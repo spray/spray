@@ -1,12 +1,13 @@
 package cc.spray
 
 import akka.actor.ActorRef
-import http.HttpResponse
+import http._
+import HttpHeaders._
 
 trait ServiceBuilder {  
   
   /*def split(r: Route[A, P]) {
-    route { ctx => r(ctx); NotHandled }
+    route { ctx => r(ctx); Unhandled }
   }
   
   def handle(actor: => ActorRef) {
@@ -21,10 +22,15 @@ trait ServiceBuilder {
     routes = routes :+ r
   }*/
   
+  def produces(mimeType: MimeType)(route: Route): Route = { ctx =>
+    route(ctx.withResponseHeader(`Content-Type`(mimeType)))
+  }
+  
   def handle(f: Context => Unit): Route = { ctx => f(ctx); Handled }
-
-  implicit def byteArray2HttpResponse(array: Array[Byte]): HttpResponse = HttpResponse(content = Some(array))
-  implicit def string2HttpResponse(s: String): HttpResponse = s.getBytes
+  
+  implicit def route2ConcatRoute(route: Route): { def ~ (other: Route): Route } = new {
+    def ~ (other: Route): Route = { ctx => route(ctx).handledOr(other(ctx)) }
+  }
   
 }
 

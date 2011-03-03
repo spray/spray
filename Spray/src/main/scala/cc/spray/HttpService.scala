@@ -17,7 +17,7 @@ class HttpService(val mainRoute: Route) extends Actor with Logging {
 
       handled match {
         case Handled => log.slf4j.debug("Handled {}", context.request)
-        case NotHandled => log.slf4j.debug("Did not handle {}", context.request)
+        case Unhandled => log.slf4j.debug("Did not handle {}", context.request)
       }
     }
 

@@ -12,7 +12,7 @@ class RootService extends Actor with ServletConverter with Logging {
   self.id = "spray-root-service"
 
   override protected[spray] def receive = {
-    case rm: RequestMethod => fire(Context(toSprayRequest(rm.request), respond(rm)))
+    case rm: RequestMethod => fire(Context(toSprayRequest(rm.request), responder(rm)))
 
     case Attach(service) => attach(service)
   }
@@ -24,22 +24,20 @@ class RootService extends Actor with ServletConverter with Logging {
       val futures = services.map { service =>
         (service !!! context).asInstanceOf[Future[RoutingResult]]
       }
-      Futures.reduce(futures) {
-        (acc, result) => if (acc == Handled) acc else result
-      } onComplete { f =>
-        if (f.result.get == NotHandled) noService(context)
-      }
+      Futures
+        .reduce(futures)(_.handledOr(_))
+        .onComplete(_.result.get.onUnhandled(noService(context)))
     }
   }
   
-  protected def respond(rm: RequestMethod): HttpResponse => Unit = {
+  protected def responder(rm: RequestMethod): HttpResponse => Unit = {
     response => rm.rawComplete(fromSprayResponse(response))    
   }
 
   protected def noService(context: Context) {
     val msg = "No service available for [" + context.request.uri + "]"
     log.slf4j.debug(msg)
-    context.respond(HttpStatus(404, msg))
+    context.responder(HttpStatus(404, msg))
   }
   
   protected def attach(serviceActor: ActorRef) {
