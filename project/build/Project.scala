@@ -30,6 +30,7 @@ class Project(info: ProjectInfo) extends ParentProject(info) with IdeaProject {
     lazy val parboiledS = "org.parboiled" % "parboiled-scala" % "0.11.0-SNAPSHOT" % "compile" withSources()
     
     lazy val specs   = "org.scala-tools.testing" %% "specs" % "1.6.7" % "test" withSources()
+    lazy val mockito = "org.mockito" % "mockito-all" % "1.8.5" % "test" withSources()
   }
   
   // -------------------------------------------------------------------------------------------------------------------
@@ -45,6 +46,7 @@ class Project(info: ProjectInfo) extends ParentProject(info) with IdeaProject {
     val parboiledS = Deps.parboiledS
     
     val specs = Deps.specs
+    val mockito = Deps.mockito
   }
   
   class ExamplesProject(info: ProjectInfo) extends DefaultWebProject(info) with AkkaProject with IdeaProject {

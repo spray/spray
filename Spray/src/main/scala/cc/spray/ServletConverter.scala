@@ -6,12 +6,10 @@ import org.apache.commons.io.IOUtils
 import java.net.{UnknownHostException, InetAddress}
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 import java.io.ByteArrayInputStream
-import akka.util.Logging
 
 trait ServletConverter {
-  this: Logging =>
   
-  protected def toSprayRequest(request: HttpServletRequest): HttpRequest = {
+  protected[spray] def toSprayRequest(request: HttpServletRequest): HttpRequest = {
     val headers = buildHeaders(request)
     HttpRequest(
       HttpMethods.get(request.getMethod).get,
@@ -54,21 +52,18 @@ trait ServletConverter {
     }
   }
   
-  protected def fromSprayResponse(response: HttpResponse): HttpServletResponse => Unit = {
+  protected[spray] def fromSprayResponse(response: HttpResponse): HttpServletResponse => Unit = {
     hsr => {
       hsr.setStatus(response.status.code.value)
-      for (header <- response.headers) header match {
-        case HttpHeaders.`Content-Type`(mimeType) => {
-          log.slf4j.warn("Explicitly set Content-Type response header with value '{}' will be ignored!", mimeType)
-        }
-        case HttpHeader(name, value) => hsr.setHeader(name, value)
+      for (HttpHeader(name, value) <- response.headers) {
+        hsr.setHeader(name, value)
       }
       response.content match {
         case Some(buffer) => {
           IOUtils.copy(new ByteArrayInputStream(buffer), hsr.getOutputStream)
           hsr.setContentLength(buffer.length)
         }
-        case None => {
+        case None => if (!response.status.code.isInstanceOf[HttpSuccess]) {
           hsr.setContentType("text/plain")
           hsr.getWriter.write(response.status.reason)
           hsr.getWriter.close

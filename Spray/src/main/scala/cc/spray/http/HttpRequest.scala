@@ -4,7 +4,7 @@ import java.net.URI
 
 case class HttpRequest(method: HttpMethod,
                        uri: String,
-                       headers: List[HttpHeader],
+                       headers: List[HttpHeader] = Nil,
                        parameters: Map[Symbol, String] = Map.empty,
                        content: Option[Array[Byte]] = None,
                        remoteHost: Option[HttpIp] = None,

@@ -5,6 +5,8 @@ import http.HttpResponse
 
 trait Service extends ServiceBuilder {
   
-  def restService: Route = { ctx => ctx.respond(HttpResponse(content = Some("Great!".getBytes))); Handled }
+  def restService: Route = {//produces() {
+    handle { _.respond("Easy...") }
+  }
   
 }

@@ -4,6 +4,7 @@ import cc.spray.utils.ObjectRegistry
 
 class HttpVersion private[http] (value: String) {
   override def toString = value
+  HttpVersions.register(this, value)
 }
 
 object HttpVersions extends ObjectRegistry[String, HttpVersion] {

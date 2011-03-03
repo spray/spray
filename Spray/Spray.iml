@@ -433,6 +433,17 @@
         <SOURCES />
       </library>
     </orderEntry>
+    <orderEntry type="module-library" exported="" scope="TEST">
+      <library>
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.1/test/mockito-all-1.8.5.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$MODULE_DIR$/lib_managed/scala_2.8.1/test/mockito-all-1.8.5-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
     <orderEntry type="module-library" exported="">
       <library>
         <CLASSES>

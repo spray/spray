@@ -1,6 +1,7 @@
 package cc.spray
 
 import akka.actor.ActorRef
+import http.HttpResponse
 
 trait ServiceBuilder {  
   
@@ -20,6 +21,10 @@ trait ServiceBuilder {
     routes = routes :+ r
   }*/
   
+  def handle(f: Context => Unit): Route = { ctx => f(ctx); Handled }
+
+  implicit def byteArray2HttpResponse(array: Array[Byte]): HttpResponse = HttpResponse(content = Some(array))
+  implicit def string2HttpResponse(s: String): HttpResponse = s.getBytes
   
 }
 
