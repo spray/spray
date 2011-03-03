@@ -3,6 +3,7 @@ package cc.spray
 import akka.actor.ActorRef
 import http._
 import HttpHeaders._
+import HttpMethods._
 
 trait ServiceBuilder {  
   
@@ -22,14 +23,31 @@ trait ServiceBuilder {
     routes = routes :+ r
   }*/
   
+  def accepts(mimeTypes: MimeType*) = filter { ctx =>
+    ctx.request
+            .extractHeader { case `Content-Type`(mimeType) => mimeType }
+            .map(contentType => mimeTypes.exists(_.matches(contentType)))
+            .getOrElse(false)
+  } _
+
+  def delete  = filter(_.request.method == DELETE) _
+  def get     = filter(_.request.method == GET) _
+  def head    = filter(_.request.method == HEAD) _
+  def options = filter(_.request.method == OPTIONS) _
+  def post    = filter(_.request.method == POST) _
+  def put     = filter(_.request.method == PUT) _
+  def trace   = filter(_.request.method == TRACE) _
+  
+  def methods(m: HttpMethod*) = filter(ctx => m.exists(_ == ctx.request.method)) _
+  
+  def filter(p: Context => Boolean)(route: Route): Route = { ctx => p(ctx) && route(ctx) }
+  
   def produces(mimeType: MimeType)(route: Route): Route = { ctx =>
     route(ctx.withResponseHeader(`Content-Type`(mimeType)))
   }
   
-  def handle(f: Context => Unit): Route = { ctx => f(ctx); Handled }
-  
-  implicit def route2ConcatRoute(route: Route): { def ~ (other: Route): Route } = new {
-    def ~ (other: Route): Route = { ctx => route(ctx).handledOr(other(ctx)) }
+  implicit def route2RouteConcatenation(route: Route): { def ~ (other: Route): Route } = new {
+    def ~ (other: Route): Route = { ctx => route(ctx) || other(ctx) }
   }
   
 }

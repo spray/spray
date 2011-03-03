@@ -22,11 +22,11 @@ class RootService extends Actor with ServletConverter with Logging {
       noService(context)
     } else {
       val futures = services.map { service =>
-        (service !!! context).asInstanceOf[Future[RoutingResult]]
+        (service !!! context).asInstanceOf[Future[Boolean]]
       }
       Futures
-        .reduce(futures)(_.handledOr(_))
-        .onComplete(_.result.get.onUnhandled(noService(context)))
+        .reduce(futures)(_ || _)
+        .onComplete(fut => if (!fut.result.get) noService(context))
     }
   }
   

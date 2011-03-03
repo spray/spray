@@ -9,13 +9,11 @@ class HttpMethod private[http] (val value: String) {
 }
 
 object HttpMethods extends ObjectRegistry[String, HttpMethod] {
-  val GET     = new HttpMethod("GET")
-  val PUT     = new HttpMethod("PUT")
-  val POST    = new HttpMethod("POST")
   val DELETE  = new HttpMethod("DELETE")
-  val PATCH   = new HttpMethod("PATCH")
-  val OPTIONS = new HttpMethod("OPTIONS")
+  val GET     = new HttpMethod("GET")
   val HEAD    = new HttpMethod("HEAD")
-  val CONNECT = new HttpMethod("CONNECT")
+  val OPTIONS = new HttpMethod("OPTIONS")
+  val POST    = new HttpMethod("POST")
+  val PUT     = new HttpMethod("PUT")
   val TRACE   = new HttpMethod("TRACE")
 }

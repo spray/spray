@@ -15,15 +15,10 @@ class HttpService(val mainRoute: Route) extends Actor with Logging {
 
       self.reply(handled) // inform the root service
 
-      handled match {
-        case Handled => log.slf4j.debug("Handled {}", context.request)
-        case Unhandled => log.slf4j.debug("Did not handle {}", context.request)
-      }
+      val msg = if (handled) "Handled {}" else "Did not handle {}" 
+      log.slf4j.debug(msg, context.request)
     }
-
-    case unknown => log.slf4j.error("Received unexpected message: {}", unknown)
   }
-
 }
 
 object HttpService {

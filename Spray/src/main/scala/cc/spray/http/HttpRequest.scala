@@ -3,7 +3,7 @@ package cc.spray.http
 import java.net.URI
 
 case class HttpRequest(method: HttpMethod,
-                       uri: String,
+                       uri: String = "",
                        headers: List[HttpHeader] = Nil,
                        parameters: Map[Symbol, String] = Map.empty,
                        content: Option[Array[Byte]] = None,
@@ -33,6 +33,8 @@ case class HttpRequest(method: HttpMethod,
               fragment: String = this.fragment) = {
     copy(uri = new URI(scheme, userInfo, host, port, path, query, fragment).toString)
   }
+  
+  def extractHeader[A](f: PartialFunction[HttpHeader, A]): Option[A] = headers.collect(f).headOption
   
   private def nonNull(s: String, default: String = ""): String = if (s == null) default else s
 }

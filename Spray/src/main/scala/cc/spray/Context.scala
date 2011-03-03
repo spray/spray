@@ -16,9 +16,9 @@ case class Context(request: HttpRequest, responder: HttpResponse => Unit) {
     response.copy(headers = header :: response.headers.filterNot(_.name == header.name))
   }
   
-  def respond(string: String) { respond(string.getBytes) }
+  def respond(string: String): Boolean = { respond(string.getBytes) }
 
-  def respond(array: Array[Byte]) { respond(HttpResponse(content = Some(array))) }
+  def respond(array: Array[Byte]): Boolean = { respond(HttpResponse(content = Some(array))) }
 
-  def respond(response: HttpResponse) { responder(response) }
+  def respond(response: HttpResponse): Boolean = { responder(response); true }
 }

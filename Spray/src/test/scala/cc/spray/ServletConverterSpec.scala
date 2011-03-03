@@ -36,7 +36,7 @@ class ServletConverterSpec extends Specification with Mockito {
         hsr.getHeaders(key).asInstanceOf[Enumeration[String]] returns Iterator(value)
       }
       hsr.getInputStream returns make(mock[ServletInputStream]) { _.read(any) returns -1 }
-      hsr.getRemoteAddr returns "xyz"
+      hsr.getRemoteAddr returns "a:b" // provoke an UnknownHostException 
       hsr.getProtocol returns "HTTP/1.1"
     }
   }

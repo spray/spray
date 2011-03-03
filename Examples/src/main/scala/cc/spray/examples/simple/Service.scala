@@ -8,7 +8,7 @@ trait Service extends ServiceBuilder {
   
   def restService: Route =
     produces(`text/plain`) {
-      handle { _.respond("Easy...") }
+      get { _.respond("Easy...") }
     }
   
 }

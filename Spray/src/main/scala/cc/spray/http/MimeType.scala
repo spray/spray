@@ -4,11 +4,13 @@ import cc.spray.utils.ObjectRegistry
 
 sealed trait MimeType {
   def value: String
-  lazy val maintype = value.split("/")(0)
-  lazy val subtype = value.split("/")(1)
+  lazy val mainType = value.split("/")(0)
+  lazy val subType = value.split("/")(1)
   def fileExtensions: Seq[String]
   def defaultExtension = fileExtensions.headOption
   override def toString = value
+  
+  def matches(other: MimeType) = (this eq other) || (subType == "+" && mainType == other.mainType) 
   
   MimeObjects.register(this, value)
 }
@@ -75,7 +77,9 @@ object MimeTypes {
   class `video/ogg`       private[http]() extends `video/+`("video/ogg", "ogg")
   class `video/quicktime` private[http]() extends `video/+`("video/quicktime", "qt", "mov")
   
-  case class CustomMimeType(override val value: String) extends `+/+`
+  case class CustomMimeType(override val value: String) extends `+/+` {
+    override def matches(other: MimeType) = this == other 
+  }
 }
 
 object MimeObjects extends ObjectRegistry[String, MimeType] {
