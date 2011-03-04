@@ -82,6 +82,23 @@ class ServiceBuilderSpec extends Specification with ServiceBuilder {
     }
   }
   
+  "The route created by the concatenation operator '~'" should {
+    "yield the first sub route if it succeeded" in {
+      captureResponse { responder =>
+        fire(HttpRequest(GET), responder) {
+          get { _.respond("first") } ~ get { _.respond("second") }
+        }
+      }.content.map(new String(_)) mustEqual Some("first")    
+    }
+    "yield the secondsub route if the first did not succeed" in {
+      captureResponse { responder =>
+        fire(HttpRequest(GET), responder) {
+          post { _.respond("first") } ~ get { _.respond("second") }
+        }
+      }.content.map(new String(_)) mustEqual Some("second")    
+    }
+  }
+  
   private def fire(request: HttpRequest, responder: HttpResponse => Unit = { _ => })(route: Route) {
     route(Context(request, responder))
   }
