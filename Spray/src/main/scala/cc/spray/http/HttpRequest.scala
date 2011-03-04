@@ -34,7 +34,7 @@ case class HttpRequest(method: HttpMethod,
     copy(uri = new URI(scheme, userInfo, host, port, path, query, fragment).toString)
   }
   
-  def extractHeader[A](f: PartialFunction[HttpHeader, A]): Option[A] = headers.collect(f).headOption
+  def extractFromHeader[A](f: PartialFunction[HttpHeader, A]): Option[A] = headers.collect(f).headOption
   
   private def nonNull(s: String, default: String = ""): String = if (s == null) default else s
 }

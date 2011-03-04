@@ -10,92 +10,186 @@ class ServiceBuilderSpec extends Specification with ServiceBuilder {
 
   "get" should {
     "block POST requests" in {
-      innerHasRun { inner =>
+      captureContext { capture =>
         fire(HttpRequest(POST)) {
-          get { inner }
+          get { capture }
         }
-      } mustBe false
+      } must beNone
     }
     "let GET requests pass" in {
-      innerHasRun { inner =>
+      captureContext { capture =>
         fire(HttpRequest(GET)) {
-          get { inner }
+          get { capture }
         }
-      } mustBe true
+      } must beSomething
     }
   }
   
   "accepts(mimeType)" should {
     "block requests without any content" in {
-      innerHasRun { inner =>
+      captureContext { capture =>
         fire(HttpRequest(GET)) {
-          accepts(`text/xml`) { inner }
+          accepts(`text/xml`) { capture }
         }
-      } mustBe false
+      } must beNone
     }
     "block requests with unmatching content" in {
-      innerHasRun { inner =>
+      captureContext { capture =>
         fire(HttpRequest(GET, headers = List(`Content-Type`(`text/html`)))) {
-          accepts(`text/xml`) { inner }
+          accepts(`text/xml`) { capture }
         }
-      } mustBe false
+      } must beNone
     }
     "let requests with matching content pass" in {
       "on simple one-on-one matches" in {
-        innerHasRun { inner =>
+        captureContext { capture =>
           fire(HttpRequest(GET, headers = List(`Content-Type`(`text/html`)))) {
-            accepts(`text/html`) { inner }
+            accepts(`text/html`) { capture }
           }
-        } mustBe true
+        } must beSomething
       }
       "as a one-of-several match " in {
-        innerHasRun { inner =>
+        captureContext { capture =>
           fire(HttpRequest(GET, headers = List(`Content-Type`(`text/html`)))) {
-            accepts(`text/xml`, `text/html`) { inner }
+            accepts(`text/xml`, `text/html`) { capture }
           }
-        } mustBe true
+        } must beSomething
       }
       "as a .../* media range match" in {
-        innerHasRun { inner =>
+        captureContext { capture =>
           fire(HttpRequest(GET, headers = List(`Content-Type`(`text/html`)))) {
-            accepts(`text/+`) { inner }
+            accepts(`text/+`) { capture }
           }
-        } mustBe true
+        } must beSomething
       }
     }
   }
   
   "produces(mimeType)" should {
     "add a 'Content-Type' response header if none was present before" in {
-      captureResponse { responder =>
-        fire(HttpRequest(GET), responder) {
+      captureResponse {
+        fire(HttpRequest(GET), _) {
           produces(`text/plain`) { _.respond("CONTENT") }
         }
       }.headers.collect { case `Content-Type`(mimeType) => mimeType } mustEqual List(`text/plain`)    
     }
     "overwrite a previously existing 'Content-Type' response header" in {
-      captureResponse { responder =>
-        fire(HttpRequest(GET), responder) {
+      captureResponse {
+        fire(HttpRequest(GET), _) {
           produces(`text/plain`) { _.respond(HttpResponse(headers = List(`Content-Type`(`text/html`)))) }
         }
       }.headers.collect { case `Content-Type`(mimeType) => mimeType } mustEqual List(`text/plain`)    
     }
   }
   
-  "The route created by the concatenation operator '~'" should {
+  "routes created by the concatenation operator '~'" should {
     "yield the first sub route if it succeeded" in {
-      captureResponse { responder =>
-        fire(HttpRequest(GET), responder) {
+      captureResponseString {
+        fire(HttpRequest(GET), _) {
           get { _.respond("first") } ~ get { _.respond("second") }
         }
-      }.content.map(new String(_)) mustEqual Some("first")    
+      } mustEqual "first"    
     }
-    "yield the secondsub route if the first did not succeed" in {
-      captureResponse { responder =>
-        fire(HttpRequest(GET), responder) {
+    "yield the second sub route if the first did not succeed" in {
+      captureResponseString {
+        fire(HttpRequest(GET), _) {
           post { _.respond("first") } ~ get { _.respond("second") }
         }
-      }.content.map(new String(_)) mustEqual Some("second")    
+      } mustEqual "second"    
+    }
+  }
+  
+  "routes created with the path(string) combinator" should {
+    "block unmatching requests" in {
+      captureContext { capture =>
+        fire(HttpRequest(GET, "/noway/this/works")) {
+          path("hello") { capture }
+        }
+      } must beNone
+    }
+    "let matching requests pass and adapt Context.unmatchedPath" in {
+      captureContext { capture =>
+        fire(HttpRequest(GET, "/noway/this/works")) {
+          path("noway") { capture }
+        }
+      }.map(_.unmatchedPath) must beSome("/this/works")
+    }
+    "be stackable" in {
+      "within one single path(...) combinator" in {
+        captureContext { capture =>
+          fire(HttpRequest(GET, "/noway/this/works")) {
+            path("noway" / "this" / "works") { capture }
+          }
+        }.map(_.unmatchedPath) must beSome("")
+      }
+      "when nested" in {
+        captureContext { capture =>
+          fire(HttpRequest(GET, "/noway/this/works")) {
+            path("noway") {
+              path("this") {
+                capture
+              }
+            }
+          }
+        }.map(_.unmatchedPath) must beSome("/works")
+      }
+    }
+  }
+  
+  "routes created with the path(regex) combinator" should {
+    "block unmatching requests" in {
+      captureContext { capture =>
+        fire(HttpRequest(GET, "/noway/this/works")) {
+          path("\\d".r) { _ => capture }
+        }
+      } must beNone
+    }
+    "let matching requests pass, extract the match value and adapt Context.unmatchedPath" in {
+      "when the regex is a simple regex" in {
+        captureResponseString {
+          fire(HttpRequest(GET, "/noway/this/works"), _) {
+            path("no[^/]+".r) { capture =>
+              get { ctx => ctx.respond(capture + ":" + ctx.unmatchedPath) }
+            }
+          }
+        } mustEqual "noway:/this/works"
+      }
+      "when the regex is a group regex" in {
+        captureResponseString {
+          fire(HttpRequest(GET, "/noway/this/works"), _) {
+            path("no([^/]+)".r) { capture =>
+              get { ctx => ctx.respond(capture + ":" + ctx.unmatchedPath) }
+            }
+          }
+        } mustEqual "way:/this/works"
+      }
+    }
+    "be stackable" in {
+      "within one single path(...) combinator" in {
+        captureResponseString {
+          fire(HttpRequest(GET, "/compute/23/19"), _) {
+            path("compute" / "\\d+".r / "\\d+".r) { (a, b) =>
+              get { _.respond((a.toInt + b.toInt).toString) }
+            }
+          }
+        } mustEqual "42"
+      }
+      "within one single path(...) combinator" in {
+        captureResponseString {
+          fire(HttpRequest(GET, "/compute/23/19"), _) {
+            path("compute" / "\\d+".r) { a =>
+              path("\\d+".r) { b =>
+                get { _.respond((a.toInt + b.toInt).toString) }
+              }
+            }
+          }
+        } mustEqual "42"
+      }
+    }
+    "fail when the regex contains more than one group" in {
+      path("compute" / "yea(\\d+)(\\d+)".r / "\\d+".r) { (a, b) =>
+        get { _ => true }
+      } must throwA[IllegalArgumentException]
     }
   }
   
@@ -103,15 +197,19 @@ class ServiceBuilderSpec extends Specification with ServiceBuilder {
     route(Context(request, responder))
   }
   
-  private def innerHasRun(f: Route => Unit): Boolean = {
-    var hasRun = false;
-    f { _ => hasRun = true; true }
-    hasRun
+  private def captureContext(f: Route => Unit): Option[Context] = {
+    var context: Option[Context] = None;
+    f { ctx => context = Some(ctx); true }
+    context
   }
   
   private def captureResponse(f: (HttpResponse => Unit) => Unit): HttpResponse = {
-    var response: HttpResponse = null
-    f { res => response = res }
-    response
+    var response: Option[HttpResponse] = None
+    f { res => response = Some(res) }
+    response.getOrElse(fail("No response received"))
+  }
+  
+  private def captureResponseString(f: (HttpResponse => Unit) => Unit): String = {
+    captureResponse(f).content.map(new String(_)).getOrElse(fail("Response has no content"))
   }
 }

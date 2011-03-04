@@ -7,8 +7,12 @@ import MimeObjects._
 trait Service extends ServiceBuilder {
   
   def restService: Route =
-    produces(`text/plain`) {
-      get { _.respond("Easy...") }
+    path("test" / "hello") {
+      path("\\d".r) { number =>
+        produces(`text/plain`) {
+          get { _.respond("The number is: " + number) }
+        }
+      }
     }
   
 }

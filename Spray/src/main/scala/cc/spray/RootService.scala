@@ -12,7 +12,7 @@ class RootService extends Actor with ServletConverter with Logging {
   self.id = "spray-root-service"
 
   override protected[spray] def receive = {
-    case rm: RequestMethod => fire(Context(toSprayRequest(rm.request), responder(rm)))
+    case rm: RequestMethod => fire(createContext(rm))
 
     case Attach(service) => attach(service)
   }
@@ -28,6 +28,10 @@ class RootService extends Actor with ServletConverter with Logging {
         .reduce(futures)(_ || _)
         .onComplete(fut => if (!fut.result.get) noService(context))
     }
+  }
+  
+  protected def createContext(rm: RequestMethod): Context = {
+    Context(toSprayRequest(rm.request), responder(rm))
   }
   
   protected def responder(rm: RequestMethod): HttpResponse => Unit = {

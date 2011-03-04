@@ -2,7 +2,7 @@ package cc.spray
 
 import http._
 
-case class Context(request: HttpRequest, responder: HttpResponse => Unit) {
+case class Context(request: HttpRequest, responder: HttpResponse => Unit, unmatchedPath: String) {
   
   def withTransformedRequest(transformer: HttpRequest => HttpRequest): Context = {
     copy(request = transformer(request))
@@ -21,4 +21,8 @@ case class Context(request: HttpRequest, responder: HttpResponse => Unit) {
   def respond(array: Array[Byte]): Boolean = { respond(HttpResponse(content = Some(array))) }
 
   def respond(response: HttpResponse): Boolean = { responder(response); true }
+}
+
+object Context {
+  def apply(request: HttpRequest, responder: HttpResponse => Unit): Context = apply(request, responder, request.path)
 }
