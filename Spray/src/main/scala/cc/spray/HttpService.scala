@@ -3,7 +3,7 @@ package cc.spray
 import akka.http.Endpoint
 import akka.util.Logging
 import http.{HttpResponse, HttpRequest}
-import akka.actor.{ActorRef, Actor}
+import akka.actor.{Channel, ActorRef, Actor}
 
 class HttpService(val mainRoute: Route) extends Actor with Logging {
 
@@ -15,11 +15,11 @@ class HttpService(val mainRoute: Route) extends Actor with Logging {
   }
   
   protected def createRequestContext(request: HttpRequest) = {
-    RequestContext(request, respond(request, self.sender.get))
+    RequestContext(request, respond(request, self.channel))
   }
   
-  protected def respond(request: HttpRequest, sender: ActorRef)(responseContext: ResponseContext) {
-    sender ! responseContext.response
+  protected def respond(request: HttpRequest, channel: Channel[Any])(responseContext: ResponseContext) {
+    channel ! responseContext.response
   }
 }
 
