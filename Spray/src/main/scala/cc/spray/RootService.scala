@@ -3,7 +3,6 @@ package cc.spray
 import akka.http._
 import akka.actor.{Actor, ActorRef}
 import akka.util.Logging
-import akka.dispatch.{Futures, Future}
 import http._
 
 class RootService extends Actor with ServletConverter with Logging {
@@ -12,36 +11,20 @@ class RootService extends Actor with ServletConverter with Logging {
   self.id = "spray-root-service"
 
   override protected[spray] def receive = {
-    case rm: RequestMethod => fire(createContext(rm))
+    case rm: RequestMethod => {
+      val rootRequestActor = createRootRequestActor(toSprayRequest(rm.request), respond(rm))
+      Actor.actorOf(rootRequestActor).start
+    }
 
     case Attach(service) => attach(service)
   }
-
-  protected def fire(context: Context) {
-    if (services.isEmpty) {
-      noService(context)
-    } else {
-      val futures = services.map { service =>
-        (service !!! context).asInstanceOf[Future[Boolean]]
-      }
-      Futures
-        .reduce(futures)(_ || _)
-        .onComplete(fut => if (!fut.result.get) noService(context))
-    }
-  }
   
-  protected def createContext(rm: RequestMethod): Context = {
-    Context(toSprayRequest(rm.request), responder(rm))
-  }
-  
-  protected def responder(rm: RequestMethod): HttpResponse => Unit = {
-    response => rm.rawComplete(fromSprayResponse(response))    
+  protected def createRootRequestActor(request: HttpRequest, responder: HttpResponse => Unit) = {
+    new RootRequestActor(services, request, responder)
   }
 
-  protected def noService(context: Context) {
-    val msg = "No service available for [" + context.request.uri + "]"
-    log.slf4j.debug(msg)
-    context.responder(HttpStatus(404, msg))
+  protected def respond(rm: RequestMethod)(response: HttpResponse) {
+    rm.rawComplete(fromSprayResponse(response))
   }
   
   protected def attach(serviceActor: ActorRef) {

@@ -1,7 +1,6 @@
 package cc.spray
 
 import util.matching.Regex
-import java.util.regex.Pattern
 
 /**
  * a PathMatcher tries to match a prefix of a given string and returns

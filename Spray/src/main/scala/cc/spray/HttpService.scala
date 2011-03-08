@@ -1,8 +1,9 @@
 package cc.spray
 
 import akka.http.Endpoint
-import akka.actor.Actor
 import akka.util.Logging
+import http.{HttpResponse, HttpRequest}
+import akka.actor.{ActorRef, Actor}
 
 class HttpService(val mainRoute: Route) extends Actor with Logging {
 
@@ -10,14 +11,15 @@ class HttpService(val mainRoute: Route) extends Actor with Logging {
   self.dispatcher = Endpoint.Dispatcher 
 
   protected def receive = {
-    case context: Context => {
-      val handled = mainRoute(context)
-
-      self.reply(handled) // inform the root service
-
-      val msg = if (handled) "Handled {}" else "Did not handle {}" 
-      log.slf4j.debug(msg, context.request)
-    }
+    case request: HttpRequest => mainRoute(createRequestContext(request))
+  }
+  
+  protected def createRequestContext(request: HttpRequest) = {
+    RequestContext(request, respond(request, self.sender.get))
+  }
+  
+  protected def respond(request: HttpRequest, sender: ActorRef)(responseContext: ResponseContext) {
+    sender ! responseContext.response
   }
 }
 

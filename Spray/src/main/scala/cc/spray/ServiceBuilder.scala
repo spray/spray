@@ -35,11 +35,11 @@ trait ServiceBuilder {
   private def pathFilter(pattern: PathMatcher)(f: PartialFunction[List[String], Route]): Route = { ctx =>
     pattern(ctx.unmatchedPath) match {
       case Some((remainingPath, captures)) => {
-        assert(f.isDefinedAt(captures)) // the static typing should ensure that we match the right number of captures
+        assert(f.isDefinedAt(captures)) // static typing should ensure that we match the right number of captures
         val route = f(captures)
-        route((ctx.copy(unmatchedPath = remainingPath)))
+        route(ctx.copy(unmatchedPath = remainingPath))
       }
-      case _ => false
+      case _ => ctx.stopRouting
     }
   } 
   
@@ -50,10 +50,6 @@ trait ServiceBuilder {
     }
   } _
 
-  def produces(mimeType: MimeType)(route: Route): Route = { ctx =>
-    route(ctx.withResponseHeader(`Content-Type`(mimeType)))
-  }
-  
   def methods(m: HttpMethod*) = filter(ctx => m.exists(_ == ctx.request.method)) _
   
   def delete  = filter(_.request.method == DELETE) _
@@ -64,14 +60,31 @@ trait ServiceBuilder {
   def put     = filter(_.request.method == PUT) _
   def trace   = filter(_.request.method == TRACE) _
 
-  def filter(p: Context => Boolean)(route: Route): Route = { ctx => p(ctx) && route(ctx) }
+  def filter(p: RequestContext => Boolean)(route: Route): Route = { ctx =>
+    if (p(ctx)) route(ctx) else ctx.stopRouting
+  }
   
+  def produces(mimeType: MimeType) = responseHeader(`Content-Type`(mimeType)) _
+  
+  def responseHeader(header: HttpHeader)(route: Route): Route = { ctx =>
+    route {
+      ctx.withResponseTransformer { response =>
+        Some(response.copy(headers = header :: response.headers.filterNot(_.name == header.name)))
+      }
+    }
+  }
   
   // implicits
   
   
   implicit def route2RouteConcatenation(route: Route): { def ~ (other: Route): Route } = new {
-    def ~ (other: Route): Route = { ctx => route(ctx) || other(ctx) }
+    def ~ (other: Route): Route = { ctx =>
+      route {
+        ctx.withResponder { responseContext =>
+          if (responseContext.response.isDefined) ctx.responder(responseContext) else other(ctx)
+        }
+      }
+    }
   }
   
   implicit def string2Matcher(s: String): PathMatcher0 = new StringMatcher(s)

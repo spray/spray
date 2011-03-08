@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, Actor}
 
 package object spray {
 
-  type Route = Context => Boolean
+  type Route = RequestContext => Unit
   
   def actor(id: Symbol): ActorRef = actor(id.toString)
 
