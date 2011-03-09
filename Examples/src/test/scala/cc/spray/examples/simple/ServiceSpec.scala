@@ -25,7 +25,7 @@ class ServiceSpec extends Specification with Service with SprayTest with Detachi
   }
   
   "GET /resource/sampleResource.txt" in {
-    test(HttpRequest(GET, "/resource/sampleResource.html")) {
+    test(HttpRequest(GET, "/resource/sample.html")) {
       service
     }.response mustEqual HttpResponse(headers = List(`Content-Type`(`text/html`)), content = "<p>Lorem ipsum!</p>")
   }

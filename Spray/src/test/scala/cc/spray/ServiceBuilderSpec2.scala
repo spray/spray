@@ -56,6 +56,16 @@ trait ServiceBuilderSpec2 {
         getFromResource("nonExistingResource")
       }.response.status mustEqual HttpStatus(500, "Resource 'nonExistingResource' not found")
     }
+    "return the resource content with the MimeType matching the file extension" in {
+      test(HttpRequest(GET)) {
+        getFromResource("sample.html")
+      }.response mustEqual HttpResponse(headers = List(`Content-Type`(`text/html`)), content = "<p>Lorem ipsum!</p>")
+    }
+    "return the file content with MimeType 'application/octet-stream' on unknown file extensions" in {
+      test(HttpRequest(GET)) {
+        getFromResource("sample.xyz")
+      }.response mustEqual HttpResponse(headers = List(`Content-Type`(`application/octet-stream`)), content = "XyZ")
+    }
   }
   
 }
