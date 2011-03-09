@@ -2,10 +2,13 @@ package cc
 
 import akka.actor.{ActorRef, Actor}
 import java.io.File
+import spray.http.HttpResponse
 
 package object spray {
 
   type Route = RequestContext => Unit
+  
+  type RoutingResult = Either[Set[Rejection], HttpResponse]
   
   def actor(id: Symbol): ActorRef = actor(id.toString)
 

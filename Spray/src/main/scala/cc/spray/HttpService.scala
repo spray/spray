@@ -1,9 +1,8 @@
 package cc.spray
 
 import akka.http.Endpoint
-import akka.util.Logging
-import akka.actor.{Channel, ActorRef, Actor}
-import http.{HttpStatus, HttpResponse, HttpRequest}
+import akka.actor.Channel
+import http._
 
 class HttpService(val mainRoute: Route) extends RoutingActor {
 
@@ -25,9 +24,26 @@ class HttpService(val mainRoute: Route) extends RoutingActor {
     RequestContext(request, respond(request, self.channel))
   }
   
-  protected def respond(request: HttpRequest, channel: Channel[Any])(responseContext: ResponseContext) {
-    channel ! responseContext.response
-  }  
+  protected def respond(request: HttpRequest, channel: Channel[Any])(response: RoutingResult) {
+    response match {
+      case Right(httpResponse) => channel ! Some(httpResponse) 
+      case Left(rejections) => channel ! responseForRejections(rejections) 
+    }
+  }
+  
+  protected def responseForRejections(rejections: Set[Rejection]): Option[HttpResponse] = {
+    if (rejections.contains(PathMatchedRejection)) {
+      if (rejections.contains(MethodRejection)) {
+        Some(HttpResponse(HttpStatusCodes.MethodNotAllowed))
+      } else if (rejections.contains(AcceptRejection)) {
+        Some(HttpResponse(HttpStatusCodes.NotAcceptable))
+      } else {
+        throw new IllegalStateException("Unknown request rejection")
+      }
+    } else {
+      None // no path matched, so signal to the root service that this service did not handle the request 
+    }
+  } 
 }
 
 object HttpService {

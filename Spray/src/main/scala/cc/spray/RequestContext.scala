@@ -2,36 +2,36 @@ package cc.spray
 
 import http._
 
-case class RequestContext(request: HttpRequest, responder: ResponseContext => Unit, unmatchedPath: String) {
+case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit, unmatchedPath: String) {
   
-  def withTransformedRequest(transformer: HttpRequest => HttpRequest): RequestContext = {
-    copy(request = transformer(request))
+  def withRequestTransformed(f: HttpRequest => HttpRequest): RequestContext = {
+    copy(request = f(request))
   }
 
-  def withResponseTransformer(transformer: HttpResponse => Option[HttpResponse]): RequestContext = {
-    withResponseContextTransformer { responseContext =>
-      responseContext.response match {
-        case Some(res) => responseContext.copy(response = transformer(res))
-        case None => responseContext
+  def withHttpResponseTransformed(f: HttpResponse => HttpResponse): RequestContext = {
+    withRouteResponseTransformed {
+      _ match {
+        case x@ Left(_) => x
+        case Right(response) => Right(f(response))
       }
     }
   }
-
-  def withResponseContextTransformer(transformer: ResponseContext => ResponseContext): RequestContext = {
-    withResponder { responseContext => responder(transformer(responseContext)) }
+  
+  def withRouteResponseTransformed(f: RoutingResult => RoutingResult): RequestContext = {
+    withResponder { rr => responder(f(rr)) }
   }
 
-  def withResponder(newResponder: ResponseContext => Unit) = copy(responder = newResponder)
+  def withResponder(newResponder: RoutingResult => Unit) = copy(responder = newResponder)
   
   def respond(string: String) { respond(string.getBytes) }
 
   def respond(array: Array[Byte]) { respond(HttpResponse(content = HttpContent(array))) }
 
-  def respond(response: HttpResponse) { responder(ResponseContext(Some(response))) }
+  def respond(response: HttpResponse) { respond(Right(response)) }
   
-  def respond(responseContext: ResponseContext) { responder(responseContext) }
+  def respond(rr: RoutingResult) { responder(rr) }
   
-  def respondUnhandled { respond(ResponseContext(None)) }
+  def reject(rejections: Rejection*) { respond(Left(Set(rejections: _*))) }
   
   def fail(failure: HttpFailure, reason: String = "") {
     respond(HttpResponse(HttpStatus(failure, reason)))
@@ -39,7 +39,7 @@ case class RequestContext(request: HttpRequest, responder: ResponseContext => Un
 }
 
 object RequestContext {
-  def apply(request: HttpRequest, responder: ResponseContext => Unit = { _ => }): RequestContext = {
+  def apply(request: HttpRequest, responder: RoutingResult => Unit = { _ => }): RequestContext = {
     apply(request, responder, request.path)
   }
 }

@@ -8,6 +8,6 @@ trait RoutingActor extends Actor with Logging {
   
   protected def responseForException(request: HttpRequest, e: Exception): HttpResponse = {
     log.error("Error during processing of request {}:\n{}", request, e)
-    HttpResponse(HttpStatus(501, e.getMessage))
+    HttpResponse(HttpStatus(500, e.getMessage))
   }  
 } 

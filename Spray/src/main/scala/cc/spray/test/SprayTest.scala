@@ -1,21 +1,24 @@
 package cc.spray
 package test
 
-import cc.spray.{ResponseContext, RequestContext}
+import cc.spray.RequestContext
 import http._
 
 trait SprayTest {
   this: { def fail(msg: String): Nothing } =>
 
-  def test(request: HttpRequest)(route: Route): ContextWrapper = {
-    var result: Option[ResponseContext] = None;
+  def test(request: HttpRequest)(route: Route): RoutingResultWrapper = {
+    var result: Option[RoutingResult] = None;
     route(RequestContext(request, {ctx => result = Some(ctx)}))
-    new ContextWrapper(result.getOrElse(fail("No response received")))
+    new RoutingResultWrapper(result.getOrElse(fail("No response received")))
   }
 
-  class ContextWrapper(context: ResponseContext) {
-    def handled: Boolean = context.response.isDefined
-    def response: HttpResponse = context.response.getOrElse(fail("Request was not handled"))
+  class RoutingResultWrapper(rr: RoutingResult) {
+    def handled: Boolean = rr.isRight    
+    def response: HttpResponse = rr match {
+      case Right(response) => response
+      case Left(rejections) => fail("Request was not handled, rejections: " + rejections)
+    }
   } 
 
   def captureRequestContext(route: (Route => Route) => Unit): RequestContext = {

@@ -34,10 +34,22 @@ private[spray] trait PathBuilders {
     pattern(ctx.unmatchedPath) match {
       case Some((remainingPath, captures)) => {
         assert(f.isDefinedAt(captures)) // static typing should ensure that we match the right number of captures
-        val route = f(captures)
-        route(ctx.copy(unmatchedPath = remainingPath))
+        f(captures)(
+          if (remainingPath == "") {
+            // if we have successfully matched the complete URI we need to  
+            // add a PathMatchedRejection if the request is still rejected
+            ctx.copy(unmatchedPath = "", responder = {
+              _ match {
+                case x@ Right(_) => ctx.responder(x) // request succeeded, no further action required
+                case Left(rejections) => Left(rejections + PathMatchedRejection) // rejected, add marker  
+              }
+            })
+          } else {
+            ctx.copy(unmatchedPath = remainingPath)
+          }
+        )
       }
-      case _ => ctx.respondUnhandled
+      case _ => ctx.reject()
     }
   } 
   

@@ -9,39 +9,37 @@ import collection.mutable.WeakHashMap
 
 private[spray] trait BasicBuilders {
   
-  def accepts(mimeTypes: MimeType*) = filter { ctx =>
+  def accepts(mimeTypes: MimeType*) = filter(AcceptRejection) { ctx =>
     (for (`Content-Type`(mimeType) <- ctx.request.headers) yield mimeType) match {
       case contentType :: Nil => mimeTypes.exists(_.matchesOrIncludes(contentType))
       case _ => false
     }
   } _
 
-  def methods(m: HttpMethod*) = filter(ctx => m.exists(_ == ctx.request.method)) _
+  def methods(m: HttpMethod*) = filter(MethodRejection) { ctx => m.exists(_ == ctx.request.method) } _
   
-  def delete  = filter(_.request.method == DELETE) _
-  def get     = filter(_.request.method == GET) _
-  def head    = filter(_.request.method == HEAD) _
-  def options = filter(_.request.method == OPTIONS) _
-  def post    = filter(_.request.method == POST) _
-  def put     = filter(_.request.method == PUT) _
-  def trace   = filter(_.request.method == TRACE) _
+  def delete  = filter(MethodRejection) { _.request.method == DELETE } _
+  def get     = filter(MethodRejection) { _.request.method == GET } _
+  def head    = filter(MethodRejection) { _.request.method == HEAD } _
+  def options = filter(MethodRejection) { _.request.method == OPTIONS } _
+  def post    = filter(MethodRejection) { _.request.method == POST } _
+  def put     = filter(MethodRejection) { _.request.method == PUT } _
+  def trace   = filter(MethodRejection) { _.request.method == TRACE } _
 
-  def filter(p: RequestContext => Boolean)(route: Route): Route = { ctx =>
-    if (p(ctx)) route(ctx) else ctx.respondUnhandled
+  def filter(rejection: Rejection)(p: RequestContext => Boolean)(route: Route): Route = { ctx =>
+    if (p(ctx)) route(ctx) else ctx.reject(rejection)
   }
   
   def produces(mimeType: MimeType) = responseHeader(`Content-Type`(mimeType)) _
   
   def responseHeader(header: HttpHeader)(route: Route): Route = { ctx =>
     route {
-      ctx.withResponseTransformer { response =>
-        Some(
-          if (response.isSuccess) {
-            response.copy(headers = header :: response.headers.filterNot(_.name == header.name))
-          } else {
-            response // in case of failures or warnings we do not set the header
-          }
-        )
+      ctx.withHttpResponseTransformed { response => 
+        if (response.isSuccess) {
+          response.copy(headers = header :: response.headers.filterNot(_.name == header.name))
+        } else {
+          response // in case of failures or warnings we do not set the header
+        }
       }
     }
   }
@@ -58,9 +56,9 @@ private[spray] trait BasicBuilders {
       route(ctx)
     } else {
       def continueAndCacheResponse() = route {
-        ctx.withResponseTransformer { response =>
+        ctx.withHttpResponseTransformed { response =>
           cache.update(key, response)
-          Some(response)
+          response
         }
       }
       val cachedResponse = cache.get(key)
@@ -79,8 +77,18 @@ private[spray] trait BasicBuilders {
   implicit def route2RouteConcatenation(route: Route): { def ~ (other: Route): Route } = new {
     def ~ (other: Route): Route = { ctx =>
       route {
-        ctx.withResponder { responseContext =>
-          if (responseContext.response.isDefined) ctx.responder(responseContext) else other(ctx)
+        ctx.withResponder { 
+          _ match {
+            case x@ Right(_) => ctx.responder(x) // first route succeeded
+            case Left(rejections1) => other {
+              ctx.withResponder {
+                _ match {
+                  case x@ Right(_) => ctx.responder(x) // second route succeeded
+                  case Left(rejections2) => Left(rejections1 ++ rejections2)  
+                }
+              }
+            }  
+          }
         }
       }
     }
