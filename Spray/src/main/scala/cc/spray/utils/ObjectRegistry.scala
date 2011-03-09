@@ -1,7 +1,7 @@
 package cc.spray.utils
 
 trait ObjectRegistry[K, V] {
-  private val registry = collection.mutable.Map.empty[K, V]
+  protected val registry = collection.mutable.Map.empty[K, V]
   
   def register(obj: V, keys: Seq[K]) {
     keys.foreach(register(obj, _))

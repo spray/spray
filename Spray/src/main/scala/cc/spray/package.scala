@@ -1,6 +1,7 @@
 package cc
 
 import akka.actor.{ActorRef, Actor}
+import java.io.File
 
 package object spray {
 
@@ -29,4 +30,14 @@ package object spray {
   }
   
   def make[A, U](a: A)(f: A => U): A = { f(a); a }
+  
+  implicit def pimpWithExtension(file: File): { def extension: String } = new {
+    def extension = {
+      val name = file.getName
+      name.lastIndexOf('.') match {
+        case -1 => ""
+        case x => name.substring(x + 1)
+      }
+    }
+  }
 }

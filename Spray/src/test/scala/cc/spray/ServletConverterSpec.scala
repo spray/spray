@@ -7,7 +7,7 @@ import scala.collection.JavaConversions._
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.ServletInputStream
 import http.HttpHeaders._
-import http.MimeObjects._
+import http.MimeTypes._
 
 class ServletConverterSpec extends Specification with Mockito {
   val convert = new ServletConverter {}

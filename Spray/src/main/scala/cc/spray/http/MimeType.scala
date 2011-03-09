@@ -12,133 +12,79 @@ sealed trait MimeType {
   
   def matches(other: MimeType) = (this eq other) || (subType == "+" && mainType == other.mainType) 
   
-  MimeObjects.register(this, value)
+  MimeTypes.register(this, value)
 }
 
-object MimeTypes {
-  class `+/+` protected[http] (val fileExtensions: String*) extends MimeType {
-    def value = "+/+"
+object MimeTypes extends ObjectRegistry[String, MimeType] {
+  
+  def forExtension(ext: String): Option[MimeType] = {
+    val extLower = ext.toLowerCase
+    registry.values.find(_.fileExtensions.contains(extLower))
   }
   
-  class `application/+` protected[http] (override val value: String, fileExtensions: String*) extends `+/+`(fileExtensions: _*)
-  class `audio/+`       protected[http] (override val value: String, fileExtensions: String*) extends `+/+`(fileExtensions: _*)
-  class `image/+`       protected[http] (override val value: String, fileExtensions: String*) extends `+/+`(fileExtensions: _*)
-  class `message/+`     protected[http] (override val value: String, fileExtensions: String*) extends `+/+`(fileExtensions: _*)
-  class `multipart/+`   protected[http] (override val value: String, fileExtensions: String*) extends `+/+`(fileExtensions: _*)
-  class `text/+`        protected[http] (override val value: String, fileExtensions: String*) extends `+/+`(fileExtensions: _*)
-  class `video/+`       protected[http] (override val value: String, fileExtensions: String*) extends `+/+`(fileExtensions: _*)
+  class PredefinedMimeType private[MimeTypes](val value: String, val fileExtensions: String*) extends MimeType
   
-  class `application/atom+xml`              private[http]() extends `application/+`("application/atom+xml")
-  class `application/javascript`            private[http]() extends `application/+`("application/javascript", "js")
-  class `application/json`                  private[http]() extends `application/+`("application/json", "json")
-  class `application/octet-stream`          private[http]() extends `application/+`("application/octet-stream", "bin", "class", "exe")
-  class `application/ogg`                   private[http]() extends `application/+`("application/ogg", "ogg")
-  class `application/pdf`                   private[http]() extends `application/+`("application/pdf", "pdf")
-  class `application/postscript`            private[http]() extends `application/+`("application/postscript", "ps", "ai")
-  class `application/soap+xml`              private[http]() extends `application/+`("application/soap+xml")
-  class `application/xhtml+xml`             private[http]() extends `application/+`("application/xhtml+xml")
-  class `application/xml-dtd`               private[http]() extends `application/+`("application/xml-dtd")
-  class `application/x-javascript`          private[http]() extends `application/+`("application/x-javascript", "js")
-  class `application/x-shockwave-flash`     private[http]() extends `application/+`("application/x-shockwave-flash", "swf")
-  class `application/x-www-form-urlencoded` private[http]() extends `application/+`("application/x-www-form-urlencoded")
-  class `application/zip`                   private[http]() extends `application/+`("application/zip", "zip")
+  val `+/+` = new PredefinedMimeType("+/+") 
   
-  class `audio/basic`   private[http]() extends `audio/+`("audio/basic", "au", "snd")
-  class `audio/mp4`     private[http]() extends `audio/+`("audio/mp4", "mp4")
-  class `audio/mpeg`    private[http]() extends `audio/+`("audio/mpeg", "mpg", "mpeg", "mpga", "mpe", "mp3", "mp2")
-  class `audio/ogg`     private[http]() extends `audio/+`("audio/ogg", "ogg")
-  class `audio/vorbis`  private[http]() extends `audio/+`("audio/vorbis", "vorbis")
+  val `application/+` = new PredefinedMimeType("application/+")   
+  val `audio/+`       = new PredefinedMimeType("audio/+")            
+  val `image/+`       = new PredefinedMimeType("image/+")            
+  val `message/+`     = new PredefinedMimeType("message/+")    
+  val `multipart/+`   = new PredefinedMimeType("multipart/+")  
+  val `text/+`        = new PredefinedMimeType("text/+")       
+  val `video/+`       = new PredefinedMimeType("video/+")
   
-  class `image/gif`     private[http]() extends `image/+`("image/gif", "gif")
-  class `image/png`     private[http]() extends `image/+`("image/png", "png")
-  class `image/jpeg`    private[http]() extends `image/+`("image/jpeg", "jpg", "jpeg", "jpe")
-  class `image/svg+xml` private[http]() extends `image/+`("image/svg+xml", "svg")
-  class `image/tiff`    private[http]() extends `image/+`("image/tiff", "tif", "tiff")
+  val `application/atom+xml`              = new PredefinedMimeType("application/atom+xml")
+  val `application/javascript`            = new PredefinedMimeType("application/javascript", "js")
+  val `application/json`                  = new PredefinedMimeType("application/json", "json")
+  val `application/octet-stream`          = new PredefinedMimeType("application/octet-stream", "bin", "class", "exe")
+  val `application/ogg`                   = new PredefinedMimeType("application/ogg", "ogg")
+  val `application/pdf`                   = new PredefinedMimeType("application/pdf", "pdf")
+  val `application/postscript`            = new PredefinedMimeType("application/postscript", "ps", "ai")
+  val `application/soap+xml`              = new PredefinedMimeType("application/soap+xml")
+  val `application/xhtml+xml`             = new PredefinedMimeType("application/xhtml+xml")
+  val `application/xml-dtd`               = new PredefinedMimeType("application/xml-dtd")
+  val `application/x-javascript`          = new PredefinedMimeType("application/x-javascript", "js")
+  val `application/x-shockwave-flash`     = new PredefinedMimeType("application/x-shockwave-flash", "swf")
+  val `application/x-www-form-urlencoded` = new PredefinedMimeType("application/x-www-form-urlencoded")
+  val `application/zip`                   = new PredefinedMimeType("application/zip", "zip")
   
-  class `message/http`            private[http]() extends `message/+`("message/http")
-  class `message/delivery-status` private[http]() extends `message/+`("message/delivery-status")
+  val `audio/basic`   = new PredefinedMimeType("audio/basic", "au", "snd")
+  val `audio/mp4`     = new PredefinedMimeType("audio/mp4", "mp4")
+  val `audio/mpeg`    = new PredefinedMimeType("audio/mpeg", "mpg", "mpeg", "mpga", "mpe", "mp3", "mp2")
+  val `audio/ogg`     = new PredefinedMimeType("audio/ogg", "ogg")
+  val `audio/vorbis`  = new PredefinedMimeType("audio/vorbis", "vorbis")
   
-  class `multipart/mixed`       private[http]() extends `multipart/+`("multipart/mixed")
-  class `multipart/alternative` private[http]() extends `multipart/+`("multipart/alternative")
-  class `multipart/related`     private[http]() extends `multipart/+`("multipart/related")
-  class `multipart/form-data`   private[http]() extends `multipart/+`("multipart/form-data")
-  class `multipart/signed`      private[http]() extends `multipart/+`("multipart/signed")
-  class `multipart/encrypted`   private[http]() extends `multipart/+`("multipart/encrypted")
+  val `image/gif`     = new PredefinedMimeType("image/gif", "gif")
+  val `image/png`     = new PredefinedMimeType("image/png", "png")
+  val `image/jpeg`    = new PredefinedMimeType("image/jpeg", "jpg", "jpeg", "jpe")
+  val `image/svg+xml` = new PredefinedMimeType("image/svg+xml", "svg")
+  val `image/tiff`    = new PredefinedMimeType("image/tiff", "tif", "tiff")
   
-  class `text/css`        private[http]() extends `text/+`("text/css", "css")
-  class `text/csv`        private[http]() extends `text/+`("text/csv", "csv")
-  class `text/html`       private[http]() extends `text/+`("text/html", "html", "htm")
-  class `text/javascript` private[http]() extends `text/+`("text/javascript", "js")
-  class `text/plain`      private[http]() extends `text/+`("text/plain", "txt", "text", "conf", "properties")
-  class `text/xml`        private[http]() extends `text/+`("text/xml", "xml")
+  val `message/http`            = new PredefinedMimeType("message/http")
+  val `message/delivery-status` = new PredefinedMimeType("message/delivery-status")
   
-  class `video/mpeg`      private[http]() extends `video/+`("video/mpeg", "mpg", "mpeg")
-  class `video/mp4`       private[http]() extends `video/+`("video/mp4", "mp4")
-  class `video/ogg`       private[http]() extends `video/+`("video/ogg", "ogg")
-  class `video/quicktime` private[http]() extends `video/+`("video/quicktime", "qt", "mov")
+  val `multipart/mixed`       = new PredefinedMimeType("multipart/mixed")
+  val `multipart/alternative` = new PredefinedMimeType("multipart/alternative")
+  val `multipart/related`     = new PredefinedMimeType("multipart/related")
+  val `multipart/form-data`   = new PredefinedMimeType("multipart/form-data")
+  val `multipart/signed`      = new PredefinedMimeType("multipart/signed")
+  val `multipart/encrypted`   = new PredefinedMimeType("multipart/encrypted")
   
-  case class CustomMimeType(override val value: String) extends `+/+` {
-    override def matches(other: MimeType) = this == other 
+  val `text/css`        = new PredefinedMimeType("text/css", "css")
+  val `text/csv`        = new PredefinedMimeType("text/csv", "csv")
+  val `text/html`       = new PredefinedMimeType("text/html", "html", "htm")
+  val `text/javascript` = new PredefinedMimeType("text/javascript", "js")
+  val `text/plain`      = new PredefinedMimeType("text/plain", "txt", "text", "conf", "properties")
+  val `text/xml`        = new PredefinedMimeType("text/xml", "xml")
+  
+  val `video/mpeg`      = new PredefinedMimeType("video/mpeg", "mpg", "mpeg")
+  val `video/mp4`       = new PredefinedMimeType("video/mp4", "mp4")
+  val `video/ogg`       = new PredefinedMimeType("video/ogg", "ogg")
+  val `video/quicktime` = new PredefinedMimeType("video/quicktime", "qt", "mov")
+  
+  case class CustomMimeType(override val value: String) extends MimeType {
+    override def matches(other: MimeType) = this == other
+    def fileExtensions = Nil
   }
-}
-
-object MimeObjects extends ObjectRegistry[String, MimeType] {
-  val `+/+` = new MimeTypes.`+/+`("+/+") 
-  
-  val `application/+` = new MimeTypes.`application/+`("application/+")   
-  val `audio/+`       = new MimeTypes.`audio/+`("audio/+")            
-  val `image/+`       = new MimeTypes.`image/+`("image/+")            
-  val `message/+`     = new MimeTypes.`message/+`("message/+")    
-  val `multipart/+`   = new MimeTypes.`multipart/+`("multipart/+")  
-  val `text/+`        = new MimeTypes.`text/+`("text/+")       
-  val `video/+`       = new MimeTypes.`video/+`("video/+")      
-  
-  val `application/atom+xml`              = new MimeTypes.`application/atom+xml`             
-  val `application/javascript`            = new MimeTypes.`application/javascript`           
-  val `application/json`                  = new MimeTypes.`application/json`                 
-  val `application/octet-stream`          = new MimeTypes.`application/octet-stream`         
-  val `application/ogg`                   = new MimeTypes.`application/ogg`                  
-  val `application/pdf`                   = new MimeTypes.`application/pdf`                  
-  val `application/postscript`            = new MimeTypes.`application/postscript`           
-  val `application/soap+xml`              = new MimeTypes.`application/soap+xml`             
-  val `application/xhtml+xml`             = new MimeTypes.`application/xhtml+xml`            
-  val `application/xml-dtd`               = new MimeTypes.`application/xml-dtd`              
-  val `application/x-javascript`          = new MimeTypes.`application/x-javascript`         
-  val `application/x-shockwave-flash`     = new MimeTypes.`application/x-shockwave-flash`    
-  val `application/x-www-form-urlencoded` = new MimeTypes.`application/x-www-form-urlencoded`
-  val `application/zip`                   = new MimeTypes.`application/zip`                  
-  
-  val `audio/basic`   = new MimeTypes.`audio/basic`  
-  val `audio/mp4`     = new MimeTypes.`audio/mp4`    
-  val `audio/mpeg`    = new MimeTypes.`audio/mpeg`   
-  val `audio/ogg`     = new MimeTypes.`audio/ogg`    
-  val `audio/vorbis`  = new MimeTypes.`audio/vorbis` 
-                                                     
-  val `image/gif`     = new MimeTypes.`image/gif`    
-  val `image/png`     = new MimeTypes.`image/png`    
-  val `image/jpeg`    = new MimeTypes.`image/jpeg`   
-  val `image/svg+xml` = new MimeTypes.`image/svg+xml`
-  val `image/tiff`    = new MimeTypes.`image/tiff`   
-  
-  val `message/http`            = new MimeTypes.`message/http`           
-  val `message/delivery-status` = new MimeTypes.`message/delivery-status`
-  
-  val `multipart/mixed`       = new MimeTypes.`multipart/mixed`      
-  val `multipart/alternative` = new MimeTypes.`multipart/alternative`
-  val `multipart/related`     = new MimeTypes.`multipart/related`    
-  val `multipart/form-data`   = new MimeTypes.`multipart/form-data`  
-  val `multipart/signed`      = new MimeTypes.`multipart/signed`     
-  val `multipart/encrypted`   = new MimeTypes.`multipart/encrypted`  
-  
-  val `text/css`        = new MimeTypes.`text/css`       
-  val `text/csv`        = new MimeTypes.`text/csv`       
-  val `text/html`       = new MimeTypes.`text/html`      
-  val `text/javascript` = new MimeTypes.`text/javascript`
-  val `text/plain`      = new MimeTypes.`text/plain`     
-  val `text/xml`        = new MimeTypes.`text/xml`       
-  
-  val `video/mpeg`      = new MimeTypes.`video/mpeg`     
-  val `video/mp4`       = new MimeTypes.`video/mp4`      
-  val `video/ogg`       = new MimeTypes.`video/ogg`      
-  val `video/quicktime` = new MimeTypes.`video/quicktime`
 }

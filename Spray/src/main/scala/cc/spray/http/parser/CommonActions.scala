@@ -5,7 +5,7 @@ trait CommonActions {
   
   def getMimeType(mainType: String, subType: String): MimeType = {
     val value = mainType.toLowerCase + "/" + subType.toLowerCase
-    MimeObjects.get(value).getOrElse(MimeTypes.CustomMimeType(value))
+    MimeTypes.get(value).getOrElse(MimeTypes.CustomMimeType(value))
   }
   
 }

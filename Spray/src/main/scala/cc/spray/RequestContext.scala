@@ -31,7 +31,11 @@ case class RequestContext(request: HttpRequest, responder: ResponseContext => Un
   
   def respond(responseContext: ResponseContext) { responder(responseContext) }
   
-  def stopRouting { respond(ResponseContext(None)) }
+  def respondUnhandled { respond(ResponseContext(None)) }
+  
+  def fail(failure: HttpFailure, reason: String = "") {
+    respond(HttpResponse(HttpStatus(failure, reason)))
+  }
 }
 
 object RequestContext {

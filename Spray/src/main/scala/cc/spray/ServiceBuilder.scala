@@ -5,6 +5,9 @@ import HttpHeaders._
 import HttpMethods._
 import java.util.regex.Pattern
 import util.matching.Regex
+import akka.actor.Actor
+import org.parboiled.common.FileUtils
+import java.io.{FileInputStream, FileNotFoundException, File}
 
 trait ServiceBuilder {
   
@@ -39,7 +42,7 @@ trait ServiceBuilder {
         val route = f(captures)
         route(ctx.copy(unmatchedPath = remainingPath))
       }
-      case _ => ctx.stopRouting
+      case _ => ctx.respondUnhandled
     }
   } 
   
@@ -61,7 +64,7 @@ trait ServiceBuilder {
   def trace   = filter(_.request.method == TRACE) _
 
   def filter(p: RequestContext => Boolean)(route: Route): Route = { ctx =>
-    if (p(ctx)) route(ctx) else ctx.stopRouting
+    if (p(ctx)) route(ctx) else ctx.respondUnhandled
   }
   
   def produces(mimeType: MimeType) = responseHeader(`Content-Type`(mimeType)) _
@@ -74,8 +77,22 @@ trait ServiceBuilder {
     }
   }
   
-  // implicits
+  def detached(route: Route)(implicit detachedActorFactory: Route => Actor): Route = { ctx =>
+    Actor.actorOf(detachedActorFactory(route)).start ! ctx
+  }
   
+  def getFromFile(filename: String): Route = getFromFile(new File(filename))
+  
+  def getFromFile(file: File)(implicit detachedActorFactory: Route => Actor,
+                              mimeType4FileResolver: File => MimeType): Route = {
+    detached {
+      produces(mimeType4FileResolver(file)) {
+        _.respond(FileUtils.readAllBytes(new FileInputStream(file))) // potentially throws FileNotFoundException
+      }
+    }
+  }
+  
+  // implicits
   
   implicit def route2RouteConcatenation(route: Route): { def ~ (other: Route): Route } = new {
     def ~ (other: Route): Route = { ctx =>
@@ -96,9 +113,13 @@ trait ServiceBuilder {
             "' must not contain more than one capturing group")
   }
   
+  implicit def defaultDetachedActorFactory(route: Route): Actor = new DetachedRouteActor(route)
+  
+  implicit def defaultMimeType4FileResolver(file: File): MimeType = {
+    MimeTypes.forExtension(file.extension).getOrElse(MimeTypes.`application/octet-stream`)
+  }
   
   // helpers
-  
   
   private def getGroupCount(regex: Regex) = {
     try {
