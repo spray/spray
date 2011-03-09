@@ -70,4 +70,17 @@ class FileResourceDirectoryBuildersSpec extends Specification with DetachingDisa
     }
   }
   
+  "getFromResourceDirectory" should {
+    "return a 404 for non-existing resources" in {
+      test(HttpRequest(GET, "/not/found")) {
+        getFromResourceDirectory("subDirectory")
+      }.response mustEqual failure(404, "Resource 'subDirectory/not/found' not found")
+    }
+    "return the resource content with the MimeType matching the file extension" in {
+      test(HttpRequest(GET, "subDirectory/empty.pdf")) {
+        getFromResourceDirectory("")
+      }.response mustEqual HttpResponse(headers = List(`Content-Type`(`application/pdf`)), content = Some(Array[Byte]()))
+    }
+  }
+  
 }
