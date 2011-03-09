@@ -3,6 +3,8 @@ package test
 
 import cc.spray.{ResponseContext, RequestContext}
 import http._
+import HttpHeaders._
+import MimeTypes._
 
 trait SprayTest {
   this: { def fail(msg: String): Nothing } =>
@@ -24,6 +26,8 @@ trait SprayTest {
     result.getOrElse(fail("No RequestContext received"))
   }
   
+  def failure(code: HttpStatusCode, reason: String): HttpResponse = HttpResponse(HttpStatus(code, reason))
+  
   // for easy creation of HttpResponse content
-  implicit def stringToOptionByteArray(string: String) = Some(string.getBytes)
+  implicit def stringToOptionByteArray(string: String): Option[Array[Byte]] = Some(string.getBytes)
 } 

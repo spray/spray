@@ -2,7 +2,6 @@ package cc.spray
 package builders
 
 import http._
-import HttpMethods._
 import akka.actor.Actor
 import org.parboiled.common.FileUtils
 import java.io.File
@@ -41,23 +40,17 @@ private[spray] trait FileResourceDirectoryBuilders {
     }
   }
   
-  /*def getFromDirectory(directoryName: String)(implicit detachedActorFactory: Route => Actor,
-                                              mimeType4FileResolver: File => MimeType): Route = {
-    getFromDirectory(new File(directoryName))
+  def getFromDirectory(directoryName: String)(implicit detachedActorFactory: Route => Actor,
+                                              mimeType4FileResolver: File => MimeType): Route = { ctx =>
+    val subPath = if (File.pathSeparatorChar == '/') ctx.unmatchedPath
+                  else ctx.unmatchedPath.replace('/', File.pathSeparatorChar) 
+    getFromFile(directoryName + subPath).apply(ctx)
   }
   
-  def getFromDirectory(directory: File)(implicit detachedActorFactory: Route => Actor,
-                                        mimeType4FileResolver: File => MimeType): Route = {
-    detached {
-      produces(mimeType4FileResolver(file)) {
-        get { ctx =>
-          val content = FileUtils.readAllBytes(file)
-          if (content != null) ctx.respond(content)
-          else ctx.fail(HttpStatusCodes.InternalServerError, "File '" + file + "' not found")
-        }
-      }
-    }
-  }*/
+  def getFromResourceDirectory(directoryName: String)(implicit detachedActorFactory: Route => Actor,
+                                                      mimeType4FileResolver: File => MimeType): Route = { ctx =>
+    getFromResource(directoryName + ctx.unmatchedPath).apply(ctx)
+  }
   
   // implicits
   

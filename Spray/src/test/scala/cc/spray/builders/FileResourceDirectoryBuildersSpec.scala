@@ -19,15 +19,15 @@ class FileResourceDirectoryBuildersSpec extends Specification with DetachingDisa
         getFromFile("some")
       }.handled must beFalse
     }
-    "return a 500 for non-existing files" in {
+    "return a 404 for non-existing files" in {
       test(HttpRequest(GET)) {
         getFromFile("nonExistentFile")
-      }.response.status mustEqual HttpStatus(404, "File 'nonExistentFile' not found")
+      }.response mustEqual failure(404, "File 'nonExistentFile' not found")
     }
-    "return a 500 for directories" in {
+    "return a 404 for directories" in {
       test(HttpRequest(GET)) {
         getFromFile(Properties.javaHome)
-      }.response.status mustEqual HttpStatus(404, "File '" + Properties.javaHome + "' not found")
+      }.response mustEqual failure(404, "File '" + Properties.javaHome + "' not found")
     }
     "return the file content with the MimeType matching the file extension" in {
       val file = File.createTempFile("sprayTest", ".PDF")
@@ -53,10 +53,10 @@ class FileResourceDirectoryBuildersSpec extends Specification with DetachingDisa
         getFromResource("some")
       }.handled must beFalse
     }
-    "return a 500 for non-existing resources" in {
+    "return a 404 for non-existing resources" in {
       test(HttpRequest(GET)) {
         getFromResource("nonExistingResource")
-      }.response.status mustEqual HttpStatus(404, "Resource 'nonExistingResource' not found")
+      }.response mustEqual failure(404, "Resource 'nonExistingResource' not found")
     }
     "return the resource content with the MimeType matching the file extension" in {
       test(HttpRequest(GET)) {
@@ -69,5 +69,5 @@ class FileResourceDirectoryBuildersSpec extends Specification with DetachingDisa
       }.response mustEqual HttpResponse(headers = List(`Content-Type`(`application/octet-stream`)), content = "XyZ")
     }
   }
-
+  
 }

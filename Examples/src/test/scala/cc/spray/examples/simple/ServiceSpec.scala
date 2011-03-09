@@ -24,10 +24,16 @@ class ServiceSpec extends Specification with Service with SprayTest with Detachi
     }.response mustEqual HttpResponse(headers = List(`Content-Type`(`text/plain`)), content = "The letters are: S and p")
   }
   
-  "GET /resource/sampleResource.txt" in {
-    test(HttpRequest(GET, "/resource/sample.html")) {
+  "GET /resources/sample.html" in {
+    test(HttpRequest(GET, "/resources/sample.html")) {
       service
     }.response mustEqual HttpResponse(headers = List(`Content-Type`(`text/html`)), content = "<p>Lorem ipsum!</p>")
+  }
+  
+  "GET /resources/notThere.txt" in {
+    test(HttpRequest(GET, "/resources/notThere.txt")) {
+      service
+    }.response mustEqual failure(404, "Resource 'samples/notThere.txt' not found")
   }
   
 }

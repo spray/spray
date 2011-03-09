@@ -17,8 +17,8 @@ trait Service extends ServiceBuilder {
         }
       }
     } ~
-    path("resource" / Remaining) {
-      getFromResource(_)
+    path("resources") {
+      getFromResourceDirectory("samples")
     }
   }
 }

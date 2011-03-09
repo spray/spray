@@ -34,7 +34,13 @@ private[spray] trait BasicBuilders {
   def responseHeader(header: HttpHeader)(route: Route): Route = { ctx =>
     route {
       ctx.withResponseTransformer { response =>
-        Some(response.copy(headers = header :: response.headers.filterNot(_.name == header.name)))
+        Some(
+          if (response.isSuccess) {
+            response.copy(headers = header :: response.headers.filterNot(_.name == header.name))
+          } else {
+            response // in case of failures or warnings we do not set the header
+          }
+        )
       }
     }
   }

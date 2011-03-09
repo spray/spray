@@ -20,5 +20,11 @@ case class HttpResponse(status: HttpStatus = HttpStatus(OK),
       } 
     }
     case _ => false
-  }  
+  }
+  
+  def isSuccess: Boolean = status.code.isInstanceOf[HttpSuccess]
+  
+  def isWarning: Boolean = status.code.isInstanceOf[HttpWarning]
+  
+  def isFailure: Boolean = status.code.isInstanceOf[HttpFailure]
 }
