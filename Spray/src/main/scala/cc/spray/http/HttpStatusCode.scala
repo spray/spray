@@ -18,14 +18,14 @@ sealed trait HttpSuccess extends HttpStatusCode
 sealed trait HttpFailure extends HttpStatusCode
 sealed trait HttpWarning extends HttpStatusCode
 
-class Informational private[http] (val value: Int, val defaultMessage: String) extends HttpSuccess
-class Success       private[http] (val value: Int, val defaultMessage: String) extends HttpSuccess
-class Redirection   private[http] (val value: Int, val defaultMessage: String) extends HttpSuccess
-class Warning       private[http] (val value: Int, val defaultMessage: String) extends HttpWarning
-class ClientError   private[http] (val value: Int, val defaultMessage: String) extends HttpFailure
-class ServerError   private[http] (val value: Int, val defaultMessage: String) extends HttpFailure
-
 object HttpStatusCodes extends ObjectRegistry[Int, HttpStatusCode] {
+  case class Informational private[HttpStatusCodes] (value: Int, defaultMessage: String) extends HttpSuccess
+  case class Success       private[HttpStatusCodes] (value: Int, defaultMessage: String) extends HttpSuccess
+  case class Redirection   private[HttpStatusCodes] (value: Int, defaultMessage: String) extends HttpSuccess
+  case class Warning       private[HttpStatusCodes] (value: Int, defaultMessage: String) extends HttpWarning
+  case class ClientError   private[HttpStatusCodes] (value: Int, defaultMessage: String) extends HttpFailure
+  case class ServerError   private[HttpStatusCodes] (value: Int, defaultMessage: String) extends HttpFailure
+  
   val Continue                     = new Informational(100, "The server has received the request headers, and the client should proceed to send the request body.")
   val SwitchingProtocols           = new Informational(101, "The server is switching protocols, because the client requested the switch.")
   val Processing                   = new Informational(102, "The server is processing the request, but no response is available yet.")

@@ -87,7 +87,24 @@ trait ServiceBuilder {
                               mimeType4FileResolver: File => MimeType): Route = {
     detached {
       produces(mimeType4FileResolver(file)) {
-        _.respond(FileUtils.readAllBytes(new FileInputStream(file))) // potentially throws FileNotFoundException
+        get { ctx =>
+          val content = FileUtils.readAllBytes(file)
+          if (content != null) ctx.respond(content)
+          else ctx.fail(HttpStatusCodes.InternalServerError, "File '" + file + "' not found")
+        }
+      }
+    }
+  }
+  
+  def getFromResource(resourceName: String)(implicit detachedActorFactory: Route => Actor,
+                                            mimeType4FileResolver: File => MimeType): Route = {
+    detached {
+      produces(mimeType4FileResolver(new File(resourceName))) {
+        get { ctx =>
+          val content = FileUtils.readAllBytesFromResource(resourceName)
+          if (content != null) ctx.respond(content)
+          else ctx.fail(HttpStatusCodes.InternalServerError, "Resource '" + resourceName + "' not found")
+        }
       }
     }
   }

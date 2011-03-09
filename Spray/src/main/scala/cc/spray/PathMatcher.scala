@@ -83,6 +83,10 @@ object Slash extends PathMatcher0 {
   }
 }
 
+object Remaining extends PathMatcher1 {
+  def apply(path: String) = Some(("", path :: Nil))
+}
+
 private[spray] class StringMatcher(prefix: String) extends PathMatcher0 {
   def apply(path: String) = {
     if (path.startsWith(prefix)) Some((path.substring(prefix.length), Nil)) else None

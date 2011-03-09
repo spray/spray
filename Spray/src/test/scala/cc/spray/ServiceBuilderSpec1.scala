@@ -15,138 +15,140 @@ trait ServiceBuilderSpec1 {
 
   "get" should {
     "block POST requests" in {
-      responseFor(HttpRequest(POST)) { 
+      test(HttpRequest(POST)) { 
         get { respondOk }
-      }.response must beNone
+      }.handled must beFalse
     }
     "let GET requests pass" in {
-      responseFor(HttpRequest(GET)) { 
+      test(HttpRequest(GET)) { 
         get { respondOk }
-      } mustEqual OK
+      }.response mustEqual Ok
     }
   }
   
   "accepts(mimeType)" should {
     "block requests without any content" in {
-      responseFor(HttpRequest(GET)) {
+      test(HttpRequest(GET)) {
         accepts(`text/xml`) { respondOk }
-      }.response must beNone
+      }.handled must beFalse
     }
     "block requests with unmatching content" in {
-      responseFor(HttpRequest(GET, headers = List(`Content-Type`(`text/html`)))) {
+      test(HttpRequest(GET, headers = List(`Content-Type`(`text/html`)))) {
         accepts(`text/xml`) { respondOk }
-      }.response must beNone
+      }.handled must beFalse
     }
     "let requests with matching content pass" in {
       "on simple one-on-one matches" in {
-        responseFor(HttpRequest(GET, headers = List(`Content-Type`(`text/html`)))) {
+        test(HttpRequest(GET, headers = List(`Content-Type`(`text/html`)))) {
           accepts(`text/html`) { respondOk }
-        } mustEqual OK
+        }.response mustEqual Ok
       }
       "as a one-of-several match " in {
-        responseFor(HttpRequest(GET, headers = List(`Content-Type`(`text/html`)))) {
+        test(HttpRequest(GET, headers = List(`Content-Type`(`text/html`)))) {
           accepts(`text/xml`, `text/html`) {respondOk }
-        } mustEqual OK
+        }.response mustEqual Ok
       }
       "as a .../star media range match" in {
-        responseFor(HttpRequest(GET, headers = List(`Content-Type`(`text/html`)))) {
+        test(HttpRequest(GET, headers = List(`Content-Type`(`text/html`)))) {
           accepts(`text/+`) { respondOk }
-        } mustEqual OK
+        }.response mustEqual Ok
       }
     }
   }
   
   "produces(mimeType)" should {
     "add a 'Content-Type' response header if none was present before" in {
-      responseFor(HttpRequest(GET)) {
+      test(HttpRequest(GET)) {
         produces(`text/plain`) { respondOk }
-      }.responseHeaders.collect { case `Content-Type`(mimeType) => mimeType } mustEqual List(`text/plain`)    
+      }.response mustEqual HttpResponse(headers = List(`Content-Type`(`text/plain`)))    
     }
     "overwrite a previously existing 'Content-Type' response header" in {
-      responseFor(HttpRequest(GET)) {
+      test(HttpRequest(GET)) {
         produces(`text/plain`) { _.respond(HttpResponse(headers = List(`Content-Type`(`text/html`)))) }
-      }.responseHeaders.collect { case `Content-Type`(mimeType) => mimeType } mustEqual List(`text/plain`)    
+      }.response mustEqual HttpResponse(headers = List(`Content-Type`(`text/plain`)))   
     }
   }
   
   "routes created by the concatenation operator '~'" should {
     "yield the first sub route if it succeeded" in {
-      responseFor(HttpRequest(GET)) {
+      test(HttpRequest(GET)) {
         get { _.respond("first") } ~ get { _.respond("second") }
-      }.contentAsString mustEqual "first"    
+      }.response mustEqual HttpResponse(content = "first")    
     }
     "yield the second sub route if the first did not succeed" in {
-      responseFor(HttpRequest(GET)) {
+      test(HttpRequest(GET)) {
         post { _.respond("first") } ~ get { _.respond("second") }
-      }.contentAsString mustEqual "second"    
+      }.response mustEqual HttpResponse(content = "second")    
     }
   }
   
   "routes created with the path(string) combinator" should {
     "block unmatching requests" in {
-      responseFor(HttpRequest(GET, "/noway/this/works")) {
+      test(HttpRequest(GET, "/noway/this/works")) {
         path("hello") { respondOk }
-      }.response must beNone
+      }.handled must beFalse
     }
     "let matching requests pass and adapt RequestContext.unmatchedPath" in {
-      responseFor(HttpRequest(GET, "/noway/this/works")) {
-        path("noway") { respondWithUnmatchedPath }
-      }.contentAsString mustEqual "/this/works"
+      test(HttpRequest(GET, "/noway/this/works")) {
+        path("noway") { ctx => ctx.respond(ctx.unmatchedPath) }
+      }.response mustEqual HttpResponse(content = "/this/works")
     }
     "be stackable" in {
       "within one single path(...) combinator" in {
-        responseFor(HttpRequest(GET, "/noway/this/works")) {
-          path("noway" / "this" / "works") { respondWithUnmatchedPath }
-        }.contentAsString mustEqual ""
+        test(HttpRequest(GET, "/noway/this/works")) {
+          path("noway" / "this" / "works" ~ Remaining) { remaining =>
+            get { _.respond(remaining) }
+          }
+        }.response mustEqual HttpResponse(content = "")
       }
       "when nested" in {
-        responseFor(HttpRequest(GET, "/noway/this/works")) {
+        test(HttpRequest(GET, "/noway/this/works")) {
           path("noway") {
-            path("this") { respondWithUnmatchedPath }
+            path("this") { ctx => ctx.respond(ctx.unmatchedPath) }
           }
-        }.contentAsString mustEqual "/works"
+        }.response mustEqual HttpResponse(content = "/works")
       }
     }
   }
   
   "routes created with the path(regex) combinator" should {
     "block unmatching requests" in {
-      responseFor(HttpRequest(GET, "/noway/this/works")) {
+      test(HttpRequest(GET, "/noway/this/works")) {
         path("\\d".r) { _ => respondOk }
-      }.response must beNone
+      }.handled must beFalse
     }
     "let matching requests pass, extract the match value and adapt RequestContext.unmatchedPath" in {
       "when the regex is a simple regex" in {
-        responseFor(HttpRequest(GET, "/noway/this/works")) {
+        test(HttpRequest(GET, "/noway/this/works")) {
           path("no[^/]+".r) { capture =>
             get { ctx => ctx.respond(capture + ":" + ctx.unmatchedPath) }
           }
-        }.contentAsString mustEqual "noway:/this/works"
+        }.response mustEqual HttpResponse(content = "noway:/this/works")
       }
       "when the regex is a group regex" in {
-        responseFor(HttpRequest(GET, "/noway/this/works")) {
+        test(HttpRequest(GET, "/noway/this/works")) {
           path("no([^/]+)".r) { capture =>
             get { ctx => ctx.respond(capture + ":" + ctx.unmatchedPath) }
           }
-        }.contentAsString mustEqual "way:/this/works"
+        }.response mustEqual HttpResponse(content = "way:/this/works")
       }
     }
     "be stackable" in {
       "within one single path(...) combinator" in {
-        responseFor(HttpRequest(GET, "/compute/23/19")) {
+        test(HttpRequest(GET, "/compute/23/19")) {
           path("compute" / "\\d+".r / "\\d+".r) { (a, b) =>
             get { _.respond((a.toInt + b.toInt).toString) }
           }
-        }.contentAsString mustEqual "42"
+        }.response mustEqual HttpResponse(content = "42")
       }
       "within one single path(...) combinator" in {
-        responseFor(HttpRequest(GET, "/compute/23/19")) {
+        test(HttpRequest(GET, "/compute/23/19")) {
           path("compute" / "\\d+".r) { a =>
             path("\\d+".r) { b =>
               get { _.respond((a.toInt + b.toInt).toString) }
             }
           }
-        }.contentAsString mustEqual "42"
+        }.response mustEqual HttpResponse(content = "42")
       }
     }
     "fail when the regex contains more than one group" in {

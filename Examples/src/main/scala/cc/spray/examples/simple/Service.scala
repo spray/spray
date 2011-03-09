@@ -6,13 +6,19 @@ import MimeTypes._
 
 trait Service extends ServiceBuilder {
   
-  def restService: Route =
-    path("test" / "hello") {
-      path("\\d".r) { number =>
-        produces(`text/plain`) {
+  def restService: Route = {
+    path("test" / "echo") {
+      produces(`text/plain`) {
+        path("\\d+".r) { number =>
           get { _.respond("The number is: " + number) }
+        } ~
+        path("[A-Z]".r ~ "[a-z]".r) { (upcase, downcase) =>
+          get { _.respond("The letters are: " + upcase + " and " + downcase) }
         }
       }
+    } ~
+    path("resource" / Remaining) {
+      getFromResource(_)
     }
-  
+  }
 }
