@@ -25,7 +25,7 @@ case class RequestContext(request: HttpRequest, responder: ResponseContext => Un
   
   def respond(string: String) { respond(string.getBytes) }
 
-  def respond(array: Array[Byte]) { respond(HttpResponse(content = Some(array))) }
+  def respond(array: Array[Byte]) { respond(HttpResponse(content = HttpContent(array))) }
 
   def respond(response: HttpResponse) { responder(ResponseContext(Some(response))) }
   
@@ -39,7 +39,7 @@ case class RequestContext(request: HttpRequest, responder: ResponseContext => Un
 }
 
 object RequestContext {
-  def apply(request: HttpRequest, responder: ResponseContext => Unit): RequestContext = {
+  def apply(request: HttpRequest, responder: ResponseContext => Unit = { _ => }): RequestContext = {
     apply(request, responder, request.path)
   }
 }

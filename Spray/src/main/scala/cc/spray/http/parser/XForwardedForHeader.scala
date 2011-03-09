@@ -9,7 +9,7 @@ trait XForwardedForHeader {
 
   def X_FORWARDED_FOR = rule (
     oneOrMore(Ip, ListSep) ~ EOI
-      ~~> (x => HttpHeaders.`X-Forwarded-For`(x: _*))
+      ~~> (x => HttpHeaders.`X-Forwarded-For`(x))
   )
   
 }

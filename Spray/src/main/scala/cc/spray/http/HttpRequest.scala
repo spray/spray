@@ -1,12 +1,13 @@
 package cc.spray.http
 
 import java.net.URI
+import HttpHeaders._
 
 case class HttpRequest(method: HttpMethod,
                        uri: String = "",
                        headers: List[HttpHeader] = Nil,
                        parameters: Map[Symbol, String] = Map.empty,
-                       content: Option[Array[Byte]] = None,
+                       content: HttpContent = NoContent,
                        remoteHost: Option[HttpIp] = None,
                        version: Option[HttpVersion] = Some(HttpVersions.`HTTP/1.1`)) {
   
@@ -24,6 +25,8 @@ case class HttpRequest(method: HttpMethod,
   def isUriAbsolute = URI.isAbsolute
   def isUriOpaque = URI.isOpaque
 
+  private def nonNull(s: String, default: String = ""): String = if (s == null) default else s
+  
   def withUri(scheme: String = this.scheme,
               userInfo: String = this.userInfo,
               host: String = this.host,
@@ -34,7 +37,12 @@ case class HttpRequest(method: HttpMethod,
     copy(uri = new URI(scheme, userInfo, host, port, path, query, fragment).toString)
   }
   
-  def extractFromHeader[A](f: PartialFunction[HttpHeader, A]): Option[A] = headers.collect(f).headOption
+  def clientAccepts(mimeType: MimeType): Boolean = {
+    val acceptTypes = for (Accept(mimeTypes) <- headers; mType <- mimeTypes) yield mType
+    
+    // according to the HTTP spec a client has to accept all content types if no Accept header is sent with the request
+    acceptTypes.isEmpty || acceptTypes.exists(_.matchesOrIncludes(mimeType))
+  }
   
-  private def nonNull(s: String, default: String = ""): String = if (s == null) default else s
+  def contentType: Option[MimeType] = (for (`Content-Type`(mimeType) <- headers) yield mimeType).headOption
 }

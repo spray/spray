@@ -9,7 +9,7 @@ trait AcceptRangesHeader {
 
   def ACCEPT_RANGES = rule (
     RangeUnitsDef ~ EOI
-            ~~> (x => HttpHeaders.`Accept-Ranges`(x: _*))
+            ~~> (x => HttpHeaders.`Accept-Ranges`(x))
   )
   
   def RangeUnitsDef = rule {

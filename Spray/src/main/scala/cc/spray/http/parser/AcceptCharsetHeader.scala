@@ -10,7 +10,7 @@ trait AcceptCharsetHeader {
 
   def ACCEPT_CHARSET = rule (
     oneOrMore(CharsetDef, ListSep) ~ EOI
-            ~~> (x => HttpHeaders.`Accept-Charset`(x: _*))
+            ~~> (x => HttpHeaders.`Accept-Charset`(x))
   )
   
   def CharsetDef = rule (

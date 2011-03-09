@@ -57,7 +57,7 @@ class HttpHeaderSpec extends Specification {
       HttpHeader("Accept-Ranges", "bytes") mustEqual `Accept-Ranges`(bytes)
     )
     "be parsed correctly from example 2" in (
-      HttpHeader("Accept-Ranges", "none") mustEqual `Accept-Ranges`()
+      HttpHeader("Accept-Ranges", "none") mustEqual `Accept-Ranges`(Nil)
     )
     "be parsed correctly from example 2" in (
       HttpHeader("Accept-Ranges", "bytes, fancy") mustEqual `Accept-Ranges`(bytes, CustomRangeUnit("fancy"))

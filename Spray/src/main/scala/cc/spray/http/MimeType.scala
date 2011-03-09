@@ -10,7 +10,7 @@ sealed trait MimeType {
   def defaultExtension = fileExtensions.headOption
   override def toString = value
   
-  def matches(other: MimeType) = (this eq other) || (subType == "+" && mainType == other.mainType) 
+  def matchesOrIncludes(other: MimeType) = (this eq other) || (subType == "+" && mainType == other.mainType)
   
   MimeTypes.register(this, value)
 }
@@ -84,7 +84,7 @@ object MimeTypes extends ObjectRegistry[String, MimeType] {
   val `video/quicktime` = new PredefinedMimeType("video/quicktime", "qt", "mov")
   
   case class CustomMimeType(override val value: String) extends MimeType {
-    override def matches(other: MimeType) = this == other
+    override def matchesOrIncludes(other: MimeType) = this == other
     def fileExtensions = Nil
   }
 }

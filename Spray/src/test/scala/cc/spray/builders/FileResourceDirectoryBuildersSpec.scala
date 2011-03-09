@@ -79,7 +79,7 @@ class FileResourceDirectoryBuildersSpec extends Specification with DetachingDisa
     "return the resource content with the MimeType matching the file extension" in {
       test(HttpRequest(GET, "subDirectory/empty.pdf")) {
         getFromResourceDirectory("")
-      }.response mustEqual HttpResponse(headers = List(`Content-Type`(`application/pdf`)), content = Some(Array[Byte]()))
+      }.response mustEqual HttpResponse(headers = List(`Content-Type`(`application/pdf`)), content = NoContent)
     }
   }
   

@@ -51,23 +51,28 @@ object HttpHeader {
 
 object HttpHeaders {
 
-  case class Accept(mimeTypes: MimeType*) extends HttpHeader {
+  object Accept { def apply(first: MimeType, more: MimeType*): Accept = apply(first +: more) }
+  case class Accept(mimeTypes: Seq[MimeType]) extends HttpHeader {
     def value = mimeTypes.mkString(", ")
   }
   
-  case class `Accept-Charset`(charsets: Charset*) extends HttpHeader {
+  object `Accept-Charset` { def apply(first: Charset, more: Charset*): `Accept-Charset` = apply(first +: more) }
+  case class `Accept-Charset`(charsets: Seq[Charset]) extends HttpHeader {
     def value = charsets.mkString(", ")
   }
   
-  case class `Accept-Encoding`(encodings: Encoding*) extends HttpHeader {
+  object `Accept-Encoding` { def apply(first: Encoding, more: Encoding*): `Accept-Encoding` = apply(first +: more) }
+  case class `Accept-Encoding`(encodings: Seq[Encoding]) extends HttpHeader {
     def value = encodings.mkString(", ")
   }
   
-  case class `Accept-Language`(languageRanges: LanguageRange*) extends HttpHeader {
+  object `Accept-Language` { def apply(first: LanguageRange, more: LanguageRange*): `Accept-Language` = apply(first +: more) }
+  case class `Accept-Language`(languageRanges: Seq[LanguageRange]) extends HttpHeader {
     def value = languageRanges.mkString(", ")
   }
   
-  case class `Accept-Ranges`(rangeUnits: RangeUnit*) extends HttpHeader {
+  object `Accept-Ranges` { def apply(first: RangeUnit, more: RangeUnit*): `Accept-Ranges` = apply(first +: more) }
+  case class `Accept-Ranges`(rangeUnits: Seq[RangeUnit]) extends HttpHeader {
     def value = if (rangeUnits.isEmpty) "none" else rangeUnits.mkString(", ")
   }
   
@@ -75,10 +80,10 @@ object HttpHeaders {
     def value = mimeType.toString
   }
   
-  case class `X-Forwarded-For`(ips: HttpIp*) extends HttpHeader {
+  object `X-Forwarded-For` { def apply(first: HttpIp, more: HttpIp*): `X-Forwarded-For` = apply(first +: more) }
+  case class `X-Forwarded-For`(ips: Seq[HttpIp]) extends HttpHeader {
     def value = ips.mkString(", ")
   }
   
   case class `CustomHeader`(override val name: String, value: String) extends HttpHeader
-  
 }

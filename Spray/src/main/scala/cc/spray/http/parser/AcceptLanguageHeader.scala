@@ -10,7 +10,7 @@ trait AcceptLanguageHeader {
 
   def ACCEPT_LANGUAGE = rule (
     oneOrMore(LanguageRangeDef, ListSep) ~ EOI
-            ~~> (x => HttpHeaders.`Accept-Language`(x: _*))
+            ~~> (x => HttpHeaders.`Accept-Language`(x))
   )
   
   def LanguageRangeDef = rule {

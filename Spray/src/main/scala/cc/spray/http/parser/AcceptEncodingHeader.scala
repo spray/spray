@@ -10,7 +10,7 @@ trait AcceptEncodingHeader {
 
   def ACCEPT_ENCODING = rule (
     oneOrMore(EncodingDef, ListSep) ~ EOI
-            ~~> (x => HttpHeaders.`Accept-Encoding`(x: _*))
+            ~~> (x => HttpHeaders.`Accept-Encoding`(x))
   )
   
   def EncodingDef = rule (

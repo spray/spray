@@ -5,12 +5,13 @@ import http._
 import HttpMethods._
 import HttpHeaders._
 import akka.actor.Actor
+import collection.mutable.WeakHashMap
 
 private[spray] trait BasicBuilders {
   
   def accepts(mimeTypes: MimeType*) = filter { ctx =>
-    (ctx.request.extractFromHeader { case `Content-Type`(mimeType) => mimeType }) match {
-      case Some(contentType) => mimeTypes.exists(_.matches(contentType))
+    (for (`Content-Type`(mimeType) <- ctx.request.headers) yield mimeType) match {
+      case contentType :: Nil => mimeTypes.exists(_.matchesOrIncludes(contentType))
       case _ => false
     }
   } _
@@ -49,6 +50,29 @@ private[spray] trait BasicBuilders {
     Actor.actorOf(detachedActorFactory(route)).start ! ctx
   }
   
+  private lazy val cache = WeakHashMap.empty[Any, HttpResponse]
+  
+  def cached(route: Route)(implicit keyer: RequestContext => CacheKey): Route = { ctx =>          
+    val key = if (ctx.request.method == HttpMethods.GET) keyer(ctx) else DontCache
+    if (key eq DontCache) {
+      route(ctx)
+    } else {
+      def continueAndCacheResponse() = route {
+        ctx.withResponseTransformer { response =>
+          cache.update(key, response)
+          Some(response)
+        }
+      }
+      val cachedResponse = cache.get(key)
+      if (cachedResponse.isDefined) {
+        val responseType = cachedResponse.get.contentType
+        if (responseType.isDefined && ctx.request.clientAccepts(responseType.get)) {
+          ctx.respond(cachedResponse.get)
+        } else continueAndCacheResponse()
+      } else continueAndCacheResponse()
+    }
+  }
+  
   
   // implicits
   
@@ -63,5 +87,7 @@ private[spray] trait BasicBuilders {
   }
   
   implicit def defaultDetachedActorFactory(route: Route): Actor = new DetachedRouteActor(route)
+  
+  implicit def defaultCacheKeyer(ctx: RequestContext): CacheKey = CacheOn(ctx.request.uri)
   
 }

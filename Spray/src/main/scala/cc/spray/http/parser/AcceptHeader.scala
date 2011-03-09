@@ -9,7 +9,7 @@ trait AcceptHeader {
 
   def ACCEPT = rule (
     zeroOrMore(MediaRange ~ optional(AcceptParams), ListSep) ~ EOI
-      ~~> (HttpHeaders.Accept(_: _*))
+      ~~> (HttpHeaders.Accept(_))
   )
   
   def MediaRange = rule {

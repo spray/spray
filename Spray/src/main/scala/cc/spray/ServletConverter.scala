@@ -39,9 +39,8 @@ trait ServletConverter {
     }
   }
   
-  protected def readContent(request: HttpServletRequest, headers: List[HttpHeader]): Option[Array[Byte]] = {
-    val buffer = IOUtils.toByteArray(request.getInputStream)
-    if (buffer.length > 0) Some(buffer) else None
+  protected def readContent(request: HttpServletRequest, headers: List[HttpHeader]): HttpContent = {
+    HttpContent(IOUtils.toByteArray(request.getInputStream))
   }
   
   protected def getRemoteHost(request: HttpServletRequest) = {
@@ -59,11 +58,11 @@ trait ServletConverter {
         hsr.setHeader(name, value)
       }
       response.content match {
-        case Some(buffer) => {
-          IOUtils.copy(new ByteArrayInputStream(buffer), hsr.getOutputStream)
+        case buffer: ContentBuffer => {
+          IOUtils.copy(buffer.inputStream, hsr.getOutputStream)
           hsr.setContentLength(buffer.length)
         }
-        case None => if (!response.status.code.isInstanceOf[HttpSuccess]) {
+        case NoContent => if (!response.status.code.isInstanceOf[HttpSuccess]) {
           hsr.setContentType("text/plain")
           hsr.getWriter.write(response.status.reason)
           hsr.getWriter.close
