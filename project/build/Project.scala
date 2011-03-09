@@ -1,7 +1,7 @@
 import sbt._
 import Process._
 
-class Project(info: ProjectInfo) extends ParentProject(info) with IdeaProject {
+class Project(info: ProjectInfo) extends ParentProject(info) {
   
   // -------------------------------------------------------------------------------------------------------------------
   // All repositories *must* go here! See ModuleConigurations below.
@@ -39,7 +39,7 @@ class Project(info: ProjectInfo) extends ParentProject(info) with IdeaProject {
   lazy val sprayProject     = project("Spray", "Spray", new SprayProject(_))
   lazy val examplesProject = project("Examples", "Examples", new ExamplesProject(_))
   
-  class SprayProject(info: ProjectInfo) extends DefaultProject(info) with AkkaProject with IdeaProject {
+  class SprayProject(info: ProjectInfo) extends DefaultProject(info) with AkkaProject {
     override val akkaActor = akkaModule("actor") withSources()
     val akkaHttp = akkaModule("http") withSources()
     val parboiledC = Deps.parboiledC
@@ -49,7 +49,7 @@ class Project(info: ProjectInfo) extends ParentProject(info) with IdeaProject {
     val mockito = Deps.mockito
   }
   
-  class ExamplesProject(info: ProjectInfo) extends DefaultWebProject(info) with AkkaProject with IdeaProject {
+  class ExamplesProject(info: ProjectInfo) extends DefaultWebProject(info) with AkkaProject {
     override val akkaActor = akkaModule("actor") withSources()
     val akkaHttp = akkaModule("http") withSources()
     val spray = sprayProject
