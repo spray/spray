@@ -3,7 +3,7 @@ package cc.spray
 import http._
 import org.specs.Specification
 import HttpMethods._
-import test.RouteTest
+import test.SprayTest
 import akka.actor.Actor
 import util.Properties
 import java.io.{File, FileNotFoundException}

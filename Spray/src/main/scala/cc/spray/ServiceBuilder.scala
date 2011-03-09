@@ -7,7 +7,7 @@ import java.util.regex.Pattern
 import util.matching.Regex
 import akka.actor.Actor
 import org.parboiled.common.FileUtils
-import java.io.{FileInputStream, FileNotFoundException, File}
+import java.io.File
 
 trait ServiceBuilder {
   
@@ -150,5 +150,3 @@ trait ServiceBuilder {
   }
   
 }
-
-object ServiceBuilder extends ServiceBuilder

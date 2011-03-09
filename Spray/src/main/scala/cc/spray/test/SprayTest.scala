@@ -4,7 +4,7 @@ package test
 import cc.spray.{ResponseContext, RequestContext}
 import http._
 
-trait RouteTest {
+trait SprayTest {
   this: { def fail(msg: String): Nothing } =>
 
   def test(request: HttpRequest)(route: Route): ContextWrapper = {
