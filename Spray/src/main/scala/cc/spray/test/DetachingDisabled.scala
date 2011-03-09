@@ -7,6 +7,6 @@ import akka.actor.Actor
 trait DetachingDisabled extends ServiceBuilder {
   
   // disable detach-to-actor so we do not have to actually run actors in the test
-  abstract override def detached(route: Route)(implicit detachedActorFactory: Route => Actor): Route = route
+  override def detached(route: Route)(implicit detachedActorFactory: Route => Actor): Route = route
   
 }
