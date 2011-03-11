@@ -8,32 +8,32 @@ import HttpMethods._
 import HttpHeaders._
 import MimeTypes._
 
-class ServiceSpec extends Specification with Service with SprayTest with DetachingDisabled {
+class ServiceSpec extends Specification with SprayTest with Service with DetachingDisabled {
   
-  val service = restService
+  val service = HttpServiceTest(sampleService)
   
-  "GET /test/echo/42" in {
-    test(HttpRequest(GET, "/test/echo/42")) {
-      service
-    }.response mustEqual HttpResponse(headers = List(`Content-Type`(`text/plain`)), content = "The number is: 42")
-  }
-  
-  "GET /test/echo/Sp" in {
-    test(HttpRequest(GET, "/test/echo/Sp")) {
-      service
-    }.response mustEqual HttpResponse(headers = List(`Content-Type`(`text/plain`)), content = "The letters are: S and p")
-  }
-  
-  "GET /resources/sample.html" in {
-    test(HttpRequest(GET, "/resources/sample.html")) {
-      service
-    }.response mustEqual HttpResponse(headers = List(`Content-Type`(`text/html`)), content = "<p>Lorem ipsum!</p>")
-  }
-  
-  "GET /resources/notThere.txt" in {
-    test(HttpRequest(GET, "/resources/notThere.txt")) {
-      service
-    }.response mustEqual failure(404, "Resource 'samples/notThere.txt' not found")
+  "The sample service" should {
+    "correctly handle these example" in {
+      "GET /test/echo/42" in {
+        test(service, HttpRequest(GET, "/test/echo/42")).response mustEqual
+                HttpResponse(content = HttpContent(`text/plain`, "The number is: 42"))
+      }
+      
+      "GET /test/echo/Sp" in {
+        test(service, HttpRequest(GET, "/test/echo/Sp")).response mustEqual
+                HttpResponse(content = HttpContent(`text/plain`, "The letters are: S and p"))
+      }
+      
+      "GET /resources/sample.html" in {
+        test(service, HttpRequest(GET, "/resources/sample.html")).response mustEqual
+                HttpResponse(content = HttpContent(`text/html`, "<p>Lorem ipsum!</p>"))
+      }
+      
+      "GET /resources/notThere.txt" in {
+        test(service, HttpRequest(GET, "/resources/notThere.txt")).response mustEqual
+                failure(404)
+      }
+    }
   }
   
 }

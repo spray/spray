@@ -6,7 +6,7 @@ import MimeTypes._
 
 trait Service extends ServiceBuilder {
   
-  def restService: Route = {
+  def sampleService: Route = {
     path("test" / "echo") {
       path("\\d+".r) { number =>
         get { _.respond("The number is: " + number) }

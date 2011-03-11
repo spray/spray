@@ -26,6 +26,15 @@ trait SprayTest {
     )
     protected[spray] def responderForRequest(request: HttpRequest) = responder.value
   }
+
+  /**
+   * The default HttpServiceLogic for testing.
+   * If you have derived your own CustomHttpServiceLogic that you would like to test, use this construct:
+   * val serviceTest = new CustomHttpServiceLogic with ServiceTest {
+   *    val route = ...
+   * }
+   */
+  case class HttpServiceTest(route: Route) extends ServiceTest
   
   def test(service: ServiceTest, request: HttpRequest): ServiceResultWrapper = {
     var response: Option[Option[HttpResponse]] = None 

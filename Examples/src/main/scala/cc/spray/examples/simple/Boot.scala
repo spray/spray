@@ -14,5 +14,5 @@ class Boot extends Service {
     )
   ).newInstance.start
   
-  actor[RootService] ! Attach(HttpService(restService))
+  actor[RootService] ! Attach(HttpService(sampleService))
 }

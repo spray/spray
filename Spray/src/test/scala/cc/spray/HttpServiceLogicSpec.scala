@@ -8,19 +8,19 @@ import HttpStatusCodes._
 import MimeTypes._
 import test.SprayTest
 
-class HttpServiceLogicSpec extends Specification with SprayTest {
+class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuilder {
   
-  val service = new HttpServiceLogic with ServiceBuilder with ServiceTest {
-    val route = {
-      path("abc") {
+  val route = {
+    path("abc") {
         get { _.respond("yes") } ~
         put { _.respond("yes") }
       } ~
       path("def") {
         get { _.respond("yeah") }
       }
-    } 
   }
+  
+  val service = HttpServiceTest(route)
   
   "The HttpServiceLogic" should {
     "leave requests to unmatched paths unhandled" in {
