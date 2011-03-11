@@ -19,7 +19,7 @@ class HttpHeaderSpec extends Specification {
   "Header 'Accept-Charset'" should {
     import Charsets._
     "be parsed correctly from example 1" in (
-      HttpHeader("Accept-Charset", "iso-8859-5, unicode-1-1;q =0.8") mustEqual `Accept-Charset`(`ISO-8859-5`, `UNICODE-1-1`)
+      HttpHeader("Accept-Charset", "iso-8859-5, UTF-16LE;q =0.8") mustEqual `Accept-Charset`(`ISO-8859-5`, `UTF-16LE`)
     )
     "be parsed correctly from example 2" in (
       HttpHeader("Accept-Charset", "*") mustEqual `Accept-Charset`(`*`)
@@ -66,8 +66,15 @@ class HttpHeaderSpec extends Specification {
   
   "Header 'Content-Type'" should {
     import MimeTypes._
+    import Charsets._
     "be parsed correctly from example 1" in (
-      HttpHeader("Content-Type", "text/html; charset=ISO-8859-4") mustEqual `Content-Type`(`text/html`)
+      HttpHeader("Content-Type", "application/pdf") mustEqual `Content-Type`(`application/pdf`)
+    )
+    "be parsed correctly from example 2" in (
+      HttpHeader("Content-Type", "text/plain; charset=utf8") mustEqual `Content-Type`(ContentType(`text/plain`, `UTF-8`))
+    )
+    "be parsed correctly from example 3" in (
+      HttpHeader("Content-Type", "text/css") mustEqual `Content-Type`(ContentType(`text/css`, `ISO-8859-1`))
     )
   }
   

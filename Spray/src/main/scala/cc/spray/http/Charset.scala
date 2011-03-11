@@ -1,26 +1,43 @@
 package cc.spray.http
 
 import cc.spray.utils.ObjectRegistry
+import java.nio.charset.{Charset => JCharset}
 
 sealed trait Charset {
   def aliases: Seq[String]
-  val value: String
+  def value: String
+  def nioCharset: JCharset
   override def toString = value
   
-  Charsets.register(this, value.toLowerCase)
-  Charsets.register(this, aliases.map(_.toLowerCase))
+  def equalsOrIncludes(other: Charset): Boolean
 }
 
 // see http://www.iana.org/assignments/character-sets
 object Charsets extends ObjectRegistry[String, Charset] {
   
-  class StandardCharset private[Charsets] (val value: String, val aliases: String*) extends Charset
+  class StandardCharset private[Charsets] (val value: String, val aliases: String*) extends Charset {
+    val nioCharset: JCharset = JCharset.forName(value)
+    def equalsOrIncludes(other: Charset) = this eq other
+    
+    Charsets.register(this, value.toLowerCase)
+    Charsets.register(this, aliases.map(_.toLowerCase))
+  }
   
   case class CustomCharset(override val value: String) extends Charset {
     def aliases = List.empty[String]
+    lazy val nioCharset: JCharset = JCharset.forName(value)
+    def equalsOrIncludes(other: Charset) = this == other
   }
   
-  val `*`           = new StandardCharset("*") 
+  val `*` = new Charset {
+    def value = "*"
+    def aliases = List.empty[String]
+    def nioCharset = `ISO-8859-1`.nioCharset
+    def equalsOrIncludes(other: Charset) = true
+    
+    Charsets.register(this, value)
+  }
+  
   val `US-ASCII`    = new StandardCharset("US-ASCII", "iso-ir-6", "ANSI_X3.4-1986", "ISO_646.irv:1991", "ASCII", "ISO646-US", "us", "IBM367", "cp367", "csASCII")
   val `ISO-8859-1`  = new StandardCharset("ISO-8859-1", "iso-ir-100", "ISO_8859-1", "latin1", "l1", "IBM819", "CP819", "csISOLatin1")
   val `ISO-8859-2`  = new StandardCharset("ISO-8859-2", "iso-ir-101", "ISO_8859-2", "latin2", "l2", "csISOLatin2") 
@@ -32,8 +49,6 @@ object Charsets extends ObjectRegistry[String, Charset] {
   val `ISO-8859-8`  = new StandardCharset("ISO-8859-8", "iso-ir-138", "ISO_8859-8", "hebrew", "csISOLatinHebrew")
   val `ISO-8859-9`  = new StandardCharset("ISO-8859-9", "iso-ir-148", "ISO_8859-9", "latin5", "l5", "csISOLatin5")
   val `ISO-8859-10` = new StandardCharset("ISO-8859-1", "iso-ir-157", "l6", "ISO_8859-10", "csISOLatin6", "latin6")
-  val `UNICODE-1-1` = new StandardCharset("UNICODE-1-1", "csUnicode11")
-  val `UTF-7`       = new StandardCharset("UTF-7", "UTF7")
   val `UTF-8`       = new StandardCharset("UTF-8", "UTF8")
   val `UTF-16`      = new StandardCharset("UTF-16", "UTF16")
   val `UTF-16BE`    = new StandardCharset("UTF-16BE")

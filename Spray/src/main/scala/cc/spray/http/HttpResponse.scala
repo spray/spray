@@ -1,11 +1,10 @@
 package cc.spray.http
 
 import HttpStatusCodes._
-import HttpHeaders._
 
-case class HttpResponse(status: HttpStatus = HttpStatus(OK),
+case class HttpResponse(status: HttpStatus = OK,
                         headers: List[HttpHeader] = Nil,
-                        content: HttpContent = NoContent) {
+                        content: HttpContent = EmptyContent) {
 
   def isSuccess: Boolean = status.code.isInstanceOf[HttpSuccess]
   
@@ -13,5 +12,4 @@ case class HttpResponse(status: HttpStatus = HttpStatus(OK),
   
   def isFailure: Boolean = status.code.isInstanceOf[HttpFailure]
   
-  def contentType: Option[MimeType] = (for (`Content-Type`(mimeType) <- headers) yield mimeType).headOption
 }

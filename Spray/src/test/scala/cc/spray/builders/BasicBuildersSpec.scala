@@ -26,46 +26,16 @@ class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest 
     }
   }
   
-  "accepts(mimeType)" should {
-    "block requests without any content" in {
-      test(HttpRequest(GET)) {
-        accepts(`text/xml`) { respondOk }
+  "methods(GET, POST)" should {
+    "block PUT requests" in {
+      test(HttpRequest(PUT)) { 
+        methods(GET, POST) { respondOk }
       }.handled must beFalse
     }
-    "block requests with unmatching content" in {
-      test(HttpRequest(GET, headers = List(`Content-Type`(`text/html`)))) {
-        accepts(`text/xml`) { respondOk }
-      }.handled must beFalse
-    }
-    "let requests with matching content pass" in {
-      "on simple one-on-one matches" in {
-        test(HttpRequest(GET, headers = List(`Content-Type`(`text/html`)))) {
-          accepts(`text/html`) { respondOk }
-        }.response mustEqual Ok
-      }
-      "as a one-of-several match " in {
-        test(HttpRequest(GET, headers = List(`Content-Type`(`text/html`)))) {
-          accepts(`text/xml`, `text/html`) {respondOk }
-        }.response mustEqual Ok
-      }
-      "as a .../star media range match" in {
-        test(HttpRequest(GET, headers = List(`Content-Type`(`text/html`)))) {
-          accepts(`text/+`) { respondOk }
-        }.response mustEqual Ok
-      }
-    }
-  }
-  
-  "produces(mimeType)" should {
-    "add a 'Content-Type' response header if none was present before" in {
-      test(HttpRequest(GET)) {
-        produces(`text/plain`) { respondOk }
-      }.response mustEqual HttpResponse(headers = List(`Content-Type`(`text/plain`)))    
-    }
-    "overwrite a previously existing 'Content-Type' response header" in {
-      test(HttpRequest(GET)) {
-        produces(`text/plain`) { _.respond(HttpResponse(headers = List(`Content-Type`(`text/html`)))) }
-      }.response mustEqual HttpResponse(headers = List(`Content-Type`(`text/plain`)))   
+    "let POST requests pass" in {
+      test(HttpRequest(POST)) { 
+        methods(GET, POST) { respondOk }
+      }.response mustEqual Ok
     }
   }
   
@@ -80,45 +50,44 @@ class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest 
         post { _.respond("first") } ~ get { _.respond("second") }
       }.response mustEqual HttpResponse(content = "second")    
     }
+    "collect rejections from both sub routes" in {
+      test(HttpRequest(DELETE)) {
+        get { _.respond("first") } ~ put { _.respond("second") }
+      }.rejections mustEqual Set(MethodRejection(GET), MethodRejection(PUT))
+    }
   }
   
   "the cached directive" should {
     def createBuilder = new BasicBuilders {
       var i = 0
-      val service = cached {
-        produces(`text/plain`) { _.respond { i += 1; i.toString } }
-      }
+      val service = cached { _.respond { i += 1; i.toString } }
+      val errorService = cached { _.respond { i += 1; HttpResponse(HttpStatus(500 + i)) } }
     }
-    def createAndPrimeBuilder = make(createBuilder) { _.service(RequestContext(HttpRequest(GET))) }
+    def createAndPrimeService = make(createBuilder) { _.service(RequestContext(HttpRequest(GET))) }
+    def createAndPrimeErrorService = make(createBuilder) { _.errorService(RequestContext(HttpRequest(GET))) }
     
     "return and cache the response of the first GET" in {      
       test(HttpRequest(GET)) {
         createBuilder.service        
-      }.response mustEqual HttpResponse(headers = List(`Content-Type`(`text/plain`)), content = "1")
+      }.response mustEqual HttpResponse(content = "1")
     }
-    "return the cached response for a GET if the client accepts the cached responses MimeType" in {
-      val builder = createAndPrimeBuilder
-      test(HttpRequest(GET, headers = List(Accept(`text/+`)))) {
-        builder.service        
-      }.response mustEqual HttpResponse(headers = List(`Content-Type`(`text/plain`)), content = "1")
-    }
-    "return the cached response for a GET if the request carries no Accept header" in {
-      val builder = createAndPrimeBuilder
+    "return the cached response for a second GET" in {
+      val builder = createAndPrimeService
       test(HttpRequest(GET)) {
         builder.service        
-      }.response mustEqual HttpResponse(headers = List(`Content-Type`(`text/plain`)), content = "1")
+      }.response mustEqual HttpResponse(content = "1")
     }
-    "not return the cached response if the client does not accept the cached responses MimeType" in {
-      val builder = createAndPrimeBuilder
-      test(HttpRequest(GET, headers = List(Accept(`application/+`)))) {
+    "return the cached response also for HttpFailures on GETs" in {
+      val builder = createAndPrimeErrorService
+      test(HttpRequest(GET)) {
         builder.service        
-      }.response mustEqual HttpResponse(headers = List(`Content-Type`(`text/plain`)), content = "2")
+      }.response mustEqual failure(501)
     }
     "not cache responses for PUTs" in {
-      val builder = createAndPrimeBuilder
+      val builder = createAndPrimeService
       test(HttpRequest(PUT)) {
         builder.service        
-      }.response mustEqual HttpResponse(headers = List(`Content-Type`(`text/plain`)), content = "2")
+      }.response mustEqual HttpResponse(content = "2")
     }
   }
 

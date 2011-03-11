@@ -73,7 +73,9 @@ trait ProtocolParameterRules {
   
   /* 3.7 Media Types */
   
-  def MediaType = rule { Type ~ "/" ~ Subtype ~ zeroOrMore(";" ~ Parameter ~ POP1) } // TODO: support parameters 
+  def MediaType: Rule3[String, String, Map[String, String]] = rule {
+    Type ~ "/" ~ Subtype ~ zeroOrMore(";" ~ Parameter) ~~> (_.toMap)
+  } 
   
   def Type = rule { Token }
   

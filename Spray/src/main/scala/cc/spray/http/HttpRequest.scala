@@ -2,12 +2,13 @@ package cc.spray.http
 
 import java.net.URI
 import HttpHeaders._
+import HttpStatusCodes._
 
 case class HttpRequest(method: HttpMethod,
                        uri: String = "",
                        headers: List[HttpHeader] = Nil,
                        parameters: Map[Symbol, String] = Map.empty,
-                       content: HttpContent = NoContent,
+                       content: HttpContent = EmptyContent,
                        remoteHost: Option[HttpIp] = None,
                        version: Option[HttpVersion] = Some(HttpVersions.`HTTP/1.1`)) {
   
@@ -37,12 +38,29 @@ case class HttpRequest(method: HttpMethod,
     copy(uri = new URI(scheme, userInfo, host, port, path, query, fragment).toString)
   }
   
-  def clientAccepts(mimeType: MimeType): Boolean = {
-    val acceptTypes = for (Accept(mimeTypes) <- headers; mType <- mimeTypes) yield mType
-    
-    // according to the HTTP spec a client has to accept all content types if no Accept header is sent with the request
-    acceptTypes.isEmpty || acceptTypes.exists(_.matchesOrIncludes(mimeType))
+  lazy val acceptedMimeTypes: List[MimeType] = {
+    // TODO: sort by preference
+    for (Accept(mimeTypes) <- headers; mType <- mimeTypes) yield mType
   }
   
-  def contentType: Option[MimeType] = (for (`Content-Type`(mimeType) <- headers) yield mimeType).headOption
+  lazy val acceptedCharsets: List[Charset] = {
+    // TODO: sort by preference
+    for (`Accept-Charset`(charsets) <- headers; cs <- charsets) yield cs
+  }
+
+  def isContentTypeAccepted(contentType: ContentType) = {
+    isMimeTypeAccepted(contentType.mimeType) && isCharsetAccepted(contentType.charset)  
+  } 
+  
+  def isMimeTypeAccepted(mimeType: MimeType) = {
+    // according to the HTTP spec a client has to accept all mime types if no Accept header is sent with the request
+    // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
+    acceptedMimeTypes.isEmpty || acceptedMimeTypes.exists(_.equalsOrIncludes(mimeType))
+  }
+  
+  def isCharsetAccepted(charset: Charset) = {
+    // according to the HTTP spec a client has to accept all charsets if no Accept-Charset header is sent with the request
+    // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.2
+    acceptedCharsets.isEmpty || acceptedCharsets.exists(_.equalsOrIncludes(charset))
+  }
 }

@@ -5,18 +5,20 @@ import scala.collection.JavaConversions._
 import org.apache.commons.io.IOUtils
 import java.net.{UnknownHostException, InetAddress}
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
-import java.io.ByteArrayInputStream
+import HttpHeaders._
+import MimeTypes._
+import Charsets._
 
 trait ServletConverter {
   
   protected[spray] def toSprayRequest(request: HttpServletRequest): HttpRequest = {
-    val headers = buildHeaders(request)
+    val (ctHeaders, headers) = buildHeaders(request).partition(_.isInstanceOf[`Content-Type`])
     HttpRequest(
       HttpMethods.get(request.getMethod).get,
       request.getRequestURI,
       headers,
       buildParameters(request.getParameterMap.asInstanceOf[java.util.Map[String, Array[String]]]),
-      readContent(request, headers),
+      readContent(request, ctHeaders.headOption.asInstanceOf[Option[`Content-Type`]]),
       getRemoteHost(request),
       HttpVersions.get(request.getProtocol)
     )
@@ -39,8 +41,16 @@ trait ServletConverter {
     }
   }
   
-  protected def readContent(request: HttpServletRequest, headers: List[HttpHeader]): HttpContent = {
-    HttpContent(IOUtils.toByteArray(request.getInputStream))
+  protected def readContent(request: HttpServletRequest, header: Option[`Content-Type`]): HttpContent = {
+    val bytes = IOUtils.toByteArray(request.getInputStream)
+    if (bytes.length > 0) {
+      // so far we do not guess the content-type
+      // see http://www.w3.org/Protocols/rfc2616/rfc2616-sec7.html#sec7.2.1
+      val contentType = header.map(_.contentType).getOrElse(ContentType(`application/octet-stream`))
+      HttpContent(contentType, bytes)
+    } else {
+      EmptyContent
+    }
   }
   
   protected def getRemoteHost(request: HttpServletRequest) = {
@@ -55,18 +65,24 @@ trait ServletConverter {
     hsr => {
       hsr.setStatus(response.status.code.value)
       for (HttpHeader(name, value) <- response.headers) {
+        if (name == "Content-Type") {
+          // TODO: move higher up
+          throw new RuntimeException("HttpResponse must not include explicit Content-Type header")
+        }
         hsr.setHeader(name, value)
       }
       response.content match {
-        case buffer: ContentBuffer => {
-          IOUtils.copy(buffer.inputStream, hsr.getOutputStream)
+        case buffer: BufferContent => {
           hsr.setContentLength(buffer.length)
+          hsr.setContentType(buffer.contentType.value)
+          IOUtils.copy(buffer.inputStream, hsr.getOutputStream)
         }
-        case NoContent => if (!response.status.code.isInstanceOf[HttpSuccess]) {
+        case EmptyContent => if (!response.isSuccess) {
           hsr.setContentType("text/plain")
           hsr.getWriter.write(response.status.reason)
           hsr.getWriter.close
         }
+        case ObjectContent(_) => throw new IllegalStateException // should always be converted by "service" directive
       }
       hsr.flushBuffer
     }

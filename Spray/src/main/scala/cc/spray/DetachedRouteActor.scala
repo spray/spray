@@ -1,6 +1,11 @@
 package cc.spray
 
-class DetachedRouteActor(route: Route) extends RoutingActor {
+import akka.util.Logging
+import akka.actor.Actor
+import http._
+import HttpStatusCodes._
+
+class DetachedRouteActor(route: Route) extends Actor with Logging {
   
   protected def receive = {
     case ctx: RequestContext => {
@@ -11,5 +16,13 @@ class DetachedRouteActor(route: Route) extends RoutingActor {
       }
     } 
   }
+  
+  protected def responseForException(request: HttpRequest, e: Exception): HttpResponse = {
+    log.error("Error during processing of request {}:\n{}", request, e)
+    e match {
+      case e: HttpException => HttpResponse(e.status)
+      case e: Exception => HttpResponse(HttpStatus(InternalServerError, e.getMessage)) 
+    }    
+  } 
   
 } 

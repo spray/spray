@@ -1,9 +1,15 @@
 package cc.spray
 
+import http._
+
 trait Rejection
 
-case object MethodRejection extends Rejection
+/**
+ * The request was rejected because the HTTP method is unsupported
+ */
+case class MethodRejection(supported: HttpMethod) extends Rejection
 
-case object AcceptRejection extends Rejection
-
+/**
+ * The request was rejected even though the URI path matched completely.
+ */
 case object PathMatchedRejection extends Rejection

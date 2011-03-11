@@ -2,13 +2,15 @@ package cc
 
 import akka.actor.{ActorRef, Actor}
 import java.io.File
-import spray.http.HttpResponse
+import spray.http._
+import collection.immutable.LinearSeq
+import spray.utils.PimpedLinearSeq
 
 package object spray {
 
   type Route = RequestContext => Unit
-  
   type RoutingResult = Either[Set[Rejection], HttpResponse]
+  type ContentTypeResolver = (File, Option[Charset]) => ContentType
   
   def actor(id: Symbol): ActorRef = actor(id.toString)
 
@@ -43,4 +45,6 @@ package object spray {
       }
     }
   }
+  
+  implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq) 
 }

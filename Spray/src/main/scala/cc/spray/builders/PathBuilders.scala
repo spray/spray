@@ -37,11 +37,13 @@ private[spray] trait PathBuilders {
         f(captures)(
           if (remainingPath == "") {
             // if we have successfully matched the complete URI we need to  
-            // add a PathMatchedRejection if the request is still rejected
-            ctx.copy(unmatchedPath = "", responder = {
-              _ match {
-                case x@ Right(_) => ctx.responder(x) // request succeeded, no further action required
-                case Left(rejections) => Left(rejections + PathMatchedRejection) // rejected, add marker  
+            // add a PathMatchedRejection if the request is rejected by some inner filter
+            ctx.copy(unmatchedPath = "", responder = { rr =>
+              ctx.respond {
+                rr match {
+                  case x@ Right(_) => x // request succeeded, no further action required
+                  case Left(rejections) => Left(rejections + PathMatchedRejection) // rejected, add marker  
+                }
               }
             })
           } else {

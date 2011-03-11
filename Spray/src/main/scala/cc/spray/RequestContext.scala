@@ -9,23 +9,21 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
   }
 
   def withHttpResponseTransformed(f: HttpResponse => HttpResponse): RequestContext = {
-    withRouteResponseTransformed {
+    withRoutingResultTransformed {
       _ match {
-        case x@ Left(_) => x
         case Right(response) => Right(f(response))
+        case x@ Left(_) => x
       }
     }
   }
   
-  def withRouteResponseTransformed(f: RoutingResult => RoutingResult): RequestContext = {
+  def withRoutingResultTransformed(f: RoutingResult => RoutingResult): RequestContext = {
     withResponder { rr => responder(f(rr)) }
   }
 
   def withResponder(newResponder: RoutingResult => Unit) = copy(responder = newResponder)
   
-  def respond(string: String) { respond(string.getBytes) }
-
-  def respond(array: Array[Byte]) { respond(HttpResponse(content = HttpContent(array))) }
+  def respond(content: HttpContent) { respond(HttpResponse(content = content)) }
 
   def respond(response: HttpResponse) { respond(Right(response)) }
   
@@ -33,6 +31,7 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
   
   def reject(rejections: Rejection*) { respond(Left(Set(rejections: _*))) }
   
+  // can be cached
   def fail(failure: HttpFailure, reason: String = "") {
     respond(HttpResponse(HttpStatus(failure, reason)))
   }

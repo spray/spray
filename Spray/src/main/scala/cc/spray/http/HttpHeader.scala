@@ -76,8 +76,8 @@ object HttpHeaders {
     def value = if (rangeUnits.isEmpty) "none" else rangeUnits.mkString(", ")
   }
   
-  case class `Content-Type`(mimeType: MimeType) extends HttpHeader {
-    def value = mimeType.toString
+  case class `Content-Type`(contentType: ContentType) extends HttpHeader {
+    def value = contentType.value
   }
   
   object `X-Forwarded-For` { def apply(first: HttpIp, more: HttpIp*): `X-Forwarded-For` = apply(first +: more) }

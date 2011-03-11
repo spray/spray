@@ -5,57 +5,58 @@ import http._
 import akka.actor.Actor
 import org.parboiled.common.FileUtils
 import java.io.File
+import HttpStatusCodes._
 
 private[spray] trait FileResourceDirectoryBuilders {
   this: BasicBuilders =>
   
-  def getFromFile(filename: String)(implicit detachedActorFactory: Route => Actor,
-                                    mimeType4FileResolver: File => MimeType): Route = {
-    getFromFile(new File(filename))
-  }
-  
-  def getFromFile(file: File)(implicit detachedActorFactory: Route => Actor,
-                              mimeType4FileResolver: File => MimeType): Route = {
+  def getFromFile(fileName: String, charset: Option[Charset] = None)
+                 (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {
     detached {
-      produces(mimeType4FileResolver(file)) {
-        get { ctx =>
-          val content = FileUtils.readAllBytes(file)
-          if (content != null) ctx.respond(content)
-          else ctx.fail(HttpStatusCodes.NotFound, "File '" + file + "' not found")
-        }
+      get {
+        _.respond {
+          Option(FileUtils.readAllBytes(fileName)).map { buffer =>
+            HttpResponse(content = HttpContent(resolver(new File(fileName), charset), buffer))
+          }.getOrElse(HttpResponse(NotFound))
+        } 
       }
     }
   }
   
-  def getFromResource(resourceName: String)(implicit detachedActorFactory: Route => Actor,
-                                            mimeType4FileResolver: File => MimeType): Route = {
+  def getFromResource(resourceName: String, charset: Option[Charset] = None)
+                     (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {
     detached {
-      produces(mimeType4FileResolver(new File(resourceName))) {
-        get { ctx =>
-          val content = FileUtils.readAllBytesFromResource(resourceName)
-          if (content != null) ctx.respond(content)
-          else ctx.fail(HttpStatusCodes.NotFound, "Resource '" + resourceName + "' not found")
-        }
+      get {
+        _.respond {
+          Option(FileUtils.readAllBytesFromResource(resourceName)).map { buffer =>
+            HttpResponse(content = HttpContent(resolver(new File(resourceName), charset), buffer))
+          }.getOrElse(HttpResponse(NotFound))
+        } 
       }
     }
   }
   
-  def getFromDirectory(directoryName: String)(implicit detachedActorFactory: Route => Actor,
-                                              mimeType4FileResolver: File => MimeType): Route = { ctx =>
+  def getFromDirectory(directoryName: String, charset: Option[Charset] = None)
+                      (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = { ctx =>
     val subPath = if (File.pathSeparatorChar == '/') ctx.unmatchedPath
                   else ctx.unmatchedPath.replace('/', File.pathSeparatorChar) 
-    getFromFile(directoryName + subPath).apply(ctx)
+    getFromFile(directoryName + subPath, charset).apply(ctx)
   }
   
-  def getFromResourceDirectory(directoryName: String)(implicit detachedActorFactory: Route => Actor,
-                                                      mimeType4FileResolver: File => MimeType): Route = { ctx =>
-    getFromResource(directoryName + ctx.unmatchedPath).apply(ctx)
+  def getFromResourceDirectory(directoryName: String, charset: Option[Charset] = None)
+                              (implicit detachedActorFactory: Route => Actor,
+                               resolver: ContentTypeResolver): Route = { ctx =>
+    getFromResource(directoryName + ctx.unmatchedPath, charset).apply(ctx)
   }
   
   // implicits
   
-  implicit def defaultMimeType4FileResolver(file: File): MimeType = {
-    MimeTypes.forExtension(file.extension).getOrElse(MimeTypes.`application/octet-stream`)
+  implicit def defaultContentTypeResolver(file: File, charset: Option[Charset]): ContentType = {
+    val mimeType = MimeTypes.forExtension(file.extension).getOrElse(MimeTypes.`application/octet-stream`)
+    charset match {
+      case Some(cs) => ContentType(mimeType, cs)
+      case None => ContentType(mimeType)
+    }
   }
   
 }

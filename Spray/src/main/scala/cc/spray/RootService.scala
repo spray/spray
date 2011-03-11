@@ -5,6 +5,7 @@ import akka.actor.{Actor, ActorRef}
 import akka.util.Logging
 import http._
 import akka.dispatch.{Future, Futures}
+import HttpStatusCodes._
 
 class RootService extends Actor with ServletConverter with Logging {
   private var services: List[ActorRef] = Nil
@@ -13,7 +14,13 @@ class RootService extends Actor with ServletConverter with Logging {
   self.id = "spray-root-service"
 
   protected def receive = {
-    case rm: RequestMethod => handler(rm)
+    case rm: RequestMethod => {
+      try {
+        handler(rm)
+      } catch {
+        case e: Exception => handleException(e, rm)
+      }
+    }
     case Attach(service) => attach(service)
     case Detach(service) => detach(service)
   }
@@ -40,6 +47,13 @@ class RootService extends Actor with ServletConverter with Logging {
         }
       }
     } onComplete completeRequest(rm) _
+  }
+  
+  protected def handleException(e: Exception, rm: RequestMethod) {
+    rm.rawComplete(fromSprayResponse( e match {
+      case e: HttpException => HttpResponse(e.status)
+      case e: Exception => HttpResponse(HttpStatus(InternalServerError, e.getMessage))
+    })) 
   }
   
   private def completeRequest(rm: RequestMethod)(future: Future[Option[Any]]) {
