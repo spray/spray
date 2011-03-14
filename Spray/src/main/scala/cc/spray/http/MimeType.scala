@@ -10,7 +10,7 @@ sealed trait MimeType {
   def defaultExtension = fileExtensions.headOption
   override def toString = value
   
-  def equalsOrIncludes(other: MimeType) = (this eq other) || (subType == "+" && mainType == other.mainType)
+  def equalsOrIncludes(other: MimeType) = (this eq other) || (subType == "*" && mainType == other.mainType)
   
   MimeTypes.register(this, value)
 }
@@ -28,15 +28,15 @@ object MimeTypes extends ObjectRegistry[String, MimeType] {
   
   class PredefinedMimeType private[MimeTypes](val value: String, val fileExtensions: String*) extends MimeType
   
-  val `+/+` = new PredefinedMimeType("+/+") 
+  val `*/*` = new PredefinedMimeType("*/*") 
   
-  val `application/+` = new PredefinedMimeType("application/+")   
-  val `audio/+`       = new PredefinedMimeType("audio/+")            
-  val `image/+`       = new PredefinedMimeType("image/+")            
-  val `message/+`     = new PredefinedMimeType("message/+")    
-  val `multipart/+`   = new PredefinedMimeType("multipart/+")  
-  val `text/+`        = new PredefinedMimeType("text/+")       
-  val `video/+`       = new PredefinedMimeType("video/+")
+  val `application/*` = new PredefinedMimeType("application/*")   
+  val `audio/*`       = new PredefinedMimeType("audio/*")            
+  val `image/*`       = new PredefinedMimeType("image/*")            
+  val `message/*`     = new PredefinedMimeType("message/*")    
+  val `multipart/*`   = new PredefinedMimeType("multipart/*")  
+  val `text/*`        = new PredefinedMimeType("text/*")       
+  val `video/*`       = new PredefinedMimeType("video/*")
   
   val `application/atom+xml`              = new PredefinedMimeType("application/atom+xml")
   val `application/javascript`            = new PredefinedMimeType("application/javascript", "js")
