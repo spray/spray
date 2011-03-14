@@ -10,7 +10,7 @@ import MimeTypes._
 
 class ServiceSpec extends Specification with SprayTest with Service with DetachingDisabled {
   
-  val service = HttpServiceTest(sampleService)
+  val service = TestHttpService(sampleService)
   
   "The sample service" should {
     "correctly handle these example" in {

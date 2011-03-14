@@ -31,4 +31,4 @@ trait HttpServiceActor extends HttpServiceLogic with Actor with Logging {
  * "case class CustomHttpService(route: Route) extends HttpServiceActor with CustomServiceLogic".
  * In this way you can test your CustomServiceLogic with SprayTest without the need to fire up actual actors.
  */
-case class HttpService(route: Route) extends HttpServiceActor
+case class HttpService(route: RootRoute) extends HttpServiceActor

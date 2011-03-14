@@ -12,8 +12,6 @@ private[spray] trait BasicBuilders {
   // - host
   // - parameter
   // - optionalParameter
-  //
-  // introduce RootRoute
   
   def methods(m: HttpMethod*) = filter(m.map(MethodRejection(_))) { ctx => m.exists(_ == ctx.request.method) } _
   

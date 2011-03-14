@@ -5,7 +5,7 @@ import HttpStatusCodes._
 
 trait HttpServiceLogic {
   
-  def route: Route
+  def route: RootRoute
   
   def handle(request: HttpRequest) {
     val context = contextForRequest(request)
@@ -46,4 +46,8 @@ trait HttpServiceLogic {
     case e: HttpException => HttpResponse(e.status)
     case e: Exception => HttpResponse(HttpStatus(InternalServerError, e.getMessage))
   } 
+}
+
+class RootRoute private[spray](val route: Route) extends (RequestContext => Unit) {
+  def apply(context: RequestContext) { route(context) }
 }

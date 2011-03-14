@@ -10,7 +10,7 @@ import test.SprayTest
 
 class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuilder {
   
-  val route = {
+  val route = service {
     path("abc") {
         get { _.respond("yes") } ~
         put { _.respond("yes") }
@@ -20,22 +20,22 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
       }
   }
   
-  val service = HttpServiceTest(route)
+  val testService = TestHttpService(route)
   
   "The HttpServiceLogic" should {
     "leave requests to unmatched paths unhandled" in {
-      test(service, HttpRequest(GET, "/test")).handled must beFalse
+      test(testService, HttpRequest(GET, "/test")).handled must beFalse
     }
     "respond with the route response for completely matched requests" in {
       "example 1" in {
-        test(service, HttpRequest(GET, "/abc")).response mustEqual HttpResponse(content = "yes")
+        test(testService, HttpRequest(GET, "/abc")).response mustEqual HttpResponse(content = "yes")
       }
       "example 2" in {
-        test(service, HttpRequest(GET, "/def")).response mustEqual HttpResponse(content = "yeah")
+        test(testService, HttpRequest(GET, "/def")).response mustEqual HttpResponse(content = "yeah")
       }
     }
     "respond with MethodNotAllowed if the request path was fully matched but the HTTP method was not handled" in {
-      test(service, HttpRequest(POST, "/abc")).response mustEqual failure(MethodNotAllowed,
+      test(testService, HttpRequest(POST, "/abc")).response mustEqual failure(MethodNotAllowed,
         "HTTP method not allowed, supported methods: GET, PUT")
     }
   }

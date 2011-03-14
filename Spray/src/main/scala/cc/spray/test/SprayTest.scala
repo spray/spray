@@ -34,7 +34,7 @@ trait SprayTest {
    *    val route = ...
    * }
    */
-  case class HttpServiceTest(route: Route) extends ServiceTest
+  case class TestHttpService(route: RootRoute) extends ServiceTest
   
   def test(service: ServiceTest, request: HttpRequest): ServiceResultWrapper = {
     var response: Option[Option[HttpResponse]] = None 
