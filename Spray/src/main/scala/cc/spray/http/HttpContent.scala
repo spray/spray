@@ -9,21 +9,23 @@ sealed trait HttpContent {
   def isEmpty: Boolean
 }
 
+sealed trait RawContent extends HttpContent
+
 object HttpContent {
-  def apply(contentType: ContentType, buffer: Array[Byte]): HttpContent = {
+  def apply(contentType: ContentType, buffer: Array[Byte]): RawContent = {
     if (buffer.length == 0) EmptyContent
     else new BufferContent(contentType, buffer)
   }
   
-  def apply(contentType: ContentType, string: String): HttpContent = {
+  def apply(contentType: ContentType, string: String): RawContent = {
     if (string.isEmpty) EmptyContent
     else new BufferContent(contentType, string.getBytes(contentType.charset.nioCharset))
   }
   
-  implicit def stringToOptionByteArray(string: String): HttpContent = HttpContent(`text/plain`, string)
+  implicit def stringToHttpContent(string: String): HttpContent = HttpContent(`text/plain`, string)
 } 
 
-class BufferContent private[http](val contentType: ContentType, private val buffer: Array[Byte]) extends HttpContent {
+class BufferContent private[http](val contentType: ContentType, private[spray] val buffer: Array[Byte]) extends RawContent {
   def isEmpty = false
   def length = buffer.length
   def inputStream = new ByteArrayInputStream(buffer)
@@ -36,10 +38,10 @@ class BufferContent private[http](val contentType: ContentType, private val buff
   }
 }
 
-case class ObjectContent(value: Any) extends HttpContent {
-  def isEmpty = false
+case object EmptyContent extends RawContent {
+  def isEmpty = true
 }
 
-case object EmptyContent extends HttpContent {
-  def isEmpty = true
+case class ObjectContent(value: Any) extends HttpContent {
+  def isEmpty = false
 }

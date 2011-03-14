@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, Actor}
 import java.io.File
 import spray.http._
 import collection.immutable.LinearSeq
-import spray.utils.PimpedLinearSeq
+import spray.utils.{PimpedClass, PimpedLinearSeq}
 
 package object spray {
 
@@ -46,5 +46,7 @@ package object spray {
     }
   }
   
-  implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq) 
+  implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq)
+  
+  implicit def pimpClass[A](clazz: Class[A]): PimpedClass[A] = new PimpedClass[A](clazz)
 }

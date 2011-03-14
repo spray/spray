@@ -3,14 +3,14 @@ package builders
 
 import http._
 import HttpStatusCodes._
-import marshalling.{Unmarshaller, Marshaller}
+import marshalling._
 
-private[spray] trait DeSerializingBuilders {
+private[spray] trait DeSerializingBuilders extends DefaultMarshallers with DefaultUnmarshallers {
   this: BasicBuilders =>
   
   // TODO: change marshallers and unmarshallers to actors
   
-  def service(route: Route)(implicit marshallers: List[Marshaller]): Route = { ctx =>
+  def service(route: Route)(implicit marshallers: List[Marshaller]): RootRoute = new RootRoute({ ctx =>
     def marshal(response: HttpResponse, obj: Any): HttpResponse = {
       marshallers.mapFind { marshaller =>
         marshaller.canMarshal(obj).mapFind { contentType =>
@@ -41,7 +41,7 @@ private[spray] trait DeSerializingBuilders {
         }
       } 
     }
-  }
+  })
   
   def handledBy[A, B](f: A => B)(implicit ma: Manifest[A], unmarshallers: List[Unmarshaller[A]]): Route = { ctx =>
     def unmarshal(bufferContent: BufferContent): Either[HttpStatus, A] = {
@@ -58,19 +58,18 @@ private[spray] trait DeSerializingBuilders {
       }
     }
     
-    {
-      ctx.request.content match {
-        case x: BufferContent => unmarshal(x)
-        case ObjectContent(x) => {
-          if (ma.erasure.isInstance(x)) Right(x.asInstanceOf[A])
-          else Left(HttpStatus(InternalServerError, "Cannot unmarshal ObjectContent"))
-        }
-        case EmptyContent => {
-          if (ma.erasure == classOf[Unit]) Right(().asInstanceOf[A])
-          else Left(HttpStatus(BadRequest, "Request entity expected"))
-        }
+    val input = ctx.request.content match {
+      case x: BufferContent => unmarshal(x)
+      case ObjectContent(x) => {
+        if (ma.erasure.isInstance(x)) Right(x.asInstanceOf[A])
+        else Left(HttpStatus(InternalServerError, "Cannot unmarshal ObjectContent"))
       }
-    } match {
+      case EmptyContent => {
+        if (ma.erasure == classOf[Unit]) Right(().asInstanceOf[A])
+        else Left(HttpStatus(BadRequest, "Request entity expected"))
+      }
+    }
+    input match {
       case Right(input) => ctx.respond {
         f(input) match {
           case EmptyContent => EmptyContent
@@ -82,11 +81,4 @@ private[spray] trait DeSerializingBuilders {
     }    
   }
 
-  
-  // implicits
-  
-  
-  
-  // helpers
-  
 }
