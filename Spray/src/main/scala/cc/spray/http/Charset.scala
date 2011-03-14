@@ -32,7 +32,7 @@ object Charsets extends ObjectRegistry[String, Charset] {
   val `*` = new Charset {
     def value = "*"
     def aliases = List.empty[String]
-    def nioCharset = `ISO-8859-1`.nioCharset
+    def nioCharset = `ISO-8859-1`.nioCharset // the HTTP default charset
     def equalsOrIncludes(other: Charset) = true
     
     Charsets.register(this, value)

@@ -23,6 +23,8 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
 
   def withResponder(newResponder: RoutingResult => Unit) = copy(responder = newResponder)
   
+  def respond(obj: Any) { respond(ObjectContent(obj)) }
+  
   def respond(content: HttpContent) { respond(HttpResponse(content = content)) }
 
   def respond(response: HttpResponse) { respond(Right(response)) }

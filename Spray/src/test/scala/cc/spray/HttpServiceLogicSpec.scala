@@ -28,10 +28,10 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
     }
     "respond with the route response for completely matched requests" in {
       "example 1" in {
-        test(testService, HttpRequest(GET, "/abc")).response mustEqual HttpResponse(content = "yes")
+        test(testService, HttpRequest(GET, "/abc")).response.content.as[String] mustEqual Right("yes")
       }
       "example 2" in {
-        test(testService, HttpRequest(GET, "/def")).response mustEqual HttpResponse(content = "yeah")
+        test(testService, HttpRequest(GET, "/def")).response.content.as[String] mustEqual Right("yeah")
       }
     }
     "respond with MethodNotAllowed if the request path was fully matched but the HTTP method was not handled" in {

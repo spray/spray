@@ -21,8 +21,6 @@ object HttpContent {
     if (string.isEmpty) EmptyContent
     else new BufferContent(contentType, string.getBytes(contentType.charset.nioCharset))
   }
-  
-  implicit def stringToHttpContent(string: String): HttpContent = HttpContent(`text/plain`, string)
 } 
 
 class BufferContent private[http](val contentType: ContentType, private[spray] val buffer: Array[Byte]) extends RawContent {

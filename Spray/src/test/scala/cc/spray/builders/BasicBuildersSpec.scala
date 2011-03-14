@@ -7,6 +7,7 @@ import HttpMethods._
 import HttpHeaders._
 import MimeTypes._
 import test.SprayTest
+import marshalling.DefaultUnmarshallers._
 
 class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest {
 
@@ -43,12 +44,12 @@ class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest 
     "yield the first sub route if it succeeded" in {
       test(HttpRequest(GET)) {
         get { _.respond("first") } ~ get { _.respond("second") }
-      }.response mustEqual HttpResponse(content = "first")    
+      }.response.content.as[String] mustEqual Right("first")    
     }
     "yield the second sub route if the first did not succeed" in {
       test(HttpRequest(GET)) {
         post { _.respond("first") } ~ get { _.respond("second") }
-      }.response mustEqual HttpResponse(content = "second")    
+      }.response.content.as[String] mustEqual Right("second")    
     }
     "collect rejections from both sub routes" in {
       test(HttpRequest(DELETE)) {
@@ -69,13 +70,13 @@ class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest 
     "return and cache the response of the first GET" in {      
       test(HttpRequest(GET)) {
         createBuilder.service        
-      }.response mustEqual HttpResponse(content = "1")
+      }.response.content.as[String] mustEqual Right("1")
     }
     "return the cached response for a second GET" in {
       val builder = createAndPrimeService
       test(HttpRequest(GET)) {
         builder.service        
-      }.response mustEqual HttpResponse(content = "1")
+      }.response.content.as[String] mustEqual Right("1")
     }
     "return the cached response also for HttpFailures on GETs" in {
       val builder = createAndPrimeErrorService
@@ -87,7 +88,7 @@ class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest 
       val builder = createAndPrimeService
       test(HttpRequest(PUT)) {
         builder.service        
-      }.response mustEqual HttpResponse(content = "2")
+      }.response.content.as[String] mustEqual Right("2")
     }
   }
 

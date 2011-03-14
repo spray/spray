@@ -5,6 +5,7 @@ import org.specs.Specification
 import http._
 import HttpMethods._
 import test.SprayTest
+import marshalling.DefaultUnmarshallers._
 
 class PathBuildersSpec extends Specification with BasicBuilders with PathBuilders with SprayTest {
 
@@ -20,7 +21,7 @@ class PathBuildersSpec extends Specification with BasicBuilders with PathBuilder
     "let matching requests pass and adapt RequestContext.unmatchedPath" in {
       test(HttpRequest(GET, "/noway/this/works")) {
         path("noway") { ctx => ctx.respond(ctx.unmatchedPath) }
-      }.response mustEqual HttpResponse(content = "/this/works")
+      }.response.content.as[String] mustEqual Right("/this/works")
     }
     "be stackable" in {
       "within one single path(...) combinator" in {
@@ -28,14 +29,14 @@ class PathBuildersSpec extends Specification with BasicBuilders with PathBuilder
           path("noway" / "this" / "works" ~ Remaining) { remaining =>
             get { _.respond(remaining) }
           }
-        }.response mustEqual HttpResponse(content = "")
+        }.response.content.as[String] mustEqual Right("")
       }
       "when nested" in {
         test(HttpRequest(GET, "/noway/this/works")) {
           path("noway") {
             path("this") { ctx => ctx.respond(ctx.unmatchedPath) }
           }
-        }.response mustEqual HttpResponse(content = "/works")
+        }.response.content.as[String] mustEqual Right("/works")
       }
     }
     "add a PathMatchedRejection in case the request was rejected" in {
@@ -59,14 +60,14 @@ class PathBuildersSpec extends Specification with BasicBuilders with PathBuilder
           path("no[^/]+".r) { capture =>
             get { ctx => ctx.respond(capture + ":" + ctx.unmatchedPath) }
           }
-        }.response mustEqual HttpResponse(content = "noway:/this/works")
+        }.response.content.as[String] mustEqual Right("noway:/this/works")
       }
       "when the regex is a group regex" in {
         test(HttpRequest(GET, "/noway/this/works")) {
           path("no([^/]+)".r) { capture =>
             get { ctx => ctx.respond(capture + ":" + ctx.unmatchedPath) }
           }
-        }.response mustEqual HttpResponse(content = "way:/this/works")
+        }.response.content.as[String] mustEqual Right("way:/this/works")
       }
     }
     "be stackable" in {
@@ -75,7 +76,7 @@ class PathBuildersSpec extends Specification with BasicBuilders with PathBuilder
           path("compute" / "\\d+".r / "\\d+".r) { (a, b) =>
             get { _.respond((a.toInt + b.toInt).toString) }
           }
-        }.response mustEqual HttpResponse(content = "42")
+        }.response.content.as[String] mustEqual Right("42")
       }
       "within one single path(...) combinator" in {
         test(HttpRequest(GET, "/compute/23/19")) {
@@ -84,7 +85,7 @@ class PathBuildersSpec extends Specification with BasicBuilders with PathBuilder
               get { _.respond((a.toInt + b.toInt).toString) }
             }
           }
-        }.response mustEqual HttpResponse(content = "42")
+        }.response.content.as[String] mustEqual Right("42")
       }
     }
     "fail when the regex contains more than one group" in {

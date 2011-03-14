@@ -3,14 +3,17 @@ package marshalling
 
 import http._
 
-abstract class AbstractMarshaller[A](implicit ma: Manifest[A]) extends Marshaller {
-  val erasure = ma.erasure
-
-  def canMarshal(obj: Any) = if (erasure.isInstance(obj)) contentTypes else Nil
-
-  def marshal(obj: Any, contentType: ContentType) = doMarshal(obj.asInstanceOf[A], contentType)
-
-  def contentTypes: List[ContentType]
+abstract class AbstractMarshaller[A] extends Marshaller {
+  private val erasure = getClass.
+          getTypeArgumentsOf(classOf[AbstractMarshaller[_]]).head.
+          getOrElse(throw new RuntimeException("Can not resolve type argument to AbstractMarshaller"))
   
-  protected def doMarshal(obj: A, contentType: ContentType): RawContent
-}  
+  def isDefinedAt(x: Any) = erasure.isInstance(x)
+
+  def apply(x: Any) = (canMarshalTo, marshal(x.asInstanceOf[A], _))
+
+  def canMarshalTo: List[ContentType]
+
+  def marshal(value: A, contentType: ContentType): RawContent
+  
+} 
