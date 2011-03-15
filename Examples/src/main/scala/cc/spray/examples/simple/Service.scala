@@ -2,7 +2,7 @@ package cc.spray.examples.simple
 
 import cc.spray._
 import http._
-import MimeTypes._
+import MediaTypes._
 
 trait Service extends ServiceBuilder {
   

@@ -73,7 +73,7 @@ trait ProtocolParameterRules {
   
   /* 3.7 Media Types */
   
-  def MediaType: Rule3[String, String, Map[String, String]] = rule {
+  def MediaTypeDef: Rule3[String, String, Map[String, String]] = rule {
     Type ~ "/" ~ Subtype ~ zeroOrMore(";" ~ Parameter) ~~> (_.toMap)
   } 
   

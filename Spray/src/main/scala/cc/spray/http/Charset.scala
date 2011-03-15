@@ -3,39 +3,37 @@ package cc.spray.http
 import cc.spray.utils.ObjectRegistry
 import java.nio.charset.{Charset => JCharset}
 
-sealed trait Charset {
-  def aliases: Seq[String]
+sealed trait CharsetRange {
   def value: String
+  def matches(charset: Charset): Boolean
+  override def toString = "CharsetRange(" + value + ')'
+}
+
+sealed trait Charset extends CharsetRange {
+  def aliases: Seq[String]
   def nioCharset: JCharset
-  override def toString = value
-  
-  def equalsOrIncludes(other: Charset): Boolean
+  def matches(charset: Charset) = value == charset.value
+  override def toString = "Charset(" + value + ')'
 }
 
 // see http://www.iana.org/assignments/character-sets
 object Charsets extends ObjectRegistry[String, Charset] {
   
+  val `*` = new CharsetRange {
+    def value = "*"
+    def matches(charset: Charset) = true
+  }
+  
   class StandardCharset private[Charsets] (val value: String, val aliases: String*) extends Charset {
     val nioCharset: JCharset = JCharset.forName(value)
-    def equalsOrIncludes(other: Charset) = this eq other
     
     Charsets.register(this, value.toLowerCase)
     Charsets.register(this, aliases.map(_.toLowerCase))
   }
   
-  case class CustomCharset(override val value: String) extends Charset {
+  case class CustomCharset(value: String) extends Charset {
     def aliases = List.empty[String]
     lazy val nioCharset: JCharset = JCharset.forName(value)
-    def equalsOrIncludes(other: Charset) = this == other
-  }
-  
-  val `*` = new Charset {
-    def value = "*"
-    def aliases = List.empty[String]
-    def nioCharset = `ISO-8859-1`.nioCharset // the HTTP default charset
-    def equalsOrIncludes(other: Charset) = true
-    
-    Charsets.register(this, value)
   }
   
   val `US-ASCII`    = new StandardCharset("US-ASCII", "iso-ir-6", "ANSI_X3.4-1986", "ISO_646.irv:1991", "ASCII", "ISO646-US", "us", "IBM367", "cp367", "csASCII")

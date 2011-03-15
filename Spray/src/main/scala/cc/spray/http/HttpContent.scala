@@ -2,7 +2,7 @@ package cc.spray.http
 
 import java.util.Arrays
 import java.io.ByteArrayInputStream
-import MimeTypes._
+import MediaTypes._
 import Charsets._
 
 sealed trait HttpContent {
@@ -19,7 +19,9 @@ object HttpContent {
   
   def apply(contentType: ContentType, string: String): RawContent = {
     if (string.isEmpty) EmptyContent
-    else new BufferContent(contentType, string.getBytes(contentType.charset.nioCharset))
+    else {
+      new BufferContent(contentType, string.getBytes(contentType.charset.getOrElse(`ISO-8859-1`).nioCharset))
+    }
   }
 } 
 

@@ -3,19 +3,23 @@ package parser
 
 import org.parboiled.scala._
 import BasicRules._
-import cc.spray.http.Charsets.CustomCharset
+import Charsets._
 
 trait AcceptCharsetHeader {
   this: Parser with ProtocolParameterRules =>
 
   def ACCEPT_CHARSET = rule (
-    oneOrMore(CharsetDef, ListSep) ~ EOI
+    oneOrMore(CharsetRangeDecl, ListSep) ~ EOI
             ~~> (x => HttpHeaders.`Accept-Charset`(x))
   )
   
-  def CharsetDef = rule (
-    (Charset | "*" ~> identity) ~ optional(CharsetQuality) 
-            ~~> (x => Charsets.get(x.toLowerCase).getOrElse(CustomCharset(x))) 
+  def CharsetRangeDecl = rule (
+    CharsetRangeDef ~ optional(CharsetQuality) 
+  )
+  
+  def CharsetRangeDef = rule (
+      "*" ~ push(`*`)
+    | Charset ~~> (x => Charsets.get(x.toLowerCase).getOrElse(CustomCharset(x)))  
   )
   
   def CharsetQuality = rule {

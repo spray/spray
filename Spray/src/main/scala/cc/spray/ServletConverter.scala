@@ -6,7 +6,7 @@ import org.apache.commons.io.IOUtils
 import java.net.{UnknownHostException, InetAddress}
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 import HttpHeaders._
-import MimeTypes._
+import MediaTypes._
 import Charsets._
 
 trait ServletConverter {

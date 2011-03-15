@@ -2,7 +2,7 @@ package cc.spray
 package marshalling
 
 import http._
-import MimeTypes._
+import MediaTypes._
 import xml.NodeSeq
 import HttpStatusCodes._
 
@@ -33,7 +33,7 @@ trait DefaultMarshallers {
         } match {
           case Some(contentType) => Right(convert(contentType))
           case None => Left(HttpStatus(NotAcceptable, "Resource representation is only available with these " +
-                  "content-types:\n" + canMarshalTo.mkString("\n")))  
+                  "content-types:\n" + canMarshalTo.map(_.value).mkString("\n")))  
         }
       } else {
         Left(HttpStatus(InternalServerError, "No marshaller for response content '" + obj + "'"))

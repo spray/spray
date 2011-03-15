@@ -52,7 +52,7 @@ private[spray] trait FileResourceDirectoryBuilders {
   // implicits
   
   implicit def defaultContentTypeResolver(file: File, charset: Option[Charset]): ContentType = {
-    val mimeType = MimeTypes.forExtension(file.extension).getOrElse(MimeTypes.`application/octet-stream`)
+    val mimeType = MediaTypes.forExtension(file.extension).getOrElse(MediaTypes.`application/octet-stream`)
     charset match {
       case Some(cs) => ContentType(mimeType, cs)
       case None => ContentType(mimeType)

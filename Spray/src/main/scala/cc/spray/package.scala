@@ -12,7 +12,7 @@ package object spray {
   type RoutingResult = Either[Set[Rejection], HttpResponse]
   type ContentTypeResolver = (File, Option[Charset]) => ContentType
   type Marshaller = PartialFunction[Any, (List[ContentType], ContentType => RawContent)]
-  type Unmarshaller[A] = ContentType => Either[List[ContentType], BufferContent => A]
+  type Unmarshaller[A] = ContentType => Either[List[ContentTypeRange], BufferContent => A]
   
   def actor(id: Symbol): ActorRef = actor(id.toString)
 

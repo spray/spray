@@ -5,7 +5,7 @@ import org.specs.Specification
 import http._
 import HttpMethods._
 import HttpHeaders._
-import MimeTypes._
+import MediaTypes._
 import org.parboiled.common.FileUtils
 import util.Properties
 import java.io.File
@@ -29,7 +29,7 @@ class FileResourceDirectoryBuildersSpec extends Specification with DetachingDisa
         getFromFile(Properties.javaHome)
       }.response mustEqual failure(404)
     }
-    "return the file content with the MimeType matching the file extension" in {
+    "return the file content with the MediaType matching the file extension" in {
       val file = File.createTempFile("sprayTest", ".PDF")
       FileUtils.writeAllText("This is PDF", file)
       test(HttpRequest(GET)) {
@@ -37,7 +37,7 @@ class FileResourceDirectoryBuildersSpec extends Specification with DetachingDisa
       }.response mustEqual HttpResponse(content = HttpContent(`application/pdf`, "This is PDF"))
       file.delete
     }
-    "return the file content with MimeType 'application/octet-stream' on unknown file extensions" in {
+    "return the file content with MediaType 'application/octet-stream' on unknown file extensions" in {
       val file = File.createTempFile("sprayTest", null)
       FileUtils.writeAllText("Some content", file)
       test(HttpRequest(GET)) {
@@ -58,12 +58,12 @@ class FileResourceDirectoryBuildersSpec extends Specification with DetachingDisa
         getFromResource("nonExistingResource")
       }.response mustEqual failure(404)
     }
-    "return the resource content with the MimeType matching the file extension" in {
+    "return the resource content with the MediaType matching the file extension" in {
       test(HttpRequest(GET)) {
         getFromResource("sample.html")
       }.response mustEqual HttpResponse(content = HttpContent(`text/html`, "<p>Lorem ipsum!</p>"))
     }
-    "return the file content with MimeType 'application/octet-stream' on unknown file extensions" in {
+    "return the file content with MediaType 'application/octet-stream' on unknown file extensions" in {
       test(HttpRequest(GET)) {
         getFromResource("sample.xyz")
       }.response mustEqual HttpResponse(content = HttpContent(`application/octet-stream`, "XyZ"))
@@ -76,7 +76,7 @@ class FileResourceDirectoryBuildersSpec extends Specification with DetachingDisa
         getFromResourceDirectory("subDirectory")
       }.response mustEqual failure(404)
     }
-    "return the resource content with the MimeType matching the file extension" in {
+    "return the resource content with the MediaType matching the file extension" in {
       test(HttpRequest(GET, "subDirectory/empty.pdf")) {
         getFromResourceDirectory("")
       }.response mustEqual HttpResponse(content = HttpContent(`application/pdf`, ""))

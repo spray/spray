@@ -2,22 +2,27 @@ package cc.spray
 package marshalling
 
 import http._
-import MimeTypes._
+import MediaTypes._
+import MediaRanges._
 import xml.{XML, NodeSeq}
 import HttpStatusCodes._
 
 trait DefaultUnmarshallers {
   
   implicit object StringUnmarshaller extends AbstractUnmarshaller[String] {
-    val canUnmarshalFrom = List(ContentType(`text/*`))
+    val canUnmarshalFrom = List(ContentTypeRange(`text/*`))
 
     def unmarshal(content: BufferContent): String = {
-      new String(content.buffer, content.contentType.charset.nioCharset)
+      new String(content.buffer, content.contentType.charset.map(_.nioCharset).getOrElse {
+        throw new IllegalStateException // text content should always have a Charset set
+      }) 
     }
   }
   
   implicit object NodeSeqUnmarshaller extends AbstractUnmarshaller[NodeSeq] {
-    val canUnmarshalFrom = List(ContentType(`text/xml`), ContentType(`text/html`), ContentType(`application/xhtml+xml`))
+    val canUnmarshalFrom = ContentTypeRange(`text/xml`) ::
+                           ContentTypeRange(`text/html`) ::
+                           ContentTypeRange(`application/xhtml+xml`) :: Nil
 
     def unmarshal(content: BufferContent): NodeSeq = XML.load(content.inputStream)
   }
@@ -28,8 +33,8 @@ trait DefaultUnmarshallers {
     def as[A](implicit ma: Manifest[A], unmarshaller: Unmarshaller[A]): Either[HttpStatus, A] = content match {
       case x: BufferContent => unmarshaller(x.contentType) match {
         case Right(convert) => Right(convert(x))
-        case Left(canConvertFrom) => Left(HttpStatus(UnsupportedMediaType,
-          "The requests content-type must be one the following:\n" + canConvertFrom.mkString("\n"))) 
+        case Left(canUnmarshalFrom) => Left(HttpStatus(UnsupportedMediaType,
+          "The requests content-type must be one the following:\n" + canUnmarshalFrom.map(_.value).mkString("\n"))) 
       }
       case ObjectContent(x) => {
         if (ma.erasure.isInstance(x)) Right(x.asInstanceOf[A])

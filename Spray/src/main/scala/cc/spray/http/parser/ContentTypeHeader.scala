@@ -9,15 +9,15 @@ trait ContentTypeHeader {
   this: Parser with ProtocolParameterRules with CommonActions =>
 
   def CONTENT_TYPE = rule (
-    MediaTypeDef ~ EOI
+    MediaTypeDecl ~ EOI
   )
   
-  def MediaTypeDef = rule (
-    MediaType ~~> (createContentTypeHeader(_, _, _))
+  def MediaTypeDecl = rule (
+    MediaTypeDef ~~> (createContentTypeHeader(_, _, _))
   )
   
   private def createContentTypeHeader(mainType: String, subType: String, params: Map[String, String]) = {
-    val mimeType = getMimeType(mainType, subType)
+    val mimeType = getMediaType(mainType, subType)
     params.get("charset").map { charsetName =>
       Charsets.get(charsetName.toLowerCase).getOrElse {
         throw new HttpException(BadRequest, "Unsupported charset: " + charsetName)

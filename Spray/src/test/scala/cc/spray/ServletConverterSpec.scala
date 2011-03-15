@@ -7,7 +7,7 @@ import javax.servlet.http.HttpServletRequest
 import javax.servlet.ServletInputStream
 import java.io.ByteArrayInputStream
 import http._
-import MimeTypes._
+import MediaTypes._
 import HttpHeaders._
 import HttpMethods._
 import Charsets._
@@ -29,7 +29,7 @@ class ServletConverterSpec extends Specification with Mockito {
     )
     
     "create an HttpContent instance in the HttpRequest" in {
-      "that has the MimeType of the requests Content-Type header and remove the Content-Type header" in (
+      "that has the MediaType of the requests Content-Type header and remove the Content-Type header" in (
         convert.toSprayRequest(Hsr("POST", "/path", Map("Content-Type" -> "application/json"), "yes"))
           mustEqual
         HttpRequest(method = POST, uri = "/path", content = HttpContent(`application/json`, "yes".getBytes))
@@ -39,7 +39,7 @@ class ServletConverterSpec extends Specification with Mockito {
           mustEqual
         HttpRequest(method = POST, uri = "/path", content = HttpContent(`application/octet-stream`, "yes".getBytes))
       )
-      "and set the charset of the HttpContent to 'ISO-8859-1' for text/* MimeTypes if no explicit charset if given" in (
+      "and set the charset of the HttpContent to 'ISO-8859-1' for text/* MediaTypes if no explicit charset if given" in (
         convert.toSprayRequest(Hsr("POST", "/path", Map("Content-Type" -> "text/html"), "yes"))
           mustEqual
         HttpRequest(method = POST, uri = "/path", content = HttpContent(ContentType(`text/html`, `ISO-8859-1`), "yes".getBytes))

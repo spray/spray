@@ -3,9 +3,9 @@ package parser
 
 trait CommonActions {
   
-  def getMimeType(mainType: String, subType: String): MimeType = {
+  def getMediaType(mainType: String, subType: String): MediaType = {
     val value = mainType.toLowerCase + "/" + subType.toLowerCase
-    MimeTypes.get(value).getOrElse(MimeTypes.CustomMimeType(value))
+    MediaTypes.get(value).getOrElse(MediaTypes.CustomMediaType(value))
   }
   
 }

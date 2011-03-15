@@ -38,29 +38,29 @@ case class HttpRequest(method: HttpMethod,
     copy(uri = new URI(scheme, userInfo, host, port, path, query, fragment).toString)
   }
   
-  lazy val acceptedMimeTypes: List[MimeType] = {
+  lazy val acceptedMediaRanges: List[MediaRange] = {
     // TODO: sort by preference
-    for (Accept(mimeTypes) <- headers; mType <- mimeTypes) yield mType
+    for (Accept(mediaRanges) <- headers; range <- mediaRanges) yield range
   }
   
-  lazy val acceptedCharsets: List[Charset] = {
+  lazy val acceptedCharsetRanges: List[CharsetRange] = {
     // TODO: sort by preference
-    for (`Accept-Charset`(charsets) <- headers; cs <- charsets) yield cs
+    for (`Accept-Charset`(charsetRanges) <- headers; range <- charsetRanges) yield range
   }
 
   def isContentTypeAccepted(contentType: ContentType) = {
-    isMimeTypeAccepted(contentType.mimeType) && isCharsetAccepted(contentType.charset)  
+    isMediaTypeAccepted(contentType.mediaType) && isCharsetAccepted(contentType.charset)  
   } 
   
-  def isMimeTypeAccepted(mimeType: MimeType) = {
+  def isMediaTypeAccepted(mediaType: MediaType) = {
     // according to the HTTP spec a client has to accept all mime types if no Accept header is sent with the request
     // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
-    acceptedMimeTypes.isEmpty || acceptedMimeTypes.exists(_.equalsOrIncludes(mimeType))
+    acceptedMediaRanges.isEmpty || acceptedMediaRanges.exists(_.matches(mediaType))
   }
   
-  def isCharsetAccepted(charset: Charset) = {
+  def isCharsetAccepted(charset: Option[Charset]) = {
     // according to the HTTP spec a client has to accept all charsets if no Accept-Charset header is sent with the request
     // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.2
-    acceptedCharsets.isEmpty || acceptedCharsets.exists(_.equalsOrIncludes(charset))
+    acceptedCharsetRanges.isEmpty || charset.isDefined && acceptedCharsetRanges.exists(_.matches(charset.get))
   }
 }

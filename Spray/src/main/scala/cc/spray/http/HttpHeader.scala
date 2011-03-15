@@ -51,14 +51,14 @@ object HttpHeader {
 
 object HttpHeaders {
 
-  object Accept { def apply(first: MimeType, more: MimeType*): Accept = apply(first +: more) }
-  case class Accept(mimeTypes: Seq[MimeType]) extends HttpHeader {
-    def value = mimeTypes.mkString(", ")
+  object Accept { def apply(first: MediaRange, more: MediaRange*): Accept = apply(first +: more) }
+  case class Accept(mediaRanges: Seq[MediaRange]) extends HttpHeader {
+    def value = mediaRanges.mkString(", ")
   }
   
-  object `Accept-Charset` { def apply(first: Charset, more: Charset*): `Accept-Charset` = apply(first +: more) }
-  case class `Accept-Charset`(charsets: Seq[Charset]) extends HttpHeader {
-    def value = charsets.mkString(", ")
+  object `Accept-Charset` { def apply(first: CharsetRange, more: CharsetRange*): `Accept-Charset` = apply(first +: more) }
+  case class `Accept-Charset`(charsetRanges: Seq[CharsetRange]) extends HttpHeader {
+    def value = charsetRanges.mkString(", ")
   }
   
   object `Accept-Encoding` { def apply(first: Encoding, more: Encoding*): `Accept-Encoding` = apply(first +: more) }

@@ -6,7 +6,7 @@ import HttpHeaders._
 class HttpHeaderSpec extends Specification {
 
   "Header 'Accept'" should {
-    import MimeTypes._
+    import MediaTypes._
     "be parsed correctly from example 1" in (
       HttpHeader("Accept", "audio/mp4; q=0.2, audio/basic") mustEqual Accept(`audio/mp4`, `audio/basic`)
     )
@@ -65,7 +65,7 @@ class HttpHeaderSpec extends Specification {
   }
   
   "Header 'Content-Type'" should {
-    import MimeTypes._
+    import MediaTypes._
     import Charsets._
     "be parsed correctly from example 1" in (
       HttpHeader("Content-Type", "application/pdf") mustEqual `Content-Type`(`application/pdf`)

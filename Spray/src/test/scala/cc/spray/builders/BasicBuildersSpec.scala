@@ -5,7 +5,7 @@ import org.specs.Specification
 import http._
 import HttpMethods._
 import HttpHeaders._
-import MimeTypes._
+import MediaTypes._
 import test.SprayTest
 import marshalling.DefaultUnmarshallers._
 

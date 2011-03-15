@@ -6,7 +6,7 @@ import test.{DetachingDisabled, SprayTest}
 import http._
 import HttpMethods._
 import HttpHeaders._
-import MimeTypes._
+import MediaTypes._
 
 class ServiceSpec extends Specification with SprayTest with Service with DetachingDisabled {
   

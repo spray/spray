@@ -5,7 +5,7 @@ import org.specs.Specification
 import HttpHeaders._
 import HttpMethods._
 import HttpStatusCodes._
-import MimeTypes._
+import MediaTypes._
 import test.SprayTest
 
 class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuilder {

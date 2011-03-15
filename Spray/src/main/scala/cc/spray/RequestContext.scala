@@ -35,7 +35,11 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
   
   // can be cached
   def fail(failure: HttpFailure, reason: String = "") {
-    respond(HttpResponse(HttpStatus(failure, reason)))
+    fail(HttpStatus(failure, reason))
+  }
+  
+  def fail(failure: HttpStatus) {
+    respond(HttpResponse(failure))
   }
 }
 

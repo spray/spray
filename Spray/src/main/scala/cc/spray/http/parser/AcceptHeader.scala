@@ -8,17 +8,17 @@ trait AcceptHeader {
   this: Parser with ProtocolParameterRules with CommonActions =>
 
   def ACCEPT = rule (
-    zeroOrMore(MediaRange ~ optional(AcceptParams), ListSep) ~ EOI
+    zeroOrMore(MediaRangeDecl ~ optional(AcceptParams), ListSep) ~ EOI
       ~~> (HttpHeaders.Accept(_))
   )
   
-  def MediaRange = rule {
+  def MediaRangeDecl = rule {
     MediaRangeDef ~ zeroOrMore(";" ~ Parameter ~ POP1) // TODO: support parameters    
   }
   
   def MediaRangeDef = rule (
     ("*/*" ~ push("*", "*") | Type ~ "/" ~ ("*" ~ push("*") | Subtype))
-      ~~> (getMimeType(_, _))   
+      ~~> (getMediaRange(_, _))   
   )
   
   def AcceptParams = rule {
@@ -27,6 +27,17 @@ trait AcceptHeader {
   
   def AcceptExtension = rule {
     ";" ~ Token ~ optional("=" ~ (Token | QuotedString)) ~ POP2 // TODO: support extensions
+  }
+  
+  // helpers
+  
+  def getMediaRange(mainType: String, subType: String): MediaRange = {
+    if (subType == "*") {
+      val mainTypeLower = mainType.toLowerCase
+      MediaRanges.get(mainTypeLower).getOrElse(MediaRanges.CustomMediaRange(mainTypeLower))
+    } else {
+      getMediaType(mainType, subType)
+    }
   }
   
 }
