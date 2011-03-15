@@ -24,8 +24,7 @@ private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with Defau
             }
           }
         } else {
-          // do not change the response of failures or warnings
-          response
+          response // do not change the response of failures or warnings
         }
       } 
     }

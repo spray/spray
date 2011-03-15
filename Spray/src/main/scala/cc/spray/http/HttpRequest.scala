@@ -7,7 +7,6 @@ import HttpStatusCodes._
 case class HttpRequest(method: HttpMethod = HttpMethods.GET,
                        uri: String = "",
                        headers: List[HttpHeader] = Nil,
-                       parameters: Map[Symbol, String] = Map.empty,
                        content: HttpContent = EmptyContent,
                        remoteHost: Option[HttpIp] = None,
                        version: Option[HttpVersion] = Some(HttpVersions.`HTTP/1.1`)) {

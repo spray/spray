@@ -1,7 +1,6 @@
 package cc.spray
 package builders
 
-import java.util.regex.Pattern
 import util.matching.Regex
 
 private[spray] trait PathBuilders {

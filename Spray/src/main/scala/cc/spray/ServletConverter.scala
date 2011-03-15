@@ -17,7 +17,6 @@ trait ServletConverter {
       HttpMethods.get(request.getMethod).get,
       request.getRequestURI,
       headers,
-      buildParameters(request.getParameterMap.asInstanceOf[java.util.Map[String, Array[String]]]),
       readContent(request, ctHeaders.headOption.asInstanceOf[Option[`Content-Type`]]),
       getRemoteHost(request),
       HttpVersions.get(request.getProtocol)
@@ -33,14 +32,6 @@ trait ServletConverter {
     }
   }
 
-  protected def buildParameters(parameterMap: java.util.Map[String, Array[String]]) = {
-    (Map.empty[Symbol, String] /: parameterMap) {
-      (map, entry) => {
-        map.updated(Symbol(entry._1), if (entry._2.isEmpty) "" else entry._2(0))
-      }
-    }
-  }
-  
   protected def readContent(request: HttpServletRequest, header: Option[`Content-Type`]): HttpContent = {
     val bytes = IOUtils.toByteArray(request.getInputStream)
     if (bytes.length > 0) {
@@ -80,11 +71,11 @@ trait ServletConverter {
         case EmptyContent => if (!response.isSuccess) {
           hsr.setContentType("text/plain")
           hsr.getWriter.write(response.status.reason)
-          hsr.getWriter.close
+          hsr.getWriter.close()
         }
         case ObjectContent(_) => throw new IllegalStateException // should always be converted by "service" directive
       }
-      hsr.flushBuffer
+      hsr.flushBuffer()
     }
   }
   
