@@ -5,11 +5,11 @@ import http._
 import HttpMethods._
 import akka.actor.Actor
 import collection.mutable.WeakHashMap
+import util.matching.Regex
 
 private[spray] trait BasicBuilders {
   
   // TODO:
-  // - host
   // - parameter
   // - optionalParameter
   
@@ -22,6 +22,25 @@ private[spray] trait BasicBuilders {
   def post    = filter(Seq(MethodRejection(POST)))    { _.request.method == POST } _
   def put     = filter(Seq(MethodRejection(PUT)))     { _.request.method == PUT } _
   def trace   = filter(Seq(MethodRejection(TRACE)))   { _.request.method == TRACE } _
+  
+  def host(hostName: String): Route => Route = host(_ == hostName)
+  
+  def host(predicate: String => Boolean): Route => Route = filter(Nil) { ctx => predicate(ctx.request.host) } _
+  
+  def host(regex: Regex)(routing: String => Route): Route = {
+    def complete(regexMatch: String => Option[String]): Route = { ctx =>
+      regexMatch(ctx.request.host) match {
+        case Some(matched) => routing(matched)(ctx)
+        case None => ctx.reject()
+      }
+    }
+    regex.groupCount match {
+      case 0 => complete(regex.findPrefixOf(_))
+      case 1 => complete(regex.findPrefixMatchOf(_).map(_.group(1)))
+      case 2 => throw new IllegalArgumentException("Path regex '" + regex.pattern.pattern +
+              "' must not contain more than one capturing group")
+    }
+  }
 
   def filter(rejections: Seq[Rejection])(p: RequestContext => Boolean)(route: Route): Route = { ctx =>
     if (p(ctx)) route(ctx) else ctx.reject(rejections: _*)

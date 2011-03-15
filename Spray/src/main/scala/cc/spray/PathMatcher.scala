@@ -101,7 +101,7 @@ private[spray] class SimpleRegexMatcher(regex: Regex) extends PathMatcher1 {
 
 private[spray] class GroupRegexMatcher(regex: Regex) extends PathMatcher1 {
   def apply(path: String) = {
-    regex.findFirstMatchIn(path).map { m =>
+    regex.findPrefixMatchOf(path).map { m =>
       val matchLength = m.end - m.start
       (path.substring(matchLength), m.group(1) :: Nil)
     }

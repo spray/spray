@@ -4,6 +4,7 @@ import akka.actor.SupervisorFactory
 import akka.config.Supervision._
 import akka.actor.Actor._
 import cc.spray._
+import utils.ActorHelpers._
 
 class Boot extends Service {
   SupervisorFactory(

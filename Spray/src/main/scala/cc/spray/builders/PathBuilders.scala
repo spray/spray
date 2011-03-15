@@ -51,7 +51,7 @@ private[spray] trait PathBuilders {
           }
         )
       }
-      case _ => ctx.reject()
+      case None => ctx.reject()
     }
   } 
   
@@ -60,17 +60,7 @@ private[spray] trait PathBuilders {
   implicit def string2Matcher(s: String): PathMatcher0 = new StringMatcher(s)
   
   implicit def regex2Matcher(regex: Regex): PathMatcher1 = {
-    val groupCount = {
-      try {
-        val field = classOf[Pattern].getDeclaredField("capturingGroupCount")
-        field.setAccessible(true)
-        field.getInt(regex.pattern) - 1
-      } catch {
-        case t: Throwable =>
-          throw new RuntimeException("Could not determine group count of path regex: " + regex.pattern.pattern, t)
-      }
-    }
-    groupCount match {
+    regex.groupCount match {
       case 0 => new SimpleRegexMatcher(regex)
       case 1 => new GroupRegexMatcher(regex)
       case 2 => throw new IllegalArgumentException("Path regex '" + regex.pattern.pattern +

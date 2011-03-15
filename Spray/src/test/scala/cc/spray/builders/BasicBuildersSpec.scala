@@ -41,6 +41,45 @@ class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest 
     }
   }
   
+  "The 'host' directive" should {
+    "in its simple String form" in {
+      "block requests to unmatched hosts" in {
+        test(HttpRequest(uri = "http://spray.cc/somewhere")) {
+          host("spray.com") { notRun }
+        }.handled must beFalse
+      }
+      "let requests to matching hosts pass" in {
+        test(HttpRequest(uri = "http://spray.cc/somewhere")) {
+          host("spray.cc") { respondOk }
+        }.response mustEqual Ok
+      }
+    }
+    "in its simple RegEx form" in {
+      "block requests to unmatched hosts" in {
+        test(HttpRequest(uri = "http://spray.cc/somewhere")) {
+          host("hairspray.*".r) { _ => notRun }
+        }.handled must beFalse
+      }
+      "let requests to matching hosts pass and extract the full host" in {
+        test(HttpRequest(uri = "http://spray.cc/somewhere")) {
+          host("spra.*".r) { host => _.respond(host) }
+        }.response.content.as[String] mustEqual Right("spray.cc")
+      }
+    }
+    "in its group RegEx form" in {
+      "block requests to unmatched hosts" in {
+        test(HttpRequest(uri = "http://spray.cc/somewhere")) {
+          host("hairspray(.*)".r) { _ => notRun }
+        }.handled must beFalse
+      }
+      "let requests to matching hosts pass and extract the full host" in {
+        test(HttpRequest(uri = "http://spray.cc/somewhere")) {
+          host("spra(.*)".r) { host => _.respond(host) }
+        }.response.content.as[String] mustEqual Right("y.cc")
+      }
+    }
+  }
+  
   "routes created by the concatenation operator '~'" should {
     "yield the first sub route if it succeeded" in {
       test(HttpRequest(GET)) {

@@ -4,7 +4,7 @@ import java.net.URI
 import HttpHeaders._
 import HttpStatusCodes._
 
-case class HttpRequest(method: HttpMethod,
+case class HttpRequest(method: HttpMethod = HttpMethods.GET,
                        uri: String = "",
                        headers: List[HttpHeader] = Nil,
                        parameters: Map[Symbol, String] = Map.empty,
