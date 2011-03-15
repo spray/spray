@@ -10,28 +10,30 @@ import MimeTypes._
 
 class ServiceSpec extends Specification with SprayTest with Service with DetachingDisabled {
   
-  val service = TestHttpService(sampleService)
-  
   "The sample service" should {
     "correctly handle these example" in {
       "GET /test/echo/42" in {
-        test(service, HttpRequest(GET, "/test/echo/42")).response mustEqual
-                HttpResponse(content = HttpContent(`text/plain`, "The number is: 42"))
+        testService(HttpRequest(GET, "/test/echo/42")) {
+          sampleService
+        }.response mustEqual HttpResponse(content = HttpContent(`text/plain`, "The number is: 42"))
       }
       
       "GET /test/echo/Sp" in {
-        test(service, HttpRequest(GET, "/test/echo/Sp")).response mustEqual
-                HttpResponse(content = HttpContent(`text/plain`, "The letters are: S and p"))
+        testService(HttpRequest(GET, "/test/echo/Sp")) {
+          sampleService
+        }. response mustEqual HttpResponse(content = HttpContent(`text/plain`, "The letters are: S and p"))
       }
       
       "GET /resources/sample.html" in {
-        test(service, HttpRequest(GET, "/resources/sample.html")).response mustEqual
-                HttpResponse(content = HttpContent(`text/html`, "<p>Lorem ipsum!</p>"))
+        testService(HttpRequest(GET, "/resources/sample.html")) {
+          sampleService
+        }.response mustEqual HttpResponse(content = HttpContent(`text/html`, "<p>Lorem ipsum!</p>"))
       }
       
       "GET /resources/notThere.txt" in {
-        test(service, HttpRequest(GET, "/resources/notThere.txt")).response mustEqual
-                failure(404)
+        testService(HttpRequest(GET, "/resources/notThere.txt")) {
+          sampleService
+        }.response mustEqual failure(404)
       }
     }
   }

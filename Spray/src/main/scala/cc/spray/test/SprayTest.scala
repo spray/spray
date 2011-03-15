@@ -29,14 +29,17 @@ trait SprayTest {
 
   /**
    * The default HttpServiceLogic for testing.
-   * If you have derived your own CustomHttpServiceLogic that you would like to test, use this construct:
-   * val serviceTest = new CustomHttpServiceLogic with ServiceTest {
-   *    val route = ...
+   * If you have derived your own CustomHttpServiceLogic that you would like to test, create an implicit conversion
+   * similar to this:
+   * implicit def customWrapRootRoute(rootRoute: RootRoute): ServiceTest = new CustomHttpServiceLogic with ServiceTest {
+   *   val route = routeRoute
    * }
    */
-  case class TestHttpService(route: RootRoute) extends ServiceTest
+  implicit def wrapRootRoute(rootRoute: RootRoute): ServiceTest = new ServiceTest {
+    val route = rootRoute
+  }
   
-  def test(service: ServiceTest, request: HttpRequest): ServiceResultWrapper = {
+  def testService(request: HttpRequest)(service: ServiceTest): ServiceResultWrapper = {
     var response: Option[Option[HttpResponse]] = None 
     service.responder.withValue(rr => { response = Some(service.responseFromRoutingResult(rr)) }) {
       service.handle(request)
