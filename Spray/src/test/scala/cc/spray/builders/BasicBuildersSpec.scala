@@ -13,11 +13,12 @@ class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest 
 
   val Ok = HttpResponse()
   val respondOk: Route = { _.respond(Ok) }
+  val notRun: Route = { _ => fail("Should not run") }
   
   "get" should {
     "block POST requests" in {
       test(HttpRequest(POST)) { 
-        get { respondOk }
+        get { notRun }
       }.handled must beFalse
     }
     "let GET requests pass" in {
@@ -30,7 +31,7 @@ class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest 
   "methods(GET, POST)" should {
     "block PUT requests" in {
       test(HttpRequest(PUT)) { 
-        methods(GET, POST) { respondOk }
+        methods(GET, POST) { notRun }
       }.handled must beFalse
     }
     "let POST requests pass" in {
@@ -53,7 +54,7 @@ class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest 
     }
     "collect rejections from both sub routes" in {
       test(HttpRequest(DELETE)) {
-        get { _.respond("first") } ~ put { _.respond("second") }
+        get { notRun } ~ put { notRun }
       }.rejections mustEqual Set(MethodRejection(GET), MethodRejection(PUT))
     }
   }

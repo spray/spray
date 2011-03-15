@@ -31,17 +31,30 @@ private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with Defau
     }
   })
   
-  def handledBy[A, B](f: A => B)(implicit ma: Manifest[A], unmarshaller: Unmarshaller[A]): Route = { ctx =>
-    ctx.request.content.as[A](ma, unmarshaller) match {
-      case Right(input) => ctx.respond {
+  def contentAs[A: Manifest : Unmarshaller](route: Route): Route = { ctx =>
+    ctx.request.content.as[A] match {
+      case Right(a) => route(ctx.withRequestTransformed(_.copy(content = ObjectContent(a))))
+      case Left(httpStatus) => ctx.fail(httpStatus)
+    }
+  }
+  
+  def getContentAs[A: Manifest : Unmarshaller](routing: A => Route): Route = { ctx =>
+    ctx.request.content.as[A] match {
+      case Right(a) => routing(a)(ctx)
+      case Left(httpStatus) => ctx.fail(httpStatus)
+    }
+  }          
+  
+  def handledBy[A: Manifest : Unmarshaller](f: A => Any): Route = {
+    getContentAs[A] { input =>
+       _.respond {
         f(input) match {
-          case EmptyContent => EmptyContent
+          case null | EmptyContent => EmptyContent
           case x: BufferContent => x
           case x => ObjectContent(x)
         }
       }
-      case Left(httpStatus) => ctx.respond(httpStatus)
-    }    
+    }
   }
   
 }
