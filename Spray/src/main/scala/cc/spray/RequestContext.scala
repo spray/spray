@@ -44,7 +44,7 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
   }
   
   def fail(failure: HttpStatus) {
-    respond(HttpResponse(failure))
+    responder(Right(HttpResponse(failure)))
   }
 }
 

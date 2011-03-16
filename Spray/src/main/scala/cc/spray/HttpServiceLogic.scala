@@ -12,7 +12,7 @@ trait HttpServiceLogic {
     try {
       route(context)
     } catch {
-      case e: Exception => context.respond(responseForException(request, e))
+      case e: Exception => context.responder(Right(responseForException(request, e)))
     }
   }
   

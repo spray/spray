@@ -58,7 +58,7 @@ private[spray] trait BasicBuilders {
       route(ctx)
     } else {
       cache.get(key) match {
-        case Some(response) => ctx.respond(response)
+        case Some(response) => ctx.responder(Right(response))
         case None => route {
           ctx.withHttpResponseTransformed { response =>
             cache.update(key, response)
@@ -80,12 +80,12 @@ private[spray] trait BasicBuilders {
       route {
         ctx.withResponder { 
           _ match {
-            case x@ Right(response) => ctx.respond(x) // first route succeeded
+            case x@ Right(response) => ctx.responder(x) // first route succeeded
             case Left(rejections1) => other {
               ctx.withResponder {
                 _ match {
-                  case x@ Right(_) => ctx.respond(x) // second route succeeded
-                  case Left(rejections2) => ctx.respond(Left(rejections1 ++ rejections2))  
+                  case x@ Right(_) => ctx.responder(x) // second route succeeded
+                  case Left(rejections2) => ctx.responder(Left(rejections1 ++ rejections2))  
                 }
               }
             }  
