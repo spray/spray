@@ -9,10 +9,10 @@ trait Service extends ServiceBuilder {
   def sampleService = service {
     path("test" / "echo") {
       path("\\d+".r) { number =>
-        get { _.respond("The number is: " + number) }
+        get { _.complete("The number is: " + number) }
       } ~
       path("[A-Z]".r ~ "[a-z]".r) { (upcase, downcase) =>
-        get { _.respond("The letters are: " + upcase + " and " + downcase) }
+        get { _.complete("The letters are: " + upcase + " and " + downcase) }
       }
     } ~
     path("resources") {

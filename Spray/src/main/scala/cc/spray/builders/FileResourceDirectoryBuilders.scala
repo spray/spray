@@ -14,7 +14,7 @@ private[spray] trait FileResourceDirectoryBuilders {
                  (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {
     detached {
       get {
-        _.respond {
+        _.complete {
           Option(FileUtils.readAllBytes(fileName)).map { buffer =>
             HttpResponse(content = HttpContent(resolver(new File(fileName), charset), buffer))
           }.getOrElse(HttpResponse(NotFound))
@@ -27,7 +27,7 @@ private[spray] trait FileResourceDirectoryBuilders {
                      (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {
     detached {
       get {
-        _.respond {
+        _.complete {
           Option(FileUtils.readAllBytesFromResource(resourceName)).map { buffer =>
             HttpResponse(content = HttpContent(resolver(new File(resourceName), charset), buffer))
           }.getOrElse(HttpResponse(NotFound))

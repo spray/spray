@@ -37,39 +37,39 @@ class UnMarshallingBuildersSpec extends Specification with SprayTest with Servic
     }
     "return EmptyContent unchanged" in {
       testService(HttpRequest(GET)) {
-        service { _.respond(EmptyContent) }
+        service { _.complete(EmptyContent) }
       }.response mustEqual HttpResponse()
     }
     "convert ObjectContent to BufferContent using the default marshaller" in {
       testService(HttpRequest(GET)) {
-        service { _.respond(<p>yes</p>) }
+        service { _.complete(<p>yes</p>) }
       }.response.content.as[String] mustEqual Right("<p>yes</p>")
     }
     "convert ObjectContent to BufferContent using the in-scope marshaller" in {
       testService(HttpRequest(GET)) {
-        service { _.respond(42) }
+        service { _.complete(42) }
       }.response mustEqual HttpResponse(content = HttpContent(ContentType(`application/xhtml+xml`), "<int>42</int>"))
     }
     "return an InternalServerError response if no marshaller is in scope" in {
       testService(HttpRequest(GET)) {
-        service { _.respond(42.0) }
+        service { _.complete(42.0) }
       }.response mustEqual failure(InternalServerError, "No marshaller for response content '42.0'")
     }
     "return a NotAcceptable response if no acceptable marshaller is in scope" in {
       testService(HttpRequest(GET, headers = List(`Accept`(`text/css`)))) {
-        service { _.respond(42) }
+        service { _.complete(42) }
       }.response mustEqual
               failure(NotAcceptable, "Resource representation is only available with these content-types:\n" +
               "application/xhtml+xml\ntext/xml; charset=UTF-8")
     }
     "let acceptable BufferContent pass" in {
       testService(HttpRequest(GET, headers = List(`Accept`(`text/css`)))) {
-        service { _.respond(HttpContent(`text/css`, "CSS")) }
+        service { _.complete(HttpContent(`text/css`, "CSS")) }
       }.response mustEqual HttpResponse(content = HttpContent(ContentType(`text/css`), "CSS"))
     }
     "return an InternalServerError if the response BufferContent is not accepted by the client" in {
       testService(HttpRequest(GET, headers = List(`Accept`(`text/css`)))) {
-        service { _.respond(HttpContent(`text/plain`, "CSS")) }
+        service { _.complete(HttpContent(`text/plain`, "CSS")) }
       }.response mustEqual failure(InternalServerError, "Response BufferContent has unacceptable Content-Type")
     }
   }
@@ -77,7 +77,7 @@ class UnMarshallingBuildersSpec extends Specification with SprayTest with Servic
   "The 'contentAs' directive" should {
     "convert BufferContent to ObjectContent using the in-scope Unmarshaller" in {
       test(HttpRequest(PUT, content = HttpContent(ContentType(`text/xml`), "<p>cool</p>"))) {
-        contentAs[NodeSeq] { ctx => ctx.respond(ctx.request.content.asInstanceOf[ObjectContent].value) }
+        contentAs[NodeSeq] { ctx => ctx.complete(ctx.request.content.asInstanceOf[ObjectContent].value) }
       }.response.content mustEqual ObjectContent(<p>cool</p>) 
     }
     "return a BadRequest response if the request has no entity" in {
@@ -96,7 +96,7 @@ class UnMarshallingBuildersSpec extends Specification with SprayTest with Servic
   "The 'getContentAs' directive" should {
     "extract an object from the requests BufferContent using the in-scope Unmarshaller" in {
       test(HttpRequest(PUT, content = HttpContent(ContentType(`text/xml`), "<p>cool</p>"))) {
-        getContentAs[NodeSeq] { xml => _.respond(xml) }
+        getContentAs[NodeSeq] { xml => _.complete(xml) }
       }.response.content mustEqual ObjectContent(<p>cool</p>) 
     }
     "return a BadRequest response if the request has no entity" in {

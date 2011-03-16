@@ -12,7 +12,7 @@ import marshalling.DefaultUnmarshallers._
 class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest {
 
   val Ok = HttpResponse()
-  val respondOk: Route = { _.respond(Ok) }
+  val completeOk: Route = { _.complete(Ok) }
   val notRun: Route = { _ => fail("Should not run") }
   
   "get" should {
@@ -23,7 +23,7 @@ class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest 
     }
     "let GET requests pass" in {
       test(HttpRequest(GET)) { 
-        get { respondOk }
+        get { completeOk }
       }.response mustEqual Ok
     }
   }
@@ -36,7 +36,7 @@ class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest 
     }
     "let POST requests pass" in {
       test(HttpRequest(POST)) { 
-        methods(GET, POST) { respondOk }
+        methods(GET, POST) { completeOk }
       }.response mustEqual Ok
     }
   }
@@ -50,7 +50,7 @@ class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest 
       }
       "let requests to matching hosts pass" in {
         test(HttpRequest(uri = "http://spray.cc")) {
-          host("spray.cc") { respondOk }
+          host("spray.cc") { completeOk }
         }.response mustEqual Ok
       }
     }
@@ -62,7 +62,7 @@ class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest 
       }
       "let requests to matching hosts pass and extract the full host" in {
         test(HttpRequest(uri = "http://spray.cc")) {
-          host("spra.*".r) { host => _.respond(host) }
+          host("spra.*".r) { host => _.complete(host) }
         }.response.content.as[String] mustEqual Right("spray.cc")
       }
     }
@@ -74,7 +74,7 @@ class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest 
       }
       "let requests to matching hosts pass and extract the full host" in {
         test(HttpRequest(uri = "http://spray.cc")) {
-          host("spra(.*)".r) { host => _.respond(host) }
+          host("spra(.*)".r) { host => _.complete(host) }
         }.response.content.as[String] mustEqual Right("y.cc")
       }
     }
@@ -83,12 +83,12 @@ class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest 
   "routes created by the concatenation operator '~'" should {
     "yield the first sub route if it succeeded" in {
       test(HttpRequest(GET)) {
-        get { _.respond("first") } ~ get { _.respond("second") }
+        get { _.complete("first") } ~ get { _.complete("second") }
       }.response.content.as[String] mustEqual Right("first")    
     }
     "yield the second sub route if the first did not succeed" in {
       test(HttpRequest(GET)) {
-        post { _.respond("first") } ~ get { _.respond("second") }
+        post { _.complete("first") } ~ get { _.complete("second") }
       }.response.content.as[String] mustEqual Right("second")    
     }
     "collect rejections from both sub routes" in {
@@ -101,8 +101,8 @@ class BasicBuildersSpec extends Specification with BasicBuilders with SprayTest 
   "the cached directive" should {
     def createBuilder = new BasicBuilders {
       var i = 0
-      val service = cached { _.respond { i += 1; i.toString } }
-      val errorService = cached { _.respond { i += 1; HttpResponse(HttpStatus(500 + i)) } }
+      val service = cached { _.complete { i += 1; i.toString } }
+      val errorService = cached { _.complete { i += 1; HttpResponse(HttpStatus(500 + i)) } }
     }
     def createAndPrimeService = make(createBuilder) { _.service(RequestContext(HttpRequest(GET))) }
     def createAndPrimeErrorService = make(createBuilder) { _.errorService(RequestContext(HttpRequest(GET))) }

@@ -10,7 +10,7 @@ import marshalling.DefaultUnmarshallers._
 class PathBuildersSpec extends Specification with BasicBuilders with PathBuilders with SprayTest {
 
   val Ok = HttpResponse()
-  val respondOk: Route = { _.responder(Right(Ok)) } // don't use "respond" -> don't get any unmatched path rejections
+  val respondOk: Route = { _.responder(Right(Ok)) } // don't use "complete" -> don't get any unmatched path rejections
   
   "routes created with the path(string) combinator" should {
     "block unmatching requests" in {
@@ -74,7 +74,7 @@ class PathBuildersSpec extends Specification with BasicBuilders with PathBuilder
       "within one single path(...) combinator" in {
         test(HttpRequest(GET, "/compute/23/19")) {
           path("compute" / "\\d+".r / "\\d+".r) { (a, b) =>
-            get { _.respond((a.toInt + b.toInt).toString) }
+            get { _.complete((a.toInt + b.toInt).toString) }
           }
         }.response.content.as[String] mustEqual Right("42")
       }
@@ -82,7 +82,7 @@ class PathBuildersSpec extends Specification with BasicBuilders with PathBuilder
         test(HttpRequest(GET, "/compute/23/19")) {
           path("compute" / "\\d+".r) { a =>
             path("\\d+".r) { b =>
-              get { _.respond((a.toInt + b.toInt).toString) }
+              get { _.complete((a.toInt + b.toInt).toString) }
             }
           }
         }.response.content.as[String] mustEqual Right("42")

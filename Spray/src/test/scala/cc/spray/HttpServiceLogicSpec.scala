@@ -14,21 +14,21 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
     "leave requests to unmatched paths unhandled" in {
       testService(HttpRequest(GET, "/test")) {
         service {
-          path("abc") { _.respond("yes") }
+          path("abc") { _.complete("yes") }
         }
       }.handled must beFalse
     }
     "leave only partially matched requests unhandled" in {
       testService(HttpRequest(GET, "/test/more")) {
         service {
-          path("test") { _.respond("yes") }
+          path("test") { _.complete("yes") }
         }
       }.handled must beFalse
     }
     "respond with the route response for completely matched requests" in {
       testService(HttpRequest(GET, "/test")) {
         service {
-          path("test") { _.respond("yes") }
+          path("test") { _.complete("yes") }
         }
       }.response.content.as[String] mustEqual Right("yes")
     }
@@ -36,8 +36,8 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
       testService(HttpRequest(POST, "/test")) {
         service {
           path("test") {
-            get { _.respond("yes") } ~
-            put { _.respond("yes") }
+            get { _.complete("yes") } ~
+            put { _.complete("yes") }
           }
         }
       }.response mustEqual failure(MethodNotAllowed,

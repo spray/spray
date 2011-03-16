@@ -25,13 +25,13 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
 
   def reject(rejections: Rejection*) { responder(Left(Set(rejections: _*))) }
 
-  def respond(obj: Any) { respond(ObjectContent(obj)) }
+  def complete(obj: Any) { complete(ObjectContent(obj)) }
 
-  def respond(content: HttpContent) { respond(HttpResponse(content = content)) }
+  def complete(content: HttpContent) { complete(HttpResponse(content = content)) }
 
-  def respond(response: HttpResponse) { respond(Right(response)) }
+  def complete(response: HttpResponse) { complete(Right(response)) }
   
-  def respond(rr: RoutingResult) {
+  def complete(rr: RoutingResult) {
     if (unmatchedPath.isEmpty)
       responder(rr)
     else

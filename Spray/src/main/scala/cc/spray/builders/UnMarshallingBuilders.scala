@@ -46,7 +46,7 @@ private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with Defau
   
   def handledBy[A: Manifest : Unmarshaller](f: A => Any): Route = {
     getContentAs[A] { input =>
-       _.respond {
+       _.complete {
         f(input) match {
           case null | EmptyContent => EmptyContent
           case x: BufferContent => x
