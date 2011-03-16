@@ -5,7 +5,7 @@ import org.parboiled.scala._
 import BasicRules._
 import Charsets._
 
-trait AcceptCharsetHeader {
+private[parser] trait AcceptCharsetHeader {
   this: Parser with ProtocolParameterRules =>
 
   def ACCEPT_CHARSET = rule (

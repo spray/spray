@@ -4,7 +4,7 @@ package parser
 import org.parboiled.scala._
 import BasicRules._
 
-trait AcceptRangesHeader {
+private[parser] trait AcceptRangesHeader {
   this: Parser with ProtocolParameterRules =>
 
   def ACCEPT_RANGES = rule (

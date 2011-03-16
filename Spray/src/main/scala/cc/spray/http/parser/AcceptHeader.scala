@@ -4,7 +4,7 @@ package parser
 import org.parboiled.scala._
 import BasicRules._
 
-trait AcceptHeader {
+private[parser] trait AcceptHeader {
   this: Parser with ProtocolParameterRules with CommonActions =>
 
   def ACCEPT = rule (
@@ -13,7 +13,7 @@ trait AcceptHeader {
   )
   
   def MediaRangeDecl = rule {
-    MediaRangeDef ~ zeroOrMore(";" ~ Parameter ~ POP1) // TODO: support parameters    
+    MediaRangeDef ~ zeroOrMore(";" ~ Parameter ~ DROP) // TODO: support parameters    
   }
   
   def MediaRangeDef = rule (
@@ -26,7 +26,7 @@ trait AcceptHeader {
   }
   
   def AcceptExtension = rule {
-    ";" ~ Token ~ optional("=" ~ (Token | QuotedString)) ~ POP2 // TODO: support extensions
+    ";" ~ Token ~ optional("=" ~ (Token | QuotedString)) ~ DROP2 // TODO: support extensions
   }
   
   // helpers

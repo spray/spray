@@ -5,7 +5,7 @@ import org.parboiled.scala._
 import BasicRules._
 
 // direct implementation of http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html
-trait ProtocolParameterRules {
+private[parser] trait ProtocolParameterRules {
   this: Parser =>
 
   /* 3.1 HTTP Version */
@@ -56,7 +56,7 @@ trait ProtocolParameterRules {
   
   /* 3.6 Transfer Codings */
   
-  def TransferCoding = rule { "chunked" | TransferExtension ~ POP2 }
+  def TransferCoding = rule { "chunked" | TransferExtension ~ DROP2 }
   
   def TransferExtension = rule { Token ~ zeroOrMore(";" ~ Parameter) }
   

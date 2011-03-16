@@ -1,7 +1,7 @@
 package cc.spray.http
 package parser
 
-trait CommonActions {
+private[parser] trait CommonActions {
   
   def getMediaType(mainType: String, subType: String): MediaType = {
     val value = mainType.toLowerCase + "/" + subType.toLowerCase

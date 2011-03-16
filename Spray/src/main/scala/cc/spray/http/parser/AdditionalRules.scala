@@ -6,7 +6,7 @@ import BasicRules._
 import java.net.InetAddress
 
 // implementation of additional parsing rules required for extensions that are not in the core HTTP standard
-trait AdditionalRules {
+private[parser] trait AdditionalRules {
   this: Parser =>
 
   def Ip: Rule1[HttpIp] = rule (

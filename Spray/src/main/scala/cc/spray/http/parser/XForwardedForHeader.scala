@@ -4,7 +4,7 @@ package parser
 import org.parboiled.scala._
 import BasicRules._
 
-trait XForwardedForHeader {
+private[parser] trait XForwardedForHeader {
   this: Parser with AdditionalRules =>
 
   def X_FORWARDED_FOR = rule (

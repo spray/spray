@@ -5,7 +5,7 @@ import org.parboiled.scala._
 import HttpStatusCodes._
 import HttpHeaders._
 
-trait ContentTypeHeader {
+private[parser] trait ContentTypeHeader {
   this: Parser with ProtocolParameterRules with CommonActions =>
 
   def CONTENT_TYPE = rule (

@@ -5,7 +5,7 @@ import org.parboiled.scala._
 import BasicRules._
 import LanguageRanges._
 
-trait AcceptLanguageHeader {
+private[parser] trait AcceptLanguageHeader {
   this: Parser with ProtocolParameterRules =>
 
   def ACCEPT_LANGUAGE = rule (

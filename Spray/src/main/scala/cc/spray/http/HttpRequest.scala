@@ -3,6 +3,7 @@ package cc.spray.http
 import java.net.URI
 import HttpHeaders._
 import HttpStatusCodes._
+import parser.QueryParser
 
 case class HttpRequest(method: HttpMethod = HttpMethods.GET,
                        uri: String = "",
@@ -63,7 +64,5 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
     acceptedCharsetRanges.isEmpty || charset.isDefined && acceptedCharsetRanges.exists(_.matches(charset.get))
   }
   
-  /*lazy val queryParams: Map[String, String] = {
-    
-  }*/
+  lazy val queryParams: Map[String, String] = QueryParser.parse(query)
 }

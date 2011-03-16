@@ -5,7 +5,7 @@ import org.parboiled.scala._
 import BasicRules._
 import cc.spray.http.Encodings.CustomEncoding
 
-trait AcceptEncodingHeader {
+private[parser] trait AcceptEncodingHeader {
   this: Parser with ProtocolParameterRules =>
 
   def ACCEPT_ENCODING = rule (
