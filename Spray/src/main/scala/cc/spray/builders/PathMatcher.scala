@@ -1,4 +1,4 @@
-package cc.spray
+package cc.spray.builders
 
 import util.matching.Regex
 
@@ -7,9 +7,9 @@ import util.matching.Regex
  * - None if not matched
  * - Some(remainingPath, captures) if matched
  */
-trait PathMatcher extends (String => Option[ (String, List[String]) ])
+sealed trait PathMatcher extends (String => Option[ (String, List[String]) ])
 
-trait PathMatcher0 extends PathMatcher {
+sealed trait PathMatcher0 extends PathMatcher {
   def / (sub: PathMatcher0) = this ~ Slash ~ sub
   def / (sub: PathMatcher1) = this ~ Slash ~ sub
   def / (sub: PathMatcher2) = this ~ Slash ~ sub
@@ -24,7 +24,7 @@ trait PathMatcher0 extends PathMatcher {
   def ~ (sub: PathMatcher5) = new Combi(this, sub) with PathMatcher5
 }
 
-trait PathMatcher1 extends PathMatcher {
+sealed trait PathMatcher1 extends PathMatcher {
   def / (sub: PathMatcher0) = this ~ Slash ~ sub
   def / (sub: PathMatcher1) = this ~ Slash ~ sub
   def / (sub: PathMatcher2) = this ~ Slash ~ sub
@@ -37,7 +37,7 @@ trait PathMatcher1 extends PathMatcher {
   def ~ (sub: PathMatcher4) = new Combi(this, sub) with PathMatcher5
 }
 
-trait PathMatcher2 extends PathMatcher {
+sealed trait PathMatcher2 extends PathMatcher {
   def / (sub: PathMatcher0) = this ~ Slash ~ sub
   def / (sub: PathMatcher1) = this ~ Slash ~ sub
   def / (sub: PathMatcher2) = this ~ Slash ~ sub
@@ -48,7 +48,7 @@ trait PathMatcher2 extends PathMatcher {
   def ~ (sub: PathMatcher3) = new Combi(this, sub) with PathMatcher5
 }
 
-trait PathMatcher3 extends PathMatcher {
+sealed trait PathMatcher3 extends PathMatcher {
   def / (sub: PathMatcher0) = this ~ Slash ~ sub
   def / (sub: PathMatcher1) = this ~ Slash ~ sub
   def / (sub: PathMatcher2) = this ~ Slash ~ sub
@@ -57,14 +57,14 @@ trait PathMatcher3 extends PathMatcher {
   def ~ (sub: PathMatcher2) = new Combi(this, sub) with PathMatcher5
 }
 
-trait PathMatcher4 extends PathMatcher {
+sealed trait PathMatcher4 extends PathMatcher {
   def / (sub: PathMatcher0) = this ~ Slash ~ sub
   def / (sub: PathMatcher1) = this ~ Slash ~ sub
   def ~ (sub: PathMatcher0) = new Combi(this, sub) with PathMatcher4
   def ~ (sub: PathMatcher1) = new Combi(this, sub) with PathMatcher5
 }
 
-trait PathMatcher5 extends PathMatcher {
+sealed trait PathMatcher5 extends PathMatcher {
   def / (sub: PathMatcher0) = this ~ Slash ~ sub
   def ~ (sub: PathMatcher0) = new Combi(this, sub) with PathMatcher5
 }
@@ -87,19 +87,19 @@ object Remaining extends PathMatcher1 {
   def apply(path: String) = Some(("", path :: Nil))
 }
 
-private[spray] class StringMatcher(prefix: String) extends PathMatcher0 {
+private[builders] class StringMatcher(prefix: String) extends PathMatcher0 {
   def apply(path: String) = {
     if (path.startsWith(prefix)) Some((path.substring(prefix.length), Nil)) else None
   } 
 }
 
-private[spray] class SimpleRegexMatcher(regex: Regex) extends PathMatcher1 {
+private[builders] class SimpleRegexMatcher(regex: Regex) extends PathMatcher1 {
   def apply(path: String) = {
     regex.findPrefixOf(path).map(matched => (path.substring(matched.length), matched :: Nil))
   }
 }
 
-private[spray] class GroupRegexMatcher(regex: Regex) extends PathMatcher1 {
+private[builders] class GroupRegexMatcher(regex: Regex) extends PathMatcher1 {
   def apply(path: String) = {
     regex.findPrefixMatchOf(path).map { m =>
       val matchLength = m.end - m.start

@@ -7,7 +7,7 @@ import HttpMethods._
 import test.SprayTest
 import marshalling.DefaultUnmarshallers._
 
-class PathBuildersSpec extends Specification with BasicBuilders with PathBuilders with SprayTest {
+class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder {
 
   val Ok = HttpResponse()
   val respondOk: Route = { _.responder(Right(Ok)) } // don't use "complete" -> don't get any unmatched path rejections
