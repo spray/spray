@@ -4,23 +4,12 @@ import Process._
 class Project(info: ProjectInfo) extends ParentProject(info) {
   
   // -------------------------------------------------------------------------------------------------------------------
-  // All repositories *must* go here! See ModuleConigurations below.
-  // -------------------------------------------------------------------------------------------------------------------
-  object Repositories {
-    val siloRepo             = Resolver
-      .ssh("Silo Repo", "telfish.dyndns.org", 29292, "/opt/mvn")
-      .withPermissions("0666")
-      .as(system[String]("user.name").value, new java.io.File(system[String]("user.home").value + "/.ssh/id_rsa"))
-  }
-
-  // -------------------------------------------------------------------------------------------------------------------
   // ModuleConfigurations
   // Every dependency that cannot be resolved from the built-in repositories (Maven Central and Scala Tools Releases)
   // must be resolved from a ModuleConfiguration. This will result in a significant acceleration of the update action.
   // Therefore, if repositories are defined, this must happen as def, not as val.
   // -------------------------------------------------------------------------------------------------------------------
-  import Repositories._
-  lazy val parboiledModuleConfig   = ModuleConfiguration("org.parboiled", siloRepo)
+  lazy val parboiledModuleConfig   = ModuleConfiguration("org.parboiled", ScalaToolsSnapshots)
   
   // -------------------------------------------------------------------------------------------------------------------
   // Dependencies

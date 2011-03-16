@@ -7,16 +7,6 @@
         <option name="compilerLibraryName" value="buildScala" />
       </configuration>
     </facet>
-    <facet type="web" name="Web">
-      <configuration>
-        <descriptors>
-          <deploymentDescriptor url="file://$MODULE_DIR$/src/main/webapp/WEB-INF/web.xml" name="web.xml" />
-        </descriptors>
-        <webroots>
-          <root url="file://$MODULE_DIR$/src/main/webapp" relative="/" />
-        </webroots>
-      </configuration>
-    </facet>
   </component>
   <component name="NewModuleRootManager" inherit-compiler-output="false">
     <output url="file://$MODULE_DIR$/target/scala_2.8.1/classes" />
@@ -26,11 +16,21 @@
       <sourceFolder url="file://$MODULE_DIR$/src/main/scala" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/test/scala" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/src/main/resources" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/test/resources" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/.idea" />
       <excludeFolder url="file://$MODULE_DIR$/lib_managed" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/test-output" />
     </content>
+    <orderEntry type="module-library" exported="" scope="TEST">
+      <library>
+        <CLASSES>
+          <root url="file://$MODULE_DIR$/target/scala_2.8.1/test-resources" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
     <orderEntry type="module-library" exported="">
       <library>
         <CLASSES>
