@@ -10,7 +10,7 @@ import marshalling.DefaultUnmarshallers._
 class PathBuildersSpec extends Specification with BasicBuilders with PathBuilders with SprayTest {
 
   val Ok = HttpResponse()
-  val respondOk: Route = { _.respond(Ok) }
+  val respondOk: Route = { _.responder(Right(Ok)) } // don't use "respond" -> don't get any unmatched path rejections
   
   "routes created with the path(string) combinator" should {
     "block unmatching requests" in {
@@ -20,21 +20,21 @@ class PathBuildersSpec extends Specification with BasicBuilders with PathBuilder
     }
     "let matching requests pass and adapt RequestContext.unmatchedPath" in {
       test(HttpRequest(GET, "/noway/this/works")) {
-        path("noway") { ctx => ctx.respond(ctx.unmatchedPath) }
+        path("noway") { ctx => ctx.responder(Right(HttpResponse(content = ObjectContent(ctx.unmatchedPath)))) }
       }.response.content.as[String] mustEqual Right("/this/works")
     }
     "be stackable" in {
       "within one single path(...) combinator" in {
         test(HttpRequest(GET, "/noway/this/works")) {
           path("noway" / "this" / "works" ~ Remaining) { remaining =>
-            get { _.respond(remaining) }
+            get { _.responder(Right(HttpResponse(content = ObjectContent(remaining)))) }
           }
         }.response.content.as[String] mustEqual Right("")
       }
       "when nested" in {
         test(HttpRequest(GET, "/noway/this/works")) {
           path("noway") {
-            path("this") { ctx => ctx.respond(ctx.unmatchedPath) }
+            path("this") { ctx => ctx.responder(Right(HttpResponse(content = ObjectContent(ctx.unmatchedPath)))) }
           }
         }.response.content.as[String] mustEqual Right("/works")
       }
@@ -58,14 +58,14 @@ class PathBuildersSpec extends Specification with BasicBuilders with PathBuilder
       "when the regex is a simple regex" in {
         test(HttpRequest(GET, "/noway/this/works")) {
           path("no[^/]+".r) { capture =>
-            get { ctx => ctx.respond(capture + ":" + ctx.unmatchedPath) }
+            get { ctx => ctx.responder(Right(HttpResponse(content = ObjectContent(capture + ":" + ctx.unmatchedPath)))) }
           }
         }.response.content.as[String] mustEqual Right("noway:/this/works")
       }
       "when the regex is a group regex" in {
         test(HttpRequest(GET, "/noway/this/works")) {
           path("no([^/]+)".r) { capture =>
-            get { ctx => ctx.respond(capture + ":" + ctx.unmatchedPath) }
+            get { ctx => ctx.responder(Right(HttpResponse(content = ObjectContent(capture + ":" + ctx.unmatchedPath)))) }
           }
         }.response.content.as[String] mustEqual Right("way:/this/works")
       }

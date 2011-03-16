@@ -40,13 +40,13 @@ private[spray] trait FileResourceDirectoryBuilders {
                       (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = { ctx =>
     val subPath = if (File.pathSeparatorChar == '/') ctx.unmatchedPath
                   else ctx.unmatchedPath.replace('/', File.pathSeparatorChar) 
-    getFromFile(directoryName + subPath, charset).apply(ctx)
+    getFromFile(directoryName + subPath, charset).apply(ctx.copy(unmatchedPath = ""))
   }
   
   def getFromResourceDirectory(directoryName: String, charset: Option[Charset] = None)
                               (implicit detachedActorFactory: Route => Actor,
                                resolver: ContentTypeResolver): Route = { ctx =>
-    getFromResource(directoryName + ctx.unmatchedPath, charset).apply(ctx)
+    getFromResource(directoryName + ctx.unmatchedPath, charset).apply(ctx.copy(unmatchedPath = ""))
   }
   
   // implicits

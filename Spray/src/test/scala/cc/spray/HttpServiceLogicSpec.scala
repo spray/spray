@@ -18,6 +18,13 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
         }
       }.handled must beFalse
     }
+    "leave only partially matched requests unhandled" in {
+      testService(HttpRequest(GET, "/test/more")) {
+        service {
+          path("test") { _.respond("yes") }
+        }
+      }.handled must beFalse
+    }
     "respond with the route response for completely matched requests" in {
       testService(HttpRequest(GET, "/test")) {
         service {

@@ -62,4 +62,8 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
     // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.2
     acceptedCharsetRanges.isEmpty || charset.isDefined && acceptedCharsetRanges.exists(_.matches(charset.get))
   }
+  
+  /*lazy val queryParams: Map[String, String] = {
+    
+  }*/
 }

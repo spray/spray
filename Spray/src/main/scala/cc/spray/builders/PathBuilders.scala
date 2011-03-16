@@ -38,7 +38,7 @@ private[spray] trait PathBuilders {
             // if we have successfully matched the complete URI we need to  
             // add a PathMatchedRejection if the request is rejected by some inner filter
             ctx.copy(unmatchedPath = "", responder = { rr =>
-              ctx.respond {
+              ctx.responder {
                 rr match {
                   case x@ Right(_) => x // request succeeded, no further action required
                   case Left(rejections) => Left(rejections + PathMatchedRejection) // rejected, add marker  
