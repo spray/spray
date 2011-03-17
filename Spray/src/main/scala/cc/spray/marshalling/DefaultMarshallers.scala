@@ -8,7 +8,7 @@ import HttpStatusCodes._
 
 trait DefaultMarshallers {
 
-  implicit val defaultMarshaller = StringMarshaller orElse NodeSeqMarshaller
+  implicit val DefaultMarshaller = StringMarshaller orElse NodeSeqMarshaller
 
   object StringMarshaller extends AbstractMarshaller[String] {
     val canMarshalTo = List(ContentType(`text/plain`)) 
@@ -27,7 +27,7 @@ trait DefaultMarshallers {
   class WithMarshalExtender(obj: Any) {
     def marshal(accept: ContentType => Boolean)(implicit marshaller: Marshaller): Either[HttpStatus, RawContent] = {
       if (marshaller.isDefinedAt(obj)) {
-        val (canMarshalTo, convert) = marshaller(obj)
+        val Marshalling(canMarshalTo, convert) = marshaller(obj)
         canMarshalTo.mapFind { contentType =>
           if (accept(contentType)) Some(contentType) else None
         } match {

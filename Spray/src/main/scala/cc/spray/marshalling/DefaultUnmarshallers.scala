@@ -32,9 +32,9 @@ trait DefaultUnmarshallers {
   class HttpContentExtractor(content: HttpContent) {
     def as[A](implicit ma: Manifest[A], unmarshaller: Unmarshaller[A]): Either[HttpStatus, A] = content match {
       case x: BufferContent => unmarshaller(x.contentType) match {
-        case Right(convert) => Right(convert(x))
-        case Left(canUnmarshalFrom) => Left(HttpStatus(UnsupportedMediaType,
-          "The requests content-type must be one the following:\n" + canUnmarshalFrom.map(_.value).mkString("\n"))) 
+        case UnmarshalWith(converter) => Right(converter(x))
+        case CantUnmarshal(onlyFrom) => Left(HttpStatus(UnsupportedMediaType,
+          "The requests content-type must be one the following:\n" + onlyFrom.map(_.value).mkString("\n"))) 
       }
       case ObjectContent(x) => {
         if (ma.erasure.isInstance(x)) Right(x.asInstanceOf[A])

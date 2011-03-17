@@ -27,7 +27,7 @@ class UnMarshallingBuildersSpec extends Specification with SprayTest with Servic
     def marshal(value: Int, contentType: ContentType) = NodeSeqMarshaller.marshal(<int>{value}</int>, contentType)
   }
   
-  implicit val marshaller = IntMarshaller orElse defaultMarshaller
+  implicit val marshaller = IntMarshaller orElse DefaultMarshaller
   
   "The 'service' directive" should {
     "not change failure results" in {

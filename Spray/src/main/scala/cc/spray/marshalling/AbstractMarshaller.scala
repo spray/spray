@@ -10,7 +10,7 @@ abstract class AbstractMarshaller[A] extends Marshaller {
   
   def isDefinedAt(x: Any) = erasure.isInstance(x)
 
-  def apply(x: Any) = (canMarshalTo, marshal(x.asInstanceOf[A], _))
+  def apply(x: Any) = Marshalling(canMarshalTo, marshal(x.asInstanceOf[A], _))
 
   def canMarshalTo: List[ContentType]
 

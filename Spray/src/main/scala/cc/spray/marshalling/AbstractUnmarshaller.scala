@@ -6,7 +6,11 @@ import http._
 abstract class AbstractUnmarshaller[A] extends Unmarshaller[A] {
 
   def apply(contentType: ContentType) = {
-    if (canUnmarshalFrom.exists(_.matches(contentType))) Right(unmarshal) else Left(canUnmarshalFrom)
+    if (canUnmarshalFrom.exists(_.matches(contentType))) {
+      UnmarshalWith(unmarshal)
+    } else {
+      CantUnmarshal(canUnmarshalFrom)
+    }
   }
   
   def canUnmarshalFrom: List[ContentTypeRange]

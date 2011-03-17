@@ -4,6 +4,7 @@ import java.io.File
 import spray.builders.FilterResult
 import spray.http._
 import collection.immutable.LinearSeq
+import spray.marshalling.{Marshalling, Unmarshalling}
 import spray.utils.{PimpedClass, PimpedLinearSeq}
 import util.matching.Regex
 import java.util.regex.Pattern
@@ -13,8 +14,8 @@ package object spray {
   type Route = RequestContext => Unit
   type RoutingResult = Either[Set[Rejection], HttpResponse]
   type ContentTypeResolver = (File, Option[Charset]) => ContentType
-  type Marshaller = PartialFunction[Any, (List[ContentType], ContentType => RawContent)]
-  type Unmarshaller[A] = ContentType => Either[List[ContentTypeRange], BufferContent => A]
+  type Marshaller = PartialFunction[Any, Marshalling]
+  type Unmarshaller[A] = ContentType => Unmarshalling[A]
   type RouteFilter = RequestContext => FilterResult
   
   private val unmanglingOperators = Map("$eq" -> "=", "$greater" -> ">", "$less" -> "<", "$plus" -> "+",
