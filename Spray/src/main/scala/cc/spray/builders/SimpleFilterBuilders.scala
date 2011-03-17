@@ -17,7 +17,7 @@ private[spray] trait SimpleFilterBuilders {
   def trace   = method(TRACE)
   
   def method(m: HttpMethod) = filter { ctx =>
-    if (ctx.request.method == m) Pass() else Reject(MethodRejection(m) :: Nil) 
+    if (ctx.request.method == m) Pass() else Reject(MethodRejection(m)) 
   }
   
   def host(hostName: String): FilterRoute0 = host(_ == hostName)

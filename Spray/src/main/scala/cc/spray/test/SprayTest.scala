@@ -15,9 +15,15 @@ trait SprayTest {
   }
 
   class RoutingResultWrapper(rr: RoutingResult) {
-    def handled: Boolean = rr.isRight
-    def response: HttpResponse = rr.right.getOrElse(fail("Request was rejected"))
-    def rejections: Set[Rejection] = rr.left.getOrElse(fail("Request was not rejected"))
+    def handled: Boolean = rr.isInstanceOf[Respond]
+    def response: HttpResponse = rr match {
+      case Respond(response) => response
+      case Reject(_) => fail("Request was rejected") 
+    }
+    def rejections: Set[Rejection] = rr match {
+      case Respond(_) => fail("Request was not rejected")
+      case Reject(rejections) => rejections 
+    }
   }
   
   trait ServiceTest extends HttpServiceLogic {

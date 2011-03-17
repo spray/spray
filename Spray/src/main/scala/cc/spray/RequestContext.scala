@@ -11,8 +11,8 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
   def withHttpResponseTransformed(f: HttpResponse => HttpResponse): RequestContext = {
     withRoutingResultTransformed {
       _ match {
-        case Right(response) => Right(f(response))
-        case x@ Left(_) => x
+        case Respond(response) => Respond(f(response))
+        case x: Reject => x
       }
     }
   }
@@ -23,19 +23,22 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
 
   def withResponder(newResponder: RoutingResult => Unit) = copy(responder = newResponder)
 
-  def reject(rejections: Rejection*) { responder(Left(Set(rejections: _*))) }
+  def reject(rejections: Rejection*) { reject(Set(rejections: _*)) }
+  
+  def reject(rejections: Set[Rejection]) { responder(Reject(rejections)) }
 
   def complete(obj: Any) { complete(ObjectContent(obj)) }
 
   def complete(content: HttpContent) { complete(HttpResponse(content = content)) }
 
-  def complete(response: HttpResponse) { complete(Right(response)) }
+  def complete(response: HttpResponse) { complete(Respond(response)) }
   
   def complete(rr: RoutingResult) {
-    if (unmatchedPath.isEmpty)
+    if (unmatchedPath.isEmpty) {
       responder(rr)
-    else
+    } else {
       reject()
+    }
   }
   
   // can be cached
@@ -44,7 +47,7 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
   }
   
   def fail(failure: HttpStatus) {
-    responder(Right(HttpResponse(failure)))
+    responder(Respond(HttpResponse(failure)))
   }
 }
 

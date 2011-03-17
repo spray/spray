@@ -1,7 +1,6 @@
 package cc
 
 import java.io.File
-import spray.builders.FilterResult
 import spray.http._
 import collection.immutable.LinearSeq
 import spray.marshalling.{Marshalling, Unmarshalling}
@@ -12,7 +11,6 @@ import java.util.regex.Pattern
 package object spray {
 
   type Route = RequestContext => Unit
-  type RoutingResult = Either[Set[Rejection], HttpResponse]
   type ContentTypeResolver = (File, Option[Charset]) => ContentType
   type Marshaller = PartialFunction[Any, Marshalling]
   type Unmarshaller[A] = ContentType => Unmarshalling[A]

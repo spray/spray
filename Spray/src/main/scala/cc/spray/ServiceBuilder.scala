@@ -21,12 +21,12 @@ trait ServiceBuilder
       route {
         ctx.withResponder { 
           _ match {
-            case x@ Right(response) => ctx.responder(x) // first route succeeded
-            case Left(rejections1) => other {
+            case x: Respond => ctx.responder(x) // first route succeeded
+            case Reject(rejections1) => other {
               ctx.withResponder {
                 _ match {
-                  case x@ Right(_) => ctx.responder(x) // second route succeeded
-                  case Left(rejections2) => ctx.responder(Left(rejections1 ++ rejections2))  
+                  case x: Respond => ctx.responder(x) // second route succeeded
+                  case Reject(rejections2) => ctx.responder(Reject(rejections1 ++ rejections2))  
                 }
               }
             }  

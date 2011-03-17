@@ -12,7 +12,7 @@ trait HttpServiceLogic {
     try {
       route(context)
     } catch {
-      case e: Exception => context.responder(Right(responseForException(request, e)))
+      case e: Exception => context.responder(Respond(responseForException(request, e)))
     }
   }
   
@@ -23,8 +23,8 @@ trait HttpServiceLogic {
   protected[spray] def responderForRequest(request: HttpRequest): RoutingResult => Unit
   
   protected[spray] def responseFromRoutingResult(rr: RoutingResult): Option[HttpResponse] = rr match {
-    case Right(httpResponse) => Some(httpResponse) 
-    case Left(rejections) => responseForRejections(rejections) 
+    case Respond(httpResponse) => Some(httpResponse) 
+    case Reject(rejections) => responseForRejections(rejections.toSet) 
   }
   
   protected[spray] def responseForRejections(rejections: Set[Rejection]): Option[HttpResponse] = {

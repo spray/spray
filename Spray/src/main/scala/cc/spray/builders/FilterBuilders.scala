@@ -11,15 +11,11 @@ private[spray] trait FilterBuilders {
   def filter5(filter: RouteFilter) = new FilterRoute5(filter)
 }
 
-sealed trait FilterResult
-case class Reject(rejections: List[Rejection] = Nil) extends FilterResult
-case class Pass(values: List[String] = Nil, transform: RequestContext => RequestContext = identity) extends FilterResult
-
 abstract class FilterRoute(val filter: RouteFilter) { self =>
   protected def fromRouting(f: List[String] => Route): Route = { ctx =>
     filter(ctx) match {
       case Pass(values, transform) => f(values)(transform(ctx)) 
-      case Reject(rejections) => ctx.reject(rejections: _*)
+      case Reject(rejections) => ctx.reject(rejections)
     }
   }
   protected def chainFilterWith(other: RouteFilter): RouteFilter = { ctx =>

@@ -22,8 +22,8 @@ private[spray] trait PathBuilders {
           ctx.copy(unmatchedPath = "", responder = { rr =>
             ctx.responder {
               rr match {
-                case x@ Right(_) => x // request succeeded, no further action required
-                case Left(rejections) => Left(rejections + PathMatchedRejection) // rejected, add marker  
+                case x: Respond => x // request succeeded, no further action required
+                case Reject(rejections) => Reject(rejections + PathMatchedRejection) // rejected, add marker  
               }
             }
           })

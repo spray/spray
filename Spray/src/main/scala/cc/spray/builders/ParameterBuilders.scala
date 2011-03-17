@@ -15,10 +15,10 @@ private[spray] trait ParameterBuilders {
       result match {
         case Pass(values, _) => p.extract(ctx.request.queryParams) match {
           case Right(value) => Pass(value :: values)
-          case Left(rejection) => Reject(rejection :: Nil)
+          case Left(rejection) => Reject(rejection)
         }
         case x@ Reject(rejections) => p.extract(ctx.request.queryParams) match {
-          case Left(rejection) => Reject(rejection :: rejections)
+          case Left(rejection) => Reject(rejections + rejection)
           case _ => x
         }
       }
