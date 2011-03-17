@@ -2,13 +2,13 @@ package cc.spray
 package examples.simple
 
 import org.specs.Specification
-import test.{DetachingDisabled, SprayTest}
+import test.{ServiceBuilderNoDetach, SprayTest}
 import http._
 import HttpMethods._
 import HttpHeaders._
 import MediaTypes._
 
-class ServiceSpec extends Specification with SprayTest with Service with DetachingDisabled {
+class ServiceSpec extends Specification with SprayTest with Service with ServiceBuilderNoDetach {
   
   "The sample service" should {
     "correctly handle these example" in {

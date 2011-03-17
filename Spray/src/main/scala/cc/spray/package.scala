@@ -14,6 +14,13 @@ package object spray {
   type ContentTypeResolver = (File, Option[Charset]) => ContentType
   type Marshaller = PartialFunction[Any, (List[ContentType], ContentType => RawContent)]
   type Unmarshaller[A] = ContentType => Either[List[ContentTypeRange], BufferContent => A]
+  type RouteFilter0 = RequestContext => Option[List[Rejection]]
+  type RouteFilter1 = RouteFilter[String]
+  type RouteFilter2 = RouteFilter[(String, String)]
+  type RouteFilter3 = RouteFilter[(String, String, String)]
+  type RouteFilter4 = RouteFilter[(String, String, String, String)]
+  type RouteFilter5 = RouteFilter[(String, String, String, String, String)]
+  type RouteFilter[T] = RequestContext => Either[List[Rejection], T]
   
   private val unmanglingOperators = Map("$eq" -> "=", "$greater" -> ">", "$less" -> "<", "$plus" -> "+",
     "$minus" -> "-", "$times" -> "*", "$div" -> "/", "$bang" -> "!", "$at" -> "@", "$hash" -> "#", "$percent" -> "%",

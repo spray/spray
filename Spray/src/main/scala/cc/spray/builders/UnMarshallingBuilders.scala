@@ -6,7 +6,6 @@ import HttpStatusCodes._
 import marshalling._
 
 private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with DefaultUnmarshallers {
-  this: BasicBuilders =>
   
   def service(route: Route)(implicit marshaller: Marshaller): RootRoute = new RootRoute({ ctx =>
     route {

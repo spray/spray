@@ -8,7 +8,7 @@ import java.io.File
 import HttpStatusCodes._
 
 private[spray] trait FileResourceDirectoryBuilders {
-  this: BasicBuilders =>
+  this: SimpleFilterBuilders with DetachedBuilders=>
   
   def getFromFile(fileName: String, charset: Option[Charset] = None)
                  (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {

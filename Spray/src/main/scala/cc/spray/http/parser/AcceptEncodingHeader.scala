@@ -15,7 +15,7 @@ private[parser] trait AcceptEncodingHeader {
   
   def EncodingDef = rule (
     (ContentCoding | "*" ~> identity) ~ optional(EncodingQuality)
-            ~~> (x => Encodings.get(x).getOrElse(CustomEncoding(x))) 
+            ~~> (x => Encodings.getForKey(x).getOrElse(CustomEncoding(x))) 
   )
   
   def EncodingQuality = rule {

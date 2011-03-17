@@ -9,9 +9,9 @@ import MediaTypes._
 import org.parboiled.common.FileUtils
 import util.Properties
 import java.io.File
-import test.{DetachingDisabled, SprayTest}
+import test._
 
-class FileResourceDirectoryBuildersSpec extends Specification with DetachingDisabled with SprayTest {
+class FileResourceDirectoryBuildersSpec extends Specification with SprayTest with ServiceBuilderNoDetach {
 
   "getFromFile" should {
     "block non-GET requests" in {

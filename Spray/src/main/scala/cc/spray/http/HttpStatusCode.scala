@@ -11,7 +11,7 @@ sealed trait HttpStatusCode {
 
 object HttpStatusCode {
   import HttpStatusCodes._
-  implicit def int2HttpStatusCode(code: Int): HttpStatusCode = get(code).getOrElse(InternalServerError)
+  implicit def int2HttpStatusCode(code: Int): HttpStatusCode = getForKey(code).getOrElse(InternalServerError)
 }
 
 sealed trait HttpSuccess extends HttpStatusCode

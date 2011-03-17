@@ -11,7 +11,7 @@ trait ObjectRegistry[K, V] {
     registry.update(key, obj)
   }
   
-  def get(key: K): Option[V] = {
+  def getForKey(key: K): Option[V] = {
     registry.get(key)
   }
 }

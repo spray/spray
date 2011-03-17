@@ -1,12 +1,24 @@
 package cc.spray
+package builders
 
-import akka.util.Logging
 import akka.actor.Actor
+import akka.util.Logging
 import http._
 import HttpStatusCodes._
 
-class DetachedRouteActor(route: Route) extends Actor with Logging {
+private[spray] trait DetachedBuilders {
+
+  def detached(route: Route)(implicit detachedActorFactory: Route => Actor): Route = { ctx =>
+    Actor.actorOf(detachedActorFactory(route)).start ! ctx
+  }
   
+  // implicits  
+  
+  implicit def defaultDetachedActorFactory(route: Route): Actor = new DetachedRouteActor(route)
+  
+}
+
+class DetachedRouteActor(route: Route) extends Actor with Logging {  
   protected def receive = {
     case ctx: RequestContext => {
       try {
@@ -23,6 +35,5 @@ class DetachedRouteActor(route: Route) extends Actor with Logging {
       case e: HttpException => HttpResponse(e.status)
       case e: Exception => HttpResponse(HttpStatus(InternalServerError, e.getMessage)) 
     }    
-  } 
-  
+  }   
 } 

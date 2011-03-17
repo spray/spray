@@ -14,12 +14,12 @@ trait ServletConverter {
   protected[spray] def toSprayRequest(request: HttpServletRequest): HttpRequest = {
     val (ctHeaders, headers) = buildHeaders(request).partition(_.isInstanceOf[`Content-Type`])
     HttpRequest(
-      HttpMethods.get(request.getMethod).get,
+      HttpMethods.getForKey(request.getMethod).get,
       request.getRequestURI,
       headers,
       readContent(request, ctHeaders.headOption.asInstanceOf[Option[`Content-Type`]]),
       getRemoteHost(request),
-      HttpVersions.get(request.getProtocol)
+      HttpVersions.getForKey(request.getProtocol)
     )
   }
 
