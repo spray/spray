@@ -3,7 +3,6 @@ package builders
 
 import org.specs.Specification
 import http._
-import HttpStatusCodes._
 import test.SprayTest
 
 class ParameterBuildersSpec extends Specification with SprayTest with ServiceBuilder {
@@ -27,14 +26,15 @@ class ParameterBuildersSpec extends Specification with SprayTest with ServiceBui
         }
       }.response.content.as[String] mustEqual Right("EllenParsons")
     }
-    "return a NotFound error with a proper error message if a required parameter is missing" in {
+    "reject the request with QueryParamRequiredRejection if required parameters are missing" in {
       test(HttpRequest(uri = "/person?name=Parsons&sex=female")) {
         path("person") {
           parameters('name, 'FirstName, 'age) { (name, firstName, age) =>
             get { _ => fail("Should not run") }
           }
         }
-      }.response mustEqual failure(NotFound, "Query parameter(s) required: FirstName, age")
+      }.rejections mustEqual
+              Set(PathMatchedRejection, QueryParamRequiredRejection("FirstName"), QueryParamRequiredRejection("age"))
     }
     "supply the default value if an optional parameter is missing" in {
       test(HttpRequest(uri = "/person?name=Parsons&FirstName=Ellen")) {

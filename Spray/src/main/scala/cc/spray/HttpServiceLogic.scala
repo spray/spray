@@ -35,7 +35,13 @@ trait HttpServiceLogic {
         Some(HttpResponse(HttpStatus(MethodNotAllowed, "HTTP method not allowed, supported methods: " +
                 methodRejections.mkString(", "))))
       } else {
-        throw new IllegalStateException("Unknown request rejection")
+        val queryParamRequiredRejections = rejections.collect { case QueryParamRequiredRejection(p) => p } 
+        if (!queryParamRequiredRejections.isEmpty) {
+          Some(HttpResponse(HttpStatus(NotFound, "Request is missing the following required query parameters: " +
+                queryParamRequiredRejections.mkString(", "))))
+        } else {
+          throw new IllegalStateException("Unknown request rejection")
+        }
       }
     } else {
       None // no path matched, so signal to the root service that this service did not handle the request 

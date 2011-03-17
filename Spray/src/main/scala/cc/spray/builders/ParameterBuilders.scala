@@ -1,42 +1,16 @@
 package cc.spray
 package builders
 
-import http._
-import HttpStatusCodes._
-
 private[spray] trait ParameterBuilders {
+  this: FilterBuilders =>
   
-  def parameter(p: Param)
-               (routing: String => Route): Route = build(p :: Nil) {
-    case a :: Nil => routing(a)
-    case _ => throw new IllegalStateException
-  }
+  def parameter (a: Param) = filter1(build(a :: Nil))
+  def parameters(a: Param, b: Param) = filter2(build(a :: b :: Nil))
+  def parameters(a: Param, b: Param, c: Param) = filter3(build(a :: b :: c :: Nil))
+  def parameters(a: Param, b: Param, c: Param, d: Param) = filter4(build(a :: b :: c :: d :: Nil))
+  def parameters(a: Param, b: Param, c: Param, d: Param, e: Param) = filter5(build(a :: b :: c :: d :: e :: Nil))
   
-  def parameters(p1: Param, p2: Param)
-                (routing: (String, String) => Route) = build(p1 :: p2 :: Nil) {
-    case b :: a :: Nil => routing(a, b)
-    case _ => throw new IllegalStateException
-  }
-  
-  def parameters(p1: Param, p2: Param, p3: Param)
-                (routing: (String, String, String) => Route) = build(p1 :: p2 :: p3 :: Nil) {
-    case c :: b :: a :: Nil => routing(a, b, c)
-    case _ => throw new IllegalStateException
-  }
-  
-  def parameters(p1: Param, p2: Param, p3: Param, p4: Param)
-                (routing: (String, String, String, String) => Route) = build(p1 :: p2 :: p3 :: p4 :: Nil) {
-    case d :: c :: b :: a :: Nil => routing(a, b, c, d)
-    case _ => throw new IllegalStateException
-  }
-  
-  def parameters(p1: Param, p2: Param, p3: Param, p4: Param, p5: Param)
-                (routing: (String, String, String, String, String) => Route) = build(p1 :: p2 :: p3 :: p4 :: p5 :: Nil) {
-    case e :: d :: c :: b :: a :: Nil => routing(a, b, c, d, e)
-    case _ => throw new IllegalStateException
-  }
-  
-  private def build(params: List[Param])(f: List[String] => Route): Route = { ctx =>
+  private def build[T](params: List[Param]): RouteFilter[T] = { ctx =>
     params.foldLeft[Either[List[String], List[String]]](Right(Nil)) { (result, p) =>
       result match {
         case Right(values) => p.extract(ctx.request.queryParams) match {
@@ -49,8 +23,15 @@ private[spray] trait ParameterBuilders {
         }
       }
     } match {
-      case Right(values) => f(values)(ctx)
-      case Left(missing) => ctx.fail(NotFound, "Query parameter(s) required: " + missing.reverse.mkString(", "))
+      case Right(values) => values match {
+        case a :: Nil => Right(a.asInstanceOf[T])
+        case a :: b :: Nil => Right((b, a).asInstanceOf[T])
+        case a :: b :: c :: Nil => Right((c, b, a).asInstanceOf[T])
+        case a :: b :: c :: d :: Nil => Right((d, c, b, a).asInstanceOf[T])
+        case a :: b :: c :: d :: e :: Nil => Right((e, d, c, b, a).asInstanceOf[T])
+        case _ => throw new IllegalStateException
+      }
+      case Left(missing) => Left(missing.reverse.map(QueryParamRequiredRejection(_)))
     }
   }
   
