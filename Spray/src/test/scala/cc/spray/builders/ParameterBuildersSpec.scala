@@ -7,7 +7,7 @@ import test.SprayTest
 
 class ParameterBuildersSpec extends Specification with SprayTest with ServiceBuilder {
 
-  "The 'parameter' directive" should {
+  "The 'parameter' extraction directive" should {
     "extract the value of given required parameters" in {
       test(HttpRequest(uri = "/person?name=Parsons&FirstName=Ellen")) {
         path("person") {
@@ -26,7 +26,7 @@ class ParameterBuildersSpec extends Specification with SprayTest with ServiceBui
         }
       }.response.content.as[String] mustEqual Right("EllenParsons")
     }
-    "reject the request with QueryParamRequiredRejection if required parameters are missing" in {
+    "reject the request with MissingQueryParamRejection if required parameters are missing" in {
       test(HttpRequest(uri = "/person?name=Parsons&sex=female")) {
         path("person") {
           parameters('name, 'FirstName, 'age) { (name, firstName, age) =>
@@ -34,16 +34,36 @@ class ParameterBuildersSpec extends Specification with SprayTest with ServiceBui
           }
         }
       }.rejections mustEqual
-              Set(PathMatchedRejection, QueryParamRequiredRejection("FirstName"), QueryParamRequiredRejection("age"))
+              Set(PathMatchedRejection, MissingQueryParamRejection("FirstName"), MissingQueryParamRejection("age"))
     }
     "supply the default value if an optional parameter is missing" in {
       test(HttpRequest(uri = "/person?name=Parsons&FirstName=Ellen")) {
         path("person") {
-          parameters("name"?, 'FirstName, 'age ? "29") { (name, firstName, age) =>
-            get { _.complete(firstName + name + age) }
+          parameters("name"?, 'FirstName, 'age ? "29", 'eyes?) { (name, firstName, age, eyes) =>
+            get { _.complete(firstName + name + age + eyes) }
           }
         }
       }.response.content.as[String] mustEqual Right("EllenParsons29")
+    }
+  }
+  
+  "The 'parameter' requirement directive" should {
+    "block requests that do not contain the required parameter" in {
+      test(HttpRequest(uri = "/person?age=19")) { 
+        parameter('nose ! "large") { _ => fail("Should not run") }
+      }.handled must beFalse
+    }
+    "block requests that contain the required parameter but with an unmatching value" in {
+      test(HttpRequest(uri = "/person?age=19&nose=small")) { 
+        parameter('nose ! "large") { _ => fail("Should not run") }
+      }.handled must beFalse
+    }
+    "let requests pass that contain the required parameter with its required value" in {
+      test(HttpRequest(uri = "/person?nose=large&eyes=blue")) {
+        path("person") {
+          parameter('nose ! "large") { _.complete("yes") }
+        }
+      }.response.content.as[String] mustEqual Right("yes")
     }
   }
 

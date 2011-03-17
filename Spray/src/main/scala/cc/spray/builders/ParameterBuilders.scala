@@ -11,15 +11,15 @@ private[spray] trait ParameterBuilders {
   def parameters(a: Param, b: Param, c: Param, d: Param, e: Param) = filter5(build(a :: b :: c :: d :: e :: Nil))
   
   private def build[T](params: List[Param]): RouteFilter[T] = { ctx =>
-    params.foldLeft[Either[List[String], List[String]]](Right(Nil)) { (result, p) =>
+    params.foldLeft[Either[List[Rejection], List[String]]](Right(Nil)) { (result, p) =>
       result match {
         case Right(values) => p.extract(ctx.request.queryParams) match {
-          case Some(value) => Right(value :: values)
-          case None => Left(p.name :: Nil)
+          case Right(value) => Right(value :: values)
+          case Left(rejection) => Left(rejection :: Nil)
         }
-        case x@ Left(missing) => p.extract(ctx.request.queryParams) match {
-          case Some(_) => x
-          case None => Left(p.name :: missing)
+        case x@ Left(rejections) => p.extract(ctx.request.queryParams) match {
+          case Left(rejection) => Left(rejection :: rejections)
+          case _ => x
         }
       }
     } match {
@@ -31,7 +31,14 @@ private[spray] trait ParameterBuilders {
         case a :: b :: c :: d :: e :: Nil => Right((e, d, c, b, a).asInstanceOf[T])
         case _ => throw new IllegalStateException
       }
-      case Left(missing) => Left(missing.reverse.map(QueryParamRequiredRejection(_)))
+      case Left(rejections) => Left(rejections)
+    }
+  }
+  
+  def parameter(p: RequiredParameter) = filter { ctx =>
+    ctx.request.queryParams.get(p.name) match {
+      case Some(value) if value == p.requiredValue => Right(())
+      case _ => Left(Nil) 
     }
   }
   
@@ -42,5 +49,10 @@ private[spray] trait ParameterBuilders {
 class Param(val name: String, val default: Option[String] = None) {
   def ? : Param = ? ("")
   def ? (default: String) = new Param(name, Some(default))
-  def extract(paramMap: Map[String, String]): Option[String] = paramMap.get(name).orElse(default)
+  def ! (requiredValue: String) = new RequiredParameter(name, requiredValue)
+  def extract(paramMap: Map[String, String]): Either[Rejection, String] = {
+    paramMap.get(name).orElse(default).map(Right(_)).getOrElse(Left(MissingQueryParamRejection(name)))
+  }
 }
+
+class RequiredParameter(val name: String, val requiredValue: String)

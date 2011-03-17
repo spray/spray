@@ -35,7 +35,7 @@ trait HttpServiceLogic {
         Some(HttpResponse(HttpStatus(MethodNotAllowed, "HTTP method not allowed, supported methods: " +
                 methodRejections.mkString(", "))))
       } else {
-        val queryParamRequiredRejections = rejections.collect { case QueryParamRequiredRejection(p) => p } 
+        val queryParamRequiredRejections = rejections.collect { case MissingQueryParamRejection(p) => p } 
         if (!queryParamRequiredRejections.isEmpty) {
           Some(HttpResponse(HttpStatus(NotFound, "Request is missing the following required query parameters: " +
                 queryParamRequiredRejections.mkString(", "))))
