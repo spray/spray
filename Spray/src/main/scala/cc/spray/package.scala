@@ -1,6 +1,7 @@
 package cc
 
 import java.io.File
+import spray.builders.FilterResult
 import spray.http._
 import collection.immutable.LinearSeq
 import spray.utils.{PimpedClass, PimpedLinearSeq}
@@ -14,13 +15,7 @@ package object spray {
   type ContentTypeResolver = (File, Option[Charset]) => ContentType
   type Marshaller = PartialFunction[Any, (List[ContentType], ContentType => RawContent)]
   type Unmarshaller[A] = ContentType => Either[List[ContentTypeRange], BufferContent => A]
-  type RouteFilter[T] = RequestContext => Either[List[Rejection], T]
-  type RouteFilter0 = RouteFilter[Unit]
-  type RouteFilter1 = RouteFilter[String]
-  type RouteFilter2 = RouteFilter[(String, String)]
-  type RouteFilter3 = RouteFilter[(String, String, String)]
-  type RouteFilter4 = RouteFilter[(String, String, String, String)]
-  type RouteFilter5 = RouteFilter[(String, String, String, String, String)]
+  type RouteFilter = RequestContext => FilterResult
   
   private val unmanglingOperators = Map("$eq" -> "=", "$greater" -> ">", "$less" -> "<", "$plus" -> "+",
     "$minus" -> "-", "$times" -> "*", "$div" -> "/", "$bang" -> "!", "$at" -> "@", "$hash" -> "#", "$percent" -> "%",

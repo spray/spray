@@ -5,40 +5,30 @@ private[spray] trait ParameterBuilders {
   this: FilterBuilders =>
   
   def parameter (a: Param) = filter1(build(a :: Nil))
-  def parameters(a: Param, b: Param) = filter2(build(a :: b :: Nil))
-  def parameters(a: Param, b: Param, c: Param) = filter3(build(a :: b :: c :: Nil))
-  def parameters(a: Param, b: Param, c: Param, d: Param) = filter4(build(a :: b :: c :: d :: Nil))
-  def parameters(a: Param, b: Param, c: Param, d: Param, e: Param) = filter5(build(a :: b :: c :: d :: e :: Nil))
+  def parameters(a: Param, b: Param) = filter2(build(b :: a :: Nil))
+  def parameters(a: Param, b: Param, c: Param) = filter3(build(c :: b :: a :: Nil))
+  def parameters(a: Param, b: Param, c: Param, d: Param) = filter4(build(d :: c :: b :: a :: Nil))
+  def parameters(a: Param, b: Param, c: Param, d: Param, e: Param) = filter5(build(e :: d :: c :: b :: a :: Nil))
   
-  private def build[T](params: List[Param]): RouteFilter[T] = { ctx =>
-    params.foldLeft[Either[List[Rejection], List[String]]](Right(Nil)) { (result, p) =>
+  private def build(params: List[Param]): RouteFilter = { ctx =>
+    params.foldLeft[FilterResult](Pass()) { (result, p) =>
       result match {
-        case Right(values) => p.extract(ctx.request.queryParams) match {
-          case Right(value) => Right(value :: values)
-          case Left(rejection) => Left(rejection :: Nil)
+        case Pass(values, _) => p.extract(ctx.request.queryParams) match {
+          case Right(value) => Pass(value :: values)
+          case Left(rejection) => Reject(rejection :: Nil)
         }
-        case x@ Left(rejections) => p.extract(ctx.request.queryParams) match {
-          case Left(rejection) => Left(rejection :: rejections)
+        case x@ Reject(rejections) => p.extract(ctx.request.queryParams) match {
+          case Left(rejection) => Reject(rejection :: rejections)
           case _ => x
         }
       }
-    } match {
-      case Right(values) => values match {
-        case a :: Nil => Right(a.asInstanceOf[T])
-        case a :: b :: Nil => Right((b, a).asInstanceOf[T])
-        case a :: b :: c :: Nil => Right((c, b, a).asInstanceOf[T])
-        case a :: b :: c :: d :: Nil => Right((d, c, b, a).asInstanceOf[T])
-        case a :: b :: c :: d :: e :: Nil => Right((e, d, c, b, a).asInstanceOf[T])
-        case _ => throw new IllegalStateException
-      }
-      case Left(rejections) => Left(rejections)
     }
   }
   
   def parameter(p: RequiredParameter) = filter { ctx =>
     ctx.request.queryParams.get(p.name) match {
-      case Some(value) if value == p.requiredValue => Right(())
-      case _ => Left(Nil) 
+      case Some(value) if value == p.requiredValue => Pass()
+      case _ => Reject() 
     }
   }
   
