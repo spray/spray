@@ -10,7 +10,6 @@ class CachingBuildersSpec extends Specification with SprayTest with ServiceBuild
 
   val Ok = HttpResponse()
   val completeOk: Route = { _.complete(Ok) }
-  val notRun: Route = { _ => fail("Should not run") }
   
   "the cached directive" should {
     val countingService = {
