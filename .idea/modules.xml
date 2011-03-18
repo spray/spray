@@ -2,8 +2,6 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/Examples/Examples.iml" filepath="$PROJECT_DIR$/Examples/Examples.iml" />
-      <module fileurl="file://$PROJECT_DIR$/Spray/Spray.iml" filepath="$PROJECT_DIR$/Spray/Spray.iml" />
       <module fileurl="file://$PROJECT_DIR$/spray.iml" filepath="$PROJECT_DIR$/spray.iml" />
     </modules>
   </component>
