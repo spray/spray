@@ -1,6 +1,7 @@
 package cc.spray
 
 import http._
+import marshalling.{CantMarshal, MarshalWith}
 
 case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit, unmatchedPath: String) {
   
@@ -27,9 +28,14 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
   
   def reject(rejections: Set[Rejection]) { responder(Reject(rejections)) }
 
-  def complete(obj: Any) { complete(ObjectContent(obj)) }
+  def complete[A :Marshaller](obj: A) {
+    marshaller.apply(request.isContentTypeAccepted(_)) match {
+      case MarshalWith(converter) => complete(converter(obj))
+      case CantMarshal(onlyTo) => reject(UnacceptedResponseContentTypeRejection(onlyTo))
+    }
+  }
 
-  def complete(content: HttpContent) { complete(HttpResponse(content = content)) }
+  def complete(content: HttpContent) { complete(HttpResponse(content = Some(content))) }
 
   def complete(response: HttpResponse) { complete(Respond(response)) }
   

@@ -15,5 +15,5 @@ abstract class AbstractUnmarshaller[A] extends Unmarshaller[A] {
   
   def canUnmarshalFrom: List[ContentTypeRange]
   
-  def unmarshal(content: BufferContent): A
+  def unmarshal(content: HttpContent): A
 } 

@@ -37,11 +37,11 @@ trait SprayTest {
    * The default HttpServiceLogic for testing.
    * If you have derived your own CustomHttpServiceLogic that you would like to test, create an implicit conversion
    * similar to this:
-   * implicit def customWrapRootRoute(rootRoute: RootRoute): ServiceTest = new CustomHttpServiceLogic with ServiceTest {
+   * implicit def customWrapRootRoute(rootRoute: Route): ServiceTest = new CustomHttpServiceLogic with ServiceTest {
    *   val route = routeRoute
    * }
    */
-  implicit def wrapRootRoute(rootRoute: RootRoute): ServiceTest = new ServiceTest {
+  implicit def wrapRootRoute(rootRoute: Route): ServiceTest = new ServiceTest {
     val route = rootRoute
   }
   

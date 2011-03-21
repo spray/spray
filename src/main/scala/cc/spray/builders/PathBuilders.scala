@@ -13,7 +13,7 @@ private[spray] trait PathBuilders {
   def path(pattern: PathMatcher4) = filter4(pathFilter(Slash ~ pattern))
   def path(pattern: PathMatcher5) = filter5(pathFilter(Slash ~ pattern))
   
-  private def pathFilter(pattern: PathMatcher): RouteFilter = { ctx =>
+  private def pathFilter(pattern: PathMatcher): RouteFilter[String] = { ctx =>
     pattern(ctx.unmatchedPath) match {
       case Some((remainingPath, captures)) => Pass(captures, { ctx =>
         if (remainingPath == "") {

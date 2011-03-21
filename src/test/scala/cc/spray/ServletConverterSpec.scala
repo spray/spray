@@ -32,22 +32,22 @@ class ServletConverterSpec extends Specification with Mockito {
       "that has the MediaType of the requests Content-Type header and remove the Content-Type header" in (
         convert.toSprayRequest(Hsr("POST", "/path", Map("Content-Type" -> "application/json"), "yes"))
           mustEqual
-        HttpRequest(method = POST, uri = "/path", content = HttpContent(`application/json`, "yes".getBytes))
+        HttpRequest(method = POST, uri = "/path", content = Some(HttpContent(`application/json`, "yes".getBytes)))
       )
       "and mark the content as 'application/octet-stream' if no Content-Type header is present" in (
         convert.toSprayRequest(Hsr("POST", "/path", Map(), "yes"))
           mustEqual
-        HttpRequest(method = POST, uri = "/path", content = HttpContent(`application/octet-stream`, "yes".getBytes))
+        HttpRequest(method = POST, uri = "/path", content = Some(HttpContent(`application/octet-stream`, "yes".getBytes)))
       )
       "and set the charset of the HttpContent to 'ISO-8859-1' for text/* MediaTypes if no explicit charset if given" in (
         convert.toSprayRequest(Hsr("POST", "/path", Map("Content-Type" -> "text/html"), "yes"))
           mustEqual
-        HttpRequest(method = POST, uri = "/path", content = HttpContent(ContentType(`text/html`, `ISO-8859-1`), "yes".getBytes))
+        HttpRequest(method = POST, uri = "/path", content = Some(HttpContent(ContentType(`text/html`, `ISO-8859-1`), "yes".getBytes)))
       )
       "and carry over explicitly given charset from the Content-Type header" in (
         convert.toSprayRequest(Hsr("POST", "/path", Map("Content-Type" -> "text/css; charset=utf8"), "yes"))
           mustEqual
-        HttpRequest(method = POST, uri = "/path", content = HttpContent(ContentType(`text/css`, `UTF-8`), "yes".getBytes))
+        HttpRequest(method = POST, uri = "/path", content = Some(HttpContent(ContentType(`text/css`, `UTF-8`), "yes".getBytes)))
       )
     }
   }

@@ -16,17 +16,17 @@ private[spray] trait SimpleFilterBuilders {
   def put     = method(PUT)
   def trace   = method(TRACE)
   
-  def method(m: HttpMethod) = filter { ctx =>
+  def method(m: HttpMethod): FilterRoute0[String] = filter { ctx =>
     if (ctx.request.method == m) Pass() else Reject(MethodRejection(m)) 
   }
   
-  def host(hostName: String): FilterRoute0 = host(_ == hostName)
+  def host(hostName: String): FilterRoute0[String] = host(_ == hostName)
   
-  def host(predicate: String => Boolean): FilterRoute0 = filter { ctx =>
+  def host(predicate: String => Boolean): FilterRoute0[String] = filter { ctx =>
     if (predicate(ctx.request.host)) Pass() else Reject()
   }
   
-  def host(regex: Regex): FilterRoute1 = filter1 { ctx =>
+  def host(regex: Regex): FilterRoute1[String] = filter1 { ctx =>
     def run(regexMatch: String => Option[String]) = {
       regexMatch(ctx.request.host) match {
         case Some(matched) => Pass(matched :: Nil)

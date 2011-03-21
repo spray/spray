@@ -10,8 +10,8 @@ private[spray] trait ParameterBuilders {
   def parameters(a: Param, b: Param, c: Param, d: Param) = filter4(build(d :: c :: b :: a :: Nil))
   def parameters(a: Param, b: Param, c: Param, d: Param, e: Param) = filter5(build(e :: d :: c :: b :: a :: Nil))
   
-  private def build(params: List[Param]): RouteFilter = { ctx =>
-    params.foldLeft[FilterResult](Pass()) { (result, p) =>
+  private def build(params: List[Param]): RouteFilter[String] = { ctx =>
+    params.foldLeft[FilterResult[String]](Pass()) { (result, p) =>
       result match {
         case Pass(values, _) => p.extract(ctx.request.queryParams) match {
           case Right(value) => Pass(value :: values)

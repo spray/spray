@@ -3,76 +3,73 @@ package builders
 
 private[spray] trait FilterBuilders {
   
-  def filter (filter: RouteFilter) = new FilterRoute0(filter)
-  def filter1(filter: RouteFilter) = new FilterRoute1(filter)
-  def filter2(filter: RouteFilter) = new FilterRoute2(filter)
-  def filter3(filter: RouteFilter) = new FilterRoute3(filter)
-  def filter4(filter: RouteFilter) = new FilterRoute4(filter)
-  def filter5(filter: RouteFilter) = new FilterRoute5(filter)
+  def filter [A](filter: RouteFilter[A]) = new FilterRoute0[A](filter)
+  def filter1[A](filter: RouteFilter[A]) = new FilterRoute1[A](filter)
+  def filter2[A](filter: RouteFilter[A]) = new FilterRoute2[A](filter)
+  def filter3[A](filter: RouteFilter[A]) = new FilterRoute3[A](filter)
+  def filter4[A](filter: RouteFilter[A]) = new FilterRoute4[A](filter)
+  def filter5[A](filter: RouteFilter[A]) = new FilterRoute5[A](filter)
 }
 
-abstract class FilterRoute(val filter: RouteFilter) { self =>
-  protected def fromRouting(f: List[String] => Route): Route = { ctx =>
+abstract class FilterRoute[A](val filter: RouteFilter[A]) { self =>
+  protected def fromRouting(f: List[A] => Route): Route = { ctx =>
     filter(ctx) match {
       case Pass(values, transform) => f(values)(transform(ctx)) 
       case Reject(rejections) => ctx.reject(rejections)
     }
   }
-  protected def chainFilterWith(other: RouteFilter): RouteFilter = { ctx =>
+  protected def chainFilterWith(other: RouteFilter[A]): RouteFilter[A] = { ctx =>
     self.filter(ctx) match {
-      case x: Pass => x
+      case x: Pass[_] => x
       case Reject(rejections1) => other(ctx) match {
-        case x: Pass => x
+        case x: Pass[_] => x
         case Reject(rejections2) => Reject(rejections1 ++ rejections2) 
       }
     }
   } 
 }
 
-class FilterRoute0(filter: RouteFilter) extends FilterRoute(filter) with (Route => Route) {
+class FilterRoute0[A](filter: RouteFilter[A]) extends FilterRoute[A](filter) with (Route => Route) {
   def apply(route: Route) = fromRouting(_ => route) 
-  def | (other: FilterRoute0) = new FilterRoute0(chainFilterWith(other.filter))
+  def | (other: FilterRoute0[A]) = new FilterRoute0[A](chainFilterWith(other.filter))
 }
 
-class FilterRoute1(filter: RouteFilter) extends FilterRoute(filter) with ((String => Route) => Route) {
-  def apply(routing: String => Route) = fromRouting {
+class FilterRoute1[A](filter: RouteFilter[A]) extends FilterRoute[A](filter) with ((A => Route) => Route) {
+  def apply(routing: A => Route) = fromRouting {
     case a :: Nil => routing(a)
     case _ => throw new IllegalStateException
   }
-  def | (other: FilterRoute1) = new FilterRoute1(chainFilterWith(other.filter))
+  def | (other: FilterRoute1[A]) = new FilterRoute1[A](chainFilterWith(other.filter))
 }
 
-class FilterRoute2(filter: RouteFilter) extends FilterRoute(filter) with (((String, String) => Route) => Route) {
-  def apply(routing: (String, String) => Route) = fromRouting {
+class FilterRoute2[A](filter: RouteFilter[A]) extends FilterRoute[A](filter) with (((A, A) => Route) => Route) {
+  def apply(routing: (A, A) => Route) = fromRouting {
     case a :: b :: Nil => routing(a, b)
     case _ => throw new IllegalStateException
   }
-  def | (other: FilterRoute2) = new FilterRoute2(chainFilterWith(other.filter))
+  def | (other: FilterRoute2[A]) = new FilterRoute2[A](chainFilterWith(other.filter))
 }
 
-class FilterRoute3(filter: RouteFilter) extends FilterRoute(filter)
-                                         with (((String, String, String) => Route) => Route) {
-  def apply(routing: (String, String, String) => Route) = fromRouting {
+class FilterRoute3[A](filter: RouteFilter[A]) extends FilterRoute[A](filter) with (((A, A, A) => Route) => Route) {
+  def apply(routing: (A, A, A) => Route) = fromRouting {
     case a :: b :: c :: Nil => routing(a, b, c)
     case _ => throw new IllegalStateException
   }
-  def | (other: FilterRoute3) = new FilterRoute3(chainFilterWith(other.filter))
+  def | (other: FilterRoute3[A]) = new FilterRoute3[A](chainFilterWith(other.filter))
 }
 
-class FilterRoute4(filter: RouteFilter) extends FilterRoute(filter)
-                                         with (((String, String, String, String) => Route) => Route) {
-  def apply(routing: (String, String, String, String) => Route) = fromRouting {
+class FilterRoute4[A](filter: RouteFilter[A]) extends FilterRoute[A](filter) with (((A, A, A, A) => Route) => Route) {
+  def apply(routing: (A, A, A, A) => Route) = fromRouting {
     case a :: b :: c :: d :: Nil => routing(a, b, c, d)
     case _ => throw new IllegalStateException
   }
-  def | (other: FilterRoute4) = new FilterRoute4(chainFilterWith(other.filter))
+  def | (other: FilterRoute4[A]) = new FilterRoute4[A](chainFilterWith(other.filter))
 }
 
-class FilterRoute5(filter: RouteFilter) extends FilterRoute(filter)
-                                         with (((String, String, String, String, String) => Route) => Route) {
-  def apply(routing: (String, String, String, String, String) => Route) = fromRouting {
+class FilterRoute5[A](filter: RouteFilter[A]) extends FilterRoute[A](filter) with (((A, A, A, A, A) => Route) => Route) {
+  def apply(routing: (A, A, A, A, A) => Route) = fromRouting {
     case a :: b :: c :: d :: e :: Nil => routing(a, b, c, d, e)
     case _ => throw new IllegalStateException
   }
-  def | (other: FilterRoute5) = new FilterRoute5(chainFilterWith(other.filter))
+  def | (other: FilterRoute5[A]) = new FilterRoute5[A](chainFilterWith(other.filter))
 }

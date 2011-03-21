@@ -4,7 +4,7 @@ import HttpStatusCodes._
 
 case class HttpResponse(status: HttpStatus = OK,
                         headers: List[HttpHeader] = Nil,
-                        content: HttpContent = EmptyContent) {
+                        content: Option[HttpContent] = None) {
 
   def isSuccess: Boolean = status.code.isInstanceOf[HttpSuccess]
   

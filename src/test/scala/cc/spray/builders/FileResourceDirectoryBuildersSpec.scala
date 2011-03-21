@@ -34,7 +34,7 @@ class FileResourceDirectoryBuildersSpec extends Specification with SprayTest wit
       FileUtils.writeAllText("This is PDF", file)
       test(HttpRequest(GET)) {
         getFromFile(file.getPath)
-      }.response mustEqual HttpResponse(content = HttpContent(`application/pdf`, "This is PDF"))
+      }.response.content mustEqual Some(HttpContent(`application/pdf`, "This is PDF"))
       file.delete
     }
     "return the file content with MediaType 'application/octet-stream' on unknown file extensions" in {
@@ -42,7 +42,7 @@ class FileResourceDirectoryBuildersSpec extends Specification with SprayTest wit
       FileUtils.writeAllText("Some content", file)
       test(HttpRequest(GET)) {
         getFromFile(file.getPath)
-      }.response mustEqual HttpResponse(content = HttpContent(`application/octet-stream`, "Some content"))
+      }.response.content mustEqual Some(HttpContent(`application/octet-stream`, "Some content"))
       file.delete
     }
   }
@@ -61,12 +61,12 @@ class FileResourceDirectoryBuildersSpec extends Specification with SprayTest wit
     "return the resource content with the MediaType matching the file extension" in {
       test(HttpRequest(GET)) {
         getFromResource("sample.html")
-      }.response mustEqual HttpResponse(content = HttpContent(`text/html`, "<p>Lorem ipsum!</p>"))
+      }.response.content mustEqual Some(HttpContent(`text/html`, "<p>Lorem ipsum!</p>"))
     }
     "return the file content with MediaType 'application/octet-stream' on unknown file extensions" in {
       test(HttpRequest(GET)) {
         getFromResource("sample.xyz")
-      }.response mustEqual HttpResponse(content = HttpContent(`application/octet-stream`, "XyZ"))
+      }.response.content mustEqual Some(HttpContent(`application/octet-stream`, "XyZ"))
     }
   }
   
@@ -79,7 +79,7 @@ class FileResourceDirectoryBuildersSpec extends Specification with SprayTest wit
     "return the resource content with the MediaType matching the file extension" in {
       test(HttpRequest(GET, "subDirectory/empty.pdf")) {
         getFromResourceDirectory("")
-      }.response mustEqual HttpResponse(content = HttpContent(`application/pdf`, ""))
+      }.response.content mustEqual Some(HttpContent(`application/pdf`, ""))
     }
   }
   

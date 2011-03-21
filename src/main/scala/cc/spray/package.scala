@@ -12,9 +12,9 @@ package object spray {
 
   type Route = RequestContext => Unit
   type ContentTypeResolver = (File, Option[Charset]) => ContentType
-  type Marshaller = PartialFunction[Any, Marshalling]
+  type Marshaller[A] = (ContentType => Boolean) => Marshalling[A]
   type Unmarshaller[A] = ContentType => Unmarshalling[A]
-  type RouteFilter = RequestContext => FilterResult
+  type RouteFilter[A] = RequestContext => FilterResult[A]
   
   private val unmanglingOperators = Map("$eq" -> "=", "$greater" -> ">", "$less" -> "<", "$plus" -> "+",
     "$minus" -> "-", "$times" -> "*", "$div" -> "/", "$bang" -> "!", "$at" -> "@", "$hash" -> "#", "$percent" -> "%",
@@ -26,6 +26,8 @@ package object spray {
   
   def make[A, U](a: A)(f: A => U): A = { f(a); a }
   
+  def marshaller[T](implicit m: Marshaller[T]) = m
+  def unmarshaller[T](implicit um: Unmarshaller[T]) = um
   
   // implicits
   

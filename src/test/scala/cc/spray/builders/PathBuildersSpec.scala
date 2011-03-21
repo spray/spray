@@ -20,21 +20,21 @@ class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder 
     }
     "let matching requests pass and adapt RequestContext.unmatchedPath" in {
       test(HttpRequest(GET, "/noway/this/works")) {
-        path("noway") { ctx => ctx.responder(Respond(HttpResponse(content = ObjectContent(ctx.unmatchedPath)))) }
+        path("noway") { ctx => ctx.responder(Respond(HttpResponse(content = Some(HttpContent(ctx.unmatchedPath))))) }
       }.response.content.as[String] mustEqual Right("/this/works")
     }
     "be stackable" in {
       "within one single path(...) combinator" in {
         test(HttpRequest(GET, "/noway/this/works")) {
           path("noway" / "this" / "works" ~ Remaining) { remaining =>
-            get { _.responder(Respond(HttpResponse(content = ObjectContent(remaining)))) }
+            get { _.responder(Respond(HttpResponse(content = Some(HttpContent(remaining))))) }
           }
         }.response.content.as[String] mustEqual Right("")
       }
       "when nested" in {
         test(HttpRequest(GET, "/noway/this/works")) {
           path("noway") {
-            path("this") { ctx => ctx.responder(Respond(HttpResponse(content = ObjectContent(ctx.unmatchedPath)))) }
+            path("this") { ctx => ctx.responder(Respond(HttpResponse(content = Some(HttpContent(ctx.unmatchedPath))))) }
           }
         }.response.content.as[String] mustEqual Right("/works")
       }
@@ -58,14 +58,14 @@ class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder 
       "when the regex is a simple regex" in {
         test(HttpRequest(GET, "/noway/this/works")) {
           path("no[^/]+".r) { capture =>
-            get { ctx => ctx.responder(Respond(HttpResponse(content = ObjectContent(capture + ":" + ctx.unmatchedPath)))) }
+            get { ctx => ctx.responder(Respond(HttpResponse(content = Some(HttpContent(capture + ":" + ctx.unmatchedPath))))) }
           }
         }.response.content.as[String] mustEqual Right("noway:/this/works")
       }
       "when the regex is a group regex" in {
         test(HttpRequest(GET, "/noway/this/works")) {
           path("no([^/]+)".r) { capture =>
-            get { ctx => ctx.responder(Respond(HttpResponse(content = ObjectContent(capture + ":" + ctx.unmatchedPath)))) }
+            get { ctx => ctx.responder(Respond(HttpResponse(content = Some(HttpContent(capture + ":" + ctx.unmatchedPath))))) }
           }
         }.response.content.as[String] mustEqual Right("way:/this/works")
       }

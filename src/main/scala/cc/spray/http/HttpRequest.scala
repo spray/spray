@@ -2,15 +2,15 @@ package cc.spray.http
 
 import java.net.URI
 import HttpHeaders._
-import HttpStatusCodes._
+import HttpVersions._
 import parser.QueryParser
 
 case class HttpRequest(method: HttpMethod = HttpMethods.GET,
                        uri: String = "",
                        headers: List[HttpHeader] = Nil,
-                       content: HttpContent = EmptyContent,
+                       content: Option[HttpContent] = None,
                        remoteHost: Option[HttpIp] = None,
-                       version: Option[HttpVersion] = Some(HttpVersions.`HTTP/1.1`)) {
+                       version: Option[HttpVersion] = Some(`HTTP/1.1`)) {
   
   lazy val URI = new URI(uri)
   

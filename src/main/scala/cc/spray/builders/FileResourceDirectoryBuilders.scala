@@ -16,7 +16,7 @@ private[spray] trait FileResourceDirectoryBuilders {
       get {
         _.complete {
           Option(FileUtils.readAllBytes(fileName)).map { buffer =>
-            HttpResponse(content = HttpContent(resolver(new File(fileName), charset), buffer))
+            HttpResponse(content = Some(HttpContent(resolver(new File(fileName), charset), buffer)))
           }.getOrElse(HttpResponse(NotFound))
         } 
       }
@@ -29,7 +29,7 @@ private[spray] trait FileResourceDirectoryBuilders {
       get {
         _.complete {
           Option(FileUtils.readAllBytesFromResource(resourceName)).map { buffer =>
-            HttpResponse(content = HttpContent(resolver(new File(resourceName), charset), buffer))
+            HttpResponse(content = Some(HttpContent(resolver(new File(resourceName), charset), buffer)))
           }.getOrElse(HttpResponse(NotFound))
         } 
       }

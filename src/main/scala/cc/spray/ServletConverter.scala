@@ -32,15 +32,15 @@ trait ServletConverter {
     }
   }
 
-  protected def readContent(request: HttpServletRequest, header: Option[`Content-Type`]): HttpContent = {
+  protected def readContent(request: HttpServletRequest, header: Option[`Content-Type`]): Option[HttpContent] = {
     val bytes = IOUtils.toByteArray(request.getInputStream)
     if (bytes.length > 0) {
       // so far we do not guess the content-type
       // see http://www.w3.org/Protocols/rfc2616/rfc2616-sec7.html#sec7.2.1
       val contentType = header.map(_.contentType).getOrElse(ContentType(`application/octet-stream`))
-      HttpContent(contentType, bytes)
+      Some(HttpContent(contentType, bytes))
     } else {
-      EmptyContent
+      None
     }
   }
   
@@ -63,17 +63,16 @@ trait ServletConverter {
         hsr.setHeader(name, value)
       }
       response.content match {
-        case buffer: BufferContent => {
+        case Some(buffer) => {
           hsr.setContentLength(buffer.length)
           hsr.setContentType(buffer.contentType.value)
           IOUtils.copy(buffer.inputStream, hsr.getOutputStream)
         }
-        case EmptyContent => if (!response.isSuccess) {
+        case None => if (!response.isSuccess) {
           hsr.setContentType("text/plain")
           hsr.getWriter.write(response.status.reason)
           hsr.getWriter.close()
         }
-        case ObjectContent(_) => throw new IllegalStateException // should always be converted by "service" directive
       }
       hsr.flushBuffer()
     }

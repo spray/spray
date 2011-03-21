@@ -19,119 +19,67 @@ class UnMarshallingBuildersSpec extends Specification with SprayTest with Servic
                            ContentTypeRange(`text/html`) ::
                            ContentTypeRange(`application/xhtml+xml`) :: Nil
 
-    def unmarshal(content: BufferContent): Int = XML.load(content.inputStream).text.toInt
+    def unmarshal(content: HttpContent): Int = XML.load(content.inputStream).text.toInt
   }
   
-  object IntMarshaller extends AbstractMarshaller[Int] {
-    def canMarshalTo = ContentType(`application/xhtml+xml`) :: ContentType(`text/xml`, `UTF-8`) :: Nil
+  implicit object IntMarshaller extends AbstractMarshaller[Int] {
+    val canMarshalTo = ContentType(`application/xhtml+xml`) :: ContentType(`text/xml`, `UTF-8`) :: Nil
     def marshal(value: Int, contentType: ContentType) = NodeSeqMarshaller.marshal(<int>{value}</int>, contentType)
   }
   
-  implicit val marshaller = IntMarshaller orElse DefaultMarshaller
-  
-  "The 'service' directive" should {
-    "not change failure results" in {
-      testService(HttpRequest(GET)) {
-        service { _.fail(InternalServerError, "NOPE") }
-      }.response mustEqual HttpResponse(HttpStatus(InternalServerError, "NOPE"))
-    }
-    "return EmptyContent unchanged" in {
-      testService(HttpRequest(GET)) {
-        service { _.complete(EmptyContent) }
-      }.response mustEqual HttpResponse()
-    }
-    "convert ObjectContent to BufferContent using the default marshaller" in {
-      testService(HttpRequest(GET)) {
-        service { _.complete(<p>yes</p>) }
-      }.response.content.as[String] mustEqual Right("<p>yes</p>")
-    }
-    "convert ObjectContent to BufferContent using the in-scope marshaller" in {
-      testService(HttpRequest(GET)) {
-        service { _.complete(42) }
-      }.response mustEqual HttpResponse(content = HttpContent(ContentType(`application/xhtml+xml`), "<int>42</int>"))
-    }
-    "return an InternalServerError response if no marshaller is in scope" in {
-      testService(HttpRequest(GET)) {
-        service { _.complete(42.0) }
-      }.response mustEqual failure(InternalServerError, "No marshaller for response content '42.0'")
-    }
-    "return a NotAcceptable response if no acceptable marshaller is in scope" in {
-      testService(HttpRequest(GET, headers = List(`Accept`(`text/css`)))) {
-        service { _.complete(42) }
-      }.response mustEqual
-              failure(NotAcceptable, "Resource representation is only available with these content-types:\n" +
-              "application/xhtml+xml\ntext/xml; charset=UTF-8")
-    }
-    "let acceptable BufferContent pass" in {
-      testService(HttpRequest(GET, headers = List(`Accept`(`text/css`)))) {
-        service { _.complete(HttpContent(`text/css`, "CSS")) }
-      }.response mustEqual HttpResponse(content = HttpContent(ContentType(`text/css`), "CSS"))
-    }
-    "return an InternalServerError if the response BufferContent is not accepted by the client" in {
-      testService(HttpRequest(GET, headers = List(`Accept`(`text/css`)))) {
-        service { _.complete(HttpContent(`text/plain`, "CSS")) }
-      }.response mustEqual failure(InternalServerError, "Response BufferContent has unacceptable Content-Type")
-    }
-  }
-  
   "The 'contentAs' directive" should {
-    "convert BufferContent to ObjectContent using the in-scope Unmarshaller" in {
-      test(HttpRequest(PUT, content = HttpContent(ContentType(`text/xml`), "<p>cool</p>"))) {
-        contentAs[NodeSeq] { ctx => ctx.complete(ctx.request.content.asInstanceOf[ObjectContent].value) }
-      }.response.content mustEqual ObjectContent(<p>cool</p>) 
+    "extract an object from the requests HttpContent using the in-scope Unmarshaller" in {
+      test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/xml`), "<p>cool</p>")))) {
+        contentAs[NodeSeq] { xml => _.complete(xml) }
+      }.response.content.as[NodeSeq] mustEqual Right(<p>cool</p>) 
     }
-    "return a BadRequest response if the request has no entity" in {
+    "return a RequestEntityExpectedRejection rejection if the request has no entity" in {
       test(HttpRequest(PUT)) {
         contentAs[NodeSeq] { _ => fail("Should not run") }
-      }.response mustEqual failure(BadRequest, "Request entity expected")
+      }.rejections mustEqual Set(RequestEntityExpectedRejection)
     }
-    "return an UnsupportedMediaType response if no matching unmarshaller is in scope" in {
-      test(HttpRequest(PUT, content = HttpContent(ContentType(`text/css`), "<p>cool</p>"))) {
+    "return an UnsupportedRequestContentTypeRejection if no matching unmarshaller is in scope" in {
+      test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/css`), "<p>cool</p>")))) {
         contentAs[NodeSeq] { _ => fail("Should not run") }
-      }.response mustEqual failure(UnsupportedMediaType, "The requests content-type must be one the following:\n" +
-        "text/xml\ntext/html\napplication/xhtml+xml")
+      }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(NodeSeqUnmarshaller.canUnmarshalFrom))
     }
   }
   
-  "The 'getContentAs' directive" should {
-    "extract an object from the requests BufferContent using the in-scope Unmarshaller" in {
-      test(HttpRequest(PUT, content = HttpContent(ContentType(`text/xml`), "<p>cool</p>"))) {
-        getContentAs[NodeSeq] { xml => _.complete(xml) }
-      }.response.content mustEqual ObjectContent(<p>cool</p>) 
+  "The 'produces' directive" should {
+    "provide a completion function converting custom objects to HttpContent using the in-scope marshaller" in {
+      test(HttpRequest(GET)) {
+        produces[Int] { produce =>
+          _ => produce(42)
+        }
+      }.response.content mustEqual Some(HttpContent(ContentType(`application/xhtml+xml`), "<int>42</int>"))
     }
-    "return a BadRequest response if the request has no entity" in {
-      test(HttpRequest(PUT)) {
-        getContentAs[NodeSeq] { _ => fail("Should not run") }
-      }.response mustEqual failure(BadRequest, "Request entity expected")
-    }
-    "return an UnsupportedMediaType response if no matching unmarshaller is in scope" in {
-      test(HttpRequest(PUT, content = HttpContent(ContentType(`text/css`), "<p>cool</p>"))) {
-        getContentAs[NodeSeq] { _ => fail("Should not run") }
-      }.response mustEqual failure(UnsupportedMediaType, "The requests content-type must be one the following:\n" +
-        "text/xml\ntext/html\napplication/xhtml+xml")
+    "return a UnacceptedResponseContentTypeRejection rejection if no acceptable marshaller is in scope" in {
+      test(HttpRequest(GET, headers = List(`Accept`(`text/css`)))) {
+        produces[Int] { produce =>
+          _ => produce(42)
+        }
+      }.rejections mustEqual Set(UnacceptedResponseContentTypeRejection(IntMarshaller.canMarshalTo))
     }
   }
   
   "The 'handledBy' directive" should {
     "support proper round-trip content unmarshalling/marshalling to and from a function" in {
-      testService(HttpRequest(PUT, headers = List(Accept(`text/xml`)),
-        content = HttpContent(ContentType(`text/html`), "<int>42</int>"))) {
-        service { handledBy { (x: Int) => x * 2 } }
-      }.response.content mustEqual HttpContent(ContentType(`text/xml`, `UTF-8`), "<int>84</int>")
+      test(HttpRequest(PUT, headers = List(Accept(`text/xml`)),
+        content = Some(HttpContent(ContentType(`text/html`), "<int>42</int>")))) {
+        handledBy { (x: Int) => x * 2 }
+      }.response.content mustEqual Some(HttpContent(ContentType(`text/xml`, `UTF-8`), "<int>84</int>"))
     }
-    "result in an UnsupportedMediaType error if there is no unmarshaller supporting the requests charset" in {
-      testService(HttpRequest(PUT, headers = List(Accept(`text/xml`)),
-        content = HttpContent(ContentType(`text/xml`, `UTF-8`), "<int>42</int>"))) {
-        service { handledBy { (x: Int) => x * 2 } }
-      }.response mustEqual failure(UnsupportedMediaType, "The requests content-type must be one the following:\n" +
-        "text/xml; charset=ISO-8859-2\ntext/html\napplication/xhtml+xml")
+    "result in UnsupportedRequestContentTypeRejection rejection if there is no unmarshaller supporting the requests charset" in {
+      test(HttpRequest(PUT, headers = List(Accept(`text/xml`)),
+        content = Some(HttpContent(ContentType(`text/xml`, `UTF-8`), "<int>42</int>")))) {
+        handledBy { (x: Int) => x * 2 }
+      }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(IntUnmarshaller.canUnmarshalFrom))
     }
-    "result in an NotAcceptable error if there is no marshaller supporting the requests Accept-Charset header" in {
-      testService(HttpRequest(PUT, headers = List(Accept(`text/xml`), `Accept-Charset`(`UTF-16`)),
-        content = HttpContent(ContentType(`text/html`), "<int>42</int>"))) {
-        service { handledBy { (x: Int) => x * 2 } }
-      }.response mustEqual failure(NotAcceptable, "Resource representation is only available with these content-types:\n" +
-              "application/xhtml+xml\ntext/xml; charset=UTF-8")
+    "result in an UnacceptedResponseContentTypeRejection rejection if there is no marshaller supporting the requests Accept-Charset header" in {
+      test(HttpRequest(PUT, headers = List(Accept(`text/xml`), `Accept-Charset`(`UTF-16`)),
+        content = Some(HttpContent(ContentType(`text/html`), "<int>42</int>")))) {
+        handledBy { (x: Int) => x * 2 }
+      }.rejections mustEqual Set(UnacceptedResponseContentTypeRejection(IntMarshaller.canMarshalTo))
     }
   }
   
