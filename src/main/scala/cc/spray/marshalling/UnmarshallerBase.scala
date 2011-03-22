@@ -3,7 +3,7 @@ package marshalling
 
 import http._
 
-abstract class AbstractUnmarshaller[A] extends Unmarshaller[A] {
+trait UnmarshallerBase[A] extends Unmarshaller[A] {
 
   def apply(contentType: ContentType) = {
     if (canUnmarshalFrom.exists(_.matches(contentType))) {

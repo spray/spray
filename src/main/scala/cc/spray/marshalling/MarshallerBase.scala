@@ -3,7 +3,7 @@ package marshalling
 
 import http._
 
-abstract class AbstractMarshaller[A] extends Marshaller[A] {
+trait MarshallerBase[A] extends Marshaller[A] {
 
   def apply(accept: ContentType => Boolean) = {
     canMarshalTo.find(accept) match {

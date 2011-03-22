@@ -9,12 +9,12 @@ import HttpStatusCodes._
 import MediaTypes._
 import Charsets._
 import test.SprayTest
-import marshalling.{AbstractUnmarshaller, AbstractMarshaller}
+import marshalling.{UnmarshallerBase, MarshallerBase}
 import xml.{XML, NodeSeq}
 
 class UnMarshallingBuildersSpec extends Specification with SprayTest with ServiceBuilder {
   
-  implicit object IntUnmarshaller extends AbstractUnmarshaller[Int] {
+  implicit object IntUnmarshaller extends UnmarshallerBase[Int] {
     val canUnmarshalFrom = ContentTypeRange(`text/xml`, `ISO-8859-2`) ::
                            ContentTypeRange(`text/html`) ::
                            ContentTypeRange(`application/xhtml+xml`) :: Nil
@@ -22,7 +22,7 @@ class UnMarshallingBuildersSpec extends Specification with SprayTest with Servic
     def unmarshal(content: HttpContent): Int = XML.load(content.inputStream).text.toInt
   }
   
-  implicit object IntMarshaller extends AbstractMarshaller[Int] {
+  implicit object IntMarshaller extends MarshallerBase[Int] {
     val canMarshalTo = ContentType(`application/xhtml+xml`) :: ContentType(`text/xml`, `UTF-8`) :: Nil
     def marshal(value: Int, contentType: ContentType) = NodeSeqMarshaller.marshal(<int>{value}</int>, contentType)
   }

@@ -8,7 +8,7 @@ import xml.{XML, NodeSeq}
 
 trait DefaultUnmarshallers {
   
-  implicit object StringUnmarshaller extends AbstractUnmarshaller[String] {
+  implicit object StringUnmarshaller extends UnmarshallerBase[String] {
     val canUnmarshalFrom = List(ContentTypeRange(`text/*`))
 
     def unmarshal(content: HttpContent): String = {
@@ -18,7 +18,7 @@ trait DefaultUnmarshallers {
     }
   }
   
-  implicit object NodeSeqUnmarshaller extends AbstractUnmarshaller[NodeSeq] {
+  implicit object NodeSeqUnmarshaller extends UnmarshallerBase[NodeSeq] {
     val canUnmarshalFrom = ContentTypeRange(`text/xml`) ::
                            ContentTypeRange(`text/html`) ::
                            ContentTypeRange(`application/xhtml+xml`) :: Nil
