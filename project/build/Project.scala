@@ -29,7 +29,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaProject {
   
   Credentials(Path.userHome / ".ivy2" / ".credentials", log)
   override def managedStyle = ManagedStyle.Maven
-  override def packageDocsJar = defaultJarPath("-javadocs.jar")
+  override def packageDocsJar = defaultJarPath("-scaladoc.jar")
   override def packageSrcJar = defaultJarPath("-sources.jar")
   val sourceArtifact = Artifact(artifactID, "src", "jar", Some("sources"), Nil, None)
   val docsArtifact = Artifact(artifactID, "docs", "jar", Some("javadocs"), Nil, None)
