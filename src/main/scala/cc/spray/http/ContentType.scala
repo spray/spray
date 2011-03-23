@@ -37,5 +37,7 @@ object ContentType {
     new ContentType(mediaType, if (mediaType.isText && charset.isEmpty) Some(`ISO-8859-1`) else charset)
   }
   
+  def unapply(ct: ContentType): Option[(MediaType, Option[Charset])] = Some((ct.mediaType, ct.charset))
+  
   implicit def fromMimeType(mimeType: MediaType): ContentType = ContentType(mimeType) 
 }                     

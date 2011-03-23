@@ -12,4 +12,5 @@ case class HttpResponse(status: HttpStatus = OK,
   
   def isFailure: Boolean = status.code.isInstanceOf[HttpFailure]
   
+  def withContentTransformed(f: HttpContent => HttpContent): HttpResponse = copy(content = content.map(f))
 }

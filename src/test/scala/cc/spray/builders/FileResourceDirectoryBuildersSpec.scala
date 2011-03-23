@@ -11,7 +11,7 @@ import util.Properties
 import java.io.File
 import test._
 
-class FileResourceDirectoryBuildersSpec extends Specification with SprayTest with ServiceBuilderNoDetach {
+class FileResourceDirectoryBuildersSpec extends Specification with SprayTest with DontDetach {
 
   "getFromFile" should {
     "block non-GET requests" in {
@@ -72,14 +72,21 @@ class FileResourceDirectoryBuildersSpec extends Specification with SprayTest wit
   
   "getFromResourceDirectory" should {
     "return a 404 for non-existing resources" in {
-      test(HttpRequest(GET, "/not/found")) {
+      test(HttpRequest(GET, "not/found")) {
         getFromResourceDirectory("subDirectory")
       }.response mustEqual failure(404)
     }
     "return the resource content with the MediaType matching the file extension" in {
-      test(HttpRequest(GET, "subDirectory/empty.pdf")) {
-        getFromResourceDirectory("")
-      }.response.content mustEqual Some(HttpContent(`application/pdf`, ""))
+      "example 1" in {
+        test(HttpRequest(GET, "empty.pdf")) {
+          getFromResourceDirectory("subDirectory")
+        }.response.content mustEqual Some(HttpContent(`application/pdf`, ""))
+      }
+      "example 2" in {
+        test(HttpRequest(GET, "subDirectory/empty.pdf")) {
+          getFromResourceDirectory("")
+        }.response.content mustEqual Some(HttpContent(`application/pdf`, ""))
+      }
     }
   }
   

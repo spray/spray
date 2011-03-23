@@ -26,7 +26,8 @@ trait DefaultUnmarshallers {
     def unmarshal(content: HttpContent): NodeSeq = XML.load(content.inputStream)
   }
   
-  implicit def pimpHttpContentWithAs(c: Option[HttpContent]): HttpContentExtractor = new HttpContentExtractor(c) 
+  implicit def pimpHttpContentWithAs1(c: HttpContent): HttpContentExtractor = new HttpContentExtractor(Some(c)) 
+  implicit def pimpHttpContentWithAs2(c: Option[HttpContent]): HttpContentExtractor = new HttpContentExtractor(c)
   
   class HttpContentExtractor(content: Option[HttpContent]) {
     def as[A](implicit unmarshaller: Unmarshaller[A]): Either[Rejection, A] = content match {
