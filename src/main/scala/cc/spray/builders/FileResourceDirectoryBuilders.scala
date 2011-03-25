@@ -54,16 +54,17 @@ private[spray] trait FileResourceDirectoryBuilders {
   
   def getFromDirectory(directoryName: String, charset: Option[Charset] = None,
                        pathRewriter: String => String = identity)
-                      (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = { ctx =>
-    getFromFile(directoryName + "/" + pathRewriter(ctx.unmatchedPath), charset).apply(ctx.copy(unmatchedPath = ""))
+                      (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {
+    val base = if (directoryName.endsWith("/")) directoryName else directoryName + "/";
+    { ctx => getFromFile(base + pathRewriter(ctx.unmatchedPath), charset).apply(ctx.copy(unmatchedPath = "")) }
   }
   
   def getFromResourceDirectory(directoryName: String, charset: Option[Charset] = None,
                                pathRewriter: String => String = identity)
                               (implicit detachedActorFactory: Route => Actor,
-                               resolver: ContentTypeResolver): Route = { ctx =>
-    val path = if (directoryName.isEmpty) "" else directoryName + "/"
-    getFromResource(path + pathRewriter(ctx.unmatchedPath), charset).apply(ctx.copy(unmatchedPath = ""))
+                               resolver: ContentTypeResolver): Route = {
+    val base = if (directoryName.isEmpty) "" else directoryName + "/";
+    { ctx => getFromResource(base + pathRewriter(ctx.unmatchedPath), charset).apply(ctx.copy(unmatchedPath = "")) }
   }
   
   // implicits
