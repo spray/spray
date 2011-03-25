@@ -32,7 +32,7 @@ trait HttpServiceActor extends HttpServiceLogic with Actor with Logging {
 
   protected[spray] def responderForRequest(request: HttpRequest) = new (RoutingResult => Unit) {
     val channel = self.channel    
-    def apply(rr:RoutingResult) = channel ! responseFromRoutingResult(rr)
+    def apply(rr:RoutingResult) { channel ! responseFromRoutingResult(rr) }
   }
 
   override protected[spray] def responseForException(request: HttpRequest, e: Exception) = {
