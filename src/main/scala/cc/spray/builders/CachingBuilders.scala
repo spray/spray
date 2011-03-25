@@ -26,7 +26,7 @@ private[spray] trait CachingBuilders {
     private val cache = WeakHashMap.empty[Any, HttpResponse]
     
     def apply(ctx: RequestContext) {
-      val key = if (ctx.request.method == HttpMethods.GET) keyer(ctx) else DontCache
+      val key = keyer(ctx) 
       if (key eq DontCache) {
         route(ctx)
       } else {
@@ -45,10 +45,23 @@ private[spray] trait CachingBuilders {
   
   // implicits  
   
-  implicit def defaultCacheKeyer(ctx: RequestContext): CacheKey = CacheOn(ctx.request.uri)
+  implicit def defaultCacheKeyer(ctx: RequestContext): CacheKey = {
+    if (ctx.request.method == HttpMethods.GET) CacheOn(ctx.request.uri) else DontCache
+  }
   
 }
 
+/**
+ * The result of the implicit cache keyer function argument to the 'cached' directive. 
+ */
 sealed trait CacheKey
+
+/**
+ * When the cache keyer function returns an instance of this class this instance is used as the key into the cache.
+ */
 case class CacheOn(key: Any) extends CacheKey
+
+/**
+ * When the cache keyer function returns this object the request will not be cached.
+ */
 case object DontCache extends CacheKey
