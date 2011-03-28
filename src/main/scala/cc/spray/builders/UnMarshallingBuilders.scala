@@ -32,6 +32,17 @@ private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with Defau
     filterRoute(routing) 
   }
   
+  def optionalContentAs[A :Unmarshaller](routing: Option[A] => Route): Route = {
+    val filterRoute = filter1 { ctx =>
+      ctx.request.content.as[A] match {
+        case Right(a) => Pass(Some(a) :: Nil)
+        case Left(RequestEntityExpectedRejection) => Pass(None :: Nil)
+        case Left(rejection) => Reject(rejection)
+      }
+    }
+    filterRoute(routing) 
+  }
+  
   def produces[A](routing: (A => Unit) => Route)(implicit marshaller: Marshaller[A]): Route = {
     val filterRoute = filter1 { ctx =>
       marshaller(ctx.request.isContentTypeAccepted(_)) match {

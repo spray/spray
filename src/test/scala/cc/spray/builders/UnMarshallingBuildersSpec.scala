@@ -61,6 +61,24 @@ class UnMarshallingBuildersSpec extends Specification with SprayTest with Servic
     }
   }
   
+  "The 'optionalContentAs' directive" should {
+    "extract an object from the requests HttpContent using the in-scope Unmarshaller" in {
+      test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/xml`), "<p>cool</p>")))) {
+        optionalContentAs[NodeSeq] { optXml => _.complete(optXml.get) }
+      }.response.content.as[NodeSeq] mustEqual Right(<p>cool</p>) 
+    }
+    "extract None if the request has no entity" in {
+      test(HttpRequest(PUT)) {
+        optionalContentAs[NodeSeq] { optXml => _.complete(optXml.toString) }
+      }.response.content.as[String] mustEqual Right("None")
+    }
+    "return an UnsupportedRequestContentTypeRejection if no matching unmarshaller is in scope" in {
+      test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/css`), "<p>cool</p>")))) {
+        optionalContentAs[NodeSeq] { _ => fail("Should not run") }
+      }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(NodeSeqUnmarshaller.canUnmarshalFrom))
+    }
+  }
+  
   "The 'produces' directive" should {
     "provide a completion function converting custom objects to HttpContent using the in-scope marshaller" in {
       test(HttpRequest(GET)) {
