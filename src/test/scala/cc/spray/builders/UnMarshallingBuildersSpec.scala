@@ -35,7 +35,7 @@ class UnMarshallingBuildersSpec extends Specification with SprayTest with Servic
                            ContentTypeRange(`text/html`) ::
                            ContentTypeRange(`application/xhtml+xml`) :: Nil
 
-    def unmarshal(content: HttpContent): Int = XML.load(content.inputStream).text.toInt
+    def unmarshal(content: HttpContent) = protect { XML.load(content.inputStream).text.toInt }
   }
   
   implicit object IntMarshaller extends MarshallerBase[Int] {

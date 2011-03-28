@@ -53,6 +53,7 @@ trait HttpServiceLogic {
     handleUnsupportedRequestContentTypeRejections(r) orElse
     handleRequestEntityExpectedRejection(r) orElse
     handleUnacceptedResponseContentTypeRejection(r) orElse
+    handleMalformedRequestContentRejection(r) orElse
     handleCustomRejections(r) 
   }
   
@@ -99,6 +100,15 @@ trait HttpServiceLogic {
       case supported :: _ => {
         Some(HttpResponse(HttpStatus(NotAcceptable, "Resource representation is only available with these " +
                   "content-types:\n" + supported.map(_.value).mkString("\n"))))
+      }
+    } 
+  }
+  
+  protected def handleMalformedRequestContentRejection(rejections: List[Rejection]): Option[HttpResponse] = {
+    (rejections.collect { case MalformedRequestContentRejection(msg) => msg }) match {
+      case Nil => None
+      case msg :: _ => {
+        Some(HttpResponse(HttpStatus(BadRequest, "The request content was malformed:\n" + msg)))
       }
     } 
   }

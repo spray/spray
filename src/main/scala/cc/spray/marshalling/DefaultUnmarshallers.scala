@@ -27,10 +27,9 @@ trait DefaultUnmarshallers {
   implicit object StringUnmarshaller extends UnmarshallerBase[String] {
     val canUnmarshalFrom = List(ContentTypeRange(`text/*`))
 
-    def unmarshal(content: HttpContent): String = {
-      new String(content.buffer, content.contentType.charset.map(_.nioCharset).getOrElse {
-        throw new IllegalStateException // text content should always have a Charset set
-      }) 
+    def unmarshal(content: HttpContent) = content.contentType.charset match {
+      case Some(cs) => Right(new String(content.buffer, cs.nioCharset))
+      case None => throw new IllegalStateException // text content should always have a Charset set
     }
   }
   
@@ -39,7 +38,7 @@ trait DefaultUnmarshallers {
                            ContentTypeRange(`text/html`) ::
                            ContentTypeRange(`application/xhtml+xml`) :: Nil
 
-    def unmarshal(content: HttpContent): NodeSeq = XML.load(content.inputStream)
+    def unmarshal(content: HttpContent) = protect { XML.load(content.inputStream) }
   }
   
   implicit def pimpHttpContentWithAs1(c: HttpContent): HttpContentExtractor = new HttpContentExtractor(Some(c)) 
@@ -48,7 +47,7 @@ trait DefaultUnmarshallers {
   class HttpContentExtractor(content: Option[HttpContent]) {
     def as[A](implicit unmarshaller: Unmarshaller[A]): Either[Rejection, A] = content match {
       case Some(httpContent) => unmarshaller(httpContent.contentType) match {
-        case UnmarshalWith(converter) => Right(converter(httpContent))
+        case UnmarshalWith(converter) => converter(httpContent)
         case CantUnmarshal(onlyFrom) => Left(UnsupportedRequestContentTypeRejection(onlyFrom))
       }
       case None => Left(RequestEntityExpectedRejection)

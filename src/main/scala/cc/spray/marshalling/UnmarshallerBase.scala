@@ -31,5 +31,17 @@ trait UnmarshallerBase[A] extends Unmarshaller[A] {
   
   def canUnmarshalFrom: List[ContentTypeRange]
   
-  def unmarshal(content: HttpContent): A
+  def unmarshal(content: HttpContent): Either[Rejection, A]
+
+  /**
+   * Helper method for turning exceptions occuring during evaluation of the named parameter into
+   * IllegalRequestContentRejections.
+   */
+  protected def protect(f: => A): Either[Rejection, A] = {
+    try {
+      Right(f)
+    } catch {
+      case e: Exception => Left(MalformedRequestContentRejection(e.getMessage))
+    }
+  }   
 } 
