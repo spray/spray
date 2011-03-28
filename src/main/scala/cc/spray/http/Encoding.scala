@@ -22,14 +22,14 @@ import cc.spray.utils.ObjectRegistry
 sealed trait Encoding {
   def value: String   
   override def toString = value
-  
-  Encodings.register(this, value)
 }
 
 // see http://www.iana.org/assignments/http-parameters/http-parameters.xml
 object Encodings extends ObjectRegistry[String, Encoding] {
   
-  class StandardEncoding private[Encodings] (val value: String) extends Encoding
+  class StandardEncoding private[Encodings] (val value: String) extends Encoding {
+    Encodings.register(this, value)
+  }
   
   case class CustomEncoding(value: String) extends Encoding
   

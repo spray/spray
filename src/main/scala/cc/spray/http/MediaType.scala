@@ -34,13 +34,13 @@ sealed trait MediaRange {
   def isVideo = mainType == "video"
   
   override def toString = "MediaRange(" + value + ')'
-  
-  MediaRanges.register(this, mainType)
 }
 
 object MediaRanges extends ObjectRegistry[String, MediaRange] {
   
-  class PredefinedMediaRange private[MediaRanges](val mainType: String) extends MediaRange
+  class PredefinedMediaRange private[MediaRanges](val mainType: String) extends MediaRange {
+    MediaRanges.register(this, mainType)
+  }
   
   val `*/*` = new PredefinedMediaRange("*") {
     override def matches(mediaType: MediaType) = true
@@ -69,10 +69,7 @@ sealed trait MediaType extends MediaRange {
   }
   
   override def hashCode() = value.##
-  
   override def toString = "MediaType(" + value + ')'
-  
-  MediaTypes.register(this, value)
 }
 
 object MediaType {
@@ -86,7 +83,10 @@ object MediaTypes extends ObjectRegistry[String, MediaType] {
     registry.values.find(_.fileExtensions.contains(extLower))
   }
   
-  class PredefinedMediaType private[MediaTypes](override val value: String, val fileExtensions: String*) extends MediaType
+  class PredefinedMediaType private[MediaTypes](override val value: String, val fileExtensions: String*)
+          extends MediaType {
+    MediaTypes.register(this, value)
+  }
   
   val `application/atom+xml`              = new PredefinedMediaType("application/atom+xml")
   val `application/javascript`            = new PredefinedMediaType("application/javascript", "js")
