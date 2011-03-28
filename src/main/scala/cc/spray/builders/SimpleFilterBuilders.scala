@@ -32,13 +32,13 @@ private[spray] trait SimpleFilterBuilders {
   def put     = method(PUT)
   def trace   = method(TRACE)
   
-  def method(m: HttpMethod): FilterRoute0[String] = filter { ctx =>
+  def method(m: HttpMethod): FilterRoute0 = filter { ctx =>
     if (ctx.request.method == m) Pass() else Reject(MethodRejection(m)) 
   }
   
-  def host(hostName: String): FilterRoute0[String] = host(_ == hostName)
+  def host(hostName: String): FilterRoute0 = host(_ == hostName)
   
-  def host(predicate: String => Boolean): FilterRoute0[String] = filter { ctx =>
+  def host(predicate: String => Boolean): FilterRoute0 = filter { ctx =>
     if (predicate(ctx.request.host)) Pass() else Reject()
   }
   

@@ -19,7 +19,7 @@ package builders
 
 private[spray] trait FilterBuilders {
   
-  def filter [A](filter: RouteFilter[A]) = new FilterRoute0[A](filter)
+  def filter(filter: RouteFilter[Any]) = new FilterRoute0(filter)
   def filter1[A](filter: RouteFilter[A]) = new FilterRoute1[A](filter)
   def filter2[A](filter: RouteFilter[A]) = new FilterRoute2[A](filter)
   def filter3[A](filter: RouteFilter[A]) = new FilterRoute3[A](filter)
@@ -45,9 +45,9 @@ abstract class FilterRoute[A](val filter: RouteFilter[A]) { self =>
   } 
 }
 
-class FilterRoute0[A](filter: RouteFilter[A]) extends FilterRoute[A](filter) with (Route => Route) {
+class FilterRoute0(filter: RouteFilter[Any]) extends FilterRoute[Any](filter) with (Route => Route) {
   def apply(route: Route) = fromRouting(_ => route) 
-  def | (other: FilterRoute0[A]) = new FilterRoute0[A](chainFilterWith(other.filter))
+  def | (other: FilterRoute0) = new FilterRoute0(chainFilterWith(other.filter))
 }
 
 class FilterRoute1[A](filter: RouteFilter[A]) extends FilterRoute[A](filter) with ((A => Route) => Route) {
