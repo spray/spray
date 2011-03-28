@@ -33,6 +33,14 @@ private[spray] trait MiscBuilders {
     route(ctx.withRoutingResultTransformed(f))
   }
   
+  def respondsWithStatus(responseStatus: HttpStatusCode) = responseTransformedBy { response =>
+    response.copy(status = responseStatus)
+  } _
+  
+  def respondsWithHeader(responseHeader: HttpHeader) = responseTransformedBy { response =>
+    response.copy(headers = responseHeader :: response.headers)
+  } _
+  
   // uncachable
   def hardFail(failure: HttpFailure, reason: String = ""): Nothing = throw new HttpException(failure, reason)
   
