@@ -27,8 +27,10 @@ sealed trait Encoding {
 // see http://www.iana.org/assignments/http-parameters/http-parameters.xml
 object Encodings extends ObjectRegistry[String, Encoding] {
   
+  def register(encoding: Encoding) { register(encoding, encoding.value) }
+  
   class StandardEncoding private[Encodings] (val value: String) extends Encoding {
-    Encodings.register(this, value)
+    register(this)
   }
   
   case class CustomEncoding(value: String) extends Encoding

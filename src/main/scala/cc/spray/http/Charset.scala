@@ -36,6 +36,8 @@ sealed trait Charset extends CharsetRange {
 // see http://www.iana.org/assignments/character-sets
 object Charsets extends ObjectRegistry[String, Charset] {
   
+  def register(charset: Charset) { register(charset, charset.value.toLowerCase) }
+  
   val `*` = new CharsetRange {
     def value = "*"
     def matches(charset: Charset) = true
@@ -44,8 +46,8 @@ object Charsets extends ObjectRegistry[String, Charset] {
   class StandardCharset private[Charsets] (val value: String, val aliases: String*) extends Charset {
     val nioCharset: JCharset = JCharset.forName(value)
     
-    Charsets.register(this, value.toLowerCase)
-    Charsets.register(this, aliases.map(_.toLowerCase))
+    register(this)
+    register(this, aliases.map(_.toLowerCase))
   }
   
   case class CustomCharset(value: String) extends Charset {

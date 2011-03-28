@@ -38,8 +38,10 @@ sealed trait MediaRange {
 
 object MediaRanges extends ObjectRegistry[String, MediaRange] {
   
+  def register(mediaRange: MediaRange) { register(mediaRange, mediaRange.mainType) }
+  
   class PredefinedMediaRange private[MediaRanges](val mainType: String) extends MediaRange {
-    MediaRanges.register(this, mainType)
+    register(this)
   }
   
   val `*/*` = new PredefinedMediaRange("*") {
@@ -78,6 +80,8 @@ object MediaType {
 
 object MediaTypes extends ObjectRegistry[String, MediaType] {
   
+  def register(mediaType: MediaType) { register(mediaType, mediaType.value) }
+  
   def forExtension(ext: String): Option[MediaType] = {
     val extLower = ext.toLowerCase
     registry.values.find(_.fileExtensions.contains(extLower))
@@ -85,7 +89,7 @@ object MediaTypes extends ObjectRegistry[String, MediaType] {
   
   class PredefinedMediaType private[MediaTypes](override val value: String, val fileExtensions: String*)
           extends MediaType {
-    MediaTypes.register(this, value)
+    register(this)
   }
   
   val `application/atom+xml`              = new PredefinedMediaType("application/atom+xml")
