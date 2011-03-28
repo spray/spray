@@ -97,6 +97,10 @@ object HttpHeaders {
     def value = contentType.value
   }
   
+  case class `Location`(absoluteUri: String) extends HttpHeader {
+    def value = absoluteUri
+  }
+  
   object `X-Forwarded-For` { def apply(first: HttpIp, more: HttpIp*): `X-Forwarded-For` = apply(first +: more) }
   case class `X-Forwarded-For`(ips: Seq[HttpIp]) extends HttpHeader {
     def value = ips.mkString(", ")
