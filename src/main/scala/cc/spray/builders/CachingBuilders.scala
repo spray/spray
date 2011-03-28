@@ -31,7 +31,7 @@ private[spray] trait CachingBuilders {
         route(ctx)
       } else {
         cache.get(key) match {
-          case Some(response) => ctx.responder(Respond(response))
+          case Some(response) => ctx.complete(response)
           case None => route {
             ctx.withHttpResponseTransformed { response =>
               cache.update(key, response)

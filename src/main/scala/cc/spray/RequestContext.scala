@@ -53,15 +53,7 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
 
   def complete(content: HttpContent) { complete(HttpResponse(content = Some(content))) }
 
-  def complete(response: HttpResponse) { complete(Respond(response)) }
-  
-  def complete(rr: RoutingResult) {
-    if (unmatchedPath.isEmpty) {
-      responder(rr)
-    } else {
-      reject()
-    }
-  }
+  def complete(response: HttpResponse) { responder(Respond(response)) }
   
   // can be cached
   def fail(failure: HttpFailure, reason: String = "") {

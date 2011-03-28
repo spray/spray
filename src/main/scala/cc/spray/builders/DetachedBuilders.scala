@@ -40,7 +40,7 @@ class DetachedRouteActor(route: Route) extends Actor with Logging {
       try {
         route(ctx)
       } catch {
-        case e: Exception => ctx.responder(Respond(responseForException(ctx.request, e)))
+        case e: Exception => ctx.complete(responseForException(ctx.request, e))
       }
     } 
   }

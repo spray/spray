@@ -46,7 +46,7 @@ private[spray] trait MiscBuilders {
               ctx.withResponder {
                 _ match {
                   case x: Respond => ctx.responder(x) // second route succeeded
-                  case Reject(rejections2) => ctx.responder(Reject(rejections1 ++ rejections2))  
+                  case Reject(rejections2) => ctx.reject(rejections1 ++ rejections2)  
                 }
               }
             }  

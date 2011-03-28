@@ -49,8 +49,7 @@ class ParameterBuildersSpec extends Specification with SprayTest with ServiceBui
             get { _ => fail("Should not run") }
           }
         }
-      }.rejections mustEqual
-              Set(PathMatchedRejection, MissingQueryParamRejection("FirstName"), MissingQueryParamRejection("age"))
+      }.rejections mustEqual Set(MissingQueryParamRejection("FirstName"), MissingQueryParamRejection("age"))
     }
     "supply the default value if an optional parameter is missing" in {
       test(HttpRequest(uri = "/person?name=Parsons&FirstName=Ellen")) {

@@ -42,7 +42,7 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
           path("test") { completeOk }
         }.handled must beFalse
       }
-      "for route path routes" in {
+      "for root path routes" in {
         testService(HttpRequest(GET, "/test")) {
           path("") { completeOk }
         }.handled must beFalse

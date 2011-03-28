@@ -50,8 +50,3 @@ case class UnacceptedResponseContentTypeRejection(supported: List[ContentType]) 
  * The request was rejected because there was an error while unmarshalling the request content
  */
 case class MalformedRequestContentRejection(message: String) extends Rejection
-
-/**
- * The request was rejected even though the URI path matched completely.
- */
-case object PathMatchedRejection extends Rejection

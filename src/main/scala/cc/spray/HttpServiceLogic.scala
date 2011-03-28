@@ -28,7 +28,7 @@ trait HttpServiceLogic {
     try {
       route(context)
     } catch {
-      case e: Exception => context.responder(Respond(responseForException(request, e)))
+      case e: Exception => context.complete(responseForException(request, e))
     }
   }
   
@@ -40,10 +40,7 @@ trait HttpServiceLogic {
   
   protected[spray] def responseFromRoutingResult(rr: RoutingResult): Option[HttpResponse] = rr match {
     case Respond(httpResponse) => Some(httpResponse) 
-    case Reject(rejections) => {
-      // if no path matched signal to the root service that this service did not handle the request
-      if (rejections.contains(PathMatchedRejection)) responseForRejections(rejections.toSet) else None
-    }
+    case Reject(rejections) => if (rejections.isEmpty) None else responseForRejections(rejections.toSet)
   }
   
   protected[spray] def responseForRejections(rejections: Set[Rejection]): Option[HttpResponse] = {
@@ -114,7 +111,7 @@ trait HttpServiceLogic {
   }
   
   protected def handleCustomRejections(rejections: List[Rejection]): Option[HttpResponse] = {
-    Some(HttpResponse(HttpStatus(InternalServerError, "Unknown request rejection")))
+    Some(HttpResponse(HttpStatus(InternalServerError, "Unknown request rejection: " + rejections.head)))
   }
   
   protected[spray] def responseForException(request: HttpRequest, e: Exception): HttpResponse = e match {

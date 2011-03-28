@@ -22,31 +22,23 @@ import util.matching.Regex
 private[spray] trait PathBuilders {
   this: FilterBuilders =>
   
-  def path(pattern: PathMatcher0) = filter (pathFilter(Slash ~ pattern))
-  def path(pattern: PathMatcher1) = filter1(pathFilter(Slash ~ pattern))
-  def path(pattern: PathMatcher2) = filter2(pathFilter(Slash ~ pattern))
-  def path(pattern: PathMatcher3) = filter3(pathFilter(Slash ~ pattern))
-  def path(pattern: PathMatcher4) = filter4(pathFilter(Slash ~ pattern))
-  def path(pattern: PathMatcher5) = filter5(pathFilter(Slash ~ pattern))
+  def path(pattern: PathMatcher0) = pathPrefix(pattern ~ PathEnd)
+  def path(pattern: PathMatcher1) = pathPrefix(pattern ~ PathEnd)
+  def path(pattern: PathMatcher2) = pathPrefix(pattern ~ PathEnd)
+  def path(pattern: PathMatcher3) = pathPrefix(pattern ~ PathEnd)
+  def path(pattern: PathMatcher4) = pathPrefix(pattern ~ PathEnd)
+  def path(pattern: PathMatcher5) = pathPrefix(pattern ~ PathEnd)
+  
+  def pathPrefix(pattern: PathMatcher0) = filter (pathFilter(Slash ~ pattern))
+  def pathPrefix(pattern: PathMatcher1) = filter1(pathFilter(Slash ~ pattern))
+  def pathPrefix(pattern: PathMatcher2) = filter2(pathFilter(Slash ~ pattern))
+  def pathPrefix(pattern: PathMatcher3) = filter3(pathFilter(Slash ~ pattern))
+  def pathPrefix(pattern: PathMatcher4) = filter4(pathFilter(Slash ~ pattern))
+  def pathPrefix(pattern: PathMatcher5) = filter5(pathFilter(Slash ~ pattern))
   
   private def pathFilter(pattern: PathMatcher): RouteFilter[String] = { ctx =>
     pattern(ctx.unmatchedPath) match {
-      case Some((remainingPath, captures)) => Pass(captures, { ctx =>
-        if (remainingPath == "") {
-          // if we have successfully matched the complete URI we need to  
-          // add a PathMatchedRejection if the request is rejected by some inner filter
-          ctx.copy(unmatchedPath = "", responder = { rr =>
-            ctx.responder {
-              rr match {
-                case x: Respond => x // request succeeded, no further action required
-                case Reject(rejections) => Reject(rejections + PathMatchedRejection) // rejected, add marker  
-              }
-            }
-          })
-        } else {
-          ctx.copy(unmatchedPath = remainingPath)
-        }
-      })
+      case Some((remainingPath, captures)) => Pass(captures, _.copy(unmatchedPath = remainingPath))
       case None => Reject()
     }
   } 
@@ -144,6 +136,12 @@ private[spray] class Combi(a: PathMatcher, b: PathMatcher) {
 object Slash extends PathMatcher0 {
   def apply(path: String) = {
     if (path.length > 0 && path.charAt(0) == '/') Some((path.substring(1), Nil)) else None
+  }
+}
+
+object PathEnd extends PathMatcher0 {
+  def apply(path: String) = {
+    if (path.length == 0) Some(("", Nil)) else None
   }
 }
 
