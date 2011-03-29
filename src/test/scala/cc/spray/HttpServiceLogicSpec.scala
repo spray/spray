@@ -97,7 +97,7 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
           get { _.complete("text text text") }
         }
       }.response mustEqual failure(NotAcceptable, "Resource representation is only available with these content-types:\n" +
-              "text/plain; charset=ISO-8859-1")
+              "text/plain")
     }
     "respond with BadRequest for fully-matched requests resulting in MalformedRequestContentRejections" in {
       testService(HttpRequest(POST, "/", content = Some(HttpContent(`text/xml`, "<broken>xmlbroken>")))) {

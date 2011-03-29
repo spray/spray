@@ -32,8 +32,9 @@ case class ContentTypeRange(mediaRange: MediaRange, charsetRange: CharsetRange =
 
 class ContentType private (val mediaType: MediaType, val charset: Option[Charset]) {
   def value: String = charset match {
-    case Some(cs) => mediaType.value + "; charset=" + cs.value
-    case None => mediaType.value
+    // don't print the charset parameter if it's the default charset
+    case Some(cs) if (!mediaType.isText || cs != `ISO-8859-1`)=> mediaType.value + "; charset=" + cs.value
+    case _ => mediaType.value
   }
 
   override def equals(obj: Any) = obj match {
