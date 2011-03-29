@@ -19,6 +19,7 @@ package builders
 
 import org.specs.Specification
 import http._
+import HttpMethods._
 import test.SprayTest
 
 class ParameterBuildersSpec extends Specification with SprayTest with ServiceBuilder {
@@ -79,6 +80,25 @@ class ParameterBuildersSpec extends Specification with SprayTest with ServiceBui
           parameter('nose ! "large") { _.complete("yes") }
         }
       }.response.content.as[String] mustEqual Right("yes")
+    }
+    "be useable for method tunneling" in {
+      val route = {
+        path("person") {
+          (post | parameter('method ! "post")) {
+            _.complete("POST")
+          } ~
+          get { _.complete("GET") }
+        }
+      }
+      test(HttpRequest(uri = "/person?method=post")) {
+        route 
+      }.response.content.as[String] mustEqual Right("POST")
+      test(HttpRequest(POST, uri = "/person")) {
+        route 
+      }.response.content.as[String] mustEqual Right("POST")
+      test(HttpRequest(uri = "/person")) {
+        route 
+      }.response.content.as[String] mustEqual Right("GET")
     }
   }
 
