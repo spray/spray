@@ -51,6 +51,14 @@ class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder 
         }
       }.response.content.as[String] mustEqual Right("")
     }
+    "implicitly match trailing slashes" in {
+      test(HttpRequest(GET, "/works/")) {
+        path("works") { respondOk }
+      }.response mustBe Ok
+      test(HttpRequest(GET, "")) {
+        path("") { respondOk }
+      }.response mustBe Ok
+    }
   }
   
   "routes created with the pathPrefix(string) combinator" should {

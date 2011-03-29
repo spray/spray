@@ -134,14 +134,20 @@ private[spray] class Combi(a: PathMatcher, b: PathMatcher) {
 }
 
 object Slash extends PathMatcher0 {
+  private val Empty = Some(("", Nil)) // pre-allocated for speed 
   def apply(path: String) = {
-    if (path.length > 0 && path.charAt(0) == '/') Some((path.substring(1), Nil)) else None
+    if (path.length == 0) {
+      Empty
+    } else if (path.length > 0 && path.charAt(0) == '/') {
+      Some((path.substring(1), Nil))
+    } else None
   }
 }
 
 object PathEnd extends PathMatcher0 {
+  private val Empty = Some(("", Nil)) // pre-allocated for speed
   def apply(path: String) = {
-    if (path.length == 0) Some(("", Nil)) else None
+    if (path.length == 0 || path.length == 1 && path.charAt(0) == '/') Empty else None
   }
 }
 
