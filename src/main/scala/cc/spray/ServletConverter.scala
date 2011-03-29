@@ -31,7 +31,7 @@ trait ServletConverter {
     val (ctHeaders, headers) = buildHeaders(request).partition(_.isInstanceOf[`Content-Type`])
     HttpRequest(
       HttpMethods.getForKey(request.getMethod).get,
-      request.getRequestURI,
+      getRequestUri(request),
       headers,
       readContent(request, ctHeaders.headOption.asInstanceOf[Option[`Content-Type`]]),
       getRemoteHost(request),
@@ -46,6 +46,13 @@ trait ServletConverter {
     ) yield {
       HttpHeader(name, value)
     }
+  }
+  
+  protected def getRequestUri(request: HttpServletRequest) = {
+    val buffer = request.getRequestURL
+    val queryString = request.getQueryString
+    if (queryString != null && queryString.length > 1) buffer.append('?').append(queryString)
+    buffer.toString
   }
 
   protected def readContent(request: HttpServletRequest, header: Option[`Content-Type`]): Option[HttpContent] = {
