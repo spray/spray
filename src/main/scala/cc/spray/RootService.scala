@@ -42,15 +42,19 @@ class RootService extends Actor with ServletConverter with Logging {
   }
   
   private def handleNoServices(rm: RequestMethod) {
+    log.slf4j.debug("Received {} with no attached services, completing with 404", toSprayRequest(rm.request))
     rm.rawComplete(fromSprayResponse(noService(rm.request.getRequestURI)))
   }
   
   private def handleOneService(rm: RequestMethod) {
-    (services.head !!! toSprayRequest(rm.request)) onComplete completeRequest(rm) _
+    val request = toSprayRequest(rm.request)
+    log.slf4j.debug("Received {} with one attached service, dispatching...", request)
+    (services.head !!! request) onComplete completeRequest(rm) _
   }
   
-  private def handleMultipleServices(rm: RequestMethod) {
-    val request = toSprayRequest(rm.request) 
+  private def handleMultipleServices(rm: RequestMethod) {    
+    val request = toSprayRequest(rm.request)
+    log.slf4j.debug("Received {} with {} attached services, dispatching...", services.size, request)
     val futures = services.map(_ !!! request).asInstanceOf[List[Future[Any]]]
     Futures.fold(None.asInstanceOf[Option[Any]])(futures) { (result, future) =>
       (result, future) match {
@@ -65,37 +69,37 @@ class RootService extends Actor with ServletConverter with Logging {
     } onComplete completeRequest(rm) _
   }
   
-  protected def handleException(e: Exception, rm: RequestMethod) {
-    rm.rawComplete(fromSprayResponse( e match {
-      case e: HttpException => HttpResponse(e.status)
-      case e: Exception => HttpResponse(HttpStatus(InternalServerError, e.getMessage))
-    })) 
-  }
-  
   private def completeRequest(rm: RequestMethod)(future: Future[Option[Any]]) {
-    val problem = future.exception 
-    if (problem.isEmpty) {
+    if (future.exception.isEmpty) {
       future.result.get match {
         case Some(response: HttpResponse) => rm.rawComplete(fromSprayResponse(response))
         case None => handleNoServices(rm)
-      }
+      }  
     } else {
-      log.slf4j.error("Exception during request processing: {}", problem.get)
+      handleException(future.exception.get, rm)
     }
+  }
+
+  protected def handleException(e: Throwable, rm: RequestMethod) {
+    log.slf4j.error("Exception during request processing: {}", e)
+    rm.rawComplete(fromSprayResponse(e match {
+      case e: HttpException => HttpResponse(e.status)
+      case e: Exception => HttpResponse(HttpStatus(InternalServerError, e.getMessage))
+    }))
   }
   
   protected def attach(serviceActor: ActorRef) {
     services = serviceActor :: services
-    if (serviceActor.isUnstarted) serviceActor.start
-    updateHandler
+    if (serviceActor.isUnstarted) serviceActor.start()
+    updateHandler()
   }
   
   protected def detach(serviceActor: ActorRef) {
     services = services.filter(_ != serviceActor)    
-    updateHandler
+    updateHandler()
   }
   
-  private def updateHandler {
+  private def updateHandler() {
     handler = services.size match {
       case 0 => handleNoServices
       case 1 => handleOneService
@@ -104,9 +108,7 @@ class RootService extends Actor with ServletConverter with Logging {
   }
   
   protected def noService(uri: String): HttpResponse = {
-    val msg = "No service available for [" + uri + "]"
-    log.slf4j.debug(msg)
-    HttpStatus(404, msg)
+    HttpStatus(404, "No service available for [" + uri + "]")
   }
 }
 
