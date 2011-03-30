@@ -38,11 +38,7 @@ trait HttpServiceActor extends Actor with Logging {
     val channel = self.channel    
     def apply(rr:RoutingResult) { channel ! responseFromRoutingResult(rr) }
   }
-
-  override protected[spray] def responseForException(request: HttpRequest, e: Exception) = {
-    log.error("Error during processing of request {}:\n{}", request, e)
-    super.responseForException(request, e)
-  }
+  
 }
 
 /***
@@ -53,4 +49,11 @@ trait HttpServiceActor extends Actor with Logging {
  * 
  * In this way you can test your CustomServiceLogic with [[SprayTest]] without the need to fire up actual actors.
  */
-case class HttpService(route: Route) extends HttpServiceActor with HttpServiceLogic
+class HttpService(val route: Route) extends HttpServiceActor with HttpServiceLogic {
+  
+  override protected[spray] def responseForException(request: HttpRequest, e: Exception) = {
+    log.error("Error during processing of request {}:\n{}", request, e)
+    super.responseForException(request, e)
+  }
+  
+}
