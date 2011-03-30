@@ -21,7 +21,12 @@ import http._
 import collection.mutable.WeakHashMap
 
 private[spray] trait CachingBuilders {
-  
+
+  /**
+   * Returns a Route that caches responses returned by its inner Route using the given keyer function.
+   * The default keyer caches GET requests with the request URI as caching key, to all other requests it is fully
+   * transparent. The cache itself is implemented as a [[collection.mutable.WeakHashMap]].
+   */
   def cached(route: Route)(implicit keyer: RequestContext => CacheKey): Route = new Route {
     private val cache = WeakHashMap.empty[Any, HttpResponse]
     

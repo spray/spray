@@ -22,6 +22,9 @@ import HttpHeaders._
 import HttpVersions._
 import parser.QueryParser
 
+/**
+ * Sprays immutable model of an HTTP request.
+ */
 case class HttpRequest(method: HttpMethod = HttpMethods.GET,
                        uri: String = "",
                        headers: List[HttpHeader] = Nil,

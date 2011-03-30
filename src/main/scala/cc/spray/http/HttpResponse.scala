@@ -19,6 +19,9 @@ package cc.spray.http
 
 import HttpStatusCodes._
 
+/**
+ * Sprays immutable model of an HTTP response.
+ */
 case class HttpResponse(status: HttpStatus = OK,
                         headers: List[HttpHeader] = Nil,
                         content: Option[HttpContent] = None) {

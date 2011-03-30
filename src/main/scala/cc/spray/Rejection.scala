@@ -18,35 +18,47 @@ package cc.spray
 
 import http._
 
+/**
+ * A rejection encapsulates a specific reason why a Route was not able to handle a request. Rejections are gathered
+ * up over the course of a Route evaluation and finally converted to [[HttpResponse]]s by the [[HttpService]] actor,
+ * if there was no way for the request to be completed.
+ */
 trait Rejection
 
 /**
- * The request was rejected because the HTTP method is unsupported
+ * Rejection created by method filters.
+ * Signals that the request was rejected because the HTTP method is unsupported.
  */
 case class MethodRejection(supported: HttpMethod) extends Rejection
 
 /**
- * The request was rejected because a query parameter was not found
+ * Rejection created by parameter filters.
+ * Signals that the request was rejected because a query parameter was not found.
  */
 case class MissingQueryParamRejection(parameterName: String) extends Rejection
 
 /**
- * The request was rejected because the requests content-type is unsupported
+ * Rejection created by unmarshallers.
+ * Signals that the request was rejected because the requests content-type is unsupported.
  */
 case class UnsupportedRequestContentTypeRejection(supported: List[ContentTypeRange]) extends Rejection
 
 /**
- * The request was rejected because an message body entity was expected but not supplied 
+ * Rejection created by unmarshallers.
+ * Signals that the request was rejected because there was an error while unmarshalling the request content
+ */
+case class MalformedRequestContentRejection(message: String) extends Rejection
+
+/**
+ * Rejection created by unmarshallers.
+ * Signals that the request was rejected because an message body entity was expected but not supplied. 
  */
 case object RequestEntityExpectedRejection extends Rejection
 
 /**
- * The request was rejected because the service is not capable of producing a response entity whose
+ * Rejection created by marshallers.
+ * Signals that the request was rejected because the service is not capable of producing a response entity whose
  * content type is accepted by the client
  */
 case class UnacceptedResponseContentTypeRejection(supported: List[ContentType]) extends Rejection
 
-/**
- * The request was rejected because there was an error while unmarshalling the request content
- */
-case class MalformedRequestContentRejection(message: String) extends Rejection

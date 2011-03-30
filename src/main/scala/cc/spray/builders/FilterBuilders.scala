@@ -20,12 +20,35 @@ package builders
 import utils.Product0
 
 private[spray] trait FilterBuilders {
-  
+
+  /**
+   * Created a [[FilterRoute0]] from the given RouteFilter function. 
+   */
   def filter(filter: RouteFilter[Product0]) = new FilterRoute0(filter)
+  
+  /**
+   * Created a [[FilterRoute1]] from the given RouteFilter function. 
+   */
   def filter1[A](filter: RouteFilter[Tuple1[A]]) = new FilterRoute1(filter)
+  
+  /**
+   * Created a [[FilterRoute2]] from the given RouteFilter function. 
+   */
   def filter2[A, B](filter: RouteFilter[(A, B)]) = new FilterRoute2(filter)
+  
+  /**
+   * Created a [[FilterRoute3]] from the given RouteFilter function. 
+   */
   def filter3[A, B, C](filter: RouteFilter[(A, B, C)]) = new FilterRoute3(filter)
+  
+  /**
+   * Created a [[FilterRoute4]] from the given RouteFilter function. 
+   */
   def filter4[A, B, C, D](filter: RouteFilter[(A, B, C, D)]) = new FilterRoute4(filter)
+  
+  /**
+   * Created a [[FilterRoute5]] from the given RouteFilter function. 
+   */
   def filter5[A, B, C, D, E](filter: RouteFilter[(A, B, C, D, E)]) = new FilterRoute5(filter)
 }
 
@@ -58,6 +81,9 @@ abstract class FilterRoute[T <: Product](val filter: RouteFilter[T]) { self =>
   }
 }
 
+/**
+ * A Route using the given RouteFilter function on all inner Routes it is applied to.
+ */
 class FilterRoute0(filter: RouteFilter[Product0]) extends FilterRoute(filter) with (Route => Route) {  
   def apply(route: Route) = fromRouting { _ => route }
   def | (other: FilterRoute0) = new FilterRoute0(or(other.filter))
@@ -69,6 +95,9 @@ class FilterRoute0(filter: RouteFilter[Product0]) extends FilterRoute(filter) wi
   def & [A, B, C, D, E](other: FilterRoute5[A, B, C, D, E]) = new FilterRoute5[A, B, C, D, E](and(other.filter))
 }
 
+/**
+ * A Route using the given RouteFilter function (which extracts 1 value) on all inner Routes it is applied to.
+ */
 class FilterRoute1[A](filter: RouteFilter[Tuple1[A]]) extends FilterRoute(filter) with ((A => Route) => Route) {
   def apply(routing: A => Route) = fromRouting { t => routing(t._1) }
   def | (other: FilterRoute1[A]) = new FilterRoute1[A](or(other.filter))
@@ -79,6 +108,9 @@ class FilterRoute1[A](filter: RouteFilter[Tuple1[A]]) extends FilterRoute(filter
   def & [B, C, D, E](other: FilterRoute4[B, C, D, E]) = new FilterRoute5[A, B, C, D, E](and(other.filter))
 }
 
+/**
+ * A Route using the given RouteFilter function (which extracts 2 values) on all inner Routes it is applied to.
+ */
 class FilterRoute2[A, B](filter: RouteFilter[(A, B)]) extends FilterRoute(filter) with (((A, B) => Route) => Route) {
   def apply(routing: (A, B) => Route) = fromRouting { t => routing(t._1, t._2) }
   def | (other: FilterRoute2[A, B]) = new FilterRoute2[A, B](or(other.filter))
@@ -88,6 +120,9 @@ class FilterRoute2[A, B](filter: RouteFilter[(A, B)]) extends FilterRoute(filter
   def & [C, D, E](other: FilterRoute3[C, D, E]) = new FilterRoute5[A, B, C, D, E](and(other.filter))
 }
 
+/**
+ * A Route using the given RouteFilter function (which extracts 3 values) on all inner Routes it is applied to.
+ */
 class FilterRoute3[A, B, C](filter: RouteFilter[(A, B, C)]) extends FilterRoute(filter) with (((A, B, C) => Route) => Route) {
   def apply(routing: (A, B, C) => Route) = fromRouting { t => routing(t._1, t._2, t._3) }
   def | (other: FilterRoute3[A, B, C]) = new FilterRoute3[A, B, C](or(other.filter))
@@ -96,6 +131,9 @@ class FilterRoute3[A, B, C](filter: RouteFilter[(A, B, C)]) extends FilterRoute(
   def & [D, E](other: FilterRoute2[D, E]) = new FilterRoute5[A, B, C, D, E](and(other.filter))
 }
 
+/**
+ * A Route using the given RouteFilter function (which extracts 4 values) on all inner Routes it is applied to.
+ */
 class FilterRoute4[A, B, C, D](filter: RouteFilter[(A, B, C, D)]) extends FilterRoute(filter) with (((A, B, C, D) => Route) => Route) {
   def apply(routing: (A, B, C, D) => Route) = fromRouting { t => routing(t._1, t._2, t._3, t._4) }
   def | (other: FilterRoute4[A, B, C, D]) = new FilterRoute4[A, B, C, D](or(other.filter))
@@ -103,6 +141,9 @@ class FilterRoute4[A, B, C, D](filter: RouteFilter[(A, B, C, D)]) extends Filter
   def & [E](other: FilterRoute1[E]) = new FilterRoute5[A, B, C, D, E](and(other.filter))
 }
 
+/**
+ * A Route using the given RouteFilter function (which extracts 5 values) on all inner Routes it is applied to.
+ */
 class FilterRoute5[A, B, C, D, E](filter: RouteFilter[(A, B, C, D, E)]) extends FilterRoute(filter) with (((A, B, C, D, E) => Route) => Route) {
   def apply(routing: (A, B, C, D, E) => Route) = fromRouting { t => routing(t._1, t._2, t._3, t._4, t._5) }
   def | (other: FilterRoute5[A, B, C, D, E]) = new FilterRoute5[A, B, C, D, E](or(other.filter))

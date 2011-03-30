@@ -20,11 +20,19 @@ package builders
 import http._
 
 private[spray] trait MiscBuilders {
-  
+
+  /**
+   * Returns a Route which applies the given [[HttpRequest]] transformation function before passing on the
+   * [[RequestContext]] to its inner Route.
+   */
   def requestTransformedBy(f: HttpRequest => HttpRequest)(route: Route): Route = { ctx =>
     route(ctx.withRequestTransformed(f))
   }
-  
+
+  /**
+   * Returns a Route which applies the given [[HttpResponse]] transformation function to all not-rejected
+   * responses of its inner Route.
+   */
   def responseTransformedBy(f: HttpResponse => HttpResponse)(route: Route): Route = { ctx =>
     route(ctx.withHttpResponseTransformed(f))
   }
@@ -33,18 +41,33 @@ private[spray] trait MiscBuilders {
     route(ctx.withRoutingResultTransformed(f))
   }
   
+  /**
+   * Returns a Route that sets the given response status on all not-rejected responses of its inner Route.
+   */
   def respondsWithStatus(responseStatus: HttpStatusCode) = responseTransformedBy { response =>
     response.copy(status = responseStatus)
   } _
-  
+
+  /**
+   * Returns a Route that adds the given response headers to all not-rejected responses of its inner Route.
+   */
   def respondsWithHeader(responseHeader: HttpHeader) = responseTransformedBy { response =>
     response.copy(headers = responseHeader :: response.headers)
   } _
-  
-  // uncachable
+
+  /**
+   * Stops the current Route processing by throwing an HttpException that will be caught by the enclosing Actor.
+   * Failures produced in this way circumvent all response processing logic that might be present (for example they
+   * cannot be cached with the 'cached' directive).
+   */
   def hardFail(failure: HttpFailure, reason: String = ""): Nothing = throw new HttpException(failure, reason)
   
   implicit def pimpRouteWithConcatenation(route: Route): { def ~ (other: Route): Route } = new {
+
+    /**
+     * Returns a Route that chains two Routes. If the first Route rejects the request the second route is given a
+     * chance to act upon the request.
+     */
     def ~ (other: Route): Route = { ctx =>
       route {
         ctx.withResponder { 

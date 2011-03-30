@@ -24,6 +24,10 @@ import HttpStatusCodes._
 
 private[spray] trait DetachedBuilders {
 
+  /**
+   * Returns a Route that executes its inner Route in the content of a newly spawned actor. You can supply your own
+   * implicit detachedActorFactory function to take control of the actual spawning.
+   */
   def detached(route: Route)(implicit detachedActorFactory: Route => Actor): Route = { ctx =>
     Actor.actorOf(detachedActorFactory(route)).start ! ctx
   }
@@ -34,6 +38,9 @@ private[spray] trait DetachedBuilders {
   
 }
 
+/**
+ * Actor used by the `detached` directive.
+ */
 class DetachedRouteActor(route: Route) extends Actor with Logging {  
   protected def receive = {
     case ctx: RequestContext => {

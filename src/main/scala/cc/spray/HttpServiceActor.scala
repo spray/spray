@@ -21,7 +21,11 @@ import http._
 import akka.actor.Actor
 import akka.util.Logging
 
-trait HttpServiceActor extends HttpServiceLogic with Actor with Logging {
+/**
+ * The actor path of the [[HttpService]].
+ */
+trait HttpServiceActor extends Actor with Logging {
+  this: HttpServiceLogic =>
   
   // use the configurable dispatcher
   self.dispatcher = Endpoint.Dispatcher 
@@ -42,9 +46,11 @@ trait HttpServiceActor extends HttpServiceLogic with Actor with Logging {
 }
 
 /***
- * The default implementation of an HttpService. If you want to use a custom HttpService implementation you should
- * generate a sub trait of HttpServiceLogic (e.g. CustomServiceLogic) and create your CustomHttpService with
- * "case class CustomHttpService(route: Route) extends HttpServiceActor with CustomServiceLogic".
- * In this way you can test your CustomServiceLogic with SprayTest without the need to fire up actual actors.
+ * The default implementation of an HttpService. It combines the [[HttpServiceActor]] with the [[HttpServiceLogic]].
+ * If you'd like to use a custom [[HttpServiceLogic]] you should generate a sub trait of [[HttpServiceLogic]] (e.g.
+ * CustomServiceLogic) and create your CustomHttpService with
+ * {{{ case class CustomHttpService(route: Route) extends HttpServiceActor with CustomServiceLogic }}}
+ * 
+ * In this way you can test your CustomServiceLogic with [[SprayTest]] without the need to fire up actual actors.
  */
-case class HttpService(route: Route) extends HttpServiceActor
+case class HttpService(route: Route) extends HttpServiceActor with HttpServiceLogic

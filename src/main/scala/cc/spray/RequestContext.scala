@@ -19,12 +19,21 @@ package cc.spray
 import http._
 import marshalling.{CantMarshal, MarshalWith}
 
+/**
+ * Immutable object encapsulating the context of an [[HttpRequest]] as it flows through a ''spray'' Route structure.
+ */
 case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit, unmatchedPath: String) {
-  
+
+  /**
+   * Returns a copy of this context with the HttpRequest transformed by the given function.
+   */
   def withRequestTransformed(f: HttpRequest => HttpRequest): RequestContext = {
     copy(request = f(request))
   }
 
+  /**
+   * Returns a copy of this context with the the given response transformation function chained into the responder.
+   */
   def withHttpResponseTransformed(f: HttpResponse => HttpResponse): RequestContext = {
     withRoutingResultTransformed {
       _ match {
@@ -34,16 +43,32 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
     }
   }
   
+  /**
+   * Returns a copy of this context with the the given RoutingResult transformation function chained into the responder.
+   */
   def withRoutingResultTransformed(f: RoutingResult => RoutingResult): RequestContext = {
     withResponder { rr => responder(f(rr)) }
   }
 
+  /**
+   * Returns a copy of this context with the responder replaced by the given responder.
+   */
   def withResponder(newResponder: RoutingResult => Unit) = copy(responder = newResponder)
 
+  /**
+   * Rejects the request with the given rejections.
+   */
   def reject(rejections: Rejection*) { reject(Set(rejections: _*)) }
   
+  /**
+   * Rejects the request with the given rejections.
+   */
   def reject(rejections: Set[Rejection]) { responder(Reject(rejections)) }
 
+  /**
+   * Completes the request with status "200 Ok" and response content created by marshalling the given object using
+   * the in-scope marshaller for the type.
+   */
   def complete[A :Marshaller](obj: A) {
     marshaller.apply(request.isContentTypeAccepted(_)) match {
       case MarshalWith(converter) => complete(converter(obj))
@@ -51,15 +76,26 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
     }
   }
 
+  /**
+   * Completes the request with status "200 Ok" and the given response content.
+   */
   def complete(content: HttpContent) { complete(HttpResponse(content = Some(content))) }
 
+  /**
+   * Completes the request with the given [[HttpResponse]].
+   */
   def complete(response: HttpResponse) { responder(Respond(response)) }
   
-  // can be cached
+  /**
+   * Completes the request with the given [[HttpFailure]].
+   */
   def fail(failure: HttpFailure, reason: String = "") {
     fail(HttpStatus(failure, reason))
   }
   
+  /**
+   * Completes the request with the given [[HttpStatus]].
+   */
   def fail(failure: HttpStatus) {
     responder(Respond(HttpResponse(failure)))
   }

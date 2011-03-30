@@ -21,7 +21,13 @@ import marshalling._
 
 private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with DefaultUnmarshallers {
   this: FilterBuilders =>
-  
+
+  /**
+   * Returns a Route that unmarshalls the requests content using the in-scope unmarshaller for the given type and
+   * passes it as an argument to the inner Route building function.
+   * If the unmarshaller cannot unmarshal the request content the request is rejected with the [[Rejection]] produced
+   * by the unmarshaller.
+   */
   def contentAs[A :Unmarshaller](routing: A => Route): Route = {
     val filterRoute = filter1 { ctx =>
       ctx.request.content.as[A] match {
@@ -31,7 +37,13 @@ private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with Defau
     }
     filterRoute(routing) 
   }
-  
+
+  /**
+   * Returns a Route that unmarshalls the optional request content using the in-scope unmarshaller for the given type
+   * and passes it as an argument to the inner Route building function.
+   * If the unmarshaller cannot unmarshal the request content the request is rejected with the [[Rejection]] produced
+   * by the unmarshaller.
+   */
   def optionalContentAs[A :Unmarshaller](routing: Option[A] => Route): Route = {
     val filterRoute = filter1 { ctx =>
       ctx.request.content.as[A] match {
@@ -42,7 +54,12 @@ private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with Defau
     }
     filterRoute(routing) 
   }
-  
+
+  /**
+   * Returns a Route that uses the in-scope marshaller for the given type to produce a completion function that is
+   * passed to the inner route building function. You can use it do decouple marshaller resolution from the call
+   * site of the RequestContexts 'complete' function.
+   */
   def produces[A](routing: (A => Unit) => Route)(implicit marshaller: Marshaller[A]): Route = {
     val filterRoute = filter1 { ctx =>
       marshaller(ctx.request.isContentTypeAccepted(_)) match {
@@ -52,7 +69,11 @@ private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with Defau
     }
     filterRoute(routing)
   }
-  
+
+  /**
+   * Returns a Route that completes the request using the given function. The input to the function is produces with
+   * the in-scope unmarshaller and the result value of the function is marshalled with the in-scope marshaller.
+   */
   def handledBy[A :Unmarshaller, B: Marshaller](f: A => B): Route = {
     contentAs[A] { a =>
       produces[B] { produce =>

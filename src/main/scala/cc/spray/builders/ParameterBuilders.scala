@@ -19,11 +19,35 @@ package builders
 
 private[spray] trait ParameterBuilders {
   this: FilterBuilders =>
-  
+
+  /**
+   * Returns a Route that rejects the request if a query parameter with the given name cannot be found.
+   * If it can be found the parameters value is extracted and passed as argument to the inner Route building function. 
+   */
   def parameter (a: Param) = filter1[String](build(a :: Nil))
+
+  /**
+   * Returns a Route that rejects the request if the query parameters with the given names cannot be found.
+   * If it can be found the parameter values are extracted and passed as arguments to the inner Route building function.
+   */
   def parameters(a: Param, b: Param) = filter2[String, String](build(a :: b :: Nil))
+
+  /**
+   * Returns a Route that rejects the request if the query parameters with the given names cannot be found.
+   * If it can be found the parameter values are extracted and passed as arguments to the inner Route building function.
+   */
   def parameters(a: Param, b: Param, c: Param) = filter3[String, String, String](build(a :: b :: c :: Nil))
+
+  /**
+   * Returns a Route that rejects the request if the query parameters with the given names cannot be found.
+   * If it can be found the parameter values are extracted and passed as arguments to the inner Route building function.
+   */
   def parameters(a: Param, b: Param, c: Param, d: Param) = filter4[String, String, String, String](build(a :: b :: c :: d :: Nil))
+
+  /**
+   * Returns a Route that rejects the request if the query parameters with the given names cannot be found.
+   * If it can be found the parameter values are extracted and passed as arguments to the inner Route building function.
+   */
   def parameters(a: Param, b: Param, c: Param, d: Param, e: Param) = filter5[String, String, String, String, String](build(a :: b :: c :: d :: e :: Nil))
   
   private def build[T <: Product](params: List[Param]): RouteFilter[T] = { ctx =>
@@ -40,7 +64,11 @@ private[spray] trait ParameterBuilders {
       }
     }.asInstanceOf[FilterResult[T]]
   }
-  
+
+  /**
+   * Returns a Route that rejects the request if the query parameter with the given name cannot be found or does not
+   * have the required value.
+   */
   def parameter(p: RequiredParameter) = filter { ctx =>
     ctx.request.queryParams.get(p.name) match {
       case Some(value) if value == p.requiredValue => Pass()

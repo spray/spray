@@ -21,6 +21,11 @@ import cc.spray.RequestContext
 import http._
 import util.DynamicVariable
 
+/**
+ * Mix this trait into the class or trait containing your route and service tests.
+ * Use the "test" and "testService" methods to test the behavior of your routes and services for different HTTP request
+ * examples.
+ */
 trait SprayTest {
   this: { def fail(msg: String): Nothing } =>
   
@@ -53,9 +58,11 @@ trait SprayTest {
    * The default HttpServiceLogic for testing.
    * If you have derived your own CustomHttpServiceLogic that you would like to test, create an implicit conversion
    * similar to this:
+   * {{{
    * implicit def customWrapRootRoute(rootRoute: Route): ServiceTest = new CustomHttpServiceLogic with ServiceTest {
    *   val route = routeRoute
    * }
+   * }}}
    */
   implicit def wrapRootRoute(rootRoute: Route): ServiceTest = new ServiceTest {
     val route = rootRoute

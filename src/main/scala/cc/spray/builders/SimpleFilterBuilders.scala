@@ -24,24 +24,66 @@ import util.matching.Regex
 private[spray] trait SimpleFilterBuilders {
   this: FilterBuilders =>
   
+  /**
+   * Returns a Route filter that rejects all non-DELETE requests.
+   */
   def delete  = method(DELETE)
+
+  /**
+   * Returns a Route filter that rejects all non-GET requests.
+   */
   def get     = method(GET)
+
+  /**
+   * Returns a Route filter that rejects all non-HEAD requests.
+   */
   def head    = method(HEAD)
+
+  /**
+   * Returns a Route filter that rejects all non-OPTIONS requests.
+   */
   def options = method(OPTIONS)
+
+  /**
+   * Returns a Route filter that rejects all non-POST requests.
+   */
   def post    = method(POST)
+
+  /**
+   * Returns a Route filter that rejects all non-PUT requests.
+   */
   def put     = method(PUT)
+
+  /**
+   * Returns a Route filter that rejects all non-TRACE requests.
+   */
   def trace   = method(TRACE)
-  
+
+  /**
+   * Returns a Route filter that rejects all requests whose HTTP method does not match the given one.
+   */
   def method(m: HttpMethod): FilterRoute0 = filter { ctx =>
     if (ctx.request.method == m) Pass() else Reject(MethodRejection(m)) 
   }
-  
+
+  /**
+   * Returns a Route filter that rejects all requests with a host name different from the given one.
+   */
   def host(hostName: String): FilterRoute0 = host(_ == hostName)
-  
+
+  /**
+   * Returns a Route filter that rejects all requests for whose host name the given predicate function return false.
+   */
   def host(predicate: String => Boolean): FilterRoute0 = filter { ctx =>
     if (predicate(ctx.request.host)) Pass() else Reject()
   }
-  
+
+  /**
+   * Returns a Route filter that rejects all requests with a host name that does not have a prefix matching the given
+   * regular expression. For all matching requests the prefix string matching the regex is extracted and passed to
+   * the inner Route building function. If the regex contains a capturing group only the string matched by this group
+   * is extracted. If the regex contains more than one capturing group an IllegalArgumentException will be thrown.
+   */
   def host(regex: Regex): FilterRoute1[String] = filter1 { ctx =>
     def run(regexMatch: String => Option[String]) = {
       regexMatch(ctx.request.host) match {

@@ -19,6 +19,11 @@ package cc.spray
 import http._
 import HttpStatusCodes._
 
+/**
+ * The logic path of the [[HttpService]].
+ * Contains the code for [[RequestContext]] creation as well as translation of [[Rejection]]s and Exceptions to
+ * [[HttpResponse]]s. 
+ */
 trait HttpServiceLogic {
   
   def route: Route

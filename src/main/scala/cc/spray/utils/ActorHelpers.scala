@@ -19,17 +19,27 @@ package cc.spray.utils
 import akka.actor.{Actor, ActorRef}
 
 object ActorHelpers {
-  
+
+  /**
+   * Returns the actor whose id matches the given symbol.
+   */
   def actor(id: Symbol): ActorRef = actor(id.toString)
 
+  /**
+   * Returns the actor with the given id.
+   */
   def actor(id: String): ActorRef = {
     val actors = Actor.registry.actorsFor(id)
     assert(actors.length == 1, actors.length + " actors for id '" + id + "' found, expected exactly one")
     actors.head
   }
 
+  /**
+   * Returns the actor of the given type. If there are no actors with the given type or more than one an
+   * AssertionError will be thrown.
+   */
   def actor[A <: Actor : Manifest]: ActorRef = {
-    val actors = Actor.registry.actorsFor(manifest)
+    val actors = Actor.registry.actorsFor
     assert(actors.length == 1, "Actor of type '" + manifest.erasure.getName + "' not found")
     actors.head
   }

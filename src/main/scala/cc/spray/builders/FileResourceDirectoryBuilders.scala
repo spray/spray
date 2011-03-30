@@ -25,7 +25,12 @@ import HttpStatusCodes._
 
 private[spray] trait FileResourceDirectoryBuilders {
   this: SimpleFilterBuilders with DetachedBuilders=>
-  
+
+  /**
+   * Returns a Route that completes GET requests with the content of the given file. The actual I/O operation is
+   * running detached in the context of a newly spawned actor, so it doesn't block the current thread.
+   * If the file cannot be read the Route completes the request with a "404 NotFound" error.
+   */
   def getFromFile(fileName: String, charset: Option[Charset] = None)
                  (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {
     detached {
@@ -38,7 +43,12 @@ private[spray] trait FileResourceDirectoryBuilders {
       }
     }
   }
-  
+
+  /**
+   * Returns a Route that completes GET requests with the content of the given resource. The actual I/O operation is
+   * running detached in the context of a newly spawned actor, so it doesn't block the current thread.
+   * If the file cannot be read the Route completes the request with a "404 NotFound" error.
+   */
   def getFromResource(resourceName: String, charset: Option[Charset] = None)
                      (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {
     detached {
@@ -51,14 +61,25 @@ private[spray] trait FileResourceDirectoryBuilders {
       }
     }
   }
-  
+
+  /**
+   * Returns a Route that completes GET requests with the content of a file underneath the given directory.
+   * The unmatchedPath of the [[RequestContext]] is first transformed by the given pathRewriter function before
+   * being appended to the given directoryName to build the final fileName. 
+   * The actual I/O operation is running detached in the context of a newly spawned actor, so it doesn't block the
+   * current thread. If the file cannot be read the Route completes the request with a "404 NotFound" error.
+   */
   def getFromDirectory(directoryName: String, charset: Option[Charset] = None,
                        pathRewriter: String => String = identity)
                       (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {
     val base = if (directoryName.endsWith("/")) directoryName else directoryName + "/";
     { ctx => getFromFile(base + pathRewriter(ctx.unmatchedPath), charset).apply(ctx) }
   }
-  
+
+  /**
+   * Same as "getFromDirectory" except that the file is not fetched from the file system but rather from a
+   * "resource directory". 
+   */
   def getFromResourceDirectory(directoryName: String, charset: Option[Charset] = None,
                                pathRewriter: String => String = identity)
                               (implicit detachedActorFactory: Route => Actor,
