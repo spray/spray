@@ -16,4 +16,4 @@
 
 package cc.spray.utils
 
-class NotImplementedException extends RuntimeException
+class NotImplementedException(msg: String = "") extends RuntimeException(msg)

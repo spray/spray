@@ -45,7 +45,7 @@ private[spray] trait SimpleFilterBuilders {
   def host(regex: Regex): FilterRoute1[String] = filter1 { ctx =>
     def run(regexMatch: String => Option[String]) = {
       regexMatch(ctx.request.host) match {
-        case Some(matched) => Pass(matched :: Nil)
+        case Some(matched) => Pass(matched)
         case None => Reject()
       }
     }

@@ -17,14 +17,28 @@
 package cc.spray
 
 import http.HttpResponse
+import utils.Product0
 
 sealed trait RoutingResult
 case class Respond(response: HttpResponse) extends RoutingResult
 
-sealed trait FilterResult[+A]
-case class Reject(rejections: Set[Rejection] = Set.empty) extends FilterResult[Nothing] with RoutingResult
-case class Pass[+A](values: List[A] = Nil, transform: RequestContext => RequestContext = identity) extends FilterResult[A]
+sealed trait FilterResult[+T <: Product]
+
+case class Reject(rejections: Set[Rejection] = Set.empty) extends RoutingResult with FilterResult[Nothing]
 
 object Reject {
   def apply(rejection: Rejection): Reject = apply(Set(rejection))
+}
+
+class Pass[+T <: Product](val values: T, val transform: RequestContext => RequestContext) extends FilterResult[T]
+
+object Pass {
+  def apply(): Pass[Product0] = new Pass(Product0, transform = identity)
+  def apply[A](a: A): Pass[Tuple1[A]] = new Pass(Tuple1(a), transform = identity)
+  def apply[A, B](a: A, b: B): Pass[(A, B)] = new Pass((a, b), transform = identity)
+  def apply[A, B, C](a: A, b: B, c: C): Pass[(A, B, C)] = new Pass((a, b, c), transform = identity)
+  def apply[A, B, C, D](a: A, b: B, c: C, d: D): Pass[(A, B, C, D)] = new Pass((a, b, c, d), transform = identity)
+  def apply[A, B, C, D, E](a: A, b: B, c: C, d: D, e: E): Pass[(A, B, C, D, E)] = new Pass((a, b, c, d, e), transform = identity)
+  
+  def unapply[T <: Product](pass: Pass[T]): Option[(T, RequestContext => RequestContext)] = Some(pass.values, pass.transform)
 }

@@ -74,7 +74,7 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
           parameters('amount, 'orderId) { (_, _) => completeOk }
         }
       }.response mustEqual failure(NotFound, "Request is missing the following required query parameters: " +
-              "orderId, amount")
+              "amount, orderId")
     }
     "respond with UnsupportedMediaType for fully-matched requests resulting in UnsupportedRequestContentTypeRejection" in {
       testService(HttpRequest(POST, "/", content = Some(HttpContent(`application/pdf`, "...PDF...")))) {

@@ -20,17 +20,17 @@ package builders
 private[spray] trait ParameterBuilders {
   this: FilterBuilders =>
   
-  def parameter (a: Param) = filter1(build(a :: Nil))
-  def parameters(a: Param, b: Param) = filter2(build(b :: a :: Nil))
-  def parameters(a: Param, b: Param, c: Param) = filter3(build(c :: b :: a :: Nil))
-  def parameters(a: Param, b: Param, c: Param, d: Param) = filter4(build(d :: c :: b :: a :: Nil))
-  def parameters(a: Param, b: Param, c: Param, d: Param, e: Param) = filter5(build(e :: d :: c :: b :: a :: Nil))
+  def parameter (a: Param) = filter1[String](build(a :: Nil))
+  def parameters(a: Param, b: Param) = filter2[String, String](build(a :: b :: Nil))
+  def parameters(a: Param, b: Param, c: Param) = filter3[String, String, String](build(a :: b :: c :: Nil))
+  def parameters(a: Param, b: Param, c: Param, d: Param) = filter4[String, String, String, String](build(a :: b :: c :: d :: Nil))
+  def parameters(a: Param, b: Param, c: Param, d: Param, e: Param) = filter5[String, String, String, String, String](build(a :: b :: c :: d :: e :: Nil))
   
-  private def build(params: List[Param]): RouteFilter[String] = { ctx =>
-    params.foldLeft[FilterResult[String]](Pass()) { (result, p) =>
+  private def build[T <: Product](params: List[Param]): RouteFilter[T] = { ctx =>
+    params.foldLeft[FilterResult[Product]](Pass()) { (result, p) =>
       result match {
         case Pass(values, _) => p.extract(ctx.request.queryParams) match {
-          case Right(value) => Pass(value :: values)
+          case Right(value) => new Pass(values productJoin Tuple1(value), transform = identity)
           case Left(rejection) => Reject(rejection)
         }
         case x@ Reject(rejections) => p.extract(ctx.request.queryParams) match {
@@ -38,7 +38,7 @@ private[spray] trait ParameterBuilders {
           case _ => x
         }
       }
-    }
+    }.asInstanceOf[FilterResult[T]]
   }
   
   def parameter(p: RequiredParameter) = filter { ctx =>

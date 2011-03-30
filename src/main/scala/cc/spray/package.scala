@@ -20,7 +20,7 @@ import java.io.File
 import spray.http._
 import collection.immutable.LinearSeq
 import spray.marshalling.{Marshalling, Unmarshalling}
-import spray.utils.{PimpedClass, PimpedLinearSeq}
+import spray.utils.{PimpedProduct, PimpedClass, PimpedLinearSeq}
 import util.matching.Regex
 import java.util.regex.Pattern
 
@@ -30,7 +30,7 @@ package object spray {
   type ContentTypeResolver = (File, Option[Charset]) => ContentType
   type Marshaller[A] = (ContentType => Boolean) => Marshalling[A]
   type Unmarshaller[A] = ContentType => Unmarshalling[A]
-  type RouteFilter[A] = RequestContext => FilterResult[A]
+  type RouteFilter[T <: Product] = RequestContext => FilterResult[T]
   
   private val unmanglingOperators = Map("$eq" -> "=", "$greater" -> ">", "$less" -> "<", "$plus" -> "+",
     "$minus" -> "-", "$times" -> "*", "$div" -> "/", "$bang" -> "!", "$at" -> "@", "$hash" -> "#", "$percent" -> "%",
@@ -51,6 +51,8 @@ package object spray {
   implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq)
 
   implicit def pimpClass[A](clazz: Class[A]): PimpedClass[A] = new PimpedClass[A](clazz)
+  
+  implicit def pimpProduct(product: Product): PimpedProduct = new PimpedProduct(product)
 
   implicit def pimpFile(file: File) = new {
     def extension = {

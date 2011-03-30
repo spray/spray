@@ -30,19 +30,20 @@ class FilterBuildersSpec extends Specification with SprayTest with ServiceBuilde
   val notRun: Route = { _ => fail("Should not run") }
   
   "get | put" should {
+    val getOrPut = get | put
     "block POST requests" in {
       test(HttpRequest(POST)) { 
-        (get | put) { notRun }
+        getOrPut { notRun }
       }.handled must beFalse
     }
     "let GET requests pass" in {
       test(HttpRequest(GET)) { 
-        (get | put) { completeOk }
+        getOrPut { completeOk }
       }.response mustEqual Ok
     }
     "let PUT requests pass" in {
       test(HttpRequest(PUT)) { 
-        (get | put) { completeOk }
+        getOrPut { completeOk }
       }.response mustEqual Ok
     }
   }
@@ -62,6 +63,49 @@ class FilterBuildersSpec extends Specification with SprayTest with ServiceBuilde
       test(HttpRequest(uri = "http://spray.cc")) { 
         (host("[^\\.]+.spray.cc".r) | host("spray(.*)".r)) { matched => _.complete(matched) }
       }.response.content.as[String] mustEqual Right(".cc")
+    }
+  }
+  
+  "host(regex) & parameters('a, 'b)" should {
+    val filter = host("([^\\.]+).spray.cc".r) & parameters('a, 'b) 
+    "block requests to unmatching hosts" in {
+      test(HttpRequest(GET, "http://www.spray.org/?a=1&b=2")) { 
+        filter { (_, _, _) => notRun }
+      }.handled must beFalse
+    }
+    "block requests without matching parameters" in {
+      test(HttpRequest(GET, "http://www.spray.cc/?a=1&c=2")) { 
+        filter { (_, _, _) => notRun }
+      }.handled must beFalse
+    }
+    "let matching requests pass and extract all values" in {
+      test(HttpRequest(GET, "http://www.spray.cc/?a=1&b=2")) { 
+        filter { (host, a, b) => _.complete(host + a + b) }
+      }.response.content.as[String] mustEqual Right("www12")
+    }
+  }
+  
+  "put | (get & parameter('method ! \"put\"))" should {
+    val putx = put | (get & parameter('method ! "put")) 
+    "block GET requests" in {
+      test(HttpRequest(GET)) { 
+        putx { notRun }
+      }.handled must beFalse
+    }
+    "let PUT requests pass" in {
+      test(HttpRequest(PUT)) { 
+        putx { completeOk }
+      }.response mustEqual Ok
+    }
+    "let GET requests with method tunneling pass" in {
+      test(HttpRequest(GET, "/?method=put")) { 
+        putx { completeOk }
+      }.response mustEqual Ok
+    }
+    "block POST requests with method tunneling parameter" in {
+      test(HttpRequest(POST, "/?method=put")) { 
+        putx { completeOk }
+      }.handled must beFalse
     }
   }
 

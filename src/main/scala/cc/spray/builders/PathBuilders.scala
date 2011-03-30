@@ -18,6 +18,7 @@ package cc.spray
 package builders
 
 import util.matching.Regex
+import utils.Product0
 
 private[spray] trait PathBuilders {
   this: FilterBuilders =>
@@ -29,16 +30,16 @@ private[spray] trait PathBuilders {
   def path(pattern: PathMatcher4) = pathPrefix(pattern ~ PathEnd)
   def path(pattern: PathMatcher5) = pathPrefix(pattern ~ PathEnd)
   
-  def pathPrefix(pattern: PathMatcher0) = filter (pathFilter(Slash ~ pattern))
-  def pathPrefix(pattern: PathMatcher1) = filter1(pathFilter(Slash ~ pattern))
-  def pathPrefix(pattern: PathMatcher2) = filter2(pathFilter(Slash ~ pattern))
-  def pathPrefix(pattern: PathMatcher3) = filter3(pathFilter(Slash ~ pattern))
-  def pathPrefix(pattern: PathMatcher4) = filter4(pathFilter(Slash ~ pattern))
-  def pathPrefix(pattern: PathMatcher5) = filter5(pathFilter(Slash ~ pattern))
+  def pathPrefix(pattern: PathMatcher0) = filter(pathFilter(Slash ~ pattern))
+  def pathPrefix(pattern: PathMatcher1) = filter1[String](pathFilter(Slash ~ pattern))
+  def pathPrefix(pattern: PathMatcher2) = filter2[String, String](pathFilter(Slash ~ pattern))
+  def pathPrefix(pattern: PathMatcher3) = filter3[String, String, String](pathFilter(Slash ~ pattern))
+  def pathPrefix(pattern: PathMatcher4) = filter4[String, String, String, String](pathFilter(Slash ~ pattern))
+  def pathPrefix(pattern: PathMatcher5) = filter5[String, String, String, String, String](pathFilter(Slash ~ pattern))
   
-  private def pathFilter(pattern: PathMatcher): RouteFilter[String] = { ctx =>
+  private def pathFilter[T <: Product](pattern: PathMatcher): RouteFilter[T] = { ctx =>
     pattern(ctx.unmatchedPath) match {
-      case Some((remainingPath, captures)) => Pass(captures, _.copy(unmatchedPath = remainingPath))
+      case Some((remainingPath, captures)) => new Pass(captures.asInstanceOf[T], _.copy(unmatchedPath = remainingPath))
       case None => Reject()
     }
   } 
@@ -63,7 +64,7 @@ private[spray] trait PathBuilders {
  * - None if not matched
  * - Some(remainingPath, captures) if matched
  */
-sealed trait PathMatcher extends (String => Option[ (String, List[String]) ])
+sealed trait PathMatcher extends (String => Option[(String, Product)])
 
 sealed trait PathMatcher0 extends PathMatcher {
   def / (sub: PathMatcher0) = this ~ Slash ~ sub
@@ -128,42 +129,42 @@ sealed trait PathMatcher5 extends PathMatcher {
 private[spray] class Combi(a: PathMatcher, b: PathMatcher) {
   def apply(path: String) = a(path).flatMap {
     case (restA, capturesA) => b(restA).map {
-      case (restB, capturesB) => (restB, capturesA ::: capturesB) 
+      case (restB, capturesB) => (restB, capturesA productJoin capturesB) 
     }
   }
 }
 
 object Slash extends PathMatcher0 {
-  private val Empty = Some(("", Nil)) // pre-allocated for speed 
+  private val Empty = Some(("", Product0)) // pre-allocated for speed 
   def apply(path: String) = {
     if (path.length == 0) {
       Empty
     } else if (path.length > 0 && path.charAt(0) == '/') {
-      Some((path.substring(1), Nil))
+      Some((path.substring(1), Product0))
     } else None
   }
 }
 
 object PathEnd extends PathMatcher0 {
-  private val Empty = Some(("", Nil)) // pre-allocated for speed
+  private val Empty = Some(("", Product0)) // pre-allocated for speed
   def apply(path: String) = {
     if (path.length == 0 || path.length == 1 && path.charAt(0) == '/') Empty else None
   }
 }
 
 object Remaining extends PathMatcher1 {
-  def apply(path: String) = Some(("", path :: Nil))
+  def apply(path: String) = Some(("", Tuple1(path)))
 }
 
 private[builders] class StringMatcher(prefix: String) extends PathMatcher0 {
   def apply(path: String) = {
-    if (path.startsWith(prefix)) Some((path.substring(prefix.length), Nil)) else None
+    if (path.startsWith(prefix)) Some((path.substring(prefix.length), Product0)) else None
   } 
 }
 
 private[builders] class SimpleRegexMatcher(regex: Regex) extends PathMatcher1 {
   def apply(path: String) = {
-    regex.findPrefixOf(path).map(matched => (path.substring(matched.length), matched :: Nil))
+    regex.findPrefixOf(path).map(matched => (path.substring(matched.length), Tuple1(matched)))
   }
 }
 
@@ -171,7 +172,7 @@ private[builders] class GroupRegexMatcher(regex: Regex) extends PathMatcher1 {
   def apply(path: String) = {
     regex.findPrefixMatchOf(path).map { m =>
       val matchLength = m.end - m.start
-      (path.substring(matchLength), m.group(1) :: Nil)
+      (path.substring(matchLength), Tuple1(m.group(1)))
     }
   }
 }
