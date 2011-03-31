@@ -59,3 +59,7 @@ class HttpService(val route: Route) extends HttpServiceActor with HttpServiceLog
   }
   
 }
+
+object HttpService {
+  def apply(route: Route) = new HttpService(route)
+}

@@ -23,16 +23,16 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaProject {
   // -------------------------------------------------------------------------------------------------------------------
   // Publishing
   // -------------------------------------------------------------------------------------------------------------------
-  val publishTo = Resolver.file("Spray Test Repo", new File("/Users/mathias/Documents/spray/test-repo/"))
+  //val publishTo = Resolver.file("Spray Test Repo", new File("/Users/mathias/Documents/spray/test-repo/"))
   //val publishTo = "Scala Tools Snapshots" at "http://nexus.scala-tools.org/content/repositories/snapshots/"
-  //val publishTo = "Scala Tools Releases" at "http://nexus.scala-tools.org/content/repositories/releases/"
+  val publishTo = "Scala Tools Releases" at "http://nexus.scala-tools.org/content/repositories/releases/"
   
   Credentials(Path.userHome / ".ivy2" / ".credentials", log)
   override def managedStyle = ManagedStyle.Maven
   override def packageDocsJar = defaultJarPath("-scaladoc.jar")
   override def packageSrcJar = defaultJarPath("-sources.jar")
   val sourceArtifact = Artifact(artifactID, "src", "jar", Some("sources"), Nil, None)
-  val docsArtifact = Artifact(artifactID, "docs", "jar", Some("javadocs"), Nil, None)
+  val docsArtifact = Artifact(artifactID, "docs", "jar", Some("scaladoc"), Nil, None)
   override def packageToPublishActions = super.packageToPublishActions ++ Seq(packageDocs, packageSrc)
 
   // -------------------------------------------------------------------------------------------------------------------
