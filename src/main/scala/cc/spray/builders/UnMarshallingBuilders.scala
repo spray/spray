@@ -25,8 +25,8 @@ private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with Defau
   /**
    * Returns a Route that unmarshalls the requests content using the in-scope unmarshaller for the given type and
    * passes it as an argument to the inner Route building function.
-   * If the unmarshaller cannot unmarshal the request content the request is rejected with the [[Rejection]] produced
-   * by the unmarshaller.
+   * If the unmarshaller cannot unmarshal the request content the request is rejected with the [[cc.spray.Rejection]]
+   * produced by the unmarshaller.
    */
   def contentAs[A :Unmarshaller](routing: A => Route): Route = {
     val filterRoute = filter1 { ctx =>
@@ -41,8 +41,8 @@ private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with Defau
   /**
    * Returns a Route that unmarshalls the optional request content using the in-scope unmarshaller for the given type
    * and passes it as an argument to the inner Route building function.
-   * If the unmarshaller cannot unmarshal the request content the request is rejected with the [[Rejection]] produced
-   * by the unmarshaller.
+   * If the unmarshaller cannot unmarshal the request content the request is rejected with the [[cc.spray.Rejection]]
+   * produced by the unmarshaller.
    */
   def optionalContentAs[A :Unmarshaller](routing: Option[A] => Route): Route = {
     val filterRoute = filter1 { ctx =>

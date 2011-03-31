@@ -20,8 +20,8 @@ import http.HttpResponse
 import utils.Product0
 
 /**
- * The RoutingResult represents the two different options for the way Routes can act upon a request:
- * [[Respond]] or [[Reject]]
+ * The RoutingResult represents the two different options for the way Routes 
+ * can act upon a request [[cc.spray.Respond]] or [[cc.spray.Reject]]
  */
 sealed trait RoutingResult
 
@@ -29,7 +29,7 @@ case class Respond(response: HttpResponse) extends RoutingResult
 
 /**
  * The FilterResult represents the two different filtering outcomes of RouteFilters:
- * [[Pass]] or [[Reject]]
+ *  [[cc.spray.Pass]] or [[cc.spray.Reject]]
  */
 sealed trait FilterResult[+T <: Product]
 

@@ -20,7 +20,8 @@ import http._
 import marshalling.{CantMarshal, MarshalWith}
 
 /**
- * Immutable object encapsulating the context of an [[HttpRequest]] as it flows through a ''spray'' Route structure.
+ * Immutable object encapsulating the context of an [[cc.spray.http.HttpRequest]]
+ * as it flows through a ''spray'' Route structure.
  */
 case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit, unmatchedPath: String) {
 
@@ -82,19 +83,19 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
   def complete(content: HttpContent) { complete(HttpResponse(content = Some(content))) }
 
   /**
-   * Completes the request with the given [[HttpResponse]].
+   * Completes the request with the given [[cc.spray.http.HttpResponse]].
    */
   def complete(response: HttpResponse) { responder(Respond(response)) }
   
   /**
-   * Completes the request with the given [[HttpFailure]].
+   * Completes the request with the given [[cc.spray.http.HttpFailure]].
    */
   def fail(failure: HttpFailure, reason: String = "") {
     fail(HttpStatus(failure, reason))
   }
   
   /**
-   * Completes the request with the given [[HttpStatus]].
+   * Completes the request with the given [[cc.spray.http.HttpStatus]].
    */
   def fail(failure: HttpStatus) {
     responder(Respond(HttpResponse(failure)))

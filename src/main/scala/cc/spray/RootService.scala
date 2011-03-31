@@ -25,8 +25,8 @@ import HttpStatusCodes._
 
 /**
  * The RootService actor is the central entrypoint for HTTP requests entering the ''spray'' infrastructure.
- * It is responsible for creating an [[HttpRequest]] object for the request as well as dispatching this
- * [[HttpRequest]] object to all attached [[HttpService]]s. 
+ * It is responsible for creating an [[cc.spray.http.HttpRequest]] object for the request as well as dispatching this
+ *  [[cc.spray.http.HttpRequest]] object to all attached [[cc.spray.HttpService]]s. 
  */
 class RootService extends Actor with ServletConverter with Logging {
   private var services: List[ActorRef] = Nil

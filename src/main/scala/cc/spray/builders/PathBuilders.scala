@@ -24,82 +24,82 @@ private[spray] trait PathBuilders {
   this: FilterBuilders =>
 
   /**
-   * Returns a Route that rejects the request if the unmatchedPath of the [[RequestContext]] does not match
+   * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does not match
    * the given PathMatcher. 
    */
   def path(pattern: PathMatcher0) = pathPrefix(pattern ~ PathEnd)
 
   /**
-   * Returns a Route that rejects the request if the unmatchedPath of the [[RequestContext]] does not match
+   * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does not match
    * the given PathMatcher. If it does match the value extracted by the matcher is passed to the inner Route building
    * function.
    */
   def path(pattern: PathMatcher1) = pathPrefix(pattern ~ PathEnd)
 
   /**
-   * Returns a Route that rejects the request if the unmatchedPath of the [[RequestContext]] does not match
+   * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does not match
    * the given PathMatcher. If it does match the values extracted by the matcher are passed to the inner Route building
    * function.
    */
   def path(pattern: PathMatcher2) = pathPrefix(pattern ~ PathEnd)
   
   /**
-   * Returns a Route that rejects the request if the unmatchedPath of the [[RequestContext]] does not match
+   * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does not match
    * the given PathMatcher. If it does match the values extracted by the matcher are passed to the inner Route building
    * function.
    */
   def path(pattern: PathMatcher3) = pathPrefix(pattern ~ PathEnd)
   
   /**
-   * Returns a Route that rejects the request if the unmatchedPath of the [[RequestContext]] does not match
+   * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does not match
    * the given PathMatcher. If it does match the values extracted by the matcher are passed to the inner Route building
    * function.
    */
   def path(pattern: PathMatcher4) = pathPrefix(pattern ~ PathEnd)
   
   /**
-   * Returns a Route that rejects the request if the unmatchedPath of the [[RequestContext]] does not match
+   * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does not match
    * the given PathMatcher. If it does match the values extracted by the matcher are passed to the inner Route building
    * function.
    */
   def path(pattern: PathMatcher5) = pathPrefix(pattern ~ PathEnd)
   
   /**
-   * Returns a Route that rejects the request if the unmatchedPath of the [[RequestContext]] does have a prefix
+   * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does have a prefix
    * that matches the given PathMatcher.
    */
   def pathPrefix(pattern: PathMatcher0) = filter(pathFilter(Slash ~ pattern))
   
   /**
-   * Returns a Route that rejects the request if the unmatchedPath of the [[RequestContext]] does have a prefix
+   * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does have a prefix
    * that matches the given PathMatcher. If it does match the value extracted by the matcher is passed to the inner
    * Route building function.
    */
   def pathPrefix(pattern: PathMatcher1) = filter1[String](pathFilter(Slash ~ pattern))
 
   /**
-   * Returns a Route that rejects the request if the unmatchedPath of the [[RequestContext]] does have a prefix
+   * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does have a prefix
    * that matches the given PathMatcher. If it does match the values extracted by the matcher are passed to the inner
    * Route building function.
    */
   def pathPrefix(pattern: PathMatcher2) = filter2[String, String](pathFilter(Slash ~ pattern))
   
   /**
-   * Returns a Route that rejects the request if the unmatchedPath of the [[RequestContext]] does have a prefix
+   * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does have a prefix
    * that matches the given PathMatcher. If it does match the values extracted by the matcher are passed to the inner
    * Route building function.
    */
   def pathPrefix(pattern: PathMatcher3) = filter3[String, String, String](pathFilter(Slash ~ pattern))
   
   /**
-   * Returns a Route that rejects the request if the unmatchedPath of the [[RequestContext]] does have a prefix
+   * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does have a prefix
    * that matches the given PathMatcher. If it does match the values extracted by the matcher are passed to the inner
    * Route building function.
    */
   def pathPrefix(pattern: PathMatcher4) = filter4[String, String, String, String](pathFilter(Slash ~ pattern))
   
   /**
-   * Returns a Route that rejects the request if the unmatchedPath of the [[RequestContext]] does have a prefix
+   * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does have a prefix
    * that matches the given PathMatcher. If it does match the values extracted by the matcher are passed to the inner
    * Route building function.
    */

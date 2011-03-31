@@ -27,11 +27,11 @@ import Charsets._
 
 /**
  * The logic for converting
- * [[http://download.oracle.com/javaee/6/api/javax/servlet/http/HttpServletRequest.html HttpServletRequests]]
- * to [[HttpRequest]]s and
- * [[http://download.oracle.com/javaee/6/api/javax/servlet/http/HttpServletResponse.html HttpServletResponses]]
- * to [[HttpResponse]]s.
- * Separated out from the [[RootService]] actor for testability.
+ *  [[http://download.oracle.com/javaee/6/api/javax/servlet/http/HttpServletRequest.html HttpServletRequests]]
+ *  to [[cc.spray.http.HttpRequest]]s and
+ *  [[http://download.oracle.com/javaee/6/api/javax/servlet/http/HttpServletResponse.html HttpServletResponses]]
+ *  to [[cc.spray.http.HttpResponse]]s.
+ * Separated out from the [[cc.spray.RootService]] actor for testability.
  */
 trait ServletConverter {
   

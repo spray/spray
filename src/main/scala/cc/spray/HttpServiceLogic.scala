@@ -20,9 +20,8 @@ import http._
 import HttpStatusCodes._
 
 /**
- * The logic path of the [[HttpService]].
- * Contains the code for [[RequestContext]] creation as well as translation of [[Rejection]]s and Exceptions to
- * [[HttpResponse]]s. 
+ * The logic part of the [[cc.spray.HttpService]]. Contains the code for [[cc.spray.RequestContext]] creation as well
+ * as translation of [[cc.spray.Rejection]]s and Exceptions to [[cc.spray.http.HttpResponse]]s. 
  */
 trait HttpServiceLogic {
   

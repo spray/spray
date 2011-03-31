@@ -22,32 +22,32 @@ import utils.Product0
 private[spray] trait FilterBuilders {
 
   /**
-   * Created a [[FilterRoute0]] from the given RouteFilter function. 
+   * Creates a [[cc.spray.FilterRoute0]] from the given RouteFilter function. 
    */
   def filter(filter: RouteFilter[Product0]) = new FilterRoute0(filter)
   
   /**
-   * Created a [[FilterRoute1]] from the given RouteFilter function. 
+   * Created a [[cc.spray.FilterRoute1]] from the given RouteFilter function. 
    */
   def filter1[A](filter: RouteFilter[Tuple1[A]]) = new FilterRoute1(filter)
   
   /**
-   * Created a [[FilterRoute2]] from the given RouteFilter function. 
+   * Creates a [[cc.spray.FilterRoute2]] from the given RouteFilter function. 
    */
   def filter2[A, B](filter: RouteFilter[(A, B)]) = new FilterRoute2(filter)
   
   /**
-   * Created a [[FilterRoute3]] from the given RouteFilter function. 
+   * Creates a [[cc.spray.FilterRoute3]] from the given RouteFilter function. 
    */
   def filter3[A, B, C](filter: RouteFilter[(A, B, C)]) = new FilterRoute3(filter)
   
   /**
-   * Created a [[FilterRoute4]] from the given RouteFilter function. 
+   * Creates a [[cc.spray.FilterRoute4]] from the given RouteFilter function. 
    */
   def filter4[A, B, C, D](filter: RouteFilter[(A, B, C, D)]) = new FilterRoute4(filter)
   
   /**
-   * Created a [[FilterRoute5]] from the given RouteFilter function. 
+   * Creates a [[cc.spray.FilterRoute5]] from the given RouteFilter function. 
    */
   def filter5[A, B, C, D, E](filter: RouteFilter[(A, B, C, D, E)]) = new FilterRoute5(filter)
 }

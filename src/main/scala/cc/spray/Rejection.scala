@@ -20,8 +20,8 @@ import http._
 
 /**
  * A rejection encapsulates a specific reason why a Route was not able to handle a request. Rejections are gathered
- * up over the course of a Route evaluation and finally converted to [[HttpResponse]]s by the [[HttpService]] actor,
- * if there was no way for the request to be completed.
+ * up over the course of a Route evaluation and finally converted to [[cc.spray.http.HttpResponse]]s by the
+ *  [[cc.spray.HttpService]] actor, if there was no way for the request to be completed.
  */
 trait Rejection
 

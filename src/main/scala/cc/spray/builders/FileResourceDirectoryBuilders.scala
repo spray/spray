@@ -64,7 +64,7 @@ private[spray] trait FileResourceDirectoryBuilders {
 
   /**
    * Returns a Route that completes GET requests with the content of a file underneath the given directory.
-   * The unmatchedPath of the [[RequestContext]] is first transformed by the given pathRewriter function before
+   * The unmatchedPath of the [[cc.spray.RequestContext]] is first transformed by the given pathRewriter function before
    * being appended to the given directoryName to build the final fileName. 
    * The actual I/O operation is running detached in the context of a newly spawned actor, so it doesn't block the
    * current thread. If the file cannot be read the Route completes the request with a "404 NotFound" error.

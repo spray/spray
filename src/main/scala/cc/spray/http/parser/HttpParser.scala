@@ -21,7 +21,7 @@ import org.parboiled.scala._
 
 /**
  * Parser for all HTTP headers as defined by
- * http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
+ *  [[http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html]]
  */
 object HttpParser extends SprayParser with ProtocolParameterRules with AdditionalRules with CommonActions
   with AcceptCharsetHeader
@@ -33,7 +33,7 @@ object HttpParser extends SprayParser with ProtocolParameterRules with Additiona
   with XForwardedForHeader
   {
   
-  // all string literals automatically receive an trailing optional whitespace
+  // all string literals automatically receive a trailing optional whitespace
   override implicit def toRule(string :String) : Rule0 = {
     super.toRule(string) ~ BasicRules.OptWS
   }

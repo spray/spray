@@ -22,15 +22,15 @@ import http._
 private[spray] trait MiscBuilders {
 
   /**
-   * Returns a Route which applies the given [[HttpRequest]] transformation function before passing on the
-   * [[RequestContext]] to its inner Route.
+   * Returns a Route which applies the given [[cc.spray.http.HttpRequest]] transformation function before passing on the
+   *  [[cc.spray.RequestContext]] to its inner Route.
    */
   def requestTransformedBy(f: HttpRequest => HttpRequest)(route: Route): Route = { ctx =>
     route(ctx.withRequestTransformed(f))
   }
 
   /**
-   * Returns a Route which applies the given [[HttpResponse]] transformation function to all not-rejected
+   * Returns a Route which applies the given [[cc.spray.http.HttpResponse]] transformation function to all not-rejected
    * responses of its inner Route.
    */
   def responseTransformedBy(f: HttpResponse => HttpResponse)(route: Route): Route = { ctx =>

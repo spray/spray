@@ -22,7 +22,7 @@ import akka.actor.Actor
 import akka.util.Logging
 
 /**
- * The actor path of the [[HttpService]].
+ * The actor path of the [[cc.spray.HttpService]].
  */
 trait HttpServiceActor extends Actor with Logging {
   this: HttpServiceLogic =>
@@ -41,13 +41,15 @@ trait HttpServiceActor extends Actor with Logging {
   
 }
 
-/***
- * The default implementation of an HttpService. It combines the [[HttpServiceActor]] with the [[HttpServiceLogic]].
- * If you'd like to use a custom [[HttpServiceLogic]] you should generate a sub trait of [[HttpServiceLogic]] (e.g.
- * CustomServiceLogic) and create your CustomHttpService with
+/**
+ * The default implementation of an HttpService. It combines the [[cc.spray.HttpServiceActor]] with
+ * the [[cc.spray.HttpServiceLogic]]. If you'd like to use a custom [[cc.spray.HttpServiceLogic]] you should generate
+ * a sub trait of [[cc.spray.HttpServiceLogic]] (e.g. CustomServiceLogic) and create your CustomHttpService with
+ * 
  * {{{ case class CustomHttpService(route: Route) extends HttpServiceActor with CustomServiceLogic }}}
  * 
- * In this way you can test your CustomServiceLogic with [[SprayTest]] without the need to fire up actual actors.
+ * In this way you can test your CustomServiceLogic with [[cc.spray.test.SprayTest]] without the need to fire up
+ * actual actors.
  */
 class HttpService(val route: Route) extends HttpServiceActor with HttpServiceLogic {
   
