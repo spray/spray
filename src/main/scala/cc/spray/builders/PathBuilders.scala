@@ -19,6 +19,7 @@ package builders
 
 import util.matching.Regex
 import utils.Product0
+import annotation.tailrec
 
 private[spray] trait PathBuilders {
   this: FilterBuilders =>
@@ -34,35 +35,35 @@ private[spray] trait PathBuilders {
    * the given PathMatcher. If it does match the value extracted by the matcher is passed to the inner Route building
    * function.
    */
-  def path(pattern: PathMatcher1) = pathPrefix(pattern ~ PathEnd)
+  def path[A](pattern: PathMatcher1[A]) = pathPrefix(pattern ~ PathEnd)
 
   /**
    * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does not match
    * the given PathMatcher. If it does match the values extracted by the matcher are passed to the inner Route building
    * function.
    */
-  def path(pattern: PathMatcher2) = pathPrefix(pattern ~ PathEnd)
+  def path[A, B](pattern: PathMatcher2[A, B]) = pathPrefix(pattern ~ PathEnd)
   
   /**
    * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does not match
    * the given PathMatcher. If it does match the values extracted by the matcher are passed to the inner Route building
    * function.
    */
-  def path(pattern: PathMatcher3) = pathPrefix(pattern ~ PathEnd)
+  def path[A, B, C](pattern: PathMatcher3[A, B, C]) = pathPrefix(pattern ~ PathEnd)
   
   /**
    * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does not match
    * the given PathMatcher. If it does match the values extracted by the matcher are passed to the inner Route building
    * function.
    */
-  def path(pattern: PathMatcher4) = pathPrefix(pattern ~ PathEnd)
+  def path[A, B, C, D](pattern: PathMatcher4[A, B, C, D]) = pathPrefix(pattern ~ PathEnd)
   
   /**
    * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does not match
    * the given PathMatcher. If it does match the values extracted by the matcher are passed to the inner Route building
    * function.
    */
-  def path(pattern: PathMatcher5) = pathPrefix(pattern ~ PathEnd)
+  def path[A, B, C, D, E](pattern: PathMatcher5[A, B, C, D, E]) = pathPrefix(pattern ~ PathEnd)
   
   /**
    * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does have a prefix
@@ -75,37 +76,37 @@ private[spray] trait PathBuilders {
    * that matches the given PathMatcher. If it does match the value extracted by the matcher is passed to the inner
    * Route building function.
    */
-  def pathPrefix(pattern: PathMatcher1) = filter1[String](pathFilter(Slash ~ pattern))
+  def pathPrefix[A](pattern: PathMatcher1[A]) = filter1[A](pathFilter(Slash ~ pattern))
 
   /**
    * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does have a prefix
    * that matches the given PathMatcher. If it does match the values extracted by the matcher are passed to the inner
    * Route building function.
    */
-  def pathPrefix(pattern: PathMatcher2) = filter2[String, String](pathFilter(Slash ~ pattern))
+  def pathPrefix[A, B](pattern: PathMatcher2[A, B]) = filter2[A, B](pathFilter(Slash ~ pattern))
   
   /**
    * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does have a prefix
    * that matches the given PathMatcher. If it does match the values extracted by the matcher are passed to the inner
    * Route building function.
    */
-  def pathPrefix(pattern: PathMatcher3) = filter3[String, String, String](pathFilter(Slash ~ pattern))
+  def pathPrefix[A, B, C](pattern: PathMatcher3[A, B, C]) = filter3[A, B, C](pathFilter(Slash ~ pattern))
   
   /**
    * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does have a prefix
    * that matches the given PathMatcher. If it does match the values extracted by the matcher are passed to the inner
    * Route building function.
    */
-  def pathPrefix(pattern: PathMatcher4) = filter4[String, String, String, String](pathFilter(Slash ~ pattern))
+  def pathPrefix[A, B, C, D](pattern: PathMatcher4[A, B, C, D]) = filter4[A, B, C, D](pathFilter(Slash ~ pattern))
   
   /**
    * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does have a prefix
    * that matches the given PathMatcher. If it does match the values extracted by the matcher are passed to the inner
    * Route building function.
    */
-  def pathPrefix(pattern: PathMatcher5) = filter5[String, String, String, String, String](pathFilter(Slash ~ pattern))
+  def pathPrefix[A, B, C, D, E](pattern: PathMatcher5[A, B, C, D, E]) = filter5[A, B, C, D, E](pathFilter(Slash ~ pattern))
   
-  private def pathFilter[T <: Product](pattern: PathMatcher): RouteFilter[T] = { ctx =>
+  private def pathFilter[T <: Product](pattern: PathMatcher[T]): RouteFilter[T] = { ctx =>
     pattern(ctx.unmatchedPath) match {
       case Some((remainingPath, captures)) => new Pass(captures.asInstanceOf[T], _.copy(unmatchedPath = remainingPath))
       case None => Reject()
@@ -116,7 +117,7 @@ private[spray] trait PathBuilders {
   
   implicit def string2Matcher(s: String): PathMatcher0 = new StringMatcher(s)
   
-  implicit def regex2Matcher(regex: Regex): PathMatcher1 = {
+  implicit def regex2Matcher(regex: Regex): PathMatcher1[String] = {
     regex.groupCount match {
       case 0 => new SimpleRegexMatcher(regex)
       case 1 => new GroupRegexMatcher(regex)
@@ -128,76 +129,134 @@ private[spray] trait PathBuilders {
 }
 
 /**
- * a PathMatcher tries to match a prefix of a given string and returns
- * - None if not matched
- * - Some(remainingPath, captures) if matched
+ * A PathMatcher tries to match a prefix of a given string and returns
+ * 
+ *  - None if not matched
+ *  - Some(remainingPath, TupleX with the value captures) if matched
  */
-sealed trait PathMatcher extends (String => Option[(String, Product)])
+sealed trait PathMatcher[T <: Product] extends (String => Option[(String, T)])
 
-sealed trait PathMatcher0 extends PathMatcher {
+/**
+ * A PathMatcher0 extends a function that takes the unmatched path part of the request URI and returns
+ * 
+ *  - None if not matched
+ *  - Some(remainingPath, [[cc.spray.utils.Product0]]) if matched (i.e. extracts nothing) 
+ */
+trait PathMatcher0 extends PathMatcher[Product0] {
   def / (sub: PathMatcher0) = this ~ Slash ~ sub
-  def / (sub: PathMatcher1) = this ~ Slash ~ sub
-  def / (sub: PathMatcher2) = this ~ Slash ~ sub
-  def / (sub: PathMatcher3) = this ~ Slash ~ sub
-  def / (sub: PathMatcher4) = this ~ Slash ~ sub
-  def / (sub: PathMatcher5) = this ~ Slash ~ sub
-  def ~ (sub: PathMatcher0) = new Combi(this, sub) with PathMatcher0
-  def ~ (sub: PathMatcher1) = new Combi(this, sub) with PathMatcher1
-  def ~ (sub: PathMatcher2) = new Combi(this, sub) with PathMatcher2
-  def ~ (sub: PathMatcher3) = new Combi(this, sub) with PathMatcher3
-  def ~ (sub: PathMatcher4) = new Combi(this, sub) with PathMatcher4
-  def ~ (sub: PathMatcher5) = new Combi(this, sub) with PathMatcher5
+  def / [A](sub: PathMatcher1[A]) = this ~ Slash ~ sub
+  def / [A, B](sub: PathMatcher2[A, B]) = this ~ Slash ~ sub
+  def / [A, B, C](sub: PathMatcher3[A, B, C]) = this ~ Slash ~ sub
+  def / [A, B, C, D](sub: PathMatcher4[A, B, C, D]) = this ~ Slash ~ sub
+  def / [A, B, C, D, E](sub: PathMatcher5[A, B, C, D, E]) = this ~ Slash ~ sub
+  def ~ (sub: PathMatcher0) = new Combi[Product0](this, sub) with PathMatcher0
+  def ~ [A](sub: PathMatcher1[A]) = new Combi[Tuple1[A]](this, sub) with PathMatcher1[A]
+  def ~ [A, B](sub: PathMatcher2[A, B]) = new Combi[(A, B)](this, sub) with PathMatcher2[A, B]
+  def ~ [A, B, C](sub: PathMatcher3[A, B, C]) = new Combi[(A, B, C)](this, sub) with PathMatcher3[A, B, C]
+  def ~ [A, B, C, D](sub: PathMatcher4[A, B, C, D]) = new Combi[(A, B, C, D)](this, sub) with PathMatcher4[A, B, C, D]
+  def ~ [A, B, C, D, E](sub: PathMatcher5[A, B, C, D, E]) = new Combi[(A, B, C, D, E)](this, sub) with PathMatcher5[A, B, C, D, E]
 }
 
-sealed trait PathMatcher1 extends PathMatcher {
+/**
+ * A PathMatcher1[A] extends a function that takes the unmatched path part of the request URI and returns
+ * 
+ *  - None if not matched
+ *  - Some(remainingPath, Tuple1(a)) if matched (with a being the extracted value) 
+ */
+trait PathMatcher1[A] extends PathMatcher[Tuple1[A]] {
   def / (sub: PathMatcher0) = this ~ Slash ~ sub
-  def / (sub: PathMatcher1) = this ~ Slash ~ sub
-  def / (sub: PathMatcher2) = this ~ Slash ~ sub
-  def / (sub: PathMatcher3) = this ~ Slash ~ sub
-  def / (sub: PathMatcher4) = this ~ Slash ~ sub
-  def ~ (sub: PathMatcher0) = new Combi(this, sub) with PathMatcher1
-  def ~ (sub: PathMatcher1) = new Combi(this, sub) with PathMatcher2
-  def ~ (sub: PathMatcher2) = new Combi(this, sub) with PathMatcher3
-  def ~ (sub: PathMatcher3) = new Combi(this, sub) with PathMatcher4
-  def ~ (sub: PathMatcher4) = new Combi(this, sub) with PathMatcher5
+  def / [B](sub: PathMatcher1[B]) = this ~ Slash ~ sub
+  def / [B, C](sub: PathMatcher2[B, C]) = this ~ Slash ~ sub
+  def / [B, C, D](sub: PathMatcher3[B, C, D]) = this ~ Slash ~ sub
+  def / [B, C, D, E](sub: PathMatcher4[B, C, D, E]) = this ~ Slash ~ sub
+  def ~ (sub: PathMatcher0) = new Combi[Tuple1[A]](this, sub) with PathMatcher1[A]
+  def ~ [B](sub: PathMatcher1[B]) = new Combi[(A, B)](this, sub) with PathMatcher2[A, B]
+  def ~ [B, C](sub: PathMatcher2[B, C]) = new Combi[(A, B, C)](this, sub) with PathMatcher3[A, B, C]
+  def ~ [B, C, D](sub: PathMatcher3[B, C, D]) = new Combi[(A, B, C, D)](this, sub) with PathMatcher4[A, B, C, D]
+  def ~ [B, C, D, E](sub: PathMatcher4[B, C, D, E]) = new Combi[(A, B, C, D, E)](this, sub) with PathMatcher5[A, B, C, D, E]
 }
 
-sealed trait PathMatcher2 extends PathMatcher {
+/**
+ * A PathMatcher2[A, B] extends a function that takes the unmatched path part of the request URI and returns
+ * 
+ *  - None if not matched
+ *  - Some(remainingPath, (a, b)) if matched (with a and b being the extracted values) 
+ */
+trait PathMatcher2[A, B] extends PathMatcher[(A, B)] {
   def / (sub: PathMatcher0) = this ~ Slash ~ sub
-  def / (sub: PathMatcher1) = this ~ Slash ~ sub
-  def / (sub: PathMatcher2) = this ~ Slash ~ sub
-  def / (sub: PathMatcher3) = this ~ Slash ~ sub
-  def ~ (sub: PathMatcher0) = new Combi(this, sub) with PathMatcher2
-  def ~ (sub: PathMatcher1) = new Combi(this, sub) with PathMatcher3
-  def ~ (sub: PathMatcher2) = new Combi(this, sub) with PathMatcher4
-  def ~ (sub: PathMatcher3) = new Combi(this, sub) with PathMatcher5
+  def / [C](sub: PathMatcher1[C]) = this ~ Slash ~ sub
+  def / [C, D](sub: PathMatcher2[C, D]) = this ~ Slash ~ sub
+  def / [C, D, E](sub: PathMatcher3[C, D, E]) = this ~ Slash ~ sub
+  def ~ (sub: PathMatcher0) = new Combi[(A, B)](this, sub) with PathMatcher2[A, B]
+  def ~ [C](sub: PathMatcher1[C]) = new Combi[(A, B, C)](this, sub) with PathMatcher3[A, B, C]
+  def ~ [C, D](sub: PathMatcher2[C, D]) = new Combi[(A, B, C, D)](this, sub) with PathMatcher4[A, B, C, D]
+  def ~ [C, D, E](sub: PathMatcher3[C, D, E]) = new Combi[(A, B, C, D, E)](this, sub) with PathMatcher5[A, B, C, D, E]
 }
 
-sealed trait PathMatcher3 extends PathMatcher {
+/**
+ * A PathMatcher3[A, B, C] extends a function that takes the unmatched path part of the request URI and returns
+ * 
+ *  - None if not matched
+ *  - Some(remainingPath, (a, b, c)) if matched (with a, b and c being the extracted values) 
+ */
+trait PathMatcher3[A, B, C] extends PathMatcher[(A, B, C)] {
   def / (sub: PathMatcher0) = this ~ Slash ~ sub
-  def / (sub: PathMatcher1) = this ~ Slash ~ sub
-  def / (sub: PathMatcher2) = this ~ Slash ~ sub
-  def ~ (sub: PathMatcher0) = new Combi(this, sub) with PathMatcher3
-  def ~ (sub: PathMatcher1) = new Combi(this, sub) with PathMatcher4
-  def ~ (sub: PathMatcher2) = new Combi(this, sub) with PathMatcher5
+  def / [D](sub: PathMatcher1[D]) = this ~ Slash ~ sub
+  def / [D, E](sub: PathMatcher2[D, E]) = this ~ Slash ~ sub
+  def ~ (sub: PathMatcher0) = new Combi[(A, B, C)](this, sub) with PathMatcher3[A, B, C]
+  def ~ [D](sub: PathMatcher1[D]) = new Combi[(A, B, C, D)](this, sub) with PathMatcher4[A, B, C, D]
+  def ~ [D, E](sub: PathMatcher2[D, E]) = new Combi[(A, B, C, D, E)](this, sub) with PathMatcher5[A, B, C, D, E]
 }
 
-sealed trait PathMatcher4 extends PathMatcher {
+/**
+ * A PathMatcher4[A, B, C, D] extends a function that takes the unmatched path part of the request URI and returns
+ * 
+ *  - None if not matched
+ *  - Some(remainingPath, (a, b, c, d)) if matched (with a, b, c and d being the extracted values) 
+ */
+trait PathMatcher4[A, B, C, D] extends PathMatcher[(A, B, C, D)] {
   def / (sub: PathMatcher0) = this ~ Slash ~ sub
-  def / (sub: PathMatcher1) = this ~ Slash ~ sub
-  def ~ (sub: PathMatcher0) = new Combi(this, sub) with PathMatcher4
-  def ~ (sub: PathMatcher1) = new Combi(this, sub) with PathMatcher5
+  def / [E](sub: PathMatcher1[E]) = this ~ Slash ~ sub
+  def ~ (sub: PathMatcher0) = new Combi[(A, B, C, D)](this, sub) with PathMatcher4[A, B, C, D]
+  def ~ [E](sub: PathMatcher1[E]) = new Combi[(A, B, C, D, E)](this, sub) with PathMatcher5[A, B, C, D, E]
 }
 
-sealed trait PathMatcher5 extends PathMatcher {
+/**
+ * A PathMatcher5[A, B, C, D, E] extends a function that takes the unmatched path part of the request URI and returns
+ * 
+ *  - None if not matched
+ *  - Some(remainingPath, (a, b, c, d, e)) if matched (with a, b, c, d and e being the extracted values) 
+ */
+trait PathMatcher5[A, B, C, D, E] extends PathMatcher[(A, B, C, D, E)] {
   def / (sub: PathMatcher0) = this ~ Slash ~ sub
-  def ~ (sub: PathMatcher0) = new Combi(this, sub) with PathMatcher5
+  def ~ (sub: PathMatcher0) = new Combi[(A, B, C, D, E)](this, sub) with PathMatcher5[A, B, C, D, E]
 }
 
-private[spray] class Combi(a: PathMatcher, b: PathMatcher) {
+private[spray] class Combi[T <: Product](a: PathMatcher[_ <: Product], b: PathMatcher[_ <: Product]) extends PathMatcher[T]{
   def apply(path: String) = a(path).flatMap {
     case (restA, capturesA) => b(restA).map {
-      case (restB, capturesB) => (restB, capturesA productJoin capturesB) 
+      case (restB, capturesB) => (restB, (capturesA productJoin capturesB).asInstanceOf[T]) 
+    }
+  }
+}
+
+private[builders] class StringMatcher(prefix: String) extends PathMatcher0 {
+  def apply(path: String) = {
+    if (path.startsWith(prefix)) Some((path.substring(prefix.length), Product0)) else None
+  } 
+}
+
+private[builders] class SimpleRegexMatcher(regex: Regex) extends PathMatcher1[String] {
+  def apply(path: String) = {
+    regex.findPrefixOf(path).map(matched => (path.substring(matched.length), Tuple1(matched)))
+  }
+}
+
+private[builders] class GroupRegexMatcher(regex: Regex) extends PathMatcher1[String] {
+  def apply(path: String) = {
+    regex.findPrefixMatchOf(path).map { m =>
+      val matchLength = m.end - m.start
+      (path.substring(matchLength), Tuple1(m.group(1)))
     }
   }
 }
@@ -220,27 +279,28 @@ object PathEnd extends PathMatcher0 {
   }
 }
 
-object Remaining extends PathMatcher1 {
+object Remaining extends PathMatcher1[String] {
   def apply(path: String) = Some(("", Tuple1(path)))
 }
 
-private[builders] class StringMatcher(prefix: String) extends PathMatcher0 {
+/**
+ * A PathMatcher that efficiently matches a number of digits and extracts their integer value.
+ * The matcher will not match 0 digits or a sequence of digits that would represent an integer value larger
+ * than Int.MaxValue.
+ */
+object INT extends PathMatcher1[Int] {
   def apply(path: String) = {
-    if (path.startsWith(prefix)) Some((path.substring(prefix.length), Product0)) else None
-  } 
-}
-
-private[builders] class SimpleRegexMatcher(regex: Regex) extends PathMatcher1 {
-  def apply(path: String) = {
-    regex.findPrefixOf(path).map(matched => (path.substring(matched.length), Tuple1(matched)))
-  }
-}
-
-private[builders] class GroupRegexMatcher(regex: Regex) extends PathMatcher1 {
-  def apply(path: String) = {
-    regex.findPrefixMatchOf(path).map { m =>
-      val matchLength = m.end - m.start
-      (path.substring(matchLength), Tuple1(m.group(1)))
+    @tailrec
+    def swallowDigits(remainingPath: String, value: Int): Option[(String, Tuple1[Int])] = {
+      val c = if (remainingPath.isEmpty) 'x' else remainingPath.charAt(0) - '0'
+      if (0 <= c && c <= 9) {
+        if (value < Int.MaxValue / 10) // protect from Int overflow
+          swallowDigits(remainingPath.substring(1), if (value == -1) c else value * 10 + c)
+        else None 
+      } else {
+        if (value == -1) None else Some(remainingPath, Tuple1(value))
+      }
     }
+    swallowDigits(path, -1)    
   }
-}
+} 
