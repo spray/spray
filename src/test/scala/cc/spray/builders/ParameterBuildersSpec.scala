@@ -61,6 +61,15 @@ class ParameterBuildersSpec extends Specification with SprayTest with ServiceBui
         }
       }.response.content.as[String] mustEqual Right("EllenParsons29")
     }
+    "accept a single parameter to the plural form" in {
+      test(HttpRequest(uri = "/person?name=Charlie")) {
+        path("person") {
+          parameters("name") { (name) =>
+            get { _.complete(name) }
+          }
+        }
+      }.response.content.as[String] mustEqual Right("Charlie")
+    }
   }
   
   "The 'parameter' requirement directive" should {
@@ -99,6 +108,13 @@ class ParameterBuildersSpec extends Specification with SprayTest with ServiceBui
       test(HttpRequest(uri = "/person")) {
         route 
       }.response.content.as[String] mustEqual Right("GET")
+    }
+    "accept a single parameter to the plural form" in {
+      test(HttpRequest(uri = "/person?name=Charlie")) {
+        path("person") {
+          parameters('name ! "Charlie") { _.complete("yes") }
+        }
+      }.response.content.as[String] mustEqual Right("yes")
     }
   }
 
