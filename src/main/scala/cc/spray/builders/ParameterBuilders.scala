@@ -27,6 +27,12 @@ private[spray] trait ParameterBuilders {
   def parameter (a: Param) = filter1[String](build(a :: Nil))
 
   /**
+   * Returns a Route that rejects the request if a query parameter with the given name cannot be found.
+   * If it can be found the parameters value is extracted and passed as argument to the inner Route building function.
+   */
+  def parameters (a: Param) = filter1[String](build(a :: Nil))
+
+  /**
    * Returns a Route that rejects the request if the query parameters with the given names cannot be found.
    * If it can be found the parameter values are extracted and passed as arguments to the inner Route building function.
    */
@@ -73,6 +79,17 @@ private[spray] trait ParameterBuilders {
     ctx.request.queryParams.get(p.name) match {
       case Some(value) if value == p.requiredValue => Pass()
       case _ => Reject() 
+    }
+  }
+
+  /**
+   * Returns a Route that rejects the request if the query parameter with the given name cannot be found or does not
+   * have the required value.
+   */
+  def parameters(p: RequiredParameter) = filter { ctx =>
+    ctx.request.queryParams.get(p.name) match {
+      case Some(value) if value == p.requiredValue => Pass()
+      case _ => Reject()
     }
   }
   
