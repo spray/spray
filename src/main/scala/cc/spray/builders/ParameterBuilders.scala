@@ -24,7 +24,7 @@ private[spray] trait ParameterBuilders {
    * Returns a Route that rejects the request if a query parameter with the given name cannot be found.
    * If it can be found the parameters value is extracted and passed as argument to the inner Route building function. 
    */
-  def parameter (a: Param) = filter1[String](build(a :: Nil))
+  def parameter (a: Param) = parameters(a)
 
   /**
    * Returns a Route that rejects the request if a query parameter with the given name cannot be found.
