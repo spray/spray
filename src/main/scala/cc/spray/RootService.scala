@@ -48,7 +48,7 @@ class RootService extends Actor with ServletConverter with Logging {
   
   private def handleNoServices(rm: RequestMethod) {
     log.slf4j.debug("Received {} with no attached services, completing with 404", toSprayRequest(rm.request))
-    rm.rawComplete(fromSprayResponse(noService(rm.request.getRequestURI)))
+    completeNoService(rm)
   }
   
   private def handleOneService(rm: RequestMethod) {
@@ -74,11 +74,15 @@ class RootService extends Actor with ServletConverter with Logging {
     } onComplete completeRequest(rm) _
   }
   
+  private def completeNoService(rm: RequestMethod) {
+    rm.rawComplete(fromSprayResponse(noService(rm.request.getRequestURI)))
+  }
+  
   private def completeRequest(rm: RequestMethod)(future: Future[Option[Any]]) {
     if (future.exception.isEmpty) {
       future.result.get match {
         case Some(response: HttpResponse) => rm.rawComplete(fromSprayResponse(response))
-        case None => handleNoServices(rm)
+        case None => completeNoService(rm)
       }  
     } else {
       handleException(future.exception.get, rm)
