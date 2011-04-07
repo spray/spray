@@ -137,38 +137,38 @@ class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder 
     }
   }
   
-  "the predefined INT PathMatcher" should {
+  "the predefined IntNumber PathMatcher" should {
     "properly extract digit sequences at the path end into an integer" in {
       test(HttpRequest(GET, "/id/23")) {
-        path("id" / INT) { i =>
+        path("id" / IntNumber) { i =>
           get { _.complete(i.toString) }
         }
       }.response.content.as[String] mustEqual Right("23")
     }
     "properly extract digit sequences in the middle of the path into an integer" in {
       test(HttpRequest(GET, "/id/12345yes")) {
-        path("id" / INT ~ "yes") { i =>
+        path("id" / IntNumber ~ "yes") { i =>
           get { _.complete(i.toString) }
         }
       }.response.content.as[String] mustEqual Right("12345")
     }
     "reject empty matches" in {
       test(HttpRequest(GET, "/id/")) {
-        path("id" / INT) { i =>
+        path("id" / IntNumber) { i =>
           get { _.complete(i.toString) }
         }
       }.handled must beFalse
     }
     "reject non-digit matches" in {
       test(HttpRequest(GET, "/id/xyz")) {
-        path("id" / INT) { i =>
+        path("id" / IntNumber) { i =>
           get { _.complete(i.toString) }
         }
       }.handled must beFalse
     }
     "reject digit sequences representing numbers greater than Int.MaxValue" in {
       test(HttpRequest(GET, "/id/2147483648")) {
-        path("id" / INT) { i =>
+        path("id" / IntNumber) { i =>
           get { _.complete(i.toString) }
         }
       }.handled must beFalse

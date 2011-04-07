@@ -288,7 +288,7 @@ object Remaining extends PathMatcher1[String] {
  * The matcher will not match 0 digits or a sequence of digits that would represent an integer value larger
  * than Int.MaxValue.
  */
-object INT extends PathMatcher1[Int] {
+object IntNumber extends PathMatcher1[Int] {
   def apply(path: String) = {
     @tailrec
     def swallowDigits(remainingPath: String, value: Int): Option[(String, Tuple1[Int])] = {
