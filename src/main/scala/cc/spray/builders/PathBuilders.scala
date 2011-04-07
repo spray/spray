@@ -282,25 +282,3 @@ object PathEnd extends PathMatcher0 {
 object Remaining extends PathMatcher1[String] {
   def apply(path: String) = Some(("", Tuple1(path)))
 }
-
-/**
- * A PathMatcher that efficiently matches a number of digits and extracts their integer value.
- * The matcher will not match 0 digits or a sequence of digits that would represent an integer value larger
- * than Int.MaxValue.
- */
-object IntNumber extends PathMatcher1[Int] {
-  def apply(path: String) = {
-    @tailrec
-    def swallowDigits(remainingPath: String, value: Int): Option[(String, Tuple1[Int])] = {
-      val c = if (remainingPath.isEmpty) 'x' else remainingPath.charAt(0) - '0'
-      if (0 <= c && c <= 9) {
-        if (value < Int.MaxValue / 10) // protect from Int overflow
-          swallowDigits(remainingPath.substring(1), if (value == -1) c else value * 10 + c)
-        else None 
-      } else {
-        if (value == -1) None else Some(remainingPath, Tuple1(value))
-      }
-    }
-    swallowDigits(path, -1)    
-  }
-} 
