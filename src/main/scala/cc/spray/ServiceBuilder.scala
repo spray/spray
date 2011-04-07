@@ -28,6 +28,7 @@ trait ServiceBuilder
         with FilterBuilders
         with MiscBuilders
         with ParameterBuilders
+        with ParameterConverters
         with PathBuilders
         with SimpleFilterBuilders
         with UnMarshallingBuilders

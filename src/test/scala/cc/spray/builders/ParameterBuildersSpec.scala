@@ -43,14 +43,14 @@ class ParameterBuildersSpec extends Specification with SprayTest with ServiceBui
         }
       }.response.content.as[String] mustEqual Right("EllenParsons")
     }
-    "reject the request with MissingQueryParamRejection if required parameters are missing" in {
+    "reject the request with a MissingQueryParamRejection if a required parameters is missing" in {
       test(HttpRequest(uri = "/person?name=Parsons&sex=female")) {
         path("person") {
           parameters('name, 'FirstName, 'age) { (name, firstName, age) =>
             get { _ => fail("Should not run") }
           }
         }
-      }.rejections mustEqual Set(MissingQueryParamRejection("FirstName"), MissingQueryParamRejection("age"))
+      }.rejections mustEqual Set(MissingQueryParamRejection("FirstName"))
     }
     "supply the default value if an optional parameter is missing" in {
       test(HttpRequest(uri = "/person?name=Parsons&FirstName=Ellen")) {
@@ -60,15 +60,6 @@ class ParameterBuildersSpec extends Specification with SprayTest with ServiceBui
           }
         }
       }.response.content.as[String] mustEqual Right("EllenSome(Parsons)29None")
-    }
-    "accept a single parameter to the plural form" in {
-      test(HttpRequest(uri = "/person?name=Charlie")) {
-        path("person") {
-          parameters("name") { (name) =>
-            get { _.complete(name) }
-          }
-        }
-      }.response.content.as[String] mustEqual Right("Charlie")
     }
   }
   
@@ -108,13 +99,6 @@ class ParameterBuildersSpec extends Specification with SprayTest with ServiceBui
       test(HttpRequest(uri = "/person")) {
         route 
       }.response.content.as[String] mustEqual Right("GET")
-    }
-    "accept a single parameter to the plural form" in {
-      test(HttpRequest(uri = "/person?name=Charlie")) {
-        path("person") {
-          parameters('name ! "Charlie") { _.complete("yes") }
-        }
-      }.response.content.as[String] mustEqual Right("yes")
     }
   }
 

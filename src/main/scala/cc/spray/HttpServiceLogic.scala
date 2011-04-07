@@ -73,19 +73,17 @@ trait HttpServiceLogic {
   protected def handleMissingQueryParamRejections(rejections: List[Rejection]): Option[HttpResponse] = {
     (rejections.collect { case MissingQueryParamRejection(p) => p }) match {
       case Nil => None
-      case paramNames => {
-        Some(HttpResponse(HttpStatus(NotFound, "Request is missing the following required query parameters: " +
-                paramNames.mkString(", "))))
+      case paramName :: _ => {
+        Some(HttpResponse(HttpStatus(NotFound, "Request is missing required query parameter '" + paramName + '\'')))
       }
     } 
   }
   
   protected def handleMalformedQueryParamRejections(rejections: List[Rejection]): Option[HttpResponse] = {
-    (rejections.collect { case MalformedQueryParamRejection(p) => p }) match {
+    (rejections.collect { case MalformedQueryParamRejection(name, msg) => (name, msg) }) match {
       case Nil => None
-      case paramNames => {
-        Some(HttpResponse(HttpStatus(BadRequest, "The following of the requests query parameters were malformed: " +
-                paramNames.mkString(", "))))
+      case (name, msg) :: _ => {
+        Some(HttpResponse(HttpStatus(BadRequest, "The query parameter '" + name + "' was malformed:\n" + msg)))
       }
     } 
   }

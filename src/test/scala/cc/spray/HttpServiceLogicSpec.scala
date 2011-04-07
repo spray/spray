@@ -60,50 +60,43 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
         }.response mustEqual Ok
       }
     }
-    "respond with MethodNotAllowed for fully-matched requests resulting in MethodRejections" in {
+    "respond with MethodNotAllowed for requests resulting in MethodRejections" in {
       testService(HttpRequest(POST, "/test")) {
-        path("test") {
-          get { _.complete("yes") } ~
-          put { _.complete("yes") }
-        }
+        get { _.complete("yes") } ~
+        put { _.complete("yes") }
       }.response mustEqual failure(MethodNotAllowed, "HTTP method not allowed, supported methods: GET, PUT")
     }    
-    "respond with NotFound for fully-matched requests resulting in MissingQueryParamRejections" in {
-      testService(HttpRequest(POST, "/")) {
-        path("") {
-          parameters('amount, 'orderId) { (_, _) => completeOk }
-        }
-      }.response mustEqual failure(NotFound, "Request is missing the following required query parameters: " +
-              "amount, orderId")
+    "respond with NotFound for requests resulting in a MissingQueryParamRejection" in {
+      testService(HttpRequest(POST)) {
+        parameters('amount, 'orderId) { (_, _) => completeOk }
+      }.response mustEqual failure(NotFound, "Request is missing required query parameter 'amount'")
     }
-    "respond with UnsupportedMediaType for fully-matched requests resulting in UnsupportedRequestContentTypeRejection" in {
-      testService(HttpRequest(POST, "/", content = Some(HttpContent(`application/pdf`, "...PDF...")))) {
-        path("") {
-          contentAs[NodeSeq] { _ => completeOk }
-        }
+    "respond with BadRequest for requests resulting in a MalformedQueryParamRejection" in {
+      testService(HttpRequest(POST, "/?amount=xyz")) {
+        parameters('amount.as[Int]) { amount => completeOk }
+      }.response mustEqual failure(BadRequest, "The query parameter 'amount' was malformed:\n" +
+              "'xyz' is not a valid 32-bit integer value")
+    }
+    "respond with UnsupportedMediaType for requests resulting in UnsupportedRequestContentTypeRejection" in {
+      testService(HttpRequest(POST, content = Some(HttpContent(`application/pdf`, "...PDF...")))) {
+        contentAs[NodeSeq] { _ => completeOk }
       }.response mustEqual failure(UnsupportedMediaType, "The requests content-type must be one the following:\n" +
               "text/xml\ntext/html\napplication/xhtml+xml")
     }
-    "respond with BadRequest for fully-matched requests resulting in RequestEntityExpectedRejection" in {
-      testService(HttpRequest(POST, "/")) {
-        path("") {
-          contentAs[NodeSeq] { _ => completeOk }
-        }
+    "respond with BadRequest for requests resulting in RequestEntityExpectedRejection" in {
+      testService(HttpRequest(POST)) {
+        contentAs[NodeSeq] { _ => completeOk }
       }.response mustEqual failure(BadRequest, "Request entity expected")
     }
-    "respond with NotAcceptable for fully-matched requests resulting in UnacceptedResponseContentTypeRejection" in {
-      testService(HttpRequest(GET, "/", headers = List(`Accept`(`text/css`)))) {
-        path("") {
-          get { _.complete("text text text") }
-        }
+    "respond with NotAcceptable for requests resulting in UnacceptedResponseContentTypeRejection" in {
+      testService(HttpRequest(GET, headers = List(`Accept`(`text/css`)))) {
+        get { _.complete("text text text") }
       }.response mustEqual failure(NotAcceptable, "Resource representation is only available with these content-types:\n" +
               "text/plain")
     }
-    "respond with BadRequest for fully-matched requests resulting in MalformedRequestContentRejections" in {
-      testService(HttpRequest(POST, "/", content = Some(HttpContent(`text/xml`, "<broken>xmlbroken>")))) {
-        path("") {
-          contentAs[NodeSeq] { _ => completeOk }
-        }
+    "respond with BadRequest for requests resulting in MalformedRequestContentRejections" in {
+      testService(HttpRequest(POST, content = Some(HttpContent(`text/xml`, "<broken>xmlbroken>")))) {
+        contentAs[NodeSeq] { _ => completeOk }
       }.response mustEqual failure(BadRequest, "The request content was malformed:\n" +
               "XML document structures must start and end within the same entity.")
     }
