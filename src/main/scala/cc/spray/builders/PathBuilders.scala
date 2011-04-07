@@ -174,6 +174,16 @@ trait PathMatcher1[A] extends PathMatcher[Tuple1[A]] {
   def ~ [B, C](sub: PathMatcher2[B, C]) = new Combi[(A, B, C)](this, sub) with PathMatcher3[A, B, C]
   def ~ [B, C, D](sub: PathMatcher3[B, C, D]) = new Combi[(A, B, C, D)](this, sub) with PathMatcher4[A, B, C, D]
   def ~ [B, C, D, E](sub: PathMatcher4[B, C, D, E]) = new Combi[(A, B, C, D, E)](this, sub) with PathMatcher5[A, B, C, D, E]
+
+  class ValueMapper[S](res: Option[(String, Tuple1[S])]) {
+    def flatMapValue[T](f: S => Option[T]): Option[(String, Tuple1[T])] = {
+      res.flatMap {
+        case (remainingPath, Tuple1(v)) => f(v).map { t => (remainingPath, Tuple1(t)) }
+      }
+    } 
+  }
+  
+  implicit def pimpResult[S](res: Option[(String, Tuple1[S])]): ValueMapper[S] = new ValueMapper(res)  
 }
 
 /**
@@ -240,19 +250,19 @@ private[spray] class Combi[T <: Product](a: PathMatcher[_ <: Product], b: PathMa
   }
 }
 
-private[builders] class StringMatcher(prefix: String) extends PathMatcher0 {
+class StringMatcher(prefix: String) extends PathMatcher0 {
   def apply(path: String) = {
     if (path.startsWith(prefix)) Some((path.substring(prefix.length), Product0)) else None
   } 
 }
 
-private[builders] class SimpleRegexMatcher(regex: Regex) extends PathMatcher1[String] {
+class SimpleRegexMatcher(regex: Regex) extends PathMatcher1[String] {
   def apply(path: String) = {
     regex.findPrefixOf(path).map(matched => (path.substring(matched.length), Tuple1(matched)))
   }
 }
 
-private[builders] class GroupRegexMatcher(regex: Regex) extends PathMatcher1[String] {
+class GroupRegexMatcher(regex: Regex) extends PathMatcher1[String] {
   def apply(path: String) = {
     regex.findPrefixMatchOf(path).map { m =>
       val matchLength = m.end - m.start

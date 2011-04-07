@@ -73,3 +73,22 @@ private[builders] abstract class NumberMatcher[@specialized(Int, Long) A](max: A
     minusOne
   }
 }
+
+/**
+ * A PathMatcher that matches and extracts a Double value. The matched string representation is the pure decimal,
+ * optionally signed form of a double value, i.e. without exponent.
+ */
+object DoubleNumber extends PathMatcher1[Double] {
+  private val regexMatcher = new SimpleRegexMatcher("""[+-]?\d*\.?\d*""".r)
+  
+  def apply(path: String) = {
+    // use 'flatMapValue' on the result of any PathMatcher1 to convert the extracted value to another type 
+    regexMatcher(path).flatMapValue { string =>
+      try {
+        Some(java.lang.Double.parseDouble(string))
+      } catch {
+        case _: NumberFormatException => None
+      }
+    }
+  }
+}

@@ -23,7 +23,7 @@ import HttpMethods._
 import test.SprayTest
 class NumberMatchersSpec extends Specification with SprayTest with ServiceBuilder {
 
-  "the predefined LongNumber PathMatcher" should {
+  "the LongNumber PathMatcher" should {
     "properly extract digit sequences at the path end into a Long" in {
       test(HttpRequest(GET, "/id/23")) {
         path("id" / LongNumber) { i =>
@@ -61,7 +61,7 @@ class NumberMatchersSpec extends Specification with SprayTest with ServiceBuilde
     }
   }
   
-  "the predefined HexIntNumber PathMatcher" should {
+  "the HexIntNumber PathMatcher" should {
     "properly extract hex digit sequences at the path end into an Int" in {
       test(HttpRequest(GET, "/id/1A2bc3")) {
         path("id" / HexIntNumber) { i =>
@@ -69,7 +69,7 @@ class NumberMatchersSpec extends Specification with SprayTest with ServiceBuilde
         }
       }.response.content.as[String] mustEqual Right("1715139")
     }
-    "properly extract digit sequences in the middle of the path into an integer" in {
+    "properly extract digit sequences in the middle of the path into an Int" in {
       test(HttpRequest(GET, "/id/7fffffffyes")) {
         path("id" / HexIntNumber ~ "yes") { i =>
           get { _.complete(i.toString) }
@@ -93,6 +93,37 @@ class NumberMatchersSpec extends Specification with SprayTest with ServiceBuilde
     "reject digit sequences representing numbers greater than Int.MaxValue" in {
       test(HttpRequest(GET, "/id/80000000")) {
         path("id" / HexIntNumber) { i =>
+          get { _.complete(i.toString) }
+        }
+      }.handled must beFalse
+    }
+  }
+  
+  "the DoubleNumber PathMatcher" should {
+    "properly extract double representations at the path end into a Double" in {
+      test(HttpRequest(GET, "/id/1.23")) {
+        path("id" / DoubleNumber) { i =>
+          get { _.complete(i.toString) }
+        }
+      }.response.content.as[String] mustEqual Right("1.23")
+    }
+    "properly extract double representations in the middle of the path into a Double" in {
+      test(HttpRequest(GET, "/id/-5.yes")) {
+        path("id" / DoubleNumber ~ "yes") { i =>
+          get { _.complete(i.toString) }
+        }
+      }.response.content.as[String] mustEqual Right("-5.0")
+    }
+    "reject empty matches" in {
+      test(HttpRequest(GET, "/id/")) {
+        path("id" / DoubleNumber) { i =>
+          get { _.complete(i.toString) }
+        }
+      }.handled must beFalse
+    }
+    "reject non-digit matches" in {
+      test(HttpRequest(GET, "/id/+-5")) {
+        path("id" / DoubleNumber) { i =>
           get { _.complete(i.toString) }
         }
       }.handled must beFalse
