@@ -51,6 +51,7 @@ trait HttpServiceLogic {
     val r = rejections.toList
     handleMethodRejections(r) orElse
     handleMissingQueryParamRejections(r) orElse
+    handleMalformedQueryParamRejections(r) orElse
     handleUnsupportedRequestContentTypeRejections(r) orElse
     handleRequestEntityExpectedRejection(r) orElse
     handleUnacceptedResponseContentTypeRejection(r) orElse
@@ -61,10 +62,10 @@ trait HttpServiceLogic {
   protected def handleMethodRejections(rejections: List[Rejection]): Option[HttpResponse] = {
     (rejections.collect { case MethodRejection(method) => method }) match {
       case Nil => None
-      case methodRejections => {
+      case methods => {
         // TODO: add Allow header (required by the spec)
         Some(HttpResponse(HttpStatus(MethodNotAllowed, "HTTP method not allowed, supported methods: " +
-                methodRejections.mkString(", "))))
+                methods.mkString(", "))))
       }
     } 
   }
@@ -72,9 +73,19 @@ trait HttpServiceLogic {
   protected def handleMissingQueryParamRejections(rejections: List[Rejection]): Option[HttpResponse] = {
     (rejections.collect { case MissingQueryParamRejection(p) => p }) match {
       case Nil => None
-      case missingQueryParamRejection => {
+      case paramNames => {
         Some(HttpResponse(HttpStatus(NotFound, "Request is missing the following required query parameters: " +
-            missingQueryParamRejection.mkString(", "))))
+                paramNames.mkString(", "))))
+      }
+    } 
+  }
+  
+  protected def handleMalformedQueryParamRejections(rejections: List[Rejection]): Option[HttpResponse] = {
+    (rejections.collect { case MalformedQueryParamRejection(p) => p }) match {
+      case Nil => None
+      case paramNames => {
+        Some(HttpResponse(HttpStatus(BadRequest, "The following of the requests query parameters were malformed: " +
+                paramNames.mkString(", "))))
       }
     } 
   }

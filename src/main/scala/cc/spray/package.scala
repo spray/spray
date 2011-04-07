@@ -31,6 +31,7 @@ package object spray {
   type Marshaller[A] = (ContentType => Boolean) => Marshalling[A]
   type Unmarshaller[A] = ContentType => Unmarshalling[A]
   type RouteFilter[T <: Product] = RequestContext => FilterResult[T]
+  type ParameterMatcher[A] = Map[String, String] => Either[Rejection, A]
   
   private val unmanglingOperators = Map("$eq" -> "=", "$greater" -> ">", "$less" -> "<", "$plus" -> "+",
     "$minus" -> "-", "$times" -> "*", "$div" -> "/", "$bang" -> "!", "$at" -> "@", "$hash" -> "#", "$percent" -> "%",

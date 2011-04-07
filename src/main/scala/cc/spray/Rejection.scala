@@ -38,6 +38,12 @@ case class MethodRejection(supported: HttpMethod) extends Rejection
 case class MissingQueryParamRejection(parameterName: String) extends Rejection
 
 /**
+ * Rejection created by parameter filters.
+ * Signals that the request was rejected because a query parameter could not be interpreted.
+ */
+case class MalformedQueryParamRejection(parameterName: String) extends Rejection
+
+/**
  * Rejection created by unmarshallers.
  * Signals that the request was rejected because the requests content-type is unsupported.
  */

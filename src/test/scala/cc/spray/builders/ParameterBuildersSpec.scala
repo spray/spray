@@ -59,7 +59,7 @@ class ParameterBuildersSpec extends Specification with SprayTest with ServiceBui
             get { _.complete(firstName + name + age + eyes) }
           }
         }
-      }.response.content.as[String] mustEqual Right("EllenParsons29")
+      }.response.content.as[String] mustEqual Right("EllenSome(Parsons)29None")
     }
     "accept a single parameter to the plural form" in {
       test(HttpRequest(uri = "/person?name=Charlie")) {

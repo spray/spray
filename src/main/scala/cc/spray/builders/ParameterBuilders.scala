@@ -17,6 +17,8 @@
 package cc.spray
 package builders
 
+import utils.Product0
+
 private[spray] trait ParameterBuilders {
   this: FilterBuilders =>
 
@@ -24,86 +26,115 @@ private[spray] trait ParameterBuilders {
    * Returns a Route that rejects the request if a query parameter with the given name cannot be found.
    * If it can be found the parameters value is extracted and passed as argument to the inner Route building function. 
    */
-  def parameter (a: Param) = parameters(a)
+  def parameter[A](a: ParameterMatcher[A]) = parameters(a)
 
   /**
    * Returns a Route that rejects the request if a query parameter with the given name cannot be found.
    * If it can be found the parameters value is extracted and passed as argument to the inner Route building function.
    */
-  def parameters (a: Param) = filter1[String](build(a :: Nil))
+  def parameters[A](a: ParameterMatcher[A]) = filter1[A](build(a :: Nil))
 
   /**
    * Returns a Route that rejects the request if the query parameters with the given names cannot be found.
    * If it can be found the parameter values are extracted and passed as arguments to the inner Route building function.
    */
-  def parameters(a: Param, b: Param) = filter2[String, String](build(a :: b :: Nil))
+  def parameters[A, B](a: ParameterMatcher[A], b: ParameterMatcher[B]) = filter2[A, B](build(a :: b :: Nil))
 
   /**
    * Returns a Route that rejects the request if the query parameters with the given names cannot be found.
    * If it can be found the parameter values are extracted and passed as arguments to the inner Route building function.
    */
-  def parameters(a: Param, b: Param, c: Param) = filter3[String, String, String](build(a :: b :: c :: Nil))
+  def parameters[A, B, C](a: ParameterMatcher[A], b: ParameterMatcher[B], c: ParameterMatcher[C]) = {
+    filter3[A, B, C](build(a :: b :: c :: Nil))
+  }
 
   /**
    * Returns a Route that rejects the request if the query parameters with the given names cannot be found.
    * If it can be found the parameter values are extracted and passed as arguments to the inner Route building function.
    */
-  def parameters(a: Param, b: Param, c: Param, d: Param) = filter4[String, String, String, String](build(a :: b :: c :: d :: Nil))
+  def parameters[A, B, C, D](a: ParameterMatcher[A], b: ParameterMatcher[B], c: ParameterMatcher[C],
+                             d: ParameterMatcher[D]) = {
+    filter4[A, B, C, D](build(a :: b :: c :: d :: Nil))
+  }
 
   /**
    * Returns a Route that rejects the request if the query parameters with the given names cannot be found.
    * If it can be found the parameter values are extracted and passed as arguments to the inner Route building function.
    */
-  def parameters(a: Param, b: Param, c: Param, d: Param, e: Param) = filter5[String, String, String, String, String](build(a :: b :: c :: d :: e :: Nil))
-  
-  private def build[T <: Product](params: List[Param]): RouteFilter[T] = { ctx =>
+  def parameters[A, B, C, D, E](a: ParameterMatcher[A], b: ParameterMatcher[B], c: ParameterMatcher[C],
+                                d: ParameterMatcher[D], e: ParameterMatcher[E]) = {
+    filter5[A, B, C, D, E](build(a :: b :: c :: d :: e :: Nil))
+  }
+
+  private def build[T <: Product](params: List[ParameterMatcher[_]]): RouteFilter[T] = { ctx =>
     params.foldLeft[FilterResult[Product]](Pass()) { (result, p) =>
       result match {
-        case Pass(values, _) => p.extract(ctx.request.queryParams) match {
+        case Pass(values, _) => p(ctx.request.queryParams) match {
           case Right(value) => new Pass(values productJoin Tuple1(value), transform = identity)
           case Left(rejection) => Reject(rejection)
         }
-        case x@ Reject(rejections) => p.extract(ctx.request.queryParams) match {
+        case x@ Reject(rejections) => p(ctx.request.queryParams) match {
           case Left(rejection) => Reject(rejections + rejection)
           case _ => x
         }
       }
     }.asInstanceOf[FilterResult[T]]
   }
+  
+  /**
+   * Returns a Route that rejects the request if the query parameter with the given name cannot be found or does not
+   * have the required value.
+   */
+  def parameter(p: RequiredParameterMatcher) = filter { ctx => if (p(ctx.request.queryParams)) Pass() else Reject() }
 
   /**
    * Returns a Route that rejects the request if the query parameter with the given name cannot be found or does not
    * have the required value.
    */
-  def parameter(p: RequiredParameter) = filter { ctx =>
-    ctx.request.queryParams.get(p.name) match {
-      case Some(value) if value == p.requiredValue => Pass()
-      case _ => Reject() 
-    }
+  def parameters(p: RequiredParameterMatcher, more: RequiredParameterMatcher*) = {
+    val allRPM = p +: more
+    filter { ctx => if (allRPM.forall(_(ctx.request.queryParams))) Pass() else Reject() }
   }
 
-  /**
-   * Returns a Route that rejects the request if the query parameter with the given name cannot be found or does not
-   * have the required value.
-   */
-  def parameters(p: RequiredParameter) = filter { ctx =>
-    ctx.request.queryParams.get(p.name) match {
-      case Some(value) if value == p.requiredValue => Pass()
-      case _ => Reject()
+  implicit def fromSymbol(name: Symbol) = fromString(name.name)  
+  
+  implicit def fromString(name: String) = new DefaultParameterMatcher[String](name, StringParameterConverter)
+  
+  implicit object StringParameterConverter extends ParameterConverter[String] {
+    def apply(string: String) = Some(string)
+  } 
+}
+
+trait ParameterConverter[A] extends (String => Option[A])
+trait RequiredParameterMatcher extends (Map[String, String] => Boolean)
+
+class DefaultParameterMatcher[A](name: String, converter: ParameterConverter[A]) extends ParameterMatcher[A] { self =>
+  def apply(params: Map[String, String]) = {
+    params.get(name) match {
+      case Some(value) => converter(value) match {
+        case Some(converted) => Right(converted)
+        case None => Left(MalformedQueryParamRejection(name)) 
+      }
+      case None => notFound  
     }
   }
   
-  implicit def fromString(name: String): Param = new Param(name)
-  implicit def fromSymbol(name: Symbol): Param = new Param(name.name)
-}
-
-class Param(val name: String, val default: Option[String] = None) {
-  def ? : Param = ? ("")
-  def ? (default: String) = new Param(name, Some(default))
-  def ! (requiredValue: String) = new RequiredParameter(name, requiredValue)
-  def extract(paramMap: Map[String, String]): Either[Rejection, String] = {
-    paramMap.get(name).orElse(default).map(Right(_)).getOrElse(Left(MissingQueryParamRejection(name)))
+  def notFound: Either[Rejection, A] = Left(MissingQueryParamRejection(name))
+  
+  def ? : ParameterMatcher[Option[A]] = {
+    new DefaultParameterMatcher[Option[A]](name,
+      new ParameterConverter[Option[A]] { def apply(s: String) = converter(s).map(Some(_)) }) {
+      override def notFound = Right(None)
+    }
   }
+  
+  def ? [B](default: B)(implicit converter: ParameterConverter[B]) = new DefaultParameterMatcher[B](name, converter) {
+    override def notFound = Right(default)
+  }
+  
+  def as[B](implicit converter: ParameterConverter[B]) = new DefaultParameterMatcher[B](name, converter)
+  
+  def ! [B](requiredValue: B)(implicit converter: ParameterConverter[B]) = new RequiredParameterMatcher {
+    def apply(params: Map[String, String]) = params.get(name).flatMap(converter) == Some(requiredValue)
+  } 
 }
-
-class RequiredParameter(val name: String, val requiredValue: String)
