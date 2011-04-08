@@ -20,41 +20,39 @@ package builders
 import http._
 
 private[spray] trait MiscBuilders {
+  this: FilterBuilders =>
 
   /**
    * Returns a Route which applies the given [[cc.spray.http.HttpRequest]] transformation function before passing on the
    *  [[cc.spray.RequestContext]] to its inner Route.
    */
-  def requestTransformedBy(f: HttpRequest => HttpRequest)(route: Route): Route = { ctx =>
-    route(ctx.withRequestTransformed(f))
-  }
+  def requestTransformedBy(f: HttpRequest => HttpRequest) = transform(_.withRequestTransformed(f))
 
   /**
    * Returns a Route which applies the given [[cc.spray.http.HttpResponse]] transformation function to all not-rejected
    * responses of its inner Route.
    */
-  def responseTransformedBy(f: HttpResponse => HttpResponse)(route: Route): Route = { ctx =>
-    route(ctx.withHttpResponseTransformed(f))
-  }
+  def responseTransformedBy(f: HttpResponse => HttpResponse) = transform(_.withHttpResponseTransformed(f))
   
-  def routingResultTransformedBy(f: RoutingResult => RoutingResult)(route: Route): Route = { ctx =>
-    route(ctx.withRoutingResultTransformed(f))
-  }
+  /**
+   * Returns a Route which applies the given transformation function to the RoutingResult of its inner Route.
+   */
+  def routingResultTransformedBy(f: RoutingResult => RoutingResult) = transform(_.withRoutingResultTransformed(f))
   
   /**
    * Returns a Route that sets the given response status on all not-rejected responses of its inner Route.
    */
   def respondsWithStatus(responseStatus: HttpStatusCode) = responseTransformedBy { response =>
     response.copy(status = responseStatus)
-  } _
+  }
 
   /**
    * Returns a Route that adds the given response headers to all not-rejected responses of its inner Route.
    */
   def respondsWithHeader(responseHeader: HttpHeader) = responseTransformedBy { response =>
     response.copy(headers = responseHeader :: response.headers)
-  } _
-
+  }
+  
   /**
    * Stops the current Route processing by throwing an HttpException that will be caught by the enclosing Actor.
    * Failures produced in this way circumvent all response processing logic that might be present (for example they

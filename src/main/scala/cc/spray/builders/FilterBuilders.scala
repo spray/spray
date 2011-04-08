@@ -20,6 +20,12 @@ package builders
 import utils.Product0
 
 private[spray] trait FilterBuilders {
+  
+  /**
+   * Creates a [[cc.spray.FilterRoute0]] that accepts all requests but applies to given transformation function to
+   * the RequestContext.
+   */
+  def transform(f: RequestContext => RequestContext) = new TransformerRoute(f)
 
   /**
    * Creates a [[cc.spray.FilterRoute0]] from the given RouteFilter function. 
@@ -149,3 +155,6 @@ class FilterRoute5[A, B, C, D, E](filter: RouteFilter[(A, B, C, D, E)]) extends 
   def | (other: FilterRoute5[A, B, C, D, E]) = new FilterRoute5[A, B, C, D, E](or(other.filter))
   def & (other: FilterRoute0) = new FilterRoute5[A, B, C, D, E](and(other.filter))
 }
+
+class TransformerRoute(transform: RequestContext => RequestContext)
+        extends FilterRoute0(_ => new Pass(Product0, transform = transform))
