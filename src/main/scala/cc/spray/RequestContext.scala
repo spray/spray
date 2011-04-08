@@ -17,6 +17,9 @@
 package cc.spray
 
 import http._
+import HttpStatusCodes._
+import HttpHeaders._
+import MediaTypes._
 import marshalling.{CantMarshal, MarshalWith}
 
 /**
@@ -99,6 +102,18 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
    */
   def fail(failure: HttpStatus) {
     responder(Respond(HttpResponse(failure)))
+  }
+  
+  def redirect(uri: String, redirectionType: Redirection = Found) {
+    complete(
+      HttpResponse(
+        status = redirectionType,
+        headers = Location(uri) :: Nil,
+        content = Some(HttpContent(`text/html`,
+          "The requested resource temporarily resides under this <a href=\"" + uri + "\">URI</a>."
+        ))
+      )
+    )
   }
 }
 
