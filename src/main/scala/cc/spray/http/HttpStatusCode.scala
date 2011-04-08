@@ -64,13 +64,13 @@ object HttpStatusCodes extends ObjectRegistry[Int, HttpStatusCode] {
   val PartialContent               = new Success(206, "The server is delivering only part of the resource due to a range header sent by the client.")
   val Multi                        = new Success(207, "The message body that follows is an XML message and can contain a number of separate response codes, depending on how many sub-requests were made.")
                                       
-  val MultipleChoices              = new Redirection(300, "Indicates multiple options for the resource that the client may follow.")
+  val MultipleChoices              = new Redirection(300, "There are multiple options for the resource that the client may follow.")
   val MovedPermanently             = new Redirection(301, "This and all future requests should be directed to the given URI.")
   val Found                        = new Redirection(302, "The resource was found, but at a different URI.")
   val SeeOther                     = new Redirection(303, "The response to the request can be found under another URI using a GET method.")
-  val NotModified                  = new Redirection(304, "Indicates the resource has not been modified since last requested.")
-  val UseProxy                     = new Redirection(305, "Many HTTP clients (such as Mozilla[7] and Internet Explorer) do not correctly handle responses with this status code, primarily for security reasons.")
-  val TemporaryRedirect            = new Redirection(307, "In this occasion, the request should be repeated with another URI, but future requests can still use the original URI.")
+  val NotModified                  = new Redirection(304, "The resource has not been modified since last requested.")
+  val UseProxy                     = new Redirection(305, "This single request is to be repeated via the proxy given by the Location field.")
+  val TemporaryRedirect            = new Redirection(307, "The request should be repeated with another URI, but future requests can still use the original URI.")
                                       
   val BadRequest                   = new ClientError(400, "The request contains bad syntax or cannot be fulfilled.")
   val Unauthorized                 = new ClientError(401, "Authentication is possible but has failed or not yet been provided.")
