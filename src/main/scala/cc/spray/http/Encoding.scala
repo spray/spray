@@ -19,8 +19,15 @@ package cc.spray.http
 
 import cc.spray.utils.ObjectRegistry
 
-sealed trait Encoding {
-  def value: String   
+sealed trait EncodingRange {
+  def value: String
+  def matches(encoding: Encoding): Boolean
+  override def toString = "EncodingRange(" + value + ')'
+}
+
+sealed trait Encoding extends EncodingRange {
+  def value: String
+  def matches(encoding: Encoding) = value == encoding.value
   override def toString = value
 }
 
@@ -29,13 +36,17 @@ object Encodings extends ObjectRegistry[String, Encoding] {
   
   def register(encoding: Encoding) { register(encoding, encoding.value) }
   
+  val `*` = new EncodingRange {
+    def value = "*"
+    def matches(encoding: Encoding) = true
+  }
+  
   class StandardEncoding private[Encodings] (val value: String) extends Encoding {
     register(this)
   }
   
   case class CustomEncoding(value: String) extends Encoding
   
-  val `*`           = new StandardEncoding("*")
   val compress      = new StandardEncoding("compress")
   val chunked       = new StandardEncoding("chunked") 
   val deflate       = new StandardEncoding("deflate") 

@@ -32,7 +32,8 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
    * Returns a copy of this context with the HttpRequest transformed by the given function.
    */
   def withRequestTransformed(f: HttpRequest => HttpRequest): RequestContext = {
-    copy(request = f(request))
+    val newRequest = f(request)
+    if (newRequest eq request) this else copy(request = newRequest)
   }
 
   /**

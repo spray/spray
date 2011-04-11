@@ -47,7 +47,19 @@ case class MalformedQueryParamRejection(parameterName: String, errorMsg: String)
  * Rejection created by unmarshallers.
  * Signals that the request was rejected because the requests content-type is unsupported.
  */
-case class UnsupportedRequestContentTypeRejection(supported: List[ContentTypeRange]) extends Rejection
+case class UnsupportedRequestContentTypeRejection(supported: Seq[ContentTypeRange]) extends Rejection
+
+/**
+ * Rejection created by decoding filters.
+ * Signals that the request was rejected because the requests content encoding is unsupported.
+ */
+case class UnsupportedRequestEncodingRejection(supported: Encoding) extends Rejection
+
+/**
+ * Rejection created by decoding filters.
+ * Signals that the request was rejected because the requests content is corrupted.
+ */
+case class CorruptRequestEncodingRejection(msg: String) extends Rejection
 
 /**
  * Rejection created by unmarshallers.
@@ -66,5 +78,12 @@ case object RequestEntityExpectedRejection extends Rejection
  * Signals that the request was rejected because the service is not capable of producing a response entity whose
  * content type is accepted by the client
  */
-case class UnacceptedResponseContentTypeRejection(supported: List[ContentType]) extends Rejection
+case class UnacceptedResponseContentTypeRejection(supported: Seq[ContentType]) extends Rejection
+
+/**
+ * Rejection created by encoding filters.
+ * Signals that the request was rejected because the service is not capable of producing a response entity whose
+ * content encoding is accepted by the client
+ */
+case class UnacceptedResponseEncodingRejection(supported: Encoding) extends Rejection
 

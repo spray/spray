@@ -24,7 +24,7 @@ import HttpStatusCodes._
  */
 case class HttpResponse(status: HttpStatus = OK,
                         headers: List[HttpHeader] = Nil,
-                        content: Option[HttpContent] = None) {
+                        content: Option[HttpContent] = None) extends HttpMessage {
 
   def isSuccess: Boolean = status.code.isInstanceOf[HttpSuccess]
   

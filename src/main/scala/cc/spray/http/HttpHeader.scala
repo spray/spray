@@ -78,8 +78,8 @@ object HttpHeaders {
     def value = charsetRanges.mkString(", ")
   }
   
-  object `Accept-Encoding` { def apply(first: Encoding, more: Encoding*): `Accept-Encoding` = apply(first +: more) }
-  case class `Accept-Encoding`(encodings: Seq[Encoding]) extends HttpHeader {
+  object `Accept-Encoding` { def apply(first: EncodingRange, more: EncodingRange*): `Accept-Encoding` = apply(first +: more) }
+  case class `Accept-Encoding`(encodings: Seq[EncodingRange]) extends HttpHeader {
     def value = encodings.mkString(", ")
   }
   
@@ -91,6 +91,10 @@ object HttpHeaders {
   object `Accept-Ranges` { def apply(first: RangeUnit, more: RangeUnit*): `Accept-Ranges` = apply(first +: more) }
   case class `Accept-Ranges`(rangeUnits: Seq[RangeUnit]) extends HttpHeader {
     def value = if (rangeUnits.isEmpty) "none" else rangeUnits.mkString(", ")
+  }
+  
+  case class `Content-Encoding`(encoding: Encoding) extends HttpHeader {
+    def value = encoding.value
   }
   
   case class `Content-Type`(contentType: ContentType) extends HttpHeader {

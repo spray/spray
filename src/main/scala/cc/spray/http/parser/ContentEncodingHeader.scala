@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-package cc.spray
+package cc.spray.http
+package parser
 
-import builders._
+import org.parboiled.scala._
+import cc.spray.http.Encodings._
 
-/**
- * The ServiceBuilder is the central trait you should mix in to get access to ''sprays'' Route building directives.
- */
-trait ServiceBuilder
-        extends CachingBuilders
-        with CodecBuilders
-        with DetachedBuilders
-        with FileResourceDirectoryBuilders
-        with FilterBuilders
-        with MiscBuilders
-        with ParameterBuilders
-        with ParameterConverters
-        with PathBuilders
-        with SimpleFilterBuilders
-        with UnMarshallingBuilders
+private[parser] trait ContentEncodingHeader {
+  this: Parser with ProtocolParameterRules =>
+
+  def CONTENT_ENCODING = rule (
+    ContentEncoding ~ EOI
+        ~~> (x => HttpHeaders.`Content-Encoding`(x))
+  )
+  
+  def ContentEncoding = rule {
+    ContentCoding ~~> (x => Encodings.getForKey(x.toLowerCase).getOrElse(CustomEncoding(x)))
+  }
+  
+}

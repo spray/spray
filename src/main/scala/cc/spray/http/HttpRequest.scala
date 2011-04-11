@@ -30,7 +30,7 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
                        headers: List[HttpHeader] = Nil,
                        content: Option[HttpContent] = None,
                        remoteHost: Option[HttpIp] = None,
-                       version: Option[HttpVersion] = Some(`HTTP/1.1`)) {
+                       version: Option[HttpVersion] = Some(`HTTP/1.1`)) extends HttpMessage {
   
   lazy val URI = new URI(uri)
   
@@ -57,7 +57,7 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
               fragment: String = this.fragment) = {
     copy(uri = new URI(scheme, userInfo, host, port, path, query, fragment).toString)
   }
-  
+
   lazy val acceptedMediaRanges: List[MediaRange] = {
     // TODO: sort by preference
     for (Accept(mediaRanges) <- headers; range <- mediaRanges) yield range
@@ -66,6 +66,11 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   lazy val acceptedCharsetRanges: List[CharsetRange] = {
     // TODO: sort by preference
     for (`Accept-Charset`(charsetRanges) <- headers; range <- charsetRanges) yield range
+  }
+  
+  lazy val acceptedEncodingRanges: List[EncodingRange] = {
+    // TODO: sort by preference
+    for (`Accept-Encoding`(encodingRanges) <- headers; range <- encodingRanges) yield range
   }
 
   def isContentTypeAccepted(contentType: ContentType) = {
@@ -82,6 +87,13 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
     // according to the HTTP spec a client has to accept all charsets if no Accept-Charset header is sent with the request
     // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.2
     acceptedCharsetRanges.isEmpty || charset.isDefined && acceptedCharsetRanges.exists(_.matches(charset.get))
+  }
+  
+  def isEncodingAccepted(encoding: Encoding) = {
+    // according to the HTTP spec the server MAY assume that the client will accept any content coding if no
+    // Accept-Encoding header is sent with the request (http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.3)
+    // this is what we do here
+    acceptedEncodingRanges.isEmpty || acceptedEncodingRanges.exists(_.matches(encoding))
   }
   
   lazy val queryParams: Map[String, String] = QueryParser.parse(query)

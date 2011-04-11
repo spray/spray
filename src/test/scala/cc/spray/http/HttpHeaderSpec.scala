@@ -80,6 +80,13 @@ class HttpHeaderSpec extends Specification {
     )
   }
   
+  "Header 'Content-Encoding'" should {
+    import Encodings._
+    "be parsed correctly from example 1" in (
+      HttpHeader("Content-Encoding", "gzip") mustEqual `Content-Encoding`(`gzip`)
+    )
+  }
+  
   "Header 'Content-Type'" should {
     import MediaTypes._
     import Charsets._

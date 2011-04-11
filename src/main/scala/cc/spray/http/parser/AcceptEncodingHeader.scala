@@ -19,19 +19,23 @@ package parser
 
 import org.parboiled.scala._
 import BasicRules._
-import cc.spray.http.Encodings.CustomEncoding
+import cc.spray.http.Encodings._
 
 private[parser] trait AcceptEncodingHeader {
   this: Parser with ProtocolParameterRules =>
 
   def ACCEPT_ENCODING = rule (
-    oneOrMore(EncodingDef, ListSep) ~ EOI
+    oneOrMore(EncodingRangeDecl, ListSep) ~ EOI
             ~~> (x => HttpHeaders.`Accept-Encoding`(x))
   )
   
-  def EncodingDef = rule (
-    (ContentCoding | "*" ~> identity) ~ optional(EncodingQuality)
-            ~~> (x => Encodings.getForKey(x).getOrElse(CustomEncoding(x))) 
+  def EncodingRangeDecl = rule (
+    EncodingRangeDef ~ optional(EncodingQuality) 
+  )
+  
+  def EncodingRangeDef = rule (
+      "*" ~ push(`*`)
+    | ContentCoding ~~> (x => Encodings.getForKey(x.toLowerCase).getOrElse(CustomEncoding(x)))  
   )
   
   def EncodingQuality = rule {
