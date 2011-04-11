@@ -18,6 +18,7 @@ package cc.spray
 package builders
 
 import marshalling._
+import cc.spray.RequestEntityExpectedRejection
 
 private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with DefaultUnmarshallers {
   this: FilterBuilders =>
@@ -31,7 +32,7 @@ private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with Defau
   def contentAs[A :Unmarshaller](routing: A => Route): Route = {
     val filterRoute = filter1 { ctx =>
       ctx.request.content.as[A] match {
-        case Right(a) => Pass(a)
+        case Right(a) => Pass(a)(_.cancelRejections[UnsupportedRequestContentTypeRejection])
         case Left(rejection) => Reject(rejection)
       }
     }
@@ -47,7 +48,11 @@ private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with Defau
   def optionalContentAs[A :Unmarshaller](routing: Option[A] => Route): Route = {
     val filterRoute = filter1 { ctx =>
       ctx.request.content.as[A] match {
-        case Right(a) => Pass(Some(a))
+        case Right(a) => Pass(Some(a)) {
+          _.cancelRejections { r =>
+            r.isInstanceOf[UnsupportedRequestContentTypeRejection] || r == RequestEntityExpectedRejection
+          }
+        }
         case Left(RequestEntityExpectedRejection) => Pass(None)
         case Left(rejection) => Reject(rejection)
       }
@@ -63,7 +68,9 @@ private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with Defau
   def produce[A](routing: (A => Unit) => Route)(implicit marshaller: Marshaller[A]): Route = {
     val filterRoute = filter1 { ctx =>
       marshaller(ctx.request.isContentTypeAccepted(_)) match {
-        case MarshalWith(converter) => Pass({ (a: A) => ctx.complete(converter(a)) })
+        case MarshalWith(converter) => Pass((a: A) => ctx.complete(converter(a))) {
+          _.cancelRejections[UnacceptedResponseContentTypeRejection]
+        }
         case CantMarshal(onlyTo) => Reject(UnacceptedResponseContentTypeRejection(onlyTo))
       }
     }

@@ -41,10 +41,11 @@ trait SprayTest {
       case Respond(response) => response
       case Reject(_) => fail("Request was rejected") 
     }
-    def rejections: Set[Rejection] = rr match {
+    def rawRejections: Set[Rejection] = rr match {
       case Respond(_) => fail("Request was not rejected")
       case Reject(rejections) => rejections 
     }
+    def rejections: Set[Rejection] = Rejections.applyCancellations(rawRejections)   
   }
   
   trait ServiceTest extends HttpServiceLogic {

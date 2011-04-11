@@ -21,7 +21,6 @@ import http._
 import HttpHeaders._
 import utils.Product0
 import org.parboiled.common.FileUtils
-import collection.immutable.List._
 import java.io._
 import java.util.zip._
 
@@ -30,7 +29,7 @@ private[spray] trait CodecBuilders {
 
   def decodeRequest(decoder: Decoder) = filter { ctx =>
     if (ctx.request.content.isEmpty) {
-      Pass()
+      Pass()(_.cancelRejections[UnsupportedRequestEncodingRejection])
     } else if (ctx.request.encoding == decoder.encoding) {
       try {
         val decodedRequest = decoder.decode(ctx.request) 
@@ -43,7 +42,16 @@ private[spray] trait CodecBuilders {
   
   def encodeResponse(encoder: Encoder) = filter { ctx =>
     if (ctx.request.isEncodingAccepted(encoder.encoding)) {
-      new Pass(Product0, _.withHttpResponseTransformed(encoder.encode))
+      Pass() {
+        _.withRoutingResultTransformed {
+          _ match {
+            case Respond(response) => Respond(encoder.encode(response))
+            case Reject(rejections) => {
+              Reject(rejections + RejectionRejection(_.isInstanceOf[UnacceptedResponseEncodingRejection]))
+            }
+          }
+        }
+      }
     } else Reject(UnacceptedResponseEncodingRejection(encoder.encoding))
   }
   

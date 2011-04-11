@@ -27,17 +27,17 @@ private[spray] trait SimpleFilterBuilders {
   /**
    * Returns a Route filter that rejects all non-DELETE requests.
    */
-  def delete  = method(DELETE)
+  def delete = method(DELETE)
 
   /**
    * Returns a Route filter that rejects all non-GET requests.
    */
-  def get     = method(GET)
+  def get = method(GET)
 
   /**
    * Returns a Route filter that rejects all non-HEAD requests.
    */
-  def head    = method(HEAD)
+  def head = method(HEAD)
 
   /**
    * Returns a Route filter that rejects all non-OPTIONS requests.
@@ -47,23 +47,25 @@ private[spray] trait SimpleFilterBuilders {
   /**
    * Returns a Route filter that rejects all non-POST requests.
    */
-  def post    = method(POST)
+  def post = method(POST)
 
   /**
    * Returns a Route filter that rejects all non-PUT requests.
    */
-  def put     = method(PUT)
+  def put = method(PUT)
 
   /**
    * Returns a Route filter that rejects all non-TRACE requests.
    */
-  def trace   = method(TRACE)
+  def trace = method(TRACE)
 
   /**
    * Returns a Route filter that rejects all requests whose HTTP method does not match the given one.
    */
   def method(m: HttpMethod): FilterRoute0 = filter { ctx =>
-    if (ctx.request.method == m) Pass() else Reject(MethodRejection(m)) 
+    if (ctx.request.method == m) {
+      Pass()(_.cancelRejections[MethodRejection])
+    } else Reject(MethodRejection(m)) 
   }
 
   /**

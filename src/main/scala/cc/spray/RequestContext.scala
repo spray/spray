@@ -90,6 +90,28 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
    * Completes the request with the given [[cc.spray.http.HttpResponse]].
    */
   def complete(response: HttpResponse) { responder(Respond(response)) }
+
+  /**
+   * Returns a copy of this context that cancels all rejections of type R with
+   * a [[cc.spray.RejectionRejection]]. 
+   */
+  def cancelRejections[R <: Rejection :Manifest]: RequestContext = {
+    val erasure = manifest.erasure
+    cancelRejections(erasure.isInstance(_))
+  }
+  
+  /**
+   * Returns a copy of this context that cancels all rejections matching the given predicate with
+   * a [[cc.spray.RejectionRejection]].
+   */
+  def cancelRejections(reject: Rejection => Boolean): RequestContext = {
+    withRoutingResultTransformed {
+      _ match {
+        case x: Respond => x
+        case Reject(rejections) => Reject(rejections + RejectionRejection(reject))
+      }
+    }
+  }
   
   /**
    * Completes the request with the given [[cc.spray.http.HttpFailure]].

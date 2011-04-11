@@ -87,3 +87,16 @@ case class UnacceptedResponseContentTypeRejection(supported: Seq[ContentType]) e
  */
 case class UnacceptedResponseEncodingRejection(supported: Encoding) extends Rejection
 
+/**
+ * Special Rejection that is used to cancel Rejections that have been gathered up but are "obsolete" since
+ * another Route of the same type has matched the request.
+ */
+case class RejectionRejection(reject: Rejection => Boolean) extends Rejection
+
+
+object Rejections {
+  def applyCancellations(rejections: Set[Rejection]): Set[Rejection] = {
+    val cancellations = rejections.collect { case RejectionRejection(f) => f }
+    rejections.filterNot(r => cancellations.exists(_(r)) || r.isInstanceOf[RejectionRejection])
+  }
+}

@@ -21,6 +21,7 @@ import org.specs.Specification
 import http._
 import HttpStatusCodes._
 import HttpHeaders._
+import HttpMethods._
 import test.SprayTest
 
 class MiscBuildersSpec extends Specification with SprayTest with ServiceBuilder {
@@ -53,5 +54,29 @@ class MiscBuildersSpec extends Specification with SprayTest with ServiceBuilder 
       }.rejections mustEqual Set() 
     }
   }
-
+  
+  "routes created by the concatenation operator '~'" should {
+    "yield the first sub route if it succeeded" in {
+      test(HttpRequest(GET)) {
+        get { _.complete("first") } ~ get { _.complete("second") }
+      }.response.content.as[String] mustEqual Right("first")    
+    }
+    "yield the second sub route if the first did not succeed" in {
+      test(HttpRequest(GET)) {
+        post { _.complete("first") } ~ get { _.complete("second") }
+      }.response.content.as[String] mustEqual Right("second")    
+    }
+    "collect rejections from both sub routes" in {
+      test(HttpRequest(DELETE)) {
+        get { { _ => fail("Should not run") } } ~ put { { _ => fail("Should not run") } }
+      }.rejections mustEqual Set(MethodRejection(GET), MethodRejection(PUT))
+    }
+    "clear rejections that have already 'overcome' by previous directives" in {
+      test(HttpRequest(PUT)) {
+        put { contentAs[String] { s => _.complete(s) }} ~
+        get { completeOk }
+      }.rejections mustEqual Set(RequestEntityExpectedRejection)
+    }
+  }
+  
 }

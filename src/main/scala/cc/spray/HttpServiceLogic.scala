@@ -44,7 +44,8 @@ trait HttpServiceLogic {
   
   protected[spray] def responseFromRoutingResult(rr: RoutingResult): Option[HttpResponse] = rr match {
     case Respond(httpResponse) => Some(httpResponse) 
-    case Reject(rejections) => if (rejections.isEmpty) None else responseForRejections(rejections.toSet)
+    case Reject(rejections) => if (rejections.isEmpty) None
+                               else responseForRejections(Rejections.applyCancellations(rejections))
   }
   
   protected[spray] def responseForRejections(rejections: Set[Rejection]): Option[HttpResponse] = {

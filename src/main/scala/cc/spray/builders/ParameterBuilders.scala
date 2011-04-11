@@ -98,8 +98,22 @@ class DefaultParameterMatcher[A](name: String, converter: ParameterConverter[A])
   def apply(params: Map[String, String]) = {
     params.get(name) match {
       case Some(value) => converter(value) match {
-        case Right(converted) => Pass(converted)
-        case Left(errorMsg) => Reject(MalformedQueryParamRejection(name, errorMsg)) 
+        case Right(converted) => Pass(converted) {
+          _.cancelRejections {
+            _ match {
+              case MissingQueryParamRejection(n) if n == name => true
+              case MalformedQueryParamRejection(n, _) if n == name => true
+              case _ => false
+            }
+          }
+        }
+        case Left(errorMsg) => new Reject(Set(
+          MalformedQueryParamRejection(name, errorMsg),
+          RejectionRejection(_ match {
+            case MissingQueryParamRejection(n) if n == name => true
+            case _ => false
+          })
+        )) 
       }
       case None => notFound  
     }
