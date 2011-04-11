@@ -79,17 +79,17 @@ class UnMarshallingBuildersSpec extends Specification with SprayTest with Servic
     }
   }
   
-  "The 'produces' directive" should {
+  "The 'produce' directive" should {
     "provide a completion function converting custom objects to HttpContent using the in-scope marshaller" in {
       test(HttpRequest(GET)) {
-        produces[Int] { produce =>
+        produce[Int] { produce =>
           _ => produce(42)
         }
       }.response.content mustEqual Some(HttpContent(ContentType(`application/xhtml+xml`), "<int>42</int>"))
     }
     "return a UnacceptedResponseContentTypeRejection rejection if no acceptable marshaller is in scope" in {
       test(HttpRequest(GET, headers = List(`Accept`(`text/css`)))) {
-        produces[Int] { produce =>
+        produce[Int] { produce =>
           _ => produce(42)
         }
       }.rejections mustEqual Set(UnacceptedResponseContentTypeRejection(IntMarshaller.canMarshalTo))

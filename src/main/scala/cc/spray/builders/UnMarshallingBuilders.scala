@@ -60,7 +60,7 @@ private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with Defau
    * passed to the inner route building function. You can use it do decouple marshaller resolution from the call
    * site of the RequestContexts 'complete' function.
    */
-  def produces[A](routing: (A => Unit) => Route)(implicit marshaller: Marshaller[A]): Route = {
+  def produce[A](routing: (A => Unit) => Route)(implicit marshaller: Marshaller[A]): Route = {
     val filterRoute = filter1 { ctx =>
       marshaller(ctx.request.isContentTypeAccepted(_)) match {
         case MarshalWith(converter) => Pass({ (a: A) => ctx.complete(converter(a)) })
@@ -71,12 +71,12 @@ private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with Defau
   }
 
   /**
-   * Returns a Route that completes the request using the given function. The input to the function is produces with
+   * Returns a Route that completes the request using the given function. The input to the function is produce with
    * the in-scope unmarshaller and the result value of the function is marshalled with the in-scope marshaller.
    */
   def handledBy[A :Unmarshaller, B: Marshaller](f: A => B): Route = {
     contentAs[A] { a =>
-      produces[B] { produce =>
+      produce[B] { produce =>
         _ => produce(f(a))
       }
     }
