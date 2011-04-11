@@ -24,7 +24,7 @@ import builders._
 trait ServiceBuilder
         extends CachingBuilders
         with CodecBuilders
-        with DetachedBuilders
+        with DetachBuilder
         with FileResourceDirectoryBuilders
         with FilterBuilders
         with MiscBuilders

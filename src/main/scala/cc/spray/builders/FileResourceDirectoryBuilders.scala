@@ -24,7 +24,7 @@ import java.io.File
 import HttpStatusCodes._
 
 private[spray] trait FileResourceDirectoryBuilders {
-  this: SimpleFilterBuilders with DetachedBuilders=>
+  this: SimpleFilterBuilders with DetachBuilder=>
 
   /**
    * Returns a Route that completes GET requests with the content of the given file. The actual I/O operation is
@@ -33,7 +33,7 @@ private[spray] trait FileResourceDirectoryBuilders {
    */
   def getFromFile(fileName: String, charset: Option[Charset] = None)
                  (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {
-    detached {
+    detach {
       get {
         _.complete {
           Option(FileUtils.readAllBytes(fileName)).map { buffer =>
@@ -51,7 +51,7 @@ private[spray] trait FileResourceDirectoryBuilders {
    */
   def getFromResource(resourceName: String, charset: Option[Charset] = None)
                      (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {
-    detached {
+    detach {
       get {
         _.complete {
           Option(FileUtils.readAllBytesFromResource(resourceName)).map { buffer =>

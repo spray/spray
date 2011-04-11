@@ -21,12 +21,12 @@ import cc.spray.ServiceBuilder
 import akka.actor.Actor
 
 /**
- * Trait that should be mixed into the [[cc.spray.ServiceBuilder]] instance used for testing. It disables the 'detached'
- * directive, preventing "No response received" failures in Routes using `detached`.
+ * Trait that should be mixed into the [[cc.spray.ServiceBuilder]] instance used for testing. It disables the 'detach'
+ * directive, preventing "No response received" failures in Routes using `detach`.
  */
 trait DontDetach extends ServiceBuilder {
   
   // disable detach-to-actor so we do not have to actually run actors in the test
-  override def detached(route: Route)(implicit detachedActorFactory: Route => Actor): Route = route
+  override def detach(route: Route)(implicit detachedActorFactory: Route => Actor): Route = route
   
 }

@@ -22,13 +22,13 @@ import akka.util.Logging
 import http._
 import HttpStatusCodes._
 
-private[spray] trait DetachedBuilders {
+private[spray] trait DetachBuilder {
 
   /**
    * Returns a Route that executes its inner Route in the content of a newly spawned actor. You can supply your own
    * implicit detachedActorFactory function to take control of the actual spawning.
    */
-  def detached(route: Route)(implicit detachedActorFactory: Route => Actor): Route = { ctx =>
+  def detach(route: Route)(implicit detachedActorFactory: Route => Actor): Route = { ctx =>
     Actor.actorOf(detachedActorFactory(route)).start ! ctx
   }
   
@@ -39,7 +39,7 @@ private[spray] trait DetachedBuilders {
 }
 
 /**
- * Actor used by the `detached` directive.
+ * Actor used by the `detach` directive.
  */
 class DetachedRouteActor(route: Route) extends Actor with Logging {  
   protected def receive = {
