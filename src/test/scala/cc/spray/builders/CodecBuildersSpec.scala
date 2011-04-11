@@ -112,7 +112,7 @@ class CodecBuildersSpec extends Specification with SprayTest with ServiceBuilder
     "leave responses with an already set Content-Encoding header unchanged" in {
       test(HttpRequest(headers = List(`Accept-Encoding`(Encodings.gzip)))) { 
         encodeResponse(Gzip) {
-          respondsWithHeader(`Content-Encoding`(Encodings.identity)) {
+          respondWithHeader(`Content-Encoding`(Encodings.identity)) {
             _.complete("Yeah!")
           }
         }

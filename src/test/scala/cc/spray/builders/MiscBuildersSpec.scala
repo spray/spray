@@ -28,28 +28,28 @@ class MiscBuildersSpec extends Specification with SprayTest with ServiceBuilder 
   val Ok = HttpResponse()
   val completeOk: Route = { _.complete(Ok) }
   
-  "respondsWithStatus" should {
+  "respondWithStatus" should {
     "set the given status on successful responses" in {
       test(HttpRequest()) { 
-        respondsWithStatus(Created) { completeOk }
+        respondWithStatus(Created) { completeOk }
       }.response mustEqual HttpResponse(Created) 
     }
     "leave rejections unaffected" in {
       test(HttpRequest()) { 
-        respondsWithStatus(Created) { _.reject() }
+        respondWithStatus(Created) { _.reject() }
       }.rejections mustEqual Set() 
     }
   }
   
-  "respondsWithHeader" should {
+  "respondWithHeader" should {
     "add the given headers to successful responses" in {
       test(HttpRequest()) { 
-        respondsWithHeader(CustomHeader("custom", "custom")) { completeOk }
+        respondWithHeader(CustomHeader("custom", "custom")) { completeOk }
       }.response mustEqual HttpResponse(headers = CustomHeader("custom", "custom") :: Nil) 
     }
     "leave rejections unaffected" in {
       test(HttpRequest()) { 
-        respondsWithHeader(CustomHeader("custom", "custom")) { _.reject() }
+        respondWithHeader(CustomHeader("custom", "custom")) { _.reject() }
       }.rejections mustEqual Set() 
     }
   }

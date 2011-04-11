@@ -26,30 +26,30 @@ private[spray] trait MiscBuilders {
    * Returns a Route which applies the given [[cc.spray.http.HttpRequest]] transformation function before passing on the
    *  [[cc.spray.RequestContext]] to its inner Route.
    */
-  def requestTransformedBy(f: HttpRequest => HttpRequest) = transform(_.withRequestTransformed(f))
+  def transformRequest(f: HttpRequest => HttpRequest) = transform(_.withRequestTransformed(f))
 
   /**
    * Returns a Route which applies the given [[cc.spray.http.HttpResponse]] transformation function to all not-rejected
    * responses of its inner Route.
    */
-  def responseTransformedBy(f: HttpResponse => HttpResponse) = transform(_.withHttpResponseTransformed(f))
+  def transformResponse(f: HttpResponse => HttpResponse) = transform(_.withHttpResponseTransformed(f))
   
   /**
    * Returns a Route which applies the given transformation function to the RoutingResult of its inner Route.
    */
-  def routingResultTransformedBy(f: RoutingResult => RoutingResult) = transform(_.withRoutingResultTransformed(f))
+  def transformRoutingResult(f: RoutingResult => RoutingResult) = transform(_.withRoutingResultTransformed(f))
   
   /**
    * Returns a Route that sets the given response status on all not-rejected responses of its inner Route.
    */
-  def respondsWithStatus(responseStatus: HttpStatusCode) = responseTransformedBy { response =>
+  def respondWithStatus(responseStatus: HttpStatusCode) = transformResponse { response =>
     response.copy(status = responseStatus)
   }
 
   /**
    * Returns a Route that adds the given response headers to all not-rejected responses of its inner Route.
    */
-  def respondsWithHeader(responseHeader: HttpHeader) = responseTransformedBy { response =>
+  def respondWithHeader(responseHeader: HttpHeader) = transformResponse { response =>
     response.copy(headers = responseHeader :: response.headers)
   }
   
