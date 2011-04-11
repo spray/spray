@@ -56,7 +56,7 @@ private[spray] trait MiscBuilders {
   /**
    * Stops the current Route processing by throwing an HttpException that will be caught by the enclosing Actor.
    * Failures produced in this way circumvent all response processing logic that might be present (for example they
-   * cannot be cached with the 'cached' directive).
+   * cannot be cached with the 'cache' directive).
    */
   def hardFail(failure: HttpFailure, reason: String = ""): Nothing = throw new HttpException(failure, reason)
   

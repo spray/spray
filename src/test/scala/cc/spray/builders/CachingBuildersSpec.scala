@@ -27,14 +27,14 @@ class CachingBuildersSpec extends Specification with SprayTest with ServiceBuild
   val Ok = HttpResponse()
   val completeOk: Route = { _.complete(Ok) }
   
-  "the cached directive" should {
+  "the cache directive" should {
     val countingService = {
       var i = 0
-      cached { _.complete { i += 1; i.toString } }
+      cache { _.complete { i += 1; i.toString } }
     }
     val errorService = {
       var i = 0
-      cached { _.complete { i += 1; HttpResponse(HttpStatus(500 + i)) } }
+      cache { _.complete { i += 1; HttpResponse(HttpStatus(500 + i)) } }
     }
     def prime(route: Route) = make(route) { _(RequestContext(HttpRequest(GET))) }
     

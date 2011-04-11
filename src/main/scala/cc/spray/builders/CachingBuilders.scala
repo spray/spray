@@ -27,7 +27,7 @@ private[spray] trait CachingBuilders {
    * The default keyer caches GET requests with the request URI as caching key, to all other requests it is fully
    * transparent. The cache itself is implemented as a [[collection.mutable.WeakHashMap]].
    */
-  def cached(route: Route)(implicit keyer: RequestContext => CacheKey): Route = new Route {
+  def cache(route: Route)(implicit keyer: RequestContext => CacheKey): Route = new Route {
     private val cache = WeakHashMap.empty[Any, HttpResponse]
     
     def apply(ctx: RequestContext) {
@@ -57,7 +57,7 @@ private[spray] trait CachingBuilders {
 }
 
 /**
- * The result of the implicit cache keyer function argument to the 'cached' directive. 
+ * The result of the implicit cache keyer function argument to the 'cache' directive. 
  */
 sealed trait CacheKey
 
