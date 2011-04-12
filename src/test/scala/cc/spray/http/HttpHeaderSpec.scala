@@ -96,9 +96,6 @@ class HttpHeaderSpec extends Specification {
     "be parsed correctly from example 2" in (
       HttpHeader("Content-Type", "text/plain; charset=utf8") mustEqual `Content-Type`(ContentType(`text/plain`, `UTF-8`))
     )
-    "be parsed correctly from example 3" in (
-      HttpHeader("Content-Type", "text/css") mustEqual `Content-Type`(ContentType(`text/css`, `ISO-8859-1`))
-    )
   }
   
   "Header 'X-Forwarded-For'" should {

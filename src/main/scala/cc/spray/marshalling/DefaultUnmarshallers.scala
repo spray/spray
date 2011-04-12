@@ -20,6 +20,7 @@ package marshalling
 import http._
 import MediaTypes._
 import MediaRanges._
+import Charsets._
 import xml.{XML, NodeSeq}
 
 trait DefaultUnmarshallers {
@@ -27,9 +28,9 @@ trait DefaultUnmarshallers {
   implicit object StringUnmarshaller extends UnmarshallerBase[String] {
     val canUnmarshalFrom = List(ContentTypeRange(`text/*`))
 
-    def unmarshal(content: HttpContent) = content.contentType.charset match {
-      case Some(cs) => Right(new String(content.buffer, cs.nioCharset))
-      case None => throw new IllegalStateException // text content should always have a Charset set
+    def unmarshal(content: HttpContent) = {
+      val charset = content.contentType.charset.getOrElse(`ISO-8859-1`)
+      Right(new String(content.buffer, charset.nioCharset))
     }
   }
   
@@ -38,7 +39,13 @@ trait DefaultUnmarshallers {
                            ContentTypeRange(`text/html`) ::
                            ContentTypeRange(`application/xhtml+xml`) :: Nil
 
-    def unmarshal(content: HttpContent) = protect { XML.load(content.inputStream) }
+    def unmarshal(content: HttpContent) = protect {
+      if (content.contentType.charset.isDefined) {
+        XML.loadString(StringUnmarshaller.unmarshal(content).right.get)
+      } else {
+        XML.load(content.inputStream)
+      }
+    }
   }
   
   implicit def pimpHttpContentWithAs1(c: HttpContent): HttpContentExtractor = new HttpContentExtractor(Some(c)) 

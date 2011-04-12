@@ -22,6 +22,7 @@ import http._
 import HttpStatusCodes._
 import HttpHeaders._
 import MediaTypes._
+import Charsets._
 import test.SprayTest
 import org.parboiled.common.FileUtils
 import http.HttpContent._
@@ -92,12 +93,12 @@ class CodecBuildersSpec extends Specification with SprayTest with ServiceBuilder
     "encode the response content with GZIP if the client accepts it with a dedicated Accept-Encoding header" in {
       test(HttpRequest(headers = List(`Accept-Encoding`(Encodings.gzip)))) { 
         encodeResponse(Gzip) { _.complete("Yeah!") }
-      }.response.content mustEqual Some(HttpContent(`text/plain`, yeahGzipped))
+      }.response.content mustEqual Some(HttpContent(ContentType(`text/plain`, `ISO-8859-1`), yeahGzipped))
     }
     "encode the response content with GZIP if the request has no Accept-Encoding header" in {
       test(HttpRequest()) { 
         encodeResponse(Gzip) { _.complete("Yeah!") }
-      }.response.content mustEqual Some(HttpContent(`text/plain`, yeahGzipped))
+      }.response.content mustEqual Some(HttpContent(ContentType(`text/plain`, `ISO-8859-1`), yeahGzipped))
     }
     "reject the request if the client does not accept GZIP encoding" in {
       test(HttpRequest(headers = List(`Accept-Encoding`(Encodings.identity)))) { 

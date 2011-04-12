@@ -61,11 +61,6 @@ class ServletConverterSpec extends Specification with Mockito {
           mustEqual
         HttpRequest(method = POST, uri = "/path", content = Some(HttpContent(`application/octet-stream`, "yes".getBytes)))
       )
-      "and set the charset of the HttpContent to 'ISO-8859-1' for text/* MediaTypes if no explicit charset if given" in (
-        convert.toSprayRequest(Hsr("POST", "/path", "", Map("Content-Type" -> "text/html"), "yes"))
-          mustEqual
-        HttpRequest(method = POST, uri = "/path", content = Some(HttpContent(ContentType(`text/html`, `ISO-8859-1`), "yes".getBytes)))
-      )
       "and carry over explicitly given charset from the Content-Type header" in (
         convert.toSprayRequest(Hsr("POST", "/path", "", Map("Content-Type" -> "text/css; charset=utf8"), "yes"))
           mustEqual

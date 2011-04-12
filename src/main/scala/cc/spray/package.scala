@@ -28,7 +28,7 @@ package object spray {
 
   type Route = RequestContext => Unit
   type ContentTypeResolver = (File, Option[Charset]) => ContentType
-  type Marshaller[A] = (ContentType => Boolean) => Marshalling[A]
+  type Marshaller[A] = (ContentType => Option[ContentType]) => Marshalling[A]
   type Unmarshaller[A] = ContentType => Unmarshalling[A]
   type RouteFilter[T <: Product] = RequestContext => FilterResult[T]
   type ParameterMatcher[A] = Map[String, String] => FilterResult[Tuple1[A]]

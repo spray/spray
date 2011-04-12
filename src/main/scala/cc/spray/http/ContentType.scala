@@ -30,7 +30,7 @@ case class ContentTypeRange(mediaRange: MediaRange, charsetRange: CharsetRange =
   override def toString = "ContentTypeRange(" + value + ')'
 }
 
-class ContentType private (val mediaType: MediaType, val charset: Option[Charset]) {
+case class ContentType private (mediaType: MediaType, charset: Option[Charset]) {
   def value: String = charset match {
     // don't print the charset parameter if it's the default charset
     case Some(cs) if (!mediaType.isText || cs != `ISO-8859-1`)=> mediaType.value + "; charset=" + cs.value
@@ -41,20 +41,11 @@ class ContentType private (val mediaType: MediaType, val charset: Option[Charset
     case x: ContentType => mediaType == x.mediaType && charset == x.charset
     case _ => false
   }
-
-  override def hashCode() = 31 * mediaType.## + charset.##
-
-  override def toString = "ContentType(" + value + ")"
 }
 
 object ContentType {
   def apply(mediaType: MediaType, charset: Charset): ContentType = apply(mediaType, Some(charset))
+  def apply(mediaType: MediaType): ContentType = apply(mediaType, None)
   
-  def apply(mediaType: MediaType, charset: Option[Charset] = None): ContentType = {
-    new ContentType(mediaType, if (mediaType.isText && charset.isEmpty) Some(`ISO-8859-1`) else charset)
-  }
-  
-  def unapply(ct: ContentType): Option[(MediaType, Option[Charset])] = Some((ct.mediaType, ct.charset))
-  
-  implicit def fromMimeType(mimeType: MediaType): ContentType = ContentType(mimeType) 
+  implicit def fromMimeType(mimeType: MediaType): ContentType = apply(mimeType) 
 }                     

@@ -21,8 +21,8 @@ import http._
 
 trait MarshallerBase[A] extends Marshaller[A] {
 
-  def apply(accept: ContentType => Boolean) = {
-    canMarshalTo.find(accept) match {
+  def apply(accept: ContentType => Option[ContentType]) = {
+    canMarshalTo.mapFind(accept) match {
       case Some(contentType) => MarshalWith(marshal(_, contentType))
       case None => CantMarshal(canMarshalTo)
     }

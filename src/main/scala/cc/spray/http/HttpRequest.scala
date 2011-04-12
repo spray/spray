@@ -20,6 +20,7 @@ package cc.spray.http
 import java.net.URI
 import HttpHeaders._
 import HttpVersions._
+import Charsets._
 import parser.QueryParser
 
 /**
@@ -73,27 +74,62 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
     for (`Accept-Encoding`(encodingRanges) <- headers; range <- encodingRanges) yield range
   }
 
-  def isContentTypeAccepted(contentType: ContentType) = {
-    isMediaTypeAccepted(contentType.mediaType) && isCharsetAccepted(contentType.charset)  
-  } 
-  
+  /**
+   * Determines whether the given mediatype is accepted by the client.
+   */
   def isMediaTypeAccepted(mediaType: MediaType) = {
     // according to the HTTP spec a client has to accept all mime types if no Accept header is sent with the request
     // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
     acceptedMediaRanges.isEmpty || acceptedMediaRanges.exists(_.matches(mediaType))
   }
-  
-  def isCharsetAccepted(charset: Option[Charset]) = {
+
+  /**
+   * Determines whether the given charset is accepted by the client.
+   */
+  def isCharsetAccepted(charset: Charset) = {
     // according to the HTTP spec a client has to accept all charsets if no Accept-Charset header is sent with the request
     // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.2
-    acceptedCharsetRanges.isEmpty || charset.isDefined && acceptedCharsetRanges.exists(_.matches(charset.get))
+    acceptedCharsetRanges.isEmpty || acceptedCharsetRanges.exists(_.matches(charset))
   }
-  
+
+  /**
+   * Determines whether the given encoding is accepted by the client.
+   */
   def isEncodingAccepted(encoding: Encoding) = {
     // according to the HTTP spec the server MAY assume that the client will accept any content coding if no
     // Accept-Encoding header is sent with the request (http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.3)
     // this is what we do here
     acceptedEncodingRanges.isEmpty || acceptedEncodingRanges.exists(_.matches(encoding))
+  }
+
+  /**
+   * Determines whether the given content-type is accepted by the client.
+   */
+  def isContentTypeAccepted(ct: ContentType) = {
+    isMediaTypeAccepted(ct.mediaType) && (ct.charset.isEmpty || isCharsetAccepted(ct.charset.get))
+  }
+
+  /**
+   * Determines whether the given content-type is accepted by the client.
+   * If the given content-type does not contain a charset an accepted charset is selected, i.e. the method guarantees
+   * that, if a content-type instance is returned within the option it will contain a charset.
+   */
+  def acceptableContentType(contentType: ContentType): Option[ContentType] = {
+    if (isContentTypeAccepted(contentType)) Some {
+      if (contentType.charset.isDefined) contentType
+      else ContentType(contentType.mediaType, acceptedCharset)
+    } else None
+  }
+
+  /**
+   * Returns a charset that is accepted by the client.
+   */
+  def acceptedCharset: Charset = {
+    if (isCharsetAccepted(`ISO-8859-1`)) `ISO-8859-1`
+    else acceptedCharsetRanges match {
+      case (cs: Charset) :: _ => cs
+      case _ => throw new IllegalStateException // a CharsetRange that is not `*` ?
+    }
   }
   
   lazy val queryParams: Map[String, String] = QueryParser.parse(query)

@@ -75,7 +75,7 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
    * the in-scope marshaller for the type.
    */
   def complete[A :Marshaller](obj: A) {
-    marshaller.apply(request.isContentTypeAccepted(_)) match {
+    marshaller.apply(request.acceptableContentType) match {
       case MarshalWith(converter) => complete(converter(obj))
       case CantMarshal(onlyTo) => reject(UnacceptedResponseContentTypeRejection(onlyTo))
     }

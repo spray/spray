@@ -67,7 +67,7 @@ private[spray] trait UnMarshallingBuilders extends DefaultMarshallers with Defau
    */
   def produce[A](routing: (A => Unit) => Route)(implicit marshaller: Marshaller[A]): Route = {
     val filterRoute = filter1 { ctx =>
-      marshaller(ctx.request.isContentTypeAccepted(_)) match {
+      marshaller(ctx.request.acceptableContentType) match {
         case MarshalWith(converter) => Pass((a: A) => ctx.complete(converter(a))) {
           _.cancelRejections[UnacceptedResponseContentTypeRejection]
         }
