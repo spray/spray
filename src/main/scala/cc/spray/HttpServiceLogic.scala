@@ -23,7 +23,7 @@ import HttpStatusCodes._
  * The logic part of the [[cc.spray.HttpService]]. Contains the code for [[cc.spray.RequestContext]] creation as well
  * as translation of [[cc.spray.Rejection]]s and Exceptions to [[cc.spray.http.HttpResponse]]s. 
  */
-trait HttpServiceLogic {
+trait HttpServiceLogic extends ErrorHandling {
   
   def route: Route
   
@@ -127,9 +127,5 @@ trait HttpServiceLogic {
   protected def handleCustomRejections(rejections: List[Rejection]): Option[HttpResponse] = {
     Some(HttpResponse(HttpStatus(InternalServerError, "Unknown request rejection: " + rejections.head)))
   }
-  
-  protected[spray] def responseForException(request: HttpRequest, e: Exception): HttpResponse = e match {
-    case e: HttpException => HttpResponse(e.status)
-    case e: Exception => HttpResponse(HttpStatus(InternalServerError, e.getMessage))
-  } 
+
 }

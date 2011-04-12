@@ -53,6 +53,8 @@ trait SprayTest {
       throw new IllegalStateException("SprayTest.HttpService instances can only be used with the SprayTest.test(service, request) method")
     )
     protected[spray] def responderForRequest(request: HttpRequest) = responder.value
+
+    protected def logException(request: HttpRequest, e: Exception) { } // in the tests we don't log
   }
 
   /**

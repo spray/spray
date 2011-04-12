@@ -24,7 +24,7 @@ import akka.util.Logging
 /**
  * The actor path of the [[cc.spray.HttpService]].
  */
-trait HttpServiceActor extends Actor with Logging {
+trait HttpServiceActor extends Actor with Logging with ErrorLogging {
   this: HttpServiceLogic =>
   
   // use the configurable dispatcher
@@ -51,14 +51,7 @@ trait HttpServiceActor extends Actor with Logging {
  * In this way you can test your CustomServiceLogic with [[cc.spray.test.SprayTest]] without the need to fire up
  * actual actors.
  */
-class HttpService(val route: Route) extends HttpServiceActor with HttpServiceLogic {
-  
-  override protected[spray] def responseForException(request: HttpRequest, e: Exception) = {
-    log.error("Error during processing of request {}:\n{}", request, e)
-    super.responseForException(request, e)
-  }
-  
-}
+class HttpService(val route: Route) extends HttpServiceActor with HttpServiceLogic
 
 object HttpService {
   def apply(route: Route) = new HttpService(route)

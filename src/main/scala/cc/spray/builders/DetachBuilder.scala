@@ -21,6 +21,8 @@ import akka.actor.Actor
 import akka.util.Logging
 import http._
 import HttpStatusCodes._
+import org.parboiled.common.StringUtils
+import java.io.{Writer, StringWriter, PrintStream, PrintWriter}
 
 private[spray] trait DetachBuilder {
 
@@ -41,7 +43,7 @@ private[spray] trait DetachBuilder {
 /**
  * Actor used by the `detach` directive.
  */
-class DetachedRouteActor(route: Route) extends Actor with Logging {  
+class DetachedRouteActor(route: Route) extends Actor with Logging with ErrorLogging {  
   protected def receive = {
     case ctx: RequestContext => {
       try {
@@ -51,12 +53,4 @@ class DetachedRouteActor(route: Route) extends Actor with Logging {
       }
     } 
   }
-  
-  protected def responseForException(request: HttpRequest, e: Exception): HttpResponse = {
-    log.error("Error during processing of request {}:\n{}", request, e)
-    e match {
-      case e: HttpException => HttpResponse(e.status)
-      case e: Exception => HttpResponse(HttpStatus(InternalServerError, e.getMessage)) 
-    }    
-  }   
 } 
