@@ -44,8 +44,10 @@ trait HttpServiceLogic extends ErrorHandling {
   
   protected[spray] def responseFromRoutingResult(rr: RoutingResult): Option[HttpResponse] = rr match {
     case Respond(httpResponse) => Some(httpResponse) 
-    case Reject(rejections) => if (rejections.isEmpty) None
-                               else responseForRejections(Rejections.applyCancellations(rejections))
+    case Reject(rejections) => {
+      val activeRejections = Rejections.applyCancellations(rejections)
+      if (activeRejections.isEmpty) None else responseForRejections(activeRejections)
+    }
   }
   
   protected[spray] def responseForRejections(rejections: Set[Rejection]): Option[HttpResponse] = {
