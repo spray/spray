@@ -73,7 +73,13 @@ private[spray] trait FileResourceDirectoryBuilders {
                        pathRewriter: String => String = identity)
                       (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {
     val base = if (directoryName.endsWith("/")) directoryName else directoryName + "/";
-    { ctx => getFromFile(base + pathRewriter(ctx.unmatchedPath), charset).apply(ctx) }
+    { ctx =>
+      {
+        val subPath = pathRewriter(ctx.unmatchedPath)
+        if (subPath.charAt(0) == '/') subPath.substring(1) else subPath
+        getFromFile(base + subPath, charset).apply(ctx)
+      }
+    }
   }
 
   /**
@@ -85,7 +91,12 @@ private[spray] trait FileResourceDirectoryBuilders {
                               (implicit detachedActorFactory: Route => Actor,
                                resolver: ContentTypeResolver): Route = {
     val base = if (directoryName.isEmpty) "" else directoryName + "/";
-    { ctx => getFromResource(base + pathRewriter(ctx.unmatchedPath), charset).apply(ctx) }
+    { ctx =>
+      {
+        val subPath = pathRewriter(ctx.unmatchedPath)
+        getFromResource(base + pathRewriter(ctx.unmatchedPath), charset).apply(ctx)
+      }
+    }
   }
   
   // implicits
