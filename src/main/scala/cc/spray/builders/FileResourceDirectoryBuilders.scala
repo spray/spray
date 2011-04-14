@@ -75,9 +75,8 @@ private[spray] trait FileResourceDirectoryBuilders {
     val base = if (directoryName.endsWith("/")) directoryName else directoryName + "/";
     { ctx =>
       {
-        val subPath = pathRewriter(ctx.unmatchedPath)
-        if (subPath.charAt(0) == '/') subPath.substring(1) else subPath
-        getFromFile(base + subPath, charset).apply(ctx)
+        val subPath = if (ctx.unmatchedPath.startsWith("/")) ctx.unmatchedPath.substring(1) else ctx.unmatchedPath
+        getFromFile(base + pathRewriter(subPath), charset).apply(ctx)
       }
     }
   }
@@ -93,8 +92,8 @@ private[spray] trait FileResourceDirectoryBuilders {
     val base = if (directoryName.isEmpty) "" else directoryName + "/";
     { ctx =>
       {
-        val subPath = pathRewriter(ctx.unmatchedPath)
-        getFromResource(base + pathRewriter(ctx.unmatchedPath), charset).apply(ctx)
+        val subPath = if (ctx.unmatchedPath.startsWith("/")) ctx.unmatchedPath.substring(1) else ctx.unmatchedPath
+        getFromResource(base + pathRewriter(subPath), charset).apply(ctx)
       }
     }
   }
