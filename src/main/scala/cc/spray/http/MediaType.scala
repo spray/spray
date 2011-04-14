@@ -118,6 +118,7 @@ object MediaTypes extends ObjectRegistry[String, MediaType] {
   val `image/jpeg`                        = new PredefinedMediaType("image/jpeg", "jpg", "jpeg", "jpe")
   val `image/svg+xml`                     = new PredefinedMediaType("image/svg+xml", "svg")
   val `image/tiff`                        = new PredefinedMediaType("image/tiff", "tif", "tiff")
+  val `image/vnd.microsoft.icon`          = new PredefinedMediaType("image/vnd.microsoft.icon", "ico")
                                              
   val `message/http`                      = new PredefinedMediaType("message/http")
   val `message/delivery-status`           = new PredefinedMediaType("message/delivery-status")
