@@ -20,23 +20,25 @@ package builders
 private[spray] trait ParameterBuilders {
   this: FilterBuilders =>
 
+  private type PM[A] = ParameterMatcher[A]
+  
   /**
    * Returns a Route that rejects the request if a query parameter with the given name cannot be found.
    * If it can be found the parameters value is extracted and passed as argument to the inner Route building function. 
    */
-  def parameter[A](pm: ParameterMatcher[A]): FilterRoute1[A] = filter1[A] { ctx => pm(ctx.request.queryParams) }
+  def parameter[A](pm: PM[A]): FilterRoute1[A] = filter1[A] { ctx => pm(ctx.request.queryParams) }
 
   /**
    * Returns a Route that rejects the request if a query parameter with the given name cannot be found.
    * If it can be found the parameters value is extracted and passed as argument to the inner Route building function.
    */
-  def parameters[A](a: ParameterMatcher[A]): FilterRoute1[A] = parameter(a)
+  def parameters[A](a: PM[A]): FilterRoute1[A] = parameter(a)
 
   /**
    * Returns a Route that rejects the request if the query parameters with the given names cannot be found.
    * If it can be found the parameter values are extracted and passed as arguments to the inner Route building function.
    */
-  def parameters[A, B](a: ParameterMatcher[A], b: ParameterMatcher[B]): FilterRoute2[A, B] = {
+  def parameters[A, B](a: PM[A], b: PM[B]): FilterRoute2[A, B] = {
     parameter(a) & parameter(b)
   }  
 
@@ -44,8 +46,7 @@ private[spray] trait ParameterBuilders {
    * Returns a Route that rejects the request if the query parameters with the given names cannot be found.
    * If it can be found the parameter values are extracted and passed as arguments to the inner Route building function.
    */
-  def parameters[A, B, C](a: ParameterMatcher[A], b: ParameterMatcher[B],
-                          c: ParameterMatcher[C]): FilterRoute3[A, B, C] = {
+  def parameters[A, B, C](a: PM[A], b: PM[B], c: PM[C]): FilterRoute3[A, B, C] = {
     parameters(a, b) & parameter(c)
   }
 
@@ -53,8 +54,7 @@ private[spray] trait ParameterBuilders {
    * Returns a Route that rejects the request if the query parameters with the given names cannot be found.
    * If it can be found the parameter values are extracted and passed as arguments to the inner Route building function.
    */
-  def parameters[A, B, C, D](a: ParameterMatcher[A], b: ParameterMatcher[B], c: ParameterMatcher[C],
-                             d: ParameterMatcher[D]): FilterRoute4[A, B, C, D] = {
+  def parameters[A, B, C, D](a: PM[A], b: PM[B], c: PM[C], d: PM[D]): FilterRoute4[A, B, C, D] = {
     parameters(a, b, c) & parameter(d)
   }
 
@@ -62,9 +62,26 @@ private[spray] trait ParameterBuilders {
    * Returns a Route that rejects the request if the query parameters with the given names cannot be found.
    * If it can be found the parameter values are extracted and passed as arguments to the inner Route building function.
    */
-  def parameters[A, B, C, D, E](a: ParameterMatcher[A], b: ParameterMatcher[B], c: ParameterMatcher[C],
-                                d: ParameterMatcher[D], e: ParameterMatcher[E]): FilterRoute5[A, B, C, D, E] = {
+  def parameters[A, B, C, D, E](a: PM[A], b: PM[B], c: PM[C], d: PM[D], e: PM[E]): FilterRoute5[A, B, C, D, E] = {
     parameters(a, b, c, d) & parameter(e)
+  }
+  
+  /**
+   * Returns a Route that rejects the request if the query parameters with the given names cannot be found.
+   * If it can be found the parameter values are extracted and passed as arguments to the inner Route building function.
+   */
+  def parameters[A, B, C, D, E, F](a: PM[A], b: PM[B], c: PM[C], d: PM[D], e: PM[E],
+                                   f: PM[F]): FilterRoute6[A, B, C, D, E, F] = {
+    parameters(a, b, c, d, e) & parameter(f)
+  }
+  
+  /**
+   * Returns a Route that rejects the request if the query parameters with the given names cannot be found.
+   * If it can be found the parameter values are extracted and passed as arguments to the inner Route building function.
+   */
+  def parameters[A, B, C, D, E, F, G](a: PM[A], b: PM[B], c: PM[C], d: PM[D], e: PM[E],
+                                      f: PM[F], g: PM[G]): FilterRoute7[A, B, C, D, E, F, G] = {
+    parameters(a, b, c, d, e, f) & parameter(g)
   }
   
   /**

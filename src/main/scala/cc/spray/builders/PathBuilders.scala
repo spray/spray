@@ -155,10 +155,12 @@ trait PathMatcher0 extends PathMatcher[Product0] {
   def ~ [A, B, C](sub: PathMatcher3[A, B, C]) = new Combi[(A, B, C)](this, sub) with PathMatcher3[A, B, C]
   def ~ [A, B, C, D](sub: PathMatcher4[A, B, C, D]) = new Combi[(A, B, C, D)](this, sub) with PathMatcher4[A, B, C, D]
   def ~ [A, B, C, D, E](sub: PathMatcher5[A, B, C, D, E]) = new Combi[(A, B, C, D, E)](this, sub) with PathMatcher5[A, B, C, D, E]
+  def ~ [A, B, C, D, E, F](sub: PathMatcher6[A, B, C, D, E, F]) = new Combi[(A, B, C, D, E, F)](this, sub) with PathMatcher6[A, B, C, D, E, F]
+  def ~ [A, B, C, D, E, F, G](sub: PathMatcher7[A, B, C, D, E, F, G]) = new Combi[(A, B, C, D, E, F, G)](this, sub) with PathMatcher7[A, B, C, D, E, F, G]
 }
 
 /**
- * A PathMatcher1[A] extends a function that takes the unmatched path part of the request URI and returns
+ * A PathMatcher1 extends a function that takes the unmatched path part of the request URI and returns
  * 
  *  - None if not matched
  *  - Some(remainingPath, Tuple1(a)) if matched (with a being the extracted value) 
@@ -174,6 +176,8 @@ trait PathMatcher1[A] extends PathMatcher[Tuple1[A]] {
   def ~ [B, C](sub: PathMatcher2[B, C]) = new Combi[(A, B, C)](this, sub) with PathMatcher3[A, B, C]
   def ~ [B, C, D](sub: PathMatcher3[B, C, D]) = new Combi[(A, B, C, D)](this, sub) with PathMatcher4[A, B, C, D]
   def ~ [B, C, D, E](sub: PathMatcher4[B, C, D, E]) = new Combi[(A, B, C, D, E)](this, sub) with PathMatcher5[A, B, C, D, E]
+  def ~ [B, C, D, E, F](sub: PathMatcher5[B, C, D, E, F]) = new Combi[(A, B, C, D, E, F)](this, sub) with PathMatcher6[A, B, C, D, E, F]
+  def ~ [B, C, D, E, F, G](sub: PathMatcher6[B, C, D, E, F, G]) = new Combi[(A, B, C, D, E, F, G)](this, sub) with PathMatcher7[A, B, C, D, E, F, G]
 
   class ValueMapper[S](res: Option[(String, Tuple1[S])]) {
     def flatMapValue[T](f: S => Option[T]): Option[(String, Tuple1[T])] = {
@@ -187,7 +191,7 @@ trait PathMatcher1[A] extends PathMatcher[Tuple1[A]] {
 }
 
 /**
- * A PathMatcher2[A, B] extends a function that takes the unmatched path part of the request URI and returns
+ * A PathMatcher2 extends a function that takes the unmatched path part of the request URI and returns
  * 
  *  - None if not matched
  *  - Some(remainingPath, (a, b)) if matched (with a and b being the extracted values) 
@@ -201,10 +205,12 @@ trait PathMatcher2[A, B] extends PathMatcher[(A, B)] {
   def ~ [C](sub: PathMatcher1[C]) = new Combi[(A, B, C)](this, sub) with PathMatcher3[A, B, C]
   def ~ [C, D](sub: PathMatcher2[C, D]) = new Combi[(A, B, C, D)](this, sub) with PathMatcher4[A, B, C, D]
   def ~ [C, D, E](sub: PathMatcher3[C, D, E]) = new Combi[(A, B, C, D, E)](this, sub) with PathMatcher5[A, B, C, D, E]
+  def ~ [C, D, E, F](sub: PathMatcher4[C, D, E, F]) = new Combi[(A, B, C, D, E, F)](this, sub) with PathMatcher6[A, B, C, D, E, F]
+  def ~ [C, D, E, F, G](sub: PathMatcher5[C, D, E, F, G]) = new Combi[(A, B, C, D, E, F, G)](this, sub) with PathMatcher7[A, B, C, D, E, F, G]
 }
 
 /**
- * A PathMatcher3[A, B, C] extends a function that takes the unmatched path part of the request URI and returns
+ * A PathMatcher3 extends a function that takes the unmatched path part of the request URI and returns
  * 
  *  - None if not matched
  *  - Some(remainingPath, (a, b, c)) if matched (with a, b and c being the extracted values) 
@@ -216,30 +222,59 @@ trait PathMatcher3[A, B, C] extends PathMatcher[(A, B, C)] {
   def ~ (sub: PathMatcher0) = new Combi[(A, B, C)](this, sub) with PathMatcher3[A, B, C]
   def ~ [D](sub: PathMatcher1[D]) = new Combi[(A, B, C, D)](this, sub) with PathMatcher4[A, B, C, D]
   def ~ [D, E](sub: PathMatcher2[D, E]) = new Combi[(A, B, C, D, E)](this, sub) with PathMatcher5[A, B, C, D, E]
+  def ~ [D, E, F](sub: PathMatcher3[D, E, F]) = new Combi[(A, B, C, D, E, F)](this, sub) with PathMatcher6[A, B, C, D, E, F]
+  def ~ [D, E, F, G](sub: PathMatcher4[D, E, F, G]) = new Combi[(A, B, C, D, E, F, G)](this, sub) with PathMatcher7[A, B, C, D, E, F, G]
 }
 
 /**
- * A PathMatcher4[A, B, C, D] extends a function that takes the unmatched path part of the request URI and returns
+ * A PathMatcher4 extends a function that takes the unmatched path part of the request URI and returns
  * 
  *  - None if not matched
- *  - Some(remainingPath, (a, b, c, d)) if matched (with a, b, c and d being the extracted values) 
+ *  - Some(remainingPath, (a, b, c, d)) if matched (with a to d being the extracted values) 
  */
 trait PathMatcher4[A, B, C, D] extends PathMatcher[(A, B, C, D)] {
   def / (sub: PathMatcher0) = this ~ Slash ~ sub
   def / [E](sub: PathMatcher1[E]) = this ~ Slash ~ sub
   def ~ (sub: PathMatcher0) = new Combi[(A, B, C, D)](this, sub) with PathMatcher4[A, B, C, D]
   def ~ [E](sub: PathMatcher1[E]) = new Combi[(A, B, C, D, E)](this, sub) with PathMatcher5[A, B, C, D, E]
+  def ~ [E, F](sub: PathMatcher2[E, F]) = new Combi[(A, B, C, D, E, F)](this, sub) with PathMatcher6[A, B, C, D, E, F]
+  def ~ [E, F, G](sub: PathMatcher3[E, F, G]) = new Combi[(A, B, C, D, E, F, G)](this, sub) with PathMatcher7[A, B, C, D, E, F, G]
 }
 
 /**
- * A PathMatcher5[A, B, C, D, E] extends a function that takes the unmatched path part of the request URI and returns
+ * A PathMatcher5 extends a function that takes the unmatched path part of the request URI and returns
  * 
  *  - None if not matched
- *  - Some(remainingPath, (a, b, c, d, e)) if matched (with a, b, c, d and e being the extracted values) 
+ *  - Some(remainingPath, (a, b, c, d, e)) if matched (with a to e being the extracted values) 
  */
 trait PathMatcher5[A, B, C, D, E] extends PathMatcher[(A, B, C, D, E)] {
   def / (sub: PathMatcher0) = this ~ Slash ~ sub
   def ~ (sub: PathMatcher0) = new Combi[(A, B, C, D, E)](this, sub) with PathMatcher5[A, B, C, D, E]
+  def ~ [F](sub: PathMatcher1[F]) = new Combi[(A, B, C, D, E, F)](this, sub) with PathMatcher6[A, B, C, D, E, F]
+  def ~ [F, G](sub: PathMatcher2[F, G]) = new Combi[(A, B, C, D, E, F, G)](this, sub) with PathMatcher7[A, B, C, D, E, F, G]
+}
+
+/**
+ * A PathMatcher6 extends a function that takes the unmatched path part of the request URI and returns
+ * 
+ *  - None if not matched
+ *  - Some(remainingPath, (a, b, c, d, e, f)) if matched (with a to f being the extracted values) 
+ */
+trait PathMatcher6[A, B, C, D, E, F] extends PathMatcher[(A, B, C, D, E, F)] {
+  def / (sub: PathMatcher0) = this ~ Slash ~ sub
+  def ~ (sub: PathMatcher0) = new Combi[(A, B, C, D, E, F)](this, sub) with PathMatcher6[A, B, C, D, E, F]
+  def ~ [G](sub: PathMatcher1[G]) = new Combi[(A, B, C, D, E, F, G)](this, sub) with PathMatcher7[A, B, C, D, E, F, G]
+}
+
+/**
+ * A PathMatcher7 extends a function that takes the unmatched path part of the request URI and returns
+ * 
+ *  - None if not matched
+ *  - Some(remainingPath, (a, b, c, d, e, f, g)) if matched (with a to g being the extracted values) 
+ */
+trait PathMatcher7[A, B, C, D, E, F, G] extends PathMatcher[(A, B, C, D, E, F, G)] {
+  def / (sub: PathMatcher0) = this ~ Slash ~ sub
+  def ~ (sub: PathMatcher0) = new Combi[(A, B, C, D, E, F, G)](this, sub) with PathMatcher7[A, B, C, D, E, F, G]
 }
 
 private[spray] class Combi[T <: Product](a: PathMatcher[_ <: Product], b: PathMatcher[_ <: Product]) extends PathMatcher[T]{
