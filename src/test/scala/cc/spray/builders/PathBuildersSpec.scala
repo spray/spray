@@ -21,22 +21,21 @@ import org.specs.Specification
 import http._
 import HttpMethods._
 import test.SprayTest
-import marshalling.DefaultUnmarshallers._
 
 class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder {
 
   val Ok = HttpResponse()
-  val respondOk: Route = { _.complete(Ok) }
+  val completeOk: Route = { _.complete(Ok) }
 
   "routes created with the path(string) combinator" should {
     "block completely unmatching requests" in {
       test(HttpRequest(GET, "/noway/this/works")) {
-        path("hello") { respondOk }
+        path("hello") { completeOk }
       }.handled must beFalse
     }
     "block prefix requests" in {
       test(HttpRequest(GET, "/noway/this/works")) {
-        path("noway/this") { respondOk }
+        path("noway/this") { completeOk }
       }.handled must beFalse
     }
     "let fully matching requests pass and clear the RequestContext.unmatchedPath" in {
@@ -47,16 +46,16 @@ class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder 
     "be stackable within one single path(...) combinator" in {
       test(HttpRequest(GET, "/noway/this/works")) {
         path("noway" / "this" / "works") {
-          get { ctx => ctx.complete(HttpResponse(content = Some(HttpContent(ctx.unmatchedPath)))) }
+          ctx => ctx.complete(HttpResponse(content = Some(HttpContent(ctx.unmatchedPath))))
         }
       }.response.content.as[String] mustEqual Right("")
     }
     "implicitly match trailing slashes" in {
       test(HttpRequest(GET, "/works/")) {
-        path("works") { respondOk }
+        path("works") { completeOk }
       }.response mustBe Ok
       test(HttpRequest(GET, "")) {
-        path("") { respondOk }
+        path("") { completeOk }
       }.response mustBe Ok
     }
   }
@@ -64,7 +63,7 @@ class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder 
   "routes created with the pathPrefix(string) combinator" should {
     "block unmatching requests" in {
       test(HttpRequest(GET, "/noway/this/works")) {
-        pathPrefix("hello") { respondOk }
+        pathPrefix("hello") { completeOk }
       }.handled must beFalse
     }
     "let matching requests pass and adapt RequestContext.unmatchedPath" in {
@@ -76,7 +75,7 @@ class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder 
       "within one single pathPrefix(...) combinator" in {
         test(HttpRequest(GET, "/noway/this/works")) {
           pathPrefix("noway" / "this" / "works" ~ Remaining) { remaining =>
-            get { _.complete(HttpResponse(content = Some(HttpContent(remaining)))) }
+            _.complete(HttpResponse(content = Some(HttpContent(remaining))))
           }
         }.response.content.as[String] mustEqual Right("")
       }
@@ -93,21 +92,21 @@ class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder 
   "routes created with the pathPrefix(regex) combinator" should {
     "block unmatching requests" in {
       test(HttpRequest(GET, "/noway/this/works")) {
-        pathPrefix("\\d".r) { _ => respondOk }
+        pathPrefix("\\d".r) { _ => completeOk }
       }.handled must beFalse
     }
     "let matching requests pass, extract the match value and adapt RequestContext.unmatchedPath" in {
       "when the regex is a simple regex" in {
         test(HttpRequest(GET, "/noway/this/works")) {
           pathPrefix("no[^/]+".r) { capture =>
-            get { ctx => ctx.responder(Respond(HttpResponse(content = Some(HttpContent(capture + ":" + ctx.unmatchedPath))))) }
+            ctx => ctx.responder(Respond(HttpResponse(content = Some(HttpContent(capture + ":" + ctx.unmatchedPath)))))
           }
         }.response.content.as[String] mustEqual Right("noway:/this/works")
       }
       "when the regex is a group regex" in {
         test(HttpRequest(GET, "/noway/this/works")) {
           pathPrefix("no([^/]+)".r) { capture =>
-            get { ctx => ctx.responder(Respond(HttpResponse(content = Some(HttpContent(capture + ":" + ctx.unmatchedPath))))) }
+            ctx => ctx.responder(Respond(HttpResponse(content = Some(HttpContent(capture + ":" + ctx.unmatchedPath)))))
           }
         }.response.content.as[String] mustEqual Right("way:/this/works")
       }
@@ -116,7 +115,7 @@ class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder 
       "within one single path(...) combinator" in {
         test(HttpRequest(GET, "/compute/23/19")) {
           pathPrefix("compute" / "\\d+".r / "\\d+".r) { (a, b) =>
-            get { _.complete((a.toInt + b.toInt).toString) }
+            _.complete((a.toInt + b.toInt).toString)
           }
         }.response.content.as[String] mustEqual Right("42")
       }
@@ -124,7 +123,7 @@ class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder 
         test(HttpRequest(GET, "/compute/23/19")) {
           pathPrefix("compute" / "\\d+".r) { a =>
             pathPrefix("\\d+".r) { b =>
-              get { _.complete((a.toInt + b.toInt).toString) }
+              _.complete((a.toInt + b.toInt).toString)
             }
           }
         }.response.content.as[String] mustEqual Right("42")
@@ -132,7 +131,7 @@ class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder 
     }
     "fail when the regex contains more than one group" in {
       path("compute" / "yea(\\d+)(\\d+)".r / "\\d+".r) { (a, b) =>
-        get { respondOk }
+        completeOk
       } must throwA[IllegalArgumentException]
     }
   }
@@ -141,36 +140,62 @@ class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder 
     "properly extract digit sequences at the path end into an integer" in {
       test(HttpRequest(GET, "/id/23")) {
         path("id" / IntNumber) { i =>
-          get { _.complete(i.toString) }
+          _.complete(i.toString)
         }
       }.response.content.as[String] mustEqual Right("23")
     }
     "properly extract digit sequences in the middle of the path into an integer" in {
       test(HttpRequest(GET, "/id/12345yes")) {
         path("id" / IntNumber ~ "yes") { i =>
-          get { _.complete(i.toString) }
+          _.complete(i.toString)
         }
       }.response.content.as[String] mustEqual Right("12345")
     }
     "reject empty matches" in {
       test(HttpRequest(GET, "/id/")) {
         path("id" / IntNumber) { i =>
-          get { _.complete(i.toString) }
+          _.complete(i.toString)
         }
       }.handled must beFalse
     }
     "reject non-digit matches" in {
       test(HttpRequest(GET, "/id/xyz")) {
         path("id" / IntNumber) { i =>
-          get { _.complete(i.toString) }
+          _.complete(i.toString)
         }
       }.handled must beFalse
     }
     "reject digit sequences representing numbers greater than Int.MaxValue" in {
       test(HttpRequest(GET, "/id/2147483648")) {
         path("id" / IntNumber) { i =>
-          get { _.complete(i.toString) }
+          _.complete(i.toString)
         }
+      }.handled must beFalse
+    }
+  }
+  
+  "trailing slashes in the URI" should {
+    "be matched by path matchers no having a trailing slash" in {
+      testService(HttpRequest(GET, "/a/")) {
+        path("a") { completeOk }
+      }.response mustBe Ok
+    }
+    "be matched by path matchers having a trailing slash" in {
+      testService(HttpRequest(GET, "/a/")) {
+        path("a/") { completeOk } 
+      }.response mustBe Ok
+    }
+  }
+  
+  "URIs without trailing slash" should {
+    "be matched by path matchers no having a trailing slash" in {
+      testService(HttpRequest(GET, "/a")) {
+        path("a") { completeOk }
+      }.response mustBe Ok
+    }
+    "not be matched by path matchers having a trailing slash" in {
+      testService(HttpRequest(GET, "/a")) {
+        path("a/") { completeOk } 
       }.handled must beFalse
     }
   }
