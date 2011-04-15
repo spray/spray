@@ -35,6 +35,8 @@ class HttpContent private[http](val contentType: ContentType, private[spray] val
   def isEmpty = false
   def length = buffer.length
   def inputStream = new ByteArrayInputStream(buffer)
+  
+  def withContentType(contentType: ContentType) = new HttpContent(contentType, buffer)
 
   override def toString = "HttpContent(" + contentType + ',' + new String(buffer, contentType.charset.getOrElse(`ISO-8859-1`).nioCharset) + ')'
   override def hashCode = contentType.## * 31 + Arrays.hashCode(buffer)

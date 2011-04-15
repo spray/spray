@@ -56,8 +56,17 @@ private[spray] trait MiscBuilders {
   /**
    * Returns a Route that adds the given response headers to all not-rejected responses of its inner Route.
    */
-  def respondWithHeaders(responseHeaders: HttpHeader*) = transformResponse { response =>
-    response.copy(headers = responseHeaders.toList ::: response.headers)
+  def respondWithHeaders(responseHeaders: HttpHeader*) = {
+    val headers = responseHeaders.toList 
+    transformResponse { response => response.copy(headers = headers ::: response.headers) }
+  }
+
+  /**
+   * Returns a Route that sets the content-type of non-empty, non-rejected responses of its inner Route to the given
+   * ContentType.
+   */
+  def respondWithContentType(contentType: ContentType) = transformResponse { response =>
+    response.copy(content = response.content.map(_.withContentType(contentType)))
   }
   
   /**

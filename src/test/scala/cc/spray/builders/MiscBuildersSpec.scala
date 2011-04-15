@@ -1,18 +1,18 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+* Copyright (C) 2011 Mathias Doenitz
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 
 package cc.spray
 package builders
@@ -22,6 +22,7 @@ import http._
 import HttpStatusCodes._
 import HttpHeaders._
 import HttpMethods._
+import MediaTypes._
 import test.SprayTest
 
 class MiscBuildersSpec extends Specification with SprayTest with ServiceBuilder {
@@ -51,6 +52,19 @@ class MiscBuildersSpec extends Specification with SprayTest with ServiceBuilder 
     "leave rejections unaffected" in {
       test(HttpRequest()) { 
         respondWithHeader(CustomHeader("custom", "custom")) { _.reject() }
+      }.rejections mustEqual Set() 
+    }
+  }
+  
+  "respondWithContentType" should {
+    "set the content type of successful responses" in {
+      test(HttpRequest()) { 
+        respondWithContentType(`application/json`) { _.complete("plaintext") }
+      }.response.content mustEqual Some(HttpContent(`application/json`, "plaintext")) 
+    }
+    "leave rejections unaffected" in {
+      test(HttpRequest()) { 
+        respondWithContentType(`application/json`) { _.reject() }
       }.rejections mustEqual Set() 
     }
   }
