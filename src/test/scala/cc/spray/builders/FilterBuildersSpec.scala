@@ -27,13 +27,12 @@ class FilterBuildersSpec extends Specification with SprayTest with ServiceBuilde
 
   val Ok = HttpResponse()
   val completeOk: Route = { _.complete(Ok) }
-  val notRun: Route = { _ => fail("Should not run") }
   
   "get | put" should {
     val getOrPut = get | put
     "block POST requests" in {
       test(HttpRequest(POST)) { 
-        getOrPut { notRun }
+        getOrPut { completeOk }
       }.handled must beFalse
     }
     "let GET requests pass" in {
@@ -51,7 +50,7 @@ class FilterBuildersSpec extends Specification with SprayTest with ServiceBuilde
   "host(regex) | host(otherRegex)" should {
     "block requests not matching any of the two conditions" in {
       test(HttpRequest(uri = "http://xyz.com")) { 
-        (host("spray.*".r) | host("clay.*".r)) { _ => notRun }
+        (host("spray.*".r) | host("clay.*".r)) { _ => completeOk }
       }.handled must beFalse
     }
     "extract the first match if it is successful" in {
@@ -70,12 +69,12 @@ class FilterBuildersSpec extends Specification with SprayTest with ServiceBuilde
     val filter = host("([^\\.]+).spray.cc".r) & parameters('a, 'b) 
     "block requests to unmatching hosts" in {
       test(HttpRequest(GET, "http://www.spray.org/?a=1&b=2")) { 
-        filter { (_, _, _) => notRun }
+        filter { (_, _, _) => completeOk }
       }.handled must beFalse
     }
     "block requests without matching parameters" in {
       test(HttpRequest(GET, "http://www.spray.cc/?a=1&c=2")) { 
-        filter { (_, _, _) => notRun }
+        filter { (_, _, _) => completeOk }
       }.handled must beFalse
     }
     "let matching requests pass and extract all values" in {
@@ -89,7 +88,7 @@ class FilterBuildersSpec extends Specification with SprayTest with ServiceBuilde
     val putx = put | (get & parameter('method ! "put")) 
     "block GET requests" in {
       test(HttpRequest(GET)) { 
-        putx { notRun }
+        putx { completeOk }
       }.handled must beFalse
     }
     "let PUT requests pass" in {
@@ -106,6 +105,24 @@ class FilterBuildersSpec extends Specification with SprayTest with ServiceBuilde
       test(HttpRequest(POST, "/?method=put")) { 
         putx { completeOk }
       }.handled must beFalse
+    }
+  }
+  
+  "(!get & !put)" should {
+    "block GET requests" in {
+      test(HttpRequest(GET)) { 
+        (!get & !put) { completeOk }
+      }.handled must beFalse
+    }
+    "block PUT requests" in {
+      test(HttpRequest(GET)) { 
+        (!get & !put) { completeOk }
+      }.handled must beFalse
+    }
+    "let POST requests pass" in {
+      test(HttpRequest(POST)) { 
+        (!get & !put) { completeOk }
+      }.response mustEqual Ok
     }
   }
 

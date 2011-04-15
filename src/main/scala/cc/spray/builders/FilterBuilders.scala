@@ -95,6 +95,19 @@ abstract class FilterRoute[T <: Product](val filter: RouteFilter[T]) { self =>
       case x: Reject => x
     }
   }
+
+  /**
+   * Negates this filter, i.e. the inner route will be evaluated if this filter rejects and be rejected of this passes.
+   * Note that negated filters completely loose any specific characteristics of their underlying filter:
+   * They never extract anything, they do not apply the potential context transformation of their underlying filter
+   * and they do not create any specific rejection instances if they don't pass.
+   */
+  def unary_! : FilterRoute0 = new FilterRoute0( ctx =>
+    filter(ctx) match {
+      case _: Pass[_] => Reject() 
+      case _: Reject => Pass()
+    }
+  )
 }
 
 /**
