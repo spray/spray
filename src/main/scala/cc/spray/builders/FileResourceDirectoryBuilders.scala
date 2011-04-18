@@ -70,7 +70,7 @@ private[spray] trait FileResourceDirectoryBuilders {
    * current thread. If the file cannot be read the Route completes the request with a "404 NotFound" error.
    */
   def getFromDirectory(directoryName: String, charset: Option[Charset] = None,
-                       pathRewriter: String => String = identity)
+                       pathRewriter: String => String = identity) // TODO: remodel as stand-alone directive
                       (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {
     val base = if (directoryName.endsWith("/")) directoryName else directoryName + "/";
     { ctx =>
