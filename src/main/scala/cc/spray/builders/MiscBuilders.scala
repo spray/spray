@@ -70,6 +70,14 @@ private[spray] trait MiscBuilders {
   }
   
   /**
+   * Returns a Route that sets the media-type of non-empty, non-rejected responses of its inner Route to the given
+   * one.
+   */
+  def respondWithMediaType(mediaType: MediaType) = transformResponse { response =>
+    response.copy(content = response.content.map(c => c.withContentType(ContentType(mediaType, c.contentType.charset))))
+  }
+  
+  /**
    * Stops the current Route processing by throwing an HttpException that will be caught by the enclosing Actor.
    * Failures produced in this way circumvent all response processing logic that might be present (for example they
    * cannot be cached with the 'cache' directive).
