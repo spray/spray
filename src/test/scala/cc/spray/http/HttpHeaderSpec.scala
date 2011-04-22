@@ -87,6 +87,12 @@ class HttpHeaderSpec extends Specification {
     )
   }
   
+  "Header 'Content-Length'" should {
+    "be parsed correctly from example 1" in (
+      HttpHeader("Content-Length", "42") mustEqual `Content-Length`(42)
+    )
+  }
+  
   "Header 'Content-Type'" should {
     import MediaTypes._
     import Charsets._

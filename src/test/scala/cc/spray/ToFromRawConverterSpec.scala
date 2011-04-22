@@ -16,11 +16,8 @@
 
 package cc.spray
 
-import org.specs.mock.Mockito
 import org.specs.Specification
 import scala.collection.JavaConversions._
-import javax.servlet.http.HttpServletRequest
-import javax.servlet.ServletInputStream
 import java.io.ByteArrayInputStream
 import http._
 import MediaTypes._
@@ -28,49 +25,56 @@ import HttpHeaders._
 import HttpMethods._
 import Charsets._
 
-class ServletConverterSpec extends Specification with Mockito {
-  val convert = new ServletConverter {}
+class ToFromRawConverterSpec extends Specification {
+  val convert = new ToFromRawConverter {}
   
-  "The ServletConverter" should {
+  "The ToFromRawConverter" should {
     "properly convert a minimal request" in (
-      convert.toSprayRequest(Hsr("GET", "/path"))
+      convert.toSprayRequest(raw("GET", "/path"))
         mustEqual
       HttpRequest(GET, "/path")
     )
     
     "properly convert a request with headers" in (
-      convert.toSprayRequest(Hsr("POST", "/path", "", Map("Accept" -> "text/html", "Accept-Charset" -> "utf8")))
+      convert.toSprayRequest(raw("POST", "/path", Map("Accept" -> "text/html", "Accept-Charset" -> "utf8")))
         mustEqual
       HttpRequest(POST, "/path", List(Accept(`text/html`), `Accept-Charset`(`UTF-8`)))
     )
     
     "properly convert a request with query parameters" in (
-      convert.toSprayRequest(Hsr("GET", "/path", "key=value"))
+      convert.toSprayRequest(raw("GET", "/path?key=value"))
         mustEqual
       HttpRequest(GET, "/path?key=value")
     )
     
     "create an HttpContent instance in the HttpRequest" in {
       "that has the MediaType of the requests Content-Type header and remove the Content-Type header" in (
-        convert.toSprayRequest(Hsr("POST", "/path", "", Map("Content-Type" -> "application/json"), "yes"))
+        convert.toSprayRequest(raw("POST", "/path", Map("Content-Type" -> "application/json", "Content-Length" -> "10"), "yes"))
           mustEqual
         HttpRequest(method = POST, uri = "/path", content = Some(HttpContent(`application/json`, "yes".getBytes)))
       )
       "and mark the content as 'application/octet-stream' if no Content-Type header is present" in (
-        convert.toSprayRequest(Hsr("POST", "/path", content = "yes"))
+        convert.toSprayRequest(raw("POST", "/path", Map("Content-Length" -> "10"), "yes"))
           mustEqual
         HttpRequest(method = POST, uri = "/path", content = Some(HttpContent(`application/octet-stream`, "yes".getBytes)))
       )
       "and carry over explicitly given charset from the Content-Type header" in (
-        convert.toSprayRequest(Hsr("POST", "/path", "", Map("Content-Type" -> "text/css; charset=utf8"), "yes"))
+        convert.toSprayRequest(raw("POST", "/path", Map("Content-Type" -> "text/css; charset=utf8", "Content-Length" -> "10"), "yes"))
           mustEqual
         HttpRequest(method = POST, uri = "/path", content = Some(HttpContent(ContentType(`text/css`, `UTF-8`), "yes".getBytes)))
       )
     }
   }
   
-  private def Hsr(method: String, uri: String, queryString: String = "", headers: Map[String, String] = Map(),
-                  content: String = "") = {
+  private def raw(m: String, u: String, h: Map[String, String] = Map(), content: String = "") = new RawRequest {
+    def method = m
+    def uri = u
+    def headers = h
+    def inputStream = new ByteArrayInputStream(content.getBytes)
+    def remoteIP = "a:b" // provoke an UnknownHostException
+    def protocol = "HTTP/1.1"
+
+    /*RawRequest
     import java.util.Enumeration    
     make(mock[HttpServletRequest]) { hsr =>
       hsr.getMethod returns method
@@ -86,7 +90,7 @@ class ServletConverterSpec extends Specification with Mockito {
       }
       hsr.getRemoteAddr returns "a:b" // provoke an UnknownHostException 
       hsr.getProtocol returns "HTTP/1.1"
-    }
+    }*/
   }
   
 }

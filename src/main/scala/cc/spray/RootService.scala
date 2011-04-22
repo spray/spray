@@ -16,82 +16,81 @@
 
 package cc.spray
 
-import akka.http._
+import http._
+import HttpStatusCodes._
 import akka.actor.{Actor, ActorRef}
 import akka.util.Logging
-import http._
 import akka.dispatch.{Future, Futures}
-import HttpStatusCodes._
 
 /**
  * The RootService actor is the central entrypoint for HTTP requests entering the ''spray'' infrastructure.
  * It is responsible for creating an [[cc.spray.http.HttpRequest]] object for the request as well as dispatching this
  *  [[cc.spray.http.HttpRequest]] object to all attached [[cc.spray.HttpService]]s. 
  */
-class RootService extends Actor with ServletConverter with Logging {
+class RootService extends Actor with ToFromRawConverter with Logging {
   private var services: List[ActorRef] = Nil
-  private var handler: RequestMethod => Unit = handleNoServices  
+  private var handler: RawRequestContext => Unit = handleNoServices  
 
   self.id = "spray-root-service"
 
   protected def receive = {
-    case rm: RequestMethod => {
+    case rawContext: RawRequestContext => {
       try {
-        handler(rm)
+        handler(rawContext)
       } catch {
-        case e: Exception => handleException(e, rm)
+        case e: Exception => handleException(e, rawContext)
       }
     }
     case Attach(service) => attach(service)
     case Detach(service) => detach(service)
   }
   
-  private def handleNoServices(rm: RequestMethod) {
-    log.slf4j.debug("Received {} with no attached services, completing with 404", toSprayRequest(rm.request))
-    completeNoService(rm)
+  private def handleNoServices(rawContext: RawRequestContext) {
+    log.slf4j.debug("Received {} with no attached services, completing with 404", toSprayRequest(rawContext.request))
+    completeNoService(rawContext)
   }
   
-  private def handleOneService(rm: RequestMethod) {
-    val request = toSprayRequest(rm.request)
+  private def handleOneService(rawContext: RawRequestContext) {
+    val request = toSprayRequest(rawContext.request)
     log.slf4j.debug("Received {} with one attached service, dispatching...", request)
-    (services.head !!! request) onComplete completeRequest(rm) _
+    (services.head !!! request) onComplete completeRequest(rawContext) _
   }
   
-  private def handleMultipleServices(rm: RequestMethod) {    
-    val request = toSprayRequest(rm.request)
+  private def handleMultipleServices(rawContext: RawRequestContext) {    
+    val request = toSprayRequest(rawContext.request)
     log.slf4j.debug("Received {} with {} attached services, dispatching...", services.size, request)
     val futures = services.map(_ !!! request).asInstanceOf[List[Future[Any]]]
     Futures.fold(None.asInstanceOf[Option[Any]])(futures) { (result, future) =>
       (result, future) match {
         case (None, None) => None
-        case (None, x@ Some(_: HttpResponse)) => x
-        case (x@ Some(_: HttpResponse), None) => x 
-        case (x@ Some(_: HttpResponse), Some(y: HttpResponse)) => {
+        case (None, x: Some[_]) => x
+        case (x: Some[_], None) => x 
+        case (x: Some[_], Some(y)) => {
           log.slf4j.warn("Received a second response for request '{}':\n\nn{}\n\nIgnoring the additional response...", request, y)
           x
         }
       }
-    } onComplete completeRequest(rm) _
+    } onComplete completeRequest(rawContext) _
   }
   
-  private def completeNoService(rm: RequestMethod) {
-    rm.rawComplete(fromSprayResponse(noService(rm.request.getRequestURI)))
+  private def completeNoService(rawContext: RawRequestContext) {
+    rawContext.complete(fromSprayResponse(noService(rawContext.request.uri)))
   }
   
-  private def completeRequest(rm: RequestMethod)(future: Future[Option[Any]]) {
+  private def completeRequest(rawContext: RawRequestContext)(future: Future[Option[Any]]) {
     if (future.exception.isEmpty) {
       future.result.get match {
-        case Some(response: HttpResponse) => rm.rawComplete(fromSprayResponse(response))
-        case None => completeNoService(rm)
+        case Some(response: HttpResponse) => rawContext.complete(fromSprayResponse(response))
+        case None => completeNoService(rawContext)
       }  
     } else {
-      handleException(future.exception.get, rm)
+      handleException(future.exception.get, rawContext)
     }
   }
 
-  protected def handleException(e: Throwable, rm: RequestMethod) {
+  protected def handleException(e: Throwable, rawContext: RawRequestContext) {
     log.slf4j.error("Exception during request processing: {}", e)
-    rm.rawComplete(fromSprayResponse(e match {
+    rawContext.complete(fromSprayResponse(e match {
       case e: HttpException => HttpResponse(e.status)
       case e: Exception => HttpResponse(HttpStatus(InternalServerError, e.getMessage))
     }))

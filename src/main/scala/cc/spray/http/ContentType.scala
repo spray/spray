@@ -30,7 +30,7 @@ case class ContentTypeRange(mediaRange: MediaRange, charsetRange: CharsetRange =
   override def toString = "ContentTypeRange(" + value + ')'
 }
 
-case class ContentType private (mediaType: MediaType, charset: Option[Charset]) {
+case class ContentType(mediaType: MediaType, charset: Option[Charset]) {
   def value: String = charset match {
     // don't print the charset parameter if it's the default charset
     case Some(cs) if (!mediaType.isText || cs != `ISO-8859-1`)=> mediaType.value + "; charset=" + cs.value

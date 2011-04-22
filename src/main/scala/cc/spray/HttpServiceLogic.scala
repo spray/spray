@@ -18,6 +18,9 @@ package cc.spray
 
 import http._
 import HttpStatusCodes._
+import HttpHeaders._
+import MediaTypes._
+import utils.IllegalResponseException
 
 /**
  * The logic part of the [[cc.spray.HttpService]]. Contains the code for [[cc.spray.RequestContext]] creation as well
@@ -43,7 +46,7 @@ trait HttpServiceLogic extends ErrorHandling {
   protected[spray] def responderForRequest(request: HttpRequest): RoutingResult => Unit
   
   protected[spray] def responseFromRoutingResult(rr: RoutingResult): Option[HttpResponse] = rr match {
-    case Respond(httpResponse) => Some(httpResponse) 
+    case Respond(httpResponse) => Some(finalizeResponse(httpResponse)) 
     case Reject(rejections) => {
       val activeRejections = Rejections.applyCancellations(rejections)
       if (activeRejections.isEmpty) None else responseForRejections(activeRejections)
@@ -128,6 +131,19 @@ trait HttpServiceLogic extends ErrorHandling {
   
   protected def handleCustomRejections(rejections: List[Rejection]): Option[HttpResponse] = {
     Some(HttpResponse(HttpStatus(InternalServerError, "Unknown request rejection: " + rejections.head)))
+  }
+  
+  protected def finalizeResponse(response: HttpResponse) = {
+    response.headers.foreach {
+      case _: `Content-Type` => throw new IllegalResponseException(
+        "HttpResponse must not include explicit 'Content-Type' header, use the respective HttpContent member!"
+      )
+      case _: `Content-Length` => throw new IllegalResponseException(
+        "HttpResponse must not include explicit 'Content-Length' header, this header will be set implicitly!"
+      ) 
+    }
+    if (response.isSuccess) response 
+    else response.withContentTransformed(content => HttpContent(`text/plain`, response.status.reason))
   }
 
 }

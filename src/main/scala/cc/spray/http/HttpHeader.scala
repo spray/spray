@@ -97,6 +97,10 @@ object HttpHeaders {
     def value = encoding.value
   }
   
+  case class `Content-Length`(length: Int) extends HttpHeader {
+    def value = length.toString
+  }
+  
   case class `Content-Type`(contentType: ContentType) extends HttpHeader {
     def value = contentType.value
   }

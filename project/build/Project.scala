@@ -23,12 +23,11 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaProject {
   // Dependencies
   // -------------------------------------------------------------------------------------------------------------------
   override val akkaActor  = akkaModule("actor") withSources()
-  val akkaHttp            = akkaModule("http") withSources()
+  //val akkaHttp            = akkaModule("http") withSources()
   val parboiledC          = "org.parboiled" % "parboiled-core" % "0.12.0-SNAPSHOT" % "compile" withSources()
   val parboiledS          = "org.parboiled" % "parboiled-scala" % "0.12.0-SNAPSHOT" % "compile" withSources()
   
   val specs   = "org.scala-tools.testing" %% "specs" % "1.6.7" % "test" withSources()
-  val mockito = "org.mockito" % "mockito-all" % "1.8.5" % "test" withSources()
   
   // -------------------------------------------------------------------------------------------------------------------
   // Options

@@ -16,7 +16,6 @@
 
 package cc.spray
 
-import akka.http.Endpoint
 import http._
 import akka.actor.Actor
 import akka.util.Logging
@@ -27,16 +26,13 @@ import akka.util.Logging
 trait HttpServiceActor extends Actor with Logging with ErrorLogging {
   this: HttpServiceLogic =>
   
-  // use the configurable dispatcher
-  self.dispatcher = Endpoint.Dispatcher 
-
   protected def receive = {
     case request: HttpRequest => handle(request)
   }
 
-  protected[spray] def responderForRequest(request: HttpRequest) = new (RoutingResult => Unit) {
-    val channel = self.channel    
-    def apply(rr:RoutingResult) { channel ! responseFromRoutingResult(rr) }
+  protected[spray] def responderForRequest(request: HttpRequest): RoutingResult => Unit = {
+    val channel = self.channel;
+    { rr => channel ! responseFromRoutingResult(rr) }
   }
   
 }
