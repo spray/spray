@@ -45,7 +45,7 @@ trait ToFromRawConverter {
     )
   }
 
-  protected def buildHeaders(headers: Map[String, String]) = {
+  protected def buildHeaders(headers: collection.Map[String, String]) = {
     var contentType: Option[`Content-Type`] = None
     var contentLength: Option[`Content-Length`] = None
     val filtered = ListBuffer.empty[HttpHeader]

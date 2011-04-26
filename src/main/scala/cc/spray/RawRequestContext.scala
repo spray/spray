@@ -23,7 +23,7 @@ case class RawRequestContext(request: RawRequest, complete: (RawResponse => Unit
 trait RawRequest {
   def method: String
   def uri: String
-  def headers: Map[String, String]
+  def headers: collection.Map[String, String]
   def inputStream: InputStream
   def remoteIP: String
   def protocol: String

@@ -23,7 +23,7 @@ object ActorHelpers {
   /**
    * Returns the actor whose id matches the given symbol.
    */
-  def actor(id: Symbol): ActorRef = actor(id.toString)
+  def actor(id: Symbol): ActorRef = actor(id.name)
 
   /**
    * Returns the actor with the given id.
