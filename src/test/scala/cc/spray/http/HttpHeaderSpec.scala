@@ -80,10 +80,23 @@ class HttpHeaderSpec extends Specification {
     )
   }
   
+  "Header 'Connection'" should {
+    import ConnectionTokens._
+    "be parsed correctly from example 1" in (
+      HttpHeader("Connection", "close") mustEqual Connection(close)
+    )
+    "be parsed correctly from example 2" in (
+      HttpHeader("Connection", "pipapo") mustEqual Connection(CustomConnectionToken("pipapo"))
+    )
+  }
+  
   "Header 'Content-Encoding'" should {
     import Encodings._
     "be parsed correctly from example 1" in (
       HttpHeader("Content-Encoding", "gzip") mustEqual `Content-Encoding`(`gzip`)
+    )
+    "be parsed correctly from example 2" in (
+      HttpHeader("Content-Encoding", "pipapo") mustEqual `Content-Encoding`(CustomEncoding("pipapo"))
     )
   }
   

@@ -18,27 +18,19 @@ package cc.spray.http
 package parser
 
 import org.parboiled.scala._
+import ConnectionTokens._
+import BasicRules._
 
-/**
- * Parser for all HTTP headers as defined by
- *  [[http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html]]
- */
-object HttpParser extends SprayParser with ProtocolParameterRules with AdditionalRules with CommonActions
-  with AcceptCharsetHeader
-  with AcceptEncodingHeader
-  with AcceptHeader
-  with AcceptLanguageHeader
-  with AcceptRangesHeader
-  with ConnectionHeader
-  with ContentEncodingHeader
-  with ContentLengthHeader
-  with ContentTypeHeader
-  with XForwardedForHeader
-  {
+private[parser] trait ConnectionHeader {
+  this: Parser =>
+
+  def CONNECTION = rule (
+    ConnectionToken ~ EOI
+        ~~> (x => HttpHeaders.Connection(x))
+  )
   
-  // all string literals automatically receive a trailing optional whitespace
-  override implicit def toRule(string :String) : Rule0 = {
-    super.toRule(string) ~ BasicRules.OptWS
+  def ConnectionToken = rule {
+    "close" ~ push(close) | Token ~~> (x => CustomConnectionToken(x))
   }
   
 }

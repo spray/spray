@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Mathias Doenitz
+ * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,21 +16,19 @@
  */
 
 package cc.spray.http
-package parser
 
-import org.parboiled.scala._
-import Encodings._
-
-private[parser] trait ContentEncodingHeader {
-  this: Parser with ProtocolParameterRules =>
-
-  def CONTENT_ENCODING = rule (
-    ContentEncoding ~ EOI
-        ~~> (x => HttpHeaders.`Content-Encoding`(x))
-  )
-  
-  def ContentEncoding = rule {
-    ContentCoding ~~> (x => Encodings.getForKey(x.toLowerCase).getOrElse(CustomEncoding(x)))
-  }
-  
+sealed trait ConnectionToken {
+  def value: String
+  override def toString = value
 }
+
+object ConnectionTokens {
+
+  class StandardConnectionToken private[ConnectionTokens] (val value: String) extends ConnectionToken
+  
+  case class CustomConnectionToken(value: String) extends ConnectionToken
+  
+  val close = new StandardConnectionToken("close")
+  // val keepAlive = ... // deprecated in HTTP 1.1
+}
+

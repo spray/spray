@@ -93,6 +93,10 @@ object HttpHeaders {
     def value = if (rangeUnits.isEmpty) "none" else rangeUnits.mkString(", ")
   }
   
+  case class `Connection`(connectionToken: ConnectionToken) extends HttpHeader {
+    def value = connectionToken.value
+  }
+  
   case class `Content-Encoding`(encoding: Encoding) extends HttpHeader {
     def value = encoding.value
   }
