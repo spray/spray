@@ -31,7 +31,7 @@ class RootService extends Actor with ToFromRawConverter with Logging {
   private var services: List[ActorRef] = Nil
   private var handler: RawRequestContext => Unit = handleNoServices  
 
-  self.id = "spray-root-service"
+  self.id = Settings.RootActorId
 
   protected def receive = {
     case rawContext: RawRequestContext => {

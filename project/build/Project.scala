@@ -7,7 +7,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaProject {
   // All repositories *must* go here! See ModuleConfigurations below.
   // -------------------------------------------------------------------------------------------------------------------
   object Repositories {
-    // e.g. val akkaRepo = MavenRepository("Akka Repository", "http://akka.io/repository")
+    lazy val JavaNetRepo = MavenRepository("java.net Repo", "http://download.java.net/maven/2")
   }
   
   // -------------------------------------------------------------------------------------------------------------------
@@ -17,15 +17,22 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaProject {
   // Therefore, if repositories are defined, this must happen as def, not as val.
   // -------------------------------------------------------------------------------------------------------------------
   import Repositories._
-  lazy val parboiledModuleConfig   = ModuleConfiguration("org.parboiled", ScalaToolsSnapshots)
+  lazy val parboiledModuleConfig = ModuleConfiguration("org.parboiled", ScalaToolsSnapshots)
+  lazy val glassfishModuleConfig = ModuleConfiguration("org.glassfish", JavaNetRepo)
   
   // -------------------------------------------------------------------------------------------------------------------
   // Dependencies
   // -------------------------------------------------------------------------------------------------------------------
+
+  // compile
   override val akkaActor  = akkaModule("actor") withSources()
-  val parboiledC          = "org.parboiled" % "parboiled-core" % "0.12.0-SNAPSHOT" % "compile" withSources()
-  val parboiledS          = "org.parboiled" % "parboiled-scala" % "0.12.0-SNAPSHOT" % "compile" withSources()
+  val parboiledC = "org.parboiled" % "parboiled-core" % "0.12.0-SNAPSHOT" % "compile" withSources()
+  val parboiledS = "org.parboiled" % "parboiled-scala" % "0.12.0-SNAPSHOT" % "compile" withSources()
   
+  // provided
+  val servlet30           = "org.glassfish" % "javax.servlet" % "3.0" % "provided" withSources()
+  
+  // test
   val specs   = "org.scala-tools.testing" %% "specs" % "1.6.7" % "test" withSources()
   
   // -------------------------------------------------------------------------------------------------------------------

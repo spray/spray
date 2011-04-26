@@ -23,8 +23,9 @@ import Charsets._
 import scala.collection.JavaConversions._
 import java.net.{UnknownHostException, InetAddress}
 import org.parboiled.common.FileUtils
-import java.io.ByteArrayOutputStream
 import collection.mutable.ListBuffer
+import java.io.{IOException, ByteArrayOutputStream}
+import akka.util.Logging
 
 /**
  * The logic for converting [[cc.spray.RawRequest]]s to [[cc.spray.http.HttpRequest]]s and
@@ -32,6 +33,7 @@ import collection.mutable.ListBuffer
  * Separated out from the [[cc.spray.RootService]] actor for testability.
  */
 trait ToFromRawConverter {
+  this: Logging =>
   
   protected[spray] def toSprayRequest(request: RawRequest): HttpRequest = {
     val (contentType, contentLength, headers) = buildHeaders(request.headers)
@@ -91,7 +93,16 @@ trait ToFromRawConverter {
         case Some(content) => {
           raw.addHeader("Content-Length", content.buffer.length.toString)
           raw.addHeader("Content-Type", content.contentType.value)
-          FileUtils.copyAll(content.inputStream, raw.outputStream)
+          try {
+            FileUtils.copyAll(content.inputStream, raw.outputStream)
+          } catch {
+            case e: RuntimeException => e.getCause match {
+              case e: IOException if (e.getMessage == "Closed") => {
+                log.slf4j.error("Could not write response body, " +
+                        "probably the request has either timed out or the client has disconnected")
+              }
+            }
+          }
         }
         case None => 
       }
