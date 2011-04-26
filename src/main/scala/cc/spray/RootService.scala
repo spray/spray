@@ -33,6 +33,8 @@ class RootService extends Actor with ToFromRawConverter with Logging {
 
   self.id = Settings.RootActorId
 
+  lazy val addConnectionCloseResponseHeader = Settings.CloseConnection
+
   protected def receive = {
     case rawContext: RawRequestContext => {
       try {
@@ -118,6 +120,8 @@ class RootService extends Actor with ToFromRawConverter with Logging {
   protected def noService(uri: String): HttpResponse = {
     HttpStatus(404, "No service available for [" + uri + "]")
   }
+  
+  
 }
 
 case class Attach(serviceActorRef: ActorRef)

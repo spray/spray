@@ -25,7 +25,7 @@ import java.net.{UnknownHostException, InetAddress}
 import org.parboiled.common.FileUtils
 import collection.mutable.ListBuffer
 import java.io.{IOException, ByteArrayOutputStream}
-import akka.util.Logging
+import utils.ResponseOutputStreamClosedException
 
 /**
  * The logic for converting [[cc.spray.RawRequest]]s to [[cc.spray.http.HttpRequest]]s and
@@ -33,7 +33,8 @@ import akka.util.Logging
  * Separated out from the [[cc.spray.RootService]] actor for testability.
  */
 trait ToFromRawConverter {
-  this: Logging =>
+  
+  def addConnectionCloseResponseHeader: Boolean
   
   protected[spray] def toSprayRequest(request: RawRequest): HttpRequest = {
     val (contentType, contentLength, headers) = buildHeaders(request.headers)
@@ -89,6 +90,9 @@ trait ToFromRawConverter {
     raw => {
       raw.setStatus(response.status.code.value)
       response.headers.foreach(header => raw.addHeader(header.name, header.value))
+      if (addConnectionCloseResponseHeader && !response.headers.exists(_.isInstanceOf[HttpHeaders.Connection])) {
+        raw.addHeader("Connection", "close")
+      }
       response.content match {
         case Some(content) => {
           raw.addHeader("Content-Length", content.buffer.length.toString)
@@ -96,11 +100,8 @@ trait ToFromRawConverter {
           try {
             FileUtils.copyAll(content.inputStream, raw.outputStream)
           } catch {
-            case e: RuntimeException => e.getCause match {
-              case e: IOException if (e.getMessage == "Closed") => {
-                log.slf4j.error("Could not write response body, " +
-                        "probably the request has either timed out or the client has disconnected")
-              }
+            case e: RuntimeException if e.getCause.isInstanceOf[IOException] && e.getCause.getMessage == "Closed" => {
+              throw new ResponseOutputStreamClosedException
             }
           }
         }

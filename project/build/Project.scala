@@ -30,10 +30,11 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaProject {
   val parboiledS = "org.parboiled" % "parboiled-scala" % "0.12.0-SNAPSHOT" % "compile" withSources()
   
   // provided
-  val servlet30           = "org.glassfish" % "javax.servlet" % "3.0" % "provided" withSources()
+  val servlet30          = "org.glassfish" % "javax.servlet" % "3.0" % "provided" withSources()
+  val jettyContinuations = "org.eclipse.jetty" % "jetty-continuation" % "7.2.0.v20101020" % "provided" withSources()
   
   // test
-  val specs   = "org.scala-tools.testing" %% "specs" % "1.6.7" % "test" withSources()
+  val specs = "org.scala-tools.testing" %% "specs" % "1.6.7" % "test" withSources()
   
   // -------------------------------------------------------------------------------------------------------------------
   // Options

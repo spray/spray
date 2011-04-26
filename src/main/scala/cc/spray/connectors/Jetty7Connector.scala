@@ -17,21 +17,20 @@
 package cc.spray
 package connectors
 
-import javax.servlet.{AsyncEvent, AsyncListener}
-import javax.servlet.http.{HttpServletResponse, HttpServletRequest, HttpServlet}
+import org.eclipse.jetty.continuation._
 import collection.JavaConversions._
 import collection.mutable.HashMap
 import utils.ActorHelpers._
 import akka.util.Logging
-import java.io.IOException
+import javax.servlet.http.{HttpServletResponse, HttpServletRequest, HttpServlet}
 import utils.ResponseOutputStreamClosedException
 
-class Servlet30Connector extends HttpServlet with AsyncListener with Logging {
+class Jetty7Connector extends HttpServlet with Logging {
   
   val rootService = actor("spray-root-service")
   
   override def init() {
-    log.info("Initializing Servlet 3.0 <=> Spray Connector")
+    log.info("Initializing Jetty 7 <=> Spray Connector")
   }
 
   override def service(req: HttpServletRequest, resp: HttpServletResponse) {
@@ -65,14 +64,25 @@ class Servlet30Connector extends HttpServlet with AsyncListener with Logging {
   }
   
   def suspend(req: HttpServletRequest, resp: HttpServletResponse): (RawResponse => Unit) => Unit = {
-    val asyncContext = req.startAsync()
-    asyncContext.setTimeout(Settings.AsyncTimeout)
-    asyncContext.addListener(this)
+    val continuation = ContinuationSupport.getContinuation(req)
+    continuation.addContinuationListener(new ContinuationListener {
+      def onTimeout(continuation: Continuation) {
+        log.slf4j.warn("Time out of request: {}", req)
+        TimeOutHandler.get.apply(
+          createRawRequest(req),
+          createRawResponse(resp)
+        )
+        continuation.complete()
+      }
+      def onComplete(continuation: Continuation) {}
+    })
+    continuation.setTimeout(Settings.AsyncTimeout)
+    continuation.suspend(resp)    
     
     { completer =>
+      completer(createRawResponse(resp))
       try {
-        completer(createRawResponse(resp))
-        asyncContext.complete()
+        continuation.complete()
       } catch {
         case e: ResponseOutputStreamClosedException => {
           log.slf4j.error("Could not write response body, " +
@@ -83,25 +93,4 @@ class Servlet30Connector extends HttpServlet with AsyncListener with Logging {
     }
   }
   
-  //********************** AsyncListener **********************
-
-  def onError(ev: AsyncEvent) {
-    ev.getThrowable match {
-      case null => log.warn("Unspecified Error during async request processing")
-      case   ex => log.warn("Error during async request processing: {}", ex)
-    }
-  }
-
-  def onTimeout(ev: AsyncEvent) {
-    log.slf4j.warn("Time out of request: {}", ev.getSuppliedRequest)
-    TimeOutHandler.get.apply(
-      createRawRequest(ev.getSuppliedRequest.asInstanceOf[HttpServletRequest]),
-      createRawResponse(ev.getSuppliedResponse.asInstanceOf[HttpServletResponse])
-    )
-    ev.getAsyncContext.complete()
-  }
-
-  def onComplete(ev: AsyncEvent) {}
-
-  def onStartAsync(ev: AsyncEvent) {}
 }

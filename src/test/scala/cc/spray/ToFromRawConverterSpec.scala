@@ -18,15 +18,19 @@ package cc.spray
 
 import org.specs.Specification
 import scala.collection.JavaConversions._
-import java.io.ByteArrayInputStream
 import http._
 import MediaTypes._
 import HttpHeaders._
 import HttpMethods._
 import Charsets._
+import HttpStatusCodes._
+import utils.ResponseOutputStreamClosedException
+import java.io.{IOException, OutputStream, ByteArrayOutputStream, ByteArrayInputStream}
 
 class ToFromRawConverterSpec extends Specification {
-  val convert = new ToFromRawConverter {}
+  val convert = new ToFromRawConverter {
+    val addConnectionCloseResponseHeader = true
+  }
   
   "The ToFromRawConverter" should {
     "properly convert a minimal request" in (
@@ -64,6 +68,34 @@ class ToFromRawConverterSpec extends Specification {
         HttpRequest(method = POST, uri = "/path", content = Some(HttpContent(ContentType(`text/css`, `UTF-8`), "yes".getBytes)))
       )
     }
+    
+    "properly write a response into a RawResponse" in {
+      var status = 0
+      val headers = collection.mutable.Map.empty[String, String]
+      val out = new ByteArrayOutputStream
+      convert.fromSprayResponse(HttpResponse(OK, List(`Content-Encoding`(Encodings.gzip), Location("xyz")),
+              Some(HttpContent("hello")))) {
+        new RawResponse {
+          def setStatus(code: Int) { status = code }
+          def addHeader(name: String, value: String) { headers.update(name, value) }
+          def outputStream = out
+        }
+      }
+      status mustEqual 200
+      headers mustEqual Map("Content-Encoding" -> "gzip", "Location" -> "xyz", "Content-Length" -> "5",
+        "Content-Type" -> "text/plain", "Connection" -> "close")
+      new String(out.toByteArray, "ISO-8859-1") mustEqual "hello"
+    }
+    
+    "throw a ResponseOutputStreamClosedException if the RawResponses output stream has already been closed" in {
+      convert.fromSprayResponse(HttpResponse(content = Some(HttpContent("hello")))) {
+        new RawResponse {
+          def setStatus(code: Int) {}
+          def addHeader(name: String, value: String) {}
+          def outputStream = new OutputStream { def write(b: Int) { throw new IOException("Closed") } }
+        }
+      } must throwA[ResponseOutputStreamClosedException]      
+    }
   }
   
   private def raw(m: String, u: String, h: Map[String, String] = Map(), content: String = "") = new RawRequest {
@@ -73,24 +105,6 @@ class ToFromRawConverterSpec extends Specification {
     def inputStream = new ByteArrayInputStream(content.getBytes)
     def remoteIP = "a:b" // provoke an UnknownHostException
     def protocol = "HTTP/1.1"
-
-    /*RawRequest
-    import java.util.Enumeration    
-    make(mock[HttpServletRequest]) { hsr =>
-      hsr.getMethod returns method
-      hsr.getRequestURL returns new StringBuffer(uri)
-      hsr.getQueryString returns queryString
-      hsr.getHeaderNames.asInstanceOf[Enumeration[String]] returns headers.keysIterator
-      for ((key, value) <- headers) {
-        hsr.getHeaders(key).asInstanceOf[Enumeration[String]] returns Iterator(value)
-      }
-      hsr.getInputStream returns make(mock[ServletInputStream]) { mock =>
-        val stream = new ByteArrayInputStream(content.getBytes)
-        mock.read(any) answers { array => stream.read(array.asInstanceOf[Array[Byte]])} 
-      }
-      hsr.getRemoteAddr returns "a:b" // provoke an UnknownHostException 
-      hsr.getProtocol returns "HTTP/1.1"
-    }*/
   }
   
 }
