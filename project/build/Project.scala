@@ -32,6 +32,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaProject {
   // provided
   val servlet30          = "org.glassfish" % "javax.servlet" % "3.0" % "provided" withSources()
   val jettyContinuations = "org.eclipse.jetty" % "jetty-continuation" % "7.2.0.v20101020" % "provided" withSources()
+  val tomcat6            = "org.apache.tomcat" % "catalina" % "6.0.32" % "provided"
   
   // test
   val specs = "org.scala-tools.testing" %% "specs" % "1.6.7" % "test" withSources()

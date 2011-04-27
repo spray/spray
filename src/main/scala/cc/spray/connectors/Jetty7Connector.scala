@@ -18,61 +18,25 @@ package cc.spray
 package connectors
 
 import org.eclipse.jetty.continuation._
-import collection.JavaConversions._
-import collection.mutable.HashMap
-import utils.ActorHelpers._
-import akka.util.Logging
-import javax.servlet.http.{HttpServletResponse, HttpServletRequest, HttpServlet}
-import utils.CantWriteResponseBodyException
+import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 
-class Jetty7Connector extends HttpServlet with Logging {
-  
-  val rootService = actor("spray-root-service")
+class Jetty7Connector extends ServletConnector {
   
   override def init() {
-    log.info("Initializing Jetty 7 <=> Spray Connector")
+    log.slf4j.info("Initializing Jetty 7 <=> Spray Connector")
   }
 
   override def service(req: HttpServletRequest, resp: HttpServletResponse) {
-    log.slf4j.debug("Processing HttpServletRequest {}", req)
-    rootService ! RawRequestContext(createRawRequest(req), suspend(req, resp)) 
+    rootService ! RawRequestContext(rawRequest(req), suspend(req, resp)) 
   }
   
-  def createRawRequest(req: HttpServletRequest) = new RawRequest {
-    def method = req.getMethod
-    lazy val uri = {
-      val buffer = req.getRequestURL
-      val queryString = req.getQueryString
-      if (queryString != null && queryString.length > 1) buffer.append('?').append(queryString)
-      buffer.toString
-    }
-    lazy val headers = {
-      val map = HashMap.empty[String, String]
-      for (name <- req.getHeaderNames.toList; value <- req.getHeaders(name).toList) {
-        map.update(name, value)
-      }
-      map
-    }
-    def inputStream = req.getInputStream
-    def remoteIP = req.getRemoteAddr
-    def protocol = req.getProtocol
-  }
-
-  def createRawResponse(resp: HttpServletResponse) = new RawResponse {
-    def setStatus(code: Int) { resp.setStatus(code) }
-    def addHeader(name: String, value: String) { resp.addHeader(name, value) }
-    def outputStream = resp.getOutputStream
-  }
-  
-  def suspend(req: HttpServletRequest, resp: HttpServletResponse): (RawResponse => Unit) => Unit = {
+  def suspend(req: HttpServletRequest, resp: HttpServletResponse): (RawResponse => Unit) => Unit = {    
     val continuation = ContinuationSupport.getContinuation(req)
+    val rawReq = rawRequest(req)
     continuation.addContinuationListener(new ContinuationListener {
       def onTimeout(continuation: Continuation) {
-        log.slf4j.warn("Time out of request: {}", req)
-        TimeOutHandler.get.apply(
-          createRawRequest(req),
-          createRawResponse(resp)
-        )
+        log.slf4j.warn("Timeout of {}", rawReq)
+        TimeOutHandler.get.apply(rawReq, rawResponse(resp))
         continuation.complete()
       }
       def onComplete(continuation: Continuation) {}
@@ -80,17 +44,8 @@ class Jetty7Connector extends HttpServlet with Logging {
     continuation.setTimeout(Settings.AsyncTimeout)
     continuation.suspend(resp)    
     
-    { completer =>
-      completer(createRawResponse(resp))
-      try {
-        continuation.complete()
-      } catch {
-        case e: CantWriteResponseBodyException => {
-          log.slf4j.error("Could not write response body, " +
-                  "probably the request has either timed out or the client has disconnected")
-        }
-        case e: Exception => log.slf4j.error("Could not complete request", e)
-      }
+    completer(resp) {
+      continuation.complete()
     }
   }
   

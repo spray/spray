@@ -18,87 +18,41 @@ package cc.spray
 package connectors
 
 import javax.servlet.{AsyncEvent, AsyncListener}
-import javax.servlet.http.{HttpServletResponse, HttpServletRequest, HttpServlet}
-import collection.JavaConversions._
-import collection.mutable.HashMap
-import utils.ActorHelpers._
-import akka.util.Logging
-import java.io.IOException
-import utils.CantWriteResponseBodyException
+import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 
-class Servlet30Connector extends HttpServlet with AsyncListener with Logging {
-  
-  val rootService = actor("spray-root-service")
+class Servlet30Connector extends ServletConnector with AsyncListener {
   
   override def init() {
-    log.info("Initializing Servlet 3.0 <=> Spray Connector")
+    log.slf4j.info("Initializing Servlet 3.0 <=> Spray Connector")
   }
 
   override def service(req: HttpServletRequest, resp: HttpServletResponse) {
-    log.slf4j.debug("Processing HttpServletRequest {}", req)
-    rootService ! RawRequestContext(createRawRequest(req), suspend(req, resp)) 
-  }
-  
-  def createRawRequest(req: HttpServletRequest) = new RawRequest {
-    def method = req.getMethod
-    lazy val uri = {
-      val buffer = req.getRequestURL
-      val queryString = req.getQueryString
-      if (queryString != null && queryString.length > 1) buffer.append('?').append(queryString)
-      buffer.toString
-    }
-    lazy val headers = {
-      val map = HashMap.empty[String, String]
-      for (name <- req.getHeaderNames.toList; value <- req.getHeaders(name).toList) {
-        map.update(name, value)
-      }
-      map
-    }
-    def inputStream = req.getInputStream
-    def remoteIP = req.getRemoteAddr
-    def protocol = req.getProtocol
-  }
-
-  def createRawResponse(resp: HttpServletResponse) = new RawResponse {
-    def setStatus(code: Int) { resp.setStatus(code) }
-    def addHeader(name: String, value: String) { resp.addHeader(name, value) }
-    def outputStream = resp.getOutputStream
+    rootService ! RawRequestContext(rawRequest(req), suspend(req, resp)) 
   }
   
   def suspend(req: HttpServletRequest, resp: HttpServletResponse): (RawResponse => Unit) => Unit = {
     val asyncContext = req.startAsync()
     asyncContext.setTimeout(Settings.AsyncTimeout)
     asyncContext.addListener(this)
-    
-    { completer =>
-      try {
-        completer(createRawResponse(resp))
-        asyncContext.complete()
-      } catch {
-        case e: CantWriteResponseBodyException => {
-          log.slf4j.error("Could not write response body, " +
-                  "probably the request has either timed out or the client has disconnected")
-        }
-        case e: Exception => log.slf4j.error("Could not complete request", e)
-      }
+    completer(resp) {
+      asyncContext.complete()
     }
   }
   
   //********************** AsyncListener **********************
 
   def onError(ev: AsyncEvent) {
+    val req = rawRequest(ev.getSuppliedRequest.asInstanceOf[HttpServletRequest])
     ev.getThrowable match {
-      case null => log.warn("Unspecified Error during async request processing")
-      case   ex => log.warn("Error during async request processing: {}", ex)
+      case null => log.slf4j.warn("Unspecified Error during async processing of {}", req)
+      case ex => log.slf4j.warn("Error during async processing of " + req, ex)
     }
   }
 
   def onTimeout(ev: AsyncEvent) {
-    log.slf4j.warn("Time out of request: {}", ev.getSuppliedRequest)
-    TimeOutHandler.get.apply(
-      createRawRequest(ev.getSuppliedRequest.asInstanceOf[HttpServletRequest]),
-      createRawResponse(ev.getSuppliedResponse.asInstanceOf[HttpServletResponse])
-    )
+    val req = rawRequest(ev.getSuppliedRequest.asInstanceOf[HttpServletRequest])
+    log.slf4j.warn("Timeout of {}", req)
+    TimeOutHandler.get.apply(req, rawResponse(ev.getSuppliedResponse.asInstanceOf[HttpServletResponse]))
     ev.getAsyncContext.complete()
   }
 
