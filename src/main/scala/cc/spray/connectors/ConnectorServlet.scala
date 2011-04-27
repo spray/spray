@@ -27,6 +27,15 @@ import utils.ActorHelpers._
 private[connectors] trait ConnectorServlet extends HttpServlet with Logging {
   
   val rootService = actor("spray-root-service")
+  var timeout: Int = _
+  
+  def containerName: String
+  
+  override def init() {
+    log.slf4j.info("Initializing {} <=> Spray Connector", containerName)
+    timeout = Settings.AsyncTimeout
+    log.slf4j.info("Async timeout for all requests is {} ms", timeout)
+  }
   
   def rawRequest(req: HttpServletRequest) = new RawRequest {
     def method = req.getMethod

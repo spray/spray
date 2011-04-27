@@ -22,17 +22,15 @@ import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 
 class Servlet30ConnectorServlet extends ConnectorServlet with AsyncListener {
   
-  override def init() {
-    log.slf4j.info("Initializing Servlet 3.0 <=> Spray Connector")
-  }
-
+  def containerName = "Servlet API 3.0"
+  
   override def service(req: HttpServletRequest, resp: HttpServletResponse) {
     rootService ! RawRequestContext(rawRequest(req), suspend(req, resp)) 
   }
   
   def suspend(req: HttpServletRequest, resp: HttpServletResponse): (RawResponse => Unit) => Unit = {
     val asyncContext = req.startAsync()
-    asyncContext.setTimeout(Settings.AsyncTimeout)
+    asyncContext.setTimeout(timeout)
     asyncContext.addListener(this)
     completer(resp) {
       asyncContext.complete()

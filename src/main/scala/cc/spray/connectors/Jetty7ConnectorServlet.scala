@@ -21,10 +21,8 @@ import org.eclipse.jetty.continuation._
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 
 class Jetty7ConnectorServlet extends ConnectorServlet {
-  
-  override def init() {
-    log.slf4j.info("Initializing Jetty 7 <=> Spray Connector")
-  }
+
+  def containerName = "Jetty 7"
 
   override def service(req: HttpServletRequest, resp: HttpServletResponse) {
     rootService ! RawRequestContext(rawRequest(req), suspend(req, resp)) 
@@ -41,7 +39,7 @@ class Jetty7ConnectorServlet extends ConnectorServlet {
       }
       def onComplete(continuation: Continuation) {}
     })
-    continuation.setTimeout(Settings.AsyncTimeout)
+    continuation.setTimeout(timeout)
     continuation.suspend(resp)    
     
     completer(resp) {
