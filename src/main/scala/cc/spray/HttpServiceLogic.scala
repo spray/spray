@@ -140,7 +140,8 @@ trait HttpServiceLogic extends ErrorHandling {
       )
       case _: `Content-Length` => throw new IllegalResponseException(
         "HttpResponse must not include explicit 'Content-Length' header, this header will be set implicitly!"
-      ) 
+      )
+      case _ => {}
     }
     if (response.isSuccess) response 
     else response.withContentTransformed(content => HttpContent(`text/plain`, response.status.reason))
