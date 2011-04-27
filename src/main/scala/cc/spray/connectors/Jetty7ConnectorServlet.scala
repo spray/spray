@@ -20,7 +20,7 @@ package connectors
 import org.eclipse.jetty.continuation._
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 
-class Jetty7Connector extends ServletConnector {
+class Jetty7ConnectorServlet extends ConnectorServlet {
   
   override def init() {
     log.slf4j.info("Initializing Jetty 7 <=> Spray Connector")

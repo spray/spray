@@ -20,7 +20,7 @@ package connectors
 import javax.servlet.{AsyncEvent, AsyncListener}
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 
-class Servlet30Connector extends ServletConnector with AsyncListener {
+class Servlet30ConnectorServlet extends ConnectorServlet with AsyncListener {
   
   override def init() {
     log.slf4j.info("Initializing Servlet 3.0 <=> Spray Connector")

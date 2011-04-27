@@ -24,7 +24,7 @@ import javax.servlet.http.{HttpServletResponse, HttpServletRequest, HttpServlet}
 import utils.CantWriteResponseBodyException
 import utils.ActorHelpers._
 
-private[connectors] trait ServletConnector extends HttpServlet with Logging {
+private[connectors] trait ConnectorServlet extends HttpServlet with Logging {
   
   val rootService = actor("spray-root-service")
   

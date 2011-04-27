@@ -5,8 +5,8 @@ package cc.spray.connectors
 */
 
 import akka.config.Config
-import akka.actor.Actor
 import akka.util. {Switch, Logging, Bootable}
+import akka.actor.{Scheduler, Actor}
 
 /*
 * This class is responsible for booting up a stack of bundles and then shutting them down
@@ -40,9 +40,10 @@ class AkkaLoader extends Logging {
       log.slf4j.info("Shutting down Akka...")
       _bundles.foreach(_.onUnload)
       _bundles = None
-      val shutdownHook = Actor.getClass.getMethod("shutdownHook").invoke(Actor).asInstanceOf[Runnable]
-      shutdownHook.run()
-      log.slf4j.info("Akka succesfully shut down")
+      Actor.registry.shutdownAll()
+      Scheduler.shutdown
+      Actor.getClass.getMethod("shutdownHook").invoke(Actor).asInstanceOf[Runnable].run()
+      log.slf4j.info("Akka successfully shut down")
     }
   }
 
