@@ -16,4 +16,4 @@
 
 package cc.spray.utils
 
-class ResponseOutputStreamClosedException extends RuntimeException
+class CantWriteResponseBodyException extends RuntimeException

@@ -23,7 +23,7 @@ import collection.mutable.HashMap
 import utils.ActorHelpers._
 import akka.util.Logging
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest, HttpServlet}
-import utils.ResponseOutputStreamClosedException
+import utils.CantWriteResponseBodyException
 
 class Jetty7Connector extends HttpServlet with Logging {
   
@@ -34,6 +34,7 @@ class Jetty7Connector extends HttpServlet with Logging {
   }
 
   override def service(req: HttpServletRequest, resp: HttpServletResponse) {
+    log.slf4j.debug("Processing HttpServletRequest {}", req)
     rootService ! RawRequestContext(createRawRequest(req), suspend(req, resp)) 
   }
   
@@ -84,11 +85,11 @@ class Jetty7Connector extends HttpServlet with Logging {
       try {
         continuation.complete()
       } catch {
-        case e: ResponseOutputStreamClosedException => {
+        case e: CantWriteResponseBodyException => {
           log.slf4j.error("Could not write response body, " +
                   "probably the request has either timed out or the client has disconnected")
         }
-        case e: Exception => log.slf4j.error("Could not complete request: {}", e.toString)
+        case e: Exception => log.slf4j.error("Could not complete request", e)
       }
     }
   }

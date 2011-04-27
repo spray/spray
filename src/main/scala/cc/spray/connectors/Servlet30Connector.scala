@@ -24,7 +24,7 @@ import collection.mutable.HashMap
 import utils.ActorHelpers._
 import akka.util.Logging
 import java.io.IOException
-import utils.ResponseOutputStreamClosedException
+import utils.CantWriteResponseBodyException
 
 class Servlet30Connector extends HttpServlet with AsyncListener with Logging {
   
@@ -35,6 +35,7 @@ class Servlet30Connector extends HttpServlet with AsyncListener with Logging {
   }
 
   override def service(req: HttpServletRequest, resp: HttpServletResponse) {
+    log.slf4j.debug("Processing HttpServletRequest {}", req)
     rootService ! RawRequestContext(createRawRequest(req), suspend(req, resp)) 
   }
   
@@ -74,11 +75,11 @@ class Servlet30Connector extends HttpServlet with AsyncListener with Logging {
         completer(createRawResponse(resp))
         asyncContext.complete()
       } catch {
-        case e: ResponseOutputStreamClosedException => {
+        case e: CantWriteResponseBodyException => {
           log.slf4j.error("Could not write response body, " +
                   "probably the request has either timed out or the client has disconnected")
         }
-        case e: Exception => log.slf4j.error("Could not complete request: {}", e.toString)
+        case e: Exception => log.slf4j.error("Could not complete request", e)
       }
     }
   }

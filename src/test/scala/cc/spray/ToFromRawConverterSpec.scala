@@ -24,7 +24,7 @@ import HttpHeaders._
 import HttpMethods._
 import Charsets._
 import HttpStatusCodes._
-import utils.ResponseOutputStreamClosedException
+import utils.CantWriteResponseBodyException
 import java.io.{IOException, OutputStream, ByteArrayOutputStream, ByteArrayInputStream}
 
 class ToFromRawConverterSpec extends Specification {
@@ -87,14 +87,14 @@ class ToFromRawConverterSpec extends Specification {
       new String(out.toByteArray, "ISO-8859-1") mustEqual "hello"
     }
     
-    "throw a ResponseOutputStreamClosedException if the RawResponses output stream has already been closed" in {
+    "throw a CantWriteResponseBodyException if the RawResponses output stream has already been closed" in {
       convert.fromSprayResponse(HttpResponse(content = Some(HttpContent("hello")))) {
         new RawResponse {
           def setStatus(code: Int) {}
           def addHeader(name: String, value: String) {}
           def outputStream = new OutputStream { def write(b: Int) { throw new IOException("Closed") } }
         }
-      } must throwA[ResponseOutputStreamClosedException]      
+      } must throwA[CantWriteResponseBodyException]      
     }
   }
   

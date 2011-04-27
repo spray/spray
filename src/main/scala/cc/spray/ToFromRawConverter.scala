@@ -24,8 +24,8 @@ import scala.collection.JavaConversions._
 import java.net.{UnknownHostException, InetAddress}
 import org.parboiled.common.FileUtils
 import collection.mutable.ListBuffer
-import java.io.{IOException, ByteArrayOutputStream}
-import utils.ResponseOutputStreamClosedException
+import java.io.ByteArrayOutputStream
+import utils.CantWriteResponseBodyException
 
 /**
  * The logic for converting [[cc.spray.RawRequest]]s to [[cc.spray.http.HttpRequest]]s and
@@ -100,9 +100,7 @@ trait ToFromRawConverter {
           try {
             FileUtils.copyAll(content.inputStream, raw.outputStream)
           } catch {
-            case e: RuntimeException if e.getCause.isInstanceOf[IOException] && e.getCause.getMessage == "Closed" => {
-              throw new ResponseOutputStreamClosedException
-            }
+            case e: Exception => throw new CantWriteResponseBodyException
           }
         }
         case None => 
