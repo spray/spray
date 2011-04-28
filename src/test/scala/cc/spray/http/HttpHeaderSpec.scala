@@ -117,6 +117,12 @@ class HttpHeaderSpec extends Specification {
     )
   }
   
+  "Header 'Date'" should {
+    "be parsed correctly from example 1" in (
+      HttpHeader("Date", "Tue, 15 Nov 1994 08:12:31 GMT") mustEqual Date("Tue, 15 Nov 1994 08:12:31 GMT")
+    )
+  }
+  
   "Header 'X-Forwarded-For'" should {
     "be parsed correctly from example 1" in (
       HttpHeader("X-Forwarded-For", "1.2.3.4") mustEqual `X-Forwarded-For`("1.2.3.4")

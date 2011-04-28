@@ -33,6 +33,7 @@ object HttpParser extends SprayParser with ProtocolParameterRules with Additiona
   with ContentEncodingHeader
   with ContentLengthHeader
   with ContentTypeHeader
+  with DateHeader
   with XForwardedForHeader
   {
   

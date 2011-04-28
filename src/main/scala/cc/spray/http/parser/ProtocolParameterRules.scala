@@ -49,11 +49,13 @@ private[parser] trait ProtocolParameterRules {
   
   def Time = rule { Digit ~ Digit ~ ch(':') ~ Digit ~ Digit ~ ch(':') ~ Digit ~ Digit }
   
-  def Wkday = rule { "Mon" ~ "Tue" ~ "Wed" ~ "Thu" ~ "Fri" ~ "Sat" ~ "Sun" }
+  def Wkday = rule { str("Mon") | str("Tue") | str("Wed") | str("Thu") | str("Fri") | str("Sat") | str("Sun") }
   
-  def Weekday = rule { "Monday" ~ "Tuesday" ~ "Wednesday" ~ "Thursday" ~ "Friday" ~ "Saturday" ~ "Sunday" }
+  def Weekday = rule { str("Monday") | str("Tuesday") | str("Wednesday") | str("Thursday") | str("Friday") |
+          str("Saturday") | str("Sunday") }
   
-  def Month = rule { "Jan" ~ "Feb" ~ "Mar" ~ "Apr" ~ "May" ~ "Jun" ~ "Jul" ~ "Aug" ~ "Sep" ~ "Oct" ~ "Nov" ~ "Dec" }
+  def Month = rule { str("Jan") | str("Feb") | str("Mar") | str("Apr") | str("May") | str("Jun") | str("Jul") |
+          str("Aug") | str("Sep") | str("Oct") | str("Nov") | str("Dec") }
   
   /* 3.3.2 Delta Seconds */
   

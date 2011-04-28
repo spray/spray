@@ -109,6 +109,10 @@ object HttpHeaders {
     def value = contentType.value
   }
   
+  case class `Date`(rfc1123Date: String) extends HttpHeader {
+    def value = rfc1123Date
+  }
+  
   case class `Location`(absoluteUri: String) extends HttpHeader {
     def value = absoluteUri
   }
