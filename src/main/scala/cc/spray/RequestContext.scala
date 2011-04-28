@@ -124,9 +124,12 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
    * Completes the request with the given [[cc.spray.http.HttpStatus]].
    */
   def fail(failure: HttpStatus) {
-    responder(Respond(HttpResponse(failure)))
+    complete(HttpResponse(failure))
   }
-  
+
+  /**
+   * Completes the request with a redirection response to the given URI.
+   */
   def redirect(uri: String, redirectionType: Redirection = Found) {
     complete(
       HttpResponse(

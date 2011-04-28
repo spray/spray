@@ -60,6 +60,11 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
         }.response mustEqual Ok
       }
     }
+    "respond with the failure content on HTTP Failures" in {
+      testService(HttpRequest(GET, "/")) {
+          get { _.fail(BadRequest, "Some obscure error msg") }
+        }.response mustEqual failure (BadRequest, "Some obscure error msg")
+    }
     "respond with MethodNotAllowed for requests resulting in MethodRejections" in {
       testService(HttpRequest(POST, "/test")) {
         get { _.complete("yes") } ~
@@ -80,7 +85,7 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
     "respond with UnsupportedMediaType for requests resulting in UnsupportedRequestContentTypeRejection" in {
       testService(HttpRequest(POST, content = Some(HttpContent(`application/pdf`, "...PDF...")))) {
         contentAs[NodeSeq] { _ => completeOk }
-      }.response mustEqual failure(UnsupportedMediaType, "The requests content-type must be one the following:\n" +
+      }.response mustEqual failure(UnsupportedMediaType, "The requests Content-Type must be one the following:\n" +
               "text/xml\ntext/html\napplication/xhtml+xml")
     }
     "respond with BadRequest for requests resulting in RequestEntityExpectedRejection" in {
@@ -91,7 +96,7 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
     "respond with NotAcceptable for requests resulting in UnacceptedResponseContentTypeRejection" in {
       testService(HttpRequest(GET, headers = List(`Accept`(`text/css`)))) {
         get { _.complete("text text text") }
-      }.response mustEqual failure(NotAcceptable, "Resource representation is only available with these content-types:\n" +
+      }.response mustEqual failure(NotAcceptable, "Resource representation is only available with these Content-Types:\n" +
               "text/plain")
     }
     "respond with BadRequest for requests resulting in MalformedRequestContentRejections" in {
