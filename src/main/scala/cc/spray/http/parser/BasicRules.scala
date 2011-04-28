@@ -34,7 +34,7 @@ private[spray] object BasicRules extends Parser {
   
   def Digit = rule { "0" - "9" }
   
-  def CTL = rule { "\u0000" - "\u001F" | "\u007F" }
+  def CTL = rule { "\u0000" - "\u001F" | "\u001F" }
   
   def CRLF = rule { str("\r\n") }
   

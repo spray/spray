@@ -80,6 +80,25 @@ class HttpHeaderSpec extends Specification {
     )
   }
   
+  "Header 'Authorization'" should {
+    "be parsed correctly from example 1" in (
+      HttpHeader("Authorization", "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==") mustEqual
+              Authorization(BasicCredentials("Aladdin", "open sesame"))
+    )
+    "be parsed correctly from example 2" in (
+      HttpHeader("Authorization", """Fancy yes="no", nonce="42"""") mustEqual
+              Authorization(OtherCredentials("Fancy", Map("yes"->"no", "nonce"->"42")))
+    )
+    "be parsed correctly from example 3" in (
+      HttpHeader("Authorization", BasicCredentials("Bob", "").value) mustEqual
+              Authorization(BasicCredentials("Bob", ""))
+    )
+    "be parsed correctly from example 4" in (
+      HttpHeader("Authorization", OtherCredentials("Digest", Map("name"->"Bob")).value) mustEqual
+              Authorization(OtherCredentials("Digest", Map("name"->"Bob")))
+    )
+  }
+  
   "Header 'Connection'" should {
     import ConnectionTokens._
     "be parsed correctly from example 1" in (
@@ -120,6 +139,13 @@ class HttpHeaderSpec extends Specification {
   "Header 'Date'" should {
     "be parsed correctly from example 1" in (
       HttpHeader("Date", "Tue, 15 Nov 1994 08:12:31 GMT") mustEqual Date("Tue, 15 Nov 1994 08:12:31 GMT")
+    )
+  }
+  
+  "Header 'WWW-Authenticate'" should {
+    "serialize properly to String" in (
+      `WWW-Authenticate`("Fancy", "Secure Area", Map("nonce"->"42")).value mustEqual
+              """Fancy realm="Secure Area",nonce="42""""
     )
   }
   

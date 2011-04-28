@@ -29,12 +29,11 @@ object HttpParser extends SprayParser with ProtocolParameterRules with Additiona
   with AcceptHeader
   with AcceptLanguageHeader
   with AcceptRangesHeader
+  with AuthorizationHeader
   with ConnectionHeader
   with ContentEncodingHeader
-  with ContentLengthHeader
   with ContentTypeHeader
-  with DateHeader
-  with XForwardedForHeader
+  with SimpleHeaders
   {
   
   // all string literals automatically receive a trailing optional whitespace

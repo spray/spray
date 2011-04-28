@@ -69,7 +69,7 @@ object HttpHeader {
 object HttpHeaders {
 
   object Accept { def apply(first: MediaRange, more: MediaRange*): Accept = apply(first +: more) }
-  case class Accept(mediaRanges: Seq[MediaRange]) extends HttpHeader {
+  case class `Accept`(mediaRanges: Seq[MediaRange]) extends HttpHeader {
     def value = mediaRanges.mkString(", ")
   }
   
@@ -91,6 +91,10 @@ object HttpHeaders {
   object `Accept-Ranges` { def apply(first: RangeUnit, more: RangeUnit*): `Accept-Ranges` = apply(first +: more) }
   case class `Accept-Ranges`(rangeUnits: Seq[RangeUnit]) extends HttpHeader {
     def value = if (rangeUnits.isEmpty) "none" else rangeUnits.mkString(", ")
+  }
+  
+  case class `Authorization`(credentials: Credentials) extends HttpHeader {
+    def value = credentials.value
   }
   
   case class `Connection`(connectionToken: ConnectionToken) extends HttpHeader {
@@ -115,6 +119,12 @@ object HttpHeaders {
   
   case class `Location`(absoluteUri: String) extends HttpHeader {
     def value = absoluteUri
+  }
+  
+  case class `WWW-Authenticate`(scheme: String, realm: String, params: Map[String, String] = Map.empty) extends HttpHeader {
+    def value = {
+      scheme + ' ' + (("realm" -> realm) :: params.toList).map { case (k, v) => k + "=\"" + v + '"' }.mkString(",")
+    }
   }
   
   object `X-Forwarded-For` { def apply(first: HttpIp, more: HttpIp*): `X-Forwarded-For` = apply(first +: more) }

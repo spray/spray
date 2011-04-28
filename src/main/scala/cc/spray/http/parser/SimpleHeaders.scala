@@ -20,11 +20,22 @@ package parser
 import org.parboiled.scala._
 import BasicRules._
 
-private[parser] trait ContentLengthHeader {
-  this: Parser =>
+/**
+ * parser rules for all headers that can be parsed with one simple rule
+ */
+private[parser] trait SimpleHeaders {
+  this: Parser with ProtocolParameterRules with AdditionalRules =>
 
-  def CONTENT_LENGTH = rule (
+  def CONTENT_LENGTH = rule {
     oneOrMore(Digit) ~> (s => HttpHeaders.`Content-Length`(s.toInt)) ~ EOI
-  )
+  }
+  
+  def DATE = rule {
+    HttpDate ~> HttpHeaders.Date ~ EOI
+  }
+  
+  def X_FORWARDED_FOR = rule {
+    oneOrMore(Ip, ListSep) ~ EOI ~~> (x => HttpHeaders.`X-Forwarded-For`(x))
+  }
   
 }
