@@ -20,13 +20,15 @@ import http._
 import HttpStatusCodes._
 import HttpHeaders._
 import MediaTypes._
-import utils.IllegalResponseException
+import utils.{Rfc1123, IllegalResponseException}
 
 /**
  * The logic part of the [[cc.spray.HttpService]]. Contains the code for [[cc.spray.RequestContext]] creation as well
  * as translation of [[cc.spray.Rejection]]s and Exceptions to [[cc.spray.http.HttpResponse]]s. 
  */
 trait HttpServiceLogic extends ErrorHandling {
+  
+  def setDateHeader: Boolean
   
   def route: Route
   
@@ -35,6 +37,7 @@ trait HttpServiceLogic extends ErrorHandling {
     try {
       route(context)
     } catch {
+      case e: IllegalResponseException => throw e
       case e: Exception => context.complete(responseForException(request, e))
     }
   }
@@ -106,17 +109,27 @@ trait HttpServiceLogic extends ErrorHandling {
   }
   
   protected def finalizeResponse(response: HttpResponse) = {
-    response.headers.foreach {
-      case _: `Content-Type` => throw new IllegalResponseException(
-        "HttpResponse must not include explicit 'Content-Type' header, use the respective HttpContent member!"
-      )
-      case _: `Content-Length` => throw new IllegalResponseException(
-        "HttpResponse must not include explicit 'Content-Length' header, this header will be set implicitly!"
-      )
-      case _ => {}
-    }
-    if (response.isSuccess) response 
-    else response.withContentTransformed(content => HttpContent(`text/plain`, response.status.reason))
+    val verifiedResponse = verified(response)
+    val resp = if (response.isSuccess) response 
+            else response.withContentTransformed(content => HttpContent(`text/plain`, response.status.reason))
+    if (setDateHeader) {
+      resp.copy(headers = Date(Rfc1123.now) :: resp.headers) 
+    } else resp
   }
-
+  
+  protected def verified(response: HttpResponse) = {
+    response.headers.mapFind {
+      _ match {
+        case _: `Content-Type` => Some("HttpResponse must not include explicit 'Content-Type' header, " +
+                "use the respective HttpContent member!")
+        case _: `Content-Length` => Some("HttpResponse must not include explicit 'Content-Length' header, " +
+                "this header will be set implicitly!")
+        case _ => None
+      }
+    } match {
+        case Some(errorMsg) => throw new IllegalResponseException(errorMsg)
+        case None => response
+    } 
+  }
+  
 }

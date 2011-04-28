@@ -69,6 +69,7 @@ trait SprayTest {
    */
   implicit def wrapRootRoute(rootRoute: Route): ServiceTest = new ServiceTest {
     val route = rootRoute
+    val setDateHeader = false
   }
   
   def testService(request: HttpRequest)(service: ServiceTest): ServiceResultWrapper = {

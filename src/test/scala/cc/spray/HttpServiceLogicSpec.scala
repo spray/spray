@@ -23,6 +23,7 @@ import HttpMethods._
 import HttpStatusCodes._
 import MediaTypes._
 import test.SprayTest
+import utils.IllegalResponseException
 import xml.NodeSeq
 
 class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuilder {
@@ -36,6 +37,7 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
         path("abc") { completeOk }
       }.handled must beFalse
     }
+    
     "leave only partially matched requests unhandled" in {
       "for routes on prefix paths" in {
         testService(HttpRequest(GET, "/test/more")) {
@@ -48,6 +50,7 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
         }.handled must beFalse
       }
     }
+    
     "respond with the route response for completely matched requests" in {
       "for routes on non-root paths" in {
         testService(HttpRequest(GET, "/test")) {
@@ -60,11 +63,26 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
         }.response mustEqual Ok
       }
     }
+    
     "respond with the failure content on HTTP Failures" in {
       testService(HttpRequest(GET, "/")) {
           get { _.fail(BadRequest, "Some obscure error msg") }
         }.response mustEqual failure (BadRequest, "Some obscure error msg")
     }
+    
+    "throw an IllegalResponseException if the response contains a Content-Type header" in {
+      testService(HttpRequest(GET, "/")) {
+        respondWithHeader(`Content-Type`(`text/plain`)) { completeOk }
+      } must throwA[IllegalResponseException]
+    }
+    "throw an IllegalResponseException if the response contains a Content-Length header" in {
+      testService(HttpRequest(GET, "/")) {
+        respondWithHeader(`Content-Length`(42)) { completeOk }
+      } must throwA[IllegalResponseException]
+    }
+    
+    // REJECTIONS
+    
     "respond with MethodNotAllowed for requests resulting in MethodRejections" in {
       testService(HttpRequest(POST, "/test")) {
         get { _.complete("yes") } ~

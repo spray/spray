@@ -15,12 +15,21 @@
  */
 
 package cc.spray
+package utils
 
-import akka.config.Config._
+import java.text.SimpleDateFormat
+import java.util.{Date, TimeZone, Locale}
 
-object Settings {
-  lazy val RootActorId     = config.getString("spray.root-actor-id", "spray-root-service")
-  lazy val AsyncTimeout    = config.getInt("spray.timeout", 1000)
-  lazy val CloseConnection = config.getBool("spray.close-connection", true)
-  lazy val SetDateHeader   = config.getBool("spray.set-date-header", false)
+object Rfc1123 {
+
+  val Pattern = "EEE, dd MMM yyyy HH:mm:ss zzz"
+  
+  val Format = make(new SimpleDateFormat(Pattern, Locale.US)) {
+    _.setTimeZone(TimeZone.getTimeZone("GMT"))
+  }
+  
+  def now: String = format(new Date)
+  
+  def format(date: Date): String = Format.format(date)
+  
 }

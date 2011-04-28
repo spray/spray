@@ -15,12 +15,21 @@
  */
 
 package cc.spray
+package utils
 
-import akka.config.Config._
+import org.specs.Specification
+import java.util.{TimeZone, GregorianCalendar}
 
-object Settings {
-  lazy val RootActorId     = config.getString("spray.root-actor-id", "spray-root-service")
-  lazy val AsyncTimeout    = config.getInt("spray.timeout", 1000)
-  lazy val CloseConnection = config.getBool("spray.close-connection", true)
-  lazy val SetDateHeader   = config.getBool("spray.set-date-header", false)
+class Rfc1123Spec extends Specification {
+  
+  "Rfc1123" should {
+    "format a 2011-04-28 T12:56:27 according to the RFC1123 spec" in {
+      Rfc1123.format {
+        make(new GregorianCalendar(TimeZone.getTimeZone("GMT"))) {
+          _.set(2011, 3, 28, 12, 56, 27)
+        }.getTime
+      } mustEqual "Thu, 28 Apr 2011 12:56:27 GMT"
+    }
+  }
+  
 }
