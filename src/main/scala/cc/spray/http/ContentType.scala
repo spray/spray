@@ -18,7 +18,7 @@ package cc.spray.http
 
 import Charsets._
 
-case class ContentTypeRange(mediaRange: MediaRange, charsetRange: CharsetRange = `*`) {
+case class ContentTypeRange(mediaRange: MediaRange, charsetRange: HttpCharsetRange = `*`) {
   def value: String = if (charsetRange == `*`) mediaRange.value else {
     mediaRange.value + "; charset=" + charsetRange.value
   }
@@ -30,7 +30,7 @@ case class ContentTypeRange(mediaRange: MediaRange, charsetRange: CharsetRange =
   override def toString = "ContentTypeRange(" + value + ')'
 }
 
-case class ContentType(mediaType: MediaType, charset: Option[Charset]) {
+case class ContentType(mediaType: MediaType, charset: Option[HttpCharset]) {
   def value: String = charset match {
     // don't print the charset parameter if it's the default charset
     case Some(cs) if (!mediaType.isText || cs != `ISO-8859-1`)=> mediaType.value + "; charset=" + cs.value
@@ -44,7 +44,7 @@ case class ContentType(mediaType: MediaType, charset: Option[Charset]) {
 }
 
 object ContentType {
-  def apply(mediaType: MediaType, charset: Charset): ContentType = apply(mediaType, Some(charset))
+  def apply(mediaType: MediaType, charset: HttpCharset): ContentType = apply(mediaType, Some(charset))
   def apply(mediaType: MediaType): ContentType = apply(mediaType, None)
   
   implicit def fromMimeType(mimeType: MediaType): ContentType = apply(mimeType) 

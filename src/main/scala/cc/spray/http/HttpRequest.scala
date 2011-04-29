@@ -64,7 +64,7 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
     for (Accept(mediaRanges) <- headers; range <- mediaRanges) yield range
   }
   
-  lazy val acceptedCharsetRanges: List[CharsetRange] = {
+  lazy val acceptedCharsetRanges: List[HttpCharsetRange] = {
     // TODO: sort by preference
     for (`Accept-Charset`(charsetRanges) <- headers; range <- charsetRanges) yield range
   }
@@ -86,7 +86,7 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   /**
    * Determines whether the given charset is accepted by the client.
    */
-  def isCharsetAccepted(charset: Charset) = {
+  def isCharsetAccepted(charset: HttpCharset) = {
     // according to the HTTP spec a client has to accept all charsets if no Accept-Charset header is sent with the request
     // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.2
     acceptedCharsetRanges.isEmpty || acceptedCharsetRanges.exists(_.matches(charset))
@@ -124,11 +124,11 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   /**
    * Returns a charset that is accepted by the client.
    */
-  def acceptedCharset: Charset = {
+  def acceptedCharset: HttpCharset = {
     if (isCharsetAccepted(`ISO-8859-1`)) `ISO-8859-1`
     else acceptedCharsetRanges match {
-      case (cs: Charset) :: _ => cs
-      case _ => throw new IllegalStateException // a CharsetRange that is not `*` ?
+      case (cs: HttpCharset) :: _ => cs
+      case _ => throw new IllegalStateException // a HttpCharsetRange that is not `*` ?
     }
   }
   

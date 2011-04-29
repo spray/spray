@@ -35,7 +35,7 @@ private[parser] trait AcceptCharsetHeader {
   
   def CharsetRangeDef = rule (
       "*" ~ push(`*`)
-    | Charset ~~> (x => Charsets.getForKey(x.toLowerCase).getOrElse(CustomCharset(x)))  
+    | Charset ~~> (x => Charsets.getForKey(x.toLowerCase).getOrElse(CustomHttpCharset(x)))  
   )
   
   def CharsetQuality = rule {

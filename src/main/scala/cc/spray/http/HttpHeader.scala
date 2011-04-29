@@ -73,8 +73,8 @@ object HttpHeaders {
     def value = mediaRanges.mkString(", ")
   }
   
-  object `Accept-Charset` { def apply(first: CharsetRange, more: CharsetRange*): `Accept-Charset` = apply(first +: more) }
-  case class `Accept-Charset`(charsetRanges: Seq[CharsetRange]) extends HttpHeader {
+  object `Accept-Charset` { def apply(first: HttpCharsetRange, more: HttpCharsetRange*): `Accept-Charset` = apply(first +: more) }
+  case class `Accept-Charset`(charsetRanges: Seq[HttpCharsetRange]) extends HttpHeader {
     def value = charsetRanges.mkString(", ")
   }
   

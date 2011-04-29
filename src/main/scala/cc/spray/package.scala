@@ -27,7 +27,7 @@ import java.util.regex.Pattern
 package object spray {
 
   type Route = RequestContext => Unit
-  type ContentTypeResolver = (File, Option[Charset]) => ContentType
+  type ContentTypeResolver = (File, Option[HttpCharset]) => ContentType
   type Marshaller[A] = (ContentType => Option[ContentType]) => Marshalling[A]
   type Unmarshaller[A] = ContentType => Unmarshalling[A]
   type RouteFilter[T <: Product] = RequestContext => FilterResult[T]
