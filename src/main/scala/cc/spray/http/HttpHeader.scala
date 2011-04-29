@@ -93,7 +93,7 @@ object HttpHeaders {
     def value = if (rangeUnits.isEmpty) "none" else rangeUnits.mkString(", ")
   }
   
-  case class `Authorization`(credentials: Credentials) extends HttpHeader {
+  case class `Authorization`(credentials: HttpCredentials) extends HttpHeader {
     def value = credentials.value
   }
   

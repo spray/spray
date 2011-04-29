@@ -21,12 +21,12 @@ package http
 import Charsets._
 import org.parboiled.common.Base64
 
-sealed trait Credentials {
+sealed trait HttpCredentials {
   def value: String
   override def toString = value
 }
 
-case class BasicCredentials(username: String, password: String) extends Credentials {
+case class BasicHttpCredentials(username: String, password: String) extends HttpCredentials {
   lazy val value = {
     val userPass = username + ':' + password
     val bytes = userPass.getBytes(`ISO-8859-1`.nioCharset)
@@ -35,8 +35,8 @@ case class BasicCredentials(username: String, password: String) extends Credenti
   } 
 }
 
-object BasicCredentials {
-  def apply(credentials: String): BasicCredentials = {
+object BasicHttpCredentials {
+  def apply(credentials: String): BasicHttpCredentials = {
     val bytes = Base64.rfc2045.decodeFast(credentials)
     val userPass = new String(bytes, `ISO-8859-1`.nioCharset)
     userPass.indexOf(':') match {
@@ -46,7 +46,7 @@ object BasicCredentials {
   }
 }
 
-case class OtherCredentials(scheme: String, params: Map[String, String]) extends Credentials {
+case class OtherHttpCredentials(scheme: String, params: Map[String, String]) extends HttpCredentials {
   lazy val value = {
     scheme + ' ' + params.map { case (k, v) => k + "=\"" + v + '"' }.mkString(",")
   }

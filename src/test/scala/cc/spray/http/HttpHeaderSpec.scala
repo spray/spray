@@ -83,19 +83,19 @@ class HttpHeaderSpec extends Specification {
   "Header 'Authorization'" should {
     "be parsed correctly from example 1" in (
       HttpHeader("Authorization", "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==") mustEqual
-              Authorization(BasicCredentials("Aladdin", "open sesame"))
+              Authorization(BasicHttpCredentials("Aladdin", "open sesame"))
     )
     "be parsed correctly from example 2" in (
       HttpHeader("Authorization", """Fancy yes="no", nonce="42"""") mustEqual
-              Authorization(OtherCredentials("Fancy", Map("yes"->"no", "nonce"->"42")))
+              Authorization(OtherHttpCredentials("Fancy", Map("yes"->"no", "nonce"->"42")))
     )
     "be parsed correctly from example 3" in (
-      HttpHeader("Authorization", BasicCredentials("Bob", "").value) mustEqual
-              Authorization(BasicCredentials("Bob", ""))
+      HttpHeader("Authorization", BasicHttpCredentials("Bob", "").value) mustEqual
+              Authorization(BasicHttpCredentials("Bob", ""))
     )
     "be parsed correctly from example 4" in (
-      HttpHeader("Authorization", OtherCredentials("Digest", Map("name"->"Bob")).value) mustEqual
-              Authorization(OtherCredentials("Digest", Map("name"->"Bob")))
+      HttpHeader("Authorization", OtherHttpCredentials("Digest", Map("name"->"Bob")).value) mustEqual
+              Authorization(OtherHttpCredentials("Digest", Map("name"->"Bob")))
     )
   }
   

@@ -33,7 +33,7 @@ private[parser] trait AuthorizationHeader {
   }
   
   def BasicCredentialDef = rule {
-    "Basic" ~ BasicCookie ~> (s => BasicCredentials(s))
+    "Basic" ~ BasicCookie ~> (s => BasicHttpCredentials(s))
   }
   
   def BasicCookie = rule {
@@ -41,7 +41,7 @@ private[parser] trait AuthorizationHeader {
   }
   
   def OtherCredentialDef = rule {
-    AuthScheme ~ zeroOrMore(AuthParam, ListSep) ~~> ((scheme, params) => OtherCredentials(scheme, params.toMap))   
+    AuthScheme ~ zeroOrMore(AuthParam, ListSep) ~~> ((scheme, params) => OtherHttpCredentials(scheme, params.toMap))   
   }
   
   def AuthScheme = rule {
