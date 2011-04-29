@@ -31,6 +31,10 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
   val Ok = HttpResponse()
   val completeOk: Route = { _.complete(Ok) }
   
+  implicit val userPassAuth = new UserPassAuthenticator[BasicUserContext] {
+    def apply(userPass: Option[(String, String)]) = None
+  }
+  
   "The HttpServiceLogic" should {
     "leave requests to unmatched paths unhandled" in {
       testService(HttpRequest(GET, "/test")) {
@@ -66,8 +70,13 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
     
     "respond with the failure content on HTTP Failures" in {
       testService(HttpRequest(GET, "/")) {
-          get { _.fail(BadRequest, "Some obscure error msg") }
-        }.response mustEqual failure (BadRequest, "Some obscure error msg")
+        get { _.fail(BadRequest, "Some obscure error msg") }
+      }.response mustEqual failure(BadRequest, "Some obscure error msg")
+    }
+    "respond with the response content even in failure cases, when the response has a content set" in {
+      testService(HttpRequest(GET, "/")) {
+        get { _.complete(HttpResponse(BadRequest, content = Some(HttpContent("Some content")))) }
+      }.response mustEqual HttpResponse(BadRequest, content = Some(HttpContent("Some content")))
     }
     
     "throw an IllegalResponseException if the response contains a Content-Type header" in {
@@ -99,6 +108,18 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
         parameters('amount.as[Int]) { amount => completeOk }
       }.response mustEqual failure(BadRequest, "The query parameter 'amount' was malformed:\n" +
               "'xyz' is not a valid 32-bit integer value")
+    }
+    "respond with Unauthorized plus WWW-Authenticate header for AuthenticationRequiredRejections" in {
+      testService(HttpRequest()) {
+        authenticate(HttpBasic()) { _ => completeOk }
+      }.response mustEqual failure(Unauthorized, `WWW-Authenticate`("Basic", "Secured Resource", Map.empty) :: Nil,
+          "The resource requires authentication, which was not supplied with the request")
+    }
+    "respond with Forbidden for requests resulting in an AuthorizationFailedRejection" in {
+      testService(HttpRequest(headers = Authorization(BasicHttpCredentials("bob", "")) :: Nil)) {
+        authenticate(HttpBasic()) { _ => completeOk }
+      }.response mustEqual failure(Forbidden, "The supplied authentication is either invalid " +
+              "or not authorized to access this resource")
     }
     "respond with UnsupportedMediaType for requests resulting in UnsupportedRequestContentTypeRejection" in {
       testService(HttpRequest(POST, content = Some(HttpContent(`application/pdf`, "...PDF...")))) {

@@ -35,6 +35,8 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   
   lazy val URI = new URI(uri)
   
+  lazy val queryParams: Map[String, String] = QueryParser.parse(query)
+  
   def path = nonNull(URI.getPath)
   def host = nonNull(URI.getHost)
   def port = URI.getPort
@@ -132,5 +134,4 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
     }
   }
   
-  lazy val queryParams: Map[String, String] = QueryParser.parse(query)
 }

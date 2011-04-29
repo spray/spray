@@ -91,5 +91,11 @@ trait SprayTest {
     result.getOrElse(fail("No RequestContext received"))
   }
   
-  def failure(code: StatusCode, reason: String = ""): HttpResponse = HttpResponse(HttpStatus(code, reason))
+  def failure(code: StatusCode, reason: String): HttpResponse = {
+    HttpResponse(HttpStatus(code, reason), content = Some(HttpContent(reason)))
+  }
+  
+  def failure(code: StatusCode, headers: List[HttpHeader], reason: String): HttpResponse = {
+    HttpResponse(HttpStatus(code, reason), headers, Some(HttpContent(reason)))
+  }
 } 

@@ -93,6 +93,19 @@ case class UnacceptedResponseEncodingRejection(supported: HttpEncoding) extends 
  */
 case class RejectionRejection(reject: Rejection => Boolean) extends Rejection
 
+/**
+ * Rejection created by the 'authenticate' or 'authorize' directive.
+ * Signals that the request was rejected because the supplied authorization was not accepted. 
+ */
+case object AuthorizationFailedRejection extends Rejection
+
+/**
+ * Rejection created by the 'authenticate' directive.
+ * Signals that the request was rejected because no authorization was supplied 
+ */
+case class AuthenticationRequiredRejection(scheme: String, realm: String, params: Map[String, String] = Map.empty)
+        extends Rejection
+
 
 object Rejections {
   def applyCancellations(rejections: Set[Rejection]): Set[Rejection] = {

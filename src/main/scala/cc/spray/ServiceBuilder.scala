@@ -22,7 +22,8 @@ import builders._
  * The ServiceBuilder is the central trait you should mix in to get access to ''sprays'' Route building directives.
  */
 trait ServiceBuilder
-        extends CachingBuilders
+        extends SecurityBuilders
+        with CachingBuilders        
         with CodecBuilders
         with DetachBuilder
         with FileResourceDirectoryBuilders

@@ -18,6 +18,7 @@ package cc.spray
 package builders
 
 import http._
+import HttpHeaders._
 
 private[spray] trait MiscBuilders {
   this: FilterBuilders =>

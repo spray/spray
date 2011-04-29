@@ -30,4 +30,13 @@ class PimpedLinearSeq[+A](val underlying: LinearSeq[A]) {
     res
   }
   
+  def findByType[B :Manifest]: Option[B] = {
+    val erasure = manifest.erasure
+    mapFind { x =>
+      if (erasure.isInstance(x)) {
+        Some(x.asInstanceOf[B])
+      } else None
+    }
+  }
+  
 }

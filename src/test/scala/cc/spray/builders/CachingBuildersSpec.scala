@@ -51,7 +51,7 @@ class CachingBuildersSpec extends Specification with SprayTest with ServiceBuild
     "return the cached response also for HttpFailures on GETs" in {
       test(HttpRequest(GET)) {
         prime(errorService)        
-      }.response mustEqual failure(501)
+      }.response mustEqual HttpResponse(HttpStatus(501))
     }
     "not cache responses for PUTs" in {
       test(HttpRequest(PUT)) {

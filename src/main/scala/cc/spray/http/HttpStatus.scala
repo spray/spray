@@ -18,16 +18,12 @@
 package cc.spray
 package http
 
-case class HttpStatus(code: StatusCode, unsafeReason: String = "") {
-  val reason = {
-    if (unsafeReason.isEmpty)
-      code.defaultMessage
-    else
-      unsafeReason.replace('\r', ' ').replace('\n', ' ')
-  }
-}
+
+case class HttpStatus(code: StatusCode, reason: String)
 
 object HttpStatus {
+  def apply(code: StatusCode): HttpStatus = apply(code, code.defaultMessage)
+  
   implicit def statusCode2HttpStatus(code: StatusCode): HttpStatus = HttpStatus(code)
   
   implicit def httpStatus2HttpResponse(status: HttpStatus): HttpResponse = HttpResponse(status)

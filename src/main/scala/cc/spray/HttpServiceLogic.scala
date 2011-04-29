@@ -67,11 +67,13 @@ trait HttpServiceLogic extends ErrorHandling {
     (handle[MethodRejection] getOrElse
     (handle[MissingQueryParamRejection] getOrElse
     (handle[MalformedQueryParamRejection] getOrElse
+    (handle[AuthenticationRequiredRejection] getOrElse
+    (handle[AuthorizationFailedRejection.type] getOrElse
     (handle[UnsupportedRequestContentTypeRejection] getOrElse
     (handle[RequestEntityExpectedRejection.type] getOrElse
     (handle[UnacceptedResponseContentTypeRejection] getOrElse
     (handle[MalformedRequestContentRejection] getOrElse
-    (handleCustomRejections(rejections)))))))))
+    (handleCustomRejections(rejections)))))))))))
   }
   
   protected def handleRejections(rejections: List[Rejection]): HttpResponse = rejections match {
@@ -86,6 +88,14 @@ trait HttpServiceLogic extends ErrorHandling {
     }
     case MalformedQueryParamRejection(name, msg) :: _ => {
       HttpResponse(HttpStatus(BadRequest, "The query parameter '" + name + "' was malformed:\n" + msg))
+    }
+    case AuthenticationRequiredRejection(scheme, realm, params) :: _ => {
+      HttpResponse(HttpStatus(Unauthorized, "The resource requires authentication, " +
+              "which was not supplied with the request"), headers = `WWW-Authenticate`(scheme, realm, params) :: Nil)
+    }
+    case AuthorizationFailedRejection :: _ => {
+      HttpResponse(HttpStatus(Forbidden, "The supplied authentication is either invalid " +
+              "or not authorized to access this resource"))
     }
     case UnsupportedRequestContentTypeRejection(supported) :: _ => {
       HttpResponse(HttpStatus(UnsupportedMediaType, "The requests Content-Type must be one the following:\n" +
@@ -110,8 +120,8 @@ trait HttpServiceLogic extends ErrorHandling {
   
   protected def finalizeResponse(response: HttpResponse) = {
     val verifiedResponse = verified(response)
-    val resp = if (response.isSuccess) response 
-            else response.withContentTransformed(content => HttpContent(`text/plain`, response.status.reason))
+    val resp = if (response.isSuccess || response.content.isDefined) response 
+               else response.copy(content = Some(HttpContent(response.status.reason)))
     if (setDateHeader) {
       resp.copy(headers = Date(Rfc1123.now) :: resp.headers) 
     } else resp

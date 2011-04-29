@@ -29,12 +29,11 @@ class SimpleFilterBuildersSpec extends Specification with SprayTest with Service
 
   val Ok = HttpResponse()
   val completeOk: Route = { _.complete(Ok) }
-  val notRun: Route = { _ => fail("Should not run") }
   
   "get" should {
     "block POST requests" in {
       test(HttpRequest(POST)) { 
-        get { notRun }
+        get { completeOk }
       }.handled must beFalse
     }
     "let GET requests pass" in {
@@ -48,7 +47,7 @@ class SimpleFilterBuildersSpec extends Specification with SprayTest with Service
     "in its simple String form" in {
       "block requests to unmatched hosts" in {
         test(HttpRequest(uri = "http://spray.cc")) {
-          host("spray.com") { notRun }
+          host("spray.com") { completeOk }
         }.handled must beFalse
       }
       "let requests to matching hosts pass" in {
@@ -60,7 +59,7 @@ class SimpleFilterBuildersSpec extends Specification with SprayTest with Service
     "in its simple RegEx form" in {
       "block requests to unmatched hosts" in {
         test(HttpRequest(uri = "http://spray.cc")) {
-          host("hairspray.*".r) { _ => notRun }
+          host("hairspray.*".r) { _ => completeOk }
         }.handled must beFalse
       }
       "let requests to matching hosts pass and extract the full host" in {
@@ -72,7 +71,7 @@ class SimpleFilterBuildersSpec extends Specification with SprayTest with Service
     "in its group RegEx form" in {
       "block requests to unmatched hosts" in {
         test(HttpRequest(uri = "http://spray.cc")) {
-          host("hairspray(.*)".r) { _ => notRun }
+          host("hairspray(.*)".r) { _ => completeOk }
         }.handled must beFalse
       }
       "let requests to matching hosts pass and extract the full host" in {
