@@ -55,7 +55,7 @@ object HttpHeader {
       case None => HttpHeaders.CustomHeader(name, value)
       case Some(rule) => {
         HttpParser.parse(rule, value) match {
-          case Left(error) => throw new HttpException(HttpStatusCodes.BadRequest, 
+          case Left(error) => throw new HttpException(StatusCodes.BadRequest, 
             "Illegal HTTP header '" + name + "':\n" + error)
           case Right(header) => header
         }

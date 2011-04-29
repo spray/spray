@@ -23,7 +23,7 @@ import MediaTypes._
 import HttpHeaders._
 import HttpMethods._
 import Charsets._
-import HttpStatusCodes._
+import StatusCodes._
 import utils.CantWriteResponseBodyException
 import java.io.{IOException, OutputStream, ByteArrayOutputStream, ByteArrayInputStream}
 

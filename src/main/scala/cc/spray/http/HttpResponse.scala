@@ -17,7 +17,7 @@
 
 package cc.spray.http
 
-import HttpStatusCodes._
+import StatusCodes._
 
 /**
  * Sprays immutable model of an HTTP response.

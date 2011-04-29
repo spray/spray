@@ -17,7 +17,7 @@
 package cc.spray
 
 import http._
-import HttpStatusCodes._
+import StatusCodes._
 import HttpHeaders._
 import MediaTypes._
 import marshalling.{CantMarshal, MarshalWith}

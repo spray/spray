@@ -20,7 +20,7 @@ import http._
 import org.specs.Specification
 import HttpHeaders._
 import HttpMethods._
-import HttpStatusCodes._
+import StatusCodes._
 import MediaTypes._
 import test.SprayTest
 import utils.IllegalResponseException

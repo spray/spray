@@ -18,7 +18,7 @@ package cc.spray.http
 package parser
 
 import org.parboiled.scala._
-import HttpStatusCodes._
+import StatusCodes._
 import HttpHeaders._
 
 private[parser] trait ContentTypeHeader {

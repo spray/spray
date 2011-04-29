@@ -1,7 +1,7 @@
 package cc.spray
 
 import http._
-import HttpStatusCodes._
+import StatusCodes._
 import java.io.{PrintWriter, StringWriter}
 import akka.util.Logging
 

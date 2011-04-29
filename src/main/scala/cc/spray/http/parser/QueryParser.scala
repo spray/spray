@@ -34,7 +34,7 @@ object QueryParser extends SprayParser {
   }
   
   def parse(queryString: String): Map[String, String] = parse(QueryString, queryString) match {
-    case Left(error) => throw new HttpException(HttpStatusCodes.BadRequest, 
+    case Left(error) => throw new HttpException(StatusCodes.BadRequest, 
       "Illegal query string '" + queryString + "':\n" + error)
     case Right(parameterMap) => parameterMap
   } 

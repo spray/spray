@@ -19,7 +19,7 @@ package builders
 
 import org.specs.Specification
 import http._
-import HttpStatusCodes._
+import StatusCodes._
 import HttpHeaders._
 import HttpMethods._
 import MediaTypes._

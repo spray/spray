@@ -17,7 +17,7 @@
 package cc.spray
 
 import http._
-import HttpStatusCodes._
+import StatusCodes._
 import akka.actor.{Actor, ActorRef}
 import akka.util.Logging
 import akka.dispatch.{Future, Futures}

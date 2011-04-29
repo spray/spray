@@ -21,7 +21,7 @@ import http._
 import akka.actor.Actor
 import org.parboiled.common.FileUtils
 import java.io.File
-import HttpStatusCodes._
+import StatusCodes._
 
 private[spray] trait FileResourceDirectoryBuilders {
   this: SimpleFilterBuilders with DetachBuilder=>

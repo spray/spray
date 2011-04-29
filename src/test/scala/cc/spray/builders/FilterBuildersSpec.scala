@@ -20,7 +20,7 @@ package builders
 import org.specs.Specification
 import http._
 import HttpMethods._
-import HttpStatusCodes._
+import StatusCodes._
 import test.SprayTest
 
 class FilterBuildersSpec extends Specification with SprayTest with ServiceBuilder {

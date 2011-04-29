@@ -42,7 +42,7 @@ private[spray] trait MiscBuilders {
   /**
    * Returns a Route that sets the given response status on all not-rejected responses of its inner Route.
    */
-  def respondWithStatus(responseStatus: HttpStatusCode) = transformResponse { response =>
+  def respondWithStatus(responseStatus: StatusCode) = transformResponse { response =>
     response.copy(status = responseStatus)
   }
 
