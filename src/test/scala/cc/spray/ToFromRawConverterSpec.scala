@@ -73,7 +73,7 @@ class ToFromRawConverterSpec extends Specification {
       var status = 0
       val headers = collection.mutable.Map.empty[String, String]
       val out = new ByteArrayOutputStream
-      convert.fromSprayResponse(HttpResponse(OK, List(`Content-Encoding`(Encodings.gzip), Location("xyz")),
+      convert.fromSprayResponse(HttpResponse(OK, List(`Content-Encoding`(HttpEncodings.gzip), Location("xyz")),
               Some(HttpContent("hello")))) {
         new RawResponse {
           def setStatus(code: Int) { status = code }

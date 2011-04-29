@@ -53,7 +53,7 @@ case class UnsupportedRequestContentTypeRejection(supported: Seq[ContentTypeRang
  * Rejection created by decoding filters.
  * Signals that the request was rejected because the requests content encoding is unsupported.
  */
-case class UnsupportedRequestEncodingRejection(supported: Encoding) extends Rejection
+case class UnsupportedRequestEncodingRejection(supported: HttpEncoding) extends Rejection
 
 /**
  * Rejection created by decoding filters.
@@ -85,7 +85,7 @@ case class UnacceptedResponseContentTypeRejection(supported: Seq[ContentType]) e
  * Signals that the request was rejected because the service is not capable of producing a response entity whose
  * content encoding is accepted by the client
  */
-case class UnacceptedResponseEncodingRejection(supported: Encoding) extends Rejection
+case class UnacceptedResponseEncodingRejection(supported: HttpEncoding) extends Rejection
 
 /**
  * Special Rejection that is used to cancel Rejections that have been gathered up but are "obsolete" since

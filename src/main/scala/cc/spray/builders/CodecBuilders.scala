@@ -58,7 +58,7 @@ private[spray] trait CodecBuilders {
 }
 
 trait Decoder {
-  def encoding: Encoding
+  def encoding: HttpEncoding
   
   def decode(request: HttpRequest): HttpRequest = request.content match {
     case Some(content) => request.copy(
@@ -78,7 +78,7 @@ trait Decoder {
 } 
 
 trait Encoder {
-  def encoding: Encoding
+  def encoding: HttpEncoding
   
   def handle(response: HttpResponse): Boolean
   
@@ -97,7 +97,7 @@ trait Encoder {
  * An encoder and decoder for the HTTP 'identity' encoding.
  */
 object NoEncoding extends Decoder with Encoder {
-  val encoding = Encodings.identity
+  val encoding = HttpEncodings.identity
   override def decode(request: HttpRequest) = request
   def decodeBuffer(buffer: Array[Byte]) = buffer
   def handle(response: HttpResponse) = false
@@ -105,7 +105,7 @@ object NoEncoding extends Decoder with Encoder {
 }
 
 abstract class Gzip extends Decoder with Encoder {
-  val encoding = Encodings.gzip
+  val encoding = HttpEncodings.gzip
 
   def decodeBuffer(buffer: Array[Byte]) = copyBuffer(buffer) { (in, out) => 
     FileUtils.copyAll(new GZIPInputStream(in), out)
@@ -132,7 +132,7 @@ object Gzip extends Gzip {
 }
 
 abstract class Deflate extends Decoder with Encoder {
-  val encoding = Encodings.deflate
+  val encoding = HttpEncodings.deflate
   
   def decodeBuffer(buffer: Array[Byte]) = copyBuffer(buffer) { (in, out) => 
     FileUtils.copyAll(new DeflaterInputStream(in), out)

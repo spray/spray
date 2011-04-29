@@ -69,7 +69,7 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
     for (`Accept-Charset`(charsetRanges) <- headers; range <- charsetRanges) yield range
   }
   
-  lazy val acceptedEncodingRanges: List[EncodingRange] = {
+  lazy val acceptedEncodingRanges: List[HttpEncodingRange] = {
     // TODO: sort by preference
     for (`Accept-Encoding`(encodingRanges) <- headers; range <- encodingRanges) yield range
   }
@@ -95,7 +95,7 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   /**
    * Determines whether the given encoding is accepted by the client.
    */
-  def isEncodingAccepted(encoding: Encoding) = {
+  def isEncodingAccepted(encoding: HttpEncoding) = {
     // according to the HTTP spec the server MAY assume that the client will accept any content coding if no
     // Accept-Encoding header is sent with the request (http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.3)
     // this is what we do here

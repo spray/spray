@@ -18,7 +18,7 @@ package cc.spray.http
 package parser
 
 import org.parboiled.scala._
-import Encodings._
+import HttpEncodings._
 
 private[parser] trait ContentEncodingHeader {
   this: Parser with ProtocolParameterRules =>
@@ -29,7 +29,7 @@ private[parser] trait ContentEncodingHeader {
   )
   
   def ContentEncoding = rule {
-    ContentCoding ~~> (x => Encodings.getForKey(x.toLowerCase).getOrElse(CustomEncoding(x)))
+    ContentCoding ~~> (x => HttpEncodings.getForKey(x.toLowerCase).getOrElse(CustomHttpEncoding(x)))
   }
   
 }

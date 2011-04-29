@@ -78,8 +78,8 @@ object HttpHeaders {
     def value = charsetRanges.mkString(", ")
   }
   
-  object `Accept-Encoding` { def apply(first: EncodingRange, more: EncodingRange*): `Accept-Encoding` = apply(first +: more) }
-  case class `Accept-Encoding`(encodings: Seq[EncodingRange]) extends HttpHeader {
+  object `Accept-Encoding` { def apply(first: HttpEncodingRange, more: HttpEncodingRange*): `Accept-Encoding` = apply(first +: more) }
+  case class `Accept-Encoding`(encodings: Seq[HttpEncodingRange]) extends HttpHeader {
     def value = encodings.mkString(", ")
   }
   
@@ -101,7 +101,7 @@ object HttpHeaders {
     def value = connectionToken.value
   }
   
-  case class `Content-Encoding`(encoding: Encoding) extends HttpHeader {
+  case class `Content-Encoding`(encoding: HttpEncoding) extends HttpHeader {
     def value = encoding.value
   }
   

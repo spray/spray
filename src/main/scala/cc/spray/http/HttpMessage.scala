@@ -25,7 +25,7 @@ trait HttpMessage {
    */
   lazy val encoding = headers.collect { case `Content-Encoding`(enc) => enc } match {
     case enc :: _ => enc
-    case Nil => Encodings.identity
+    case Nil => HttpEncodings.identity
   }
   
 }

@@ -19,7 +19,7 @@ package parser
 
 import org.parboiled.scala._
 import BasicRules._
-import Encodings._
+import HttpEncodings._
 
 private[parser] trait AcceptEncodingHeader {
   this: Parser with ProtocolParameterRules =>
@@ -35,7 +35,7 @@ private[parser] trait AcceptEncodingHeader {
   
   def EncodingRangeDef = rule (
       "*" ~ push(`*`)
-    | ContentCoding ~~> (x => getForKey(x.toLowerCase).getOrElse(CustomEncoding(x)))  
+    | ContentCoding ~~> (x => getForKey(x.toLowerCase).getOrElse(CustomHttpEncoding(x)))  
   )
   
   def EncodingQuality = rule {
