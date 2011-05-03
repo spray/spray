@@ -35,6 +35,22 @@ class RootService extends Actor with ToFromRawConverter with Logging {
 
   lazy val addConnectionCloseResponseHeader = Settings.CloseConnection
 
+  override def preStart {
+    log.debug("Starting spray RootService ...")
+  }
+
+  override def postStop {
+    log.debug("spray RootService stopped")
+  }
+
+  override def preRestart(reason: Throwable) {
+    log.debug("Restarting spray RootService ...")
+  }
+
+  override def postRestart(reason: Throwable) {
+    log.debug("spray RootService restarted");
+  }
+
   protected def receive = {
     case rawContext: RawRequestContext => {
       try {
