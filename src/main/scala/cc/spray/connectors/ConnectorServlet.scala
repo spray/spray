@@ -33,7 +33,7 @@ private[connectors] trait ConnectorServlet extends HttpServlet with Logging {
   
   override def init() {
     log.slf4j.info("Initializing {} <=> Spray Connector", containerName)
-    timeout = Settings.AsyncTimeout
+    timeout = SpraySettings.AsyncTimeout
     log.slf4j.info("Async timeout for all requests is {} ms", timeout)
   }
   

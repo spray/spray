@@ -29,7 +29,7 @@ object TimeOutHandler {
     response.addHeader("Async-Timeout", "expired")
     response.addHeader("Content-Type", "text/plain")
     response.addHeader("Content-Length", bytes.length.toString)
-    if (Settings.CloseConnection) response.addHeader("Connection","close")
+    if (SpraySettings.CloseConnection) response.addHeader("Connection","close")
     FileUtils.copyAll(new ByteArrayInputStream(bytes), response.outputStream)
   } 
   

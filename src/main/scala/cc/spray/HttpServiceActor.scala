@@ -26,7 +26,7 @@ import akka.util.Logging
 trait HttpServiceActor extends Actor with Logging with ErrorLogging {
   this: HttpServiceLogic =>
   
-  val setDateHeader = Settings.SetDateHeader
+  val setDateHeader = SpraySettings.SetDateHeader
   
   protected def receive = {
     case request: HttpRequest => handle(request)

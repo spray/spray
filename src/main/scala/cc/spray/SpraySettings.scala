@@ -18,7 +18,7 @@ package cc.spray
 
 import akka.config.Config._
 
-private[spray] object Settings {
+object SpraySettings {
   lazy val RootActorId     = config.getString("spray.root-actor-id", "spray-root-service")
   lazy val AsyncTimeout    = config.getInt("spray.timeout", 1000)
   lazy val CloseConnection = config.getBool("spray.close-connection", true)

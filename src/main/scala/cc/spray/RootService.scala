@@ -31,9 +31,9 @@ class RootService extends Actor with ToFromRawConverter with Logging {
   private var services: List[ActorRef] = Nil
   private var handler: RawRequestContext => Unit = handleNoServices  
 
-  self.id = Settings.RootActorId
+  self.id = SpraySettings.RootActorId
 
-  lazy val addConnectionCloseResponseHeader = Settings.CloseConnection
+  lazy val addConnectionCloseResponseHeader = SpraySettings.CloseConnection
 
   override def preStart {
     log.debug("Starting spray RootService ...")
