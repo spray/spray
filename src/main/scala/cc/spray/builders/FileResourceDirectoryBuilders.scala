@@ -34,14 +34,17 @@ private[spray] trait FileResourceDirectoryBuilders {
   def getFromFile(fileName: String, charset: Option[HttpCharset] = None)
                  (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {
     detach {
-      get {
-        _.complete {
-          Option(FileUtils.readAllBytes(fileName)).map { buffer =>
-            HttpResponse(content = Some(HttpContent(resolver(new File(fileName), charset), buffer)))
-          }.getOrElse(HttpResponse(NotFound))
-        } 
-      }
+      get { _.complete(responseFromFile(fileName, charset)) }
     }
+  }
+
+  /**
+   * Builds an HttpResponse from the content of the given file. If the file cannot be read a "404 NotFound"
+   * response is returned. Note that this method is using disk IO which may block the current thread.
+   */
+  def responseFromFile(fileName: String, charset: Option[HttpCharset] = None)
+                      (implicit resolver: ContentTypeResolver): HttpResponse = {
+    responseFromBuffer(FileUtils.readAllBytes(fileName), new File(fileName))
   }
 
   /**
@@ -52,14 +55,24 @@ private[spray] trait FileResourceDirectoryBuilders {
   def getFromResource(resourceName: String, charset: Option[HttpCharset] = None)
                      (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {
     detach {
-      get {
-        _.complete {
-          Option(FileUtils.readAllBytesFromResource(resourceName)).map { buffer =>
-            HttpResponse(content = Some(HttpContent(resolver(new File(resourceName), charset), buffer)))
-          }.getOrElse(HttpResponse(NotFound))
-        } 
-      }
+      get { _.complete(responseFromResource(resourceName, charset)) }
     }
+  }
+  
+  /**
+   * Builds an HttpResponse from the content of the given classpath resource. If the resource cannot be read a
+   * "404 NotFound" response is returned. Note that this method is using disk IO which may block the current thread.
+   */
+  def responseFromResource(resourceName: String, charset: Option[HttpCharset] = None)
+                          (implicit resolver: ContentTypeResolver): HttpResponse = {
+    responseFromBuffer(FileUtils.readAllBytesFromResource(resourceName), new File(resourceName))
+  }
+  
+  private def responseFromBuffer(buffer: Array[Byte], file: File, charset: Option[HttpCharset] = None)
+                                (implicit resolver: ContentTypeResolver): HttpResponse = {
+    Option(buffer).map { buffer =>
+      HttpResponse(content = Some(HttpContent(resolver(file, charset), buffer)))
+    }.getOrElse(HttpResponse(NotFound))
   }
 
   /**
