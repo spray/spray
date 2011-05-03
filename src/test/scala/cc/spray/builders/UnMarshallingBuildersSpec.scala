@@ -23,7 +23,7 @@ import HttpHeaders._
 import HttpMethods._
 import StatusCodes._
 import MediaTypes._
-import Charsets._
+import HttpCharsets._
 import test.SprayTest
 import marshalling.{UnmarshallerBase, MarshallerBase}
 import xml.{XML, NodeSeq}

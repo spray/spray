@@ -34,7 +34,7 @@ sealed trait HttpCharset extends HttpCharsetRange {
 }
 
 // see http://www.iana.org/assignments/character-sets
-object Charsets extends ObjectRegistry[String, HttpCharset] {
+object HttpCharsets extends ObjectRegistry[String, HttpCharset] {
   
   def register(charset: HttpCharset) { register(charset, charset.value.toLowerCase) }
   
@@ -43,7 +43,7 @@ object Charsets extends ObjectRegistry[String, HttpCharset] {
     def matches(charset: HttpCharset) = true
   }
   
-  class StandardHttpCharset private[Charsets] (val value: String, val aliases: String*) extends HttpCharset {
+  class StandardHttpCharset private[HttpCharsets] (val value: String, val aliases: String*) extends HttpCharset {
     val nioCharset: Charset = Charset.forName(value)
     
     register(this)

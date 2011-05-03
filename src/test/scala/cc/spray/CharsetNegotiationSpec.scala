@@ -20,7 +20,7 @@ import http._
 import org.specs.Specification
 import HttpHeaders._
 import MediaTypes._
-import Charsets._
+import HttpCharsets._
 import test.SprayTest
 
 class CharsetNegotiationSpec extends Specification with SprayTest with ServiceBuilder {

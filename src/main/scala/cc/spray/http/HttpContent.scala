@@ -18,7 +18,7 @@ package cc.spray.http
 
 import java.util.Arrays
 import java.io.ByteArrayInputStream
-import Charsets._
+import HttpCharsets._
 import MediaTypes._
 
 object HttpContent {

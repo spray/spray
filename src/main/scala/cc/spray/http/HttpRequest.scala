@@ -20,7 +20,7 @@ package cc.spray.http
 import java.net.URI
 import HttpHeaders._
 import HttpVersions._
-import Charsets._
+import HttpCharsets._
 import parser.QueryParser
 
 /**

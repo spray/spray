@@ -19,7 +19,7 @@ package cc.spray
 import http._
 import HttpHeaders._
 import MediaTypes._
-import Charsets._
+import HttpCharsets._
 import scala.collection.JavaConversions._
 import java.net.{UnknownHostException, InetAddress}
 import org.parboiled.common.FileUtils

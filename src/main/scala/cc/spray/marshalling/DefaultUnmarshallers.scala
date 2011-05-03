@@ -20,7 +20,7 @@ package marshalling
 import http._
 import MediaTypes._
 import MediaRanges._
-import Charsets._
+import HttpCharsets._
 import xml.{XML, NodeSeq}
 
 trait DefaultUnmarshallers {

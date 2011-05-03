@@ -19,7 +19,7 @@ package parser
 
 import org.parboiled.scala._
 import BasicRules._
-import Charsets._
+import HttpCharsets._
 
 private[parser] trait AcceptCharsetHeader {
   this: Parser with ProtocolParameterRules =>
@@ -35,7 +35,7 @@ private[parser] trait AcceptCharsetHeader {
   
   def CharsetRangeDef = rule (
       "*" ~ push(`*`)
-    | Charset ~~> (x => Charsets.getForKey(x.toLowerCase).getOrElse(CustomHttpCharset(x)))  
+    | Charset ~~> (x => HttpCharsets.getForKey(x.toLowerCase).getOrElse(CustomHttpCharset(x)))  
   )
   
   def CharsetQuality = rule {

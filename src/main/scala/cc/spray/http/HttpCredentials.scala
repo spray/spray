@@ -18,7 +18,7 @@
 package cc.spray
 package http
 
-import Charsets._
+import HttpCharsets._
 import org.parboiled.common.Base64
 
 sealed trait HttpCredentials {

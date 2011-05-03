@@ -16,7 +16,7 @@
 
 package cc.spray.http
 
-import Charsets._
+import HttpCharsets._
 
 case class ContentTypeRange(mediaRange: MediaRange, charsetRange: HttpCharsetRange = `*`) {
   def value: String = if (charsetRange == `*`) mediaRange.value else {

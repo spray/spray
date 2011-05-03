@@ -22,7 +22,7 @@ import http._
 import StatusCodes._
 import HttpHeaders._
 import MediaTypes._
-import Charsets._
+import HttpCharsets._
 import test.SprayTest
 import org.parboiled.common.FileUtils
 import http.HttpContent._
