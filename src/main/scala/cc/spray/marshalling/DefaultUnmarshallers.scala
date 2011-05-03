@@ -26,7 +26,7 @@ import xml.{XML, NodeSeq}
 trait DefaultUnmarshallers {
   
   implicit object StringUnmarshaller extends UnmarshallerBase[String] {
-    val canUnmarshalFrom = List(ContentTypeRange(`text/*`))
+    val canUnmarshalFrom = ContentTypeRange(`*/*`) :: Nil // we can convert anything to a string
 
     def unmarshal(content: HttpContent) = {
       val charset = content.contentType.charset.getOrElse(`ISO-8859-1`)
