@@ -121,7 +121,7 @@ trait HttpServiceLogic extends ErrorHandling {
   protected def finalizeResponse(response: HttpResponse) = {
     val verifiedResponse = verified(response)
     val resp = if (response.isSuccess || response.content.isDefined) response 
-               else response.copy(content = Some(HttpContent(response.status.reason)))
+               else response.copy(content = Some(HttpContent(response.status.nonEmptyReason)))
     if (setDateHeader) {
       resp.copy(headers = Date(Rfc1123.now) :: resp.headers) 
     } else resp
