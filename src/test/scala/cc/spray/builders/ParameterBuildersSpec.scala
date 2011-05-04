@@ -20,9 +20,9 @@ package builders
 import org.specs.Specification
 import http._
 import HttpMethods._
-import test.SprayTest
+import test.AbstractSprayTest
 
-class ParameterBuildersSpec extends Specification with SprayTest with ServiceBuilder {
+class ParameterBuildersSpec extends AbstractSprayTest {
 
   "The 'parameter' extraction directive" should {
     "extract the value of given required parameters" in {

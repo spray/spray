@@ -71,7 +71,7 @@ private[spray] trait FileResourceDirectoryBuilders {
   private def responseFromBuffer(buffer: Array[Byte], file: File, charset: Option[HttpCharset] = None)
                                 (implicit resolver: ContentTypeResolver): HttpResponse = {
     Option(buffer).map { buffer =>
-      HttpResponse(content = Some(HttpContent(resolver(file, charset), buffer)))
+      HttpResponse(OK, HttpContent(resolver(file, charset), buffer))
     }.getOrElse(HttpResponse(NotFound))
   }
 

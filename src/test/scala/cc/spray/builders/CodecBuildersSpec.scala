@@ -23,14 +23,11 @@ import StatusCodes._
 import HttpHeaders._
 import MediaTypes._
 import HttpCharsets._
-import test.SprayTest
+import test.AbstractSprayTest
 import org.parboiled.common.FileUtils
-import http.HttpContent._
 
-class CodecBuildersSpec extends Specification with SprayTest with ServiceBuilder {
+class CodecBuildersSpec extends AbstractSprayTest {
 
-  val Ok = HttpResponse()
-  val completeOk: Route = { _.complete(Ok) }
   val echo: Route = { ctx => ctx.complete(ctx.request.content.as[String].right.get) }
   
   "the NoEncoding decoder" should {
@@ -107,8 +104,8 @@ class CodecBuildersSpec extends Specification with SprayTest with ServiceBuilder
     }
     "leave responses without content unchanged" in {
       test(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.gzip)))) { 
-        encodeResponse(Gzip) { _.complete(HttpResponse()) }
-      }.response mustEqual HttpResponse()
+        encodeResponse(Gzip) { completeOk }
+      }.response mustEqual Ok
     }
     "leave responses with an already set Content-Encoding header unchanged" in {
       test(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.gzip)))) { 

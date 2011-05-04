@@ -88,7 +88,7 @@ class ToFromRawConverterSpec extends Specification {
     }
     
     "throw a CantWriteResponseBodyException if the RawResponses output stream has already been closed" in {
-      convert.fromSprayResponse(HttpResponse(content = Some(HttpContent("hello")))) {
+      convert.fromSprayResponse(HttpResponse(OK, "hello")) {
         new RawResponse {
           def setStatus(code: Int) {}
           def addHeader(name: String, value: String) {}

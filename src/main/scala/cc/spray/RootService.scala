@@ -109,8 +109,8 @@ class RootService extends Actor with ToFromRawConverter with Logging {
   protected def handleException(e: Throwable, rawContext: RawRequestContext) {
     log.slf4j.error("Exception during request processing: {}", e)
     rawContext.complete(fromSprayResponse(e match {
-      case e: HttpException => HttpResponse(e.status)
-      case e: Exception => HttpResponse(HttpStatus(InternalServerError, e.getMessage))
+      case e: HttpException => HttpResponse(e.failure)
+      case e: Exception => HttpResponse(InternalServerError, e.getMessage)
     }))
   }
   
@@ -133,10 +133,7 @@ class RootService extends Actor with ToFromRawConverter with Logging {
     }
   }
   
-  protected def noService(uri: String): HttpResponse = {
-    HttpStatus(404, "No service available for [" + uri + "]")
-  }
-  
+  protected def noService(uri: String) = HttpResponse(404, "No service available for [" + uri + "]")
   
 }
 

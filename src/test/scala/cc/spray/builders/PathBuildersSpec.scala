@@ -20,12 +20,10 @@ package builders
 import org.specs.Specification
 import http._
 import HttpMethods._
-import test.SprayTest
+import StatusCodes._
+import test.AbstractSprayTest
 
-class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder {
-
-  val Ok = HttpResponse()
-  val completeOk: Route = { _.complete(Ok) }
+class PathBuildersSpec extends AbstractSprayTest {
 
   "routes created with the path(string) combinator" should {
     "block completely unmatching requests" in {
@@ -40,13 +38,13 @@ class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder 
     }
     "let fully matching requests pass and clear the RequestContext.unmatchedPath" in {
       test(HttpRequest(GET, "/noway/this/works")) {
-        path("noway/this/works") { ctx => ctx.complete(HttpResponse(content = Some(HttpContent(ctx.unmatchedPath)))) }
+        path("noway/this/works") { ctx => ctx.complete(ctx.unmatchedPath) }
       }.response.content.as[String] mustEqual Right("")
     }
     "be stackable within one single path(...) combinator" in {
       test(HttpRequest(GET, "/noway/this/works")) {
         path("noway" / "this" / "works") {
-          ctx => ctx.complete(HttpResponse(content = Some(HttpContent(ctx.unmatchedPath))))
+          ctx => ctx.complete(ctx.unmatchedPath)
         }
       }.response.content.as[String] mustEqual Right("")
     }
@@ -68,21 +66,21 @@ class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder 
     }
     "let matching requests pass and adapt RequestContext.unmatchedPath" in {
       test(HttpRequest(GET, "/noway/this/works")) {
-        pathPrefix("noway") { ctx => ctx.complete(HttpResponse(content = Some(HttpContent(ctx.unmatchedPath)))) }
+        pathPrefix("noway") { ctx => ctx.complete(ctx.unmatchedPath) }
       }.response.content.as[String] mustEqual Right("/this/works")
     }
     "be stackable" in {
       "within one single pathPrefix(...) combinator" in {
         test(HttpRequest(GET, "/noway/this/works")) {
           pathPrefix("noway" / "this" / "works" ~ Remaining) { remaining =>
-            _.complete(HttpResponse(content = Some(HttpContent(remaining))))
+            _.complete(remaining)
           }
         }.response.content.as[String] mustEqual Right("")
       }
       "when nested" in {
         test(HttpRequest(GET, "/noway/this/works")) {
           pathPrefix("noway") {
-            pathPrefix("this") { ctx => ctx.complete(HttpResponse(content = Some(HttpContent(ctx.unmatchedPath)))) }
+            pathPrefix("this") { ctx => ctx.complete(ctx.unmatchedPath) }
           }
         }.response.content.as[String] mustEqual Right("/works")
       }
@@ -99,14 +97,14 @@ class PathBuildersSpec extends Specification with SprayTest with ServiceBuilder 
       "when the regex is a simple regex" in {
         test(HttpRequest(GET, "/noway/this/works")) {
           pathPrefix("no[^/]+".r) { capture =>
-            ctx => ctx.responder(Respond(HttpResponse(content = Some(HttpContent(capture + ":" + ctx.unmatchedPath)))))
+            ctx => ctx.complete(capture + ":" + ctx.unmatchedPath)
           }
         }.response.content.as[String] mustEqual Right("noway:/this/works")
       }
       "when the regex is a group regex" in {
         test(HttpRequest(GET, "/noway/this/works")) {
           pathPrefix("no([^/]+)".r) { capture =>
-            ctx => ctx.responder(Respond(HttpResponse(content = Some(HttpContent(capture + ":" + ctx.unmatchedPath)))))
+            ctx => ctx.complete(capture + ":" + ctx.unmatchedPath)
           }
         }.response.content.as[String] mustEqual Right("way:/this/works")
       }

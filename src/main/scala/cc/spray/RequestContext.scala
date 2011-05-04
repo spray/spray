@@ -84,7 +84,7 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
   /**
    * Completes the request with status "200 Ok" and the given response content.
    */
-  def complete(content: HttpContent) { complete(HttpResponse(content = Some(content))) }
+  def complete(content: HttpContent) { complete(HttpResponse(OK, content)) }
 
   /**
    * Completes the request with the given [[cc.spray.http.HttpResponse]].
@@ -116,17 +116,18 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
   /**
    * Completes the request with the given [[cc.spray.http.HttpFailure]].
    */
-  def fail(failure: HttpFailure, reason: String = "") {
-    fail(HttpStatus(failure, reason))
+  def fail(failure: HttpFailure) {
+    complete(HttpResponse(failure))
   }
   
   /**
-   * Completes the request with the given [[cc.spray.http.HttpStatus]].
+   * Completes the request with the given [[cc.spray.http.HttpFailure]].
    */
-  def fail(failure: HttpStatus) {
-    complete(HttpResponse(failure))
+  def fail(failure: HttpFailure, reason: String) {
+    complete(HttpResponse(failure, content = HttpContent(reason)))
   }
-
+  
+  
   /**
    * Completes the request with a redirection response to the given URI.
    */

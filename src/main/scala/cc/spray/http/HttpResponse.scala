@@ -17,20 +17,31 @@
 
 package cc.spray.http
 
-import StatusCodes._
-
 /**
  * Sprays immutable model of an HTTP response.
  */
-case class HttpResponse(status: HttpStatus = OK,
-                        headers: List[HttpHeader] = Nil,
-                        content: Option[HttpContent] = None) extends HttpMessage {
+case class HttpResponse(status: StatusCode,
+                        headers: List[HttpHeader],
+                        content: Option[HttpContent]) extends HttpMessage {
 
-  def isSuccess: Boolean = status.code.isInstanceOf[HttpSuccess]
+  def isSuccess: Boolean = status.isInstanceOf[HttpSuccess]
   
-  def isWarning: Boolean = status.code.isInstanceOf[HttpWarning]
+  def isWarning: Boolean = status.isInstanceOf[HttpWarning]
   
-  def isFailure: Boolean = status.code.isInstanceOf[HttpFailure]
+  def isFailure: Boolean = status.isInstanceOf[HttpFailure]
   
   def withContentTransformed(f: HttpContent => HttpContent): HttpResponse = copy(content = content.map(f))
+}
+
+object HttpResponse {
+  def apply(status: StatusCode): HttpResponse = apply(status, Nil, None)
+  def apply(status: StatusCode, headers: List[HttpHeader]): HttpResponse = apply(status, headers, None)
+  def apply(status: StatusCode, content: HttpContent): HttpResponse = apply(status, Nil, content)
+  def apply(status: StatusCode, headers: List[HttpHeader], content: HttpContent): HttpResponse = {
+    apply(status, headers, Some(content))
+  }
+  def apply(status: StatusCode, content: String): HttpResponse = apply(status, Nil, content)
+  def apply(status: StatusCode, headers: List[HttpHeader], content: String): HttpResponse = {
+    apply(status, headers, Some(HttpContent(content)))
+  }
 }

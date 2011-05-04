@@ -24,11 +24,11 @@ import HttpMethods._
 import StatusCodes._
 import MediaTypes._
 import HttpCharsets._
-import test.SprayTest
+import test.AbstractSprayTest
 import marshalling.{UnmarshallerBase, MarshallerBase}
 import xml.{XML, NodeSeq}
 
-class UnMarshallingBuildersSpec extends Specification with SprayTest with ServiceBuilder {
+class UnMarshallingBuildersSpec extends AbstractSprayTest {
   
   implicit object IntUnmarshaller extends UnmarshallerBase[Int] {
     val canUnmarshalFrom = ContentTypeRange(`text/xml`, `ISO-8859-2`) ::

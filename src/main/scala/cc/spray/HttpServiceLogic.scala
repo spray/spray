@@ -80,51 +80,48 @@ trait HttpServiceLogic extends ErrorHandling {
     case (_: MethodRejection) :: _ => {
       // TODO: add Allow header (required by the spec)
       val methods = rejections.collect { case MethodRejection(method) => (method) }
-      HttpResponse(HttpStatus(MethodNotAllowed, "HTTP method not allowed, supported methods: " + 
-              methods.mkString(", ")))
+      HttpResponse(MethodNotAllowed, "HTTP method not allowed, supported methods: " + methods.mkString(", "))
     }
     case MissingQueryParamRejection(paramName) :: _ => {
-      HttpResponse(HttpStatus(NotFound, "Request is missing required query parameter '" + paramName + '\''))
+      HttpResponse(NotFound, "Request is missing required query parameter '" + paramName + '\'')
     }
     case MalformedQueryParamRejection(name, msg) :: _ => {
-      HttpResponse(HttpStatus(BadRequest, "The query parameter '" + name + "' was malformed:\n" + msg))
+      HttpResponse(BadRequest, "The query parameter '" + name + "' was malformed:\n" + msg)
     }
     case AuthenticationRequiredRejection(scheme, realm, params) :: _ => {
-      HttpResponse(HttpStatus(Unauthorized, "The resource requires authentication, " +
-              "which was not supplied with the request"), headers = `WWW-Authenticate`(scheme, realm, params) :: Nil)
+      HttpResponse(Unauthorized, `WWW-Authenticate`(scheme, realm, params) :: Nil,
+              "The resource requires authentication, which was not supplied with the request")
     }
     case AuthorizationFailedRejection :: _ => {
-      HttpResponse(HttpStatus(Forbidden, "The supplied authentication is either invalid " +
-              "or not authorized to access this resource"))
+      HttpResponse(Forbidden, "The supplied authentication is either invalid " +
+              "or not authorized to access this resource")
     }
     case UnsupportedRequestContentTypeRejection(supported) :: _ => {
-      HttpResponse(HttpStatus(UnsupportedMediaType, "The requests Content-Type must be one the following:\n" +
-              supported.map(_.value).mkString("\n")))
+      HttpResponse(UnsupportedMediaType, "The requests Content-Type must be one the following:\n" +
+              supported.map(_.value).mkString("\n"))
     }
     case RequestEntityExpectedRejection :: _ => {
-      HttpResponse(HttpStatus(BadRequest, "Request entity expected"))
+      HttpResponse(BadRequest, "Request entity expected")
     }
     case UnacceptedResponseContentTypeRejection(supported) :: _ => {
-      HttpResponse(HttpStatus(NotAcceptable, "Resource representation is only available with these Content-Types:\n" +
-              supported.map(_.value).mkString("\n")))
+      HttpResponse(NotAcceptable, "Resource representation is only available with these Content-Types:\n" +
+              supported.map(_.value).mkString("\n"))
     }
     case MalformedRequestContentRejection(msg) :: _ => {
-      HttpResponse(HttpStatus(BadRequest, "The request content was malformed:\n" + msg))
+      HttpResponse(BadRequest, "The request content was malformed:\n" + msg)
     }
     case _ => throw new IllegalStateException
   }
   
   protected def handleCustomRejections(rejections: List[Rejection]): HttpResponse = {
-    HttpResponse(HttpStatus(InternalServerError, "Unknown request rejection: " + rejections.head))
+    HttpResponse(InternalServerError, "Unknown request rejection: " + rejections.head)
   }
   
-  protected def finalizeResponse(response: HttpResponse) = {
-    val verifiedResponse = verified(response)
-    val resp = if (response.isSuccess || response.content.isDefined) response 
-               else response.copy(content = Some(HttpContent(response.status.nonEmptyReason)))
+  protected def finalizeResponse(unverifiedResponse: HttpResponse) = {
+    val response = verified(unverifiedResponse)
     if (setDateHeader) {
-      resp.copy(headers = Date(Rfc1123.now) :: resp.headers) 
-    } else resp
+      response.copy(headers = Date(Rfc1123.now) :: response.headers) 
+    } else response
   }
   
   protected def verified(response: HttpResponse) = {

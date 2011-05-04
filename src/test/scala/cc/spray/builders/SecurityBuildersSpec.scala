@@ -20,13 +20,10 @@ package builders
 import org.specs.Specification
 import http._
 import HttpHeaders._
-import test.SprayTest
+import test.AbstractSprayTest
 
-class SecurityBuildersSpec extends Specification with SprayTest with ServiceBuilder {
+class SecurityBuildersSpec extends AbstractSprayTest {
 
-  val Ok = HttpResponse()
-  val completeOk: Route = { _.complete(Ok) }
-  
   val dontAuth = new UserPassAuthenticator[BasicUserContext] {
     def apply(userPass: Option[(String, String)]) = None
   }

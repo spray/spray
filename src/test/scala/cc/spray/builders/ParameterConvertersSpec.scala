@@ -20,9 +20,9 @@ package builders
 import org.specs.Specification
 import http._
 import HttpMethods._
-import test.SprayTest
+import test.AbstractSprayTest
 
-class ParameterConvertersSpec extends Specification with SprayTest with ServiceBuilder {
+class ParameterConvertersSpec extends AbstractSprayTest {
 
   "the IntParameterConverter" should {
     "extract parameter values as Int" in {

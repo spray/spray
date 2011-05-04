@@ -10,8 +10,8 @@ trait ErrorHandling {
   protected[spray] def responseForException(request: HttpRequest, e: Exception): HttpResponse = {
     logException(request, e)
     e match {
-      case e: HttpException => HttpResponse(e.status)
-      case e: Exception => HttpResponse(HttpStatus(InternalServerError, e.toString))
+      case e: HttpException => HttpResponse(e.failure, e.reason)
+      case e: Exception => HttpResponse(InternalServerError, e.toString)
     }
   }
   

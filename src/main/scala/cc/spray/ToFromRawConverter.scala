@@ -88,7 +88,7 @@ trait ToFromRawConverter {
   
   protected[spray] def fromSprayResponse(response: HttpResponse): RawResponse => Unit = {
     raw => {
-      raw.setStatus(response.status.code.value)
+      raw.setStatus(response.status.value)
       response.headers.foreach(header => raw.addHeader(header.name, header.value))
       if (addConnectionCloseResponseHeader && !response.headers.exists(_.isInstanceOf[HttpHeaders.Connection])) {
         raw.addHeader("Connection", "close")

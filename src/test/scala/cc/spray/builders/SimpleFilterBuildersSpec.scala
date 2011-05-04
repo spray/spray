@@ -22,14 +22,11 @@ import http._
 import HttpMethods._
 import HttpHeaders._
 import MediaTypes._
-import test.SprayTest
+import test.AbstractSprayTest
 import marshalling.DefaultUnmarshallers._
 
-class SimpleFilterBuildersSpec extends Specification with SprayTest with ServiceBuilder {
+class SimpleFilterBuildersSpec extends AbstractSprayTest {
 
-  val Ok = HttpResponse()
-  val completeOk: Route = { _.complete(Ok) }
-  
   "get" should {
     "block POST requests" in {
       test(HttpRequest(POST)) { 

@@ -25,9 +25,9 @@ import MediaTypes._
 import org.parboiled.common.FileUtils
 import util.Properties
 import java.io.File
-import test._
+import test.AbstractSprayTest
 
-class FileResourceDirectoryBuildersSpec extends Specification with SprayTest with DontDetach {
+class FileResourceDirectoryBuildersSpec extends AbstractSprayTest {
 
   "getFromFile" should {
     "block non-GET requests" in {
@@ -38,12 +38,12 @@ class FileResourceDirectoryBuildersSpec extends Specification with SprayTest wit
     "return a 404 for non-existing files" in {
       test(HttpRequest(GET)) {
         getFromFile("nonExistentFile")
-      }.response mustEqual HttpResponse(HttpStatus(404))
+      }.response mustEqual HttpResponse(404)
     }
     "return a 404 for directories" in {
       test(HttpRequest(GET)) {
         getFromFile(Properties.javaHome)
-      }.response mustEqual HttpResponse(HttpStatus(404))
+      }.response mustEqual HttpResponse(404)
     }
     "return the file content with the MediaType matching the file extension" in {
       val file = File.createTempFile("sprayTest", ".PDF")
@@ -72,7 +72,7 @@ class FileResourceDirectoryBuildersSpec extends Specification with SprayTest wit
     "return a 404 for non-existing resources" in {
       test(HttpRequest(GET)) {
         getFromResource("nonExistingResource")
-      }.response mustEqual HttpResponse(HttpStatus(404))
+      }.response mustEqual HttpResponse(404)
     }
     "return the resource content with the MediaType matching the file extension" in {
       test(HttpRequest(GET)) {
@@ -90,7 +90,7 @@ class FileResourceDirectoryBuildersSpec extends Specification with SprayTest wit
     "return a 404 for non-existing resources" in {
       test(HttpRequest(GET, "not/found")) {
         getFromResourceDirectory("subDirectory")
-      }.response mustEqual HttpResponse(HttpStatus(404))
+      }.response mustEqual HttpResponse(404)
     }
     "return the resource content with the MediaType matching the file extension" in {
       "example 1" in {

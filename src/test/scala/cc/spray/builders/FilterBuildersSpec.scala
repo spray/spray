@@ -21,13 +21,10 @@ import org.specs.Specification
 import http._
 import HttpMethods._
 import StatusCodes._
-import test.SprayTest
+import test.AbstractSprayTest
 
-class FilterBuildersSpec extends Specification with SprayTest with ServiceBuilder {
+class FilterBuildersSpec extends AbstractSprayTest {
 
-  val Ok = HttpResponse()
-  val completeOk: Route = { _.complete(Ok) }
-  
   "get | put" should {
     val getOrPut = get | put
     "block POST requests" in {

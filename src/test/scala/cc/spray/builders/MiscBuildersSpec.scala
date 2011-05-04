@@ -23,13 +23,10 @@ import StatusCodes._
 import HttpHeaders._
 import HttpMethods._
 import MediaTypes._
-import test.SprayTest
+import test.AbstractSprayTest
 
-class MiscBuildersSpec extends Specification with SprayTest with ServiceBuilder {
+class MiscBuildersSpec extends AbstractSprayTest {
 
-  val Ok = HttpResponse()
-  val completeOk: Route = { _.complete(Ok) }
-  
   "respondWithStatus" should {
     "set the given status on successful responses" in {
       test(HttpRequest()) { 
@@ -47,7 +44,7 @@ class MiscBuildersSpec extends Specification with SprayTest with ServiceBuilder 
     "add the given headers to successful responses" in {
       test(HttpRequest()) { 
         respondWithHeader(CustomHeader("custom", "custom")) { completeOk }
-      }.response mustEqual HttpResponse(headers = CustomHeader("custom", "custom") :: Nil) 
+      }.response mustEqual HttpResponse(OK, CustomHeader("custom", "custom") :: Nil) 
     }
     "leave rejections unaffected" in {
       test(HttpRequest()) { 

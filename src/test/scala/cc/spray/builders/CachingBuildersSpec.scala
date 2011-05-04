@@ -20,13 +20,10 @@ package builders
 import org.specs.Specification
 import http._
 import HttpMethods._
-import test.SprayTest
+import test.AbstractSprayTest
 
-class CachingBuildersSpec extends Specification with SprayTest with ServiceBuilder {
+class CachingBuildersSpec extends AbstractSprayTest {
 
-  val Ok = HttpResponse()
-  val completeOk: Route = { _.complete(Ok) }
-  
   "the cache directive" should {
     val countingService = {
       var i = 0
@@ -34,7 +31,7 @@ class CachingBuildersSpec extends Specification with SprayTest with ServiceBuild
     }
     val errorService = {
       var i = 0
-      cache { _.complete { i += 1; HttpResponse(HttpStatus(500 + i)) } }
+      cache { _.complete { i += 1; HttpResponse(500 + i) } }
     }
     def prime(route: Route) = make(route) { _(RequestContext(HttpRequest(GET))) }
     
@@ -51,7 +48,7 @@ class CachingBuildersSpec extends Specification with SprayTest with ServiceBuild
     "return the cached response also for HttpFailures on GETs" in {
       test(HttpRequest(GET)) {
         prime(errorService)        
-      }.response mustEqual HttpResponse(HttpStatus(501))
+      }.response mustEqual HttpResponse(501)
     }
     "not cache responses for PUTs" in {
       test(HttpRequest(PUT)) {

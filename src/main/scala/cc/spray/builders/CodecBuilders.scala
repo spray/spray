@@ -147,7 +147,7 @@ abstract class Deflate extends Decoder with Encoder {
  * An encoder and decoder for the HTTP 'deflate' encoding.
  */
 object Deflate extends Deflate {
-  def handle(response: HttpResponse) = response.status.code.isInstanceOf[HttpSuccess]
+  def handle(response: HttpResponse) = response.isSuccess
   def apply(minContentSize: Int) = new Deflate {
     def handle(response: HttpResponse) = {
       response.isSuccess && response.content.get.buffer.length >= minContentSize

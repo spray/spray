@@ -20,8 +20,9 @@ package builders
 import org.specs.Specification
 import http._
 import HttpMethods._
-import test.SprayTest
-class NumberMatchersSpec extends Specification with SprayTest with ServiceBuilder {
+import test.AbstractSprayTest  
+
+class NumberMatchersSpec extends AbstractSprayTest {
 
   "the LongNumber PathMatcher" should {
     "properly extract digit sequences at the path end into a Long" in {
