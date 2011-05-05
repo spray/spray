@@ -57,7 +57,7 @@ object JsValue {
     seq.foreach {
       case (key: String, value) => list += JsField(key, JsValue(value))
       case (key: Symbol, value) => list += JsField(key.name, JsValue(value))
-      case (key: JsString, value) => list += JsField(key, JsValue(value))
+      case (key: JsString, value) => list += JsField(key.value, JsValue(value))
       case (x, _) => throw new IllegalArgumentException(x.toString + " cannot be converted to a JsString")
     }
     list.toList
@@ -83,7 +83,7 @@ object JsNumber {
 case class JsObject(fields: List[JsField]) extends JsValue {
   lazy val asMap: Map[String, JsValue] = {
     val b = Map.newBuilder[String, JsValue]
-    for (JsField(name, value) <- fields) b += ((name.value, value))
+    for (JsField(name, value) <- fields) b += ((name, value))
     b.result()
   }
 }
@@ -93,10 +93,10 @@ object JsObject {
 }
 
 
-case class JsField(name: JsString, value: JsValue) extends JsValue
+case class JsField(name: String, value: JsValue) extends JsValue
 
 object JsField {
-  def apply(name: String, value: Any) = new JsField(JsString(name), JsValue(value))
+  def apply(name: String, value: Any) = new JsField(name, JsValue(value))
 }
 
 

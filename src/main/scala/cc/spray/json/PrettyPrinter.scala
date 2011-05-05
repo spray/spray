@@ -38,7 +38,7 @@ object PrettyPrinter extends JsonPrinter {
     sb.append("{\n")    
     printSeq(members, sb.append(",\n")) { m =>
       printIndent(sb, indent + Indent)
-      printLeaf(m.name, sb)
+      printString(m.name, sb)
       sb.append(": ")
       print(m.value, sb, indent + Indent)
     }

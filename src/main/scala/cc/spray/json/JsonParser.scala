@@ -34,13 +34,15 @@ object JsonParser extends Parser {
     "{ " ~ zeroOrMore(Pair, separator = ", ") ~ "} " ~~> (JsObject(_))
   }
 
-  def Pair = rule { JsonString ~ ": " ~ Value ~~> (JsField(_, _)) }
+  def Pair = rule { JsonStringUnwrapped ~ ": " ~ Value ~~> (JsField(_, _)) }
 
   def Value: Rule1[JsValue] = rule {
     JsonString | JsonNumber | JsonObject | JsonArray | JsonTrue | JsonFalse | JsonNull
   }
 
-  def JsonString = rule { "\"" ~ Characters ~ "\" " ~~> (sb => JsString(sb.toString)) }
+  def JsonString = rule { JsonStringUnwrapped ~~> JsString }
+  
+  def JsonStringUnwrapped = rule { "\"" ~ Characters ~ "\" " ~~> (_.toString) }
 
   def JsonNumber = rule { group(Integer ~ optional(Frac) ~ optional(Exp)) ~> (JsNumber(_)) ~ WhiteSpace }
 

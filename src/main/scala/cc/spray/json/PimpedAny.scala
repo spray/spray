@@ -18,8 +18,8 @@ package cc.spray.json
 
 import formats.JsonWriter
 
-private[json] class PimpedAny[T](any: T) {
+private[json] class PimpedAny[T](any: T, writer: JsonWriter[T]) {
   
-  def toJson[S >: T : JsonWriter]: JsValue = jsonWriter.write(any)
+  def toJson: JsValue = writer.write(any)
   
 }

@@ -42,7 +42,7 @@ trait StandardFormats {
     def write(t: (A, B)) = JsArray(t._1.toJson, t._2.toJson)
     def read(value: JsValue) = value match {
       case JsArray(a :: b :: Nil) => (a.fromJson[A], b.fromJson[B])
-      case _ => throw new RuntimeException("Tuple2 expected")
+      case _ => throw new DeserializationException("Tuple2 expected")
     }
   }
   
@@ -50,7 +50,7 @@ trait StandardFormats {
     def write(t: (A, B, C)) = JsArray(t._1.toJson, t._2.toJson, t._3.toJson)
     def read(value: JsValue) = value match {
       case JsArray(a :: b :: c :: Nil) => (a.fromJson[A], b.fromJson[B], c.fromJson[C])
-      case _ => throw new RuntimeException("Tuple3 expected")
+      case _ => throw new DeserializationException("Tuple3 expected")
     }
   }
   
@@ -58,7 +58,7 @@ trait StandardFormats {
     def write(t: (A, B, C, D)) = JsArray(t._1.toJson, t._2.toJson, t._3.toJson, t._4.toJson)
     def read(value: JsValue) = value match {
       case JsArray(a :: b :: c :: d :: Nil) => (a.fromJson[A], b.fromJson[B], c.fromJson[C], d.fromJson[D])
-      case _ => throw new RuntimeException("Tuple4 expected")
+      case _ => throw new DeserializationException("Tuple4 expected")
     }
   }
   
@@ -69,7 +69,7 @@ trait StandardFormats {
         case JsArray(a :: b :: c :: d :: e :: Nil) => {
           (a.fromJson[A], b.fromJson[B], c.fromJson[C], d.fromJson[D], e.fromJson[E])
         }
-        case _ => throw new RuntimeException("Tuple5 expected")
+        case _ => throw new DeserializationException("Tuple5 expected")
       }
     }
   }
@@ -81,7 +81,7 @@ trait StandardFormats {
         case JsArray(a :: b :: c :: d :: e :: f :: Nil) => {
           (a.fromJson[A], b.fromJson[B], c.fromJson[C], d.fromJson[D], e.fromJson[E], f.fromJson[F])
         }
-        case _ => throw new RuntimeException("Tuple6 expected")
+        case _ => throw new DeserializationException("Tuple6 expected")
       }
     }
   }
@@ -93,7 +93,7 @@ trait StandardFormats {
         case JsArray(a :: b :: c :: d :: e :: f :: g :: Nil) => {
           (a.fromJson[A], b.fromJson[B], c.fromJson[C], d.fromJson[D], e.fromJson[E], f.fromJson[F], g.fromJson[G])
         }
-        case _ => throw new RuntimeException("Tuple7 expected")
+        case _ => throw new DeserializationException("Tuple7 expected")
       }
     }
   }

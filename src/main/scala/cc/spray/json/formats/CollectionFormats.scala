@@ -19,7 +19,6 @@ package formats
  */
 
 import reflect.Manifest
-import collection._
 
 trait CollectionFormats {
   
@@ -27,7 +26,7 @@ trait CollectionFormats {
     def write(list: List[T]) = JsArray(list.map(_.toJson))
     def read(value: JsValue) = value match {
       case JsArray(elements) => elements.map(_.fromJson)
-      case _ => throw new RuntimeException("List expected")
+      case _ => throw new DeserializationException("List expected")
     }
   }
   
@@ -35,7 +34,7 @@ trait CollectionFormats {
     def write(array: Array[T]) = JsArray(array.map(_.toJson).toList)
     def read(value: JsValue) = value match {
       case JsArray(elements) => elements.map(_.fromJson[T]).toArray
-      case _ => throw new RuntimeException("Array expected")
+      case _ => throw new DeserializationException("Array expected")
     }
   }
   
@@ -43,26 +42,27 @@ trait CollectionFormats {
     def write(m: Map[K, V]) = JsObject {
       m.toList.map { t =>
         t._1.toJson match {
-          case x: JsString => JsField(x, t._2.toJson)
-          case x => throw new RuntimeException("Map key must be formatted as JsString, but is " + x)
+          case JsString(x) => JsField(x, t._2.toJson)
+          case x => throw new SerializationException("Map key must be formatted as JsString, not '" + x + "'")
         }
       }
     }
     def read(value: JsValue) = value match {
-      case JsObject(fields) => fields.map(field => (field.name.fromJson[K], field.value.fromJson[V])).toMap
-      case _ => throw new RuntimeException("Map expected")
+      case JsObject(fields) => fields.map(field => (JsString(field.name).fromJson[K], field.value.fromJson[V])).toMap
+      case _ => throw new DeserializationException("Map expected")
     }
   }
 
-  implicit def mutableSetFormat[T :JsonFormat] = viaList[mutable.Set[T], T](list => mutable.Set.empty ++ list)
-
-  implicit def immutableSetFormat[T :JsonFormat] = viaList[immutable.Set[T], T](list => immutable.Set(list :_*))
+  implicit def immutableSetFormat[T :JsonFormat] = viaList[Set[T], T](list => Set(list :_*))
+  
+  import collection.mutable.Set
+  implicit def mutableSetFormat[T :JsonFormat] = viaList[Set[T], T](list => Set.empty ++ list)
 
   def viaList[I <: Iterable[T], T :JsonFormat](f: List[T] => I): JsonFormat[I] = new JsonFormat[I] {
     def write(iterable: I) = JsArray(iterable.map(_.toJson).toList)
     def read(value: JsValue) = value match {
       case JsArray(elements) => f(elements.map(_.fromJson[T]))
-      case _ => throw new RuntimeException("Collection expected")
+      case _ => throw new DeserializationException("Collection expected")
     }
   }
   
