@@ -34,7 +34,7 @@ object JsonParser extends Parser {
     "{ " ~ zeroOrMore(Pair, separator = ", ") ~ "} " ~~> (JsObject(_))
   }
 
-  def Pair = rule { JsonString ~ ": " ~ Value ~~> ((_, _)) }
+  def Pair = rule { JsonString ~ ": " ~ Value ~~> (JsField(_, _)) }
 
   def Value: Rule1[JsValue] = rule {
     JsonString | JsonNumber | JsonObject | JsonArray | JsonTrue | JsonFalse | JsonNull

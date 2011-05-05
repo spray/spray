@@ -28,12 +28,12 @@ object CompactPrinter extends JsonPrinter {
     }
   }
 
-  private def printObject(members: List[(JsString, JsValue)], sb: StringBuilder) {
+  private def printObject(members: List[JsField], sb: StringBuilder) {
     sb.append('{')
     printSeq(members, sb.append(',')) { m =>
-      printLeaf(m._1, sb)
+      printLeaf(m.name, sb)
       sb.append(':')
-      print(m._2, sb)
+      print(m.value, sb)
     }
     sb.append('}')
   }

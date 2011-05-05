@@ -24,8 +24,6 @@ package cc.spray.json
 import collection.mutable.ListBuffer
 
 sealed trait JsValue {
-  type T
-  def self: T
   override def toString = CompactPrinter(this)
   def toString(printer: (JsValue => String)) = printer(this)
 }
@@ -51,11 +49,11 @@ object JsValue {
   }
   
   private def fromSeq(seq: Iterable[(_, _)]) = {
-    val list = ListBuffer.empty[(JsString, JsValue)]
+    val list = ListBuffer.empty[JsField]
     seq.foreach {
-      case (key: String, value) => list += ((JsString(key), JsValue(value)))
-      case (key: Symbol, value) => list += ((JsString(key.name), JsValue(value)))
-      case (key: JsString, value) => list += ((key, JsValue(value)))
+      case (key: String, value) => list += JsField(key, JsValue(value))
+      case (key: Symbol, value) => list += JsField(key.name, JsValue(value))
+      case (key: JsString, value) => list += JsField(key, JsValue(value))
       case (x, _) => throw new IllegalArgumentException(x.toString + " cannot be converted to a JsString")
     }
     list.toList
@@ -65,20 +63,10 @@ object JsValue {
   def toString(value: JsValue, printer: (JsValue => String) = CompactPrinter) = printer(value)
 }
 
-case class JsString(override val self: String) extends JsValue {
-  type T = String
-}
+case class JsString(value: String) extends JsValue
 
-/**
- * This can also be implemented with as a Double, even though BigDecimal is
- * more loyal to the json spec.
- *  NOTE: Subtle bugs can arise, i.e.
- *    BigDecimal(3.14) != BigDecimal("3.14")
- * such are the perils of floating point arithmetic.
- */
-case class JsNumber(override val self: BigDecimal) extends JsValue {
-  type T = BigDecimal
-}
+
+case class JsNumber(value: BigDecimal) extends JsValue
 
 object JsNumber {
   def apply(n: Int) = new JsNumber(BigDecimal(n))
@@ -89,37 +77,48 @@ object JsNumber {
   def apply(n: String) = new JsNumber(BigDecimal(n))
 }
 
-// This can extend scala.collection.MapProxy to implement Map interface
-case class JsObject(override val self: List[(JsString, JsValue)]) extends JsValue {
-  type T = List[(JsString, JsValue)]
-  lazy val asMap = self.toMap
-}
-object JsObject {
-  def apply(members: (JsString, JsValue)*) = new JsObject(members.toList)
+case class JsObject(fields: List[JsField]) extends JsValue {
+  lazy val asMap: Map[String, JsValue] = {
+    val b = Map.newBuilder[String, JsValue]
+    for (JsField(name, value) <- fields) b += ((name.value, value))
+    b.result()
+  }
 }
 
-// This can extend scala.SeqProxy to implement Seq interface
-case class JsArray(override val self: List[JsValue]) extends JsValue {
-  type T = List[JsValue]
+object JsObject {
+  def apply(members: JsField*) = new JsObject(members.toList)
 }
+
+
+case class JsField(name: JsString, value: JsValue) extends JsValue
+
+object JsField {
+  def apply(name: String, value: Any) = new JsField(JsString(name), JsValue(value))
+}
+
+
+case class JsArray(elements: List[JsValue]) extends JsValue
+
 object JsArray {
   def apply(elements: JsValue*) = new JsArray(elements.toList)
 }
 
-sealed abstract class JsBoolean(val b: Boolean) extends JsValue {
-  type T = Boolean
-  val self = b
+
+sealed trait JsBoolean extends JsValue {
+  def value: Boolean
 }
 
 object JsBoolean {
-  def unapply(x: JsBoolean): Option[Boolean] = Some(x.b)
+  def unapply(x: JsBoolean): Option[Boolean] = Some(x.value)
 }
 
-case object JsTrue extends JsBoolean(true)
-
-case object JsFalse extends JsBoolean(false)
-
-case object JsNull extends JsValue {
-  type T = Null
-  val self = null
+case object JsTrue extends JsBoolean {
+  def value = true
 }
+
+case object JsFalse extends JsBoolean {
+  def value = false
+}
+
+
+case object JsNull extends JsValue

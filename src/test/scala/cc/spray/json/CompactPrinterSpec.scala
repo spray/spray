@@ -36,11 +36,11 @@ class CompactPrinterSpec extends Specification {
       CompactPrinter(JsString("\"\\\b\f\n\r\t\u12AB")) mustEqual """"\"\\\b\f\n\r\t""" + "\\u12ab\""
     }
     "properly print a simple JsObject" in (
-      CompactPrinter(JsObject(JsString("key") -> JsNumber(42), JsString("key2") -> JsString("value")))
+      CompactPrinter(JsObject(JsField("key", 42), JsField("key2", "value")))
               mustEqual """{"key":42,"key2":"value"}"""
     )
     "properly print a simple JsArray" in (
-      CompactPrinter(JsArray(JsNull, JsNumber(1.23), JsObject(JsString("key") -> JsTrue)))
+      CompactPrinter(JsArray(JsNull, JsNumber(1.23), JsObject(JsField("key", true))))
               mustEqual """[null,1.23,{"key":true}]"""
     )
   }

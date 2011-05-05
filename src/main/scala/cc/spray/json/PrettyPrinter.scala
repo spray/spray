@@ -34,13 +34,13 @@ object PrettyPrinter extends JsonPrinter {
     }
   }
 
-  private def printObject(members: List[(JsString, JsValue)], sb: StringBuilder, indent: Int) {
+  private def printObject(members: List[JsField], sb: StringBuilder, indent: Int) {
     sb.append("{\n")    
     printSeq(members, sb.append(",\n")) { m =>
       printIndent(sb, indent + Indent)
-      printLeaf(m._1, sb)
+      printLeaf(m.name, sb)
       sb.append(": ")
-      print(m._2, sb, indent + Indent)
+      print(m.value, sb, indent + Indent)
     }
     sb.append('\n')
     printIndent(sb, indent)

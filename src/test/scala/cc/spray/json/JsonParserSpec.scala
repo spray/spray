@@ -34,11 +34,11 @@ class JsonParserSpec extends Specification {
     }
     "properly parse a simple JsObject" in (
       JsonParser(""" { "key" :42, "key2": "value" }""") mustEqual
-              JsObject(JsString("key") -> JsNumber(42), JsString("key2") -> JsString("value"))
+              JsObject(JsField("key", 42), JsField("key2", "value"))
     )
     "properly parse a simple JsArray" in (
       JsonParser("""[null, 1.23 ,{"key":true } ] """) mustEqual
-              JsArray(JsNull, JsNumber(1.23), JsObject(JsString("key") -> JsTrue))
+              JsArray(JsNull, JsNumber(1.23), JsObject(JsField("key", true)))
     )
   }
   
