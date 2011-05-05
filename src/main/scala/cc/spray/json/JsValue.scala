@@ -1,8 +1,7 @@
 /*
- * Copyright (C) by the databinder-dispatch team
+ * Original implementation (C) by the databinder-dispatch team
  * https://github.com/n8han/Databinder-Dispatch
- * 
- * Adapted in 2011 by Mathias Doenitz
+ * Adapted and extended in 2011 by Mathias Doenitz
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,11 +20,13 @@
 
 package cc.spray.json
 
+import formats._
 import collection.mutable.ListBuffer
 
 sealed trait JsValue {
   override def toString = CompactPrinter(this)
   def toString(printer: (JsValue => String)) = printer(this)
+  def fromJson[T :JsonReader]: T = jsonReader.read(this)
 }
 
 object JsValue {
@@ -38,10 +39,13 @@ object JsValue {
     case x: Symbol => JsString(x.name)
     case x: Int => JsNumber(x)
     case x: Long => JsNumber(x)
+    case x: Short => JsNumber(x)
+    case x: Byte => JsNumber(x)
     case x: Float => JsNumber(x)
     case x: Double => JsNumber(x)
     case x: BigInt => JsNumber(x)
     case x: BigDecimal => JsNumber(x)
+    case x: Char => JsString(String.valueOf(x))
     case x: collection.Map[_, _] => JsObject(fromSeq(x))
     case x@ collection.Seq((_, _), _*) => JsObject(fromSeq(x.asInstanceOf[Seq[(_, _)]]))
     case x: collection.Seq[_] => JsArray(x.toList.map(JsValue.apply))
@@ -71,7 +75,6 @@ case class JsNumber(value: BigDecimal) extends JsValue
 object JsNumber {
   def apply(n: Int) = new JsNumber(BigDecimal(n))
   def apply(n: Long) = new JsNumber(BigDecimal(n))
-  def apply(n: Float) = new JsNumber(BigDecimal(n))
   def apply(n: Double) = new JsNumber(BigDecimal(n))
   def apply(n: BigInt) = new JsNumber(BigDecimal(n))
   def apply(n: String) = new JsNumber(BigDecimal(n))
@@ -109,6 +112,7 @@ sealed trait JsBoolean extends JsValue {
 }
 
 object JsBoolean {
+  def apply(x: Boolean): JsBoolean = if (x) JsTrue else JsFalse
   def unapply(x: JsBoolean): Option[Boolean] = Some(x.value)
 }
 
