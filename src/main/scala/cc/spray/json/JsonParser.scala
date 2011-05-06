@@ -18,8 +18,8 @@ package cc.spray.json
 
 import org.parboiled.scala._
 import org.parboiled.errors.{ErrorUtils, ParsingException}
-import java.lang.StringBuilder
 import org.parboiled.Context
+import java.lang.StringBuilder
 
 /**
  * This JSON parser is the almost direct implementation of the JSON grammar
@@ -85,7 +85,7 @@ object JsonParser extends Parser {
   def WhiteSpace: Rule0 = rule { zeroOrMore(anyOf(" \n\r\t\f")) }
     
   // helper method for fast string building
-  // for maximum performance we use a somewhat unorthodox parsing technqiue that is a bit more verbose (and probably
+  // for maximum performance we use a somewhat unorthodox parsing technique that is a bit more verbose (and somewhat
   // less readable) but reduces object allocations during the parsing run to a minimum:
   // the Characters rules pushes a StringBuilder object onto the stack which is then directly fed with matched
   // and unescaped characters in the sub rules (i.e. no string allocations and value stack operation required)

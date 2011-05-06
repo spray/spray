@@ -1,6 +1,3 @@
-package cc.spray.json
-package formats
-
 /*
  * Original implementation (C) 2009-2011 Debasish Ghosh
  * Adapted and extended in 2011 by Mathias Doenitz
@@ -18,10 +15,16 @@ package formats
  * limitations under the License.
  */
 
+package cc.spray.json
+package formats
+
 import reflect.Manifest
 
 trait CollectionFormats {
-  
+
+  /**
+    * Supplies the JsonFormat for Lists.
+   */
   implicit def listFormat[T :JsonFormat] = new JsonFormat[List[T]] {
     def write(list: List[T]) = JsArray(list.map(_.toJson))
     def read(value: JsValue) = value match {
@@ -30,6 +33,9 @@ trait CollectionFormats {
     }
   }
   
+  /**
+    * Supplies the JsonFormat for Arrays.
+   */
   implicit def arrayFormat[T :JsonFormat :Manifest] = new JsonFormat[Array[T]] {
     def write(array: Array[T]) = JsArray(array.map(_.toJson).toList)
     def read(value: JsValue) = value match {
@@ -38,6 +44,10 @@ trait CollectionFormats {
     }
   }
   
+  /**
+    * Supplies the JsonFormat for Maps. The implicitly available JsonFormat for the key type K must
+    * always write JsStrings, otherwise a [[cc.spray.json.SerializationException]] will be thrown.
+   */
   implicit def mapFormat[K :JsonFormat, V :JsonFormat] = new JsonFormat[Map[K, V]] {
     def write(m: Map[K, V]) = JsObject {
       m.toList.map { t =>
@@ -53,11 +63,22 @@ trait CollectionFormats {
     }
   }
 
+  /**
+    * Supplies the JsonFormat for immutable Sets.
+   */
   implicit def immutableSetFormat[T :JsonFormat] = viaList[Set[T], T](list => Set(list :_*))
   
   import collection.mutable.Set
+  
+  /**
+    * Supplies the JsonFormat for mutable Sets.
+   */
   implicit def mutableSetFormat[T :JsonFormat] = viaList[Set[T], T](list => Set.empty ++ list)
 
+  /**
+    * A JsonFormat construction helper that creates a JsonFormat for an Iterable type I from a builder function
+    * List => I.
+   */
   def viaList[I <: Iterable[T], T :JsonFormat](f: List[T] => I): JsonFormat[I] = new JsonFormat[I] {
     def write(iterable: I) = JsArray(iterable.map(_.toJson).toList)
     def read(value: JsValue) = value match {

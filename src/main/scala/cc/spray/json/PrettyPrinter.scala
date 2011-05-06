@@ -19,6 +19,9 @@ package cc.spray.json
 import java.lang.StringBuilder
 import annotation.tailrec
 
+/**
+  * A JsonPrinter that produces a nicely readable JSON source.
+ */
 object PrettyPrinter extends JsonPrinter {
   val Indent = 2
 

@@ -1,6 +1,3 @@
-package cc.spray.json
-package formats
-
 /*
  * Original implementation (C) 2009-2011 Debasish Ghosh
  * Adapted and extended in 2011 by Mathias Doenitz
@@ -18,6 +15,12 @@ package formats
  * limitations under the License.
  */
 
+package cc.spray.json
+package formats
+
+/**
+  * Provides the JsonFormats for the most important Scala types.
+ */
 trait BasicFormats {
 
   implicit object IntJsonFormat extends JsonFormat[Int] {

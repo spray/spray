@@ -18,6 +18,9 @@ package cc.spray.json
 
 import java.lang.StringBuilder
 
+/**
+  * A JsonPrinter that produces compact JSON source without any superfluous whitespace.
+ */
 object CompactPrinter extends JsonPrinter {
 
   def print(x: JsValue, sb: StringBuilder) {

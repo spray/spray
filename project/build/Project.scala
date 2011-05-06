@@ -36,7 +36,6 @@ class Project(info: ProjectInfo) extends DefaultProject(info) {
   // -------------------------------------------------------------------------------------------------------------------
   // Publishing
   // -------------------------------------------------------------------------------------------------------------------
-  //val publishTo = Resolver.file("Spray Test Repo", new File("/Users/mathias/Documents/spray/test-repo/"))
   val publishTo = "Scala Tools Snapshots" at "http://nexus.scala-tools.org/content/repositories/snapshots/"
   //val publishTo = "Scala Tools Releases" at "http://nexus.scala-tools.org/content/repositories/releases/"
   

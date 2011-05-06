@@ -19,6 +19,9 @@ package cc.spray.json
 import annotation.tailrec
 import java.lang.StringBuilder
 
+/**
+  * A JsonPrinter serializes a JSON AST to a String.
+ */
 trait JsonPrinter extends (JsValue => String) {
 
   def apply(x: JsValue) = {

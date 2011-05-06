@@ -1,21 +1,19 @@
 /*
- * Original implementation (C) by the databinder-dispatch team
- * https://github.com/n8han/Databinder-Dispatch
- * Adapted and extended in 2011 by Mathias Doenitz
+ * Copyright (C) 2009-2011 Mathias Doenitz
+ * Inspired by a similar implementation by Nathan Hamblen
+ * (https://github.com/n8han/Databinder-Dispatch)
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package cc.spray.json
@@ -23,29 +21,36 @@ package cc.spray.json
 import formats._
 import collection.mutable.ListBuffer
 
+/**
+  * The general type of a JSON AST node.
+ */
 sealed trait JsValue {
   override def toString = CompactPrinter(this)
   def toString(printer: (JsValue => String)) = printer(this)
   def fromJson[T :JsonReader]: T = jsonReader.read(this)
 }
-
 object JsValue {
-  def apply(x: Any): JsValue = x match {
+
+  /**
+    * General converter to a JsValue.
+    * Throws an IllegalArgumentException of the given value cannot be converted.
+   */
+  def apply(value: Any): JsValue = value match {
     case null => JsNull
     case true => JsTrue
     case false => JsFalse
     case x: JsValue => x
     case x: String => JsString(x)
-    case x: Symbol => JsString(x.name)
     case x: Int => JsNumber(x)
     case x: Long => JsNumber(x)
-    case x: Short => JsNumber(x)
-    case x: Byte => JsNumber(x)
-    case x: Float => JsNumber(x)
     case x: Double => JsNumber(x)
+    case x: Char => JsString(String.valueOf(x))
+    case x: Float => JsNumber(x)
+    case x: Byte => JsNumber(x)
+    case x: Short => JsNumber(x)
     case x: BigInt => JsNumber(x)
     case x: BigDecimal => JsNumber(x)
-    case x: Char => JsString(String.valueOf(x))
+    case x: Symbol => JsString(x.name)
     case x: collection.Map[_, _] => JsObject(fromSeq(x))
     case x@ collection.Seq((_, _), _*) => JsObject(fromSeq(x.asInstanceOf[Seq[(_, _)]]))
     case x: collection.Seq[_] => JsArray(x.toList.map(JsValue.apply))
@@ -62,16 +67,47 @@ object JsValue {
     }
     list.toList
   }
-
-  def fromString(json: String) = JsonParser(json)
-  def toString(value: JsValue, printer: (JsValue => String) = CompactPrinter) = printer(value)
 }
 
+/**
+  * A JSON object.
+ */
+case class JsObject(fields: List[JsField]) extends JsValue {
+  lazy val asMap: Map[String, JsValue] = {
+    val b = Map.newBuilder[String, JsValue]
+    for (JsField(name, value) <- fields) b += ((name, value))
+    b.result()
+  }
+}
+object JsObject {
+  def apply(members: JsField*) = new JsObject(members.toList)
+}
+
+/**
+  * The members/fields of a JSON object.
+ */
+case class JsField(name: String, value: JsValue) extends JsValue
+object JsField {
+  def apply(name: String, value: Any) = new JsField(name, JsValue(value))
+}
+
+/**
+  * A JSON array.
+ */
+case class JsArray(elements: List[JsValue]) extends JsValue
+object JsArray {
+  def apply(elements: JsValue*) = new JsArray(elements.toList)
+}
+
+/**
+  * A JSON string.
+ */
 case class JsString(value: String) extends JsValue
 
-
+/**
+  * A JSON number.
+ */
 case class JsNumber(value: BigDecimal) extends JsValue
-
 object JsNumber {
   def apply(n: Int) = new JsNumber(BigDecimal(n))
   def apply(n: Long) = new JsNumber(BigDecimal(n))
@@ -80,49 +116,24 @@ object JsNumber {
   def apply(n: String) = new JsNumber(BigDecimal(n))
 }
 
-case class JsObject(fields: List[JsField]) extends JsValue {
-  lazy val asMap: Map[String, JsValue] = {
-    val b = Map.newBuilder[String, JsValue]
-    for (JsField(name, value) <- fields) b += ((name, value))
-    b.result()
-  }
-}
-
-object JsObject {
-  def apply(members: JsField*) = new JsObject(members.toList)
-}
-
-
-case class JsField(name: String, value: JsValue) extends JsValue
-
-object JsField {
-  def apply(name: String, value: Any) = new JsField(name, JsValue(value))
-}
-
-
-case class JsArray(elements: List[JsValue]) extends JsValue
-
-object JsArray {
-  def apply(elements: JsValue*) = new JsArray(elements.toList)
-}
-
-
+/**
+  * JSON Booleans.
+ */
 sealed trait JsBoolean extends JsValue {
   def value: Boolean
 }
-
 object JsBoolean {
   def apply(x: Boolean): JsBoolean = if (x) JsTrue else JsFalse
   def unapply(x: JsBoolean): Option[Boolean] = Some(x.value)
 }
-
 case object JsTrue extends JsBoolean {
   def value = true
 }
-
 case object JsFalse extends JsBoolean {
   def value = false
 }
 
-
+/**
+  * The representation for JSON null.
+ */
 case object JsNull extends JsValue

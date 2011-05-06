@@ -1,6 +1,3 @@
-package cc.spray.json
-package formats
-
 /*
  * Original implementation (C) 2009-2011 Debasish Ghosh
  * Adapted and extended in 2011 by Mathias Doenitz
@@ -18,12 +15,24 @@ package formats
  * limitations under the License.
  */
 
+package cc.spray.json
+package formats
+
+/**
+  * Provides the JSON deserialization for type T.
+ */
 trait JsonReader[T] {
   def read(json: JsValue): T
 }
 
+/**
+  * Provides the JSON serialization for type T.
+ */
 trait JsonWriter[T] {
   def write(obj: T): JsValue
 }
 
+/**
+  * Provides the JSON deserialization and serialization for type T.
+ */
 trait JsonFormat[T] extends JsonReader[T] with JsonWriter[T]

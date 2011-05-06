@@ -1,5 +1,3 @@
-package cc.spray.json
-
 /*
  * Copyright (C) 2009-2011 Mathias Doenitz
  *
@@ -15,6 +13,8 @@ package cc.spray.json
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+package cc.spray.json
 
 import formats.JsonWriter
 
