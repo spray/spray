@@ -6,7 +6,7 @@ class Plugins(info: ProjectInfo) extends PluginDefinition(info) {
   // All repositories *must* go here! See ModuleConigurations below.
   // -------------------------------------------------------------------------------------------------------------------
   object Repositories {
-    val akkaRepo = MavenRepository("Akka Repository", "http://akka.io/repository")
+    val AkkaRepo = MavenRepository("Akka Repository", "http://akka.io/repository")
   }
   
   // -------------------------------------------------------------------------------------------------------------------
@@ -16,7 +16,7 @@ class Plugins(info: ProjectInfo) extends PluginDefinition(info) {
   // Therefore, if repositories are defined, this must happen as def, not as val.
   // -------------------------------------------------------------------------------------------------------------------
   import Repositories._
-  lazy val akkaModuleConfig = ModuleConfiguration("se.scalablesolutions.akka", akkaRepo)
+  lazy val akkaModuleConfig = ModuleConfiguration("se.scalablesolutions.akka", AkkaRepo)
 
   // -------------------------------------------------------------------------------------------------------------------
   // Plugins

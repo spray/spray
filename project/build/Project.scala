@@ -1,13 +1,13 @@
 import sbt._
 import java.io.File
 
-class Project(info: ProjectInfo) extends DefaultProject(info) {
+class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProject{
   
   // -------------------------------------------------------------------------------------------------------------------
   // All repositories *must* go here! See ModuleConfigurations below.
   // -------------------------------------------------------------------------------------------------------------------
   object Repositories {
-    lazy val JavaNetRepo = MavenRepository("java.net Repo", "http://download.java.net/maven/2")
+    val JavaNetRepo = MavenRepository("java.net Repo", "http://download.java.net/maven/2")
   }
   
   // -------------------------------------------------------------------------------------------------------------------
@@ -17,9 +17,9 @@ class Project(info: ProjectInfo) extends DefaultProject(info) {
   // Therefore, if repositories are defined, this must happen as def, not as val.
   // -------------------------------------------------------------------------------------------------------------------
   import Repositories._
-  lazy val parboiledModuleConfig = ModuleConfiguration("org.parboiled", ScalaToolsSnapshots)
-  lazy val pegdownModuleConfig   = ModuleConfiguration("org.pegdown", ScalaToolsSnapshots)
-  lazy val glassfishModuleConfig = ModuleConfiguration("org.glassfish", JavaNetRepo)
+  val glassfishModuleConfig = ModuleConfiguration("org.glassfish", JavaNetRepo)
+  val parboiledModuleConfig = ModuleConfiguration("org.parboiled", ScalaToolsSnapshots)
+  val pegdownModuleConfig   = ModuleConfiguration("org.pegdown", ScalaToolsSnapshots)
   
   // -------------------------------------------------------------------------------------------------------------------
   // Dependencies
@@ -46,6 +46,47 @@ class Project(info: ProjectInfo) extends DefaultProject(info) {
   }
   
   // -------------------------------------------------------------------------------------------------------------------
+  // Compile settings
+  // -------------------------------------------------------------------------------------------------------------------
+
+  val scalaCompileSettings =
+    Seq("-deprecation",
+        //"-Xmigration",
+        //"-Xcheckinit",
+        //"-optimise",
+        "-Xwarninit",
+        "-encoding", "utf8")
+
+  // -------------------------------------------------------------------------------------------------------------------
+  // Miscellaneous
+  // -------------------------------------------------------------------------------------------------------------------
+  lazy override val `package` = task { None }    // disable packaging
+  lazy override val publishLocal = task { None } // and publishing
+  lazy override val publish = task { None }      // the root project
+  
+  val pomExtras =
+    <url>http://spray.cc/</url>
+    <inceptionYear>2011</inceptionYear>
+    <licenses>
+      <license>
+        <name>Apache 2</name>
+        <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        <distribution>repo</distribution>
+      </license>
+    </licenses>
+    <developers>
+      <developer>
+        <id>sirthias</id>
+        <name>Mathias Doenitz</name>
+        <timezone>+1</timezone>
+        <email>mathias [at] spray.cc</email>
+      </developer>
+    </developers>
+    <scm>
+      <url>http://github.com/spray/</url>
+    </scm>
+  
+  // -------------------------------------------------------------------------------------------------------------------
   // Subprojects
   // -------------------------------------------------------------------------------------------------------------------
   lazy val httpProject     = project("spray-http", "spray-http", new HttpProject(_))
@@ -55,11 +96,11 @@ class Project(info: ProjectInfo) extends DefaultProject(info) {
   
   abstract class ModuleProject(info: ProjectInfo) extends DefaultProject(info) {
     // Options
-    override def compileOptions = super.compileOptions ++ Seq("-deprecation", "-encoding", "utf8").map(CompileOption(_))
+    override def compileOptions = super.compileOptions ++ scalaCompileSettings.map(CompileOption)
     override def documentOptions: Seq[ScaladocOption] = documentTitle(name + " " + version) :: Nil
+    override def pomExtra = pomExtras
 
     // Publishing
-    //val publishTo = Resolver.file("Spray Test Repo", new File("/Users/mathias/Documents/spray/test-repo/"))
     val publishTo = "Scala Tools Snapshots" at "http://nexus.scala-tools.org/content/repositories/snapshots/"
     //val publishTo = "Scala Tools Releases" at "http://nexus.scala-tools.org/content/repositories/releases/"
     
@@ -70,31 +111,6 @@ class Project(info: ProjectInfo) extends DefaultProject(info) {
     lazy val sourceArtifact = Artifact(artifactID, "src", "jar", Some("sources"), Nil, None)
     lazy val docsArtifact = Artifact(artifactID, "docs", "jar", Some("scaladoc"), Nil, None)
     override def packageToPublishActions = super.packageToPublishActions ++ Seq(packageDocs, packageSrc)
-    
-    override def pomExtra = (
-      <name>spray</name>
-      <url>http://spray.cc/</url>
-      <inceptionYear>2011</inceptionYear>
-      <description>A Scala framework for building RESTful web services on top of Akka</description>
-      <licenses>
-        <license>
-          <name>Apache 2</name>
-          <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-          <distribution>repo</distribution>
-        </license>
-      </licenses>
-      <developers>
-        <developer>
-          <id>sirthias</id>
-          <name>Mathias Doenitz</name>
-          <timezone>+1</timezone>
-          <email>mathias [at] spray.cc</email>
-        </developer>
-      </developers>
-      <scm>
-        <url>http://github.com/spray/</url>
-      </scm>
-    )
   }
   
   class HttpProject(info: ProjectInfo) extends ModuleProject(info) {
@@ -124,6 +140,12 @@ class Project(info: ProjectInfo) extends DefaultProject(info) {
     val calculatorProject     = project("spray-example-calculator", "spray-example-calculator", new CalculatorProject(_))
     val markdownServerProject = project("spray-example-markdownserver", "spray-example-markdownserver", new MarkdownServerProject(_))
     val stopWatchProject      = project("spray-example-stopwatch", "spray-example-stopwatch", new StopWatchProject(_))
+    
+    // disable publishing
+    lazy override val publishLocal = task { None }
+    lazy override val publish = task { None }
+    
+    override def deliverProjectDependencies = Nil
   }
   
   abstract class SprayExampleProject(info: ProjectInfo) extends DefaultWebProject(info) with AkkaProject {
@@ -135,6 +157,10 @@ class Project(info: ProjectInfo) extends DefaultProject(info) {
     val specs       = Deps.specs
     val jettyServer = Deps.jettyServer
     val jettyWebApp = Deps.jettyWebApp
+
+    // disable publishing
+    lazy override val publishLocal = task { None }
+    lazy override val publish = task { None }
   }
   
   class CalculatorProject(info: ProjectInfo) extends SprayExampleProject(info) {
