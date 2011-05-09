@@ -1,5 +1,3 @@
-## _spray-json_
-
 _spray-json_ is a lightweight, clean and simple [JSON][] implementation in Scala.
 
 It sports the following features:
@@ -12,24 +10,26 @@ It sports the following features:
 
 ### Installation
 
-_spray-json_ is available from the [scala-tools.org][] respositories.
+_spray-json_ is available from the [scala-tools.org][] repositories.  
 There is no official release yet, but the current snapshot is `1.0-SNAPSHOT`.
-If you use SBT you can include it in your project with
 
-    val sprayJsonModuleConfig = ModuleConfiguration("cc.spray", ScalaToolsSnapshots)
+If you use SBT you can include _spray-json_ in your project with
+
+    val sprayJsonModuleConfig = ModuleConfiguration("cc.spray.json", ScalaToolsSnapshots)
     val sprayJson = "cc.spray.json" %% "spray-json" % "1.0.0-SNAPSHOT" % "compile" withSources()
 
 _spray-json_ has only one dependency: the parsing library [parboiled][] (which is also a dependency of _spray-server_ and _spray_client_, so if you use _spray-json_ with either of them you are not incurring any additional dependency).
+Currently it is built against Scala 2.8.1. A Scala 2.9.0 version will be available shortly after 2.9.0 final is shipped. 
 
 
 ### Usage
 
-_spray-json_ is really easy to use.
+_spray-json_ is really easy to use.  
 Just bring all relevant elements in scope with 
 
     import cc.spray.json._
 
-and do one or more of the following things:
+and do one or more of the following:
 
 1. Parse a JSON string into it's Abstract Syntax Tree (AST) representation
 
@@ -40,11 +40,11 @@ and do one or more of the following things:
 
         val json = PrettyPrinter(jsonAst)
         
-3. Convert any Scala object to a JSON AST using the pimped "toJson" method 
+3. Convert any Scala object to a JSON AST using the pimped `toJson` method 
         
         val jsonAst = List(1, 2, 3).toJson 
 
-4. Convert a JSON AST to a Scala object with the "fromJson" method
+4. Convert a JSON AST to a Scala object with the `fromJson` method
 
         val myObject = jsonAst.fromJson[MyObjectType]
         
@@ -60,14 +60,14 @@ The way you normally do this is via a "JsonProtocol".
 
 ### JsonProtocol
 
-_spray-json_ uses [SJSON][]s Scala-idiomatic type-class based approach to connect an existing type `T` with the information how to (de)serialize its instances to and from JSON. (In fact _spray-json_ even reuses [SJSON][] code, see the 'Credits' section below).
+_spray-json_ uses [SJSON][]s Scala-idiomatic type-class-based approach to connect an existing type `T` with the logic how to (de)serialize its instances to and from JSON. (In fact _spray-json_ even reuses [SJSON][] code, see the 'Credits' section below).
 
 This approach has the advantage of not requiring any change (or even access) to `T`s source code. All (de)serialization
 logic is attached 'from the outside'. There is no reflection involved, so the resulting conversions are fast. Scalas excellent type inference reduces verbosity and boilerplate to a minimum, while the Scala compiler will make sure at compile time that you provided all required (de)serialization logic. 
    
 In _spray-jsons_ terminology a 'JsonProtocol' is nothing but a bunch of implicit values of type `JsonFormat[T]`, whereby each `JsonFormat[T]` contains the logic of how to convert instance of `T` to and from JSON. All `JsonFormat[T]`s of a protocol need to be "MECE" (mutually exclusive, collectively exhaustive), i.e. they are not allowed to overlap and together need to span all types required by the application.
    
-This may sound more complicated than it is.
+This may sound more complicated than it is.  
 _spray-json_ comes with a `DefaultJsonProtocol` which already covers all of Scalas value types as well as the most important reference and collection types. As long as your code uses nothing more than these you only need the `DefaultJsonProtocol`.
 Here are the types already taken care off by the `DefaultJsonProtocol`: 
   
@@ -100,7 +100,7 @@ The `jsonFormat` method reduces the boilerplate to a minimum, just pass it the c
 
 ### Providing JsonFormats for other Types
 
-Of course you can also supply (de)serialization logic for types that aren't case classes.
+Of course you can also supply (de)serialization logic for types that aren't case classes.  
 Here is one way to do it:
 
     class Color(val name: String, val red: Int, val green: Int, val blue: Int)
@@ -151,14 +151,14 @@ Another way would be to serialize `Color`s as JSON objects:
       }
     }
 
-This is a bit more verbose in its definition and the resulting JSON but transports the field semantics over to the JSON side.
+This is a bit more verbose in its definition and the resulting JSON but transports the field semantics over to the JSON side.  
 Note that this is the approach _spray-json_ uses for case classes.
 
 
 ### Credits
 
 Most of type-class (de)serialization code is nothing but a polished copy of what **Debasish Ghosh** made available
-with his [SJSON library][]. These code parts therefore bear his copyright.
+with his [SJSON][] library. These code parts therefore bear his copyright.
 Additionally the JSON AST model is heavily inspired by the one from [Databinder-Dispatch][] by **Nathan Hamblen**.
 
   

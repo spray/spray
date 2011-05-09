@@ -32,7 +32,7 @@ object JsValue {
 
   /**
     * General converter to a JsValue.
-    * Throws an IllegalArgumentException of the given value cannot be converted.
+    * Throws an IllegalArgumentException if the given value cannot be converted.
    */
   def apply(value: Any): JsValue = value match {
     case null => JsNull
