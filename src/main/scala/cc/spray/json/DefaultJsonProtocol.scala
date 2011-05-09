@@ -16,11 +16,10 @@
  */
 
 package cc.spray.json
-package formats
 
 /**
   * Provides all the predefined JsonFormats.
  */
-trait DefaultJsonFormats extends BasicFormats with StandardFormats with CollectionFormats with GenericFormats
+trait DefaultJsonProtocol extends BasicFormats with StandardFormats with CollectionFormats with GenericFormats
 
-object DefaultJsonFormats extends DefaultJsonFormats
+object DefaultJsonProtocol extends DefaultJsonProtocol

@@ -16,7 +16,6 @@
  */
 
 package cc.spray.json
-package formats
 
 import reflect.Manifest
 

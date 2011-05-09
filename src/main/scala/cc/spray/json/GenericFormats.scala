@@ -16,7 +16,6 @@
  */
 
 package cc.spray.json
-package formats
 
 /**
   * Provides the helpers for constructing custom JsonFormat implementations.
@@ -34,7 +33,7 @@ trait GenericFormats {
     def read(value: JsValue) = delegate.read(value);
   }
   
-  def format[A :JF, B :JF, T <: Product](construct: (A, B) => T, a: String, b: String) = new JF[T]{
+  def jsonFormat[A :JF, B :JF, T <: Product](construct: (A, B) => T, a: String, b: String) = new JF[T]{
     def write(p: T) = JsObject(
       JsField(a, element[A](p, 0).toJson),
       JsField(b, element[B](p, 1).toJson)
@@ -45,7 +44,7 @@ trait GenericFormats {
     )
   }
 
-  def format[A :JF, B :JF, C :JF, T <: Product](construct: (A, B, C) => T,
+  def jsonFormat[A :JF, B :JF, C :JF, T <: Product](construct: (A, B, C) => T,
                                                 a: String, b: String, c: String) = new JF[T]{
     def write(p: T) = JsObject(
       JsField(a, element[A](p, 0).toJson),
@@ -59,7 +58,7 @@ trait GenericFormats {
     )
   }
 
-  def format[A :JF, B :JF, C :JF, D :JF, T <: Product](construct: (A, B, C, D) => T,
+  def jsonFormat[A :JF, B :JF, C :JF, D :JF, T <: Product](construct: (A, B, C, D) => T,
                                                        a: String, b: String, c: String, d: String) = new JF[T]{
     def write(p: T) = JsObject(
       JsField(a, element[A](p, 0).toJson),
@@ -75,7 +74,7 @@ trait GenericFormats {
     )
   }
 
-  def format[A :JF, B :JF, C :JF, D :JF, E :JF, T <: Product](construct: (A, B, C, D, E) => T,
+  def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, T <: Product](construct: (A, B, C, D, E) => T,
         a: String, b: String, c: String, d: String, e: String) = new JF[T]{
     def write(p: T) = JsObject(
       JsField(a, element[A](p, 0).toJson),
@@ -93,7 +92,7 @@ trait GenericFormats {
     )
   }
   
-  def format[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, T <: Product](construct: (A, B, C, D, E, F) => T,
+  def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, T <: Product](construct: (A, B, C, D, E, F) => T,
         a: String, b: String, c: String, d: String, e: String, f: String) = new JF[T]{
     def write(p: T) = JsObject(
       JsField(a, element[A](p, 0).toJson),
@@ -113,7 +112,7 @@ trait GenericFormats {
     )
   }
   
-  def format[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, T <: Product](construct: (A, B, C, D, E, F, G) => T,
+  def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, T <: Product](construct: (A, B, C, D, E, F, G) => T,
         a: String, b: String, c: String, d: String, e: String, f: String, g: String) = new JF[T]{
     def write(p: T) = JsObject(
       JsField(a, element[A](p, 0).toJson),
@@ -135,7 +134,7 @@ trait GenericFormats {
     )
   }
   
-  def format[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, T <: Product]
+  def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, T <: Product]
         (construct: (A, B, C, D, E, F, G, H) => T,
         a: String, b: String, c: String, d: String, e: String, f: String, g: String, h: String) = new JF[T]{
     def write(p: T) = JsObject(
@@ -160,7 +159,7 @@ trait GenericFormats {
     )
   }
   
-  def format[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, T <: Product]
+  def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, T <: Product]
         (construct: (A, B, C, D, E, F, G, H, I) => T,
         a: String, b: String, c: String, d: String, e: String, f: String, g: String, h: String, i: String) = new JF[T]{
     def write(p: T) = JsObject(
@@ -187,7 +186,7 @@ trait GenericFormats {
     )
   }
   
-  def format[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, T <: Product]
+  def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, T <: Product]
         (construct: (A, B, C, D, E, F, G, H, I, J) => T, a: String, b: String, c: String, d: String, e: String,
          f: String, g: String, h: String, i: String, j: String) = new JF[T]{
     def write(p: T) = JsObject(
@@ -216,7 +215,7 @@ trait GenericFormats {
     )
   }
   
-  def format[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, K :JF, T <: Product]
+  def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, K :JF, T <: Product]
         (construct: (A, B, C, D, E, F, G, H, I, J, K) => T, a: String, b: String, c: String, d: String, e: String,
          f: String, g: String, h: String, i: String, j: String, k: String) = new JF[T]{
     def write(p: T) = JsObject(

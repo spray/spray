@@ -18,7 +18,6 @@
 
 package cc.spray.json
 
-import formats._
 import collection.mutable.ListBuffer
 
 /**

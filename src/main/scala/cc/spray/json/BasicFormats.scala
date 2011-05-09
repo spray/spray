@@ -16,7 +16,6 @@
  */
 
 package cc.spray.json
-package formats
 
 /**
   * Provides the JsonFormats for the most important Scala types.

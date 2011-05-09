@@ -16,8 +16,6 @@
 
 package cc.spray
 
-import json.formats.{JsonReader, JsonWriter}
-
 package object json {
   
   def jsonReader[T](implicit reader: JsonReader[T]) = reader  
@@ -25,4 +23,10 @@ package object json {
   
   implicit def pimpAny[T :JsonWriter](any: T): PimpedAny[T] = new PimpedAny(any, jsonWriter) 
   
+}
+
+package json {
+  private[json] class PimpedAny[T](any: T, writer: JsonWriter[T]) {
+    def toJson: JsValue = writer.write(any)
+  }
 }

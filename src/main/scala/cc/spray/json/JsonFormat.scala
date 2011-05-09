@@ -16,7 +16,6 @@
  */
 
 package cc.spray.json
-package formats
 
 /**
   * Provides the JSON deserialization for type T.

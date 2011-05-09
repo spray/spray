@@ -6,7 +6,7 @@ import org.specs.Specification
 class GenericFormatsSpec extends Specification with GenericFormats with BasicFormats {
 
   case class Test2(a: Int, b: Double)
-  implicit val test2Format = format(Test2, "a", "b") 
+  implicit val test2Format = jsonFormat(Test2, "a", "b") 
   
   "A JsonFormat created with format, for a case class with 2 elements," should {
     val obj = Test2(42, 4.2)
