@@ -1,5 +1,4 @@
 package cc.spray.json
-package formats
 
 import org.specs.Specification
 
