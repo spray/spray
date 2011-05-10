@@ -47,10 +47,6 @@ and do one or more of the following:
 4. Convert a JSON AST to a Scala object with the `fromJson` method
 
         val myObject = jsonAst.fromJson[MyObjectType]
-        
-   or 
-
-        val myObject: MyObjectType = jsonAst.fromJson
 
         
 In order to make steps 3 and 4 work for an object of type `T` you need to bring implicit values in scope that
@@ -173,7 +169,8 @@ Feedback and contributions to the project, no matter what kind, are always very 
 However, patches can only be accepted from their original author.
 Along with any patches, please state that the patch is your original work and that you license the work to the pegdown project under the project’s open source license.
   
-   
+
+  [JSON]: http://json.org
   [parboiled]: http://parboiled.org
   [scala-tools.org]: http://scala-tools.org
   [SJSON]: https://github.com/debasishg/sjson
