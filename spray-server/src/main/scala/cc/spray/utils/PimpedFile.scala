@@ -16,26 +16,15 @@
 
 package cc.spray.utils
 
-import collection.immutable.LinearSeq
+import java.io.File
 
-class PimpedLinearSeq[+A](underlying: LinearSeq[A]) {
+class PimpedFile(file: File) {
   
-  def mapFind[B](f: A => Option[B]): Option[B] = {
-    var res: Option[B] = None
-    var these = underlying
-    while (res.isEmpty && !these.isEmpty) {
-      res = f(these.head)
-      these = these.tail
-    }
-    res
-  }
-  
-  def findByType[B :Manifest]: Option[B] = {
-    val erasure = manifest.erasure
-    mapFind { x =>
-      if (erasure.isInstance(x)) {
-        Some(x.asInstanceOf[B])
-      } else None
+  def extension = {
+    val name = file.getName
+    name.lastIndexOf('.') match {
+      case -1 => ""
+      case x => name.substring(x + 1)
     }
   }
   

@@ -17,12 +17,11 @@
 package cc
 
 import java.io.File
-import spray.http._
-import collection.immutable.LinearSeq
-import spray.marshalling.{Marshalling, Unmarshalling}
-import spray.utils.{PimpedProduct, PimpedClass, PimpedLinearSeq}
 import util.matching.Regex
-import java.util.regex.Pattern
+import collection.immutable.LinearSeq
+import spray.http._
+import spray.marshalling._
+import spray.utils._
 
 package object spray {
 
@@ -40,33 +39,9 @@ package object spray {
   def unmarshaller[T](implicit um: Unmarshaller[T]) = um
   
   // implicits
-  
   implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq)
-
   implicit def pimpClass[A](clazz: Class[A]): PimpedClass[A] = new PimpedClass[A](clazz)
-  
   implicit def pimpProduct(product: Product): PimpedProduct = new PimpedProduct(product)
-
-  implicit def pimpFile(file: File) = new {
-    def extension = {
-      val name = file.getName
-      name.lastIndexOf('.') match {
-        case -1 => ""
-        case x => name.substring(x + 1)
-      }
-    }
-  }
-  
-  implicit def pimpRegex(regex: Regex) = new {
-    def groupCount = {
-      try {
-        val field = classOf[Pattern].getDeclaredField("capturingGroupCount")
-        field.setAccessible(true)
-        field.getInt(regex.pattern) - 1
-      } catch {
-        case t: Throwable =>
-          throw new RuntimeException("Could not determine regex group count: " + regex.pattern.pattern, t)
-      }
-    }
-  } 
+  implicit def pimpFile(file: File) = new PimpedFile(file)
+  implicit def pimpRegex(regex: Regex) = new PimpedRegex(regex)
 }

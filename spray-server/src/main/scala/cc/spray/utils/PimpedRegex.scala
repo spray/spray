@@ -16,26 +16,19 @@
 
 package cc.spray.utils
 
-import collection.immutable.LinearSeq
+import util.matching.Regex
+import java.util.regex.Pattern
 
-class PimpedLinearSeq[+A](underlying: LinearSeq[A]) {
+class PimpedRegex(regex: Regex) {
   
-  def mapFind[B](f: A => Option[B]): Option[B] = {
-    var res: Option[B] = None
-    var these = underlying
-    while (res.isEmpty && !these.isEmpty) {
-      res = f(these.head)
-      these = these.tail
-    }
-    res
-  }
-  
-  def findByType[B :Manifest]: Option[B] = {
-    val erasure = manifest.erasure
-    mapFind { x =>
-      if (erasure.isInstance(x)) {
-        Some(x.asInstanceOf[B])
-      } else None
+  def groupCount = {
+    try {
+      val field = classOf[Pattern].getDeclaredField("capturingGroupCount")
+      field.setAccessible(true)
+      field.getInt(regex.pattern) - 1
+    } catch {
+      case t: Throwable =>
+        throw new RuntimeException("Could not determine regex group count: " + regex.pattern.pattern, t)
     }
   }
   
