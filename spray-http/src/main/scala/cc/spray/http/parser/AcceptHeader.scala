@@ -33,7 +33,7 @@ private[parser] trait AcceptHeader {
   }
   
   def MediaRangeDef = rule (
-    ("*/*" ~ push("*", "*") | Type ~ "/" ~ ("*" ~ push("*") | Subtype))
+    ("*/*" ~ push("*", "*") | Type ~ "/" ~ ("*" ~ push("*") | Subtype) | "*" ~ push("*", "*"))
       ~~> (getMediaRange(_, _))   
   )
   
