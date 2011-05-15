@@ -18,7 +18,6 @@
 
     <logger name="akka" level="INFO" />
     <logger name="org.eclipse.jetty" level="INFO" />
-    <logger name="cc.spray.RootService" level="DEBUG" />
 
     <root level="DEBUG">
         <appender-ref ref="CONSOLE"/>
