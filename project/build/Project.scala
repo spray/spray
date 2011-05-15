@@ -1,5 +1,4 @@
 import sbt._
-import java.io.File
 
 class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProject{
   
@@ -18,16 +17,14 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   // -------------------------------------------------------------------------------------------------------------------
   import Repositories._
   val glassfishModuleConfig = ModuleConfiguration("org.glassfish", JavaNetRepo)
-  val parboiledModuleConfig = ModuleConfiguration("org.parboiled", ScalaToolsSnapshots)
-  val pegdownModuleConfig   = ModuleConfiguration("org.pegdown", ScalaToolsSnapshots)
   
   // -------------------------------------------------------------------------------------------------------------------
   // Dependencies
   // -------------------------------------------------------------------------------------------------------------------
   object Deps {
     // compile
-    val parboiledC = "org.parboiled" % "parboiled-core" % "0.12.0-SNAPSHOT" % "compile" withSources()
-    val parboiledS = "org.parboiled" % "parboiled-scala" % "0.12.0-SNAPSHOT" % "compile" withSources()
+    val parboiledC = "org.parboiled" % "parboiled-core" % "1.0.0" % "compile" withSources()
+    val parboiledS = "org.parboiled" % "parboiled-scala" % "1.0.0" % "compile" withSources()
     val asyncHttp  = "com.ning" % "async-http-client" % "1.6.3" % "compile" withSources()
     
     // provided
@@ -36,10 +33,10 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val tomcat6            = "org.apache.tomcat" % "catalina" % "6.0.32" % "provided"
     
     // test
-    val specs = "org.scala-tools.testing" %% "specs" % "1.6.7" % "test" withSources()
+    val specs = "org.scala-tools.testing" %% "specs" % "1.6.8" % "test" withSources()
     
     // only for examples
-    val pegdown = "org.pegdown" % "pegdown" % "0.10.0-SNAPSHOT" % "compile" withSources()
+    val pegdown = "org.pegdown" % "pegdown" % "1.0.0" % "compile" withSources()
     val JETTY_VERSION = "8.0.0.M2"
     val jettyServer = "org.eclipse.jetty" % "jetty-server" % JETTY_VERSION % "test"
     val jettyWebApp = "org.eclipse.jetty" % "jetty-webapp" % JETTY_VERSION % "test"
