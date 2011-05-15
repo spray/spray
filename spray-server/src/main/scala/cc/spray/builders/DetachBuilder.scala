@@ -18,11 +18,7 @@ package cc.spray
 package builders
 
 import akka.actor.Actor
-import akka.util.Logging
-import http._
-import StatusCodes._
-import org.parboiled.common.StringUtils
-import java.io.{Writer, StringWriter, PrintStream, PrintWriter}
+import utils.Logging
 
 private[spray] trait DetachBuilder {
 

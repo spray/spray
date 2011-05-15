@@ -3,7 +3,7 @@ package cc.spray
 import http._
 import StatusCodes._
 import java.io.{PrintWriter, StringWriter}
-import akka.util.Logging
+import utils.Logging
 
 trait ErrorHandling {
   
@@ -23,9 +23,7 @@ trait ErrorLogging extends ErrorHandling {
   this: Logging =>
   
   protected def logException(request: HttpRequest, e: Exception) {
-    val stackTrace = new StringWriter()
-    e.printStackTrace(new PrintWriter(stackTrace));
-    log.slf4j.error("Error during processing of request {}:\n{}", request, stackTrace)
+    logError(e, "Error during processing of request %s", request)
   }
   
 }

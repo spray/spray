@@ -10,6 +10,7 @@ import java.util.concurrent.{ExecutionException, Executor}
 import java.io.ByteArrayOutputStream
 import collection.JavaConversions._
 import org.parboiled.common.FileUtils
+import akka.event.EventHandler
 
 class HttpClient(val ahc: AsyncHttpClient) {
   
@@ -24,6 +25,7 @@ class HttpClient(val ahc: AsyncHttpClient) {
   
   def dispatch(request: HttpRequest, requestConfig: RequestConfig = null,
                handler: AsyncHandler[HttpResponse] = defaultHandler): Future[HttpResponse] = {
+    EventHandler.debug(this, "Dispatching HTTP request:\n" + request)    
     val akkaFuture = new DefaultCompletableFuture[HttpResponse](Long.MaxValue)
     val ahcRequest = fromSprayRequest(request, requestConfig)
     val ahcFuture = ahc.executeRequest(ahcRequest, handler)    
@@ -32,8 +34,15 @@ class HttpClient(val ahc: AsyncHttpClient) {
         try {
           akkaFuture.completeWithResult(ahcFuture.get)
         } catch {
-          case e: ExecutionException => akkaFuture.completeWithException(e.getCause)
-          case e => akkaFuture.completeWithException(e)
+          case e: ExecutionException => {
+            val cause = e.getCause
+            EventHandler.error(cause, this, "Could not get HTTP response from remote server")
+            akkaFuture.completeWithException(cause)
+          }
+          case e => {
+            EventHandler.error(e, this, "Could not get HTTP response from remote server")
+            akkaFuture.completeWithException(e)
+          }
         }
       }
     }, new Executor {

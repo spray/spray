@@ -17,7 +17,7 @@
 package cc.spray
 package connectors
 
-import akka.util.Logging
+import utils.Logging
 import collection.mutable.HashMap
 import collection.JavaConversions._
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest, HttpServlet}
@@ -32,9 +32,9 @@ private[connectors] trait ConnectorServlet extends HttpServlet with Logging {
   def containerName: String
   
   override def init() {
-    log.slf4j.info("Initializing {} <=> Spray Connector", containerName)
+    logInfo("Initializing %s <=> Spray Connector", containerName)
     timeout = SpraySettings.AsyncTimeout
-    log.slf4j.info("Async timeout for all requests is {} ms", timeout)
+    logInfo("Async timeout for all requests is %s ms", timeout)
   }
   
   def rawRequest(req: HttpServletRequest) = new RawRequest {
@@ -70,10 +70,10 @@ private[connectors] trait ConnectorServlet extends HttpServlet with Logging {
       close
     } catch {
       case e: CantWriteResponseBodyException => {
-        log.slf4j.error("Could not write response body, " +
+        logError("Could not write response body, " +
                 "probably the request has either timed out or the client has disconnected")
       }
-      case e: Exception => log.slf4j.error("Could not complete request", e)
+      case e: Exception => logError(e, "Could not complete request")
     }
   }
   

@@ -36,6 +36,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val specs = "org.scala-tools.testing" %% "specs" % "1.6.8" % "test" withSources()
     
     // only for examples
+    val logback = "ch.qos.logback" % "logback-classic" % "0.9.28" % "runtime"
     val pegdown = "org.pegdown" % "pegdown" % "1.0.0" % "compile" withSources()
     val JETTY_VERSION = "8.0.0.M2"
     val jettyServer = "org.eclipse.jetty" % "jetty-server" % JETTY_VERSION % "test"
@@ -48,10 +49,10 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
 
   val scalaCompileSettings =
     Seq("-deprecation",
+        //"-unchecked",
         //"-Xmigration",
         //"-Xcheckinit",
         //"-optimise",
-        "-Xwarninit",
         "-encoding", "utf8")
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -133,27 +134,28 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   }
   
   class ExamplesProject(info: ProjectInfo) extends ParentProject(info) {
-    override def disableCrossPaths = true
     val calculatorProject     = project("spray-example-calculator", "spray-example-calculator", new CalculatorProject(_))
     val markdownServerProject = project("spray-example-markdownserver", "spray-example-markdownserver", new MarkdownServerProject(_))
     val stopWatchProject      = project("spray-example-stopwatch", "spray-example-stopwatch", new StopWatchProject(_))
-    
+
     // disable publishing
     lazy override val publishLocal = task { None }
     lazy override val publish = task { None }
     
     override def deliverProjectDependencies = Nil
+    override def disableCrossPaths = true
   }
   
   abstract class SprayExampleProject(info: ProjectInfo) extends DefaultWebProject(info) with AkkaProject {
     override val akkaActor = akkaModule("actor") withSources() // always have the sources around
-    val akkaHttp           = akkaModule("http")  withSources() // always have the sources around
+    val akkaSlf4j          = akkaModule("slf4j") withSources()
     val http               = httpProject
     val server             = serverProject
     
     val specs       = Deps.specs
     val jettyServer = Deps.jettyServer
     val jettyWebApp = Deps.jettyWebApp
+    val logback     = Deps.logback
 
     // disable publishing
     lazy override val publishLocal = task { None }

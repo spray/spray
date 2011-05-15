@@ -18,7 +18,7 @@ package cc.spray
 
 import http._
 import akka.actor.Actor
-import akka.util.Logging
+import utils.Logging
 
 /**
  * The actor path of the [[cc.spray.HttpService]].
