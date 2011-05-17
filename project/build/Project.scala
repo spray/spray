@@ -17,15 +17,14 @@ class Project(info: ProjectInfo) extends DefaultProject(info) {
   // Therefore, if repositories are defined, this must happen as def, not as val.
   // -------------------------------------------------------------------------------------------------------------------
   import Repositories._
-  val parboiledModuleConfig = ModuleConfiguration("org.parboiled", ScalaToolsSnapshots)
 
   // -------------------------------------------------------------------------------------------------------------------
   // Dependencies
   // -------------------------------------------------------------------------------------------------------------------
-  val parboiledC = "org.parboiled" % "parboiled-core" % "0.12.0-SNAPSHOT" % "compile" withSources()
-  val parboiledS = "org.parboiled" % "parboiled-scala" % "0.12.0-SNAPSHOT" % "compile" withSources()
+  val parboiledC = "org.parboiled" % "parboiled-core" % "1.0.0" % "compile" withSources()
+  val parboiledS = "org.parboiled" % "parboiled-scala" % "1.0.0" % "compile" withSources()
   
-  val specs = "org.scala-tools.testing" %% "specs" % "1.6.7" % "test" withSources()
+  val specs = "org.scala-tools.testing" %% "specs" % "1.6.8" % "test" withSources()
   
   // -------------------------------------------------------------------------------------------------------------------
   // Options

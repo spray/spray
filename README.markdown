@@ -12,6 +12,7 @@ It sports the following features:
 
 _spray-json_ is available from the [scala-tools.org][] repositories.  
 There is no official release yet, but the current snapshot is `1.0-SNAPSHOT`.
+It is built against Scala 2.9.0, but backporting to 2.8.1 is no problem (let me know if you need a 2.8.1 compatible version).
 
 If you use SBT you can include _spray-json_ in your project with
 
@@ -19,7 +20,6 @@ If you use SBT you can include _spray-json_ in your project with
     val sprayJson = "cc.spray.json" %% "spray-json" % "1.0.0-SNAPSHOT" % "compile" withSources()
 
 _spray-json_ has only one dependency: the parsing library [parboiled][] (which is also a dependency of _spray-server_ and _spray_client_, so if you use _spray-json_ with either of them you are not incurring any additional dependency).
-Currently it is built against Scala 2.8.1. A Scala 2.9.0 version will be available shortly after 2.9.0 final is shipped. 
 
 
 ### Usage

@@ -54,7 +54,7 @@ class CollectionFormatsSpec extends Specification with CollectionFormats with Ba
   
   "The mutableSetFormat" should {
     val set = collection.mutable.Set(1, 2, 3)
-    val json = JsArray(JsNumber(3), JsNumber(1), JsNumber(2))
+    val json = JsArray(JsNumber(1), JsNumber(3), JsNumber(2))
     "convert a collection.mutable.Set[Int] to a JsArray of JsNumbers" in {
       set.toJson mustEqual json
     }
