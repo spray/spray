@@ -36,19 +36,19 @@ class RootService extends Actor with ToFromRawConverter with Logging {
   lazy val addConnectionCloseResponseHeader = SpraySettings.CloseConnection
 
   override def preStart() {
-    logDebug("Starting spray RootService ...")
+    log.debug("Starting spray RootService ...")
   }
 
   override def postStop() {
-    logDebug("spray RootService stopped")
+    log.debug("spray RootService stopped")
   }
 
   override def preRestart(reason: Throwable) {
-    logDebug("Restarting spray RootService ...")
+    log.debug("Restarting spray RootService ...")
   }
 
   override def postRestart(reason: Throwable) {
-    logDebug("spray RootService restarted");
+    log.debug("spray RootService restarted");
   }
 
   protected def receive = {
@@ -64,19 +64,19 @@ class RootService extends Actor with ToFromRawConverter with Logging {
   }
   
   private def handleNoServices(rawContext: RawRequestContext) {
-    logDebug("Received %s with no attached services, completing with 404", toSprayRequest(rawContext.request))
+    log.debug("Received %s with no attached services, completing with 404", toSprayRequest(rawContext.request))
     completeNoService(rawContext)
   }
   
   private def handleOneService(rawContext: RawRequestContext) {
     val request = toSprayRequest(rawContext.request)
-    logDebug("Received %s with one attached service, dispatching...", request)
+    log.debug("Received %s with one attached service, dispatching...", request)
     (services.head !!! request) onComplete completeRequest(rawContext) _
   }
   
   private def handleMultipleServices(rawContext: RawRequestContext) {    
     val request = toSprayRequest(rawContext.request)
-    logDebug("Received %s with %s attached services, dispatching...", services.size, request)
+    log.debug("Received %s with %s attached services, dispatching...", services.size, request)
     val futures = services.map(_ !!! request).asInstanceOf[List[Future[Any]]]
     Futures.fold(None.asInstanceOf[Option[Any]])(futures) { (result, future) =>
       (result, future) match {
@@ -84,7 +84,7 @@ class RootService extends Actor with ToFromRawConverter with Logging {
         case (None, x: Some[_]) => x
         case (x: Some[_], None) => x 
         case (x: Some[_], Some(y)) => {
-         logWarn("Received a second response for request '%s':\n\nn%s\n\nIgnoring the additional response...", request, y)
+         log.warn("Received a second response for request '%s':\n\nn%s\n\nIgnoring the additional response...", request, y)
           x
         }
       }
@@ -107,7 +107,7 @@ class RootService extends Actor with ToFromRawConverter with Logging {
   }
 
   protected def handleException(e: Throwable, rawContext: RawRequestContext) {
-    logError(e, "Exception during request processing")
+    log.error(e, "Exception during request processing")
     rawContext.complete(fromSprayResponse(e match {
       case e: HttpException => HttpResponse(e.failure)
       case e: Exception => HttpResponse(InternalServerError, e.getMessage)

@@ -16,8 +16,38 @@
 
 package cc.spray.utils
 
-import akka.event.EventHandler._
 import String.format
+import java.io.{PrintWriter, StringWriter}
+
+trait Logging {  
+  val log: Log = new EventHandlerLog(this)  
+}
+
+trait Log {
+  def debug(msg: => String)
+  def debug(msgFmt: String, a: => Any)
+  def debug(msgFmt: String, a: => Any, b: => Any)
+  def debug(msgFmt: String, a: => Any, b: => Any, c: => Any)
+  
+  def info(msg: => String)
+  def info(msgFmt: String, a: => Any)
+  def info(msgFmt: String, a: => Any, b: => Any)
+  def info(msgFmt: String, a: => Any, b: => Any, c: => Any)
+  
+  def warn(msg: => String)
+  def warn(msgFmt: String, a: => Any)
+  def warn(msgFmt: String, a: => Any, b: => Any)
+  def warn(msgFmt: String, a: => Any, b: => Any, c: => Any)
+  
+  def error(msg: => String)
+  def error(msgFmt: String, a: => Any)
+  def error(msgFmt: String, a: => Any, b: => Any)
+  def error(msgFmt: String, a: => Any, b: => Any, c: => Any)
+  def error(cause: Throwable, msg: => String)
+  def error(cause: Throwable, msgFmt: String, a: => Any)
+  def error(cause: Throwable, msgFmt: String, a: => Any, b: => Any)
+  def error(cause: Throwable, msgFmt: String, a: => Any, b: => Any, c: => Any)  
+}
 
 /**
   * Defines simple convenience logging methods that delegate to the Akka EventHandler.
@@ -32,32 +62,102 @@ import String.format
   *  In the last case it is better to not use String.format (due to its somewhat lower performance) but instead use
   *  some faster, more specialized String formatting, like the [[org.slf4j.helpers.MessageFormatter]].
   */
-trait Logging {
+class EventHandlerLog(source: AnyRef) extends Log {
+  import akka.event.{EventHandler => EH}
   
-  def logDebug(msg: => String) { debug(this, msg) }
-  def logDebug(msgFmt: String, a: => Any) { debug(this, format(msgFmt, box(a))) }
-  def logDebug(msgFmt: String, a: => Any, b: => Any) { debug(this, format(msgFmt, box(a), box(b))) }
-  def logDebug(msgFmt: String, a: => Any, b: => Any, c: => Any) { debug(this, format(msgFmt, box(a), box(b), box(c))) }
+  def debug(msg: => String) { EH.debug(source, msg) }
+  def debug(msgFmt: String, a: => Any) { EH.debug(source, format(msgFmt, box(a))) }
+  def debug(msgFmt: String, a: => Any, b: => Any) { EH.debug(source, format(msgFmt, box(a), box(b))) }
+  def debug(msgFmt: String, a: => Any, b: => Any, c: => Any) { EH.debug(source, format(msgFmt, box(a), box(b), box(c))) }
   
-  def logInfo(msg: => String) { info(this, msg) }
-  def logInfo(msgFmt: String, a: => Any) { info(this, format(msgFmt, box(a))) }
-  def logInfo(msgFmt: String, a: => Any, b: => Any) { info(this, format(msgFmt, box(a), box(b))) }
-  def logInfo(msgFmt: String, a: => Any, b: => Any, c: => Any) { info(this, format(msgFmt, box(a), box(b), box(c))) }
+  def info(msg: => String) { EH.info(source, msg) }
+  def info(msgFmt: String, a: => Any) { EH.info(source, format(msgFmt, box(a))) }
+  def info(msgFmt: String, a: => Any, b: => Any) { EH.info(source, format(msgFmt, box(a), box(b))) }
+  def info(msgFmt: String, a: => Any, b: => Any, c: => Any) { EH.info(source, format(msgFmt, box(a), box(b), box(c))) }
   
-  def logWarn(msg: => String) { warning(this, msg) }
-  def logWarn(msgFmt: String, a: => Any) { warning(this, format(msgFmt, box(a))) }
-  def logWarn(msgFmt: String, a: => Any, b: => Any) { warning(this, format(msgFmt, box(a), box(b))) }
-  def logWarn(msgFmt: String, a: => Any, b: => Any, c: => Any) { warning(this, format(msgFmt, box(a), box(b), box(c))) }
+  def warn(msg: => String) { EH.warning(source, msg) }
+  def warn(msgFmt: String, a: => Any) { EH.warning(source, format(msgFmt, box(a))) }
+  def warn(msgFmt: String, a: => Any, b: => Any) { EH.warning(source, format(msgFmt, box(a), box(b))) }
+  def warn(msgFmt: String, a: => Any, b: => Any, c: => Any) { EH.warning(source, format(msgFmt, box(a), box(b), box(c))) }
   
-  def logError(msg: => String) { error(this, msg) }
-  def logError(msgFmt: String, a: => Any) { error(this, format(msgFmt, box(a))) }
-  def logError(msgFmt: String, a: => Any, b: => Any) { error(this, format(msgFmt, box(a), box(b))) }
-  def logError(msgFmt: String, a: => Any, b: => Any, c: => Any) { error(this, format(msgFmt, box(a), box(b), box(c))) }
-  def logError(cause: Throwable, msg: => String) { error(cause, this, msg) }
-  def logError(cause: Throwable, msgFmt: String, a: => Any) { error(cause, this, format(msgFmt, box(a))) }
-  def logError(cause: Throwable, msgFmt: String, a: => Any, b: => Any) { error(cause, this, format(msgFmt, box(a), box(b))) }
-  def logError(cause: Throwable, msgFmt: String, a: => Any, b: => Any, c: => Any) { error(cause, this, format(msgFmt, box(a), box(b), box(c))) }  
+  def error(msg: => String) { EH.error(source, msg) }
+  def error(msgFmt: String, a: => Any) { EH.error(source, format(msgFmt, box(a))) }
+  def error(msgFmt: String, a: => Any, b: => Any) { EH.error(source, format(msgFmt, box(a), box(b))) }
+  def error(msgFmt: String, a: => Any, b: => Any, c: => Any) { EH.error(source, format(msgFmt, box(a), box(b), box(c))) }
+  def error(cause: Throwable, msg: => String) { EH.error(cause, source, msg) }
+  def error(cause: Throwable, msgFmt: String, a: => Any) { EH.error(cause, source, format(msgFmt, box(a))) }
+  def error(cause: Throwable, msgFmt: String, a: => Any, b: => Any) { EH.error(cause, source, format(msgFmt, box(a), box(b))) }
+  def error(cause: Throwable, msgFmt: String, a: => Any, b: => Any, c: => Any) { EH.error(cause, source, format(msgFmt, box(a), box(b), box(c))) }  
 
   @inline
   private def box(a: Any) = a.asInstanceOf[AnyRef]
+}
+
+/**
+ * A Log that simply prints all log messages directly to stdout
+ */
+class ConsoleLog(source: AnyRef) extends Log {
+  private val name = source.getClass.getName
+  
+  def debug(msg: => String) { println("[DEBUG] " + name + "\n\t" + msg) }
+  def debug(msgFmt: String, a: => Any) { debug(format(msgFmt, box(a))) }
+  def debug(msgFmt: String, a: => Any, b: => Any) { debug(format(msgFmt, box(a), box(b))) }
+  def debug(msgFmt: String, a: => Any, b: => Any, c: => Any) { debug(format(msgFmt, box(a), box(b), box(c))) }
+  
+  def info(msg: => String) { println("[INFO ] " + name + "\n\t" + msg) }
+  def info(msgFmt: String, a: => Any) { info(format(msgFmt, box(a))) }
+  def info(msgFmt: String, a: => Any, b: => Any) { info(format(msgFmt, box(a), box(b))) }
+  def info(msgFmt: String, a: => Any, b: => Any, c: => Any) { info(format(msgFmt, box(a), box(b), box(c))) }
+  
+  def warn(msg: => String) { println("[WARN ] " + name + "\n\t" + msg) }
+  def warn(msgFmt: String, a: => Any) { warn(format(msgFmt, box(a))) }
+  def warn(msgFmt: String, a: => Any, b: => Any) { warn(format(msgFmt, box(a), box(b))) }
+  def warn(msgFmt: String, a: => Any, b: => Any, c: => Any) { warn(format(msgFmt, box(a), box(b), box(c))) }
+  
+  def error(msg: => String) { println("[ERROR] " + name + "\n\t" + msg) }
+  def error(msgFmt: String, a: => Any) { error(format(msgFmt, box(a))) }
+  def error(msgFmt: String, a: => Any, b: => Any) { error(format(msgFmt, box(a), box(b))) }
+  def error(msgFmt: String, a: => Any, b: => Any, c: => Any) { error(format(msgFmt, box(a), box(b), box(c))) }
+  def error(cause: Throwable, msg: => String) { println("[ERROR] " + name + "\n\t" + msg + "\n\t" + stackTrace(cause)) }
+  def error(cause: Throwable, msgFmt: String, a: => Any) { error(cause, format(msgFmt, box(a))) }
+  def error(cause: Throwable, msgFmt: String, a: => Any, b: => Any) { error(cause, format(msgFmt, box(a), box(b))) }
+  def error(cause: Throwable, msgFmt: String, a: => Any, b: => Any, c: => Any) { error(cause, format(msgFmt, box(a), box(b), box(c))) }  
+
+  @inline
+  private def box(a: Any) = a.asInstanceOf[AnyRef]
+  
+  private def stackTrace(e: Throwable) = {
+    val sw = new StringWriter
+    e.printStackTrace(new PrintWriter(sw))
+    sw.toString
+  }
+}
+
+/**
+ * A Log that simply discards all log messages. Useful for example for testing.
+ */
+object NoLog extends Log {
+  def debug(msg: => String) {}
+  def debug(msgFmt: String, a: => Any) {}
+  def debug(msgFmt: String, a: => Any, b: => Any) {}
+  def debug(msgFmt: String, a: => Any, b: => Any, c: => Any) {}
+  
+  def info(msg: => String) {}
+  def info(msgFmt: String, a: => Any) {}
+  def info(msgFmt: String, a: => Any, b: => Any) {}
+  def info(msgFmt: String, a: => Any, b: => Any, c: => Any) {}
+  
+  def warn(msg: => String) {}
+  def warn(msgFmt: String, a: => Any) {}
+  def warn(msgFmt: String, a: => Any, b: => Any) {}
+  def warn(msgFmt: String, a: => Any, b: => Any, c: => Any) {}
+  
+  def error(msg: => String) {}
+  def error(msgFmt: String, a: => Any) {}
+  def error(msgFmt: String, a: => Any, b: => Any) {}
+  def error(msgFmt: String, a: => Any, b: => Any, c: => Any) {}
+  def error(cause: Throwable, msg: => String) {}
+  def error(cause: Throwable, msgFmt: String, a: => Any) {}
+  def error(cause: Throwable, msgFmt: String, a: => Any, b: => Any) {}
+  def error(cause: Throwable, msgFmt: String, a: => Any, b: => Any, c: => Any) {}  
 }

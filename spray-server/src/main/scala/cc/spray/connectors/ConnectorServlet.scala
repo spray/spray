@@ -32,9 +32,9 @@ private[connectors] trait ConnectorServlet extends HttpServlet with Logging {
   def containerName: String
   
   override def init() {
-    logInfo("Initializing %s <=> Spray Connector", containerName)
+    log.info("Initializing %s <=> Spray Connector", containerName)
     timeout = SpraySettings.AsyncTimeout
-    logInfo("Async timeout for all requests is %s ms", timeout)
+    log.info("Async timeout for all requests is %s ms", timeout)
   }
   
   def rawRequest(req: HttpServletRequest) = new RawRequest {
@@ -70,10 +70,10 @@ private[connectors] trait ConnectorServlet extends HttpServlet with Logging {
       close
     } catch {
       case e: CantWriteResponseBodyException => {
-        logError("Could not write response body, " +
+        log.error("Could not write response body, " +
                 "probably the request has either timed out or the client has disconnected")
       }
-      case e: Exception => logError(e, "Could not complete request")
+      case e: Exception => log.error(e, "Could not complete request")
     }
   }
   

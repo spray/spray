@@ -37,8 +37,8 @@ class Tomcat6ConnectorServlet extends ConnectorServlet with CometProcessor {
       }
       case CometEvent.EventType.ERROR => ev.getEventSubType match {
         case CometEvent.EventSubType.TIMEOUT => timeout(ev, req)
-        case CometEvent.EventSubType.CLIENT_DISCONNECT => logWarn("Client disconnected for %s", req)
-        case err => logError("Unspecified Error during async processing of %s:\n%s", req, err)
+        case CometEvent.EventSubType.CLIENT_DISCONNECT => log.warn("Client disconnected for %s", req)
+        case err => log.error("Unspecified Error during async processing of %s:\n%s", req, err)
       }
       case CometEvent.EventType.READ => {}
       case CometEvent.EventType.END => {}
@@ -54,7 +54,7 @@ class Tomcat6ConnectorServlet extends ConnectorServlet with CometProcessor {
   
   def timeout(ev: CometEvent, req: RawRequest) {
     val resp = rawResponse(ev.getHttpServletResponse)
-    logError("Timeout of %s", req)
+    log.error("Timeout of %s", req)
     TimeOutHandler.get.apply(req, resp)
     ev.close()
   }

@@ -23,7 +23,7 @@ trait ErrorLogging extends ErrorHandling {
   this: Logging =>
   
   protected def logException(request: HttpRequest, e: Exception) {
-    logError(e, "Error during processing of request %s", request)
+    log.error(e, "Error during processing of request %s", request)
   }
   
 }
