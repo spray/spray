@@ -85,8 +85,9 @@ private[spray] trait MiscBuilders {
    */
   def hardFail(failure: HttpFailure, reason: String = ""): Nothing = throw new HttpException(failure, reason)
   
-  implicit def pimpRouteWithConcatenation(route: Route): { def ~ (other: Route): Route } = new {
-
+  implicit def pimpRouteWithConcatenation(route: Route) = new RouteConcatenation(route: Route)
+  
+  class RouteConcatenation(route: Route) {
     /**
      * Returns a Route that chains two Routes. If the first Route rejects the request the second route is given a
      * chance to act upon the request.
