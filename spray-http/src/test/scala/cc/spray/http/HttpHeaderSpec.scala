@@ -23,6 +23,7 @@ class HttpHeaderSpec extends Specification {
 
   "Header 'Accept'" should {
     import MediaTypes._
+    import MediaRanges._
     "be parsed correctly from example 1" in (
       HttpHeader("Accept", "audio/mp4; q=0.2, audio/basic") mustEqual Accept(`audio/mp4`, `audio/basic`)
     )
@@ -30,8 +31,12 @@ class HttpHeaderSpec extends Specification {
       HttpHeader("Accept", "text/plain; q=0.5, text/html,\r\n text/css; q=0.8") mustEqual
               Accept(`text/plain`, `text/html`, `text/css`)
     )
+    "not throw an exception parsing example 3" in (
+      HttpHeader("Accept", "text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2") mustEqual
+              Accept(`text/html`, `image/gif`, `image/jpeg`, `*/*`, `*/*`)
+    )
   }
-  
+
   "Header 'Accept-Charset'" should {
     import HttpCharsets._
     "be parsed correctly from example 1" in (
@@ -44,7 +49,7 @@ class HttpHeaderSpec extends Specification {
       HttpHeader("Accept-Charset", "pipapo; q= 1.0, utf-8") mustEqual `Accept-Charset`(CustomHttpCharset("pipapo"), `UTF-8`)
     )
   }
-  
+
   "Header 'Accept-Encoding'" should {
     import HttpEncodings._
     "be parsed correctly from example 1" in (
@@ -54,7 +59,7 @@ class HttpHeaderSpec extends Specification {
       HttpHeader("Accept-Encoding", "gzip;q=1.0, identity; q=0.5, *;q=0") mustEqual `Accept-Encoding`(gzip, identity, `*`)
     )
   }
-  
+
   "Header 'Accept-Language'" should {
     import LanguageRanges._
     "be parsed correctly from example 1" in (
@@ -66,7 +71,7 @@ class HttpHeaderSpec extends Specification {
               `Accept-Language`(Language("de", "at", "zz"), `*`)
     )
   }
-  
+
   "Header 'Accept-Ranges'" should {
     import RangeUnits._
     "be parsed correctly from example 1" in (
@@ -79,7 +84,7 @@ class HttpHeaderSpec extends Specification {
       HttpHeader("Accept-Ranges", "bytes, fancy") mustEqual `Accept-Ranges`(bytes, CustomRangeUnit("fancy"))
     )
   }
-  
+
   "Header 'Authorization'" should {
     "be parsed correctly from example 1" in (
       HttpHeader("Authorization", "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==") mustEqual
@@ -98,7 +103,7 @@ class HttpHeaderSpec extends Specification {
               Authorization(OtherHttpCredentials("Digest", Map("name"->"Bob")))
     )
   }
-  
+
   "Header 'Connection'" should {
     import ConnectionTokens._
     "be parsed correctly from example 1" in (
@@ -108,7 +113,7 @@ class HttpHeaderSpec extends Specification {
       HttpHeader("Connection", "pipapo") mustEqual Connection(CustomConnectionToken("pipapo"))
     )
   }
-  
+
   "Header 'Content-Encoding'" should {
     import HttpEncodings._
     "be parsed correctly from example 1" in (
@@ -118,13 +123,13 @@ class HttpHeaderSpec extends Specification {
       HttpHeader("Content-Encoding", "pipapo") mustEqual `Content-Encoding`(CustomHttpEncoding("pipapo"))
     )
   }
-  
+
   "Header 'Content-Length'" should {
     "be parsed correctly from example 1" in (
       HttpHeader("Content-Length", "42") mustEqual `Content-Length`(42)
     )
   }
-  
+
   "Header 'Content-Type'" should {
     import MediaTypes._
     import HttpCharsets._
@@ -135,20 +140,20 @@ class HttpHeaderSpec extends Specification {
       HttpHeader("Content-Type", "text/plain; charset=utf8") mustEqual `Content-Type`(ContentType(`text/plain`, `UTF-8`))
     )
   }
-  
+
   "Header 'Date'" should {
     "be parsed correctly from example 1" in (
       HttpHeader("Date", "Tue, 15 Nov 1994 08:12:31 GMT") mustEqual Date("Tue, 15 Nov 1994 08:12:31 GMT")
     )
   }
-  
+
   "Header 'WWW-Authenticate'" should {
     "serialize properly to String" in (
       `WWW-Authenticate`("Fancy", "Secure Area", Map("nonce"->"42")).value mustEqual
               """Fancy realm="Secure Area",nonce="42""""
     )
   }
-  
+
   "Header 'X-Forwarded-For'" should {
     "be parsed correctly from example 1" in (
       HttpHeader("X-Forwarded-For", "1.2.3.4") mustEqual `X-Forwarded-For`("1.2.3.4")
@@ -157,7 +162,7 @@ class HttpHeaderSpec extends Specification {
       HttpHeader("X-Forwarded-For", "234.123.5.6 , 8.8.8.8") mustEqual `X-Forwarded-For`("234.123.5.6", "8.8.8.8")
     )
   }
-  
+
   "Header 'CustomHeader'" should {
     "be parsed correctly from example 1" in (
       HttpHeader("X-Space-Ranger", "no, this rock!") mustEqual CustomHeader("X-Space-Ranger", "no, this rock!")
