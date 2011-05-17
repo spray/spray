@@ -23,6 +23,7 @@ class HttpHeaderSpec extends Specification {
 
   "Header 'Accept'" should {
     import MediaTypes._
+    import MediaRanges._
     "be parsed correctly from example 1" in (
       HttpHeader("Accept", "audio/mp4; q=0.2, audio/basic") mustEqual Accept(`audio/mp4`, `audio/basic`)
     )
@@ -31,7 +32,8 @@ class HttpHeaderSpec extends Specification {
               Accept(`text/plain`, `text/html`, `text/css`)
     )
     "not throw an exception parsing example 3" in (
-      HttpHeader("Accept", "text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2") must not(throwA[HttpException])
+      HttpHeader("Accept", "text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2") mustEqual
+              Accept(`text/html`, `image/gif`, `image/jpeg`, `*/*`, `*/*`)
     )
   }
 
