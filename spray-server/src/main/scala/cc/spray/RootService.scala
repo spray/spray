@@ -76,7 +76,7 @@ class RootService extends Actor with ToFromRawConverter with Logging {
   
   private def handleMultipleServices(rawContext: RawRequestContext) {    
     val request = toSprayRequest(rawContext.request)
-    log.debug("Received %s with %s attached services, dispatching...", services.size, request)
+    log.debug("Received %s with %s attached services, dispatching...", request, services.size)
     val futures = services.map(_ !!! request).asInstanceOf[List[Future[Any]]]
     Futures.fold(None.asInstanceOf[Option[Any]])(futures) { (result, future) =>
       (result, future) match {
