@@ -19,7 +19,9 @@ package marshalling
 
 import http._
 import MediaTypes._
+import HttpCharsets._
 import xml.NodeSeq
+import java.nio.CharBuffer
 
 trait DefaultMarshallers {
 
@@ -27,6 +29,17 @@ trait DefaultMarshallers {
     val canMarshalTo = List(ContentType(`text/plain`)) 
 
     def marshal(value: String, contentType: ContentType) = HttpContent(contentType, value)
+  }
+
+  implicit object CharArrayMarshaller extends MarshallerBase[Array[Char]] {
+    val canMarshalTo = List(ContentType(`text/plain`))
+
+    def marshal(value: Array[Char], contentType: ContentType) = {
+      val nioCharset = contentType.charset.getOrElse(`ISO-8859-1`).nioCharset
+      val charBuffer = CharBuffer.wrap(value)
+      val byteBuffer = nioCharset.encode(charBuffer)
+      HttpContent(contentType, byteBuffer.array)
+    }
   }
   
   implicit object NodeSeqMarshaller extends MarshallerBase[NodeSeq] {

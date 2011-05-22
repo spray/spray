@@ -22,6 +22,7 @@ import MediaTypes._
 import MediaRanges._
 import HttpCharsets._
 import xml.{XML, NodeSeq}
+import java.nio.ByteBuffer
 
 trait DefaultUnmarshallers {
   
@@ -31,6 +32,17 @@ trait DefaultUnmarshallers {
     def unmarshal(content: HttpContent) = {
       val charset = content.contentType.charset.getOrElse(`ISO-8859-1`)
       Right(new String(content.buffer, charset.nioCharset))
+    }
+  }
+
+  implicit object CharArrayUnmarshaller extends UnmarshallerBase[Array[Char]] {
+    val canUnmarshalFrom = ContentTypeRange(`*/*`) :: Nil // we can convert anything to a char array
+
+    def unmarshal(content: HttpContent) = {
+      val nioCharset = content.contentType.charset.getOrElse(`ISO-8859-1`).nioCharset
+      val byteBuffer = ByteBuffer.wrap(content.buffer)
+      val charBuffer = nioCharset.decode(byteBuffer)
+      Right(charBuffer.array())
     }
   }
   
