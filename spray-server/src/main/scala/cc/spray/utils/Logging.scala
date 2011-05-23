@@ -20,7 +20,7 @@ import String.format
 import java.io.{PrintWriter, StringWriter}
 
 trait Logging {  
-  val log: Log = new EventHandlerLog(this)  
+  lazy val log: Log = new EventHandlerLog(this)
 }
 
 trait Log {
