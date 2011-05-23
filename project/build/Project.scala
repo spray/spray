@@ -17,7 +17,8 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   // -------------------------------------------------------------------------------------------------------------------
   import Repositories._
   val glassfishModuleConfig = ModuleConfiguration("org.glassfish", JavaNetRepo)
-  
+  val sprayModuleConfig = ModuleConfiguration("cc.spray", ScalaToolsSnapshots)
+
   // -------------------------------------------------------------------------------------------------------------------
   // Dependencies
   // -------------------------------------------------------------------------------------------------------------------
@@ -37,7 +38,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     
     // only for examples
     val logback = "ch.qos.logback" % "logback-classic" % "0.9.28" % "runtime"
-    val pegdown = "org.pegdown" % "pegdown" % "1.0.0" % "compile" withSources()
+    val pegdown = "org.pegdown" % "pegdown" % "1.0.1" % "compile" withSources()
     val JETTY_VERSION = "8.0.0.M2"
     val jettyServer = "org.eclipse.jetty" % "jetty-server" % JETTY_VERSION % "test"
     val jettyWebApp = "org.eclipse.jetty" % "jetty-webapp" % JETTY_VERSION % "test"
