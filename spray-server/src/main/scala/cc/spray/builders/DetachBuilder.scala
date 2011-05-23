@@ -31,13 +31,15 @@ private[spray] trait DetachBuilder {
   }
   
   // implicits  
-  
-  implicit def defaultDetachedActorFactory(route: Route): Actor = new DetachedRouteActor(route)
+
+  implicit object DefaultDetachedActorFactory extends (Route => Actor) {
+    def apply(route: Route) = new DetachedRouteActor(route)
+  }
   
 }
 
 /**
- * Actor used by the `detach` directive.
+ * Actor used by the `detach` directive (if the DefaultDetachedActorFactory is used)
  */
 class DetachedRouteActor(route: Route) extends Actor with Logging with ErrorLogging {  
   protected def receive = {
