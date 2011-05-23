@@ -17,12 +17,24 @@
 
 package cc.spray.json
 
+import scala.{Left, Right}
+
 /**
   * Provides the JsonFormats for the non-collection standard types.
  */
 trait StandardFormats {
 
   private type JF[T] = JsonFormat[T] // simple alias for reduced verbosity
+
+  def safeReader[A :JsonFormat] = new JsonReader[Either[Exception, A]] {
+    def read(json: JsValue) = {
+      try {
+        Right(json.fromJson)
+      } catch {
+        case e: Exception => Left(e)
+      }
+    }
+  }
   
   implicit def optionFormat[T :JF] = new JF[Option[T]] {
     def write(option: Option[T]) = option match {
@@ -32,6 +44,19 @@ trait StandardFormats {
     def read(value: JsValue) = value match {
       case JsNull => None
       case x => Some(x.fromJson)
+    }
+  }
+
+  implicit def eitherFormat[A :JF, B :JF] = new JF[Either[A, B]] {
+    def write(either: Either[A, B]) = either match {
+      case Right(a) => a.toJson
+      case Left(b) => b.toJson
+    }
+    def read(value: JsValue) = (value.fromJson(safeReader[A]), value.fromJson(safeReader[B])) match {
+      case (Right(a), _: Left[_, _]) => Left(a)
+      case (_: Left[_, _], Right(b)) => Right(b)
+      case (_: Right[_, _], _: Right[_, _]) => throw new DeserializationException("Ambiguous Either value: can be read as both, Left and Right, values")
+      case (Left(ea), Left(eb)) => throw new DeserializationException("Could not read Either value:\n" + ea + "---------- and ----------\n" + eb)
     }
   }
   
