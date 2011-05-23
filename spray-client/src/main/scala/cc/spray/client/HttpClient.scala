@@ -13,18 +13,34 @@ import org.parboiled.common.FileUtils
 import akka.event.EventHandler
 
 class HttpClient(val ahc: AsyncHttpClient) {
-  
-  def this(provider: AsyncHttpProvider[_]) = this(new AsyncHttpClient(provider))
+
   def this(config: ClientConfig) = this(new AsyncHttpClient(config.toAhcConfig))
+  def this(provider: AsyncHttpProvider[_]) = this(new AsyncHttpClient(provider))
   def this(provider: AsyncHttpProvider[_], config: ClientConfig) = this(new AsyncHttpClient(provider, config.toAhcConfig))
   def this(providerClassName: String, config: ClientConfig) = this(new AsyncHttpClient(providerClassName, config.toAhcConfig))
+
+  @volatile
+  var responseMock: HttpRequest => Option[HttpResponse] = { _ => None }
+
+  def withResponseMock(mock: HttpRequest => Option[HttpResponse]): this.type = {
+    responseMock = mock
+    this
+  }
   
   lazy val defaultHandler = new AsyncCompletionHandler[HttpResponse] {
     def onCompleted(response: Response) = toSprayResponse(response)
   }
-  
+
   def dispatch(request: HttpRequest, requestConfig: RequestConfig = null,
                handler: AsyncHandler[HttpResponse] = defaultHandler): Future[HttpResponse] = {
+    responseMock(request) match {
+      case Some(response) => Future(response)
+      case None => performDispatch(request, requestConfig, handler)
+    }
+  }
+  
+  protected def performDispatch(request: HttpRequest, requestConfig: RequestConfig,
+                                handler: AsyncHandler[HttpResponse]): Future[HttpResponse] = {
     EventHandler.debug(this, "Dispatching HTTP request:\n" + request)    
     val akkaFuture = new DefaultCompletableFuture[HttpResponse](Long.MaxValue)
     val ahcRequest = fromSprayRequest(request, requestConfig)
