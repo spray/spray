@@ -38,9 +38,9 @@ object ActorHelpers {
    * Returns the actor of the given type. If there are no actors with the given type or more than one an
    * AssertionError will be thrown.
    */
-  def actor[A <: Actor : Manifest]: ActorRef = {
+  def actor[A <: Actor : ClassManifest]: ActorRef = {
     val actors = Actor.registry.actorsFor
-    assert(actors.length == 1, "Actor of type '" + manifest.erasure.getName + "' not found")
+    assert(actors.length == 1, "Actor of type '" + classManifest.erasure.getName + "' not found")
     actors.head
   }
   

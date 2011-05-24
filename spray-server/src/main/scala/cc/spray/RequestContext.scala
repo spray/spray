@@ -93,8 +93,8 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
    * Returns a copy of this context that cancels all rejections of type R with
    * a [[cc.spray.RejectionRejection]]. 
    */
-  def cancelRejections[R <: Rejection :Manifest]: RequestContext = {
-    val erasure = manifest.erasure
+  def cancelRejections[R <: Rejection :ClassManifest]: RequestContext = {
+    val erasure = classManifest.erasure
     cancelRejections(erasure.isInstance(_))
   }
   

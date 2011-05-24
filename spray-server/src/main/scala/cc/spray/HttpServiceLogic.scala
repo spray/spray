@@ -57,8 +57,8 @@ trait HttpServiceLogic extends ErrorHandling {
   }
   
   protected[spray] def responseForRejections(rejections: List[Rejection]): HttpResponse = {
-    def handle[R <: Rejection :Manifest]: Option[HttpResponse] = {
-      val erasure = manifest.erasure
+    def handle[R <: Rejection :ClassManifest]: Option[HttpResponse] = {
+      val erasure = classManifest.erasure
       rejections.filter(erasure.isInstance(_)) match {
         case Nil => None
         case filtered => Some(handleRejections(filtered))
