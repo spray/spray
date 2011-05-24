@@ -126,13 +126,11 @@ trait HttpServiceLogic extends ErrorHandling {
   
   protected def verified(response: HttpResponse) = {
     response.headers.mapFind {
-      _ match {
-        case _: `Content-Type` => Some("HttpResponse must not include explicit 'Content-Type' header, " +
-                "use the respective HttpContent member!")
-        case _: `Content-Length` => Some("HttpResponse must not include explicit 'Content-Length' header, " +
-                "this header will be set implicitly!")
-        case _ => None
-      }
+      case _: `Content-Type` => Some("HttpResponse must not include explicit 'Content-Type' header, " +
+              "use the respective HttpContent member!")
+      case _: `Content-Length` => Some("HttpResponse must not include explicit 'Content-Length' header, " +
+              "this header will be set implicitly!")
+      case _ => None
     } match {
         case Some(errorMsg) => throw new IllegalResponseException(errorMsg)
         case None => response

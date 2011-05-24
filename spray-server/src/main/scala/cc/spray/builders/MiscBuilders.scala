@@ -95,16 +95,12 @@ private[spray] trait MiscBuilders {
     def ~ (other: Route): Route = { ctx =>
       route {
         ctx.withResponder { 
-          _ match {
-            case x: Respond => ctx.responder(x) // first route succeeded
-            case Reject(rejections1) => other {
-              ctx.withResponder {
-                _ match {
-                  case x: Respond => ctx.responder(x) // second route succeeded
-                  case Reject(rejections2) => ctx.reject(rejections1 ++ rejections2)  
-                }
-              }
-            }  
+          case x: Respond => ctx.responder(x) // first route succeeded
+          case Reject(rejections1) => other {
+            ctx.withResponder {
+              case x: Respond => ctx.responder(x) // second route succeeded
+              case Reject(rejections2) => ctx.reject(rejections1 ++ rejections2)
+            }
           }
         }
       }

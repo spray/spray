@@ -126,10 +126,10 @@ class DefaultParameterMatcher[A](name: String, converter: ParameterConverter[A])
         }
         case Left(errorMsg) => new Reject(Set(
           MalformedQueryParamRejection(name, errorMsg),
-          RejectionRejection(_ match {
+          RejectionRejection {
             case MissingQueryParamRejection(n) if n == name => true
             case _ => false
-          })
+          }
         )) 
       }
       case None => notFound  

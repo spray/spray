@@ -44,11 +44,9 @@ private[spray] trait CodecBuilders {
     if (ctx.request.isEncodingAccepted(encoder.encoding)) {
       Pass() {
         _.withRoutingResultTransformed {
-          _ match {
-            case Respond(response) => Respond(encoder.encode(response))
-            case Reject(rejections) => {
-              Reject(rejections + RejectionRejection(_.isInstanceOf[UnacceptedResponseEncodingRejection]))
-            }
+          case Respond(response) => Respond(encoder.encode(response))
+          case Reject(rejections) => {
+            Reject(rejections + RejectionRejection(_.isInstanceOf[UnacceptedResponseEncodingRejection]))
           }
         }
       }

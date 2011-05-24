@@ -41,10 +41,8 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
    */
   def withHttpResponseTransformed(f: HttpResponse => HttpResponse): RequestContext = {
     withRoutingResultTransformed {
-      _ match {
-        case Respond(response) => Respond(f(response))
-        case x: Reject => x
-      }
+      case Respond(response) => Respond(f(response))
+      case x: Reject => x
     }
   }
   
