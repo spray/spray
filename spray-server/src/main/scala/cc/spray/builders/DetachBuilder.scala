@@ -20,7 +20,7 @@ package builders
 import akka.actor.Actor
 import utils.Logging
 
-private[spray] trait DetachBuilder {
+private[spray] trait DetachBuilder extends DefaultDetachedActorFactory {
 
   /**
    * Returns a Route that executes its inner Route in the content of a newly spawned actor. You can supply your own
@@ -29,13 +29,14 @@ private[spray] trait DetachBuilder {
   def detach(route: Route)(implicit detachedActorFactory: Route => Actor): Route = { ctx =>
     Actor.actorOf(detachedActorFactory(route)).start ! ctx
   }
-  
-  // implicits  
+}
+
+// introduces one more layer in the inheritance chain in order to lower the priority of the contained implicits
+trait DefaultDetachedActorFactory {
 
   implicit object DefaultDetachedActorFactory extends (Route => Actor) {
     def apply(route: Route) = new DetachedRouteActor(route)
   }
-  
 }
 
 /**

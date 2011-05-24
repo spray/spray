@@ -17,7 +17,6 @@
 package cc.spray
 package builders
 
-import org.specs.Specification
 import http._
 import HttpHeaders._
 import test.AbstractSprayTest
