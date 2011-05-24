@@ -3,7 +3,7 @@ package cc.spray.json
 import org.specs.Specification
 import java.util.Arrays
 
-class CollectionFormatsSpec extends Specification with CollectionFormats with BasicFormats {
+class CollectionFormatsSpec extends Specification with DefaultJsonProtocol {
 
   "The listFormat" should {
     val list = List(1, 2, 3)

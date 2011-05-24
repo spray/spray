@@ -18,21 +18,13 @@
 package cc.spray.json
 
 /**
-  * Provides the helpers for constructing custom JsonFormat implementations.
+ * Provides the helpers for constructing custom JsonFormat implementations for types implementing the Product trait
+ * (especially case classes)
  */
-trait GenericFormats {
+trait ProductFormats {
 
   private type JF[T] = JsonFormat[T] // simple alias for reduced verbosity
-  
-  /**
-   * Lazy wrapper around serialization. Useful when you want to serialize mutually recursive structures.
-   */
-  def lazyFormat[T](format: => JF[T]) = new JF[T]{
-    lazy val delegate = format;
-    def write(x: T) = delegate.write(x);
-    def read(value: JsValue) = delegate.read(value);
-  }
-  
+
   def jsonFormat[A :JF, T <: Product](construct: A => T, a: String) = new JF[T]{
     def write(p: T) = JsObject(
       JsField(a, element[A](p, 0).toJson)

@@ -2,7 +2,7 @@ package cc.spray.json
 
 import org.specs.Specification
 
-class GenericFormatsSpec extends Specification with GenericFormats with BasicFormats {
+class ProductFormatsSpec extends Specification with DefaultJsonProtocol {
 
   case class Test2(a: Int, b: Double)
   implicit val test2Format = jsonFormat(Test2, "a", "b") 

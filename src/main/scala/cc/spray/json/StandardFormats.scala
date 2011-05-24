@@ -23,19 +23,10 @@ import scala.{Left, Right}
   * Provides the JsonFormats for the non-collection standard types.
  */
 trait StandardFormats {
+  this: AdditionalFormats =>
 
   private type JF[T] = JsonFormat[T] // simple alias for reduced verbosity
 
-  def safeReader[A :JsonFormat] = new JsonReader[Either[Exception, A]] {
-    def read(json: JsValue) = {
-      try {
-        Right(json.fromJson)
-      } catch {
-        case e: Exception => Left(e)
-      }
-    }
-  }
-  
   implicit def optionFormat[T :JF] = new JF[Option[T]] {
     def write(option: Option[T]) = option match {
       case Some(x) => x.toJson

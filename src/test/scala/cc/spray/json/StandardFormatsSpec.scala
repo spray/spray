@@ -3,7 +3,7 @@ package cc.spray.json
 import org.specs.Specification
 import scala.Right
 
-class StandardFormatsSpec extends Specification with StandardFormats with BasicFormats {
+class StandardFormatsSpec extends Specification with DefaultJsonProtocol {
 
   "The optionFormat" should {
     "convert None to JsNull" in {
