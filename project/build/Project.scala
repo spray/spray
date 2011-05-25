@@ -62,6 +62,8 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   lazy override val `package` = task { None }    // disable packaging
   lazy override val publishLocal = task { None } // and publishing
   lazy override val publish = task { None }      // the root project
+
+  override def parallelExecution = true
   
   val pomExtras =
     <url>http://spray.cc/</url>
@@ -84,7 +86,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     <scm>
       <url>http://github.com/spray/</url>
     </scm>
-  
+
   // -------------------------------------------------------------------------------------------------------------------
   // Subprojects
   // -------------------------------------------------------------------------------------------------------------------
