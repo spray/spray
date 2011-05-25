@@ -37,10 +37,12 @@ object ActorHelpers {
   /**
    * Returns the actor of the given type. If there are no actors with the given type or more than one an
    * AssertionError will be thrown.
+   * Note that this methods has to traverse all live actors in order to find the matching one.
+   * If you need to locate an actor instance in performance criticial code resort to finding by actor id instead!
    */
-  def actor[A <: Actor : ClassManifest]: ActorRef = {
-    val actors = Actor.registry.actorsFor
-    assert(actors.length == 1, "Actor of type '" + classManifest.erasure.getName + "' not found")
+  def actor[A <: Actor :Manifest]: ActorRef = {
+    val actors = Actor.registry.actorsFor[A]
+    assert(actors.length == 1, actors.length + " actors of type '" + manifest.erasure + "' found, expected exactly one")
     actors.head
   }
   
