@@ -44,7 +44,7 @@ class RootService extends Actor with ToFromRawConverter with Logging {
   }
 
   override def preRestart(reason: Throwable) {
-    log.debug("Restarting spray RootService ...")
+    log.debug("Restarting spray RootService because of previous %s ...", reason.getClass)
   }
 
   override def postRestart(reason: Throwable) {

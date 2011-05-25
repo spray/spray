@@ -27,7 +27,19 @@ trait HttpServiceActor extends Actor with Logging with ErrorLogging {
   this: HttpServiceLogic =>
   
   val setDateHeader = SpraySettings.SetDateHeader
-  
+
+  override def preStart() {
+    log.info("Starting %s", getClass)
+  }
+
+  override def postStop() {
+    log.info("Stopped %s", getClass)
+  }
+
+  override def preRestart(reason: Throwable) {
+    log.info("Restarting %s because of previous %s", getClass, reason.getClass)
+  }
+
   protected def receive = {
     case request: HttpRequest => handle(request)
   }

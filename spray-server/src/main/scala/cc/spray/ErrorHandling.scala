@@ -2,7 +2,6 @@ package cc.spray
 
 import http._
 import StatusCodes._
-import java.io.{PrintWriter, StringWriter}
 import utils.Logging
 
 trait ErrorHandling {
@@ -11,7 +10,7 @@ trait ErrorHandling {
     logException(request, e)
     e match {
       case e: HttpException => HttpResponse(e.failure, e.reason)
-      case e: Exception => HttpResponse(InternalServerError, e.toString)
+      case e: Exception => HttpResponse(InternalServerError, "Internal Server Error:\n" + e.toString)
     }
   }
   
