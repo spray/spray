@@ -19,15 +19,15 @@ package cc.spray
 import http._
 import StatusCodes._
 import akka.actor.{Actor, ActorRef}
-import utils.Logging
 import akka.dispatch.{Future, Futures}
+import utils.{PostStart, Logging}
 
 /**
  * The RootService actor is the central entrypoint for HTTP requests entering the ''spray'' infrastructure.
  * It is responsible for creating an [[cc.spray.http.HttpRequest]] object for the request as well as dispatching this
  *  [[cc.spray.http.HttpRequest]] object to all attached [[cc.spray.HttpService]]s. 
  */
-class RootService extends Actor with ToFromRawConverter with Logging {
+class RootService extends Actor with ToFromRawConverter with Logging with PostStart {
   private var services: List[ActorRef] = Nil
   private var handler: RawRequestContext => Unit = handleNoServices  
 
@@ -39,16 +39,20 @@ class RootService extends Actor with ToFromRawConverter with Logging {
     log.debug("Starting spray RootService ...")
   }
 
+  def postStart() {
+    log.info("spray RootService started")
+  }
+
   override def postStop() {
-    log.debug("spray RootService stopped")
+    log.info("spray RootService stopped")
   }
 
   override def preRestart(reason: Throwable) {
-    log.debug("Restarting spray RootService because of previous %s ...", reason.getClass)
+    log.info("Restarting spray RootService because of previous %s ...", reason.getClass.getName)
   }
 
   override def postRestart(reason: Throwable) {
-    log.debug("spray RootService restarted");
+    log.info("spray RootService restarted");
   }
 
   protected def receive = {
