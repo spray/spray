@@ -27,19 +27,9 @@ trait AdditionalFormats {
     def read(value: JsValue) = value
   }
 
-  class DelegatingFormat[T](delegate: JsonFormat[T]) extends JsonFormat[T] {
-    def write(obj: T) = delegate.write(obj)
-    def read(json: JsValue) = delegate.read(json)
-  }
-
-  def formatFromWriter[T :JsonWriter] = new JsonFormat[T] {
-    def write(obj: T) = obj.toJson
-    def read(value: JsValue) = throw new RuntimeException("JsonFormat constructed from JsonWriter can't read from JSON")
-  }
-
-  def formatFromReader[T :JsonReader] = new JsonFormat[T] {
-    def write(obj: T) = throw new RuntimeException("JsonFormat constructed from JsonReader can't write JSON")
-    def read(value: JsValue) = value.fromJson[T]
+  def jsonFormat[T](reader: JsonReader[T], writer: JsonWriter[T]) = new JsonFormat[T] {
+    def write(obj: T) = writer.write(obj)
+    def read(json: JsValue) = reader.read(json)
   }
 
   /**

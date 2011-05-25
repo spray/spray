@@ -24,11 +24,23 @@ trait JsonReader[T] {
   def read(json: JsValue): T
 }
 
+object JsonReader {
+  implicit def func2Reader[T](f: JsValue => T): JsonReader[T] = new JsonReader[T] {
+    def read(json: JsValue) = f(json)
+  }
+}
+
 /**
   * Provides the JSON serialization for type T.
  */
 trait JsonWriter[T] {
   def write(obj: T): JsValue
+}
+
+object JsonWriter {
+  implicit def func2Writer[T](f: T => JsValue): JsonWriter[T] = new JsonWriter[T] {
+    def write(obj: T) = f(obj)
+  }
 }
 
 /**
