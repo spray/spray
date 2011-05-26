@@ -17,8 +17,6 @@
 
 package cc.spray.json
 
-import reflect.Manifest
-
 trait CollectionFormats {
 
   /**
@@ -27,7 +25,7 @@ trait CollectionFormats {
   implicit def listFormat[T :JsonFormat] = new JsonFormat[List[T]] {
     def write(list: List[T]) = JsArray(list.map(_.toJson))
     def read(value: JsValue) = value match {
-      case JsArray(elements) => elements.map(_.fromJson)
+      case JsArray(elements) => elements.map(_.fromJson[T])
       case _ => throw new DeserializationException("List expected")
     }
   }
@@ -35,10 +33,10 @@ trait CollectionFormats {
   /**
     * Supplies the JsonFormat for Arrays.
    */
-  implicit def arrayFormat[T :JsonFormat :Manifest] = new JsonFormat[Array[T]] {
+  implicit def arrayFormat[T :JsonFormat :ClassManifest] = new JsonFormat[Array[T]] {
     def write(array: Array[T]) = JsArray(array.map(_.toJson).toList)
     def read(value: JsValue) = value match {
-      case JsArray(elements) => elements.map(_.fromJson[T]).toArray
+      case JsArray(elements) => elements.map(_.fromJson[T]).toArray[T]
       case _ => throw new DeserializationException("Array expected")
     }
   }
@@ -62,17 +60,22 @@ trait CollectionFormats {
     }
   }
 
-  /**
-    * Supplies the JsonFormat for immutable Sets.
-   */
-  implicit def immutableSetFormat[T :JsonFormat] = viaList[Set[T], T](list => Set(list :_*))
-  
-  import collection.mutable.Set
-  
-  /**
-    * Supplies the JsonFormat for mutable Sets.
-   */
-  implicit def mutableSetFormat[T :JsonFormat] = viaList[Set[T], T](list => Set.empty ++ list)
+  import collection.{immutable => imm}
+
+  implicit def immIterableFormat[T :JsonFormat]   = viaList[imm.Iterable[T], T](list => imm.Iterable(list :_*))
+  implicit def immSeqFormat[T :JsonFormat]        = viaList[imm.Seq[T], T](list => imm.Seq(list :_*))
+  implicit def immIndexedSeqFormat[T :JsonFormat] = viaList[imm.IndexedSeq[T], T](list => imm.IndexedSeq(list :_*))
+  implicit def immLinearSeqFormat[T :JsonFormat]  = viaList[imm.LinearSeq[T], T](list => imm.LinearSeq(list :_*))
+  implicit def immSetFormat[T :JsonFormat]        = viaList[imm.Set[T], T](list => imm.Set(list :_*))
+  implicit def vectorFormat[T :JsonFormat]        = viaList[Vector[T], T](list => Vector(list :_*))
+
+  import collection._
+
+  implicit def iterableFormat[T :JsonFormat]   = viaList[Iterable[T], T](list => Iterable(list :_*))
+  implicit def seqFormat[T :JsonFormat]        = viaList[Seq[T], T](list => Seq(list :_*))
+  implicit def indexedSeqFormat[T :JsonFormat] = viaList[IndexedSeq[T], T](list => IndexedSeq(list :_*))
+  implicit def linearSeqFormat[T :JsonFormat]  = viaList[LinearSeq[T], T](list => LinearSeq(list :_*))
+  implicit def setFormat[T :JsonFormat]        = viaList[Set[T], T](list => Set(list :_*))
 
   /**
     * A JsonFormat construction helper that creates a JsonFormat for an Iterable type I from a builder function
@@ -85,5 +88,5 @@ trait CollectionFormats {
       case _ => throw new DeserializationException("Collection expected")
     }
   }
-  
+
 }

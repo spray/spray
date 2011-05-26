@@ -51,15 +51,15 @@ class CollectionFormatsSpec extends Specification with DefaultJsonProtocol {
       json.fromJson[Set[Int]] mustEqual set 
     }
   }
-  
-  "The mutableSetFormat" should {
-    val set = collection.mutable.Set(1, 2, 3)
-    val json = JsArray(JsNumber(1), JsNumber(3), JsNumber(2))
-    "convert a collection.mutable.Set[Int] to a JsArray of JsNumbers" in {
-      set.toJson mustEqual json
+
+  "The indexedSeqFormat" should {
+    val seq = collection.IndexedSeq(1, 2, 3)
+    val json = JsArray(JsNumber(1), JsNumber(2), JsNumber(3))
+    "convert a Set[Int] to a JsArray of JsNumbers" in {
+      seq.toJson mustEqual json
     }
-    "convert a JsArray of JsNumbers to a collection.mutable.Set[Int]" in {
-      json.fromJson[collection.mutable.Set[Int]] mustEqual set 
+    "convert a JsArray of JsNumbers to a IndexedSeq[Int]" in {
+      json.fromJson[collection.IndexedSeq[Int]] mustEqual seq
     }
   }
   
