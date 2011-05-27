@@ -32,6 +32,7 @@ class RootService extends Actor with ToFromRawConverter with Logging with PostSt
   private var handler: RawRequestContext => Unit = handleNoServices  
 
   self.id = SpraySettings.RootActorId
+  val futureTimeout = SpraySettings.AsyncTimeout
 
   lazy val addConnectionCloseResponseHeader = SpraySettings.CloseConnection
 
@@ -75,13 +76,13 @@ class RootService extends Actor with ToFromRawConverter with Logging with PostSt
   private def handleOneService(rawContext: RawRequestContext) {
     val request = toSprayRequest(rawContext.request)
     log.debug("Received %s with one attached service, dispatching...", request)
-    (services.head !!! request) onComplete completeRequest(rawContext) _
+    (services.head !!! (request, futureTimeout)) onComplete completeRequest(rawContext) _
   }
   
   private def handleMultipleServices(rawContext: RawRequestContext) {    
     val request = toSprayRequest(rawContext.request)
     log.debug("Received %s with %s attached services, dispatching...", request, services.size)
-    val futures = services.map(_ !!! request).asInstanceOf[List[Future[Any]]]
+    val futures = services.map(_ !!! (request, futureTimeout)).asInstanceOf[List[Future[Any]]]
     Futures.fold(None.asInstanceOf[Option[Any]])(futures) { (result, future) =>
       (result, future) match {
         case (None, None) => None
