@@ -53,7 +53,9 @@ object MediaRanges extends ObjectRegistry[String, MediaRange] {
   val `text/*`        = new PredefinedMediaRange("text")
   val `video/*`       = new PredefinedMediaRange("video")
   
-  case class CustomMediaRange(mainType: String) extends MediaRange
+  case class CustomMediaRange(mainType: String) extends MediaRange {
+    require(mainType == mainType.toLowerCase, "For best performance custom media ranges must be defined in lowercase")
+  }
 }
 
 sealed trait MediaType extends MediaRange {
@@ -140,5 +142,7 @@ object MediaTypes extends ObjectRegistry[String, MediaType] {
   val `video/ogg`                         = new PredefinedMediaType("video/ogg", "ogg")
   val `video/quicktime`                   = new PredefinedMediaType("video/quicktime", "qt", "mov")
   
-  case class CustomMediaType(override val value: String, fileExtensions: String*) extends MediaType
+  case class CustomMediaType(override val value: String, fileExtensions: String*) extends MediaType {
+    require(value == value.toLowerCase, "For best performance custom media types must be defined in lowercase")
+  }
 }
