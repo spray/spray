@@ -62,7 +62,7 @@ private[spray] trait SimpleDirectives {
   /**
    * Returns a Route filter that rejects all requests whose HTTP method does not match the given one.
    */
-  def method(m: HttpMethod): FilterRoute0 = filter { ctx =>
+  def method(m: HttpMethod): SprayRoute0 = filter { ctx =>
     if (ctx.request.method == m) {
       Pass()(_.cancelRejections[MethodRejection])
     } else Reject(MethodRejection(m)) 
@@ -71,12 +71,12 @@ private[spray] trait SimpleDirectives {
   /**
    * Returns a Route filter that rejects all requests with a host name different from the given one.
    */
-  def host(hostName: String): FilterRoute0 = host(_ == hostName)
+  def host(hostName: String): SprayRoute0 = host(_ == hostName)
 
   /**
    * Returns a Route filter that rejects all requests for whose host name the given predicate function return false.
    */
-  def host(predicate: String => Boolean): FilterRoute0 = filter { ctx =>
+  def host(predicate: String => Boolean): SprayRoute0 = filter { ctx =>
     if (predicate(ctx.request.host)) Pass() else Reject()
   }
 
@@ -86,7 +86,7 @@ private[spray] trait SimpleDirectives {
    * the inner Route building function. If the regex contains a capturing group only the string matched by this group
    * is extracted. If the regex contains more than one capturing group an IllegalArgumentException will be thrown.
    */
-  def host(regex: Regex): FilterRoute1[String] = filter1 { ctx =>
+  def host(regex: Regex): SprayRoute1[String] = filter1 { ctx =>
     def run(regexMatch: String => Option[String]) = {
       regexMatch(ctx.request.host) match {
         case Some(matched) => Pass(matched)

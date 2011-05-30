@@ -30,13 +30,13 @@ private[spray] trait SecurityDirectives extends DefaultUserPassAuthenticator {
    * Applies the given authorization check to the request.
    * If the check fails the route is rejected with an [[cc.spray.AuthorizationFailedRejection]].
    */
-  def authorize(check: => Boolean): FilterRoute0 = authorize(_ => check)
+  def authorize(check: => Boolean): SprayRoute0 = authorize(_ => check)
   
   /**
    * Applies the given authorization check to the request.
    * If the check fails the route is rejected with an [[cc.spray.AuthorizationFailedRejection]].
    */
-  def authorize(check: RequestContext => Boolean): FilterRoute0 = filter { ctx =>
+  def authorize(check: RequestContext => Boolean): SprayRoute0 = filter { ctx =>
     if (check(ctx)) Pass() else Reject(AuthorizationFailedRejection)
   }
 }
