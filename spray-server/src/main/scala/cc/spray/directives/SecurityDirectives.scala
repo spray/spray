@@ -48,8 +48,12 @@ private[spray] trait DefaultUserPassAuthenticator {
     def apply(userPass: Option[(String, String)]) = userPass.flatMap {
       case (user, pass) => {
         akka.config.Config.config.getString("spray.users." + user).flatMap { pw =>
-          if (pw == pass) Some(BasicUserContext(user))
-          else None
+          if (pw == pass) {
+            Some(BasicUserContext(user))
+          }
+          else {
+            None
+          }
         }
       }
     }

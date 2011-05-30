@@ -48,5 +48,12 @@ class SecurityDirectivesSpec extends AbstractSprayTest {
       }.response.content.as[String] mustEqual Right("BasicUserContext(Alice)")
     }
   }
-  
+
+  "the FromConfigUserPassAuthenticator" should {
+    "extract a BasicUserContext for users defined in the spray config" in {
+      test(HttpRequest(headers = List(Authorization(BasicHttpCredentials("Alice", "banana"))))) {
+        authenticate(HttpBasic()) { user => _.complete(user.toString) }
+      }.response.content.as[String] mustEqual Right("BasicUserContext(Alice)")
+    }
+  }
 }
