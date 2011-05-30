@@ -22,6 +22,7 @@ import collection.immutable.LinearSeq
 import spray.http._
 import spray.marshalling._
 import spray.utils._
+import akka.dispatch.Future
 
 package object spray {
 
@@ -44,4 +45,5 @@ package object spray {
   implicit def pimpProduct(product: Product): PimpedProduct = new PimpedProduct(product)
   implicit def pimpFile(file: File) = new PimpedFile(file)
   implicit def pimpRegex(regex: Regex) = new PimpedRegex(regex)
+  implicit def pimpFuture[F <: Future[_]](future: F) = new PimpedFuture(future)
 }
