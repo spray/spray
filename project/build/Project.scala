@@ -6,7 +6,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   // All repositories *must* go here! See ModuleConfigurations below.
   // -------------------------------------------------------------------------------------------------------------------
   object Repositories {
-    val JavaNetRepo = MavenRepository("java.net Repo", "http://download.java.net/maven/2")
+    val GlassFishRepo = MavenRepository("GlassFishRepo Repo", "http://download.java.net/maven/glassfish/")
   }
   
   // -------------------------------------------------------------------------------------------------------------------
@@ -16,7 +16,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   // Therefore, if repositories are defined, this must happen as def, not as val.
   // -------------------------------------------------------------------------------------------------------------------
   import Repositories._
-  val glassfishModuleConfig = ModuleConfiguration("org.glassfish", JavaNetRepo)
+  val glassfishModuleConfig = ModuleConfiguration("org.glassfish", GlassFishRepo)
   val sprayModuleConfig = ModuleConfiguration("cc.spray", ScalaToolsSnapshots)
 
   // -------------------------------------------------------------------------------------------------------------------
