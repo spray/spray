@@ -8,7 +8,7 @@ import utils.ActorHelpers._
 
 class Boot {
   
-  val mainModule = new StopWatchServiceBuilder {
+  val mainModule = new StopWatchService {
     // bake your module cake here
   }
   

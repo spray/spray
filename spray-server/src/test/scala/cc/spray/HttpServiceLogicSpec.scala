@@ -26,7 +26,7 @@ import test.SprayTest
 import utils.IllegalResponseException
 import xml.NodeSeq
 
-class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuilder {
+class HttpServiceLogicSpec extends Specification with SprayTest with Directives {
   
   val Ok = HttpResponse(OK)
   val completeOk: Route = { _.complete(Ok) }

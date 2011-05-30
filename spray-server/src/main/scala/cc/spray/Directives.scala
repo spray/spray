@@ -15,17 +15,23 @@
  */
 
 package cc.spray
-package test
 
-import akka.actor.Actor
+import directives._
 
 /**
- * Trait that should be mixed into the [[cc.spray.ServiceBuilder]] instance used for testing. It disables the 'detach'
- * directive, preventing "No response received" failures in Routes using `detach`.
+ * Directives is the central trait you should mix in to get access to ''sprays'' Route building directives.
  */
-trait DontDetach extends Directives {
-  
-  // disable detach-to-actor so we do not have to actually run actors in the test
-  override def detach(route: Route)(implicit detachedActorFactory: Route => Actor): Route = route
-  
-}
+trait Directives
+        extends CacheDirectives
+        with CodecDirectives
+        with DetachDirectives
+        with FileAndResourceDirectives
+        with FilterDirectives
+        with MarshallingDirectives
+        with MiscDirectives
+        with ParameterDirectives
+        with PathDirectives
+        with SecurityDirectives
+        with SimpleDirectives
+
+object Directives extends Directives

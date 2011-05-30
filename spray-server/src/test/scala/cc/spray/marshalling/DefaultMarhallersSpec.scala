@@ -24,7 +24,7 @@ import MediaTypes._
 import HttpCharsets._
 import test.SprayTest
 
-class DefaultMarhallersSpec extends Specification with SprayTest with ServiceBuilder {
+class DefaultMarhallersSpec extends Specification with SprayTest with Directives {
   
   "The StringMarshaller" should {
     "encode strings to `text/plain` content in ISO-8859-1 if the client accepts it" in {
