@@ -29,10 +29,9 @@ import utils.{PostStart, Logging}
  */
 class RootService extends Actor with ToFromRawConverter with Logging with PostStart {
   private var services: List[ActorRef] = Nil
-  private var handler: RawRequestContext => Unit = handleNoServices  
+  private var handler: RawRequestContext => Unit = handleNoServices
 
   self.id = SpraySettings.RootActorId
-  val futureTimeout = SpraySettings.AsyncTimeout
 
   lazy val addConnectionCloseResponseHeader = SpraySettings.CloseConnection
 
@@ -76,24 +75,22 @@ class RootService extends Actor with ToFromRawConverter with Logging with PostSt
   private def handleOneService(rawContext: RawRequestContext) {
     val request = toSprayRequest(rawContext.request)
     log.debug("Received %s with one attached service, dispatching...", request)
-    (services.head !!! (request, futureTimeout)) onComplete completeRequest(rawContext) _
+    (services.head !!! (request, SpraySettings.AsyncTimeout)).onComplete(completeRequest(rawContext) _)
   }
   
   private def handleMultipleServices(rawContext: RawRequestContext) {    
     val request = toSprayRequest(rawContext.request)
     log.debug("Received %s with %s attached services, dispatching...", request, services.size)
-    val futures = services.map(_ !!! (request, futureTimeout)).asInstanceOf[List[Future[Any]]]
-    Futures.fold(None.asInstanceOf[Option[Any]])(futures) { (result, future) =>
-      (result, future) match {
-        case (None, None) => None
-        case (None, x: Some[_]) => x
-        case (x: Some[_], None) => x 
-        case (x: Some[_], Some(y)) => {
-         log.warn("Received a second response for request '%s':\n\nn%s\n\nIgnoring the additional response...", request, y)
-          x
-        }
-      }
-    } onComplete completeRequest(rawContext) _
+    val serviceFutures: List[Future[Option[Any]]] = services.map(_ !!! (request, SpraySettings.AsyncTimeout))
+    val resultsFuture = Futures.fold[Option[Any], Option[Any]](None, SpraySettings.AsyncTimeout)(serviceFutures) {
+      case (None, None) => None
+      case (None, x: Some[_]) => x
+      case (x: Some[_], None) => x
+      case (x: Some[_], Some(y)) =>
+        log.warn("Received a second response for request '%s':\n\nn%s\n\nIgnoring the additional response...", request, y)
+        x
+    }
+    resultsFuture.onComplete(completeRequest(rawContext) _)
   }
   
   private def completeNoService(rawContext: RawRequestContext) {
@@ -118,7 +115,7 @@ class RootService extends Actor with ToFromRawConverter with Logging with PostSt
       case e: Exception => HttpResponse(InternalServerError, e.getMessage)
     }))
   }
-  
+
   protected def attach(serviceActor: ActorRef) {
     services = serviceActor :: services
     if (serviceActor.isUnstarted) serviceActor.start()

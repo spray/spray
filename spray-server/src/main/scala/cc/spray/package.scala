@@ -32,7 +32,7 @@ package object spray {
   type Unmarshaller[A] = ContentType => Unmarshalling[A]
   type RouteFilter[T <: Product] = RequestContext => FilterResult[T]
   type ParameterMatcher[A] = Map[String, String] => FilterResult[Tuple1[A]]
-  type GeneralAuthenticator[U] = RequestContext => FilterResult[Tuple1[U]] 
+  type GeneralAuthenticator[U] = RequestContext => FilterResult[Tuple1[U]]
   
   def make[A, U](a: A)(f: A => U): A = { f(a); a }
   
