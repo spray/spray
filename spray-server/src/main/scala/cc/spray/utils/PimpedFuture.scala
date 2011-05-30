@@ -28,19 +28,20 @@ class PimpedFuture[F <: Future[_]](future: F) {
    * Note that this implementation has the following limitations:
    * - the callback is called at X ms after the call to "onTimeout", not (as it should be) at X ms after future
    *   creation
-   * - the timeout callback is run on the (single!) scheduler thread created by the akka.dispatch.Scheduler and
-   *   should therefore be non-blocking and fast
+   * - the timeout callback is run on the (single!) scheduler thread created by the akka.dispatch.Scheduler (unless
+   *   the future is already expired at the time of call) and should therefore be non-blocking and fast
    */
   def onTimeout(callback: F => Unit): F = {
-    @volatile
-    var completed = false
-    val runnable = new Runnable {
-      def run() {
-        if (!completed) callback(future)
-      }
+    if (!future.isCompleted) {
+      if (!future.isExpired) {
+        val runnable = new Runnable {
+          def run() {
+            if (!future.isCompleted) callback(future)
+          }
+        }
+        Scheduler.scheduleOnce(runnable, future.timeoutInNanos, TimeUnit.NANOSECONDS)
+      } else callback(future)
     }
-    Scheduler.scheduleOnce(runnable, future.timeoutInNanos, TimeUnit.NANOSECONDS)
-    future.onComplete { _ => completed = true }
     future
   }
   
