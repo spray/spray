@@ -20,12 +20,6 @@ package directives
 import utils.Product0
 
 private[spray] trait BasicDirectives {
-  
-  /**
-   * Creates a [[cc.spray.SprayRoute0]] that accepts all requests but applies to given transformation function to
-   * the RequestContext.
-   */
-  def transform(f: RequestContext => RequestContext) = new TransformerRoute(f)
 
   /**
    * Creates a [[cc.spray.SprayRoute0]] from the given RouteFilter function.
@@ -66,6 +60,21 @@ private[spray] trait BasicDirectives {
    * Creates a [[cc.spray.SprayRoute7]] from the given RouteFilter function.
    */
   def filter7[A, B, C, D, E, F, G](filter: RouteFilter[(A, B, C, D, E, F, G)]) = new SprayRoute7(filter)
+
+  /**
+   * Creates a [[cc.spray.SprayRoute0]] that accepts all requests but applies the given transformation function to
+   * the RequestContext.
+   */
+  def transformRequestContext(f: RequestContext => RequestContext) =
+    new SprayRoute0(_ => new Pass(Product0, transform = f))
+
+  /**
+   * Creates a [[cc.spray.SprayRoute0]] that accepts all requests but applies the given transformation function to
+   * its inner Route.
+   */
+  def transform(f: Route => Route) = new SprayRoute0(_ => Pass()) {
+    override def apply(route: Route) = f(route)
+  }
 }
 
 abstract class SprayRoute[T <: Product](val filter: RouteFilter[T]) { self =>
@@ -209,6 +218,3 @@ class SprayRoute7[A, B, C, D, E, F, G](filter: RouteFilter[(A, B, C, D, E, F, G)
   def | (other: SprayRoute7[A, B, C, D, E, F, G]) = new SprayRoute7[A, B, C, D, E, F, G](or(other))
   def & (other: SprayRoute0) = new SprayRoute7[A, B, C, D, E, F, G](and(other))
 }
-
-class TransformerRoute(transform: RequestContext => RequestContext)
-        extends SprayRoute0(_ => new Pass(Product0, transform = transform))

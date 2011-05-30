@@ -26,19 +26,19 @@ private[spray] trait MiscDirectives {
    * Returns a Route which applies the given [[cc.spray.http.HttpRequest]] transformation function before passing on the
    *  [[cc.spray.RequestContext]] to its inner Route.
    */
-  def transformRequest(f: HttpRequest => HttpRequest) = transform(_.withRequestTransformed(f))
+  def transformRequest(f: HttpRequest => HttpRequest) = transformRequestContext(_.withRequestTransformed(f))
 
   /**
    * Returns a Route which applies the given [[cc.spray.http.HttpResponse]] transformation function to all not-rejected
    * responses of its inner Route.
    */
-  def transformResponse(f: HttpResponse => HttpResponse) = transform(_.withHttpResponseTransformed(f))
-  
+  def transformResponse(f: HttpResponse => HttpResponse) = transformRequestContext(_.withHttpResponseTransformed(f))
+
   /**
    * Returns a Route which applies the given transformation function to the RoutingResult of its inner Route.
    */
-  def transformRoutingResult(f: RoutingResult => RoutingResult) = transform(_.withRoutingResultTransformed(f))
-  
+  def transformRoutingResult(f: RoutingResult => RoutingResult) = transformRequestContext(_.withRoutingResultTransformed(f))
+
   /**
    * Returns a Route that sets the given response status on all not-rejected responses of its inner Route.
    */

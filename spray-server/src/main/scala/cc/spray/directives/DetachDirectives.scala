@@ -17,41 +17,33 @@
 package cc.spray
 package directives
 
-import akka.actor.Actor
 import utils.Logging
+import akka.actor.Actor
+import akka.dispatch.{Dispatchers, MessageDispatcher}
 
-private[spray] trait DetachDirectives extends DefaultDetachedActorFactory {
+private[spray] trait DetachDirectives {
+  this: BasicDirectives =>
+
+  def detachDispatcher: MessageDispatcher = Dispatchers.defaultGlobalDispatcher
 
   /**
-   * Returns a Route that executes its inner Route in the content of a newly spawned actor. You can supply your own
-   * implicit detachedActorFactory function to take control of the actual spawning.
+   * Returns a Route that executes its inner Route in the content of a newly spawned actor.
    */
-  def detach(route: Route)(implicit detachedActorFactory: Route => Actor): Route = { ctx =>
-    Actor.actorOf(detachedActorFactory(route)).start ! ctx
-  }
-}
-
-// introduces one more layer in the inheritance chain in order to lower the priority of the contained implicits
-trait DefaultDetachedActorFactory {
-
-  implicit object DefaultDetachedActorFactory extends (Route => Actor) {
-    def apply(route: Route) = new DetachedRouteActor(route)
-  }
-}
-
-/**
- * Actor used by the `detach` directive (if the DefaultDetachedActorFactory is used)
- */
-class DetachedRouteActor(route: Route) extends Actor with Logging with ErrorLogging {  
-  protected def receive = {
-    case ctx: RequestContext => {
-      try {
-        route(ctx)
-      } catch {
-        case e: Exception => ctx.complete(responseForException(ctx.request, e))
-      } finally {
-        self.stop()
+  def detach = transform { route => ctx =>
+    Actor.actorOf {
+      new Actor() with Logging with ErrorLogging {
+        self.dispatcher = detachDispatcher
+        def receive = {
+          case 'run => try {
+            route(ctx)
+          } catch {
+            case e: Exception => ctx.complete(responseForException(ctx.request, e))
+          } finally {
+            self.stop()
+          }
+        }
       }
-    } 
+    }.start() ! 'run
   }
-} 
+
+}

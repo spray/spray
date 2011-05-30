@@ -32,7 +32,7 @@ private[spray] trait FileAndResourceDirectives {
    * If the file cannot be read the Route completes the request with a "404 NotFound" error.
    */
   def getFromFile(fileName: String, charset: Option[HttpCharset] = None)
-                 (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {
+                 (implicit resolver: ContentTypeResolver): Route = {
     detach {
       get { _.complete(responseFromFile(fileName, charset)) }
     }
@@ -53,7 +53,7 @@ private[spray] trait FileAndResourceDirectives {
    * If the file cannot be read the Route completes the request with a "404 NotFound" error.
    */
   def getFromResource(resourceName: String, charset: Option[HttpCharset] = None)
-                     (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {
+                     (implicit resolver: ContentTypeResolver): Route = {
     detach {
       get { _.complete(responseFromResource(resourceName, charset)) }
     }
@@ -84,7 +84,7 @@ private[spray] trait FileAndResourceDirectives {
    */
   def getFromDirectory(directoryName: String, charset: Option[HttpCharset] = None,
                        pathRewriter: String => String = identity) // TODO: remodel as stand-alone directive
-                      (implicit detachedActorFactory: Route => Actor, resolver: ContentTypeResolver): Route = {
+                      (implicit resolver: ContentTypeResolver): Route = {
     val base = if (directoryName.endsWith("/")) directoryName else directoryName + "/";
     { ctx =>
       {
@@ -100,8 +100,7 @@ private[spray] trait FileAndResourceDirectives {
    */
   def getFromResourceDirectory(directoryName: String, charset: Option[HttpCharset] = None,
                                pathRewriter: String => String = identity)
-                              (implicit detachedActorFactory: Route => Actor,
-                               resolver: ContentTypeResolver): Route = {
+                              (implicit resolver: ContentTypeResolver): Route = {
     val base = if (directoryName.isEmpty) "" else directoryName + "/";
     { ctx =>
       {
