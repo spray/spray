@@ -28,7 +28,7 @@ class PimpedFuture[F <: Future[_]](future: F) {
    * Note that this implementation has the following limitations:
    * - the callback is called at X ms after the call to "onTimeout", not (as it should be) at X ms after future
    *   creation
-   * - the timeout callback in run on the (single!) scheduler thread created by the akka.dispatch.Scheduler and
+   * - the timeout callback is run on the (single!) scheduler thread created by the akka.dispatch.Scheduler and
    *   should therefore be non-blocking and fast
    */
   def onTimeout(callback: F => Unit): F = {

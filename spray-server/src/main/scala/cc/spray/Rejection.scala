@@ -106,6 +106,10 @@ case object AuthorizationFailedRejection extends Rejection
 case class AuthenticationRequiredRejection(scheme: String, realm: String, params: Map[String, String] = Map.empty)
         extends Rejection
 
+/**
+ * Rejection created by the `validation` directive.
+ */
+case class ValidationRejection(message: String) extends Rejection
 
 object Rejections {
   def applyCancellations(rejections: Set[Rejection]): Set[Rejection] = {

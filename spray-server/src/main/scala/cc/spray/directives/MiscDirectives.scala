@@ -23,6 +23,14 @@ private[spray] trait MiscDirectives {
   this: BasicDirectives =>
 
   /**
+   * Returns a Route which checks the given condition before passing on the [[cc.spray.RequestContext]] to its inner
+   * Route. If the condition failes the route is rejected with a [[cc.spray.ValidationRejection]].
+   */
+  def validate(check: => Boolean, errorMsg: String) = filter { _ =>
+    if (check) Pass() else Reject(ValidationRejection(errorMsg))
+  }
+
+  /**
    * Returns a Route which applies the given [[cc.spray.http.HttpRequest]] transformation function before passing on the
    *  [[cc.spray.RequestContext]] to its inner Route.
    */
