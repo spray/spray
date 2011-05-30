@@ -21,7 +21,7 @@ import marshalling._
 import cc.spray.RequestEntityExpectedRejection
 
 private[spray] trait MarshallingDirectives extends DefaultMarshallers with DefaultUnmarshallers {
-  this: FilterDirectives =>
+  this: BasicDirectives =>
 
   /**
    * Returns a Route that unmarshalls the requests content using the in-scope unmarshaller for the given type and

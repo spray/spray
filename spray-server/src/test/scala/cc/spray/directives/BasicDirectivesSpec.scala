@@ -21,7 +21,7 @@ import http._
 import HttpMethods._
 import test.AbstractSprayTest
 
-class FilterDirectivesSpec extends AbstractSprayTest {
+class BasicDirectivesSpec extends AbstractSprayTest {
 
   "get | put" should {
     val getOrPut = get | put

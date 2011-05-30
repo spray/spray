@@ -22,7 +22,7 @@ import utils.Product0
 import annotation.tailrec
 
 private[spray] trait PathDirectives {
-  this: FilterDirectives =>
+  this: BasicDirectives =>
 
   /**
    * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does not match

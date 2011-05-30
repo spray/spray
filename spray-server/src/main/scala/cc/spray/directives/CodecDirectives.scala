@@ -25,7 +25,7 @@ import java.io._
 import java.util.zip._
 
 private[spray] trait CodecDirectives {
-  this: FilterDirectives =>
+  this: BasicDirectives =>
 
   def decodeRequest(decoder: Decoder) = filter { ctx =>
     if (ctx.request.content.isEmpty) {

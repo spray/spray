@@ -18,7 +18,7 @@ package cc.spray
 package directives
 
 private[spray] trait ParameterDirectives extends ParameterConverters {
-  this: FilterDirectives =>
+  this: BasicDirectives =>
 
   private type PM[A] = ParameterMatcher[A]
   

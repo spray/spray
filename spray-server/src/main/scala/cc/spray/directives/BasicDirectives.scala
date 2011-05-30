@@ -19,7 +19,7 @@ package directives
 
 import utils.Product0
 
-private[spray] trait FilterDirectives {
+private[spray] trait BasicDirectives {
   
   /**
    * Creates a [[cc.spray.FilterRoute0]] that accepts all requests but applies to given transformation function to

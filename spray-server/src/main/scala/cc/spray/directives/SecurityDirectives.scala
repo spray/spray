@@ -18,7 +18,7 @@ package cc.spray
 package directives
 
 private[spray] trait SecurityDirectives extends DefaultUserPassAuthenticator {
-  this: FilterDirectives =>
+  this: BasicDirectives =>
 
   /**
    * Uses the given authenticator to authenticate the user and extract an object representing the users identity.

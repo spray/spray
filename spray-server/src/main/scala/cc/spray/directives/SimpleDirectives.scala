@@ -22,7 +22,7 @@ import HttpMethods._
 import util.matching.Regex
 
 private[spray] trait SimpleDirectives {
-  this: FilterDirectives =>
+  this: BasicDirectives =>
   
   /**
    * Returns a Route filter that rejects all non-DELETE requests.

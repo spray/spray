@@ -20,7 +20,7 @@ package directives
 import http._
 
 private[spray] trait MiscDirectives {
-  this: FilterDirectives =>
+  this: BasicDirectives =>
 
   /**
    * Returns a Route which applies the given [[cc.spray.http.HttpRequest]] transformation function before passing on the

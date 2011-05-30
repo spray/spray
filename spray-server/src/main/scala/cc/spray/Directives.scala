@@ -22,11 +22,11 @@ import directives._
  * Directives is the central trait you should mix in to get access to ''sprays'' Route building directives.
  */
 trait Directives
-        extends CacheDirectives
+        extends BasicDirectives
+        with CacheDirectives
         with CodecDirectives
         with DetachDirectives
         with FileAndResourceDirectives
-        with FilterDirectives
         with MarshallingDirectives
         with MiscDirectives
         with ParameterDirectives
