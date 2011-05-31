@@ -21,7 +21,7 @@ import java.lang.StringBuilder
 /**
   * A JsonPrinter that produces compact JSON source without any superfluous whitespace.
  */
-object CompactPrinter extends JsonPrinter {
+trait CompactPrinter extends JsonPrinter {
 
   def print(x: JsValue, sb: StringBuilder) {
     x match {
@@ -46,5 +46,6 @@ object CompactPrinter extends JsonPrinter {
     printSeq(elements, sb.append(','))(print(_, sb))
     sb.append(']')
   }
-  
-} 
+}
+
+object CompactPrinter extends CompactPrinter

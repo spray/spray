@@ -22,7 +22,7 @@ import annotation.tailrec
 /**
   * A JsonPrinter that produces a nicely readable JSON source.
  */
-object PrettyPrinter extends JsonPrinter {
+trait PrettyPrinter extends JsonPrinter {
   val Indent = 2
 
   def print(x: JsValue, sb: StringBuilder) {
@@ -63,5 +63,6 @@ object PrettyPrinter extends JsonPrinter {
       printIndent(sb, indent - 1)
     }
   }
-  
-} 
+}
+
+object PrettyPrinter extends PrettyPrinter
