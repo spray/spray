@@ -60,6 +60,36 @@ private[spray] trait ParameterConverters {
       }
     }
   }
+
+  implicit object FloatParameterConverter extends ParameterConverter[Float] {
+    def apply(value: String) = {
+      try {
+        Right(value.toFloat)
+      } catch {
+        case _: NumberFormatException => Left("'" + value + "' is not a valid floating point value")
+      }
+    }
+  }
+
+  implicit object ShortParameterConverter extends ParameterConverter[Short] {
+    def apply(value: String) = {
+      try {
+        Right(value.toShort)
+      } catch {
+        case _: NumberFormatException => Left("'" + value + "' is not a valid 16-bit integer value")
+      }
+    }
+  }
+
+  implicit object ByteParameterConverter extends ParameterConverter[Byte] {
+    def apply(value: String) = {
+      try {
+        Right(value.toByte)
+      } catch {
+        case _: NumberFormatException => Left("'" + value + "' is not a valid 8-bit integer value")
+      }
+    }
+  }
   
   implicit object BooleanParameterConverter extends ParameterConverter[Boolean] {
     def apply(value: String) = value.toLowerCase match {
