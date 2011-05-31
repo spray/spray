@@ -102,10 +102,6 @@ private[spray] trait ParameterDirectives extends ParameterConverters {
   implicit def fromSymbol(name: Symbol) = fromString(name.name)  
   
   implicit def fromString(name: String) = new DefaultParameterMatcher[String](name, StringParameterConverter)
-  
-  implicit object StringParameterConverter extends ParameterConverter[String] {
-    def apply(string: String) = Right(string)
-  } 
 }
 
 trait ParameterConverter[A] extends (String => Either[String, A])
@@ -115,17 +111,17 @@ class DefaultParameterMatcher[A](name: String, converter: ParameterConverter[A])
   def apply(params: Map[String, String]) = {
     params.get(name) match {
       case Some(value) => converter(value) match {
-        case Right(converted) => Pass(converted) {
+        case Right(converted) => Pass.withTransform(converted) {
           _.cancelRejections {
             _ match {
               case MissingQueryParamRejection(n) if n == name => true
-              case MalformedQueryParamRejection(n, _) if n == name => true
+              case MalformedQueryParamRejection(_, Some(n)) if n == name => true
               case _ => false
             }
           }
         }
         case Left(errorMsg) => new Reject(Set(
-          MalformedQueryParamRejection(name, errorMsg),
+          MalformedQueryParamRejection(errorMsg, Some(name)),
           RejectionRejection {
             case MissingQueryParamRejection(n) if n == name => true
             case _ => false
@@ -145,15 +141,15 @@ class DefaultParameterMatcher[A](name: String, converter: ParameterConverter[A])
     }
   }
   
-  def ? [B](default: B)(implicit converter: ParameterConverter[B]) = new DefaultParameterMatcher[B](name, converter) {
+  def ? [B :ParameterConverter](default: B) = new DefaultParameterMatcher[B](name, parameterConverter[B]) {
     override def notFound = Pass(default)
   }
   
-  def as[B](implicit converter: ParameterConverter[B]) = new DefaultParameterMatcher[B](name, converter)
+  def as[B :ParameterConverter] = new DefaultParameterMatcher[B](name, parameterConverter[B])
   
-  def ! [B](requiredValue: B)(implicit converter: ParameterConverter[B]) = new RequiredParameterMatcher {
+  def ! [B :ParameterConverter](requiredValue: B) = new RequiredParameterMatcher {
     def apply(params: Map[String, String]) = {
-      params.get(name).flatMap(converter(_).right.toOption) == Some(requiredValue)
+      params.get(name).flatMap(parameterConverter[B].apply(_).right.toOption) == Some(requiredValue)
     }
   } 
 }

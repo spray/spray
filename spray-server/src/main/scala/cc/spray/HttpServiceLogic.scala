@@ -84,8 +84,10 @@ trait HttpServiceLogic extends ErrorHandling {
       HttpResponse(MethodNotAllowed, "HTTP method not allowed, supported methods: " + methods.mkString(", "))
     case MissingQueryParamRejection(paramName) :: _ =>
       HttpResponse(NotFound, "Request is missing required query parameter '" + paramName + '\'')
-    case MalformedQueryParamRejection(name, msg) :: _ =>
+    case MalformedQueryParamRejection(msg, Some(name)) :: _ =>
       HttpResponse(BadRequest, "The query parameter '" + name + "' was malformed:\n" + msg)
+    case MalformedQueryParamRejection(msg, None) :: _ =>
+      HttpResponse(BadRequest, "One or more query parameters were illegal:\n" + msg)
     case AuthenticationRequiredRejection(scheme, realm, params) :: _ =>
       HttpResponse(Unauthorized, `WWW-Authenticate`(scheme, realm, params) :: Nil,
               "The resource requires authentication, which was not supplied with the request")

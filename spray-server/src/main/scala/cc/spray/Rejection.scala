@@ -41,7 +41,7 @@ case class MissingQueryParamRejection(parameterName: String) extends Rejection
  * Rejection created by parameter filters.
  * Signals that the request was rejected because a query parameter could not be interpreted.
  */
-case class MalformedQueryParamRejection(parameterName: String, errorMsg: String) extends Rejection
+case class MalformedQueryParamRejection(errorMsg: String, parameterName: Option[String] = None) extends Rejection
 
 /**
  * Rejection created by unmarshallers.

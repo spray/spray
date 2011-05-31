@@ -2,8 +2,15 @@ package cc.spray
 package directives
 
 private[spray] trait ParameterConverters {
-  this: ParameterDirectives =>
-  
+
+  implicit object StringParameterConverter extends ParameterConverter[String] {
+    def apply(value: String) = Right(value)
+  }
+
+  implicit object SymbolParameterConverter extends ParameterConverter[Symbol] {
+    def apply(value: String) = Right(Symbol(value))
+  }
+
   implicit object IntParameterConverter extends ParameterConverter[Int] {
     def apply(value: String) = {
       try {

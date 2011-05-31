@@ -19,7 +19,6 @@ package directives
 
 import http._
 import HttpHeaders._
-import utils.Product0
 import org.parboiled.common.FileUtils
 import java.io._
 import java.util.zip._
@@ -29,11 +28,11 @@ private[spray] trait CodecDirectives {
 
   def decodeRequest(decoder: Decoder) = filter { ctx =>
     if (ctx.request.content.isEmpty) {
-      Pass()(_.cancelRejections[UnsupportedRequestEncodingRejection])
+      Pass.withTransform(_.cancelRejections[UnsupportedRequestEncodingRejection])
     } else if (ctx.request.encoding == decoder.encoding) {
       try {
         val decodedRequest = decoder.decode(ctx.request) 
-        new Pass(Product0, _.withRequestTransformed(_ => decodedRequest))
+        Pass.withTransform(_.withRequestTransformed(_ => decodedRequest))
       } catch {
         case e: Exception => Reject(CorruptRequestEncodingRejection(e.getMessage)) 
       }
@@ -42,7 +41,7 @@ private[spray] trait CodecDirectives {
   
   def encodeResponse(encoder: Encoder) = filter { ctx =>
     if (ctx.request.isEncodingAccepted(encoder.encoding)) {
-      Pass() {
+      Pass.withTransform {
         _.withRoutingResultTransformed {
           case Respond(response) => Respond(encoder.encode(response))
           case Reject(rejections) => {

@@ -37,7 +37,7 @@ class ParameterConvertersSpec extends AbstractSprayTest {
         parameter('amount.as[Int]) { i =>
           get { _.complete(i.toString) }
         }
-      }.rejections mustEqual Set(MalformedQueryParamRejection("amount", "'1x3' is not a valid 32-bit integer value"))
+      }.rejections mustEqual Set(MalformedQueryParamRejection("'1x3' is not a valid 32-bit integer value", Some("amount")))
     }
     "supply typed default values" in {
       test(HttpRequest(GET, "/")) {
@@ -66,7 +66,7 @@ class ParameterConvertersSpec extends AbstractSprayTest {
           parameter("amount".as[Int]?) { i =>
             get { _.complete(i.toString) }
           }
-        }.rejections mustEqual Set(MalformedQueryParamRejection("amount", "'x' is not a valid 32-bit integer value"))
+        }.rejections mustEqual Set(MalformedQueryParamRejection("'x' is not a valid 32-bit integer value", Some("amount")))
       }
     }
   }

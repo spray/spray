@@ -32,7 +32,7 @@ private[spray] trait MarshallingDirectives extends DefaultMarshallers with Defau
   def contentAs[A :Unmarshaller](routing: A => Route): Route = {
     val filterRoute = filter1 { ctx =>
       ctx.request.content.as[A] match {
-        case Right(a) => Pass(a)(_.cancelRejections[UnsupportedRequestContentTypeRejection])
+        case Right(a) => Pass.withTransform(a)(_.cancelRejections[UnsupportedRequestContentTypeRejection])
         case Left(rejection) => Reject(rejection)
       }
     }
@@ -48,7 +48,7 @@ private[spray] trait MarshallingDirectives extends DefaultMarshallers with Defau
   def optionalContentAs[A :Unmarshaller](routing: Option[A] => Route): Route = {
     val filterRoute = filter1 { ctx =>
       ctx.request.content.as[A] match {
-        case Right(a) => Pass(Some(a)) {
+        case Right(a) => Pass.withTransform(Some(a)) {
           _.cancelRejections { r =>
             r.isInstanceOf[UnsupportedRequestContentTypeRejection] || r == RequestEntityExpectedRejection
           }
@@ -68,7 +68,7 @@ private[spray] trait MarshallingDirectives extends DefaultMarshallers with Defau
   def produce[A](routing: (A => Unit) => Route)(implicit marshaller: Marshaller[A]): Route = {
     val filterRoute = filter1 { ctx =>
       marshaller(ctx.request.acceptableContentType) match {
-        case MarshalWith(converter) => Pass((a: A) => ctx.complete(converter(a))) {
+        case MarshalWith(converter) => Pass.withTransform((a: A) => ctx.complete(converter(a))) {
           _.cancelRejections[UnacceptedResponseContentTypeRejection]
         }
         case CantMarshal(onlyTo) => Reject(UnacceptedResponseContentTypeRejection(onlyTo))

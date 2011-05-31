@@ -17,6 +17,7 @@
 package cc
 
 import java.io.File
+import spray.directives.ParameterConverter
 import util.matching.Regex
 import collection.immutable.LinearSeq
 import spray.http._
@@ -38,7 +39,8 @@ package object spray {
   
   def marshaller[T](implicit m: Marshaller[T]) = m
   def unmarshaller[T](implicit um: Unmarshaller[T]) = um
-  
+  def parameterConverter[T](implicit pc: ParameterConverter[T]) = pc
+
   // implicits
   implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq)
   implicit def pimpClass[A](clazz: Class[A]): PimpedClass[A] = new PimpedClass[A](clazz)
