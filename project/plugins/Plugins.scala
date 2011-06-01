@@ -21,6 +21,6 @@ class Plugins(info: ProjectInfo) extends PluginDefinition(info) {
   // -------------------------------------------------------------------------------------------------------------------
   // Plugins
   // -------------------------------------------------------------------------------------------------------------------
-  val akkaPlugin = "se.scalablesolutions.akka" % "akka-sbt-plugin" % "1.1"
+  val akkaPlugin = "se.scalablesolutions.akka" % "akka-sbt-plugin" % "1.1.2"
   
 }
