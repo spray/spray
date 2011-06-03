@@ -24,9 +24,20 @@ import java.lang.StringBuilder
  */
 trait JsonPrinter extends (JsValue => String) {
 
-  def apply(x: JsValue) = {
+  def apply(x: JsValue): String = apply(x, None)
+
+  def apply(x: JsValue, jsonpCallback: String): String = apply(x, Some(jsonpCallback))
+
+  def apply(x: JsValue, jsonpCallback: Option[String]): String = {
     val sb = new StringBuilder
-    print(x, sb)
+    jsonpCallback match {
+      case Some(callback) => {
+        sb.append(callback).append('(')
+        print(x, sb)
+        sb.append(')');
+      }
+      case None => print(x, sb)
+    }
     sb.toString
   }
   
