@@ -17,58 +17,84 @@
 package cc.spray
 package directives
 
+import cache.{CacheBackend, LRUCache, Cache, TypedCache}
 import http._
+import akka.util.Duration
 
 private[spray] trait CacheDirectives {
+  import policy.Police
 
   /**
    * Returns a Route that caches responses returned by its inner Route using the given keyer function.
    * The default keyer caches GET requests with the request URI as caching key, to all other requests it is fully
-   * transparent.
-   * Note that this implementation uses a simple map as the underlying cache, in which cached item never expire!
-   * So you should be careful to only use this directive on resources returning a clearly defined and limited set of
-   * HttpResponses. Otherwise the cache will grow indefinitely and eventually result in OutOfMemory errors.
+   * transparent. The cache itself is implemented with a [[cc.spray.cache.CacheBackend]].
    */
-  def cache(route: Route)(implicit keyer: RequestContext => CacheKey): Route = new Route {
-    private val cache = collection.mutable.Map.empty[Any, HttpResponse]
-    
-    def apply(ctx: RequestContext) {
-      val key = keyer(ctx) 
-      if (key eq DontCache) {
-        route(ctx)
-      } else {
-        cache.get(key) match {
-          case Some(response) => ctx.complete(response)
-          case None => route {
-            ctx.withHttpResponseTransformed { response =>
-              cache.update(key, response)
-              response
-            }
-          }
-        }
-      }
-    }
+
+  def cache(route: Route): Route = {
+    cache()(route)
   }
-  
-  // implicits  
-  
-  implicit def defaultCacheKeyer(ctx: RequestContext): CacheKey = {
-    if (ctx.request.method == HttpMethods.GET) CacheOn(ctx.request.uri) else DontCache
+  def cache(
+        ttl: Duration = defaultTimeToLive,
+        on: Police = defaultCachePolice,
+        in: String = defaultCacheName,
+        backend: CacheBackend = defaultCacheBackend
+      )(route: Route):Route = {
+    cacheIn(backend(in), ttl, on)(route)
   }
-  
+  def cacheIn(
+        basecache: Cache[Any],
+        ttl: Duration = defaultTimeToLive,
+        on: Police = defaultCachePolice
+      )(route: Route): Route = {
+    val cache = new TypedCache[HttpResponse](basecache)
+    new CachedRoute(route, cache, on, ttl)
+  }
+  // defaults
+  val defaultCacheName: String = "routes"
+  val defaultCachePolice: Police = Police
+  val defaultCacheBackend: CacheBackend = LRUCache
+  val defaultTimeToLive: Duration = Duration.MinusInf
 }
 
-/**
- * The result of the implicit cache keyer function argument to the 'cache' directive. 
- */
-sealed trait CacheKey
+class CachedRoute(
+  val route: Route,
+  val cache: Cache[HttpResponse],
+  val police: policy.Police,
+  val timeToLive: Duration) extends Route {
 
-/**
- * When the cache keyer function returns an instance of this class this instance is used as the key into the cache.
- */
-case class CacheOn(key: Any) extends CacheKey
+  def apply(ctx: RequestContext) {
+    police(ctx) match {
+      case Some(key) => {
+        val ttl = if (timeToLive == Duration.MinusInf) {
+          cache.timeToLive
+        } else timeToLive
+        val response = cache(key, extractResponseOrReject(ctx), ttl)
+        if (response != null) ctx.complete(response)
+        // already rejected if null
+      }
+      case _ => route(ctx)
+    }
+  }
+  protected def extractResponseOrReject(ctx: RequestContext) = {
+    var result: HttpResponse = null
+    route(ctx.withResponder(_ match {
+      case Respond(r) => result = r
+      case x: Reject => ctx.responder(x)
+    }))
+    result
+  }
+}
 
-/**
- * When the cache keyer function returns this object the request will not be cached.
- */
-case object DontCache extends CacheKey
+package object policy {
+  type Police = RequestContext => Option[Any]
+  type Filter = RequestContext => Boolean
+  class FilteredPolice protected(val filter: Filter, val police: Police) extends Police {
+    def apply(ctx: RequestContext) = if (filter(ctx)) police(ctx) else None
+    def apply(f: Filter, p: Police) = new FilteredPolice(f, p)
+    def apply(p: Police) = new FilteredPolice(filter, p)
+    def &(f:Filter) = new FilteredPolice({ c => filter(c) && f(c) }, police)
+  }
+  val GetFilter: Filter = { _.request.method == HttpMethods.GET }
+  val UriPolice: Police = { c => Some(c.request.uri) }
+  object Police extends FilteredPolice(GetFilter, UriPolice)
+}
