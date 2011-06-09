@@ -28,7 +28,7 @@ private[spray] trait CacheDirectives {
   val DefaultCacheBackend: CacheBackend = LRUCache
 
   def cache(ttl: Option[Duration] = None,
-            policy: CachePolicy = CachePolicies.DefaultPolicy,
+            keyer: CacheKeyer = CacheKeyers.DefaultCacheKeyProvider,
             name: String = DefaultCacheName,
             backend: CacheBackend = DefaultCacheBackend) = {
     cacheIn(backend(name), ttl, policy)
@@ -36,7 +36,7 @@ private[spray] trait CacheDirectives {
   
   def cacheIn(basecache: Cache[Any],
               ttl: Option[Duration] = None,
-              policy: CachePolicy = CachePolicies.DefaultPolicy) = {
+              keyer: CacheKeyer = CacheKeyers.DefaultCacheKeyProvider) = {
     val cache = new TypedCache[HttpResponse](basecache)
     transform { route => ctx =>
       policy(ctx) match {
@@ -55,13 +55,13 @@ private[spray] trait CacheDirectives {
   }
 }
 
-object CachePolicies {
-  case class FilteredCachePolicy(filter: RequestContext => Boolean, inner: CachePolicy) extends CachePolicy {
+object CacheKeyers {
+  case class FilteredCacheKeyer(filter: RequestContext => Boolean, inner: CacheKeyer) extends CacheKeyer {
     def apply(ctx: RequestContext) = if (filter(ctx)) inner(ctx) else None
-    def & (f: RequestContext => Boolean) = FilteredCachePolicy(c => filter(c) && f(c), inner)
+    def & (f: RequestContext => Boolean) = FilteredCacheKeyer(c => filter(c) && f(c), inner)
   }
 
   val GetFilter: RequestContext => Boolean = { _.request.method == HttpMethods.GET }
-  val OnUriPolicy: CachePolicy = { c => Some(c.request.uri) }
-  val DefaultPolicy = FilteredCachePolicy(GetFilter, OnUriPolicy)
+  val UriKeyer: CacheKeyer = { c => Some(c.request.uri) }
+  val DefaultCacheKeyProvider = FilteredCacheKeyer(GetFilter, UriKeyer)
 }

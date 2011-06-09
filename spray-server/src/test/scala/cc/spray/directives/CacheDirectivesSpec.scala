@@ -115,15 +115,15 @@ class CacheDirectivesSpec extends AbstractSprayTest {
       }.response.content.as[String] mustEqual Right("Yay")
     }
   }
-  "CachePolicies.DefaultPolicy" should {
-    import CachePolicies._
+  "CacheKeyers.DefaultPolicy" should {
+    import CacheKeyers._
     def req(m: HttpMethod, uri: String="") = RequestContext(HttpRequest(m, uri))
     "by default filter get requests and cache on request uri" in {
-      DefaultPolicy(req(HEAD,"/uri")) mustBe None
-      DefaultPolicy(req(GET,"/uri")) mustEqual Some("/uri")
+      DefaultCacheKeyProvider(req(HEAD,"/uri")) mustBe None
+      DefaultCacheKeyProvider(req(GET,"/uri")) mustEqual Some("/uri")
     }
     "build a new policy with an additional filter" in {
-      val policy = DefaultPolicy & { _.request.uri.last == '/' }
+      val policy = DefaultCacheKeyProvider & { _.request.uri.last == '/' }
       policy(req(GET,"/uri/")) mustEqual Some("/uri/")
       policy(req(GET,"/uri")) mustBe None
       policy(req(HEAD,"/uri/")) mustBe None
