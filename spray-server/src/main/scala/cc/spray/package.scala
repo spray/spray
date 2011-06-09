@@ -16,7 +16,6 @@
 
 package cc
 
-import java.io.File
 import spray.directives.ParameterConverter
 import util.matching.Regex
 import collection.immutable.LinearSeq
@@ -28,7 +27,7 @@ import akka.dispatch.Future
 package object spray {
 
   type Route = RequestContext => Unit
-  type ContentTypeResolver = (File, Option[HttpCharset]) => ContentType
+  type ContentTypeResolver = (String, Option[HttpCharset]) => ContentType
   type Marshaller[A] = (ContentType => Option[ContentType]) => Marshalling[A]
   type Unmarshaller[A] = ContentType => Unmarshalling[A]
   type RouteFilter[T <: Product] = RequestContext => FilterResult[T]
@@ -45,7 +44,6 @@ package object spray {
   implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq)
   implicit def pimpClass[A](clazz: Class[A]): PimpedClass[A] = new PimpedClass[A](clazz)
   implicit def pimpProduct(product: Product): PimpedProduct = new PimpedProduct(product)
-  implicit def pimpFile(file: File) = new PimpedFile(file)
   implicit def pimpRegex(regex: Regex) = new PimpedRegex(regex)
   implicit def pimpFuture[F <: Future[_]](future: F) = new PimpedFuture(future)
 }

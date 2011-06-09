@@ -18,7 +18,6 @@ package cc.spray
 package directives
 
 import http._
-import akka.actor.Actor
 import org.parboiled.common.FileUtils
 import java.io.File
 import StatusCodes._
@@ -31,10 +30,20 @@ private[spray] trait FileAndResourceDirectives {
    * running detached in the context of a newly spawned actor, so it doesn't block the current thread.
    * If the file cannot be read the Route completes the request with a "404 NotFound" error.
    */
-  def getFromFile(fileName: String, charset: Option[HttpCharset] = None)
-                 (implicit resolver: ContentTypeResolver): Route = {
+  def getFromFileName(fileName: String, charset: Option[HttpCharset] = None,
+                  resolver: ContentTypeResolver = DefaultContentTypeResolver): Route = {
+    getFromFile(new File(fileName), charset, resolver)
+  }
+
+  /**
+   * Returns a Route that completes GET requests with the content of the given file. The actual I/O operation is
+   * running detached in the context of a newly spawned actor, so it doesn't block the current thread.
+   * If the file cannot be read the Route completes the request with a "404 NotFound" error.
+   */
+  def getFromFile(file: File, charset: Option[HttpCharset] = None,
+                  resolver: ContentTypeResolver = DefaultContentTypeResolver): Route = {
     detach {
-      get { _.complete(responseFromFile(fileName, charset)) }
+      get { _.complete(responseFromFile(file, charset, resolver)) }
     }
   }
 
@@ -42,9 +51,18 @@ private[spray] trait FileAndResourceDirectives {
    * Builds an HttpResponse from the content of the given file. If the file cannot be read a "404 NotFound"
    * response is returned. Note that this method is using disk IO which may block the current thread.
    */
-  def responseFromFile(fileName: String, charset: Option[HttpCharset] = None)
-                      (implicit resolver: ContentTypeResolver): HttpResponse = {
-    responseFromBuffer(FileUtils.readAllBytes(fileName), new File(fileName))
+  def responseFromFileName(fileName: String, charset: Option[HttpCharset] = None,
+                       resolver: ContentTypeResolver = DefaultContentTypeResolver): HttpResponse = {
+    responseFromBuffer(FileUtils.readAllBytes(fileName), resolver(fileName, charset))
+  }
+
+  /**
+   * Builds an HttpResponse from the content of the given file. If the file cannot be read a "404 NotFound"
+   * response is returned. Note that this method is using disk IO which may block the current thread.
+   */
+  def responseFromFile(file: File, charset: Option[HttpCharset] = None,
+                       resolver: ContentTypeResolver = DefaultContentTypeResolver): HttpResponse = {
+    responseFromBuffer(FileUtils.readAllBytes(file), resolver(file.getName, charset))
   }
 
   /**
@@ -52,8 +70,8 @@ private[spray] trait FileAndResourceDirectives {
    * running detached in the context of a newly spawned actor, so it doesn't block the current thread.
    * If the file cannot be read the Route completes the request with a "404 NotFound" error.
    */
-  def getFromResource(resourceName: String, charset: Option[HttpCharset] = None)
-                     (implicit resolver: ContentTypeResolver): Route = {
+  def getFromResource(resourceName: String, charset: Option[HttpCharset] = None,
+                      resolver: ContentTypeResolver = DefaultContentTypeResolver): Route = {
     detach {
       get { _.complete(responseFromResource(resourceName, charset)) }
     }
@@ -63,15 +81,14 @@ private[spray] trait FileAndResourceDirectives {
    * Builds an HttpResponse from the content of the given classpath resource. If the resource cannot be read a
    * "404 NotFound" response is returned. Note that this method is using disk IO which may block the current thread.
    */
-  def responseFromResource(resourceName: String, charset: Option[HttpCharset] = None)
-                          (implicit resolver: ContentTypeResolver): HttpResponse = {
-    responseFromBuffer(FileUtils.readAllBytesFromResource(resourceName), new File(resourceName))
+  def responseFromResource(resourceName: String, charset: Option[HttpCharset] = None,
+                           resolver: ContentTypeResolver = DefaultContentTypeResolver): HttpResponse = {
+    responseFromBuffer(FileUtils.readAllBytesFromResource(resourceName), resolver(resourceName, charset))
   }
   
-  private def responseFromBuffer(buffer: Array[Byte], file: File, charset: Option[HttpCharset] = None)
-                                (implicit resolver: ContentTypeResolver): HttpResponse = {
+  private def responseFromBuffer(buffer: Array[Byte], contentType: => ContentType): HttpResponse = {
     Option(buffer).map { buffer =>
-      HttpResponse(OK, HttpContent(resolver(file, charset), buffer))
+      HttpResponse(OK, HttpContent(contentType, buffer))
     }.getOrElse(HttpResponse(NotFound))
   }
 
@@ -83,13 +100,13 @@ private[spray] trait FileAndResourceDirectives {
    * current thread. If the file cannot be read the Route completes the request with a "404 NotFound" error.
    */
   def getFromDirectory(directoryName: String, charset: Option[HttpCharset] = None,
-                       pathRewriter: String => String = identity) // TODO: remodel as stand-alone directive
-                      (implicit resolver: ContentTypeResolver): Route = {
+                       pathRewriter: String => String = identity,
+                       resolver: ContentTypeResolver = DefaultContentTypeResolver): Route = {
     val base = if (directoryName.endsWith("/")) directoryName else directoryName + "/";
     { ctx =>
       {
         val subPath = if (ctx.unmatchedPath.startsWith("/")) ctx.unmatchedPath.substring(1) else ctx.unmatchedPath
-        getFromFile(base + pathRewriter(subPath), charset).apply(ctx)
+        getFromFileName(base + pathRewriter(subPath), charset, resolver).apply(ctx)
       }
     }
   }
@@ -99,25 +116,29 @@ private[spray] trait FileAndResourceDirectives {
    * "resource directory". 
    */
   def getFromResourceDirectory(directoryName: String, charset: Option[HttpCharset] = None,
-                               pathRewriter: String => String = identity)
-                              (implicit resolver: ContentTypeResolver): Route = {
+                               pathRewriter: String => String = identity,
+                               resolver: ContentTypeResolver = DefaultContentTypeResolver): Route = {
     val base = if (directoryName.isEmpty) "" else directoryName + "/";
     { ctx =>
       {
         val subPath = if (ctx.unmatchedPath.startsWith("/")) ctx.unmatchedPath.substring(1) else ctx.unmatchedPath
-        getFromResource(base + pathRewriter(subPath), charset).apply(ctx)
+        getFromResource(base + pathRewriter(subPath), charset, resolver).apply(ctx)
       }
     }
   }
-  
-  // implicits
-  
-  implicit def defaultContentTypeResolver(file: File, charset: Option[HttpCharset]): ContentType = {
-    val mimeType = MediaTypes.forExtension(file.extension).getOrElse(MediaTypes.`application/octet-stream`)
+}
+
+object DefaultContentTypeResolver extends ContentTypeResolver {
+  def apply(fileName: String, charset: Option[HttpCharset]): ContentType = {
+    val mimeType = MediaTypes.forExtension(extension(fileName)).getOrElse(MediaTypes.`application/octet-stream`)
     charset match {
       case Some(cs) => ContentType(mimeType, cs)
       case None => ContentType(mimeType)
     }
   }
-  
+
+  def extension(fileName: String) = fileName.lastIndexOf('.') match {
+    case -1 => ""
+    case x => fileName.substring(x + 1)
+  }
 }

@@ -30,24 +30,24 @@ class FileAndResourceDirectivesSpec extends AbstractSprayTest {
   "getFromFile" should {
     "block non-GET requests" in {
       test(HttpRequest(PUT)) {
-        getFromFile("some")
+        getFromFileName("some")
       }.handled must beFalse
     }
     "return a 404 for non-existing files" in {
       test(HttpRequest(GET)) {
-        getFromFile("nonExistentFile")
+        getFromFileName("nonExistentFile")
       }.response mustEqual HttpResponse(404)
     }
     "return a 404 for directories" in {
       test(HttpRequest(GET)) {
-        getFromFile(Properties.javaHome)
+        getFromFileName(Properties.javaHome)
       }.response mustEqual HttpResponse(404)
     }
     "return the file content with the MediaType matching the file extension" in {
       val file = File.createTempFile("sprayTest", ".PDF")
       FileUtils.writeAllText("This is PDF", file)
       test(HttpRequest(GET)) {
-        getFromFile(file.getPath)
+        getFromFileName(file.getPath)
       }.response.content mustEqual Some(HttpContent(`application/pdf`, "This is PDF"))
       file.delete
     }
@@ -55,7 +55,7 @@ class FileAndResourceDirectivesSpec extends AbstractSprayTest {
       val file = File.createTempFile("sprayTest", null)
       FileUtils.writeAllText("Some content", file)
       test(HttpRequest(GET)) {
-        getFromFile(file.getPath)
+        getFromFileName(file.getPath)
       }.response.content mustEqual Some(HttpContent(`application/octet-stream`, "Some content"))
       file.delete
     }
