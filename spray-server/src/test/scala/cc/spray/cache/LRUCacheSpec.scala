@@ -2,8 +2,10 @@ package cc.spray.cache
 
 import org.specs.Specification
 import akka.util.duration._
+import akka.dispatch.Future
 
 object TestStore extends lru.Store(2,1)
+
 class LRUCacheSpec extends Specification with CacheSpec {
   "LRUCache" should {
     "provide" >> {
@@ -13,65 +15,64 @@ class LRUCacheSpec extends Specification with CacheSpec {
       storeBehaviour(fix)
     }
     "limit the capacity" in {
-      val c = new LRUCache("name", 2, 3, 50.seconds, 0.seconds)
-      c("0",0); c("1",1); c("2",2)
-      c.get("0") mustEqual None
-      c.get("2") mustEqual Some(2)
-      c.get("1") mustEqual Some(1)
-      c("3",3)
-      c.get("2") mustEqual None
+      val cache = new LRUCache("name", 2, 3, 50.seconds, 0.seconds)
+      cache("0")(0); cache("1")(1); cache("2")(2)
+      cache.get("0") mustEqual None
+      cache.get("2") mustEqual Some(2)
+      cache.get("1") mustEqual Some(1)
+      cache("3")(3)
+      cache.get("2") mustEqual None
     }
     "expire old entries" in {
-      val c = new LRUCache("name", 10, 10, 1.second, 0.seconds)
-      c.set("50", "millis", 50.millis)
-      c.set("1", "second") // default 2.seconds
-      c.get("50") mustEqual Some("millis")
+      val cache = new LRUCache("name", 10, 10, 1.second, 0.seconds)
+      cache.set("50", "millis", Some(50.millis))
+      cache.set("1", "second") // default 2.seconds
+      cache.get("50") mustEqual Some("millis")
       Thread.sleep(50)
-      c.get("50") mustBe None
-      c.get("1") mustEqual Some("second")
+      cache.get("50") mustBe None
+      cache.get("1") mustEqual Some("second")
     }
     "calm thundering herd" in {
-      val c = new LRUCache("name", 10, 10, 50.millis, 50.millis)
-      c.set("foo", "bar")
-      c.set("spam", "egg")
+      val cache = new LRUCache("name", 10, 10, 50.millis, 50.millis)
+      cache.set("foo", "bar")
+      cache.set("spam", "egg")
       Thread.sleep(20)
-      c.get("foo") mustEqual Some("bar") // fresh
+      cache.get("foo") mustEqual Some("bar") // fresh
       Thread.sleep(30)
-      c.get("foo") mustBe None           // stale
+      cache.get("foo") mustBe None           // stale
       // we are now herding! foo is a cowboy 
       // for 1 second and must be replaced
-      c("foo","egg") mustEqual "bar"     // cowboy
-      c.get("foo") mustEqual Some("bar") // cowboy
+      cache("foo")("egg") mustEqual "bar"     // cowboy
+      cache.get("foo") mustEqual Some("bar") // cowboy
       // get or set replaces cowboys automatically
-      c("spam", "bar") mustEqual "bar"   // fresh
+      cache("spam")("bar") mustEqual "bar"   // fresh
       // if a cowboy is not replaced it will expire
       Thread.sleep(50)
-      c.get("foo") mustBe None // really not herding?
-      c.get("foo") mustBe None
+      cache.get("foo") mustBe None // really not herding?
+      cache.get("foo") mustBe None
     }
     "not lock evaluation in apply" in {
-      import scala.actors.Futures
-      val c = new LRUCache("name", 10, 10, 1.second, 0.seconds)
-      val future = Futures.future {
-        c(0,"some")
-        c(1, { Thread.sleep(30); "done"})
+      val cache = new LRUCache("name", 10, 10, 1.second, 0.seconds)
+      val future = Future {
+        cache(0)("some")
+        cache(1) { Thread.sleep(100); "done"}
       }
-      Thread.sleep(10)
+      Thread.sleep(50)
       // 0 was set
-      c.get(0) mustEqual Some("some")
+      cache.get(0) mustEqual Some("some")
       // 1 evaluation is running but we can read
-      c.get(1) mustBe None
+      cache.get(1) mustBe None
       // we would refresh the value and we can. this is
       // not atomic but a compromise to avoid locking.
       // cowboys cant help if we have no initial value.
-      c(1, "thundering") mustBe "thundering"
+      cache(1)("thundering") mustBe "thundering"
       // tip: one solution is to warm up the cache
       //      before the herd arrives and set timeToHerd
       //      greater then the max time needed
       // we always get the local value once evaluation started
-      future() mustBe "done"
+      future.get mustBe "done"
       // but the second call updated the cache already
-      c.get(1) mustEqual Some("thundering")
+      cache.get(1) mustEqual Some("thundering")
     }
   }
   "lru.Store" should {

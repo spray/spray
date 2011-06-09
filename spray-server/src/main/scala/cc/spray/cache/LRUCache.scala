@@ -2,7 +2,7 @@ package cc.spray.cache
 
 import akka.util.{Duration, ReadWriteGuard}
 
-object LRUCache extends CacheBackend with CacheRegister {
+object LRUCache extends RegistryCacheBackend {
   type CacheType = LRUCache
   val defaultConfig = Map(
       "maxEntries"  -> "300", // triggers drop
@@ -37,14 +37,14 @@ class LRUCache(val name: String,
     } else Some(e.value)
     case _ => None
   }
-  def set(key: Any, value: Any, ttl: Duration=timeToLive) {
+  def set(key: Any, value: Any, ttl: Option[Duration] = None) {
     if (value != null)
-      withWriteGuard(store.store(key, value, ttl, timeToHerd))
+      withWriteGuard(store.store(key, value, ttl.getOrElse(timeToLive), timeToHerd))
   }
   def delete(key: Any) {
     withWriteGuard(store.remove(key))
   }
-  def apply(key: Any, expr: =>Any, ttl: Duration=timeToLive) = {
+  def apply(key: Any, ttl: Option[Duration] = None)(expr: =>Any) = {
     var res: Any = null
     var tryAdd = false; var tryReplace = false
     var e = withReadGuard(store.find(key))
@@ -69,8 +69,8 @@ class LRUCache(val name: String,
       } else {
         res = expr                // dont lock evaluation
         withWriteGuard {
-          if (tryAdd) store.add(key, res, ttl, timeToHerd)
-          else store.replace(_.isClean(e))(key, res, ttl, timeToHerd)
+          if (tryAdd) store.add(key, res, ttl.getOrElse(timeToLive), timeToHerd)
+          else store.replace(_.isClean(e))(key, res, ttl.getOrElse(timeToLive), timeToHerd)
         }
       }
     }
@@ -103,9 +103,9 @@ package object lru {
       c != null && expires == c.expires && herds == c.herds && value == c.value
     }
   }
-  class Store(val maxEntries: Int, val dropFraction: Int) extends HashTable[Any] {
+  class Store(val maxEntries: Int, val dropFraction: Int) extends HashTable[Any, StoreEntry] {
     type Entry = StoreEntry
-    override protected def loadFactor = 1000
+    _loadFactor = 1000
     override protected def initialSize = (maxEntries*1.1+1).toInt
     protected var head: Entry = null
     protected var tail: Entry = null
@@ -174,7 +174,7 @@ package object lru {
     def dropTail(frac: Int) {
       if (frac > 1 && maxEntries > 1) {
         val toSize = maxEntries - math.max(maxEntries/frac, 1)
-        var cur = tail
+        val cur = tail
         while (tableSize > toSize && cur != head) {
           removeEntry(cur.key)
           tail = cur.before

@@ -17,84 +17,51 @@
 package cc.spray
 package directives
 
-import cache.{CacheBackend, LRUCache, Cache, TypedCache}
+import cache._
 import http._
 import akka.util.Duration
 
 private[spray] trait CacheDirectives {
-  import policy.Police
+  this: BasicDirectives =>
 
-  /**
-   * Returns a Route that caches responses returned by its inner Route using the given keyer function.
-   * The default keyer caches GET requests with the request URI as caching key, to all other requests it is fully
-   * transparent. The cache itself is implemented with a [[cc.spray.cache.CacheBackend]].
-   */
+  val DefaultCacheName: String = "routes"
+  val DefaultCacheBackend: CacheBackend = LRUCache
 
-  def cache(route: Route): Route = {
-    cache()(route)
+  def cache(ttl: Option[Duration] = None,
+            policy: CachePolicy = CachePolicies.DefaultPolicy,
+            name: String = DefaultCacheName,
+            backend: CacheBackend = DefaultCacheBackend) = {
+    cacheIn(backend(name), ttl, policy)
   }
-  def cache(
-        ttl: Duration = defaultTimeToLive,
-        on: Police = defaultCachePolice,
-        in: String = defaultCacheName,
-        backend: CacheBackend = defaultCacheBackend
-      )(route: Route):Route = {
-    cacheIn(backend(in), ttl, on)(route)
-  }
-  def cacheIn(
-        basecache: Cache[Any],
-        ttl: Duration = defaultTimeToLive,
-        on: Police = defaultCachePolice
-      )(route: Route): Route = {
+  
+  def cacheIn(basecache: Cache[Any],
+              ttl: Option[Duration] = None,
+              policy: CachePolicy = CachePolicies.DefaultPolicy) = {
     val cache = new TypedCache[HttpResponse](basecache)
-    new CachedRoute(route, cache, on, ttl)
-  }
-  // defaults
-  val defaultCacheName: String = "routes"
-  val defaultCachePolice: Police = Police
-  val defaultCacheBackend: CacheBackend = LRUCache
-  val defaultTimeToLive: Duration = Duration.MinusInf
-}
-
-class CachedRoute(
-  val route: Route,
-  val cache: Cache[HttpResponse],
-  val police: policy.Police,
-  val timeToLive: Duration) extends Route {
-
-  def apply(ctx: RequestContext) {
-    police(ctx) match {
-      case Some(key) => {
-        val ttl = if (timeToLive == Duration.MinusInf) {
-          cache.timeToLive
-        } else timeToLive
-        val response = cache(key, extractResponseOrReject(ctx), ttl)
-        if (response != null) ctx.complete(response)
-        // already rejected if null
+    transform { route => ctx =>
+      policy(ctx) match {
+        case Some(key) => cache.get(key) match {
+          case Some(response) => ctx.complete(response)
+          case None => route {
+            ctx.withHttpResponseTransformed { response =>
+              cache.set(key, response, ttl)
+              response
+            }
+          }
+        }
+        case _ => route(ctx)
       }
-      case _ => route(ctx)
     }
   }
-  protected def extractResponseOrReject(ctx: RequestContext) = {
-    var result: HttpResponse = null
-    route(ctx.withResponder(_ match {
-      case Respond(r) => result = r
-      case x: Reject => ctx.responder(x)
-    }))
-    result
-  }
 }
 
-package object policy {
-  type Police = RequestContext => Option[Any]
-  type Filter = RequestContext => Boolean
-  class FilteredPolice protected(val filter: Filter, val police: Police) extends Police {
-    def apply(ctx: RequestContext) = if (filter(ctx)) police(ctx) else None
-    def apply(f: Filter, p: Police) = new FilteredPolice(f, p)
-    def apply(p: Police) = new FilteredPolice(filter, p)
-    def &(f:Filter) = new FilteredPolice({ c => filter(c) && f(c) }, police)
+object CachePolicies {
+  case class FilteredCachePolicy(filter: RequestContext => Boolean, inner: CachePolicy) extends CachePolicy {
+    def apply(ctx: RequestContext) = if (filter(ctx)) inner(ctx) else None
+    def & (f: RequestContext => Boolean) = FilteredCachePolicy(c => filter(c) && f(c), inner)
   }
-  val GetFilter: Filter = { _.request.method == HttpMethods.GET }
-  val UriPolice: Police = { c => Some(c.request.uri) }
-  object Police extends FilteredPolice(GetFilter, UriPolice)
+
+  val GetFilter: RequestContext => Boolean = { _.request.method == HttpMethods.GET }
+  val OnUriPolicy: CachePolicy = { c => Some(c.request.uri) }
+  val DefaultPolicy = FilteredCachePolicy(GetFilter, OnUriPolicy)
 }

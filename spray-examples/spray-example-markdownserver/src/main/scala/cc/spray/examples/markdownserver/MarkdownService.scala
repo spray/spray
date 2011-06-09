@@ -12,7 +12,7 @@ trait MarkdownService extends Directives {
   
   val markdownService = {
     pathPrefix("doc") {
-      cache {
+      cache() {
         transformResponse(_.withContentTransformed(markdown2Html)) {
           getFromResourceDirectory("www", pathRewriter = rewritePath)
         }

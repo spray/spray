@@ -16,11 +16,11 @@ class TypedCache[V] protected(protected val clas: Class[_], val wrapped:Cache[An
   
   def name = wrapped.name
 
-  def set(key: Any, value: V, ttl: Duration=timeToLive) {
+  def set(key: Any, value: V, ttl: Option[Duration] = None) {
     wrapped.set(key, value, ttl)
   }
 
-  def delete(key: Any) = wrapped.delete(key)
+  def delete(key: Any) { wrapped.delete(key) }
 
   /**
    * Returns Some(value) associated with the give key or None.
@@ -38,8 +38,8 @@ class TypedCache[V] protected(protected val clas: Class[_], val wrapped:Cache[An
    * If the value cannot be assigned to V the expression will be
    * evaluated without updating the cache.
    */
-  def apply(key: Any, expr: =>V, ttl: Duration=timeToLive): V = {
-    wrapped(key, expr) match {
+  def apply(key: Any, ttl: Option[Duration] = None)(expr: => V): V = {
+    wrapped(key)(expr) match {
       // TODO: log something when the type check fails so the admin may fix his cache setup
       case null => empty // cannot be from cache. dont evaluate expr again
       case v if clas.isInstance(v) => v.asInstanceOf[V]

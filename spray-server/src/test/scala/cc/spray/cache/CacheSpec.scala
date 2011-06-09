@@ -2,43 +2,46 @@ package cc.spray.cache
 
 import org.specs.Specification
 
-trait CacheSpec { self: Specification =>
-  def backendBehaviour(be: CacheBackend) {
+trait CacheSpec {
+  self: Specification =>
+
+  def backendBehaviour(backend: CacheBackend) {
     "named Cache[Any] instances" in {
-      val c: Cache[Any] = be("foo")
-      c.name mustEqual "foo"
+      backend("foo").name mustEqual "foo"
     }
     "equal caches for equal names" in {
-      be("bar") mustEqual be("bar")
+      backend("bar") mustEqual backend("bar")
     }
   }
-  def basicBehaviour(cache: String => Cache[Any]) = {
-    val c = cache("basic")
+
+  def basicBehaviour(cacheBuilder: String => Cache[Any]) = {
+    val cache = cacheBuilder("basic")
     "the cache name" in {
-      c.name mustEqual "basic"
+      cache.name mustEqual "basic"
     }
     "None for an unknown key" in {
-      c.get("k") mustBe None
+      cache.get("k") mustBe None
     }
     "the evaluated expr for an unknown key" in {
-      c("k", 42) mustBe 42
-      c.delete("k")
+      cache("k")(42) mustBe 42
+      cache.delete("k")
     }
   }
-  def storeBehaviour(cache: String => Cache[Any]) = {
-    val c = cache("store")
+
+  def storeBehaviour(cacheBuilder: String => Cache[Any]) = {
+    val cache = cacheBuilder("store")
     "the given value on set" in {
-      c.set("k", 123)
-      c.get("k") mustEqual Some(123)
-      c.delete("k")
-      c.get("k") mustBe None
+      cache.set("k", 123)
+      cache.get("k") mustEqual Some(123)
+      cache.delete("k")
+      cache.get("k") mustBe None
     }
     "the evaluated expr iff key unknown on getOrSet" in {
-      c("k", 321) mustEqual 321
-      c.get("k") mustEqual Some(321)
-      c("k", {fail();123}) mustEqual 321
-      c.delete("k")
-      c.get("k") mustBe None
+      cache("k")(321) mustEqual 321
+      cache.get("k") mustEqual Some(321)
+      cache("k"){fail();123} mustEqual 321
+      cache.delete("k")
+      cache.get("k") mustBe None
     }
   }
 }

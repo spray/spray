@@ -28,10 +28,10 @@ class TypedCacheSpec extends Specification with CacheSpec {
     "have type safe default behaviour" in {
       val tc1 = fix[Double]()
       //tc1("foo", "bar") //wont compile
-      tc1("foo", 42) mustEqual 42.0 // type conversion
+      tc1("foo")(42) mustEqual 42.0 // type conversion
       val tc2 = fix[String]()
       tc2.get("foo") mustBe None
-      tc2("foo", "bar") mustEqual "bar"
+      tc2("foo")("bar") mustEqual "bar"
       c.get("foo") mustEqual Some(42.0)
     }
     "not accept null" in {
@@ -39,7 +39,7 @@ class TypedCacheSpec extends Specification with CacheSpec {
       val tc = fix[String]()
       tc.set("a", null)
       tc.get("a") mustBe None
-      tc("a",{i+=1; if(i != 1) fail("executed two times"); null}) mustBe null
+      tc("a"){i+=1; if(i != 1) fail("executed two times"); null} mustBe null
       tc.get("a") mustBe None
     }
   }

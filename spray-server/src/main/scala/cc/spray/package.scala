@@ -33,6 +33,7 @@ package object spray {
   type RouteFilter[T <: Product] = RequestContext => FilterResult[T]
   type ParameterMatcher[A] = Map[String, String] => FilterResult[Tuple1[A]]
   type GeneralAuthenticator[U] = RequestContext => FilterResult[Tuple1[U]]
+  type CachePolicy = RequestContext => Option[Any]
   
   def make[A, U](a: A)(f: A => U): A = { f(a); a }
   
