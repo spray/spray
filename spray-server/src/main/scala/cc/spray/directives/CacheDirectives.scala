@@ -18,17 +18,19 @@ package cc.spray
 package directives
 
 import http._
-import collection.mutable.WeakHashMap
 
 private[spray] trait CacheDirectives {
 
   /**
    * Returns a Route that caches responses returned by its inner Route using the given keyer function.
    * The default keyer caches GET requests with the request URI as caching key, to all other requests it is fully
-   * transparent. The cache itself is implemented as a [[collection.mutable.WeakHashMap]].
+   * transparent.
+   * Note that this implementation uses a simple map as the underlying cache, in which cached item never expire!
+   * So you should be careful to only use this directive on resources returning a clearly defined and limited set of
+   * HttpResponses. Otherwise the cache will grow indefinitely and eventually result in OutOfMemory errors.
    */
   def cache(route: Route)(implicit keyer: RequestContext => CacheKey): Route = new Route {
-    private val cache = WeakHashMap.empty[Any, HttpResponse]
+    private val cache = collection.mutable.Map.empty[Any, HttpResponse]
     
     def apply(ctx: RequestContext) {
       val key = keyer(ctx) 
