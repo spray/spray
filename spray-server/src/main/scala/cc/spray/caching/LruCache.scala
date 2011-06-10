@@ -36,10 +36,9 @@ class LruCache[V](val maxEntries: Int,
   require(dropFraction > 0.0, "dropFraction must be > 0")
 
   sealed trait Entry {
-    private var expiresAt: Long = _
-    refresh()
-    def refresh() { expiresAt = System.currentTimeMillis + ttl.toMillis }
-    def isAlive = expiresAt > System.currentTimeMillis
+    private var lastUsed = System.currentTimeMillis
+    def refresh() { lastUsed = System.currentTimeMillis }
+    def isAlive = (System.currentTimeMillis - lastUsed).millis < ttl // note that infinite Durations do not support .toMillis
   }
   case class ResponseEntry(value: V) extends Entry
   case class FutureEntry(future: Future[V]) extends Entry {
