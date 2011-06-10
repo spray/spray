@@ -15,27 +15,26 @@
  */
 
 package cc.spray
-package directives
+package caching
 
-import caching._
+import akka.dispatch.{CompletableFuture, Future}
 
-private[spray] trait CacheDirectives {
-  this: BasicDirectives =>
+trait Cache[V] {
 
-  def cacheResults(cache: Cache[RoutingResult], keyer: CacheKeyer = CacheKeyers.UriGetCacheKeyer) = {
-    transform { route => ctx =>
-      keyer(ctx) match {
-        case Some(key) => {
-          cache(key) { completableFuture =>
-            route(ctx.withResponder(completableFuture.completeWithResult(_)))
-          } onComplete { future =>
-            ctx.responder(future.get)
-          }
-        }
-        case _ => route(ctx)
+  def apply(key: Any) = new Key(key)
+
+  class Key(val key: Any) {
+    def apply(func: CompletableFuture[V] => Unit) = supply(key, func)
+    def apply(expr: => V): Future[V] = apply { completableFuture =>
+      try {
+        completableFuture.completeWithResult(expr)
+      } catch {
+        case e: Exception => completableFuture.completeWithException(e)
       }
     }
   }
 
-  def cache = cacheResults(LruCache[RoutingResult]())
+  def get(key: Any): Option[Either[Future[V], V]]
+
+  def supply(key: Any, func: CompletableFuture[V] => Unit): Future[V]
 }

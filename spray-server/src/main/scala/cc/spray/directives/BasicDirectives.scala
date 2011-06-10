@@ -69,15 +69,14 @@ private[spray] trait BasicDirectives {
     new SprayRoute0(_ => new Pass(Product0, transform = f))
 
   /**
-   * Creates a [[cc.spray.SprayRoute0]] that accepts all requests but applies the given transformation function to
-   * its inner Route.
+   * Creates a [[cc.spray.TransformRoute]] that applies the given transformation function to its inner Route.
    */
-  def transform(f: Route => Route) = new SprayRoute0(_ => Pass()) {
+  def transform(f: Route => Route) = new TransformRoute {
     override def apply(route: Route) = f(route)
   }
 }
 
-abstract class SprayRoute[T <: Product](val filter: RouteFilter[T]) { self =>
+sealed abstract class SprayRoute[T <: Product](val filter: RouteFilter[T]) { self =>
   protected def fromRouting(f: T => Route): Route = { ctx =>
     filter(ctx) match {
       case Pass(values, transform) => f(values)(transform(ctx)) 
@@ -217,4 +216,11 @@ class SprayRoute7[A, B, C, D, E, F, G](filter: RouteFilter[(A, B, C, D, E, F, G)
   def apply(routing: (A, B, C, D, E, F, G) => Route) = fromRouting { t => routing(t._1, t._2, t._3, t._4, t._5, t._6, t._7) }
   def | (other: SprayRoute7[A, B, C, D, E, F, G]) = new SprayRoute7[A, B, C, D, E, F, G](or(other))
   def & (other: SprayRoute0) = new SprayRoute7[A, B, C, D, E, F, G](and(other))
+}
+
+/**
+ * A Route that transforms another route.
+ */
+class TransformRoute extends SprayRoute0(_ => Pass()) {
+  override def apply(route: Route) = route // default: no transformation
 }

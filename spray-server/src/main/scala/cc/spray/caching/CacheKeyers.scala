@@ -15,27 +15,20 @@
  */
 
 package cc.spray
-package directives
+package caching
 
-import caching._
+import http._
 
-private[spray] trait CacheDirectives {
-  this: BasicDirectives =>
+object CacheKeyers {
+  type CacheKeyFilter = RequestContext => Boolean
 
-  def cacheResults(cache: Cache[RoutingResult], keyer: CacheKeyer = CacheKeyers.UriGetCacheKeyer) = {
-    transform { route => ctx =>
-      keyer(ctx) match {
-        case Some(key) => {
-          cache(key) { completableFuture =>
-            route(ctx.withResponder(completableFuture.completeWithResult(_)))
-          } onComplete { future =>
-            ctx.responder(future.get)
-          }
-        }
-        case _ => route(ctx)
-      }
-    }
+  case class FilteredCacheKeyer(filter: CacheKeyFilter, inner: CacheKeyer) extends CacheKeyer {
+    def apply(ctx: RequestContext) = if (filter(ctx)) inner(ctx) else None
+    def & (f: CacheKeyFilter) = FilteredCacheKeyer(c => filter(c) && f(c), inner)
   }
 
-  def cache = cacheResults(LruCache[RoutingResult]())
+  val GetFilter: CacheKeyFilter = { _.request.method == HttpMethods.GET }
+  val UriKeyer: CacheKeyer = { c => Some(c.request.uri) }
+  val UriGetCacheKeyer = FilteredCacheKeyer(GetFilter, UriKeyer)
 }
+
