@@ -2,8 +2,7 @@ package cc.spray
 
 import http._
 import StatusCodes._
-import java.io.{PrintWriter, StringWriter}
-import akka.util.Logging
+import utils.Logging
 
 trait ErrorHandling {
   
@@ -11,7 +10,7 @@ trait ErrorHandling {
     logException(request, e)
     e match {
       case e: HttpException => HttpResponse(e.failure, e.reason)
-      case e: Exception => HttpResponse(InternalServerError, e.toString)
+      case e: Exception => HttpResponse(InternalServerError, "Internal Server Error:\n" + e.toString)
     }
   }
   
@@ -23,9 +22,7 @@ trait ErrorLogging extends ErrorHandling {
   this: Logging =>
   
   protected def logException(request: HttpRequest, e: Exception) {
-    val stackTrace = new StringWriter()
-    e.printStackTrace(new PrintWriter(stackTrace));
-    log.slf4j.error("Error during processing of request {}:\n{}", request, stackTrace)
+    log.error(e, "Error during processing of request %s", request)
   }
   
 }

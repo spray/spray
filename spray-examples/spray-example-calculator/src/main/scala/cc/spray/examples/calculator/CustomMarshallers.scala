@@ -4,7 +4,6 @@ import cc.spray._
 import http._
 import marshalling._
 import MediaTypes._
-import xml.XML
 
 trait CustomMarshallers {
   

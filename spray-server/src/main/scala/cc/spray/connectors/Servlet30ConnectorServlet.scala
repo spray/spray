@@ -42,14 +42,14 @@ class Servlet30ConnectorServlet extends ConnectorServlet with AsyncListener {
   def onError(ev: AsyncEvent) {
     val req = rawRequest(ev.getSuppliedRequest.asInstanceOf[HttpServletRequest])
     ev.getThrowable match {
-      case null => log.slf4j.warn("Unspecified Error during async processing of {}", req)
-      case ex => log.slf4j.warn("Error during async processing of " + req, ex)
+      case null => log.error("Unspecified Error during async processing of %s", req)
+      case ex => log.error(ex, "Error during async processing of %s", req)
     }
   }
 
   def onTimeout(ev: AsyncEvent) {
     val req = rawRequest(ev.getSuppliedRequest.asInstanceOf[HttpServletRequest])
-    log.slf4j.warn("Timeout of {}", req)
+    log.error("Timeout of %s", req)
     TimeOutHandler.get.apply(req, rawResponse(ev.getSuppliedResponse.asInstanceOf[HttpServletResponse]))
     ev.getAsyncContext.complete()
   }

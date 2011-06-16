@@ -33,7 +33,7 @@ class Jetty7ConnectorServlet extends ConnectorServlet {
     val rawReq = rawRequest(req)
     continuation.addContinuationListener(new ContinuationListener {
       def onTimeout(continuation: Continuation) {
-        log.slf4j.warn("Timeout of {}", rawReq)
+        log.error("Timeout of %s", rawReq)
         TimeOutHandler.get.apply(rawReq, rawResponse(resp))
         continuation.complete()
       }

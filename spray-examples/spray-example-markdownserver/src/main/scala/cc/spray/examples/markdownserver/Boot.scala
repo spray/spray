@@ -8,7 +8,7 @@ import utils.ActorHelpers._
 
 class Boot {
   
-  val mainModule = new MarkdownServiceBuilder {
+  val mainModule = new MarkdownService {
     // bake your module cake here
   }
   

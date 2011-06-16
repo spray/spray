@@ -18,16 +18,32 @@ package cc.spray
 
 import http._
 import akka.actor.Actor
-import akka.util.Logging
+import utils.{PostStart, Logging}
 
 /**
  * The actor path of the [[cc.spray.HttpService]].
  */
-trait HttpServiceActor extends Actor with Logging with ErrorLogging {
+trait HttpServiceActor extends Actor with Logging with ErrorLogging with PostStart {
   this: HttpServiceLogic =>
   
   val setDateHeader = SpraySettings.SetDateHeader
-  
+
+  override def preStart() {
+    log.debug("Starting ...")
+  }
+
+  def postStart() {
+    log.info("HTTP Service started")
+  }
+
+  override def postStop() {
+    log.info("Stopped")
+  }
+
+  override def preRestart(reason: Throwable) {
+    log.info("Restarting because of previous %s", reason.getClass.getName)
+  }
+
   protected def receive = {
     case request: HttpRequest => handle(request)
   }

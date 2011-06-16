@@ -43,7 +43,7 @@ trait HttpAuthenticator[U] extends GeneralAuthenticator[U] {
 
 }
 
-trait BasicHttpAuthorizer[U] extends HttpAuthenticator[U] {
+trait BasicHttpAuthenticator[U] extends HttpAuthenticator[U] {
 
   def scheme = "Basic"
 
@@ -62,8 +62,8 @@ trait BasicHttpAuthorizer[U] extends HttpAuthenticator[U] {
   
 object HttpBasic {
   def apply[U](authRealm: String = "Secured Resource")
-              (implicit authenticator: UserPassAuthenticator[U]): BasicHttpAuthorizer[U] = {
-    new BasicHttpAuthorizer[U] {
+              (implicit authenticator: UserPassAuthenticator[U]): BasicHttpAuthenticator[U] = {
+    new BasicHttpAuthenticator[U] {
       def realm = authRealm
       def authenticate(userPass: Option[(String, String)]) = authenticator(userPass)
     }

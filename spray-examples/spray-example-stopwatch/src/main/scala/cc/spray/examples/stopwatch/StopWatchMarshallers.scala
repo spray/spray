@@ -8,7 +8,7 @@ import xml.XML
 import collection.Map
 
 trait StopWatchMarshallers extends DefaultMarshallers {
-  this: StopWatchServiceBuilder =>
+  this: StopWatchService =>
 
   /**
    * Marshaller for a whole map of StopWatches

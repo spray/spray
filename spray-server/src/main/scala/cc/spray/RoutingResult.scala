@@ -39,9 +39,7 @@ object Reject {
   def apply(rejection: Rejection): Reject = apply(Set(rejection))
 }
 
-class Pass[+T <: Product](val values: T, val transform: RequestContext => RequestContext = identity) extends FilterResult[T] {
-  def apply(transform: RequestContext => RequestContext) = new Pass(values, transform)
-}
+class Pass[+T <: Product](val values: T, val transform: RequestContext => RequestContext = identity) extends FilterResult[T]
 
 object Pass {
   def apply(): Pass[Product0] = new Pass(Product0)
@@ -50,6 +48,11 @@ object Pass {
   def apply[A, B, C](a: A, b: B, c: C): Pass[(A, B, C)] = new Pass((a, b, c))
   def apply[A, B, C, D](a: A, b: B, c: C, d: D): Pass[(A, B, C, D)] = new Pass((a, b, c, d))
   def apply[A, B, C, D, E](a: A, b: B, c: C, d: D, e: E): Pass[(A, B, C, D, E)] = new Pass((a, b, c, d, e))
-  
+  def apply[A, B, C, D, E, F](a: A, b: B, c: C, d: D, e: E, f: F): Pass[(A, B, C, D, E, F)] = new Pass((a, b, c, d, e, f))
+  def apply[A, B, C, D, E, F, G](a: A, b: B, c: C, d: D, e: E, f: F, g: G): Pass[(A, B, C, D, E, F, G)] = new Pass((a, b, c, d, e, f, g))
+
+  def withTransform(transform: RequestContext => RequestContext) = new Pass(Product0, transform)
+  def withTransform[A](a: A)(transform: RequestContext => RequestContext) = new Pass(Tuple1(a), transform)
+
   def unapply[T <: Product](pass: Pass[T]): Option[(T, RequestContext => RequestContext)] = Some(pass.values, pass.transform)
 }

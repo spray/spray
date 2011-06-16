@@ -19,36 +19,40 @@ package cc.spray
 import http._
 import StatusCodes._
 import akka.actor.{Actor, ActorRef}
-import akka.util.Logging
 import akka.dispatch.{Future, Futures}
+import utils.{PostStart, Logging}
 
 /**
  * The RootService actor is the central entrypoint for HTTP requests entering the ''spray'' infrastructure.
  * It is responsible for creating an [[cc.spray.http.HttpRequest]] object for the request as well as dispatching this
  *  [[cc.spray.http.HttpRequest]] object to all attached [[cc.spray.HttpService]]s. 
  */
-class RootService extends Actor with ToFromRawConverter with Logging {
+class RootService extends Actor with ToFromRawConverter with Logging with PostStart {
   private var services: List[ActorRef] = Nil
-  private var handler: RawRequestContext => Unit = handleNoServices  
+  private var handler: RawRequestContext => Unit = handleNoServices
 
   self.id = SpraySettings.RootActorId
 
   lazy val addConnectionCloseResponseHeader = SpraySettings.CloseConnection
 
-  override def preStart {
+  override def preStart() {
     log.debug("Starting spray RootService ...")
   }
 
-  override def postStop {
-    log.debug("spray RootService stopped")
+  def postStart() {
+    log.info("spray RootService started")
+  }
+
+  override def postStop() {
+    log.info("spray RootService stopped")
   }
 
   override def preRestart(reason: Throwable) {
-    log.debug("Restarting spray RootService ...")
+    log.info("Restarting spray RootService because of previous %s ...", reason.getClass.getName)
   }
 
   override def postRestart(reason: Throwable) {
-    log.debug("spray RootService restarted");
+    log.info("spray RootService restarted");
   }
 
   protected def receive = {
@@ -64,31 +68,29 @@ class RootService extends Actor with ToFromRawConverter with Logging {
   }
   
   private def handleNoServices(rawContext: RawRequestContext) {
-    log.slf4j.debug("Received {} with no attached services, completing with 404", toSprayRequest(rawContext.request))
+    log.debug("Received %s with no attached services, completing with 404", toSprayRequest(rawContext.request))
     completeNoService(rawContext)
   }
   
   private def handleOneService(rawContext: RawRequestContext) {
     val request = toSprayRequest(rawContext.request)
-    log.slf4j.debug("Received {} with one attached service, dispatching...", request)
-    (services.head !!! request) onComplete completeRequest(rawContext) _
+    log.debug("Received %s with one attached service, dispatching...", request)
+    (services.head !!! (request, SpraySettings.AsyncTimeout)).onComplete(completeRequest(rawContext) _)
   }
   
   private def handleMultipleServices(rawContext: RawRequestContext) {    
     val request = toSprayRequest(rawContext.request)
-    log.slf4j.debug("Received {} with {} attached services, dispatching...", services.size, request)
-    val futures = services.map(_ !!! request).asInstanceOf[List[Future[Any]]]
-    Futures.fold(None.asInstanceOf[Option[Any]])(futures) { (result, future) =>
-      (result, future) match {
-        case (None, None) => None
-        case (None, x: Some[_]) => x
-        case (x: Some[_], None) => x 
-        case (x: Some[_], Some(y)) => {
-          log.slf4j.warn("Received a second response for request '{}':\n\nn{}\n\nIgnoring the additional response...", request, y)
-          x
-        }
-      }
-    } onComplete completeRequest(rawContext) _
+    log.debug("Received %s with %s attached services, dispatching...", request, services.size)
+    val serviceFutures: List[Future[Option[Any]]] = services.map(_ !!! (request, SpraySettings.AsyncTimeout))
+    val resultsFuture = Futures.fold[Option[Any], Option[Any]](None, SpraySettings.AsyncTimeout)(serviceFutures) {
+      case (None, None) => None
+      case (None, x: Some[_]) => x
+      case (x: Some[_], None) => x
+      case (x: Some[_], Some(y)) =>
+        log.warn("Received a second response for request '%s':\n\nn%s\n\nIgnoring the additional response...", request, y)
+        x
+    }
+    resultsFuture.onComplete(completeRequest(rawContext) _)
   }
   
   private def completeNoService(rawContext: RawRequestContext) {
@@ -107,13 +109,13 @@ class RootService extends Actor with ToFromRawConverter with Logging {
   }
 
   protected def handleException(e: Throwable, rawContext: RawRequestContext) {
-    log.slf4j.error("Exception during request processing: {}", e)
+    log.error(e, "Exception during request processing")
     rawContext.complete(fromSprayResponse(e match {
       case e: HttpException => HttpResponse(e.failure)
       case e: Exception => HttpResponse(InternalServerError, e.getMessage)
     }))
   }
-  
+
   protected def attach(serviceActor: ActorRef) {
     services = serviceActor :: services
     if (serviceActor.isUnstarted) serviceActor.start()

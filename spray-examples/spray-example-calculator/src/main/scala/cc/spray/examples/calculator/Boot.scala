@@ -8,7 +8,7 @@ import utils.ActorHelpers._
 
 class Boot {
   
-  val mainModule = new CalculatorServiceBuilder {
+  val mainModule = new CalculatorService {
     // bake your module cake here
   }
   

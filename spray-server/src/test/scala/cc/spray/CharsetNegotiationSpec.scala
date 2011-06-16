@@ -23,7 +23,7 @@ import MediaTypes._
 import HttpCharsets._
 import test.SprayTest
 
-class CharsetNegotiationSpec extends Specification with SprayTest with ServiceBuilder {
+class CharsetNegotiationSpec extends Specification with SprayTest with Directives {
   
   "The framework" should {
     "encode text content using ISO-8859-1 if no Accept-Charset header is present in the request" in {

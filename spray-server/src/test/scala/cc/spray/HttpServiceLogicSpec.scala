@@ -26,7 +26,7 @@ import test.SprayTest
 import utils.IllegalResponseException
 import xml.NodeSeq
 
-class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuilder {
+class HttpServiceLogicSpec extends Specification with SprayTest with Directives {
   
   val Ok = HttpResponse(OK)
   val completeOk: Route = { _.complete(Ok) }
@@ -105,7 +105,7 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
     }
     "respond with BadRequest for requests resulting in a MalformedQueryParamRejection" in {
       testService(HttpRequest(POST, "/?amount=xyz")) {
-        parameters('amount.as[Int]) { amount => completeOk }
+        parameters('amount.as[Int]) { _ => completeOk }
       }.response mustEqual HttpResponse(BadRequest, "The query parameter 'amount' was malformed:\n" +
               "'xyz' is not a valid 32-bit integer value")
     }
@@ -143,6 +143,11 @@ class HttpServiceLogicSpec extends Specification with SprayTest with ServiceBuil
         contentAs[NodeSeq] { _ => completeOk }
       }.response mustEqual HttpResponse(BadRequest, "The request content was malformed:\n" +
               "XML document structures must start and end within the same entity.")
+    }
+    "respond with BadRequest for requests resulting in a ValidationRejection" in {
+      testService(HttpRequest()) {
+        validate(false, "Oh noo!") { completeOk }
+      }.response mustEqual HttpResponse(BadRequest, "Oh noo!")
     }
   }
   
