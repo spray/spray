@@ -17,7 +17,7 @@
 package cc.spray
 package directives
 
-private[spray] trait ParameterDirectives extends ParameterConverters {
+private[spray] trait ParameterDirectives extends SimpleParsers {
   this: BasicDirectives =>
 
   private type PM[A] = ParameterMatcher[A]
@@ -26,7 +26,26 @@ private[spray] trait ParameterDirectives extends ParameterConverters {
    * Returns a Route that rejects the request if a query parameter with the given name cannot be found.
    * If it can be found the parameters value is extracted and passed as argument to the inner Route building function. 
    */
-  def parameter[A](pm: PM[A]): SprayRoute1[A] = filter1[A] { ctx => pm(ctx.request.queryParams) }
+  def parameter[A](pm: PM[A]): SprayRoute1[A] = filter1[A] { ctx =>
+    pm(ctx.request.queryParams) match {
+      case Right(value) => Pass.withTransform(value) {
+        _.cancelRejections {
+          _ match {
+            case MissingQueryParamRejection(n) if n == pm.name => true
+            case MalformedQueryParamRejection(_, Some(n)) if n == pm.name => true
+            case _ => false
+          }
+        }
+      }
+      case Left(x: MissingQueryParamRejection) => Reject(x)
+      case Left(x) => new Reject(Set(x,
+        RejectionRejection {
+          case MissingQueryParamRejection(n) if n == pm.name => true
+          case _ => false
+        }
+      ))
+    }
+  }
 
   /**
    * Returns a Route that rejects the request if a query parameter with the given name cannot be found.
@@ -101,55 +120,31 @@ private[spray] trait ParameterDirectives extends ParameterConverters {
 
   implicit def fromSymbol(name: Symbol) = fromString(name.name)  
   
-  implicit def fromString(name: String) = new DefaultParameterMatcher[String](name, StringParameterConverter)
+  implicit def fromString(name: String) = new ParameterMatcher[String](name, SimpleStringParser)
 }
 
-trait ParameterConverter[A] extends (String => Either[String, A])
-trait RequiredParameterMatcher extends (Map[String, String] => Boolean)
-
-class DefaultParameterMatcher[A](name: String, converter: ParameterConverter[A]) extends ParameterMatcher[A] { self =>
-  def apply(params: Map[String, String]) = {
+class ParameterMatcher[A](val name: String, val parser: SimpleParser[A]) {
+  def apply(params: Map[String, String]): Either[Rejection, A] = {
     params.get(name) match {
-      case Some(value) => converter(value) match {
-        case Right(converted) => Pass.withTransform(converted) {
-          _.cancelRejections {
-            _ match {
-              case MissingQueryParamRejection(n) if n == name => true
-              case MalformedQueryParamRejection(_, Some(n)) if n == name => true
-              case _ => false
-            }
-          }
-        }
-        case Left(errorMsg) => new Reject(Set(
-          MalformedQueryParamRejection(errorMsg, Some(name)),
-          RejectionRejection {
-            case MissingQueryParamRejection(n) if n == name => true
-            case _ => false
-          }
-        )) 
-      }
-      case None => notFound  
+      case Some(value) => parser(value).left.map(MalformedQueryParamRejection(_, Some(name)))
+      case None => notFound
     }
   }
+
+  protected def notFound: Either[Rejection, A] = Left(MissingQueryParamRejection(name))
   
-  protected def notFound: FilterResult[Tuple1[A]] = Reject(MissingQueryParamRejection(name))
-  
-  def ? : ParameterMatcher[Option[A]] = {
-    new DefaultParameterMatcher[Option[A]](name,
-      new ParameterConverter[Option[A]] { def apply(s: String) = converter(s).fold(Left(_), x => Right(Some(x))) }) {
-      override def notFound = Pass(None)
-    }
+  def ? = new ParameterMatcher[Option[A]](name,
+    new SimpleParser[Option[A]] { def apply(s: String) = parser(s).fold(Left(_), x => Right(Some(x))) }) {
+    override def notFound = Right(None)
   }
   
-  def ? [B :ParameterConverter](default: B) = new DefaultParameterMatcher[B](name, parameterConverter[B]) {
-    override def notFound = Pass(default)
+  def ? [B :SimpleParser](default: B) = new ParameterMatcher[B](name, simpleParser[B]) {
+    override def notFound = Right(default)
   }
   
-  def as[B :ParameterConverter] = new DefaultParameterMatcher[B](name, parameterConverter[B])
+  def as[B :SimpleParser] = new ParameterMatcher[B](name, simpleParser[B])
   
-  def ! [B :ParameterConverter](requiredValue: B) = new RequiredParameterMatcher {
-    def apply(params: Map[String, String]) = {
-      params.get(name).flatMap(parameterConverter[B].apply(_).right.toOption) == Some(requiredValue)
-    }
-  } 
+  def ! [B :SimpleParser](requiredValue: B): RequiredParameterMatcher = {
+    _.get(name).flatMap(simpleParser[B].apply(_).right.toOption) == Some(requiredValue)
+  }
 }

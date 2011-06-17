@@ -1,17 +1,33 @@
+/*
+ * Copyright (C) 2011 Mathias Doenitz
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package cc.spray
-package directives
 
-private[spray] trait ParameterConverters {
+trait SimpleParser[A] extends (String => Either[String, A])
 
-  implicit object StringParameterConverter extends ParameterConverter[String] {
+trait SimpleParsers {
+  implicit object SimpleStringParser extends SimpleParser[String] {
     def apply(value: String) = Right(value)
   }
 
-  implicit object SymbolParameterConverter extends ParameterConverter[Symbol] {
+  implicit object SimpleSymbolParser extends SimpleParser[Symbol] {
     def apply(value: String) = Right(Symbol(value))
   }
 
-  implicit object IntParameterConverter extends ParameterConverter[Int] {
+  implicit object SimpleIntParser extends SimpleParser[Int] {
     def apply(value: String) = {
       try {
         Right(value.toInt)
@@ -21,7 +37,7 @@ private[spray] trait ParameterConverters {
     }
   }
   
-  object HexInt extends ParameterConverter[Int] {
+  object HexInt extends SimpleParser[Int] {
     def apply(value: String) = {
       try {
         Right(Integer.parseInt(value, 16))
@@ -31,7 +47,7 @@ private[spray] trait ParameterConverters {
     }
   }
   
-  implicit object LongParameterConverter extends ParameterConverter[Long] {
+  implicit object SimpleLongParser extends SimpleParser[Long] {
     def apply(value: String) = {
       try {
         Right(value.toLong)
@@ -41,7 +57,7 @@ private[spray] trait ParameterConverters {
     }
   }
   
-  object HexLong extends ParameterConverter[Long] {
+  object HexLong extends SimpleParser[Long] {
     def apply(value: String) = {
       try {
         Right(java.lang.Long.parseLong(value, 16))
@@ -51,7 +67,7 @@ private[spray] trait ParameterConverters {
     }
   }
   
-  implicit object DoubleParameterConverter extends ParameterConverter[Double] {
+  implicit object SimpleDoubleParser extends SimpleParser[Double] {
     def apply(value: String) = {
       try {
         Right(value.toDouble)
@@ -61,7 +77,7 @@ private[spray] trait ParameterConverters {
     }
   }
 
-  implicit object FloatParameterConverter extends ParameterConverter[Float] {
+  implicit object SimpleFloatParser extends SimpleParser[Float] {
     def apply(value: String) = {
       try {
         Right(value.toFloat)
@@ -71,7 +87,7 @@ private[spray] trait ParameterConverters {
     }
   }
 
-  implicit object ShortParameterConverter extends ParameterConverter[Short] {
+  implicit object SimpleShortParser extends SimpleParser[Short] {
     def apply(value: String) = {
       try {
         Right(value.toShort)
@@ -81,7 +97,7 @@ private[spray] trait ParameterConverters {
     }
   }
 
-  implicit object ByteParameterConverter extends ParameterConverter[Byte] {
+  implicit object SimpleByteParser extends SimpleParser[Byte] {
     def apply(value: String) = {
       try {
         Right(value.toByte)
@@ -91,7 +107,7 @@ private[spray] trait ParameterConverters {
     }
   }
   
-  implicit object BooleanParameterConverter extends ParameterConverter[Boolean] {
+  implicit object SimpleBooleanParser extends SimpleParser[Boolean] {
     def apply(value: String) = value.toLowerCase match {
       case "true" | "yes" | "on" => Right(true)
       case "false" | "no" | "off" => Right(false)
@@ -99,3 +115,5 @@ private[spray] trait ParameterConverters {
     }
   }  
 }
+
+object SimpleParsers extends SimpleParsers

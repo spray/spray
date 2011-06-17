@@ -16,7 +16,6 @@
 
 package cc
 
-import spray.directives.ParameterConverter
 import util.matching.Regex
 import collection.immutable.LinearSeq
 import spray.http._
@@ -31,15 +30,15 @@ package object spray {
   type Marshaller[A] = (ContentType => Option[ContentType]) => Marshalling[A]
   type Unmarshaller[A] = ContentType => Unmarshalling[A]
   type RouteFilter[T <: Product] = RequestContext => FilterResult[T]
-  type ParameterMatcher[A] = Map[String, String] => FilterResult[Tuple1[A]]
-  type GeneralAuthenticator[U] = RequestContext => FilterResult[Tuple1[U]]
+  type GeneralAuthenticator[U] = RequestContext => Either[Rejection, U]
   type CacheKeyer = RequestContext => Option[Any]
+  type RequiredParameterMatcher = Map[String, String] => Boolean
   
   def make[A, U](a: A)(f: A => U): A = { f(a); a }
   
   def marshaller[T](implicit m: Marshaller[T]) = m
   def unmarshaller[T](implicit um: Unmarshaller[T]) = um
-  def parameterConverter[T](implicit pc: ParameterConverter[T]) = pc
+  def simpleParser[T](implicit sp: SimpleParser[T]) = sp
 
   // implicits
   implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq)

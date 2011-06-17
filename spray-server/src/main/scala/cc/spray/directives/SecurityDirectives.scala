@@ -24,7 +24,12 @@ private[spray] trait SecurityDirectives extends DefaultUserPassAuthenticator {
    * Uses the given authenticator to authenticate the user and extract an object representing the users identity.
    * It's up to the given authenticator how to deal with authentication failures of any kind.
    */
-  def authenticate[U](authenticator: GeneralAuthenticator[U]) = filter1(authenticator)
+  def authenticate[U](authenticator: GeneralAuthenticator[U]) = filter1 { ctx =>
+    authenticator(ctx) match {
+      case Right(userContext) => Pass(userContext)
+      case Left(rejection) => Reject(rejection)
+    }
+  }
 
   /**
    * Applies the given authorization check to the request.

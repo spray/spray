@@ -25,11 +25,11 @@ trait HttpAuthenticator[U] extends GeneralAuthenticator[U] {
     val authHeader = ctx.request.headers.findByType[`Authorization`]
     val credentials = authHeader.map { case Authorization(credentials) => credentials }
     authenticate(credentials, ctx) match {
-      case Some(userContext) => Pass(userContext)
-      case None => Reject(
+      case Some(userContext) => Right(userContext)
+      case None => Left {
         if (authHeader.isEmpty) AuthenticationRequiredRejection(scheme, realm, params(ctx))
         else AuthorizationFailedRejection 
-      ) 
+      }
     }
   }
 
