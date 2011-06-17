@@ -26,13 +26,13 @@ import java.nio.CharBuffer
 trait DefaultMarshallers {
 
   implicit object StringMarshaller extends MarshallerBase[String] {
-    val canMarshalTo = List(ContentType(`text/plain`)) 
+    val canMarshalTo = ContentType(`text/plain`) :: Nil
 
     def marshal(value: String, contentType: ContentType) = HttpContent(contentType, value)
   }
 
   implicit object CharArrayMarshaller extends MarshallerBase[Array[Char]] {
-    val canMarshalTo = List(ContentType(`text/plain`))
+    val canMarshalTo = ContentType(`text/plain`) :: Nil
 
     def marshal(value: Array[Char], contentType: ContentType) = {
       val nioCharset = contentType.charset.getOrElse(`ISO-8859-1`).nioCharset
@@ -43,7 +43,9 @@ trait DefaultMarshallers {
   }
   
   implicit object NodeSeqMarshaller extends MarshallerBase[NodeSeq] {
-    val canMarshalTo = List(ContentType(`text/xml`), ContentType(`text/html`), ContentType(`application/xhtml+xml`)) 
+    val canMarshalTo = ContentType(`text/xml`) ::
+                       ContentType(`text/html`) ::
+                       ContentType(`application/xhtml+xml`) :: Nil
 
     def marshal(value: NodeSeq, contentType: ContentType) = StringMarshaller.marshal(value.toString, contentType)
   }
