@@ -5,24 +5,14 @@ import StatusCodes._
 import utils.Logging
 
 trait ErrorHandling {
+  this: Logging =>
   
   protected[spray] def responseForException(request: HttpRequest, e: Exception): HttpResponse = {
-    logException(request, e)
+    log.error(e, "Error during processing of request %s", request)
     e match {
       case e: HttpException => HttpResponse(e.failure, e.reason)
       case e: Exception => HttpResponse(InternalServerError, "Internal Server Error:\n" + e.toString)
     }
   }
-  
-  protected def logException(request: HttpRequest, e: Exception)
-  
-}
 
-trait ErrorLogging extends ErrorHandling {
-  this: Logging =>
-  
-  protected def logException(request: HttpRequest, e: Exception) {
-    log.error(e, "Error during processing of request %s", request)
-  }
-  
 }

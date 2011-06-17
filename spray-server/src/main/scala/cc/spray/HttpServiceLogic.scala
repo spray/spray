@@ -20,13 +20,14 @@ import http._
 import StatusCodes._
 import HttpHeaders._
 import MediaTypes._
-import utils.{Rfc1123, IllegalResponseException}
+import utils.{Logging, Rfc1123, IllegalResponseException}
 
 /**
  * The logic part of the [[cc.spray.HttpService]]. Contains the code for [[cc.spray.RequestContext]] creation as well
  * as translation of [[cc.spray.Rejection]]s and Exceptions to [[cc.spray.http.HttpResponse]]s. 
  */
 trait HttpServiceLogic extends ErrorHandling {
+  this: Logging =>
   
   def setDateHeader: Boolean
   
@@ -43,7 +44,8 @@ trait HttpServiceLogic extends ErrorHandling {
   }
   
   protected def contextForRequest(request: HttpRequest): RequestContext = {
-    RequestContext(request, responderForRequest(request))
+    val path = request.path
+    RequestContext(request, responderForRequest(request), path)
   }
   
   protected def responderForRequest(request: HttpRequest): RoutingResult => Unit

@@ -141,9 +141,3 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
     )
   }
 }
-
-object RequestContext {
-  def apply(request: HttpRequest, responder: RoutingResult => Unit = { _ => }): RequestContext = {
-    apply(request, responder, request.path)
-  }
-}

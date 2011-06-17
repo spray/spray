@@ -31,7 +31,7 @@ private[spray] trait DetachDirectives {
    */
   def detach = transformRoute { route => ctx =>
     Actor.actorOf {
-      new Actor() with Logging with ErrorLogging {
+      new Actor() with ErrorHandling with Logging {
         self.dispatcher = detachDispatcher
         def receive = {
           case 'run => try {

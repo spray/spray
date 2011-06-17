@@ -23,7 +23,7 @@ import utils.{PostStart, Logging}
 /**
  * The actor path of the [[cc.spray.HttpService]].
  */
-trait HttpServiceActor extends Actor with Logging with ErrorLogging with PostStart {
+trait HttpServiceActor extends Actor with ErrorHandling with Logging with PostStart {
   this: HttpServiceLogic =>
   
   val setDateHeader = SpraySettings.SetDateHeader

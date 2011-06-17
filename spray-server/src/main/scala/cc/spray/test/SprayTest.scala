@@ -20,6 +20,7 @@ package test
 import cc.spray.RequestContext
 import http._
 import util.DynamicVariable
+import utils.{NoLog, Logging}
 
 /**
  * Mix this trait into the class or trait containing your route and service tests.
@@ -31,7 +32,7 @@ trait SprayTest {
   
   def test(request: HttpRequest)(route: Route): RoutingResultWrapper = {
     var result: Option[RoutingResult] = None;
-    route(RequestContext(request, {ctx => result = Some(ctx)}))
+    route(RequestContext(request, {ctx => result = Some(ctx)}, request.path))
     new RoutingResultWrapper(result.getOrElse(fail("No response received")))
   }
 
@@ -48,13 +49,12 @@ trait SprayTest {
     def rejections: Set[Rejection] = Rejections.applyCancellations(rawRejections)   
   }
   
-  trait ServiceTest extends HttpServiceLogic {
+  trait ServiceTest extends HttpServiceLogic with Logging {
+    override lazy val log = NoLog // in the tests we don't log
     private[SprayTest] val responder = new DynamicVariable[RoutingResult => Unit]( _ =>
       throw new IllegalStateException("SprayTest.HttpService instances can only be used with the SprayTest.test(service, request) method")
     )
     protected[spray] def responderForRequest(request: HttpRequest) = responder.value
-
-    protected def logException(request: HttpRequest, e: Exception) { } // in the tests we don't log
   }
 
   /**
