@@ -83,7 +83,7 @@ class MiscDirectivesSpec extends AbstractSprayTest {
     }
     "clear rejections that have already 'overcome' by previous directives" in {
       test(HttpRequest(PUT)) {
-        put { contentAs[String] { s => _.complete(s) }} ~
+        put { content(as[String]) { s => _.complete(s) }} ~
         get { completeOk }
       }.rejections mustEqual Set(RequestEntityExpectedRejection)
     }

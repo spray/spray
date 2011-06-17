@@ -123,13 +123,13 @@ class HttpServiceLogicSpec extends Specification with SprayTest with Directives 
     }
     "respond with UnsupportedMediaType for requests resulting in UnsupportedRequestContentTypeRejection" in {
       testService(HttpRequest(POST, content = Some(HttpContent(`application/pdf`, "...PDF...")))) {
-        contentAs[NodeSeq] { _ => completeOk }
+        content(as[NodeSeq]) { _ => completeOk }
       }.response mustEqual HttpResponse(UnsupportedMediaType, "The requests Content-Type must be one the following:\n" +
               "text/xml\ntext/html\napplication/xhtml+xml")
     }
     "respond with BadRequest for requests resulting in RequestEntityExpectedRejection" in {
       testService(HttpRequest(POST)) {
-        contentAs[NodeSeq] { _ => completeOk }
+        content(as[NodeSeq]) { _ => completeOk }
       }.response mustEqual HttpResponse(BadRequest, "Request entity expected")
     }
     "respond with NotAcceptable for requests resulting in UnacceptedResponseContentTypeRejection" in {
@@ -140,7 +140,7 @@ class HttpServiceLogicSpec extends Specification with SprayTest with Directives 
     }
     "respond with BadRequest for requests resulting in MalformedRequestContentRejections" in {
       testService(HttpRequest(POST, content = Some(HttpContent(`text/xml`, "<broken>xmlbroken>")))) {
-        contentAs[NodeSeq] { _ => completeOk }
+        content(as[NodeSeq]) { _ => completeOk }
       }.response mustEqual HttpResponse(BadRequest, "The request content was malformed:\n" +
               "XML document structures must start and end within the same entity.")
     }

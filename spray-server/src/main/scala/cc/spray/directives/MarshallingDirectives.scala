@@ -29,14 +29,11 @@ private[spray] trait MarshallingDirectives extends DefaultMarshallers with Defau
    * If the unmarshaller cannot unmarshal the request content the request is rejected with the [[cc.spray.Rejection]]
    * produced by the unmarshaller.
    */
-  def contentAs[A :Unmarshaller](routing: A => Route): Route = {
-    val filterRoute = filter1 { ctx =>
-      ctx.request.content.as[A] match {
-        case Right(a) => Pass.withTransform(a)(_.cancelRejections[UnsupportedRequestContentTypeRejection])
-        case Left(rejection) => Reject(rejection)
-      }
+  def content[A](unmarshaller: Unmarshaller[A]) = filter1 { ctx =>
+    ctx.request.content.as(unmarshaller) match {
+      case Right(a) => Pass.withTransform(a)(_.cancelRejections[UnsupportedRequestContentTypeRejection])
+      case Left(rejection) => Reject(rejection)
     }
-    filterRoute(routing) 
   }
 
   /**
@@ -45,47 +42,43 @@ private[spray] trait MarshallingDirectives extends DefaultMarshallers with Defau
    * If the unmarshaller cannot unmarshal the request content the request is rejected with the [[cc.spray.Rejection]]
    * produced by the unmarshaller.
    */
-  def optionalContentAs[A :Unmarshaller](routing: Option[A] => Route): Route = {
-    val filterRoute = filter1 { ctx =>
-      ctx.request.content.as[A] match {
-        case Right(a) => Pass.withTransform(Some(a)) {
-          _.cancelRejections { r =>
-            r.isInstanceOf[UnsupportedRequestContentTypeRejection] || r == RequestEntityExpectedRejection
-          }
+  def optionalContent[A](unmarshaller: Unmarshaller[A]) = filter1 { ctx =>
+    ctx.request.content.as(unmarshaller) match {
+      case Right(a) => Pass.withTransform(Some(a)) {
+        _.cancelRejections { r =>
+          r.isInstanceOf[UnsupportedRequestContentTypeRejection] || r == RequestEntityExpectedRejection
         }
-        case Left(RequestEntityExpectedRejection) => Pass(None)
-        case Left(rejection) => Reject(rejection)
       }
+      case Left(RequestEntityExpectedRejection) => Pass(None)
+      case Left(rejection) => Reject(rejection)
     }
-    filterRoute(routing) 
   }
+
+  def as[A :Unmarshaller] = unmarshaller[A]
 
   /**
    * Returns a Route that uses the in-scope marshaller for the given type to produce a completion function that is
    * passed to the inner route building function. You can use it do decouple marshaller resolution from the call
    * site of the RequestContexts 'complete' function.
    */
-  def produce[A](routing: (A => Unit) => Route)(implicit marshaller: Marshaller[A]): Route = {
-    val filterRoute = filter1 { ctx =>
-      marshaller(ctx.request.acceptableContentType) match {
-        case MarshalWith(converter) => Pass.withTransform((a: A) => ctx.complete(converter(a))) {
-          _.cancelRejections[UnacceptedResponseContentTypeRejection]
-        }
-        case CantMarshal(onlyTo) => Reject(UnacceptedResponseContentTypeRejection(onlyTo))
+  def produce[A](marshaller: Marshaller[A]) = filter1 { ctx =>
+    marshaller(ctx.request.acceptableContentType) match {
+      case MarshalWith(converter) => Pass.withTransform[A => Unit](a => ctx.complete(converter(a))) {
+        _.cancelRejections[UnacceptedResponseContentTypeRejection]
       }
+      case CantMarshal(onlyTo) => Reject(UnacceptedResponseContentTypeRejection(onlyTo))
     }
-    filterRoute(routing)
   }
+
+  def instanceOf[A :Marshaller] = marshaller[A]
 
   /**
    * Returns a Route that completes the request using the given function. The input to the function is produce with
    * the in-scope unmarshaller and the result value of the function is marshalled with the in-scope marshaller.
    */
-  def handledBy[A :Unmarshaller, B: Marshaller](f: A => B): Route = {
-    contentAs[A] { a =>
-      produce[B] { produce =>
-        _ => produce(f(a))
-      }
+  def handleWith[A :Unmarshaller, B: Marshaller](f: A => B): Route = {
+    (content(as[A]) & produce(instanceOf[B])) { (a, p) =>
+      _ => p(f(a))
     }
   }
   

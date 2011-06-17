@@ -29,7 +29,7 @@ class DefaultUnmarhallersSpec extends Specification with SprayTest with Directiv
   "The StringUnmarshaller" should {
     "decode `text/plain` content in ISO-8859-1 to Strings" in {
       test(HttpRequest(content = Some(HttpContent("Hällö")))) {
-        contentAs[String] { s => _.complete(s) }
+        content(as[String]) { s => _.complete(s) }
       }.response.content.as[String] mustEqual Right("Hällö")
     }
   }
@@ -37,7 +37,7 @@ class DefaultUnmarhallersSpec extends Specification with SprayTest with Directiv
   "The CharArrayUnmarshaller" should {
     "decode `text/plain` content in ISO-8859-1 to char arrays" in {
       test(HttpRequest(content = Some(HttpContent("Hällö")))) {
-        contentAs[Array[Char]] { charArray => _.complete(charArray) }
+        content(as[Array[Char]]) { charArray => _.complete(charArray) }
       }.response.content.as[String] mustEqual Right("Hällö")
     }
   }
@@ -45,7 +45,7 @@ class DefaultUnmarhallersSpec extends Specification with SprayTest with Directiv
   "The NodeSeqUnmarshaller" should {
     "decode `text/xml` content in ISO-8859-1 to NodeSeqs" in {
       test(HttpRequest(content = Some(HttpContent(ContentType(`text/xml`, `ISO-8859-1`), "<int>Hällö</int>")))) {
-        contentAs[NodeSeq] { xml => _.complete(xml.text) }
+        content(as[NodeSeq]) { xml => _.complete(xml.text) }
       }.response.content.as[String] mustEqual Right("Hällö")
     }
   }
