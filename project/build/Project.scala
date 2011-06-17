@@ -29,7 +29,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val asyncHttp  = "com.ning" % "async-http-client" % "1.6.3" % "compile" withSources()
     
     // provided
-    val servlet30          = "javax" % "javaee-web-api" % "6.0" % "provided"
+    val servlet30          = "org.glassfish" % "javax.servlet" % "3.0" % "provided"
     val jettyContinuations = "org.eclipse.jetty" % "jetty-continuation" % "7.2.0.v20101020" % "provided" withSources()
     val tomcat6            = "org.apache.tomcat" % "catalina" % "6.0.32" % "provided"
     
