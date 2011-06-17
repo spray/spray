@@ -71,7 +71,7 @@ private[spray] trait BasicDirectives {
   /**
    * Creates a [[cc.spray.TransformRoute]] that applies the given transformation function to its inner Route.
    */
-  def transform(f: Route => Route) = new TransformRoute {
+  def transformRoute(f: Route => Route) = new TransformRoute {
     override def apply(route: Route) = f(route)
   }
 }

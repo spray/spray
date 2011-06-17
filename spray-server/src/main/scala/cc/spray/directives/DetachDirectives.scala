@@ -29,7 +29,7 @@ private[spray] trait DetachDirectives {
   /**
    * Returns a Route that executes its inner Route in the content of a newly spawned actor.
    */
-  def detach = transform { route => ctx =>
+  def detach = transformRoute { route => ctx =>
     Actor.actorOf {
       new Actor() with Logging with ErrorLogging {
         self.dispatcher = detachDispatcher

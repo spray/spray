@@ -23,7 +23,7 @@ private[spray] trait CacheDirectives {
   this: BasicDirectives =>
 
   def cacheResults(cache: Cache[RoutingResult], keyer: CacheKeyer = CacheKeyers.UriGetCacheKeyer) = {
-    transform { route => ctx =>
+    transformRoute { route => ctx =>
       keyer(ctx) match {
         case Some(key) => {
           cache(key) { completableFuture =>

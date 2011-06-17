@@ -24,6 +24,6 @@ package test
 trait DontDetach extends Directives {
   
   // disable detach-to-actor so we do not have to actually run actors in the test
-  override def detach = transform(identity)
+  override def detach = transformRoute(identity)
   
 }
