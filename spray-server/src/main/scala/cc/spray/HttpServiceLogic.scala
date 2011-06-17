@@ -44,8 +44,7 @@ trait HttpServiceLogic extends ErrorHandling {
   }
   
   protected def contextForRequest(request: HttpRequest): RequestContext = {
-    val path = request.path
-    RequestContext(request, responderForRequest(request), path)
+    RequestContext(request, responderForRequest(request), request.path)
   }
   
   protected def responderForRequest(request: HttpRequest): RoutingResult => Unit
@@ -117,8 +116,10 @@ trait HttpServiceLogic extends ErrorHandling {
   protected def finalizeResponse(unverifiedResponse: HttpResponse) = {
     val response = verified(unverifiedResponse)
     if (setDateHeader) {
-      response.copy(headers = Date(Rfc1123.now) :: response.headers) 
-    } else response
+      response.copy(headers = Date(Rfc1123.now) :: response.headers)
+    } else {
+      response
+    }
   }
   
   protected def verified(response: HttpResponse) = {

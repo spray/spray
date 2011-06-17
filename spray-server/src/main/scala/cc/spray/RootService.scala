@@ -73,16 +73,16 @@ class RootService extends Actor with ToFromRawConverter with Logging with PostSt
   }
   
   private def handleOneService(rawContext: RawRequestContext) {
-    val request = toSprayRequest(rawContext.request)
+    val request = adjustRootPath(toSprayRequest(rawContext.request))
     log.debug("Received %s with one attached service, dispatching...", request)
     (services.head !!! (request, SpraySettings.AsyncTimeout)).onComplete(completeRequest(rawContext) _)
   }
   
   private def handleMultipleServices(rawContext: RawRequestContext) {    
-    val request = toSprayRequest(rawContext.request)
+    val request = adjustRootPath(toSprayRequest(rawContext.request))
     log.debug("Received %s with %s attached services, dispatching...", request, services.size)
-    val serviceFutures: List[Future[Option[Any]]] = services.map(_ !!! (request, SpraySettings.AsyncTimeout))
-    val resultsFuture = Futures.fold[Option[Any], Option[Any]](None, SpraySettings.AsyncTimeout)(serviceFutures) {
+    val serviceFutures: List[Future[Option[HttpResponse]]] = services.map(_ !!! (request, SpraySettings.AsyncTimeout))
+    val resultsFuture = Futures.fold(None.asInstanceOf[Option[HttpResponse]], SpraySettings.AsyncTimeout)(serviceFutures) {
       case (None, None) => None
       case (None, x: Some[_]) => x
       case (x: Some[_], None) => x
@@ -97,10 +97,10 @@ class RootService extends Actor with ToFromRawConverter with Logging with PostSt
     rawContext.complete(fromSprayResponse(noService(rawContext.request.uri)))
   }
   
-  private def completeRequest(rawContext: RawRequestContext)(future: Future[Option[Any]]) {
+  private def completeRequest(rawContext: RawRequestContext)(future: Future[Option[HttpResponse]]) {
     if (future.exception.isEmpty) {
       future.result.get match {
-        case Some(response: HttpResponse) => rawContext.complete(fromSprayResponse(response))
+        case Some(response) => rawContext.complete(fromSprayResponse(response))
         case None => completeNoService(rawContext)
       }  
     } else {
@@ -136,6 +136,18 @@ class RootService extends Actor with ToFromRawConverter with Logging with PostSt
   }
   
   protected def noService(uri: String) = HttpResponse(404, "No service available for [" + uri + "]")
+
+  protected def adjustRootPath(request: HttpRequest) = {
+    SpraySettings.RootPath match {
+      case None => request
+      case Some(rootPath) if (request.path.startsWith(rootPath)) =>
+        request.withUri(path = request.path.substring(rootPath.length))
+      case Some(rootPath) => {
+        log.warn("Received request outside of configured root-path '%s'", rootPath)
+        request
+      }
+    }
+  }
   
 }
 

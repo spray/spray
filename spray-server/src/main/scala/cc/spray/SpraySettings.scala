@@ -23,4 +23,5 @@ object SpraySettings {
   lazy val AsyncTimeout    = config.getInt("spray.timeout", 1000)
   lazy val CloseConnection = config.getBool("spray.close-connection", true)
   lazy val SetDateHeader   = config.getBool("spray.set-date-header", false)
+  lazy val RootPath        = config.getString("spray.root-path")
 }
