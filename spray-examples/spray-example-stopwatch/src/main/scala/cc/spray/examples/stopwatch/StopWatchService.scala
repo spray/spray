@@ -35,7 +35,7 @@ trait StopWatchService extends Directives with StopWatchMarshallers {
   
   val stopWatchService = {
     path("") {
-      getFromResource("index.html")
+      getFromResource("main.html")
     } ~
     transformResponse(_.withContentTransformed(wrapWithBackLink)) {
       path("watches") {
