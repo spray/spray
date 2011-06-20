@@ -44,7 +44,18 @@ trait HttpServiceLogic extends ErrorHandling {
   }
   
   protected def contextForRequest(request: HttpRequest): RequestContext = {
-    RequestContext(request, responderForRequest(request), request.path)
+    RequestContext(request, responderForRequest(request), initialUnmatchedPath(request))
+  }
+
+  protected def initialUnmatchedPath(request: HttpRequest) = {
+    SpraySettings.RootPath match {
+      case None => request.path
+      case Some(rootPath) if (request.path.startsWith(rootPath)) => request.path.substring(rootPath.length)
+      case Some(rootPath) => make(request.path) { path =>
+        log.warn("Received request outside of configured root-path, request uri '%s', configured root path '%s'",
+          path, rootPath)
+      }
+    }
   }
   
   protected def responderForRequest(request: HttpRequest): RoutingResult => Unit
