@@ -17,6 +17,7 @@
 package cc.spray
 
 import http._
+import parser.HttpParser
 import StatusCodes._
 import akka.actor.{Actor, ActorRef}
 import akka.dispatch.{Future, Futures}
@@ -37,9 +38,11 @@ class RootService extends Actor with ToFromRawConverter with Logging with PostSt
 
   override def preStart() {
     log.debug("Starting spray RootService ...")
+    super.preStart()
   }
 
   def postStart() {
+    cc.spray.http.warmUp()
     log.info("spray RootService started")
   }
 

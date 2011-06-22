@@ -30,6 +30,7 @@ trait HttpServiceActor extends Actor with ErrorHandling with Logging with PostSt
 
   override def preStart() {
     log.debug("Starting ...")
+    super.preStart()
   }
 
   def postStart() {

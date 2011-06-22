@@ -35,10 +35,18 @@ object HttpParser extends SprayParser with ProtocolParameterRules with Additiona
   with ContentTypeHeader
   with SimpleHeaders
   {
-  
+
   // all string literals automatically receive a trailing optional whitespace
   override implicit def toRule(string :String) : Rule0 = {
     super.toRule(string) ~ BasicRules.OptWS
   }
-  
+
+  lazy val rules: Map[String, Rule1[HttpHeader]] = {
+    // cache all the rules for public rule methods that have no lower-case letter in their name
+    // (which are all the header rules)
+    HttpParser.getClass.getMethods.filter(_.getName.forall(!_.isLower)).map { method =>
+      method.getName -> method.invoke(HttpParser).asInstanceOf[Rule1[HttpHeader]]
+    } (collection.breakOut)
+  }
+
 }
