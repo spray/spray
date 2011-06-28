@@ -27,7 +27,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     // compile
     val parboiledC = "org.parboiled" % "parboiled-core" % "1.0.0" % "compile" withSources()
     val parboiledS = "org.parboiled" % "parboiled-scala" % "1.0.0" % "compile" withSources()
-    val asyncHttp  = "com.ning" % "async-http-client" % "1.6.3" % "compile" withSources()
+    val asyncHttp  = "com.ning" % "async-http-client" % "1.6.4" % "compile" withSources()
     
     // provided
     val sprayJson          = "cc.spray.json" %% "spray-json" % "1.0.0-SNAPSHOT" % "compile" withSources()
