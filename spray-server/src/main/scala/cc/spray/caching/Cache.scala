@@ -17,14 +17,13 @@
 package cc.spray
 package caching
 
-import akka.dispatch.{CompletableFuture, Future}
+import akka.dispatch.{DefaultCompletableFuture, CompletableFuture, Future}
 
 trait Cache[V] {
 
   def apply(key: Any) = new Key(key)
 
   class Key(val key: Any) {
-    def apply(func: CompletableFuture[V] => Unit) = supply(key, func)
     def apply(expr: => V): Future[V] = apply { completableFuture =>
       try {
         completableFuture.completeWithResult(expr)
@@ -32,9 +31,12 @@ trait Cache[V] {
         case e: Exception => completableFuture.completeWithException(e)
       }
     }
+    def apply(func: CompletableFuture[V] => Unit): Future[V] = fromFuture(key) {
+      make(new DefaultCompletableFuture[V](Long.MaxValue))(func) // // TODO: make timeout configurable
+    }
   }
 
   def get(key: Any): Option[Future[V]]
 
-  protected def supply(key: Any, func: CompletableFuture[V] => Unit): Future[V]
+  def fromFuture(key: Any)(future: => Future[V]): Future[V]
 }

@@ -20,7 +20,7 @@ package caching
 import akka.util.duration._
 import akka.util.Duration
 import collection.mutable.LinkedHashMap
-import akka.dispatch.{DefaultCompletableFuture, AlreadyCompletedFuture, CompletableFuture, Future}
+import akka.dispatch.{AlreadyCompletedFuture, CompletableFuture, Future}
 
 object LruCache {
   def apply[V](maxEntries: Int = 500, dropFraction: Double = 0.20, ttl: Duration = 5.minutes) = {
@@ -48,19 +48,18 @@ class LruCache[V](val maxEntries: Int, val dropFraction: Double, val ttl: Durati
     store.getEntry(key).map(_.future)
   }
 
-  protected def supply(key: Any, func: CompletableFuture[V] => Unit): Future[V] = synchronized {
+  def fromFuture(key: Any)(completableFuture: => Future[V]): Future[V] = synchronized {
     store.getEntry(key) match {
       case Some(entry) => entry.future
-      case None => make(new DefaultCompletableFuture[V](Long.MaxValue)) { completableFuture => // TODO: make timeout configurable
-        store.setEntry(key, new Entry(completableFuture))
-        completableFuture.onComplete {
-          _.value match {
-            case Some(Right(value)) => store.setEntry(key, new Entry(new AlreadyCompletedFuture[V](Right(value))))
-            case Some(_) => store.remove(key) // in case of exceptions we remove the cache entry (i.e. try again later)
-            case None => throw new IllegalStateException // a completed future without value?
+      case None => {
+        val future = completableFuture
+        store.setEntry(key, new Entry(future))
+        future.onComplete {
+          _.value.get match {
+            case Right(value) => store.setEntry(key, new Entry(new AlreadyCompletedFuture[V](Right(value))))
+            case _ => store.remove(key) // in case of exceptions we remove the cache entry (i.e. try again later)
           }
         }
-        func(completableFuture)
       }
     }
   }

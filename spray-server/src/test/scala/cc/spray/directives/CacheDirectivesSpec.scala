@@ -26,7 +26,12 @@ class CacheDirectivesSpec extends AbstractSprayTest {
   "the cache directive" should {
     val countingService = {
       var i = 0
-      cache { _.complete { i += 1; i.toString } }
+      cache {
+        _.complete {
+          i += 1
+          i.toString
+        }
+      }
     }
     val errorService = {
       var i = 0
