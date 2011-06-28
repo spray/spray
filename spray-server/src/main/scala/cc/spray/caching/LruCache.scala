@@ -23,45 +23,40 @@ import collection.mutable.LinkedHashMap
 import akka.dispatch.{DefaultCompletableFuture, AlreadyCompletedFuture, CompletableFuture, Future}
 
 object LruCache {
-  def apply[V](maxEntries: Int = 500,
-            dropFraction: Double = 0.20,
-            ttl: Duration = 5.minutes) = {
+  def apply[V](maxEntries: Int = 500, dropFraction: Double = 0.20, ttl: Duration = 5.minutes) = {
     new LruCache[V](maxEntries, dropFraction, ttl)
   }
 }
 
-class LruCache[V](val maxEntries: Int,
-                  val dropFraction: Double,
-                  val ttl: Duration) extends Cache[V] { cache =>
+class LruCache[V](val maxEntries: Int, val dropFraction: Double, val ttl: Duration) extends Cache[V] { cache =>
   require(dropFraction > 0.0, "dropFraction must be > 0")
 
-  sealed trait Entry {
+  class Entry(val future: Future[V]) {
     private var lastUsed = System.currentTimeMillis
     def refresh() { lastUsed = System.currentTimeMillis }
     def isAlive = (System.currentTimeMillis - lastUsed).millis < ttl // note that infinite Durations do not support .toMillis
-  }
-  case class ResponseEntry(value: V) extends Entry
-  case class FutureEntry(future: Future[V]) extends Entry {
-    override def toString = productPrefix
+    override def toString = future.value match {
+      case Some(Right(value)) => value.toString
+      case Some(Left(exception)) => exception.toString
+      case None => "pending"
+    }
   }
 
   protected[caching] val store = new Store
 
-  def get(key: Any) = store.getEntry(key).map {
-    case ResponseEntry(response) => Right(response)
-    case FutureEntry(future) => Left(future)
+  def get(key: Any) = synchronized {
+    store.getEntry(key).map(_.future)
   }
 
-  def supply(key: Any, func: CompletableFuture[V] => Unit): Future[V] = {
+  protected def supply(key: Any, func: CompletableFuture[V] => Unit): Future[V] = synchronized {
     store.getEntry(key) match {
-      case Some(ResponseEntry(value)) => new AlreadyCompletedFuture[V](Right(value))
-      case Some(FutureEntry(future)) => future
+      case Some(entry) => entry.future
       case None => make(new DefaultCompletableFuture[V](Long.MaxValue)) { completableFuture => // TODO: make timeout configurable
-        store.setEntry(key, FutureEntry(completableFuture))
+        store.setEntry(key, new Entry(completableFuture))
         completableFuture.onComplete {
           _.value match {
-            case Some(Right(value)) => store.setEntry(key, ResponseEntry(value))
-            case Some(_) => store.deleteEntry(key) // in case of exceptions we simply deleteEntry the cache entry
+            case Some(Right(value)) => store.setEntry(key, new Entry(new AlreadyCompletedFuture[V](Right(value))))
+            case Some(_) => store.remove(key) // in case of exceptions we remove the cache entry (i.e. try again later)
             case None => throw new IllegalStateException // a completed future without value?
           }
         }
@@ -71,7 +66,7 @@ class LruCache[V](val maxEntries: Int,
   }
 
   protected class Store extends LinkedHashMap[Any, Entry] {
-    def getEntry(key: Any): Option[cache.Entry] = synchronized {
+    def getEntry(key: Any): Option[cache.Entry] = {
       get(key) match {
         case Some(entry) => {
           if (entry.isAlive) {
@@ -91,19 +86,11 @@ class LruCache[V](val maxEntries: Int,
     }
 
     def setEntry(key: Any, entry: cache.Entry) {
-      synchronized {
-        put(key, entry)
-        if (size > maxEntries) {
-          // remove the earliest entries
-          val newSize = maxEntries - (maxEntries * dropFraction).toInt
-          while (size > newSize) remove(firstEntry.key)
-        }
-      }
-    }
-
-    def deleteEntry(key: Any) {
-      synchronized {
-        remove(key)
+      put(key, entry)
+      if (size > maxEntries) {
+        // remove the earliest entries
+        val newSize = maxEntries - (maxEntries * dropFraction).toInt
+        while (size > newSize) remove(firstEntry.key)
       }
     }
   }

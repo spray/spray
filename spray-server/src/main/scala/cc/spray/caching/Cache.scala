@@ -34,7 +34,7 @@ trait Cache[V] {
     }
   }
 
-  def get(key: Any): Option[Either[Future[V], V]]
+  def get(key: Any): Option[Future[V]]
 
-  def supply(key: Any, func: CompletableFuture[V] => Unit): Future[V]
+  protected def supply(key: Any, func: CompletableFuture[V] => Unit): Future[V]
 }
