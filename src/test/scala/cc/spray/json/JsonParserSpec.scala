@@ -1,6 +1,7 @@
 package cc.spray.json
 
 import org.specs.Specification
+import org.parboiled.common.FileUtils
 
 class JsonParserSpec extends Specification {
 
@@ -40,6 +41,12 @@ class JsonParserSpec extends Specification {
       JsonParser("""[null, 1.23 ,{"key":true } ] """) mustEqual
               JsArray(JsNull, JsNumber(1.23), JsObject(JsField("key", true)))
     )
+    "be reentrant" in {
+      val largeJsonSource = FileUtils.readAllCharsFromResource("test.json")
+      List.fill(20)(largeJsonSource).par.map(JsonParser(_)).toList.map {
+          _.asInstanceOf[JsObject].asMap("questions").asInstanceOf[JsArray].elements.size
+      } mustEqual List.fill(20)(100)
+    }
   }
-  
+
 }
