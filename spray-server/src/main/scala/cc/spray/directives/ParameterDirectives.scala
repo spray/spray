@@ -102,6 +102,24 @@ private[spray] trait ParameterDirectives {
                                       f: PM[F], g: PM[G]): SprayRoute7[A, B, C, D, E, F, G] = {
     parameters(a, b, c, d, e, f) & parameter(g)
   }
+
+  /**
+   * Returns a Route that rejects the request if the query parameters with the given names cannot be found.
+   * If it can be found the parameter values are extracted and passed as arguments to the inner Route building function.
+   */
+  def parameters[A, B, C, D, E, F, G, H](a: PM[A], b: PM[B], c: PM[C], d: PM[D], e: PM[E],
+                                         f: PM[F], g: PM[G], h: PM[H]): SprayRoute8[A, B, C, D, E, F, G, H] = {
+    parameters(a, b, c, d, e, f, g) & parameter(h)
+  }
+
+  /**
+   * Returns a Route that rejects the request if the query parameters with the given names cannot be found.
+   * If it can be found the parameter values are extracted and passed as arguments to the inner Route building function.
+   */
+  def parameters[A, B, C, D, E, F, G, H, I](a: PM[A], b: PM[B], c: PM[C], d: PM[D], e: PM[E],
+                                            f: PM[F], g: PM[G], h: PM[H], i: PM[I]): SprayRoute9[A, B, C, D, E, F, G, H, I] = {
+    parameters(a, b, c, d, e, f, g, h) & parameter(i)
+  }
   
   /**
    * Returns a Route that rejects the request if the query parameter with the given name cannot be found or does not

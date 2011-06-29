@@ -71,6 +71,20 @@ private[spray] trait CaseClassExtractionDirectives {
     }
   }
 
+  implicit def pimpSprayRoute8[A, B, C, D, E, F, G, H](route: SprayRoute8[A, B, C, D, E, F, G, H]) = new PimpedSprayRoute8(route)
+  class PimpedSprayRoute8[A, B, C, D, E, F, G, H](route: SprayRoute8[A, B, C, D, E, F, G, H]) extends SprayRoute8[A, B, C, D, E, F, G, H](route.filter) {
+    def as[T <: Product](converter: (A, B, C, D, E, F, G, H) => Either[String, T]) = convert(route) {
+      case (a, b, c, d, e, f, g, h) => converter(a, b, c, d, e, f, g, h)
+    }
+  }
+
+  implicit def pimpSprayRoute9[A, B, C, D, E, F, G, H, I](route: SprayRoute9[A, B, C, D, E, F, G, H, I]) = new PimpedSprayRoute9(route)
+  class PimpedSprayRoute9[A, B, C, D, E, F, G, H, I](route: SprayRoute9[A, B, C, D, E, F, G, H, I]) extends SprayRoute9[A, B, C, D, E, F, G, H, I](route.filter) {
+    def as[T <: Product](converter: (A, B, C, D, E, F, G, H, I) => Either[String, T]) = convert(route) {
+      case (a, b, c, d, e, f, g, h, i) => converter(a, b, c, d, e, f, g, h, i)
+    }
+  }
+
   private def convert[P <: Product, T <: Product](route: SprayRoute[P])
                                                  (converter: P => Either[String, T]): SprayRoute1[T] = {
     filter1 { ctx =>
@@ -85,6 +99,8 @@ private[spray] trait CaseClassExtractionDirectives {
   }
 
   private type SC[AA, A] = SimpleConverter[AA, A]
+
+  // TODO: refactor to prevent excessive closure class creation in the following 9 methods
 
   def instanceOf[T <: Product, A, AA](construct: A => T)
                                      (implicit qa: SC[AA, A])
@@ -175,6 +191,52 @@ private[spray] trait CaseClassExtractionDirectives {
               qf(ff).right.flatMap { f =>
                 qg(gg).right.flatMap { g =>
                   protect(construct(a, b, c, d, e, f, g))
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH](construct: (A, B, C, D, E, F, G, H) => T)
+                                                                               (implicit qa: SC[AA, A], qb: SC[BB, B], qc: SC[CC, C], qd: SC[DD, D], qe: SC[EE, E], qf: SC[FF, F], qg: SC[GG, G], qh: SC[HH, H])
+    : (AA, BB, CC, DD, EE, FF, GG, HH) => Either[String, T] = { (aa, bb, cc, dd, ee, ff, gg, hh) =>
+    qa(aa).right.flatMap { a =>
+      qb(bb).right.flatMap { b =>
+        qc(cc).right.flatMap { c =>
+          qd(dd).right.flatMap { d =>
+            qe(ee).right.flatMap { e =>
+              qf(ff).right.flatMap { f =>
+                qg(gg).right.flatMap { g =>
+                  qh(hh).right.flatMap { h =>
+                    protect(construct(a, b, c, d, e, f, g, h))
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II](construct: (A, B, C, D, E, F, G, H, I) => T)
+                                                                               (implicit qa: SC[AA, A], qb: SC[BB, B], qc: SC[CC, C], qd: SC[DD, D], qe: SC[EE, E], qf: SC[FF, F], qg: SC[GG, G], qh: SC[HH, H], qi: SC[II, I])
+    : (AA, BB, CC, DD, EE, FF, GG, HH, II) => Either[String, T] = { (aa, bb, cc, dd, ee, ff, gg, hh, ii) =>
+    qa(aa).right.flatMap { a =>
+      qb(bb).right.flatMap { b =>
+        qc(cc).right.flatMap { c =>
+          qd(dd).right.flatMap { d =>
+            qe(ee).right.flatMap { e =>
+              qf(ff).right.flatMap { f =>
+                qg(gg).right.flatMap { g =>
+                  qh(hh).right.flatMap { h =>
+                    qi(ii).right.flatMap { i =>
+                      protect(construct(a, b, c, d, e, f, g, h, i))
+                    }
+                  }
                 }
               }
             }

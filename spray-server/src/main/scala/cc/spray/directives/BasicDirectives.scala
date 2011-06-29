@@ -62,6 +62,16 @@ private[spray] trait BasicDirectives {
   def filter7[A, B, C, D, E, F, G](filter: RouteFilter[(A, B, C, D, E, F, G)]) = new SprayRoute7(filter)
 
   /**
+   * Creates a [[cc.spray.SprayRoute8]] from the given RouteFilter function.
+   */
+  def filter8[A, B, C, D, E, F, G, H](filter: RouteFilter[(A, B, C, D, E, F, G, H)]) = new SprayRoute8(filter)
+
+  /**
+   * Creates a [[cc.spray.SprayRoute9]] from the given RouteFilter function.
+   */
+  def filter9[A, B, C, D, E, F, G, H, I](filter: RouteFilter[(A, B, C, D, E, F, G, H, I)]) = new SprayRoute9(filter)
+
+  /**
    * Creates a [[cc.spray.SprayRoute0]] that accepts all requests but applies the given transformation function to
    * the RequestContext.
    */
@@ -132,6 +142,8 @@ class SprayRoute0(filter: RouteFilter[Product0]) extends SprayRoute(filter) with
   def & [A, B, C, D, E](other: SprayRoute5[A, B, C, D, E]) = new SprayRoute5[A, B, C, D, E](and(other))
   def & [A, B, C, D, E, F](other: SprayRoute6[A, B, C, D, E, F]) = new SprayRoute6[A, B, C, D, E, F](and(other))
   def & [A, B, C, D, E, F, G](other: SprayRoute7[A, B, C, D, E, F, G]) = new SprayRoute7[A, B, C, D, E, F, G](and(other))
+  def & [A, B, C, D, E, F, G, H](other: SprayRoute8[A, B, C, D, E, F, G, H]) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
+  def & [A, B, C, D, E, F, G, H, I](other: SprayRoute9[A, B, C, D, E, F, G, H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
 }
 
 /**
@@ -147,6 +159,8 @@ class SprayRoute1[A](filter: RouteFilter[Tuple1[A]]) extends SprayRoute(filter) 
   def & [B, C, D, E](other: SprayRoute4[B, C, D, E]) = new SprayRoute5[A, B, C, D, E](and(other))
   def & [B, C, D, E, F](other: SprayRoute5[B, C, D, E, F]) = new SprayRoute6[A, B, C, D, E, F](and(other))
   def & [B, C, D, E, F, G](other: SprayRoute6[B, C, D, E, F, G]) = new SprayRoute7[A, B, C, D, E, F, G](and(other))
+  def & [B, C, D, E, F, G, H](other: SprayRoute7[B, C, D, E, F, G, H]) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
+  def & [B, C, D, E, F, G, H, I](other: SprayRoute8[B, C, D, E, F, G, H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
 }
 
 /**
@@ -161,6 +175,8 @@ class SprayRoute2[A, B](filter: RouteFilter[(A, B)]) extends SprayRoute(filter) 
   def & [C, D, E](other: SprayRoute3[C, D, E]) = new SprayRoute5[A, B, C, D, E](and(other))
   def & [C, D, E, F](other: SprayRoute4[C, D, E, F]) = new SprayRoute6[A, B, C, D, E, F](and(other))
   def & [C, D, E, F, G](other: SprayRoute5[C, D, E, F, G]) = new SprayRoute7[A, B, C, D, E, F, G](and(other))
+  def & [C, D, E, F, G, H](other: SprayRoute6[C, D, E, F, G, H]) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
+  def & [C, D, E, F, G, H, I](other: SprayRoute7[C, D, E, F, G, H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
 }
 
 /**
@@ -174,6 +190,8 @@ class SprayRoute3[A, B, C](filter: RouteFilter[(A, B, C)]) extends SprayRoute(fi
   def & [D, E](other: SprayRoute2[D, E]) = new SprayRoute5[A, B, C, D, E](and(other))
   def & [D, E, F](other: SprayRoute3[D, E, F]) = new SprayRoute6[A, B, C, D, E, F](and(other))
   def & [D, E, F, G](other: SprayRoute4[D, E, F, G]) = new SprayRoute7[A, B, C, D, E, F, G](and(other))
+  def & [D, E, F, G, H](other: SprayRoute5[D, E, F, G, H]) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
+  def & [D, E, F, G, H, I](other: SprayRoute6[D, E, F, G, H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
 }
 
 /**
@@ -186,6 +204,8 @@ class SprayRoute4[A, B, C, D](filter: RouteFilter[(A, B, C, D)]) extends SprayRo
   def & [E](other: SprayRoute1[E]) = new SprayRoute5[A, B, C, D, E](and(other))
   def & [E, F](other: SprayRoute2[E, F]) = new SprayRoute6[A, B, C, D, E, F](and(other))
   def & [E, F, G](other: SprayRoute3[E, F, G]) = new SprayRoute7[A, B, C, D, E, F, G](and(other))
+  def & [E, F, G, H](other: SprayRoute4[E, F, G, H]) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
+  def & [E, F, G, H, I](other: SprayRoute5[E, F, G, H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
 }
 
 /**
@@ -197,6 +217,8 @@ class SprayRoute5[A, B, C, D, E](filter: RouteFilter[(A, B, C, D, E)]) extends S
   def & (other: SprayRoute0) = new SprayRoute5[A, B, C, D, E](and(other))
   def & [F](other: SprayRoute1[F]) = new SprayRoute6[A, B, C, D, E, F](and(other))
   def & [F, G](other: SprayRoute2[F, G]) = new SprayRoute7[A, B, C, D, E, F, G](and(other))
+  def & [F, G, H](other: SprayRoute3[F, G, H]) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
+  def & [F, G, H, I](other: SprayRoute4[F, G, H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
 }
 
 /**
@@ -207,6 +229,8 @@ class SprayRoute6[A, B, C, D, E, F](filter: RouteFilter[(A, B, C, D, E, F)]) ext
   def | (other: SprayRoute6[A, B, C, D, E, F]) = new SprayRoute6[A, B, C, D, E, F](or(other))
   def & (other: SprayRoute0) = new SprayRoute6[A, B, C, D, E, F](and(other))
   def & [G](other: SprayRoute1[G]) = new SprayRoute7[A, B, C, D, E, F, G](and(other))
+  def & [G, H](other: SprayRoute2[G, H]) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
+  def & [G, H, I](other: SprayRoute3[G, H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
 }
 
 /**
@@ -216,6 +240,27 @@ class SprayRoute7[A, B, C, D, E, F, G](filter: RouteFilter[(A, B, C, D, E, F, G)
   def apply(routing: (A, B, C, D, E, F, G) => Route) = fromRouting { t => routing(t._1, t._2, t._3, t._4, t._5, t._6, t._7) }
   def | (other: SprayRoute7[A, B, C, D, E, F, G]) = new SprayRoute7[A, B, C, D, E, F, G](or(other))
   def & (other: SprayRoute0) = new SprayRoute7[A, B, C, D, E, F, G](and(other))
+  def & [H](other: SprayRoute1[H]) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
+  def & [H, I](other: SprayRoute2[H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
+}
+
+/**
+ * A Route using the given RouteFilter function (which extracts 8 values) on all inner Routes it is applied to.
+ */
+class SprayRoute8[A, B, C, D, E, F, G, H](filter: RouteFilter[(A, B, C, D, E, F, G, H)]) extends SprayRoute(filter) with (((A, B, C, D, E, F, G, H) => Route) => Route) {
+  def apply(routing: (A, B, C, D, E, F, G, H) => Route) = fromRouting { t => routing(t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8) }
+  def | (other: SprayRoute8[A, B, C, D, E, F, G, H]) = new SprayRoute8[A, B, C, D, E, F, G, H](or(other))
+  def & (other: SprayRoute0) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
+  def & [I](other: SprayRoute1[I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
+}
+
+/**
+ * A Route using the given RouteFilter function (which extracts 9 values) on all inner Routes it is applied to.
+ */
+class SprayRoute9[A, B, C, D, E, F, G, H, I](filter: RouteFilter[(A, B, C, D, E, F, G, H, I)]) extends SprayRoute(filter) with (((A, B, C, D, E, F, G, H, I) => Route) => Route) {
+  def apply(routing: (A, B, C, D, E, F, G, H, I) => Route) = fromRouting { t => routing(t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9) }
+  def | (other: SprayRoute9[A, B, C, D, E, F, G, H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](or(other))
+  def & (other: SprayRoute0) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
 }
 
 /**
