@@ -11,6 +11,7 @@ import java.io.ByteArrayOutputStream
 import collection.JavaConversions._
 import org.parboiled.common.FileUtils
 import akka.event.EventHandler
+import akka.actor.Actor
 
 class HttpClient(val ahc: AsyncHttpClient, responseMock: HttpRequest => Option[HttpResponse] = { _ => None }) {
 
@@ -56,7 +57,9 @@ class HttpClient(val ahc: AsyncHttpClient, responseMock: HttpRequest => Option[H
         }
       }
     }, new Executor {
-      def execute(command: Runnable) { command.run() } // run in callers thread
+      def execute(command: Runnable) {
+        Actor.spawn { command.run() }
+      }
     })
     akkaFuture
   }
