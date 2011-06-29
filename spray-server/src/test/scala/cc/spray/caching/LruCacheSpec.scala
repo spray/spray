@@ -3,6 +3,7 @@ package cc.spray.caching
 import org.specs.Specification
 import akka.util.duration._
 import akka.actor.Actor
+import java.util.concurrent.CountDownLatch
 
 class LruCacheSpec extends Specification {
   noDetailedDiffs()
@@ -24,14 +25,16 @@ class LruCacheSpec extends Specification {
     }
     "return Futures on uncached values during evaluation and replace these with the value afterwards" in {
       val cache = LruCache[String]()
+      val latch = new CountDownLatch(1)
       val future1 = cache(1) { completableFuture =>
         Actor.spawn {
-          Thread.sleep(10)
+          latch.await()
           completableFuture.completeWithResult("A")
         }
       }
       val future2 = cache(1)("")
       cache.store.toString mustEqual "Map(1 -> pending)"
+      latch.countDown()
       future1.get mustEqual "A"
       future2.get mustEqual "A"
       cache.store.toString mustEqual "Map(1 -> A)"
