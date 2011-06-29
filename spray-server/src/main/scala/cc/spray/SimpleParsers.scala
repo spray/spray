@@ -16,7 +16,21 @@
 
 package cc.spray
 
-trait SimpleParser[A] extends (String => Either[String, A])
+trait SimpleConverter[A, B] extends (A => Either[String, B])
+
+object SimpleConverter {
+  implicit def implicitConverter[A, B](implicit f: A => B) = new SimpleConverter[A, B] {
+    def apply(a: A) = {
+      try {
+        Right(f(a))
+      } catch {
+        case ex => Left(ex.toString)
+      }
+    }
+  }
+}
+
+trait SimpleParser[A] extends SimpleConverter[String, A]
 
 trait SimpleParsers {
   implicit object SimpleStringParser extends SimpleParser[String] {

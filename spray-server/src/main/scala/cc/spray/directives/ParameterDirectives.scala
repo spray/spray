@@ -17,7 +17,7 @@
 package cc.spray
 package directives
 
-private[spray] trait ParameterDirectives extends SimpleParsers {
+private[spray] trait ParameterDirectives {
   this: BasicDirectives =>
 
   private type PM[A] = ParameterMatcher[A]
@@ -120,7 +120,7 @@ private[spray] trait ParameterDirectives extends SimpleParsers {
 
   implicit def fromSymbol(name: Symbol) = fromString(name.name)  
   
-  implicit def fromString(name: String) = new ParameterMatcher[String](name, SimpleStringParser)
+  implicit def fromString(name: String) = new ParameterMatcher[String](name, SimpleParsers.SimpleStringParser)
 }
 
 class ParameterMatcher[A](val name: String, val parser: SimpleParser[A]) {

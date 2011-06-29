@@ -34,5 +34,6 @@ trait Directives
         with PathDirectives
         with SecurityDirectives
         with SimpleDirectives
+        with SimpleParsers
 
 object Directives extends Directives

@@ -20,7 +20,7 @@ package directives
 import scala.Either
 
 private[spray] trait CaseClassExtractionDirectives {
-  this: BasicDirectives with ParameterDirectives =>
+  this: BasicDirectives =>
 
   implicit def pimpSprayRoute1[A](route: SprayRoute1[A]) = new PimpedSprayRoute1(route)
   class PimpedSprayRoute1[A](route: SprayRoute1[A]) extends SprayRoute1[A](route.filter) {
@@ -84,12 +84,10 @@ private[spray] trait CaseClassExtractionDirectives {
     }
   }
 
-  private type Q[AA, A] = AA => Either[String, A]
-
-  protected implicit def qIdentity[A](a: A): Either[String, A] = Right(a)
+  private type SC[AA, A] = SimpleConverter[AA, A]
 
   def instanceOf[T <: Product, A, AA](construct: A => T)
-                                     (implicit qa: Q[AA, A])
+                                     (implicit qa: SC[AA, A])
     : AA => Either[String, T] = { aa =>
     qa(aa).right.flatMap { a =>
       protect(construct(a))
@@ -97,7 +95,7 @@ private[spray] trait CaseClassExtractionDirectives {
   }
 
   def instanceOf[T <: Product, A, AA, B, BB](construct: (A, B) => T)
-                                            (implicit qa: Q[AA, A], qb: Q[BB, B])
+                                            (implicit qa: SC[AA, A], qb: SC[BB, B])
     : (AA, BB) => Either[String, T] = { (aa, bb) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
@@ -107,7 +105,7 @@ private[spray] trait CaseClassExtractionDirectives {
   }
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC](construct: (A, B, C) => T)
-                                                   (implicit qa: Q[AA, A], qb: Q[BB, B], qc: Q[CC, C])
+                                                   (implicit qa: SC[AA, A], qb: SC[BB, B], qc: SC[CC, C])
     : (AA, BB, CC) => Either[String, T] = { (aa, bb, cc) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
@@ -119,7 +117,7 @@ private[spray] trait CaseClassExtractionDirectives {
   }
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD](construct: (A, B, C, D) => T)
-                                                          (implicit qa: Q[AA, A], qb: Q[BB, B], qc: Q[CC, C], qd: Q[DD, D])
+                                                          (implicit qa: SC[AA, A], qb: SC[BB, B], qc: SC[CC, C], qd: SC[DD, D])
     : (AA, BB, CC, DD) => Either[String, T] = { (aa, bb, cc, dd) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
@@ -133,7 +131,7 @@ private[spray] trait CaseClassExtractionDirectives {
   }
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD, E, EE](construct: (A, B, C, D, E) => T)
-                                                                 (implicit qa: Q[AA, A], qb: Q[BB, B], qc: Q[CC, C], qd: Q[DD, D], qe: Q[EE, E])
+                                                                 (implicit qa: SC[AA, A], qb: SC[BB, B], qc: SC[CC, C], qd: SC[DD, D], qe: SC[EE, E])
     : (AA, BB, CC, DD, EE) => Either[String, T] = { (aa, bb, cc, dd, ee) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
@@ -149,7 +147,7 @@ private[spray] trait CaseClassExtractionDirectives {
   }
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF](construct: (A, B, C, D, E, F) => T)
-                                                                        (implicit qa: Q[AA, A], qb: Q[BB, B], qc: Q[CC, C], qd: Q[DD, D], qe: Q[EE, E], qf: Q[FF, F])
+                                                                        (implicit qa: SC[AA, A], qb: SC[BB, B], qc: SC[CC, C], qd: SC[DD, D], qe: SC[EE, E], qf: SC[FF, F])
     : (AA, BB, CC, DD, EE, FF) => Either[String, T] = { (aa, bb, cc, dd, ee, ff) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
@@ -167,7 +165,7 @@ private[spray] trait CaseClassExtractionDirectives {
   }
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG](construct: (A, B, C, D, E, F, G) => T)
-                                                                               (implicit qa: Q[AA, A], qb: Q[BB, B], qc: Q[CC, C], qd: Q[DD, D], qe: Q[EE, E], qf: Q[FF, F], qg: Q[GG, G])
+                                                                               (implicit qa: SC[AA, A], qb: SC[BB, B], qc: SC[CC, C], qd: SC[DD, D], qe: SC[EE, E], qf: SC[FF, F], qg: SC[GG, G])
     : (AA, BB, CC, DD, EE, FF, GG) => Either[String, T] = { (aa, bb, cc, dd, ee, ff, gg) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>

@@ -50,7 +50,7 @@ class CaseClassExtractionDirectivesSpec extends AbstractSprayTest {
     }
     "work for 5 parameter case classes from mixed extractions" in {
       test(HttpRequest(uri = "/?name=McCormick&firstname=Pete&board=yes&id=1234567&age=57")) {
-        parameters('firstname, 'name, 'age, 'id.as[Long], 'board).as(instanceOf(Employee)) { employee =>
+        parameters('firstname, 'name, 'age.as[Int], 'id ? 0, 'board).as(instanceOf(Employee)) { employee =>
           _.complete(employee.toString)
         }
       }.response.content.as[String] mustEqual Right("Employee(Pete,McCormick,57,1234567,true)")
