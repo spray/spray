@@ -20,7 +20,7 @@ package caching
 import akka.util.duration._
 import akka.util.Duration
 import collection.mutable.LinkedHashMap
-import akka.dispatch.{AlreadyCompletedFuture, CompletableFuture, Future}
+import akka.dispatch.{AlreadyCompletedFuture, Future}
 
 object LruCache {
   def apply[V](maxEntries: Int = 500, dropFraction: Double = 0.20, ttl: Duration = 5.minutes) = {
@@ -48,16 +48,17 @@ class LruCache[V](val maxEntries: Int, val dropFraction: Double, val ttl: Durati
     store.getEntry(key).map(_.future)
   }
 
-  def fromFuture(key: Any)(completableFuture: => Future[V]): Future[V] = synchronized {
+  def fromFuture(key: Any)(future: => Future[V]): Future[V] = synchronized {
     store.getEntry(key) match {
       case Some(entry) => entry.future
-      case None => {
-        val future = completableFuture
+      case None => make(future) { future =>
         store.setEntry(key, new Entry(future))
-        future.onComplete {
-          _.value.get match {
-            case Right(value) => store.setEntry(key, new Entry(new AlreadyCompletedFuture[V](Right(value))))
-            case _ => store.remove(key) // in case of exceptions we remove the cache entry (i.e. try again later)
+        if (!future.isInstanceOf[AlreadyCompletedFuture[_]]) {
+          future.onComplete {
+            _.value.get match {
+              case Right(value) => store.setEntry(key, new Entry(new AlreadyCompletedFuture(Right(value))))
+              case _ => store.remove(key) // in case of exceptions we remove the cache entry (i.e. try again later)
+            }
           }
         }
       }
@@ -65,22 +66,17 @@ class LruCache[V](val maxEntries: Int, val dropFraction: Double, val ttl: Durati
   }
 
   protected class Store extends LinkedHashMap[Any, Entry] {
-    def getEntry(key: Any): Option[cache.Entry] = {
-      get(key) match {
-        case Some(entry) => {
-          if (entry.isAlive) {
-            entry.refresh()
-            remove(key)       // TODO: replace with optimized "refresh" implementation
-            put(key, entry)
-            Some(entry)
-          } else {
-            // entry expired, so remove this one and all earlier ones (they have expired as well)
-            while (firstEntry.key != key) remove(firstEntry.key)
-            remove(key)
-            None
-          }
-        }
-        case None => None
+    def getEntry(key: Any): Option[cache.Entry] = get(key).flatMap { entry =>
+      if (entry.isAlive) {
+        entry.refresh()
+        remove(key)       // TODO: replace with optimized "refresh" implementation
+        put(key, entry)
+        Some(entry)
+      } else {
+        // entry expired, so remove this one and all earlier ones (they have expired as well)
+        while (firstEntry.key != key) remove(firstEntry.key)
+        remove(key)
+        None
       }
     }
 
