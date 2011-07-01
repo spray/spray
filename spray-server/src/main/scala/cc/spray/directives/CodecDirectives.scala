@@ -132,7 +132,7 @@ abstract class Deflate extends Decoder with Encoder {
   val encoding = HttpEncodings.deflate
   
   def decodeBuffer(buffer: Array[Byte]) = copyBuffer(buffer) { (in, out) => 
-    FileUtils.copyAll(new DeflaterInputStream(in), out)
+    FileUtils.copyAll(new InflaterInputStream(in), out)
   }
 
   def encodeBuffer(buffer: Array[Byte]) = copyBuffer(buffer) { (in, out) => 

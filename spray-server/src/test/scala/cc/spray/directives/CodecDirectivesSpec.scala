@@ -115,5 +115,17 @@ class CodecDirectivesSpec extends AbstractSprayTest {
     }
   }
 
+  "all codecs" should {
+    "support round-trip encoding" in {
+      val bytes = "123456789".getBytes
+      "Gzip" in {
+        Gzip.decodeBuffer(Gzip.encodeBuffer(bytes)).mkString mustEqual bytes.mkString
+      }
+      "Deflate" in {
+        Deflate.decodeBuffer(Deflate.encodeBuffer(bytes)).mkString mustEqual bytes.mkString
+      }
+    }
+  }
+
   def fromHex(s: String) = s.split(' ').map(Integer.parseInt(_, 16).toByte)
 }
