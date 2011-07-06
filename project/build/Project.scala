@@ -25,8 +25,8 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   // -------------------------------------------------------------------------------------------------------------------
   object Deps {
     // compile
-    val parboiledC = "org.parboiled" % "parboiled-core" % "1.0.0" % "compile" withSources()
-    val parboiledS = "org.parboiled" % "parboiled-scala" % "1.0.0" % "compile" withSources()
+    val parboiledC = "org.parboiled" % "parboiled-core" % "1.0.1" % "compile" withSources()
+    val parboiledS = "org.parboiled" % "parboiled-scala" % "1.0.1" % "compile" withSources()
     val asyncHttp  = "com.ning" % "async-http-client" % "1.6.4" % "compile" withSources()
     
     // provided
@@ -40,7 +40,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     
     // only for examples
     val logback = "ch.qos.logback" % "logback-classic" % "0.9.28" % "runtime"
-    val pegdown = "org.pegdown" % "pegdown" % "1.0.1" % "compile" withSources()
+    val pegdown = "org.pegdown" % "pegdown" % "1.0.2" % "compile" withSources()
     val JETTY_VERSION = "8.0.0.M2"
     val jettyServer = "org.eclipse.jetty" % "jetty-server" % JETTY_VERSION % "test"
     val jettyWebApp = "org.eclipse.jetty" % "jetty-webapp" % JETTY_VERSION % "test"
