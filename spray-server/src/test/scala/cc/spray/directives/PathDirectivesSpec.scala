@@ -170,6 +170,37 @@ class PathDirectivesSpec extends AbstractSprayTest {
       }.handled must beFalse
     }
   }
+
+  "the predefined JavaUUID PathMatcher" should {
+    "properly extract UUID sequences at the path end into an UUID" in {
+      test(HttpRequest(GET, "/id/bdea8652-f26c-40ca-8157-0b96a2a8389d")) {
+        path("id" / JavaUUID) { id =>
+          _.complete(id.toString)
+        }
+      }.response.content.as[String] mustEqual Right("bdea8652-f26c-40ca-8157-0b96a2a8389d")
+    }
+    "properly extract UUID sequences in the middle of the path into an UUID" in {
+      test(HttpRequest(GET, "/id/bdea8652-f26c-40ca-8157-0b96a2a8389dyes")) {
+        path("id" / JavaUUID ~ "yes") { id =>
+          _.complete(id.toString)
+        }
+      }.response.content.as[String] mustEqual Right("bdea8652-f26c-40ca-8157-0b96a2a8389d")
+    }
+    "reject empty matches" in {
+      test(HttpRequest(GET, "/id/")) {
+        path("id" / JavaUUID) { id =>
+          _.complete(id.toString)
+        }
+      }.handled must beFalse
+    }
+    "reject non-UUID matches" in {
+      test(HttpRequest(GET, "/id/xyz")) {
+        path("id" / JavaUUID) { id =>
+          _.complete(id.toString)
+        }
+      }.handled must beFalse
+    }
+  }
   
   "trailing slashes in the URI" should {
     "be matched by path matchers no having a trailing slash" in {

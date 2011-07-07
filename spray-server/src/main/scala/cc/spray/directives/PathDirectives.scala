@@ -417,3 +417,21 @@ object DoubleNumber extends PathMatcher1[Double] {
     }
   }
 }
+
+import java.util.UUID
+object JavaUUID extends PathMatcher1[UUID] {
+  private val regexMatcher = new SimpleRegexMatcher(
+    """[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}""".r
+  )
+
+  def apply(path: String) = {
+    // use 'flatMapValue' on the result of any PathMatcher1 to convert the extracted value to another type
+    regexMatcher(path).flatMapValue { string =>
+      try {
+        Some(UUID.fromString(string))
+      } catch {
+        case _: IllegalArgumentException => None
+      }
+    }
+  }
+}
