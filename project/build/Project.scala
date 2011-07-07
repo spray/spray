@@ -123,7 +123,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   }
   
   class ServerProject(info: ProjectInfo) extends ModuleProject(info) with AkkaProject {
-    override val akkaActor = akkaModule("actor") withSources()
+    override val akkaActor = akkaModule("actor") % "provided" withSources()
     val http               = httpProject 
     val sprayJson          = Deps.sprayJson
     val servlet30          = Deps.servlet30
@@ -133,7 +133,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   }
   
   class ClientProject(info: ProjectInfo) extends ModuleProject(info) with AkkaProject {
-    override val akkaActor = akkaModule("actor") withSources()
+    override val akkaActor = akkaModule("actor") % "provided" withSources()
     val http               = httpProject
     val ahc                = Deps.asyncHttp 
     val specs              = Deps.specs
