@@ -20,7 +20,7 @@ package directives
 import http._
 
 private[spray] trait MiscDirectives {
-  this: BasicDirectives =>
+  this: BasicDirectives with ParameterDirectives =>
 
   /**
    * Returns a Route which checks the given condition before passing on the [[cc.spray.RequestContext]] to its inner
@@ -83,6 +83,26 @@ private[spray] trait MiscDirectives {
    */
   def respondWithMediaType(mediaType: MediaType) = transformResponse { response =>
     response.copy(content = response.content.map(c => c.withContentType(ContentType(mediaType, c.contentType.charset))))
+  }
+
+  /**
+   * Wraps the inner Route with JSONP support. If a query parameter with the given name is present in the request and
+   * the inner Route returns content with content-type `application/json` the response content is wrapped with a call
+   * to a Javascript function having the name of query parameters value. Additionally the content-type is changed from
+   * `application/json` to `application/javascript` in these cases.
+   */
+  def jsonpWithParameter(parameterName: String) = transformRequestContext { ctx =>
+    ctx.withHttpResponseTransformed {
+      _.withContentTransformed { content =>
+        import MediaTypes._
+        import marshalling.DefaultUnmarshallers._
+        (ctx.request.queryParams.get(parameterName), content.contentType) match {
+          case (Some(wrapper), ContentType(`application/json`, charset)) =>
+            HttpContent(ContentType(`application/javascript`, charset), wrapper + '(' + content.as[String].right.get + ')')
+          case _ => content
+        }
+      }
+    }
   }
   
   /**

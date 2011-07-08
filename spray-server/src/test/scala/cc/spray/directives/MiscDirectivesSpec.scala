@@ -25,6 +25,7 @@ import MediaTypes._
 import test.AbstractSprayTest
 
 class MiscDirectivesSpec extends AbstractSprayTest {
+  noDetailedDiffs()
 
   "respondWithStatus" should {
     "set the given status on successful responses" in {
@@ -86,6 +87,36 @@ class MiscDirectivesSpec extends AbstractSprayTest {
         put { content(as[String]) { s => _.complete(s) }} ~
         get { completeOk }
       }.rejections mustEqual Set(RequestEntityExpectedRejection)
+    }
+  }
+
+  "the jsonpWithParameter directive" should {
+    "convert JSON responses to corresponding javascript respones according to the given JSONP parameter" in {
+      test(HttpRequest(uri = "/?jsonp=someFunc")) {
+        jsonpWithParameter("jsonp") {
+          respondWithContentType(`application/json`) {
+            _.complete("[1,2,3]")
+          }
+        }
+      }.response.content.get mustEqual HttpContent(ContentType(`application/javascript`), "someFunc([1,2,3])")
+    }
+    "not act on JSON responses if no jsonp parameter is present" in {
+      test(HttpRequest(uri = "/")) {
+        jsonpWithParameter("jsonp") {
+          respondWithContentType(`application/json`) {
+            _.complete("[1,2,3]")
+          }
+        }
+      }.response.content.get mustEqual HttpContent(ContentType(`application/json`), "[1,2,3]")
+    }
+    "not act on non-JSON responses even if a jsonp parameter is present" in {
+      test(HttpRequest(uri = "/?jsonp=someFunc")) {
+        jsonpWithParameter("jsonp") {
+          respondWithContentType(`text/plain`) {
+            _.complete("[1,2,3]")
+          }
+        }
+      }.response.content.get mustEqual HttpContent(ContentType(`text/plain`), "[1,2,3]")
     }
   }
   
