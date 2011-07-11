@@ -110,7 +110,7 @@ class HttpHeaderSpec extends Specification {
       HttpHeader("Connection", "close") mustEqual Connection(close)
     )
     "be parsed correctly from example 2" in (
-      HttpHeader("Connection", "pipapo") mustEqual Connection(CustomConnectionToken("pipapo"))
+      HttpHeader("Connection", "pipapo, close") mustEqual Connection(CustomConnectionToken("pipapo"), close)
     )
   }
 

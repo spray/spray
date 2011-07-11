@@ -25,12 +25,12 @@ private[parser] trait ConnectionHeader {
   this: Parser =>
 
   def CONNECTION = rule (
-    ConnectionToken ~ EOI
-        ~~> (x => HttpHeaders.Connection(x))
+    zeroOrMore(ConnectionToken, ListSep) ~ EOI
+      ~~> (HttpHeaders.Connection(_))
   )
   
   def ConnectionToken = rule {
-    "close" ~ push(close) | Token ~~> (x => CustomConnectionToken(x))
+    "close" ~ push(close) | Token ~~> CustomConnectionToken
   }
   
 }

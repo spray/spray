@@ -73,9 +73,10 @@ object HttpHeaders {
   case class `Authorization`(credentials: HttpCredentials) extends HttpHeader {
     def value = credentials.value
   }
-  
-  case class `Connection`(connectionToken: ConnectionToken) extends HttpHeader {
-    def value = connectionToken.value
+
+  object `Connection` { def apply(first: ConnectionToken, more: ConnectionToken*): `Connection` = apply(first +: more) }
+  case class `Connection`(connectionTokens: Seq[ConnectionToken]) extends HttpHeader {
+    def value = connectionTokens.mkString(", ")
   }
   
   case class `Content-Encoding`(encoding: HttpEncoding) extends HttpHeader {
