@@ -1,4 +1,4 @@
-_spray-json_ is a lightweight, clean and simple [JSON][] implementation in Scala.
+_spray-json_ is a lightweight, clean and efficient [JSON][] implementation in Scala.
 
 It sports the following features:
   

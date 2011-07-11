@@ -16,11 +16,11 @@ class Plugins(info: ProjectInfo) extends PluginDefinition(info) {
   // Therefore, if repositories are defined, this must happen as def, not as val.
   // -------------------------------------------------------------------------------------------------------------------
   import Repositories._
-  //e.g. lazy val akkaModuleConfig = ModuleConfiguration("se.scalablesolutions.akka", akkaRepo)
+  val posterousSbtModuleConfig = ModuleConfiguration("net.databinder", ScalaToolsReleases)
 
   // -------------------------------------------------------------------------------------------------------------------
   // Plugins
   // -------------------------------------------------------------------------------------------------------------------
-  // e.g. val akkaPlugin = "se.scalablesolutions.akka" % "akka-sbt-plugin" % "1.0"
-  
+
+  val posterousSbt = "net.databinder" % "posterous-sbt" % "0.1.7"
 }
