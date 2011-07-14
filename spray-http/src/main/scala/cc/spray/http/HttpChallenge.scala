@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Mathias Doenitz
+ * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,27 +16,11 @@
  */
 
 package cc.spray.http
-package parser
 
-import org.parboiled.scala._
-import BasicRules._
+case class HttpChallenge(scheme: String, realm: String, params: Map[String, String] = Map.empty) {
+  def value = scheme + ' ' + (("realm" -> realm) :: params.toList).map {
+    case (k, v) => k + "=\"" + v + '"'
+  }.mkString(",")
 
-/**
- * parser rules for all headers that can be parsed with one simple rule
- */
-private[parser] trait SimpleHeaders {
-  this: Parser with ProtocolParameterRules with AdditionalRules =>
-
-  def CONTENT_LENGTH = rule {
-    oneOrMore(Digit) ~> (s => HttpHeaders.`Content-Length`(s.toInt)) ~ EOI
-  }
-  
-  def DATE = rule {
-    HttpDate ~~> HttpHeaders.Date ~ EOI
-  }
-
-  def X_FORWARDED_FOR = rule {
-    oneOrMore(Ip, separator = ListSep) ~ EOI ~~> (HttpHeaders.`X-Forwarded-For`(_))
-  }
-  
+  override def toString = value
 }

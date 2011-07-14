@@ -51,5 +51,5 @@ case class OtherHttpCredentials(scheme: String, params: Map[String, String]) ext
     scheme + ' ' + params.map { case (k, v) => k + "=\"" + v + '"' }.mkString(",")
   }
 }
-  
+
 

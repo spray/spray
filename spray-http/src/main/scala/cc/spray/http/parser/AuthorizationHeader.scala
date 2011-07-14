@@ -22,7 +22,7 @@ import org.parboiled.common.Base64
 import BasicRules._
 
 private[parser] trait AuthorizationHeader {
-  this: Parser with ProtocolParameterRules =>
+  this: Parser with ProtocolParameterRules with AdditionalRules =>
 
   def AUTHORIZATION = rule {
     CredentialDef ~~> HttpHeaders.`Authorization` 
@@ -44,13 +44,5 @@ private[parser] trait AuthorizationHeader {
     AuthScheme ~ zeroOrMore(AuthParam, separator = ListSep)
         ~~> ((scheme, params) => OtherHttpCredentials(scheme, params.toMap))
   )
-  
-  def AuthScheme = rule {
-    Token ~ OptWS
-  }
-  
-  def AuthParam = rule {
-    Token ~ "=" ~ QuotedString ~~> ((_, _)) 
-  }
-  
+
 }

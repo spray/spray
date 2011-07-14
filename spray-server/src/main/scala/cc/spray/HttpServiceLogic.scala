@@ -101,7 +101,7 @@ trait HttpServiceLogic extends ErrorHandling {
     case MalformedQueryParamRejection(msg, None) :: _ =>
       HttpResponse(BadRequest, "One or more query parameters were illegal:\n" + msg)
     case AuthenticationRequiredRejection(scheme, realm, params) :: _ =>
-      HttpResponse(Unauthorized, `WWW-Authenticate`(scheme, realm, params) :: Nil,
+      HttpResponse(Unauthorized, `WWW-Authenticate`(HttpChallenge(scheme, realm, params)) :: Nil,
               "The resource requires authentication, which was not supplied with the request")
     case AuthorizationFailedRejection :: _ =>
       HttpResponse(Forbidden, "The supplied authentication is either invalid " +

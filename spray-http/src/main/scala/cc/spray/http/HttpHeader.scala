@@ -93,7 +93,7 @@ object HttpHeaders {
 
   object `Cookie` { def apply(first: HttpCookie, more: HttpCookie*): `Cookie` = apply(first +: more) }
   case class `Cookie`(cookies: Seq[HttpCookie]) extends HttpHeader {
-    def value = cookies.map(_.value).mkString("; ")
+    def value = cookies.mkString("; ")
   }
   
   case class `Date`(date: DateTime) extends HttpHeader {
@@ -107,11 +107,10 @@ object HttpHeaders {
   case class `Set-Cookie`(cookie: HttpCookie) extends HttpHeader {
     def value = cookie.value
   }
-  
-  case class `WWW-Authenticate`(scheme: String, realm: String, params: Map[String, String] = Map.empty) extends HttpHeader {
-    def value = {
-      scheme + ' ' + (("realm" -> realm) :: params.toList).map { case (k, v) => k + "=\"" + v + '"' }.mkString(",")
-    }
+
+  object `WWW-Authenticate` { def apply(first: HttpChallenge, more: HttpChallenge*): `WWW-Authenticate` = apply(first +: more) }
+  case class `WWW-Authenticate`(challenges: Seq[HttpChallenge]) extends HttpHeader {
+    def value = challenges.mkString(", ")
   }
   
   object `X-Forwarded-For` { def apply(first: HttpIp, more: HttpIp*): `X-Forwarded-For` = apply(first +: more) }

@@ -37,4 +37,6 @@ case class HttpCookie(
                       (if (secure) "; Secure" else "") +
                       (if (httpOnly) "; HttpOnly" else "") +
                       extension.map("; " + _).getOrElse("")
+
+  override def toString = value
 }

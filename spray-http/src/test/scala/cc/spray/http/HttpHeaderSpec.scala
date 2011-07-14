@@ -144,8 +144,28 @@ class HttpHeaderSpec extends Specification {
   }
 
   "Header 'WWW-Authenticate'" should {
+    "be parsed correctly from various examples" in {
+      HttpHeader("WWW-Authenticate", "Basic realm=\"WallyWorld\"") mustEqual
+              `WWW-Authenticate`(HttpChallenge("Basic", "WallyWorld"))
+      HttpHeader("WWW-Authenticate",
+        """Digest
+           realm="testrealm@host.com",
+           qop="auth,auth-int",
+           nonce=dcd98b7102dd2f0e8b11d0f600bfb0c093,
+           opaque="5ccc069c403ebaf9f0171e9517f40e41"""".replace("\n", "\r\n")
+      ) mustEqual `WWW-Authenticate`(HttpChallenge("Digest", "testrealm@host.com", Map(
+          "qop" -> "auth,auth-int",
+          "nonce" -> "dcd98b7102dd2f0e8b11d0f600bfb0c093",
+          "opaque" -> "5ccc069c403ebaf9f0171e9517f40e41"
+      )))
+      HttpHeader("WWW-Authenticate", "Basic realm=WallyWorld,attr=value, Fancy realm=yeah") mustEqual
+              `WWW-Authenticate`(
+                HttpChallenge("Basic", "WallyWorld", Map("attr" -> "value")),
+                HttpChallenge("Fancy", "yeah")
+              )
+    }
     "serialize properly to String" in {
-      `WWW-Authenticate`("Fancy", "Secure Area", Map("nonce"->"42")).value mustEqual
+      `WWW-Authenticate`(HttpChallenge("Fancy", "Secure Area", Map("nonce"->"42"))).value mustEqual
               """Fancy realm="Secure Area",nonce="42""""
     }
   }

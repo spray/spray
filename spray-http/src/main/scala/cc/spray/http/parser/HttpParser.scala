@@ -35,6 +35,7 @@ object HttpParser extends SprayParser with ProtocolParameterRules with Additiona
   with ContentTypeHeader
   with CookieHeaders
   with SimpleHeaders
+  with WwwAuthenticateHeader
   {
 
   // all string literals automatically receive a trailing optional whitespace

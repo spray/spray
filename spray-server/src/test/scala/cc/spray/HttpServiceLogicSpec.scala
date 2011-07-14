@@ -112,7 +112,7 @@ class HttpServiceLogicSpec extends Specification with SprayTest with Directives 
     "respond with Unauthorized plus WWW-Authenticate header for AuthenticationRequiredRejections" in {
       testService(HttpRequest()) {
         authenticate(HttpBasic()) { _ => completeOk }
-      }.response mustEqual HttpResponse(Unauthorized, `WWW-Authenticate`("Basic", "Secured Resource", Map.empty) :: Nil,
+      }.response mustEqual HttpResponse(Unauthorized, `WWW-Authenticate`(HttpChallenge("Basic", "Secured Resource")) :: Nil,
           "The resource requires authentication, which was not supplied with the request")
     }
     "respond with Forbidden for requests resulting in an AuthorizationFailedRejection" in {

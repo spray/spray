@@ -14,31 +14,25 @@
  * limitations under the License.
  */
 
-package cc.spray.http
+package cc.spray
+package http
 package parser
 
 import org.parboiled.scala._
 import BasicRules._
-import java.net.InetAddress
 
-// implementation of additional parsing rules required for extensions that are not in the core HTTP standard
-private[parser] trait AdditionalRules {
-  this: Parser =>
+private[parser] trait WwwAuthenticateHeader {
+  this: Parser with AdditionalRules =>
 
-  def Ip: Rule1[HttpIp] = rule (
-    group(IpNumber ~ ch('.') ~ IpNumber ~ ch('.') ~ IpNumber ~ ch('.') ~ IpNumber)
-      ~> (x => HttpIp(InetAddress.getByName(x))) ~ OptWS
-  )
+  def WWW_AUTHENTICATE = rule {
+    oneOrMore(Challenge, separator = ListSep) ~ EOI ~~> (HttpHeaders.`WWW-Authenticate`(_))
+  }
   
-  def IpNumber = rule {
-    Digit ~ optional(Digit ~ optional(Digit))
+  def Challenge = rule {
+    AuthScheme ~ zeroOrMore(AuthParam, separator = ListSep) ~~> { (scheme, params) =>
+      val (realms, otherParams) = params.partition(_._1 == "realm")
+      HttpChallenge(scheme, realms.headOption.map(_._2).getOrElse(""), otherParams.toMap)
+    }
   }
-
-  def AuthScheme = rule {
-    Token ~ OptWS
-  }
-
-  def AuthParam = rule {
-    Token ~ "=" ~ (Token | QuotedString) ~~> ((_, _))
-  }
+  
 }
