@@ -24,8 +24,9 @@ class DateTimeSpec extends Specification {
     }
     "behave exactly as a corresponding formatting via SimpleDateFormat" in {
       val Rfc1123Format = {
-        TimeZone.setDefault(GMT)
-        new java.text.SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", java.util.Locale.US)
+        val fmt = new java.text.SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", java.util.Locale.US)
+        fmt.setTimeZone(GMT)
+        fmt
       }
       val matchSimpleDateFormat = new Matcher[Iterable[DateTime]] {
         def apply(dateTimes: => Iterable[DateTime]) = {

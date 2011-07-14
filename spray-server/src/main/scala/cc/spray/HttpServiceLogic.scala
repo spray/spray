@@ -20,7 +20,7 @@ import http._
 import StatusCodes._
 import HttpHeaders._
 import MediaTypes._
-import utils.{Logging, Rfc1123, IllegalResponseException}
+import utils.{Logging, IllegalResponseException}
 
 /**
  * The logic part of the [[cc.spray.HttpService]]. Contains the code for [[cc.spray.RequestContext]] creation as well
@@ -127,7 +127,7 @@ trait HttpServiceLogic extends ErrorHandling {
   protected def finalizeResponse(unverifiedResponse: HttpResponse) = {
     val response = verified(unverifiedResponse)
     if (setDateHeader) {
-      response.copy(headers = Date(Rfc1123.now) :: response.headers)
+      response.copy(headers = Date(DateTime.now) :: response.headers)
     } else {
       response
     }
