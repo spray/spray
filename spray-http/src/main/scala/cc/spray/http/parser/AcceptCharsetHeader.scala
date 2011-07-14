@@ -25,8 +25,7 @@ private[parser] trait AcceptCharsetHeader {
   this: Parser with ProtocolParameterRules =>
 
   def ACCEPT_CHARSET = rule (
-    oneOrMore(CharsetRangeDecl, ListSep) ~ EOI
-            ~~> (x => HttpHeaders.`Accept-Charset`(x))
+    oneOrMore(CharsetRangeDecl, separator = ListSep) ~ EOI ~~> (HttpHeaders.`Accept-Charset`(_))
   )
   
   def CharsetRangeDecl = rule (

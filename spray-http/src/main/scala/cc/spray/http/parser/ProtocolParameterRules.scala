@@ -19,6 +19,7 @@ package parser
 
 import org.parboiled.scala._
 import BasicRules._
+import org.parboiled.errors.ParsingException
 
 // direct implementation of http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html
 private[parser] trait ProtocolParameterRules {
@@ -33,30 +34,55 @@ private[parser] trait ProtocolParameterRules {
   
   /* 3.3.1 Full Date */
   
-  def HttpDate = rule { (RFC1123Date | RFC850Date | ASCTimeDate) ~ OptWS }
+  def HttpDate: Rule1[DateTime] = rule { (RFC1123Date | RFC850Date | ASCTimeDate) ~ OptWS }
   
-  def RFC1123Date = rule { Wkday ~ str(", ") ~ Date1 ~ ch(' ') ~ Time ~ ch(' ') ~ str("GMT") } 
+  def RFC1123Date = rule {
+    Wkday ~ str(", ") ~ Date1 ~ ch(' ') ~ Time ~ ch(' ') ~ str("GMT") ~~> {
+      (wkday, day, month, year, hour, min, sec) => createDateTime(year, month, day, hour, min, sec, wkday)
+    }
+  }
   
-  def RFC850Date = rule { Weekday ~ str(", ") ~ Date2 ~ ch(' ') ~ Time ~ ch(' ') ~ str("GMT") }
+  def RFC850Date = rule {
+    Weekday ~ str(", ") ~ Date2 ~ ch(' ') ~ Time ~ ch(' ') ~ str("GMT") ~~> {
+      (wkday, day, month, year, hour, min, sec) => createDateTime(year, month, day, hour, min, sec, wkday)
+    }
+  }
   
-  def ASCTimeDate = rule { Wkday ~ ch(' ') ~ Date3 ~ ch(' ') ~ Time ~ ch(' ') ~ Digit ~ Digit ~ Digit ~ Digit }
+  def ASCTimeDate = rule {
+    Wkday ~ ch(' ') ~ Date3 ~ ch(' ') ~ Time ~ ch(' ') ~ Digit4 ~~> {
+      (wkday, month, day, hour, min, sec, year) => createDateTime(year, month, day, hour, min, sec, wkday)
+    }
+  }
+
+  private def createDateTime(year: Int, month: Int, day: Int, hour: Int, min: Int, sec: Int, wkday: Int) = {
+    make(DateTime(year, month, day, hour, min, sec)) { dt =>
+      if (dt.weekday != wkday) throw new ParsingException("Illegal weekday in date (is '" +
+              DateTime.WEEKDAYS(wkday) + "' but should be '" + DateTime.WEEKDAYS(dt.weekday) + "')" + dt)
+    }
+  }
+
+  def Date1 = rule { Digit2 ~ ch(' ') ~ Month ~ ch(' ') ~ Digit4 }
   
-  def Date1 = rule { Digit ~ Digit ~ ch(' ') ~ Month ~ ch(' ') ~ Digit ~ Digit ~ Digit ~ Digit }
+  def Date2 = rule { Digit2 ~ ch('-') ~ Month ~ ch('-') ~ Digit4 }
   
-  def Date2 = rule { Digit ~ Digit ~ ch('-') ~ Month ~ ch('-') ~ Digit ~ Digit ~ Digit ~ Digit }
+  def Date3 = rule { Month ~ ch(' ') ~ (Digit2 | ch(' ') ~ Digit ~> (_.toInt)) }
   
-  def Date3 = rule { Month ~ ch(' ') ~ (Digit ~ Digit | ch(' ') ~ Digit) }
+  def Time = rule { Digit2 ~ ch(':') ~ Digit2 ~ ch(':') ~ Digit2 }
   
-  def Time = rule { Digit ~ Digit ~ ch(':') ~ Digit ~ Digit ~ ch(':') ~ Digit ~ Digit }
+  def Wkday = rule { stringIndexRule(0, "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat") }
   
-  def Wkday = rule { str("Mon") | str("Tue") | str("Wed") | str("Thu") | str("Fri") | str("Sat") | str("Sun") }
+  def Weekday = rule { stringIndexRule(0, "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday") }
   
-  def Weekday = rule { str("Monday") | str("Tuesday") | str("Wednesday") | str("Thursday") | str("Friday") |
-          str("Saturday") | str("Sunday") }
-  
-  def Month = rule { str("Jan") | str("Feb") | str("Mar") | str("Apr") | str("May") | str("Jun") | str("Jul") |
-          str("Aug") | str("Sep") | str("Oct") | str("Nov") | str("Dec") }
-  
+  def Month = rule { stringIndexRule(1, "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec") }
+
+  def Digit2 = rule { group(Digit ~ Digit) ~> (_.toInt) }
+
+  def Digit4 = rule { group(Digit ~ Digit ~ Digit ~ Digit) ~> (_.toInt) }
+
+  private def stringIndexRule(indexDelta: Int, strings: String*) = strings.zipWithIndex.map {
+    case (s, ix) => str(s) ~ push(ix + indexDelta)
+  } reduce(_ | _)
+
   /* 3.3.2 Delta Seconds */
   
   def DeltaSeconds = rule { oneOrMore(Digit) }

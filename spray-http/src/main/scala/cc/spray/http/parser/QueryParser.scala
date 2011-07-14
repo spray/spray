@@ -22,7 +22,7 @@ import org.parboiled.scala._
 object QueryParser extends SprayParser {
   
   def QueryString: Rule1[Map[String, String]] = rule {
-    zeroOrMore(QueryParameter, "&") ~ EOI ~~> (_.toMap) 
+    zeroOrMore(QueryParameter, separator = "&") ~ EOI ~~> (_.toMap)
   }
   
   def QueryParameter = rule {

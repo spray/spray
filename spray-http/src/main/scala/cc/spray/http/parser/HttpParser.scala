@@ -33,6 +33,7 @@ object HttpParser extends SprayParser with ProtocolParameterRules with Additiona
   with ConnectionHeader
   with ContentEncodingHeader
   with ContentTypeHeader
+  with CookieHeaders
   with SimpleHeaders
   {
 

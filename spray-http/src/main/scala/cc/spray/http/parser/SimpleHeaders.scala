@@ -31,11 +31,11 @@ private[parser] trait SimpleHeaders {
   }
   
   def DATE = rule {
-    HttpDate ~> HttpHeaders.Date ~ EOI
+    HttpDate ~~> HttpHeaders.Date ~ EOI
   }
   
   def X_FORWARDED_FOR = rule {
-    oneOrMore(Ip, ListSep) ~ EOI ~~> (x => HttpHeaders.`X-Forwarded-For`(x))
+    oneOrMore(Ip, separator = ListSep) ~ EOI ~~> (HttpHeaders.`X-Forwarded-For`(_))
   }
   
 }

@@ -33,16 +33,17 @@ private[parser] trait AuthorizationHeader {
   }
   
   def BasicCredentialDef = rule {
-    "Basic" ~ BasicCookie ~> (s => BasicHttpCredentials(s))
+    "Basic" ~ BasicCookie ~> (BasicHttpCredentials(_))
   }
   
   def BasicCookie = rule {
     oneOrMore(anyOf(Base64.rfc2045.getAlphabet))
   }
   
-  def OtherCredentialDef = rule {
-    AuthScheme ~ zeroOrMore(AuthParam, ListSep) ~~> ((scheme, params) => OtherHttpCredentials(scheme, params.toMap))   
-  }
+  def OtherCredentialDef = rule (
+    AuthScheme ~ zeroOrMore(AuthParam, separator = ListSep)
+        ~~> ((scheme, params) => OtherHttpCredentials(scheme, params.toMap))
+  )
   
   def AuthScheme = rule {
     Token ~ OptWS

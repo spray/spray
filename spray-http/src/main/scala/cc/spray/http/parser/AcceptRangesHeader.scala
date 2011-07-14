@@ -24,12 +24,11 @@ private[parser] trait AcceptRangesHeader {
   this: Parser with ProtocolParameterRules =>
 
   def ACCEPT_RANGES = rule (
-    RangeUnitsDef ~ EOI
-            ~~> (x => HttpHeaders.`Accept-Ranges`(x))
+    RangeUnitsDef ~ EOI ~~> (HttpHeaders.`Accept-Ranges`(_))
   )
   
   def RangeUnitsDef = rule {
-    NoRangeUnitsDef | zeroOrMore(RangeUnit, ListSep)
+    NoRangeUnitsDef | zeroOrMore(RangeUnit, separator = ListSep)
   }
   
   def NoRangeUnitsDef = rule {

@@ -90,13 +90,22 @@ object HttpHeaders {
   case class `Content-Type`(contentType: ContentType) extends HttpHeader {
     def value = contentType.value
   }
+
+  object `Cookie` { def apply(first: HttpCookie, more: HttpCookie*): `Cookie` = apply(first +: more) }
+  case class `Cookie`(cookies: Seq[HttpCookie]) extends HttpHeader {
+    def value = cookies.map(_.value).mkString("; ")
+  }
   
-  case class `Date`(rfc1123Date: String) extends HttpHeader {
-    def value = rfc1123Date
+  case class `Date`(date: DateTime) extends HttpHeader {
+    def value = date.toRfc1123DateTimeString
   }
   
   case class `Location`(absoluteUri: String) extends HttpHeader {
     def value = absoluteUri
+  }
+
+  case class `Set-Cookie`(cookie: HttpCookie) extends HttpHeader {
+    def value = cookie.value
   }
   
   case class `WWW-Authenticate`(scheme: String, realm: String, params: Map[String, String] = Map.empty) extends HttpHeader {

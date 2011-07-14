@@ -25,8 +25,7 @@ private[parser] trait ConnectionHeader {
   this: Parser =>
 
   def CONNECTION = rule (
-    zeroOrMore(ConnectionToken, ListSep) ~ EOI
-      ~~> (HttpHeaders.Connection(_))
+    zeroOrMore(ConnectionToken, separator = ListSep) ~ EOI ~~> (HttpHeaders.Connection(_))
   )
   
   def ConnectionToken = rule {

@@ -33,6 +33,8 @@ private[spray] object BasicRules extends Parser {
   def LoAlpha = rule { "a" - "z" }
   
   def Digit = rule { "0" - "9" }
+
+  def AlphaNum = Alpha | Digit
   
   def CTL = rule { "\u0000" - "\u001F" | "\u001F" }
   
