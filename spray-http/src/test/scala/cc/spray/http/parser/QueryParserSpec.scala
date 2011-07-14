@@ -32,8 +32,8 @@ class QueryParserSpec extends Specification {
     "return an empty value for keys without a value following the '=' and keys without following '='" in {
       QueryParser.parse("key=&key2") mustEqual Map("key" -> "", "key2" -> "")
     }
-    "throw an HttpException for illegal query strings" in {
-      QueryParser.parse("key=&&b") must throwA[HttpException]
+    "accept empty key value pairs" in {
+      QueryParser.parse("&&b&") mustEqual Map("b" -> "", "" -> "")
     }
   }
   

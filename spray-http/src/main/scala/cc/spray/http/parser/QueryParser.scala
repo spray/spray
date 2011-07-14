@@ -21,16 +21,17 @@ import org.parboiled.scala._
 
 object QueryParser extends SprayParser {
   
-  def QueryString: Rule1[Map[String, String]] = rule {
-    zeroOrMore(QueryParameter, separator = "&") ~ EOI ~~> (_.toMap)
-  }
+  def QueryString: Rule1[Map[String, String]] = rule (
+      EOI ~ push(Map.empty[String, String])
+    | zeroOrMore(QueryParameter, separator = "&") ~ EOI ~~> (_.toMap)
+  )
   
   def QueryParameter = rule {
     QueryParameterComponent ~ optional("=") ~ (QueryParameterComponent | push("")) 
   }
   
   def QueryParameterComponent = rule {
-    oneOrMore(!anyOf("&=") ~ ANY) ~> identity
+    zeroOrMore(!anyOf("&=") ~ ANY) ~> identity
   }
   
   def parse(queryString: String): Map[String, String] = parse(QueryString, queryString) match {
