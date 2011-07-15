@@ -74,6 +74,11 @@ object HttpHeaders {
     def value = credentials.value
   }
 
+  object `Cache-Control` { def apply(first: CacheDirective, more: CacheDirective*): `Cache-Control` = apply(first +: more) }
+  case class `Cache-Control`(directives: Seq[CacheDirective]) extends HttpHeader {
+    def value = directives.mkString(", ")
+  }
+
   object `Connection` { def apply(first: ConnectionToken, more: ConnectionToken*): `Connection` = apply(first +: more) }
   case class `Connection`(connectionTokens: Seq[ConnectionToken]) extends HttpHeader {
     def value = connectionTokens.mkString(", ")

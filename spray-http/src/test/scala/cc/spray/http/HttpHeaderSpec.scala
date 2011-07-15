@@ -83,6 +83,16 @@ class HttpHeaderSpec extends Specification {
     }
   }
 
+  "Header 'Cache-Control'" should {
+    import CacheDirectives._
+    "be parsed correctly from various examples" in {
+      HttpHeader("Cache-Control", "no-cache, max-age=0") mustEqual `Cache-Control`(`no-cache`, `max-age`(0))
+      HttpHeader("Cache-Control", "private=\"Some-Field\"") mustEqual `Cache-Control`(`private`(List("Some-Field")))
+      HttpHeader("Cache-Control", "private, community=\"UCI\"") mustEqual
+              `Cache-Control`(`private`(), CustomCacheDirective("community", Some("UCI")))
+    }
+  }
+
   "Header 'Connection'" should {
     import ConnectionTokens._
     "be parsed correctly from various examples" in {

@@ -85,7 +85,7 @@ private[parser] trait ProtocolParameterRules {
 
   /* 3.3.2 Delta Seconds */
   
-  def DeltaSeconds = rule { oneOrMore(Digit) }
+  def DeltaSeconds = rule { oneOrMore(Digit) ~> (_.toLong) }
   
   
   /* 3.4 Character Sets */
