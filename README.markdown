@@ -4,22 +4,22 @@ It sports the following features:
   
 * Simple immutable model of the JSON language elements
 * An efficient JSON PEG parser (implemented with [parboiled][])
-* Choice of either compact or pretty JSON to-string-printing
+* Choice of either compact or pretty JSON-to-string printing
 * Type-class based (de)serialization of custom objects (no reflection, no intrusion)
 
 
 ### Installation
 
 _spray-json_ is available from the [scala-tools.org][] repositories.  
-There is no official release yet, but the current snapshot is `1.0-SNAPSHOT`.
-It is built against Scala 2.9.0-1, but backporting to 2.8.1 is no problem (let me know if you need a 2.8.1 compatible version).
+The latest release is `1.0.0`.
+It's built against Scala 2.9.0-1, but backporting to 2.8.1 is no problem (let me know if you need a 2.8.1 compatible version).
 
 If you use SBT you can include _spray-json_ in your project with
 
-    val sprayJsonModuleConfig = ModuleConfiguration("cc.spray.json", ScalaToolsSnapshots)
-    val sprayJson = "cc.spray.json" %% "spray-json" % "1.0.0-SNAPSHOT" % "compile" withSources()
+    val sprayJson = "cc.spray.json" %% "spray-json" % "1.0.0" % "compile" withSources()
 
-_spray-json_ has only one dependency: the parsing library [parboiled][] (which is also a dependency of _spray-server_ and _spray-client_, so if you use _spray-json_ with either of them you are not incurring any additional dependency).
+_spray-json_ has only one dependency: the parsing library [parboiled][]
+(which is also a dependency of _spray-server_ and _spray-client_, so if you use _spray-json_ with either of them you are not incurring any additional dependency).
 
 
 ### Usage
