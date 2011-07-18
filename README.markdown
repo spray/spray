@@ -158,7 +158,7 @@ Note that this is the approach _spray-json_ uses for case classes.
 
 Most of type-class (de)serialization code is nothing but a polished copy of what **Debasish Ghosh** made available
 with his [SJSON][] library. These code parts therefore bear his copyright.
-Additionally the JSON AST model is heavily inspired by the one from [Databinder-Dispatch][] by **Nathan Hamblen**.
+Additionally the JSON AST model is heavily inspired by the one contributed by **Jorge Ortiz** to [Databinder-Dispatch][].
 
   
 ### License
