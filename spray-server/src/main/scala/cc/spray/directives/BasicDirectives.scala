@@ -115,7 +115,7 @@ sealed abstract class SprayRoute[T <: Product](val filter: RouteFilter[T]) { sel
   }
 
   /**
-   * Negates this filter, i.e. the inner route will be evaluated if this filter rejects and be rejected of this passes.
+   * Negates this filter, i.e. the inner route will be evaluated if this filter rejects and be rejected if this passes.
    * Note that negated filters completely loose any specific characteristics of their underlying filter:
    * They never extract anything, they do not apply the potential context transformation of their underlying filter
    * and they do not create any specific rejection instances if they don't pass.

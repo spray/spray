@@ -2,7 +2,6 @@ package cc.spray
 package client
 
 import http._
-import HttpContent._
 import HttpHeaders._
 import com.ning.http.client.{HttpContent => _, _}
 import akka.dispatch._
@@ -13,6 +12,13 @@ import org.parboiled.common.FileUtils
 import akka.event.EventHandler
 import akka.actor.Actor
 
+/**
+ * The central class encapsulating the Ning [[https://github.com/sonatype/async-http-client AsyncHttpClient]] as a scala wrapper.
+ * Optionally takes a {{responseMock}} function, which allows you do selectively mock [[cc.spray.HttpResponse]]s for certain
+ *  [[cc.spray.HttpRequest]]s. Very useful for testing.
+ * For all documentation regarding configuration parameters please see the
+ *  [[http://sonatype.github.com/async-http-client/apidocs/index.html AHC Javadocs]].
+ */
 class HttpClient(val ahc: AsyncHttpClient, responseMock: HttpRequest => Option[HttpResponse] = { _ => None }) {
 
   def this(config: ClientConfig) = this(new AsyncHttpClient(config.toAhcConfig))
@@ -26,6 +32,10 @@ class HttpClient(val ahc: AsyncHttpClient, responseMock: HttpRequest => Option[H
     def onCompleted(response: Response) = toSprayResponse(response)
   }
 
+  /**
+   * Dispatches the given HttpRequest, optionally using the given requestConfig and/or
+   *  [[http://sonatype.github.com/async-http-client/apidocs/com/ning/http/client/AsyncHandler.html AsyncHandler]].
+   */
   def dispatch(request: HttpRequest, requestConfig: RequestConfig = null,
                handler: AsyncHandler[HttpResponse] = defaultHandler): Future[HttpResponse] = {
     responseMock(request) match {
@@ -64,7 +74,7 @@ class HttpClient(val ahc: AsyncHttpClient, responseMock: HttpRequest => Option[H
     akkaFuture
   }
   
-  def fromSprayRequest(req: HttpRequest, requestConfig: RequestConfig) = {
+  protected def fromSprayRequest(req: HttpRequest, requestConfig: RequestConfig) = {
     val headers = new FluentCaseInsensitiveStringsMap
     for (header <- req.headers) headers.put(header.name, List(header.value))
     
@@ -77,7 +87,7 @@ class HttpClient(val ahc: AsyncHttpClient, responseMock: HttpRequest => Option[H
     builder.build()
   }
   
-  def toSprayResponse(resp: Response) = {
+  protected def toSprayResponse(resp: Response) = {
     val allHeaders = resp.getHeaders.entrySet().toList.map { entry =>
       HttpHeader(entry.getKey, entry.getValue.get(0))        
     }
@@ -90,7 +100,10 @@ class HttpClient(val ahc: AsyncHttpClient, responseMock: HttpRequest => Option[H
       case _ => HttpResponse(resp.getStatusCode, allHeaders) 
     } 
   }
-  
+
+  /**
+   * Closes all underlying connections.
+   */
   def close() {
     ahc.close()
   }

@@ -17,7 +17,6 @@
 package cc.spray
 
 import http._
-import parser.HttpParser
 import StatusCodes._
 import akka.actor.{Actor, ActorRef}
 import akka.dispatch.{Future, Futures}

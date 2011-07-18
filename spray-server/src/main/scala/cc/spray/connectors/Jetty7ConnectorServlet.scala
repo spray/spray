@@ -20,6 +20,9 @@ package connectors
 import org.eclipse.jetty.continuation._
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 
+/**
+ * The spray connector servlet for Jetty 7.
+ */
 class Jetty7ConnectorServlet extends ConnectorServlet {
 
   def containerName = "Jetty 7"

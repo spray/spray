@@ -1,5 +1,3 @@
-package cc.spray.http
-
 /*
  * Copyright (C) 2011 Mathias Doenitz
  * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
@@ -16,6 +14,8 @@ package cc.spray.http
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+package cc.spray.http
 
 private[http] trait ObjectRegistry[K, V] {
   val registry = collection.mutable.Map.empty[K, V]

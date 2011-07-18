@@ -26,6 +26,9 @@ import java.util.zip._
 private[spray] trait CodecDirectives {
   this: BasicDirectives =>
 
+  /**
+   * Wraps its inner Route with decoding support using the given Decoder.
+   */
   def decodeRequest(decoder: Decoder) = filter { ctx =>
     if (ctx.request.content.isEmpty) {
       Pass.withTransform(_.cancelRejections[UnsupportedRequestEncodingRejection])
@@ -38,7 +41,10 @@ private[spray] trait CodecDirectives {
       }
     } else Reject(UnsupportedRequestEncodingRejection(decoder.encoding))
   }
-  
+
+  /**
+   * Wraps its inner Route with encoding support using the given Encoder.
+   */
   def encodeResponse(encoder: Encoder) = filter { ctx =>
     if (ctx.request.isEncodingAccepted(encoder.encoding)) {
       Pass.withTransform {

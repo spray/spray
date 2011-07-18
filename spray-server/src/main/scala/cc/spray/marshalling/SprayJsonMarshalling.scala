@@ -21,6 +21,11 @@ import http._
 import MediaTypes._
 import json._
 
+/**
+ * A trait providing automatic to and from JSON marshalling/unmarshalling using an in-scope *spray-json* protocol.
+ * Note that *spray-server* does not have an automatic dependency on *spray-json*. You'll need to provide the
+ * appropriate *spray-json* artifacts yourself.
+ */
 trait SprayJsonMarshalling {
 
   implicit def sprayJsonUnmarshaller[A :JsonReader]: Unmarshaller[A] = new UnmarshallerBase[A] {

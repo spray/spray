@@ -20,6 +20,9 @@ package connectors
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 import org.apache.catalina.{CometEvent, CometProcessor}
 
+/**
+ * The spray connector servlet for Tomcat 6.
+ */
 class Tomcat6ConnectorServlet extends ConnectorServlet with CometProcessor {
   
   def containerName = "Tomcat 6"

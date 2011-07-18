@@ -24,8 +24,8 @@ import utils.{NoLog, Logging}
 
 /**
  * Mix this trait into the class or trait containing your route and service tests.
- * Use the "test" and "testService" methods to test the behavior of your routes and services for different HTTP request
- * examples.
+ * Use the {{test}} and {{testService}} methods to test the behavior of your routes and services for different HTTP
+ * request examples.
  */
 trait SprayTest {
   this: { def fail(msg: String): Nothing } =>

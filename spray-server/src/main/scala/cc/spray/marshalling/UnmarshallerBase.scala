@@ -35,7 +35,7 @@ trait UnmarshallerBase[A] extends Unmarshaller[A] {
 
   /**
    * Helper method for turning exceptions occuring during evaluation of the named parameter into
-   * IllegalRequestContentRejections.
+   * [[cc.spray.MalformedRequestContentRejection]]s.
    */
   protected def protect(f: => A): Either[Rejection, A] = {
     try {

@@ -20,6 +20,9 @@ package connectors
 import javax.servlet.{AsyncEvent, AsyncListener}
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 
+/**
+ * The spray connector servlet for all servlet 3.0 containers.
+ */
 class Servlet30ConnectorServlet extends ConnectorServlet with AsyncListener {
   
   def containerName = "Servlet API 3.0"

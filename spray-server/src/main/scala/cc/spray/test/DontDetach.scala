@@ -18,7 +18,7 @@ package cc.spray
 package test
 
 /**
- * Trait that should be mixed into the [[cc.spray.ServiceBuilder]] instance used for testing. It disables the 'detach'
+ * Trait that should be mixed into the [[cc.spray.Directives]] instance used for testing. It disables the 'detach'
  * directive, preventing "No response received" failures in Routes using `detach`.
  */
 trait DontDetach extends Directives {

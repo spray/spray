@@ -22,6 +22,10 @@ import caching._
 private[spray] trait CacheDirectives {
   this: BasicDirectives =>
 
+  /**
+   * Wraps its inner Route with caching support using the given [[cc.spray.caching.Cache]] implementation and
+   * keyer function.
+   */
   def cacheResults(cache: Cache[RoutingResult], keyer: CacheKeyer = CacheKeyers.UriGetCacheKeyer) = {
     transformRoute { route => ctx =>
       keyer(ctx) match {
@@ -37,5 +41,10 @@ private[spray] trait CacheDirectives {
     }
   }
 
+  /**
+   * Wraps its inner Route with caching support using a default [[cc.spray.caching.LruCache]] instance
+   * (max-entries = 500, dropFraction = 20%, time-to-live: 5 minutes) and the {{UriGetCacheKeyer}} which
+   * only caches GET requests and uses the request URI as cache key.
+   */
   def cache = cacheResults(LruCache[RoutingResult]())
 }

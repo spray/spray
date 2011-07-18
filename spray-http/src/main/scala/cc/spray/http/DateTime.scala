@@ -18,7 +18,7 @@
 package cc.spray.http
 
 /**
- * Fast and efficient Date + Time implementation without any dependencies.
+ * Immutable, fast and efficient Date + Time implementation without any dependencies.
  * Does not support TimeZones, all DateTime values are always GMT based.
  */
 sealed trait DateTime extends Ordered[DateTime] {

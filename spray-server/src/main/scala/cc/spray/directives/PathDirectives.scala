@@ -284,18 +284,27 @@ private[directives] class Combi[T <: Product](a: PathMatcher[_ <: Product], b: P
   }
 }
 
+/**
+ * A PathMatcher that matches the given string.
+ */
 class StringMatcher(prefix: String) extends PathMatcher0 {
   def apply(path: String) = {
     if (path.startsWith(prefix)) Some((path.substring(prefix.length), Product0)) else None
   } 
 }
 
+/**
+ * A PathMatcher that matches and extracts the given regular expression.
+ */
 class SimpleRegexMatcher(regex: Regex) extends PathMatcher1[String] {
   def apply(path: String) = {
     regex.findPrefixOf(path).map(matched => (path.substring(matched.length), Tuple1(matched)))
   }
 }
 
+/**
+ * A PathMatcher that matches the given regular expression and extracts the first match group.
+ */
 class GroupRegexMatcher(regex: Regex) extends PathMatcher1[String] {
   def apply(path: String) = {
     regex.findPrefixMatchOf(path).map { m =>
@@ -305,6 +314,10 @@ class GroupRegexMatcher(regex: Regex) extends PathMatcher1[String] {
   }
 }
 
+/**
+ * A PathMatcher that matches a single slash character ('/').
+ * Also matches at the very end of the requests URI path if no slash is present.
+ */
 object Slash extends PathMatcher0 {
   private val Empty = Some(("", Product0)) // pre-allocated for speed 
   def apply(path: String) = {
@@ -316,6 +329,10 @@ object Slash extends PathMatcher0 {
   }
 }
 
+/**
+ * A PathMatcher that matches the very end of the requests URI path.
+ * Also matches if the only unmatched character left is a single slash.
+ */
 object PathEnd extends PathMatcher0 {
   private val Empty = Some(("", Product0)) // pre-allocated for speed
   def apply(path: String) = {
@@ -323,6 +340,9 @@ object PathEnd extends PathMatcher0 {
   }
 }
 
+/**
+ * A PathMatcher that matches and extracts the complete remaining, unmatched part of the requests URI path.
+ */
 object Remaining extends PathMatcher1[String] {
   def apply(path: String) = Some(("", Tuple1(path)))
 }
@@ -419,6 +439,10 @@ object DoubleNumber extends PathMatcher1[Double] {
 }
 
 import java.util.UUID
+
+/**
+ * A PathMatcher that matches and extracts a java.util.UUID instance.
+ */
 object JavaUUID extends PathMatcher1[UUID] {
   private val regexMatcher = new SimpleRegexMatcher(
     """[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}""".r

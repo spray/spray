@@ -23,13 +23,22 @@ import collection.mutable.LinkedHashMap
 import akka.dispatch.{AlreadyCompletedFuture, Future}
 
 object LruCache {
+  /**
+   * Creates a new LruCache instance
+   */
   def apply[V](maxEntries: Int = 500, dropFraction: Double = 0.20, ttl: Duration = 5.minutes) = {
     new LruCache[V](maxEntries, dropFraction, ttl)
   }
 }
 
+/**
+ * A last-recently-used cache with a defined capacity and time-to-live.
+ * The {{dropFraction}} parameter is used for evicting items from the cache when the maximum capacity is reached.
+ * E.g. with a {{maxEntries}} value of 100 and a {{dropFraction}} of 0.20 the cache will evict the oldest 20 cache
+ * entries when the 101st entry is about to be stored.
+ */
 class LruCache[V](val maxEntries: Int, val dropFraction: Double, val ttl: Duration) extends Cache[V] { cache =>
-  require(dropFraction > 0.0, "dropFraction must be > 0")
+  require(0.0 < dropFraction && dropFraction < 1.0, "dropFraction must be > 0 and < 1")
 
   class Entry(val future: Future[V]) {
     private var lastUsed = System.currentTimeMillis

@@ -19,6 +19,10 @@ package cc.spray
 import http._
 import HttpHeaders._
 
+/**
+ * An HttpAuthenticator is a GeneralAuthenticator that uses credentials passed to the server via the
+ * HTTP `Authorization` header to authenticate the user and extract a user object.
+ */
 trait HttpAuthenticator[U] extends GeneralAuthenticator[U] {
 
   def apply(ctx: RequestContext) = {
@@ -43,6 +47,9 @@ trait HttpAuthenticator[U] extends GeneralAuthenticator[U] {
 
 }
 
+/**
+ * The BasicHttpAuthenticator implements HTTP Basic Auth.
+ */
 trait BasicHttpAuthenticator[U] extends HttpAuthenticator[U] {
 
   def scheme = "Basic"
@@ -50,17 +57,22 @@ trait BasicHttpAuthenticator[U] extends HttpAuthenticator[U] {
   def params(ctx: RequestContext) = Map.empty
 
   def authenticate(credentials: Option[HttpCredentials], ctx: RequestContext) = {
-    val userPass = credentials.flatMap {
-      case BasicHttpCredentials(user, pass) => Some(user -> pass)
-      case _ => None
+    authenticate {
+      credentials.flatMap {
+        case BasicHttpCredentials(user, pass) => Some(user -> pass)
+        case _ => None
+      }
     }
-    authenticate(userPass)
   }
 
   def authenticate(userPass: Option[(String, String)]): Option[U]
 }
   
 object HttpBasic {
+
+  /**
+   * Creates an authenticator for Http Basic Auth using the in-scope implicit [[cc.spray.UserPassAuthenticator]].
+   */
   def apply[U](authRealm: String = "Secured Resource")
               (implicit authenticator: UserPassAuthenticator[U]): BasicHttpAuthenticator[U] = {
     new BasicHttpAuthenticator[U] {
@@ -70,6 +82,10 @@ object HttpBasic {
   }
 }
 
+/**
+ * A UserPassAuthenticator can authenticate users via a username/password combination and provide a corresponding
+ * user object.
+ */
 trait UserPassAuthenticator[U] extends (Option[(String, String)] => Option[U])
 
 case class BasicUserContext(username: String)

@@ -24,7 +24,7 @@ private[spray] trait MarshallingDirectives extends DefaultMarshallers with Defau
   this: BasicDirectives =>
 
   /**
-   * Returns a Route that unmarshalls the requests content using the in-scope unmarshaller for the given type and
+   * Returns a Route that unmarshalls the requests content using the given unmarshaller and
    * passes it as an argument to the inner Route building function.
    * If the unmarshaller cannot unmarshal the request content the request is rejected with the [[cc.spray.Rejection]]
    * produced by the unmarshaller.
@@ -37,7 +37,7 @@ private[spray] trait MarshallingDirectives extends DefaultMarshallers with Defau
   }
 
   /**
-   * Returns a Route that unmarshalls the optional request content using the in-scope unmarshaller for the given type
+   * Returns a Route that unmarshalls the optional request content using the given unmarshaller
    * and passes it as an argument to the inner Route building function.
    * If the unmarshaller cannot unmarshal the request content the request is rejected with the [[cc.spray.Rejection]]
    * produced by the unmarshaller.
@@ -54,12 +54,15 @@ private[spray] trait MarshallingDirectives extends DefaultMarshallers with Defau
     }
   }
 
+  /**
+   * Returns the in-scope Unmarshaller for the given type.
+   */
   def as[A :Unmarshaller] = unmarshaller[A]
 
   /**
-   * Returns a Route that uses the in-scope marshaller for the given type to produce a completion function that is
+   * Returns a Route that uses the given marshaller to produce a completion function that is
    * passed to the inner route building function. You can use it do decouple marshaller resolution from the call
-   * site of the RequestContexts 'complete' function.
+   * site of the RequestContexts {{complete}} function.
    */
   def produce[A](marshaller: Marshaller[A]) = filter1 { ctx =>
     marshaller(ctx.request.acceptableContentType) match {
@@ -70,10 +73,13 @@ private[spray] trait MarshallingDirectives extends DefaultMarshallers with Defau
     }
   }
 
+  /**
+   * Returns the in-scope Marshaller for the given type.
+   */
   def instanceOf[A :Marshaller] = marshaller[A]
 
   /**
-   * Returns a Route that completes the request using the given function. The input to the function is produce with
+   * Returns a Route that completes the request using the given function. The input to the function is produced with
    * the in-scope unmarshaller and the result value of the function is marshalled with the in-scope marshaller.
    */
   def handleWith[A :Unmarshaller, B: Marshaller](f: A => B): Route = {

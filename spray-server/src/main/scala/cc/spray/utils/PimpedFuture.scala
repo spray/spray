@@ -30,6 +30,7 @@ class PimpedFuture[F <: Future[_]](future: F) {
    *   creation
    * - the timeout callback is run on the (single!) scheduler thread created by the akka.dispatch.Scheduler (unless
    *   the future is already expired at the time of call) and should therefore be non-blocking and fast
+   * Akka 1.2 will supply this functionality by itself, so this pimp will be removed at some point.
    */
   def onTimeout(callback: F => Unit): F = {
     if (!future.isCompleted) {
