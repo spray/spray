@@ -65,7 +65,7 @@ In _spray-jsons_ terminology a 'JsonProtocol' is nothing but a bunch of implicit
    
 This may sound more complicated than it is.  
 _spray-json_ comes with a `DefaultJsonProtocol` which already covers all of Scalas value types as well as the most important reference and collection types. As long as your code uses nothing more than these you only need the `DefaultJsonProtocol`.
-Here are the types already taken care off by the `DefaultJsonProtocol`: 
+Here are the types already taken care of by the `DefaultJsonProtocol`: 
   
 * Byte, Short, Int, Long, Float, Double, Char, Unit, Boolean
 * String, Symbol
