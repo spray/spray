@@ -18,14 +18,13 @@ package cc.spray
 package marshalling
 
 import http._
-import org.specs.Specification
 import HttpHeaders._
 import MediaTypes._
 import HttpCharsets._
-import test.SprayTest
+import test.AbstractSprayTest
 import json._
 
-class SprayJsonMarshallingSpec extends Specification with SprayTest with Directives with SprayJsonMarshalling {
+class SprayJsonMarshallingSpec extends AbstractSprayTest with SprayJsonMarshalling {
 
   case class Employee(fname: String, name: String, age: Int, id: Long, boardMember: Boolean) {
     require(!boardMember || age > 40, "Board members must be older than 40")

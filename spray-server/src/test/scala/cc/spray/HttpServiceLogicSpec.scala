@@ -17,19 +17,15 @@
 package cc.spray
 
 import http._
-import org.specs.Specification
 import HttpHeaders._
 import HttpMethods._
 import StatusCodes._
 import MediaTypes._
-import test.SprayTest
+import test.AbstractSprayTest
 import utils.IllegalResponseException
 import xml.NodeSeq
 
-class HttpServiceLogicSpec extends Specification with SprayTest with Directives {
-  
-  val Ok = HttpResponse(OK)
-  val completeOk: Route = { _.complete(Ok) }
+class HttpServiceLogicSpec extends AbstractSprayTest {
   
   implicit val userPassAuth = new UserPassAuthenticator[BasicUserContext] {
     def apply(userPass: Option[(String, String)]) = None

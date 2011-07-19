@@ -1,10 +1,10 @@
 package cc.spray
 package http
 
-import org.specs.Specification
+import org.specs2.mutable._
 import java.util.TimeZone
 import util.Random
-import org.specs.matcher.Matcher
+import org.specs2.matcher.Matcher
 
 class DateTimeSpec extends Specification {
 
@@ -28,16 +28,12 @@ class DateTimeSpec extends Specification {
         fmt.setTimeZone(GMT)
         fmt
       }
-      val matchSimpleDateFormat = new Matcher[Iterable[DateTime]] {
-        def apply(dateTimes: => Iterable[DateTime]) = {
-          def rfc1123Format(dt: DateTime) = Rfc1123Format.format(new java.util.Date(dt.clicks))
-          dateTimes.find(dt => dt.toRfc1123DateTimeString != rfc1123Format(dt)) match {
-            case Some(dt) => (false, "", dt.toRfc1123DateTimeString + " != " + rfc1123Format(dt))
-            case None => (true, "no errors", "")
-          }
-        }
-      }
-      httpDateTimes.take(10000) must matchSimpleDateFormat
+      def rfc1123Format(dt: DateTime) = Rfc1123Format.format(new java.util.Date(dt.clicks))
+      val matchSimpleDateFormat: Matcher[DateTime] = (
+        { (dt: DateTime) => dt.toRfc1123DateTimeString == rfc1123Format(dt) },
+        { (dt: DateTime) => dt.toRfc1123DateTimeString + " != " + rfc1123Format(dt) }
+      )
+      httpDateTimes.take(10000) must matchSimpleDateFormat.forall
     }
   }
 
@@ -49,17 +45,12 @@ class DateTimeSpec extends Specification {
 
   "The two DateTime implementations" should {
     "allow for transparent round-trip conversions" in {
-      val roundTripOk = new Matcher[Iterable[DateTime]] {
-        def apply(dateTimes: => Iterable[DateTime]) = {
-          def roundTrip(dt: DateTime) = DateTime(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
-          def matches(a: DateTime, b: DateTime) = a == b && a.weekday == b.weekday
-          dateTimes.find(dt => !matches(dt, roundTrip(dt))) match {
-            case Some(dt) => (false, "", dt.toRfc1123DateTimeString + " != " + roundTrip(dt).toRfc1123DateTimeString)
-            case None => (true, "no errors", "")
-          }
-        }
-      }
-      httpDateTimes.take(10000) must roundTripOk
+      def roundTrip(dt: DateTime) = DateTime(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+      val roundTripOk: Matcher[DateTime] = (
+        { (dt: DateTime) => val rt = roundTrip(dt); dt == rt && dt.weekday == rt.weekday },
+        { (dt: DateTime) => dt.toRfc1123DateTimeString + " != " + roundTrip(dt).toRfc1123DateTimeString }
+      )
+      httpDateTimes.take(10000) must roundTripOk.forall
     }
   }
 }

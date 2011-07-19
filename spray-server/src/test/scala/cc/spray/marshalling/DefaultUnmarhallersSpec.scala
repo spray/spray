@@ -18,13 +18,12 @@ package cc.spray
 package marshalling
 
 import http._
-import org.specs.Specification
 import MediaTypes._
 import HttpCharsets._
-import test.SprayTest
 import xml.NodeSeq
+import test.AbstractSprayTest
 
-class DefaultUnmarhallersSpec extends Specification with SprayTest with Directives {
+class DefaultUnmarhallersSpec extends AbstractSprayTest {
   
   "The StringUnmarshaller" should {
     "decode `text/plain` content in ISO-8859-1 to Strings" in {

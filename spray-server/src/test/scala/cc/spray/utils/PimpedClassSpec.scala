@@ -17,7 +17,7 @@
 package cc.spray
 package utils
 
-import org.specs.Specification
+import org.specs2.mutable._
 import collection.LinearSeqOptimized
 import java.util.{List => JList}
 

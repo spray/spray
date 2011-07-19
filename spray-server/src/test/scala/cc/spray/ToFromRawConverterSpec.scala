@@ -16,8 +16,7 @@
 
 package cc.spray
 
-import org.specs.Specification
-import scala.collection.JavaConversions._
+import org.specs2.mutable._
 import http._
 import MediaTypes._
 import HttpHeaders._

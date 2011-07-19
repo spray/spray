@@ -16,11 +16,10 @@
 
 package cc.spray.http
 
-import org.specs.Specification
+import org.specs2.mutable._
 import HttpHeaders._
 
 class HttpHeaderSpec extends Specification {
-  noDetailedDiffs()
 
   "Header 'Accept'" should {
     import MediaTypes._

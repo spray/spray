@@ -17,7 +17,7 @@
 package cc.spray.http
 package parser
 
-import org.specs.Specification
+import org.specs2.mutable._
 
 class QueryParserSpec extends Specification {
   

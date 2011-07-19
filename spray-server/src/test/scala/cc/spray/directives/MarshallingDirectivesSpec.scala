@@ -49,12 +49,12 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
     }
     "return a RequestEntityExpectedRejection rejection if the request has no entity" in {
       test(HttpRequest(PUT)) {
-        content(as[NodeSeq]) { _ => fail("Should not run") }
+        content(as[NodeSeq]) { _ => completeOk }
       }.rejections mustEqual Set(RequestEntityExpectedRejection)
     }
     "return an UnsupportedRequestContentTypeRejection if no matching unmarshaller is in scope" in {
       test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/css`), "<p>cool</p>")))) {
-        content(as[NodeSeq]) { _ => fail("Should not run") }
+        content(as[NodeSeq]) { _ => completeOk }
       }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(NodeSeqUnmarshaller.canUnmarshalFrom))
     }
   }
@@ -72,7 +72,7 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
     }
     "return an UnsupportedRequestContentTypeRejection if no matching unmarshaller is in scope" in {
       test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/css`), "<p>cool</p>")))) {
-        optionalContent(as[NodeSeq]) { _ => fail("Should not run") }
+        optionalContent(as[NodeSeq]) { _ => completeOk }
       }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(NodeSeqUnmarshaller.canUnmarshalFrom))
     }
   }

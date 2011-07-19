@@ -17,7 +17,7 @@
 package cc.spray
 package directives
 
-import org.specs.Specification
+import org.specs2.mutable._
 import http._
 import HttpMethods._
 import test.AbstractSprayTest

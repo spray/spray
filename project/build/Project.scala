@@ -35,7 +35,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val tomcat6            = "org.apache.tomcat" % "catalina" % "6.0.32" % "provided"
     
     // test
-    val specs = "org.scala-tools.testing" %% "specs" % "1.6.8" % "test" withSources()
+    val specs2 = "org.specs2" %% "specs2" % "1.5" % "test" withSources()
     
     // only for examples
     val logback = "ch.qos.logback" % "logback-classic" % "0.9.29" % "runtime"
@@ -63,6 +63,8 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   lazy override val `package` = task { None }    // disable packaging
   lazy override val publishLocal = task { None } // and publishing
   lazy override val publish = task { None }      // the root project
+
+  def specs2Framework = new TestFramework("org.specs2.runner.SpecsFramework")
 
   override def parallelExecution = true
   
@@ -99,6 +101,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   abstract class ModuleProject(info: ProjectInfo) extends DefaultProject(info) {
     // Options
     override def compileOptions = super.compileOptions ++ scalaCompileSettings.map(CompileOption)
+    override def testFrameworks = super.testFrameworks ++ Seq(specs2Framework)
     override def documentOptions: Seq[ScaladocOption] = documentTitle(name + " " + version) :: Nil
     override def pomExtra = pomExtras
 
@@ -118,7 +121,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   class HttpProject(info: ProjectInfo) extends ModuleProject(info) {
     val parboiledC = Deps.parboiledC
     val parboiledS = Deps.parboiledS
-    val specs      = Deps.specs
+    val specs2      = Deps.specs2
   }
   
   class ServerProject(info: ProjectInfo) extends ModuleProject(info) with AkkaProject {
@@ -128,14 +131,14 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val servlet30          = Deps.servlet30
     val jettyContinuations = Deps.jettyContinuations
     val tomcat6            = Deps.tomcat6 
-    val specs              = Deps.specs
+    val specs2      = Deps.specs2
   }
   
   class ClientProject(info: ProjectInfo) extends ModuleProject(info) with AkkaProject {
     override val akkaActor = akkaModule("actor") % "provided" withSources()
     val http               = httpProject
     val ahc                = Deps.asyncHttp 
-    val specs              = Deps.specs
+    val specs2      = Deps.specs2
   }
   
   class ExamplesProject(info: ProjectInfo) extends ParentProject(info) {
@@ -157,10 +160,12 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val http               = httpProject
     val server             = serverProject
     
-    val specs       = Deps.specs
+    val specs2      = Deps.specs2
     val jettyServer = Deps.jettyServer
     val jettyWebApp = Deps.jettyWebApp
     val logback     = Deps.logback
+
+    override def testFrameworks = super.testFrameworks ++ Seq(specs2Framework)
 
     // disable publishing
     lazy override val publishLocal = task { None }

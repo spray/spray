@@ -28,22 +28,21 @@ import utils.{NoLog, Logging}
  * request examples.
  */
 trait SprayTest {
-  this: { def fail(msg: String): Nothing } =>
-  
+
   def test(request: HttpRequest)(route: Route): RoutingResultWrapper = {
     var result: Option[RoutingResult] = None;
     route(RequestContext(request, {ctx => result = Some(ctx)}, request.path))
-    new RoutingResultWrapper(result.getOrElse(fail("No response received")))
+    new RoutingResultWrapper(result.getOrElse(doFail("No response received")))
   }
 
   class RoutingResultWrapper(rr: RoutingResult) {
     def handled: Boolean = rr.isInstanceOf[Respond]
     def response: HttpResponse = rr match {
       case Respond(response) => response
-      case Reject(_) => fail("Request was rejected") 
+      case Reject(_) => doFail("Request was rejected")
     }
     def rawRejections: Set[Rejection] = rr match {
-      case Respond(_) => fail("Request was not rejected")
+      case Respond(_) => doFail("Request was not rejected")
       case Reject(rejections) => rejections 
     }
     def rejections: Set[Rejection] = Rejections.applyCancellations(rawRejections)   
@@ -77,18 +76,24 @@ trait SprayTest {
     service.responder.withValue(rr => { response = Some(service.responseFromRoutingResult(rr)) }) {
       service.handle(request)
     }
-    new ServiceResultWrapper(response.getOrElse(fail("No response received")))
+    new ServiceResultWrapper(response.getOrElse(doFail("No response received")))
   }
   
   class ServiceResultWrapper(responseOption: Option[HttpResponse]) {
     def handled: Boolean = responseOption.isDefined
-    def response: HttpResponse = responseOption.getOrElse(fail("Request was not handled"))
+    def response: HttpResponse = responseOption.getOrElse(doFail("Request was not handled"))
   }
 
   def captureRequestContext(route: (Route => Route) => Unit): RequestContext = {
     var result: Option[RequestContext] = None;
     route { inner => { ctx => { result = Some(ctx); inner(ctx) }}}
-    result.getOrElse(fail("No RequestContext received"))
+    result.getOrElse(doFail("No RequestContext received"))
   }
-  
+
+  private def doFail(msg: String) = this match {
+    case x: { def fail(msg: String): Nothing } => x.fail(msg)
+    case x: { def failure(msg: String): Nothing } => x.failure(msg)
+    case _ => throw new RuntimeException("Illegal mixin: the SprayTest trait can only be mixed into test classes that " +
+            "supply a fail(String) or failure(String) method (e.g. ScalaTest, Specs or Specs2 specifications)")
+  }
 } 

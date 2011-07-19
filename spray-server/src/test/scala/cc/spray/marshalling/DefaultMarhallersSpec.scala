@@ -18,13 +18,11 @@ package cc.spray
 package marshalling
 
 import http._
-import org.specs.Specification
-import HttpHeaders._
 import MediaTypes._
 import HttpCharsets._
-import test.SprayTest
+import test.AbstractSprayTest
 
-class DefaultMarhallersSpec extends Specification with SprayTest with Directives {
+class DefaultMarhallersSpec extends AbstractSprayTest {
   
   "The StringMarshaller" should {
     "encode strings to `text/plain` content in ISO-8859-1 if the client accepts it" in {

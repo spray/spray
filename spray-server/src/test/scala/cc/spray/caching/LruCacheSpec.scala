@@ -1,12 +1,11 @@
 package cc.spray.caching
 
-import org.specs.Specification
-import akka.util.duration._
+import org.specs2.mutable._
 import akka.actor.Actor
 import java.util.concurrent.CountDownLatch
+import akka.util.Duration
 
 class LruCacheSpec extends Specification {
-  noDetailedDiffs()
 
   "An LruCache" should {
     "be initially empty" in {
@@ -58,7 +57,7 @@ class LruCacheSpec extends Specification {
       cache.store.toString mustEqual "Map(3 -> C, 4 -> D)"
     }
     "expire old entries" in {
-      val cache = LruCache[String](ttl = 20.millis)
+      val cache = LruCache[String](ttl = Duration("20 ms"))
       cache(1)("A").get mustEqual "A"
       cache(2)("B").get mustEqual "B"
       Thread.sleep(10)

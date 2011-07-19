@@ -50,10 +50,10 @@ class PathDirectivesSpec extends AbstractSprayTest {
     "implicitly match trailing slashes" in {
       test(HttpRequest(GET, "/works/")) {
         path("works") { completeOk }
-      }.response mustBe Ok
+      }.response === Ok
       test(HttpRequest(GET, "")) {
         path("") { completeOk }
-      }.response mustBe Ok
+      }.response === Ok
     }
   }
   
@@ -206,12 +206,12 @@ class PathDirectivesSpec extends AbstractSprayTest {
     "be matched by path matchers no having a trailing slash" in {
       testService(HttpRequest(GET, "/a/")) {
         path("a") { completeOk }
-      }.response mustBe Ok
+      }.response === Ok
     }
     "be matched by path matchers having a trailing slash" in {
       testService(HttpRequest(GET, "/a/")) {
         path("a/") { completeOk } 
-      }.response mustBe Ok
+      }.response === Ok
     }
   }
   
@@ -219,7 +219,7 @@ class PathDirectivesSpec extends AbstractSprayTest {
     "be matched by path matchers no having a trailing slash" in {
       testService(HttpRequest(GET, "/a")) {
         path("a") { completeOk }
-      }.response mustBe Ok
+      }.response === Ok
     }
     "not be matched by path matchers having a trailing slash" in {
       testService(HttpRequest(GET, "/a")) {

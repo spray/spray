@@ -17,13 +17,12 @@
 package cc.spray
 
 import http._
-import org.specs.Specification
 import HttpHeaders._
 import MediaTypes._
 import HttpCharsets._
-import test.SprayTest
+import test.AbstractSprayTest
 
-class CharsetNegotiationSpec extends Specification with SprayTest with Directives {
+class CharsetNegotiationSpec extends AbstractSprayTest {
   
   "The framework" should {
     "encode text content using ISO-8859-1 if no Accept-Charset header is present in the request" in {

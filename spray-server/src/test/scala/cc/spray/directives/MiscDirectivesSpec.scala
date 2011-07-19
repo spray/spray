@@ -25,7 +25,6 @@ import MediaTypes._
 import test.AbstractSprayTest
 
 class MiscDirectivesSpec extends AbstractSprayTest {
-  noDetailedDiffs()
 
   "respondWithStatus" should {
     "set the given status on successful responses" in {
@@ -79,10 +78,10 @@ class MiscDirectivesSpec extends AbstractSprayTest {
     }
     "collect rejections from both sub routes" in {
       test(HttpRequest(DELETE)) {
-        get { { _ => fail("Should not run") } } ~ put { { _ => fail("Should not run") } }
+        get { completeOk } ~ put { completeOk }
       }.rejections mustEqual Set(MethodRejection(GET), MethodRejection(PUT))
     }
-    "clear rejections that have already 'overcome' by previous directives" in {
+    "clear rejections that have already been 'overcome' by previous directives" in {
       test(HttpRequest(PUT)) {
         put { content(as[String]) { s => _.complete(s) }} ~
         get { completeOk }

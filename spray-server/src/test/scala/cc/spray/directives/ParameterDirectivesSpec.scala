@@ -46,7 +46,7 @@ class ParameterDirectivesSpec extends AbstractSprayTest {
       test(HttpRequest(uri = "/person?name=Parsons&sex=female")) {
         path("person") {
           parameters('name, 'FirstName, 'age) { (name, firstName, age) =>
-            get { _ => fail("Should not run") }
+            get { completeOk }
           }
         }
       }.rejections mustEqual Set(MissingQueryParamRejection("FirstName"))
@@ -65,20 +65,20 @@ class ParameterDirectivesSpec extends AbstractSprayTest {
   "The 'parameter' requirement directive" should {
     "block requests that do not contain the required parameter" in {
       test(HttpRequest(uri = "/person?age=19")) { 
-        parameter('nose ! "large") { _ => fail("Should not run") }
+        parameter('nose ! "large") { completeOk }
       }.handled must beFalse
     }
     "block requests that contain the required parameter but with an unmatching value" in {
       test(HttpRequest(uri = "/person?age=19&nose=small")) { 
-        parameter('nose ! "large") { _ => fail("Should not run") }
+        parameter('nose ! "large") { completeOk }
       }.handled must beFalse
     }
     "let requests pass that contain the required parameter with its required value" in {
       test(HttpRequest(uri = "/person?nose=large&eyes=blue")) {
         path("person") {
-          parameter('nose ! "large") { _.complete("yes") }
+          parameter('nose ! "large") { completeOk }
         }
-      }.response.content.as[String] mustEqual Right("yes")
+      }.response mustEqual Ok
     }
     "be useable for method tunneling" in {
       val route = {

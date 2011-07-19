@@ -1,6 +1,6 @@
 package cc.spray.examples.markdownserver
 
-import org.specs.Specification
+import org.specs2.mutable._
 import cc.spray._
 import test._
 import http._
