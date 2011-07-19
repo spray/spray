@@ -1,6 +1,6 @@
 package cc.spray.json
 
-import org.specs.Specification
+import org.specs2.mutable._
 import java.util.Arrays
 
 class CollectionFormatsSpec extends Specification with DefaultJsonProtocol {
