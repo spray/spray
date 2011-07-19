@@ -18,7 +18,6 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   import Repositories._
   val glassfishModuleConfig = ModuleConfiguration("org.glassfish", GlassFishRepo)
   val sprayModuleConfig     = ModuleConfiguration("cc.spray", ScalaToolsSnapshots)
-  val sprayJsonModuleConfig = ModuleConfiguration("cc.spray.json", ScalaToolsSnapshots)
 
   // -------------------------------------------------------------------------------------------------------------------
   // Dependencies
@@ -30,7 +29,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val asyncHttp  = "com.ning" % "async-http-client" % "1.6.4" % "compile" withSources()
     
     // provided
-    val sprayJson          = "cc.spray.json" %% "spray-json" % "1.0.0-SNAPSHOT" % "compile" withSources()
+    val sprayJson          = "cc.spray.json" %% "spray-json" % "1.0.0" % "compile" withSources()
     val servlet30          = "org.glassfish" % "javax.servlet" % "3.0" % "provided"
     val jettyContinuations = "org.eclipse.jetty" % "jetty-continuation" % "7.2.0.v20101020" % "provided" withSources()
     val tomcat6            = "org.apache.tomcat" % "catalina" % "6.0.32" % "provided"
@@ -39,9 +38,9 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val specs = "org.scala-tools.testing" %% "specs" % "1.6.8" % "test" withSources()
     
     // only for examples
-    val logback = "ch.qos.logback" % "logback-classic" % "0.9.28" % "runtime"
+    val logback = "ch.qos.logback" % "logback-classic" % "0.9.29" % "runtime"
     val pegdown = "org.pegdown" % "pegdown" % "1.0.2" % "compile" withSources()
-    val JETTY_VERSION = "8.0.0.M2"
+    val JETTY_VERSION = "8.0.0.M3"
     val jettyServer = "org.eclipse.jetty" % "jetty-server" % JETTY_VERSION % "test"
     val jettyWebApp = "org.eclipse.jetty" % "jetty-webapp" % JETTY_VERSION % "test"
   }
