@@ -50,3 +50,5 @@ trait SprayJsonMarshalling {
     }
   }
 }
+
+object SprayJsonMarshalling extends SprayJsonMarshalling
