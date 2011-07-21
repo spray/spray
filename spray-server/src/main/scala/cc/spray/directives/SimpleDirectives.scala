@@ -25,42 +25,42 @@ private[spray] trait SimpleDirectives {
   this: BasicDirectives =>
   
   /**
-   * Returns a Route filter that rejects all non-DELETE requests.
+   * A route filter that rejects all non-DELETE requests.
    */
-  def delete = method(DELETE)
+  lazy val delete = method(DELETE)
 
   /**
-   * Returns a Route filter that rejects all non-GET requests.
+   * A route filter that rejects all non-GET requests.
    */
-  def get = method(GET)
+  lazy val get = method(GET)
 
   /**
-   * Returns a Route filter that rejects all non-HEAD requests.
+   * A route filter that rejects all non-HEAD requests.
    */
-  def head = method(HEAD)
+  lazy val head = method(HEAD)
 
   /**
-   * Returns a Route filter that rejects all non-OPTIONS requests.
+   * A route filter that rejects all non-OPTIONS requests.
    */
-  def options = method(OPTIONS)
+  lazy val options = method(OPTIONS)
 
   /**
-   * Returns a Route filter that rejects all non-POST requests.
+   * A route filter that rejects all non-POST requests.
    */
-  def post = method(POST)
+  lazy val post = method(POST)
 
   /**
-   * Returns a Route filter that rejects all non-PUT requests.
+   * A route filter that rejects all non-PUT requests.
    */
-  def put = method(PUT)
+  lazy val put = method(PUT)
 
   /**
-   * Returns a Route filter that rejects all non-TRACE requests.
+   * A route filter that rejects all non-TRACE requests.
    */
-  def trace = method(TRACE)
+  lazy val trace = method(TRACE)
 
   /**
-   * Returns a Route filter that rejects all requests whose HTTP method does not match the given one.
+   * Returns a route filter that rejects all requests whose HTTP method does not match the given one.
    */
   def method(m: HttpMethod): SprayRoute0 = filter { ctx =>
     if (ctx.request.method == m) {
@@ -69,19 +69,19 @@ private[spray] trait SimpleDirectives {
   }
 
   /**
-   * Returns a Route filter that rejects all requests with a host name different from the given one.
+   * Returns a route filter that rejects all requests with a host name different from the given one.
    */
   def host(hostName: String): SprayRoute0 = host(_ == hostName)
 
   /**
-   * Returns a Route filter that rejects all requests for whose host name the given predicate function return false.
+   * Returns a route filter that rejects all requests for whose host name the given predicate function return false.
    */
   def host(predicate: String => Boolean): SprayRoute0 = filter { ctx =>
     if (predicate(ctx.request.host)) Pass() else Reject()
   }
 
   /**
-   * Returns a Route filter that rejects all requests with a host name that does not have a prefix matching the given
+   * Returns a route filter that rejects all requests with a host name that does not have a prefix matching the given
    * regular expression. For all matching requests the prefix string matching the regex is extracted and passed to
    * the inner Route building function. If the regex contains a capturing group only the string matched by this group
    * is extracted. If the regex contains more than one capturing group an IllegalArgumentException will be thrown.
