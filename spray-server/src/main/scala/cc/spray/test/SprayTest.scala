@@ -90,10 +90,19 @@ trait SprayTest {
     result.getOrElse(doFail("No RequestContext received"))
   }
 
-  private def doFail(msg: String) = this match {
-    case x: { def fail(msg: String): Nothing } => x.fail(msg)
-    case x: { def failure(msg: String): Nothing } => x.failure(msg)
-    case _ => throw new RuntimeException("Illegal mixin: the SprayTest trait can only be mixed into test classes that " +
-            "supply a fail(String) or failure(String) method (e.g. ScalaTest, Specs or Specs2 specifications)")
+  private def doFail(msg: String): Nothing = {
+    try {
+      this.asInstanceOf[{ def fail(msg: String): Nothing }].fail(msg)
+    } catch {
+      case e: NoSuchMethodException => {
+        try {
+          this.asInstanceOf[{ def failure(msg: String): Nothing }].failure(msg)
+        } catch {
+          case e: NoSuchMethodException =>
+            throw new RuntimeException("Illegal mixin: the SprayTest trait can only be mixed into test classes that " +
+              "supply a fail(String) or failure(String) method (e.g. ScalaTest, Specs or Specs2 specifications)")
+        }
+      }
+    }
   }
 } 

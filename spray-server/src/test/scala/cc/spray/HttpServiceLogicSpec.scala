@@ -23,6 +23,7 @@ import StatusCodes._
 import MediaTypes._
 import test.AbstractSprayTest
 import utils.IllegalResponseException
+import directives.{Gzip, Deflate}
 import xml.NodeSeq
 
 class HttpServiceLogicSpec extends AbstractSprayTest {
@@ -87,24 +88,7 @@ class HttpServiceLogicSpec extends AbstractSprayTest {
     }
     
     // REJECTIONS
-    
-    "respond with MethodNotAllowed for requests resulting in MethodRejections" in {
-      testService(HttpRequest(POST, "/test")) {
-        get { _.complete("yes") } ~
-        put { _.complete("yes") }
-      }.response mustEqual HttpResponse(MethodNotAllowed, "HTTP method not allowed, supported methods: GET, PUT")
-    }    
-    "respond with NotFound for requests resulting in a MissingQueryParamRejection" in {
-      testService(HttpRequest(POST)) {
-        parameters('amount, 'orderId) { (_, _) => completeOk }
-      }.response mustEqual HttpResponse(NotFound, "Request is missing required query parameter 'amount'")
-    }
-    "respond with BadRequest for requests resulting in a MalformedQueryParamRejection" in {
-      testService(HttpRequest(POST, "/?amount=xyz")) {
-        parameters('amount.as[Int]) { _ => completeOk }
-      }.response mustEqual HttpResponse(BadRequest, "The query parameter 'amount' was malformed:\n" +
-              "'xyz' is not a valid 32-bit integer value")
-    }
+
     "respond with Unauthorized plus WWW-Authenticate header for AuthenticationRequiredRejections" in {
       testService(HttpRequest()) {
         authenticate(HttpBasic()) { _ => completeOk }
@@ -117,16 +101,38 @@ class HttpServiceLogicSpec extends AbstractSprayTest {
       }.response mustEqual HttpResponse(Forbidden, "The supplied authentication is either invalid " +
               "or not authorized to access this resource")
     }
-    "respond with UnsupportedMediaType for requests resulting in UnsupportedRequestContentTypeRejection" in {
-      testService(HttpRequest(POST, content = Some(HttpContent(`application/pdf`, "...PDF...")))) {
+    "respond with BadRequest for requests resulting in a CorruptRequestEncodingRejection" in {
+      testService(HttpRequest(headers = List(`Content-Encoding`(HttpEncodings.gzip)), content = Some(HttpContent(`text/plain`, "xyz")))) {
+        decodeRequest(Gzip) { completeOk }
+      }.response mustEqual HttpResponse(BadRequest, "The requests encoding is corrupt:\nNot in GZIP format")
+    }
+    "respond with BadRequest for requests resulting in a MalformedQueryParamRejection" in {
+      testService(HttpRequest(POST, "/?amount=xyz")) {
+        parameters('amount.as[Int]) { _ => completeOk }
+      }.response mustEqual HttpResponse(BadRequest, "The query parameter 'amount' was malformed:\n" +
+              "'xyz' is not a valid 32-bit integer value")
+    }
+    "respond with BadRequest for requests resulting in MalformedRequestContentRejections" in {
+      testService(HttpRequest(POST, content = Some(HttpContent(`text/xml`, "<broken>xmlbroken>")))) {
         content(as[NodeSeq]) { _ => completeOk }
-      }.response mustEqual HttpResponse(UnsupportedMediaType, "The requests Content-Type must be one the following:\n" +
-              "text/xml\ntext/html\napplication/xhtml+xml")
+      }.response mustEqual HttpResponse(BadRequest, "The request content was malformed:\n" +
+              "XML document structures must start and end within the same entity.")
+    }
+    "respond with MethodNotAllowed for requests resulting in MethodRejections" in {
+      testService(HttpRequest(POST, "/test")) {
+        get { _.complete("yes") } ~
+        put { _.complete("yes") }
+      }.response mustEqual HttpResponse(MethodNotAllowed, "HTTP method not allowed, supported methods: GET, PUT")
+    }    
+    "respond with NotFound for requests resulting in a MissingQueryParamRejection" in {
+      testService(HttpRequest(POST)) {
+        parameters('amount, 'orderId) { (_, _) => completeOk }
+      }.response mustEqual HttpResponse(NotFound, "Request is missing required query parameter 'amount'")
     }
     "respond with BadRequest for requests resulting in RequestEntityExpectedRejection" in {
       testService(HttpRequest(POST)) {
         content(as[NodeSeq]) { _ => completeOk }
-      }.response mustEqual HttpResponse(BadRequest, "Request entity expected")
+      }.response mustEqual HttpResponse(BadRequest, "Request entity expected but not supplied")
     }
     "respond with NotAcceptable for requests resulting in UnacceptedResponseContentTypeRejection" in {
       testService(HttpRequest(GET, headers = List(`Accept`(`text/css`)))) {
@@ -134,11 +140,21 @@ class HttpServiceLogicSpec extends AbstractSprayTest {
       }.response mustEqual HttpResponse(NotAcceptable, "Resource representation is only available " +
               "with these Content-Types:\ntext/plain")
     }
-    "respond with BadRequest for requests resulting in MalformedRequestContentRejections" in {
-      testService(HttpRequest(POST, content = Some(HttpContent(`text/xml`, "<broken>xmlbroken>")))) {
+    "respond with NotAcceptable for requests resulting in UnacceptedResponseEncodingRejection" in {
+      testService(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.identity)))) {
+        (encodeResponse(Gzip) | encodeResponse(Deflate)) { completeOk }
+      }.response mustEqual HttpResponse(NotAcceptable, "Resource representation is only available with these Content-Encodings:\ngzip\ndeflate")
+    }
+    "respond with UnsupportedMediaType for requests resulting in UnsupportedRequestContentTypeRejection" in {
+      testService(HttpRequest(POST, content = Some(HttpContent(`application/pdf`, "...PDF...")))) {
         content(as[NodeSeq]) { _ => completeOk }
-      }.response mustEqual HttpResponse(BadRequest, "The request content was malformed:\n" +
-              "XML document structures must start and end within the same entity.")
+      }.response mustEqual HttpResponse(UnsupportedMediaType, "The requests Content-Type must be one the following:\n" +
+              "text/xml\ntext/html\napplication/xhtml+xml")
+    }
+    "respond with BadRequest for requests resulting in UnsupportedRequestContentTypeRejection" in {
+      testService(HttpRequest(content = Some(HttpContent(`text/plain`, "Hello")))) {
+        (decodeRequest(Gzip) | decodeRequest(Deflate)) { completeOk }
+      }.response mustEqual HttpResponse(BadRequest, "The requests Content-Encoding must be one the following:\ngzip\ndeflate")
     }
     "respond with BadRequest for requests resulting in a ValidationRejection" in {
       testService(HttpRequest()) {

@@ -91,12 +91,12 @@ class CodecDirectivesSpec extends AbstractSprayTest {
     }
     "encode the response content with GZIP if the request has no Accept-Encoding header" in {
       test(HttpRequest()) { 
-        encodeResponse(Gzip) { _.complete("Yeah!") }
+        encodeResponse(Gzip) { completeOk }
       }.response.content mustEqual Some(HttpContent(ContentType(`text/plain`, `ISO-8859-1`), yeahGzipped))
     }
     "reject the request if the client does not accept GZIP encoding" in {
       test(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.identity)))) { 
-        encodeResponse(Gzip) { _.complete("Yeah!") }
+        encodeResponse(Gzip) { completeOk }
       }.rejections mustEqual Set(UnacceptedResponseEncodingRejection(HttpEncodings.gzip))
     }
     "leave responses without content unchanged" in {
