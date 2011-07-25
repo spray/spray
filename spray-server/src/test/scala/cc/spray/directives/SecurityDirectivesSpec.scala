@@ -34,17 +34,17 @@ class SecurityDirectivesSpec extends AbstractSprayTest {
   "the 'authenticate(HttpBasic())' directive" should {
     "reject requests without Authorization header with an AuthenticationRequiredRejection" in {
       test(HttpRequest()) { 
-        authenticate(HttpBasic()(dontAuth)) { _ => completeOk } 
+        authenticate(httpBasic(authenticator = dontAuth)) { _ => completeOk }
       }.rejections mustEqual Set(AuthenticationRequiredRejection("Basic", "Secured Resource", Map.empty))
     }
     "reject unauthenticated requests with Authorization header with an AuthorizationFailedRejection" in {
       test(HttpRequest(headers = List(Authorization(BasicHttpCredentials("Bob", ""))))) { 
-        authenticate(HttpBasic()(dontAuth)) { _ => completeOk } 
-      }.rejections mustEqual Set(AuthorizationFailedRejection)
+        authenticate(httpBasic(authenticator = dontAuth)) { _ => completeOk }
+      }.rejections mustEqual Set(AuthenticationFailedRejection("Secured Resource"))
     }
     "extract the object representing the user identity created by successful authentication" in {
       test(HttpRequest(headers = List(Authorization(BasicHttpCredentials("Alice", ""))))) { 
-        authenticate(HttpBasic()(doAuth)) { user => _.complete(user.toString) } 
+        authenticate(httpBasic(authenticator = doAuth)) { user => _.complete(user.toString) }
       }.response.content.as[String] mustEqual Right("BasicUserContext(Alice)")
     }
   }
@@ -52,7 +52,7 @@ class SecurityDirectivesSpec extends AbstractSprayTest {
   "the FromConfigUserPassAuthenticator" should {
     "extract a BasicUserContext for users defined in the spray config" in {
       test(HttpRequest(headers = List(Authorization(BasicHttpCredentials("Alice", "banana"))))) {
-        authenticate(HttpBasic()) { user => _.complete(user.toString) }
+        authenticate(httpBasic()) { user => _.complete(user.toString) }
       }.response.content.as[String] mustEqual Right("BasicUserContext(Alice)")
     }
   }

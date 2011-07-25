@@ -77,6 +77,7 @@ trait HttpServiceLogic extends ErrorHandling {
       }
     }
     (handle[AuthenticationRequiredRejection] getOrElse
+    (handle[AuthenticationFailedRejection] getOrElse
     (handle[AuthorizationFailedRejection.type] getOrElse
     (handle[CorruptRequestEncodingRejection] getOrElse
     (handle[MalformedQueryParamRejection] getOrElse
@@ -89,11 +90,12 @@ trait HttpServiceLogic extends ErrorHandling {
     (handle[UnsupportedRequestContentTypeRejection] getOrElse
     (handle[UnsupportedRequestEncodingRejection] getOrElse
     (handle[ValidationRejection] getOrElse
-    (handleCustomRejections(rejections)))))))))))))))
+    (handleCustomRejections(rejections))))))))))))))))
   }
   
   protected def handleRejections(rejections: List[Rejection]): HttpResponse = rejections match {
     case AuthenticationRequiredRejection(scheme, realm, params) :: _ => HttpResponse(Unauthorized, `WWW-Authenticate`(HttpChallenge(scheme, realm, params)) :: Nil, "The resource requires authentication, which was not supplied with the request")
+    case AuthenticationFailedRejection(realm) :: _ => HttpResponse(Forbidden, "The supplied authentication is either invalid or not authorized to access this resource")
     case AuthorizationFailedRejection :: _ => HttpResponse(Forbidden, "The supplied authentication is either invalid or not authorized to access this resource")
     case CorruptRequestEncodingRejection(msg) :: _ => HttpResponse(BadRequest, "The requests encoding is corrupt:\n" + msg)
     case MalformedQueryParamRejection(msg, Some(name)) :: _ => HttpResponse(BadRequest, "The query parameter '" + name + "' was malformed:\n" + msg)

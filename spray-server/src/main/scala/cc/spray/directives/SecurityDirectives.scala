@@ -17,7 +17,7 @@
 package cc.spray
 package directives
 
-private[spray] trait SecurityDirectives extends DefaultUserPassAuthenticator {
+private[spray] trait SecurityDirectives {
   this: BasicDirectives =>
 
   /**
@@ -45,37 +45,11 @@ private[spray] trait SecurityDirectives extends DefaultUserPassAuthenticator {
   def authorize(check: RequestContext => Boolean): SprayRoute0 = filter { ctx =>
     if (check(ctx)) Pass() else Reject(AuthorizationFailedRejection)
   }
-}
-
-// introduces one more layer in the inheritance chain in order to lower the priority of the contained implicits
-private[spray] trait DefaultUserPassAuthenticator {
 
   /**
-   * A UserPassAuthenticator that uses plain-text username/password definitions from the spray/akka config file
-   * for authentication. The config section should look like this:
-   * {{{
-   * spray {
-   *   .... # other spray settings
-   *   users {
-   *     username = "password"
-   *     ...
-   *   }
-   * ...
-   * }
-   * }}}
+   * Convenience method for the creation of a BasicHttpAuthenticator instance.
    */
-  implicit object FromConfigUserPassAuthenticator extends UserPassAuthenticator[BasicUserContext] {
-    def apply(userPass: Option[(String, String)]) = userPass.flatMap {
-      case (user, pass) => {
-        akka.config.Config.config.getString("spray.users." + user).flatMap { pw =>
-          if (pw == pass) {
-            Some(BasicUserContext(user))
-          } else {
-            None
-          }
-        }
-      }
-    }
-  }
-  
+  def httpBasic[U](realm: String = "Secured Resource",
+                   authenticator: UserPassAuthenticator[U] = FromConfigUserPassAuthenticator): BasicHttpAuthenticator[U] =
+      new BasicHttpAuthenticator[U](realm, authenticator)
 }

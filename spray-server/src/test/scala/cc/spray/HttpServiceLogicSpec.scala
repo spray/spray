@@ -91,13 +91,13 @@ class HttpServiceLogicSpec extends AbstractSprayTest {
 
     "respond with Unauthorized plus WWW-Authenticate header for AuthenticationRequiredRejections" in {
       testService(HttpRequest()) {
-        authenticate(HttpBasic()) { _ => completeOk }
+        authenticate(httpBasic()) { _ => completeOk }
       }.response mustEqual HttpResponse(Unauthorized, `WWW-Authenticate`(HttpChallenge("Basic", "Secured Resource")) :: Nil,
           "The resource requires authentication, which was not supplied with the request")
     }
     "respond with Forbidden for requests resulting in an AuthorizationFailedRejection" in {
       testService(HttpRequest(headers = Authorization(BasicHttpCredentials("bob", "")) :: Nil)) {
-        authenticate(HttpBasic()) { _ => completeOk }
+        authenticate(httpBasic()) { _ => completeOk }
       }.response mustEqual HttpResponse(Forbidden, "The supplied authentication is either invalid " +
               "or not authorized to access this resource")
     }

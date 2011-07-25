@@ -31,6 +31,7 @@ package object spray {
   type Unmarshaller[A] = ContentType => Unmarshalling[A]
   type RouteFilter[T <: Product] = RequestContext => FilterResult[T]
   type GeneralAuthenticator[U] = RequestContext => Either[Rejection, U]
+  type UserPassAuthenticator[U] = Option[(String, String)] => Option[U]
   type CacheKeyer = RequestContext => Option[Any]
   type RequiredParameterMatcher = Map[String, String] => Boolean
   

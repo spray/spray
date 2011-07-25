@@ -32,7 +32,7 @@ trait HttpAuthenticator[U] extends GeneralAuthenticator[U] {
       case Some(userContext) => Right(userContext)
       case None => Left {
         if (authHeader.isEmpty) AuthenticationRequiredRejection(scheme, realm, params(ctx))
-        else AuthorizationFailedRejection 
+        else AuthenticationFailedRejection(realm)
       }
     }
   }
@@ -44,48 +44,54 @@ trait HttpAuthenticator[U] extends GeneralAuthenticator[U] {
   def params(ctx: RequestContext): Map[String, String]
   
   def authenticate(credentials: Option[HttpCredentials], ctx: RequestContext): Option[U]
-
 }
 
 /**
  * The BasicHttpAuthenticator implements HTTP Basic Auth.
  */
-trait BasicHttpAuthenticator[U] extends HttpAuthenticator[U] {
+class BasicHttpAuthenticator[U](val realm: String, val authenticator: UserPassAuthenticator[U])
+        extends HttpAuthenticator[U] {
 
   def scheme = "Basic"
 
   def params(ctx: RequestContext) = Map.empty
 
   def authenticate(credentials: Option[HttpCredentials], ctx: RequestContext) = {
-    authenticate {
+    authenticator {
       credentials.flatMap {
         case BasicHttpCredentials(user, pass) => Some(user -> pass)
         case _ => None
       }
     }
   }
-
-  def authenticate(userPass: Option[(String, String)]): Option[U]
 }
   
-object HttpBasic {
-
-  /**
-   * Creates an authenticator for Http Basic Auth using the in-scope implicit [[cc.spray.UserPassAuthenticator]].
-   */
-  def apply[U](authRealm: String = "Secured Resource")
-              (implicit authenticator: UserPassAuthenticator[U]): BasicHttpAuthenticator[U] = {
-    new BasicHttpAuthenticator[U] {
-      def realm = authRealm
-      def authenticate(userPass: Option[(String, String)]) = authenticator(userPass)
+/**
+ * A UserPassAuthenticator that uses plain-text username/password definitions from the spray/akka config file
+ * for authentication. The config section should look like this:
+ * {{{
+ * spray {
+ *   .... # other spray settings
+ *   users {
+ *     username = "password"
+ *     ...
+ *   }
+ * ...
+ * }
+ * }}}
+ */
+object FromConfigUserPassAuthenticator extends UserPassAuthenticator[BasicUserContext] {
+  def apply(userPass: Option[(String, String)]) = userPass.flatMap {
+    case (user, pass) => {
+      akka.config.Config.config.getString("spray.users." + user).flatMap { pw =>
+        if (pw == pass) {
+          Some(BasicUserContext(user))
+        } else {
+          None
+        }
+      }
     }
   }
 }
-
-/**
- * A UserPassAuthenticator can authenticate users via a username/password combination and provide a corresponding
- * user object.
- */
-trait UserPassAuthenticator[U] extends (Option[(String, String)] => Option[U])
 
 case class BasicUserContext(username: String)

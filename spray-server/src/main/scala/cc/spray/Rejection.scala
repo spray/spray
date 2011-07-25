@@ -94,8 +94,14 @@ case class UnacceptedResponseEncodingRejection(supported: HttpEncoding) extends 
 case class RejectionRejection(reject: Rejection => Boolean) extends Rejection
 
 /**
- * Rejection created by the 'authenticate' or 'authorize' directive.
- * Signals that the request was rejected because the supplied authorization was not accepted. 
+ * Rejection created by the 'authenticate' directive.
+ * Signals that the request was rejected because the user could not be authenticated.
+ */
+case class AuthenticationFailedRejection(realm: String) extends Rejection
+
+/**
+ * Rejection created by the 'authorize' directive.
+ * Signals that the request was rejected because the user is not authorized.
  */
 case object AuthorizationFailedRejection extends Rejection
 
