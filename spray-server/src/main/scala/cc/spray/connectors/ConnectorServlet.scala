@@ -26,7 +26,7 @@ import utils.ActorHelpers._
 
 private[connectors] trait ConnectorServlet extends HttpServlet with Logging {
   
-  val rootService = actor("spray-root-service")
+  val rootService = actor(SpraySettings.RootActorId)
   var timeout: Int = _
   
   def containerName: String
