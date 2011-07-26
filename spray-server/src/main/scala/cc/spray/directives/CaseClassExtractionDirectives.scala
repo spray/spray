@@ -91,7 +91,7 @@ private[spray] trait CaseClassExtractionDirectives {
       route.filter(ctx) match {
         case Pass(values, transform) => converter(values) match {
           case Right(t) => Pass.withTransform(t)(transform)
-          case Left(msg) => Reject(MalformedQueryParamRejection(msg))
+          case Left(msg) => Reject(ValidationRejection(msg))
         }
         case x: Reject => x
       }

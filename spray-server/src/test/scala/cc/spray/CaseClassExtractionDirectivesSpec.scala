@@ -67,14 +67,14 @@ class CaseClassExtractionDirectivesSpec extends AbstractSprayTest {
         (parameters('firstname, 'name) & parameters('age, 'id, 'board.as[Boolean])).as(instanceOf(Employee)) { employee =>
           _.complete(employee.toString)
         }
-      }.rejections mustEqual Set(MalformedQueryParamRejection("'12XY567' is not a valid 64-bit integer value"))
+      }.rejections mustEqual Set(ValidationRejection("'12XY567' is not a valid 64-bit integer value"))
     }
     "create a proper Rejection for failed custom validations" in {
       test(HttpRequest(uri = "/?name=McCormick&firstname=Pete&board=yes&id=1234567&age=37")) {
         parameters('firstname, 'name, 'age.as[Int], 'id, 'board).as(instanceOf(Employee)) { employee =>
           _.complete(employee.toString)
         }
-      }.rejections mustEqual Set(MalformedQueryParamRejection("requirement failed: Board members must be older than 40"))
+      }.rejections mustEqual Set(ValidationRejection("requirement failed: Board members must be older than 40"))
     }
   }
 
