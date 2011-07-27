@@ -1,6 +1,6 @@
 import sbt._
 
-class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProject{
+class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProject with posterous.Publish {
   
   // -------------------------------------------------------------------------------------------------------------------
   // All repositories *must* go here! See ModuleConfigurations below.
@@ -17,7 +17,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   // -------------------------------------------------------------------------------------------------------------------
   import Repositories._
   val glassfishModuleConfig = ModuleConfiguration("org.glassfish", GlassFishRepo)
-  val sprayModuleConfig     = ModuleConfiguration("cc.spray", ScalaToolsSnapshots)
+  //val sprayModuleConfig     = ModuleConfiguration("cc.spray", ScalaToolsSnapshots)
 
   // -------------------------------------------------------------------------------------------------------------------
   // Dependencies
@@ -106,8 +106,8 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     override def pomExtra = pomExtras
 
     // Publishing
-    val publishTo = "Scala Tools Snapshots" at "http://nexus.scala-tools.org/content/repositories/snapshots/"
-    //val publishTo = "Scala Tools Releases" at "http://nexus.scala-tools.org/content/repositories/releases/"
+    //val publishTo = "Scala Tools Snapshots" at "http://nexus.scala-tools.org/content/repositories/snapshots/"
+    val publishTo = "Scala Tools Releases" at "http://nexus.scala-tools.org/content/repositories/releases/"
     
     Credentials(Path.userHome / ".ivy2" / ".credentials", log)
     override def managedStyle = ManagedStyle.Maven
