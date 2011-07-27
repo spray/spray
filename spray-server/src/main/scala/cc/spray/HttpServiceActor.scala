@@ -21,7 +21,7 @@ import akka.actor.Actor
 import utils.{PostStart, Logging}
 
 /**
- * The actor path of the [[cc.spray.HttpService]].
+ * The actor part of the [[cc.spray.HttpService]].
  */
 trait HttpServiceActor extends Actor with ErrorHandling with Logging with PostStart {
   this: HttpServiceLogic =>
