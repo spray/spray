@@ -1,0 +1,1 @@
+[spray](http://spray.cc) is a lightweight Scala framework for building RESTful web services on top of Akka.
