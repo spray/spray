@@ -1,6 +1,6 @@
 import sbt._
 
-class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProject{
+class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProject with posterous.Publish {
   
   // -------------------------------------------------------------------------------------------------------------------
   // All repositories *must* go here! See ModuleConfigurations below.

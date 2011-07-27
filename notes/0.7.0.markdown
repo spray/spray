@@ -1,0 +1,14 @@
+This second release comes with a great number of changes and improvements, most importantly:
+
+* Removed dependency on Akka Mist
+* Upgraded to Scala 2.9.0-1 and Akka 1.1.3
+* Split into spray-server, spray-client and spray-http
+* Added support for
+    - Gzip/Deflate encodings
+    - Authentication/authorization (incl. HTTP Basic Auth)
+    - Proper server-side caching
+    - Even better path and parameter matching
+    - Case class extractions
+    - spray-json (un)marshalling
+    - Tomcat 6
+* Closed [27 tickets](https://github.com/spray/spray/issues?sort=created&direction=desc&state=closed)
