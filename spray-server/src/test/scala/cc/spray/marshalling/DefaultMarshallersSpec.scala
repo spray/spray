@@ -22,7 +22,7 @@ import MediaTypes._
 import HttpCharsets._
 import test.AbstractSprayTest
 
-class DefaultMarhallersSpec extends AbstractSprayTest {
+class DefaultMarshallersSpec extends AbstractSprayTest {
   
   "The StringMarshaller" should {
     "encode strings to `text/plain` content in ISO-8859-1 if the client accepts it" in {

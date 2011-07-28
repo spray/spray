@@ -23,7 +23,7 @@ import HttpCharsets._
 import xml.NodeSeq
 import test.AbstractSprayTest
 
-class DefaultUnmarhallersSpec extends AbstractSprayTest {
+class DefaultUnmarshallersSpec extends AbstractSprayTest {
   
   "The StringUnmarshaller" should {
     "decode `text/plain` content in ISO-8859-1 to Strings" in {
