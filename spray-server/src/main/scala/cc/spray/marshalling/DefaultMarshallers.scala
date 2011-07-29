@@ -22,6 +22,7 @@ import MediaTypes._
 import HttpCharsets._
 import xml.NodeSeq
 import java.nio.CharBuffer
+import utils.FormContent
 
 trait DefaultMarshallers {
 
@@ -49,7 +50,19 @@ trait DefaultMarshallers {
 
     def marshal(value: NodeSeq, contentType: ContentType) = StringMarshaller.marshal(value.toString, contentType)
   }
-  
+
+  implicit object FormContentMarshaller extends MarshallerBase[FormContent] {
+    val canMarshalTo = ContentType(`application/x-www-form-urlencoded`) :: Nil
+
+    def marshal(formContent: FormContent, contentType: ContentType) = {
+      import java.net.URLEncoder.encode
+      val charset = contentType.charset.getOrElse(`ISO-8859-1`).aliases.head
+      val keyValuePairs = formContent.elements.map {
+        case (key, value) => encode(key, charset) + '=' + encode(value, charset)
+      }
+      StringMarshaller.marshal(keyValuePairs.mkString("&"), contentType)
+    }
+  }
 }
 
 object DefaultMarshallers extends DefaultMarshallers

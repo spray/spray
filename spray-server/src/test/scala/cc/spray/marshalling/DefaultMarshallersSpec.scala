@@ -21,6 +21,7 @@ import http._
 import MediaTypes._
 import HttpCharsets._
 import test.AbstractSprayTest
+import utils.FormContent
 
 class DefaultMarshallersSpec extends AbstractSprayTest {
   
@@ -46,6 +47,15 @@ class DefaultMarshallersSpec extends AbstractSprayTest {
         _.complete(<employee><nr>1</nr></employee>)
       }.response.content mustEqual
               Some(HttpContent(ContentType(`text/xml`, `ISO-8859-1`), "<employee><nr>1</nr></employee>"))
+    }
+  }
+
+  "The FormContentMarshaller" should {
+    "properly marshal FormContent instances to application/x-www-form-urlencoded entity bodies" in {
+      test(HttpRequest()) {
+        _.complete(FormContent(Map("name" -> "Bob", "pass" -> "x?!54", "admin" -> "")))
+      }.response.content mustEqual Some(HttpContent(ContentType(`application/x-www-form-urlencoded`, `ISO-8859-1`),
+        "name=Bob&pass=x%3F%2154&admin="))
     }
   }
   

@@ -22,6 +22,7 @@ import MediaTypes._
 import HttpCharsets._
 import xml.NodeSeq
 import test.AbstractSprayTest
+import utils.FormContent
 
 class DefaultUnmarshallersSpec extends AbstractSprayTest {
   
@@ -46,6 +47,28 @@ class DefaultUnmarshallersSpec extends AbstractSprayTest {
       test(HttpRequest(content = Some(HttpContent(ContentType(`text/xml`, `ISO-8859-1`), "<int>Hällö</int>")))) {
         content(as[NodeSeq]) { xml => _.complete(xml.text) }
       }.response.content.as[String] mustEqual Right("Hällö")
+    }
+  }
+
+  "The FormContentUnmarshaller" should {
+    "correctly unmarshal HTML form content with one element" in {
+      test(HttpRequest(content = Some(HttpContent(ContentType(`application/x-www-form-urlencoded`, `UTF-8`),
+        "secret=x%A4%2154")))) {
+        content(as[FormContent]) { formContent => _.complete(formContent.toString) }
+      }.response.content.as[String] mustEqual Right("FormContent(Map(secret -> x?!54))")
+    }
+    "correctly unmarshal HTML form content with three elements" in {
+      test(HttpRequest(content = Some(HttpContent(ContentType(`application/x-www-form-urlencoded`, `ISO-8859-1`),
+        "email=test%40there.com&password=&username=dirk")))) {
+        content(as[FormContent]) { formContent => _.complete(formContent.toString) }
+      }.response.content.as[String] mustEqual
+              Right("FormContent(Map(email -> test@there.com, password -> , username -> dirk))")
+    }
+    "reject illegal form content" in {
+      test(HttpRequest(content = Some(HttpContent(ContentType(`application/x-www-form-urlencoded`, `ISO-8859-1`),
+        "key=really=not_good")))) {
+        content(as[FormContent]) { formContent => _.complete(formContent.toString) }
+      }.rejections mustEqual Set(MalformedRequestContentRejection("'key=really=not_good' is not a valid form content"))
     }
   }
 
