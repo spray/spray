@@ -26,6 +26,8 @@ import test.AbstractSprayTest
 
 class MiscDirectivesSpec extends AbstractSprayTest {
 
+  val reject: Route = _.reject()
+
   "respondWithStatus" should {
     "set the given status on successful responses" in {
       test(HttpRequest()) { 
@@ -34,7 +36,7 @@ class MiscDirectivesSpec extends AbstractSprayTest {
     }
     "leave rejections unaffected" in {
       test(HttpRequest()) { 
-        respondWithStatus(Created) { _.reject() }
+        respondWithStatus(Created) { reject }
       }.rejections mustEqual Set() 
     }
   }
@@ -47,7 +49,7 @@ class MiscDirectivesSpec extends AbstractSprayTest {
     }
     "leave rejections unaffected" in {
       test(HttpRequest()) { 
-        respondWithHeader(CustomHeader("custom", "custom")) { _.reject() }
+        respondWithHeader(CustomHeader("custom", "custom")) { reject }
       }.rejections mustEqual Set() 
     }
   }
@@ -60,7 +62,7 @@ class MiscDirectivesSpec extends AbstractSprayTest {
     }
     "leave rejections unaffected" in {
       test(HttpRequest()) { 
-        respondWithContentType(`application/json`) { _.reject() }
+        respondWithContentType(`application/json`) { reject }
       }.rejections mustEqual Set() 
     }
   }
@@ -83,7 +85,7 @@ class MiscDirectivesSpec extends AbstractSprayTest {
     }
     "clear rejections that have already been 'overcome' by previous directives" in {
       test(HttpRequest(PUT)) {
-        put { content(as[String]) { s => _.complete(s) }} ~
+        put { content(as[String]) { echoComplete }} ~
         get { completeOk }
       }.rejections mustEqual Set(RequestEntityExpectedRejection)
     }

@@ -28,7 +28,7 @@ class ParameterDirectivesSpec extends AbstractSprayTest {
       test(HttpRequest(uri = "/person?name=Parsons&FirstName=Ellen")) {
         path("person") {
           parameters("name", 'FirstName) { (name, firstName) =>
-            get { _.complete(firstName + name) }
+            _.complete(firstName + name)
           }
         }
       }.response.content.as[String] mustEqual Right("EllenParsons")
@@ -37,7 +37,7 @@ class ParameterDirectivesSpec extends AbstractSprayTest {
       test(HttpRequest(uri = "/person?name=Parsons&FirstName=Ellen&age=29")) {
         path("person") {
           parameters("name", 'FirstName) { (name, firstName) =>
-            get { _.complete(firstName + name) }
+            _.complete(firstName + name)
           }
         }
       }.response.content.as[String] mustEqual Right("EllenParsons")
@@ -46,7 +46,7 @@ class ParameterDirectivesSpec extends AbstractSprayTest {
       test(HttpRequest(uri = "/person?name=Parsons&sex=female")) {
         path("person") {
           parameters('name, 'FirstName, 'age) { (name, firstName, age) =>
-            get { completeOk }
+            completeOk
           }
         }
       }.rejections mustEqual Set(MissingQueryParamRejection("FirstName"))
@@ -55,7 +55,7 @@ class ParameterDirectivesSpec extends AbstractSprayTest {
       test(HttpRequest(uri = "/person?name=Parsons&FirstName=Ellen")) {
         path("person") {
           parameters("name"?, 'FirstName, 'age ? "29", 'eyes?) { (name, firstName, age, eyes) =>
-            get { _.complete(firstName + name + age + eyes) }
+            _.complete(firstName + name + age + eyes)
           }
         }
       }.response.content.as[String] mustEqual Right("EllenSome(Parsons)29None")

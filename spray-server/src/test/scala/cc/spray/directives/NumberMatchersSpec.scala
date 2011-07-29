@@ -17,115 +17,89 @@
 package cc.spray
 package directives
 
-import org.specs2.mutable._
 import http._
-import HttpMethods._
-import test.AbstractSprayTest  
+import test.AbstractSprayTest
 
 class NumberMatchersSpec extends AbstractSprayTest {
 
   "the LongNumber PathMatcher" should {
     "properly extract digit sequences at the path end into a Long" in {
-      test(HttpRequest(GET, "/id/23")) {
-        path("id" / LongNumber) { i =>
-          get { _.complete(i.toString) }
-        }
+      test(HttpRequest(uri = "/id/23")) {
+        path("id" / LongNumber) { echoComplete }
       }.response.content.as[String] mustEqual Right("23")
     }
     "properly extract digit sequences in the middle of the path into a Long" in {
-      test(HttpRequest(GET, "/id/25576577yes")) {
-        path("id" / LongNumber ~ "yes") { i =>
-          get { _.complete(i.toString) }
-        }
+      test(HttpRequest(uri = "/id/25576577yes")) {
+        path("id" / LongNumber ~ "yes") { echoComplete }
       }.response.content.as[String] mustEqual Right("25576577")
     }
     "reject empty matches" in {
-      test(HttpRequest(GET, "/id/")) {
-        path("id" / LongNumber) { i =>
-          get { _.complete(i.toString) }
-        }
+      test(HttpRequest(uri = "/id/")) {
+        path("id" / LongNumber) { echoComplete }
       }.handled must beFalse
     }
     "reject non-digit matches" in {
-      test(HttpRequest(GET, "/id/xyz")) {
-        path("id" / LongNumber) { i =>
-          get { _.complete(i.toString) }
-        }
+      test(HttpRequest(uri = "/id/xyz")) {
+        path("id" / LongNumber) { echoComplete }
       }.handled must beFalse
     }
     "reject digit sequences representing numbers greater than Long.MaxValue" in {
-      test(HttpRequest(GET, "/id/9223372036854775808")) {  // Long.MaxValue + 1
-        path("id" / LongNumber) { i =>
-          get { _.complete(i.toString) }
-        }
+      test(HttpRequest(uri = "/id/9223372036854775808")) {  // Long.MaxValue + 1
+        path("id" / LongNumber) { echoComplete }
       }.handled must beFalse
     }
   }
   
   "the HexIntNumber PathMatcher" should {
     "properly extract hex digit sequences at the path end into an Int" in {
-      test(HttpRequest(GET, "/id/1A2bc3")) {
-        path("id" / HexIntNumber) { i =>
-          get { _.complete(i.toString) }
-        }
+      test(HttpRequest(uri = "/id/1A2bc3")) {
+        path("id" / HexIntNumber) { echoComplete }
       }.response.content.as[String] mustEqual Right("1715139")
     }
     "properly extract digit sequences in the middle of the path into an Int" in {
-      test(HttpRequest(GET, "/id/7fffffffyes")) {
-        path("id" / HexIntNumber ~ "yes") { i =>
-          get { _.complete(i.toString) }
-        }
+      test(HttpRequest(uri = "/id/7fffffffyes")) {
+        path("id" / HexIntNumber ~ "yes") { echoComplete }
       }.response.content.as[String] mustEqual Right(Int.MaxValue.toString)
     }
     "reject empty matches" in {
-      test(HttpRequest(GET, "/id/")) {
-        path("id" / HexIntNumber) { i =>
-          get { _.complete(i.toString) }
-        }
+      test(HttpRequest(uri = "/id/")) {
+        path("id" / HexIntNumber) { echoComplete }
       }.handled must beFalse
     }
     "reject non-digit matches" in {
-      test(HttpRequest(GET, "/id/xaz")) {
-        path("id" / HexIntNumber) { i =>
-          get { _.complete(i.toString) }
-        }
+      test(HttpRequest(uri = "/id/xaz")) {
+        path("id" / HexIntNumber) { echoComplete }
       }.handled must beFalse
     }
     "reject digit sequences representing numbers greater than Int.MaxValue" in {
-      test(HttpRequest(GET, "/id/80000000")) {
-        path("id" / HexIntNumber) { i =>
-          get { _.complete(i.toString) }
-        }
+      test(HttpRequest(uri = "/id/80000000")) {
+        path("id" / HexIntNumber) { echoComplete }
       }.handled must beFalse
     }
   }
   
   "the DoubleNumber PathMatcher" should {
     "properly extract double representations at the path end into a Double" in {
-      test(HttpRequest(GET, "/id/1.23")) {
-        path("id" / DoubleNumber) { i =>
-          get { _.complete(i.toString) }
-        }
+      test(HttpRequest(uri = "/id/1.23")) {
+        path("id" / DoubleNumber) { echoComplete }
       }.response.content.as[String] mustEqual Right("1.23")
     }
     "properly extract double representations in the middle of the path into a Double" in {
-      test(HttpRequest(GET, "/id/-5.yes")) {
-        path("id" / DoubleNumber ~ "yes") { i =>
-          get { _.complete(i.toString) }
-        }
+      test(HttpRequest(uri = "/id/-5.yes")) {
+        path("id" / DoubleNumber ~ "yes") { echoComplete }
       }.response.content.as[String] mustEqual Right("-5.0")
     }
     "reject empty matches" in {
-      test(HttpRequest(GET, "/id/")) {
-        path("id" / DoubleNumber) { i =>
-          get { _.complete(i.toString) }
+      test(HttpRequest(uri = "/id/")) {
+        path("id" / DoubleNumber) {
+          echoComplete
         }
       }.handled must beFalse
     }
     "reject non-digit matches" in {
-      test(HttpRequest(GET, "/id/+-5")) {
-        path("id" / DoubleNumber) { i =>
-          get { _.complete(i.toString) }
+      test(HttpRequest(uri = "/id/+-5")) {
+        path("id" / DoubleNumber) {
+          echoComplete
         }
       }.handled must beFalse
     }

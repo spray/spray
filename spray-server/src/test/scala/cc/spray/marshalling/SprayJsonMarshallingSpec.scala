@@ -40,9 +40,7 @@ class SprayJsonMarshallingSpec extends AbstractSprayTest with SprayJsonMarshalli
   "The SprayJsonMarshalling" should {
     "provide unmarshalling capability for case classes with an in-scope JsonFormat" in {
       test(HttpRequest(content = Some(HttpContent(`application/json`, employeeAJson)))) {
-        content(as[Employee]) { emp =>
-          _.complete(emp.toString)
-        }
+        content(as[Employee]) { echoComplete }
       }.response.content.as[String] mustEqual Right("Employee(Frank,Smith,42,12345,false)")
     }
     "provide marshalling capability for case classes with an in-scope JsonFormat" in {

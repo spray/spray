@@ -67,7 +67,7 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
     }
     "extract None if the request has no entity" in {
       test(HttpRequest(PUT)) {
-        optionalContent(as[NodeSeq]) { optXml => _.complete(optXml.toString) }
+        optionalContent(as[NodeSeq]) { echoComplete }
       }.response.content.as[String] mustEqual Right("None")
     }
     "return an UnsupportedRequestContentTypeRejection if no matching unmarshaller is in scope" in {
@@ -102,22 +102,23 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
   }
   
   "The 'handleWith' directive" should {
+    def times2(x: Int) = x * 2
     "support proper round-trip content unmarshalling/marshalling to and from a function" in {
       test(HttpRequest(PUT, headers = List(Accept(`text/xml`)),
         content = Some(HttpContent(ContentType(`text/html`), "<int>42</int>")))) {
-        handleWith { (x: Int) => x * 2 }
+        handleWith(times2)
       }.response.content mustEqual Some(HttpContent(ContentType(`text/xml`, `UTF-8`), "<int>84</int>"))
     }
     "result in UnsupportedRequestContentTypeRejection rejection if there is no unmarshaller supporting the requests charset" in {
       test(HttpRequest(PUT, headers = List(Accept(`text/xml`)),
         content = Some(HttpContent(ContentType(`text/xml`, `UTF-8`), "<int>42</int>")))) {
-        handleWith { (x: Int) => x * 2 }
+        handleWith(times2)
       }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(IntUnmarshaller.canUnmarshalFrom))
     }
     "result in an UnacceptedResponseContentTypeRejection rejection if there is no marshaller supporting the requests Accept-Charset header" in {
       test(HttpRequest(PUT, headers = List(Accept(`text/xml`), `Accept-Charset`(`UTF-16`)),
         content = Some(HttpContent(ContentType(`text/html`), "<int>42</int>")))) {
-        handleWith { (x: Int) => x * 2 }
+        handleWith(times2)
       }.rejections mustEqual Set(UnacceptedResponseContentTypeRejection(IntMarshaller.canMarshalTo))
     }
   }

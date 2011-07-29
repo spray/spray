@@ -50,12 +50,12 @@ class BasicDirectivesSpec extends AbstractSprayTest {
     }
     "extract the first match if it is successful" in {
       test(HttpRequest(uri = "http://www.spray.cc")) { 
-        (host("[^\\.]+.spray.cc".r) | host("spray(.*)".r)) { matched => _.complete(matched) }
+        (host("[^\\.]+.spray.cc".r) | host("spray(.*)".r)) { echoComplete }
       }.response.content.as[String] mustEqual Right("www.spray.cc")
     }
     "extract the second match if the first failed and the second is successful" in {
       test(HttpRequest(uri = "http://spray.cc")) { 
-        (host("[^\\.]+.spray.cc".r) | host("spray(.*)".r)) { matched => _.complete(matched) }
+        (host("[^\\.]+.spray.cc".r) | host("spray(.*)".r)) { echoComplete }
       }.response.content.as[String] mustEqual Right(".cc")
     }
   }

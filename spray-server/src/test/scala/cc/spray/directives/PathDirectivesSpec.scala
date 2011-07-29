@@ -18,7 +18,6 @@ package cc.spray
 package directives
 
 import http._
-import HttpMethods._
 import StatusCodes._
 import test.AbstractSprayTest
 
@@ -26,58 +25,58 @@ class PathDirectivesSpec extends AbstractSprayTest {
 
   "routes created with the path(string) combinator" should {
     "block completely unmatching requests" in {
-      test(HttpRequest(GET, "/noway/this/works")) {
+      test(HttpRequest(uri = "/noway/this/works")) {
         path("hello") { completeOk }
       }.handled must beFalse
     }
     "block prefix requests" in {
-      test(HttpRequest(GET, "/noway/this/works")) {
+      test(HttpRequest(uri = "/noway/this/works")) {
         path("noway/this") { completeOk }
       }.handled must beFalse
     }
     "let fully matching requests pass and clear the RequestContext.unmatchedPath" in {
-      test(HttpRequest(GET, "/noway/this/works")) {
+      test(HttpRequest(uri = "/noway/this/works")) {
         path("noway/this/works") { ctx => ctx.complete(ctx.unmatchedPath) }
       }.response.content.as[String] mustEqual Right("")
     }
     "be stackable within one single path(...) combinator" in {
-      test(HttpRequest(GET, "/noway/this/works")) {
+      test(HttpRequest(uri = "/noway/this/works")) {
         path("noway" / "this" / "works") {
           ctx => ctx.complete(ctx.unmatchedPath)
         }
       }.response.content.as[String] mustEqual Right("")
     }
     "implicitly match trailing slashes" in {
-      test(HttpRequest(GET, "/works/")) {
+      test(HttpRequest(uri = "/works/")) {
         path("works") { completeOk }
-      }.response === Ok
-      test(HttpRequest(GET, "")) {
+      }.response mustEqual Ok
+      test(HttpRequest(uri = "")) {
         path("") { completeOk }
-      }.response === Ok
+      }.response mustEqual Ok
     }
   }
   
   "routes created with the pathPrefix(string) combinator" should {
     "block unmatching requests" in {
-      test(HttpRequest(GET, "/noway/this/works")) {
+      test(HttpRequest(uri = "/noway/this/works")) {
         pathPrefix("hello") { completeOk }
       }.handled must beFalse
     }
     "let matching requests pass and adapt RequestContext.unmatchedPath" in {
-      test(HttpRequest(GET, "/noway/this/works")) {
+      test(HttpRequest(uri = "/noway/this/works")) {
         pathPrefix("noway") { ctx => ctx.complete(ctx.unmatchedPath) }
       }.response.content.as[String] mustEqual Right("/this/works")
     }
     "be stackable" in {
       "within one single pathPrefix(...) combinator" in {
-        test(HttpRequest(GET, "/noway/this/works")) {
-          pathPrefix("noway" / "this" / "works" ~ Remaining) { remaining =>
-            _.complete(remaining)
+        test(HttpRequest(uri = "/noway/this/works")) {
+          pathPrefix("noway" / "this" / "works" ~ Remaining) {
+            echoComplete
           }
         }.response.content.as[String] mustEqual Right("")
       }
       "when nested" in {
-        test(HttpRequest(GET, "/noway/this/works")) {
+        test(HttpRequest(uri = "/noway/this/works")) {
           pathPrefix("noway") {
             pathPrefix("this") { ctx => ctx.complete(ctx.unmatchedPath) }
           }
@@ -88,20 +87,20 @@ class PathDirectivesSpec extends AbstractSprayTest {
   
   "routes created with the pathPrefix(regex) combinator" should {
     "block unmatching requests" in {
-      test(HttpRequest(GET, "/noway/this/works")) {
+      test(HttpRequest(uri = "/noway/this/works")) {
         pathPrefix("\\d".r) { _ => completeOk }
       }.handled must beFalse
     }
     "let matching requests pass, extract the match value and adapt RequestContext.unmatchedPath" in {
       "when the regex is a simple regex" in {
-        test(HttpRequest(GET, "/noway/this/works")) {
+        test(HttpRequest(uri = "/noway/this/works")) {
           pathPrefix("no[^/]+".r) { capture =>
             ctx => ctx.complete(capture + ":" + ctx.unmatchedPath)
           }
         }.response.content.as[String] mustEqual Right("noway:/this/works")
       }
       "when the regex is a group regex" in {
-        test(HttpRequest(GET, "/noway/this/works")) {
+        test(HttpRequest(uri = "/noway/this/works")) {
           pathPrefix("no([^/]+)".r) { capture =>
             ctx => ctx.complete(capture + ":" + ctx.unmatchedPath)
           }
@@ -110,14 +109,14 @@ class PathDirectivesSpec extends AbstractSprayTest {
     }
     "be stackable" in {
       "within one single path(...) combinator" in {
-        test(HttpRequest(GET, "/compute/23/19")) {
+        test(HttpRequest(uri = "/compute/23/19")) {
           pathPrefix("compute" / "\\d+".r / "\\d+".r) { (a, b) =>
             _.complete((a.toInt + b.toInt).toString)
           }
         }.response.content.as[String] mustEqual Right("42")
       }
       "within one single path(...) combinator" in {
-        test(HttpRequest(GET, "/compute/23/19")) {
+        test(HttpRequest(uri = "/compute/23/19")) {
           pathPrefix("compute" / "\\d+".r) { a =>
             pathPrefix("\\d+".r) { b =>
               _.complete((a.toInt + b.toInt).toString)
@@ -135,94 +134,76 @@ class PathDirectivesSpec extends AbstractSprayTest {
   
   "the predefined IntNumber PathMatcher" should {
     "properly extract digit sequences at the path end into an integer" in {
-      test(HttpRequest(GET, "/id/23")) {
-        path("id" / IntNumber) { i =>
-          _.complete(i.toString)
-        }
+      test(HttpRequest(uri = "/id/23")) {
+        path("id" / IntNumber) { echoComplete }
       }.response.content.as[String] mustEqual Right("23")
     }
     "properly extract digit sequences in the middle of the path into an integer" in {
-      test(HttpRequest(GET, "/id/12345yes")) {
-        path("id" / IntNumber ~ "yes") { i =>
-          _.complete(i.toString)
-        }
+      test(HttpRequest(uri = "/id/12345yes")) {
+        path("id" / IntNumber ~ "yes") { echoComplete }
       }.response.content.as[String] mustEqual Right("12345")
     }
     "reject empty matches" in {
-      test(HttpRequest(GET, "/id/")) {
-        path("id" / IntNumber) { i =>
-          _.complete(i.toString)
-        }
+      test(HttpRequest(uri = "/id/")) {
+        path("id" / IntNumber) { echoComplete }
       }.handled must beFalse
     }
     "reject non-digit matches" in {
-      test(HttpRequest(GET, "/id/xyz")) {
-        path("id" / IntNumber) { i =>
-          _.complete(i.toString)
-        }
+      test(HttpRequest(uri = "/id/xyz")) {
+        path("id" / IntNumber) { echoComplete }
       }.handled must beFalse
     }
     "reject digit sequences representing numbers greater than Int.MaxValue" in {
-      test(HttpRequest(GET, "/id/2147483648")) {
-        path("id" / IntNumber) { i =>
-          _.complete(i.toString)
-        }
+      test(HttpRequest(uri = "/id/2147483648")) {
+        path("id" / IntNumber) { echoComplete }
       }.handled must beFalse
     }
   }
 
   "the predefined JavaUUID PathMatcher" should {
     "properly extract UUID sequences at the path end into an UUID" in {
-      test(HttpRequest(GET, "/id/bdea8652-f26c-40ca-8157-0b96a2a8389d")) {
-        path("id" / JavaUUID) { id =>
-          _.complete(id.toString)
-        }
+      test(HttpRequest(uri = "/id/bdea8652-f26c-40ca-8157-0b96a2a8389d")) {
+        path("id" / JavaUUID) { echoComplete }
       }.response.content.as[String] mustEqual Right("bdea8652-f26c-40ca-8157-0b96a2a8389d")
     }
     "properly extract UUID sequences in the middle of the path into an UUID" in {
-      test(HttpRequest(GET, "/id/bdea8652-f26c-40ca-8157-0b96a2a8389dyes")) {
-        path("id" / JavaUUID ~ "yes") { id =>
-          _.complete(id.toString)
-        }
+      test(HttpRequest(uri = "/id/bdea8652-f26c-40ca-8157-0b96a2a8389dyes")) {
+        path("id" / JavaUUID ~ "yes") { echoComplete }
       }.response.content.as[String] mustEqual Right("bdea8652-f26c-40ca-8157-0b96a2a8389d")
     }
     "reject empty matches" in {
-      test(HttpRequest(GET, "/id/")) {
-        path("id" / JavaUUID) { id =>
-          _.complete(id.toString)
-        }
+      test(HttpRequest(uri = "/id/")) {
+        path("id" / JavaUUID) { echoComplete }
       }.handled must beFalse
     }
     "reject non-UUID matches" in {
-      test(HttpRequest(GET, "/id/xyz")) {
-        path("id" / JavaUUID) { id =>
-          _.complete(id.toString)
-        }
+      test(HttpRequest(uri = "/id/xyz")) {
+        path("id" / JavaUUID) { echoComplete }
       }.handled must beFalse
     }
   }
   
   "trailing slashes in the URI" should {
     "be matched by path matchers no having a trailing slash" in {
-      testService(HttpRequest(GET, "/a/")) {
+      testService(HttpRequest(uri = "/a/")) {
         path("a") { completeOk }
-      }.response === Ok
+      }.response mustEqual Ok
     }
     "be matched by path matchers having a trailing slash" in {
-      testService(HttpRequest(GET, "/a/")) {
+      testService(HttpRequest(uri = "/a/")) {
         path("a/") { completeOk } 
-      }.response === Ok
+      }.response mustEqual Ok
     }
   }
   
   "URIs without trailing slash" should {
     "be matched by path matchers no having a trailing slash" in {
-      testService(HttpRequest(GET, "/a")) {
+      testService(HttpRequest(uri = "/a")) {
         path("a") { completeOk }
-      }.response === Ok
+      }.response mustEqual Ok
     }
     "not be matched by path matchers having a trailing slash" in {
-      testService(HttpRequest(GET, "/a")) {
+      testService(HttpRequest(uri = "/a")) {
         path("a/") { completeOk } 
       }.handled must beFalse
     }

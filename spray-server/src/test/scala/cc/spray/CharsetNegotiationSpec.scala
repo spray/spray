@@ -23,21 +23,23 @@ import HttpCharsets._
 import test.AbstractSprayTest
 
 class CharsetNegotiationSpec extends AbstractSprayTest {
+
+  val Hällo: Route = _.complete("Hällö")
   
   "The framework" should {
     "encode text content using ISO-8859-1 if no Accept-Charset header is present in the request" in {
       test(HttpRequest()) {
-        _.complete("Hällö")
+        Hällo
       }.response.content mustEqual Some(HttpContent(ContentType(`text/plain`, `ISO-8859-1`), "Hällö"))
     }
     "encode text content using ISO-8859-1 if the Accept-Charset header contains '*'" in {
       test(HttpRequest(headers = List(`Accept-Charset`(`UTF-8`, `*`)))) {
-        _.complete("Hällö")
+        Hällo
       }.response.content mustEqual Some(HttpContent(ContentType(`text/plain`, `ISO-8859-1`), "Hällö"))
     }
     "encode text content using the first charset in the Accept-Charset header if '*' is not present" in {
       test(HttpRequest(headers = List(`Accept-Charset`(`UTF-8`)))) {
-        _.complete("Hällö")
+        Hällo
       }.response.content mustEqual Some(HttpContent(ContentType(`text/plain`, `UTF-8`), "Hällö"))
     }
   }

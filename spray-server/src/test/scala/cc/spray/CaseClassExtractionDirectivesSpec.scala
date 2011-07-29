@@ -29,51 +29,39 @@ class CaseClassExtractionDirectivesSpec extends AbstractSprayTest {
   "Value extraction as case class" should {
     "work for 1 parameter case classes from string extractions" in {
       test(HttpRequest(uri = "/?age=42")) {
-        parameters("age").as(instanceOf(Age)) { age =>
-          _.complete(age.toString)
-        }
+        parameters("age").as(instanceOf(Age)) { echoComplete }
       }.response.content.as[String] mustEqual Right("Age(42)")
     }
     "work for 1 parameter case classes from non-string extractions" in {
       test(HttpRequest(uri = "/?age=42")) {
-        parameters("age".as[Int]).as(instanceOf(Age)) { age =>
-          _.complete(age.toString)
-        }
+        parameters("age".as[Int]).as(instanceOf(Age)) { echoComplete }
       }.response.content.as[String] mustEqual Right("Age(42)")
     }
     "work for 5 parameter case classes from string extractions" in {
       test(HttpRequest(uri = "/?name=McCormick&firstname=Pete&board=yes&id=1234567&age=57")) {
-        parameters('firstname, 'name, 'age, 'id, 'board).as(instanceOf(Employee)) { employee =>
-          _.complete(employee.toString)
-        }
+        parameters('firstname, 'name, 'age, 'id, 'board).as(instanceOf(Employee)) { echoComplete }
       }.response.content.as[String] mustEqual Right("Employee(Pete,McCormick,57,1234567,true)")
     }
     "work for 5 parameter case classes from mixed extractions" in {
       test(HttpRequest(uri = "/?name=McCormick&firstname=Pete&board=yes&id=1234567&age=57")) {
-        parameters('firstname, 'name, 'age.as[Int], 'id ? 0, 'board).as(instanceOf(Employee)) { employee =>
-          _.complete(employee.toString)
-        }
+        parameters('firstname, 'name, 'age.as[Int], 'id ? 0, 'board).as(instanceOf(Employee)) { echoComplete }
       }.response.content.as[String] mustEqual Right("Employee(Pete,McCormick,57,1234567,true)")
     }
     "create a proper Rejection for missing parameters" in {
       test(HttpRequest(uri = "/?name=McCormick&firstname=Pete&board=yes&age=57")) {
-        parameters('firstname, 'name, 'age, 'id, 'board).as(instanceOf(Employee)) { employee =>
-          _.complete(employee.toString)
-        }
+        parameters('firstname, 'name, 'age, 'id, 'board).as(instanceOf(Employee)) { echoComplete }
       }.rejections mustEqual Set(MissingQueryParamRejection("id"))
     }
     "create a proper Rejection for malformed parameters" in {
       test(HttpRequest(uri = "/?name=McCormick&firstname=Pete&board=yes&id=12XY567&age=57")) {
-        (parameters('firstname, 'name) & parameters('age, 'id, 'board.as[Boolean])).as(instanceOf(Employee)) { employee =>
-          _.complete(employee.toString)
+        (parameters('firstname, 'name) & parameters('age, 'id, 'board.as[Boolean])).as(instanceOf(Employee)) {
+          echoComplete
         }
       }.rejections mustEqual Set(ValidationRejection("'12XY567' is not a valid 64-bit integer value"))
     }
     "create a proper Rejection for failed custom validations" in {
       test(HttpRequest(uri = "/?name=McCormick&firstname=Pete&board=yes&id=1234567&age=37")) {
-        parameters('firstname, 'name, 'age.as[Int], 'id, 'board).as(instanceOf(Employee)) { employee =>
-          _.complete(employee.toString)
-        }
+        parameters('firstname, 'name, 'age.as[Int], 'id, 'board).as(instanceOf(Employee)) { echoComplete }
       }.rejections mustEqual Set(ValidationRejection("requirement failed: Board members must be older than 40"))
     }
   }
