@@ -47,4 +47,5 @@ package object spray {
   implicit def pimpProduct(product: Product): PimpedProduct = new PimpedProduct(product)
   implicit def pimpRegex(regex: Regex) = new PimpedRegex(regex)
   implicit def pimpFuture[F <: Future[_]](future: F) = new PimpedFuture(future)
+  implicit def pimpString(s: String) = new PimpedString(s)
 }
