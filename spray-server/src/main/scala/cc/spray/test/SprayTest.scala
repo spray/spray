@@ -21,6 +21,7 @@ import cc.spray.RequestContext
 import http._
 import util.DynamicVariable
 import utils.{NoLog, Logging}
+import java.util.concurrent.{CountDownLatch, TimeUnit}
 
 /**
  * Mix this trait into the class or trait containing your route and service tests.
@@ -29,9 +30,18 @@ import utils.{NoLog, Logging}
  */
 trait SprayTest {
 
+  private val defaultTimeout = 2000
+
   def test(request: HttpRequest)(route: Route): RoutingResultWrapper = {
+    test(request, defaultTimeout)(route)
+  }
+
+  def test(request: HttpRequest, timeout: Long)(route: Route): RoutingResultWrapper = {
     var result: Option[RoutingResult] = None;
-    route(RequestContext(request, {ctx => result = Some(ctx)}, request.path))
+    //use a countdownlatch as a flag to block until the route actually completes or timeout is hit
+    val latch = new CountDownLatch(1)
+    route(RequestContext(request, {ctx => result = Some(ctx);latch.countDown()}, request.path))
+    latch.await(timeout, TimeUnit.MILLISECONDS)
     new RoutingResultWrapper(result.getOrElse(doFail("No response received")))
   }
 
@@ -70,15 +80,27 @@ trait SprayTest {
     val route = rootRoute
     val setDateHeader = false
   }
-  
+
   def testService(request: HttpRequest)(service: ServiceTest): ServiceResultWrapper = {
-    var response: Option[Option[HttpResponse]] = None 
-    service.responder.withValue(rr => { response = Some(service.responseFromRoutingResult(rr)) }) {
+    //use a default value of 2000 milliseconds
+    testService(request, defaultTimeout)(service)
+  }
+
+  def testService(request: HttpRequest, timeout: Int)(service: ServiceTest): ServiceResultWrapper = {
+    var response: Option[Option[HttpResponse]] = None
+    val latch = new CountDownLatch(1)
+
+    service.responder.withValue(rr => { response = Some(service.responseFromRoutingResult(rr));latch.countDown() }) {
       service.handle(request)
+      //service.handle returns when either the request has been processed or detached
+      //in the case of a detached request, we should wait some amount of timeout before we move on - the responder
+      //will fire the countdownlatch and thus continue processing from this point.
+      latch.await(timeout, TimeUnit.MILLISECONDS)
     }
     new ServiceResultWrapper(response.getOrElse(doFail("No response received")))
   }
-  
+
+
   class ServiceResultWrapper(responseOption: Option[HttpResponse]) {
     def handled: Boolean = responseOption.isDefined
     def response: HttpResponse = responseOption.getOrElse(doFail("Request was not handled"))
