@@ -126,7 +126,7 @@ class HttpHeaderSpec extends Specification {
   "Header 'Cookie'" should {
     "be parsed correctly from various examples" in {
       HttpHeader("Cookie", "SID=31d4d96e407aad42") mustEqual `Cookie`(HttpCookie("SID", "31d4d96e407aad42"))
-      HttpHeader("Cookie", "SID=31d4d96e407aad42; lang=en-US") mustEqual
+      HttpHeader("Cookie", "SID=31d4d96e407aad42; lang=\"en-US\"") mustEqual
               `Cookie`(HttpCookie("SID", "31d4d96e407aad42"), HttpCookie("lang", "en-US"))
     }
   }

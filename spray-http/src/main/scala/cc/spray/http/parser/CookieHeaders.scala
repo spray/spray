@@ -36,8 +36,8 @@ private[parser] trait CookieHeaders {
   }
 
   def CookieValue = rule (
-    zeroOrMore(CookieOctet) ~> identity
-    | ch('"') ~ zeroOrMore(CookieOctet) ~> identity ~ ch('"')
+      ch('"') ~ zeroOrMore(CookieOctet) ~> identity ~ ch('"')
+    | zeroOrMore(CookieOctet) ~> identity
   )
 
   def CookieOctet = rule {
