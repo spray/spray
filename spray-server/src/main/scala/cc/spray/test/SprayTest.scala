@@ -105,4 +105,6 @@ trait SprayTest {
       }
     }
   }
-} 
+}
+
+object SprayTest extends SprayTest
