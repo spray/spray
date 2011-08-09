@@ -9,7 +9,7 @@ import HttpHeaders._
 import MediaTypes._
 import StatusCodes._
 
-class CalculatorServiceSpec extends Specification with SprayTest with CalculatorService with DontDetach {
+class CalculatorServiceSpec extends Specification with SprayTest with CalculatorService {
   
   "The Calculator service" should {
     "calculate correctly" in {

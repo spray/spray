@@ -7,7 +7,7 @@ import http._
 import HttpMethods._
 import StatusCodes._
 
-class MarkdownServiceSpec extends Specification with SprayTest with MarkdownService with DontDetach {
+class MarkdownServiceSpec extends Specification with SprayTest with MarkdownService {
   
   "The Markdown service" should {
     "return the HTML for the markdown source in the resource file corresponding to the request path" in {
