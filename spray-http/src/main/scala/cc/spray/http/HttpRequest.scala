@@ -76,6 +76,8 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
     for (`Accept-Encoding`(encodingRanges) <- headers; range <- encodingRanges) yield range
   }
 
+  lazy val cookies: List[HttpCookie] = for (`Cookie`(cookies) <- headers; cookie <- cookies) yield cookie
+
   /**
    * Determines whether the given mediatype is accepted by the client.
    */
