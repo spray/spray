@@ -22,6 +22,8 @@ import http._
 import util.DynamicVariable
 import utils.{NoLog, Logging}
 import java.util.concurrent.{CountDownLatch, TimeUnit}
+import akka.util.Duration
+import akka.util.duration._
 
 /**
  * Mix this trait into the class or trait containing your route and service tests.
@@ -30,18 +32,16 @@ import java.util.concurrent.{CountDownLatch, TimeUnit}
  */
 trait SprayTest {
 
-  private val defaultTimeout = 2000
-
-  def test(request: HttpRequest)(route: Route): RoutingResultWrapper = {
-    test(request, defaultTimeout)(route)
-  }
-
-  def test(request: HttpRequest, timeout: Long)(route: Route): RoutingResultWrapper = {
+  def test(request: HttpRequest, timeout: Duration = 1000.millis)(route: Route): RoutingResultWrapper = {
     var result: Option[RoutingResult] = None;
-    //use a countdownlatch as a flag to block until the route actually completes or timeout is hit
     val latch = new CountDownLatch(1)
-    route(RequestContext(request, {ctx => result = Some(ctx);latch.countDown()}, request.path))
-    latch.await(timeout, TimeUnit.MILLISECONDS)
+    val responder = { (rr: RoutingResult) =>
+      result = Some(rr)
+      latch.countDown()
+    }
+    route(RequestContext(request, responder, request.path))
+    // since the route might detach we block until the route actually completes or times out
+    latch.await(timeout.toMillis, TimeUnit.MILLISECONDS)
     new RoutingResultWrapper(result.getOrElse(doFail("No response received")))
   }
 
@@ -61,13 +61,13 @@ trait SprayTest {
   trait ServiceTest extends HttpServiceLogic with Logging {
     override lazy val log = NoLog // in the tests we don't log
     private[SprayTest] val responder = new DynamicVariable[RoutingResult => Unit]( _ =>
-      throw new IllegalStateException("SprayTest.HttpService instances can only be used with the SprayTest.test(service, request) method")
+      throw new IllegalStateException("SprayTest.ServiceTest instances can only be used with the SprayTest.testService(...) method")
     )
     protected[spray] def responderForRequest(request: HttpRequest) = responder.value
   }
 
   /**
-   * The default HttpServiceLogic for testing.
+   * The default implicit service wrapper using the HttpServiceLogic for testing.
    * If you have derived your own CustomHttpServiceLogic that you would like to test, create an implicit conversion
    * similar to this:
    * {{{
@@ -81,22 +81,18 @@ trait SprayTest {
     val setDateHeader = false
   }
 
-  def testService(request: HttpRequest)(service: ServiceTest): ServiceResultWrapper = {
-    //use a default value of 2000 milliseconds
-    testService(request, defaultTimeout)(service)
-  }
-
-  def testService(request: HttpRequest, timeout: Int)(service: ServiceTest): ServiceResultWrapper = {
+  def testService(request: HttpRequest, timeout: Duration = 1000.millis)(service: ServiceTest): ServiceResultWrapper = {
     var response: Option[Option[HttpResponse]] = None
     val latch = new CountDownLatch(1)
-
-    service.responder.withValue(rr => { response = Some(service.responseFromRoutingResult(rr));latch.countDown() }) {
-      service.handle(request)
-      //service.handle returns when either the request has been processed or detached
-      //in the case of a detached request, we should wait some amount of timeout before we move on - the responder
-      //will fire the countdownlatch and thus continue processing from this point.
-      latch.await(timeout, TimeUnit.MILLISECONDS)
+    val responder = { (rr: RoutingResult) =>
+      response = Some(service.responseFromRoutingResult(rr))
+      latch.countDown()
     }
+    service.responder.withValue(responder) {
+      service.handle(request)
+    }
+    // since the route might detach we block until the route actually completes or times out
+    latch.await(timeout.toMillis, TimeUnit.MILLISECONDS)
     new ServiceResultWrapper(response.getOrElse(doFail("No response received")))
   }
 
