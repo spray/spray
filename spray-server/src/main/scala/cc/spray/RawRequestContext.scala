@@ -27,6 +27,8 @@ trait RawRequest {
   def inputStream: InputStream
   def remoteIP: String
   def protocol: String
+
+  override def toString = "Request(" + method + ", uri=" + uri + ", headers=" + headers + ", remoteIP=" + remoteIP + ")"
 }
 
 trait RawResponse {

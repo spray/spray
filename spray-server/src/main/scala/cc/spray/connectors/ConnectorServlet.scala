@@ -55,7 +55,6 @@ private[connectors] trait ConnectorServlet extends HttpServlet with Logging {
     def inputStream = req.getInputStream
     def remoteIP = req.getRemoteAddr
     def protocol = req.getProtocol
-    override def toString = "Request(" + method + ", uri=" + uri + ", headers=" + headers + ", remoteIP=" + remoteIP + ")"
   }
 
   def rawResponse(resp: HttpServletResponse) = new RawResponse {

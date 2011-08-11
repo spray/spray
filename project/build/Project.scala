@@ -6,7 +6,8 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   // All repositories *must* go here! See ModuleConfigurations below.
   // -------------------------------------------------------------------------------------------------------------------
   object Repositories {
-    val GlassFishRepo = MavenRepository("GlassFishRepo Repo", "http://download.java.net/maven/glassfish/")
+    val GlassFishRepo   = MavenRepository("GlassFishRepo Repo", "http://download.java.net/maven/glassfish/")
+    val SprayGithubRepo = MavenRepository("Spray Github Repo", "http://spray.github.com/spray/maven/")
   }
   
   // -------------------------------------------------------------------------------------------------------------------
@@ -18,6 +19,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   import Repositories._
   val glassfishModuleConfig = ModuleConfiguration("org.glassfish", GlassFishRepo)
   val sprayModuleConfig     = ModuleConfiguration("cc.spray", ScalaToolsSnapshots)
+  val deftModuleConfig      = ModuleConfiguration("org.deftserver", SprayGithubRepo)
 
   // -------------------------------------------------------------------------------------------------------------------
   // Dependencies
@@ -33,11 +35,13 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val servlet30          = "org.glassfish" % "javax.servlet" % "3.0" % "provided"
     val jettyContinuations = "org.eclipse.jetty" % "jetty-continuation" % "7.2.0.v20101020" % "provided" withSources()
     val tomcat6            = "org.apache.tomcat" % "catalina" % "6.0.32" % "provided"
+    val deft               = "org.deftserver" % "deft" % "0.4.0-SNAPSHOT" % "provided" withSources()
 
     // test
     val specs2 = "org.specs2" %% "specs2" % "1.5" % "test" withSources()
     
     // only for examples
+    val slf4j   = "org.slf4j" % "slf4j-api" % "1.6.1" % "compile" withSources()
     val logback = "ch.qos.logback" % "logback-classic" % "0.9.29" % "runtime"
     val pegdown = "org.pegdown" % "pegdown" % "1.0.2" % "compile" withSources()
     val JETTY_VERSION = "8.0.0.M3"
@@ -131,6 +135,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val servlet30          = Deps.servlet30
     val jettyContinuations = Deps.jettyContinuations
     val tomcat6            = Deps.tomcat6 
+    val deft               = Deps.deft
     val specs2      = Deps.specs2
   }
   
@@ -143,6 +148,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   
   class ExamplesProject(info: ProjectInfo) extends ParentProject(info) {
     val calculatorProject     = project("spray-example-calculator", "spray-example-calculator", new CalculatorProject(_))
+    val deftProject           = project("spray-example-deft", "spray-example-deft", new DeftProject(_))
     val markdownServerProject = project("spray-example-markdownserver", "spray-example-markdownserver", new MarkdownServerProject(_))
     val stopWatchProject      = project("spray-example-stopwatch", "spray-example-stopwatch", new StopWatchProject(_))
 
@@ -161,9 +167,6 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val server             = serverProject
     
     val specs2      = Deps.specs2
-    val jettyServer = Deps.jettyServer
-    val jettyWebApp = Deps.jettyWebApp
-    val logback     = Deps.logback
 
     override def testFrameworks = super.testFrameworks ++ Seq(specs2Framework)
 
@@ -173,14 +176,26 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   }
   
   class CalculatorProject(info: ProjectInfo) extends SprayExampleProject(info) {
-    // project specific stuff goes here
+    val jettyServer = Deps.jettyServer
+    val jettyWebApp = Deps.jettyWebApp
+    val logback     = Deps.logback
+  }
+
+  class DeftProject(info: ProjectInfo) extends SprayExampleProject(info) {
+    val deft  = Deps.deft
+    val slf4j = Deps.slf4j
   }
   
   class MarkdownServerProject(info: ProjectInfo) extends SprayExampleProject(info) {
     val pegdown = Deps.pegdown
+    val jettyServer = Deps.jettyServer
+    val jettyWebApp = Deps.jettyWebApp
+    val logback     = Deps.logback
   }
 
   class StopWatchProject(info: ProjectInfo) extends SprayExampleProject(info) {
-    // project specific stuff goes here
+    val jettyServer = Deps.jettyServer
+    val jettyWebApp = Deps.jettyWebApp
+    val logback     = Deps.logback
   }
 }
