@@ -19,7 +19,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   import Repositories._
   val glassfishModuleConfig = ModuleConfiguration("org.glassfish", GlassFishRepo)
   val sprayModuleConfig     = ModuleConfiguration("cc.spray", ScalaToolsSnapshots)
-  val deftModuleConfig      = ModuleConfiguration("org.deftserver", SprayGithubRepo)
+  val deftModuleConfig      = ModuleConfiguration("org.apache.deft", SprayGithubRepo)
 
   // -------------------------------------------------------------------------------------------------------------------
   // Dependencies
@@ -35,7 +35,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val servlet30          = "org.glassfish" % "javax.servlet" % "3.0" % "provided"
     val jettyContinuations = "org.eclipse.jetty" % "jetty-continuation" % "7.2.0.v20101020" % "provided" withSources()
     val tomcat6            = "org.apache.tomcat" % "catalina" % "6.0.32" % "provided"
-    val deft               = "org.deftserver" % "deft" % "0.4.0-SNAPSHOT" % "provided" withSources()
+    val deft               = "org.apache.deft" % "deft" % "0.4.0-SNAPSHOT" % "provided" withSources()
 
     // test
     val specs2 = "org.specs2" %% "specs2" % "1.5" % "test" withSources()

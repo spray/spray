@@ -3,11 +3,14 @@ package connectors
 
 import akka.util.AkkaLoader
 import akka.actor.{Actor, BootableActorLoaderService}
-import org.deftserver.io.IOLoop
-import org.deftserver.io.buffer.DynamicByteBuffer
-import org.deftserver.web.handler.RequestHandler
-import org.deftserver.web.http.{HttpResponse, HttpRequest}
-import org.deftserver.web.{Asynchronous, HttpServer}
+import org.apache.deft.io.IOLoop
+import org.apache.deft.io.buffer.DynamicByteBuffer
+import org.apache.deft.web.handler.RequestHandler
+import org.apache.deft.web.http.{HttpResponse, HttpRequest}
+import org.apache.deft.web.HttpServer
+import org.apache.deft.annotation.Asynchronous
+import org.apache.deft.configuration.{Configuration => DeftConfig}
+import org.apache.deft.web.http.protocol.HttpStatus
 import http.HttpCharsets
 import utils.ActorHelpers._
 import java.io.{OutputStream, ByteArrayInputStream}
@@ -29,8 +32,8 @@ trait DeftRunner extends Logging {
 
   def configureDeftServer() {
     log.debug("Starting up Deft server on port " + SpraySettings.DeftPort)
-    server = new HttpServer(new DeftApplication);
-    server.listen(SpraySettings.DeftPort);
+    server = new DeftHttpServer(make(new DeftConfig){ _.setHandlerPackage("none") })
+    server.listen(SpraySettings.DeftPort)
   }
 
   def run() {
@@ -43,8 +46,11 @@ trait DeftRunner extends Logging {
   }
 }
 
-// TODO: Deft should really turn their "Application" into an interface
-class DeftApplication extends org.deftserver.web.Application(new JHashMap()) {
+class DeftHttpServer(config: DeftConfig) extends HttpServer(config) {
+  override def createApplication(packageName: String) = new DeftApplication
+}
+
+class DeftApplication extends org.apache.deft.web.Application(new JHashMap()) {
   val handler = new DeftRequestHandler
   override def getHandler(request: HttpRequest) = handler
 }
@@ -78,7 +84,7 @@ class DeftRequestHandler extends RequestHandler with Logging {
       field.setAccessible(true)
       field.get(response).asInstanceOf[DynamicByteBuffer]
     }
-    def setStatus(code: Int) { response.setStatusCode(code) }
+    def setStatus(code: Int) { response.setStatus(HttpStatus.values.find(_.code == code).get) }
     def addHeader(name: String, value: String) { response.setHeader(name, value) }
     lazy val outputStream = new OutputStream {
       def write(b: Int) { throw new NotImplementedException }
