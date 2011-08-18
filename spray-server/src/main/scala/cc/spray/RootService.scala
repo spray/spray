@@ -27,9 +27,12 @@ import utils.{PostStart, Logging}
  * It is responsible for creating an [[cc.spray.http.HttpRequest]] object for the request as well as dispatching this
  *  [[cc.spray.http.HttpRequest]] object to all attached [[cc.spray.HttpService]]s. 
  */
-class RootService extends Actor with ToFromRawConverter with Logging with PostStart {
-  private var services: List[ActorRef] = Nil
-  private var handler: RawRequestContext => Unit = handleNoServices
+class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor with ToFromRawConverter with Logging with PostStart {
+
+  private val handler: RawRequestContext => Unit = moreServices.toList match {
+    case Nil => handleOneService(firstService)
+    case services => handleMultipleServices(firstService :: services)
+  }
 
   self.id = SpraySettings.RootActorId
 
@@ -65,22 +68,15 @@ class RootService extends Actor with ToFromRawConverter with Logging with PostSt
         case e: Exception => handleException(e, rawContext)
       }
     }
-    case Attach(service) => attach(service)
-    case Detach(service) => detach(service)
   }
   
-  private def handleNoServices(rawContext: RawRequestContext) {
-    log.debug("Received %s with no attached services, completing with 404", toSprayRequest(rawContext.request))
-    completeNoService(rawContext)
-  }
-  
-  private def handleOneService(rawContext: RawRequestContext) {
+  private def handleOneService(service: ActorRef)(rawContext: RawRequestContext) {
     val request = toSprayRequest(rawContext.request)
     log.debug("Received %s with one attached service, dispatching...", request)
-    (services.head !!! (request, SpraySettings.AsyncTimeout)).onComplete(completeRequest(rawContext) _)
+    (service !!! (request, SpraySettings.AsyncTimeout)).onComplete(completeRequest(rawContext) _)
   }
-  
-  private def handleMultipleServices(rawContext: RawRequestContext) {    
+
+  private def handleMultipleServices(services: List[ActorRef])(rawContext: RawRequestContext) {
     val request = toSprayRequest(rawContext.request)
     log.debug("Received %s with %s attached services, dispatching...", request, services.size)
     val serviceFutures: List[Future[Option[HttpResponse]]] = services.map(_ !!! (request, SpraySettings.AsyncTimeout))
@@ -94,17 +90,17 @@ class RootService extends Actor with ToFromRawConverter with Logging with PostSt
     }
     resultsFuture.onComplete(completeRequest(rawContext) _)
   }
-  
+
   private def completeNoService(rawContext: RawRequestContext) {
     rawContext.complete(fromSprayResponse(noService(rawContext.request.uri)))
   }
-  
+
   private def completeRequest(rawContext: RawRequestContext)(future: Future[Option[HttpResponse]]) {
     if (future.exception.isEmpty) {
       future.result.get match {
         case Some(response) => rawContext.complete(fromSprayResponse(response))
         case None => completeNoService(rawContext)
-      }  
+      }
     } else {
       handleException(future.exception.get, rawContext)
     }
@@ -118,32 +114,10 @@ class RootService extends Actor with ToFromRawConverter with Logging with PostSt
     }))
   }
 
-  protected def attach(serviceActor: ActorRef) {
-    services = serviceActor :: services
-    if (serviceActor.isUnstarted) serviceActor.start()
-    updateHandler()
-  }
-  
-  protected def detach(serviceActor: ActorRef) {
-    services = services.filter(_ != serviceActor)    
-    updateHandler()
-  }
-  
-  private def updateHandler() {
-    handler = services.size match {
-      case 0 => handleNoServices
-      case 1 => handleOneService
-      case _ => handleMultipleServices
-    }
-  }
-  
   protected def noService(uri: String) = HttpResponse(404, "No service available for [" + uri + "]")
 }
 
-case class Attach(serviceActorRef: ActorRef)
-
-case class Detach(serviceActorRef: ActorRef)
-
-object Attach {
-  def apply(serviceActor: => Actor): Attach = apply(Actor.actorOf(serviceActor))
+object RootService {
+  def apply(firstService: ActorRef, moreServices: ActorRef*): RootService =
+    new RootService(firstService, moreServices: _*)
 }
