@@ -90,6 +90,10 @@ class HttpHeaderSpec extends Specification {
       HttpHeader("Cache-Control", "private, community=\"UCI\"") mustEqual
               `Cache-Control`(`private`(), CustomCacheDirective("community", Some("UCI")))
     }
+    "be stringified correctly" in {
+      import CacheDirectives._
+      `Cache-Control`(`max-age`(0)).toString mustEqual("Cache-Control: max-age=0")
+    }
   }
 
   "Header 'Connection'" should {

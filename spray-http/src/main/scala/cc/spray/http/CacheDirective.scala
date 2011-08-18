@@ -22,6 +22,7 @@ import scala.Product
 sealed trait CacheDirective extends Product {
   val name = productPrefix.replace("$minus", "-")
   def value: String = name
+  override def toString = value
 }
 
 object CacheDirectives {
