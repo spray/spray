@@ -41,6 +41,13 @@ package object spray {
   def unmarshaller[T](implicit um: Unmarshaller[T]) = um
   def simpleParser[T](implicit sp: SimpleParser[T]) = sp
 
+  private lazy val emptyPartial = new PartialFunction[Any, Any] {
+    def isDefinedAt(x: Any) = false
+    def apply(x: Any) = throw new IllegalStateException
+  }
+
+  def emptyPartialFunc[A, B] = emptyPartial.asInstanceOf[PartialFunction[A, B]]
+
   // implicits
   implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq)
   implicit def pimpClass[A](clazz: Class[A]): PimpedClass[A] = new PimpedClass[A](clazz)

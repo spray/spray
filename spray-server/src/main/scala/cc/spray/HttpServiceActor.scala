@@ -61,13 +61,19 @@ trait HttpServiceActor extends Actor with ErrorHandling with Logging with PostSt
  * the [[cc.spray.HttpServiceLogic]]. If you'd like to use a custom [[cc.spray.HttpServiceLogic]] you should generate
  * a sub trait of [[cc.spray.HttpServiceLogic]] (e.g. CustomServiceLogic) and create your CustomHttpService with
  * 
- * {{{ case class CustomHttpService(route: Route) extends HttpServiceActor with CustomServiceLogic }}}
+ * {{{ case class CustomHttpService(
+ *       route: Route,
+ *       val customRejectionHandler: PartialFunction[List[Rejection], HttpResponse]
+ *     ) extends HttpServiceActor with CustomServiceLogic }}}
  * 
  * In this way you can test your CustomServiceLogic with [[cc.spray.test.SprayTest]] without the need to fire up
  * actual actors.
  */
-class HttpService(val route: Route) extends HttpServiceActor with HttpServiceLogic
+class HttpService(val route: Route,
+                  val customRejectionHandler: PartialFunction[List[Rejection], HttpResponse])
+        extends HttpServiceActor with HttpServiceLogic
 
 object HttpService {
-  def apply(route: Route) = new HttpService(route)
+  def apply(route: Route, customRejectionHandler: PartialFunction[List[Rejection], HttpResponse] = emptyPartialFunc) =
+    new HttpService(route, customRejectionHandler)
 }

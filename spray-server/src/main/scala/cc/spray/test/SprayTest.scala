@@ -60,6 +60,8 @@ trait SprayTest {
   
   trait ServiceTest extends HttpServiceLogic with Logging {
     override lazy val log = NoLog // in the tests we don't log
+    val customRejectionHandler = emptyPartialFunc
+    val setDateHeader = false
     private[SprayTest] val responder = new DynamicVariable[RoutingResult => Unit]( _ =>
       throw new IllegalStateException("SprayTest.ServiceTest instances can only be used with the SprayTest.testService(...) method")
     )
@@ -78,7 +80,6 @@ trait SprayTest {
    */
   implicit def wrapRootRoute(rootRoute: Route): ServiceTest = new ServiceTest {
     val route = rootRoute
-    val setDateHeader = false
   }
 
   def testService(request: HttpRequest, timeout: Duration = 1000.millis)(service: ServiceTest): ServiceResultWrapper = {
