@@ -21,6 +21,7 @@ import StatusCodes._
 import akka.actor.{Actor, ActorRef}
 import akka.dispatch.{Future, Futures}
 import utils.{PostStart, Logging}
+import akka.util.Duration
 
 /**
  * The RootService actor is the central entrypoint for HTTP requests entering the ''spray'' infrastructure.
@@ -37,6 +38,8 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
   self.id = SpraySettings.RootActorId
 
   lazy val addConnectionCloseResponseHeader = SpraySettings.CloseConnection
+
+  implicit val timeout = Actor.Timeout(Duration(SpraySettings.AsyncTimeout, "millis"))
 
   override def preStart() {
     log.debug("Starting spray RootService ...")
@@ -73,19 +76,22 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
   private def handleOneService(service: ActorRef)(rawContext: RawRequestContext) {
     val request = toSprayRequest(rawContext.request)
     log.debug("Received %s with one attached service, dispatching...", request)
-    (service !!! (request, SpraySettings.AsyncTimeout)).onComplete(completeRequest(rawContext) _)
+    (service ? request).onComplete(completeRequest(rawContext) _)
   }
 
   private def handleMultipleServices(services: List[ActorRef])(rawContext: RawRequestContext) {
     val request = toSprayRequest(rawContext.request)
     log.debug("Received %s with %s attached services, dispatching...", request, services.size)
-    val serviceFutures: List[Future[Option[HttpResponse]]] = services.map(_ !!! (request, SpraySettings.AsyncTimeout))
+    val serviceFutures = services.map(_ ? request)
     val resultsFuture = Futures.fold(None.asInstanceOf[Option[HttpResponse]], SpraySettings.AsyncTimeout)(serviceFutures) {
       case (None, None) => None
-      case (None, x: Some[_]) => x
+      case (None, Some(x: HttpResponse)) => Some(x)
       case (x: Some[_], None) => x
-      case (x: Some[_], Some(y)) =>
-        log.warn("Received a second response for request '%s':\n\nn%s\n\nIgnoring the additional response...", request, y)
+      case (x, Some(y: HttpResponse)) =>
+        log.warn("Received a second response for request '%s':\n\n%s\n\nIgnoring the additional response...", request, y)
+        x
+      case (x, y) =>
+        log.warn("Received illegal response for request '%s':\n\n%s\n\nIgnoring the response...", request, y)
         x
     }
     resultsFuture.onComplete(completeRequest(rawContext) _)
@@ -95,11 +101,15 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
     rawContext.complete(fromSprayResponse(noService(rawContext.request.uri)))
   }
 
-  private def completeRequest(rawContext: RawRequestContext)(future: Future[Option[HttpResponse]]) {
+  private def completeRequest(rawContext: RawRequestContext)(future: Future[Any]) {
     if (future.exception.isEmpty) {
       future.result.get match {
-        case Some(response) => rawContext.complete(fromSprayResponse(response))
+        case Some(response: HttpResponse) => rawContext.complete(fromSprayResponse(response))
         case None => completeNoService(rawContext)
+        case x =>
+          log.warn("Received illegal response for request to '%s':\n\n%s\n\nCompleting with 'no service' response...",
+            rawContext.request.uri, x)
+            completeNoService(rawContext)
       }
     } else {
       handleException(future.exception.get, rawContext)
