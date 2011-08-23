@@ -94,7 +94,18 @@ If your custom type `T` is a case class then augmenting the `DefaultJsonProtocol
     val json = Color("CadetBlue", 95, 158, 160).toJson
     val color = json.fromJson[Color] 
     
-The `jsonFormat` method reduces the boilerplate to a minimum, just pass it the companion object of your case class as well as the field names (in order) and it will return a ready-to-use `JsonFormat` for your type.
+The `jsonFormat` method reduces the boilerplate to a minimum, just pass it the companion object of your case class as
+well as the field names (in order) and it will return a ready-to-use `JsonFormat` for your type.
+
+If your case class is generic in that it takes type parameters itself the `jsonFormat` method can also help you.
+However, there is a little something more boilerplate required as you need to add context bounds for all type parameters
+and explicitly refer to the case classes `apply` method as in this example:
+
+    case class NamedList[A](name: String, items: List[A])
+
+    object MyJsonProtocol extends DefaultJsonProtocol {
+      implicit def namedListFormat[A :JsonFormat] = jsonFormat(NamedList.apply[A], "name", "items")
+    }
 
 
 ### Providing JsonFormats for other Types
