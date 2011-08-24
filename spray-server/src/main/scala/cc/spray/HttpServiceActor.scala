@@ -26,8 +26,6 @@ import utils.{PostStart, Logging}
 trait HttpServiceActor extends Actor with ErrorHandling with Logging with PostStart {
   this: HttpServiceLogic =>
   
-  val setDateHeader = SpraySettings.SetDateHeader
-
   override def preStart() {
     log.debug("Starting ...")
     super.preStart()

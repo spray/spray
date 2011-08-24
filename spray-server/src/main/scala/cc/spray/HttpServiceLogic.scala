@@ -29,8 +29,6 @@ import utils.{Logging, IllegalResponseException}
 trait HttpServiceLogic extends ErrorHandling {
   this: Logging =>
   
-  def setDateHeader: Boolean
-
   /**
    * The route of this HttpService
    */
@@ -70,10 +68,10 @@ trait HttpServiceLogic extends ErrorHandling {
   protected def responderForRequest(request: HttpRequest): RoutingResult => Unit
   
   protected[spray] def responseFromRoutingResult(rr: RoutingResult): Option[HttpResponse] = rr match {
-    case Respond(httpResponse) => Some(finalizeResponse(httpResponse)) 
+    case Respond(httpResponse) => Some(verify(httpResponse))
     case Reject(rejections) => {
       val activeRejections = Rejections.applyCancellations(rejections)
-      if (activeRejections.isEmpty) None else Some(finalizeResponse(responseForRejections(activeRejections.toList)))
+      if (activeRejections.isEmpty) None else Some(verify(responseForRejections(activeRejections.toList)))
     }
   }
   
@@ -111,16 +109,7 @@ trait HttpServiceLogic extends ErrorHandling {
     }
   }
   
-  protected def finalizeResponse(unverifiedResponse: HttpResponse) = {
-    val response = verified(unverifiedResponse)
-    if (setDateHeader) {
-      response.copy(headers = Date(DateTime.now) :: response.headers)
-    } else {
-      response
-    }
-  }
-  
-  protected def verified(response: HttpResponse) = {
+  protected def verify(response: HttpResponse) = {
     response.headers.mapFind {
       case _: `Content-Type` => Some("HttpResponse must not include explicit 'Content-Type' header, " +
               "use the respective HttpContent member!")
