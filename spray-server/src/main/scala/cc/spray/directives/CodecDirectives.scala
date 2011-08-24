@@ -35,7 +35,10 @@ private[spray] trait CodecDirectives {
     } else if (ctx.request.encoding == decoder.encoding) {
       try {
         val decodedRequest = decoder.decode(ctx.request) 
-        Pass.withTransform(_.withRequestTransformed(_ => decodedRequest))
+        Pass.withTransform { _
+           .cancelRejections[UnsupportedRequestEncodingRejection]
+           .withRequestTransformed(_ => decodedRequest)
+        }
       } catch {
         case e: Exception => Reject(CorruptRequestEncodingRejection(e.getMessage)) 
       }
