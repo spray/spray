@@ -25,31 +25,10 @@ sealed trait PartialRequest {
 }
 
 abstract class InHeadPartialRequest extends PartialRequest {
-  var line = 1
-  var pos = 0
-  var cursor = '\0'
-
   def read(buf: ByteBuffer): PartialRequest = {
-    def readChar() {
-      if (cursor == '\n') {
-        line += 1
-        pos = 1
-      } else pos += 1
-      cursor = buf.get().asInstanceOf[Char] // simple US-ASCII encoding conversion
-    }
-
     if (buf.remaining > 0) {
-      readChar()
-      val Self = this
-      handleChar() match {
-        case Self => this
-        case req: InHeadPartialRequest =>
-          req.line = line
-          req.pos = pos
-          req.cursor = cursor
-          req
-        case req => req
-      }
+      val cursor = buf.get().asInstanceOf[Char] // simple US-ASCII encoding conversion
+      handleChar(cursor)
     } else this
   }
 
@@ -63,16 +42,16 @@ abstract class InHeadPartialRequest extends PartialRequest {
 
   def badMethod = new ErrorRequest(501, "Unsupported HTTP method")
 
-  def handleChar(): PartialRequest
+  def handleChar(cursor: Char): PartialRequest
 }
 
 object EmptyRequest extends InHeadPartialRequest {
-  def handleChar() = cursor match {
+  def handleChar(cursor: Char) = cursor match {
     case 'G' => new InMethodPartialRequest("GET")
-    case 'P' => new InMethodPartialRequest("POST") {
-      override def handleChar() = cursor match {
-        case 'O' => new InMethodPartialRequest("POST")
-        case 'U' => new InMethodPartialRequest("PUT")
+    case 'P' => new InHeadPartialRequest {
+      override def handleChar(cursor: Char) = cursor match {
+        case 'O' => new InMethodPartialRequest("POST", 1)
+        case 'U' => new InMethodPartialRequest("PUT", 1)
         case _ => badMethod
       }
     }
@@ -85,10 +64,11 @@ object EmptyRequest extends InHeadPartialRequest {
   }
 }
 
-class InMethodPartialRequest(method: String) extends InHeadPartialRequest {
-  def handleChar() = {
+class InMethodPartialRequest(method: String, var pos: Int = 0) extends InHeadPartialRequest {
+  def handleChar(cursor: Char) = {
+    pos += 1
     if (pos <= method.length()) {
-      val current = method.charAt(pos - 1)
+      val current = method.charAt(pos)
       if (cursor == current) this
       else badMethod
     } else {
@@ -100,7 +80,7 @@ class InMethodPartialRequest(method: String) extends InHeadPartialRequest {
 
 class InUriPartialRequest(method: String) extends InHeadPartialRequest {
   val uri = new JStringBuilder
-  def handleChar() = {
+  def handleChar(cursor: Char) = {
     if (uri.length < 2048) {
       cursor match {
         case ' ' => new InVersionPartialRequest(method, uri.toString)
@@ -112,7 +92,7 @@ class InUriPartialRequest(method: String) extends InHeadPartialRequest {
 
 class InVersionPartialRequest(method: String, uri: String) extends InHeadPartialRequest {
   val version = new JStringBuilder
-  def handleChar() = {
+  def handleChar(cursor: Char) = {
     if (version.length < 12) {
       cursor match {
         case '\r' => this
@@ -129,7 +109,7 @@ class InVersionPartialRequest(method: String, uri: String) extends InHeadPartial
 
 class InHeaderNamePartialRequest(method: String, uri: String, headers: List[HttpHeader]) extends InHeadPartialRequest {
   val headerName = new JStringBuilder
-  def handleChar() = {
+  def handleChar(cursor: Char) = {
     if (headerName.length < 64) {
       cursor match {
         case x if isTokenChar(x) => headerName.append(x); this
@@ -167,7 +147,7 @@ class InHeaderValuePartialRequest(method: String, uri: String, headers: List[Htt
         extends InHeadPartialRequest {
   val headerValue = new JStringBuilder
   var space = false
-  def handleChar() = {
+  def handleChar(cursor: Char) = {
     if (headerValue.length < 8192) {
       cursor match {
         case ' ' | '\t' | '\r' => space = true; new InLwsPartialRequest(this)
@@ -183,29 +163,24 @@ class InHeaderValuePartialRequest(method: String, uri: String, headers: List[Htt
 }
 
 class InLwsPartialRequest(next: InHeadPartialRequest) extends InHeadPartialRequest {
-  def handleChar() = {
+  def handleChar(cursor: Char) = {
     cursor match {
       case ' ' | '\t' => this
       case '\r' => new InLwsCrLfPartialRequest(next)
-      case x => next.handleChar()
+      case x => next.handleChar(x)
     }
   }
 }
 
 class InLwsCrLfPartialRequest(next: InHeadPartialRequest) extends InHeadPartialRequest {
-  var nLine = 0
-  var nPos = 0
-  def handleChar() = {
+  def handleChar(cursor: Char) = {
     cursor match {
-      case '\n' => nLine = line; nPos = pos; this
+      case '\n' => this
       case ' ' | '\t' => new InLwsPartialRequest(next)
       case x => {
         // we encountered a real CRLF without following whitespace,
         // so we need to handle the newline before the current cursor
-        val savedLine = line; line = nLine; val savedPos = pos; pos = nPos; cursor = '\n'
-        val next2 = next.handleChar().asInstanceOf[InHeadPartialRequest] // handle the newline
-        line = savedLine; pos = savedPos; cursor = x
-        next2.handleChar() // handle the x
+        next.handleChar('\n').asInstanceOf[InHeadPartialRequest].handleChar(x)
       }
     }
   }
