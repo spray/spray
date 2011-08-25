@@ -26,7 +26,6 @@ import java.io.IOException
 import java.nio.charset.Charset
 import java.util.concurrent.CountDownLatch
 import annotation.tailrec
-import utils.DateTime
 
 private[can] object Constants {
   val US_ASCII = Charset.forName("US-ASCII")
@@ -38,6 +37,7 @@ private[can] object Constants {
 }
 
 trait SelectActorComponent {
+  this: ResponsePreparer =>
 
   def config: CanConfig
 
@@ -184,44 +184,6 @@ trait SelectActorComponent {
           key.attach(EmptyRequestParser)
         case remainingBuffers => // socket buffer full, we couldn't write everything so we stay in writing mode
           key.attach(remainingBuffers)
-      }
-    }
-  }
-
-  // this method does not run in the context of the SelectActor but some other thread
-  private def prepare(response: HttpResponse): List[ByteBuffer] = {
-    import Constants._
-    import ByteBuffer._
-
-    def statusLine(rest: List[ByteBuffer]) = response.statusCode match {
-      case 200 => wrap(StatusLine200) :: rest
-      case x => {
-        wrap(HttpVersionPlusSP) ::
-          wrap(response.statusCode.toString.getBytes(US_ASCII)) ::
-            wrap(SingleSP) ::
-              wrap(HttpResponse.defaultReason(response.statusCode).getBytes(US_ASCII)) ::
-                wrap(CRLF) :: rest
-      }
-    }
-    def header(name: String, value: String)(rest: List[ByteBuffer]) = {
-      wrap(name.getBytes(US_ASCII)) ::
-        wrap(ColonSP) ::
-          wrap(value.getBytes(US_ASCII)) ::
-            wrap(CRLF) :: rest
-    }
-    @tailrec
-    def headers(httpHeaders: List[HttpHeader])(rest: List[ByteBuffer]): List[ByteBuffer] = httpHeaders match {
-      case HttpHeader(name, value) :: tail => headers(tail)(header(name, value)(rest))
-      case Nil => rest
-    }
-
-    statusLine {
-      headers(response.headers.reverse) {
-        header("Content-Length", response.body.length.toString) {
-          header("Date", DateTime.now.toRfc1123DateTimeString) {
-            wrap(response.body) :: Nil
-          }
-        }
       }
     }
   }

@@ -29,7 +29,7 @@ case class HttpRequest(
 case class HttpResponse(
   statusCode: Int,
   headers: List[HttpHeader],
-  body: Array[Byte]
+  body: Array[Byte] = EmptyByteArray
 ) {
   require(100 <= statusCode && statusCode < 600, "Illegal HTTP status code: " + statusCode)
   require(headers != null, "headers must not be null")

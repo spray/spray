@@ -19,7 +19,7 @@ package cc.spray.can
 import akka.config.Supervision._
 import akka.actor.{PoisonPill, Supervisor, Actor}
 
-class HttpServer(val config: CanConfig) extends SelectActorComponent {
+class HttpServer(val config: CanConfig) extends SelectActorComponent with ResponsePreparer {
   private lazy val selectActor = Actor.actorOf(new SelectActor)
 
   def start() {
