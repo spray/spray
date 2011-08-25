@@ -21,10 +21,11 @@ import akka.actor.{Kill, Actor}
 
 trait TestServiceComponent {
 
+  def serviceActorId: String
   def server: HttpServer
 
   class TestService extends Actor {
-    self.id = "testEndpoint"
+    self.id = serviceActorId
 
     protected def receive = {
 

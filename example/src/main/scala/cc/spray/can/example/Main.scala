@@ -22,7 +22,8 @@ import akka.actor.{Supervisor, Actor}
 
 object Main extends App with TestServiceComponent {
 
-  val server = new HttpServer(SimpleConfig(serviceActorId = "testEndpoint"))
+  val serviceActorId = "testEndpoint"
+  val server = new HttpServer(SimpleConfig(serviceActorId = serviceActorId))
 
   // create, start and supervise the TestService actor
   Supervisor(
