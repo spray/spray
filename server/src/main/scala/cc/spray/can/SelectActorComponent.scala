@@ -53,10 +53,10 @@ trait SelectActorComponent {
       channel.socket.bind(config.endpoint)
       channel.register(selector, SelectionKey.OP_ACCEPT)
     }
-    private lazy val dispatchActor = Actor.registry.actorsFor(config.dispatchActorId) match {
+    private lazy val serviceActor = Actor.registry.actorsFor(config.serviceActorId) match {
       case Array(head) => head
-      case x => throw new RuntimeException("Expected exactly one dispatch actor with id '" +
-              config.dispatchActorId + "', but found " + x.length)
+      case x => throw new RuntimeException("Expected exactly one service actor with id '" +
+              config.serviceActorId + "', but found " + x.length)
     }
     private val readBuffer = ByteBuffer.allocateDirect(config.readBufferSize)
 
@@ -130,9 +130,9 @@ trait SelectActorComponent {
       }
 
       def dispatch(request: CompleteRequestParser) {
-        log.debug("Dispatching response")
+        log.debug("Dispatching request to service actor")
         import request._
-        dispatchActor ! HttpRequest(method, uri, headers.reverse, body, channel.socket.getInetAddress, respond)
+        serviceActor ! HttpRequest(method, uri, headers.reverse, body, channel.socket.getInetAddress, respond)
       }
 
       def respondWithError(error: ErrorRequestParser) {
@@ -160,6 +160,7 @@ trait SelectActorComponent {
             }
           }
         } else {
+          log.debug("Closing connection")
           close()
         } // if the client shut down the socket cleanly, we do the same
       }

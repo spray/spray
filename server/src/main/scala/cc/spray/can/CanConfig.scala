@@ -21,30 +21,30 @@ import java.net.InetSocketAddress
 
 trait CanConfig {
   def endpoint: InetSocketAddress
-  def dispatchActorId: String
+  def serviceActorId: String
   def readBufferSize: Int
 }
 
 object AkkaConfConfig extends CanConfig {
-  lazy val hostname        = config.getString("spray.can.hostname", "localhost")
-  lazy val port            = config.getInt("spray.can.port", 8888)
-  lazy val dispatchActorId = config.getString("spray.can.dispatch-actor-id", "spray-root-service")
-  lazy val readBufferSize  = config.getInt("spray.can.read-buffer-size", 8192)
-  def endpoint             = new InetSocketAddress(hostname, port)
+  lazy val hostname       = config.getString("spray.can.hostname", "localhost")
+  lazy val port           = config.getInt("spray.can.port", 8888)
+  lazy val serviceActorId = config.getString("spray.can.service-actor-id", "spray-root-service")
+  lazy val readBufferSize = config.getInt("spray.can.read-buffer-size", 8192)
+  def endpoint            = new InetSocketAddress(hostname, port)
 
   override def toString =
     "AkkaConfConfig(\n" +
-    "  hostname       : " + hostname + "\n" +
-    "  port           : " + port + "\n" +
-    "  dispatchActorId: " + dispatchActorId + "\n" +
-    "  readBufferSize : " + readBufferSize + "\n" +
+    "  hostname      : " + hostname + "\n" +
+    "  port          : " + port + "\n" +
+    "  serviceActorId: " + serviceActorId + "\n" +
+    "  readBufferSize: " + readBufferSize + "\n" +
     ")\n"
 }
 
 case class SimpleConfig(
   hostname: String = "localhost",
   port: Int = 8888,
-  dispatchActorId: String = "spray-root-service",
+  serviceActorId: String = "spray-root-service",
   readBufferSize: Int = 8192
 ) extends CanConfig {
   def endpoint = new InetSocketAddress(hostname, port)
