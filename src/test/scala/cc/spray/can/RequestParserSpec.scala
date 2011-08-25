@@ -21,7 +21,7 @@ import java.nio.ByteBuffer
 import annotation.tailrec
 import Constants._
 
-class PartialRequestSpec extends Specification {
+class RequestParserSpec extends Specification {
 
   val HH = HttpHeader
 
@@ -74,13 +74,13 @@ class PartialRequestSpec extends Specification {
     val buf = ByteBuffer.wrap(req.getBytes(US_ASCII))
 
     @tailrec
-    def runAgainst(req: PartialRequest): Any = req.read(buf) match {
-      case CompletePartialRequest(method, uri, headers, body) => (method, uri, headers, new String(body, US_ASCII))
-      case x: ErrorRequest => x
+    def runAgainst(req: RequestParser): Any = req.read(buf) match {
+      case CompleteRequestParser(method, uri, headers, body) => (method, uri, headers, new String(body, US_ASCII))
+      case x: ErrorRequestParser => x
       case x => runAgainst(x)
     }
 
-    runAgainst(EmptyRequest)
+    runAgainst(EmptyRequestParser)
   }
 
 }

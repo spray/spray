@@ -108,12 +108,12 @@ trait SelectActorComponent {
       val socketChannel = serverSocketChannel.accept
       socketChannel.configureBlocking(false)
       val key = socketChannel.register(selector, SelectionKey.OP_READ)
-      key.attach(EmptyRequest)
+      key.attach(EmptyRequestParser)
     }
 
     private def read(key: SelectionKey) {
       val channel = key.channel.asInstanceOf[SocketChannel]
-      val partialRequest = key.attachment.asInstanceOf[PartialRequest]
+      val partialRequest = key.attachment.asInstanceOf[RequestParser]
 
       def respond(response: HttpResponse) {
         // this code is executed from the thread sending the response
@@ -121,12 +121,12 @@ trait SelectActorComponent {
         selector.wakeup() // the SelectActors thread is probably blocked at the "selector.select()" call, so wake it up
       }
 
-      def dispatch(request: CompletePartialRequest) {
+      def dispatch(request: CompleteRequestParser) {
         import request._
         dispatchActor ! HttpRequest(method, uri, headers.reverse, body, channel.socket.getInetAddress, respond)
       }
 
-      def respondWithError(error: ErrorRequest) {
+      def respondWithError(error: ErrorRequestParser) {
         respond(HttpResponse(error.responseStatus, Nil, (error.message + ":\n").getBytes(Constants.US_ASCII)))
       }
 
@@ -141,8 +141,8 @@ trait SelectActorComponent {
           readBuffer.flip()
           key.attach {
             partialRequest.read(readBuffer) match {
-              case x: CompletePartialRequest => dispatch(x); EmptyRequest
-              case x: ErrorRequest => respondWithError(x); EmptyRequest
+              case x: CompleteRequestParser => dispatch(x); EmptyRequestParser
+              case x: ErrorRequestParser => respondWithError(x); EmptyRequestParser
               case x => x
             }
           }
@@ -181,7 +181,7 @@ trait SelectActorComponent {
       writeToChannel(rawResponse) match {
         case Nil => // we were able to write everything, so we can switch back to reading
           key.interestOps(SelectionKey.OP_READ)
-          key.attach(EmptyRequest)
+          key.attach(EmptyRequestParser)
         case remainingBuffers => // socket buffer full, we couldn't write everything so we stay in writing mode
           key.attach(remainingBuffers)
       }

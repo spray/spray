@@ -20,19 +20,20 @@ package can
 import java.nio.ByteBuffer
 import java.lang.{IllegalStateException, StringBuilder => JStringBuilder}
 
-sealed trait PartialRequest {
-  def read(buf: ByteBuffer): PartialRequest
+// a RequestParser instance holds the complete parsing state at any particular point in the request parsing process
+sealed trait RequestParser {
+  def read(buf: ByteBuffer): RequestParser
 }
 
-abstract class InHeadPartialRequest extends PartialRequest {
-  def read(buf: ByteBuffer): PartialRequest = {
+abstract class InHeadRequestParser extends RequestParser {
+  def read(buf: ByteBuffer): RequestParser = {
     if (buf.remaining > 0) {
       val cursor = buf.get().asInstanceOf[Char] // simple US-ASCII encoding conversion
       handleChar(cursor)
     } else readEOB
   }
 
-  def readEOB: PartialRequest = this
+  def readEOB: RequestParser = this
 
   def isTokenChar(c: Char) = c match {
     case x if 'a' <= x && x <= 'z' => true
@@ -42,31 +43,31 @@ abstract class InHeadPartialRequest extends PartialRequest {
     case x => 32 < x && x < 127
   }
 
-  def badMethod = new ErrorRequest(501, "Unsupported HTTP method")
+  def badMethod = new ErrorRequestParser(501, "Unsupported HTTP method")
 
-  def handleChar(cursor: Char): PartialRequest
+  def handleChar(cursor: Char): RequestParser
 }
 
-object EmptyRequest extends InHeadPartialRequest {
+object EmptyRequestParser extends InHeadRequestParser {
   def handleChar(cursor: Char) = cursor match {
-    case 'G' => new InMethodPartialRequest("GET")
-    case 'P' => new InHeadPartialRequest {
+    case 'G' => new InMethodRequestParser("GET")
+    case 'P' => new InHeadRequestParser {
       override def handleChar(cursor: Char) = cursor match {
-        case 'O' => new InMethodPartialRequest("POST", 1)
-        case 'U' => new InMethodPartialRequest("PUT", 1)
+        case 'O' => new InMethodRequestParser("POST", 1)
+        case 'U' => new InMethodRequestParser("PUT", 1)
         case _ => badMethod
       }
     }
-    case 'D' => new InMethodPartialRequest("DELETE")
-    case 'H' => new InMethodPartialRequest("HEAD")
-    case 'O' => new InMethodPartialRequest("OPTIONS")
-    case 'T' => new InMethodPartialRequest("TRACE")
-    case 'C' => new InMethodPartialRequest("CONNECT")
+    case 'D' => new InMethodRequestParser("DELETE")
+    case 'H' => new InMethodRequestParser("HEAD")
+    case 'O' => new InMethodRequestParser("OPTIONS")
+    case 'T' => new InMethodRequestParser("TRACE")
+    case 'C' => new InMethodRequestParser("CONNECT")
     case _ => badMethod
   }
 }
 
-class InMethodPartialRequest(method: String, var pos: Int = 0) extends InHeadPartialRequest {
+class InMethodRequestParser(method: String, var pos: Int = 0) extends InHeadRequestParser {
   def handleChar(cursor: Char) = {
     pos += 1
     if (pos < method.length()) {
@@ -74,25 +75,25 @@ class InMethodPartialRequest(method: String, var pos: Int = 0) extends InHeadPar
       if (cursor == current) this
       else badMethod
     } else {
-      if (cursor == ' ') new InUriPartialRequest(method)
+      if (cursor == ' ') new InUriRequestParser(method)
       else badMethod
     }
   }
 }
 
-class InUriPartialRequest(method: String) extends InHeadPartialRequest {
+class InUriRequestParser(method: String) extends InHeadRequestParser {
   val uri = new JStringBuilder
   def handleChar(cursor: Char) = {
     if (uri.length < 2048) {
       cursor match {
-        case ' ' => new InVersionPartialRequest(method, uri.toString)
+        case ' ' => new InVersionRequestParser(method, uri.toString)
         case _ => uri.append(cursor); this
       }
-    } else new ErrorRequest(414, "URIs with more than 2048 characters are not supported by this server")
+    } else new ErrorRequestParser(414, "URIs with more than 2048 characters are not supported by this server")
   }
 }
 
-class InVersionPartialRequest(method: String, uri: String) extends InHeadPartialRequest {
+class InVersionRequestParser(method: String, uri: String) extends InHeadRequestParser {
   val version = new JStringBuilder
   def handleChar(cursor: Char) = {
     if (version.length < 12) {
@@ -100,35 +101,35 @@ class InVersionPartialRequest(method: String, uri: String) extends InHeadPartial
         case '\r' => this
         case '\n' =>
           if (version.toString == "HTTP/1.1")
-            new InHeaderNamePartialRequest(method, uri, Nil)
+            new InHeaderNameRequestParser(method, uri, Nil)
           else badVersion
         case _ => version.append(cursor); this
       }
     } else badVersion
   }
-  def badVersion = new ErrorRequest(400, "Http version '" + version.toString + "' not supported")
+  def badVersion = new ErrorRequestParser(400, "Http version '" + version.toString + "' not supported")
 }
 
-class InHeaderNamePartialRequest(method: String, uri: String, headers: List[HttpHeader]) extends InHeadPartialRequest {
+class InHeaderNameRequestParser(method: String, uri: String, headers: List[HttpHeader]) extends InHeadRequestParser {
   val headerName = new JStringBuilder
   def handleChar(cursor: Char) = {
     if (headerName.length < 64) {
       cursor match {
         case x if isTokenChar(x) => headerName.append(x); this
-        case ':' => new InLwsPartialRequest(new InHeaderValuePartialRequest(method, uri, headers, headerName.toString))
+        case ':' => new InLwsRequestParser(new InHeaderValueRequestParser(method, uri, headers, headerName.toString))
         case '\r' if headerName.length == 0 => this
         case '\n' if headerName.length == 0 => headersComplete
-        case ' ' | '\t' | '\r' => new InLwsPartialRequest(this).handleChar(cursor)
-        case _ => new ErrorRequest(400, "Invalid character '" + cursor + "', expected TOKEN CHAR, LWS or COLON")
+        case ' ' | '\t' | '\r' => new InLwsRequestParser(this).handleChar(cursor)
+        case _ => new ErrorRequestParser(400, "Invalid character '" + cursor + "', expected TOKEN CHAR, LWS or COLON")
       }
-    } else new ErrorRequest(400, "HTTP headers with names longer than 64 characters are not supported by this server")
+    } else new ErrorRequestParser(400, "HTTP headers with names longer than 64 characters are not supported by this server")
   }
   def headersComplete = {
     transferEncodingHeader match {
-      case Some(encoding) => new ErrorRequest(501, "Non-identity transfer encodings are not currently supported by this server")
+      case Some(encoding) => new ErrorRequestParser(501, "Non-identity transfer encodings are not currently supported by this server")
       case None => contentLengthHeader match {
         case Some(length) => bodyRequest(length)
-        case None => CompletePartialRequest(method, uri, headers)
+        case None => CompleteRequestParser(method, uri, headers)
       }
     }
   }
@@ -137,61 +138,61 @@ class InHeaderNamePartialRequest(method: String, uri: String, headers: List[Http
   def bodyRequest(length: String) = {
     try {
       length.toInt match {
-        case 0 => CompletePartialRequest(method, uri, headers)
-        case x => new InBodyPartialRequest(method, uri, headers, x)
+        case 0 => CompleteRequestParser(method, uri, headers)
+        case x => new InBodyRequestParser(method, uri, headers, x)
       }
     } catch {
-      case _: Exception => new ErrorRequest(400, "Invalid Content-Length header value")
+      case _: Exception => new ErrorRequestParser(400, "Invalid Content-Length header value")
     }
   }
 }
 
-class InHeaderValuePartialRequest(method: String, uri: String, headers: List[HttpHeader], headerName: String)
-        extends InHeadPartialRequest {
+class InHeaderValueRequestParser(method: String, uri: String, headers: List[HttpHeader], headerName: String)
+        extends InHeadRequestParser {
   val headerValue = new JStringBuilder
   var space = false
   def handleChar(cursor: Char) = {
     if (headerValue.length < 8192) {
       cursor match {
-        case ' ' | '\t' | '\r' => space = true; new InLwsPartialRequest(this).handleChar(cursor)
-        case '\n' => new InHeaderNamePartialRequest(method, uri, HttpHeader(headerName, headerValue.toString) :: headers)
+        case ' ' | '\t' | '\r' => space = true; new InLwsRequestParser(this).handleChar(cursor)
+        case '\n' => new InHeaderNameRequestParser(method, uri, HttpHeader(headerName, headerValue.toString) :: headers)
         case _ =>
           if (space) { headerValue.append(' '); space = false }
           headerValue.append(cursor)
           this
       }
-    } else new ErrorRequest(400, "HTTP header values longer than 8192 characters are not supported by this server (" +
+    } else new ErrorRequestParser(400, "HTTP header values longer than 8192 characters are not supported by this server (" +
             "header '" + headerName + "')")
   }
 }
 
-class InLwsPartialRequest(next: InHeadPartialRequest) extends InHeadPartialRequest {
+class InLwsRequestParser(next: InHeadRequestParser) extends InHeadRequestParser {
   def handleChar(cursor: Char) = {
     cursor match {
       case ' ' | '\t' => this
-      case '\r' => new InLwsCrLfPartialRequest(next)
+      case '\r' => new InLwsCrLfRequestParser(next)
       case x => next.handleChar(x)
     }
   }
 }
 
-class InLwsCrLfPartialRequest(next: InHeadPartialRequest) extends InHeadPartialRequest {
+class InLwsCrLfRequestParser(next: InHeadRequestParser) extends InHeadRequestParser {
   def handleChar(cursor: Char) = {
     cursor match {
       case '\n' => this
-      case ' ' | '\t' => new InLwsPartialRequest(next)
+      case ' ' | '\t' => new InLwsRequestParser(next)
       case x => {
         // we encountered a real CRLF without following whitespace,
         // so we need to handle the newline before the current cursor
-        next.handleChar('\n').asInstanceOf[InHeadPartialRequest].handleChar(x)
+        next.handleChar('\n').asInstanceOf[InHeadRequestParser].handleChar(x)
       }
     }
   }
   override def readEOB = next.handleChar('\n')
 }
 
-class InBodyPartialRequest(method: String, uri: String, headers: List[HttpHeader], val totalBytes: Int)
-        extends PartialRequest {
+class InBodyRequestParser(method: String, uri: String, headers: List[HttpHeader], val totalBytes: Int)
+        extends RequestParser {
   require(totalBytes >= 0, "Content-Length must not be negative")
   val body = new Array[Byte](totalBytes)
   var bytesRead = 0
@@ -200,16 +201,16 @@ class InBodyPartialRequest(method: String, uri: String, headers: List[HttpHeader
     if (remaining <= totalBytes - bytesRead) {
       buf.get(body, bytesRead, remaining)
       bytesRead += remaining
-      if (bytesRead == totalBytes) new CompletePartialRequest(method, uri, headers, body) else this
-    } else new ErrorRequest(400, "Illegal Content-Length: request entity is longer than Content-Length header value")
+      if (bytesRead == totalBytes) new CompleteRequestParser(method, uri, headers, body) else this
+    } else new ErrorRequestParser(400, "Illegal Content-Length: request entity is longer than Content-Length header value")
   }
 }
 
-case class CompletePartialRequest(method: String, uri: String, headers: List[HttpHeader],
-                                  body: Array[Byte] = EmptyByteArray) extends PartialRequest {
+case class CompleteRequestParser(method: String, uri: String, headers: List[HttpHeader],
+                                  body: Array[Byte] = EmptyByteArray) extends RequestParser {
   def read(buf: ByteBuffer) = throw new IllegalStateException
 }
 
-case class ErrorRequest(responseStatus: Int, message: String) extends PartialRequest {
+case class ErrorRequestParser(responseStatus: Int, message: String) extends RequestParser {
   def read(buf: ByteBuffer) = throw new IllegalStateException
 }
