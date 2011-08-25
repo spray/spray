@@ -18,11 +18,14 @@ package cc.spray.can
 
 import akka.config.Supervision._
 import akka.actor.{PoisonPill, Supervisor, Actor}
+import org.slf4j.LoggerFactory
 
 class HttpServer(val config: CanConfig) extends SelectActorComponent with ResponsePreparer {
+  private lazy val log = LoggerFactory.getLogger(getClass)
   private lazy val selectActor = Actor.actorOf(new SelectActor)
 
   def start() {
+    log.info("Starting HttpServer with configuration {}", config)
     // start and supervise the selectActor
     Supervisor(
       SupervisorConfig(
@@ -32,11 +35,19 @@ class HttpServer(val config: CanConfig) extends SelectActorComponent with Respon
     )
   }
 
-  def shutdown() {
-    selectActor ! PoisonPill
+  def blockUntilStarted() {
+    log.info("Waiting for HttpServer startup to complete...")
+    started.await()
   }
 
-  def blockUntilShutdown() {
+  def stop() {
+    log.info("Triggering HttpServer shutdown")
+    selectActor ! PoisonPill
+    selector.wakeup() // the SelectActor is probably blocked at the "selector.select()" call, so wake it up
+  }
+
+  def blockUntilStopped() {
+    log.info("Waiting for HttpServer shutdown to complete...")
     stopped.await()
   }
 

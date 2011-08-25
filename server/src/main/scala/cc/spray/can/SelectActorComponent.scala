@@ -26,6 +26,7 @@ import java.io.IOException
 import java.nio.charset.Charset
 import java.util.concurrent.CountDownLatch
 import annotation.tailrec
+import utils.PostStart
 
 private[can] object Constants {
   val US_ASCII = Charset.forName("US-ASCII")
@@ -41,12 +42,13 @@ trait SelectActorComponent {
 
   def config: CanConfig
 
-  val stopped = new CountDownLatch(1)
+  private[can] val started = new CountDownLatch(1)
+  private[can] val stopped = new CountDownLatch(1)
+  private[can] val selector = SelectorProvider.provider.openSelector
 
-  class SelectActor extends Actor {
-    private lazy val log = LoggerFactory.getLogger(getClass)
-    private lazy val selector = SelectorProvider.provider.openSelector
-    private lazy val serverSocketChannel = make(ServerSocketChannel.open) { channel =>
+  class SelectActor extends Actor with PostStart {
+    private val log = LoggerFactory.getLogger(getClass)
+    private val serverSocketChannel = make(ServerSocketChannel.open) { channel =>
       channel.configureBlocking(false)
       channel.socket.bind(config.endpoint)
       channel.register(selector, SelectionKey.OP_ACCEPT)
@@ -61,13 +63,19 @@ trait SelectActorComponent {
     // this actor runs in its own private thread
     self.dispatcher = Dispatchers.newThreadBasedDispatcher(self)
 
+    def postStart() {
+      log.debug("SelectActor started")
+      started.countDown()
+      self ! Select // kick off the Select loop
+    }
+
     override def preRestart(reason: Throwable, message: Option[Any]) {
       log.error("SelectActor crashed, about to restart...\nmessage: {}\nreason: {}", message.getOrElse("None"), reason)
       cleanUp()
     }
 
     override def postStop() {
-      log.info("SelectActor stopped")
+      log.debug("SelectActor stopped")
       cleanUp()
       stopped.countDown()
     }
@@ -80,6 +88,7 @@ trait SelectActorComponent {
     protected def receive = {
       case Select => select()
       case Respond(key, rawResponse) => {
+        log.debug("Received raw response, scheduling write")
         key.interestOps(SelectionKey.OP_WRITE)
         key.attach(rawResponse)
       }
@@ -92,12 +101,8 @@ trait SelectActorComponent {
         val key = selectedKeys.next
         selectedKeys.remove()
         if (key.isValid) {
-          if (key.isAcceptable) {
-            accept()
-          }
-          else if (key.isReadable) {
-            read(key)
-          }
+          if (key.isAcceptable) accept()
+          else if (key.isReadable) read(key)
           else if (key.isWritable) write(key)
         }
       }
@@ -105,28 +110,33 @@ trait SelectActorComponent {
     }
 
     private def accept() {
+      log.debug("Accepting new connection")
       val socketChannel = serverSocketChannel.accept
       socketChannel.configureBlocking(false)
       val key = socketChannel.register(selector, SelectionKey.OP_READ)
       key.attach(EmptyRequestParser)
+      log.debug("New connection accepted and registered")
     }
 
     private def read(key: SelectionKey) {
+      log.debug("Reading from connection")
       val channel = key.channel.asInstanceOf[SocketChannel]
-      val partialRequest = key.attachment.asInstanceOf[RequestParser]
+      val requestParser = key.attachment.asInstanceOf[IntermediateParser]
 
       def respond(response: HttpResponse) {
         // this code is executed from the thread sending the response
         self ! Respond(key, prepare(response))
-        selector.wakeup() // the SelectActors thread is probably blocked at the "selector.select()" call, so wake it up
+        selector.wakeup() // the SelectActor is probably blocked at the "selector.select()" call, so wake it up
       }
 
       def dispatch(request: CompleteRequestParser) {
+        log.debug("Dispatching response")
         import request._
         dispatchActor ! HttpRequest(method, uri, headers.reverse, body, channel.socket.getInetAddress, respond)
       }
 
       def respondWithError(error: ErrorRequestParser) {
+        log.debug("Responding with error response")
         respond(HttpResponse(error.responseStatus, Nil, (error.message + ":\n").getBytes(Constants.US_ASCII)))
       }
 
@@ -139,8 +149,11 @@ trait SelectActorComponent {
         readBuffer.clear()
         if (channel.read(readBuffer) > -1) {
           readBuffer.flip()
+
+          log.debug("Read {} bytes", readBuffer.limit())
+
           key.attach {
-            partialRequest.read(readBuffer) match {
+            requestParser.read(readBuffer) match {
               case x: CompleteRequestParser => dispatch(x); EmptyRequestParser
               case x: ErrorRequestParser => respondWithError(x); EmptyRequestParser
               case x => x
@@ -160,6 +173,7 @@ trait SelectActorComponent {
     }
 
     private def write(key: SelectionKey) {
+      log.debug("Writing to connection")
       val channel = key.channel.asInstanceOf[SocketChannel]
       val rawResponse = key.attachment.asInstanceOf[List[ByteBuffer]]
 

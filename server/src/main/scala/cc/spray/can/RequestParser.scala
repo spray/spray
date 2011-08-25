@@ -18,22 +18,33 @@ package cc.spray
 package can
 
 import java.nio.ByteBuffer
-import java.lang.{IllegalStateException, StringBuilder => JStringBuilder}
+import java.lang.{StringBuilder => JStringBuilder}
+import annotation.tailrec
 
 // a RequestParser instance holds the complete parsing state at any particular point in the request parsing process
-sealed trait RequestParser {
+sealed trait RequestParser
+
+trait IntermediateParser extends RequestParser {
   def read(buf: ByteBuffer): RequestParser
 }
 
-abstract class InHeadRequestParser extends RequestParser {
+abstract class CharacterParser extends IntermediateParser {
   def read(buf: ByteBuffer): RequestParser = {
-    if (buf.remaining > 0) {
-      val cursor = buf.get().asInstanceOf[Char] // simple US-ASCII encoding conversion
-      handleChar(cursor)
-    } else readEOB
+    @tailrec
+    def read(parser: RequestParser): RequestParser = parser match {
+      case x: CharacterParser => {
+        if (buf.remaining() > 0) {
+          val cursor = buf.get().asInstanceOf[Char] // simple US-ASCII encoding conversion
+          read(x.handleChar(cursor))
+        } else x
+      }
+      case x: IntermediateParser => x.read(buf) // InBodyRequestParser
+      case x => x // complete or error
+    }
+    read(this)
   }
 
-  def readEOB: RequestParser = this
+  def handleChar(cursor: Char): RequestParser
 
   def isTokenChar(c: Char) = c match {
     case x if 'a' <= x && x <= 'z' => true
@@ -44,14 +55,12 @@ abstract class InHeadRequestParser extends RequestParser {
   }
 
   def badMethod = new ErrorRequestParser(501, "Unsupported HTTP method")
-
-  def handleChar(cursor: Char): RequestParser
 }
 
-object EmptyRequestParser extends InHeadRequestParser {
+object EmptyRequestParser extends CharacterParser {
   def handleChar(cursor: Char) = cursor match {
     case 'G' => new InMethodRequestParser("GET")
-    case 'P' => new InHeadRequestParser {
+    case 'P' => new CharacterParser {
       override def handleChar(cursor: Char) = cursor match {
         case 'O' => new InMethodRequestParser("POST", 1)
         case 'U' => new InMethodRequestParser("PUT", 1)
@@ -67,7 +76,7 @@ object EmptyRequestParser extends InHeadRequestParser {
   }
 }
 
-class InMethodRequestParser(method: String, var pos: Int = 0) extends InHeadRequestParser {
+class InMethodRequestParser(method: String, var pos: Int = 0) extends CharacterParser {
   def handleChar(cursor: Char) = {
     pos += 1
     if (pos < method.length()) {
@@ -81,7 +90,7 @@ class InMethodRequestParser(method: String, var pos: Int = 0) extends InHeadRequ
   }
 }
 
-class InUriRequestParser(method: String) extends InHeadRequestParser {
+class InUriRequestParser(method: String) extends CharacterParser {
   val uri = new JStringBuilder
   def handleChar(cursor: Char) = {
     if (uri.length < 2048) {
@@ -93,7 +102,7 @@ class InUriRequestParser(method: String) extends InHeadRequestParser {
   }
 }
 
-class InVersionRequestParser(method: String, uri: String) extends InHeadRequestParser {
+class InVersionRequestParser(method: String, uri: String) extends CharacterParser {
   val version = new JStringBuilder
   def handleChar(cursor: Char) = {
     if (version.length < 12) {
@@ -110,7 +119,7 @@ class InVersionRequestParser(method: String, uri: String) extends InHeadRequestP
   def badVersion = new ErrorRequestParser(400, "Http version '" + version.toString + "' not supported")
 }
 
-class InHeaderNameRequestParser(method: String, uri: String, headers: List[HttpHeader]) extends InHeadRequestParser {
+class InHeaderNameRequestParser(method: String, uri: String, headers: List[HttpHeader]) extends CharacterParser {
   val headerName = new JStringBuilder
   def handleChar(cursor: Char) = {
     if (headerName.length < 64) {
@@ -148,7 +157,7 @@ class InHeaderNameRequestParser(method: String, uri: String, headers: List[HttpH
 }
 
 class InHeaderValueRequestParser(method: String, uri: String, headers: List[HttpHeader], headerName: String)
-        extends InHeadRequestParser {
+        extends CharacterParser {
   val headerValue = new JStringBuilder
   var space = false
   def handleChar(cursor: Char) = {
@@ -166,7 +175,7 @@ class InHeaderValueRequestParser(method: String, uri: String, headers: List[Http
   }
 }
 
-class InLwsRequestParser(next: InHeadRequestParser) extends InHeadRequestParser {
+class InLwsRequestParser(next: CharacterParser) extends CharacterParser {
   def handleChar(cursor: Char) = {
     cursor match {
       case ' ' | '\t' => this
@@ -176,7 +185,7 @@ class InLwsRequestParser(next: InHeadRequestParser) extends InHeadRequestParser 
   }
 }
 
-class InLwsCrLfRequestParser(next: InHeadRequestParser) extends InHeadRequestParser {
+class InLwsCrLfRequestParser(next: CharacterParser) extends CharacterParser {
   def handleChar(cursor: Char) = {
     cursor match {
       case '\n' => this
@@ -184,15 +193,14 @@ class InLwsCrLfRequestParser(next: InHeadRequestParser) extends InHeadRequestPar
       case x => {
         // we encountered a real CRLF without following whitespace,
         // so we need to handle the newline before the current cursor
-        next.handleChar('\n').asInstanceOf[InHeadRequestParser].handleChar(x)
+        next.handleChar('\n').asInstanceOf[CharacterParser].handleChar(x)
       }
     }
   }
-  override def readEOB = next.handleChar('\n')
 }
 
 class InBodyRequestParser(method: String, uri: String, headers: List[HttpHeader], val totalBytes: Int)
-        extends RequestParser {
+        extends IntermediateParser {
   require(totalBytes >= 0, "Content-Length must not be negative")
   val body = new Array[Byte](totalBytes)
   var bytesRead = 0
@@ -207,10 +215,6 @@ class InBodyRequestParser(method: String, uri: String, headers: List[HttpHeader]
 }
 
 case class CompleteRequestParser(method: String, uri: String, headers: List[HttpHeader],
-                                  body: Array[Byte] = EmptyByteArray) extends RequestParser {
-  def read(buf: ByteBuffer) = throw new IllegalStateException
-}
+                                  body: Array[Byte] = EmptyByteArray) extends RequestParser
 
-case class ErrorRequestParser(responseStatus: Int, message: String) extends RequestParser {
-  def read(buf: ByteBuffer) = throw new IllegalStateException
-}
+case class ErrorRequestParser(responseStatus: Int, message: String) extends RequestParser

@@ -25,13 +25,13 @@ trait ResponsePreparer {
     import Constants._
     import ByteBuffer._
 
-    def statusLine(rest: List[ByteBuffer]) = response.statusCode match {
+    def statusLine(rest: List[ByteBuffer]) = response.status match {
       case 200 => wrap(StatusLine200) :: rest
       case x => {
         wrap(HttpVersionPlusSP) ::
-          wrap(response.statusCode.toString.getBytes(US_ASCII)) ::
+          wrap(response.status.toString.getBytes(US_ASCII)) ::
             wrap(SingleSP) ::
-              wrap(HttpResponse.defaultReason(response.statusCode).getBytes(US_ASCII)) ::
+              wrap(HttpResponse.defaultReason(response.status).getBytes(US_ASCII)) ::
                 wrap(CRLF) :: rest
       }
     }

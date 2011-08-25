@@ -144,15 +144,10 @@ class RequestParserSpec extends Specification {
   def parse(request: String) = {
     val req = request.stripMargin.replace("\n", "\r\n")
     val buf = ByteBuffer.wrap(req.getBytes(US_ASCII))
-
-    @tailrec
-    def runAgainst(req: RequestParser): Any = req.read(buf) match {
+    EmptyRequestParser.read(buf) match {
       case CompleteRequestParser(method, uri, headers, body) => (method, uri, headers, new String(body, US_ASCII))
-      case x: ErrorRequestParser => x
-      case x => runAgainst(x)
+      case x => x
     }
-
-    runAgainst(EmptyRequestParser)
   }
 
 }

@@ -27,16 +27,16 @@ case class HttpRequest(
 )
 
 case class HttpResponse(
-  statusCode: Int,
-  headers: List[HttpHeader],
+  status: Int = 200,
+  headers: List[HttpHeader] = Nil,
   body: Array[Byte] = EmptyByteArray
 ) {
-  require(100 <= statusCode && statusCode < 600, "Illegal HTTP status code: " + statusCode)
+  require(100 <= status && status < 600, "Illegal HTTP status code: " + status)
   require(headers != null, "headers must not be null")
   require(body != null, "body must not be null (use cc.spray.can.EmptyByteArray for empty body)")
   require(headers.forall(_.name != "Content-Length"), "Content-Length header must not be present, the server sets it itself")
-  require(body.length == 0 || statusCode / 100 > 1 && statusCode != 204 && statusCode != 304, "Illegal HTTP response: " +
-          "responses with status code " + statusCode + " must not have a message body")
+  require(body.length == 0 || status / 100 > 1 && status != 204 && status != 304, "Illegal HTTP response: " +
+          "responses with status code " + status + " must not have a message body")
 }
 
 case class HttpHeader(name: String, value: String)

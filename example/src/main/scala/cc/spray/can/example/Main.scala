@@ -15,16 +15,25 @@
  */
 
 package cc.spray.can
+package example
 
-import akka.config.Config._
-import java.net.InetSocketAddress
+import akka.config.Supervision._
+import akka.actor.{Supervisor, Actor}
 
-trait CanConfig {
-  def endpoint: InetSocketAddress
-  def dispatchActorId: String
-  def readBufferSize: Int
-}
+object Main extends App with TestServiceComponent {
 
-object CanConfig {
-  lazy val DispatchActorId = config.getString("spray.can.dispatch-actor-id", "spray-root-service")
+  val server = new HttpServer(SimpleConfig(dispatchActorId = "testEndpoint"))
+
+  // create, start and supervise the TestService actor
+  Supervisor(
+    SupervisorConfig(
+      OneForOneStrategy(List(classOf[Exception]), 3, 100),
+      List(Supervise(Actor.actorOf(new TestService), Permanent))
+    )
+  )
+
+  server.start()
+  server.blockUntilStopped()
+
+  Actor.registry.shutdownAll()
 }
