@@ -18,7 +18,6 @@ package cc.spray.can
 
 import org.specs2.mutable.Specification
 import utils.DateTime
-import Constants._
 
 class ResponsePreparerSpec extends Specification with ResponsePreparer {
 

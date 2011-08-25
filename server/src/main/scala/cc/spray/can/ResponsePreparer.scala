@@ -18,11 +18,18 @@ package cc.spray.can
 import java.nio.ByteBuffer
 import annotation.tailrec
 import utils.DateTime
+import java.nio.charset.Charset
 
 trait ResponsePreparer {
 
+  private[can] val US_ASCII = Charset.forName("US-ASCII")
+  private val HttpVersionPlusSP = "HTTP/1.1 ".getBytes(US_ASCII)
+  private val ColonSP = ": ".getBytes(US_ASCII)
+  private val CRLF = "\r\n".getBytes(US_ASCII)
+  private val SingleSP = " ".getBytes(US_ASCII)
+  private val StatusLine200 = "HTTP/1.1 200 OK\r\n".getBytes(US_ASCII)
+
   protected def prepare(response: HttpResponse): List[ByteBuffer] = {
-    import Constants._
     import ByteBuffer._
 
     def statusLine(rest: List[ByteBuffer]) = response.status match {

@@ -18,7 +18,6 @@ package cc.spray.can
 
 import org.specs2.mutable.Specification
 import akka.actor.Actor
-import Constants._
 import cc.spray.client.{ClientConfig, HttpClient}
 
 class HttpServerSpec extends Specification {

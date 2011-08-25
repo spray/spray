@@ -18,8 +18,6 @@ package cc.spray.can
 
 import org.specs2.mutable.Specification
 import java.nio.ByteBuffer
-import annotation.tailrec
-import Constants._
 
 class RequestParserSpec extends Specification {
 
@@ -143,9 +141,9 @@ class RequestParserSpec extends Specification {
 
   def parse(request: String) = {
     val req = request.stripMargin.replace("\n", "\r\n")
-    val buf = ByteBuffer.wrap(req.getBytes(US_ASCII))
+    val buf = ByteBuffer.wrap(req.getBytes("US-ASCII"))
     EmptyRequestParser.read(buf) match {
-      case CompleteRequestParser(method, uri, headers, body) => (method, uri, headers, new String(body, US_ASCII))
+      case CompleteRequestParser(method, uri, headers, body) => (method, uri, headers, new String(body, "US-ASCII"))
       case x => x
     }
   }

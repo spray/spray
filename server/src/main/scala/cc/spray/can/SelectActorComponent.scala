@@ -23,19 +23,9 @@ import org.slf4j.LoggerFactory
 import akka.actor.Actor
 import java.nio.channels.{SocketChannel, SelectionKey, ServerSocketChannel}
 import java.io.IOException
-import java.nio.charset.Charset
 import java.util.concurrent.CountDownLatch
 import annotation.tailrec
 import utils.PostStart
-
-private[can] object Constants {
-  val US_ASCII = Charset.forName("US-ASCII")
-  val HttpVersionPlusSP = "HTTP/1.1 ".getBytes(US_ASCII)
-  val ColonSP = ": ".getBytes(US_ASCII)
-  val CRLF = "\r\n".getBytes(US_ASCII)
-  val SingleSP = " ".getBytes(US_ASCII)
-  val StatusLine200 = "HTTP/1.1 200 OK\r\n".getBytes(US_ASCII)
-}
 
 trait SelectActorComponent {
   this: ResponsePreparer =>
@@ -137,7 +127,7 @@ trait SelectActorComponent {
 
       def respondWithError(error: ErrorRequestParser) {
         log.debug("Responding with error response")
-        respond(HttpResponse(error.responseStatus, Nil, (error.message + ":\n").getBytes(Constants.US_ASCII)))
+        respond(HttpResponse(error.responseStatus, Nil, (error.message + ":\n").getBytes(US_ASCII)))
       }
 
       def close() {
