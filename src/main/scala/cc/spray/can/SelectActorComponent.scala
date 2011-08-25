@@ -139,10 +139,12 @@ trait SelectActorComponent {
         readBuffer.clear()
         if (channel.read(readBuffer) > -1) {
           readBuffer.flip()
-          partialRequest.read(readBuffer) match {
-            case x: CompletePartialRequest => dispatch(x)
-            case x: ErrorRequest => respondWithError(x)
-            case x => key.attach(x)
+          key.attach {
+            partialRequest.read(readBuffer) match {
+              case x: CompletePartialRequest => dispatch(x); EmptyRequest
+              case x: ErrorRequest => respondWithError(x); EmptyRequest
+              case x => x
+            }
           }
         } else {
           close()

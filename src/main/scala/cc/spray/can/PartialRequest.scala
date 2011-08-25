@@ -29,8 +29,10 @@ abstract class InHeadPartialRequest extends PartialRequest {
     if (buf.remaining > 0) {
       val cursor = buf.get().asInstanceOf[Char] // simple US-ASCII encoding conversion
       handleChar(cursor)
-    } else this
+    } else readEOB
   }
+
+  def readEOB: PartialRequest = this
 
   def isTokenChar(c: Char) = c match {
     case x if 'a' <= x && x <= 'z' => true
@@ -67,7 +69,7 @@ object EmptyRequest extends InHeadPartialRequest {
 class InMethodPartialRequest(method: String, var pos: Int = 0) extends InHeadPartialRequest {
   def handleChar(cursor: Char) = {
     pos += 1
-    if (pos <= method.length()) {
+    if (pos < method.length()) {
       val current = method.charAt(pos)
       if (cursor == current) this
       else badMethod
@@ -84,7 +86,7 @@ class InUriPartialRequest(method: String) extends InHeadPartialRequest {
     if (uri.length < 2048) {
       cursor match {
         case ' ' => new InVersionPartialRequest(method, uri.toString)
-        case x => uri.append(x); this
+        case _ => uri.append(cursor); this
       }
     } else new ErrorRequest(414, "URIs with more than 2048 characters are not supported by this server")
   }
@@ -100,7 +102,7 @@ class InVersionPartialRequest(method: String, uri: String) extends InHeadPartial
           if (version.toString == "HTTP/1.1")
             new InHeaderNamePartialRequest(method, uri, Nil)
           else badVersion
-        case x => version.append(x); this
+        case _ => version.append(cursor); this
       }
     } else badVersion
   }
@@ -114,9 +116,10 @@ class InHeaderNamePartialRequest(method: String, uri: String, headers: List[Http
       cursor match {
         case x if isTokenChar(x) => headerName.append(x); this
         case ':' => new InLwsPartialRequest(new InHeaderValuePartialRequest(method, uri, headers, headerName.toString))
-        case ' ' | '\t' | '\r' => new InLwsPartialRequest(this)
+        case '\r' if headerName.length == 0 => this
         case '\n' if headerName.length == 0 => headersComplete
-        case _ => new ErrorRequest(400, "Invalid character, expected TOKEN CHAR, LWS or COLON")
+        case ' ' | '\t' | '\r' => new InLwsPartialRequest(this).handleChar(cursor)
+        case _ => new ErrorRequest(400, "Invalid character '" + cursor + "', expected TOKEN CHAR, LWS or COLON")
       }
     } else new ErrorRequest(400, "HTTP headers with names longer than 64 characters are not supported by this server")
   }
@@ -125,7 +128,7 @@ class InHeaderNamePartialRequest(method: String, uri: String, headers: List[Http
       case Some(encoding) => new ErrorRequest(501, "Non-identity transfer encodings are not currently supported by this server")
       case None => contentLengthHeader match {
         case Some(length) => bodyRequest(length)
-        case None => new ErrorRequest(411, "Content-Length header required but not present in the request")
+        case None => CompletePartialRequest(method, uri, headers)
       }
     }
   }
@@ -150,11 +153,11 @@ class InHeaderValuePartialRequest(method: String, uri: String, headers: List[Htt
   def handleChar(cursor: Char) = {
     if (headerValue.length < 8192) {
       cursor match {
-        case ' ' | '\t' | '\r' => space = true; new InLwsPartialRequest(this)
+        case ' ' | '\t' | '\r' => space = true; new InLwsPartialRequest(this).handleChar(cursor)
         case '\n' => new InHeaderNamePartialRequest(method, uri, HttpHeader(headerName, headerValue.toString) :: headers)
-        case x =>
+        case _ =>
           if (space) { headerValue.append(' '); space = false }
-          headerValue.append(x)
+          headerValue.append(cursor)
           this
       }
     } else new ErrorRequest(400, "HTTP header values longer than 8192 characters are not supported by this server (" +
@@ -184,10 +187,12 @@ class InLwsCrLfPartialRequest(next: InHeadPartialRequest) extends InHeadPartialR
       }
     }
   }
+  override def readEOB = next.handleChar('\n')
 }
 
 class InBodyPartialRequest(method: String, uri: String, headers: List[HttpHeader], val totalBytes: Int)
         extends PartialRequest {
+  require(totalBytes >= 0, "Content-Length must not be negative")
   val body = new Array[Byte](totalBytes)
   var bytesRead = 0
   def read(buf: ByteBuffer) = {

@@ -17,9 +17,70 @@
 package cc.spray.can
 
 import org.specs2.mutable.Specification
+import java.nio.ByteBuffer
+import annotation.tailrec
+import Constants._
 
 class PartialRequestSpec extends Specification {
 
+  val HH = HttpHeader
 
+  "The request parsing logic" should {
+
+    "properly parse request example 1" in {
+      test {
+        """|GET / HTTP/1.1
+           |Host: api.example.com
+           |
+           |"""
+      } mustEqual ("GET", "/", List(HH("Host", "api.example.com")), "")
+    }
+
+    "properly parse request example 2" in {
+      test {
+        """|POST /resource/yes HTTP/1.1
+           |User-Agent: curl/7.19.7 xyz
+           |Accept:*/*
+           |Content-Length    : 17
+           |
+           |Shake your BOODY!"""
+      } mustEqual ("POST", "/resource/yes", List(
+        HH("Content-Length", "17"),
+        HH("Accept", "*/*"),
+        HH("User-Agent", "curl/7.19.7 xyz")
+      ), "Shake your BOODY!")
+    }
+
+    "properly parse request example 3" in {
+      test {
+        """|DELETE /abc HTTP/1.1
+           |User-Agent: curl/7.19.7
+           | abc
+           |    xyz
+           |Accept
+           | : */*  """ + """
+           |
+           |"""
+      } mustEqual ("DELETE", "/abc", List(
+        HH("Accept", "*/*"),
+        HH("User-Agent", "curl/7.19.7 abc xyz")
+      ), "")
+    }
+
+  }
+
+  def test(request: String) = {
+    val req = request.stripMargin.replace("\n", "\r\n")
+    val buf = ByteBuffer.wrap(req.getBytes(US_ASCII))
+
+    @tailrec
+    def runAgainst(req: PartialRequest): Any = req.read(buf) match {
+      case CompletePartialRequest(method, uri, headers, body) => (method, uri, headers, new String(body, US_ASCII))
+      case x: ErrorRequest => x
+      case x => runAgainst(x)
+    }
+
+    runAgainst(EmptyRequest)
+  }
 
 }
