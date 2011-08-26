@@ -17,38 +17,44 @@
 package cc.spray.can
 
 import akka.config.Supervision._
-import akka.actor.{PoisonPill, Supervisor, Actor}
 import org.slf4j.LoggerFactory
+import akka.actor.{Kill, Supervisor, Actor}
+import akka.dispatch.{AlreadyCompletedFuture, Future}
 
 class HttpServer(val config: CanConfig) extends SelectActorComponent with ResponsePreparer {
   private lazy val log = LoggerFactory.getLogger(getClass)
   private lazy val selectActor = Actor.actorOf(new SelectActor)
 
-  def start() {
-    log.info("Starting HttpServer with configuration {}", config)
-    // start and supervise the selectActor
-    Supervisor(
-      SupervisorConfig(
-        OneForOneStrategy(List(classOf[Exception]), 3, 100),
-        List(Supervise(selectActor, Permanent))
+  def start(): Future[Unit] = {
+    if (selectActor.isUnstarted) {
+      log.info("Starting HttpServer with configuration {}", config)
+      // start and supervise the selectActor
+      Supervisor(
+        SupervisorConfig(
+          OneForOneStrategy(List(classOf[Exception]), 3, 100),
+          List(Supervise(selectActor, Permanent))
+        )
       )
-    )
+      (selectActor ? 'start).mapTo[Unit]
+    } else {
+      log.warn("Cannot start an already running HttpServer")
+      new AlreadyCompletedFuture(Right(()))
+    }
   }
 
-  def blockUntilStarted() {
-    log.info("Waiting for HttpServer startup to complete...")
-    started.await()
+  def stop(): Future[Unit] = {
+    if (selectActor.isShutdown) {
+      log.warn("Cannot stop an already stopped HttpServer")
+      new AlreadyCompletedFuture(Right(()))
+    } else {
+      log.info("Triggering HttpServer shutdown")
+      val future = (selectActor ? 'stop).mapTo[Unit]
+      selector.wakeup() // the SelectActor is probably blocked at the "selector.select()" call, so wake it up
+      future
+    }
   }
 
-  def stop() {
-    log.info("Triggering HttpServer shutdown")
-    selectActor ! PoisonPill
-    selector.wakeup() // the SelectActor is probably blocked at the "selector.select()" call, so wake it up
+  def reset() {
+    selectActor ! Kill
   }
-
-  def blockUntilStopped() {
-    log.info("Waiting for HttpServer shutdown to complete...")
-    stopped.await()
-  }
-
 }

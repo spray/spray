@@ -19,9 +19,10 @@ package example
 
 import akka.config.Supervision._
 import akka.actor.{Supervisor, Actor}
+import org.slf4j.LoggerFactory
 
 object Main extends App with TestServiceComponent {
-
+  val log = LoggerFactory.getLogger(getClass)
   val serviceActorId = "testEndpoint"
   val server = new HttpServer(SimpleConfig(serviceActorId = serviceActorId))
 
@@ -33,8 +34,7 @@ object Main extends App with TestServiceComponent {
     )
   )
 
-  server.start()
-  server.blockUntilStopped()
-
-  Actor.registry.shutdownAll()
+  server.start().onComplete { _ =>
+    log.info("Server online")
+  }
 }

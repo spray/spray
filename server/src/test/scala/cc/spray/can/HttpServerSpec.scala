@@ -22,13 +22,13 @@ import cc.spray.client.{ClientConfig, HttpClient}
 
 class HttpServerSpec extends Specification {
 
-  /*val server = new HttpServer(SimpleConfig(port = 16242, serviceActorId = "testEndpoint"))
+  val server = new HttpServer(SimpleConfig(port = 16242, serviceActorId = "testEndpoint"))
   val client = new HttpClient(ClientConfig())
   class TestService extends Actor {
     self.id = "testEndpoint"
     protected def receive = {
       case r: HttpRequest => r.complete {
-        HttpResponse(200, List(HttpHeader("Server", "spray-can/test")), (r.method + "|" + r.uri).getBytes(US_ASCII))
+        HttpResponse(200, List(HttpHeader("Server", "spray-can/test")), (r.method + "|" + r.uri).getBytes("US-ASCII"))
       }
     }
   }
@@ -36,22 +36,22 @@ class HttpServerSpec extends Specification {
   textFragment("This specification starts a new HttpServer and fires a few test requests against it")
   step {
     Actor.actorOf(new TestService).start()
-    server.start()
-    server.blockUntilStarted()
+    server.start().await()
     Thread.sleep(1000)
   }
 
-  /*"The server" should {
+  "The server" should {
     "properly deliver the response of the service endpoint" in {
       import cc.spray.http.{HttpRequest, HttpResponse}
       client.dispatch(HttpRequest(uri = "http://localhost:16242/abc")).get mustEqual
               HttpResponse(200, "GET|xyz")
     }
-  }*/
+  }
 
   step {
-    server.stop()
-    server.blockUntilStopped()
-  }*/
+    server.stop().onComplete { _ =>
+      Actor.registry.shutdownAll()
+    }
+  }
 
 }

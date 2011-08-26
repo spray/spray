@@ -23,20 +23,16 @@ import org.slf4j.LoggerFactory
 import akka.actor.Actor
 import java.nio.channels.{SocketChannel, SelectionKey, ServerSocketChannel}
 import java.io.IOException
-import java.util.concurrent.CountDownLatch
 import annotation.tailrec
-import utils.PostStart
 
 trait SelectActorComponent {
   this: ResponsePreparer =>
 
   def config: CanConfig
 
-  private[can] val started = new CountDownLatch(1)
-  private[can] val stopped = new CountDownLatch(1)
   private[can] val selector = SelectorProvider.provider.openSelector
 
-  class SelectActor extends Actor with PostStart {
+  class SelectActor extends Actor {
     private val log = LoggerFactory.getLogger(getClass)
     private val serverSocketChannel = make(ServerSocketChannel.open) { channel =>
       channel.configureBlocking(false)
@@ -49,25 +45,15 @@ trait SelectActorComponent {
               config.serviceActorId + "', but found " + x.length)
     }
     private val readBuffer = ByteBuffer.allocateDirect(config.readBufferSize)
+    private var startTime: Long = _
+    private var requestsDispatched: Long = _
 
     // this actor runs in its own private thread
     self.dispatcher = Dispatchers.newThreadBasedDispatcher(self)
 
-    def postStart() {
-      log.debug("SelectActor started")
-      started.countDown()
-      self ! Select // kick off the Select loop
-    }
-
     override def preRestart(reason: Throwable, message: Option[Any]) {
       log.error("SelectActor crashed, about to restart...\nmessage: {}\nreason: {}", message.getOrElse("None"), reason)
       cleanUp()
-    }
-
-    override def postStop() {
-      log.debug("SelectActor stopped")
-      cleanUp()
-      stopped.countDown()
     }
 
     private def cleanUp() {
@@ -76,16 +62,35 @@ trait SelectActorComponent {
     }
 
     protected def receive = {
-      case Select => select()
+      case 'select => select()
       case Respond(key, rawResponse) => {
         log.debug("Received raw response, scheduling write")
         key.interestOps(SelectionKey.OP_WRITE)
         key.attach(rawResponse)
       }
+      case 'start => start()
+      case 'stop => stop()
+      case 'stats => self.reply(stats)
     }
 
+    private def start() {
+      log.debug("Starting main event loop")
+      self ! 'select
+      self.reply(())
+      startTime = System.currentTimeMillis()
+    }
+
+    private def stop() {
+      cleanUp()
+      log.debug("Stopped main event loop")
+      self.reply(())
+      self.stop()
+    }
+
+    private def stats = Stats(System.currentTimeMillis() - startTime, requestsDispatched)
+
     private def select() {
-      selector.select()
+      selector.select(100)
       val selectedKeys = selector.selectedKeys.iterator
       while (selectedKeys.hasNext) {
         val key = selectedKeys.next
@@ -96,7 +101,7 @@ trait SelectActorComponent {
           else if (key.isWritable) write(key)
         }
       }
-      self ! Select
+      self ! 'select // loop
     }
 
     private def accept() {
@@ -123,6 +128,7 @@ trait SelectActorComponent {
         log.debug("Dispatching request to service actor")
         import request._
         serviceActor ! HttpRequest(method, uri, headers.reverse, body, channel.socket.getInetAddress, respond)
+        requestsDispatched += 1
       }
 
       def respondWithError(error: ErrorRequestParser) {
@@ -195,5 +201,5 @@ trait SelectActorComponent {
 
 }
 
-private[can] case object Select
 private[can] case class Respond(key: SelectionKey, rawResponse: List[ByteBuffer])
+private[can] case class Stats(uptime: Long, requestsDispatched: Long)

@@ -18,6 +18,7 @@ package cc.spray.can
 package example
 
 import akka.actor.{Kill, Actor}
+import org.slf4j.LoggerFactory
 
 trait TestServiceComponent {
 
@@ -25,6 +26,7 @@ trait TestServiceComponent {
   def server: HttpServer
 
   class TestService extends Actor {
+    val log = LoggerFactory.getLogger(getClass)
     self.id = serviceActorId
 
     protected def receive = {
@@ -54,7 +56,10 @@ trait TestServiceComponent {
             body = "Shutting down the spray-can server...".getBytes("ASCII")
           )
         }
-        server.stop()
+        server.stop().onComplete { _ =>
+          log.info("Server stopped")
+          Actor.registry.shutdownAll()
+        }
       }
 
       case HttpRequest(_, _, _, _, _, complete) => complete {

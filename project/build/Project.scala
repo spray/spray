@@ -94,6 +94,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
 
   class ServerProject(info: ProjectInfo) extends ModuleProject(info) with AkkaProject {
     override val akkaActor = akkaModule("actor") % "provided" withSources()
+    val akkaSlf4j          = akkaModule("slf4j")
     val slf4j              = Deps.slf4j
 
     // testing
