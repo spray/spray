@@ -19,38 +19,30 @@ package example
 
 import akka.actor.{Kill, Actor}
 import org.slf4j.LoggerFactory
+import java.nio.charset.Charset
 
 class TestService(id: String) extends Actor {
   val log = LoggerFactory.getLogger(getClass)
   self.id = id
 
+  val iso88591 = Charset.forName("ISO-8859-1")
+  val headers = List(HttpHeader("Server", "spray-can/test"), HttpHeader("Content-Type", "text/plain"))
+
+  def response(msg: String, status: Int = 200) = HttpResponse(status, headers, msg.getBytes(iso88591))
+
   protected def receive = {
 
     case HttpRequest("GET", "/", _, _, _, complete) => complete {
-      HttpResponse(
-        status = 200,
-        headers = List(HttpHeader("Server", "spray-can/test")),
-        body = "Say hello to a spray-can app".getBytes("ASCII")
-      )
+      response("Say hello to a spray-can app")
     }
 
     case HttpRequest("POST", "/crash", _, _, _, complete) => {
-      complete {
-        HttpResponse(
-          status = 200,
-          body = "Hai! (about to kill the HttpServer)".getBytes("ASCII")
-        )
-      }
+      complete(response("Hai! (about to kill the HttpServer)"))
       self ! Kill
     }
 
     case HttpRequest("POST", "/stop", _, _, _, complete) => {
-      complete {
-        HttpResponse(
-          status = 200,
-          body = "Shutting down the spray-can server...".getBytes("ASCII")
-        )
-      }
+      complete(response("Shutting down the spray-can server..."))
       Actor.registry.shutdownAll()
     }
 
@@ -59,26 +51,16 @@ class TestService(id: String) extends Actor {
       (serverActor ? GetServerStats).mapTo[ServerStats].onComplete {
         _.value.get match {
           case Right(stats) => complete {
-            HttpResponse(
-              status = 200,
-              body = (
-                "Uptime: " + (stats.uptime / 1000.0) + " sec\n" +
-                "Requests dispatched: " + stats.requestsDispatched + '\n'
-              ).getBytes("ASCII")
-            )
+            response {
+              "Uptime: " + (stats.uptime / 1000.0) + " sec\n" +
+              "Requests dispatched: " + stats.requestsDispatched + '\n'
+            }
           }
-          case Left(ex) => complete {
-            HttpResponse(
-              status = 500,
-              body = ("Couldn't get server stats due to " + ex).getBytes("ASCII")
-            )
-          }
+          case Left(ex) => complete(response("Couldn't get server stats due to " + ex, status = 500))
         }
       }
     }
 
-    case HttpRequest(_, _, _, _, _, complete) => complete {
-      HttpResponse(status = 404, body = "Unknown command!".getBytes("ASCII"))
-    }
+    case HttpRequest(_, _, _, _, _, complete) => complete(response("Unknown command!", 404))
   }
 }
