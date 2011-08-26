@@ -191,12 +191,8 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
           if (buffers.head.remaining == 0) {
             // if we were able to write the whole buffer
             writeToChannel(buffers.tail) // we continue with the next buffer
-          } else {
-            buffers
-          } // otherwise we cannot drop the head and need to continue with it next time
-        } else {
-          Nil
-        }
+          } else buffers // otherwise we cannot drop the head and need to continue with it next time
+        } else Nil
       }
 
       writeToChannel(rawResponse) match {

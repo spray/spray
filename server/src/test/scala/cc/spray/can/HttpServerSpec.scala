@@ -18,17 +18,15 @@ package cc.spray.can
 
 import org.specs2.mutable.Specification
 import akka.actor.Actor
-import cc.spray.client.{ClientConfig, HttpClient}
 
 class HttpServerSpec extends Specification {
 
-  /*val server = new HttpServer(SimpleConfig(port = 16242, serviceActorId = "testEndpoint"))
-  val client = new HttpClient(ClientConfig())
+  val h = new dispatch.nio.Http
   class TestService extends Actor {
     self.id = "testEndpoint"
     protected def receive = {
       case r: HttpRequest => r.complete {
-        HttpResponse(200, List(HttpHeader("Server", "spray-can/test")), (r.method + "|" + r.uri).getBytes("US-ASCII"))
+        HttpResponse(200, List(HttpHeader("Content-Type", "text/plain")),(r.method + "|" + r.uri).getBytes("ISO-8859-1"))
       }
     }
   }
@@ -36,22 +34,24 @@ class HttpServerSpec extends Specification {
   textFragment("This specification starts a new HttpServer and fires a few test requests against it")
   step {
     Actor.actorOf(new TestService).start()
-    server.start().await()
-    Thread.sleep(1000)
+    Actor.actorOf(new HttpServer(SimpleConfig(port = 16242, serviceActorId = "testEndpoint"))).start()
   }
 
   "The server" should {
+    import dispatch._
     "properly deliver the response of the service endpoint" in {
-      import cc.spray.http.{HttpRequest, HttpResponse}
-      client.dispatch(HttpRequest(uri = "http://localhost:16242/abc")).get mustEqual
-              HttpResponse(200, "GET|xyz")
+      val response = h(url("http://localhost:16242/abc") as_str)
+      response() mustEqual "GET|/abc"
+    }
+    "properly deliver the response of the service endpoint" in {
+      val response = h(url("http://localhost:16242/xyz") as_str)
+      response() mustEqual "GET|/xyz"
     }
   }
 
   step {
-    server.stop().onComplete { _ =>
-      Actor.registry.shutdownAll()
-    }
-  }*/
+    Actor.registry.shutdownAll()
+    h.shutdown()
+  }
 
 }

@@ -28,8 +28,9 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
 
     // testing with specs2, spray-client and some logging
     val specs2 = "org.specs2" %% "specs2" % "1.5" % "test" withSources()
-    val spray_client = "cc.spray" %% "spray-client" % "0.8.0-SNAPSHOT" % "test" withSources()
-    val spray_http   = "cc.spray" %% "spray-http" % "0.8.0-SNAPSHOT" % "test" withSources()
+    val dispatch_core = "net.databinder" %% "dispatch-core" % "0.8.5" withSources()
+    val dispatch_http = "net.databinder" %% "dispatch-http" % "0.8.5" withSources()
+    val dispatch_nio = "net.databinder" %% "dispatch-nio" % "0.8.5" withSources()
     val logback = "ch.qos.logback" % "logback-classic" % "0.9.29"
   }
 
@@ -98,10 +99,11 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val slf4j              = Deps.slf4j
 
     // testing
-    val specs2             = Deps.specs2
-    val spray_client       = Deps.spray_client
-    val spray_http         = Deps.spray_http
-    val logback            = Deps.logback % "test"
+    val specs2        = Deps.specs2
+    val dispatch_core = Deps.dispatch_core
+    val dispatch_http = Deps.dispatch_http
+    val dispatch_nio  = Deps.dispatch_nio
+    val logback       = Deps.logback % "test"
 
     override def documentOptions: Seq[ScaladocOption] = documentTitle(name + " " + version) :: Nil
     override def pomExtra = pomExtras
