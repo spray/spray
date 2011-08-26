@@ -17,9 +17,43 @@ package cc.spray.can
 
 import java.net.InetAddress
 
+sealed trait HttpMethod {
+  def name: String
+}
+object HttpMethods {
+  class Method private[HttpMethods] (val name: String) extends HttpMethod {
+    override def toString = name
+  }
+  val GET = new Method("GET")
+  val POST = new Method("POST")
+  val PUT = new Method("PUT")
+  val DELETE = new Method("DELETE")
+  val HEAD = new Method("HEAD")
+  val OPTIONS = new Method("OPTIONS")
+  val TRACE = new Method("TRACE")
+  val CONNECT = new Method("CONNECT")
+}
+
+sealed trait HttpProtocol {
+  def name: String
+}
+
+object HttpProtocols {
+  class Protocol private[HttpProtocols] (val name: String) extends HttpProtocol {
+    override def toString = name
+  }
+  val `HTTP/1.0` = new Protocol("HTTP/1.0")
+  val `HTTP/1.1` = new Protocol("HTTP/1.1")
+}
+
+case class RequestLine(method: HttpMethod, uri: String, protocol: HttpProtocol)
+
+case class HttpHeader(name: String, value: String)
+
 case class HttpRequest(
-  method: String,
+  method: HttpMethod,
   uri: String,
+  protocol: HttpProtocol,
   headers: List[HttpHeader],
   body: Array[Byte],
   remoteIP: InetAddress,
@@ -38,8 +72,6 @@ case class HttpResponse(
   require(body.length == 0 || status / 100 > 1 && status != 204 && status != 304, "Illegal HTTP response: " +
           "responses with status code " + status + " must not have a message body")
 }
-
-case class HttpHeader(name: String, value: String)
 
 object HttpResponse {
   def defaultReason(statusCode: Int) = statusCode match {

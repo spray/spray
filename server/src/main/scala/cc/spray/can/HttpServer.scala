@@ -33,6 +33,9 @@ case class ServerStats(uptime: Long, requestsDispatched: Long)
 private[can] case object Select
 private[can] case class Respond(key: SelectionKey, rawResponse: List[ByteBuffer])
 
+// helpers
+class Connection(close: Boolean, sendKeepAliveHeader: Boolean)
+
 class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
   private lazy val log = LoggerFactory.getLogger(getClass)
   private lazy val selector = SelectorProvider.provider.openSelector
@@ -100,7 +103,7 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
       select()
       self ! Select // loop
     }
-    case Respond(key, rawResponse) => {
+    case Respond(key, rawResponse) => if (key.isValid) {
       log.debug("Received raw response, scheduling write")
       key.interestOps(SelectionKey.OP_WRITE)
       key.attach(rawResponse)
@@ -136,8 +139,9 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
 
       def dispatch(request: CompleteRequestParser) {
         import request._
+        import requestLine._
         log.debug("Dispatching {} request to '{}' to the service actor", method, uri)
-        serviceActor ! HttpRequest(method, uri, headers.reverse, body, channel.socket.getInetAddress, respond)
+        serviceActor ! HttpRequest(method, uri, protocol, headers.reverse, body, channel.socket.getInetAddress, respond)
         requestsDispatched += 1
       }
 
@@ -173,7 +177,7 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
       catch {
         case e: IOException => {
           // the client forcibly closed the connection
-          log.debug("Closing connection due to {}", e)
+          log.warn("Closing connection due to {}", e.toString)
           close()
         }
       }
@@ -195,12 +199,20 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
         } else Nil
       }
 
-      writeToChannel(rawResponse) match {
-        case Nil => // we were able to write everything, so we can switch back to reading
-          key.interestOps(SelectionKey.OP_READ)
-          key.attach(EmptyRequestParser)
-        case remainingBuffers => // socket buffer full, we couldn't write everything so we stay in writing mode
-          key.attach(remainingBuffers)
+      try {
+        writeToChannel(rawResponse) match {
+          case Nil => // we were able to write everything, so we can switch back to reading
+            key.interestOps(SelectionKey.OP_READ)
+            key.attach(EmptyRequestParser)
+          case remainingBuffers => // socket buffer full, we couldn't write everything so we stay in writing mode
+            key.attach(remainingBuffers)
+        }
+      } catch {
+        case e: IOException => { // the client forcibly closed the connection
+          log.warn("Closing connection due to {}", e.toString)
+          key.cancel()
+          channel.close()
+        }
       }
     }
 

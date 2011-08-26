@@ -18,6 +18,8 @@ package cc.spray.can
 
 import org.specs2.mutable.Specification
 import java.nio.ByteBuffer
+import HttpMethods._
+import HttpProtocols._
 
 class RequestParserSpec extends Specification {
 
@@ -28,16 +30,16 @@ class RequestParserSpec extends Specification {
           """|GET / HTTP/1.1
              |
              |"""
-        } mustEqual ("GET", "/", Nil, "")
+        } mustEqual (GET, "/", `HTTP/1.1`, Nil, "")
       }
 
       "with one header" in {
         parse {
-          """|GET / HTTP/1.1
+          """|GET / HTTP/1.0
              |Host: api.example.com
              |
              |"""
-        } mustEqual ("GET", "/", List(HttpHeader("Host", "api.example.com")), "")
+        } mustEqual (GET, "/", `HTTP/1.0`, List(HttpHeader("Host", "api.example.com")), "")
       }
 
       "with 3 headers and a body" in {
@@ -48,7 +50,7 @@ class RequestParserSpec extends Specification {
              |Content-Length    : 17
              |
              |Shake your BOODY!"""
-        } mustEqual ("POST", "/resource/yes", List(
+        } mustEqual (POST, "/resource/yes", `HTTP/1.1`, List(
           HttpHeader("Content-Length", "17"),
           HttpHeader("Transfer-Encoding", "identity"),
           HttpHeader("User-Agent", "curl/7.19.7 xyz")
@@ -65,7 +67,7 @@ class RequestParserSpec extends Specification {
              | : */*  """ + """
              |
              |"""
-        } mustEqual ("DELETE", "/abc", List(
+        } mustEqual (DELETE, "/abc", `HTTP/1.1`, List(
           HttpHeader("Accept", "*/*"),
           HttpHeader("User-Agent", "curl/7.19.7 abc xyz")
         ), "")
@@ -82,8 +84,8 @@ class RequestParserSpec extends Specification {
         parse("GET x" + "xxxx" * 512) mustEqual ErrorRequestParser(414, "URIs with more than 2048 characters are not supported by this server")
       }
 
-      "HTTP version 1.0" in {
-        parse("GET / HTTP/1.0\r\n") mustEqual ErrorRequestParser(400, "Http version 'HTTP/1.0' not supported")
+      "HTTP version 1.2" in {
+        parse("GET / HTTP/1.2\r\n") mustEqual ErrorRequestParser(400, "HTTP version not supported")
       }
 
       "with an illegal char in a header name" in {
@@ -143,7 +145,8 @@ class RequestParserSpec extends Specification {
     val req = request.stripMargin.replace("\n", "\r\n")
     val buf = ByteBuffer.wrap(req.getBytes("US-ASCII"))
     EmptyRequestParser.read(buf) match {
-      case CompleteRequestParser(method, uri, headers, body) => (method, uri, headers, new String(body, "US-ASCII"))
+      case CompleteRequestParser(RequestLine(method, uri, protocol), headers, body) =>
+        (method, uri, protocol, headers, new String(body, "US-ASCII"))
       case x => x
     }
   }

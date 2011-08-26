@@ -58,29 +58,30 @@ abstract class CharacterParser extends IntermediateParser {
 }
 
 object EmptyRequestParser extends CharacterParser {
+  import HttpMethods._
   def handleChar(cursor: Char) = cursor match {
-    case 'G' => new InMethodRequestParser("GET")
+    case 'G' => new InMethodRequestParser(GET)
     case 'P' => new CharacterParser {
       override def handleChar(cursor: Char) = cursor match {
-        case 'O' => new InMethodRequestParser("POST", 1)
-        case 'U' => new InMethodRequestParser("PUT", 1)
+        case 'O' => new InMethodRequestParser(POST, 1)
+        case 'U' => new InMethodRequestParser(PUT, 1)
         case _ => badMethod
       }
     }
-    case 'D' => new InMethodRequestParser("DELETE")
-    case 'H' => new InMethodRequestParser("HEAD")
-    case 'O' => new InMethodRequestParser("OPTIONS")
-    case 'T' => new InMethodRequestParser("TRACE")
-    case 'C' => new InMethodRequestParser("CONNECT")
+    case 'D' => new InMethodRequestParser(DELETE)
+    case 'H' => new InMethodRequestParser(HEAD)
+    case 'O' => new InMethodRequestParser(OPTIONS)
+    case 'T' => new InMethodRequestParser(TRACE)
+    case 'C' => new InMethodRequestParser(CONNECT)
     case _ => badMethod
   }
 }
 
-class InMethodRequestParser(method: String, var pos: Int = 0) extends CharacterParser {
+class InMethodRequestParser(method: HttpMethod, var pos: Int = 0) extends CharacterParser {
   def handleChar(cursor: Char) = {
     pos += 1
-    if (pos < method.length()) {
-      val current = method.charAt(pos)
+    if (pos < method.name.length()) {
+      val current = method.name.charAt(pos)
       if (cursor == current) this
       else badMethod
     } else {
@@ -90,7 +91,7 @@ class InMethodRequestParser(method: String, var pos: Int = 0) extends CharacterP
   }
 }
 
-class InUriRequestParser(method: String) extends CharacterParser {
+class InUriRequestParser(method: HttpMethod) extends CharacterParser {
   val uri = new JStringBuilder
   def handleChar(cursor: Char) = {
     if (uri.length < 2048) {
@@ -102,30 +103,38 @@ class InUriRequestParser(method: String) extends CharacterParser {
   }
 }
 
-class InVersionRequestParser(method: String, uri: String) extends CharacterParser {
-  val version = new JStringBuilder
-  def handleChar(cursor: Char) = {
-    if (version.length < 12) {
-      cursor match {
-        case '\r' => this
-        case '\n' =>
-          if (version.toString == "HTTP/1.1")
-            new InHeaderNameRequestParser(method, uri, Nil)
-          else badVersion
-        case _ => version.append(cursor); this
+class InVersionRequestParser(method: HttpMethod, uri: String) extends CharacterParser {
+  var pos = 0
+  var version: Char = _
+  def handleChar(cursor: Char) = pos match {
+    case 0 => if (cursor == 'H') { pos = 1; this } else badVersion
+    case 1 => if (cursor == 'T') { pos = 2; this } else badVersion
+    case 2 => if (cursor == 'T') { pos = 3; this } else badVersion
+    case 3 => if (cursor == 'P') { pos = 4; this } else badVersion
+    case 4 => if (cursor == '/') { pos = 5; this } else badVersion
+    case 5 => if (cursor == '1') { pos = 6; this } else badVersion
+    case 6 => if (cursor == '.') { pos = 7; this } else badVersion
+    case 7 => version = cursor; pos = 8; this
+    case 8 => if (cursor == '\r') { pos = 9; this } else badVersion
+    case 9 => if (cursor == '\n') {
+      version match {
+        case '1' => new InHeaderNameRequestParser(RequestLine(method, uri, HttpProtocols.`HTTP/1.1`), Nil)
+        case '0' => new InHeaderNameRequestParser(RequestLine(method, uri, HttpProtocols.`HTTP/1.0`), Nil)
+        case _ => badVersion
       }
     } else badVersion
   }
-  def badVersion = new ErrorRequestParser(400, "Http version '" + version.toString + "' not supported")
+  def badVersion = new ErrorRequestParser(400, "HTTP version not supported")
 }
 
-class InHeaderNameRequestParser(method: String, uri: String, headers: List[HttpHeader]) extends CharacterParser {
+class InHeaderNameRequestParser(requestLine: RequestLine, headers: List[HttpHeader])
+        extends CharacterParser {
   val headerName = new JStringBuilder
   def handleChar(cursor: Char) = {
     if (headerName.length < 64) {
       cursor match {
         case x if isTokenChar(x) => headerName.append(x); this
-        case ':' => new InLwsRequestParser(new InHeaderValueRequestParser(method, uri, headers, headerName.toString))
+        case ':' => new InLwsRequestParser(new InHeaderValueRequestParser(requestLine, headers, headerName.toString))
         case '\r' if headerName.length == 0 => this
         case '\n' if headerName.length == 0 => headersComplete
         case ' ' | '\t' | '\r' => new InLwsRequestParser(this).handleChar(cursor)
@@ -138,7 +147,7 @@ class InHeaderNameRequestParser(method: String, uri: String, headers: List[HttpH
       case Some(encoding) => new ErrorRequestParser(501, "Non-identity transfer encodings are not currently supported by this server")
       case None => contentLengthHeader match {
         case Some(length) => bodyRequest(length)
-        case None => CompleteRequestParser(method, uri, headers)
+        case None => CompleteRequestParser(requestLine, headers)
       }
     }
   }
@@ -147,8 +156,8 @@ class InHeaderNameRequestParser(method: String, uri: String, headers: List[HttpH
   def bodyRequest(length: String) = {
     try {
       length.toInt match {
-        case 0 => CompleteRequestParser(method, uri, headers)
-        case x => new InBodyRequestParser(method, uri, headers, x)
+        case 0 => CompleteRequestParser(requestLine, headers)
+        case x => new InBodyRequestParser(requestLine, headers, x)
       }
     } catch {
       case _: Exception => new ErrorRequestParser(400, "Invalid Content-Length header value")
@@ -156,7 +165,7 @@ class InHeaderNameRequestParser(method: String, uri: String, headers: List[HttpH
   }
 }
 
-class InHeaderValueRequestParser(method: String, uri: String, headers: List[HttpHeader], headerName: String)
+class InHeaderValueRequestParser(requestLine: RequestLine, headers: List[HttpHeader], headerName: String)
         extends CharacterParser {
   val headerValue = new JStringBuilder
   var space = false
@@ -164,7 +173,7 @@ class InHeaderValueRequestParser(method: String, uri: String, headers: List[Http
     if (headerValue.length < 8192) {
       cursor match {
         case ' ' | '\t' | '\r' => space = true; new InLwsRequestParser(this).handleChar(cursor)
-        case '\n' => new InHeaderNameRequestParser(method, uri, HttpHeader(headerName, headerValue.toString) :: headers)
+        case '\n' => new InHeaderNameRequestParser(requestLine, HttpHeader(headerName, headerValue.toString) :: headers)
         case _ =>
           if (space) { headerValue.append(' '); space = false }
           headerValue.append(cursor)
@@ -199,7 +208,7 @@ class InLwsCrLfRequestParser(next: CharacterParser) extends CharacterParser {
   }
 }
 
-class InBodyRequestParser(method: String, uri: String, headers: List[HttpHeader], val totalBytes: Int)
+class InBodyRequestParser(requestLine: RequestLine, headers: List[HttpHeader], val totalBytes: Int)
         extends IntermediateParser {
   require(totalBytes >= 0, "Content-Length must not be negative")
   val body = new Array[Byte](totalBytes)
@@ -209,12 +218,12 @@ class InBodyRequestParser(method: String, uri: String, headers: List[HttpHeader]
     if (remaining <= totalBytes - bytesRead) {
       buf.get(body, bytesRead, remaining)
       bytesRead += remaining
-      if (bytesRead == totalBytes) new CompleteRequestParser(method, uri, headers, body) else this
+      if (bytesRead == totalBytes) new CompleteRequestParser(requestLine, headers, body) else this
     } else new ErrorRequestParser(400, "Illegal Content-Length: request entity is longer than Content-Length header value")
   }
 }
 
-case class CompleteRequestParser(method: String, uri: String, headers: List[HttpHeader],
-                                  body: Array[Byte] = EmptyByteArray) extends RequestParser
+case class CompleteRequestParser(requestLine: RequestLine, headers: List[HttpHeader],
+                                 body: Array[Byte] = EmptyByteArray) extends RequestParser
 
 case class ErrorRequestParser(responseStatus: Int, message: String) extends RequestParser
