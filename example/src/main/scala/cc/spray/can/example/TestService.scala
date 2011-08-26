@@ -18,8 +18,10 @@ package cc.spray.can
 package example
 
 import akka.actor.{Kill, Actor}
+import org.slf4j.LoggerFactory
 
 class TestService(id: String) extends Actor {
+  val log = LoggerFactory.getLogger(getClass)
   self.id = id
 
   protected def receive = {
@@ -60,9 +62,9 @@ class TestService(id: String) extends Actor {
             HttpResponse(
               status = 200,
               body = (
-                      "Uptime: " + (stats.uptime / 1000.0) + " sec\n" +
-                              "Requests dispatched: " + stats.requestsDispatched + '\n'
-                      ).getBytes("ASCII")
+                "Uptime: " + (stats.uptime / 1000.0) + " sec\n" +
+                "Requests dispatched: " + stats.requestsDispatched + '\n'
+              ).getBytes("ASCII")
             )
           }
           case Left(ex) => complete {

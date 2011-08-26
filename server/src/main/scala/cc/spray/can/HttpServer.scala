@@ -17,14 +17,13 @@
 package cc.spray.can
 
 import org.slf4j.LoggerFactory
-import akka.actor.Actor
 import java.nio.channels.spi.SelectorProvider
 import java.nio.ByteBuffer
 import java.nio.channels.{SocketChannel, SelectionKey, ServerSocketChannel}
 import java.io.IOException
 import annotation.tailrec
-import akka.dispatch.{ThreadBasedDispatcher, ExecutorBasedEventDrivenDispatcher, Dispatchers}
-import akka.dispatch.UnboundedMailbox
+import akka.actor.Actor
+import akka.dispatch._
 
 // public messages
 case object GetServerStats
@@ -51,15 +50,28 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
   private var startTime: Long = _
   private var requestsDispatched: Long = _
 
-  // this actor runs in its own private thread
-  self.dispatcher = new ExecutorBasedEventDrivenDispatcher(
-    _name = "spray-can",
-    throughput = 10,
+  self.id = config.serverActorId
+
+  // we use our own custom single-thread dispatcher, because our thread will, for the most time,
+  // be blocked at selector selection, therefore we need to wake it up upon message or task arrival,
+  // otherwise reaction to new events would be very sluggish
+  self.dispatcher = new ImprovedExecutorBasedEventDrivenDispatcher(
+    name = "spray-can",
+    throughput = -1,
     throughputDeadlineTime = -1,
     mailboxType = UnboundedMailbox(),
     config = ThreadBasedDispatcher.oneThread
-  )
-  self.id = config.serverActorId
+  ) {
+    override def dispatch(invocation: MessageInvocation) {
+      super.dispatch(invocation)
+      if (invocation.message != Select) selector.wakeup()
+    }
+
+    override def executeTask(invocation: TaskInvocation) {
+      super.executeTask(invocation)
+      selector.wakeup()
+    }
+  }
 
   override def preStart() {
     log.info("Starting main event loop")
@@ -93,8 +105,11 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
       key.interestOps(SelectionKey.OP_WRITE)
       key.attach(rawResponse)
     }
-    case GetServerStats => self.reply {
-      ServerStats(System.currentTimeMillis() - startTime, requestsDispatched)
+    case GetServerStats => {
+      log.debug("Received GetServerStats request, responding with stats")
+      self.reply {
+        ServerStats(System.currentTimeMillis() - startTime, requestsDispatched)
+      }
     }
   }
 
@@ -115,19 +130,19 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
 
       def respond(response: HttpResponse) {
         // this code is executed from the thread sending the response
+        log.debug("Received HttpResponse, enqueuing as raw response")
         self ! Respond(key, prepare(response))
-        selector.wakeup() // the SelectActor is probably blocked at the "selector.select()" call, so wake it up
       }
 
       def dispatch(request: CompleteRequestParser) {
-        log.debug("Dispatching request to service actor")
         import request._
+        log.debug("Dispatching {} request to '{}' to the service actor", method, uri)
         serviceActor ! HttpRequest(method, uri, headers.reverse, body, channel.socket.getInetAddress, respond)
         requestsDispatched += 1
       }
 
       def respondWithError(error: ErrorRequestParser) {
-        log.debug("Responding with error response")
+        log.debug("Responding with {}", error)
         respond(HttpResponse(error.responseStatus, Nil, (error.message + ":\n").getBytes(US_ASCII)))
       }
 
