@@ -73,6 +73,6 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer {
 
   def prep(s: String) = s.stripMargin.replace("\n", "\r\n")
 
-  override val now = DateTime(2011, 8, 25, 9,10,29) // provide a stable date for testing
+  override val dateTimeNow = DateTime(2011, 8, 25, 9,10,29) // provide a stable date for testing
 
 }

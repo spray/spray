@@ -19,22 +19,18 @@ package example
 
 import akka.config.Supervision._
 import akka.actor.{Supervisor, Actor}
-import org.slf4j.LoggerFactory
 
-object Main extends App with TestServiceComponent {
-  val log = LoggerFactory.getLogger(getClass)
+object Main extends App {
   val serviceActorId = "testEndpoint"
-  val server = new HttpServer(SimpleConfig(serviceActorId = serviceActorId))
 
-  // create, start and supervise the TestService actor
+  // create, start and supervise the TestService and HttpServer actors
   Supervisor(
     SupervisorConfig(
       OneForOneStrategy(List(classOf[Exception]), 3, 100),
-      List(Supervise(Actor.actorOf(new TestService), Permanent))
+      List(
+        Supervise(Actor.actorOf(new TestService(serviceActorId)), Permanent),
+        Supervise(Actor.actorOf(new HttpServer(SimpleConfig(port = 8080, serviceActorId = serviceActorId))), Permanent)
+      )
     )
   )
-
-  server.start().onComplete { _ =>
-    log.info("Server online")
-  }
 }

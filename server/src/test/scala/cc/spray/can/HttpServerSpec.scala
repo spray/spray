@@ -22,7 +22,7 @@ import cc.spray.client.{ClientConfig, HttpClient}
 
 class HttpServerSpec extends Specification {
 
-  val server = new HttpServer(SimpleConfig(port = 16242, serviceActorId = "testEndpoint"))
+  /*val server = new HttpServer(SimpleConfig(port = 16242, serviceActorId = "testEndpoint"))
   val client = new HttpClient(ClientConfig())
   class TestService extends Actor {
     self.id = "testEndpoint"
@@ -52,6 +52,6 @@ class HttpServerSpec extends Specification {
     server.stop().onComplete { _ =>
       Actor.registry.shutdownAll()
     }
-  }
+  }*/
 
 }

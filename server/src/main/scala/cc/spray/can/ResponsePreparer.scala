@@ -60,7 +60,7 @@ trait ResponsePreparer {
     statusLine {
       headers(response.headers.reverse) {
         contentLengthHeader {
-          header("Date", now.toRfc1123DateTimeString) {
+          header("Date", dateTimeNow.toRfc1123DateTimeString) {
             wrap(CRLF) ::
               wrap(response.body) :: Nil
           }
@@ -69,6 +69,6 @@ trait ResponsePreparer {
     }
   }
 
-  protected def now = DateTime.now
+  protected def dateTimeNow = DateTime.now
 
 }
