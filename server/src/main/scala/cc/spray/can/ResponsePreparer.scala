@@ -19,6 +19,7 @@ import java.nio.ByteBuffer
 import annotation.tailrec
 import utils.DateTime
 import java.nio.charset.Charset
+import HttpProtocols._
 
 trait ResponsePreparer {
 
@@ -29,19 +30,20 @@ trait ResponsePreparer {
   private val SingleSP = " ".getBytes(US_ASCII)
   private val StatusLine200 = "HTTP/1.1 200 OK\r\n".getBytes(US_ASCII)
 
-  protected def prepare(response: HttpResponse): List[ByteBuffer] = {
+  protected def prepare(response: HttpResponse, reqProtocol: HttpProtocol,
+                        reqConnectionHeader: Option[String]): RawResponse = {
     import ByteBuffer._
 
-    def statusLine(rest: List[ByteBuffer]) = response.status match {
-      case 200 => wrap(StatusLine200) :: rest
-      case x => {
-        wrap(HttpVersionPlusSP) ::
-          wrap(response.status.toString.getBytes(US_ASCII)) ::
-            wrap(SingleSP) ::
-              wrap(HttpResponse.defaultReason(response.status).getBytes(US_ASCII)) ::
-                wrap(CRLF) :: rest
+    def statusLine(rawResponse: RawResponse) = rawResponse.copy(buffers = {
+      response.status match {
+        case 200 => wrap(StatusLine200) :: rawResponse.buffers
+        case x => wrap(HttpVersionPlusSP) ::
+                    wrap(response.status.toString.getBytes(US_ASCII)) ::
+                      wrap(SingleSP) ::
+                        wrap(HttpResponse.defaultReason(response.status).getBytes(US_ASCII)) ::
+                         wrap(CRLF) :: rawResponse.buffers
       }
-    }
+    })
     def header(name: String, value: String)(rest: List[ByteBuffer]) = {
       wrap(name.getBytes(US_ASCII)) ::
         wrap(ColonSP) ::
@@ -49,16 +51,31 @@ trait ResponsePreparer {
             wrap(CRLF) :: rest
     }
     @tailrec
-    def headers(httpHeaders: List[HttpHeader])(rest: List[ByteBuffer]): List[ByteBuffer] = httpHeaders match {
-      case HttpHeader(name, value) :: tail => headers(tail)(header(name, value)(rest))
-      case Nil => rest
+    def headers(httpHeaders: List[HttpHeader], resConnHeader: Option[String] = None)
+               (rest: List[ByteBuffer]): RawResponse = httpHeaders match {
+      case HttpHeader(name, value) :: tail =>
+        headers(tail, if (resConnHeader.isEmpty) if (name == "Connection") Some(value) else None else resConnHeader) {
+          header(name, value)(rest)
+        }
+      case Nil => if (resConnHeader.isDefined) {
+        RawResponse(rest, resConnHeader.get.contains("close"))
+      } else reqProtocol match {
+        case `HTTP/1.0` =>
+          if (reqConnectionHeader.isEmpty || reqConnectionHeader.get != "Keep-Alive") {
+            RawResponse(rest, closeConnection = true)
+          } else RawResponse(header("Connection", "Keep-Alive")(rest), closeConnection = false)
+        case `HTTP/1.1` =>
+          if (reqConnectionHeader.isDefined && reqConnectionHeader.get == "close") {
+            RawResponse(header("Connection", "close")(rest), closeConnection = true)
+          } else RawResponse(rest, closeConnection = false)
+      }
     }
 
     def contentLengthHeader(rest: List[ByteBuffer]) =
       if (response.body.length > 0) header("Content-Length", response.body.length.toString)(rest) else rest
 
     statusLine {
-      headers(response.headers.reverse) {
+      headers(response.headers) {
         contentLengthHeader {
           header("Date", dateTimeNow.toRfc1123DateTimeString) {
             wrap(CRLF) ::

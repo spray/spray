@@ -31,10 +31,12 @@ case class ServerStats(uptime: Long, requestsDispatched: Long)
 
 // private messages
 private[can] case object Select
-private[can] case class Respond(key: SelectionKey, rawResponse: List[ByteBuffer])
+private[can] case class Respond(key: SelectionKey, rawResponse: RawResponse)
 
 // helpers
-class Connection(close: Boolean, sendKeepAliveHeader: Boolean)
+private[can] trait ConnRecordLoad
+private[can] case class RawResponse(buffers: List[ByteBuffer], closeConnection: Boolean) extends ConnRecordLoad
+private[can] class ConnRecord(var key: SelectionKey, var load: ConnRecordLoad, var next: ConnRecord = null)
 
 class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
   private lazy val log = LoggerFactory.getLogger(getClass)
@@ -98,6 +100,8 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
     serverSocketChannel.close()
   }
 
+  @inline private def connRecord(key: SelectionKey) = key.attachment.asInstanceOf[ConnRecord]
+
   protected def receive = {
     case Select => {
       select()
@@ -106,7 +110,7 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
     case Respond(key, rawResponse) => if (key.isValid) {
       log.debug("Received raw response, scheduling write")
       key.interestOps(SelectionKey.OP_WRITE)
-      key.attach(rawResponse)
+      connRecord(key).load = rawResponse
     }
     case GetServerStats => {
       log.debug("Received GetServerStats request, responding with stats")
@@ -122,32 +126,35 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
       val socketChannel = serverSocketChannel.accept
       socketChannel.configureBlocking(false)
       val key = socketChannel.register(selector, SelectionKey.OP_READ)
-      key.attach(EmptyRequestParser)
+      key.attach(new ConnRecord(key, load = EmptyRequestParser))
       log.debug("New connection accepted and registered")
     }
 
     def read(key: SelectionKey) {
       log.debug("Reading from connection")
       val channel = key.channel.asInstanceOf[SocketChannel]
-      val requestParser = key.attachment.asInstanceOf[IntermediateParser]
+      val connRec = connRecord(key)
 
-      def respond(response: HttpResponse) {
+      def respond(reqProtocol: HttpProtocol, reqConnectionHeader: Option[String])(response: HttpResponse) {
         // this code is executed from the thread sending the response
-        log.debug("Received HttpResponse, enqueuing as raw response")
-        self ! Respond(key, prepare(response))
+        log.debug("Received HttpResponse, enqueuing RawResponse")
+        self ! Respond(key, prepare(response, reqProtocol, reqConnectionHeader))
       }
 
       def dispatch(request: CompleteRequestParser) {
         import request._
         import requestLine._
         log.debug("Dispatching {} request to '{}' to the service actor", method, uri)
-        serviceActor ! HttpRequest(method, uri, protocol, headers.reverse, body, channel.socket.getInetAddress, respond)
+        serviceActor ! HttpRequest(method, uri, protocol, headers, body, channel.socket.getInetAddress,
+          respond(protocol, connectionHeader))
         requestsDispatched += 1
       }
 
       def respondWithError(error: ErrorRequestParser) {
         log.debug("Responding with {}", error)
-        respond(HttpResponse(error.responseStatus, Nil, (error.message + ":\n").getBytes(US_ASCII)))
+        respond(HttpProtocols.`HTTP/1.1`, None) {
+          HttpResponse(error.responseStatus, Nil, (error.message + '\n').getBytes(US_ASCII))
+        }
       }
 
       def close() {
@@ -162,12 +169,10 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
 
           log.debug("Read {} bytes", readBuffer.limit())
 
-          key.attach {
-            requestParser.read(readBuffer) match {
-              case x: CompleteRequestParser => dispatch(x); EmptyRequestParser
-              case x: ErrorRequestParser => respondWithError(x); EmptyRequestParser
-              case x => x
-            }
+          connRec.load = connRec.load.asInstanceOf[IntermediateParser].read(readBuffer) match {
+            case x: CompleteRequestParser => dispatch(x); EmptyRequestParser
+            case x: ErrorRequestParser => respondWithError(x); EmptyRequestParser
+            case x => x
           }
         } else {
           log.debug("Closing connection")
@@ -186,7 +191,6 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
     def write(key: SelectionKey) {
       log.debug("Writing to connection")
       val channel = key.channel.asInstanceOf[SocketChannel]
-      val rawResponse = key.attachment.asInstanceOf[List[ByteBuffer]]
 
       @tailrec
       def writeToChannel(buffers: List[ByteBuffer]): List[ByteBuffer] = {
@@ -200,12 +204,17 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
       }
 
       try {
-        writeToChannel(rawResponse) match {
-          case Nil => // we were able to write everything, so we can switch back to reading
-            key.interestOps(SelectionKey.OP_READ)
-            key.attach(EmptyRequestParser)
+        val connRec = connRecord(key)
+        val rawResponse = connRec.load.asInstanceOf[RawResponse]
+        connRec.load = writeToChannel(rawResponse.buffers) match {
+          case Nil => // we were able to write everything
+            if (rawResponse.closeConnection) { // either the protocol or a response header is telling us to close
+              key.cancel()
+              channel.close()
+            } else key.interestOps(SelectionKey.OP_READ) // switch back to reading if we are not closing
+            EmptyRequestParser
           case remainingBuffers => // socket buffer full, we couldn't write everything so we stay in writing mode
-            key.attach(remainingBuffers)
+            RawResponse(remainingBuffers, rawResponse.closeConnection)
         }
       } catch {
         case e: IOException => { // the client forcibly closed the connection
@@ -225,9 +234,7 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
         if (key.isAcceptable) accept()
         else if (key.isReadable) read(key)
         else if (key.isWritable) write(key)
-      } else {
-        log.warn("Invalid selection key: {}", key)
-      }
+      } else log.warn("Invalid selection key: {}", key)
     }
   }
 }

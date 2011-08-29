@@ -22,13 +22,13 @@ import java.lang.{StringBuilder => JStringBuilder}
 import annotation.tailrec
 
 // a RequestParser instance holds the complete parsing state at any particular point in the request parsing process
-sealed trait RequestParser
+private[can] sealed trait RequestParser extends ConnRecordLoad
 
-trait IntermediateParser extends RequestParser {
+private[can] trait IntermediateParser extends RequestParser {
   def read(buf: ByteBuffer): RequestParser
 }
 
-abstract class CharacterParser extends IntermediateParser {
+private[can] abstract class CharacterParser extends IntermediateParser {
   def read(buf: ByteBuffer): RequestParser = {
     @tailrec
     def read(parser: RequestParser): RequestParser = parser match {
@@ -57,7 +57,7 @@ abstract class CharacterParser extends IntermediateParser {
   def badMethod = new ErrorRequestParser(501, "Unsupported HTTP method")
 }
 
-object EmptyRequestParser extends CharacterParser {
+private[can] object EmptyRequestParser extends CharacterParser {
   import HttpMethods._
   def handleChar(cursor: Char) = cursor match {
     case 'G' => new InMethodRequestParser(GET)
@@ -77,7 +77,7 @@ object EmptyRequestParser extends CharacterParser {
   }
 }
 
-class InMethodRequestParser(method: HttpMethod, var pos: Int = 0) extends CharacterParser {
+private[can] class InMethodRequestParser(method: HttpMethod, var pos: Int = 0) extends CharacterParser {
   def handleChar(cursor: Char) = {
     pos += 1
     if (pos < method.name.length()) {
@@ -91,7 +91,7 @@ class InMethodRequestParser(method: HttpMethod, var pos: Int = 0) extends Charac
   }
 }
 
-class InUriRequestParser(method: HttpMethod) extends CharacterParser {
+private[can] class InUriRequestParser(method: HttpMethod) extends CharacterParser {
   val uri = new JStringBuilder
   def handleChar(cursor: Char) = {
     if (uri.length < 2048) {
@@ -103,7 +103,7 @@ class InUriRequestParser(method: HttpMethod) extends CharacterParser {
   }
 }
 
-class InVersionRequestParser(method: HttpMethod, uri: String) extends CharacterParser {
+private[can] class InVersionRequestParser(method: HttpMethod, uri: String) extends CharacterParser {
   var pos = 0
   var version: Char = _
   def handleChar(cursor: Char) = pos match {
@@ -124,10 +124,10 @@ class InVersionRequestParser(method: HttpMethod, uri: String) extends CharacterP
       }
     } else badVersion
   }
-  def badVersion = new ErrorRequestParser(400, "HTTP version not supported")
+  def badVersion = new ErrorRequestParser(505, "HTTP Version not supported")
 }
 
-class InHeaderNameRequestParser(requestLine: RequestLine, headers: List[HttpHeader])
+private[can] class InHeaderNameRequestParser(requestLine: RequestLine, headers: List[HttpHeader])
         extends CharacterParser {
   val headerName = new JStringBuilder
   def handleChar(cursor: Char) = {
@@ -143,29 +143,29 @@ class InHeaderNameRequestParser(requestLine: RequestLine, headers: List[HttpHead
     } else new ErrorRequestParser(400, "HTTP headers with names longer than 64 characters are not supported by this server")
   }
   def headersComplete = {
-    transferEncodingHeader match {
-      case Some(encoding) => new ErrorRequestParser(501, "Non-identity transfer encodings are not currently supported by this server")
-      case None => contentLengthHeader match {
-        case Some(length) => bodyRequest(length)
-        case None => CompleteRequestParser(requestLine, headers)
+    var transferEncodingHeader: Option[String] = None
+    var contentLengthHeader: Option[String] = None
+    var connectionHeader: Option[String] = None
+    headers.foreach { h =>
+      h.name match {
+        case "Content-Length" if h.value != "0" => contentLengthHeader = Some(h.value)
+        case "Transfer-Encoding" if h.value != "identity" => transferEncodingHeader = Some(h.value)
+        case "Connection" => connectionHeader = Some(h.value)
+        case _ =>
       }
     }
-  }
-  def transferEncodingHeader = headers.mapFindPF { case HttpHeader("Transfer-Encoding", x) if x != "identity" => x }
-  def contentLengthHeader = headers.mapFindPF { case HttpHeader("Content-Length", x) => x }
-  def bodyRequest(length: String) = {
-    try {
-      length.toInt match {
-        case 0 => CompleteRequestParser(requestLine, headers)
-        case x => new InBodyRequestParser(requestLine, headers, x)
+    if (transferEncodingHeader.isEmpty) {
+      contentLengthHeader match {
+        case Some(length) =>
+          try { new InBodyRequestParser(requestLine, headers, connectionHeader, length.toInt) }
+          catch { case _: Exception => new ErrorRequestParser(400, "Invalid Content-Length header value") }
+        case None => CompleteRequestParser(requestLine, headers, connectionHeader)
       }
-    } catch {
-      case _: Exception => new ErrorRequestParser(400, "Invalid Content-Length header value")
-    }
+    } else new ErrorRequestParser(501, "Non-identity transfer encodings are not currently supported by this server")
   }
 }
 
-class InHeaderValueRequestParser(requestLine: RequestLine, headers: List[HttpHeader], headerName: String)
+private[can] class InHeaderValueRequestParser(requestLine: RequestLine, headers: List[HttpHeader], headerName: String)
         extends CharacterParser {
   val headerValue = new JStringBuilder
   var space = false
@@ -184,7 +184,7 @@ class InHeaderValueRequestParser(requestLine: RequestLine, headers: List[HttpHea
   }
 }
 
-class InLwsRequestParser(next: CharacterParser) extends CharacterParser {
+private[can] class InLwsRequestParser(next: CharacterParser) extends CharacterParser {
   def handleChar(cursor: Char) = {
     cursor match {
       case ' ' | '\t' => this
@@ -194,7 +194,7 @@ class InLwsRequestParser(next: CharacterParser) extends CharacterParser {
   }
 }
 
-class InLwsCrLfRequestParser(next: CharacterParser) extends CharacterParser {
+private[can] class InLwsCrLfRequestParser(next: CharacterParser) extends CharacterParser {
   def handleChar(cursor: Char) = {
     cursor match {
       case '\n' => this
@@ -208,8 +208,8 @@ class InLwsCrLfRequestParser(next: CharacterParser) extends CharacterParser {
   }
 }
 
-class InBodyRequestParser(requestLine: RequestLine, headers: List[HttpHeader], val totalBytes: Int)
-        extends IntermediateParser {
+private[can] class InBodyRequestParser(requestLine: RequestLine, headers: List[HttpHeader],
+                                       connectionHeader: Option[String], totalBytes: Int) extends IntermediateParser {
   require(totalBytes >= 0, "Content-Length must not be negative")
   val body = new Array[Byte](totalBytes)
   var bytesRead = 0
@@ -218,12 +218,16 @@ class InBodyRequestParser(requestLine: RequestLine, headers: List[HttpHeader], v
     if (remaining <= totalBytes - bytesRead) {
       buf.get(body, bytesRead, remaining)
       bytesRead += remaining
-      if (bytesRead == totalBytes) new CompleteRequestParser(requestLine, headers, body) else this
+      if (bytesRead == totalBytes) new CompleteRequestParser(requestLine, headers, connectionHeader, body) else this
     } else new ErrorRequestParser(400, "Illegal Content-Length: request entity is longer than Content-Length header value")
   }
 }
 
-case class CompleteRequestParser(requestLine: RequestLine, headers: List[HttpHeader],
-                                 body: Array[Byte] = EmptyByteArray) extends RequestParser
+private[can] case class CompleteRequestParser(
+  requestLine: RequestLine,
+  headers: List[HttpHeader] = Nil,
+  connectionHeader: Option[String] = None,
+  body: Array[Byte] = EmptyByteArray
+) extends RequestParser
 
-case class ErrorRequestParser(responseStatus: Int, message: String) extends RequestParser
+private[can] case class ErrorRequestParser(responseStatus: Int, message: String) extends RequestParser

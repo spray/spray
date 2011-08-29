@@ -16,62 +16,90 @@
 
 package cc.spray.can
 
-import org.specs2.mutable.Specification
+import org.specs2._
 import utils.DateTime
+import HttpProtocols._
+import matcher.DataTables
 
-class ResponsePreparerSpec extends Specification with ResponsePreparer {
+class ResponsePreparerSpec extends Specification with ResponsePreparer with DataTables { def is =
 
-  "The response preparation logic" should {
-    "properly serialize a response" in {
-      "with status 200, no headers or body" in {
-        prep(HttpResponse(200, Nil)) mustEqual prep {
-          """|HTTP/1.1 200 OK
-             |Date: Thu, 25 Aug 2011 09:10:29 GMT
-             |
-             |"""
-        }
-      }
+  "The response preparation logic should properly render a response" ^
+    "with status 200, no headers and no body"                        ! e1^
+    "with status 304, a few headers and no body"                     ! e2^
+    "with status 400, a few headers and a body"                      ! e3^
+                                                                     end^
+  "The 'Connection' header should be rendered correctly"             ! e4
 
-      "with status 304, a few headers and no body" in {
-        prep(HttpResponse(304, List(
-          HttpHeader("Age", "0"),
-          HttpHeader("Server", "spray-can/1.0")
-        ))) mustEqual prep {
-          """|HTTP/1.1 304 Not Modified
-             |Age: 0
-             |Server: spray-can/1.0
-             |Date: Thu, 25 Aug 2011 09:10:29 GMT
-             |
-             |"""
-        }
-      }
-
-      "with status 400, a few headers and a body" in {
-        prep(HttpResponse(400, List(
-          HttpHeader("Cache-Control", "public"),
-          HttpHeader("Server", "spray-can/1.0")
-        ), "Small f*ck up overhere!".getBytes(US_ASCII))) mustEqual prep {
-          """|HTTP/1.1 400 Bad Request
-             |Cache-Control: public
-             |Server: spray-can/1.0
-             |Content-Length: 23
-             |Date: Thu, 25 Aug 2011 09:10:29 GMT
-             |
-             |Small f*ck up overhere!"""
-        }
-      }
-    }
+  def e1 = prep(`HTTP/1.1`) {
+    HttpResponse(200, Nil)
+  } mustEqual prep {
+    """|HTTP/1.1 200 OK
+       |Date: Thu, 25 Aug 2011 09:10:29 GMT
+       |
+       |""" -> false
   }
 
-  def prep(response: HttpResponse) = {
+  def e2 = prep(`HTTP/1.1`) {
+    HttpResponse(304, List(
+      HttpHeader("Server", "spray-can/1.0"),
+      HttpHeader("Age", "0")
+    ))
+  } mustEqual prep {
+    """|HTTP/1.1 304 Not Modified
+       |Age: 0
+       |Server: spray-can/1.0
+       |Date: Thu, 25 Aug 2011 09:10:29 GMT
+       |
+       |""" -> false
+  }
+
+  def e3 = prep(`HTTP/1.1`) {
+    HttpResponse(400, List(
+      HttpHeader("Server", "spray-can/1.0"),
+      HttpHeader("Cache-Control", "public")
+    ), "Small f*ck up overhere!".getBytes(US_ASCII))
+  } mustEqual prep {
+    """|HTTP/1.1 400 Bad Request
+       |Cache-Control: public
+       |Server: spray-can/1.0
+       |Content-Length: 23
+       |Date: Thu, 25 Aug 2011 09:10:29 GMT
+       |
+       |Small f*ck up overhere!""" -> false
+  }
+
+  val NONE: Option[String] = None
+  
+  def e4 =
+    "Client Version" | "Request"          | "Response"         | "Rendered"         | "Close" |
+    `HTTP/1.1`       ! NONE               ! NONE               ! NONE               ! false   |
+    `HTTP/1.1`       ! Some("close")      ! NONE               ! Some("close")      ! true    |
+    `HTTP/1.1`       ! Some("Keep-Alive") ! NONE               ! NONE               ! false   |
+    `HTTP/1.0`       ! NONE               ! NONE               ! NONE               ! true    |
+    `HTTP/1.0`       ! Some("close")      ! NONE               ! NONE               ! true    |
+    `HTTP/1.0`       ! Some("Keep-Alive") ! NONE               ! Some("Keep-Alive") ! false   |
+    `HTTP/1.1`       ! NONE               ! Some("close")      ! Some("close")      ! true    |
+    `HTTP/1.0`       ! Some("close")      ! Some("Keep-Alive") ! Some("Keep-Alive") ! false   |> {
+      (reqProto, reqCH, resCH, renCH, close) =>
+      prep(reqProto, reqCH) {
+        HttpResponse(200, resCH.map(h => List(HttpHeader("Connection", h))).getOrElse(Nil))
+      } mustEqual prep {
+        "HTTP/1.1 200 OK\n" +
+        renCH.map("Connection: " + _ + "\n").getOrElse("") +
+        "Date: Thu, 25 Aug 2011 09:10:29 GMT\n\n" -> close
+      }
+    }
+
+  def prep(reqProtocol: HttpProtocol, reqConnectionHeader: Option[String] = None)(response: HttpResponse) = {
     val sb = new java.lang.StringBuilder()
-    prepare(response).foreach { buf =>
+    val rawResponse = prepare(response, reqProtocol, reqConnectionHeader)
+    rawResponse.buffers.foreach { buf =>
       sb.append(new String(buf.array, US_ASCII))
     }
-    sb.toString
+    sb.toString -> rawResponse.closeConnection
   }
 
-  def prep(s: String) = s.stripMargin.replace("\n", "\r\n")
+  def prep(t: Tuple2[String, Boolean]) = t._1.stripMargin.replace("\n", "\r\n") -> t._2
 
   override val dateTimeNow = DateTime(2011, 8, 25, 9,10,29) // provide a stable date for testing
 

@@ -30,7 +30,7 @@ class RequestParserSpec extends Specification {
           """|GET / HTTP/1.1
              |
              |"""
-        } mustEqual (GET, "/", `HTTP/1.1`, Nil, "")
+        } mustEqual (GET, "/", `HTTP/1.1`, Nil, None, "")
       }
 
       "with one header" in {
@@ -39,22 +39,24 @@ class RequestParserSpec extends Specification {
              |Host: api.example.com
              |
              |"""
-        } mustEqual (GET, "/", `HTTP/1.0`, List(HttpHeader("Host", "api.example.com")), "")
+        } mustEqual (GET, "/", `HTTP/1.0`, List(HttpHeader("Host", "api.example.com")), None, "")
       }
 
-      "with 3 headers and a body" in {
+      "with 4 headers and a body" in {
         parse {
           """|POST /resource/yes HTTP/1.1
              |User-Agent: curl/7.19.7 xyz
              |Transfer-Encoding:identity
+             |Connection:close
              |Content-Length    : 17
              |
              |Shake your BOODY!"""
         } mustEqual (POST, "/resource/yes", `HTTP/1.1`, List(
           HttpHeader("Content-Length", "17"),
+          HttpHeader("Connection", "close"),
           HttpHeader("Transfer-Encoding", "identity"),
           HttpHeader("User-Agent", "curl/7.19.7 xyz")
-        ), "Shake your BOODY!")
+        ), Some("close"), "Shake your BOODY!")
       }
 
       "with multi-line headers" in {
@@ -70,7 +72,7 @@ class RequestParserSpec extends Specification {
         } mustEqual (DELETE, "/abc", `HTTP/1.1`, List(
           HttpHeader("Accept", "*/*"),
           HttpHeader("User-Agent", "curl/7.19.7 abc xyz")
-        ), "")
+        ), None, "")
       }
     }
 
@@ -85,7 +87,7 @@ class RequestParserSpec extends Specification {
       }
 
       "HTTP version 1.2" in {
-        parse("GET / HTTP/1.2\r\n") mustEqual ErrorRequestParser(400, "HTTP version not supported")
+        parse("GET / HTTP/1.2\r\n") mustEqual ErrorRequestParser(505, "HTTP Version not supported")
       }
 
       "with an illegal char in a header name" in {
@@ -145,8 +147,8 @@ class RequestParserSpec extends Specification {
     val req = request.stripMargin.replace("\n", "\r\n")
     val buf = ByteBuffer.wrap(req.getBytes("US-ASCII"))
     EmptyRequestParser.read(buf) match {
-      case CompleteRequestParser(RequestLine(method, uri, protocol), headers, body) =>
-        (method, uri, protocol, headers, new String(body, "US-ASCII"))
+      case CompleteRequestParser(RequestLine(method, uri, protocol), headers, connectionHeader, body) =>
+        (method, uri, protocol, headers, connectionHeader, new String(body, "US-ASCII"))
       case x => x
     }
   }

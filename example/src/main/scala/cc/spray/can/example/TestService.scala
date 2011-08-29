@@ -29,7 +29,6 @@ class TestService(id: String) extends Actor {
   val iso88591 = Charset.forName("ISO-8859-1")
   val headers = List(
     HttpHeader("Server", "spray-can/test"),
-    HttpHeader("Connection", "Keep-Alive"),
     HttpHeader("Content-Type", "text/plain")
   )
 
