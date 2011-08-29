@@ -24,7 +24,6 @@ trait CanConfig {
   def serverActorId: String
   def serviceActorId: String
   def readBufferSize: Int
-  def selectionTimeout: Long
 }
 
 object AkkaConfConfig extends CanConfig {
@@ -33,7 +32,6 @@ object AkkaConfConfig extends CanConfig {
   lazy val serverActorId    = config.getString("spray.can.server-actor-id", "spray-can-server")
   lazy val serviceActorId   = config.getString("spray.can.service-actor-id", "spray-root-service")
   lazy val readBufferSize   = config.getInt("spray.can.read-buffer-size", 8192)
-  lazy val selectionTimeout = config.getLong("spray.can.selection-timeout", 100)
   def endpoint            = new InetSocketAddress(hostname, port)
 
   override def toString =
@@ -41,8 +39,7 @@ object AkkaConfConfig extends CanConfig {
     "  hostname        : " + hostname + "\n" +
     "  port            : " + port + "\n" +
     "  serviceActorId  : " + serviceActorId + "\n" +
-    "  readBufferSize  : " + readBufferSize + "\n" +
-    "  selectionTimeout: " + selectionTimeout + "\n" +
+    "  readBufferSize  : " + readBufferSize + "\n"
     ")"
 }
 
@@ -51,8 +48,7 @@ case class SimpleConfig(
   port: Int = 8888,
   serverActorId: String = "spray-can-server",
   serviceActorId: String = "spray-root-service",
-  readBufferSize: Int = 8192,
-  selectionTimeout: Long = 100
+  readBufferSize: Int = 8192
 ) extends CanConfig {
   def endpoint = new InetSocketAddress(hostname, port)
 }

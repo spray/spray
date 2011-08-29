@@ -22,9 +22,9 @@ import java.nio.ByteBuffer
 import java.nio.channels.{SocketChannel, SelectionKey, ServerSocketChannel}
 import java.io.IOException
 import annotation.tailrec
-import akka.actor.Actor
 import akka.dispatch._
 import utils.LinkedList
+import akka.actor.{ActorRef, Actor}
 
 // public messages
 case object GetServerStats
@@ -228,7 +228,7 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
       connections -= connRecord(key)
     }
 
-    selector.select(config.selectionTimeout)
+    selector.select()
     val selectedKeys = selector.selectedKeys.iterator
     while (selectedKeys.hasNext) {
       val key = selectedKeys.next

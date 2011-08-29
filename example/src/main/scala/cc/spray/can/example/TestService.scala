@@ -17,10 +17,10 @@
 package cc.spray.can
 package example
 
-import akka.actor.{Kill, Actor}
 import org.slf4j.LoggerFactory
 import java.nio.charset.Charset
 import HttpMethods._
+import akka.actor.{PoisonPill, Kill, Actor}
 
 class TestService(id: String) extends Actor {
   val log = LoggerFactory.getLogger(getClass)
@@ -31,6 +31,7 @@ class TestService(id: String) extends Actor {
     HttpHeader("Server", "spray-can/test"),
     HttpHeader("Content-Type", "text/plain")
   )
+  lazy val serverActor = Actor.registry.actorsFor("spray-can-server").head
 
   def response(msg: String, status: Int = 200) = HttpResponse(status, headers, msg.getBytes(iso88591))
 
@@ -42,16 +43,17 @@ class TestService(id: String) extends Actor {
 
     case HttpRequest(POST, "/crash", _, _, _, _, complete) => {
       complete(response("Hai! (about to kill the HttpServer)"))
-      self ! Kill
+      serverActor ! Kill
     }
 
     case HttpRequest(POST, "/stop", _, _, _, _, complete) => {
       complete(response("Shutting down the spray-can server..."))
+      serverActor ! PoisonPill
       Actor.registry.shutdownAll()
     }
 
     case HttpRequest(GET, "/stats", _, _, _, _, complete) => {
-      val serverActor = Actor.registry.actorsFor("spray-can-server").head
+
       (serverActor ? GetServerStats).mapTo[ServerStats].onComplete {
         _.value.get match {
           case Right(stats) => complete {
