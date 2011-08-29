@@ -69,15 +69,25 @@ class LinkedList[Elem >: Null <: LinkedListElement[Elem]] {
     this += rec
   }
 
-  override def toString = {
-    import java.lang.{StringBuilder => SB}
-    @tailrec def append(sb: SB, e: Elem): String = {
-      if (e != null) {
-        if (sb.length > 1) sb.append(',')
-        append(sb.append(e), e.next)
-      } else sb.append(']').toString
+  /**
+   * Applies the given function to all elements in sequence.
+   * The function can stop the traversal by returning false.
+   */
+  def traverse(f: Elem => Boolean) {
+    @tailrec def traverse(e: Elem) {
+      if (e != null && f(e)) traverse(e.next)
     }
-    append(new SB().append('['), first)
+    traverse(first)
+  }
+
+  override def toString = {
+    val sb = new java.lang.StringBuilder("[")
+    traverse { elem =>
+      if (sb.length > 1) sb.append(',')
+      sb.append(elem)
+      true
+    }
+    sb.append(']').toString
   }
 }
 

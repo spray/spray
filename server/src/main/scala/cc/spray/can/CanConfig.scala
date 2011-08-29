@@ -24,14 +24,18 @@ trait CanConfig {
   def serverActorId: String
   def serviceActorId: String
   def readBufferSize: Int
+  def idleTimeout: Long
+  def reapingCycle: Long
 }
 
 object AkkaConfConfig extends CanConfig {
-  lazy val hostname         = config.getString("spray.can.hostname", "localhost")
-  lazy val port             = config.getInt("spray.can.port", 8888)
-  lazy val serverActorId    = config.getString("spray.can.server-actor-id", "spray-can-server")
-  lazy val serviceActorId   = config.getString("spray.can.service-actor-id", "spray-root-service")
-  lazy val readBufferSize   = config.getInt("spray.can.read-buffer-size", 8192)
+  lazy val hostname       = config.getString("spray.can.hostname", "localhost")
+  lazy val port           = config.getInt("spray.can.port", 8888)
+  lazy val serverActorId  = config.getString("spray.can.server-actor-id", "spray-can-server")
+  lazy val serviceActorId = config.getString("spray.can.service-actor-id", "spray-root-service")
+  lazy val readBufferSize = config.getInt("spray.can.read-buffer-size", 8192)
+  lazy val idleTimeout    = config.getLong("spray.can.idle-timeout", 10000)
+  lazy val reapingCycle   = config.getLong("spray.can.reaping-cycle", 500)
   def endpoint            = new InetSocketAddress(hostname, port)
 
   override def toString =
@@ -48,7 +52,9 @@ case class SimpleConfig(
   port: Int = 8888,
   serverActorId: String = "spray-can-server",
   serviceActorId: String = "spray-root-service",
-  readBufferSize: Int = 8192
+  readBufferSize: Int = 8192,
+  idleTimeout: Long = 10000,
+  reapingCycle: Long = 500
 ) extends CanConfig {
   def endpoint = new InetSocketAddress(hostname, port)
 }

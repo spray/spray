@@ -24,7 +24,8 @@ import java.io.IOException
 import annotation.tailrec
 import akka.dispatch._
 import utils.LinkedList
-import akka.actor.{ActorRef, Actor}
+import akka.actor.{Scheduler, Actor}
+import java.util.concurrent.TimeUnit
 
 // public messages
 case object GetServerStats
@@ -32,6 +33,7 @@ case class ServerStats(uptime: Long, requestsDispatched: Long, currentConnection
 
 // private messages
 private[can] case object Select
+private[can] case object ReapIdleConnections
 private[can] case class Respond(key: SelectionKey, rawResponse: RawResponse)
 
 class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
@@ -75,8 +77,10 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
     }
   }
 
+  Scheduler.schedule(self, ReapIdleConnections, config.reapingCycle, config.reapingCycle, TimeUnit.MILLISECONDS)
+
   override def preStart() {
-    log.info("Starting main event loop")
+    log.info("Starting spray-can HTTP server on {}", config.endpoint)
     serverSocketChannel // trigger serverSocketChannel initialization and registration
     self ! Select
     startTime = System.currentTimeMillis()
@@ -88,7 +92,7 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
   }
 
   override def postStop() {
-    log.info("Stopped main event loop")
+    log.info("Stopped spray-can HTTP server on {}", config.endpoint)
     cleanUp()
   }
 
@@ -109,6 +113,7 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
       key.interestOps(SelectionKey.OP_WRITE)
       connRecord(key).load = rawResponse
     }
+    case ReapIdleConnections => reapIdleConnections()
     case GetServerStats => {
       log.debug("Received GetServerStats request, responding with stats")
       self.reply {
@@ -169,14 +174,14 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
           refresh(connRec)
         } else {
           log.debug("Closing connection")
-          close(key, channel)
+          close(key)
         } // if the client shut down the socket cleanly, we do the same
       }
       catch {
         case e: IOException => {
           // the client forcibly closed the connection
           log.warn("Closing connection due to {}", e.toString)
-          close(key, channel)
+          close(key)
         }
       }
     }
@@ -202,7 +207,7 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
         connRec.load = writeToChannel(rawResponse.buffers) match {
           case Nil => // we were able to write everything
             if (rawResponse.closeConnection) { // either the protocol or a response header is telling us to close
-              close(key, channel)
+              close(key)
             } else key.interestOps(SelectionKey.OP_READ) // switch back to reading if we are not closing
             EmptyRequestParser
           case remainingBuffers => // socket buffer full, we couldn't write everything so we stay in writing mode
@@ -212,7 +217,7 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
       } catch {
         case e: IOException => { // the client forcibly closed the connection
           log.warn("Closing connection due to {}", e.toString)
-          close(key, channel)
+          close(key)
         }
       }
     }
@@ -220,12 +225,6 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
     def refresh(rec: ConnRecord) {
       rec.idleSince = System.currentTimeMillis
       connections.moveToEnd(rec)
-    }
-
-    def close(key: SelectionKey, channel: SocketChannel) {
-      key.cancel()
-      channel.close()
-      connections -= connRecord(key)
     }
 
     selector.select()
@@ -238,6 +237,27 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
         else if (key.isReadable) read(key)
         else if (key.isWritable) write(key)
       } else log.warn("Invalid selection key: {}", key)
+    }
+  }
+
+  private def close(key: SelectionKey) {
+    key.cancel()
+    try {
+      key.channel.close()
+    } catch {
+      case e: IOException => log.warn("Error while closing socket channel: {}", e.toString)
+    }
+    connections -= connRecord(key)
+  }
+
+  private def reapIdleConnections() {
+    val now = System.currentTimeMillis
+    connections.traverse { connRec =>
+      if (now - connRec.idleSince > config.idleTimeout) {
+        log.debug("Closing connection due to idle timout")
+        close(connRec.key)
+        true // continue the traversal
+      } else false // once we reached a connection that hasn't timed out all subsequent ones won't either
     }
   }
 }
