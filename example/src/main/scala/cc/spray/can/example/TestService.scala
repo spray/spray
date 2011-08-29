@@ -57,7 +57,8 @@ class TestService(id: String) extends Actor {
           case Right(stats) => complete {
             response {
               "Uptime: " + (stats.uptime / 1000.0) + " sec\n" +
-              "Requests dispatched: " + stats.requestsDispatched + '\n'
+              "Requests dispatched: " + stats.requestsDispatched + '\n' +
+              "Currently open connections: " + stats.currentConnectionCount + '\n'
             }
           }
           case Left(ex) => complete(response("Couldn't get server stats due to " + ex, status = 500))

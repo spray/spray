@@ -24,19 +24,15 @@ import java.io.IOException
 import annotation.tailrec
 import akka.actor.Actor
 import akka.dispatch._
+import utils.LinkedList
 
 // public messages
 case object GetServerStats
-case class ServerStats(uptime: Long, requestsDispatched: Long)
+case class ServerStats(uptime: Long, requestsDispatched: Long, currentConnectionCount: Int)
 
 // private messages
 private[can] case object Select
 private[can] case class Respond(key: SelectionKey, rawResponse: RawResponse)
-
-// helpers
-private[can] trait ConnRecordLoad
-private[can] case class RawResponse(buffers: List[ByteBuffer], closeConnection: Boolean) extends ConnRecordLoad
-private[can] class ConnRecord(var key: SelectionKey, var load: ConnRecordLoad, var next: ConnRecord = null)
 
 class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
   private lazy val log = LoggerFactory.getLogger(getClass)
@@ -52,6 +48,7 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
             config.serviceActorId + "', but found " + x.length)
   }
   private val readBuffer = ByteBuffer.allocateDirect(config.readBufferSize)
+  private val connections = new LinkedList[ConnRecord] // a list of all connections registered on the selector
   private var startTime: Long = _
   private var requestsDispatched: Long = _
 
@@ -115,7 +112,7 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
     case GetServerStats => {
       log.debug("Received GetServerStats request, responding with stats")
       self.reply {
-        ServerStats(System.currentTimeMillis() - startTime, requestsDispatched)
+        ServerStats(System.currentTimeMillis - startTime, requestsDispatched, connections.size)
       }
     }
   }
@@ -126,7 +123,9 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
       val socketChannel = serverSocketChannel.accept
       socketChannel.configureBlocking(false)
       val key = socketChannel.register(selector, SelectionKey.OP_READ)
-      key.attach(new ConnRecord(key, load = EmptyRequestParser))
+      val connRecord = new ConnRecord(key, load = EmptyRequestParser)
+      key.attach(connRecord)
+      connections += connRecord
       log.debug("New connection accepted and registered")
     }
 
@@ -157,33 +156,27 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
         }
       }
 
-      def close() {
-        key.cancel()
-        channel.close()
-      }
-
       try {
         readBuffer.clear()
         if (channel.read(readBuffer) > -1) {
           readBuffer.flip()
-
           log.debug("Read {} bytes", readBuffer.limit())
-
           connRec.load = connRec.load.asInstanceOf[IntermediateParser].read(readBuffer) match {
             case x: CompleteRequestParser => dispatch(x); EmptyRequestParser
             case x: ErrorRequestParser => respondWithError(x); EmptyRequestParser
             case x => x
           }
+          refresh(connRec)
         } else {
           log.debug("Closing connection")
-          close()
+          close(key, channel)
         } // if the client shut down the socket cleanly, we do the same
       }
       catch {
         case e: IOException => {
           // the client forcibly closed the connection
           log.warn("Closing connection due to {}", e.toString)
-          close()
+          close(key, channel)
         }
       }
     }
@@ -209,20 +202,30 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
         connRec.load = writeToChannel(rawResponse.buffers) match {
           case Nil => // we were able to write everything
             if (rawResponse.closeConnection) { // either the protocol or a response header is telling us to close
-              key.cancel()
-              channel.close()
+              close(key, channel)
             } else key.interestOps(SelectionKey.OP_READ) // switch back to reading if we are not closing
             EmptyRequestParser
           case remainingBuffers => // socket buffer full, we couldn't write everything so we stay in writing mode
             RawResponse(remainingBuffers, rawResponse.closeConnection)
         }
+        refresh(connRec)
       } catch {
         case e: IOException => { // the client forcibly closed the connection
           log.warn("Closing connection due to {}", e.toString)
-          key.cancel()
-          channel.close()
+          close(key, channel)
         }
       }
+    }
+
+    def refresh(rec: ConnRecord) {
+      rec.idleSince = System.currentTimeMillis
+      connections.moveToEnd(rec)
+    }
+
+    def close(key: SelectionKey, channel: SocketChannel) {
+      key.cancel()
+      channel.close()
+      connections -= connRecord(key)
     }
 
     selector.select(config.selectionTimeout)
