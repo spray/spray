@@ -25,7 +25,6 @@ object LinkedList {
     private[LinkedList] var next: Elem = _
     private[LinkedList] var timeStamp: Long = _
 
-    def isAttached = list != null
     def memberOf: LinkedList[Elem] = list
   }
 }
@@ -41,7 +40,7 @@ class LinkedList[Elem >: Null <: LinkedList.Element[Elem]] {
   def size = length
 
   def += (rec: Elem) {
-    require(!rec.isAttached, "Cannot add an element that is already member of some list")
+    require(rec.list == null, "Cannot add an element that is already member of some list")
     assert(rec.prev == null && rec.next == null)
     if (length == 0) {
       first = rec
@@ -85,7 +84,7 @@ class LinkedList[Elem >: Null <: LinkedList.Element[Elem]] {
     this += rec
   }
 
-  def forAllTimedOut(timeout: Long)(f: Elem => Unit) {
+  def forAllTimedOut[U](timeout: Long)(f: Elem => U) {
     val now = System.currentTimeMillis
     traverse { elem =>
       if (now - elem.timeStamp > timeout) {
@@ -112,7 +111,7 @@ class LinkedList[Elem >: Null <: LinkedList.Element[Elem]] {
   override def toString = {
     val sb = new java.lang.StringBuilder("[")
     traverse { elem =>
-      if (sb.length > 1) sb.append(',')
+      if (sb.length > 1) sb.append(", ")
       sb.append(elem)
       true
     }
