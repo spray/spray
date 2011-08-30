@@ -16,42 +16,62 @@
 
 package cc.spray.can
 
-import org.specs2.mutable.Specification
-import akka.actor.Actor
+import org.specs2._
+import matcher.Matcher
+import specification.Step
+import akka.actor.{PoisonPill, Actor}
+import java.net.Socket
+import org.parboiled.common.FileUtils
+import java.io.{ByteArrayOutputStream, ByteArrayInputStream}
 
-class HttpServerSpec extends Specification {
-
-  val h = new dispatch.nio.Http
-  class TestService extends Actor {
-    self.id = "testEndpoint"
-    protected def receive = {
-      case RequestContext(HttpRequest(method, uri, _, _, _, _), complete) => complete {
-        HttpResponse(200, List(HttpHeader("Content-Type", "text/plain")),(method + "|" + uri).getBytes("ISO-8859-1"))
-      }
+class TestService extends Actor {
+  self.id = "test-1"
+  protected def receive = {
+    case RequestContext(HttpRequest(method, uri, _, _, _, _), complete) => complete {
+      HttpResponse(200, List(HttpHeader("Content-Type", "text/plain")),(method + "|" + uri).getBytes("ISO-8859-1"))
     }
   }
+}
 
-  textFragment("This specification starts a new HttpServer and fires a few test requests against it")
-  step {
+class HttpServerSpec extends Specification { def is =
+
+  "This spec starts a new HttpServer and exercises its behavior with test requests" ^
+                                                                                    Step(startServer())^
+                                                                                    p^
+  "responses to simple requests" ! simpleRequests
+
+
+  def simpleRequests = {
+    responseFor(16242) {
+      """|GET /abc HTTP/1.1
+         |"""
+    } must matchResponse(status = 200, body = "GET|/abc")
+  }
+
+  def matchResponse(status: Int = 0, headers: List[HttpHeader] = null, body: String = null): Matcher[HttpResponse] = {
+    def f[A](g: HttpResponse => A) = g
+    val statusMatcher: Matcher[HttpResponse] = f(hr => status == 0 || hr.status == status) -> f(_.status + " != " + status)
+    val headerMatcher: Matcher[HttpResponse] = f(hr => headers == null || hr.headers == headers) -> f(_.headers + " != " + headers)
+    val bodyMatcher: Matcher[HttpResponse] = f(hr => body == null || hr.bodyAsString() == body) -> f(_.bodyAsString() + " != " + body)
+    statusMatcher and headerMatcher and bodyMatcher
+  }
+
+  def responseFor(port: Int)(request: String) = {
+    /*val socket = new Socket("localhost", port)
+    FileUtils.copyAll(
+      new ByteArrayInputStream(request.getBytes("US-ASCII")),
+      new ByteArrayOutputStream()
+    )*/
+    HttpResponse.of(body = "GET|/abc")
+  }
+
+  def startServer() {
     Actor.actorOf(new TestService).start()
-    Actor.actorOf(new HttpServer(SimpleConfig(port = 16242, serviceActorId = "testEndpoint", requestTimeout = 0))).start()
+    Actor.actorOf(new HttpServer(SimpleConfig(port = 16242, serviceActorId = "test-1", requestTimeout = 0))).start()
   }
 
-  "The server" should {
-    import dispatch._
-    "properly deliver the response of the service endpoint" in {
-      val response = h(url("http://localhost:16242/abc") as_str)
-      response() mustEqual "GET|/abc"
-    }
-    "properly deliver the response of the service endpoint" in {
-      val response = h(url("http://localhost:16242/xyz") as_str)
-      response() mustEqual "GET|/xyz"
-    }
-  }
-
-  step {
+  def stopServer() {
+    actor("test-1") ! PoisonPill
     Actor.registry.shutdownAll()
-    h.shutdown()
   }
-
 }

@@ -171,8 +171,9 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
       val channel = key.channel.asInstanceOf[SocketChannel]
       val connRec = connRecord(key)
 
-      def dispatch(request: CompleteRequestParser) {
+      def dispatch(request: CompleteMessageParser) {
         import request._
+        val requestLine = messageLine.asInstanceOf[RequestLine]
         import requestLine._
         log.debug("Dispatching {} request to '{}' to the service actor", method, uri)
         val alreadyCompleted = new AtomicBoolean(false)
@@ -209,9 +210,9 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
         requestsOpen += 1
       }
 
-      def respondWithError(error: ErrorRequestParser) {
+      def respondWithError(error: ErrorMessageParser) {
         log.debug("Responding with {}", error)
-        val response = HttpResponse(error.responseStatus, Nil, (error.message + '\n').getBytes(US_ASCII))
+        val response = HttpResponse(error.status, Nil, (error.message + '\n').getBytes(US_ASCII))
         self ! Respond(key, prepare(response, `HTTP/1.1`, None))
       }
 
@@ -221,8 +222,8 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
           readBuffer.flip()
           log.debug("Read {} bytes", readBuffer.limit())
           connRec.load = connRec.load.asInstanceOf[IntermediateParser].read(readBuffer) match {
-            case x: CompleteRequestParser => dispatch(x); EmptyRequestParser
-            case x: ErrorRequestParser => respondWithError(x); EmptyRequestParser
+            case x: CompleteMessageParser => dispatch(x); EmptyRequestParser
+            case x: ErrorMessageParser => respondWithError(x); EmptyRequestParser
             case x => x
           }
           connections.refresh(connRec)

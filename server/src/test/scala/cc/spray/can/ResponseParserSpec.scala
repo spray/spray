@@ -1,3 +1,5 @@
+package cc.spray.can
+
 /*
  * Copyright (C) 2011 Mathias Doenitz
  *
@@ -14,44 +16,42 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-
 import org.specs2.mutable.Specification
 import java.nio.ByteBuffer
 import HttpMethods._
 import HttpProtocols._
 
-class RequestParserSpec extends Specification {
+class ResponseParserSpec extends Specification {
 
-  "The request parsing logic" should {
-    "properly parse a request" in {
+  "The reponse parsing logic" should {
+    "properly parse a response" in {
       "without headers and body" in {
         parse {
-          """|GET / HTTP/1.1
+          """|HTTP/1.1 200 OK
              |
              |"""
-        } mustEqual (GET, "/", `HTTP/1.1`, Nil, None, "")
+        } mustEqual (`HTTP/1.1`, 200, "OK", Nil, None, "")
       }
 
       "with one header" in {
         parse {
-          """|GET / HTTP/1.0
+          """|HTTP/1.0 404 Not Found
              |Host: api.example.com
              |
              |"""
-        } mustEqual (GET, "/", `HTTP/1.0`, List(HttpHeader("Host", "api.example.com")), None, "")
+        } mustEqual (`HTTP/1.0`, 404, "Not Found", List(HttpHeader("Host", "api.example.com")), None, "")
       }
 
       "with 4 headers and a body" in {
         parse {
-          """|POST /resource/yes HTTP/1.1
+          """|HTTP/1.1 500 Internal Server Error
              |User-Agent: curl/7.19.7 xyz
              |Transfer-Encoding:identity
              |Connection:close
              |Content-Length    : 17
              |
              |Shake your BOODY!"""
-        } mustEqual (POST, "/resource/yes", `HTTP/1.1`, List(
+        } mustEqual (`HTTP/1.1`, 500, "Internal Server Error", List(
           HttpHeader("Content-Length", "17"),
           HttpHeader("Connection", "close"),
           HttpHeader("Transfer-Encoding", "identity"),
@@ -61,7 +61,7 @@ class RequestParserSpec extends Specification {
 
       "with multi-line headers" in {
         parse {
-          """|DELETE /abc HTTP/1.1
+          """|HTTP/1.1 200 OK
              |User-Agent: curl/7.19.7
              | abc
              |    xyz
@@ -69,45 +69,45 @@ class RequestParserSpec extends Specification {
              | : */*  """ + """
              |
              |"""
-        } mustEqual (DELETE, "/abc", `HTTP/1.1`, List(
+        } mustEqual (`HTTP/1.1`, 200, "OK", List(
           HttpHeader("Accept", "*/*"),
           HttpHeader("User-Agent", "curl/7.19.7 abc xyz")
         ), None, "")
       }
     }
 
-    "reject a request with" in {
-      "an illegal HTTP method" in {
-        parse("get") mustEqual ErrorMessageParser("Unsupported HTTP method", 501)
-        parse("GETX") mustEqual ErrorMessageParser("Unsupported HTTP method", 501)
-      }
-
-      "an URI longer than 2048 chars" in {
-        parse("GET x" + "xxxx" * 512 + " HTTP/1.1") mustEqual
-                ErrorMessageParser("URIs with more than 2048 characters are not supported", 414)
-      }
-
+    "reject a response with" in {
       "HTTP version 1.2" in {
-        parse("GET / HTTP/1.2\r\n") mustEqual ErrorMessageParser("HTTP Version not supported", 505)
+        parse("HTTP/1.2 200 OK\r\n") mustEqual ErrorMessageParser("HTTP Version not supported", 505)
+      }
+
+      "an illegal status code" in {
+        parse("HTTP/1.1 700 Something") mustEqual ErrorMessageParser("Illegal response status code")
+        parse("HTTP/1.1 2000 Something") mustEqual ErrorMessageParser("Illegal response status code")
+      }
+
+      "a response status reason longer than 64 chars" in {
+        parse("HTTP/1.1 250 x" + "xxxx" * 16 + "\r\n") mustEqual
+                ErrorMessageParser("Reason phrases with more than 64 characters are not supported")
       }
 
       "with an illegal char in a header name" in {
         parse {
-          """|GET / HTTP/1.1
+          """|HTTP/1.1 200 OK
              |User@Agent: curl/7.19.7"""
         } mustEqual ErrorMessageParser("Invalid character '@', expected TOKEN CHAR, LWS or COLON")
       }
 
       "with a header name longer than 64 chars" in {
         parse {
-          """|GET / HTTP/1.1
+          """|HTTP/1.1 200 OK
              |UserxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxAgent: curl/7.19.7"""
         } mustEqual ErrorMessageParser("HTTP headers with names longer than 64 characters are not supported")
       }
 
       "with a non-identity transfer encoding" in {
         parse {
-          """|GET / HTTP/1.1
+          """|HTTP/1.1 200 OK
              |Transfer-Encoding: chunked
              |
              |abc"""
@@ -116,26 +116,26 @@ class RequestParserSpec extends Specification {
 
       "with a header-value longer than 8192 chars" in {
         parse {
-          """|GET / HTTP/1.1
+          """|HTTP/1.1 200 OK
              |Fancy: 0""" + ("12345678" * 1024) + "\r\n"
         } mustEqual ErrorMessageParser("HTTP header values longer than 8192 characters are not supported (header 'Fancy')", 400)
       }
 
       "with an invalid Content-Length header value" in {
         parse {
-          """|GET / HTTP/1.1
+          """|HTTP/1.1 200 OK
              |Content-Length: 1.5
              |
              |abc"""
         } mustEqual ErrorMessageParser("Invalid Content-Length header value", 400)
         parse {
-          """|GET / HTTP/1.1
+          """|HTTP/1.1 200 OK
              |Content-Length: -3
              |
              |abc"""
         } mustEqual ErrorMessageParser("Invalid Content-Length header value", 400)
         parse {
-          """|GET / HTTP/1.1
+          """|HTTP/1.1 200 OK
              |Content-Length: 3
              |
              |abcde"""
@@ -147,9 +147,9 @@ class RequestParserSpec extends Specification {
   def parse(request: String) = {
     val req = request.stripMargin.replace("\n", "\r\n")
     val buf = ByteBuffer.wrap(req.getBytes("US-ASCII"))
-    EmptyRequestParser.read(buf) match {
-      case CompleteMessageParser(RequestLine(method, uri, protocol), headers, connectionHeader, body) =>
-        (method, uri, protocol, headers, connectionHeader, new String(body, "ISO-8859-1"))
+    new EmptyResponseParser().read(buf) match {
+      case CompleteMessageParser(StatusLine(protocol, status, reason), headers, connectionHeader, body) =>
+        (protocol, status, reason, headers, connectionHeader, new String(body, "ISO-8859-1"))
       case x => x
     }
   }

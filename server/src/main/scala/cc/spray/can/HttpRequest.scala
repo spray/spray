@@ -46,7 +46,9 @@ object HttpProtocols {
   val `HTTP/1.1` = new Protocol("HTTP/1.1")
 }
 
-case class RequestLine(method: HttpMethod, uri: String, protocol: HttpProtocol)
+sealed trait MessageLine
+case class RequestLine(method: HttpMethod, uri: String, protocol: HttpProtocol) extends MessageLine
+case class StatusLine(protocol: HttpProtocol, status: Int, reason: String) extends MessageLine
 
 case class HttpHeader(name: String, value: String)
 
@@ -72,9 +74,14 @@ case class HttpResponse(
   require(headers.forall(_.name != "Content-Length"), "Content-Length header must not be present, the server sets it itself")
   require(body.length == 0 || status / 100 > 1 && status != 204 && status != 304, "Illegal HTTP response: " +
           "responses with status code " + status + " must not have a message body")
+
+  def bodyAsString(charset: String = "ISO-8859-1") = new String(body, charset)
 }
 
 object HttpResponse {
+  def of(status: Int = 200, headers: List[HttpHeader] = Nil, body: String = "") =
+    HttpResponse(status, headers, if (body.isEmpty) EmptyByteArray else body.getBytes("ISO-8859-1"))
+
   def defaultReason(statusCode: Int) = statusCode match {
     case 100 => "Continue"
     case 101 => "Switching Protocols"
