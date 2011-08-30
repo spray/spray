@@ -17,18 +17,20 @@
 package cc.spray.can
 
 import org.specs2._
-import matcher.Matcher
 import specification.Step
 import akka.actor.{PoisonPill, Actor}
-import java.net.Socket
-import org.parboiled.common.FileUtils
-import java.io.{ByteArrayOutputStream, ByteArrayInputStream}
+import java.nio.ByteBuffer
+import java.io._
+import annotation.tailrec
+import java.lang.IllegalStateException
+import java.nio.channels.SocketChannel
+import java.net.InetSocketAddress
 
 class TestService extends Actor {
   self.id = "test-1"
   protected def receive = {
     case RequestContext(HttpRequest(method, uri, _, _, _, _), complete) => complete {
-      HttpResponse(200, List(HttpHeader("Content-Type", "text/plain")),(method + "|" + uri).getBytes("ISO-8859-1"))
+      HttpResponse(200, Nil, (method + "|" + uri).getBytes("ISO-8859-1"))
     }
   }
 }
@@ -44,25 +46,35 @@ class HttpServerSpec extends Specification { def is =
   def simpleRequests = {
     responseFor(16242) {
       """|GET /abc HTTP/1.1
+         |
          |"""
-    } must matchResponse(status = 200, body = "GET|/abc")
-  }
-
-  def matchResponse(status: Int = 0, headers: List[HttpHeader] = null, body: String = null): Matcher[HttpResponse] = {
-    def f[A](g: HttpResponse => A) = g
-    val statusMatcher: Matcher[HttpResponse] = f(hr => status == 0 || hr.status == status) -> f(_.status + " != " + status)
-    val headerMatcher: Matcher[HttpResponse] = f(hr => headers == null || hr.headers == headers) -> f(_.headers + " != " + headers)
-    val bodyMatcher: Matcher[HttpResponse] = f(hr => body == null || hr.bodyAsString() == body) -> f(_.bodyAsString() + " != " + body)
-    statusMatcher and headerMatcher and bodyMatcher
+    } mustEqual (200, List(HttpHeader("Content-Length", "8")), "GET|/abc")
   }
 
   def responseFor(port: Int)(request: String) = {
-    /*val socket = new Socket("localhost", port)
-    FileUtils.copyAll(
-      new ByteArrayInputStream(request.getBytes("US-ASCII")),
-      new ByteArrayOutputStream()
-    )*/
-    HttpResponse.of(body = "GET|/abc")
+    val req = request.stripMargin.replace("\n", "\r\n")
+    val channel = SocketChannel.open(new InetSocketAddress("localhost", port))
+    val readBuffer = ByteBuffer.allocate(1) // we read one byte at a time
+
+    @tailrec
+    def read(parser: IntermediateParser): MessageParser = {
+      readBuffer.clear()
+      channel.read(readBuffer)
+      readBuffer.flip()
+      parser.read(readBuffer) match {
+        case x: IntermediateParser => read(x)
+        case x => x
+      }
+    }
+
+    channel.write(ByteBuffer.wrap(req.getBytes("US-ASCII")))
+    read(new EmptyResponseParser) match {
+      case CompleteMessageParser(StatusLine(_, status, _), headers, _, body) =>
+        channel.close()
+        (status, headers.filter(_.name != "Date"), new String(body, "ISO-8859-1"))
+      case ErrorMessageParser(message, _) => throw new RuntimeException("Illegal response: " + message)
+      case _ => throw new IllegalStateException
+    }
   }
 
   def startServer() {
@@ -71,7 +83,7 @@ class HttpServerSpec extends Specification { def is =
   }
 
   def stopServer() {
-    actor("test-1") ! PoisonPill
+    actor("spray-can-server") ! PoisonPill
     Actor.registry.shutdownAll()
   }
 }

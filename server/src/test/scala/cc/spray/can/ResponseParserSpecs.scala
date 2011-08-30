@@ -1,5 +1,3 @@
-package cc.spray.can
-
 /*
  * Copyright (C) 2011 Mathias Doenitz
  *
@@ -16,12 +14,13 @@ package cc.spray.can
  * limitations under the License.
  */
 
+package cc.spray.can
+
 import org.specs2.mutable.Specification
 import java.nio.ByteBuffer
-import HttpMethods._
 import HttpProtocols._
 
-class ResponseParserSpec extends Specification {
+class ResponseParserSpecs extends Specification {
 
   "The reponse parsing logic" should {
     "properly parse a response" in {

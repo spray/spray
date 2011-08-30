@@ -263,13 +263,16 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
           case Nil => // we were able to write everything
             if (rawResponse.closeConnection) { // either the protocol or a response header is telling us to close
               close(key)
-            } else key.interestOps(SelectionKey.OP_READ) // switch back to reading if we are not closing
+            } else {
+              key.interestOps(SelectionKey.OP_READ) // switch back to reading if we are not closing
+              connections.refresh(connRec)
+            }
             requestsOpen -= 1
             EmptyRequestParser
           case remainingBuffers => // socket buffer full, we couldn't write everything so we stay in writing mode
+            connections.refresh(connRec)
             RawResponse(remainingBuffers, rawResponse.closeConnection)
         }
-        connections.refresh(connRec)
       } catch {
         case e: IOException => { // the client forcibly closed the connection
           log.warn("Closing connection due to {}", e.toString)

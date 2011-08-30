@@ -79,7 +79,7 @@ case class HttpResponse(
 }
 
 object HttpResponse {
-  def of(status: Int = 200, headers: List[HttpHeader] = Nil, body: String = "") =
+  def create(status: Int = 200, headers: List[HttpHeader] = Nil, body: String = "") =
     HttpResponse(status, headers, if (body.isEmpty) EmptyByteArray else body.getBytes("ISO-8859-1"))
 
   def defaultReason(statusCode: Int) = statusCode match {
