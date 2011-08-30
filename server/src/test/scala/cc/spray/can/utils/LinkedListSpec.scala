@@ -4,7 +4,7 @@ import org.specs2.mutable._
 
 class LinkedListSpec extends Specification {
 
-  case class Elem(value: Int) extends LinkedListElement[Elem]
+  case class Elem(value: Int) extends LinkedList.Element[Elem]
 
   "A LinkedList" should {
     "properly append elements" in {
@@ -50,11 +50,11 @@ class LinkedListSpec extends Specification {
       list += e2
       list += e3
       list.toString mustEqual "[Elem(1),Elem(2),Elem(3)]"
-      list.moveToEnd(e2)
+      list.refresh(e2)
       list.toString mustEqual "[Elem(1),Elem(3),Elem(2)]"
-      list.moveToEnd(e1)
+      list.refresh(e1)
       list.toString mustEqual "[Elem(3),Elem(2),Elem(1)]"
-      list.moveToEnd(e1)
+      list.refresh(e1)
       list.toString mustEqual "[Elem(3),Elem(2),Elem(1)]"
     }
   }

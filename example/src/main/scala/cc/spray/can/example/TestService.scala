@@ -37,30 +37,30 @@ class TestService(id: String) extends Actor {
 
   protected def receive = {
 
-    case HttpRequest(GET, "/", _, _, _, _, complete) => complete {
-      response("Say hello to a spray-can app")
-    }
+    case RequestContext(HttpRequest(GET, "/", _, _, _, _), complete) =>
+      complete(response("Say hello to a spray-can app"))
 
-    case HttpRequest(POST, "/crash", _, _, _, _, complete) => {
+    case RequestContext(HttpRequest(POST, "/crash", _, _, _, _), complete) => {
       complete(response("Hai! (about to kill the HttpServer)"))
       serverActor ! Kill
     }
 
-    case HttpRequest(POST, "/stop", _, _, _, _, complete) => {
+    case RequestContext(HttpRequest(POST, "/stop", _, _, _, _), complete) => {
       complete(response("Shutting down the spray-can server..."))
       serverActor ! PoisonPill
       Actor.registry.shutdownAll()
     }
 
-    case HttpRequest(GET, "/stats", _, _, _, _, complete) => {
-
-      (serverActor ? GetServerStats).mapTo[ServerStats].onComplete {
-        _.value.get match {
+    case RequestContext(HttpRequest(GET, "/stats", _, _, _, _), complete) => {
+      (serverActor ? GetServerStats).mapTo[ServerStats].onComplete { future =>
+        future.value.get match {
           case Right(stats) => complete {
             response {
-              "Uptime: " + (stats.uptime / 1000.0) + " sec\n" +
-              "Requests dispatched: " + stats.requestsDispatched + '\n' +
-              "Currently open connections: " + stats.currentConnectionCount + '\n'
+              "Uptime              : " + (stats.uptime / 1000.0) + " sec\n" +
+              "Requests dispatched : " + stats.requestsDispatched + '\n' +
+              "Requests timed out  : " + stats.requestsTimedOut + '\n' +
+              "Requests open       : " + stats.requestsOpen + '\n' +
+              "Open connections    : " + stats.connectionsOpen + '\n'
             }
           }
           case Left(ex) => complete(response("Couldn't get server stats due to " + ex, status = 500))
@@ -68,6 +68,7 @@ class TestService(id: String) extends Actor {
       }
     }
 
-    case HttpRequest(_, _, _, _, _, _, complete) => complete(response("Unknown command!", 404))
+    case RequestContext(HttpRequest(_, _, _, _, _, _), complete) =>
+      complete(response("Unknown command!", 404))
   }
 }

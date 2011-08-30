@@ -24,19 +24,48 @@ import java.io.IOException
 import annotation.tailrec
 import akka.dispatch._
 import utils.LinkedList
-import akka.actor.{Scheduler, Actor}
 import java.util.concurrent.TimeUnit
+import HttpProtocols._
+import java.util.concurrent.atomic.{AtomicInteger, AtomicBoolean}
+import akka.config.Supervision._
+import akka.actor.{Supervisor, ActorRef, Scheduler, Actor}
 
 // public messages
 case object GetServerStats
-case class ServerStats(uptime: Long, requestsDispatched: Long, currentConnectionCount: Int)
+case class ServerStats(
+  uptime: Long,
+  requestsDispatched: Long,
+  requestsTimedOut: Int,
+  requestsOpen: Int,
+  connectionsOpen: Int
+)
 
-// private messages
-private[can] case object Select
-private[can] case object ReapIdleConnections
-private[can] case class Respond(key: SelectionKey, rawResponse: RawResponse)
+object HttpServer {
+  private case object Select
+  private case object ReapIdleConnections
+  private case class Respond(key: SelectionKey, rawResponse: RawResponse)
+  private class ConnRecord(val key: SelectionKey, var load: ConnRecordLoad) extends LinkedList.Element[ConnRecord]
+
+  def start(config: CanConfig = AkkaConfConfig) {
+    // create, start and supervise the spray-can server actors, which need to be linked
+    val actors = Actor.actorOf(new HttpServer(config)) :: {
+      if (config.requestTimeout > 0)
+        Actor.actorOf(new TimeoutKeeper(config)) :: Nil
+      else
+        Nil
+    }
+    Supervisor(
+      SupervisorConfig(
+        AllForOneStrategy(List(classOf[Exception]), 3, 100),
+        actors.map(Supervise(_, Permanent))
+      )
+    )
+  }
+}
 
 class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
+  import HttpServer._
+
   private lazy val log = LoggerFactory.getLogger(getClass)
   private lazy val selector = SelectorProvider.provider.openSelector
   private lazy val serverSocketChannel = make(ServerSocketChannel.open) { channel =>
@@ -44,15 +73,15 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
     channel.socket.bind(config.endpoint)
     channel.register(selector, SelectionKey.OP_ACCEPT)
   }
-  private lazy val serviceActor = Actor.registry.actorsFor(config.serviceActorId) match {
-    case Array(head) => head
-    case x => throw new RuntimeException("Expected exactly one service actor with id '" +
-            config.serviceActorId + "', but found " + x.length)
-  }
+  private lazy val serviceActor = actor(config.serviceActorId)
+  private lazy val timeoutKeeper: Option[ActorRef] =
+    if (config.requestTimeout > 0) Some(actor(config.timeoutKeeperActorId)) else None
   private val readBuffer = ByteBuffer.allocateDirect(config.readBufferSize)
   private val connections = new LinkedList[ConnRecord] // a list of all connections registered on the selector
   private var startTime: Long = _
   private var requestsDispatched: Long = _
+  private var requestsOpen: Int = _
+  private val requestsTimedOut = new AtomicInteger(0)
 
   self.id = config.serverActorId
 
@@ -70,7 +99,6 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
       super.dispatch(invocation)
       if (invocation.message != Select) selector.wakeup()
     }
-
     override def executeTask(invocation: TaskInvocation) {
       super.executeTask(invocation)
       selector.wakeup()
@@ -113,11 +141,15 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
       key.interestOps(SelectionKey.OP_WRITE)
       connRecord(key).load = rawResponse
     }
-    case ReapIdleConnections => reapIdleConnections()
+    case ReapIdleConnections => connections.forAllTimedOut(config.idleTimeout) { connRec =>
+      log.debug("Closing connection due to idle timout")
+      close(connRec.key)
+    }
     case GetServerStats => {
       log.debug("Received GetServerStats request, responding with stats")
       self.reply {
-        ServerStats(System.currentTimeMillis - startTime, requestsDispatched, connections.size)
+        ServerStats(System.currentTimeMillis - startTime, requestsDispatched,
+          requestsTimedOut.get, requestsOpen, connections.size)
       }
     }
   }
@@ -139,26 +171,48 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
       val channel = key.channel.asInstanceOf[SocketChannel]
       val connRec = connRecord(key)
 
-      def respond(reqProtocol: HttpProtocol, reqConnectionHeader: Option[String])(response: HttpResponse) {
-        // this code is executed from the thread sending the response
-        log.debug("Received HttpResponse, enqueuing RawResponse")
-        self ! Respond(key, prepare(response, reqProtocol, reqConnectionHeader))
-      }
-
       def dispatch(request: CompleteRequestParser) {
         import request._
         import requestLine._
         log.debug("Dispatching {} request to '{}' to the service actor", method, uri)
-        serviceActor ! HttpRequest(method, uri, protocol, headers, body, channel.socket.getInetAddress,
-          respond(protocol, connectionHeader))
+        val alreadyCompleted = new AtomicBoolean(false)
+
+        def respond(response: HttpResponse): Boolean = {
+          if (alreadyCompleted.compareAndSet(false, true)) {
+            log.debug("Received HttpResponse, enqueuing RawResponse")
+            self ! Respond(key, prepare(response, protocol, connectionHeader))
+            true
+          } else false
+        }
+
+        val httpRequest = HttpRequest(method, uri, protocol, headers, body, channel.socket.getInetAddress)
+        if (timeoutKeeper.isDefined) {
+          val timeoutContext = new TimeoutContext(httpRequest, { response =>
+            if (respond(response)) requestsTimedOut.incrementAndGet()
+          })
+          timeoutKeeper.get ! timeoutContext
+          serviceActor ! RequestContext(httpRequest, { response =>
+            if (respond(response)) {
+              timeoutKeeper.get ! CancelTimeout(timeoutContext)
+            } else {
+              log.warn("Received an additional response for an already completed request to '{}', ignoring...", httpRequest.uri)
+            }
+          })
+        } else {
+          serviceActor ! RequestContext(httpRequest, { response =>
+            if (!respond(response)) {
+              log.warn("Received an additional response for an already completed request to '{}', ignoring...", httpRequest.uri)
+            }
+          })
+        }
         requestsDispatched += 1
+        requestsOpen += 1
       }
 
       def respondWithError(error: ErrorRequestParser) {
         log.debug("Responding with {}", error)
-        respond(HttpProtocols.`HTTP/1.1`, None) {
-          HttpResponse(error.responseStatus, Nil, (error.message + '\n').getBytes(US_ASCII))
-        }
+        val response = HttpResponse(error.responseStatus, Nil, (error.message + '\n').getBytes(US_ASCII))
+        self ! Respond(key, prepare(response, `HTTP/1.1`, None))
       }
 
       try {
@@ -171,11 +225,11 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
             case x: ErrorRequestParser => respondWithError(x); EmptyRequestParser
             case x => x
           }
-          refresh(connRec)
+          connections.refresh(connRec)
         } else {
           log.debug("Closing connection")
-          close(key)
-        } // if the client shut down the socket cleanly, we do the same
+          close(key) // if the client shut down the socket cleanly, we do the same
+        }
       }
       catch {
         case e: IOException => {
@@ -209,22 +263,18 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
             if (rawResponse.closeConnection) { // either the protocol or a response header is telling us to close
               close(key)
             } else key.interestOps(SelectionKey.OP_READ) // switch back to reading if we are not closing
+            requestsOpen -= 1
             EmptyRequestParser
           case remainingBuffers => // socket buffer full, we couldn't write everything so we stay in writing mode
             RawResponse(remainingBuffers, rawResponse.closeConnection)
         }
-        refresh(connRec)
+        connections.refresh(connRec)
       } catch {
         case e: IOException => { // the client forcibly closed the connection
           log.warn("Closing connection due to {}", e.toString)
           close(key)
         }
       }
-    }
-
-    def refresh(rec: ConnRecord) {
-      rec.idleSince = System.currentTimeMillis
-      connections.moveToEnd(rec)
     }
 
     selector.select()
@@ -248,16 +298,5 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
       case e: IOException => log.warn("Error while closing socket channel: {}", e.toString)
     }
     connections -= connRecord(key)
-  }
-
-  private def reapIdleConnections() {
-    val now = System.currentTimeMillis
-    connections.traverse { connRec =>
-      if (now - connRec.idleSince > config.idleTimeout) {
-        log.debug("Closing connection due to idle timout")
-        close(connRec.key)
-        true // continue the traversal
-      } else false // once we reached a connection that hasn't timed out all subsequent ones won't either
-    }
   }
 }

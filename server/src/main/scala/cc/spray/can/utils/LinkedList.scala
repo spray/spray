@@ -18,21 +18,32 @@ package cc.spray.can.utils
 
 import annotation.tailrec
 
-trait LinkedListElement[Elem <: LinkedListElement[Elem]] {
-  var prev: Elem = _
-  var next: Elem = _
+object LinkedList {
+  trait Element[Elem >: Null <: Element[Elem]] {
+    private[LinkedList] var list: LinkedList[Elem] = _
+    private[LinkedList] var prev: Elem = _
+    private[LinkedList] var next: Elem = _
+    private[LinkedList] var timeStamp: Long = _
+
+    def isAttached = list != null
+    def memberOf: LinkedList[Elem] = list
+  }
 }
 
 // a special mutable, double-linked list without "buckets", i.e. container objects to hold the payload;
 // rather the payload objects themselves must contain the link fields, which has the advantage that removal operations
-// are constant-time operations
-class LinkedList[Elem >: Null <: LinkedListElement[Elem]] {
-  var first: Elem = _
-  var last: Elem = _
-  var size: Int = _
+// can be performed without searching and in constant-time
+class LinkedList[Elem >: Null <: LinkedList.Element[Elem]] {
+  private var first: Elem = _
+  private var last: Elem = _
+  private var length: Int = _
+
+  def size = length
 
   def += (rec: Elem) {
-    if (size == 0) {
+    require(!rec.isAttached, "Cannot add an element that is already member of some list")
+    assert(rec.prev == null && rec.next == null)
+    if (length == 0) {
       first = rec
       last = rec
     } else {
@@ -40,10 +51,13 @@ class LinkedList[Elem >: Null <: LinkedListElement[Elem]] {
       rec.prev = last
       last = rec
     }
-    size += 1
+    rec.list = this
+    rec.timeStamp = System.currentTimeMillis
+    length += 1
   }
 
   def -= (rec: Elem) {
+    require(rec.list == this, "Cannot remove an element that is not part of this list")
     if (rec == last) {
       if (rec == first) {
         first = null
@@ -56,17 +70,29 @@ class LinkedList[Elem >: Null <: LinkedListElement[Elem]] {
       first = rec.next
       first.prev = null
     } else {
+      assert(rec.prev != null && rec.next != null)
       rec.prev.next = rec.next
       rec.next.prev = rec.prev
     }
+    rec.list = null
     rec.prev = null
     rec.next = null
-    size -= 1
+    length -= 1
   }
 
-  def moveToEnd(rec: Elem) {
+  def refresh(rec: Elem) {
     this -= rec
     this += rec
+  }
+
+  def forAllTimedOut(timeout: Long)(f: Elem => Unit) {
+    val now = System.currentTimeMillis
+    traverse { elem =>
+      if (now - elem.timeStamp > timeout) {
+        f(elem)
+        true // continue the traversal
+      } else false // once we reached an element that hasn't timed out yet all subsequent ones won't either
+    }
   }
 
   /**
@@ -75,7 +101,10 @@ class LinkedList[Elem >: Null <: LinkedListElement[Elem]] {
    */
   def traverse(f: Elem => Boolean) {
     @tailrec def traverse(e: Elem) {
-      if (e != null && f(e)) traverse(e.next)
+      if (e != null) {
+        val next = e.next // get the next element before applying the function, since the latter might move the element
+        if (f(e)) traverse(next)
+      }
     }
     traverse(first)
   }

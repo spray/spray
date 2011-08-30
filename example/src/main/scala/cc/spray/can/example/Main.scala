@@ -21,16 +21,15 @@ import akka.config.Supervision._
 import akka.actor.{Supervisor, Actor}
 
 object Main extends App {
-  val serviceActorId = "testEndpoint"
 
-  // create, start and supervise the TestService and HttpServer actors
+  // create, start and supervise the TestService actor, which holds our custom request handling logic
   Supervisor(
     SupervisorConfig(
       OneForOneStrategy(List(classOf[Exception]), 3, 100),
-      List(
-        Supervise(Actor.actorOf(new TestService(serviceActorId)), Permanent),
-        Supervise(Actor.actorOf(new HttpServer(SimpleConfig(port = 8080, serviceActorId = serviceActorId))), Permanent)
-      )
+      List(Supervise(Actor.actorOf(new TestService("test-endpoint")), Permanent))
     )
   )
+
+  // create, start and supervise the HttpServer actor and possibly (if configured) the TimeoutKeeper actor
+  HttpServer.start()
 }

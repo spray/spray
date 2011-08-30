@@ -7,6 +7,8 @@ package akka.dispatch
 /**
  * Simple extension of ExecutorBasedEventDrivenDispatcher that makes the `dispatch` and
  * `executeTask` methods accessible to derived classes outside of the akka package hierarchy
+ *
+ * TODO: remove once akka ticket #1145 is closed (http://www.assembla.com/spaces/akka/tickets/1145)
  */
 class ImprovedExecutorBasedEventDrivenDispatcher(
   name: String,

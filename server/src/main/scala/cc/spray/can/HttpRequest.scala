@@ -56,9 +56,10 @@ case class HttpRequest(
   protocol: HttpProtocol,
   headers: List[HttpHeader],
   body: Array[Byte],
-  remoteIP: InetAddress,
-  complete: HttpResponse => Unit
+  remoteIP: InetAddress
 )
+
+case class RequestContext(request: HttpRequest, responder: HttpResponse => Unit)
 
 case class HttpResponse(
   status: Int = 200,

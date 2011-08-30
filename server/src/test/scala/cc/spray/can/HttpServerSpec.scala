@@ -25,8 +25,8 @@ class HttpServerSpec extends Specification {
   class TestService extends Actor {
     self.id = "testEndpoint"
     protected def receive = {
-      case r: HttpRequest => r.complete {
-        HttpResponse(200, List(HttpHeader("Content-Type", "text/plain")),(r.method + "|" + r.uri).getBytes("ISO-8859-1"))
+      case RequestContext(HttpRequest(method, uri, _, _, _, _), complete) => complete {
+        HttpResponse(200, List(HttpHeader("Content-Type", "text/plain")),(method + "|" + uri).getBytes("ISO-8859-1"))
       }
     }
   }
@@ -34,7 +34,7 @@ class HttpServerSpec extends Specification {
   textFragment("This specification starts a new HttpServer and fires a few test requests against it")
   step {
     Actor.actorOf(new TestService).start()
-    Actor.actorOf(new HttpServer(SimpleConfig(port = 16242, serviceActorId = "testEndpoint"))).start()
+    Actor.actorOf(new HttpServer(SimpleConfig(port = 16242, serviceActorId = "testEndpoint", requestTimeout = 0))).start()
   }
 
   "The server" should {
