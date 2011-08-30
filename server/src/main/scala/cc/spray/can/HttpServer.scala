@@ -26,16 +26,17 @@ import akka.dispatch._
 import utils.LinkedList
 import java.util.concurrent.TimeUnit
 import HttpProtocols._
-import java.util.concurrent.atomic.{AtomicInteger, AtomicBoolean}
-import akka.config.Supervision._
-import akka.actor.{Supervisor, ActorRef, Scheduler, Actor}
+import java.util.concurrent.atomic.AtomicBoolean
+import akka.actor.{Scheduler, Actor}
 
 // public messages
+case class RequestContext(request: HttpRequest, responder: HttpResponse => Unit)
+case class Timeout(context: RequestContext)
 case object GetServerStats
 case class ServerStats(
   uptime: Long,
   requestsDispatched: Long,
-  requestsTimedOut: Int,
+  requestsTimedOut: Long,
   requestsOpen: Int,
   connectionsOpen: Int
 )
@@ -43,45 +44,44 @@ case class ServerStats(
 object HttpServer {
   private case object Select
   private case object ReapIdleConnections
+  private case object CheckForTimeouts
   private case class Respond(key: SelectionKey, rawResponse: RawResponse)
+  private class TimeoutContext(val request: HttpRequest, val responder: HttpResponse => Unit)
+          extends LinkedList.Element[TimeoutContext]
+  private case class CancelTimeout(context: TimeoutContext)
   private class ConnRecord(val key: SelectionKey, var load: ConnRecordLoad) extends LinkedList.Element[ConnRecord]
-
-  def start(config: CanConfig = AkkaConfConfig) {
-    // create, start and supervise the spray-can server actors, which need to be linked
-    val actors = Actor.actorOf(new HttpServer(config)) :: {
-      if (config.requestTimeout > 0)
-        Actor.actorOf(new TimeoutKeeper(config)) :: Nil
-      else
-        Nil
-    }
-    Supervisor(
-      SupervisorConfig(
-        AllForOneStrategy(List(classOf[Exception]), 3, 100),
-        actors.map(Supervise(_, Permanent))
-      )
-    )
-  }
 }
 
-class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
+class HttpServer(config: CanConfig = AkkaConfConfig) extends Actor with ResponsePreparer {
   import HttpServer._
 
-  private lazy val log = LoggerFactory.getLogger(getClass)
+  // NIO stuff
+  private val readBuffer = ByteBuffer.allocateDirect(config.readBufferSize)
   private lazy val selector = SelectorProvider.provider.openSelector
   private lazy val serverSocketChannel = make(ServerSocketChannel.open) { channel =>
     channel.configureBlocking(false)
     channel.socket.bind(config.endpoint)
     channel.register(selector, SelectionKey.OP_ACCEPT)
   }
+
+  // actor references
   private lazy val serviceActor = actor(config.serviceActorId)
-  private lazy val timeoutKeeper: Option[ActorRef] =
-    if (config.requestTimeout > 0) Some(actor(config.timeoutKeeperActorId)) else None
-  private val readBuffer = ByteBuffer.allocateDirect(config.readBufferSize)
+  private lazy val timeoutServiceActor = actor(config.timeoutServiceActorId)
+
+  // connection and request context lists
   private val connections = new LinkedList[ConnRecord] // a list of all connections registered on the selector
+  private val openRequests = new LinkedList[TimeoutContext]
+  private val openTimeouts = new LinkedList[TimeoutContext]
+
+  // statistics
   private var startTime: Long = _
   private var requestsDispatched: Long = _
   private var requestsOpen: Int = _
-  private val requestsTimedOut = new AtomicInteger(0)
+  private var requestsTimedOut: Long = _
+
+  // misc
+  private lazy val log = LoggerFactory.getLogger(getClass)
+  private val requestTimeoutsEnabled = config.requestTimeout > 0
 
   self.id = config.serverActorId
 
@@ -106,6 +106,8 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
   }
 
   Scheduler.schedule(self, ReapIdleConnections, config.reapingCycle, config.reapingCycle, TimeUnit.MILLISECONDS)
+  if (requestTimeoutsEnabled)
+    Scheduler.schedule(self, CheckForTimeouts, config.timeoutCycle, config.timeoutCycle, TimeUnit.MILLISECONDS)
 
   override def preStart() {
     log.info("Starting spray-can HTTP server on {}", config.endpoint)
@@ -141,6 +143,20 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
       key.interestOps(SelectionKey.OP_WRITE)
       connRecord(key).load = rawResponse
     }
+    case CancelTimeout(ctx) => ctx.memberOf -= ctx // remove from either the openRequests or the openTimeouts list
+    case CheckForTimeouts => {
+      openRequests.forAllTimedOut(config.requestTimeout) { ctx =>
+        log.warn("A request to '{}' timed out, dispatching to the TimeoutService '{}'",
+          ctx.request.uri, config.timeoutServiceActorId)
+        openRequests -= ctx
+        timeoutServiceActor ! Timeout(RequestContext(ctx.request, ctx.responder))
+        openTimeouts += ctx
+      }
+      openTimeouts.forAllTimedOut(config.timeoutTimeout) { ctx =>
+        log.warn("The TimeoutService for '{}' timed out as well, responding with the static error reponse", ctx.request.uri)
+        ctx.responder(timeoutTimeoutResponse(ctx.request))
+      }
+    }
     case ReapIdleConnections => connections.forAllTimedOut(config.idleTimeout) { connRec =>
       log.debug("Closing connection due to idle timout")
       close(connRec.key)
@@ -148,8 +164,7 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
     case GetServerStats => {
       log.debug("Received GetServerStats request, responding with stats")
       self.reply {
-        ServerStats(System.currentTimeMillis - startTime, requestsDispatched,
-          requestsTimedOut.get, requestsOpen, connections.size)
+        ServerStats(System.currentTimeMillis - startTime, requestsDispatched, requestsTimedOut, requestsOpen, connections.size)
       }
     }
   }
@@ -187,14 +202,14 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
         }
 
         val httpRequest = HttpRequest(method, uri, protocol, headers, body, channel.socket.getInetAddress)
-        if (timeoutKeeper.isDefined) {
+        if (requestTimeoutsEnabled) {
           val timeoutContext = new TimeoutContext(httpRequest, { response =>
-            if (respond(response)) requestsTimedOut.incrementAndGet()
+            if (respond(response)) requestsTimedOut += 1
           })
-          timeoutKeeper.get ! timeoutContext
+          openRequests += timeoutContext
           serviceActor ! RequestContext(httpRequest, { response =>
             if (respond(response)) {
-              timeoutKeeper.get ! CancelTimeout(timeoutContext)
+              self ! CancelTimeout(timeoutContext)
             } else {
               log.warn("Received an additional response for an already completed request to '{}', ignoring...", httpRequest.uri)
             }
@@ -302,5 +317,14 @@ class HttpServer(config: CanConfig) extends Actor with ResponsePreparer {
       case e: IOException => log.warn("Error while closing socket channel: {}", e.toString)
     }
     connections -= connRecord(key)
+  }
+
+  protected def timeoutTimeoutResponse(request: HttpRequest) = {
+    HttpResponse.create(
+      status = 500,
+      headers = List(HttpHeader("Content-Type", "text/plain")),
+      body = "Ooops! The server was not able to produce a timely response to your request.\n" +
+             "Please try again in a short while!"
+    )
   }
 }

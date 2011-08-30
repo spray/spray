@@ -61,8 +61,6 @@ case class HttpRequest(
   remoteIP: InetAddress
 )
 
-case class RequestContext(request: HttpRequest, responder: HttpResponse => Unit)
-
 case class HttpResponse(
   status: Int = 200,
   headers: List[HttpHeader] = Nil,

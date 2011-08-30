@@ -20,7 +20,6 @@ import org.specs2._
 import specification.Step
 import akka.actor.{PoisonPill, Actor}
 import java.nio.ByteBuffer
-import java.io._
 import annotation.tailrec
 import java.lang.IllegalStateException
 import java.nio.channels.SocketChannel
@@ -40,7 +39,8 @@ class HttpServerSpec extends Specification { def is =
   "This spec starts a new HttpServer and exercises its behavior with test requests" ^
                                                                                     Step(startServer())^
                                                                                     p^
-  "responses to simple requests" ! simpleRequests
+  "test responses to simple requests"                                               ! simpleRequests^
+                                                                                    Step(stopServer())
 
 
   def simpleRequests = {
