@@ -126,7 +126,7 @@ class HttpServer(config: CanConfig = AkkaConfConfig) extends Actor with Response
     cleanUp()
   }
 
-  private def cleanUp() {
+  protected def cleanUp() {
     selector.close()
     serverSocketChannel.close()
   }
@@ -134,42 +134,15 @@ class HttpServer(config: CanConfig = AkkaConfConfig) extends Actor with Response
   @inline private def connRecord(key: SelectionKey) = key.attachment.asInstanceOf[ConnRecord]
 
   protected def receive = {
-    case Select => {
-      select()
-      self ! Select // loop
-    }
-    case Respond(key, rawResponse) => if (key.isValid) {
-      log.debug("Received raw response, scheduling write")
-      key.interestOps(SelectionKey.OP_WRITE)
-      connRecord(key).load = rawResponse
-    }
+    case Select => select()
+    case Respond(key, rawResponse) => respond(key, rawResponse)
     case CancelTimeout(ctx) => ctx.memberOf -= ctx // remove from either the openRequests or the openTimeouts list
-    case CheckForTimeouts => {
-      openRequests.forAllTimedOut(config.requestTimeout) { ctx =>
-        log.warn("A request to '{}' timed out, dispatching to the TimeoutService '{}'",
-          ctx.request.uri, config.timeoutServiceActorId)
-        openRequests -= ctx
-        timeoutServiceActor ! Timeout(RequestContext(ctx.request, ctx.responder))
-        openTimeouts += ctx
-      }
-      openTimeouts.forAllTimedOut(config.timeoutTimeout) { ctx =>
-        log.warn("The TimeoutService for '{}' timed out as well, responding with the static error reponse", ctx.request.uri)
-        ctx.responder(timeoutTimeoutResponse(ctx.request))
-      }
-    }
-    case ReapIdleConnections => connections.forAllTimedOut(config.idleTimeout) { connRec =>
-      log.debug("Closing connection due to idle timout")
-      close(connRec.key)
-    }
-    case GetServerStats => {
-      log.debug("Received GetServerStats request, responding with stats")
-      self.reply {
-        ServerStats(System.currentTimeMillis - startTime, requestsDispatched, requestsTimedOut, requestsOpen, connections.size)
-      }
-    }
+    case CheckForTimeouts => checkForTimeouts()
+    case ReapIdleConnections => reapIdleConnections()
+    case GetServerStats => self.reply(serverStats)
   }
 
-  private def select() {
+  protected def select() {
     def accept() {
       log.debug("Accepting new connection")
       val socketChannel = serverSocketChannel.accept
@@ -296,6 +269,9 @@ class HttpServer(config: CanConfig = AkkaConfConfig) extends Actor with Response
       }
     }
 
+    // The following select() call only really blocks for a longer period of time if the actors mailbox is empty and no
+    // other tasks have been scheduled by the dispatcher. Otherwise the dispatcher will either already have called
+    // selector.wakeup() (which causes the following call to not block at all) or do so in a short while.
     selector.select()
     val selectedKeys = selector.selectedKeys.iterator
     while (selectedKeys.hasNext) {
@@ -307,9 +283,44 @@ class HttpServer(config: CanConfig = AkkaConfConfig) extends Actor with Response
         else if (key.isWritable) write(key)
       } else log.warn("Invalid selection key: {}", key)
     }
+    self ! Select // loop
   }
 
-  private def close(key: SelectionKey) {
+  protected def respond(key: SelectionKey, rawResponse: RawResponse) {
+    if (key.isValid) {
+      log.debug("Received raw response, scheduling write")
+      key.interestOps(SelectionKey.OP_WRITE)
+      connRecord(key).load = rawResponse
+    }
+  }
+
+  protected def checkForTimeouts() {
+    openRequests.forAllTimedOut(config.requestTimeout) { ctx =>
+      log.warn("A request to '{}' timed out, dispatching to the TimeoutService '{}'",
+        ctx.request.uri, config.timeoutServiceActorId)
+      openRequests -= ctx
+      timeoutServiceActor ! Timeout(RequestContext(ctx.request, ctx.responder))
+      openTimeouts += ctx
+    }
+    openTimeouts.forAllTimedOut(config.timeoutTimeout) { ctx =>
+      log.warn("The TimeoutService for '{}' timed out as well, responding with the static error reponse", ctx.request.uri)
+      ctx.responder(timeoutTimeoutResponse(ctx.request))
+    }
+  }
+
+  protected def reapIdleConnections() {
+    connections.forAllTimedOut(config.idleTimeout) { connRec =>
+      log.debug("Closing connection due to idle timout")
+      close(connRec.key)
+    }
+  }
+
+  protected def serverStats = {
+    log.debug("Received GetServerStats request, responding with stats")
+    ServerStats(System.currentTimeMillis - startTime, requestsDispatched, requestsTimedOut, requestsOpen, connections.size)
+  }
+
+  protected def close(key: SelectionKey) {
     key.cancel()
     try {
       key.channel.close()

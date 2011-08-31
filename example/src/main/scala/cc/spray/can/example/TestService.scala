@@ -47,7 +47,6 @@ class TestService(id: String) extends Actor {
 
     case RequestContext(HttpRequest(POST, "/stop", _, _, _, _), complete) => {
       complete(response("Shutting down the spray-can server..."))
-      serverActor ! PoisonPill
       Actor.registry.shutdownAll()
     }
 

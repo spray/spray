@@ -25,16 +25,18 @@ import java.lang.IllegalStateException
 import java.nio.channels.SocketChannel
 import java.net.InetSocketAddress
 
-class TestService extends Actor {
-  self.id = "test-1"
-  protected def receive = {
-    case RequestContext(HttpRequest(method, uri, _, _, _, _), complete) => complete {
-      HttpResponse(200, Nil, (method + "|" + uri).getBytes("ISO-8859-1"))
+class HttpServerSpec extends Specification {
+
+  class TestService extends Actor {
+    self.id = "test-1"
+    protected def receive = {
+      case RequestContext(HttpRequest(method, uri, _, _, _, _), complete) => complete {
+        HttpResponse(200, Nil, (method + "|" + uri).getBytes("ISO-8859-1"))
+      }
     }
   }
-}
 
-class HttpServerSpec extends Specification { def is =
+  def is =
 
   "This spec starts a new HttpServer and exercises its behavior with test requests" ^
                                                                                     Step(startServer())^
@@ -83,7 +85,6 @@ class HttpServerSpec extends Specification { def is =
   }
 
   def stopServer() {
-    actor("spray-can-server") ! PoisonPill
     Actor.registry.shutdownAll()
   }
 }

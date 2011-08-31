@@ -4,9 +4,11 @@ import org.specs2._
 import matcher.MustThrownMatchers
 import scala.collection.mutable.ListBuffer
 
-case class Elem(value: Int) extends LinkedList.Element[Elem]
+class LinkedListSpec extends Specification with MustThrownMatchers {
 
-class LinkedListSpec extends Specification with MustThrownMatchers { def is =
+  case class Elem(value: Int) extends LinkedList.Element[Elem]
+
+  def is =
 
   "A LinkedList should" ^
     "properly append elements"  ! e1^
@@ -59,7 +61,7 @@ class LinkedListSpec extends Specification with MustThrownMatchers { def is =
     Thread.sleep(100)
     list.refresh(e2)
     val lb = new ListBuffer[Elem]
-    list.forAllTimedOut(100)(lb.+=)
+    list.forAllTimedOut(90)(lb.+=)
     lb.toString mustEqual "ListBuffer(Elem(1), Elem(3))"
     list.toString mustEqual "[Elem(1), Elem(3), Elem(2)]"
   }
