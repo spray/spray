@@ -18,7 +18,7 @@ package cc.spray.can
 
 import org.specs2._
 import specification.Step
-import akka.actor.{PoisonPill, Actor}
+import akka.actor.Actor
 import java.nio.ByteBuffer
 import annotation.tailrec
 import java.lang.IllegalStateException
@@ -30,7 +30,7 @@ class HttpServerSpec extends Specification {
   class TestService extends Actor {
     self.id = "test-1"
     protected def receive = {
-      case RequestContext(HttpRequest(method, uri, _, _, _, _), complete) => complete {
+      case RequestContext(HttpRequest(method, uri, _, _), _, _, complete) => complete {
         HttpResponse(200, Nil, (method + "|" + uri).getBytes("ISO-8859-1"))
       }
     }
@@ -81,7 +81,7 @@ class HttpServerSpec extends Specification {
 
   def startServer() {
     Actor.actorOf(new TestService).start()
-    Actor.actorOf(new HttpServer(SimpleConfig(port = 16242, serviceActorId = "test-1", requestTimeout = 0))).start()
+    Actor.actorOf(new HttpServer(SimpleServerConfig(port = 16242, serviceActorId = "test-1", requestTimeout = 0))).start()
   }
 
   def stopServer() {

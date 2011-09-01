@@ -15,14 +15,15 @@
  */
 package cc.spray.can
 
-import java.net.InetAddress
-
 sealed trait HttpMethod {
   def name: String
+  private[can] def asByteArray: Array[Byte]
 }
+
 object HttpMethods {
   class Method private[HttpMethods] (val name: String) extends HttpMethod {
     override def toString = name
+    private[can] lazy val asByteArray = (name + ' ').getBytes("US-ASCII")
   }
   val GET = new Method("GET")
   val POST = new Method("POST")
@@ -53,33 +54,24 @@ case class StatusLine(protocol: HttpProtocol, status: Int, reason: String) exten
 case class HttpHeader(name: String, value: String)
 
 case class HttpRequest(
-  method: HttpMethod,
-  uri: String,
-  protocol: HttpProtocol,
-  headers: List[HttpHeader],
-  body: Array[Byte],
-  remoteIP: InetAddress
-)
+  method: HttpMethod = HttpMethods.GET,
+  uri: String = "/",
+  headers: List[HttpHeader] = Nil,
+  body: Array[Byte] = EmptyByteArray
+) {
+  def withBody(body: String, charset: String = "ISO-8859-1") = copy(body = body.getBytes(charset))
+}
 
 case class HttpResponse(
   status: Int = 200,
   headers: List[HttpHeader] = Nil,
-  body: Array[Byte] = EmptyByteArray
+  body: Array[Byte] = EmptyByteArray,
+  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
 ) {
-  require(100 <= status && status < 600, "Illegal HTTP status code: " + status)
-  require(headers != null, "headers must not be null")
-  require(body != null, "body must not be null (use cc.spray.can.EmptyByteArray for empty body)")
-  require(headers.forall(_.name != "Content-Length"), "Content-Length header must not be present, the server sets it itself")
-  require(body.length == 0 || status / 100 > 1 && status != 204 && status != 304, "Illegal HTTP response: " +
-          "responses with status code " + status + " must not have a message body")
-
-  def bodyAsString(charset: String = "ISO-8859-1") = new String(body, charset)
+  def withBody(body: String, charset: String = "ISO-8859-1") = copy(body = body.getBytes(charset))
 }
 
 object HttpResponse {
-  def create(status: Int = 200, headers: List[HttpHeader] = Nil, body: String = "") =
-    HttpResponse(status, headers, if (body.isEmpty) EmptyByteArray else body.getBytes("ISO-8859-1"))
-
   def defaultReason(statusCode: Int) = statusCode match {
     case 100 => "Continue"
     case 101 => "Switching Protocols"

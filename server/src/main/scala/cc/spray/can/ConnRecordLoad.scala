@@ -23,7 +23,7 @@ import annotation.tailrec
 
 private[can] sealed trait ConnRecordLoad
 
-private[can] case class RawResponse(buffers: List[ByteBuffer], closeConnection: Boolean) extends ConnRecordLoad
+private[can] case class WriteJob(buffers: List[ByteBuffer], closeConnection: Boolean) extends ConnRecordLoad
 
 // a MessageParser instance holds the complete parsing state at any particular point in the request parsing process
 private[can] trait MessageParser extends ConnRecordLoad

@@ -92,11 +92,11 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
 
   def prep(reqProtocol: HttpProtocol, reqConnectionHeader: Option[String] = None)(response: HttpResponse) = {
     val sb = new java.lang.StringBuilder()
-    val rawResponse = prepare(response, reqProtocol, reqConnectionHeader)
-    rawResponse.buffers.foreach { buf =>
+    val writeJob = prepare(response, reqProtocol, reqConnectionHeader)
+    writeJob.buffers.foreach { buf =>
       sb.append(new String(buf.array, US_ASCII))
     }
-    sb.toString -> rawResponse.closeConnection
+    sb.toString -> writeJob.closeConnection
   }
 
   def prep(t: Tuple2[String, Boolean]) = t._1.stripMargin.replace("\n", "\r\n") -> t._2
