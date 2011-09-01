@@ -4,22 +4,6 @@ import Process._
 class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProject with posterous.Publish {
 
   // -------------------------------------------------------------------------------------------------------------------
-  // All repositories *must* go here! See ModuleConfigurations below.
-  // -------------------------------------------------------------------------------------------------------------------
-  object Repositories {
-    // e.g. val GlassFishRepo   = MavenRepository("GlassFishRepo Repo", "http://download.java.net/maven/glassfish/")
-  }
-
-  // -------------------------------------------------------------------------------------------------------------------
-  // ModuleConfigurations
-  // Every dependency that cannot be resolved from the built-in repositories (Maven Central and Scala Tools Releases)
-  // must be resolved from a ModuleConfiguration. This will result in a significant acceleration of the update action.
-  // Therefore, if repositories are defined, this must happen as def, not as val.
-  // -------------------------------------------------------------------------------------------------------------------
-  import Repositories._
-  val sprayModuleConfig = ModuleConfiguration("cc.spray", ScalaToolsSnapshots)
-
-  // -------------------------------------------------------------------------------------------------------------------
   // Dependencies
   // -------------------------------------------------------------------------------------------------------------------
   object Deps {
@@ -81,8 +65,9 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   // -------------------------------------------------------------------------------------------------------------------
   // Subprojects
   // -------------------------------------------------------------------------------------------------------------------
-  lazy val serverProject  = project("server", "server", new ServerProject(_))
-  lazy val exampleProject = project("example", "example", new ExampleProject(_))
+  lazy val sprayCanProject  = project("spray-can", "spray-can", new SprayCanProject(_))
+  lazy val serverExampleProject = project("server-example", "server-example", new ServerExampleProject(_))
+  lazy val clientExampleProject = project("client-example", "client-example", new ClientExampleProject(_))
 
   abstract class ModuleProject(info: ProjectInfo) extends DefaultProject(info) {
     // Options
@@ -90,14 +75,14 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     override def testFrameworks = super.testFrameworks ++ Seq(specs2Framework)
   }
 
-  class ServerProject(info: ProjectInfo) extends ModuleProject(info) with AkkaProject {
+  class SprayCanProject(info: ProjectInfo) extends ModuleProject(info) with AkkaProject {
     override val akkaActor = akkaModule("actor") % "provided" withSources()
-    val akkaSlf4j          = akkaModule("slf4j")
     val slf4j              = Deps.slf4j
 
     // testing
-    val specs2  = Deps.specs2
-    val logback = Deps.logback % "test"
+    val specs2    = Deps.specs2
+    val akkaSlf4j = akkaModule("slf4j") % "test"
+    val logback   = Deps.logback % "test"
 
     override def documentOptions: Seq[ScaladocOption] = documentTitle(name + " " + version) :: Nil
     override def pomExtra = pomExtras
@@ -115,8 +100,8 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     override def packageToPublishActions = super.packageToPublishActions ++ Seq(packageDocs, packageSrc)
   }
 
-  class ExampleProject(info: ProjectInfo) extends ModuleProject(info) with AkkaProject {
-    val server    = serverProject
+  abstract class ExampleProject(info: ProjectInfo) extends ModuleProject(info) with AkkaProject {
+    val server    = sprayCanProject
     val akkaSlf4j = akkaModule("slf4j")
     val logback   = Deps.logback % "runtime"
 
@@ -127,5 +112,9 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     override def deliverProjectDependencies = Nil
     override def disableCrossPaths = true
   }
+
+  class ServerExampleProject(info: ProjectInfo) extends ExampleProject(info)
+
+  class ClientExampleProject(info: ProjectInfo) extends ExampleProject(info)
 
 }
