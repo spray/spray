@@ -36,13 +36,11 @@ trait PeerConfig {
 trait ServerConfig extends PeerConfig {
   def endpoint: InetSocketAddress
   def serverActorId: String
-  def timeoutKeeperActorId: String
   def serviceActorId: String
   def timeoutServiceActorId: String
   def timeoutTimeout: Long
 
   require(!serverActorId.isEmpty, "serverActorId must not be empty")
-  require(!timeoutKeeperActorId.isEmpty, "timeoutKeeperActorId must not be empty")
   require(!serviceActorId.isEmpty, "serviceActorId must not be empty")
   require(!timeoutServiceActorId.isEmpty, "timeoutServiceActorId must not be empty")
   require(timeoutTimeout >= 0, "timeoutTimeout must be >= 0 ms")
@@ -51,7 +49,6 @@ trait ServerConfig extends PeerConfig {
     getClass.getSimpleName + "(\n" +
     "  endpoint              : " + endpoint + "\n" +
     "  serverActorId         : " + serverActorId + "\n" +
-    "  timeoutKeeperActorId  : " + timeoutKeeperActorId + "\n" +
     "  serviceActorId        : " + serviceActorId + "\n" +
     "  timeoutServiceActorId : " + timeoutServiceActorId + "\n" +
     "  readBufferSize        : " + readBufferSize + " bytes\n" +
@@ -79,11 +76,10 @@ object AkkaConfServerConfig extends ServerConfig {
 
   // ServerConfig
   lazy val hostname              = config.getString("spray.can-server.hostname", "localhost")
-  lazy val port                  = config.getInt("spray.can-server.port", 8888)
+  lazy val port                  = config.getInt("spray.can-server.port", 8080)
   lazy val serverActorId         = config.getString("spray.can-server.server-actor-id", "spray-can-server")
-  lazy val timeoutKeeperActorId  = config.getString("spray.can-server.timeout-keeper-actor-id", "spray-can-timeout-keeper")
   lazy val serviceActorId        = config.getString("spray.can-server.service-actor-id", "spray-root-service")
-  lazy val timeoutServiceActorId = config.getString("spray.can-server.service-actor-id", "spray-root-service")
+  lazy val timeoutServiceActorId = config.getString("spray.can-server.timeout-service-actor-id", "spray-root-service")
   lazy val timeoutTimeout        = config.getLong("spray.can-server.timeout-timeout", 500)
   def endpoint = new InetSocketAddress(hostname, port)
 }
@@ -103,7 +99,7 @@ object AkkaConfClientConfig extends ClientConfig {
 case class SimpleServerConfig(
   // ServerConfig
   hostname: String = "localhost",
-  port: Int = 8888,
+  port: Int = 8080,
   serverActorId: String = "spray-can-server",
   timeoutKeeperActorId: String = "spray-can-timeout-keeper",
   serviceActorId: String = "spray-root-service",
