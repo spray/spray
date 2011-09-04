@@ -37,9 +37,10 @@ object BuildSettings {
   // -------------------------------------------------------------------------------------------------------------------
   // Common settings for all modules
   // -------------------------------------------------------------------------------------------------------------------
-  val buildOrganization  = "cc.spray"
-  val buildVersion       = "0.8-SNAPSHOT"
-  val buildScalaVersion  = "2.9.0-1"
+  val buildOrganization       = "cc.spray"
+  val buildVersion            = "0.8-SNAPSHOT"
+  val buildScalaVersion       = "2.9.0-1"
+  val buildCrossScalaVersions = Seq("2.9.0-1", "2.9.1")
 
   // Compile options
   val buildScalacOptions = 
@@ -77,13 +78,14 @@ object BuildSettings {
 
   // Create common build settings
   val buildSettings = Defaults.defaultSettings ++ Seq(
-    organization      := buildOrganization,
-    version           := buildVersion,
-    scalaVersion      := buildScalaVersion,
-    scalacOptions     := buildScalacOptions,
-    pomExtra          := pomExtras,
-    publishMavenStyle := true,
-    fullResolvers    ++= resolvers,
+    organization       := buildOrganization,
+    version            := buildVersion,
+    scalaVersion       := buildScalaVersion,
+    scalacOptions      := buildScalacOptions,
+    crossScalaVersions := buildCrossScalaVersions,
+    pomExtra           := pomExtras,
+    publishMavenStyle  := true,
+    fullResolvers     ++= resolvers,
     
     publishTo <<= (version) { version: String =>
       /*val scalaTools = "http://nexus.scala-tools.org/content/repositories/"
@@ -98,8 +100,9 @@ object BuildSettings {
   )
 
   // All settings needed to completely disable publishing of an artifact
-  // TODO pom.xml is still published
   val disablePublishing = Seq(
+    publish         := (),
+    publishLocal    := (),
     publishArtifact := false
   )
 
@@ -168,11 +171,6 @@ object SprayBuild extends Build {
   // Root-Project
   // -------------------------------------------------------------------------------------------------------------------
   
-  // TODO Disable publishing of root project
-  //lazy override val `package` = task { None }    // disable packaging
-  //lazy override val publishLocal = task { None } // and publishing
-  //lazy override val publish = task { None }      // the root project
-
   lazy val spray = Project(
     "spray",
     file("."),
@@ -232,12 +230,7 @@ object SprayBuild extends Build {
   // Spray-Example-Projects
   // -------------------------------------------------------------------------------------------------------------------
 
-  // TODO Disable publishing for examples
-  //lazy override val publishLocal = task { None }
-  //lazy override val publish = task { None }
-  //
-  //override def deliverProjectDependencies = Nil
-  //override def disableCrossPaths = true
+  // TODO override def disableCrossPaths = true
 
   // Common dependencies for all example modules
   val exampleDeps = Seq(
