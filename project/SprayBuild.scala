@@ -162,6 +162,9 @@ object Dependencies {
   val pegdown     = "org.pegdown" % "pegdown" % "1.0.2" % "compile"
   val jettyServer = "org.eclipse.jetty" % "jetty-server" % JETTY_VERSION % "test"
   val jettyWebApp = "org.eclipse.jetty" % "jetty-webapp" % JETTY_VERSION % "test"
+
+  // only for example execution with web-pöugin
+  val jettyPlugin = "org.eclipse.jetty" % "jetty-webapp" % JETTY_VERSION % "jetty"
 }
 
 object SprayBuild extends Build {
@@ -254,6 +257,7 @@ object SprayBuild extends Build {
       libraryDependencies ++= exampleDeps ++ Seq(
         Dependencies.jettyServer,
         Dependencies.jettyWebApp,
+        Dependencies.jettyPlugin,
         Dependencies.logback
       )
     )
@@ -280,6 +284,7 @@ object SprayBuild extends Build {
         Dependencies.pegdown,
         Dependencies.jettyServer,
         Dependencies.jettyWebApp,
+        Dependencies.jettyPlugin,
         Dependencies.logback
       )
     )
@@ -293,6 +298,7 @@ object SprayBuild extends Build {
       libraryDependencies ++= exampleDeps ++ Seq(
         Dependencies.jettyServer,
         Dependencies.jettyWebApp,
+        Dependencies.jettyPlugin,
         Dependencies.logback
       )
     )
