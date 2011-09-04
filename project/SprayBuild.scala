@@ -31,7 +31,7 @@ object BuildSettings {
   // must be resolved from a ModuleConfiguration. This will result in a significant acceleration of the update action.
   // Therefore, if repositories are defined, this must happen as def, not as val.
   // -------------------------------------------------------------------------------------------------------------------
-  val akkaModuleConfig      = ModuleConfiguration("akka", AkkaRepo)
+  val akkaModuleConfig      = ModuleConfiguration("se.scalablesolutions.akka", AkkaRepo)
   val glassfishModuleConfig = ModuleConfiguration("org.glassfish", GlassfishRepo)
   val sprayModuleConfig     = ModuleConfiguration("cc.spray", ScalaToolsSnapshots)
   val deftModuleConfig      = ModuleConfiguration("org.apache.deft", SprayGithubRepo)
