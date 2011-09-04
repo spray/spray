@@ -82,7 +82,7 @@ object BuildSettings {
     version            := buildVersion,
     scalaVersion       := buildScalaVersion,
     scalacOptions      := buildScalacOptions,
-    crossScalaVersions := buildCrossScalaVersions,
+    //crossScalaVersions := buildCrossScalaVersions,
     pomExtra           := pomExtras,
     publishMavenStyle  := true,
     fullResolvers     ++= resolvers,
