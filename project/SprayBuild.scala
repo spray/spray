@@ -3,9 +3,6 @@ import Keys._
 import com.github.siasia.WebPlugin
 
 
-// TODO Include posterous plugin
-
-
 // ---------------------------------------------------------------------------------------------------------------------
 // All repositories *must* go here! See ModuleConfigurations below.
 // ---------------------------------------------------------------------------------------------------------------------
