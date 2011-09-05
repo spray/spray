@@ -163,7 +163,7 @@ object Dependencies {
   val jettyServer = "org.eclipse.jetty" % "jetty-server" % JETTY_VERSION % "test"
   val jettyWebApp = "org.eclipse.jetty" % "jetty-webapp" % JETTY_VERSION % "test"
 
-  // only for example execution with web-pöugin
+  // only for example execution with web-plugin
   val jettyPlugin = "org.eclipse.jetty" % "jetty-webapp" % JETTY_VERSION % "jetty"
 }
 
