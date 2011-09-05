@@ -135,7 +135,7 @@ object BuildSettings {
 // Dependencies
 // ---------------------------------------------------------------------------------------------------------------------
 object Dependencies {
-  val AKKA_VERSION      = "1.1.3"
+  val AKKA_VERSION      = "1.2-RC6"
   val JETTY_VERSION     = "8.0.0.RC0"
   val PARBOILED_VERSION = "1.0.1"
 
