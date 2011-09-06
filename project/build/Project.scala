@@ -27,7 +27,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with posterous.Pub
   // -------------------------------------------------------------------------------------------------------------------
   // Testing with Specs2
   // -------------------------------------------------------------------------------------------------------------------
-  val specs2 = "org.specs2" %% "specs2" % "1.5" % "test" withSources()
+  val specs2 = "org.specs2" %% "specs2" % "1.6.1" % "test" withSources()
 
   def specs2Framework = new TestFramework("org.specs2.runner.SpecsFramework")
   override def testFrameworks = super.testFrameworks ++ Seq(specs2Framework)
