@@ -32,6 +32,18 @@ trait AdditionalFormats {
     def read(json: JsValue) = reader.read(json)
   }
 
+  def lift[T](writer :JsonWriter[T]) = new JsonFormat[T] {
+    def write(obj: T): JsValue = writer.write(obj)
+    def read(value: JsValue) =
+      throw new UnsupportedOperationException("JsonReader implementation missing")
+  }
+
+  def lift[T <: AnyRef](reader :JsonReader[T]) = new JsonFormat[T] {
+    def write(obj: T): JsValue =
+      throw new UnsupportedOperationException("No JsonWriter[" + obj.getClass + "] available")
+    def read(value: JsValue) = reader.read(value)
+  }
+
   /**
    * Lazy wrapper around serialization. Useful when you want to serialize (mutually) recursive structures.
    */

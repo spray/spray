@@ -26,7 +26,7 @@ import collection.mutable.ListBuffer
 sealed trait JsValue {
   override def toString = CompactPrinter(this)
   def toString(printer: (JsValue => String)) = printer(this)
-  def fromJson[T :JsonReader]: T = jsonReader.read(this)
+  def fromJson[T :JsonReader]: T = jsonReader[T].read(this)
 }
 object JsValue {
 
