@@ -16,11 +16,11 @@
 
 package cc.spray.can
 
-import akka.actor.{Scheduler, ActorRef}
 import akka.dispatch.{DefaultCompletableFuture, Future}
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
 import org.slf4j.LoggerFactory
+import akka.actor.{Actor, Scheduler, ActorRef}
 
 private[can] trait HighLevelHttpClient {
   private lazy val log = LoggerFactory.getLogger(getClass)
@@ -35,7 +35,7 @@ private[can] trait HighLevelHttpClient {
     }
 
     def awaitResponse: HttpDialog[A] = appendToConnectionChain { connection =>
-      make(new DefaultCompletableFuture[ConnectionHandle]) { nextConnectionF =>
+      make(new DefaultCompletableFuture[ConnectionHandle](Long.MaxValue)) { nextConnectionF =>
         // only complete the next connection future once the result is in
         log.debug("Awaiting response")
         resultF.onComplete(_ => nextConnectionF.completeWithResult(connection))
@@ -43,7 +43,7 @@ private[can] trait HighLevelHttpClient {
     }
 
     def waitIdle(duration: Duration): HttpDialog[A] = appendToConnectionChain { connection =>
-      make(new DefaultCompletableFuture[ConnectionHandle]) { nextConnectionF =>
+      make(new DefaultCompletableFuture[ConnectionHandle](Long.MaxValue)) { nextConnectionF =>
         // delay completion of the next connection future by the given time
         val millis = duration.toMillis
         log.debug("Waiting {} ms", millis)
@@ -68,6 +68,7 @@ private[can] trait HighLevelHttpClient {
 
     private def doSend(request: HttpRequest): Future[HttpResponse] = connectionF.flatMap { connection =>
       log.debug("Sending request {}", request)
+      implicit val timeout = Actor.Timeout(Long.MaxValue)
       (client ? Send(connection, request)).mapTo[Received].map {
         case Received(Right(response)) => response
         case Received(Left(error)) => throw new RuntimeException(error) // unwrap error into Future
@@ -80,7 +81,8 @@ private[can] trait HighLevelHttpClient {
 
     def apply(host: String, port: Int = 80, clientActorId: String = AkkaConfClientConfig.clientActorId): HttpDialog[Unit] = {
       val client = actor(clientActorId)
-      val connection = new DefaultCompletableFuture[ConnectionHandle]
+      val connection = new DefaultCompletableFuture[ConnectionHandle](Long.MaxValue)
+      implicit val timeout = Actor.Timeout(Long.MaxValue)
       val result: Future[Unit] = (client ? Connect(host, port)).mapTo[ConnectionResult].map {
         case ConnectionResult(Right(connectionHandle)) => {
           log.debug("Connected to {}", host + ":" + port)
