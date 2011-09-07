@@ -159,7 +159,6 @@ class HttpClient(config: ClientConfig = AkkaConfClientConfig) extends HttpPeer(c
 
   protected def writeComplete(connRec: ConnRecord) = {
     requestsDispatched += 1
-    requestsOpen += 1
     new EmptyResponseParser
   }
 
@@ -170,4 +169,6 @@ class HttpClient(config: ClientConfig = AkkaConfClientConfig) extends HttpPeer(c
       ctx.connRec.deliverResponse(Received(Left("Timeout")))
     }
   }
+
+  protected def openRequestCount = openRequests.size
 }

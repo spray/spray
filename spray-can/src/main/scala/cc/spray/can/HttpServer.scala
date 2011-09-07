@@ -155,7 +155,6 @@ class HttpServer(config: ServerConfig = AkkaConfServerConfig) extends HttpPeer(c
     }
     serviceActor ! RequestContext(httpRequest, protocol, remoteAddress, responder)
     requestsDispatched += 1
-    requestsOpen += 1
     EmptyRequestParser // switch back to parsing the next request from the start
   }
 
@@ -171,7 +170,6 @@ class HttpServer(config: ServerConfig = AkkaConfServerConfig) extends HttpPeer(c
   }        // it will never be used since we close the connection after writing the error response
 
   protected def writeComplete(connRec: ConnRecord): ConnRecordLoad = {
-    requestsOpen -= 1
     EmptyRequestParser
   }
 
@@ -204,4 +202,6 @@ class HttpServer(config: ServerConfig = AkkaConfServerConfig) extends HttpPeer(c
       "Please try again in a short while!"
     }
   }
+
+  protected def openRequestCount = openRequests.size
 }

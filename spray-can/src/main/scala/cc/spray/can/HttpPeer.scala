@@ -49,7 +49,6 @@ private[can] abstract class HttpPeer(config: PeerConfig) extends Actor {
   // statistics
   protected var startTime: Long = _
   protected var requestsDispatched: Long = _
-  protected var requestsOpen: Int = _
   protected var requestsTimedOut: Long = _
 
   protected val idleTimeoutsEnabled = config.idleTimeout > 0
@@ -196,7 +195,7 @@ private[can] abstract class HttpPeer(config: PeerConfig) extends Actor {
 
   protected def stats = {
     log.debug("Received GetStats request, responding with stats")
-    Stats(System.currentTimeMillis - startTime, requestsDispatched, requestsTimedOut, requestsOpen, connections.size)
+    Stats(System.currentTimeMillis - startTime, requestsDispatched, requestsTimedOut, openRequestCount, connections.size)
   }
 
   protected def accept()
@@ -210,5 +209,7 @@ private[can] abstract class HttpPeer(config: PeerConfig) extends Actor {
   protected def writeComplete(connRec: ConnRecord): ConnRecordLoad
 
   protected def handleTimedOutRequests()
+
+  protected def openRequestCount: Int
 
 }
