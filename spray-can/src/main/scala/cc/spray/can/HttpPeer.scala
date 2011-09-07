@@ -38,7 +38,9 @@ case class Stats(
 private[can] case object Select
 private[can] case object ReapIdleConnections
 private[can] case object HandleTimedOutRequests
-private[can] class ConnRecord(val key: SelectionKey, var load: ConnRecordLoad) extends LinkedList.Element[ConnRecord]
+private[can] class ConnRecord(val key: SelectionKey, var load: ConnRecordLoad) extends LinkedList.Element[ConnRecord] {
+  key.attach(this)
+}
 
 private[can] abstract class HttpPeer(config: PeerConfig) extends Actor {
   private lazy val log = LoggerFactory.getLogger(getClass)
@@ -165,11 +167,13 @@ private[can] abstract class HttpPeer(config: PeerConfig) extends Actor {
   }
 
   protected def close(connRec: ConnRecord) {
-    protectIO("Closing socket") {
-      connRec.key.cancel()
-      connRec.key.channel.close()
+    if (connRec.key.isValid) {
+      protectIO("Closing socket") {
+        connRec.key.cancel()
+        connRec.key.channel.close()
+      }
+      connections -= connRec
     }
-    connections -= connRec
   }
 
   protected def cleanUp() {

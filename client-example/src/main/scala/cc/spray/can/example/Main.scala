@@ -20,6 +20,7 @@ package example
 import akka.config.Supervision._
 import akka.actor.{Supervisor, Actor}
 import org.slf4j.LoggerFactory
+import akka.dispatch.Future
 
 object Main extends App {
   val log = LoggerFactory.getLogger(getClass)
@@ -33,10 +34,23 @@ object Main extends App {
   )
 
   import HttpClient._
-  HttpDialog("github.com").send(HttpRequest()).end.onResult {
-    case response: HttpResponse => log.info("Result from host: {}", response)
-  } onException {
-    case exception: Exception => log.error("Error: {}", exception)
+  val dialog: Future[HttpResponse] = HttpDialog("github.com").send(HttpRequest()).end
+
+  dialog.onComplete { future =>
+    future.value match {
+      case Some(Right(response)) => show(response)
+      case error => log.error("Error: {}", error)
+    }
+    Actor.registry.shutdownAll()
   }
 
+  def show(response: HttpResponse) {
+    log.info(
+      """|Result from host:
+         |status : {}
+         |headers: {}
+         |body   : {}""".stripMargin,
+      Array(response.status: java.lang.Integer, response.headers, response.bodyAsString)
+    )
+  }
 }

@@ -29,6 +29,7 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
 
   def e1 = prep(HttpRequest(method = GET, uri = "/abc")) mustEqual prep {
     """|GET /abc HTTP/1.1
+       |Host: test.com:8080
        |
        |"""
   }
@@ -46,6 +47,7 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
     """|POST /abc/xyz HTTP/1.1
        |Age: 0
        |Server: spray-can/1.0
+       |Host: test.com:8080
        |
        |"""
   }
@@ -64,6 +66,7 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
     """|PUT /abc/xyz HTTP/1.1
        |Cache-Control: public
        |Server: spray-can/1.0
+       |Host: test.com:8080
        |Content-Length: 19
        |
        |The content please!"""
@@ -71,7 +74,7 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
 
   def prep(request: HttpRequest) = {
     val sb = new java.lang.StringBuilder()
-    val buffers = prepare(request)
+    val buffers = prepare(request, "test.com", 8080)
     buffers.foreach { buf =>
       sb.append(new String(buf.array, US_ASCII))
     }

@@ -95,9 +95,7 @@ class HttpServer(config: ServerConfig = AkkaConfServerConfig) extends HttpPeer(c
       val socketChannel = serverSocketChannel.accept
       socketChannel.configureBlocking(false)
       val key = socketChannel.register(selector, SelectionKey.OP_READ)
-      val connRecord = new ConnRecord(key, load = EmptyRequestParser)
-      key.attach(connRecord)
-      connections += connRecord
+      connections += new ConnRecord(key, load = EmptyRequestParser)
       log.debug("New connection accepted and registered")
     }
   }

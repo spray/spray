@@ -109,7 +109,7 @@ trait ResponsePreparer extends MessagePreparer {
 trait RequestPreparer extends MessagePreparer {
   private val SPplusHttpVersionPlusCRLF = " HTTP/1.1\r\n".getBytes(US_ASCII)
 
-  protected def prepare(request: HttpRequest): List[ByteBuffer] = {
+  protected def prepare(request: HttpRequest, host: String, port: Int): List[ByteBuffer] = {
     import request._
 
     def requestLine(tuple: (List[ByteBuffer], Option[String])) = {
@@ -120,8 +120,10 @@ trait RequestPreparer extends MessagePreparer {
 
     requestLine {
       theHeaders(headers) {
-        contentLengthHeader(body.length) {
-          wrap(CRLF) :: wrap(body) :: Nil
+        header("Host", if (port == 80) host else host + ':' + port) {
+          contentLengthHeader(body.length) {
+            wrap(CRLF) :: wrap(body) :: Nil
+          }
         }
       }
     }

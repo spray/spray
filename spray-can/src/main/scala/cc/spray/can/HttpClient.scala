@@ -38,7 +38,8 @@ case class ConnectionResult(value: Either[String, ConnectionHandle]) // response
 case class Received(value: Either[String, HttpResponse]) // response to Send
 
 object HttpClient extends HighLevelHttpClient {
-  private class ClientConnRecord(key: SelectionKey, load: ConnRecordLoad) extends ConnRecord(key, load) {
+  private class ClientConnRecord(key: SelectionKey, load: ConnRecordLoad, val host: String, val port: Int)
+          extends ConnRecord(key, load) {
     var deliverResponse: Received => Unit = _
   }
   private case class TimeoutContext(request: HttpRequest, connRec: ClientConnRecord)
@@ -68,27 +69,31 @@ class HttpClient(config: ClientConfig = AkkaConfClientConfig) extends HttpPeer(c
   }
 
   protected override def receive = super.receive orElse {
-    case Connect(host, port) => self reply ConnectionResult(initiateConnection(new InetSocketAddress(host, port)))
+    case Connect(host, port) => initiateConnection(host, port)
     case Send(connection, request) => send(connection.connRecord, request)
     case Close(connection) => close(connection.connRecord)
   }
 
-  protected def initiateConnection(address: InetSocketAddress): Either[String, ConnectionHandle] = {
+  protected def initiateConnection(host: String, port: Int) {
+    val address = new InetSocketAddress(host, port)
     log.debug("Initiating new connection to {}", address)
     protectIO("Init connect") {
       val socketChannel = SocketChannel.open()
       socketChannel.configureBlocking(false)
-      val key = if (socketChannel.connect(address)) {
+      if (socketChannel.connect(address)) {
         log.debug("New connection immediately established")
-        socketChannel.register(selector, SelectionKey.OP_READ) // start out in reading mode
+        val key = socketChannel.register(selector, SelectionKey.OP_READ) // start out in reading mode
+        val connRec = new ClientConnRecord(key, new EmptyResponseParser, host, port)
+        connections += connRec
+        httpConnectionFor(connRec)
       } else {
         log.debug("Connection request registered")
-        socketChannel.register(selector, SelectionKey.OP_CONNECT)
+        val key = socketChannel.register(selector, SelectionKey.OP_CONNECT)
+        new ClientConnRecord(key, Connecting(self.channel), host, port)
       }
-      val connRec = new ClientConnRecord(key, load = new EmptyResponseParser)
-      key.attach(connRec)
-      connections += connRec
-      httpConnectionFor(connRec)
+    } match {
+      case Right(_: ClientConnRecord) => // nothing to do
+      case x => self.reply(ConnectionResult(x.asInstanceOf[Either[String, ConnectionHandle]]))
     }
   }
 
@@ -100,7 +105,9 @@ class HttpClient(config: ClientConfig = AkkaConfClientConfig) extends HttpPeer(c
           if (headers != null) {
             if (body != null) {
               if (headers.forall(_.name != "Content-Length")) {
-                None
+                if (headers.forall(_.name != "Host")) {
+                  None
+                } else Some("Host header must not be present, the HttpClient sets it itself")
               } else Some("Content-Length header must not be present, the HttpClient sets it itself")
             } else Some("body must not be null (you can use cc.spray.can.EmptyByteArray for an empty body)")
           } else Some("headers must not be null")
@@ -113,11 +120,12 @@ class HttpClient(config: ClientConfig = AkkaConfClientConfig) extends HttpPeer(c
         case None => {
           log.debug("Received valid HttpRequest to send, scheduling write")
           val clientConnRec = connRec.asInstanceOf[ClientConnRecord]
-          clientConnRec.key.interestOps(SelectionKey.OP_WRITE)
-          clientConnRec.load = WriteJob(buffers = prepare(request), closeConnection = false)
+          import clientConnRec._
+          key.interestOps(SelectionKey.OP_WRITE)
+          load = WriteJob(buffers = prepare(request, host, port), closeConnection = false)
           val timeoutContext = TimeoutContext(request, clientConnRec)
           val responseChannel = self.channel
-          clientConnRec.deliverResponse = { received =>
+          deliverResponse = { received =>
             openRequests -= timeoutContext
             responseChannel ! received
           }
@@ -128,19 +136,24 @@ class HttpClient(config: ClientConfig = AkkaConfClientConfig) extends HttpPeer(c
     } else self reply Received(Left("Connection closed"))
   }
 
-  protected def httpConnectionFor(connRec: ConnRecord) = new ConnectionHandle { val connRecord = connRec }
-
   protected def accept() {
     throw new IllegalStateException
   }
 
   protected def finishConnection(connRec: ConnRecord) {
-    protectIO("Finish connect", connRec) {
-      val socketChannel = connRec.key.channel.asInstanceOf[SocketChannel]
-      socketChannel.finishConnect()
+    log.debug("Finish connecting")
+    val responseChannel = connRec.load.asInstanceOf[Connecting].responseChannel
+    val result = protectIO("Finish connect", connRec) {
+      connRec.key.channel.asInstanceOf[SocketChannel].finishConnect()
       connRec.key.interestOps(SelectionKey.OP_READ) // start out in reading mode
+      connRec.load = new EmptyResponseParser
+      connections += connRec
+      httpConnectionFor(connRec)
     }
+    responseChannel ! ConnectionResult(result)
   }
+
+  protected def httpConnectionFor(connRec: ConnRecord) = new ConnectionHandle { val connRecord = connRec }
 
   protected def readComplete(connRec: ConnRecord, parser: CompleteMessageParser) = {
     import parser._

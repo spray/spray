@@ -15,6 +15,8 @@
  */
 package cc.spray.can
 
+import java.io.UnsupportedEncodingException
+
 sealed trait HttpMethod {
   def name: String
   private[can] def asByteArray: Array[Byte]
@@ -69,9 +71,23 @@ case class HttpResponse(
   protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
 ) {
   def withBody(body: String, charset: String = "ISO-8859-1") = copy(body = body.getBytes(charset))
+
+  def bodyAsString: String = if (body.isEmpty) "" else {
+    val charset = headers.mapFind {
+      case HttpHeader("Content-Type", HttpResponse.ContentTypeCharsetPattern(value)) => Some(value)
+      case _ => None
+    }
+    try {
+      new String(body, charset.getOrElse("ISO-8859-1"))
+    } catch {
+      case e: UnsupportedEncodingException => "<unsupported charset in Content-Type-Header>"
+    }
+  }
 }
 
 object HttpResponse {
+  private val ContentTypeCharsetPattern = """.*charset=([-\w]+)""".r
+
   def defaultReason(statusCode: Int) = statusCode match {
     case 100 => "Continue"
     case 101 => "Switching Protocols"
