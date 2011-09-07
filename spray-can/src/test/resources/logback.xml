@@ -4,7 +4,7 @@
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <target>System.out</target>
         <encoder>
-            <pattern>%date{MM/dd HH:mm:ss} %-5level[%thread] %logger{1} - %msg%n</pattern>
+            <pattern>%date{MM/dd HH:mm:ss.SSS} %-5level[%thread] %logger{1} - %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -16,9 +16,9 @@
         </encoder>
     </appender> -->
 
-    <logger name="akka" level="INFO" />
+    <logger name="akka" level="OFF" />
 
-    <root level="DEBUG">
+    <root level="INFO">
         <appender-ref ref="CONSOLE"/>
     </root>
 

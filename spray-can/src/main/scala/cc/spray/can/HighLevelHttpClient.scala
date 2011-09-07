@@ -42,7 +42,7 @@ private[can] trait HighLevelHttpClient {
       }
     }
 
-    def wait(duration: Duration): HttpDialog[A] = appendToConnectionChain { connection =>
+    def waitIdle(duration: Duration): HttpDialog[A] = appendToConnectionChain { connection =>
       make(new DefaultCompletableFuture[ConnectionHandle]) { nextConnectionF =>
         // delay completion of the next connection future by the given time
         val millis = duration.toMillis
