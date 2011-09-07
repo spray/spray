@@ -11,7 +11,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val slf4j = "org.slf4j" % "slf4j-api" % "1.6.1" % "compile" withSources()
 
     // testing with specs2, spray-client and some logging
-    val specs2 = "org.specs2" %% "specs2" % "1.5" % "test" withSources()
+    val specs2 = "org.specs2" %% "specs2" % "1.6.1" % "test" withSources()
     val logback = "ch.qos.logback" % "logback-classic" % "0.9.29"
   }
 
