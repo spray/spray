@@ -35,10 +35,9 @@ case class RequestContext(
 case class Timeout(context: RequestContext)
 
 object HttpServer {
-  private case class Respond(connRec: ConnRecord, writeJob: WriteJob)
+  private case class Respond(connRec: ConnRecord, writeJob: WriteJob, timeoutContext: TimeoutContext = null)
   private case class TimeoutContext(request: HttpRequest, protocol: HttpProtocol, remoteAddress: InetAddress,
                                     responder: HttpResponse => Unit) extends LinkedList.Element[TimeoutContext]
-  private case class CancelTimeout(context: TimeoutContext)
 }
 
 class HttpServer(config: ServerConfig = AkkaConfServerConfig) extends HttpPeer(config) with ResponsePreparer {
@@ -85,8 +84,11 @@ class HttpServer(config: ServerConfig = AkkaConfServerConfig) extends HttpPeer(c
   }
 
   protected override def receive = super.receive orElse {
-    case Respond(connRec, writeJob) => respond(connRec, writeJob)
-    case CancelTimeout(ctx) => ctx.memberOf -= ctx // remove from either the openRequests or the openTimeouts list
+    case Respond(connRec, writeJob, timeoutContext) => {
+      respond(connRec, writeJob)
+      if (timeoutContext != null)
+        timeoutContext.memberOf -= timeoutContext // remove from either the openRequests or the openTimeouts list
+    }
   }
 
   protected def accept() {
@@ -121,35 +123,27 @@ class HttpServer(config: ServerConfig = AkkaConfServerConfig) extends HttpPeer(c
               "responses with status code " + status + " must not have a message body")
     }
 
-    def respond(response: HttpResponse): Boolean = {
+    def respond(response: HttpResponse, timeoutContext: TimeoutContext): Boolean = {
       verify(response)
       if (alreadyCompleted.compareAndSet(false, true)) {
         log.debug("Received HttpResponse, enqueuing RawResponse")
-        self ! Respond(connRec, prepare(response, protocol, connectionHeader))
+        self ! Respond(connRec, prepare(response, protocol, connectionHeader), timeoutContext)
         true
       } else false
     }
 
     val httpRequest = HttpRequest(method, uri, headers, body)
     val remoteAddress = connRec.key.channel.asInstanceOf[SocketChannel].socket.getInetAddress
-    val responder: HttpResponse => Unit = {
-      if (requestTimeoutsEnabled) {
-        val timeoutContext = new TimeoutContext(httpRequest, protocol, remoteAddress, { response =>
-          if (respond(response)) requestsTimedOut += 1
-        })
-        openRequests += timeoutContext;
-        { response =>
-          if (respond(response)) {
-            self ! CancelTimeout(timeoutContext)
-          } else {
-            log.warn("Received an additional response for an already completed request to '{}', ignoring...", httpRequest.uri)
-          }
-        }
-      } else { response =>
-          if (!respond(response)) {
-            log.warn("Received an additional response for an already completed request to '{}', ignoring...", httpRequest.uri)
-        }
-      }
+    var timeoutContext: TimeoutContext = null
+    if (requestTimeoutsEnabled) {
+      timeoutContext = new TimeoutContext(httpRequest, protocol, remoteAddress, { response =>
+        if (respond(response, timeoutContext)) requestsTimedOut += 1
+      })
+      openRequests += timeoutContext;
+    }
+    val responder: HttpResponse => Unit = { response =>
+      if (!respond(response, timeoutContext))
+        log.warn("Received an additional response for an already completed request to '{}', ignoring...", httpRequest.uri)
     }
     serviceActor ! RequestContext(httpRequest, protocol, remoteAddress, responder)
     requestsDispatched += 1

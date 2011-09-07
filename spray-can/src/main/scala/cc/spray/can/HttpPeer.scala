@@ -57,10 +57,10 @@ private[can] abstract class HttpPeer(config: PeerConfig) extends Actor {
   protected val requestTimeoutsEnabled = config.requestTimeout > 0
 
   if (idleTimeoutsEnabled) {
-    Scheduler.schedule(self, ReapIdleConnections, config.reapingCycle, config.reapingCycle, TimeUnit.MILLISECONDS)
+    Scheduler.schedule(() => self ! ReapIdleConnections, config.reapingCycle, config.reapingCycle, TimeUnit.MILLISECONDS)
   }
   if (requestTimeoutsEnabled) {
-    Scheduler.schedule(self, HandleTimedOutRequests, config.timeoutCycle, config.timeoutCycle, TimeUnit.MILLISECONDS)
+    Scheduler.schedule(() => self ! HandleTimedOutRequests, config.timeoutCycle, config.timeoutCycle, TimeUnit.MILLISECONDS)
   }
 
   override def preStart() {

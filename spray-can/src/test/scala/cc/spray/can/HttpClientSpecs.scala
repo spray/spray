@@ -23,7 +23,7 @@ import akka.actor.{Scheduler, Actor}
 import java.util.concurrent.TimeUnit
 import akka.util.Duration
 
-class HttpClientSpec extends Specification {
+trait HttpClientSpecs extends Specification {
 
   class TestService extends Actor {
     self.id = "client-test-server"
@@ -39,31 +39,29 @@ class HttpClientSpec extends Specification {
     }
   }
 
-  def is =
+  def clientSpecs =
 
   "This spec exercises a new HttpClient instance against a simple echo HttpServer" ^
                                                                                     Step(start())^
                                                                                     p^
-  sequential                                                                        ^
   "simple one-request dialog"                                                       ! oneRequestDialog^
   "request-response dialog"                                                         ! requestResponseDialog^
   "non-pipelined request-request dialog"                                            ! requestRequestNonPipelinedDialog^
   "pipelined request-request dialog"                                                ! requestRequestPipelinedDialog^
   "connect to a non-existing server"                                                ! illegalConnect^
   "time-out request"                                                                ! timeoutRequest^
-  "idle-time-out connection"                                                        ! timeoutConnection^
-                                                                                    Step(stop())
+  "idle-time-out connection"                                                        ! timeoutConnection
 
   import HttpClient._
 
-  def oneRequestDialog = {
+  private def oneRequestDialog = {
     newDialog()
             .send(HttpRequest(uri = "/yeah"))
             .end
             .get.bodyAsString mustEqual "GET|/yeah|1"
   }
 
-  def requestResponseDialog = {
+  private def requestResponseDialog = {
     def respond(res: HttpResponse) = HttpRequest(POST, uri = "(" + res.bodyAsString + ")")
 
     newDialog()
@@ -73,7 +71,7 @@ class HttpClientSpec extends Specification {
             .get.bodyAsString mustEqual "POST|(GET|/abc|2)|3"
   }
 
-  def requestRequestNonPipelinedDialog = {
+  private def requestRequestNonPipelinedDialog = {
     newDialog()
             .send(HttpRequest(DELETE, uri = "/abc"))
             .awaitResponse
@@ -82,7 +80,7 @@ class HttpClientSpec extends Specification {
             .get.map(_.bodyAsString).mkString(", ") mustEqual "DELETE|/abc|4, PUT|/xyz|5"
   }
 
-  def requestRequestPipelinedDialog = {
+  private def requestRequestPipelinedDialog = {
     newDialog()
             .send(HttpRequest(DELETE, uri = "/abc"))
             .send(HttpRequest(PUT, uri = "/xyz"))
@@ -90,21 +88,21 @@ class HttpClientSpec extends Specification {
             .get.map(_.bodyAsString).mkString(", ") mustEqual "DELETE|/abc|6, PUT|/xyz|7"
   }
 
-  def illegalConnect = {
+  private def illegalConnect = {
     newDialog(16243)
             .send(HttpRequest())
             .end
             .await.exception.get.getMessage mustEqual "java.net.ConnectException: Connection refused"
   }
 
-  def timeoutRequest = {
+  private def timeoutRequest = {
     newDialog()
             .send(HttpRequest(uri = "/wait500"))
             .end
             .await.exception.get.getMessage mustEqual "Timeout"
   }
 
-  def timeoutConnection = {
+  private def timeoutConnection = {
     newDialog()
             .waitIdle(Duration("500 ms"))
             .send(HttpRequest())
@@ -112,16 +110,13 @@ class HttpClientSpec extends Specification {
             .await.exception.get.getMessage mustEqual "Connection closed"
   }
 
-  def newDialog(port: Int = 16242) = HttpDialog(host = "localhost", port = port, clientActorId = "client-test-client")
+  private def newDialog(port: Int = 16242) =
+    HttpDialog(host = "localhost", port = port, clientActorId = "client-test-client")
 
-  def start() {
+  private def start() {
     Actor.actorOf(new TestService).start()
     Actor.actorOf(new HttpServer(SimpleServerConfig(port = 16242, serviceActorId = "client-test-server", requestTimeout = 0))).start()
     Actor.actorOf(new HttpClient(SimpleClientConfig(clientActorId = "client-test-client",
       requestTimeout = 100, timeoutCycle = 50, idleTimeout = 200, reapingCycle = 100))).start()
-  }
-
-  def stop() {
-    Actor.registry.shutdownAll()
   }
 }
