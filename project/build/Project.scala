@@ -19,6 +19,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   import Repositories._
   val glassfishModuleConfig = ModuleConfiguration("org.glassfish", GlassFishRepo)
   val sprayModuleConfig     = ModuleConfiguration("cc.spray", ScalaToolsSnapshots)
+  val sprayJsonModuleConfig = ModuleConfiguration("cc.spray.json", ScalaToolsSnapshots)
   val deftModuleConfig      = ModuleConfiguration("org.apache.deft", SprayGithubRepo)
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -31,14 +32,14 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val asyncHttp  = "com.ning" % "async-http-client" % "1.6.4" % "compile" withSources()
     
     // provided
-    val sprayJson          = "cc.spray.json" %% "spray-json" % "1.0.0" % "provided" withSources()
+    val sprayJson          = "cc.spray.json" %% "spray-json" % "1.1.0-SNAPSHOT" % "provided" withSources()
     val servlet30          = "org.glassfish" % "javax.servlet" % "3.0" % "provided"
     val jettyContinuations = "org.eclipse.jetty" % "jetty-continuation" % "7.2.0.v20101020" % "provided" withSources()
-    val tomcat6            = "org.apache.tomcat" % "catalina" % "6.0.32" % "provided"
+    val tomcat6            = "org.atmosphere" % "atmosphere-compat-tomcat" % "0.7.1" % "provided"
     val deft               = "org.apache.deft" % "deft" % "0.4.0-SNAPSHOT" % "provided" withSources()
 
     // test
-    val specs2 = "org.specs2" %% "specs2" % "1.5" % "test" withSources()
+    val specs2 = "org.specs2" %% "specs2" % "1.6.1" % "test" withSources()
     
     // only for examples
     val slf4j   = "org.slf4j" % "slf4j-api" % "1.6.1" % "compile" withSources()
