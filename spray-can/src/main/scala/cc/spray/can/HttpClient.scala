@@ -17,26 +17,27 @@
 package cc.spray.can
 
 import org.slf4j.LoggerFactory
-import java.net.{InetAddress, InetSocketAddress}
+import java.net.InetSocketAddress
 import java.nio.channels.{SocketChannel, SelectionKey}
 import utils.LinkedList
 
-sealed trait HttpConnection {
+sealed trait ConnectionHandle {
   private[can] def connRecord: ConnRecord
 }
 
 // public incoming messages
+case object GetClientStats
 case class Connect(host: String, port: Int = 80)
-case class Send(connection: HttpConnection, request: HttpRequest)
-case class Close(connection: HttpConnection)
-case class SendPooled(request: HttpRequest)
-// plus HttpRequest itself
+case class Send(connection: ConnectionHandle, request: HttpRequest)
+case class Close(connection: ConnectionHandle)
+//case class SendPooled(request: HttpRequest) // coming
+// plus HttpRequest itself (coming)
 
 // public outgoing messages
-case class ConnectionResult(value: Either[String, HttpConnection]) // response to Connect
+case class ConnectionResult(value: Either[String, ConnectionHandle]) // response to Connect
 case class Received(value: Either[String, HttpResponse]) // response to Send
 
-object HttpClient {
+object HttpClient extends HighLevelHttpClient {
   private class ClientConnRecord(key: SelectionKey, load: ConnRecordLoad) extends ConnRecord(key, load) {
     var deliverResponse: Received => Unit = _
   }
@@ -72,7 +73,7 @@ class HttpClient(config: ClientConfig = AkkaConfClientConfig) extends HttpPeer(c
     case Close(connection) => close(connection.connRecord)
   }
 
-  protected def initiateConnection(address: InetSocketAddress): Either[String, HttpConnection] = {
+  protected def initiateConnection(address: InetSocketAddress): Either[String, ConnectionHandle] = {
     log.debug("Initiating new connection to {}", address)
     protectIO("Init connect") {
       val socketChannel = SocketChannel.open()
@@ -127,7 +128,7 @@ class HttpClient(config: ClientConfig = AkkaConfClientConfig) extends HttpPeer(c
     } else self reply Received(Left("Connection closed"))
   }
 
-  protected def httpConnectionFor(connRec: ConnRecord) = new HttpConnection { val connRecord = connRec }
+  protected def httpConnectionFor(connRec: ConnRecord) = new ConnectionHandle { val connRecord = connRec }
 
   protected def accept() {
     throw new IllegalStateException

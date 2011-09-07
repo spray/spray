@@ -23,7 +23,7 @@ import akka.actor.{Supervisor, Actor}
 object Main extends App {
 
   // create, start and supervise the TestService actor, which holds our custom request handling logic
-  // as well the HttpServer actor
+  // as well as the HttpServer actor
   Supervisor(
     SupervisorConfig(
       OneForOneStrategy(List(classOf[Exception]), 3, 100),

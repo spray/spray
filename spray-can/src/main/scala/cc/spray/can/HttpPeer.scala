@@ -26,6 +26,15 @@ import java.io.IOException
 import java.nio.channels.{SocketChannel, SelectionKey}
 import annotation.tailrec
 
+case object GetStats
+case class Stats(
+  uptime: Long,
+  requestsDispatched: Long,
+  requestsTimedOut: Long,
+  requestsOpen: Int,
+  connectionsOpen: Int
+)
+
 private[can] case object Select
 private[can] case object ReapIdleConnections
 private[can] case object HandleTimedOutRequests
@@ -72,6 +81,7 @@ private[can] abstract class HttpPeer(config: PeerConfig) extends Actor {
     case Select => select()
     case HandleTimedOutRequests => handleTimedOutRequests()
     case ReapIdleConnections => reapIdleConnections()
+    case GetStats => self.reply(stats)
   }
 
   protected def select() {
@@ -182,6 +192,11 @@ private[can] abstract class HttpPeer(config: PeerConfig) extends Actor {
         Left(error)
       }
     }
+  }
+
+  protected def stats = {
+    log.debug("Received GetStats request, responding with stats")
+    Stats(System.currentTimeMillis - startTime, requestsDispatched, requestsTimedOut, requestsOpen, connections.size)
   }
 
   protected def accept()

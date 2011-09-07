@@ -25,9 +25,6 @@ import java.io.IOException
 import akka.actor.PoisonPill
 import java.net.InetAddress
 
-// public incoming messages
-case object GetServerStats
-
 // public outgoing messages
 case class RequestContext(
   request: HttpRequest,
@@ -36,13 +33,6 @@ case class RequestContext(
   responder: HttpResponse => Unit
 )
 case class Timeout(context: RequestContext)
-case class ServerStats(
-  uptime: Long,
-  requestsDispatched: Long,
-  requestsTimedOut: Long,
-  requestsOpen: Int,
-  connectionsOpen: Int
-)
 
 object HttpServer {
   private case class Respond(connRec: ConnRecord, writeJob: WriteJob)
@@ -97,7 +87,6 @@ class HttpServer(config: ServerConfig = AkkaConfServerConfig) extends HttpPeer(c
   protected override def receive = super.receive orElse {
     case Respond(connRec, writeJob) => respond(connRec, writeJob)
     case CancelTimeout(ctx) => ctx.memberOf -= ctx // remove from either the openRequests or the openTimeouts list
-    case GetServerStats => self.reply(serverStats)
   }
 
   protected def accept() {
@@ -207,11 +196,6 @@ class HttpServer(config: ServerConfig = AkkaConfServerConfig) extends HttpPeer(c
       connRec.key.interestOps(SelectionKey.OP_WRITE)
       connRec.load = writeJob
     } else log.warn("Dropping response due to closed connection")
-  }
-
-  protected def serverStats = {
-    log.debug("Received GetServerStats request, responding with stats")
-    ServerStats(System.currentTimeMillis - startTime, requestsDispatched, requestsTimedOut, requestsOpen, connections.size)
   }
 
   protected def timeoutTimeoutResponse(request: HttpRequest) = {

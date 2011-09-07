@@ -19,18 +19,24 @@ package example
 
 import akka.config.Supervision._
 import akka.actor.{Supervisor, Actor}
+import org.slf4j.LoggerFactory
 
 object Main extends App {
+  val log = LoggerFactory.getLogger(getClass)
 
-  // create, start and supervise the TestService actor, which holds our custom request handling logic
-  // as well the HttpServer actor
+  // start and supervise the HttpClient actor
   Supervisor(
     SupervisorConfig(
       OneForOneStrategy(List(classOf[Exception]), 3, 100),
-      List(
-        Supervise(Actor.actorOf(new TestService("test-endpoint")), Permanent),
-        Supervise(Actor.actorOf(new HttpServer()), Permanent)
-      )
+      List(Supervise(Actor.actorOf(new HttpClient()), Permanent))
     )
   )
+
+  import HttpClient._
+  HttpDialog("github.com").send(HttpRequest()).end.onResult {
+    case response: HttpResponse => log.info("Result from host: {}", response)
+  } onException {
+    case exception: Exception => log.error("Error: {}", exception)
+  }
+
 }

@@ -51,7 +51,7 @@ class TestService(id: String) extends Actor {
     }
 
     case RequestContext(HttpRequest(GET, "/stats", _, _), _, _, complete) => {
-      (serverActor ? GetServerStats).mapTo[ServerStats].onComplete { future =>
+      (serverActor ? GetStats).mapTo[Stats].onComplete { future =>
         future.value.get match {
           case Right(stats) => complete {
             response {
