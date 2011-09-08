@@ -19,9 +19,14 @@ package cc.spray
 import can.utils.PimpedLinearSeq
 import collection.immutable.LinearSeq
 import akka.actor.{ActorRef, Actor}
+import java.io.{BufferedReader, InputStreamReader}
 
 package object can {
   def make[A, U](a: A)(f: A => U): A = { f(a); a }
+
+  lazy val SprayCanVersion: String = {
+    new BufferedReader(new InputStreamReader(getClass.getResourceAsStream("/version.txt"))).readLine()
+  }
 
   /**
    * Returns the actor with the given id.

@@ -42,7 +42,7 @@ private[can] class ConnRecord(val key: SelectionKey, var load: ConnRecordLoad) e
   key.attach(this)
 }
 
-private[can] abstract class HttpPeer(config: PeerConfig) extends Actor {
+private[can] abstract class HttpPeer extends Actor {
   private lazy val log = LoggerFactory.getLogger(getClass)
   protected val readBuffer = ByteBuffer.allocateDirect(config.readBufferSize)
   protected val selector = SelectorProvider.provider.openSelector
@@ -214,5 +214,7 @@ private[can] abstract class HttpPeer(config: PeerConfig) extends Actor {
   protected def handleTimedOutRequests()
 
   protected def openRequestCount: Int
+
+  protected def config: PeerConfig
 
 }

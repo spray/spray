@@ -30,6 +30,7 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
   def e1 = prep(HttpRequest(method = GET, uri = "/abc")) mustEqual prep {
     """|GET /abc HTTP/1.1
        |Host: test.com:8080
+       |User-Agent: spray-can/1.0.0
        |
        |"""
   }
@@ -39,15 +40,16 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
       method = POST,
       uri = "/abc/xyz",
       headers = List(
-        HttpHeader("Server", "spray-can/1.0"),
+        HttpHeader("X-Fancy", "naa"),
         HttpHeader("Age", "0")
       )
     )
   } mustEqual prep {
     """|POST /abc/xyz HTTP/1.1
        |Age: 0
-       |Server: spray-can/1.0
+       |X-Fancy: naa
        |Host: test.com:8080
+       |User-Agent: spray-can/1.0.0
        |
        |"""
   }
@@ -57,7 +59,7 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
       method = PUT,
       uri = "/abc/xyz",
       headers = List(
-        HttpHeader("Server", "spray-can/1.0"),
+        HttpHeader("X-Fancy", "naa"),
         HttpHeader("Cache-Control", "public")
       ),
       body = "The content please!".getBytes("ISO-8859-1")
@@ -65,8 +67,9 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
   } mustEqual prep {
     """|PUT /abc/xyz HTTP/1.1
        |Cache-Control: public
-       |Server: spray-can/1.0
+       |X-Fancy: naa
        |Host: test.com:8080
+       |User-Agent: spray-can/1.0.0
        |Content-Length: 19
        |
        |The content please!"""
@@ -83,4 +86,5 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
 
   def prep(request: String) = request.stripMargin.replace("\n", "\r\n")
 
+  protected def userAgentHeader = "spray-can/1.0.0"
 }

@@ -27,16 +27,16 @@ trait MessagePreparer {
   protected val ColonSP = ": ".getBytes(US_ASCII)
   protected val CRLF = "\r\n".getBytes(US_ASCII)
   protected val SingleSP = " ".getBytes(US_ASCII)
+  protected val ContentLengthColonSP = "Content-Length: ".getBytes(US_ASCII)
 
   protected def header(name: String, value: String)(rest: List[ByteBuffer]) = {
-    wrap(name.getBytes(US_ASCII)) ::
-      wrap(ColonSP) ::
-        wrap(value.getBytes(US_ASCII)) ::
-          wrap(CRLF) :: rest
+    wrapStr(name) :: wrap(ColonSP) :: wrapStr(value) :: wrap(CRLF) :: rest
   }
 
   protected def contentLengthHeader(contentLength: Int)(rest: List[ByteBuffer]) =
-    if (contentLength > 0) header("Content-Length", contentLength.toString)(rest) else rest
+    if (contentLength > 0)
+      wrap(ContentLengthColonSP) :: wrapStr(contentLength.toString) :: wrap(CRLF) :: rest
+    else rest
 
   @tailrec
   protected final def theHeaders(httpHeaders: List[HttpHeader], connectionHeaderValue: Option[String] = None)
@@ -52,11 +52,19 @@ trait MessagePreparer {
       case Nil => (rest, connectionHeaderValue)
     }
   }
+
+  protected def wrapStr(string: String) = wrap(string.getBytes(US_ASCII))
+
+  protected def wrapBody(body: Array[Byte]) = if (body.length == 0) Nil else wrap(body) :: Nil
 }
 
 trait ResponsePreparer extends MessagePreparer {
+  protected def serverHeader: String
   private val StatusLine200 = "HTTP/1.1 200 OK\r\n".getBytes(US_ASCII)
   private val HttpVersionPlusSP = "HTTP/1.1 ".getBytes(US_ASCII)
+  private val ServerHeaderLinePlusDateColonSP =
+    (if (serverHeader.isEmpty) "Date: " else "Server: " + serverHeader + "\r\nDate: ").getBytes(US_ASCII)
+  private val CRLFCRLF = "\r\n\r\n".getBytes(US_ASCII)
 
   protected def prepare(response: HttpResponse, reqProtocol: HttpProtocol,
                         reqConnectionHeader: Option[String]): WriteJob = {
@@ -67,9 +75,9 @@ trait ResponsePreparer extends MessagePreparer {
       status match {
         case 200 => wrap(StatusLine200) :: writeJob.buffers
         case x => wrap(HttpVersionPlusSP) ::
-                    wrap(status.toString.getBytes(US_ASCII)) ::
+                    wrapStr(status.toString) ::
                       wrap(SingleSP) ::
-                        wrap(HttpResponse.defaultReason(status).getBytes(US_ASCII)) ::
+                        wrapStr(HttpResponse.defaultReason(status)) ::
                          wrap(CRLF) :: writeJob.buffers
       }
     })
@@ -94,9 +102,8 @@ trait ResponsePreparer extends MessagePreparer {
       fixConnectionHeader {
         theHeaders(headers) {
           contentLengthHeader(body.length) {
-            header("Date", dateTimeNow.toRfc1123DateTimeString) {
-              wrap(CRLF) :: wrap(body) :: Nil
-            }
+            wrap(ServerHeaderLinePlusDateColonSP) :: wrapStr(dateTimeNow.toRfc1123DateTimeString) :: wrap(CRLFCRLF) ::
+              wrapBody(body)
           }
         }
       }
@@ -107,22 +114,26 @@ trait ResponsePreparer extends MessagePreparer {
 }
 
 trait RequestPreparer extends MessagePreparer {
+  protected def userAgentHeader: String
   private val SPplusHttpVersionPlusCRLF = " HTTP/1.1\r\n".getBytes(US_ASCII)
 
   protected def prepare(request: HttpRequest, host: String, port: Int): List[ByteBuffer] = {
     import request._
 
     def requestLine(tuple: (List[ByteBuffer], Option[String])) = {
-      wrap(method.asByteArray) ::
-        wrap(uri.getBytes(US_ASCII)) ::
-          wrap(SPplusHttpVersionPlusCRLF) :: tuple._1
+      wrap(method.asByteArray) :: wrapStr(uri) :: wrap(SPplusHttpVersionPlusCRLF) :: tuple._1
     }
+
+    def userAgent(rest: List[ByteBuffer]) =
+      if (userAgentHeader.isEmpty) rest else header("User-Agent", userAgentHeader)(rest)
 
     requestLine {
       theHeaders(headers) {
         header("Host", if (port == 80) host else host + ':' + port) {
-          contentLengthHeader(body.length) {
-            wrap(CRLF) :: wrap(body) :: Nil
+          userAgent {
+            contentLengthHeader(body.length) {
+              wrap(CRLF) :: wrapBody(body)
+            }
           }
         }
       }

@@ -40,7 +40,7 @@ object HttpServer {
                                     responder: HttpResponse => Unit) extends LinkedList.Element[TimeoutContext]
 }
 
-class HttpServer(config: ServerConfig = AkkaConfServerConfig) extends HttpPeer(config) with ResponsePreparer {
+class HttpServer(val config: ServerConfig = AkkaConfServerConfig) extends HttpPeer with ResponsePreparer {
   import HttpServer._
 
   private lazy val log = LoggerFactory.getLogger(getClass)
@@ -196,4 +196,6 @@ class HttpServer(config: ServerConfig = AkkaConfServerConfig) extends HttpPeer(c
   }
 
   protected def openRequestCount = openRequests.size
+
+  protected def serverHeader = config.serverHeader
 }

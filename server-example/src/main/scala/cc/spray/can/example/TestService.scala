@@ -27,10 +27,7 @@ class TestService(id: String) extends Actor {
   self.id = id
 
   val iso88591 = Charset.forName("ISO-8859-1")
-  val headers = List(
-    HttpHeader("Server", "spray-can/test"),
-    HttpHeader("Content-Type", "text/plain")
-  )
+  val headers = List(HttpHeader("Content-Type", "text/plain"))
   lazy val serverActor = Actor.registry.actorsFor("spray-can-server").head
 
   def response(msg: String, status: Int = 200) = HttpResponse(status, headers, msg.getBytes(iso88591))

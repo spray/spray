@@ -79,13 +79,16 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     override val akkaActor = akkaModule("actor") % "provided" withSources()
     val slf4j              = Deps.slf4j
 
+    // make version available to application
+    override def copyResourcesAction = super.copyResourcesAction && task {
+      FileUtilities.write((mainResourcesOutputPath / "version.txt").asFile, version.toString, log)
+      None
+    }
+
     // testing
     val specs2    = Deps.specs2
     val akkaSlf4j = akkaModule("slf4j") % "test"
     val logback   = Deps.logback % "test"
-
-    override def documentOptions: Seq[ScaladocOption] = documentTitle(name + " " + version) :: Nil
-    override def pomExtra = pomExtras
 
     // Publishing
     val publishTo = "Scala Tools Snapshots" at "http://nexus.scala-tools.org/content/repositories/snapshots/"
@@ -98,6 +101,9 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     lazy val sourceArtifact = Artifact(artifactID, "src", "jar", Some("sources"), Nil, None)
     lazy val docsArtifact = Artifact(artifactID, "docs", "jar", Some("scaladoc"), Nil, None)
     override def packageToPublishActions = super.packageToPublishActions ++ Seq(packageDocs, packageSrc)
+
+    override def documentOptions: Seq[ScaladocOption] = documentTitle(name + " " + version) :: Nil
+    override def pomExtra = pomExtras
   }
 
   abstract class ExampleProject(info: ProjectInfo) extends ModuleProject(info) with AkkaProject {

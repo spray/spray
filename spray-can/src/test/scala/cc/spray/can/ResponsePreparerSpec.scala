@@ -34,6 +34,7 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
     HttpResponse(200, Nil)
   } mustEqual prep {
     """|HTTP/1.1 200 OK
+       |Server: spray-can/1.0.0
        |Date: Thu, 25 Aug 2011 09:10:29 GMT
        |
        |""" -> false
@@ -41,13 +42,14 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
 
   def e2 = prep(`HTTP/1.1`) {
     HttpResponse(304, List(
-      HttpHeader("Server", "spray-can/1.0"),
+      HttpHeader("X-Fancy", "of course"),
       HttpHeader("Age", "0")
     ))
   } mustEqual prep {
     """|HTTP/1.1 304 Not Modified
        |Age: 0
-       |Server: spray-can/1.0
+       |X-Fancy: of course
+       |Server: spray-can/1.0.0
        |Date: Thu, 25 Aug 2011 09:10:29 GMT
        |
        |""" -> false
@@ -63,6 +65,7 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
        |Cache-Control: public
        |Server: spray-can/1.0
        |Content-Length: 23
+       |Server: spray-can/1.0.0
        |Date: Thu, 25 Aug 2011 09:10:29 GMT
        |
        |Small f*ck up overhere!""" -> false
@@ -86,6 +89,7 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
       } mustEqual prep {
         "HTTP/1.1 200 OK\n" +
         renCH.map("Connection: " + _ + "\n").getOrElse("") +
+        "Server: spray-can/1.0.0\n" +
         "Date: Thu, 25 Aug 2011 09:10:29 GMT\n\n" -> close
       }
     }
@@ -99,8 +103,9 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
     sb.toString -> writeJob.closeConnection
   }
 
-  def prep(t: Tuple2[String, Boolean]) = t._1.stripMargin.replace("\n", "\r\n") -> t._2
+  def prep(t: (String, Boolean)) = t._1.stripMargin.replace("\n", "\r\n") -> t._2
 
   override val dateTimeNow = DateTime(2011, 8, 25, 9,10,29) // provide a stable date for testing
 
+  protected def serverHeader = "spray-can/1.0.0"
 }

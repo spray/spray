@@ -39,6 +39,7 @@ trait ServerConfig extends PeerConfig {
   def serviceActorId: String
   def timeoutServiceActorId: String
   def timeoutTimeout: Long
+  def serverHeader: String
 
   require(!serverActorId.isEmpty, "serverActorId must not be empty")
   require(!serviceActorId.isEmpty, "serviceActorId must not be empty")
@@ -62,6 +63,7 @@ trait ServerConfig extends PeerConfig {
 
 trait ClientConfig extends PeerConfig {
   def clientActorId: String
+  def userAgentHeader: String
 
   require(!clientActorId.isEmpty, "serverActorId must not be empty")
 }
@@ -81,6 +83,7 @@ object AkkaConfServerConfig extends ServerConfig {
   lazy val serviceActorId        = config.getString("spray.can-server.service-actor-id", "spray-root-service")
   lazy val timeoutServiceActorId = config.getString("spray.can-server.timeout-service-actor-id", "spray-root-service")
   lazy val timeoutTimeout        = config.getLong("spray.can-server.timeout-timeout", 500)
+  lazy val serverHeader          = config.getString("spray.can-server.server-header", "spray-can/" + SprayCanVersion)
   def endpoint = new InetSocketAddress(hostname, port)
 }
 
@@ -94,6 +97,7 @@ object AkkaConfClientConfig extends ClientConfig {
 
   // ClientConfig
   lazy val clientActorId         = config.getString("spray.can-client.client-actor-id", "spray-can-client")
+  lazy val userAgentHeader       = config.getString("spray.can-client.user-agent-header", "spray-can/" + SprayCanVersion)
 }
 
 case class SimpleServerConfig(
@@ -105,6 +109,7 @@ case class SimpleServerConfig(
   serviceActorId: String = "spray-root-service",
   timeoutServiceActorId: String = "spray-root-service",
   timeoutTimeout: Long = 500,
+  serverHeader: String = "spray-can/" + SprayCanVersion,
 
   // PeerConfig
   readBufferSize: Int = 8192,
@@ -119,6 +124,7 @@ case class SimpleServerConfig(
 case class SimpleClientConfig(
   // ClientConfig
   clientActorId: String = "spray-can-client",
+  userAgentHeader: String = "spray-can/" + SprayCanVersion,
 
   // PeerConfig
   readBufferSize: Int = 8192,
