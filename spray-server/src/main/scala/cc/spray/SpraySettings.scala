@@ -24,7 +24,4 @@ object SpraySettings {
   lazy val CloseConnection     = config.getBool("spray.set-connection-close-header", true)
   lazy val RootPath            = config.getString("spray.root-path")
   lazy val CompactJsonPrinting = config.getBool("spray.compact-json-printing", false)
-
-  lazy val DeftPort            = config.getInt("spray.deft.port", 8080)
-  lazy val DeftShutdownActorId = config.getString("spray.deft.shutdown-actor-id", "deft-shutdown-actor")
 }

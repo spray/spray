@@ -20,7 +20,6 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   val glassfishModuleConfig = ModuleConfiguration("org.glassfish", GlassFishRepo)
   val sprayModuleConfig     = ModuleConfiguration("cc.spray", ScalaToolsSnapshots)
   val sprayJsonModuleConfig = ModuleConfiguration("cc.spray.json", ScalaToolsSnapshots)
-  val deftModuleConfig      = ModuleConfiguration("org.apache.deft", SprayGithubRepo)
 
   // -------------------------------------------------------------------------------------------------------------------
   // Dependencies
@@ -36,7 +35,6 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val servlet30          = "org.glassfish" % "javax.servlet" % "3.0" % "provided"
     val jettyContinuations = "org.eclipse.jetty" % "jetty-continuation" % "7.2.0.v20101020" % "provided" withSources()
     val tomcat6            = "org.atmosphere" % "atmosphere-compat-tomcat" % "0.7.1" % "provided"
-    val deft               = "org.apache.deft" % "deft" % "0.4.0-SNAPSHOT" % "provided" withSources()
 
     // test
     val specs2 = "org.specs2" %% "specs2" % "1.6.1" % "test" withSources()
@@ -136,7 +134,6 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val servlet30          = Deps.servlet30
     val jettyContinuations = Deps.jettyContinuations
     val tomcat6            = Deps.tomcat6 
-    val deft               = Deps.deft
     val specs2      = Deps.specs2
   }
   
@@ -149,7 +146,6 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   
   class ExamplesProject(info: ProjectInfo) extends ParentProject(info) {
     val calculatorProject     = project("spray-example-calculator", "spray-example-calculator", new CalculatorProject(_))
-    val deftProject           = project("spray-example-deft", "spray-example-deft", new DeftProject(_))
     val markdownServerProject = project("spray-example-markdownserver", "spray-example-markdownserver", new MarkdownServerProject(_))
     val stopWatchProject      = project("spray-example-stopwatch", "spray-example-stopwatch", new StopWatchProject(_))
 
@@ -182,11 +178,6 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val logback     = Deps.logback
   }
 
-  class DeftProject(info: ProjectInfo) extends SprayExampleProject(info) {
-    val deft  = Deps.deft
-    val slf4j = Deps.slf4j
-  }
-  
   class MarkdownServerProject(info: ProjectInfo) extends SprayExampleProject(info) {
     val pegdown = Deps.pegdown
     val jettyServer = Deps.jettyServer
