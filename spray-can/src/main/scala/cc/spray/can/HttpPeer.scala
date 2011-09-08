@@ -53,14 +53,11 @@ private[can] abstract class HttpPeer(config: PeerConfig) extends Actor {
   protected var requestsDispatched: Long = _
   protected var requestsTimedOut: Long = _
 
-  protected val idleTimeoutsEnabled = config.idleTimeout > 0
-  protected val requestTimeoutsEnabled = config.requestTimeout > 0
-
-  if (idleTimeoutsEnabled) {
-    Scheduler.schedule(() => self ! ReapIdleConnections, config.reapingCycle, config.reapingCycle, TimeUnit.MILLISECONDS)
+  protected val idleTimeoutCycle = if (config.idleTimeout == 0) None else Some {
+    Scheduler.schedule(self, ReapIdleConnections, config.reapingCycle, config.reapingCycle, TimeUnit.MILLISECONDS)
   }
-  if (requestTimeoutsEnabled) {
-    Scheduler.schedule(() => self ! HandleTimedOutRequests, config.timeoutCycle, config.timeoutCycle, TimeUnit.MILLISECONDS)
+  protected val requestTimeoutCycle = if (config.requestTimeout == 0) None else Some {
+    Scheduler.schedule(self, HandleTimedOutRequests, config.timeoutCycle, config.timeoutCycle, TimeUnit.MILLISECONDS)
   }
 
   override def preStart() {
@@ -177,6 +174,8 @@ private[can] abstract class HttpPeer(config: PeerConfig) extends Actor {
   }
 
   protected def cleanUp() {
+    idleTimeoutCycle.foreach(_.cancel(false))
+    requestTimeoutCycle.foreach(_.cancel(false))
     protectIO("Closing selector") {
       selector.close()
     }

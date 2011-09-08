@@ -135,7 +135,7 @@ class HttpServer(config: ServerConfig = AkkaConfServerConfig) extends HttpPeer(c
     val httpRequest = HttpRequest(method, uri, headers, body)
     val remoteAddress = connRec.key.channel.asInstanceOf[SocketChannel].socket.getInetAddress
     var timeoutContext: TimeoutContext = null
-    if (requestTimeoutsEnabled) {
+    if (requestTimeoutCycle.isDefined) {
       timeoutContext = new TimeoutContext(httpRequest, protocol, remoteAddress, { response =>
         if (respond(response, timeoutContext)) requestsTimedOut += 1
       })
