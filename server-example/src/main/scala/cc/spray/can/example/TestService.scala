@@ -34,20 +34,20 @@ class TestService(id: String) extends Actor {
 
   protected def receive = {
 
-    case RequestContext(HttpRequest(GET, "/", _, _), _, _, complete) =>
+    case RequestContext(HttpRequest(GET, "/", _, _, _), _, complete) =>
       complete(response("Say hello to a spray-can app"))
 
-    case RequestContext(HttpRequest(POST, "/crash", _, _), _, _, complete) => {
+    case RequestContext(HttpRequest(POST, "/crash", _, _, _), _, complete) => {
       complete(response("Hai! (about to kill the HttpServer)"))
       serverActor ! Kill
     }
 
-    case RequestContext(HttpRequest(POST, "/stop", _, _), _, _, complete) => {
+    case RequestContext(HttpRequest(POST, "/stop", _, _, _), _, complete) => {
       complete(response("Shutting down the spray-can server..."))
       Actor.registry.shutdownAll()
     }
 
-    case RequestContext(HttpRequest(GET, "/stats", _, _), _, _, complete) => {
+    case RequestContext(HttpRequest(GET, "/stats", _, _, _), _, complete) => {
       (serverActor ? GetStats).mapTo[Stats].onComplete { future =>
         future.value.get match {
           case Right(stats) => complete {
@@ -64,7 +64,7 @@ class TestService(id: String) extends Actor {
       }
     }
 
-    case RequestContext(HttpRequest(_, _, _, _), _, _, complete) =>
+    case RequestContext(HttpRequest(_, _, _, _, _), _, complete) =>
       complete(response("Unknown command!", 404))
   }
 }

@@ -28,7 +28,6 @@ import java.net.InetAddress
 // public outgoing messages
 case class RequestContext(
   request: HttpRequest,
-  protocol: HttpProtocol,
   remoteAddress: InetAddress,
   responder: HttpResponse => Unit
 )
@@ -36,8 +35,8 @@ case class Timeout(context: RequestContext)
 
 object HttpServer {
   private case class Respond(connRec: ConnRecord, writeJob: WriteJob, timeoutContext: TimeoutContext = null)
-  private case class TimeoutContext(request: HttpRequest, protocol: HttpProtocol, remoteAddress: InetAddress,
-                                    responder: HttpResponse => Unit) extends LinkedList.Element[TimeoutContext]
+  private case class TimeoutContext(request: HttpRequest, remoteAddress: InetAddress, responder: HttpResponse => Unit)
+          extends LinkedList.Element[TimeoutContext]
 }
 
 class HttpServer(val config: ServerConfig = AkkaConfServerConfig) extends HttpPeer with ResponsePreparer {
@@ -132,11 +131,11 @@ class HttpServer(val config: ServerConfig = AkkaConfServerConfig) extends HttpPe
       } else false
     }
 
-    val httpRequest = HttpRequest(method, uri, headers, body)
+    val httpRequest = HttpRequest(method, uri, headers, body, protocol)
     val remoteAddress = connRec.key.channel.asInstanceOf[SocketChannel].socket.getInetAddress
     var timeoutContext: TimeoutContext = null
     if (requestTimeoutCycle.isDefined) {
-      timeoutContext = new TimeoutContext(httpRequest, protocol, remoteAddress, { response =>
+      timeoutContext = new TimeoutContext(httpRequest, remoteAddress, { response =>
         if (respond(response, timeoutContext)) requestsTimedOut += 1
       })
       openRequests += timeoutContext;
@@ -145,7 +144,7 @@ class HttpServer(val config: ServerConfig = AkkaConfServerConfig) extends HttpPe
       if (!respond(response, timeoutContext))
         log.warn("Received an additional response for an already completed request to '{}', ignoring...", httpRequest.uri)
     }
-    serviceActor ! RequestContext(httpRequest, protocol, remoteAddress, responder)
+    serviceActor ! RequestContext(httpRequest, remoteAddress, responder)
     requestsDispatched += 1
     EmptyRequestParser // switch back to parsing the next request from the start
   }
@@ -172,7 +171,7 @@ class HttpServer(val config: ServerConfig = AkkaConfServerConfig) extends HttpPe
       openRequests -= ctx
       openTimeouts += ctx
       import ctx._
-      timeoutServiceActor ! Timeout(RequestContext(request, protocol, remoteAddress, responder))
+      timeoutServiceActor ! Timeout(RequestContext(request, remoteAddress, responder))
     }
     openTimeouts.forAllTimedOut(config.timeoutTimeout) { ctx =>
       log.warn("The TimeoutService for '{}' timed out as well, responding with the static error reponse", ctx.request.uri)

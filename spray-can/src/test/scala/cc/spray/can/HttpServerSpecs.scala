@@ -29,14 +29,14 @@ trait HttpServerSpecs extends Specification {
     self.id = "server-test-server"
     var requestIndex: Int = 0
     protected def receive = {
-      case RequestContext(HttpRequest(_, "/wait500", _, _), _, _, complete) => {
+      case RequestContext(HttpRequest(_, "/wait500", _, _, _), _, complete) => {
         Scheduler.scheduleOnce(() => complete(HttpResponse()), 200, TimeUnit.MILLISECONDS)
       }
-      case RequestContext(HttpRequest(method, uri, _, _), _, _, complete) => complete {
+      case RequestContext(HttpRequest(method, uri, _, _, _), _, complete) => complete {
         requestIndex += 1
         HttpResponse().withBody(method + "|" + uri + "|" + requestIndex)
       }
-      case Timeout(RequestContext(_, _, _, complete)) => complete {
+      case Timeout(RequestContext(_, _, complete)) => complete {
         HttpResponse().withBody("TIMEOUT")
       }
     }

@@ -109,7 +109,7 @@ trait RequestPreparer extends MessagePreparer {
     import request._
 
     def appendRequestLine(sb: JStringBuilder) {
-      sb.append(method.name).append(' ').append(uri).append(" HTTP/1.1\r\n")
+      appendLine(sb.append(method.name).append(' ').append(uri).append(' ').append(protocol.name))
     }
 
     val sb = new java.lang.StringBuilder(512)

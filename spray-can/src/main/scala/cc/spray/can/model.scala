@@ -57,7 +57,8 @@ case class HttpRequest(
   method: HttpMethod = HttpMethods.GET,
   uri: String = "/",
   headers: List[HttpHeader] = Nil,
-  body: Array[Byte] = EmptyByteArray
+  body: Array[Byte] = EmptyByteArray,
+  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
 ) {
   def withBody(body: String, charset: String = "ISO-8859-1") = copy(body = body.getBytes(charset))
 }

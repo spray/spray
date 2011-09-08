@@ -29,10 +29,10 @@ trait HttpClientSpecs extends Specification {
     self.id = "client-test-server"
     var requestIndex: Int = 0
     protected def receive = {
-      case RequestContext(HttpRequest(_, "/wait500", _, _), _, _, complete) => {
+      case RequestContext(HttpRequest(_, "/wait500", _, _, _), _, complete) => {
         Scheduler.scheduleOnce(() => complete(HttpResponse()), 500, TimeUnit.MILLISECONDS)
       }
-      case RequestContext(HttpRequest(method, uri, _, _), _, _, complete) => complete {
+      case RequestContext(HttpRequest(method, uri, _, _, _), _, complete) => complete {
         requestIndex += 1
         HttpResponse().withBody(method + "|" + uri + "|" + requestIndex)
       }
