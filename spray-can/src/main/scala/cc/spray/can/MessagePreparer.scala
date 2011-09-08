@@ -20,94 +20,83 @@ import annotation.tailrec
 import utils.DateTime
 import java.nio.charset.Charset
 import HttpProtocols._
-import ByteBuffer._
+import java.lang.{StringBuilder => JStringBuilder}
 
 trait MessagePreparer {
   protected val US_ASCII = Charset.forName("US-ASCII")
-  protected val ColonSP = ": ".getBytes(US_ASCII)
-  protected val CRLF = "\r\n".getBytes(US_ASCII)
-  protected val SingleSP = " ".getBytes(US_ASCII)
-  protected val ContentLengthColonSP = "Content-Length: ".getBytes(US_ASCII)
 
-  protected def header(name: String, value: String)(rest: List[ByteBuffer]) = {
-    wrapStr(name) :: wrap(ColonSP) :: wrapStr(value) :: wrap(CRLF) :: rest
-  }
+  protected def appendHeader(name: String, value: String, sb: JStringBuilder) =
+    appendLine(sb.append(name).append(':').append(' ').append(value))
 
-  protected def contentLengthHeader(contentLength: Int)(rest: List[ByteBuffer]) =
-    if (contentLength > 0)
-      wrap(ContentLengthColonSP) :: wrapStr(contentLength.toString) :: wrap(CRLF) :: rest
-    else rest
+  protected def appendContentLengthHeader(contentLength: Int, sb: JStringBuilder) =
+    if (contentLength > 0) appendHeader("Content-Length", contentLength.toString, sb) else sb
 
   @tailrec
-  protected final def theHeaders(httpHeaders: List[HttpHeader], connectionHeaderValue: Option[String] = None)
-                                (rest: List[ByteBuffer]): (List[ByteBuffer], Option[String]) = {
-    httpHeaders match {
-      case HttpHeader(name, value) :: tail =>
-        val newConnectionHeaderValue = {
-          if (connectionHeaderValue.isEmpty)
-            if (name == "Connection") Some(value) else None
-          else connectionHeaderValue
-        }
-        theHeaders(tail, newConnectionHeaderValue)(header(name, value)(rest))
-      case Nil => (rest, connectionHeaderValue)
+  protected final def appendHeaders(httpHeaders: List[HttpHeader], sb: JStringBuilder,
+                                    connectionHeaderValue: Option[String] = None): Option[String] = {
+    if (httpHeaders.isEmpty) {
+      connectionHeaderValue
+    } else {
+      val header = httpHeaders.head
+      val newConnectionHeaderValue = {
+        if (connectionHeaderValue.isEmpty)
+          if (header.name == "Connection") Some(header.value) else None
+        else connectionHeaderValue
+      }
+      appendHeader(header.name, header.value, sb)
+      appendHeaders(httpHeaders.tail, sb, newConnectionHeaderValue)
     }
   }
 
-  protected def wrapStr(string: String) = wrap(string.getBytes(US_ASCII))
+  protected def appendLine(sb: JStringBuilder) = sb.append('\r').append('\n')
 
-  protected def wrapBody(body: Array[Byte]) = if (body.length == 0) Nil else wrap(body) :: Nil
+  protected def wrapBody(body: Array[Byte]) = if (body.length == 0) Nil else ByteBuffer.wrap(body) :: Nil
 }
 
 trait ResponsePreparer extends MessagePreparer {
   protected def serverHeader: String
-  private val StatusLine200 = "HTTP/1.1 200 OK\r\n".getBytes(US_ASCII)
-  private val HttpVersionPlusSP = "HTTP/1.1 ".getBytes(US_ASCII)
-  private val ServerHeaderLinePlusDateColonSP =
-    (if (serverHeader.isEmpty) "Date: " else "Server: " + serverHeader + "\r\nDate: ").getBytes(US_ASCII)
-  private val CRLFCRLF = "\r\n\r\n".getBytes(US_ASCII)
+
+  private val ServerHeaderPlusDateColonSP =
+    if (serverHeader.isEmpty) "Date: " else "Server: " + serverHeader + "\r\nDate: "
 
   protected def prepare(response: HttpResponse, reqProtocol: HttpProtocol,
                         reqConnectionHeader: Option[String]): WriteJob = {
-    import ByteBuffer._
     import response._
 
-    def statusLine(writeJob: WriteJob) = writeJob.copy(buffers = {
-      status match {
-        case 200 => wrap(StatusLine200) :: writeJob.buffers
-        case x => wrap(HttpVersionPlusSP) ::
-                    wrapStr(status.toString) ::
-                      wrap(SingleSP) ::
-                        wrapStr(HttpResponse.defaultReason(status)) ::
-                         wrap(CRLF) :: writeJob.buffers
-      }
-    })
+    def appendStatusLine(sb: JStringBuilder) {
+      if (status == 200)
+        sb.append("HTTP/1.1 200 OK\r\n")
+      else
+        appendLine(sb.append("HTTP/1.1 ").append(status).append(' ').append(HttpResponse.defaultReason(status)))
+    }
 
-    def fixConnectionHeader(tuple: (List[ByteBuffer], Option[String])): WriteJob = {
-      val (rest, connectionHeaderValue) = tuple
-      if (connectionHeaderValue.isDefined) {
-        WriteJob(rest, connectionHeaderValue.get.contains("close"))
-      } else reqProtocol match {
+    def appendConnectionHeader(sb: JStringBuilder)(connectionHeaderValue: Option[String]) = {
+      if (connectionHeaderValue.isEmpty) reqProtocol match {
         case `HTTP/1.0` =>
-          if (reqConnectionHeader.isEmpty || reqConnectionHeader.get != "Keep-Alive") {
-            WriteJob(rest, closeConnection = true)
-          } else WriteJob(header("Connection", "Keep-Alive")(rest), closeConnection = false)
+          if (reqConnectionHeader.isEmpty || reqConnectionHeader.get != "Keep-Alive") true
+          else {
+            appendHeader("Connection", "Keep-Alive", sb)
+            false
+          }
         case `HTTP/1.1` =>
           if (reqConnectionHeader.isDefined && reqConnectionHeader.get == "close") {
-            WriteJob(header("Connection", "close")(rest), closeConnection = true)
-          } else WriteJob(rest, closeConnection = false)
+            appendHeader("Connection", "close", sb)
+            true
+          } else false
+      } else {
+        connectionHeaderValue.get.contains("close")
       }
     }
 
-    statusLine {
-      fixConnectionHeader {
-        theHeaders(headers) {
-          contentLengthHeader(body.length) {
-            wrap(ServerHeaderLinePlusDateColonSP) :: wrapStr(dateTimeNow.toRfc1123DateTimeString) :: wrap(CRLFCRLF) ::
-              wrapBody(body)
-          }
-        }
-      }
+    val sb = new java.lang.StringBuilder(512)
+    appendStatusLine(sb)
+    val close = appendConnectionHeader(sb) {
+      appendHeaders(headers, sb)
     }
+    appendContentLengthHeader(body.length, sb)
+    appendLine(sb.append(ServerHeaderPlusDateColonSP).append(dateTimeNow.toRfc1123DateTimeString))
+    appendLine(sb)
+    WriteJob(ByteBuffer.wrap(sb.toString.getBytes(US_ASCII)) :: wrapBody(body), close)
   }
 
   protected def dateTimeNow = DateTime.now  // split out so we can stabilize by overriding in tests
@@ -115,28 +104,21 @@ trait ResponsePreparer extends MessagePreparer {
 
 trait RequestPreparer extends MessagePreparer {
   protected def userAgentHeader: String
-  private val SPplusHttpVersionPlusCRLF = " HTTP/1.1\r\n".getBytes(US_ASCII)
 
   protected def prepare(request: HttpRequest, host: String, port: Int): List[ByteBuffer] = {
     import request._
 
-    def requestLine(tuple: (List[ByteBuffer], Option[String])) = {
-      wrap(method.asByteArray) :: wrapStr(uri) :: wrap(SPplusHttpVersionPlusCRLF) :: tuple._1
+    def appendRequestLine(sb: JStringBuilder) {
+      sb.append(method.name).append(' ').append(uri).append(" HTTP/1.1\r\n")
     }
 
-    def userAgent(rest: List[ByteBuffer]) =
-      if (userAgentHeader.isEmpty) rest else header("User-Agent", userAgentHeader)(rest)
-
-    requestLine {
-      theHeaders(headers) {
-        header("Host", if (port == 80) host else host + ':' + port) {
-          userAgent {
-            contentLengthHeader(body.length) {
-              wrap(CRLF) :: wrapBody(body)
-            }
-          }
-        }
-      }
-    }
+    val sb = new java.lang.StringBuilder(512)
+    appendRequestLine(sb)
+    appendHeaders(headers, sb)
+    appendHeader("Host", if (port == 80) host else host + ':' + port, sb)
+    if (!userAgentHeader.isEmpty) appendHeader("User-Agent", userAgentHeader, sb)
+    appendContentLengthHeader(body.length, sb)
+    appendLine(sb)
+    ByteBuffer.wrap(sb.toString.getBytes(US_ASCII)) :: wrapBody(body)
   }
 }

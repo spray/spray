@@ -19,13 +19,11 @@ import java.io.UnsupportedEncodingException
 
 sealed trait HttpMethod {
   def name: String
-  private[can] def asByteArray: Array[Byte]
 }
 
 object HttpMethods {
   class Method private[HttpMethods] (val name: String) extends HttpMethod {
     override def toString = name
-    private[can] lazy val asByteArray = (name + ' ').getBytes("US-ASCII")
   }
   val GET = new Method("GET")
   val POST = new Method("POST")

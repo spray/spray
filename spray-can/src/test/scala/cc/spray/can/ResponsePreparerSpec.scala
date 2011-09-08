@@ -47,8 +47,8 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
     ))
   } mustEqual prep {
     """|HTTP/1.1 304 Not Modified
-       |Age: 0
        |X-Fancy: of course
+       |Age: 0
        |Server: spray-can/1.0.0
        |Date: Thu, 25 Aug 2011 09:10:29 GMT
        |
@@ -57,13 +57,13 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
 
   def e3 = prep(`HTTP/1.1`) {
     HttpResponse(400, List(
-      HttpHeader("Server", "spray-can/1.0"),
+      HttpHeader("Age", "30"),
       HttpHeader("Cache-Control", "public")
     ), "Small f*ck up overhere!".getBytes(US_ASCII))
   } mustEqual prep {
     """|HTTP/1.1 400 Bad Request
+       |Age: 30
        |Cache-Control: public
-       |Server: spray-can/1.0
        |Content-Length: 23
        |Server: spray-can/1.0.0
        |Date: Thu, 25 Aug 2011 09:10:29 GMT

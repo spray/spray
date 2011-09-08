@@ -46,8 +46,8 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
     )
   } mustEqual prep {
     """|POST /abc/xyz HTTP/1.1
-       |Age: 0
        |X-Fancy: naa
+       |Age: 0
        |Host: test.com:8080
        |User-Agent: spray-can/1.0.0
        |
@@ -66,8 +66,8 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
     )
   } mustEqual prep {
     """|PUT /abc/xyz HTTP/1.1
-       |Cache-Control: public
        |X-Fancy: naa
+       |Cache-Control: public
        |Host: test.com:8080
        |User-Agent: spray-can/1.0.0
        |Content-Length: 19
