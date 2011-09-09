@@ -80,10 +80,11 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val slf4j              = Deps.slf4j
 
     // make version available to application
-    override def copyResourcesAction = super.copyResourcesAction && task {
+    def createVersionTxtAction = task {
       FileUtilities.write((mainResourcesOutputPath / "version.txt").asFile, version.toString, log)
       None
     }
+    override def copyResourcesAction = super.copyResourcesAction && createVersionTxtAction
 
     // testing
     val specs2    = Deps.specs2
@@ -100,7 +101,9 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     override def packageSrcJar = defaultJarPath("-sources.jar")
     lazy val sourceArtifact = Artifact(artifactID, "src", "jar", Some("sources"), Nil, None)
     lazy val docsArtifact = Artifact(artifactID, "docs", "jar", Some("scaladoc"), Nil, None)
-    override def packageToPublishActions = super.packageToPublishActions ++ Seq(packageDocs, packageSrc)
+    override def packageToPublishActions =
+      Seq(copyResourcesAction) ++ super.packageToPublishActions ++ Seq(packageDocs, packageSrc)
+    override def packagePaths = super.packagePaths +++ descendents(mainResourcesOutputPath ##, "version.txt")
 
     override def documentOptions: Seq[ScaladocOption] = documentTitle(name + " " + version) :: Nil
     override def pomExtra = pomExtras
