@@ -51,7 +51,10 @@ sealed trait MessageLine
 case class RequestLine(method: HttpMethod, uri: String, protocol: HttpProtocol) extends MessageLine
 case class StatusLine(protocol: HttpProtocol, status: Int, reason: String) extends MessageLine
 
-case class HttpHeader(name: String, value: String)
+case class HttpHeader(name: String, value: String) extends Product2[String, String] {
+  def _1 = name
+  def _2 = value
+}
 
 case class HttpRequest(
   method: HttpMethod = HttpMethods.GET,
