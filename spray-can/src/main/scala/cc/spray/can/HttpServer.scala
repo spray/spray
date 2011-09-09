@@ -49,7 +49,7 @@ class HttpServer(val config: ServerConfig = AkkaConfServerConfig) extends HttpPe
     channel.register(selector, SelectionKey.OP_ACCEPT)
   }
   private lazy val serviceActor = actor(config.serviceActorId)
-  private lazy val timeoutServiceActor = actor(config.timeoutServiceActorId)
+  private lazy val timeoutActor = actor(config.timeoutActorId)
   private val openRequests = new LinkedList[TimeoutContext]
   private val openTimeouts = new LinkedList[TimeoutContext]
 
@@ -166,12 +166,12 @@ class HttpServer(val config: ServerConfig = AkkaConfServerConfig) extends HttpPe
 
   protected def handleTimedOutRequests() {
     openRequests.forAllTimedOut(config.requestTimeout) { ctx =>
-      log.warn("A request to '{}' timed out, dispatching to the TimeoutService '{}'",
-        ctx.request.uri, config.timeoutServiceActorId)
+      log.warn("A request to '{}' timed out, dispatching to the TimeoutActor '{}'",
+        ctx.request.uri, config.timeoutActorId)
       openRequests -= ctx
       openTimeouts += ctx
       import ctx._
-      timeoutServiceActor ! Timeout(RequestContext(request, remoteAddress, responder))
+      timeoutActor ! Timeout(RequestContext(request, remoteAddress, responder))
     }
     openTimeouts.forAllTimedOut(config.timeoutTimeout) { ctx =>
       log.warn("The TimeoutService for '{}' timed out as well, responding with the static error reponse", ctx.request.uri)

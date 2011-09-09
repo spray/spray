@@ -84,7 +84,7 @@ trait HttpServerSpecs extends Specification {
     Actor.actorOf(new HttpServer(SimpleServerConfig(
       port = 17242,
       serviceActorId = "server-test-server",
-      timeoutServiceActorId = "server-test-server",
+      timeoutActorId = "server-test-server",
       requestTimeout = 100, timeoutCycle = 50,
       idleTimeout = 200, reapingCycle = 100
     ))).start()
