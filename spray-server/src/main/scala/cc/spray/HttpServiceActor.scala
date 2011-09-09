@@ -61,10 +61,7 @@ trait HttpServiceActor extends Actor with ErrorHandling with Logging with PostSt
  * In this way you can test your CustomServiceLogic with [[cc.spray.test.SprayTest]] without the need to fire up
  * actual actors.
  */
-class HttpService(val route: Route, val customRejectionHandler: PartialFunction[List[Rejection], HttpResponse])
-        extends HttpServiceActor with HttpServiceLogic
-
-object HttpService {
-  def apply(route: Route, customRejectionHandler: PartialFunction[List[Rejection], HttpResponse] = emptyPartialFunc) =
-    new HttpService(route, customRejectionHandler)
-}
+class HttpService(
+  val route: Route,
+  val customRejectionHandler: PartialFunction[List[Rejection], HttpResponse] = emptyPartialFunc
+) extends HttpServiceActor with HttpServiceLogic

@@ -113,9 +113,4 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
     HttpResponse(500, "The server could not handle the request in the appropriate time frame (async timeout)")
 }
 
-object RootService {
-  def apply(firstService: ActorRef, moreServices: ActorRef*): RootService =
-    new RootService(firstService, moreServices: _*)
-}
-
 case class Timeout(context: RequestContext)

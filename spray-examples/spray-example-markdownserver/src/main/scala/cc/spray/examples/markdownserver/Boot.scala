@@ -11,8 +11,8 @@ class Boot {
     // bake your module cake here
   }
   
-  val httpService = actorOf(HttpService(mainModule.markdownService))
-  val rootService = actorOf(RootService(httpService))
+  val httpService = actorOf(new HttpService(mainModule.markdownService))
+  val rootService = actorOf(new RootService(httpService))
 
   // start and supervise the created actors
   Supervisor(
