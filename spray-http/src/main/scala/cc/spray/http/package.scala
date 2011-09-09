@@ -39,10 +39,10 @@ package object http {
         HttpHeader("Content-Type", "application/json"),
         HttpHeader("Fancy-Custom-Header", "yeah")
       ),
-      content = Some(HttpContent("spray rocks!")),
-      remoteHost = Some(HttpIp.string2HttpIp("127.0.0.1"))
+      content = Some(HttpContent("spray rocks!"))
     )
-    HttpResponse(status = StatusCode.int2HttpStatusCode(200))
+    HttpResponse(status = 200)
+    HttpIp.fromString("127.0.0.1")
   }
 
 }

@@ -25,6 +25,7 @@ import HttpCharsets._
 import test.AbstractSprayTest
 import marshalling.{UnmarshallerBase, MarshallerBase}
 import xml.{XML, NodeSeq}
+import java.io.ByteArrayInputStream
 
 class MarshallingDirectivesSpec extends AbstractSprayTest {
   
@@ -33,7 +34,7 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
                            ContentTypeRange(`text/html`) ::
                            ContentTypeRange(`application/xhtml+xml`) :: Nil
 
-    def unmarshal(content: HttpContent) = protect { XML.load(content.inputStream).text.toInt }
+    def unmarshal(content: HttpContent) = protect { XML.load(new ByteArrayInputStream(content.buffer)).text.toInt }
   }
   
   implicit object IntMarshaller extends MarshallerBase[Int] {

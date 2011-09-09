@@ -16,25 +16,29 @@
  */
 
 package cc.spray.http
+import HttpProtocols._
 
 /**
  * Sprays immutable model of an HTTP response.
  */
-case class HttpResponse(status: StatusCode,
-                        headers: List[HttpHeader],
-                        content: Option[HttpContent]) extends HttpMessage {
+case class HttpResponse(
+  status: StatusCode,
+  headers: List[HttpHeader],
+  content: Option[HttpContent],
+  protocol: HttpProtocol
+) extends HttpMessage {
   def withContentTransformed(f: HttpContent => HttpContent): HttpResponse = copy(content = content.map(f))
 }
 
 object HttpResponse {
-  def apply(status: StatusCode): HttpResponse = apply(status, Nil, None)
-  def apply(status: StatusCode, headers: List[HttpHeader]): HttpResponse = apply(status, headers, None)
+  def apply(status: StatusCode): HttpResponse = apply(status, Nil, None, `HTTP/1.1`)
+  def apply(status: StatusCode, headers: List[HttpHeader]): HttpResponse = apply(status, headers, None, `HTTP/1.1`)
   def apply(status: StatusCode, content: HttpContent): HttpResponse = apply(status, Nil, content)
   def apply(status: StatusCode, headers: List[HttpHeader], content: HttpContent): HttpResponse = {
-    apply(status, headers, Some(content))
+    apply(status, headers, Some(content), `HTTP/1.1`)
   }
   def apply(status: StatusCode, content: String): HttpResponse = apply(status, Nil, content)
   def apply(status: StatusCode, headers: List[HttpHeader], content: String): HttpResponse = {
-    apply(status, headers, Some(HttpContent(content)))
+    apply(status, headers, Some(HttpContent(content)), `HTTP/1.1`)
   }
 }

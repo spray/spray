@@ -40,18 +40,12 @@ trait HttpServiceActor extends Actor with ErrorHandling with Logging with PostSt
   }
 
   override def preRestart(reason: Throwable) {
-    log.info("Restarting because of previous %s", reason.getClass.getName)
+    log.info("Restarting because of previous %s", reason)
   }
 
   protected def receive = {
-    case request: HttpRequest => handle(request)
+    case context: RequestContext => handle(context)
   }
-
-  protected[spray] def responderForRequest(request: HttpRequest): RoutingResult => Unit = {
-    val channel = self.channel;
-    { rr => channel ! responseFromRoutingResult(rr) }
-  }
-  
 }
 
 /**
@@ -67,8 +61,7 @@ trait HttpServiceActor extends Actor with ErrorHandling with Logging with PostSt
  * In this way you can test your CustomServiceLogic with [[cc.spray.test.SprayTest]] without the need to fire up
  * actual actors.
  */
-class HttpService(val route: Route,
-                  val customRejectionHandler: PartialFunction[List[Rejection], HttpResponse])
+class HttpService(val route: Route, val customRejectionHandler: PartialFunction[List[Rejection], HttpResponse])
         extends HttpServiceActor with HttpServiceLogic
 
 object HttpService {
