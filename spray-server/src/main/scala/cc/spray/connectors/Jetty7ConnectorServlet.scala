@@ -23,29 +23,25 @@ import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 /**
  * The spray connector servlet for Jetty 7.
  */
-class Jetty7ConnectorServlet extends ConnectorServlet {
-
-  def containerName = "Jetty 7"
+class Jetty7ConnectorServlet extends ConnectorServlet("Jetty 7") {
 
   override def service(req: HttpServletRequest, resp: HttpServletResponse) {
-    rootService ! RawRequestContext(rawRequest(req), suspend(req, resp)) 
+    requestContext(req, resp, responder(req, resp)).foreach(rootService ! _)
   }
-  
-  def suspend(req: HttpServletRequest, resp: HttpServletResponse): (RawResponse => Unit) => Unit = {    
+
+  def responder(req: HttpServletRequest, resp: HttpServletResponse)(context: RequestContext): RoutingResult => Unit = {
     val continuation = ContinuationSupport.getContinuation(req)
-    val rawReq = rawRequest(req)
     continuation.addContinuationListener(new ContinuationListener {
       def onTimeout(continuation: Continuation) {
-        log.error("Timeout of %s", rawReq)
-        TimeOutHandler.get.apply(rawReq, rawResponse(resp))
-        continuation.complete()
+        log.error("Timeout of %s", context.request)
+        timeoutActor ! Timeout(context)
       }
       def onComplete(continuation: Continuation) {}
     })
     continuation.setTimeout(timeout)
-    continuation.suspend(resp)    
-    
-    completer(resp) {
+    continuation.suspend(resp)
+    responder { response =>
+      respond(resp, response)
       continuation.complete()
     }
   }

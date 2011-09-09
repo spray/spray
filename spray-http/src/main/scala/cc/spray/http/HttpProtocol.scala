@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Mathias Doenitz
+ * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +15,14 @@
  * limitations under the License.
  */
 
-package cc.spray.utils
+package cc.spray.http
 
-class CantWriteResponseBodyException extends RuntimeException
+class HttpProtocol private[http] (value: String) {
+  override def toString = value
+  HttpProtocols.register(this, value)
+}
+
+object HttpProtocols extends ObjectRegistry[String, HttpProtocol] {
+  val `HTTP/1.0` = new HttpProtocol("HTTP/1.0")
+  val `HTTP/1.1` = new HttpProtocol("HTTP/1.1")
+}

@@ -19,7 +19,6 @@ package parser
 
 import org.parboiled.scala._
 import BasicRules._
-import java.net.InetAddress
 
 // implementation of additional parsing rules required for extensions that are not in the core HTTP standard
 private[parser] trait AdditionalRules {
@@ -27,7 +26,7 @@ private[parser] trait AdditionalRules {
 
   def Ip: Rule1[HttpIp] = rule (
     group(IpNumber ~ ch('.') ~ IpNumber ~ ch('.') ~ IpNumber ~ ch('.') ~ IpNumber)
-      ~> (x => HttpIp(InetAddress.getByName(x))) ~ OptWS
+      ~> HttpIp.fromString ~ OptWS
   )
   
   def IpNumber = rule {

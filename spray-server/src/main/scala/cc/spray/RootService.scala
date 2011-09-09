@@ -17,26 +17,36 @@
 package cc.spray
 
 import http._
-import StatusCodes._
 import akka.actor.{Actor, ActorRef}
-import akka.dispatch.{Future, Futures}
 import utils.{PostStart, Logging}
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * The RootService actor is the central entrypoint for HTTP requests entering the ''spray'' infrastructure.
  * It is responsible for creating an [[cc.spray.http.HttpRequest]] object for the request as well as dispatching this
  *  [[cc.spray.http.HttpRequest]] object to all attached [[cc.spray.HttpService]]s. 
  */
-class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor with ToFromRawConverter with Logging with PostStart {
+class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
+  with Logging with ErrorHandling with PostStart {
 
-  private val handler: RawRequestContext => Unit = moreServices.toList match {
+  protected val handler: RequestContext => Unit = moreServices.toList match {
     case Nil => handleOneService(firstService)
     case services => handleMultipleServices(firstService :: services)
   }
 
-  self.id = SpraySettings.RootActorId
+  protected val initialUnmatchedPath: String => String = SpraySettings.RootPath match {
+    case Some(rootPath) => { path =>
+      if (path.startsWith(rootPath)) {
+        path.substring(rootPath.length)
+      } else {
+        log.warn("Received request outside of configured root-path, request uri '%s', configured root path '%s'", path, rootPath)
+        path
+      }
+    }
+    case None => identity
+  }
 
-  lazy val addConnectionCloseResponseHeader = SpraySettings.CloseConnection
+  self.id = SpraySettings.RootActorId
 
   override def preStart() {
     log.debug("Starting spray RootService ...")
@@ -61,63 +71,46 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
   }
 
   protected def receive = {
-    case rawContext: RawRequestContext => {
-      try {
-        handler(rawContext)
-      } catch {
-        case e: Exception => handleException(e, rawContext)
+    case context: RequestContext =>
+      try handler(context) catch handleExceptions(context)
+    case Timeout(context) =>
+      try context.complete(timeoutResponse(context.request)) catch handleExceptions(context)
+  }
+
+  protected def handleExceptions(context: RequestContext): PartialFunction[Throwable, Unit] = {
+    case e: Exception => context.complete(responseForException(context.request, e))
+  }
+
+  protected def handleOneService(service: ActorRef)(context: RequestContext) {
+    log.debug("Received %s with one attached service, dispatching...", context.request)
+    val newResponder: RoutingResult => Unit = {
+      case x: Respond => context.responder(x)
+      case x: Reject => context.responder(Respond(noServiceResponse(context.request)))
+    }
+    service ! context.copy(responder = newResponder, unmatchedPath = initialUnmatchedPath(context.request.path))
+  }
+
+  protected def handleMultipleServices(services: List[ActorRef])(context: RequestContext) {
+    log.debug("Received %s with %s attached services, dispatching...", context.request, services.size)
+    val responded = new AtomicBoolean(false)
+    val newResponder: RoutingResult => Unit = {
+      case x: Respond => {
+        if (responded.compareAndSet(false, true)) {
+          context.responder(x)
+        } else  log.warn("Received a second response for request '%s':\n\n%s\n\nIgnoring the additional response...",
+          context.request, x)
       }
+      case x: Reject => // ignore
     }
-  }
-  
-  private def handleOneService(service: ActorRef)(rawContext: RawRequestContext) {
-    val request = toSprayRequest(rawContext.request)
-    log.debug("Received %s with one attached service, dispatching...", request)
-    (service !!! (request, SpraySettings.AsyncTimeout)).onComplete(completeRequest(rawContext) _)
+    val outContext = context.copy(responder = newResponder, unmatchedPath = initialUnmatchedPath(context.request.path))
+    services.foreach(_ ! outContext)
   }
 
-  private def handleMultipleServices(services: List[ActorRef])(rawContext: RawRequestContext) {
-    val request = toSprayRequest(rawContext.request)
-    log.debug("Received %s with %s attached services, dispatching...", request, services.size)
-    val serviceFutures: List[Future[Option[HttpResponse]]] = services.map(_ !!! (request, SpraySettings.AsyncTimeout))
-    val resultsFuture = Futures.fold(None.asInstanceOf[Option[HttpResponse]], SpraySettings.AsyncTimeout)(serviceFutures) {
-      case (None, None) => None
-      case (None, x: Some[_]) => x
-      case (x: Some[_], None) => x
-      case (x: Some[_], Some(y)) =>
-        log.warn("Received a second response for request '%s':\n\nn%s\n\nIgnoring the additional response...", request, y)
-        x
-    }
-    resultsFuture.onComplete(completeRequest(rawContext) _)
-  }
+  protected def noServiceResponse(request: HttpRequest) =
+    HttpResponse(404, "No service available for [" + request.uri + "]")
 
-  private def completeNoService(rawContext: RawRequestContext) {
-    rawContext.complete(fromSprayResponse(noService(rawContext.request.uri)))
-  }
-
-  private def completeRequest(rawContext: RawRequestContext)(future: Future[Option[HttpResponse]]) {
-    if (future.exception.isEmpty) {
-      future.result.get match {
-        case Some(response) => rawContext.complete(fromSprayResponse(response))
-        case None => completeNoService(rawContext)
-      }
-    } else {
-      handleException(future.exception.get, rawContext)
-    }
-  }
-
-  protected def handleException(e: Throwable, rawContext: RawRequestContext) {
-    log.error(e, "Exception during request processing")
-    rawContext.complete(fromSprayResponse(e match {
-      case e: HttpException => HttpResponse(e.failure)
-      case e: Exception => HttpResponse(InternalServerError, e.getMessage)
-    }))
-  }
-
-  protected def noService(uri: String) = HttpResponse(404, "No service available for [" + uri + "]")
+  protected def timeoutResponse(request: HttpRequest) =
+    HttpResponse(500, "The server could not handle the request in the appropriate time frame (async timeout)")
 }
 
-object RootService {
-  def apply(firstService: ActorRef, moreServices: ActorRef*): RootService =
-    new RootService(firstService, moreServices: _*)
-}
+case class Timeout(context: RequestContext)

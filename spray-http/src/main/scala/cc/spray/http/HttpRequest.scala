@@ -19,8 +19,8 @@ package cc.spray.http
 
 import java.net.URI
 import HttpHeaders._
-import HttpVersions._
 import HttpCharsets._
+import HttpProtocols._
 import parser.QueryParser
 
 /**
@@ -30,8 +30,7 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
                        uri: String = "",
                        headers: List[HttpHeader] = Nil,
                        content: Option[HttpContent] = None,
-                       remoteHost: Option[HttpIp] = None,
-                       version: Option[HttpVersion] = Some(`HTTP/1.1`)) extends HttpMessage {
+                       protocol: HttpProtocol = `HTTP/1.1`) extends HttpMessage {
   
   lazy val URI = new URI(uri)
   

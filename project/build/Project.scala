@@ -19,7 +19,8 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   import Repositories._
   val glassfishModuleConfig = ModuleConfiguration("org.glassfish", GlassFishRepo)
   val sprayModuleConfig     = ModuleConfiguration("cc.spray", ScalaToolsSnapshots)
-  val deftModuleConfig      = ModuleConfiguration("org.apache.deft", SprayGithubRepo)
+  val sprayJsonModuleConfig = ModuleConfiguration("cc.spray.json", ScalaToolsSnapshots)
+  val sprayCanModuleConfig  = ModuleConfiguration("cc.spray.can", ScalaToolsSnapshots)
 
   // -------------------------------------------------------------------------------------------------------------------
   // Dependencies
@@ -31,14 +32,14 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val asyncHttp  = "com.ning" % "async-http-client" % "1.6.4" % "compile" withSources()
     
     // provided
-    val sprayJson          = "cc.spray.json" %% "spray-json" % "1.0.0" % "provided" withSources()
-    val servlet30          = "org.glassfish" % "javax.servlet" % "3.0" % "provided"
+    val sprayJson          = "cc.spray.json" %% "spray-json" % "1.1.0-SNAPSHOT" % "provided" withSources()
+    val servlet30          = "org.glassfish" % "javax.servlet" % "3.0" % "provided" withSources()
     val jettyContinuations = "org.eclipse.jetty" % "jetty-continuation" % "7.2.0.v20101020" % "provided" withSources()
-    val tomcat6            = "org.apache.tomcat" % "catalina" % "6.0.32" % "provided"
-    val deft               = "org.apache.deft" % "deft" % "0.4.0-SNAPSHOT" % "provided" withSources()
+    val tomcat6            = "org.atmosphere" % "atmosphere-compat-tomcat" % "0.7.1" % "provided" withSources()
+    val sprayCan           = "cc.spray.can" %% "spray-can" % "0.5.0-SNAPSHOT" % "provided" withSources()
 
     // test
-    val specs2 = "org.specs2" %% "specs2" % "1.5" % "test" withSources()
+    val specs2 = "org.specs2" %% "specs2" % "1.6.1" % "test" withSources()
     
     // only for examples
     val slf4j   = "org.slf4j" % "slf4j-api" % "1.6.1" % "compile" withSources()
@@ -135,20 +136,20 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val servlet30          = Deps.servlet30
     val jettyContinuations = Deps.jettyContinuations
     val tomcat6            = Deps.tomcat6 
-    val deft               = Deps.deft
-    val specs2      = Deps.specs2
+    val sprayCan           = Deps.sprayCan
+    val specs2             = Deps.specs2
   }
   
   class ClientProject(info: ProjectInfo) extends ModuleProject(info) with AkkaProject {
     override val akkaActor = akkaModule("actor") % "provided" withSources()
     val http               = httpProject
     val ahc                = Deps.asyncHttp 
-    val specs2      = Deps.specs2
+    val specs2             = Deps.specs2
   }
   
   class ExamplesProject(info: ProjectInfo) extends ParentProject(info) {
     val calculatorProject     = project("spray-example-calculator", "spray-example-calculator", new CalculatorProject(_))
-    val deftProject           = project("spray-example-deft", "spray-example-deft", new DeftProject(_))
+    val sprayCanProject       = project("spray-example-spray-can", "spray-example-spray-can", new SprayCanProject(_))
     val markdownServerProject = project("spray-example-markdownserver", "spray-example-markdownserver", new MarkdownServerProject(_))
     val stopWatchProject      = project("spray-example-stopwatch", "spray-example-stopwatch", new StopWatchProject(_))
 
@@ -165,9 +166,9 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val akkaSlf4j          = akkaModule("slf4j") withSources()
     val http               = httpProject
     val server             = serverProject
-    
-    val specs2      = Deps.specs2
+    val specs2             = Deps.specs2
 
+    override def compileOptions = super.compileOptions ++ scalaCompileSettings.map(CompileOption)
     override def testFrameworks = super.testFrameworks ++ Seq(specs2Framework)
 
     // disable publishing
@@ -181,13 +182,14 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val logback     = Deps.logback
   }
 
-  class DeftProject(info: ProjectInfo) extends SprayExampleProject(info) {
-    val deft  = Deps.deft
-    val slf4j = Deps.slf4j
+  class SprayCanProject(info: ProjectInfo) extends SprayExampleProject(info) {
+    val sprayCan = Deps.sprayCan
+    val slf4j    = Deps.slf4j
+    val logback  = Deps.logback
   }
   
   class MarkdownServerProject(info: ProjectInfo) extends SprayExampleProject(info) {
-    val pegdown = Deps.pegdown
+    val pegdown     = Deps.pegdown
     val jettyServer = Deps.jettyServer
     val jettyWebApp = Deps.jettyWebApp
     val logback     = Deps.logback

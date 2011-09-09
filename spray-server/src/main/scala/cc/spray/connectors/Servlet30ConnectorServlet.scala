@@ -23,41 +23,34 @@ import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 /**
  * The spray connector servlet for all servlet 3.0 containers.
  */
-class Servlet30ConnectorServlet extends ConnectorServlet with AsyncListener {
-  
-  def containerName = "Servlet API 3.0"
-  
+class Servlet30ConnectorServlet extends ConnectorServlet("Servlet API 3.0") {
+
   override def service(req: HttpServletRequest, resp: HttpServletResponse) {
-    rootService ! RawRequestContext(rawRequest(req), suspend(req, resp)) 
+    requestContext(req, resp, responder(req, resp)).foreach(rootService ! _)
   }
-  
-  def suspend(req: HttpServletRequest, resp: HttpServletResponse): (RawResponse => Unit) => Unit = {
+
+  def responder(req: HttpServletRequest, resp: HttpServletResponse)(context: RequestContext): RoutingResult => Unit = {
     val asyncContext = req.startAsync()
     asyncContext.setTimeout(timeout)
-    asyncContext.addListener(this)
-    completer(resp) {
+    asyncContext.addListener {
+      new AsyncListener {
+        def onTimeout(event: AsyncEvent) {
+          log.error("Timeout of %s", context.request)
+          timeoutActor ! Timeout(context)
+        }
+        def onError(event: AsyncEvent) {
+          event.getThrowable match {
+            case null => log.error("Unspecified Error during async processing of %s", context.request)
+            case ex => log.error(ex, "Error during async processing of %s", context.request)
+          }
+        }
+        def onStartAsync(event: AsyncEvent) {}
+        def onComplete(event: AsyncEvent) {}
+      }
+    }
+    responder { response =>
+      respond(resp, response)
       asyncContext.complete()
     }
   }
-  
-  //********************** AsyncListener **********************
-
-  def onError(ev: AsyncEvent) {
-    val req = rawRequest(ev.getSuppliedRequest.asInstanceOf[HttpServletRequest])
-    ev.getThrowable match {
-      case null => log.error("Unspecified Error during async processing of %s", req)
-      case ex => log.error(ex, "Error during async processing of %s", req)
-    }
-  }
-
-  def onTimeout(ev: AsyncEvent) {
-    val req = rawRequest(ev.getSuppliedRequest.asInstanceOf[HttpServletRequest])
-    log.error("Timeout of %s", req)
-    TimeOutHandler.get.apply(req, rawResponse(ev.getSuppliedResponse.asInstanceOf[HttpServletResponse]))
-    ev.getAsyncContext.complete()
-  }
-
-  def onComplete(ev: AsyncEvent) {}
-
-  def onStartAsync(ev: AsyncEvent) {}
 }

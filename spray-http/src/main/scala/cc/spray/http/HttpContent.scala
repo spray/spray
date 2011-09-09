@@ -17,15 +17,10 @@
 package cc.spray.http
 
 import java.util.Arrays
-import java.io.ByteArrayInputStream
 import HttpCharsets._
 import MediaTypes._
 
-class HttpContent private[http](val contentType: ContentType, private[spray] val buffer: Array[Byte]) {
-  def isEmpty = false
-  def length = buffer.length
-  def inputStream = new ByteArrayInputStream(buffer)
-  
+class HttpContent private[http](val contentType: ContentType, val buffer: Array[Byte]) {
   def withContentType(contentType: ContentType) = new HttpContent(contentType, buffer)
 
   override def toString = "HttpContent(" + contentType + ',' + new String(buffer, contentType.charset.getOrElse(`ISO-8859-1`).nioCharset) + ')'

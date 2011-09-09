@@ -35,7 +35,10 @@ private[spray] trait CodecDirectives {
     } else if (ctx.request.encoding == decoder.encoding) {
       try {
         val decodedRequest = decoder.decode(ctx.request) 
-        Pass.withTransform(_.withRequestTransformed(_ => decodedRequest))
+        Pass.withTransform { _
+           .cancelRejections[UnsupportedRequestEncodingRejection]
+           .withRequestTransformed(_ => decodedRequest)
+        }
       } catch {
         case e: Exception => Reject(CorruptRequestEncodingRejection(e.getMessage)) 
       }
@@ -123,10 +126,10 @@ abstract class Gzip extends Decoder with Encoder {
  * An encoder and decoder for the HTTP 'gzip' encoding.
  */
 object Gzip extends Gzip {
-  def handle(response: HttpResponse) = response.isSuccess
+  def handle(response: HttpResponse) = response.status.isSuccess
   def apply(minContentSize: Int) = new Gzip {
     def handle(response: HttpResponse) = {
-      response.isSuccess && response.content.get.buffer.length >= minContentSize
+      response.status.isSuccess && response.content.get.buffer.length >= minContentSize
     }
   }
   def apply(predicate: HttpResponse => Boolean) = new Gzip {
@@ -150,10 +153,10 @@ abstract class Deflate extends Decoder with Encoder {
  * An encoder and decoder for the HTTP 'deflate' encoding.
  */
 object Deflate extends Deflate {
-  def handle(response: HttpResponse) = response.isSuccess
+  def handle(response: HttpResponse) = response.status.isSuccess
   def apply(minContentSize: Int) = new Deflate {
     def handle(response: HttpResponse) = {
-      response.isSuccess && response.content.get.buffer.length >= minContentSize
+      response.status.isSuccess && response.content.get.buffer.length >= minContentSize
     }
   }
   def apply(predicate: HttpResponse => Boolean) = new Deflate {
