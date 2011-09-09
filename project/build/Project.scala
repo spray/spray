@@ -185,6 +185,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   class SprayCanProject(info: ProjectInfo) extends SprayExampleProject(info) {
     val sprayCan = Deps.sprayCan
     val slf4j    = Deps.slf4j
+    val logback  = Deps.logback
   }
   
   class MarkdownServerProject(info: ProjectInfo) extends SprayExampleProject(info) {
