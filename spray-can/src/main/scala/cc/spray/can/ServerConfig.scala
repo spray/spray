@@ -70,34 +70,34 @@ trait ClientConfig extends PeerConfig {
 
 object AkkaConfServerConfig extends ServerConfig {
   // PeerConfig
-  lazy val readBufferSize = config.getInt("spray.can-server.read-buffer-size", 8192)
-  lazy val idleTimeout    = config.getLong("spray.can-server.idle-timeout", 10000)
-  lazy val reapingCycle   = config.getLong("spray.can-server.reaping-cycle", 500)
-  lazy val requestTimeout = config.getLong("spray.can-server.request-timeout", 5000)
-  lazy val timeoutCycle   = config.getLong("spray.can-server.timeout-cycle", 200)
+  lazy val readBufferSize = config.getInt("spray-can.server.read-buffer-size", 8192)
+  lazy val idleTimeout    = config.getLong("spray-can.server.idle-timeout", 10000)
+  lazy val reapingCycle   = config.getLong("spray-can.server.reaping-cycle", 500)
+  lazy val requestTimeout = config.getLong("spray-can.server.request-timeout", 5000)
+  lazy val timeoutCycle   = config.getLong("spray-can.server.timeout-cycle", 200)
 
   // ServerConfig
-  lazy val hostname       = config.getString("spray.can-server.hostname", "localhost")
-  lazy val port           = config.getInt("spray.can-server.port", 8080)
-  lazy val serverActorId  = config.getString("spray.can-server.server-actor-id", "spray-can-server")
-  lazy val serviceActorId = config.getString("spray.can-server.service-actor-id", "spray-root-service")
-  lazy val timeoutActorId = config.getString("spray.can-server.timeout-actor-id", "spray-root-service")
-  lazy val timeoutTimeout = config.getLong("spray.can-server.timeout-timeout", 500)
-  lazy val serverHeader   = config.getString("spray.can-server.server-header", "spray-can/" + SprayCanVersion)
+  lazy val hostname       = config.getString("spray-can.server.hostname", "localhost")
+  lazy val port           = config.getInt("spray-can.server.port", 8080)
+  lazy val serverActorId  = config.getString("spray-can.server.server-actor-id", "spray-can-server")
+  lazy val serviceActorId = config.getString("spray-can.server.service-actor-id", "spray-root-service")
+  lazy val timeoutActorId = config.getString("spray-can.server.timeout-actor-id", "spray-root-service")
+  lazy val timeoutTimeout = config.getLong("spray-can.server.timeout-timeout", 500)
+  lazy val serverHeader   = config.getString("spray-can.server.server-header", "spray-can/" + SprayCanVersion)
   def endpoint = new InetSocketAddress(hostname, port)
 }
 
 object AkkaConfClientConfig extends ClientConfig {
   // PeerConfig
-  lazy val readBufferSize  = config.getInt("spray.can-client.read-buffer-size", 8192)
-  lazy val idleTimeout     = config.getLong("spray.can-client.idle-timeout", 10000)
-  lazy val reapingCycle    = config.getLong("spray.can-client.reaping-cycle", 500)
-  lazy val requestTimeout  = config.getLong("spray.can-client.request-timeout", 5000)
-  lazy val timeoutCycle    = config.getLong("spray.can-client.timeout-cycle", 200)
+  lazy val readBufferSize  = config.getInt("spray-can.client.read-buffer-size", 8192)
+  lazy val idleTimeout     = config.getLong("spray-can.client.idle-timeout", 10000)
+  lazy val reapingCycle    = config.getLong("spray-can.client.reaping-cycle", 500)
+  lazy val requestTimeout  = config.getLong("spray-can.client.request-timeout", 5000)
+  lazy val timeoutCycle    = config.getLong("spray-can.client.timeout-cycle", 200)
 
   // ClientConfig
-  lazy val clientActorId   = config.getString("spray.can-client.client-actor-id", "spray-can-client")
-  lazy val userAgentHeader = config.getString("spray.can-client.user-agent-header", "spray-can/" + SprayCanVersion)
+  lazy val clientActorId   = config.getString("spray-can.client.client-actor-id", "spray-can-client")
+  lazy val userAgentHeader = config.getString("spray-can.client.user-agent-header", "spray-can/" + SprayCanVersion)
 }
 
 case class SimpleServerConfig(
