@@ -79,7 +79,7 @@ private[can] trait HighLevelHttpClient {
   object HttpDialog {
     private lazy val log = LoggerFactory.getLogger(getClass)
 
-    def apply(host: String, port: Int = 80, clientActorId: String = AkkaConfClientConfig.clientActorId): HttpDialog[Unit] = {
+    def apply(host: String, port: Int = 80, clientActorId: String = ClientConfig.fromAkkaConf.clientActorId): HttpDialog[Unit] = {
       val client = actor(clientActorId)
       val connection = new DefaultCompletableFuture[ConnectionHandle](Long.MaxValue)
       implicit val timeout = Actor.Timeout(Long.MaxValue)

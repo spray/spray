@@ -39,7 +39,7 @@ object HttpServer {
           extends LinkedList.Element[TimeoutContext]
 }
 
-class HttpServer(val config: ServerConfig = AkkaConfServerConfig) extends HttpPeer with ResponsePreparer {
+class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends HttpPeer with ResponsePreparer {
   import HttpServer._
 
   private lazy val log = LoggerFactory.getLogger(getClass)

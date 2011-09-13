@@ -115,8 +115,8 @@ trait HttpClientSpecs extends Specification {
 
   private def start() {
     Actor.actorOf(new TestService).start()
-    Actor.actorOf(new HttpServer(SimpleServerConfig(port = 16242, serviceActorId = "client-test-server", requestTimeout = 0))).start()
-    Actor.actorOf(new HttpClient(SimpleClientConfig(clientActorId = "client-test-client",
+    Actor.actorOf(new HttpServer(ServerConfig(port = 16242, serviceActorId = "client-test-server", requestTimeout = 0))).start()
+    Actor.actorOf(new HttpClient(ClientConfig(clientActorId = "client-test-client",
       requestTimeout = 100, timeoutCycle = 50, idleTimeout = 200, reapingCycle = 100))).start()
   }
 }

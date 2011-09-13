@@ -46,7 +46,7 @@ object HttpClient extends HighLevelHttpClient {
           extends LinkedList.Element[TimeoutContext]
 }
 
-class HttpClient(val config: ClientConfig = AkkaConfClientConfig) extends HttpPeer with RequestPreparer {
+class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends HttpPeer with RequestPreparer {
   import HttpClient._
 
   private lazy val log = LoggerFactory.getLogger(getClass)

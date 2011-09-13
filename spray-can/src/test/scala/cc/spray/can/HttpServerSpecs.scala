@@ -81,13 +81,13 @@ trait HttpServerSpecs extends Specification {
 
   private def start() {
     Actor.actorOf(new TestService).start()
-    Actor.actorOf(new HttpServer(SimpleServerConfig(
+    Actor.actorOf(new HttpServer(ServerConfig(
       port = 17242,
       serviceActorId = "server-test-server",
       timeoutActorId = "server-test-server",
       requestTimeout = 100, timeoutCycle = 50,
       idleTimeout = 200, reapingCycle = 100
     ))).start()
-    Actor.actorOf(new HttpClient(SimpleClientConfig(clientActorId = "server-test-client", requestTimeout = 0))).start()
+    Actor.actorOf(new HttpClient(ClientConfig(clientActorId = "server-test-client", requestTimeout = 0))).start()
   }
 }
