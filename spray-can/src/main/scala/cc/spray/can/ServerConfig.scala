@@ -35,7 +35,7 @@ trait PeerConfig {
 
 case class ServerConfig(
   // ServerConfig
-  hostname: String = "localhost",
+  host: String = "localhost",
   port: Int = 8080,
   serverActorId: String = "spray-can-server",
   serviceActorId: String = "spray-root-service",
@@ -56,7 +56,7 @@ case class ServerConfig(
   require(!timeoutActorId.isEmpty, "timeoutActorId must not be empty")
   require(timeoutTimeout >= 0, "timeoutTimeout must be >= 0 ms")
 
-  def endpoint = new InetSocketAddress(hostname, port)
+  def endpoint = new InetSocketAddress(host, port)
 
   override def toString =
     "ServerConfig(\n" +
@@ -77,7 +77,7 @@ case class ServerConfig(
 object ServerConfig {
   lazy val fromAkkaConf = ServerConfig(
     // ServerConfig
-    hostname       = config.getString("spray-can.server.hostname", "localhost"),
+    host           = config.getString("spray-can.server.host", "localhost"),
     port           = config.getInt("spray-can.server.port", 8080),
     serverActorId  = config.getString("spray-can.server.server-actor-id", "spray-can-server"),
     serviceActorId = config.getString("spray-can.server.service-actor-id", "spray-root-service"),
