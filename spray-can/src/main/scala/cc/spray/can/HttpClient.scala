@@ -70,7 +70,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
 
   protected override def receive = super.receive orElse {
     case Connect(host, port) => initiateConnection(host, port)
-    case Send(connection, request) => send(connection.connRecord, request)
+    case Send(connection, request) => send(connection, request)
     case Close(connection) => close(connection.connRecord)
   }
 
@@ -97,7 +97,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
     }
   }
 
-  protected def send(connRec: ConnRecord, request: HttpRequest) {
+  protected def send(connection: ConnectionHandle, request: HttpRequest) {
     def verifyRequest = {
       import request._
       if (method != null) {
@@ -115,23 +115,29 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
       } else Some("method must not be null")
     }
 
+    val connRec = connection.connRecord
     if (connRec.key.isValid) {
-      verifyRequest match {
-        case None => {
-          log.debug("Received valid HttpRequest to send, scheduling write")
-          val clientConnRec = connRec.asInstanceOf[ClientConnRecord]
-          import clientConnRec._
-          key.interestOps(SelectionKey.OP_WRITE)
-          load = WriteJob(buffers = prepare(request, host, port), closeConnection = false)
-          val timeoutContext = TimeoutContext(request, clientConnRec)
-          val responseChannel = self.channel
-          deliverResponse = { received =>
-            openRequests -= timeoutContext
-            responseChannel ! received
+      if (!connRec.load.isInstanceOf[WriteJob]) { // if we are currently reading or waiting, we switch to writing
+        verifyRequest match {
+          case None => {
+            log.debug("Received valid HttpRequest to send, scheduling write")
+            val clientConnRec = connRec.asInstanceOf[ClientConnRecord]
+            import clientConnRec._
+            key.interestOps(SelectionKey.OP_WRITE)
+            load = WriteJob(buffers = prepare(request, host, port), closeConnection = false)
+            val timeoutContext = TimeoutContext(request, clientConnRec)
+            val responseChannel = self.channel
+            deliverResponse = { received =>
+              openRequests -= timeoutContext
+              responseChannel ! received
+            }
+            openRequests += timeoutContext
           }
-          openRequests += timeoutContext
+          case Some(error) => self reply Received(Left("Illegal HttpRequest: " + error))
         }
-        case Some(error) => self reply Received(Left("Illegal HttpRequest: " + error))
+      } else {
+        // we already have a WriteJob ongoing, so we need to defer processing of this request
+        self ! Send(connection, request)
       }
     } else self reply Received(Left("Connection closed"))
   }
