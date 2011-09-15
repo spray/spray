@@ -26,6 +26,10 @@ import java.io.IOException
 import java.nio.channels.{SocketChannel, SelectionKey}
 import annotation.tailrec
 
+/////////////////////////////////////////////
+// HttpPeer messages
+////////////////////////////////////////////
+
 case object GetStats
 case class Stats(
   uptime: Long,
@@ -38,15 +42,33 @@ case class Stats(
 private[can] case object Select
 private[can] case object ReapIdleConnections
 private[can] case object HandleTimedOutRequests
-private[can] class ConnRecord(val key: SelectionKey, var load: ConnRecordLoad) extends LinkedList.Element[ConnRecord] {
-  key.attach(this)
+
+
+/////////////////////////////////////////////
+// HttpPeer
+////////////////////////////////////////////
+
+// as soon as a connection is properly established a Connection instance
+// is created and permanently attached to the connections SelectionKey
+private[can] abstract class Connection[T >: Null <: LinkedList.Element[T]](val key: SelectionKey)
+        extends LinkedList.Element[T] {
+  var writeBuffers: List[ByteBuffer] = Nil
+  var messageParser: MessageParser = EmptyRequestParser
+
+  import SelectionKey._
+  def enableWriting() { key.interestOps(OP_READ | OP_WRITE) }
+  def disableWriting() { key.interestOps(OP_READ) }
 }
 
 private[can] abstract class HttpPeer extends Actor {
   private lazy val log = LoggerFactory.getLogger(getClass)
+
+  private[can] type Conn >: Null <: Connection[Conn]
+  protected def config: PeerConfig
+
   protected val readBuffer = ByteBuffer.allocateDirect(config.readBufferSize)
   protected val selector = SelectorProvider.provider.openSelector
-  protected val connections = new LinkedList[ConnRecord] // a list of all connections registered on the selector
+  protected val connections = new LinkedList[Conn] // a list of all connections registered on the selector
 
   // statistics
   protected var startTime: Long = _
@@ -82,7 +104,7 @@ private[can] abstract class HttpPeer extends Actor {
     case GetStats => self.reply(stats)
   }
 
-  protected def select() {
+  private def select() {
     // The following select() call only really blocks for a longer period of time if the actors mailbox is empty and no
     // other tasks have been scheduled by the dispatcher. Otherwise the dispatcher will either already have called
     // selector.wakeup() (which causes the following call to not block at all) or do so in a short while.
@@ -92,41 +114,37 @@ private[can] abstract class HttpPeer extends Actor {
       val key = selectedKeys.next
       selectedKeys.remove()
       if (key.isValid) {
-        val connRec = key.attachment.asInstanceOf[ConnRecord]
-        if (key.isAcceptable) accept()
-        else if (key.isReadable) read(connRec)
-        else if (key.isWritable) write(connRec)
-        else if (key.isConnectable) finishConnection(connRec)
+        if (key.isWritable) write(key) // favor writes if writeable as well as readable
+        else if (key.isReadable) read(key)
+        else handleConnectionEvent(key)
       } else log.warn("Invalid selection key: {}", key)
     }
     self ! Select // loop
   }
 
-  protected def read(connRec: ConnRecord) {
+  private def read(key: SelectionKey) {
+    val conn = key.attachment.asInstanceOf[Conn]
     log.debug("Reading from connection")
-    protectIO("Read", connRec) {
-      val channel = connRec.key.channel.asInstanceOf[SocketChannel]
+    protectIO("Read", conn) {
+      val channel = key.channel.asInstanceOf[SocketChannel]
       readBuffer.clear()
       if (channel.read(readBuffer) > -1) {
         readBuffer.flip()
         log.debug("Read {} bytes", readBuffer.limit())
-        val parser = connRec.load.asInstanceOf[IntermediateParser]
-        connRec.load = parser.read(readBuffer) match {
-          case x: CompleteMessageParser => readComplete(connRec, x)
-          case x: ErrorMessageParser => readParsingError(connRec, x)
-          case x => x
-        }
-        connections.refresh(connRec)
+        conn.messageParser = conn.messageParser.asInstanceOf[IntermediateParser].read(readBuffer)
+        connections.refresh(conn)
+        onRead(conn)
       } else {
         log.debug("Closing connection")
-        close(connRec) // if the peer shut down the socket cleanly, we do the same
+        close(conn) // if the peer shut down the socket cleanly, we do the same
       }
     }
   }
 
-  protected def write(connRec: ConnRecord) {
+  private def write(key: SelectionKey) {
+    val conn = key.attachment.asInstanceOf[Conn]
     log.debug("Writing to connection")
-    val channel = connRec.key.channel.asInstanceOf[SocketChannel]
+    val channel = key.channel.asInstanceOf[SocketChannel]
 
     @tailrec
     def writeToChannel(buffers: List[ByteBuffer]): List[ByteBuffer] = {
@@ -138,38 +156,27 @@ private[can] abstract class HttpPeer extends Actor {
       } else Nil
     }
 
-    protectIO("Write", connRec) {
-      val writeJob = connRec.load.asInstanceOf[WriteJob]
-      connRec.load = writeToChannel(writeJob.buffers) match {
-        case Nil => // we were able to write everything
-          if (writeJob.closeConnection) {
-            close(connRec)
-          } else {
-            connRec.key.interestOps(SelectionKey.OP_READ) // switch back to reading if we are not closing
-            connections.refresh(connRec)
-          }
-          writeComplete(connRec)
-        case remainingBuffers => // socket buffer full, we couldn't write everything so we stay in writing mode
-          connections.refresh(connRec)
-          WriteJob(remainingBuffers, writeJob.closeConnection)
-      }
+    protectIO("Write", conn) {
+      conn.writeBuffers = writeToChannel(conn.writeBuffers)
+      connections.refresh(conn)
+      onWrite(conn)
     }
   }
 
-  protected def reapIdleConnections() {
-    connections.forAllTimedOut(config.idleTimeout) { connRec =>
+  private def reapIdleConnections() {
+    connections.forAllTimedOut(config.idleTimeout) { conn =>
       log.debug("Closing connection due to idle timout")
-      close(connRec)
+      close(conn)
     }
   }
 
-  protected def close(connRec: ConnRecord) {
-    if (connRec.key.isValid) {
+  protected final def close(conn: Conn) {
+    if (conn.key.isValid) {
       protectIO("Closing socket") {
-        connRec.key.cancel()
-        connRec.key.channel.close()
+        conn.key.cancel()
+        conn.key.channel.close()
       }
-      connections -= connRec
+      connections -= conn
     }
   }
 
@@ -181,15 +188,15 @@ private[can] abstract class HttpPeer extends Actor {
     }
   }
 
-  protected def protectIO[A](operation: String, connRec: ConnRecord = null)(body: => A): Either[String, A] = {
+  protected final def protectIO[A](operation: String, conn: Conn = null)(body: => A): Either[String, A] = {
     try {
       Right(body)
     } catch {
-      case e: IOException => { // maybe the peer forcibly closed the connection?
+      case e: IOException => { // probably the peer forcibly closed the connection
         val error = e.toString
-        if (connRec != null) {
+        if (conn != null) {
           log.warn("{} error: closing connection due to {}", operation, error)
-          close(connRec)
+          close(conn)
         } else log.warn("{} error: {}", operation, error)
         Left(error)
       }
@@ -201,20 +208,14 @@ private[can] abstract class HttpPeer extends Actor {
     Stats(System.currentTimeMillis - startTime, requestsDispatched, requestsTimedOut, openRequestCount, connections.size)
   }
 
-  protected def accept()
+  protected def handleConnectionEvent(key: SelectionKey)
 
-  protected def finishConnection(connRec: ConnRecord)
+  protected def onRead(conn: Conn)
 
-  protected def readComplete(connRec: ConnRecord, parser: CompleteMessageParser): ConnRecordLoad
-
-  protected def readParsingError(connRec: ConnRecord, parser: ErrorMessageParser): ConnRecordLoad
-
-  protected def writeComplete(connRec: ConnRecord): ConnRecordLoad
+  protected def onWrite(conn: Conn)
 
   protected def handleTimedOutRequests()
 
   protected def openRequestCount: Int
-
-  protected def config: PeerConfig
 
 }

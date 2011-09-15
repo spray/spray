@@ -20,16 +20,9 @@ package can
 import java.nio.ByteBuffer
 import java.lang.{StringBuilder => JStringBuilder}
 import annotation.tailrec
-import akka.actor.UntypedChannel
-
-private[can] sealed trait ConnRecordLoad
-
-private[can] case class WriteJob(buffers: List[ByteBuffer], closeConnection: Boolean) extends ConnRecordLoad
-
-private[can] case class Connecting(responseChannel: UntypedChannel) extends ConnRecordLoad
 
 // a MessageParser instance holds the complete parsing state at any particular point in the request parsing process
-private[can] trait MessageParser extends ConnRecordLoad
+private[can] trait MessageParser
 
 private[can] sealed trait IntermediateParser extends MessageParser {
   def read(buf: ByteBuffer): MessageParser

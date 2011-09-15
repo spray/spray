@@ -18,7 +18,7 @@ package cc.spray.can.utils
 
 import annotation.tailrec
 
-object LinkedList {
+private[can] object LinkedList {
   trait Element[Elem >: Null <: Element[Elem]] {
     private[LinkedList] var list: LinkedList[Elem] = _
     private[LinkedList] var prev: Elem = _
@@ -30,9 +30,9 @@ object LinkedList {
 }
 
 // a special mutable, double-linked list without "buckets", i.e. container objects to hold the payload;
-// rather the payload objects themselves must contain the link fields, which has the advantage that removal operations
-// can be performed without searching and in constant-time
-class LinkedList[Elem >: Null <: LinkedList.Element[Elem]] {
+// rather the payload objects themselves must contain the link fields, which has the advantage of fewer created objects
+// and, more importantly, constant-time complexity for removal operations
+private[can] class LinkedList[Elem >: Null <: LinkedList.Element[Elem]] {
   private var first: Elem = _
   private var last: Elem = _
   private var length: Int = _

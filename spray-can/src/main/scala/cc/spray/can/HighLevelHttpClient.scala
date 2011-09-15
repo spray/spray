@@ -16,16 +16,16 @@
 
 package cc.spray.can
 
-import akka.dispatch.{DefaultCompletableFuture, Future}
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
 import org.slf4j.LoggerFactory
-import akka.actor.{Actor, Scheduler, ActorRef}
+import akka.actor.{Actor, Scheduler}
+import akka.dispatch.{AlreadyCompletedFuture, DefaultCompletableFuture, Future}
 
-private[can] trait HighLevelHttpClient {
+object HighLevelHttpClient {
   private lazy val log = LoggerFactory.getLogger(getClass)
 
-  class HttpDialog[A](client: ActorRef, connectionF: Future[ConnectionHandle], resultF: Future[A]) {
+  class HttpDialog[A](connectionF: Future[HttpConnection], resultF: Future[A]) {
     def send[B](request: HttpRequest)(implicit concat: (A, Future[HttpResponse]) => Future[B]): HttpDialog[B] = {
       appendToResultChain {
         val responseF = doSend(request)
@@ -38,7 +38,7 @@ private[can] trait HighLevelHttpClient {
     }
 
     def awaitResponse: HttpDialog[A] = appendToConnectionChain { connection =>
-      make(new DefaultCompletableFuture[ConnectionHandle](Long.MaxValue)) { nextConnectionF =>
+      make(new DefaultCompletableFuture[HttpConnection](Long.MaxValue)) { nextConnectionF =>
         // only complete the next connection future once the result is in
         log.debug("Awaiting response")
         resultF.onComplete(_ => nextConnectionF.completeWithResult(connection))
@@ -46,7 +46,7 @@ private[can] trait HighLevelHttpClient {
     }
 
     def waitIdle(duration: Duration): HttpDialog[A] = appendToConnectionChain { connection =>
-      make(new DefaultCompletableFuture[ConnectionHandle](Long.MaxValue)) { nextConnectionF =>
+      make(new DefaultCompletableFuture[HttpConnection](Long.MaxValue)) { nextConnectionF =>
         // delay completion of the next connection future by the given time
         val millis = duration.toMillis
         log.debug("Waiting {} ms", millis)
@@ -56,48 +56,31 @@ private[can] trait HighLevelHttpClient {
 
     def end: Future[A] = resultF.onComplete { _ =>
       connectionF.onResult {
-        case conn: ConnectionHandle => {
+        case conn: HttpConnection => {
           log.debug("Closing connection after HttpDialog completion")
-          client ! Close(conn)
+          conn.close()
         }
       }
     }
 
-    private def appendToConnectionChain[B](f: ConnectionHandle => Future[ConnectionHandle]): HttpDialog[A] =
-      new HttpDialog(client, connectionF.flatMap(f), resultF)
+    private def appendToConnectionChain[B](f: HttpConnection => Future[HttpConnection]): HttpDialog[A] =
+      new HttpDialog(connectionF.flatMap(f), resultF)
 
     private def appendToResultChain[B](f: A => Future[B]): HttpDialog[B] =
-      new HttpDialog(client, connectionF, resultF.flatMap(f))
+      new HttpDialog(connectionF, resultF.flatMap(f))
 
     private def doSend(request: HttpRequest): Future[HttpResponse] = connectionF.flatMap { connection =>
       log.debug("Sending request {}", request)
-      implicit val timeout = Actor.Timeout(Long.MaxValue)
-      (client ? Send(connection, request)).mapTo[Received].map {
-        case Received(Right(response)) => response
-        case Received(Left(error)) => throw new RuntimeException(error) // unwrap error into Future
-      }
+      connection.send(request)
     }
   }
 
   object HttpDialog {
-    private lazy val log = LoggerFactory.getLogger(getClass)
-
-    def apply(host: String, port: Int = 80, clientActorId: String = ClientConfig.fromAkkaConf.clientActorId): HttpDialog[Unit] = {
-      val client = actor(clientActorId)
-      val connection = new DefaultCompletableFuture[ConnectionHandle](Long.MaxValue)
+    def apply(host: String, port: Int = 80,
+              clientActorId: String = ClientConfig.fromAkkaConf.clientActorId): HttpDialog[Unit] = {
       implicit val timeout = Actor.Timeout(Long.MaxValue)
-      val result: Future[Unit] = (client ? Connect(host, port)).mapTo[ConnectionResult].map {
-        case ConnectionResult(Right(connectionHandle)) => {
-          log.debug("Connected to {}", host + ":" + port)
-          connection.completeWithResult(connectionHandle)
-        }
-        case ConnectionResult(Left(error)) => {
-          val exception = new RuntimeException(error)
-          connection.complete(Left(exception))
-          throw exception // unwrap error into Future
-        }
-      }
-      new HttpDialog(client, connection, result)
+      val connection = (actor(clientActorId) ? Connect(host, port)).mapTo[HttpConnection]
+      new HttpDialog(connection, new AlreadyCompletedFuture(Right(()))) // start out with result type Unit
     }
   }
 

@@ -66,6 +66,20 @@ case class HttpRequest(
   def withBody(body: String, charset: String = "ISO-8859-1") = copy(body = body.getBytes(charset))
 }
 
+object HttpRequest {
+  def verify(request: HttpRequest) = {
+    import request._
+    def req(cond: Boolean, msg: => String) { require(cond, "Illegal HttpRequest: " + msg) }
+    req(method != null, "method must not be null")
+    req(uri != null && !uri.isEmpty, "uri must not be null or empty")
+    req(headers != null, "headers must not be null")
+    req(body != null, "body must not be null (you can use cc.spray.can.EmptyByteArray for an empty body)")
+    req(headers.forall(_.name != "Content-Length"), "Content-Length header must not be present, the HttpClient sets it itself")
+    req(headers.forall(_.name != "Host"), "Host header must not be present, the HttpClient sets it itself")
+    request
+  }
+}
+
 case class HttpResponse(
   status: Int = 200,
   headers: List[HttpHeader] = Nil,
@@ -89,6 +103,18 @@ case class HttpResponse(
 
 object HttpResponse {
   private val ContentTypeCharsetPattern = """.*charset=([-\w]+)""".r
+
+  def verify(response: HttpResponse) = {
+    import response._
+    def req(cond: Boolean, msg: => String) { require(cond, "Illegal HttpResponse: " + msg) }
+    req(100 <= status && status < 600, "Illegal HTTP status code: " + status)
+    req(headers != null, "headers must not be null")
+    req(body != null, "body must not be null (you can use cc.spray.can.EmptyByteArray for an empty body)")
+    req(headers.forall(_.name != "Content-Length"), "Content-Length header must not be present, the HttpServer sets it itself")
+    req(body.length == 0 || status / 100 > 1 && status != 204 && status != 304, "Illegal HTTP response: " +
+            "responses with status code " + status + " must not have a message body")
+    response
+  }
 
   def defaultReason(statusCode: Int) = statusCode match {
     case 100 => "Continue"

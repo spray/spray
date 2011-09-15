@@ -20,37 +20,41 @@ import org.slf4j.LoggerFactory
 import java.net.InetSocketAddress
 import java.nio.channels.{SocketChannel, SelectionKey}
 import utils.LinkedList
+import akka.dispatch.Future
+import java.nio.ByteBuffer
+import collection.mutable.Queue
+import akka.actor.{Actor, UntypedChannel}
 
-sealed trait ConnectionHandle {
-  private[can] def connRecord: ConnRecord
+sealed trait HttpConnection {
+  def send(request: HttpRequest): Future[HttpResponse]
+  def close()
 }
 
 // public incoming messages
-case object GetClientStats
 case class Connect(host: String, port: Int = 80)
-case class Send(connection: ConnectionHandle, request: HttpRequest)
-case class Close(connection: ConnectionHandle)
-//case class SendPooled(request: HttpRequest) // coming
-// plus HttpRequest itself (coming)
 
-// public outgoing messages
-case class ConnectionResult(value: Either[String, ConnectionHandle]) // response to Connect
-case class Received(value: Either[String, HttpResponse]) // response to Send
+object HttpClient {
+  private case class Send(conn: ClientConnection, request: HttpRequest, buffers: List[ByteBuffer])
+  private case class Close(conn: ClientConnection)
+  private case class RequestRecord(request: HttpRequest, conn: ClientConnection)
+          extends LinkedList.Element[RequestRecord]
 
-object HttpClient extends HighLevelHttpClient {
-  private class ClientConnRecord(key: SelectionKey, load: ConnRecordLoad, val host: String, val port: Int)
-          extends ConnRecord(key, load) {
-    var deliverResponse: Received => Unit = _
+  private[can] class ClientConnection(key: SelectionKey, val host: String, val port: Int,
+                                 val connectionResponseChannel: Option[UntypedChannel] = None)
+          extends Connection[ClientConnection](key) {
+    val responseQueue = Queue.empty[Either[String, HttpResponse] => Unit]
+    key.attach(this)
+    messageParser = new EmptyResponseParser
   }
-  private case class TimeoutContext(request: HttpRequest, connRec: ClientConnRecord)
-          extends LinkedList.Element[TimeoutContext]
 }
 
-class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends HttpPeer with RequestPreparer {
+final class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends HttpPeer {
   import HttpClient._
 
   private lazy val log = LoggerFactory.getLogger(getClass)
-  private val openRequests = new LinkedList[TimeoutContext]
+  private val openRequests = new LinkedList[RequestRecord]
+
+  private[can] type Conn = ClientConnection
 
   self.id = config.clientActorId
 
@@ -70,11 +74,15 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
 
   protected override def receive = super.receive orElse {
     case Connect(host, port) => initiateConnection(host, port)
-    case Send(connection, request) => send(connection, request)
-    case Close(connection) => close(connection.connRecord)
+    case send: Send => {
+      if (send.conn.writeBuffers.isEmpty) {
+        prepareWriting(send)
+      } else self ! send // we still have a previous write ongoing, so try again later
+    }
+    case Close(conn) => close(conn)
   }
 
-  protected def initiateConnection(host: String, port: Int) {
+  private def initiateConnection(host: String, port: Int) {
     val address = new InetSocketAddress(host, port)
     log.debug("Initiating new connection to {}", address)
     protectIO("Init connect") {
@@ -82,114 +90,116 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
       socketChannel.configureBlocking(false)
       if (socketChannel.connect(address)) {
         log.debug("New connection immediately established")
-        val key = socketChannel.register(selector, SelectionKey.OP_READ) // start out in reading mode
-        val connRec = new ClientConnRecord(key, new EmptyResponseParser, host, port)
-        connections += connRec
-        httpConnectionFor(connRec)
+        val key = socketChannel.register(selector, SelectionKey.OP_READ) // start out with writing disabled
+        val conn = new ClientConnection(key, host, port)
+        connections += conn
+        new HttpConnectionImpl(conn)
       } else {
         log.debug("Connection request registered")
         val key = socketChannel.register(selector, SelectionKey.OP_CONNECT)
-        new ClientConnRecord(key, Connecting(self.channel), host, port)
+        new ClientConnection(key, host, port)
       }
     } match {
-      case Right(_: ClientConnRecord) => // nothing to do
-      case x => self.reply(ConnectionResult(x.asInstanceOf[Either[String, ConnectionHandle]]))
-    }
-  }
-
-  protected def send(connection: ConnectionHandle, request: HttpRequest) {
-    def verifyRequest = {
-      import request._
-      if (method != null) {
-        if (uri != null && !uri.isEmpty) {
-          if (headers != null) {
-            if (body != null) {
-              if (headers.forall(_.name != "Content-Length")) {
-                if (headers.forall(_.name != "Host")) {
-                  None
-                } else Some("Host header must not be present, the HttpClient sets it itself")
-              } else Some("Content-Length header must not be present, the HttpClient sets it itself")
-            } else Some("body must not be null (you can use cc.spray.can.EmptyByteArray for an empty body)")
-          } else Some("headers must not be null")
-        } else Some("uri must not be null or empty")
-      } else Some("method must not be null")
-    }
-
-    val connRec = connection.connRecord
-    if (connRec.key.isValid) {
-      if (!connRec.load.isInstanceOf[WriteJob]) { // if we are currently reading or waiting, we switch to writing
-        verifyRequest match {
-          case None => {
-            log.debug("Received valid HttpRequest to send, scheduling write")
-            val clientConnRec = connRec.asInstanceOf[ClientConnRecord]
-            import clientConnRec._
-            key.interestOps(SelectionKey.OP_WRITE)
-            load = WriteJob(buffers = prepare(request, host, port), closeConnection = false)
-            val timeoutContext = TimeoutContext(request, clientConnRec)
-            val responseChannel = self.channel
-            deliverResponse = { received =>
-              openRequests -= timeoutContext
-              responseChannel ! received
-            }
-            openRequests += timeoutContext
-          }
-          case Some(error) => self reply Received(Left("Illegal HttpRequest: " + error))
-        }
-      } else {
-        // we already have a WriteJob ongoing, so we need to defer processing of this request
-        self ! Send(connection, request)
+      case Right(_: ClientConnection) => // nothing to do
+      case Right(x: HttpConnection) => if (!self.tryReply(x)) log.error("Couldn't reply to Connect message")
+      case Left(error) => self.channel.sendException {
+        new HttpClientException("Could not connect to " + address + ": " + error)
       }
-    } else self reply Received(Left("Connection closed"))
-  }
-
-  protected def accept() {
-    throw new IllegalStateException
-  }
-
-  protected def finishConnection(connRec: ConnRecord) {
-    log.debug("Finish connecting")
-    val responseChannel = connRec.load.asInstanceOf[Connecting].responseChannel
-    val result = protectIO("Finish connect", connRec) {
-      connRec.key.channel.asInstanceOf[SocketChannel].finishConnect()
-      connRec.key.interestOps(SelectionKey.OP_READ) // start out in reading mode
-      connRec.load = new EmptyResponseParser
-      connections += connRec
-      httpConnectionFor(connRec)
+      case _ => throw new IllegalStateException
     }
-    responseChannel ! ConnectionResult(result)
   }
 
-  protected def httpConnectionFor(connRec: ConnRecord) = new ConnectionHandle { val connRecord = connRec }
-
-  protected def readComplete(connRec: ConnRecord, parser: CompleteMessageParser) = {
-    import parser._
-    val statusLine = messageLine.asInstanceOf[StatusLine]
-    import statusLine._
-    val response = HttpResponse(status, headers, body, protocol)
-    connRec.asInstanceOf[ClientConnRecord].deliverResponse(Received(Right(response)))
-    new EmptyResponseParser
+  protected def handleConnectionEvent(key: SelectionKey) {
+    val conn = key.attachment.asInstanceOf[ClientConnection]
+    protectIO("Finish connect", conn) {
+      key.channel.asInstanceOf[SocketChannel].finishConnect()
+      conn.disableWriting()
+      connections += conn
+      log.debug("Connected to {}:{}", conn.host, conn.port)
+      new HttpConnectionImpl(conn)
+    } match {
+      case Right(x) => conn.connectionResponseChannel.foreach { channel =>
+        if (!channel.tryTell(x)) log.error("Couldn't reply to Connect message")
+      }
+      case Left(error) => self.channel.sendException {
+        new HttpClientException("Could not connect to " + conn.host + ':' + conn.port + ": " + error)
+      }
+    }
   }
 
-  protected def readParsingError(connRec: ConnRecord, parser: ErrorMessageParser) = {
-    connRec.asInstanceOf[ClientConnRecord].deliverResponse(Received(Left(parser.message)))
-    self ! Close(httpConnectionFor(connRec))
-    parser // we just need to return some parser,
-  }        // it will never be used since we close the connection after writing the error response
+  private def prepareWriting(send: Send) {
+    import send._
+    if (conn.key.isValid) {
+      log.debug("Received raw request, scheduling write")
+      val requestRecord = RequestRecord(request, conn)
+      val responseChannel = self.channel
+      conn.responseQueue.enqueue { either =>
+        either match {
+          case Right(response) => responseChannel ! response
+          case Left(error) => responseChannel.sendException(new HttpClientException(error))
+        }
+        openRequests -= requestRecord
+      }
+      conn.writeBuffers = buffers
+      conn.enableWriting()
+      openRequests += requestRecord
+      requestsDispatched += 1
+    } else log.warn("Dropping response due to closed connection")
+  }
 
-  protected def writeComplete(connRec: ConnRecord) = {
-    requestsDispatched += 1
-    new EmptyResponseParser
+  protected def onRead(conn: ClientConnection) {
+    def readComplete(parser: CompleteMessageParser) {
+      import parser._
+      val statusLine = messageLine.asInstanceOf[StatusLine]
+      import statusLine._
+      val response = HttpResponse(status, headers, body, protocol)
+      conn.responseQueue.dequeue().apply(Right(response))
+      conn.messageParser = new EmptyResponseParser // reset for parsing the next response
+    }
+    def readParsingError(parser: ErrorMessageParser) {
+      conn.responseQueue.dequeue().apply(Left(parser.message))
+      // In case of a response parsing error we probably stopped reading the response somewhere in between, where we
+      // cannot simply resume. Resetting to a known state is not easy either, so we need to close the connection to do so.
+      close(conn)
+    }
+
+    conn.messageParser match {
+      case x: CompleteMessageParser => readComplete(x)
+      case x: ErrorMessageParser => readParsingError(x)
+      case x: IntermediateParser => // nothing to do, just wait for the rest of the request being read
+    }
+  }
+
+  protected def onWrite(conn: ClientConnection) {
+    if (conn.writeBuffers.isEmpty) {
+      conn.disableWriting()
+    }
   }
 
   protected def handleTimedOutRequests() {
-    openRequests.forAllTimedOut(config.requestTimeout) { ctx =>
-      log.warn("Request to '{}' timed out, closing the connection", ctx.request.uri)
-      close(ctx.connRec)
-      ctx.connRec.deliverResponse(Received(Left("Timeout")))
+    openRequests.forAllTimedOut(config.requestTimeout) { requestRecord =>
+      log.warn("Request to '{}' timed out, closing the connection", requestRecord.request.uri)
+      requestRecord.conn.responseQueue.dequeue().apply(Left("Timeout"))
+      close(requestRecord.conn)
     }
   }
 
   protected def openRequestCount = openRequests.size
 
-  protected def userAgentHeader = config.userAgentHeader
+  private class HttpConnectionImpl(conn: ClientConnection) extends HttpConnection with RequestPreparer {
+    protected def userAgentHeader = config.userAgentHeader
+
+    def send(request: HttpRequest) = {
+      HttpRequest.verify(request)
+      log.debug("Enqueueing valid HttpRequest as raw request")
+      implicit val timeout = Actor.Timeout(Long.MaxValue) // "disable" the akka future, since we rely on our own
+      (self ? Send(conn, request, prepare(request, conn.host, conn.port))).mapTo[HttpResponse]
+    }
+
+    def close() {
+      self ! Close(conn)
+    }
+  }
 }
+
+class HttpClientException(message: String) extends RuntimeException(message)

@@ -60,7 +60,7 @@ trait ResponsePreparer extends MessagePreparer {
     if (serverHeader.isEmpty) "Date: " else "Server: " + serverHeader + "\r\nDate: "
 
   protected def prepare(response: HttpResponse, reqProtocol: HttpProtocol,
-                        reqConnectionHeader: Option[String]): WriteJob = {
+                        reqConnectionHeader: Option[String]): (List[ByteBuffer], Boolean) = {
     import response._
 
     def appendStatusLine(sb: JStringBuilder) {
@@ -88,7 +88,7 @@ trait ResponsePreparer extends MessagePreparer {
       }
     }
 
-    val sb = new java.lang.StringBuilder(512)
+    val sb = new java.lang.StringBuilder(256)
     appendStatusLine(sb)
     val close = appendConnectionHeader(sb) {
       appendHeaders(headers, sb)
@@ -96,7 +96,7 @@ trait ResponsePreparer extends MessagePreparer {
     appendContentLengthHeader(body.length, sb)
     appendLine(sb.append(ServerHeaderPlusDateColonSP).append(dateTimeNow.toRfc1123DateTimeString))
     appendLine(sb)
-    WriteJob(ByteBuffer.wrap(sb.toString.getBytes(US_ASCII)) :: wrapBody(body), close)
+    (ByteBuffer.wrap(sb.toString.getBytes(US_ASCII)) :: wrapBody(body), close)
   }
 
   protected def dateTimeNow = DateTime.now  // split out so we can stabilize by overriding in tests
@@ -112,7 +112,7 @@ trait RequestPreparer extends MessagePreparer {
       appendLine(sb.append(method.name).append(' ').append(uri).append(' ').append(protocol.name))
     }
 
-    val sb = new java.lang.StringBuilder(512)
+    val sb = new java.lang.StringBuilder(256)
     appendRequestLine(sb)
     appendHeaders(headers, sb)
     appendHeader("Host", if (port == 80) host else host + ':' + port, sb)
