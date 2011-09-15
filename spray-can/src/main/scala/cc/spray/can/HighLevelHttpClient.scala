@@ -27,7 +27,10 @@ private[can] trait HighLevelHttpClient {
 
   class HttpDialog[A](client: ActorRef, connectionF: Future[ConnectionHandle], resultF: Future[A]) {
     def send[B](request: HttpRequest)(implicit concat: (A, Future[HttpResponse]) => Future[B]): HttpDialog[B] = {
-      appendToResultChain(concat(_, doSend(request)))
+      appendToResultChain {
+        val responseF = doSend(request)
+        concat(_, responseF)
+      }
     }
 
     def reply(f: HttpResponse => HttpRequest)(implicit ev: A <:< HttpResponse): HttpDialog[HttpResponse] = {
