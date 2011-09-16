@@ -78,7 +78,7 @@ final class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) ext
     case send: Send => {
       if (send.conn.writeBuffers.isEmpty) {
         prepareWriting(send)
-      } else self ! send // we still have a previous write ongoing, so try again later
+      } else self.forward(send) // we still have a previous write ongoing, so try again later (but keep the response channel)
     }
     case Close(conn) => close(conn)
   }
@@ -152,41 +152,44 @@ final class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) ext
     }
   }
 
-  protected def onRead(conn: ClientConnection) {
-    def readComplete(parser: CompleteMessageParser) {
-      import parser._
-      val statusLine = messageLine.asInstanceOf[StatusLine]
-      import statusLine._
-      val response = HttpResponse(status, headers, body, protocol)
-      conn.responseQueue.dequeue().apply(Right(response))
-      conn.messageParser = new EmptyResponseParser // reset for parsing the next response
-    }
-    def readParsingError(parser: ErrorMessageParser) {
-      conn.responseQueue.dequeue().apply(Left(parser.message))
-      // In case of a response parsing error we probably stopped reading the response somewhere in between, where we
-      // cannot simply resume. Resetting to a known state is not easy either, so we need to close the connection to do so.
-      close(conn)
-    }
-
-    conn.messageParser match {
-      case x: CompleteMessageParser => readComplete(x)
-      case x: ErrorMessageParser => readParsingError(x)
-      case x: IntermediateParser => // nothing to do, just wait for the rest of the request being read
-    }
+  protected def handleMessageParsingComplete(conn: Conn, parser: CompleteMessageParser) {
+    import parser._
+    val statusLine = messageLine.asInstanceOf[StatusLine]
+    import statusLine._
+    val response = HttpResponse(status, headers, body, protocol)
+    conn.responseQueue.dequeue().apply(Right(response))
+    conn.messageParser = new EmptyResponseParser // reset for parsing the next response
   }
 
-  protected def onWrite(conn: ClientConnection) {
+  protected def handleMessageParsingError(conn: Conn, parser: ErrorMessageParser) {
+    conn.responseQueue.foreach(_(Left(parser.message)))
+    // In case of a response parsing error we probably stopped reading the response somewhere in between, where we
+    // cannot simply resume. Resetting to a known state is not easy either, so we need to close the connection to do so.
+    close(conn)
+  }
+
+  protected def finishWrite(conn: ClientConnection) {
     if (conn.writeBuffers.isEmpty) {
       conn.disableWriting()
     }
   }
 
+  override protected def cleanClose(conn: Conn) {
+    super.cleanClose(conn)
+    conn.responseQueue.foreach(_(Left("Server closed connection")))
+  }
+
   protected def handleTimedOutRequests() {
     openRequests.forAllTimedOut(config.requestTimeout) { requestRecord =>
       log.warn("Request to '{}' timed out, closing the connection", requestRecord.request.uri)
-      requestRecord.conn.responseQueue.dequeue().apply(Left("Timeout"))
+      requestRecord.conn.responseQueue.foreach(_(Left("Request timed out")))
       close(requestRecord.conn)
     }
+  }
+
+  override protected def reapConnection(conn: Conn) {
+    conn.responseQueue.foreach(_(Left("Connection closed due to idle timeout")))
+    super.reapConnection(conn)
   }
 
   protected def openRequestCount = openRequests.size

@@ -100,7 +100,7 @@ private[can] abstract class HttpPeer extends Actor {
   protected def receive = {
     case Select => select()
     case HandleTimedOutRequests => handleTimedOutRequests()
-    case ReapIdleConnections => reapIdleConnections()
+    case ReapIdleConnections => connections.forAllTimedOut(config.idleTimeout)(reapConnection)
     case GetStats => self.reply(stats)
   }
 
@@ -124,21 +124,33 @@ private[can] abstract class HttpPeer extends Actor {
 
   private def read(key: SelectionKey) {
     val conn = key.attachment.asInstanceOf[Conn]
-    log.debug("Reading from connection")
+
+    @tailrec def parseReadBuffer() {
+      conn.messageParser.asInstanceOf[IntermediateParser].read(readBuffer) match {
+        case x: CompleteMessageParser => {
+          handleMessageParsingComplete(conn, x)
+          if (readBuffer.remaining > 0) parseReadBuffer() // if we had more than one request in the buffer, go on
+        }
+        case x: ErrorMessageParser => handleMessageParsingError(conn, x)
+        case x: IntermediateParser => // nothing to do, just wait for the rest of the message being read the next time
+      }
+    }
+
     protectIO("Read", conn) {
       val channel = key.channel.asInstanceOf[SocketChannel]
       readBuffer.clear()
       if (channel.read(readBuffer) > -1) {
         readBuffer.flip()
         log.debug("Read {} bytes", readBuffer.limit())
-        conn.messageParser = conn.messageParser.asInstanceOf[IntermediateParser].read(readBuffer)
+        parseReadBuffer()
         connections.refresh(conn)
-        onRead(conn)
-      } else {
-        log.debug("Closing connection")
-        close(conn) // if the peer shut down the socket cleanly, we do the same
-      }
+      } else cleanClose(conn) // if the peer shut down the socket cleanly, we do the same
     }
+  }
+
+  protected def cleanClose(conn: Conn) {
+    log.debug("Server orderly closed connection")
+    close(conn)
   }
 
   private def write(key: SelectionKey) {
@@ -159,15 +171,13 @@ private[can] abstract class HttpPeer extends Actor {
     protectIO("Write", conn) {
       conn.writeBuffers = writeToChannel(conn.writeBuffers)
       connections.refresh(conn)
-      onWrite(conn)
+      finishWrite(conn)
     }
   }
 
-  private def reapIdleConnections() {
-    connections.forAllTimedOut(config.idleTimeout) { conn =>
-      log.debug("Closing connection due to idle timout")
-      close(conn)
-    }
+  protected def reapConnection(conn: Conn) {
+    log.debug("Closing connection due to idle timout")
+    close(conn)
   }
 
   protected final def close(conn: Conn) {
@@ -210,9 +220,11 @@ private[can] abstract class HttpPeer extends Actor {
 
   protected def handleConnectionEvent(key: SelectionKey)
 
-  protected def onRead(conn: Conn)
+  protected def handleMessageParsingComplete(conn: Conn, parser: CompleteMessageParser)
 
-  protected def onWrite(conn: Conn)
+  protected def handleMessageParsingError(conn: Conn, parser: ErrorMessageParser)
+
+  protected def finishWrite(conn: Conn)
 
   protected def handleTimedOutRequests()
 

@@ -116,62 +116,55 @@ final class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) ext
     } else throw new IllegalStateException
   }
 
-  protected def onRead(conn: Conn) {
-    def readComplete(parser: CompleteMessageParser) {
-      import parser._
-      val requestLine = messageLine.asInstanceOf[RequestLine]
-      import requestLine._
-      log.debug("Dispatching {} request to '{}' to the service actor", method, uri)
-      val alreadyCompleted = new AtomicBoolean(false)
+  protected def handleMessageParsingComplete(conn: Conn, parser: CompleteMessageParser) {
+    import parser._
+    val requestLine = messageLine.asInstanceOf[RequestLine]
+    import requestLine._
+    log.debug("Dispatching {} request to '{}' to the service actor", method, uri)
+    val alreadyCompleted = new AtomicBoolean(false)
 
-      def respond(response: HttpResponse, requestRecord: RequestRecord): Boolean = {
-        HttpResponse.verify(response)
-        if (alreadyCompleted.compareAndSet(false, true)) {
-          log.debug("Enqueueing valid HttpResponse as raw response")
-          val (buffers, close) = prepare(response, protocol, connectionHeader)
-          self ! Respond(conn, buffers, close, requestRecord)
-          true
-        } else false
-      }
-
-      val httpRequest = HttpRequest(method, uri, headers, body, protocol)
-      val remoteAddress = conn.key.channel.asInstanceOf[SocketChannel].socket.getInetAddress
-      var requestRecord: RequestRecord = null
-      if (requestTimeoutCycle.isDefined) {
-        requestRecord = new RequestRecord(
-          request = httpRequest,
-          remoteAddress = remoteAddress,
-          timeoutResponder = { response => if (respond(response, requestRecord)) requestsTimedOut += 1 }
-        )
-        openRequests += requestRecord;
-      }
-      val responder: HttpResponse => Unit = { response =>
-        if (!respond(response, requestRecord))
-          log.warn("Received an additional response for an already completed request to '{}', ignoring...", httpRequest.uri)
-      }
-      serviceActor ! RequestContext(httpRequest, remoteAddress, responder)
-      requestsDispatched += 1
-      conn.messageParser = EmptyRequestParser // switch back to parsing the next request from the start
-    }
-    def readParsingError(parser: ErrorMessageParser) {
-      log.debug("Illegal request, responding with status {} and '{}'", parser.status, parser.message)
-      val response = HttpResponse(status = parser.status,
-        headers = List(HttpHeader("Content-Type", "text/plain"))).withBody(parser.message)
-      // In case of a request parsing error we probably stopped reading the request somewhere in between, where we
-      // cannot simply resume. Resetting to a known state is not easy either, so we need to close the connection to do so.
-      // This is done here by pretending the request contained a "Connection: close" header
-      val (buffers, close) = prepare(response, `HTTP/1.1`, Some("close"))
-      self ! Respond(conn, buffers, close)
+    def respond(response: HttpResponse, requestRecord: RequestRecord): Boolean = {
+      HttpResponse.verify(response)
+      if (alreadyCompleted.compareAndSet(false, true)) {
+        log.debug("Enqueueing valid HttpResponse as raw response")
+        val (buffers, close) = prepare(response, protocol, connectionHeader)
+        self ! Respond(conn, buffers, close, requestRecord)
+        true
+      } else false
     }
 
-    conn.messageParser match {
-      case x: CompleteMessageParser => readComplete(x)
-      case x: ErrorMessageParser => readParsingError(x)
-      case x: IntermediateParser => // nothing to do, just wait for the rest of the request being read
+    val httpRequest = HttpRequest(method, uri, headers, body, protocol)
+    val remoteAddress = conn.key.channel.asInstanceOf[SocketChannel].socket.getInetAddress
+    var requestRecord: RequestRecord = null
+    if (requestTimeoutCycle.isDefined) {
+      requestRecord = new RequestRecord(
+        request = httpRequest,
+        remoteAddress = remoteAddress,
+        timeoutResponder = { response => if (respond(response, requestRecord)) requestsTimedOut += 1 }
+      )
+      openRequests += requestRecord;
     }
+    val responder: HttpResponse => Unit = { response =>
+      if (!respond(response, requestRecord))
+        log.warn("Received an additional response for an already completed request to '{}', ignoring...", httpRequest.uri)
+    }
+    serviceActor ! RequestContext(httpRequest, remoteAddress, responder)
+    requestsDispatched += 1
+    conn.messageParser = EmptyRequestParser // switch back to parsing the next request from the start
   }
 
-  protected def onWrite(conn: Conn) {
+  protected def handleMessageParsingError(conn: Conn, parser: ErrorMessageParser) {
+    log.debug("Illegal request, responding with status {} and '{}'", parser.status, parser.message)
+    val response = HttpResponse(status = parser.status,
+      headers = List(HttpHeader("Content-Type", "text/plain"))).withBody(parser.message)
+    // In case of a request parsing error we probably stopped reading the request somewhere in between, where we
+    // cannot simply resume. Resetting to a known state is not easy either, so we need to close the connection to do so.
+    // This is done here by pretending the request contained a "Connection: close" header
+    val (buffers, close) = prepare(response, `HTTP/1.1`, Some("close"))
+    self ! Respond(conn, buffers, close)
+  }
+
+  protected def finishWrite(conn: Conn) {
     if (conn.writeBuffers.isEmpty) {
       if (conn.closeAfterWrite) {
         close(conn)

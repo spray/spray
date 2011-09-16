@@ -66,8 +66,10 @@ private[can] trait HighLevelHttpClient {
     private def appendToConnectionChain[B](f: HttpConnection => Future[HttpConnection]): HttpDialog[A] =
       new HttpDialog(connectionF.flatMap(f), resultF)
 
-    private def appendToResultChain[B](f: A => Future[B]): HttpDialog[B] =
-      new HttpDialog(connectionF, resultF.flatMap(f))
+    private def appendToResultChain[B](f: A => Future[B]): HttpDialog[B] = {
+      // map(identity) creates a fresh future, so onComplete listeners are invoked in order of registration
+      new HttpDialog(connectionF.map(identity), resultF.flatMap(f))
+    }
 
     private def doSend(request: HttpRequest): Future[HttpResponse] = connectionF.flatMap { connection =>
       log.debug("Sending request {}", request)

@@ -29,7 +29,7 @@ trait HttpServerSpecs extends Specification {
     self.id = "server-test-server"
     var delayedResponse: HttpResponse => Unit = _
     protected def receive = {
-      case RequestContext(HttpRequest(_, "/wait500", _, _, _), _, complete) => {
+      case RequestContext(HttpRequest(_, "/wait200", _, _, _), _, complete) => {
         Scheduler.scheduleOnce(() => complete(HttpResponse()), 200, TimeUnit.MILLISECONDS)
       }
       case RequestContext(HttpRequest(_, "/delayResponse", _, _, _), _, complete) =>
@@ -52,7 +52,7 @@ trait HttpServerSpecs extends Specification {
                                                                                     Step(start())^
                                                                                     p^
   "simple one-request dialog"                                                       ! oneRequestDialog^
-//  "two request dialog with response reordering"                                     ! responseReorderingDialog^
+  //"two request dialog with response reordering"                                     ! responseReorderingDialog^
   "time-out request"                                                                ! timeoutRequest^
   "idle-time-out connection"                                                        ! timeoutConnection^
                                                                                     end
@@ -76,7 +76,7 @@ trait HttpServerSpecs extends Specification {
 
   private def timeoutRequest = {
     dialog()
-            .send(HttpRequest(uri = "/wait500"))
+            .send(HttpRequest(uri = "/wait200"))
             .end
             .get.bodyAsString mustEqual "TIMEOUT"
   }
@@ -101,6 +101,6 @@ trait HttpServerSpecs extends Specification {
       requestTimeout = 100, timeoutCycle = 50,
       idleTimeout = 200, reapingCycle = 100
     ))).start()
-    Actor.actorOf(new HttpClient(ClientConfig(clientActorId = "server-test-client", requestTimeout = 0))).start()
+    Actor.actorOf(new HttpClient(ClientConfig(clientActorId = "server-test-client", requestTimeout = 1000))).start()
   }
 }

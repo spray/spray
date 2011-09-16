@@ -100,7 +100,7 @@ trait HttpClientSpecs extends Specification {
     newDialog()
             .send(HttpRequest(uri = "/wait500"))
             .end
-            .await.exception.get.toString mustEqual "cc.spray.can.HttpClientException: Timeout"
+            .await.exception.get.toString mustEqual "cc.spray.can.HttpClientException: Request timed out"
   }
 
   private def timeoutConnection = {
