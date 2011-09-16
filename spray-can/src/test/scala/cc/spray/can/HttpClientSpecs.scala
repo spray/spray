@@ -27,39 +27,38 @@ trait HttpClientSpecs extends Specification {
 
   class TestService extends Actor {
     self.id = "client-test-server"
-    var requestIndex: Int = 0
     protected def receive = {
       case RequestContext(HttpRequest(_, "/wait500", _, _, _), _, complete) => {
         Scheduler.scheduleOnce(() => complete(HttpResponse()), 500, TimeUnit.MILLISECONDS)
       }
       case RequestContext(HttpRequest(method, uri, _, _, _), _, complete) => complete {
-        requestIndex += 1
-        HttpResponse().withBody(method + "|" + uri + "|" + requestIndex)
+        HttpResponse().withBody(method + "|" + uri)
       }
     }
   }
 
   def clientSpecs =
 
-  "This spec exercises a new HttpClient instance against a simple echo HttpServer" ^
+  "This spec exercises a new HttpClient instance against a simple echo HttpServer"  ^
+  "by testing several request/response patterns (in parallel)"                      ^
                                                                                     Step(start())^
                                                                                     p^
-  //"simple one-request dialog"                                                       ! oneRequestDialog^
-  //"request-response dialog"                                                         ! requestResponseDialog^
-  //"non-pipelined request-request dialog"                                            ! requestRequestNonPipelinedDialog^
-  "pipelined request-request dialog"                                                ! requestRequestPipelinedDialog^
-  //"connect to a non-existing server"                                                ! illegalConnect^
-  //"time-out request"                                                                ! timeoutRequest^
-  //"idle-time-out connection"                                                        ! timeoutConnection^
+  "simple one-request dialog"                                                       ! oneRequestDialog^
+  "request-response dialog"                                                         ! requestResponseDialog^
+  "non-pipelined request-request dialog"                                            ! nonPipelinedRequestRequestDialog^
+  "pipelined request-request dialog"                                                ! pipelinedRequestRequestDialog^
+  "connect to a non-existing server"                                                ! illegalConnect^
+  "time-out request"                                                                ! timeoutRequest^
+  "idle-time-out connection"                                                        ! timeoutConnection^
                                                                                     end
 
-  import HighLevelHttpClient._
+  import HttpClient._
 
   private def oneRequestDialog = {
     newDialog()
             .send(HttpRequest(uri = "/yeah"))
             .end
-            .get.bodyAsString mustEqual "GET|/yeah|1"
+            .get.bodyAsString mustEqual "GET|/yeah"
   }
 
   private def requestResponseDialog = {
@@ -69,38 +68,39 @@ trait HttpClientSpecs extends Specification {
             .send(HttpRequest(uri = "/abc"))
             .reply(respond)
             .end
-            .get.bodyAsString mustEqual "POST|(GET|/abc|2)|3"
+            .get.bodyAsString mustEqual "POST|(GET|/abc)"
   }
 
-  private def requestRequestNonPipelinedDialog = {
+  private def nonPipelinedRequestRequestDialog = {
     newDialog()
             .send(HttpRequest(DELETE, uri = "/abc"))
             .awaitResponse
             .send(HttpRequest(PUT, uri = "/xyz"))
             .end
-            .get.map(_.bodyAsString).mkString(", ") mustEqual "DELETE|/abc|4, PUT|/xyz|5"
+            .get.map(_.bodyAsString).mkString(", ") mustEqual "DELETE|/abc, PUT|/xyz"
   }
 
-  private def requestRequestPipelinedDialog = {
+  private def pipelinedRequestRequestDialog = {
     newDialog()
             .send(HttpRequest(DELETE, uri = "/abc"))
             .send(HttpRequest(PUT, uri = "/xyz"))
             .end
-            .get.map(_.bodyAsString).mkString(", ") mustEqual "DELETE|/abc|6, PUT|/xyz|7"
+            .get.map(_.bodyAsString).mkString(", ") mustEqual "DELETE|/abc, PUT|/xyz"
   }
 
   private def illegalConnect = {
     newDialog(16243)
             .send(HttpRequest())
             .end
-            .await.exception.get.getMessage mustEqual "java.net.ConnectException: Connection refused"
+            .await.exception.get.toString mustEqual "cc.spray.can.HttpClientException: " +
+            "Could not connect to localhost:16243 due to java.net.ConnectException: Connection refused"
   }
 
   private def timeoutRequest = {
     newDialog()
             .send(HttpRequest(uri = "/wait500"))
             .end
-            .await.exception.get.getMessage mustEqual "Timeout"
+            .await.exception.get.toString mustEqual "cc.spray.can.HttpClientException: Timeout"
   }
 
   private def timeoutConnection = {
@@ -108,7 +108,8 @@ trait HttpClientSpecs extends Specification {
             .waitIdle(Duration("500 ms"))
             .send(HttpRequest())
             .end
-            .await.exception.get.getMessage mustEqual "Connection closed"
+            .await.exception.get.toString mustEqual "cc.spray.can.HttpClientException: " +
+            "Cannot send request due to closed connection"
   }
 
   private def newDialog(port: Int = 16242) =

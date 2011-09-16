@@ -20,9 +20,9 @@ import akka.util.Duration
 import java.util.concurrent.TimeUnit
 import org.slf4j.LoggerFactory
 import akka.actor.{Actor, Scheduler}
-import akka.dispatch.{AlreadyCompletedFuture, DefaultCompletableFuture, Future}
+import akka.dispatch.{DefaultCompletableFuture, Future}
 
-object HighLevelHttpClient {
+private[can] trait HighLevelHttpClient {
   private lazy val log = LoggerFactory.getLogger(getClass)
 
   class HttpDialog[A](connectionF: Future[HttpConnection], resultF: Future[A]) {
@@ -80,7 +80,7 @@ object HighLevelHttpClient {
               clientActorId: String = ClientConfig.fromAkkaConf.clientActorId): HttpDialog[Unit] = {
       implicit val timeout = Actor.Timeout(Long.MaxValue)
       val connection = (actor(clientActorId) ? Connect(host, port)).mapTo[HttpConnection]
-      new HttpDialog(connection, new AlreadyCompletedFuture(Right(()))) // start out with result type Unit
+      new HttpDialog(connection, connection.map(_ => ())) // start out with result type Unit
     }
   }
 

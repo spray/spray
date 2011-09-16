@@ -33,7 +33,7 @@ object Main extends App {
     )
   )
 
-  import HighLevelHttpClient._
+  import HttpClient._
   val dialog: Future[HttpResponse] = HttpDialog("github.com").send(HttpRequest()).end
 
   dialog.onComplete { future =>

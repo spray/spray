@@ -24,6 +24,7 @@ import akka.dispatch.Future
 import java.nio.ByteBuffer
 import collection.mutable.Queue
 import akka.actor.{Actor, UntypedChannel}
+import java.lang.IllegalStateException
 
 sealed trait HttpConnection {
   def send(request: HttpRequest): Future[HttpResponse]
@@ -33,7 +34,7 @@ sealed trait HttpConnection {
 // public incoming messages
 case class Connect(host: String, port: Int = 80)
 
-object HttpClient {
+object HttpClient extends HighLevelHttpClient {
   private case class Send(conn: ClientConnection, request: HttpRequest, buffers: List[ByteBuffer])
   private case class Close(conn: ClientConnection)
   private case class RequestRecord(request: HttpRequest, conn: ClientConnection)
@@ -97,7 +98,7 @@ final class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) ext
       } else {
         log.debug("Connection request registered")
         val key = socketChannel.register(selector, SelectionKey.OP_CONNECT)
-        new ClientConnection(key, host, port)
+        new ClientConnection(key, host, port, Some(self.channel))
       }
     } match {
       case Right(_: ClientConnection) => // nothing to do
@@ -110,21 +111,23 @@ final class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) ext
   }
 
   protected def handleConnectionEvent(key: SelectionKey) {
-    val conn = key.attachment.asInstanceOf[ClientConnection]
-    protectIO("Finish connect", conn) {
-      key.channel.asInstanceOf[SocketChannel].finishConnect()
-      conn.disableWriting()
-      connections += conn
-      log.debug("Connected to {}:{}", conn.host, conn.port)
-      new HttpConnectionImpl(conn)
-    } match {
-      case Right(x) => conn.connectionResponseChannel.foreach { channel =>
-        if (!channel.tryTell(x)) log.error("Couldn't reply to Connect message")
+    if (key.isConnectable) {
+      val conn = key.attachment.asInstanceOf[ClientConnection]
+      conn.connectionResponseChannel.foreach { channel =>
+        protectIO("Connect", conn) {
+          key.channel.asInstanceOf[SocketChannel].finishConnect()
+          conn.disableWriting()
+          connections += conn
+          log.debug("Connected to {}:{}", conn.host, conn.port)
+          new HttpConnectionImpl(conn)
+        } match {
+          case Right(x) =>  if (!channel.tryTell(x)) log.error("Couldn't reply to Connect message")
+          case Left(error) => channel.sendException {
+            new HttpClientException("Could not connect to " + conn.host + ':' + conn.port + " due to " + error)
+          }
+        }
       }
-      case Left(error) => self.channel.sendException {
-        new HttpClientException("Could not connect to " + conn.host + ':' + conn.port + ": " + error)
-      }
-    }
+    } else throw new IllegalStateException
   }
 
   private def prepareWriting(send: Send) {
@@ -144,7 +147,9 @@ final class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) ext
       conn.enableWriting()
       openRequests += requestRecord
       requestsDispatched += 1
-    } else log.warn("Dropping response due to closed connection")
+    } else {
+      self.channel.sendException(new HttpClientException("Cannot send request due to closed connection"))
+    }
   }
 
   protected def onRead(conn: ClientConnection) {

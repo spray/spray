@@ -29,7 +29,7 @@ class HttpClientServerSpec extends Specification with HttpClientSpecs with HttpS
     sequential^
     clientSpecs^
     p^
-    //serverSpecs^
+    serverSpecs^
     Step(Actor.registry.shutdownAll())
 
 }

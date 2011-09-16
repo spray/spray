@@ -27,7 +27,6 @@ trait HttpServerSpecs extends Specification {
 
   class TestService extends Actor {
     self.id = "server-test-server"
-    var requestIndex: Int = 0
     var delayedResponse: HttpResponse => Unit = _
     protected def receive = {
       case RequestContext(HttpRequest(_, "/wait500", _, _, _), _, complete) => {
@@ -39,8 +38,7 @@ trait HttpServerSpecs extends Specification {
         complete(HttpResponse().withBody("secondResponse"))          // first complete the second request
         delayedResponse(HttpResponse().withBody("delayedResponse"))  // then complete the first request
       case RequestContext(HttpRequest(method, uri, _, _, _), _, complete) => complete {
-        requestIndex += 1
-        HttpResponse().withBody(method + "|" + uri + "|" + requestIndex)
+        HttpResponse().withBody(method + "|" + uri)
       }
       case Timeout(RequestContext(_, _, complete)) => complete {
         HttpResponse().withBody("TIMEOUT")
@@ -53,20 +51,19 @@ trait HttpServerSpecs extends Specification {
   "This spec exercises a new HttpServer instance with test requests" ^
                                                                                     Step(start())^
                                                                                     p^
-  sequential                                                                        ^
-//  "simple one-request dialog"                                                       ! oneRequestDialog^
-  "two request dialog with response reordering"                                     ! responseReorderingDialog^
-//  "time-out request"                                                                ! timeoutRequest^
-//  "idle-time-out connection"                                                        ! timeoutConnection^
+  "simple one-request dialog"                                                       ! oneRequestDialog^
+//  "two request dialog with response reordering"                                     ! responseReorderingDialog^
+  "time-out request"                                                                ! timeoutRequest^
+  "idle-time-out connection"                                                        ! timeoutConnection^
                                                                                     end
 
-  import HighLevelHttpClient._
+  import HttpClient._
 
   private def oneRequestDialog = {
     dialog()
             .send(HttpRequest(uri = "/yeah"))
             .end
-            .get.bodyAsString mustEqual "GET|/yeah|1"
+            .get.bodyAsString mustEqual "GET|/yeah"
   }
 
   private def responseReorderingDialog = {
@@ -89,7 +86,7 @@ trait HttpServerSpecs extends Specification {
             .waitIdle(Duration("500 ms"))
             .send(HttpRequest())
             .end
-            .await.exception.get.getMessage mustEqual "Connection closed"
+            .await.exception.get.getMessage mustEqual "Cannot send request due to closed connection"
   }
 
   private def dialog(port: Int = 17242) =
@@ -101,8 +98,8 @@ trait HttpServerSpecs extends Specification {
       port = 17242,
       serviceActorId = "server-test-server",
       timeoutActorId = "server-test-server",
-      requestTimeout = 1000, timeoutCycle = 50,
-      idleTimeout = 2000, reapingCycle = 100
+      requestTimeout = 100, timeoutCycle = 50,
+      idleTimeout = 200, reapingCycle = 100
     ))).start()
     Actor.actorOf(new HttpClient(ClientConfig(clientActorId = "server-test-client", requestTimeout = 0))).start()
   }
