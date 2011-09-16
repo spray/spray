@@ -56,8 +56,10 @@ private[can] abstract class Connection[T >: Null <: LinkedList.Element[T]](val k
   var messageParser: MessageParser = EmptyRequestParser
 
   import SelectionKey._
-  def enableWriting() { key.interestOps(OP_READ | OP_WRITE) }
-  def disableWriting() { key.interestOps(OP_READ) }
+  var interestOps = OP_READ
+  def enableWriting() { key.interestOps { interestOps |= OP_WRITE; interestOps } }
+  def disableWriting() { key.interestOps { interestOps &= ~OP_WRITE; interestOps } }
+  def disableReading() { key.interestOps { interestOps &= ~OP_READ; interestOps } }
 }
 
 private[can] abstract class HttpPeer extends Actor {
@@ -132,7 +134,7 @@ private[can] abstract class HttpPeer extends Actor {
           if (readBuffer.remaining > 0) parseReadBuffer() // if we had more than one request in the buffer, go on
         }
         case x: ErrorMessageParser => handleMessageParsingError(conn, x)
-        case x: IntermediateParser => // nothing to do, just wait for the rest of the message being read the next time
+        case x: IntermediateParser => conn.messageParser = x
       }
     }
 

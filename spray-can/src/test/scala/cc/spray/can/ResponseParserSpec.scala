@@ -134,12 +134,6 @@ class ResponseParserSpec extends Specification {
              |
              |abc"""
         } mustEqual ErrorMessageParser("Invalid Content-Length header value", 400)
-        parse {
-          """|HTTP/1.1 200 OK
-             |Content-Length: 3
-             |
-             |abcde"""
-        } mustEqual ErrorMessageParser("Illegal Content-Length: request entity is longer than Content-Length header value", 400)
       }
     }
   }

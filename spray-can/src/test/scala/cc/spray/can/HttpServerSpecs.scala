@@ -29,20 +29,20 @@ trait HttpServerSpecs extends Specification {
     self.id = "server-test-server"
     var delayedResponse: HttpResponse => Unit = _
     protected def receive = {
-      case RequestContext(HttpRequest(_, "/wait200", _, _, _), _, complete) => {
-        Scheduler.scheduleOnce(() => complete(HttpResponse()), 200, TimeUnit.MILLISECONDS)
-      }
       case RequestContext(HttpRequest(_, "/delayResponse", _, _, _), _, complete) =>
         delayedResponse = complete
       case RequestContext(HttpRequest(_, "/getThisAndDelayedResponse", _, _, _), _, complete) =>
         complete(HttpResponse().withBody("secondResponse"))          // first complete the second request
         delayedResponse(HttpResponse().withBody("delayedResponse"))  // then complete the first request
-      case RequestContext(HttpRequest(method, uri, _, _, _), _, complete) => complete {
-        HttpResponse().withBody(method + "|" + uri)
-      }
-      case Timeout(RequestContext(_, _, complete)) => complete {
-        HttpResponse().withBody("TIMEOUT")
-      }
+      case RequestContext(HttpRequest(_, path, _, _, _), _, complete) if path.startsWith("/multi/") =>
+        val delay = (scala.math.random * 80.0).toLong
+        Scheduler.scheduleOnce(() => complete(HttpResponse().withBody(path.last.toString)), delay, TimeUnit.MILLISECONDS)
+      case RequestContext(HttpRequest(_, "/wait200", _, _, _), _, complete) =>
+        Scheduler.scheduleOnce(() => complete(HttpResponse()), 200, TimeUnit.MILLISECONDS)
+      case RequestContext(HttpRequest(method, uri, _, _, _), _, complete) =>
+        complete(HttpResponse().withBody(method + "|" + uri))
+      case Timeout(RequestContext(_, _, complete)) =>
+        complete(HttpResponse().withBody("TIMEOUT"))
     }
   }
 
@@ -52,7 +52,8 @@ trait HttpServerSpecs extends Specification {
                                                                                     Step(start())^
                                                                                     p^
   "simple one-request dialog"                                                       ! oneRequestDialog^
-  //"two request dialog with response reordering"                                     ! responseReorderingDialog^
+  "two request pipelined dialog with response reordering"                           ! responseReorderingDialog^
+  "multi-request pipelined dialog with response reordering"                         ! multiRequestDialog^
   "time-out request"                                                                ! timeoutRequest^
   "idle-time-out connection"                                                        ! timeoutConnection^
                                                                                     end
@@ -72,6 +73,21 @@ trait HttpServerSpecs extends Specification {
             .send(HttpRequest(uri = "/getThisAndDelayedResponse"))
             .end
             .get.map(_.bodyAsString).mkString(",") mustEqual "delayedResponse,secondResponse"
+  }
+
+  private def multiRequestDialog = {
+    dialog()
+            .send(HttpRequest(uri = "/multi/1"))
+            .send(HttpRequest(uri = "/multi/2"))
+            .send(HttpRequest(uri = "/multi/3"))
+            .send(HttpRequest(uri = "/multi/4"))
+            .send(HttpRequest(uri = "/multi/5"))
+            .send(HttpRequest(uri = "/multi/6"))
+            .send(HttpRequest(uri = "/multi/7"))
+            .send(HttpRequest(uri = "/multi/8"))
+            .send(HttpRequest(uri = "/multi/9"))
+            .end
+            .get.map(_.bodyAsString).mkString(",") mustEqual "1,2,3,4,5,6,7,8,9"
   }
 
   private def timeoutRequest = {

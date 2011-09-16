@@ -251,12 +251,10 @@ private[can] class InBodyMessageParser(messageLine: MessageLine, headers: List[H
   val body = new Array[Byte](totalBytes)
   var bytesRead = 0
   def read(buf: ByteBuffer) = {
-    val remaining = buf.remaining
-    if (remaining <= totalBytes - bytesRead) {
-      buf.get(body, bytesRead, remaining)
-      bytesRead += remaining
-      if (bytesRead == totalBytes) new CompleteMessageParser(messageLine, headers, connectionHeader, body) else this
-    } else new ErrorMessageParser("Illegal Content-Length: request entity is longer than Content-Length header value")
+    val remaining = scala.math.min(buf.remaining, totalBytes - bytesRead)
+    buf.get(body, bytesRead, remaining)
+    bytesRead += remaining
+    if (bytesRead == totalBytes) new CompleteMessageParser(messageLine, headers, connectionHeader, body) else this
   }
 }
 

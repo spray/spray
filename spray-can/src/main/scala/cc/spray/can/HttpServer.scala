@@ -25,6 +25,7 @@ import java.io.IOException
 import akka.actor.PoisonPill
 import java.net.InetAddress
 import java.nio.ByteBuffer
+import annotation.tailrec
 
 /////////////////////////////////////////////
 // HttpServer messages
@@ -41,18 +42,34 @@ case class Timeout(context: RequestContext)
 ////////////////////////////////////////////
 
 object HttpServer {
-  private case class Respond(conn: ServerConnection, buffers: List[ByteBuffer], closeAfterWrite: Boolean,
-                             requestRecord: RequestRecord = null)
-  private case class RequestRecord(request: HttpRequest, remoteAddress: InetAddress,
-                                   timeoutResponder: HttpResponse => Unit) extends LinkedList.Element[RequestRecord]
+  private[can] class Respond(val conn: ServerConnection, val buffers: List[ByteBuffer], val closeAfterWrite: Boolean,
+                        val responseNr: Int, val requestRecord: RequestRecord = null) {
+    var next: Respond = _
+  }
+  private[can] case class RequestRecord(request: HttpRequest, remoteAddress: InetAddress,
+                                        timeoutResponder: HttpResponse => Unit) extends LinkedList.Element[RequestRecord]
 
   private[can] class ServerConnection(key: SelectionKey) extends Connection[ServerConnection](key) {
     var closeAfterWrite = false
+    var requestNr = 0
+    var responseNr = 0
+    var queuedResponds: Respond = _
     key.attach(this)
+
+    def enqueue(respond: Respond) {
+      @tailrec def insertAfter(cursor: Respond) {
+        if (cursor.next == null) cursor.next = respond
+        else if (cursor.next.responseNr < respond.responseNr) insertAfter(cursor.next)
+        else { respond.next = cursor.next; cursor.next = respond }
+      }
+      if (queuedResponds == null) queuedResponds = respond
+      else if (queuedResponds.responseNr < respond.responseNr) insertAfter(queuedResponds)
+      else { respond.next = queuedResponds; queuedResponds = respond }
+    }
   }
 }
 
-final class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends HttpPeer with ResponsePreparer {
+class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends HttpPeer with ResponsePreparer {
   import HttpServer._
 
   private lazy val log = LoggerFactory.getLogger(getClass)
@@ -98,9 +115,13 @@ final class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) ext
   }
 
   protected override def receive = super.receive orElse {
-    case r: Respond => if (r.conn.writeBuffers.isEmpty) {
-      prepareWriting(r)
-    } else self ! r // we still have a previous write ongoing, so try again later
+    case respond: Respond => {
+      import respond._
+      if (conn.writeBuffers.isEmpty && conn.responseNr == responseNr) {
+        // we can only prepare the next write if we are not already writing and it's the right response
+        prepareWriting(respond)
+      } else conn.enqueue(respond)
+    }
   }
 
   protected def handleConnectionEvent(key: SelectionKey) {
@@ -116,19 +137,47 @@ final class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) ext
     } else throw new IllegalStateException
   }
 
+  protected def prepareWriting(respond: Respond) {
+    import respond._
+    if (conn.key.isValid) {
+      log.debug("Received raw response, scheduling write")
+      conn.writeBuffers = buffers
+      conn.closeAfterWrite = closeAfterWrite
+      conn.enableWriting()
+    } else log.warn("Dropping response due to closed connection")
+    if (requestRecord != null)
+      requestRecord.memberOf -= requestRecord // remove from either the openRequests or the openTimeouts list
+  }
+
+  protected def finishWrite(conn: Conn) {
+    if (conn.writeBuffers.isEmpty) {
+      if (conn.closeAfterWrite) {
+        close(conn)
+      } else {
+        conn.responseNr += 1
+        val next = conn.queuedResponds
+        if (next != null && next.responseNr == conn.responseNr) {
+          conn.queuedResponds = next.next
+          prepareWriting(next)
+        } else conn.disableWriting()
+      }
+    }
+  }
+
   protected def handleMessageParsingComplete(conn: Conn, parser: CompleteMessageParser) {
     import parser._
     val requestLine = messageLine.asInstanceOf[RequestLine]
     import requestLine._
     log.debug("Dispatching {} request to '{}' to the service actor", method, uri)
     val alreadyCompleted = new AtomicBoolean(false)
+    val responseNr = conn.requestNr; conn.requestNr += 1
 
     def respond(response: HttpResponse, requestRecord: RequestRecord): Boolean = {
       HttpResponse.verify(response)
       if (alreadyCompleted.compareAndSet(false, true)) {
         log.debug("Enqueueing valid HttpResponse as raw response")
         val (buffers, close) = prepare(response, protocol, connectionHeader)
-        self ! Respond(conn, buffers, close, requestRecord)
+        self ! new Respond(conn, buffers, close, responseNr, requestRecord)
         true
       } else false
     }
@@ -154,24 +203,15 @@ final class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) ext
   }
 
   protected def handleMessageParsingError(conn: Conn, parser: ErrorMessageParser) {
-    log.debug("Illegal request, responding with status {} and '{}'", parser.status, parser.message)
+    log.warn("Illegal request, responding with status {} and '{}'", parser.status, parser.message)
     val response = HttpResponse(status = parser.status,
       headers = List(HttpHeader("Content-Type", "text/plain"))).withBody(parser.message)
     // In case of a request parsing error we probably stopped reading the request somewhere in between, where we
     // cannot simply resume. Resetting to a known state is not easy either, so we need to close the connection to do so.
     // This is done here by pretending the request contained a "Connection: close" header
     val (buffers, close) = prepare(response, `HTTP/1.1`, Some("close"))
-    self ! Respond(conn, buffers, close)
-  }
-
-  protected def finishWrite(conn: Conn) {
-    if (conn.writeBuffers.isEmpty) {
-      if (conn.closeAfterWrite) {
-        close(conn)
-      } else {
-        conn.disableWriting() // done writing
-      }
-    }
+    conn.disableReading() // we can't read anymore on this connection
+    self ! new Respond(conn, buffers, close, conn.requestNr)
   }
 
   protected def handleTimedOutRequests() {
@@ -187,18 +227,6 @@ final class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) ext
       log.warn("The TimeoutService for '{}' timed out as well, responding with the static error reponse", ctx.request.uri)
       ctx.timeoutResponder(timeoutTimeoutResponse(ctx.request))
     }
-  }
-
-  protected def prepareWriting(respond: Respond) {
-    import respond._
-    if (conn.key.isValid) {
-      log.debug("Received raw response, scheduling write")
-      conn.writeBuffers = buffers
-      conn.closeAfterWrite = closeAfterWrite
-      conn.enableWriting()
-    } else log.warn("Dropping response due to closed connection")
-    if (requestRecord != null)
-      requestRecord.memberOf -= requestRecord // remove from either the openRequests or the openTimeouts list
   }
 
   protected def timeoutTimeoutResponse(request: HttpRequest) = {

@@ -31,11 +31,11 @@ sealed trait HttpConnection {
   def close()
 }
 
-// public incoming messages
+// public incoming message
 case class Connect(host: String, port: Int = 80)
 
 object HttpClient extends HighLevelHttpClient {
-  private case class Send(conn: ClientConnection, request: HttpRequest, buffers: List[ByteBuffer])
+  private[can] case class Send(conn: ClientConnection, request: HttpRequest, buffers: List[ByteBuffer])
   private case class Close(conn: ClientConnection)
   private case class RequestRecord(request: HttpRequest, conn: ClientConnection)
           extends LinkedList.Element[RequestRecord]
@@ -44,12 +44,13 @@ object HttpClient extends HighLevelHttpClient {
                                  val connectionResponseChannel: Option[UntypedChannel] = None)
           extends Connection[ClientConnection](key) {
     val responseQueue = Queue.empty[Either[String, HttpResponse] => Unit]
+    val requestQueue = Queue.empty[(Send, UntypedChannel)]
     key.attach(this)
     messageParser = new EmptyResponseParser
   }
 }
 
-final class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends HttpPeer {
+class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends HttpPeer {
   import HttpClient._
 
   private lazy val log = LoggerFactory.getLogger(getClass)
@@ -77,8 +78,8 @@ final class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) ext
     case Connect(host, port) => initiateConnection(host, port)
     case send: Send => {
       if (send.conn.writeBuffers.isEmpty) {
-        prepareWriting(send)
-      } else self.forward(send) // we still have a previous write ongoing, so try again later (but keep the response channel)
+        prepareWriting(send, self.channel)
+      } else send.conn.requestQueue.enqueue(send -> self.channel)
     }
     case Close(conn) => close(conn)
   }
@@ -116,7 +117,7 @@ final class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) ext
       conn.connectionResponseChannel.foreach { channel =>
         protectIO("Connect", conn) {
           key.channel.asInstanceOf[SocketChannel].finishConnect()
-          conn.disableWriting()
+          conn.key.interestOps(SelectionKey.OP_READ)
           connections += conn
           log.debug("Connected to {}:{}", conn.host, conn.port)
           new HttpConnectionImpl(conn)
@@ -130,13 +131,13 @@ final class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) ext
     } else throw new IllegalStateException
   }
 
-  private def prepareWriting(send: Send) {
+  private def prepareWriting(send: Send, responseChannel: UntypedChannel) {
     import send._
     if (conn.key.isValid) {
       log.debug("Received raw request, scheduling write")
       val requestRecord = RequestRecord(request, conn)
-      val responseChannel = self.channel
       conn.responseQueue.enqueue { either =>
+        log.debug("Delivering received response: {}", either)
         either match {
           case Right(response) => responseChannel ! response
           case Left(error) => responseChannel.sendException(new HttpClientException(error))
@@ -152,26 +153,34 @@ final class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) ext
     }
   }
 
+  protected def finishWrite(conn: ClientConnection) {
+    if (conn.writeBuffers.isEmpty) {
+      if (conn.requestQueue.isEmpty) {
+        conn.disableWriting()
+      } else {
+        val (send, channel) = conn.requestQueue.dequeue()
+        prepareWriting(send, channel)
+      }
+    }
+  }
+
   protected def handleMessageParsingComplete(conn: Conn, parser: CompleteMessageParser) {
     import parser._
     val statusLine = messageLine.asInstanceOf[StatusLine]
     import statusLine._
     val response = HttpResponse(status, headers, body, protocol)
-    conn.responseQueue.dequeue().apply(Right(response))
-    conn.messageParser = new EmptyResponseParser // reset for parsing the next response
+    if (!conn.responseQueue.isEmpty) {
+      conn.responseQueue.dequeue().apply(Right(response))
+      conn.messageParser = new EmptyResponseParser // reset for parsing the next response
+    } else handleMessageParsingError(conn, new ErrorMessageParser("Received unexpected HttpResponse"))
   }
 
   protected def handleMessageParsingError(conn: Conn, parser: ErrorMessageParser) {
-    conn.responseQueue.foreach(_(Left(parser.message)))
+    log.warn("Received illegal response: {}", parser.message)
     // In case of a response parsing error we probably stopped reading the response somewhere in between, where we
     // cannot simply resume. Resetting to a known state is not easy either, so we need to close the connection to do so.
+    conn.responseQueue.foreach(_(Left(parser.message))) // close all pending responses
     close(conn)
-  }
-
-  protected def finishWrite(conn: ClientConnection) {
-    if (conn.writeBuffers.isEmpty) {
-      conn.disableWriting()
-    }
   }
 
   override protected def cleanClose(conn: Conn) {
