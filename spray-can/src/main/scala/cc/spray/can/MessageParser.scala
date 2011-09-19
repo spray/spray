@@ -38,7 +38,7 @@ private[can] sealed abstract class CharacterParser extends IntermediateParser {
           read(x.handleChar(cursor))
         } else x
       }
-      case x: IntermediateParser => x.read(buf) // FixedLengthBodyParser
+      case x: IntermediateParser => x.read(buf) // a body parser
       case x => x // complete or error
     }
     read(this)
@@ -57,27 +57,28 @@ private[can] sealed abstract class CharacterParser extends IntermediateParser {
   def badMethod = MessageError("Unsupported HTTP method", 501)
 }
 
-private[can] object EmptyRequestParser extends CharacterParser {
+private[can] class EmptyRequestParser(config: MessageParserConfig) extends CharacterParser {
   import HttpMethods._
   def handleChar(cursor: Char) = cursor match {
-    case 'G' => new MethodParser(GET)
+    case 'G' => new MethodParser(config, GET)
     case 'P' => new CharacterParser {
       override def handleChar(cursor: Char) = cursor match {
-        case 'O' => new MethodParser(POST, 1)
-        case 'U' => new MethodParser(PUT, 1)
+        case 'O' => new MethodParser(config, POST, 1)
+        case 'U' => new MethodParser(config, PUT, 1)
         case _ => badMethod
       }
     }
-    case 'D' => new MethodParser(DELETE)
-    case 'H' => new MethodParser(HEAD)
-    case 'O' => new MethodParser(OPTIONS)
-    case 'T' => new MethodParser(TRACE)
-    case 'C' => new MethodParser(CONNECT)
+    case 'D' => new MethodParser(config, DELETE)
+    case 'H' => new MethodParser(config, HEAD)
+    case 'O' => new MethodParser(config, OPTIONS)
+    case 'T' => new MethodParser(config, TRACE)
+    case 'C' => new MethodParser(config, CONNECT)
     case _ => badMethod
   }
 }
 
-private[can] class MethodParser(method: HttpMethod, var pos: Int = 0) extends CharacterParser {
+private[can] class MethodParser(config: MessageParserConfig, method: HttpMethod, var pos: Int = 0)
+        extends CharacterParser {
   def handleChar(cursor: Char) = {
     pos += 1
     if (pos < method.name.length()) {
@@ -85,21 +86,21 @@ private[can] class MethodParser(method: HttpMethod, var pos: Int = 0) extends Ch
       if (cursor == current) this
       else badMethod
     } else {
-      if (cursor == ' ') new UriParser(method)
+      if (cursor == ' ') new UriParser(config, method)
       else badMethod
     }
   }
 }
 
-private[can] class UriParser(method: HttpMethod) extends CharacterParser {
+private[can] class UriParser(config: MessageParserConfig, method: HttpMethod) extends CharacterParser {
   val uri = new JStringBuilder
   def handleChar(cursor: Char) = {
-    if (uri.length <= 2048) {
+    if (uri.length <= config.maxUriLength) {
       cursor match {
-        case ' ' => new RequestVersionParser(method, uri.toString)
+        case ' ' => new RequestVersionParser(config, method, uri.toString)
         case _ => uri.append(cursor); this
       }
-    } else MessageError("URIs with more than 2048 characters are not supported", 414)
+    } else MessageError("URIs with more than " + config.maxUriLength + " characters are not supported", 414)
   }
 }
 
@@ -126,59 +127,62 @@ private[can] abstract class VersionParser extends CharacterParser {
   def badVersion = MessageError("HTTP Version not supported", 505)
 }
 
-private[can] class RequestVersionParser(method: HttpMethod, uri: String) extends VersionParser {
+private[can] class RequestVersionParser(config: MessageParserConfig, method: HttpMethod, uri: String)
+        extends VersionParser {
   def handleSuffix(cursor: Char) = pos match {
     case 8 => if (cursor == '\r') { pos = 9; this } else badVersion
-    case 9 => if (cursor == '\n') new HeaderNameParser(RequestLine(method, uri, protocol)) else badVersion
+    case 9 => if (cursor == '\n') new HeaderNameParser(config, RequestLine(method, uri, protocol)) else badVersion
   }
 }
 
-private[can] class EmptyResponseParser(request: HttpRequest) extends VersionParser {
+private[can] class EmptyResponseParser(config: MessageParserConfig, request: HttpRequest) extends VersionParser {
   def handleSuffix(cursor: Char) = pos match {
-    case 8 => if (cursor == ' ') new StatusCodeParser(request, protocol) else badVersion
+    case 8 => if (cursor == ' ') new StatusCodeParser(config, request, protocol) else badVersion
   }
 }
 
-private[can] class StatusCodeParser(request: HttpRequest, protocol: HttpProtocol) extends CharacterParser {
+private[can] class StatusCodeParser(config: MessageParserConfig, request: HttpRequest, protocol: HttpProtocol)
+        extends CharacterParser {
   var pos = 0
   var status = 0
   def handleChar(cursor: Char) = pos match {
     case 0 => if ('1' <= cursor && cursor <= '5') { pos = 1; status = (cursor - '0') * 100; this } else badStatus
     case 1 => if ('0' <= cursor && cursor <= '9') { pos = 2; status += (cursor - '0') * 10; this } else badStatus
     case 2 => if ('0' <= cursor && cursor <= '9') { pos = 3; status += cursor - '0'; this } else badStatus
-    case 3 => if (cursor == ' ') new ReasonParser(request, protocol, status) else badStatus
+    case 3 => if (cursor == ' ') new ReasonParser(config, request, protocol, status) else badStatus
   }
   def badStatus = MessageError("Illegal response status code")
 }
 
-private[can] class ReasonParser(request: HttpRequest, protocol: HttpProtocol, status: Int)
+private[can] class ReasonParser(config: MessageParserConfig, request: HttpRequest, protocol: HttpProtocol, status: Int)
         extends CharacterParser {
   val reason = new JStringBuilder
   def handleChar(cursor: Char) = {
-    if (reason.length <= 64) {
+    if (reason.length <= config.maxResponseReasonLength) {
       cursor match {
         case '\r' => this
-        case '\n' => new HeaderNameParser(StatusLine(request, protocol, status, reason.toString))
+        case '\n' => new HeaderNameParser(config, StatusLine(request, protocol, status, reason.toString))
         case _ => reason.append(cursor); this
       }
-    } else MessageError("Reason phrases with more than 64 characters are not supported")
+    } else MessageError("Reason phrases with more than " + config.maxResponseReasonLength + " characters are not supported")
   }
 }
 
-private[can] class HeaderNameParser(messageLine: MessageLine, headers: List[HttpHeader] = Nil)
+private[can] class HeaderNameParser(config: MessageParserConfig, messageLine: MessageLine,
+                                    headerCount: Int = 0, headers: List[HttpHeader] = Nil)
         extends CharacterParser {
   val headerName = new JStringBuilder
   def handleChar(cursor: Char) = {
-    if (headerName.length <= 64) {
+    if (headerName.length <= config.maxHeaderNameLength) {
       cursor match {
         case x if isTokenChar(x) => headerName.append(x); this
-        case ':' => new LwsParser(new HeaderValueParser(messageLine, headers, headerName.toString))
+        case ':' => new LwsParser(new HeaderValueParser(config, messageLine, headerCount, headers, headerName.toString))
         case '\r' if headerName.length == 0 => this
         case '\n' if headerName.length == 0 => headersComplete(headers, headers, None, None, None)
         case ' ' | '\t' | '\r' => new LwsParser(this).handleChar(cursor)
         case _ => MessageError("Invalid character '" + cursor + "', expected TOKEN CHAR, LWS or COLON")
       }
-    } else MessageError("HTTP headers with names longer than 64 characters are not supported")
+    } else MessageError("HTTP headers with names longer than " + config.maxHeaderNameLength + " characters are not supported")
   }
   @tailrec
   private def headersComplete(remaining: List[HttpHeader], headers: List[HttpHeader], cHeader: Option[String],
@@ -203,33 +207,38 @@ private[can] class HeaderNameParser(messageLine: MessageLine, headers: List[Http
         MessageError("Non-identity transfer encodings are not currently supported", 501)
       else if (clHeader.isDefined) clHeader.get match {
         case "0" => CompleteMessage(messageLine, headers, cHeader)
-        case value => try { new FixedLengthBodyParser(messageLine, headers, cHeader, value.toInt) }
-                      catch { case _: Exception => MessageError("Invalid Content-Length header value") }
+        case value => try { new FixedLengthBodyParser(config, messageLine, headers, cHeader, value.toInt) }
+                      catch { case e: Exception => MessageError("Invalid Content-Length header value: " + e.getMessage) }
       } else messageLine match {
         case RequestLine(_, _, HttpProtocols.`HTTP/1.0`) => CompleteMessage(messageLine, headers, cHeader)
-        case _: StatusLine => new ToCloseBodyParser(messageLine, headers, cHeader)
+        case _: StatusLine => new ToCloseBodyParser(config, messageLine, headers, cHeader)
         case _ => MessageError("Content-Length header or chunked transfer encoding required", 411)
       }
     }
   }
 }
 
-private[can] class HeaderValueParser(messageLine: MessageLine, headers: List[HttpHeader], headerName: String)
+private[can] class HeaderValueParser(config: MessageParserConfig, messageLine: MessageLine, headerCount: Int,
+                                     headers: List[HttpHeader], headerName: String)
         extends CharacterParser {
   val headerValue = new JStringBuilder
   var space = false
   def handleChar(cursor: Char) = {
-    if (headerValue.length <= 8192) {
+    if (headerValue.length <= config.maxHeaderValueLength) {
       cursor match {
         case ' ' | '\t' | '\r' => space = true; new LwsParser(this).handleChar(cursor)
-        case '\n' => new HeaderNameParser(messageLine, HttpHeader(headerName, headerValue.toString) :: headers)
+        case '\n' =>
+          if (headerCount < config.maxHeaderCount)
+            new HeaderNameParser(config, messageLine, headerCount + 1, HttpHeader(headerName, headerValue.toString) :: headers)
+          else
+            MessageError("HTTP message with more than " + config.maxHeaderCount + " headers are not supported", 400)
         case _ =>
           if (space) { headerValue.append(' '); space = false }
           headerValue.append(cursor)
           this
       }
-    } else MessageError("HTTP header values longer than 8192 characters are not supported (" +
-            "header '" + headerName + "')")
+    } else MessageError("HTTP header values longer than " + config.maxHeaderValueLength +
+            " characters are not supported (header '" + headerName + "')")
   }
 }
 
@@ -257,9 +266,12 @@ private[can] class LwsCrLfParser(next: CharacterParser) extends CharacterParser 
   }
 }
 
-private[can] class FixedLengthBodyParser(messageLine: MessageLine, headers: List[HttpHeader],
-                                       connectionHeader: Option[String], totalBytes: Int) extends IntermediateParser {
+private[can] class FixedLengthBodyParser(config: MessageParserConfig, messageLine: MessageLine,
+                                         headers: List[HttpHeader], connectionHeader: Option[String], totalBytes: Int)
+        extends IntermediateParser {
   require(totalBytes >= 0, "Content-Length must not be negative")
+  require(totalBytes <= config.maxBodyLength, "HTTP message body size exceeds configured limit")
+
   val body = new Array[Byte](totalBytes)
   var bytesRead = 0
   def read(buf: ByteBuffer) = {
@@ -270,20 +282,27 @@ private[can] class FixedLengthBodyParser(messageLine: MessageLine, headers: List
   }
 }
 
-private[can] class ToCloseBodyParser(messageLine: MessageLine, headers: List[HttpHeader],
+private[can] class ToCloseBodyParser(config: MessageParserConfig, messageLine: MessageLine, headers: List[HttpHeader],
                                      connectionHeader: Option[String]) extends IntermediateParser {
   private var body: Array[Byte] = EmptyByteArray
   def read(buf: ByteBuffer) = {
     val array = new Array[Byte](buf.remaining)
     buf.get(array)
-    body = body match {
-      case EmptyByteArray => array
-      case _ => make(new Array[Byte](body.length + array.length)) { newBody =>
-        System.arraycopy(body, 0, newBody, 0, body.length)
-        System.arraycopy(array, 0, newBody, body.length, array.length)
+    body match {
+      case EmptyByteArray =>
+        body = array
+        this
+      case _ => {
+        val newLength = body.length + array.length
+        if (newLength <= config.maxBodyLength) {
+          body = make(new Array[Byte](newLength)) { newBody =>
+            System.arraycopy(body, 0, newBody, 0, body.length)
+            System.arraycopy(array, 0, newBody, body.length, array.length)
+          }
+          this
+        } else MessageError("HTTP message body size exceeds configured limit")
       }
     }
-    this
   }
   def complete = new CompleteMessage(messageLine, headers, connectionHeader, body)
 }

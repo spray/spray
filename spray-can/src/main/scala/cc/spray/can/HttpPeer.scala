@@ -53,7 +53,7 @@ private[can] case object HandleTimedOutRequests
 private[can] abstract class Connection[T >: Null <: LinkedList.Element[T]](val key: SelectionKey)
         extends LinkedList.Element[T] {
   var writeBuffers: List[ByteBuffer] = Nil
-  var messageParser: MessageParser = EmptyRequestParser
+  var messageParser: MessageParser = _
 
   import SelectionKey._
   var interestOps = OP_READ

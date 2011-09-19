@@ -127,18 +127,19 @@ class ResponseParserSpec extends Specification {
              |Content-Length: 1.5
              |
              |abc"""
-        } mustEqual MessageError("Invalid Content-Length header value", 400)
+        } mustEqual MessageError("Invalid Content-Length header value: For input string: \"1.5\"", 400)
         parse {
           """|HTTP/1.1 200 OK
              |Content-Length: -3
              |
              |abc"""
-        } mustEqual MessageError("Invalid Content-Length header value", 400)
+        } mustEqual MessageError("Invalid Content-Length header value: " +
+                "requirement failed: Content-Length must not be negative", 400)
       }
     }
   }
 
-  def parse = RequestParserSpec.parse(new EmptyResponseParser(HttpRequest()), extractFromCompleteMessage _) _
+  def parse = RequestParserSpec.parse(new EmptyResponseParser(MessageParserConfig(), HttpRequest()), extractFromCompleteMessage _) _
 
   def extractFromCompleteMessage(completeMessage: CompleteMessage) = {
     val CompleteMessage(StatusLine(_, protocol, status, reason), headers, connectionHeader, body) = completeMessage

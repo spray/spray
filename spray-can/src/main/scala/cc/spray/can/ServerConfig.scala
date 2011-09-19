@@ -25,12 +25,14 @@ trait PeerConfig {
   def reapingCycle: Long
   def requestTimeout: Long
   def timeoutCycle: Long
+  def parserConfig: MessageParserConfig
 
   require(readBufferSize > 0, "readBufferSize must be > 0 bytes")
   require(idleTimeout >= 0, "idleTimeout must be >= 0 ms")
   require(reapingCycle > 0, "reapingCycle must be > 0 ms")
   require(requestTimeout >= 0, "requestTimeout must be >= 0 ms")
   require(timeoutCycle > 0, "timeoutCycle must be > 0 ms")
+  require(parserConfig != null, "parserConfig must not be null")
 }
 
 case class ServerConfig(
@@ -48,7 +50,8 @@ case class ServerConfig(
   idleTimeout: Long = 10000,
   reapingCycle: Long = 500,
   requestTimeout: Long = 5000,
-  timeoutCycle: Long = 200
+  timeoutCycle: Long = 200,
+  parserConfig: MessageParserConfig = MessageParserConfig()
 ) extends PeerConfig {
 
   require(!serverActorId.isEmpty, "serverActorId must not be empty")
@@ -90,7 +93,8 @@ object ServerConfig {
     idleTimeout    = config.getLong("spray-can.server.idle-timeout", 10000),
     reapingCycle   = config.getLong("spray-can.server.reaping-cycle", 500),
     requestTimeout = config.getLong("spray-can.server.request-timeout", 5000),
-    timeoutCycle   = config.getLong("spray-can.server.timeout-cycle", 200)
+    timeoutCycle   = config.getLong("spray-can.server.timeout-cycle", 200),
+    parserConfig   = MessageParserConfig.fromAkkaConf
   )
 }
 
@@ -104,7 +108,8 @@ case class ClientConfig(
   idleTimeout: Long = 10000,
   reapingCycle: Long = 500,
   requestTimeout: Long = 5000,
-  timeoutCycle: Long = 200
+  timeoutCycle: Long = 200,
+  parserConfig: MessageParserConfig = MessageParserConfig()
 ) extends PeerConfig {
 
   require(!clientActorId.isEmpty, "serverActorId must not be empty")
@@ -132,7 +137,27 @@ object ClientConfig {
     idleTimeout    = config.getLong("spray-can.server.idle-timeout", 10000),
     reapingCycle   = config.getLong("spray-can.server.reaping-cycle", 500),
     requestTimeout = config.getLong("spray-can.server.request-timeout", 5000),
-    timeoutCycle   = config.getLong("spray-can.server.timeout-cycle", 200)
+    timeoutCycle   = config.getLong("spray-can.server.timeout-cycle", 200),
+    parserConfig   = MessageParserConfig.fromAkkaConf
   )
 }
 
+case class MessageParserConfig(
+  maxUriLength: Int = 2048,
+  maxResponseReasonLength: Int = 64,
+  maxHeaderNameLength: Int = 64,
+  maxHeaderValueLength: Int = 8192,
+  maxHeaderCount: Int = 64,
+  maxBodyLength: Int = 8192 * 1024 // default entity size limit = 8 MB
+)
+
+object MessageParserConfig {
+  lazy val fromAkkaConf = MessageParserConfig(
+    maxUriLength            = config.getInt("spray-can.parser.max-uri-length", 2048),
+    maxResponseReasonLength = config.getInt("spray-can.parser.max-response-reason-length", 64),
+    maxHeaderNameLength     = config.getInt("spray-can.parser.max-header-name-length", 64),
+    maxHeaderValueLength    = config.getInt("spray-can.parser.max-header-value-length", 8192),
+    maxHeaderCount          = config.getInt("spray-can.parser.max-header-count-length", 64),
+    maxBodyLength           = config.getInt("spray-can.parser.max-body-length", 8192 * 1024)
+  )
+}

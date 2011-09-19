@@ -63,12 +63,14 @@ object HttpServer {
   private[can] case class RequestRecord(request: HttpRequest, remoteAddress: InetAddress,
                                         timeoutResponder: HttpResponse => Unit) extends LinkedList.Element[RequestRecord]
 
-  private[can] class ServerConnection(key: SelectionKey) extends Connection[ServerConnection](key) {
+  private[can] class ServerConnection(key: SelectionKey, emptyRequestParser: EmptyRequestParser)
+          extends Connection[ServerConnection](key) {
     var closeAfterWrite = false
     var requestNr = 0
     var responseNr = 0
     var queuedResponds: Respond = _
     key.attach(this)
+    messageParser = emptyRequestParser
 
     def enqueue(respond: Respond) {
       @tailrec def insertAfter(cursor: Respond) {
@@ -98,6 +100,8 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
   private val openTimeouts = new LinkedList[RequestRecord]
 
   private[can] type Conn = ServerConnection
+
+  private val StartRequestParser = new EmptyRequestParser(config.parserConfig)
 
   self.id = config.serverActorId
 
@@ -145,7 +149,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
         val socketChannel = serverSocketChannel.accept
         socketChannel.configureBlocking(false)
         val key = socketChannel.register(selector, SelectionKey.OP_READ) // start out only reading
-        connections += new ServerConnection(key)
+        connections += new ServerConnection(key, StartRequestParser)
         log.debug("New connection accepted and registered")
       }
     } else throw new IllegalStateException
@@ -213,7 +217,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
     }
     serviceActor ! RequestContext(httpRequest, remoteAddress, responder)
     requestsDispatched += 1
-    conn.messageParser = EmptyRequestParser // switch back to parsing the next request from the start
+    conn.messageParser = StartRequestParser // switch back to parsing the next request from the start
   }
 
   protected def handleMessageParsingError(conn: Conn, parser: MessageError) {

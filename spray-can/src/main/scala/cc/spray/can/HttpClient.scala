@@ -163,7 +163,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
     import conn._
     if (writeBuffers.isEmpty) {
       if (messageParser == UnexpectedResponseErrorParser)
-        messageParser = new EmptyResponseParser(pendingResponses.head.request)
+        messageParser = new EmptyResponseParser(config.parserConfig, pendingResponses.head.request)
       if (requestQueue.isEmpty) {
         disableWriting()
       } else {
@@ -181,7 +181,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
     assert(!conn.pendingResponses.isEmpty)
     conn.pendingResponses.dequeue().deliver(Right(response))
     conn.messageParser = if (conn.pendingResponses.isEmpty) UnexpectedResponseErrorParser
-                         else new EmptyResponseParser(conn.pendingResponses.head.request)
+                         else new EmptyResponseParser(config.parserConfig, conn.pendingResponses.head.request)
   }
 
   protected def handleMessageParsingError(conn: Conn, parser: MessageError) {
