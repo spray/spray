@@ -23,13 +23,13 @@ import akka.actor.Actor
 class HttpClientServerSpec extends Specification with HttpClientSpecs with HttpServerSpecs {
 
   // we need to merge the client and server tests into one spec in order to be able to have one
-  // join stop step for shutting down all actors
+  // common stop step for shutting down all actors
 
   def is =
     sequential^
     clientSpecs^
     p^
-    serverSpecs^
+    //serverSpecs^
     Step(Actor.registry.shutdownAll())
 
 }

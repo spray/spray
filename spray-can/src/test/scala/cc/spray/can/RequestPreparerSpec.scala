@@ -79,7 +79,7 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
 
   def prep(request: HttpRequest) = {
     val sb = new java.lang.StringBuilder()
-    val buffers = prepare(request, "test.com", 8080)
+    val buffers = prepareRequest(request, "test.com", 8080)
     buffers.foreach { buf =>
       sb.append(new String(buf.array, US_ASCII))
     }

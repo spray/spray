@@ -47,6 +47,7 @@ trait HttpClientSpecs extends Specification {
   "request-response dialog"                                                         ! requestResponseDialog^
   "non-pipelined request-request dialog"                                            ! nonPipelinedRequestRequestDialog^
   "pipelined request-request dialog"                                                ! pipelinedRequestRequestDialog^
+  "pipelined request-request dialog with HEAD requests"                             ! pipelinedRequestRequestWithHeadsDialog^
   "connect to a non-existing server"                                                ! illegalConnect^
   "time-out request"                                                                ! timeoutRequest^
   "idle-time-out connection"                                                        ! timeoutConnection^
@@ -86,6 +87,17 @@ trait HttpClientSpecs extends Specification {
             .send(HttpRequest(PUT, "/xyz"))
             .end
             .get.map(_.bodyAsString).mkString(", ") mustEqual "DELETE|/abc, PUT|/xyz"
+  }
+
+  private def pipelinedRequestRequestWithHeadsDialog = {
+    newDialog()
+            .send(HttpRequest(DELETE, "/abc"))
+            .send(HttpRequest(HEAD, "/def"))
+            .send(HttpRequest(PUT, "/xyz"))
+            .end
+            .get.map { r =>
+              (r.headers.collect({ case HttpHeader("Content-Length", cl) => cl }).head.toInt, r.bodyAsString)
+            } mustEqual Seq((11, "DELETE|/abc"), (9, ""), (8, "PUT|/xyz"))
   }
 
   private def illegalConnect = {

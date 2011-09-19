@@ -46,8 +46,6 @@ trait MessagePreparer {
   }
 
   protected def appendLine(sb: JStringBuilder) = sb.append('\r').append('\n')
-
-  protected def wrapBody(body: Array[Byte]) = if (body.length == 0) Nil else ByteBuffer.wrap(body) :: Nil
 }
 
 trait ResponsePreparer extends MessagePreparer {
@@ -56,7 +54,7 @@ trait ResponsePreparer extends MessagePreparer {
   private val ServerHeaderPlusDateColonSP =
     if (serverHeader.isEmpty) "Date: " else "Server: " + serverHeader + "\r\nDate: "
 
-  protected def prepare(response: HttpResponse, reqProtocol: HttpProtocol,
+  protected def prepareResponse(requestMethod: HttpMethod, response: HttpResponse, reqProtocol: HttpProtocol,
                         reqConnectionHeader: Option[String]): (List[ByteBuffer], Boolean) = {
     import response._
 
@@ -85,6 +83,8 @@ trait ResponsePreparer extends MessagePreparer {
       }
     }
 
+    def wrapBody = if (body.length == 0 || requestMethod == HttpMethods.HEAD) Nil else ByteBuffer.wrap(body) :: Nil
+
     val sb = new java.lang.StringBuilder(256)
     appendStatusLine(sb)
     val close = appendConnectionHeader(sb) {
@@ -93,7 +93,7 @@ trait ResponsePreparer extends MessagePreparer {
     appendLine(sb.append(ServerHeaderPlusDateColonSP).append(dateTimeNow.toRfc1123DateTimeString))
     appendHeader("Content-Length", body.length.toString, sb)
     appendLine(sb)
-    (ByteBuffer.wrap(sb.toString.getBytes(US_ASCII)) :: wrapBody(body), close)
+    (ByteBuffer.wrap(sb.toString.getBytes(US_ASCII)) :: wrapBody, close)
   }
 
   protected def dateTimeNow = DateTime.now  // split out so we can stabilize by overriding in tests
@@ -102,12 +102,14 @@ trait ResponsePreparer extends MessagePreparer {
 trait RequestPreparer extends MessagePreparer {
   protected def userAgentHeader: String
 
-  protected def prepare(request: HttpRequest, host: String, port: Int): List[ByteBuffer] = {
+  protected def prepareRequest(request: HttpRequest, host: String, port: Int): List[ByteBuffer] = {
     import request._
 
     def appendRequestLine(sb: JStringBuilder) {
       appendLine(sb.append(method.name).append(' ').append(uri).append(' ').append(protocol.name))
     }
+
+    def wrapBody = if (body.length == 0) Nil else ByteBuffer.wrap(body) :: Nil
 
     val sb = new java.lang.StringBuilder(256)
     appendRequestLine(sb)
@@ -116,6 +118,6 @@ trait RequestPreparer extends MessagePreparer {
     if (!userAgentHeader.isEmpty) appendHeader("User-Agent", userAgentHeader, sb)
     appendHeader("Content-Length", body.length.toString, sb)
     appendLine(sb)
-    ByteBuffer.wrap(sb.toString.getBytes(US_ASCII)) :: wrapBody(body)
+    ByteBuffer.wrap(sb.toString.getBytes(US_ASCII)) :: wrapBody
   }
 }

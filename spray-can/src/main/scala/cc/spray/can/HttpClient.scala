@@ -219,7 +219,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
       HttpRequest.verify(request)
       log.debug("Enqueueing valid HttpRequest as raw request")
       implicit val timeout = Actor.Timeout(Long.MaxValue) // "disable" the akka future, since we rely on our own
-      (self ? Send(conn, request, prepare(request, conn.host, conn.port))).mapTo[HttpResponse]
+      (self ? Send(conn, request, prepareRequest(request, conn.host, conn.port))).mapTo[HttpResponse]
     }
 
     def close() {

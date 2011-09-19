@@ -194,7 +194,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
       HttpResponse.verify(response)
       if (alreadyCompleted.compareAndSet(false, true)) {
         log.debug("Enqueueing valid HttpResponse as raw response")
-        val (buffers, close) = prepare(response, protocol, connectionHeader)
+        val (buffers, close) = prepareResponse(method, response, protocol, connectionHeader)
         self ! new Respond(conn, buffers, close, responseNr, requestRecord)
         true
       } else false
@@ -227,7 +227,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
     // In case of a request parsing error we probably stopped reading the request somewhere in between, where we
     // cannot simply resume. Resetting to a known state is not easy either, so we need to close the connection to do so.
     // This is done here by pretending the request contained a "Connection: close" header
-    val (buffers, close) = prepare(response, `HTTP/1.1`, Some("close"))
+    val (buffers, close) = prepareResponse(HttpMethods.GET, response, `HTTP/1.1`, Some("close"))
     conn.disableReading() // we can't read anymore on this connection
     self ! new Respond(conn, buffers, close, conn.requestNr)
   }
