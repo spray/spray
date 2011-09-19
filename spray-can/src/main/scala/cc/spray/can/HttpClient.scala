@@ -39,15 +39,19 @@ object HttpClient extends HighLevelHttpClient {
   private case class Close(conn: ClientConnection)
   private case class RequestRecord(request: HttpRequest, conn: ClientConnection)
           extends LinkedList.Element[RequestRecord]
-
+  private[can] abstract class PendingResponse(val request: HttpRequest) {
+    def deliver(either: Either[String, HttpResponse])
+  }
   private[can] class ClientConnection(key: SelectionKey, val host: String, val port: Int,
-                                 val connectionResponseChannel: Option[UntypedChannel] = None)
+                                      val connectionResponseChannel: Option[UntypedChannel] = None)
           extends Connection[ClientConnection](key) {
-    val responseQueue = Queue.empty[Either[String, HttpResponse] => Unit]
+    val pendingResponses = Queue.empty[PendingResponse]
     val requestQueue = Queue.empty[(Send, UntypedChannel)]
     key.attach(this)
-    messageParser = new EmptyResponseParser
+    messageParser = UnexpectedResponseErrorParser
+    def closeAllPendingWithError(error: String) { pendingResponses.foreach(_.deliver(Left(error))) }
   }
+  private val UnexpectedResponseErrorParser = MessageError("Received unexpected HttpResponse")
 }
 
 class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends HttpPeer {
@@ -136,14 +140,16 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
     if (conn.key.isValid) {
       log.debug("Received raw request, scheduling write")
       val requestRecord = RequestRecord(request, conn)
-      conn.responseQueue.enqueue { either =>
-        log.debug("Delivering received response: {}", either)
-        either match {
-          case Right(response) => responseChannel ! response
-          case Left(error) => responseChannel.sendException(new HttpClientException(error))
+      conn.pendingResponses.enqueue(new PendingResponse(request) {
+        def deliver(either: Either[String, HttpResponse]) {
+          log.debug("Delivering received response: {}", either)
+          either match {
+            case Right(response) => responseChannel ! response
+            case Left(error) => responseChannel.sendException(new HttpClientException(error))
+          }
+          openRequests -= requestRecord
         }
-        openRequests -= requestRecord
-      }
+      })
       conn.writeBuffers = buffers
       conn.enableWriting()
       openRequests += requestRecord
@@ -154,50 +160,53 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
   }
 
   protected def finishWrite(conn: ClientConnection) {
-    if (conn.writeBuffers.isEmpty) {
-      if (conn.requestQueue.isEmpty) {
-        conn.disableWriting()
+    import conn._
+    if (writeBuffers.isEmpty) {
+      if (messageParser == UnexpectedResponseErrorParser)
+        messageParser = new EmptyResponseParser(pendingResponses.head.request)
+      if (requestQueue.isEmpty) {
+        disableWriting()
       } else {
-        val (send, channel) = conn.requestQueue.dequeue()
+        val (send, channel) = requestQueue.dequeue()
         prepareWriting(send, channel)
       }
     }
   }
 
-  protected def handleMessageParsingComplete(conn: Conn, parser: CompleteMessageParser) {
+  protected def handleMessageParsingComplete(conn: Conn, parser: CompleteMessage) {
     import parser._
     val statusLine = messageLine.asInstanceOf[StatusLine]
     import statusLine._
     val response = HttpResponse(status, headers, body, protocol)
-    if (!conn.responseQueue.isEmpty) {
-      conn.responseQueue.dequeue().apply(Right(response))
-      conn.messageParser = new EmptyResponseParser // reset for parsing the next response
-    } else handleMessageParsingError(conn, new ErrorMessageParser("Received unexpected HttpResponse"))
+    assert(!conn.pendingResponses.isEmpty)
+    conn.pendingResponses.dequeue().deliver(Right(response))
+    conn.messageParser = if (conn.pendingResponses.isEmpty) UnexpectedResponseErrorParser
+                         else new EmptyResponseParser(conn.pendingResponses.head.request)
   }
 
-  protected def handleMessageParsingError(conn: Conn, parser: ErrorMessageParser) {
+  protected def handleMessageParsingError(conn: Conn, parser: MessageError) {
     log.warn("Received illegal response: {}", parser.message)
     // In case of a response parsing error we probably stopped reading the response somewhere in between, where we
     // cannot simply resume. Resetting to a known state is not easy either, so we need to close the connection to do so.
-    conn.responseQueue.foreach(_(Left(parser.message))) // close all pending responses
+    conn.closeAllPendingWithError(parser.message)
     close(conn)
   }
 
   override protected def cleanClose(conn: Conn) {
+    conn.closeAllPendingWithError("Server closed connection")
     super.cleanClose(conn)
-    conn.responseQueue.foreach(_(Left("Server closed connection")))
   }
 
   protected def handleTimedOutRequests() {
     openRequests.forAllTimedOut(config.requestTimeout) { requestRecord =>
       log.warn("Request to '{}' timed out, closing the connection", requestRecord.request.uri)
-      requestRecord.conn.responseQueue.foreach(_(Left("Request timed out")))
+      requestRecord.conn.closeAllPendingWithError("Request timed out")
       close(requestRecord.conn)
     }
   }
 
   override protected def reapConnection(conn: Conn) {
-    conn.responseQueue.foreach(_(Left("Connection closed due to idle timeout")))
+    conn.closeAllPendingWithError("Connection closed due to idle timeout")
     super.reapConnection(conn)
   }
 

@@ -31,6 +31,7 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
     """|GET /abc HTTP/1.1
        |Host: test.com:8080
        |User-Agent: spray-can/1.0.0
+       |Content-Length: 0
        |
        |"""
   }
@@ -50,6 +51,7 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
        |Age: 0
        |Host: test.com:8080
        |User-Agent: spray-can/1.0.0
+       |Content-Length: 0
        |
        |"""
   }

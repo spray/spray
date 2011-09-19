@@ -30,16 +30,16 @@ class RequestParserSpec extends Specification {
           """|GET / HTTP/1.1
              |
              |"""
-        } mustEqual (GET, "/", `HTTP/1.1`, Nil, None, "")
+        } mustEqual MessageError("Content-Length header or chunked transfer encoding required", 411)
       }
 
       "with one header" in {
         parse {
           """|GET / HTTP/1.0
-             |Host: api.example.com
+             |Content-Length: 0
              |
              |"""
-        } mustEqual (GET, "/", `HTTP/1.0`, List(HttpHeader("Host", "api.example.com")), None, "")
+        } mustEqual (GET, "/", `HTTP/1.0`, List(HttpHeader("Content-Length", "0")), None, "")
       }
 
       "with 4 headers and a body" in {
@@ -67,9 +67,11 @@ class RequestParserSpec extends Specification {
              |    xyz
              |Accept
              | : */*  """ + """
+             |Content-Length: 0
              |
              |"""
         } mustEqual (DELETE, "/abc", `HTTP/1.1`, List(
+          HttpHeader("Content-Length", "0"),
           HttpHeader("Accept", "*/*"),
           HttpHeader("User-Agent", "curl/7.19.7 abc xyz")
         ), None, "")
@@ -78,31 +80,31 @@ class RequestParserSpec extends Specification {
 
     "reject a request with" in {
       "an illegal HTTP method" in {
-        parse("get") mustEqual ErrorMessageParser("Unsupported HTTP method", 501)
-        parse("GETX") mustEqual ErrorMessageParser("Unsupported HTTP method", 501)
+        parse("get") mustEqual MessageError("Unsupported HTTP method", 501)
+        parse("GETX") mustEqual MessageError("Unsupported HTTP method", 501)
       }
 
       "an URI longer than 2048 chars" in {
         parse("GET x" + "xxxx" * 512 + " HTTP/1.1") mustEqual
-                ErrorMessageParser("URIs with more than 2048 characters are not supported", 414)
+                MessageError("URIs with more than 2048 characters are not supported", 414)
       }
 
       "HTTP version 1.2" in {
-        parse("GET / HTTP/1.2\r\n") mustEqual ErrorMessageParser("HTTP Version not supported", 505)
+        parse("GET / HTTP/1.2\r\n") mustEqual MessageError("HTTP Version not supported", 505)
       }
 
       "with an illegal char in a header name" in {
         parse {
           """|GET / HTTP/1.1
              |User@Agent: curl/7.19.7"""
-        } mustEqual ErrorMessageParser("Invalid character '@', expected TOKEN CHAR, LWS or COLON")
+        } mustEqual MessageError("Invalid character '@', expected TOKEN CHAR, LWS or COLON")
       }
 
       "with a header name longer than 64 chars" in {
         parse {
           """|GET / HTTP/1.1
              |UserxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxAgent: curl/7.19.7"""
-        } mustEqual ErrorMessageParser("HTTP headers with names longer than 64 characters are not supported")
+        } mustEqual MessageError("HTTP headers with names longer than 64 characters are not supported")
       }
 
       "with a non-identity transfer encoding" in {
@@ -111,14 +113,14 @@ class RequestParserSpec extends Specification {
              |Transfer-Encoding: chunked
              |
              |abc"""
-        } mustEqual ErrorMessageParser("Non-identity transfer encodings are not currently supported", 501)
+        } mustEqual MessageError("Non-identity transfer encodings are not currently supported", 501)
       }
 
       "with a header-value longer than 8192 chars" in {
         parse {
           """|GET / HTTP/1.1
              |Fancy: 0""" + ("12345678" * 1024) + "\r\n"
-        } mustEqual ErrorMessageParser("HTTP header values longer than 8192 characters are not supported (header 'Fancy')", 400)
+        } mustEqual MessageError("HTTP header values longer than 8192 characters are not supported (header 'Fancy')", 400)
       }
 
       "with an invalid Content-Length header value" in {
@@ -127,25 +129,34 @@ class RequestParserSpec extends Specification {
              |Content-Length: 1.5
              |
              |abc"""
-        } mustEqual ErrorMessageParser("Invalid Content-Length header value", 400)
+        } mustEqual MessageError("Invalid Content-Length header value", 400)
         parse {
           """|GET / HTTP/1.1
              |Content-Length: -3
              |
              |abc"""
-        } mustEqual ErrorMessageParser("Invalid Content-Length header value", 400)
+        } mustEqual MessageError("Invalid Content-Length header value", 400)
       }
     }
   }
 
-  def parse(request: String) = {
-    val req = request.stripMargin.replace("\n", "\r\n")
+  val parse = RequestParserSpec.parse(EmptyRequestParser, extractFromCompleteMessage _) _
+
+  def extractFromCompleteMessage(completeMessage: CompleteMessage) = {
+    val CompleteMessage(RequestLine(method, uri, protocol), headers, connectionHeader, body) = completeMessage
+    (method, uri, protocol, headers, connectionHeader, new String(body, "ISO-8859-1"))
+  }
+}
+
+object RequestParserSpec {
+  def parse(startParser: => IntermediateParser,
+            extractFromCompleteMessage: CompleteMessage => AnyRef)(response: String): AnyRef = {
+    val req = response.stripMargin.replace("\n", "\r\n")
     val buf = ByteBuffer.wrap(req.getBytes("US-ASCII"))
-    EmptyRequestParser.read(buf) match {
-      case CompleteMessageParser(RequestLine(method, uri, protocol), headers, connectionHeader, body) =>
-        (method, uri, protocol, headers, connectionHeader, new String(body, "ISO-8859-1"))
+    startParser.read(buf) match {
+      case x: CompleteMessage => extractFromCompleteMessage(x)
+      case x: ToCloseBodyParser => extractFromCompleteMessage(x.complete)
       case x => x
     }
   }
-
 }

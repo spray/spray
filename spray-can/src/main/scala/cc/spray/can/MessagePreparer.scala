@@ -28,9 +28,6 @@ trait MessagePreparer {
   protected def appendHeader(name: String, value: String, sb: JStringBuilder) =
     appendLine(sb.append(name).append(':').append(' ').append(value))
 
-  protected def appendContentLengthHeader(contentLength: Int, sb: JStringBuilder) =
-    if (contentLength > 0) appendHeader("Content-Length", contentLength.toString, sb) else sb
-
   @tailrec
   protected final def appendHeaders(httpHeaders: List[HttpHeader], sb: JStringBuilder,
                                     connectionHeaderValue: Option[String] = None): Option[String] = {
@@ -93,8 +90,8 @@ trait ResponsePreparer extends MessagePreparer {
     val close = appendConnectionHeader(sb) {
       appendHeaders(headers, sb)
     }
-    appendContentLengthHeader(body.length, sb)
     appendLine(sb.append(ServerHeaderPlusDateColonSP).append(dateTimeNow.toRfc1123DateTimeString))
+    appendHeader("Content-Length", body.length.toString, sb)
     appendLine(sb)
     (ByteBuffer.wrap(sb.toString.getBytes(US_ASCII)) :: wrapBody(body), close)
   }
@@ -117,7 +114,7 @@ trait RequestPreparer extends MessagePreparer {
     appendHeaders(headers, sb)
     appendHeader("Host", if (port == 80) host else host + ':' + port, sb)
     if (!userAgentHeader.isEmpty) appendHeader("User-Agent", userAgentHeader, sb)
-    appendContentLengthHeader(body.length, sb)
+    appendHeader("Content-Length", body.length.toString, sb)
     appendLine(sb)
     ByteBuffer.wrap(sb.toString.getBytes(US_ASCII)) :: wrapBody(body)
   }

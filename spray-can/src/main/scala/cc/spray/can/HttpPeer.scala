@@ -129,11 +129,11 @@ private[can] abstract class HttpPeer extends Actor {
 
     @tailrec def parseReadBuffer() {
       conn.messageParser.asInstanceOf[IntermediateParser].read(readBuffer) match {
-        case x: CompleteMessageParser => {
+        case x: CompleteMessage => {
           handleMessageParsingComplete(conn, x)
           if (readBuffer.remaining > 0) parseReadBuffer() // if we had more than one request in the buffer, go on
         }
-        case x: ErrorMessageParser => handleMessageParsingError(conn, x)
+        case x: MessageError => handleMessageParsingError(conn, x)
         case x: IntermediateParser => conn.messageParser = x
       }
     }
@@ -222,9 +222,9 @@ private[can] abstract class HttpPeer extends Actor {
 
   protected def handleConnectionEvent(key: SelectionKey)
 
-  protected def handleMessageParsingComplete(conn: Conn, parser: CompleteMessageParser)
+  protected def handleMessageParsingComplete(conn: Conn, parser: CompleteMessage)
 
-  protected def handleMessageParsingError(conn: Conn, parser: ErrorMessageParser)
+  protected def handleMessageParsingError(conn: Conn, parser: MessageError)
 
   protected def finishWrite(conn: Conn)
 

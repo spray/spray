@@ -38,6 +38,20 @@ case class RequestContext(
 case class Timeout(context: RequestContext)
 
 /////////////////////////////////////////////
+// Responders
+////////////////////////////////////////////
+
+trait RequestResponder {
+  def apply(response: HttpResponse)
+  def apply(chunkedResponseStart: ChunkedResponseStart): ChunkedResponder
+}
+
+trait ChunkedResponder {
+  def apply(chunk: ChunkedResponseChunk)
+  def apply(end: ChunkedResponseEnd)
+}
+
+/////////////////////////////////////////////
 // HttpServer
 ////////////////////////////////////////////
 
@@ -164,7 +178,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
     }
   }
 
-  protected def handleMessageParsingComplete(conn: Conn, parser: CompleteMessageParser) {
+  protected def handleMessageParsingComplete(conn: Conn, parser: CompleteMessage) {
     import parser._
     val requestLine = messageLine.asInstanceOf[RequestLine]
     import requestLine._
@@ -202,7 +216,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
     conn.messageParser = EmptyRequestParser // switch back to parsing the next request from the start
   }
 
-  protected def handleMessageParsingError(conn: Conn, parser: ErrorMessageParser) {
+  protected def handleMessageParsingError(conn: Conn, parser: MessageError) {
     log.warn("Illegal request, responding with status {} and '{}'", parser.status, parser.message)
     val response = HttpResponse(status = parser.status,
       headers = List(HttpHeader("Content-Type", "text/plain"))).withBody(parser.message)

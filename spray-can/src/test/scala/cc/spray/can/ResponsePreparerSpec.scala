@@ -36,6 +36,7 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
     """|HTTP/1.1 200 OK
        |Server: spray-can/1.0.0
        |Date: Thu, 25 Aug 2011 09:10:29 GMT
+       |Content-Length: 0
        |
        |""" -> false
   }
@@ -51,6 +52,7 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
        |Age: 0
        |Server: spray-can/1.0.0
        |Date: Thu, 25 Aug 2011 09:10:29 GMT
+       |Content-Length: 0
        |
        |""" -> false
   }
@@ -64,9 +66,9 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
     """|HTTP/1.1 400 Bad Request
        |Age: 30
        |Cache-Control: public
-       |Content-Length: 23
        |Server: spray-can/1.0.0
        |Date: Thu, 25 Aug 2011 09:10:29 GMT
+       |Content-Length: 23
        |
        |Small f*ck up overhere!""" -> false
   }
@@ -90,7 +92,8 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
         "HTTP/1.1 200 OK\n" +
         renCH.map("Connection: " + _ + "\n").getOrElse("") +
         "Server: spray-can/1.0.0\n" +
-        "Date: Thu, 25 Aug 2011 09:10:29 GMT\n\n" -> close
+        "Date: Thu, 25 Aug 2011 09:10:29 GMT\n" +
+        "Content-Length: 0\n\n" -> close
       }
     }
 

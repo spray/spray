@@ -56,7 +56,7 @@ trait HttpClientSpecs extends Specification {
 
   private def oneRequestDialog = {
     newDialog()
-            .send(HttpRequest(uri = "/yeah"))
+            .send(HttpRequest(GET, "/yeah"))
             .end
             .get.bodyAsString mustEqual "GET|/yeah"
   }
@@ -65,7 +65,7 @@ trait HttpClientSpecs extends Specification {
     def respond(res: HttpResponse) = HttpRequest(POST, uri = "(" + res.bodyAsString + ")")
 
     newDialog()
-            .send(HttpRequest(uri = "/abc"))
+            .send(HttpRequest(GET, "/abc"))
             .reply(respond)
             .end
             .get.bodyAsString mustEqual "POST|(GET|/abc)"
@@ -73,24 +73,24 @@ trait HttpClientSpecs extends Specification {
 
   private def nonPipelinedRequestRequestDialog = {
     newDialog()
-            .send(HttpRequest(DELETE, uri = "/abc"))
+            .send(HttpRequest(DELETE, "/abc"))
             .awaitResponse
-            .send(HttpRequest(PUT, uri = "/xyz"))
+            .send(HttpRequest(PUT, "/xyz"))
             .end
             .get.map(_.bodyAsString).mkString(", ") mustEqual "DELETE|/abc, PUT|/xyz"
   }
 
   private def pipelinedRequestRequestDialog = {
     newDialog()
-            .send(HttpRequest(DELETE, uri = "/abc"))
-            .send(HttpRequest(PUT, uri = "/xyz"))
+            .send(HttpRequest(DELETE, "/abc"))
+            .send(HttpRequest(PUT, "/xyz"))
             .end
             .get.map(_.bodyAsString).mkString(", ") mustEqual "DELETE|/abc, PUT|/xyz"
   }
 
   private def illegalConnect = {
     newDialog(16243)
-            .send(HttpRequest())
+            .send(HttpRequest(GET, "/"))
             .end
             .await.exception.get.toString mustEqual "cc.spray.can.HttpClientException: " +
             "Could not connect to localhost:16243 due to java.net.ConnectException: Connection refused"
@@ -98,7 +98,7 @@ trait HttpClientSpecs extends Specification {
 
   private def timeoutRequest = {
     newDialog()
-            .send(HttpRequest(uri = "/wait500"))
+            .send(HttpRequest(GET, "/wait500"))
             .end
             .await.exception.get.toString mustEqual "cc.spray.can.HttpClientException: Request timed out"
   }
@@ -106,7 +106,7 @@ trait HttpClientSpecs extends Specification {
   private def timeoutConnection = {
     newDialog()
             .waitIdle(Duration("500 ms"))
-            .send(HttpRequest())
+            .send(HttpRequest(GET, "/"))
             .end
             .await.exception.get.toString mustEqual "cc.spray.can.HttpClientException: " +
             "Cannot send request due to closed connection"

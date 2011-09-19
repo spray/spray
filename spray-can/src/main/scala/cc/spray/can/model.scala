@@ -49,7 +49,7 @@ object HttpProtocols {
 
 sealed trait MessageLine
 case class RequestLine(method: HttpMethod, uri: String, protocol: HttpProtocol) extends MessageLine
-case class StatusLine(protocol: HttpProtocol, status: Int, reason: String) extends MessageLine
+case class StatusLine(request: HttpRequest, protocol: HttpProtocol, status: Int, reason: String) extends MessageLine
 
 case class HttpHeader(name: String, value: String) extends Product2[String, String] {
   def _1 = name
@@ -164,3 +164,13 @@ object HttpResponse {
     case _   => "???"
   }
 }
+
+case class ChunkedResponseStart(
+  status: Int = 200,
+  headers: List[HttpHeader] = Nil,
+  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
+)
+
+case class ChunkedResponseChunk(headers: List[HttpHeader], body: Array[Byte])
+
+case class ChunkedResponseEnd(headers: List[HttpHeader])
