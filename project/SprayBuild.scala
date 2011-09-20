@@ -39,7 +39,7 @@ object BuildSettings {
   // Common settings for all modules
   // -------------------------------------------------------------------------------------------------------------------
   val buildOrganization       = "cc.spray"
-  val buildVersion            = "0.8-AKKA12-SNAPSHOT"
+  val buildVersion            = "0.8-SBT11-SNAPSHOT"
   val buildScalaVersion       = "2.9.1"
   val buildCrossScalaVersions = Seq("2.9.1", "2.9.0-1")
 
