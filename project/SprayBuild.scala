@@ -31,7 +31,8 @@ object BuildSettings {
   val akkaModuleConfig      = ModuleConfiguration("se.scalablesolutions.akka", AkkaRepo)
   val glassfishModuleConfig = ModuleConfiguration("org.glassfish", GlassfishRepo)
   val sprayModuleConfig     = ModuleConfiguration("cc.spray", ScalaToolsSnapshots)
-  val deftModuleConfig      = ModuleConfiguration("org.apache.deft", SprayGithubRepo)
+  val sprayJsonModuleConfig = ModuleConfiguration("cc.spray.json", ScalaToolsSnapshots)
+  val sprayCanModuleConfig  = ModuleConfiguration("cc.spray.can", ScalaToolsSnapshots)
 
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -149,11 +150,12 @@ object Dependencies {
   val sprayJson          = "cc.spray.json" %% "spray-json" % "1.0.0" % "compile"
   val servlet30          = "org.glassfish" % "javax.servlet" % "3.0" % "provided"
   val jettyContinuations = "org.eclipse.jetty" % "jetty-continuation" % "7.2.0.v20101020" % "provided"
-  val tomcat6            = "org.apache.tomcat" % "catalina" % "6.0.32" % "provided"
+  val tomcat6            = "org.atmosphere" % "atmosphere-compat-tomcat" % "0.7.1" % "provided"
   val deft               = "org.apache.deft" % "deft" % "0.4.0-SNAPSHOT" % "provided"
+  val sprayCan           = "cc.spray.can" %% "spray-can" % "0.5.0-SNAPSHOT" % "provided"
 
   // test
-  val specs2 = "org.specs2" %% "specs2" % "1.5" % "test"
+  val specs2 = "org.specs2" %% "specs2" % "1.6.1" % "test"
 
   // only for examples
   val akkaSlf4j   = "se.scalablesolutions.akka" % "akka-slf4j" % AKKA_VERSION
@@ -210,7 +212,8 @@ object SprayBuild extends Build {
         Dependencies.jettyContinuations,
         Dependencies.tomcat6,
         Dependencies.deft,
-        Dependencies.specs2
+        Dependencies.specs2,
+        Dependencies.sprayCan
       )
     )
   ) dependsOn (http)
