@@ -26,7 +26,7 @@ class RequestParserSpec extends Specification {
   "The request parsing logic" should {
     "properly parse a request" in {
       "without headers and body" in {
-        parse {
+        parse() {
           """|GET / HTTP/1.1
              |
              |"""
@@ -34,7 +34,7 @@ class RequestParserSpec extends Specification {
       }
 
       "with one header" in {
-        parse {
+        parse() {
           """|GET / HTTP/1.0
              |Content-Length: 0
              |
@@ -43,7 +43,7 @@ class RequestParserSpec extends Specification {
       }
 
       "with 4 headers and a body" in {
-        parse {
+        parse() {
           """|POST /resource/yes HTTP/1.1
              |User-Agent: curl/7.19.7 xyz
              |Transfer-Encoding:identity
@@ -60,7 +60,7 @@ class RequestParserSpec extends Specification {
       }
 
       "with multi-line headers" in {
-        parse {
+        parse() {
           """|DELETE /abc HTTP/1.1
              |User-Agent: curl/7.19.7
              | abc
@@ -76,9 +76,11 @@ class RequestParserSpec extends Specification {
           HttpHeader("User-Agent", "curl/7.19.7 abc xyz")
         ), None, "")
       }
+    }
 
-      "with a chunked transfer encoding" in {
-        parse {
+    "properly parse a chunked" in {
+      "request start" in {
+        parse() {
           """|PUT /data HTTP/1.1
              |Transfer-Encoding: chunked
              |Connection: lalelu
@@ -91,52 +93,82 @@ class RequestParserSpec extends Specification {
           Some("lalelu")
         )
       }
+      "message chunk" in {
+        def chunkParser = new ChunkParser(MessageParserConfig(), null)
+        parse(chunkParser)("3\nabc") mustEqual (Nil, "abc")
+        parse(chunkParser)("10 ;key= value ; another=one;and =more \n0123456789ABCDEFG") mustEqual(
+          List(
+            ChunkExtension("and", "more"),
+            ChunkExtension("another", "one"),
+            ChunkExtension("key", "value")
+          ),
+          "0123456789ABCDEF"
+        )
+        parse(chunkParser)("15 ;\n") mustEqual
+                ErrorParser("Invalid character '\\r', expected TOKEN CHAR, SPACE, TAB or EQUAL")
+        parse(chunkParser)("bla") mustEqual ErrorParser("Illegal chunk size")
+      }
+      "message end" in {
+        def chunkParser = new ChunkParser(MessageParserConfig(), null)
+        parse(chunkParser)("0\n\n") mustEqual (Nil, Nil)
+        parse(chunkParser) {
+          """|000;nice=true
+             |Foo: pip
+             | apo
+             |Bar: xyz
+             |
+             |"""
+        } mustEqual (
+          List(ChunkExtension("nice", "true")),
+          List(HttpHeader("Bar", "xyz"), HttpHeader("Foo", "pip apo"))
+        )
+      }
     }
 
     "reject a request with" in {
       "an illegal HTTP method" in {
-        parse("get") mustEqual ErrorParser("Unsupported HTTP method", 501)
-        parse("GETX") mustEqual ErrorParser("Unsupported HTTP method", 501)
+        parse()("get") mustEqual ErrorParser("Unsupported HTTP method", 501)
+        parse()("GETX") mustEqual ErrorParser("Unsupported HTTP method", 501)
       }
 
       "an URI longer than 2048 chars" in {
-        parse("GET x" + "xxxx" * 512 + " HTTP/1.1") mustEqual
+        parse()("GET x" + "xxxx" * 512 + " HTTP/1.1") mustEqual
                 ErrorParser("URIs with more than 2048 characters are not supported", 414)
       }
 
       "HTTP version 1.2" in {
-        parse("GET / HTTP/1.2\r\n") mustEqual ErrorParser("HTTP Version not supported", 505)
+        parse()("GET / HTTP/1.2\r\n") mustEqual ErrorParser("HTTP Version not supported", 505)
       }
 
       "with an illegal char in a header name" in {
-        parse {
+        parse() {
           """|GET / HTTP/1.1
              |User@Agent: curl/7.19.7"""
         } mustEqual ErrorParser("Invalid character '@', expected TOKEN CHAR, LWS or COLON")
       }
 
       "with a header name longer than 64 chars" in {
-        parse {
+        parse() {
           """|GET / HTTP/1.1
              |UserxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxAgent: curl/7.19.7"""
         } mustEqual ErrorParser("HTTP headers with names longer than 64 characters are not supported")
       }
 
       "with a header-value longer than 8192 chars" in {
-        parse {
+        parse() {
           """|GET / HTTP/1.1
              |Fancy: 0""" + ("12345678" * 1024) + "\r\n"
         } mustEqual ErrorParser("HTTP header values longer than 8192 characters are not supported (header 'Fancy')", 400)
       }
 
       "with an invalid Content-Length header value" in {
-        parse {
+        parse() {
           """|GET / HTTP/1.1
              |Content-Length: 1.5
              |
              |abc"""
         } mustEqual ErrorParser("Invalid Content-Length header value: For input string: \"1.5\"", 400)
-        parse {
+        parse() {
           """|GET / HTTP/1.1
              |Content-Length: -3
              |
@@ -147,7 +179,9 @@ class RequestParserSpec extends Specification {
     }
   }
 
-  val parse = RequestParserSpec.parse(new EmptyRequestParser(MessageParserConfig()), extractFromCompleteMessage _) _
+  def parse(startParser: IntermediateParser = new EmptyRequestParser(MessageParserConfig())) = {
+    RequestParserSpec.parse(startParser, extractFromCompleteMessage _) _
+  }
 
   def extractFromCompleteMessage(completeMessage: CompleteMessageParser) = {
     val CompleteMessageParser(RequestLine(method, uri, protocol), headers, connectionHeader, body) = completeMessage
@@ -163,8 +197,8 @@ object RequestParserSpec {
     startParser.read(buf) match {
       case x: CompleteMessageParser => extractFromCompleteMessage(x)
       case x: ToCloseBodyParser => extractFromCompleteMessage(x.complete)
-      case ChunkedChunkParser(extensions, body, _) => (extensions, body)
-      case ChunkedEndParser(trailer, _) => trailer
+      case ChunkedChunkParser(extensions, body, _) => (extensions, new String(body, "ISO-8859-1"))
+      case ChunkedEndParser(extensions, trailer, _) => (extensions, trailer)
       case x => x
     }
   }

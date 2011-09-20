@@ -184,6 +184,7 @@ case class ChunkedRequestStart(
 )
 
 case class ChunkedRequestEnd(
+  extensions: List[ChunkExtension],
   trailer: List[HttpHeader],
   responder: RequestResponder
 )

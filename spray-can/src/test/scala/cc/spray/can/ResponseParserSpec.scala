@@ -73,8 +73,10 @@ class ResponseParserSpec extends Specification {
           HttpHeader("User-Agent", "curl/7.19.7 abc xyz")
         ), None, "")
       }
+    }
 
-      "with a chunked transfer encoding" in {
+    "properly parse a chunked" in {
+      "response start" in {
         parse {
           """|HTTP/1.1 200 OK
              |User-Agent: curl/7.19.7

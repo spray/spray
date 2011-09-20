@@ -218,7 +218,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
   protected def handleChunkedEnd(conn: Conn, parser: ChunkedEndParser) {
     import parser.context._
     val responder = new DefaultRequestResponder(conn, requestLine, conn.countDispatch(), connectionHeader)
-    streamActor ! ChunkedRequestEnd(parser.trailer, responder)
+    streamActor ! ChunkedRequestEnd(parser.extensions, parser.trailer, responder)
     conn.messageParser = StartRequestParser // switch back to parsing the next request from the start
   }
 

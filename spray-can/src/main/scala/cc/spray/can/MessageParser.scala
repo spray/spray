@@ -248,7 +248,7 @@ private[can] class HeaderValueParser(config: MessageParserConfig, messageLine: M
 private[can] class ChunkParser(config: MessageParserConfig, context: RequestChunkingContext) extends CharacterParser {
   var chunkSize = -1
   def handle(digit: Int) = {
-    chunkSize = if (chunkSize == -1) digit else chunkSize * 10 + digit
+    chunkSize = if (chunkSize == -1) digit else chunkSize * 16 + digit
     if (chunkSize > config.maxChunkSize) ErrorParser("HTTP message chunk size exceeds configured limit") else this
   }
   def handleChar(cursor: Char) = cursor match {
@@ -290,7 +290,7 @@ private[can] class ChunkExtensionValueParser(config: MessageParserConfig, contex
   var quoted = false
   def next(parser: MessageParser) = if (extCount < config.maxChunkExtCount) parser else
     ErrorParser("Chunks with more than " + config.maxChunkExtCount + " extensions are not supported", 400)
-
+  def newExtensions = ChunkExtension(extName, extValue.toString) :: extensions
   def handleChar(cursor: Char) = {
     if (extValue.length <= config.maxChunkExtValueLength) {
       if (quoted) cursor match {
@@ -301,10 +301,11 @@ private[can] class ChunkExtensionValueParser(config: MessageParserConfig, contex
         case x if isTokenChar(x) => extValue.append(x); this
         case '"' if extValue.length == 0 => quoted = true; this
         case ' ' | '\t' | '\r' => this
-        case ';' => next(new ChunkExtensionNameParser(config, context, chunkSize, extCount + 1,
-          ChunkExtension(extName, extValue.toString) :: extensions))
-        case '\n' => next(new ChunkBodyParser(config, context, chunkSize,
-          ChunkExtension(extName, extValue.toString) :: extensions))
+        case ';' => next(new ChunkExtensionNameParser(config, context, chunkSize, extCount + 1, newExtensions))
+        case '\n' => next {
+          if (chunkSize == 0) new TrailerParser(config, context, newExtensions)
+          else new ChunkBodyParser(config, context, chunkSize, newExtensions)
+        }
         case _ => ErrorParser("Invalid character '" + cursor + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
       }
     } else ErrorParser("Chunk extensions with values longer than " + config.maxChunkExtValueLength +
@@ -313,13 +314,14 @@ private[can] class ChunkExtensionValueParser(config: MessageParserConfig, contex
 }
 
 private[can] class TrailerParser(config: MessageParserConfig, context: RequestChunkingContext,
-                                 headerCount: Int = 0, headers: List[HttpHeader] = Nil)
+                                 extensions: List[ChunkExtension] = Nil, headerCount: Int = 0,
+                                 headers: List[HttpHeader] = Nil)
         extends HeaderNameParser(config, null, headerCount, headers) {
   override def valueParser = new HeaderValueParser(config, null, headerCount, headers, headerName.toString) {
     override def nameParser =
-      new TrailerParser(config, context, headerCount + 1, HttpHeader(headerName, headerValue.toString) :: headers)
+      new TrailerParser(config, context, extensions, headerCount + 1, HttpHeader(headerName, headerValue.toString) :: headers)
   }
-  override def headersComplete = ChunkedEndParser(headers, context)
+  override def headersComplete = ChunkedEndParser(extensions, headers, context)
 }
 
 private[can] class LwsParser(next: CharacterParser) extends CharacterParser {
@@ -420,8 +422,24 @@ private[can] case class ChunkedChunkParser(
 ) extends MessageParser
 
 private[can] case class ChunkedEndParser(
+  extensions: List[ChunkExtension],
   trailer: List[HttpHeader],
   context: RequestChunkingContext
 ) extends MessageParser
 
-private[can] case class ErrorParser(message: String, status: Int = 400) extends MessageParser
+private[can] class ErrorParser(val message: String, val status: Int) extends MessageParser {
+  override def hashCode = message.## * 31 + status
+  override def equals(obj: Any) = obj match {
+    case x: ErrorParser => x.message == message && x.status == status
+    case _ => false
+  }
+  override def toString = "ErrorParser(" + message + ", " + status + ")"
+}
+
+private[can] object ErrorParser {
+  def apply(message: String, status: Int = 400): ErrorParser = new ErrorParser(
+    message.replace("\t", "\\t").replace("\r", "\\r").replace("\n", "\\n"),
+    status
+  )
+}
+
