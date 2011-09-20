@@ -26,7 +26,12 @@ import marshalling.{CantMarshal, MarshalWith}
  * Immutable object encapsulating the context of an [[cc.spray.http.HttpRequest]]
  * as it flows through a ''spray'' Route structure.
  */
-case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit, unmatchedPath: String) {
+case class RequestContext(
+  request: HttpRequest,
+  remoteHost: HttpIp = "127.0.01",
+  responder: RoutingResult => Unit = { _ => },
+  unmatchedPath: String = ""
+) {
 
   /**
    * Returns a copy of this context with the HttpRequest transformed by the given function.
@@ -130,14 +135,13 @@ case class RequestContext(request: HttpRequest, responder: RoutingResult => Unit
    * Completes the request with a redirection response to the given URI.
    */
   def redirect(uri: String, redirectionType: Redirection = Found) {
-    complete(
+    complete {
       HttpResponse(
         status = redirectionType,
         headers = Location(uri) :: Nil,
-        content = Some(HttpContent(`text/html`,
-          "The requested resource temporarily resides under this <a href=\"" + uri + "\">URI</a>."
-        ))
+        content = HttpContent(`text/html`,
+          "The requested resource temporarily resides under this <a href=\"" + uri + "\">URI</a>.")
       )
-    )
+    }
   }
 }

@@ -25,5 +25,5 @@ case class HttpIp(ip: InetAddress) {
 }
 
 object HttpIp {
-  implicit def string2HttpIp(s: String): HttpIp = HttpIp(InetAddress.getByName(s))
+  implicit def fromString(s: String): HttpIp = HttpIp(InetAddress.getByName(s))
 }

@@ -25,6 +25,7 @@ import xml.{XML, NodeSeq}
 import java.nio.ByteBuffer
 import java.net.URLDecoder
 import utils.FormContent
+import java.io.ByteArrayInputStream
 
 trait DefaultUnmarshallers {
   
@@ -57,7 +58,7 @@ trait DefaultUnmarshallers {
       if (content.contentType.charset.isDefined) {
         XML.loadString(StringUnmarshaller.unmarshal(content).right.get)
       } else {
-        XML.load(content.inputStream)
+        XML.load(new ByteArrayInputStream(content.buffer))
       }
     }
   }

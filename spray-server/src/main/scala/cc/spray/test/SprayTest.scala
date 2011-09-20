@@ -19,11 +19,10 @@ package test
 
 import cc.spray.RequestContext
 import http._
-import util.DynamicVariable
-import utils.{NoLog, Logging}
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import akka.util.Duration
 import akka.util.duration._
+import utils.{Logging, NoLog}
 
 /**
  * Mix this trait into the class or trait containing your route and service tests.
@@ -33,13 +32,13 @@ import akka.util.duration._
 trait SprayTest {
 
   def test(request: HttpRequest, timeout: Duration = 1000.millis)(route: Route): RoutingResultWrapper = {
-    var result: Option[RoutingResult] = None;
+    var result: Option[RoutingResult] = None
     val latch = new CountDownLatch(1)
     val responder = { (rr: RoutingResult) =>
       result = Some(rr)
       latch.countDown()
     }
-    route(RequestContext(request, responder, request.path))
+    route(RequestContext(request = request, responder = responder, unmatchedPath = request.path))
     // since the route might detach we block until the route actually completes or times out
     latch.await(timeout.toMillis, TimeUnit.MILLISECONDS)
     new RoutingResultWrapper(result.getOrElse(doFail("No response received")))
@@ -57,15 +56,10 @@ trait SprayTest {
     }
     def rejections: Set[Rejection] = Rejections.applyCancellations(rawRejections)   
   }
-  
+
   trait ServiceTest extends HttpServiceLogic with Logging {
     override lazy val log = NoLog // in the tests we don't log
     val customRejectionHandler = emptyPartialFunc
-    val setDateHeader = false
-    private[SprayTest] val responder = new DynamicVariable[RoutingResult => Unit]( _ =>
-      throw new IllegalStateException("SprayTest.ServiceTest instances can only be used with the SprayTest.testService(...) method")
-    )
-    protected[spray] def responderForRequest(request: HttpRequest) = responder.value
   }
 
   /**
@@ -83,20 +77,21 @@ trait SprayTest {
   }
 
   def testService(request: HttpRequest, timeout: Duration = 1000.millis)(service: ServiceTest): ServiceResultWrapper = {
-    var response: Option[Option[HttpResponse]] = None
+    var result: Option[RoutingResult] = None
     val latch = new CountDownLatch(1)
     val responder = { (rr: RoutingResult) =>
-      response = Some(service.responseFromRoutingResult(rr))
+      result = Some(rr)
       latch.countDown()
     }
-    service.responder.withValue(responder) {
-      service.handle(request)
-    }
+    service.handle(RequestContext(request = request, responder = responder, unmatchedPath = request.path))
     // since the route might detach we block until the route actually completes or times out
     latch.await(timeout.toMillis, TimeUnit.MILLISECONDS)
-    new ServiceResultWrapper(response.getOrElse(doFail("No response received")))
+    result match {
+      case Some(Respond(response)) => new ServiceResultWrapper(Some(response))
+      case Some(_: Reject) => new ServiceResultWrapper(None)
+      case None => doFail("No response received")
+    }
   }
-
 
   class ServiceResultWrapper(responseOption: Option[HttpResponse]) {
     def handled: Boolean = responseOption.isDefined

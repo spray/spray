@@ -19,7 +19,6 @@ package cc.spray
 import http._
 import StatusCodes._
 import HttpHeaders._
-import MediaTypes._
 import utils.{Logging, IllegalResponseException}
 
 /**
@@ -29,8 +28,6 @@ import utils.{Logging, IllegalResponseException}
 trait HttpServiceLogic extends ErrorHandling {
   this: Logging =>
   
-  def setDateHeader: Boolean
-
   /**
    * The route of this HttpService
    */
@@ -42,38 +39,22 @@ trait HttpServiceLogic extends ErrorHandling {
    */
   def customRejectionHandler: PartialFunction[List[Rejection], HttpResponse]
   
-  def handle(request: HttpRequest) {
-    val context = contextForRequest(request)
+  def handle(context: RequestContext) {
     try {
-      route(context)
+      route(context.withRoutingResultTransformed(convertRejections))
     } catch {
-      case e: IllegalResponseException => throw e
-      case e: Exception => context.complete(responseForException(request, e))
+      case e: Exception => context.complete(responseForException(context.request, e))
     }
   }
   
-  protected def contextForRequest(request: HttpRequest): RequestContext = {
-    RequestContext(request, responderForRequest(request), initialUnmatchedPath(request))
-  }
-
-  protected def initialUnmatchedPath(request: HttpRequest) = {
-    SpraySettings.RootPath match {
-      case None => request.path
-      case Some(rootPath) if (request.path.startsWith(rootPath)) => request.path.substring(rootPath.length)
-      case Some(rootPath) => make(request.path) { path =>
-        log.warn("Received request outside of configured root-path, request uri '%s', configured root path '%s'",
-          path, rootPath)
-      }
-    }
-  }
-  
-  protected def responderForRequest(request: HttpRequest): RoutingResult => Unit
-  
-  protected[spray] def responseFromRoutingResult(rr: RoutingResult): Option[HttpResponse] = rr match {
-    case Respond(httpResponse) => Some(finalizeResponse(httpResponse)) 
+  protected[spray] def convertRejections(rr: RoutingResult): RoutingResult = rr match {
+    case x: Respond => withVerifiedResponse(x.response)(_ => x)
     case Reject(rejections) => {
       val activeRejections = Rejections.applyCancellations(rejections)
-      if (activeRejections.isEmpty) None else Some(finalizeResponse(responseForRejections(activeRejections.toList)))
+      if (activeRejections.isEmpty)
+        Reject() // reject to RootService to signal that no response from this service
+      else
+        withVerifiedResponse(responseForRejections(activeRejections.toList))(Respond(_))
     }
   }
   
@@ -111,26 +92,17 @@ trait HttpServiceLogic extends ErrorHandling {
     }
   }
   
-  protected def finalizeResponse(unverifiedResponse: HttpResponse) = {
-    val response = verified(unverifiedResponse)
-    if (setDateHeader) {
-      response.copy(headers = Date(DateTime.now) :: response.headers)
-    } else {
-      response
-    }
-  }
-  
-  protected def verified(response: HttpResponse) = {
-    response.headers.mapFind {
-      case _: `Content-Type` => Some("HttpResponse must not include explicit 'Content-Type' header, " +
+  protected def withVerifiedResponse[A](response: HttpResponse)(f: HttpResponse => A): A = {
+    response.headers.foreach {
+      case _: `Content-Type` =>
+        throw new IllegalResponseException("HttpResponse must not include explicit 'Content-Type' header, " +
               "use the respective HttpContent member!")
-      case _: `Content-Length` => Some("HttpResponse must not include explicit 'Content-Length' header, " +
+      case _: `Content-Length` =>
+        throw new IllegalResponseException("HttpResponse must not include explicit 'Content-Length' header, " +
               "this header will be set implicitly!")
-      case _ => None
-    } match {
-        case Some(errorMsg) => throw new IllegalResponseException(errorMsg)
-        case None => response
-    } 
+      case _ =>
+    }
+    f(response)
   }
   
 }

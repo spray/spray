@@ -124,4 +124,21 @@ object HttpHeaders {
   }
   
   case class `CustomHeader`(override val name: String, value: String) extends HttpHeader
+
+  /////////////////////////////////////////////////////////////////////////////////////////
+
+  def parseFromRaw(rawHeaders: List[Product2[String, String]]) = {
+    import collection.mutable.ListBuffer
+    var contentType: Option[`Content-Type`] = None
+    var contentLength: Option[`Content-Length`] = None
+    val filtered = ListBuffer.empty[HttpHeader]
+    rawHeaders.foreach { raw =>
+      HttpHeader(raw._1, raw._2) match {
+        case x:`Content-Type` => contentType = Some(x)
+        case x:`Content-Length` => contentLength = Some(x)
+        case x => filtered += x
+      }
+    }
+    (contentType, contentLength, filtered.toList)
+  }
 }

@@ -1,5 +1,5 @@
 package cc.spray
-package examples.deft
+package examples.spraycan
 
 import org.specs2.mutable._
 import cc.spray._

@@ -23,9 +23,7 @@ import org.apache.catalina.{CometEvent, CometProcessor}
 /**
  * The spray connector servlet for Tomcat 6.
  */
-class Tomcat6ConnectorServlet extends ConnectorServlet with CometProcessor {
-  
-  def containerName = "Tomcat 6"
+class Tomcat6ConnectorServlet extends ConnectorServlet("Tomcat 6") with CometProcessor {
 
   override def service(req: HttpServletRequest, resp: HttpServletResponse) {
     throw new RuntimeException("The Tomcat6ConnectorServlet does not support the standard blocking Servlet API, " +
@@ -33,33 +31,33 @@ class Tomcat6ConnectorServlet extends ConnectorServlet with CometProcessor {
   }
 
   def event(ev: CometEvent) {
-    val req = rawRequest(ev.getHttpServletRequest)
     ev.getEventType match {
-      case CometEvent.EventType.BEGIN => {
-        rootService ! RawRequestContext(req, completer(ev))
-      }
+      case CometEvent.EventType.BEGIN => requestContext(ev).foreach(rootService ! _)
       case CometEvent.EventType.ERROR => ev.getEventSubType match {
-        case CometEvent.EventSubType.TIMEOUT => timeout(ev, req)
-        case CometEvent.EventSubType.CLIENT_DISCONNECT => log.warn("Client disconnected for %s", req)
-        case err => log.error("Unspecified Error during async processing of %s:\n%s", req, err)
+        case CometEvent.EventSubType.TIMEOUT => requestContext(ev).foreach { ctx =>
+          log.error("Timeout of %s", ctx.request)
+          timeoutActor ! Timeout(ctx)
+        }
+        case CometEvent.EventSubType.CLIENT_DISCONNECT => log.warn("Client disconnected")
+        case err => log.error("Unspecified Error during async processing: %s", err)
       }
       case CometEvent.EventType.READ => {}
       case CometEvent.EventType.END => {}
     }
   }
 
-  def completer(ev: CometEvent): (RawResponse => Unit) => Unit = {
+  def requestContext(ev: CometEvent): Option[RequestContext] = {
+    val req: HttpServletRequest = ev.getHttpServletRequest
+    val resp: HttpServletResponse = ev.getHttpServletResponse
+    requestContext(req, resp, responder(ev))
+  }
+
+  def responder(ev: CometEvent)(context: RequestContext): RoutingResult => Unit = {
     ev.setTimeout(timeout)
-    completer(ev.getHttpServletResponse) {
+    responder { response =>
+      respond(ev.getHttpServletResponse, response)
       ev.close()
     }
   }
-  
-  def timeout(ev: CometEvent, req: RawRequest) {
-    val resp = rawResponse(ev.getHttpServletResponse)
-    log.error("Timeout of %s", req)
-    TimeOutHandler.get.apply(req, resp)
-    ev.close()
-  }
-  
+
 }

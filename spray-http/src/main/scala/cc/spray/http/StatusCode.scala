@@ -20,6 +20,9 @@ package cc.spray.http
 sealed trait StatusCode {
   def value: Int
   def defaultMessage: String
+  def isSuccess: Boolean
+  def isWarning: Boolean
+  def isFailure: Boolean
   
   StatusCodes.register(this, value)
 }
@@ -29,9 +32,21 @@ object StatusCode {
   implicit def int2HttpStatusCode(code: Int): StatusCode = getForKey(code).getOrElse(InternalServerError)
 }
 
-sealed trait HttpSuccess extends StatusCode
-sealed trait HttpFailure extends StatusCode
-sealed trait HttpWarning extends StatusCode
+sealed trait HttpSuccess extends StatusCode {
+  def isSuccess = true
+  def isWarning = false
+  def isFailure = false
+}
+sealed trait HttpWarning extends StatusCode {
+  def isSuccess = false
+  def isWarning = true
+  def isFailure = false
+}
+sealed trait HttpFailure extends StatusCode {
+  def isSuccess = false
+  def isWarning = false
+  def isFailure = true
+}
 
 object StatusCodes extends ObjectRegistry[Int, StatusCode] {
   case class Informational private[StatusCodes] (value: Int, defaultMessage: String) extends HttpSuccess
