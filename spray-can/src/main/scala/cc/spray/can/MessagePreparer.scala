@@ -54,8 +54,8 @@ trait ResponsePreparer extends MessagePreparer {
   private val ServerHeaderPlusDateColonSP =
     if (serverHeader.isEmpty) "Date: " else "Server: " + serverHeader + "\r\nDate: "
 
-  protected def prepareResponse(requestMethod: HttpMethod, response: HttpResponse, reqProtocol: HttpProtocol,
-                        reqConnectionHeader: Option[String]): (List[ByteBuffer], Boolean) = {
+  protected def prepareResponse(requestLine: RequestLine, response: HttpResponse,
+                                reqConnectionHeader: Option[String]): (List[ByteBuffer], Boolean) = {
     import response._
 
     def appendStatusLine(sb: JStringBuilder) {
@@ -66,7 +66,7 @@ trait ResponsePreparer extends MessagePreparer {
     }
 
     def appendConnectionHeader(sb: JStringBuilder)(connectionHeaderValue: Option[String]) = {
-      if (connectionHeaderValue.isEmpty) reqProtocol match {
+      if (connectionHeaderValue.isEmpty) requestLine.protocol match {
         case `HTTP/1.0` =>
           if (reqConnectionHeader.isEmpty || reqConnectionHeader.get != "Keep-Alive") true
           else {
@@ -83,7 +83,7 @@ trait ResponsePreparer extends MessagePreparer {
       }
     }
 
-    def wrapBody = if (body.length == 0 || requestMethod == HttpMethods.HEAD) Nil else ByteBuffer.wrap(body) :: Nil
+    def wrapBody = if (body.length == 0 || requestLine.method == HttpMethods.HEAD) Nil else ByteBuffer.wrap(body) :: Nil
 
     val sb = new java.lang.StringBuilder(256)
     appendStatusLine(sb)

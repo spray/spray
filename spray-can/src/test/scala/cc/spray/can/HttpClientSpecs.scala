@@ -28,10 +28,10 @@ trait HttpClientSpecs extends Specification {
   class TestService extends Actor {
     self.id = "client-test-server"
     protected def receive = {
-      case RequestContext(HttpRequest(_, "/wait500", _, _, _), _, complete) => {
-        Scheduler.scheduleOnce(() => complete(HttpResponse()), 500, TimeUnit.MILLISECONDS)
+      case RequestContext(HttpRequest(_, "/wait500", _, _, _), _, responder) => {
+        Scheduler.scheduleOnce(() => responder.send(HttpResponse()), 500, TimeUnit.MILLISECONDS)
       }
-      case RequestContext(HttpRequest(method, uri, _, _, _), _, complete) => complete {
+      case RequestContext(HttpRequest(method, uri, _, _, _), _, responder) => responder.send {
         HttpResponse().withBody(method + "|" + uri)
       }
     }

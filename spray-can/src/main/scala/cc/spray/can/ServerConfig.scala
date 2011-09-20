@@ -18,6 +18,7 @@ package cc.spray.can
 
 import akka.config.Config._
 import java.net.InetSocketAddress
+import akka.actor.Actor
 
 trait PeerConfig {
   def readBufferSize: Int
@@ -44,6 +45,9 @@ case class ServerConfig(
   timeoutActorId: String = "spray-root-service",
   timeoutTimeout: Long = 500,
   serverHeader: String = "spray-can/" + SprayCanVersion,
+
+  // must be fast and non-blocking
+  streamHandlerCreator: Option[ChunkedRequestContext => Actor] = None,
 
   // PeerConfig
   readBufferSize: Int = 8192,
@@ -103,6 +107,9 @@ case class ClientConfig(
   clientActorId: String = "spray-can-client",
   userAgentHeader: String = "spray-can/" + SprayCanVersion,
 
+  // must be fast and non-blocking
+  streamHandlerCreator: Option[ChunkedResponseStart => Actor] = None,
+
   // PeerConfig
   readBufferSize: Int = 8192,
   idleTimeout: Long = 10000,
@@ -148,7 +155,11 @@ case class MessageParserConfig(
   maxHeaderNameLength: Int = 64,
   maxHeaderValueLength: Int = 8192,
   maxHeaderCount: Int = 64,
-  maxBodyLength: Int = 8192 * 1024 // default entity size limit = 8 MB
+  maxBodyLength: Int = 8192 * 1024, // default entity size limit = 8 MB
+  maxChunkExtNameLength: Int = 64,
+  maxChunkExtValueLength: Int = 256,
+  maxChunkExtCount: Int = 16,
+  maxChunkSize: Int = 1024 * 1024   // default chunk size limit = 1 MB
 )
 
 object MessageParserConfig {
@@ -158,6 +169,10 @@ object MessageParserConfig {
     maxHeaderNameLength     = config.getInt("spray-can.parser.max-header-name-length", 64),
     maxHeaderValueLength    = config.getInt("spray-can.parser.max-header-value-length", 8192),
     maxHeaderCount          = config.getInt("spray-can.parser.max-header-count-length", 64),
-    maxBodyLength           = config.getInt("spray-can.parser.max-body-length", 8192 * 1024)
+    maxBodyLength           = config.getInt("spray-can.parser.max-body-length", 8192 * 1024),
+    maxChunkExtNameLength   = config.getInt("spray-can.parser.max-chunk-ext-name-length", 64),
+    maxChunkExtValueLength  = config.getInt("spray-can.parser.max-chunk-ext-value-length", 256),
+    maxChunkExtCount        = config.getInt("spray-can.parser.max-chunk-ext-count", 16),
+    maxChunkSize            = config.getInt("spray-can.parser.max-chunk-size", 1024 * 1024)
   )
 }

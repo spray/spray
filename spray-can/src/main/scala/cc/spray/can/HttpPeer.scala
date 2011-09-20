@@ -128,14 +128,15 @@ private[can] abstract class HttpPeer extends Actor {
     val conn = key.attachment.asInstanceOf[Conn]
 
     @tailrec def parseReadBuffer() {
-      conn.messageParser.asInstanceOf[IntermediateParser].read(readBuffer) match {
-        case x: CompleteMessage => {
-          handleMessageParsingComplete(conn, x)
-          if (readBuffer.remaining > 0) parseReadBuffer() // if we had more than one request in the buffer, go on
-        }
-        case x: MessageError => handleMessageParsingError(conn, x)
-        case x: IntermediateParser => conn.messageParser = x
+      val recurse = conn.messageParser.asInstanceOf[IntermediateParser].read(readBuffer) match {
+        case x: IntermediateParser => conn.messageParser = x; false
+        case x: CompleteMessageParser => handleCompleteMessage(conn, x); true
+        case x: ChunkedStartParser => handleChunkedStart(conn, x); true
+        case x: ChunkedChunkParser => handleChunkedChunk(conn, x); true
+        case x: ChunkedEndParser => handleChunkedEnd(conn, x); true
+        case x: ErrorParser => handleParseError(conn, x); false
       }
+      if (recurse && readBuffer.remaining > 0) parseReadBuffer()
     }
 
     protectIO("Read", conn) {
@@ -222,9 +223,15 @@ private[can] abstract class HttpPeer extends Actor {
 
   protected def handleConnectionEvent(key: SelectionKey)
 
-  protected def handleMessageParsingComplete(conn: Conn, parser: CompleteMessage)
+  protected def handleCompleteMessage(conn: Conn, parser: CompleteMessageParser)
 
-  protected def handleMessageParsingError(conn: Conn, parser: MessageError)
+  protected def handleChunkedStart(conn: Conn, parser: ChunkedStartParser)
+
+  protected def handleChunkedChunk(conn: Conn, parser: ChunkedChunkParser)
+
+  protected def handleChunkedEnd(conn: Conn, parser: ChunkedEndParser)
+
+  protected def handleParseError(conn: Conn, parser: ErrorParser)
 
   protected def finishWrite(conn: Conn)
 

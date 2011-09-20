@@ -28,6 +28,7 @@ import java.lang.IllegalStateException
 
 sealed trait HttpConnection {
   def send(request: HttpRequest): Future[HttpResponse]
+  def startStreaming(requestStart: ChunkedRequestStart): StreamHandler
   def close()
 }
 
@@ -51,7 +52,7 @@ object HttpClient extends HighLevelHttpClient {
     messageParser = UnexpectedResponseErrorParser
     def closeAllPendingWithError(error: String) { pendingResponses.foreach(_.deliver(Left(error))) }
   }
-  private val UnexpectedResponseErrorParser = MessageError("Received unexpected HttpResponse")
+  private val UnexpectedResponseErrorParser = ErrorParser("Received unexpected HttpResponse")
 }
 
 class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends HttpPeer {
@@ -61,6 +62,8 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
   private val openRequests = new LinkedList[RequestRecord]
 
   private[can] type Conn = ClientConnection
+
+  private lazy val streamHandlerCreator = config.streamHandlerCreator.getOrElse(throw new RuntimeException("Not yet implemented"))
 
   self.id = config.clientActorId
 
@@ -163,7 +166,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
     import conn._
     if (writeBuffers.isEmpty) {
       if (messageParser == UnexpectedResponseErrorParser)
-        messageParser = new EmptyResponseParser(config.parserConfig, pendingResponses.head.request)
+        messageParser = new EmptyResponseParser(config.parserConfig, pendingResponses.head.request.method)
       if (requestQueue.isEmpty) {
         disableWriting()
       } else {
@@ -173,7 +176,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
     }
   }
 
-  protected def handleMessageParsingComplete(conn: Conn, parser: CompleteMessage) {
+  protected def handleCompleteMessage(conn: Conn, parser: CompleteMessageParser) {
     import parser._
     val statusLine = messageLine.asInstanceOf[StatusLine]
     import statusLine._
@@ -181,10 +184,19 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
     assert(!conn.pendingResponses.isEmpty)
     conn.pendingResponses.dequeue().deliver(Right(response))
     conn.messageParser = if (conn.pendingResponses.isEmpty) UnexpectedResponseErrorParser
-                         else new EmptyResponseParser(config.parserConfig, conn.pendingResponses.head.request)
+                         else new EmptyResponseParser(config.parserConfig, conn.pendingResponses.head.request.method)
   }
 
-  protected def handleMessageParsingError(conn: Conn, parser: MessageError) {
+  protected def handleChunkedStart(conn: Conn, parser: ChunkedStartParser) {
+  }
+
+  protected def handleChunkedChunk(conn: Conn, parser: ChunkedChunkParser) {
+  }
+
+  protected def handleChunkedEnd(conn: Conn, parser: ChunkedEndParser) {
+  }
+
+  protected def handleParseError(conn: Conn, parser: ErrorParser) {
     log.warn("Received illegal response: {}", parser.message)
     // In case of a response parsing error we probably stopped reading the response somewhere in between, where we
     // cannot simply resume. Resetting to a known state is not easy either, so we need to close the connection to do so.
@@ -220,6 +232,10 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
       log.debug("Enqueueing valid HttpRequest as raw request")
       implicit val timeout = Actor.Timeout(Long.MaxValue) // "disable" the akka future, since we rely on our own
       (self ? Send(conn, request, prepareRequest(request, conn.host, conn.port))).mapTo[HttpResponse]
+    }
+
+    def startStreaming(requestStart: ChunkedRequestStart) = {
+      throw new RuntimeException("Not yet")
     }
 
     def close() {

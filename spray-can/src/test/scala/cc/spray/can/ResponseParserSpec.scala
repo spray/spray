@@ -17,9 +17,8 @@
 package cc.spray.can
 
 import org.specs2.mutable.Specification
-import HttpMethods._
 import HttpProtocols._
-import java.nio.ByteBuffer
+import HttpMethods._
 
 class ResponseParserSpec extends Specification {
 
@@ -74,51 +73,57 @@ class ResponseParserSpec extends Specification {
           HttpHeader("User-Agent", "curl/7.19.7 abc xyz")
         ), None, "")
       }
+
+      "with a chunked transfer encoding" in {
+        parse {
+          """|HTTP/1.1 200 OK
+             |User-Agent: curl/7.19.7
+             |Transfer-Encoding: chunked
+             |
+             |3
+             |abc"""
+        } mustEqual ChunkedStartParser(
+          StatusLine(GET, `HTTP/1.1`, 200, "OK"),
+          List(HttpHeader("Transfer-Encoding", "chunked"), HttpHeader("User-Agent", "curl/7.19.7")),
+          None
+        )
+      }
     }
 
     "reject a response with" in {
       "HTTP version 1.2" in {
-        parse("HTTP/1.2 200 OK\r\n") mustEqual MessageError("HTTP Version not supported", 505)
+        parse("HTTP/1.2 200 OK\r\n") mustEqual ErrorParser("HTTP Version not supported", 505)
       }
 
       "an illegal status code" in {
-        parse("HTTP/1.1 700 Something") mustEqual MessageError("Illegal response status code")
-        parse("HTTP/1.1 2000 Something") mustEqual MessageError("Illegal response status code")
+        parse("HTTP/1.1 700 Something") mustEqual ErrorParser("Illegal response status code")
+        parse("HTTP/1.1 2000 Something") mustEqual ErrorParser("Illegal response status code")
       }
 
       "a response status reason longer than 64 chars" in {
         parse("HTTP/1.1 250 x" + "xxxx" * 16 + "\r\n") mustEqual
-                MessageError("Reason phrases with more than 64 characters are not supported")
+                ErrorParser("Reason phrases with more than 64 characters are not supported")
       }
 
       "with an illegal char in a header name" in {
         parse {
           """|HTTP/1.1 200 OK
              |User@Agent: curl/7.19.7"""
-        } mustEqual MessageError("Invalid character '@', expected TOKEN CHAR, LWS or COLON")
+        } mustEqual ErrorParser("Invalid character '@', expected TOKEN CHAR, LWS or COLON")
       }
 
       "with a header name longer than 64 chars" in {
         parse {
           """|HTTP/1.1 200 OK
              |UserxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxAgent: curl/7.19.7"""
-        } mustEqual MessageError("HTTP headers with names longer than 64 characters are not supported")
-      }
-
-      "with a non-identity transfer encoding" in {
-        parse {
-          """|HTTP/1.1 200 OK
-             |Transfer-Encoding: chunked
-             |
-             |abc"""
-        } mustEqual MessageError("Non-identity transfer encodings are not currently supported", 501)
+        } mustEqual ErrorParser("HTTP headers with names longer than 64 characters are not supported")
       }
 
       "with a header-value longer than 8192 chars" in {
         parse {
           """|HTTP/1.1 200 OK
              |Fancy: 0""" + ("12345678" * 1024) + "\r\n"
-        } mustEqual MessageError("HTTP header values longer than 8192 characters are not supported (header 'Fancy')", 400)
+        } mustEqual ErrorParser("HTTP header values longer than 8192 characters are not supported (header 'Fancy')", 400)
       }
 
       "with an invalid Content-Length header value" in {
@@ -127,22 +132,22 @@ class ResponseParserSpec extends Specification {
              |Content-Length: 1.5
              |
              |abc"""
-        } mustEqual MessageError("Invalid Content-Length header value: For input string: \"1.5\"", 400)
+        } mustEqual ErrorParser("Invalid Content-Length header value: For input string: \"1.5\"", 400)
         parse {
           """|HTTP/1.1 200 OK
              |Content-Length: -3
              |
              |abc"""
-        } mustEqual MessageError("Invalid Content-Length header value: " +
+        } mustEqual ErrorParser("Invalid Content-Length header value: " +
                 "requirement failed: Content-Length must not be negative", 400)
       }
     }
   }
 
-  def parse = RequestParserSpec.parse(new EmptyResponseParser(MessageParserConfig(), HttpRequest()), extractFromCompleteMessage _) _
+  def parse = RequestParserSpec.parse(new EmptyResponseParser(MessageParserConfig(), HttpMethods.GET), extractFromCompleteMessage _) _
 
-  def extractFromCompleteMessage(completeMessage: CompleteMessage) = {
-    val CompleteMessage(StatusLine(_, protocol, status, reason), headers, connectionHeader, body) = completeMessage
+  def extractFromCompleteMessage(completeMessage: CompleteMessageParser) = {
+    val CompleteMessageParser(StatusLine(_, protocol, status, reason), headers, connectionHeader, body) = completeMessage
     (protocol, status, reason, headers, connectionHeader, new String(body, "ISO-8859-1"))
   }
 

@@ -30,7 +30,7 @@ class RequestParserSpec extends Specification {
           """|GET / HTTP/1.1
              |
              |"""
-        } mustEqual MessageError("Content-Length header or chunked transfer encoding required", 411)
+        } mustEqual ErrorParser("Content-Length header or chunked transfer encoding required", 411)
       }
 
       "with one header" in {
@@ -76,51 +76,57 @@ class RequestParserSpec extends Specification {
           HttpHeader("User-Agent", "curl/7.19.7 abc xyz")
         ), None, "")
       }
+
+      "with a chunked transfer encoding" in {
+        parse {
+          """|PUT /data HTTP/1.1
+             |Transfer-Encoding: chunked
+             |Connection: lalelu
+             |
+             |3
+             |abc"""
+        } mustEqual ChunkedStartParser(
+          RequestLine(PUT, "/data", `HTTP/1.1`),
+          List(HttpHeader("Connection", "lalelu"), HttpHeader("Transfer-Encoding", "chunked")),
+          Some("lalelu")
+        )
+      }
     }
 
     "reject a request with" in {
       "an illegal HTTP method" in {
-        parse("get") mustEqual MessageError("Unsupported HTTP method", 501)
-        parse("GETX") mustEqual MessageError("Unsupported HTTP method", 501)
+        parse("get") mustEqual ErrorParser("Unsupported HTTP method", 501)
+        parse("GETX") mustEqual ErrorParser("Unsupported HTTP method", 501)
       }
 
       "an URI longer than 2048 chars" in {
         parse("GET x" + "xxxx" * 512 + " HTTP/1.1") mustEqual
-                MessageError("URIs with more than 2048 characters are not supported", 414)
+                ErrorParser("URIs with more than 2048 characters are not supported", 414)
       }
 
       "HTTP version 1.2" in {
-        parse("GET / HTTP/1.2\r\n") mustEqual MessageError("HTTP Version not supported", 505)
+        parse("GET / HTTP/1.2\r\n") mustEqual ErrorParser("HTTP Version not supported", 505)
       }
 
       "with an illegal char in a header name" in {
         parse {
           """|GET / HTTP/1.1
              |User@Agent: curl/7.19.7"""
-        } mustEqual MessageError("Invalid character '@', expected TOKEN CHAR, LWS or COLON")
+        } mustEqual ErrorParser("Invalid character '@', expected TOKEN CHAR, LWS or COLON")
       }
 
       "with a header name longer than 64 chars" in {
         parse {
           """|GET / HTTP/1.1
              |UserxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxAgent: curl/7.19.7"""
-        } mustEqual MessageError("HTTP headers with names longer than 64 characters are not supported")
-      }
-
-      "with a non-identity transfer encoding" in {
-        parse {
-          """|GET / HTTP/1.1
-             |Transfer-Encoding: chunked
-             |
-             |abc"""
-        } mustEqual MessageError("Non-identity transfer encodings are not currently supported", 501)
+        } mustEqual ErrorParser("HTTP headers with names longer than 64 characters are not supported")
       }
 
       "with a header-value longer than 8192 chars" in {
         parse {
           """|GET / HTTP/1.1
              |Fancy: 0""" + ("12345678" * 1024) + "\r\n"
-        } mustEqual MessageError("HTTP header values longer than 8192 characters are not supported (header 'Fancy')", 400)
+        } mustEqual ErrorParser("HTTP header values longer than 8192 characters are not supported (header 'Fancy')", 400)
       }
 
       "with an invalid Content-Length header value" in {
@@ -129,13 +135,13 @@ class RequestParserSpec extends Specification {
              |Content-Length: 1.5
              |
              |abc"""
-        } mustEqual MessageError("Invalid Content-Length header value: For input string: \"1.5\"", 400)
+        } mustEqual ErrorParser("Invalid Content-Length header value: For input string: \"1.5\"", 400)
         parse {
           """|GET / HTTP/1.1
              |Content-Length: -3
              |
              |abc"""
-        } mustEqual MessageError("Invalid Content-Length header value: " +
+        } mustEqual ErrorParser("Invalid Content-Length header value: " +
                 "requirement failed: Content-Length must not be negative", 400)
       }
     }
@@ -143,20 +149,22 @@ class RequestParserSpec extends Specification {
 
   val parse = RequestParserSpec.parse(new EmptyRequestParser(MessageParserConfig()), extractFromCompleteMessage _) _
 
-  def extractFromCompleteMessage(completeMessage: CompleteMessage) = {
-    val CompleteMessage(RequestLine(method, uri, protocol), headers, connectionHeader, body) = completeMessage
+  def extractFromCompleteMessage(completeMessage: CompleteMessageParser) = {
+    val CompleteMessageParser(RequestLine(method, uri, protocol), headers, connectionHeader, body) = completeMessage
     (method, uri, protocol, headers, connectionHeader, new String(body, "ISO-8859-1"))
   }
 }
 
 object RequestParserSpec {
   def parse(startParser: => IntermediateParser,
-            extractFromCompleteMessage: CompleteMessage => AnyRef)(response: String): AnyRef = {
+            extractFromCompleteMessage: CompleteMessageParser => AnyRef)(response: String): AnyRef = {
     val req = response.stripMargin.replace("\n", "\r\n")
     val buf = ByteBuffer.wrap(req.getBytes("US-ASCII"))
     startParser.read(buf) match {
-      case x: CompleteMessage => extractFromCompleteMessage(x)
+      case x: CompleteMessageParser => extractFromCompleteMessage(x)
       case x: ToCloseBodyParser => extractFromCompleteMessage(x.complete)
+      case ChunkedChunkParser(extensions, body, _) => (extensions, body)
+      case ChunkedEndParser(trailer, _) => trailer
       case x => x
     }
   }

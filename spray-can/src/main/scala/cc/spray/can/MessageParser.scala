@@ -20,6 +20,7 @@ package can
 import java.nio.ByteBuffer
 import java.lang.{StringBuilder => JStringBuilder}
 import annotation.tailrec
+import akka.actor.ActorRef
 
 // a MessageParser instance holds the complete parsing state at any particular point in the request parsing process
 private[can] trait MessageParser
@@ -54,7 +55,7 @@ private[can] sealed abstract class CharacterParser extends IntermediateParser {
     case x => 32 < x && x < 127
   }
 
-  def badMethod = MessageError("Unsupported HTTP method", 501)
+  def badMethod = ErrorParser("Unsupported HTTP method", 501)
 }
 
 private[can] class EmptyRequestParser(config: MessageParserConfig) extends CharacterParser {
@@ -100,7 +101,7 @@ private[can] class UriParser(config: MessageParserConfig, method: HttpMethod) ex
         case ' ' => new RequestVersionParser(config, method, uri.toString)
         case _ => uri.append(cursor); this
       }
-    } else MessageError("URIs with more than " + config.maxUriLength + " characters are not supported", 414)
+    } else ErrorParser("URIs with more than " + config.maxUriLength + " characters are not supported", 414)
   }
 }
 
@@ -124,7 +125,7 @@ private[can] abstract class VersionParser extends CharacterParser {
     case _ => handleSuffix(cursor)
   }
   def handleSuffix(cursor: Char): MessageParser
-  def badVersion = MessageError("HTTP Version not supported", 505)
+  def badVersion = ErrorParser("HTTP Version not supported", 505)
 }
 
 private[can] class RequestVersionParser(config: MessageParserConfig, method: HttpMethod, uri: String)
@@ -135,13 +136,13 @@ private[can] class RequestVersionParser(config: MessageParserConfig, method: Htt
   }
 }
 
-private[can] class EmptyResponseParser(config: MessageParserConfig, request: HttpRequest) extends VersionParser {
+private[can] class EmptyResponseParser(config: MessageParserConfig, requestMethod: HttpMethod) extends VersionParser {
   def handleSuffix(cursor: Char) = pos match {
-    case 8 => if (cursor == ' ') new StatusCodeParser(config, request, protocol) else badVersion
+    case 8 => if (cursor == ' ') new StatusCodeParser(config, requestMethod, protocol) else badVersion
   }
 }
 
-private[can] class StatusCodeParser(config: MessageParserConfig, request: HttpRequest, protocol: HttpProtocol)
+private[can] class StatusCodeParser(config: MessageParserConfig, requestMethod: HttpMethod, protocol: HttpProtocol)
         extends CharacterParser {
   var pos = 0
   var status = 0
@@ -149,97 +150,176 @@ private[can] class StatusCodeParser(config: MessageParserConfig, request: HttpRe
     case 0 => if ('1' <= cursor && cursor <= '5') { pos = 1; status = (cursor - '0') * 100; this } else badStatus
     case 1 => if ('0' <= cursor && cursor <= '9') { pos = 2; status += (cursor - '0') * 10; this } else badStatus
     case 2 => if ('0' <= cursor && cursor <= '9') { pos = 3; status += cursor - '0'; this } else badStatus
-    case 3 => if (cursor == ' ') new ReasonParser(config, request, protocol, status) else badStatus
+    case 3 => if (cursor == ' ') new ReasonParser(config, requestMethod, protocol, status) else badStatus
   }
-  def badStatus = MessageError("Illegal response status code")
+  def badStatus = ErrorParser("Illegal response status code")
 }
 
-private[can] class ReasonParser(config: MessageParserConfig, request: HttpRequest, protocol: HttpProtocol, status: Int)
+private[can] class ReasonParser(config: MessageParserConfig, requestMethod: HttpMethod, protocol: HttpProtocol, status: Int)
         extends CharacterParser {
   val reason = new JStringBuilder
   def handleChar(cursor: Char) = {
     if (reason.length <= config.maxResponseReasonLength) {
       cursor match {
         case '\r' => this
-        case '\n' => new HeaderNameParser(config, StatusLine(request, protocol, status, reason.toString))
+        case '\n' => new HeaderNameParser(config, StatusLine(requestMethod, protocol, status, reason.toString))
         case _ => reason.append(cursor); this
       }
-    } else MessageError("Reason phrases with more than " + config.maxResponseReasonLength + " characters are not supported")
+    } else ErrorParser("Reason phrases with more than " + config.maxResponseReasonLength + " characters are not supported")
   }
 }
 
-private[can] class HeaderNameParser(config: MessageParserConfig, messageLine: MessageLine,
-                                    headerCount: Int = 0, headers: List[HttpHeader] = Nil)
+private[can] class HeaderNameParser(config: MessageParserConfig, messageLine: MessageLine, headerCount: Int = 0,
+                                    headers: List[HttpHeader] = Nil)
         extends CharacterParser {
   val headerName = new JStringBuilder
+  def valueParser = new HeaderValueParser(config, messageLine, headerCount, headers, headerName.toString)
   def handleChar(cursor: Char) = {
     if (headerName.length <= config.maxHeaderNameLength) {
       cursor match {
         case x if isTokenChar(x) => headerName.append(x); this
-        case ':' => new LwsParser(new HeaderValueParser(config, messageLine, headerCount, headers, headerName.toString))
+        case ':' => new LwsParser(valueParser)
         case '\r' if headerName.length == 0 => this
-        case '\n' if headerName.length == 0 => headersComplete(headers, headers, None, None, None)
+        case '\n' if headerName.length == 0 => headersComplete
         case ' ' | '\t' | '\r' => new LwsParser(this).handleChar(cursor)
-        case _ => MessageError("Invalid character '" + cursor + "', expected TOKEN CHAR, LWS or COLON")
+        case _ => ErrorParser("Invalid character '" + cursor + "', expected TOKEN CHAR, LWS or COLON")
       }
-    } else MessageError("HTTP headers with names longer than " + config.maxHeaderNameLength + " characters are not supported")
+    } else ErrorParser("HTTP headers with names longer than " + config.maxHeaderNameLength + " characters are not supported")
   }
-  @tailrec
-  private def headersComplete(remaining: List[HttpHeader], headers: List[HttpHeader], cHeader: Option[String],
-                              clHeader: Option[String], teHeader: Option[String]): MessageParser = {
-    def messageBodyDisallowed = messageLine match {
-      case _: RequestLine => false // there can always be a body in a request
-      case StatusLine(request, _, status, _) => // certain responses never have a body
-        (status / 100 == 1) || status == 204 || status == 304 || request.method == HttpMethods.HEAD
-    }
-    if (!remaining.isEmpty) remaining.head.name match {
-      case "Content-Length" =>
-        if (clHeader.isEmpty) headersComplete(remaining.tail, headers, cHeader, Some(remaining.head.value), teHeader)
-        else MessageError("HTTP message must not contain more than one Content-Length header", 400)
-      case "Transfer-Encoding" => headersComplete(remaining.tail, headers, cHeader, clHeader, Some(remaining.head.value))
-      case "Connection" => headersComplete(remaining.tail, headers, Some(remaining.head.value), clHeader, teHeader)
-      case _ => headersComplete(remaining.tail, headers, cHeader, clHeader, teHeader)
-    } else {
-      // rfc2616 sec. 4.4
-      if (messageBodyDisallowed)
-        CompleteMessage(messageLine, headers, cHeader)
-      else if (teHeader.isDefined && teHeader.get != "identity")
-        MessageError("Non-identity transfer encodings are not currently supported", 501)
-      else if (clHeader.isDefined) clHeader.get match {
-        case "0" => CompleteMessage(messageLine, headers, cHeader)
-        case value => try { new FixedLengthBodyParser(config, messageLine, headers, cHeader, value.toInt) }
-                      catch { case e: Exception => MessageError("Invalid Content-Length header value: " + e.getMessage) }
-      } else messageLine match {
-        case RequestLine(_, _, HttpProtocols.`HTTP/1.0`) => CompleteMessage(messageLine, headers, cHeader)
-        case _: StatusLine => new ToCloseBodyParser(config, messageLine, headers, cHeader)
-        case _ => MessageError("Content-Length header or chunked transfer encoding required", 411)
+  def headersComplete = {
+    @tailrec def traverse(remaining: List[HttpHeader], connection: Option[String], contentLength: Option[String],
+                          transferEncoding: Option[String]): MessageParser = {
+      if (!remaining.isEmpty) remaining.head.name match {
+        case "Content-Length" =>
+          if (contentLength.isEmpty) traverse(remaining.tail, connection, Some(remaining.head.value), transferEncoding)
+          else ErrorParser("HTTP message must not contain more than one Content-Length header", 400)
+        case "Transfer-Encoding" => traverse(remaining.tail, connection, contentLength, Some(remaining.head.value))
+        case "Connection" => traverse(remaining.tail, Some(remaining.head.value), contentLength, transferEncoding)
+        case _ => traverse(remaining.tail, connection, contentLength, transferEncoding)
+      } else {
+        // rfc2616 sec. 4.4
+        if (messageBodyDisallowed)
+          CompleteMessageParser(messageLine, headers, connection)
+        else if (transferEncoding.isDefined && transferEncoding.get != "identity")
+          ChunkedStartParser(messageLine, headers, connection)
+        else if (contentLength.isDefined) contentLength.get match {
+          case "0" => CompleteMessageParser(messageLine, headers, connection)
+          case value => try { new FixedLengthBodyParser(config, messageLine, headers, connection, value.toInt) }
+          catch { case e: Exception => ErrorParser("Invalid Content-Length header value: " + e.getMessage) }
+        } else messageLine match {
+          case RequestLine(_, _, HttpProtocols.`HTTP/1.0`) => CompleteMessageParser(messageLine, headers, connection)
+          case _: StatusLine => new ToCloseBodyParser(config, messageLine, headers, connection)
+          case _ => ErrorParser("Content-Length header or chunked transfer encoding required", 411)
+        }
       }
     }
+    traverse(headers, None, None, None)
+  }
+  def messageBodyDisallowed = messageLine match {
+    case _: RequestLine => false // there can always be a body in a request
+    case StatusLine(requestMethod, _, status, _) => // certain responses never have a body
+      (status / 100 == 1) || status == 204 || status == 304 || requestMethod == HttpMethods.HEAD
   }
 }
 
 private[can] class HeaderValueParser(config: MessageParserConfig, messageLine: MessageLine, headerCount: Int,
-                                     headers: List[HttpHeader], headerName: String)
+                                     headers: List[HttpHeader], val headerName: String)
         extends CharacterParser {
   val headerValue = new JStringBuilder
   var space = false
+  def nameParser =
+    new HeaderNameParser(config, messageLine, headerCount + 1, HttpHeader(headerName, headerValue.toString) :: headers)
   def handleChar(cursor: Char) = {
     if (headerValue.length <= config.maxHeaderValueLength) {
       cursor match {
         case ' ' | '\t' | '\r' => space = true; new LwsParser(this).handleChar(cursor)
-        case '\n' =>
-          if (headerCount < config.maxHeaderCount)
-            new HeaderNameParser(config, messageLine, headerCount + 1, HttpHeader(headerName, headerValue.toString) :: headers)
-          else
-            MessageError("HTTP message with more than " + config.maxHeaderCount + " headers are not supported", 400)
+        case '\n' => if (headerCount < config.maxHeaderCount) nameParser else
+          ErrorParser("HTTP message with more than " + config.maxHeaderCount + " headers are not supported", 400)
         case _ =>
           if (space) { headerValue.append(' '); space = false }
           headerValue.append(cursor)
           this
       }
-    } else MessageError("HTTP header values longer than " + config.maxHeaderValueLength +
+    } else ErrorParser("HTTP header values longer than " + config.maxHeaderValueLength +
             " characters are not supported (header '" + headerName + "')")
   }
+}
+
+private[can] class ChunkParser(config: MessageParserConfig, context: RequestChunkingContext) extends CharacterParser {
+  var chunkSize = -1
+  def handle(digit: Int) = {
+    chunkSize = if (chunkSize == -1) digit else chunkSize * 10 + digit
+    if (chunkSize > config.maxChunkSize) ErrorParser("HTTP message chunk size exceeds configured limit") else this
+  }
+  def handleChar(cursor: Char) = cursor match {
+    case x if '0' <= cursor && cursor <= '9' => handle(x - '0')
+    case x if 'A' <= cursor && cursor <= 'F' => handle(x - 'A' + 10)
+    case x if 'a' <= cursor && cursor <= 'f' => handle(x - 'a' + 10)
+    case ' ' | '\t' | '\r' => this
+    case '\n' => chunkSize match {
+      case -1 => ErrorParser("Chunk size expected")
+      case 0 => new TrailerParser(config, context)
+      case _ => new ChunkBodyParser(config, context, chunkSize)
+    }
+    case ';'  => new ChunkExtensionNameParser(config, context, chunkSize)
+    case _ => ErrorParser("Illegal chunk size")
+  }
+}
+
+private[can] class ChunkExtensionNameParser(config: MessageParserConfig, context: RequestChunkingContext,
+                                            chunkSize: Int, extCount: Int = 0, extensions: List[ChunkExtension] = Nil)
+        extends CharacterParser {
+  val extName = new JStringBuilder
+  def handleChar(cursor: Char) = {
+    if (extName.length <= config.maxChunkExtNameLength) {
+      cursor match {
+        case x if isTokenChar(x) => extName.append(x); this
+        case '=' => new ChunkExtensionValueParser(config, context, chunkSize, extCount, extensions, extName.toString)
+        case ' ' | '\t' => this
+        case _ => ErrorParser("Invalid character '" + cursor + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
+      }
+    } else ErrorParser("Chunk extensions with names longer than " + config.maxChunkExtNameLength +
+            " characters are not supported")
+  }
+}
+
+private[can] class ChunkExtensionValueParser(config: MessageParserConfig, context: RequestChunkingContext, chunkSize: Int,
+                                             extCount: Int, extensions: List[ChunkExtension], extName: String)
+        extends CharacterParser {
+  val extValue = new JStringBuilder
+  var quoted = false
+  def next(parser: MessageParser) = if (extCount < config.maxChunkExtCount) parser else
+    ErrorParser("Chunks with more than " + config.maxChunkExtCount + " extensions are not supported", 400)
+
+  def handleChar(cursor: Char) = {
+    if (extValue.length <= config.maxChunkExtValueLength) {
+      if (quoted) cursor match {
+        case '"' => quoted = false; this
+        case '\r' | '\n' => ErrorParser("Invalid chunk extension value: unclosed quoted string")
+        case x => extValue.append(x); this
+      } else cursor match {
+        case x if isTokenChar(x) => extValue.append(x); this
+        case '"' if extValue.length == 0 => quoted = true; this
+        case ' ' | '\t' | '\r' => this
+        case ';' => next(new ChunkExtensionNameParser(config, context, chunkSize, extCount + 1,
+          ChunkExtension(extName, extValue.toString) :: extensions))
+        case '\n' => next(new ChunkBodyParser(config, context, chunkSize,
+          ChunkExtension(extName, extValue.toString) :: extensions))
+        case _ => ErrorParser("Invalid character '" + cursor + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
+      }
+    } else ErrorParser("Chunk extensions with values longer than " + config.maxChunkExtValueLength +
+            " characters are not supported (extension '" + extName + "')")
+  }
+}
+
+private[can] class TrailerParser(config: MessageParserConfig, context: RequestChunkingContext,
+                                 headerCount: Int = 0, headers: List[HttpHeader] = Nil)
+        extends HeaderNameParser(config, null, headerCount, headers) {
+  override def valueParser = new HeaderValueParser(config, null, headerCount, headers, headerName.toString) {
+    override def nameParser =
+      new TrailerParser(config, context, headerCount + 1, HttpHeader(headerName, headerValue.toString) :: headers)
+  }
+  override def headersComplete = ChunkedEndParser(headers, context)
 }
 
 private[can] class LwsParser(next: CharacterParser) extends CharacterParser {
@@ -270,7 +350,7 @@ private[can] class FixedLengthBodyParser(config: MessageParserConfig, messageLin
                                          headers: List[HttpHeader], connectionHeader: Option[String], totalBytes: Int)
         extends IntermediateParser {
   require(totalBytes >= 0, "Content-Length must not be negative")
-  require(totalBytes <= config.maxBodyLength, "HTTP message body size exceeds configured limit")
+  require(totalBytes <= config.maxBodyLength, "HTTP message Content-Length " + totalBytes + " exceeds configured limit")
 
   val body = new Array[Byte](totalBytes)
   var bytesRead = 0
@@ -278,7 +358,7 @@ private[can] class FixedLengthBodyParser(config: MessageParserConfig, messageLin
     val remaining = scala.math.min(buf.remaining, totalBytes - bytesRead)
     buf.get(body, bytesRead, remaining)
     bytesRead += remaining
-    if (bytesRead == totalBytes) new CompleteMessage(messageLine, headers, connectionHeader, body) else this
+    if (bytesRead == totalBytes) CompleteMessageParser(messageLine, headers, connectionHeader, body) else this
   }
 }
 
@@ -289,9 +369,7 @@ private[can] class ToCloseBodyParser(config: MessageParserConfig, messageLine: M
     val array = new Array[Byte](buf.remaining)
     buf.get(array)
     body match {
-      case EmptyByteArray =>
-        body = array
-        this
+      case EmptyByteArray => body = array; this
       case _ => {
         val newLength = body.length + array.length
         if (newLength <= config.maxBodyLength) {
@@ -300,18 +378,50 @@ private[can] class ToCloseBodyParser(config: MessageParserConfig, messageLine: M
             System.arraycopy(array, 0, newBody, body.length, array.length)
           }
           this
-        } else MessageError("HTTP message body size exceeds configured limit")
+        } else ErrorParser("HTTP message body size exceeds configured limit")
       }
     }
   }
-  def complete = new CompleteMessage(messageLine, headers, connectionHeader, body)
+  def complete = CompleteMessageParser(messageLine, headers, connectionHeader, body)
 }
 
-private[can] case class CompleteMessage(
+private[can] class ChunkBodyParser(config: MessageParserConfig, context: RequestChunkingContext, chunkSize: Int,
+                                   extensions: List[ChunkExtension] = Nil) extends IntermediateParser {
+  require(chunkSize > 0, "Chunk size must not be negative")
+  require(chunkSize <= config.maxChunkSize, "HTTP message chunk size " + chunkSize + " exceeds configured limit")
+
+  val body = new Array[Byte](chunkSize)
+  var bytesRead = 0
+  def read(buf: ByteBuffer) = {
+    val remaining = scala.math.min(buf.remaining, chunkSize - bytesRead)
+    buf.get(body, bytesRead, remaining)
+    bytesRead += remaining
+    if (bytesRead == chunkSize) ChunkedChunkParser(extensions, body, context) else this
+  }
+}
+
+private[can] case class CompleteMessageParser(
   messageLine: MessageLine,
   headers: List[HttpHeader] = Nil,
   connectionHeader: Option[String] = None,
   body: Array[Byte] = EmptyByteArray
 ) extends MessageParser
 
-private[can] case class MessageError(message: String, status: Int = 400) extends MessageParser
+private[can] case class ChunkedStartParser(
+  messageLine: MessageLine,
+  headers: List[HttpHeader] = Nil,
+  connectionHeader: Option[String] = None
+) extends MessageParser
+
+private[can] case class ChunkedChunkParser(
+  extensions: List[ChunkExtension],
+  body: Array[Byte],
+  context: RequestChunkingContext
+) extends MessageParser
+
+private[can] case class ChunkedEndParser(
+  trailer: List[HttpHeader],
+  context: RequestChunkingContext
+) extends MessageParser
+
+private[can] case class ErrorParser(message: String, status: Int = 400) extends MessageParser

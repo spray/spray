@@ -16,6 +16,8 @@
 package cc.spray.can
 
 import java.io.UnsupportedEncodingException
+import java.net.InetAddress
+import akka.actor.ActorRef
 
 sealed trait HttpMethod {
   def name: String
@@ -48,8 +50,16 @@ object HttpProtocols {
 }
 
 sealed trait MessageLine
-case class RequestLine(method: HttpMethod, uri: String, protocol: HttpProtocol) extends MessageLine
-case class StatusLine(request: HttpRequest, protocol: HttpProtocol, status: Int, reason: String) extends MessageLine
+case class RequestLine(
+  method: HttpMethod = HttpMethods.GET,
+  uri: String = "/",
+  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
+) extends MessageLine
+case class StatusLine(requestMethod: HttpMethod, protocol: HttpProtocol, status: Int, reason: String) extends MessageLine
+
+sealed trait ChunkingContext
+case class RequestChunkingContext(requestLine: RequestLine, connectionHeader: Option[String], streamActor: ActorRef)
+        extends ChunkingContext
 
 case class HttpHeader(name: String, value: String) extends Product2[String, String] {
   def _1 = name
@@ -165,12 +175,31 @@ object HttpResponse {
   }
 }
 
-case class ChunkedResponseStart(
-  status: Int = 200,
-  headers: List[HttpHeader] = Nil,
-  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
+case class ChunkedRequestContext(requestStart: ChunkedRequestStart, remoteAddress: InetAddress)
+
+case class ChunkedRequestStart(
+  method: HttpMethod = HttpMethods.GET,
+  uri: String = "/",
+  headers: List[HttpHeader] = Nil
 )
 
-case class ChunkedResponseChunk(headers: List[HttpHeader], body: Array[Byte])
+case class ChunkedRequestEnd(
+  trailer: List[HttpHeader],
+  responder: RequestResponder
+)
 
-case class ChunkedResponseEnd(headers: List[HttpHeader])
+case class ChunkedResponseStart(
+  status: Int = 200,
+  headers: List[HttpHeader] = Nil
+)
+
+case class MessageChunk(extensions: List[ChunkExtension], body: Array[Byte]) {
+  require(body.length > 0, "MessageChunk must not have empty body")
+}
+
+case class ChunkExtension(name: String, value: String)
+
+trait StreamHandler {
+  def sendChunk(chunk: MessageChunk)
+  def closeStream(trailer: List[HttpHeader] = Nil)
+}

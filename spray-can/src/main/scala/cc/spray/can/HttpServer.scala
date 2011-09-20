@@ -19,13 +19,12 @@ package cc.spray.can
 import org.slf4j.LoggerFactory
 import java.nio.channels.{SocketChannel, SelectionKey, ServerSocketChannel}
 import utils.LinkedList
-import HttpProtocols._
 import java.util.concurrent.atomic.AtomicBoolean
 import java.io.IOException
-import akka.actor.PoisonPill
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import annotation.tailrec
+import akka.actor.{Actor, PoisonPill}
 
 /////////////////////////////////////////////
 // HttpServer messages
@@ -33,22 +32,14 @@ import annotation.tailrec
 case class RequestContext(
   request: HttpRequest,
   remoteAddress: InetAddress,
-  responder: HttpResponse => Unit
+  responder: RequestResponder
 )
+
 case class Timeout(context: RequestContext)
 
-/////////////////////////////////////////////
-// Responders
-////////////////////////////////////////////
-
 trait RequestResponder {
-  def apply(response: HttpResponse)
-  def apply(chunkedResponseStart: ChunkedResponseStart): ChunkedResponder
-}
-
-trait ChunkedResponder {
-  def apply(chunk: ChunkedResponseChunk)
-  def apply(end: ChunkedResponseEnd)
+  def send(response: HttpResponse)
+  def startStreaming(responseStart: ChunkedResponseStart): StreamHandler
 }
 
 /////////////////////////////////////////////
@@ -61,12 +52,12 @@ object HttpServer {
     var next: Respond = _
   }
   private[can] case class RequestRecord(request: HttpRequest, remoteAddress: InetAddress,
-                                        timeoutResponder: HttpResponse => Unit) extends LinkedList.Element[RequestRecord]
+                                        responder: RequestResponder) extends LinkedList.Element[RequestRecord]
 
   private[can] class ServerConnection(key: SelectionKey, emptyRequestParser: EmptyRequestParser)
           extends Connection[ServerConnection](key) {
     var closeAfterWrite = false
-    var requestNr = 0
+    var requestsDispatched = 0
     var responseNr = 0
     var queuedResponds: Respond = _
     key.attach(this)
@@ -81,6 +72,12 @@ object HttpServer {
       if (queuedResponds == null) queuedResponds = respond
       else if (queuedResponds.responseNr < respond.responseNr) insertAfter(queuedResponds)
       else { respond.next = queuedResponds; queuedResponds = respond }
+    }
+
+    def countDispatch() = {
+      val nextResponseNr = requestsDispatched
+      requestsDispatched += 1
+      nextResponseNr
     }
   }
 }
@@ -102,6 +99,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
   private[can] type Conn = ServerConnection
 
   private val StartRequestParser = new EmptyRequestParser(config.parserConfig)
+  private lazy val streamHandlerCreator = config.streamHandlerCreator.getOrElse(throw new RuntimeException("Not yet implemented"))
 
   self.id = config.serverActorId
 
@@ -182,54 +180,58 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
     }
   }
 
-  protected def handleMessageParsingComplete(conn: Conn, parser: CompleteMessage) {
-    import parser._
-    val requestLine = messageLine.asInstanceOf[RequestLine]
+  protected def handleCompleteMessage(conn: Conn, parser: CompleteMessageParser) {
+    val requestLine = parser.messageLine.asInstanceOf[RequestLine]
     import requestLine._
     log.debug("Dispatching {} request to '{}' to the service actor", method, uri)
-    val alreadyCompleted = new AtomicBoolean(false)
-    val responseNr = conn.requestNr; conn.requestNr += 1
-
-    def respond(response: HttpResponse, requestRecord: RequestRecord): Boolean = {
-      HttpResponse.verify(response)
-      if (alreadyCompleted.compareAndSet(false, true)) {
-        log.debug("Enqueueing valid HttpResponse as raw response")
-        val (buffers, close) = prepareResponse(method, response, protocol, connectionHeader)
-        self ! new Respond(conn, buffers, close, responseNr, requestRecord)
-        true
-      } else false
-    }
-
-    val httpRequest = HttpRequest(method, uri, headers, body, protocol)
+    val request = HttpRequest(method, uri, parser.headers, parser.body, protocol)
+    val responder = new DefaultRequestResponder(conn, requestLine, conn.countDispatch(), parser.connectionHeader)
     val remoteAddress = conn.key.channel.asInstanceOf[SocketChannel].socket.getInetAddress
-    var requestRecord: RequestRecord = null
     if (requestTimeoutCycle.isDefined) {
-      requestRecord = new RequestRecord(
-        request = httpRequest,
-        remoteAddress = remoteAddress,
-        timeoutResponder = { response => if (respond(response, requestRecord)) requestsTimedOut += 1 }
-      )
+      val requestRecord = RequestRecord(request, remoteAddress, responder)
+      responder.setRequestRecord(requestRecord)
       openRequests += requestRecord;
     }
-    val responder: HttpResponse => Unit = { response =>
-      if (!respond(response, requestRecord))
-        log.warn("Received an additional response for an already completed request to '{}', ignoring...", httpRequest.uri)
-    }
-    serviceActor ! RequestContext(httpRequest, remoteAddress, responder)
     requestsDispatched += 1
+    conn.messageParser = StartRequestParser // switch back to parsing the next request from the start
+    serviceActor ! RequestContext(request, remoteAddress, responder)
+  }
+
+  protected def handleChunkedStart(conn: Conn, parser: ChunkedStartParser) {
+    val requestLine = parser.messageLine.asInstanceOf[RequestLine]
+    import requestLine._
+    val remoteAddress = conn.key.channel.asInstanceOf[SocketChannel].socket.getInetAddress
+    log.debug("Dispatching start of streamed {} request to '{}' to the service actor", method, uri)
+    val streamActor = Actor.actorOf(
+      streamHandlerCreator(ChunkedRequestContext(ChunkedRequestStart(method, uri, parser.headers), remoteAddress))
+    ).start()
+    conn.messageParser = new ChunkParser(config.parserConfig,
+      RequestChunkingContext(requestLine, parser.connectionHeader, streamActor))
+  }
+
+  protected def handleChunkedChunk(conn: Conn, parser: ChunkedChunkParser) {
+    import parser._
+    context.streamActor ! MessageChunk(extensions, body)
+    conn.messageParser = new ChunkParser(config.parserConfig, context)
+  }
+
+  protected def handleChunkedEnd(conn: Conn, parser: ChunkedEndParser) {
+    import parser.context._
+    val responder = new DefaultRequestResponder(conn, requestLine, conn.countDispatch(), connectionHeader)
+    streamActor ! ChunkedRequestEnd(parser.trailer, responder)
     conn.messageParser = StartRequestParser // switch back to parsing the next request from the start
   }
 
-  protected def handleMessageParsingError(conn: Conn, parser: MessageError) {
+  protected def handleParseError(conn: Conn, parser: ErrorParser) {
     log.warn("Illegal request, responding with status {} and '{}'", parser.status, parser.message)
     val response = HttpResponse(status = parser.status,
       headers = List(HttpHeader("Content-Type", "text/plain"))).withBody(parser.message)
     // In case of a request parsing error we probably stopped reading the request somewhere in between, where we
     // cannot simply resume. Resetting to a known state is not easy either, so we need to close the connection to do so.
     // This is done here by pretending the request contained a "Connection: close" header
-    val (buffers, close) = prepareResponse(HttpMethods.GET, response, `HTTP/1.1`, Some("close"))
+    val (buffers, close) = prepareResponse(RequestLine(), response, Some("close"))
     conn.disableReading() // we can't read anymore on this connection
-    self ! new Respond(conn, buffers, close, conn.requestNr)
+    self ! new Respond(conn, buffers, close, conn.countDispatch())
   }
 
   protected def handleTimedOutRequests() {
@@ -239,11 +241,13 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
       openRequests -= ctx
       openTimeouts += ctx
       import ctx._
-      timeoutActor ! Timeout(RequestContext(request, remoteAddress, timeoutResponder))
+      timeoutActor ! Timeout(
+        RequestContext(request, remoteAddress, responder.asInstanceOf[DefaultRequestResponder].timeoutResponder)
+      )
     }
     openTimeouts.forAllTimedOut(config.timeoutTimeout) { ctx =>
       log.warn("The TimeoutService for '{}' timed out as well, responding with the static error reponse", ctx.request.uri)
-      ctx.timeoutResponder(timeoutTimeoutResponse(ctx.request))
+      ctx.responder.asInstanceOf[DefaultRequestResponder].timeoutResponder.send(timeoutTimeoutResponse(ctx.request))
     }
   }
 
@@ -257,4 +261,32 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
   protected def openRequestCount = openRequests.size
 
   protected def serverHeader = config.serverHeader
+
+  private class DefaultRequestResponder(conn: Conn, requestLine: RequestLine, responseNr: Int,
+                                        connectionHeader: Option[String])
+          extends RequestResponder { original =>
+    private val alreadyCompleted = new AtomicBoolean(false)
+    private var requestRecord: RequestRecord = _
+    def send(response: HttpResponse) {
+      if (!trySend(response))
+        log.warn("Received an additional response for an already completed request to '{}', ignoring...", requestLine.uri)
+    }
+    private def trySend(response: HttpResponse) = {
+      HttpResponse.verify(response)
+      if (alreadyCompleted.compareAndSet(false, true)) {
+        log.debug("Enqueueing valid HttpResponse as raw response")
+        val (buffers, close) = prepareResponse(requestLine, response, connectionHeader)
+        self ! new Respond(conn, buffers, close, responseNr, requestRecord)
+        true
+      } else false
+    }
+    def startStreaming(responseStart: ChunkedResponseStart) = {
+      throw new RuntimeException("Not implemented")
+    }
+    lazy val timeoutResponder = new RequestResponder {
+      def send(response: HttpResponse) { if (original.trySend(response)) requestsTimedOut += 1 }
+      def startStreaming(responseStart: ChunkedResponseStart) = original.startStreaming(responseStart)
+    }
+    def setRequestRecord(record: RequestRecord) { requestRecord = record }
+  }
 }
