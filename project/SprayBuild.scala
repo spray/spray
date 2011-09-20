@@ -10,7 +10,7 @@ object Resolvers {
   val AkkaRepo        = "Akka Repository" at "http://akka.io/repository/"
   val GlassfishRepo   = "Glassfish Repository" at "http://download.java.net/maven/glassfish/"
   val SprayGithubRepo = "Spray Github Repository" at "http://spray.github.com/spray/maven/"
-  val resolvers       = Seq(AkkaRepo, GlassfishRepo, SprayGithubRepo)
+  val resolvers       = Seq(AkkaRepo, GlassfishRepo, SprayGithubRepo, ScalaToolsSnapshots)
 
   val credentials     = Credentials(Path.userHome / ".ivy2" / ".credentials")
 }
@@ -40,8 +40,8 @@ object BuildSettings {
   // -------------------------------------------------------------------------------------------------------------------
   val buildOrganization       = "cc.spray"
   val buildVersion            = "0.8-AKKA12-SNAPSHOT"
-  val buildScalaVersion       = "2.9.0-1"
-  val buildCrossScalaVersions = Seq("2.9.0-1", "2.9.1")
+  val buildScalaVersion       = "2.9.1"
+  val buildCrossScalaVersions = Seq("2.9.1", "2.9.0-1")
 
   // Compile options
   val buildScalacOptions = 
@@ -136,7 +136,7 @@ object BuildSettings {
 // Dependencies
 // ---------------------------------------------------------------------------------------------------------------------
 object Dependencies {
-  val AKKA_VERSION      = "1.2-RC6"
+  val AKKA_VERSION      = "1.2"
   val JETTY_VERSION     = "8.0.0.RC0"
   val PARBOILED_VERSION = "1.0.1"
 
@@ -147,7 +147,7 @@ object Dependencies {
   val asyncHttp  = "com.ning" % "async-http-client" % "1.6.4" % "compile"
 
   // provided
-  val sprayJson          = "cc.spray.json" %% "spray-json" % "1.0.0" % "compile"
+  val sprayJson          = "cc.spray.json" % "spray-json_2.9.0-1" % "1.0.0" % "compile"
   val servlet30          = "org.glassfish" % "javax.servlet" % "3.0" % "provided"
   val jettyContinuations = "org.eclipse.jetty" % "jetty-continuation" % "7.2.0.v20101020" % "provided"
   val tomcat6            = "org.atmosphere" % "atmosphere-compat-tomcat" % "0.7.1" % "provided"
@@ -250,7 +250,7 @@ object SprayBuild extends Build {
     "spray-examples",
     file("spray-examples"),
     settings = exampleSettings
-  ) aggregate (calculator, deft, markdownserver, stopwatch)
+  ) aggregate (calculator, sprayCan, markdownserver, stopwatch)
 
   // Module for "calculator" example
   lazy val calculator = Project(
@@ -266,14 +266,15 @@ object SprayBuild extends Build {
     )
   ) dependsOn (http, server)
 
-  // Module for "deft" example
-  lazy val deft = Project(
-    "spray-example-deft",
-    file("spray-examples/spray-example-deft"),
+  // Module for "spray-can" example
+  lazy val sprayCan = Project(
+    "spray-example-spray-can",
+    file("spray-examples/spray-example-spray-can"),
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= exampleDeps ++ Seq(
-        Dependencies.deft,
-        Dependencies.slf4j
+        Dependencies.sprayCan,
+        Dependencies.slf4j,
+        Dependencies.logback
       )
     )
   ) dependsOn (http, server)
