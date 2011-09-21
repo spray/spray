@@ -19,12 +19,12 @@ package cc.spray.can
 import org.slf4j.LoggerFactory
 import java.nio.channels.{SocketChannel, SelectionKey, ServerSocketChannel}
 import utils.LinkedList
-import java.util.concurrent.atomic.AtomicBoolean
 import java.io.IOException
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import annotation.tailrec
 import akka.actor.{Actor, PoisonPill}
+import java.util.concurrent.atomic.{AtomicInteger, AtomicBoolean}
 
 /////////////////////////////////////////////
 // HttpServer messages
@@ -35,7 +35,11 @@ case class RequestContext(
   responder: RequestResponder
 )
 
-case class Timeout(context: RequestContext)
+case class Timeout(
+  request: HttpRequest,
+  remoteAddress: InetAddress,
+  complete: HttpResponse => Unit
+)
 
 trait RequestResponder {
   def complete(response: HttpResponse)
@@ -47,8 +51,13 @@ trait RequestResponder {
 ////////////////////////////////////////////
 
 object HttpServer {
-  private[can] class Respond(val conn: ServerConnection, val buffers: List[ByteBuffer], val closeAfterWrite: Boolean,
-                        val responseNr: Int, val requestRecord: RequestRecord = null) {
+  private[can] class Respond(
+    val conn: ServerConnection,
+    val buffers: List[ByteBuffer],
+    val closeAfterWrite: Boolean,
+    val responseNr: Int,
+    val increaseResponseNr: Boolean = true,
+    val requestRecord: RequestRecord = null) {
     var next: Respond = _
   }
   private[can] case class RequestRecord(request: HttpRequest, remoteAddress: InetAddress,
@@ -56,9 +65,9 @@ object HttpServer {
 
   private[can] class ServerConnection(key: SelectionKey, emptyRequestParser: EmptyRequestParser)
           extends Connection[ServerConnection](key) {
-    var closeAfterWrite = false
     var requestsDispatched = 0
     var responseNr = 0
+    var currentRespond: Respond = _
     var queuedResponds: Respond = _
     key.attach(this)
     messageParser = emptyRequestParser
@@ -160,7 +169,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
     if (conn.key.isValid) {
       log.debug("Received raw response, scheduling write")
       conn.writeBuffers = buffers
-      conn.closeAfterWrite = closeAfterWrite
+      conn.currentRespond = respond
       conn.enableWriting()
     } else log.warn("Dropping response due to closed connection")
     if (requestRecord != null)
@@ -169,10 +178,10 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
 
   protected def finishWrite(conn: Conn) {
     if (conn.writeBuffers.isEmpty) {
-      if (conn.closeAfterWrite) {
+      if (conn.currentRespond.closeAfterWrite) {
         close(conn)
       } else {
-        conn.responseNr += 1
+        if (conn.currentRespond.increaseResponseNr) conn.responseNr += 1
         val next = conn.queuedResponds
         if (next != null && next.responseNr == conn.responseNr) {
           conn.queuedResponds = next.next
@@ -243,13 +252,11 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
       openRequests -= ctx
       openTimeouts += ctx
       import ctx._
-      timeoutActor ! Timeout(
-        RequestContext(request, remoteAddress, responder.asInstanceOf[DefaultRequestResponder].timeoutResponder)
-      )
+      timeoutActor ! Timeout(request, remoteAddress, responder.asInstanceOf[DefaultRequestResponder].timeoutResponder)
     }
     openTimeouts.forAllTimedOut(config.timeoutTimeout) { ctx =>
       log.warn("The TimeoutService for '{}' timed out as well, responding with the static error reponse", ctx.request.uri)
-      ctx.responder.asInstanceOf[DefaultRequestResponder].timeoutResponder.complete(timeoutTimeoutResponse(ctx.request))
+      ctx.responder.asInstanceOf[DefaultRequestResponder].timeoutResponder(timeoutTimeoutResponse(ctx.request))
     }
   }
 
@@ -267,28 +274,80 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
   private class DefaultRequestResponder(conn: Conn, requestLine: RequestLine, responseNr: Int,
                                         connectionHeader: Option[String])
           extends RequestResponder { original =>
-    private val alreadyCompleted = new AtomicBoolean(false)
+    private val UNCOMPLETED = 0
+    private val COMPLETED = 1
+    private val STREAMING = 2
+    private val mode = new AtomicInteger(UNCOMPLETED)
     private var requestRecord: RequestRecord = _
+
     def complete(response: HttpResponse) {
-      if (!trySend(response))
-        log.warn("Received an additional response for an already completed request to '{}', ignoring...", requestLine.uri)
+      if (!trySend(response)) mode.get match {
+        case COMPLETED =>
+          log.warn("Received an additional response for an already completed request to '{}', ignoring...", requestLine.uri)
+        case STREAMING =>
+          log.warn("Received a regular response for a request to '{}', " +
+                   "that a streaming response has already been started/completed, ignoring...", requestLine.uri)
+      }
     }
+
     private def trySend(response: HttpResponse) = {
       HttpResponse.verify(response)
-      if (alreadyCompleted.compareAndSet(false, true)) {
+      if (mode.compareAndSet(UNCOMPLETED, COMPLETED)) {
         log.debug("Enqueueing valid HttpResponse as raw response")
         val (buffers, close) = prepareResponse(requestLine, response, connectionHeader)
-        self ! new Respond(conn, buffers, close, responseNr, requestRecord)
+        self ! new Respond(conn, buffers, close, responseNr, true, requestRecord)
         true
       } else false
     }
+
     def startStreaming(responseStart: ChunkedResponseStart) = {
-      throw new RuntimeException("Not implemented")
+      ChunkedResponseStart.verify(responseStart)
+      if (mode.compareAndSet(UNCOMPLETED, STREAMING)) {
+        log.debug("Enqueueing start of streaming response")
+        val headers = HttpHeader("Transfer-Encoding", "chunked") :: responseStart.headers
+        val (buffers, close) = prepareResponse(requestLine, HttpResponse(responseStart.status, headers), connectionHeader)
+        self ! new Respond(conn, buffers, false, responseNr, false, requestRecord)
+        new ResponseStreamHandler(responseStart, close)
+      } else throw new IllegalStateException {
+        mode.get match {
+          case COMPLETED => "The streaming response cannot be started since this request to '" + requestLine.uri + "' has already been completed"
+          case STREAMING => "A streaming response has already been started for this request to '" + requestLine.uri + "'"
+        }
+      }
     }
-    lazy val timeoutResponder = new RequestResponder {
-      def complete(response: HttpResponse) { if (original.trySend(response)) requestsTimedOut += 1 }
-      def startStreaming(responseStart: ChunkedResponseStart) = original.startStreaming(responseStart)
+
+    lazy val timeoutResponder: HttpResponse => Unit = { response =>
+      if (original.trySend(response)) requestsTimedOut += 1
     }
+
     def setRequestRecord(record: RequestRecord) { requestRecord = record }
+
+    class ResponseStreamHandler(responseStart: ChunkedResponseStart, closeAfterLastChunk: Boolean)
+            extends StreamHandler {
+      private var closed = false
+      def sendChunk(chunk: MessageChunk) {
+        synchronized {
+          if (!closed) {
+            log.debug("Enqueueing streaming response chunk")
+            self ! new Respond(conn, prepareResponseChunk(chunk), false, responseNr, false, null)
+          } else throw new RuntimeException("Cannot send MessageChunk after HTTP stream has been closed")
+        }
+      }
+      def closeStream(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
+        if (!trailer.isEmpty) {
+          require(trailer.forall(_.name != "Content-Length"), "Content-Length header is not allowed in trailer")
+          require(trailer.forall(_.name != "Transfer-Encoding"), "Transfer-Encoding header is not allowed in trailer")
+          require(trailer.forall(_.name != "Trailer"), "Trailer header is not allowed in trailer")
+        }
+        synchronized {
+          if (!closed) {
+            log.debug("Enqueueing final streaming response chunk")
+            val buffers = prepareFinalResponseChunk(extensions, trailer)
+            self ! new Respond(conn, buffers, closeAfterLastChunk, responseNr)
+            closed = true
+          } else throw new RuntimeException("Cannot close an HTTP stream that has already been closed")
+        }
+      }
+    }
   }
 }

@@ -96,6 +96,32 @@ trait ResponsePreparer extends MessagePreparer {
     (ByteBuffer.wrap(sb.toString.getBytes(US_ASCII)) :: wrapBody, close)
   }
 
+  def prepareResponseChunk(chunk: MessageChunk) = {
+    val sb = new java.lang.StringBuilder(16)
+    sb.append(chunk.body.length.toHexString)
+    appendLine(appendChunkExtensions(chunk.extensions, sb))
+    ByteBuffer.wrap(sb.toString.getBytes(US_ASCII)) :: ByteBuffer.wrap(chunk.body) :: Nil
+  }
+
+  def prepareFinalResponseChunk(extensions: List[ChunkExtension], trailer: List[HttpHeader]) = {
+    val sb = new java.lang.StringBuilder(16)
+    appendLine(appendChunkExtensions(extensions, sb.append("0")))
+    appendHeaders(trailer, sb)
+    appendLine(sb)
+    ByteBuffer.wrap(sb.toString.getBytes(US_ASCII)) :: Nil
+  }
+
+  @tailrec
+  private def appendChunkExtensions(extensions: List[ChunkExtension], sb: JStringBuilder): JStringBuilder = {
+    extensions match {
+      case Nil => sb
+      case ChunkExtension(name, value) :: rest => appendChunkExtensions(rest, {
+        sb.append(';').append(name).append('=')
+        if (value.forall(isTokenChar)) sb.append(value) else sb.append('"').append(value).append('"')
+      })
+    }
+  }
+
   protected def dateTimeNow = DateTime.now  // split out so we can stabilize by overriding in tests
 }
 

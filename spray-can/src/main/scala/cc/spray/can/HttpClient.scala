@@ -63,8 +63,6 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
 
   private[can] type Conn = ClientConnection
 
-  private lazy val streamHandlerCreator = config.streamHandlerCreator.getOrElse(throw new RuntimeException("Not yet implemented"))
-
   self.id = config.clientActorId
 
   // we use our own custom single-thread dispatcher, because our thread will, for the most time,

@@ -20,7 +20,6 @@ package can
 import java.nio.ByteBuffer
 import java.lang.{StringBuilder => JStringBuilder}
 import annotation.tailrec
-import akka.actor.ActorRef
 
 // a MessageParser instance holds the complete parsing state at any particular point in the request parsing process
 private[can] trait MessageParser
@@ -48,14 +47,6 @@ private[can] sealed abstract class CharacterParser extends IntermediateParser {
   }
 
   def handleChar(cursor: Char): MessageParser
-
-  def isTokenChar(c: Char) = c match {
-    case x if 'a' <= x && x <= 'z' => true
-    case x if 'A' <= x && x <= 'Z' => true
-    case '-' => true
-    case '(' | ')' | '<' | '>' | '@' | ',' | ';' | ':' | '\\' | '"' | '/' | '[' | ']' | '?' | '=' | '{' | '}' => false
-    case x => 32 < x && x < 127
-  }
 
   def badMethod = ErrorParser("Unsupported HTTP method", 501)
 }

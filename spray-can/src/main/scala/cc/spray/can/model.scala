@@ -194,6 +194,18 @@ case class ChunkedResponseStart(
   headers: List[HttpHeader] = Nil
 )
 
+object ChunkedResponseStart {
+  def verify(responseStart: ChunkedResponseStart) = {
+    import responseStart._
+    def req(cond: Boolean, msg: => String) { require(cond, "Illegal ChunkedResponseStart: " + msg) }
+    req(100 <= status && status < 600, "Illegal HTTP status code: " + status)
+    req(headers != null, "headers must not be null")
+    req(headers.forall(_.name != "Content-Length"), "Content-Length header is not allowed")
+    req(headers.forall(_.name != "Transfer-Encoding"), "Transfer-Encoding header is not allowed, the server sets it itself")
+    responseStart
+  }
+}
+
 case class MessageChunk(extensions: List[ChunkExtension], body: Array[Byte]) {
   require(body.length > 0, "MessageChunk must not have empty body")
 }
@@ -202,5 +214,5 @@ case class ChunkExtension(name: String, value: String)
 
 trait StreamHandler {
   def sendChunk(chunk: MessageChunk)
-  def closeStream(trailer: List[HttpHeader] = Nil)
+  def closeStream(extensions: List[ChunkExtension] = Nil, trailer: List[HttpHeader] = Nil)
 }

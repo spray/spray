@@ -41,8 +41,8 @@ trait HttpServerSpecs extends Specification {
         Scheduler.scheduleOnce(() => responder.complete(HttpResponse()), 200, TimeUnit.MILLISECONDS)
       case RequestContext(HttpRequest(method, uri, _, _, _), _, responder) =>
         responder.complete(HttpResponse().withBody(method + "|" + uri))
-      case Timeout(RequestContext(_, _, responder)) =>
-        responder.complete(HttpResponse().withBody("TIMEOUT"))
+      case Timeout(_, _, complete) =>
+        complete(HttpResponse().withBody("TIMEOUT"))
     }
   }
 
