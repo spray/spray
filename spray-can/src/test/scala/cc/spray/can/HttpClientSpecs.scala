@@ -29,9 +29,9 @@ trait HttpClientSpecs extends Specification {
     self.id = "client-test-server"
     protected def receive = {
       case RequestContext(HttpRequest(_, "/wait500", _, _, _), _, responder) => {
-        Scheduler.scheduleOnce(() => responder.send(HttpResponse()), 500, TimeUnit.MILLISECONDS)
+        Scheduler.scheduleOnce(() => responder.complete(HttpResponse()), 500, TimeUnit.MILLISECONDS)
       }
-      case RequestContext(HttpRequest(method, uri, _, _, _), _, responder) => responder.send {
+      case RequestContext(HttpRequest(method, uri, _, _, _), _, responder) => responder.complete {
         HttpResponse().withBody(method + "|" + uri)
       }
     }

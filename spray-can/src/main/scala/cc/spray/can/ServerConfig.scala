@@ -47,7 +47,7 @@ case class ServerConfig(
   serverHeader: String = "spray-can/" + SprayCanVersion,
 
   // must be fast and non-blocking
-  streamHandlerCreator: Option[ChunkedRequestContext => Actor] = None,
+  streamActorCreator: Option[ChunkedRequestContext => Actor] = None,
 
   // PeerConfig
   readBufferSize: Int = 8192,
@@ -155,7 +155,7 @@ case class MessageParserConfig(
   maxHeaderNameLength: Int = 64,
   maxHeaderValueLength: Int = 8192,
   maxHeaderCount: Int = 64,
-  maxBodyLength: Int = 8192 * 1024, // default entity size limit = 8 MB
+  maxContentLength: Int = 8192 * 1024, // default entity size limit = 8 MB
   maxChunkExtNameLength: Int = 64,
   maxChunkExtValueLength: Int = 256,
   maxChunkExtCount: Int = 16,
@@ -169,7 +169,7 @@ object MessageParserConfig {
     maxHeaderNameLength     = config.getInt("spray-can.parser.max-header-name-length", 64),
     maxHeaderValueLength    = config.getInt("spray-can.parser.max-header-value-length", 8192),
     maxHeaderCount          = config.getInt("spray-can.parser.max-header-count-length", 64),
-    maxBodyLength           = config.getInt("spray-can.parser.max-body-length", 8192 * 1024),
+    maxContentLength        = config.getInt("spray-can.parser.max-content-length", 8192 * 1024),
     maxChunkExtNameLength   = config.getInt("spray-can.parser.max-chunk-ext-name-length", 64),
     maxChunkExtValueLength  = config.getInt("spray-can.parser.max-chunk-ext-value-length", 256),
     maxChunkExtCount        = config.getInt("spray-can.parser.max-chunk-ext-count", 16),

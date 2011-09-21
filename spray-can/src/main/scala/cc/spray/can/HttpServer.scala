@@ -38,7 +38,7 @@ case class RequestContext(
 case class Timeout(context: RequestContext)
 
 trait RequestResponder {
-  def send(response: HttpResponse)
+  def complete(response: HttpResponse)
   def startStreaming(responseStart: ChunkedResponseStart): StreamHandler
 }
 
@@ -99,7 +99,9 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
   private[can] type Conn = ServerConnection
 
   private val StartRequestParser = new EmptyRequestParser(config.parserConfig)
-  private lazy val streamHandlerCreator = config.streamHandlerCreator.getOrElse(throw new RuntimeException("Not yet implemented"))
+  private lazy val streamActorCreator = config.streamActorCreator.getOrElse {
+    new BufferingRequestStreamActorCreator(serviceActor, config.parserConfig.maxContentLength)
+  }
 
   self.id = config.serverActorId
 
@@ -201,9 +203,9 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
     val requestLine = parser.messageLine.asInstanceOf[RequestLine]
     import requestLine._
     val remoteAddress = conn.key.channel.asInstanceOf[SocketChannel].socket.getInetAddress
-    log.debug("Dispatching start of streamed {} request to '{}' to the service actor", method, uri)
+    log.debug("Dispatching start of streamed {} request to '{}' to a new stream actor", method, uri)
     val streamActor = Actor.actorOf(
-      streamHandlerCreator(ChunkedRequestContext(ChunkedRequestStart(method, uri, parser.headers), remoteAddress))
+      streamActorCreator(ChunkedRequestContext(ChunkedRequestStart(method, uri, parser.headers), remoteAddress))
     ).start()
     conn.messageParser = new ChunkParser(config.parserConfig,
       RequestChunkingContext(requestLine, parser.connectionHeader, streamActor))
@@ -247,7 +249,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
     }
     openTimeouts.forAllTimedOut(config.timeoutTimeout) { ctx =>
       log.warn("The TimeoutService for '{}' timed out as well, responding with the static error reponse", ctx.request.uri)
-      ctx.responder.asInstanceOf[DefaultRequestResponder].timeoutResponder.send(timeoutTimeoutResponse(ctx.request))
+      ctx.responder.asInstanceOf[DefaultRequestResponder].timeoutResponder.complete(timeoutTimeoutResponse(ctx.request))
     }
   }
 
@@ -267,7 +269,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
           extends RequestResponder { original =>
     private val alreadyCompleted = new AtomicBoolean(false)
     private var requestRecord: RequestRecord = _
-    def send(response: HttpResponse) {
+    def complete(response: HttpResponse) {
       if (!trySend(response))
         log.warn("Received an additional response for an already completed request to '{}', ignoring...", requestLine.uri)
     }
@@ -284,7 +286,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
       throw new RuntimeException("Not implemented")
     }
     lazy val timeoutResponder = new RequestResponder {
-      def send(response: HttpResponse) { if (original.trySend(response)) requestsTimedOut += 1 }
+      def complete(response: HttpResponse) { if (original.trySend(response)) requestsTimedOut += 1 }
       def startStreaming(responseStart: ChunkedResponseStart) = original.startStreaming(responseStart)
     }
     def setRequestRecord(record: RequestRecord) { requestRecord = record }

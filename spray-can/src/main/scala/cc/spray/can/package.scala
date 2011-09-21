@@ -16,7 +16,7 @@
 
 package cc.spray
 
-import can.utils.PimpedLinearSeq
+import can.utils.{PimpedByteArray, PimpedLinearSeq}
 import collection.immutable.LinearSeq
 import akka.actor.{ActorRef, Actor}
 import java.io.{BufferedReader, InputStreamReader}
@@ -39,6 +39,7 @@ package object can {
 
   // implicits
   implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq)
+  implicit def pimpByteArray(array: Array[Byte]): PimpedByteArray = new PimpedByteArray(array)
 
   val EmptyByteArray = new Array[Byte](0)
 }

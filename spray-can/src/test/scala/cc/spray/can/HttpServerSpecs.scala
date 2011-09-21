@@ -32,17 +32,17 @@ trait HttpServerSpecs extends Specification {
       case RequestContext(HttpRequest(_, "/delayResponse", _, _, _), _, responder) =>
         delayedResponse = responder
       case RequestContext(HttpRequest(_, "/getThisAndDelayedResponse", _, _, _), _, responder) =>
-        responder.send(HttpResponse().withBody("secondResponse"))          // first complete the second request
-        delayedResponse.send(HttpResponse().withBody("delayedResponse"))  // then complete the first request
+        responder.complete(HttpResponse().withBody("secondResponse"))          // first complete the second request
+        delayedResponse.complete(HttpResponse().withBody("delayedResponse"))  // then complete the first request
       case RequestContext(HttpRequest(_, path, _, _, _), _, responder) if path.startsWith("/multi/") =>
         val delay = (scala.math.random * 80.0).toLong
-        Scheduler.scheduleOnce(() => responder.send(HttpResponse().withBody(path.last.toString)), delay, TimeUnit.MILLISECONDS)
+        Scheduler.scheduleOnce(() => responder.complete(HttpResponse().withBody(path.last.toString)), delay, TimeUnit.MILLISECONDS)
       case RequestContext(HttpRequest(_, "/wait200", _, _, _), _, responder) =>
-        Scheduler.scheduleOnce(() => responder.send(HttpResponse()), 200, TimeUnit.MILLISECONDS)
+        Scheduler.scheduleOnce(() => responder.complete(HttpResponse()), 200, TimeUnit.MILLISECONDS)
       case RequestContext(HttpRequest(method, uri, _, _, _), _, responder) =>
-        responder.send(HttpResponse().withBody(method + "|" + uri))
+        responder.complete(HttpResponse().withBody(method + "|" + uri))
       case Timeout(RequestContext(_, _, responder)) =>
-        responder.send(HttpResponse().withBody("TIMEOUT"))
+        responder.complete(HttpResponse().withBody("TIMEOUT"))
     }
   }
 

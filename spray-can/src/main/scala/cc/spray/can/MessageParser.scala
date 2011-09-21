@@ -37,7 +37,9 @@ private[can] sealed abstract class CharacterParser extends IntermediateParser {
         if (buf.remaining() > 0) {
           val cursor = buf.get().asInstanceOf[Char] // simple US-ASCII encoding conversion
           read(x.handleChar(cursor))
-        } else x
+        } else {
+          x
+        }
       }
       case x: IntermediateParser => x.read(buf) // a body parser
       case x => x // complete or error
@@ -84,11 +86,19 @@ private[can] class MethodParser(config: MessageParserConfig, method: HttpMethod,
     pos += 1
     if (pos < method.name.length()) {
       val current = method.name.charAt(pos)
-      if (cursor == current) this
-      else badMethod
+      if (cursor == current) {
+        this
+      }
+      else {
+        badMethod
+      }
     } else {
-      if (cursor == ' ') new UriParser(config, method)
-      else badMethod
+      if (cursor == ' ') {
+        new UriParser(config, method)
+      }
+      else {
+        badMethod
+      }
     }
   }
 }
@@ -101,7 +111,9 @@ private[can] class UriParser(config: MessageParserConfig, method: HttpMethod) ex
         case ' ' => new RequestVersionParser(config, method, uri.toString)
         case _ => uri.append(cursor); this
       }
-    } else ErrorParser("URIs with more than " + config.maxUriLength + " characters are not supported", 414)
+    } else {
+      ErrorParser("URIs with more than " + config.maxUriLength + " characters are not supported", 414)
+    }
   }
 }
 
@@ -165,7 +177,9 @@ private[can] class ReasonParser(config: MessageParserConfig, requestMethod: Http
         case '\n' => new HeaderNameParser(config, StatusLine(requestMethod, protocol, status, reason.toString))
         case _ => reason.append(cursor); this
       }
-    } else ErrorParser("Reason phrases with more than " + config.maxResponseReasonLength + " characters are not supported")
+    } else {
+      ErrorParser("Reason phrases with more than " + config.maxResponseReasonLength + " characters are not supported")
+    }
   }
 }
 
@@ -184,32 +198,46 @@ private[can] class HeaderNameParser(config: MessageParserConfig, messageLine: Me
         case ' ' | '\t' | '\r' => new LwsParser(this).handleChar(cursor)
         case _ => ErrorParser("Invalid character '" + cursor + "', expected TOKEN CHAR, LWS or COLON")
       }
-    } else ErrorParser("HTTP headers with names longer than " + config.maxHeaderNameLength + " characters are not supported")
+    } else {
+      ErrorParser("HTTP headers with names longer than " + config.maxHeaderNameLength + " characters are not supported")
+    }
   }
   def headersComplete = {
     @tailrec def traverse(remaining: List[HttpHeader], connection: Option[String], contentLength: Option[String],
                           transferEncoding: Option[String]): MessageParser = {
-      if (!remaining.isEmpty) remaining.head.name match {
-        case "Content-Length" =>
-          if (contentLength.isEmpty) traverse(remaining.tail, connection, Some(remaining.head.value), transferEncoding)
-          else ErrorParser("HTTP message must not contain more than one Content-Length header", 400)
-        case "Transfer-Encoding" => traverse(remaining.tail, connection, contentLength, Some(remaining.head.value))
-        case "Connection" => traverse(remaining.tail, Some(remaining.head.value), contentLength, transferEncoding)
-        case _ => traverse(remaining.tail, connection, contentLength, transferEncoding)
+      if (!remaining.isEmpty) {
+        remaining.head.name match {
+          case "Content-Length" =>
+            if (contentLength.isEmpty) {
+              traverse(remaining.tail, connection, Some(remaining.head.value), transferEncoding)
+            }
+            else {
+              ErrorParser("HTTP message must not contain more than one Content-Length header", 400)
+            }
+          case "Transfer-Encoding" => traverse(remaining.tail, connection, contentLength, Some(remaining.head.value))
+          case "Connection" => traverse(remaining.tail, Some(remaining.head.value), contentLength, transferEncoding)
+          case _ => traverse(remaining.tail, connection, contentLength, transferEncoding)
+        }
       } else {
         // rfc2616 sec. 4.4
-        if (messageBodyDisallowed)
+        if (messageBodyDisallowed) {
           CompleteMessageParser(messageLine, headers, connection)
-        else if (transferEncoding.isDefined && transferEncoding.get != "identity")
+        }
+        else if (transferEncoding.isDefined && transferEncoding.get != "identity") {
           ChunkedStartParser(messageLine, headers, connection)
-        else if (contentLength.isDefined) contentLength.get match {
-          case "0" => CompleteMessageParser(messageLine, headers, connection)
-          case value => try { new FixedLengthBodyParser(config, messageLine, headers, connection, value.toInt) }
-          catch { case e: Exception => ErrorParser("Invalid Content-Length header value: " + e.getMessage) }
-        } else messageLine match {
-          case RequestLine(_, _, HttpProtocols.`HTTP/1.0`) => CompleteMessageParser(messageLine, headers, connection)
-          case _: StatusLine => new ToCloseBodyParser(config, messageLine, headers, connection)
-          case _ => ErrorParser("Content-Length header or chunked transfer encoding required", 411)
+        }
+        else if (contentLength.isDefined) {
+          contentLength.get match {
+            case "0" => CompleteMessageParser(messageLine, headers, connection)
+            case value => try {new FixedLengthBodyParser(config, messageLine, headers, connection, value.toInt)}
+            catch {case e: Exception => ErrorParser("Invalid Content-Length header value: " + e.getMessage)}
+          }
+        } else {
+          messageLine match {
+            case RequestLine(_, _, HttpProtocols.`HTTP/1.0`) => CompleteMessageParser(messageLine, headers, connection)
+            case _: StatusLine => new ToCloseBodyParser(config, messageLine, headers, connection)
+            case _ => ErrorParser("Content-Length header or chunked transfer encoding required", 411)
+          }
         }
       }
     }
@@ -233,15 +261,20 @@ private[can] class HeaderValueParser(config: MessageParserConfig, messageLine: M
     if (headerValue.length <= config.maxHeaderValueLength) {
       cursor match {
         case ' ' | '\t' | '\r' => space = true; new LwsParser(this).handleChar(cursor)
-        case '\n' => if (headerCount < config.maxHeaderCount) nameParser else
+        case '\n' => if (headerCount < config.maxHeaderCount) {
+          nameParser
+        } else {
           ErrorParser("HTTP message with more than " + config.maxHeaderCount + " headers are not supported", 400)
+        }
         case _ =>
-          if (space) { headerValue.append(' '); space = false }
+          if (space) {headerValue.append(' '); space = false}
           headerValue.append(cursor)
           this
       }
-    } else ErrorParser("HTTP header values longer than " + config.maxHeaderValueLength +
-            " characters are not supported (header '" + headerName + "')")
+    } else {
+      ErrorParser("HTTP header values longer than " + config.maxHeaderValueLength +
+              " characters are not supported (header '" + headerName + "')")
+    }
   }
 }
 
@@ -278,8 +311,10 @@ private[can] class ChunkExtensionNameParser(config: MessageParserConfig, context
         case ' ' | '\t' => this
         case _ => ErrorParser("Invalid character '" + cursor + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
       }
-    } else ErrorParser("Chunk extensions with names longer than " + config.maxChunkExtNameLength +
-            " characters are not supported")
+    } else {
+      ErrorParser("Chunk extensions with names longer than " + config.maxChunkExtNameLength +
+              " characters are not supported")
+    }
   }
 }
 
@@ -288,28 +323,41 @@ private[can] class ChunkExtensionValueParser(config: MessageParserConfig, contex
         extends CharacterParser {
   val extValue = new JStringBuilder
   var quoted = false
-  def next(parser: MessageParser) = if (extCount < config.maxChunkExtCount) parser else
+  def next(parser: MessageParser) = if (extCount < config.maxChunkExtCount) {
+    parser
+  } else {
     ErrorParser("Chunks with more than " + config.maxChunkExtCount + " extensions are not supported", 400)
+  }
   def newExtensions = ChunkExtension(extName, extValue.toString) :: extensions
   def handleChar(cursor: Char) = {
     if (extValue.length <= config.maxChunkExtValueLength) {
-      if (quoted) cursor match {
-        case '"' => quoted = false; this
-        case '\r' | '\n' => ErrorParser("Invalid chunk extension value: unclosed quoted string")
-        case x => extValue.append(x); this
-      } else cursor match {
-        case x if isTokenChar(x) => extValue.append(x); this
-        case '"' if extValue.length == 0 => quoted = true; this
-        case ' ' | '\t' | '\r' => this
-        case ';' => next(new ChunkExtensionNameParser(config, context, chunkSize, extCount + 1, newExtensions))
-        case '\n' => next {
-          if (chunkSize == 0) new TrailerParser(config, context, newExtensions)
-          else new ChunkBodyParser(config, context, chunkSize, newExtensions)
+      if (quoted) {
+        cursor match {
+          case '"' => quoted = false; this
+          case '\r' | '\n' => ErrorParser("Invalid chunk extension value: unclosed quoted string")
+          case x => extValue.append(x); this
         }
-        case _ => ErrorParser("Invalid character '" + cursor + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
+      } else {
+        cursor match {
+          case x if isTokenChar(x) => extValue.append(x); this
+          case '"' if extValue.length == 0 => quoted = true; this
+          case ' ' | '\t' | '\r' => this
+          case ';' => next(new ChunkExtensionNameParser(config, context, chunkSize, extCount + 1, newExtensions))
+          case '\n' => next {
+            if (chunkSize == 0) {
+              new TrailerParser(config, context, newExtensions)
+            }
+            else {
+              new ChunkBodyParser(config, context, chunkSize, newExtensions)
+            }
+          }
+          case _ => ErrorParser("Invalid character '" + cursor + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
+        }
       }
-    } else ErrorParser("Chunk extensions with values longer than " + config.maxChunkExtValueLength +
-            " characters are not supported (extension '" + extName + "')")
+    } else {
+      ErrorParser("Chunk extensions with values longer than " + config.maxChunkExtValueLength +
+              " characters are not supported (extension '" + extName + "')")
+    }
   }
 }
 
@@ -352,7 +400,7 @@ private[can] class FixedLengthBodyParser(config: MessageParserConfig, messageLin
                                          headers: List[HttpHeader], connectionHeader: Option[String], totalBytes: Int)
         extends IntermediateParser {
   require(totalBytes >= 0, "Content-Length must not be negative")
-  require(totalBytes <= config.maxBodyLength, "HTTP message Content-Length " + totalBytes + " exceeds configured limit")
+  require(totalBytes <= config.maxContentLength, "HTTP message Content-Length " + totalBytes + " exceeds configured limit")
 
   val body = new Array[Byte](totalBytes)
   var bytesRead = 0
@@ -373,14 +421,10 @@ private[can] class ToCloseBodyParser(config: MessageParserConfig, messageLine: M
     body match {
       case EmptyByteArray => body = array; this
       case _ => {
-        val newLength = body.length + array.length
-        if (newLength <= config.maxBodyLength) {
-          body = make(new Array[Byte](newLength)) { newBody =>
-            System.arraycopy(body, 0, newBody, 0, body.length)
-            System.arraycopy(array, 0, newBody, body.length, array.length)
-          }
+        if (body.length + array.length <= config.maxContentLength) {
+          body = body concat array
           this
-        } else ErrorParser("HTTP message body size exceeds configured limit")
+        } else ErrorParser("HTTP message body size exceeds configured limit", 413)
       }
     }
   }

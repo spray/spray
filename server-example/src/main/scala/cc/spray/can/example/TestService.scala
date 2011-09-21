@@ -35,22 +35,22 @@ class TestService(id: String) extends Actor {
   protected def receive = {
 
     case RequestContext(HttpRequest(GET, "/", _, _, _), _, responder) =>
-      responder.send(response("Say hello to a spray-can app"))
+      responder.complete(response("Say hello to a spray-can app"))
 
     case RequestContext(HttpRequest(POST, "/crash", _, _, _), _, responder) => {
-      responder.send(response("Hai! (about to kill the HttpServer)"))
+      responder.complete(response("Hai! (about to kill the HttpServer)"))
       serverActor ! Kill
     }
 
     case RequestContext(HttpRequest(POST, "/stop", _, _, _), _, responder) => {
-      responder.send(response("Shutting down the spray-can server..."))
+      responder.complete(response("Shutting down the spray-can server..."))
       Actor.registry.shutdownAll()
     }
 
     case RequestContext(HttpRequest(GET, "/stats", _, _, _), _, responder) => {
       (serverActor ? GetStats).mapTo[Stats].onComplete { future =>
         future.value.get match {
-          case Right(stats) => responder.send {
+          case Right(stats) => responder.complete {
             response {
               "Uptime              : " + (stats.uptime / 1000.0) + " sec\n" +
               "Requests dispatched : " + stats.requestsDispatched + '\n' +
@@ -59,12 +59,12 @@ class TestService(id: String) extends Actor {
               "Open connections    : " + stats.connectionsOpen + '\n'
             }
           }
-          case Left(ex) => responder.send(response("Couldn't get server stats due to " + ex, status = 500))
+          case Left(ex) => responder.complete(response("Couldn't get server stats due to " + ex, status = 500))
         }
       }
     }
 
     case RequestContext(HttpRequest(_, _, _, _, _), _, responder) =>
-      responder.send(response("Unknown command!", 404))
+      responder.complete(response("Unknown command!", 404))
   }
 }
