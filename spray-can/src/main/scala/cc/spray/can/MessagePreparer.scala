@@ -18,13 +18,10 @@ package cc.spray.can
 import java.nio.ByteBuffer
 import annotation.tailrec
 import utils.DateTime
-import java.nio.charset.Charset
 import HttpProtocols._
 import java.lang.{StringBuilder => JStringBuilder}
 
 trait MessagePreparer {
-  protected val US_ASCII = Charset.forName("US-ASCII")
-
   protected def appendHeader(name: String, value: String, sb: JStringBuilder) =
     appendLine(sb.append(name).append(':').append(' ').append(value))
 
@@ -46,6 +43,19 @@ trait MessagePreparer {
   }
 
   protected def appendLine(sb: JStringBuilder) = sb.append('\r').append('\n')
+
+  protected def encode(sb: JStringBuilder): ByteBuffer = {
+    val chars = new Array[Char](sb.length)
+    sb.getChars(0, sb.length, chars, 0)
+    val buf = ByteBuffer.allocate(sb.length)
+    var i = 0
+    while (i < chars.length) {
+      buf.put(chars(i).asInstanceOf[Byte])
+      i += 1
+    }
+    buf.flip()
+    buf
+  }
 }
 
 trait ResponsePreparer extends MessagePreparer {
@@ -93,14 +103,14 @@ trait ResponsePreparer extends MessagePreparer {
     appendLine(sb.append(ServerHeaderPlusDateColonSP).append(dateTimeNow.toRfc1123DateTimeString))
     appendHeader("Content-Length", body.length.toString, sb)
     appendLine(sb)
-    (ByteBuffer.wrap(sb.toString.getBytes(US_ASCII)) :: wrapBody, close)
+    (encode(sb) :: wrapBody, close)
   }
 
   def prepareResponseChunk(chunk: MessageChunk) = {
     val sb = new java.lang.StringBuilder(16)
     sb.append(chunk.body.length.toHexString)
     appendLine(appendChunkExtensions(chunk.extensions, sb))
-    ByteBuffer.wrap(sb.toString.getBytes(US_ASCII)) :: ByteBuffer.wrap(chunk.body) :: Nil
+    encode(sb) :: ByteBuffer.wrap(chunk.body) :: Nil
   }
 
   def prepareFinalResponseChunk(extensions: List[ChunkExtension], trailer: List[HttpHeader]) = {
@@ -108,7 +118,7 @@ trait ResponsePreparer extends MessagePreparer {
     appendLine(appendChunkExtensions(extensions, sb.append("0")))
     appendHeaders(trailer, sb)
     appendLine(sb)
-    ByteBuffer.wrap(sb.toString.getBytes(US_ASCII)) :: Nil
+    encode(sb) :: Nil
   }
 
   @tailrec
@@ -144,6 +154,6 @@ trait RequestPreparer extends MessagePreparer {
     if (!userAgentHeader.isEmpty) appendHeader("User-Agent", userAgentHeader, sb)
     appendHeader("Content-Length", body.length.toString, sb)
     appendLine(sb)
-    ByteBuffer.wrap(sb.toString.getBytes(US_ASCII)) :: wrapBody
+    encode(sb) :: wrapBody
   }
 }

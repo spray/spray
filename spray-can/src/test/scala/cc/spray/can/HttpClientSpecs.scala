@@ -40,7 +40,7 @@ trait HttpClientSpecs extends Specification {
   def clientSpecs =
 
   "This spec exercises a new HttpClient instance against a simple echo HttpServer"  ^
-  "by testing several request/response patterns (in parallel)"                      ^
+  "by testing several request/response patterns"                                    ^
                                                                                     Step(start())^
                                                                                     p^
   "simple one-request dialog"                                                       ! oneRequestDialog^

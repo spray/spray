@@ -61,7 +61,7 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
     HttpResponse(400, List(
       HttpHeader("Age", "30"),
       HttpHeader("Cache-Control", "public")
-    ), "Small f*ck up overhere!".getBytes(US_ASCII))
+    ), "Small f*ck up overhere!".getBytes("ASCII"))
   } mustEqual prep {
     """|HTTP/1.1 400 Bad Request
        |Age: 30
@@ -101,7 +101,7 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
     val sb = new java.lang.StringBuilder()
     val (buffers, closeAfterWrite) = prepareResponse(RequestLine(protocol = reqProtocol), response, reqConnectionHeader)
     buffers.foreach { buf =>
-      sb.append(new String(buf.array, US_ASCII))
+      sb.append(new String(buf.array, "ASCII"))
     }
     sb.toString -> closeAfterWrite
   }
