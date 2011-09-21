@@ -20,7 +20,9 @@ package example
 import org.slf4j.LoggerFactory
 import java.nio.charset.Charset
 import HttpMethods._
-import akka.actor.{Kill, Actor}
+import akka.actor.{Scheduler, Kill, Actor}
+import utils.DateTime
+import java.util.concurrent.TimeUnit
 
 class TestService(id: String) extends Actor {
   val log = LoggerFactory.getLogger(getClass)
@@ -46,6 +48,14 @@ class TestService(id: String) extends Actor {
       responder.complete(response("Shutting down the spray-can server..."))
       Actor.registry.shutdownAll()
     }
+
+    case RequestContext(HttpRequest(GET, "/stream", _, _, _), _, responder) =>
+      val streamHandler = responder.startStreaming(ChunkedResponseStart(200, headers))
+      val seconds = Scheduler.schedule(
+        () => streamHandler.sendChunk(MessageChunk(DateTime.now.toIsoDateTimeString + ", ")),
+        100, 100, TimeUnit.MILLISECONDS
+      )
+      Scheduler.scheduleOnce(() => { seconds.cancel(false); streamHandler.closeStream() }, 10500, TimeUnit.MILLISECONDS)
 
     case RequestContext(HttpRequest(GET, "/stats", _, _, _), _, responder) => {
       (serverActor ? GetStats).mapTo[Stats].onComplete { future =>

@@ -20,6 +20,7 @@ package can
 import java.nio.ByteBuffer
 import java.lang.{StringBuilder => JStringBuilder}
 import annotation.tailrec
+import HttpProtocols._
 
 // a MessageParser instance holds the complete parsing state at any particular point in the request parsing process
 private[can] trait MessageParser
@@ -109,7 +110,6 @@ private[can] class UriParser(config: MessageParserConfig, method: HttpMethod) ex
 }
 
 private[can] abstract class VersionParser extends CharacterParser {
-  import HttpProtocols._
   var pos = 0
   var protocol: HttpProtocol = _
   def handleChar(cursor: Char) = pos match {
@@ -225,8 +225,9 @@ private[can] class HeaderNameParser(config: MessageParserConfig, messageLine: Me
           }
         } else {
           messageLine match {
-            case RequestLine(_, _, HttpProtocols.`HTTP/1.0`) => CompleteMessageParser(messageLine, headers, connection)
-            case _: StatusLine => new ToCloseBodyParser(config, messageLine, headers, connection)
+            case _: RequestLine => CompleteMessageParser(messageLine, headers, connection)
+            case x: StatusLine if connection == Some("close") || connection.isEmpty && x.protocol == `HTTP/1.0` =>
+              new ToCloseBodyParser(config, messageLine, headers, connection)
             case _ => ErrorParser("Content-Length header or chunked transfer encoding required", 411)
           }
         }

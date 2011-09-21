@@ -210,6 +210,10 @@ case class MessageChunk(extensions: List[ChunkExtension], body: Array[Byte]) {
   require(body.length > 0, "MessageChunk must not have empty body")
 }
 
+object MessageChunk {
+  def apply(body: String) = new MessageChunk(Nil, body.getBytes("ISO-8859-1"))
+}
+
 case class ChunkExtension(name: String, value: String)
 
 trait StreamHandler {

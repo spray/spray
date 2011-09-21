@@ -20,15 +20,18 @@ import org.specs2._
 import utils.DateTime
 import HttpProtocols._
 import matcher.DataTables
+import java.nio.ByteBuffer
 
 class ResponsePreparerSpec extends Specification with ResponsePreparer with DataTables { def is =
 
-  "The response preparation logic should properly render a response" ^
-    "with status 200, no headers and no body"                        ! e1^
-    "with status 304, a few headers and no body"                     ! e2^
-    "with status 400, a few headers and a body"                      ! e3^
-                                                                     end^
-  "The 'Connection' header should be rendered correctly"             ! e4
+  "The response preparation logic should properly render"   ^
+    "a response with status 200, no headers and no body"    ! e1^
+    "a response with status 304, a few headers and no body" ! e2^
+    "a response with status 400, a few headers and a body"  ! e3^
+    "a response chunk"                                      ! e4^
+    "a terminating response chunk"                          ! e5^
+                                                            end^
+  "The 'Connection' header should be rendered correctly"    ! e6
 
   def e1 = prep(`HTTP/1.1`) {
     HttpResponse(200, Nil)
@@ -73,9 +76,32 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
        |Small f*ck up overhere!""" -> false
   }
 
+  def e4 = decode(
+    prepareResponseChunk(
+      MessageChunk(
+        List(ChunkExtension("key", "value"), ChunkExtension("another", "tl;dr")),
+        "body123".getBytes("ISO-8859-1")
+      )
+    )
+  ) mustEqual prep {
+    """|7;key=value;another="tl;dr"
+       |body123
+       |"""
+  }
+
+  def e5 = decode(
+    prepareFinalResponseChunk(Nil, List(HttpHeader("Age", "30"), HttpHeader("Cache-Control", "public")))
+  ) mustEqual prep {
+    """|0
+       |Age: 30
+       |Cache-Control: public
+       |
+       |"""
+  }
+
   val NONE: Option[String] = None
   
-  def e4 =
+  def e6 =
     "Client Version" | "Request"          | "Response"         | "Rendered"         | "Close" |
     `HTTP/1.1`       ! NONE               ! NONE               ! NONE               ! false   |
     `HTTP/1.1`       ! Some("close")      ! NONE               ! Some("close")      ! true    |
@@ -100,13 +126,21 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
   def prep(reqProtocol: HttpProtocol, reqConnectionHeader: Option[String] = None)(response: HttpResponse) = {
     val sb = new java.lang.StringBuilder()
     val (buffers, closeAfterWrite) = prepareResponse(RequestLine(protocol = reqProtocol), response, reqConnectionHeader)
-    buffers.foreach { buf =>
-      sb.append(new String(buf.array, "ASCII"))
-    }
+    sb.append(decode(buffers))
     sb.toString -> closeAfterWrite
   }
 
-  def prep(t: (String, Boolean)) = t._1.stripMargin.replace("\n", "\r\n") -> t._2
+  def decode(buffers: List[ByteBuffer]) = {
+    val sb = new java.lang.StringBuilder()
+    buffers.foreach { buf =>
+      sb.append(new String(buf.array, "ASCII"))
+    }
+    sb.toString
+  }
+
+  def prep(t: (String, Boolean)): (String, Boolean) = t._1.stripMargin.replace("\n", "\r\n") -> t._2
+
+  def prep(s: String): String = s.stripMargin.replace("\n", "\r\n")
 
   override val dateTimeNow = DateTime(2011, 8, 25, 9,10,29) // provide a stable date for testing
 

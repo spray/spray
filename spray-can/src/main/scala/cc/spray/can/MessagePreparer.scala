@@ -63,6 +63,7 @@ trait ResponsePreparer extends MessagePreparer {
 
   private val ServerHeaderPlusDateColonSP =
     if (serverHeader.isEmpty) "Date: " else "Server: " + serverHeader + "\r\nDate: "
+  private val CrLf = "\r\n".getBytes("ASCII")
 
   protected def prepareResponse(requestLine: RequestLine, response: HttpResponse,
                                 reqConnectionHeader: Option[String]): (List[ByteBuffer], Boolean) = {
@@ -110,7 +111,7 @@ trait ResponsePreparer extends MessagePreparer {
     val sb = new java.lang.StringBuilder(16)
     sb.append(chunk.body.length.toHexString)
     appendLine(appendChunkExtensions(chunk.extensions, sb))
-    encode(sb) :: ByteBuffer.wrap(chunk.body) :: Nil
+    encode(sb) :: ByteBuffer.wrap(chunk.body) :: ByteBuffer.wrap(CrLf) :: Nil
   }
 
   def prepareFinalResponseChunk(extensions: List[ChunkExtension], trailer: List[HttpHeader]) = {
