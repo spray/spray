@@ -50,12 +50,12 @@ class TestService(id: String) extends Actor {
     }
 
     case RequestContext(HttpRequest(GET, "/stream", _, _, _), _, responder) =>
-      val streamHandler = responder.startStreaming(ChunkedResponseStart(200, headers))
+      val streamHandler = responder.startChunkedResponse(ChunkedResponseStart(200, headers))
       val seconds = Scheduler.schedule(
         () => streamHandler.sendChunk(MessageChunk(DateTime.now.toIsoDateTimeString + ", ")),
         100, 100, TimeUnit.MILLISECONDS
       )
-      Scheduler.scheduleOnce(() => { seconds.cancel(false); streamHandler.closeStream() }, 10500, TimeUnit.MILLISECONDS)
+      Scheduler.scheduleOnce(() => { seconds.cancel(false); streamHandler.close() }, 10500, TimeUnit.MILLISECONDS)
 
     case RequestContext(HttpRequest(GET, "/stats", _, _, _), _, responder) => {
       (serverActor ? GetStats).mapTo[Stats].onComplete { future =>

@@ -22,6 +22,8 @@ import HttpProtocols._
 import java.lang.{StringBuilder => JStringBuilder}
 
 trait MessagePreparer {
+  private val CrLf = "\r\n".getBytes("ASCII")
+
   protected def appendHeader(name: String, value: String, sb: JStringBuilder) =
     appendLine(sb.append(name).append(':').append(' ').append(value))
 
@@ -56,6 +58,32 @@ trait MessagePreparer {
     buf.flip()
     buf
   }
+
+  def prepareChunk(chunk: MessageChunk) = {
+    val sb = new java.lang.StringBuilder(16)
+    sb.append(chunk.body.length.toHexString)
+    appendLine(appendChunkExtensions(chunk.extensions, sb))
+    encode(sb) :: ByteBuffer.wrap(chunk.body) :: ByteBuffer.wrap(CrLf) :: Nil
+  }
+
+  def prepareFinalChunk(extensions: List[ChunkExtension], trailer: List[HttpHeader]) = {
+    val sb = new java.lang.StringBuilder(16)
+    appendLine(appendChunkExtensions(extensions, sb.append("0")))
+    appendHeaders(trailer, sb)
+    appendLine(sb)
+    encode(sb) :: Nil
+  }
+
+  @tailrec
+  protected final def appendChunkExtensions(extensions: List[ChunkExtension], sb: JStringBuilder): JStringBuilder = {
+    extensions match {
+      case Nil => sb
+      case ChunkExtension(name, value) :: rest => appendChunkExtensions(rest, {
+        sb.append(';').append(name).append('=')
+        if (value.forall(isTokenChar)) sb.append(value) else sb.append('"').append(value).append('"')
+      })
+    }
+  }
 }
 
 trait ResponsePreparer extends MessagePreparer {
@@ -63,7 +91,6 @@ trait ResponsePreparer extends MessagePreparer {
 
   private val ServerHeaderPlusDateColonSP =
     if (serverHeader.isEmpty) "Date: " else "Server: " + serverHeader + "\r\nDate: "
-  private val CrLf = "\r\n".getBytes("ASCII")
 
   protected def prepareResponse(requestLine: RequestLine, response: HttpResponse,
                                 reqConnectionHeader: Option[String]): (List[ByteBuffer], Boolean) = {
@@ -105,32 +132,6 @@ trait ResponsePreparer extends MessagePreparer {
     appendHeader("Content-Length", body.length.toString, sb)
     appendLine(sb)
     (encode(sb) :: wrapBody, close)
-  }
-
-  def prepareResponseChunk(chunk: MessageChunk) = {
-    val sb = new java.lang.StringBuilder(16)
-    sb.append(chunk.body.length.toHexString)
-    appendLine(appendChunkExtensions(chunk.extensions, sb))
-    encode(sb) :: ByteBuffer.wrap(chunk.body) :: ByteBuffer.wrap(CrLf) :: Nil
-  }
-
-  def prepareFinalResponseChunk(extensions: List[ChunkExtension], trailer: List[HttpHeader]) = {
-    val sb = new java.lang.StringBuilder(16)
-    appendLine(appendChunkExtensions(extensions, sb.append("0")))
-    appendHeaders(trailer, sb)
-    appendLine(sb)
-    encode(sb) :: Nil
-  }
-
-  @tailrec
-  private def appendChunkExtensions(extensions: List[ChunkExtension], sb: JStringBuilder): JStringBuilder = {
-    extensions match {
-      case Nil => sb
-      case ChunkExtension(name, value) :: rest => appendChunkExtensions(rest, {
-        sb.append(';').append(name).append('=')
-        if (value.forall(isTokenChar)) sb.append(value) else sb.append('"').append(value).append('"')
-      })
-    }
   }
 
   protected def dateTimeNow = DateTime.now  // split out so we can stabilize by overriding in tests

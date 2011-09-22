@@ -179,6 +179,18 @@ case class ChunkedRequestStart(
   headers: List[HttpHeader] = Nil
 )
 
+object ChunkedRequestStart {
+  def verify(requestStart: ChunkedRequestStart) = {
+    import requestStart._
+    def req(cond: Boolean, msg: => String) { require(cond, "Illegal ChunkedRequestStart: " + msg) }
+    req(headers != null, "headers must not be null")
+    req(headers.forall(_.name != "Content-Length"), "Content-Length header is not allowed")
+    req(headers.forall(_.name != "Transfer-Encoding"), "Transfer-Encoding header is not allowed, the client sets it itself")
+    requestStart
+  }
+}
+
+
 case class ChunkedRequestEnd(
   extensions: List[ChunkExtension],
   trailer: List[HttpHeader],
@@ -217,7 +229,13 @@ object MessageChunk {
 
 case class ChunkExtension(name: String, value: String)
 
-trait StreamHandler {
-  def sendChunk(chunk: MessageChunk)
-  def closeStream(extensions: List[ChunkExtension] = Nil, trailer: List[HttpHeader] = Nil)
+object Trailer {
+  def verify(trailer: List[HttpHeader]) = {
+    if (!trailer.isEmpty) {
+      require(trailer.forall(_.name != "Content-Length"), "Content-Length header is not allowed in trailer")
+      require(trailer.forall(_.name != "Transfer-Encoding"), "Transfer-Encoding header is not allowed in trailer")
+      require(trailer.forall(_.name != "Trailer"), "Trailer header is not allowed in trailer")
+    }
+    trailer
+  }
 }

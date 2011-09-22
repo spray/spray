@@ -23,7 +23,7 @@ import java.io.IOException
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import annotation.tailrec
-import java.util.concurrent.atomic.{AtomicInteger, AtomicBoolean}
+import java.util.concurrent.atomic.AtomicInteger
 import akka.actor.{ActorRef, Actor, PoisonPill}
 
 /////////////////////////////////////////////
@@ -46,7 +46,12 @@ case class Timeout(
 
 trait RequestResponder {
   def complete(response: HttpResponse)
-  def startStreaming(responseStart: ChunkedResponseStart): StreamHandler
+  def startChunkedResponse(responseStart: ChunkedResponseStart): ChunkedResponder
+}
+
+trait ChunkedResponder {
+  def sendChunk(chunk: MessageChunk)
+  def close(extensions: List[ChunkExtension] = Nil, trailer: List[HttpHeader] = Nil)
 }
 
 /////////////////////////////////////////////
@@ -324,7 +329,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
           log.warn("Received an additional response for an already completed request to '{}', ignoring...", requestLine.uri)
         case STREAMING =>
           log.warn("Received a regular response for a request to '{}', " +
-                   "that a streaming response has already been started/completed, ignoring...", requestLine.uri)
+                   "that a chunked response has already been started/completed, ignoring...", requestLine.uri)
       }
     }
 
@@ -338,18 +343,18 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
       } else false
     }
 
-    def startStreaming(responseStart: ChunkedResponseStart) = {
+    def startChunkedResponse(responseStart: ChunkedResponseStart) = {
       ChunkedResponseStart.verify(responseStart)
       if (mode.compareAndSet(UNCOMPLETED, STREAMING)) {
-        log.debug("Enqueueing start of streaming response")
+        log.debug("Enqueueing start of chunked response")
         val headers = HttpHeader("Transfer-Encoding", "chunked") :: responseStart.headers
         val (buffers, close) = prepareResponse(requestLine, HttpResponse(responseStart.status, headers), connectionHeader)
         self ! new Respond(conn, buffers, false, responseNr, false, requestRecord)
-        new ResponseStreamHandler(responseStart, close)
+        new DefaultChunkedResponder(responseStart, close)
       } else throw new IllegalStateException {
         mode.get match {
-          case COMPLETED => "The streaming response cannot be started since this request to '" + requestLine.uri + "' has already been completed"
-          case STREAMING => "A streaming response has already been started for this request to '" + requestLine.uri + "'"
+          case COMPLETED => "The chunked response cannot be started since this request to '" + requestLine.uri + "' has already been completed"
+          case STREAMING => "A chunked response has already been started (and maybe completed) for this request to '" + requestLine.uri + "'"
         }
       }
     }
@@ -360,27 +365,23 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
 
     def setRequestRecord(record: RequestRecord) { requestRecord = record }
 
-    class ResponseStreamHandler(responseStart: ChunkedResponseStart, closeAfterLastChunk: Boolean)
-            extends StreamHandler {
+    class DefaultChunkedResponder(responseStart: ChunkedResponseStart, closeAfterLastChunk: Boolean)
+            extends ChunkedResponder {
       private var closed = false
       def sendChunk(chunk: MessageChunk) {
         synchronized {
           if (!closed) {
-            log.debug("Enqueueing streaming response chunk")
-            self ! new Respond(conn, prepareResponseChunk(chunk), false, responseNr, false, null)
+            log.debug("Enqueueing response chunk")
+            self ! new Respond(conn, prepareChunk(chunk), false, responseNr, false)
           } else throw new RuntimeException("Cannot send MessageChunk after HTTP stream has been closed")
         }
       }
-      def closeStream(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
-        if (!trailer.isEmpty) {
-          require(trailer.forall(_.name != "Content-Length"), "Content-Length header is not allowed in trailer")
-          require(trailer.forall(_.name != "Transfer-Encoding"), "Transfer-Encoding header is not allowed in trailer")
-          require(trailer.forall(_.name != "Trailer"), "Trailer header is not allowed in trailer")
-        }
+      def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
+        Trailer.verify(trailer)
         synchronized {
           if (!closed) {
-            log.debug("Enqueueing final streaming response chunk")
-            val buffers = prepareFinalResponseChunk(extensions, trailer)
+            log.debug("Enqueueing final response chunk")
+            val buffers = prepareFinalChunk(extensions, trailer)
             self ! new Respond(conn, buffers, closeAfterLastChunk, responseNr)
             closed = true
           } else throw new RuntimeException("Cannot close an HTTP stream that has already been closed")

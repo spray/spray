@@ -24,6 +24,7 @@ class BufferingRequestStreamActorCreator(serviceActor: ActorRef, maxContentLengt
   def apply(context: ChunkedRequestContext) = new Actor {
     var body: Array[Byte] = _
     var totalBytes = 0L
+
     protected def receive = {
       case x: MessageChunk => body match {
         case null =>

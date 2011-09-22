@@ -25,24 +25,38 @@ import collection.mutable.Queue
 import java.lang.IllegalStateException
 import akka.dispatch.{DefaultCompletableFuture, CompletableFuture, Future}
 import akka.actor.{ActorRef, Actor, UntypedChannel}
+import HttpProtocols._
 
 sealed trait HttpConnection {
   def send(request: HttpRequest): Future[HttpResponse]
-  def send(request: HttpRequest, receiver: ActorRef, context: Option[Any] = None)
-  def startRequestStream(requestStart: ChunkedRequestStart): StreamHandler
+  def sendAndReceive(request: HttpRequest, receiver: ActorRef, context: Option[Any] = None)
+  def startChunkedRequest(requestStart: ChunkedRequestStart): ChunkedRequester
   def close()
+}
+
+trait ChunkedRequester {
+  def sendChunk(chunk: MessageChunk)
+  def close(extensions: List[ChunkExtension] = Nil, trailer: List[HttpHeader] = Nil): Future[HttpResponse]
+  def closeAndReceive(receiver: ActorRef, context: Option[Any] = None, extensions: List[ChunkExtension] = Nil,
+                      trailer: List[HttpHeader] = Nil)
 }
 
 // public incoming message
 case class Connect(host: String, port: Int = 80)
 
 object HttpClient extends HighLevelHttpClient {
-  private[can] case class Send(conn: ClientConnection, request: HttpRequest, buffers: List[ByteBuffer],
-                               responder: AnyRef => Unit)
+  private[can] class RequestMark // a unique object used to mark all parts of one chunked request
+  private[can] case class Send(
+    conn: ClientConnection,
+    requestMethod: HttpMethod,
+    requestUri: String,
+    buffers: List[ByteBuffer],
+    commitMark: Option[RequestMark], // None for regular (unchunked) requests
+    responder: Option[AnyRef => Unit] // Only defined for regular requests and final chunks of chunked requests
+  )
   private case class Close(conn: ClientConnection)
-  private case class RequestRecord(request: HttpRequest, conn: ClientConnection)
-          extends LinkedList.Element[RequestRecord]
-  private[can] abstract class PendingResponse(val request: HttpRequest) {
+  private case class RequestRecord(requestUri: String, conn: ClientConnection) extends LinkedList.Element[RequestRecord]
+  private[can] abstract class PendingResponse(val requestMethod: HttpMethod) {
     def deliver(response: AnyRef)
   }
   private[can] class ClientConnection(key: SelectionKey, val host: String, val port: Int,
@@ -50,13 +64,14 @@ object HttpClient extends HighLevelHttpClient {
           extends Connection[ClientConnection](key) {
     val pendingResponses = Queue.empty[PendingResponse]
     val requestQueue = Queue.empty[Send]
+    var currentCommitMark: Option[RequestMark] = None // defined if a chunked request is currently being written
     key.attach(this)
     messageParser = UnexpectedResponseErrorParser
     def closeAllPendingWithError(error: String) { pendingResponses.foreach(_.deliver(new HttpClientException(error))) }
     def resetParser(config: MessageParserConfig) {
       messageParser = {
         if (pendingResponses.isEmpty) UnexpectedResponseErrorParser
-        else new EmptyResponseParser(config, pendingResponses.head.request.method)
+        else new EmptyResponseParser(config, pendingResponses.head.requestMethod)
       }
     }
   }
@@ -90,10 +105,13 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
   protected override def receive = super.receive orElse {
     case Connect(host, port) => initiateConnection(host, port)
     case send: Send => {
-      if (send.conn.writeBuffers.isEmpty)
+      import send.conn._
+      // if writeBuffers aren't empty we are in the middle of a write, so we have to queue
+      // otherwise we also have to queue if a chunked request is ongoing and the current Send is not part of it
+      if (writeBuffers.isEmpty && (currentCommitMark.isEmpty || send.commitMark == currentCommitMark))
         prepareWriting(send)
       else
-        send.conn.requestQueue.enqueue(send)
+        requestQueue.enqueue(send)
     }
     case Close(conn) => close(conn)
   }
@@ -109,7 +127,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
         val key = socketChannel.register(selector, SelectionKey.OP_READ) // start out with writing disabled
         val conn = new ClientConnection(key, host, port)
         connections += conn
-        new HttpConnectionImpl(conn)
+        new DefaultHttpConnection(conn)
       } else {
         log.debug("Connection request registered")
         val key = socketChannel.register(selector, SelectionKey.OP_CONNECT)
@@ -134,7 +152,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
           conn.key.interestOps(SelectionKey.OP_READ)
           connections += conn
           log.debug("Connected to {}:{}", conn.host, conn.port)
-          new HttpConnectionImpl(conn)
+          new DefaultHttpConnection(conn)
         } match {
           case Right(x) =>  if (!channel.tryTell(x)) log.error("Couldn't reply to Connect message")
           case Left(error) => channel.sendException {
@@ -148,33 +166,42 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
   private def prepareWriting(send: Send) {
     import send._
     if (conn.key.isValid) {
-      log.debug("Received raw request, scheduling write")
-      val requestRecord = RequestRecord(request, conn)
-      conn.pendingResponses.enqueue(new PendingResponse(request) {
-        def deliver(response: AnyRef) {
-          log.debug("Delivering received response: {}", response)
-          send.responder(response)
-          openRequests -= requestRecord
-        }
-      })
+      if (responder.isDefined) {
+        log.debug("Received raw request or final chunk, scheduling write")
+        val requestRecord = RequestRecord(requestUri, conn)
+        conn.pendingResponses.enqueue(new PendingResponse(requestMethod) {
+          def deliver(response: AnyRef) {
+            log.debug("Delivering received response: {}", response)
+            responder.get.apply(response)
+            openRequests -= requestRecord
+          }
+        })
+        openRequests += requestRecord
+        requestsDispatched += 1
+        conn.currentCommitMark = None // if we were in a chunked request it is now complete
+      } else {
+        log.debug("Received chunked request start or chunk, scheduling write")
+        conn.currentCommitMark = commitMark // signal that we are now in a chunked request
+      }
       conn.writeBuffers = buffers
       conn.enableWriting()
-      openRequests += requestRecord
-      requestsDispatched += 1
     } else {
-      send.responder(new HttpClientException("Cannot send request due to closed connection"))
+      send.responder.map(_(new HttpClientException("Cannot send request due to closed connection")))
     }
   }
 
   protected def finishWrite(conn: ClientConnection) {
     import conn._
     if (writeBuffers.isEmpty) {
-      if (messageParser == UnexpectedResponseErrorParser)
-        messageParser = new EmptyResponseParser(config.parserConfig, pendingResponses.head.request.method)
+      if (messageParser == UnexpectedResponseErrorParser) {
+        // if this is the first request (of a series) we need to re-initialize the response parser
+        messageParser = new EmptyResponseParser(config.parserConfig, pendingResponses.head.requestMethod)
+      }
       if (requestQueue.isEmpty) {
         disableWriting()
-      } else {
-        prepareWriting(requestQueue.dequeue())
+      } else conn.currentCommitMark match {
+        case None => prepareWriting(requestQueue.dequeue())
+        case mark => requestQueue.dequeueFirst(_.commitMark == mark).foreach(prepareWriting)
       }
     }
   }
@@ -223,7 +250,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
 
   protected def handleTimedOutRequests() {
     openRequests.forAllTimedOut(config.requestTimeout) { requestRecord =>
-      log.warn("Request to '{}' timed out, closing the connection", requestRecord.request.uri)
+      log.warn("Request to '{}' timed out, closing the connection", requestRecord.requestUri)
       requestRecord.conn.closeAllPendingWithError("Request timed out")
       close(requestRecord.conn)
     }
@@ -236,40 +263,79 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
 
   protected def openRequestCount = openRequests.size
 
-  private class HttpConnectionImpl(conn: ClientConnection) extends HttpConnection with RequestPreparer {
+  private class DefaultHttpConnection(conn: ClientConnection) extends HttpConnection with RequestPreparer {
     protected def userAgentHeader = config.userAgentHeader
 
     def send(request: HttpRequest) = {
       // we "disable" the akka future timeout, since we rely on our own logic
       val future = new DefaultCompletableFuture[HttpResponse](Long.MaxValue)
-      send(request, Actor.actorOf(new ResponseBufferingActor(future)).start())
+      val actor = Actor.actorOf(new ResponseBufferingActor(future, config.parserConfig.maxContentLength))
+      sendAndReceive(request, actor.start())
       future
     }
 
-    def send(request: HttpRequest, receiver: ActorRef, context: Option[Any] = None) {
+    def sendAndReceive(request: HttpRequest, receiver: ActorRef, context: Option[Any] = None) {
       HttpRequest.verify(request)
       log.debug("Enqueueing valid HttpRequest as raw request")
-      val responder: AnyRef => Unit = context match {
-        case Some(ctx) => receiver ! (_, ctx)
-        case None => receiver ! _
-      }
-      self ! Send(conn, request, prepareRequest(request, conn.host, conn.port), responder)
+      val buffers = prepareRequest(request, conn.host, conn.port)
+      self ! Send(conn, request.method, request.uri, buffers, None, Some(responder(receiver, context)))
     }
 
-    def startRequestStream(requestStart: ChunkedRequestStart) = {
-      throw new RuntimeException("Not yet")
+    def startChunkedRequest(requestStart: ChunkedRequestStart) = {
+      ChunkedRequestStart.verify(requestStart)
+      log.debug("Enqueueing start of chunked request")
+      import requestStart._
+      val mark = Some(new RequestMark)
+      val request = HttpRequest(method, uri, headers, EmptyByteArray, `HTTP/1.1`)
+      val buffers = prepareRequest(request, conn.host, conn.port)
+      self ! Send(conn, method, uri, buffers, mark, None)
+      new DefaultChunkedRequester(method, uri, mark)
     }
 
     def close() {
       self ! Close(conn)
     }
-  }
-}
 
-private[can] class ResponseBufferingActor(future: CompletableFuture[HttpResponse]) extends Actor {
-  protected def receive = {
-    case response: HttpResponse => future.completeWithResult(response)
-    case exception: HttpClientException => future.completeWithException(exception)
+    private def responder(receiver: ActorRef, context: Option[Any]): AnyRef => Unit = {
+      context match {
+        case Some(ctx) => receiver ! (_, ctx)
+        case None => receiver ! _
+      }
+    }
+
+    class DefaultChunkedRequester(method: HttpMethod, uri: String, mark: Option[RequestMark]) extends ChunkedRequester {
+      private var closed = false
+      def sendChunk(chunk: MessageChunk) {
+        synchronized {
+          if (!closed) {
+            log.debug("Enqueueing request chunk")
+            val buffers = prepareChunk(chunk)
+            self ! Send(conn, method, uri, buffers, mark, None)
+          } else throw new RuntimeException("Cannot send MessageChunk after HTTP stream has been closed")
+        }
+      }
+
+      def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) = {
+        // we "disable" the akka future timeout, since we rely on our own logic
+        val future = new DefaultCompletableFuture[HttpResponse](Long.MaxValue)
+        val actor = Actor.actorOf(new ResponseBufferingActor(future, config.parserConfig.maxContentLength))
+        closeAndReceive(actor.start(), None, extensions, trailer)
+        future
+      }
+
+      def closeAndReceive(receiver: ActorRef, context: Option[Any], extensions: List[ChunkExtension],
+                          trailer: List[HttpHeader]) {
+        Trailer.verify(trailer)
+        synchronized {
+          if (!closed) {
+            log.debug("Enqueueing final request chunk")
+            val buffers = prepareFinalChunk(extensions, trailer)
+            self ! Send(conn, method, uri, buffers, mark, Some(responder(receiver, context)))
+            closed = true
+          } else throw new RuntimeException("Cannot close an HTTP stream that has already been closed")
+        }
+      }
+    }
   }
 }
 

@@ -77,7 +77,7 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
   }
 
   def e4 = decode(
-    prepareResponseChunk(
+    prepareChunk(
       MessageChunk(
         List(ChunkExtension("key", "value"), ChunkExtension("another", "tl;dr")),
         "body123".getBytes("ISO-8859-1")
@@ -90,7 +90,7 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
   }
 
   def e5 = decode(
-    prepareFinalResponseChunk(Nil, List(HttpHeader("Age", "30"), HttpHeader("Cache-Control", "public")))
+    prepareFinalChunk(Nil, List(HttpHeader("Age", "30"), HttpHeader("Cache-Control", "public")))
   ) mustEqual prep {
     """|0
        |Age: 30
