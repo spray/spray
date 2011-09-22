@@ -212,7 +212,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
     val requestLine = parser.messageLine.asInstanceOf[RequestLine]
     import requestLine._
     val remoteAddress = conn.key.channel.asInstanceOf[SocketChannel].socket.getInetAddress
-    log.debug("Dispatching start of streamed {} request to '{}' to a new stream actor", method, uri)
+    log.debug("Dispatching start of chunked {} request to '{}' to a new stream actor", method, uri)
     val streamActor = Actor.actorOf(
       streamActorCreator(ChunkedRequestContext(ChunkedRequestStart(method, uri, parser.headers), remoteAddress))
     ).start()
@@ -220,14 +220,9 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
       RequestChunkingContext(requestLine, parser.connectionHeader, streamActor))
   }
 
-  protected def handleChunkedChunk(conn: Conn, parser: ChunkedChunkParser) {
-    import parser._
-    context.streamActor ! MessageChunk(extensions, body)
-    conn.messageParser = new ChunkParser(config.parserConfig, context)
-  }
-
   protected def handleChunkedEnd(conn: Conn, parser: ChunkedEndParser) {
-    import parser.context._
+    val context = parser.context.asInstanceOf[RequestChunkingContext]
+    import context._
     val responder = new DefaultRequestResponder(conn, requestLine, conn.countDispatch(), connectionHeader)
     streamActor ! ChunkedRequestEnd(parser.extensions, parser.trailer, responder)
     conn.messageParser = StartRequestParser // switch back to parsing the next request from the start

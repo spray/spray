@@ -20,15 +20,16 @@ import org.slf4j.LoggerFactory
 import java.net.InetSocketAddress
 import java.nio.channels.{SocketChannel, SelectionKey}
 import utils.LinkedList
-import akka.dispatch.Future
 import java.nio.ByteBuffer
 import collection.mutable.Queue
-import akka.actor.{Actor, UntypedChannel}
 import java.lang.IllegalStateException
+import akka.dispatch.{DefaultCompletableFuture, CompletableFuture, Future}
+import akka.actor.{ActorRef, Actor, UntypedChannel}
 
 sealed trait HttpConnection {
   def send(request: HttpRequest): Future[HttpResponse]
-  def startStreaming(requestStart: ChunkedRequestStart): StreamHandler
+  def send(request: HttpRequest, receiver: => Actor)
+  def startRequestStream(requestStart: ChunkedRequestStart): StreamHandler
   def close()
 }
 
@@ -36,7 +37,8 @@ sealed trait HttpConnection {
 case class Connect(host: String, port: Int = 80)
 
 object HttpClient extends HighLevelHttpClient {
-  private[can] case class Send(conn: ClientConnection, request: HttpRequest, buffers: List[ByteBuffer])
+  private[can] case class Send(conn: ClientConnection, request: HttpRequest, buffers: List[ByteBuffer],
+                               receiver: ActorRef)
   private case class Close(conn: ClientConnection)
   private case class RequestRecord(request: HttpRequest, conn: ClientConnection)
           extends LinkedList.Element[RequestRecord]
@@ -47,7 +49,7 @@ object HttpClient extends HighLevelHttpClient {
                                       val connectionResponseChannel: Option[UntypedChannel] = None)
           extends Connection[ClientConnection](key) {
     val pendingResponses = Queue.empty[PendingResponse]
-    val requestQueue = Queue.empty[(Send, UntypedChannel)]
+    val requestQueue = Queue.empty[Send]
     key.attach(this)
     messageParser = UnexpectedResponseErrorParser
     def closeAllPendingWithError(error: String) { pendingResponses.foreach(_.deliver(Left(error))) }
@@ -82,9 +84,10 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
   protected override def receive = super.receive orElse {
     case Connect(host, port) => initiateConnection(host, port)
     case send: Send => {
-      if (send.conn.writeBuffers.isEmpty) {
-        prepareWriting(send, self.channel)
-      } else send.conn.requestQueue.enqueue(send -> self.channel)
+      if (send.conn.writeBuffers.isEmpty)
+        prepareWriting(send)
+      else
+        send.conn.requestQueue.enqueue(send)
     }
     case Close(conn) => close(conn)
   }
@@ -136,7 +139,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
     } else throw new IllegalStateException
   }
 
-  private def prepareWriting(send: Send, responseChannel: UntypedChannel) {
+  private def prepareWriting(send: Send) {
     import send._
     if (conn.key.isValid) {
       log.debug("Received raw request, scheduling write")
@@ -144,9 +147,11 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
       conn.pendingResponses.enqueue(new PendingResponse(request) {
         def deliver(either: Either[String, HttpResponse]) {
           log.debug("Delivering received response: {}", either)
-          either match {
-            case Right(response) => responseChannel ! response
-            case Left(error) => responseChannel.sendException(new HttpClientException(error))
+          send.receiver ! {
+            either match {
+              case Right(response) => response
+              case Left(error) => new HttpClientException(error)
+            }
           }
           openRequests -= requestRecord
         }
@@ -156,7 +161,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
       openRequests += requestRecord
       requestsDispatched += 1
     } else {
-      self.channel.sendException(new HttpClientException("Cannot send request due to closed connection"))
+      send.receiver ! new HttpClientException("Cannot send request due to closed connection")
     }
   }
 
@@ -168,8 +173,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
       if (requestQueue.isEmpty) {
         disableWriting()
       } else {
-        val (send, channel) = requestQueue.dequeue()
-        prepareWriting(send, channel)
+        prepareWriting(requestQueue.dequeue())
       }
     }
   }
@@ -186,12 +190,21 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
   }
 
   protected def handleChunkedStart(conn: Conn, parser: ChunkedStartParser) {
-  }
-
-  protected def handleChunkedChunk(conn: Conn, parser: ChunkedChunkParser) {
+    /*assert(!conn.pendingResponses.isEmpty)
+    val pendingResponse = conn.pendingResponses.dequeue()
+    log.debug("Delivering start of chunked response from {} request to '{}'",
+      pendingResponse.request.method, pendingResponse.request.uri)
+    val statusLine = parser.messageLine.asInstanceOf[StatusLine]
+    val streamActor = Actor.actorOf(streamActorCreator(ChunkedResponseStart(statusLine.status, parser.headers))).start()
+    conn.messageParser = new ChunkParser(config.parserConfig, ResponseChunkingContext(statusLine, streamActor))*/
   }
 
   protected def handleChunkedEnd(conn: Conn, parser: ChunkedEndParser) {
+    /*val context = parser.context.asInstanceOf[ResponseChunkingContext]
+    import context._
+    val responder = new DefaultRequestResponder(conn, requestLine, conn.countDispatch(), connectionHeader)
+    streamActor ! ChunkedRequestEnd(parser.extensions, parser.trailer, responder)
+    conn.messageParser = StartRequestParser // switch back to parsing the next request from the start*/
   }
 
   protected def handleParseError(conn: Conn, parser: ErrorParser) {
@@ -226,19 +239,33 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
     protected def userAgentHeader = config.userAgentHeader
 
     def send(request: HttpRequest) = {
-      HttpRequest.verify(request)
-      log.debug("Enqueueing valid HttpRequest as raw request")
-      implicit val timeout = Actor.Timeout(Long.MaxValue) // "disable" the akka future, since we rely on our own
-      (self ? Send(conn, request, prepareRequest(request, conn.host, conn.port))).mapTo[HttpResponse]
+      // we "disable" the akka future timeout, since we rely on our own logic
+      val future = new DefaultCompletableFuture[HttpResponse](Long.MaxValue)
+      send(request, new ResponseBufferingActor(future))
+      future
     }
 
-    def startStreaming(requestStart: ChunkedRequestStart) = {
+    def send(request: HttpRequest, receiver: => Actor) {
+      HttpRequest.verify(request)
+      val receiverActor = Actor.actorOf(receiver).start()
+      log.debug("Enqueueing valid HttpRequest as raw request")
+      self ! Send(conn, request, prepareRequest(request, conn.host, conn.port), receiverActor)
+    }
+
+    def startRequestStream(requestStart: ChunkedRequestStart) = {
       throw new RuntimeException("Not yet")
     }
 
     def close() {
       self ! Close(conn)
     }
+  }
+}
+
+private[can] class ResponseBufferingActor(future: CompletableFuture[HttpResponse]) extends Actor {
+  protected def receive = {
+    case response: HttpResponse => future.completeWithResult(response)
+    case exception: HttpClientException => future.completeWithException(exception)
   }
 }
 

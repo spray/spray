@@ -227,7 +227,11 @@ private[can] abstract class HttpPeer extends Actor {
 
   protected def handleChunkedStart(conn: Conn, parser: ChunkedStartParser)
 
-  protected def handleChunkedChunk(conn: Conn, parser: ChunkedChunkParser)
+  protected def handleChunkedChunk(conn: Conn, parser: ChunkedChunkParser) {
+    import parser._
+    context.streamActor ! MessageChunk(extensions, body)
+    conn.messageParser = new ChunkParser(config.parserConfig, context)
+  }
 
   protected def handleChunkedEnd(conn: Conn, parser: ChunkedEndParser)
 

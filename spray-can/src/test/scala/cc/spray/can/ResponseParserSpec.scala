@@ -29,7 +29,7 @@ class ResponseParserSpec extends Specification {
           """|HTTP/1.1 200 OK
              |
              |"""
-        } mustEqual (`HTTP/1.1`, 200, "OK", Nil, None, "")
+        } mustEqual ErrorParser("Content-Length header or chunked transfer encoding required", 411)
       }
 
       "with one header, a body, but no Content-Length header" in {
@@ -60,7 +60,7 @@ class ResponseParserSpec extends Specification {
 
       "with multi-line headers" in {
         parse {
-          """|HTTP/1.1 200 OK
+          """|HTTP/1.0 200 OK
              |User-Agent: curl/7.19.7
              | abc
              |    xyz
@@ -68,15 +68,15 @@ class ResponseParserSpec extends Specification {
              | : */*  """ + """
              |
              |"""
-        } mustEqual (`HTTP/1.1`, 200, "OK", List(
+        } mustEqual (`HTTP/1.0`, 200, "OK", List(
           HttpHeader("Accept", "*/*"),
           HttpHeader("User-Agent", "curl/7.19.7 abc xyz")
         ), None, "")
       }
     }
 
-    "properly parse a chunked" in {
-      "response start" in {
+    "properly parse a" in {
+      "chunked response start" in {
         parse {
           """|HTTP/1.1 200 OK
              |User-Agent: curl/7.19.7

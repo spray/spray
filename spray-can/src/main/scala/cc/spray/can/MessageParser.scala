@@ -270,7 +270,7 @@ private[can] class HeaderValueParser(config: MessageParserConfig, messageLine: M
   }
 }
 
-private[can] class ChunkParser(config: MessageParserConfig, context: RequestChunkingContext) extends CharacterParser {
+private[can] class ChunkParser(config: MessageParserConfig, context: ChunkingContext) extends CharacterParser {
   var chunkSize = -1
   def handle(digit: Int) = {
     chunkSize = if (chunkSize == -1) digit else chunkSize * 16 + digit
@@ -291,7 +291,7 @@ private[can] class ChunkParser(config: MessageParserConfig, context: RequestChun
   }
 }
 
-private[can] class ChunkExtensionNameParser(config: MessageParserConfig, context: RequestChunkingContext,
+private[can] class ChunkExtensionNameParser(config: MessageParserConfig, context: ChunkingContext,
                                             chunkSize: Int, extCount: Int = 0, extensions: List[ChunkExtension] = Nil)
         extends CharacterParser {
   val extName = new JStringBuilder
@@ -310,7 +310,7 @@ private[can] class ChunkExtensionNameParser(config: MessageParserConfig, context
   }
 }
 
-private[can] class ChunkExtensionValueParser(config: MessageParserConfig, context: RequestChunkingContext, chunkSize: Int,
+private[can] class ChunkExtensionValueParser(config: MessageParserConfig, context: ChunkingContext, chunkSize: Int,
                                              extCount: Int, extensions: List[ChunkExtension], extName: String)
         extends CharacterParser {
   val extValue = new JStringBuilder
@@ -353,7 +353,7 @@ private[can] class ChunkExtensionValueParser(config: MessageParserConfig, contex
   }
 }
 
-private[can] class TrailerParser(config: MessageParserConfig, context: RequestChunkingContext,
+private[can] class TrailerParser(config: MessageParserConfig, context: ChunkingContext,
                                  extensions: List[ChunkExtension] = Nil, headerCount: Int = 0,
                                  headers: List[HttpHeader] = Nil)
         extends HeaderNameParser(config, null, headerCount, headers) {
@@ -423,7 +423,7 @@ private[can] class ToCloseBodyParser(config: MessageParserConfig, messageLine: M
   def complete = CompleteMessageParser(messageLine, headers, connectionHeader, body)
 }
 
-private[can] class ChunkBodyParser(config: MessageParserConfig, context: RequestChunkingContext, chunkSize: Int,
+private[can] class ChunkBodyParser(config: MessageParserConfig, context: ChunkingContext, chunkSize: Int,
                                    extensions: List[ChunkExtension] = Nil) extends IntermediateParser {
   require(chunkSize > 0, "Chunk size must not be negative")
   require(chunkSize <= config.maxChunkSize, "HTTP message chunk size " + chunkSize + " exceeds configured limit")
@@ -454,13 +454,13 @@ private[can] case class ChunkedStartParser(
 private[can] case class ChunkedChunkParser(
   extensions: List[ChunkExtension],
   body: Array[Byte],
-  context: RequestChunkingContext
+  context: ChunkingContext
 ) extends MessageParser
 
 private[can] case class ChunkedEndParser(
   extensions: List[ChunkExtension],
   trailer: List[HttpHeader],
-  context: RequestChunkingContext
+  context: ChunkingContext
 ) extends MessageParser
 
 private[can] class ErrorParser(val message: String, val status: Int) extends MessageParser {

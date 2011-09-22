@@ -57,9 +57,12 @@ case class RequestLine(
 ) extends MessageLine
 case class StatusLine(requestMethod: HttpMethod, protocol: HttpProtocol, status: Int, reason: String) extends MessageLine
 
-sealed trait ChunkingContext
+sealed trait ChunkingContext {
+  def streamActor: ActorRef
+}
 case class RequestChunkingContext(requestLine: RequestLine, connectionHeader: Option[String], streamActor: ActorRef)
         extends ChunkingContext
+case class ResponseChunkingContext(requestLine: RequestLine, streamActor: ActorRef) extends ChunkingContext
 
 case class HttpHeader(name: String, value: String) extends Product2[String, String] {
   def _1 = name

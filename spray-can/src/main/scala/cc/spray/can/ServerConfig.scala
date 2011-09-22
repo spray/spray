@@ -107,9 +107,6 @@ case class ClientConfig(
   clientActorId: String = "spray-can-client",
   userAgentHeader: String = "spray-can/" + SprayCanVersion,
 
-  // must be fast and non-blocking
-  streamHandlerCreator: Option[ChunkedResponseStart => Actor] = None,
-
   // PeerConfig
   readBufferSize: Int = 8192,
   idleTimeout: Long = 10000,

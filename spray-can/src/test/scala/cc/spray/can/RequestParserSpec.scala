@@ -30,7 +30,7 @@ class RequestParserSpec extends Specification {
           """|GET / HTTP/1.1
              |
              |"""
-        } mustEqual ErrorParser("Content-Length header or chunked transfer encoding required", 411)
+        } mustEqual (GET, "/", `HTTP/1.1`, Nil, None, "")
       }
 
       "with one header" in {
