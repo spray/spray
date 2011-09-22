@@ -23,8 +23,8 @@ import java.io.IOException
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import annotation.tailrec
-import akka.actor.{Actor, PoisonPill}
 import java.util.concurrent.atomic.{AtomicInteger, AtomicBoolean}
+import akka.actor.{ActorRef, Actor, PoisonPill}
 
 /////////////////////////////////////////////
 // HttpServer messages
@@ -36,7 +36,10 @@ case class RequestContext(
 )
 
 case class Timeout(
-  request: HttpRequest,
+  method: HttpMethod,
+  uri: String,
+  protocol: HttpProtocol,
+  headers: List[HttpHeader],
   remoteAddress: InetAddress,
   complete: HttpResponse => Unit
 )
@@ -60,8 +63,12 @@ object HttpServer {
     val requestRecord: RequestRecord = null) {
     var next: Respond = _
   }
-  private[can] case class RequestRecord(request: HttpRequest, remoteAddress: InetAddress,
+  private[can] case class RequestRecord(method: HttpMethod, uri: String, protocol: HttpProtocol,
+                                        headers: List[HttpHeader], remoteAddress: InetAddress,
                                         responder: RequestResponder) extends LinkedList.Element[RequestRecord]
+
+  case class ChunkingContext(requestLine: RequestLine, headers: List[HttpHeader], connectionHeader: Option[String],
+                             streamActor: ActorRef)
 
   private[can] class ServerConnection(key: SelectionKey, emptyRequestParser: EmptyRequestParser)
           extends Connection[ServerConnection](key) {
@@ -69,6 +76,7 @@ object HttpServer {
     var responseNr = 0
     var currentRespond: Respond = _
     var queuedResponds: Respond = _
+    var chunkingContext: ChunkingContext = _
     key.attach(this)
     messageParser = emptyRequestParser
 
@@ -87,6 +95,13 @@ object HttpServer {
       val nextResponseNr = requestsDispatched
       requestsDispatched += 1
       nextResponseNr
+    }
+
+    def closeChunkingContext() {
+      if (chunkingContext != null) {
+        chunkingContext.streamActor ! PoisonPill // stop the stream actor
+        chunkingContext = null // free for GC
+      }
     }
   }
 }
@@ -181,7 +196,12 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
       if (conn.currentRespond.closeAfterWrite) {
         close(conn)
       } else {
-        if (conn.currentRespond.increaseResponseNr) conn.responseNr += 1
+        if (conn.currentRespond.increaseResponseNr) {
+          // we completely finished the response, i.e. either the HttpResponse has completely been written or
+          // the last chunk of a chunked response has gone out
+          conn.responseNr += 1
+          conn.closeChunkingContext()
+        }
         val next = conn.queuedResponds
         if (next != null && next.responseNr == conn.responseNr) {
           conn.queuedResponds = next.next
@@ -195,37 +215,51 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
     val requestLine = parser.messageLine.asInstanceOf[RequestLine]
     import requestLine._
     log.debug("Dispatching {} request to '{}' to the service actor", method, uri)
-    val request = HttpRequest(method, uri, parser.headers, parser.body, protocol)
-    val responder = new DefaultRequestResponder(conn, requestLine, conn.countDispatch(), parser.connectionHeader)
     val remoteAddress = conn.key.channel.asInstanceOf[SocketChannel].socket.getInetAddress
-    if (requestTimeoutCycle.isDefined) {
-      val requestRecord = RequestRecord(request, remoteAddress, responder)
-      responder.setRequestRecord(requestRecord)
-      openRequests += requestRecord;
-    }
-    requestsDispatched += 1
-    conn.messageParser = StartRequestParser // switch back to parsing the next request from the start
+    val responder = createAndRegisterRequestResponder(conn, requestLine, parser.headers, remoteAddress, parser.connectionHeader)
+    val request = HttpRequest(method, uri, parser.headers, parser.body, protocol)
     serviceActor ! RequestContext(request, remoteAddress, responder)
+    conn.messageParser = StartRequestParser // switch back to parsing the next request from the start
+    requestsDispatched += 1
   }
 
   protected def handleChunkedStart(conn: Conn, parser: ChunkedStartParser) {
-    val requestLine = parser.messageLine.asInstanceOf[RequestLine]
+    import parser._
+    val requestLine = messageLine.asInstanceOf[RequestLine]
     import requestLine._
     val remoteAddress = conn.key.channel.asInstanceOf[SocketChannel].socket.getInetAddress
     log.debug("Dispatching start of chunked {} request to '{}' to a new stream actor", method, uri)
     val streamActor = Actor.actorOf(
-      streamActorCreator(ChunkedRequestContext(ChunkedRequestStart(method, uri, parser.headers), remoteAddress))
+      streamActorCreator(ChunkedRequestContext(ChunkedRequestStart(method, uri, headers), remoteAddress))
     ).start()
-    conn.messageParser = new ChunkParser(config.parserConfig,
-      RequestChunkingContext(requestLine, parser.connectionHeader, streamActor))
+    conn.chunkingContext = ChunkingContext(requestLine, headers, connectionHeader, streamActor)
+    conn.messageParser = new ChunkParser(config.parserConfig)
+  }
+
+  protected def handleChunkedChunk(conn: Conn, parser: ChunkedChunkParser) {
+    conn.chunkingContext.streamActor ! MessageChunk(parser.extensions, parser.body)
+    conn.messageParser = new ChunkParser(config.parserConfig)
   }
 
   protected def handleChunkedEnd(conn: Conn, parser: ChunkedEndParser) {
-    val context = parser.context.asInstanceOf[RequestChunkingContext]
-    import context._
-    val responder = new DefaultRequestResponder(conn, requestLine, conn.countDispatch(), connectionHeader)
-    streamActor ! ChunkedRequestEnd(parser.extensions, parser.trailer, responder)
+    val cc = conn.chunkingContext
+    val remoteAddress = conn.key.channel.asInstanceOf[SocketChannel].socket.getInetAddress
+    val responder = createAndRegisterRequestResponder(conn, cc.requestLine, cc.headers, remoteAddress, cc.connectionHeader)
+    cc.streamActor ! ChunkedRequestEnd(parser.extensions, parser.trailer, responder)
     conn.messageParser = StartRequestParser // switch back to parsing the next request from the start
+    requestsDispatched += 1
+  }
+
+  private def createAndRegisterRequestResponder(conn: Conn, requestLine: RequestLine, headers: List[HttpHeader],
+                                                remoteAddress: InetAddress, connectionHeader: Option[String]) = {
+    val responder = new DefaultRequestResponder(conn, requestLine, conn.countDispatch(), connectionHeader)
+    if (requestTimeoutCycle.isDefined) {
+      import requestLine._
+      val requestRecord = RequestRecord(method, uri, protocol, headers, remoteAddress, responder)
+      responder.setRequestRecord(requestRecord)
+      openRequests += requestRecord;
+    }
+    responder
   }
 
   protected def handleParseError(conn: Conn, parser: ErrorParser) {
@@ -241,25 +275,34 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
   }
 
   protected def handleTimedOutRequests() {
-    openRequests.forAllTimedOut(config.requestTimeout) { ctx =>
-      log.warn("A request to '{}' timed out, dispatching to the TimeoutActor '{}'",
-        ctx.request.uri, config.timeoutActorId)
-      openRequests -= ctx
-      openTimeouts += ctx
-      import ctx._
-      timeoutActor ! Timeout(request, remoteAddress, responder.asInstanceOf[DefaultRequestResponder].timeoutResponder)
+    openRequests.forAllTimedOut(config.requestTimeout) { record =>
+      log.warn("A request to '{}' timed out, dispatching to the TimeoutActor '{}'", record.uri, config.timeoutActorId)
+      openRequests -= record
+      openTimeouts += record
+      import record._
+      timeoutActor ! Timeout(method, uri, protocol, headers, remoteAddress,
+        responder.asInstanceOf[DefaultRequestResponder].timeoutResponder)
     }
-    openTimeouts.forAllTimedOut(config.timeoutTimeout) { ctx =>
-      log.warn("The TimeoutService for '{}' timed out as well, responding with the static error reponse", ctx.request.uri)
-      ctx.responder.asInstanceOf[DefaultRequestResponder].timeoutResponder(timeoutTimeoutResponse(ctx.request))
+    openTimeouts.forAllTimedOut(config.timeoutTimeout) { record =>
+      import record._
+      log.warn("The TimeoutService for '{}' timed out as well, responding with the static error reponse", uri)
+      record.responder.asInstanceOf[DefaultRequestResponder].timeoutResponder {
+        timeoutTimeoutResponse(method, uri, protocol, headers, remoteAddress)
+      }
     }
   }
 
-  protected def timeoutTimeoutResponse(request: HttpRequest) = {
+  protected def timeoutTimeoutResponse(method: HttpMethod, uri: String, protocol: HttpProtocol,
+                                       headers: List[HttpHeader], remoteAddress: InetAddress) = {
     HttpResponse(status = 500, headers = List(HttpHeader("Content-Type", "text/plain"))).withBody {
       "Ooops! The server was not able to produce a timely response to your request.\n" +
-      "Please try again in a short while!"
+              "Please try again in a short while!"
     }
+  }
+
+  override protected def close(conn: Conn) {
+    conn.closeChunkingContext()
+    super.close(conn)
   }
 
   protected def openRequestCount = openRequests.size

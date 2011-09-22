@@ -270,7 +270,7 @@ private[can] class HeaderValueParser(config: MessageParserConfig, messageLine: M
   }
 }
 
-private[can] class ChunkParser(config: MessageParserConfig, context: ChunkingContext) extends CharacterParser {
+private[can] class ChunkParser(config: MessageParserConfig) extends CharacterParser {
   var chunkSize = -1
   def handle(digit: Int) = {
     chunkSize = if (chunkSize == -1) digit else chunkSize * 16 + digit
@@ -283,23 +283,23 @@ private[can] class ChunkParser(config: MessageParserConfig, context: ChunkingCon
     case ' ' | '\t' | '\r' => this
     case '\n' => chunkSize match {
       case -1 => ErrorParser("Chunk size expected")
-      case 0 => new TrailerParser(config, context)
-      case _ => new ChunkBodyParser(config, context, chunkSize)
+      case 0 => new TrailerParser(config)
+      case _ => new ChunkBodyParser(config, chunkSize)
     }
-    case ';'  => new ChunkExtensionNameParser(config, context, chunkSize)
+    case ';'  => new ChunkExtensionNameParser(config, chunkSize)
     case _ => ErrorParser("Illegal chunk size")
   }
 }
 
-private[can] class ChunkExtensionNameParser(config: MessageParserConfig, context: ChunkingContext,
-                                            chunkSize: Int, extCount: Int = 0, extensions: List[ChunkExtension] = Nil)
+private[can] class ChunkExtensionNameParser(config: MessageParserConfig, chunkSize: Int, extCount: Int = 0,
+                                            extensions: List[ChunkExtension] = Nil)
         extends CharacterParser {
   val extName = new JStringBuilder
   def handleChar(cursor: Char) = {
     if (extName.length <= config.maxChunkExtNameLength) {
       cursor match {
         case x if isTokenChar(x) => extName.append(x); this
-        case '=' => new ChunkExtensionValueParser(config, context, chunkSize, extCount, extensions, extName.toString)
+        case '=' => new ChunkExtensionValueParser(config, chunkSize, extCount, extensions, extName.toString)
         case ' ' | '\t' => this
         case _ => ErrorParser("Invalid character '" + cursor + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
       }
@@ -310,8 +310,8 @@ private[can] class ChunkExtensionNameParser(config: MessageParserConfig, context
   }
 }
 
-private[can] class ChunkExtensionValueParser(config: MessageParserConfig, context: ChunkingContext, chunkSize: Int,
-                                             extCount: Int, extensions: List[ChunkExtension], extName: String)
+private[can] class ChunkExtensionValueParser(config: MessageParserConfig, chunkSize: Int, extCount: Int,
+                                             extensions: List[ChunkExtension], extName: String)
         extends CharacterParser {
   val extValue = new JStringBuilder
   var quoted = false
@@ -334,14 +334,10 @@ private[can] class ChunkExtensionValueParser(config: MessageParserConfig, contex
           case x if isTokenChar(x) => extValue.append(x); this
           case '"' if extValue.length == 0 => quoted = true; this
           case ' ' | '\t' | '\r' => this
-          case ';' => next(new ChunkExtensionNameParser(config, context, chunkSize, extCount + 1, newExtensions))
+          case ';' => next(new ChunkExtensionNameParser(config, chunkSize, extCount + 1, newExtensions))
           case '\n' => next {
-            if (chunkSize == 0) {
-              new TrailerParser(config, context, newExtensions)
-            }
-            else {
-              new ChunkBodyParser(config, context, chunkSize, newExtensions)
-            }
+            if (chunkSize == 0) new TrailerParser(config, newExtensions)
+            else new ChunkBodyParser(config, chunkSize, newExtensions)
           }
           case _ => ErrorParser("Invalid character '" + cursor + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
         }
@@ -353,15 +349,15 @@ private[can] class ChunkExtensionValueParser(config: MessageParserConfig, contex
   }
 }
 
-private[can] class TrailerParser(config: MessageParserConfig, context: ChunkingContext,
+private[can] class TrailerParser(config: MessageParserConfig,
                                  extensions: List[ChunkExtension] = Nil, headerCount: Int = 0,
                                  headers: List[HttpHeader] = Nil)
         extends HeaderNameParser(config, null, headerCount, headers) {
   override def valueParser = new HeaderValueParser(config, null, headerCount, headers, headerName.toString) {
     override def nameParser =
-      new TrailerParser(config, context, extensions, headerCount + 1, HttpHeader(headerName, headerValue.toString) :: headers)
+      new TrailerParser(config, extensions, headerCount + 1, HttpHeader(headerName, headerValue.toString) :: headers)
   }
-  override def headersComplete = ChunkedEndParser(extensions, headers, context)
+  override def headersComplete = ChunkedEndParser(extensions, headers)
 }
 
 private[can] class LwsParser(next: CharacterParser) extends CharacterParser {
@@ -423,7 +419,7 @@ private[can] class ToCloseBodyParser(config: MessageParserConfig, messageLine: M
   def complete = CompleteMessageParser(messageLine, headers, connectionHeader, body)
 }
 
-private[can] class ChunkBodyParser(config: MessageParserConfig, context: ChunkingContext, chunkSize: Int,
+private[can] class ChunkBodyParser(config: MessageParserConfig, chunkSize: Int,
                                    extensions: List[ChunkExtension] = Nil) extends IntermediateParser {
   require(chunkSize > 0, "Chunk size must not be negative")
   require(chunkSize <= config.maxChunkSize, "HTTP message chunk size " + chunkSize + " exceeds configured limit")
@@ -434,7 +430,7 @@ private[can] class ChunkBodyParser(config: MessageParserConfig, context: Chunkin
     val remaining = scala.math.min(buf.remaining, chunkSize - bytesRead)
     buf.get(body, bytesRead, remaining)
     bytesRead += remaining
-    if (bytesRead == chunkSize) ChunkedChunkParser(extensions, body, context) else this
+    if (bytesRead == chunkSize) ChunkedChunkParser(extensions, body) else this
   }
 }
 
@@ -453,14 +449,12 @@ private[can] case class ChunkedStartParser(
 
 private[can] case class ChunkedChunkParser(
   extensions: List[ChunkExtension],
-  body: Array[Byte],
-  context: ChunkingContext
+  body: Array[Byte]
 ) extends MessageParser
 
 private[can] case class ChunkedEndParser(
   extensions: List[ChunkExtension],
-  trailer: List[HttpHeader],
-  context: ChunkingContext
+  trailer: List[HttpHeader]
 ) extends MessageParser
 
 private[can] class ErrorParser(val message: String, val status: Int) extends MessageParser {

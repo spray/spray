@@ -152,7 +152,7 @@ private[can] abstract class HttpPeer extends Actor {
   }
 
   protected def cleanClose(conn: Conn) {
-    log.debug("Server orderly closed connection")
+    log.debug("Peer orderly closed connection")
     close(conn)
   }
 
@@ -183,7 +183,7 @@ private[can] abstract class HttpPeer extends Actor {
     close(conn)
   }
 
-  protected final def close(conn: Conn) {
+  protected def close(conn: Conn) {
     if (conn.key.isValid) {
       protectIO("Closing socket") {
         conn.key.cancel()
@@ -227,11 +227,7 @@ private[can] abstract class HttpPeer extends Actor {
 
   protected def handleChunkedStart(conn: Conn, parser: ChunkedStartParser)
 
-  protected def handleChunkedChunk(conn: Conn, parser: ChunkedChunkParser) {
-    import parser._
-    context.streamActor ! MessageChunk(extensions, body)
-    conn.messageParser = new ChunkParser(config.parserConfig, context)
-  }
+  protected def handleChunkedChunk(conn: Conn, parser: ChunkedChunkParser)
 
   protected def handleChunkedEnd(conn: Conn, parser: ChunkedEndParser)
 

@@ -153,7 +153,7 @@ trait RequestPreparer extends MessagePreparer {
     appendHeaders(headers, sb)
     appendHeader("Host", if (port == 80) host else host + ':' + port, sb)
     if (!userAgentHeader.isEmpty) appendHeader("User-Agent", userAgentHeader, sb)
-    appendHeader("Content-Length", body.length.toString, sb)
+    if (body.length > 0) appendHeader("Content-Length", body.length.toString, sb)
     appendLine(sb)
     encode(sb) :: wrapBody
   }

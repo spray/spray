@@ -57,13 +57,6 @@ case class RequestLine(
 ) extends MessageLine
 case class StatusLine(requestMethod: HttpMethod, protocol: HttpProtocol, status: Int, reason: String) extends MessageLine
 
-sealed trait ChunkingContext {
-  def streamActor: ActorRef
-}
-case class RequestChunkingContext(requestLine: RequestLine, connectionHeader: Option[String], streamActor: ActorRef)
-        extends ChunkingContext
-case class ResponseChunkingContext(requestLine: RequestLine, streamActor: ActorRef) extends ChunkingContext
-
 case class HttpHeader(name: String, value: String) extends Product2[String, String] {
   def _1 = name
   def _2 = value
@@ -208,6 +201,11 @@ object ChunkedResponseStart {
     responseStart
   }
 }
+
+case class ChunkedResponseEnd(
+  extensions: List[ChunkExtension],
+  trailer: List[HttpHeader]
+)
 
 case class MessageChunk(extensions: List[ChunkExtension], body: Array[Byte]) {
   require(body.length > 0, "MessageChunk must not have empty body")

@@ -28,7 +28,7 @@ import akka.actor.{ActorRef, Actor, UntypedChannel}
 
 sealed trait HttpConnection {
   def send(request: HttpRequest): Future[HttpResponse]
-  def send(request: HttpRequest, receiver: => Actor)
+  def send(request: HttpRequest, receiver: ActorRef, context: Option[Any] = None)
   def startRequestStream(requestStart: ChunkedRequestStart): StreamHandler
   def close()
 }
@@ -38,12 +38,12 @@ case class Connect(host: String, port: Int = 80)
 
 object HttpClient extends HighLevelHttpClient {
   private[can] case class Send(conn: ClientConnection, request: HttpRequest, buffers: List[ByteBuffer],
-                               receiver: ActorRef)
+                               responder: AnyRef => Unit)
   private case class Close(conn: ClientConnection)
   private case class RequestRecord(request: HttpRequest, conn: ClientConnection)
           extends LinkedList.Element[RequestRecord]
   private[can] abstract class PendingResponse(val request: HttpRequest) {
-    def deliver(either: Either[String, HttpResponse])
+    def deliver(response: AnyRef)
   }
   private[can] class ClientConnection(key: SelectionKey, val host: String, val port: Int,
                                       val connectionResponseChannel: Option[UntypedChannel] = None)
@@ -52,7 +52,13 @@ object HttpClient extends HighLevelHttpClient {
     val requestQueue = Queue.empty[Send]
     key.attach(this)
     messageParser = UnexpectedResponseErrorParser
-    def closeAllPendingWithError(error: String) { pendingResponses.foreach(_.deliver(Left(error))) }
+    def closeAllPendingWithError(error: String) { pendingResponses.foreach(_.deliver(new HttpClientException(error))) }
+    def resetParser(config: MessageParserConfig) {
+      messageParser = {
+        if (pendingResponses.isEmpty) UnexpectedResponseErrorParser
+        else new EmptyResponseParser(config, pendingResponses.head.request.method)
+      }
+    }
   }
   private val UnexpectedResponseErrorParser = ErrorParser("Received unexpected HttpResponse")
 }
@@ -145,14 +151,9 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
       log.debug("Received raw request, scheduling write")
       val requestRecord = RequestRecord(request, conn)
       conn.pendingResponses.enqueue(new PendingResponse(request) {
-        def deliver(either: Either[String, HttpResponse]) {
-          log.debug("Delivering received response: {}", either)
-          send.receiver ! {
-            either match {
-              case Right(response) => response
-              case Left(error) => new HttpClientException(error)
-            }
-          }
+        def deliver(response: AnyRef) {
+          log.debug("Delivering received response: {}", response)
+          send.responder(response)
           openRequests -= requestRecord
         }
       })
@@ -161,7 +162,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
       openRequests += requestRecord
       requestsDispatched += 1
     } else {
-      send.receiver ! new HttpClientException("Cannot send request due to closed connection")
+      send.responder(new HttpClientException("Cannot send request due to closed connection"))
     }
   }
 
@@ -184,27 +185,27 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
     import statusLine._
     val response = HttpResponse(status, headers, body, protocol)
     assert(!conn.pendingResponses.isEmpty)
-    conn.pendingResponses.dequeue().deliver(Right(response))
-    conn.messageParser = if (conn.pendingResponses.isEmpty) UnexpectedResponseErrorParser
-                         else new EmptyResponseParser(config.parserConfig, conn.pendingResponses.head.request.method)
+    conn.pendingResponses.dequeue().deliver(response)
+    conn.resetParser(config.parserConfig)
   }
 
   protected def handleChunkedStart(conn: Conn, parser: ChunkedStartParser) {
-    /*assert(!conn.pendingResponses.isEmpty)
-    val pendingResponse = conn.pendingResponses.dequeue()
-    log.debug("Delivering start of chunked response from {} request to '{}'",
-      pendingResponse.request.method, pendingResponse.request.uri)
     val statusLine = parser.messageLine.asInstanceOf[StatusLine]
-    val streamActor = Actor.actorOf(streamActorCreator(ChunkedResponseStart(statusLine.status, parser.headers))).start()
-    conn.messageParser = new ChunkParser(config.parserConfig, ResponseChunkingContext(statusLine, streamActor))*/
+    assert(!conn.pendingResponses.isEmpty)
+    conn.pendingResponses.head.deliver(ChunkedResponseStart(statusLine.status, parser.headers))
+    conn.messageParser = new ChunkParser(config.parserConfig)
+  }
+
+  protected def handleChunkedChunk(conn: Conn, parser: ChunkedChunkParser) {
+    assert(!conn.pendingResponses.isEmpty)
+    conn.pendingResponses.head.deliver(MessageChunk(parser.extensions, parser.body))
+    conn.messageParser = new ChunkParser(config.parserConfig)
   }
 
   protected def handleChunkedEnd(conn: Conn, parser: ChunkedEndParser) {
-    /*val context = parser.context.asInstanceOf[ResponseChunkingContext]
-    import context._
-    val responder = new DefaultRequestResponder(conn, requestLine, conn.countDispatch(), connectionHeader)
-    streamActor ! ChunkedRequestEnd(parser.extensions, parser.trailer, responder)
-    conn.messageParser = StartRequestParser // switch back to parsing the next request from the start*/
+    assert(!conn.pendingResponses.isEmpty)
+    conn.pendingResponses.dequeue().deliver(ChunkedResponseEnd(parser.extensions, parser.trailer))
+    conn.resetParser(config.parserConfig)
   }
 
   protected def handleParseError(conn: Conn, parser: ErrorParser) {
@@ -241,15 +242,18 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
     def send(request: HttpRequest) = {
       // we "disable" the akka future timeout, since we rely on our own logic
       val future = new DefaultCompletableFuture[HttpResponse](Long.MaxValue)
-      send(request, new ResponseBufferingActor(future))
+      send(request, Actor.actorOf(new ResponseBufferingActor(future)).start())
       future
     }
 
-    def send(request: HttpRequest, receiver: => Actor) {
+    def send(request: HttpRequest, receiver: ActorRef, context: Option[Any] = None) {
       HttpRequest.verify(request)
-      val receiverActor = Actor.actorOf(receiver).start()
       log.debug("Enqueueing valid HttpRequest as raw request")
-      self ! Send(conn, request, prepareRequest(request, conn.host, conn.port), receiverActor)
+      val responder: AnyRef => Unit = context match {
+        case Some(ctx) => receiver ! (_, ctx)
+        case None => receiver ! _
+      }
+      self ! Send(conn, request, prepareRequest(request, conn.host, conn.port), responder)
     }
 
     def startRequestStream(requestStart: ChunkedRequestStart) = {

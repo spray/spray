@@ -94,7 +94,7 @@ class RequestParserSpec extends Specification {
         )
       }
       "message chunk" in {
-        def chunkParser = new ChunkParser(MessageParserConfig(), null)
+        def chunkParser = new ChunkParser(MessageParserConfig())
         parse(chunkParser)("3\nabc") mustEqual (Nil, "abc")
         parse(chunkParser)("10 ;key= value ; another=one;and =more \n0123456789ABCDEFG") mustEqual(
           List(
@@ -109,7 +109,7 @@ class RequestParserSpec extends Specification {
         parse(chunkParser)("bla") mustEqual ErrorParser("Illegal chunk size")
       }
       "message end" in {
-        def chunkParser = new ChunkParser(MessageParserConfig(), null)
+        def chunkParser = new ChunkParser(MessageParserConfig())
         parse(chunkParser)("0\n\n") mustEqual (Nil, Nil)
         parse(chunkParser) {
           """|000;nice=true
@@ -197,8 +197,8 @@ object RequestParserSpec {
     startParser.read(buf) match {
       case x: CompleteMessageParser => extractFromCompleteMessage(x)
       case x: ToCloseBodyParser => extractFromCompleteMessage(x.complete)
-      case ChunkedChunkParser(extensions, body, _) => (extensions, new String(body, "ISO-8859-1"))
-      case ChunkedEndParser(extensions, trailer, _) => (extensions, trailer)
+      case ChunkedChunkParser(extensions, body) => (extensions, new String(body, "ISO-8859-1"))
+      case ChunkedEndParser(extensions, trailer) => (extensions, trailer)
       case x => x
     }
   }
