@@ -78,7 +78,7 @@ object HttpClient extends HighLevelHttpClient {
   private val UnexpectedResponseErrorParser = ErrorParser("Received unexpected HttpResponse")
 }
 
-class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends HttpPeer {
+class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends HttpPeer("spray-can-client") {
   import HttpClient._
 
   private lazy val log = LoggerFactory.getLogger(getClass)
@@ -87,10 +87,6 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
   private[can] type Conn = ClientConnection
 
   self.id = config.clientActorId
-
-  // we use our own custom single-thread dispatcher, because our thread will, for the most time,
-  // be blocked at selector selection, therefore we need to wake it up upon message or task arrival
-  self.dispatcher = new SelectorWakingDispatcher("spray-can-client", selector)
 
   override def preStart() {
     log.info("Starting spray-can HTTP client")

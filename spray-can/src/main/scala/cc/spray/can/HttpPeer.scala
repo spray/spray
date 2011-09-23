@@ -62,7 +62,7 @@ private[can] abstract class Connection[T >: Null <: LinkedList.Element[T]](val k
   def disableReading() { key.interestOps { interestOps &= ~OP_READ; interestOps } }
 }
 
-private[can] abstract class HttpPeer extends Actor {
+private[can] abstract class HttpPeer(threadName: String) extends Actor {
   private lazy val log = LoggerFactory.getLogger(getClass)
 
   private[can] type Conn >: Null <: Connection[Conn]
@@ -84,7 +84,16 @@ private[can] abstract class HttpPeer extends Actor {
     Scheduler.schedule(() => self ! HandleTimedOutRequests, config.timeoutCycle, config.timeoutCycle, TimeUnit.MILLISECONDS)
   }
 
+  // we use our own custom single-thread dispatcher, because our thread will, for the most time,
+  // be blocked at selector selection, therefore we need to wake it up upon message or task arrival
+  if (self.isBeingRestarted) {
+    self.dispatcher.asInstanceOf[SelectorWakingDispatcher].selector = selector
+  } else {
+    self.dispatcher = new SelectorWakingDispatcher(threadName, selector)
+  }
+
   override def preStart() {
+    // CAUTION: as of Akka 2.0 this method will not be called during a restart
     startTime = System.currentTimeMillis()
     self ! Select // start the selection loop
   }
@@ -195,6 +204,7 @@ private[can] abstract class HttpPeer extends Actor {
   }
 
   protected def cleanUp() {
+    log.debug("Cleaning up scheduled tasks and NIO selector")
     idleTimeoutCycle.foreach(_.cancel(false))
     requestTimeoutCycle.foreach(_.cancel(false))
     protectIO("Closing selector") {

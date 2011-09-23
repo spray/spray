@@ -112,7 +112,8 @@ object HttpServer {
   }
 }
 
-class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends HttpPeer with ResponsePreparer {
+class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
+        extends HttpPeer("spray-can-server") with ResponsePreparer {
   import HttpServer._
 
   private lazy val log = LoggerFactory.getLogger(getClass)
@@ -134,10 +135,6 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
   }
 
   self.id = config.serverActorId
-
-  // we use our own custom single-thread dispatcher, because our thread will, for the most time,
-  // be blocked at selector selection, therefore we need to wake it up upon message or task arrival
-  self.dispatcher = new SelectorWakingDispatcher("spray-can-server", selector)
 
   override def preStart() {
     log.info("Starting spray-can HTTP server on {}", config.endpoint)
