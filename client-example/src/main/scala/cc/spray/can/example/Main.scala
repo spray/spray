@@ -21,6 +21,7 @@ import akka.config.Supervision._
 import akka.actor.{Supervisor, Actor}
 import org.slf4j.LoggerFactory
 import akka.dispatch.Future
+import HttpMethods._
 
 object Main extends App {
   val log = LoggerFactory.getLogger(getClass)
@@ -34,7 +35,10 @@ object Main extends App {
   )
 
   import HttpClient._
-  val dialog: Future[HttpResponse] = HttpDialog("github.com").send(HttpRequest()).end
+  val dialog: Future[HttpResponse] =
+    HttpDialog("github.com")
+          .send(HttpRequest(method = GET, uri = "/"))
+          .end
 
   dialog.onComplete { future =>
     future.value match {

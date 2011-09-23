@@ -18,7 +18,6 @@ package cc.spray.can
 package example
 
 import org.slf4j.LoggerFactory
-import java.nio.charset.Charset
 import HttpMethods._
 import akka.actor.{Scheduler, Kill, Actor}
 import utils.DateTime
@@ -28,34 +27,25 @@ class TestService(id: String) extends Actor {
   val log = LoggerFactory.getLogger(getClass)
   self.id = id
 
-  val iso88591 = Charset.forName("ISO-8859-1")
-  val headers = List(HttpHeader("Content-Type", "text/plain"))
-  lazy val serverActor = Actor.registry.actorsFor("spray-can-server").head
-
-  def response(msg: String, status: Int = 200) = HttpResponse(status, headers, msg.getBytes(iso88591))
-
   protected def receive = {
 
     case RequestContext(HttpRequest(GET, "/", _, _, _), _, responder) =>
-      responder.complete(response("Say hello to a spray-can app"))
+      responder.complete(index)
 
-    case RequestContext(HttpRequest(POST, "/crash", _, _, _), _, responder) => {
-      responder.complete(response("Hai! (about to kill the HttpServer)"))
-      serverActor ! Kill
-    }
-
-    case RequestContext(HttpRequest(POST, "/stop", _, _, _), _, responder) => {
-      responder.complete(response("Shutting down the spray-can server..."))
-      Actor.registry.shutdownAll()
-    }
+    case RequestContext(HttpRequest(GET, "/ping", _, _, _), _, responder) =>
+      responder.complete(response("PONG!"))
 
     case RequestContext(HttpRequest(GET, "/stream", _, _, _), _, responder) =>
-      val streamHandler = responder.startChunkedResponse(ChunkedResponseStart(200, headers))
-      val seconds = Scheduler.schedule(
+      val streamHandler = responder.startChunkedResponse(HttpResponse(headers = defaultHeaders))
+      val chunkGenerator = Scheduler.schedule(
         () => streamHandler.sendChunk(MessageChunk(DateTime.now.toIsoDateTimeString + ", ")),
         100, 100, TimeUnit.MILLISECONDS
       )
-      Scheduler.scheduleOnce(() => { seconds.cancel(false); streamHandler.close() }, 10500, TimeUnit.MILLISECONDS)
+      Scheduler.scheduleOnce(() => {
+        chunkGenerator.cancel(false)
+        streamHandler.sendChunk(MessageChunk("\nStopped..."))
+        streamHandler.close()
+      }, 20500, TimeUnit.MILLISECONDS)
 
     case RequestContext(HttpRequest(GET, "/stats", _, _, _), _, responder) => {
       (serverActor ? GetStats).mapTo[Stats].onComplete { future =>
@@ -74,7 +64,41 @@ class TestService(id: String) extends Actor {
       }
     }
 
+    case RequestContext(HttpRequest(GET, "/crash", _, _, _), _, responder) =>
+      responder.complete(response("Hai! (about to kill the HttpServer, watch the log for the automatic restart)"))
+      serverActor ! Kill
+
+    case RequestContext(HttpRequest(GET, "/stop", _, _, _), _, responder) =>
+      responder.complete(response("Shutting down the spray-can server..."))
+      Actor.registry.shutdownAll()
+
     case RequestContext(HttpRequest(_, _, _, _, _), _, responder) =>
-      responder.complete(response("Unknown command!", 404))
+      responder.complete(response("Unknown resource!", 404))
   }
+
+  ////////////// helpers //////////////
+
+  val defaultHeaders = List(HttpHeader("Content-Type", "text/plain"))
+
+  lazy val serverActor = Actor.registry.actorsFor("spray-can-server").head
+
+  def response(msg: String, status: Int = 200) = HttpResponse(status, defaultHeaders , msg.getBytes("ISO-8859-1"))
+
+  lazy val index = HttpResponse(
+    headers = List(HttpHeader("Content-Type", "text/html")),
+    body =
+      <html>
+        <body>
+          <h1>Say hello to <i>spray-can</i>!</h1>
+          <p>Defined resources:</p>
+          <ul>
+            <li><a href="/ping">/ping</a></li>
+            <li><a href="/stream">/stream</a></li>
+            <li><a href="/stats">/stats</a></li>
+            <li><a href="/crash">/crash</a></li>
+            <li><a href="/stop">/stop</a></li>
+          </ul>
+        </body>
+      </html>.toString.getBytes("ISO-8859-1")
+  )
 }
