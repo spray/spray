@@ -80,8 +80,10 @@ object HttpRequest {
     req(uri != null && !uri.isEmpty, "uri must not be null or empty")
     req(headers != null, "headers must not be null")
     req(body != null, "body must not be null (you can use cc.spray.can.EmptyByteArray for an empty body)")
-    req(headers.forall(_.name != "Content-Length"), "Content-Length header must not be present, the HttpClient sets it itself")
-    req(headers.forall(_.name != "Host"), "Host header must not be present, the HttpClient sets it itself")
+    headers.foreach { header =>
+      if (header.name == "Content-Length" || header.name == "Transfer-Encoding" || header.name == "Host")
+        throw new IllegalArgumentException(header.name + " header must not be set explicitly, it is set automatically")
+    }
     request
   }
 }
@@ -116,7 +118,10 @@ object HttpResponse {
     req(100 <= status && status < 600, "Illegal HTTP status code: " + status)
     req(headers != null, "headers must not be null")
     req(body != null, "body must not be null (you can use cc.spray.can.EmptyByteArray for an empty body)")
-    req(headers.forall(_.name != "Content-Length"), "Content-Length header must not be present, the HttpServer sets it itself")
+    headers.foreach { header =>
+      if (header.name == "Content-Length" || header.name == "Transfer-Encoding")
+        throw new IllegalArgumentException(header.name + " header must not be set explicitly, it is set automatically")
+    }
     req(body.length == 0 || status / 100 > 1 && status != 204 && status != 304, "Illegal HTTP response: " +
             "responses with status code " + status + " must not have a message body")
     response
@@ -171,48 +176,15 @@ object HttpResponse {
   }
 }
 
-case class ChunkedRequestContext(requestStart: ChunkedRequestStart, remoteAddress: InetAddress)
+case class ChunkedRequestContext(request: HttpRequest, remoteAddress: InetAddress)
 
-case class ChunkedRequestStart(
-  method: HttpMethod = HttpMethods.GET,
-  uri: String = "/",
-  headers: List[HttpHeader] = Nil
-)
-
-object ChunkedRequestStart {
-  def verify(requestStart: ChunkedRequestStart) = {
-    import requestStart._
-    def req(cond: Boolean, msg: => String) { require(cond, "Illegal ChunkedRequestStart: " + msg) }
-    req(headers != null, "headers must not be null")
-    req(headers.forall(_.name != "Content-Length"), "Content-Length header is not allowed")
-    req(headers.forall(_.name != "Transfer-Encoding"), "Transfer-Encoding header is not allowed, the client sets it itself")
-    requestStart
-  }
-}
-
+case class ChunkedResponseStart(status: Int, headers: List[HttpHeader])
 
 case class ChunkedRequestEnd(
   extensions: List[ChunkExtension],
   trailer: List[HttpHeader],
   responder: RequestResponder
 )
-
-case class ChunkedResponseStart(
-  status: Int = 200,
-  headers: List[HttpHeader] = Nil
-)
-
-object ChunkedResponseStart {
-  def verify(responseStart: ChunkedResponseStart) = {
-    import responseStart._
-    def req(cond: Boolean, msg: => String) { require(cond, "Illegal ChunkedResponseStart: " + msg) }
-    req(100 <= status && status < 600, "Illegal HTTP status code: " + status)
-    req(headers != null, "headers must not be null")
-    req(headers.forall(_.name != "Content-Length"), "Content-Length header is not allowed")
-    req(headers.forall(_.name != "Transfer-Encoding"), "Transfer-Encoding header is not allowed, the server sets it itself")
-    responseStart
-  }
-}
 
 case class ChunkedResponseEnd(
   extensions: List[ChunkExtension],

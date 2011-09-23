@@ -28,12 +28,14 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
     "a response with status 200, no headers and no body"    ! e1^
     "a response with status 304, a few headers and no body" ! e2^
     "a response with status 400, a few headers and a body"  ! e3^
-    "a response chunk"                                      ! e4^
-    "a terminating response chunk"                          ! e5^
+    "a chunked response without body"                       ! e4^
+    "a chunked response with body"                          ! e5^
+    "a response chunk"                                      ! e6^
+    "a terminating response chunk"                          ! e7^
                                                             end^
-  "The 'Connection' header should be rendered correctly"    ! e6
+  "The 'Connection' header should be rendered correctly"    ! e8
 
-  def e1 = prep(`HTTP/1.1`) {
+  def e1 = prep() {
     HttpResponse(200, Nil)
   } mustEqual prep {
     """|HTTP/1.1 200 OK
@@ -44,7 +46,7 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
        |""" -> false
   }
 
-  def e2 = prep(`HTTP/1.1`) {
+  def e2 = prep() {
     HttpResponse(304, List(
       HttpHeader("X-Fancy", "of course"),
       HttpHeader("Age", "0")
@@ -60,7 +62,7 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
        |""" -> false
   }
 
-  def e3 = prep(`HTTP/1.1`) {
+  def e3 = prep() {
     HttpResponse(400, List(
       HttpHeader("Age", "30"),
       HttpHeader("Cache-Control", "public")
@@ -76,12 +78,36 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
        |Small f*ck up overhere!""" -> false
   }
 
-  def e4 = decode(
+  def e4 = prep(reqConnectionHeader = Some("close"), chunked = true) {
+    HttpResponse(200, List(HttpHeader("Age", "30")))
+  } mustEqual prep {
+    """|HTTP/1.1 200 OK
+       |Age: 30
+       |Connection: close
+       |Server: spray-can/1.0.0
+       |Date: Thu, 25 Aug 2011 09:10:29 GMT
+       |Transfer-Encoding: chunked
+       |
+       |""" -> true
+  }
+
+  def e5 = prep(chunked = true) {
+    HttpResponse().withBody("Yahoooo")
+  } mustEqual prep {
+    """|HTTP/1.1 200 OK
+       |Server: spray-can/1.0.0
+       |Date: Thu, 25 Aug 2011 09:10:29 GMT
+       |Transfer-Encoding: chunked
+       |
+       |7
+       |Yahoooo
+       |""" -> false
+  }
+
+  def e6 = decode(
     prepareChunk(
-      MessageChunk(
-        List(ChunkExtension("key", "value"), ChunkExtension("another", "tl;dr")),
-        "body123".getBytes("ISO-8859-1")
-      )
+      List(ChunkExtension("key", "value"), ChunkExtension("another", "tl;dr")),
+      "body123".getBytes("ISO-8859-1")
     )
   ) mustEqual prep {
     """|7;key=value;another="tl;dr"
@@ -89,7 +115,7 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
        |"""
   }
 
-  def e5 = decode(
+  def e7 = decode(
     prepareFinalChunk(Nil, List(HttpHeader("Age", "30"), HttpHeader("Cache-Control", "public")))
   ) mustEqual prep {
     """|0
@@ -101,7 +127,7 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
 
   val NONE: Option[String] = None
   
-  def e6 =
+  def e8 =
     "Client Version" | "Request"          | "Response"         | "Rendered"         | "Close" |
     `HTTP/1.1`       ! NONE               ! NONE               ! NONE               ! false   |
     `HTTP/1.1`       ! Some("close")      ! NONE               ! Some("close")      ! true    |
@@ -123,9 +149,13 @@ class ResponsePreparerSpec extends Specification with ResponsePreparer with Data
       }
     }
 
-  def prep(reqProtocol: HttpProtocol, reqConnectionHeader: Option[String] = None)(response: HttpResponse) = {
+  def prep(reqProtocol: HttpProtocol = `HTTP/1.1`, reqConnectionHeader: Option[String] = None, chunked: Boolean = false)
+          (response: HttpResponse) = {
     val sb = new java.lang.StringBuilder()
-    val (buffers, closeAfterWrite) = prepareResponse(RequestLine(protocol = reqProtocol), response, reqConnectionHeader)
+    val (buffers, closeAfterWrite) = {
+      if (chunked) prepareChunkedResponseStart(RequestLine(protocol = reqProtocol), response, reqConnectionHeader)
+      else prepareResponse(RequestLine(protocol = reqProtocol), response, reqConnectionHeader)
+    }
     sb.append(decode(buffers))
     sb.toString -> closeAfterWrite
   }

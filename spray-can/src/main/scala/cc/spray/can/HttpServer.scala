@@ -25,6 +25,7 @@ import java.nio.ByteBuffer
 import annotation.tailrec
 import java.util.concurrent.atomic.AtomicInteger
 import akka.actor.{ActorRef, Actor, PoisonPill}
+import HttpProtocols._
 
 /////////////////////////////////////////////
 // HttpServer messages
@@ -46,7 +47,7 @@ case class Timeout(
 
 trait RequestResponder {
   def complete(response: HttpResponse)
-  def startChunkedResponse(responseStart: ChunkedResponseStart): ChunkedResponder
+  def startChunkedResponse(response: HttpResponse): ChunkedResponder
 }
 
 trait ChunkedResponder {
@@ -88,11 +89,11 @@ object HttpServer {
     def enqueue(respond: Respond) {
       @tailrec def insertAfter(cursor: Respond) {
         if (cursor.next == null) cursor.next = respond
-        else if (cursor.next.responseNr < respond.responseNr) insertAfter(cursor.next)
+        else if (cursor.next.responseNr <= respond.responseNr) insertAfter(cursor.next)
         else { respond.next = cursor.next; cursor.next = respond }
       }
       if (queuedResponds == null) queuedResponds = respond
-      else if (queuedResponds.responseNr < respond.responseNr) insertAfter(queuedResponds)
+      else if (queuedResponds.responseNr <= respond.responseNr) insertAfter(queuedResponds)
       else { respond.next = queuedResponds; queuedResponds = respond }
     }
 
@@ -235,7 +236,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
     val remoteAddress = conn.key.channel.asInstanceOf[SocketChannel].socket.getInetAddress
     log.debug("Dispatching start of chunked {} request to '{}' to a new stream actor", method, uri)
     val streamActor = Actor.actorOf(
-      streamActorCreator(ChunkedRequestContext(ChunkedRequestStart(method, uri, headers), remoteAddress))
+      streamActorCreator(ChunkedRequestContext(HttpRequest(method, uri, headers), remoteAddress))
     ).start()
     conn.chunkingContext = ChunkingContext(requestLine, headers, connectionHeader, streamActor)
     conn.messageParser = new ChunkParser(config.parserConfig)
@@ -343,14 +344,16 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
       } else false
     }
 
-    def startChunkedResponse(responseStart: ChunkedResponseStart) = {
-      ChunkedResponseStart.verify(responseStart)
+    def startChunkedResponse(response: HttpResponse) = {
+      HttpResponse.verify(response)
+      require(response.protocol == `HTTP/1.1`, "Chunked responses must have protocol HTTP/1.1")
+      require(requestLine.protocol == `HTTP/1.1`, "Cannot reply with a chunked response to an HTTP/1.0 client")
+      require(requestLine.method != HttpMethods.HEAD, "HEAD requests must not be answered by chunked responses")
       if (mode.compareAndSet(UNCOMPLETED, STREAMING)) {
         log.debug("Enqueueing start of chunked response")
-        val headers = HttpHeader("Transfer-Encoding", "chunked") :: responseStart.headers
-        val (buffers, close) = prepareResponse(requestLine, HttpResponse(responseStart.status, headers), connectionHeader)
+        val (buffers, close) = prepareChunkedResponseStart(requestLine, response, connectionHeader)
         self ! new Respond(conn, buffers, false, responseNr, false, requestRecord)
-        new DefaultChunkedResponder(responseStart, close)
+        new DefaultChunkedResponder(close)
       } else throw new IllegalStateException {
         mode.get match {
           case COMPLETED => "The chunked response cannot be started since this request to '" + requestLine.uri + "' has already been completed"
@@ -365,14 +368,14 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf) extends H
 
     def setRequestRecord(record: RequestRecord) { requestRecord = record }
 
-    class DefaultChunkedResponder(responseStart: ChunkedResponseStart, closeAfterLastChunk: Boolean)
+    class DefaultChunkedResponder(closeAfterLastChunk: Boolean)
             extends ChunkedResponder {
       private var closed = false
       def sendChunk(chunk: MessageChunk) {
         synchronized {
           if (!closed) {
             log.debug("Enqueueing response chunk")
-            self ! new Respond(conn, prepareChunk(chunk), false, responseNr, false)
+            self ! new Respond(conn, prepareChunk(chunk.extensions, chunk.body), false, responseNr, false)
           } else throw new RuntimeException("Cannot send MessageChunk after HTTP stream has been closed")
         }
       }

@@ -27,7 +27,7 @@ class HttpClientServerSpec extends Specification with HttpClientSpecs with HttpS
 
   def is =
     sequential^
-    clientSpecs^
+    //clientSpecs^
     p^
     serverSpecs^
     Step(Actor.registry.shutdownAll())

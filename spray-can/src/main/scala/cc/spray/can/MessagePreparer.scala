@@ -59,11 +59,11 @@ trait MessagePreparer {
     buf
   }
 
-  def prepareChunk(chunk: MessageChunk) = {
+  def prepareChunk(extensions: List[ChunkExtension], body: Array[Byte]) = {
     val sb = new java.lang.StringBuilder(16)
-    sb.append(chunk.body.length.toHexString)
-    appendLine(appendChunkExtensions(chunk.extensions, sb))
-    encode(sb) :: ByteBuffer.wrap(chunk.body) :: ByteBuffer.wrap(CrLf) :: Nil
+    sb.append(body.length.toHexString)
+    appendLine(appendChunkExtensions(extensions, sb))
+    encode(sb) :: ByteBuffer.wrap(body) :: ByteBuffer.wrap(CrLf) :: Nil
   }
 
   def prepareFinalChunk(extensions: List[ChunkExtension], trailer: List[HttpHeader]) = {
@@ -95,13 +95,26 @@ trait ResponsePreparer extends MessagePreparer {
   protected def prepareResponse(requestLine: RequestLine, response: HttpResponse,
                                 reqConnectionHeader: Option[String]): (List[ByteBuffer], Boolean) = {
     import response._
+    val (sb, close) = prepareResponseStart(requestLine, response, reqConnectionHeader)
+    appendHeader("Content-Length", body.length.toString, sb)
+    appendLine(sb)
+    val bodyBufs = if (body.length == 0 || requestLine.method == HttpMethods.HEAD) Nil else ByteBuffer.wrap(body) :: Nil
+    (encode(sb) :: bodyBufs, close)
+  }
 
-    def appendStatusLine(sb: JStringBuilder) {
-      if (status == 200)
-        sb.append("HTTP/1.1 200 OK\r\n")
-      else
-        appendLine(sb.append("HTTP/1.1 ").append(status).append(' ').append(HttpResponse.defaultReason(status)))
-    }
+  protected def prepareChunkedResponseStart(requestLine: RequestLine, response: HttpResponse,
+                                            reqConnectionHeader: Option[String]): (List[ByteBuffer], Boolean) = {
+    import response._
+    val (sb, close) = prepareResponseStart(requestLine, response, reqConnectionHeader)
+    appendHeader("Transfer-Encoding", "chunked", sb)
+    appendLine(sb)
+    val bodyBufs = if (body.length == 0) Nil else prepareChunk(Nil, body)
+    (encode(sb) :: bodyBufs, close)
+  }
+
+  private def prepareResponseStart(requestLine: RequestLine, response: HttpResponse,
+                                   reqConnectionHeader: Option[String]) = {
+    import response._
 
     def appendConnectionHeader(sb: JStringBuilder)(connectionHeaderValue: Option[String]) = {
       if (connectionHeaderValue.isEmpty) requestLine.protocol match {
@@ -121,17 +134,14 @@ trait ResponsePreparer extends MessagePreparer {
       }
     }
 
-    def wrapBody = if (body.length == 0 || requestLine.method == HttpMethods.HEAD) Nil else ByteBuffer.wrap(body) :: Nil
-
     val sb = new java.lang.StringBuilder(256)
-    appendStatusLine(sb)
+    if (status == 200) sb.append("HTTP/1.1 200 OK\r\n")
+    else appendLine(sb.append("HTTP/1.1 ").append(status).append(' ').append(HttpResponse.defaultReason(status)))
     val close = appendConnectionHeader(sb) {
       appendHeaders(headers, sb)
     }
     appendLine(sb.append(ServerHeaderPlusDateColonSP).append(dateTimeNow.toRfc1123DateTimeString))
-    appendHeader("Content-Length", body.length.toString, sb)
-    appendLine(sb)
-    (encode(sb) :: wrapBody, close)
+    (sb, close)
   }
 
   protected def dateTimeNow = DateTime.now  // split out so we can stabilize by overriding in tests
@@ -141,21 +151,32 @@ trait RequestPreparer extends MessagePreparer {
   protected def userAgentHeader: String
 
   protected def prepareRequest(request: HttpRequest, host: String, port: Int): List[ByteBuffer] = {
-    import request._
-
-    def appendRequestLine(sb: JStringBuilder) {
-      appendLine(sb.append(method.name).append(' ').append(uri).append(' ').append(protocol.name))
+    val sb = prepareRequestStart(request, host, port)
+    val bodyBufs = if (request.body.length > 0) {
+      appendHeader("Content-Length", request.body.length.toString, sb)
+      appendLine(sb)
+      ByteBuffer.wrap(request.body) :: Nil
+    } else {
+      appendLine(sb)
+      Nil
     }
+    encode(sb) :: bodyBufs
+  }
 
-    def wrapBody = if (body.length == 0) Nil else ByteBuffer.wrap(body) :: Nil
+  protected def prepareChunkedRequestStart(request: HttpRequest, host: String, port: Int): List[ByteBuffer] = {
+    val sb = prepareRequestStart(request, host, port)
+    appendHeader("Transfer-Encoding", "chunked", sb)
+    appendLine(sb)
+    encode(sb) :: { if (request.body.length > 0) prepareChunk(Nil, request.body) else Nil }
+  }
 
+  private def prepareRequestStart(request: HttpRequest, host: String, port: Int) = {
+    import request._
     val sb = new java.lang.StringBuilder(256)
-    appendRequestLine(sb)
+    appendLine(sb.append(method.name).append(' ').append(uri).append(' ').append(protocol.name))
     appendHeaders(headers, sb)
     appendHeader("Host", if (port == 80) host else host + ':' + port, sb)
     if (!userAgentHeader.isEmpty) appendHeader("User-Agent", userAgentHeader, sb)
-    if (body.length > 0) appendHeader("Content-Length", body.length.toString, sb)
-    appendLine(sb)
-    encode(sb) :: wrapBody
+    sb
   }
 }

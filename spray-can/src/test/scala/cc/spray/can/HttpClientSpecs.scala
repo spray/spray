@@ -31,8 +31,16 @@ trait HttpClientSpecs extends Specification {
       case RequestContext(HttpRequest(_, "/wait500", _, _, _), _, responder) => {
         Scheduler.scheduleOnce(() => responder.complete(HttpResponse()), 500, TimeUnit.MILLISECONDS)
       }
-      case RequestContext(HttpRequest(method, uri, _, _, _), _, responder) => responder.complete {
-        HttpResponse().withBody(method + "|" + uri)
+      case RequestContext(HttpRequest(_, "/chunked", _, _, _), _, responder) => {
+        val chunker = responder.startChunkedResponse(HttpResponse(201, List(HttpHeader("Fancy", "cool"))))
+        chunker.sendChunk(MessageChunk("1"))
+        chunker.sendChunk(MessageChunk("2345"))
+        chunker.sendChunk(MessageChunk("6789ABCD"))
+        chunker.sendChunk(MessageChunk("EFGHIJKLMNOPQRSTUVWXYZ"))
+        chunker.close()
+      }
+      case RequestContext(HttpRequest(method, uri, _, body, _), _, responder) => responder.complete {
+        HttpResponse().withBody(method + "|" + uri + (if (body.length == 0) "" else "|" + new String(body, "ASCII")))
       }
     }
   }
@@ -43,11 +51,14 @@ trait HttpClientSpecs extends Specification {
   "by testing several request/response patterns"                                    ^
                                                                                     Step(start())^
                                                                                     p^
-  "simple one-request dialog"                                                       ! oneRequestDialog^
-  "request-response dialog"                                                         ! requestResponseDialog^
-  "non-pipelined request-request dialog"                                            ! nonPipelinedRequestRequestDialog^
-  "pipelined request-request dialog"                                                ! pipelinedRequestRequestDialog^
-  "pipelined request-request dialog with HEAD requests"                             ! pipelinedRequestRequestWithHeadsDialog^
+  "simple one-request dialog"                                                       ! oneRequest^
+  "request-response dialog"                                                         ! requestResponse^
+  "non-pipelined request-request dialog"                                            ! nonPipelinedRequestRequest^
+  "pipelined request-request dialog"                                                ! pipelinedRequestRequest^
+  "pipelined request-request dialog with HEAD requests"                             ! pipelinedRequestsWithHead^
+  "one-request dialog with a chunked response"                                      ! oneRequestChunkedResponse^
+  "one-chunked-request dialog"                                                      ! oneChunkedRequest^
+  "pipelined requests with chunked dialog"                                          ! pipeLinedRequestsWithChunked^
   "connect to a non-existing server"                                                ! illegalConnect^
   "time-out request"                                                                ! timeoutRequest^
   "idle-time-out connection"                                                        ! timeoutConnection^
@@ -55,24 +66,24 @@ trait HttpClientSpecs extends Specification {
 
   import HttpClient._
 
-  private def oneRequestDialog = {
+  private def oneRequest = {
     newDialog()
             .send(HttpRequest(GET, "/yeah"))
             .end
             .get.bodyAsString mustEqual "GET|/yeah"
   }
 
-  private def requestResponseDialog = {
-    def respond(res: HttpResponse) = HttpRequest(POST, uri = "(" + res.bodyAsString + ")")
+  private def requestResponse = {
+    def respond(res: HttpResponse) = HttpRequest(POST).withBody("(" + res.bodyAsString + ")")
 
     newDialog()
             .send(HttpRequest(GET, "/abc"))
             .reply(respond)
             .end
-            .get.bodyAsString mustEqual "POST|(GET|/abc)"
+            .get.bodyAsString mustEqual "POST|/|(GET|/abc)"
   }
 
-  private def nonPipelinedRequestRequestDialog = {
+  private def nonPipelinedRequestRequest = {
     newDialog()
             .send(HttpRequest(DELETE, "/abc"))
             .awaitResponse
@@ -81,7 +92,7 @@ trait HttpClientSpecs extends Specification {
             .get.map(_.bodyAsString).mkString(", ") mustEqual "DELETE|/abc, PUT|/xyz"
   }
 
-  private def pipelinedRequestRequestDialog = {
+  private def pipelinedRequestRequest = {
     newDialog()
             .send(HttpRequest(DELETE, "/abc"))
             .send(HttpRequest(PUT, "/xyz"))
@@ -89,7 +100,7 @@ trait HttpClientSpecs extends Specification {
             .get.map(_.bodyAsString).mkString(", ") mustEqual "DELETE|/abc, PUT|/xyz"
   }
 
-  private def pipelinedRequestRequestWithHeadsDialog = {
+  private def pipelinedRequestsWithHead = {
     newDialog()
             .send(HttpRequest(DELETE, "/abc"))
             .send(HttpRequest(HEAD, "/def"))
@@ -98,6 +109,39 @@ trait HttpClientSpecs extends Specification {
             .get.map { r =>
               (r.headers.collect({ case HttpHeader("Content-Length", cl) => cl }).head.toInt, r.bodyAsString)
             } mustEqual Seq((11, "DELETE|/abc"), (9, ""), (8, "PUT|/xyz"))
+  }
+
+  private def oneRequestChunkedResponse = {
+    newDialog()
+            .send(HttpRequest(GET, "/chunked"))
+            .end
+            .get.bodyAsString mustEqual "123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  }
+
+  private def oneChunkedRequest = {
+    newDialog()
+            .sendChunked(HttpRequest(GET)) { chunker =>
+              chunker.sendChunk(MessageChunk("1"))
+              chunker.sendChunk(MessageChunk("2"))
+              chunker.sendChunk(MessageChunk("3"))
+              chunker.close()
+            }
+            .end
+            .get.bodyAsString mustEqual "GET|/|123"
+  }
+
+  private def pipeLinedRequestsWithChunked = {
+    newDialog()
+            .send(HttpRequest(DELETE, "/delete"))
+            .sendChunked(HttpRequest(PUT, "/put")) { chunker =>
+              chunker.sendChunk(MessageChunk("1"))
+              chunker.sendChunk(MessageChunk("2"))
+              chunker.sendChunk(MessageChunk("3"))
+              chunker.close()
+            }
+            .send(HttpRequest(GET, "/get"))
+            .end
+            .get.map(_.bodyAsString).mkString(", ") mustEqual "DELETE|/delete, PUT|/put|123, GET|/get"
   }
 
   private def illegalConnect = {

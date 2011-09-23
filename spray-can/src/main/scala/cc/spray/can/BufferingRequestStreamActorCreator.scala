@@ -46,12 +46,7 @@ class BufferingRequestStreamActorCreator(serviceActor: ActorRef, maxContentLengt
         }
       }
       case x: ChunkedRequestEnd => serviceActor ! RequestContext(
-        request = HttpRequest(
-          method = context.requestStart.method,
-          uri = context.requestStart.uri,
-          headers = context.requestStart.headers,
-          body = body
-        ),
+        request = context.request.copy(body = body),
         remoteAddress = context.remoteAddress,
         x.responder
       )

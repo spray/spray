@@ -146,7 +146,8 @@ private[can] abstract class HttpPeer extends Actor {
         readBuffer.flip()
         log.debug("Read {} bytes", readBuffer.limit())
         parseReadBuffer()
-        connections.refresh(conn)
+        if (conn.memberOf == connections) // otherwise the conn has been closed during parser handling
+          connections.refresh(conn)
       } else cleanClose(conn) // if the peer shut down the socket cleanly, we do the same
     }
   }

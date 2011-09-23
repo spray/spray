@@ -24,10 +24,12 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
   "The request preparation logic should properly render a" ^
     "GET request without headers and without body"        ! e1^
     "POST request, a few headers and no body"             ! e2^
-    "PUT request, a few headers and a body"               ! e3
+    "PUT request, a few headers and a body"               ! e3^
+    "PUT request start (chunked) without body"            ! e4^
+    "POST request start (chunked) with body"              ! e5
 
 
-  def e1 = prep(HttpRequest(method = GET, uri = "/abc")) mustEqual prep {
+  def e1 = prep()(HttpRequest(method = GET, uri = "/abc")) mustEqual prep {
     """|GET /abc HTTP/1.1
        |Host: test.com:8080
        |User-Agent: spray-can/1.0.0
@@ -35,7 +37,7 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
        |"""
   }
 
-  def e2 = prep {
+  def e2 = prep() {
     HttpRequest(
       method = POST,
       uri = "/abc/xyz",
@@ -54,7 +56,7 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
        |"""
   }
 
-  def e3 = prep {
+  def e3 = prep() {
     HttpRequest(
       method = PUT,
       uri = "/abc/xyz",
@@ -75,9 +77,36 @@ class RequestPreparerSpec extends Specification with RequestPreparer { def is =
        |The content please!"""
   }
 
-  def prep(request: HttpRequest) = {
+  def e4 = prep(chunked = true) {
+    HttpRequest(PUT, "/abc/xyz")
+  } mustEqual prep {
+    """|PUT /abc/xyz HTTP/1.1
+       |Host: test.com:8080
+       |User-Agent: spray-can/1.0.0
+       |Transfer-Encoding: chunked
+       |
+       |"""
+  }
+
+  def e5 = prep(chunked = true) {
+    HttpRequest(POST, "/abc/xyz").withBody("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+  } mustEqual prep {
+    """|POST /abc/xyz HTTP/1.1
+       |Host: test.com:8080
+       |User-Agent: spray-can/1.0.0
+       |Transfer-Encoding: chunked
+       |
+       |1a
+       |ABCDEFGHIJKLMNOPQRSTUVWXYZ
+       |"""
+  }
+
+  def prep(chunked: Boolean = false)(request: HttpRequest) = {
     val sb = new java.lang.StringBuilder()
-    val buffers = prepareRequest(request, "test.com", 8080)
+    val buffers = {
+      if (chunked) prepareChunkedRequestStart(request, "test.com", 8080)
+      else prepareRequest(request, "test.com", 8080)
+    }
     buffers.foreach { buf =>
       sb.append(new String(buf.array, "ASCII"))
     }

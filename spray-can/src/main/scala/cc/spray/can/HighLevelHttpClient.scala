@@ -33,6 +33,17 @@ private[can] trait HighLevelHttpClient {
       }
     }
 
+    def sendChunked[B](request: HttpRequest)(chunker: ChunkedRequester => Future[HttpResponse])
+                      (implicit concat: (A, Future[HttpResponse]) => Future[B]): HttpDialog[B] = {
+      appendToResultChain {
+        val responseF = connectionF.flatMap { connection =>
+          log.debug("Sending chunked request start {}", request)
+          chunker(connection.startChunkedRequest(request))
+        }
+        concat(_, responseF)
+      }
+    }
+
     def reply(f: HttpResponse => HttpRequest)(implicit ev: A <:< HttpResponse): HttpDialog[HttpResponse] = {
       appendToResultChain(response => doSend(f(response)))
     }

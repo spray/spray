@@ -426,11 +426,23 @@ private[can] class ChunkBodyParser(config: MessageParserConfig, chunkSize: Int,
 
   val body = new Array[Byte](chunkSize)
   var bytesRead = 0
-  def read(buf: ByteBuffer) = {
-    val remaining = scala.math.min(buf.remaining, chunkSize - bytesRead)
-    buf.get(body, bytesRead, remaining)
-    bytesRead += remaining
-    if (bytesRead == chunkSize) ChunkedChunkParser(extensions, body) else this
+
+  @tailrec
+  final def read(buf: ByteBuffer) = {
+    if (bytesRead < chunkSize) {
+      val remaining = scala.math.min(buf.remaining, chunkSize - bytesRead)
+      buf.get(body, bytesRead, remaining)
+      bytesRead += remaining
+      if (buf.remaining == 0) this else read(buf)
+    } else if (bytesRead == chunkSize) {
+      if (buf.get() == '\r'.asInstanceOf[Byte]) {
+        bytesRead += 1
+        if (buf.remaining == 0) this else read(buf)
+      } else ErrorParser("Expected CR after message chunk")
+    } else {
+      if (buf.get() == '\n'.asInstanceOf[Byte]) ChunkedChunkParser(extensions, body)
+      else ErrorParser("Expected LF after CR after message chunk")
+    }
   }
 }
 

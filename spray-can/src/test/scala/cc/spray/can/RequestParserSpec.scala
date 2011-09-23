@@ -86,7 +86,8 @@ class RequestParserSpec extends Specification {
              |Connection: lalelu
              |
              |3
-             |abc"""
+             |abc
+             |"""
         } mustEqual ChunkedStartParser(
           RequestLine(PUT, "/data", `HTTP/1.1`),
           List(HttpHeader("Connection", "lalelu"), HttpHeader("Transfer-Encoding", "chunked")),
@@ -95,8 +96,8 @@ class RequestParserSpec extends Specification {
       }
       "message chunk" in {
         def chunkParser = new ChunkParser(MessageParserConfig())
-        parse(chunkParser)("3\nabc") mustEqual (Nil, "abc")
-        parse(chunkParser)("10 ;key= value ; another=one;and =more \n0123456789ABCDEFG") mustEqual(
+        parse(chunkParser)("3\nabc\n") mustEqual (Nil, "abc")
+        parse(chunkParser)("10 ;key= value ; another=one;and =more \n0123456789ABCDEF\n") mustEqual(
           List(
             ChunkExtension("and", "more"),
             ChunkExtension("another", "one"),
