@@ -18,10 +18,9 @@ package cc.spray.can
 package example
 
 import akka.config.Supervision._
-import akka.actor.{Supervisor, Actor}
 import org.slf4j.LoggerFactory
-import akka.dispatch.Future
 import HttpMethods._
+import akka.actor.{PoisonPill, Supervisor, Actor}
 
 object Main extends App {
   val log = LoggerFactory.getLogger(getClass)
@@ -34,18 +33,19 @@ object Main extends App {
     )
   )
 
+  // create a very basic HttpDialog that results in a Future[HttpResponse]
   import HttpClient._
-  val dialog: Future[HttpResponse] =
-    HttpDialog("github.com")
+  val dialog = HttpDialog("github.com")
           .send(HttpRequest(method = GET, uri = "/"))
           .end
 
+  // hook in our "continuation"
   dialog.onComplete { future =>
     future.value match {
       case Some(Right(response)) => show(response)
       case error => log.error("Error: {}", error)
     }
-    Actor.registry.shutdownAll()
+    Actor.registry.actors.foreach(_ ! PoisonPill)
   }
 
   def show(response: HttpResponse) {

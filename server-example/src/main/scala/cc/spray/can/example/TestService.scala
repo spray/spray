@@ -19,9 +19,9 @@ package example
 
 import org.slf4j.LoggerFactory
 import HttpMethods._
-import akka.actor.{Scheduler, Kill, Actor}
 import utils.DateTime
 import java.util.concurrent.TimeUnit
+import akka.actor.{PoisonPill, Scheduler, Kill, Actor}
 
 class TestService(id: String) extends Actor {
   val log = LoggerFactory.getLogger(getClass)
@@ -69,8 +69,8 @@ class TestService(id: String) extends Actor {
       serverActor ! Kill
 
     case RequestContext(HttpRequest(GET, "/stop", _, _, _), _, responder) =>
-      responder.complete(response("Shutting down the spray-can server..."))
-      Actor.registry.shutdownAll()
+      responder.complete(response("Shutting down in 1 second ..."))
+      Scheduler.scheduleOnce(() => Actor.registry.actors.foreach(_ ! PoisonPill), 1000, TimeUnit.MILLISECONDS)
 
     case RequestContext(HttpRequest(_, _, _, _, _), _, responder) =>
       responder.complete(response("Unknown resource!", 404))
