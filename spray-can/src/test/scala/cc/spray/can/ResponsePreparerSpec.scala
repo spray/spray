@@ -17,7 +17,6 @@
 package cc.spray.can
 
 import org.specs2._
-import utils.DateTime
 import HttpProtocols._
 import matcher.DataTables
 import java.nio.ByteBuffer

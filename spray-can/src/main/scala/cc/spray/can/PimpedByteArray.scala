@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 
-package cc.spray.can.utils
+package cc.spray.can
 
 class PimpedByteArray(underlying: Array[Byte]) {
 
+  /**
+   * Creates a new Array[Byte] that is the concatenation of the underlying and the given one.
+   */
   def concat(other: Array[Byte]) = {
     val newArray = new Array[Byte](underlying.length + other.length)
     System.arraycopy(underlying, 0, newArray, 0, underlying.length)

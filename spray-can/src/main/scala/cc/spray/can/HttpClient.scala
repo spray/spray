@@ -19,29 +19,18 @@ package cc.spray.can
 import org.slf4j.LoggerFactory
 import java.net.InetSocketAddress
 import java.nio.channels.{SocketChannel, SelectionKey}
-import utils.LinkedList
 import java.nio.ByteBuffer
 import collection.mutable.Queue
 import java.lang.IllegalStateException
-import akka.dispatch.{DefaultCompletableFuture, Future}
+import akka.dispatch.DefaultCompletableFuture
 import akka.actor.{ActorRef, Actor, UntypedChannel}
 import HttpProtocols._
 
-sealed trait HttpConnection {
-  def send(request: HttpRequest): Future[HttpResponse]
-  def sendAndReceive(request: HttpRequest, receiver: ActorRef, context: Option[Any] = None)
-  def startChunkedRequest(request: HttpRequest): ChunkedRequester
-  def close()
-}
-
-trait ChunkedRequester {
-  def sendChunk(chunk: MessageChunk)
-  def close(extensions: List[ChunkExtension] = Nil, trailer: List[HttpHeader] = Nil): Future[HttpResponse]
-  def closeAndReceive(receiver: ActorRef, context: Option[Any] = None, extensions: List[ChunkExtension] = Nil,
-                      trailer: List[HttpHeader] = Nil)
-}
-
-// public incoming message
+/**
+ * Message to be send to an [[cc.spray.can.HttpClient]] actor to initiate a new connection to the given host and port.
+ * Upon successful establishment of the HTTP connection the [[cc.spray.can.HttpClient]] responds with an
+ * [[cc.spray.can.HttpConnection]] instance.
+ */
 case class Connect(host: String, port: Int = 80)
 
 object HttpClient extends HighLevelHttpClient {
@@ -78,6 +67,13 @@ object HttpClient extends HighLevelHttpClient {
   private val UnexpectedResponseErrorParser = ErrorParser("Received unexpected HttpResponse")
 }
 
+/**
+ * The actor implementing the ''spray-can'' HTTP client functionality.
+ * Normally you only need to start one `HttpClient` actor per JVM instance since an `HttpClient` is able to concurrently
+ * and efficiently manage a large number of connections.
+ *
+ * An `HttpClient` reacts to [[cc.spray.can.Connect]] and [[cc.spray.can.GetStats]] messages.
+ */
 class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends HttpPeer("spray-can-client") {
   import HttpClient._
 
@@ -272,7 +268,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
     def send(request: HttpRequest) = {
       // we "disable" the akka future timeout, since we rely on our own logic
       val future = new DefaultCompletableFuture[HttpResponse](Long.MaxValue)
-      val actor = Actor.actorOf(new ResponseBufferingActor(future, config.parserConfig.maxContentLength))
+      val actor = Actor.actorOf(new DefaultReceiverActor(future, config.parserConfig.maxContentLength))
       sendAndReceive(request, actor.start())
       future
     }
@@ -320,7 +316,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
       def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) = {
         // we "disable" the akka future timeout, since we rely on our own logic
         val future = new DefaultCompletableFuture[HttpResponse](Long.MaxValue)
-        val actor = Actor.actorOf(new ResponseBufferingActor(future, config.parserConfig.maxContentLength))
+        val actor = Actor.actorOf(new DefaultReceiverActor(future, config.parserConfig.maxContentLength))
         closeAndReceive(actor.start(), None, extensions, trailer)
         future
       }
@@ -341,4 +337,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
   }
 }
 
+/**
+ * Special exception used for transporting error occuring during [[cc.spray.can.HttpClient]] operations.
+ */
 class HttpClientException(message: String) extends RuntimeException(message)

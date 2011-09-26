@@ -18,7 +18,6 @@ package cc.spray.can
 
 import java.nio.ByteBuffer
 import java.nio.channels.spi.SelectorProvider
-import utils.LinkedList
 import java.util.concurrent.TimeUnit
 import akka.actor._
 import org.slf4j.LoggerFactory
@@ -30,7 +29,16 @@ import annotation.tailrec
 // HttpPeer messages
 ////////////////////////////////////////////
 
+/**
+ * Both, the [[cc.spray.can.HttpServer]] as well as the [[cc.spray.can.HttpClient]] respond to `GetStats` messages
+ * by replying with an instance of [[cc.spray.can.Stats]].
+ */
 case object GetStats
+
+/**
+ * Both, the [[cc.spray.can.HttpServer]] as well as the [[cc.spray.can.HttpClient]] respond to
+ * `GetStats` messages by replying with an instance of `Stats`.
+ */
 case class Stats(
   uptime: Long,
   requestsDispatched: Long,

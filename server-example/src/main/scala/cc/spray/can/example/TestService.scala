@@ -19,7 +19,6 @@ package example
 
 import org.slf4j.LoggerFactory
 import HttpMethods._
-import utils.DateTime
 import java.util.concurrent.TimeUnit
 import akka.actor.{PoisonPill, Scheduler, Kill, Actor}
 

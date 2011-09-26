@@ -18,7 +18,6 @@ package cc.spray.can
 
 import org.slf4j.LoggerFactory
 import java.nio.channels.{SocketChannel, SelectionKey, ServerSocketChannel}
-import utils.LinkedList
 import java.io.IOException
 import java.net.InetAddress
 import java.nio.ByteBuffer
@@ -30,12 +29,26 @@ import HttpProtocols._
 /////////////////////////////////////////////
 // HttpServer messages
 ////////////////////////////////////////////
+
+/**
+ * The [[cc.spray.can.HttpServer]] dispatches a `RequestContext` instance to the service actor (as configured in the
+ * [[cc.spray.can.ServerConfig]] of the [[cc.spray.can.HttpServer]]) upon successful reception of an HTTP request.
+ * The service actor is expected to either complete the request by calling `responder.complete` or start a chunked
+ * response by calling `responder.startChunkedResponse`. If neither of this happens within the timeout period configured
+ * as `requestTimeout` in the [[cc.spray.can.ServerConfig]] the [[cc.spray.can.HttpServer]] actor dispatches a
+ * [[cc.spray.can.Timeout]] instance to the configure timeout actor.
+ */
 case class RequestContext(
   request: HttpRequest,
   remoteAddress: InetAddress,
   responder: RequestResponder
 )
 
+/**
+ * When the service actor does not reply to a dispatched [[cc.spray.can.RequestContext]] within the time period
+ * configured as `requestTimeout` in the [[cc.spray.can.ServerConfig]] the [[cc.spray.can.HttpServer]] dispatches
+ * a `Timeout` instance to the timeout actor (as configured in the [[cc.spray.can.ServerConfig]]).
+ */
 case class Timeout(
   method: HttpMethod,
   uri: String,
@@ -45,13 +58,41 @@ case class Timeout(
   complete: HttpResponse => Unit
 )
 
+/**
+ * An instance of this trait is used by the application to complete incoming requests.
+ */
 trait RequestResponder {
+  /**
+   * Completes a request by responding with the given [[cc.spray.can.HttpResponse]]. Only the first invocation of
+   * this method determines the response that is sent back to the client. All potentially following calls will trigger
+   * an exception.
+   */
   def complete(response: HttpResponse)
+
+  /**
+   * Starts a chunked (streaming) response. The given [[cc.spray.can.HttpResponse]] object must have the protocol
+   * `HTTP/1.1` and is allowed to contain an entity body. Should the body of the given `HttpResponse` be non-empty it
+   * is sent immediately following the responses HTTP header section as the first chunk.
+   * The application is required to use the returned [[cc.spray.can.ChunkedResponder]] instance to send any number of
+   * response chunks before calling the `ChunkedResponder`s `close` method to finalize the response.
+   */
   def startChunkedResponse(response: HttpResponse): ChunkedResponder
 }
 
+/**
+ * A `ChunkedResponder` is returned by the `startChunkedResponse` method of a [[cc.spray.can.RequestResponder]]
+ * (the `responder` member of a [[cc.spray.can.RequestContext]]). It is used by the application to send the chunks and
+ * finalization of a chunked (streaming) HTTP response.
+ */
 trait ChunkedResponder {
+  /**
+   * Send the given [[cc.spray.can.MessageChunk]] back to the client.
+   */
   def sendChunk(chunk: MessageChunk)
+
+  /**
+   * Finalizes the chunked (streaming) response.
+   */
   def close(extensions: List[ChunkExtension] = Nil, trailer: List[HttpHeader] = Nil)
 }
 
@@ -73,8 +114,8 @@ object HttpServer {
                                         headers: List[HttpHeader], remoteAddress: InetAddress,
                                         responder: RequestResponder) extends LinkedList.Element[RequestRecord]
 
-  case class ChunkingContext(requestLine: RequestLine, headers: List[HttpHeader], connectionHeader: Option[String],
-                             streamActor: ActorRef)
+  private[can] case class ChunkingContext(requestLine: RequestLine, headers: List[HttpHeader],
+                                          connectionHeader: Option[String], streamActor: ActorRef)
 
   private[can] class ServerConnection(key: SelectionKey, emptyRequestParser: EmptyRequestParser)
           extends Connection[ServerConnection](key) {
@@ -112,6 +153,22 @@ object HttpServer {
   }
 }
 
+/**
+ * The actor implementing the ''spray-can'' HTTP server functionality.
+ * An `HttpServer` instance starts one private thread and binds to one port (as configured with the given
+ * [[cc.spray.can.ServerConfig]]. It manages connections and requests quite efficiently and can handle thousands of
+ * concurrent connections. For every incoming HTTP request the `HttpServer` creates an [[cc.spray.can.RequestContext]]
+ * instance that is dispatched to the server actor configured via the given [[cc.spray.can.ServerConfig]].
+ *
+ * The service actor is expected to either complete the request by calling `responder.complete` or start a chunked
+ * response by calling `responder.startChunkedResponse`. If neither of this happens within the timeout period configured
+ * as `requestTimeout` in the [[cc.spray.can.ServerConfig]] the `HttpServer` actor dispatches a
+ * [[cc.spray.can.Timeout]] instance to the configure timeout actor. The timeout actor is expected to complete the
+ * request within the configured `timeoutTimeout` period. If this doesn't happen the `HttpServer` completes the request
+ * itself with the result of its `timeoutTimeoutResponse` method.
+ *
+ * An `HttpServer` also reacts to [[cc.spray.can.GetStats]] messages.
+ */
 class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
         extends HttpPeer("spray-can-server") with ResponsePreparer {
   import HttpServer._
@@ -131,7 +188,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
 
   private val StartRequestParser = new EmptyRequestParser(config.parserConfig)
   private lazy val streamActorCreator = config.streamActorCreator.getOrElse {
-    new BufferingRequestStreamActorCreator(serviceActor, config.parserConfig.maxContentLength)
+    BufferingRequestStreamActor.creator(serviceActor, config.parserConfig.maxContentLength)
   }
 
   self.id = config.serverActorId
@@ -295,8 +352,13 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
     }
   }
 
+  /**
+   * This methods determines the [[cc.spray.can.HttpResponse]] to sent back to the client if both the service actor
+   * as well as the timeout actor do not produce timely responses with regard to their timeout periods configured
+   * via the `HttpServers` [[cc.spray.can.ServerConfig]].
+   */
   protected def timeoutTimeoutResponse(method: HttpMethod, uri: String, protocol: HttpProtocol,
-                                       headers: List[HttpHeader], remoteAddress: InetAddress) = {
+                                       headers: List[HttpHeader], remoteAddress: InetAddress): HttpResponse = {
     HttpResponse(status = 500, headers = List(HttpHeader("Content-Type", "text/plain"))).withBody {
       "Ooops! The server was not able to produce a timely response to your request.\n" +
               "Please try again in a short while!"

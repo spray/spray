@@ -17,30 +17,43 @@ package cc.spray.can
 
 import java.io.UnsupportedEncodingException
 import java.net.InetAddress
-import akka.actor.ActorRef
 
+/**
+ * Sealed trait modelling an HTTP method.
+ * All defined methods are declared as members of the `HttpMethods` object.
+ */
 sealed trait HttpMethod {
   def name: String
 }
 
+/**
+ * Module containing all defined [[cc.spray.can.HttpMethod]] instances.
+ */
 object HttpMethods {
   class Method private[HttpMethods] (val name: String) extends HttpMethod {
     override def toString = name
   }
-  val GET = new Method("GET")
-  val POST = new Method("POST")
-  val PUT = new Method("PUT")
-  val DELETE = new Method("DELETE")
-  val HEAD = new Method("HEAD")
+  val GET     = new Method("GET")
+  val POST    = new Method("POST")
+  val PUT     = new Method("PUT")
+  val DELETE  = new Method("DELETE")
+  val HEAD    = new Method("HEAD")
   val OPTIONS = new Method("OPTIONS")
-  val TRACE = new Method("TRACE")
+  val TRACE   = new Method("TRACE")
   val CONNECT = new Method("CONNECT")
 }
 
+/**
+ * Sealed trait modelling an HTTP protocol version.
+ * All defined protocols are declared as memebers of the `HttpProtocols` object.
+ */
 sealed trait HttpProtocol {
   def name: String
 }
 
+/**
+ * Module containing all defined [[cc.spray.can.HttpProtocol]] instances.
+ */
 object HttpProtocols {
   class Protocol private[HttpProtocols] (val name: String) extends HttpProtocol {
     override def toString = name
@@ -49,19 +62,25 @@ object HttpProtocols {
   val `HTTP/1.1` = new Protocol("HTTP/1.1")
 }
 
-sealed trait MessageLine
-case class RequestLine(
+private[can] sealed trait MessageLine
+private[can] case class RequestLine(
   method: HttpMethod = HttpMethods.GET,
   uri: String = "/",
   protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
 ) extends MessageLine
-case class StatusLine(requestMethod: HttpMethod, protocol: HttpProtocol, status: Int, reason: String) extends MessageLine
+private[can] case class StatusLine(requestMethod: HttpMethod, protocol: HttpProtocol, status: Int, reason: String) extends MessageLine
 
+/**
+ * The ''spray-can'' model of an HTTP header.
+ */
 case class HttpHeader(name: String, value: String) extends Product2[String, String] {
   def _1 = name
   def _2 = value
 }
 
+/**
+ * The ''spray-can'' model of an HTTP request.
+ */
 case class HttpRequest(
   method: HttpMethod = HttpMethods.GET,
   uri: String = "/",
@@ -88,6 +107,9 @@ object HttpRequest {
   }
 }
 
+/**
+ * The ''spray-can'' model of an HTTP response.
+ */
 case class HttpResponse(
   status: Int = 200,
   headers: List[HttpHeader] = Nil,
@@ -176,21 +198,40 @@ object HttpResponse {
   }
 }
 
+/**
+ * An instance of this class serves as argument to the `streamActorCreator` function of the
+ * [[cc.spray.can.ServerConfig]].
+ */
 case class ChunkedRequestContext(request: HttpRequest, remoteAddress: InetAddress)
 
+/**
+ * Receiver actors (see the `sendAndReceive` method of the [[cc.spray.can.HttpConnection]]) need to be able to handle
+ * `ChunkedResponseStart` messages, which signal the arrival of a chunked (streaming) response.
+ */
 case class ChunkedResponseStart(status: Int, headers: List[HttpHeader])
 
+/**
+ * Stream actors (see the `streamActorCreator` member of the [[cc.spray.can.ServerConfig]]) need to be able to handle
+ * `ChunkedRequestEnd` messages, which represent the end of an incoming chunked (streaming) request.
+ */
 case class ChunkedRequestEnd(
   extensions: List[ChunkExtension],
   trailer: List[HttpHeader],
   responder: RequestResponder
 )
 
+/**
+ * Receiver actors (see the `sendAndReceive` method of the [[cc.spray.can.HttpConnection]]) need to be able to handle
+ * `ChunkedResponseEnd` messages, which represent the end of an incoming chunked (streaming) response.
+ */
 case class ChunkedResponseEnd(
   extensions: List[ChunkExtension],
   trailer: List[HttpHeader]
 )
 
+/**
+ * Instance of this class represent the individual chunks of a chunked HTTP message (request or response).
+ */
 case class MessageChunk(extensions: List[ChunkExtension], body: Array[Byte]) {
   require(body.length > 0, "MessageChunk must not have empty body")
 }

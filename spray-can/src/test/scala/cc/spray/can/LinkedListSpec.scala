@@ -1,4 +1,4 @@
-package cc.spray.can.utils
+package cc.spray.can
 
 import org.specs2._
 import matcher.MustThrownMatchers

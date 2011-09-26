@@ -20,12 +20,51 @@ import akka.config.Config._
 import java.net.InetSocketAddress
 import akka.actor.Actor
 
+/**
+ * The common configuration elements of a [[cc.spray.can.ServerConfig]] and a [[cc.spray.can.ClientConfig]].
+ */
 trait PeerConfig {
+  /**
+   * The size of the read buffer used for processing incoming messages.
+   * Usually there should be little reason to configure it to a value different from its default of 8192 (bytes).
+   */
   def readBufferSize: Int
+
+  /**
+   * The time period in milliseconds that an open HTTP connection has to be idle before automatically being closed.
+   *
+   * Default: 10,000 ms = 10 seconds
+   */
   def idleTimeout: Long
+
+  /**
+   * The `reapingCycle` is the time in milliseconds between two runs of the "reaper", which is the logic that closes
+   * open HTTP connections whose idle timeout has exceeded the configured value. Larger values (very slightly) increase
+   * overall server or client efficiency (since less time is being spent looking for timed out connections) whereas
+   * smaller values increase the precision with which idle connections are really closed after the configured idle
+   * timeout. The default value is 500, which means that the reaper runs twice per second.
+   */
   def reapingCycle: Long
+
+  /**
+   * The time period in milliseconds that are response has to be produced by the application (in the case of the
+   * [[cc.spray.can.ServerConfig]]) or received by the server (in the case of the [[cc.spray.can.ClientConfig]].
+   * The default value is 5000 ms = 5 seconds.
+   */
   def requestTimeout: Long
+
+  /**
+   * The `timeoutCycle` is the time in milliseconds between two runs of the logic that determines which of all open
+   * requests have timed out. Larger values (very slightly) increase overall server or client efficiency (since less
+   * time is being spent looking for timed out requests) whereas smaller values increase the precision with which
+   * timed out requests are really reacted on after the configured timeout time has elapsed.
+   * The default value is 200.
+   */
   def timeoutCycle: Long
+
+  /**
+   * The configuration of the ''spray-can'' message parser.
+   */
   def parserConfig: MessageParserConfig
 
   require(readBufferSize > 0, "readBufferSize must be > 0 bytes")
@@ -36,8 +75,30 @@ trait PeerConfig {
   require(parserConfig != null, "parserConfig must not be null")
 }
 
+/**
+ * The `ServerConfig` configures an instance of the [[cc.spray.can.HttpServer]] actor.
+ *
+ * @constructor Creates a new `ServerConfig`
+ * @param host the interface to bind to, default is `localhost`
+ * @param port the port to bind to, default is `8080`
+ * @param serverActorId the actor id the [[cc.spray.can.HttpServer]] is to receive, default is `spray-can-server`
+ * @param serviceActorId the id of the actor to dispatch the generated [[cc.spray.can.RequestContext]] messages to,
+ * default is `spray-root-service`
+ * @param timeoutActorId the id of the actor to dispatch the generated [[cc.spray.can.Timeout]] messages to,
+ * default is `spray-root-service`
+ * @param timeoutTimeout the number of milliseconds the timeout actor has to complete the request after having received
+ * a [[cc.spray.can.Timeout]] message. If this time has elapsed without the request being completed the `HttpServer`
+ * completes the request by calling its `timeoutTimeoutResponse` method.
+ * @param serverHeader the value of the "Server" response header set by the [[cc.spray.can.HttpServer]], if empty the
+ * "User-Agent" header will not be rendered
+ * @param streamActorCreator an optional function creating a "stream actor", an per-request actor receiving the parts
+ * of a chunked (streaming) request as separate messages. If `None` the [[cc.spray.can.HttpServer]] will use a new
+ * [[cc.spray.can.BufferingRequestStreamActor]] instance for every incoming chunked request, which buffers chunked
+ * content before dispatching it as a regular [[cc.spray.can.RequestContext]] to the service actor.
+ */
 case class ServerConfig(
   // ServerConfig
+
   host: String = "localhost",
   port: Int = 8080,
   serverActorId: String = "spray-can-server",
@@ -82,6 +143,10 @@ case class ServerConfig(
 }
 
 object ServerConfig {
+
+  /**
+   * Returns a `ServerConfig` constructed from the `spray-can` section of the applications `akka.conf` file.
+   */
   lazy val fromAkkaConf = ServerConfig(
     // ServerConfig
     host           = config.getString("spray-can.server.host", "localhost"),
@@ -102,6 +167,14 @@ object ServerConfig {
   )
 }
 
+/**
+ * The `ClientConfig` configures an instance of the [[cc.spray.can.HttpClient]] actor.
+ *
+ * @constructor Creates a new `ClientConfig`
+ * @param clientActorId the actor id the [[cc.spray.can.HttpClient]] is to receive, default is `spray-can-server`
+ * @param userAgentHeader the value of the "User-Agent" request header set by the [[cc.spray.can.HttpClient]],
+ * if empty the "User-Agent" request header will not be rendered
+ */
 case class ClientConfig(
   // ClientConfig
   clientActorId: String = "spray-can-client",
@@ -146,6 +219,11 @@ object ClientConfig {
   )
 }
 
+/**
+ * The configuration of the HTTP message parser.
+ * The only setting that more frequently requires tweaking is the `maxContentLength` setting, which represents the
+ * maximum request entity size of an HTTP request or response accepted by the server or client.
+ */
 case class MessageParserConfig(
   maxUriLength: Int = 2048,
   maxResponseReasonLength: Int = 64,

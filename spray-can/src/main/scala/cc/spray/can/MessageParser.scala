@@ -22,13 +22,16 @@ import java.lang.{StringBuilder => JStringBuilder}
 import annotation.tailrec
 import HttpProtocols._
 
-// a MessageParser instance holds the complete parsing state at any particular point in the request parsing process
+// a MessageParser instance holds the complete parsing state at any particular point in the request or response
+// parsing process
 private[can] trait MessageParser
 
+// a MessageParser holding an intermediate parsing state, i.e. which does not represent a complete parsing result
 private[can] sealed trait IntermediateParser extends MessageParser {
   def read(buf: ByteBuffer): MessageParser
 }
 
+// an IntermediateParser working on US-ASCII encoded characters (e.g. the HTTP messages header section)
 private[can] sealed abstract class CharacterParser extends IntermediateParser {
   def read(buf: ByteBuffer): MessageParser = {
     @tailrec

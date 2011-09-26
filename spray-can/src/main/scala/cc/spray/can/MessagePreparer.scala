@@ -17,11 +17,10 @@ package cc.spray.can
 
 import java.nio.ByteBuffer
 import annotation.tailrec
-import utils.DateTime
 import HttpProtocols._
 import java.lang.{StringBuilder => JStringBuilder}
 
-trait MessagePreparer {
+private[can] trait MessagePreparer {
   private val CrLf = "\r\n".getBytes("ASCII")
 
   protected def appendHeader(name: String, value: String, sb: JStringBuilder) =
@@ -86,7 +85,7 @@ trait MessagePreparer {
   }
 }
 
-trait ResponsePreparer extends MessagePreparer {
+private[can] trait ResponsePreparer extends MessagePreparer {
   protected def serverHeader: String
 
   private val ServerHeaderPlusDateColonSP =
@@ -147,7 +146,7 @@ trait ResponsePreparer extends MessagePreparer {
   protected def dateTimeNow = DateTime.now  // split out so we can stabilize by overriding in tests
 }
 
-trait RequestPreparer extends MessagePreparer {
+private[can] trait RequestPreparer extends MessagePreparer {
   protected def userAgentHeader: String
 
   protected def prepareRequest(request: HttpRequest, host: String, port: Int): List[ByteBuffer] = {

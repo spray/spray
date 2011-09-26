@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
-package cc.spray.can.utils
+package cc.spray.can
 
 import collection.immutable.LinearSeq
 import annotation.tailrec
 
 class PimpedLinearSeq[+A](underlying: LinearSeq[A]) {
-  
+
+  /**
+   * Returns the first defined result of the given function when applied to the underlying sequence (in order) or
+   * `None`, if the given function returns `None` for all elements of the underlying sequence.
+   */
   def mapFind[B](f: A => Option[B]): Option[B] = {
     @tailrec
     def mapFind(seq: LinearSeq[A]): Option[B] = {
@@ -34,6 +38,10 @@ class PimpedLinearSeq[+A](underlying: LinearSeq[A]) {
     mapFind(underlying)
   }
 
+  /**
+   * Returns the first result of the given partial function when applied to the underlying sequence (in order) or
+   * `None`, if the partial function is not defined for any object of the sequence.
+   */
   def mapFindPF[B](f: PartialFunction[A, B]): Option[B] = {
     @tailrec
     def mapFind(seq: LinearSeq[A]): Option[B] = {
@@ -44,7 +52,10 @@ class PimpedLinearSeq[+A](underlying: LinearSeq[A]) {
     }
     mapFind(underlying)
   }
-  
+
+  /**
+   * Returns the first object of type B in the underlying sequence or `None`, if none is found.
+   */
   def findByType[B :ClassManifest]: Option[B] = {
     val erasure = classManifest.erasure
     mapFind { x =>

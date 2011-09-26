@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.can.utils
+package cc.spray.can
 
 import annotation.tailrec
 
