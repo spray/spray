@@ -1,16 +1,16 @@
-_spray-json_ is a lightweight, clean and efficient [JSON][] implementation in Scala.
+_spray-json_ is a lightweight, clean and efficient [JSON] implementation in Scala.
 
 It sports the following features:
   
 * Simple immutable model of the JSON language elements
-* An efficient JSON PEG parser (implemented with [parboiled][])
+* An efficient JSON PEG parser (implemented with [parboiled])
 * Choice of either compact or pretty JSON-to-string printing
 * Type-class based (de)serialization of custom objects (no reflection, no intrusion)
 
 
 ### Installation
 
-_spray-json_ is available from the [scala-tools.org][] repositories.  
+_spray-json_ is available from the [scala-tools.org] repositories.
 The latest release is `1.0.0`.
 It's built against Scala 2.9.0-1, but backporting to 2.8.1 is no problem (let me know if you need a 2.8.1 compatible version).
 
@@ -18,7 +18,7 @@ If you use SBT you can include _spray-json_ in your project with
 
     val sprayJson = "cc.spray.json" %% "spray-json" % "1.0.0" % "compile" withSources()
 
-_spray-json_ has only one dependency: the parsing library [parboiled][]
+_spray-json_ has only one dependency: the parsing library [parboiled]
 (which is also a dependency of _spray-server_ and _spray-client_, so if you use _spray-json_ with either of them you are not incurring any additional dependency).
 
 
@@ -56,7 +56,7 @@ The way you normally do this is via a "JsonProtocol".
 
 ### JsonProtocol
 
-_spray-json_ uses [SJSON][]s Scala-idiomatic type-class-based approach to connect an existing type `T` with the logic how to (de)serialize its instances to and from JSON. (In fact _spray-json_ even reuses [SJSON][] code, see the 'Credits' section below).
+_spray-json_ uses [SJSON]s Scala-idiomatic type-class-based approach to connect an existing type `T` with the logic how to (de)serialize its instances to and from JSON. (In fact _spray-json_ even reuses [SJSON] code, see the 'Credits' section below).
 
 This approach has the advantage of not requiring any change (or even access) to `T`s source code. All (de)serialization
 logic is attached 'from the outside'. There is no reflection involved, so the resulting conversions are fast. Scalas excellent type inference reduces verbosity and boilerplate to a minimum, while the Scala compiler will make sure at compile time that you provided all required (de)serialization logic. 
@@ -168,20 +168,21 @@ Note that this is the approach _spray-json_ uses for case classes.
 ### Credits
 
 Most of type-class (de)serialization code is nothing but a polished copy of what **Debasish Ghosh** made available
-with his [SJSON][] library. These code parts therefore bear his copyright.
-Additionally the JSON AST model is heavily inspired by the one contributed by **Jorge Ortiz** to [Databinder-Dispatch][].
+with his [SJSON] library. These code parts therefore bear his copyright.
+Additionally the JSON AST model is heavily inspired by the one contributed by **Jorge Ortiz** to [Databinder-Dispatch].
 
   
 ### License
 
-_spray-json_ is licensed under [APL 2.0][].
+_spray-json_ is licensed under [APL 2.0].
 
 
 ### Patch Policy
 
 Feedback and contributions to the project, no matter what kind, are always very welcome.
 However, patches can only be accepted from their original author.
-Along with any patches, please state that the patch is your original work and that you license the work to the pegdown project under the project’s open source license.
+Along with any patches, please state that the patch is your original work and that you license the work to the
+_spray-json_ project under the project’s open source license.
   
 
   [JSON]: http://json.org
