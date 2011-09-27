@@ -26,6 +26,9 @@ class ProductFormatsSpec extends Specification with DefaultJsonProtocol {
     "ignore additional members during deserialization" in {
       JsObject(JsField("a", 42), JsField("b", 4.2), JsField("c", 'no)).fromJson[Test2] mustEqual obj 
     }
+    "not depend on any specific member order for deserialization" in {
+      JsObject(JsField("b", 4.2), JsField("a", 42)).fromJson[Test2] mustEqual obj
+    }
     "throw a DeserializationException if the JsValue is not a JsObject" in (
       JsNull.fromJson[Test2] must throwA(new DeserializationException("Object expected"))  
     )
