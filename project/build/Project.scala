@@ -42,7 +42,8 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     <name>spray-can</name>
     <url>http://spray.cc/</url>
     <inceptionYear>2011</inceptionYear>
-    <description>...</description>
+    <description>a low-overhead, high-performance, fully asynchronous HTTP 1.1 server and client library
+      implemented entirely in Scala on top of Akka</description>
     <licenses>
       <license>
         <name>Apache 2</name>
@@ -92,8 +93,8 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val logback   = Deps.logback % "test"
 
     // Publishing
-    val publishTo = "Scala Tools Snapshots" at "http://nexus.scala-tools.org/content/repositories/snapshots/"
-    //val publishTo = "Scala Tools Releases" at "http://nexus.scala-tools.org/content/repositories/releases/"
+    //val publishTo = "Scala Tools Snapshots" at "http://nexus.scala-tools.org/content/repositories/snapshots/"
+    val publishTo = "Scala Tools Releases" at "http://nexus.scala-tools.org/content/repositories/releases/"
 
     Credentials(Path.userHome / ".ivy2" / ".credentials", log)
     override def managedStyle = ManagedStyle.Maven
