@@ -141,7 +141,7 @@ object HttpResponse {
     req(headers != null, "headers must not be null")
     req(body != null, "body must not be null (you can use cc.spray.can.EmptyByteArray for an empty body)")
     headers.foreach { header =>
-      if (header.name == "Content-Length" || header.name == "Transfer-Encoding")
+      if (header.name == "Content-Length" || header.name == "Transfer-Encoding" || header.name == "Date")
         throw new IllegalArgumentException(header.name + " header must not be set explicitly, it is set automatically")
     }
     req(body.length == 0 || status / 100 > 1 && status != 204 && status != 304, "Illegal HTTP response: " +

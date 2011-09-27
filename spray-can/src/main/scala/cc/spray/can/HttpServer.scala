@@ -36,7 +36,7 @@ import HttpProtocols._
  * The service actor is expected to either complete the request by calling `responder.complete` or start a chunked
  * response by calling `responder.startChunkedResponse`. If neither of this happens within the timeout period configured
  * as `requestTimeout` in the [[cc.spray.can.ServerConfig]] the [[cc.spray.can.HttpServer]] actor dispatches a
- * [[cc.spray.can.Timeout]] instance to the configure timeout actor.
+ * [[cc.spray.can.Timeout]] instance to the configured timeout actor.
  */
 case class RequestContext(
   request: HttpRequest,

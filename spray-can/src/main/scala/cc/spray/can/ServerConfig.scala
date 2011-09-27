@@ -32,6 +32,7 @@ trait PeerConfig {
 
   /**
    * The time period in milliseconds that an open HTTP connection has to be idle before automatically being closed.
+   * Set to zero to disable connection timeouts.
    *
    * Default: 10,000 ms = 10 seconds
    */
@@ -49,6 +50,7 @@ trait PeerConfig {
   /**
    * The time period in milliseconds that are response has to be produced by the application (in the case of the
    * [[cc.spray.can.ServerConfig]]) or received by the server (in the case of the [[cc.spray.can.ClientConfig]].
+   * Set to zero to disable request timeouts.
    * The default value is 5000 ms = 5 seconds.
    */
   def requestTimeout: Long

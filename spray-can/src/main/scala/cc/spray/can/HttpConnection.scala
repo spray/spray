@@ -27,7 +27,7 @@ trait HttpConnection {
   /**
    * Sends the given request and delivers its reponse as a `Future`.
    * If the response is chunked the message entities are buffered and assembled into an [[cc.spray.can.HttpResponse]]
-   * by and automatically started [[cc.spray.can.DefaultReceiverActor]] before delivery.
+   * by an automatically started [[cc.spray.can.DefaultReceiverActor]] before delivery.
    * If the configured maximum content length is exceeded during buffering the `Future` will be completed with a
    * respective [[cc.spray.can.HttpClientException]].
    */
