@@ -311,7 +311,7 @@ _spray-can_ project under the project’s open source license.
   [HttpServer]: http://spray.github.com/spray/api/spray-can/index.html#cc.spray.can.HttpServer
   [ServerConfig]: http://spray.github.com/spray/api/spray-can/index.html#cc.spray.can.ServerConfig
   [RequestContext]: http://spray.github.com/spray/api/spray-can/index.html#cc.spray.can.RequestContext
-  [TestService]: https://github.com/spray/spray-can/blob/main/server-example/src/main/scala/cc/spray/can/example/TestService.scala
+  [TestService]: https://github.com/spray/spray-can/blob/master/server-example/src/main/scala/cc/spray/can/example/TestService.scala
   [HttpResponse]: http://spray.github.com/spray/api/spray-can/index.html#cc.spray.can.HttpResponse
   [Timeout]: http://spray.github.com/spray/api/spray-can/index.html#cc.spray.can.Timeout
   [MessageChunk]: http://spray.github.com/spray/api/spray-can/index.html#cc.spray.can.MessageChunk
