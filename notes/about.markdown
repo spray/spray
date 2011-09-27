@@ -1,1 +1,2 @@
-[spray-json](http://json.spray.cc) is a lightweight, clean and efficient JSON implementation in Scala.
+[spray-can](http://can.spray.cc) is a low-overhead, high-performance, fully asynchronous HTTP 1.1 server and client library
+implemented entirely in [Scala] on top of [Akka].
