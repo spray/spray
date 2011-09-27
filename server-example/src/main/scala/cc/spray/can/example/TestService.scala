@@ -67,12 +67,19 @@ class TestService(id: String) extends Actor {
       responder.complete(response("Hai! (about to kill the HttpServer, watch the log for the automatic restart)"))
       serverActor ! Kill
 
+    case RequestContext(HttpRequest(GET, "/timeout", _, _, _), _, _) =>
+      // we simply drop the request triggering a timeout
+
     case RequestContext(HttpRequest(GET, "/stop", _, _, _), _, responder) =>
       responder.complete(response("Shutting down in 1 second ..."))
       Scheduler.scheduleOnce(() => Actor.registry.actors.foreach(_ ! PoisonPill), 1000, TimeUnit.MILLISECONDS)
 
     case RequestContext(HttpRequest(_, _, _, _, _), _, responder) =>
       responder.complete(response("Unknown resource!", 404))
+
+    case Timeout(method, uri, _, _, _, complete) => complete {
+      HttpResponse(status = 500).withBody("The " + method + " request to '" + uri + "' has timed out...")
+    }
   }
 
   ////////////// helpers //////////////
@@ -95,6 +102,7 @@ class TestService(id: String) extends Actor {
             <li><a href="/stream">/stream</a></li>
             <li><a href="/stats">/stats</a></li>
             <li><a href="/crash">/crash</a></li>
+            <li><a href="/timeout">/timeout</a></li>
             <li><a href="/stop">/stop</a></li>
           </ul>
         </body>
