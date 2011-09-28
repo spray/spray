@@ -25,16 +25,18 @@ import scala.{Left, Right}
 trait StandardFormats {
   this: AdditionalFormats =>
 
-  private type JF[T] = JsonFormat[T] // simple alias for reduced verbosity
+  private[json] type JF[T] = JsonFormat[T] // simple alias for reduced verbosity
 
-  implicit def optionFormat[T :JF] = new JF[Option[T]] {
+  implicit def optionFormat[T :JF] = new OptionFormat[T]
+
+  class OptionFormat[T :JF] extends JF[Option[T]] {
     def write(option: Option[T]) = option match {
       case Some(x) => x.toJson
       case None => JsNull
     }
     def read(value: JsValue) = value match {
       case JsNull => None
-      case x => Some(x.fromJson)
+      case x => Some(x.fromJson[T])
     }
   }
 
