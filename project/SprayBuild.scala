@@ -151,8 +151,7 @@ object Dependencies {
   val servlet30          = "org.glassfish" % "javax.servlet" % "3.0" % "provided"
   val jettyContinuations = "org.eclipse.jetty" % "jetty-continuation" % "7.2.0.v20101020" % "provided"
   val tomcat6            = "org.atmosphere" % "atmosphere-compat-tomcat" % "0.7.1" % "provided"
-  val deft               = "org.apache.deft" % "deft" % "0.4.0-SNAPSHOT" % "provided"
-  val sprayCan           = "cc.spray.can" %% "spray-can" % "0.5.0-SNAPSHOT" % "provided"
+  val sprayCan           = "cc.spray.can" %% "spray-can" % "0.9.0" % "provided"
 
   // test
   val specs2 = "org.specs2" %% "specs2" % "1.6.1" % "test"
@@ -211,7 +210,6 @@ object SprayBuild extends Build {
         Dependencies.servlet30,
         Dependencies.jettyContinuations,
         Dependencies.tomcat6,
-        Dependencies.deft,
         Dependencies.specs2,
         Dependencies.sprayCan
       )
