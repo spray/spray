@@ -19,14 +19,16 @@ package cc.spray
 import http._
 import HttpHeaders._
 import MediaTypes._
+import java.net.InetAddress
 
 trait SprayCanSupport {
 
-  protected def fromSprayCanContext(ctx: can.RequestContext) = {
+  protected def fromSprayCanContext(request: can.HttpRequest, remoteAddress: InetAddress,
+                                    responder: can.HttpResponse => Unit) = {
     RequestContext(
-      request = fromSprayCanRequest(ctx.request),
-      remoteHost = HttpIp(ctx.remoteAddress),
-      responder = fromSprayCanResponder(ctx.responder)
+      request = fromSprayCanRequest(request),
+      remoteHost = HttpIp(remoteAddress),
+      responder = fromSprayCanResponder(responder)
     )
   }
 

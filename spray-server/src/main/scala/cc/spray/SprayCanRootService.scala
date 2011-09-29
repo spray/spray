@@ -15,36 +15,38 @@
  */
 package cc.spray
 
-import akka.actor.{Actor, ActorRef}
+import akka.actor.ActorRef
+import utils.ActorHelpers
 
 /**
- * The RootService actor is the central entrypoint for HTTP requests entering the ''spray'' infrastructure.
- * It is responsible for creating an [[cc.spray.http.HttpRequest]] object for the request as well as dispatching this
- *  [[cc.spray.http.HttpRequest]] object to all attached [[cc.spray.HttpService]]s. 
+ * A specialized [[cc.spray.RootService]] for connector-less deployment on top of the ''spray-can'' `HttpServer`.
  */
 class SprayCanRootService(firstService: ActorRef, moreServices: ActorRef*)
         extends RootService(firstService, moreServices: _*) with SprayCanSupport {
 
-  lazy val timeoutActor = {
-    val actors = Actor.registry.actorsFor(SpraySettings.TimeoutActorId)
-    assert(actors.length == 1, actors.length + " actors for id '" + SpraySettings.TimeoutActorId +
-            "' found, expected exactly one")
-    actors.head
-  }
+  lazy val timeoutActor = ActorHelpers.actor(SpraySettings.TimeoutActorId)
 
   protected override def receive = {
-    case context: can.RequestContext =>
-      try handler(fromSprayCanContext(context)) catch handleExceptions(context)
-    case can.Timeout(context) => {
+    case context: can.RequestContext => {
+      import context._
+      val complete: can.HttpResponse => Unit = responder.complete
       try {
-        val ctx = fromSprayCanContext(context)
-        if (self == timeoutActor) context.responder(fromSprayResponse(timeoutResponse(ctx.request)))
-        else timeoutActor ! Timeout(ctx)
-      } catch handleExceptions(context)
+        handler(fromSprayCanContext(request, remoteAddress, complete))
+      } catch handleExceptions(request, complete)
+    }
+    case can.Timeout(method, uri, protocol, headers, remoteAddress, complete) => {
+      val request = can.HttpRequest(method, uri, headers)
+      try {
+        if (self == timeoutActor)
+          complete(fromSprayResponse(timeoutResponse(fromSprayCanRequest(request))))
+        else
+          timeoutActor ! Timeout(fromSprayCanContext(request, remoteAddress, complete))
+      } catch handleExceptions(request, complete)
     }
   }
 
-  protected def handleExceptions(context: can.RequestContext): PartialFunction[Throwable, Unit] = {
-    case e: Exception => context.responder(fromSprayResponse(responseForException(context.request, e)))
+  protected def handleExceptions(request: can.HttpRequest,
+                                 complete: can.HttpResponse => Unit): PartialFunction[Throwable, Unit] = {
+    case e: Exception => complete(fromSprayResponse(responseForException(request, e)))
   }
 }
