@@ -48,10 +48,10 @@ trait SprayTest {
     def handled: Boolean = rr.isInstanceOf[Respond]
     def response: HttpResponse = rr match {
       case Respond(response) => response
-      case Reject(_) => doFail("Request was rejected")
+      case Reject(rejections) => doFail("Request was rejected with " + rejections)
     }
     def rawRejections: Set[Rejection] = rr match {
-      case Respond(_) => doFail("Request was not rejected")
+      case Respond(response) => doFail("Request was not rejected, response was " + response)
       case Reject(rejections) => rejections 
     }
     def rejections: Set[Rejection] = Rejections.applyCancellations(rawRejections)   
