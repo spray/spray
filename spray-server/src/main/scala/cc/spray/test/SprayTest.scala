@@ -22,7 +22,7 @@ import http._
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import akka.util.Duration
 import akka.util.duration._
-import utils.{Logging, NoLog}
+import utils.{Log, Logging, NoLog}
 
 /**
  * Mix this trait into the class or trait containing your route and service tests.
@@ -58,7 +58,7 @@ trait SprayTest {
   }
 
   trait ServiceTest extends HttpServiceLogic with Logging {
-    override lazy val log = NoLog // in the tests we don't log
+    override lazy val log: Log = NoLog // in the tests we don't log
     val customRejectionHandler = emptyPartialFunc
   }
 
