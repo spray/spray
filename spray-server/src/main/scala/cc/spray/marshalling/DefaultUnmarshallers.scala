@@ -29,7 +29,7 @@ import java.io.ByteArrayInputStream
 
 trait DefaultUnmarshallers {
   
-  implicit object StringUnmarshaller extends UnmarshallerBase[String] {
+  implicit val StringUnmarshaller = new UnmarshallerBase[String] {
     val canUnmarshalFrom = ContentTypeRange(`*/*`) :: Nil // we can convert anything to a string
 
     def unmarshal(content: HttpContent) = {
@@ -38,7 +38,7 @@ trait DefaultUnmarshallers {
     }
   }
 
-  implicit object CharArrayUnmarshaller extends UnmarshallerBase[Array[Char]] {
+  implicit val CharArrayUnmarshaller = new UnmarshallerBase[Array[Char]] {
     val canUnmarshalFrom = ContentTypeRange(`*/*`) :: Nil // we can convert anything to a char array
 
     def unmarshal(content: HttpContent) = {
@@ -49,7 +49,7 @@ trait DefaultUnmarshallers {
     }
   }
   
-  implicit object NodeSeqUnmarshaller extends UnmarshallerBase[NodeSeq] {
+  implicit val NodeSeqUnmarshaller = new UnmarshallerBase[NodeSeq] {
     val canUnmarshalFrom = ContentTypeRange(`text/xml`) ::
                            ContentTypeRange(`text/html`) ::
                            ContentTypeRange(`application/xhtml+xml`) :: Nil
@@ -63,7 +63,7 @@ trait DefaultUnmarshallers {
     }
   }
 
-  implicit object FormContentUnmarshaller extends UnmarshallerBase[FormContent] {
+  implicit val FormContentUnmarshaller = new UnmarshallerBase[FormContent] {
     val canUnmarshalFrom = ContentTypeRange(`application/x-www-form-urlencoded`) :: Nil
   
     def unmarshal(content: HttpContent) = protect {

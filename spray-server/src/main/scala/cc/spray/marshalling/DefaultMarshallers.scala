@@ -26,13 +26,13 @@ import utils.FormContent
 
 trait DefaultMarshallers {
 
-  implicit object StringMarshaller extends MarshallerBase[String] {
+  implicit val StringMarshaller = new MarshallerBase[String] {
     val canMarshalTo = ContentType(`text/plain`) :: Nil
 
     def marshal(value: String, contentType: ContentType) = HttpContent(contentType, value)
   }
 
-  implicit object CharArrayMarshaller extends MarshallerBase[Array[Char]] {
+  implicit val CharArrayMarshaller = new MarshallerBase[Array[Char]] {
     val canMarshalTo = ContentType(`text/plain`) :: Nil
 
     def marshal(value: Array[Char], contentType: ContentType) = {
@@ -43,7 +43,7 @@ trait DefaultMarshallers {
     }
   }
   
-  implicit object NodeSeqMarshaller extends MarshallerBase[NodeSeq] {
+  implicit val NodeSeqMarshaller = new MarshallerBase[NodeSeq] {
     val canMarshalTo = ContentType(`text/xml`) ::
                        ContentType(`text/html`) ::
                        ContentType(`application/xhtml+xml`) :: Nil
@@ -51,7 +51,7 @@ trait DefaultMarshallers {
     def marshal(value: NodeSeq, contentType: ContentType) = StringMarshaller.marshal(value.toString, contentType)
   }
 
-  implicit object FormContentMarshaller extends MarshallerBase[FormContent] {
+  implicit val FormContentMarshaller = new MarshallerBase[FormContent] {
     val canMarshalTo = ContentType(`application/x-www-form-urlencoded`) :: Nil
 
     def marshal(formContent: FormContent, contentType: ContentType) = {
