@@ -45,7 +45,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val slf4j   = "org.slf4j" % "slf4j-api" % "1.6.1" % "compile" withSources()
     val logback = "ch.qos.logback" % "logback-classic" % "0.9.29" % "runtime"
     val pegdown = "org.pegdown" % "pegdown" % "1.0.2" % "compile" withSources()
-    val JETTY_VERSION = "8.0.1.v20110908"
+    val JETTY_VERSION = "8.0.0.M3"
     val jettyServer = "org.eclipse.jetty" % "jetty-server" % JETTY_VERSION % "test"
     val jettyWebApp = "org.eclipse.jetty" % "jetty-webapp" % JETTY_VERSION % "test"
   }
