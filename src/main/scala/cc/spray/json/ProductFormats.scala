@@ -422,6 +422,13 @@ trait ProductFormats {
   }
 }
 
+/**
+ * This trait supplies an alternative rendering mode for optional case class members.
+ * Normally optional members that are undefined (`None`) are not rendered at all.
+ * By mixing in this trait into your custom JsonProtocol you can enforce the rendering of undefined members as `null`.
+ * (Note that this only affect JSON writing, spray-json will always read missing optional members as well as `null`
+ * optional members as `None`.)
+ */
 trait NullOptions extends ProductFormats {
   this: StandardFormats =>
 

@@ -55,7 +55,7 @@ object JsValue {
     case x: collection.Seq[_] => JsArray(x.toList.map(JsValue.apply))
     case x => throw new IllegalArgumentException(x.toString + " cannot be converted to a JsValue")
   }
-  
+
   private def fromSeq(seq: Iterable[(_, _)]) = {
     val list = ListBuffer.empty[JsField]
     seq.foreach {
