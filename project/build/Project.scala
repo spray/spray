@@ -21,8 +21,8 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with posterous.Pub
   // -------------------------------------------------------------------------------------------------------------------
   // Dependencies
   // -------------------------------------------------------------------------------------------------------------------
-  val parboiledC = "org.parboiled" % "parboiled-core" % "1.0.1" % "compile" withSources()
-  val parboiledS = "org.parboiled" % "parboiled-scala" % "1.0.1" % "compile" withSources()
+  val parboiledC = "org.parboiled" % "parboiled-core" % "1.0.2" % "compile" withSources()
+  val parboiledS = "org.parboiled" % "parboiled-scala" % "1.0.2" % "compile" withSources()
 
   // -------------------------------------------------------------------------------------------------------------------
   // Testing with Specs2
