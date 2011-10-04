@@ -27,9 +27,30 @@ trait AdditionalFormats {
     def read(value: JsValue) = value
   }
 
+  /**
+   * Constructs a JsonFormat from its two parts, JsonReader and JsonWriter.
+   */
   def jsonFormat[T](reader: JsonReader[T], writer: JsonWriter[T]) = new JsonFormat[T] {
     def write(obj: T) = writer.write(obj)
     def read(json: JsValue) = reader.read(json)
+  }
+
+  /**
+   * Turns a JsonWriter into a JsonFormat that throws an UnsupportedOperationException for reads.
+   */
+  def lift[T](writer :JsonWriter[T]) = new JsonFormat[T] {
+    def write(obj: T): JsValue = writer.write(obj)
+    def read(value: JsValue) =
+      throw new UnsupportedOperationException("JsonReader implementation missing")
+  }
+
+  /**
+   * Turns a JsonReader into a JsonFormat that throws an UnsupportedOperationException for writes.
+   */
+  def lift[T <: AnyRef](reader :JsonReader[T]) = new JsonFormat[T] {
+    def write(obj: T): JsValue =
+      throw new UnsupportedOperationException("No JsonWriter[" + obj.getClass + "] available")
+    def read(value: JsValue) = reader.read(value)
   }
 
   /**

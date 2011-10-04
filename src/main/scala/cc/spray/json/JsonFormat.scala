@@ -17,9 +17,12 @@
 
 package cc.spray.json
 
+import annotation.implicitNotFound
+
 /**
   * Provides the JSON deserialization for type T.
  */
+@implicitNotFound(msg = "Cannot find JsonReader or JsonFormat type class for ${T}")
 trait JsonReader[T] {
   def read(json: JsValue): T
 }
@@ -33,6 +36,7 @@ object JsonReader {
 /**
   * Provides the JSON serialization for type T.
  */
+@implicitNotFound(msg = "Cannot find JsonWriter or JsonFormat type class for ${T}")
 trait JsonWriter[T] {
   def write(obj: T): JsValue
 }

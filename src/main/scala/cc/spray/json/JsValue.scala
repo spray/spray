@@ -26,7 +26,7 @@ import collection.mutable.ListBuffer
 sealed trait JsValue {
   override def toString = CompactPrinter(this)
   def toString(printer: (JsValue => String)) = printer(this)
-  def fromJson[T :JsonReader]: T = jsonReader.read(this)
+  def fromJson[T :JsonReader]: T = jsonReader[T].read(this)
 }
 object JsValue {
 
@@ -55,7 +55,7 @@ object JsValue {
     case x: collection.Seq[_] => JsArray(x.toList.map(JsValue.apply))
     case x => throw new IllegalArgumentException(x.toString + " cannot be converted to a JsValue")
   }
-  
+
   private def fromSeq(seq: Iterable[(_, _)]) = {
     val list = ListBuffer.empty[JsField]
     seq.foreach {

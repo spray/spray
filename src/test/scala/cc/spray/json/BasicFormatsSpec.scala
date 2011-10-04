@@ -1,6 +1,6 @@
 package cc.spray.json
 
-import org.specs.Specification
+import org.specs2.mutable._
 
 class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
 

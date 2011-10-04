@@ -17,121 +17,122 @@
 
 package cc.spray.json
 
+import annotation.tailrec
+
 /**
  * Provides the helpers for constructing custom JsonFormat implementations for types implementing the Product trait
  * (especially case classes)
  */
 trait ProductFormats {
-
-  private type JF[T] = JsonFormat[T] // simple alias for reduced verbosity
+  this: StandardFormats =>
 
   def jsonFormat[A :JF, T <: Product](construct: A => T, a: String) = new JF[T]{
     def write(p: T) = JsObject(
-      JsField(a, element[A](p, 0).toJson)
+      productElement2Field[A](a, p, 0)
     )
     def read(value: JsValue) = construct(
-      field(value, a).fromJson[A]
+      fromField[A](value, a)
     )
   }
 
   def jsonFormat[A :JF, B :JF, T <: Product](construct: (A, B) => T, a: String, b: String) = new JF[T]{
     def write(p: T) = JsObject(
-      JsField(a, element[A](p, 0).toJson),
-      JsField(b, element[B](p, 1).toJson)
+      productElement2Field[A](a, p, 0,
+      productElement2Field[B](b, p, 1))
     )
     def read(value: JsValue) = construct(
-      field(value, a).fromJson[A],
-      field(value, b).fromJson[B]
+      fromField[A](value, a),
+      fromField[B](value, b)
     )
   }
 
   def jsonFormat[A :JF, B :JF, C :JF, T <: Product](construct: (A, B, C) => T,
                                                 a: String, b: String, c: String) = new JF[T]{
     def write(p: T) = JsObject(
-      JsField(a, element[A](p, 0).toJson),
-      JsField(b, element[B](p, 1).toJson),
-      JsField(c, element[C](p, 2).toJson)
+      productElement2Field[A](a, p, 0,
+      productElement2Field[B](b, p, 1,
+      productElement2Field[C](c, p, 2)))
     )
     def read(value: JsValue) = construct(
-      field(value, a).fromJson[A],
-      field(value, b).fromJson[B],
-      field(value, c).fromJson[C]
+      fromField[A](value, a),
+      fromField[B](value, b),
+      fromField[C](value, c)
     )
   }
 
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, T <: Product](construct: (A, B, C, D) => T,
                                                        a: String, b: String, c: String, d: String) = new JF[T]{
     def write(p: T) = JsObject(
-      JsField(a, element[A](p, 0).toJson),
-      JsField(b, element[B](p, 1).toJson),
-      JsField(c, element[C](p, 2).toJson),
-      JsField(d, element[D](p, 3).toJson)
+      productElement2Field[A](a, p, 0,
+      productElement2Field[B](b, p, 1,
+      productElement2Field[C](c, p, 2,
+      productElement2Field[D](d, p, 3))))
     )
     def read(value: JsValue) = construct(
-      field(value, a).fromJson[A],
-      field(value, b).fromJson[B],
-      field(value, c).fromJson[C],
-      field(value, d).fromJson[D]
+      fromField[A](value, a),
+      fromField[B](value, b),
+      fromField[C](value, c),
+      fromField[D](value, d)
     )
   }
 
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, T <: Product](construct: (A, B, C, D, E) => T,
         a: String, b: String, c: String, d: String, e: String) = new JF[T]{
     def write(p: T) = JsObject(
-      JsField(a, element[A](p, 0).toJson),
-      JsField(b, element[B](p, 1).toJson),
-      JsField(c, element[C](p, 2).toJson),
-      JsField(d, element[D](p, 3).toJson),
-      JsField(e, element[E](p, 4).toJson)
+      productElement2Field[A](a, p, 0,
+      productElement2Field[B](b, p, 1,
+      productElement2Field[C](c, p, 2,
+      productElement2Field[D](d, p, 3,
+      productElement2Field[E](e, p, 4)))))
     )
     def read(value: JsValue) = construct(
-      field(value, a).fromJson[A],
-      field(value, b).fromJson[B],
-      field(value, c).fromJson[C],
-      field(value, d).fromJson[D],
-      field(value, e).fromJson[E]
+      fromField[A](value, a),
+      fromField[B](value, b),
+      fromField[C](value, c),
+      fromField[D](value, d),
+      fromField[E](value, e)
     )
   }
   
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, T <: Product](construct: (A, B, C, D, E, F) => T,
         a: String, b: String, c: String, d: String, e: String, f: String) = new JF[T]{
     def write(p: T) = JsObject(
-      JsField(a, element[A](p, 0).toJson),
-      JsField(b, element[B](p, 1).toJson),
-      JsField(c, element[C](p, 2).toJson),
-      JsField(d, element[D](p, 3).toJson),
-      JsField(e, element[E](p, 4).toJson),
-      JsField(f, element[F](p, 5).toJson)
+      productElement2Field[A](a, p, 0,
+      productElement2Field[B](b, p, 1,
+      productElement2Field[C](c, p, 2,
+      productElement2Field[D](d, p, 3,
+      productElement2Field[E](e, p, 4,
+      productElement2Field[F](f, p, 5))))))
     )
     def read(value: JsValue) = construct(
-      field(value, a).fromJson[A],
-      field(value, b).fromJson[B],
-      field(value, c).fromJson[C],
-      field(value, d).fromJson[D],
-      field(value, e).fromJson[E],
-      field(value, f).fromJson[F]
+      fromField[A](value, a),
+      fromField[B](value, b),
+      fromField[C](value, c),
+      fromField[D](value, d),
+      fromField[E](value, e),
+      fromField[F](value, f)
     )
   }
   
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, T <: Product](construct: (A, B, C, D, E, F, G) => T,
         a: String, b: String, c: String, d: String, e: String, f: String, g: String) = new JF[T]{
     def write(p: T) = JsObject(
-      JsField(a, element[A](p, 0).toJson),
-      JsField(b, element[B](p, 1).toJson),
-      JsField(c, element[C](p, 2).toJson),
-      JsField(d, element[D](p, 3).toJson),
-      JsField(e, element[E](p, 4).toJson),
-      JsField(f, element[F](p, 5).toJson),
-      JsField(g, element[G](p, 6).toJson)
+      productElement2Field[A](a, p, 0,
+      productElement2Field[B](b, p, 1,
+      productElement2Field[C](c, p, 2,
+      productElement2Field[D](d, p, 3,
+      productElement2Field[E](e, p, 4,
+      productElement2Field[F](f, p, 5,
+      productElement2Field[G](g, p, 6)))))))
     )
     def read(value: JsValue) = construct(
-      field(value, a).fromJson[A],
-      field(value, b).fromJson[B],
-      field(value, c).fromJson[C],
-      field(value, d).fromJson[D],
-      field(value, e).fromJson[E],
-      field(value, f).fromJson[F],
-      field(value, g).fromJson[G]
+      fromField[A](value, a),
+      fromField[B](value, b),
+      fromField[C](value, c),
+      fromField[D](value, d),
+      fromField[E](value, e),
+      fromField[F](value, f),
+      fromField[G](value, g)
     )
   }
   
@@ -139,24 +140,24 @@ trait ProductFormats {
         (construct: (A, B, C, D, E, F, G, H) => T,
         a: String, b: String, c: String, d: String, e: String, f: String, g: String, h: String) = new JF[T]{
     def write(p: T) = JsObject(
-      JsField(a, element[A](p, 0).toJson),
-      JsField(b, element[B](p, 1).toJson),
-      JsField(c, element[C](p, 2).toJson),
-      JsField(d, element[D](p, 3).toJson),
-      JsField(e, element[E](p, 4).toJson),
-      JsField(f, element[F](p, 5).toJson),
-      JsField(g, element[G](p, 6).toJson),
-      JsField(h, element[H](p, 7).toJson)
+      productElement2Field[A](a, p, 0,
+      productElement2Field[B](b, p, 1,
+      productElement2Field[C](c, p, 2,
+      productElement2Field[D](d, p, 3,
+      productElement2Field[E](e, p, 4,
+      productElement2Field[F](f, p, 5,
+      productElement2Field[G](g, p, 6,
+      productElement2Field[H](h, p, 7))))))))
     )
     def read(value: JsValue) = construct(
-      field(value, a).fromJson[A],
-      field(value, b).fromJson[B],
-      field(value, c).fromJson[C],
-      field(value, d).fromJson[D],
-      field(value, e).fromJson[E],
-      field(value, f).fromJson[F],
-      field(value, g).fromJson[G],
-      field(value, h).fromJson[H]
+      fromField[A](value, a),
+      fromField[B](value, b),
+      fromField[C](value, c),
+      fromField[D](value, d),
+      fromField[E](value, e),
+      fromField[F](value, f),
+      fromField[G](value, g),
+      fromField[H](value, h)
     )
   }
   
@@ -164,26 +165,26 @@ trait ProductFormats {
         (construct: (A, B, C, D, E, F, G, H, I) => T,
         a: String, b: String, c: String, d: String, e: String, f: String, g: String, h: String, i: String) = new JF[T]{
     def write(p: T) = JsObject(
-      JsField(a, element[A](p, 0).toJson),
-      JsField(b, element[B](p, 1).toJson),
-      JsField(c, element[C](p, 2).toJson),
-      JsField(d, element[D](p, 3).toJson),
-      JsField(e, element[E](p, 4).toJson),
-      JsField(f, element[F](p, 5).toJson),
-      JsField(g, element[G](p, 6).toJson),
-      JsField(h, element[H](p, 7).toJson),
-      JsField(i, element[I](p, 8).toJson)
+      productElement2Field[A](a, p, 0,
+      productElement2Field[B](b, p, 1,
+      productElement2Field[C](c, p, 2,
+      productElement2Field[D](d, p, 3,
+      productElement2Field[E](e, p, 4,
+      productElement2Field[F](f, p, 5,
+      productElement2Field[G](g, p, 6,
+      productElement2Field[H](h, p, 7,
+      productElement2Field[I](i, p, 8)))))))))
     )
     def read(value: JsValue) = construct(
-      field(value, a).fromJson[A],
-      field(value, b).fromJson[B],
-      field(value, c).fromJson[C],
-      field(value, d).fromJson[D],
-      field(value, e).fromJson[E],
-      field(value, f).fromJson[F],
-      field(value, g).fromJson[G],
-      field(value, h).fromJson[H],
-      field(value, i).fromJson[I]
+      fromField[A](value, a),
+      fromField[B](value, b),
+      fromField[C](value, c),
+      fromField[D](value, d),
+      fromField[E](value, e),
+      fromField[F](value, f),
+      fromField[G](value, g),
+      fromField[H](value, h),
+      fromField[I](value, i)
     )
   }
   
@@ -191,28 +192,28 @@ trait ProductFormats {
         (construct: (A, B, C, D, E, F, G, H, I, J) => T, a: String, b: String, c: String, d: String, e: String,
          f: String, g: String, h: String, i: String, j: String) = new JF[T]{
     def write(p: T) = JsObject(
-      JsField(a, element[A](p, 0).toJson),
-      JsField(b, element[B](p, 1).toJson),
-      JsField(c, element[C](p, 2).toJson),
-      JsField(d, element[D](p, 3).toJson),
-      JsField(e, element[E](p, 4).toJson),
-      JsField(f, element[F](p, 5).toJson),
-      JsField(g, element[G](p, 6).toJson),
-      JsField(h, element[H](p, 7).toJson),
-      JsField(i, element[I](p, 8).toJson),
-      JsField(j, element[J](p, 9).toJson)
+      productElement2Field[A](a, p, 0,
+      productElement2Field[B](b, p, 1,
+      productElement2Field[C](c, p, 2,
+      productElement2Field[D](d, p, 3,
+      productElement2Field[E](e, p, 4,
+      productElement2Field[F](f, p, 5,
+      productElement2Field[G](g, p, 6,
+      productElement2Field[H](h, p, 7,
+      productElement2Field[I](i, p, 8,
+      productElement2Field[J](j, p, 9))))))))))
     )
     def read(value: JsValue) = construct(
-      field(value, a).fromJson[A],
-      field(value, b).fromJson[B],
-      field(value, c).fromJson[C],
-      field(value, d).fromJson[D],
-      field(value, e).fromJson[E],
-      field(value, f).fromJson[F],
-      field(value, g).fromJson[G],
-      field(value, h).fromJson[H],
-      field(value, i).fromJson[I],
-      field(value, j).fromJson[J]
+      fromField[A](value, a),
+      fromField[B](value, b),
+      fromField[C](value, c),
+      fromField[D](value, d),
+      fromField[E](value, e),
+      fromField[F](value, f),
+      fromField[G](value, g),
+      fromField[H](value, h),
+      fromField[I](value, i),
+      fromField[J](value, j)
     )
   }
   
@@ -220,30 +221,30 @@ trait ProductFormats {
         (construct: (A, B, C, D, E, F, G, H, I, J, K) => T, a: String, b: String, c: String, d: String, e: String,
          f: String, g: String, h: String, i: String, j: String, k: String) = new JF[T]{
     def write(p: T) = JsObject(
-      JsField(a, element[A](p, 0).toJson),
-      JsField(b, element[B](p, 1).toJson),
-      JsField(c, element[C](p, 2).toJson),
-      JsField(d, element[D](p, 3).toJson),
-      JsField(e, element[E](p, 4).toJson),
-      JsField(f, element[F](p, 5).toJson),
-      JsField(g, element[G](p, 6).toJson),
-      JsField(h, element[H](p, 7).toJson),
-      JsField(i, element[I](p, 8).toJson),
-      JsField(j, element[J](p, 9).toJson),
-      JsField(k, element[K](p, 10).toJson)
+      productElement2Field[A](a, p, 0,
+      productElement2Field[B](b, p, 1,
+      productElement2Field[C](c, p, 2,
+      productElement2Field[D](d, p, 3,
+      productElement2Field[E](e, p, 4,
+      productElement2Field[F](f, p, 5,
+      productElement2Field[G](g, p, 6,
+      productElement2Field[H](h, p, 7,
+      productElement2Field[I](i, p, 8,
+      productElement2Field[J](j, p, 9,
+      productElement2Field[K](k, p, 10)))))))))))
     )
     def read(value: JsValue) = construct(
-      field(value, a).fromJson[A],
-      field(value, b).fromJson[B],
-      field(value, c).fromJson[C],
-      field(value, d).fromJson[D],
-      field(value, e).fromJson[E],
-      field(value, f).fromJson[F],
-      field(value, g).fromJson[G],
-      field(value, h).fromJson[H],
-      field(value, i).fromJson[I],
-      field(value, j).fromJson[J],
-      field(value, k).fromJson[K]
+      fromField[A](value, a),
+      fromField[B](value, b),
+      fromField[C](value, c),
+      fromField[D](value, d),
+      fromField[E](value, e),
+      fromField[F](value, f),
+      fromField[G](value, g),
+      fromField[H](value, h),
+      fromField[I](value, i),
+      fromField[J](value, j),
+      fromField[K](value, k)
     )
   }
 
@@ -251,32 +252,32 @@ trait ProductFormats {
         (construct: (A, B, C, D, E, F, G, H, I, J, K, L) => T, a: String, b: String, c: String, d: String, e: String,
          f: String, g: String, h: String, i: String, j: String, k: String, l: String) = new JF[T]{
     def write(p: T) = JsObject(
-      JsField(a, element[A](p, 0).toJson),
-      JsField(b, element[B](p, 1).toJson),
-      JsField(c, element[C](p, 2).toJson),
-      JsField(d, element[D](p, 3).toJson),
-      JsField(e, element[E](p, 4).toJson),
-      JsField(f, element[F](p, 5).toJson),
-      JsField(g, element[G](p, 6).toJson),
-      JsField(h, element[H](p, 7).toJson),
-      JsField(i, element[I](p, 8).toJson),
-      JsField(j, element[J](p, 9).toJson),
-      JsField(k, element[K](p, 10).toJson),
-      JsField(l, element[L](p, 11).toJson)
+      productElement2Field[A](a, p,  0,
+      productElement2Field[B](b, p,  1,
+      productElement2Field[C](c, p,  2,
+      productElement2Field[D](d, p,  3,
+      productElement2Field[E](e, p,  4,
+      productElement2Field[F](f, p,  5,
+      productElement2Field[G](g, p,  6,
+      productElement2Field[H](h, p,  7,
+      productElement2Field[I](i, p,  8,
+      productElement2Field[J](j, p,  9,
+      productElement2Field[K](k, p, 10,
+      productElement2Field[L](l, p, 11))))))))))))
     )
     def read(value: JsValue) = construct(
-      field(value, a).fromJson[A],
-      field(value, b).fromJson[B],
-      field(value, c).fromJson[C],
-      field(value, d).fromJson[D],
-      field(value, e).fromJson[E],
-      field(value, f).fromJson[F],
-      field(value, g).fromJson[G],
-      field(value, h).fromJson[H],
-      field(value, i).fromJson[I],
-      field(value, j).fromJson[J],
-      field(value, k).fromJson[K],
-      field(value, l).fromJson[L]
+      fromField[A](value, a),
+      fromField[B](value, b),
+      fromField[C](value, c),
+      fromField[D](value, d),
+      fromField[E](value, e),
+      fromField[F](value, f),
+      fromField[G](value, g),
+      fromField[H](value, h),
+      fromField[I](value, i),
+      fromField[J](value, j),
+      fromField[K](value, k),
+      fromField[L](value, l)
     )
   }
 
@@ -284,34 +285,34 @@ trait ProductFormats {
         (construct: (A, B, C, D, E, F, G, H, I, J, K, L, M) => T, a: String, b: String, c: String, d: String, e: String,
          f: String, g: String, h: String, i: String, j: String, k: String, l: String, m: String) = new JF[T]{
     def write(p: T) = JsObject(
-      JsField(a, element[A](p, 0).toJson),
-      JsField(b, element[B](p, 1).toJson),
-      JsField(c, element[C](p, 2).toJson),
-      JsField(d, element[D](p, 3).toJson),
-      JsField(e, element[E](p, 4).toJson),
-      JsField(f, element[F](p, 5).toJson),
-      JsField(g, element[G](p, 6).toJson),
-      JsField(h, element[H](p, 7).toJson),
-      JsField(i, element[I](p, 8).toJson),
-      JsField(j, element[J](p, 9).toJson),
-      JsField(k, element[K](p, 10).toJson),
-      JsField(l, element[L](p, 11).toJson),
-      JsField(m, element[M](p, 12).toJson)
+      productElement2Field[A](a, p,  0,
+      productElement2Field[B](b, p,  1,
+      productElement2Field[C](c, p,  2,
+      productElement2Field[D](d, p,  3,
+      productElement2Field[E](e, p,  4,
+      productElement2Field[F](f, p,  5,
+      productElement2Field[G](g, p,  6,
+      productElement2Field[H](h, p,  7,
+      productElement2Field[I](i, p,  8,
+      productElement2Field[J](j, p,  9,
+      productElement2Field[K](k, p, 10,
+      productElement2Field[L](l, p, 11,
+      productElement2Field[M](m, p, 12)))))))))))))
     )
     def read(value: JsValue) = construct(
-      field(value, a).fromJson[A],
-      field(value, b).fromJson[B],
-      field(value, c).fromJson[C],
-      field(value, d).fromJson[D],
-      field(value, e).fromJson[E],
-      field(value, f).fromJson[F],
-      field(value, g).fromJson[G],
-      field(value, h).fromJson[H],
-      field(value, i).fromJson[I],
-      field(value, j).fromJson[J],
-      field(value, k).fromJson[K],
-      field(value, l).fromJson[L],
-      field(value, m).fromJson[M]
+      fromField[A](value, a),
+      fromField[B](value, b),
+      fromField[C](value, c),
+      fromField[D](value, d),
+      fromField[E](value, e),
+      fromField[F](value, f),
+      fromField[G](value, g),
+      fromField[H](value, h),
+      fromField[I](value, i),
+      fromField[J](value, j),
+      fromField[K](value, k),
+      fromField[L](value, l),
+      fromField[M](value, m)
     )
   }
 
@@ -319,36 +320,36 @@ trait ProductFormats {
         (construct: (A, B, C, D, E, F, G, H, I, J, K, L, M, N) => T, a: String, b: String, c: String, d: String, e: String,
          f: String, g: String, h: String, i: String, j: String, k: String, l: String, m: String, n: String) = new JF[T]{
     def write(p: T) = JsObject(
-      JsField(a, element[A](p, 0).toJson),
-      JsField(b, element[B](p, 1).toJson),
-      JsField(c, element[C](p, 2).toJson),
-      JsField(d, element[D](p, 3).toJson),
-      JsField(e, element[E](p, 4).toJson),
-      JsField(f, element[F](p, 5).toJson),
-      JsField(g, element[G](p, 6).toJson),
-      JsField(h, element[H](p, 7).toJson),
-      JsField(i, element[I](p, 8).toJson),
-      JsField(j, element[J](p, 9).toJson),
-      JsField(k, element[K](p, 10).toJson),
-      JsField(l, element[L](p, 11).toJson),
-      JsField(m, element[M](p, 12).toJson),
-      JsField(n, element[N](p, 13).toJson)
+      productElement2Field[A](a, p,  0,
+      productElement2Field[B](b, p,  1,
+      productElement2Field[C](c, p,  2,
+      productElement2Field[D](d, p,  3,
+      productElement2Field[E](e, p,  4,
+      productElement2Field[F](f, p,  5,
+      productElement2Field[G](g, p,  6,
+      productElement2Field[H](h, p,  7,
+      productElement2Field[I](i, p,  8,
+      productElement2Field[J](j, p,  9,
+      productElement2Field[K](k, p, 10,
+      productElement2Field[L](l, p, 11,
+      productElement2Field[M](m, p, 12,
+      productElement2Field[N](n, p, 13))))))))))))))
     )
     def read(value: JsValue) = construct(
-      field(value, a).fromJson[A],
-      field(value, b).fromJson[B],
-      field(value, c).fromJson[C],
-      field(value, d).fromJson[D],
-      field(value, e).fromJson[E],
-      field(value, f).fromJson[F],
-      field(value, g).fromJson[G],
-      field(value, h).fromJson[H],
-      field(value, i).fromJson[I],
-      field(value, j).fromJson[J],
-      field(value, k).fromJson[K],
-      field(value, l).fromJson[L],
-      field(value, m).fromJson[M],
-      field(value, n).fromJson[N]
+      fromField[A](value, a),
+      fromField[B](value, b),
+      fromField[C](value, c),
+      fromField[D](value, d),
+      fromField[E](value, e),
+      fromField[F](value, f),
+      fromField[G](value, g),
+      fromField[H](value, h),
+      fromField[I](value, i),
+      fromField[J](value, j),
+      fromField[K](value, k),
+      fromField[L](value, l),
+      fromField[M](value, m),
+      fromField[N](value, n)
     )
   }
 
@@ -356,52 +357,84 @@ trait ProductFormats {
         (construct: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O) => T, a: String, b: String, c: String, d: String, e: String,
          f: String, g: String, h: String, i: String, j: String, k: String, l: String, m: String, n: String, o: String) = new JF[T]{
     def write(p: T) = JsObject(
-      JsField(a, element[A](p, 0).toJson),
-      JsField(b, element[B](p, 1).toJson),
-      JsField(c, element[C](p, 2).toJson),
-      JsField(d, element[D](p, 3).toJson),
-      JsField(e, element[E](p, 4).toJson),
-      JsField(f, element[F](p, 5).toJson),
-      JsField(g, element[G](p, 6).toJson),
-      JsField(h, element[H](p, 7).toJson),
-      JsField(i, element[I](p, 8).toJson),
-      JsField(j, element[J](p, 9).toJson),
-      JsField(k, element[K](p, 10).toJson),
-      JsField(l, element[L](p, 11).toJson),
-      JsField(m, element[M](p, 12).toJson),
-      JsField(n, element[N](p, 13).toJson),
-      JsField(o, element[O](p, 14).toJson)
+      productElement2Field[A](a, p,  0,
+      productElement2Field[B](b, p,  1,
+      productElement2Field[C](c, p,  2,
+      productElement2Field[D](d, p,  3,
+      productElement2Field[E](e, p,  4,
+      productElement2Field[F](f, p,  5,
+      productElement2Field[G](g, p,  6,
+      productElement2Field[H](h, p,  7,
+      productElement2Field[I](i, p,  8,
+      productElement2Field[J](j, p,  9,
+      productElement2Field[K](k, p, 10,
+      productElement2Field[L](l, p, 11,
+      productElement2Field[M](m, p, 12,
+      productElement2Field[N](n, p, 13,
+      productElement2Field[O](o, p, 14)))))))))))))))
     )
     def read(value: JsValue) = construct(
-      field(value, a).fromJson[A],
-      field(value, b).fromJson[B],
-      field(value, c).fromJson[C],
-      field(value, d).fromJson[D],
-      field(value, e).fromJson[E],
-      field(value, f).fromJson[F],
-      field(value, g).fromJson[G],
-      field(value, h).fromJson[H],
-      field(value, i).fromJson[I],
-      field(value, j).fromJson[J],
-      field(value, k).fromJson[K],
-      field(value, l).fromJson[L],
-      field(value, m).fromJson[M],
-      field(value, n).fromJson[N],
-      field(value, o).fromJson[O]
+      fromField[A](value, a),
+      fromField[B](value, b),
+      fromField[C](value, c),
+      fromField[D](value, d),
+      fromField[E](value, e),
+      fromField[F](value, f),
+      fromField[G](value, g),
+      fromField[H](value, h),
+      fromField[I](value, i),
+      fromField[J](value, j),
+      fromField[K](value, k),
+      fromField[L](value, l),
+      fromField[M](value, m),
+      fromField[N](value, n),
+      fromField[O](value, o)
     )
   }
 
   // helpers
   
-  private def element[T](p: Product, ix: Int) = p.productElement(ix).asInstanceOf[T]
-  
-  private def field(value: JsValue, fieldName: String) = value match {
-    case jso: JsObject => {
-      jso.fields
-              .find(_.name == fieldName)
-              .getOrElse(throw new DeserializationException("Object is missing required member '" + fieldName + "'"))
-              .value
+  protected def productElement2Field[T](fieldName: String, p: Product, ix: Int, rest: List[JsField] = Nil)
+                                       (implicit writer: JsonWriter[T]): List[JsField] = {
+    val value = p.productElement(ix).asInstanceOf[T]
+    writer match {
+      case _: OptionFormat[_] if (value == None) => rest
+      case _ => JsField(fieldName, writer.write(value)) :: rest
     }
-    case _ => throw new DeserializationException("Object expected")
+  }
+  
+  private def fromField[T](value: JsValue, fieldName: String)(implicit reader: JsonReader[T]) = {
+    @tailrec
+    def getFrom(fields: List[JsField]): T = {
+      if (fields.isEmpty) {
+        if (reader.isInstanceOf[OptionFormat[_]]) None.asInstanceOf[T]
+        else throw new DeserializationException("Object is missing required member '" + fieldName + "'")
+      } else if (fields.head.name == fieldName) {
+        reader.read(fields.head.value)
+      } else {
+        getFrom(fields.tail)
+      }
+    }
+    value match {
+      case x: JsObject => getFrom(x.fields)
+      case _ => throw new DeserializationException("Object expected")
+    }
+  }
+}
+
+/**
+ * This trait supplies an alternative rendering mode for optional case class members.
+ * Normally optional members that are undefined (`None`) are not rendered at all.
+ * By mixing in this trait into your custom JsonProtocol you can enforce the rendering of undefined members as `null`.
+ * (Note that this only affect JSON writing, spray-json will always read missing optional members as well as `null`
+ * optional members as `None`.)
+ */
+trait NullOptions extends ProductFormats {
+  this: StandardFormats =>
+
+  override protected def productElement2Field[T](fieldName: String, p: Product, ix: Int, rest: List[JsField])
+                                                (implicit writer: JsonWriter[T]) = {
+    val value = p.productElement(ix).asInstanceOf[T]
+    JsField(fieldName, writer.write(value)) :: rest
   }
 }

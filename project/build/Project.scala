@@ -21,11 +21,17 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with posterous.Pub
   // -------------------------------------------------------------------------------------------------------------------
   // Dependencies
   // -------------------------------------------------------------------------------------------------------------------
-  val parboiledC = "org.parboiled" % "parboiled-core" % "1.0.1" % "compile" withSources()
-  val parboiledS = "org.parboiled" % "parboiled-scala" % "1.0.1" % "compile" withSources()
-  
-  val specs = "org.scala-tools.testing" %% "specs" % "1.6.8" % "test" withSources()
-  
+  val parboiledC = "org.parboiled" % "parboiled-core" % "1.0.2" % "compile" withSources()
+  val parboiledS = "org.parboiled" % "parboiled-scala" % "1.0.2" % "compile" withSources()
+
+  // -------------------------------------------------------------------------------------------------------------------
+  // Testing with Specs2
+  // -------------------------------------------------------------------------------------------------------------------
+  val specs2 = "org.specs2" %% "specs2" % "1.6.1" % "test" withSources()
+
+  def specs2Framework = new TestFramework("org.specs2.runner.SpecsFramework")
+  override def testFrameworks = super.testFrameworks ++ Seq(specs2Framework)
+
   // -------------------------------------------------------------------------------------------------------------------
   // Options
   // -------------------------------------------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 package cc.spray.json
 
-import org.specs.Specification
+import org.specs2.mutable._
 import scala.Right
 
 class StandardFormatsSpec extends Specification with DefaultJsonProtocol {
