@@ -19,6 +19,7 @@ package connectors
 
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 import org.apache.catalina.{CometEvent, CometProcessor}
+import java.util.concurrent.{TimeUnit, CountDownLatch}
 
 /**
  * The spray connector servlet for Tomcat 6.
@@ -32,11 +33,14 @@ class Tomcat6ConnectorServlet extends ConnectorServlet("Tomcat 6") with CometPro
 
   def event(ev: CometEvent) {
     ev.getEventType match {
-      case CometEvent.EventType.BEGIN => requestContext(ev).foreach(rootService ! _)
+      case CometEvent.EventType.BEGIN => {
+        requestContext(ev.getHttpServletRequest, ev.getHttpServletResponse, responder(ev)).foreach(rootService ! _)
+      }
       case CometEvent.EventType.ERROR => ev.getEventSubType match {
-        case CometEvent.EventSubType.TIMEOUT => requestContext(ev).foreach { ctx =>
-          log.error("Timeout of %s", ctx.request)
-          timeoutActor ! Timeout(ctx)
+        case CometEvent.EventSubType.TIMEOUT => {
+          handleTimeout(ev.getHttpServletRequest, ev.getHttpServletResponse) {
+            ev.close()
+          }
         }
         case CometEvent.EventSubType.CLIENT_DISCONNECT => log.warn("Client disconnected")
         case err => log.error("Unspecified Error during async processing: %s", err)
@@ -46,15 +50,9 @@ class Tomcat6ConnectorServlet extends ConnectorServlet("Tomcat 6") with CometPro
     }
   }
 
-  def requestContext(ev: CometEvent): Option[RequestContext] = {
-    val req: HttpServletRequest = ev.getHttpServletRequest
-    val resp: HttpServletResponse = ev.getHttpServletResponse
-    requestContext(req, resp, responder(ev))
-  }
-
-  def responder(ev: CometEvent)(context: RequestContext): RoutingResult => Unit = {
+  def responder(ev: CometEvent): RoutingResult => Unit = {
     ev.setTimeout(timeout)
-    responder { response =>
+    responderFrom { response =>
       respond(ev.getHttpServletResponse, response)
       ev.close()
     }

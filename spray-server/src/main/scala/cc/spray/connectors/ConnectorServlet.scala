@@ -26,12 +26,12 @@ import HttpHeaders._
 import StatusCodes._
 import MediaTypes._
 import java.io.{IOException, InputStream}
+import java.util.concurrent.{TimeUnit, CountDownLatch}
 
 private[connectors] abstract class ConnectorServlet(containerName: String) extends HttpServlet with Logging {
   lazy val rootService = actor(SpraySettings.RootActorId)
   lazy val timeoutActor = actor(SpraySettings.TimeoutActorId)
   var timeout: Int = _
-  val EmptyResponder: RoutingResult => Unit = { _ => }
 
   override def init() {
     log.info("Initializing %s <=> Spray Connector", containerName)
@@ -40,14 +40,15 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
   }
 
   def requestContext(req: HttpServletRequest, resp: HttpServletResponse,
-                     responderFactory: RequestContext => RoutingResult => Unit): Option[RequestContext] = {
+                     responder: RoutingResult => Unit): Option[RequestContext] = {
     try {
-      val context = RequestContext(
-        request = httpRequest(req),
-        remoteHost = req.getRemoteAddr,
-        responder = EmptyResponder
-      )
-      Some(context.withResponder(responderFactory(context)))
+      Some {
+        RequestContext(
+          request = httpRequest(req),
+          remoteHost = req.getRemoteAddr,
+          responder = responder
+        )
+      }
     } catch {
       case HttpException(failure, reason) => respond(resp, HttpResponse(failure.value, reason)); None
       case e: Exception => respond(resp, HttpResponse(500, "Internal Server Error:\n" + e.toString)); None
@@ -105,9 +106,23 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
     }
   }
 
-  def responder(f: HttpResponse => Unit): RoutingResult => Unit = {
+  def responderFrom(f: HttpResponse => Unit): RoutingResult => Unit = {
     case Respond(response) => f(response)
     case _: Reject => throw new IllegalStateException
+  }
+
+  def handleTimeout(req: HttpServletRequest, resp: HttpServletResponse)(complete: => Unit) {
+    val latch = new CountDownLatch(1);
+    val responder = responderFrom { response =>
+      respond(resp, response)
+      complete
+      latch.countDown()
+    }
+    requestContext(req, resp, responder).foreach { context =>
+      log.error("Timeout of %s", context.request)
+      timeoutActor ! Timeout(context)
+      latch.await(timeout, TimeUnit.MILLISECONDS) // give the timeoutActor another `timeout` ms for completing
+    }
   }
 
 }
