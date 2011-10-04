@@ -2,15 +2,21 @@ package cc.spray.json
 
 import org.specs2.mutable._
 
-class ProductFormatsSpec extends Specification with DefaultJsonProtocol {
+class ProductFormatsSpec extends Specification {
 
   case class Test2(a: Int, b: Option[Double])
-  implicit val test2Format = jsonFormat(Test2, "a", "b")
-
   case class Test3[A, B](as: List[A], bs: List[B])
-  implicit def test3Format[A: JsonFormat, B: JsonFormat] = jsonFormat(Test3.apply[A, B], "as", "bs")
-  
+
+  trait TestProtocol {
+    this: DefaultJsonProtocol =>
+    implicit val test2Format = jsonFormat(Test2, "a", "b")
+    implicit def test3Format[A: JsonFormat, B: JsonFormat] = jsonFormat(Test3.apply[A, B], "as", "bs")
+  }
+  object TestProtocol1 extends DefaultJsonProtocol with TestProtocol
+  object TestProtocol2 extends DefaultJsonProtocol with TestProtocol with NullOptions
+
   "A JsonFormat created with `jsonFormat`, for a case class with 2 elements," should {
+    import TestProtocol1._
     val obj = Test2(42, Some(4.2))
     val json = JsObject(JsField("a", 42), JsField("b", 4.2))
     "convert to a respective JsObject" in {
@@ -40,7 +46,15 @@ class ProductFormatsSpec extends Specification with DefaultJsonProtocol {
     )
   }
 
+  "A JsonProtocol mixing in NullOptions" should {
+    "render `None` members to `null`" in {
+      import TestProtocol2._
+      Test2(42, None).toJson mustEqual JsObject(JsField("a", 42), JsField("b", JsNull))
+    }
+  }
+
   "A JsonFormat for a generic case class and created with `jsonFormat`" should {
+    import TestProtocol1._
     val obj = Test3(42 :: 43 :: Nil, "x" :: "y" :: "z" :: Nil)
     val json = JsObject(
       JsField("as", JsArray(JsNumber(42), JsNumber(43))),
