@@ -1,0 +1,63 @@
+package cc.spray
+package examples.simple
+
+import utils.ActorHelpers._
+import http.MediaTypes._
+import java.util.concurrent.TimeUnit
+import akka.actor.{Scheduler, Actor, Kill}
+
+trait SimpleService extends Directives {
+
+  val simpleService = {
+    path("") {
+      get {
+        respondWithMediaType(`text/html`) {
+          _.complete {
+            <html>
+              <body>
+                <h1>Say hello to <i>spray</i>!</h1>
+                <p>Defined resources:</p>
+                <ul>
+                  <li><a href="/ping">/ping</a></li>
+                  <li><a href="/crashRootService">/crashRootService</a></li>
+                  <li><a href="/crashHttpService">/crashHttpService</a></li>
+                  <li><a href="/timeout">/timeout</a></li>
+                  <li><a href="/stop">/stop</a></li>
+                </ul>
+              </body>
+            </html>
+          }
+        }
+      }
+    } ~
+    path("ping") {
+      get {
+        _.complete("PONG!")
+      }
+    } ~
+    path("crashRootService") {
+      get { ctx =>
+        ctx.complete("About to kill the RootService...")
+        actor("spray-root-service") ! Kill
+      }
+    } ~
+    path("crashHttpService") {
+      get { ctx =>
+        ctx.complete("About to kill the RootService...")
+        Actor.registry.actorsFor[HttpService].head ! Kill
+      }
+    } ~
+    path("timeout") {
+      get { ctx =>
+        // just let it drop
+      }
+    } ~
+    path("stop") {
+      get { ctx =>
+        ctx.complete("Stopping all actors...")
+        Scheduler.scheduleOnce(() => Actor.registry.shutdownAll(), 100, TimeUnit.MILLISECONDS)
+      }
+    }
+  }
+
+}

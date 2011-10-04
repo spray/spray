@@ -149,8 +149,9 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   
   class ExamplesProject(info: ProjectInfo) extends ParentProject(info) {
     val calculatorProject     = project("spray-example-calculator", "spray-example-calculator", new CalculatorProject(_))
-    val sprayCanProject       = project("spray-example-spray-can", "spray-example-spray-can", new SprayCanProject(_))
     val markdownServerProject = project("spray-example-markdownserver", "spray-example-markdownserver", new MarkdownServerProject(_))
+    val simpleProject         = project("spray-example-simple", "spray-example-simple", new SimpleProject(_))
+    val sprayCanProject       = project("spray-example-spray-can", "spray-example-spray-can", new SprayCanProject(_))
     val stopWatchProject      = project("spray-example-stopwatch", "spray-example-stopwatch", new StopWatchProject(_))
 
     // disable publishing
@@ -182,17 +183,23 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val logback     = Deps.logback
   }
 
-  class SprayCanProject(info: ProjectInfo) extends SprayExampleProject(info) {
-    val sprayCan = Deps.sprayCan
-    val slf4j    = Deps.slf4j
-    val logback  = Deps.logback
-  }
-  
   class MarkdownServerProject(info: ProjectInfo) extends SprayExampleProject(info) {
     val pegdown     = Deps.pegdown
     val jettyServer = Deps.jettyServer
     val jettyWebApp = Deps.jettyWebApp
     val logback     = Deps.logback
+  }
+
+  class SimpleProject(info: ProjectInfo) extends SprayExampleProject(info) {
+    val jettyServer = Deps.jettyServer
+    val jettyWebApp = Deps.jettyWebApp
+    val logback     = Deps.logback
+  }
+
+  class SprayCanProject(info: ProjectInfo) extends SprayExampleProject(info) {
+    val sprayCan = Deps.sprayCan
+    val slf4j    = Deps.slf4j
+    val logback  = Deps.logback
   }
 
   class StopWatchProject(info: ProjectInfo) extends SprayExampleProject(info) {

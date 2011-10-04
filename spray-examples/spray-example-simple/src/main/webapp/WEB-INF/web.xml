@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE web-app PUBLIC "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+        "http://java.sun.com/dtd/web-app_2_4.dtd">
+
+<web-app>
+
+    <listener>
+        <listener-class>cc.spray.connectors.Initializer</listener-class>
+    </listener>
+
+    <servlet>
+        <servlet-name>SprayConnectorServlet</servlet-name>
+        <servlet-class>cc.spray.connectors.Servlet30ConnectorServlet</servlet-class>
+        <!-- <servlet-class>cc.spray.connectors.Jetty7ConnectorServlet</servlet-class> -->
+        <!-- <servlet-class>cc.spray.connectors.Tomcat6ConnectorServlet</servlet-class> -->
+        <async-supported>true</async-supported>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>SprayConnectorServlet</servlet-name>
+        <url-pattern>/*</url-pattern>
+    </servlet-mapping>
+
+</web-app>
