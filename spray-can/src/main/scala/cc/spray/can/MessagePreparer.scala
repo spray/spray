@@ -107,7 +107,7 @@ private[can] trait ResponsePreparer extends MessagePreparer {
     val (sb, close) = prepareResponseStart(requestLine, response, reqConnectionHeader)
     appendHeader("Transfer-Encoding", "chunked", sb)
     appendLine(sb)
-    val bodyBufs = if (body.length == 0) Nil else prepareChunk(Nil, body)
+    val bodyBufs = if (body.length == 0 || requestLine.method == HttpMethods.HEAD) Nil else prepareChunk(Nil, body)
     (encode(sb) :: bodyBufs, close)
   }
 

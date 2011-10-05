@@ -407,12 +407,14 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
       HttpResponse.verify(response)
       require(response.protocol == `HTTP/1.1`, "Chunked responses must have protocol HTTP/1.1")
       require(requestLine.protocol == `HTTP/1.1`, "Cannot reply with a chunked response to an HTTP/1.0 client")
-      require(requestLine.method != HttpMethods.HEAD, "HEAD requests must not be answered by chunked responses")
       if (mode.compareAndSet(UNCOMPLETED, STREAMING)) {
         log.debug("Enqueueing start of chunked response")
         val (buffers, close) = prepareChunkedResponseStart(requestLine, response, connectionHeader)
         self ! new Respond(conn, buffers, false, responseNr, false, requestRecord)
-        new DefaultChunkedResponder(close)
+        if (requestLine.method != HttpMethods.HEAD) new DefaultChunkedResponder(close) else new ChunkedResponder {
+          def sendChunk(chunk: MessageChunk) {}
+          def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {}
+        }
       } else throw new IllegalStateException {
         mode.get match {
           case COMPLETED => "The chunked response cannot be started since this request to '" + requestLine.uri + "' has already been completed"
