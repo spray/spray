@@ -104,6 +104,10 @@ object HttpHeaders {
   case class `Date`(date: DateTime) extends HttpHeader {
     def value = date.toRfc1123DateTimeString
   }
+
+  case class `Last-Modified`(date: DateTime) extends HttpHeader {
+    def value = date.toRfc1123DateTimeString
+  }
   
   case class `Location`(absoluteUri: String) extends HttpHeader {
     def value = absoluteUri

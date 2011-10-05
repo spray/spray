@@ -142,6 +142,13 @@ class HttpHeaderSpec extends Specification {
     }
   }
 
+  "Header 'Last-Modified'" should {
+    "be parsed correctly from various examples" in {
+      HttpHeader("Last-Modified", "Wed, 13 Jul 2011 08:12:31 GMT") mustEqual `Last-Modified`(DateTime(2011, 7, 13, 8, 12, 31))
+      HttpHeader("Last-Modified", "Fri, 23 Mar 1804 12:11:10 GMT") mustEqual `Last-Modified`(DateTime(1804, 3, 23, 12, 11, 10))
+    }
+  }
+
   "Header 'Set-Cookie'" should {
     "be parsed correctly from various examples" in {
       HttpHeader("Set-Cookie", "SID=31d4d96e407aad42") mustEqual `Set-Cookie`(HttpCookie("SID", "31d4d96e407aad42"))
