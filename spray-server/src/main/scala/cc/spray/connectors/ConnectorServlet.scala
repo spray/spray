@@ -25,12 +25,13 @@ import http._
 import HttpHeaders._
 import StatusCodes._
 import MediaTypes._
-import java.io.{IOException, InputStream}
 import java.util.concurrent.{TimeUnit, CountDownLatch}
+import java.io.{IOException, InputStream}
 
 private[connectors] abstract class ConnectorServlet(containerName: String) extends HttpServlet with Logging {
   lazy val rootService = actor(SpraySettings.RootActorId)
   lazy val timeoutActor = actor(SpraySettings.TimeoutActorId)
+  val EmptyByteArray = new Array[Byte](0)
   var timeout: Int = _
 
   override def init() {
@@ -82,10 +83,22 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
     contentLengthHeader.flatMap {
       case `Content-Length`(0) => None
       case `Content-Length`(contentLength) => {
-        val buf = new Array[Byte](contentLength)
-        if (inputStream.read(buf) != contentLength) throw new HttpException(BadRequest, "Illegal Servlet request content")
+        val body = if (contentLength == 0) EmptyByteArray else try {
+          val buf = new Array[Byte](contentLength)
+          var bytesRead = 0
+          while (bytesRead < contentLength) {
+            val count = inputStream.read(buf, bytesRead, contentLength - bytesRead)
+            if (count >= 0) bytesRead += count
+            else throw new HttpException(BadRequest, "Illegal Servlet request entity, expected length " +
+                    contentLength + " but only has length " + bytesRead)
+          }
+          buf
+        } catch {
+          case e: IOException =>
+            throw new HttpException(InternalServerError, "Could not read request entity due to " + e.toString)
+        }
         val contentType = contentTypeHeader.map(_.contentType).getOrElse(ContentType(`application/octet-stream`))
-        Some(HttpContent(contentType, buf))
+        Some(HttpContent(contentType, body))
       }
     }
   }

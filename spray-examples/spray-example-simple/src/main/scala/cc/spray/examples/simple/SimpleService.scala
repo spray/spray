@@ -31,8 +31,8 @@ trait SimpleService extends Directives {
       }
     } ~
     path("ping") {
-      get {
-        _.complete("PONG!")
+      optionalContent(as[String]) { body =>
+        _.complete("PONG! " + body.getOrElse(""))
       }
     } ~
     path("crashRootService") {

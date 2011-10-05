@@ -19,7 +19,6 @@ package connectors
 
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
 import org.apache.catalina.{CometEvent, CometProcessor}
-import java.util.concurrent.{TimeUnit, CountDownLatch}
 
 /**
  * The spray connector servlet for Tomcat 6.

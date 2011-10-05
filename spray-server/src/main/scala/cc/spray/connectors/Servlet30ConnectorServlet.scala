@@ -19,7 +19,6 @@ package connectors
 
 import javax.servlet.{AsyncEvent, AsyncListener}
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
-import java.util.concurrent.{TimeUnit, CountDownLatch}
 
 /**
  * The spray connector servlet for all servlet 3.0 containers.
@@ -42,8 +41,8 @@ class Servlet30ConnectorServlet extends ConnectorServlet("Servlet API 3.0") {
         }
         def onError(event: AsyncEvent) {
           event.getThrowable match {
-            case null => log.error("Unspecified Error during async processing of %s", httpRequest(req))
-            case ex => log.error(ex, "Error during async processing of %s", httpRequest(req))
+            case null => log.error("Unspecified Error during async processing of %s request to '%s'", req.getMethod, rebuildUri(req))
+            case ex => log.error(ex, "Error during async processing of %s request to '%s'", req.getMethod, rebuildUri(req))
           }
         }
         def onStartAsync(event: AsyncEvent) {}

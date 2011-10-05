@@ -19,7 +19,6 @@ package connectors
 
 import org.eclipse.jetty.continuation._
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
-import java.util.concurrent.{TimeUnit, CountDownLatch}
 
 /**
  * The spray connector servlet for Jetty 7.
