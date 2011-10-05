@@ -24,4 +24,5 @@ object SpraySettings {
   lazy val AsyncTimeout        = config.getInt("spray.request-timeout", 1000)
   lazy val RootPath            = config.getString("spray.root-path")
   lazy val CompactJsonPrinting = config.getBool("spray.compact-json-printing", false)
+  lazy val LoggingTarget       = config.getString("spray.logging-target", "AkkaEventHandler")
 }

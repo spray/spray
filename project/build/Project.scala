@@ -180,6 +180,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   class CalculatorProject(info: ProjectInfo) extends SprayExampleProject(info) {
     val jettyServer = Deps.jettyServer
     val jettyWebApp = Deps.jettyWebApp
+    val slf4j       = Deps.slf4j
     val logback     = Deps.logback
   }
 
@@ -187,12 +188,12 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val pegdown     = Deps.pegdown
     val jettyServer = Deps.jettyServer
     val jettyWebApp = Deps.jettyWebApp
-    val logback     = Deps.logback
   }
 
   class SimpleProject(info: ProjectInfo) extends SprayExampleProject(info) {
     val jettyServer = Deps.jettyServer
     val jettyWebApp = Deps.jettyWebApp
+    val slf4j       = Deps.slf4j
     val logback     = Deps.logback
   }
 
@@ -205,6 +206,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   class StopWatchProject(info: ProjectInfo) extends SprayExampleProject(info) {
     val jettyServer = Deps.jettyServer
     val jettyWebApp = Deps.jettyWebApp
+    val slf4j       = Deps.slf4j
     val logback     = Deps.logback
   }
 }
