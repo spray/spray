@@ -68,7 +68,7 @@ trait SprayTest {
    * similar to this:
    * {{{
    * implicit def customWrapRootRoute(rootRoute: Route): ServiceTest = new CustomHttpServiceLogic with ServiceTest {
-   *   val route = routeRoute
+   *   val route = rootRoute
    * }
    * }}}
    */
