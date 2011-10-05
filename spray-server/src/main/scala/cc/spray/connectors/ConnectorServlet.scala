@@ -114,13 +114,20 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
       }
     } catch {
       case e: IOException => log.error("Could not write response body, " +
-                "probably the request has either timed out or the client has disconnected")
+                "probably the request has either timed out or the client has disconnected (" + e.toString + ')')
       case e: Exception => log.error(e, "Could not complete request")
     }
   }
 
   def responderFrom(f: HttpResponse => Unit): RoutingResult => Unit = {
-    case Respond(response) => f(response)
+    case Respond(response) =>
+      try {
+        f(response)
+      } catch {
+        case e: IllegalStateException => log.error("Could not complete request, it probably timed out and has therefore " +
+                "already been completed (" + e.toString + ')')
+        case e: Exception => log.error("Could not complete request due to " + e.toString)
+      }
     case _: Reject => throw new IllegalStateException
   }
 

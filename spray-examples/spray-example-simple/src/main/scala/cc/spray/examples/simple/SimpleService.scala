@@ -49,7 +49,7 @@ trait SimpleService extends Directives {
     } ~
     path("timeout") {
       get { ctx =>
-        // just let it drop
+        Scheduler.scheduleOnce(() => ctx.complete("Too late!"), 1500, TimeUnit.MILLISECONDS)
       }
     } ~
     path("stop") {
