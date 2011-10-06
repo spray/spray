@@ -38,7 +38,7 @@ class HttpHeaderSpec extends Specification {
     "be parsed correctly from various examples" in {
       HttpHeader("Accept-Charset", "iso-8859-5, UTF-16LE;q =0.8") mustEqual `Accept-Charset`(`ISO-8859-5`, `UTF-16LE`)
       HttpHeader("Accept-Charset", "*") mustEqual `Accept-Charset`(`*`)
-      HttpHeader("Accept-Charset", "pipapo; q= 1.0, utf-8") mustEqual `Accept-Charset`(CustomHttpCharset("pipapo"), `UTF-8`)
+      HttpHeader("Accept-Charset", "pipapo; q= 1.0, utf-8") mustEqual `Accept-Charset`(new CustomHttpCharset("pipapo"), `UTF-8`)
     }
   }
 
