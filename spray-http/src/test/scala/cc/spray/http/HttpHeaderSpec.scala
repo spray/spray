@@ -124,6 +124,8 @@ class HttpHeaderSpec extends Specification {
     "be parsed correctly from various examples" in {
       HttpHeader("Content-Type", "application/pdf") mustEqual `Content-Type`(`application/pdf`)
       HttpHeader("Content-Type", "text/plain; charset=utf8") mustEqual `Content-Type`(ContentType(`text/plain`, `UTF-8`))
+      HttpHeader("Content-Type", "multipart/mixed; boundary=ABC123") mustEqual
+              `Content-Type`(ContentType(`multipart/mixed`, None), Some("ABC123"))
     }
   }
 

@@ -92,7 +92,7 @@ class HttpClient(val ahc: AsyncHttpClient, responseMock: HttpRequest => Option[H
       HttpHeader(entry.getKey, entry.getValue.get(0))        
     }
     allHeaders.partition(_.isInstanceOf[`Content-Type`]) match {
-      case (`Content-Type`(contentType) :: _, headers) => {
+      case (`Content-Type`(contentType, _) :: _, headers) => {
         val buf = new ByteArrayOutputStream
         FileUtils.copyAll(resp.getResponseBodyAsStream, buf)
         HttpResponse(resp.getStatusCode, headers, HttpContent(contentType, buf.toByteArray))

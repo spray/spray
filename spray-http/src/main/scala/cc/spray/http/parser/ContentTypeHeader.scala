@@ -34,14 +34,13 @@ private[parser] trait ContentTypeHeader {
   
   private def createContentTypeHeader(mainType: String, subType: String, params: Map[String, String]) = {
     val mimeType = getMediaType(mainType, subType)
-    params.get("charset").map { charsetName =>
+    val charset = params.get("charset").map { charsetName =>
       HttpCharsets.getForKey(charsetName.toLowerCase).getOrElse {
         throw new HttpException(BadRequest, "Unsupported charset: " + charsetName)
       }
-    } match {
-      case Some(charset) => `Content-Type`(ContentType(mimeType, charset)) 
-      case None => `Content-Type`(ContentType(mimeType)) 
     }
-  } 
+    val boundary = params.get("boundary")
+    `Content-Type`(ContentType(mimeType, charset), boundary)
+  }
   
 }
