@@ -60,4 +60,12 @@ trait SimpleService extends Directives {
     }
   }
 
+  val secondService = {
+    path("2nd") {
+      get {
+        _.complete("A reply from a second service!")
+      }
+    }
+  }
+
 }

@@ -12,7 +12,8 @@ class Boot {
   }
   
   val httpService = actorOf(new HttpService(mainModule.simpleService))
-  val rootService = actorOf(new RootService(httpService))
+  val httpService2 = actorOf(new HttpService(mainModule.secondService))
+  val rootService = actorOf(new RootService(httpService, httpService2))
 
   // start and supervise the created actors
   Supervisor(
@@ -20,6 +21,7 @@ class Boot {
       OneForOneStrategy(List(classOf[Exception]), 3, 100),
       List(
         Supervise(httpService, Permanent),
+        Supervise(httpService2, Permanent),
         Supervise(rootService, Permanent)
       )
     )
