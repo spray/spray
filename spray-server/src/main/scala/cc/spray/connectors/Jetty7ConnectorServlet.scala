@@ -19,6 +19,7 @@ package connectors
 
 import org.eclipse.jetty.continuation._
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * The spray connector servlet for Jetty 7.
@@ -30,20 +31,25 @@ class Jetty7ConnectorServlet extends ConnectorServlet("Jetty 7") {
   }
 
   def responder(req: HttpServletRequest, resp: HttpServletResponse): RoutingResult => Unit = {
+    val alreadyResponded = new AtomicBoolean(false)
     val continuation = ContinuationSupport.getContinuation(req)
     continuation.addContinuationListener(new ContinuationListener {
       def onTimeout(continuation: Continuation) {
-        handleTimeout(req, resp) {
-          continuation.complete()
-        }
+        if (alreadyResponded.compareAndSet(false, true)) {
+          handleTimeout(req, resp) {
+            continuation.complete()
+          }
+        } // else the request was completed just after the container decided to trigger a timeout
       }
       def onComplete(continuation: Continuation) {}
     })
     continuation.setTimeout(timeout)
     continuation.suspend(resp)
     responderFrom { response =>
-      respond(resp, response)
-      continuation.complete()
+      if (alreadyResponded.compareAndSet(false, true)) {
+        respond(resp, response)
+        continuation.complete()
+      } else log.warn("Received late response to a request, which already timed out, dropping response...")
     }
   }
   
