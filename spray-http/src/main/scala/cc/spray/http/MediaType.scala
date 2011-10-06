@@ -218,7 +218,7 @@ object MediaTypes extends ObjectRegistry[String, MediaType] {
 
   object CustomMediaType {
     def apply(value: String, fileExtensions: String*) = {
-      val parts = value.split('/')
+      val parts = value.toLowerCase.split('/')
       new CustomMediaType(parts(0), parts(1), fileExtensions)
     }
   }

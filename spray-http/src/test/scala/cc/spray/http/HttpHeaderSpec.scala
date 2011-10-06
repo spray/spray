@@ -45,7 +45,7 @@ class HttpHeaderSpec extends Specification {
   "Header 'Accept-Encoding'" should {
     import HttpEncodings._
     "be parsed correctly from various examples" in {
-      HttpHeader("Accept-Encoding", "compress, gzip, fancy") mustEqual `Accept-Encoding`(compress, gzip, CustomHttpEncoding("fancy"))
+      HttpHeader("Accept-Encoding", "compress, gzip, fancy") mustEqual `Accept-Encoding`(compress, gzip, new CustomHttpEncoding("fancy"))
       HttpHeader("Accept-Encoding", "gzip;q=1.0, identity; q=0.5, *;q=0") mustEqual `Accept-Encoding`(gzip, identity, `*`)
     }
   }
@@ -108,7 +108,7 @@ class HttpHeaderSpec extends Specification {
     import HttpEncodings._
     "be parsed correctly from various examples" in {
       HttpHeader("Content-Encoding", "gzip") mustEqual `Content-Encoding`(`gzip`)
-      HttpHeader("Content-Encoding", "pipapo") mustEqual `Content-Encoding`(CustomHttpEncoding("pipapo"))
+      HttpHeader("Content-Encoding", "pipapo") mustEqual `Content-Encoding`(new CustomHttpEncoding("pipapo"))
     }
   }
 

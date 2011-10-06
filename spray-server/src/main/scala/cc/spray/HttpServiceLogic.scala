@@ -80,13 +80,13 @@ trait HttpServiceLogic extends ErrorHandling {
         HttpResponse(NotAcceptable, "Resource representation is only available with these Content-Types:\n" + supported.map(_.value).mkString("\n"))
       case (_: UnacceptedResponseEncodingRejection) :: _ =>
         val supported = rejections.collect { case UnacceptedResponseEncodingRejection(supported) => supported }
-        HttpResponse(NotAcceptable, "Resource representation is only available with these Content-Encodings:\n" + supported.mkString("\n"))
+        HttpResponse(NotAcceptable, "Resource representation is only available with these Content-Encodings:\n" + supported.map(_.value).mkString("\n"))
       case (_: UnsupportedRequestContentTypeRejection) :: _ =>
         val supported = rejections.flatMap { case UnsupportedRequestContentTypeRejection(supported) => supported }
         HttpResponse(UnsupportedMediaType, "The requests Content-Type must be one the following:\n" + supported.map(_.value).mkString("\n"))
       case (_: UnsupportedRequestEncodingRejection) :: _ =>
         val supported = rejections.collect { case UnsupportedRequestEncodingRejection(supported) => supported }
-        HttpResponse(BadRequest, "The requests Content-Encoding must be one the following:\n" + supported.mkString("\n"))
+        HttpResponse(BadRequest, "The requests Content-Encoding must be one the following:\n" + supported.map(_.value).mkString("\n"))
       case ValidationRejection(msg) :: _ => HttpResponse(BadRequest, msg)
       case _ => HttpResponse(InternalServerError, "Unknown request rejection: " + rejections.head)
     }

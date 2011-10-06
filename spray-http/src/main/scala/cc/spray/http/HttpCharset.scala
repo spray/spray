@@ -73,7 +73,6 @@ object HttpCharsets extends ObjectRegistry[String, HttpCharset] {
   val `UTF-32LE`    = register(new PredefCharset("UTF-32LE"))
 
   class CustomHttpCharset(_value: String, val aliases: Seq[String] = Nil) extends HttpCharset {
-    val value = _value.intern()
-    require(value == value.toLowerCase, "For best performance custom charsets must be defined in lowercase")
+    val value = _value.toLowerCase.intern()
   }
 }

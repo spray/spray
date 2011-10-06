@@ -28,7 +28,7 @@ private[parser] trait ContentEncodingHeader {
   )
   
   def ContentEncoding = rule {
-    ContentCoding ~~> (x => HttpEncodings.getForKey(x.toLowerCase).getOrElse(CustomHttpEncoding(x)))
+    ContentCoding ~~> (x => HttpEncodings.getForKey(x.toLowerCase).getOrElse(new CustomHttpEncoding(x)))
   }
   
 }
