@@ -17,18 +17,17 @@
 
 package cc.spray.http
 
-sealed trait RangeUnit {
+sealed abstract class RangeUnit {
   def value: String
   override def toString = value
 }
 
 object RangeUnits {
 
-  class StandardRangeUnit private[RangeUnits] (val value: String) extends RangeUnit
-  
+  val bytes = new RangeUnit {
+    def value = "bytes"
+  }
+
   case class CustomRangeUnit(value: String) extends RangeUnit
-  
-  val bytes = new StandardRangeUnit("bytes")
-  
 }
 

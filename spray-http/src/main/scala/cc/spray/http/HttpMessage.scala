@@ -2,7 +2,7 @@ package cc.spray.http
 
 import HttpHeaders._
 
-trait HttpMessage {
+abstract class HttpMessage {
 
   /**
    * The HTTP headers of the request or response.

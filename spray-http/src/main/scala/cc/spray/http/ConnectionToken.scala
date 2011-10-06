@@ -17,18 +17,18 @@
 
 package cc.spray.http
 
-sealed trait ConnectionToken {
+sealed abstract class ConnectionToken {
   def value: String
   override def toString = value
 }
 
 object ConnectionTokens {
 
-  class StandardConnectionToken private[ConnectionTokens] (val value: String) extends ConnectionToken
-  
-  case class CustomConnectionToken(value: String) extends ConnectionToken
-  
-  val close = new StandardConnectionToken("close")
+  val close = new ConnectionToken {
+    def value = "close"
+  }
   // val keepAlive = ... // deprecated in HTTP 1.1
+
+  case class CustomConnectionToken(value: String) extends ConnectionToken
 }
 

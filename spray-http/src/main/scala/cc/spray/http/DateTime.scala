@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2011 Mathias Doenitz
- * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +20,7 @@ package cc.spray.http
  * Immutable, fast and efficient Date + Time implementation without any dependencies.
  * Does not support TimeZones, all DateTime values are always GMT based.
  */
-sealed trait DateTime extends Ordered[DateTime] {
+sealed abstract class DateTime extends Ordered[DateTime] {
   /**
    * The year.
    */
@@ -57,25 +56,51 @@ sealed trait DateTime extends Ordered[DateTime] {
    */
   def weekday: Int
 
+  /**
+   * The day of the week as a 3 letter abbreviation:
+   * `Sun`, `Mon`, `Tue`, `Wed`, `Thu`, `Fri` or `Sat`
+   */
   def weekdayStr: String = DateTime.WEEKDAYS(weekday)
 
+  /**
+   * The day of the month as a 3 letter abbreviation:
+   * `Jan`, `Feb`, `Mar`, `Apr`, `May`, `Jun`, `Jul`, `Aug`, `Sep`, `Oct`, `Nov` or `Dec`
+   */
   def monthStr: String = DateTime.MONTHS(month - 1)
 
+  /**
+   * True if leap year.
+   */
   def isLeapYear: Boolean
 
   /**
-   * The number of milli seconds since the start of "the epoch", namely January 1, 1970, 00:00:00 GMT.
+   * The number of milliseconds since the start of "the epoch", namely January 1, 1970, 00:00:00 GMT.
    */
   def clicks: Long
 
+  /**
+   * Creates a new `DateTime` that represents the point in time the given number of ms later.
+   */
   def + (millis: Long): DateTime = DateTime(clicks + millis)
 
+  /**
+   * Creates a new `DateTime` that represents the point in time the given number of ms earlier.
+   */
   def - (millis: Long): DateTime = DateTime(clicks - millis)
 
+  /**
+   * `yyyy-mm-dd`
+   */
   def toIsoDateString = year + "-" + ##(month) + '-' + ##(day)
+
+  /**
+   * `yyyy-mm-ddThh:mm:ss`
+   */
   def toIsoDateTimeString = toIsoDateString + 'T' + ##(hour) + ':' + ##(minute) + ':' + ##(second)
 
-  /* RFC 1123 date string: "Sun, 06 Nov 1994 08:49:37 GMT" */
+  /**
+   * RFC 1123 date string, e.g. `Sun, 06 Nov 1994 08:49:37 GMT`
+   */
   def toRfc1123DateTimeString = {
     new java.lang.StringBuilder(32)
       .append(weekdayStr).append(", ")
@@ -111,7 +136,7 @@ object DateTime {
   val MaxValue = DateTime(2199, 12, 31, 23, 59, 59)
 
   /**
-   * Creates a new DateTime with the given properties.
+   * Creates a new `DateTime` with the given properties.
    */
   def apply(year_ :Int, month_ :Int, day_ :Int, hour_ :Int = 0, minute_ :Int = 0, second_ :Int = 0): DateTime = new DateTime {
     val year = check(year_, 1800 <= year_ && year_ <= 2199, "year must be >= 1800 and <= 2199")
@@ -144,7 +169,7 @@ object DateTime {
   }
 
   /**
-   * Creates a new DateTime from the number of milli seconds
+   * Creates a new `DateTime` from the number of milli seconds
    * since the start of "the epoch", namely January 1, 1970, 00:00:00 GMT.
    */
   def apply(clicks_ :Long): DateTime = new DateTime {
@@ -202,7 +227,7 @@ object DateTime {
   }
 
   /**
-   * Creates a new DateTime instance for the current point in time.
+   * Creates a new `DateTime` instance for the current point in time.
    */
   def now: DateTime = apply(System.currentTimeMillis)
 }

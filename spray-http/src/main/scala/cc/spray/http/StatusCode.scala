@@ -17,13 +17,14 @@
 
 package cc.spray.http
 
-sealed trait StatusCode {
+sealed abstract class StatusCode {
   def value: Int
   def defaultMessage: String
   def isSuccess: Boolean
   def isWarning: Boolean
   def isFailure: Boolean
-  
+  override def toString = "StatusCode(" + value + ", " + defaultMessage + ')'
+
   StatusCodes.register(this, value)
 }
 
@@ -32,29 +33,29 @@ object StatusCode {
   implicit def int2HttpStatusCode(code: Int): StatusCode = getForKey(code).getOrElse(InternalServerError)
 }
 
-sealed trait HttpSuccess extends StatusCode {
+sealed abstract class HttpSuccess extends StatusCode {
   def isSuccess = true
   def isWarning = false
   def isFailure = false
 }
-sealed trait HttpWarning extends StatusCode {
+sealed abstract class HttpWarning extends StatusCode {
   def isSuccess = false
   def isWarning = true
   def isFailure = false
 }
-sealed trait HttpFailure extends StatusCode {
+sealed abstract class HttpFailure extends StatusCode {
   def isSuccess = false
   def isWarning = false
   def isFailure = true
 }
 
 object StatusCodes extends ObjectRegistry[Int, StatusCode] {
-  case class Informational private[StatusCodes] (value: Int, defaultMessage: String) extends HttpSuccess
-  case class Success       private[StatusCodes] (value: Int, defaultMessage: String) extends HttpSuccess
-  case class Redirection   private[StatusCodes] (value: Int, defaultMessage: String) extends HttpSuccess
-  case class Warning       private[StatusCodes] (value: Int, defaultMessage: String) extends HttpWarning
-  case class ClientError   private[StatusCodes] (value: Int, defaultMessage: String) extends HttpFailure
-  case class ServerError   private[StatusCodes] (value: Int, defaultMessage: String) extends HttpFailure
+  class Informational private[StatusCodes] (val value: Int, val defaultMessage: String) extends HttpSuccess
+  class Success       private[StatusCodes] (val value: Int, val defaultMessage: String) extends HttpSuccess
+  class Redirection   private[StatusCodes] (val value: Int, val defaultMessage: String) extends HttpSuccess
+  class Warning       private[StatusCodes] (val value: Int, val defaultMessage: String) extends HttpWarning
+  class ClientError   private[StatusCodes] (val value: Int, val defaultMessage: String) extends HttpFailure
+  class ServerError   private[StatusCodes] (val value: Int, val defaultMessage: String) extends HttpFailure
   
   val Continue                     = new Informational(100, "The server has received the request headers, and the client should proceed to send the request body.")
   val SwitchingProtocols           = new Informational(101, "The server is switching protocols, because the client requested the switch.")
@@ -67,7 +68,7 @@ object StatusCodes extends ObjectRegistry[Int, StatusCode] {
   val Miscellaneous                = new Warning(119, "Miscellaneous warning.")
   val Transformation               = new Warning(214, "A transformation changed the content-coding of the response, or the entity-body of the response.")
   val MiscellaneousPersistent      = new Warning(299, "Miscellaneous persistent warning.")
-                                      
+
   val OK                           = new Success(200, "")
   val Created                      = new Success(201, "The request has been fulfilled and resulted in a new resource being created.")
   val Accepted                     = new Success(202, "The request has been accepted for processing, but the processing has not been completed.")
@@ -76,7 +77,7 @@ object StatusCodes extends ObjectRegistry[Int, StatusCode] {
   val ResetContent                 = new Success(205, "The server successfully processed the request, but is not returning any content.")
   val PartialContent               = new Success(206, "The server is delivering only part of the resource due to a range header sent by the client.")
   val Multi                        = new Success(207, "The message body that follows is an XML message and can contain a number of separate response codes, depending on how many sub-requests were made.")
-                                      
+
   val MultipleChoices              = new Redirection(300, "There are multiple options for the resource that the client may follow.")
   val MovedPermanently             = new Redirection(301, "This and all future requests should be directed to the given URI.")
   val Found                        = new Redirection(302, "The resource was found, but at a different URI.")
@@ -84,7 +85,7 @@ object StatusCodes extends ObjectRegistry[Int, StatusCode] {
   val NotModified                  = new Redirection(304, "The resource has not been modified since last requested.")
   val UseProxy                     = new Redirection(305, "This single request is to be repeated via the proxy given by the Location field.")
   val TemporaryRedirect            = new Redirection(307, "The request should be repeated with another URI, but future requests can still use the original URI.")
-                                      
+
   val BadRequest                   = new ClientError(400, "The request contains bad syntax or cannot be fulfilled.")
   val Unauthorized                 = new ClientError(401, "Authentication is possible but has failed or not yet been provided.")
   val PaymentRequired              = new ClientError(402, "Reserved for future use.")
@@ -110,7 +111,7 @@ object StatusCodes extends ObjectRegistry[Int, StatusCode] {
   val UnorderedCollection          = new ClientError(425, "The collection is unordered.")
   val UpgradeRequired              = new ClientError(426, "The client should switch to a different protocol such as TLS/1.0.")
   val RetryWith                    = new ClientError(449, "The request should be retried after doing the appropriate action.")
-                                      
+
   val InternalServerError          = new ServerError(500, "There was an internal server error.")
   val NotImplemented               = new ServerError(501, "The server either does not recognize the request method, or it lacks the ability to fulfill the request.")
   val BadGateway                   = new ServerError(502, "The server was acting as a gateway or proxy and received an invalid response from the upstream server.")

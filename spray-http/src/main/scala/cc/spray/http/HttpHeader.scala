@@ -20,7 +20,7 @@ package http
 
 import parser.HttpParser
 
-trait HttpHeader extends Product {
+abstract class HttpHeader extends Product {
   val name = productPrefix.replace("$minus", "-")
   def value: String
   override def toString = name + ": " + value

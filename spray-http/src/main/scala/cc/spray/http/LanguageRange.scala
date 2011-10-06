@@ -18,13 +18,11 @@
 package cc.spray
 package http
 
-sealed trait LanguageRange {
+sealed abstract class LanguageRange {
   def primaryTag: String
   def subTags: Seq[String]
-
-  def value: String = (primaryTag +: subTags).mkString("-")
-  
-  override def toString = value
+  val value = (primaryTag +: subTags).mkString("-")
+  override def toString = "LanguageRange(" + value + ')'
 }
 
 object LanguageRanges {

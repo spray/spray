@@ -21,7 +21,7 @@ package http
 import HttpCharsets._
 import org.parboiled.common.Base64
 
-sealed trait HttpCredentials {
+sealed abstract class HttpCredentials {
   def value: String
   override def toString = value
 }
