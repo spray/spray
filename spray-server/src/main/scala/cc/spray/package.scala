@@ -27,7 +27,7 @@ package object spray {
   type Route = RequestContext => Unit
   type ContentTypeResolver = (String, Option[HttpCharset]) => ContentType
   type Marshaller[A] = (ContentType => Option[ContentType]) => Marshalling[A]
-  type Unmarshaller[A] = ContentType => Unmarshalling[A]
+  type Unmarshaller[A] = Option[HttpContent] => Either[UnmarshallingError, A]
   type RouteFilter[T <: Product] = RequestContext => FilterResult[T]
   type GeneralAuthenticator[U] = RequestContext => Either[Rejection, U]
   type UserPassAuthenticator[U] = Option[(String, String)] => Option[U]

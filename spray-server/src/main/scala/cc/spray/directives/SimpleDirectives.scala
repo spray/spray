@@ -64,7 +64,7 @@ private[spray] trait SimpleDirectives {
    */
   def method(m: HttpMethod): SprayRoute0 = filter { ctx =>
     if (ctx.request.method == m) {
-      Pass.withTransform(_.cancelRejections[MethodRejection])
+      Pass.withTransform(_.cancelRejectionsOfType[MethodRejection])
     } else Reject(MethodRejection(m)) 
   }
 

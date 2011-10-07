@@ -29,24 +29,21 @@ import java.io.ByteArrayInputStream
 
 trait DefaultUnmarshallers {
   
-  implicit val StringUnmarshaller = new UnmarshallerBase[String] {
-    val canUnmarshalFrom = ContentTypeRange(`*/*`) :: Nil // we can convert anything to a string
-
-    def unmarshal(content: HttpContent) = {
-      val charset = content.contentType.charset.getOrElse(`ISO-8859-1`)
-      Right(new String(content.buffer, charset.nioCharset))
+  implicit val StringUnmarshaller: Unmarshaller[String] = {
+    case Some(content) => Right { // we can convert anything to a String
+      new String(content.buffer, content.contentType.charset.getOrElse(`ISO-8859-1`).nioCharset)
     }
+    case None => Left(ContentExpected)
   }
 
-  implicit val CharArrayUnmarshaller = new UnmarshallerBase[Array[Char]] {
-    val canUnmarshalFrom = ContentTypeRange(`*/*`) :: Nil // we can convert anything to a char array
-
-    def unmarshal(content: HttpContent) = {
+  implicit val CharArrayUnmarshaller: Unmarshaller[Array[Char]] = {
+    case Some(content) => Right { // we can convert anything to a char array
       val nioCharset = content.contentType.charset.getOrElse(`ISO-8859-1`).nioCharset
       val byteBuffer = ByteBuffer.wrap(content.buffer)
       val charBuffer = nioCharset.decode(byteBuffer)
-      Right(charBuffer.array())
+      charBuffer.array()
     }
+    case None => Left(ContentExpected)
   }
   
   implicit val NodeSeqUnmarshaller = new UnmarshallerBase[NodeSeq] {
@@ -56,7 +53,7 @@ trait DefaultUnmarshallers {
 
     def unmarshal(content: HttpContent) = protect {
       if (content.contentType.charset.isDefined) {
-        XML.loadString(StringUnmarshaller.unmarshal(content).right.get)
+        XML.loadString(StringUnmarshaller(Some(content)).right.get)
       } else {
         XML.load(new ByteArrayInputStream(content.buffer))
       }
@@ -68,7 +65,7 @@ trait DefaultUnmarshallers {
   
     def unmarshal(content: HttpContent) = protect {
       FormContent {
-        val data = DefaultUnmarshallers.StringUnmarshaller.unmarshal(content).right.get
+        val data = DefaultUnmarshallers.StringUnmarshaller(Some(content)).right.get
         val charset = content.contentType.charset.getOrElse(`ISO-8859-1`).aliases.head
         URLDecoder.decode(data, charset).fastSplit('&').map {
           _.fastSplit('=') match {
@@ -79,18 +76,20 @@ trait DefaultUnmarshallers {
       }
     }
   }
+
+  implicit def optionUnmarshaller[A :Unmarshaller]: Unmarshaller[Option[A]] = {
+    case x: Some[HttpContent] => unmarshaller[A].apply(x) match {
+      case Right(a) => Right(Some(a))
+      case Left(error) => Left(error)
+    }
+    case None => Right(None)
+  }
   
   implicit def pimpHttpContentWithAs1(c: HttpContent): HttpContentExtractor = new HttpContentExtractor(Some(c)) 
   implicit def pimpHttpContentWithAs2(c: Option[HttpContent]): HttpContentExtractor = new HttpContentExtractor(c)
   
   class HttpContentExtractor(content: Option[HttpContent]) {
-    def as[A](implicit unmarshaller: Unmarshaller[A]): Either[Rejection, A] = content match {
-      case Some(httpContent) => unmarshaller(httpContent.contentType) match {
-        case UnmarshalWith(converter) => converter(httpContent)
-        case CantUnmarshal(onlyFrom) => Left(UnsupportedRequestContentTypeRejection(onlyFrom))
-      }
-      case None => Left(RequestEntityExpectedRejection)
-    }
+    def as[A](implicit unmarshaller: Unmarshaller[A]): Either[UnmarshallingError, A] = unmarshaller(content)
   }
   
 }

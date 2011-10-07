@@ -29,10 +29,10 @@ import json._
 trait SprayJsonMarshalling {
 
   implicit def sprayJsonUnmarshaller[A :JsonReader]: Unmarshaller[A] = new UnmarshallerBase[A] {
-    def canUnmarshalFrom = ContentTypeRange(`application/json`) :: Nil
+    val canUnmarshalFrom = ContentTypeRange(`application/json`) :: Nil
 
     def unmarshal(content: HttpContent) = protect {
-      val jsonSource = DefaultUnmarshallers.StringUnmarshaller.unmarshal(content).right.get
+      val jsonSource = DefaultUnmarshallers.StringUnmarshaller(Some(content)).right.get
       val json = JsonParser(jsonSource)
       jsonReader[A].read(json)
     }

@@ -19,29 +19,27 @@ package marshalling
 
 import http._
 
-trait UnmarshallerBase[A] extends Unmarshaller[A] {
+abstract class UnmarshallerBase[A] extends Unmarshaller[A] {
+  val canUnmarshalFrom: List[ContentTypeRange]
 
-  def apply(contentType: ContentType) = {
-    if (canUnmarshalFrom.exists(_.matches(contentType))) {
-      UnmarshalWith(unmarshal)
-    } else {
-      CantUnmarshal(canUnmarshalFrom)
-    }
+  def apply(content: Option[HttpContent]) = content match {
+    case Some(c) =>
+      if (canUnmarshalFrom.exists(_.matches(c.contentType))) unmarshal(c)
+      else Left(UnsupportedContentType(canUnmarshalFrom))
+    case None => Left(ContentExpected)
   }
   
-  def canUnmarshalFrom: List[ContentTypeRange]
-  
-  def unmarshal(content: HttpContent): Either[Rejection, A]
+  def unmarshal(content: HttpContent): Either[UnmarshallingError, A]
 
   /**
    * Helper method for turning exceptions occuring during evaluation of the named parameter into
-   * [[cc.spray.MalformedRequestContentRejection]]s.
+   * [[cc.spray.MalformedContent]] instances.
    */
-  protected def protect(f: => A): Either[Rejection, A] = {
+  protected def protect(f: => A): Either[UnmarshallingError, A] = {
     try {
       Right(f)
     } catch {
-      case e: Exception => Left(MalformedRequestContentRejection(e.getMessage))
+      case e: Exception => Left(MalformedContent(e.getMessage))
     }
   }   
 } 

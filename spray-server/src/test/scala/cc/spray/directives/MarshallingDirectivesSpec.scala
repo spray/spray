@@ -58,22 +58,19 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
         content(as[NodeSeq]) { _ => completeOk }
       }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(NodeSeqUnmarshaller.canUnmarshalFrom))
     }
-  }
-  
-  "The 'optionalContentAs' directive" should {
-    "extract an object from the requests HttpContent using the in-scope Unmarshaller" in {
+    "extract an Option[A] from the requests HttpContent using the in-scope Unmarshaller" in {
       test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/xml`), "<p>cool</p>")))) {
-        optionalContent(as[NodeSeq]) { optXml => _.complete(optXml.get) }
+        content(as[Option[NodeSeq]]) { optXml => _.complete(optXml.get) }
       }.response.content.as[NodeSeq] mustEqual Right(<p>cool</p>) 
     }
-    "extract None if the request has no entity" in {
+    "extract an Option[A] as None if the request has no entity" in {
       test(HttpRequest(PUT)) {
-        optionalContent(as[NodeSeq]) { echoComplete }
+        content(as[Option[NodeSeq]]) { echoComplete }
       }.response.content.as[String] mustEqual Right("None")
     }
-    "return an UnsupportedRequestContentTypeRejection if no matching unmarshaller is in scope" in {
+    "return an UnsupportedRequestContentTypeRejection if no matching unmarshaller is in scope (for Option[A]s)" in {
       test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/css`), "<p>cool</p>")))) {
-        optionalContent(as[NodeSeq]) { _ => completeOk }
+        content(as[Option[NodeSeq]]) { _ => completeOk }
       }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(NodeSeqUnmarshaller.canUnmarshalFrom))
     }
   }

@@ -31,7 +31,7 @@ trait SimpleService extends Directives {
       }
     } ~
     path("ping") {
-      optionalContent(as[String]) { body =>
+      content(as[Option[String]]) { body =>
         _.complete("PONG! " + body.getOrElse(""))
       }
     } ~
