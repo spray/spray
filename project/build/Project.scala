@@ -30,6 +30,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val parboiledC = "org.parboiled" % "parboiled-core" % "1.0.2" % "compile" withSources()
     val parboiledS = "org.parboiled" % "parboiled-scala" % "1.0.2" % "compile" withSources()
     val asyncHttp  = "com.ning" % "async-http-client" % "1.6.4" % "compile" withSources()
+    val mimepull   = "org.jvnet" % "mimepull" % "1.6" % "compile" withSources()
     
     // provided
     val sprayJson          = "cc.spray.json" %% "spray-json" % "1.0.1" % "provided" withSources()
@@ -56,7 +57,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
 
   val scalaCompileSettings =
     Seq("-deprecation",
-        //"-unchecked",
+        "-unchecked",
         //"-Xmigration",
         //"-Xcheckinit",
         //"-optimise",
@@ -131,7 +132,8 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   
   class ServerProject(info: ProjectInfo) extends ModuleProject(info) with AkkaProject {
     override val akkaActor = akkaModule("actor") % "provided" withSources()
-    val http               = httpProject 
+    val http               = httpProject
+    val mimepull           = Deps.mimepull
     val sprayJson          = Deps.sprayJson
     val servlet30          = Deps.servlet30
     val jettyContinuations = Deps.jettyContinuations

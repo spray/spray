@@ -27,7 +27,7 @@ import java.net.URLDecoder
 import utils.FormContent
 import java.io.ByteArrayInputStream
 
-trait DefaultUnmarshallers {
+trait DefaultUnmarshallers extends MultipartUnmarshallers {
   
   implicit val StringUnmarshaller: Unmarshaller[String] = {
     case Some(content) => Right { // we can convert anything to a String
