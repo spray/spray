@@ -17,11 +17,25 @@
 package cc.spray.http
 package parser
 
+import cc.spray.http.MediaTypes._
+
 private[parser] trait CommonActions {
   
-  def getMediaType(mainType: String, subType: String): MediaType = {
-    val value = mainType.toLowerCase + "/" + subType.toLowerCase
-    MediaTypes.getForKey(value).getOrElse(MediaTypes.CustomMediaType(value))
+  def getMediaType(mainType: String, subType: String, boundary: Option[String] = None): MediaType = {
+    mainType.toLowerCase match {
+      case "multipart" => subType.toLowerCase match {
+        case "mixed"       => new `multipart/mixed`      (boundary)
+        case "alternative" => new `multipart/alternative`(boundary)
+        case "related"     => new `multipart/related`    (boundary)
+        case "form-data"   => new `multipart/form-data`  (boundary)
+        case "signed"      => new `multipart/signed`     (boundary)
+        case "encrypted"   => new `multipart/encrypted`  (boundary)
+        case custom        => new MultipartMediaType(custom, boundary)
+      }
+      case main =>
+        val value = main + "/" + subType.toLowerCase
+        MediaTypes.getForKey(value).getOrElse(MediaTypes.CustomMediaType(value))
+    }
   }
   
 }

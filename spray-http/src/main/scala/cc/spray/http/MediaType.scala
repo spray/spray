@@ -137,31 +137,33 @@ object MediaTypes extends ObjectRegistry[String, MediaType] {
     registry.values.find(_.fileExtensions.contains(extLower))
   }
   
-  private class ApplicationMediaType(val subType: String, val fileExtensions: String*) extends MediaType {
+  class ApplicationMediaType(val subType: String, val fileExtensions: String*) extends MediaType {
     def mainType = "application"
     override def isApplication = true
   }
-  private class AudioMediaType(val subType: String, val fileExtensions: String*) extends MediaType {
+  class AudioMediaType(val subType: String, val fileExtensions: String*) extends MediaType {
     def mainType = "audio"
     override def isAudio = true
   }
-  private class ImageMediaType(val subType: String, val fileExtensions: String*) extends MediaType {
+  class ImageMediaType(val subType: String, val fileExtensions: String*) extends MediaType {
     def mainType = "image"
     override def isImage = true
   }
-  private class MessageMediaType(val subType: String, val fileExtensions: String*) extends MediaType {
+  class MessageMediaType(val subType: String) extends MediaType {
     def mainType = "message"
+    def fileExtensions = Nil
     override def isMessage = true
   }
-  private class MultipartMediaType(val subType: String, val fileExtensions: String*) extends MediaType {
+  class MultipartMediaType(val subType: String, val boundary: Option[String]) extends MediaType {
     def mainType = "multipart"
+    def fileExtensions = Nil
     override def isMultipart = true
   }
-  private class TextMediaType(val subType: String, val fileExtensions: String*) extends MediaType {
+  class TextMediaType(val subType: String, val fileExtensions: String*) extends MediaType {
     def mainType = "text"
     override def isText = true
   }
-  private class VideoMediaType(val subType: String, val fileExtensions: String*) extends MediaType {
+  class VideoMediaType(val subType: String, val fileExtensions: String*) extends MediaType {
     def mainType = "video"
     override def isVideo = true
   }
@@ -197,13 +199,13 @@ object MediaTypes extends ObjectRegistry[String, MediaType] {
   val `message/http`                      = register(new MessageMediaType("http"))
   val `message/delivery-status`           = register(new MessageMediaType("delivery-status"))
                                              
-  val `multipart/mixed`                   = register(new MultipartMediaType("mixed"))
-  val `multipart/alternative`             = register(new MultipartMediaType("alternative"))
-  val `multipart/related`                 = register(new MultipartMediaType("related"))
-  val `multipart/form-data`               = register(new MultipartMediaType("form-data"))
-  val `multipart/signed`                  = register(new MultipartMediaType("signed"))
-  val `multipart/encrypted`               = register(new MultipartMediaType("encrypted"))
-                                             
+  class `multipart/mixed`      (boundary: Option[String]) extends MultipartMediaType("mixed", boundary)
+  class `multipart/alternative`(boundary: Option[String]) extends MultipartMediaType("alternative", boundary)
+  class `multipart/related`    (boundary: Option[String]) extends MultipartMediaType("related", boundary)
+  class `multipart/form-data`  (boundary: Option[String]) extends MultipartMediaType("form-data", boundary)
+  class `multipart/signed`     (boundary: Option[String]) extends MultipartMediaType("signed", boundary)
+  class `multipart/encrypted`  (boundary: Option[String]) extends MultipartMediaType("encrypted", boundary)
+
   val `text/css`                          = register(new TextMediaType("css", "css"))
   val `text/csv`                          = register(new TextMediaType("csv", "csv"))
   val `text/html`                         = register(new TextMediaType("html", "html", "htm"))

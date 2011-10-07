@@ -92,11 +92,8 @@ object HttpHeaders {
     def value = length.toString
   }
   
-  case class `Content-Type`(contentType: ContentType, boundary: Option[String] = None) extends HttpHeader {
-    def value = boundary match {
-      case None    => contentType.value
-      case Some(b) => contentType.value + "; " + b
-    }
+  case class `Content-Type`(contentType: ContentType) extends HttpHeader {
+    def value = contentType.value
   }
 
   object `Cookie` { def apply(first: HttpCookie, more: HttpCookie*): `Cookie` = apply(first +: more) }
