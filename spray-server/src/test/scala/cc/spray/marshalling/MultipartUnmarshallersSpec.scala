@@ -55,7 +55,7 @@ class MultipartUnmarshallersSpec extends AbstractSprayTest {
             "BodyPart(" +
               "List(" +
                 "Content-Type: text/plain; charset=UTF-8, " +
-                "content-disposition: form-data; name=\"email\"" +
+                "Content-Disposition: form-data; name=\"email\"" +
               ")," +
               "Some(HttpContent(ContentType(MediaType(text/plain),Some(HttpCharset(UTF-8))),test@there.com))" +
             ")" +

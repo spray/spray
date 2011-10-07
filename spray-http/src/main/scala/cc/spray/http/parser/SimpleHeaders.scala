@@ -30,6 +30,10 @@ private[parser] trait SimpleHeaders {
   def CONTENT_LENGTH = rule {
     oneOrMore(Digit) ~> (s => `Content-Length`(s.toInt)) ~ EOI
   }
+
+  def CONTENT_DISPOSITION = rule {
+    Token ~ zeroOrMore(";" ~ Parameter) ~ EOI ~~> (_.toMap) ~~> `Content-Disposition`
+  }
   
   def DATE = rule {
     HttpDate ~~> Date ~ EOI

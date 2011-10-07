@@ -83,7 +83,12 @@ object HttpHeaders {
   case class `Connection`(connectionTokens: Seq[ConnectionToken]) extends HttpHeader {
     def value = connectionTokens.mkString(", ")
   }
-  
+
+  // see http://tools.ietf.org/html/rfc2183
+  case class `Content-Disposition`(dispositionType: String, parameters: Map[String, String]) extends HttpHeader {
+    def value = parameters.map(p => "; " + p._1 + "=\"" + p._2 + '"').mkString(dispositionType, "", "")
+  }
+
   case class `Content-Encoding`(encoding: HttpEncoding) extends HttpHeader {
     def value = encoding.value
   }
