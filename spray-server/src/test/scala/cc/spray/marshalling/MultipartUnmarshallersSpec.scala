@@ -26,7 +26,7 @@ import utils.FormContent
 
 class MultipartUnmarshallersSpec extends AbstractSprayTest {
   
-  "The MultiPartFormDataUnmarshaller" should {
+  "The MultipartContentUnmarshaller" should {
     "correctly unmarshal 'multipart/mixed' content with one empty part" in {
       test(HttpRequest(content = Some(HttpContent(ContentType(new `multipart/mixed`(Some("XYZABC"))),
         """|--XYZABC
@@ -96,6 +96,57 @@ class MultipartUnmarshallersSpec extends AbstractSprayTest {
       test(HttpRequest(content = Some(HttpContent(ContentType(new `multipart/mixed`(Some("12345"))), "--noob")))) {
         content(as[MultipartContent]) { echoComplete }
       }.rejections mustEqual Set(MalformedRequestContentRejection("Could not parse multipart content: Missing start boundary"))
+    }
+  }
+
+  "The MultipartFormDataUnmarshaller" should {
+    "correctly unmarshal 'multipart/form-data' content with one element" in {
+      test(HttpRequest(content = Some(HttpContent(ContentType(new `multipart/form-data`(Some("XYZABC"))),
+        """|--XYZABC
+           |content-disposition: form-data; name="email"
+           |
+           |test@there.com
+           |--XYZABC--""".stripMargin)))) {
+        content(as[MultipartFormData]) { data => _.complete(data.parts("email").content.as[String].right.get) }
+      }.response.content.as[String] mustEqual Right("test@there.com")
+    }
+    "correctly unmarshal 'multipart/form-data' content mixed with a file" in {
+      test(HttpRequest(content = Some(HttpContent(ContentType(new `multipart/form-data`(Some("XYZABC"))),
+        """|--XYZABC
+           |Content-Disposition: form-data; name="email"
+           |
+           |test@there.com
+           |--XYZABC
+           |Content-Disposition: form-data; name="userfile"; filename="test.dat"
+           |Content-Type: application/octet-stream
+           |Content-Transfer-Encoding: binary
+           |
+           |filecontent
+           |--XYZABC--""".stripMargin)))) {
+        content(as[MultipartFormData]) { data =>
+          _.complete {
+            data.parts("email").content.as[String].right.get + data.parts("userfile").content.as[String].right.get
+          }
+        }
+      }.response.content.as[String] mustEqual Right("test@there.comfilecontent")
+    }
+    "reject illegal multipart content" in {
+      test(HttpRequest(content = Some(HttpContent(ContentType(new `multipart/form-data`(Some("XYZABC"))),
+        "--noboundary--")))) {
+        content(as[MultipartFormData]) { echoComplete }
+      }.rejections mustEqual Set(MalformedRequestContentRejection("Could not parse multipart content: " +
+              "Missing start boundary"))
+    }
+    "reject illegal form-data content" in {
+      test(HttpRequest(content = Some(HttpContent(ContentType(new `multipart/form-data`(Some("XYZABC"))),
+        """|--XYZABC
+           |content-disposition: form-data; named="email"
+           |
+           |test@there.com
+           |--XYZABC--""".stripMargin)))) {
+        content(as[MultipartFormData]) { echoComplete }
+      }.rejections mustEqual Set(MalformedRequestContentRejection("Illegal multipart/form-data content: " +
+              "unnamed body part (no Content-Disposition header or no 'name' parameter)"))
     }
   }
 

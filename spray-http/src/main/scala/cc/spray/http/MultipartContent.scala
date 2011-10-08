@@ -17,8 +17,20 @@
 
 package cc.spray.http
 
+/**
+ * Basic model for multipart content as defind in RFC 2046.
+ * If you are looking for a model for `multipart/form-data` you should be using [[cc.spray.http.MultipartFormData]].
+ */
 case class MultipartContent(parts: Seq[BodyPart])
 
+/**
+ * Model for `multipart/form-data` content as defined in RFC 2388.
+ */
+case class MultipartFormData(parts: Map[String, BodyPart])
+
+/**
+ * Model for one part of a multipart message.
+ */
 case class BodyPart(headers: List[HttpHeader], content: Option[HttpContent])
 
 object BodyPart {

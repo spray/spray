@@ -199,12 +199,12 @@ object MediaTypes extends ObjectRegistry[String, MediaType] {
   val `message/http`                      = register(new MessageMediaType("http"))
   val `message/delivery-status`           = register(new MessageMediaType("delivery-status"))
                                              
-  class `multipart/mixed`      (boundary: Option[String]) extends MultipartMediaType("mixed", boundary)
-  class `multipart/alternative`(boundary: Option[String]) extends MultipartMediaType("alternative", boundary)
-  class `multipart/related`    (boundary: Option[String]) extends MultipartMediaType("related", boundary)
-  class `multipart/form-data`  (boundary: Option[String]) extends MultipartMediaType("form-data", boundary)
-  class `multipart/signed`     (boundary: Option[String]) extends MultipartMediaType("signed", boundary)
-  class `multipart/encrypted`  (boundary: Option[String]) extends MultipartMediaType("encrypted", boundary)
+  class `multipart/mixed`      (boundary: Option[String] = None) extends MultipartMediaType("mixed", boundary)
+  class `multipart/alternative`(boundary: Option[String] = None) extends MultipartMediaType("alternative", boundary)
+  class `multipart/related`    (boundary: Option[String] = None) extends MultipartMediaType("related", boundary)
+  class `multipart/form-data`  (boundary: Option[String] = None) extends MultipartMediaType("form-data", boundary)
+  class `multipart/signed`     (boundary: Option[String] = None) extends MultipartMediaType("signed", boundary)
+  class `multipart/encrypted`  (boundary: Option[String] = None) extends MultipartMediaType("encrypted", boundary)
 
   val `text/css`                          = register(new TextMediaType("css", "css"))
   val `text/csv`                          = register(new TextMediaType("csv", "csv"))

@@ -29,7 +29,7 @@ import org.jvnet.mimepull.{MIMEConfig, MIMEMessage}
 
 trait MultipartUnmarshallers {
 
-  implicit val MultipartUnmarshaller = new UnmarshallerBase[MultipartContent] {
+  implicit val MultipartContentUnmarshaller = new UnmarshallerBase[MultipartContent] {
     val canUnmarshalFrom = ContentTypeRange(`multipart/*`) :: Nil
     val mimeParsingConfig = make(new MIMEConfig()) {
       _.setMemoryThreshold(-1) // use only in-memory parsing
@@ -71,6 +71,27 @@ trait MultipartUnmarshallers {
           )
         } (collection.breakOut)
       }
+    }
+  }
+
+  implicit val MultipartFormDataUnmarshaller = new UnmarshallerBase[MultipartFormData] {
+    val canUnmarshalFrom = ContentTypeRange(new `multipart/form-data`()) :: Nil
+
+    def unmarshal(content: HttpContent) = {
+      MultipartContentUnmarshaller.unmarshal(content).right.flatMap { mpContent =>
+        try {
+          Right(MultipartFormData(mpContent.parts.map(part => nameOf(part) -> part)(collection.breakOut)))
+        } catch {
+          case e: Exception => Left(MalformedContent("Illegal multipart/form-data content: " + e.getMessage))
+        }
+      }
+    }
+
+    def nameOf(part: BodyPart): String = {
+      part.headers.mapFind {
+        case `Content-Disposition`(dispoType, parms) => parms.get("name")
+        case _ => None
+      }.getOrElse(throw new RuntimeException("unnamed body part (no Content-Disposition header or no 'name' parameter)"))
     }
   }
 
