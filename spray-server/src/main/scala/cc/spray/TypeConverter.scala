@@ -16,10 +16,16 @@
 
 package cc.spray
 
-trait SimpleConverter[A, B] extends (A => Either[String, B])
+trait TypeConverter[A, B] extends (A => Either[String, B])
 
-object SimpleConverter {
-  implicit def implicitConverter[A, B](implicit f: A => B) = new SimpleConverter[A, B] {
+object TypeConverter {
+  // implemented as an optimization; we could get away without an explicit IdentityConverter since the
+  // fromFunctionConverter below makes identity conversion available through the Predef.conforms implicit conversion,
+  // however, the explicit IdentityConverter saves the construction of a new TypeConverter object for identity conversions
+  private val IdentityConverter = new TypeConverter[Any, Any] { def apply(obj: Any) = Right(obj) }
+  implicit def identityConverter[A] = IdentityConverter.asInstanceOf[TypeConverter[A, A]]
+
+  implicit def fromFunctionConverter[A, B](implicit f: A => B) = new TypeConverter[A, B] {
     def apply(a: A) = {
       try {
         Right(f(a))
@@ -30,18 +36,13 @@ object SimpleConverter {
   }
 }
 
-trait SimpleParser[A] extends SimpleConverter[String, A]
+trait TypeConverters {
 
-trait SimpleParsers {
-  implicit object SimpleStringParser extends SimpleParser[String] {
-    def apply(value: String) = Right(value)
-  }
-
-  implicit object SimpleSymbolParser extends SimpleParser[Symbol] {
+  implicit val String2SymbolConverter = new TypeConverter[String, Symbol] {
     def apply(value: String) = Right(Symbol(value))
   }
 
-  implicit object SimpleIntParser extends SimpleParser[Int] {
+  implicit val String2IntConverter = new TypeConverter[String, Int] {
     def apply(value: String) = {
       try {
         Right(value.toInt)
@@ -51,7 +52,7 @@ trait SimpleParsers {
     }
   }
   
-  object HexInt extends SimpleParser[Int] {
+  object HexInt extends TypeConverter[String, Int] {
     def apply(value: String) = {
       try {
         Right(Integer.parseInt(value, 16))
@@ -61,7 +62,7 @@ trait SimpleParsers {
     }
   }
   
-  implicit object SimpleLongParser extends SimpleParser[Long] {
+  implicit val String2LongConverter = new TypeConverter[String, Long] {
     def apply(value: String) = {
       try {
         Right(value.toLong)
@@ -71,7 +72,7 @@ trait SimpleParsers {
     }
   }
   
-  object HexLong extends SimpleParser[Long] {
+  object HexLong extends TypeConverter[String, Long] {
     def apply(value: String) = {
       try {
         Right(java.lang.Long.parseLong(value, 16))
@@ -81,7 +82,7 @@ trait SimpleParsers {
     }
   }
   
-  implicit object SimpleDoubleParser extends SimpleParser[Double] {
+  implicit val String2DoubleConverter = new TypeConverter[String, Double] {
     def apply(value: String) = {
       try {
         Right(value.toDouble)
@@ -91,7 +92,7 @@ trait SimpleParsers {
     }
   }
 
-  implicit object SimpleFloatParser extends SimpleParser[Float] {
+  implicit val String2FloatConverter = new TypeConverter[String, Float] {
     def apply(value: String) = {
       try {
         Right(value.toFloat)
@@ -101,7 +102,7 @@ trait SimpleParsers {
     }
   }
 
-  implicit object SimpleShortParser extends SimpleParser[Short] {
+  implicit val String2ShortConverter = new TypeConverter[String, Short] {
     def apply(value: String) = {
       try {
         Right(value.toShort)
@@ -111,7 +112,7 @@ trait SimpleParsers {
     }
   }
 
-  implicit object SimpleByteParser extends SimpleParser[Byte] {
+  implicit val String2ByteConverter = new TypeConverter[String, Byte] {
     def apply(value: String) = {
       try {
         Right(value.toByte)
@@ -121,7 +122,7 @@ trait SimpleParsers {
     }
   }
   
-  implicit object SimpleBooleanParser extends SimpleParser[Boolean] {
+  implicit val String2BooleanConverter = new TypeConverter[String, Boolean] {
     def apply(value: String) = value.toLowerCase match {
       case "true" | "yes" | "on" => Right(true)
       case "false" | "no" | "off" => Right(false)
@@ -130,4 +131,4 @@ trait SimpleParsers {
   }  
 }
 
-object SimpleParsers extends SimpleParsers
+object TypeConverters extends TypeConverters

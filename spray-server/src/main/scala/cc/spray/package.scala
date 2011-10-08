@@ -33,12 +33,14 @@ package object spray {
   type UserPassAuthenticator[U] = Option[(String, String)] => Option[U]
   type CacheKeyer = RequestContext => Option[Any]
   type RequiredParameterMatcher = Map[String, String] => Boolean
+  type FromStringConverter[A] = TypeConverter[String, A]
   
   def make[A, U](a: A)(f: A => U): A = { f(a); a }
   
   def marshaller[T](implicit m: Marshaller[T]) = m
   def unmarshaller[T](implicit um: Unmarshaller[T]) = um
-  def simpleParser[T](implicit sp: SimpleParser[T]) = sp
+  def typeConverter[A, B](implicit converter: TypeConverter[A, B]) = converter
+  def fromStringConverter[T](implicit converter: FromStringConverter[T]) = converter
 
   private lazy val emptyPartial = new PartialFunction[Any, Any] {
     def isDefinedAt(x: Any) = false

@@ -136,33 +136,37 @@ private[spray] trait ParameterDirectives {
     filter { ctx => if (allRPM.forall(_(ctx.request.queryParams))) Pass() else Reject() }
   }
 
-  implicit def fromSymbol(name: Symbol) = fromString(name.name)  
+  implicit def fromSymbol(name: Symbol): ParameterMatcher[String] = fromString(name.name)
   
-  implicit def fromString(name: String) = new ParameterMatcher[String](name, SimpleParsers.SimpleStringParser)
+  implicit def fromString(name: String): ParameterMatcher[String] = new ParameterMatcher(name)
 }
 
-class ParameterMatcher[A](val name: String, val parser: SimpleParser[A]) {
+class ParameterMatcher[A :FromStringConverter](val name: String) {
   def apply(params: Map[String, String]): Either[Rejection, A] = {
     params.get(name) match {
-      case Some(value) => parser(value).left.map(MalformedQueryParamRejection(_, Some(name)))
+      case Some(value) => fromStringConverter[A].apply(value).left.map(MalformedQueryParamRejection(_, Some(name)))
       case None => notFound
     }
   }
 
   protected def notFound: Either[Rejection, A] = Left(MissingQueryParamRejection(name))
   
-  def ? = new ParameterMatcher[Option[A]](name,
-    new SimpleParser[Option[A]] { def apply(s: String) = parser(s).fold(Left(_), x => Right(Some(x))) }) {
-    override def notFound = Right(None)
+  def ? = {
+    implicit val toOptionLifter = new FromStringConverter[Option[A]] {
+      def apply(s: String) = fromStringConverter[A].apply(s).right.map(Some(_))
+    }
+    new ParameterMatcher[Option[A]](name) {
+      override def notFound = Right(None)
+    }
   }
   
-  def ? [B :SimpleParser](default: B) = new ParameterMatcher[B](name, simpleParser[B]) {
+  def ? [B :FromStringConverter](default: B) = new ParameterMatcher[B](name) {
     override def notFound = Right(default)
   }
   
-  def as[B :SimpleParser] = new ParameterMatcher[B](name, simpleParser[B])
+  def as[B :FromStringConverter] = new ParameterMatcher[B](name)
   
-  def ! [B :SimpleParser](requiredValue: B): RequiredParameterMatcher = {
-    _.get(name).flatMap(simpleParser[B].apply(_).right.toOption) == Some(requiredValue)
+  def ! [B :FromStringConverter](requiredValue: B): RequiredParameterMatcher = {
+    _.get(name).flatMap(fromStringConverter[B].apply(_).right.toOption) == Some(requiredValue)
   }
 }

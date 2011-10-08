@@ -98,12 +98,12 @@ private[spray] trait CaseClassExtractionDirectives {
     }
   }
 
-  private type SC[AA, A] = SimpleConverter[AA, A]
+  private type TC[AA, A] = TypeConverter[AA, A]
 
   // TODO: refactor to prevent excessive closure class creation in the following 9 methods
 
   def instanceOf[T <: Product, A, AA](construct: A => T)
-                                     (implicit qa: SC[AA, A])
+                                     (implicit qa: TC[AA, A])
     : AA => Either[String, T] = { aa =>
     qa(aa).right.flatMap { a =>
       protect(construct(a))
@@ -111,7 +111,7 @@ private[spray] trait CaseClassExtractionDirectives {
   }
 
   def instanceOf[T <: Product, A, AA, B, BB](construct: (A, B) => T)
-                                            (implicit qa: SC[AA, A], qb: SC[BB, B])
+                                            (implicit qa: TC[AA, A], qb: TC[BB, B])
     : (AA, BB) => Either[String, T] = { (aa, bb) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
@@ -121,7 +121,7 @@ private[spray] trait CaseClassExtractionDirectives {
   }
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC](construct: (A, B, C) => T)
-                                                   (implicit qa: SC[AA, A], qb: SC[BB, B], qc: SC[CC, C])
+                                                   (implicit qa: TC[AA, A], qb: TC[BB, B], qc: TC[CC, C])
     : (AA, BB, CC) => Either[String, T] = { (aa, bb, cc) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
@@ -133,7 +133,7 @@ private[spray] trait CaseClassExtractionDirectives {
   }
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD](construct: (A, B, C, D) => T)
-                                                          (implicit qa: SC[AA, A], qb: SC[BB, B], qc: SC[CC, C], qd: SC[DD, D])
+                                                          (implicit qa: TC[AA, A], qb: TC[BB, B], qc: TC[CC, C], qd: TC[DD, D])
     : (AA, BB, CC, DD) => Either[String, T] = { (aa, bb, cc, dd) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
@@ -147,7 +147,7 @@ private[spray] trait CaseClassExtractionDirectives {
   }
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD, E, EE](construct: (A, B, C, D, E) => T)
-                                                                 (implicit qa: SC[AA, A], qb: SC[BB, B], qc: SC[CC, C], qd: SC[DD, D], qe: SC[EE, E])
+                                                                 (implicit qa: TC[AA, A], qb: TC[BB, B], qc: TC[CC, C], qd: TC[DD, D], qe: TC[EE, E])
     : (AA, BB, CC, DD, EE) => Either[String, T] = { (aa, bb, cc, dd, ee) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
@@ -163,7 +163,7 @@ private[spray] trait CaseClassExtractionDirectives {
   }
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF](construct: (A, B, C, D, E, F) => T)
-                                                                        (implicit qa: SC[AA, A], qb: SC[BB, B], qc: SC[CC, C], qd: SC[DD, D], qe: SC[EE, E], qf: SC[FF, F])
+                                                                        (implicit qa: TC[AA, A], qb: TC[BB, B], qc: TC[CC, C], qd: TC[DD, D], qe: TC[EE, E], qf: TC[FF, F])
     : (AA, BB, CC, DD, EE, FF) => Either[String, T] = { (aa, bb, cc, dd, ee, ff) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
@@ -181,7 +181,7 @@ private[spray] trait CaseClassExtractionDirectives {
   }
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG](construct: (A, B, C, D, E, F, G) => T)
-                                                                               (implicit qa: SC[AA, A], qb: SC[BB, B], qc: SC[CC, C], qd: SC[DD, D], qe: SC[EE, E], qf: SC[FF, F], qg: SC[GG, G])
+                                                                               (implicit qa: TC[AA, A], qb: TC[BB, B], qc: TC[CC, C], qd: TC[DD, D], qe: TC[EE, E], qf: TC[FF, F], qg: TC[GG, G])
     : (AA, BB, CC, DD, EE, FF, GG) => Either[String, T] = { (aa, bb, cc, dd, ee, ff, gg) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
@@ -201,7 +201,7 @@ private[spray] trait CaseClassExtractionDirectives {
   }
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH](construct: (A, B, C, D, E, F, G, H) => T)
-                                                                               (implicit qa: SC[AA, A], qb: SC[BB, B], qc: SC[CC, C], qd: SC[DD, D], qe: SC[EE, E], qf: SC[FF, F], qg: SC[GG, G], qh: SC[HH, H])
+                                                                               (implicit qa: TC[AA, A], qb: TC[BB, B], qc: TC[CC, C], qd: TC[DD, D], qe: TC[EE, E], qf: TC[FF, F], qg: TC[GG, G], qh: TC[HH, H])
     : (AA, BB, CC, DD, EE, FF, GG, HH) => Either[String, T] = { (aa, bb, cc, dd, ee, ff, gg, hh) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
@@ -223,7 +223,7 @@ private[spray] trait CaseClassExtractionDirectives {
   }
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II](construct: (A, B, C, D, E, F, G, H, I) => T)
-                                                                               (implicit qa: SC[AA, A], qb: SC[BB, B], qc: SC[CC, C], qd: SC[DD, D], qe: SC[EE, E], qf: SC[FF, F], qg: SC[GG, G], qh: SC[HH, H], qi: SC[II, I])
+                                                                               (implicit qa: TC[AA, A], qb: TC[BB, B], qc: TC[CC, C], qd: TC[DD, D], qe: TC[EE, E], qf: TC[FF, F], qg: TC[GG, G], qh: TC[HH, H], qi: TC[II, I])
     : (AA, BB, CC, DD, EE, FF, GG, HH, II) => Either[String, T] = { (aa, bb, cc, dd, ee, ff, gg, hh, ii) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
