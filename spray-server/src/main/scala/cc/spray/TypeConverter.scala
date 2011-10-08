@@ -16,7 +16,9 @@
 
 package cc.spray
 
-trait TypeConverter[A, B] extends (A => Either[String, B])
+import http.ContentTypeRange
+
+trait TypeConverter[A, B] extends (A => Either[TypeConversionError, B])
 
 object TypeConverter {
   // implemented as an optimization; we could get away without an explicit IdentityConverter since the
@@ -25,16 +27,32 @@ object TypeConverter {
   private val IdentityConverter = new TypeConverter[Any, Any] { def apply(obj: Any) = Right(obj) }
   implicit def identityConverter[A] = IdentityConverter.asInstanceOf[TypeConverter[A, A]]
 
-  implicit def fromFunctionConverter[A, B](implicit f: A => B) = new TypeConverter[A, B] {
-    def apply(a: A) = {
-      try {
-        Right(f(a))
-      } catch {
-        case ex => Left(ex.toString)
+  implicit def fromFunction2Converter[A, B](implicit f: A => B) = {
+    new TypeConverter[A, B] {
+      def apply(a: A) = {
+        try {
+          Right(f(a))
+        } catch {
+          case ex => Left(MalformedContent(ex.toString))
+        }
+      }
+    }
+  }
+
+  implicit def fromConverter2OptionConverter[A, B](implicit converter: TypeConverter[A, B]) = {
+    new TypeConverter[Option[A], B] {
+      def apply(value: Option[A]) = value match {
+        case Some(a) => converter(a)
+        case None => Left(ContentExpected)
       }
     }
   }
 }
+
+sealed trait TypeConversionError
+case object ContentExpected extends TypeConversionError
+case class MalformedContent(errorMessage: String) extends TypeConversionError
+case class UnsupportedContentType(supported: List[ContentTypeRange]) extends TypeConversionError
 
 trait TypeConverters {
 
@@ -47,7 +65,7 @@ trait TypeConverters {
       try {
         Right(value.toInt)
       } catch {
-        case _: NumberFormatException => Left("'" + value + "' is not a valid 32-bit integer value") 
+        case _: NumberFormatException => Left(MalformedContent("'" + value + "' is not a valid 32-bit integer value"))
       }
     }
   }
@@ -57,7 +75,8 @@ trait TypeConverters {
       try {
         Right(Integer.parseInt(value, 16))
       } catch {
-        case _: NumberFormatException => Left("'" + value + "' is not a valid 32-bit hexadecimal integer value") 
+        case _: NumberFormatException =>
+          Left(MalformedContent("'" + value + "' is not a valid 32-bit hexadecimal integer value"))
       }
     }
   }
@@ -67,7 +86,7 @@ trait TypeConverters {
       try {
         Right(value.toLong)
       } catch {
-        case _: NumberFormatException => Left("'" + value + "' is not a valid 64-bit integer value") 
+        case _: NumberFormatException => Left(MalformedContent("'" + value + "' is not a valid 64-bit integer value"))
       }
     }
   }
@@ -77,7 +96,8 @@ trait TypeConverters {
       try {
         Right(java.lang.Long.parseLong(value, 16))
       } catch {
-        case _: NumberFormatException => Left("'" + value + "' is not a valid 64-bit hexadecimal integer value") 
+        case _: NumberFormatException =>
+          Left(MalformedContent("'" + value + "' is not a valid 64-bit hexadecimal integer value"))
       }
     }
   }
@@ -87,7 +107,7 @@ trait TypeConverters {
       try {
         Right(value.toDouble)
       } catch {
-        case _: NumberFormatException => Left("'" + value + "' is not a valid floating point value") 
+        case _: NumberFormatException => Left(MalformedContent("'" + value + "' is not a valid floating point value"))
       }
     }
   }
@@ -97,7 +117,7 @@ trait TypeConverters {
       try {
         Right(value.toFloat)
       } catch {
-        case _: NumberFormatException => Left("'" + value + "' is not a valid floating point value")
+        case _: NumberFormatException => Left(MalformedContent("'" + value + "' is not a valid floating point value"))
       }
     }
   }
@@ -107,7 +127,7 @@ trait TypeConverters {
       try {
         Right(value.toShort)
       } catch {
-        case _: NumberFormatException => Left("'" + value + "' is not a valid 16-bit integer value")
+        case _: NumberFormatException => Left(MalformedContent("'" + value + "' is not a valid 16-bit integer value"))
       }
     }
   }
@@ -117,7 +137,7 @@ trait TypeConverters {
       try {
         Right(value.toByte)
       } catch {
-        case _: NumberFormatException => Left("'" + value + "' is not a valid 8-bit integer value")
+        case _: NumberFormatException => Left(MalformedContent("'" + value + "' is not a valid 8-bit integer value"))
       }
     }
   }
@@ -126,7 +146,7 @@ trait TypeConverters {
     def apply(value: String) = value.toLowerCase match {
       case "true" | "yes" | "on" => Right(true)
       case "false" | "no" | "off" => Right(false)
-      case x => Left("'" + x + "' is not a valid Boolean value")
+      case x => Left(MalformedContent("'" + x + "' is not a valid Boolean value"))
     }
   }  
 }

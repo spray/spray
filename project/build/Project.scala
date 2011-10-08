@@ -57,7 +57,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
 
   val scalaCompileSettings =
     Seq("-deprecation",
-        "-unchecked",
+        //"-unchecked",
         //"-Xmigration",
         //"-Xcheckinit",
         //"-optimise",

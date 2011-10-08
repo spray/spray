@@ -29,13 +29,13 @@ abstract class UnmarshallerBase[A] extends Unmarshaller[A] {
     case None => Left(ContentExpected)
   }
   
-  def unmarshal(content: HttpContent): Either[UnmarshallingError, A]
+  def unmarshal(content: HttpContent): Either[TypeConversionError, A]
 
   /**
    * Helper method for turning exceptions occuring during evaluation of the named parameter into
    * [[cc.spray.MalformedContent]] instances.
    */
-  protected def protect(f: => A): Either[UnmarshallingError, A] = {
+  protected def protect(f: => A): Either[TypeConversionError, A] = {
     try {
       Right(f)
     } catch {

@@ -24,74 +24,75 @@ private[spray] trait CaseClassExtractionDirectives {
 
   implicit def pimpSprayRoute1[A](route: SprayRoute1[A]) = new PimpedSprayRoute1(route)
   class PimpedSprayRoute1[A](route: SprayRoute1[A]) extends SprayRoute1[A](route.filter) {
-    def as[T <: Product](converter: A => Either[String, T]) = convert(route) {
+    def as[T <: Product](converter: A => Either[TypeConversionError, T]) = convert(route) {
       case Tuple1(a) => converter(a)
     }
   }
 
   implicit def pimpSprayRoute2[A, B](route: SprayRoute2[A, B]) = new PimpedSprayRoute2(route)
   class PimpedSprayRoute2[A, B](route: SprayRoute2[A, B]) extends SprayRoute2[A, B](route.filter) {
-    def as[T <: Product](converter: (A, B) => Either[String, T]) = convert(route) {
+    def as[T <: Product](converter: (A, B) => Either[TypeConversionError, T]) = convert(route) {
       case (a, b) => converter(a, b)
     }
   }
 
   implicit def pimpSprayRoute3[A, B, C](route: SprayRoute3[A, B, C]) = new PimpedSprayRoute3(route)
   class PimpedSprayRoute3[A, B, C](route: SprayRoute3[A, B, C]) extends SprayRoute3[A, B, C](route.filter) {
-    def as[T <: Product](converter: (A, B, C) => Either[String, T]) = convert(route) {
+    def as[T <: Product](converter: (A, B, C) => Either[TypeConversionError, T]) = convert(route) {
       case (a, b, c) => converter(a, b, c)
     }
   }
 
   implicit def pimpSprayRoute4[A, B, C, D](route: SprayRoute4[A, B, C, D]) = new PimpedSprayRoute4(route)
   class PimpedSprayRoute4[A, B, C, D](route: SprayRoute4[A, B, C, D]) extends SprayRoute4[A, B, C, D](route.filter) {
-    def as[T <: Product](converter: (A, B, C, D) => Either[String, T]) = convert(route) {
+    def as[T <: Product](converter: (A, B, C, D) => Either[TypeConversionError, T]) = convert(route) {
       case (a, b, c, d) => converter(a, b, c, d)
     }
   }
 
   implicit def pimpSprayRoute5[A, B, C, D, E](route: SprayRoute5[A, B, C, D, E]) = new PimpedSprayRoute5(route)
   class PimpedSprayRoute5[A, B, C, D, E](route: SprayRoute5[A, B, C, D, E]) extends SprayRoute5[A, B, C, D, E](route.filter) {
-    def as[T <: Product](converter: (A, B, C, D, E) => Either[String, T]) = convert(route) {
+    def as[T <: Product](converter: (A, B, C, D, E) => Either[TypeConversionError, T]) = convert(route) {
       case (a, b, c, d, e) => converter(a, b, c, d, e)
     }
   }
 
   implicit def pimpSprayRoute6[A, B, C, D, E, F](route: SprayRoute6[A, B, C, D, E, F]) = new PimpedSprayRoute6(route)
   class PimpedSprayRoute6[A, B, C, D, E, F](route: SprayRoute6[A, B, C, D, E, F]) extends SprayRoute6[A, B, C, D, E, F](route.filter) {
-    def as[T <: Product](converter: (A, B, C, D, E, F) => Either[String, T]) = convert(route) {
+    def as[T <: Product](converter: (A, B, C, D, E, F) => Either[TypeConversionError, T]) = convert(route) {
       case (a, b, c, d, e, f) => converter(a, b, c, d, e, f)
     }
   }
 
   implicit def pimpSprayRoute7[A, B, C, D, E, F, G](route: SprayRoute7[A, B, C, D, E, F, G]) = new PimpedSprayRoute7(route)
   class PimpedSprayRoute7[A, B, C, D, E, F, G](route: SprayRoute7[A, B, C, D, E, F, G]) extends SprayRoute7[A, B, C, D, E, F, G](route.filter) {
-    def as[T <: Product](converter: (A, B, C, D, E, F, G) => Either[String, T]) = convert(route) {
+    def as[T <: Product](converter: (A, B, C, D, E, F, G) => Either[TypeConversionError, T]) = convert(route) {
       case (a, b, c, d, e, f, g) => converter(a, b, c, d, e, f, g)
     }
   }
 
   implicit def pimpSprayRoute8[A, B, C, D, E, F, G, H](route: SprayRoute8[A, B, C, D, E, F, G, H]) = new PimpedSprayRoute8(route)
   class PimpedSprayRoute8[A, B, C, D, E, F, G, H](route: SprayRoute8[A, B, C, D, E, F, G, H]) extends SprayRoute8[A, B, C, D, E, F, G, H](route.filter) {
-    def as[T <: Product](converter: (A, B, C, D, E, F, G, H) => Either[String, T]) = convert(route) {
+    def as[T <: Product](converter: (A, B, C, D, E, F, G, H) => Either[TypeConversionError, T]) = convert(route) {
       case (a, b, c, d, e, f, g, h) => converter(a, b, c, d, e, f, g, h)
     }
   }
 
   implicit def pimpSprayRoute9[A, B, C, D, E, F, G, H, I](route: SprayRoute9[A, B, C, D, E, F, G, H, I]) = new PimpedSprayRoute9(route)
   class PimpedSprayRoute9[A, B, C, D, E, F, G, H, I](route: SprayRoute9[A, B, C, D, E, F, G, H, I]) extends SprayRoute9[A, B, C, D, E, F, G, H, I](route.filter) {
-    def as[T <: Product](converter: (A, B, C, D, E, F, G, H, I) => Either[String, T]) = convert(route) {
+    def as[T <: Product](converter: (A, B, C, D, E, F, G, H, I) => Either[TypeConversionError, T]) = convert(route) {
       case (a, b, c, d, e, f, g, h, i) => converter(a, b, c, d, e, f, g, h, i)
     }
   }
 
   private def convert[P <: Product, T <: Product](route: SprayRoute[P])
-                                                 (converter: P => Either[String, T]): SprayRoute1[T] = {
+                                                 (converter: P => Either[TypeConversionError, T]): SprayRoute1[T] = {
     filter1 { ctx =>
       route.filter(ctx) match {
         case Pass(values, transform) => converter(values) match {
           case Right(t) => Pass.withTransform(t)(transform)
-          case Left(msg) => Reject(ValidationRejection(msg))
+          case Left(MalformedContent(msg)) => Reject(ValidationRejection(msg))
+          case Left(error) => Reject(ValidationRejection(error.toString))
         }
         case x: Reject => x
       }
@@ -104,7 +105,7 @@ private[spray] trait CaseClassExtractionDirectives {
 
   def instanceOf[T <: Product, A, AA](construct: A => T)
                                      (implicit qa: TC[AA, A])
-    : AA => Either[String, T] = { aa =>
+    : AA => Either[TypeConversionError, T] = { aa =>
     qa(aa).right.flatMap { a =>
       protect(construct(a))
     }
@@ -112,7 +113,7 @@ private[spray] trait CaseClassExtractionDirectives {
 
   def instanceOf[T <: Product, A, AA, B, BB](construct: (A, B) => T)
                                             (implicit qa: TC[AA, A], qb: TC[BB, B])
-    : (AA, BB) => Either[String, T] = { (aa, bb) =>
+    : (AA, BB) => Either[TypeConversionError, T] = { (aa, bb) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
         protect(construct(a, b))
@@ -122,7 +123,7 @@ private[spray] trait CaseClassExtractionDirectives {
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC](construct: (A, B, C) => T)
                                                    (implicit qa: TC[AA, A], qb: TC[BB, B], qc: TC[CC, C])
-    : (AA, BB, CC) => Either[String, T] = { (aa, bb, cc) =>
+    : (AA, BB, CC) => Either[TypeConversionError, T] = { (aa, bb, cc) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
         qc(cc).right.flatMap { c =>
@@ -134,7 +135,7 @@ private[spray] trait CaseClassExtractionDirectives {
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD](construct: (A, B, C, D) => T)
                                                           (implicit qa: TC[AA, A], qb: TC[BB, B], qc: TC[CC, C], qd: TC[DD, D])
-    : (AA, BB, CC, DD) => Either[String, T] = { (aa, bb, cc, dd) =>
+    : (AA, BB, CC, DD) => Either[TypeConversionError, T] = { (aa, bb, cc, dd) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
         qc(cc).right.flatMap { c =>
@@ -148,7 +149,7 @@ private[spray] trait CaseClassExtractionDirectives {
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD, E, EE](construct: (A, B, C, D, E) => T)
                                                                  (implicit qa: TC[AA, A], qb: TC[BB, B], qc: TC[CC, C], qd: TC[DD, D], qe: TC[EE, E])
-    : (AA, BB, CC, DD, EE) => Either[String, T] = { (aa, bb, cc, dd, ee) =>
+    : (AA, BB, CC, DD, EE) => Either[TypeConversionError, T] = { (aa, bb, cc, dd, ee) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
         qc(cc).right.flatMap { c =>
@@ -164,7 +165,7 @@ private[spray] trait CaseClassExtractionDirectives {
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF](construct: (A, B, C, D, E, F) => T)
                                                                         (implicit qa: TC[AA, A], qb: TC[BB, B], qc: TC[CC, C], qd: TC[DD, D], qe: TC[EE, E], qf: TC[FF, F])
-    : (AA, BB, CC, DD, EE, FF) => Either[String, T] = { (aa, bb, cc, dd, ee, ff) =>
+    : (AA, BB, CC, DD, EE, FF) => Either[TypeConversionError, T] = { (aa, bb, cc, dd, ee, ff) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
         qc(cc).right.flatMap { c =>
@@ -182,7 +183,7 @@ private[spray] trait CaseClassExtractionDirectives {
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG](construct: (A, B, C, D, E, F, G) => T)
                                                                                (implicit qa: TC[AA, A], qb: TC[BB, B], qc: TC[CC, C], qd: TC[DD, D], qe: TC[EE, E], qf: TC[FF, F], qg: TC[GG, G])
-    : (AA, BB, CC, DD, EE, FF, GG) => Either[String, T] = { (aa, bb, cc, dd, ee, ff, gg) =>
+    : (AA, BB, CC, DD, EE, FF, GG) => Either[TypeConversionError, T] = { (aa, bb, cc, dd, ee, ff, gg) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
         qc(cc).right.flatMap { c =>
@@ -202,7 +203,7 @@ private[spray] trait CaseClassExtractionDirectives {
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH](construct: (A, B, C, D, E, F, G, H) => T)
                                                                                (implicit qa: TC[AA, A], qb: TC[BB, B], qc: TC[CC, C], qd: TC[DD, D], qe: TC[EE, E], qf: TC[FF, F], qg: TC[GG, G], qh: TC[HH, H])
-    : (AA, BB, CC, DD, EE, FF, GG, HH) => Either[String, T] = { (aa, bb, cc, dd, ee, ff, gg, hh) =>
+    : (AA, BB, CC, DD, EE, FF, GG, HH) => Either[TypeConversionError, T] = { (aa, bb, cc, dd, ee, ff, gg, hh) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
         qc(cc).right.flatMap { c =>
@@ -224,7 +225,7 @@ private[spray] trait CaseClassExtractionDirectives {
 
   def instanceOf[T <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II](construct: (A, B, C, D, E, F, G, H, I) => T)
                                                                                (implicit qa: TC[AA, A], qb: TC[BB, B], qc: TC[CC, C], qd: TC[DD, D], qe: TC[EE, E], qf: TC[FF, F], qg: TC[GG, G], qh: TC[HH, H], qi: TC[II, I])
-    : (AA, BB, CC, DD, EE, FF, GG, HH, II) => Either[String, T] = { (aa, bb, cc, dd, ee, ff, gg, hh, ii) =>
+    : (AA, BB, CC, DD, EE, FF, GG, HH, II) => Either[TypeConversionError, T] = { (aa, bb, cc, dd, ee, ff, gg, hh, ii) =>
     qa(aa).right.flatMap { a =>
       qb(bb).right.flatMap { b =>
         qc(cc).right.flatMap { c =>
@@ -246,11 +247,11 @@ private[spray] trait CaseClassExtractionDirectives {
     }
   }
 
-  private def protect[T](f: => T): Either[String, T] = {
+  private def protect[T](f: => T): Either[TypeConversionError, T] = {
     try {
       Right(f)
     } catch {
-      case e: IllegalArgumentException => Left(e.getMessage)
+      case e: IllegalArgumentException => Left(MalformedContent(e.getMessage))
     }
   }
 }

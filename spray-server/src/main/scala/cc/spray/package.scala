@@ -21,26 +21,27 @@ import collection.immutable.LinearSeq
 import spray.http._
 import spray.marshalling._
 import spray.utils._
+import scala.Either
 
 package object spray {
 
   type Route = RequestContext => Unit
   type ContentTypeResolver = (String, Option[HttpCharset]) => ContentType
   type Marshaller[A] = (ContentType => Option[ContentType]) => Marshalling[A]
-  type Unmarshaller[A] = Option[HttpContent] => Either[UnmarshallingError, A]
+  type Unmarshaller[A] = TypeConverter[Option[HttpContent], A]
   type RouteFilter[T <: Product] = RequestContext => FilterResult[T]
   type GeneralAuthenticator[U] = RequestContext => Either[Rejection, U]
   type UserPassAuthenticator[U] = Option[(String, String)] => Option[U]
   type CacheKeyer = RequestContext => Option[Any]
   type RequiredParameterMatcher = Map[String, String] => Boolean
-  type FromStringConverter[A] = TypeConverter[String, A]
-  
+  type FromStringOptionConverter[A] = TypeConverter[Option[String], A]
+
   def make[A, U](a: A)(f: A => U): A = { f(a); a }
   
   def marshaller[T](implicit m: Marshaller[T]) = m
   def unmarshaller[T](implicit um: Unmarshaller[T]) = um
   def typeConverter[A, B](implicit converter: TypeConverter[A, B]) = converter
-  def fromStringConverter[T](implicit converter: FromStringConverter[T]) = converter
+  def fromStringOptionConverter[T](implicit converter: FromStringOptionConverter[T]) = converter
 
   private lazy val emptyPartial = new PartialFunction[Any, Any] {
     def isDefinedAt(x: Any) = false

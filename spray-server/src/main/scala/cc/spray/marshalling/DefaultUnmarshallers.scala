@@ -29,21 +29,25 @@ import java.io.ByteArrayInputStream
 
 trait DefaultUnmarshallers extends MultipartUnmarshallers {
   
-  implicit val StringUnmarshaller: Unmarshaller[String] = {
-    case Some(content) => Right { // we can convert anything to a String
-      new String(content.buffer, content.contentType.charset.getOrElse(`ISO-8859-1`).nioCharset)
+  implicit val StringUnmarshaller = new Unmarshaller[String] {
+    def apply(httpContent: Option[HttpContent]) = httpContent match {
+      case Some(content) => Right { // we can convert anything to a String
+        new String(content.buffer, content.contentType.charset.getOrElse(`ISO-8859-1`).nioCharset)
+      }
+      case None => Left(ContentExpected)
     }
-    case None => Left(ContentExpected)
   }
 
-  implicit val CharArrayUnmarshaller: Unmarshaller[Array[Char]] = {
-    case Some(content) => Right { // we can convert anything to a char array
-      val nioCharset = content.contentType.charset.getOrElse(`ISO-8859-1`).nioCharset
-      val byteBuffer = ByteBuffer.wrap(content.buffer)
-      val charBuffer = nioCharset.decode(byteBuffer)
-      charBuffer.array()
+  implicit val CharArrayUnmarshaller = new Unmarshaller[Array[Char]] {
+    def apply(httpContent: Option[HttpContent]) = httpContent match {
+      case Some(content) => Right { // we can convert anything to a char array
+        val nioCharset = content.contentType.charset.getOrElse(`ISO-8859-1`).nioCharset
+        val byteBuffer = ByteBuffer.wrap(content.buffer)
+        val charBuffer = nioCharset.decode(byteBuffer)
+        charBuffer.array()
+      }
+      case None => Left(ContentExpected)
     }
-    case None => Left(ContentExpected)
   }
   
   implicit val NodeSeqUnmarshaller = new UnmarshallerBase[NodeSeq] {
@@ -77,16 +81,18 @@ trait DefaultUnmarshallers extends MultipartUnmarshallers {
     }
   }
 
-  implicit def optionUnmarshaller[A :Unmarshaller]: Unmarshaller[Option[A]] = {
-    case x: Some[HttpContent] => unmarshaller[A].apply(x).right.map(Some(_))
-    case None => Right(None)
+  implicit def optionUnmarshaller[A :Unmarshaller] = new Unmarshaller[Option[A]] {
+    def apply(httpContent: Option[HttpContent]) = httpContent match {
+      case x: Some[HttpContent] => unmarshaller[A].apply(x).right.map(Some(_))
+      case None => Right(None)
+    }
   }
   
   implicit def pimpHttpContentWithAs1(c: HttpContent): HttpContentExtractor = new HttpContentExtractor(Some(c)) 
   implicit def pimpHttpContentWithAs2(c: Option[HttpContent]): HttpContentExtractor = new HttpContentExtractor(c)
   
   class HttpContentExtractor(content: Option[HttpContent]) {
-    def as[A](implicit unmarshaller: Unmarshaller[A]): Either[UnmarshallingError, A] = unmarshaller(content)
+    def as[A](implicit unmarshaller: Unmarshaller[A]): Either[TypeConversionError, A] = unmarshaller(content)
   }
   
 }

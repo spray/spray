@@ -17,6 +17,8 @@
 package cc.spray
 package directives
 
+import java.lang.IllegalStateException
+
 private[spray] trait ParameterDirectives {
   this: BasicDirectives =>
 
@@ -141,32 +143,37 @@ private[spray] trait ParameterDirectives {
   implicit def fromString(name: String): ParameterMatcher[String] = new ParameterMatcher(name)
 }
 
-class ParameterMatcher[A :FromStringConverter](val name: String) {
+class ParameterMatcher[A :FromStringOptionConverter](val name: String) {
   def apply(params: Map[String, String]): Either[Rejection, A] = {
-    params.get(name) match {
-      case Some(value) => fromStringConverter[A].apply(value).left.map(MalformedQueryParamRejection(_, Some(name)))
-      case None => notFound
+    fromStringOptionConverter[A].apply(params.get(name)).left.map {
+      case ContentExpected => MissingQueryParamRejection(name)
+      case MalformedContent(error) => MalformedQueryParamRejection(error, Some(name))
+      case _: UnsupportedContentType => throw new IllegalStateException
     }
   }
 
-  protected def notFound: Either[Rejection, A] = Left(MissingQueryParamRejection(name))
-  
-  def ? = {
-    implicit val toOptionLifter = new FromStringConverter[Option[A]] {
-      def apply(s: String) = fromStringConverter[A].apply(s).right.map(Some(_))
+  def ? = new ParameterMatcher[Option[A]](name)(
+    new FromStringOptionConverter[Option[A]] {
+      def apply(s: Option[String]) = fromStringOptionConverter[A].apply(s) match {
+        case Right(a) => Right(Some(a))
+        case Left(ContentExpected) => Right(None)
+        case Left(error) => Left(error)
+      }
     }
-    new ParameterMatcher[Option[A]](name) {
-      override def notFound = Right(None)
+  )
+  
+  def ? [B :FromStringOptionConverter](default: B) = new ParameterMatcher[B](name)(
+    new FromStringOptionConverter[B] {
+      def apply(s: Option[String]) = fromStringOptionConverter[B].apply(s).left.flatMap {
+        case ContentExpected => Right(default)
+        case error => Left(error)
+      }
     }
-  }
+  )
   
-  def ? [B :FromStringConverter](default: B) = new ParameterMatcher[B](name) {
-    override def notFound = Right(default)
-  }
+  def as[B :FromStringOptionConverter] = new ParameterMatcher[B](name)
   
-  def as[B :FromStringConverter] = new ParameterMatcher[B](name)
-  
-  def ! [B :FromStringConverter](requiredValue: B): RequiredParameterMatcher = {
-    _.get(name).flatMap(fromStringConverter[B].apply(_).right.toOption) == Some(requiredValue)
+  def ! [B :FromStringOptionConverter](requiredValue: B): RequiredParameterMatcher = { paramsMap =>
+    fromStringOptionConverter[B].apply(paramsMap.get(name)) == Right(requiredValue)
   }
 }
