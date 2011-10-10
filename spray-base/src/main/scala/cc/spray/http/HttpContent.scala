@@ -47,5 +47,45 @@ object HttpContent {
 
   class HttpContentExtractor(content: Option[HttpContent]) {
     def as[A](implicit unmarshaller: Unmarshaller[A]): Either[TypeConversionError, A] = unmarshaller(content)
+
+    def formField(fieldName: String): Either[TypeConversionError, FormField] = {
+      import DefaultUnmarshallers._
+      content.as[FormData] match {
+        case Right(FormData(fields)) => Right {
+          new UrlEncodedFormField {
+            val raw = fields.get(fieldName)
+            def as[A: FormFieldConverter] = converter[A].urlEncodedFieldConverter match {
+              case Some(conv) => conv(raw)
+              case None => Left(UnsupportedContentType(FormDataUnmarshaller.canUnmarshalFrom))
+            }
+          }
+        }
+        case Left(_: UnsupportedContentType) => content.as[MultipartFormData].right.map { data =>
+          new MultipartFormField {
+            val raw = data.parts.get(fieldName)
+            def as[A: FormFieldConverter] = converter[A].multipartFieldConverter match {
+              case Some(conv) => conv(raw.flatMap(_.content))
+              case None => Left(UnsupportedContentType(MultipartFormDataUnmarshaller.canUnmarshalFrom))
+            }
+          }
+        }
+        case Left(error) => Left(error)
+      }
+    }
+
+    private def converter[A](implicit conv: FormFieldConverter[A]) = conv
   }
-} 
+}
+
+sealed trait FormField {
+  def as[A :FormFieldConverter]: Either[TypeConversionError, A]
+}
+
+trait UrlEncodedFormField extends FormField {
+  def raw: Option[String]
+}
+
+trait MultipartFormField extends FormField {
+  def raw: Option[BodyPart]
+}
+

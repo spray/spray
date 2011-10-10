@@ -59,11 +59,11 @@ trait DefaultUnmarshallers extends MultipartUnmarshallers {
     }
   }
 
-  implicit val FormContentUnmarshaller = new UnmarshallerBase[FormContent] {
+  implicit val FormDataUnmarshaller = new UnmarshallerBase[FormData] {
     val canUnmarshalFrom = ContentTypeRange(`application/x-www-form-urlencoded`) :: Nil
   
     def unmarshal(content: HttpContent) = protect {
-      FormContent {
+      FormData {
         val data = DefaultUnmarshallers.StringUnmarshaller(content).right.get
         val charset = content.contentType.charset.getOrElse(`ISO-8859-1`).aliases.head
         URLDecoder.decode(data, charset).fastSplit('&').map {

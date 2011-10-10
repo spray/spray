@@ -50,13 +50,13 @@ trait DefaultMarshallers {
     def marshal(value: NodeSeq, contentType: ContentType) = StringMarshaller.marshal(value.toString, contentType)
   }
 
-  implicit val FormContentMarshaller = new MarshallerBase[FormContent] {
+  implicit val FormContentMarshaller = new MarshallerBase[FormData] {
     val canMarshalTo = ContentType(`application/x-www-form-urlencoded`) :: Nil
 
-    def marshal(formContent: FormContent, contentType: ContentType) = {
+    def marshal(formContent: FormData, contentType: ContentType) = {
       import java.net.URLEncoder.encode
       val charset = contentType.charset.getOrElse(`ISO-8859-1`).aliases.head
-      val keyValuePairs = formContent.elements.map {
+      val keyValuePairs = formContent.fields.map {
         case (key, value) => encode(key, charset) + '=' + encode(value, charset)
       }
       StringMarshaller.marshal(keyValuePairs.mkString("&"), contentType)

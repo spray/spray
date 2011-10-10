@@ -97,3 +97,5 @@ trait MultipartUnmarshallers {
   }
 
 }
+
+object MultipartUnmarshallers extends MultipartUnmarshallers

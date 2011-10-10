@@ -22,7 +22,7 @@ import org.specs2.mutable.Specification
 class PimpedStringTest extends Specification {
 
   "fastSplit" should {
-    "properly split a string with three elements" in {
+    "properly split a string with three fields" in {
       "abc/def/gh".fastSplit('/') mustEqual List("abc", "def", "gh")
     }
     "return a single-element list containing the original string if the string does not contain the delimiter" in {
@@ -40,7 +40,7 @@ class PimpedStringTest extends Specification {
   }
 
   "lazySplit" should {
-    "properly split a string with three elements" in {
+    "properly split a string with three fields" in {
       "abc/def/gh".lazySplit('/') mustEqual Stream("abc", "def", "gh")
     }
     "return a single-element list containing the original string if the string does not contain the delimiter" in {

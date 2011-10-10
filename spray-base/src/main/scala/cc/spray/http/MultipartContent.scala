@@ -38,6 +38,6 @@ object BodyPart {
 }
 
 /**
- * Model for `application/x-www-form-urlencoded` form content.
+ * Model for `application/x-www-form-urlencoded` form data.
  */
-case class FormContent(elements: Map[String, String])
+case class FormData(fields: Map[String, String])

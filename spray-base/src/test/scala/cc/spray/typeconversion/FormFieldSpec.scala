@@ -23,11 +23,12 @@ import HttpCharsets._
 import HttpHeaders._
 import org.specs2.mutable.Specification
 
-class MultipartUnmarshallersSpec extends Specification with DefaultUnmarshallers {
+class FormFieldSpec extends Specification with DefaultUnmarshallers {
   
-  "The MultipartContentUnmarshaller" should {
-    "correctly unmarshal 'multipart/mixed' content with one empty part" in {
-      HttpContent(ContentType(new `multipart/mixed`(Some("XYZABC"))),
+  /*"The FormField infrastructure" should {
+    "properly allow access to the fields of www-urlencoded forms" in {
+      FormData(
+      HttpContent(ContentType(`apple)),
         """|--XYZABC
            |--XYZABC--""".stripMargin).as[MultipartContent] mustEqual Right {
         MultipartContent(
@@ -136,6 +137,6 @@ class MultipartUnmarshallersSpec extends Specification with DefaultUnmarshallers
         }
       }
     }
-  }
+  }*/
 
 }

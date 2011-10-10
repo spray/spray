@@ -26,37 +26,33 @@ class DefaultMarshallersSpec extends Specification with DefaultMarshallers {
   
   "The StringMarshaller" should {
     "encode strings to `text/plain` content in ISO-8859-1 if the client accepts it" in {
-      marshall("Hällö")() mustEqual Right(HttpContent(ContentType(`text/plain`, `ISO-8859-1`), "Hällö"))
+      marshal("Hällö")() mustEqual Right(HttpContent(ContentType(`text/plain`, `ISO-8859-1`), "Hällö"))
     }
   }
 
-  /*"The CharArrayMarshaller" should {
+  "The CharArrayMarshaller" should {
     "encode char arrays to `text/plain` content in ISO-8859-1 if the client accepts it" in {
-      test(HttpRequest()) {
-        _.complete("Hällö".toCharArray)
-      }.response.content mustEqual Some(HttpContent(ContentType(`text/plain`, `ISO-8859-1`), "Hällö"))
+      marshal("Hällö".toCharArray)() mustEqual
+              Right(HttpContent(ContentType(`text/plain`, `ISO-8859-1`), "Hällö"))
     }
   }
 
   "The NodeSeqMarshaller" should {
     "encode xml snippets to `text/xml` content in ISO-8859-1 if the client accepts it" in {
-      test(HttpRequest()) {
-        _.complete(<employee><nr>1</nr></employee>)
-      }.response.content mustEqual
-              Some(HttpContent(ContentType(`text/xml`, `ISO-8859-1`), "<employee><nr>1</nr></employee>"))
+      marshal(<employee><nr>1</nr></employee>)() mustEqual
+              Right(HttpContent(ContentType(`text/xml`, `ISO-8859-1`), "<employee><nr>1</nr></employee>"))
     }
   }
 
   "The FormContentMarshaller" should {
-    "properly marshal FormContent instances to application/x-www-form-urlencoded entity bodies" in {
-      test(HttpRequest()) {
-        _.complete(FormContent(Map("name" -> "Bob", "pass" -> "x?!54", "admin" -> "")))
-      }.response.content mustEqual Some(HttpContent(ContentType(`application/x-www-form-urlencoded`, `ISO-8859-1`),
-        "name=Bob&pass=x%3F%2154&admin="))
+    "properly marshal FormData instances to application/x-www-form-urlencoded entity bodies" in {
+      marshal(FormData(Map("name" -> "Bob", "pass" -> "x?!54", "admin" -> "")))() mustEqual
+              Right(HttpContent(ContentType(`application/x-www-form-urlencoded`, `ISO-8859-1`),
+                "name=Bob&pass=x%3F%2154&admin="))
     }
-  }*/
+  }
 
-  def marshall[A :Marshaller](obj: A)(ctSelector: ContentTypeSelector = ct => Some(ct.withCharset(`ISO-8859-1`))) = {
+  def marshal[A :Marshaller](obj: A)(ctSelector: ContentTypeSelector = ct => Some(ct.withCharset(`ISO-8859-1`))) = {
     marshaller[A].apply(ctSelector) match {
       case MarshalWith(converter) => Right(converter(obj))
       case CantMarshal(onlyTo) => Left(onlyTo)
