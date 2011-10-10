@@ -29,24 +29,19 @@ import java.io.ByteArrayInputStream
 
 trait DefaultUnmarshallers extends MultipartUnmarshallers {
   
-  implicit val StringUnmarshaller = new Unmarshaller[String] {
-    def apply(httpContent: Option[HttpContent]) = httpContent match {
-      case Some(content) => Right { // we can convert anything to a String
-        new String(content.buffer, content.contentType.charset.getOrElse(`ISO-8859-1`).nioCharset)
-      }
-      case None => Left(ContentExpected)
+  implicit val StringUnmarshaller = new TypeConverter[HttpContent, String] {
+    def apply(content: HttpContent) = Right {
+      // we can convert anything to a String
+      new String(content.buffer, content.contentType.charset.getOrElse(`ISO-8859-1`).nioCharset)
     }
   }
 
-  implicit val CharArrayUnmarshaller = new Unmarshaller[Array[Char]] {
-    def apply(httpContent: Option[HttpContent]) = httpContent match {
-      case Some(content) => Right { // we can convert anything to a char array
-        val nioCharset = content.contentType.charset.getOrElse(`ISO-8859-1`).nioCharset
-        val byteBuffer = ByteBuffer.wrap(content.buffer)
-        val charBuffer = nioCharset.decode(byteBuffer)
-        charBuffer.array()
-      }
-      case None => Left(ContentExpected)
+  implicit val CharArrayUnmarshaller = new TypeConverter[HttpContent, Array[Char]] {
+    def apply(content: HttpContent) = Right { // we can convert anything to a char array
+      val nioCharset = content.contentType.charset.getOrElse(`ISO-8859-1`).nioCharset
+      val byteBuffer = ByteBuffer.wrap(content.buffer)
+      val charBuffer = nioCharset.decode(byteBuffer)
+      charBuffer.array()
     }
   }
   
@@ -57,7 +52,7 @@ trait DefaultUnmarshallers extends MultipartUnmarshallers {
 
     def unmarshal(content: HttpContent) = protect {
       if (content.contentType.charset.isDefined) {
-        XML.loadString(StringUnmarshaller(Some(content)).right.get)
+        XML.loadString(StringUnmarshaller(content).right.get)
       } else {
         XML.load(new ByteArrayInputStream(content.buffer))
       }
@@ -69,7 +64,7 @@ trait DefaultUnmarshallers extends MultipartUnmarshallers {
   
     def unmarshal(content: HttpContent) = protect {
       FormContent {
-        val data = DefaultUnmarshallers.StringUnmarshaller(Some(content)).right.get
+        val data = DefaultUnmarshallers.StringUnmarshaller(content).right.get
         val charset = content.contentType.charset.getOrElse(`ISO-8859-1`).aliases.head
         URLDecoder.decode(data, charset).fastSplit('&').map {
           _.fastSplit('=') match {

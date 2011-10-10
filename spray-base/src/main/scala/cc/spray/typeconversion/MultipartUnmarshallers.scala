@@ -79,7 +79,7 @@ trait MultipartUnmarshallers {
     val canUnmarshalFrom = ContentTypeRange(new `multipart/form-data`()) :: Nil
 
     def unmarshal(content: HttpContent) = {
-      MultipartContentUnmarshaller.unmarshal(content).right.flatMap { mpContent =>
+      MultipartContentUnmarshaller(content).right.flatMap { mpContent =>
         try {
           Right(MultipartFormData(mpContent.parts.map(part => nameOf(part) -> part)(collection.breakOut)))
         } catch {

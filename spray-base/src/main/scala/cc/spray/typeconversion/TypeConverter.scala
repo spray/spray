@@ -22,12 +22,6 @@ import http._
 trait TypeConverter[A, B] extends (A => Either[TypeConversionError, B])
 
 object TypeConverter {
-  // implemented as an optimization; we could get away without an explicit IdentityConverter since the
-  // fromFunctionConverter below makes identity conversion available through the Predef.conforms implicit conversion,
-  // however, the explicit IdentityConverter saves the construction of a new TypeConverter object for identity conversions
-  private val IdentityConverter = new TypeConverter[Any, Any] { def apply(obj: Any) = Right(obj) }
-  implicit def identityConverter[A] = IdentityConverter.asInstanceOf[TypeConverter[A, A]]
-
   implicit def fromFunction2Converter[A, B](implicit f: A => B) = {
     new TypeConverter[A, B] {
       def apply(a: A) = {

@@ -19,17 +19,15 @@ package typeconversion
 
 import http._
 
-abstract class UnmarshallerBase[A] extends Unmarshaller[A] {
+abstract class UnmarshallerBase[A] extends TypeConverter[HttpContent, A] {
   val canUnmarshalFrom: List[ContentTypeRange]
 
-  def apply(content: Option[HttpContent]) = content match {
-    case Some(c) =>
-      if (canUnmarshalFrom.exists(_.matches(c.contentType))) unmarshal(c)
-      else Left(UnsupportedContentType(canUnmarshalFrom))
-    case None => Left(ContentExpected)
+  def apply(content: HttpContent) = {
+    if (canUnmarshalFrom.exists(_.matches(content.contentType))) unmarshal(content)
+    else Left(UnsupportedContentType(canUnmarshalFrom))
   }
-  
-  def unmarshal(content: HttpContent): Either[TypeConversionError, A]
+
+  protected def unmarshal(content: HttpContent): Either[TypeConversionError, A]
 
   /**
    * Helper method for turning exceptions occuring during evaluation of the named parameter into
