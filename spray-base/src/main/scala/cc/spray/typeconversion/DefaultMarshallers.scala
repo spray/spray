@@ -50,7 +50,7 @@ trait DefaultMarshallers {
     def marshal(value: NodeSeq, contentType: ContentType) = StringMarshaller.marshal(value.toString, contentType)
   }
 
-  implicit val FormContentMarshaller = new MarshallerBase[FormData] {
+  implicit val FormDataMarshaller = new MarshallerBase[FormData] {
     val canMarshalTo = ContentType(`application/x-www-form-urlencoded`) :: Nil
 
     def marshal(formContent: FormData, contentType: ContentType) = {

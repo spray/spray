@@ -41,14 +41,8 @@ class SprayJsonMarshallingSpec extends Specification with SprayJsonSupport {
               Right(Employee("Frank", "Smith", 42, 12345, false))
     }
     "provide marshalling capability for case classes with an in-scope JsonFormat" in {
-      marshall(employeeA)() mustEqual Right(HttpContent(ContentType(`application/json`), employeeAJson))
+      employeeA.toHttpContent mustEqual HttpContent(ContentType(`application/json`), employeeAJson)
     }
   }
 
-  def marshall[A :Marshaller](obj: A)(contentTypeSelector: ContentTypeSelector = Some(_)) = {
-    marshaller[A].apply(contentTypeSelector) match {
-      case MarshalWith(converter) => Right(converter(obj))
-      case CantMarshal(onlyTo) => Left(onlyTo)
-    }
-  }
 }

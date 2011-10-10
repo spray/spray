@@ -26,37 +26,28 @@ class DefaultMarshallersSpec extends Specification with DefaultMarshallers {
   
   "The StringMarshaller" should {
     "encode strings to `text/plain` content in ISO-8859-1 if the client accepts it" in {
-      marshal("Hällö")() mustEqual Right(HttpContent(ContentType(`text/plain`, `ISO-8859-1`), "Hällö"))
+      "Hällö".toHttpContent mustEqual HttpContent("Hällö")
     }
   }
 
   "The CharArrayMarshaller" should {
     "encode char arrays to `text/plain` content in ISO-8859-1 if the client accepts it" in {
-      marshal("Hällö".toCharArray)() mustEqual
-              Right(HttpContent(ContentType(`text/plain`, `ISO-8859-1`), "Hällö"))
+      "Hällö".toCharArray.toHttpContent mustEqual HttpContent("Hällö")
     }
   }
 
   "The NodeSeqMarshaller" should {
     "encode xml snippets to `text/xml` content in ISO-8859-1 if the client accepts it" in {
-      marshal(<employee><nr>1</nr></employee>)() mustEqual
-              Right(HttpContent(ContentType(`text/xml`, `ISO-8859-1`), "<employee><nr>1</nr></employee>"))
+      <employee><nr>1</nr></employee>.toHttpContent mustEqual
+              HttpContent(ContentType(`text/xml`), "<employee><nr>1</nr></employee>")
     }
   }
 
-  "The FormContentMarshaller" should {
+  "The FormDataMarshaller" should {
     "properly marshal FormData instances to application/x-www-form-urlencoded entity bodies" in {
-      marshal(FormData(Map("name" -> "Bob", "pass" -> "x?!54", "admin" -> "")))() mustEqual
-              Right(HttpContent(ContentType(`application/x-www-form-urlencoded`, `ISO-8859-1`),
-                "name=Bob&pass=x%3F%2154&admin="))
+      FormData(Map("name" -> "Bob", "pass" -> "x?!54", "admin" -> "")).toHttpContent mustEqual
+              HttpContent(ContentType(`application/x-www-form-urlencoded`), "name=Bob&pass=x%3F%2154&admin=")
     }
   }
 
-  def marshal[A :Marshaller](obj: A)(ctSelector: ContentTypeSelector = ct => Some(ct.withCharset(`ISO-8859-1`))) = {
-    marshaller[A].apply(ctSelector) match {
-      case MarshalWith(converter) => Right(converter(obj))
-      case CantMarshal(onlyTo) => Left(onlyTo)
-    }
-  }
-  
 }

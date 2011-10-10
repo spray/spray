@@ -22,12 +22,21 @@ package object typeconversion {
 
   type FromStringOptionDeserializer[A] = Deserializer[Option[String], A]
   type Unmarshaller[A] = Deserializer[Option[HttpContent], A]
-  type ContentTypeSelector = ContentType => Option[ContentType]
   type Marshaller[A] = ContentTypeSelector => Marshalling[A]
+  type ContentTypeSelector = ContentType => Option[ContentType]
 
   def marshaller[T](implicit m: Marshaller[T]) = m
   def unmarshaller[T](implicit um: Unmarshaller[T]) = um
   def deserializer[A, B](implicit converter: Deserializer[A, B]) = converter
   def fromStringOptionDeserializer[T](implicit converter: FromStringOptionDeserializer[T]) = converter
+
+  implicit def pimpAnyWithToHttpContent[A :Marshaller](obj: A) = new ToHttpContentPimp(obj)
+
+  class ToHttpContentPimp[A :Marshaller](underlying: A) {
+    def toHttpContent: HttpContent = marshaller[A].apply(Some(_)) match {
+      case MarshalWith(converter) => converter(underlying)
+      case CantMarshal(onlyTo) => throw new IllegalStateException
+    }
+  }
 
 }
