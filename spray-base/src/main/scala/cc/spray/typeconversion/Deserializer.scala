@@ -21,7 +21,7 @@ import http._
 
 trait Deserializer[A, B] extends (A => Either[DeserializationError, B])
 
-object Deserializer {
+object Deserializer extends CaseClassDeserializers {
   implicit def fromFunction2Converter[A, B](implicit f: A => B) = {
     new Deserializer[A, B] {
       def apply(a: A) = {

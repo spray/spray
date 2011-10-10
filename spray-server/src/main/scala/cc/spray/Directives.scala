@@ -17,7 +17,7 @@
 package cc.spray
 
 import directives._
-import typeconversion.FromStringDeserializers
+import typeconversion._
 
 /**
  * Directives is the central trait you should mix in to get access to ''sprays'' Route building directives.
@@ -31,7 +31,6 @@ trait Directives
         with MarshallingDirectives
         with MiscDirectives
         with ParameterDirectives
-        with CaseClassExtractionDirectives
         with PathDirectives
         with SecurityDirectives
         with SimpleDirectives

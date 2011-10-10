@@ -18,6 +18,7 @@ package cc.spray
 package directives
 
 import utils._
+import typeconversion._
 
 private[spray] trait BasicDirectives {
 
@@ -126,6 +127,19 @@ sealed abstract class SprayRoute[T <: Product](val filter: RouteFilter[T]) { sel
       case _: Reject => Pass()
     }
   )
+
+  protected def convert[P <: Product](deserializer: Deserializer[T, P]): SprayRoute1[P] = {
+    new SprayRoute1( ctx =>
+      self.filter(ctx) match {
+        case Pass(values, transform) => deserializer(values) match {
+          case Right(t) => Pass.withTransform(t)(transform)
+          case Left(MalformedContent(msg)) => Reject(ValidationRejection(msg))
+          case Left(error) => Reject(ValidationRejection(error.toString))
+        }
+        case x: Reject => x
+      }
+    )
+  }
 }
 
 /**
@@ -161,6 +175,7 @@ class SprayRoute1[A](filter: RouteFilter[Tuple1[A]]) extends SprayRoute(filter) 
   def & [B, C, D, E, F, G](other: SprayRoute6[B, C, D, E, F, G]) = new SprayRoute7[A, B, C, D, E, F, G](and(other))
   def & [B, C, D, E, F, G, H](other: SprayRoute7[B, C, D, E, F, G, H]) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
   def & [B, C, D, E, F, G, H, I](other: SprayRoute8[B, C, D, E, F, G, H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
+  def as[T <: Product](deserializer: Deserializer[Tuple1[A], T]) = convert(deserializer)
 }
 
 /**
@@ -177,6 +192,7 @@ class SprayRoute2[A, B](filter: RouteFilter[(A, B)]) extends SprayRoute(filter) 
   def & [C, D, E, F, G](other: SprayRoute5[C, D, E, F, G]) = new SprayRoute7[A, B, C, D, E, F, G](and(other))
   def & [C, D, E, F, G, H](other: SprayRoute6[C, D, E, F, G, H]) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
   def & [C, D, E, F, G, H, I](other: SprayRoute7[C, D, E, F, G, H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
+  def as[T <: Product](deserializer: Deserializer[(A, B), T]) = convert(deserializer)
 }
 
 /**
@@ -192,6 +208,7 @@ class SprayRoute3[A, B, C](filter: RouteFilter[(A, B, C)]) extends SprayRoute(fi
   def & [D, E, F, G](other: SprayRoute4[D, E, F, G]) = new SprayRoute7[A, B, C, D, E, F, G](and(other))
   def & [D, E, F, G, H](other: SprayRoute5[D, E, F, G, H]) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
   def & [D, E, F, G, H, I](other: SprayRoute6[D, E, F, G, H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
+  def as[T <: Product](deserializer: Deserializer[(A, B, C), T]) = convert(deserializer)
 }
 
 /**
@@ -206,6 +223,7 @@ class SprayRoute4[A, B, C, D](filter: RouteFilter[(A, B, C, D)]) extends SprayRo
   def & [E, F, G](other: SprayRoute3[E, F, G]) = new SprayRoute7[A, B, C, D, E, F, G](and(other))
   def & [E, F, G, H](other: SprayRoute4[E, F, G, H]) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
   def & [E, F, G, H, I](other: SprayRoute5[E, F, G, H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
+  def as[T <: Product](deserializer: Deserializer[(A, B, C, D), T]) = convert(deserializer)
 }
 
 /**
@@ -219,6 +237,7 @@ class SprayRoute5[A, B, C, D, E](filter: RouteFilter[(A, B, C, D, E)]) extends S
   def & [F, G](other: SprayRoute2[F, G]) = new SprayRoute7[A, B, C, D, E, F, G](and(other))
   def & [F, G, H](other: SprayRoute3[F, G, H]) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
   def & [F, G, H, I](other: SprayRoute4[F, G, H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
+  def as[T <: Product](deserializer: Deserializer[(A, B, C, D, E), T]) = convert(deserializer)
 }
 
 /**
@@ -231,6 +250,7 @@ class SprayRoute6[A, B, C, D, E, F](filter: RouteFilter[(A, B, C, D, E, F)]) ext
   def & [G](other: SprayRoute1[G]) = new SprayRoute7[A, B, C, D, E, F, G](and(other))
   def & [G, H](other: SprayRoute2[G, H]) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
   def & [G, H, I](other: SprayRoute3[G, H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
+  def as[T <: Product](deserializer: Deserializer[(A, B, C, D, E, F), T]) = convert(deserializer)
 }
 
 /**
@@ -242,6 +262,7 @@ class SprayRoute7[A, B, C, D, E, F, G](filter: RouteFilter[(A, B, C, D, E, F, G)
   def & (other: SprayRoute0) = new SprayRoute7[A, B, C, D, E, F, G](and(other))
   def & [H](other: SprayRoute1[H]) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
   def & [H, I](other: SprayRoute2[H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
+  def as[T <: Product](deserializer: Deserializer[(A, B, C, D, E, F, G), T]) = convert(deserializer)
 }
 
 /**
@@ -252,6 +273,7 @@ class SprayRoute8[A, B, C, D, E, F, G, H](filter: RouteFilter[(A, B, C, D, E, F,
   def | (other: SprayRoute8[A, B, C, D, E, F, G, H]) = new SprayRoute8[A, B, C, D, E, F, G, H](or(other))
   def & (other: SprayRoute0) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
   def & [I](other: SprayRoute1[I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
+  def as[T <: Product](deserializer: Deserializer[(A, B, C, D, E, F, G, H), T]) = convert(deserializer)
 }
 
 /**
@@ -261,6 +283,7 @@ class SprayRoute9[A, B, C, D, E, F, G, H, I](filter: RouteFilter[(A, B, C, D, E,
   def apply(routing: (A, B, C, D, E, F, G, H, I) => Route) = fromRouting { t => routing(t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8, t._9) }
   def | (other: SprayRoute9[A, B, C, D, E, F, G, H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](or(other))
   def & (other: SprayRoute0) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
+  def as[T <: Product](deserializer: Deserializer[(A, B, C, D, E, F, G, H, I), T]) = convert(deserializer)
 }
 
 /**
