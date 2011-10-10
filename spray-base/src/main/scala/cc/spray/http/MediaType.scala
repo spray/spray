@@ -108,7 +108,7 @@ object MediaRanges extends ObjectRegistry[String, MediaRange] {
 }
 
 sealed abstract class MediaType extends MediaRange {
-  override val value = (mainType + '/' + subType).intern()
+  override val value = mainType + '/' + subType
   def mainType: String
   def subType: String
   def fileExtensions: Seq[String]
@@ -116,7 +116,7 @@ sealed abstract class MediaType extends MediaRange {
   override def matches(mediaType: MediaType) = this == mediaType
 
   override def equals(obj: Any) = obj match {
-    case x: MediaType => (this eq x) || (value eq x.value)
+    case x: MediaType => (this eq x) || (mainType eq x.mainType) && (subType eq x.subType)
     case _ => false
   }
   
@@ -155,6 +155,10 @@ object MediaTypes extends ObjectRegistry[String, MediaType] {
     override def isMessage = true
   }
   class MultipartMediaType(val subType: String, val boundary: Option[String]) extends MediaType {
+    override val value = boundary match {
+      case None       => mainType + '/' + subType
+      case _: Some[_] => mainType + '/' + subType + "; boundary=\"" + boundary.get + '"'
+    }
     def mainType = "multipart"
     def fileExtensions = Nil
     override def isMultipart = true

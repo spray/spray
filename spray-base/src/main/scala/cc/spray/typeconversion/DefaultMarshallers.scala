@@ -23,7 +23,7 @@ import HttpCharsets._
 import xml.NodeSeq
 import java.nio.CharBuffer
 
-trait DefaultMarshallers {
+trait DefaultMarshallers extends MultipartMarshallers {
 
   implicit val StringMarshaller = new MarshallerBase[String] {
     val canMarshalTo = ContentType(`text/plain`) :: Nil

@@ -90,7 +90,7 @@ trait MultipartUnmarshallers {
 
     def nameOf(part: BodyPart): String = {
       part.headers.mapFind {
-        case `Content-Disposition`(dispoType, parms) => parms.get("name")
+        case `Content-Disposition`("form-data", parms) => parms.get("name")
         case _ => None
       }.getOrElse(throw new RuntimeException("unnamed body part (no Content-Disposition header or no 'name' parameter)"))
     }

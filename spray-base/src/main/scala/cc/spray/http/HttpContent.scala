@@ -51,9 +51,9 @@ object HttpContent {
     def formField(fieldName: String): Either[DeserializationError, FormField] = {
       import DefaultUnmarshallers._
       content.as[FormData] match {
-        case Right(FormData(fields)) => Right {
+        case Right(formData) => Right {
           new UrlEncodedFormField {
-            val raw = fields.get(fieldName)
+            val raw = formData.fields.get(fieldName)
             def as[A: FormFieldConverter] = converter[A].urlEncodedFieldConverter match {
               case Some(conv) => conv(raw)
               case None => Left(UnsupportedContentType(FormDataUnmarshaller.canUnmarshalFrom))

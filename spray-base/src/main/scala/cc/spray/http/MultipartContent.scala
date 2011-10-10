@@ -15,7 +15,10 @@
  * limitations under the License.
  */
 
-package cc.spray.http
+package cc.spray
+package http
+
+import typeconversion._
 
 /**
  * Basic model for multipart content as defind in RFC 2046.
@@ -34,7 +37,9 @@ case class MultipartFormData(parts: Map[String, BodyPart])
 case class BodyPart(headers: List[HttpHeader], content: Option[HttpContent])
 
 object BodyPart {
-  def apply(headers: List[HttpHeader], content: HttpContent) = new BodyPart(headers, Some(content))
+  def apply[A :Marshaller](value: A): BodyPart = apply(value.toHttpContent)
+  def apply(content: HttpContent): BodyPart = apply(Nil, content)
+  def apply(headers: List[HttpHeader], content: HttpContent): BodyPart = new BodyPart(headers, Some(content))
 }
 
 /**

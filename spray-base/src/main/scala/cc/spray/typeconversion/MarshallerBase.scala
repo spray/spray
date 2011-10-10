@@ -20,7 +20,7 @@ package typeconversion
 import http._
 import utils._
 
-trait MarshallerBase[A] extends Marshaller[A] {
+abstract class MarshallerBase[A] extends Marshaller[A] {
 
   def apply(accept: ContentType => Option[ContentType]) = {
     canMarshalTo.mapFind(accept) match {

@@ -31,7 +31,7 @@ class MultipartUnmarshallersSpec extends Specification with DefaultUnmarshallers
         """|--XYZABC
            |--XYZABC--""".stripMargin).as[MultipartContent] mustEqual Right {
         MultipartContent(
-          Vector(
+          Seq(
             BodyPart(Nil,Some(HttpContent(ContentType(`text/plain`, Some(`US-ASCII`)), "")))
           )
         )
@@ -46,7 +46,7 @@ class MultipartUnmarshallersSpec extends Specification with DefaultUnmarshallers
            |test@there.com
            |-----""".stripMargin).as[MultipartContent] mustEqual Right {
         MultipartContent(
-          Vector(
+          Seq(
             BodyPart(
               List(
                 `Content-Type`(ContentType(`text/plain`, Some(`UTF-8`))),
@@ -71,7 +71,7 @@ class MultipartUnmarshallersSpec extends Specification with DefaultUnmarshallers
            |filecontent
            |--12345--""".stripMargin).as[MultipartContent] mustEqual Right {
         MultipartContent(
-          Vector(
+          Seq(
             BodyPart(Nil,
               Some(HttpContent(ContentType(`text/plain`, Some(`US-ASCII`)),
                 "first part, with a trailing linebreak\n"))
@@ -101,7 +101,13 @@ class MultipartUnmarshallersSpec extends Specification with DefaultUnmarshallers
            |
            |test@there.com
            |--XYZABC--""".stripMargin)
-      .as[MultipartFormData].right.get.parts("email").content.as[String] mustEqual Right("test@there.com")
+      .as[MultipartFormData] mustEqual Right {
+        MultipartFormData(
+          Map("email" -> BodyPart(
+            headers = List(`Content-Disposition`("form-data", Map("name" -> "email"))),
+            content = HttpContent(ContentType(`text/plain`,`US-ASCII`), "test@there.com")
+          )))
+      }
     )
     "correctly unmarshal 'multipart/form-data' content mixed with a file" in {
       HttpContent(ContentType(new `multipart/form-data`(Some("XYZABC"))),
