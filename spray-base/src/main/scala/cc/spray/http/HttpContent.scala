@@ -46,9 +46,9 @@ object HttpContent {
   implicit def pimpHttpContentWithAs2(c: Option[HttpContent]): HttpContentExtractor = new HttpContentExtractor(c)
 
   class HttpContentExtractor(content: Option[HttpContent]) {
-    def as[A](implicit unmarshaller: Unmarshaller[A]): Either[TypeConversionError, A] = unmarshaller(content)
+    def as[A](implicit unmarshaller: Unmarshaller[A]): Either[DeserializationError, A] = unmarshaller(content)
 
-    def formField(fieldName: String): Either[TypeConversionError, FormField] = {
+    def formField(fieldName: String): Either[DeserializationError, FormField] = {
       import DefaultUnmarshallers._
       content.as[FormData] match {
         case Right(FormData(fields)) => Right {
@@ -78,7 +78,7 @@ object HttpContent {
 }
 
 sealed trait FormField {
-  def as[A :FormFieldConverter]: Either[TypeConversionError, A]
+  def as[A :FormFieldConverter]: Either[DeserializationError, A]
 }
 
 trait UrlEncodedFormField extends FormField {

@@ -19,11 +19,11 @@ package typeconversion
 
 import http._
 
-trait TypeConverter[A, B] extends (A => Either[TypeConversionError, B])
+trait Deserializer[A, B] extends (A => Either[DeserializationError, B])
 
-object TypeConverter {
+object Deserializer {
   implicit def fromFunction2Converter[A, B](implicit f: A => B) = {
-    new TypeConverter[A, B] {
+    new Deserializer[A, B] {
       def apply(a: A) = {
         try {
           Right(f(a))
@@ -34,8 +34,8 @@ object TypeConverter {
     }
   }
 
-  implicit def fromConverter2OptionConverter[A, B](implicit converter: TypeConverter[A, B]) = {
-    new TypeConverter[Option[A], B] {
+  implicit def fromConverter2OptionConverter[A, B](implicit converter: Deserializer[A, B]) = {
+    new Deserializer[Option[A], B] {
       def apply(value: Option[A]) = value match {
         case Some(a) => converter(a)
         case None => Left(ContentExpected)
@@ -44,7 +44,7 @@ object TypeConverter {
   }
 }
 
-sealed trait TypeConversionError
-case object ContentExpected extends TypeConversionError
-case class MalformedContent(errorMessage: String) extends TypeConversionError
-case class UnsupportedContentType(supported: List[ContentTypeRange]) extends TypeConversionError
+sealed trait DeserializationError
+case object ContentExpected extends DeserializationError
+case class MalformedContent(errorMessage: String) extends DeserializationError
+case class UnsupportedContentType(supported: List[ContentTypeRange]) extends DeserializationError

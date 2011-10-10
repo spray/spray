@@ -20,14 +20,14 @@ import http._
 
 package object typeconversion {
 
-  type FromStringOptionConverter[A] = TypeConverter[Option[String], A]
-  type Unmarshaller[A] = TypeConverter[Option[HttpContent], A]
+  type FromStringOptionDeserializer[A] = Deserializer[Option[String], A]
+  type Unmarshaller[A] = Deserializer[Option[HttpContent], A]
   type ContentTypeSelector = ContentType => Option[ContentType]
   type Marshaller[A] = ContentTypeSelector => Marshalling[A]
 
   def marshaller[T](implicit m: Marshaller[T]) = m
   def unmarshaller[T](implicit um: Unmarshaller[T]) = um
-  def typeConverter[A, B](implicit converter: TypeConverter[A, B]) = converter
-  def fromStringOptionConverter[T](implicit converter: FromStringOptionConverter[T]) = converter
+  def deserializer[A, B](implicit converter: Deserializer[A, B]) = converter
+  def fromStringOptionDeserializer[T](implicit converter: FromStringOptionDeserializer[T]) = converter
 
 }

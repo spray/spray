@@ -18,20 +18,20 @@ package cc.spray
 package typeconversion
 
 trait FormFieldConverter[A] {
-  def urlEncodedFieldConverter: Option[FromStringOptionConverter[A]]
+  def urlEncodedFieldConverter: Option[FromStringOptionDeserializer[A]]
   def multipartFieldConverter: Option[Unmarshaller[A]]
 }
 
 object FormFieldConverter extends SingleModeFormFieldsConverters {
-  implicit def dualModeFormFieldConverter[A :FromStringOptionConverter :Unmarshaller] = new FormFieldConverter[A] {
-    val urlEncodedFieldConverter = Some(fromStringOptionConverter[A])
+  implicit def dualModeFormFieldConverter[A :FromStringOptionDeserializer :Unmarshaller] = new FormFieldConverter[A] {
+    val urlEncodedFieldConverter = Some(fromStringOptionDeserializer[A])
     val multipartFieldConverter = Some(unmarshaller[A])
   }
 }
 
 sealed abstract class SingleModeFormFieldsConverters {
-  implicit def urlEncodedFormFieldConverter[A :FromStringOptionConverter] = new FormFieldConverter[A] {
-    val urlEncodedFieldConverter = Some(fromStringOptionConverter[A])
+  implicit def urlEncodedFormFieldConverter[A :FromStringOptionDeserializer] = new FormFieldConverter[A] {
+    val urlEncodedFieldConverter = Some(fromStringOptionDeserializer[A])
     def multipartFieldConverter = None
   }
 

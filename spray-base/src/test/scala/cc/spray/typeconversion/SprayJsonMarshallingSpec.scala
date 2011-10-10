@@ -22,7 +22,7 @@ import http._
 import MediaTypes._
 import org.specs2.mutable.Specification
 
-class SprayJsonMarshallingSpec extends Specification with SprayJsonMarshalling {
+class SprayJsonMarshallingSpec extends Specification with SprayJsonSupport {
 
   case class Employee(fname: String, name: String, age: Int, id: Long, boardMember: Boolean) {
     require(!boardMember || age > 40, "Board members must be older than 40")
@@ -35,7 +35,7 @@ class SprayJsonMarshallingSpec extends Specification with SprayJsonMarshalling {
   val employeeA = Employee("Frank", "Smith", 42, 12345, false)
   val employeeAJson = PrettyPrinter(employeeA.toJson)
 
-  "The SprayJsonMarshalling" should {
+  "The SprayJsonSupport" should {
     "provide unmarshalling capability for case classes with an in-scope JsonFormat" in {
       HttpContent(`application/json`, employeeAJson).as[Employee] mustEqual
               Right(Employee("Frank", "Smith", 42, 12345, false))

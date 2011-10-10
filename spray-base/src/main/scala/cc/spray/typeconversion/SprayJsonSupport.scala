@@ -26,7 +26,7 @@ import MediaTypes._
  * Note that *spray-server* does not have an automatic dependency on *spray-json*. You'll need to provide the
  * appropriate *spray-json* artifacts yourself.
  */
-trait SprayJsonMarshalling {
+trait SprayJsonSupport {
 
   implicit def sprayJsonUnmarshaller[A :JsonReader] = new UnmarshallerBase[A] {
     val canUnmarshalFrom = ContentTypeRange(`application/json`) :: Nil
@@ -51,4 +51,4 @@ trait SprayJsonMarshalling {
   }
 }
 
-object SprayJsonMarshalling extends SprayJsonMarshalling
+object SprayJsonSupport extends SprayJsonSupport

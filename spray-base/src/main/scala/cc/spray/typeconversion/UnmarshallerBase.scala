@@ -19,7 +19,7 @@ package typeconversion
 
 import http._
 
-abstract class UnmarshallerBase[A] extends TypeConverter[HttpContent, A] {
+abstract class UnmarshallerBase[A] extends Deserializer[HttpContent, A] {
   val canUnmarshalFrom: List[ContentTypeRange]
 
   def apply(content: HttpContent) = {
@@ -27,13 +27,13 @@ abstract class UnmarshallerBase[A] extends TypeConverter[HttpContent, A] {
     else Left(UnsupportedContentType(canUnmarshalFrom))
   }
 
-  protected def unmarshal(content: HttpContent): Either[TypeConversionError, A]
+  protected def unmarshal(content: HttpContent): Either[DeserializationError, A]
 
   /**
    * Helper method for turning exceptions occuring during evaluation of the named parameter into
    * [[cc.spray.typeconversion.MalformedContent]] instances.
    */
-  protected def protect(f: => A): Either[TypeConversionError, A] = {
+  protected def protect(f: => A): Either[DeserializationError, A] = {
     try {
       Right(f)
     } catch {

@@ -144,9 +144,9 @@ private[spray] trait ParameterDirectives {
   implicit def fromString(name: String): ParameterMatcher[String] = new ParameterMatcher(name)
 }
 
-class ParameterMatcher[A :FromStringOptionConverter](val name: String) {
+class ParameterMatcher[A :FromStringOptionDeserializer](val name: String) {
   def apply(params: Map[String, String]): Either[Rejection, A] = {
-    fromStringOptionConverter[A].apply(params.get(name)).left.map {
+    fromStringOptionDeserializer[A].apply(params.get(name)).left.map {
       case ContentExpected => MissingQueryParamRejection(name)
       case MalformedContent(error) => MalformedQueryParamRejection(error, Some(name))
       case _: UnsupportedContentType => throw new IllegalStateException
@@ -154,8 +154,8 @@ class ParameterMatcher[A :FromStringOptionConverter](val name: String) {
   }
 
   def ? = new ParameterMatcher[Option[A]](name)(
-    new FromStringOptionConverter[Option[A]] {
-      def apply(s: Option[String]) = fromStringOptionConverter[A].apply(s) match {
+    new FromStringOptionDeserializer[Option[A]] {
+      def apply(s: Option[String]) = fromStringOptionDeserializer[A].apply(s) match {
         case Right(a) => Right(Some(a))
         case Left(ContentExpected) => Right(None)
         case Left(error) => Left(error)
@@ -163,18 +163,18 @@ class ParameterMatcher[A :FromStringOptionConverter](val name: String) {
     }
   )
   
-  def ? [B :FromStringOptionConverter](default: B) = new ParameterMatcher[B](name)(
-    new FromStringOptionConverter[B] {
-      def apply(s: Option[String]) = fromStringOptionConverter[B].apply(s).left.flatMap {
+  def ? [B :FromStringOptionDeserializer](default: B) = new ParameterMatcher[B](name)(
+    new FromStringOptionDeserializer[B] {
+      def apply(s: Option[String]) = fromStringOptionDeserializer[B].apply(s).left.flatMap {
         case ContentExpected => Right(default)
         case error => Left(error)
       }
     }
   )
   
-  def as[B :FromStringOptionConverter] = new ParameterMatcher[B](name)
+  def as[B :FromStringOptionDeserializer] = new ParameterMatcher[B](name)
   
-  def ! [B :FromStringOptionConverter](requiredValue: B): RequiredParameterMatcher = { paramsMap =>
-    fromStringOptionConverter[B].apply(paramsMap.get(name)) == Right(requiredValue)
+  def ! [B :FromStringOptionDeserializer](requiredValue: B): RequiredParameterMatcher = { paramsMap =>
+    fromStringOptionDeserializer[B].apply(paramsMap.get(name)) == Right(requiredValue)
   }
 }

@@ -17,13 +17,13 @@
 package cc.spray
 package typeconversion
 
-trait TypeConverters {
+trait FromStringDeserializers {
 
-  implicit val String2SymbolConverter = new TypeConverter[String, Symbol] {
+  implicit val String2SymbolConverter = new Deserializer[String, Symbol] {
     def apply(value: String) = Right(Symbol(value))
   }
 
-  implicit val String2IntConverter = new TypeConverter[String, Int] {
+  implicit val String2IntConverter = new Deserializer[String, Int] {
     def apply(value: String) = {
       try {
         Right(value.toInt)
@@ -33,7 +33,7 @@ trait TypeConverters {
     }
   }
 
-  object HexInt extends TypeConverter[String, Int] {
+  object HexInt extends Deserializer[String, Int] {
     def apply(value: String) = {
       try {
         Right(Integer.parseInt(value, 16))
@@ -44,7 +44,7 @@ trait TypeConverters {
     }
   }
 
-  implicit val String2LongConverter = new TypeConverter[String, Long] {
+  implicit val String2LongConverter = new Deserializer[String, Long] {
     def apply(value: String) = {
       try {
         Right(value.toLong)
@@ -54,7 +54,7 @@ trait TypeConverters {
     }
   }
 
-  object HexLong extends TypeConverter[String, Long] {
+  object HexLong extends Deserializer[String, Long] {
     def apply(value: String) = {
       try {
         Right(java.lang.Long.parseLong(value, 16))
@@ -65,7 +65,7 @@ trait TypeConverters {
     }
   }
 
-  implicit val String2DoubleConverter = new TypeConverter[String, Double] {
+  implicit val String2DoubleConverter = new Deserializer[String, Double] {
     def apply(value: String) = {
       try {
         Right(value.toDouble)
@@ -75,7 +75,7 @@ trait TypeConverters {
     }
   }
 
-  implicit val String2FloatConverter = new TypeConverter[String, Float] {
+  implicit val String2FloatConverter = new Deserializer[String, Float] {
     def apply(value: String) = {
       try {
         Right(value.toFloat)
@@ -85,7 +85,7 @@ trait TypeConverters {
     }
   }
 
-  implicit val String2ShortConverter = new TypeConverter[String, Short] {
+  implicit val String2ShortConverter = new Deserializer[String, Short] {
     def apply(value: String) = {
       try {
         Right(value.toShort)
@@ -95,7 +95,7 @@ trait TypeConverters {
     }
   }
 
-  implicit val String2ByteConverter = new TypeConverter[String, Byte] {
+  implicit val String2ByteConverter = new Deserializer[String, Byte] {
     def apply(value: String) = {
       try {
         Right(value.toByte)
@@ -105,7 +105,7 @@ trait TypeConverters {
     }
   }
 
-  implicit val String2BooleanConverter = new TypeConverter[String, Boolean] {
+  implicit val String2BooleanConverter = new Deserializer[String, Boolean] {
     def apply(value: String) = value.toLowerCase match {
       case "true" | "yes" | "on" => Right(true)
       case "false" | "no" | "off" => Right(false)
@@ -114,7 +114,7 @@ trait TypeConverters {
   }
 }
 
-object TypeConverters extends TypeConverters
+object FromStringDeserializers extends FromStringDeserializers
 
 
 
