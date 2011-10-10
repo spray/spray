@@ -17,6 +17,7 @@
 package cc.spray
 package directives
 
+import typeconversion._
 import java.lang.IllegalStateException
 
 private[spray] trait ParameterDirectives {

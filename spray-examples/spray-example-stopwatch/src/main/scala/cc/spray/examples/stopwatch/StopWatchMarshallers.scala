@@ -2,7 +2,7 @@ package cc.spray.examples.stopwatch
 
 import cc.spray._
 import http._
-import marshalling._
+import typeconversion._
 import MediaTypes._
 import xml.XML
 import collection.Map

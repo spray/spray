@@ -17,6 +17,7 @@
 package cc.spray
 
 import http._
+import utils._
 import HttpHeaders._
 
 /**

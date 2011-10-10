@@ -14,17 +14,14 @@
  * limitations under the License.
  */
 
-package cc
+package cc.spray
 
-import spray.http._
+import akka.config.Config._
 
-package object spray {
-
-  type Route = RequestContext => Unit
-  type ContentTypeResolver = (String, Option[HttpCharset]) => ContentType
-  type RouteFilter[T <: Product] = RequestContext => FilterResult[T]
-  type GeneralAuthenticator[U] = RequestContext => Either[Rejection, U]
-  type UserPassAuthenticator[U] = Option[(String, String)] => Option[U]
-  type CacheKeyer = RequestContext => Option[Any]
-  type RequiredParameterMatcher = Map[String, String] => Boolean
+object SprayServerSettings {
+  lazy val RootActorId         = config.getString("spray.root-actor-id", "spray-root-service")
+  lazy val TimeoutActorId      = config.getString("spray.timeout-actor-id", "spray-root-service")
+  lazy val AsyncTimeout        = config.getInt("spray.request-timeout", 1000)
+  lazy val RootPath            = config.getString("spray.root-path")
+  lazy val CompactJsonPrinting = config.getBool("spray.compact-json-printing", false)
 }

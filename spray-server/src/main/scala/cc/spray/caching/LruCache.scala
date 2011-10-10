@@ -17,6 +17,7 @@
 package cc.spray
 package caching
 
+import utils._
 import akka.util.duration._
 import akka.util.Duration
 import collection.mutable.LinkedHashMap

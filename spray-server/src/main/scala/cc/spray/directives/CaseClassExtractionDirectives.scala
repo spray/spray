@@ -17,6 +17,7 @@
 package cc.spray
 package directives
 
+import typeconversion._
 import scala.Either
 
 private[spray] trait CaseClassExtractionDirectives {

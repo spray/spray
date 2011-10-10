@@ -22,7 +22,7 @@ import http._
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import akka.util.Duration
 import akka.util.duration._
-import utils.{Log, Logging, NoLog}
+import utils._
 
 /**
  * Mix this trait into the class or trait containing your route and service tests.

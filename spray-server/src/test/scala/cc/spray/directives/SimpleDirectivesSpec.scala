@@ -23,7 +23,7 @@ import HttpMethods._
 import HttpHeaders._
 import MediaTypes._
 import test.AbstractSprayTest
-import marshalling.DefaultUnmarshallers._
+import typeconversion.DefaultUnmarshallers._
 
 class SimpleDirectivesSpec extends AbstractSprayTest {
 

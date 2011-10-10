@@ -17,7 +17,7 @@
 package cc.spray
 package directives
 
-import utils.Product0
+import utils._
 
 private[spray] trait BasicDirectives {
 

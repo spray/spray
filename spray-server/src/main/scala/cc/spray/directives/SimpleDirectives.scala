@@ -17,6 +17,7 @@
 package cc.spray
 package directives
 
+import utils._
 import http._
 import HttpMethods._
 import util.matching.Regex

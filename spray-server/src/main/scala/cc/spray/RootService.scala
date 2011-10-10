@@ -34,7 +34,7 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
     case services => handleMultipleServices(firstService :: services)
   }
 
-  protected val initialUnmatchedPath: String => String = SpraySettings.RootPath match {
+  protected val initialUnmatchedPath: String => String = SprayServerSettings.RootPath match {
     case Some(rootPath) => { path =>
       if (path.startsWith(rootPath)) {
         path.substring(rootPath.length)
@@ -46,7 +46,7 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
     case None => identity
   }
 
-  self.id = SpraySettings.RootActorId
+  self.id = SprayServerSettings.RootActorId
 
   override def preStart() {
     log.debug("Starting spray RootService ...")

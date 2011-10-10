@@ -33,17 +33,18 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     val mimepull   = "org.jvnet" % "mimepull" % "1.6" % "compile" withSources()
     
     // provided
-    val sprayJson          = "cc.spray.json" %% "spray-json" % "1.0.1" % "provided" withSources()
-    val servlet30          = "org.glassfish" % "javax.servlet" % "3.0" % "provided" withSources()
-    val jettyContinuations = "org.eclipse.jetty" % "jetty-continuation" % "7.5.1.v20110908" % "provided" withSources()
-    val tomcat6            = "org.atmosphere" % "atmosphere-compat-tomcat" % "0.7.1" % "provided" withSources()
-    val sprayCan           = "cc.spray.can" %% "spray-can" % "0.9.0" % "provided" withSources()
+    val slf4j_provided        = "org.slf4j" % "slf4j-api" % "1.6.1" % "provided" withSources()
+    val sprayJson_provided    = "cc.spray.json" %% "spray-json" % "1.0.1" % "provided" withSources()
+    val servlet30_provided    = "org.glassfish" % "javax.servlet" % "3.0" % "provided" withSources()
+    val jettyAsync_provided   = "org.eclipse.jetty" % "jetty-continuation" % "7.5.1.v20110908" % "provided" withSources()
+    val tomcat6Async_provided = "org.atmosphere" % "atmosphere-compat-tomcat" % "0.7.1" % "provided" withSources()
+    val sprayCan_provided     = "cc.spray.can" %% "spray-can" % "0.9.0" % "provided" withSources()
 
     // test
-    val specs2 = "org.specs2" %% "specs2" % "1.6.1" % "test" withSources()
+    val specs2_test = "org.specs2" %% "specs2" % "1.6.1" % "test" withSources()
     
     // only for examples
-    val slf4j   = "org.slf4j" % "slf4j-api" % "1.6.1" % "compile" withSources()
+    val slf4j   = "org.slf4j" % "slf4j-api" % "1.6.1" % "provided" withSources()
     val logback = "ch.qos.logback" % "logback-classic" % "0.9.29" % "runtime"
     val pegdown = "org.pegdown" % "pegdown" % "1.1.0" % "compile" withSources()
     val JETTY_VERSION = "8.0.0.M3"
@@ -99,7 +100,7 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   // -------------------------------------------------------------------------------------------------------------------
   // Subprojects
   // -------------------------------------------------------------------------------------------------------------------
-  lazy val httpProject     = project("spray-http", "spray-http", new HttpProject(_))
+  lazy val baseProject     = project("spray-base", "spray-base", new BaseProject(_))
   lazy val serverProject   = project("spray-server", "spray-server", new ServerProject(_))
   lazy val clientProject   = project("spray-client", "spray-client", new ClientProject(_))
   lazy val examplesProject = project("spray-examples", "spray-examples", new ExamplesProject(_))
@@ -124,29 +125,27 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
     override def packageToPublishActions = super.packageToPublishActions ++ Seq(packageDocs, packageSrc)
   }
   
-  class HttpProject(info: ProjectInfo) extends ModuleProject(info) {
+  class BaseProject(info: ProjectInfo) extends ModuleProject(info) with AkkaProject {
+    override val akkaActor = akkaModule("actor") % "provided" withSources()
     val parboiledC = Deps.parboiledC
     val parboiledS = Deps.parboiledS
-    val specs2      = Deps.specs2
+    val mimepull   = Deps.mimepull
+    val slf4j      = Deps.slf4j_provided
+    val sprayJson  = Deps.sprayJson_provided
+    val specs2     = Deps.specs2_test
   }
   
   class ServerProject(info: ProjectInfo) extends ModuleProject(info) with AkkaProject {
-    override val akkaActor = akkaModule("actor") % "provided" withSources()
-    val http               = httpProject
-    val mimepull           = Deps.mimepull
-    val sprayJson          = Deps.sprayJson
-    val servlet30          = Deps.servlet30
-    val jettyContinuations = Deps.jettyContinuations
-    val tomcat6            = Deps.tomcat6 
-    val sprayCan           = Deps.sprayCan
-    val specs2             = Deps.specs2
+    val base                = baseProject
+    val servlet30           = Deps.servlet30_provided
+    val jettyAsync_provided = Deps.jettyAsync_provided
+    val tomcat6             = Deps.tomcat6Async_provided
+    val sprayCan            = Deps.sprayCan_provided
   }
   
   class ClientProject(info: ProjectInfo) extends ModuleProject(info) with AkkaProject {
-    override val akkaActor = akkaModule("actor") % "provided" withSources()
-    val http               = httpProject
+    val base               = baseProject
     val ahc                = Deps.asyncHttp 
-    val specs2             = Deps.specs2
   }
   
   class ExamplesProject(info: ProjectInfo) extends ParentProject(info) {
@@ -165,11 +164,10 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   }
   
   abstract class SprayExampleProject(info: ProjectInfo) extends DefaultWebProject(info) with AkkaProject {
-    override val akkaActor = akkaModule("actor") withSources() // always have the sources around
+    override val akkaActor = akkaModule("actor") withSources()
     val akkaSlf4j          = akkaModule("slf4j") withSources()
-    val http               = httpProject
+    val base               = baseProject
     val server             = serverProject
-    val specs2             = Deps.specs2
 
     override def compileOptions = super.compileOptions ++ scalaCompileSettings.map(CompileOption)
     override def testFrameworks = super.testFrameworks ++ Seq(specs2Framework)
@@ -182,7 +180,6 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   class CalculatorProject(info: ProjectInfo) extends SprayExampleProject(info) {
     val jettyServer = Deps.jettyServer
     val jettyWebApp = Deps.jettyWebApp
-    val slf4j       = Deps.slf4j
     val logback     = Deps.logback
   }
 
@@ -195,20 +192,17 @@ class Project(info: ProjectInfo) extends DefaultProject(info) with AkkaBaseProje
   class SimpleProject(info: ProjectInfo) extends SprayExampleProject(info) {
     val jettyServer = Deps.jettyServer
     val jettyWebApp = Deps.jettyWebApp
-    val slf4j       = Deps.slf4j
     val logback     = Deps.logback
   }
 
   class SprayCanProject(info: ProjectInfo) extends SprayExampleProject(info) {
-    val sprayCan = Deps.sprayCan
-    val slf4j    = Deps.slf4j
+    val sprayCan = Deps.sprayCan_provided
     val logback  = Deps.logback
   }
 
   class StopWatchProject(info: ProjectInfo) extends SprayExampleProject(info) {
     val jettyServer = Deps.jettyServer
     val jettyWebApp = Deps.jettyWebApp
-    val slf4j       = Deps.slf4j
     val logback     = Deps.logback
   }
 }

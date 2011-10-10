@@ -20,7 +20,7 @@ import http._
 import StatusCodes._
 import HttpHeaders._
 import MediaTypes._
-import marshalling.{CantMarshal, MarshalWith}
+import typeconversion._
 
 /**
  * Immutable object encapsulating the context of an [[cc.spray.http.HttpRequest]]

@@ -14,17 +14,11 @@
  * limitations under the License.
  */
 
-package cc
+package cc.spray
+package typeconversion
 
-import spray.http._
+import http._
 
-package object spray {
-
-  type Route = RequestContext => Unit
-  type ContentTypeResolver = (String, Option[HttpCharset]) => ContentType
-  type RouteFilter[T <: Product] = RequestContext => FilterResult[T]
-  type GeneralAuthenticator[U] = RequestContext => Either[Rejection, U]
-  type UserPassAuthenticator[U] = Option[(String, String)] => Option[U]
-  type CacheKeyer = RequestContext => Option[Any]
-  type RequiredParameterMatcher = Map[String, String] => Boolean
-}
+sealed trait Marshalling[-A]
+case class CantMarshal(onlyTo: List[ContentType]) extends Marshalling[Any]
+case class MarshalWith[-A](f: A => HttpContent) extends Marshalling[A]

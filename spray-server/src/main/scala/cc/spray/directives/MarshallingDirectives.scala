@@ -17,7 +17,7 @@
 package cc.spray
 package directives
 
-import marshalling._
+import typeconversion._
 
 private[spray] trait MarshallingDirectives extends DefaultMarshallers with DefaultUnmarshallers {
   this: BasicDirectives =>

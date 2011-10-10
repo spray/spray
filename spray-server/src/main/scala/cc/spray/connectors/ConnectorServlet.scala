@@ -29,14 +29,14 @@ import java.util.concurrent.{TimeUnit, CountDownLatch}
 import java.io.{IOException, InputStream}
 
 private[connectors] abstract class ConnectorServlet(containerName: String) extends HttpServlet with Logging {
-  lazy val rootService = actor(SpraySettings.RootActorId)
-  lazy val timeoutActor = actor(SpraySettings.TimeoutActorId)
+  lazy val rootService = actor(SprayServerSettings.RootActorId)
+  lazy val timeoutActor = actor(SprayServerSettings.TimeoutActorId)
   val EmptyByteArray = new Array[Byte](0)
   var timeout: Int = _
 
   override def init() {
     log.info("Initializing %s <=> Spray Connector", containerName)
-    timeout = SpraySettings.AsyncTimeout
+    timeout = SprayServerSettings.AsyncTimeout
     log.info("Async timeout for all requests is %s ms", timeout)
   }
 

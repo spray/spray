@@ -14,17 +14,23 @@
  * limitations under the License.
  */
 
-package cc
+package cc.spray
+package typeconversion
 
-import spray.http._
+import http._
+import utils._
 
-package object spray {
+trait MarshallerBase[A] extends Marshaller[A] {
 
-  type Route = RequestContext => Unit
-  type ContentTypeResolver = (String, Option[HttpCharset]) => ContentType
-  type RouteFilter[T <: Product] = RequestContext => FilterResult[T]
-  type GeneralAuthenticator[U] = RequestContext => Either[Rejection, U]
-  type UserPassAuthenticator[U] = Option[(String, String)] => Option[U]
-  type CacheKeyer = RequestContext => Option[Any]
-  type RequiredParameterMatcher = Map[String, String] => Boolean
-}
+  def apply(accept: ContentType => Option[ContentType]) = {
+    canMarshalTo.mapFind(accept) match {
+      case Some(contentType) => MarshalWith(marshal(_, contentType))
+      case None => CantMarshal(canMarshalTo)
+    }
+  }
+
+  def canMarshalTo: List[ContentType]
+
+  def marshal(value: A, contentType: ContentType): HttpContent
+  
+} 
