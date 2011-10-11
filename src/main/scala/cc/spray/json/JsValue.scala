@@ -110,7 +110,11 @@ case class JsNumber(value: BigDecimal) extends JsValue
 object JsNumber {
   def apply(n: Int) = new JsNumber(BigDecimal(n))
   def apply(n: Long) = new JsNumber(BigDecimal(n))
-  def apply(n: Double) = new JsNumber(BigDecimal(n))
+  def apply(n: Double) = n match {
+    case n if n.isNaN      => JsNull
+    case n if n.isInfinity => JsNull
+    case _                 => new JsNumber(BigDecimal(n))
+  }
   def apply(n: BigInt) = new JsNumber(BigDecimal(n))
   def apply(n: String) = new JsNumber(BigDecimal(n))
 }

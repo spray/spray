@@ -26,6 +26,15 @@ class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
     "convert a Float to a JsNumber" in {
       4.2f.toJson mustEqual JsNumber(4.2f)
     }
+    "convert a Float.NaN to a JsNull" in {
+      Float.NaN.toJson mustEqual JsNull
+    }
+    "convert a Float.PositiveInfinity to a JsNull" in {
+      Float.PositiveInfinity.toJson mustEqual JsNull
+    }
+    "convert a Float.NegativeInfinity to a JsNull" in {
+      Float.NegativeInfinity.toJson mustEqual JsNull
+    }
     "convert a JsNumber to a Float" in {
       JsNumber(4.2f).fromJson[Float] mustEqual 4.2f 
     }
@@ -34,6 +43,15 @@ class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
   "The DoubleJsonFormat" should {
     "convert a Double to a JsNumber" in {
       4.2.toJson mustEqual JsNumber(4.2)
+    }
+    "convert a Double.NaN to a JsNull" in {
+      Double.NaN.toJson mustEqual JsNull
+    }
+    "convert a Double.PositiveInfinity to a JsNull" in {
+      Double.PositiveInfinity.toJson mustEqual JsNull
+    }
+    "convert a Double.NegativeInfinity to a JsNull" in {
+      Double.NegativeInfinity.toJson mustEqual JsNull
     }
     "convert a JsNumber to a Double" in {
       JsNumber(4.2).fromJson[Double] mustEqual 4.2 
