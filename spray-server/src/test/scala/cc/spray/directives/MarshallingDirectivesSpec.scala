@@ -23,7 +23,7 @@ import HttpMethods._
 import MediaTypes._
 import HttpCharsets._
 import test.AbstractSprayTest
-import marshalling.{UnmarshallerBase, MarshallerBase}
+import typeconversion._
 import xml.{XML, NodeSeq}
 import java.io.ByteArrayInputStream
 
@@ -56,25 +56,22 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
     "return an UnsupportedRequestContentTypeRejection if no matching unmarshaller is in scope" in {
       test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/css`), "<p>cool</p>")))) {
         content(as[NodeSeq]) { _ => completeOk }
-      }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(NodeSeqUnmarshaller.canUnmarshalFrom))
+      }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection("Expected 'text/xml' or 'text/html' or 'application/xhtml+xml'"))
     }
-  }
-  
-  "The 'optionalContentAs' directive" should {
-    "extract an object from the requests HttpContent using the in-scope Unmarshaller" in {
+    "extract an Option[A] from the requests HttpContent using the in-scope Unmarshaller" in {
       test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/xml`), "<p>cool</p>")))) {
-        optionalContent(as[NodeSeq]) { optXml => _.complete(optXml.get) }
+        content(as[Option[NodeSeq]]) { optXml => _.complete(optXml.get) }
       }.response.content.as[NodeSeq] mustEqual Right(<p>cool</p>) 
     }
-    "extract None if the request has no entity" in {
+    "extract an Option[A] as None if the request has no entity" in {
       test(HttpRequest(PUT)) {
-        optionalContent(as[NodeSeq]) { echoComplete }
+        content(as[Option[NodeSeq]]) { echoComplete }
       }.response.content.as[String] mustEqual Right("None")
     }
-    "return an UnsupportedRequestContentTypeRejection if no matching unmarshaller is in scope" in {
+    "return an UnsupportedRequestContentTypeRejection if no matching unmarshaller is in scope (for Option[A]s)" in {
       test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/css`), "<p>cool</p>")))) {
-        optionalContent(as[NodeSeq]) { _ => completeOk }
-      }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(NodeSeqUnmarshaller.canUnmarshalFrom))
+        content(as[Option[NodeSeq]]) { _ => completeOk }
+      }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection("Expected 'text/xml' or 'text/html' or 'application/xhtml+xml'"))
     }
   }
   
@@ -114,7 +111,7 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
       test(HttpRequest(PUT, headers = List(Accept(`text/xml`)),
         content = Some(HttpContent(ContentType(`text/xml`, `UTF-8`), "<int>42</int>")))) {
         handleWith(times2)
-      }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(IntUnmarshaller.canUnmarshalFrom))
+      }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection("Expected 'text/xml; charset=ISO-8859-2' or 'text/html' or 'application/xhtml+xml'"))
     }
     "result in an UnacceptedResponseContentTypeRejection rejection if there is no marshaller supporting the requests Accept-Charset header" in {
       test(HttpRequest(PUT, headers = List(Accept(`text/xml`), `Accept-Charset`(`UTF-16`)),

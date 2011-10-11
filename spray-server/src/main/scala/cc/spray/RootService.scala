@@ -19,7 +19,7 @@ package cc.spray
 import http._
 import akka.actor.{Actor, ActorRef}
 import utils.{PostStart, Logging}
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.{AtomicInteger, AtomicBoolean}
 
 /**
  * The RootService actor is the central entrypoint for HTTP requests entering the ''spray'' infrastructure.
@@ -34,7 +34,7 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
     case services => handleMultipleServices(firstService :: services)
   }
 
-  protected val initialUnmatchedPath: String => String = SpraySettings.RootPath match {
+  protected val initialUnmatchedPath: String => String = SprayServerSettings.RootPath match {
     case Some(rootPath) => { path =>
       if (path.startsWith(rootPath)) {
         path.substring(rootPath.length)
@@ -46,7 +46,7 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
     case None => identity
   }
 
-  self.id = SpraySettings.RootActorId
+  self.id = SprayServerSettings.RootActorId
 
   override def preStart() {
     log.debug("Starting spray RootService ...")
@@ -93,14 +93,15 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
   protected def handleMultipleServices(services: List[ActorRef])(context: RequestContext) {
     log.debug("Received %s with %s attached services, dispatching...", context.request, services.size)
     val responded = new AtomicBoolean(false)
+    val rejected = new AtomicInteger(services.size)
     val newResponder: RoutingResult => Unit = {
-      case x: Respond => {
+      case x: Respond =>
         if (responded.compareAndSet(false, true)) {
           context.responder(x)
         } else  log.warn("Received a second response for request '%s':\n\n%s\n\nIgnoring the additional response...",
           context.request, x)
-      }
-      case x: Reject => // ignore
+      case x: Reject =>
+        if (rejected.decrementAndGet() == 0) context.responder(Respond(noServiceResponse(context.request)))
     }
     val outContext = context.copy(responder = newResponder, unmatchedPath = initialUnmatchedPath(context.request.path))
     services.foreach(_ ! outContext)

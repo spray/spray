@@ -17,8 +17,7 @@
 package cc.spray
 package directives
 
-import marshalling._
-import cc.spray.RequestEntityExpectedRejection
+import typeconversion._
 
 private[spray] trait MarshallingDirectives extends DefaultMarshallers with DefaultUnmarshallers {
   this: BasicDirectives =>
@@ -31,26 +30,20 @@ private[spray] trait MarshallingDirectives extends DefaultMarshallers with Defau
    */
   def content[A](unmarshaller: Unmarshaller[A]) = filter1 { ctx =>
     ctx.request.content.as(unmarshaller) match {
-      case Right(a) => Pass.withTransform(a)(_.cancelRejections[UnsupportedRequestContentTypeRejection])
-      case Left(rejection) => Reject(rejection)
-    }
-  }
-
-  /**
-   * Returns a Route that unmarshalls the optional request content using the given unmarshaller
-   * and passes it as an argument to the inner Route building function.
-   * If the unmarshaller cannot unmarshal the request content the request is rejected with the [[cc.spray.Rejection]]
-   * produced by the unmarshaller.
-   */
-  def optionalContent[A](unmarshaller: Unmarshaller[A]) = filter1 { ctx =>
-    ctx.request.content.as(unmarshaller) match {
-      case Right(a) => Pass.withTransform(Some(a)) {
-        _.cancelRejections { r =>
-          r.isInstanceOf[UnsupportedRequestContentTypeRejection] || r == RequestEntityExpectedRejection
+      case Right(a) => Pass.withTransform(a) {
+        _.cancelRejections {
+          case RequestEntityExpectedRejection => true
+          case _: UnsupportedContentType => true
+          case _ => false
         }
       }
-      case Left(RequestEntityExpectedRejection) => Pass(None)
-      case Left(rejection) => Reject(rejection)
+      case Left(problem) => Reject {
+        problem match {
+          case ContentExpected => RequestEntityExpectedRejection
+          case UnsupportedContentType(supported) => UnsupportedRequestContentTypeRejection(supported)
+          case MalformedContent(error) => MalformedRequestContentRejection(error)
+        }
+      }
     }
   }
 
@@ -67,7 +60,7 @@ private[spray] trait MarshallingDirectives extends DefaultMarshallers with Defau
   def produce[A](marshaller: Marshaller[A]) = filter1 { ctx =>
     marshaller(ctx.request.acceptableContentType) match {
       case MarshalWith(converter) => Pass.withTransform[A => Unit](a => ctx.complete(converter(a))) {
-        _.cancelRejections[UnacceptedResponseContentTypeRejection]
+        _.cancelRejectionsOfType[UnacceptedResponseContentTypeRejection]
       }
       case CantMarshal(onlyTo) => Reject(UnacceptedResponseContentTypeRejection(onlyTo))
     }

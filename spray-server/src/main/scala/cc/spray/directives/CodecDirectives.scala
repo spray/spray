@@ -31,12 +31,12 @@ private[spray] trait CodecDirectives {
    */
   def decodeRequest(decoder: Decoder) = filter { ctx =>
     if (ctx.request.content.isEmpty) {
-      Pass.withTransform(_.cancelRejections[UnsupportedRequestEncodingRejection])
+      Pass.withTransform(_.cancelRejectionsOfType[UnsupportedRequestEncodingRejection])
     } else if (ctx.request.encoding == decoder.encoding) {
       try {
         val decodedRequest = decoder.decode(ctx.request) 
         Pass.withTransform { _
-           .cancelRejections[UnsupportedRequestEncodingRejection]
+           .cancelRejectionsOfType[UnsupportedRequestEncodingRejection]
            .withRequestTransformed(_ => decodedRequest)
         }
       } catch {

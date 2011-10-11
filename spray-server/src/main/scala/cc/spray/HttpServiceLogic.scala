@@ -66,13 +66,14 @@ trait HttpServiceLogic extends ErrorHandling {
       case AuthenticationFailedRejection(realm) :: _ => HttpResponse(Forbidden, "The supplied authentication is either invalid or not authorized to access this resource")
       case AuthorizationFailedRejection :: _ => HttpResponse(Forbidden, "The supplied authentication is either invalid or not authorized to access this resource")
       case CorruptRequestEncodingRejection(msg) :: _ => HttpResponse(BadRequest, "The requests encoding is corrupt:\n" + msg)
-      case MalformedQueryParamRejection(msg, Some(name)) :: _ => HttpResponse(BadRequest, "The query parameter '" + name + "' was malformed:\n" + msg)
-      case MalformedQueryParamRejection(msg, None) :: _ => HttpResponse(BadRequest, "One or more query parameters were illegal:\n" + msg)
+      case MalformedFormFieldRejection(msg, name) :: _ => HttpResponse(BadRequest, "The form field '" + name + "' was malformed:\n" + msg)
+      case MalformedQueryParamRejection(msg, name) :: _ => HttpResponse(BadRequest, "The query parameter '" + name + "' was malformed:\n" + msg)
       case MalformedRequestContentRejection(msg) :: _ => HttpResponse(BadRequest, "The request content was malformed:\n" + msg)
       case (_: MethodRejection) :: _ =>
         // TODO: add Allow header (required by the spec)
         val methods = rejections.collect { case MethodRejection(method) => method }
         HttpResponse(MethodNotAllowed, "HTTP method not allowed, supported methods: " + methods.mkString(", "))
+      case MissingFormFieldRejection(fieldName) :: _ => HttpResponse(BadRequest, "Request is missing required form field '" + fieldName + '\'')
       case MissingQueryParamRejection(paramName) :: _ => HttpResponse(NotFound, "Request is missing required query parameter '" + paramName + '\'')
       case RequestEntityExpectedRejection :: _ => HttpResponse(BadRequest, "Request entity expected but not supplied")
       case (_: UnacceptedResponseContentTypeRejection) :: _ =>
@@ -80,13 +81,13 @@ trait HttpServiceLogic extends ErrorHandling {
         HttpResponse(NotAcceptable, "Resource representation is only available with these Content-Types:\n" + supported.map(_.value).mkString("\n"))
       case (_: UnacceptedResponseEncodingRejection) :: _ =>
         val supported = rejections.collect { case UnacceptedResponseEncodingRejection(supported) => supported }
-        HttpResponse(NotAcceptable, "Resource representation is only available with these Content-Encodings:\n" + supported.mkString("\n"))
+        HttpResponse(NotAcceptable, "Resource representation is only available with these Content-Encodings:\n" + supported.map(_.value).mkString("\n"))
       case (_: UnsupportedRequestContentTypeRejection) :: _ =>
-        val supported = rejections.flatMap { case UnsupportedRequestContentTypeRejection(supported) => supported }
-        HttpResponse(UnsupportedMediaType, "The requests Content-Type must be one the following:\n" + supported.map(_.value).mkString("\n"))
+        val supported = rejections.collect { case UnsupportedRequestContentTypeRejection(supported) => supported }
+        HttpResponse(UnsupportedMediaType, "There was a problem with the requests Content-Type:\n" + supported.mkString(" or "))
       case (_: UnsupportedRequestEncodingRejection) :: _ =>
         val supported = rejections.collect { case UnsupportedRequestEncodingRejection(supported) => supported }
-        HttpResponse(BadRequest, "The requests Content-Encoding must be one the following:\n" + supported.mkString("\n"))
+        HttpResponse(BadRequest, "The requests Content-Encoding must be one the following:\n" + supported.map(_.value).mkString("\n"))
       case ValidationRejection(msg) :: _ => HttpResponse(BadRequest, msg)
       case _ => HttpResponse(InternalServerError, "Unknown request rejection: " + rejections.head)
     }

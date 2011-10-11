@@ -20,7 +20,7 @@ import http._
 import StatusCodes._
 import HttpHeaders._
 import MediaTypes._
-import marshalling.{CantMarshal, MarshalWith}
+import typeconversion._
 
 /**
  * Immutable object encapsulating the context of an [[cc.spray.http.HttpRequest]]
@@ -98,7 +98,7 @@ case class RequestContext(
    * Returns a copy of this context that cancels all rejections of type R with
    * a [[cc.spray.RejectionRejection]]. 
    */
-  def cancelRejections[R <: Rejection :ClassManifest]: RequestContext = {
+  def cancelRejectionsOfType[R <: Rejection :ClassManifest]: RequestContext = {
     val erasure = classManifest.erasure
     cancelRejections(erasure.isInstance(_))
   }

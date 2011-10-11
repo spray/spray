@@ -19,6 +19,7 @@ package connectors
 
 import javax.servlet.{AsyncEvent, AsyncListener}
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * The spray connector servlet for all servlet 3.0 containers.
@@ -29,28 +30,34 @@ class Servlet30ConnectorServlet extends ConnectorServlet("Servlet API 3.0") {
     requestContext(req, resp, responder(req, resp)).foreach(rootService ! _)
   }
 
-  def responder(req: HttpServletRequest, resp: HttpServletResponse)(context: RequestContext): RoutingResult => Unit = {
+  def responder(req: HttpServletRequest, resp: HttpServletResponse): RoutingResult => Unit = {
+    val alreadyResponded = new AtomicBoolean(false)
     val asyncContext = req.startAsync()
     asyncContext.setTimeout(timeout)
     asyncContext.addListener {
       new AsyncListener {
         def onTimeout(event: AsyncEvent) {
-          log.error("Timeout of %s", context.request)
-          timeoutActor ! Timeout(context)
+          if (alreadyResponded.compareAndSet(false, true)) {
+            handleTimeout(req, resp) {
+              asyncContext.complete()
+            }
+          } // else the request was completed just after the container decided to trigger a timeout
         }
         def onError(event: AsyncEvent) {
           event.getThrowable match {
-            case null => log.error("Unspecified Error during async processing of %s", context.request)
-            case ex => log.error(ex, "Error during async processing of %s", context.request)
+            case null => log.error("Unspecified Error during async processing of %s request to '%s'", req.getMethod, rebuildUri(req))
+            case ex => log.error(ex, "Error during async processing of %s request to '%s'", req.getMethod, rebuildUri(req))
           }
         }
         def onStartAsync(event: AsyncEvent) {}
         def onComplete(event: AsyncEvent) {}
       }
     }
-    responder { response =>
-      respond(resp, response)
-      asyncContext.complete()
+    responderFrom { response =>
+      if (alreadyResponded.compareAndSet(false, true)) {
+        respond(resp, response)
+        asyncContext.complete()
+      } else log.warn("Received late response to a request, which already timed out, dropping response...")
     }
   }
 }

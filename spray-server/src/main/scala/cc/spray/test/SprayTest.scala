@@ -22,7 +22,7 @@ import http._
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import akka.util.Duration
 import akka.util.duration._
-import utils.{Logging, NoLog}
+import utils._
 
 /**
  * Mix this trait into the class or trait containing your route and service tests.
@@ -48,17 +48,17 @@ trait SprayTest {
     def handled: Boolean = rr.isInstanceOf[Respond]
     def response: HttpResponse = rr match {
       case Respond(response) => response
-      case Reject(_) => doFail("Request was rejected")
+      case Reject(rejections) => doFail("Request was rejected with " + rejections)
     }
     def rawRejections: Set[Rejection] = rr match {
-      case Respond(_) => doFail("Request was not rejected")
+      case Respond(response) => doFail("Request was not rejected, response was " + response)
       case Reject(rejections) => rejections 
     }
     def rejections: Set[Rejection] = Rejections.applyCancellations(rawRejections)   
   }
 
   trait ServiceTest extends HttpServiceLogic with Logging {
-    override lazy val log = NoLog // in the tests we don't log
+    override lazy val log: Log = NoLog // in the tests we don't log
     val customRejectionHandler = emptyPartialFunc
   }
 
@@ -68,7 +68,7 @@ trait SprayTest {
    * similar to this:
    * {{{
    * implicit def customWrapRootRoute(rootRoute: Route): ServiceTest = new CustomHttpServiceLogic with ServiceTest {
-   *   val route = routeRoute
+   *   val route = rootRoute
    * }
    * }}}
    */

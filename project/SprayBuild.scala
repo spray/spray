@@ -138,18 +138,19 @@ object BuildSettings {
 object Dependencies {
   val AKKA_VERSION      = "1.2"
   val JETTY_VERSION     = "8.0.0.RC0"
-  val PARBOILED_VERSION = "1.0.1"
+  val PARBOILED_VERSION = "1.0.2"
 
   // compile
   val akkaActor  = "se.scalablesolutions.akka" % "akka-actor" % AKKA_VERSION
   val parboiledC = "org.parboiled" % "parboiled-core" % PARBOILED_VERSION % "compile"
   val parboiledS = "org.parboiled" % "parboiled-scala" % PARBOILED_VERSION % "compile"
   val asyncHttp  = "com.ning" % "async-http-client" % "1.6.4" % "compile"
+  val mimepull   = "org.jvnet" % "mimepull" % "1.6" % "compile"
 
   // provided
-  val sprayJson          = "cc.spray.json" % "spray-json_2.9.0-1" % "1.0.0" % "compile"
+  val sprayJson          = "cc.spray.json" %% "spray-json" % "1.0.1" % "provided"
   val servlet30          = "org.glassfish" % "javax.servlet" % "3.0" % "provided"
-  val jettyContinuations = "org.eclipse.jetty" % "jetty-continuation" % "7.2.0.v20101020" % "provided"
+  val jettyContinuations = "org.eclipse.jetty" % "jetty-continuation" % "7.5.1.v20110908" % "provided"
   val tomcat6            = "org.atmosphere" % "atmosphere-compat-tomcat" % "0.7.1" % "provided"
   val sprayCan           = "cc.spray.can" %% "spray-can" % "0.9.0" % "provided"
 
@@ -160,7 +161,7 @@ object Dependencies {
   val akkaSlf4j   = "se.scalablesolutions.akka" % "akka-slf4j" % AKKA_VERSION
   val slf4j       = "org.slf4j" % "slf4j-api" % "1.6.1" % "compile"
   val logback     = "ch.qos.logback" % "logback-classic" % "0.9.29" % "runtime"
-  val pegdown     = "org.pegdown" % "pegdown" % "1.0.2" % "compile"
+  val pegdown     = "org.pegdown" % "pegdown" % "1.1.0" % "compile"
   val jettyServer = "org.eclipse.jetty" % "jetty-server" % JETTY_VERSION % "test"
   val jettyWebApp = "org.eclipse.jetty" % "jetty-webapp" % JETTY_VERSION % "test"
 
@@ -179,21 +180,25 @@ object SprayBuild extends Build {
     "spray",
     file("."),
     settings = buildSettings ++ disablePublishing
-  ) aggregate (http, server, client, examples)
+  ) aggregate (base, server, client, examples)
 
 
   // -------------------------------------------------------------------------------------------------------------------
   // Spray-Sub-Projects
   // -------------------------------------------------------------------------------------------------------------------
 
-  // Module "spray-http"
-  lazy val http = Project(
-    "spray-http",
-    file("spray-http"),
+  // Module "spray-base"
+  lazy val base = Project(
+    "spray-base",
+    file("spray-base"),
     settings = moduleSettings ++ Seq(
       libraryDependencies ++= Seq(
+        Dependencies.akkaActor,
         Dependencies.parboiledC, 
         Dependencies.parboiledS,
+        Dependencies.mimepull,
+        Dependencies.slf4j,
+        Dependencies.sprayJson,
         Dependencies.specs2
       )
     )
@@ -206,15 +211,14 @@ object SprayBuild extends Build {
     settings = moduleSettings ++ Seq(
       libraryDependencies ++= Seq(
         Dependencies.akkaActor,
-        Dependencies.sprayJson,
         Dependencies.servlet30,
         Dependencies.jettyContinuations,
         Dependencies.tomcat6,
-        Dependencies.specs2,
-        Dependencies.sprayCan
+        Dependencies.sprayCan,
+        Dependencies.specs2
       )
     )
-  ) dependsOn (http)
+  ) dependsOn (base)
 
   // Module "spray-client"
   lazy val client = Project(
@@ -227,7 +231,7 @@ object SprayBuild extends Build {
         Dependencies.specs2
       )
     )
-  ) dependsOn (http)
+  ) dependsOn (base)
 
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -248,7 +252,7 @@ object SprayBuild extends Build {
     "spray-examples",
     file("spray-examples"),
     settings = exampleSettings
-  ) aggregate (calculator, sprayCan, markdownserver, stopwatch)
+  ) aggregate (calculator, sprayCan, simple, markdownserver, stopwatch)
 
   // Module for "calculator" example
   lazy val calculator = Project(
@@ -262,7 +266,7 @@ object SprayBuild extends Build {
         Dependencies.logback
       )
     )
-  ) dependsOn (http, server)
+  ) dependsOn (base, server)
 
   // Module for "spray-can" example
   lazy val sprayCan = Project(
@@ -271,11 +275,10 @@ object SprayBuild extends Build {
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= exampleDeps ++ Seq(
         Dependencies.sprayCan,
-        Dependencies.slf4j,
         Dependencies.logback
       )
     )
-  ) dependsOn (http, server)
+  ) dependsOn (base, server)
 
   // Module for "markdownserver" example
   lazy val markdownserver = Project(
@@ -286,11 +289,10 @@ object SprayBuild extends Build {
         Dependencies.pegdown,
         Dependencies.jettyServer,
         Dependencies.jettyWebApp,
-        Dependencies.jettyPlugin,
-        Dependencies.logback
+        Dependencies.jettyPlugin
       )
     )
-  ) dependsOn (http, server)
+  ) dependsOn (base, server)
 
   // Module for "stopwatch" example
   lazy val stopwatch = Project(
@@ -304,6 +306,20 @@ object SprayBuild extends Build {
         Dependencies.logback
       )
     )
-  ) dependsOn (http, server)
+  ) dependsOn (base, server)
+
+  // Module for "simple" example
+  lazy val simple = Project(
+    "spray-example-simple",
+    file("spray-examples/spray-example-simple"),
+    settings = exampleSettings ++ Seq(
+      libraryDependencies ++= exampleDeps ++ Seq(
+        Dependencies.jettyServer,
+        Dependencies.jettyWebApp,
+        Dependencies.jettyPlugin,
+        Dependencies.logback
+      )
+    )
+  ) dependsOn (base, server)
 }
 

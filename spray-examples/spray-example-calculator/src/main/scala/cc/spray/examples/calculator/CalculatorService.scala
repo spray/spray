@@ -2,8 +2,6 @@ package cc.spray
 package examples.calculator
 
 import directives.DoubleNumber
-import java.util.concurrent.TimeUnit
-import akka.actor.{Scheduler, Actor}
 
 trait CalculatorService extends Directives with CustomMarshallers {
   

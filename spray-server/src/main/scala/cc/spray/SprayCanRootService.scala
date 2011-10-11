@@ -24,7 +24,7 @@ import utils.ActorHelpers
 class SprayCanRootService(firstService: ActorRef, moreServices: ActorRef*)
         extends RootService(firstService, moreServices: _*) with SprayCanSupport {
 
-  lazy val timeoutActor = ActorHelpers.actor(SpraySettings.TimeoutActorId)
+  lazy val timeoutActor = ActorHelpers.actor(SprayServerSettings.TimeoutActorId)
 
   protected override def receive = {
     case context: can.RequestContext => {

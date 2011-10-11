@@ -17,8 +17,8 @@
 package cc.spray
 package directives
 
+import utils._
 import util.matching.Regex
-import utils.Product0
 import annotation.tailrec
 
 private[spray] trait PathDirectives {
