@@ -42,6 +42,7 @@ trait BasicFormats {
     def write(x: Float) = JsNumber(x)
     def read(value: JsValue) = value match {
       case JsNumber(x) => x.floatValue
+      case JsNull      => Float.NaN
       case _ => throw new DeserializationException("Float expected")
     }
   }
@@ -50,6 +51,7 @@ trait BasicFormats {
     def write(x: Double) = JsNumber(x)
     def read(value: JsValue) = value match {
       case JsNumber(x) => x.doubleValue
+      case JsNull      => Double.NaN
       case _ => throw new DeserializationException("Double expected")
     }
   }
