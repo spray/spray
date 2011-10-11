@@ -113,28 +113,29 @@ private[spray] trait FormFieldDirectives {
     formFields(a, b, c, d, e, f, g, h) & formField(i)
   }
 
-  implicit def fromSymbol(name: Symbol)(implicit converter: FormFieldConverter[String]) = fromString(name.name)
-  implicit def fromString(name: String)(implicit converter: FormFieldConverter[String]) = new FieldMatcher(name)
+  implicit def symbol2FieldMatcher(name: Symbol)(implicit ev: FormFieldConverter[String]) = new FieldMatcher[String](name.name)
+  implicit def string2FieldMatcher(name: String)(implicit ev: FormFieldConverter[String]) = new FieldMatcher[String](name)
+  implicit def receptacle2FieldMatcher[A :FormFieldConverter](receptacle: ExtractionReceptacle[A]): FieldMatcher[A] = {
+    receptacle match {
+      case NameTypeReceptacle(name) => new FieldMatcher[A](name)
+      case NameTypeDefaultReceptable(name, default) => new FieldMatcher[A](name)(
+        new FormFieldConverter[A] {
+          lazy val urlEncodedFieldConverter: Option[FromStringOptionDeserializer[A]] =
+            formFieldConverter[A].urlEncodedFieldConverter.map(transform)
+          lazy val multipartFieldConverter: Option[Unmarshaller[A]] =
+            formFieldConverter[A].multipartFieldConverter.map(transform)
+          def transform[S](ds: Deserializer[S, A]) = new Deserializer[S, A] {
+            def apply(source: S) = ds(source).left.flatMap {
+              case ContentExpected => Right(default)
+              case error => Left(error)
+            }
+          }
+        }
+      )
+    }
+  }
 }
 
-class FieldMatcher[A :FormFieldConverter](val name: String) extends Unmarshaller[A] {
-
+class FieldMatcher[+A :FormFieldConverter](val name: String) extends Unmarshaller[A] {
   def apply(content: Option[HttpContent]) = content.formField(name).right.flatMap(_.as[A])
-
-  def ? = as[Option[A]]
-
-  def as[B :FormFieldConverter] = new FieldMatcher[B](name)
-
-  def ? [B](default: B)(implicit convB: FormFieldConverter[B]) = new FieldMatcher[B](name)(
-    new FormFieldConverter[B] {
-      lazy val urlEncodedFieldConverter = convB.urlEncodedFieldConverter.map(transform)
-      lazy val multipartFieldConverter = convB.multipartFieldConverter.map(transform)
-      def transform[S](ds: Deserializer[S, B]) = new Deserializer[S, B] {
-        def apply(source: S) = ds(source).left.flatMap {
-          case ContentExpected => Right(default)
-          case error => Left(error)
-        }
-      }
-    }
-  )
 }

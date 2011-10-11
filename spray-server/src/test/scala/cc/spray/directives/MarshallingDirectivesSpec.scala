@@ -56,7 +56,7 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
     "return an UnsupportedRequestContentTypeRejection if no matching unmarshaller is in scope" in {
       test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/css`), "<p>cool</p>")))) {
         content(as[NodeSeq]) { _ => completeOk }
-      }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(NodeSeqUnmarshaller.canUnmarshalFrom))
+      }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection("Expected 'text/xml' or 'text/html' or 'application/xhtml+xml'"))
     }
     "extract an Option[A] from the requests HttpContent using the in-scope Unmarshaller" in {
       test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/xml`), "<p>cool</p>")))) {
@@ -71,7 +71,7 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
     "return an UnsupportedRequestContentTypeRejection if no matching unmarshaller is in scope (for Option[A]s)" in {
       test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/css`), "<p>cool</p>")))) {
         content(as[Option[NodeSeq]]) { _ => completeOk }
-      }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(NodeSeqUnmarshaller.canUnmarshalFrom))
+      }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection("Expected 'text/xml' or 'text/html' or 'application/xhtml+xml'"))
     }
   }
   
@@ -111,7 +111,7 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
       test(HttpRequest(PUT, headers = List(Accept(`text/xml`)),
         content = Some(HttpContent(ContentType(`text/xml`, `UTF-8`), "<int>42</int>")))) {
         handleWith(times2)
-      }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(IntUnmarshaller.canUnmarshalFrom))
+      }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection("Expected 'text/xml; charset=ISO-8859-2' or 'text/html' or 'application/xhtml+xml'"))
     }
     "result in an UnacceptedResponseContentTypeRejection rejection if there is no marshaller supporting the requests Accept-Charset header" in {
       test(HttpRequest(PUT, headers = List(Accept(`text/xml`), `Accept-Charset`(`UTF-16`)),

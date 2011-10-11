@@ -82,8 +82,8 @@ trait HttpServiceLogic extends ErrorHandling {
         val supported = rejections.collect { case UnacceptedResponseEncodingRejection(supported) => supported }
         HttpResponse(NotAcceptable, "Resource representation is only available with these Content-Encodings:\n" + supported.map(_.value).mkString("\n"))
       case (_: UnsupportedRequestContentTypeRejection) :: _ =>
-        val supported = rejections.flatMap { case UnsupportedRequestContentTypeRejection(supported) => supported }
-        HttpResponse(UnsupportedMediaType, "The requests Content-Type must be one the following:\n" + supported.map(_.value).mkString("\n"))
+        val supported = rejections.collect { case UnsupportedRequestContentTypeRejection(supported) => supported }
+        HttpResponse(UnsupportedMediaType, "There was a problem with the requests Content-Type:\n" + supported.mkString(" or "))
       case (_: UnsupportedRequestEncodingRejection) :: _ =>
         val supported = rejections.collect { case UnsupportedRequestEncodingRejection(supported) => supported }
         HttpResponse(BadRequest, "The requests Content-Encoding must be one the following:\n" + supported.map(_.value).mkString("\n"))

@@ -75,14 +75,6 @@ trait DefaultUnmarshallers extends MultipartUnmarshallers {
       }
     }
   }
-
-  implicit def optionUnmarshaller[A :Unmarshaller] = new Unmarshaller[Option[A]] {
-    def apply(httpContent: Option[HttpContent]) = httpContent match {
-      case x: Some[HttpContent] => unmarshaller[A].apply(x).right.map(Some(_))
-      case None => Right(None)
-    }
-  }
-
 }
 
 object DefaultUnmarshallers extends DefaultUnmarshallers

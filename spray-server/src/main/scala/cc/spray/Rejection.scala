@@ -59,7 +59,7 @@ case class MalformedFormFieldRejection(errorMsg: String, fieldName: Option[Strin
  * Rejection created by unmarshallers.
  * Signals that the request was rejected because the requests content-type is unsupported.
  */
-case class UnsupportedRequestContentTypeRejection(supported: Seq[ContentTypeRange]) extends Rejection
+case class UnsupportedRequestContentTypeRejection(errorMsg: String) extends Rejection
 
 /**
  * Rejection created by decoding filters.

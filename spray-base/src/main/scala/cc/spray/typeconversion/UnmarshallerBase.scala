@@ -24,7 +24,7 @@ abstract class UnmarshallerBase[A] extends Deserializer[HttpContent, A] {
 
   def apply(content: HttpContent) = {
     if (canUnmarshalFrom.exists(_.matches(content.contentType))) unmarshal(content)
-    else Left(UnsupportedContentType(canUnmarshalFrom))
+    else Left(UnsupportedContentType(canUnmarshalFrom.map(_.value).mkString("Expected '", "' or '", "'")))
   }
 
   protected def unmarshal(content: HttpContent): Either[DeserializationError, A]

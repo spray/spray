@@ -17,11 +17,9 @@
 package cc.spray
 package typeconversion
 
-import http._
-
 trait Deserializer[A, B] extends (A => Either[DeserializationError, B])
 
-object Deserializer extends CaseClassDeserializers {
+object Deserializer extends DeserializerLowerPriorityImplicits with CaseClassDeserializers {
   implicit def fromFunction2Converter[A, B](implicit f: A => B) = {
     new Deserializer[A, B] {
       def apply(a: A) = {
@@ -30,15 +28,6 @@ object Deserializer extends CaseClassDeserializers {
         } catch {
           case ex => Left(MalformedContent(ex.toString))
         }
-      }
-    }
-  }
-
-  implicit def liftToSourceOption[A, B](implicit converter: Deserializer[A, B]) = {
-    new Deserializer[Option[A], B] {
-      def apply(value: Option[A]) = value match {
-        case Some(a) => converter(a)
-        case None => Left(ContentExpected)
       }
     }
   }
@@ -54,7 +43,18 @@ object Deserializer extends CaseClassDeserializers {
   }
 }
 
+private[typeconversion] abstract class DeserializerLowerPriorityImplicits {
+  implicit def liftToSourceOption[A, B](implicit converter: Deserializer[A, B]) = {
+    new Deserializer[Option[A], B] {
+      def apply(value: Option[A]) = value match {
+        case Some(a) => converter(a)
+        case None => Left(ContentExpected)
+      }
+    }
+  }
+}
+
 sealed trait DeserializationError
 case object ContentExpected extends DeserializationError
 case class MalformedContent(errorMessage: String) extends DeserializationError
-case class UnsupportedContentType(supported: List[ContentTypeRange]) extends DeserializationError
+case class UnsupportedContentType(errorMessage: String) extends DeserializationError

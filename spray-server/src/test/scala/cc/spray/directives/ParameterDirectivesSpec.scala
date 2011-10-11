@@ -23,45 +23,72 @@ import test.AbstractSprayTest
 
 class ParameterDirectivesSpec extends AbstractSprayTest {
 
-  "The 'parameter' extraction directive" should {
+  "when used with 'as[Int]' the parameter directive" should {
+    "extract parameter values as Int" in {
+      test(HttpRequest(uri = "/?amount=123")) {
+        parameter('amount.as[Int]) { echoComplete }
+      }.response.content.as[String] mustEqual Right("123")
+    }
+    "cause a MalformedQueryParamRejection on illegal Int values" in {
+      test(HttpRequest(uri = "/?amount=1x3")) {
+        parameter('amount.as[Int]) { echoComplete }
+      }.rejections mustEqual Set(MalformedQueryParamRejection("'1x3' is not a valid 32-bit integer value", Some("amount")))
+    }
+    "supply typed default values" in {
+      test(HttpRequest(uri = "/")) {
+        parameter('amount ? 45) { echoComplete }
+      }.response.content.as[String] mustEqual Right("45")
+    }
+    "create typed optional parameters that" in {
+      "extract Some(value) when present" in {
+        test(HttpRequest(uri = "/?amount=12")) {
+          parameter("amount".as[Int]?) { echoComplete }
+        }.response.content.as[String] mustEqual Right("Some(12)")
+      }
+      "extract None when not present" in {
+        test(HttpRequest(uri = "/")) {
+          parameter("amount".as[Int]?) { echoComplete }
+        }.response.content.as[String] mustEqual Right("None")
+      }
+      "cause a MalformedQueryParamRejection on illegal Int values" in {
+        test(HttpRequest(uri = "/?amount=x")) {
+          parameter("amount".as[Int]?) { echoComplete }
+        }.rejections mustEqual Set(MalformedQueryParamRejection("'x' is not a valid 32-bit integer value", Some("amount")))
+      }
+    }
+  }
+
+  "The 'parameters' extraction directive" should {
     "extract the value of given required parameters" in {
-      test(HttpRequest(uri = "/person?name=Parsons&FirstName=Ellen")) {
-        path("person") {
-          parameters("name", 'FirstName) { (name, firstName) =>
-            _.complete(firstName + name)
-          }
+      test(HttpRequest(uri = "/?name=Parsons&FirstName=Ellen")) {
+        parameters("name", 'FirstName) { (name, firstName) =>
+          _.complete(firstName + name)
         }
       }.response.content.as[String] mustEqual Right("EllenParsons")
     }
     "ignore additional parameters" in {
-      test(HttpRequest(uri = "/person?name=Parsons&FirstName=Ellen&age=29")) {
-        path("person") {
-          parameters("name", 'FirstName) { (name, firstName) =>
-            _.complete(firstName + name)
-          }
+      test(HttpRequest(uri = "/?name=Parsons&FirstName=Ellen&age=29")) {
+        parameters("name", 'FirstName) { (name, firstName) =>
+          _.complete(firstName + name)
         }
       }.response.content.as[String] mustEqual Right("EllenParsons")
     }
     "reject the request with a MissingQueryParamRejection if a required parameters is missing" in {
-      test(HttpRequest(uri = "/person?name=Parsons&sex=female")) {
-        path("person") {
-          parameters('name, 'FirstName, 'age) { (name, firstName, age) =>
-            completeOk
-          }
+      test(HttpRequest(uri = "/?name=Parsons&sex=female")) {
+        parameters('name, 'FirstName, 'age) { (name, firstName, age) =>
+          completeOk
         }
       }.rejections mustEqual Set(MissingQueryParamRejection("FirstName"))
     }
     "supply the default value if an optional parameter is missing" in {
-      test(HttpRequest(uri = "/person?name=Parsons&FirstName=Ellen")) {
-        path("person") {
-          parameters("name"?, 'FirstName, 'age ? "29", 'eyes?) { (name, firstName, age, eyes) =>
-            _.complete(firstName + name + age + eyes)
-          }
+      test(HttpRequest(uri = "/?name=Parsons&FirstName=Ellen")) {
+        parameters("name"?, 'FirstName, 'age ? "29", 'eyes?) { (name, firstName, age, eyes) =>
+          _.complete(firstName + name + age + eyes)
         }
       }.response.content.as[String] mustEqual Right("EllenSome(Parsons)29None")
     }
   }
-  
+
   "The 'parameter' requirement directive" should {
     "block requests that do not contain the required parameter" in {
       test(HttpRequest(uri = "/person?age=19")) { 
@@ -75,9 +102,7 @@ class ParameterDirectivesSpec extends AbstractSprayTest {
     }
     "let requests pass that contain the required parameter with its required value" in {
       test(HttpRequest(uri = "/person?nose=large&eyes=blue")) {
-        path("person") {
-          parameter('nose ! "large") { completeOk }
-        }
+        parameter('nose ! "large") { completeOk }
       }.response mustEqual Ok
     }
     "be useable for method tunneling" in {

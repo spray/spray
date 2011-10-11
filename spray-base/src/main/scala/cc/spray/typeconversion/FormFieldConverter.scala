@@ -22,20 +22,14 @@ trait FormFieldConverter[A] {
   def multipartFieldConverter: Option[Unmarshaller[A]]
 }
 
-object FormFieldConverter extends SingleModeFormFieldsConverters {
+object FormFieldConverter extends FormFieldConverterLowerPriorityImplicits {
   implicit def dualModeFormFieldConverter[A :FromStringOptionDeserializer :Unmarshaller] = new FormFieldConverter[A] {
     lazy val urlEncodedFieldConverter = Some(fromStringOptionDeserializer[A])
     lazy val multipartFieldConverter = Some(unmarshaller[A])
   }
-  implicit def liftToTargetOption[A](implicit ffc: FormFieldConverter[A]) = {
-    new FormFieldConverter[Option[A]] {
-      lazy val urlEncodedFieldConverter = ffc.urlEncodedFieldConverter.map(Deserializer.liftToTargetOption(_))
-      lazy val multipartFieldConverter = ffc.multipartFieldConverter.map(Deserializer.liftToTargetOption(_))
-    }
-  }
 }
 
-sealed abstract class SingleModeFormFieldsConverters {
+private[typeconversion] abstract class FormFieldConverterLowerPriorityImplicits {
   implicit def urlEncodedFormFieldConverter[A :FromStringOptionDeserializer] = new FormFieldConverter[A] {
     lazy val urlEncodedFieldConverter = Some(fromStringOptionDeserializer[A])
     def multipartFieldConverter = None
@@ -44,6 +38,13 @@ sealed abstract class SingleModeFormFieldsConverters {
   implicit def multiPartFormFieldConverter[A :Unmarshaller] = new FormFieldConverter[A] {
     def urlEncodedFieldConverter = None
     lazy val multipartFieldConverter = Some(unmarshaller[A])
+  }
+
+  implicit def liftToTargetOption[A](implicit ffc: FormFieldConverter[A]) = {
+    new FormFieldConverter[Option[A]] {
+      lazy val urlEncodedFieldConverter = ffc.urlEncodedFieldConverter.map(Deserializer.liftToTargetOption(_))
+      lazy val multipartFieldConverter = ffc.multipartFieldConverter.map(Deserializer.liftToTargetOption(_))
+    }
   }
 }
 

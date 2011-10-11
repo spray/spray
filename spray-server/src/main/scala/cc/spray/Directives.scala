@@ -36,5 +36,6 @@ trait Directives
         with SecurityDirectives
         with SimpleDirectives
         with FromStringDeserializers
+        with SuffixReceptaclePimps
 
 object Directives extends Directives

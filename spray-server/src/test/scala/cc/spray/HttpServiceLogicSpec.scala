@@ -148,8 +148,8 @@ class HttpServiceLogicSpec extends AbstractSprayTest {
     "respond with UnsupportedMediaType for requests resulting in UnsupportedRequestContentTypeRejection" in {
       testService(HttpRequest(POST, content = Some(HttpContent(`application/pdf`, "...PDF...")))) {
         content(as[NodeSeq]) { _ => completeOk }
-      }.response mustEqual HttpResponse(UnsupportedMediaType, "The requests Content-Type must be one the following:\n" +
-              "text/xml\ntext/html\napplication/xhtml+xml")
+      }.response mustEqual HttpResponse(UnsupportedMediaType, "There was a problem with the requests Content-Type:\n" +
+              "Expected 'text/xml' or 'text/html' or 'application/xhtml+xml'")
     }
     "respond with BadRequest for requests resulting in UnsupportedRequestContentTypeRejection" in {
       testService(HttpRequest(content = Some(HttpContent(`text/plain`, "Hello")))) {

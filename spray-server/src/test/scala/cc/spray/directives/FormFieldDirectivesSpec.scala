@@ -27,40 +27,43 @@ class FormFieldDirectivesSpec extends AbstractSprayTest with Directives {
   val multipartForm = MultipartFormData(Map("firstName" -> BodyPart("Mike"), "age" -> BodyPart(<int>42</int>)))
 
   "The 'formFields' extraction directive" should {
-    "extract the value of required www-urlencoded form fields" in {
+    "properly extract the value of www-urlencoded form fields" in {
       test(HttpRequest(content = Some(urlEncodedForm.toHttpContent))) {
-        formFields('firstName, "age", 'sex?) { (firstName, age, sex) =>
-          _.complete(firstName + name + sex)
+        formFields('firstName, "age".as[Int], 'sex?, "VIP" ? false) { (firstName, age, sex, vip) =>
+          _.complete(firstName + age + sex + vip)
         }
-      }.response.content.as[String] mustEqual Right("EllenParsons")
+      }.response.content.as[String] mustEqual Right("Mike42Nonefalse")
     }
-    /*"ignore additional parameters" in {
-      test(HttpRequest(uri = "/person?name=Parsons&FirstName=Ellen&age=29")) {
-        path("person") {
-          parameters("name", 'FirstName) { (name, firstName) =>
-            _.complete(firstName + name)
-          }
+    "properly extract the value of multipart form fields" in {
+      test(HttpRequest(content = Some(multipartForm.toHttpContent))) {
+        formFields('firstName, "age", 'sex?, "VIP" ? (<b>yes</b>:xml.NodeSeq)) { (firstName, age, sex, vip) =>
+          _.complete(firstName + age + sex + vip)
         }
-      }.response.content.as[String] mustEqual Right("EllenParsons")
+      }.response.content.as[String] mustEqual Right("Mike<int>42</int>None<b>yes</b>")
     }
-    "reject the request with a MissingQueryParamRejection if a required parameters is missing" in {
-      test(HttpRequest(uri = "/person?name=Parsons&sex=female")) {
-        path("person") {
-          parameters('name, 'FirstName, 'age) { (name, firstName, age) =>
-            completeOk
-          }
+    "reject the request with a MissingFormFieldRejection if a required form field is missing" in {
+      test(HttpRequest(content = Some(urlEncodedForm.toHttpContent))) {
+        formFields('firstName, "age", 'sex, "VIP" ? false) { (firstName, age, sex, vip) =>
+          _.complete(firstName + age + sex + vip)
         }
-      }.rejections mustEqual Set(MissingQueryParamRejection("FirstName"))
+      }.rejections mustEqual Set(MissingFormFieldRejection("sex"))
     }
-    "supply the default value if an optional parameter is missing" in {
-      test(HttpRequest(uri = "/person?name=Parsons&FirstName=Ellen")) {
-        path("person") {
-          parameters("name"?, 'FirstName, 'age ? "29", 'eyes?) { (name, firstName, age, eyes) =>
-            _.complete(firstName + name + age + eyes)
-          }
+    "create a proper error message if only a multipart unmarshaller is available for a www-urlencoded field" in {
+      test(HttpRequest(content = Some(urlEncodedForm.toHttpContent))) {
+        formFields('firstName, "age", 'sex?, "VIP" ? (<b>yes</b>:xml.NodeSeq)) { (firstName, age, sex, vip) =>
+          _.complete(firstName + age + sex + vip)
         }
-      }.response.content.as[String] mustEqual Right("EllenSome(Parsons)29None")
-    }*/
+      }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(
+        "Field 'VIP' can only be read from 'application/x-www-form-urlencoded' form content"))
+    }
+    "create a proper error message if only a urlencoded deserializer is available for a multipart field" in {
+      test(HttpRequest(content = Some(multipartForm.toHttpContent))) {
+        formFields('firstName, "age", 'sex?, "VIP" ? false) { (firstName, age, sex, vip) =>
+          _.complete(firstName + age + sex + vip)
+        }
+      }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(
+        "Field 'VIP' can only be read from 'multipart/form-data' form content"))
+    }
   }
 
 }
