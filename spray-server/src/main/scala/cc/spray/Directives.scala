@@ -28,6 +28,7 @@ trait Directives
         with CodecDirectives
         with DetachDirectives
         with FileAndResourceDirectives
+        with FormFieldDirectives
         with MarshallingDirectives
         with MiscDirectives
         with ParameterDirectives

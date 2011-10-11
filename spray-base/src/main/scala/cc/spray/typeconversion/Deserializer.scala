@@ -34,11 +34,21 @@ object Deserializer extends CaseClassDeserializers {
     }
   }
 
-  implicit def fromConverter2OptionConverter[A, B](implicit converter: Deserializer[A, B]) = {
+  implicit def liftToSourceOption[A, B](implicit converter: Deserializer[A, B]) = {
     new Deserializer[Option[A], B] {
       def apply(value: Option[A]) = value match {
         case Some(a) => converter(a)
         case None => Left(ContentExpected)
+      }
+    }
+  }
+
+  implicit def liftToTargetOption[A, B](implicit converter: Deserializer[A, B]) = {
+    new Deserializer[A, Option[B]] {
+      def apply(value: A) = converter(value) match {
+        case Right(a) => Right(Some(a))
+        case Left(ContentExpected) => Right(None)
+        case Left(error) => Left(error)
       }
     }
   }

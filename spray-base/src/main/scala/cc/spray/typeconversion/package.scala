@@ -27,8 +27,9 @@ package object typeconversion {
 
   def marshaller[T](implicit m: Marshaller[T]) = m
   def unmarshaller[T](implicit um: Unmarshaller[T]) = um
-  def deserializer[A, B](implicit converter: Deserializer[A, B]) = converter
-  def fromStringOptionDeserializer[T](implicit converter: FromStringOptionDeserializer[T]) = converter
+  def deserializer[A, B](implicit ds: Deserializer[A, B]) = ds
+  def fromStringOptionDeserializer[T](implicit ds: FromStringOptionDeserializer[T]) = ds
+  def formFieldConverter[T](implicit ffc: FormFieldConverter[T]) = ffc
 
   implicit def pimpAnyWithToHttpContent[A :Marshaller](obj: A) = new ToHttpContentPimp(obj)
 

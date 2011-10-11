@@ -140,7 +140,6 @@ private[spray] trait ParameterDirectives {
   }
 
   implicit def fromSymbol(name: Symbol): ParameterMatcher[String] = fromString(name.name)
-  
   implicit def fromString(name: String): ParameterMatcher[String] = new ParameterMatcher(name)
 }
 
