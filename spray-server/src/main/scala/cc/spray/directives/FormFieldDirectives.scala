@@ -34,7 +34,7 @@ private[spray] trait FormFieldDirectives {
     fieldMatcher(ctx.request.content) match {
       case Right(value) => Pass(value)
       case Left(ContentExpected) => Reject(MissingFormFieldRejection(FieldName))
-      case Left(MalformedContent(errorMsg)) => Reject(MalformedFormFieldRejection(errorMsg, Some(FieldName)))
+      case Left(MalformedContent(errorMsg)) => Reject(MalformedFormFieldRejection(errorMsg, FieldName))
       case Left(UnsupportedContentType(supported)) => Reject(UnsupportedRequestContentTypeRejection(supported))
     }
   }
@@ -136,6 +136,6 @@ private[spray] trait FormFieldDirectives {
   }
 }
 
-class FieldMatcher[+A :FormFieldConverter](val name: String) extends Unmarshaller[A] {
+class FieldMatcher[A :FormFieldConverter](val name: String) extends Unmarshaller[A] {
   def apply(content: Option[HttpContent]) = content.formField(name).right.flatMap(_.as[A])
 }

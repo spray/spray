@@ -41,7 +41,7 @@ case class MissingQueryParamRejection(parameterName: String) extends Rejection
  * Rejection created by parameter filters.
  * Signals that the request was rejected because a query parameter could not be interpreted.
  */
-case class MalformedQueryParamRejection(errorMsg: String, parameterName: Option[String] = None) extends Rejection
+case class MalformedQueryParamRejection(errorMsg: String, parameterName: String) extends Rejection
 
 /**
  * Rejection created by form field filters.
@@ -53,7 +53,7 @@ case class MissingFormFieldRejection(fieldName: String) extends Rejection
  * Rejection created by form field filters.
  * Signals that the request was rejected because a form field could not be interpreted.
  */
-case class MalformedFormFieldRejection(errorMsg: String, fieldName: Option[String] = None) extends Rejection
+case class MalformedFormFieldRejection(errorMsg: String, fieldName: String) extends Rejection
 
 /**
  * Rejection created by unmarshallers.

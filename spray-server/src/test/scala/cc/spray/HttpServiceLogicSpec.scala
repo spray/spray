@@ -16,6 +16,7 @@
 
 package cc.spray
 
+import typeconversion._
 import http._
 import HttpHeaders._
 import HttpMethods._
@@ -89,6 +90,12 @@ class HttpServiceLogicSpec extends AbstractSprayTest {
     
     // REJECTIONS
 
+    "respond with Forbidden for requests resulting in an AuthorizationFailedRejection" in {
+      testService(HttpRequest(headers = Authorization(BasicHttpCredentials("bob", "")) :: Nil)) {
+        authenticate(httpBasic()) { _ => completeOk }
+      }.response mustEqual HttpResponse(Forbidden, "The supplied authentication is either invalid " +
+              "or not authorized to access this resource")
+    }
     "respond with Unauthorized plus WWW-Authenticate header for AuthenticationRequiredRejections" in {
       testService(HttpRequest()) {
         authenticate(httpBasic()) { _ => completeOk }
@@ -96,15 +103,20 @@ class HttpServiceLogicSpec extends AbstractSprayTest {
           "The resource requires authentication, which was not supplied with the request")
     }
     "respond with Forbidden for requests resulting in an AuthorizationFailedRejection" in {
-      testService(HttpRequest(headers = Authorization(BasicHttpCredentials("bob", "")) :: Nil)) {
-        authenticate(httpBasic()) { _ => completeOk }
-      }.response mustEqual HttpResponse(Forbidden, "The supplied authentication is either invalid " +
-              "or not authorized to access this resource")
+      testService(HttpRequest()) {
+        authorize(false) { _ => completeOk }
+      }.response mustEqual HttpResponse(Forbidden, "The supplied authentication is either invalid or not authorized to access this resource")
     }
     "respond with BadRequest for requests resulting in a CorruptRequestEncodingRejection" in {
       testService(HttpRequest(headers = List(`Content-Encoding`(HttpEncodings.gzip)), content = Some(HttpContent(`text/plain`, "xyz")))) {
         decodeRequest(Gzip) { completeOk }
       }.response mustEqual HttpResponse(BadRequest, "The requests encoding is corrupt:\nNot in GZIP format")
+    }
+    "respond with BadRequest for requests resulting in a MalformedFormFieldRejection" in {
+      testService(HttpRequest(POST, content = Some(FormData(Map("amount" -> "12.2")).toHttpContent))) {
+        formField('amount.as[Int]) { _ => completeOk }
+      }.response mustEqual HttpResponse(BadRequest, "The form field 'amount' was malformed:\n" +
+              "'12.2' is not a valid 32-bit integer value")
     }
     "respond with BadRequest for requests resulting in a MalformedQueryParamRejection" in {
       testService(HttpRequest(POST, "/?amount=xyz")) {
@@ -124,6 +136,11 @@ class HttpServiceLogicSpec extends AbstractSprayTest {
         put { _.complete("yes") }
       }.response mustEqual HttpResponse(MethodNotAllowed, "HTTP method not allowed, supported methods: GET, PUT")
     }    
+    "respond with BadRequest for requests resulting in a MissingFormFieldRejection" in {
+      testService(HttpRequest(POST)) {
+        formFields('amount, 'orderId) { (_, _) => completeOk }
+      }.response mustEqual HttpResponse(BadRequest, "Request is missing required form field 'amount'")
+    }
     "respond with NotFound for requests resulting in a MissingQueryParamRejection" in {
       testService(HttpRequest(POST)) {
         parameters('amount, 'orderId) { (_, _) => completeOk }

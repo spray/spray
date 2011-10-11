@@ -36,13 +36,13 @@ private[spray] trait ParameterDirectives {
         _.cancelRejections {
           _ match {
             case MissingQueryParamRejection(ParamName) => true
-            case MalformedQueryParamRejection(_, Some(ParamName)) => true
+            case MalformedQueryParamRejection(_, ParamName) => true
             case _ => false
           }
         }
       }
       case Left(ContentExpected) => Reject(MissingQueryParamRejection(ParamName))
-      case Left(MalformedContent(errorMsg)) => Reject(MalformedQueryParamRejection(errorMsg, Some(ParamName)))
+      case Left(MalformedContent(errorMsg)) => Reject(MalformedQueryParamRejection(errorMsg, ParamName))
       case Left(UnsupportedContentType(_)) => throw new IllegalStateException
     }
   }

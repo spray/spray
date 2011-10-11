@@ -32,7 +32,7 @@ class ParameterDirectivesSpec extends AbstractSprayTest {
     "cause a MalformedQueryParamRejection on illegal Int values" in {
       test(HttpRequest(uri = "/?amount=1x3")) {
         parameter('amount.as[Int]) { echoComplete }
-      }.rejections mustEqual Set(MalformedQueryParamRejection("'1x3' is not a valid 32-bit integer value", Some("amount")))
+      }.rejections mustEqual Set(MalformedQueryParamRejection("'1x3' is not a valid 32-bit integer value", "amount"))
     }
     "supply typed default values" in {
       test(HttpRequest(uri = "/")) {
@@ -53,7 +53,7 @@ class ParameterDirectivesSpec extends AbstractSprayTest {
       "cause a MalformedQueryParamRejection on illegal Int values" in {
         test(HttpRequest(uri = "/?amount=x")) {
           parameter("amount".as[Int]?) { echoComplete }
-        }.rejections mustEqual Set(MalformedQueryParamRejection("'x' is not a valid 32-bit integer value", Some("amount")))
+        }.rejections mustEqual Set(MalformedQueryParamRejection("'x' is not a valid 32-bit integer value", "amount"))
       }
     }
   }
