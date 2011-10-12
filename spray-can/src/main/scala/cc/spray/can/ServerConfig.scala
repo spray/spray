@@ -191,7 +191,7 @@ case class ClientConfig(
   parserConfig: MessageParserConfig = MessageParserConfig()
 ) extends PeerConfig {
 
-  require(!clientActorId.isEmpty, "serverActorId must not be empty")
+  require(!clientActorId.isEmpty, "clientActorId must not be empty")
 
   override def toString =
     "ClientConfig(\n" +
