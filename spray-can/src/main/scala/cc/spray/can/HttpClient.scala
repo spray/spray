@@ -33,7 +33,7 @@ import HttpProtocols._
  */
 case class Connect(host: String, port: Int = 80)
 
-object HttpClient extends HighLevelHttpClient {
+object HttpClient extends HttpDialogComponent {
   private[can] class RequestMark // a unique object used to mark all parts of one chunked request
   private[can] case class Send(
     conn: ClientConnection,

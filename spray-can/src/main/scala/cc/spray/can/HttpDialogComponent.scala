@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory
 import akka.actor.{Actor, Scheduler}
 import akka.dispatch.{DefaultCompletableFuture, Future}
 
-trait HighLevelHttpClient {
+trait HttpDialogComponent {
   private lazy val log = LoggerFactory.getLogger(getClass)
 
   /**
