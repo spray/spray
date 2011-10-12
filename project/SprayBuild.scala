@@ -2,7 +2,6 @@ import sbt._
 import Keys._
 import com.github.siasia.WebPlugin
 
-
 // ---------------------------------------------------------------------------------------------------------------------
 // All repositories *must* go here! See ModuleConfigurations below.
 // ---------------------------------------------------------------------------------------------------------------------
@@ -14,7 +13,6 @@ object Resolvers {
 
   val credentials     = Credentials(Path.userHome / ".ivy2" / ".credentials")
 }
-
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Common build settings for all modules
@@ -34,23 +32,23 @@ object BuildSettings {
   val sprayJsonModuleConfig = ModuleConfiguration("cc.spray.json", ScalaToolsSnapshots)
   val sprayCanModuleConfig  = ModuleConfiguration("cc.spray.can", ScalaToolsSnapshots)
 
-
   // -------------------------------------------------------------------------------------------------------------------
   // Common settings for all modules
   // -------------------------------------------------------------------------------------------------------------------
   val buildOrganization       = "cc.spray"
-  val buildVersion            = "0.8-SBT11-SNAPSHOT"
+  val buildVersion            = "0.8-SNAPSHOT"
   val buildScalaVersion       = "2.9.1"
   val buildCrossScalaVersions = Seq("2.9.1", "2.9.0-1")
 
   // Compile options
-  val buildScalacOptions = 
-    Seq("-deprecation",
-      //"-unchecked",
-      //"-Xmigration",
-      //"-Xcheckinit",
-      //"-optimise",
-      "-encoding", "utf8")
+  val buildScalacOptions = Seq(
+    "-deprecation",
+    //"-unchecked",
+    //"-Xmigration",
+    //"-Xcheckinit",
+    //"-optimise",
+    "-encoding", "utf8"
+  )
 
   // TODO override def documentOptions: Seq[ScaladocOption] = documentTitle(name + " " + version) :: Nil
 
@@ -107,7 +105,6 @@ object BuildSettings {
     publishArtifact := false
   )
 
-
   // -------------------------------------------------------------------------------------------------------------------
   // Settings for spray modules
   // -------------------------------------------------------------------------------------------------------------------
@@ -123,14 +120,12 @@ object BuildSettings {
   //override def packageToPublishActions = super.packageToPublishActions ++ Seq(packageDocs, packageSrc)
 
   val moduleSettings = buildSettings
-  
 
   // -------------------------------------------------------------------------------------------------------------------
   // Settings for spray examples
   // -------------------------------------------------------------------------------------------------------------------
   val exampleSettings = buildSettings ++ disablePublishing ++ WebPlugin.webSettings
 }
-
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Dependencies
@@ -139,38 +134,38 @@ object Dependencies {
   val AKKA_VERSION      = "1.2"
   val JETTY_VERSION     = "8.0.0.RC0"
   val PARBOILED_VERSION = "1.0.2"
+  val SPRAY_CAN_VERSION = "0.9.0"
 
-  // compile
-  val akkaActor  = "se.scalablesolutions.akka" % "akka-actor" % AKKA_VERSION
-  val parboiledC = "org.parboiled" % "parboiled-core" % PARBOILED_VERSION % "compile"
-  val parboiledS = "org.parboiled" % "parboiled-scala" % PARBOILED_VERSION % "compile"
-  val asyncHttp  = "com.ning" % "async-http-client" % "1.6.4" % "compile"
-  val mimepull   = "org.jvnet" % "mimepull" % "1.6" % "compile"
-
-  // provided
-  val sprayJson          = "cc.spray.json" %% "spray-json" % "1.0.1" % "provided"
-  val servlet30          = "org.glassfish" % "javax.servlet" % "3.0" % "provided"
-  val jettyContinuations = "org.eclipse.jetty" % "jetty-continuation" % "7.5.1.v20110908" % "provided"
-  val tomcat6            = "org.atmosphere" % "atmosphere-compat-tomcat" % "0.7.1" % "provided"
-  val sprayCan           = "cc.spray.can" %% "spray-can" % "0.9.0" % "provided"
-
-  // test
-  val specs2 = "org.specs2" %% "specs2" % "1.6.1" % "test"
-
-  // only for examples
-  val akkaSlf4j   = "se.scalablesolutions.akka" % "akka-slf4j" % AKKA_VERSION
-  val slf4j       = "org.slf4j" % "slf4j-api" % "1.6.1" % "compile"
-  val logback     = "ch.qos.logback" % "logback-classic" % "0.9.29" % "runtime"
-  val pegdown     = "org.pegdown" % "pegdown" % "1.1.0" % "compile"
-  val jettyServer = "org.eclipse.jetty" % "jetty-server" % JETTY_VERSION % "test"
-  val jettyWebApp = "org.eclipse.jetty" % "jetty-webapp" % JETTY_VERSION % "test"
-
-  // only for example execution with web-plugin
-  val jettyPlugin = "org.eclipse.jetty" % "jetty-webapp" % JETTY_VERSION % "jetty"
+  object Compile {
+    val akkaActor     = "se.scalablesolutions.akka" %   "akka-actor"                % AKKA_VERSION      % "compile"
+    val akkaSlf4j     = "se.scalablesolutions.akka" %   "akka-slf4j"                % AKKA_VERSION      % "compile"
+    val parboiledC    = "org.parboiled"             %   "parboiled-core"            % PARBOILED_VERSION % "compile"
+    val parboiledS    = "org.parboiled"             %   "parboiled-scala"           % PARBOILED_VERSION % "compile"
+    val mimepull      = "org.jvnet"                 %   "mimepull"                  % "1.6"             % "compile"
+    val sprayCan      = "cc.spray.can"              %%  "spray-can"                 % SPRAY_CAN_VERSION % "compile"
+    val asyncHttp     = "com.ning"                  %   "async-http-client"         % "1.6.4"           % "compile"
+    val pegdown       = "org.pegdown"               %   "pegdown"                   % "1.1.0"           % "compile"
+  }
+  object Provided {
+    val sprayJson     = "cc.spray.json"             %%  "spray-json"                % "1.0.1"           % "provided"
+    val sprayCan      = "cc.spray.can"              %%  "spray-can"                 % SPRAY_CAN_VERSION % "provided"
+    val servlet30     = "org.glassfish"             %   "javax.servlet"             % "3.0"             % "provided"
+    val jettyAsync    = "org.eclipse.jetty"         %   "jetty-continuation"        % "7.5.1.v20110908" % "provided"
+    val tomcat6Async  = "org.atmosphere"            %   "atmosphere-compat-tomcat"  % "0.7.1"           % "provided"
+    val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % "1.6.1"           % "provided"
+  }
+  object Test {
+    val specs2        = "org.specs2"                %%  "specs2"                    % "1.6.1"           % "test"
+    val jettyServer   = "org.eclipse.jetty"         %   "jetty-server"              % JETTY_VERSION     % "test"
+    val jettyWebApp   = "org.eclipse.jetty"         %   "jetty-webapp"              % JETTY_VERSION     % "test"
+    val jettyPlugin   = "org.eclipse.jetty"         %   "jetty-webapp"              % JETTY_VERSION     % "jetty" // web-plugin
+    val logback       = "ch.qos.logback"            %   "logback-classic"           % "0.9.29"          % "runtime"
+  }
 }
 
 object SprayBuild extends Build {
   import BuildSettings._
+  import Dependencies._
 
   // -------------------------------------------------------------------------------------------------------------------
   // Root-Project
@@ -193,13 +188,13 @@ object SprayBuild extends Build {
     file("spray-base"),
     settings = moduleSettings ++ Seq(
       libraryDependencies ++= Seq(
-        Dependencies.akkaActor,
-        Dependencies.parboiledC, 
-        Dependencies.parboiledS,
-        Dependencies.mimepull,
-        Dependencies.slf4j,
-        Dependencies.sprayJson,
-        Dependencies.specs2
+        Compile.akkaActor,
+        Compile.parboiledC,
+        Compile.parboiledS,
+        Compile.mimepull,
+        Provided.slf4j,
+        Provided.sprayJson,
+        Test.specs2
       )
     )
   )
@@ -210,12 +205,12 @@ object SprayBuild extends Build {
     file("spray-server"),
     settings = moduleSettings ++ Seq(
       libraryDependencies ++= Seq(
-        Dependencies.akkaActor,
-        Dependencies.servlet30,
-        Dependencies.jettyContinuations,
-        Dependencies.tomcat6,
-        Dependencies.sprayCan,
-        Dependencies.specs2
+        Compile.akkaActor,
+        Provided.servlet30,
+        Provided.jettyAsync,
+        Provided.tomcat6Async,
+        Provided.sprayCan,
+        Test.specs2
       )
     )
   ) dependsOn (base)
@@ -226,9 +221,9 @@ object SprayBuild extends Build {
     file("spray-client"),
     settings = moduleSettings ++ Seq(
       libraryDependencies ++= Seq(
-        Dependencies.akkaActor,
-        Dependencies.asyncHttp,
-        Dependencies.specs2
+        Compile.akkaActor,
+        Compile.asyncHttp,
+        Test.specs2
       )
     )
   ) dependsOn (base)
@@ -242,9 +237,16 @@ object SprayBuild extends Build {
 
   // Common dependencies for all example modules
   val exampleDeps = Seq(
-    Dependencies.akkaActor,
-    Dependencies.akkaSlf4j,
-    Dependencies.specs2
+    Compile.akkaActor,
+    Compile.akkaSlf4j,
+    Test.specs2
+  )
+
+  // Dependencies required for running jetty examples with web plugin
+  val jettyForWebPlugin = Seq(
+    Test.jettyServer,
+    Test.jettyWebApp,
+    Test.jettyPlugin
   )
 
   // Parent module for all examples
@@ -259,11 +261,8 @@ object SprayBuild extends Build {
     "spray-example-calculator",
     file("spray-examples/spray-example-calculator"),
     settings = exampleSettings ++ Seq(
-      libraryDependencies ++= exampleDeps ++ Seq(
-        Dependencies.jettyServer,
-        Dependencies.jettyWebApp,
-        Dependencies.jettyPlugin,
-        Dependencies.logback
+      libraryDependencies ++= exampleDeps ++ jettyForWebPlugin ++ Seq(
+        Test.logback
       )
     )
   ) dependsOn (base, server)
@@ -274,8 +273,8 @@ object SprayBuild extends Build {
     file("spray-examples/spray-example-spray-can"),
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= exampleDeps ++ Seq(
-        Dependencies.sprayCan,
-        Dependencies.logback
+        Compile.sprayCan,
+        Test.logback
       )
     )
   ) dependsOn (base, server)
@@ -285,11 +284,8 @@ object SprayBuild extends Build {
     "spray-example-markdownserver",
     file("spray-examples/spray-example-markdownserver"),
     settings = exampleSettings ++ Seq(
-      libraryDependencies ++= exampleDeps ++ Seq(
-        Dependencies.pegdown,
-        Dependencies.jettyServer,
-        Dependencies.jettyWebApp,
-        Dependencies.jettyPlugin
+      libraryDependencies ++= exampleDeps ++ jettyForWebPlugin ++ Seq(
+        Compile.pegdown
       )
     )
   ) dependsOn (base, server)
@@ -299,11 +295,8 @@ object SprayBuild extends Build {
     "spray-example-stopwatch",
     file("spray-examples/spray-example-stopwatch"),
     settings = exampleSettings ++ Seq(
-      libraryDependencies ++= exampleDeps ++ Seq(
-        Dependencies.jettyServer,
-        Dependencies.jettyWebApp,
-        Dependencies.jettyPlugin,
-        Dependencies.logback
+      libraryDependencies ++= exampleDeps ++ jettyForWebPlugin ++ Seq(
+        Test.logback
       )
     )
   ) dependsOn (base, server)
@@ -313,11 +306,8 @@ object SprayBuild extends Build {
     "spray-example-simple",
     file("spray-examples/spray-example-simple"),
     settings = exampleSettings ++ Seq(
-      libraryDependencies ++= exampleDeps ++ Seq(
-        Dependencies.jettyServer,
-        Dependencies.jettyWebApp,
-        Dependencies.jettyPlugin,
-        Dependencies.logback
+      libraryDependencies ++= exampleDeps ++ jettyForWebPlugin ++ Seq(
+        Test.logback
       )
     )
   ) dependsOn (base, server)
