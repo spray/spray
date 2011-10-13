@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2011 Mathias Doenitz
- * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,20 +14,13 @@
  * limitations under the License.
  */
 
-package cc.spray.http
+package cc.spray.client
 
-sealed abstract class ConnectionToken {
-  def value: String
-  override def toString = value
-}
+class ConnectionException(message: String, cause: Throwable) extends RuntimeException(message, cause)
 
-object ConnectionTokens {
 
-  val close = new ConnectionToken {
-    def value = "close"
-  }
-  // val keepAlive = ... // deprecated in HTTP 1.1
 
-  case class CustomConnectionToken(value: String) extends ConnectionToken
-}
+
+
+
 

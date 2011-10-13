@@ -143,7 +143,6 @@ object Dependencies {
     val parboiledS    = "org.parboiled"             %   "parboiled-scala"           % PARBOILED_VERSION % "compile"
     val mimepull      = "org.jvnet"                 %   "mimepull"                  % "1.6"             % "compile"
     val sprayCan      = "cc.spray.can"              %%  "spray-can"                 % SPRAY_CAN_VERSION % "compile"
-    val asyncHttp     = "com.ning"                  %   "async-http-client"         % "1.6.4"           % "compile"
     val pegdown       = "org.pegdown"               %   "pegdown"                   % "1.1.0"           % "compile"
   }
   object Provided {
@@ -192,8 +191,9 @@ object SprayBuild extends Build {
         Compile.parboiledC,
         Compile.parboiledS,
         Compile.mimepull,
-        Provided.slf4j,
         Provided.sprayJson,
+        Provided.sprayCan,
+        Provided.slf4j,
         Test.specs2
       )
     )
@@ -222,7 +222,7 @@ object SprayBuild extends Build {
     settings = moduleSettings ++ Seq(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
-        Compile.asyncHttp,
+        Compile.sprayCan,
         Test.specs2
       )
     )
@@ -255,6 +255,18 @@ object SprayBuild extends Build {
     file("spray-examples"),
     settings = exampleSettings
   ) aggregate (calculator, sprayCan, simple, markdownserver, stopwatch)
+
+  // Module for "calculator" example
+  lazy val clientExample = Project(
+    "spray-client-example",
+    file("spray-examples/spray-client-example"),
+    settings = exampleSettings ++ Seq(
+      libraryDependencies ++= exampleDeps ++ Seq(
+        Compile.sprayCan,
+        Test.logback
+      )
+    )
+  ) dependsOn (base, client)
 
   // Module for "calculator" example
   lazy val calculator = Project(

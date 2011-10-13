@@ -1,5 +1,5 @@
 package cc.spray
-package examples.simple
+package examples.client
 
 import utils.ActorHelpers._
 import http.MediaTypes._

@@ -14,22 +14,11 @@
  * limitations under the License.
  */
 
-package cc.spray.http
-package parser
+package cc.spray
 
-import org.parboiled.scala._
-import ConnectionTokens._
-import BasicRules._
+package object client {
 
-private[parser] trait ConnectionHeader {
-  this: Parser =>
+  def requestPipeline[T](implicit p: RequestPipeline[T]) = p
+  def responsePipeline[T](implicit p: ResponsePipeline[T]) = p
 
-  def CONNECTION = rule (
-    zeroOrMore(ConnectionToken, separator = ListSep) ~ EOI ~~> (HttpHeaders.Connection(_))
-  )
-  
-  def ConnectionToken = rule {
-    "close" ~ push(close) | Token ~~> CustomConnectionToken
-  }
-  
 }
