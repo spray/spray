@@ -38,7 +38,7 @@ class SprayCanRootService(firstService: ActorRef, moreServices: ActorRef*)
       val request = can.HttpRequest(method, uri, headers)
       try {
         if (self == timeoutActor)
-          complete(fromSprayResponse(timeoutResponse(fromSprayCanRequest(request))))
+          complete(toSprayCanResponse(timeoutResponse(fromSprayCanRequest(request))))
         else
           timeoutActor ! Timeout(fromSprayCanContext(request, remoteAddress, complete))
       } catch handleExceptions(request, complete)
@@ -47,6 +47,6 @@ class SprayCanRootService(firstService: ActorRef, moreServices: ActorRef*)
 
   protected def handleExceptions(request: can.HttpRequest,
                                  complete: can.HttpResponse => Unit): PartialFunction[Throwable, Unit] = {
-    case e: Exception => complete(fromSprayResponse(responseForException(request, e)))
+    case e: Exception => complete(toSprayCanResponse(responseForException(request, e)))
   }
 }
