@@ -27,6 +27,10 @@ import HttpHeaders._
 private[parser] trait SimpleHeaders {
   this: Parser with ProtocolParameterRules with AdditionalRules =>
 
+  def CONNECTION = rule (
+    oneOrMore(Token, separator = ListSep) ~ EOI ~~> (HttpHeaders.Connection(_))
+  )
+
   def CONTENT_LENGTH = rule {
     oneOrMore(Digit) ~> (s => `Content-Length`(s.toInt)) ~ EOI
   }

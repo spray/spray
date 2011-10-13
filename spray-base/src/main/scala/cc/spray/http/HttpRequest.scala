@@ -27,7 +27,7 @@ import parser.QueryParser
  * Sprays immutable model of an HTTP request.
  */
 case class HttpRequest(method: HttpMethod = HttpMethods.GET,
-                       uri: String = "",
+                       uri: String = "/",
                        headers: List[HttpHeader] = Nil,
                        content: Option[HttpContent] = None,
                        protocol: HttpProtocol = `HTTP/1.1`) extends HttpMessage {

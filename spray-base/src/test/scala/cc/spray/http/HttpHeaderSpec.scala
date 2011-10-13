@@ -97,10 +97,9 @@ class HttpHeaderSpec extends Specification {
   }
 
   "Header 'Connection'" should {
-    import ConnectionTokens._
     "be parsed correctly from various examples" in {
-      HttpHeader("Connection", "close") mustEqual Connection(close)
-      HttpHeader("Connection", "pipapo, close") mustEqual Connection(CustomConnectionToken("pipapo"), close)
+      HttpHeader("Connection", "close") mustEqual Connection("close")
+      HttpHeader("Connection", "pipapo, close") mustEqual Connection("pipapo", "close")
     }
   }
 
