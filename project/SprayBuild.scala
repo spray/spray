@@ -135,6 +135,8 @@ object Dependencies {
   val JETTY_VERSION     = "8.0.0.RC0"
   val PARBOILED_VERSION = "1.0.2"
   val SPRAY_CAN_VERSION = "0.9.0"
+  val SLF4J_VERSION     = "1.6.1"
+  val LOGBACK_VERSION   = "0.9.29"
 
   object Compile {
     val akkaActor     = "se.scalablesolutions.akka" %   "akka-actor"                % AKKA_VERSION      % "compile"
@@ -151,14 +153,18 @@ object Dependencies {
     val servlet30     = "org.glassfish"             %   "javax.servlet"             % "3.0"             % "provided"
     val jettyAsync    = "org.eclipse.jetty"         %   "jetty-continuation"        % "7.5.1.v20110908" % "provided"
     val tomcat6Async  = "org.atmosphere"            %   "atmosphere-compat-tomcat"  % "0.7.1"           % "provided"
-    val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % "1.6.1"           % "provided"
+    val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % SLF4J_VERSION     % "provided"
   }
   object Test {
     val specs2        = "org.specs2"                %%  "specs2"                    % "1.6.1"           % "test"
     val jettyServer   = "org.eclipse.jetty"         %   "jetty-server"              % JETTY_VERSION     % "test"
     val jettyWebApp   = "org.eclipse.jetty"         %   "jetty-webapp"              % JETTY_VERSION     % "test"
     val jettyPlugin   = "org.eclipse.jetty"         %   "jetty-webapp"              % JETTY_VERSION     % "jetty" // web-plugin
-    val logback       = "ch.qos.logback"            %   "logback-classic"           % "0.9.29"          % "runtime"
+    val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % SLF4J_VERSION     % "test"
+    val logback       = "ch.qos.logback"            %   "logback-classic"           % LOGBACK_VERSION   % "test"
+  }
+  object Runtime {
+    val logback       = "ch.qos.logback"            %   "logback-classic"           % LOGBACK_VERSION   % "runtime"
   }
 }
 
@@ -223,7 +229,9 @@ object SprayBuild extends Build {
       libraryDependencies ++= Seq(
         Compile.akkaActor,
         Compile.sprayCan,
-        Test.specs2
+        Test.specs2,
+        Test.slf4j,
+        Test.logback
       )
     )
   ) dependsOn (base)
@@ -263,7 +271,7 @@ object SprayBuild extends Build {
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= exampleDeps ++ Seq(
         Compile.sprayCan,
-        Test.logback
+        Runtime.logback
       )
     )
   ) dependsOn (base, client)
@@ -274,7 +282,7 @@ object SprayBuild extends Build {
     file("spray-examples/spray-example-calculator"),
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= exampleDeps ++ jettyForWebPlugin ++ Seq(
-        Test.logback
+        Runtime.logback
       )
     )
   ) dependsOn (base, server)
@@ -286,7 +294,7 @@ object SprayBuild extends Build {
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= exampleDeps ++ Seq(
         Compile.sprayCan,
-        Test.logback
+        Runtime.logback
       )
     )
   ) dependsOn (base, server)
@@ -308,7 +316,7 @@ object SprayBuild extends Build {
     file("spray-examples/spray-example-stopwatch"),
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= exampleDeps ++ jettyForWebPlugin ++ Seq(
-        Test.logback
+        Runtime.logback
       )
     )
   ) dependsOn (base, server)
@@ -319,7 +327,7 @@ object SprayBuild extends Build {
     file("spray-examples/spray-example-simple"),
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= exampleDeps ++ jettyForWebPlugin ++ Seq(
-        Test.logback
+        Runtime.logback
       )
     )
   ) dependsOn (base, server)

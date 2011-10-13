@@ -23,7 +23,7 @@ case class ConduitConfig(
   clientActorId: String = "spray-can-client",
   maxConnections: Int = 4,
   pipeliningEnabled: Boolean = false,
-  dispatchStrategy: DispatchStrategy = DispatchStrategies.NonPipelining
+  dispatchStrategy: DispatchStrategy = DispatchStrategies.NonPipelined
 ) {
 
   require(!clientActorId.isEmpty, "clientActorId must not be empty")

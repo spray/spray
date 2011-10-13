@@ -20,14 +20,35 @@ package client
 import http._
 import collection.mutable.Queue
 
+/**
+ * Abstraction over the logic of how to dispatch outgoing requests to one of several connections.
+ */
 trait DispatchStrategy {
+  /**
+   * Requests that the given context be dispatched to one of the given HttpConns, if possible.
+   * The strategy might also be to not dispatch the request at all and save it for a dispatch at a later time.
+   */
   def dispatch(context: HttpRequestContext, conns: Seq[HttpConn])
+
+  /**
+   * Informs the strategy logic of a change in state of the given connections.
+   */
   def onStateChange(conns: Seq[HttpConn])
 }
 
+/**
+ * Abstraction over HTTP connections in the context of a [[cc.spray.client.DispatchStrategy]]
+ */
 trait HttpConn {
-  // -1 -> unconnected
+  /**
+   * Returns the number of open requests on this connection.
+   * If the connection is unconnected the method returns -1.
+   */
   def pendingResponses: Int
+
+  /**
+   * Dispatches the given request context to this connection.
+   */
   def dispatch(context: HttpRequestContext)
 }
 
@@ -37,7 +58,14 @@ trait HttpRequestContext {
 
 object DispatchStrategies {
 
-  class NonPipelining extends DispatchStrategy {
+  /**
+   * Defines a [[cc.spray.client.DispatchStrategy]] with the following logic:
+   *  - Dispatch to the first idle connection in the pool, if there is one.
+   *  - If none is idle, dispatch to the first unconnected connection, if there is one.
+   *  - If all are already connected, store the request and send it as soon as one
+   *    connection becomes either idle or unconnected.
+   */
+  class NonPipelined extends DispatchStrategy {
     val queue = Queue.empty[HttpRequestContext]
 
     def dispatch(context: HttpRequestContext, conns: Seq[HttpConn]) {
@@ -60,5 +88,26 @@ object DispatchStrategies {
     }
   }
 
-  object NonPipelining extends NonPipelining
+  object NonPipelined extends NonPipelined
+
+  /**
+   * Defines a [[cc.spray.client.DispatchStrategy]] with the following logic:
+   *  - Dispatch to the first idle connection in the pool, if there is one.
+   *  - If none is idle, dispatch to the first unconnected connection, if there is one.
+   *  - If all are already connected, dispatch to the connection with the least open requests.
+   */
+  class Pipelined extends DispatchStrategy {
+    def dispatch(context: HttpRequestContext, conns: Seq[HttpConn]) {
+      // if possible dispatch to idle connections, if no idle ones are available prefer
+      // unconnected connections over busy ones and less busy ones over more busy ones
+      val conn = conns.find(_.pendingResponses == 0).getOrElse(conns.minBy(_.pendingResponses))
+      conn.dispatch(context)
+    }
+
+    def onStateChange(conns: Seq[HttpConn]) {
+      // nothing to do here
+    }
+  }
+
+  object Pipelined extends Pipelined
 }
