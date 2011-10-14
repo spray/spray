@@ -19,7 +19,6 @@ package client
 
 import utils._
 import http._
-import typeconversion._
 import akka.actor.Actor
 import akka.actor.Actor._
 import can.{HttpConnection, Connect}
@@ -32,13 +31,11 @@ class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitC
   protected lazy val httpClient = ActorHelpers.actor(config.clientActorId)
   protected val mainActor = actorOf(new MainActor).start()
 
-  val sendReceive: HttpRequest => Future[HttpResponse] = { request =>
+  val sendReceive: SendReceive = { request =>
     make(new DefaultCompletableFuture[HttpResponse](Long.MaxValue)) { future =>
       mainActor ! Send(request, { result => future.complete(result); () })
     }
   }
-
-  def send(request: HttpRequest) = sendReceive(request)
 
   def close() {
     mainActor.stop()

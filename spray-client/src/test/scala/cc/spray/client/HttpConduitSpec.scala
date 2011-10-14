@@ -49,14 +49,14 @@ class HttpConduitSpec extends Specification { def is =
   }
 
   def oneRequest(strategy: DispatchStrategy) = {
-    val response = newConduit(strategy).send(HttpRequest()).get
+    val response = newConduit(strategy).sendReceive(HttpRequest()).get
     response.copy(headers = Nil) mustEqual HttpResponse(200, "GET|/")
   }
 
   def hundredRequests(strategy: DispatchStrategy) = {
     val conduit = newConduit(strategy)
     val requests = Seq.tabulate(10)(index => HttpRequest(uri = "/" + index))
-    val responseFutures = requests.map(conduit.send(_))
+    val responseFutures = requests.map(conduit.sendReceive(_))
     responseFutures.zipWithIndex.map { case (future, index) =>
       future.get.copy(headers = Nil) mustEqual HttpResponse(200, "GET|/" + index)
     }.reduceLeft(_ and _)

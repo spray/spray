@@ -26,18 +26,29 @@ sealed trait SimpleRequest[T] {
   def content: Option[T]
 }
 
-case class Get[T](uri: String = "/", content: Option[T] = None) extends SimpleRequest[T] {
+private[client] sealed abstract class SimpleRequestConstructors[T[_]] {
+  def apply(): T[Nothing] = apply("/")
+  def apply(uri: String): T[Nothing] = apply(uri, None)
+  def apply[A](uri: String, content: A): T[A] = apply(uri, Some(content))
+  def apply[A](uri: String, content: Option[A]): T[A]
+}
+
+object Get extends SimpleRequestConstructors[Get]
+case class Get[T](uri: String, content: Option[T]) extends SimpleRequest[T] {
   def method = GET
 }
 
+object Post extends SimpleRequestConstructors[Post]
 case class Post[T](uri: String = "/", content: Option[T] = None) extends SimpleRequest[T] {
   def method = POST
 }
 
+object Put extends SimpleRequestConstructors[Put]
 case class Put[T](uri: String = "/", content: Option[T] = None) extends SimpleRequest[T] {
   def method = PUT
 }
 
+object Delete extends SimpleRequestConstructors[Delete]
 case class Delete[T](uri: String = "/", content: Option[T] = None) extends SimpleRequest[T] {
   def method = DELETE
 }

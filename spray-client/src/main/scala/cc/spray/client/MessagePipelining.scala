@@ -20,8 +20,11 @@ package client
 import http._
 import typeconversion._
 import akka.dispatch.Future
+import encoding.{Decoder, Encoder}
 
 trait MessagePipelining {
+
+  type SendReceive = HttpRequest => Future[HttpResponse]
 
   def simpleRequest: SimpleRequest[Nothing] => HttpRequest = { simpleRequest =>
     HttpRequest(
@@ -42,12 +45,18 @@ trait MessagePipelining {
     )
   }
 
-  def unmarshal[T :Unmarshaller]: Future[HttpResponse] => Future[T] = _.map { response =>
+  def encode(encoder: Encoder): HttpRequest => HttpRequest = encoder.encode(_)
+
+  def decode(decoder: Decoder) = transformResponse(decoder.decode[HttpResponse])
+
+  def unmarshal[T :Unmarshaller] = transformResponse { response: HttpResponse =>
     unmarshaller[T].apply(response.content) match {
       case Right(value) => value
       case Left(error) => throw new PipelineException(error.toString) // "unwrap" the error into the future
     }
   }
+
+  def transformResponse[A, B](f: A => B): Future[A] => Future[B] = _.map(f)
 
   implicit def pimpFunction[A, B](f: A => B) = new PimpedFunction(f)
   class PimpedFunction[A, B](f: A => B) extends (A => B) {

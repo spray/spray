@@ -33,7 +33,7 @@ object Main extends App with Logging {
     val conduit = new HttpConduit("github.com")
 
     // send a simple request
-    val responseFuture = conduit.send(HttpRequest(method = GET, uri = "/"))
+    val responseFuture = conduit.sendReceive(HttpRequest(method = GET, uri = "/"))
     val response = responseFuture.get
     log.info(
       """|Response for GET request to github.com:
