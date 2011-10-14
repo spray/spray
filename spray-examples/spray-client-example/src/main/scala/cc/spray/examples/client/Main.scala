@@ -3,14 +3,14 @@ package examples.client
 
 import http._
 import HttpMethods._
-import client.HttpConduit
 import can.HttpClient
 import akka.config.Supervision._
 import akka.actor.{PoisonPill, Actor, Supervisor}
-import org.slf4j.LoggerFactory
+import client.{Get, HttpConduit}
+import typeconversion.{SprayJsonSupport, DefaultMarshallers}
+import utils.Logging
 
-object Main extends App {
-  val log = LoggerFactory.getLogger(getClass)
+object Main extends App with Logging {
 
   // start and supervise the spray-can HttpClient actor
   Supervisor(
@@ -20,29 +20,41 @@ object Main extends App {
     )
   )
 
-  // the HttpConduit gives us access to an HTTP server, it manages a pool of connections
-  val conduit = new HttpConduit("github.com")
+  fetchAndShowGithubDotCom()
 
-  // send a simple request
-  val responseFuture = conduit.send(HttpRequest(method = GET, uri = "/"))
+  fetchAndShowHeightOfMtEverest()
 
-  // attach a "continuation" function to the future
-  responseFuture.await.value.get match {
-    case Right(response) => show(response)
-    case error => log.error("Error: {}", error)
-  }
-  conduit.close()
   Actor.registry.actors.foreach(_ ! PoisonPill)
 
   ///////////////////////////////////////////////////
 
-  def show(response: HttpResponse) {
+  def fetchAndShowGithubDotCom() {
+    // the HttpConduit gives us access to an HTTP server, it manages a pool of connections
+    val conduit = new HttpConduit("github.com")
+
+    // send a simple request
+    val responseFuture = conduit.send(HttpRequest(method = GET, uri = "/"))
+    val response = responseFuture.get
     log.info(
-      """|Result from host:
-         |status : {}
-         |headers: {}
-         |body   : {}""".stripMargin,
-      Array[AnyRef](response.status.value :java.lang.Integer, response.headers, response.content)
+      """|Response for GET request to github.com:
+         |status : %s
+         |headers: %s
+         |body   : %s""".stripMargin,
+      response.status.value, response.headers, response.content
     )
+    conduit.close()
+  }
+
+  def fetchAndShowHeightOfMtEverest() {
+    log.info("Requesting the elevation of Mt. Everest from Googles Elevation API...")
+    val conduit = new HttpConduit("maps.googleapis.com")
+      with DefaultMarshallers
+      with SprayJsonSupport
+      with ElevationJsonProtocol {
+      val elevationPipeline = simpleRequest ~> sendReceive ~> unmarshal[GoogleApiResult[Elevation]]
+    }
+    val responseFuture = conduit.elevationPipeline(Get("/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))
+    log.info("The elevation of Mt. Everest is: %s m", responseFuture.get.results.head.elevation)
+    conduit.close()
   }
 }

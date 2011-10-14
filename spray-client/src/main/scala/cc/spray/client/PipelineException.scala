@@ -16,7 +16,7 @@
 
 package cc.spray.client
 
-class ConnectionException(message: String, cause: Throwable) extends RuntimeException(message, cause)
+class PipelineException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
 
 
 

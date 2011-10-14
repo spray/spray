@@ -15,7 +15,29 @@
  */
 
 package cc.spray
+package client
 
-package object client {
+import http._
+import HttpMethods._
 
+sealed trait SimpleRequest[T] {
+  def method: HttpMethod
+  def uri: String
+  def content: Option[T]
+}
+
+case class Get[T](uri: String = "/", content: Option[T] = None) extends SimpleRequest[T] {
+  def method = GET
+}
+
+case class Post[T](uri: String = "/", content: Option[T] = None) extends SimpleRequest[T] {
+  def method = POST
+}
+
+case class Put[T](uri: String = "/", content: Option[T] = None) extends SimpleRequest[T] {
+  def method = PUT
+}
+
+case class Delete[T](uri: String = "/", content: Option[T] = None) extends SimpleRequest[T] {
+  def method = DELETE
 }

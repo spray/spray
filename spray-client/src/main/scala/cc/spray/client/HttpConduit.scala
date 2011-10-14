@@ -19,6 +19,7 @@ package client
 
 import utils._
 import http._
+import typeconversion._
 import akka.actor.Actor
 import akka.actor.Actor._
 import can.{HttpConnection, Connect}
@@ -26,19 +27,18 @@ import akka.dispatch.{DefaultCompletableFuture, Future}
 import HttpProtocols._
 
 class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitConfig.fromAkkaConf)
-  extends Logging with SprayCanConversions {
+  extends MessagePipelining with Logging with SprayCanConversions {
 
   protected lazy val httpClient = ActorHelpers.actor(config.clientActorId)
   protected val mainActor = actorOf(new MainActor).start()
 
-  def send[A, B](message: A)(implicit pipeline: HttpPipeline[A, B]): Future[B] = {
-    make(new DefaultCompletableFuture[B](Long.MaxValue)) { future =>
-      mainActor ! Send(
-        request = pipeline.requestPipeline(message),
-        responder = { result => future.complete(result.right.map(pipeline.responsePipeline)) }
-      )
+  val sendReceive: HttpRequest => Future[HttpResponse] = { request =>
+    make(new DefaultCompletableFuture[HttpResponse](Long.MaxValue)) { future =>
+      mainActor ! Send(request, { result => future.complete(result); () })
     }
   }
+
+  def send(request: HttpRequest) = sendReceive(request)
 
   def close() {
     mainActor.stop()
@@ -70,7 +70,7 @@ class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitC
       case ConnectionResult(conn, send, Left(error)) =>
         conn.httpConnection = None
         conn.pendingResponses = -1
-        send.responder(Left(new ConnectionException("Could not connect to %s:%s".format(host, port), error)))
+        send.responder(Left(new PipelineException("Could not connect to %s:%s".format(host, port), error)))
     }
 
     def closeExpected(response: HttpResponse) = {

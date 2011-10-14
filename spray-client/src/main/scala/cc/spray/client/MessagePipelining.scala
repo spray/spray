@@ -1,0 +1,59 @@
+/*
+ * Copyright (C) 2011 Mathias Doenitz
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package cc.spray
+package client
+
+import http._
+import typeconversion._
+import akka.dispatch.Future
+
+trait MessagePipelining {
+
+  def simpleRequest: SimpleRequest[Nothing] => HttpRequest = { simpleRequest =>
+    HttpRequest(
+      method = simpleRequest.method,
+      uri = simpleRequest.uri
+    )
+  }
+
+  def simpleRequest[T :Marshaller]: SimpleRequest[T] => HttpRequest = {
+    val marshal = marshaller[T].apply(Some(_)) match {
+      case MarshalWith(f) => f
+      case _: CantMarshal => throw new IllegalStateException
+    }
+    simpleRequest => HttpRequest(
+      method = simpleRequest.method,
+      uri = simpleRequest.uri,
+      content = simpleRequest.content.map(marshal)
+    )
+  }
+
+  def unmarshal[T :Unmarshaller]: Future[HttpResponse] => Future[T] = _.map { response =>
+    unmarshaller[T].apply(response.content) match {
+      case Right(value) => value
+      case Left(error) => throw new PipelineException(error.toString) // "unwrap" the error into the future
+    }
+  }
+
+  implicit def pimpFunction[A, B](f: A => B) = new PimpedFunction(f)
+  class PimpedFunction[A, B](f: A => B) extends (A => B) {
+    def apply(a: A) = f(a)
+    def ~> [C](g: B => C): A => C = g compose f
+  }
+}
+
+object MessagePipelining extends MessagePipelining
