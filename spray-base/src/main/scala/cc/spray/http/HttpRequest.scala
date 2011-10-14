@@ -27,10 +27,10 @@ import parser.QueryParser
  * Sprays immutable model of an HTTP request.
  */
 case class HttpRequest(method: HttpMethod = HttpMethods.GET,
-                       uri: String = "",
+                       uri: String = "/",
                        headers: List[HttpHeader] = Nil,
                        content: Option[HttpContent] = None,
-                       protocol: HttpProtocol = `HTTP/1.1`) extends HttpMessage {
+                       protocol: HttpProtocol = `HTTP/1.1`) extends HttpMessage[HttpRequest] {
   
   lazy val URI = new URI(uri)
   
@@ -134,5 +134,11 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
       case _ => throw new IllegalStateException // a HttpCharsetRange that is not `*` ?
     }
   }
-  
+
+  def withHeader(headers: List[HttpHeader]) = copy(headers = headers)
+
+  def withContent(content: Option[HttpContent]) = copy(content = content)
+
+  def withHeadersAndContent(headers: List[HttpHeader], content: Option[HttpContent]) =
+    copy(headers = headers, content = content)
 }

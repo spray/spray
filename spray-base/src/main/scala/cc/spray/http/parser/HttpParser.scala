@@ -31,7 +31,6 @@ object HttpParser extends SprayParser with ProtocolParameterRules with Additiona
   with AcceptRangesHeader
   with AuthorizationHeader
   with CacheControlHeader
-  with ConnectionHeader
   with ContentEncodingHeader
   with ContentTypeHeader
   with CookieHeaders

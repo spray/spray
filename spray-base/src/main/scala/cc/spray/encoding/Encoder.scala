@@ -14,22 +14,24 @@
  * limitations under the License.
  */
 
-package cc.spray.http
-package parser
+package cc.spray
+package encoding
 
-import org.parboiled.scala._
-import ConnectionTokens._
-import BasicRules._
+import http._
+import HttpHeaders._
 
-private[parser] trait ConnectionHeader {
-  this: Parser =>
-
-  def CONNECTION = rule (
-    zeroOrMore(ConnectionToken, separator = ListSep) ~ EOI ~~> (HttpHeaders.Connection(_))
-  )
+trait Encoder {
+  def encoding: HttpEncoding
   
-  def ConnectionToken = rule {
-    "close" ~ push(close) | Token ~~> CustomConnectionToken
+  def handle(message: HttpMessage[_]): Boolean
+  
+  def encode[T <: HttpMessage[T]](message: T): T = message.content match {
+    case Some(content) if !message.isEncodingSpecified && handle(message) => message.withHeadersAndContent(
+      headers = `Content-Encoding`(encoding) :: message.headers,
+      content = Some(HttpContent(content.contentType, encodeBuffer(content.buffer)))
+    )
+    case _ => message
   }
-  
+
+  def encodeBuffer(buffer: Array[Byte]): Array[Byte]
 }

@@ -24,8 +24,8 @@ import StatusCodes._
 import MediaTypes._
 import test.AbstractSprayTest
 import utils.IllegalResponseException
-import directives.{Gzip, Deflate}
 import xml.NodeSeq
+import encoding._
 
 class HttpServiceLogicSpec extends AbstractSprayTest {
   

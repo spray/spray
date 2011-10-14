@@ -1,0 +1,73 @@
+/*
+ * Copyright (C) 2011 Mathias Doenitz
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package cc.spray
+package client
+
+import akka.dispatch._
+import http.HttpResponse
+import org.specs2.Specification
+import typeconversion.{DefaultMarshallers, DefaultUnmarshallers}
+import encoding.Gzip
+
+class MessagePipeliningSpec extends Specification
+  with MessagePipelining with DefaultMarshallers with DefaultUnmarshallers { def is =
+
+  "MessagePipelining should"                              ^
+  "work correctly for simply requests"                    ! testSimple^
+  "support marshalling"                                   ! testMarshalling^
+  "support request compression"                           ! testCompression^
+  "support response decompression"                        ! testDecompression^
+                                                          end
+
+  val report: SendReceive = { request =>
+    import request._
+    completed(HttpResponse(200, method + "|" + uri + "|" + content.map(_.as[String])))
+  }
+
+  val reportDecoding: SendReceive = { request =>
+    val decoded = Gzip.decode(request)
+    import decoded._
+    completed(HttpResponse(200, method + "|" + uri + "|" + content.map(_.as[String])))
+  }
+
+  val echo: SendReceive = { request =>
+    completed(HttpResponse(200, request.content.get))
+  }
+
+  def completed(response: HttpResponse) =
+    new DefaultCompletableFuture[HttpResponse](Long.MaxValue).completeWithResult(response)
+
+  def testSimple = {
+    val pipeline = simpleRequest ~> report
+    pipeline(Get("/abc")).get mustEqual HttpResponse(200, "GET|/abc|None")
+  }
+
+  def testMarshalling = {
+    val pipeline = simpleRequest[String] ~> report
+    pipeline(Get("/abc", "Hello")).get mustEqual HttpResponse(200, "GET|/abc|Some(Right(Hello))")
+  }
+
+  def testCompression = {
+    val pipeline = simpleRequest[String] ~> encode(Gzip) ~> reportDecoding
+    pipeline(Get("/abc", "Hello")).get mustEqual HttpResponse(200, "GET|/abc|Some(Right(Hello))")
+  }
+
+  def testDecompression = {
+    val pipeline = simpleRequest[String] ~> encode(Gzip) ~> echo ~> decode(Gzip)
+    pipeline(Get("/abc", "Hello")).get mustEqual HttpResponse(200, "Hello")
+  }
+}

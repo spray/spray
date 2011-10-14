@@ -79,8 +79,8 @@ object HttpHeaders {
     def value = directives.mkString(", ")
   }
 
-  object `Connection` { def apply(first: ConnectionToken, more: ConnectionToken*): `Connection` = apply(first +: more) }
-  case class `Connection`(connectionTokens: Seq[ConnectionToken]) extends HttpHeader {
+  object `Connection` { def apply(first: String, more: String*): `Connection` = apply(first +: more) }
+  case class `Connection`(connectionTokens: Seq[String]) extends HttpHeader {
     def value = connectionTokens.mkString(", ")
   }
 

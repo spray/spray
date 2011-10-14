@@ -17,11 +17,7 @@
 package cc.spray
 package directives
 
-import http._
-import HttpHeaders._
-import org.parboiled.common.FileUtils
-import java.io._
-import java.util.zip._
+import encoding._
 
 private[spray] trait CodecDirectives {
   this: BasicDirectives =>
@@ -61,105 +57,4 @@ private[spray] trait CodecDirectives {
     } else Reject(UnacceptedResponseEncodingRejection(encoder.encoding))
   }
   
-}
-
-trait Decoder {
-  def encoding: HttpEncoding
-  
-  def decode(request: HttpRequest): HttpRequest = request.content match {
-    case Some(content) => request.copy(
-      content = Some(HttpContent(content.contentType, decodeBuffer(content.buffer)))
-    )
-    case _ => request
-  }
-  
-  def decodeBuffer(buffer: Array[Byte]): Array[Byte]
-  
-  protected def copyBuffer(buffer: Array[Byte])(copy: (InputStream, OutputStream) => Unit) = {
-    val in = new ByteArrayInputStream(buffer)
-    val out = new ByteArrayOutputStream()
-    copy(in, out)
-    out.toByteArray
-  }
-} 
-
-trait Encoder {
-  def encoding: HttpEncoding
-  
-  def handle(response: HttpResponse): Boolean
-  
-  def encode(response: HttpResponse): HttpResponse = response.content match {
-    case Some(content) if !response.isEncodingSpecified && handle(response) => response.copy(
-      headers = `Content-Encoding`(encoding) :: response.headers,
-      content = Some(HttpContent(content.contentType, encodeBuffer(content.buffer)))
-    )
-    case _ => response
-  }
-
-  def encodeBuffer(buffer: Array[Byte]): Array[Byte]
-}
-
-/**
- * An encoder and decoder for the HTTP 'identity' encoding.
- */
-object NoEncoding extends Decoder with Encoder {
-  val encoding = HttpEncodings.identity
-  override def decode(request: HttpRequest) = request
-  def decodeBuffer(buffer: Array[Byte]) = buffer
-  def handle(response: HttpResponse) = false
-  def encodeBuffer(buffer: Array[Byte]) = buffer
-}
-
-abstract class Gzip extends Decoder with Encoder {
-  val encoding = HttpEncodings.gzip
-
-  def decodeBuffer(buffer: Array[Byte]) = copyBuffer(buffer) { (in, out) => 
-    FileUtils.copyAll(new GZIPInputStream(in), out)
-  }
-
-  def encodeBuffer(buffer: Array[Byte]) = copyBuffer(buffer) { (in, out) => 
-    FileUtils.copyAll(in, new GZIPOutputStream(out))
-  }
-}
-
-/**
- * An encoder and decoder for the HTTP 'gzip' encoding.
- */
-object Gzip extends Gzip {
-  def handle(response: HttpResponse) = response.status.isSuccess
-  def apply(minContentSize: Int) = new Gzip {
-    def handle(response: HttpResponse) = {
-      response.status.isSuccess && response.content.get.buffer.length >= minContentSize
-    }
-  }
-  def apply(predicate: HttpResponse => Boolean) = new Gzip {
-    def handle(response: HttpResponse) = predicate(response)
-  }
-}
-
-abstract class Deflate extends Decoder with Encoder {
-  val encoding = HttpEncodings.deflate
-  
-  def decodeBuffer(buffer: Array[Byte]) = copyBuffer(buffer) { (in, out) => 
-    FileUtils.copyAll(new InflaterInputStream(in), out)
-  }
-
-  def encodeBuffer(buffer: Array[Byte]) = copyBuffer(buffer) { (in, out) => 
-    FileUtils.copyAll(in, new DeflaterOutputStream(out))
-  }
-}
-
-/**
- * An encoder and decoder for the HTTP 'deflate' encoding.
- */
-object Deflate extends Deflate {
-  def handle(response: HttpResponse) = response.status.isSuccess
-  def apply(minContentSize: Int) = new Deflate {
-    def handle(response: HttpResponse) = {
-      response.status.isSuccess && response.content.get.buffer.length >= minContentSize
-    }
-  }
-  def apply(predicate: HttpResponse => Boolean) = new Deflate {
-    def handle(response: HttpResponse) = predicate(response)
-  }
 }

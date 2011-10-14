@@ -131,35 +131,42 @@ object BuildSettings {
 // Dependencies
 // ---------------------------------------------------------------------------------------------------------------------
 object Dependencies {
-  val AKKA_VERSION      = "1.2"
-  val JETTY_VERSION     = "8.0.0.RC0"
-  val PARBOILED_VERSION = "1.0.2"
-  val SPRAY_CAN_VERSION = "0.9.0"
+  val AKKA_VERSION       = "1.2"
+  val JETTY_VERSION      = "8.0.0.RC0"
+  val PARBOILED_VERSION  = "1.0.2"
+  val SPRAY_CAN_VERSION  = "0.9.0"
+  val SPRAY_JSON_VERSION = "1.0.1"
+  val SLF4J_VERSION      = "1.6.1"
+  val LOGBACK_VERSION    = "0.9.29"
 
   object Compile {
-    val akkaActor     = "se.scalablesolutions.akka" %   "akka-actor"                % AKKA_VERSION      % "compile"
-    val akkaSlf4j     = "se.scalablesolutions.akka" %   "akka-slf4j"                % AKKA_VERSION      % "compile"
-    val parboiledC    = "org.parboiled"             %   "parboiled-core"            % PARBOILED_VERSION % "compile"
-    val parboiledS    = "org.parboiled"             %   "parboiled-scala"           % PARBOILED_VERSION % "compile"
-    val mimepull      = "org.jvnet"                 %   "mimepull"                  % "1.6"             % "compile"
-    val sprayCan      = "cc.spray.can"              %%  "spray-can"                 % SPRAY_CAN_VERSION % "compile"
-    val asyncHttp     = "com.ning"                  %   "async-http-client"         % "1.6.4"           % "compile"
-    val pegdown       = "org.pegdown"               %   "pegdown"                   % "1.1.0"           % "compile"
+    val akkaActor     = "se.scalablesolutions.akka" %   "akka-actor"                % AKKA_VERSION       % "compile"
+    val akkaSlf4j     = "se.scalablesolutions.akka" %   "akka-slf4j"                % AKKA_VERSION       % "compile"
+    val parboiledC    = "org.parboiled"             %   "parboiled-core"            % PARBOILED_VERSION  % "compile"
+    val parboiledS    = "org.parboiled"             %   "parboiled-scala"           % PARBOILED_VERSION  % "compile"
+    val mimepull      = "org.jvnet"                 %   "mimepull"                  % "1.6"              % "compile"
+    val sprayCan      = "cc.spray.can"              %%  "spray-can"                 % SPRAY_CAN_VERSION  % "compile"
+    val pegdown       = "org.pegdown"               %   "pegdown"                   % "1.1.0"            % "compile"
+    val sprayJson     = "cc.spray.json"             %%  "spray-json"                % SPRAY_JSON_VERSION % "compile"
   }
   object Provided {
-    val sprayJson     = "cc.spray.json"             %%  "spray-json"                % "1.0.1"           % "provided"
-    val sprayCan      = "cc.spray.can"              %%  "spray-can"                 % SPRAY_CAN_VERSION % "provided"
-    val servlet30     = "org.glassfish"             %   "javax.servlet"             % "3.0"             % "provided"
-    val jettyAsync    = "org.eclipse.jetty"         %   "jetty-continuation"        % "7.5.1.v20110908" % "provided"
-    val tomcat6Async  = "org.atmosphere"            %   "atmosphere-compat-tomcat"  % "0.7.1"           % "provided"
-    val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % "1.6.1"           % "provided"
+    val sprayJson     = "cc.spray.json"             %%  "spray-json"                % SPRAY_JSON_VERSION % "provided"
+    val sprayCan      = "cc.spray.can"              %%  "spray-can"                 % SPRAY_CAN_VERSION  % "provided"
+    val servlet30     = "org.glassfish"             %   "javax.servlet"             % "3.0"              % "provided"
+    val jettyAsync    = "org.eclipse.jetty"         %   "jetty-continuation"        % "7.5.1.v20110908"  % "provided"
+    val tomcat6Async  = "org.atmosphere"            %   "atmosphere-compat-tomcat"  % "0.7.1"            % "provided"
+    val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % SLF4J_VERSION      % "provided"
   }
   object Test {
-    val specs2        = "org.specs2"                %%  "specs2"                    % "1.6.1"           % "test"
-    val jettyServer   = "org.eclipse.jetty"         %   "jetty-server"              % JETTY_VERSION     % "test"
-    val jettyWebApp   = "org.eclipse.jetty"         %   "jetty-webapp"              % JETTY_VERSION     % "test"
-    val jettyPlugin   = "org.eclipse.jetty"         %   "jetty-webapp"              % JETTY_VERSION     % "jetty" // web-plugin
-    val logback       = "ch.qos.logback"            %   "logback-classic"           % "0.9.29"          % "runtime"
+    val specs2        = "org.specs2"                %%  "specs2"                    % "1.6.1"            % "test"
+    val jettyServer   = "org.eclipse.jetty"         %   "jetty-server"              % JETTY_VERSION      % "test"
+    val jettyWebApp   = "org.eclipse.jetty"         %   "jetty-webapp"              % JETTY_VERSION      % "test"
+    val jettyPlugin   = "org.eclipse.jetty"         %   "jetty-webapp"              % JETTY_VERSION      % "jetty" // web-plugin
+    val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % SLF4J_VERSION      % "test"
+    val logback       = "ch.qos.logback"            %   "logback-classic"           % LOGBACK_VERSION    % "test"
+  }
+  object Runtime {
+    val logback       = "ch.qos.logback"            %   "logback-classic"           % LOGBACK_VERSION    % "runtime"
   }
 }
 
@@ -192,8 +199,9 @@ object SprayBuild extends Build {
         Compile.parboiledC,
         Compile.parboiledS,
         Compile.mimepull,
-        Provided.slf4j,
         Provided.sprayJson,
+        Provided.sprayCan,
+        Provided.slf4j,
         Test.specs2
       )
     )
@@ -222,8 +230,10 @@ object SprayBuild extends Build {
     settings = moduleSettings ++ Seq(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
-        Compile.asyncHttp,
-        Test.specs2
+        Compile.sprayCan,
+        Test.specs2,
+        Test.slf4j,
+        Test.logback
       )
     )
   ) dependsOn (base)
@@ -257,12 +267,25 @@ object SprayBuild extends Build {
   ) aggregate (calculator, sprayCan, simple, markdownserver, stopwatch)
 
   // Module for "calculator" example
+  lazy val clientExample = Project(
+    "spray-client-example",
+    file("spray-examples/spray-client-example"),
+    settings = exampleSettings ++ Seq(
+      libraryDependencies ++= exampleDeps ++ Seq(
+        Compile.sprayCan,
+        Compile.sprayJson,
+        Runtime.logback
+      )
+    )
+  ) dependsOn (base, client)
+
+  // Module for "calculator" example
   lazy val calculator = Project(
     "spray-example-calculator",
     file("spray-examples/spray-example-calculator"),
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= exampleDeps ++ jettyForWebPlugin ++ Seq(
-        Test.logback
+        Runtime.logback
       )
     )
   ) dependsOn (base, server)
@@ -274,7 +297,7 @@ object SprayBuild extends Build {
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= exampleDeps ++ Seq(
         Compile.sprayCan,
-        Test.logback
+        Runtime.logback
       )
     )
   ) dependsOn (base, server)
@@ -296,7 +319,7 @@ object SprayBuild extends Build {
     file("spray-examples/spray-example-stopwatch"),
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= exampleDeps ++ jettyForWebPlugin ++ Seq(
-        Test.logback
+        Runtime.logback
       )
     )
   ) dependsOn (base, server)
@@ -307,7 +330,7 @@ object SprayBuild extends Build {
     file("spray-examples/spray-example-simple"),
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= exampleDeps ++ jettyForWebPlugin ++ Seq(
-        Test.logback
+        Runtime.logback
       )
     )
   ) dependsOn (base, server)
