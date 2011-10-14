@@ -25,11 +25,11 @@ import http._
 object NoEncoding extends Decoder with Encoder {
   val encoding = HttpEncodings.identity
 
-  override def decode(request: HttpRequest) = request
+  override def decode[T <: HttpMessage[T]](message: T) = message
 
   def decodeBuffer(buffer: Array[Byte]) = buffer
 
-  def handle(response: HttpResponse) = false
+  def handle(message: HttpMessage[_]) = false
 
   def encodeBuffer(buffer: Array[Byte]) = buffer
 }

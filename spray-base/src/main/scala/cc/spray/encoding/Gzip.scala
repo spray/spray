@@ -37,14 +37,17 @@ abstract class Gzip extends Decoder with Encoder {
 /**
  * An encoder and decoder for the HTTP 'gzip' encoding.
  */
-object Gzip extends Gzip {
-  def handle(response: HttpResponse) = response.status.isSuccess
+object Gzip extends Gzip { self =>
+
+  def handle(message: HttpMessage[_]) =
+    message.isInstanceOf[HttpRequest] || message.asInstanceOf[HttpResponse].status.isSuccess
+
   def apply(minContentSize: Int) = new Gzip {
-    def handle(response: HttpResponse) = {
-      response.status.isSuccess && response.content.get.buffer.length >= minContentSize
-    }
+    def handle(message: HttpMessage[_]) =
+      self.handle(message) && message.content.isDefined && message.content.get.buffer.length >= minContentSize
   }
-  def apply(predicate: HttpResponse => Boolean) = new Gzip {
-    def handle(response: HttpResponse) = predicate(response)
+
+  def apply(predicate: HttpMessage[_] => Boolean) = new Gzip {
+    def handle(message: HttpMessage[_]) = predicate(message)
   }
 }

@@ -26,8 +26,14 @@ case class HttpResponse(
   headers: List[HttpHeader],
   content: Option[HttpContent],
   protocol: HttpProtocol
-) extends HttpMessage {
-  def withContentTransformed(f: HttpContent => HttpContent): HttpResponse = copy(content = content.map(f))
+) extends HttpMessage[HttpResponse] {
+
+  def withHeader(headers: List[HttpHeader]) = copy(headers = headers)
+
+  def withContent(content: Option[HttpContent]) = copy(content = content)
+
+  def withHeadersAndContent(headers: List[HttpHeader], content: Option[HttpContent]) =
+    copy(headers = headers, content = content)
 }
 
 object HttpResponse {

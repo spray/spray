@@ -23,11 +23,11 @@ import java.io._
 trait Decoder {
   def encoding: HttpEncoding
   
-  def decode(request: HttpRequest): HttpRequest = request.content match {
-    case Some(content) => request.copy(
+  def decode[T <: HttpMessage[T]](message: T): T = message.content match {
+    case Some(content) => message.withContent(
       content = Some(HttpContent(content.contentType, decodeBuffer(content.buffer)))
     )
-    case _ => request
+    case _ => message
   }
   
   def decodeBuffer(buffer: Array[Byte]): Array[Byte]

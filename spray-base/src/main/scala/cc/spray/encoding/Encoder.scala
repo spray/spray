@@ -23,14 +23,14 @@ import HttpHeaders._
 trait Encoder {
   def encoding: HttpEncoding
   
-  def handle(response: HttpResponse): Boolean
+  def handle(message: HttpMessage[_]): Boolean
   
-  def encode(response: HttpResponse): HttpResponse = response.content match {
-    case Some(content) if !response.isEncodingSpecified && handle(response) => response.copy(
-      headers = `Content-Encoding`(encoding) :: response.headers,
+  def encode[T <: HttpMessage[T]](message: T): T = message.content match {
+    case Some(content) if !message.isEncodingSpecified && handle(message) => message.withHeadersAndContent(
+      headers = `Content-Encoding`(encoding) :: message.headers,
       content = Some(HttpContent(content.contentType, encodeBuffer(content.buffer)))
     )
-    case _ => response
+    case _ => message
   }
 
   def encodeBuffer(buffer: Array[Byte]): Array[Byte]
