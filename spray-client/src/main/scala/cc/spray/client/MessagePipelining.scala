@@ -47,7 +47,10 @@ trait MessagePipelining {
 
   def encode(encoder: Encoder): HttpRequest => HttpRequest = encoder.encode(_)
 
-  def decode(decoder: Decoder) = transformResponse(decoder.decode[HttpResponse])
+  def decode(decoder: Decoder) = transformResponse { response: HttpResponse =>
+    if (response.encoding == decoder.encoding) decoder.decode[HttpResponse](response)
+    else response
+  }
 
   def unmarshal[T :Unmarshaller] = transformResponse { response: HttpResponse =>
     unmarshaller[T].apply(response.content) match {

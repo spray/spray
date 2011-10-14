@@ -18,10 +18,12 @@ package cc.spray
 package client
 
 import akka.dispatch._
-import http.HttpResponse
+import http._
 import org.specs2.Specification
 import typeconversion.{DefaultMarshallers, DefaultUnmarshallers}
 import encoding.Gzip
+import HttpHeaders._
+import HttpEncodings._
 
 class MessagePipeliningSpec extends Specification
   with MessagePipelining with DefaultMarshallers with DefaultUnmarshallers { def is =
@@ -45,7 +47,7 @@ class MessagePipeliningSpec extends Specification
   }
 
   val echo: SendReceive = { request =>
-    completed(HttpResponse(200, request.content.get))
+    completed(HttpResponse(200, request.headers.filter(_.isInstanceOf[`Content-Encoding`]), request.content.get))
   }
 
   def completed(response: HttpResponse) =
@@ -68,6 +70,6 @@ class MessagePipeliningSpec extends Specification
 
   def testDecompression = {
     val pipeline = simpleRequest[String] ~> encode(Gzip) ~> echo ~> decode(Gzip)
-    pipeline(Get("/abc", "Hello")).get mustEqual HttpResponse(200, "Hello")
+    pipeline(Get("/abc", "Hello")).get mustEqual HttpResponse(200, List(`Content-Encoding`(gzip)), "Hello")
   }
 }
