@@ -32,7 +32,15 @@ private[spray] trait FormFieldDirectives {
   def formField[A](fieldMatcher: FM[A]): SprayRoute1[A] = filter1[A] { ctx =>
     val FieldName = fieldMatcher.name
     fieldMatcher(ctx.request.content) match {
-      case Right(value) => Pass(value)
+      case Right(value) => Pass.withTransform(value) {
+        _.cancelRejections {
+          _ match {
+            case MissingFormFieldRejection(FieldName) => true
+            case MalformedFormFieldRejection(_, FieldName) => true
+            case _ => false
+          }
+        }
+      }
       case Left(ContentExpected) => Reject(MissingFormFieldRejection(FieldName))
       case Left(MalformedContent(errorMsg)) => Reject(MalformedFormFieldRejection(errorMsg, FieldName))
       case Left(UnsupportedContentType(supported)) => Reject(UnsupportedRequestContentTypeRejection(supported))
