@@ -29,10 +29,12 @@ class MessagePipeliningSpec extends Specification
   with MessagePipelining with DefaultMarshallers with DefaultUnmarshallers { def is =
 
   "MessagePipelining should"                              ^
-  "work correctly for simply requests"                    ! testSimple^
+  "work correctly for simple requests"                    ! testSimple^
   "support marshalling"                                   ! testMarshalling^
+  "support unmarshalling"                                 ! testUnmarshalling^
   "support request compression"                           ! testCompression^
   "support response decompression"                        ! testDecompression^
+  "support request authentication"                        ! testAuthentication^
                                                           end
 
   val report: SendReceive = { request =>
@@ -40,14 +42,22 @@ class MessagePipeliningSpec extends Specification
     completed(HttpResponse(200, method + "|" + uri + "|" + content.map(_.as[String])))
   }
 
-  val reportDecoding: SendReceive = { request =>
+  val reportDecoding: SendReceive = request => completed {
     val decoded = Gzip.decode(request)
     import decoded._
-    completed(HttpResponse(200, method + "|" + uri + "|" + content.map(_.as[String])))
+    HttpResponse(200, method + "|" + uri + "|" + content.map(_.as[String]))
   }
 
-  val echo: SendReceive = { request =>
-    completed(HttpResponse(200, request.headers.filter(_.isInstanceOf[`Content-Encoding`]), request.content.get))
+  val echo: SendReceive = request => completed {
+    HttpResponse(200, request.headers.filter(_.isInstanceOf[`Content-Encoding`]), request.content.get)
+  }
+
+  val authenticatedEcho: SendReceive = request => completed {
+    HttpResponse(
+      status = request.headers
+        .collect { case Authorization(BasicHttpCredentials("bob", "1234")) => StatusCodes.OK }
+        .headOption.getOrElse(StatusCodes.Forbidden)
+    )
   }
 
   def completed(response: HttpResponse) =
@@ -63,6 +73,11 @@ class MessagePipeliningSpec extends Specification
     pipeline(Get("/abc", "Hello")).get mustEqual HttpResponse(200, "GET|/abc|Some(Right(Hello))")
   }
 
+  def testUnmarshalling = {
+    val pipeline = simpleRequest ~> report ~> unmarshal[String]
+    pipeline(Get("/abc")).get mustEqual "GET|/abc|None"
+  }
+
   def testCompression = {
     val pipeline = simpleRequest[String] ~> encode(Gzip) ~> reportDecoding
     pipeline(Get("/abc", "Hello")).get mustEqual HttpResponse(200, "GET|/abc|Some(Right(Hello))")
@@ -71,5 +86,10 @@ class MessagePipeliningSpec extends Specification
   def testDecompression = {
     val pipeline = simpleRequest[String] ~> encode(Gzip) ~> echo ~> decode(Gzip)
     pipeline(Get("/abc", "Hello")).get mustEqual HttpResponse(200, List(`Content-Encoding`(gzip)), "Hello")
+  }
+
+  def testAuthentication = {
+    val pipeline = simpleRequest ~> authenticate(BasicHttpCredentials("bob", "1234")) ~> authenticatedEcho
+    pipeline(Get()).get mustEqual HttpResponse(200)
   }
 }

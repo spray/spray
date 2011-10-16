@@ -47,6 +47,14 @@ trait MessagePipelining {
 
   def encode(encoder: Encoder): HttpRequest => HttpRequest = encoder.encode(_)
 
+  def addHeader(header: HttpHeader): HttpRequest => HttpRequest = req => req.withHeaders(header :: req.headers)
+
+  def addHeaders(first: HttpHeader, more: HttpHeader*): HttpRequest => HttpRequest = addHeaders(first :: more.toList)
+
+  def addHeaders(headers: List[HttpHeader]): HttpRequest => HttpRequest = req => req.withHeaders(headers ::: req.headers)
+
+  def authenticate(credentials: BasicHttpCredentials) = addHeader(HttpHeaders.Authorization(credentials))
+
   def decode(decoder: Decoder) = transformResponse { response: HttpResponse =>
     if (response.encoding == decoder.encoding) decoder.decode[HttpResponse](response)
     else response

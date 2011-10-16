@@ -135,7 +135,7 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
     }
   }
 
-  def withHeader(headers: List[HttpHeader]) = copy(headers = headers)
+  def withHeaders(headers: List[HttpHeader]) = copy(headers = headers)
 
   def withContent(content: Option[HttpContent]) = copy(content = content)
 

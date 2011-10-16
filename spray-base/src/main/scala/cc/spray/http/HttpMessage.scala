@@ -17,7 +17,7 @@ abstract class HttpMessage[T <: HttpMessage[T]] {
   /**
    * Creates a copy of this message replacing the headers with the given ones.
    */
-  def withHeader(headers: List[HttpHeader]): T
+  def withHeaders(headers: List[HttpHeader]): T
 
   /**
    * Creates a copy of this message replacing the content with the given one.
