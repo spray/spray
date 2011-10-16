@@ -45,11 +45,11 @@ class Jetty7ConnectorServlet extends ConnectorServlet("Jetty 7") {
     })
     continuation.setTimeout(timeout)
     continuation.suspend(resp)
-    responderFrom { response =>
+    responderFor(req) { response =>
       if (alreadyResponded.compareAndSet(false, true)) {
-        respond(resp, response)
+        respond(req, resp, response)
         continuation.complete()
-      } else log.warn("Received late response to a request, which already timed out, dropping response...")
+      } else log.warn("Received late response to %s, which already timed out, dropping response...", requestString(req))
     }
   }
   

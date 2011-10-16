@@ -51,8 +51,8 @@ class Tomcat6ConnectorServlet extends ConnectorServlet("Tomcat 6") with CometPro
 
   def responder(ev: CometEvent): RoutingResult => Unit = {
     ev.setTimeout(timeout)
-    responderFrom { response =>
-      respond(ev.getHttpServletResponse, response)
+    responderFor(ev.getHttpServletRequest) { response =>
+      respond(ev.getHttpServletRequest, ev.getHttpServletResponse, response)
       ev.close()
     }
   }

@@ -51,8 +51,8 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
         )
       }
     } catch {
-      case HttpException(failure, reason) => respond(resp, HttpResponse(failure.value, reason)); None
-      case e: Exception => respond(resp, HttpResponse(500, "Internal Server Error:\n" + e.toString)); None
+      case HttpException(failure, reason) => respond(req, resp, HttpResponse(failure.value, reason)); None
+      case e: Exception => respond(req, resp, HttpResponse(500, "Internal Server Error:\n" + e.toString)); None
     }
   }
 
@@ -103,7 +103,7 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
     }
   }
 
-  def respond(servletResponse: HttpServletResponse, response: HttpResponse) {
+  def respond(req: HttpServletRequest, servletResponse: HttpServletResponse, response: HttpResponse) {
     try {
       servletResponse.setStatus(response.status.value)
       response.headers.foreach(header => servletResponse.addHeader(header.name, header.value))
@@ -113,28 +113,28 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
         servletResponse.getOutputStream.write(content.buffer)
       }
     } catch {
-      case e: IOException => log.error("Could not write response body, " +
-                "probably the request has either timed out or the client has disconnected (" + e.toString + ')')
-      case e: Exception => log.error(e, "Could not complete request")
+      case e: IOException => log.error("Could not write response body of %s, probably the request has either timed out" +
+        "or the client has disconnected (%s)", requestString(req), e)
+      case e: Exception => log.error(e, "Could not complete %s", requestString(req))
     }
   }
 
-  def responderFrom(f: HttpResponse => Unit): RoutingResult => Unit = {
+  def responderFor(req: HttpServletRequest)(f: HttpResponse => Unit): RoutingResult => Unit = {
     case Respond(response) =>
       try {
         f(response)
       } catch {
-        case e: IllegalStateException => log.error("Could not complete request, it probably timed out and has therefore " +
-                "already been completed (" + e.toString + ')')
-        case e: Exception => log.error("Could not complete request due to " + e.toString)
+        case e: IllegalStateException => log.error("Could not complete %s, it probably timed out and has therefore" +
+          "already been completed (%s)", requestString(req), e)
+        case e: Exception => log.error("Could not complete %s due to %s", requestString(req), e)
       }
     case _: Reject => throw new IllegalStateException
   }
 
   def handleTimeout(req: HttpServletRequest, resp: HttpServletResponse)(complete: => Unit) {
     val latch = new CountDownLatch(1);
-    val responder = responderFrom { response =>
-      respond(resp, response)
+    val responder = responderFor(req) { response =>
+      respond(req, resp, response)
       complete
       latch.countDown()
     }
@@ -144,5 +144,7 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
       latch.await(timeout, TimeUnit.MILLISECONDS) // give the timeoutActor another `timeout` ms for completing
     }
   }
+
+  def requestString(req: HttpServletRequest) = req.getMethod + " request to '" + rebuildUri(req) + "'"
 
 }
