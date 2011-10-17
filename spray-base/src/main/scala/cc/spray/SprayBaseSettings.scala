@@ -16,9 +16,9 @@
 
 package cc.spray
 
-import akka.config.Config._
+import utils.AkkaConfSettings
 
-object SprayBaseSettings {
-  lazy val CompactJsonPrinting = config.getBool("spray.compact-json-printing", false)
-  lazy val LoggingTarget       = config.getString("spray.logging-target", "AkkaEventHandler")
+object SprayBaseSettings extends AkkaConfSettings("spray.") {
+  lazy val CompactJsonPrinting = configBool(false)
+  lazy val LoggingTarget       = configString("AkkaEventHandler")
 }

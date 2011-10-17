@@ -36,7 +36,7 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
 
   override def init() {
     log.info("Initializing %s <=> Spray Connector", containerName)
-    timeout = SprayServerSettings.AsyncTimeout
+    timeout = SprayServerSettings.RequestTimeout
     log.info("Async timeout for all requests is %s ms", timeout)
   }
 
