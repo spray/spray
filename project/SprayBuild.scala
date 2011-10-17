@@ -31,8 +31,7 @@ object SprayBuild extends Build {
     settings = moduleSettings ++ Seq(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
-        Compile.parboiledC,
-        Compile.parboiledS,
+        Compile.parboiled,
         Compile.mimepull,
         Provided.sprayJson,
         Provided.sprayCan,
@@ -49,7 +48,7 @@ object SprayBuild extends Build {
       libraryDependencies ++= Seq(
         Compile.akkaActor,
         Provided.servlet30,
-        Provided.jettyAsync,
+        Provided.jetty7Async,
         Provided.tomcat6Async,
         Provided.sprayCan,
         Test.specs2
@@ -88,10 +87,10 @@ object SprayBuild extends Build {
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
-        Compile.akkaSlf4j,
         Compile.sprayCan,
         Compile.sprayJson,
         Test.specs2,
+        Runtime.akkaSlf4j,
         Runtime.logback
       )
     )
@@ -103,11 +102,9 @@ object SprayBuild extends Build {
     settings = jettyExampleSettings ++ Seq(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
-        Compile.akkaSlf4j,
-        Test.jettyServer,
-        Test.jettyWebApp,
-        Test.jettyPlugin,
         Test.specs2,
+        Runtime.akkaSlf4j,
+        Runtime.jettyWebApp,
         Runtime.logback
       )
     )
@@ -119,11 +116,9 @@ object SprayBuild extends Build {
     settings = jettyExampleSettings ++ Seq(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
-        Test.jettyServer,
-        Test.jettyWebApp,
-        Test.jettyPlugin,
+        Compile.pegdown,
         Test.specs2,
-        Compile.pegdown
+        Runtime.jettyWebApp
       )
     )
   ) dependsOn (base, server)
@@ -134,11 +129,9 @@ object SprayBuild extends Build {
     settings = jettyExampleSettings ++ Seq(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
-        Compile.akkaSlf4j,
-        Test.jettyServer,
-        Test.jettyWebApp,
-        Test.jettyPlugin,
         Test.specs2,
+        Runtime.akkaSlf4j,
+        Runtime.jettyWebApp,
         Runtime.logback
       )
     )
@@ -150,9 +143,9 @@ object SprayBuild extends Build {
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
-        Compile.akkaSlf4j,
         Compile.sprayCan,
         Test.specs2,
+        Runtime.akkaSlf4j,
         Runtime.logback
       )
     )
@@ -164,11 +157,9 @@ object SprayBuild extends Build {
     settings = jettyExampleSettings ++ Seq(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
-        Compile.akkaSlf4j,
-        Test.jettyServer,
-        Test.jettyWebApp,
-        Test.jettyPlugin,
         Test.specs2,
+        Runtime.akkaSlf4j,
+        Runtime.jettyWebApp,
         Runtime.logback
       )
     )

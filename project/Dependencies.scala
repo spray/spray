@@ -11,7 +11,6 @@ object Dependencies {
   object V {
     val akka      = "1.2"
     val jetty     = "8.0.3.v20111011"
-    val parboiled = "1.0.2"
     val sprayCan  = "0.9.0"
     val sprayJson = "1.0.1"
     val slf4j     = "1.6.1"
@@ -20,9 +19,7 @@ object Dependencies {
 
   object Compile {
     val akkaActor     = "se.scalablesolutions.akka" %   "akka-actor"                % V.akka      % "compile"
-    val akkaSlf4j     = "se.scalablesolutions.akka" %   "akka-slf4j"                % V.akka      % "compile"
-    val parboiledC    = "org.parboiled"             %   "parboiled-core"            % V.parboiled % "compile"
-    val parboiledS    = "org.parboiled"             %   "parboiled-scala"           % V.parboiled % "compile"
+    val parboiled     = "org.parboiled"             %   "parboiled-scala"           % "1.0.2"     % "compile"
     val mimepull      = "org.jvnet"                 %   "mimepull"                  % "1.6"       % "compile"
     val sprayCan      = "cc.spray.can"              %%  "spray-can"                 % V.sprayCan  % "compile"
     val pegdown       = "org.pegdown"               %   "pegdown"                   % "1.1.0"     % "compile"
@@ -33,22 +30,22 @@ object Dependencies {
     val sprayJson     = "cc.spray.json"             %%  "spray-json"                % V.sprayJson       % "provided"
     val sprayCan      = "cc.spray.can"              %%  "spray-can"                 % V.sprayCan        % "provided"
     val servlet30     = "org.glassfish"             %   "javax.servlet"             % "3.0"             % "provided"
-    val jettyAsync    = "org.eclipse.jetty"         %   "jetty-continuation"        % "7.5.1.v20110908" % "provided"
+    val jetty7Async   = "org.eclipse.jetty"         %   "jetty-continuation"        % "7.5.1.v20110908" % "provided"
     val tomcat6Async  = "org.atmosphere"            %   "atmosphere-compat-tomcat"  % "0.7.1"           % "provided"
     val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % V.slf4j           % "provided"
   }
 
   object Test {
     val specs2        = "org.specs2"                %%  "specs2"                    % "1.6.1"   % "test"
-    val jettyServer   = "org.eclipse.jetty"         %   "jetty-server"              % V.jetty   % "test"
-    val jettyWebApp   = "org.eclipse.jetty"         %   "jetty-webapp"              % V.jetty   % "test"
-    val jettyPlugin   = "org.eclipse.jetty"         %   "jetty-webapp"              % V.jetty   % "jetty" // web-plugin
     val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % V.slf4j   % "test"
     val logback       = "ch.qos.logback"            %   "logback-classic"           % V.logback % "test"
   }
 
   object Runtime {
-    val logback       = "ch.qos.logback"            %   "logback-classic"           % V.logback % "runtime"
+    val jettyWebApp   = "org.eclipse.jetty"         %   "jetty-webapp"              % V.jetty   % "container"
+    val akkaSlf4j     = "se.scalablesolutions.akka" %   "akka-slf4j"                % V.akka
+    val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % V.slf4j
+    val logback       = "ch.qos.logback"            %   "logback-classic"           % V.logback
   }
 
 }
