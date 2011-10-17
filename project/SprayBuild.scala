@@ -18,8 +18,8 @@ object Resolvers {
 // Common build settings for all modules
 // ---------------------------------------------------------------------------------------------------------------------
 object BuildSettings {
- import Resolvers._
- 
+  import Resolvers._
+
   // -------------------------------------------------------------------------------------------------------------------
   // ModuleConfigurations
   // Every dependency that cannot be resolved from the built-in repositories (Maven Central and Scala Tools Releases)
@@ -38,7 +38,6 @@ object BuildSettings {
   val buildOrganization       = "cc.spray"
   val buildVersion            = "0.8-SNAPSHOT"
   val buildScalaVersion       = "2.9.1"
-  val buildCrossScalaVersions = Seq("2.9.1", "2.9.0-1")
 
   // Compile options
   val buildScalacOptions = Seq(
@@ -81,20 +80,18 @@ object BuildSettings {
     version            := buildVersion,
     scalaVersion       := buildScalaVersion,
     scalacOptions      := buildScalacOptions,
-    //crossScalaVersions := buildCrossScalaVersions,
     pomExtra           := pomExtras,
     publishMavenStyle  := true,
     fullResolvers     ++= resolvers,
-    
-    publishTo <<= (version) { version: String =>
-      /*val scalaTools = "http://nexus.scala-tools.org/content/repositories/"
-      if (version.trim.endsWith("SNAPSHOT")) Some("snapshots" at scalaTools + "snapshots/")
-      else                                   Some("releases"  at scalaTools + "releases/")*/
-      // FIXME Should be removed once testing of publishing is finished
-      val repoSuffix = if (version.contains("-SNAPSHOT")) "snapshots" else "releases"
-      val resolver = Resolver.file("gh-pages",
-          Path.userHome / "dev" / "stefri.github.com" / "repo" / repoSuffix)
-      Some(resolver)
+    publishArtifact in (Compile, packageSrc) := true,
+    publishTo         <<= version { version =>
+      Some {
+        "snapshots" at {
+          "http://nexus.scala-tools.org/content/repositories/" + {
+            if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else"releases/"
+          }
+        }
+      }
     }
   )
 
@@ -108,23 +105,12 @@ object BuildSettings {
   // -------------------------------------------------------------------------------------------------------------------
   // Settings for spray modules
   // -------------------------------------------------------------------------------------------------------------------
- 
-  // Publishing
-
-  // TODO Make sure the following options have an equivillant 0.10 setting
-  //override def managedStyle = ManagedStyle.Maven
-  //override def packageDocsJar = defaultJarPath("-scaladoc.jar")
-  //override def packageSrcJar = defaultJarPath("-sources.jar")
-  //lazy val sourceArtifact = Artifact(artifactID, "src", "jar", Some("sources"), Nil, None)
-  //lazy val docsArtifact = Artifact(artifactID, "docs", "jar", Some("scaladoc"), Nil, None)
-  //override def packageToPublishActions = super.packageToPublishActions ++ Seq(packageDocs, packageSrc)
-
   val moduleSettings = buildSettings
 
   // -------------------------------------------------------------------------------------------------------------------
   // Settings for spray examples
   // -------------------------------------------------------------------------------------------------------------------
-  val exampleSettings = buildSettings ++ disablePublishing ++ WebPlugin.webSettings
+  val exampleSettings = buildSettings ++ disablePublishing
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -173,6 +159,11 @@ object Dependencies {
 object SprayBuild extends Build {
   import BuildSettings._
   import Dependencies._
+
+  // configure prompt to show current project
+  override lazy val settings = super.settings :+  {
+    shellPrompt := { s => Project.extract(s).currentProject.id + " > " }
+  }
 
   // -------------------------------------------------------------------------------------------------------------------
   // Root-Project
@@ -259,14 +250,14 @@ object SprayBuild extends Build {
     Test.jettyPlugin
   )
 
-  // Parent module for all examples
+  // Parent for all examples
   lazy val examples = Project(
     "spray-examples",
     file("spray-examples"),
     settings = exampleSettings
   ) aggregate (calculator, sprayCan, simple, markdownserver, stopwatch)
 
-  // Module for "calculator" example
+  // "client" example
   lazy val clientExample = Project(
     "spray-client-example",
     file("spray-examples/spray-client-example"),
@@ -279,18 +270,18 @@ object SprayBuild extends Build {
     )
   ) dependsOn (base, client)
 
-  // Module for "calculator" example
+  // "calculator" example
   lazy val calculator = Project(
     "spray-example-calculator",
     file("spray-examples/spray-example-calculator"),
-    settings = exampleSettings ++ Seq(
+    settings = exampleSettings ++ WebPlugin.webSettings ++ Seq(
       libraryDependencies ++= exampleDeps ++ jettyForWebPlugin ++ Seq(
         Runtime.logback
       )
     )
   ) dependsOn (base, server)
 
-  // Module for "spray-can" example
+  // "spray-can" example
   lazy val sprayCan = Project(
     "spray-example-spray-can",
     file("spray-examples/spray-example-spray-can"),
@@ -302,33 +293,33 @@ object SprayBuild extends Build {
     )
   ) dependsOn (base, server)
 
-  // Module for "markdownserver" example
+  // "markdownserver" example
   lazy val markdownserver = Project(
     "spray-example-markdownserver",
     file("spray-examples/spray-example-markdownserver"),
-    settings = exampleSettings ++ Seq(
+    settings = exampleSettings ++ WebPlugin.webSettings ++ Seq(
       libraryDependencies ++= exampleDeps ++ jettyForWebPlugin ++ Seq(
         Compile.pegdown
       )
     )
   ) dependsOn (base, server)
 
-  // Module for "stopwatch" example
+  // "stopwatch" example
   lazy val stopwatch = Project(
     "spray-example-stopwatch",
     file("spray-examples/spray-example-stopwatch"),
-    settings = exampleSettings ++ Seq(
+    settings = exampleSettings ++ WebPlugin.webSettings ++ Seq(
       libraryDependencies ++= exampleDeps ++ jettyForWebPlugin ++ Seq(
         Runtime.logback
       )
     )
   ) dependsOn (base, server)
 
-  // Module for "simple" example
+  // "simple" example
   lazy val simple = Project(
     "spray-example-simple",
     file("spray-examples/spray-example-simple"),
-    settings = exampleSettings ++ Seq(
+    settings = exampleSettings ++ WebPlugin.webSettings ++ Seq(
       libraryDependencies ++= exampleDeps ++ jettyForWebPlugin ++ Seq(
         Runtime.logback
       )
