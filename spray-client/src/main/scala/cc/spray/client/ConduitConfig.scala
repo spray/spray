@@ -17,12 +17,11 @@
 package cc.spray
 package client
 
-import akka.config.Config._
+import utils.AkkaConfSettings
 
 case class ConduitConfig(
   clientActorId: String = "spray-can-client",
   maxConnections: Int = 4,
-  pipeliningEnabled: Boolean = false,
   dispatchStrategy: DispatchStrategy = DispatchStrategies.NonPipelined
 ) {
 
@@ -32,14 +31,17 @@ case class ConduitConfig(
     "ConduitConfig(\n" +
     "  clientActorId     : " + clientActorId + "\n" +
     "  maxConnections    : " + maxConnections + "\n" +
-    "  pipeliningEnabled : " + pipeliningEnabled + "\n" +
     ")"
 }
 
 object ConduitConfig {
   lazy val fromAkkaConf = ConduitConfig(
-    clientActorId   = config.getString("spray.client.client-actor-id", "spray-can-client"),
-    maxConnections  = config.getInt("spray.client.max-connections-per-conduit", 4),
-    pipeliningEnabled = config.getBoolean("spray.client.pipelining-enabled", false)
+    clientActorId   = AkkaConfConduitConfig.ClientActorId,
+    maxConnections  = AkkaConfConduitConfig.MaxConnectionsPerConduit
   )
+}
+
+object AkkaConfConduitConfig extends AkkaConfSettings("spray.client.") {
+  lazy val ClientActorId = configString("spray-can-client")
+  lazy val MaxConnectionsPerConduit = configInt(4)
 }
