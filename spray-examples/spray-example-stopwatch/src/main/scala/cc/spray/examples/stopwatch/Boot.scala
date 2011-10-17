@@ -1,10 +1,9 @@
-package cc.spray.examples.stopwatch
+package cc.spray
+package examples.stopwatch
 
 import akka.config.Supervision._
 import akka.actor.Supervisor
 import akka.actor.Actor._
-import cc.spray._
-import utils.ActorHelpers._
 
 class Boot {
   
@@ -12,17 +11,17 @@ class Boot {
     // bake your module cake here
   }
   
-  // start the root service actor (and any service actors you want to specify supervision details for)
+  val httpService = actorOf(new HttpService(mainModule.stopWatchService))
+  val rootService = actorOf(new RootService(httpService))
+
+  // start and supervise the created actors
   Supervisor(
     SupervisorConfig(
       OneForOneStrategy(List(classOf[Exception]), 3, 100),
       List(
-        Supervise(actorOf[RootService], Permanent)
+        Supervise(httpService, Permanent),
+        Supervise(rootService, Permanent)
       )
     )
   )
-  
-  // attach an HttpService (which is also an actor)
-  // the root service automatically starts the HttpService if it is unstarted
-  actor[RootService] ! Attach(HttpService(mainModule.stopWatchService))
 }

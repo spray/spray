@@ -19,8 +19,10 @@ package test
 
 import cc.spray.RequestContext
 import http._
-import util.DynamicVariable
-import utils.{NoLog, Logging}
+import java.util.concurrent.{CountDownLatch, TimeUnit}
+import akka.util.Duration
+import akka.util.duration._
+import utils._
 
 /**
  * Mix this trait into the class or trait containing your route and service tests.
@@ -29,9 +31,16 @@ import utils.{NoLog, Logging}
  */
 trait SprayTest {
 
-  def test(request: HttpRequest)(route: Route): RoutingResultWrapper = {
-    var result: Option[RoutingResult] = None;
-    route(RequestContext(request, {ctx => result = Some(ctx)}, request.path))
+  def test(request: HttpRequest, timeout: Duration = 1000.millis)(route: Route): RoutingResultWrapper = {
+    var result: Option[RoutingResult] = None
+    val latch = new CountDownLatch(1)
+    val responder = { (rr: RoutingResult) =>
+      result = Some(rr)
+      latch.countDown()
+    }
+    route(RequestContext(request = request, responder = responder, unmatchedPath = request.path))
+    // since the route might detach we block until the route actually completes or times out
+    latch.await(timeout.toMillis, TimeUnit.MILLISECONDS)
     new RoutingResultWrapper(result.getOrElse(doFail("No response received")))
   }
 
@@ -39,46 +48,51 @@ trait SprayTest {
     def handled: Boolean = rr.isInstanceOf[Respond]
     def response: HttpResponse = rr match {
       case Respond(response) => response
-      case Reject(_) => doFail("Request was rejected")
+      case Reject(rejections) => doFail("Request was rejected with " + rejections)
     }
     def rawRejections: Set[Rejection] = rr match {
-      case Respond(_) => doFail("Request was not rejected")
+      case Respond(response) => doFail("Request was not rejected, response was " + response)
       case Reject(rejections) => rejections 
     }
     def rejections: Set[Rejection] = Rejections.applyCancellations(rawRejections)   
   }
-  
+
   trait ServiceTest extends HttpServiceLogic with Logging {
-    override lazy val log = NoLog // in the tests we don't log
-    private[SprayTest] val responder = new DynamicVariable[RoutingResult => Unit]( _ =>
-      throw new IllegalStateException("SprayTest.HttpService instances can only be used with the SprayTest.test(service, request) method")
-    )
-    protected[spray] def responderForRequest(request: HttpRequest) = responder.value
+    override lazy val log: Log = NoLog // in the tests we don't log
+    val customRejectionHandler = emptyPartialFunc
   }
 
   /**
-   * The default HttpServiceLogic for testing.
+   * The default implicit service wrapper using the HttpServiceLogic for testing.
    * If you have derived your own CustomHttpServiceLogic that you would like to test, create an implicit conversion
    * similar to this:
    * {{{
    * implicit def customWrapRootRoute(rootRoute: Route): ServiceTest = new CustomHttpServiceLogic with ServiceTest {
-   *   val route = routeRoute
+   *   val route = rootRoute
    * }
    * }}}
    */
   implicit def wrapRootRoute(rootRoute: Route): ServiceTest = new ServiceTest {
     val route = rootRoute
-    val setDateHeader = false
   }
-  
-  def testService(request: HttpRequest)(service: ServiceTest): ServiceResultWrapper = {
-    var response: Option[Option[HttpResponse]] = None 
-    service.responder.withValue(rr => { response = Some(service.responseFromRoutingResult(rr)) }) {
-      service.handle(request)
+
+  def testService(request: HttpRequest, timeout: Duration = 1000.millis)(service: ServiceTest): ServiceResultWrapper = {
+    var result: Option[RoutingResult] = None
+    val latch = new CountDownLatch(1)
+    val responder = { (rr: RoutingResult) =>
+      result = Some(rr)
+      latch.countDown()
     }
-    new ServiceResultWrapper(response.getOrElse(doFail("No response received")))
+    service.handle(RequestContext(request = request, responder = responder, unmatchedPath = request.path))
+    // since the route might detach we block until the route actually completes or times out
+    latch.await(timeout.toMillis, TimeUnit.MILLISECONDS)
+    result match {
+      case Some(Respond(response)) => new ServiceResultWrapper(Some(response))
+      case Some(_: Reject) => new ServiceResultWrapper(None)
+      case None => doFail("No response received")
+    }
   }
-  
+
   class ServiceResultWrapper(responseOption: Option[HttpResponse]) {
     def handled: Boolean = responseOption.isDefined
     def response: HttpResponse = responseOption.getOrElse(doFail("Request was not handled"))
@@ -105,4 +119,6 @@ trait SprayTest {
       }
     }
   }
-} 
+}
+
+object SprayTest extends SprayTest

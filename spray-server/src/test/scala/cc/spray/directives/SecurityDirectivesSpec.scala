@@ -44,7 +44,7 @@ class SecurityDirectivesSpec extends AbstractSprayTest {
     }
     "extract the object representing the user identity created by successful authentication" in {
       test(HttpRequest(headers = List(Authorization(BasicHttpCredentials("Alice", ""))))) { 
-        authenticate(httpBasic(authenticator = doAuth)) { user => _.complete(user.toString) }
+        authenticate(httpBasic(authenticator = doAuth)) { echoComplete }
       }.response.content.as[String] mustEqual Right("BasicUserContext(Alice)")
     }
   }
@@ -52,7 +52,7 @@ class SecurityDirectivesSpec extends AbstractSprayTest {
   "the FromConfigUserPassAuthenticator" should {
     "extract a BasicUserContext for users defined in the spray config" in {
       test(HttpRequest(headers = List(Authorization(BasicHttpCredentials("Alice", "banana"))))) {
-        authenticate(httpBasic()) { user => _.complete(user.toString) }
+        authenticate(httpBasic()) { echoComplete }
       }.response.content.as[String] mustEqual Right("BasicUserContext(Alice)")
     }
   }

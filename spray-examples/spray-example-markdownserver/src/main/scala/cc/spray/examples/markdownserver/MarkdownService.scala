@@ -1,4 +1,5 @@
-package cc.spray.examples.markdownserver
+package cc.spray
+package examples.markdownserver
 
 import cc.spray._
 import http._

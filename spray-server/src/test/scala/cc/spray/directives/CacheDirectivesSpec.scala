@@ -17,6 +17,7 @@
 package cc.spray
 package directives
 
+import utils._
 import http._
 import HttpMethods._
 import test.AbstractSprayTest
@@ -37,7 +38,7 @@ class CacheDirectivesSpec extends AbstractSprayTest {
       var i = 0
       cache { _.complete { i += 1; HttpResponse(500 + i) } }
     }
-    def prime(route: Route) = make(route) { _(RequestContext(HttpRequest(GET), _ => (), "")) }
+    def prime(route: Route) = make(route) { _(RequestContext(HttpRequest(GET))) }
     
     "return and cache the response of the first GET" in {      
       test(HttpRequest(GET)) {

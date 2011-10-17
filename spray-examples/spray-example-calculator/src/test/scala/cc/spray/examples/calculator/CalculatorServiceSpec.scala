@@ -1,7 +1,7 @@
-package cc.spray.examples.calculator
+package cc.spray
+package examples.calculator
 
 import org.specs2.mutable._
-import cc.spray._
 import test._
 import http._
 import HttpMethods._
@@ -9,7 +9,7 @@ import HttpHeaders._
 import MediaTypes._
 import StatusCodes._
 
-class CalculatorServiceSpec extends Specification with SprayTest with CalculatorService with DontDetach {
+class CalculatorServiceSpec extends Specification with SprayTest with CalculatorService {
   
   "The Calculator service" should {
     "calculate correctly" in {

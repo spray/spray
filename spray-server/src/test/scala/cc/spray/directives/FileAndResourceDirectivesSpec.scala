@@ -24,6 +24,7 @@ import org.parboiled.common.FileUtils
 import util.Properties
 import java.io.File
 import test.AbstractSprayTest
+import HttpHeaders._
 
 class FileAndResourceDirectivesSpec extends AbstractSprayTest {
 
@@ -46,9 +47,11 @@ class FileAndResourceDirectivesSpec extends AbstractSprayTest {
     "return the file content with the MediaType matching the file extension" in {
       val file = File.createTempFile("sprayTest", ".PDF")
       FileUtils.writeAllText("This is PDF", file)
-      test(HttpRequest(GET)) {
+      val HttpResponse(_, headers, content, _) = test(HttpRequest(GET)) {
         getFromFileName(file.getPath)
-      }.response.content mustEqual Some(HttpContent(`application/pdf`, "This is PDF"))
+      }.response
+      content mustEqual Some(HttpContent(`application/pdf`, "This is PDF"))
+      headers must have { case `Last-Modified`(dateTime) => dateTime.clicks == file.lastModified }
       file.delete
     }
     "return the file content with MediaType 'application/octet-stream' on unknown file extensions" in {
@@ -73,9 +76,11 @@ class FileAndResourceDirectivesSpec extends AbstractSprayTest {
       }.response mustEqual HttpResponse(404)
     }
     "return the resource content with the MediaType matching the file extension" in {
-      test(HttpRequest(GET)) {
+      val HttpResponse(_, headers, content, _) = test(HttpRequest(GET)) {
         getFromResource("sample.html")
-      }.response.content mustEqual Some(HttpContent(`text/html`, "<p>Lorem ipsum!</p>"))
+      }.response
+      content mustEqual Some(HttpContent(`text/html`, "<p>Lorem ipsum!</p>"))
+      headers must have { case `Last-Modified`(dt) => DateTime(2011, 7, 1) < dt && dt.clicks < System.currentTimeMillis() }
     }
     "return the file content with MediaType 'application/octet-stream' on unknown file extensions" in {
       test(HttpRequest(GET)) {

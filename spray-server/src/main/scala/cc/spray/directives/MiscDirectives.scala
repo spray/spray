@@ -95,7 +95,7 @@ private[spray] trait MiscDirectives {
     ctx.withHttpResponseTransformed {
       _.withContentTransformed { content =>
         import MediaTypes._
-        import marshalling.DefaultUnmarshallers._
+        import typeconversion.DefaultUnmarshallers._
         (ctx.request.queryParams.get(parameterName), content.contentType) match {
           case (Some(wrapper), ContentType(`application/json`, charset)) =>
             HttpContent(ContentType(`application/javascript`, charset), wrapper + '(' + content.as[String].right.get + ')')

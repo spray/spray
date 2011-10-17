@@ -84,8 +84,7 @@ trait StopWatchService extends Directives with StopWatchMarshallers {
   def createNewWatch(): Route = { ctx =>
     val newWatchUri = "/watch/" + watches.size
     watches(watches.size) = Stopped(0) // all new watches start stopped
-    ctx.complete(HttpResponse(Created, Location(newWatchUri) :: Nil,
-      Some(HttpContent("New stopwatch created at " + newWatchUri))))
+    ctx.complete(HttpResponse(Created, Location(newWatchUri) :: Nil, HttpContent("New stopwatch created at " + newWatchUri)))
   }
   
   def wrapWithBackLink(content: HttpContent) = content.contentType match {

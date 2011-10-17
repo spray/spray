@@ -19,45 +19,45 @@ package connectors
 
 import javax.servlet.{AsyncEvent, AsyncListener}
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * The spray connector servlet for all servlet 3.0 containers.
  */
-class Servlet30ConnectorServlet extends ConnectorServlet with AsyncListener {
-  
-  def containerName = "Servlet API 3.0"
-  
+class Servlet30ConnectorServlet extends ConnectorServlet("Servlet API 3.0") {
+
   override def service(req: HttpServletRequest, resp: HttpServletResponse) {
-    rootService ! RawRequestContext(rawRequest(req), suspend(req, resp)) 
+    requestContext(req, resp, responder(req, resp)).foreach(rootService ! _)
   }
-  
-  def suspend(req: HttpServletRequest, resp: HttpServletResponse): (RawResponse => Unit) => Unit = {
+
+  def responder(req: HttpServletRequest, resp: HttpServletResponse): RoutingResult => Unit = {
+    val alreadyResponded = new AtomicBoolean(false)
     val asyncContext = req.startAsync()
     asyncContext.setTimeout(timeout)
-    asyncContext.addListener(this)
-    completer(resp) {
-      asyncContext.complete()
+    asyncContext.addListener {
+      new AsyncListener {
+        def onTimeout(event: AsyncEvent) {
+          if (alreadyResponded.compareAndSet(false, true)) {
+            handleTimeout(req, resp) {
+              asyncContext.complete()
+            }
+          } // else the request was completed just after the container decided to trigger a timeout
+        }
+        def onError(event: AsyncEvent) {
+          event.getThrowable match {
+            case null => log.error("Unspecified Error during async processing of %s", requestString(req))
+            case ex => log.error(ex, "Error during async processing of %s", requestString(req))
+          }
+        }
+        def onStartAsync(event: AsyncEvent) {}
+        def onComplete(event: AsyncEvent) {}
+      }
+    }
+    responderFor(req) { response =>
+      if (alreadyResponded.compareAndSet(false, true)) {
+        respond(req, resp, response)
+        asyncContext.complete()
+      } else log.warn("Received late response to %s, which already timed out, dropping response...", requestString(req))
     }
   }
-  
-  //********************** AsyncListener **********************
-
-  def onError(ev: AsyncEvent) {
-    val req = rawRequest(ev.getSuppliedRequest.asInstanceOf[HttpServletRequest])
-    ev.getThrowable match {
-      case null => log.error("Unspecified Error during async processing of %s", req)
-      case ex => log.error(ex, "Error during async processing of %s", req)
-    }
-  }
-
-  def onTimeout(ev: AsyncEvent) {
-    val req = rawRequest(ev.getSuppliedRequest.asInstanceOf[HttpServletRequest])
-    log.error("Timeout of %s", req)
-    TimeOutHandler.get.apply(req, rawResponse(ev.getSuppliedResponse.asInstanceOf[HttpServletResponse]))
-    ev.getAsyncContext.complete()
-  }
-
-  def onComplete(ev: AsyncEvent) {}
-
-  def onStartAsync(ev: AsyncEvent) {}
 }

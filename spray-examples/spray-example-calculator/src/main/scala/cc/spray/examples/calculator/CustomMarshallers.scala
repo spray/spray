@@ -1,8 +1,8 @@
-package cc.spray.examples.calculator
+package cc.spray
+package examples.calculator
 
-import cc.spray._
 import http._
-import marshalling._
+import typeconversion._
 import MediaTypes._
 
 trait CustomMarshallers {

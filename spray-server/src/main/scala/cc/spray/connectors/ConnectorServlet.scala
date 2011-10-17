@@ -18,63 +18,133 @@ package cc.spray
 package connectors
 
 import utils.Logging
-import collection.mutable.HashMap
 import collection.JavaConversions._
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest, HttpServlet}
-import utils.CantWriteResponseBodyException
 import utils.ActorHelpers._
+import http._
+import HttpHeaders._
+import StatusCodes._
+import MediaTypes._
+import java.util.concurrent.{TimeUnit, CountDownLatch}
+import java.io.{IOException, InputStream}
 
-private[connectors] trait ConnectorServlet extends HttpServlet with Logging {
-  
-  val rootService = actor(SpraySettings.RootActorId)
+private[connectors] abstract class ConnectorServlet(containerName: String) extends HttpServlet with Logging {
+  lazy val rootService = actor(SprayServerSettings.RootActorId)
+  lazy val timeoutActor = actor(SprayServerSettings.TimeoutActorId)
+  val EmptyByteArray = new Array[Byte](0)
   var timeout: Int = _
-  
-  def containerName: String
-  
+
   override def init() {
     log.info("Initializing %s <=> Spray Connector", containerName)
-    timeout = SpraySettings.AsyncTimeout
+    timeout = SprayServerSettings.RequestTimeout
     log.info("Async timeout for all requests is %s ms", timeout)
   }
-  
-  def rawRequest(req: HttpServletRequest) = new RawRequest {
-    def method = req.getMethod
-    lazy val uri = {
-      val buffer = req.getRequestURL
-      val queryString = req.getQueryString
-      if (queryString != null && queryString.length > 1) buffer.append('?').append(queryString)
-      buffer.toString
-    }
-    lazy val headers = {
-      val map = HashMap.empty[String, String]
-      for (name <- req.getHeaderNames.toList; value <- req.getHeaders(name).toList) {
-        map.update(name, value)
-      }
-      map
-    }
-    def inputStream = req.getInputStream
-    def remoteIP = req.getRemoteAddr
-    def protocol = req.getProtocol
-    override def toString = "Request(" + method + ", uri=" + uri + ", headers=" + headers + ", remoteIP=" + remoteIP + ")"
-  }
 
-  def rawResponse(resp: HttpServletResponse) = new RawResponse {
-    def setStatus(code: Int) { resp.setStatus(code) }
-    def addHeader(name: String, value: String) { resp.addHeader(name, value) }
-    def outputStream = resp.getOutputStream
-  }
-
-  def completer(resp: HttpServletResponse)(close: => Unit): (RawResponse => Unit) => Unit = { fillResponse =>
+  def requestContext(req: HttpServletRequest, resp: HttpServletResponse,
+                     responder: RoutingResult => Unit): Option[RequestContext] = {
     try {
-      fillResponse(rawResponse(resp))
-      close
-    } catch {
-      case e: CantWriteResponseBodyException => {
-        log.error("Could not write response body, " +
-                "probably the request has either timed out or the client has disconnected")
+      Some {
+        RequestContext(
+          request = httpRequest(req),
+          remoteHost = req.getRemoteAddr,
+          responder = responder
+        )
       }
-      case e: Exception => log.error(e, "Could not complete request")
+    } catch {
+      case HttpException(failure, reason) => respond(req, resp, HttpResponse(failure.value, reason)); None
+      case e: Exception => respond(req, resp, HttpResponse(500, "Internal Server Error:\n" + e.toString)); None
     }
   }
-  
+
+  def httpRequest(req: HttpServletRequest) = {
+    val (contentTypeHeader, contentLengthHeader, regularHeaders) = HttpHeaders.parseFromRaw {
+      req.getHeaderNames.toList.map { name =>
+        name -> req.getHeaders(name).toList.mkString(", ")
+      }
+    }
+    HttpRequest(
+      method = HttpMethods.getForKey(req.getMethod).get,
+      uri = rebuildUri(req),
+      headers = regularHeaders,
+      content = httpContent(req.getInputStream, contentTypeHeader, contentLengthHeader),
+      protocol = HttpProtocols.getForKey(req.getProtocol).get
+    )
+  }
+
+  def rebuildUri(req: HttpServletRequest) = {
+    val buffer = req.getRequestURL
+    val queryString = req.getQueryString
+    if (queryString != null && queryString.length > 1) buffer.append('?').append(queryString)
+    buffer.toString
+  }
+
+  def httpContent(inputStream: InputStream, contentTypeHeader: Option[`Content-Type`],
+                  contentLengthHeader: Option[`Content-Length`]): Option[HttpContent] = {
+    contentLengthHeader.flatMap {
+      case `Content-Length`(0) => None
+      case `Content-Length`(contentLength) => {
+        val body = if (contentLength == 0) EmptyByteArray else try {
+          val buf = new Array[Byte](contentLength)
+          var bytesRead = 0
+          while (bytesRead < contentLength) {
+            val count = inputStream.read(buf, bytesRead, contentLength - bytesRead)
+            if (count >= 0) bytesRead += count
+            else throw new HttpException(BadRequest, "Illegal Servlet request entity, expected length " +
+                    contentLength + " but only has length " + bytesRead)
+          }
+          buf
+        } catch {
+          case e: IOException =>
+            throw new HttpException(InternalServerError, "Could not read request entity due to " + e.toString)
+        }
+        val contentType = contentTypeHeader.map(_.contentType).getOrElse(ContentType(`application/octet-stream`))
+        Some(HttpContent(contentType, body))
+      }
+    }
+  }
+
+  def respond(req: HttpServletRequest, servletResponse: HttpServletResponse, response: HttpResponse) {
+    try {
+      servletResponse.setStatus(response.status.value)
+      response.headers.foreach(header => servletResponse.addHeader(header.name, header.value))
+      response.content.foreach { content =>
+        servletResponse.addHeader("Content-Type", content.contentType.value)
+        servletResponse.addHeader("Content-Length", content.buffer.length.toString)
+        servletResponse.getOutputStream.write(content.buffer)
+      }
+    } catch {
+      case e: IOException => log.error("Could not write response body of %s, probably the request has either timed out" +
+        "or the client has disconnected (%s)", requestString(req), e)
+      case e: Exception => log.error(e, "Could not complete %s", requestString(req))
+    }
+  }
+
+  def responderFor(req: HttpServletRequest)(f: HttpResponse => Unit): RoutingResult => Unit = {
+    case Respond(response) =>
+      try {
+        f(response)
+      } catch {
+        case e: IllegalStateException => log.error("Could not complete %s, it probably timed out and has therefore" +
+          "already been completed (%s)", requestString(req), e)
+        case e: Exception => log.error("Could not complete %s due to %s", requestString(req), e)
+      }
+    case _: Reject => throw new IllegalStateException
+  }
+
+  def handleTimeout(req: HttpServletRequest, resp: HttpServletResponse)(complete: => Unit) {
+    val latch = new CountDownLatch(1);
+    val responder = responderFor(req) { response =>
+      respond(req, resp, response)
+      complete
+      latch.countDown()
+    }
+    requestContext(req, resp, responder).foreach { context =>
+      log.error("Timeout of %s", context.request)
+      timeoutActor ! Timeout(context)
+      latch.await(timeout, TimeUnit.MILLISECONDS) // give the timeoutActor another `timeout` ms for completing
+    }
+  }
+
+  def requestString(req: HttpServletRequest) = req.getMethod + " request to '" + rebuildUri(req) + "'"
+
 }

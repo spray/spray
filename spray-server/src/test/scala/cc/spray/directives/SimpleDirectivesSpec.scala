@@ -23,7 +23,7 @@ import HttpMethods._
 import HttpHeaders._
 import MediaTypes._
 import test.AbstractSprayTest
-import marshalling.DefaultUnmarshallers._
+import typeconversion.DefaultUnmarshallers._
 
 class SimpleDirectivesSpec extends AbstractSprayTest {
 
@@ -61,7 +61,7 @@ class SimpleDirectivesSpec extends AbstractSprayTest {
       }
       "let requests to matching hosts pass and extract the full host" in {
         test(HttpRequest(uri = "http://spray.cc")) {
-          host("spra.*".r) { host => _.complete(host) }
+          host("spra.*".r) { echoComplete }
         }.response.content.as[String] mustEqual Right("spray.cc")
       }
     }
@@ -73,7 +73,7 @@ class SimpleDirectivesSpec extends AbstractSprayTest {
       }
       "let requests to matching hosts pass and extract the full host" in {
         test(HttpRequest(uri = "http://spray.cc")) {
-          host("spra(.*)".r) { host => _.complete(host) }
+          host("spra(.*)".r) { echoComplete }
         }.response.content.as[String] mustEqual Right("y.cc")
       }
     }

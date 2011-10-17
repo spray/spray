@@ -19,34 +19,37 @@ package connectors
 
 import org.eclipse.jetty.continuation._
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest}
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * The spray connector servlet for Jetty 7.
  */
-class Jetty7ConnectorServlet extends ConnectorServlet {
-
-  def containerName = "Jetty 7"
+class Jetty7ConnectorServlet extends ConnectorServlet("Jetty 7") {
 
   override def service(req: HttpServletRequest, resp: HttpServletResponse) {
-    rootService ! RawRequestContext(rawRequest(req), suspend(req, resp)) 
+    requestContext(req, resp, responder(req, resp)).foreach(rootService ! _)
   }
-  
-  def suspend(req: HttpServletRequest, resp: HttpServletResponse): (RawResponse => Unit) => Unit = {    
+
+  def responder(req: HttpServletRequest, resp: HttpServletResponse): RoutingResult => Unit = {
+    val alreadyResponded = new AtomicBoolean(false)
     val continuation = ContinuationSupport.getContinuation(req)
-    val rawReq = rawRequest(req)
     continuation.addContinuationListener(new ContinuationListener {
       def onTimeout(continuation: Continuation) {
-        log.error("Timeout of %s", rawReq)
-        TimeOutHandler.get.apply(rawReq, rawResponse(resp))
-        continuation.complete()
+        if (alreadyResponded.compareAndSet(false, true)) {
+          handleTimeout(req, resp) {
+            continuation.complete()
+          }
+        } // else the request was completed just after the container decided to trigger a timeout
       }
       def onComplete(continuation: Continuation) {}
     })
     continuation.setTimeout(timeout)
-    continuation.suspend(resp)    
-    
-    completer(resp) {
-      continuation.complete()
+    continuation.suspend(resp)
+    responderFor(req) { response =>
+      if (alreadyResponded.compareAndSet(false, true)) {
+        respond(req, resp, response)
+        continuation.complete()
+      } else log.warn("Received late response to %s, which already timed out, dropping response...", requestString(req))
     }
   }
   

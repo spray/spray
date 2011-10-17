@@ -1,13 +1,15 @@
-package cc.spray.examples.markdownserver
+package cc.spray
+package examples.markdownserver
 
 import org.specs2.mutable._
-import cc.spray._
 import test._
 import http._
 import HttpMethods._
 import StatusCodes._
+import java.util.concurrent.TimeUnit
+import akka.util.{Duration => AkkaDuration}
 
-class MarkdownServiceSpec extends Specification with SprayTest with MarkdownService with DontDetach {
+class MarkdownServiceSpec extends Specification with SprayTest with MarkdownService {
   
   "The Markdown service" should {
     "return the HTML for the markdown source in the resource file corresponding to the request path" in {
@@ -21,5 +23,9 @@ class MarkdownServiceSpec extends Specification with SprayTest with MarkdownServ
       }.response mustEqual HttpResponse(NotFound)
     }
   }
-  
+
+  // since pegdown can sometimes startup a little slow we give the testService a timeout of 2 seconds
+  override def testService(request: HttpRequest, timeout: AkkaDuration = AkkaDuration(2, TimeUnit.SECONDS))
+                          (service: ServiceTest) = super.testService(request, timeout)(service)
+
 }
