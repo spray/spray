@@ -1,7 +1,7 @@
-package cc.spray.examples.markdownserver
+package cc.spray
+package examples.markdownserver
 
 import org.specs2.mutable._
-import cc.spray._
 import test._
 import http._
 import HttpMethods._

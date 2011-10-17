@@ -1,4 +1,5 @@
-package cc.spray.examples.client
+package cc.spray
+package examples.simple
 
 import akka.config.Supervision._
 import akka.actor.Supervisor

@@ -1,5 +1,5 @@
 package cc.spray
-package examples.client
+package examples.simple
 
 import utils.ActorHelpers._
 import http.MediaTypes._
@@ -43,7 +43,7 @@ trait SimpleService extends Directives {
     } ~
     path("crashHttpService") {
       get { ctx =>
-        ctx.complete("About to kill the RootService...")
+        ctx.complete("About to kill the HttpService...")
         Actor.registry.actorsFor[HttpService].head ! Kill
       }
     } ~

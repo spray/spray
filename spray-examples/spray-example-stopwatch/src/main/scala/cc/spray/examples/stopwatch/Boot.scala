@@ -1,9 +1,9 @@
-package cc.spray.examples.stopwatch
+package cc.spray
+package examples.stopwatch
 
 import akka.config.Supervision._
 import akka.actor.Supervisor
 import akka.actor.Actor._
-import cc.spray._
 
 class Boot {
   

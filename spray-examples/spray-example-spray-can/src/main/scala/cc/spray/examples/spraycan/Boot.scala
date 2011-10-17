@@ -1,10 +1,10 @@
-package cc.spray.examples.spraycan
+package cc.spray
+package examples.spraycan
 
 import akka.config.Supervision._
 import akka.actor.{Supervisor, Actor}
-import cc.spray.{SprayCanRootService, HttpService}
-import cc.spray.can.HttpServer
 import Actor._
+import can.HttpServer
 import org.slf4j.LoggerFactory
 
 object Boot extends App {

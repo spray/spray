@@ -1,9 +1,9 @@
-package cc.spray.examples.calculator
+package cc.spray
+package examples.calculator
 
 import akka.config.Supervision._
 import akka.actor.Supervisor
 import akka.actor.Actor._
-import cc.spray._
 
 class Boot {
   

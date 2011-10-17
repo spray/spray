@@ -1,7 +1,7 @@
-package cc.spray.examples.stopwatch
+package cc.spray
+package examples.stopwatch
 
 import org.specs2.mutable._
-import cc.spray._
 import test._
 import http._
 import HttpMethods._
