@@ -45,7 +45,12 @@ private[spray] trait FileAndResourceDirectives {
   def getFromFile(file: File, charset: Option[HttpCharset] = None,
                   resolver: ContentTypeResolver = DefaultContentTypeResolver): Route = {
     detach {
-      get { _.complete(responseFromFile(file, charset, resolver)) }
+      get { ctx =>
+        responseFromFile(file, charset, resolver) match {
+          case Some(response) => ctx.complete(response)
+          case None => ctx.reject() // reject without specific rejection => same as unmatched "path" directive
+        }
+      }
     }
   }
 
@@ -54,7 +59,7 @@ private[spray] trait FileAndResourceDirectives {
    * response is returned. Note that this method is using disk IO which may block the current thread.
    */
   def responseFromFile(file: File, charset: Option[HttpCharset] = None,
-                       resolver: ContentTypeResolver = DefaultContentTypeResolver): HttpResponse = {
+                       resolver: ContentTypeResolver = DefaultContentTypeResolver): Option[HttpResponse] = {
     responseFromBuffer(
       lastModified = DateTime(math.min(file.lastModified, System.currentTimeMillis())),
       buffer = FileUtils.readAllBytes(file),
@@ -65,12 +70,17 @@ private[spray] trait FileAndResourceDirectives {
   /**
    * Returns a Route that completes GET requests with the content of the given resource. The actual I/O operation is
    * running detached in the context of a newly spawned actor, so it doesn't block the current thread.
-   * If the file cannot be read the Route completes the request with a "404 NotFound" error.
+   * If the resource cannot be read the Route completes the request with a "404 NotFound" error.
    */
   def getFromResource(resourceName: String, charset: Option[HttpCharset] = None,
                       resolver: ContentTypeResolver = DefaultContentTypeResolver): Route = {
     detach {
-      get { _.complete(responseFromResource(resourceName, charset)) }
+      get { ctx =>
+        responseFromResource(resourceName, charset) match {
+          case Some(response) => ctx.complete(response)
+          case None => ctx.reject() // reject without specific rejection => same as unmatched "path" directive
+        }
+      }
     }
   }
   
@@ -79,9 +89,8 @@ private[spray] trait FileAndResourceDirectives {
    * "404 NotFound" response is returned. Note that this method is using disk IO which may block the current thread.
    */
   def responseFromResource(resourceName: String, charset: Option[HttpCharset] = None,
-                           resolver: ContentTypeResolver = DefaultContentTypeResolver): HttpResponse = {
-    val resource = getClass.getClassLoader.getResource(resourceName)
-    if (resource != null) {
+                           resolver: ContentTypeResolver = DefaultContentTypeResolver): Option[HttpResponse] = {
+    Option(getClass.getClassLoader.getResource(resourceName)).flatMap { resource =>
       val urlConn = resource.openConnection()
       val inputStream = urlConn.getInputStream
       val response = responseFromBuffer(
@@ -91,14 +100,14 @@ private[spray] trait FileAndResourceDirectives {
       )
       inputStream.close()
       response
-    } else HttpResponse(NotFound)
+    }
   }
   
   private def responseFromBuffer(lastModified: DateTime, buffer: Array[Byte],
-                                 contentType: => ContentType): HttpResponse = {
+                                 contentType: => ContentType): Option[HttpResponse] = {
     Option(buffer).map { buffer =>
       HttpResponse(OK, List(`Last-Modified`(lastModified)), HttpContent(contentType, buffer))
-    }.getOrElse(HttpResponse(NotFound))
+    }
   }
 
   /**

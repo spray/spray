@@ -20,7 +20,7 @@ class MarkdownServiceSpec extends Specification with SprayTest with MarkdownServ
     "return a 404 error to paths that do not have corresponding resources" in {
       testService(HttpRequest(GET, "/doc/pipapo")) {
         markdownService
-      }.response mustEqual HttpResponse(NotFound)
+      }.handled must beFalse
     }
   }
 

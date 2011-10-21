@@ -37,12 +37,12 @@ class FileAndResourceDirectivesSpec extends AbstractSprayTest {
     "return a 404 for non-existing files" in {
       test(HttpRequest(GET)) {
         getFromFileName("nonExistentFile")
-      }.response mustEqual HttpResponse(404)
+      }.handled must beFalse
     }
     "return a 404 for directories" in {
       test(HttpRequest(GET)) {
         getFromFileName(Properties.javaHome)
-      }.response mustEqual HttpResponse(404)
+      }.handled must beFalse
     }
     "return the file content with the MediaType matching the file extension" in {
       val file = File.createTempFile("sprayTest", ".PDF")
@@ -73,7 +73,7 @@ class FileAndResourceDirectivesSpec extends AbstractSprayTest {
     "return a 404 for non-existing resources" in {
       test(HttpRequest(GET)) {
         getFromResource("nonExistingResource")
-      }.response mustEqual HttpResponse(404)
+      }.handled must beFalse
     }
     "return the resource content with the MediaType matching the file extension" in {
       val HttpResponse(_, headers, content, _) = test(HttpRequest(GET)) {
@@ -93,7 +93,7 @@ class FileAndResourceDirectivesSpec extends AbstractSprayTest {
     "return a 404 for non-existing resources" in {
       test(HttpRequest(GET, "not/found")) {
         getFromResourceDirectory("subDirectory")
-      }.response mustEqual HttpResponse(404)
+      }.handled must beFalse
     }
     "return the resource content with the MediaType matching the file extension" in {
       "example 1" in {

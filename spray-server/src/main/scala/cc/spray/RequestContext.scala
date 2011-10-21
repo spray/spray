@@ -120,7 +120,7 @@ case class RequestContext(
    * Completes the request with the given [[cc.spray.http.HttpFailure]].
    */
   def fail(failure: HttpFailure) {
-    complete(HttpResponse(failure))
+    fail(failure, failure.defaultMessage)
   }
   
   /**
