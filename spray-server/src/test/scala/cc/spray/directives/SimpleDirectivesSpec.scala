@@ -17,13 +17,10 @@
 package cc.spray
 package directives
 
-import org.specs2.mutable._
 import http._
 import HttpMethods._
 import HttpHeaders._
-import MediaTypes._
 import test.AbstractSprayTest
-import typeconversion.DefaultUnmarshallers._
 
 class SimpleDirectivesSpec extends AbstractSprayTest {
 
@@ -43,36 +40,36 @@ class SimpleDirectivesSpec extends AbstractSprayTest {
   "The 'host' directive" should {
     "in its simple String form" in {
       "block requests to unmatched hosts" in {
-        test(HttpRequest(uri = "http://spray.cc")) {
+        test(HttpRequest(headers = Host("spray.cc") :: Nil)) {
           host("spray.com") { completeOk }
         }.handled must beFalse
       }
       "let requests to matching hosts pass" in {
-        test(HttpRequest(uri = "http://spray.cc")) {
+        test(HttpRequest(headers = Host("spray.cc") :: Nil)) {
           host("spray.cc") { completeOk }
         }.response mustEqual Ok
       }
     }
     "in its simple RegEx form" in {
       "block requests to unmatched hosts" in {
-        test(HttpRequest(uri = "http://spray.cc")) {
+        test(HttpRequest(headers = Host("spray.cc") :: Nil)) {
           host("hairspray.*".r) { _ => completeOk }
         }.handled must beFalse
       }
       "let requests to matching hosts pass and extract the full host" in {
-        test(HttpRequest(uri = "http://spray.cc")) {
+        test(HttpRequest(headers = Host("spray.cc") :: Nil)) {
           host("spra.*".r) { echoComplete }
         }.response.content.as[String] mustEqual Right("spray.cc")
       }
     }
     "in its group RegEx form" in {
       "block requests to unmatched hosts" in {
-        test(HttpRequest(uri = "http://spray.cc")) {
+        test(HttpRequest(headers = Host("spray.cc") :: Nil)) {
           host("hairspray(.*)".r) { _ => completeOk }
         }.handled must beFalse
       }
       "let requests to matching hosts pass and extract the full host" in {
-        test(HttpRequest(uri = "http://spray.cc")) {
+        test(HttpRequest(headers = Host("spray.cc") :: Nil)) {
           host("spra(.*)".r) { echoComplete }
         }.response.content.as[String] mustEqual Right("y.cc")
       }

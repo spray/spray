@@ -72,10 +72,9 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
   }
 
   def rebuildUri(req: HttpServletRequest) = {
-    val buffer = req.getRequestURL
+    val uri = req.getRequestURI
     val queryString = req.getQueryString
-    if (queryString != null && queryString.length > 1) buffer.append('?').append(queryString)
-    buffer.toString
+    if (queryString != null && queryString.length > 1) uri + '?' + queryString else uri
   }
 
   def httpContent(inputStream: InputStream, contentTypeHeader: Option[`Content-Type`],

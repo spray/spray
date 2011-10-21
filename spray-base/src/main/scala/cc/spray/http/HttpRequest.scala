@@ -15,9 +15,10 @@
  * limitations under the License.
  */
 
-package cc.spray.http
+package cc.spray
+package http
 
-import java.net.URI
+import utils._
 import HttpHeaders._
 import HttpCharsets._
 import HttpProtocols._
@@ -25,6 +26,8 @@ import parser.QueryParser
 
 /**
  * Sprays immutable model of an HTTP request.
+ * The `uri` member contains the the URI of the request as it appears in the HTTP message, i.e. just the path and query
+ * string without scheme and authority (host and port).
  */
 case class HttpRequest(method: HttpMethod = HttpMethods.GET,
                        uri: String = "/",
@@ -32,33 +35,15 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
                        content: Option[HttpContent] = None,
                        protocol: HttpProtocol = `HTTP/1.1`) extends HttpMessage[HttpRequest] {
   
-  lazy val URI = new URI(uri)
-  
-  lazy val queryParams: Map[String, String] = QueryParser.parse(query)
-  
-  def path = nonNull(URI.getPath)
-  def host = nonNull(URI.getHost)
-  def port = URI.getPort
-  def query = nonNull(URI.getQuery)
-  def fragment = nonNull(URI.getFragment)
-  def authority = nonNull(URI.getAuthority)
-  def scheme = nonNull(URI.getScheme)
-  def schemeSpecificPart = nonNull(URI.getSchemeSpecificPart)
-  def userInfo = nonNull(URI.getUserInfo)
-  def isUriAbsolute = URI.isAbsolute
-  def isUriOpaque = URI.isOpaque
-
-  private def nonNull(s: String, default: String = ""): String = if (s == null) default else s
-  
-  def withUri(scheme: String = this.scheme,
-              userInfo: String = this.userInfo,
-              host: String = this.host,
-              port: Int = this.port,
-              path: String = this.path,
-              query: String = this.query,
-              fragment: String = this.fragment) = {
-    copy(uri = new URI(scheme, userInfo, host, port, path, query, fragment).toString)
+  val (path, queryParams) = uri.fastSplit('?') match {
+    case pathPart :: Nil => (pathPart, Map.empty[String, String])
+    case pathPart :: queryPart :: _ => (pathPart, QueryParser.parse(queryPart))
+    case Nil => throw new IllegalStateException // fastSplit never returns an empty list
   }
+
+  def host: String = headers.findByType[Host].map(_.host).getOrElse("")
+  def port: Option[Int] = headers.findByType[Host].map(_.port).getOrElse(None)
+  def hostAndPort: String = headers.findByType[Host].map(_.value).getOrElse("")
 
   lazy val acceptedMediaRanges: List[MediaRange] = {
     // TODO: sort by preference

@@ -19,6 +19,7 @@ package directives
 
 import http._
 import HttpMethods._
+import HttpHeaders._
 import test.AbstractSprayTest
 
 class BasicDirectivesSpec extends AbstractSprayTest {
@@ -44,17 +45,17 @@ class BasicDirectivesSpec extends AbstractSprayTest {
   
   "host(regex) | host(otherRegex)" should {
     "block requests not matching any of the two conditions" in {
-      test(HttpRequest(uri = "http://xyz.com")) { 
+      test(HttpRequest(headers = Host("xyz.com") :: Nil)) {
         (host("spray.*".r) | host("clay.*".r)) { _ => completeOk }
       }.handled must beFalse
     }
     "extract the first match if it is successful" in {
-      test(HttpRequest(uri = "http://www.spray.cc")) { 
+      test(HttpRequest(headers = Host("www.spray.cc") :: Nil)) {
         (host("[^\\.]+.spray.cc".r) | host("spray(.*)".r)) { echoComplete }
       }.response.content.as[String] mustEqual Right("www.spray.cc")
     }
     "extract the second match if the first failed and the second is successful" in {
-      test(HttpRequest(uri = "http://spray.cc")) { 
+      test(HttpRequest(headers = Host("spray.cc", Some(8000)) :: Nil)) {
         (host("[^\\.]+.spray.cc".r) | host("spray(.*)".r)) { echoComplete }
       }.response.content.as[String] mustEqual Right(".cc")
     }
@@ -63,17 +64,17 @@ class BasicDirectivesSpec extends AbstractSprayTest {
   "host(regex) & parameters('a, 'b)" should {
     val filter = host("([^\\.]+).spray.cc".r) & parameters('a, 'b) 
     "block requests to unmatching hosts" in {
-      test(HttpRequest(GET, "http://www.spray.org/?a=1&b=2")) { 
+      test(HttpRequest(GET, "/?a=1&b=2", Host("www.spray.org") :: Nil)) {
         filter { (_, _, _) => completeOk }
       }.handled must beFalse
     }
     "block requests without matching parameters" in {
-      test(HttpRequest(GET, "http://www.spray.cc/?a=1&c=2")) { 
+      test(HttpRequest(GET, "/?a=1&c=2", Host("www.spray.cc") :: Nil)) {
         filter { (_, _, _) => completeOk }
       }.handled must beFalse
     }
     "let matching requests pass and extract all values" in {
-      test(HttpRequest(GET, "http://www.spray.cc/?a=1&b=2")) { 
+      test(HttpRequest(GET, "/?a=1&b=2", Host("www.spray.cc") :: Nil)) {
         filter { (host, a, b) => _.complete(host + a + b) }
       }.response.content.as[String] mustEqual Right("www12")
     }
