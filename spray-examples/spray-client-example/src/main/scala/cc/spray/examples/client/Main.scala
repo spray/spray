@@ -48,7 +48,6 @@ object Main extends App with Logging {
   def fetchAndShowHeightOfMtEverest() {
     log.info("Requesting the elevation of Mt. Everest from Googles Elevation API...")
     val conduit = new HttpConduit("maps.googleapis.com")
-      with DefaultMarshallers
       with SprayJsonSupport
       with ElevationJsonProtocol {
       val elevationPipeline = simpleRequest ~> sendReceive ~> unmarshal[GoogleApiResult[Elevation]]
