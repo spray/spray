@@ -110,6 +110,10 @@ object HttpHeaders {
     def value = date.toRfc1123DateTimeString
   }
 
+  case class `Host`(host: String, port: Option[Int] = None) extends HttpHeader {
+    def value = port.map(host + ':' + _).getOrElse(host)
+  }
+
   case class `Last-Modified`(date: DateTime) extends HttpHeader {
     def value = date.toRfc1123DateTimeString
   }
