@@ -58,6 +58,41 @@ class ParameterDirectivesSpec extends AbstractSprayTest {
     }
   }
 
+  "when used with 'as(HexInt)' the parameter directive" should {
+    "extract parameter values as Int" in {
+      test(HttpRequest(uri = "/?amount=1f")) {
+        parameter('amount.as(HexInt)) { echoComplete }
+      }.response.content.as[String] mustEqual Right("31")
+    }
+    "cause a MalformedQueryParamRejection on illegal Int values" in {
+      test(HttpRequest(uri = "/?amount=1x3")) {
+        parameter('amount.as(HexInt)) { echoComplete }
+      }.rejections mustEqual Set(MalformedQueryParamRejection("'1x3' is not a valid 32-bit hexadecimal integer value", "amount"))
+    }
+    "supply typed default values" in {
+      test(HttpRequest(uri = "/")) {
+        parameter('amount.as(HexInt) ? 45) { echoComplete }
+      }.response.content.as[String] mustEqual Right("45")
+    }
+    "create typed optional parameters that" in {
+      "extract Some(value) when present" in {
+        test(HttpRequest(uri = "/?amount=A")) {
+          parameter("amount".as(HexInt)?) { echoComplete }
+        }.response.content.as[String] mustEqual Right("Some(10)")
+      }
+      "extract None when not present" in {
+        test(HttpRequest(uri = "/")) {
+          parameter("amount".as(HexInt)?) { echoComplete }
+        }.response.content.as[String] mustEqual Right("None")
+      }
+      "cause a MalformedQueryParamRejection on illegal Int values" in {
+        test(HttpRequest(uri = "/?amount=x")) {
+          parameter("amount".as(HexInt)?) { echoComplete }
+        }.rejections mustEqual Set(MalformedQueryParamRejection("'x' is not a valid 32-bit hexadecimal integer value", "amount"))
+      }
+    }
+  }
+
   "The 'parameters' extraction directive" should {
     "extract the value of given required parameters" in {
       test(HttpRequest(uri = "/?name=Parsons&FirstName=Ellen")) {

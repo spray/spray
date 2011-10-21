@@ -34,6 +34,13 @@ class FormFieldDirectivesSpec extends AbstractSprayTest with Directives {
         }
       }.response.content.as[String] mustEqual Right("Mike42Nonefalse")
     }
+    "properly extract the value of www-urlencoded form fields when an explicit deserializer is given" in {
+      test(HttpRequest(content = Some(urlEncodedForm.toHttpContent))) {
+        formFields('firstName, "age".as(HexInt), 'sex?, "VIP" ? false) { (firstName, age, sex, vip) =>
+          _.complete(firstName + age + sex + vip)
+        }
+      }.response.content.as[String] mustEqual Right("Mike66Nonefalse")
+    }
     "properly extract the value of multipart form fields" in {
       test(HttpRequest(content = Some(multipartForm.toHttpContent))) {
         formFields('firstName, "age", 'sex?, "VIP" ? (<b>yes</b>:xml.NodeSeq)) { (firstName, age, sex, vip) =>

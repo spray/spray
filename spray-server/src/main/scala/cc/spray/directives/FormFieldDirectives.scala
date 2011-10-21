@@ -121,25 +121,36 @@ private[spray] trait FormFieldDirectives {
     formFields(a, b, c, d, e, f, g, h) & formField(i)
   }
 
-  implicit def symbol2FieldMatcher(name: Symbol)(implicit ev: FormFieldConverter[String]) = new FieldMatcher[String](name.name)
-  implicit def string2FieldMatcher(name: String)(implicit ev: FormFieldConverter[String]) = new FieldMatcher[String](name)
-  implicit def receptacle2FieldMatcher[A :FormFieldConverter](receptacle: ExtractionReceptacle[A]): FieldMatcher[A] = {
-    receptacle match {
-      case NameTypeReceptacle(name) => new FieldMatcher[A](name)
-      case NameTypeDefaultReceptable(name, default) => new FieldMatcher[A](name)(
-        new FormFieldConverter[A] {
-          lazy val urlEncodedFieldConverter: Option[FromStringOptionDeserializer[A]] =
-            formFieldConverter[A].urlEncodedFieldConverter.map(transform)
-          lazy val multipartFieldConverter: Option[Unmarshaller[A]] =
-            formFieldConverter[A].multipartFieldConverter.map(transform)
-          def transform[S](ds: Deserializer[S, A]) = new Deserializer[S, A] {
-            def apply(source: S) = ds(source).left.flatMap {
-              case ContentExpected => Right(default)
-              case error => Left(error)
-            }
-          }
+  implicit def symbol2FM(name: Symbol)(implicit ev: FormFieldConverter[String]) =
+    new FieldMatcher[String](name.name)
+  implicit def string2FM(name: String)(implicit ev: FormFieldConverter[String]) =
+    new FieldMatcher[String](name)
+  implicit def nameReceptacle2FM[A :FormFieldConverter](r: NameReceptacle[A]) =
+    new FieldMatcher[A](r.name)
+  implicit def nameDeserializerReceptacle2FM[A](r: NameDeserializerReceptacle[A])(implicit um: Unmarshaller[A] = null) =
+    new FieldMatcher[A](r.name)(toFormFieldConverter(r.deserializer, um))
+  implicit def nameDefaultReceptacle2FM[A :FormFieldConverter](r: NameDefaultReceptacle[A]) =
+    new FieldMatcher[A](r.name)(withDefaultFormFieldConverter(r.default))
+  implicit def nameDeserializerDefaultReceptacle2FM[A](r: NameDeserializerDefaultReceptacle[A])(implicit um: Unmarshaller[A] = null) =
+    new FieldMatcher[A](r.name)(withDefaultFormFieldConverter(r.default)(toFormFieldConverter(r.deserializer, um)))
+
+  private def toFormFieldConverter[A](ds: FromStringOptionDeserializer[A], um: Unmarshaller[A]) = {
+    if (um == null) FormFieldConverter.urlEncodedFormFieldConverter(ds)
+    else FormFieldConverter.dualModeFormFieldConverter(ds, um)
+  }
+
+  private def withDefaultFormFieldConverter[A :FormFieldConverter](default: A): FormFieldConverter[A] = {
+    new FormFieldConverter[A] {
+      lazy val urlEncodedFieldConverter: Option[FromStringOptionDeserializer[A]] =
+        formFieldConverter[A].urlEncodedFieldConverter.map(transform)
+      lazy val multipartFieldConverter: Option[Unmarshaller[A]] =
+        formFieldConverter[A].multipartFieldConverter.map(transform)
+      def transform[S](ds: Deserializer[S, A]) = new Deserializer[S, A] {
+        def apply(source: S) = ds(source).left.flatMap {
+          case ContentExpected => Right(default)
+          case error => Left(error)
         }
-      )
+      }
     }
   }
 }
