@@ -27,9 +27,6 @@ package object can {
     new BufferedReader(new InputStreamReader(getClass.getResourceAsStream("/version.txt"))).readLine()
   }
 
-  /**
-   * Returns the actor with the given id.
-   */
   private[can] def actor(id: String): ActorRef = {
     val actors = Actor.registry.actorsFor(id)
     assert(actors.length == 1, actors.length + " actors for id '" + id + "' found, expected exactly one")

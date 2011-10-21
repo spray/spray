@@ -54,7 +54,7 @@ object Main extends App {
          |status : {}
          |headers: {}
          |body   : {}""".stripMargin,
-      Array(response.status: java.lang.Integer, response.headers, response.bodyAsString)
+      Array[AnyRef](response.status, response.headers, response.bodyAsString)
     )
   }
 }
