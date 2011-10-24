@@ -242,6 +242,10 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
   }
 
   override protected def cleanClose(conn: Conn) {
+    conn.messageParser match {
+      case x: ToCloseBodyParser => handleCompleteMessage(conn, x.complete)
+      case _ =>
+    }
     conn.closeAllPendingWithError("Server closed connection")
     super.cleanClose(conn)
   }

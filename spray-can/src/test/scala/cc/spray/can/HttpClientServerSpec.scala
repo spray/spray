@@ -31,6 +31,7 @@ class HttpClientServerSpec extends Specification with HttpClientSpecs { def is =
                                                                       p^
                                                                       Step(start())^
   "simple one-request dialog"                                         ! oneRequestDialog^
+  "one-request dialog with HTTP/1.0 terminated-by-close reponse"      ! terminatedByCloseDialog^
   "request-response dialog"                                           ! requestResponse^
   "non-pipelined request-request dialog"                              ! nonPipelinedRequestRequest^
   "pipelined request-request dialog"                                  ! pipelinedRequestRequest^
@@ -69,6 +70,9 @@ class HttpClientServerSpec extends Specification with HttpClientSpecs { def is =
       }
       case RequestContext(HttpRequest(_, "/wait200", _, _, _), _, responder) =>
         Scheduler.scheduleOnce(() => responder.complete(HttpResponse()), 200, TimeUnit.MILLISECONDS)
+      case RequestContext(HttpRequest(_, "/terminatedByClose", _, _, _), _, responder) => responder.complete {
+        HttpResponse(protocol = HttpProtocols.`HTTP/1.0`).withBody("This body is terminated by closing the connection!")
+      }
       case RequestContext(HttpRequest(method, uri, _, body, _), _, responder) => responder.complete {
         HttpResponse().withBody(method + "|" + uri + (if (body.length == 0) "" else "|" + new String(body, "ASCII")))
       }
@@ -84,6 +88,13 @@ class HttpClientServerSpec extends Specification with HttpClientSpecs { def is =
             .send(HttpRequest(uri = "/yeah"))
             .end
             .get.bodyAsString mustEqual "GET|/yeah"
+  }
+
+  private def terminatedByCloseDialog = {
+    dialog
+            .send(HttpRequest(uri = "/terminatedByClose"))
+            .end
+            .get.bodyAsString mustEqual "This body is terminated by closing the connection!"
   }
 
   private def requestResponse = {
