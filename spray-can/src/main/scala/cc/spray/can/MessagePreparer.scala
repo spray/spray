@@ -95,7 +95,8 @@ private[can] trait ResponsePreparer extends MessagePreparer {
                                 reqConnectionHeader: Option[String]): (List[ByteBuffer], Boolean) = {
     import response._
     val (sb, close) = prepareResponseStart(requestLine, response, reqConnectionHeader)
-    appendHeader("Content-Length", body.length.toString, sb)
+    // don't set a Content-Length header for non-keepalive HTTP/1.0 responses (rely on body end by connection close)
+    if (response.protocol == `HTTP/1.1` || !close) appendHeader("Content-Length", body.length.toString, sb)
     appendLine(sb)
     val bodyBufs = if (body.length == 0 || requestLine.method == HttpMethods.HEAD) Nil else ByteBuffer.wrap(body) :: Nil
     (encode(sb) :: bodyBufs, close)
@@ -115,30 +116,35 @@ private[can] trait ResponsePreparer extends MessagePreparer {
                                    reqConnectionHeader: Option[String]) = {
     import response._
 
-    def appendConnectionHeader(sb: JStringBuilder)(connectionHeaderValue: Option[String]) = {
-      if (connectionHeaderValue.isEmpty) requestLine.protocol match {
-        case `HTTP/1.0` =>
-          if (reqConnectionHeader.isEmpty || reqConnectionHeader.get != "Keep-Alive") true
-          else {
-            appendHeader("Connection", "Keep-Alive", sb)
-            false
-          }
-        case `HTTP/1.1` =>
-          if (reqConnectionHeader.isDefined && reqConnectionHeader.get == "close") {
-            appendHeader("Connection", "close", sb)
-            true
-          } else false
-      } else {
-        connectionHeaderValue.get.contains("close")
+    def appendConnectionHeaderIfRequired(connectionHeaderValue: Option[String], sb: JStringBuilder) = {
+      requestLine.protocol match {
+        case `HTTP/1.0` => {
+          if (connectionHeaderValue.isEmpty) {
+            if (reqConnectionHeader.isDefined && reqConnectionHeader.get == "Keep-Alive") {
+              appendHeader("Connection", "Keep-Alive", sb)
+              false
+            } else true
+          } else !connectionHeaderValue.get.contains("Keep-Alive")
+        }
+        case `HTTP/1.1` => {
+          if (connectionHeaderValue.isEmpty) {
+            if (reqConnectionHeader.isDefined && reqConnectionHeader.get == "close") {
+              if (response.protocol == `HTTP/1.1`) appendHeader("Connection", "close", sb)
+              true
+            } else response.protocol == `HTTP/1.0`
+          } else connectionHeaderValue.get.contains("close")
+        }
       }
     }
 
     val sb = new java.lang.StringBuilder(256)
-    if (status == 200) sb.append("HTTP/1.1 200 OK\r\n")
-    else appendLine(sb.append("HTTP/1.1 ").append(status).append(' ').append(HttpResponse.defaultReason(status)))
-    val close = appendConnectionHeader(sb) {
-      appendHeaders(headers, sb)
+    if (status == 200 && protocol == `HTTP/1.1`) {
+      sb.append("HTTP/1.1 200 OK\r\n")
+    } else appendLine {
+      sb.append(protocol.name).append(' ').append(status).append(' ').append(HttpResponse.defaultReason(status))
     }
+    val connectionHeaderValue = appendHeaders(headers, sb)
+    val close = appendConnectionHeaderIfRequired(connectionHeaderValue, sb)
     appendLine(sb.append(ServerHeaderPlusDateColonSP).append(dateTimeNow.toRfc1123DateTimeString))
     (sb, close)
   }
