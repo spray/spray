@@ -49,28 +49,24 @@ part of the _spray-can_ codebase:
 
         $ cd my-project
 
-3. Launch [SBT][] (SBT 0.7.7) and fetch all dependencies:
-
-        $ sbt update
-
-4. Run the server example:
+3. Launch [SBT][] (SBT 0.11.0) and run the server example:
 
         $ sbt "project server-example" run
 
-6. Browse to <http://127.0.0.1:8080> and play around with the sample "app".
+4. Browse to <http://127.0.0.1:8080> and play around with the sample "app".
 
-7. Run the client example:
+5. Run the client example:
 
         $ sbt "project client-example" run
 
-8. Start hacking on the sources in
+6. Start hacking on the sources in
 
    * `server-example/src/main/scala/cc/spray/can/example/` and/or
    * `client-example/src/main/scala/cc/spray/can/example/`
 
 
 For setting up your own project you need to pull in the _spray-can_ artifacts from the <http://scala-tools.org> repositories.
-The latest release is `0.9.0`. It's built against Scala 2.9.1 and Akka 1.2.
+The latest release is `0.9.1`. It's built against Scala 2.9.1 and Akka 1.2.
 
 
 ## Server
@@ -113,8 +109,8 @@ All other headers are of no interest to the server layer.
 When sending out responses the server watches for a `Connection` header that your application might set and acts
 accordingly. I.e. you can force _spray-can_ to close the connection after having sent the response by including an
 `HttpHeader("Connection", "close")`. To unconditionally force a connection keep-alive you can explicitly set a
-`HttpHeader("Connection", "keep-alive")` header. If you don't set an explicit `Connection` header the server will keep
-the connection alive if the client supports this (i.e. it either sent a "Connection: keep-alive" header or specified
+`HttpHeader("Connection", "Keep-Alive")` header. If you don't set an explicit `Connection` header the server will keep
+the connection alive if the client supports this (i.e. it either sent a "Connection: Keep-Alive" header or specified
 HTTP/1.1 capabilities without sending a "Connection: close" header).
 
 Your [HttpResponse] instances must not include explicit `Content-Length`, `Transfer-Encoding` or `Date` headers, since

@@ -1,3 +1,12 @@
+Version 0.9.1 (2011-10-25)
+--------------------------
+- Upgrade to SBT 0.11.0
+- Fix #6 (HTTP/1.1 requests without Host header are not rejected)
+- Fix #7 (client: support for terminated-by-close responses broken)
+- Fix incorrect akka.conf keys for client configuration
+- Smaller cleanups
+
+
 Version 0.9.0 (2011-09-27)
 --------------------------
 first public release
