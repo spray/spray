@@ -198,45 +198,40 @@ private[can] class HeaderNameParser(config: MessageParserConfig, messageLine: Me
   }
   def headersComplete = {
     @tailrec def traverse(remaining: List[HttpHeader], connection: Option[String], contentLength: Option[String],
-                          transferEncoding: Option[String]): MessageParser = {
+                          transferEncoding: Option[String], hostHeaderPresent: Boolean): MessageParser = {
       if (!remaining.isEmpty) {
         remaining.head.name match {
           case "Content-Length" =>
             if (contentLength.isEmpty) {
-              traverse(remaining.tail, connection, Some(remaining.head.value), transferEncoding)
-            }
-            else {
-              ErrorParser("HTTP message must not contain more than one Content-Length header", 400)
-            }
-          case "Transfer-Encoding" => traverse(remaining.tail, connection, contentLength, Some(remaining.head.value))
-          case "Connection" => traverse(remaining.tail, Some(remaining.head.value), contentLength, transferEncoding)
-          case _ => traverse(remaining.tail, connection, contentLength, transferEncoding)
+              traverse(remaining.tail, connection, Some(remaining.head.value), transferEncoding, hostHeaderPresent)
+            } else ErrorParser("HTTP message must not contain more than one Content-Length header", 400)
+          case "Transfer-Encoding" => traverse(remaining.tail, connection, contentLength, Some(remaining.head.value), hostHeaderPresent)
+          case "Connection" => traverse(remaining.tail, Some(remaining.head.value), contentLength, transferEncoding, hostHeaderPresent)
+          case "Host" =>
+            if (!hostHeaderPresent) traverse(remaining.tail, connection, contentLength, transferEncoding, true)
+            else ErrorParser("HTTP message must not contain more than one Host header", 400)
+          case _ => traverse(remaining.tail, connection, contentLength, transferEncoding, hostHeaderPresent)
         }
-      } else {
-        // rfc2616 sec. 4.4
-        if (messageBodyDisallowed) {
+      } else messageLine match { // rfc2616 sec. 4.4
+        case x: RequestLine if x.protocol == `HTTP/1.1` && !hostHeaderPresent =>
+          ErrorParser("Host header required", 400)
+        case _ if messageBodyDisallowed =>
           CompleteMessageParser(messageLine, headers, connection)
-        }
-        else if (transferEncoding.isDefined && transferEncoding.get != "identity") {
+        case _ if transferEncoding.isDefined && transferEncoding.get != "identity" =>
           ChunkedStartParser(messageLine, headers, connection)
-        }
-        else if (contentLength.isDefined) {
+        case _ if contentLength.isDefined =>
           contentLength.get match {
             case "0" => CompleteMessageParser(messageLine, headers, connection)
             case value => try {new FixedLengthBodyParser(config, messageLine, headers, connection, value.toInt)}
             catch {case e: Exception => ErrorParser("Invalid Content-Length header value: " + e.getMessage)}
           }
-        } else {
-          messageLine match {
-            case _: RequestLine => CompleteMessageParser(messageLine, headers, connection)
-            case x: StatusLine if connection == Some("close") || connection.isEmpty && x.protocol == `HTTP/1.0` =>
-              new ToCloseBodyParser(config, messageLine, headers, connection)
-            case _ => ErrorParser("Content-Length header or chunked transfer encoding required", 411)
-          }
-        }
+        case _: RequestLine => CompleteMessageParser(messageLine, headers, connection)
+        case x: StatusLine if connection == Some("close") || connection.isEmpty && x.protocol == `HTTP/1.0` =>
+          new ToCloseBodyParser(config, messageLine, headers, connection)
+        case _ => ErrorParser("Content-Length header or chunked transfer encoding required", 411)
       }
     }
-    traverse(headers, None, None, None)
+    traverse(headers, None, None, None, false)
   }
   def messageBodyDisallowed = messageLine match {
     case _: RequestLine => false // there can always be a body in a request

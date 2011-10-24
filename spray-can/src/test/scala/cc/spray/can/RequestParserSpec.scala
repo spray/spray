@@ -27,31 +27,31 @@ class RequestParserSpec extends Specification {
     "properly parse a request" in {
       "without headers and body" in {
         parse() {
-          """|GET / HTTP/1.1
+          """|GET / HTTP/1.0
              |
              |"""
-        } mustEqual (GET, "/", `HTTP/1.1`, Nil, None, "")
+        } mustEqual (GET, "/", `HTTP/1.0`, Nil, None, "")
       }
 
       "with one header" in {
         parse() {
-          """|GET / HTTP/1.0
-             |Content-Length: 0
+          """|GET / HTTP/1.1
+             |Host: example.com
              |
              |"""
-        } mustEqual (GET, "/", `HTTP/1.0`, List(HttpHeader("Content-Length", "0")), None, "")
+        } mustEqual (GET, "/", `HTTP/1.1`, List(HttpHeader("Host", "example.com")), None, "")
       }
 
       "with 4 headers and a body" in {
         parse() {
-          """|POST /resource/yes HTTP/1.1
+          """|POST /resource/yes HTTP/1.0
              |User-Agent: curl/7.19.7 xyz
              |Transfer-Encoding:identity
              |Connection:close
              |Content-Length    : 17
              |
              |Shake your BOODY!"""
-        } mustEqual (POST, "/resource/yes", `HTTP/1.1`, List(
+        } mustEqual (POST, "/resource/yes", `HTTP/1.0`, List(
           HttpHeader("Content-Length", "17"),
           HttpHeader("Connection", "close"),
           HttpHeader("Transfer-Encoding", "identity"),
@@ -67,11 +67,11 @@ class RequestParserSpec extends Specification {
              |    xyz
              |Accept
              | : */*  """ + """
-             |Content-Length: 0
+             |Host: example.com
              |
              |"""
         } mustEqual (DELETE, "/abc", `HTTP/1.1`, List(
-          HttpHeader("Content-Length", "0"),
+          HttpHeader("Host", "example.com"),
           HttpHeader("Accept", "*/*"),
           HttpHeader("User-Agent", "curl/7.19.7 abc xyz")
         ), None, "")
@@ -84,13 +84,14 @@ class RequestParserSpec extends Specification {
           """|PUT /data HTTP/1.1
              |Transfer-Encoding: chunked
              |Connection: lalelu
+             |Host: ping
              |
              |3
              |abc
              |"""
         } mustEqual ChunkedStartParser(
           RequestLine(PUT, "/data", `HTTP/1.1`),
-          List(HttpHeader("Connection", "lalelu"), HttpHeader("Transfer-Encoding", "chunked")),
+          List(HttpHeader("Host", "ping"), HttpHeader("Connection", "lalelu"), HttpHeader("Transfer-Encoding", "chunked")),
           Some("lalelu")
         )
       }
@@ -164,18 +165,26 @@ class RequestParserSpec extends Specification {
 
       "with an invalid Content-Length header value" in {
         parse() {
-          """|GET / HTTP/1.1
+          """|GET / HTTP/1.0
              |Content-Length: 1.5
              |
              |abc"""
         } mustEqual ErrorParser("Invalid Content-Length header value: For input string: \"1.5\"", 400)
         parse() {
-          """|GET / HTTP/1.1
+          """|GET / HTTP/1.0
              |Content-Length: -3
              |
              |abc"""
         } mustEqual ErrorParser("Invalid Content-Length header value: " +
                 "requirement failed: Content-Length must not be negative", 400)
+      }
+
+      "a required Host header missing" in {
+        parse() {
+          """|GET / HTTP/1.1
+             |
+             |"""
+        } mustEqual ErrorParser("Host header required", 400)
       }
     }
   }

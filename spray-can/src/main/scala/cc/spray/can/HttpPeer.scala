@@ -145,15 +145,19 @@ private[can] abstract class HttpPeer(threadName: String) extends Actor {
     val conn = key.attachment.asInstanceOf[Conn]
 
     @tailrec def parseReadBuffer() {
-      val recurse = conn.messageParser.asInstanceOf[IntermediateParser].read(readBuffer) match {
-        case x: IntermediateParser => conn.messageParser = x; false
-        case x: CompleteMessageParser => handleCompleteMessage(conn, x); true
-        case x: ChunkedStartParser => handleChunkedStart(conn, x); true
-        case x: ChunkedChunkParser => handleChunkedChunk(conn, x); true
-        case x: ChunkedEndParser => handleChunkedEnd(conn, x); true
-        case x: ErrorParser => handleParseError(conn, x); false
+      conn.messageParser match {
+        case x: IntermediateParser =>
+          val recurse = x.read(readBuffer) match {
+            case x: IntermediateParser => conn.messageParser = x; false
+            case x: CompleteMessageParser => handleCompleteMessage(conn, x); true
+            case x: ChunkedStartParser => handleChunkedStart(conn, x); true
+            case x: ChunkedChunkParser => handleChunkedChunk(conn, x); true
+            case x: ChunkedEndParser => handleChunkedEnd(conn, x); true
+            case x: ErrorParser => handleParseError(conn, x); false
+          }
+          if (recurse && readBuffer.remaining > 0) parseReadBuffer()
+        case x: ErrorParser => handleParseError(conn, x)
       }
-      if (recurse && readBuffer.remaining > 0) parseReadBuffer()
     }
 
     protectIO("Read", conn) {
