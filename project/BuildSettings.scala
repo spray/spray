@@ -12,6 +12,13 @@ object BuildSettings {
   )
 
   lazy val moduleSettings = basicSettings ++ Seq(
+    // write the project version to a resource file
+    resourceGenerators in Compile <+= (version, resourceManaged) map { (v, dir) =>
+      val file = dir / "version"
+      IO.writeLines(file, List(v))
+      Seq(file)
+    },
+
     // scaladoc
     scaladocOptions <<= (name, version).map { (n, v) => Seq("-doc-title", n + " " + v) },
 
