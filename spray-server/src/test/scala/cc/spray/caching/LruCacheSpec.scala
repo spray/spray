@@ -4,6 +4,9 @@ import org.specs2.mutable._
 import akka.actor.Actor
 import java.util.concurrent.CountDownLatch
 import akka.util.Duration
+import util.Random
+import akka.dispatch.Future
+import org.specs2.matcher.Matcher
 
 class LruCacheSpec extends Specification {
 
@@ -74,6 +77,32 @@ class LruCacheSpec extends Specification {
       cache(3)("C").get mustEqual "C"
       cache(1)("").get mustEqual "A" // refresh
       cache.store.toString mustEqual "Map(2 -> B, 3 -> C, 1 -> A)"
+    }
+    "be thread-safe" in {
+      val cache = LruCache[Int](maxEntries = 1000)
+      // exercise the cache from 10 parallel "tracks" (threads)
+      val views = Future.traverse(Seq.tabulate(10)(identity), Long.MaxValue) { track =>
+        Future {
+          val array = Array.fill(1000)(0) // our view of the cache
+          val rand = new Random(track)
+          (1 to 10000) foreach { i =>
+            val ix = rand.nextInt(1000)            // for a random index into the cache
+            val value = cache(ix) {                // get (and maybe set) the cache value
+              Thread.sleep(0)
+              rand.nextInt(1000000) + 1
+            }.get
+            if (array(ix) == 0) array(ix) = value  // update our view of the cache
+            else if (array(ix) != value) failure("Cache view is inconsistent (track " + track + ", iteration " + i +
+              ", index " + ix + ": expected " + array(ix) + " but is " + value)
+          }
+          array
+        }
+      }.get
+      val beConsistent: Matcher[Seq[Int]] = (
+        (ints: Seq[Int]) => ints.filter(_ != 0).reduceLeft((a, b) => if (a == b) a else 0) != 0,
+        (_: Seq[Int]) => "consistency check"
+      )
+      views.transpose must beConsistent.forall
     }
   }
 }
