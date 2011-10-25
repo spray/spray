@@ -14,7 +14,7 @@ object BuildSettings {
   lazy val moduleSettings = basicSettings ++ Seq(
     // write the project version to a resource file
     resourceGenerators in Compile <+= (version, resourceManaged) map { (v, dir) =>
-      val file = dir / "version"
+      val file = dir / "spray-can.version"
       IO.writeLines(file, List(v))
       Seq(file)
     },
