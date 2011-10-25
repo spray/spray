@@ -44,6 +44,7 @@ object Deserializer extends DeserializerLowerPriorityImplicits with CaseClassDes
 }
 
 private[typeconversion] abstract class DeserializerLowerPriorityImplicits {
+  implicit def lift2SourceOption[A, B](converter: Deserializer[A, B]) = liftToSourceOption(converter)
   implicit def liftToSourceOption[A, B](implicit converter: Deserializer[A, B]) = {
     new Deserializer[Option[A], B] {
       def apply(value: Option[A]) = value match {

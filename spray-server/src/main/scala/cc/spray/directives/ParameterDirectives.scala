@@ -136,25 +136,34 @@ private[spray] trait ParameterDirectives {
     filter { ctx => if (allRPM.forall(_(ctx.request.queryParams))) Pass() else Reject() }
   }
 
-  implicit def symbol2ParameterMatcher(name: Symbol)(implicit ev: FromStringOptionDeserializer[String]) = new ParameterMatcher[String](name.name)
-  implicit def string2ParameterMatcher(name: String)(implicit ev: FromStringOptionDeserializer[String]) = new ParameterMatcher[String](name)
-  implicit def receptacle2ParameterMatcher[A :FromStringOptionDeserializer](receptacle: ExtractionReceptacle[A]) = {
-    receptacle match {
-      case NameTypeReceptacle(name) => new ParameterMatcher[A](name)
-      case NameTypeDefaultReceptable(name, default) => new ParameterMatcher[A](name)(
-        new FromStringOptionDeserializer[A] {
-          def apply(s: Option[String]) = fromStringOptionDeserializer[A].apply(s).left.flatMap {
-            case ContentExpected => Right(default)
-            case error => Left(error)
-          }
-        }
-      )
-    }
+  implicit def symbol2PM(name: Symbol)(implicit ev: FromStringOptionDeserializer[String]) =
+    new ParameterMatcher[String](name.name)
+  implicit def string2PM(name: String)(implicit ev: FromStringOptionDeserializer[String]) =
+    new ParameterMatcher[String](name)
+  implicit def nameReceptacle2PM[A :FromStringOptionDeserializer](r: NameReceptacle[A]) =
+    new ParameterMatcher[A](r.name)
+  implicit def nameDeserializerReceptacle2PM[A](r: NameDeserializerReceptacle[A]) =
+    new ParameterMatcher[A](r.name)(r.deserializer)
+  implicit def nameDefaultReceptacle2PM[A :FromStringOptionDeserializer](r: NameDefaultReceptacle[A]) =
+    new ParameterMatcher[A](r.name)(withDefaultDeserializer(r.default))
+  implicit def nameDeserializerDefaultReceptacle2PM[A](r: NameDeserializerDefaultReceptacle[A]) =
+    new ParameterMatcher[A](r.name)(withDefaultDeserializer(r.default)(r.deserializer))
+  implicit def requiredValueReceptacle2RPM[A :FromStringOptionDeserializer]
+    (r: RequiredValueReceptacle[A]): RequiredParameterMatcher = { paramsMap =>
+    fromStringOptionDeserializer[A].apply(paramsMap.get(r.name)) == Right(r.requiredValue)
+  }
+  implicit def requiredValueDeserializerReceptacle2RPM[A]
+    (r: RequiredValueDeserializerReceptacle[A]): RequiredParameterMatcher = { paramsMap =>
+    r.deserializer(paramsMap.get(r.name)) == Right(r.requiredValue)
   }
 
-  implicit def receptacle2RequiredParameterMatcher[A :FromStringOptionDeserializer]
-    (receptacle: RequiredValueReceptable[A]): RequiredParameterMatcher = { paramsMap =>
-    fromStringOptionDeserializer[A].apply(paramsMap.get(receptacle.name)) == Right(receptacle.requiredValue)
+  private def withDefaultDeserializer[A :FromStringOptionDeserializer](default: A): FromStringOptionDeserializer[A] = {
+    new FromStringOptionDeserializer[A] {
+      def apply(s: Option[String]) = fromStringOptionDeserializer[A].apply(s).left.flatMap {
+        case ContentExpected => Right(default)
+        case error => Left(error)
+      }
+    }
   }
 }
 

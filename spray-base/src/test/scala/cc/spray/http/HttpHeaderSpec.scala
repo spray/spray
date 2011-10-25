@@ -151,6 +151,13 @@ class HttpHeaderSpec extends Specification {
     }
   }
 
+  "Header 'Host'" should {
+    "be parsed correctly from various examples" in {
+      HttpHeader("Host", "www.spray.cc:8080") mustEqual Host("www.spray.cc", Some(8080))
+      HttpHeader("Host", "spray.cc") mustEqual Host("spray.cc")
+    }
+  }
+
   "Header 'Last-Modified'" should {
     "be parsed correctly from various examples" in {
       HttpHeader("Last-Modified", "Wed, 13 Jul 2011 08:12:31 GMT") mustEqual `Last-Modified`(DateTime(2011, 7, 13, 8, 12, 31))

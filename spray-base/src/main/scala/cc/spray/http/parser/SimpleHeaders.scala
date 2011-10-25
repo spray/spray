@@ -40,11 +40,15 @@ private[parser] trait SimpleHeaders {
   }
   
   def DATE = rule {
-    HttpDate ~~> Date ~ EOI
+    HttpDate ~ EOI ~~> Date
+  }
+
+  def HOST = rule {
+    Token ~ OptWS ~ optional(":" ~ oneOrMore(Digit) ~> (_.toInt)) ~ EOI ~~> Host
   }
 
   def LAST_MODIFIED = rule {
-    HttpDate ~~> `Last-Modified` ~ EOI
+    HttpDate ~ EOI ~~> `Last-Modified`
   }
 
   def X_FORWARDED_FOR = rule {
