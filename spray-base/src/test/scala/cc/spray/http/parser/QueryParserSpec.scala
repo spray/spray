@@ -26,6 +26,10 @@ class QueryParserSpec extends Specification {
       QueryParser.parse("key=value") mustEqual Map("key" -> "value")
       QueryParser.parse("key=value&key2=value2") mustEqual Map("key" -> "value", "key2" -> "value2")
     }
+    "decode URL-encoded keys and values" in {
+      QueryParser.parse("ke%25y=value") mustEqual Map("ke%y" -> "value")
+      QueryParser.parse("key=value%26&key2=value2") mustEqual Map("key" -> "value&", "key2" -> "value2")
+    }
     "return an empty Map for an empty query string" in {
       QueryParser.parse("") mustEqual Map()
     }
@@ -34,6 +38,12 @@ class QueryParserSpec extends Specification {
     }
     "accept empty key value pairs" in {
       QueryParser.parse("&&b&") mustEqual Map("b" -> "", "" -> "")
+    }
+    "throw a proper HttpException on illegal query strings" in {
+      QueryParser.parse("a=b=c") must throwA[HttpException]
+    }
+    "throw a proper HttpException on illegal URL encodings" in {
+      QueryParser.parse("a=b%G") must throwA[HttpException]
     }
   }
   
