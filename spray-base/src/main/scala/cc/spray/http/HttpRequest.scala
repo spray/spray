@@ -23,23 +23,29 @@ import HttpHeaders._
 import HttpCharsets._
 import HttpProtocols._
 import parser.QueryParser
+import java.net.URI
 
 /**
  * Sprays immutable model of an HTTP request.
- * The `uri` member contains the the URI of the request as it appears in the HTTP message, i.e. just the path and query
- * string without scheme and authority (host and port).
+ * The `uri` member contains the the undecoded URI of the request as it appears in the HTTP message, i.e. just the path,
+ * query and fragment string without scheme and authority (host and port).
  */
 case class HttpRequest(method: HttpMethod = HttpMethods.GET,
                        uri: String = "/",
                        headers: List[HttpHeader] = Nil,
                        content: Option[HttpContent] = None,
                        protocol: HttpProtocol = `HTTP/1.1`) extends HttpMessage[HttpRequest] {
-  
-  val (path, queryParams) = uri.fastSplit('?') match {
-    case pathPart :: Nil => (pathPart, Map.empty[String, String])
-    case pathPart :: queryPart :: _ => (pathPart, QueryParser.parse(queryPart))
-    case Nil => throw new IllegalStateException // fastSplit never returns an empty list
-  }
+
+  lazy val URI = new URI(uri)
+
+  lazy val queryParams: Map[String, String] = QueryParser.parse(rawQuery)
+
+  def path = nonNull(URI.getPath)
+  def query = nonNull(URI.getQuery)
+  def rawQuery = nonNull(URI.getRawQuery)
+  def fragment = nonNull(URI.getFragment)
+
+  private def nonNull(s: String) = if (s == null) "" else s
 
   def host: String = headers.findByType[Host].map(_.host).getOrElse("")
   def port: Option[Int] = headers.findByType[Host].map(_.port).getOrElse(None)

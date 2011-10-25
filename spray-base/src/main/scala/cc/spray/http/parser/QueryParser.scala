@@ -18,6 +18,7 @@ package cc.spray.http
 package parser
 
 import org.parboiled.scala._
+import java.net.URLDecoder
 
 object QueryParser extends SprayParser {
   
@@ -31,13 +32,19 @@ object QueryParser extends SprayParser {
   }
   
   def QueryParameterComponent = rule {
-    zeroOrMore(!anyOf("&=") ~ ANY) ~> identity
+    zeroOrMore(!anyOf("&=") ~ ANY) ~> (s => URLDecoder.decode(s, "UTF8"))
   }
   
-  def parse(queryString: String): Map[String, String] = parse(QueryString, queryString) match {
-    case Left(error) => throw new HttpException(StatusCodes.BadRequest, 
-      "Illegal query string '" + queryString + "':\n" + error)
-    case Right(parameterMap) => parameterMap
-  } 
+  def parse(queryString: String): Map[String, String] = {
+    try {
+      parse(QueryString, queryString) match {
+        case Left(error) => throw new RuntimeException(error)
+        case Right(parameterMap) => parameterMap
+      }
+    } catch {
+      case e: Exception => throw new HttpException(StatusCodes.BadRequest,
+          "Illegal query string '" + queryString + "':\n" + e.getMessage)
+    }
+  }
   
 }
