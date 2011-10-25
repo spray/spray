@@ -5,7 +5,7 @@ object BuildSettings {
 
   lazy val basicSettings = Defaults.defaultSettings ++ Seq(
     organization  := "cc.spray.can",
-    version       := "0.9.1-SNAPSHOT",
+    version       := "0.9.1",
     scalaVersion  := "2.9.1",
     scalacOptions := Seq("-deprecation", "-encoding", "utf8"),
     resolvers     ++= Dependencies.resolutionRepos
