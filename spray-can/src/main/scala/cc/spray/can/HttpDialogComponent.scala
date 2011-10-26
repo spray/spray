@@ -37,12 +37,26 @@ trait HttpDialogComponent {
      * The request will be sent as soon as the connection has been established and any `awaitResponse` and
      * `waitIdle` tasks potentially chained in before this `send` have been completed.
      * Several `send` tasks not separated by `awaitResponse`/`waitIdle` will cause the corresponding requests to be send
-     * in a pipelined fashion, one right after another.
+     * in a pipelined fashion, one right after the other.
      */
     def send[B](request: HttpRequest)(implicit concat: (A, Future[HttpResponse]) => Future[B]): HttpDialog[B] = {
       appendToResultChain {
         val responseF = doSend(request)
         concat(_, responseF)
+      }
+    }
+
+    /**
+     * Chains the sending of the given [[cc.spray.can.HttpRequest]] instances into the dialog.
+     * The requests will be sent as soon as the connection has been established and any `awaitResponse` and
+     * `waitIdle` tasks potentially chained in before this `send` have been completed.
+     * All of the given HttpRequests are send in a pipelined fashion, one right after the other.
+     */
+    def send[B](requests: Seq[HttpRequest])
+               (implicit concat: (A, Seq[Future[HttpResponse]]) => Future[Seq[HttpResponse]]): HttpDialog[Seq[HttpResponse]] = {
+      appendToResultChain {
+        val responseFs = requests.map(doSend)
+        concat(_, responseFs)
       }
     }
 
@@ -135,7 +149,13 @@ trait HttpDialogComponent {
     }
   }
 
-  implicit def concat(value: Unit, responseFuture: Future[HttpResponse]) = responseFuture
-  implicit def concat(value: HttpResponse, responseFuture: Future[HttpResponse]) = responseFuture.map(Seq(value, _))
-  implicit def concat(value: Seq[HttpResponse], responseFuture: Future[HttpResponse]) = responseFuture.map(value :+ _)
+  implicit def concat1(value: Unit, responseFuture: Future[HttpResponse]) = responseFuture
+  implicit def concat2(value: HttpResponse, responseFuture: Future[HttpResponse]) = responseFuture.map(Seq(value, _))
+  implicit def concat3(value: Seq[HttpResponse], responseFuture: Future[HttpResponse]) = responseFuture.map(value :+ _)
+  implicit def concat4(value: Unit, responseFutures: Seq[Future[HttpResponse]]) =
+    Future.sequence(responseFutures, Long.MaxValue)
+  implicit def concat5(value: HttpResponse, responseFutures: Seq[Future[HttpResponse]]) =
+    Future.sequence(responseFutures, Long.MaxValue).map(value +: _)
+  implicit def concat6(value: Seq[HttpResponse], responseFutures: Seq[Future[HttpResponse]]) =
+    Future.sequence(responseFutures, Long.MaxValue).map(value ++ _)
 }

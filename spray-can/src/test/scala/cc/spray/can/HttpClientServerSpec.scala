@@ -134,15 +134,7 @@ class HttpClientServerSpec extends Specification with HttpClientSpecs { def is =
 
   private def multiRequestDialog = {
     dialog
-            .send(HttpRequest(uri = "/multi/1"))
-            .send(HttpRequest(uri = "/multi/2"))
-            .send(HttpRequest(uri = "/multi/3"))
-            .send(HttpRequest(uri = "/multi/4"))
-            .send(HttpRequest(uri = "/multi/5"))
-            .send(HttpRequest(uri = "/multi/6"))
-            .send(HttpRequest(uri = "/multi/7"))
-            .send(HttpRequest(uri = "/multi/8"))
-            .send(HttpRequest(uri = "/multi/9"))
+            .send((1 to 9).map(i => HttpRequest(uri = "/multi/" + i)))
             .end
             .get.map(_.bodyAsString).mkString(",") mustEqual "1,2,3,4,5,6,7,8,9"
   }
