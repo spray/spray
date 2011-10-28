@@ -253,9 +253,11 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
   protected def handleTimedOutRequests() {
     openRequests.forAllTimedOut(config.requestTimeout) { requestRecord =>
       import requestRecord._
-      log.warn("{} request to '{}' timed out, closing the connection", request.method, request.uri)
-      conn.closeAllPendingWithError("Request timed out")
-      close(conn)
+      if (conn.key.isValid) {
+        log.warn("{} request to '{}' timed out, closing the connection", request.method, request.uri)
+        conn.closeAllPendingWithError("Request timed out")
+        close(conn)
+      } // else already closed
     }
   }
 
