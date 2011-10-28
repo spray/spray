@@ -24,7 +24,7 @@ import MediaRanges._
 import HttpCharsets._
 import xml.{XML, NodeSeq}
 import java.nio.ByteBuffer
-import java.net.URLDecoder
+import java.net.URLDecoder.decode
 import java.io.ByteArrayInputStream
 
 trait DefaultUnmarshallers extends MultipartUnmarshallers {
@@ -66,9 +66,9 @@ trait DefaultUnmarshallers extends MultipartUnmarshallers {
       FormData {
         val data = DefaultUnmarshallers.StringUnmarshaller(content).right.get
         val charset = content.contentType.charset.getOrElse(`ISO-8859-1`).aliases.head
-        URLDecoder.decode(data, charset).fastSplit('&').map {
+        data.fastSplit('&').map {
           _.fastSplit('=') match {
-            case key :: value :: Nil => (key, value)
+            case key :: value :: Nil => (decode(key, charset), decode(value, charset))
             case _ => throw new IllegalArgumentException("'" + data + "' is not a valid form content")
           }
         } (collection.breakOut)
