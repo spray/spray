@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory
 import HttpMethods._
 import akka.actor.{PoisonPill, Supervisor, Actor}
 
-object Main extends App {
+object SimpleExample extends App {
   val log = LoggerFactory.getLogger(getClass)
 
   // start and supervise the HttpClient actor
