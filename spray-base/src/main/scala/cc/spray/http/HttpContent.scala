@@ -34,7 +34,7 @@ class HttpContent private[http](val contentType: ContentType, val buffer: Array[
 }
 
 object HttpContent {
-  def apply(string: String): HttpContent = apply(ContentType(`text/plain`), string)
+  def apply(string: String): HttpContent = apply(ContentType(`text/plain`, `ISO-8859-1`), string)
   
   def apply(contentType: ContentType, string: String): HttpContent = {
     apply(contentType, string.getBytes(contentType.charset.getOrElse(`ISO-8859-1`).nioCharset))

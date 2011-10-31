@@ -39,7 +39,7 @@ class DefaultMarshallersSpec extends Specification with DefaultMarshallers {
   "The NodeSeqMarshaller" should {
     "encode xml snippets to `text/xml` content in ISO-8859-1 if the client accepts it" in {
       <employee><nr>1</nr></employee>.toHttpContent mustEqual
-              HttpContent(ContentType(`text/xml`), "<employee><nr>1</nr></employee>")
+              HttpContent(ContentType(`text/xml`, `ISO-8859-1`), "<employee><nr>1</nr></employee>")
     }
   }
 
