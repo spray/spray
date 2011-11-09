@@ -39,7 +39,7 @@ class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
       JsNumber(4.2f).convertTo[Float] mustEqual 4.2f
     }
     "convert a JsNull to a Float" in {
-      JsNull.fromJson[Float].isNaN mustEqual Float.NaN.isNaN
+      JsNull.convertTo[Float].isNaN mustEqual Float.NaN.isNaN
     }
   }
   
@@ -60,7 +60,7 @@ class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
       JsNumber(4.2).convertTo[Double] mustEqual 4.2
     }
     "convert a JsNull to a Double" in {
-      JsNull.fromJson[Double].isNaN mustEqual Double.NaN.isNaN
+      JsNull.convertTo[Double].isNaN mustEqual Double.NaN.isNaN
     }
   }
   
