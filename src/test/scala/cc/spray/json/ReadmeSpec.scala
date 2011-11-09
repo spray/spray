@@ -10,7 +10,7 @@ class ReadmeSpec extends Specification {
       
       val json = """{ "some": "JSON source" }""" 
       val jsonAst = JsonParser(json)
-      jsonAst mustEqual JsObject(JsField("some", "JSON source"))
+      jsonAst mustEqual JsObject(JsField("some", JsString("JSON source")))
       
       val json2 = PrettyPrinter(jsonAst)
       json2 mustEqual

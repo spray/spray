@@ -18,7 +18,7 @@ class ProductFormatsSpec extends Specification {
   "A JsonFormat created with `jsonFormat`, for a case class with 2 elements," should {
     import TestProtocol1._
     val obj = Test2(42, Some(4.2))
-    val json = JsObject(JsField("a", 42), JsField("b", 4.2))
+    val json = JsObject(JsField("a", JsNumber(42)), JsField("b", JsNumber(4.2)))
     "convert to a respective JsObject" in {
       obj.toJson mustEqual json
     }
@@ -26,20 +26,20 @@ class ProductFormatsSpec extends Specification {
       json.convertTo[Test2] mustEqual obj
     }
     "throw a DeserializationException if the JsObject does not all required members" in (
-      JsObject(JsField("b", 4.2)).convertTo[Test2] must
+      JsObject(JsField("b", JsNumber(4.2))).convertTo[Test2] must
               throwA(new DeserializationException("Object is missing required member 'a'"))
     )
     "not require the presence of optional fields for deserialization" in {
-      JsObject(JsField("a", 42)).convertTo[Test2] mustEqual Test2(42, None)
+      JsObject(JsField("a", JsNumber(42))).convertTo[Test2] mustEqual Test2(42, None)
     }
     "not render `None` members during serialization" in {
-      Test2(42, None).toJson mustEqual JsObject(JsField("a", 42))
+      Test2(42, None).toJson mustEqual JsObject(JsField("a", JsNumber(42)))
     }
     "ignore additional members during deserialization" in {
-      JsObject(JsField("a", 42), JsField("b", 4.2), JsField("c", 'no)).convertTo[Test2] mustEqual obj
+      JsObject(JsField("a", JsNumber(42)), JsField("b", JsNumber(4.2)), JsField("c", JsString('no))).convertTo[Test2] mustEqual obj
     }
     "not depend on any specific member order for deserialization" in {
-      JsObject(JsField("b", 4.2), JsField("a", 42)).convertTo[Test2] mustEqual obj
+      JsObject(JsField("b", JsNumber(4.2)), JsField("a", JsNumber(42))).convertTo[Test2] mustEqual obj
     }
     "throw a DeserializationException if the JsValue is not a JsObject" in (
       JsNull.convertTo[Test2] must throwA(new DeserializationException("Object expected"))
@@ -49,7 +49,7 @@ class ProductFormatsSpec extends Specification {
   "A JsonProtocol mixing in NullOptions" should {
     "render `None` members to `null`" in {
       import TestProtocol2._
-      Test2(42, None).toJson mustEqual JsObject(JsField("a", 42), JsField("b", JsNull))
+      Test2(42, None).toJson mustEqual JsObject(JsField("a", JsNumber(42)), JsField("b", JsNull))
     }
   }
 

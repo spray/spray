@@ -35,11 +35,11 @@ class JsonParserSpec extends Specification {
     }
     "properly parse a simple JsObject" in (
       JsonParser(""" { "key" :42, "key2": "value" }""") mustEqual
-              JsObject(JsField("key", 42), JsField("key2", "value"))
+              JsObject(JsField("key", JsNumber(42)), JsField("key2", JsString("value")))
     )
     "properly parse a simple JsArray" in (
       JsonParser("""[null, 1.23 ,{"key":true } ] """) mustEqual
-              JsArray(JsNull, JsNumber(1.23), JsObject(JsField("key", true)))
+              JsArray(JsNull, JsNumber(1.23), JsObject(JsField("key", JsBoolean(true))))
     )
     "be reentrant" in {
       val largeJsonSource = FileUtils.readAllCharsFromResource("test.json")

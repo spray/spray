@@ -33,45 +33,6 @@ sealed trait JsValue {
   @deprecated("Superceded by 'convertTo'", "1.1.0")
   def fromJson[T :JsonReader]: T = convertTo
 }
-object JsValue {
-
-  /**
-    * General converter to a JsValue.
-    * Throws an IllegalArgumentException if the given value cannot be converted.
-   */
-  def apply(value: Any): JsValue = value match {
-    case null => JsNull
-    case true => JsTrue
-    case false => JsFalse
-    case x: JsValue => x
-    case x: String => JsString(x)
-    case x: Int => JsNumber(x)
-    case x: Long => JsNumber(x)
-    case x: Double => JsNumber(x)
-    case x: Char => JsString(String.valueOf(x))
-    case x: Float => JsNumber(x)
-    case x: Byte => JsNumber(x)
-    case x: Short => JsNumber(x)
-    case x: BigInt => JsNumber(x)
-    case x: BigDecimal => JsNumber(x)
-    case x: Symbol => JsString(x.name)
-    case x: collection.Map[_, _] => JsObject(fromSeq(x))
-    case x@ collection.Seq((_, _), _*) => JsObject(fromSeq(x.asInstanceOf[Seq[(_, _)]]))
-    case x: collection.Seq[_] => JsArray(x.toList.map(JsValue.apply))
-    case x => throw new IllegalArgumentException(x.toString + " cannot be converted to a JsValue")
-  }
-
-  private def fromSeq(seq: Iterable[(_, _)]) = {
-    val list = ListBuffer.empty[JsField]
-    seq.foreach {
-      case (key: String, value) => list += JsField(key, JsValue(value))
-      case (key: Symbol, value) => list += JsField(key.name, JsValue(value))
-      case (key: JsString, value) => list += JsField(key.value, JsValue(value))
-      case (x, _) => throw new IllegalArgumentException(x.toString + " cannot be converted to a JsString")
-    }
-    list.toList
-  }
-}
 
 /**
   * A JSON object.
@@ -91,9 +52,6 @@ object JsObject {
   * The members/fields of a JSON object.
  */
 case class JsField(name: String, value: JsValue) extends JsValue
-object JsField {
-  def apply(name: String, value: Any) = new JsField(name, JsValue(value))
-}
 
 /**
   * A JSON array.
@@ -107,6 +65,10 @@ object JsArray {
   * A JSON string.
  */
 case class JsString(value: String) extends JsValue
+
+object JsString {
+  def apply(value: Symbol) = new JsString(value.name)
+}
 
 /**
   * A JSON number.

@@ -40,7 +40,7 @@ object JsonParser extends Parser {
     JsonString | JsonNumber | JsonObject | JsonArray | JsonTrue | JsonFalse | JsonNull
   }
 
-  def JsonString = rule { JsonStringUnwrapped ~~> JsString }
+  def JsonString = rule { JsonStringUnwrapped ~~> (JsString(_)) }
   
   def JsonStringUnwrapped = rule { "\"" ~ Characters ~ "\" " ~~> (_.toString) }
 
