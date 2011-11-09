@@ -25,7 +25,7 @@ trait CollectionFormats {
   implicit def listFormat[T :JsonFormat] = new JsonFormat[List[T]] {
     def write(list: List[T]) = JsArray(list.map(_.toJson))
     def read(value: JsValue) = value match {
-      case JsArray(elements) => elements.map(_.fromJson[T])
+      case JsArray(elements) => elements.map(_.convertTo[T])
       case _ => throw new DeserializationException("List expected")
     }
   }
@@ -36,7 +36,7 @@ trait CollectionFormats {
   implicit def arrayFormat[T :JsonFormat :ClassManifest] = new JsonFormat[Array[T]] {
     def write(array: Array[T]) = JsArray(array.map(_.toJson).toList)
     def read(value: JsValue) = value match {
-      case JsArray(elements) => elements.map(_.fromJson[T]).toArray[T]
+      case JsArray(elements) => elements.map(_.convertTo[T]).toArray[T]
       case _ => throw new DeserializationException("Array expected")
     }
   }
@@ -55,7 +55,7 @@ trait CollectionFormats {
       }
     }
     def read(value: JsValue) = value match {
-      case JsObject(fields) => fields.map(field => (JsString(field.name).fromJson[K], field.value.fromJson[V])).toMap
+      case JsObject(fields) => fields.map(field => (JsString(field.name).convertTo[K], field.value.convertTo[V])).toMap
       case _ => throw new DeserializationException("Map expected")
     }
   }
@@ -84,7 +84,7 @@ trait CollectionFormats {
   def viaList[I <: Iterable[T], T :JsonFormat](f: List[T] => I): JsonFormat[I] = new JsonFormat[I] {
     def write(iterable: I) = JsArray(iterable.map(_.toJson).toList)
     def read(value: JsValue) = value match {
-      case JsArray(elements) => f(elements.map(_.fromJson[T]))
+      case JsArray(elements) => f(elements.map(_.convertTo[T]))
       case _ => throw new DeserializationException("Collection expected")
     }
   }

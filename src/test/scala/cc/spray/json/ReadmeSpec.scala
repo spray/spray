@@ -33,7 +33,7 @@ class ReadmeSpec extends Specification {
       import MyJsonProtocol._
       
       val json = Color("CadetBlue", 95, 158, 160).toJson
-      val color = json.fromJson[Color]
+      val color = json.convertTo[Color]
       
       color mustEqual Color("CadetBlue", 95, 158, 160)
     }
@@ -57,7 +57,7 @@ class ReadmeSpec extends Specification {
       import MyJsonProtocol._
       
       val json = Color("CadetBlue", 95, 158, 160).toJson
-      val color = json.fromJson[Color]
+      val color = json.convertTo[Color]
       
       color mustEqual Color("CadetBlue", 95, 158, 160)
     }

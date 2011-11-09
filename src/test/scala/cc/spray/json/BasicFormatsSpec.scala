@@ -9,7 +9,7 @@ class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
       42.toJson mustEqual JsNumber(42)
     }
     "convert a JsNumber to an Int" in {
-      JsNumber(42).fromJson[Int] mustEqual 42 
+      JsNumber(42).convertTo[Int] mustEqual 42
     }
   }
   
@@ -18,7 +18,7 @@ class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
       42L.toJson mustEqual JsNumber(42L)
     }
     "convert a JsNumber to a Long" in {
-      JsNumber(42L).fromJson[Long] mustEqual 42L 
+      JsNumber(42L).convertTo[Long] mustEqual 42L
     }
   }
   
@@ -36,7 +36,7 @@ class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
       Float.NegativeInfinity.toJson mustEqual JsNull
     }
     "convert a JsNumber to a Float" in {
-      JsNumber(4.2f).fromJson[Float] mustEqual 4.2f 
+      JsNumber(4.2f).convertTo[Float] mustEqual 4.2f
     }
     "convert a JsNull to a Float" in {
       JsNull.fromJson[Float].isNaN mustEqual Float.NaN.isNaN
@@ -57,7 +57,7 @@ class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
       Double.NegativeInfinity.toJson mustEqual JsNull
     }
     "convert a JsNumber to a Double" in {
-      JsNumber(4.2).fromJson[Double] mustEqual 4.2 
+      JsNumber(4.2).convertTo[Double] mustEqual 4.2
     }
     "convert a JsNull to a Double" in {
       JsNull.fromJson[Double].isNaN mustEqual Double.NaN.isNaN
@@ -69,7 +69,7 @@ class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
       42.asInstanceOf[Byte].toJson mustEqual JsNumber(42)
     }
     "convert a JsNumber to a Byte" in {
-      JsNumber(42).fromJson[Byte] mustEqual 42 
+      JsNumber(42).convertTo[Byte] mustEqual 42
     }
   }
   
@@ -78,7 +78,7 @@ class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
       42.asInstanceOf[Short].toJson mustEqual JsNumber(42)
     }
     "convert a JsNumber to a Short" in {
-      JsNumber(42).fromJson[Short] mustEqual 42 
+      JsNumber(42).convertTo[Short] mustEqual 42
     }
   }
   
@@ -87,7 +87,7 @@ class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
       BigDecimal(42).toJson mustEqual JsNumber(42)
     }
     "convert a JsNumber to a BigDecimal" in {
-      JsNumber(42).fromJson[BigDecimal] mustEqual BigDecimal(42) 
+      JsNumber(42).convertTo[BigDecimal] mustEqual BigDecimal(42)
     }
   }
   
@@ -96,7 +96,7 @@ class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
       BigInt(42).toJson mustEqual JsNumber(42)
     }
     "convert a JsNumber to a BigInt" in {
-      JsNumber(42).fromJson[BigInt] mustEqual BigInt(42) 
+      JsNumber(42).convertTo[BigInt] mustEqual BigInt(42)
     }
   }
   
@@ -105,15 +105,15 @@ class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
       ().toJson mustEqual JsNumber(1)
     }
     "convert a JsNumber to Unit" in {
-      JsNumber(1).fromJson[Unit] mustEqual () 
+      JsNumber(1).convertTo[Unit] mustEqual ()
     }
   }
   
   "The BooleanJsonFormat" should {
     "convert true to a JsTrue" in { true.toJson mustEqual JsTrue }
     "convert false to a JsFalse" in { false.toJson mustEqual JsFalse }
-    "convert a JsTrue to true" in { JsTrue.fromJson[Boolean] mustEqual true }
-    "convert a JsFalse to false" in { JsFalse.fromJson[Boolean] mustEqual false }
+    "convert a JsTrue to true" in { JsTrue.convertTo[Boolean] mustEqual true }
+    "convert a JsFalse to false" in { JsFalse.convertTo[Boolean] mustEqual false }
   }
   
   "The CharJsonFormat" should {
@@ -121,7 +121,7 @@ class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
       'c'.toJson mustEqual JsString("c")
     }
     "convert a JsString to a Char" in {
-      JsString("c").fromJson[Char] mustEqual 'c' 
+      JsString("c").convertTo[Char] mustEqual 'c'
     }
   }
   
@@ -130,7 +130,7 @@ class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
       "Hello".toJson mustEqual JsString("Hello")
     }
     "convert a JsString to a String" in {
-      JsString("Hello").fromJson[String] mustEqual "Hello" 
+      JsString("Hello").convertTo[String] mustEqual "Hello"
     }
   }
   
@@ -139,7 +139,7 @@ class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
       'Hello.toJson mustEqual JsString("Hello")
     }
     "convert a JsString to a Symbol" in {
-      JsString("Hello").fromJson[Symbol] mustEqual 'Hello 
+      JsString("Hello").convertTo[Symbol] mustEqual 'Hello
     }
   }
   

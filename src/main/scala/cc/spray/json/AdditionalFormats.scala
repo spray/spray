@@ -68,7 +68,7 @@ trait AdditionalFormats {
   def safeReader[A :JsonReader] = new JsonReader[Either[Exception, A]] {
     def read(json: JsValue) = {
       try {
-        Right(json.fromJson)
+        Right(json.convertTo)
       } catch {
         case e: Exception => Left(e)
       }

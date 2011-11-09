@@ -10,13 +10,13 @@ class StandardFormatsSpec extends Specification with DefaultJsonProtocol {
       None.asInstanceOf[Option[Int]].toJson mustEqual JsNull
     }
     "convert JsNull to None" in {
-      JsNull.fromJson[Option[Int]] mustEqual None
+      JsNull.convertTo[Option[Int]] mustEqual None
     } 
     "convert Some(Hello) to JsString(Hello)" in {
       Some("Hello").asInstanceOf[Option[String]].toJson mustEqual JsString("Hello")
     }
     "convert JsString(Hello) to Some(Hello)" in {
-      JsString("Hello").fromJson[Option[String]] mustEqual Some("Hello")
+      JsString("Hello").convertTo[Option[String]] mustEqual Some("Hello")
     } 
   }
 
@@ -31,10 +31,10 @@ class StandardFormatsSpec extends Specification with DefaultJsonProtocol {
       b.toJson mustEqual JsString("Hello")
     }
     "convert the left side of an Either value from Json" in {
-      JsNumber(42).fromJson[Either[Int, String]] mustEqual Left(42)
+      JsNumber(42).convertTo[Either[Int, String]] mustEqual Left(42)
     }
     "convert the right side of an Either value from Json" in {
-      JsString("Hello").fromJson[Either[Int, String]] mustEqual Right("Hello")
+      JsString("Hello").convertTo[Either[Int, String]] mustEqual Right("Hello")
     }
   }
   
@@ -43,7 +43,7 @@ class StandardFormatsSpec extends Specification with DefaultJsonProtocol {
       Tuple1(42).toJson mustEqual JsNumber(42)
     }
     "be able to convert a JsNumber to a Tuple1[Int]" in {
-      JsNumber(42).fromJson[Tuple1[Int]] mustEqual Tuple1(42) 
+      JsNumber(42).convertTo[Tuple1[Int]] mustEqual Tuple1(42)
     }
   }
   
@@ -53,7 +53,7 @@ class StandardFormatsSpec extends Specification with DefaultJsonProtocol {
       (42, 4.2).toJson mustEqual json
     }
     "be able to convert a JsArray to a (Int, Double)]" in {
-      json.fromJson[(Int, Double)] mustEqual (42, 4.2) 
+      json.convertTo[(Int, Double)] mustEqual (42, 4.2)
     }
   }
   

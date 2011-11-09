@@ -23,26 +23,26 @@ class ProductFormatsSpec extends Specification {
       obj.toJson mustEqual json
     }
     "convert a JsObject to the respective case class instance" in {
-      json.fromJson[Test2] mustEqual obj
+      json.convertTo[Test2] mustEqual obj
     }
     "throw a DeserializationException if the JsObject does not all required members" in (
-      JsObject(JsField("b", 4.2)).fromJson[Test2] must
+      JsObject(JsField("b", 4.2)).convertTo[Test2] must
               throwA(new DeserializationException("Object is missing required member 'a'"))
     )
     "not require the presence of optional fields for deserialization" in {
-      JsObject(JsField("a", 42)).fromJson[Test2] mustEqual Test2(42, None)
+      JsObject(JsField("a", 42)).convertTo[Test2] mustEqual Test2(42, None)
     }
     "not render `None` members during serialization" in {
       Test2(42, None).toJson mustEqual JsObject(JsField("a", 42))
     }
     "ignore additional members during deserialization" in {
-      JsObject(JsField("a", 42), JsField("b", 4.2), JsField("c", 'no)).fromJson[Test2] mustEqual obj 
+      JsObject(JsField("a", 42), JsField("b", 4.2), JsField("c", 'no)).convertTo[Test2] mustEqual obj
     }
     "not depend on any specific member order for deserialization" in {
-      JsObject(JsField("b", 4.2), JsField("a", 42)).fromJson[Test2] mustEqual obj
+      JsObject(JsField("b", 4.2), JsField("a", 42)).convertTo[Test2] mustEqual obj
     }
     "throw a DeserializationException if the JsValue is not a JsObject" in (
-      JsNull.fromJson[Test2] must throwA(new DeserializationException("Object expected"))  
+      JsNull.convertTo[Test2] must throwA(new DeserializationException("Object expected"))
     )
   }
 
@@ -64,7 +64,7 @@ class ProductFormatsSpec extends Specification {
       obj.toJson mustEqual json
     }
     "convert a JsObject to the respective case class instance" in {
-      json.fromJson[Test3[Int, String]] mustEqual obj
+      json.convertTo[Test3[Int, String]] mustEqual obj
     }
   }
 

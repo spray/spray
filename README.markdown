@@ -37,15 +37,15 @@ and do one or more of the following:
 
 2. Print a JSON AST back to a String using either the `CompactPrinter` or the `PrettyPrinter`
 
-        val json = PrettyPrinter(jsonAst)
+        val json = jsonAst.prettyPrint // or .compactPrint
 
 3. Convert any Scala object to a JSON AST using the pimped `toJson` method 
         
         val jsonAst = List(1, 2, 3).toJson 
 
-4. Convert a JSON AST to a Scala object with the `fromJson` method
+4. Convert a JSON AST to a Scala object with the `convertTo` method
 
-        val myObject = jsonAst.fromJson[MyObjectType]
+        val myObject = jsonAst.convertTo[MyObjectType]
 
 In order to make steps 3 and 4 work for an object of type `T` you need to bring implicit values in scope that
 provide `JsonFormat[T]` instances for `T` and all types used by `T` (directly or indirectly).
@@ -90,7 +90,7 @@ If your custom type `T` is a case class then augmenting the `DefaultJsonProtocol
     import MyJsonProtocol._
     
     val json = Color("CadetBlue", 95, 158, 160).toJson
-    val color = json.fromJson[Color] 
+    val color = json.convertTo[Color]
     
 The `jsonFormat` method reduces the boilerplate to a minimum, just pass it the companion object of your case class as
 well as the field names (in order) and it will return a ready-to-use `JsonFormat` for your type.
@@ -139,7 +139,7 @@ Here is one way to do it:
     import MyJsonProtocol._
     
     val json = Color("CadetBlue", 95, 158, 160).toJson
-    val color = json.fromJson[Color]    
+    val color = json.convertTo[Color]
 
 This serializes `Color` instances as a JSON array, which is compact but does not make the elements semantics explicit.
 You need to know that the color components are ordered "red, green, blue".

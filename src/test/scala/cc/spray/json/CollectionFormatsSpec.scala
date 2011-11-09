@@ -12,7 +12,7 @@ class CollectionFormatsSpec extends Specification with DefaultJsonProtocol {
       list.toJson mustEqual json
     }
     "convert a JsArray of JsNumbers to a List[Int]" in {
-      json.fromJson[List[Int]] mustEqual list 
+      json.convertTo[List[Int]] mustEqual list
     }
   }
   
@@ -23,7 +23,7 @@ class CollectionFormatsSpec extends Specification with DefaultJsonProtocol {
       array.toJson mustEqual json
     }
     "convert a JsArray of JsNumbers to an Array[Int]" in {
-      Arrays.equals(json.fromJson[Array[Int]], array) must beTrue 
+      Arrays.equals(json.convertTo[Array[Int]], array) must beTrue
     }
   }
   
@@ -34,7 +34,7 @@ class CollectionFormatsSpec extends Specification with DefaultJsonProtocol {
       map.toJson mustEqual json
     }
     "be able to convert a JsObject to a Map[String, Long]" in {
-      json.fromJson[Map[String, Long]] mustEqual map 
+      json.convertTo[Map[String, Long]] mustEqual map
     }
     "throw an Exception when trying to serialize a map whose key are not serialized to JsStrings" in {
       Map(1 -> "a").toJson must throwA(new SerializationException("Map key must be formatted as JsString, not '1'"))
@@ -48,7 +48,7 @@ class CollectionFormatsSpec extends Specification with DefaultJsonProtocol {
       set.toJson mustEqual json
     }
     "convert a JsArray of JsNumbers to a Set[Int]" in {
-      json.fromJson[Set[Int]] mustEqual set 
+      json.convertTo[Set[Int]] mustEqual set
     }
   }
 
@@ -59,7 +59,7 @@ class CollectionFormatsSpec extends Specification with DefaultJsonProtocol {
       seq.toJson mustEqual json
     }
     "convert a JsArray of JsNumbers to a IndexedSeq[Int]" in {
-      json.fromJson[collection.IndexedSeq[Int]] mustEqual seq
+      json.convertTo[collection.IndexedSeq[Int]] mustEqual seq
     }
   }
   

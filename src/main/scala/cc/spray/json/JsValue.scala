@@ -24,9 +24,14 @@ import collection.mutable.ListBuffer
   * The general type of a JSON AST node.
  */
 sealed trait JsValue {
-  override def toString = CompactPrinter(this)
+  override def toString = compactPrint
   def toString(printer: (JsValue => String)) = printer(this)
-  def fromJson[T :JsonReader]: T = jsonReader[T].read(this)
+  def compactPrint = CompactPrinter(this)
+  def prettyPrint = PrettyPrinter(this)
+  def convertTo[T :JsonReader]: T = jsonReader[T].read(this)
+
+  @deprecated("Superceded by 'convertTo'", "1.1.0")
+  def fromJson[T :JsonReader]: T = convertTo
 }
 object JsValue {
 
