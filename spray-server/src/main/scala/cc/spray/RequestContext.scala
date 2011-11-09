@@ -21,6 +21,7 @@ import StatusCodes._
 import HttpHeaders._
 import MediaTypes._
 import typeconversion._
+import akka.dispatch.Future
 
 /**
  * Immutable object encapsulating the context of an [[cc.spray.http.HttpRequest]]
@@ -94,6 +95,14 @@ case class RequestContext(
       case MarshalWith(converter) => complete(HttpResponse(status, headers, converter(obj)))
       case CantMarshal(onlyTo) => reject(UnacceptedResponseContentTypeRejection(onlyTo))
     }
+  }
+
+  /**
+   * Schedules the completion of the request with status "200 Ok" and the response content created by marshalling the
+   * future result using the in-scope marshaller for A.
+   */
+  def complete[A :Marshaller](responseFuture: Future[A]) {
+    responseFuture.onComplete(future => complete(future.resultOrException.get))
   }
 
   /**
