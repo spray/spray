@@ -22,7 +22,7 @@ import http._
 import MediaTypes._
 import org.specs2.mutable.Specification
 
-class SprayJsonMarshallingSpec extends Specification with SprayJsonSupport {
+class SprayJsonSupportSpec extends Specification with SprayJsonSupport {
 
   case class Employee(fname: String, name: String, age: Int, id: Long, boardMember: Boolean) {
     require(!boardMember || age > 40, "Board members must be older than 40")

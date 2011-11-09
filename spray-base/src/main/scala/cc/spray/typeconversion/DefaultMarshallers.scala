@@ -62,6 +62,13 @@ trait DefaultMarshallers extends MultipartMarshallers {
       StringMarshaller.marshal(keyValuePairs.mkString("&"), contentType)
     }
   }
+
+  // As a fallback we allow marshalling without content negotiation from objects that are implicitly convertible to
+  // HttpContent (most notably HttpContent itself). Note that relying on this might make the application not HTTP spec
+  // conformant since the Accept headers the client sent with the request are completely ignored
+  implicit def view2Marshaller[T](implicit converter: T => HttpContent) = new Marshaller[T] {
+    def apply(selector: ContentTypeSelector) = MarshalWith(converter)
+  }
 }
 
 object DefaultMarshallers extends DefaultMarshallers

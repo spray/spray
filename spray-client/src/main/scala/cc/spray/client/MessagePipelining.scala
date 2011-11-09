@@ -34,14 +34,10 @@ trait MessagePipelining {
   }
 
   def simpleRequest[T :Marshaller]: SimpleRequest[T] => HttpRequest = {
-    val marshal = marshaller[T].apply(Some(_)) match {
-      case MarshalWith(f) => f
-      case _: CantMarshal => throw new IllegalStateException
-    }
     simpleRequest => HttpRequest(
       method = simpleRequest.method,
       uri = simpleRequest.uri,
-      content = simpleRequest.content.map(marshal)
+      content = simpleRequest.content.map(_.toHttpContent)
     )
   }
 

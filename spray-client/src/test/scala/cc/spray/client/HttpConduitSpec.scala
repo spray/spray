@@ -45,7 +45,7 @@ class HttpConduitSpec extends Specification { def is =
       }
       case Timeout(_, _, _, _, _, complete) => complete(response.withBody("TIMEOUT"))
     }
-    def response = can.HttpResponse(headers = List(can.HttpHeader("Content-Type", "text/plain")))
+    def response = can.HttpResponse(headers = List(can.HttpHeader("Content-Type", "text/plain; charset=ISO-8859-1")))
   }
 
   def oneRequest(strategy: DispatchStrategy) = {

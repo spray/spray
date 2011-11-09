@@ -32,6 +32,11 @@ class FormFieldSpec extends Specification with DefaultUnmarshallers with Default
       formData.toHttpContent.formField("age").right.get.as[Int] mustEqual Right(42)
     }
 
+    "properly allow access to the fields of www-urlencoded forms containing special chars" in {
+      FormData(Map("name" -> "Smith&Wesson")).toHttpContent.formField("name").right.get.as[String] mustEqual
+        Right("Smith&Wesson")
+    }
+
     "properly allow access to the fields of multipart/form-data forms" in {
       multipartFormData.toHttpContent.formField("surname").right.get.as[String] mustEqual Right("Smith")
       multipartFormData.toHttpContent.formField("age").right.get.as[NodeSeq] mustEqual Right(<int>42</int>)

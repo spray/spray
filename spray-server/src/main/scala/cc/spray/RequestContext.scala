@@ -21,6 +21,7 @@ import StatusCodes._
 import HttpHeaders._
 import MediaTypes._
 import typeconversion._
+import akka.dispatch.Future
 
 /**
  * Immutable object encapsulating the context of an [[cc.spray.http.HttpRequest]]
@@ -74,20 +75,35 @@ case class RequestContext(
   def reject(rejections: Set[Rejection]) { responder(Reject(rejections)) }
 
   /**
-   * Completes the request with status "200 Ok" and response content created by marshalling the given object using
+   * Completes the request with status "200 Ok" and the response content created by marshalling the given object using
    * the in-scope marshaller for the type.
    */
-  def complete[A :Marshaller](obj: A) {
+  def complete[A :Marshaller](obj: A) { complete(OK, obj) }
+
+  /**
+   * Completes the request with the given status and the response content created by marshalling the given object using
+   * the in-scope marshaller for the type.
+   */
+  def complete[A :Marshaller](status: StatusCode, obj: A) { complete(status, Nil, obj) }
+
+  /**
+   * Completes the request with the given status, headers and the response content created by marshalling the
+   * given object using the in-scope marshaller for the type.
+   */
+  def complete[A :Marshaller](status: StatusCode, headers: List[HttpHeader], obj: A) {
     marshaller.apply(request.acceptableContentType) match {
-      case MarshalWith(converter) => complete(converter(obj))
+      case MarshalWith(converter) => complete(HttpResponse(status, headers, converter(obj)))
       case CantMarshal(onlyTo) => reject(UnacceptedResponseContentTypeRejection(onlyTo))
     }
   }
 
   /**
-   * Completes the request with status "200 Ok" and the given response content.
+   * Schedules the completion of the request with status "200 Ok" and the response content created by marshalling the
+   * future result using the in-scope marshaller for A.
    */
-  def complete(content: HttpContent) { complete(HttpResponse(OK, content)) }
+  def complete[A :Marshaller](responseFuture: Future[A]) {
+    responseFuture.onComplete(future => complete(future.resultOrException.get))
+  }
 
   /**
    * Completes the request with the given [[cc.spray.http.HttpResponse]].
@@ -119,17 +135,19 @@ case class RequestContext(
   /**
    * Completes the request with the given [[cc.spray.http.HttpFailure]].
    */
-  def fail(failure: HttpFailure) {
-    fail(failure, failure.defaultMessage)
-  }
-  
+  def fail(status: HttpFailure) { fail(status, status.defaultMessage)(DefaultMarshallers.StringMarshaller) }
+
   /**
-   * Completes the request with the given [[cc.spray.http.HttpFailure]].
+   * Completes the request with the given status and the response content created by marshalling the given object using
+   * the in-scope marshaller for the type.
    */
-  def fail(failure: HttpFailure, reason: String) {
-    complete(HttpResponse(failure, content = HttpContent(reason)))
-  }
-  
+  def fail[A :Marshaller](status: HttpFailure, obj: A) { fail(status, Nil, obj) }
+
+  /**
+   * Completes the request with the given status, headers and the response content created by marshalling the
+   * given object using the in-scope marshaller for the type.
+   */
+  def fail[A :Marshaller](status: HttpFailure, headers: List[HttpHeader], obj: A) { complete(status, headers, obj) }
   
   /**
    * Completes the request with a redirection response to the given URI.

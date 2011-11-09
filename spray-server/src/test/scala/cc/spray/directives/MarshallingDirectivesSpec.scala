@@ -26,6 +26,7 @@ import test.AbstractSprayTest
 import typeconversion._
 import xml.{XML, NodeSeq}
 import java.io.ByteArrayInputStream
+import akka.dispatch.Future
 
 class MarshallingDirectivesSpec extends AbstractSprayTest {
   
@@ -118,6 +119,14 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
         content = Some(HttpContent(ContentType(`text/html`), "<int>42</int>")))) {
         handleWith(times2)
       }.rejections mustEqual Set(UnacceptedResponseContentTypeRejection(IntMarshaller.canMarshalTo))
+    }
+  }
+
+  "RequestContext.complete(Future)" should {
+    "correctly complete the request with the future result" in {
+      test(HttpRequest()) {
+        _.complete(Future("yeah"))
+      }.response.content.as[String] mustEqual Right("yeah")
     }
   }
   

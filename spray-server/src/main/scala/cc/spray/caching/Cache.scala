@@ -26,7 +26,7 @@ import akka.dispatch._
 trait Cache[V] {
 
   /**
-   * Selects the (pontentially non-existing) cache entry with the given key.
+   * Selects the (potentially non-existing) cache entry with the given key.
    */
   def apply(key: Any) = new Key(key)
 
