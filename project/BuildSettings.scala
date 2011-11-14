@@ -36,7 +36,6 @@ object BuildSettings {
       }
     },
     pomExtra := (
-      <name>spray-can</name>
       <url>http://spray.cc/</url>
       <inceptionYear>2011</inceptionYear>
       <description>a low-overhead, high-performance, fully asynchronous HTTP 1.1 server and client library
