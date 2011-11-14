@@ -8,6 +8,8 @@ object BuildSettings {
     version       := "0.9.2-SNAPSHOT",
     scalaVersion  := "2.9.1",
     scalacOptions := Seq("-deprecation", "-encoding", "utf8"),
+    description   := "low-overhead, high-performance, fully asynchronous HTTP 1.1 server and client " +
+                     "library implemented entirely in Scala on top of Akka",
     resolvers     ++= Dependencies.resolutionRepos
   )
 
@@ -38,8 +40,6 @@ object BuildSettings {
     pomExtra := (
       <url>http://spray.cc/</url>
       <inceptionYear>2011</inceptionYear>
-      <description>a low-overhead, high-performance, fully asynchronous HTTP 1.1 server and client library
-        implemented entirely in Scala on top of Akka</description>
       <licenses>
         <license>
           <name>Apache 2</name>
