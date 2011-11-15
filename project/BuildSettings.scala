@@ -4,9 +4,10 @@ import com.github.siasia.WebPlugin
 
 object BuildSettings {
 
-  lazy val basicSettings = Defaults.defaultSettings ++ Seq(
+  lazy val basicSettings = Seq[Setting[_]](
     organization  := "cc.spray",
     version       := "0.8.0-RC3",
+    description   := "a suite of lightweight Scala libraries for building and consuming RESTful web services on top of Akka",
     scalaVersion  := "2.9.1",
     scalacOptions := Seq("-deprecation", "-encoding", "utf8"),
     resolvers     ++= Dependencies.resolutionRepos
