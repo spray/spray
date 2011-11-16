@@ -172,6 +172,20 @@ This is a bit more verbose in its definition and the resulting JSON but transpor
 Note that this is the approach _spray-json_ uses for case classes.
 
 
+### JsonFormats for recursive Types
+
+If your type is recursive such as
+
+    case class Foo(i: Int, foo: Foo)
+
+you need to wrap your format constructor with `lazyFormat` and supply an explicit type annotation:
+
+    implicit val fooFormat: JsonFormat[Foo] = lazyFormat(jsonFormat(Foo, "i", "foo"))
+
+Otherwise your code will either not compile (no explicit type annotation) or throw an NPE at runtime (no `lazyFormat`
+wrapper).
+
+
 ### API Documentation
 
 You can find the documentation for the _spray-json_ API here:
