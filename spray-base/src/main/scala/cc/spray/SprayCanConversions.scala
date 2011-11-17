@@ -54,7 +54,7 @@ trait SprayCanConversions {
     case can.HttpMethods.HEAD    => HEAD
     case can.HttpMethods.OPTIONS => OPTIONS
     case can.HttpMethods.TRACE   => TRACE
-    case can.HttpMethods.CONNECT => CONNECT
+    case can.HttpMethods.CONNECT => throw new HttpException(StatusCodes.MethodNotAllowed)
   }
 
   protected def toSprayCanMethod(method: HttpMethod) = method match {

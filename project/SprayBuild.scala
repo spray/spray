@@ -14,21 +14,19 @@ object SprayBuild extends Build {
   // Root Project
   // -------------------------------------------------------------------------------------------------------------------
 
-  lazy val spray = Project(
-    "spray",
-    file("."),
-    settings = basicSettings ++ noPublishing
-  ) aggregate (base, server, client, examples)
+  lazy val spray = Project("spray", file("."))
+    .settings(basicSettings: _*)
+    .settings(noPublishing: _*)
+    .aggregate(base, server, client, examples)
 
 
   // -------------------------------------------------------------------------------------------------------------------
-  // Spray Modules
+  // Modules
   // -------------------------------------------------------------------------------------------------------------------
 
-  lazy val base = Project(
-    "spray-base",
-    file("spray-base"),
-    settings = moduleSettings ++ Seq(
+  lazy val base = Project("spray-base", file("spray-base"))
+    .settings(moduleSettings: _*)
+    .settings(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
         Compile.parboiled,
@@ -39,12 +37,10 @@ object SprayBuild extends Build {
         Test.specs2
       )
     )
-  )
 
-  lazy val server = Project(
-    "spray-server",
-    file("spray-server"),
-    settings = moduleSettings ++ Seq(
+  lazy val server = Project("spray-server", file("spray-server"))
+    .settings(moduleSettings: _*)
+    .settings(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
         Provided.servlet30,
@@ -54,12 +50,11 @@ object SprayBuild extends Build {
         Test.specs2
       )
     )
-  ) dependsOn (base)
+    .dependsOn(base)
 
-  lazy val client = Project(
-    "spray-client",
-    file("spray-client"),
-    settings = moduleSettings ++ Seq(
+  lazy val client = Project("spray-client", file("spray-client"))
+    .settings(moduleSettings: _*)
+    .settings(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
         Compile.sprayCan,
@@ -68,23 +63,21 @@ object SprayBuild extends Build {
         Test.logback
       )
     )
-  ) dependsOn (base)
+    .dependsOn(base)
 
 
   // -------------------------------------------------------------------------------------------------------------------
   // Example Projects
   // -------------------------------------------------------------------------------------------------------------------
 
-  lazy val examples = Project(
-    "spray-examples",
-    file("spray-examples"),
-    settings = basicSettings ++ noPublishing
-  ) aggregate (clientExample, calculatorExample, markdownserverExample, simpleExample, sprayCanExample, stopwatchExample)
+  lazy val examples = Project("spray-examples", file("spray-examples"))
+    .settings(basicSettings: _*)
+    .settings(noPublishing: _*)
+    .aggregate(clientExample, calculatorExample, markdownserverExample, simpleExample, sprayCanExample, stopwatchExample)
 
-  lazy val clientExample = Project(
-    "spray-client-example",
-    file("spray-examples/spray-client-example"),
-    settings = exampleSettings ++ Seq(
+  lazy val clientExample = Project("spray-client-example", file("spray-examples/spray-client-example"))
+    .settings(exampleSettings: _*)
+    .settings(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
         Compile.sprayCan,
@@ -94,12 +87,11 @@ object SprayBuild extends Build {
         Runtime.logback
       )
     )
-  ) dependsOn (base, client)
+    .dependsOn(base, client)
 
-  lazy val calculatorExample = Project(
-    "spray-example-calculator",
-    file("spray-examples/spray-example-calculator"),
-    settings = jettyExampleSettings ++ Seq(
+  lazy val calculatorExample = Project("spray-example-calculator", file("spray-examples/spray-example-calculator"))
+    .settings(jettyExampleSettings: _*)
+    .settings(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
         Test.specs2,
@@ -108,12 +100,11 @@ object SprayBuild extends Build {
         Runtime.logback
       )
     )
-  ) dependsOn (base, server)
+    .dependsOn(base, server)
 
-  lazy val markdownserverExample = Project(
-    "spray-example-markdownserver",
-    file("spray-examples/spray-example-markdownserver"),
-    settings = jettyExampleSettings ++ Seq(
+  lazy val markdownserverExample = Project("spray-example-markdownserver", file("spray-examples/spray-example-markdownserver"))
+    .settings(jettyExampleSettings: _*)
+    .settings(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
         Compile.pegdown,
@@ -121,12 +112,11 @@ object SprayBuild extends Build {
         Runtime.jettyWebApp
       )
     )
-  ) dependsOn (base, server)
+    .dependsOn(base, server)
 
-  lazy val simpleExample = Project(
-    "spray-example-simple",
-    file("spray-examples/spray-example-simple"),
-    settings = jettyExampleSettings ++ Seq(
+  lazy val simpleExample = Project("spray-example-simple", file("spray-examples/spray-example-simple"))
+    .settings(jettyExampleSettings: _*)
+    .settings(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
         Test.specs2,
@@ -135,12 +125,11 @@ object SprayBuild extends Build {
         Runtime.logback
       )
     )
-  ) dependsOn (base, server)
+    .dependsOn(base, server)
 
-  lazy val sprayCanExample = Project(
-    "spray-example-spray-can",
-    file("spray-examples/spray-example-spray-can"),
-    settings = exampleSettings ++ Seq(
+  lazy val sprayCanExample = Project("spray-example-spray-can", file("spray-examples/spray-example-spray-can"))
+    .settings(exampleSettings: _*)
+    .settings(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
         Compile.sprayCan,
@@ -149,12 +138,11 @@ object SprayBuild extends Build {
         Runtime.logback
       )
     )
-  ) dependsOn (base, server)
+    .dependsOn(base, server)
 
-  lazy val stopwatchExample = Project(
-    "spray-example-stopwatch",
-    file("spray-examples/spray-example-stopwatch"),
-    settings = jettyExampleSettings ++ Seq(
+  lazy val stopwatchExample = Project("spray-example-stopwatch", file("spray-examples/spray-example-stopwatch"))
+    .settings(jettyExampleSettings: _*)
+    .settings(
       libraryDependencies ++= Seq(
         Compile.akkaActor,
         Test.specs2,
@@ -163,6 +151,6 @@ object SprayBuild extends Build {
         Runtime.logback
       )
     )
-  ) dependsOn (base, server)
+    .dependsOn(base, server)
 
 }

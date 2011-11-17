@@ -46,5 +46,5 @@ private[spray] trait CacheDirectives {
    * (max-entries = 500, dropFraction = 20%, time-to-live: 5 minutes) and the {{UriGetCacheKeyer}} which
    * only caches GET requests and uses the request URI as cache key.
    */
-  def cache = cacheResults(LruCache[RoutingResult]())
+  def cache = cacheResults(LruCache())
 }
