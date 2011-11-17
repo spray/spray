@@ -74,6 +74,7 @@ private[can] abstract class HttpPeer(threadName: String) extends Actor {
   private lazy val log = LoggerFactory.getLogger(getClass)
 
   private[can] type Conn >: Null <: Connection[Conn]
+  private[can] case class RefreshConnection(conn: Conn)
   protected def config: PeerConfig
 
   protected val readBuffer = ByteBuffer.allocateDirect(config.readBufferSize)
@@ -120,6 +121,7 @@ private[can] abstract class HttpPeer(threadName: String) extends Actor {
     case Select => select()
     case HandleTimedOutRequests => handleTimedOutRequests()
     case ReapIdleConnections => connections.forAllTimedOut(config.idleTimeout)(reapConnection)
+    case RefreshConnection(conn) => connections.refresh(conn)
     case GetStats => self.reply(stats)
   }
 

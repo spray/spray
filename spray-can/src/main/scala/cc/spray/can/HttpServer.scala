@@ -77,6 +77,11 @@ trait RequestResponder {
    * response chunks before calling the `ChunkedResponder`s `close` method to finalize the response.
    */
   def startChunkedResponse(response: HttpResponse): ChunkedResponder
+
+  /**
+   * Explicitly resets the connection idle timeout for the connection underlying this chunked response.
+   */
+  def resetConnectionTimeout()
 }
 
 /**
@@ -429,8 +434,9 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
 
     def setRequestRecord(record: RequestRecord) { requestRecord = record }
 
-    class DefaultChunkedResponder(closeAfterLastChunk: Boolean)
-            extends ChunkedResponder {
+    def resetConnectionTimeout() { self ! RefreshConnection(conn) }
+
+    class DefaultChunkedResponder(closeAfterLastChunk: Boolean) extends ChunkedResponder {
       private var closed = false
       def sendChunk(chunk: MessageChunk) {
         synchronized {
@@ -440,6 +446,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
           } else throw new RuntimeException("Cannot send MessageChunk after HTTP stream has been closed")
         }
       }
+
       def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
         Trailer.verify(trailer)
         synchronized {
