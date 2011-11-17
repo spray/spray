@@ -62,7 +62,7 @@ trait StandardFormats {
     def write(t: (A, B)) = JsArray(t._1.toJson, t._2.toJson)
     def read(value: JsValue) = value match {
       case JsArray(a :: b :: Nil) => (a.convertTo[A], b.convertTo[B])
-      case _ => throw new DeserializationException("Tuple2 expected")
+      case x => throw new DeserializationException("Expected Tuple2 as JsArray, but got " + x)
     }
   }
   
@@ -70,7 +70,7 @@ trait StandardFormats {
     def write(t: (A, B, C)) = JsArray(t._1.toJson, t._2.toJson, t._3.toJson)
     def read(value: JsValue) = value match {
       case JsArray(a :: b :: c :: Nil) => (a.convertTo[A], b.convertTo[B], c.convertTo[C])
-      case _ => throw new DeserializationException("Tuple3 expected")
+      case x => throw new DeserializationException("Expected Tuple3 as JsArray, but got " + x)
     }
   }
   
@@ -78,7 +78,7 @@ trait StandardFormats {
     def write(t: (A, B, C, D)) = JsArray(t._1.toJson, t._2.toJson, t._3.toJson, t._4.toJson)
     def read(value: JsValue) = value match {
       case JsArray(a :: b :: c :: d :: Nil) => (a.convertTo[A], b.convertTo[B], c.convertTo[C], d.convertTo[D])
-      case _ => throw new DeserializationException("Tuple4 expected")
+      case x => throw new DeserializationException("Expected Tuple4 as JsArray, but got " + x)
     }
   }
   
@@ -86,10 +86,9 @@ trait StandardFormats {
     new JF[(A, B, C, D, E)] {
       def write(t: (A, B, C, D, E)) = JsArray(t._1.toJson, t._2.toJson, t._3.toJson, t._4.toJson, t._5.toJson)
       def read(value: JsValue) = value match {
-        case JsArray(a :: b :: c :: d :: e :: Nil) => {
+        case JsArray(a :: b :: c :: d :: e :: Nil) =>
           (a.convertTo[A], b.convertTo[B], c.convertTo[C], d.convertTo[D], e.convertTo[E])
-        }
-        case _ => throw new DeserializationException("Tuple5 expected")
+        case x => throw new DeserializationException("Expected Tuple5 as JsArray, but got " + x)
       }
     }
   }
@@ -98,10 +97,9 @@ trait StandardFormats {
     new JF[(A, B, C, D, E, F)] {
       def write(t: (A, B, C, D, E, F)) = JsArray(t._1.toJson, t._2.toJson, t._3.toJson, t._4.toJson, t._5.toJson, t._6.toJson)
       def read(value: JsValue) = value match {
-        case JsArray(a :: b :: c :: d :: e :: f :: Nil) => {
+        case JsArray(a :: b :: c :: d :: e :: f :: Nil) =>
           (a.convertTo[A], b.convertTo[B], c.convertTo[C], d.convertTo[D], e.convertTo[E], f.convertTo[F])
-        }
-        case _ => throw new DeserializationException("Tuple6 expected")
+        case x => throw new DeserializationException("Expected Tuple6 as JsArray, but got " + x)
       }
     }
   }
@@ -110,10 +108,9 @@ trait StandardFormats {
     new JF[(A, B, C, D, E, F, G)] {
       def write(t: (A, B, C, D, E, F, G)) = JsArray(t._1.toJson, t._2.toJson, t._3.toJson, t._4.toJson, t._5.toJson, t._6.toJson, t._6.toJson)
       def read(value: JsValue) = value match {
-        case JsArray(a :: b :: c :: d :: e :: f :: g :: Nil) => {
+        case JsArray(a :: b :: c :: d :: e :: f :: g :: Nil) =>
           (a.convertTo[A], b.convertTo[B], c.convertTo[C], d.convertTo[D], e.convertTo[E], f.convertTo[F], g.convertTo[G])
-        }
-        case _ => throw new DeserializationException("Tuple7 expected")
+        case x => throw new DeserializationException("Expected Tuple7 as JsArray, but got " + x)
       }
     }
   }

@@ -26,7 +26,7 @@ trait BasicFormats {
     def write(x: Int) = JsNumber(x)
     def read(value: JsValue) = value match {
       case JsNumber(x) => x.intValue
-      case _ => throw new DeserializationException("Int expected")
+      case x => throw new DeserializationException("Expected Int as JsNumber, but got " + x)
     }
   }
 
@@ -34,7 +34,7 @@ trait BasicFormats {
     def write(x: Long) = JsNumber(x)
     def read(value: JsValue) = value match {
       case JsNumber(x) => x.longValue
-      case _ => throw new DeserializationException("Long expected")
+      case x => throw new DeserializationException("Expected Long as JsNumber, but got " + x)
     }
   }
 
@@ -43,7 +43,7 @@ trait BasicFormats {
     def read(value: JsValue) = value match {
       case JsNumber(x) => x.floatValue
       case JsNull      => Float.NaN
-      case _ => throw new DeserializationException("Float expected")
+      case x => throw new DeserializationException("Expected Float as JsNumber, but got " + x)
     }
   }
 
@@ -52,7 +52,7 @@ trait BasicFormats {
     def read(value: JsValue) = value match {
       case JsNumber(x) => x.doubleValue
       case JsNull      => Double.NaN
-      case _ => throw new DeserializationException("Double expected")
+      case x => throw new DeserializationException("Expected Double as JsNumber, but got " + x)
     }
   }
 
@@ -60,7 +60,7 @@ trait BasicFormats {
     def write(x: Byte) = JsNumber(x)
     def read(value: JsValue) = value match {
       case JsNumber(x) => x.byteValue
-      case _ => throw new DeserializationException("Byte expected")
+      case x => throw new DeserializationException("Expected Byte as JsNumber, but got " + x)
     }
   }
   
@@ -68,7 +68,7 @@ trait BasicFormats {
     def write(x: Short) = JsNumber(x)
     def read(value: JsValue) = value match {
       case JsNumber(x) => x.shortValue
-      case _ => throw new DeserializationException("Short expected")
+      case x => throw new DeserializationException("Expected Short as JsNumber, but got " + x)
     }
   }
 
@@ -76,7 +76,7 @@ trait BasicFormats {
     def write(x: BigDecimal) = JsNumber(x)
     def read(value: JsValue) = value match {
       case JsNumber(x) => x
-      case _ => throw new DeserializationException("String expected")
+      case x => throw new DeserializationException("Expected BigDecimal as JsNumber, but got " + x)
     }
   }
 
@@ -84,7 +84,7 @@ trait BasicFormats {
     def write(x: BigInt) = JsNumber(x)
     def read(value: JsValue) = value match {
       case JsNumber(x) => x.toBigInt
-      case _ => throw new DeserializationException("BigInt expected")
+      case x => throw new DeserializationException("Expected BigInt as JsNumber, but got " + x)
     }
   }
 
@@ -98,7 +98,7 @@ trait BasicFormats {
     def read(value: JsValue) = value match {
       case JsTrue => true
       case JsFalse => false
-      case _ => throw new DeserializationException("Boolean expected")
+      case x => throw new DeserializationException("Expected JsBoolean, but got " + x)
     }
   }
 
@@ -106,7 +106,7 @@ trait BasicFormats {
     def write(x: Char) = JsString(String.valueOf(x))
     def read(value: JsValue) = value match {
       case JsString(x) if x.length == 1 => x.charAt(0)
-      case _ => throw new DeserializationException("Char expected")
+      case x => throw new DeserializationException("Expected Char as single-character JsString, but got " + x)
     }
   }
   
@@ -114,7 +114,7 @@ trait BasicFormats {
     def write(x: String) = JsString(x)
     def read(value: JsValue) = value match {
       case JsString(x) => x
-      case _ => throw new DeserializationException("String expected")
+      case x => throw new DeserializationException("Expected String as JsString, but got " + x)
     }
   }
   
@@ -122,7 +122,7 @@ trait BasicFormats {
     def write(x: Symbol) = JsString(x.name)
     def read(value: JsValue) = value match {
       case JsString(x) => Symbol(x)
-      case _ => throw new DeserializationException("Symbol expected")
+      case x => throw new DeserializationException("Expected Symbol as JsString, but got " + x)
     }
   }
   
