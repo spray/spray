@@ -80,8 +80,10 @@ private[can] class LinkedList[Elem >: Null <: LinkedList.Element[Elem]] {
   }
 
   def refresh(rec: Elem) {
-    this -= rec
-    this += rec
+    if (rec.list != null) {
+      this -= rec
+      this += rec
+    }
   }
 
   def forAllTimedOut[U](timeout: Long)(f: Elem => U) {

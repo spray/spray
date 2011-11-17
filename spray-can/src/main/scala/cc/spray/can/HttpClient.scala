@@ -167,7 +167,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
           def complete(response: AnyRef) {
             log.debug("Completing request with {}", response)
             responder.get.apply(response)
-            openRequests -= requestRecord
+            if (requestRecord.memberOf != openRequests) openRequests -= requestRecord
           }
           def deliverPartialResponse(response: AnyRef) {
             log.debug("Delivering partial response: {}", response)
@@ -264,6 +264,12 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
   override protected def reapConnection(conn: Conn) {
     conn.closeAllPendingWithError("Connection closed due to idle timeout")
     super.reapConnection(conn)
+  }
+
+
+  override protected def close(conn: Conn) {
+    conn.closeAllPendingWithError("Unspecified")
+    super.close(conn)
   }
 
   protected def openRequestCount = openRequests.size
