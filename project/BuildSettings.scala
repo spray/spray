@@ -1,6 +1,7 @@
 import sbt._
 import Keys._
 import com.github.siasia.WebPlugin
+import xml.transform.{RewriteRule, RuleTransformer}
 
 object BuildSettings {
 
@@ -9,13 +10,13 @@ object BuildSettings {
     version       := "0.8.0-RC3",
     description   := "a suite of lightweight Scala libraries for building and consuming RESTful web services on top of Akka",
     scalaVersion  := "2.9.1",
-    scalacOptions := Seq("-deprecation", "-encoding", "utf8"),
     resolvers     ++= Dependencies.resolutionRepos
   )
 
   lazy val moduleSettings = basicSettings ++ Seq(
-    // scaladoc
-    scaladocOptions <<= (name, version).map { (n, v) => Seq("-doc-title", n + " " + v) },
+    // compiler and scaladoc settings
+    scalacOptions := Seq("-deprecation", "-encoding", "utf8"),
+    (scalacOptions in doc) <++= (name, version).map { (n, v) => Seq("-doc-title", n, "-doc-version", v) },
 
     // publishing
     credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
@@ -51,6 +52,17 @@ object BuildSettings {
       <scm>
         <url>http://github.com/spray/</url>
       </scm>
+    ),
+
+    // work-around for SBT 0.11.1 issue #257 (https://github.com/harrah/xsbt/issues/257)
+    pomPostProcess := new RuleTransformer(
+      new RewriteRule {
+        import xml._
+        override def transform(n: Node) = n match {
+          case e: Elem if e.label == "classifier" => NodeSeq.Empty
+          case e => e :: Nil
+        }
+      }
     )
   )
 
