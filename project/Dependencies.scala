@@ -14,6 +14,7 @@ object Dependencies {
 
   object Compile {
     val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % "1.6.1"     % "compile"
+    val akkaActor     = "se.scalablesolutions.akka" %   "akka-actor"                % V.akka      % "compile"
   }
 
   object Provided {
