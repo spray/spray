@@ -75,6 +75,8 @@ class HttpHeaderSpec extends Specification {
               Authorization(BasicHttpCredentials("Aladdin", "open sesame"))
       HttpHeader("Authorization", """Fancy yes="no", nonce="42"""") mustEqual
               Authorization(OtherHttpCredentials("Fancy", Map("yes"->"no", "nonce"->"42")))
+      HttpHeader("Authorization", """Fancy yes="no", nonce="4\\2"""") mustEqual
+              Authorization(OtherHttpCredentials("Fancy", Map("yes"->"no", "nonce"->"""4\2""")))
       HttpHeader("Authorization", BasicHttpCredentials("Bob", "").value) mustEqual
               Authorization(BasicHttpCredentials("Bob", ""))
       HttpHeader("Authorization", OtherHttpCredentials("Digest", Map("name"->"Bob")).value) mustEqual

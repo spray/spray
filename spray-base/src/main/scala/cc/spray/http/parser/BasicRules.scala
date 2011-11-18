@@ -50,15 +50,17 @@ private[spray] object BasicRules extends Parser {
   
   def Token: Rule1[String] = rule { oneOrMore(!CTL ~ !Separator ~ ANY) ~> identity }
   
-  def Comment: Rule0 = rule { "(" ~ zeroOrMore(CText | QuotedPair | Comment) ~ ")" }
+  def Comment: Rule0 = rule { "(" ~ zeroOrMore(CText | QuotedPair ~ DROP | Comment) ~ ")" }
   
   def CText = rule { !anyOf("()") ~ Text }
   
-  def QuotedString: Rule1[String] = rule { "\"" ~ zeroOrMore(QDText | QuotedPair) ~> identity ~ "\"" }
+  def QuotedString: Rule1[String] = rule {
+    "\"" ~ zeroOrMore(QuotedPair | QDText) ~~> (chars => new String(chars.toArray)) ~ "\""
+  }
   
-  def QDText = rule { !ch('"') ~ Text }
+  def QDText: Rule1[Char] = rule { !ch('"') ~ Text ~:> identity }
   
-  def QuotedPair = rule { "\\" ~ Char }
+  def QuotedPair: Rule1[Char] = rule { "\\" ~ Char ~:> identity }
   
   // helpers
   
