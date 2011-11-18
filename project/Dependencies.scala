@@ -8,13 +8,16 @@ object Dependencies {
   )
 
   object V {
-    val akka      = "1.2"
+    val akka      = "1.3-RC1"
     val logback   = "0.9.29"
   }
 
   object Compile {
-    val akkaActor     = "se.scalablesolutions.akka" %   "akka-actor"                % V.akka      % "compile"
     val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % "1.6.1"     % "compile"
+  }
+
+  object Provided {
+    val akkaActor     = "se.scalablesolutions.akka" %   "akka-actor"                % V.akka      % "provided"
   }
 
   object Test {

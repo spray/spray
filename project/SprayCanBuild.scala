@@ -30,8 +30,8 @@ object SprayCanBuild extends Build {
     file("spray-can"),
     settings = moduleSettings ++ Seq(
       libraryDependencies ++= Seq(
-        Compile.akkaActor,
         Compile.slf4j,
+        Provided.akkaActor,
         Test.specs2,
         Test.akkaSlf4j,
         Test.logback
@@ -44,6 +44,7 @@ object SprayCanBuild extends Build {
     file("client-example"),
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= Seq(
+        Provided.akkaActor,
         Runtime.akkaSlf4j,
         Runtime.logback
       )
@@ -55,6 +56,7 @@ object SprayCanBuild extends Build {
     file("server-example"),
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= Seq(
+        Provided.akkaActor,
         Runtime.akkaSlf4j,
         Runtime.logback
       )
