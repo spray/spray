@@ -20,15 +20,17 @@ package parser
 import org.parboiled.scala._
 import BasicRules._
 
+// http://tools.ietf.org/html/draft-ietf-httpstate-cookie-23#section-4
+// with one exception: we are more lenient on additional or missing whitespace
 private[parser] trait CookieHeaders {
   this: Parser with ProtocolParameterRules =>
 
   def SET_COOKIE = rule {
-    CookiePair ~ zeroOrMore(str("; ") ~ CookieAttrs) ~ EOI ~~> (HttpHeaders.`Set-Cookie`(_))
+    CookiePair ~ zeroOrMore(";" ~ CookieAttrs) ~ EOI ~~> (HttpHeaders.`Set-Cookie`(_))
   }
 
   def COOKIE = rule {
-    oneOrMore(CookiePair, separator = str("; ")) ~ EOI ~~> (HttpHeaders.`Cookie`(_))
+    oneOrMore(CookiePair, separator = ";") ~ EOI ~~> (HttpHeaders.`Cookie`(_))
   }
   
   def CookiePair = rule {
@@ -36,8 +38,8 @@ private[parser] trait CookieHeaders {
   }
 
   def CookieValue = rule (
-      ch('"') ~ zeroOrMore(CookieOctet) ~> identity ~ ch('"')
-    | zeroOrMore(CookieOctet) ~> identity
+      ch('"') ~ zeroOrMore(CookieOctet) ~> identity ~ "\""
+    | zeroOrMore(CookieOctet) ~> identity ~ OptWS
   )
 
   def CookieOctet = rule {

@@ -141,6 +141,9 @@ class HttpHeaderSpec extends Specification {
       HttpHeader("Cookie", "SID=31d4d96e407aad42") mustEqual `Cookie`(HttpCookie("SID", "31d4d96e407aad42"))
       HttpHeader("Cookie", "SID=31d4d96e407aad42; lang=\"en-US\"") mustEqual
               `Cookie`(HttpCookie("SID", "31d4d96e407aad42"), HttpCookie("lang", "en-US"))
+      HttpHeader("Cookie", "a=1;b=2") mustEqual `Cookie`(HttpCookie("a", "1"), HttpCookie("b", "2"))
+      HttpHeader("Cookie", "a=1 ;b=2") mustEqual `Cookie`(HttpCookie("a", "1"), HttpCookie("b", "2"))
+      HttpHeader("Cookie", "a=1; b=2") mustEqual `Cookie`(HttpCookie("a", "1"), HttpCookie("b", "2"))
     }
   }
 
@@ -172,9 +175,9 @@ class HttpHeaderSpec extends Specification {
               `Set-Cookie`(HttpCookie("SID", "31d4d96e407aad42", path = Some("/"), domain = Some("example.com")))
       HttpHeader("Set-Cookie", "lang=en-US; Path=/; Expires=Wed, 09 Jun 2021 10:18:14 GMT; Path=/hello") mustEqual
               `Set-Cookie`(HttpCookie("lang", "en-US", expires = Some(DateTime(2021, 6, 9, 10, 18, 14)), path = Some("/hello")))
-      HttpHeader("Set-Cookie", "name=123; Max-Age=12345; Secure") mustEqual
+      HttpHeader("Set-Cookie", "name=123;Max-Age=12345; Secure") mustEqual
               `Set-Cookie`(HttpCookie("name", "123", maxAge = Some(12345), secure = true))
-      HttpHeader("Set-Cookie", "name=123; fancyPants; HttpOnly") mustEqual
+      HttpHeader("Set-Cookie", "name=123; fancyPants;HttpOnly") mustEqual
               `Set-Cookie`(HttpCookie("name", "123", httpOnly = true, extension = Some("fancyPants")))
     }
   }
