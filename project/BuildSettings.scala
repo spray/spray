@@ -7,7 +7,7 @@ object BuildSettings {
 
   lazy val basicSettings = Seq[Setting[_]](
     organization  := "cc.spray",
-    version       := "0.8.0",
+    version       := "0.9.0-SNAPSHOT",
     description   := "a suite of lightweight Scala libraries for building and consuming RESTful web services on top of Akka",
     scalaVersion  := "2.9.1",
     resolvers     ++= Dependencies.resolutionRepos
