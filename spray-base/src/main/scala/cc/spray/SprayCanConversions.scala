@@ -115,7 +115,7 @@ object SprayCanConversions {
   def toSprayCanHeader(header: HttpHeader) = can.HttpHeader(header.name, header.value)
 
   def toSprayCanMessageChunk(chunk: MessageChunk) =
-    can.MessageChunk(chunk.extensions.map(toSprayCanChunkExtension), chunk.body)
+    can.MessageChunk(chunk.body, chunk.extensions.map(toSprayCanChunkExtension))
 
   def toSprayCanChunkExtension(ext: ChunkExtension) = can.ChunkExtension(ext.name, ext.value)
 }

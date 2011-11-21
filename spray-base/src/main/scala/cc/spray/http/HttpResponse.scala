@@ -17,6 +17,7 @@
 
 package cc.spray.http
 import HttpProtocols._
+import java.nio.charset.Charset
 
 /**
  * Sprays immutable model of an HTTP response.
@@ -54,6 +55,10 @@ object HttpResponse {
  */
 case class MessageChunk(body: Array[Byte], extensions: List[ChunkExtension]) {
   require(body.length > 0, "MessageChunk must not have empty body")
+  def bodyAsString: String = bodyAsString(HttpCharsets.`ISO-8859-1`.nioCharset)
+  def bodyAsString(charset: HttpCharset): String = bodyAsString(charset.nioCharset)
+  def bodyAsString(charset: Charset): String = if (body.isEmpty) "" else new String(body, charset)
+  def bodyAsString(charset: String): String = if (body.isEmpty) "" else new String(body, charset)
 }
 
 object MessageChunk {

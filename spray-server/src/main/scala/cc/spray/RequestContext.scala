@@ -154,7 +154,7 @@ case class RequestContext(
   def fail[A :Marshaller](status: HttpFailure, headers: List[HttpHeader], obj: A) { complete(status, headers, obj) }
   
   /**
-   * Completes the request with a redirection response to the given URI.
+   * Completes the request with a 301 redirection response to the given URI.
    */
   def redirect(uri: String, redirectionType: Redirection = Found) {
     complete {
@@ -166,4 +166,13 @@ case class RequestContext(
       )
     }
   }
+
+  /**
+   * Starts a chunked (streaming) response. The given [[cc.spray.HttpResponse]] object must have the protocol
+   * `HTTP/1.1` and is allowed to contain an entity body. Should the body of the given `HttpResponse` be non-empty it
+   * is sent immediately following the responses HTTP header section as the first chunk.
+   * The application is required to use the returned [[cc.spray.ChunkedResponder]] instance to send any number of
+   * response chunks before calling the `ChunkedResponder`s `close` method to finalize the response.
+   */
+  def startChunkedResponse(response: HttpResponse) = responder.startChunkedResponse(response)
 }

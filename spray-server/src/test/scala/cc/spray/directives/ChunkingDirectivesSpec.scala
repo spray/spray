@@ -15,18 +15,23 @@
  */
 
 package cc.spray
+package directives
 
 import http._
 import test.AbstractSprayTest
 
-class SimpleChunkedResponseSpec extends AbstractSprayTest {
+class ChunkingDirectivesSpec extends AbstractSprayTest {
 
-  /*"Value extraction as case class" should {
+  "Value extraction as case class" should {
     "work for 1 parameter case classes from string extractions" in {
-      test(HttpRequest(uri = "/?age=42")) {
-        parameters("age").as(Age) { echoComplete }
-      }.response.content.as[String] mustEqual Right("Age(42)")
+      val result = test(HttpRequest(uri = "/a-really-chunky-path-that-will-form-the-chunk-contents")) {
+        autoChunk(8) {
+          path(Remaining) { echoComplete }
+        }
+      }
+      result.response.content.as[String] mustEqual Right("a-really")
+      result.chunks.map(_.bodyAsString).mkString("|") mustEqual "-chunky-|path-tha|t-will-f|orm-the-|chunk-co|ntents"
     }
-  }*/
+  }
 
 }
