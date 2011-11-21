@@ -322,7 +322,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
   }
 
   protected def handleChunkedChunk(conn: Conn, parser: ChunkedChunkParser) {
-    conn.chunkingContext.streamActor ! MessageChunk(parser.extensions, parser.body)
+    conn.chunkingContext.streamActor ! MessageChunk(parser.body, parser.extensions)
     conn.messageParser = new ChunkParser(config.parserConfig)
   }
 

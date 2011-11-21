@@ -18,6 +18,7 @@ package cc.spray.can
 
 import java.io.UnsupportedEncodingException
 import java.net.InetAddress
+import java.nio.charset.Charset
 
 /**
  * Sealed trait modelling an HTTP method.
@@ -233,12 +234,23 @@ case class ChunkedResponseEnd(
 /**
  * Instance of this class represent the individual chunks of a chunked HTTP message (request or response).
  */
-case class MessageChunk(extensions: List[ChunkExtension], body: Array[Byte]) {
+case class MessageChunk(body: Array[Byte], extensions: List[ChunkExtension]) {
   require(body.length > 0, "MessageChunk must not have empty body")
+  def bodyAsString(charset: Charset): String = if (body.isEmpty) "" else new String(body, charset)
+  def bodyAsString(charset: String): String = if (body.isEmpty) "" else new String(body, charset)
 }
 
 object MessageChunk {
-  def apply(body: String) = new MessageChunk(Nil, body.getBytes("ISO-8859-1"))
+  def apply(body: String): MessageChunk =
+    apply(body, Nil)
+  def apply(body: String, charset: String): MessageChunk =
+    apply(body, charset, Nil)
+  def apply(body: String, extensions: List[ChunkExtension]): MessageChunk =
+    apply(body, "ISO-8859-1", extensions)
+  def apply(body: String, charset: String, extensions: List[ChunkExtension]): MessageChunk =
+    apply(body.getBytes(charset), extensions)
+  def apply(body: Array[Byte]): MessageChunk =
+    apply(body, Nil)
 }
 
 case class ChunkExtension(name: String, value: String)

@@ -223,7 +223,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
 
   protected def handleChunkedChunk(conn: Conn, parser: ChunkedChunkParser) {
     assert(!conn.pendingResponses.isEmpty)
-    conn.pendingResponses.head.deliverPartialResponse(MessageChunk(parser.extensions, parser.body))
+    conn.pendingResponses.head.deliverPartialResponse(MessageChunk(parser.body, parser.extensions))
     conn.messageParser = new ChunkParser(config.parserConfig)
   }
 
