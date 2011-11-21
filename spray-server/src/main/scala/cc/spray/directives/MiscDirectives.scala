@@ -121,11 +121,11 @@ private[spray] trait MiscDirectives {
      */
     def ~ (other: Route): Route = { ctx =>
       route {
-        ctx.withResponder { 
-          case x: Respond => ctx.responder(x) // first route succeeded
+        ctx.withResponderReply {
+          case x: Respond => ctx.responder.reply(x) // first route succeeded
           case Reject(rejections1) => other {
-            ctx.withResponder {
-              case x: Respond => ctx.responder(x) // second route succeeded
+            ctx.withResponderReply {
+              case x: Respond => ctx.responder.reply(x) // second route succeeded
               case Reject(rejections2) => ctx.reject(rejections1 ++ rejections2)
             }
           }

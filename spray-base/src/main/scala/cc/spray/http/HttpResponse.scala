@@ -48,3 +48,26 @@ object HttpResponse {
     apply(status, headers, Some(HttpContent(content)), `HTTP/1.1`)
   }
 }
+
+/**
+ * Instance of this class represent the individual chunks of a chunked HTTP message (request or response).
+ */
+case class MessageChunk(body: Array[Byte], extensions: List[ChunkExtension]) {
+  require(body.length > 0, "MessageChunk must not have empty body")
+}
+
+object MessageChunk {
+  import HttpCharsets._
+  def apply(body: String): MessageChunk =
+    apply(body, Nil)
+  def apply(body: String, charset: HttpCharset): MessageChunk =
+    apply(body, charset, Nil)
+  def apply(body: String, extensions: List[ChunkExtension]): MessageChunk =
+    apply(body, `ISO-8859-1`, extensions)
+  def apply(body: String, charset: HttpCharset, extensions: List[ChunkExtension]): MessageChunk =
+    apply(body.getBytes(charset.nioCharset), extensions)
+  def apply(body: Array[Byte]): MessageChunk =
+    apply(body, Nil)
+}
+
+case class ChunkExtension(name: String, value: String)

@@ -31,9 +31,9 @@ private[spray] trait CacheDirectives {
       keyer(ctx) match {
         case Some(key) => {
           cache(key) { completableFuture =>
-            route(ctx.withResponder(completableFuture.completeWithResult(_)))
+            route(ctx.withResponderReply(completableFuture.completeWithResult(_)))
           } onComplete { future =>
-            ctx.responder(future.get)
+            ctx.responder.reply(future.get)
           }
         }
         case _ => route(ctx)

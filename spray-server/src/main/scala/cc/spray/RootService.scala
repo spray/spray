@@ -83,9 +83,9 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
 
   protected def handleOneService(service: ActorRef)(context: RequestContext) {
     log.debug("Received %s with one attached service, dispatching...", context.request)
-    val newResponder: RoutingResult => Unit = {
-      case x: Respond => context.responder(x)
-      case x: Reject => context.responder(Respond(noServiceResponse(context.request)))
+    val newResponder = context.responder.withReply {
+      case x: Respond => context.responder.reply(x)
+      case x: Reject => context.responder.reply(Respond(noServiceResponse(context.request)))
     }
     service ! context.copy(responder = newResponder, unmatchedPath = initialUnmatchedPath(context.request.path))
   }
@@ -94,14 +94,14 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
     log.debug("Received %s with %s attached services, dispatching...", context.request, services.size)
     val responded = new AtomicBoolean(false)
     val rejected = new AtomicInteger(services.size)
-    val newResponder: RoutingResult => Unit = {
+    val newResponder = context.responder.withReply {
       case x: Respond =>
         if (responded.compareAndSet(false, true)) {
-          context.responder(x)
+          context.responder.reply(x)
         } else  log.warn("Received a second response for request '%s':\n\n%s\n\nIgnoring the additional response...",
           context.request, x)
       case x: Reject =>
-        if (rejected.decrementAndGet() == 0) context.responder(Respond(noServiceResponse(context.request)))
+        if (rejected.decrementAndGet() == 0) context.responder.reply(Respond(noServiceResponse(context.request)))
     }
     val outContext = context.copy(responder = newResponder, unmatchedPath = initialUnmatchedPath(context.request.path))
     services.foreach(_ ! outContext)

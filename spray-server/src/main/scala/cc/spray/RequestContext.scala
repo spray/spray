@@ -30,7 +30,7 @@ import akka.dispatch.Future
 case class RequestContext(
   request: HttpRequest,
   remoteHost: HttpIp = "127.0.01",
-  responder: RoutingResult => Unit = { _ => },
+  responder: RequestResponder = RequestResponder.EmptyResponder,
   unmatchedPath: String = ""
 ) {
 
@@ -43,7 +43,7 @@ case class RequestContext(
   }
 
   /**
-   * Returns a copy of this context with the the given response transformation function chained into the responder.
+   * Returns a copy of this context with the given response transformation function chained into the responder.
    */
   def withHttpResponseTransformed(f: HttpResponse => HttpResponse): RequestContext = {
     withRoutingResultTransformed {
@@ -53,16 +53,20 @@ case class RequestContext(
   }
   
   /**
-   * Returns a copy of this context with the the given RoutingResult transformation function chained into the responder.
+   * Returns a copy of this context with the given RoutingResult transformation function chained into the responder.
    */
-  def withRoutingResultTransformed(f: RoutingResult => RoutingResult): RequestContext = {
-    withResponder { rr => responder(f(rr)) }
-  }
+  def withRoutingResultTransformed(f: RoutingResult => RoutingResult): RequestContext =
+    withResponder(responder.withReply(rr => responder.reply(f(rr))))
+
+  /**
+   * Returns a copy of this context with the responder using the given reply function.
+   */
+  def withResponderReply(f: RoutingResult => Unit): RequestContext = withResponder(responder.withReply(f))
 
   /**
    * Returns a copy of this context with the responder replaced by the given responder.
    */
-  def withResponder(newResponder: RoutingResult => Unit) = copy(responder = newResponder)
+  def withResponder(newResponder: RequestResponder) = copy(responder = newResponder)
 
   /**
    * Rejects the request with the given rejections.
@@ -72,7 +76,7 @@ case class RequestContext(
   /**
    * Rejects the request with the given rejections.
    */
-  def reject(rejections: Set[Rejection]) { responder(Reject(rejections)) }
+  def reject(rejections: Set[Rejection]) { responder.reply(Reject(rejections)) }
 
   /**
    * Completes the request with status "200 Ok" and the response content created by marshalling the given object using
@@ -108,7 +112,7 @@ case class RequestContext(
   /**
    * Completes the request with the given [[cc.spray.http.HttpResponse]].
    */
-  def complete(response: HttpResponse) { responder(Respond(response)) }
+  def complete(response: HttpResponse) { responder.reply(Respond(response)) }
 
   /**
    * Returns a copy of this context that cancels all rejections of type R with

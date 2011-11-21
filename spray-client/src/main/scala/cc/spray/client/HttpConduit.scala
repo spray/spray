@@ -24,9 +24,10 @@ import akka.actor.Actor._
 import can.{HttpConnection, Connect}
 import akka.dispatch.{DefaultCompletableFuture, Future}
 import HttpProtocols._
+import SprayCanConversions._
 
 class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitConfig.fromAkkaConf)
-  extends MessagePipelining with Logging with SprayCanConversions {
+  extends MessagePipelining with Logging {
 
   protected lazy val httpClient = ActorHelpers.actor(config.clientActorId)
   protected val mainActor = actorOf(new MainActor).start()

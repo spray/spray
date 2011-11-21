@@ -41,13 +41,13 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
   }
 
   def requestContext(req: HttpServletRequest, resp: HttpServletResponse,
-                     responder: RoutingResult => Unit): Option[RequestContext] = {
+                     reply: RoutingResult => Unit): Option[RequestContext] = {
     try {
       Some {
         RequestContext(
           request = httpRequest(req),
           remoteHost = req.getRemoteAddr,
-          responder = responder
+          responder = new SimpleResponder(reply)
         )
       }
     } catch {

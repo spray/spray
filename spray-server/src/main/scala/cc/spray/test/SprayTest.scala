@@ -34,10 +34,10 @@ trait SprayTest {
   def test(request: HttpRequest, timeout: Duration = 1000.millis)(route: Route): RoutingResultWrapper = {
     var result: Option[RoutingResult] = None
     val latch = new CountDownLatch(1)
-    val responder = { (rr: RoutingResult) =>
+    val responder = new SimpleResponder({ rr =>
       result = Some(rr)
       latch.countDown()
-    }
+    })
     route(RequestContext(request = request, responder = responder, unmatchedPath = request.path))
     // since the route might detach we block until the route actually completes or times out
     latch.await(timeout.toMillis, TimeUnit.MILLISECONDS)
@@ -79,10 +79,10 @@ trait SprayTest {
   def testService(request: HttpRequest, timeout: Duration = 1000.millis)(service: ServiceTest): ServiceResultWrapper = {
     var result: Option[RoutingResult] = None
     val latch = new CountDownLatch(1)
-    val responder = { (rr: RoutingResult) =>
+    val responder = new SimpleResponder({ rr =>
       result = Some(rr)
       latch.countDown()
-    }
+    })
     service.handle(RequestContext(request = request, responder = responder, unmatchedPath = request.path))
     // since the route might detach we block until the route actually completes or times out
     latch.await(timeout.toMillis, TimeUnit.MILLISECONDS)
