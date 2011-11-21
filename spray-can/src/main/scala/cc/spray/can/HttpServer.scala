@@ -96,9 +96,10 @@ trait RequestResponder {
  */
 trait ChunkedResponder {
   /**
-   * Send the given [[cc.spray.can.MessageChunk]] back to the client.
+   * Send the given [[cc.spray.can.MessageChunk]] back to the client and returns the sequence number of the chunk
+   * (which can be used for example with the `onChunkSent` method).
    */
-  def sendChunk(chunk: MessageChunk)
+  def sendChunk(chunk: MessageChunk): Long
 
   /**
    * Finalizes the chunked (streaming) response.
@@ -107,9 +108,10 @@ trait ChunkedResponder {
 
   /**
    * Registers the given function to be called whenever a chunk previously scheduled for sending via `sendChunk`
-   * has actually and successfully gone out over the wire.
+   * has actually and successfully gone out over the wire. The callback receives the sequence number as produced by
+   * the `sendChunk` method.
    */
-  def onChunkSent(callback: MessageChunk => Unit): this.type
+  def onChunkSent(callback: Long => Unit): this.type
 }
 
 /////////////////////////////////////////////
@@ -405,7 +407,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
     private val STREAMING = 2
     private val mode = new AtomicInteger(UNCOMPLETED)
     private var requestRecord: Option[RequestRecord] = None
-    private var onClientCloseCallback = new AtomicReference[Option[() => Unit]](None)
+    private val onClientCloseCallback = new AtomicReference[Option[() => Unit]](None)
 
     def complete(response: HttpResponse) {
       if (!trySend(response)) mode.get match {
@@ -437,10 +439,12 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
         val (buffers, close) = prepareChunkedResponseStart(requestLine, response, connectionHeader)
         self ! new Respond(conn, buffers, closeAfterWrite = false, responseNr = responseNr,
           increaseResponseNr = false, requestRecord = requestRecord, onClientClose = onClientCloseCallback.get)
-        if (requestLine.method != HttpMethods.HEAD) new DefaultChunkedResponder(close) else new ChunkedResponder {
-          def sendChunk(chunk: MessageChunk) {}
+        if (requestLine.method != HttpMethods.HEAD)
+          new DefaultChunkedResponder(close, response.body.length > 0)
+        else new ChunkedResponder {
+          def sendChunk(chunk: MessageChunk) = 0L
           def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {}
-          def onChunkSent(callback: (MessageChunk) => Unit) = this
+          def onChunkSent(callback: Long => Unit) = this
         }
       } else throw new IllegalStateException {
         mode.get match {
@@ -463,22 +467,26 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
 
     def resetConnectionTimeout() { self ! RefreshConnection(conn) }
 
-    class DefaultChunkedResponder(closeAfterLastChunk: Boolean) extends ChunkedResponder {
+    class DefaultChunkedResponder(closeAfterLastChunk: Boolean, initialChunkSent: Boolean) extends ChunkedResponder {
+      private val onChunkSentCallback = new AtomicReference[Option[Long => Unit]](None)
       private var closed = false
-      private var onChunkSentCallback: Option[MessageChunk => Unit] = None
+      private var chunksSent = if (initialChunkSent) 1L else 0L
 
-      def sendChunk(chunk: MessageChunk) {
+      def sendChunk(chunk: MessageChunk) = {
         synchronized {
           if (!closed) {
             log.debug("Enqueueing response chunk")
+            val chunkNr = chunksSent
+            chunksSent += 1
             self ! new Respond(conn,
               buffers = prepareChunk(chunk.extensions, chunk.body),
               closeAfterWrite = false,
               responseNr = responseNr,
               increaseResponseNr = false,
-              onSent = Some { () => onChunkSentCallback.foreach(_(chunk)) },
+              onSent = Some { () => onChunkSentCallback.get.foreach(_(chunkNr)) },
               onClientClose = onClientCloseCallback.get
             )
+            chunkNr
           } else throw new RuntimeException("Cannot send MessageChunk after HTTP stream has been closed")
         }
       }
@@ -495,10 +503,8 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
         }
       }
 
-      def onChunkSent(callback: MessageChunk => Unit) = {
-        synchronized {
-          onChunkSentCallback = Some(callback)
-        }
+      def onChunkSent(callback: Long => Unit) = {
+        onChunkSentCallback.set(Some(callback))
         this
       }
     }
