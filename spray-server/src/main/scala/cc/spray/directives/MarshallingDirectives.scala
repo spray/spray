@@ -18,6 +18,7 @@ package cc.spray
 package directives
 
 import typeconversion._
+import http._
 
 private[spray] trait MarshallingDirectives extends DefaultMarshallers with DefaultUnmarshallers {
   this: BasicDirectives =>
@@ -57,12 +58,15 @@ private[spray] trait MarshallingDirectives extends DefaultMarshallers with Defau
    * passed to the inner route building function. You can use it do decouple marshaller resolution from the call
    * site of the RequestContexts {{complete}} function.
    */
-  def produce[A](marshaller: Marshaller[A]) = filter1 { ctx =>
-    marshaller(ctx.request.acceptableContentType) match {
-      case MarshalWith(converter) => Pass.withTransform[A => Unit](a => ctx.complete(converter(a))) {
-        _.cancelRejectionsOfType[UnacceptedResponseContentTypeRejection]
+  def produce[A](marshaller: Marshaller[A], status: StatusCode = StatusCodes.OK, headers: List[HttpHeader] = Nil) = {
+    filter1 { ctx =>
+      marshaller(ctx.request.acceptableContentType) match {
+        case MarshalWith(converter) =>
+          Pass.withTransform[A => Unit](converter(ctx.marshallingContext(status, headers))) {
+            _.cancelRejectionsOfType[UnacceptedResponseContentTypeRejection]
+          }
+        case CantMarshal(onlyTo) => Reject(UnacceptedResponseContentTypeRejection(onlyTo))
       }
-      case CantMarshal(onlyTo) => Reject(UnacceptedResponseContentTypeRejection(onlyTo))
     }
   }
 
@@ -76,9 +80,7 @@ private[spray] trait MarshallingDirectives extends DefaultMarshallers with Defau
    * the in-scope unmarshaller and the result value of the function is marshalled with the in-scope marshaller.
    */
   def handleWith[A :Unmarshaller, B: Marshaller](f: A => B): Route = {
-    (content(as[A]) & produce(instanceOf[B])) { (a, p) =>
-      _ => p(f(a))
-    }
+    content(as[A]) { a => _.complete(f(a)) }
   }
   
 }

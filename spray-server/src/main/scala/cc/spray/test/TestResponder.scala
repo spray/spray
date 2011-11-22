@@ -21,6 +21,7 @@ import collection.mutable.ListBuffer
 import http.{HttpResponse, HttpHeader, ChunkExtension, MessageChunk}
 import akka.util.Duration
 import java.util.concurrent.{TimeUnit, CountDownLatch}
+import typeconversion.ChunkSender
 
 /**
  * A RequestResponder using during testing.
@@ -48,7 +49,7 @@ class TestResponder(givenComplete: Option[HttpResponse => Unit] = None,
 
   override def startChunkedResponse(response: HttpResponse) = {
     saveResult(Right(response))
-    new TestChunkedResponder()
+    new TestChunkSender()
   }
 
   override def resetConnectionTimeout() {}
@@ -74,7 +75,7 @@ class TestResponder(givenComplete: Option[HttpResponse => Unit] = None,
     }
   }
 
-  class TestChunkedResponder(onSent: Option[Long => Unit] = None) extends ChunkedResponder {
+  class TestChunkSender(onSent: Option[Long => Unit] = None) extends ChunkSender {
     def sendChunk(chunk: MessageChunk) = outer.synchronized {
       chunks += chunk
       val chunkNr = if (response.get.content.isEmpty) chunks.size - 1 else chunks.size
@@ -91,7 +92,7 @@ class TestResponder(givenComplete: Option[HttpResponse => Unit] = None,
       }
     }
 
-    def withOnChunkSent(callback: Long => Unit) = new TestChunkedResponder(Some(callback))
+    def withOnChunkSent(callback: Long => Unit) = new TestChunkSender(Some(callback))
   }
 }
 

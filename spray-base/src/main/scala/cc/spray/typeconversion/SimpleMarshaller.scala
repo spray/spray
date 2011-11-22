@@ -20,11 +20,11 @@ package typeconversion
 import http._
 import utils._
 
-abstract class MarshallerBase[A] extends Marshaller[A] {
+abstract class SimpleMarshaller[A] extends Marshaller[A] {
 
   def apply(accept: ContentType => Option[ContentType]) = {
     canMarshalTo.mapFind(accept) match {
-      case Some(contentType) => MarshalWith(marshal(_, contentType))
+      case Some(contentType) => MarshalWith[A](ctx => value => ctx.marshalTo(marshal(value, contentType)))
       case None => CantMarshal(canMarshalTo)
     }
   }

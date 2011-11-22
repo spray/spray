@@ -17,6 +17,7 @@ package cc.spray
 
 import akka.actor.ActorRef
 import http._
+import typeconversion.ChunkSender
 import utils.ActorHelpers
 import java.net.InetAddress
 import SprayCanConversions._
@@ -91,12 +92,12 @@ class SprayCanAdapterResponder(canResponder: can.RequestResponder,
     new SprayCanAdapterResponder(canResponder.withOnClientClose(callback), complete, reject)
 
   override def startChunkedResponse(response: HttpResponse) =
-    new SprayCanAdapterChunkedResponder(canResponder.startChunkedResponse(toSprayCanResponse(response)))
+    new SprayCanAdapterChunkSender(canResponder.startChunkedResponse(toSprayCanResponse(response)))
 
   override def resetConnectionTimeout() { canResponder.resetConnectionTimeout() }
 }
 
-class SprayCanAdapterChunkedResponder(canChunkedResponder: can.ChunkedResponder) extends ChunkedResponder {
+class SprayCanAdapterChunkSender(canChunkedResponder: can.ChunkedResponder) extends ChunkSender {
   def sendChunk(chunk: MessageChunk) = canChunkedResponder.sendChunk(toSprayCanMessageChunk(chunk))
 
   def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
@@ -104,5 +105,5 @@ class SprayCanAdapterChunkedResponder(canChunkedResponder: can.ChunkedResponder)
   }
 
   def withOnChunkSent(callback: Long => Unit) =
-    new SprayCanAdapterChunkedResponder(canChunkedResponder.withOnChunkSent(callback))
+    new SprayCanAdapterChunkSender(canChunkedResponder.withOnChunkSent(callback))
 }

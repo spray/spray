@@ -22,6 +22,7 @@ import HttpHeaders._
 import MediaTypes._
 import typeconversion._
 import akka.dispatch.Future
+import akka.actor.Actor
 
 /**
  * Immutable object encapsulating the context of an [[cc.spray.http.HttpRequest]]
@@ -74,34 +75,15 @@ case class RequestContext(
   /**
    * Rejects the request with the given rejections.
    */
-  def reject(rejections: Rejection*) { reject(Set(rejections: _*)) }
+  def reject(rejections: Rejection*) {
+    reject(Set(rejections: _*))
+  }
   
   /**
    * Rejects the request with the given rejections.
    */
-  def reject(rejections: Set[Rejection]) { responder.reject(rejections) }
-
-  /**
-   * Completes the request with status "200 Ok" and the response content created by marshalling the given object using
-   * the in-scope marshaller for the type.
-   */
-  def complete[A :Marshaller](obj: A) { complete(OK, obj) }
-
-  /**
-   * Completes the request with the given status and the response content created by marshalling the given object using
-   * the in-scope marshaller for the type.
-   */
-  def complete[A :Marshaller](status: StatusCode, obj: A) { complete(status, Nil, obj) }
-
-  /**
-   * Completes the request with the given status, headers and the response content created by marshalling the
-   * given object using the in-scope marshaller for the type.
-   */
-  def complete[A :Marshaller](status: StatusCode, headers: List[HttpHeader], obj: A) {
-    marshaller.apply(request.acceptableContentType) match {
-      case MarshalWith(converter) => complete(HttpResponse(status, headers, converter(obj)))
-      case CantMarshal(onlyTo) => reject(UnacceptedResponseContentTypeRejection(onlyTo))
-    }
+  def reject(rejections: Set[Rejection]) {
+    responder.reject(rejections)
   }
 
   /**
@@ -113,9 +95,48 @@ case class RequestContext(
   }
 
   /**
+   * Completes the request with status "200 Ok" and the response content created by marshalling the given object using
+   * the in-scope marshaller for the type.
+   */
+  def complete[A :Marshaller](obj: A) {
+    complete(OK, obj)
+  }
+
+  /**
+   * Completes the request with the given status and the response content created by marshalling the given object using
+   * the in-scope marshaller for the type.
+   */
+  def complete[A :Marshaller](status: StatusCode, obj: A) {
+    complete(status, Nil, obj)
+  }
+
+  /**
+   * Completes the request with the given status, headers and the response content created by marshalling the
+   * given object using the in-scope marshaller for the type.
+   */
+  def complete[A :Marshaller](status: StatusCode, headers: List[HttpHeader], obj: A) {
+    marshaller.apply(request.acceptableContentType) match {
+      case MarshalWith(converter) => converter(marshallingContext(status, headers)).apply(obj)
+      case CantMarshal(onlyTo) => reject(UnacceptedResponseContentTypeRejection(onlyTo))
+    }
+  }
+
+  /**
+   * Creates a MarshallingContext using the given status and headers.
+   */
+  private[spray] def marshallingContext(status: StatusCode, headers: List[HttpHeader]) = {
+    new MarshallingContext {
+      def marshalTo(content: HttpContent) { complete(HttpResponse(status, headers, content)) }
+      def startChunkedMessage() = startChunkedResponse(HttpResponse(status, headers))
+    }
+  }
+
+  /**
    * Completes the request with the given [[cc.spray.http.HttpResponse]].
    */
-  def complete(response: HttpResponse) { responder.complete(response) }
+  def complete(response: HttpResponse) {
+    responder.complete(response)
+  }
 
   /**
    * Returns a copy of this context that cancels all rejections of type R with
@@ -136,19 +157,25 @@ case class RequestContext(
   /**
    * Completes the request with the given [[cc.spray.http.HttpFailure]].
    */
-  def fail(status: HttpFailure) { fail(status, status.defaultMessage)(DefaultMarshallers.StringMarshaller) }
+  def fail(status: HttpFailure) {
+    fail(status, status.defaultMessage)(DefaultMarshallers.StringMarshaller)
+  }
 
   /**
    * Completes the request with the given status and the response content created by marshalling the given object using
    * the in-scope marshaller for the type.
    */
-  def fail[A :Marshaller](status: HttpFailure, obj: A) { fail(status, Nil, obj) }
+  def fail[A :Marshaller](status: HttpFailure, obj: A) {
+    fail(status, Nil, obj)
+  }
 
   /**
    * Completes the request with the given status, headers and the response content created by marshalling the
    * given object using the in-scope marshaller for the type.
    */
-  def fail[A :Marshaller](status: HttpFailure, headers: List[HttpHeader], obj: A) { complete(status, headers, obj) }
+  def fail[A :Marshaller](status: HttpFailure, headers: List[HttpHeader], obj: A) {
+    complete(status, headers, obj)
+  }
   
   /**
    * Completes the request with a 301 redirection response to the given URI.

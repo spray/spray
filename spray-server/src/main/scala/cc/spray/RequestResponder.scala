@@ -17,9 +17,10 @@
 package cc.spray
 
 import http._
+import typeconversion.{MarshallingContext, ChunkSender}
 
 /**
- * Encapsulates the logic completion logic of a spray route.
+ * Encapsulates the completion logic of a spray route.
  */
 trait RequestResponder {
 
@@ -40,7 +41,7 @@ trait RequestResponder {
    * The application is required to use the returned [[cc.spray.ChunkedResponder]] instance to send any number of
    * response chunks before calling the `ChunkedResponder`s `close` method to finalize the response.
    */
-  def startChunkedResponse(response: HttpResponse): ChunkedResponder
+  def startChunkedResponse(response: HttpResponse): ChunkSender
 
   /**
    * Explicitly resets the connection idle timeout for the connection underlying this response.
@@ -78,30 +79,4 @@ class SimpleResponder(val complete: HttpResponse => Unit, val reject: Set[Reject
   def withComplete(newComplete: HttpResponse => Unit) = new SimpleResponder(newComplete, reject)
   def withReject(newReject: Set[Rejection] => Unit) = new SimpleResponder(complete, newReject)
   def withOnClientClose(callback: () => Unit) = this
-}
-
-/**
- * A `ChunkedResponder` is returned by the `startChunkedResponse` method of a [[cc.spray.RequestResponder]]
- * (the `responder` member of a [[cc.spray.RequestContext]]). It is used by the application to send the chunks and
- * finalization of a chunked (streaming) HTTP response.
- */
-trait ChunkedResponder {
-
-  /**
-   * Send the given [[cc.spray.can.MessageChunk]] back to the client and returns the sequence number of the chunk
-   * (which can be used for example with the `onChunkSent` method).
-   */
-  def sendChunk(chunk: MessageChunk): Long
-
-  /**
-   * Finalizes the chunked (streaming) response.
-   */
-  def close(extensions: List[ChunkExtension] = Nil, trailer: List[HttpHeader] = Nil)
-
-  /**
-   * Returns a copy of this ChunkedResponder registering the given callback to be invoked whenever a chunk previously
-   * scheduled for sending via `sendChunk` has actually and successfully been dispatched to the network layer. The
-   * callback receives the sequence number as produced by the `sendChunk` method.
-   */
-  def withOnChunkSent(callback: Long => Unit): ChunkedResponder
 }

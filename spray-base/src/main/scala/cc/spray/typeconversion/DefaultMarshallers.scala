@@ -25,13 +25,13 @@ import java.nio.CharBuffer
 
 trait DefaultMarshallers extends MultipartMarshallers {
 
-  implicit val StringMarshaller = new MarshallerBase[String] {
+  implicit val StringMarshaller = new SimpleMarshaller[String] {
     val canMarshalTo = ContentType(`text/plain`) :: Nil
 
     def marshal(value: String, contentType: ContentType) = HttpContent(contentType, value)
   }
 
-  implicit val CharArrayMarshaller = new MarshallerBase[Array[Char]] {
+  implicit val CharArrayMarshaller = new SimpleMarshaller[Array[Char]] {
     val canMarshalTo = ContentType(`text/plain`) :: Nil
 
     def marshal(value: Array[Char], contentType: ContentType) = {
@@ -42,7 +42,7 @@ trait DefaultMarshallers extends MultipartMarshallers {
     }
   }
   
-  implicit val NodeSeqMarshaller = new MarshallerBase[NodeSeq] {
+  implicit val NodeSeqMarshaller = new SimpleMarshaller[NodeSeq] {
     val canMarshalTo = ContentType(`text/xml`) ::
                        ContentType(`text/html`) ::
                        ContentType(`application/xhtml+xml`) :: Nil
@@ -50,7 +50,7 @@ trait DefaultMarshallers extends MultipartMarshallers {
     def marshal(value: NodeSeq, contentType: ContentType) = StringMarshaller.marshal(value.toString, contentType)
   }
 
-  implicit val FormDataMarshaller = new MarshallerBase[FormData] {
+  implicit val FormDataMarshaller = new SimpleMarshaller[FormData] {
     val canMarshalTo = ContentType(`application/x-www-form-urlencoded`) :: Nil
 
     def marshal(formContent: FormData, contentType: ContentType) = {
@@ -67,7 +67,7 @@ trait DefaultMarshallers extends MultipartMarshallers {
   // HttpContent (most notably HttpContent itself). Note that relying on this might make the application not HTTP spec
   // conformant since the Accept headers the client sent with the request are completely ignored
   implicit def view2Marshaller[T](implicit converter: T => HttpContent) = new Marshaller[T] {
-    def apply(selector: ContentTypeSelector) = MarshalWith(converter)
+    def apply(selector: ContentTypeSelector) = MarshalWith(ctx => value => ctx.marshalTo(converter(value)))
   }
 }
 

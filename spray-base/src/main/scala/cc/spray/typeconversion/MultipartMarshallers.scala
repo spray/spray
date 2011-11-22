@@ -35,7 +35,7 @@ trait MultipartMarshallers {
     Base64.rfc2045.encodeToString(make(new Array[Byte](18)) { multipartBoundaryRandom.nextBytes(_) }, false)
   }
 
-  implicit val MultipartContentMarshaller = new MarshallerBase[MultipartContent] {
+  implicit val MultipartContentMarshaller = new SimpleMarshaller[MultipartContent] {
     def canMarshalTo = ContentType(new `multipart/mixed`(Some(randomBoundary))) :: Nil
 
     def marshal(value: MultipartContent, contentType: ContentType) = {
@@ -75,7 +75,7 @@ trait MultipartMarshallers {
     }
   }
 
-  implicit val MultipartFormDataMarshaller = new MarshallerBase[MultipartFormData] {
+  implicit val MultipartFormDataMarshaller = new SimpleMarshaller[MultipartFormData] {
     def canMarshalTo = ContentType(new `multipart/form-data`(Some(randomBoundary))) :: Nil
 
     def marshal(value: MultipartFormData, contentType: ContentType) = {

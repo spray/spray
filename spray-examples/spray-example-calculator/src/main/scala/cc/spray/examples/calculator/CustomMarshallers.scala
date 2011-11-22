@@ -7,7 +7,7 @@ import MediaTypes._
 
 trait CustomMarshallers {
   
-  implicit object DoubleMarshaller extends MarshallerBase[Double] {
+  implicit object DoubleMarshaller extends SimpleMarshaller[Double] {
     val canMarshalTo = ContentType(`text/xml`) :: ContentType(`text/plain`) :: Nil
 
     def marshal(value: Double, contentType: ContentType) = contentType match {
