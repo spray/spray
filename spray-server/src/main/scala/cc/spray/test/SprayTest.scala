@@ -28,14 +28,14 @@ import utils._
  * Use the {{test}} and {{testService}} methods to test the behavior of your routes and services for different HTTP
  * request examples.
  */
-trait SprayTest {
+trait SprayTest extends TestResponderComponent {
 
   def test(request: HttpRequest, timeout: Duration = 1000.millis)(route: Route): RoutingResultWrapper = {
     val responder = new TestResponder()
     route(RequestContext(request = request, responder = responder, unmatchedPath = request.path))
     // since the route might detach we block until the route actually completes or times out
     responder.awaitResult(timeout)
-    new RoutingResultWrapper(responder)
+    new RoutingResultWrapper(responder, timeout)
   }
 
   trait ServiceTest extends HttpServiceLogic with Logging {
@@ -62,31 +62,32 @@ trait SprayTest {
     service.handle(RequestContext(request = request, responder = responder, unmatchedPath = request.path))
     // since the route might detach we block until the route actually completes or times out
     responder.awaitResult(timeout)
-    new ServiceResultWrapper(responder)
+    new ServiceResultWrapper(responder, timeout)
   }
 
-  class ServiceResultWrapper(responder: TestResponder) {
+  class ServiceResultWrapper(responder: TestResponder, timeout: Duration) {
     def handled: Boolean = responder.response.isDefined
     def response: HttpResponse = responder.response.getOrElse {
-      SprayTest.doFail("Service did not convert rejection(s): " + responder.rejections)
+      responder.rejections.foreach(rejs => doFail("Service did not convert rejection(s): " + rejs))
+      doFail("Request was neither completed nor rejected within " + timeout)
     }
     def chunks: List[MessageChunk] = responder.chunks.toList
     def closingExtensions = responder.closingExtensions
     def trailer = responder.trailer
   }
 
-  class RoutingResultWrapper(responder: TestResponder) extends ServiceResultWrapper(responder){
+  class RoutingResultWrapper(responder: TestResponder, timeout: Duration)
+    extends ServiceResultWrapper(responder, timeout){
     override def response: HttpResponse = responder.response.getOrElse {
-      SprayTest.doFail("Request was rejected with " + rejections)
+      doFail("Request was rejected with " + rejections)
     }
-    def rawRejections: Set[Rejection] = responder.response.map { resp =>
-      SprayTest.doFail("Request was not rejected, response was " + resp)
-    } getOrElse responder.rejections
+    def rawRejections: Set[Rejection] = responder.rejections.getOrElse {
+      responder.response.foreach(resp => doFail("Request was not rejected, response was " + resp))
+      doFail("Request was neither completed nor rejected within " + timeout)
+    }
     def rejections: Set[Rejection] = Rejections.applyCancellations(rawRejections)
   }
-}
 
-object SprayTest extends SprayTest {
   def doFail(msg: String): Nothing = {
     try {
       this.asInstanceOf[{ def fail(msg: String): Nothing }].fail(msg)

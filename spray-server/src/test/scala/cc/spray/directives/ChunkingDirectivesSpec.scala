@@ -19,18 +19,22 @@ package directives
 
 import http._
 import test.AbstractSprayTest
+import MediaTypes._
+import HttpCharsets._
 
 class ChunkingDirectivesSpec extends AbstractSprayTest {
 
-  "Value extraction as case class" should {
-    "work for 1 parameter case classes from string extractions" in {
+  "The 'autoChunk' directive" should {
+    "correctly split the inner response into chunks" in {
       val result = test(HttpRequest(uri = "/a-really-chunky-path-that-will-form-the-chunk-contents")) {
         autoChunk(8) {
           path(Remaining) { echoComplete }
         }
       }
-      result.response.content.as[String] mustEqual Right("a-really")
-      result.chunks.map(_.bodyAsString).mkString("|") mustEqual "-chunky-|path-tha|t-will-f|orm-the-|chunk-co|ntents"
+      result.response.content.map(_.contentType) mustEqual Some(ContentType(`text/plain`, `ISO-8859-1`))
+      result.response.content.map(_.buffer.length) mustEqual Some(0)
+      result.chunks.map(_.bodyAsString).mkString("|") mustEqual
+        "a-really|-chunky-|path-tha|t-will-f|orm-the-|chunk-co|ntents"
     }
   }
 

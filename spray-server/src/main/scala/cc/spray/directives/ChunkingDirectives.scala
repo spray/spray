@@ -17,23 +17,22 @@
 package cc.spray
 package directives
 
-import akka.actor.{PoisonPill, Actor}
-import http.{HttpResponse, MessageChunk, HttpContent}
 import utils.make
+import http.{ContentType, HttpContent}
+import typeconversion.{DefaultMarshallers, SimpleMarshaller}
 
 private[spray] trait ChunkingDirectives {
-  this: BasicDirectives =>
+  this: BasicDirectives with DefaultMarshallers =>
 
   /**
    * Automatically converts a non-rejected response from its inner route into a response with HTTP transfer encoding
    * "chunked", of which each chunk (save the very last) has the given size.
    * If the response content from the inner route is smaller than chunkSize a "regular", unchunked response is produced.
    */
-  def autoChunk(chunkSize: Int) = transformRequestContext {
-    _.withResponderTransformed { responder =>
+  def autoChunk(chunkSize: Int) = transformRequestContext { ctx =>
+    ctx.withResponderTransformed { responder =>
       responder.withComplete { response =>
-
-        def sendChunked(content: HttpContent) {
+        def completeChunked(content: HttpContent) {
           def split(ix: Int): Stream[Array[Byte]] = {
             def chunkBuf(size: Int) = make(new Array[Byte](size)) {
               System.arraycopy(content.buffer, ix, _, 0, size)
@@ -43,27 +42,15 @@ private[spray] trait ChunkingDirectives {
             else
               Stream.cons(chunkBuf(content.buffer.length - ix), Stream.Empty)
           }
-          val first #:: rest = split(0)
-          val chunkedResponder = responder.startChunkedResponse {
-            response.withContent(Some(content.withBuffer(first))) // response with initial chunk
+          implicit val byteArrayMarshaller = new SimpleMarshaller[Array[Byte]] {
+            val canMarshalTo = content.contentType :: Nil
+            def marshal(value: Array[Byte], contentType: ContentType) = HttpContent(contentType, value)
           }
-          Actor.actorOf(new Actor() {
-            def receive = { case chunk #:: remaining =>
-              // we only send the next chunk when the previous has actually gone out
-              chunkedResponder withOnChunkSent { _ =>
-                self ! {
-                  if (remaining.isEmpty) {
-                    chunkedResponder.close()
-                    PoisonPill
-                  } else remaining
-                }
-              } sendChunk MessageChunk(chunk.asInstanceOf[Array[Byte]])
-            }
-          }).start() ! rest
+          ctx.complete(split(0))
         }
 
         response.content match {
-          case Some(content) if content.buffer.length > chunkSize => sendChunked(content)
+          case Some(content) if content.buffer.length > chunkSize => completeChunked(content)
           case _ => responder.complete(response)
         }
       }

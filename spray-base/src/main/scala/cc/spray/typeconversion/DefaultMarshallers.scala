@@ -97,7 +97,7 @@ trait DefaultMarshallers extends MultipartMarshallers {
               }
             }
           }
-        }
+        } apply(current.asInstanceOf[T])
       }
     }
   }
