@@ -41,13 +41,13 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
   }
 
   def requestContext(req: HttpServletRequest, resp: HttpServletResponse,
-                     reply: RoutingResult => Unit): Option[RequestContext] = {
+                     responder: RequestResponder): Option[RequestContext] = {
     try {
       Some {
         RequestContext(
           request = httpRequest(req),
           remoteHost = req.getRemoteAddr,
-          responder = new SimpleResponder(reply)
+          responder = responder
         )
       }
     } catch {
@@ -118,16 +118,19 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
     }
   }
 
-  def responderFor(req: HttpServletRequest)(f: HttpResponse => Unit): RoutingResult => Unit = {
-    case Respond(response) =>
-      try {
-        f(response)
-      } catch {
-        case e: IllegalStateException => log.error("Could not complete %s, it probably timed out and has therefore" +
-          "already been completed (%s)", requestString(req), e)
-        case e: Exception => log.error("Could not complete %s due to %s", requestString(req), e)
-      }
-    case _: Reject => throw new IllegalStateException
+  def responderFor(req: HttpServletRequest)(f: HttpResponse => Unit): RequestResponder = {
+    new SimpleResponder(
+      response => {
+        try {
+          f(response)
+        } catch {
+          case e: IllegalStateException => log.error("Could not complete %s, it probably timed out and has therefore" +
+            "already been completed (%s)", requestString(req), e)
+          case e: Exception => log.error("Could not complete %s due to %s", requestString(req), e)
+        }
+      },
+      _ => throw new IllegalStateException
+    )
   }
 
   def handleTimeout(req: HttpServletRequest, resp: HttpServletResponse)(complete: => Unit) {

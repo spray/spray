@@ -18,6 +18,7 @@ package cc.spray
 package directives
 
 import caching._
+import http.HttpResponse
 
 private[spray] trait CacheDirectives {
   this: BasicDirectives =>
@@ -26,14 +27,20 @@ private[spray] trait CacheDirectives {
    * Wraps its inner Route with caching support using the given [[cc.spray.caching.Cache]] implementation and
    * keyer function.
    */
-  def cacheResults(cache: Cache[RoutingResult], keyer: CacheKeyer = CacheKeyers.UriGetCacheKeyer) = {
+  def cacheResults(cache: Cache[Either[Set[Rejection], HttpResponse]],
+                   keyer: CacheKeyer = CacheKeyers.UriGetCacheKeyer) = {
     transformRoute { route => ctx =>
       keyer(ctx) match {
         case Some(key) => {
           cache(key) { completableFuture =>
-            route(ctx.withResponderReply(completableFuture.completeWithResult(_)))
-          } onComplete { future =>
-            ctx.responder.reply(future.get)
+            route {
+              ctx
+                .withComplete(response => completableFuture.completeWithResult(Right(response)))
+                .withReject(rejections => completableFuture.completeWithResult(Left(rejections)))
+            }
+          } onResult {
+            case Right(response) => ctx.responder.complete(response)
+            case Left(rejections) => ctx.responder.reject(rejections)
           }
         }
         case _ => route(ctx)

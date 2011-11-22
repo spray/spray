@@ -30,7 +30,7 @@ class Servlet30ConnectorServlet extends ConnectorServlet("Servlet API 3.0") {
     requestContext(req, resp, responder(req, resp)).foreach(rootService ! _)
   }
 
-  def responder(req: HttpServletRequest, resp: HttpServletResponse): RoutingResult => Unit = {
+  def responder(req: HttpServletRequest, resp: HttpServletResponse): RequestResponder = {
     val alreadyResponded = new AtomicBoolean(false)
     val asyncContext = req.startAsync()
     asyncContext.setTimeout(timeout)

@@ -46,13 +46,9 @@ private[spray] trait CodecDirectives {
    */
   def encodeResponse(encoder: Encoder) = filter { ctx =>
     if (ctx.request.isEncodingAccepted(encoder.encoding)) {
-      Pass.withTransform {
-        _.withRoutingResultTransformed {
-          case Respond(response) => Respond(encoder.encode(response))
-          case Reject(rejections) => {
-            Reject(rejections + RejectionRejection(_.isInstanceOf[UnacceptedResponseEncodingRejection]))
-          }
-        }
+      Pass.withTransform { _
+        .withResponseTransformed(encoder.encode)
+        .withRejectionsTransformed(_ + RejectionRejection(_.isInstanceOf[UnacceptedResponseEncodingRejection]))
       }
     } else Reject(UnacceptedResponseEncodingRejection(encoder.encoding))
   }

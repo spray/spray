@@ -45,28 +45,31 @@ case class RequestContext(
   /**
    * Returns a copy of this context with the given response transformation function chained into the responder.
    */
-  def withHttpResponseTransformed(f: HttpResponse => HttpResponse): RequestContext = {
-    withRoutingResultTransformed {
-      case Respond(response) => Respond(f(response))
-      case x: Reject => x
-    }
-  }
-  
-  /**
-   * Returns a copy of this context with the given RoutingResult transformation function chained into the responder.
-   */
-  def withRoutingResultTransformed(f: RoutingResult => RoutingResult): RequestContext =
-    withResponder(responder.withReply(rr => responder.reply(f(rr))))
+  def withResponseTransformed(f: HttpResponse => HttpResponse): RequestContext =
+    withComplete(response => responder.complete(f(response)))
 
   /**
-   * Returns a copy of this context with the responder using the given reply function.
+   * Returns a copy of this context with the given rejection transformation function chained into the responder.
    */
-  def withResponderReply(f: RoutingResult => Unit): RequestContext = withResponder(responder.withReply(f))
+  def withRejectionsTransformed(f: Set[Rejection] => Set[Rejection]): RequestContext =
+    withReject(rejections => responder.reject(f(rejections)))
 
   /**
-   * Returns a copy of this context with the responder replaced by the given responder.
+   * Returns a copy of this context with a new responder using the given complete function.
    */
-  def withResponder(newResponder: RequestResponder) = copy(responder = newResponder)
+  def withComplete(newComplete: HttpResponse => Unit): RequestContext =
+    withResponderTransformed(_.withComplete(newComplete))
+
+  /**
+   * Returns a copy of this context with a new responder using the given complete function.
+   */
+  def withReject(newReject: Set[Rejection] => Unit): RequestContext =
+    withResponderTransformed(_.withReject(newReject))
+
+  /**
+   * Returns a copy of this context with the responder transformed by the given function.
+   */
+  def withResponderTransformed(f: RequestResponder => RequestResponder) = copy(responder = f(responder))
 
   /**
    * Rejects the request with the given rejections.
@@ -76,7 +79,7 @@ case class RequestContext(
   /**
    * Rejects the request with the given rejections.
    */
-  def reject(rejections: Set[Rejection]) { responder.reply(Reject(rejections)) }
+  def reject(rejections: Set[Rejection]) { responder.reject(rejections) }
 
   /**
    * Completes the request with status "200 Ok" and the response content created by marshalling the given object using
@@ -112,7 +115,7 @@ case class RequestContext(
   /**
    * Completes the request with the given [[cc.spray.http.HttpResponse]].
    */
-  def complete(response: HttpResponse) { responder.reply(Respond(response)) }
+  def complete(response: HttpResponse) { responder.complete(response) }
 
   /**
    * Returns a copy of this context that cancels all rejections of type R with
@@ -127,15 +130,9 @@ case class RequestContext(
    * Returns a copy of this context that cancels all rejections matching the given predicate with
    * a [[cc.spray.RejectionRejection]].
    */
-  def cancelRejections(reject: Rejection => Boolean): RequestContext = {
-    withRoutingResultTransformed {
-      _ match {
-        case x: Respond => x
-        case Reject(rejections) => Reject(rejections + RejectionRejection(reject))
-      }
-    }
-  }
-  
+  def cancelRejections(reject: Rejection => Boolean): RequestContext =
+    withReject(rejections => responder.reject(rejections + RejectionRejection(reject)))
+
   /**
    * Completes the request with the given [[cc.spray.http.HttpFailure]].
    */

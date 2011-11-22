@@ -34,66 +34,38 @@ trait HttpServiceLogic extends ErrorHandling {
   def route: Route
 
   /**
-   * A custom handler function for rejections.
-   * All rejections not handled by this PartialFunction will be responded to with the default logic.
+   * A RejectionHandler responsible for converting a List of Rejections into an HttpResponse.
+   * If a given List of Rejections is not handled by this partial function an InternalServerError response is produced.
    */
-  def customRejectionHandler: PartialFunction[List[Rejection], HttpResponse]
+  def rejectionHandler: RejectionHandler = RejectionHandler.Default
   
   def handle(context: RequestContext) {
     try {
-      route(context.withRoutingResultTransformed(convertRejections))
+      route {
+        context
+          .withResponseTransformed(verifyResponse)
+          .withResponderTransformed(convertRejections)
+      }
     } catch {
       case e: Exception => context.complete(responseForException(context.request, e))
     }
   }
   
-  protected[spray] def convertRejections(rr: RoutingResult): RoutingResult = rr match {
-    case x: Respond => withVerifiedResponse(x.response)(_ => x)
-    case Reject(rejections) => {
+  protected def convertRejections(responder: RequestResponder): RequestResponder = {
+    responder.withReject { rejections =>
       val activeRejections = Rejections.applyCancellations(rejections)
       if (activeRejections.isEmpty)
-        Reject() // reject to RootService to signal that no response from this service
+        responder.reject(activeRejections) // reject with empty set to RootService -> no response from this service
       else
-        withVerifiedResponse(responseForRejections(activeRejections.toList))(Respond(_))
+        responder.complete(verifyResponse(fullRejectionHandler(activeRejections.toList)))
     }
   }
-  
-  protected[spray] def responseForRejections(rejections: List[Rejection]): HttpResponse = {
-    if (customRejectionHandler.isDefinedAt(rejections))
-      customRejectionHandler(rejections)
-    else rejections match {
-      case AuthenticationRequiredRejection(scheme, realm, params) :: _ => HttpResponse(Unauthorized, `WWW-Authenticate`(HttpChallenge(scheme, realm, params)) :: Nil, "The resource requires authentication, which was not supplied with the request")
-      case AuthenticationFailedRejection(realm) :: _ => HttpResponse(Forbidden, "The supplied authentication is either invalid or not authorized to access this resource")
-      case AuthorizationFailedRejection :: _ => HttpResponse(Forbidden, "The supplied authentication is either invalid or not authorized to access this resource")
-      case CorruptRequestEncodingRejection(msg) :: _ => HttpResponse(BadRequest, "The requests encoding is corrupt:\n" + msg)
-      case MalformedFormFieldRejection(msg, name) :: _ => HttpResponse(BadRequest, "The form field '" + name + "' was malformed:\n" + msg)
-      case MalformedQueryParamRejection(msg, name) :: _ => HttpResponse(BadRequest, "The query parameter '" + name + "' was malformed:\n" + msg)
-      case MalformedRequestContentRejection(msg) :: _ => HttpResponse(BadRequest, "The request content was malformed:\n" + msg)
-      case (_: MethodRejection) :: _ =>
-        // TODO: add Allow header (required by the spec)
-        val methods = rejections.collect { case MethodRejection(method) => method }
-        HttpResponse(MethodNotAllowed, "HTTP method not allowed, supported methods: " + methods.mkString(", "))
-      case MissingFormFieldRejection(fieldName) :: _ => HttpResponse(BadRequest, "Request is missing required form field '" + fieldName + '\'')
-      case MissingQueryParamRejection(paramName) :: _ => HttpResponse(NotFound, "Request is missing required query parameter '" + paramName + '\'')
-      case RequestEntityExpectedRejection :: _ => HttpResponse(BadRequest, "Request entity expected but not supplied")
-      case (_: UnacceptedResponseContentTypeRejection) :: _ =>
-        val supported = rejections.flatMap { case UnacceptedResponseContentTypeRejection(supported) => supported }
-        HttpResponse(NotAcceptable, "Resource representation is only available with these Content-Types:\n" + supported.map(_.value).mkString("\n"))
-      case (_: UnacceptedResponseEncodingRejection) :: _ =>
-        val supported = rejections.collect { case UnacceptedResponseEncodingRejection(supported) => supported }
-        HttpResponse(NotAcceptable, "Resource representation is only available with these Content-Encodings:\n" + supported.map(_.value).mkString("\n"))
-      case (_: UnsupportedRequestContentTypeRejection) :: _ =>
-        val supported = rejections.collect { case UnsupportedRequestContentTypeRejection(supported) => supported }
-        HttpResponse(UnsupportedMediaType, "There was a problem with the requests Content-Type:\n" + supported.mkString(" or "))
-      case (_: UnsupportedRequestEncodingRejection) :: _ =>
-        val supported = rejections.collect { case UnsupportedRequestEncodingRejection(supported) => supported }
-        HttpResponse(BadRequest, "The requests Content-Encoding must be one the following:\n" + supported.map(_.value).mkString("\n"))
-      case ValidationRejection(msg) :: _ => HttpResponse(BadRequest, msg)
-      case _ => HttpResponse(InternalServerError, "Unknown request rejection: " + rejections.head)
-    }
+
+  protected lazy val fullRejectionHandler: RejectionHandler = rejectionHandler orElse {
+    case rejection :: _ => HttpResponse(InternalServerError, "Unknown request rejection: " + rejection)
   }
   
-  protected def withVerifiedResponse[A](response: HttpResponse)(f: HttpResponse => A): A = {
+  protected def verifyResponse(response: HttpResponse): HttpResponse = {
     response.headers.foreach {
       case _: `Content-Type` =>
         throw new IllegalResponseException("HttpResponse must not include explicit 'Content-Type' header, " +
@@ -103,7 +75,7 @@ trait HttpServiceLogic extends ErrorHandling {
               "this header will be set implicitly!")
       case _ =>
     }
-    f(response)
+    response
   }
   
 }

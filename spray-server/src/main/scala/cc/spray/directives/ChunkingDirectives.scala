@@ -29,43 +29,42 @@ private[spray] trait ChunkingDirectives {
    * "chunked", of which each chunk (save the very last) has the given size.
    * If the response content from the inner route is smaller than chunkSize a "regular", unchunked response is produced.
    */
-  def autoChunk(chunkSize: Int) = transformRequestContext { ctx =>
-    def sendChunked(response: HttpResponse, content: HttpContent) {
-      def split(ix: Int): Stream[Array[Byte]] = {
-        def chunkBuf(size: Int) = make(new Array[Byte](size)) {
-          System.arraycopy(content.buffer, ix, _, 0, size)
-        }
-        if (ix < content.buffer.length - chunkSize)
-          Stream.cons(chunkBuf(chunkSize), split(ix + chunkSize))
-        else
-          Stream.cons(chunkBuf(content.buffer.length - ix), Stream.Empty)
-      }
-      val first #:: rest = split(0)
-      val chunkedResponder = ctx.responder.startChunkedResponse {
-        response.withContent(Some(content.withBuffer(first))) // response with initial chunk
-      }
-      Actor.actorOf(new Actor() {
-        def receive = { case chunk #:: remaining =>
-          // we only send the next chunk when the previous has actually gone out
-          chunkedResponder.onChunkSent { _ =>
-            self ! {
-              if (remaining.isEmpty) {
-                chunkedResponder.close()
-                PoisonPill
-              } else remaining
-            }
-          }
-          chunkedResponder.sendChunk(MessageChunk(chunk.asInstanceOf[Array[Byte]]))
-        }
-      }).start() ! rest
-    }
+  def autoChunk(chunkSize: Int) = transformRequestContext {
+    _.withResponderTransformed { responder =>
+      responder.withComplete { response =>
 
-    ctx.withResponder {
-      ctx.responder.withReply {
-        case x: Reject => ctx.responder.reply(x)
-        case x: Respond => x.response.content match {
-          case Some(content) if content.buffer.length > chunkSize => sendChunked(x.response, content)
-          case _ => ctx.responder.reply(x)
+        def sendChunked(content: HttpContent) {
+          def split(ix: Int): Stream[Array[Byte]] = {
+            def chunkBuf(size: Int) = make(new Array[Byte](size)) {
+              System.arraycopy(content.buffer, ix, _, 0, size)
+            }
+            if (ix < content.buffer.length - chunkSize)
+              Stream.cons(chunkBuf(chunkSize), split(ix + chunkSize))
+            else
+              Stream.cons(chunkBuf(content.buffer.length - ix), Stream.Empty)
+          }
+          val first #:: rest = split(0)
+          val chunkedResponder = responder.startChunkedResponse {
+            response.withContent(Some(content.withBuffer(first))) // response with initial chunk
+          }
+          Actor.actorOf(new Actor() {
+            def receive = { case chunk #:: remaining =>
+              // we only send the next chunk when the previous has actually gone out
+              chunkedResponder withOnChunkSent { _ =>
+                self ! {
+                  if (remaining.isEmpty) {
+                    chunkedResponder.close()
+                    PoisonPill
+                  } else remaining
+                }
+              } sendChunk MessageChunk(chunk.asInstanceOf[Array[Byte]])
+            }
+          }).start() ! rest
+        }
+
+        response.content match {
+          case Some(content) if content.buffer.length > chunkSize => sendChunked(content)
+          case _ => responder.complete(response)
         }
       }
     }

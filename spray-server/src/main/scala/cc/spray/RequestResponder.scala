@@ -18,12 +18,20 @@ package cc.spray
 
 import http._
 
+/**
+ * Encapsulates the logic completion logic of a spray route.
+ */
 trait RequestResponder {
 
   /**
-   * Completes or rejects the request with the given RoutingResult.
+   * Completes the request with the given RoutingResult.
    */
-  def reply: RoutingResult => Unit
+  def complete: HttpResponse => Unit
+
+  /**
+   * Rejects the request with the given set of Rejections (which might be empty).
+   */
+  def reject: Set[Rejection] => Unit
 
   /**
    * Starts a chunked (streaming) response. The given [[cc.spray.HttpResponse]] object must have the protocol
@@ -32,40 +40,44 @@ trait RequestResponder {
    * The application is required to use the returned [[cc.spray.ChunkedResponder]] instance to send any number of
    * response chunks before calling the `ChunkedResponder`s `close` method to finalize the response.
    */
-  def startChunkedResponse(response: HttpResponse): ChunkedResponder = {
-    throw new UnsupportedOperationException
-  }
+  def startChunkedResponse(response: HttpResponse): ChunkedResponder
 
   /**
-   * Registers the given function to be called if and when the client prematurely closed the connection.
+   * Explicitly resets the connection idle timeout for the connection underlying this response.
    */
-  def onClientClose(callback: () => Unit): this.type = {
-    throw new UnsupportedOperationException
-  }
+  def resetConnectionTimeout()
 
   /**
-   * Explicitly resets the connection idle timeout for the connection underlying this chunked response.
+   * Returns a copy of this responder with the complete method replaced by the given one.
    */
-  def resetConnectionTimeout() {
-    throw new UnsupportedOperationException // default implementation
-  }
+  def withComplete(newComplete: HttpResponse => Unit): RequestResponder
 
   /**
-   * Creates a copy of this responder with the reply function replaces by the given one.
+   * Returns a copy of this responder with the reject method replaced by the given one.
    */
-  def withReply(newReply: RoutingResult => Unit): RequestResponder
+  def withReject(newReject: Set[Rejection] => Unit): RequestResponder
+
+  /**
+   * Returns a copy of this responder registering the given callback function to be invoked if and when the client
+   * prematurely closed the connection.
+   */
+  def withOnClientClose(callback: () => Unit): RequestResponder
 }
 
 object RequestResponder {
-  lazy val EmptyResponder = new SimpleResponder(_ => ())
+  lazy val EmptyResponder = new SimpleResponder(_ => (), _ => ())
 }
 
 /**
  * A RequestResponder throwing UnsupportedOperationExceptions for the `startChunkedResponse`, `onClientClose` and
  * `resetConnectionTimeout` methods.
  */
-class SimpleResponder(val reply: RoutingResult => Unit) extends RequestResponder {
-  def withReply(newReply: (RoutingResult) => Unit) = new SimpleResponder(newReply)
+class SimpleResponder(val complete: HttpResponse => Unit, val reject: Set[Rejection] => Unit) extends RequestResponder {
+  def startChunkedResponse(response: HttpResponse) = throw new UnsupportedOperationException
+  def resetConnectionTimeout() { throw new UnsupportedOperationException }
+  def withComplete(newComplete: HttpResponse => Unit) = new SimpleResponder(newComplete, reject)
+  def withReject(newReject: Set[Rejection] => Unit) = new SimpleResponder(complete, newReject)
+  def withOnClientClose(callback: () => Unit) = this
 }
 
 /**
@@ -87,9 +99,9 @@ trait ChunkedResponder {
   def close(extensions: List[ChunkExtension] = Nil, trailer: List[HttpHeader] = Nil)
 
   /**
-   * Registers the given function to be called whenever a chunk previously scheduled for sending via `sendChunk`
-   * has actually and successfully gone out over the wire. The callback receives the sequence number as produced by
-   * the `sendChunk` method.
+   * Returns a copy of this ChunkedResponder registering the given callback to be invoked whenever a chunk previously
+   * scheduled for sending via `sendChunk` has actually and successfully been dispatched to the network layer. The
+   * callback receives the sequence number as produced by the `sendChunk` method.
    */
-  def onChunkSent(callback: Long => Unit): this.type
+  def withOnChunkSent(callback: Long => Unit): ChunkedResponder
 }

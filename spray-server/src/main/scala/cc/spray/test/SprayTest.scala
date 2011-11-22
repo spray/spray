@@ -66,11 +66,9 @@ trait SprayTest {
   }
 
   class ServiceResultWrapper(responder: TestResponder) {
-    val rr = responder.result.getOrElse(SprayTest.doFail("No response received"))
-    def handled: Boolean = rr.isInstanceOf[Respond]
-    def response: HttpResponse = rr match {
-      case Respond(response) => response
-      case Reject(rejections) => SprayTest.doFail("Service did not convert rejection(s): " + rejections.mkString(", "))
+    def handled: Boolean = responder.response.isDefined
+    def response: HttpResponse = responder.response.getOrElse {
+      SprayTest.doFail("Service did not convert rejection(s): " + responder.rejections)
     }
     def chunks: List[MessageChunk] = responder.chunks.toList
     def closingExtensions = responder.closingExtensions
@@ -78,14 +76,12 @@ trait SprayTest {
   }
 
   class RoutingResultWrapper(responder: TestResponder) extends ServiceResultWrapper(responder){
-    override def response: HttpResponse = rr match {
-      case Respond(response) => response
-      case Reject(rejections) => SprayTest.doFail("Request was rejected with " + rejections)
+    override def response: HttpResponse = responder.response.getOrElse {
+      SprayTest.doFail("Request was rejected with " + rejections)
     }
-    def rawRejections: Set[Rejection] = rr match {
-      case Respond(response) => SprayTest.doFail("Request was not rejected, response was " + response)
-      case Reject(rejections) => rejections
-    }
+    def rawRejections: Set[Rejection] = responder.response.map { resp =>
+      SprayTest.doFail("Request was not rejected, response was " + resp)
+    } getOrElse responder.rejections
     def rejections: Set[Rejection] = Rejections.applyCancellations(rawRejections)
   }
 }

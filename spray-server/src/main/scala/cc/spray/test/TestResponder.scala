@@ -19,7 +19,6 @@ package test
 
 import collection.mutable.ListBuffer
 import http.{HttpResponse, HttpHeader, ChunkExtension, MessageChunk}
-import java.util.concurrent.atomic.AtomicReference
 import akka.util.Duration
 import java.util.concurrent.{TimeUnit, CountDownLatch}
 
@@ -27,58 +26,72 @@ import java.util.concurrent.{TimeUnit, CountDownLatch}
  * A RequestResponder using during testing.
  * It collects the response (incl. potentially generated response chunks) for later inspection in a test.
  */
-class TestResponder(givenReply: Option[RoutingResult => Unit] = None) extends RequestResponder { outer =>
-  var result: Option[RoutingResult] = None
+class TestResponder(givenComplete: Option[HttpResponse => Unit] = None,
+                    givenReject: Option[Set[Rejection] => Unit] = None) extends RequestResponder { outer =>
+  var response: Option[HttpResponse] = None
+  var rejections = Set.empty[Rejection]
   val chunks = ListBuffer.empty[MessageChunk]
   var closingExtensions: List[ChunkExtension] = Nil
   var trailer: List[HttpHeader] = Nil
   private val latch = new CountDownLatch(1)
   private var virginal = true
-  val reply = givenReply.getOrElse { (rr: RoutingResult) =>
-    saveResult(rr)
+
+  val complete = givenComplete getOrElse { (resp: HttpResponse) =>
+    saveResult(Right(resp))
+    latch.countDown()
+  }
+
+  val reject = givenReject getOrElse { (rejs: Set[Rejection]) =>
+    saveResult(Left(rejs))
     latch.countDown()
   }
 
   override def startChunkedResponse(response: HttpResponse) = {
-    saveResult(Respond(response))
-    new ChunkedResponder {
-      val onSent = new AtomicReference[Option[Long => Unit]](None)
-      def sendChunk(chunk: MessageChunk) = outer.synchronized {
-        chunks += chunk
-        val chunkNr = if (response.content.isEmpty) chunks.size - 1 else chunks.size
-        onSent.get.foreach(_(chunkNr))
-        chunkNr
-      }
-      def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
-        outer.synchronized {
-          if (latch.getCount == 0) SprayTest.doFail("`close` called more than once")
-          closingExtensions = extensions
-          outer.trailer = trailer
-          latch.countDown()
-        }
-      }
-      def onChunkSent(callback: Long => Unit) = {
-        onSent.set(Some(callback))
-        this
-      }
-    }
+    saveResult(Right(response))
+    new TestChunkedResponder()
   }
-
-  private def saveResult(rr: RoutingResult) {
-    synchronized {
-      if (!virginal) SprayTest.doFail("Route completed/rejected more than once")
-      result = Some(rr)
-      virginal = false
-    }
-  }
-
-  override def onClientClose(callback: () => Unit) = this
 
   override def resetConnectionTimeout() {}
 
-  def withReply(newReply: RoutingResult => Unit) = new TestResponder(Some(newReply))
+  def withComplete(newComplete: HttpResponse => Unit) = new TestResponder(Some(newComplete), Some(reject))
+
+  def withReject(newReject: Set[Rejection] => Unit) = new TestResponder(Some(complete), Some(newReject))
+
+  def withOnClientClose(callback: () => Unit) = this
 
   def awaitResult(timeout: Duration) {
     latch.await(timeout.toMillis, TimeUnit.MILLISECONDS)
   }
+
+  private def saveResult(result: Either[Set[Rejection], HttpResponse]) {
+    synchronized {
+      if (!virginal) SprayTest.doFail("Route completed/rejected more than once")
+      result match {
+        case Right(resp) => response = Some(resp)
+        case Left(rejs) => rejections = rejs
+      }
+      virginal = false
+    }
+  }
+
+  class TestChunkedResponder(onSent: Option[Long => Unit] = None) extends ChunkedResponder {
+    def sendChunk(chunk: MessageChunk) = outer.synchronized {
+      chunks += chunk
+      val chunkNr = if (response.get.content.isEmpty) chunks.size - 1 else chunks.size
+      onSent.foreach(_(chunkNr))
+      chunkNr
+    }
+
+    def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
+      outer.synchronized {
+        if (latch.getCount == 0) SprayTest.doFail("`close` called more than once")
+        closingExtensions = extensions
+        outer.trailer = trailer
+        latch.countDown()
+      }
+    }
+
+    def withOnChunkSent(callback: Long => Unit) = new TestChunkedResponder(Some(callback))
+  }
 }
+
