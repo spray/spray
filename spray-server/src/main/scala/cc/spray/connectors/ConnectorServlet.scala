@@ -31,7 +31,6 @@ import java.io.{IOException, InputStream}
 private[connectors] abstract class ConnectorServlet(containerName: String) extends HttpServlet with Logging {
   lazy val rootService = actor(SprayServerSettings.RootActorId)
   lazy val timeoutActor = actor(SprayServerSettings.TimeoutActorId)
-  val EmptyByteArray = new Array[Byte](0)
   var timeout: Int = _
 
   override def init() {
@@ -82,7 +81,7 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
     contentLengthHeader.flatMap {
       case `Content-Length`(0) => None
       case `Content-Length`(contentLength) => {
-        val body = if (contentLength == 0) EmptyByteArray else try {
+        val body = if (contentLength == 0) utils.EmptyByteArray else try {
           val buf = new Array[Byte](contentLength)
           var bytesRead = 0
           while (bytesRead < contentLength) {

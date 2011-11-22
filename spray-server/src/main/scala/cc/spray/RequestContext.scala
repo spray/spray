@@ -127,7 +127,8 @@ case class RequestContext(
   private[spray] def marshallingContext(status: StatusCode, headers: List[HttpHeader]) = {
     new MarshallingContext {
       def marshalTo(content: HttpContent) { complete(HttpResponse(status, headers, content)) }
-      def startChunkedMessage() = startChunkedResponse(HttpResponse(status, headers))
+      def startChunkedMessage(contentType: ContentType) =
+        startChunkedResponse(HttpResponse(status, headers, HttpContent(contentType, utils.EmptyByteArray)))
     }
   }
 

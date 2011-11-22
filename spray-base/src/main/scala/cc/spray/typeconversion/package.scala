@@ -40,7 +40,7 @@ package object typeconversion {
         converter {
           new MarshallingContext {
             def marshalTo(content: HttpContent) { c = Some(content) }
-            def startChunkedMessage() = throw new UnsupportedOperationException
+            def startChunkedMessage(contentType: ContentType) = throw new UnsupportedOperationException
           }
         } apply(underlying)
         c.getOrElse(sys.error("Marshaller for %s did not produce result".format(underlying)))

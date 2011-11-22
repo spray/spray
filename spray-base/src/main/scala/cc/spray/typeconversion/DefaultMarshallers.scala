@@ -22,6 +22,7 @@ import MediaTypes._
 import HttpCharsets._
 import xml.NodeSeq
 import java.nio.CharBuffer
+import akka.actor.{PoisonPill, Actor}
 
 trait DefaultMarshallers extends MultipartMarshallers {
 
@@ -60,6 +61,44 @@ trait DefaultMarshallers extends MultipartMarshallers {
         case (key, value) => encode(key, charset) + '=' + encode(value, charset)
       }
       StringMarshaller.marshal(keyValuePairs.mkString("&"), contentType)
+    }
+  }
+
+  implicit def streamMarshaller[T :Marshaller] = new Marshaller[Stream[T]] {
+    def apply(selector: ContentTypeSelector) = {
+      marshaller[T].apply(selector) match {
+        case x: CantMarshal => x
+        case MarshalWith(converter) => MarshalWith { ctx => stream =>
+          Actor.actorOf(new ChunkingActor(ctx, stream, converter)).start() ! stream
+        }
+      }
+    }
+
+    class ChunkingActor(ctx: MarshallingContext, stream: Stream[T],
+                        converter: MarshallingContext => T => Unit) extends Actor {
+      var chunkSender: Option[ChunkSender] = None
+      def receive = { case current #:: remaining =>
+        converter {
+          new MarshallingContext {
+            def startChunkedMessage(contentType: ContentType) = sys.error("Cannot marshal a stream of streams")
+            def marshalTo(content: HttpContent) {
+              chunkSender orElse {
+                chunkSender = Some(ctx.startChunkedMessage(content.contentType))
+                chunkSender
+              } foreach { sender =>
+                sender withOnChunkSent { _ => // we only send the next chunk when the previous has actually gone out
+                  self ! {
+                    if (remaining.isEmpty) {
+                      sender.close()
+                      PoisonPill
+                    } else remaining
+                  }
+                } sendChunk MessageChunk(content.buffer)
+              }
+            }
+          }
+        }
+      }
     }
   }
 

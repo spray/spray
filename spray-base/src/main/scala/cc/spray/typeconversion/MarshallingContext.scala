@@ -25,5 +25,5 @@ case class MarshalWith[-A](f: MarshallingContext => A => Unit) extends Marshalli
 
 trait MarshallingContext {
   def marshalTo(content: HttpContent)
-  def startChunkedMessage(): ChunkSender
+  def startChunkedMessage(contentType: ContentType): ChunkSender
 }

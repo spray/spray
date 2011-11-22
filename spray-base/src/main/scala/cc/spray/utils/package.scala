@@ -21,14 +21,16 @@ import util.matching.Regex
 
 package object utils {
 
-  private lazy val emptyPartial = new PartialFunction[Any, Any] {
+  val EmptyByteArray = new Array[Byte](0)
+
+  private lazy val EmptyPartial = new PartialFunction[Any, Any] {
     def isDefinedAt(x: Any) = false
     def apply(x: Any) = throw new IllegalStateException
   }
 
   // TODO: remove and replace with equivalent from the standard library once the resolution to issue 25578
   // (https://codereview.scala-lang.org/fisheye/changelog/scala-svn?cs=25578) has made it into a release
-  def emptyPartialFunc[A, B] = emptyPartial.asInstanceOf[PartialFunction[A, B]]
+  def emptyPartialFunc[A, B] = EmptyPartial.asInstanceOf[PartialFunction[A, B]]
 
   def make[A, U](a: A)(f: A => U): A = { f(a); a }
 
