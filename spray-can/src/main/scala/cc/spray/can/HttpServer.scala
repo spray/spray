@@ -79,9 +79,10 @@ trait RequestResponder {
   def startChunkedResponse(response: HttpResponse): ChunkedResponder
 
   /**
-   * Registers the given function to be called if and when the client prematurely closed the connection.
+   * Returns a copy of this responder registering the given callback function to be invoked if and when the client
+   * prematurely closed the connection.
    */
-  def onClientClose(callback: () => Unit): this.type
+  def withOnClientClose(callback: () => Unit): RequestResponder
 
   /**
    * Explicitly resets the connection idle timeout for the connection underlying this chunked response.
@@ -107,11 +108,11 @@ trait ChunkedResponder {
   def close(extensions: List[ChunkExtension] = Nil, trailer: List[HttpHeader] = Nil)
 
   /**
-   * Registers the given function to be called whenever a chunk previously scheduled for sending via `sendChunk`
-   * has actually and successfully gone out over the wire. The callback receives the sequence number as produced by
-   * the `sendChunk` method.
+   * Returns a copy of this ChunkedResponder registering the given callback to be invoked whenever a chunk previously
+   * scheduled for sending via `sendChunk` has actually and successfully been dispatched to the network layer. The
+   * callback receives the sequence number as produced by the `sendChunk` method.
    */
-  def onChunkSent(callback: Long => Unit): this.type
+  def withOnChunkSent(callback: Long => Unit): ChunkedResponder
 }
 
 /////////////////////////////////////////////
@@ -337,12 +338,12 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
 
   private def createAndRegisterRequestResponder(conn: Conn, requestLine: RequestLine, headers: List[HttpHeader],
                                                 remoteAddress: InetAddress, connectionHeader: Option[String]) = {
-    val responder = new DefaultRequestResponder(conn, requestLine, conn.countDispatch(), connectionHeader)
+    var requestRecord: Option[RequestRecord] = None
+    val responder = new DefaultRequestResponder(conn, requestLine, conn.countDispatch(), connectionHeader, requestRecord)
     if (requestTimeoutCycle.isDefined) {
       import requestLine._
-      val requestRecord = RequestRecord(method, uri, protocol, headers, remoteAddress, responder)
-      responder.setRequestRecord(requestRecord)
-      openRequests += requestRecord;
+      requestRecord = Some(RequestRecord(method, uri, protocol, headers, remoteAddress, responder))
+      openRequests += requestRecord.get
     }
     responder
   }
@@ -400,14 +401,14 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
   protected def serverHeader = config.serverHeader
 
   private class DefaultRequestResponder(conn: Conn, requestLine: RequestLine, responseNr: Int,
-                                        connectionHeader: Option[String])
-          extends RequestResponder { original =>
+                                        connectionHeader: Option[String], requestRecord: => Option[RequestRecord],
+                                        onClientCloseCallback: Option[() => Unit] = None)
+    extends RequestResponder {
+
     private val UNCOMPLETED = 0
     private val COMPLETED = 1
     private val STREAMING = 2
     private val mode = new AtomicInteger(UNCOMPLETED)
-    private var requestRecord: Option[RequestRecord] = None
-    private val onClientCloseCallback = new AtomicReference[Option[() => Unit]](None)
 
     def complete(response: HttpResponse) {
       if (!trySend(response)) mode.get match {
@@ -425,7 +426,7 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
         log.debug("Enqueueing valid HttpResponse as raw response")
         val (buffers, close) = prepareResponse(requestLine, response, connectionHeader)
         self ! new Respond(conn, buffers, close, responseNr, increaseResponseNr = true,
-          requestRecord = requestRecord, onClientClose = onClientCloseCallback.get)
+          requestRecord = requestRecord, onClientClose = onClientCloseCallback)
         true
       } else false
     }
@@ -438,13 +439,13 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
         log.debug("Enqueueing start of chunked response")
         val (buffers, close) = prepareChunkedResponseStart(requestLine, response, connectionHeader)
         self ! new Respond(conn, buffers, closeAfterWrite = false, responseNr = responseNr,
-          increaseResponseNr = false, requestRecord = requestRecord, onClientClose = onClientCloseCallback.get)
+          increaseResponseNr = false, requestRecord = requestRecord, onClientClose = onClientCloseCallback)
         if (requestLine.method != HttpMethods.HEAD)
           new DefaultChunkedResponder(close, response.body.length > 0)
         else new ChunkedResponder {
           def sendChunk(chunk: MessageChunk) = 0L
           def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {}
-          def onChunkSent(callback: Long => Unit) = this
+          def withOnChunkSent(callback: Long => Unit) = this
         }
       } else throw new IllegalStateException {
         mode.get match {
@@ -455,20 +456,16 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
     }
 
     lazy val timeoutResponder: HttpResponse => Unit = { response =>
-      if (original.trySend(response)) requestsTimedOut += 1
+      if (trySend(response)) requestsTimedOut += 1
     }
 
-    def setRequestRecord(record: RequestRecord) { requestRecord = Some(record) }
-
-    def onClientClose(callback: () => Unit) = {
-      onClientCloseCallback.set(Some(callback))
-      this
-    }
+    def withOnClientClose(callback: () => Unit) =
+      new DefaultRequestResponder(conn, requestLine, responseNr, connectionHeader, requestRecord, Some(callback))
 
     def resetConnectionTimeout() { self ! RefreshConnection(conn) }
 
-    class DefaultChunkedResponder(closeAfterLastChunk: Boolean, initialChunkSent: Boolean) extends ChunkedResponder {
-      private val onChunkSentCallback = new AtomicReference[Option[Long => Unit]](None)
+    class DefaultChunkedResponder(closeAfterLastChunk: Boolean, initialChunkSent: Boolean,
+                                  onChunkSentCallback: Option[Long => Unit] = None) extends ChunkedResponder {
       private var closed = false
       private var chunksSent = if (initialChunkSent) 1L else 0L
 
@@ -483,8 +480,8 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
               closeAfterWrite = false,
               responseNr = responseNr,
               increaseResponseNr = false,
-              onSent = Some { () => onChunkSentCallback.get.foreach(_(chunkNr)) },
-              onClientClose = onClientCloseCallback.get
+              onSent = Some { () => onChunkSentCallback.foreach(_(chunkNr)) },
+              onClientClose = onClientCloseCallback
             )
             chunkNr
           } else throw new RuntimeException("Cannot send MessageChunk after HTTP stream has been closed")
@@ -497,15 +494,19 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
           if (!closed) {
             log.debug("Enqueueing final response chunk")
             val buffers = prepareFinalChunk(extensions, trailer)
-            self ! new Respond(conn, buffers, closeAfterLastChunk, responseNr, onClientClose = onClientCloseCallback.get)
+            self ! new Respond(conn, buffers, closeAfterLastChunk, responseNr, onClientClose = onClientCloseCallback)
             closed = true
           } else throw new RuntimeException("Cannot close an HTTP stream that has already been closed")
         }
       }
 
-      def onChunkSent(callback: Long => Unit) = {
-        onChunkSentCallback.set(Some(callback))
-        this
+      def withOnChunkSent(callback: Long => Unit) = {
+        synchronized {
+          make(new DefaultChunkedResponder(closeAfterLastChunk, initialChunkSent, Some(callback))) { copy =>
+            copy.closed = closed
+            copy.chunksSent = chunksSent
+          }
+        }
       }
     }
   }

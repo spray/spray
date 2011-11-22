@@ -22,6 +22,7 @@ import akka.actor.{Scheduler, Actor}
 import akka.util.Duration
 import HttpMethods._
 import java.util.concurrent.{CountDownLatch, TimeUnit}
+import java.util.concurrent.atomic.AtomicLong
 
 class HttpClientServerSpec extends Specification with HttpClientSpecs { def is =
 
@@ -62,9 +63,9 @@ class HttpClientServerSpec extends Specification with HttpClientSpecs { def is =
         Scheduler.scheduleOnce(() => responder.complete(HttpResponse().withBody(path.last.toString)), delay, TimeUnit.MILLISECONDS)
       case RequestContext(HttpRequest(_, "/chunked", _, _, _), _, responder) => {
         val latch = new CountDownLatch(4)
-        var chunkNrSum = 0L
-        val chunker = responder.startChunkedResponse(HttpResponse(201, List(HttpHeader("Fancy", "cool")))).onChunkSent {
-          chunkNr => chunkNrSum += chunkNr; latch.countDown()
+        val chunkNrSum = new AtomicLong(0)
+        val chunker = responder.startChunkedResponse(HttpResponse(201, List(HttpHeader("Fancy", "cool")))).withOnChunkSent {
+          chunkNr => chunkNrSum.addAndGet(chunkNr); latch.countDown()
         }
         val a = chunker.sendChunk(MessageChunk("1:"))
         val b = chunker.sendChunk(MessageChunk(a + "-2345:"))

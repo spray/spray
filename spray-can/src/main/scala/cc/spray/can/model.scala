@@ -236,6 +236,7 @@ case class ChunkedResponseEnd(
  */
 case class MessageChunk(body: Array[Byte], extensions: List[ChunkExtension]) {
   require(body.length > 0, "MessageChunk must not have empty body")
+  def bodyAsString: String = bodyAsString("ISO-88591-1")
   def bodyAsString(charset: Charset): String = if (body.isEmpty) "" else new String(body, charset)
   def bodyAsString(charset: String): String = if (body.isEmpty) "" else new String(body, charset)
 }
