@@ -130,6 +130,7 @@ object HttpServer {
     val onSent: Option[() => Unit] = None,
     val onClientClose: Option[() => Unit] = None) {
     var next: Respond = _
+    def toList: List[Respond] = this :: (if (next != null) next.toList else Nil)
   }
   private[can] case class RequestRecord(method: HttpMethod, uri: String, protocol: HttpProtocol,
                                         headers: List[HttpHeader], remoteAddress: InetAddress,
@@ -388,6 +389,15 @@ class HttpServer(val config: ServerConfig = ServerConfig.fromAkkaConf)
     HttpResponse(status = 500, headers = List(HttpHeader("Content-Type", "text/plain"))).withBody {
       "Ooops! The server was not able to produce a timely response to your request.\n" +
               "Please try again in a short while!"
+    }
+  }
+
+
+  override protected def cleanClose(conn: Conn) {
+    super.cleanClose(conn)
+    if (conn.currentRespond != null) {
+      conn.enqueue(conn.currentRespond)
+      conn.queuedResponds.toList.flatMap(_.onClientClose).distinct.foreach(callback => Actor.spawn(callback()))
     }
   }
 
