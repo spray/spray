@@ -22,7 +22,7 @@ import org.parboiled.common.FileUtils
 import java.io.File
 import StatusCodes._
 import HttpHeaders._
-import java.net.{URL, URLConnection}
+import utils.identityFunc
 
 private[spray] trait FileAndResourceDirectives {
   this: SimpleDirectives with DetachDirectives =>
@@ -118,7 +118,7 @@ private[spray] trait FileAndResourceDirectives {
    * current thread. If the file cannot be read the Route completes the request with a "404 NotFound" error.
    */
   def getFromDirectory(directoryName: String, charset: Option[HttpCharset] = None,
-                       pathRewriter: String => String = identity,
+                       pathRewriter: String => String = identityFunc,
                        resolver: ContentTypeResolver = DefaultContentTypeResolver): Route = {
     val base = if (directoryName.endsWith("/")) directoryName else directoryName + "/";
     { ctx =>
@@ -132,7 +132,7 @@ private[spray] trait FileAndResourceDirectives {
    * "resource directory". 
    */
   def getFromResourceDirectory(directoryName: String, charset: Option[HttpCharset] = None,
-                               pathRewriter: String => String = identity,
+                               pathRewriter: String => String = identityFunc,
                                resolver: ContentTypeResolver = DefaultContentTypeResolver): Route = {
     val base = if (directoryName.isEmpty) "" else directoryName + "/";
     { ctx =>

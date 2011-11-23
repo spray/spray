@@ -22,7 +22,6 @@ import HttpHeaders._
 import MediaTypes._
 import typeconversion._
 import akka.dispatch.Future
-import akka.actor.Actor
 
 /**
  * Immutable object encapsulating the context of an [[cc.spray.http.HttpRequest]]
@@ -30,8 +29,8 @@ import akka.actor.Actor
  */
 case class RequestContext(
   request: HttpRequest,
-  remoteHost: HttpIp = "127.0.01",
-  responder: RequestResponder = RequestResponder.EmptyResponder,
+  responder: RequestResponder,
+  remoteHost: HttpIp = "127.0.0.1",
   unmatchedPath: String = ""
 ) {
 

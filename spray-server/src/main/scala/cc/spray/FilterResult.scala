@@ -16,7 +16,7 @@
 
 package cc.spray
 
-import utils.Product0
+import utils._
 
 /**
  * The FilterResult represents the two different filtering outcomes of RouteFilters:
@@ -30,7 +30,7 @@ object Reject {
   def apply(rejection: Rejection): Reject = apply(Set(rejection))
 }
 
-class Pass[+T <: Product](val values: T, val transform: RequestContext => RequestContext = identity) extends FilterResult[T]
+class Pass[+T <: Product](val values: T, val transform: RequestContext => RequestContext = identityFunc) extends FilterResult[T]
 
 object Pass {
   def apply(): Pass[Product0] = new Pass(Product0)

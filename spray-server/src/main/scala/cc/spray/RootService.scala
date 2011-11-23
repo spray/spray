@@ -17,8 +17,8 @@
 package cc.spray
 
 import http._
+import utils._
 import akka.actor.{Actor, ActorRef}
-import utils.{PostStart, Logging}
 import java.util.concurrent.atomic.{AtomicInteger, AtomicBoolean}
 
 /**
@@ -43,7 +43,7 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
         path
       }
     }
-    case None => identity
+    case None => identityFunc
   }
 
   self.id = SprayServerSettings.RootActorId
@@ -96,13 +96,16 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
     log.debug("Received %s with %s attached services, dispatching...", request, services.size)
     val responded = new AtomicBoolean(false)
     val rejected = new AtomicInteger(services.size)
-    val newResponder = responder.withComplete { response =>
-      if (responded.compareAndSet(false, true)) responder.complete(response)
-      else log.warn("Received a second response for request '%s':\n\n%s\n\nIgnoring the additional response...", request, response)
-    } withReject { rejections =>
-      if (!rejections.isEmpty) log.warn("Non-empty rejection set received in RootService, ignoring ...")
-      if (rejected.decrementAndGet() == 0) responder.complete(noServiceResponse(request))
-    }
+    val newResponder = responder.copy(
+      complete = { response =>
+        if (responded.compareAndSet(false, true)) responder.complete(response)
+        else log.warn("Received a second response for request '%s':\n\n%s\n\nIgnoring the additional response...", request, response)
+      },
+      reject = { rejections =>
+        if (!rejections.isEmpty) log.warn("Non-empty rejection set received in RootService, ignoring ...")
+        if (rejected.decrementAndGet() == 0) responder.complete(noServiceResponse(request))
+      }
+    )
     val outContext = context.copy(responder = newResponder, unmatchedPath = initialUnmatchedPath(request.path))
     services.foreach(_ ! outContext)
   }

@@ -38,7 +38,7 @@ class CacheDirectivesSpec extends AbstractSprayTest {
       var i = 0
       cache { _.complete { i += 1; HttpResponse(500 + i) } }
     }
-    def prime(route: Route) = make(route) { _(RequestContext(HttpRequest(GET))) }
+    def prime(route: Route) = make(route) { _(RequestContext(HttpRequest(GET), RequestResponder(_ => ()))) }
     
     "return and cache the response of the first GET" in {      
       test(HttpRequest(GET)) {

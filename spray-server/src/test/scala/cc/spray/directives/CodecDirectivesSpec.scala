@@ -22,6 +22,7 @@ import HttpHeaders._
 import MediaTypes._
 import HttpCharsets._
 import test.AbstractSprayTest
+import utils._
 import encoding._
 
 class CodecDirectivesSpec extends AbstractSprayTest {
@@ -86,10 +87,15 @@ class CodecDirectivesSpec extends AbstractSprayTest {
   
   "the Gzip encoder" should {
     val yeahGzipped = fromHex("1f 8b 08 00 00 00 00 00 00 00 8b 4c 4d cc 50 04 00 70 0d 81 57 05 00 00 00")
+    def mustHaveContentEncodingGzip(response: HttpResponse) =
+      response.headers.findByType[`Content-Encoding`] mustEqual Some(`Content-Encoding`(HttpEncodings.gzip))
+
     "encode the response content with GZIP if the client accepts it with a dedicated Accept-Encoding header" in {
-      test(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.gzip)))) { 
+      val response = test(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.gzip)))) {
         encodeResponse(Gzip) { yeah }
-      }.response.content mustEqual Some(HttpContent(ContentType(`text/plain`, `ISO-8859-1`), yeahGzipped))
+      }.response
+      mustHaveContentEncodingGzip(response)
+      response.content mustEqual Some(HttpContent(ContentType(`text/plain`, `ISO-8859-1`), yeahGzipped))
     }
     "encode the response content with GZIP if the request has no Accept-Encoding header" in {
       test(HttpRequest()) { 
@@ -112,6 +118,16 @@ class CodecDirectivesSpec extends AbstractSprayTest {
           respondWithHeader(`Content-Encoding`(HttpEncodings.identity)) { yeah }
         }
       }.response.content.as[String] mustEqual Right("Yeah!")
+    }
+    "correctly encode the chunk stream produced by a chunked response" in {
+      val result = test(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.gzip)))) {
+        encodeResponse(Gzip) {
+          //autoChunk(8) {
+            _.complete("This is a somewhat lengthy text that is being chunked by the autochunk directive!")
+          //}
+        }
+      }
+      mustHaveContentEncodingGzip(result.response)
     }
   }
 

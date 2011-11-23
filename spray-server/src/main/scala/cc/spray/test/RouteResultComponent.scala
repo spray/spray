@@ -23,16 +23,14 @@ import akka.util.Duration
 import java.util.concurrent.{TimeUnit, CountDownLatch}
 import typeconversion.ChunkSender
 
-trait TestResponderComponent {
+trait RouteResultComponent {
 
   def doFail(msg: String): Nothing
 
   /**
-   * A RequestResponder using during testing.
-   * It collects the response (incl. potentially generated response chunks) for later inspection in a test.
+   * A receptacle for the response, rejections and potentially generated response chunks created by a route.
    */
-  class TestResponder(givenComplete: Option[HttpResponse => Unit] = None,
-                      givenReject: Option[Set[Rejection] => Unit] = None) extends RequestResponder { outer =>
+  class RouteResult { outer =>
     var response: Option[HttpResponse] = None
     var rejections: Option[Set[Rejection]] = None
     val chunks = ListBuffer.empty[MessageChunk]
@@ -41,28 +39,12 @@ trait TestResponderComponent {
     private val latch = new CountDownLatch(1)
     private var virginal = true
 
-    val complete = givenComplete getOrElse { (resp: HttpResponse) =>
-      saveResult(Right(resp))
-      latch.countDown()
-    }
-
-    val reject = givenReject getOrElse { (rejs: Set[Rejection]) =>
-      saveResult(Left(rejs))
-      latch.countDown()
-    }
-
-    override def startChunkedResponse(response: HttpResponse) = {
-      saveResult(Right(response))
-      new TestChunkSender()
-    }
-
-    override def resetConnectionTimeout() {}
-
-    def withComplete(newComplete: HttpResponse => Unit) = new TestResponder(Some(newComplete), Some(reject))
-
-    def withReject(newReject: Set[Rejection] => Unit) = new TestResponder(Some(complete), Some(newReject))
-
-    def withOnClientClose(callback: () => Unit) = this
+    def requestResponder = RequestResponder(
+      complete = resp => { saveResult(Right(resp)); latch.countDown() },
+      reject = rejs => { saveResult(Left(rejs)); latch.countDown() },
+      startChunkedResponse = resp => { saveResult(Right(resp)); new TestChunkSender() },
+      resetConnectionTimeout = () => ()
+    )
 
     def awaitResult(timeout: Duration) {
       latch.await(timeout.toMillis, TimeUnit.MILLISECONDS)

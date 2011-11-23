@@ -118,8 +118,8 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
   }
 
   def responderFor(req: HttpServletRequest)(f: HttpResponse => Unit): RequestResponder = {
-    new SimpleResponder(
-      response => {
+    RequestResponder(
+      complete = { response =>
         try {
           f(response)
         } catch {
@@ -128,7 +128,7 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
           case e: Exception => log.error("Could not complete %s due to %s", requestString(req), e)
         }
       },
-      _ => throw new IllegalStateException
+      reject = _ => throw new IllegalStateException
     )
   }
 

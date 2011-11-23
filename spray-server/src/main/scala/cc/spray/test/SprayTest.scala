@@ -28,14 +28,20 @@ import utils._
  * Use the {{test}} and {{testService}} methods to test the behavior of your routes and services for different HTTP
  * request examples.
  */
-trait SprayTest extends TestResponderComponent {
+trait SprayTest extends RouteResultComponent {
 
   def test(request: HttpRequest, timeout: Duration = 1000.millis)(route: Route): RoutingResultWrapper = {
-    val responder = new TestResponder()
-    route(RequestContext(request = request, responder = responder, unmatchedPath = request.path))
+    val routeResult = new RouteResult
+    route {
+      RequestContext(
+        request = request,
+        responder = routeResult.requestResponder,
+        unmatchedPath = request.path
+      )
+    }
     // since the route might detach we block until the route actually completes or times out
-    responder.awaitResult(timeout)
-    new RoutingResultWrapper(responder, timeout)
+    routeResult.awaitResult(timeout)
+    new RoutingResultWrapper(routeResult, timeout)
   }
 
   trait ServiceTest extends HttpServiceLogic with Logging {
@@ -58,32 +64,44 @@ trait SprayTest extends TestResponderComponent {
   }
 
   def testService(request: HttpRequest, timeout: Duration = 1000.millis)(service: ServiceTest): ServiceResultWrapper = {
-    val responder = new TestResponder()
-    service.handle(RequestContext(request = request, responder = responder, unmatchedPath = request.path))
+    val routeResult = new RouteResult
+    service.handle {
+      RequestContext(
+        request = request,
+        responder = routeResult.requestResponder,
+        unmatchedPath = request.path
+      )
+    }
     // since the route might detach we block until the route actually completes or times out
-    responder.awaitResult(timeout)
-    new ServiceResultWrapper(responder, timeout)
+    routeResult.awaitResult(timeout)
+    new ServiceResultWrapper(routeResult, timeout)
   }
 
-  class ServiceResultWrapper(responder: TestResponder, timeout: Duration) {
-    def handled: Boolean = responder.response.isDefined
-    def response: HttpResponse = responder.response.getOrElse {
-      responder.rejections.foreach(rejs => doFail("Service did not convert rejection(s): " + rejs))
-      doFail("Request was neither completed nor rejected within " + timeout)
+  class ServiceResultWrapper(routeResult: RouteResult, timeout: Duration) {
+    def handled: Boolean = routeResult.synchronized { routeResult.response.isDefined }
+    def response: HttpResponse = routeResult.synchronized {
+      routeResult.response.getOrElse {
+        routeResult.rejections.foreach(rejs => doFail("Service did not convert rejection(s): " + rejs))
+        doFail("Request was neither completed nor rejected within " + timeout)
+      }
     }
-    def chunks: List[MessageChunk] = responder.chunks.toList
-    def closingExtensions = responder.closingExtensions
-    def trailer = responder.trailer
+    def chunks: List[MessageChunk] = routeResult.synchronized { routeResult.chunks.toList }
+    def closingExtensions = routeResult.synchronized { routeResult.closingExtensions }
+    def trailer = routeResult.synchronized { routeResult.trailer }
   }
 
-  class RoutingResultWrapper(responder: TestResponder, timeout: Duration)
-    extends ServiceResultWrapper(responder, timeout){
-    override def response: HttpResponse = responder.response.getOrElse {
-      doFail("Request was rejected with " + rejections)
+  class RoutingResultWrapper(routeResult: RouteResult, timeout: Duration)
+    extends ServiceResultWrapper(routeResult, timeout){
+    override def response: HttpResponse = routeResult.synchronized {
+      routeResult.response.getOrElse {
+        doFail("Request was rejected with " + rejections)
+      }
     }
-    def rawRejections: Set[Rejection] = responder.rejections.getOrElse {
-      responder.response.foreach(resp => doFail("Request was not rejected, response was " + resp))
-      doFail("Request was neither completed nor rejected within " + timeout)
+    def rawRejections: Set[Rejection] = routeResult.synchronized {
+      routeResult.rejections.getOrElse {
+        routeResult.response.foreach(resp => doFail("Request was not rejected, response was " + resp))
+        doFail("Request was neither completed nor rejected within " + timeout)
+      }
     }
     def rejections: Set[Rejection] = Rejections.applyCancellations(rawRejections)
   }

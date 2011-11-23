@@ -26,9 +26,6 @@ package object utils {
   def identityFunc[T]: T => T = _identityFunc.asInstanceOf[T => T]
   private lazy val _identityFunc: Any => Any = x => x
 
-  def dropFunc[T]: T => Unit = _dropFunc.asInstanceOf[T => Unit]
-  private lazy val _dropFunc: Any => Unit = _ => ()
-
   // TODO: remove and replace with equivalent from the standard library once the resolution to issue 25578
   // (https://codereview.scala-lang.org/fisheye/changelog/scala-svn?cs=25578) has made it into a release
   def emptyPartialFunc[A, B] = EmptyPartial.asInstanceOf[PartialFunction[A, B]]

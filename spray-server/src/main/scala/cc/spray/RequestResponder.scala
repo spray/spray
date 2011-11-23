@@ -17,22 +17,22 @@
 package cc.spray
 
 import http._
-import typeconversion.{MarshallingContext, ChunkSender}
+import typeconversion.ChunkSender
 
 /**
  * Encapsulates the completion logic of a spray route.
  */
-trait RequestResponder {
+case class RequestResponder(
 
   /**
    * Completes the request with the given RoutingResult.
    */
-  def complete: HttpResponse => Unit
+  complete: HttpResponse => Unit,
 
   /**
    * Rejects the request with the given set of Rejections (which might be empty).
    */
-  def reject: Set[Rejection] => Unit
+  reject: Set[Rejection] => Unit = _ => throw new IllegalStateException,
 
   /**
    * Starts a chunked (streaming) response. The given [[cc.spray.HttpResponse]] object must have the protocol
@@ -41,42 +41,29 @@ trait RequestResponder {
    * The application is required to use the returned [[cc.spray.ChunkedResponder]] instance to send any number of
    * response chunks before calling the `ChunkedResponder`s `close` method to finalize the response.
    */
-  def startChunkedResponse(response: HttpResponse): ChunkSender
+  startChunkedResponse: HttpResponse => ChunkSender = _ => throw new UnsupportedOperationException,
 
   /**
    * Explicitly resets the connection idle timeout for the connection underlying this response.
    */
-  def resetConnectionTimeout()
-
-  /**
-   * Returns a copy of this responder with the complete method replaced by the given one.
-   */
-  def withComplete(newComplete: HttpResponse => Unit): RequestResponder
-
-  /**
-   * Returns a copy of this responder with the reject method replaced by the given one.
-   */
-  def withReject(newReject: Set[Rejection] => Unit): RequestResponder
+  resetConnectionTimeout: () => Unit = () => throw new UnsupportedOperationException,
 
   /**
    * Returns a copy of this responder registering the given callback function to be invoked if and when the client
    * prematurely closed the connection.
    */
-  def withOnClientClose(callback: () => Unit): RequestResponder
-}
+  registerOnClientClose: (() => Unit) => RequestResponder = _ => throw new UnsupportedOperationException
 
-object RequestResponder {
-  lazy val EmptyResponder = new SimpleResponder(_ => (), _ => ())
-}
+) {
 
-/**
- * A RequestResponder throwing UnsupportedOperationExceptions for the `startChunkedResponse`, `onClientClose` and
- * `resetConnectionTimeout` methods.
- */
-class SimpleResponder(val complete: HttpResponse => Unit, val reject: Set[Rejection] => Unit) extends RequestResponder {
-  def startChunkedResponse(response: HttpResponse) = throw new UnsupportedOperationException
-  def resetConnectionTimeout() { throw new UnsupportedOperationException }
-  def withComplete(newComplete: HttpResponse => Unit) = new SimpleResponder(newComplete, reject)
-  def withReject(newReject: Set[Rejection] => Unit) = new SimpleResponder(complete, newReject)
-  def withOnClientClose(callback: () => Unit) = this
+  /**
+   * Returns a copy of this responder with the complete method replaced by the given one.
+   */
+  def withComplete(newComplete: HttpResponse => Unit) = copy(complete = newComplete)
+
+  /**
+   * Returns a copy of this responder with the reject method replaced by the given one.
+   */
+  def withReject(newReject: Set[Rejection] => Unit) = copy(reject = newReject)
+
 }

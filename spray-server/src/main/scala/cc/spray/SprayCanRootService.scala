@@ -34,7 +34,7 @@ class SprayCanRootService(firstService: ActorRef, moreServices: ActorRef*)
     case context: can.RequestContext => {
       import context._
       try {
-        handler(fromSprayCanContext(request, remoteAddress, responder))
+        handler(fromSprayCanContext(request, remoteAddress, sprayCanAdapterResponder(responder)))
       } catch handleExceptions(request, responder.complete)
     }
     case can.Timeout(method, uri, protocol, headers, remoteAddress, complete) => {
@@ -43,7 +43,8 @@ class SprayCanRootService(firstService: ActorRef, moreServices: ActorRef*)
         if (self == timeoutActor)
           complete(toSprayCanResponse(timeoutResponse(fromSprayCanRequest(request))))
         else
-          timeoutActor ! Timeout(fromSprayCanContext(request, remoteAddress, complete))
+          timeoutActor ! Timeout(fromSprayCanContext(request, remoteAddress,
+            RequestResponder(response => complete(toSprayCanResponse(response)))))
       } catch handleExceptions(request, complete)
     }
   }
@@ -54,47 +55,24 @@ class SprayCanRootService(firstService: ActorRef, moreServices: ActorRef*)
   }
 
   protected def fromSprayCanContext(request: can.HttpRequest, remoteAddress: InetAddress,
-                                    canComplete: can.HttpResponse => Unit) = {
+                                    responder: RequestResponder) = {
     RequestContext(
       request = fromSprayCanRequest(request),
       remoteHost = HttpIp(remoteAddress),
-      responder = new SimpleResponder(
-        response => canComplete(toSprayCanResponse(response)),
-        _ => throw new IllegalStateException
-      )
+      responder = responder
     )
   }
 
-  protected def fromSprayCanContext(request: can.HttpRequest, remoteAddress: InetAddress,
-                                    responder: can.RequestResponder) = {
-    RequestContext(
-      request = fromSprayCanRequest(request),
-      remoteHost = HttpIp(remoteAddress),
-      responder = new SprayCanAdapterResponder(responder,
-        response => responder.complete(toSprayCanResponse(response)),
-        _ => throw new IllegalStateException
-      )
+  protected def sprayCanAdapterResponder(canResponder: can.RequestResponder): RequestResponder = {
+    RequestResponder(
+      complete = response => canResponder.complete(toSprayCanResponse(response)),
+      startChunkedResponse = response => new SprayCanAdapterChunkSender(
+        canResponder.startChunkedResponse(toSprayCanResponse(response))
+      ),
+      resetConnectionTimeout = () => canResponder.resetConnectionTimeout(),
+      registerOnClientClose = callback => sprayCanAdapterResponder(canResponder.withOnClientClose(callback))
     )
   }
-}
-
-class SprayCanAdapterResponder(canResponder: can.RequestResponder,
-                               val complete: HttpResponse => Unit,
-                               val reject: Set[Rejection] => Unit) extends RequestResponder {
-
-  def withComplete(newComplete: HttpResponse => Unit) =
-    new SprayCanAdapterResponder(canResponder, newComplete, reject)
-
-  def withReject(newReject: Set[Rejection] => Unit) =
-    new SprayCanAdapterResponder(canResponder, complete, newReject)
-
-  def withOnClientClose(callback: () => Unit) =
-    new SprayCanAdapterResponder(canResponder.withOnClientClose(callback), complete, reject)
-
-  override def startChunkedResponse(response: HttpResponse) =
-    new SprayCanAdapterChunkSender(canResponder.startChunkedResponse(toSprayCanResponse(response)))
-
-  override def resetConnectionTimeout() { canResponder.resetConnectionTimeout() }
 }
 
 class SprayCanAdapterChunkSender(canChunkedResponder: can.ChunkedResponder) extends ChunkSender {
