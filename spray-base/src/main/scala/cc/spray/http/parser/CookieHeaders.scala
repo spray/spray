@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package cc.spray
-package http
+package cc.spray.http
 package parser
 
 import org.parboiled.scala._
 import BasicRules._
+import cc.spray.utils.identityFunc
 
 // http://tools.ietf.org/html/draft-ietf-httpstate-cookie-23#section-4
 // with one exception: we are more lenient on additional or missing whitespace
@@ -38,8 +38,8 @@ private[parser] trait CookieHeaders {
   }
 
   def CookieValue = rule (
-      ch('"') ~ zeroOrMore(CookieOctet) ~> identity ~ "\""
-    | zeroOrMore(CookieOctet) ~> identity ~ OptWS
+      ch('"') ~ zeroOrMore(CookieOctet) ~> identityFunc ~ "\""
+    | zeroOrMore(CookieOctet) ~> identityFunc ~ OptWS
   )
 
   def CookieOctet = rule {
@@ -58,9 +58,9 @@ private[parser] trait CookieHeaders {
 
   def NonNegativeLong = rule { oneOrMore(Digit) ~> (_.toLong) }
 
-  def DomainName = rule { oneOrMore(DomainNamePart, separator = ch('.')) ~> identity }
+  def DomainName = rule { oneOrMore(DomainNamePart, separator = ch('.')) ~> identityFunc }
 
   def DomainNamePart = rule { AlphaNum ~ zeroOrMore(AlphaNum | ch('-')) }
 
-  def StringValue = rule { oneOrMore(!(CTL | ch(';')) ~ Char) ~> identity }
+  def StringValue = rule { oneOrMore(!(CTL | ch(';')) ~ Char) ~> identityFunc }
 }
