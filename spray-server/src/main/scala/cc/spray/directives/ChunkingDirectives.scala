@@ -25,32 +25,26 @@ private[spray] trait ChunkingDirectives {
   this: BasicDirectives with DefaultMarshallers =>
 
   /**
-   * Automatically converts a non-rejected response from its inner route into a response with HTTP transfer encoding
-   * "chunked", of which each chunk (save the very last) has the given size.
+   * Automatically converts a non-rejected response from its inner route into a chunked response of which each chunk
+   * (save the very last) has the given size.
    * If the response content from the inner route is smaller than chunkSize a "regular", unchunked response is produced.
    */
   def autoChunk(chunkSize: Int) = transformRequestContext { ctx =>
     ctx.withResponderTransformed { responder =>
       responder.withComplete { response =>
-        def completeChunked(content: HttpContent) {
-          def split(ix: Int): Stream[Array[Byte]] = {
-            def chunkBuf(size: Int) = make(new Array[Byte](size)) {
-              System.arraycopy(content.buffer, ix, _, 0, size)
-            }
-            if (ix < content.buffer.length - chunkSize)
-              Stream.cons(chunkBuf(chunkSize), split(ix + chunkSize))
-            else
-              Stream.cons(chunkBuf(content.buffer.length - ix), Stream.Empty)
-          }
-          implicit val byteArrayMarshaller = new SimpleMarshaller[Array[Byte]] {
-            val canMarshalTo = content.contentType :: Nil
-            def marshal(value: Array[Byte], contentType: ContentType) = HttpContent(contentType, value)
-          }
-          ctx.complete(split(0))
-        }
-
         response.content match {
-          case Some(content) if content.buffer.length > chunkSize => completeChunked(content)
+          case Some(content) if content.buffer.length > chunkSize => {
+            def split(ix: Int): Stream[Array[Byte]] = {
+              def chunkBuf(size: Int) = make(new Array[Byte](size)){ System.arraycopy(content.buffer, ix, _, 0, size) }
+              if (ix < content.buffer.length - chunkSize) Stream.cons(chunkBuf(chunkSize), split(ix + chunkSize))
+              else Stream.cons(chunkBuf(content.buffer.length - ix), Stream.Empty)
+            }
+            implicit val byteArrayMarshaller = new SimpleMarshaller[Array[Byte]] {
+              val canMarshalTo = content.contentType :: Nil
+              def marshal(value: Array[Byte], contentType: ContentType) = HttpContent(contentType, value)
+            }
+            ctx.complete(split(0))
+          }
           case _ => responder.complete(response)
         }
       }
