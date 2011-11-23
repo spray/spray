@@ -18,6 +18,8 @@ package cc.spray
 package directives
 
 import encoding._
+import typeconversion.ChunkSender
+import http.{MessageChunk, HttpHeader, ChunkExtension}
 
 private[spray] trait CodecDirectives {
   this: BasicDirectives =>
@@ -46,11 +48,28 @@ private[spray] trait CodecDirectives {
    */
   def encodeResponse(encoder: Encoder) = filter { ctx =>
     if (ctx.request.isEncodingAccepted(encoder.encoding)) {
-      Pass.withTransform { _
-        .withResponseTransformed(encoder.encode)
-        .withRejectionsTransformed(_ + RejectionRejection(_.isInstanceOf[UnacceptedResponseEncodingRejection]))
+      Pass.withTransform {
+        _.withResponderTransformed { responder =>
+          RequestResponder(
+            complete = response => responder.complete(encoder.encode(response)),
+            reject = rejections =>
+              responder.reject(rejections + RejectionRejection(_.isInstanceOf[UnacceptedResponseEncodingRejection])),
+            startChunkedResponse = response =>
+              new EncodingChunkSender(encoder, responder.startChunkedResponse(encoder.encode(response)))
+          )
+        }
       }
     } else Reject(UnacceptedResponseEncodingRejection(encoder.encoding))
+  }
+
+  class EncodingChunkSender(encoder: Encoder, inner: ChunkSender) extends ChunkSender {
+    def sendChunk(chunk: MessageChunk) = {
+      inner.sendChunk(chunk.copy(body = encoder.encodeBuffer(chunk.body)))
+    }
+    def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
+      inner.close(extensions, trailer)
+    }
+    def withOnChunkSent(callback: Long => Unit) = new EncodingChunkSender(encoder, inner.withOnChunkSent(callback))
   }
   
 }
