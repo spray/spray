@@ -132,19 +132,7 @@ class CodecDirectivesSpec extends AbstractSprayTest {
         }
       }
       result.response must haveContentEncoding(HttpEncodings.gzip)
-      Gzip.decodeBuffer(result.chunks.toArray.flatMap(_.body)) must readAs(text)
-    }
-  }
-
-  "all codecs" should {
-    "support round-trip encoding" in {
-      val text = "123456789"
-      "Gzip" in {
-        Gzip.decodeBuffer(Gzip.encodeBuffer(text.getBytes("UTF8"))) must readAs(text)
-      }
-      "Deflate" in {
-        Deflate.decodeBuffer(Deflate.encodeBuffer(text.getBytes("UTF8"))) must readAs(text)
-      }
+      Gzip.newDecompressor.decompress(result.chunks.toArray.flatMap(_.body)) must readAs(text)
     }
   }
 

@@ -54,22 +54,29 @@ private[spray] trait CodecDirectives {
             complete = response => responder.complete(encoder.encode(response)),
             reject = rejections =>
               responder.reject(rejections + RejectionRejection(_.isInstanceOf[UnacceptedResponseEncodingRejection])),
-            startChunkedResponse = response =>
-              new EncodingChunkSender(encoder, responder.startChunkedResponse(encoder.encode(response)))
+            startChunkedResponse = { response =>
+              encoder.startEncoding(response) match {
+                case Some((compressedResponse, compressor)) =>
+                  new EncodingChunkSender(compressor, responder.startChunkedResponse(compressedResponse))
+                case None => responder.startChunkedResponse(response)
+              }
+            }
           )
         }
       }
     } else Reject(UnacceptedResponseEncodingRejection(encoder.encoding))
   }
 
-  class EncodingChunkSender(encoder: Encoder, inner: ChunkSender) extends ChunkSender {
+  class EncodingChunkSender(compressor: Compressor, inner: ChunkSender) extends ChunkSender {
     def sendChunk(chunk: MessageChunk) = {
-      inner.sendChunk(chunk.copy(body = encoder.encodeBuffer(chunk.body)))
+      inner.sendChunk(chunk.copy(body = compressor.compress(chunk.body).flush()))
     }
     def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
+      val body = compressor.finish()
+      if (body.length > 0) inner.sendChunk(MessageChunk(body))
       inner.close(extensions, trailer)
     }
-    def withOnChunkSent(callback: Long => Unit) = new EncodingChunkSender(encoder, inner.withOnChunkSent(callback))
+    def withOnChunkSent(callback: Long => Unit) = new EncodingChunkSender(compressor, inner.withOnChunkSent(callback))
   }
   
 }
