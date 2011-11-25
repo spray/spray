@@ -90,6 +90,8 @@ class GzipCompressor extends DeflateCompressor {
 
 class GzipDecompressor extends DeflateDecompressor {
   override lazy val inflater = new Inflater(true)
+  val checkSum = new CRC32 // CRC32 of uncompressed data
+  var headerRead = false
 
   override def decompress(buffer: Array[Byte], offset: Int, output: ResettableByteArrayOutputStream) = {
     decomp(buffer, offset, output, throw _)
@@ -98,18 +100,6 @@ class GzipDecompressor extends DeflateDecompressor {
   @tailrec
   private def decomp(buffer: Array[Byte], offset: Int, output: ResettableByteArrayOutputStream,
                      produceResult: Exception => Int): Int = {
-
-    val (off, recurse) = {
-      try { decompEntity(buffer, offset, output) -> true }
-      catch { case e: Exception => produceResult(e) -> false }
-    }
-    if (recurse && off < buffer.length) {
-      val mark = output.pos
-      decomp(buffer, off, output, _ => { output.resetTo(mark); off })
-    } else off
-  }
-
-  private def decompEntity(buffer: Array[Byte], offset: Int, output: ResettableByteArrayOutputStream): Int = {
     var off = offset
     def fail(msg: String) = throw new ZipException(msg)
     def readByte(): Int = {
@@ -121,29 +111,51 @@ class GzipDecompressor extends DeflateDecompressor {
     }
     def readShort(): Int = readByte() | (readByte() << 8)
     def readInt(): Int = readShort() | (readShort() << 16)
+    def readHeader() {
+      def crc16(buffer: Array[Byte], offset: Int, len: Int) = {
+        val crc = new CRC32
+        crc.update(buffer, offset, len)
+        crc.getValue.asInstanceOf[Int] & 0xFFFF
+      }
+      if (readByte() != 0x1F || readByte() != 0x8B) fail("Not in GZIP format")  // check magic header
+      if (readByte() != 8) fail("Unsupported GZIP compression method")        // check compression method
+      val flags = readByte()
+      off += 6                                         // skip MTIME, XFL and OS fields
+      if ((flags & 4) > 0) off += readShort()          // skip optional extra fields
+      if ((flags & 8) > 0) while (readByte() != 0) {}  // skip optional file name
+      if ((flags & 16) > 0) while (readByte() != 0) {} // skip optional file comment
+      if ((flags & 2) > 0 && crc16(buffer, offset, off - offset) != readShort()) fail("Corrupt GZIP header")
+    }
+    def readTrailer() {
+      if (readInt() != checkSum.getValue.asInstanceOf[Int]) fail("Corrupt data (CRC32 checksum error)")
+      if (readInt() != inflater.getBytesWritten) fail("Corrupt GZIP trailer ISIZE")
+    }
 
-    inflater.reset() // reset the inflater, since we might have recursed
+    var recurse = false
+    try {
+      if (!headerRead) {
+        readHeader()
+        headerRead = true
+      }
+      val dataStart = output.pos
+      off = super.decompress(buffer, off, output)
+      checkSum.update(output.buffer, dataStart, output.pos - dataStart)
+      if (inflater.finished()) {
+        readTrailer()
+        recurse = true
+        inflater.reset()
+        checkSum.reset()
+        headerRead = false
+      }
+    }
+    catch {
+      case e: Exception => produceResult(e)
+    }
 
-    if (readByte() != 0x1F || readByte() != 0x8B) fail("Not in GZIP format")  // check magic header
-    if (readByte() != 8) fail("Unsupported GZIP compression method")        // check compression method
-    val flags = readByte()
-    off += 6                                         // skip MTIME, XFL and OS fields
-    if ((flags & 4) > 0) off += readShort()          // skip optional extra fields
-    if ((flags & 8) > 0) while (readByte() != 0) {}  // skip optional file name
-    if ((flags & 16) > 0) while (readByte() != 0) {} // skip optional file comment
-    if ((flags & 2) > 0 && (crc32(buffer, offset, off - offset) & 0xFFFF) != readShort()) fail("Corrupt GZIP header")
-
-    val dataStart = output.pos
-    off = super.decompress(buffer, off, output)
-    if (readInt() != crc32(output.buffer, dataStart, output.pos - dataStart)) fail("Corrupt data (CRC32 checksum error)")
-    if (readInt() != inflater.getBytesWritten) fail("Corrupt GZIP trailer ISIZE")
-    off
-  }
-
-  private def crc32(buffer: Array[Byte], offset: Int, len: Int) = {
-    val crc = new CRC32
-    crc.update(buffer, offset, len)
-    crc.getValue.asInstanceOf[Int]
+    if (recurse && off < buffer.length) {
+      val mark = output.pos
+      decomp(buffer, off, output, _ => { output.resetTo(mark); off })
+    } else off
   }
 
 }

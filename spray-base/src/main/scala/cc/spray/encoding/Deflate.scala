@@ -95,10 +95,10 @@ class DeflateDecompressor extends Decompressor {
   def decompress(buffer: Array[Byte], offset: Int, output: ResettableByteArrayOutputStream) = {
     @tailrec
     def doDecompress(off: Int) {
-      inflater.setInput(buffer, off, math.min(512, buffer.length - off))
+      inflater.setInput(buffer, off, math.min(1024, buffer.length - off))
       drainTo(output)
       if (inflater.needsDictionary) throw new ZipException("ZLIB dictionary missing")
-      val nextOffset = off + 512
+      val nextOffset = off + 1024
       if (nextOffset < buffer.length && !inflater.finished()) doDecompress(nextOffset)
     }
     try {

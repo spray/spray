@@ -39,13 +39,13 @@ class GzipSpec extends Specification with CodecSpecSupport {
     "not throw an error if a subsequent block is corrupt" in {
       ourGunzip(Array(gzip("Hello,"), gzip(" dear "), corruptGzipContent).flatten) must readAs("Hello, dear ")
     }
-    /*"support chunked round-trip encoding/decoding" in {
+    "support chunked round-trip encoding/decoding" in {
       val chunks = largeTextBytes.grouped(512).toArray
       val encCtx = Gzip.newEncodingContext
       val decCtx = Gzip.newDecodingContext
       val chunks2 = chunks.map(chunk => decCtx.decode(encCtx.encodeChunk(chunk))) :+ decCtx.decode(encCtx.finish())
       chunks2.flatten must readAs(largeText)
-    }*/
+    }
   }
 
   def gzip(s: String) = ourGzip(s.getBytes("UTF8"))
