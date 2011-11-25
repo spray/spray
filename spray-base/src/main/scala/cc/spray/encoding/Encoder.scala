@@ -19,19 +19,39 @@ package encoding
 
 import http._
 import HttpHeaders._
+import java.io.ByteArrayOutputStream
 
 trait Encoder {
   def encoding: HttpEncoding
-  
+
   def handle(message: HttpMessage[_]): Boolean
   
   def encode[T <: HttpMessage[T]](message: T): T = message.content match {
-    case Some(content) if !message.isEncodingSpecified && handle(message) => message.withHeadersAndContent(
-      headers = `Content-Encoding`(encoding) :: message.headers,
-      content = Some(HttpContent(content.contentType, encodeBuffer(content.buffer)))
-    )
+    case Some(content) if !message.isEncodingSpecified && handle(message) => {
+      message.withHeadersAndContent(
+        headers = `Content-Encoding`(encoding) :: message.headers,
+        content = Some(HttpContent(content.contentType, newEncodingContext.encode(content.buffer)))
+      )
+    }
     case _ => message
   }
 
-  def encodeBuffer(buffer: Array[Byte]): Array[Byte]
+  def newEncodingContext: EncodingContext
+}
+
+class EncodingContext(compressor: Compressor) {
+
+  def encode(buffer: Array[Byte]): Array[Byte] = {
+    compressor.finish {
+      compressor.compress(buffer, new ByteArrayOutputStream(1024))
+    }.toByteArray
+  }
+
+  def encodeChunk(buffer: Array[Byte]): Array[Byte] = {
+    compressor.flush {
+      compressor.compress(buffer, new ByteArrayOutputStream(1024))
+    }.toByteArray
+  }
+
+  def finish(): Array[Byte] = compressor.finish(new ByteArrayOutputStream).toByteArray
 }

@@ -17,26 +17,17 @@
 package cc.spray
 package encoding
 
-import http._
+import java.io.ByteArrayOutputStream
 
-trait Decoder {
-  def encoding: HttpEncoding
-
-  def decode[T <: HttpMessage[T]](message: T): T = message.content match {
-    case Some(content) => message.withContent(
-      content = Some(HttpContent(content.contentType, newDecodingContext.decode(content.buffer)))
-    )
-    case _ => message
-  }
-  
-  def newDecodingContext: DecodingContext
+trait Compressor {
+  def compress(buffer: Array[Byte], output: ByteArrayOutputStream): ByteArrayOutputStream
+  def flush(output: ByteArrayOutputStream): ByteArrayOutputStream
+  def finish(output: ByteArrayOutputStream): ByteArrayOutputStream
 }
 
-class DecodingContext(decompressor: Decompressor) {
-  def decode(buffer: Array[Byte]) = {
-    val output = new ResettableByteArrayOutputStream(1024)
-    decompressor.decompress(buffer, 0, output)
-    output.toByteArray
-  }
+trait Decompressor {
+  def decompress(buffer: Array[Byte], offset: Int, output: ResettableByteArrayOutputStream): Int
 }
+
+
 

@@ -18,6 +18,7 @@ package cc.spray
 package encoding
 
 import http._
+import java.io.ByteArrayOutputStream
 
 /**
  * An encoder and decoder for the HTTP 'identity' encoding.
@@ -25,11 +26,17 @@ import http._
 object NoEncoding extends Decoder with Encoder {
   val encoding = HttpEncodings.identity
 
+  override def encode[T <: HttpMessage[T]](message: T) = message
   override def decode[T <: HttpMessage[T]](message: T) = message
-
-  def decodeBuffer(buffer: Array[Byte]) = buffer
 
   def handle(message: HttpMessage[_]) = false
 
-  def encodeBuffer(buffer: Array[Byte]) = buffer
+  def newEncodingContext = new EncodingContext(null) {
+    override def encode(buffer: Array[Byte]) = buffer
+    override def encodeChunk(buffer: Array[Byte]) = buffer
+    override def finish() = utils.EmptyByteArray
+  }
+  def newDecodingContext = new DecodingContext(null) {
+    override def decode(buffer: Array[Byte]) = buffer
+  }
 }

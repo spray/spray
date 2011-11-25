@@ -17,26 +17,16 @@
 package cc.spray
 package encoding
 
-import http._
+import java.io.ByteArrayOutputStream
 
-trait Decoder {
-  def encoding: HttpEncoding
+class ResettableByteArrayOutputStream(initialSize: Int) extends ByteArrayOutputStream(initialSize) {
 
-  def decode[T <: HttpMessage[T]](message: T): T = message.content match {
-    case Some(content) => message.withContent(
-      content = Some(HttpContent(content.contentType, newDecodingContext.decode(content.buffer)))
-    )
-    case _ => message
+  def pos = count
+
+  def buffer = buf
+
+  def resetTo(pos: Int) {
+    count = pos
   }
-  
-  def newDecodingContext: DecodingContext
-}
 
-class DecodingContext(decompressor: Decompressor) {
-  def decode(buffer: Array[Byte]) = {
-    val output = new ResettableByteArrayOutputStream(1024)
-    decompressor.decompress(buffer, 0, output)
-    output.toByteArray
-  }
 }
-

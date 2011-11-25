@@ -36,6 +36,8 @@ package object utils {
 
   def make[A, U](a: A)(f: A => U): A = { f(a); a }
 
+
+
   // implicits
   implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq)
   implicit def pimpClass[A](clazz: Class[A]): PimpedClass[A] = new PimpedClass[A](clazz)
