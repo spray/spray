@@ -30,28 +30,39 @@ trait Encoder {
     case Some(content) if !message.isEncodingSpecified && handle(message) => {
       message.withHeadersAndContent(
         headers = `Content-Encoding`(encoding) :: message.headers,
-        content = Some(HttpContent(content.contentType, newEncodingContext.encode(content.buffer)))
+        content = Some(HttpContent(content.contentType, newCompressor.compress(content.buffer).finish()))
       )
     }
     case _ => message
   }
 
-  def newEncodingContext: EncodingContext
+  def startEncoding[T <: HttpMessage[T]](message: T): Option[(T, Compressor)] = {
+    if (!message.isEncodingSpecified && handle(message)) {
+      message.content.map { content =>
+        val compressor = newCompressor
+        message.withHeadersAndContent(
+          headers = `Content-Encoding`(encoding) :: message.headers,
+          content = Some(HttpContent(content.contentType, newCompressor.compress(content.buffer).flush()))
+        ) -> compressor
+      }
+    } else None
+  }
+
+  def newCompressor: Compressor
 }
 
-class EncodingContext(compressor: Compressor) {
+abstract class Compressor {
+  protected lazy val output = new ByteArrayOutputStream(1024)
 
-  def encode(buffer: Array[Byte]): Array[Byte] = {
-    compressor.finish {
-      compressor.compress(buffer, new ByteArrayOutputStream(1024))
-    }.toByteArray
+  def compress(buffer: Array[Byte]): this.type
+
+  def flush(): Array[Byte]
+
+  def finish(): Array[Byte]
+
+  protected def getBytes: Array[Byte] = {
+    val bytes = output.toByteArray
+    output.reset()
+    bytes
   }
-
-  def encodeChunk(buffer: Array[Byte]): Array[Byte] = {
-    compressor.flush {
-      compressor.compress(buffer, new ByteArrayOutputStream(1024))
-    }.toByteArray
-  }
-
-  def finish(): Array[Byte] = compressor.finish(new ByteArrayOutputStream).toByteArray
 }

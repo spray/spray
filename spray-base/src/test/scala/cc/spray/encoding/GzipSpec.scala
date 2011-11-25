@@ -41,16 +41,17 @@ class GzipSpec extends Specification with CodecSpecSupport {
     }
     "support chunked round-trip encoding/decoding" in {
       val chunks = largeTextBytes.grouped(512).toArray
-      val encCtx = Gzip.newEncodingContext
-      val decCtx = Gzip.newDecodingContext
-      val chunks2 = chunks.map(chunk => decCtx.decode(encCtx.encodeChunk(chunk))) :+ decCtx.decode(encCtx.finish())
+      val comp = Gzip.newCompressor
+      val decomp = Gzip.newDecompressor
+      val chunks2 =
+        chunks.map { chunk => decomp.decompress(comp.compress(chunk).flush()) } :+ decomp.decompress(comp.finish())
       chunks2.flatten must readAs(largeText)
     }
   }
 
   def gzip(s: String) = ourGzip(s.getBytes("UTF8"))
-  def ourGzip(bytes: Array[Byte]) = Gzip.newEncodingContext.encode(bytes)
-  def ourGunzip(bytes: Array[Byte]) = Gzip.newDecodingContext.decode(bytes)
+  def ourGzip(bytes: Array[Byte]) = Gzip.newCompressor.compress(bytes).finish()
+  def ourGunzip(bytes: Array[Byte]) = Gzip.newDecompressor.decompress(bytes)
 
   lazy val corruptGzipContent = utils.make(gzip("Hello")) { _.update(14, 26.toByte) }
 

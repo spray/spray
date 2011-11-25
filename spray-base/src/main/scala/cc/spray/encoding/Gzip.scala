@@ -19,14 +19,13 @@ package encoding
 
 import http._
 import cc.spray.http.HttpResponse
-import java.io.ByteArrayOutputStream
 import annotation.tailrec
 import java.util.zip.{Inflater, CRC32, ZipException, Deflater}
 
 abstract class Gzip extends Decoder with Encoder {
   val encoding = HttpEncodings.gzip
-  def newEncodingContext = new EncodingContext(new GzipCompressor)
-  def newDecodingContext = new DecodingContext(new GzipDecompressor)
+  def newCompressor = new GzipCompressor
+  def newDecompressor = new GzipDecompressor
 }
 
 /**
@@ -64,42 +63,43 @@ object GzipCompressor {
 }
 
 class GzipCompressor extends DeflateCompressor {
-  override lazy val deflater = new Deflater(Deflater.BEST_COMPRESSION, true)
-  val checkSum = new CRC32 // CRC32 of uncompressed data
-  var headerSent = false
+  override protected lazy val deflater = new Deflater(Deflater.BEST_COMPRESSION, true)
+  private val checkSum = new CRC32 // CRC32 of uncompressed data
+  private var headerSent = false
 
-  override def compress(buffer: Array[Byte], output: ByteArrayOutputStream) = {
+  override def compress(buffer: Array[Byte]) = {
     if (!headerSent) {
       output.write(GzipCompressor.Header)
       headerSent = true
     }
     checkSum.update(buffer)
-    super.compress(buffer, output)
+    super.compress(buffer)
   }
 
-  override def finish(output: ByteArrayOutputStream) = {
+  override def finish() = {
     def byte(i: Int) = (i & 0xFF).asInstanceOf[Byte]
     val crc = checkSum.getValue.asInstanceOf[Int]
     val tot = deflater.getTotalIn
-    val out = super.finish(output)
-    out.write(byte(crc)); out.write(byte(crc >> 8)); out.write(byte(crc >> 16)); out.write(byte(crc >> 24));
-    out.write(byte(tot)); out.write(byte(tot >> 8)); out.write(byte(tot >> 16)); out.write(byte(tot >> 24));
-    out
+    deflater.finish()
+    drain()
+    deflater.end()
+    output.write(byte(crc)); output.write(byte(crc >> 8)); output.write(byte(crc >> 16)); output.write(byte(crc >> 24));
+    output.write(byte(tot)); output.write(byte(tot >> 8)); output.write(byte(tot >> 16)); output.write(byte(tot >> 24));
+    getBytes
   }
 }
 
 class GzipDecompressor extends DeflateDecompressor {
-  override lazy val inflater = new Inflater(true)
-  val checkSum = new CRC32 // CRC32 of uncompressed data
-  var headerRead = false
+  override protected lazy val inflater = new Inflater(true)
+  private val checkSum = new CRC32 // CRC32 of uncompressed data
+  private var headerRead = false
 
-  override def decompress(buffer: Array[Byte], offset: Int, output: ResettableByteArrayOutputStream) = {
-    decomp(buffer, offset, output, throw _)
+  override protected def decompress(buffer: Array[Byte], offset: Int) = {
+    decomp(buffer, offset, throw _)
   }
 
   @tailrec
-  private def decomp(buffer: Array[Byte], offset: Int, output: ResettableByteArrayOutputStream,
-                     produceResult: Exception => Int): Int = {
+  private def decomp(buffer: Array[Byte], offset: Int, produceResult: Exception => Int): Int = {
     var off = offset
     def fail(msg: String) = throw new ZipException(msg)
     def readByte(): Int = {
@@ -138,7 +138,7 @@ class GzipDecompressor extends DeflateDecompressor {
         headerRead = true
       }
       val dataStart = output.pos
-      off = super.decompress(buffer, off, output)
+      off = super.decompress(buffer, off)
       checkSum.update(output.buffer, dataStart, output.pos - dataStart)
       if (inflater.finished()) {
         readTrailer()
@@ -154,7 +154,7 @@ class GzipDecompressor extends DeflateDecompressor {
 
     if (recurse && off < buffer.length) {
       val mark = output.pos
-      decomp(buffer, off, output, _ => { output.resetTo(mark); off })
+      decomp(buffer, off, _ => { output.resetTo(mark); off })
     } else off
   }
 

@@ -24,19 +24,22 @@ trait Decoder {
 
   def decode[T <: HttpMessage[T]](message: T): T = message.content match {
     case Some(content) => message.withContent(
-      content = Some(HttpContent(content.contentType, newDecodingContext.decode(content.buffer)))
+      content = Some(HttpContent(content.contentType, newDecompressor.decompress(content.buffer)))
     )
     case _ => message
   }
   
-  def newDecodingContext: DecodingContext
+  def newDecompressor: Decompressor
 }
 
-class DecodingContext(decompressor: Decompressor) {
-  def decode(buffer: Array[Byte]) = {
-    val output = new ResettableByteArrayOutputStream(1024)
-    decompressor.decompress(buffer, 0, output)
+abstract class Decompressor {
+  protected val output = new ResettableByteArrayOutputStream(1024)
+
+  def decompress(buffer: Array[Byte]): Array[Byte] = {
+    output.reset()
+    decompress(buffer, 0)
     output.toByteArray
   }
-}
 
+  protected def decompress(buffer: Array[Byte], offset: Int): Int
+}

@@ -18,7 +18,7 @@ package cc.spray
 package encoding
 
 import http._
-import java.io.ByteArrayOutputStream
+import java.lang.IllegalStateException
 
 /**
  * An encoder and decoder for the HTTP 'identity' encoding.
@@ -31,12 +31,19 @@ object NoEncoding extends Decoder with Encoder {
 
   def handle(message: HttpMessage[_]) = false
 
-  def newEncodingContext = new EncodingContext(null) {
-    override def encode(buffer: Array[Byte]) = buffer
-    override def encodeChunk(buffer: Array[Byte]) = buffer
-    override def finish() = utils.EmptyByteArray
-  }
-  def newDecodingContext = new DecodingContext(null) {
-    override def decode(buffer: Array[Byte]) = buffer
-  }
+  def newCompressor = NoEncodingCompressor
+  def newDecompressor = NoEncodingDecompressor
+}
+
+class NoEncodingCompressor(private var buffer: Array[Byte]) extends Compressor {
+  def compress(buffer: Array[Byte]) = { this.buffer = buffer; this }
+  def flush() = buffer
+  def finish() = buffer
+}
+
+object NoEncodingCompressor extends NoEncodingCompressor(utils.EmptyByteArray)
+
+object NoEncodingDecompressor extends Decompressor {
+  override def decompress(buffer: Array[Byte]) = buffer
+  protected def decompress(buffer: Array[Byte], offset: Int) = throw new IllegalStateException
 }

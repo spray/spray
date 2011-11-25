@@ -7,9 +7,6 @@ import java.io.{ByteArrayOutputStream}
 class DeflateSpec extends Specification with CodecSpecSupport {
 
   "The Deflate codec" should {
-    def ourDeflate(bytes: Array[Byte]) = Deflate.newEncodingContext.encode(bytes)
-    def ourInflate(bytes: Array[Byte]) = Deflate.newDecodingContext.decode(bytes)
-
     "properly encode a small string" in {
       streamInflate(ourDeflate(smallTextBytes)) must readAs(smallText)
     }
@@ -33,12 +30,16 @@ class DeflateSpec extends Specification with CodecSpecSupport {
     }
     "support chunked round-trip encoding/decoding" in {
       val chunks = largeTextBytes.grouped(512).toArray
-      val encCtx = Deflate.newEncodingContext
-      val decCtx = Deflate.newDecodingContext
-      val chunks2 = chunks.map(chunk => decCtx.decode(encCtx.encodeChunk(chunk))) :+ decCtx.decode(encCtx.finish())
+      val comp = Deflate.newCompressor
+      val decomp = Deflate.newDecompressor
+      val chunks2 =
+        chunks.map { chunk => decomp.decompress(comp.compress(chunk).flush()) } :+ decomp.decompress(comp.finish())
       chunks2.flatten must readAs(largeText)
     }
   }
+
+  def ourDeflate(bytes: Array[Byte]) = Deflate.newCompressor.compress(bytes).finish()
+  def ourInflate(bytes: Array[Byte]) = Deflate.newDecompressor.decompress(bytes)
 
   def streamDeflate(bytes: Array[Byte]) = {
     val output = new ByteArrayOutputStream()
