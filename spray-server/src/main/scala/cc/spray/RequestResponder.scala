@@ -57,13 +57,18 @@ case class RequestResponder(
 ) {
 
   /**
-   * Returns a copy of this responder with the complete method replaced by the given one.
+   * Returns a copy of this responder with the complete member replaced by the given one.
    */
-  def withComplete(newComplete: HttpResponse => Unit) = copy(complete = newComplete)
+  def withComplete(f: HttpResponse => Unit) = copy(complete = f)
 
   /**
-   * Returns a copy of this responder with the reject method replaced by the given one.
+   * Returns a copy of this responder with the reject member replaced by the given one.
    */
-  def withReject(newReject: Set[Rejection] => Unit) = copy(reject = newReject)
+  def withReject(f: Set[Rejection] => Unit) = copy(reject = f)
+
+  /**
+   * Returns a copy of this responder with the startChunkedResponse member replaced by the given one.
+   */
+  def withStartChunkedResponse(f: HttpResponse => ChunkSender) = copy(startChunkedResponse = f)
 
 }

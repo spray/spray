@@ -19,18 +19,21 @@ package directives
 
 import http._
 import org.parboiled.common.FileUtils
-import java.io.File
 import StatusCodes._
 import HttpHeaders._
 import utils.identityFunc
+import java.io.{FileInputStream, File}
+import java.util.Arrays
+import typeconversion.{DefaultMarshallers, SimpleMarshaller}
 
 private[spray] trait FileAndResourceDirectives {
-  this: SimpleDirectives with DetachDirectives =>
+  this: SimpleDirectives with DetachDirectives with MiscDirectives with DefaultMarshallers =>
 
   /**
    * Returns a Route that completes GET requests with the content of the given file. The actual I/O operation is
-   * running detached in the context of a newly spawned actor, so it doesn't block the current thread.
-   * If the file cannot be read the Route completes the request with a "404 NotFound" error.
+   * running detached in the context of a newly spawned actor, so it doesn't block the current thread (but potentially
+   * some other thread !).
+   * If the file cannot be found or read the Route rejects the request.
    */
   def getFromFileName(fileName: String, charset: Option[HttpCharset] = None,
                   resolver: ContentTypeResolver = DefaultContentTypeResolver): Route = {
@@ -39,44 +42,56 @@ private[spray] trait FileAndResourceDirectives {
 
   /**
    * Returns a Route that completes GET requests with the content of the given file. The actual I/O operation is
-   * running detached in the context of a newly spawned actor, so it doesn't block the current thread.
-   * If the file cannot be read the Route completes the request with a "404 NotFound" error.
+   * running detached in the context of a newly spawned actor, so it doesn't block the current thread (but potentially
+   * some other thread !).
+   * If the file cannot be found or read the Route rejects the request.
    */
   def getFromFile(file: File, charset: Option[HttpCharset] = None,
                   resolver: ContentTypeResolver = DefaultContentTypeResolver): Route = {
+    def addLastModifiedHeader(response: HttpResponse) = response.withHeadersTransformed { headers =>
+      if (headers.exists(_.isInstanceOf[`Last-Modified`])) headers
+      else `Last-Modified`(validateLastModified(file.lastModified)) :: headers
+    }
+
     detach {
-      get { ctx =>
-        responseFromFile(file, charset, resolver) match {
-          case Some(response) => ctx.complete(response)
-          case None => ctx.reject() // reject without specific rejection => same as unmatched "path" directive
+      transformResponse(addLastModifiedHeader) {
+        get { ctx =>
+          if (file.isFile && file.canRead) {
+            val contentType = resolver(file.getName, charset)
+            if (file.length() >= SprayServerSettings.FileChunkingThresholdSize) {
+              import FileChunking._
+              implicit val marshaller = fileChunkMarshaller(contentType)
+              ctx.complete(fileChunkStream(file))
+            } else ctx.complete(responseFromFile(file, contentType).get)
+          } else ctx.reject() // reject without specific rejection => same as unmatched "path" directive
         }
       }
     }
   }
 
   /**
-   * Builds an HttpResponse from the content of the given file. If the file cannot be read a "404 NotFound"
-   * response is returned. Note that this method is using disk IO which may block the current thread.
+   * Builds an HttpResponse from the content of the given file. If the file cannot be read the method returns `None`.
+   * Note that this method is using disk IO which may block the current thread.
    */
-  def responseFromFile(file: File, charset: Option[HttpCharset] = None,
-                       resolver: ContentTypeResolver = DefaultContentTypeResolver): Option[HttpResponse] = {
+  def responseFromFile(file: File, contentType: ContentType): Option[HttpResponse] = {
     responseFromBuffer(
-      lastModified = DateTime(math.min(file.lastModified, System.currentTimeMillis())),
+      lastModified = validateLastModified(file.lastModified),
       buffer = FileUtils.readAllBytes(file),
-      contentType = resolver(file.getName, charset)
+      contentType = contentType
     )
   }
 
   /**
    * Returns a Route that completes GET requests with the content of the given resource. The actual I/O operation is
-   * running detached in the context of a newly spawned actor, so it doesn't block the current thread.
-   * If the resource cannot be read the Route completes the request with a "404 NotFound" error.
+   * running detached in the context of a newly spawned actor, so it doesn't block the current thread (but potentially
+   * some other thread !).
+   * If the file cannot be found or read the Route rejects the request.
    */
   def getFromResource(resourceName: String, charset: Option[HttpCharset] = None,
                       resolver: ContentTypeResolver = DefaultContentTypeResolver): Route = {
     detach {
       get { ctx =>
-        responseFromResource(resourceName, charset) match {
+        responseFromResource(resourceName, resolver(resourceName, charset)) match {
           case Some(response) => ctx.complete(response)
           case None => ctx.reject() // reject without specific rejection => same as unmatched "path" directive
         }
@@ -85,18 +100,17 @@ private[spray] trait FileAndResourceDirectives {
   }
   
   /**
-   * Builds an HttpResponse from the content of the given classpath resource. If the resource cannot be read a
-   * "404 NotFound" response is returned. Note that this method is using disk IO which may block the current thread.
+   * Builds an HttpResponse from the content of the given resource. If the resource cannot be read the method returns
+   * `None`. Note that this method is using disk IO which may block the current thread.
    */
-  def responseFromResource(resourceName: String, charset: Option[HttpCharset] = None,
-                           resolver: ContentTypeResolver = DefaultContentTypeResolver): Option[HttpResponse] = {
+  def responseFromResource(resourceName: String, contentType: => ContentType): Option[HttpResponse] = {
     Option(getClass.getClassLoader.getResource(resourceName)).flatMap { resource =>
       val urlConn = resource.openConnection()
       val inputStream = urlConn.getInputStream
       val response = responseFromBuffer(
-        lastModified = DateTime(math.min(urlConn.getLastModified, System.currentTimeMillis())),
+        lastModified = validateLastModified(urlConn.getLastModified),
         buffer = FileUtils.readAllBytes(inputStream),
-        contentType = resolver(resourceName, charset)
+        contentType = contentType
       )
       inputStream.close()
       response
@@ -115,7 +129,7 @@ private[spray] trait FileAndResourceDirectives {
    * The unmatchedPath of the [[cc.spray.RequestContext]] is first transformed by the given pathRewriter function before
    * being appended to the given directoryName to build the final fileName. 
    * The actual I/O operation is running detached in the context of a newly spawned actor, so it doesn't block the
-   * current thread. If the file cannot be read the Route completes the request with a "404 NotFound" error.
+   * current thread. If the file cannot be read the Route rejects the request.
    */
   def getFromDirectory(directoryName: String, charset: Option[HttpCharset] = None,
                        pathRewriter: String => String = identityFunc,
@@ -140,6 +154,8 @@ private[spray] trait FileAndResourceDirectives {
       getFromResource(base + pathRewriter(subPath), charset, resolver).apply(ctx)
     }
   }
+
+  private def validateLastModified(timestamp: Long) = DateTime(math.min(timestamp, System.currentTimeMillis))
 }
 
 object DefaultContentTypeResolver extends ContentTypeResolver {
@@ -154,5 +170,28 @@ object DefaultContentTypeResolver extends ContentTypeResolver {
   def extension(fileName: String) = fileName.lastIndexOf('.') match {
     case -1 => ""
     case x => fileName.substring(x + 1)
+  }
+}
+
+object FileChunking {
+  case class FileChunk(buffer: Array[Byte])
+
+  def fileChunkStream(file: File): Stream[FileChunk] = {
+    val fis = new FileInputStream(file)
+
+    def chunkStream(): Stream[FileChunk] = {
+      val buffer = new Array[Byte](SprayServerSettings.FileChunkingChunkSize)
+      val bytesRead = fis.read(buffer)
+      if (bytesRead > 0) {
+        val chunkBytes = if (bytesRead == buffer.length) buffer else Arrays.copyOfRange(buffer, 0, bytesRead)
+        Stream.cons(FileChunk(chunkBytes), chunkStream())
+      } else Stream.Empty
+    }
+    chunkStream()
+  }
+
+  def fileChunkMarshaller(contentType: ContentType) = new SimpleMarshaller[FileChunk] {
+    val canMarshalTo = contentType :: Nil
+    def marshal(value: FileChunk, contentType: ContentType) = HttpContent(contentType, value.buffer)
   }
 }

@@ -42,23 +42,25 @@ trait HttpServiceLogic extends ErrorHandling {
   def handle(context: RequestContext) {
     try {
       route {
-        context
-          .withResponseTransformed(verifyResponse)
-          .withResponderTransformed(convertRejections)
+        context.withResponderTransformed { responder =>
+          responder.copy(
+            complete = { response => responder.complete(verifyResponse(response)) },
+            reject = convertRejections(responder),
+            startChunkedResponse = { response => responder.startChunkedResponse(verifyResponse(response)) }
+          )
+        }
       }
     } catch {
       case e: Exception => context.complete(responseForException(context.request, e))
     }
   }
   
-  protected def convertRejections(responder: RequestResponder): RequestResponder = {
-    responder.withReject { rejections =>
-      val activeRejections = Rejections.applyCancellations(rejections)
-      if (activeRejections.isEmpty)
-        responder.reject(activeRejections) // reject with empty set to RootService -> no response from this service
-      else
-        responder.complete(verifyResponse(fullRejectionHandler(activeRejections.toList)))
-    }
+  protected def convertRejections(responder: RequestResponder)(rejections: Set[Rejection]) {
+    val activeRejections = Rejections.applyCancellations(rejections)
+    if (activeRejections.isEmpty)
+      responder.reject(activeRejections) // reject with empty set to RootService -> no response from this service
+    else
+      responder.complete(verifyResponse(fullRejectionHandler(activeRejections.toList)))
   }
 
   protected lazy val fullRejectionHandler: RejectionHandler = rejectionHandler orElse {

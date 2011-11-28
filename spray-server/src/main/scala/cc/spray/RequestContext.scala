@@ -38,38 +38,65 @@ case class RequestContext(
    * Returns a copy of this context with the HttpRequest transformed by the given function.
    */
   def withRequestTransformed(f: HttpRequest => HttpRequest): RequestContext = {
-    val newRequest = f(request)
-    if (newRequest eq request) this else copy(request = newRequest)
+    val transformed = f(request)
+    if (transformed eq request) this else copy(request = transformed)
   }
 
   /**
-   * Returns a copy of this context with the given response transformation function chained into the responder.
+   * Returns a copy of this context with the given response transformation function chained into 'responder.complete'
+   * as well as 'responder.startChunkedResponse'.
    */
-  def withResponseTransformed(f: HttpResponse => HttpResponse): RequestContext =
+  def withResponseTransformed(f: HttpResponse => HttpResponse) = withResponderTransformed { responder =>
+    responder.copy(
+      complete = { response => responder.complete(f(response)) },
+      startChunkedResponse = { response => responder.startChunkedResponse(f(response)) }
+    )
+  }
+
+  /**
+   * Returns a copy of this context with the given response transformation function chained into 'responder.complete'.
+   */
+  def withUnchunkedResponseTransformed(f: HttpResponse => HttpResponse) =
     withComplete(response => responder.complete(f(response)))
 
   /**
-   * Returns a copy of this context with the given rejection transformation function chained into the responder.
+   * Returns a copy of this context with the given response transformation function chained into
+   * 'responder.startChunkedResponse'.
    */
-  def withRejectionsTransformed(f: Set[Rejection] => Set[Rejection]): RequestContext =
+  def withChunkedResponseTransformed(f: HttpResponse => HttpResponse) =
+    withStartChunkedResponse(response => responder.startChunkedResponse(f(response)))
+
+  /**
+   * Returns a copy of this context with the given rejection transformation function chained into 'responder.reject'.
+   */
+  def withRejectionsTransformed(f: Set[Rejection] => Set[Rejection]) =
     withReject(rejections => responder.reject(f(rejections)))
 
   /**
    * Returns a copy of this context with a new responder using the given complete function.
    */
-  def withComplete(newComplete: HttpResponse => Unit): RequestContext =
-    withResponderTransformed(_.withComplete(newComplete))
+  def withComplete(f: HttpResponse => Unit): RequestContext =
+    withResponderTransformed(_.withComplete(f))
 
   /**
-   * Returns a copy of this context with a new responder using the given complete function.
+   * Returns a copy of this context with a new responder using the given reject function.
    */
-  def withReject(newReject: Set[Rejection] => Unit): RequestContext =
-    withResponderTransformed(_.withReject(newReject))
+  def withReject(f: Set[Rejection] => Unit): RequestContext =
+    withResponderTransformed(_.withReject(f))
+
+  /**
+   * Returns a copy of this context with a new responder using the given startChunkedResponse function.
+   */
+  def withStartChunkedResponse(f: HttpResponse => ChunkSender): RequestContext =
+    withResponderTransformed(_.withStartChunkedResponse(f))
 
   /**
    * Returns a copy of this context with the responder transformed by the given function.
    */
-  def withResponderTransformed(f: RequestResponder => RequestResponder) = copy(responder = f(responder))
+  def withResponderTransformed(f: RequestResponder => RequestResponder) = {
+    val transformed = f(responder)
+    if (transformed eq responder) this else copy(responder = transformed)
+  }
 
   /**
    * Rejects the request with the given rejections.
