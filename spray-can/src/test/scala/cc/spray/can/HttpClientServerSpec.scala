@@ -62,17 +62,18 @@ class HttpClientServerSpec extends Specification with HttpClientSpecs { def is =
         val delay = (scala.math.random * 80.0).toLong
         Scheduler.scheduleOnce(() => responder.complete(HttpResponse().withBody(path.last.toString)), delay, TimeUnit.MILLISECONDS)
       case RequestContext(HttpRequest(_, "/chunked", _, _, _), _, responder) => {
-        val latch = new CountDownLatch(4)
-        val chunkNrSum = new AtomicLong(0)
-        val chunker = responder.startChunkedResponse(HttpResponse(201, List(HttpHeader("Fancy", "cool")))).withOnChunkSent {
-          chunkNr => chunkNrSum.addAndGet(chunkNr); latch.countDown()
+        val latch = new CountDownLatch(1)
+        val chunker = responder.startChunkedResponse(HttpResponse(201, List(HttpHeader("Fancy", "cool"))))
+        chunker.sendChunk(MessageChunk("1")).onResult { case () =>
+          chunker.sendChunk(MessageChunk("-2345")).onResult { case () =>
+            chunker.sendChunk(MessageChunk("-6789ABCD")).onResult { case () =>
+              chunker.sendChunk(MessageChunk("-EFGHIJKLMNOPQRSTUVWXYZ")).onResult { case () =>
+                latch.countDown()
+              }
+            }
+          }
         }
-        val a = chunker.sendChunk(MessageChunk("1:"))
-        val b = chunker.sendChunk(MessageChunk(a + "-2345:"))
-        val c = chunker.sendChunk(MessageChunk(b + "-6789ABCD:"))
-        val d = chunker.sendChunk(MessageChunk(c + "-EFGHIJKLMNOPQRSTUVWXYZ:"))
         latch.await()
-        chunker.sendChunk(MessageChunk(d + ":" + chunkNrSum))
         chunker.close()
       }
       case RequestContext(HttpRequest(_, "/wait200", _, _, _), _, responder) =>
@@ -161,7 +162,7 @@ class HttpClientServerSpec extends Specification with HttpClientSpecs { def is =
     dialog
             .send(HttpRequest(GET, "/chunked"))
             .end
-            .get.bodyAsString mustEqual "1:0-2345:1-6789ABCD:2-EFGHIJKLMNOPQRSTUVWXYZ:3:6"
+            .get.bodyAsString mustEqual "1-2345-6789ABCD-EFGHIJKLMNOPQRSTUVWXYZ"
   }
 
   private def oneRequestChunkedRequest = {
@@ -196,8 +197,7 @@ class HttpClientServerSpec extends Specification with HttpClientSpecs { def is =
             .send(HttpRequest(GET, "/chunked"))
             .send(HttpRequest(PUT, "/xyz"))
             .end
-            .get.map(_.bodyAsString).mkString(", ") mustEqual
-                "POST|/, 1:0-2345:1-6789ABCD:2-EFGHIJKLMNOPQRSTUVWXYZ:3:6, PUT|/xyz"
+            .get.map(_.bodyAsString).mkString(", ") mustEqual "POST|/, 1-2345-6789ABCD-EFGHIJKLMNOPQRSTUVWXYZ, PUT|/xyz"
   }
 
   private def timeoutRequest = {
