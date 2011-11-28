@@ -30,7 +30,7 @@ class Jetty7ConnectorServlet extends ConnectorServlet("Jetty 7") {
     requestContext(req, resp, responder(req, resp)).foreach(rootService ! _)
   }
 
-  def responder(req: HttpServletRequest, resp: HttpServletResponse): RoutingResult => Unit = {
+  def responder(req: HttpServletRequest, resp: HttpServletResponse): RequestResponder = {
     val alreadyResponded = new AtomicBoolean(false)
     val continuation = ContinuationSupport.getContinuation(req)
     continuation.addContinuationListener(new ContinuationListener {

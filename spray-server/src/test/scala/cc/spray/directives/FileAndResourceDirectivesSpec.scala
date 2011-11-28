@@ -20,26 +20,27 @@ package directives
 import http._
 import HttpMethods._
 import MediaTypes._
+import HttpHeaders._
+import HttpCharsets._
 import org.parboiled.common.FileUtils
 import util.Properties
 import java.io.File
 import test.AbstractSprayTest
-import HttpHeaders._
 
 class FileAndResourceDirectivesSpec extends AbstractSprayTest {
 
   "getFromFile" should {
-    "block non-GET requests" in {
+    "reject non-GET requests" in {
       test(HttpRequest(PUT)) {
         getFromFileName("some")
       }.handled must beFalse
     }
-    "return a 404 for non-existing files" in {
+    "reject requests to non-existing files" in {
       test(HttpRequest(GET)) {
         getFromFileName("nonExistentFile")
       }.handled must beFalse
     }
-    "return a 404 for directories" in {
+    "reject requests to directories" in {
       test(HttpRequest(GET)) {
         getFromFileName(Properties.javaHome)
       }.handled must beFalse
@@ -47,30 +48,42 @@ class FileAndResourceDirectivesSpec extends AbstractSprayTest {
     "return the file content with the MediaType matching the file extension" in {
       val file = File.createTempFile("sprayTest", ".PDF")
       FileUtils.writeAllText("This is PDF", file)
-      val HttpResponse(_, headers, content, _) = test(HttpRequest(GET)) {
+      val response = test(HttpRequest(GET)) {
         getFromFileName(file.getPath)
       }.response
-      content mustEqual Some(HttpContent(`application/pdf`, "This is PDF"))
-      headers must have { case `Last-Modified`(dateTime) => dateTime.clicks == file.lastModified }
+      response.content mustEqual Some(HttpContent(`application/pdf`, "This is PDF"))
+      response.headers mustEqual List(`Last-Modified`(DateTime(file.lastModified)))
       file.delete
     }
     "return the file content with MediaType 'application/octet-stream' on unknown file extensions" in {
       val file = File.createTempFile("sprayTest", null)
       FileUtils.writeAllText("Some content", file)
       test(HttpRequest(GET)) {
-        getFromFileName(file.getPath)
+        getFromFile(file)
       }.response.content mustEqual Some(HttpContent(`application/octet-stream`, "Some content"))
+      file.delete
+    }
+    "return a chunked response for files larger than the configured file-chunking-threshold-size" in {
+      val file = File.createTempFile("sprayTest2", ".xml")
+      FileUtils.writeAllText("<this could be XML if it were formatted correctly>", file)
+      val result = test(HttpRequest(GET)) {
+        getFromFile(file)
+      }
+      result.response.content mustEqual Some(HttpContent(ContentType(`text/xml`, `ISO-8859-1`), ""))
+      result.response.headers mustEqual List(`Last-Modified`(DateTime(file.lastModified)))
+      result.chunks.map(_.bodyAsString).mkString("|") mustEqual
+        "<this co|uld be X|ML if it| were fo|rmatted |correctl|y>"
       file.delete
     }
   }
   
   "getFromResource" should {
-    "block non-GET requests" in {
+    "reject non-GET requests" in {
       test(HttpRequest(PUT)) {
         getFromResource("some")
       }.handled must beFalse
     }
-    "return a 404 for non-existing resources" in {
+    "reject requests to non-existing resources" in {
       test(HttpRequest(GET)) {
         getFromResource("nonExistingResource")
       }.handled must beFalse
@@ -90,7 +103,7 @@ class FileAndResourceDirectivesSpec extends AbstractSprayTest {
   }
   
   "getFromResourceDirectory" should {
-    "return a 404 for non-existing resources" in {
+    "reject requests to non-existing resources" in {
       test(HttpRequest(GET, "not/found")) {
         getFromResourceDirectory("subDirectory")
       }.handled must beFalse

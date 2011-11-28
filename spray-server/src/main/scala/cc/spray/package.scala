@@ -27,4 +27,6 @@ package object spray {
   type UserPassAuthenticator[U] = Option[(String, String)] => Option[U]
   type CacheKeyer = RequestContext => Option[Any]
   type RequiredParameterMatcher = Map[String, String] => Boolean
+  type RejectionHandler = PartialFunction[List[Rejection], HttpResponse]
+
 }

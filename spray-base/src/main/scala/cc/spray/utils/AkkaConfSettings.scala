@@ -51,7 +51,7 @@ abstract class AkkaConfSettings(prefix: String) extends Logging {
     case (result, c) => result + c
   }
 
-  def warnOnUndefined(additionallyDefined: String*) {
+  def warnOnUndefinedExcept(additionallyDefined: String*) {
     val allDefined = definedSettings ++ additionallyDefined.map(settingsKeyFromMethodName)
     config.keys.toList.filter { key =>
       key.startsWith(prefix) && key.lastIndexOf('.') == prefix.length - 1 && !allDefined.contains(key.substring(prefix.length))

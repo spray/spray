@@ -18,6 +18,8 @@ package cc.spray
 package directives
 
 import encoding._
+import typeconversion.ChunkSender
+import http.{MessageChunk, HttpHeader, ChunkExtension}
 
 private[spray] trait CodecDirectives {
   this: BasicDirectives =>
@@ -47,14 +49,34 @@ private[spray] trait CodecDirectives {
   def encodeResponse(encoder: Encoder) = filter { ctx =>
     if (ctx.request.isEncodingAccepted(encoder.encoding)) {
       Pass.withTransform {
-        _.withRoutingResultTransformed {
-          case Respond(response) => Respond(encoder.encode(response))
-          case Reject(rejections) => {
-            Reject(rejections + RejectionRejection(_.isInstanceOf[UnacceptedResponseEncodingRejection]))
-          }
+        _.withResponderTransformed { responder =>
+          RequestResponder(
+            complete = response => responder.complete(encoder.encode(response)),
+            reject = rejections =>
+              responder.reject(rejections + RejectionRejection(_.isInstanceOf[UnacceptedResponseEncodingRejection])),
+            startChunkedResponse = { response =>
+              encoder.startEncoding(response) match {
+                case Some((compressedResponse, compressor)) =>
+                  new EncodingChunkSender(compressor, responder.startChunkedResponse(compressedResponse))
+                case None => responder.startChunkedResponse(response)
+              }
+            }
+          )
         }
       }
     } else Reject(UnacceptedResponseEncodingRejection(encoder.encoding))
+  }
+
+  class EncodingChunkSender(compressor: Compressor, inner: ChunkSender) extends ChunkSender {
+    def sendChunk(chunk: MessageChunk) = {
+      inner.sendChunk(chunk.copy(body = compressor.compress(chunk.body).flush()))
+    }
+    def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
+      val body = compressor.finish()
+      if (body.length > 0) inner.sendChunk(MessageChunk(body))
+      inner.close(extensions, trailer)
+    }
+    def withOnChunkSent(callback: Long => Unit) = new EncodingChunkSender(compressor, inner.withOnChunkSent(callback))
   }
   
 }

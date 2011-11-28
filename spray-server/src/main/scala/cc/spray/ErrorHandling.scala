@@ -22,7 +22,7 @@ import utils.{IllegalResponseException, Logging}
 
 trait ErrorHandling {
   this: Logging =>
-  
+
   protected[spray] def responseForException(request: Any, e: Exception): HttpResponse = {
     log.error(e, "Error during processing of request %s", request)
     e match {

@@ -15,16 +15,22 @@
  */
 
 package cc.spray
+package typeconversion
 
-import utils.AkkaConfSettings
+import http._
+import utils._
 
-object SprayServerSettings extends AkkaConfSettings("spray.") {
-  lazy val RootActorId                = configString("spray-root-service")
-  lazy val TimeoutActorId             = configString("spray-root-service")
-  lazy val RequestTimeout             = configInt(1000)
-  lazy val RootPath                   = configString
-  lazy val FileChunkingThresholdSize  = configInt(1024 * 1024) // 1 MB
-  lazy val FileChunkingChunkSize      = configInt(512 * 1024) // 512 kB
+abstract class SimpleMarshaller[A] extends Marshaller[A] {
 
-  warnOnUndefinedExcept("CompactJsonPrinting", "LoggingTarget")
-}
+  def apply(accept: ContentType => Option[ContentType]) = {
+    canMarshalTo.mapFind(accept) match {
+      case Some(contentType) => MarshalWith[A](ctx => value => ctx.marshalTo(marshal(value, contentType)))
+      case None => CantMarshal(canMarshalTo)
+    }
+  }
+
+  def canMarshalTo: List[ContentType]
+
+  def marshal(value: A, contentType: ContentType): HttpContent
+  
+} 

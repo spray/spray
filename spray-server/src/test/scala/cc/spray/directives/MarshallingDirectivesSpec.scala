@@ -38,7 +38,7 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
     def unmarshal(content: HttpContent) = protect { XML.load(new ByteArrayInputStream(content.buffer)).text.toInt }
   }
   
-  implicit object IntMarshaller extends MarshallerBase[Int] {
+  implicit object IntMarshaller extends SimpleMarshaller[Int] {
     val canMarshalTo = ContentType(`application/xhtml+xml`) :: ContentType(`text/xml`, `UTF-8`) :: Nil
     def marshal(value: Int, contentType: ContentType) = NodeSeqMarshaller.marshal(<int>{value}</int>, contentType)
   }

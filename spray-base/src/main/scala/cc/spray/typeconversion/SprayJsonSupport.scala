@@ -38,7 +38,7 @@ trait SprayJsonSupport {
     }
   }
 
-  implicit def sprayJsonMarshaller[A :JsonWriter] = new MarshallerBase[A] {
+  implicit def sprayJsonMarshaller[A :JsonWriter] = new SimpleMarshaller[A] {
     val canMarshalTo = ContentType(`application/json`) :: Nil
 
     lazy val printer = if (SprayBaseSettings.CompactJsonPrinting) CompactPrinter else PrettyPrinter

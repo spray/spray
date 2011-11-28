@@ -22,12 +22,18 @@ import HttpHeaders._
 import MediaTypes._
 import HttpCharsets._
 import test.AbstractSprayTest
+import utils._
 import encoding._
 
 class CodecDirectivesSpec extends AbstractSprayTest {
 
   val echoRequestContent: Route = { ctx => ctx.complete(ctx.request.content.as[String].right.get) }
   val yeah: Route = _.complete("Yeah!")
+
+  def haveContentEncoding(encoding: HttpEncoding) =
+      beEqualTo(Some(`Content-Encoding`(encoding))) ^^ { (_: HttpResponse).headers.findByType[`Content-Encoding`] }
+
+  def readAs(string: String, charset: String = "UTF8") = beEqualTo(string) ^^ { new String(_: Array[Byte], charset) }
   
   "the NoEncoding decoder" should {
     "decode the request content if it has encoding 'identidy'" in {
@@ -86,10 +92,13 @@ class CodecDirectivesSpec extends AbstractSprayTest {
   
   "the Gzip encoder" should {
     val yeahGzipped = fromHex("1f 8b 08 00 00 00 00 00 00 00 8b 4c 4d cc 50 04 00 70 0d 81 57 05 00 00 00")
+
     "encode the response content with GZIP if the client accepts it with a dedicated Accept-Encoding header" in {
-      test(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.gzip)))) { 
+      val response = test(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.gzip)))) {
         encodeResponse(Gzip) { yeah }
-      }.response.content mustEqual Some(HttpContent(ContentType(`text/plain`, `ISO-8859-1`), yeahGzipped))
+      }.response
+      response must haveContentEncoding(HttpEncodings.gzip)
+      response.content mustEqual Some(HttpContent(ContentType(`text/plain`, `ISO-8859-1`), yeahGzipped))
     }
     "encode the response content with GZIP if the request has no Accept-Encoding header" in {
       test(HttpRequest()) { 
@@ -113,17 +122,17 @@ class CodecDirectivesSpec extends AbstractSprayTest {
         }
       }.response.content.as[String] mustEqual Right("Yeah!")
     }
-  }
-
-  "all codecs" should {
-    "support round-trip encoding" in {
-      val bytes = "123456789".getBytes
-      "Gzip" in {
-        Gzip.decodeBuffer(Gzip.encodeBuffer(bytes)).mkString mustEqual bytes.mkString
+    "correctly encode the chunk stream produced by a chunked response" in {
+      val text = "This is a somewhat lengthy text that is being chunked by the autochunk directive!"
+      val result = test(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.gzip)))) {
+        encodeResponse(Gzip) {
+          autoChunk(8) {
+            _.complete(text)
+          }
+        }
       }
-      "Deflate" in {
-        Deflate.decodeBuffer(Deflate.encodeBuffer(bytes)).mkString mustEqual bytes.mkString
-      }
+      result.response must haveContentEncoding(HttpEncodings.gzip)
+      Gzip.newDecompressor.decompress(result.chunks.toArray.flatMap(_.body)) must readAs(text)
     }
   }
 

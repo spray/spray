@@ -21,4 +21,9 @@ import http._
 
 sealed trait Marshalling[-A]
 case class CantMarshal(onlyTo: List[ContentType]) extends Marshalling[Any]
-case class MarshalWith[-A](f: A => HttpContent) extends Marshalling[A]
+case class MarshalWith[-A](f: MarshallingContext => A => Unit) extends Marshalling[A]
+
+trait MarshallingContext {
+  def marshalTo(content: HttpContent)
+  def startChunkedMessage(contentType: ContentType): ChunkSender
+}

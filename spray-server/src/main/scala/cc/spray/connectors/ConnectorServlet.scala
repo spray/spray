@@ -31,7 +31,6 @@ import java.io.{IOException, InputStream}
 private[connectors] abstract class ConnectorServlet(containerName: String) extends HttpServlet with Logging {
   lazy val rootService = actor(SprayServerSettings.RootActorId)
   lazy val timeoutActor = actor(SprayServerSettings.TimeoutActorId)
-  val EmptyByteArray = new Array[Byte](0)
   var timeout: Int = _
 
   override def init() {
@@ -41,7 +40,7 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
   }
 
   def requestContext(req: HttpServletRequest, resp: HttpServletResponse,
-                     responder: RoutingResult => Unit): Option[RequestContext] = {
+                     responder: RequestResponder): Option[RequestContext] = {
     try {
       Some {
         RequestContext(
@@ -82,7 +81,7 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
     contentLengthHeader.flatMap {
       case `Content-Length`(0) => None
       case `Content-Length`(contentLength) => {
-        val body = if (contentLength == 0) EmptyByteArray else try {
+        val body = if (contentLength == 0) utils.EmptyByteArray else try {
           val buf = new Array[Byte](contentLength)
           var bytesRead = 0
           while (bytesRead < contentLength) {
@@ -118,16 +117,19 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
     }
   }
 
-  def responderFor(req: HttpServletRequest)(f: HttpResponse => Unit): RoutingResult => Unit = {
-    case Respond(response) =>
-      try {
-        f(response)
-      } catch {
-        case e: IllegalStateException => log.error("Could not complete %s, it probably timed out and has therefore" +
-          "already been completed (%s)", requestString(req), e)
-        case e: Exception => log.error("Could not complete %s due to %s", requestString(req), e)
-      }
-    case _: Reject => throw new IllegalStateException
+  def responderFor(req: HttpServletRequest)(f: HttpResponse => Unit): RequestResponder = {
+    RequestResponder(
+      complete = { response =>
+        try {
+          f(response)
+        } catch {
+          case e: IllegalStateException => log.error("Could not complete %s, it probably timed out and has therefore" +
+            "already been completed (%s)", requestString(req), e)
+          case e: Exception => log.error("Could not complete %s due to %s", requestString(req), e)
+        }
+      },
+      reject = _ => throw new IllegalStateException
+    )
   }
 
   def handleTimeout(req: HttpServletRequest, resp: HttpServletResponse)(complete: => Unit) {

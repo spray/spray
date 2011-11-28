@@ -19,7 +19,6 @@ package test
 
 import cc.spray.RequestContext
 import http._
-import java.util.concurrent.{CountDownLatch, TimeUnit}
 import akka.util.Duration
 import akka.util.duration._
 import utils._
@@ -29,32 +28,20 @@ import utils._
  * Use the {{test}} and {{testService}} methods to test the behavior of your routes and services for different HTTP
  * request examples.
  */
-trait SprayTest {
+trait SprayTest extends RouteResultComponent {
 
   def test(request: HttpRequest, timeout: Duration = 1000.millis)(route: Route): RoutingResultWrapper = {
-    var result: Option[RoutingResult] = None
-    val latch = new CountDownLatch(1)
-    val responder = { (rr: RoutingResult) =>
-      result = Some(rr)
-      latch.countDown()
+    val routeResult = new RouteResult
+    route {
+      RequestContext(
+        request = request,
+        responder = routeResult.requestResponder,
+        unmatchedPath = request.path
+      )
     }
-    route(RequestContext(request = request, responder = responder, unmatchedPath = request.path))
     // since the route might detach we block until the route actually completes or times out
-    latch.await(timeout.toMillis, TimeUnit.MILLISECONDS)
-    new RoutingResultWrapper(result.getOrElse(doFail("No response received")))
-  }
-
-  class RoutingResultWrapper(rr: RoutingResult) {
-    def handled: Boolean = rr.isInstanceOf[Respond]
-    def response: HttpResponse = rr match {
-      case Respond(response) => response
-      case Reject(rejections) => doFail("Request was rejected with " + rejections)
-    }
-    def rawRejections: Set[Rejection] = rr match {
-      case Respond(response) => doFail("Request was not rejected, response was " + response)
-      case Reject(rejections) => rejections 
-    }
-    def rejections: Set[Rejection] = Rejections.applyCancellations(rawRejections)   
+    routeResult.awaitResult(timeout)
+    new RoutingResultWrapper(routeResult, timeout)
   }
 
   trait ServiceTest extends HttpServiceLogic with Logging {
@@ -77,34 +64,49 @@ trait SprayTest {
   }
 
   def testService(request: HttpRequest, timeout: Duration = 1000.millis)(service: ServiceTest): ServiceResultWrapper = {
-    var result: Option[RoutingResult] = None
-    val latch = new CountDownLatch(1)
-    val responder = { (rr: RoutingResult) =>
-      result = Some(rr)
-      latch.countDown()
+    val routeResult = new RouteResult
+    service.handle {
+      RequestContext(
+        request = request,
+        responder = routeResult.requestResponder,
+        unmatchedPath = request.path
+      )
     }
-    service.handle(RequestContext(request = request, responder = responder, unmatchedPath = request.path))
     // since the route might detach we block until the route actually completes or times out
-    latch.await(timeout.toMillis, TimeUnit.MILLISECONDS)
-    result match {
-      case Some(Respond(response)) => new ServiceResultWrapper(Some(response))
-      case Some(_: Reject) => new ServiceResultWrapper(None)
-      case None => doFail("No response received")
+    routeResult.awaitResult(timeout)
+    new ServiceResultWrapper(routeResult, timeout)
+  }
+
+  class ServiceResultWrapper(routeResult: RouteResult, timeout: Duration) {
+    def handled: Boolean = routeResult.synchronized { routeResult.response.isDefined }
+    def response: HttpResponse = routeResult.synchronized {
+      routeResult.response.getOrElse {
+        routeResult.rejections.foreach(rejs => doFail("Service did not convert rejection(s): " + rejs))
+        doFail("Request was neither completed nor rejected within " + timeout)
+      }
     }
+    def chunks: List[MessageChunk] = routeResult.synchronized { routeResult.chunks.toList }
+    def closingExtensions = routeResult.synchronized { routeResult.closingExtensions }
+    def trailer = routeResult.synchronized { routeResult.trailer }
   }
 
-  class ServiceResultWrapper(responseOption: Option[HttpResponse]) {
-    def handled: Boolean = responseOption.isDefined
-    def response: HttpResponse = responseOption.getOrElse(doFail("Request was not handled"))
+  class RoutingResultWrapper(routeResult: RouteResult, timeout: Duration)
+    extends ServiceResultWrapper(routeResult, timeout){
+    override def response: HttpResponse = routeResult.synchronized {
+      routeResult.response.getOrElse {
+        doFail("Request was rejected with " + rejections)
+      }
+    }
+    def rawRejections: Set[Rejection] = routeResult.synchronized {
+      routeResult.rejections.getOrElse {
+        routeResult.response.foreach(resp => doFail("Request was not rejected, response was " + resp))
+        doFail("Request was neither completed nor rejected within " + timeout)
+      }
+    }
+    def rejections: Set[Rejection] = Rejections.applyCancellations(rawRejections)
   }
 
-  def captureRequestContext(route: (Route => Route) => Unit): RequestContext = {
-    var result: Option[RequestContext] = None;
-    route { inner => { ctx => { result = Some(ctx); inner(ctx) }}}
-    result.getOrElse(doFail("No RequestContext received"))
-  }
-
-  private def doFail(msg: String): Nothing = {
+  def doFail(msg: String): Nothing = {
     try {
       this.asInstanceOf[{ def fail(msg: String): Nothing }].fail(msg)
     } catch {
@@ -120,5 +122,3 @@ trait SprayTest {
     }
   }
 }
-
-object SprayTest extends SprayTest

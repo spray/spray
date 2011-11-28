@@ -22,16 +22,17 @@ import MediaTypes._
 import HttpCharsets._
 import xml.NodeSeq
 import java.nio.CharBuffer
+import akka.actor.{PoisonPill, Actor}
 
 trait DefaultMarshallers extends MultipartMarshallers {
 
-  implicit val StringMarshaller = new MarshallerBase[String] {
+  implicit val StringMarshaller = new SimpleMarshaller[String] {
     val canMarshalTo = ContentType(`text/plain`) :: Nil
 
     def marshal(value: String, contentType: ContentType) = HttpContent(contentType, value)
   }
 
-  implicit val CharArrayMarshaller = new MarshallerBase[Array[Char]] {
+  implicit val CharArrayMarshaller = new SimpleMarshaller[Array[Char]] {
     val canMarshalTo = ContentType(`text/plain`) :: Nil
 
     def marshal(value: Array[Char], contentType: ContentType) = {
@@ -42,7 +43,7 @@ trait DefaultMarshallers extends MultipartMarshallers {
     }
   }
   
-  implicit val NodeSeqMarshaller = new MarshallerBase[NodeSeq] {
+  implicit val NodeSeqMarshaller = new SimpleMarshaller[NodeSeq] {
     val canMarshalTo = ContentType(`text/xml`) ::
                        ContentType(`text/html`) ::
                        ContentType(`application/xhtml+xml`) :: Nil
@@ -50,7 +51,7 @@ trait DefaultMarshallers extends MultipartMarshallers {
     def marshal(value: NodeSeq, contentType: ContentType) = StringMarshaller.marshal(value.toString, contentType)
   }
 
-  implicit val FormDataMarshaller = new MarshallerBase[FormData] {
+  implicit val FormDataMarshaller = new SimpleMarshaller[FormData] {
     val canMarshalTo = ContentType(`application/x-www-form-urlencoded`) :: Nil
 
     def marshal(formContent: FormData, contentType: ContentType) = {
@@ -63,11 +64,49 @@ trait DefaultMarshallers extends MultipartMarshallers {
     }
   }
 
+  implicit def streamMarshaller[T :Marshaller] = new Marshaller[Stream[T]] {
+    def apply(selector: ContentTypeSelector) = {
+      marshaller[T].apply(selector) match {
+        case x: CantMarshal => x
+        case MarshalWith(converter) => MarshalWith { ctx => stream =>
+          Actor.actorOf(new ChunkingActor(ctx, stream, converter)).start() ! stream
+        }
+      }
+    }
+
+    class ChunkingActor(ctx: MarshallingContext, stream: Stream[T],
+                        converter: MarshallingContext => T => Unit) extends Actor {
+      var chunkSender: Option[ChunkSender] = None
+      def receive = { case current #:: remaining =>
+        converter {
+          new MarshallingContext {
+            def startChunkedMessage(contentType: ContentType) = sys.error("Cannot marshal a stream of streams")
+            def marshalTo(content: HttpContent) {
+              chunkSender orElse {
+                chunkSender = Some(ctx.startChunkedMessage(content.contentType))
+                chunkSender
+              } foreach { sender =>
+                sender withOnChunkSent { _ => // we only send the next chunk when the previous has actually gone out
+                  self ! {
+                    if (remaining.isEmpty) {
+                      sender.close()
+                      PoisonPill
+                    } else remaining
+                  }
+                } sendChunk MessageChunk(content.buffer)
+              }
+            }
+          }
+        } apply(current.asInstanceOf[T])
+      }
+    }
+  }
+
   // As a fallback we allow marshalling without content negotiation from objects that are implicitly convertible to
   // HttpContent (most notably HttpContent itself). Note that relying on this might make the application not HTTP spec
   // conformant since the Accept headers the client sent with the request are completely ignored
   implicit def view2Marshaller[T](implicit converter: T => HttpContent) = new Marshaller[T] {
-    def apply(selector: ContentTypeSelector) = MarshalWith(converter)
+    def apply(selector: ContentTypeSelector) = MarshalWith(ctx => value => ctx.marshalTo(converter(value)))
   }
 }
 

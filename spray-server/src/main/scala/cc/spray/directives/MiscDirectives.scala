@@ -40,12 +40,7 @@ private[spray] trait MiscDirectives {
    * Returns a Route which applies the given [[cc.spray.http.HttpResponse]] transformation function to all not-rejected
    * responses of its inner Route.
    */
-  def transformResponse(f: HttpResponse => HttpResponse) = transformRequestContext(_.withHttpResponseTransformed(f))
-
-  /**
-   * Returns a Route which applies the given transformation function to the RoutingResult of its inner Route.
-   */
-  def transformRoutingResult(f: RoutingResult => RoutingResult) = transformRequestContext(_.withRoutingResultTransformed(f))
+  def transformResponse(f: HttpResponse => HttpResponse) = transformRequestContext(_.withResponseTransformed(f))
 
   /**
    * Returns a Route that sets the given response status on all not-rejected responses of its inner Route.
@@ -92,7 +87,7 @@ private[spray] trait MiscDirectives {
    * `application/json` to `application/javascript` in these cases.
    */
   def jsonpWithParameter(parameterName: String) = transformRequestContext { ctx =>
-    ctx.withHttpResponseTransformed {
+    ctx.withResponseTransformed {
       _.withContentTransformed { content =>
         import MediaTypes._
         import typeconversion.DefaultUnmarshallers._
@@ -121,13 +116,9 @@ private[spray] trait MiscDirectives {
      */
     def ~ (other: Route): Route = { ctx =>
       route {
-        ctx.withResponder { 
-          case x: Respond => ctx.responder(x) // first route succeeded
-          case Reject(rejections1) => other {
-            ctx.withResponder {
-              case x: Respond => ctx.responder(x) // second route succeeded
-              case Reject(rejections2) => ctx.reject(rejections1 ++ rejections2)
-            }
+        ctx.withReject { rejections1 =>
+          other {
+            ctx.withReject(rejections2 => ctx.reject(rejections1 ++ rejections2))
           }
         }
       }

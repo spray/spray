@@ -29,8 +29,8 @@ import akka.dispatch.Future
  */
 case class RequestContext(
   request: HttpRequest,
-  remoteHost: HttpIp = "127.0.01",
-  responder: RoutingResult => Unit = { _ => },
+  responder: RequestResponder,
+  remoteHost: HttpIp = "127.0.0.1",
   unmatchedPath: String = ""
 ) {
 
@@ -38,63 +38,78 @@ case class RequestContext(
    * Returns a copy of this context with the HttpRequest transformed by the given function.
    */
   def withRequestTransformed(f: HttpRequest => HttpRequest): RequestContext = {
-    val newRequest = f(request)
-    if (newRequest eq request) this else copy(request = newRequest)
+    val transformed = f(request)
+    if (transformed eq request) this else copy(request = transformed)
   }
 
   /**
-   * Returns a copy of this context with the the given response transformation function chained into the responder.
+   * Returns a copy of this context with the given response transformation function chained into 'responder.complete'
+   * as well as 'responder.startChunkedResponse'.
    */
-  def withHttpResponseTransformed(f: HttpResponse => HttpResponse): RequestContext = {
-    withRoutingResultTransformed {
-      case Respond(response) => Respond(f(response))
-      case x: Reject => x
-    }
-  }
-  
-  /**
-   * Returns a copy of this context with the the given RoutingResult transformation function chained into the responder.
-   */
-  def withRoutingResultTransformed(f: RoutingResult => RoutingResult): RequestContext = {
-    withResponder { rr => responder(f(rr)) }
+  def withResponseTransformed(f: HttpResponse => HttpResponse) = withResponderTransformed { responder =>
+    responder.copy(
+      complete = { response => responder.complete(f(response)) },
+      startChunkedResponse = { response => responder.startChunkedResponse(f(response)) }
+    )
   }
 
   /**
-   * Returns a copy of this context with the responder replaced by the given responder.
+   * Returns a copy of this context with the given response transformation function chained into 'responder.complete'.
    */
-  def withResponder(newResponder: RoutingResult => Unit) = copy(responder = newResponder)
+  def withUnchunkedResponseTransformed(f: HttpResponse => HttpResponse) =
+    withComplete(response => responder.complete(f(response)))
+
+  /**
+   * Returns a copy of this context with the given response transformation function chained into
+   * 'responder.startChunkedResponse'.
+   */
+  def withChunkedResponseTransformed(f: HttpResponse => HttpResponse) =
+    withStartChunkedResponse(response => responder.startChunkedResponse(f(response)))
+
+  /**
+   * Returns a copy of this context with the given rejection transformation function chained into 'responder.reject'.
+   */
+  def withRejectionsTransformed(f: Set[Rejection] => Set[Rejection]) =
+    withReject(rejections => responder.reject(f(rejections)))
+
+  /**
+   * Returns a copy of this context with a new responder using the given complete function.
+   */
+  def withComplete(f: HttpResponse => Unit): RequestContext =
+    withResponderTransformed(_.withComplete(f))
+
+  /**
+   * Returns a copy of this context with a new responder using the given reject function.
+   */
+  def withReject(f: Set[Rejection] => Unit): RequestContext =
+    withResponderTransformed(_.withReject(f))
+
+  /**
+   * Returns a copy of this context with a new responder using the given startChunkedResponse function.
+   */
+  def withStartChunkedResponse(f: HttpResponse => ChunkSender): RequestContext =
+    withResponderTransformed(_.withStartChunkedResponse(f))
+
+  /**
+   * Returns a copy of this context with the responder transformed by the given function.
+   */
+  def withResponderTransformed(f: RequestResponder => RequestResponder) = {
+    val transformed = f(responder)
+    if (transformed eq responder) this else copy(responder = transformed)
+  }
 
   /**
    * Rejects the request with the given rejections.
    */
-  def reject(rejections: Rejection*) { reject(Set(rejections: _*)) }
+  def reject(rejections: Rejection*) {
+    reject(Set(rejections: _*))
+  }
   
   /**
    * Rejects the request with the given rejections.
    */
-  def reject(rejections: Set[Rejection]) { responder(Reject(rejections)) }
-
-  /**
-   * Completes the request with status "200 Ok" and the response content created by marshalling the given object using
-   * the in-scope marshaller for the type.
-   */
-  def complete[A :Marshaller](obj: A) { complete(OK, obj) }
-
-  /**
-   * Completes the request with the given status and the response content created by marshalling the given object using
-   * the in-scope marshaller for the type.
-   */
-  def complete[A :Marshaller](status: StatusCode, obj: A) { complete(status, Nil, obj) }
-
-  /**
-   * Completes the request with the given status, headers and the response content created by marshalling the
-   * given object using the in-scope marshaller for the type.
-   */
-  def complete[A :Marshaller](status: StatusCode, headers: List[HttpHeader], obj: A) {
-    marshaller.apply(request.acceptableContentType) match {
-      case MarshalWith(converter) => complete(HttpResponse(status, headers, converter(obj)))
-      case CantMarshal(onlyTo) => reject(UnacceptedResponseContentTypeRejection(onlyTo))
-    }
+  def reject(rejections: Set[Rejection]) {
+    responder.reject(rejections)
   }
 
   /**
@@ -106,9 +121,49 @@ case class RequestContext(
   }
 
   /**
+   * Completes the request with status "200 Ok" and the response content created by marshalling the given object using
+   * the in-scope marshaller for the type.
+   */
+  def complete[A :Marshaller](obj: A) {
+    complete(OK, obj)
+  }
+
+  /**
+   * Completes the request with the given status and the response content created by marshalling the given object using
+   * the in-scope marshaller for the type.
+   */
+  def complete[A :Marshaller](status: StatusCode, obj: A) {
+    complete(status, Nil, obj)
+  }
+
+  /**
+   * Completes the request with the given status, headers and the response content created by marshalling the
+   * given object using the in-scope marshaller for the type.
+   */
+  def complete[A :Marshaller](status: StatusCode, headers: List[HttpHeader], obj: A) {
+    marshaller.apply(request.acceptableContentType) match {
+      case MarshalWith(converter) => converter(marshallingContext(status, headers)).apply(obj)
+      case CantMarshal(onlyTo) => reject(UnacceptedResponseContentTypeRejection(onlyTo))
+    }
+  }
+
+  /**
+   * Creates a MarshallingContext using the given status and headers.
+   */
+  private[spray] def marshallingContext(status: StatusCode, headers: List[HttpHeader]) = {
+    new MarshallingContext {
+      def marshalTo(content: HttpContent) { complete(HttpResponse(status, headers, content)) }
+      def startChunkedMessage(contentType: ContentType) =
+        startChunkedResponse(HttpResponse(status, headers, HttpContent(contentType, utils.EmptyByteArray)))
+    }
+  }
+
+  /**
    * Completes the request with the given [[cc.spray.http.HttpResponse]].
    */
-  def complete(response: HttpResponse) { responder(Respond(response)) }
+  def complete(response: HttpResponse) {
+    responder.complete(response)
+  }
 
   /**
    * Returns a copy of this context that cancels all rejections of type R with
@@ -123,34 +178,34 @@ case class RequestContext(
    * Returns a copy of this context that cancels all rejections matching the given predicate with
    * a [[cc.spray.RejectionRejection]].
    */
-  def cancelRejections(reject: Rejection => Boolean): RequestContext = {
-    withRoutingResultTransformed {
-      _ match {
-        case x: Respond => x
-        case Reject(rejections) => Reject(rejections + RejectionRejection(reject))
-      }
-    }
-  }
-  
+  def cancelRejections(reject: Rejection => Boolean): RequestContext =
+    withReject(rejections => responder.reject(rejections + RejectionRejection(reject)))
+
   /**
    * Completes the request with the given [[cc.spray.http.HttpFailure]].
    */
-  def fail(status: HttpFailure) { fail(status, status.defaultMessage)(DefaultMarshallers.StringMarshaller) }
+  def fail(status: HttpFailure) {
+    fail(status, status.defaultMessage)(DefaultMarshallers.StringMarshaller)
+  }
 
   /**
    * Completes the request with the given status and the response content created by marshalling the given object using
    * the in-scope marshaller for the type.
    */
-  def fail[A :Marshaller](status: HttpFailure, obj: A) { fail(status, Nil, obj) }
+  def fail[A :Marshaller](status: HttpFailure, obj: A) {
+    fail(status, Nil, obj)
+  }
 
   /**
    * Completes the request with the given status, headers and the response content created by marshalling the
    * given object using the in-scope marshaller for the type.
    */
-  def fail[A :Marshaller](status: HttpFailure, headers: List[HttpHeader], obj: A) { complete(status, headers, obj) }
+  def fail[A :Marshaller](status: HttpFailure, headers: List[HttpHeader], obj: A) {
+    complete(status, headers, obj)
+  }
   
   /**
-   * Completes the request with a redirection response to the given URI.
+   * Completes the request with a 301 redirection response to the given URI.
    */
   def redirect(uri: String, redirectionType: Redirection = Found) {
     complete {
@@ -162,4 +217,13 @@ case class RequestContext(
       )
     }
   }
+
+  /**
+   * Starts a chunked (streaming) response. The given [[cc.spray.HttpResponse]] object must have the protocol
+   * `HTTP/1.1` and is allowed to contain an entity body. Should the body of the given `HttpResponse` be non-empty it
+   * is sent immediately following the responses HTTP header section as the first chunk.
+   * The application is required to use the returned [[cc.spray.ChunkedResponder]] instance to send any number of
+   * response chunks before calling the `ChunkedResponder`s `close` method to finalize the response.
+   */
+  def startChunkedResponse(response: HttpResponse) = responder.startChunkedResponse(response)
 }

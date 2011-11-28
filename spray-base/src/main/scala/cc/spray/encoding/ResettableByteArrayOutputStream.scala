@@ -15,22 +15,18 @@
  */
 
 package cc.spray
-package typeconversion
+package encoding
 
-import http._
-import utils._
+import java.io.ByteArrayOutputStream
 
-abstract class MarshallerBase[A] extends Marshaller[A] {
+class ResettableByteArrayOutputStream(initialSize: Int) extends ByteArrayOutputStream(initialSize) {
 
-  def apply(accept: ContentType => Option[ContentType]) = {
-    canMarshalTo.mapFind(accept) match {
-      case Some(contentType) => MarshalWith(marshal(_, contentType))
-      case None => CantMarshal(canMarshalTo)
-    }
+  def pos = count
+
+  def buffer = buf
+
+  def resetTo(pos: Int) {
+    count = pos
   }
 
-  def canMarshalTo: List[ContentType]
-
-  def marshal(value: A, contentType: ContentType): HttpContent
-  
-} 
+}
