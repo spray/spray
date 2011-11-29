@@ -16,7 +16,7 @@ import java.io.File
 import org.parboiled.common.FileUtils
 import encoding.{Deflate, Gzip}
 
-trait HelloService extends Directives with Logging {
+trait DemoService extends Directives with Logging {
 
   val helloService = {
     get {

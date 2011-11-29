@@ -8,9 +8,9 @@ import http._
 import HttpMethods._
 import StatusCodes._
 
-class HelloServiceSpec extends Specification with SprayTest with HelloService {
+class DemoServiceSpec extends Specification with SprayTest with DemoService {
   
-  "The HelloService" should {
+  "The DemoService" should {
     "return a greeting for GET requests to the root path" in {
       testService(HttpRequest(GET, "/")) {
         helloService

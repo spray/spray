@@ -23,8 +23,9 @@ import akka.dispatch.Future
 trait ChunkSender {
 
   /**
-   * Send the given [[cc.spray.can.MessageChunk]] back to the client and returns the sequence number of the chunk
-   * (which can be used for example with the `onChunkSent` method).
+   * Sends the given [[cc.spray.http.MessageChunk]] back to the client and returns a Future that is completed when the
+   * chunk has actually and successfully been dispatched to the network layer. Should the client prematurely close
+   * the connection the future is completed with a [[cc.spray.can.ClientClosedConnectionException]]
    */
   def sendChunk(chunk: MessageChunk): Future[Unit]
 

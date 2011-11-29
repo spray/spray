@@ -11,7 +11,7 @@ object Boot extends App {
 
   LoggerFactory.getLogger(getClass) // initialize SLF4J early
 
-  val mainModule = new HelloService {
+  val mainModule = new DemoService {
     // bake your module cake here
   }
 
