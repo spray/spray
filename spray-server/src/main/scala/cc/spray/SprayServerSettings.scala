@@ -23,8 +23,8 @@ object SprayServerSettings extends AkkaConfSettings("spray.") {
   lazy val TimeoutActorId             = configString("spray-root-service")
   lazy val RequestTimeout             = configInt(1000)
   lazy val RootPath                   = configString
-  lazy val FileChunkingThresholdSize  = configInt(1024 * 1024) // 1 MB
-  lazy val FileChunkingChunkSize      = configInt(512 * 1024) // 512 kB
+  lazy val FileChunkingThresholdSize  = configLong(Long.MaxValue) // in bytes
+  lazy val FileChunkingChunkSize      = configInt(512 * 1024) // 512 KB
 
   warnOnUndefinedExcept("CompactJsonPrinting", "LoggingTarget")
 }

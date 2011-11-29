@@ -116,8 +116,8 @@ case class RequestContext(
    * Schedules the completion of the request with status "200 Ok" and the response content created by marshalling the
    * future result using the in-scope marshaller for A.
    */
-  def complete[A :Marshaller](responseFuture: Future[A]) {
-    responseFuture.onComplete(future => complete(future.resultOrException.get))
+  def complete[A :Marshaller](future: Future[A]) {
+    future.onComplete(future => complete(future.resultOrException.get))
   }
 
   /**
@@ -147,15 +147,19 @@ case class RequestContext(
     }
   }
 
-  /**
-   * Creates a MarshallingContext using the given status and headers.
-   */
   private[spray] def marshallingContext(status: StatusCode, headers: List[HttpHeader]) = {
     new MarshallingContext {
       def marshalTo(content: HttpContent) { complete(HttpResponse(status, headers, content)) }
       def startChunkedMessage(contentType: ContentType) =
         startChunkedResponse(HttpResponse(status, headers, HttpContent(contentType, utils.EmptyByteArray)))
     }
+  }
+
+  /**
+   * Schedules the completion of the request with result of the given future.
+   */
+  def complete(future: Future[HttpResponse]) {
+    future.onComplete(future => complete(future.resultOrException.get))
   }
 
   /**
@@ -219,11 +223,51 @@ case class RequestContext(
   }
 
   /**
+   * Starts a chunked (streaming) response, of which the first chunk is produced by the marshaller in scope for the
+   * given object. Note that the marshaller for `A` must not itself produce chunked responses or offload response
+   * generation to another thread (or actor).
+   */
+  def startChunkedResponse[A :Marshaller](obj: A): Option[ChunkSender] =
+    startChunkedResponse(OK, obj)
+
+  /**
+   * Starts a chunked (streaming) response, of which the first chunk is produced by the marshaller in scope for the
+   * given object. Note that the marshaller for `A` must not itself produce chunked responses or offload response
+   * generation to another thread (or actor).
+   */
+  def startChunkedResponse[A :Marshaller](status: StatusCode, obj: A): Option[ChunkSender] =
+    startChunkedResponse(status, Nil, obj)
+
+  /**
+   * Starts a chunked (streaming) response, of which the first chunk is produced by the marshaller in scope for the
+   * given object. Note that the marshaller for `A` must not itself produce chunked responses or offload response
+   * generation to another thread (or actor).
+   */
+  def startChunkedResponse[A :Marshaller](status: StatusCode,
+                                          headers: List[HttpHeader], obj: A): Option[ChunkSender] = {
+    marshaller.apply(request.acceptableContentType) match {
+      case MarshalWith(converter) =>
+        var marshalled: Option[HttpContent] = None
+        converter {
+          new MarshallingContext {
+            def marshalTo(content: HttpContent) { marshalled = Some(content) }
+            def startChunkedMessage(contentType: ContentType) = sys.error("Cannot use a marshaller for " +
+              "'request.startChunkedResponse' that itself marshalls to a chunked response")
+          }
+        } apply(obj)
+        marshalled.map(content => startChunkedResponse(HttpResponse(status, headers, content)))
+          .orElse(sys.error("Marshaller did not immediately 'marshalTo' an HttpContent instance. Note that you " +
+          "cannot use an asynchronous marshaller with 'startChunkedResponse'."))
+      case CantMarshal(onlyTo) => reject(UnacceptedResponseContentTypeRejection(onlyTo)); None
+    }
+  }
+
+  /**
    * Starts a chunked (streaming) response. The given [[cc.spray.HttpResponse]] object must have the protocol
    * `HTTP/1.1` and is allowed to contain an entity body. Should the body of the given `HttpResponse` be non-empty it
    * is sent immediately following the responses HTTP header section as the first chunk.
    * The application is required to use the returned [[cc.spray.ChunkedResponder]] instance to send any number of
    * response chunks before calling the `ChunkedResponder`s `close` method to finalize the response.
    */
-  def startChunkedResponse(response: HttpResponse) = responder.startChunkedResponse(response)
+  def startChunkedResponse(response: HttpResponse): ChunkSender = responder.startChunkedResponse(response)
 }
