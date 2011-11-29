@@ -22,6 +22,7 @@ import http.{HttpResponse, HttpHeader, ChunkExtension, MessageChunk}
 import akka.util.Duration
 import java.util.concurrent.{TimeUnit, CountDownLatch}
 import typeconversion.ChunkSender
+import akka.dispatch.AlreadyCompletedFuture
 
 trait RouteResultComponent {
 
@@ -64,9 +65,7 @@ trait RouteResultComponent {
     class TestChunkSender(onSent: Option[Long => Unit] = None) extends ChunkSender {
       def sendChunk(chunk: MessageChunk) = outer.synchronized {
         chunks += chunk
-        val chunkNr = if (response.get.content.isEmpty) chunks.size - 1 else chunks.size
-        onSent.foreach(_(chunkNr))
-        chunkNr
+        new AlreadyCompletedFuture(Right(()))
       }
 
       def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
@@ -77,8 +76,6 @@ trait RouteResultComponent {
           latch.countDown()
         }
       }
-
-      def withOnChunkSent(callback: Long => Unit) = new TestChunkSender(Some(callback))
     }
   }
 

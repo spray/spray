@@ -46,13 +46,7 @@ case class RequestResponder(
   /**
    * Explicitly resets the connection idle timeout for the connection underlying this response.
    */
-  resetConnectionTimeout: () => Unit = () => throw new UnsupportedOperationException,
-
-  /**
-   * Returns a copy of this responder registering the given callback function to be invoked if and when the client
-   * prematurely closed the connection.
-   */
-  registerOnClientClose: (() => Unit) => RequestResponder = _ => throw new UnsupportedOperationException
+  resetConnectionTimeout: () => Unit = () => throw new UnsupportedOperationException
 
 ) {
 

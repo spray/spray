@@ -18,6 +18,7 @@ package cc.spray
 package typeconversion
 
 import http._
+import akka.dispatch.Future
 
 trait ChunkSender {
 
@@ -25,17 +26,11 @@ trait ChunkSender {
    * Send the given [[cc.spray.can.MessageChunk]] back to the client and returns the sequence number of the chunk
    * (which can be used for example with the `onChunkSent` method).
    */
-  def sendChunk(chunk: MessageChunk): Long
+  def sendChunk(chunk: MessageChunk): Future[Unit]
 
   /**
    * Finalizes the chunked (streaming) response.
    */
   def close(extensions: List[ChunkExtension] = Nil, trailer: List[HttpHeader] = Nil)
 
-  /**
-   * Returns a copy of this ChunkedResponder registering the given callback to be invoked whenever a chunk previously
-   * scheduled for sending via `sendChunk` has actually and successfully been dispatched to the network layer. The
-   * callback receives the sequence number as produced by the `sendChunk` method.
-   */
-  def withOnChunkSent(callback: Long => Unit): ChunkSender
 }

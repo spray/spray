@@ -86,14 +86,15 @@ trait DefaultMarshallers extends MultipartMarshallers {
                 chunkSender = Some(ctx.startChunkedMessage(content.contentType))
                 chunkSender
               } foreach { sender =>
-                sender withOnChunkSent { _ => // we only send the next chunk when the previous has actually gone out
+                sender.sendChunk(MessageChunk(content.buffer)).onResult { case () =>
+                  // we only send the next chunk when the previous has actually gone out
                   self ! {
                     if (remaining.isEmpty) {
                       sender.close()
                       PoisonPill
                     } else remaining
                   }
-                } sendChunk MessageChunk(content.buffer)
+                }
               }
             }
           }

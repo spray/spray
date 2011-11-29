@@ -66,22 +66,16 @@ class SprayCanRootService(firstService: ActorRef, moreServices: ActorRef*)
   protected def sprayCanAdapterResponder(canResponder: can.RequestResponder): RequestResponder = {
     RequestResponder(
       complete = response => canResponder.complete(toSprayCanResponse(response)),
-      startChunkedResponse = response => new SprayCanAdapterChunkSender(
-        canResponder.startChunkedResponse(toSprayCanResponse(response))
-      ),
-      resetConnectionTimeout = () => canResponder.resetConnectionTimeout(),
-      registerOnClientClose = callback => sprayCanAdapterResponder(canResponder.withOnClientClose(callback))
+      startChunkedResponse = { response =>
+        val canChunkedResponder = canResponder.startChunkedResponse(toSprayCanResponse(response))
+        new ChunkSender {
+          def sendChunk(chunk: MessageChunk) = canChunkedResponder.sendChunk(toSprayCanMessageChunk(chunk))
+          def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
+            canChunkedResponder.close(extensions.map(toSprayCanChunkExtension), trailer.map(toSprayCanHeader))
+          }
+        }
+      },
+      resetConnectionTimeout = () => canResponder.resetConnectionTimeout()
     )
   }
-}
-
-class SprayCanAdapterChunkSender(canChunkedResponder: can.ChunkedResponder) extends ChunkSender {
-  def sendChunk(chunk: MessageChunk) = canChunkedResponder.sendChunk(toSprayCanMessageChunk(chunk))
-
-  def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
-    canChunkedResponder.close(extensions.map(toSprayCanChunkExtension), trailer.map(toSprayCanHeader))
-  }
-
-  def withOnChunkSent(callback: Long => Unit) =
-    new SprayCanAdapterChunkSender(canChunkedResponder.withOnChunkSent(callback))
 }

@@ -57,7 +57,17 @@ private[spray] trait CodecDirectives {
             startChunkedResponse = { response =>
               encoder.startEncoding(response) match {
                 case Some((compressedResponse, compressor)) =>
-                  new EncodingChunkSender(compressor, responder.startChunkedResponse(compressedResponse))
+                  val inner = responder.startChunkedResponse(compressedResponse)
+                  new ChunkSender {
+                    def sendChunk(chunk: MessageChunk) = {
+                      inner.sendChunk(chunk.copy(body = compressor.compress(chunk.body).flush()))
+                    }
+                    def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
+                      val body = compressor.finish()
+                      if (body.length > 0) inner.sendChunk(MessageChunk(body))
+                      inner.close(extensions, trailer)
+                    }
+                  }
                 case None => responder.startChunkedResponse(response)
               }
             }
@@ -67,16 +77,4 @@ private[spray] trait CodecDirectives {
     } else Reject(UnacceptedResponseEncodingRejection(encoder.encoding))
   }
 
-  class EncodingChunkSender(compressor: Compressor, inner: ChunkSender) extends ChunkSender {
-    def sendChunk(chunk: MessageChunk) = {
-      inner.sendChunk(chunk.copy(body = compressor.compress(chunk.body).flush()))
-    }
-    def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
-      val body = compressor.finish()
-      if (body.length > 0) inner.sendChunk(MessageChunk(body))
-      inner.close(extensions, trailer)
-    }
-    def withOnChunkSent(callback: Long => Unit) = new EncodingChunkSender(compressor, inner.withOnChunkSent(callback))
-  }
-  
 }
