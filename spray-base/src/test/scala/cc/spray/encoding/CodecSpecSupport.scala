@@ -6,7 +6,7 @@ trait CodecSpecSupport {
   this: Specification =>
 
   def readAs(string: String, charset: String = "UTF8") = beEqualTo(string) ^^ { new String(_: Array[Byte], charset) }
-  def hexDump(bytes: Array[Byte]) = bytes.map(_.toInt.toHexString.takeRight(2)).mkString
+  def hexDump(bytes: Array[Byte]) = bytes.map("%02x".format(_)).mkString
   def fromHexDump(dump: String) = dump.grouped(2).toArray.map(chars => Integer.parseInt(new String(chars), 16).toByte)
 
   def printBytes(i: Int, id: String) = {

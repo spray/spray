@@ -42,7 +42,7 @@ trait Encoder {
         val compressor = newCompressor
         message.withHeadersAndContent(
           headers = `Content-Encoding`(encoding) :: message.headers,
-          content = Some(HttpContent(content.contentType, newCompressor.compress(content.buffer).flush()))
+          content = Some(HttpContent(content.contentType, compressor.compress(content.buffer).flush()))
         ) -> compressor
       }
     } else None

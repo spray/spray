@@ -32,7 +32,7 @@ trait HelloService extends Directives with Logging {
         sendStreamingResponse
       } ~
       path("stream-large-file") {
-        encodeResponse(Deflate) {
+        encodeResponse(Gzip) {
           getFromFile(largeTempFile)
         }
       } ~

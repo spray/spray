@@ -34,6 +34,8 @@ class CodecDirectivesSpec extends AbstractSprayTest {
       beEqualTo(Some(`Content-Encoding`(encoding))) ^^ { (_: HttpResponse).headers.findByType[`Content-Encoding`] }
 
   def readAs(string: String, charset: String = "UTF8") = beEqualTo(string) ^^ { new String(_: Array[Byte], charset) }
+  def hexDump(bytes: Array[Byte]) = bytes.map("%02x".format(_)).mkString
+  def fromHexDump(dump: String) = dump.grouped(2).toArray.map(chars => Integer.parseInt(new String(chars), 16).toByte)
   
   "the NoEncoding decoder" should {
     "decode the request content if it has encoding 'identidy'" in {
@@ -60,7 +62,7 @@ class CodecDirectivesSpec extends AbstractSprayTest {
   
   "the Gzip decoder" should {
     "decode the request content if it has encoding 'gzip'" in {
-      val helloGzipped = fromHex("1f 8b 08 00 5e dc a2 4d 00 03 f3 48 cd c9 c9 07 00 82 89 d1 f7 05 00 00 00")
+      val helloGzipped = fromHexDump("1f8b08005edca24d0003f348cdc9c907008289d1f705000000")
       test(HttpRequest(headers = List(`Content-Encoding`(HttpEncodings.gzip)),
         content = Some(HttpContent(`text/plain`, helloGzipped)))) { 
         decodeRequest(Gzip) { echoRequestContent }
@@ -68,7 +70,7 @@ class CodecDirectivesSpec extends AbstractSprayTest {
     }
     "reject the request content if it has encoding 'gzip' but is corrupt" in {
       test(HttpRequest(headers = List(`Content-Encoding`(HttpEncodings.gzip)),
-        content = Some(HttpContent(`text/plain`, fromHex("00 01 02"))))) { 
+        content = Some(HttpContent(`text/plain`, fromHexDump("000102"))))) {
         decodeRequest(Gzip) { completeOk }
       }.rejections mustEqual Set(CorruptRequestEncodingRejection("Not in GZIP format"))
     }
@@ -91,7 +93,7 @@ class CodecDirectivesSpec extends AbstractSprayTest {
   }
   
   "the Gzip encoder" should {
-    val yeahGzipped = fromHex("1f 8b 08 00 00 00 00 00 00 00 8b 4c 4d cc 50 04 00 70 0d 81 57 05 00 00 00")
+    val yeahGzipped = fromHexDump("1f8b08000000000000008b4c4dcc500400700d815705000000")
 
     "encode the response content with GZIP if the client accepts it with a dedicated Accept-Encoding header" in {
       val response = test(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.gzip)))) {
@@ -132,9 +134,9 @@ class CodecDirectivesSpec extends AbstractSprayTest {
         }
       }
       result.response must haveContentEncoding(HttpEncodings.gzip)
-      Gzip.newDecompressor.decompress(result.chunks.toArray.flatMap(_.body)) must readAs(text)
+      val bytes = result.response.content.get.buffer ++ result.chunks.toArray.flatMap(_.body)
+      Gzip.newDecompressor.decompress(bytes) must readAs(text)
     }
   }
 
-  def fromHex(s: String) = s.split(' ').map(Integer.parseInt(_, 16).toByte)
 }
