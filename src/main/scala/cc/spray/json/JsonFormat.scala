@@ -51,3 +51,9 @@ object JsonWriter {
   * Provides the JSON deserialization and serialization for type T.
  */
 trait JsonFormat[T] extends JsonReader[T] with JsonWriter[T]
+
+/**
+ * A special JsonFormat signaling that the format produces a legal JSON root object, i.e. either a JSON array
+ * or a JSON object.
+ */
+trait RootJsonFormat[T] extends JsonFormat[T]

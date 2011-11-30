@@ -22,7 +22,7 @@ trait CollectionFormats {
   /**
     * Supplies the JsonFormat for Lists.
    */
-  implicit def listFormat[T :JsonFormat] = new JsonFormat[List[T]] {
+  implicit def listFormat[T :JsonFormat] = new RootJsonFormat[List[T]] {
     def write(list: List[T]) = JsArray(list.map(_.toJson))
     def read(value: JsValue) = value match {
       case JsArray(elements) => elements.map(_.convertTo[T])
@@ -33,7 +33,7 @@ trait CollectionFormats {
   /**
     * Supplies the JsonFormat for Arrays.
    */
-  implicit def arrayFormat[T :JsonFormat :ClassManifest] = new JsonFormat[Array[T]] {
+  implicit def arrayFormat[T :JsonFormat :ClassManifest] = new RootJsonFormat[Array[T]] {
     def write(array: Array[T]) = JsArray(array.map(_.toJson).toList)
     def read(value: JsValue) = value match {
       case JsArray(elements) => elements.map(_.convertTo[T]).toArray[T]
@@ -45,7 +45,7 @@ trait CollectionFormats {
     * Supplies the JsonFormat for Maps. The implicitly available JsonFormat for the key type K must
     * always write JsStrings, otherwise a [[cc.spray.json.SerializationException]] will be thrown.
    */
-  implicit def mapFormat[K :JsonFormat, V :JsonFormat] = new JsonFormat[Map[K, V]] {
+  implicit def mapFormat[K :JsonFormat, V :JsonFormat] = new RootJsonFormat[Map[K, V]] {
     def write(m: Map[K, V]) = JsObject {
       m.toList.map { t =>
         t._1.toJson match {
@@ -81,7 +81,7 @@ trait CollectionFormats {
     * A JsonFormat construction helper that creates a JsonFormat for an Iterable type I from a builder function
     * List => I.
    */
-  def viaList[I <: Iterable[T], T :JsonFormat](f: List[T] => I): JsonFormat[I] = new JsonFormat[I] {
+  def viaList[I <: Iterable[T], T :JsonFormat](f: List[T] => I): RootJsonFormat[I] = new RootJsonFormat[I] {
     def write(iterable: I) = JsArray(iterable.map(_.toJson).toList)
     def read(value: JsValue) = value match {
       case JsArray(elements) => f(elements.map(_.convertTo[T]))

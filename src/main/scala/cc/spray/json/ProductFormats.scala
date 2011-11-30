@@ -26,7 +26,7 @@ import annotation.tailrec
 trait ProductFormats {
   this: StandardFormats =>
 
-  def jsonFormat[A :JF, T <: Product](construct: A => T, a: String) = new JF[T]{
+  def jsonFormat[A :JF, T <: Product](construct: A => T, a: String) = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0)
     )
@@ -35,7 +35,7 @@ trait ProductFormats {
     )
   }
 
-  def jsonFormat[A :JF, B :JF, T <: Product](construct: (A, B) => T, a: String, b: String) = new JF[T]{
+  def jsonFormat[A :JF, B :JF, T <: Product](construct: (A, B) => T, a: String, b: String) = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1))
@@ -47,7 +47,7 @@ trait ProductFormats {
   }
 
   def jsonFormat[A :JF, B :JF, C :JF, T <: Product](construct: (A, B, C) => T,
-                                                a: String, b: String, c: String) = new JF[T]{
+        a: String, b: String, c: String) = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -61,7 +61,7 @@ trait ProductFormats {
   }
 
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, T <: Product](construct: (A, B, C, D) => T,
-                                                       a: String, b: String, c: String, d: String) = new JF[T]{
+        a: String, b: String, c: String, d: String) = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -77,7 +77,7 @@ trait ProductFormats {
   }
 
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, T <: Product](construct: (A, B, C, D, E) => T,
-        a: String, b: String, c: String, d: String, e: String) = new JF[T]{
+        a: String, b: String, c: String, d: String, e: String) = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -95,7 +95,7 @@ trait ProductFormats {
   }
   
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, T <: Product](construct: (A, B, C, D, E, F) => T,
-        a: String, b: String, c: String, d: String, e: String, f: String) = new JF[T]{
+        a: String, b: String, c: String, d: String, e: String, f: String) = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -115,7 +115,7 @@ trait ProductFormats {
   }
   
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, T <: Product](construct: (A, B, C, D, E, F, G) => T,
-        a: String, b: String, c: String, d: String, e: String, f: String, g: String) = new JF[T]{
+        a: String, b: String, c: String, d: String, e: String, f: String, g: String) = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -138,7 +138,7 @@ trait ProductFormats {
   
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, T <: Product]
         (construct: (A, B, C, D, E, F, G, H) => T,
-        a: String, b: String, c: String, d: String, e: String, f: String, g: String, h: String) = new JF[T]{
+         a: String, b: String, c: String, d: String, e: String, f: String, g: String, h: String) = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -162,8 +162,8 @@ trait ProductFormats {
   }
   
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, T <: Product]
-        (construct: (A, B, C, D, E, F, G, H, I) => T,
-        a: String, b: String, c: String, d: String, e: String, f: String, g: String, h: String, i: String) = new JF[T]{
+        (construct: (A, B, C, D, E, F, G, H, I) => T, a: String, b: String, c: String, d: String, e: String, f: String,
+         g: String, h: String, i: String) = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -190,7 +190,7 @@ trait ProductFormats {
   
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, T <: Product]
         (construct: (A, B, C, D, E, F, G, H, I, J) => T, a: String, b: String, c: String, d: String, e: String,
-         f: String, g: String, h: String, i: String, j: String) = new JF[T]{
+         f: String, g: String, h: String, i: String, j: String) = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -219,7 +219,7 @@ trait ProductFormats {
   
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, K :JF, T <: Product]
         (construct: (A, B, C, D, E, F, G, H, I, J, K) => T, a: String, b: String, c: String, d: String, e: String,
-         f: String, g: String, h: String, i: String, j: String, k: String) = new JF[T]{
+         f: String, g: String, h: String, i: String, j: String, k: String) = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -250,7 +250,7 @@ trait ProductFormats {
 
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, K :JF, L :JF, T <: Product]
         (construct: (A, B, C, D, E, F, G, H, I, J, K, L) => T, a: String, b: String, c: String, d: String, e: String,
-         f: String, g: String, h: String, i: String, j: String, k: String, l: String) = new JF[T]{
+         f: String, g: String, h: String, i: String, j: String, k: String, l: String) = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p,  0,
       productElement2Field[B](b, p,  1,
@@ -283,7 +283,7 @@ trait ProductFormats {
 
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, K :JF, L :JF, M :JF, T <: Product]
         (construct: (A, B, C, D, E, F, G, H, I, J, K, L, M) => T, a: String, b: String, c: String, d: String, e: String,
-         f: String, g: String, h: String, i: String, j: String, k: String, l: String, m: String) = new JF[T]{
+         f: String, g: String, h: String, i: String, j: String, k: String, l: String, m: String) = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p,  0,
       productElement2Field[B](b, p,  1,
@@ -317,8 +317,9 @@ trait ProductFormats {
   }
 
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, K :JF, L :JF, M :JF, N :JF, T <: Product]
-        (construct: (A, B, C, D, E, F, G, H, I, J, K, L, M, N) => T, a: String, b: String, c: String, d: String, e: String,
-         f: String, g: String, h: String, i: String, j: String, k: String, l: String, m: String, n: String) = new JF[T]{
+        (construct: (A, B, C, D, E, F, G, H, I, J, K, L, M, N) => T, a: String, b: String, c: String, d: String,
+         e: String, f: String, g: String, h: String, i: String, j: String, k: String, l: String, m: String,
+         n: String) = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p,  0,
       productElement2Field[B](b, p,  1,
@@ -354,8 +355,9 @@ trait ProductFormats {
   }
 
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, K :JF, L :JF, M :JF, N :JF, O :JF, T <: Product]
-        (construct: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O) => T, a: String, b: String, c: String, d: String, e: String,
-         f: String, g: String, h: String, i: String, j: String, k: String, l: String, m: String, n: String, o: String) = new JF[T]{
+        (construct: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O) => T, a: String, b: String, c: String, d: String,
+         e: String, f: String, g: String, h: String, i: String, j: String, k: String, l: String, m: String, n: String,
+         o: String) = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p,  0,
       productElement2Field[B](b, p,  1,

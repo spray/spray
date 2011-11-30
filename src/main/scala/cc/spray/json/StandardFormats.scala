@@ -58,7 +58,7 @@ trait StandardFormats {
     def read(value: JsValue) = Tuple1(value.convertTo[A])
   }
   
-  implicit def tuple2Format[A :JF, B :JF] = new JF[(A, B)] {
+  implicit def tuple2Format[A :JF, B :JF] = new RootJsonFormat[(A, B)] {
     def write(t: (A, B)) = JsArray(t._1.toJson, t._2.toJson)
     def read(value: JsValue) = value match {
       case JsArray(a :: b :: Nil) => (a.convertTo[A], b.convertTo[B])
@@ -66,7 +66,7 @@ trait StandardFormats {
     }
   }
   
-  implicit def tuple3Format[A :JF, B :JF, C :JF] = new JF[(A, B, C)] {
+  implicit def tuple3Format[A :JF, B :JF, C :JF] = new RootJsonFormat[(A, B, C)] {
     def write(t: (A, B, C)) = JsArray(t._1.toJson, t._2.toJson, t._3.toJson)
     def read(value: JsValue) = value match {
       case JsArray(a :: b :: c :: Nil) => (a.convertTo[A], b.convertTo[B], c.convertTo[C])
@@ -74,7 +74,7 @@ trait StandardFormats {
     }
   }
   
-  implicit def tuple4Format[A :JF, B :JF, C :JF, D :JF] = new JF[(A, B, C, D)] {
+  implicit def tuple4Format[A :JF, B :JF, C :JF, D :JF] = new RootJsonFormat[(A, B, C, D)] {
     def write(t: (A, B, C, D)) = JsArray(t._1.toJson, t._2.toJson, t._3.toJson, t._4.toJson)
     def read(value: JsValue) = value match {
       case JsArray(a :: b :: c :: d :: Nil) => (a.convertTo[A], b.convertTo[B], c.convertTo[C], d.convertTo[D])
@@ -83,7 +83,7 @@ trait StandardFormats {
   }
   
   implicit def tuple5Format[A :JF, B :JF, C :JF, D :JF, E :JF] = {
-    new JF[(A, B, C, D, E)] {
+    new RootJsonFormat[(A, B, C, D, E)] {
       def write(t: (A, B, C, D, E)) = JsArray(t._1.toJson, t._2.toJson, t._3.toJson, t._4.toJson, t._5.toJson)
       def read(value: JsValue) = value match {
         case JsArray(a :: b :: c :: d :: e :: Nil) =>
@@ -94,7 +94,7 @@ trait StandardFormats {
   }
   
   implicit def tuple6Format[A :JF, B :JF, C :JF, D :JF, E :JF, F: JF] = {
-    new JF[(A, B, C, D, E, F)] {
+    new RootJsonFormat[(A, B, C, D, E, F)] {
       def write(t: (A, B, C, D, E, F)) = JsArray(t._1.toJson, t._2.toJson, t._3.toJson, t._4.toJson, t._5.toJson, t._6.toJson)
       def read(value: JsValue) = value match {
         case JsArray(a :: b :: c :: d :: e :: f :: Nil) =>
@@ -105,7 +105,7 @@ trait StandardFormats {
   }
   
   implicit def tuple7Format[A :JF, B :JF, C :JF, D :JF, E :JF, F: JF, G: JF] = {
-    new JF[(A, B, C, D, E, F, G)] {
+    new RootJsonFormat[(A, B, C, D, E, F, G)] {
       def write(t: (A, B, C, D, E, F, G)) = JsArray(t._1.toJson, t._2.toJson, t._3.toJson, t._4.toJson, t._5.toJson, t._6.toJson, t._6.toJson)
       def read(value: JsValue) = value match {
         case JsArray(a :: b :: c :: d :: e :: f :: g :: Nil) =>
