@@ -36,6 +36,12 @@ trait AdditionalFormats {
   }
 
   /**
+   * Constructs a RootJsonFormat from its two parts, RootJsonReader and RootJsonWriter.
+   */
+  def rootJsonFormat[T](reader: RootJsonReader[T], writer: RootJsonWriter[T]) =
+    rootFormat(jsonFormat(reader, writer))
+
+  /**
    * Turns a JsonWriter into a JsonFormat that throws an UnsupportedOperationException for reads.
    */
   def lift[T](writer :JsonWriter[T]) = new JsonFormat[T] {
@@ -43,6 +49,12 @@ trait AdditionalFormats {
     def read(value: JsValue) =
       throw new UnsupportedOperationException("JsonReader implementation missing")
   }
+
+  /**
+   * Turns a RootJsonWriter into a RootJsonFormat that throws an UnsupportedOperationException for reads.
+   */
+  def lift[T](writer :RootJsonWriter[T]): RootJsonFormat[T] =
+    rootFormat(lift(writer :JsonWriter[T]))
 
   /**
    * Turns a JsonReader into a JsonFormat that throws an UnsupportedOperationException for writes.
@@ -54,12 +66,26 @@ trait AdditionalFormats {
   }
 
   /**
+   * Turns a RootJsonReader into a RootJsonFormat that throws an UnsupportedOperationException for writes.
+   */
+  def lift[T <: AnyRef](reader :RootJsonReader[T]): RootJsonFormat[T] =
+    rootFormat(lift(reader :JsonReader[T]))
+
+  /**
    * Lazy wrapper around serialization. Useful when you want to serialize (mutually) recursive structures.
    */
-  def lazyFormat[T](format: => JsonFormat[T]) = new JsonFormat[T]{
+  def lazyFormat[T](format: => JsonFormat[T]) = new JsonFormat[T] {
     lazy val delegate = format;
     def write(x: T) = delegate.write(x);
     def read(value: JsValue) = delegate.read(value);
+  }
+
+  /**
+   * Explicitly turns a JsonFormat into a RootJsonFormat.
+   */
+  def rootFormat[T](format: JsonFormat[T]) = new RootJsonFormat[T] {
+    def write(obj: T) = format.write(obj)
+    def read(json: JsValue) = format.read(json)
   }
 
   /**
