@@ -45,7 +45,7 @@ trait DefaultUnmarshallers extends MultipartUnmarshallers {
     }
   }
   
-  implicit val NodeSeqUnmarshaller = new UnmarshallerBase[NodeSeq] {
+  implicit val NodeSeqUnmarshaller = new SimpleUnmarshaller[NodeSeq] {
     val canUnmarshalFrom = ContentTypeRange(`text/xml`) ::
                            ContentTypeRange(`text/html`) ::
                            ContentTypeRange(`application/xhtml+xml`) :: Nil
@@ -59,7 +59,7 @@ trait DefaultUnmarshallers extends MultipartUnmarshallers {
     }
   }
 
-  implicit val FormDataUnmarshaller = new UnmarshallerBase[FormData] {
+  implicit val FormDataUnmarshaller = new SimpleUnmarshaller[FormData] {
     val canUnmarshalFrom = ContentTypeRange(`application/x-www-form-urlencoded`) :: Nil
   
     def unmarshal(content: HttpContent) = protect {

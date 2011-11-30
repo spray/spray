@@ -28,7 +28,7 @@ import MediaTypes._
  */
 trait SprayJsonSupport {
 
-  implicit def sprayJsonUnmarshaller[A :JsonReader] = new UnmarshallerBase[A] {
+  implicit def sprayJsonUnmarshaller[A :JsonReader] = new SimpleUnmarshaller[A] {
     val canUnmarshalFrom = ContentTypeRange(`application/json`) :: Nil
 
     def unmarshal(content: HttpContent) = protect {

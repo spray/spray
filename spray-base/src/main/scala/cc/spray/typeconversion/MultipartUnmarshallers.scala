@@ -30,7 +30,7 @@ import utils._
 
 trait MultipartUnmarshallers {
 
-  implicit val MultipartContentUnmarshaller = new UnmarshallerBase[MultipartContent] {
+  implicit val MultipartContentUnmarshaller = new SimpleUnmarshaller[MultipartContent] {
     val canUnmarshalFrom = ContentTypeRange(`multipart/*`) :: Nil
     val mimeParsingConfig = make(new MIMEConfig()) {
       _.setMemoryThreshold(-1) // use only in-memory parsing
@@ -75,7 +75,7 @@ trait MultipartUnmarshallers {
     }
   }
 
-  implicit val MultipartFormDataUnmarshaller = new UnmarshallerBase[MultipartFormData] {
+  implicit val MultipartFormDataUnmarshaller = new SimpleUnmarshaller[MultipartFormData] {
     val canUnmarshalFrom = ContentTypeRange(new `multipart/form-data`()) :: Nil
 
     def unmarshal(content: HttpContent) = {

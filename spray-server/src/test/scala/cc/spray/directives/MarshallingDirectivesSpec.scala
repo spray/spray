@@ -30,7 +30,7 @@ import akka.dispatch.Future
 
 class MarshallingDirectivesSpec extends AbstractSprayTest {
   
-  implicit object IntUnmarshaller extends UnmarshallerBase[Int] {
+  implicit object IntUnmarshaller extends SimpleUnmarshaller[Int] {
     val canUnmarshalFrom = ContentTypeRange(`text/xml`, `ISO-8859-2`) ::
                            ContentTypeRange(`text/html`) ::
                            ContentTypeRange(`application/xhtml+xml`) :: Nil
