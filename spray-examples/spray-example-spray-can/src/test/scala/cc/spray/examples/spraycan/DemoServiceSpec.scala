@@ -24,7 +24,7 @@ class DemoServiceSpec extends Specification with SprayTest with DemoService {
     "return a MethodNotAllowed error for PUT requests to the root path" in {
       testService(HttpRequest(PUT, "/")) {
         helloService
-      }.response mustEqual HttpResponse(MethodNotAllowed, "HTTP method not allowed, supported methods: GET")
+      }.response mustEqual HttpResponse(MethodNotAllowed, "HTTP method not allowed, supported methods: GET, POST")
     }
   }
   
