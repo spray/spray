@@ -8,9 +8,8 @@ import org.pegdown.{Extensions, PegDownProcessor}
 
 trait MarkdownService extends Directives {
   
-  val MarkdownType = CustomMediaType("text/x-markdown", "markdown", "mdown", "md")
-  MediaTypes.register(MarkdownType)
-  
+  val MarkdownType = register(CustomMediaType("text/x-markdown", "markdown", "mdown", "md"))
+
   val markdownService = {
     pathPrefix("doc") {
       cache {
