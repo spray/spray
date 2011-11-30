@@ -12,7 +12,7 @@ object Dependencies {
     val akka      = "1.3-RC1"
     val jetty     = "8.0.3.v20111011"
     val sprayCan  = "0.9.2-SNAPSHOT"
-    val sprayJson = "1.0.1"
+    val sprayJson = "1.1.0-SNAPSHOT"
     val slf4j     = "1.6.1"
     val logback   = "0.9.29"
   }
