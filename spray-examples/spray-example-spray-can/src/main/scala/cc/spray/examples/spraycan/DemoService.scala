@@ -41,6 +41,14 @@ trait DemoService extends Directives with Logging {
       } ~
       path("timeout") { ctx =>
         // we simply let the request drop to provoke a timeout
+      } ~
+      path("cached") {
+        cache { ctx =>
+          in(800.millis) {
+            ctx.complete("This resource is only slow the first time!\n" +
+              "It was produced on " + DateTime.now.toIsoDateTimeString)
+          }
+        }
       }
     } ~
     (post | parameter('method ! "post")) {
@@ -76,6 +84,7 @@ trait DemoService extends Directives with Logging {
           <li><a href="/stream-large-file">/stream-large-file</a></li>
           <li><a href="/stats">/stats</a></li>
           <li><a href="/timeout">/timeout</a></li>
+          <li><a href="/cached">/cached</a></li>
           <li><a href="/crash-root-service?method=post">/crash-root-service</a></li>
           <li><a href="/crash-spray-can-server?method=post">/crash-spray-can-server</a></li>
           <li><a href="/stop?method=post">/stop</a></li>
