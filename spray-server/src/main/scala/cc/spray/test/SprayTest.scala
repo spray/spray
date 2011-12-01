@@ -22,6 +22,7 @@ import http._
 import akka.util.Duration
 import akka.util.duration._
 import utils._
+import java.lang.Class
 
 /**
  * Mix this trait into the class or trait containing your route and service tests.
@@ -107,18 +108,36 @@ trait SprayTest extends RouteResultComponent {
   }
 
   def doFail(msg: String): Nothing = {
-    try {
-      this.asInstanceOf[{ def fail(msg: String): Nothing }].fail(msg)
-    } catch {
-      case e: NoSuchMethodException => {
-        try {
-          this.asInstanceOf[{ def failure(msg: String): Nothing }].failure(msg)
-        } catch {
-          case e: NoSuchMethodException =>
-            throw new RuntimeException("Illegal mixin: the SprayTest trait can only be mixed into test classes that " +
-              "supply a fail(String) or failure(String) method (e.g. ScalaTest, Specs or Specs2 specifications)")
-        }
-      }
+    import util.control.Exception._
+    ignoring(classOf[ClassNotFoundException]) {
+      // try generating a scalatest test failure
+      throw Class.forName("org.scalatest.TestFailedException")
+        .getConstructor(classOf[String], classOf[Int])
+        .newInstance(msg, 5 :java.lang.Integer) // TODO verify stack depth value
+        .asInstanceOf[Exception]
     }
+    ignoring(classOf[ClassNotFoundException]) {
+      // try generating a specs2 test failure
+      def specs2(className: String) = Class.forName("org.specs2.execute." + className)
+      throw specs2("FailureException")
+        .getConstructor(specs2("Failure"))
+        .newInstance(
+          specs2("Failure")
+            .getConstructor(classOf[String], classOf[String], classOf[List[_]], specs2("Details"))
+            .newInstance(msg, "", new Exception().getStackTrace.toList,
+              specs2("NoDetails").getConstructor().newInstance().asInstanceOf[Object])
+            .asInstanceOf[Object]
+        )
+        .asInstanceOf[Exception]
+    }
+    ignoring(classOf[NoSuchMethodException]) {
+      // fallback: try a `fail` method defined on this
+      this.asInstanceOf[{ def fail(msg: String): Nothing }].fail(msg)
+    }
+    sys.error("Illegal SprayTest usage: When used with scalatest or specs2 you can `import cc.spray.SprayTest._` or " +
+      "mix in the SprayTest trait. With other test frameworks the former option is unavailable and your test classes " +
+      "have to implement a `fail(String)` method in order to be usable with SprayTest.")
   }
 }
+
+object SprayTest extends SprayTest
