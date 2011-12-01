@@ -4,6 +4,8 @@ organization := "cc.spray.json"
 
 version := "1.1.0-SNAPSHOT"
 
+description := "A Scala library for easy and idiomatic JSON (de)serialization"
+
 scalaVersion := "2.9.1"
 
 scalacOptions := Seq("-deprecation", "-encoding", "utf8")
@@ -30,10 +32,8 @@ publishTo <<= version { version =>
 }
 
 pomExtra := (
-  <name>spray JSON</name>
   <url>http://spray.cc/</url>
   <inceptionYear>2011</inceptionYear>
-  <description>A Scala library for easy and idiomatic JSON (de)serialization</description>
   <licenses>
     <license>
       <name>Apache 2</name>
