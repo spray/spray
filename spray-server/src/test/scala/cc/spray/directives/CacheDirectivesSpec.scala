@@ -21,13 +21,14 @@ import utils._
 import http._
 import HttpMethods._
 import test.AbstractSprayTest
+import caching.LruCache
 
 class CacheDirectivesSpec extends AbstractSprayTest {
 
-  "the cache directive" should {
+  "the cacheResults directive" should {
     val countingService = {
       var i = 0
-      cache {
+      cacheResults(LruCache()) {
         _.complete {
           i += 1
           i.toString

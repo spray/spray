@@ -61,13 +61,13 @@ class LruCacheSpec extends Specification {
       cache.store.toString mustEqual "Map(3 -> C, 4 -> D)"
     }
     "expire old entries" in {
-      val cache = LruCache[String](ttl = Duration("20 ms"))
+      val cache = LruCache[String](ttl = Duration("30 ms"))
       cache(1)("A").get mustEqual "A"
       cache(2)("B").get mustEqual "B"
-      Thread.sleep(10)
+      Thread.sleep(20)
       cache(3)("C").get mustEqual "C"
       cache.store.toString mustEqual "Map(1 -> A, 2 -> B, 3 -> C)"
-      Thread.sleep(10)
+      Thread.sleep(20)
       cache.get(2) must beNone // triggers clean up, also of earlier entries
       cache.store.toString mustEqual "Map(3 -> C)"
     }

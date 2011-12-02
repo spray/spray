@@ -64,15 +64,18 @@ class LruCache[V](val maxEntries: Int, val dropFraction: Double, val ttl: Durati
       case None => make(future) { future =>
         store.setEntry(key, new Entry(future))
         if (!future.isInstanceOf[AlreadyCompletedFuture[_]]) {
-          future.onComplete { fut =>
-            cache.synchronized {
-              fut.value.get match {
-                case Right(value) => store.setEntry(key, new Entry(new AlreadyCompletedFuture(Right(value))))
-                case _ => store.remove(key) // in case of exceptions we remove the cache entry (i.e. try again later)
-              }
-            }
-          }
+          future.onComplete(updateStore(key))
         }
+      }
+    }
+  }
+
+
+  protected def updateStore(key: Any)(future: Future[V]) {
+    synchronized {
+      future.value.get match {
+        case Right(value) => store.setEntry(key, new Entry(new AlreadyCompletedFuture(Right(value))))
+        case _ => store.remove(key) // in case of exceptions we remove the cache entry (i.e. try again later)
       }
     }
   }
