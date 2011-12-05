@@ -209,4 +209,18 @@ class PathDirectivesSpec extends AbstractSprayTest {
     }
   }
 
+  "A PathMatcher1 constructed with the `pathMatcher` helper" should {
+    val Color = pathMatcher(Map("red" -> 1, "green" -> 2, "blue" -> 3))
+    "properly match its map keys" in {
+      test(HttpRequest(uri = "/color/green")) {
+        path("color" / Color) { echoComplete }
+      }.response.content.as[String] mustEqual Right("2")
+    }
+    "not match something else" in {
+      test(HttpRequest(uri = "/color/black")) {
+        path("color" / Color) { echoComplete }
+      }.handled must beFalse
+    }
+  }
+
 }
