@@ -47,22 +47,22 @@ object HttpHeaders {
 
   object Accept { def apply(first: MediaRange, more: MediaRange*): Accept = apply(first +: more) }
   case class `Accept`(mediaRanges: Seq[MediaRange]) extends HttpHeader {
-    def value = mediaRanges.mkString(", ")
+    def value = mediaRanges.map(_.value).mkString(", ")
   }
   
   object `Accept-Charset` { def apply(first: HttpCharsetRange, more: HttpCharsetRange*): `Accept-Charset` = apply(first +: more) }
   case class `Accept-Charset`(charsetRanges: Seq[HttpCharsetRange]) extends HttpHeader {
-    def value = charsetRanges.mkString(", ")
+    def value = charsetRanges.map(_.value).mkString(", ")
   }
   
   object `Accept-Encoding` { def apply(first: HttpEncodingRange, more: HttpEncodingRange*): `Accept-Encoding` = apply(first +: more) }
   case class `Accept-Encoding`(encodings: Seq[HttpEncodingRange]) extends HttpHeader {
-    def value = encodings.mkString(", ")
+    def value = encodings.map(_.value).mkString(", ")
   }
   
   object `Accept-Language` { def apply(first: LanguageRange, more: LanguageRange*): `Accept-Language` = apply(first +: more) }
   case class `Accept-Language`(languageRanges: Seq[LanguageRange]) extends HttpHeader {
-    def value = languageRanges.mkString(", ")
+    def value = languageRanges.map(_.value).mkString(", ")
   }
   
   object `Accept-Ranges` { def apply(first: RangeUnit, more: RangeUnit*): `Accept-Ranges` = apply(first +: more) }

@@ -38,7 +38,7 @@ object CacheDirectives {
   }
   case class CustomCacheDirective(name_ :String, content: Option[String])  extends RequestDirective with ResponseDirective {
     override val name = name_
-    override def value = name + content.map("=" + _).getOrElse("")
+    override def value = name + content.map("=\"" + _ + '"').getOrElse("")
   }
 
   /* Requests only */
@@ -53,10 +53,10 @@ object CacheDirectives {
   /* Responses only */
   case object `public` extends ResponseDirective
   case class `private`(fieldNames :Seq[String] = Nil) extends ResponseDirective {
-    override def value = name + (if (fieldNames.isEmpty) "" else fieldNames.mkString("=", ",", ""))
+    override def value = name + (if (fieldNames.isEmpty) "" else fieldNames.mkString("=\"", ",", "\""))
   }
   case class `no-cache`(fieldNames: Seq[String] = Nil) extends ResponseDirective {
-    override def value = name + (if (fieldNames.isEmpty) "" else fieldNames.mkString("=", ",", ""))
+    override def value = name + (if (fieldNames.isEmpty) "" else fieldNames.mkString("=\"", ",", "\""))
   }
   case object `must-revalidate` extends ResponseDirective
   case object `proxy-revalidate` extends ResponseDirective

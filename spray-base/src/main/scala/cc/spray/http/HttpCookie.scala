@@ -29,8 +29,8 @@ case class HttpCookie(
   httpOnly: Boolean = false,
   extension: Option[String] = None
 ) {
-  def value: String = name + "=" + content +
-                      expires.map("; Expires=" + _).getOrElse("") +
+  def value: String = name + "=\"" + content + '"' +
+                      expires.map("; Expires=" + _.toRfc1123DateTimeString).getOrElse("") +
                       maxAge.map("; Max-Age=" + _).getOrElse("") +
                       domain.map("; Domain=" + _).getOrElse("") +
                       path.map("; Path=" + _).getOrElse("") +

@@ -48,7 +48,20 @@ object BasicHttpCredentials {
 
 case class OtherHttpCredentials(scheme: String, params: Map[String, String]) extends HttpCredentials {
   lazy val value = {
-    scheme + ' ' + params.map { case (k, v) => k + "=\"" + v + '"' }.mkString(",")
+    val sb = new java.lang.StringBuilder(scheme).append(' ')
+    var first = true
+    params.foreach {
+      case (k, v) =>
+        if (first) first = false else sb.append(',')
+        sb.append(k).append('=').append('"')
+        v.foreach {
+          case '"' => sb.append('\\').append('"')
+          case '\\' => sb.append('\\').append('\\')
+          case c => sb.append(c)
+        }
+        sb.append('"')
+    }
+    sb.toString
   }
 }
 
