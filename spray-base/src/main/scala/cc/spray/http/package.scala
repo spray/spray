@@ -18,6 +18,8 @@ package cc.spray
 
 package object http {
 
+  type HttpResult[+T] = Either[HttpException, T]
+
   /**
    * Warms up the cc.spray.http module by triggering the loading of most classes in this package,
    * so as to increase the speed of the first usage.

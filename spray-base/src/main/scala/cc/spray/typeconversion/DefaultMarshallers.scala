@@ -64,6 +64,10 @@ trait DefaultMarshallers extends MultipartMarshallers {
     }
   }
 
+  implicit val HttpExceptionMarshaller = new Marshaller[HttpException] {
+    def apply(sel: ContentTypeSelector) = MarshalWith(ctx => throw _)
+  }
+
   implicit def streamMarshaller[T :Marshaller] = new Marshaller[Stream[T]] {
     def apply(selector: ContentTypeSelector) = {
       marshaller[T].apply(selector) match {
@@ -99,6 +103,25 @@ trait DefaultMarshallers extends MultipartMarshallers {
             }
           }
         } apply(current.asInstanceOf[T])
+      }
+    }
+  }
+
+  implicit def eitherMarshaller[A :Marshaller, B :Marshaller] = new Marshaller[Either[A, B]] {
+    val ma = marshaller[A]
+    val mb = marshaller[B]
+    def apply(sel: ContentTypeSelector) = ma(sel) match {
+      case x: CantMarshal => x
+      case MarshalWith(fa) => mb(sel) match {
+        case x: CantMarshal => x
+        case MarshalWith(fb) => MarshalWith { ctx =>
+          lazy val converta = fa(ctx)
+          lazy val convertb = fb(ctx);
+          {
+            case Right(value) => convertb(value)
+            case Left(value) => converta(value)
+          }
+        }
       }
     }
   }
