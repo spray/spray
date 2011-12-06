@@ -29,7 +29,7 @@ class CollectionFormatsSpec extends Specification with DefaultJsonProtocol {
   
   "The mapFormat" should {
     val map = Map("a" -> 1, "b" -> 2, "c" -> 3)
-    val json = JsObject(JsField("a", JsNumber(1)), JsField("b", JsNumber(2)), JsField("c", JsNumber(3)))
+    val json = JsObject("a" -> JsNumber(1), "b" -> JsNumber(2), "c" -> JsNumber(3))
     "convert a Map[String, Long] to a JsObject" in {
       map.toJson mustEqual json
     }

@@ -16,4 +16,4 @@
 
 package cc.spray.json
 
-class DeserializationException(msg: String) extends RuntimeException(msg)
+class DeserializationException(msg: String, cause: Throwable = null) extends RuntimeException(msg, cause)

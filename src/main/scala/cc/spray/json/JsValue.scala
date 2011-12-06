@@ -18,7 +18,9 @@
 
 package cc.spray.json
 
-import collection.mutable.ListBuffer
+import collection.mutable.{LinkedHashMap, ListBuffer}
+import collection.immutable.ListMap
+
 
 /**
   * The general type of a JSON AST node.
@@ -37,21 +39,12 @@ sealed trait JsValue {
 /**
   * A JSON object.
  */
-case class JsObject(fields: List[JsField]) extends JsValue {
-  lazy val asMap: Map[String, JsValue] = {
-    val b = Map.newBuilder[String, JsValue]
-    for (JsField(name, value) <- fields) b += ((name, value))
-    b.result()
-  }
-}
+case class JsObject(fields: Map[String, JsValue]) extends JsValue
 object JsObject {
-  def apply(members: JsField*) = new JsObject(members.toList)
+  // we use a ListMap in order to preserve the field order
+  def apply(members: JsField*) = new JsObject(ListMap(members: _*))
+  def apply(members: List[JsField]) = new JsObject(ListMap(members: _*))
 }
-
-/**
-  * The members/fields of a JSON object.
- */
-case class JsField(name: String, value: JsValue) extends JsValue
 
 /**
   * A JSON array.

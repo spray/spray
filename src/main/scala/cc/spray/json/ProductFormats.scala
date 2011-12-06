@@ -401,24 +401,24 @@ trait ProductFormats {
     val value = p.productElement(ix).asInstanceOf[T]
     writer match {
       case _: OptionFormat[_] if (value == None) => rest
-      case _ => JsField(fieldName, writer.write(value)) :: rest
+      case _ => (fieldName, writer.write(value)) :: rest
     }
   }
   
   private def fromField[T](value: JsValue, fieldName: String)(implicit reader: JsonReader[T]) = {
-    @tailrec
-    def getFrom(fields: List[JsField]): T = {
-      if (fields.isEmpty) {
-        if (reader.isInstanceOf[OptionFormat[_]]) None.asInstanceOf[T]
-        else throw new DeserializationException("Object is missing required member '" + fieldName + "'")
-      } else if (fields.head.name == fieldName) {
-        reader.read(fields.head.value)
-      } else {
-        getFrom(fields.tail)
-      }
-    }
     value match {
-      case x: JsObject => getFrom(x.fields)
+      case x: JsObject =>
+        var fieldFound = false
+        try {
+          val fieldValue = x.fields(fieldName)
+          fieldFound = true
+          reader.read(fieldValue)
+        }
+        catch {
+          case e: NoSuchElementException if !fieldFound =>
+            if (reader.isInstanceOf[OptionFormat[_]]) None.asInstanceOf[T]
+            else throw new DeserializationException("Object is missing required member '" + fieldName + "'", e)
+        }
       case _ => throw new DeserializationException("Object expected")
     }
   }
@@ -437,6 +437,6 @@ trait NullOptions extends ProductFormats {
   override protected def productElement2Field[T](fieldName: String, p: Product, ix: Int, rest: List[JsField])
                                                 (implicit writer: JsonWriter[T]) = {
     val value = p.productElement(ix).asInstanceOf[T]
-    JsField(fieldName, writer.write(value)) :: rest
+    (fieldName, writer.write(value)) :: rest
   }
 }

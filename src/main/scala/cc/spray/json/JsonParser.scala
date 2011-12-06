@@ -31,10 +31,10 @@ object JsonParser extends Parser {
   def Json = rule { WhiteSpace ~ Value ~ EOI }
 
   def JsonObject: Rule1[JsObject] = rule {
-    "{ " ~ zeroOrMore(Pair, separator = ", ") ~ "} " ~~> (JsObject(_))
+    "{ " ~ zeroOrMore(Pair, separator = ", ") ~ "} " ~~> (JsObject(_ :_*))
   }
 
-  def Pair = rule { JsonStringUnwrapped ~ ": " ~ Value ~~> (JsField(_, _)) }
+  def Pair = rule { JsonStringUnwrapped ~ ": " ~ Value ~~> ((_, _)) }
 
   def Value: Rule1[JsValue] = rule {
     JsonString | JsonNumber | JsonObject | JsonArray | JsonTrue | JsonFalse | JsonNull

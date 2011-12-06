@@ -47,15 +47,16 @@ trait CollectionFormats {
    */
   implicit def mapFormat[K :JsonFormat, V :JsonFormat] = new RootJsonFormat[Map[K, V]] {
     def write(m: Map[K, V]) = JsObject {
-      m.toList.map { t =>
-        t._1.toJson match {
-          case JsString(x) => JsField(x, t._2.toJson)
+      m.map { field =>
+        field._1.toJson match {
+          case JsString(x) => x -> field._2.toJson
           case x => throw new SerializationException("Map key must be formatted as JsString, not '" + x + "'")
         }
       }
     }
     def read(value: JsValue) = value match {
-      case JsObject(fields) => fields.map(field => (JsString(field.name).convertTo[K], field.value.convertTo[V])).toMap
+      case JsObject(fields) =>
+        fields.map(field => (JsString(field._1).convertTo[K], field._2.convertTo[V])) (collection.breakOut)
       case x => throw new DeserializationException("Expected Map as JsObject, but got " + x)
     }
   }

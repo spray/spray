@@ -17,6 +17,8 @@
 package cc.spray
 
 package object json {
+
+  type JsField = (String, JsValue)
   
   def jsonReader[T](implicit reader: JsonReader[T]) = reader  
   def jsonWriter[T](implicit writer: JsonWriter[T]) = writer 
