@@ -1,6 +1,5 @@
 /*
- * Original implementation (C) 2009-2011 Debasish Ghosh
- * Adapted and extended in 2011 by Mathias Doenitz
+ * Copyright (C) 2011 Mathias Doenitz
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
