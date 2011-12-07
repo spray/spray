@@ -18,19 +18,28 @@
 
 package cc.spray.json
 
-import collection.mutable.{LinkedHashMap, ListBuffer}
 import collection.immutable.ListMap
 
 
 /**
   * The general type of a JSON AST node.
  */
-sealed trait JsValue {
+sealed abstract class JsValue {
   override def toString = compactPrint
   def toString(printer: (JsValue => String)) = printer(this)
   def compactPrint = CompactPrinter(this)
   def prettyPrint = PrettyPrinter(this)
   def convertTo[T :JsonReader]: T = jsonReader[T].read(this)
+
+  /**
+   * Returns `this` if this JsValue is a JsObject, otherwise throws a DeserializationException with the given error msg.
+   */
+  def asJsObject(errorMsg: String = "JSON object expected"): JsObject = deserializationError(errorMsg)
+
+  /**
+   * Returns `this` if this JsValue is a JsObject, otherwise throws a DeserializationException.
+   */
+  def asJsObject: JsObject = asJsObject()
 
   @deprecated("Superceded by 'convertTo'", "1.1.0")
   def fromJson[T :JsonReader]: T = convertTo
@@ -39,7 +48,10 @@ sealed trait JsValue {
 /**
   * A JSON object.
  */
-case class JsObject(fields: Map[String, JsValue]) extends JsValue
+case class JsObject(fields: Map[String, JsValue]) extends JsValue {
+  override def asJsObject(errorMsg: String) = this
+  def getFields(fieldNames: String*): Seq[JsValue] = fieldNames.flatMap(fields.get)
+}
 object JsObject {
   // we use a ListMap in order to preserve the field order
   def apply(members: JsField*) = new JsObject(ListMap(members: _*))
@@ -82,7 +94,7 @@ object JsNumber {
 /**
   * JSON Booleans.
  */
-sealed trait JsBoolean extends JsValue {
+sealed abstract class JsBoolean extends JsValue {
   def value: Boolean
 }
 object JsBoolean {
