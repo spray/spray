@@ -16,8 +16,6 @@
 
 package cc.spray.json
 
-import annotation.tailrec
-
 /**
  * Provides the helpers for constructing custom JsonFormat implementations for types implementing the Product trait
  * (especially case classes)
@@ -416,9 +414,9 @@ trait ProductFormats {
         catch {
           case e: NoSuchElementException if !fieldFound =>
             if (reader.isInstanceOf[OptionFormat[_]]) None.asInstanceOf[T]
-            else throw new DeserializationException("Object is missing required member '" + fieldName + "'", e)
+            else deserializationError("Object is missing required member '" + fieldName + "'", e)
         }
-      case _ => throw new DeserializationException("Object expected")
+      case _ => deserializationError("Object expected")
     }
   }
 }

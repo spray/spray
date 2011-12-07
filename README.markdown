@@ -131,7 +131,7 @@ Here is one way to do it:
           case JsArray(JsString(name) :: JsNumber(red) :: JsNumber(green) :: JsNumber(blue) :: Nil) => {
             new Color(name, red.toInt, green.toInt, blue.toInt)
           }
-          case _ => throw new DeserializationException("Color expected")
+          case _ => deserializationError("Color expected")
         }
       }
     }
@@ -163,7 +163,7 @@ Another way would be to serialize `Color`s as JSON objects:
           ) => {
             new Color(name.value, red.value.toInt, green.value.toInt, blue.value.toInt)
           }
-          case _ => throw new DeserializationException("Color expected")
+          case _ => deserializationError("Color expected")
         }
       }
     }

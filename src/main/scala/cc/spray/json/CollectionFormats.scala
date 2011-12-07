@@ -26,7 +26,7 @@ trait CollectionFormats {
     def write(list: List[T]) = JsArray(list.map(_.toJson))
     def read(value: JsValue) = value match {
       case JsArray(elements) => elements.map(_.convertTo[T])
-      case x => throw new DeserializationException("Expected List as JsArray, but got " + x)
+      case x => deserializationError("Expected List as JsArray, but got " + x)
     }
   }
   
@@ -37,7 +37,7 @@ trait CollectionFormats {
     def write(array: Array[T]) = JsArray(array.map(_.toJson).toList)
     def read(value: JsValue) = value match {
       case JsArray(elements) => elements.map(_.convertTo[T]).toArray[T]
-      case x => throw new DeserializationException("Expected Array as JsArray, but got " + x)
+      case x => deserializationError("Expected Array as JsArray, but got " + x)
     }
   }
   
@@ -55,9 +55,10 @@ trait CollectionFormats {
       }
     }
     def read(value: JsValue) = value match {
-      case JsObject(fields) =>
-        fields.map(field => (JsString(field._1).convertTo[K], field._2.convertTo[V])) (collection.breakOut)
-      case x => throw new DeserializationException("Expected Map as JsObject, but got " + x)
+      case x: JsObject => x.fields.map { field =>
+        (JsString(field._1).convertTo[K], field._2.convertTo[V])
+      } (collection.breakOut)
+      case x => deserializationError("Expected Map as JsObject, but got " + x)
     }
   }
 
@@ -86,7 +87,7 @@ trait CollectionFormats {
     def write(iterable: I) = JsArray(iterable.map(_.toJson).toList)
     def read(value: JsValue) = value match {
       case JsArray(elements) => f(elements.map(_.convertTo[T]))
-      case x => throw new DeserializationException("Expected Collection as JsArray, but got " + x)
+      case x => deserializationError("Expected Collection as JsArray, but got " + x)
     }
   }
 

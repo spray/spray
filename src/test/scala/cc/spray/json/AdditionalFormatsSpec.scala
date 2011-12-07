@@ -27,7 +27,7 @@ class AdditionalFormatsSpec extends Specification {
       new JsonReader[Container[T]] {
         def read(value: JsValue) = value match {
           case JsObject(fields) if fields.contains("content") => Container(Some(jsonReader[T].read(fields("content"))))
-          case _ => throw new DeserializationException("Unexpected format: " + value.toString)
+          case _ => deserializationError("Unexpected format: " + value.toString)
         }
       }
     }

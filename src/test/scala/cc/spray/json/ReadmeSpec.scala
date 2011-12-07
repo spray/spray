@@ -66,7 +66,7 @@ class ReadmeSpec extends Specification {
             case JsArray(JsString(name) :: JsNumber(red) :: JsNumber(green) :: JsNumber(blue) :: Nil) => {
               new Color(name, red.toInt, green.toInt, blue.toInt)
             }
-            case _ => throw new DeserializationException("Color expected")
+            case _ => deserializationError("Color expected")
           }
         }
       }      
