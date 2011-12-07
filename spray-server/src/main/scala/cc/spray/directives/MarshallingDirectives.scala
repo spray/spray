@@ -89,9 +89,4 @@ private[spray] trait MarshallingDirectives extends DefaultMarshallers with Defau
    */
   def completeWith[T :Marshaller](value: T): Route = _.complete(value)
 
-  /**
-   * Completes the request with the given [[cc.spray.http.HttpResponse]].
-   */
-  def completeWith(response: HttpResponse): Route = _.complete(response)
-  
 }

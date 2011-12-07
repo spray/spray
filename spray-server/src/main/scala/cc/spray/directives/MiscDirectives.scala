@@ -18,9 +18,23 @@ package cc.spray
 package directives
 
 import http._
+import StatusCodes.Redirection
 
 private[spray] trait MiscDirectives {
   this: BasicDirectives with ParameterDirectives =>
+
+  /**
+   * Completes the request with the given [[cc.spray.http.HttpResponse]].
+   */
+  def completeWith(response: HttpResponse): Route =
+    _.complete(response)
+
+  /**
+   * Completes the request with redirection response of the given type to the given URI.
+   * The default redirectionType is a temporary `302 Found`.
+   */
+  def redirect(uri: String, redirectionType: Redirection = StatusCodes.Found): Route =
+    _.redirect(uri, redirectionType)
 
   /**
    * Returns a Route which checks the given condition before passing on the [[cc.spray.RequestContext]] to its inner

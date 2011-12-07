@@ -216,15 +216,21 @@ case class RequestContext(
   }
   
   /**
-   * Completes the request with a 301 redirection response to the given URI.
+   * Completes the request with redirection response of the given type to the given URI.
+   * The default redirectionType is a temporary `302 Found`.
    */
   def redirect(uri: String, redirectionType: Redirection = Found) {
     complete {
       HttpResponse(
         status = redirectionType,
         headers = Location(uri) :: Nil,
-        content = HttpContent(`text/html`,
-          "The requested resource temporarily resides under this <a href=\"" + uri + "\">URI</a>.")
+        content = redirectionType match {
+          case Found =>
+            HttpContent(`text/html`, "The requested resource temporarily resides under <a href=\"" + uri + "\">this URI</a>.")
+          case MovedPermanently =>
+            HttpContent(`text/html`, "This and all future requests should be directed to <a href=\"" + uri + "\">this URI</a>.")
+          case _ => HttpContent(redirectionType.defaultMessage)
+        }
       )
     }
   }
