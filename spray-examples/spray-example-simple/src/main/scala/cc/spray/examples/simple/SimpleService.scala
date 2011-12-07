@@ -32,7 +32,7 @@ trait SimpleService extends Directives {
     } ~
     path("ping") {
       content(as[Option[String]]) { body =>
-        _.complete("PONG! " + body.getOrElse(""))
+        completeWith("PONG! " + body.getOrElse(""))
       }
     } ~
     path("crashRootService") {
@@ -63,7 +63,7 @@ trait SimpleService extends Directives {
   val secondService = {
     path("2nd") {
       get {
-        _.complete("A reply from a second service!")
+        completeWith("A reply from a second service!")
       }
     }
   }

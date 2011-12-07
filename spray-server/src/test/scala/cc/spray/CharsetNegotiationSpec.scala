@@ -24,7 +24,7 @@ import test.AbstractSprayTest
 
 class CharsetNegotiationSpec extends AbstractSprayTest {
 
-  val Hällo: Route = _.complete("Hällö")
+  val Hällo: Route = completeWith("Hällö")
   
   "The framework" should {
     "encode text content using ISO-8859-1 if no Accept-Charset header is present in the request" in {

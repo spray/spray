@@ -80,7 +80,18 @@ private[spray] trait MarshallingDirectives extends DefaultMarshallers with Defau
    * the in-scope unmarshaller and the result value of the function is marshalled with the in-scope marshaller.
    */
   def handleWith[A :Unmarshaller, B: Marshaller](f: A => B): Route = {
-    content(as[A]) { a => _.complete(f(a)) }
+    content(as[A]) { a => completeWith(f(a)) }
   }
+
+  /**
+   * Completes the request with status "200 Ok" and the response content created by marshalling the given object using
+   * the in-scope marshaller for the type.
+   */
+  def completeWith[T :Marshaller](value: T): Route = _.complete(value)
+
+  /**
+   * Completes the request with the given [[cc.spray.http.HttpResponse]].
+   */
+  def completeWith(response: HttpResponse): Route = _.complete(response)
   
 }

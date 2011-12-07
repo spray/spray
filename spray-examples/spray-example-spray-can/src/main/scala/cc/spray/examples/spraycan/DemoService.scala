@@ -22,11 +22,11 @@ trait DemoService extends Directives with Logging {
     get {
       path("") {
         respondWithMediaType(`text/html`) { // XML is marshalled to `text/xml` by default, so we simply override here
-          _.complete(index)
+          completeWith(index)
         }
       } ~
       path("ping") {
-        _.complete("PONG!")
+        completeWith("PONG!")
       } ~
       path("stream") {
         sendStreamingResponse

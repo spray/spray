@@ -46,22 +46,22 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
   "The 'contentAs' directive" should {
     "extract an object from the requests HttpContent using the in-scope Unmarshaller" in {
       test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/xml`), "<p>cool</p>")))) {
-        content(as[NodeSeq]) { xml => _.complete(xml) }
+        content(as[NodeSeq]) { xml => completeWith(xml) }
       }.response.content.as[NodeSeq] mustEqual Right(<p>cool</p>) 
     }
     "return a RequestEntityExpectedRejection rejection if the request has no entity" in {
       test(HttpRequest(PUT)) {
-        content(as[NodeSeq]) { _ => completeOk }
+        content(as[NodeSeq]) { _ => completeWith(Ok) }
       }.rejections mustEqual Set(RequestEntityExpectedRejection)
     }
     "return an UnsupportedRequestContentTypeRejection if no matching unmarshaller is in scope" in {
       test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/css`), "<p>cool</p>")))) {
-        content(as[NodeSeq]) { _ => completeOk }
+        content(as[NodeSeq]) { _ => completeWith(Ok) }
       }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection("Expected 'text/xml' or 'text/html' or 'application/xhtml+xml'"))
     }
     "extract an Option[A] from the requests HttpContent using the in-scope Unmarshaller" in {
       test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/xml`), "<p>cool</p>")))) {
-        content(as[Option[NodeSeq]]) { optXml => _.complete(optXml.get) }
+        content(as[Option[NodeSeq]]) { optXml => completeWith(optXml.get) }
       }.response.content.as[NodeSeq] mustEqual Right(<p>cool</p>) 
     }
     "extract an Option[A] as None if the request has no entity" in {
@@ -71,7 +71,7 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
     }
     "return an UnsupportedRequestContentTypeRejection if no matching unmarshaller is in scope (for Option[A]s)" in {
       test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/css`), "<p>cool</p>")))) {
-        content(as[Option[NodeSeq]]) { _ => completeOk }
+        content(as[Option[NodeSeq]]) { _ => completeWith(Ok) }
       }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection("Expected 'text/xml' or 'text/html' or 'application/xhtml+xml'"))
     }
   }
@@ -125,7 +125,7 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
   "RequestContext.complete(Future)" should {
     "correctly complete the request with the future result" in {
       test(HttpRequest()) {
-        _.complete(Future("yeah"))
+        completeWith(Future("yeah"))
       }.response.content.as[String] mustEqual Right("yeah")
     }
   }

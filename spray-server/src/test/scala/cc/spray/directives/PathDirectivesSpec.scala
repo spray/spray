@@ -26,12 +26,12 @@ class PathDirectivesSpec extends AbstractSprayTest {
   "routes created with the path(string) combinator" should {
     "block completely unmatching requests" in {
       test(HttpRequest(uri = "/noway/this/works")) {
-        path("hello") { completeOk }
+        path("hello") { completeWith(Ok) }
       }.handled must beFalse
     }
     "block prefix requests" in {
       test(HttpRequest(uri = "/noway/this/works")) {
-        path("noway/this") { completeOk }
+        path("noway/this") { completeWith(Ok) }
       }.handled must beFalse
     }
     "let fully matching requests pass and clear the RequestContext.unmatchedPath" in {
@@ -48,10 +48,10 @@ class PathDirectivesSpec extends AbstractSprayTest {
     }
     "implicitly match trailing slashes" in {
       test(HttpRequest(uri = "/works/")) {
-        path("works") { completeOk }
+        path("works") { completeWith(Ok) }
       }.response mustEqual Ok
       test(HttpRequest(uri = "")) {
-        path("") { completeOk }
+        path("") { completeWith(Ok) }
       }.response mustEqual Ok
     }
   }
@@ -59,7 +59,7 @@ class PathDirectivesSpec extends AbstractSprayTest {
   "routes created with the pathPrefix(string) combinator" should {
     "block unmatching requests" in {
       test(HttpRequest(uri = "/noway/this/works")) {
-        pathPrefix("hello") { completeOk }
+        pathPrefix("hello") { completeWith(Ok) }
       }.handled must beFalse
     }
     "let matching requests pass and adapt RequestContext.unmatchedPath" in {
@@ -88,7 +88,7 @@ class PathDirectivesSpec extends AbstractSprayTest {
   "routes created with the pathPrefix(regex) combinator" should {
     "block unmatching requests" in {
       test(HttpRequest(uri = "/noway/this/works")) {
-        pathPrefix("\\d".r) { _ => completeOk }
+        pathPrefix("\\d".r) { _ => completeWith(Ok) }
       }.handled must beFalse
     }
     "let matching requests pass, extract the match value and adapt RequestContext.unmatchedPath" in {
@@ -111,7 +111,7 @@ class PathDirectivesSpec extends AbstractSprayTest {
       "within one single path(...) combinator" in {
         test(HttpRequest(uri = "/compute/23/19")) {
           pathPrefix("compute" / "\\d+".r / "\\d+".r) { (a, b) =>
-            _.complete((a.toInt + b.toInt).toString)
+            completeWith((a.toInt + b.toInt).toString)
           }
         }.response.content.as[String] mustEqual Right("42")
       }
@@ -119,7 +119,7 @@ class PathDirectivesSpec extends AbstractSprayTest {
         test(HttpRequest(uri = "/compute/23/19")) {
           pathPrefix("compute" / "\\d+".r) { a =>
             pathPrefix("\\d+".r) { b =>
-              _.complete((a.toInt + b.toInt).toString)
+              completeWith((a.toInt + b.toInt).toString)
             }
           }
         }.response.content.as[String] mustEqual Right("42")
@@ -127,7 +127,7 @@ class PathDirectivesSpec extends AbstractSprayTest {
     }
     "fail when the regex contains more than one group" in {
       path("compute" / "yea(\\d+)(\\d+)".r / "\\d+".r) { (a, b) =>
-        completeOk
+        completeWith(Ok)
       } must throwA[IllegalArgumentException]
     }
   }
@@ -186,12 +186,12 @@ class PathDirectivesSpec extends AbstractSprayTest {
   "trailing slashes in the URI" should {
     "be matched by path matchers no having a trailing slash" in {
       testService(HttpRequest(uri = "/a/")) {
-        path("a") { completeOk }
+        path("a") { completeWith(Ok) }
       }.response mustEqual Ok
     }
     "be matched by path matchers having a trailing slash" in {
       testService(HttpRequest(uri = "/a/")) {
-        path("a/") { completeOk } 
+        path("a/") { completeWith(Ok) }
       }.response mustEqual Ok
     }
   }
@@ -199,12 +199,12 @@ class PathDirectivesSpec extends AbstractSprayTest {
   "URIs without trailing slash" should {
     "be matched by path matchers no having a trailing slash" in {
       testService(HttpRequest(uri = "/a")) {
-        path("a") { completeOk }
+        path("a") { completeWith(Ok) }
       }.response mustEqual Ok
     }
     "not be matched by path matchers having a trailing slash" in {
       testService(HttpRequest(uri = "/a")) {
-        path("a/") { completeOk } 
+        path("a/") { completeWith(Ok) }
       }.handled must beFalse
     }
   }

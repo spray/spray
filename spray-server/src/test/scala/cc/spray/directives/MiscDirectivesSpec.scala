@@ -31,7 +31,7 @@ class MiscDirectivesSpec extends AbstractSprayTest {
   "respondWithStatus" should {
     "set the given status on successful responses" in {
       test(HttpRequest()) { 
-        respondWithStatus(Created) { completeOk }
+        respondWithStatus(Created) { completeWith(Ok) }
       }.response mustEqual HttpResponse(Created) 
     }
     "leave rejections unaffected" in {
@@ -44,7 +44,7 @@ class MiscDirectivesSpec extends AbstractSprayTest {
   "respondWithHeader" should {
     "add the given headers to successful responses" in {
       test(HttpRequest()) { 
-        respondWithHeader(CustomHeader("custom", "custom")) { completeOk }
+        respondWithHeader(CustomHeader("custom", "custom")) { completeWith(Ok) }
       }.response mustEqual HttpResponse(OK, CustomHeader("custom", "custom") :: Nil) 
     }
     "leave rejections unaffected" in {
@@ -57,7 +57,7 @@ class MiscDirectivesSpec extends AbstractSprayTest {
   "respondWithContentType" should {
     "set the content type of successful responses" in {
       test(HttpRequest()) { 
-        respondWithContentType(`application/json`) { _.complete("plaintext") }
+        respondWithContentType(`application/json`) { completeWith("plaintext") }
       }.response.content mustEqual Some(HttpContent(`application/json`, "plaintext")) 
     }
     "leave rejections unaffected" in {
@@ -70,23 +70,23 @@ class MiscDirectivesSpec extends AbstractSprayTest {
   "routes created by the concatenation operator '~'" should {
     "yield the first sub route if it succeeded" in {
       test(HttpRequest(GET)) {
-        get { _.complete("first") } ~ get { _.complete("second") }
+        get { completeWith("first") } ~ get { completeWith("second") }
       }.response.content.as[String] mustEqual Right("first")    
     }
     "yield the second sub route if the first did not succeed" in {
       test(HttpRequest(GET)) {
-        post { _.complete("first") } ~ get { _.complete("second") }
+        post { completeWith("first") } ~ get { completeWith("second") }
       }.response.content.as[String] mustEqual Right("second")    
     }
     "collect rejections from both sub routes" in {
       test(HttpRequest(DELETE)) {
-        get { completeOk } ~ put { completeOk }
+        get { completeWith(Ok) } ~ put { completeWith(Ok) }
       }.rejections mustEqual Set(MethodRejection(GET), MethodRejection(PUT))
     }
     "clear rejections that have already been 'overcome' by previous directives" in {
       test(HttpRequest(PUT)) {
         put { content(as[String]) { echoComplete }} ~
-        get { completeOk }
+        get { completeWith(Ok) }
       }.rejections mustEqual Set(RequestEntityExpectedRejection)
     }
   }
@@ -96,7 +96,7 @@ class MiscDirectivesSpec extends AbstractSprayTest {
       test(HttpRequest(uri = "/?jsonp=someFunc")) {
         jsonpWithParameter("jsonp") {
           respondWithContentType(`application/json`) {
-            _.complete("[1,2,3]")
+            completeWith("[1,2,3]")
           }
         }
       }.response.content.get mustEqual HttpContent(ContentType(`application/javascript`), "someFunc([1,2,3])")
@@ -105,7 +105,7 @@ class MiscDirectivesSpec extends AbstractSprayTest {
       test(HttpRequest(uri = "/")) {
         jsonpWithParameter("jsonp") {
           respondWithContentType(`application/json`) {
-            _.complete("[1,2,3]")
+            completeWith("[1,2,3]")
           }
         }
       }.response.content.get mustEqual HttpContent(ContentType(`application/json`), "[1,2,3]")
@@ -114,7 +114,7 @@ class MiscDirectivesSpec extends AbstractSprayTest {
       test(HttpRequest(uri = "/?jsonp=someFunc")) {
         jsonpWithParameter("jsonp") {
           respondWithContentType(`text/plain`) {
-            _.complete("[1,2,3]")
+            completeWith("[1,2,3]")
           }
         }
       }.response.content.get mustEqual HttpContent(ContentType(`text/plain`), "[1,2,3]")

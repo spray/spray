@@ -8,14 +8,14 @@ trait CalculatorService extends Directives with CustomMarshallers {
   val calculatorService = {
     path("add" / DoubleNumber / DoubleNumber) { (a, b) =>
       get {
-        _.complete(a + b)
+        completeWith(a + b)
       }
     } ~
     pathPrefix("substract") {
       pathPrefix(DoubleNumber) { a =>
         path(DoubleNumber) { b => // pathPrefix can be nested, but the final match needs to be done with the "path" directive
           get {
-            _.complete(a - b)
+            completeWith(a - b)
           }
         }
       }
@@ -23,7 +23,7 @@ trait CalculatorService extends Directives with CustomMarshallers {
     path("multiply" / DoubleNumber / DoubleNumber) { (a, b) =>
       detach { // just for fun: everything following the 'detach' directive will be running in a newly spawned actor  
         get {
-          _.complete(a * b)
+          completeWith(a * b)
         }
       }
     } ~

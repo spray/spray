@@ -34,12 +34,12 @@ class SecurityDirectivesSpec extends AbstractSprayTest {
   "the 'authenticate(HttpBasic())' directive" should {
     "reject requests without Authorization header with an AuthenticationRequiredRejection" in {
       test(HttpRequest()) { 
-        authenticate(httpBasic(authenticator = dontAuth)) { _ => completeOk }
+        authenticate(httpBasic(authenticator = dontAuth)) { _ => completeWith(Ok) }
       }.rejections mustEqual Set(AuthenticationRequiredRejection("Basic", "Secured Resource", Map.empty))
     }
     "reject unauthenticated requests with Authorization header with an AuthorizationFailedRejection" in {
       test(HttpRequest(headers = List(Authorization(BasicHttpCredentials("Bob", ""))))) { 
-        authenticate(httpBasic(authenticator = dontAuth)) { _ => completeOk }
+        authenticate(httpBasic(authenticator = dontAuth)) { _ => completeWith(Ok) }
       }.rejections mustEqual Set(AuthenticationFailedRejection("Secured Resource"))
     }
     "extract the object representing the user identity created by successful authentication" in {

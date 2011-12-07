@@ -97,28 +97,28 @@ class ParameterDirectivesSpec extends AbstractSprayTest {
     "extract the value of given required parameters" in {
       test(HttpRequest(uri = "/?name=Parsons&FirstName=Ellen")) {
         parameters("name", 'FirstName) { (name, firstName) =>
-          _.complete(firstName + name)
+          completeWith(firstName + name)
         }
       }.response.content.as[String] mustEqual Right("EllenParsons")
     }
     "ignore additional parameters" in {
       test(HttpRequest(uri = "/?name=Parsons&FirstName=Ellen&age=29")) {
         parameters("name", 'FirstName) { (name, firstName) =>
-          _.complete(firstName + name)
+          completeWith(firstName + name)
         }
       }.response.content.as[String] mustEqual Right("EllenParsons")
     }
     "reject the request with a MissingQueryParamRejection if a required parameters is missing" in {
       test(HttpRequest(uri = "/?name=Parsons&sex=female")) {
         parameters('name, 'FirstName, 'age) { (name, firstName, age) =>
-          completeOk
+          completeWith(Ok)
         }
       }.rejections mustEqual Set(MissingQueryParamRejection("FirstName"))
     }
     "supply the default value if an optional parameter is missing" in {
       test(HttpRequest(uri = "/?name=Parsons&FirstName=Ellen")) {
         parameters("name"?, 'FirstName, 'age ? "29", 'eyes?) { (name, firstName, age, eyes) =>
-          _.complete(firstName + name + age + eyes)
+          completeWith(firstName + name + age + eyes)
         }
       }.response.content.as[String] mustEqual Right("EllenSome(Parsons)29None")
     }
@@ -127,26 +127,26 @@ class ParameterDirectivesSpec extends AbstractSprayTest {
   "The 'parameter' requirement directive" should {
     "block requests that do not contain the required parameter" in {
       test(HttpRequest(uri = "/person?age=19")) { 
-        parameter('nose ! "large") { completeOk }
+        parameter('nose ! "large") { completeWith(Ok) }
       }.handled must beFalse
     }
     "block requests that contain the required parameter but with an unmatching value" in {
       test(HttpRequest(uri = "/person?age=19&nose=small")) { 
-        parameter('nose ! "large") { completeOk }
+        parameter('nose ! "large") { completeWith(Ok) }
       }.handled must beFalse
     }
     "let requests pass that contain the required parameter with its required value" in {
       test(HttpRequest(uri = "/person?nose=large&eyes=blue")) {
-        parameter('nose ! "large") { completeOk }
+        parameter('nose ! "large") { completeWith(Ok) }
       }.response mustEqual Ok
     }
     "be useable for method tunneling" in {
       val route = {
         path("person") {
           (post | parameter('method ! "post")) {
-            _.complete("POST")
+            completeWith("POST")
           } ~
-          get { _.complete("GET") }
+          get { completeWith("GET") }
         }
       }
       test(HttpRequest(uri = "/person?method=post")) {
