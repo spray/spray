@@ -23,6 +23,7 @@ import HttpCharsets._
 import xml.NodeSeq
 import java.nio.CharBuffer
 import akka.actor.{PoisonPill, Actor}
+import akka.dispatch.Future
 
 trait DefaultMarshallers extends MultipartMarshallers {
 
@@ -64,8 +65,8 @@ trait DefaultMarshallers extends MultipartMarshallers {
     }
   }
 
-  implicit val HttpExceptionMarshaller = new Marshaller[HttpException] {
-    def apply(sel: ContentTypeSelector) = MarshalWith(ctx => throw _)
+  implicit val ThrowableMarshaller = new Marshaller[Throwable] {
+    def apply(sel: ContentTypeSelector) = MarshalWith(_.handleError)
   }
 
   implicit def streamMarshaller[T :Marshaller] = new Marshaller[Stream[T]] {
@@ -85,6 +86,7 @@ trait DefaultMarshallers extends MultipartMarshallers {
         converter {
           new MarshallingContext {
             def startChunkedMessage(contentType: ContentType) = sys.error("Cannot marshal a stream of streams")
+            def handleError(error: Throwable) { ctx.handleError(error) }
             def marshalTo(content: HttpContent) {
               chunkSender orElse {
                 chunkSender = Some(ctx.startChunkedMessage(content.contentType))
@@ -120,6 +122,22 @@ trait DefaultMarshallers extends MultipartMarshallers {
           {
             case Right(value) => convertb(value)
             case Left(value) => converta(value)
+          }
+        }
+      }
+    }
+  }
+
+  implicit def futureMarshaller[T :Marshaller] = new Marshaller[Future[T]] {
+    val m = marshaller[T]
+    def apply(sel: ContentTypeSelector) = m(sel) match {
+      case x: CantMarshal => x
+      case MarshalWith(f) => MarshalWith { ctx =>
+        val convert = f(ctx)
+        _.onComplete {
+          _.value.get match {
+            case Right(value) => convert(value)
+            case Left(error) => ctx.handleError(error)
           }
         }
       }

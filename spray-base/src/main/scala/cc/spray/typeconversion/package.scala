@@ -40,6 +40,7 @@ package object typeconversion {
         converter {
           new MarshallingContext {
             def marshalTo(content: HttpContent) { c = Some(content) }
+            def handleError(error: Throwable) { throw error }
             def startChunkedMessage(contentType: ContentType) = throw new UnsupportedOperationException
           }
         } apply(underlying)
