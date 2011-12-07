@@ -26,7 +26,7 @@ private[spray] trait MiscDirectives {
   /**
    * Completes the request with the given [[cc.spray.http.HttpResponse]].
    */
-  def completeWith(response: HttpResponse): Route =
+  def completeWith(response: => HttpResponse): Route =
     _.complete(response)
 
   /**

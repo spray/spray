@@ -87,6 +87,6 @@ private[spray] trait MarshallingDirectives extends DefaultMarshallers with Defau
    * Completes the request with status "200 Ok" and the response content created by marshalling the given object using
    * the in-scope marshaller for the type.
    */
-  def completeWith[T :Marshaller](value: T): Route = _.complete(value)
+  def completeWith[T :Marshaller](value: => T): Route = _.complete(value)
 
 }
