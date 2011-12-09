@@ -308,8 +308,8 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
 
     private def responder(receiver: ActorRef, context: Option[Any]): AnyRef => Unit = {
       context match {
-        case Some(ctx) => receiver ! (_, ctx)
-        case None => receiver ! _
+        case Some(ctx) => response => if (receiver.isRunning) receiver ! (response, ctx)
+        case None => response => if (receiver.isRunning) receiver ! response
       }
     }
 

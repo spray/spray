@@ -26,16 +26,24 @@ import akka.dispatch.CompletableFuture
 class DefaultReceiverActor(future: CompletableFuture[HttpResponse], maxContentLength: Int) extends Actor {
   var body: Array[Byte] = _
 
-  protected def receive = {
-    case x: HttpResponse => future.completeWithResult(x)
-    case start: ChunkedResponseStart => become {
-      case x: MessageChunk => body match {
-        case null => body = x.body
-        case _ if body.length + x.body.length <= maxContentLength => body = body concat x.body
-        case _ => future.completeWithException(new HttpClientException("Response entity greater than configured " +
-                "limit of " + maxContentLength + " bytes"))
-      }
-      case x: ChunkedResponseEnd => future.completeWithResult {
+  protected def receive = receiveResponse orElse receiveError
+
+  protected def receiveResponse: Receive = {
+    case x: HttpResponse =>
+      future.completeWithResult(x)
+      self.stop()
+    case start: ChunkedResponseStart => become(receiveChunkedResponse(start) orElse receiveError)
+  }
+
+  protected def receiveChunkedResponse(start: ChunkedResponseStart): Receive = {
+    case x: MessageChunk => body match {
+      case null => body = x.body
+      case _ if body.length + x.body.length <= maxContentLength => body = body concat x.body
+      case _ => future.completeWithException(new HttpClientException("Response entity greater than configured " +
+              "limit of " + maxContentLength + " bytes"))
+    }
+    case x: ChunkedResponseEnd =>
+      future.completeWithResult {
         HttpResponse(
           status = start.status,
           headers = start.headers,
@@ -43,8 +51,12 @@ class DefaultReceiverActor(future: CompletableFuture[HttpResponse], maxContentLe
           protocol = HttpProtocols.`HTTP/1.1`
         )
       }
-      case x: HttpClientException => future.completeWithException(x)
-    }
-    case x: HttpClientException => future.completeWithException(x)
+      self.stop()
+  }
+
+  protected def receiveError: Receive = {
+    case x: HttpClientException =>
+      future.completeWithException(x)
+      self.stop()
   }
 }
