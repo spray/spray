@@ -9,13 +9,13 @@ object Dependencies {
   )
 
   object V {
-    val akka      = "1.3-RC2"
+    val akka      = "1.3-RC3"
     val jetty     = "8.0.3.v20111011"
     val sprayCan  = "0.9.2-SNAPSHOT"
     val sprayJson = "1.1.0-SNAPSHOT"
     val slf4j     = "1.6.1"
     val logback   = "0.9.29"
-    val liftJson  = "2.4-M2"
+    val liftJson  = "2.4-M5"
   }
 
   object Compile {
@@ -35,7 +35,7 @@ object Dependencies {
     val jetty7Async   = "org.eclipse.jetty"         %   "jetty-continuation"        % "7.5.1.v20110908" % "provided"
     val tomcat6Async  = "org.atmosphere"            %   "atmosphere-compat-tomcat"  % "0.7.1"           % "provided"
     val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % V.slf4j           % "provided"
-    val liftJson      = "net.liftweb"               %   "lift-json_2.9.0-1"         % V.liftJson        % "provided"
+    val liftJson      = "net.liftweb"               %%  "lift-json"                 % V.liftJson        % "provided"
   }
 
   object Test {
