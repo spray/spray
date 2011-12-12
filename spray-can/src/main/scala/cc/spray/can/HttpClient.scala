@@ -167,7 +167,7 @@ class HttpClient(val config: ClientConfig = ClientConfig.fromAkkaConf) extends H
           def complete(response: AnyRef) {
             log.debug("Completing request with {}", response)
             responder.get.apply(response)
-            if (requestRecord.memberOf != openRequests) openRequests -= requestRecord
+            if (requestRecord.memberOf == openRequests) openRequests -= requestRecord
           }
           def deliverPartialResponse(response: AnyRef) {
             log.debug("Delivering partial response: {}", response)
