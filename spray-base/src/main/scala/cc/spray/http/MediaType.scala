@@ -119,7 +119,7 @@ sealed abstract class MediaType extends MediaRange {
     case x: MediaType => (this eq x) || (mainType eq x.mainType) && (subType eq x.subType)
     case _ => false
   }
-  
+
   override def hashCode() = value.##
   override def toString = "MediaType(" + value + ')'
 }
@@ -228,6 +228,12 @@ object MediaTypes extends ObjectRegistry[String, MediaType] {
       new CustomMediaType(parts(0), parts(1), fileExtensions)
     }
   }
+
+  /**
+   * Allows the definition of custom media types. In order for your custom type to be properly used by the
+   * HTTP layer you need to create an instance, register it via `MediaTypes.register` and use this instance in
+   * your custom Marshallers and Unmarshallers.
+   */
   class CustomMediaType(val mainType: String, val subType: String, val fileExtensions: Seq[String] = Nil)
           extends MediaType {
     require(value == value.toLowerCase, "For best performance custom media types must be defined in lowercase")
