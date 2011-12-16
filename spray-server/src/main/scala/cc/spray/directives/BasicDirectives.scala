@@ -124,7 +124,7 @@ sealed abstract class SprayRoute[T <: Product](val filter: RouteFilter[T]) { sel
   def unary_! : SprayRoute0 = new SprayRoute0( ctx =>
     filter(ctx) match {
       case _: Pass[_] => Reject() 
-      case _: Reject => Pass()
+      case _: Reject => Pass
     }
   )
 
@@ -289,6 +289,6 @@ class SprayRoute9[A, B, C, D, E, F, G, H, I](filter: RouteFilter[(A, B, C, D, E,
 /**
  * A Route that transforms another route.
  */
-class TransformRoute extends SprayRoute0(_ => Pass()) {
+class TransformRoute extends SprayRoute0(_ => Pass) {
   override def apply(route: Route) = route // default: no transformation
 }

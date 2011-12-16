@@ -43,7 +43,7 @@ private[spray] trait SecurityDirectives {
    * If the check fails the route is rejected with an [[cc.spray.AuthorizationFailedRejection]].
    */
   def authorize(check: RequestContext => Boolean): SprayRoute0 = filter { ctx =>
-    if (check(ctx)) Pass() else Reject(AuthorizationFailedRejection)
+    if (check(ctx)) Pass else Reject(AuthorizationFailedRejection)
   }
 
   /**

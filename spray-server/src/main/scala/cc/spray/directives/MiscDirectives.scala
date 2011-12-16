@@ -41,7 +41,7 @@ private[spray] trait MiscDirectives {
    * Route. If the condition failes the route is rejected with a [[cc.spray.ValidationRejection]].
    */
   def validate(check: => Boolean, errorMsg: String) = filter { _ =>
-    if (check) Pass() else Reject(ValidationRejection(errorMsg))
+    if (check) Pass else Reject(ValidationRejection(errorMsg))
   }
 
   /**
