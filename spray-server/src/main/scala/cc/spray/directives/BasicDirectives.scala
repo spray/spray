@@ -85,6 +85,11 @@ private[spray] trait BasicDirectives {
   def transformRoute(f: Route => Route) = new TransformRoute {
     override def apply(route: Route) = f(route)
   }
+
+  /**
+   * A directive that does nothing but delegate route handling to its inner route.
+   */
+  def alwaysPass = filter(_ => Pass)
 }
 
 sealed abstract class SprayRoute[T <: Product](val filter: RouteFilter[T]) { self =>
