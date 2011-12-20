@@ -22,7 +22,7 @@ import http.{ContentType, HttpContent}
 import typeconversion.{DefaultMarshallers, SimpleMarshaller}
 
 private[spray] trait ChunkingDirectives {
-  this: BasicDirectives with DefaultMarshallers =>
+  this: BasicDirectives =>
 
   /**
    * Automatically converts a non-rejected response from its inner route into a chunked response of which each chunk
@@ -30,6 +30,7 @@ private[spray] trait ChunkingDirectives {
    * If the response content from the inner route is smaller than chunkSize a "regular", unchunked response is produced.
    */
   def autoChunk(chunkSize: Int) = transformRequestContext { ctx =>
+    import DefaultMarshallers.{ByteArrayMarshaller => _, _}
     ctx.withResponderTransformed { responder =>
       responder.withComplete { response =>
         response.content match {
@@ -39,10 +40,7 @@ private[spray] trait ChunkingDirectives {
               if (ix < content.buffer.length - chunkSize) Stream.cons(chunkBuf(chunkSize), split(ix + chunkSize))
               else Stream.cons(chunkBuf(content.buffer.length - ix), Stream.Empty)
             }
-            implicit val byteArrayMarshaller = new SimpleMarshaller[Array[Byte]] {
-              val canMarshalTo = content.contentType :: Nil
-              def marshal(value: Array[Byte], contentType: ContentType) = HttpContent(contentType, value)
-            }
+            implicit val byteArrayMarshaller = DefaultMarshallers.byteArrayMarshaller(content.contentType)
             ctx.complete(split(0))
           }
           case _ => responder.complete(response)

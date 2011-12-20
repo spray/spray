@@ -27,15 +27,15 @@ import akka.dispatch.Future
 
 trait DefaultMarshallers extends MultipartMarshallers {
 
-  implicit val StringMarshaller = new SimpleMarshaller[String] {
-    val canMarshalTo = ContentType(`text/plain`) :: Nil
-
-    def marshal(value: String, contentType: ContentType) = HttpContent(contentType, value)
+  def byteArrayMarshaller(contentType: ContentType) = new SimpleMarshaller[Array[Byte]] {
+    val canMarshalTo = contentType :: Nil
+    def marshal(value: Array[Byte], contentType: ContentType) = HttpContent(contentType, value)
   }
 
-  implicit val CharArrayMarshaller = new SimpleMarshaller[Array[Char]] {
-    val canMarshalTo = ContentType(`text/plain`) :: Nil
+  implicit lazy val ByteArrayMarshaller = byteArrayMarshaller(`application/octet-stream`)
 
+  implicit lazy val CharArrayMarshaller = new SimpleMarshaller[Array[Char]] {
+    val canMarshalTo = ContentType(`text/plain`) :: Nil
     def marshal(value: Array[Char], contentType: ContentType) = {
       val nioCharset = contentType.charset.getOrElse(`ISO-8859-1`).nioCharset
       val charBuffer = CharBuffer.wrap(value)
@@ -43,18 +43,21 @@ trait DefaultMarshallers extends MultipartMarshallers {
       HttpContent(contentType, byteBuffer.array)
     }
   }
-  
-  implicit val NodeSeqMarshaller = new SimpleMarshaller[NodeSeq] {
+
+  implicit lazy val StringMarshaller = new SimpleMarshaller[String] {
+    val canMarshalTo = ContentType(`text/plain`) :: Nil
+    def marshal(value: String, contentType: ContentType) = HttpContent(contentType, value)
+  }
+
+  implicit lazy val NodeSeqMarshaller = new SimpleMarshaller[NodeSeq] {
     val canMarshalTo = ContentType(`text/xml`) ::
                        ContentType(`text/html`) ::
                        ContentType(`application/xhtml+xml`) :: Nil
-
     def marshal(value: NodeSeq, contentType: ContentType) = StringMarshaller.marshal(value.toString, contentType)
   }
 
-  implicit val FormDataMarshaller = new SimpleMarshaller[FormData] {
+  implicit lazy val FormDataMarshaller = new SimpleMarshaller[FormData] {
     val canMarshalTo = ContentType(`application/x-www-form-urlencoded`) :: Nil
-
     def marshal(formContent: FormData, contentType: ContentType) = {
       import java.net.URLEncoder.encode
       val charset = contentType.charset.getOrElse(`ISO-8859-1`).aliases.head
@@ -65,7 +68,7 @@ trait DefaultMarshallers extends MultipartMarshallers {
     }
   }
 
-  implicit val ThrowableMarshaller = new Marshaller[Throwable] {
+  implicit lazy val ThrowableMarshaller = new Marshaller[Throwable] {
     def apply(sel: ContentTypeSelector) = MarshalWith(_.handleError)
   }
 
