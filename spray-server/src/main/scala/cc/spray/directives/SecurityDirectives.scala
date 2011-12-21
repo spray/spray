@@ -17,6 +17,8 @@
 package cc.spray
 package directives
 
+import authentication.{BasicHttpAuthenticator, FromConfigUserPassAuthenticator}
+
 private[spray] trait SecurityDirectives {
   this: BasicDirectives =>
 

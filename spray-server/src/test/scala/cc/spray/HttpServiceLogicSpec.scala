@@ -16,6 +16,7 @@
 
 package cc.spray
 
+import authentication.BasicUserContext
 import typeconversion._
 import http._
 import HttpHeaders._

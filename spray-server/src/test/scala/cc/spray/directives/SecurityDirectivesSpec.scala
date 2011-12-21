@@ -20,6 +20,7 @@ package directives
 import http._
 import HttpHeaders._
 import test.AbstractSprayTest
+import authentication.BasicUserContext
 
 class SecurityDirectivesSpec extends AbstractSprayTest {
 

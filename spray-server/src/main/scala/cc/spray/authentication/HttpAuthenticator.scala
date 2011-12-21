@@ -15,6 +15,7 @@
  */
 
 package cc.spray
+package authentication
 
 import http._
 import utils._
@@ -46,53 +47,3 @@ trait HttpAuthenticator[U] extends GeneralAuthenticator[U] {
   
   def authenticate(credentials: Option[HttpCredentials], ctx: RequestContext): Option[U]
 }
-
-/**
- * The BasicHttpAuthenticator implements HTTP Basic Auth.
- */
-class BasicHttpAuthenticator[U](val realm: String, val authenticator: UserPassAuthenticator[U])
-        extends HttpAuthenticator[U] {
-
-  def scheme = "Basic"
-
-  def params(ctx: RequestContext) = Map.empty
-
-  def authenticate(credentials: Option[HttpCredentials], ctx: RequestContext) = {
-    authenticator {
-      credentials.flatMap {
-        case BasicHttpCredentials(user, pass) => Some(user -> pass)
-        case _ => None
-      }
-    }
-  }
-}
-  
-/**
- * A UserPassAuthenticator that uses plain-text username/password definitions from the spray/akka config file
- * for authentication. The config section should look like this:
- * {{{
- * spray {
- *   .... # other spray settings
- *   users {
- *     username = "password"
- *     ...
- *   }
- * ...
- * }
- * }}}
- */
-object FromConfigUserPassAuthenticator extends UserPassAuthenticator[BasicUserContext] {
-  def apply(userPass: Option[(String, String)]) = userPass.flatMap {
-    case (user, pass) => {
-      akka.config.Config.config.getString("spray.users." + user).flatMap { pw =>
-        if (pw == pass) {
-          Some(BasicUserContext(user))
-        } else {
-          None
-        }
-      }
-    }
-  }
-}
-
-case class BasicUserContext(username: String)
