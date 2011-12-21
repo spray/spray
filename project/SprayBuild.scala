@@ -48,6 +48,7 @@ object SprayBuild extends Build {
         Provided.jetty7Async,
         Provided.tomcat6Async,
         Provided.sprayCan,
+        Provided.scalate,
         Test.specs2
       )
     )

@@ -36,6 +36,7 @@ object Dependencies {
     val tomcat6Async  = "org.atmosphere"            %   "atmosphere-compat-tomcat"  % "0.7.1"           % "provided"
     val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % V.slf4j           % "provided"
     val liftJson      = "net.liftweb"               %%  "lift-json"                 % V.liftJson        % "provided"
+    val scalate       = "org.fusesource.scalate"    %   "scalate-core"              % "1.5.3"           % "provided"
   }
 
   object Test {
