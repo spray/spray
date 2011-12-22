@@ -22,7 +22,6 @@ import HttpHeaders._
 import MediaTypes._
 import typeconversion._
 import akka.dispatch.Future
-import utils.IllegalResponseException
 
 /**
  * Immutable object encapsulating the context of an [[cc.spray.http.HttpRequest]]
