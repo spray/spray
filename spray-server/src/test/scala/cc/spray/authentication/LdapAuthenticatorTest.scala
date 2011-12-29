@@ -23,6 +23,10 @@ import http._
 import HttpHeaders._
 import javax.naming.directory.SearchControls
 
+/**
+ * This spec tests the LdapAuthenticator against a publicly available LDAP server that is graciously provided
+ * by Stuart Lewis. See [[http://blog.stuartlewis.com/2008/07/07/test-ldap-service/ this blog post]] for more info.
+ */
 object LdapAuthenticatorTest extends AbstractSprayTest {
   args(ex = "suppress this test") // comment out to have this test run
 
