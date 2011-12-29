@@ -3,7 +3,7 @@ import sbt._
 object Dependencies {
 
   val resolutionRepos = Seq(
-    "Akka Repository" at "http://akka.io/repository/",
+    "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
     ScalaToolsSnapshots
   )
 
