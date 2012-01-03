@@ -30,7 +30,7 @@ Just bring all relevant elements in scope with
 
 and do one or more of the following:
 
-1. Parse a JSON string into it's Abstract Syntax Tree (AST) representation
+1. Parse a JSON string into its Abstract Syntax Tree (AST) representation
 
         val json = """{ "some": "JSON source" }""" 
         val jsonAst = JsonParser(json)
