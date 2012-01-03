@@ -3,7 +3,7 @@ _spray-json_ is a lightweight, clean and efficient [JSON] implementation in Scal
 It sports the following features:
   
 * Simple immutable model of the JSON language elements
-* An efficient JSON PEG parser (implemented with [parboiled])
+* An efficient JSON PEG parser (implemented with [parboiled][])
 * Choice of either compact or pretty JSON-to-string printing
 * Type-class based (de)serialization of custom objects (no reflection, no intrusion)
 
@@ -17,7 +17,7 @@ If you use SBT (0.7.x) you can include _spray-json_ in your project with
 
     val sprayJson = "cc.spray.json" %% "spray-json" % "1.0.1" % "compile" withSources()
 
-_spray-json_ has only one dependency: the parsing library [parboiled]
+_spray-json_ has only one dependency: the parsing library [parboiled][]
 (which is also a dependency of _spray-server_ and _spray-client_, so if you use _spray-json_ with either of them you are not incurring any additional dependency).
 
 
