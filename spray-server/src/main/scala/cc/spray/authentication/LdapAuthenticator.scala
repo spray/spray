@@ -23,8 +23,7 @@ import javax.naming.ldap.InitialLdapContext
 import javax.naming.directory.{SearchControls, SearchResult, Attribute}
 import collection.JavaConverters._
 import utils.Logging
-import akka.actor.Actor
-import akka.dispatch.{Future, CompletableFuture, DefaultCompletableFuture, AlreadyCompletedFuture}
+import akka.dispatch.{Future, AlreadyCompletedFuture}
 
 /**
  * The LdapAuthenticator faciliates user/password authentication against an LDAP server.
