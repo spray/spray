@@ -43,5 +43,5 @@ class CharsetNegotiationSpec extends AbstractSprayTest {
       }.response.content mustEqual Some(HttpContent(ContentType(`text/plain`, `UTF-8`), "Hällö"))
     }
   }
-  
+
 }

@@ -23,6 +23,11 @@ import javax.naming.directory.SearchControls
  * The LdapAuthenticator faciliates user/password authentication against an LDAP server.
  * It delegates the application specific parts of the LDAP configuration to the given LdapAuthConfig instance,
  * which is also responsible for creating the object representing the application-specific user context.
+ *
+ * Authentication against an LDAP server is done in two separate steps:
+ * First, some "search credentials" are used to log into the LDAP server and perform a search for the directory entry
+ * matching a given user name. If exactly one user entry is found another LDAP bind operation is performed using the
+ * principal DN of the found user entry to validate the password.
  */
 trait LdapAuthConfig[T] {
 
@@ -43,20 +48,28 @@ trait LdapAuthConfig[T] {
   def contextEnv(user: String, pass: String): Seq[(String, String)]
 
   /**
-   * The security principal to use for the given user name.
+   * Returns the credentials used to bind to the LDAP server in order to search for a matching user entry.
    * For example:
    *
-   * {{{def securityPrincipal(user: String) = "CN=%s,OU=users,DC=testathon,DC=net" format user}}}
+   * {{{val searchCredentials = "CN=stuart,OU=users,DC=testathon,DC=net" -> "stuart"}}}
    */
-  def securityPrincipal(user: String): String
+  def searchCredentials: (String, String)
 
   /**
-   * The dn of the entity to base the directory search on.
+   * The DN of the entity to base the directory search on.
    * For example:
    *
    * {{{def searchBase(user: String) = "OU=users,DC=testathon,DC=net"}}}
    */
   def searchBase(user: String): String
+
+  /**
+   * The search filter to use for searching for the user entry.
+   * For example:
+   *
+   * {{{def searchFilter(user: String) = "(uid=%s)" format user}}}
+   */
+  def searchFilter(user: String): String
 
   /**
    * Configures the given searchControls instance according the application-specific requirements.
@@ -70,18 +83,10 @@ trait LdapAuthConfig[T] {
   def configureSearchControls(searchControls: SearchControls, user: String)
 
   /**
-   * The search filter to use.
-   * For example:
-   *
-   * {{{def searchFilter(user: String) = "cn=" + user}}}
-   */
-  def searchFilter(user: String): String
-
-  /**
    * Creates a user object from the given LDAP query result.
    * The method can also choose to return None, in which case authentication will fail.
    */
-  def createUserObject(queryResult: Seq[LdapQueryResult]): Option[T]
+  def createUserObject(queryResult: LdapQueryResult): Option[T]
 }
 
 case class LdapQueryResult(

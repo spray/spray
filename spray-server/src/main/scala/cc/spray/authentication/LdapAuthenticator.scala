@@ -28,14 +28,53 @@ import utils.Logging
  * The LdapAuthenticator faciliates user/password authentication against an LDAP server.
  * It delegates the application specific parts of the LDAP configuration to the given LdapAuthConfig instance,
  * which is also responsible for creating the object representing the application-specific user context.
+ *
+ * Authentication against an LDAP server is done in two separate steps:
+ * First, some "search credentials" are used to log into the LDAP server and perform a search for the directory entry
+ * matching a given user name. If exactly one user entry is found another LDAP bind operation is performed using the
+ * principal DN of the found user entry to validate the password.
  */
 class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthenticator[T] with Logging {
 
-  def apply(userPass: Option[(String, String)]) = userPass.flatMap { case (user, pass) =>
-    ldapContext(user, pass) match {
-      case Right(ldapContext) => config.createUserObject(query(ldapContext, user))
-      case Left(ex) =>
-        log.info("Could not authenticate user '%s' with password '%s' %s", user, pass, ex.getMessage)
+  def apply(userPass: Option[(String, String)]) = {
+    def auth3(entry: LdapQueryResult, pass: String) = {
+      ldapContext(entry.fullName, pass) match {
+        case Right(authContext) =>
+          authContext.close()
+          config.createUserObject(entry)
+        case Left(ex) =>
+          log.info("Could not authenticate credentials '%s'/'%s': %s", entry.fullName, pass, ex)
+          None
+      }
+    }
+
+    def auth2(searchContext: InitialLdapContext, user: String, pass: String) = {
+      query(searchContext, user) match {
+        case entry :: Nil => auth3(entry, pass)
+        case entries =>
+          log.warn("Expected exactly one search result for search filter '%s' and search base '%s', but got %s",
+            config.searchFilter(user), config.searchBase(user), entries.size)
+          None
+      }
+    }
+
+    def auth1(user: String, pass: String) = {
+      val (searchUser, searchPass) = config.searchCredentials
+      ldapContext(searchUser, searchPass) match {
+        case Right(searchContext) =>
+          val result = auth2(searchContext, user, pass)
+          searchContext.close()
+          result
+        case Left(ex) =>
+          log.warn("Could not authenticate with search credentials '%s'/'%s': %s", searchUser, searchPass, ex)
+          None
+      }
+    }
+
+    userPass match {
+      case Some((user, pass)) => auth1(user, pass)
+      case None =>
+        log.warn("LdapAuthenticator.apply called with empty userPass, authentication not possible")
         None
     }
   }
@@ -44,7 +83,7 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthentica
     util.control.Exception.catching(classOf[NamingException]).either {
       val env = new Hashtable[AnyRef, AnyRef]
       env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
-      env.put(Context.SECURITY_PRINCIPAL, config.securityPrincipal(user))
+      env.put(Context.SECURITY_PRINCIPAL, user)
       env.put(Context.SECURITY_CREDENTIALS, pass)
       env.put(Context.SECURITY_AUTHENTICATION, "simple")
       for ((key, value) <- config.contextEnv(user, pass)) env.put(key, value)
@@ -52,13 +91,13 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthentica
     }
   }
 
-  def query(ldapContext: InitialLdapContext, user: String): Seq[LdapQueryResult] = {
+  def query(ldapContext: InitialLdapContext, user: String): List[LdapQueryResult] = {
     val results: NamingEnumeration[SearchResult] = ldapContext.search(
       config.searchBase(user),
       config.searchFilter(user),
       searchControls(user)
     )
-    results.asScala.toSeq.map(searchResult2LdapQueryResult)
+    results.asScala.toList.map(searchResult2LdapQueryResult)
   }
 
   def searchControls(user: String) = {

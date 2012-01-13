@@ -27,30 +27,30 @@ import javax.naming.directory.SearchControls
  * This spec tests the LdapAuthenticator against a publicly available LDAP server that is graciously provided
  * by Stuart Lewis. See [[http://blog.stuartlewis.com/2008/07/07/test-ldap-service/ this blog post]] for more info.
  */
-object LdapAuthenticatorTest extends AbstractSprayTest {
+class LdapAuthenticatorTest extends AbstractSprayTest {
   args(ex = "suppress this test") // comment out to have this test run
 
   "The LdapAuthenticator" should {
     "be able to authenticate a user against a public LDAP testing server " in {
-      test(HttpRequest(headers = List(Authorization(BasicHttpCredentials("stuart", "stuart"))))) {
+      test(HttpRequest(headers = List(Authorization(BasicHttpCredentials("Budgie", "bob"))))) {
         authenticate(httpBasic(authenticator = LdapAuthenticator(TestLdapAuthConfig))) { user =>
           completeWith(user.toString)
         }
-      }.response.content.as[String] mustEqual Right("BasicUserContext(Stuart Lewis)")
+      }.response.content.as[String] mustEqual Right("BasicUserContext(Bob Budgie)")
     }
   }
 
   object TestLdapAuthConfig extends LdapAuthConfig[BasicUserContext] {
     def contextEnv(user: String, pass: String) = Seq(Context.PROVIDER_URL -> "ldap://ldap.testathon.net:389")
-    def securityPrincipal(user: String) = "CN=%s,OU=users,DC=testathon,DC=net" format user
+    val searchCredentials = "CN=stuart,OU=users,DC=testathon,DC=net" -> "stuart"
     def searchBase(user: String) = "OU=users,DC=testathon,DC=net"
     def configureSearchControls(searchControls: SearchControls, user: String) {
       searchControls.setSearchScope(SearchControls.SUBTREE_SCOPE)
       searchControls.setReturningAttributes(Array("givenName", "sn"))
     }
-    def searchFilter(user: String) = "cn=" + user
-    def createUserObject(queryResult: Seq[LdapQueryResult]) =
-      queryResult.headOption.map(r => BasicUserContext(r.attrs("givenName").value + ' ' + r.attrs("sn").value))
+    def searchFilter(user: String) = "(sn=%s)" format user
+    def createUserObject(queryResult: LdapQueryResult) =
+      Some(BasicUserContext(queryResult.attrs("givenName").value + ' ' + queryResult.attrs("sn").value))
   }
 
 }
