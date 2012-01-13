@@ -17,6 +17,8 @@
 package cc.spray
 package authentication
 
+import akka.dispatch.AlreadyCompletedFuture
+
 /**
  * A UserPassAuthenticator that uses plain-text username/password definitions from the spray/akka config file
  * for authentication. The config section should look like this:
@@ -32,15 +34,19 @@ package authentication
  * }}}
  */
 object FromConfigUserPassAuthenticator extends UserPassAuthenticator[BasicUserContext] {
-  def apply(userPass: Option[(String, String)]) = userPass.flatMap {
-    case (user, pass) => {
-      akka.config.Config.config.getString("spray.users." + user).flatMap { pw =>
-        if (pw == pass) {
-          Some(BasicUserContext(user))
-        } else {
-          None
+  def apply(userPass: Option[(String, String)]) = new AlreadyCompletedFuture(
+    Right {
+      userPass.flatMap {
+        case (user, pass) => {
+          akka.config.Config.config.getString("spray.users." + user).flatMap { pw =>
+            if (pw == pass) {
+              Some(BasicUserContext(user))
+            } else {
+              None
+            }
+          }
         }
       }
     }
-  }
+  )
 }

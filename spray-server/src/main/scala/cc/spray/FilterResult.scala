@@ -33,6 +33,8 @@ object Reject {
 class Pass[+T <: Product](val values: T, val transform: RequestContext => RequestContext = identityFunc) extends FilterResult[T]
 
 object Pass extends Pass[Product0](Product0, identityFunc) {
+  lazy val Always: RouteFilter[Product0] = _ => Pass
+
   def apply[A](a: A): Pass[Tuple1[A]] = new Pass(Tuple1(a))
   def apply[A, B](a: A, b: B): Pass[(A, B)] = new Pass((a, b))
   def apply[A, B, C](a: A, b: B, c: C): Pass[(A, B, C)] = new Pass((a, b, c))

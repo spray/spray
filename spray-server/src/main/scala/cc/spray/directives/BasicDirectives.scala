@@ -82,14 +82,14 @@ private[spray] trait BasicDirectives {
   /**
    * Creates a [[cc.spray.TransformRoute]] that applies the given transformation function to its inner Route.
    */
-  def transformRoute(f: Route => Route) = new TransformRoute {
+  def transformRoute(f: Route => Route) = new SprayRoute0(Pass.Always) {
     override def apply(route: Route) = f(route)
   }
 
   /**
    * A directive that does nothing but delegate route handling to its inner route.
    */
-  def alwaysPass = filter(_ => Pass)
+  def alwaysPass = filter(Pass.Always)
 }
 
 sealed abstract class SprayRoute[T <: Product](val filter: RouteFilter[T]) { self =>
@@ -289,11 +289,4 @@ class SprayRoute9[A, B, C, D, E, F, G, H, I](filter: RouteFilter[(A, B, C, D, E,
   def | (other: SprayRoute9[A, B, C, D, E, F, G, H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](or(other))
   def & (other: SprayRoute0) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
   def as[T <: Product](deserializer: Deserializer[(A, B, C, D, E, F, G, H, I), T]) = convert(deserializer)
-}
-
-/**
- * A Route that transforms another route.
- */
-class TransformRoute extends SprayRoute0(_ => Pass) {
-  override def apply(route: Route) = route // default: no transformation
 }

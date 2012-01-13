@@ -20,6 +20,7 @@ package authentication
 import http._
 import utils._
 import HttpHeaders._
+import akka.dispatch.Future
 
 /**
  * An HttpAuthenticator is a GeneralAuthenticator that uses credentials passed to the server via the
@@ -29,8 +30,8 @@ trait HttpAuthenticator[U] extends GeneralAuthenticator[U] {
 
   def apply(ctx: RequestContext) = {
     val authHeader = ctx.request.headers.findByType[`Authorization`]
-    val credentials = authHeader.map { case Authorization(credentials) => credentials }
-    authenticate(credentials, ctx) match {
+    val credentials = authHeader.map { case Authorization(creds) => creds }
+    authenticate(credentials, ctx) map {
       case Some(userContext) => Right(userContext)
       case None => Left {
         if (authHeader.isEmpty) AuthenticationRequiredRejection(scheme, realm, params(ctx))
@@ -45,5 +46,5 @@ trait HttpAuthenticator[U] extends GeneralAuthenticator[U] {
   
   def params(ctx: RequestContext): Map[String, String]
   
-  def authenticate(credentials: Option[HttpCredentials], ctx: RequestContext): Option[U]
+  def authenticate(credentials: Option[HttpCredentials], ctx: RequestContext): Future[Option[U]]
 }

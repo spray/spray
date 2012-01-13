@@ -23,6 +23,8 @@ import javax.naming.ldap.InitialLdapContext
 import javax.naming.directory.{SearchControls, SearchResult, Attribute}
 import collection.JavaConverters._
 import utils.Logging
+import akka.actor.Actor
+import akka.dispatch.{Future, CompletableFuture, DefaultCompletableFuture, AlreadyCompletedFuture}
 
 /**
  * The LdapAuthenticator faciliates user/password authentication against an LDAP server.
@@ -76,10 +78,10 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthentica
     }
 
     userPass match {
-      case Some((user, pass)) => auth1(user, pass)
+      case Some((user, pass)) => Future(auth1(user, pass))
       case None =>
         log.warn("LdapAuthenticator.apply called with empty userPass, authentication not possible")
-        None
+        new AlreadyCompletedFuture(Right(None))
     }
   }
 

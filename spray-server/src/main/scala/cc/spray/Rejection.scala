@@ -135,3 +135,10 @@ object Rejections {
     rejections.filterNot(r => cancellations.exists(_(r)) || r.isInstanceOf[RejectionRejection])
   }
 }
+
+/**
+ * An exception wrapping a Rejection.
+ * Used mainly with Futures, where instead of a `Future[Either[Rejection, T]]` we just use a Future[T] and wrap
+ * potential rejections into the Future result.
+ */
+case class RejectionException(rejection: Rejection) extends Exception
