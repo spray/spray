@@ -51,6 +51,10 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthentica
     def auth2(searchContext: InitialLdapContext, user: String, pass: String) = {
       query(searchContext, user) match {
         case entry :: Nil => auth3(entry, pass)
+        case Nil =>
+          log.warn("User '%s' not found (search filter '%s' and search base '%s'", user, config.searchFilter(user),
+            config.searchBase(user))
+          None
         case entries =>
           log.warn("Expected exactly one search result for search filter '%s' and search base '%s', but got %s",
             config.searchFilter(user), config.searchBase(user), entries.size)
