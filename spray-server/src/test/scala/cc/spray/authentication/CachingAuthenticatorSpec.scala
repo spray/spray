@@ -19,7 +19,6 @@ package authentication
 
 import org.specs2.mutable.Specification
 import java.util.concurrent.atomic.AtomicInteger
-import caching.LruCache
 import akka.dispatch.{Future, AlreadyCompletedFuture}
 
 class CachingAuthenticatorSpec extends Specification {
@@ -31,9 +30,9 @@ class CachingAuthenticatorSpec extends Specification {
   }
 
   val CountingAuthenticator = new CountingAuthenticator
-  val CachinggAuthenticator = new CountingAuthenticator with CachingAuthenticator[Int]
+  val CachinggAuthenticator = new CountingAuthenticator with AuthenticationCaching[Int]
 
-  "the CachingAuthenticator" should {
+  "the AuthenticationCaching" should {
     "cache the auth results from the underlying UserPassAuthenticator" in {
       val dummyCreds = Some("", "")
       CountingAuthenticator(dummyCreds).get mustEqual Some(1)

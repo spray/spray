@@ -24,7 +24,7 @@ import caching.{LruCache, Cache}
  * Stackable trait to be mixed into a UserPassAuthenticator.
  * Provides the underlying UserPassAuthenticator with authentication lookup caching.
  */
-trait CachingAuthenticator[U] extends UserPassAuthenticator[U] {
+trait AuthenticationCaching[U] extends UserPassAuthenticator[U] {
 
   /**
    * The cache to use for storing authentication records.
