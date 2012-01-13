@@ -17,7 +17,8 @@
 package cc.spray
 package authentication
 
-import caching.Cache
+import caching.{LruCache, Cache}
+
 
 /**
  * Stackable trait to be mixed into a UserPassAuthenticator.
@@ -25,7 +26,11 @@ import caching.Cache
  */
 trait CachingAuthenticator[U] extends UserPassAuthenticator[U] {
 
-  protected def authCache: Cache[Option[U]]
+  /**
+   * The cache to use for storing authentication records.
+   * Override for customization of caching attributes.
+   */
+  protected val authCache: Cache[Option[U]] = LruCache()
 
   abstract override def apply(userPass: Option[(String, String)]) = {
     authCache.fromFuture(userPass) {

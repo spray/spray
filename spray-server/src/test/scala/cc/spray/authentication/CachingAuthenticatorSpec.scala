@@ -31,9 +31,7 @@ class CachingAuthenticatorSpec extends Specification {
   }
 
   val CountingAuthenticator = new CountingAuthenticator
-  val CachinggAuthenticator = new CountingAuthenticator with CachingAuthenticator[Int] {
-    protected val authCache = LruCache[Option[Int]]()
-  }
+  val CachinggAuthenticator = new CountingAuthenticator with CachingAuthenticator[Int]
 
   "the CachingAuthenticator" should {
     "cache the auth results from the underlying UserPassAuthenticator" in {
