@@ -20,24 +20,24 @@ import java.lang.StringBuilder
 import annotation.tailrec
 
 /**
-  * A JsonPrinter that produces a nicely readable JSON source.
+  * A JsonFormatter that produces a nicely readable JSON source.
  */
-trait PrettyPrinter extends JsonPrinter {
+trait PrettyFormatter extends JsonFormatter {
   val Indent = 2
 
-  def print(x: JsValue, sb: StringBuilder) {
+  def format(x: JsValue, sb: StringBuilder) {
     print(x, sb, 0)
   }
   
   private def print(x: JsValue, sb: StringBuilder, indent: Int) {
     x match {
-      case JsObject(x) => printObject(x, sb, indent)
-      case JsArray(x)  => printArray(x, sb, indent)
+      case x: JsObject => formatObject(x.fields, sb, indent)
+      case x: JsArray => formatArray(x.elements, sb, indent)
       case _ => printLeaf(x, sb)
     }
   }
 
-  private def printObject(members: Map[String, JsValue], sb: StringBuilder, indent: Int) {
+  private def formatObject(members: Map[String, JsValue], sb: StringBuilder, indent: Int) {
     sb.append("{\n")    
     printSeq(members, sb.append(",\n")) { m =>
       printIndent(sb, indent + Indent)
@@ -50,7 +50,7 @@ trait PrettyPrinter extends JsonPrinter {
     sb.append("}")
   }
   
-  private def printArray(elements: List[JsValue], sb: StringBuilder, indent: Int) {
+  private def formatArray(elements: Seq[JsValue], sb: StringBuilder, indent: Int) {
     sb.append('[')
     printSeq(elements, sb.append(", "))(print(_, sb, indent))
     sb.append(']')
@@ -65,4 +65,4 @@ trait PrettyPrinter extends JsonPrinter {
   }
 }
 
-object PrettyPrinter extends PrettyPrinter
+object PrettyFormatter extends PrettyFormatter

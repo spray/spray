@@ -25,10 +25,10 @@ import collection.immutable.ListMap
   * The general type of a JSON AST node.
  */
 sealed abstract class JsValue {
-  override def toString = compactPrint
+  override def toString = formatCompact
   def toString(printer: (JsValue => String)) = printer(this)
-  def compactPrint = CompactPrinter(this)
-  def prettyPrint = PrettyPrinter(this)
+  def formatCompact = CompactFormatter(this)
+  def formatPretty = PrettyFormatter(this)
   def convertTo[T :JsonReader]: T = jsonReader[T].read(this)
 
   /**

@@ -28,7 +28,7 @@ class ReadmeSpec extends Specification {
       val jsonAst = source.asJson
       jsonAst mustEqual JsObject("some" -> JsString("JSON source"))
       
-      val json2 = PrettyPrinter(jsonAst)
+      val json2 = jsonAst.formatPretty
       json2 mustEqual
               """{
                 |  "some": "JSON source"

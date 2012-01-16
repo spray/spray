@@ -20,9 +20,9 @@ import annotation.tailrec
 import java.lang.StringBuilder
 
 /**
-  * A JsonPrinter serializes a JSON AST to a String.
+  * A JsonFormatter serializes a JSON AST to a String.
  */
-trait JsonPrinter extends (JsValue => String) {
+trait JsonFormatter extends (JsValue => String) {
 
   def apply(x: JsValue): String = apply(x, None)
 
@@ -33,23 +33,23 @@ trait JsonPrinter extends (JsValue => String) {
     jsonpCallback match {
       case Some(callback) => {
         sb.append(callback).append('(')
-        print(x, sb)
+        format(x, sb)
         sb.append(')');
       }
-      case None => print(x, sb)
+      case None => format(x, sb)
     }
     sb.toString
   }
   
-  def print(x: JsValue, sb: StringBuilder)
+  def format(x: JsValue, sb: StringBuilder)
   
   protected def printLeaf(x: JsValue, sb: StringBuilder) {
     x match {
       case JsNull      => sb.append("null")
       case JsTrue      => sb.append("true")
       case JsFalse     => sb.append("false")
-      case JsNumber(x) => sb.append(x)
-      case JsString(x) => printString(x, sb)
+      case x: JsNumber => sb.append(x.value)
+      case x: JsString => printString(x.value, sb)
       case _           => throw new IllegalStateException
     }
   }

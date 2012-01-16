@@ -35,9 +35,9 @@ and do one or more of the following:
         val source = """{ "some": "JSON source" }"""
         val jsonAst = source.asJson // or JsonParser(source)
 
-2. Print a JSON AST back to a String using either the `CompactPrinter` or the `PrettyPrinter`
+2. Format a JSON AST to a String using either the `CompactFormatter` or the `PrettyFormatter`
 
-        val json = jsonAst.prettyPrint // or .compactPrint
+        val json = jsonAst.formatPretty // or .formatCompact
 
 3. Convert any Scala object to a JSON AST using the pimped `toJson` method 
         

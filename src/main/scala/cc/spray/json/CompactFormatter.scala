@@ -19,33 +19,33 @@ package cc.spray.json
 import java.lang.StringBuilder
 
 /**
-  * A JsonPrinter that produces compact JSON source without any superfluous whitespace.
+  * A JsonFormatter that produces compact JSON source without any superfluous whitespace.
  */
-trait CompactPrinter extends JsonPrinter {
+trait CompactFormatter extends JsonFormatter {
 
-  def print(x: JsValue, sb: StringBuilder) {
+  def format(x: JsValue, sb: StringBuilder) {
     x match {
-      case JsObject(x) => printObject(x, sb)
-      case JsArray(x)  => printArray(x, sb)
+      case x: JsObject => formatObject(x.fields, sb)
+      case x: JsArray => formatArray(x.elements, sb)
       case _ => printLeaf(x, sb)
     }
   }
 
-  private def printObject(members: Map[String, JsValue], sb: StringBuilder) {
+  private def formatObject(members: Map[String, JsValue], sb: StringBuilder) {
     sb.append('{')
     printSeq(members, sb.append(',')) { m =>
       printString(m._1, sb)
       sb.append(':')
-      print(m._2, sb)
+      format(m._2, sb)
     }
     sb.append('}')
   }
 
-  private def printArray(elements: List[JsValue], sb: StringBuilder) {
+  private def formatArray(elements: Seq[JsValue], sb: StringBuilder) {
     sb.append('[')
-    printSeq(elements, sb.append(','))(print(_, sb))
+    printSeq(elements, sb.append(','))(format(_, sb))
     sb.append(']')
   }
 }
 
-object CompactPrinter extends CompactPrinter
+object CompactFormatter extends CompactFormatter
