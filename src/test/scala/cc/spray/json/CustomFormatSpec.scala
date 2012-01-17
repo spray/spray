@@ -35,7 +35,7 @@ class CustomFormatSpec extends Specification with DefaultJsonProtocol {
   "A custom JsonFormat built with 'asJsonObject'" should {
     val value = MyType("bob", 42)
     "correctly deserialize valid JSON content" in {
-      JsonParser("""{ "name": "bob", "value": 42 }""").convertTo[MyType] mustEqual value
+      """{ "name": "bob", "value": 42 }""".asJson.convertTo[MyType] mustEqual value
     }
     "support full round-trip (de)serialization" in {
       value.toJson.convertTo[MyType] mustEqual value

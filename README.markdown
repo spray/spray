@@ -32,8 +32,8 @@ and do one or more of the following:
 
 1. Parse a JSON string into its Abstract Syntax Tree (AST) representation
 
-        val json = """{ "some": "JSON source" }""" 
-        val jsonAst = JsonParser(json)
+        val source = """{ "some": "JSON source" }"""
+        val jsonAst = source.asJson // or JsonParser(source)
 
 2. Print a JSON AST back to a String using either the `CompactPrinter` or the `PrettyPrinter`
 

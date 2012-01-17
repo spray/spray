@@ -26,8 +26,8 @@ package object json {
   def jsonReader[T](implicit reader: JsonReader[T]) = reader
   def jsonWriter[T](implicit writer: JsonWriter[T]) = writer 
   
-  implicit def pimpAny[T](any: T): PimpedAny[T] = new PimpedAny(any)
-
+  implicit def pimpAny[T](any: T) = new PimpedAny(any)
+  implicit def pimpString(string: String) = new PimpedString(string)
 }
 
 package json {
@@ -37,5 +37,9 @@ package json {
 
   private[json] class PimpedAny[T](any: T) {
     def toJson(implicit writer: JsonWriter[T]): JsValue = writer.write(any)
+  }
+
+  private[json] class PimpedString(string: String) {
+    def asJson: JsValue = JsonParser(string)
   }
 }
