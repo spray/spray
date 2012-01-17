@@ -113,7 +113,7 @@ trait SprayTest extends RouteResultComponent {
       // try generating a scalatest test failure
       throw Class.forName("org.scalatest.TestFailedException")
         .getConstructor(classOf[String], classOf[Int])
-        .newInstance(msg, 5 :java.lang.Integer) // TODO verify stack depth value
+        .newInstance(msg, 14 :java.lang.Integer)
         .asInstanceOf[Exception]
     }
     ignoring(classOf[ClassNotFoundException]) {
