@@ -27,7 +27,7 @@ import java.util.Arrays
 import typeconversion.{DefaultMarshallers, SimpleMarshaller}
 
 private[spray] trait FileAndResourceDirectives {
-  this: SimpleDirectives with DetachDirectives with MiscDirectives with DefaultMarshallers =>
+  this: SimpleDirectives with ExecutionDirectives with MiscDirectives with DefaultMarshallers =>
 
   /**
    * Returns a Route that completes GET requests with the content of the given file. The actual I/O operation is

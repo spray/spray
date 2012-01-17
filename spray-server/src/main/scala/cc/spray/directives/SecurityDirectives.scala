@@ -30,10 +30,10 @@ private[spray] trait SecurityDirectives {
    * Uses the given authenticator to authenticate the user and extract an object representing the users identity.
    * It's up to the given authenticator how to deal with authentication failures of any kind.
    *
-   * Note that this directive differs from the other directives in that it
+   * Note that this directive differs from most other directives in that it
    * - automatically detaches its inner route from the enclosing actor scope, i.e. it runs its inner route
    *   asynchronously in a private, per-request execution context
-   * - it cannot be combined with other routes via the usual `&` and `|` operators
+   * - cannot be combined with other routes via the usual `&` and `|` operators
    */
   def authenticate[U](authenticator: GeneralAuthenticator[U]): (U => Route) => Route = { innerRoute => ctx =>
     authenticator(ctx) onComplete {
