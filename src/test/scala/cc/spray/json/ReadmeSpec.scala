@@ -59,13 +59,12 @@ class ReadmeSpec extends Specification {
     "behave as expected" in {
       object MyJsonProtocol extends DefaultJsonProtocol {
         implicit object ColorJsonFormat extends JsonFormat[Color] {
-          def write(c: Color) = {
+          def write(c: Color) =
             JsArray(JsString(c.name), JsNumber(c.red), JsNumber(c.green), JsNumber(c.blue))
-          }
+
           def read(value: JsValue) = value match {
-            case JsArray(JsString(name) :: JsNumber(red) :: JsNumber(green) :: JsNumber(blue) :: Nil) => {
-              new Color(name, red.toInt, green.toInt, blue.toInt)
-            }
+            case JsArray(Seq(JsString(name), JsNumber(red), JsNumber(green), JsNumber(blue))) =>
+              Validated(new Color(name, red.toInt, green.toInt, blue.toInt))
             case _ => deserializationError("Color expected")
           }
         }

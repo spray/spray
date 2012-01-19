@@ -43,7 +43,7 @@ class ProductFormatsSpec extends Specification {
     }
     "throw a DeserializationException if the JsObject does not all required members" in (
       JsObject("b" -> JsNumber(4.2)).convertTo[Test2] must
-              throwA(new DeserializationException("Object is missing required member 'a'"))
+              throwA(new DeserializationException("JsObject is missing required member 'a'"))
     )
     "not require the presence of optional fields for deserialization" in {
       JsObject("a" -> JsNumber(42)).convertTo[Test2] mustEqual Test2(42, None)
@@ -58,7 +58,7 @@ class ProductFormatsSpec extends Specification {
       JsObject("b" -> JsNumber(4.2), "a" -> JsNumber(42)).convertTo[Test2] mustEqual obj
     }
     "throw a DeserializationException if the JsValue is not a JsObject" in (
-      JsNull.convertTo[Test2] must throwA(new DeserializationException("Object expected"))
+      JsNull.convertTo[Test2] must throwA(new DeserializationException("Expected JsObject but got JsNull$"))
     )
   }
 

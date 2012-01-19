@@ -24,12 +24,12 @@ import annotation.implicitNotFound
  */
 @implicitNotFound(msg = "Cannot find JsonReader or JsonFormat type class for ${T}")
 trait JsonReader[T] {
-  def read(json: JsValue): T
+  def read(json: JsValue): Validated[T]
 }
 
 object JsonReader {
   implicit def func2Reader[T](f: JsValue => T): JsonReader[T] = new JsonReader[T] {
-    def read(json: JsValue) = f(json)
+    def read(json: JsValue) = Validated(f(json))
   }
 }
 

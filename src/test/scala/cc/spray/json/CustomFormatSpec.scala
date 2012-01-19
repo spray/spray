@@ -24,10 +24,10 @@ class CustomFormatSpec extends Specification with DefaultJsonProtocol {
 
   implicit val MyTypeProtocol = new RootJsonFormat[MyType] {
     def read(json: JsValue) = {
-      json.asJsObject.getFields("name", "value") match {
-        case Seq(JsString(name), JsNumber(value)) => MyType(name, value.toInt)
-        case _ => deserializationError("Expected fields: 'name' (JSON string) and 'value' (JSON number)")
-      }
+      for {
+        name: String <- json("name")
+        value: Int <- json("value")
+      } yield MyType(name, value.toInt)
     }
     def write(obj: MyType) = JsObject("name" -> JsString(obj.name), "value" -> JsNumber(obj.value))
   }

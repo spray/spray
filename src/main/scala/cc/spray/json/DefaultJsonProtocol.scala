@@ -25,6 +25,12 @@ trait DefaultJsonProtocol
         with StandardFormats
         with CollectionFormats
         with ProductFormats
-        with AdditionalFormats
+        with AdditionalFormats {
+
+  // enables automatic from JSON conversion in for comprehensions
+  protected implicit def pimpFuncWithFromJsonConversion[A :JsonFormat, B](f: A => B): JsValue => B =
+    json => f(json.convertTo[A])
+
+}
 
 object DefaultJsonProtocol extends DefaultJsonProtocol
