@@ -8,7 +8,7 @@ description := "A Scala library for easy and idiomatic JSON (de)serialization"
 
 scalaVersion := "2.9.1"
 
-scalacOptions := Seq("-deprecation", "-encoding", "utf8")
+scalacOptions := Seq("-deprecation", "-encoding", "utf8", "-Xexperimental")
 
 libraryDependencies ++= Seq(
   "org.parboiled" % "parboiled-scala" % "1.0.2" % "compile",

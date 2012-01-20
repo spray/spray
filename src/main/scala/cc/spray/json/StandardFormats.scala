@@ -37,7 +37,7 @@ trait StandardFormats {
       case (Success(a), _: Failure[_]) => Success(Left(a))
       case (_: Failure[_], Success(b)) => Success(Right(b))
       case (_: Success[_], _: Success[_]) => deserializationError("Ambiguous Either value: can be read as both, Left and Right, values")
-      case (Failure(ea), Failure(eb)) => deserializationError("Could not read Either value:\n" + ea + "---------- and ----------\n" + eb)
+      case (Failure(ea), Failure(eb)) => deserializationError("Could not read Either value:\n" + ea + "\n---------- and ----------\n" + eb)
     }
   }
   
