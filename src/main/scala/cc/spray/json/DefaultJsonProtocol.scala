@@ -29,7 +29,7 @@ trait DefaultJsonProtocol
 
   // enables automatic from JSON conversion in for comprehensions
   protected implicit def pimpFuncWithFromJsonConversion[A :JsonFormat, B](f: A => B): JsValue => B =
-    json => f(json.convertTo[A])
+    json => f(json.as[A])
 
 }
 

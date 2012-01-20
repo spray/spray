@@ -39,26 +39,26 @@ class ProductFormatsSpec extends Specification {
       obj.toJson mustEqual json
     }
     "convert a JsObject to the respective case class instance" in {
-      json.convertTo[Test2] mustEqual obj
+      json.as[Test2] mustEqual obj
     }
     "throw a DeserializationException if the JsObject does not all required members" in (
-      JsObject("b" -> JsNumber(4.2)).convertTo[Test2] must
+      JsObject("b" -> JsNumber(4.2)).as[Test2] must
               throwA(new DeserializationException("JsObject is missing required member 'a'"))
     )
     "not require the presence of optional fields for deserialization" in {
-      JsObject("a" -> JsNumber(42)).convertTo[Test2] mustEqual Test2(42, None)
+      JsObject("a" -> JsNumber(42)).as[Test2] mustEqual Test2(42, None)
     }
     "not render `None` members during serialization" in {
       Test2(42, None).toJson mustEqual JsObject("a" -> JsNumber(42))
     }
     "ignore additional members during deserialization" in {
-      JsObject("a" -> JsNumber(42), "b" -> JsNumber(4.2), "c" -> JsString('no)).convertTo[Test2] mustEqual obj
+      JsObject("a" -> JsNumber(42), "b" -> JsNumber(4.2), "c" -> JsString('no)).as[Test2] mustEqual obj
     }
     "not depend on any specific member order for deserialization" in {
-      JsObject("b" -> JsNumber(4.2), "a" -> JsNumber(42)).convertTo[Test2] mustEqual obj
+      JsObject("b" -> JsNumber(4.2), "a" -> JsNumber(42)).as[Test2] mustEqual obj
     }
     "throw a DeserializationException if the JsValue is not a JsObject" in (
-      JsNull.convertTo[Test2] must throwA(new DeserializationException("Expected JsObject but got JsNull$"))
+      JsNull.as[Test2] must throwA(new DeserializationException("Expected JsObject but got JsNull$"))
     )
   }
 
@@ -80,7 +80,7 @@ class ProductFormatsSpec extends Specification {
       obj.toJson mustEqual json
     }
     "convert a JsObject to the respective case class instance" in {
-      json.convertTo[Test3[Int, String]] mustEqual obj
+      json.as[Test3[Int, String]] mustEqual obj
     }
   }
 

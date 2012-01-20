@@ -33,7 +33,7 @@ sealed abstract class JsValue extends Dynamic {
   def toValidated[T :JsonReader]: Validated[T] = jsonReader[T].read(this)
   def toOption[T :JsonReader]: Option[T] = toValidated[T].toOption
   def toEither[T :JsonReader]: Either[Throwable, T] = toValidated[T].toEither
-  def convertTo[T :JsonReader]: T = toValidated[T].get
+  def as[T :JsonReader]: T = toValidated[T].get
 
   def applyDynamic(key: String)(index: Int = -1): Validated[JsValue] =
     if (index == -1) apply(key) else apply(key).flatMap(_.apply(index))
@@ -42,8 +42,8 @@ sealed abstract class JsValue extends Dynamic {
   def apply(key: String): Validated[JsValue] =
     deserializationError("Expected JsObject but got " + getClass.getSimpleName)
 
-  @deprecated("Superceded by 'convertTo'", "1.1.0")
-  def fromJson[T :JsonReader]: T = convertTo
+  @deprecated("Superceded by 'as'", "1.1.0")
+  def fromJson[T :JsonReader]: T = as
 }
 
 /**

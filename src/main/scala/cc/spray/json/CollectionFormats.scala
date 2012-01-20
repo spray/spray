@@ -30,7 +30,7 @@ trait CollectionFormats {
   implicit def arrayFormat[T :JsonFormat :ClassManifest]: RootJsonFormat[Array[T]] = new RootJsonFormat[Array[T]] {
     def write(array: Array[T]) = JsArray(array.map(_.toJson)(collection.breakOut) :Vector[JsValue])
     def read(value: JsValue) = value match {
-      case x: JsArray => Validated(x.elements.map(_.convertTo[T])(collection.breakOut) :Array[T])
+      case x: JsArray => Validated(x.elements.map(_.as[T])(collection.breakOut) :Array[T])
       case x => deserializationError("Expected Array as JsArray, but got " + x)
     }
   }
@@ -51,7 +51,7 @@ trait CollectionFormats {
     def read(value: JsValue) = value match {
       case x: JsObject => Validated {
         x.fields.map { field =>
-          (JsString(field._1).convertTo[K], field._2.convertTo[V])
+          (JsString(field._1).as[K], field._2.as[V])
         } (collection.breakOut) :Map[K, V]
       }
       case x => deserializationError("Expected Map as JsObject, but got " + x)
@@ -86,7 +86,7 @@ trait CollectionFormats {
                                                          cbf: CanBuildFrom[T,A,T]): RootJsonFormat[T] = new RootJsonFormat[T] {
     def write(items: T) = JsArray(items.map(_.toJson)(collection.breakOut) :Vector[JsValue])
     def read(value: JsValue) = value match {
-      case x: JsArray => Validated(x.elements.map(_.convertTo[A])(collection.breakOut) :T)
+      case x: JsArray => Validated(x.elements.map(_.as[A])(collection.breakOut) :T)
       case x => deserializationError("Expected JsArray, but got " + x)
     }
   }
