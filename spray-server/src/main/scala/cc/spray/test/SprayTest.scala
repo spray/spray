@@ -47,7 +47,6 @@ trait SprayTest extends RouteResultComponent {
 
   trait ServiceTest extends HttpServiceLogic with Logging {
     override lazy val log: Log = NoLog // in the tests we don't log
-    val customRejectionHandler = emptyPartialFunc
   }
 
   /**
