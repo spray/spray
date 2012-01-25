@@ -21,7 +21,7 @@ import akka.dispatch.CompletableFuture
 
 /**
  * A new instance of the `DefaultReceiverActor` is used as the receiver actor for `send` calls on an
- * [[cc.spray.can.HttpConnection]], that return a `Future[HttpResponse].
+ * [[cc.spray.can.HttpConnection]], that return a `Future[HttpResponse]`.
  */
 class DefaultReceiverActor(future: CompletableFuture[HttpResponse], maxContentLength: Int) extends Actor {
   var body: Array[Byte] = _
