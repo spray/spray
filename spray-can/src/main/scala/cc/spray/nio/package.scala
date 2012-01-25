@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package cc.spray.nio
+package cc.spray
 
-case class NioWorkerConfig(
-  threadName: String = "spray-nio-worker",
-  readBufferSize: Int = 4096
-)
+package object nio {
+  def make[A, U](a: A)(f: A => U): A = { f(a); a }
+}
