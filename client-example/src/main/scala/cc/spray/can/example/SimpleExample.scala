@@ -17,6 +17,7 @@
 package cc.spray.can
 package example
 
+/*
 import akka.config.Supervision._
 import org.slf4j.LoggerFactory
 import HttpMethods._
@@ -57,4 +58,4 @@ object SimpleExample extends App {
       Array(response.status: java.lang.Integer, response.headers, response.bodyAsString)
     )
   }
-}
+}*/

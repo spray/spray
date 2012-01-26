@@ -18,11 +18,15 @@ package cc.spray.can
 package example
 
 import org.slf4j.LoggerFactory
-import HttpMethods._
+import model._
 import java.util.concurrent.TimeUnit
 import akka.actor.{PoisonPill, Scheduler, Kill, Actor}
+import util.DateTime
+import nio.GetStats
 
 class TestService(id: String) extends Actor {
+  import HttpMethods._
+
   val log = LoggerFactory.getLogger(getClass)
   self.id = id
 
@@ -47,7 +51,7 @@ class TestService(id: String) extends Actor {
       }, 20500, TimeUnit.MILLISECONDS)
 
     case RequestContext(HttpRequest(GET, "/stats", _, _, _), _, responder) => {
-      (serverActor ? GetStats).mapTo[Stats].onComplete { future =>
+      (serverActor ? GetStats).mapTo[ServerStats].onComplete { future =>
         future.value.get match {
           case Right(stats) => responder.complete {
             response {
@@ -77,9 +81,9 @@ class TestService(id: String) extends Actor {
     case RequestContext(HttpRequest(_, _, _, _, _), _, responder) =>
       responder.complete(response("Unknown resource!", 404))
 
-    case Timeout(method, uri, _, _, _, complete) => complete {
+    /*case Timeout(method, uri, _, _, _, complete) => complete {
       HttpResponse(status = 500).withBody("The " + method + " request to '" + uri + "' has timed out...")
-    }
+    }*/
   }
 
   ////////////// helpers //////////////

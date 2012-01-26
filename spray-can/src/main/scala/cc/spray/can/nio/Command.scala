@@ -31,6 +31,7 @@ case class Stop(sender: ActorRef) extends SuperCommand
 case class Bind(sender: ActorRef, handleFactory: Key => Handle, address: SocketAddress, backlog: Int = 100) extends SuperCommand
 case class Unbind(sender: ActorRef, bindingKey: Key) extends SuperCommand
 case class Connect(sender: ActorRef, address: SocketAddress, handleFactory: Key => Handle) extends SuperCommand
+case object GetStats
 
 sealed abstract class ConnectionCommand extends ConnectionMessage with Command
 case class Close(handle: Handle) extends ConnectionCommand

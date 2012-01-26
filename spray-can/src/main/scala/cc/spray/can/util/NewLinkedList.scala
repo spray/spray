@@ -25,9 +25,9 @@ abstract class NewLinkedList {
   type Elem >: Null <: Element
 
   trait Element {
-    private[LinkedList] var prev: Elem = _
-    private[LinkedList] var next: Elem = _
-    private[LinkedList] var timeStamp = 0L
+    private[NewLinkedList] var prev: Elem = _
+    private[NewLinkedList] var next: Elem = _
+    private[NewLinkedList] var timeStamp = 0L
   }
 
   private var first: Elem = _

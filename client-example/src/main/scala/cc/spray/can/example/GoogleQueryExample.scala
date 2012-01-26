@@ -2,6 +2,7 @@ package cc.spray.can.example
 
 import java.util.concurrent.TimeUnit
 
+/*
 import akka.actor._
 import akka.config.Supervision._
 import akka.dispatch.Future
@@ -59,4 +60,4 @@ object GoogleQueryExample extends App {
     val startTime = System.currentTimeMillis
     block.map(_ -> (System.currentTimeMillis - startTime))
   }
-}
+}*/

@@ -19,11 +19,11 @@ package config
 
 import java.net.InetSocketAddress
 import akka.actor.Actor
+import model.ChunkedRequestContext
 
 /**
  * The `ServerConfig` configures an instance of the [[cc.spray.can.HttpServer]] actor.
  *
- * @constructor Creates a new `ServerConfig`
  * @param host the interface to bind to, default is `localhost`
  * @param port the port to bind to, default is `8080`
  * @param serverActorId the actor id the [[cc.spray.can.HttpServer]] is to receive, default is `spray-can-server`

@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package cc.spray.can.model
+package cc.spray.can
+package model
 
 import java.io.UnsupportedEncodingException
-
 
 /**
  * The ''spray-can'' model of an HTTP response.
