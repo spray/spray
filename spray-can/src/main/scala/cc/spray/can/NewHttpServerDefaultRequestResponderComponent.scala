@@ -1,6 +1,7 @@
 package cc.spray.can
 
 import java.util.concurrent.atomic.AtomicInteger
+import model.HttpHeader
 
 trait NewHttpServerDefaultRequestResponderComponent {
 

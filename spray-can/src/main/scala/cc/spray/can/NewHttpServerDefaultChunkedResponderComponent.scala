@@ -1,6 +1,7 @@
 package cc.spray.can
 
 import akka.dispatch.DefaultCompletableFuture
+import model.HttpHeader
 
 trait NewHttpServerDefaultChunkedResponderComponent {
 

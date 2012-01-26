@@ -21,6 +21,7 @@ import java.nio.ByteBuffer
 import java.lang.{StringBuilder => JStringBuilder}
 import annotation.tailrec
 import HttpProtocols._
+import model.{HttpMethod, HttpHeader}
 
 // a MessageParser instance holds the complete parsing state at any particular point in the request or response
 // parsing process

@@ -20,6 +20,7 @@ import java.nio.ByteBuffer
 import annotation.tailrec
 import HttpProtocols._
 import java.lang.{StringBuilder => JStringBuilder}
+import model.HttpHeader
 
 private[can] trait MessagePreparer {
   private val CrLf = "\r\n".getBytes("ASCII")

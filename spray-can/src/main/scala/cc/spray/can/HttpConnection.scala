@@ -18,6 +18,7 @@ package cc.spray.can
 
 import akka.actor.ActorRef
 import akka.dispatch.Future
+import model.HttpHeader
 
 /**
  * An instance of this trait represents an HTTP connection to a specific host and port.
