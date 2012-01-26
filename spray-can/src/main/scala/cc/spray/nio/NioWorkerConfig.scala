@@ -18,5 +18,7 @@ package cc.spray.nio
 
 case class NioWorkerConfig(
   threadName: String = "spray-nio-worker",
-  readBufferSize: Int = 4096
+  readBufferSize: Int = 4096,
+  idleTimeout: Long = 10000,
+  reapingCycle: Long = 500
 )

@@ -17,34 +17,45 @@
 package cc.spray.nio
 
 import java.nio.channels.spi.SelectorProvider
-import java.nio.channels.{SelectionKey, SocketChannel, ServerSocketChannel}
 import org.slf4j.LoggerFactory
 import java.nio.ByteBuffer
 import annotation.tailrec
 import collection.mutable.ListBuffer
-import akka.actor.ActorRef
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.TimeUnit
+import akka.actor.{Scheduler, ActorRef}
+import java.nio.channels.{Channel, SelectionKey, SocketChannel, ServerSocketChannel}
+import cc.spray.can.NewLinkedList
 
 class NioWorker(config: NioWorkerConfig = NioWorkerConfig()) {
   private val _thread = make(new NioThread(config)) {
-    _.setName(config.threadName)
+    _.setName(config.threadName + '-' + NioWorker.counter.incrementAndGet())
+    _.setDaemon(true)
+  }
+  private lazy val idleTimeoutCycle = if (config.idleTimeout == 0) None else Some {
+    Scheduler.schedule(() => this ! ReapIdleConnections, config.reapingCycle, config.reapingCycle, TimeUnit.MILLISECONDS)
   }
 
   def thread: Thread = _thread
 
   def start() {
     _thread.start()
+    idleTimeoutCycle // start idle connection reaping if configured
   }
 
   def ! (cmd: Command) {
+    if (cmd == Stop) {
+      idleTimeoutCycle.foreach(_.cancel(false))
+    }
     _thread.post(cmd)
   }
 
   private class NioThread(config: NioWorkerConfig) extends Thread {
     import SelectionKey._
-
     val log = LoggerFactory.getLogger(getClass)
     val commandQueue = new SingleReaderConcurrentQueue[Command]
     val selector = SelectorProvider.provider.openSelector
+    val connections = new ConnectionsList
     var stopCmd: Option[Stop] = None
 
     // executed from other threads!
@@ -61,6 +72,7 @@ class NioWorker(config: NioWorkerConfig = NioWorkerConfig()) {
           runCommand(commandQueue.dequeue())
         }
       }
+      closeSelector()
       safeSend(stopCmd.get.sender, Stopped)
     }
 
@@ -85,6 +97,7 @@ class NioWorker(config: NioWorkerConfig = NioWorkerConfig()) {
     def write(key: SelectionKey) {
       log.debug("Writing to connection")
       val handle = key.attachment.asInstanceOf[Handle]
+      val conn = handle.key.asInstanceOf[connections.Conn]
       val channel = key.channel.asInstanceOf[SocketChannel]
 
       @tailrec
@@ -100,20 +113,22 @@ class NioWorker(config: NioWorkerConfig = NioWorkerConfig()) {
       }
 
       try {
-        val buffers = handle.key.writeBuffers
+        val buffers = conn.writeBuffers
         if (writeToChannel(buffers.head)) {
           buffers.remove(0)
           safeSend(handle.handler, CompletedSend(handle))
-          if (buffers.isEmpty) handle.key.disable(OP_WRITE)
+          if (buffers.isEmpty) conn.disable(OP_WRITE)
         }
+        connections.refresh(conn)
       } catch { case e =>
-        log.warn("Write error: closing connection due to {}", e)
-        close(handle, Some(e))
+        log.warn("Write error: closing connection due to {}", e.toString)
+        close(handle, IoError(e))
       }
     }
 
     def read(key: SelectionKey) {
       val handle = key.attachment.asInstanceOf[Handle]
+      val conn = handle.key.asInstanceOf[connections.Conn]
       val channel = key.channel.asInstanceOf[SocketChannel]
       val buffer = ByteBuffer.allocate(config.readBufferSize)
 
@@ -122,13 +137,14 @@ class NioWorker(config: NioWorkerConfig = NioWorkerConfig()) {
           buffer.flip()
           log.debug("Read {} bytes", buffer.limit)
           safeSend(handle.handler, Received(handle, buffer))
+          connections.refresh(conn)
         } else {
           // if the peer shut down the socket cleanly, we do the same
           close(handle)
         }
       } catch { case e =>
-        log.warn("Read error: closing connection due to {}", e)
-        close(handle, Some(e))
+        log.warn("Read error: closing connection due to {}", e.toString)
+        close(handle, IoError(e))
       }
     }
 
@@ -138,7 +154,8 @@ class NioWorker(config: NioWorkerConfig = NioWorkerConfig()) {
         socketChannel.configureBlocking(false)
         val connectionKey = socketChannel.register(selector, SelectionKey.OP_READ)
         val cmd = key.attachment.asInstanceOf[Bind]
-        val handle = cmd.handleFactory(Key(connectionKey))
+        val handle = cmd.handleFactory(new connections.Conn(connectionKey))
+        connectionKey.attach(handle)
         log.debug("New connection accepted and registered")
         safeSend(handle.handler, Connected(handle))
       } catch { case e =>
@@ -170,6 +187,9 @@ class NioWorker(config: NioWorkerConfig = NioWorkerConfig()) {
           case x: Bind => bind(x)
           case x: Unbind => unbind(x)
           case x: Stop => stopCmd = Some(x)
+
+          // InternalCommands
+          case ReapIdleConnections => reapIdleConnections()
         }
       } catch { case e =>
         log.error("Error during execution of command '" + command + "'", e)
@@ -187,10 +207,12 @@ class NioWorker(config: NioWorkerConfig = NioWorkerConfig()) {
       key.enable(OP_WRITE)
     }
 
-    def close(handle: Handle, reason: Option[Throwable] = None) {
-      val key = handle.key.selectionKey
+    def close(handle: Handle, reason: ConnectionClosedReason = RegularClose) {
+      val conn = handle.key.asInstanceOf[connections.Conn]
+      val key = conn.selectionKey
       key.cancel()
       key.channel.close()
+      connections -= conn
       safeSend(handle.handler, Closed(handle, reason))
     }
 
@@ -208,7 +230,7 @@ class NioWorker(config: NioWorkerConfig = NioWorkerConfig()) {
     }
 
     def connectionEstablished(key: SelectionKey, cmd: Connect) {
-      val handle = cmd.handleFactory(Key(key))
+      val handle = cmd.handleFactory(new connections.Conn(key))
       key.attach(handle)
       log.debug("Connection established to {}", cmd.address)
       safeSend(handle.handler, Connected(handle))
@@ -220,11 +242,11 @@ class NioWorker(config: NioWorkerConfig = NioWorkerConfig()) {
       channel.socket.bind(cmd.address, cmd.backlog)
       val key = channel.register(selector, OP_ACCEPT)
       key.attach(cmd)
-      safeSend(cmd.sender, Bound(Key(key)))
+      safeSend(cmd.sender, Bound(new SimpleKey(key)))
     }
 
     def unbind(cmd: Unbind) {
-      val key = cmd.bindingKey.selectionKey
+      val key = cmd.bindingKey.asInstanceOf[SimpleKey].selectionKey
       key.cancel()
       key.channel.close()
       safeSend(cmd.sender, Unbound(cmd.bindingKey))
@@ -237,7 +259,48 @@ class NioWorker(config: NioWorkerConfig = NioWorkerConfig()) {
         case e => LoggerFactory.getLogger(getClass).error("Could not send '" + message + "' to '" + receiver + "'", e)
       }
     }
+
+    def reapIdleConnections() {
+      connections.forAllTimedOut(config.idleTimeout) { conn =>
+        log.debug("Closing connection due to idle timout")
+        close(conn.selectionKey.attachment.asInstanceOf[Handle], IdleTimeout)
+      }
+    }
+
+    def closeSelector() {
+      try {
+        selector.close()
+      } catch { case e =>
+        log.error("Error closing selector", e)
+      }
+    }
   }
 }
 
-object NioWorker extends NioWorker(NioWorkerConfig())
+object NioWorker extends NioWorker(NioWorkerConfig()) {
+  private val counter = new AtomicInteger
+}
+
+sealed trait Key {
+  def channel: Channel
+}
+
+private[nio] class SimpleKey(val selectionKey: SelectionKey) extends Key {
+  def channel = selectionKey.channel
+}
+
+private[nio] class ConnectionsList extends NewLinkedList { list =>
+  type Elem = Conn
+
+  class Conn(val selectionKey: SelectionKey) extends Element with Key {
+    list += this
+    def channel = key.channel
+    val writeBuffers = ListBuffer.empty[ListBuffer[ByteBuffer]]
+    def enable(ops: Int) {
+      selectionKey.interestOps(selectionKey.interestOps() | ops)
+    }
+    def disable(ops: Int) {
+      selectionKey.interestOps(selectionKey.interestOps() & ~ops)
+    }
+  }
+}
