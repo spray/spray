@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011, 2012 Mathias Doenitz
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,25 +14,22 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray.can.util
 
 import annotation.tailrec
-
-private[can] object LinkedList {
-  trait Element[Elem >: Null <: Element[Elem]] {
-    private[LinkedList] var list: LinkedList[Elem] = _
-    private[LinkedList] var prev: Elem = _
-    private[LinkedList] var next: Elem = _
-    private[LinkedList] var timeStamp: Long = _
-
-    def memberOf: LinkedList[Elem] = list
-  }
-}
 
 // a special mutable, double-linked list without "buckets", i.e. container objects to hold the payload;
 // rather the payload objects themselves must contain the link fields, which has the advantage of fewer created objects
 // and, more importantly, constant-time complexity for removal operations
-private[can] class LinkedList[Elem >: Null <: LinkedList.Element[Elem]] {
+abstract class NewLinkedList {
+  type Elem >: Null <: Element
+
+  trait Element {
+    private[LinkedList] var prev: Elem = _
+    private[LinkedList] var next: Elem = _
+    private[LinkedList] var timeStamp = 0L
+  }
+
   private var first: Elem = _
   private var last: Elem = _
   private var length: Int = _
@@ -40,8 +37,7 @@ private[can] class LinkedList[Elem >: Null <: LinkedList.Element[Elem]] {
   def size = length
 
   def += (rec: Elem) {
-    require(rec.list == null, "Cannot add an element that is already member of some list")
-    assert(rec.prev == null && rec.next == null)
+    require(rec.timeStamp == 0, "Cannot add an element twice")
     if (length == 0) {
       first = rec
       last = rec
@@ -50,13 +46,12 @@ private[can] class LinkedList[Elem >: Null <: LinkedList.Element[Elem]] {
       rec.prev = last
       last = rec
     }
-    rec.list = this
     rec.timeStamp = System.currentTimeMillis
     length += 1
   }
 
   def -= (rec: Elem) {
-    require(rec.list == this, "Cannot remove an element that is not part of this list")
+    require(rec.timeStamp > 0, "Cannot remove an element that is not part of this list")
     if (rec == last) {
       if (rec == first) {
         first = null
@@ -73,17 +68,15 @@ private[can] class LinkedList[Elem >: Null <: LinkedList.Element[Elem]] {
       rec.prev.next = rec.next
       rec.next.prev = rec.prev
     }
-    rec.list = null
     rec.prev = null
     rec.next = null
+    rec.timeStamp = 0
     length -= 1
   }
 
   def refresh(rec: Elem) {
-    if (rec.list != null) {
-      this -= rec
-      this += rec
-    }
+    this -= rec
+    this += rec
   }
 
   def forAllTimedOut[U](timeout: Long)(f: Elem => U) {
@@ -120,5 +113,3 @@ private[can] class LinkedList[Elem >: Null <: LinkedList.Element[Elem]] {
     sb.append(']').toString
   }
 }
-
-

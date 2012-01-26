@@ -14,8 +14,18 @@
  * limitations under the License.
  */
 
-package cc.spray
+package cc.spray.can.util
 
-package object nio {
-  def make[A, U](a: A)(f: A => U): A = { f(a); a }
+class PimpedByteArray(underlying: Array[Byte]) {
+
+  /**
+   * Creates a new Array[Byte] that is the concatenation of the underlying and the given one.
+   */
+  def concat(other: Array[Byte]) = {
+    val newArray = new Array[Byte](underlying.length + other.length)
+    System.arraycopy(underlying, 0, newArray, 0, underlying.length)
+    System.arraycopy(other, 0, newArray, underlying.length, other.length)
+    newArray
+  }
+
 }

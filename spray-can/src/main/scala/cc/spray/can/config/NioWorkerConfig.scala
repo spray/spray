@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.nio
+package cc.spray.can
+package config
 
-import akka.actor.ActorRef
-
-trait Handle {
-  def key: Key
-
-  def handler: ActorRef
-}
+case class NioWorkerConfig(
+  threadName: String = "spray-nio-worker",
+  readBufferSize: Int = 4096,
+  idleTimeout: Long = 10000,
+  reapingCycle: Long = 500
+)

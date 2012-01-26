@@ -16,6 +16,7 @@
 
 package cc.spray
 
+import can.util.{PimpedByteArray, PimpedLinearSeq}
 import collection.immutable.LinearSeq
 import akka.actor.{ActorRef, Actor}
 import java.io.{BufferedReader, InputStreamReader}

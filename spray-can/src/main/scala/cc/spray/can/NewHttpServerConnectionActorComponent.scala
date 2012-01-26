@@ -16,8 +16,10 @@
 
 package cc.spray.can
 
+import _root_..
+import _root_..
+import _root_..{NewLinkedList, Received, Handle, Key}
 import akka.actor.Actor
-import cc.spray.nio.{Received, Handle, Key}
 import java.nio.ByteBuffer
 import annotation.tailrec
 import java.nio.channels.SocketChannel

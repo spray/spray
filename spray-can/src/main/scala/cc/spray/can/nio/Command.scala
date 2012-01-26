@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-package cc.spray.nio
+package cc.spray.can
+package nio
 
 import java.nio.ByteBuffer
 import akka.actor.ActorRef
@@ -55,9 +56,3 @@ case class Connected(handle: Handle) extends ConnectionEvent
 case class Closed(handle: Handle, reason: ConnectionClosedReason) extends ConnectionEvent
 case class CompletedSend(handle: Handle) extends ConnectionEvent
 case class Received(handle: Handle, buffer: ByteBuffer) extends ConnectionEvent
-
-
-sealed trait ConnectionClosedReason
-case object RegularClose
-case object IdleTimeout
-case class IoError(error: Throwable)

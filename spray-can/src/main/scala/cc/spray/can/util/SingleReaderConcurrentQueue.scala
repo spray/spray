@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.nio
+package cc.spray.can.util
 
 import java.util.concurrent.atomic.AtomicReference
 import annotation.tailrec

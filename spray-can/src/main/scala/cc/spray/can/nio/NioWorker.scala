@@ -14,18 +14,21 @@
  * limitations under the License.
  */
 
-package cc.spray.nio
+package cc.spray.can
+package nio
 
+import _root_..
+import _root_..
+import java.nio.channels.{Channel, SelectionKey, SocketChannel, ServerSocketChannel}
 import java.nio.channels.spi.SelectorProvider
-import org.slf4j.LoggerFactory
 import java.nio.ByteBuffer
-import annotation.tailrec
-import collection.mutable.ListBuffer
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.TimeUnit
+import org.slf4j.LoggerFactory
+import annotation.tailrec
+import collection.mutable.ListBuffer
 import akka.actor.{Scheduler, ActorRef}
-import java.nio.channels.{Channel, SelectionKey, SocketChannel, ServerSocketChannel}
-import cc.spray.can.NewLinkedList
+import util.SingleReaderConcurrentQueue
 
 class NioWorker(config: NioWorkerConfig = NioWorkerConfig()) {
   private val _thread = make(new NioThread(config)) {

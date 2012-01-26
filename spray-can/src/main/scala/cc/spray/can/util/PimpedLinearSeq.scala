@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011, 2012 Mathias Doenitz
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray.can.util
 
 import collection.immutable.LinearSeq
 import annotation.tailrec
@@ -62,5 +62,5 @@ class PimpedLinearSeq[+A](underlying: LinearSeq[A]) {
       if (erasure.isInstance(x)) Some(x.asInstanceOf[B]) else None
     }
   }
-  
+
 }

@@ -14,11 +14,45 @@
  * limitations under the License.
  */
 
-package cc.spray.nio
+package cc.spray.can
+package nio
 
-case class NioWorkerConfig(
-  threadName: String = "spray-nio-worker",
-  readBufferSize: Int = 4096,
-  idleTimeout: Long = 10000,
-  reapingCycle: Long = 500
-)
+sealed trait ConnectionClosedReason
+case object RegularClose extends ConnectionClosedReason
+case object IdleTimeout extends ConnectionClosedReason
+case class IoError(error: Throwable) extends ConnectionClosedReason
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
