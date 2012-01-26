@@ -14,19 +14,16 @@
  * limitations under the License.
  */
 
-package cc.spray.can.model
+package cc.spray.can
 
-sealed trait MessageLine
+package object util {
 
-case class RequestLine(
-  method: HttpMethod = HttpMethods.GET,
-  uri: String = "/",
-  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
-) extends MessageLine
+  private[can] def isTokenChar(c: Char) = c match {
+    case x if 'a' <= x && x <= 'z' => true
+    case x if 'A' <= x && x <= 'Z' => true
+    case '-' => true
+    case '(' | ')' | '<' | '>' | '@' | ',' | ';' | ':' | '\\' | '"' | '/' | '[' | ']' | '?' | '=' | '{' | '}' => false
+    case x => 32 < x && x < 127
+  }
 
-case class StatusLine(
-  requestMethod: HttpMethod,
-  protocol: HttpProtocol,
-  status: Int,
-  reason: String
-) extends MessageLine
+}

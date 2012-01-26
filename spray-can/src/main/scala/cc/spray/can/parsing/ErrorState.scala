@@ -14,19 +14,21 @@
  * limitations under the License.
  */
 
-package cc.spray.can.model
+package cc.spray.can
+package parsing
 
-sealed trait MessageLine
+class ErrorState(val message: String, val status: Int) extends ParsingState {
+  override def hashCode = message.## * 31 + status
+  override def equals(obj: Any) = obj match {
+    case x: ErrorState => x.message == message && x.status == status
+    case _ => false
+  }
+  override def toString = "ErrorState(" + message + ", " + status + ")"
+}
 
-case class RequestLine(
-  method: HttpMethod = HttpMethods.GET,
-  uri: String = "/",
-  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
-) extends MessageLine
-
-case class StatusLine(
-  requestMethod: HttpMethod,
-  protocol: HttpProtocol,
-  status: Int,
-  reason: String
-) extends MessageLine
+object ErrorState {
+  def apply(message: String, status: Int = 400) = new ErrorState(
+    message.replace("\t", "\\t").replace("\r", "\\r").replace("\n", "\\n"),
+    status
+  )
+}

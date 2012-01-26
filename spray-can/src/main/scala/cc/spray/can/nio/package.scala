@@ -1,5 +1,3 @@
-package cc.spray.can.nio
-
 /*
  * Copyright (C) 2011, 2012 Mathias Doenitz
  *
@@ -16,6 +14,10 @@ package cc.spray.can.nio
  * limitations under the License.
  */
 
+package cc.spray.can
+
 package object nio {
-  def make[A, U](a: A)(f: A => U): A = { f(a); a }
+
+  type ~~>[In, Out] = PipelineContext[In, Out] => Unit
+
 }

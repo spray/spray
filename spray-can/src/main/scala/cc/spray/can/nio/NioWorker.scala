@@ -29,12 +29,8 @@ import util.SingleReaderConcurrentQueue
 import config.NioWorkerConfig
 import model.NioWorkerStats
 
-class NioWorker(config: NioWorkerConfig = NioWorkerConfig()) {
-
-  private val _thread = make(new NioThread(config)) { t =>
-    t.setName(config.threadName + '-' + NioWorker.counter.incrementAndGet())
-    t.setDaemon(true)
-  }
+class NioWorker(config: NioWorkerConfig) {
+  private lazy val _thread = new NioThread(config)
 
   def thread: Thread = _thread
 
@@ -61,8 +57,14 @@ class NioWorker(config: NioWorkerConfig = NioWorkerConfig()) {
     private var connectionsClosed = 0L
     private var commandsExecuted = 0L
 
+    setName(config.threadName + '-' + NioWorker.counter.incrementAndGet())
+    setDaemon(true)
+
     override def start() {
-      startTime = System.currentTimeMillis
+      if (getState == Thread.State.NEW) {
+        startTime = System.currentTimeMillis
+        super.start()
+      }
     }
 
     // executed from other threads!
@@ -279,6 +281,6 @@ class NioWorker(config: NioWorkerConfig = NioWorkerConfig()) {
   }
 }
 
-object NioWorker extends NioWorker(NioWorkerConfig()) {
+object NioWorker {
   private val counter = new AtomicInteger
 }

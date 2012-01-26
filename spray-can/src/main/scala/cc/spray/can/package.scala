@@ -22,6 +22,7 @@ import akka.actor.{ActorRef, Actor}
 import java.io.{BufferedReader, InputStreamReader}
 
 package object can {
+
   def make[A, U](a: A)(f: A => U): A = { f(a); a }
 
   lazy val SprayCanVersion: String = {

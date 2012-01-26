@@ -14,19 +14,32 @@
  * limitations under the License.
  */
 
-package cc.spray.can.model
+package cc.spray.can
+package parsing
 
-sealed trait MessageLine
+import config.HttpParserConfig
+import model.HttpMethod
 
-case class RequestLine(
-  method: HttpMethod = HttpMethods.GET,
-  uri: String = "/",
-  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
-) extends MessageLine
+class MethodParser(config: HttpParserConfig, method: HttpMethod, var pos: Int = 0) extends CharacterParser {
 
-case class StatusLine(
-  requestMethod: HttpMethod,
-  protocol: HttpProtocol,
-  status: Int,
-  reason: String
-) extends MessageLine
+  def handleChar(cursor: Char) = {
+    pos += 1
+    if (pos < method.name.length()) {
+      val current = method.name.charAt(pos)
+      if (cursor == current) {
+        this
+      }
+      else {
+        badMethod
+      }
+    } else {
+      if (cursor == ' ') {
+        new UriParser(config, method)
+      }
+      else {
+        badMethod
+      }
+    }
+  }
+
+}

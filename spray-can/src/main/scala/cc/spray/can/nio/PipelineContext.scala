@@ -16,19 +16,28 @@
 
 package cc.spray.can.nio
 
-import java.nio.ByteBuffer
+import java.nio.channels.Channel
 
-sealed trait Event
+abstract class PipelineContext[Input, Output] { outer =>
+  def input: Input
 
-// "general" events not on the connection-level
-case object Stopped extends Event
-case class Bound(bindingKey: Key) extends Event
-case class Unbound(bindingKey: Key) extends Event
-case class Connected(key: Key) extends Event
+  def push(output: Output)
 
-// connection-level events
-case class Closed(handle: Handle, reason: ConnectionClosedReason) extends Event
-case class CompletedSend(handle: Handle) extends Event
-case class Received(handle: Handle, buffer: ByteBuffer) extends Event
+  def channel: Channel
 
-case class CommandError(command: Command, error: Throwable) extends Event
+  def close()
+
+  def withInput[T](newInput: T) = new PipelineContext[T, Output] {
+    def input = newInput
+    def push(output: Output) { outer.push(output) }
+    def channel = outer.channel
+    def close() { outer.close() }
+  }
+
+  def withPush[T](f: T => Unit) = new PipelineContext[Input, T] {
+    def input = outer.input
+    def push(output: T) { f(output) }
+    def channel = outer.channel
+    def close() { outer.close() }
+  }
+}

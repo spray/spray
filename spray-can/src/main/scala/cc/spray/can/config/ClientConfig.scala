@@ -36,7 +36,7 @@ case class ClientConfig(
   reapingCycle: Long = 500,
   requestTimeout: Long = 5000,
   timeoutCycle: Long = 200,
-  parserConfig: MessageParserConfig = MessageParserConfig()
+  parserConfig: HttpParserConfig = HttpParserConfig()
 ) extends PeerConfig {
 
   require(!clientActorId.isEmpty, "clientActorId must not be empty")
@@ -67,6 +67,6 @@ object ClientConfig {
     reapingCycle   = getLong("spray-can.client.reaping-cycle", 500),
     requestTimeout = getLong("spray-can.client.request-timeout", 5000),
     timeoutCycle   = getLong("spray-can.client.timeout-cycle", 200),
-    parserConfig   = MessageParserConfig.fromAkkaConf
+    parserConfig   = HttpParserConfig.fromAkkaConf
   )
 }

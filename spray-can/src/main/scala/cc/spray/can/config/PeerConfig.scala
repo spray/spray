@@ -64,7 +64,7 @@ trait PeerConfig {
   /**
    * The configuration of the ''spray-can'' message parser.
    */
-  def parserConfig: MessageParserConfig
+  def parserConfig: HttpParserConfig
 
   require(readBufferSize > 0, "readBufferSize must be > 0 bytes")
   require(idleTimeout >= 0, "idleTimeout must be >= 0 ms")

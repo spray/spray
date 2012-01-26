@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-package cc.spray.can.model
+package cc.spray.can
 
-sealed trait MessageLine
+import nio._
+import akka.actor.ActorRef
+import parsing.HttpMessagePartCompletedState
 
-case class RequestLine(
-  method: HttpMethod = HttpMethods.GET,
-  uri: String = "/",
-  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
-) extends MessageLine
+object ToServiceActorDispatching {
 
-case class StatusLine(
-  requestMethod: HttpMethod,
-  protocol: HttpProtocol,
-  status: Int,
-  reason: String
-) extends MessageLine
+  def apply(requestActorFactory: => ActorRef)
+           :HttpMessagePartCompletedState ~~> HttpResponseRenderingContext = {
+
+    ctx => {
+
+    }
+  }
+}

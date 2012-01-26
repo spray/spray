@@ -15,9 +15,24 @@
  */
 
 package cc.spray.can
-package config
+package parsing
 
-case class NioWorkerConfig(
-  threadName: String = "spray-nio-worker",
-  readBufferSize: Int = 4096
-)
+import java.lang.{StringBuilder => JStringBuilder}
+import config.HttpParserConfig
+import model.HttpMethod
+
+class UriParser(config: HttpParserConfig, method: HttpMethod) extends CharacterParser {
+  val uri = new JStringBuilder
+
+  def handleChar(cursor: Char) = {
+    if (uri.length <= config.maxUriLength) {
+      cursor match {
+        case ' ' => new RequestVersionParser(config, method, uri.toString)
+        case _ => uri.append(cursor); this
+      }
+    } else {
+      ErrorState("URIs with more than " + config.maxUriLength + " characters are not supported", 414)
+    }
+  }
+
+}

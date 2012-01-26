@@ -16,17 +16,10 @@
 
 package cc.spray.can.model
 
-sealed trait MessageLine
+trait HttpMessage {
+  def headers: List[HttpHeader]
 
-case class RequestLine(
-  method: HttpMethod = HttpMethods.GET,
-  uri: String = "/",
-  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
-) extends MessageLine
+  def body: Array[Byte]
 
-case class StatusLine(
-  requestMethod: HttpMethod,
-  protocol: HttpProtocol,
-  status: Int,
-  reason: String
-) extends MessageLine
+  def protocol: HttpProtocol
+}

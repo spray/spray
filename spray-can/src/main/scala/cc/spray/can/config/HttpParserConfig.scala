@@ -17,11 +17,11 @@
 package cc.spray.can.config
 
 /**
- * The configuration of the HTTP message parser.
+ * The configuration of the HTTP message parsers.
  * The only setting that more frequently requires tweaking is the `maxContentLength` setting, which represents the
  * maximum request entity size of an HTTP request or response accepted by the server or client.
  */
-case class MessageParserConfig(
+case class HttpParserConfig(
   maxUriLength: Int = 2048,
   maxResponseReasonLength: Int = 64,
   maxHeaderNameLength: Int = 64,
@@ -34,10 +34,10 @@ case class MessageParserConfig(
   maxChunkSize: Int = 1024 * 1024   // default chunk size limit = 1 MB
 )
 
-object MessageParserConfig {
+object HttpParserConfig {
   import akka.config.Config.config._
 
-  lazy val fromAkkaConf = MessageParserConfig(
+  lazy val fromAkkaConf = HttpParserConfig(
     maxUriLength            = getInt("spray-can.parser.max-uri-length", 2048),
     maxResponseReasonLength = getInt("spray-can.parser.max-response-reason-length", 64),
     maxHeaderNameLength     = getInt("spray-can.parser.max-header-name-length", 64),

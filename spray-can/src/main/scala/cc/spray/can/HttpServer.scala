@@ -15,9 +15,23 @@
  */
 
 package cc.spray.can
-package config
 
-case class NioWorkerConfig(
-  threadName: String = "spray-nio-worker",
-  readBufferSize: Int = 4096
-)
+import config.HttpServerConfig
+import nio._
+import akka.actor.ActorRef
+
+class HttpServer(config: HttpServerConfig, requestActorFactory: => ActorRef)
+  extends NioServerActor("spray-can HTTP server", config.nioServerConfig, new NioWorker(config.nioWorkerConfig))
+  with NioConnectionActorComponent {
+
+  protected def createConnectionActor(key: Key) = new NioConnectionActor(key) {
+    def pipeline = {
+      HttpResponseRendering(config.serverHeader) {
+        HttpRequestParsing(config.parserConfig) {
+          ToServiceActorDispatching(requestActorFactory)
+        }
+      }
+    }
+  }
+
+}

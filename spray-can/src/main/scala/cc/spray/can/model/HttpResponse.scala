@@ -27,7 +27,7 @@ case class HttpResponse(
   headers: List[HttpHeader] = Nil,
   body: Array[Byte] = EmptyByteArray,
   protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
-) {
+) extends HttpMessage {
   def withBody(body: String, charset: String = "ISO-8859-1") = copy(body = body.getBytes(charset))
 
   def bodyAsString: String = if (body.isEmpty) "" else {

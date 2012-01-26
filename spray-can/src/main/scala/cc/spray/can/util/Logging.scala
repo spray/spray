@@ -14,19 +14,10 @@
  * limitations under the License.
  */
 
-package cc.spray.can.model
+package cc.spray.can.util
 
-sealed trait MessageLine
+import org.slf4j.LoggerFactory
 
-case class RequestLine(
-  method: HttpMethod = HttpMethods.GET,
-  uri: String = "/",
-  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
-) extends MessageLine
-
-case class StatusLine(
-  requestMethod: HttpMethod,
-  protocol: HttpProtocol,
-  status: Int,
-  reason: String
-) extends MessageLine
+trait Logging {
+  lazy val log = LoggerFactory.getLogger(getClass)
+}

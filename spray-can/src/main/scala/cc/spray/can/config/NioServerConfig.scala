@@ -18,7 +18,6 @@ package cc.spray.can
 package config
 
 case class NioServerConfig(
-  serverName: String,
   host: String,
   port: Int,
   bindingBacklog: Int = 100

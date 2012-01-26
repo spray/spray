@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011. 2012 Mathias Doenitz
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.can.model
+package cc.spray.can
+package config
 
-sealed trait MessageLine
-
-case class RequestLine(
-  method: HttpMethod = HttpMethods.GET,
-  uri: String = "/",
-  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
-) extends MessageLine
-
-case class StatusLine(
-  requestMethod: HttpMethod,
-  protocol: HttpProtocol,
-  status: Int,
-  reason: String
-) extends MessageLine
+case class HttpServerConfig(
+  parserConfig: HttpParserConfig,
+  nioServerConfig: NioServerConfig,
+  nioWorkerConfig: NioWorkerConfig,
+  serverHeader: String = "spray-can/" + SprayCanVersion
+)
