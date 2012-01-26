@@ -21,39 +21,44 @@ import java.nio.ByteBuffer
 import akka.actor.ActorRef
 import java.net.SocketAddress
 
-sealed trait Command
-
-sealed abstract class SuperCommand extends Command {
-  def sender: ActorRef
+sealed trait Command {
+  def errorReceiver: Option[ActorRef]
 }
 
-case class Stop(sender: ActorRef) extends SuperCommand
-case class Bind(sender: ActorRef, handleFactory: Key => Handle, address: SocketAddress, backlog: Int = 100) extends SuperCommand
-case class Unbind(sender: ActorRef, bindingKey: Key) extends SuperCommand
-case class Connect(sender: ActorRef, address: SocketAddress, handleFactory: Key => Handle) extends SuperCommand
-case object GetStats
+// "super" commands not on the connection-level
+case class Stop(ackTo: Option[ActorRef] = None) extends Command {
+  def errorReceiver = ackTo
+}
 
-sealed abstract class ConnectionCommand extends ConnectionMessage with Command
-case class Close(handle: Handle) extends ConnectionCommand
-case class Send(handle: Handle, buffers: Seq[ByteBuffer]) extends ConnectionCommand
+case class Bind(
+  handleCreator: ActorRef,
+  address: SocketAddress,
+  backlog: Int = 100,
+  ackTo: Option[ActorRef] = None
+) extends Command {
+  def errorReceiver = ackTo
+}
 
-sealed abstract class InternalCommand extends Command
-case object ReapIdleConnections extends InternalCommand
+case class Unbind(bindingKey: Key, ackTo: Option[ActorRef] = None) extends Command {
+  def errorReceiver = ackTo
+}
 
+case class Connect(handleCreator: ActorRef, address: SocketAddress) extends Command {
+  def errorReceiver = Some(handleCreator)
+}
 
-sealed trait SuperCommandAck
-case object Stopped extends SuperCommandAck
-case class Bound(bindingKey: Key) extends SuperCommandAck
-case class Unbound(bindingKey: Key) extends SuperCommandAck
-case class CommandError(command: Command, error: Throwable) extends SuperCommandAck
+case class GetStats(deliverTo: ActorRef) extends Command {
+  def errorReceiver = Some(deliverTo)
+}
 
-
-sealed abstract class ConnectionMessage {
+// commands on the connection-level
+sealed abstract class ConnectionCommand extends Command {
   def handle: Handle
+  def errorReceiver = Some(handle.handler)
 }
 
-sealed abstract class ConnectionEvent extends ConnectionMessage
-case class Connected(handle: Handle) extends ConnectionEvent
-case class Closed(handle: Handle, reason: ConnectionClosedReason) extends ConnectionEvent
-case class CompletedSend(handle: Handle) extends ConnectionEvent
-case class Received(handle: Handle, buffer: ByteBuffer) extends ConnectionEvent
+case class Register(handle: Handle) extends ConnectionCommand
+
+case class Close(handle: Handle) extends ConnectionCommand
+
+case class Send(handle: Handle, buffers: Seq[ByteBuffer]) extends ConnectionCommand

@@ -14,46 +14,14 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package nio
+package cc.spray.can.model
 
-sealed trait ConnectionClosedReason
-case object PeerClosed extends ConnectionClosedReason
-case object CloseRequested extends ConnectionClosedReason
-case object IdleTimeout extends ConnectionClosedReason
-case class IoError(error: Throwable) extends ConnectionClosedReason
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+case class NioWorkerStats(
+  uptime: Long,
+  bytesRead: Long,
+  bytesWritten: Long,
+  connectionsOpened: Long,
+  connectionsClosed: Long,
+  commandsExecuted: Long,
+  commandsQueued: Int
+)

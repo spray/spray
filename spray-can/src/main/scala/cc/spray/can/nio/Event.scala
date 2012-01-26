@@ -14,46 +14,20 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package nio
+package cc.spray.can.nio
 
-sealed trait ConnectionClosedReason
-case object PeerClosed extends ConnectionClosedReason
-case object CloseRequested extends ConnectionClosedReason
-case object IdleTimeout extends ConnectionClosedReason
-case class IoError(error: Throwable) extends ConnectionClosedReason
+import java.nio.ByteBuffer
 
+sealed trait Event
 
+// "general" events not on the connection-level
+case object Stopped extends Event
+case class Bound(bindingKey: Key) extends Event
+case class Unbound(bindingKey: Key) extends Event
+case class Connected(key: Key) extends Event
+case class CommandError(command: Command, error: Throwable) extends Event
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// connection-level events
+case class Closed(handle: Handle, reason: ConnectionClosedReason) extends Event
+case class CompletedSend(handle: Handle) extends Event
+case class Received(handle: Handle, buffer: ByteBuffer) extends Event
