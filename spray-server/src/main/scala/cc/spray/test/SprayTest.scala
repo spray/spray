@@ -45,25 +45,17 @@ trait SprayTest extends RouteResultComponent {
     new RoutingResultWrapper(routeResult, timeout)
   }
 
-  trait ServiceTest extends HttpServiceLogic with Logging {
-    override lazy val log: Log = NoLog // in the tests we don't log
+  implicit def wrapRoute(theRoute: Route)
+                        (implicit theRejectionHandler: RejectionHandler = RejectionHandler.Default) = {
+    new HttpServiceLogic with Logging {
+      override lazy val log = NoLog // in the tests we don't log
+      val route = theRoute
+      def rejectionHandler = theRejectionHandler
+    }
   }
 
-  /**
-   * The default implicit service wrapper using the HttpServiceLogic for testing.
-   * If you have derived your own CustomHttpServiceLogic that you would like to test, create an implicit conversion
-   * similar to this:
-   * {{{
-   * implicit def customWrapRootRoute(rootRoute: Route): ServiceTest = new CustomHttpServiceLogic with ServiceTest {
-   *   val route = rootRoute
-   * }
-   * }}}
-   */
-  implicit def wrapRootRoute(rootRoute: Route): ServiceTest = new ServiceTest {
-    val route = rootRoute
-  }
-
-  def testService(request: HttpRequest, timeout: Duration = 1000.millis)(service: ServiceTest): ServiceResultWrapper = {
+  def testService(request: HttpRequest, timeout: Duration = 1000.millis)
+                 (service: HttpServiceLogic): ServiceResultWrapper = {
     val routeResult = new RouteResult
     service.handle {
       RequestContext(

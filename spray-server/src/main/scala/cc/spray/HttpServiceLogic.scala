@@ -37,7 +37,7 @@ trait HttpServiceLogic extends ErrorHandling {
    * A RejectionHandler responsible for converting a List of Rejections into an HttpResponse.
    * If a given List of Rejections is not handled by this partial function an InternalServerError response is produced.
    */
-  def rejectionHandler: RejectionHandler = RejectionHandler.Default
+  def rejectionHandler: RejectionHandler
   
   def handle(context: RequestContext) {
     try {
