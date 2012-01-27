@@ -16,17 +16,41 @@
 
 package cc.spray.can
 
+import model._
 import nio._
 import akka.actor.ActorRef
-import parsing.HttpMessagePartCompletedState
+import collection.mutable.Queue
+import rendering.HttpResponsePartRenderingContext
 
 object ToServiceActorDispatching {
 
-  def apply(requestActorFactory: => ActorRef)
-           :HttpMessagePartCompletedState ~~> HttpResponseRenderingContext = {
+  def apply(requestActorFactory: => ActorRef)(pipelines: Pipelines) = {
+    val openRequests = Queue.empty[HttpRequest]
+    pipelines.copy(
+      upstream = {
+        case part: HttpRequestPart =>
+          part match {
+            case x: HttpRequest         => openRequests += x
+            case x: ChunkedRequestStart => openRequests += x.request
+            case _                      =>
+          }
+          requestActorFactory ! part
 
-    ctx => {
-
-    }
+        case event => pipelines.upstream(event)
+      },
+      downstream = {
+        case part: HttpResponsePart => pipelines.downstream {
+          if (openRequests.isEmpty) throw new IllegalStateException("Received ResponsePart for non-existing request")
+          val request = part match {
+            case _: HttpResponse      => openRequests.dequeue()
+            case _: ChunkedMessageEnd => openRequests.dequeue()
+            case _                    => openRequests.front
+          }
+          HttpResponsePartRenderingContext(part, request.method, request.protocol, request.connectionHeader)
+        }
+        case event => pipelines.downstream(event)
+      }
+    )
   }
+
 }

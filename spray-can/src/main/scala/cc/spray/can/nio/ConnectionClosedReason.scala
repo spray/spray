@@ -18,9 +18,10 @@ package cc.spray.can
 package nio
 
 sealed trait ConnectionClosedReason
+case object ProtocolClose extends ConnectionClosedReason
 case object PeerClosed extends ConnectionClosedReason
-case object CloseRequested extends ConnectionClosedReason
 case object IdleTimeout extends ConnectionClosedReason
+case class ProtocolError(msg: String) extends ConnectionClosedReason
 case class IoError(error: Throwable) extends ConnectionClosedReason
 
 

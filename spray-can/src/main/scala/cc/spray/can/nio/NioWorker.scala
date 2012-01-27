@@ -24,12 +24,13 @@ import java.util.concurrent.atomic.AtomicInteger
 import org.slf4j.LoggerFactory
 import annotation.tailrec
 import collection.mutable.ListBuffer
-import akka.actor.ActorRef
 import util.SingleReaderConcurrentQueue
 import config.NioWorkerConfig
 import model.NioWorkerStats
+import akka.actor.{UntypedChannel, ActorRef}
 
-class NioWorker(config: NioWorkerConfig) {
+class NioWorker(config: NioWorkerConfig) extends UntypedChannel { nioWorker =>
+  private val log = LoggerFactory.getLogger(getClass)
   private lazy val _thread = new NioThread(config)
 
   def thread: Thread = _thread
@@ -38,13 +39,15 @@ class NioWorker(config: NioWorkerConfig) {
     _thread.start()
   }
 
-  def ! (cmd: Command) {
-    _thread.post(cmd)
+  def ! (msg: Any)(implicit sender: UntypedChannel) {
+    msg match {
+      case cmd: Command => _thread.post(cmd)
+      case x => log.warn("Received non-command message '{}', ignoring...", x)
+    }
   }
 
   private class NioThread(config: NioWorkerConfig) extends Thread {
     import SelectionKey._
-    private val log = LoggerFactory.getLogger(getClass)
     private val commandQueue = new SingleReaderConcurrentQueue[Command]
     private val selector = SelectorProvider.provider.openSelector
     private var stopped: Option[Stop] = None
@@ -189,7 +192,7 @@ class NioWorker(config: NioWorkerConfig) {
           // ConnectionCommands
           case x: Send => send(x)
           case x: Register => register(x)
-          case x: Close => close(x.handle, CloseRequested)
+          case x: Close => close(x.handle, x.reason)
 
           // SuperCommands
           case x: Connect => connect(x)
@@ -265,7 +268,7 @@ class NioWorker(config: NioWorkerConfig) {
 
     def safeSend(receiver: ActorRef, message: Any) {
       try {
-        receiver! message
+        receiver.!(message)(nioWorker)
       } catch {
         case e => LoggerFactory.getLogger(getClass).error("Could not send '" + message + "' to '" + receiver + "'", e)
       }

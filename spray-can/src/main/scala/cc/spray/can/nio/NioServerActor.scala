@@ -59,11 +59,5 @@ abstract class NioServerActor(
       log.warn("Received {}", x)
   }
 
-  protected def createConnectionHandle(key: Key): Handle = {
-    lazy val actor = createConnectionActor(key)
-    Actor.actorOf(actor).start()
-    actor
-  }
-
-  protected def createConnectionActor(key: Key): Actor with Handle
+  protected def createConnectionHandle(key: Key): Handle
 }

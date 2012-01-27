@@ -20,16 +20,16 @@ package rendering
 import java.lang.{StringBuilder => JStringBuilder}
 import annotation.tailrec
 import java.nio.ByteBuffer
-import model.{ChunkExtension, HttpHeader}
+import model.{ChunkedMessageEnd, MessageChunk, ChunkExtension, HttpHeader}
 
-private[rendering] object HttpMessageRendering {
+private[rendering] trait HttpMessageRendering {
   private val CrLf = "\r\n".getBytes("ASCII")
 
-  def appendHeader(name: String, value: String, sb: JStringBuilder) =
+  protected def appendHeader(name: String, value: String, sb: JStringBuilder) =
     appendLine(sb.append(name).append(':').append(' ').append(value))
 
   @tailrec
-  def appendHeaders(httpHeaders: List[HttpHeader], sb: JStringBuilder,
+  protected final def appendHeaders(httpHeaders: List[HttpHeader], sb: JStringBuilder,
                     connectionHeaderValue: Option[String] = None): Option[String] = {
     if (httpHeaders.isEmpty) {
       connectionHeaderValue
@@ -45,9 +45,9 @@ private[rendering] object HttpMessageRendering {
     }
   }
 
-  def appendLine(sb: JStringBuilder) = sb.append('\r').append('\n')
+  protected def appendLine(sb: JStringBuilder) = sb.append('\r').append('\n')
 
-  def encode(sb: JStringBuilder): ByteBuffer = {
+  protected def encode(sb: JStringBuilder): ByteBuffer = {
     val chars = new Array[Char](sb.length)
     sb.getChars(0, sb.length, chars, 0)
     val buf = ByteBuffer.allocate(sb.length)
@@ -60,23 +60,26 @@ private[rendering] object HttpMessageRendering {
     buf
   }
 
-  def prepareChunk(extensions: List[ChunkExtension], body: Array[Byte]) = {
-    val sb = new java.lang.StringBuilder(16)
-    sb.append(body.length.toHexString)
+  protected def renderChunk(chunk: MessageChunk): RenderedMessagePart =
+    RenderedMessagePart(renderChunk(chunk.extensions, chunk.body))
+
+  protected def renderChunk(extensions: List[ChunkExtension], body: Array[Byte]): List[ByteBuffer] = {
+    val sb = new JStringBuilder(16)
+    sb.append(Integer.toHexString(body.length))
     appendLine(appendChunkExtensions(extensions, sb))
     encode(sb) :: ByteBuffer.wrap(body) :: ByteBuffer.wrap(CrLf) :: Nil
   }
 
-  def prepareFinalChunk(extensions: List[ChunkExtension], trailer: List[HttpHeader]) = {
-    val sb = new java.lang.StringBuilder(16)
-    appendLine(appendChunkExtensions(extensions, sb.append("0")))
-    appendHeaders(trailer, sb)
+  protected def renderFinalChunk(chunk: ChunkedMessageEnd, requestConnectionHeader: Option[String] = None) = {
+    val sb = new JStringBuilder(16)
+    appendLine(appendChunkExtensions(chunk.extensions, sb.append("0")))
+    appendHeaders(chunk.trailer, sb)
     appendLine(sb)
-    encode(sb) :: Nil
+    RenderedMessagePart(encode(sb) :: Nil, requestConnectionHeader.get == "close")
   }
 
   @tailrec
-  def appendChunkExtensions(extensions: List[ChunkExtension], sb: JStringBuilder): JStringBuilder = {
+  private def appendChunkExtensions(extensions: List[ChunkExtension], sb: JStringBuilder): JStringBuilder = {
     extensions match {
       case Nil => sb
       case ChunkExtension(name, value) :: rest => appendChunkExtensions(rest, {

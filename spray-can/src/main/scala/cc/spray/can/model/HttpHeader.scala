@@ -19,7 +19,4 @@ package cc.spray.can.model
 /**
  * The ''spray-can'' model of an HTTP header.
  */
-case class HttpHeader(name: String, value: String) extends Product2[String, String] {
-  def _1 = name
-  def _2 = value
-}
+case class HttpHeader(name: String, value: String)

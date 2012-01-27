@@ -18,61 +18,65 @@ package cc.spray.can
 
 import config.HttpParserConfig
 import java.nio.ByteBuffer
-import model.{RequestLine, HttpHeader, HttpResponse}
+import model._
 import nio._
 import annotation.tailrec
 import parsing._
+import rendering.HttpResponsePartRenderingContext
 import util.Logging
 
 object HttpRequestParsing extends Logging {
 
-  def apply(config: HttpParserConfig)
-           (innerPipeline: HttpMessagePartCompletedState ~~> HttpResponseRenderingContext)
-           :ByteBuffer ~~> HttpResponseRenderingContext = {
+  def apply(config: HttpParserConfig)(pipelines: Pipelines) = {
+    val piplelineStage = new PipelineStage(config, pipelines)
+    pipelines.withUpstream {
+      case x: Received => piplelineStage(x.buffer)
+      case event => pipelines.upstream(event)
+    }
+  }
 
-    val StartRequestParser = new EmptyRequestParser(config)
-    var currentParsingState: ParsingState = StartRequestParser
+  private class PipelineStage(config: HttpParserConfig, pipelines: Pipelines) {
+    val startRequestParser = new EmptyRequestParser(config)
+    var currentParsingState: ParsingState = startRequestParser
 
-    ctx => {
-      parse(ctx.input)
+    @tailrec
+    final def apply(buffer: ByteBuffer) {
+      currentParsingState match {
+        case x: IntermediateState =>
+          currentParsingState = x.read(buffer)
+          currentParsingState match {
+            case x: IntermediateState => // wait for more input
 
-      @tailrec
-      def parse(buffer: ByteBuffer) {
-        currentParsingState match {
-          case x: IntermediateState =>
-            currentParsingState = x.read(buffer)
-            currentParsingState match {
-              case x: IntermediateState => // wait for more input
+            case x: HttpMessagePartCompletedState =>
+              dispatch(x.toHttpMessagePart)
+              if (buffer.remaining > 0) apply(buffer) // there might be more input in the buffer, so recurse
 
-              case x: HttpMessagePartCompletedState =>
-                dispatch(x)
-                if (buffer.remaining > 0) parse(buffer) // there might be more input in the buffer, so recurse
-
-              case x: ErrorState => handleParseError(x)
-            }
-          case x: ErrorState => // if we are already in the errorstate we ignore all further input
-        }
+            case x: ErrorState => handleParseError(x)
+          }
+        case x: ErrorState => // if we are already in the errorstate we ignore all further input
       }
+    }
 
-      def dispatch(state: HttpMessagePartCompletedState) {
-        currentParsingState = state match {
-          case _: HttpMessageCompletedState => StartRequestParser
-          case _ => new ChunkParser(config)
-        }
-        innerPipeline(ctx.withInput(state))
+    def dispatch(messagePart: HttpMessagePart) {
+      pipelines.upstream(messagePart)
+      currentParsingState = messagePart match {
+        case _: HttpMessage => startRequestParser
+        case _ => new ChunkParser(config)
       }
+    }
 
-      def handleParseError(state: ErrorState) {
-        log.warn("Illegal request, responding with status {} and '{}'", state.status, state.message)
-        val response = HttpResponse(
-          status = state.status,
-          headers = List(HttpHeader("Content-Type", "text/plain"))
-        ).withBody(state.message)
+    def handleParseError(state: ErrorState) {
+      log.warn("Illegal request, responding with status {} and '{}'", state.status, state.message)
+      val response = HttpResponse(
+        status = state.status,
+        headers = List(HttpHeader("Content-Type", "text/plain"))
+      ).withBody(state.message)
 
-        // In case of a request parsing error we probably stopped reading the request somewhere in between, where we
-        // cannot simply resume. Resetting to a known state is not easy either, so we need to close the connection to do so.
-        // This is done here by pretending the request contained a "Connection: close" header
-        ctx.push(HttpResponseRenderingContext(response, RequestLine(), Some("close")))
+      // In case of a request parsing error we probably stopped reading the request somewhere in between, where we
+      // cannot simply resume. Resetting to a known state is not easy either, so we need to close the connection to do so.
+      // This is done here by pretending the request contained a "Connection: close" header
+      pipelines.downstream {
+        HttpResponsePartRenderingContext(response, HttpMethods.GET, HttpProtocols.`HTTP/1.1`, Some("close"))
       }
     }
   }

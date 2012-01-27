@@ -19,13 +19,21 @@ package rendering
 
 import java.lang.{StringBuilder => JStringBuilder}
 import java.nio.ByteBuffer
-import model.HttpRequest
+import model.{ChunkedMessageEnd, MessageChunk, ChunkedRequestStart, HttpRequest}
 
-class HttpRequestRenderer(userAgentHeader: String) {
-  import HttpMessageRendering._
+class HttpRequestRenderer(userAgentHeader: String) extends HttpMessageRendering {
 
-  def renderRequest(request: HttpRequest, host: String, port: Int): List[ByteBuffer] = {
-    val sb = prepareRequestStart(request, host, port)
+  def render(ctx: HttpRequestPartRenderingContext): RenderedMessagePart = {
+    ctx.requestPart match {
+      case x: HttpRequest => renderRequest(x, ctx.host, ctx.port)
+      case x: ChunkedRequestStart => renderChunkedRequestStart(x.request, ctx.host, ctx.port)
+      case x: MessageChunk => renderChunk(x)
+      case x: ChunkedMessageEnd => renderFinalChunk(x)
+    }
+  }
+
+  private def renderRequest(request: HttpRequest, host: String, port: Int) = {
+    val sb = renderRequestStart(request, host, port)
     val bodyBufs = if (request.body.length > 0) {
       appendHeader("Content-Length", request.body.length.toString, sb)
       appendLine(sb)
@@ -34,17 +42,17 @@ class HttpRequestRenderer(userAgentHeader: String) {
       appendLine(sb)
       Nil
     }
-    encode(sb) :: bodyBufs
+    RenderedMessagePart(encode(sb) :: bodyBufs)
   }
 
-  def renderChunkedRequestStart(request: HttpRequest, host: String, port: Int): List[ByteBuffer] = {
-    val sb = prepareRequestStart(request, host, port)
+  private def renderChunkedRequestStart(request: HttpRequest, host: String, port: Int) = {
+    val sb = renderRequestStart(request, host, port)
     appendHeader("Transfer-Encoding", "chunked", sb)
     appendLine(sb)
-    encode(sb) :: { if (request.body.length > 0) prepareChunk(Nil, request.body) else Nil }
+    RenderedMessagePart(encode(sb) :: { if (request.body.length > 0) renderChunk(Nil, request.body) else Nil })
   }
 
-  private def prepareRequestStart(request: HttpRequest, host: String, port: Int) = {
+  private def renderRequestStart(request: HttpRequest, host: String, port: Int) = {
     import request._
     val sb = new JStringBuilder(256)
     appendLine(sb.append(method.name).append(' ').append(uri).append(' ').append(protocol.name))

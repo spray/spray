@@ -59,6 +59,6 @@ sealed abstract class ConnectionCommand extends Command {
 
 case class Register(handle: Handle) extends ConnectionCommand
 
-case class Close(handle: Handle) extends ConnectionCommand
+case class Close(handle: Handle, reason: ConnectionClosedReason) extends ConnectionCommand
 
 case class Send(handle: Handle, buffers: Seq[ByteBuffer]) extends ConnectionCommand

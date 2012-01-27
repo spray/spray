@@ -15,9 +15,22 @@
  */
 
 package cc.spray.can
+package rendering
 
-package object nio {
+import java.nio.ByteBuffer
+import model._
 
-  type Pipeline = Any => Unit
+case class HttpRequestPartRenderingContext(
+  requestPart: HttpRequestPart,
+  host: String,
+  port: Int
+)
 
-}
+case class HttpResponsePartRenderingContext(
+  responsePart: HttpResponsePart,
+  requestMethod: HttpMethod,
+  requestProtocol: HttpProtocol,
+  requestConnectionHeader: Option[String]
+)
+
+case class RenderedMessagePart(buffers: List[ByteBuffer], closeConnection: Boolean = false)

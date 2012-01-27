@@ -20,7 +20,9 @@ package parsing
 import model._
 
 
-sealed trait HttpMessagePartCompletedState extends ParsingState
+sealed trait HttpMessagePartCompletedState extends ParsingState {
+  def toHttpMessagePart: HttpMessagePart
+}
 
 sealed trait HttpMessageCompletedState extends HttpMessagePartCompletedState
 
@@ -31,7 +33,7 @@ case class CompleteMessageState(
   body: Array[Byte] = EmptyByteArray
 ) extends HttpMessageCompletedState {
 
-  def toHttpMessage: HttpMessage = messageLine match {
+  def toHttpMessagePart = messageLine match {
     case x: RequestLine => HttpRequest(x.method, x.uri, headers, body, x.protocol)
     case x: StatusLine => HttpResponse(x.status, headers, body, x.protocol)
   }
@@ -44,9 +46,9 @@ case class ChunkedStartState(
   connectionHeader: Option[String] = None
 ) extends HttpMessagePartCompletedState {
 
-  def toHttpMessage: HttpMessage = messageLine match {
-    case x: RequestLine => HttpRequest(x.method, x.uri, headers)
-    case x: StatusLine => HttpResponse(x.status, headers)
+  def toHttpMessagePart = messageLine match {
+    case x: RequestLine => ChunkedRequestStart(HttpRequest(x.method, x.uri, headers))
+    case x: StatusLine => ChunkedResponseStart(HttpResponse(x.status, headers))
   }
 }
 
@@ -54,10 +56,16 @@ case class ChunkedStartState(
 case class ChunkedChunkState(
   extensions: List[ChunkExtension],
   body: Array[Byte]
-) extends HttpMessagePartCompletedState
+) extends HttpMessagePartCompletedState {
+
+  def toHttpMessagePart = MessageChunk(body, extensions)
+}
 
 
 case class ChunkedEndState(
   extensions: List[ChunkExtension],
   trailer: List[HttpHeader]
-) extends HttpMessageCompletedState
+) extends HttpMessageCompletedState {
+
+  def toHttpMessagePart = ChunkedMessageEnd(extensions, trailer)
+}

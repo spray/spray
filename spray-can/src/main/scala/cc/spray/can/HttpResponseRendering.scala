@@ -16,31 +16,27 @@
 
 package cc.spray.can
 
-import java.nio.ByteBuffer
-import model.{RequestLine, HttpResponse}
 import nio._
-import rendering.HttpResponseRenderer
+import rendering.{HttpResponsePartRenderingContext, HttpResponseRenderer}
 
 object HttpResponseRendering {
-  def apply(serverHeader: String)
-           (innerPipeline: ByteBuffer ~~> HttpResponseRenderingContext)
-           : ByteBuffer ~~> Seq[ByteBuffer] = {
 
+  def apply(serverHeader: String)(pipelines: Pipelines) = {
     val renderer = new HttpResponseRenderer(serverHeader)
 
-    ctx => innerPipeline {
-      ctx.withPush { renderingContext =>
-        import renderingContext._
-        val renderedResponse = renderer.renderResponse(requestLine, response, requestConnectionHeader)
-        ctx.push(renderedResponse.buffers)
-        if (renderedResponse.closeConnection) ctx.close()
-      }
+    pipelines.withDownstream {
+      case ctx: HttpResponsePartRenderingContext =>
+        val rendered = renderer.render(ctx)
+        pipelines.downstream {
+          Send(pipelines.handle, rendered.buffers)
+        }
+        if (rendered.closeConnection) {
+          pipelines.downstream {
+            Close(pipelines.handle, ProtocolClose)
+          }
+        }
+
+      case event => pipelines.downstream(event)
     }
   }
 }
-
-case class HttpResponseRenderingContext(
-  response: HttpResponse,
-  requestLine: RequestLine,                 // response rendering is influenced the request protocol, HTTP method
-  requestConnectionHeader: Option[String]   // and connection header
-)

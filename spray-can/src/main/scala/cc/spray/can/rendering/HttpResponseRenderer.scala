@@ -23,42 +23,49 @@ import model._
 import HttpProtocols._
 import util.DateTime
 
-class HttpResponseRenderer(serverHeader: String) {
-  import HttpMessageRendering._
+class HttpResponseRenderer(serverHeader: String) extends HttpMessageRendering {
 
   private val serverHeaderPlusDateColonSP =
     if (serverHeader.isEmpty) "Date: " else "Server: " + serverHeader + "\r\nDate: "
 
-  def renderResponse(requestLine: RequestLine, response: HttpResponse,
-                     requestConnectionHeader: Option[String]): RenderedHttpResponse = {
+  def render(ctx: HttpResponsePartRenderingContext): RenderedMessagePart = {
+    ctx.responsePart match {
+      case x: HttpResponse => renderResponse(x, ctx)
+      case x: ChunkedResponseStart => renderChunkedResponseStart(x.response, ctx)
+      case x: MessageChunk => renderChunk(x)
+      case x: ChunkedMessageEnd => renderFinalChunk(x, ctx.requestConnectionHeader)
+    }
+  }
+
+  private def renderResponse(response: HttpResponse, ctx: HttpResponsePartRenderingContext) = {
     import response._
-    val (sb, close) = renderResponseStart(requestLine, response, requestConnectionHeader)
+
+    val (sb, close) = renderResponseStart(response, ctx)
     // don't set a Content-Length header for non-keepalive HTTP/1.0 responses (rely on body end by connection close)
     if (response.protocol == `HTTP/1.1` || !close) appendHeader("Content-Length", body.length.toString, sb)
     appendLine(sb)
-    val bodyBufs = if (body.length == 0 || requestLine.method == HttpMethods.HEAD) Nil else ByteBuffer.wrap(body) :: Nil
-    RenderedHttpResponse(encode(sb) :: bodyBufs, close)
+    val bodyBufs = if (body.length == 0 || ctx.requestMethod == HttpMethods.HEAD) Nil else ByteBuffer.wrap(body) :: Nil
+    RenderedMessagePart(encode(sb) :: bodyBufs, close)
   }
 
-  def renderChunkedResponseStart(requestLine: RequestLine, response: HttpResponse,
-                                 requestConnectionHeader: Option[String]): RenderedHttpResponse = {
+  private def renderChunkedResponseStart(response: HttpResponse, ctx: HttpResponsePartRenderingContext) = {
     import response._
-    val (sb, close) = renderResponseStart(requestLine, response, requestConnectionHeader)
+
+    val (sb, close) = renderResponseStart(response, ctx)
     appendHeader("Transfer-Encoding", "chunked", sb)
     appendLine(sb)
-    val bodyBufs = if (body.length == 0 || requestLine.method == HttpMethods.HEAD) Nil else prepareChunk(Nil, body)
-    RenderedHttpResponse(encode(sb) :: bodyBufs, close)
+    val bodyBufs = if (body.length == 0 || ctx.requestMethod == HttpMethods.HEAD) Nil else renderChunk(Nil, body)
+    RenderedMessagePart(encode(sb) :: bodyBufs, close)
   }
 
-  private def renderResponseStart(requestLine: RequestLine, response: HttpResponse,
-                                  requestConnectionHeader: Option[String]) = {
+  private def renderResponseStart(response: HttpResponse, ctx: HttpResponsePartRenderingContext) = {
     import response._
 
     def appendConnectionHeaderIfRequired(connectionHeaderValue: Option[String], sb: JStringBuilder) = {
-      requestLine.protocol match {
+      ctx.requestProtocol match {
         case `HTTP/1.0` => {
           if (connectionHeaderValue.isEmpty) {
-            if (requestConnectionHeader.isDefined && requestConnectionHeader.get == "Keep-Alive") {
+            if (ctx.requestConnectionHeader.isDefined && ctx.requestConnectionHeader.get == "Keep-Alive") {
               appendHeader("Connection", "Keep-Alive", sb)
               false
             } else true
@@ -66,7 +73,7 @@ class HttpResponseRenderer(serverHeader: String) {
         }
         case `HTTP/1.1` => {
           if (connectionHeaderValue.isEmpty) {
-            if (requestConnectionHeader.isDefined && requestConnectionHeader.get == "close") {
+            if (ctx.requestConnectionHeader.isDefined && ctx.requestConnectionHeader.get == "close") {
               if (response.protocol == `HTTP/1.1`) appendHeader("Connection", "close", sb)
               true
             } else response.protocol == `HTTP/1.0`
@@ -89,5 +96,3 @@ class HttpResponseRenderer(serverHeader: String) {
 
   protected def dateTimeNow = DateTime.now  // split out so we can stabilize by overriding in tests
 }
-
-case class RenderedHttpResponse(buffers: List[ByteBuffer], closeConnection: Boolean)
