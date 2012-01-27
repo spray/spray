@@ -18,8 +18,34 @@ package cc.spray.can
 package config
 
 case class HttpServerConfig(
-  parserConfig: HttpParserConfig,
-  nioServerConfig: NioServerConfig,
-  nioWorkerConfig: NioWorkerConfig,
-  serverHeader: String = "spray-can/" + SprayCanVersion
-)
+
+  // HttpServer
+  serverHeader: String = "spray-can/" + SprayCanVersion,
+
+  // NioWorkerConfig
+  threadName: String = NioWorkerConfig.defaultThreadName,
+  readBufferSize: Int = NioWorkerConfig.defaultReadBufferSize,
+
+  // NioServerConfig
+  label: String = "spray-can HTTP server",
+  host: String = "localhost",
+  port: Int = 80,
+  bindingBacklog: Int = NioServerConfig.defaultBindingBacklog,
+
+  // ConnectionTimeoutConfig
+  idleTimeout: Long = ConnectionTimeoutConfig.defaultIdleTimeout,
+  reapingCycle: Long = ConnectionTimeoutConfig.defaultReapingCycle,
+
+  // HttpParserConfig
+  maxUriLength: Int             = HttpParserConfig.defaultMaxUriLength,
+  maxResponseReasonLength: Int  = HttpParserConfig.defaultMaxResponseReasonLength,
+  maxHeaderNameLength: Int      = HttpParserConfig.defaultMaxHeaderNameLength,
+  maxHeaderValueLength: Int     = HttpParserConfig.defaultMaxHeaderValueLength,
+  maxHeaderCount: Int           = HttpParserConfig.defaultMaxHeaderCount,
+  maxContentLength: Int         = HttpParserConfig.defaultMaxContentLength,
+  maxChunkExtNameLength: Int    = HttpParserConfig.defaultMaxChunkExtNameLength,
+  maxChunkExtValueLength: Int   = HttpParserConfig.defaultMaxChunkExtValueLength,
+  maxChunkExtCount: Int         = HttpParserConfig.defaultMaxChunkExtCount,
+  maxChunkSize: Int             = HttpParserConfig.defaultMaxChunkSize
+
+) extends NioWorkerConfig with NioServerConfig with ConnectionTimeoutConfig with HttpParserConfig

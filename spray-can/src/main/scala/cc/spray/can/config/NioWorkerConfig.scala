@@ -17,7 +17,12 @@
 package cc.spray.can
 package config
 
-case class NioWorkerConfig(
-  threadName: String = "spray-nio-worker",
-  readBufferSize: Int = 4096
-)
+trait NioWorkerConfig {
+  def threadName: String
+  def readBufferSize: Int
+}
+
+object NioWorkerConfig {
+  val defaultThreadName = "spray-can-nio-worker"
+  val defaultReadBufferSize = 4096
+}

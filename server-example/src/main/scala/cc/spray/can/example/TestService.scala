@@ -24,7 +24,7 @@ import akka.actor.{PoisonPill, Scheduler, Kill, Actor}
 import util.DateTime
 import nio.GetStats
 
-class TestService(id: String) extends Actor {
+/*class TestService(id: String) extends Actor {
   import HttpMethods._
 
   val log = LoggerFactory.getLogger(getClass)
@@ -112,4 +112,4 @@ class TestService(id: String) extends Actor {
         </body>
       </html>.toString.getBytes("ISO-8859-1")
   )
-}
+}*/

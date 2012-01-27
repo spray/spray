@@ -21,32 +21,28 @@ package cc.spray.can.config
  * The only setting that more frequently requires tweaking is the `maxContentLength` setting, which represents the
  * maximum request entity size of an HTTP request or response accepted by the server or client.
  */
-case class HttpParserConfig(
-  maxUriLength: Int = 2048,
-  maxResponseReasonLength: Int = 64,
-  maxHeaderNameLength: Int = 64,
-  maxHeaderValueLength: Int = 8192,
-  maxHeaderCount: Int = 64,
-  maxContentLength: Int = 8192 * 1024, // default entity size limit = 8 MB
-  maxChunkExtNameLength: Int = 64,
-  maxChunkExtValueLength: Int = 256,
-  maxChunkExtCount: Int = 16,
-  maxChunkSize: Int = 1024 * 1024   // default chunk size limit = 1 MB
-)
+trait HttpParserConfig {
+  def maxUriLength: Int
+  def maxResponseReasonLength: Int
+  def maxHeaderNameLength: Int
+  def maxHeaderValueLength: Int
+  def maxHeaderCount: Int
+  def maxContentLength: Int
+  def maxChunkExtNameLength: Int
+  def maxChunkExtValueLength: Int
+  def maxChunkExtCount: Int
+  def maxChunkSize: Int
+}
 
 object HttpParserConfig {
-  import akka.config.Config.config._
-
-  lazy val fromAkkaConf = HttpParserConfig(
-    maxUriLength            = getInt("spray-can.parser.max-uri-length", 2048),
-    maxResponseReasonLength = getInt("spray-can.parser.max-response-reason-length", 64),
-    maxHeaderNameLength     = getInt("spray-can.parser.max-header-name-length", 64),
-    maxHeaderValueLength    = getInt("spray-can.parser.max-header-value-length", 8192),
-    maxHeaderCount          = getInt("spray-can.parser.max-header-count-length", 64),
-    maxContentLength        = getInt("spray-can.parser.max-content-length", 8192 * 1024),
-    maxChunkExtNameLength   = getInt("spray-can.parser.max-chunk-ext-name-length", 64),
-    maxChunkExtValueLength  = getInt("spray-can.parser.max-chunk-ext-value-length", 256),
-    maxChunkExtCount        = getInt("spray-can.parser.max-chunk-ext-count", 16),
-    maxChunkSize            = getInt("spray-can.parser.max-chunk-size", 1024 * 1024)
-  )
+  val defaultMaxUriLength = 2048
+  val defaultMaxResponseReasonLength = 64
+  val defaultMaxHeaderNameLength = 64
+  val defaultMaxHeaderValueLength = 8192
+  val defaultMaxHeaderCount = 64
+  val defaultMaxContentLength = 8192 * 1024 // default entity size limit = 8 MB
+  val defaultMaxChunkExtNameLength = 64
+  val defaultMaxChunkExtValueLength = 256
+  val defaultMaxChunkExtCount = 16
+  val defaultMaxChunkSize = 1024 * 1024   // default chunk size limit = 1 MB
 }

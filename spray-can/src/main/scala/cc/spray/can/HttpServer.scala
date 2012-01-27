@@ -21,15 +21,16 @@ import nio._
 import akka.actor.ActorRef
 
 class HttpServer(config: HttpServerConfig, requestActorFactory: => ActorRef)
-  extends NioServerActor("spray-can HTTP server", config.nioServerConfig, new NioWorker(config.nioWorkerConfig))
-  with ConnectionActors {
-
+                (nioWorker: NioWorker = new NioWorker(config))
+                extends NioServerActor(config, nioWorker) with ConnectionActors {
 
   protected def buildConnectionPipelines(baseContext: Pipelines) = {
     ToServiceActorDispatching(requestActorFactory) {
-      HttpRequestParsing(config.parserConfig) {
+      HttpRequestParsing(config) {
         HttpResponseRendering(config.serverHeader) {
-          baseContext
+          ConnectionTimeoutSupport(config) {
+            baseContext
+          }
         }
       }
     }

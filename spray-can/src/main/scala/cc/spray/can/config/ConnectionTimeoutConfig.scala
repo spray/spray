@@ -17,13 +17,12 @@
 package cc.spray.can
 package config
 
-trait NioServerConfig {
-  def label: String
-  def host: String
-  def port: Int
-  def bindingBacklog: Int
+trait ConnectionTimeoutConfig {
+  def idleTimeout: Long
+  def reapingCycle: Long
 }
 
-object NioServerConfig {
-  val defaultBindingBacklog = 100
+object ConnectionTimeoutConfig {
+  val defaultIdleTimeout = 10000
+  val defaultReapingCycle = 500
 }

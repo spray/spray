@@ -15,15 +15,13 @@
  */
 
 package cc.spray.can
-package config
 
-trait NioServerConfig {
-  def label: String
-  def host: String
-  def port: Int
-  def bindingBacklog: Int
-}
+import config.ConnectionTimeoutConfig
+import nio._
 
-object NioServerConfig {
-  val defaultBindingBacklog = 100
+object ConnectionTimeoutSupport {
+
+  def apply(config: ConnectionTimeoutConfig)(pipelines: Pipelines) = {
+    pipelines
+  }
 }
