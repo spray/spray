@@ -19,18 +19,16 @@ package parsing
 
 import java.lang.{StringBuilder => JStringBuilder}
 import config.HttpParserConfig
-import model.{StatusLine, HttpProtocol, HttpMethod}
+import model.{StatusLine, HttpProtocol}
 
-class ReasonParser(config: HttpParserConfig, requestMethod: HttpMethod, protocol: HttpProtocol, status: Int)
-        extends CharacterParser {
-
+class ReasonParser(config: HttpParserConfig, protocol: HttpProtocol, status: Int) extends CharacterParser {
   val reason = new JStringBuilder
 
   def handleChar(cursor: Char) = {
     if (reason.length <= config.maxResponseReasonLength) {
       cursor match {
         case '\r' => this
-        case '\n' => new HeaderNameParser(config, StatusLine(requestMethod, protocol, status, reason.toString))
+        case '\n' => new HeaderNameParser(config, StatusLine(protocol, status, reason.toString))
         case _ => reason.append(cursor); this
       }
     } else {

@@ -24,7 +24,7 @@ sealed trait Event
 case object Stopped extends Event
 case class Bound(bindingKey: Key) extends Event
 case class Unbound(bindingKey: Key) extends Event
-case class Connected(key: Key) extends Event
+case class Connected(key: Key, tag: Any = ()) extends Event
 
 // connection-level events
 case class Closed(handle: Handle, reason: ConnectionClosedReason) extends Event

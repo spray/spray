@@ -16,24 +16,21 @@
 
 package cc.spray.can
 
-import config.HttpServerConfig
 import nio._
-import akka.actor.ActorRef
+import rendering.{HttpRequestPartRenderingContext, HttpRequestRenderer}
 
-class HttpServer(config: HttpServerConfig, requestActorFactory: => ActorRef)
-                (nioWorker: NioWorker = new NioWorker(config))
-                extends NioServerActor(config, nioWorker) with ConnectionActors {
+object HttpRequestRendering {
 
-  protected def buildConnectionPipelines(baseContext: Pipelines) = {
-    StandardHttpServerFrontend(requestActorFactory) {
-      HttpRequestParsing(config) {
-        HttpResponseRendering(config.serverHeader) {
-          ConnectionTimeoutSupport(config) {
-            baseContext
-          }
+  def apply(userAgentHeader: String)(pipelines: Pipelines) = {
+    val renderer = new HttpRequestRenderer(userAgentHeader)
+    pipelines.withDownstream {
+      case ctx: HttpRequestPartRenderingContext =>
+        val rendered = renderer.render(ctx)
+        pipelines.downstream {
+          Send(pipelines.handle, rendered.buffers)
         }
-      }
+
+      case event => pipelines.downstream(event)
     }
   }
-
 }

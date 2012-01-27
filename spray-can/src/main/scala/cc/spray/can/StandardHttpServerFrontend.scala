@@ -22,7 +22,7 @@ import akka.actor.ActorRef
 import collection.mutable.Queue
 import rendering.HttpResponsePartRenderingContext
 
-object ToServiceActorDispatching {
+object StandardHttpServerFrontend {
 
   def apply(requestActorFactory: => ActorRef)(pipelines: Pipelines) = {
     val openRequests = Queue.empty[HttpRequest]

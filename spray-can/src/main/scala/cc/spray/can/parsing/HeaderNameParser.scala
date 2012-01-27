@@ -87,7 +87,7 @@ class HeaderNameParser(config: HttpParserConfig, messageLine: MessageLine, heade
 
   def messageBodyDisallowed = messageLine match {
     case _: RequestLine => false // there can always be a body in a request
-    case StatusLine(requestMethod, _, status, _) => // certain responses never have a body
-      (status / 100 == 1) || status == 204 || status == 304 || requestMethod == HttpMethods.HEAD
+    case x: StatusLine => // certain responses never have a body
+      (x.status / 100 == 1) || x.status == 204 || x.status == 304
   }
 }

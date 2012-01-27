@@ -15,25 +15,8 @@
  */
 
 package cc.spray.can
+package config
 
-import config.HttpServerConfig
-import nio._
-import akka.actor.ActorRef
-
-class HttpServer(config: HttpServerConfig, requestActorFactory: => ActorRef)
-                (nioWorker: NioWorker = new NioWorker(config))
-                extends NioServerActor(config, nioWorker) with ConnectionActors {
-
-  protected def buildConnectionPipelines(baseContext: Pipelines) = {
-    StandardHttpServerFrontend(requestActorFactory) {
-      HttpRequestParsing(config) {
-        HttpResponseRendering(config.serverHeader) {
-          ConnectionTimeoutSupport(config) {
-            baseContext
-          }
-        }
-      }
-    }
-  }
-
+trait NioClientConfig {
+  def label: String
 }

@@ -16,10 +16,10 @@
 
 package cc.spray
 
-import can.util.{PimpedByteArray, PimpedLinearSeq}
+import can.util.{PimpedAkkaChannel, PimpedByteArray, PimpedLinearSeq}
 import collection.immutable.LinearSeq
-import akka.actor.{ActorRef, Actor}
 import java.io.{BufferedReader, InputStreamReader}
+import akka.actor.{UntypedChannel, ActorRef, Actor}
 
 package object can {
 
@@ -38,6 +38,7 @@ package object can {
   // implicits
   implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq)
   implicit def pimpByteArray(array: Array[Byte]): PimpedByteArray = new PimpedByteArray(array)
+  implicit def pimpAkkaChannel(channel: UntypedChannel): PimpedAkkaChannel = new PimpedAkkaChannel(channel)
 
   val EmptyByteArray = new Array[Byte](0)
 }

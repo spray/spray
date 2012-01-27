@@ -18,8 +18,8 @@ package cc.spray.can
 package nio
 
 import java.nio.ByteBuffer
-import akka.actor.ActorRef
 import java.net.SocketAddress
+import akka.actor.{ActorRef}
 
 sealed trait Command {
   def errorReceiver: Option[ActorRef]
@@ -43,7 +43,7 @@ case class Unbind(bindingKey: Key, ackTo: Option[ActorRef] = None) extends Comma
   def errorReceiver = ackTo
 }
 
-case class Connect(handleCreator: ActorRef, address: SocketAddress) extends Command {
+case class Connect(handleCreator: ActorRef, address: SocketAddress, tag: Any) extends Command {
   def errorReceiver = Some(handleCreator)
 }
 

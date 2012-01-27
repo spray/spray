@@ -46,18 +46,15 @@ abstract class VersionParser extends CharacterParser {
   def badVersion = ErrorState("HTTP Version not supported", 505)
 }
 
-class RequestVersionParser(config: HttpParserConfig, method: HttpMethod, uri: String)
-        extends VersionParser {
-
+class RequestVersionParser(config: HttpParserConfig, method: HttpMethod, uri: String) extends VersionParser {
   def handleSuffix(cursor: Char) = pos match {
     case 8 => if (cursor == '\r') { pos = 9; this } else badVersion
     case 9 => if (cursor == '\n') new HeaderNameParser(config, RequestLine(method, uri, protocol)) else badVersion
   }
 }
 
-class EmptyResponseParser(config: HttpParserConfig, requestMethod: HttpMethod) extends VersionParser {
-
+class EmptyResponseParser(config: HttpParserConfig) extends VersionParser {
   def handleSuffix(cursor: Char) = pos match {
-    case 8 => if (cursor == ' ') new StatusCodeParser(config, requestMethod, protocol) else badVersion
+    case 8 => if (cursor == ' ') new StatusCodeParser(config, protocol) else badVersion
   }
 }

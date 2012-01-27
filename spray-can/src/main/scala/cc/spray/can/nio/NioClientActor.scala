@@ -15,25 +15,20 @@
  */
 
 package cc.spray.can
+package nio
 
-import config.HttpServerConfig
-import nio._
-import akka.actor.ActorRef
+import akka.actor.Actor
+import config.NioClientConfig
 
-class HttpServer(config: HttpServerConfig, requestActorFactory: => ActorRef)
-                (nioWorker: NioWorker = new NioWorker(config))
-                extends NioServerActor(config, nioWorker) with ConnectionActors {
+abstract class NioClientActor(val config: NioClientConfig, val nioWorker: NioWorker) extends NioPeer with Actor {
 
-  protected def buildConnectionPipelines(baseContext: Pipelines) = {
-    StandardHttpServerFrontend(requestActorFactory) {
-      HttpRequestParsing(config) {
-        HttpResponseRendering(config.serverHeader) {
-          ConnectionTimeoutSupport(config) {
-            baseContext
-          }
-        }
-      }
-    }
+  override def preStart() {
+    log.info("Starting {}", config.label)
+    nioWorker.start() // start if not started yet
+  }
+
+  override def postStop() {
+    log.info("Stopped {}", config.label)
   }
 
 }

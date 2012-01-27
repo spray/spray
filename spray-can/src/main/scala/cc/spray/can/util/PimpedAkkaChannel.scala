@@ -14,18 +14,17 @@
  * limitations under the License.
  */
 
-package cc.spray.can.model
+package cc.spray.can.util
 
-sealed trait MessageLine
+import akka.actor.{UntypedChannel, ExceptionChannel}
 
-case class RequestLine(
-  method: HttpMethod = HttpMethods.GET,
-  uri: String = "/",
-  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
-) extends MessageLine
 
-case class StatusLine(
-  protocol: HttpProtocol,
-  status: Int,
-  reason: String
-) extends MessageLine
+class PimpedAkkaChannel(channel: UntypedChannel) {
+
+  def sendError(error: Throwable) {
+    channel match {
+      case exceptionChannel: ExceptionChannel[_] => channel.sendException(error)
+      case _ => channel ! error
+    }
+  }
+}

@@ -19,15 +19,13 @@ package nio
 
 import akka.actor.Actor
 
-trait ConnectionActors extends NioServerActor {
+trait ConnectionActors extends NioPeer {
 
   protected def createConnectionHandle(key: Key): Handle = {
-    lazy val actor = createConnectionActor(key)
+    lazy val actor = new NioConnectionActor(key)
     Actor.actorOf(actor).start()
     actor
   }
-
-  protected def createConnectionActor(key: Key) = new NioConnectionActor(key)
 
   protected def buildConnectionPipelines(baseContext: Pipelines): Pipelines
 
@@ -41,12 +39,12 @@ trait ConnectionActors extends NioServerActor {
             log.debug("Stopping connection actor, connection was closed due to {}", x.reason)
             self.stop()
           case x: CommandError => log.warn("Received {}", x)
-          case x => log.debug("upstreamPipeline: dropped {}", x)
+          case x => log.warn("upstreamPipeline: dropped {}", x)
         },
         downstream = {
           case x: Send => nioWorker ! x
           case x: Close => nioWorker ! x
-          case x => log.debug("downstreamPipeline: dropped {}", x)
+          case x => log.warn("downstreamPipeline: dropped {}", x)
         }
       )
     }

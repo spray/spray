@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package cc.spray.can.nio
+package cc.spray.can
+package nio
 
-import akka.actor.Actor
-import cc.spray.can.config.NioServerConfig
 import java.net.InetSocketAddress
-import cc.spray.can.util.Logging
+import akka.actor.Actor
+import config.NioServerConfig
 
-abstract class NioServerActor(val config: NioServerConfig, val nioWorker: NioWorker) extends Actor with Logging {
+abstract class NioServerActor(val config: NioServerConfig, val nioWorker: NioWorker) extends NioPeer with Actor {
 
   private val endpoint = new InetSocketAddress(config.host, config.port)
   private var bindingKey: Option[Key] = None
@@ -49,12 +49,10 @@ abstract class NioServerActor(val config: NioServerConfig, val nioWorker: NioWor
       bindingKey = Some(key)
       log.info("{} started on {}", config.label, endpoint)
 
-    case Connected(key) =>
+    case Connected(key, _) =>
       nioWorker ! Register(createConnectionHandle(key))
 
     case x: CommandError =>
       log.warn("Received {}", x)
   }
-
-  protected def createConnectionHandle(key: Key): Handle
 }
