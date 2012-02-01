@@ -4,6 +4,3 @@
 - Improved compile time error messages with `@implicitNotFound` annotations
 - Improved documentation
 - Smaller fixes and additions
-
-  [JSON]: http://json.org
-  [parboiled]: http://parboiled.org
