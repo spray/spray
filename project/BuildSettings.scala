@@ -4,7 +4,7 @@ import Keys._
 object BuildSettings {
 
   lazy val basicSettings = Defaults.defaultSettings ++ Seq(
-    organization  := "cc.spray.can",
+    organization  := "cc.spray",
     version       := "0.9.2-SNAPSHOT",
     scalaVersion  := "2.9.1",
     scalacOptions := Seq("-deprecation", "-encoding", "utf8"),
@@ -30,8 +30,9 @@ object BuildSettings {
     publishMavenStyle := true,
     publishTo <<= version { version =>
       Some {
-        "snapshots" at {
-          "http://nexus.scala-tools.org/content/repositories/" + {
+        "spray repo" at {
+          // public uri is repo.spray.cc, we use an SSH tunnel to the nexus here
+          "http://localhost:42424/content/repositories/" + {
             if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else"releases/"
           }
         }
