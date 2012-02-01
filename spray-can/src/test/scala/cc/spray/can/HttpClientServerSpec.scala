@@ -154,7 +154,7 @@ class HttpClientServerSpec extends Specification with HttpClientSpecs { def is =
             .send(HttpRequest(PUT, "/xyz"))
             .end
             .get.map { r =>
-              (r.headers.collect({ case HttpHeader("Content-Length", cl) => cl }).head.toInt, r.bodyAsString)
+              (r.headers.collect({ case HttpHeader("content-length", cl) => cl }).head.toInt, r.bodyAsString)
             } mustEqual Seq((11, "DELETE|/abc"), (9, ""), (8, "PUT|/xyz"))
   }
 

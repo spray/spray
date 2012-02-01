@@ -185,7 +185,7 @@ private[can] class HeaderNameParser(config: MessageParserConfig, messageLine: Me
   def handleChar(cursor: Char) = {
     if (headerName.length <= config.maxHeaderNameLength) {
       cursor match {
-        case x if isTokenChar(x) => headerName.append(x); this
+        case x if isTokenChar(x) => headerName.append(toLowerCase(x)); this
         case ':' => new LwsParser(valueParser)
         case '\r' if headerName.length == 0 => this
         case '\n' if headerName.length == 0 => headersComplete
@@ -196,18 +196,19 @@ private[can] class HeaderNameParser(config: MessageParserConfig, messageLine: Me
       ErrorParser("HTTP headers with names longer than " + config.maxHeaderNameLength + " characters are not supported")
     }
   }
+  def toLowerCase(c: Char) = if ('A' <= c && c <= 'Z') (c + 32).toChar else c
   def headersComplete = {
     @tailrec def traverse(remaining: List[HttpHeader], connection: Option[String], contentLength: Option[String],
                           transferEncoding: Option[String], hostHeaderPresent: Boolean): MessageParser = {
       if (!remaining.isEmpty) {
         remaining.head.name match {
-          case "Content-Length" =>
+          case "content-length" =>
             if (contentLength.isEmpty) {
               traverse(remaining.tail, connection, Some(remaining.head.value), transferEncoding, hostHeaderPresent)
             } else ErrorParser("HTTP message must not contain more than one Content-Length header", 400)
-          case "Transfer-Encoding" => traverse(remaining.tail, connection, contentLength, Some(remaining.head.value), hostHeaderPresent)
-          case "Connection" => traverse(remaining.tail, Some(remaining.head.value), contentLength, transferEncoding, hostHeaderPresent)
-          case "Host" =>
+          case "transfer-encoding" => traverse(remaining.tail, connection, contentLength, Some(remaining.head.value), hostHeaderPresent)
+          case "connection" => traverse(remaining.tail, Some(remaining.head.value), contentLength, transferEncoding, hostHeaderPresent)
+          case "host" =>
             if (!hostHeaderPresent) traverse(remaining.tail, connection, contentLength, transferEncoding, true)
             else ErrorParser("HTTP message must not contain more than one Host header", 400)
           case _ => traverse(remaining.tail, connection, contentLength, transferEncoding, hostHeaderPresent)

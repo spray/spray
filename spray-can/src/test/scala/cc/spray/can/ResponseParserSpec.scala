@@ -38,7 +38,7 @@ class ResponseParserSpec extends Specification {
              |Host: api.example.com
              |
              |Foobs"""
-        } mustEqual (`HTTP/1.0`, 404, "Not Found", List(HttpHeader("Host", "api.example.com")), None, "Foobs")
+        } mustEqual (`HTTP/1.0`, 404, "Not Found", List(HttpHeader("host", "api.example.com")), None, "Foobs")
       }
 
       "with 4 headers and a body" in {
@@ -51,10 +51,10 @@ class ResponseParserSpec extends Specification {
              |
              |Shake your BOODY!"""
         } mustEqual (`HTTP/1.1`, 500, "Internal Server Error", List(
-          HttpHeader("Content-Length", "17"),
-          HttpHeader("Connection", "close"),
-          HttpHeader("Transfer-Encoding", "identity"),
-          HttpHeader("User-Agent", "curl/7.19.7 xyz")
+          HttpHeader("content-length", "17"),
+          HttpHeader("connection", "close"),
+          HttpHeader("transfer-encoding", "identity"),
+          HttpHeader("user-agent", "curl/7.19.7 xyz")
         ), Some("close"), "Shake your BOODY!")
       }
 
@@ -69,8 +69,8 @@ class ResponseParserSpec extends Specification {
              |
              |"""
         } mustEqual (`HTTP/1.0`, 200, "OK", List(
-          HttpHeader("Accept", "*/*"),
-          HttpHeader("User-Agent", "curl/7.19.7 abc xyz")
+          HttpHeader("accept", "*/*"),
+          HttpHeader("user-agent", "curl/7.19.7 abc xyz")
         ), None, "")
       }
     }
@@ -86,7 +86,7 @@ class ResponseParserSpec extends Specification {
              |abc"""
         } mustEqual ChunkedStartParser(
           StatusLine(GET, `HTTP/1.1`, 200, "OK"),
-          List(HttpHeader("Transfer-Encoding", "chunked"), HttpHeader("User-Agent", "curl/7.19.7")),
+          List(HttpHeader("transfer-encoding", "chunked"), HttpHeader("user-agent", "curl/7.19.7")),
           None
         )
       }
@@ -125,7 +125,7 @@ class ResponseParserSpec extends Specification {
         parse {
           """|HTTP/1.1 200 OK
              |Fancy: 0""" + ("12345678" * 1024) + "\r\n"
-        } mustEqual ErrorParser("HTTP header values longer than 8192 characters are not supported (header 'Fancy')", 400)
+        } mustEqual ErrorParser("HTTP header values longer than 8192 characters are not supported (header 'fancy')", 400)
       }
 
       "with an invalid Content-Length header value" in {
