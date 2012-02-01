@@ -1,8 +1,8 @@
 name := "spray-json"
 
-organization := "cc.spray.json"
+organization := "cc.spray"
 
-version := "1.1.0-SNAPSHOT"
+version := "1.1.0"
 
 description := "A Scala library for easy and idiomatic JSON (de)serialization"
 
@@ -23,8 +23,9 @@ publishMavenStyle := true
 
 publishTo <<= version { version =>
   Some {
-    "snapshots" at {
-      "http://nexus.scala-tools.org/content/repositories/" + {
+    "spray nexus" at {
+      // public uri is repo.spray.cc, we use an SSH tunnel to the nexus here
+      "http://localhost:42424/content/repositories/" + {
         if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else"releases/"
       }
     }
