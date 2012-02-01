@@ -1,10 +1,18 @@
 name := "spray-json"
 
-organization := "cc.spray"
-
 version := "1.1.0"
 
+organization := "cc.spray"
+
+organizationHomepage := Some(new URL("http://spray.cc"))
+
 description := "A Scala library for easy and idiomatic JSON (de)serialization"
+
+homepage := Some(new URL("https://github.com/spray/spray-json"))
+
+startYear := Some(2011)
+
+licenses := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt"))
 
 scalaVersion := "2.9.1"
 
@@ -23,7 +31,7 @@ publishMavenStyle := true
 
 publishTo <<= version { version =>
   Some {
-    "spray nexus" at {
+    "spray repo" at {
       // public uri is repo.spray.cc, we use an SSH tunnel to the nexus here
       "http://localhost:42424/content/repositories/" + {
         if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else"releases/"
@@ -32,25 +40,10 @@ publishTo <<= version { version =>
   }
 }
 
-pomExtra := (
-  <url>http://spray.cc/</url>
-  <inceptionYear>2011</inceptionYear>
-  <licenses>
-    <license>
-      <name>Apache 2</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-      <distribution>repo</distribution>
-    </license>
-  </licenses>
-  <developers>
-    <developer>
-      <id>sirthias</id>
-      <name>Mathias Doenitz</name>
-      <timezone>+1</timezone>
-      <email>mathias [at] spray.cc</email>
-    </developer>
-  </developers>
-  <scm>
-    <url>http://github.com/spray/spray-json/</url>
-  </scm>
-)
+seq(lsSettings:_*)
+
+(LsKeys.tags in LsKeys.lsync) := Seq("json")
+
+(LsKeys.docsUrl in LsKeys.lsync) := Some(new URL("http://spray.github.com/spray/api/spray-json/"))
+
+(externalResolvers in LsKeys.lsync) := Seq("spray repo" at "http://repo.spray.cc")
