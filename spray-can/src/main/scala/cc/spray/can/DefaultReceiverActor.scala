@@ -24,7 +24,7 @@ import akka.dispatch.CompletableFuture
  * [[cc.spray.can.HttpConnection]], that return a `Future[HttpResponse].
  */
 class DefaultReceiverActor(future: CompletableFuture[HttpResponse], maxContentLength: Int) extends Actor {
-  var body: Array[Byte] = _
+  var body: Array[Byte] = EmptyByteArray
 
   protected def receive = receiveResponse orElse receiveError
 
@@ -37,7 +37,7 @@ class DefaultReceiverActor(future: CompletableFuture[HttpResponse], maxContentLe
 
   protected def receiveChunkedResponse(start: ChunkedResponseStart): Receive = {
     case x: MessageChunk => body match {
-      case null => body = x.body
+      case EmptyByteArray => body = x.body
       case _ if body.length + x.body.length <= maxContentLength => body = body concat x.body
       case _ => future.completeWithException(new HttpClientException("Response entity greater than configured " +
               "limit of " + maxContentLength + " bytes"))
