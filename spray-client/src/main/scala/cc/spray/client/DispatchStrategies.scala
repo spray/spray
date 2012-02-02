@@ -88,8 +88,6 @@ object DispatchStrategies {
     }
   }
 
-  object NonPipelined extends NonPipelined
-
   /**
    * Defines a [[cc.spray.client.DispatchStrategy]] with the following logic:
    *  - Dispatch to the first idle connection in the pool, if there is one.

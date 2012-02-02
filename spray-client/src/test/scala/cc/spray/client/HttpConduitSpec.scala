@@ -28,8 +28,8 @@ class HttpConduitSpec extends Specification { def is =
                                                                               sequential^
                                                                               Step(start())^
   "An HttpConduit with max. 4 connections and NonPipelined strategy should"  ^
-  "properly deliver the result of a simple request"                           ! oneRequest(NonPipelined)^
-  "properly deliver the results of 100 requests"                              ! hundredRequests(NonPipelined)^
+  "properly deliver the result of a simple request"                           ! oneRequest(new NonPipelined)^
+  "properly deliver the results of 100 requests"                              ! hundredRequests(new NonPipelined)^
                                                                               p^
   "An HttpConduit with max. 4 connections and Pipelined strategy should"     ^
   "properly deliver the result of a simple request"                           ! oneRequest(Pipelined)^
