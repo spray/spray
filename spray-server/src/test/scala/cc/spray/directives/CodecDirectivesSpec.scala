@@ -38,7 +38,7 @@ class CodecDirectivesSpec extends AbstractSprayTest {
   def fromHexDump(dump: String) = dump.grouped(2).toArray.map(chars => Integer.parseInt(new String(chars), 16).toByte)
   
   "the NoEncoding decoder" should {
-    "decode the request content if it has encoding 'identidy'" in {
+    "decode the request content if it has encoding 'identity'" in {
       test(HttpRequest(headers = List(`Content-Encoding`(HttpEncodings.identity)), content = Some(HttpContent(`text/plain`, "yes")))) { 
         decodeRequest(NoEncoding) { echoRequestContent }
       }.response.content.as[String] mustEqual Right("yes")
@@ -136,6 +136,22 @@ class CodecDirectivesSpec extends AbstractSprayTest {
       result.response must haveContentEncoding(HttpEncodings.gzip)
       val bytes = result.response.content.get.buffer ++ result.chunks.toArray.flatMap(_.body)
       Gzip.newDecompressor.decompress(bytes) must readAs(text)
+    }
+  }
+
+  "the encodeResponse(NoEncoding) directive" should {
+    "produce a response if no Accept-Encoding is present in the request" in {
+      test(HttpRequest()) {
+        encodeResponse(NoEncoding) { completeWith(Ok) }
+      }.response mustEqual Ok
+    }
+    "produce a response if the request has an 'Accept-Encoding: gzip' header" in {
+      test(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.gzip)))) {
+        encodeResponse(NoEncoding) { completeWith(Ok) }
+      }.response mustEqual Ok
+    }
+    "reject the request if the request has an 'Accept-Encoding: identity; q=0' header" in {
+      pending
     }
   }
 
