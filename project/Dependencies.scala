@@ -26,6 +26,7 @@ object Dependencies {
     val sprayCan      = "cc.spray"                  %   "spray-can"                 % V.sprayCan  % "compile"
     val sprayJson     = "cc.spray"                  %%  "spray-json"                % V.sprayJson % "compile"
     val pegdown       = "org.pegdown"               %   "pegdown"                   % "1.1.0"     % "compile"
+    val clHashMap     = "com.googlecode.concurrentlinkedhashmap" % "concurrentlinkedhashmap-lru" % "1.2" % "compile"
   }
 
   object Provided {

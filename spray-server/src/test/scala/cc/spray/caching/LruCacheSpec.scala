@@ -13,18 +13,18 @@ class LruCacheSpec extends Specification {
 
   "An LruCache" should {
     "be initially empty" in {
-      LruCache().store.toString mustEqual "Map()"
+      LruCache().store.toString mustEqual "{}"
     }
     "store uncached values" in {
       val cache = LruCache[String]()
       cache(1)("A").get mustEqual "A"
-      cache.store.toString mustEqual "Map(1 -> A)"
+      cache.store.toString mustEqual "{1=A}"
     }
     "return stored values upon cache hit on existing values" in {
       val cache = LruCache[String]()
       cache(1)("A").get mustEqual "A"
       cache(1)("").get mustEqual "A"
-      cache.store.toString mustEqual "Map(1 -> A)"
+      cache.store.toString mustEqual "{1=A}"
     }
     "return Futures on uncached values during evaluation and replace these with the value afterwards" in {
       val cache = LruCache[String]()
@@ -36,29 +36,20 @@ class LruCacheSpec extends Specification {
         }
       }
       val future2 = cache(1)("")
-      cache.store.toString mustEqual "Map(1 -> pending)"
+      cache.store.toString mustEqual "{1=pending}"
       latch.countDown()
       future1.get mustEqual "A"
       future2.get mustEqual "A"
-      cache.store.toString mustEqual "Map(1 -> A)"
+      cache.store.toString mustEqual "{1=A}"
     }
     "properly limit capacity" in {
       val cache = LruCache[String](maxEntries = 3)
       cache(1)("A").get mustEqual "A"
       cache(2)("B").get mustEqual "B"
       cache(3)("C").get mustEqual "C"
-      cache.store.toString mustEqual "Map(1 -> A, 2 -> B, 3 -> C)"
+      cache.store.toString mustEqual "{2=B, 1=A, 3=C}"
       cache(4)("D")
-      cache.store.toString mustEqual "Map(2 -> B, 3 -> C, 4 -> D)"
-    }
-    "honor the dropFraction param during resizing" in {
-      val cache = LruCache[String](maxEntries = 3, dropFraction = 0.4)
-      cache(1)("A").get mustEqual "A"
-      cache(2)("B").get mustEqual "B"
-      cache(3)("C").get mustEqual "C"
-      cache.store.toString mustEqual "Map(1 -> A, 2 -> B, 3 -> C)"
-      cache(4)("D")
-      cache.store.toString mustEqual "Map(3 -> C, 4 -> D)"
+      cache.store.toString mustEqual "{2=B, 3=C, 4=D}"
     }
     "expire old entries" in {
       val cache = LruCache[String](ttl = Duration("75 ms"))
@@ -66,10 +57,11 @@ class LruCacheSpec extends Specification {
       cache(2)("B").get mustEqual "B"
       Thread.sleep(50)
       cache(3)("C").get mustEqual "C"
-      cache.store.toString mustEqual "Map(1 -> A, 2 -> B, 3 -> C)"
+      cache.store.toString mustEqual "{2=B, 1=A, 3=C}"
       Thread.sleep(50)
-      cache.get(2) must beNone // triggers clean up, also of earlier entries
-      cache.store.toString mustEqual "Map(3 -> C)"
+      cache.get(2) must beNone // removed on request
+      cache.store.toString mustEqual "{1=A, 3=C}" // expired entry 1 still there
+      cache.get(1) must beNone // but not retrievable anymore
     }
     "refresh an entries expiration time on cache hit" in {
       val cache = LruCache[String]()
@@ -77,7 +69,7 @@ class LruCacheSpec extends Specification {
       cache(2)("B").get mustEqual "B"
       cache(3)("C").get mustEqual "C"
       cache(1)("").get mustEqual "A" // refresh
-      cache.store.toString mustEqual "Map(2 -> B, 3 -> C, 1 -> A)"
+      cache.store.toString mustEqual "{2=B, 1=A, 3=C}"
     }
     "be thread-safe" in {
       val cache = LruCache[Int](maxEntries = 1000)

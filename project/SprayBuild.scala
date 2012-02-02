@@ -43,6 +43,7 @@ object SprayBuild extends Build {
     .settings(moduleSettings: _*)
     .settings(
       libraryDependencies ++= Seq(
+        Compile.clHashMap,
         Provided.akkaActor,
         Provided.servlet30,
         Provided.jetty7Async,
