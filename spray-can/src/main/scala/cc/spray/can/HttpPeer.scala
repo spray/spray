@@ -229,7 +229,7 @@ private[can] abstract class HttpPeer(threadName: String) extends Actor {
     try {
       Right(body)
     } catch {
-      case e: IOException => { // probably the peer forcibly closed the connection
+      case e => { // probably the peer forcibly closed the connection
         val error = e.toString
         if (conn != null) {
           log.warn("{} error: closing connection due to {}", operation, error)

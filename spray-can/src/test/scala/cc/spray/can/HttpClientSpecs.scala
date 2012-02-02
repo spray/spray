@@ -32,6 +32,7 @@ trait HttpClientSpecs extends Specification { def clientSpecs =
   "connect to a non-existing server"                    ! illegalConnect^
   "time-out request"                                    ! timeoutRequest^
   "idle-time-out connection"                            ! timeoutConnection^
+  "connect to unresolvable host"                        ! connectToUnresolvable^
                                                         end
 
   private class TestService extends Actor {
@@ -76,6 +77,14 @@ trait HttpClientSpecs extends Specification { def clientSpecs =
             .end
             .await.exception.get.toString mustEqual "cc.spray.can.HttpClientException: " +
             "Cannot send request due to closed connection"
+  }
+
+  private def connectToUnresolvable = {
+    HttpDialog(host = "someUnresolvableHost", clientActorId = "client-test-client")
+            .send(HttpRequest(GET, "/"))
+            .end
+            .await.exception.get.toString mustEqual "cc.spray.can.HttpClientException: " +
+            "Could not connect to someUnresolvableHost:80: java.nio.channels.UnresolvedAddressException"
   }
 
   private def dialog(port: Int = 16242) =
