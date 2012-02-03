@@ -1,6 +1,5 @@
 /*
- * Original implementation (C) 2009-2011 Debasish Ghosh
- * Adapted and extended in 2011 by Mathias Doenitz
+ * Copyright (C) 2011 Mathias Doenitz
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +16,6 @@
 
 package cc.spray.json
 
-import annotation.tailrec
-
 /**
  * Provides the helpers for constructing custom JsonFormat implementations for types implementing the Product trait
  * (especially case classes)
@@ -26,7 +23,11 @@ import annotation.tailrec
 trait ProductFormats {
   this: StandardFormats =>
 
-  def jsonFormat[A :JF, T <: Product](construct: A => T, a: String) = new JF[T]{
+  def jsonFormat1[A :JF, T <: Product :ClassManifest](construct: A => T): RootJsonFormat[T] = {
+    val Array(a) = extractFieldNames(classManifest[T])
+    jsonFormat(construct, a)
+  }
+  def jsonFormat[A :JF, T <: Product](construct: A => T, a: String): RootJsonFormat[T] = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0)
     )
@@ -35,7 +36,11 @@ trait ProductFormats {
     )
   }
 
-  def jsonFormat[A :JF, B :JF, T <: Product](construct: (A, B) => T, a: String, b: String) = new JF[T]{
+  def jsonFormat2[A :JF, B :JF, T <: Product :ClassManifest](construct: (A, B) => T): RootJsonFormat[T] = {
+    val Array(a, b) = extractFieldNames(classManifest[T])
+    jsonFormat(construct, a, b)
+  }
+  def jsonFormat[A :JF, B :JF, T <: Product](construct: (A, B) => T, a: String, b: String): RootJsonFormat[T] = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1))
@@ -46,8 +51,12 @@ trait ProductFormats {
     )
   }
 
+  def jsonFormat3[A :JF, B :JF, C :JF, T <: Product :ClassManifest](construct: (A, B, C) => T): RootJsonFormat[T] = {
+    val Array(a, b, c) = extractFieldNames(classManifest[T])
+    jsonFormat(construct, a, b, c)
+  }
   def jsonFormat[A :JF, B :JF, C :JF, T <: Product](construct: (A, B, C) => T,
-                                                a: String, b: String, c: String) = new JF[T]{
+        a: String, b: String, c: String): RootJsonFormat[T] = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -60,8 +69,13 @@ trait ProductFormats {
     )
   }
 
+  def jsonFormat4[A :JF, B :JF, C :JF, D :JF, T <: Product :ClassManifest]
+    (construct: (A, B, C, D) => T): RootJsonFormat[T] = {
+    val Array(a, b, c, d) = extractFieldNames(classManifest[T])
+    jsonFormat(construct, a, b, c, d)
+  }
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, T <: Product](construct: (A, B, C, D) => T,
-                                                       a: String, b: String, c: String, d: String) = new JF[T]{
+        a: String, b: String, c: String, d: String): RootJsonFormat[T] = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -76,8 +90,13 @@ trait ProductFormats {
     )
   }
 
+  def jsonFormat5[A :JF, B :JF, C :JF, D :JF, E :JF, T <: Product :ClassManifest]
+    (construct: (A, B, C, D, E) => T): RootJsonFormat[T] = {
+    val Array(a, b, c, d, e) = extractFieldNames(classManifest[T])
+    jsonFormat(construct, a, b, c, d, e)
+  }
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, T <: Product](construct: (A, B, C, D, E) => T,
-        a: String, b: String, c: String, d: String, e: String) = new JF[T]{
+        a: String, b: String, c: String, d: String, e: String): RootJsonFormat[T] = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -93,9 +112,14 @@ trait ProductFormats {
       fromField[E](value, e)
     )
   }
-  
+
+  def jsonFormat6[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, T <: Product :ClassManifest]
+    (construct: (A, B, C, D, E, F) => T): RootJsonFormat[T] = {
+    val Array(a, b, c, d, e, f) = extractFieldNames(classManifest[T])
+    jsonFormat(construct, a, b, c, d, e, f)
+  }
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, T <: Product](construct: (A, B, C, D, E, F) => T,
-        a: String, b: String, c: String, d: String, e: String, f: String) = new JF[T]{
+        a: String, b: String, c: String, d: String, e: String, f: String): RootJsonFormat[T] = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -113,9 +137,14 @@ trait ProductFormats {
       fromField[F](value, f)
     )
   }
-  
+
+  def jsonFormat7[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, T <: Product :ClassManifest]
+    (construct: (A, B, C, D, E, F, G) => T): RootJsonFormat[T] = {
+    val Array(a, b, c, d, e, f, g) = extractFieldNames(classManifest[T])
+    jsonFormat(construct, a, b, c, d, e, f, g)
+  }
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, T <: Product](construct: (A, B, C, D, E, F, G) => T,
-        a: String, b: String, c: String, d: String, e: String, f: String, g: String) = new JF[T]{
+        a: String, b: String, c: String, d: String, e: String, f: String, g: String): RootJsonFormat[T] = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -135,10 +164,15 @@ trait ProductFormats {
       fromField[G](value, g)
     )
   }
-  
+
+  def jsonFormat8[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, T <: Product :ClassManifest]
+    (construct: (A, B, C, D, E, F, G, H) => T): RootJsonFormat[T] = {
+    val Array(a, b, c, d, e, f, g, h) = extractFieldNames(classManifest[T])
+    jsonFormat(construct, a, b, c, d, e, f, g, h)
+  }
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, T <: Product]
         (construct: (A, B, C, D, E, F, G, H) => T,
-        a: String, b: String, c: String, d: String, e: String, f: String, g: String, h: String) = new JF[T]{
+         a: String, b: String, c: String, d: String, e: String, f: String, g: String, h: String): RootJsonFormat[T] = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -160,10 +194,15 @@ trait ProductFormats {
       fromField[H](value, h)
     )
   }
-  
+
+  def jsonFormat9[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, T <: Product :ClassManifest]
+    (construct: (A, B, C, D, E, F, G, H, I) => T): RootJsonFormat[T] = {
+    val Array(a, b, c, d, e, f, g, h, i) = extractFieldNames(classManifest[T])
+    jsonFormat(construct, a, b, c, d, e, f, g, h, i)
+  }
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, T <: Product]
-        (construct: (A, B, C, D, E, F, G, H, I) => T,
-        a: String, b: String, c: String, d: String, e: String, f: String, g: String, h: String, i: String) = new JF[T]{
+        (construct: (A, B, C, D, E, F, G, H, I) => T, a: String, b: String, c: String, d: String, e: String, f: String,
+         g: String, h: String, i: String): RootJsonFormat[T] = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -187,10 +226,15 @@ trait ProductFormats {
       fromField[I](value, i)
     )
   }
-  
+
+  def jsonFormat10[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, T <: Product :ClassManifest]
+    (construct: (A, B, C, D, E, F, G, H, I, J) => T): RootJsonFormat[T] = {
+    val Array(a, b, c, d, e, f, g, h, i, j) = extractFieldNames(classManifest[T])
+    jsonFormat(construct, a, b, c, d, e, f, g, h, i, j)
+  }
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, T <: Product]
         (construct: (A, B, C, D, E, F, G, H, I, J) => T, a: String, b: String, c: String, d: String, e: String,
-         f: String, g: String, h: String, i: String, j: String) = new JF[T]{
+         f: String, g: String, h: String, i: String, j: String): RootJsonFormat[T] = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -216,10 +260,15 @@ trait ProductFormats {
       fromField[J](value, j)
     )
   }
-  
+
+  def jsonFormat11[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, K :JF, T <: Product :ClassManifest]
+    (construct: (A, B, C, D, E, F, G, H, I, J, K) => T): RootJsonFormat[T] = {
+    val Array(a, b, c, d, e, f, g, h, i, j, k) = extractFieldNames(classManifest[T])
+    jsonFormat(construct, a, b, c, d, e, f, g, h, i, j, k)
+  }
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, K :JF, T <: Product]
         (construct: (A, B, C, D, E, F, G, H, I, J, K) => T, a: String, b: String, c: String, d: String, e: String,
-         f: String, g: String, h: String, i: String, j: String, k: String) = new JF[T]{
+         f: String, g: String, h: String, i: String, j: String, k: String): RootJsonFormat[T] = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p, 0,
       productElement2Field[B](b, p, 1,
@@ -248,9 +297,14 @@ trait ProductFormats {
     )
   }
 
+  def jsonFormat12[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, K :JF, L: JF, T <: Product :ClassManifest]
+    (construct: (A, B, C, D, E, F, G, H, I, J, K, L) => T): RootJsonFormat[T] = {
+    val Array(a, b, c, d, e, f, g, h, i, j, k, l) = extractFieldNames(classManifest[T])
+    jsonFormat(construct, a, b, c, d, e, f, g, h, i, j, k, l)
+  }
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, K :JF, L :JF, T <: Product]
         (construct: (A, B, C, D, E, F, G, H, I, J, K, L) => T, a: String, b: String, c: String, d: String, e: String,
-         f: String, g: String, h: String, i: String, j: String, k: String, l: String) = new JF[T]{
+         f: String, g: String, h: String, i: String, j: String, k: String, l: String): RootJsonFormat[T] = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p,  0,
       productElement2Field[B](b, p,  1,
@@ -281,9 +335,14 @@ trait ProductFormats {
     )
   }
 
+  def jsonFormat13[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, K :JF, L: JF, M :JF, T <: Product :ClassManifest]
+    (construct: (A, B, C, D, E, F, G, H, I, J, K, L, M) => T): RootJsonFormat[T] = {
+    val Array(a, b, c, d, e, f, g, h, i, j, k, l, m) = extractFieldNames(classManifest[T])
+    jsonFormat(construct, a, b, c, d, e, f, g, h, i, j, k, l, m)
+  }
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, K :JF, L :JF, M :JF, T <: Product]
         (construct: (A, B, C, D, E, F, G, H, I, J, K, L, M) => T, a: String, b: String, c: String, d: String, e: String,
-         f: String, g: String, h: String, i: String, j: String, k: String, l: String, m: String) = new JF[T]{
+         f: String, g: String, h: String, i: String, j: String, k: String, l: String, m: String): RootJsonFormat[T] = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p,  0,
       productElement2Field[B](b, p,  1,
@@ -316,9 +375,15 @@ trait ProductFormats {
     )
   }
 
+  def jsonFormat14[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, K :JF, L: JF, M :JF, N :JF, T <: Product :ClassManifest]
+    (construct: (A, B, C, D, E, F, G, H, I, J, K, L, M, N) => T): RootJsonFormat[T] = {
+    val Array(a, b, c, d, e, f, g, h, i, j, k, l, m, n) = extractFieldNames(classManifest[T])
+    jsonFormat(construct, a, b, c, d, e, f, g, h, i, j, k, l, m, n)
+  }
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, K :JF, L :JF, M :JF, N :JF, T <: Product]
-        (construct: (A, B, C, D, E, F, G, H, I, J, K, L, M, N) => T, a: String, b: String, c: String, d: String, e: String,
-         f: String, g: String, h: String, i: String, j: String, k: String, l: String, m: String, n: String) = new JF[T]{
+        (construct: (A, B, C, D, E, F, G, H, I, J, K, L, M, N) => T, a: String, b: String, c: String, d: String,
+         e: String, f: String, g: String, h: String, i: String, j: String, k: String, l: String, m: String,
+         n: String): RootJsonFormat[T] = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p,  0,
       productElement2Field[B](b, p,  1,
@@ -353,9 +418,15 @@ trait ProductFormats {
     )
   }
 
+  def jsonFormat15[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, K :JF, L: JF, M :JF, N :JF, O :JF, T <: Product :ClassManifest]
+    (construct: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O) => T): RootJsonFormat[T] = {
+    val Array(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) = extractFieldNames(classManifest[T])
+    jsonFormat(construct, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o)
+  }
   def jsonFormat[A :JF, B :JF, C :JF, D :JF, E :JF, F :JF, G :JF, H :JF, I :JF, J :JF, K :JF, L :JF, M :JF, N :JF, O :JF, T <: Product]
-        (construct: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O) => T, a: String, b: String, c: String, d: String, e: String,
-         f: String, g: String, h: String, i: String, j: String, k: String, l: String, m: String, n: String, o: String) = new JF[T]{
+        (construct: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O) => T, a: String, b: String, c: String, d: String,
+         e: String, f: String, g: String, h: String, i: String, j: String, k: String, l: String, m: String, n: String,
+         o: String): RootJsonFormat[T] = new RootJsonFormat[T]{
     def write(p: T) = JsObject(
       productElement2Field[A](a, p,  0,
       productElement2Field[B](b, p,  1,
@@ -399,25 +470,41 @@ trait ProductFormats {
     val value = p.productElement(ix).asInstanceOf[T]
     writer match {
       case _: OptionFormat[_] if (value == None) => rest
-      case _ => JsField(fieldName, writer.write(value)) :: rest
+      case _ => (fieldName, writer.write(value)) :: rest
     }
   }
-  
+
   private def fromField[T](value: JsValue, fieldName: String)(implicit reader: JsonReader[T]) = {
-    @tailrec
-    def getFrom(fields: List[JsField]): T = {
-      if (fields.isEmpty) {
-        if (reader.isInstanceOf[OptionFormat[_]]) None.asInstanceOf[T]
-        else throw new DeserializationException("Object is missing required member '" + fieldName + "'")
-      } else if (fields.head.name == fieldName) {
-        reader.read(fields.head.value)
-      } else {
-        getFrom(fields.tail)
-      }
-    }
     value match {
-      case x: JsObject => getFrom(x.fields)
-      case _ => throw new DeserializationException("Object expected")
+      case x: JsObject =>
+        var fieldFound = false
+        try {
+          val fieldValue = x.fields(fieldName)
+          fieldFound = true
+          reader.read(fieldValue)
+        }
+        catch {
+          case e: NoSuchElementException if !fieldFound =>
+            if (reader.isInstanceOf[OptionFormat[_]]) None.asInstanceOf[T]
+            else deserializationError("Object is missing required member '" + fieldName + "'", e)
+        }
+      case _ => deserializationError("Object expected")
+    }
+  }
+
+  protected def extractFieldNames(classManifest: ClassManifest[_]): Array[String] = {
+    val clazz = classManifest.erasure
+    try {
+      val copyDefaultMethods = clazz.getMethods.filter(_.getName.startsWith("copy$default$"))
+      val fields = clazz.getDeclaredFields.filterNot(_.getName.startsWith("$"))
+      if (copyDefaultMethods.length != fields.length)
+        sys.error("Case class declares additional fields")
+      if (fields.zip(copyDefaultMethods).exists { case (f, m) => f.getType != m.getReturnType })
+        sys.error("Cannot determine field order")
+      fields.map(_.getName)
+    } catch {
+      case ex => throw new RuntimeException("Cannot automatically determine case class field names and order, " +
+        "please use the 'jsonFormat' overload with explicit field name specification", ex)
     }
   }
 }
@@ -435,6 +522,6 @@ trait NullOptions extends ProductFormats {
   override protected def productElement2Field[T](fieldName: String, p: Product, ix: Int, rest: List[JsField])
                                                 (implicit writer: JsonWriter[T]) = {
     val value = p.productElement(ix).asInstanceOf[T]
-    JsField(fieldName, writer.write(value)) :: rest
+    (fieldName, writer.write(value)) :: rest
   }
 }

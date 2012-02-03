@@ -17,16 +17,29 @@
 package cc.spray
 
 package object json {
-  
-  def jsonReader[T](implicit reader: JsonReader[T]) = reader  
+
+  type JsField = (String, JsValue)
+
+  def deserializationError(msg: String, cause: Throwable = null) = throw new DeserializationException(msg, cause)
+  def serializationError(msg: String) = throw new SerializationException(msg)
+
+  def jsonReader[T](implicit reader: JsonReader[T]) = reader
   def jsonWriter[T](implicit writer: JsonWriter[T]) = writer 
   
-  implicit def pimpAny[T](any: T): PimpedAny[T] = new PimpedAny(any)
-
+  implicit def pimpAny[T](any: T) = new PimpedAny(any)
+  implicit def pimpString(string: String) = new PimpedString(string)
 }
 
 package json {
+
+  class DeserializationException(msg: String, cause: Throwable = null) extends RuntimeException(msg, cause)
+  class SerializationException(msg: String) extends RuntimeException(msg)
+
   private[json] class PimpedAny[T](any: T) {
     def toJson(implicit writer: JsonWriter[T]): JsValue = writer.write(any)
+  }
+
+  private[json] class PimpedString(string: String) {
+    def asJson: JsValue = JsonParser(string)
   }
 }

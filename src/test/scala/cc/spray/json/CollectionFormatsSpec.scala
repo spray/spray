@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2011 Mathias Doenitz
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package cc.spray.json
 
 import org.specs2.mutable._
@@ -12,7 +28,7 @@ class CollectionFormatsSpec extends Specification with DefaultJsonProtocol {
       list.toJson mustEqual json
     }
     "convert a JsArray of JsNumbers to a List[Int]" in {
-      json.fromJson[List[Int]] mustEqual list 
+      json.convertTo[List[Int]] mustEqual list
     }
   }
   
@@ -23,18 +39,18 @@ class CollectionFormatsSpec extends Specification with DefaultJsonProtocol {
       array.toJson mustEqual json
     }
     "convert a JsArray of JsNumbers to an Array[Int]" in {
-      Arrays.equals(json.fromJson[Array[Int]], array) must beTrue 
+      Arrays.equals(json.convertTo[Array[Int]], array) must beTrue
     }
   }
   
   "The mapFormat" should {
     val map = Map("a" -> 1, "b" -> 2, "c" -> 3)
-    val json = JsObject(JsField("a", 1), JsField("b", 2), JsField("c", 3))
+    val json = JsObject("a" -> JsNumber(1), "b" -> JsNumber(2), "c" -> JsNumber(3))
     "convert a Map[String, Long] to a JsObject" in {
       map.toJson mustEqual json
     }
     "be able to convert a JsObject to a Map[String, Long]" in {
-      json.fromJson[Map[String, Long]] mustEqual map 
+      json.convertTo[Map[String, Long]] mustEqual map
     }
     "throw an Exception when trying to serialize a map whose key are not serialized to JsStrings" in {
       Map(1 -> "a").toJson must throwA(new SerializationException("Map key must be formatted as JsString, not '1'"))
@@ -48,7 +64,7 @@ class CollectionFormatsSpec extends Specification with DefaultJsonProtocol {
       set.toJson mustEqual json
     }
     "convert a JsArray of JsNumbers to a Set[Int]" in {
-      json.fromJson[Set[Int]] mustEqual set 
+      json.convertTo[Set[Int]] mustEqual set
     }
   }
 
@@ -59,7 +75,7 @@ class CollectionFormatsSpec extends Specification with DefaultJsonProtocol {
       seq.toJson mustEqual json
     }
     "convert a JsArray of JsNumbers to a IndexedSeq[Int]" in {
-      json.fromJson[collection.IndexedSeq[Int]] mustEqual seq
+      json.convertTo[collection.IndexedSeq[Int]] mustEqual seq
     }
   }
   

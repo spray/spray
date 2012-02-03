@@ -22,22 +22,22 @@ trait CollectionFormats {
   /**
     * Supplies the JsonFormat for Lists.
    */
-  implicit def listFormat[T :JsonFormat] = new JsonFormat[List[T]] {
+  implicit def listFormat[T :JsonFormat] = new RootJsonFormat[List[T]] {
     def write(list: List[T]) = JsArray(list.map(_.toJson))
     def read(value: JsValue) = value match {
-      case JsArray(elements) => elements.map(_.fromJson[T])
-      case _ => throw new DeserializationException("List expected")
+      case JsArray(elements) => elements.map(_.convertTo[T])
+      case x => deserializationError("Expected List as JsArray, but got " + x)
     }
   }
   
   /**
     * Supplies the JsonFormat for Arrays.
    */
-  implicit def arrayFormat[T :JsonFormat :ClassManifest] = new JsonFormat[Array[T]] {
+  implicit def arrayFormat[T :JsonFormat :ClassManifest] = new RootJsonFormat[Array[T]] {
     def write(array: Array[T]) = JsArray(array.map(_.toJson).toList)
     def read(value: JsValue) = value match {
-      case JsArray(elements) => elements.map(_.fromJson[T]).toArray[T]
-      case _ => throw new DeserializationException("Array expected")
+      case JsArray(elements) => elements.map(_.convertTo[T]).toArray[T]
+      case x => deserializationError("Expected Array as JsArray, but got " + x)
     }
   }
   
@@ -45,18 +45,20 @@ trait CollectionFormats {
     * Supplies the JsonFormat for Maps. The implicitly available JsonFormat for the key type K must
     * always write JsStrings, otherwise a [[cc.spray.json.SerializationException]] will be thrown.
    */
-  implicit def mapFormat[K :JsonFormat, V :JsonFormat] = new JsonFormat[Map[K, V]] {
+  implicit def mapFormat[K :JsonFormat, V :JsonFormat] = new RootJsonFormat[Map[K, V]] {
     def write(m: Map[K, V]) = JsObject {
-      m.toList.map { t =>
-        t._1.toJson match {
-          case JsString(x) => JsField(x, t._2.toJson)
+      m.map { field =>
+        field._1.toJson match {
+          case JsString(x) => x -> field._2.toJson
           case x => throw new SerializationException("Map key must be formatted as JsString, not '" + x + "'")
         }
       }
     }
     def read(value: JsValue) = value match {
-      case JsObject(fields) => fields.map(field => (JsString(field.name).fromJson[K], field.value.fromJson[V])).toMap
-      case _ => throw new DeserializationException("Map expected")
+      case x: JsObject => x.fields.map { field =>
+        (JsString(field._1).convertTo[K], field._2.convertTo[V])
+      } (collection.breakOut)
+      case x => deserializationError("Expected Map as JsObject, but got " + x)
     }
   }
 
@@ -81,11 +83,11 @@ trait CollectionFormats {
     * A JsonFormat construction helper that creates a JsonFormat for an Iterable type I from a builder function
     * List => I.
    */
-  def viaList[I <: Iterable[T], T :JsonFormat](f: List[T] => I): JsonFormat[I] = new JsonFormat[I] {
+  def viaList[I <: Iterable[T], T :JsonFormat](f: List[T] => I): RootJsonFormat[I] = new RootJsonFormat[I] {
     def write(iterable: I) = JsArray(iterable.map(_.toJson).toList)
     def read(value: JsValue) = value match {
-      case JsArray(elements) => f(elements.map(_.fromJson[T]))
-      case _ => throw new DeserializationException("Collection expected")
+      case JsArray(elements) => f(elements.map(_.convertTo[T]))
+      case x => deserializationError("Expected Collection as JsArray, but got " + x)
     }
   }
 

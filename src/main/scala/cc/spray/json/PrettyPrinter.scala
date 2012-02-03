@@ -37,13 +37,13 @@ trait PrettyPrinter extends JsonPrinter {
     }
   }
 
-  private def printObject(members: List[JsField], sb: StringBuilder, indent: Int) {
+  private def printObject(members: Map[String, JsValue], sb: StringBuilder, indent: Int) {
     sb.append("{\n")    
     printSeq(members, sb.append(",\n")) { m =>
       printIndent(sb, indent + Indent)
-      printString(m.name, sb)
+      printString(m._1, sb)
       sb.append(": ")
-      print(m.value, sb, indent + Indent)
+      print(m._2, sb, indent + Indent)
     }
     sb.append('\n')
     printIndent(sb, indent)

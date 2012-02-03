@@ -18,76 +18,44 @@
 
 package cc.spray.json
 
-import collection.mutable.ListBuffer
+import collection.immutable.ListMap
+
 
 /**
   * The general type of a JSON AST node.
  */
-sealed trait JsValue {
-  override def toString = CompactPrinter(this)
+sealed abstract class JsValue {
+  override def toString = compactPrint
   def toString(printer: (JsValue => String)) = printer(this)
-  def fromJson[T :JsonReader]: T = jsonReader[T].read(this)
-}
-object JsValue {
+  def compactPrint = CompactPrinter(this)
+  def prettyPrint = PrettyPrinter(this)
+  def convertTo[T :JsonReader]: T = jsonReader[T].read(this)
 
   /**
-    * General converter to a JsValue.
-    * Throws an IllegalArgumentException if the given value cannot be converted.
+   * Returns `this` if this JsValue is a JsObject, otherwise throws a DeserializationException with the given error msg.
    */
-  def apply(value: Any): JsValue = value match {
-    case null => JsNull
-    case true => JsTrue
-    case false => JsFalse
-    case x: JsValue => x
-    case x: String => JsString(x)
-    case x: Int => JsNumber(x)
-    case x: Long => JsNumber(x)
-    case x: Double => JsNumber(x)
-    case x: Char => JsString(String.valueOf(x))
-    case x: Float => JsNumber(x)
-    case x: Byte => JsNumber(x)
-    case x: Short => JsNumber(x)
-    case x: BigInt => JsNumber(x)
-    case x: BigDecimal => JsNumber(x)
-    case x: Symbol => JsString(x.name)
-    case x: collection.Map[_, _] => JsObject(fromSeq(x))
-    case x@ collection.Seq((_, _), _*) => JsObject(fromSeq(x.asInstanceOf[Seq[(_, _)]]))
-    case x: collection.Seq[_] => JsArray(x.toList.map(JsValue.apply))
-    case x => throw new IllegalArgumentException(x.toString + " cannot be converted to a JsValue")
-  }
+  def asJsObject(errorMsg: String = "JSON object expected"): JsObject = deserializationError(errorMsg)
 
-  private def fromSeq(seq: Iterable[(_, _)]) = {
-    val list = ListBuffer.empty[JsField]
-    seq.foreach {
-      case (key: String, value) => list += JsField(key, JsValue(value))
-      case (key: Symbol, value) => list += JsField(key.name, JsValue(value))
-      case (key: JsString, value) => list += JsField(key.value, JsValue(value))
-      case (x, _) => throw new IllegalArgumentException(x.toString + " cannot be converted to a JsString")
-    }
-    list.toList
-  }
+  /**
+   * Returns `this` if this JsValue is a JsObject, otherwise throws a DeserializationException.
+   */
+  def asJsObject: JsObject = asJsObject()
+
+  @deprecated("Superceded by 'convertTo'", "1.1.0")
+  def fromJson[T :JsonReader]: T = convertTo
 }
 
 /**
   * A JSON object.
  */
-case class JsObject(fields: List[JsField]) extends JsValue {
-  lazy val asMap: Map[String, JsValue] = {
-    val b = Map.newBuilder[String, JsValue]
-    for (JsField(name, value) <- fields) b += ((name, value))
-    b.result()
-  }
+case class JsObject(fields: Map[String, JsValue]) extends JsValue {
+  override def asJsObject(errorMsg: String) = this
+  def getFields(fieldNames: String*): Seq[JsValue] = fieldNames.flatMap(fields.get)
 }
 object JsObject {
-  def apply(members: JsField*) = new JsObject(members.toList)
-}
-
-/**
-  * The members/fields of a JSON object.
- */
-case class JsField(name: String, value: JsValue) extends JsValue
-object JsField {
-  def apply(name: String, value: Any) = new JsField(name, JsValue(value))
+  // we use a ListMap in order to preserve the field order
+  def apply(members: JsField*) = new JsObject(ListMap(members: _*))
+  def apply(members: List[JsField]) = new JsObject(ListMap(members: _*))
 }
 
 /**
@@ -103,6 +71,10 @@ object JsArray {
  */
 case class JsString(value: String) extends JsValue
 
+object JsString {
+  def apply(value: Symbol) = new JsString(value.name)
+}
+
 /**
   * A JSON number.
  */
@@ -110,7 +82,11 @@ case class JsNumber(value: BigDecimal) extends JsValue
 object JsNumber {
   def apply(n: Int) = new JsNumber(BigDecimal(n))
   def apply(n: Long) = new JsNumber(BigDecimal(n))
-  def apply(n: Double) = new JsNumber(BigDecimal(n))
+  def apply(n: Double) = n match {
+    case n if n.isNaN      => JsNull
+    case n if n.isInfinity => JsNull
+    case _                 => new JsNumber(BigDecimal(n))
+  }
   def apply(n: BigInt) = new JsNumber(BigDecimal(n))
   def apply(n: String) = new JsNumber(BigDecimal(n))
 }
@@ -118,7 +94,7 @@ object JsNumber {
 /**
   * JSON Booleans.
  */
-sealed trait JsBoolean extends JsValue {
+sealed abstract class JsBoolean extends JsValue {
   def value: Boolean
 }
 object JsBoolean {

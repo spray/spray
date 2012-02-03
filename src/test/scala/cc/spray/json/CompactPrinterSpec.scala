@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2011 Mathias Doenitz
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package cc.spray.json
 
 import org.specs2.mutable._
@@ -36,11 +52,11 @@ class CompactPrinterSpec extends Specification {
       CompactPrinter(JsString("\"\\\b\f\n\r\t\u12AB")) mustEqual """"\"\\\b\f\n\r\t""" + "\\u12ab\""
     }
     "properly print a simple JsObject" in (
-      CompactPrinter(JsObject(JsField("key", 42), JsField("key2", "value")))
+      CompactPrinter(JsObject("key" -> JsNumber(42), "key2" -> JsString("value")))
               mustEqual """{"key":42,"key2":"value"}"""
     )
     "properly print a simple JsArray" in (
-      CompactPrinter(JsArray(JsNull, JsNumber(1.23), JsObject(JsField("key", true))))
+      CompactPrinter(JsArray(JsNull, JsNumber(1.23), JsObject("key" -> JsBoolean(true))))
               mustEqual """[null,1.23,{"key":true}]"""
     )
     "properly print a JSON padding (JSONP) if requested" in {

@@ -1,0 +1,14 @@
+Starting with this release _spray-json_ artifacts live on <http://repo.spray.cc/>
+and will have group id `cc.spray` rather than `cc.spray.json` as before.
+
+Changes since the last release (1.0.1):
+
+- Added automatic case class field name extraction via new `jsonFormatX` overloads
+- Added `asJson` pimp to Strings
+- Added `RootJsonFormat` (`JsonFormat` for types corresponding to JSON document roots)
+- Fixed problem of JSON object deserialization not being member-order independent
+  (removed `JsField`, turned `JsObject(List[JsField])` into `JsObject(Map[String, JsValue])`)
+- Fixed issue #8 (Allow (de)serialization of `NaN` (Double)), thx to @stefritz
+- Fixed #6 (rename `JsValue:fromJson` to `convertTo`, add `.prettyPrint` and `.compactPrint`)
+- Improved deserialization error messages
+- Upgraded to SBT 0.11.2
