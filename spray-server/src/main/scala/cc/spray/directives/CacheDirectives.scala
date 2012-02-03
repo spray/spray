@@ -18,7 +18,8 @@ package cc.spray
 package directives
 
 import caching._
-import http.HttpResponse
+import http._
+import HttpHeaders._
 
 private[spray] trait CacheDirectives {
   this: BasicDirectives =>
@@ -30,27 +31,33 @@ private[spray] trait CacheDirectives {
   def cacheResults(cache: Cache[Either[Set[Rejection], HttpResponse]],
                    keyer: CacheKeyer = CacheKeyers.UriGetCacheKeyer) = {
     transformRoute { route => ctx =>
-      keyer(ctx) match {
-        case Some(key) => {
-          cache(key) { completableFuture =>
-            route {
-              ctx
-                .withComplete(response => completableFuture.completeWithResult(Right(response)))
-                .withReject(rejections => completableFuture.completeWithResult(Left(rejections)))
-            }
-          } onResult {
-            case Right(response) => ctx.responder.complete(response)
-            case Left(rejections) => ctx.responder.reject(rejections)
-          }
-        }
-        case _ => route(ctx)
+      val noCachePresent = ctx.request.headers.exists {
+        case x: `Cache-Control` => x.directives.contains(CacheDirectives.`no-cache`)
+        case _ => false
       }
+      if (!noCachePresent) {
+        keyer(ctx) match {
+          case Some(key) => {
+            cache(key) { completableFuture =>
+              route {
+                ctx
+                  .withComplete(response => completableFuture.completeWithResult(Right(response)))
+                  .withReject(rejections => completableFuture.completeWithResult(Left(rejections)))
+              }
+            } onResult {
+              case Right(response) => ctx.responder.complete(response)
+              case Left(rejections) => ctx.responder.reject(rejections)
+            }
+          }
+          case _ => route(ctx)
+        }
+      } else route(ctx)
     }
   }
 
   /**
    * Wraps its inner Route with caching support using a default [[cc.spray.caching.LruCache]] instance
-   * (max-entries = 500, dropFraction = 20%, time-to-live: 5 minutes) and the {{UriGetCacheKeyer}} which
+   * (max-entries = 500, initialCapacity = 16, time-to-idle: infinite) and the {{UriGetCacheKeyer}} which
    * only caches GET requests and uses the request URI as cache key.
    */
   lazy val cache = cacheResults(LruCache())
