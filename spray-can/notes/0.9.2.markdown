@@ -1,0 +1,17 @@
+Starting with this release _spray-can_ artifacts live on <http://repo.spray.cc/>
+and will have group id `cc.spray` rather than `cc.spray.can` as before.
+
+This is a primarily a maintenance release:
+
+- Upgraded to Akka 1.3 and SLF4J 1.6.4
+- Improved HttpServer response streaming API
+- Fixed #8 (Extend HttpDialog to allow for sending Seq[HttpRequest])
+- Fixed #11 (Improved message parser error messages)
+- Fixed #15 (Change header parsing to always extract header names in lower case)
+- Fixed #20 (HttpClient: crash on java.nio.channels.UnresolvedAddressException)
+- Fixed #21 (DefaultReceiverActor sometimes produces HttpResponses with body = null)
+- Fixed IllegalArgumentException in HttpClient upon timing out of a pipelined request
+- Fixed two memory leaks in HttpClient
+- Added GoogleQueryExample to Client-Example
+- Changed dependency on akka-actor from 'compile' to 'provided' scope
+- Smaller cleanups
