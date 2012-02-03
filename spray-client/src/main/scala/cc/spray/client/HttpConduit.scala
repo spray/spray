@@ -24,15 +24,18 @@ import akka.actor.Actor._
 import can.{HttpConnection, Connect}
 import akka.dispatch.{DefaultCompletableFuture, Future}
 import HttpProtocols._
+import SprayCanConversions._
 
 class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitConfig.fromAkkaConf)
-  extends MessagePipelining with Logging with SprayCanConversions {
+  extends MessagePipelining with Logging {
 
   protected lazy val httpClient = ActorHelpers.actor(config.clientActorId)
   protected val mainActor = actorOf(new MainActor).start()
 
-  val sendReceive: SendReceive = { request =>
-    make(new DefaultCompletableFuture[HttpResponse](Long.MaxValue)) { future =>
+  val sendReceive: SendReceive = sendReceive()
+
+  def sendReceive(timeout: Long = Actor.defaultTimeout.duration.toMillis): SendReceive = { request =>
+    make(new DefaultCompletableFuture[HttpResponse](timeout)) { future =>
       mainActor ! Send(request, { result => future.complete(result); () })
     }
   }

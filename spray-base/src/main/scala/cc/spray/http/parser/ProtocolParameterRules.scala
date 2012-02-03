@@ -18,8 +18,9 @@ package cc.spray.http
 package parser
 
 import org.parboiled.scala._
-import BasicRules._
 import org.parboiled.errors.ParsingException
+import BasicRules._
+import cc.spray.utils.identityFunc
 
 // direct implementation of http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html
 private[parser] trait ProtocolParameterRules {
@@ -147,10 +148,10 @@ private[parser] trait ProtocolParameterRules {
   def LanguageTag = rule { PrimaryTag ~ zeroOrMore("-" ~ SubTag) }
   
   // more loose than the spec which only allows 1 to max. 8 alphas
-  def PrimaryTag = rule { oneOrMore(Alpha) ~> identity ~ OptWS } 
+  def PrimaryTag = rule { oneOrMore(Alpha) ~> identityFunc ~ OptWS }
   
   // more loose than the spec which only allows 1 to max. 8 alphas
-  def SubTag = rule { oneOrMore(Alpha) ~> identity ~ OptWS }
+  def SubTag = rule { oneOrMore(Alpha) ~> identityFunc ~ OptWS }
   
   
   /* 3.11 Entity Tags */

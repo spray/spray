@@ -18,24 +18,28 @@ package cc.spray
 package encoding
 
 import http._
-import java.io._
 
 trait Decoder {
   def encoding: HttpEncoding
-  
+
   def decode[T <: HttpMessage[T]](message: T): T = message.content match {
     case Some(content) => message.withContent(
-      content = Some(HttpContent(content.contentType, decodeBuffer(content.buffer)))
+      content = Some(HttpContent(content.contentType, newDecompressor.decompress(content.buffer)))
     )
     case _ => message
   }
   
-  def decodeBuffer(buffer: Array[Byte]): Array[Byte]
+  def newDecompressor: Decompressor
+}
 
-  protected def copyBuffer(buffer: Array[Byte])(copy: (InputStream, OutputStream) => Unit) = {
-    val in = new ByteArrayInputStream(buffer)
-    val out = new ByteArrayOutputStream()
-    copy(in, out)
-    out.toByteArray
+abstract class Decompressor {
+  protected val output = new ResettableByteArrayOutputStream(1024)
+
+  def decompress(buffer: Array[Byte]): Array[Byte] = {
+    output.reset()
+    decompress(buffer, 0)
+    output.toByteArray
   }
+
+  protected def decompress(buffer: Array[Byte], offset: Int): Int
 }

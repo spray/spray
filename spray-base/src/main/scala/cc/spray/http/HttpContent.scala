@@ -24,6 +24,7 @@ import typeconversion._
 
 class HttpContent private[http](val contentType: ContentType, val buffer: Array[Byte]) {
   def withContentType(contentType: ContentType) = new HttpContent(contentType, buffer)
+  def withBuffer(buffer: Array[Byte]) = new HttpContent(contentType, buffer)
 
   override def toString = "HttpContent(" + contentType + ',' + new String(buffer, contentType.charset.getOrElse(`ISO-8859-1`).nioCharset) + ')'
   override def hashCode = contentType.## * 31 + Arrays.hashCode(buffer)

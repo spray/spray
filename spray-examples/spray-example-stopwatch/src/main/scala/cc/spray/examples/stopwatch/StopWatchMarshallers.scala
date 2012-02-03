@@ -12,7 +12,7 @@ trait StopWatchMarshallers extends DefaultMarshallers {
   /**
    * Marshaller for a whole map of StopWatches
    */
-  implicit object StopWatchesMarshaller extends MarshallerBase[Map[Int, StopWatch]] {
+  implicit object StopWatchesMarshaller extends SimpleMarshaller[Map[Int, StopWatch]] {
     val canMarshalTo = ContentType(`text/html`) :: Nil
 
     def marshal(value: Map[Int, StopWatch], contentType: ContentType) = contentType match {
@@ -50,7 +50,7 @@ trait StopWatchMarshallers extends DefaultMarshallers {
   /**
    * Marshaller for a single StopWatch
    */
-  implicit object StopWatchMarshaller extends MarshallerBase[StopWatch] {
+  implicit object StopWatchMarshaller extends SimpleMarshaller[StopWatch] {
     val canMarshalTo = ContentType(`text/html`) :: Nil
 
     def marshal(value: StopWatch, contentType: ContentType) = contentType match {

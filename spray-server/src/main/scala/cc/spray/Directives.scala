@@ -25,8 +25,9 @@ import typeconversion._
 trait Directives
         extends BasicDirectives
         with CacheDirectives
+        with ChunkingDirectives
         with CodecDirectives
-        with DetachDirectives
+        with ExecutionDirectives
         with FileAndResourceDirectives
         with FormFieldDirectives
         with MarshallingDirectives

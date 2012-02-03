@@ -26,6 +26,6 @@ class MarkdownServiceSpec extends Specification with SprayTest with MarkdownServ
 
   // since pegdown can sometimes startup a little slow we give the testService a timeout of 2 seconds
   override def testService(request: HttpRequest, timeout: AkkaDuration = AkkaDuration(2, TimeUnit.SECONDS))
-                          (service: ServiceTest) = super.testService(request, timeout)(service)
+                          (service: HttpServiceLogic) = super.testService(request, timeout)(service)
 
 }

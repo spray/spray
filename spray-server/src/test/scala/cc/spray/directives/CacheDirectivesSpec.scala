@@ -20,14 +20,17 @@ package directives
 import utils._
 import http._
 import HttpMethods._
+import HttpHeaders._
 import test.AbstractSprayTest
+import caching.LruCache
 
 class CacheDirectivesSpec extends AbstractSprayTest {
+  sequential
 
-  "the cache directive" should {
+  "the cacheResults directive" should {
     val countingService = {
       var i = 0
-      cache {
+      cacheResults(LruCache()) {
         _.complete {
           i += 1
           i.toString
@@ -38,7 +41,7 @@ class CacheDirectivesSpec extends AbstractSprayTest {
       var i = 0
       cache { _.complete { i += 1; HttpResponse(500 + i) } }
     }
-    def prime(route: Route) = make(route) { _(RequestContext(HttpRequest(GET))) }
+    def prime(route: Route) = make(route) { _(RequestContext(HttpRequest(GET), RequestResponder(_ => ()))) }
     
     "return and cache the response of the first GET" in {      
       test(HttpRequest(GET)) {
@@ -59,6 +62,11 @@ class CacheDirectivesSpec extends AbstractSprayTest {
       test(HttpRequest(PUT)) {
         prime(countingService)        
       }.response.content.as[String] mustEqual Right("2")
+    }
+    "not cache responses for GETs if the request contains a Cache-Control: no-cache header" in {
+      test(HttpRequest(GET, headers = List(`Cache-Control`(CacheDirectives.`no-cache`)))) {
+        prime(countingService)
+      }.response.content.as[String] mustEqual Right("3")
     }
   }
 

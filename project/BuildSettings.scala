@@ -6,16 +6,20 @@ import xml.transform.{RewriteRule, RuleTransformer}
 object BuildSettings {
 
   lazy val basicSettings = Seq[Setting[_]](
+    version       := "0.9.0-RC1",
+    homepage      := Some(new URL("http://spray.cc")),
     organization  := "cc.spray",
-    version       := "0.8.0",
-    description   := "a suite of lightweight Scala libraries for building and consuming RESTful web services on top of Akka",
+    organizationHomepage := Some(new URL("http://spray.cc")),
+    description   := "A suite of lightweight Scala libraries for building and consuming RESTful web services on top of Akka",
+    startYear     := Some(2011),
+    licenses      := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
     scalaVersion  := "2.9.1",
-    resolvers     ++= Dependencies.resolutionRepos
+    resolvers     ++= Dependencies.resolutionRepos,
+    scalacOptions := Seq("-deprecation", "-encoding", "utf8")
   )
 
   lazy val moduleSettings = basicSettings ++ Seq(
     // compiler and scaladoc settings
-    scalacOptions := Seq("-deprecation", "-encoding", "utf8"),
     (scalacOptions in doc) <++= (name, version).map { (n, v) => Seq("-doc-title", n, "-doc-version", v) },
 
     // publishing
@@ -24,46 +28,14 @@ object BuildSettings {
     publishMavenStyle := true,
     publishTo <<= version { version =>
       Some {
-        "snapshots" at {
-          "http://nexus.scala-tools.org/content/repositories/" + {
+        "spray nexus" at {
+          // public uri is repo.spray.cc, we use an SSH tunnel to the nexus here
+          "http://localhost:42424/content/repositories/" + {
             if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else"releases/"
           }
         }
       }
-    },
-    pomExtra := (
-      <url>http://spray.cc/</url>
-      <inceptionYear>2011</inceptionYear>
-      <licenses>
-        <license>
-          <name>Apache 2</name>
-          <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-          <distribution>repo</distribution>
-        </license>
-      </licenses>
-      <developers>
-        <developer>
-          <id>sirthias</id>
-          <name>Mathias Doenitz</name>
-          <timezone>+1</timezone>
-          <email>mathias [at] spray.cc</email>
-        </developer>
-      </developers>
-      <scm>
-        <url>http://github.com/spray/</url>
-      </scm>
-    ),
-
-    // work-around for SBT 0.11.1 issue #257 (https://github.com/harrah/xsbt/issues/257)
-    pomPostProcess := new RuleTransformer(
-      new RewriteRule {
-        import xml._
-        override def transform(n: Node) = n match {
-          case e: Elem if e.label == "classifier" => NodeSeq.Empty
-          case e => e :: Nil
-        }
-      }
-    )
+    }
   )
 
   lazy val noPublishing = Seq(

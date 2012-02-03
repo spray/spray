@@ -18,6 +18,7 @@ package cc.spray.http
 package parser
 
 import org.parboiled.scala._
+import cc.spray.utils.identityFunc
 
 // direct implementation of http://www.w3.org/Protocols/rfc2616/rfc2616-sec2.html#sec2
 private[spray] object BasicRules extends Parser {
@@ -48,17 +49,19 @@ private[spray] object BasicRules extends Parser {
   
   def Separator = rule { anyOf("()<>@,;:\\\"/[]?={} \t") } 
   
-  def Token: Rule1[String] = rule { oneOrMore(!CTL ~ !Separator ~ ANY) ~> identity }
+  def Token: Rule1[String] = rule { oneOrMore(!CTL ~ !Separator ~ ANY) ~> identityFunc }
   
-  def Comment: Rule0 = rule { "(" ~ zeroOrMore(CText | QuotedPair | Comment) ~ ")" }
+  def Comment: Rule0 = rule { "(" ~ zeroOrMore(CText | QuotedPair ~ DROP | Comment) ~ ")" }
   
   def CText = rule { !anyOf("()") ~ Text }
   
-  def QuotedString: Rule1[String] = rule { "\"" ~ zeroOrMore(QDText | QuotedPair) ~> identity ~ "\"" }
+  def QuotedString: Rule1[String] = rule {
+    "\"" ~ zeroOrMore(QuotedPair | QDText) ~~> (chars => new String(chars.toArray)) ~ "\""
+  }
   
-  def QDText = rule { !ch('"') ~ Text }
+  def QDText: Rule1[Char] = rule { !ch('"') ~ Text ~:> identityFunc }
   
-  def QuotedPair = rule { "\\" ~ Char }
+  def QuotedPair: Rule1[Char] = rule { "\\" ~ Char ~:> identityFunc }
   
   // helpers
   

@@ -19,7 +19,7 @@ package typeconversion
 
 import http._
 
-abstract class UnmarshallerBase[A] extends Deserializer[HttpContent, A] {
+abstract class SimpleUnmarshaller[A] extends Deserializer[HttpContent, A] {
   val canUnmarshalFrom: List[ContentTypeRange]
 
   def apply(content: HttpContent) = {

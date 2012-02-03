@@ -15,10 +15,22 @@
  */
 
 package cc.spray
-package typeconversion
 
-import http._
+import http.ContentType
+import http.MediaTypes._
+import org.fusesource.scalate.{Binding, TemplateEngine}
 
-sealed trait Marshalling[-A]
-case class CantMarshal(onlyTo: List[ContentType]) extends Marshalling[Any]
-case class MarshalWith[-A](f: A => HttpContent) extends Marshalling[A]
+trait ScalateSupport {
+  this: Directives =>
+
+  val templateEngine = new TemplateEngine
+
+  def render(uri: String, attributes: Map[String,Any] = Map.empty,
+             extraBindings: Traversable[Binding] = Nil, contentType: ContentType = `text/html`): Route = {
+    respondWithContentType(contentType) {
+      completeWith {
+        templateEngine.layout(uri, attributes, extraBindings)
+      }
+    }
+  }
+}

@@ -28,17 +28,17 @@ class BasicDirectivesSpec extends AbstractSprayTest {
     val getOrPut = get | put
     "block POST requests" in {
       test(HttpRequest(POST)) { 
-        getOrPut { completeOk }
+        getOrPut { completeWith(Ok) }
       }.handled must beFalse
     }
     "let GET requests pass" in {
       test(HttpRequest(GET)) { 
-        getOrPut { completeOk }
+        getOrPut { completeWith(Ok) }
       }.response mustEqual Ok
     }
     "let PUT requests pass" in {
       test(HttpRequest(PUT)) { 
-        getOrPut { completeOk }
+        getOrPut { completeWith(Ok) }
       }.response mustEqual Ok
     }
   }
@@ -46,7 +46,7 @@ class BasicDirectivesSpec extends AbstractSprayTest {
   "host(regex) | host(otherRegex)" should {
     "block requests not matching any of the two conditions" in {
       test(HttpRequest(headers = Host("xyz.com") :: Nil)) {
-        (host("spray.*".r) | host("clay.*".r)) { _ => completeOk }
+        (host("spray.*".r) | host("clay.*".r)) { _ => completeWith(Ok) }
       }.handled must beFalse
     }
     "extract the first match if it is successful" in {
@@ -65,17 +65,17 @@ class BasicDirectivesSpec extends AbstractSprayTest {
     val filter = host("([^\\.]+).spray.cc".r) & parameters('a, 'b) 
     "block requests to unmatching hosts" in {
       test(HttpRequest(GET, "/?a=1&b=2", Host("www.spray.org") :: Nil)) {
-        filter { (_, _, _) => completeOk }
+        filter { (_, _, _) => completeWith(Ok) }
       }.handled must beFalse
     }
     "block requests without matching parameters" in {
       test(HttpRequest(GET, "/?a=1&c=2", Host("www.spray.cc") :: Nil)) {
-        filter { (_, _, _) => completeOk }
+        filter { (_, _, _) => completeWith(Ok) }
       }.handled must beFalse
     }
     "let matching requests pass and extract all values" in {
       test(HttpRequest(GET, "/?a=1&b=2", Host("www.spray.cc") :: Nil)) {
-        filter { (host, a, b) => _.complete(host + a + b) }
+        filter { (host, a, b) => completeWith(host + a + b) }
       }.response.content.as[String] mustEqual Right("www12")
     }
   }
@@ -84,22 +84,22 @@ class BasicDirectivesSpec extends AbstractSprayTest {
     val putx = put | (get & parameter('method ! "put")) 
     "block GET requests" in {
       test(HttpRequest(GET)) { 
-        putx { completeOk }
+        putx { completeWith(Ok) }
       }.handled must beFalse
     }
     "let PUT requests pass" in {
       test(HttpRequest(PUT)) { 
-        putx { completeOk }
+        putx { completeWith(Ok) }
       }.response mustEqual Ok
     }
     "let GET requests with method tunneling pass" in {
       test(HttpRequest(GET, "/?method=put")) { 
-        putx { completeOk }
+        putx { completeWith(Ok) }
       }.response mustEqual Ok
     }
     "block POST requests with method tunneling parameter" in {
       test(HttpRequest(POST, "/?method=put")) { 
-        putx { completeOk }
+        putx { completeWith(Ok) }
       }.handled must beFalse
     }
   }
@@ -107,17 +107,17 @@ class BasicDirectivesSpec extends AbstractSprayTest {
   "(!get & !put)" should {
     "block GET requests" in {
       test(HttpRequest(GET)) { 
-        (!get & !put) { completeOk }
+        (!get & !put) { completeWith(Ok) }
       }.handled must beFalse
     }
     "block PUT requests" in {
       test(HttpRequest(GET)) { 
-        (!get & !put) { completeOk }
+        (!get & !put) { completeWith(Ok) }
       }.handled must beFalse
     }
     "let POST requests pass" in {
       test(HttpRequest(POST)) { 
-        (!get & !put) { completeOk }
+        (!get & !put) { completeWith(Ok) }
       }.response mustEqual Ok
     }
   }

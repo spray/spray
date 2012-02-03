@@ -22,22 +22,30 @@ import HttpHeaders._
 import MediaTypes._
 import HttpCharsets._
 import test.AbstractSprayTest
+import utils._
 import encoding._
 
 class CodecDirectivesSpec extends AbstractSprayTest {
 
   val echoRequestContent: Route = { ctx => ctx.complete(ctx.request.content.as[String].right.get) }
-  val yeah: Route = _.complete("Yeah!")
+  val yeah: Route = completeWith("Yeah!")
+
+  def haveContentEncoding(encoding: HttpEncoding) =
+      beEqualTo(Some(`Content-Encoding`(encoding))) ^^ { (_: HttpResponse).headers.findByType[`Content-Encoding`] }
+
+  def readAs(string: String, charset: String = "UTF8") = beEqualTo(string) ^^ { new String(_: Array[Byte], charset) }
+  def hexDump(bytes: Array[Byte]) = bytes.map("%02x".format(_)).mkString
+  def fromHexDump(dump: String) = dump.grouped(2).toArray.map(chars => Integer.parseInt(new String(chars), 16).toByte)
   
   "the NoEncoding decoder" should {
-    "decode the request content if it has encoding 'identidy'" in {
+    "decode the request content if it has encoding 'identity'" in {
       test(HttpRequest(headers = List(`Content-Encoding`(HttpEncodings.identity)), content = Some(HttpContent(`text/plain`, "yes")))) { 
         decodeRequest(NoEncoding) { echoRequestContent }
       }.response.content.as[String] mustEqual Right("yes")
     }
     "reject requests with content encoded with 'deflate'" in {
       test(HttpRequest(headers = List(`Content-Encoding`(HttpEncodings.deflate)), content = Some(HttpContent(`text/plain`, "yes")))) { 
-        decodeRequest(NoEncoding) { completeOk }
+        decodeRequest(NoEncoding) { completeWith(Ok) }
       }.rejections mustEqual Set(UnsupportedRequestEncodingRejection(HttpEncodings.identity))
     }
     "decode the request content if no Content-Encoding header is present" in {
@@ -47,14 +55,14 @@ class CodecDirectivesSpec extends AbstractSprayTest {
     }
     "leave request without content unchanged" in {
       test(HttpRequest()) { 
-        decodeRequest(Gzip) { completeOk }
+        decodeRequest(Gzip) { completeWith(Ok) }
       }.response mustEqual Ok
     }
   }
   
   "the Gzip decoder" should {
     "decode the request content if it has encoding 'gzip'" in {
-      val helloGzipped = fromHex("1f 8b 08 00 5e dc a2 4d 00 03 f3 48 cd c9 c9 07 00 82 89 d1 f7 05 00 00 00")
+      val helloGzipped = fromHexDump("1f8b08005edca24d0003f348cdc9c907008289d1f705000000")
       test(HttpRequest(headers = List(`Content-Encoding`(HttpEncodings.gzip)),
         content = Some(HttpContent(`text/plain`, helloGzipped)))) { 
         decodeRequest(Gzip) { echoRequestContent }
@@ -62,34 +70,37 @@ class CodecDirectivesSpec extends AbstractSprayTest {
     }
     "reject the request content if it has encoding 'gzip' but is corrupt" in {
       test(HttpRequest(headers = List(`Content-Encoding`(HttpEncodings.gzip)),
-        content = Some(HttpContent(`text/plain`, fromHex("00 01 02"))))) { 
-        decodeRequest(Gzip) { completeOk }
+        content = Some(HttpContent(`text/plain`, fromHexDump("000102"))))) {
+        decodeRequest(Gzip) { completeWith(Ok) }
       }.rejections mustEqual Set(CorruptRequestEncodingRejection("Not in GZIP format"))
     }
     "reject requests with content encoded with 'deflate'" in {
       test(HttpRequest(headers = List(`Content-Encoding`(HttpEncodings.deflate)),
         content = Some(HttpContent(`text/plain`, "Hello")))) { 
-        decodeRequest(Gzip) { completeOk }
+        decodeRequest(Gzip) { completeWith(Ok) }
       }.rejections mustEqual Set(UnsupportedRequestEncodingRejection(HttpEncodings.gzip))
     }
     "reject requests without Content-Encoding header" in {
       test(HttpRequest(content = Some(HttpContent(`text/plain`, "Hello")))) { 
-        decodeRequest(Gzip) { completeOk }
+        decodeRequest(Gzip) { completeWith(Ok) }
       }.rejections mustEqual Set(UnsupportedRequestEncodingRejection(HttpEncodings.gzip))
     }
     "leave request without content unchanged" in {
       test(HttpRequest()) { 
-        decodeRequest(Gzip) { completeOk }
+        decodeRequest(Gzip) { completeWith(Ok) }
       }.response mustEqual Ok
     }
   }
   
   "the Gzip encoder" should {
-    val yeahGzipped = fromHex("1f 8b 08 00 00 00 00 00 00 00 8b 4c 4d cc 50 04 00 70 0d 81 57 05 00 00 00")
+    val yeahGzipped = fromHexDump("1f8b08000000000000008b4c4dcc500400700d815705000000")
+
     "encode the response content with GZIP if the client accepts it with a dedicated Accept-Encoding header" in {
-      test(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.gzip)))) { 
+      val response = test(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.gzip)))) {
         encodeResponse(Gzip) { yeah }
-      }.response.content mustEqual Some(HttpContent(ContentType(`text/plain`, `ISO-8859-1`), yeahGzipped))
+      }.response
+      response must haveContentEncoding(HttpEncodings.gzip)
+      response.content mustEqual Some(HttpContent(ContentType(`text/plain`, `ISO-8859-1`), yeahGzipped))
     }
     "encode the response content with GZIP if the request has no Accept-Encoding header" in {
       test(HttpRequest()) { 
@@ -98,12 +109,12 @@ class CodecDirectivesSpec extends AbstractSprayTest {
     }
     "reject the request if the client does not accept GZIP encoding" in {
       test(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.identity)))) { 
-        encodeResponse(Gzip) { completeOk }
+        encodeResponse(Gzip) { completeWith(Ok) }
       }.rejections mustEqual Set(UnacceptedResponseEncodingRejection(HttpEncodings.gzip))
     }
     "leave responses without content unchanged" in {
       test(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.gzip)))) { 
-        encodeResponse(Gzip) { completeOk }
+        encodeResponse(Gzip) { completeWith(Ok) }
       }.response mustEqual Ok
     }
     "leave responses with an already set Content-Encoding header unchanged" in {
@@ -113,19 +124,35 @@ class CodecDirectivesSpec extends AbstractSprayTest {
         }
       }.response.content.as[String] mustEqual Right("Yeah!")
     }
-  }
-
-  "all codecs" should {
-    "support round-trip encoding" in {
-      val bytes = "123456789".getBytes
-      "Gzip" in {
-        Gzip.decodeBuffer(Gzip.encodeBuffer(bytes)).mkString mustEqual bytes.mkString
+    "correctly encode the chunk stream produced by a chunked response" in {
+      val text = "This is a somewhat lengthy text that is being chunked by the autochunk directive!"
+      val result = test(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.gzip)))) {
+        encodeResponse(Gzip) {
+          autoChunk(8) {
+            completeWith(text)
+          }
+        }
       }
-      "Deflate" in {
-        Deflate.decodeBuffer(Deflate.encodeBuffer(bytes)).mkString mustEqual bytes.mkString
-      }
+      result.response must haveContentEncoding(HttpEncodings.gzip)
+      val bytes = result.response.content.get.buffer ++ result.chunks.toArray.flatMap(_.body)
+      Gzip.newDecompressor.decompress(bytes) must readAs(text)
     }
   }
 
-  def fromHex(s: String) = s.split(' ').map(Integer.parseInt(_, 16).toByte)
+  "the encodeResponse(NoEncoding) directive" should {
+    "produce a response if no Accept-Encoding is present in the request" in {
+      test(HttpRequest()) {
+        encodeResponse(NoEncoding) { completeWith(Ok) }
+      }.response mustEqual Ok
+    }
+    "produce a response if the request has an 'Accept-Encoding: gzip' header" in {
+      test(HttpRequest(headers = List(`Accept-Encoding`(HttpEncodings.gzip)))) {
+        encodeResponse(NoEncoding) { completeWith(Ok) }
+      }.response mustEqual Ok
+    }
+    "reject the request if the request has an 'Accept-Encoding: identity; q=0' header" in {
+      pending
+    }
+  }
+
 }

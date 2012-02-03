@@ -17,6 +17,11 @@
 package cc.spray
 package directives
 
+import authentication.{BasicHttpAuthenticator, FromConfigUserPassAuthenticator}
+import http.StatusCodes._
+import akka.dispatch.Future
+import utils.Logging
+
 private[spray] trait SecurityDirectives {
   this: BasicDirectives =>
 
@@ -24,11 +29,28 @@ private[spray] trait SecurityDirectives {
    * Wraps its inner Route with authentication support.
    * Uses the given authenticator to authenticate the user and extract an object representing the users identity.
    * It's up to the given authenticator how to deal with authentication failures of any kind.
+   *
+   * Note that this directive differs from most other directives in that it
+   * - automatically detaches its inner route from the enclosing actor scope, i.e. it runs its inner route
+   *   asynchronously in a private, per-request execution context
+   * - cannot be combined with other routes via the usual `&` and `|` operators
    */
-  def authenticate[U](authenticator: GeneralAuthenticator[U]) = filter1 { ctx =>
-    authenticator(ctx) match {
-      case Right(userContext) => Pass(userContext)
-      case Left(rejection) => Reject(rejection)
+  def authenticate[U](authenticator: GeneralAuthenticator[U]): (U => Route) => Route = { innerRoute => ctx =>
+    authenticator(ctx) onComplete {
+      new ((Future[Either[Rejection, U]]) => Unit) with ErrorHandling with Logging {
+        def apply(future: Future[Either[Rejection, U]]) {
+          future.value.get match {
+            case Right(Right(userContext)) =>
+              try {
+                innerRoute(userContext)(ctx)
+              } catch {
+                case e: Exception => ctx.complete(responseForException(ctx.request, e))
+              }
+            case Right(Left(rejection)) => ctx.reject(rejection)
+            case Left(ex) => ctx.fail(InternalServerError)
+          }
+        }
+      }
     }
   }
 
@@ -43,7 +65,7 @@ private[spray] trait SecurityDirectives {
    * If the check fails the route is rejected with an [[cc.spray.AuthorizationFailedRejection]].
    */
   def authorize(check: RequestContext => Boolean): SprayRoute0 = filter { ctx =>
-    if (check(ctx)) Pass() else Reject(AuthorizationFailedRejection)
+    if (check(ctx)) Pass else Reject(AuthorizationFailedRejection)
   }
 
   /**

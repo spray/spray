@@ -8,9 +8,9 @@ import http._
 import HttpMethods._
 import StatusCodes._
 
-class HelloServiceSpec extends Specification with SprayTest with HelloService {
+class DemoServiceSpec extends Specification with SprayTest with DemoService {
   
-  "The HelloService" should {
+  "The DemoService" should {
     "return a greeting for GET requests to the root path" in {
       testService(HttpRequest(GET, "/")) {
         helloService
@@ -24,7 +24,7 @@ class HelloServiceSpec extends Specification with SprayTest with HelloService {
     "return a MethodNotAllowed error for PUT requests to the root path" in {
       testService(HttpRequest(PUT, "/")) {
         helloService
-      }.response mustEqual HttpResponse(MethodNotAllowed, "HTTP method not allowed, supported methods: GET")
+      }.response mustEqual HttpResponse(MethodNotAllowed, "HTTP method not allowed, supported methods: GET, POST")
     }
   }
   

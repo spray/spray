@@ -28,15 +28,12 @@ import java.net.URLDecoder.decode
 import java.io.ByteArrayInputStream
 
 trait DefaultUnmarshallers extends MultipartUnmarshallers {
-  
-  implicit val StringUnmarshaller = new Deserializer[HttpContent, String] {
-    def apply(content: HttpContent) = Right {
-      // we can convert anything to a String
-      new String(content.buffer, content.contentType.charset.getOrElse(`ISO-8859-1`).nioCharset)
-    }
+
+  implicit lazy val ByteArrayUnmarshaller = new Deserializer[HttpContent, Array[Byte]] {
+    def apply(content: HttpContent) = Right(content.buffer)
   }
 
-  implicit val CharArrayUnmarshaller = new Deserializer[HttpContent, Array[Char]] {
+  implicit lazy val CharArrayUnmarshaller = new Deserializer[HttpContent, Array[Char]] {
     def apply(content: HttpContent) = Right { // we can convert anything to a char array
       val nioCharset = content.contentType.charset.getOrElse(`ISO-8859-1`).nioCharset
       val byteBuffer = ByteBuffer.wrap(content.buffer)
@@ -44,8 +41,14 @@ trait DefaultUnmarshallers extends MultipartUnmarshallers {
       charBuffer.array()
     }
   }
-  
-  implicit val NodeSeqUnmarshaller = new UnmarshallerBase[NodeSeq] {
+
+  implicit lazy val StringUnmarshaller = new Deserializer[HttpContent, String] {
+    def apply(content: HttpContent) = Right { // we can convert anything to a String
+      new String(content.buffer, content.contentType.charset.getOrElse(`ISO-8859-1`).nioCharset)
+    }
+  }
+
+  implicit lazy val NodeSeqUnmarshaller = new SimpleUnmarshaller[NodeSeq] {
     val canUnmarshalFrom = ContentTypeRange(`text/xml`) ::
                            ContentTypeRange(`text/html`) ::
                            ContentTypeRange(`application/xhtml+xml`) :: Nil
@@ -59,7 +62,7 @@ trait DefaultUnmarshallers extends MultipartUnmarshallers {
     }
   }
 
-  implicit val FormDataUnmarshaller = new UnmarshallerBase[FormData] {
+  implicit lazy val FormDataUnmarshaller = new SimpleUnmarshaller[FormData] {
     val canUnmarshalFrom = ContentTypeRange(`application/x-www-form-urlencoded`) :: Nil
   
     def unmarshal(content: HttpContent) = protect {

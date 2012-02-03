@@ -15,22 +15,26 @@
  */
 
 package cc.spray
-package typeconversion
+package authentication
 
-import http._
-import utils._
+import http.{BasicHttpCredentials, HttpCredentials}
 
-abstract class MarshallerBase[A] extends Marshaller[A] {
+/**
+ * The BasicHttpAuthenticator implements HTTP Basic Auth.
+ */
+class BasicHttpAuthenticator[U](val realm: String, val authenticator: UserPassAuthenticator[U])
+        extends HttpAuthenticator[U] {
 
-  def apply(accept: ContentType => Option[ContentType]) = {
-    canMarshalTo.mapFind(accept) match {
-      case Some(contentType) => MarshalWith(marshal(_, contentType))
-      case None => CantMarshal(canMarshalTo)
+  def scheme = "Basic"
+
+  def params(ctx: RequestContext) = Map.empty
+
+  def authenticate(credentials: Option[HttpCredentials], ctx: RequestContext) = {
+    authenticator {
+      credentials.flatMap {
+        case BasicHttpCredentials(user, pass) => Some(user -> pass)
+        case _ => None
+      }
     }
   }
-
-  def canMarshalTo: List[ContentType]
-
-  def marshal(value: A, contentType: ContentType): HttpContent
-  
-} 
+}

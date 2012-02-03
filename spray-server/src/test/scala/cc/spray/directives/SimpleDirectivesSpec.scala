@@ -27,12 +27,12 @@ class SimpleDirectivesSpec extends AbstractSprayTest {
   "get" should {
     "block POST requests" in {
       test(HttpRequest(POST)) { 
-        get { completeOk }
+        get { completeWith(Ok) }
       }.handled must beFalse
     }
     "let GET requests pass" in {
       test(HttpRequest(GET)) { 
-        get { completeOk }
+        get { completeWith(Ok) }
       }.response mustEqual Ok
     }
   }
@@ -41,19 +41,19 @@ class SimpleDirectivesSpec extends AbstractSprayTest {
     "in its simple String form" in {
       "block requests to unmatched hosts" in {
         test(HttpRequest(headers = Host("spray.cc") :: Nil)) {
-          host("spray.com") { completeOk }
+          host("spray.com") { completeWith(Ok) }
         }.handled must beFalse
       }
       "let requests to matching hosts pass" in {
         test(HttpRequest(headers = Host("spray.cc") :: Nil)) {
-          host("spray.cc") { completeOk }
+          host("spray.cc") { completeWith(Ok) }
         }.response mustEqual Ok
       }
     }
     "in its simple RegEx form" in {
       "block requests to unmatched hosts" in {
         test(HttpRequest(headers = Host("spray.cc") :: Nil)) {
-          host("hairspray.*".r) { _ => completeOk }
+          host("hairspray.*".r) { _ => completeWith(Ok) }
         }.handled must beFalse
       }
       "let requests to matching hosts pass and extract the full host" in {
@@ -65,7 +65,7 @@ class SimpleDirectivesSpec extends AbstractSprayTest {
     "in its group RegEx form" in {
       "block requests to unmatched hosts" in {
         test(HttpRequest(headers = Host("spray.cc") :: Nil)) {
-          host("hairspray(.*)".r) { _ => completeOk }
+          host("hairspray(.*)".r) { _ => completeWith(Ok) }
         }.handled must beFalse
       }
       "let requests to matching hosts pass and extract the full host" in {

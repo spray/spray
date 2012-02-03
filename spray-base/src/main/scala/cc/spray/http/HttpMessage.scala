@@ -30,9 +30,22 @@ abstract class HttpMessage[T <: HttpMessage[T]] {
   def withHeadersAndContent(headers: List[HttpHeader], content: Option[HttpContent]): T
 
   /**
+   * Creates a copy of this message with the heders transformed by the given function.
+   */
+  def withHeadersTransformed(f: List[HttpHeader] => List[HttpHeader]): T = {
+    val transformed = f(headers)
+    if (transformed eq headers) this.asInstanceOf[T] else withHeaders(transformed)
+  }
+
+  /**
    * Creates a copy of this message with the content transformed by the given function.
    */
-  def withContentTransformed(f: HttpContent => HttpContent) = withContent(content.map(f))
+  def withContentTransformed(f: HttpContent => HttpContent): T = content match {
+    case Some(content) =>
+      val transformed = f(content)
+      if (transformed eq content) this.asInstanceOf[T] else withContent(Some(transformed))
+    case None => this.asInstanceOf[T]
+  }
 
   /**
    * Returns true if a Content-Encoding header is present. 

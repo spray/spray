@@ -111,7 +111,20 @@ private[spray] trait PathDirectives {
       case Some((remainingPath, captures)) => new Pass(captures.asInstanceOf[T], _.copy(unmatchedPath = remainingPath))
       case None => Reject()
     }
-  } 
+  }
+
+  /**
+   * Creates a [[cc.spray.directives.PathMatcher1]] from the given Map of path prefixes to extracted values.
+   * If the unmatched path starts with one of the maps keys the matcher consumes this path prefix and extracts the
+   * corresponding map value.
+   */
+  def pathMatcher[T](map: Map[String, T]) = new PathMatcher1[T] {
+    def apply(path: String) = {
+      map.collect {
+        case (prefix, value) if path.startsWith(prefix) => path.substring(prefix.length) -> Tuple1(value)
+      }.headOption
+    }
+  }
   
   // implicits
   
@@ -289,7 +302,7 @@ private[directives] class Combi[T <: Product](a: PathMatcher[_ <: Product], b: P
  */
 class StringMatcher(prefix: String) extends PathMatcher0 {
   def apply(path: String) = {
-    if (path.startsWith(prefix)) Some((path.substring(prefix.length), Product0)) else None
+    if (path.startsWith(prefix)) Some(path.substring(prefix.length), Product0) else None
   } 
 }
 
@@ -324,7 +337,7 @@ object Slash extends PathMatcher0 {
     if (path.length == 0) {
       Empty
     } else if (path.length > 0 && path.charAt(0) == '/') {
-      Some((path.substring(1), Product0))
+      Some(path.substring(1), Product0)
     } else None
   }
 }
@@ -344,7 +357,7 @@ object PathEnd extends PathMatcher0 {
  * A PathMatcher that matches and extracts the complete remaining, unmatched part of the requests URI path.
  */
 object Remaining extends PathMatcher1[String] {
-  def apply(path: String) = Some(("", Tuple1(path)))
+  def apply(path: String) = Some("", Tuple1(path))
 }
 
 /**

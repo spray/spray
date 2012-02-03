@@ -35,9 +35,19 @@ package object typeconversion {
 
   class ToHttpContentPimp[A :Marshaller](underlying: A) {
     def toHttpContent: HttpContent = marshaller[A].apply(withExplicitCharset) match {
-      case MarshalWith(converter) => converter(underlying)
-      case CantMarshal(onlyTo) => throw new IllegalStateException
+      case MarshalWith(converter) =>
+        var c: Option[HttpContent] = None
+        converter {
+          new MarshallingContext {
+            def marshalTo(content: HttpContent) { c = Some(content) }
+            def handleError(error: Throwable) { throw error }
+            def startChunkedMessage(contentType: ContentType) = throw new UnsupportedOperationException
+          }
+        } apply(underlying)
+        c.getOrElse(sys.error("Marshaller for %s did not produce result".format(underlying)))
+      case CantMarshal(onlyTo) => sys.error("Marshaller for %s can only marshal to %s".format(underlying, onlyTo))
     }
+
     def withExplicitCharset(ct: ContentType): Option[ContentType] = Some {
       if (ct.charset.isDefined || !ct.mediaType.isText) ct else ct.copy(charset = Some(HttpCharsets.`ISO-8859-1`))
     }

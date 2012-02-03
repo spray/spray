@@ -20,5 +20,6 @@ import utils.AkkaConfSettings
 
 object SprayBaseSettings extends AkkaConfSettings("spray.") {
   lazy val CompactJsonPrinting = configBool(false)
+  lazy val RelaxedHeaderParsing = configBool(false)
   lazy val LoggingTarget       = configString("AkkaEventHandler")
 }

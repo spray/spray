@@ -17,8 +17,8 @@
 package cc.spray
 
 import http._
+import utils._
 import akka.actor.{Actor, ActorRef}
-import utils.{PostStart, Logging}
 import java.util.concurrent.atomic.{AtomicInteger, AtomicBoolean}
 
 /**
@@ -43,7 +43,7 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
         path
       }
     }
-    case None => identity
+    case None => identityFunc
   }
 
   self.id = SprayServerSettings.RootActorId
@@ -82,28 +82,31 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
   }
 
   protected def handleOneService(service: ActorRef)(context: RequestContext) {
-    log.debug("Received %s with one attached service, dispatching...", context.request)
-    val newResponder: RoutingResult => Unit = {
-      case x: Respond => context.responder(x)
-      case x: Reject => context.responder(Respond(noServiceResponse(context.request)))
+    import context._
+    log.debug("Received %s with one attached service, dispatching...", request)
+    val newResponder = responder.withReject { rejections =>
+      if (!rejections.isEmpty) log.warn("Non-empty rejection set received in RootService, ignoring ...")
+      responder.complete(noServiceResponse(request))
     }
-    service ! context.copy(responder = newResponder, unmatchedPath = initialUnmatchedPath(context.request.path))
+    service ! context.copy(responder = newResponder, unmatchedPath = initialUnmatchedPath(request.path))
   }
 
   protected def handleMultipleServices(services: List[ActorRef])(context: RequestContext) {
-    log.debug("Received %s with %s attached services, dispatching...", context.request, services.size)
+    import context._
+    log.debug("Received %s with %s attached services, dispatching...", request, services.size)
     val responded = new AtomicBoolean(false)
     val rejected = new AtomicInteger(services.size)
-    val newResponder: RoutingResult => Unit = {
-      case x: Respond =>
-        if (responded.compareAndSet(false, true)) {
-          context.responder(x)
-        } else  log.warn("Received a second response for request '%s':\n\n%s\n\nIgnoring the additional response...",
-          context.request, x)
-      case x: Reject =>
-        if (rejected.decrementAndGet() == 0) context.responder(Respond(noServiceResponse(context.request)))
-    }
-    val outContext = context.copy(responder = newResponder, unmatchedPath = initialUnmatchedPath(context.request.path))
+    val newResponder = responder.copy(
+      complete = { response =>
+        if (responded.compareAndSet(false, true)) responder.complete(response)
+        else log.warn("Received a second response for request '%s':\n\n%s\n\nIgnoring the additional response...", request, response)
+      },
+      reject = { rejections =>
+        if (!rejections.isEmpty) log.warn("Non-empty rejection set received in RootService, ignoring ...")
+        if (rejected.decrementAndGet() == 0) responder.complete(noServiceResponse(request))
+      }
+    )
+    val outContext = context.copy(responder = newResponder, unmatchedPath = initialUnmatchedPath(request.path))
     services.foreach(_ ! outContext)
   }
 

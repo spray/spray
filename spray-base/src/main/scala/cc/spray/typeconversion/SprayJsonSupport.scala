@@ -28,7 +28,7 @@ import MediaTypes._
  */
 trait SprayJsonSupport {
 
-  implicit def sprayJsonUnmarshaller[A :JsonReader] = new UnmarshallerBase[A] {
+  implicit def sprayJsonUnmarshaller[A :RootJsonReader] = new SimpleUnmarshaller[A] {
     val canUnmarshalFrom = ContentTypeRange(`application/json`) :: Nil
 
     def unmarshal(content: HttpContent) = protect {
@@ -38,7 +38,7 @@ trait SprayJsonSupport {
     }
   }
 
-  implicit def sprayJsonMarshaller[A :JsonWriter] = new MarshallerBase[A] {
+  implicit def sprayJsonMarshaller[A :RootJsonWriter] = new SimpleMarshaller[A] {
     val canMarshalTo = ContentType(`application/json`) :: Nil
 
     lazy val printer = if (SprayBaseSettings.CompactJsonPrinting) CompactPrinter else PrettyPrinter

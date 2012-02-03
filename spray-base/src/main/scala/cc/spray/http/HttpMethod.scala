@@ -31,5 +31,4 @@ object HttpMethods extends ObjectRegistry[String, HttpMethod] {
   val POST    = new HttpMethod("POST")
   val PUT     = new HttpMethod("PUT")
   val TRACE   = new HttpMethod("TRACE")
-  val CONNECT = new HttpMethod("CONNECT")
 }

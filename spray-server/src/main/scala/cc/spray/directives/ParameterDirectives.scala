@@ -125,7 +125,7 @@ private[spray] trait ParameterDirectives {
    * Returns a Route that rejects the request if the query parameter with the given name cannot be found or does not
    * have the required value.
    */
-  def parameter(p: RequiredParameterMatcher) = filter { ctx => if (p(ctx.request.queryParams)) Pass() else Reject() }
+  def parameter(p: RequiredParameterMatcher) = filter { ctx => if (p(ctx.request.queryParams)) Pass else Reject() }
 
   /**
    * Returns a Route that rejects the request if the query parameter with the given name cannot be found or does not
@@ -133,7 +133,7 @@ private[spray] trait ParameterDirectives {
    */
   def parameters(p: RequiredParameterMatcher, more: RequiredParameterMatcher*) = {
     val allRPM = p +: more
-    filter { ctx => if (allRPM.forall(_(ctx.request.queryParams))) Pass() else Reject() }
+    filter { ctx => if (allRPM.forall(_(ctx.request.queryParams))) Pass else Reject() }
   }
 
   implicit def symbol2PM(name: Symbol)(implicit ev: FromStringOptionDeserializer[String]) =

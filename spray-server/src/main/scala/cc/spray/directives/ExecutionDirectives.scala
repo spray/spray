@@ -21,7 +21,7 @@ import utils.Logging
 import akka.actor.Actor
 import akka.dispatch.{Dispatchers, MessageDispatcher}
 
-private[spray] trait DetachDirectives {
+private[spray] trait ExecutionDirectives {
   this: BasicDirectives =>
 
   def detachDispatcher: MessageDispatcher = Dispatchers.defaultGlobalDispatcher
@@ -46,4 +46,15 @@ private[spray] trait DetachDirectives {
     }.start() ! 'run
   }
 
+  /**
+   * A directive thats evaluates its inner Route for every request anew. Note that this directive has no additional
+   * effect, when used inside (or some level underneath) a directive extracting one or more values, since everything
+   * inside a directive extracing values is _always_ reevaluted for every request.
+   *
+   * Also Note that this directive differs from most other directives in that it cannot be combined with other routes
+   * via the usual `&` and `|` operators.
+   */
+  object dynamic {
+    def apply(inner: => Route): Route = ctx => inner(ctx)
+  }
 }

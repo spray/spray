@@ -29,7 +29,8 @@ object FormFieldConverter extends FormFieldConverterLowerPriorityImplicits {
   }
 }
 
-private[typeconversion] abstract class FormFieldConverterLowerPriorityImplicits {
+private[typeconversion] abstract class FormFieldConverterLowerPriorityImplicits
+  extends FormFieldConverterLowerPriorityImplicits2 {
   implicit def urlEncodedFormFieldConverter[A :FromStringOptionDeserializer] = new FormFieldConverter[A] {
     lazy val urlEncodedFieldConverter = Some(fromStringOptionDeserializer[A])
     def multipartFieldConverter = None
@@ -39,7 +40,9 @@ private[typeconversion] abstract class FormFieldConverterLowerPriorityImplicits 
     def urlEncodedFieldConverter = None
     lazy val multipartFieldConverter = Some(unmarshaller[A])
   }
+}
 
+private[typeconversion] abstract class FormFieldConverterLowerPriorityImplicits2 {
   implicit def liftToTargetOption[A](implicit ffc: FormFieldConverter[A]) = {
     new FormFieldConverter[Option[A]] {
       lazy val urlEncodedFieldConverter = ffc.urlEncodedFieldConverter.map(Deserializer.liftToTargetOption(_))

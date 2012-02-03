@@ -13,8 +13,7 @@ abstract class AbstractSprayTest extends Specification with SprayTest with Direc
   }*/
 
   val Ok = HttpResponse(StatusCodes.OK)
-  val completeOk: Route = { _.complete(Ok) }
 
-  def echoComplete[T]: T => Route = { x => _.complete(x.toString) }
+  def echoComplete[T]: T => Route = { x => completeWith(x.toString) }
 
 }

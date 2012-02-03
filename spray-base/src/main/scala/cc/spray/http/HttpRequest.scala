@@ -93,7 +93,8 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
     // according to the HTTP spec the server MAY assume that the client will accept any content coding if no
     // Accept-Encoding header is sent with the request (http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.3)
     // this is what we do here
-    acceptedEncodingRanges.isEmpty || acceptedEncodingRanges.exists(_.matches(encoding))
+    acceptedEncodingRanges.isEmpty || encoding == HttpEncodings.identity ||
+      acceptedEncodingRanges.exists(_.matches(encoding))
   }
 
   /**

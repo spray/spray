@@ -78,7 +78,7 @@ private[spray] trait SimpleDirectives {
    * Returns a route filter that rejects all requests for whose host name the given predicate function return false.
    */
   def host(predicate: String => Boolean): SprayRoute0 = filter { ctx =>
-    if (predicate(ctx.request.host)) Pass() else Reject()
+    if (predicate(ctx.request.host)) Pass else Reject()
   }
 
   /**

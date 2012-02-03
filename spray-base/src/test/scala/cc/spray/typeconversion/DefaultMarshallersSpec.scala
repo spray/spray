@@ -20,6 +20,7 @@ package typeconversion
 import http._
 import MediaTypes._
 import HttpCharsets._
+import StatusCodes._
 import org.specs2.mutable.Specification
 
 class DefaultMarshallersSpec extends Specification with DefaultMarshallers {
@@ -47,6 +48,14 @@ class DefaultMarshallersSpec extends Specification with DefaultMarshallers {
     "properly marshal FormData instances to application/x-www-form-urlencoded entity bodies" in {
       FormData(Map("name" -> "Bob", "pass" -> "x?!54", "admin" -> "")).toHttpContent mustEqual
               HttpContent(ContentType(`application/x-www-form-urlencoded`), "name=Bob&pass=x%3F%2154&admin=")
+    }
+  }
+
+  "The eitherMarshaller" should {
+    "properly marshal HttpResult instances" in {
+      (Right("Yes"): HttpResult[String]).toHttpContent mustEqual HttpContent("Yes")
+      val ex = HttpException(Locked, "Naa!")
+      (Left(ex): HttpResult[String]).toHttpContent must throwAn(ex)
     }
   }
 

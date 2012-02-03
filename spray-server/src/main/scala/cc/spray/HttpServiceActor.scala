@@ -50,18 +50,9 @@ trait HttpServiceActor extends Actor with ErrorHandling with Logging with PostSt
 
 /**
  * The default implementation of an HttpService. It combines the [[cc.spray.HttpServiceActor]] with
- * the [[cc.spray.HttpServiceLogic]]. If you'd like to use a custom [[cc.spray.HttpServiceLogic]] you should generate
- * a sub trait of [[cc.spray.HttpServiceLogic]] (e.g. CustomServiceLogic) and create your CustomHttpService with
- * 
- * {{{ case class CustomHttpService(
- *       route: Route,
- *       val customRejectionHandler: PartialFunction[List[Rejection], HttpResponse]
- *     ) extends HttpServiceActor with CustomServiceLogic }}}
- * 
- * In this way you can test your CustomServiceLogic with [[cc.spray.test.SprayTest]] without the need to fire up
- * actual actors.
+ * the [[cc.spray.HttpServiceLogic]].
  */
 class HttpService(
   val route: Route,
-  val customRejectionHandler: PartialFunction[List[Rejection], HttpResponse] = emptyPartialFunc
+  val rejectionHandler: RejectionHandler = RejectionHandler.Default
 ) extends HttpServiceActor with HttpServiceLogic

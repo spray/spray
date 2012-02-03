@@ -20,39 +20,34 @@ package directives
 import http._
 import HttpHeaders._
 import test.AbstractSprayTest
+import authentication.BasicUserContext
+import akka.dispatch.AlreadyCompletedFuture
 
 class SecurityDirectivesSpec extends AbstractSprayTest {
 
   val dontAuth = new UserPassAuthenticator[BasicUserContext] {
-    def apply(userPass: Option[(String, String)]) = None
+    def apply(userPass: Option[(String, String)]) = new AlreadyCompletedFuture(Right(None))
   }
   
   val doAuth = new UserPassAuthenticator[BasicUserContext] {
-    def apply(userPass: Option[(String, String)]) = Some(BasicUserContext(userPass.get._1))
+    def apply(userPass: Option[(String, String)]) =
+      new AlreadyCompletedFuture(Right(Some(BasicUserContext(userPass.get._1))))
   }
   
   "the 'authenticate(HttpBasic())' directive" should {
     "reject requests without Authorization header with an AuthenticationRequiredRejection" in {
       test(HttpRequest()) { 
-        authenticate(httpBasic(authenticator = dontAuth)) { _ => completeOk }
+        authenticate(httpBasic(authenticator = dontAuth)) { _ => completeWith(Ok) }
       }.rejections mustEqual Set(AuthenticationRequiredRejection("Basic", "Secured Resource", Map.empty))
     }
     "reject unauthenticated requests with Authorization header with an AuthorizationFailedRejection" in {
       test(HttpRequest(headers = List(Authorization(BasicHttpCredentials("Bob", ""))))) { 
-        authenticate(httpBasic(authenticator = dontAuth)) { _ => completeOk }
+        authenticate(httpBasic(authenticator = dontAuth)) { _ => completeWith(Ok) }
       }.rejections mustEqual Set(AuthenticationFailedRejection("Secured Resource"))
     }
     "extract the object representing the user identity created by successful authentication" in {
       test(HttpRequest(headers = List(Authorization(BasicHttpCredentials("Alice", ""))))) { 
         authenticate(httpBasic(authenticator = doAuth)) { echoComplete }
-      }.response.content.as[String] mustEqual Right("BasicUserContext(Alice)")
-    }
-  }
-
-  "the FromConfigUserPassAuthenticator" should {
-    "extract a BasicUserContext for users defined in the spray config" in {
-      test(HttpRequest(headers = List(Authorization(BasicHttpCredentials("Alice", "banana"))))) {
-        authenticate(httpBasic()) { echoComplete }
       }.response.content.as[String] mustEqual Right("BasicUserContext(Alice)")
     }
   }

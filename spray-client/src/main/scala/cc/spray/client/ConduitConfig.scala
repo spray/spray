@@ -22,7 +22,7 @@ import utils.AkkaConfSettings
 case class ConduitConfig(
   clientActorId: String = "spray-can-client",
   maxConnections: Int = 4,
-  dispatchStrategy: DispatchStrategy = DispatchStrategies.NonPipelined
+  dispatchStrategy: DispatchStrategy = new DispatchStrategies.NonPipelined
 ) {
 
   require(!clientActorId.isEmpty, "clientActorId must not be empty")

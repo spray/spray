@@ -19,6 +19,8 @@ package cc.spray
 package http
 
 import parser.HttpParser
+import java.lang.String
+import utils.Logging
 
 abstract class HttpHeader extends Product {
   val name = productPrefix.replace("$minus", "-")
@@ -26,17 +28,19 @@ abstract class HttpHeader extends Product {
   override def toString = name + ": " + value
 }
 
-object HttpHeader {
+object HttpHeader extends Logging {
   def apply(name: String, value: String): HttpHeader = {
     HttpParser.rules.get(name.trim.toUpperCase.replace('-', '_')) match {
       case None => HttpHeaders.CustomHeader(name, value)
-      case Some(rule) => {
-        HttpParser.parse(rule, value) match {
-          case Left(error) => throw new HttpException(StatusCodes.BadRequest, 
-            "Illegal HTTP header '" + name + "':\n" + error)
-          case Right(header) => header
-        }
-      } 
+      case Some(rule) => HttpParser.parse(rule, value) match {
+        case Left(error) =>
+          val msg = "Illegal HTTP header '" + name + "':\n" + error
+          if (SprayBaseSettings.RelaxedHeaderParsing) {
+            log.warn(msg)
+            HttpHeaders.CustomHeader(name, value)
+          } else throw new HttpException(StatusCodes.BadRequest, msg)
+        case Right(header) => header
+      }
     }
   }
   
@@ -47,22 +51,22 @@ object HttpHeaders {
 
   object Accept { def apply(first: MediaRange, more: MediaRange*): Accept = apply(first +: more) }
   case class `Accept`(mediaRanges: Seq[MediaRange]) extends HttpHeader {
-    def value = mediaRanges.mkString(", ")
+    def value = mediaRanges.map(_.value).mkString(", ")
   }
   
   object `Accept-Charset` { def apply(first: HttpCharsetRange, more: HttpCharsetRange*): `Accept-Charset` = apply(first +: more) }
   case class `Accept-Charset`(charsetRanges: Seq[HttpCharsetRange]) extends HttpHeader {
-    def value = charsetRanges.mkString(", ")
+    def value = charsetRanges.map(_.value).mkString(", ")
   }
   
   object `Accept-Encoding` { def apply(first: HttpEncodingRange, more: HttpEncodingRange*): `Accept-Encoding` = apply(first +: more) }
   case class `Accept-Encoding`(encodings: Seq[HttpEncodingRange]) extends HttpHeader {
-    def value = encodings.mkString(", ")
+    def value = encodings.map(_.value).mkString(", ")
   }
   
   object `Accept-Language` { def apply(first: LanguageRange, more: LanguageRange*): `Accept-Language` = apply(first +: more) }
   case class `Accept-Language`(languageRanges: Seq[LanguageRange]) extends HttpHeader {
-    def value = languageRanges.mkString(", ")
+    def value = languageRanges.map(_.value).mkString(", ")
   }
   
   object `Accept-Ranges` { def apply(first: RangeUnit, more: RangeUnit*): `Accept-Ranges` = apply(first +: more) }

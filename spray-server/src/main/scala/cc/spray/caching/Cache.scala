@@ -61,4 +61,14 @@ trait Cache[V] {
    * Supplies a cache entry for the given key from the given expression.
    */
   def fromFuture(key: Any)(future: => Future[V]): Future[V]
+
+  /**
+   * Removes the cache item for the given key. Returns the removed item if it was found (and removed).
+   */
+  def remove(key: Any): Option[Future[V]]
+
+  /**
+   * Clears the cache by removing all entries.
+   */
+  def clear()
 }

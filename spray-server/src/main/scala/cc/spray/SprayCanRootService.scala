@@ -16,23 +16,26 @@
 package cc.spray
 
 import akka.actor.ActorRef
+import http._
+import typeconversion.ChunkSender
 import utils.ActorHelpers
+import java.net.InetAddress
+import SprayCanConversions._
 
 /**
  * A specialized [[cc.spray.RootService]] for connector-less deployment on top of the ''spray-can'' `HttpServer`.
  */
 class SprayCanRootService(firstService: ActorRef, moreServices: ActorRef*)
-        extends RootService(firstService, moreServices: _*) with SprayCanSupport {
+        extends RootService(firstService, moreServices: _*) {
 
   lazy val timeoutActor = ActorHelpers.actor(SprayServerSettings.TimeoutActorId)
 
   protected override def receive = {
     case context: can.RequestContext => {
       import context._
-      val complete: can.HttpResponse => Unit = responder.complete
       try {
-        handler(fromSprayCanContext(request, remoteAddress, complete))
-      } catch handleExceptions(request, complete)
+        handler(fromSprayCanContext(request, remoteAddress, sprayCanAdapterResponder(responder)))
+      } catch handleExceptions(request, responder.complete)
     }
     case can.Timeout(method, uri, protocol, headers, remoteAddress, complete) => {
       val request = can.HttpRequest(method, uri, headers)
@@ -40,7 +43,8 @@ class SprayCanRootService(firstService: ActorRef, moreServices: ActorRef*)
         if (self == timeoutActor)
           complete(toSprayCanResponse(timeoutResponse(fromSprayCanRequest(request))))
         else
-          timeoutActor ! Timeout(fromSprayCanContext(request, remoteAddress, complete))
+          timeoutActor ! Timeout(fromSprayCanContext(request, remoteAddress,
+            RequestResponder(response => complete(toSprayCanResponse(response)))))
       } catch handleExceptions(request, complete)
     }
   }
@@ -48,5 +52,30 @@ class SprayCanRootService(firstService: ActorRef, moreServices: ActorRef*)
   protected def handleExceptions(request: can.HttpRequest,
                                  complete: can.HttpResponse => Unit): PartialFunction[Throwable, Unit] = {
     case e: Exception => complete(toSprayCanResponse(responseForException(request, e)))
+  }
+
+  protected def fromSprayCanContext(request: can.HttpRequest, remoteAddress: InetAddress,
+                                    responder: RequestResponder) = {
+    RequestContext(
+      request = fromSprayCanRequest(request),
+      remoteHost = HttpIp(remoteAddress),
+      responder = responder
+    )
+  }
+
+  protected def sprayCanAdapterResponder(canResponder: can.RequestResponder): RequestResponder = {
+    RequestResponder(
+      complete = response => canResponder.complete(toSprayCanResponse(response)),
+      startChunkedResponse = { response =>
+        val canChunkedResponder = canResponder.startChunkedResponse(toSprayCanResponse(response))
+        new ChunkSender {
+          def sendChunk(chunk: MessageChunk) = canChunkedResponder.sendChunk(toSprayCanMessageChunk(chunk))
+          def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
+            canChunkedResponder.close(extensions.map(toSprayCanChunkExtension), trailer.map(toSprayCanHeader))
+          }
+        }
+      },
+      resetConnectionTimeout = () => canResponder.resetConnectionTimeout()
+    )
   }
 }

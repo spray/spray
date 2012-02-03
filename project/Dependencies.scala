@@ -3,40 +3,46 @@ import sbt._
 object Dependencies {
 
   val resolutionRepos = Seq(
-    "Akka Repository" at "http://akka.io/repository/",
+    "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
     "Glassfish Repository" at "http://download.java.net/maven/glassfish/",
+    "spray repo" at "http://repo.spray.cc/",
     ScalaToolsSnapshots
   )
 
   object V {
-    val akka      = "1.2"
-    val jetty     = "8.0.3.v20111011"
-    val sprayCan  = "0.9.1"
-    val sprayJson = "1.0.1"
-    val slf4j     = "1.6.1"
-    val logback   = "0.9.29"
+    val akka      = "1.3"
+    val jetty     = "8.1.0.v20120127"
+    val sprayCan  = "0.9.2"
+    val sprayJson = "1.1.0"
+    val slf4j     = "1.6.4"
+    val logback   = "1.0.0"
+    val liftJson  = "2.4"
   }
 
   object Compile {
     val akkaActor     = "se.scalablesolutions.akka" %   "akka-actor"                % V.akka      % "compile"
     val parboiled     = "org.parboiled"             %   "parboiled-scala"           % "1.0.2"     % "compile"
     val mimepull      = "org.jvnet"                 %   "mimepull"                  % "1.6"       % "compile"
-    val sprayCan      = "cc.spray.can"              %   "spray-can"                 % V.sprayCan  % "compile"
+    val sprayCan      = "cc.spray"                  %   "spray-can"                 % V.sprayCan  % "compile"
+    val sprayJson     = "cc.spray"                  %%  "spray-json"                % V.sprayJson % "compile"
     val pegdown       = "org.pegdown"               %   "pegdown"                   % "1.1.0"     % "compile"
-    val sprayJson     = "cc.spray.json"             %%  "spray-json"                % V.sprayJson % "compile"
+    val clHashMap     = "com.googlecode.concurrentlinkedhashmap" % "concurrentlinkedhashmap-lru" % "1.2" % "compile"
   }
 
   object Provided {
-    val sprayJson     = "cc.spray.json"             %%  "spray-json"                % V.sprayJson       % "provided"
-    val sprayCan      = "cc.spray.can"              %   "spray-can"                 % V.sprayCan        % "provided"
+    val akkaActor     = "se.scalablesolutions.akka" %   "akka-actor"                % V.akka            % "provided"
+    val sprayJson     = "cc.spray"                  %%  "spray-json"                % V.sprayJson       % "provided"
+    val sprayCan      = "cc.spray"                  %   "spray-can"                 % V.sprayCan        % "provided"
     val servlet30     = "org.glassfish"             %   "javax.servlet"             % "3.0"             % "provided"
     val jetty7Async   = "org.eclipse.jetty"         %   "jetty-continuation"        % "7.5.1.v20110908" % "provided"
     val tomcat6Async  = "org.atmosphere"            %   "atmosphere-compat-tomcat"  % "0.7.1"           % "provided"
     val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % V.slf4j           % "provided"
+    val liftJson      = "net.liftweb"               %%  "lift-json"                 % V.liftJson        % "provided"
+    val scalate       = "org.fusesource.scalate"    %   "scalate-core"              % "1.5.3"           % "provided"
   }
 
   object Test {
-    val specs2        = "org.specs2"                %%  "specs2"                    % "1.6.1"   % "test"
+    val specs2        = "org.specs2"                %%  "specs2"                    % "1.7.1"   % "test"
     val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % V.slf4j   % "test"
     val logback       = "ch.qos.logback"            %   "logback-classic"           % V.logback % "test"
   }

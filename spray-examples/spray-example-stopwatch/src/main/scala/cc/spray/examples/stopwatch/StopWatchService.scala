@@ -43,7 +43,7 @@ trait StopWatchService extends Directives with StopWatchMarshallers {
           createNewWatch()
         } ~
         get {
-          _.complete(watches)
+          completeWith(watches)
         }      
       } ~
       pathPrefix("watch" / IntNumber) { ix =>
@@ -53,7 +53,7 @@ trait StopWatchService extends Directives with StopWatchMarshallers {
             ctx.complete("Removed watch " + ix)
           } 
           get {
-            _.complete(watches(ix))
+            completeWith(watches(ix))
           }
         } ~
         path("start") {

@@ -19,105 +19,115 @@ package test
 
 import cc.spray.RequestContext
 import http._
-import java.util.concurrent.{CountDownLatch, TimeUnit}
 import akka.util.Duration
 import akka.util.duration._
 import utils._
+import java.lang.Class
 
 /**
  * Mix this trait into the class or trait containing your route and service tests.
  * Use the {{test}} and {{testService}} methods to test the behavior of your routes and services for different HTTP
  * request examples.
  */
-trait SprayTest {
+trait SprayTest extends RouteResultComponent {
 
   def test(request: HttpRequest, timeout: Duration = 1000.millis)(route: Route): RoutingResultWrapper = {
-    var result: Option[RoutingResult] = None
-    val latch = new CountDownLatch(1)
-    val responder = { (rr: RoutingResult) =>
-      result = Some(rr)
-      latch.countDown()
+    val routeResult = new RouteResult
+    route {
+      RequestContext(
+        request = request,
+        responder = routeResult.requestResponder,
+        unmatchedPath = request.path
+      )
     }
-    route(RequestContext(request = request, responder = responder, unmatchedPath = request.path))
     // since the route might detach we block until the route actually completes or times out
-    latch.await(timeout.toMillis, TimeUnit.MILLISECONDS)
-    new RoutingResultWrapper(result.getOrElse(doFail("No response received")))
+    routeResult.awaitResult(timeout)
+    new RoutingResultWrapper(routeResult, timeout)
   }
 
-  class RoutingResultWrapper(rr: RoutingResult) {
-    def handled: Boolean = rr.isInstanceOf[Respond]
-    def response: HttpResponse = rr match {
-      case Respond(response) => response
-      case Reject(rejections) => doFail("Request was rejected with " + rejections)
+  implicit def wrapRoute(theRoute: Route)
+                        (implicit theRejectionHandler: RejectionHandler = RejectionHandler.Default) = {
+    new HttpServiceLogic with Logging {
+      override lazy val log = NoLog // in the tests we don't log
+      val route = theRoute
+      def rejectionHandler = theRejectionHandler
     }
-    def rawRejections: Set[Rejection] = rr match {
-      case Respond(response) => doFail("Request was not rejected, response was " + response)
-      case Reject(rejections) => rejections 
+  }
+
+  def testService(request: HttpRequest, timeout: Duration = 1000.millis)
+                 (service: HttpServiceLogic): ServiceResultWrapper = {
+    val routeResult = new RouteResult
+    service.handle {
+      RequestContext(
+        request = request,
+        responder = routeResult.requestResponder,
+        unmatchedPath = request.path
+      )
     }
-    def rejections: Set[Rejection] = Rejections.applyCancellations(rawRejections)   
-  }
-
-  trait ServiceTest extends HttpServiceLogic with Logging {
-    override lazy val log: Log = NoLog // in the tests we don't log
-    val customRejectionHandler = emptyPartialFunc
-  }
-
-  /**
-   * The default implicit service wrapper using the HttpServiceLogic for testing.
-   * If you have derived your own CustomHttpServiceLogic that you would like to test, create an implicit conversion
-   * similar to this:
-   * {{{
-   * implicit def customWrapRootRoute(rootRoute: Route): ServiceTest = new CustomHttpServiceLogic with ServiceTest {
-   *   val route = rootRoute
-   * }
-   * }}}
-   */
-  implicit def wrapRootRoute(rootRoute: Route): ServiceTest = new ServiceTest {
-    val route = rootRoute
-  }
-
-  def testService(request: HttpRequest, timeout: Duration = 1000.millis)(service: ServiceTest): ServiceResultWrapper = {
-    var result: Option[RoutingResult] = None
-    val latch = new CountDownLatch(1)
-    val responder = { (rr: RoutingResult) =>
-      result = Some(rr)
-      latch.countDown()
-    }
-    service.handle(RequestContext(request = request, responder = responder, unmatchedPath = request.path))
     // since the route might detach we block until the route actually completes or times out
-    latch.await(timeout.toMillis, TimeUnit.MILLISECONDS)
-    result match {
-      case Some(Respond(response)) => new ServiceResultWrapper(Some(response))
-      case Some(_: Reject) => new ServiceResultWrapper(None)
-      case None => doFail("No response received")
-    }
+    routeResult.awaitResult(timeout)
+    new ServiceResultWrapper(routeResult, timeout)
   }
 
-  class ServiceResultWrapper(responseOption: Option[HttpResponse]) {
-    def handled: Boolean = responseOption.isDefined
-    def response: HttpResponse = responseOption.getOrElse(doFail("Request was not handled"))
-  }
-
-  def captureRequestContext(route: (Route => Route) => Unit): RequestContext = {
-    var result: Option[RequestContext] = None;
-    route { inner => { ctx => { result = Some(ctx); inner(ctx) }}}
-    result.getOrElse(doFail("No RequestContext received"))
-  }
-
-  private def doFail(msg: String): Nothing = {
-    try {
-      this.asInstanceOf[{ def fail(msg: String): Nothing }].fail(msg)
-    } catch {
-      case e: NoSuchMethodException => {
-        try {
-          this.asInstanceOf[{ def failure(msg: String): Nothing }].failure(msg)
-        } catch {
-          case e: NoSuchMethodException =>
-            throw new RuntimeException("Illegal mixin: the SprayTest trait can only be mixed into test classes that " +
-              "supply a fail(String) or failure(String) method (e.g. ScalaTest, Specs or Specs2 specifications)")
-        }
+  class ServiceResultWrapper(routeResult: RouteResult, timeout: Duration) {
+    def handled: Boolean = routeResult.synchronized { routeResult.response.isDefined }
+    def response: HttpResponse = routeResult.synchronized {
+      routeResult.response.getOrElse {
+        routeResult.rejections.foreach(rejs => doFail("Service did not convert rejection(s): " + rejs))
+        doFail("Request was neither completed nor rejected within " + timeout)
       }
     }
+    def chunks: List[MessageChunk] = routeResult.synchronized { routeResult.chunks.toList }
+    def closingExtensions = routeResult.synchronized { routeResult.closingExtensions }
+    def trailer = routeResult.synchronized { routeResult.trailer }
+  }
+
+  class RoutingResultWrapper(routeResult: RouteResult, timeout: Duration)
+    extends ServiceResultWrapper(routeResult, timeout){
+    override def response: HttpResponse = routeResult.synchronized {
+      routeResult.response.getOrElse {
+        doFail("Request was rejected with " + rejections)
+      }
+    }
+    def rawRejections: Set[Rejection] = routeResult.synchronized {
+      routeResult.rejections.getOrElse {
+        routeResult.response.foreach(resp => doFail("Request was not rejected, response was " + resp))
+        doFail("Request was neither completed nor rejected within " + timeout)
+      }
+    }
+    def rejections: Set[Rejection] = Rejections.applyCancellations(rawRejections)
+  }
+
+  def doFail(msg: String): Nothing = {
+    import util.control.Exception._
+    ignoring(classOf[ClassNotFoundException]) {
+      // try generating a scalatest test failure
+      throw Class.forName("org.scalatest.TestFailedException")
+        .getConstructor(classOf[String], classOf[Int])
+        .newInstance(msg, 14 :java.lang.Integer)
+        .asInstanceOf[Exception]
+    }
+    ignoring(classOf[ClassNotFoundException]) {
+      // try generating a specs2 test failure
+      def specs2(className: String) = Class.forName("org.specs2.execute." + className)
+      throw specs2("FailureException")
+        .getConstructor(specs2("Failure"))
+        .newInstance(
+          specs2("Failure")
+            .getConstructor(classOf[String], classOf[String], classOf[List[_]], specs2("Details"))
+            .newInstance(msg, "", new Exception().getStackTrace.toList,
+              specs2("NoDetails").getConstructor().newInstance().asInstanceOf[Object])
+            .asInstanceOf[Object]
+        )
+        .asInstanceOf[Exception]
+    }
+    ignoring(classOf[NoSuchMethodException]) {
+      // fallback: try a `fail` method defined on this
+      this.asInstanceOf[{ def fail(msg: String): Nothing }].fail(msg)
+    }
+    sys.error("Illegal SprayTest usage: When used with scalatest or specs2 you can `import cc.spray.SprayTest._` or " +
+      "mix in the SprayTest trait. With other test frameworks the former option is unavailable and your test classes " +
+      "have to implement a `fail(String)` method in order to be usable with SprayTest.")
   }
 }
 
