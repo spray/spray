@@ -9,25 +9,25 @@ import akka.dispatch.Future
 import org.specs2.matcher.Matcher
 import cc.spray.utils.identityFunc
 
-class LruCacheSpec extends Specification {
+class ExpiringLruCacheSpec extends Specification {
 
   "An LruCache" should {
     "be initially empty" in {
-      LruCache().store.toString mustEqual "{}"
+      lruCache().store.toString mustEqual "{}"
     }
     "store uncached values" in {
-      val cache = LruCache[String]()
+      val cache = lruCache[String]()
       cache(1)("A").get mustEqual "A"
       cache.store.toString mustEqual "{1=A}"
     }
     "return stored values upon cache hit on existing values" in {
-      val cache = LruCache[String]()
+      val cache = lruCache[String]()
       cache(1)("A").get mustEqual "A"
       cache(1)("").get mustEqual "A"
       cache.store.toString mustEqual "{1=A}"
     }
     "return Futures on uncached values during evaluation and replace these with the value afterwards" in {
-      val cache = LruCache[String]()
+      val cache = lruCache[String]()
       val latch = new CountDownLatch(1)
       val future1 = cache(1) { completableFuture =>
         Actor.spawn {
@@ -43,7 +43,7 @@ class LruCacheSpec extends Specification {
       cache.store.toString mustEqual "{1=A}"
     }
     "properly limit capacity" in {
-      val cache = LruCache[String](maxEntries = 3)
+      val cache = lruCache[String](maxCapacity = 3)
       cache(1)("A").get mustEqual "A"
       cache(2)("B").get mustEqual "B"
       cache(3)("C").get mustEqual "C"
@@ -52,7 +52,7 @@ class LruCacheSpec extends Specification {
       cache.store.toString mustEqual "{2=B, 3=C, 4=D}"
     }
     "expire old entries" in {
-      val cache = LruCache[String](ttl = Duration("75 ms"))
+      val cache = lruCache[String](timeToIdle = Duration("75 ms"))
       cache(1)("A").get mustEqual "A"
       cache(2)("B").get mustEqual "B"
       Thread.sleep(50)
@@ -64,7 +64,7 @@ class LruCacheSpec extends Specification {
       cache.get(1) must beNone // but not retrievable anymore
     }
     "refresh an entries expiration time on cache hit" in {
-      val cache = LruCache[String]()
+      val cache = lruCache[String]()
       cache(1)("A").get mustEqual "A"
       cache(2)("B").get mustEqual "B"
       cache(3)("C").get mustEqual "C"
@@ -72,7 +72,7 @@ class LruCacheSpec extends Specification {
       cache.store.toString mustEqual "{2=B, 1=A, 3=C}"
     }
     "be thread-safe" in {
-      val cache = LruCache[Int](maxEntries = 1000)
+      val cache = lruCache[Int](maxCapacity = 1000)
       // exercise the cache from 10 parallel "tracks" (threads)
       val views = Future.traverse(Seq.tabulate(10)(identityFunc), Long.MaxValue) { track =>
         Future {
@@ -98,4 +98,8 @@ class LruCacheSpec extends Specification {
       views.transpose must beConsistent.forall
     }
   }
+
+  def lruCache[T](maxCapacity: Int = 500, initialCapacity: Int = 16, timeToIdle: Duration = Duration("5 min")) =
+    new ExpiringLruCache[T](maxCapacity,  initialCapacity, timeToIdle.toMillis)
+
 }
