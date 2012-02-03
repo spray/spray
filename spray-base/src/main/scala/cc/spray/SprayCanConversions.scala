@@ -54,7 +54,7 @@ object SprayCanConversions {
     case can.HttpMethods.HEAD    => HEAD
     case can.HttpMethods.OPTIONS => OPTIONS
     case can.HttpMethods.TRACE   => TRACE
-    case can.HttpMethods.CONNECT => throw new HttpException(StatusCodes.MethodNotAllowed)
+    case can.HttpMethods.CONNECT => throw HttpException(StatusCodes.MethodNotAllowed)
   }
 
   def toSprayCanMethod(method: HttpMethod) = method match {
@@ -65,7 +65,6 @@ object SprayCanConversions {
     case HEAD    => can.HttpMethods.HEAD
     case OPTIONS => can.HttpMethods.OPTIONS
     case TRACE   => can.HttpMethods.TRACE
-    case CONNECT => can.HttpMethods.CONNECT
   }
 
   def fromSprayCanProtocol(protocol: can.HttpProtocol) = protocol match {
