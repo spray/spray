@@ -135,7 +135,7 @@ class RequestParserSpec extends Specification {
 
       "an URI longer than 2048 chars" in {
         parse()("GET x" + "xxxx" * 512 + " HTTP/1.1") mustEqual
-                ErrorParser("URIs with more than 2048 characters are not supported", 414)
+                ErrorParser("URI length exceeds the configured limit of 2048 characters", 414)
       }
 
       "HTTP version 1.2" in {
@@ -153,14 +153,14 @@ class RequestParserSpec extends Specification {
         parse() {
           """|GET / HTTP/1.1
              |UserxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxAgent: curl/7.19.7"""
-        } mustEqual ErrorParser("HTTP headers with names longer than 64 characters are not supported")
+        } mustEqual ErrorParser("HTTP header name exceeds the configured limit of 64 characters (userxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...)")
       }
 
       "with a header-value longer than 8192 chars" in {
         parse() {
           """|GET / HTTP/1.1
              |Fancy: 0""" + ("12345678" * 1024) + "\r\n"
-        } mustEqual ErrorParser("HTTP header values longer than 8192 characters are not supported (header 'fancy')", 400)
+        } mustEqual ErrorParser("HTTP header value exceeds the configured limit of 8192 characters (header 'fancy')", 400)
       }
 
       "with an invalid Content-Length header value" in {

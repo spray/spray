@@ -107,7 +107,7 @@ private[can] class UriParser(config: MessageParserConfig, method: HttpMethod) ex
         case _ => uri.append(cursor); this
       }
     } else {
-      ErrorParser("URIs with more than " + config.maxUriLength + " characters are not supported", 414)
+      ErrorParser("URI length exceeds the configured limit of " + config.maxUriLength + " characters", 414)
     }
   }
 }
@@ -172,7 +172,7 @@ private[can] class ReasonParser(config: MessageParserConfig, requestMethod: Http
         case _ => reason.append(cursor); this
       }
     } else {
-      ErrorParser("Reason phrases with more than " + config.maxResponseReasonLength + " characters are not supported")
+      ErrorParser("Reason phrase exceeds the configured limit of " + config.maxResponseReasonLength + " characters")
     }
   }
 }
@@ -193,7 +193,8 @@ private[can] class HeaderNameParser(config: MessageParserConfig, messageLine: Me
         case _ => ErrorParser("Invalid character '" + cursor + "', expected TOKEN CHAR, LWS or COLON")
       }
     } else {
-      ErrorParser("HTTP headers with names longer than " + config.maxHeaderNameLength + " characters are not supported")
+      ErrorParser("HTTP header name exceeds the configured limit of " + config.maxHeaderNameLength +
+        " characters (" + headerName.toString.take(50) + "...)")
     }
   }
   def toLowerCase(c: Char) = if ('A' <= c && c <= 'Z') (c + 32).toChar else c
@@ -252,19 +253,17 @@ private[can] class HeaderValueParser(config: MessageParserConfig, messageLine: M
     if (headerValue.length <= config.maxHeaderValueLength) {
       cursor match {
         case ' ' | '\t' | '\r' => space = true; new LwsParser(this).handleChar(cursor)
-        case '\n' => if (headerCount < config.maxHeaderCount) {
-          nameParser
-        } else {
-          ErrorParser("HTTP message with more than " + config.maxHeaderCount + " headers are not supported", 400)
-        }
+        case '\n' =>
+          if (headerCount < config.maxHeaderCount) nameParser
+          else ErrorParser("HTTP message header count exceeds the configured limit of " + config.maxHeaderCount, 400)
         case _ =>
           if (space) {headerValue.append(' '); space = false}
           headerValue.append(cursor)
           this
       }
     } else {
-      ErrorParser("HTTP header values longer than " + config.maxHeaderValueLength +
-              " characters are not supported (header '" + headerName + "')")
+      ErrorParser("HTTP header value exceeds the configured limit of " + config.maxHeaderValueLength +
+        " characters (header '" + headerName + "')")
     }
   }
 }
@@ -273,7 +272,9 @@ private[can] class ChunkParser(config: MessageParserConfig) extends CharacterPar
   var chunkSize = -1
   def handle(digit: Int) = {
     chunkSize = if (chunkSize == -1) digit else chunkSize * 16 + digit
-    if (chunkSize > config.maxChunkSize) ErrorParser("HTTP message chunk size exceeds configured limit") else this
+    if (chunkSize > config.maxChunkSize)
+      ErrorParser("HTTP message chunk size exceeds the configured limit of " + config.maxChunkSize + " bytes")
+    else this
   }
   def handleChar(cursor: Char) = cursor match {
     case x if '0' <= cursor && cursor <= '9' => handle(x - '0')
@@ -303,8 +304,8 @@ private[can] class ChunkExtensionNameParser(config: MessageParserConfig, chunkSi
         case _ => ErrorParser("Invalid character '" + cursor + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
       }
     } else {
-      ErrorParser("Chunk extensions with names longer than " + config.maxChunkExtNameLength +
-              " characters are not supported")
+      ErrorParser("Chunk extension name exceeds the configured limit of " + config.maxChunkExtNameLength +
+              " characters (" + extName.toString.take(50) + "...)")
     }
   }
 }
@@ -317,7 +318,7 @@ private[can] class ChunkExtensionValueParser(config: MessageParserConfig, chunkS
   def next(parser: MessageParser) = if (extCount < config.maxChunkExtCount) {
     parser
   } else {
-    ErrorParser("Chunks with more than " + config.maxChunkExtCount + " extensions are not supported", 400)
+    ErrorParser("Chunk extension count exceeds the configured limit of " + config.maxChunkExtCount, 400)
   }
   def newExtensions = ChunkExtension(extName, extValue.toString) :: extensions
   def handleChar(cursor: Char) = {
@@ -342,8 +343,8 @@ private[can] class ChunkExtensionValueParser(config: MessageParserConfig, chunkS
         }
       }
     } else {
-      ErrorParser("Chunk extensions with values longer than " + config.maxChunkExtValueLength +
-              " characters are not supported (extension '" + extName + "')")
+      ErrorParser("Chunk extension value exceeds the configured limit of " + config.maxChunkExtValueLength +
+              " characters (extension '" + extName + "')")
     }
   }
 }
@@ -387,7 +388,8 @@ private[can] class FixedLengthBodyParser(config: MessageParserConfig, messageLin
                                          headers: List[HttpHeader], connectionHeader: Option[String], totalBytes: Int)
         extends IntermediateParser {
   require(totalBytes >= 0, "Content-Length must not be negative")
-  require(totalBytes <= config.maxContentLength, "HTTP message Content-Length " + totalBytes + " exceeds configured limit")
+  require(totalBytes <= config.maxContentLength,
+    "HTTP message Content-Length " + totalBytes + " exceeds the configured limit of " + config.maxContentLength)
 
   val body = new Array[Byte](totalBytes)
   var bytesRead = 0
@@ -411,7 +413,7 @@ private[can] class ToCloseBodyParser(config: MessageParserConfig, messageLine: M
         if (body.length + array.length <= config.maxContentLength) {
           body = body concat array
           this
-        } else ErrorParser("HTTP message body size exceeds configured limit", 413)
+        } else ErrorParser("HTTP message body size exceeds the configured limit of " + config.maxContentLength, 413)
       }
     }
   }
@@ -421,7 +423,8 @@ private[can] class ToCloseBodyParser(config: MessageParserConfig, messageLine: M
 private[can] class ChunkBodyParser(config: MessageParserConfig, chunkSize: Int,
                                    extensions: List[ChunkExtension] = Nil) extends IntermediateParser {
   require(chunkSize > 0, "Chunk size must not be negative")
-  require(chunkSize <= config.maxChunkSize, "HTTP message chunk size " + chunkSize + " exceeds configured limit")
+  require(chunkSize <= config.maxChunkSize,
+    "HTTP message chunk size " + chunkSize + " exceeds configured limit of " + config.maxChunkSize)
 
   val body = new Array[Byte](chunkSize)
   var bytesRead = 0

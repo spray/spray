@@ -104,7 +104,7 @@ class ResponseParserSpec extends Specification {
 
       "a response status reason longer than 64 chars" in {
         parse("HTTP/1.1 250 x" + "xxxx" * 16 + "\r\n") mustEqual
-                ErrorParser("Reason phrases with more than 64 characters are not supported")
+                ErrorParser("Reason phrase exceeds the configured limit of 64 characters")
       }
 
       "with an illegal char in a header name" in {
@@ -118,14 +118,14 @@ class ResponseParserSpec extends Specification {
         parse {
           """|HTTP/1.1 200 OK
              |UserxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxAgent: curl/7.19.7"""
-        } mustEqual ErrorParser("HTTP headers with names longer than 64 characters are not supported")
+        } mustEqual ErrorParser("HTTP header name exceeds the configured limit of 64 characters (userxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...)")
       }
 
       "with a header-value longer than 8192 chars" in {
         parse {
           """|HTTP/1.1 200 OK
              |Fancy: 0""" + ("12345678" * 1024) + "\r\n"
-        } mustEqual ErrorParser("HTTP header values longer than 8192 characters are not supported (header 'fancy')", 400)
+        } mustEqual ErrorParser("HTTP header value exceeds the configured limit of 8192 characters (header 'fancy')", 400)
       }
 
       "with an invalid Content-Length header value" in {
