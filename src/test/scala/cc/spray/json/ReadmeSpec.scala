@@ -28,7 +28,7 @@ class ReadmeSpec extends Specification {
       val jsonAst = source.asJson
       jsonAst mustEqual JsObject("some" -> JsString("JSON source"))
       
-      val json2 = PrettyPrinter(jsonAst)
+      val json2 = jsonAst.prettyPrint
       json2 mustEqual
               """{
                 |  "some": "JSON source"
@@ -45,7 +45,7 @@ class ReadmeSpec extends Specification {
   "The case class example" should {
     "behave as expected" in {
       object MyJsonProtocol extends DefaultJsonProtocol {
-        implicit val colorFormat = jsonFormat(Color, "name", "red", "green", "blue")
+        implicit val colorFormat = jsonFormat4(Color)
       }
       import MyJsonProtocol._
       color.toJson.convertTo[Color] mustEqual color
@@ -60,7 +60,7 @@ class ReadmeSpec extends Specification {
             JsArray(JsString(c.name), JsNumber(c.red), JsNumber(c.green), JsNumber(c.blue))
 
           def read(value: JsValue) = value match {
-            case JsArray(Seq(JsString(name), JsNumber(red), JsNumber(green), JsNumber(blue))) =>
+            case JsArray(JsString(name) :: JsNumber(red) :: JsNumber(green) :: JsNumber(blue) :: Nil) =>
               new Color(name, red.toInt, green.toInt, blue.toInt)
             case _ => deserializationError("Color expected")
           }
