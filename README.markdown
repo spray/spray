@@ -10,7 +10,7 @@ It sports the following features:
 
 ### Installation
 
-_spray-json_ is available from the [repo.spray.cc] repositories.
+_spray-json_ is available from the [repo.spray.cc] repository.
 The latest release is `1.1.0` and is built against Scala 2.9.1.
 
 If you use SBT you can include _spray-json_ in your project with
@@ -129,6 +129,15 @@ and explicitly refer to the case classes `apply` method as in this example:
     object MyJsonProtocol extends DefaultJsonProtocol {
       implicit def namedListFormat[A :JsonFormat] = jsonFormat2(NamedList.apply[A])
     }
+
+
+#### NullOptions
+
+The `NullOptions` trait supplies an alternative rendering mode for optional case class members. Normally optional
+members that are undefined (`None`) are not rendered at all. By mixing in this trait into your custom JsonProtocol you
+can enforce the rendering of undefined members as `null`.
+(Note that this only affect JSON writing, spray-json will always read missing optional members as well as `null`
+optional members as `None`.)
 
 
 ### Providing JsonFormats for other Types
