@@ -20,10 +20,15 @@ scalacOptions := Seq("-deprecation", "-encoding", "utf8")
 
 libraryDependencies ++= Seq(
   "org.parboiled" % "parboiled-scala" % "1.0.2" % "compile",
-  "org.specs2" %% "specs2" % "1.6.1" % "test"
+  "org.specs2" %% "specs2" % "1.7.1" % "test"
 )
 
 scaladocOptions <<= (name, version).map { (n, v) => Seq("-doc-title", n + " " + v) }
+
+
+///////////////
+// publishing
+///////////////
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
 
@@ -39,6 +44,12 @@ publishTo <<= version { version =>
     }
   }
 }
+
+
+///////////////
+// ls-sbt
+///////////////
+
 
 seq(lsSettings:_*)
 
