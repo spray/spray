@@ -129,5 +129,18 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
       }.response.content.as[String] mustEqual Right("yeah")
     }
   }
+
+  "RequestContext.complete(Option)" should {
+    "correctly complete the request with the option content" in {
+      test(HttpRequest()) {
+        completeWith(Some("yeah"))
+      }.response.content.as[String] mustEqual Right("yeah")
+    }
+    "reject with an empty rejection set if the option is empty" in {
+      test(HttpRequest()) {
+        completeWith(None: Option[String])
+      }.rejections mustEqual Set()
+    }
+  }
   
 }
