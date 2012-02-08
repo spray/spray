@@ -17,30 +17,48 @@
 package cc.spray
 package directives
 
-import http.HttpMessage
 import utils.Logging
+import http.{HttpResponse, HttpRequest, HttpMessage}
 
 trait DebuggingDirectives {
-  this: MiscDirectives with Logging =>
+  this: BasicDirectives with MiscDirectives with Logging =>
 
-  lazy val logRequest: SprayRoute0 = logRequest("logged request")
-  def logRequest(marker: String): SprayRoute0 =
-    transformRequest(logMessage(marker))
+  def logRequest(marker: String = "") = transformRequest(logMessage("Request", marker))
 
-  lazy val logResponse: SprayRoute0 = logResponse("logged response")
-  def logResponse(marker: String): SprayRoute0 =
-    transformResponse(logMessage(marker))
+  def logResponse(marker: String = "") = transformResponse(logMessage("Response", marker))
 
-  lazy val logUnchunkedResponse: SprayRoute0 = logUnchunkedResponse("logged response (unchunked)")
-  def logUnchunkedResponse(marker: String): SprayRoute0 =
-    transformUnchunkedResponse(logMessage(marker))
+  def logUnchunkedResponse(marker: String) = transformUnchunkedResponse(logMessage("Unchunked response", marker))
 
-  lazy val logChunkedResponse: SprayRoute0 = logChunkedResponse("logged response (chunked)")
-  def logChunkedResponse(marker: String): SprayRoute0 =
-    transformChunkedResponse(logMessage(marker))
+  def logChunkedResponse(marker: String) = transformChunkedResponse(logMessage("Chunked response", marker))
 
-  private def logMessage[T <: HttpMessage[T]](marker: String)(msg: T) = {
-    log.debug("%s: %s", marker, msg)
+  def logRequestResponse(marker: String = "",
+                         showRequest: HttpRequest => Any = utils.identityFunc,
+                         showResponse: HttpResponse => Any = utils.identityFunc) = {
+    transformRequestContext { ctx =>
+      val mark = if (marker.isEmpty) marker else " " + marker
+      val request2Show = showRequest(ctx.request)
+      log.debug("Request%s: %s", mark, request2Show)
+      ctx.withResponderTransformed { responder =>
+        responder.copy(
+          complete = { response =>
+            log.debug("Completed%s %s with %s", mark, request2Show, showResponse(response))
+            responder.complete(response)
+          },
+          reject = { rejections =>
+            log.debug("Rejected%s %s with %s", mark, request2Show, rejections)
+            responder.reject(rejections)
+          },
+          startChunkedResponse = { response =>
+            log.debug("Started chunked response for%s %s with %s", mark, request2Show, showResponse(response))
+            responder.startChunkedResponse(response)
+          }
+        )
+      }
+    }
+  }
+
+  private def logMessage[T <: HttpMessage[T]](prefix: String, marker: String)(msg: T) = {
+    log.debug("%s: %s", if (marker.isEmpty) prefix else prefix + ' ' + marker, msg)
     msg
   }
 
