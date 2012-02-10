@@ -35,6 +35,7 @@ object SprayBuild extends Build {
         Provided.sprayCan,
         Provided.slf4j,
         Provided.liftJson,
+        Provided.twirlApi,
         Test.specs2
       )
     )
