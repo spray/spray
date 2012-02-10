@@ -20,6 +20,7 @@ package directives
 import caching._
 import http._
 import HttpHeaders._
+import CacheDirectives._
 
 private[spray] trait CacheDirectives {
   this: BasicDirectives =>
@@ -32,7 +33,11 @@ private[spray] trait CacheDirectives {
                    keyer: CacheKeyer = CacheKeyers.UriGetCacheKeyer) = {
     transformRoute { route => ctx =>
       val noCachePresent = ctx.request.headers.exists {
-        case x: `Cache-Control` => x.directives.contains(CacheDirectives.`no-cache`)
+        case x: `Cache-Control` => x.directives.exists {
+          case `no-cache` => true
+          case `max-age`(0) => true
+          case _ => false
+        }
         case _ => false
       }
       if (!noCachePresent) {
