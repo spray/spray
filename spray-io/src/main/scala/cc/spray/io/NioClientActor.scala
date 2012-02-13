@@ -14,47 +14,20 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package nio
+package cc.spray.io
 
-sealed trait ConnectionClosedReason
-case object ProtocolClose extends ConnectionClosedReason
-case object PeerClosed extends ConnectionClosedReason
-case object IdleTimeout extends ConnectionClosedReason
-case class ProtocolError(msg: String) extends ConnectionClosedReason
-case class IoError(error: Throwable) extends ConnectionClosedReason
+import akka.actor.Actor
+import config.NioClientConfig
 
+abstract class NioClientActor(val config: NioClientConfig, val nioWorker: NioWorker) extends NioPeer with Actor {
 
+  override def preStart() {
+    log.info("Starting {}", config.label)
+    nioWorker.start() // start if not started yet
+  }
 
+  override def postStop() {
+    log.info("Stopped {}", config.label)
+  }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}

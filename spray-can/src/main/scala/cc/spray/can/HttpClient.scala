@@ -21,6 +21,7 @@ import nio._
 import java.lang.String
 import java.net.{InetAddress, InetSocketAddress}
 import akka.actor.{UntypedChannel, ActorRef, Channel}
+import cc.spray.io.{ConnectionActors, NioClientActor, NioWorker, Pipelines}
 
 /**
  * Reacts to [[cc.spray.can.Connect]] messages by establishing a connection to the remote host. If there is an error

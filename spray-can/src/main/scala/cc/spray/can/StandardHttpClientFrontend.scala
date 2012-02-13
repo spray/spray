@@ -22,6 +22,7 @@ import collection.mutable.Queue
 import java.nio.channels.SocketChannel
 import akka.actor.{UntypedChannel, Channel}
 import util.Logging
+import cc.spray.io.Pipelines
 
 object StandardHttpClientFrontend extends Logging {
 

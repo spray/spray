@@ -18,6 +18,7 @@ package cc.spray.can
 
 import nio._
 import rendering.{HttpResponsePartRenderingContext, HttpResponseRenderer}
+import cc.spray.io.{ProtocolClose, Pipelines}
 
 object HttpResponseRendering {
 

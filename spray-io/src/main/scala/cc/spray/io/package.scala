@@ -14,21 +14,10 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package nio
+package cc.spray
 
-import akka.actor.Actor
-import config.NioClientConfig
+package object io {
 
-abstract class NioClientActor(val config: NioClientConfig, val nioWorker: NioWorker) extends NioPeer with Actor {
-
-  override def preStart() {
-    log.info("Starting {}", config.label)
-    nioWorker.start() // start if not started yet
-  }
-
-  override def postStop() {
-    log.info("Stopped {}", config.label)
-  }
+  type Pipeline = Any => Unit
 
 }

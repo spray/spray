@@ -18,6 +18,7 @@ package cc.spray.can
 
 import config.HttpParserConfig
 import model.{HttpMessagePart, HttpMessage}
+import cc.spray.io.Pipelines
 import nio.Pipelines
 import java.nio.ByteBuffer
 import annotation.tailrec

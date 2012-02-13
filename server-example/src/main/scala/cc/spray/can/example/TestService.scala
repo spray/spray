@@ -22,6 +22,7 @@ import model._
 import java.util.concurrent.TimeUnit
 import akka.actor.{PoisonPill, Scheduler, Kill, Actor}
 import util.DateTime
+import cc.spray.io.GetStats
 import nio.GetStats
 
 /*class TestService(id: String) extends Actor {

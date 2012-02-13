@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package nio
+package cc.spray.io
 
-case class Pipelines(
-  handle: Handle,
-  upstream: Pipeline,
-  downstream: Pipeline
-) {
-  def withUpstream(pipeline: Pipeline) = copy(upstream = pipeline)
-  def withDownstream(pipeline: Pipeline) = copy(downstream = pipeline)
+import util.Logging
+
+abstract class NioPeer extends Logging {
+
+  def nioWorker: NioWorker
+
+  protected def createConnectionHandle(key: Key): Handle
+
 }

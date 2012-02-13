@@ -14,21 +14,31 @@
  * limitations under the License.
  */
 
-package cc.spray.can.nio
+package cc.spray.io
 
+import java.nio.channels.{Channel, SelectionKey}
 import java.nio.ByteBuffer
+import collection.mutable.ListBuffer
 
-sealed trait Event
+sealed abstract class Key {
+  def channel: Channel
 
-// "general" events not on the connection-level
-case object Stopped extends Event
-case class Bound(bindingKey: Key) extends Event
-case class Unbound(bindingKey: Key) extends Event
-case class Connected(key: Key, tag: Any = ()) extends Event
+  private[nio] def selectionKey: SelectionKey
 
-// connection-level events
-case class Closed(handle: Handle, reason: ConnectionClosedReason) extends Event
-case class CompletedSend(handle: Handle) extends Event
-case class Received(handle: Handle, buffer: ByteBuffer) extends Event
+  private[nio] val writeBuffers = ListBuffer.empty[ListBuffer[ByteBuffer]]
 
-case class CommandError(command: Command, error: Throwable) extends Event
+  private[nio] def enable(ops: Int) {
+    selectionKey.interestOps(selectionKey.interestOps() | ops)
+  }
+
+  private[nio] def disable(ops: Int) {
+    selectionKey.interestOps(selectionKey.interestOps() & ~ops)
+  }
+}
+
+private[nio] object Key {
+  def apply(key: SelectionKey) = new Key {
+    def channel = key.channel
+    private[nio] def selectionKey = key
+  }
+}

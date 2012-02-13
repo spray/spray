@@ -18,6 +18,7 @@ package cc.spray.can
 
 import config.HttpParserConfig
 import model.{HttpProtocols, HttpMethods, HttpHeader, HttpResponse}
+import cc.spray.io.{Received, Pipelines}
 import nio.{Received, Pipelines}
 import parsing.{ErrorState, EmptyRequestParser}
 import rendering.HttpResponsePartRenderingContext

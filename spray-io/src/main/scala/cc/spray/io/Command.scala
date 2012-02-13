@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package nio
+package cc.spray.io
 
 import java.nio.ByteBuffer
 import java.net.SocketAddress

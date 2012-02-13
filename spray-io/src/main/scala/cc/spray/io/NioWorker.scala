@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package nio
+package cc.spray.io
 
 import java.nio.channels.{SelectionKey, SocketChannel, ServerSocketChannel}
 import java.nio.channels.spi.SelectorProvider
@@ -25,11 +24,10 @@ import org.slf4j.LoggerFactory
 import annotation.tailrec
 import collection.mutable.ListBuffer
 import util.SingleReaderConcurrentQueue
-import config.NioWorkerConfig
-import model.NioWorkerStats
 import akka.actor.{UntypedChannel, ActorRef}
 
-class NioWorker(config: NioWorkerConfig) extends UntypedChannel { nioWorker =>
+class NioWorker(config: NioWorkerConfig) extends UntypedChannel {
+  nioWorker =>
   private val log = LoggerFactory.getLogger(getClass)
   private lazy val _thread = new NioThread(config)
 
@@ -39,7 +37,7 @@ class NioWorker(config: NioWorkerConfig) extends UntypedChannel { nioWorker =>
     _thread.start()
   }
 
-  def ! (msg: Any)(implicit sender: UntypedChannel) {
+  def !(msg: Any)(implicit sender: UntypedChannel) {
     msg match {
       case cmd: Command => _thread.post(cmd)
       case x => log.warn("Received non-command message '{}', ignoring...", x)
@@ -47,7 +45,9 @@ class NioWorker(config: NioWorkerConfig) extends UntypedChannel { nioWorker =>
   }
 
   private class NioThread(config: NioWorkerConfig) extends Thread {
+
     import SelectionKey._
+
     private val commandQueue = new SingleReaderConcurrentQueue[Command]
     private val selector = SelectorProvider.provider.openSelector
     private var stopped: Option[Stop] = None
@@ -77,7 +77,7 @@ class NioWorker(config: NioWorkerConfig) extends UntypedChannel { nioWorker =>
     }
 
     override def run() {
-      while(stopped.isEmpty) {
+      while (stopped.isEmpty) {
         if (commandQueue.isEmpty) {
           select()
         } else {
@@ -119,9 +119,10 @@ class NioWorker(config: NioWorkerConfig) extends UntypedChannel { nioWorker =>
       def writeToChannel(buffers: ListBuffer[ByteBuffer]): Boolean = {
         if (!buffers.isEmpty) {
           bytesWritten += channel.write(buffers.head)
-          if (buffers.head.remaining == 0) {  // if we were able to write the whole buffer
+          if (buffers.head.remaining == 0) {
+            // if we were able to write the whole buffer
             buffers.remove(0)
-            writeToChannel(buffers)           // we continue with the next buffer
+            writeToChannel(buffers) // we continue with the next buffer
           } else false // otherwise we cannot drop the head and need to continue with it next time
         } else true
       }
@@ -133,9 +134,10 @@ class NioWorker(config: NioWorkerConfig) extends UntypedChannel { nioWorker =>
           safeSend(handle.handler, CompletedSend(handle))
           if (buffers.isEmpty) handle.key.disable(OP_WRITE)
         }
-      } catch { case e =>
-        log.warn("Write error: closing connection due to {}", e.toString)
-        close(handle, IoError(e))
+      } catch {
+        case e =>
+          log.warn("Write error: closing connection due to {}", e.toString)
+          close(handle, IoError(e))
       }
     }
 
@@ -154,9 +156,10 @@ class NioWorker(config: NioWorkerConfig) extends UntypedChannel { nioWorker =>
           // if the peer shut down the socket cleanly, we do the same
           close(handle, PeerClosed)
         }
-      } catch { case e =>
-        log.warn("Read error: closing connection due to {}", e.toString)
-        close(handle, IoError(e))
+      } catch {
+        case e =>
+          log.warn("Read error: closing connection due to {}", e.toString)
+          close(handle, IoError(e))
       }
     }
 
@@ -168,8 +171,9 @@ class NioWorker(config: NioWorkerConfig) extends UntypedChannel { nioWorker =>
         log.debug("New connection accepted")
         val cmd = key.attachment.asInstanceOf[Bind]
         safeSend(cmd.handleCreator, Connected(Key(connectionKey)))
-      } catch { case e =>
-        log.error("Accept error: could not accept new connection", e)
+      } catch {
+        case e =>
+          log.error("Accept error: could not accept new connection", e)
       }
     }
 
@@ -180,8 +184,9 @@ class NioWorker(config: NioWorkerConfig) extends UntypedChannel { nioWorker =>
         val cmd = key.attachment.asInstanceOf[Connect]
         log.debug("Connection established to {}", cmd.address)
         safeSend(cmd.handleCreator, Connected(Key(key)))
-      } catch { case e =>
-        log.error("Connect error: could not establish new connection", e)
+      } catch {
+        case e =>
+          log.error("Connect error: could not establish new connection", e)
       }
     }
 
@@ -201,11 +206,12 @@ class NioWorker(config: NioWorkerConfig) extends UntypedChannel { nioWorker =>
           case x: GetStats => deliverStats(x)
           case x: Stop => stopped = Some(x)
         }
-      } catch { case e =>
-        log.error("Error during execution of command '" + command + "'", e)
-        for (receiver <- command.errorReceiver) {
-          safeSend(receiver, CommandError(command, e))
-        }
+      } catch {
+        case e =>
+          log.error("Error during execution of command '" + command + "'", e)
+          for (receiver <- command.errorReceiver) {
+            safeSend(receiver, CommandError(command, e))
+          }
       }
     }
 
@@ -277,11 +283,13 @@ class NioWorker(config: NioWorkerConfig) extends UntypedChannel { nioWorker =>
     def closeSelector() {
       try {
         selector.close()
-      } catch { case e =>
-        log.error("Error closing selector", e)
+      } catch {
+        case e =>
+          log.error("Error closing selector", e)
       }
     }
   }
+
 }
 
 object NioWorker {

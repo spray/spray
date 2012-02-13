@@ -19,6 +19,7 @@ package cc.spray.can
 import config.HttpServerConfig
 import nio._
 import akka.actor.ActorRef
+import cc.spray.io.{ConnectionActors, NioServerActor, NioWorker, Pipelines}
 
 class HttpServer(config: HttpServerConfig, requestActorFactory: => ActorRef)
                 (nioWorker: NioWorker = new NioWorker(config))

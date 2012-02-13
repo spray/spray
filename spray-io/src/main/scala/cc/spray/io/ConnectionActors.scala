@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package nio
+package cc.spray.io
 
 import akka.actor.Actor
 
@@ -56,4 +55,5 @@ trait ConnectionActors extends NioPeer {
 
     def handler = self
   }
+
 }

@@ -25,6 +25,20 @@ object SprayCanBuild extends Build {
   // Sub Projects
   // -------------------------------------------------------------------------------------------------------------------
 
+  lazy val sprayIo = Project(
+    "spray-io",
+    file("spray-io"),
+    settings = moduleSettings ++ Seq(
+      libraryDependencies ++= Seq(
+        Compile.slf4j,
+        Provided.akkaActor,
+        Test.specs2,
+        Test.akkaSlf4j,
+        Test.logback
+      )
+    )
+  )
+
   lazy val sprayCan = Project(
     "spray-can",
     file("spray-can"),
@@ -37,7 +51,7 @@ object SprayCanBuild extends Build {
         Test.logback
       )
     )
-  )
+  ) dependsOn(sprayIo)
 
   lazy val clientExample = Project(
     "client-example",

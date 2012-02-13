@@ -14,15 +14,21 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package nio
+package cc.spray.io
 
-import util.Logging
+import java.nio.ByteBuffer
 
-abstract class NioPeer extends Logging {
+sealed trait Event
 
-  def nioWorker: NioWorker
+// "general" events not on the connection-level
+case object Stopped extends Event
+case class Bound(bindingKey: Key) extends Event
+case class Unbound(bindingKey: Key) extends Event
+case class Connected(key: Key, tag: Any = ()) extends Event
 
-  protected def createConnectionHandle(key: Key): Handle
+// connection-level events
+case class Closed(handle: Handle, reason: ConnectionClosedReason) extends Event
+case class CompletedSend(handle: Handle) extends Event
+case class Received(handle: Handle, buffer: ByteBuffer) extends Event
 
-}
+case class CommandError(command: Command, error: Throwable) extends Event

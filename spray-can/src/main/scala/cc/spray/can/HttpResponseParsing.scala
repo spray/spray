@@ -17,6 +17,7 @@
 package cc.spray.can
 
 import config.HttpParserConfig
+import cc.spray.io.{Close, ProtocolError, Received, Pipelines}
 import nio.{Received, ProtocolError, Close, Pipelines}
 import parsing.{ErrorState, EmptyResponseParser}
 import util.Logging

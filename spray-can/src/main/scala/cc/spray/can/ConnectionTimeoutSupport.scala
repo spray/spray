@@ -18,6 +18,7 @@ package cc.spray.can
 
 import config.ConnectionTimeoutConfig
 import nio._
+import cc.spray.io.Pipelines
 
 object ConnectionTimeoutSupport {
 

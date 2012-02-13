@@ -21,6 +21,7 @@ import nio._
 import akka.actor.ActorRef
 import collection.mutable.Queue
 import rendering.HttpResponsePartRenderingContext
+import cc.spray.io.Pipelines
 
 object StandardHttpServerFrontend {
 

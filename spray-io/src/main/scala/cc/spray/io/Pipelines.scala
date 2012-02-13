@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray.io
 
-package object nio {
-
-  type Pipeline = Any => Unit
-
+case class Pipelines(
+  handle: Handle,
+  upstream: Pipeline,
+  downstream: Pipeline
+) {
+  def withUpstream(pipeline: Pipeline) = copy(upstream = pipeline)
+  def withDownstream(pipeline: Pipeline) = copy(downstream = pipeline)
 }

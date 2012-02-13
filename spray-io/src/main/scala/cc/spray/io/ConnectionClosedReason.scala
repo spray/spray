@@ -14,24 +14,46 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray.io
 
-import nio._
-import rendering.{HttpRequestPartRenderingContext, HttpRequestRenderer}
-import cc.spray.io.Pipelines
+sealed trait ConnectionClosedReason
+case object ProtocolClose extends ConnectionClosedReason
+case object PeerClosed extends ConnectionClosedReason
+case object IdleTimeout extends ConnectionClosedReason
+case class ProtocolError(msg: String) extends ConnectionClosedReason
+case class IoError(error: Throwable) extends ConnectionClosedReason
 
-object HttpRequestRendering {
 
-  def apply(userAgentHeader: String)(pipelines: Pipelines) = {
-    val renderer = new HttpRequestRenderer(userAgentHeader)
-    pipelines.withDownstream {
-      case ctx: HttpRequestPartRenderingContext =>
-        val rendered = renderer.render(ctx)
-        pipelines.downstream {
-          Send(pipelines.handle, rendered.buffers)
-        }
 
-      case event => pipelines.downstream(event)
-    }
-  }
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

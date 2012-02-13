@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package nio
+package cc.spray.io
 
 import java.net.InetSocketAddress
 import akka.actor.Actor
-import config.NioServerConfig
 
 abstract class NioServerActor(val config: NioServerConfig, val nioWorker: NioWorker) extends NioPeer with Actor {
 
