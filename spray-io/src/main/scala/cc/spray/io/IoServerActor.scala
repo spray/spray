@@ -16,19 +16,19 @@
 
 package cc.spray.io
 
-import config.NioServerConfig
+import config.IoServerConfig
 import java.net.InetSocketAddress
 import akka.actor.Actor
 
-abstract class NioServerActor(val config: NioServerConfig, val nioWorker: NioWorker) extends NioPeer with Actor {
+abstract class IoServerActor(val config: IoServerConfig, val ioWorker: IoWorker) extends IoPeer with Actor {
 
   private val endpoint = new InetSocketAddress(config.host, config.port)
   private var bindingKey: Option[Key] = None
 
   override def preStart() {
     log.info("Starting {} on {}", config.label, endpoint)
-    nioWorker.start() // start if not started yet
-    nioWorker ! Bind(
+    ioWorker.start() // start if not started yet
+    ioWorker ! Bind(
       handleCreator = self,
       address = endpoint,
       backlog = config.bindingBacklog,
@@ -39,7 +39,7 @@ abstract class NioServerActor(val config: NioServerConfig, val nioWorker: NioWor
   override def postStop() {
     for (key <- bindingKey) {
       log.info("Stopping {} on {}", config.label, endpoint)
-      nioWorker ! Unbind(key)
+      ioWorker ! Unbind(key)
     }
   }
 
@@ -49,7 +49,7 @@ abstract class NioServerActor(val config: NioServerConfig, val nioWorker: NioWor
       log.info("{} started on {}", config.label, endpoint)
 
     case Connected(key, _) =>
-      nioWorker ! Register(createConnectionHandle(key))
+      ioWorker ! Register(createConnectionHandle(key))
 
     case x: CommandError =>
       log.warn("Received {}", x)

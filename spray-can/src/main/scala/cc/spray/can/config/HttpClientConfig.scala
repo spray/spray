@@ -17,7 +17,7 @@
 package cc.spray.can
 package config
 
-import cc.spray.io.config.{NioWorkerConfig, NioClientConfig}
+import cc.spray.io.config.{IoWorkerConfig, IoClientConfig}
 
 
 case class HttpClientConfig(
@@ -25,11 +25,11 @@ case class HttpClientConfig(
   // HttpClient
   userAgentHeader: String = "spray-can/" + SprayCanVersion,
 
-  // NioWorkerConfig
-  threadName: String = NioWorkerConfig.defaultThreadName,
-  readBufferSize: Int = NioWorkerConfig.defaultReadBufferSize,
+  // IoWorkerConfig
+  threadName: String = IoWorkerConfig.defaultThreadName,
+  readBufferSize: Int = IoWorkerConfig.defaultReadBufferSize,
 
-  // NioClientConfig
+  // IoClientConfig
   label: String = "spray-can HTTP client",
 
   // ConnectionTimeoutConfig
@@ -48,4 +48,4 @@ case class HttpClientConfig(
   maxChunkExtCount: Int         = HttpParserConfig.defaultMaxChunkExtCount,
   maxChunkSize: Int             = HttpParserConfig.defaultMaxChunkSize
 
-) extends NioWorkerConfig with NioClientConfig with ConnectionTimeoutConfig with HttpParserConfig
+) extends IoWorkerConfig with IoClientConfig with ConnectionTimeoutConfig with HttpParserConfig

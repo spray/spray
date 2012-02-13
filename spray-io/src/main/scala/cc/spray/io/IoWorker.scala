@@ -16,7 +16,7 @@
 
 package cc.spray.io
 
-import config.NioWorkerConfig
+import config.IoWorkerConfig
 import java.nio.channels.{SelectionKey, SocketChannel, ServerSocketChannel}
 import java.nio.channels.spi.SelectorProvider
 import java.nio.ByteBuffer
@@ -24,12 +24,12 @@ import java.util.concurrent.atomic.AtomicInteger
 import org.slf4j.LoggerFactory
 import annotation.tailrec
 import collection.mutable.ListBuffer
-import akka.actor.{UntypedChannel, ActorRef}
+import akka.actor.ActorRef
 
-class NioWorker(config: NioWorkerConfig) extends UntypedChannel {
+class IoWorker(config: IoWorkerConfig) {
   nioWorker =>
   private val log = LoggerFactory.getLogger(getClass)
-  private lazy val _thread = new NioThread(config)
+  private lazy val _thread = new IoThread(config)
 
   def thread: Thread = _thread
 
@@ -44,7 +44,7 @@ class NioWorker(config: NioWorkerConfig) extends UntypedChannel {
     }
   }
 
-  private class NioThread(config: NioWorkerConfig) extends Thread {
+  private class IoThread(config: IoWorkerConfig) extends Thread {
 
     import SelectionKey._
 
@@ -60,7 +60,7 @@ class NioWorker(config: NioWorkerConfig) extends UntypedChannel {
     private var connectionsClosed = 0L
     private var commandsExecuted = 0L
 
-    setName(config.threadName + '-' + NioWorker.counter.incrementAndGet())
+    setName(config.threadName + '-' + IoWorker.counter.incrementAndGet())
     setDaemon(true)
 
     override def start() {
@@ -292,6 +292,6 @@ class NioWorker(config: NioWorkerConfig) extends UntypedChannel {
 
 }
 
-object NioWorker {
+object IoWorker {
   private val counter = new AtomicInteger
 }

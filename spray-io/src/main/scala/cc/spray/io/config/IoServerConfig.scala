@@ -14,20 +14,15 @@
  * limitations under the License.
  */
 
-package cc.spray.io
+package cc.spray.io.config
 
-import akka.actor.Actor
-import config.NioClientConfig
+trait IoServerConfig {
+  def label: String
+  def host: String
+  def port: Int
+  def bindingBacklog: Int
+}
 
-abstract class NioClientActor(val config: NioClientConfig, val nioWorker: NioWorker) extends NioPeer with Actor {
-
-  override def preStart() {
-    log.info("Starting {}", config.label)
-    nioWorker.start() // start if not started yet
-  }
-
-  override def postStop() {
-    log.info("Stopped {}", config.label)
-  }
-
+object IoServerConfig {
+  val defaultBindingBacklog = 100
 }

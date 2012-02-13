@@ -14,8 +14,14 @@
  * limitations under the License.
  */
 
-package cc.spray.io.config
+package cc.spray.io
 
-trait NioClientConfig {
-  def label: String
+import util.Logging
+
+abstract class IoPeer extends Logging {
+
+  def nioWorker: IoWorker
+
+  protected def createConnectionHandle(key: Key): Handle
+
 }

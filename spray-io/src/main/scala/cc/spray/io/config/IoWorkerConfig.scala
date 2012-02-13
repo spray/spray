@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package cc.spray.io
+package cc.spray.io.config
 
-import util.Logging
+trait IoWorkerConfig {
+  def threadName: String
+  def readBufferSize: Int
+}
 
-abstract class NioPeer extends Logging {
-
-  def nioWorker: NioWorker
-
-  protected def createConnectionHandle(key: Key): Handle
-
+object IoWorkerConfig {
+  val defaultThreadName = "spray-io-worker"
+  val defaultReadBufferSize = 4096
 }

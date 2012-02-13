@@ -21,7 +21,7 @@ import nio._
 import java.lang.String
 import java.net.{InetAddress, InetSocketAddress}
 import akka.actor.{UntypedChannel, ActorRef, Channel}
-import cc.spray.io.{ConnectionActors, NioClientActor, NioWorker, Pipelines}
+import cc.spray.io.{ConnectionActors, IoClientActor, IoWorker, Pipelines}
 
 /**
  * Reacts to [[cc.spray.can.Connect]] messages by establishing a connection to the remote host. If there is an error
@@ -34,8 +34,8 @@ import cc.spray.io.{ConnectionActors, NioClientActor, NioWorker, Pipelines}
  * in case of errors).
  */
 class HttpClient(config: HttpClientConfig)
-                (nioWorker: NioWorker = new NioWorker(config))
-                extends NioClientActor(config, nioWorker) with ConnectionActors {
+                (nioWorker: IoWorker = new IoWorker(config))
+                extends IoClientActor(config, nioWorker) with ConnectionActors {
 
   protected def receive = {
     case Connect(host, port) =>

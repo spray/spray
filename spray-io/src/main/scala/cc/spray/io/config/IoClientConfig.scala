@@ -16,12 +16,6 @@
 
 package cc.spray.io.config
 
-trait NioWorkerConfig {
-  def threadName: String
-  def readBufferSize: Int
-}
-
-object NioWorkerConfig {
-  val defaultThreadName = "spray-io-worker"
-  val defaultReadBufferSize = 4096
+trait IoClientConfig {
+  def label: String
 }

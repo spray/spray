@@ -18,17 +18,17 @@ package cc.spray.io
 
 import akka.actor.Actor
 
-trait ConnectionActors extends NioPeer {
+trait ConnectionActors extends IoPeer {
 
   protected def createConnectionHandle(key: Key): Handle = {
-    lazy val actor = new NioConnectionActor(key)
+    lazy val actor = new IoConnectionActor(key)
     Actor.actorOf(actor).start()
     actor
   }
 
   protected def buildConnectionPipelines(baseContext: Pipelines): Pipelines
 
-  class NioConnectionActor(val key: Key) extends Actor with Handle {
+  class IoConnectionActor(val key: Key) extends Actor with Handle {
 
     private val context = buildConnectionPipelines {
       Pipelines(
