@@ -25,7 +25,8 @@ class FixedLengthBodyParser(config: HttpParserConfig, messageLine: MessageLine, 
                             connectionHeader: Option[String], totalBytes: Int) extends IntermediateState {
 
   require(totalBytes >= 0, "Content-Length must not be negative")
-  require(totalBytes <= config.maxContentLength, "HTTP message Content-Length " + totalBytes + " exceeds configured limit")
+  require(totalBytes <= config.maxContentLength,
+          "HTTP message Content-Length " + totalBytes + " exceeds the configured limit of " + config.maxContentLength)
 
   val body = new Array[Byte](totalBytes)
   var bytesRead = 0

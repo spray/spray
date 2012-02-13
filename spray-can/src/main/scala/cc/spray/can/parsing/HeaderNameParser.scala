@@ -41,7 +41,8 @@ class HeaderNameParser(config: HttpParserConfig, messageLine: MessageLine, heade
         case _ => ErrorState("Invalid character '" + cursor + "', expected TOKEN CHAR, LWS or COLON")
       }
     } else {
-      ErrorState("HTTP headers with names longer than " + config.maxHeaderNameLength + " characters are not supported")
+      ErrorParser("HTTP header name exceeds the configured limit of " + config.maxHeaderNameLength +
+                  " characters (" + headerName.toString.take(50) + "...)")
     }
   }
 

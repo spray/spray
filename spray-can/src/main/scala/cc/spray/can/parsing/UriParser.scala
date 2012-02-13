@@ -31,7 +31,7 @@ class UriParser(config: HttpParserConfig, method: HttpMethod) extends CharacterP
         case _ => uri.append(cursor); this
       }
     } else {
-      ErrorState("URIs with more than " + config.maxUriLength + " characters are not supported", 414)
+      ErrorParser("URI length exceeds the configured limit of " + config.maxUriLength + " characters", 414)
     }
   }
 

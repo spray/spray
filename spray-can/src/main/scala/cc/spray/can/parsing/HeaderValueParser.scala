@@ -34,19 +34,17 @@ class HeaderValueParser(config: HttpParserConfig, messageLine: MessageLine, head
     if (headerValue.length <= config.maxHeaderValueLength) {
       cursor match {
         case ' ' | '\t' | '\r' => space = true; new LwsParser(this).handleChar(cursor)
-        case '\n' => if (headerCount < config.maxHeaderCount) {
-          nameParser
-        } else {
-          ErrorState("HTTP message with more than " + config.maxHeaderCount + " headers are not supported", 400)
-        }
+        case '\n' =>
+          if (headerCount < config.maxHeaderCount) nameParser
+          else ErrorParser("HTTP message header count exceeds the configured limit of " + config.maxHeaderCount, 400)
         case _ =>
           if (space) {headerValue.append(' '); space = false}
           headerValue.append(cursor)
           this
       }
     } else {
-      ErrorState("HTTP header values longer than " + config.maxHeaderValueLength +
-              " characters are not supported (header '" + headerName + "')")
+      ErrorParser("HTTP header value exceeds the configured limit of " + config.maxHeaderValueLength +
+                  " characters (header '" + headerName + "')")
     }
   }
 }

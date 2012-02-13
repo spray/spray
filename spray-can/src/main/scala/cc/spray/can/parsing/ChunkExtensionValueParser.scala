@@ -30,7 +30,7 @@ class ChunkExtensionValueParser(config: HttpParserConfig, chunkSize: Int, extCou
   def next(parser: ParsingState) = if (extCount < config.maxChunkExtCount) {
     parser
   } else {
-    ErrorState("Chunks with more than " + config.maxChunkExtCount + " extensions are not supported", 400)
+    ErrorParser("Chunk extension count exceeds the configured limit of " + config.maxChunkExtCount, 400)
   }
 
   def newExtensions = ChunkExtension(extName, extValue.toString) :: extensions
@@ -57,8 +57,8 @@ class ChunkExtensionValueParser(config: HttpParserConfig, chunkSize: Int, extCou
         }
       }
     } else {
-      ErrorState("Chunk extensions with values longer than " + config.maxChunkExtValueLength +
-              " characters are not supported (extension '" + extName + "')")
+      ErrorParser("Chunk extension value exceeds the configured limit of " + config.maxChunkExtValueLength +
+                  " characters (extension '" + extName + "')")
     }
   }
 

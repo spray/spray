@@ -9,7 +9,7 @@ Both, the _spray-can_ server and the _spray-can_ client, sport the following fea
 * Full support for message pipelining
 * Full support for asynchronous HTTP streaming (i.e. "chunked" transfer encoding)
 * Akka-Actor and -Future based architecture for easy integration into your Akka applications
-* No dependencies except for JavaSE 6, Scala 2.9 and [Akka] 1.2 (actors module).
+* No dependencies except for JavaSE 6, Scala 2.9 and [Akka] 1.3 (actors module).
 
 
 ## Basic Architecture & Design Philosophy
@@ -30,10 +30,22 @@ All non-core features of typical HTTP servers (like request routing, file servin
 next layer in the application stack, they are not implemented by _spray-can_ itself. Apart from general focus this design
 keeps _spray-can_ small and light-weight as well as easy to understand and to maintain.
 It also makes a _spray-can_ HttpServer a perfect "container" for a [spray-server] application, since _spray-can_ and
-_spray-server_ nicely complement and interface into each other. The coming 0.8.0 release of _spray-server_ will
-support _spray-can_ HttpServer out of the box.
+_spray-server_ nicely complement and interface into each other. _spray-server_ supports _spray-can_ HttpServer out of
+the box.
 
 (Everything in this section is also valid in analogy for the _spray-can_ HttpClient implementation.)
+
+
+### Installation
+
+_spray-can_ is available from the [repo.spray.cc] repository.
+The latest release is `0.9.2` and is built against Scala 2.9.1 and Akka 1.3.
+
+If you use SBT you can include _spray-can_ in your project with
+
+    "cc.spray" %%  "spray-can" % "0.9.2"
+
+Apart from Scala, Akka and SLF4J _spray-can_ has no dependencies.
 
 
 ## Getting Started
@@ -49,7 +61,7 @@ part of the _spray-can_ codebase:
 
         $ cd my-project
 
-3. Launch [SBT][] (SBT 0.11.0) and run the server example:
+3. Launch [SBT][] and run the server example:
 
         $ sbt "project server-example" run
 
@@ -63,10 +75,6 @@ part of the _spray-can_ codebase:
 
    * `server-example/src/main/scala/cc/spray/can/example/` and/or
    * `client-example/src/main/scala/cc/spray/can/example/`
-
-
-For setting up your own project you need to pull in the _spray-can_ artifacts from the <http://scala-tools.org> repositories.
-The latest release is `0.9.1`. It's built against Scala 2.9.1 and Akka 1.2.
 
 
 ## Server
@@ -302,8 +310,9 @@ _spray-can_ project under the project’s open source license.
 
   [Scala]: http://www.scala-lang.org/
   [Akka]: http://akka.io
+  [repo.spray.cc]: http://repo.spray.cc
   [spray-server]: http://spray.cc
-  [SBT]: http://code.google.com/p/simple-build-tool/wiki/DocumentationHome
+  [SBT]: https://github.com/harrah/xsbt/wiki
   [HttpServer]: http://spray.github.com/spray/api/spray-can/index.html#cc.spray.can.HttpServer
   [ServerConfig]: http://spray.github.com/spray/api/spray-can/index.html#cc.spray.can.ServerConfig
   [RequestContext]: http://spray.github.com/spray/api/spray-can/index.html#cc.spray.can.RequestContext

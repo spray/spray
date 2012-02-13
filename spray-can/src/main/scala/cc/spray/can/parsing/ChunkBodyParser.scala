@@ -26,7 +26,8 @@ class ChunkBodyParser(config: HttpParserConfig, chunkSize: Int,
                       extensions: List[ChunkExtension] = Nil) extends IntermediateState {
 
   require(chunkSize > 0, "Chunk size must not be negative")
-  require(chunkSize <= config.maxChunkSize, "HTTP message chunk size " + chunkSize + " exceeds configured limit")
+  require(chunkSize <= config.maxChunkSize,
+          "HTTP message chunk size " + chunkSize + " exceeds configured limit of " + config.maxChunkSize)
 
   val body = new Array[Byte](chunkSize)
   var bytesRead = 0

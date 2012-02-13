@@ -24,9 +24,9 @@ class ChunkParser(config: HttpParserConfig) extends CharacterParser {
 
   def handle(digit: Int) = {
     chunkSize = if (chunkSize == -1) digit else chunkSize * 16 + digit
-    if (chunkSize > config.maxChunkSize) {
-      ErrorState("HTTP message chunk size exceeds configured limit")
-    } else this
+    if (chunkSize > config.maxChunkSize)
+      ErrorParser("HTTP message chunk size exceeds the configured limit of " + config.maxChunkSize + " bytes")
+    else this
   }
 
   def handleChar(cursor: Char) = cursor match {
