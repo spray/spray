@@ -14,9 +14,14 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package config
+package cc.spray.io.config
 
-trait NioClientConfig {
-  def label: String
+trait NioWorkerConfig {
+  def threadName: String
+  def readBufferSize: Int
+}
+
+object NioWorkerConfig {
+  val defaultThreadName = "spray-io-worker"
+  val defaultReadBufferSize = 4096
 }

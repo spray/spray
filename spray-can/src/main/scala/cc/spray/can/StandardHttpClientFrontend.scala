@@ -21,6 +21,7 @@ import nio._
 import collection.mutable.Queue
 import java.nio.channels.SocketChannel
 import akka.actor.{UntypedChannel, Channel}
+import cc.spray.io.util.Logging
 import util.Logging
 import cc.spray.io.Pipelines
 

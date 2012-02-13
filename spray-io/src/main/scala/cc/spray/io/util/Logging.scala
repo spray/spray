@@ -14,15 +14,10 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package config
+package cc.spray.io.util
 
-trait NioWorkerConfig {
-  def threadName: String
-  def readBufferSize: Int
-}
+import org.slf4j.LoggerFactory
 
-object NioWorkerConfig {
-  val defaultThreadName = "spray-can-nio-worker"
-  val defaultReadBufferSize = 4096
+trait Logging {
+  lazy val log = LoggerFactory.getLogger(getClass)
 }

@@ -17,6 +17,9 @@
 package cc.spray.can
 package config
 
+import cc.spray.io.config.{NioWorkerConfig, NioServerConfig}
+
+
 case class HttpServerConfig(
 
   // HttpServer

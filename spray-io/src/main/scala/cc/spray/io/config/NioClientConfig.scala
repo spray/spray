@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-package cc.spray.can.util
+package cc.spray.io.config
 
-import org.slf4j.LoggerFactory
-
-trait Logging {
-  lazy val log = LoggerFactory.getLogger(getClass)
+trait NioClientConfig {
+  def label: String
 }

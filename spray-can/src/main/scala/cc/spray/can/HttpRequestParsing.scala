@@ -22,6 +22,7 @@ import cc.spray.io.{Received, Pipelines}
 import nio.{Received, Pipelines}
 import parsing.{ErrorState, EmptyRequestParser}
 import rendering.HttpResponsePartRenderingContext
+import cc.spray.io.util.Logging
 import util.Logging
 
 object HttpRequestParsing extends Logging {

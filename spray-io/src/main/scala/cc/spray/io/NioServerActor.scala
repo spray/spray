@@ -16,6 +16,7 @@
 
 package cc.spray.io
 
+import config.NioServerConfig
 import java.net.InetSocketAddress
 import akka.actor.Actor
 

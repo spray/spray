@@ -20,6 +20,7 @@ import config.HttpParserConfig
 import cc.spray.io.{Close, ProtocolError, Received, Pipelines}
 import nio.{Received, ProtocolError, Close, Pipelines}
 import parsing.{ErrorState, EmptyResponseParser}
+import cc.spray.io.util.Logging
 import util.Logging
 
 object HttpResponseParsing extends Logging {

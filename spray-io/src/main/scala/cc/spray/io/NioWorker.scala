@@ -16,6 +16,7 @@
 
 package cc.spray.io
 
+import config.NioWorkerConfig
 import java.nio.channels.{SelectionKey, SocketChannel, ServerSocketChannel}
 import java.nio.channels.spi.SelectorProvider
 import java.nio.ByteBuffer
@@ -23,7 +24,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import org.slf4j.LoggerFactory
 import annotation.tailrec
 import collection.mutable.ListBuffer
-import util.SingleReaderConcurrentQueue
 import akka.actor.{UntypedChannel, ActorRef}
 
 class NioWorker(config: NioWorkerConfig) extends UntypedChannel {

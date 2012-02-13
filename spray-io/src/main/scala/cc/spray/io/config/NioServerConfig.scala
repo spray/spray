@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package config
+package cc.spray.io.config
 
 trait NioServerConfig {
   def label: String

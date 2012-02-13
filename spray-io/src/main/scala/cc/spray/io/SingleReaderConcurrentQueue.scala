@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-package cc.spray.can.util
+package cc.spray.io
 
 import java.util.concurrent.atomic.AtomicReference
 import annotation.tailrec
 
 /**
- * A fast unbounded FIFO queue implementation that supports multiple concurrent writers (i.e. "enqueuers") and one
- * reader (i.e. "dequeuer"). The queue must be dequeued by the thread having created the queue (the reader thread).
- * Only the "enqueue" method is allowed to be called by multiple concurrent threads, all other methods only produce
- * meaningful results when called from the single reader thread.
+ * A fast, lock-free unbounded FIFO queue implementation that supports multiple concurrent writers (i.e. "enqueuers")
+ * and one reader (i.e. "dequeuer"). The queue must be dequeued by the thread having created the queue (the reader
+ * thread). Only the "enqueue" method is allowed to be called by multiple concurrent threads, all other methods only
+ * produce meaningful results when called from the single reader thread.
  * Enqueuing always happens in constant time, dequeueing is performed in O(1) in most cases, sometimes (in one n-th
- * of all cases) it takes O(n), which also constitutes asymptotic O(1) complexity.
+ * of all cases) it takes O(n), which still constitutes asymptotic O(1) complexity.
  */
 final class SingleReaderConcurrentQueue[T] {
   private val in = new AtomicReference(List.empty[T])
