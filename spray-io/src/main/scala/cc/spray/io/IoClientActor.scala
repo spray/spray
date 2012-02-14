@@ -16,17 +16,36 @@
 
 package cc.spray.io
 
-import config.IoClientConfig
 import akka.actor.ActorRef
+import java.net.{InetSocketAddress, SocketAddress}
 
-abstract class IoClientActor(val config: IoClientConfig, val ioWorker: ActorRef) extends IoPeer {
+class IoClientActor(val ioWorker: ActorRef) extends IoPeerActor {
 
   override def preStart() {
-    log.info("Starting {}", config.label)
+    log.info("Starting {}", self.path)
   }
 
   override def postStop() {
-    log.info("Stopped {}", config.label)
+    log.info("Stopped {}", self.path)
   }
 
+  protected def receive = {
+    case ClientConnect(address) =>
+      ioWorker ! Connect(self, address, sender)
+
+    case Connected(key, receiver: ActorRef) =>
+      val handle = createConnectionHandle(key)
+      ioWorker ! Register(handle)
+      receiver ! handle
+
+    case x: CommandError =>
+      log.warning("Received {}", x)
+  }
+
+}
+
+case class ClientConnect(address: SocketAddress)
+object ClientConnect {
+  def apply(host: String, port: Int): ClientConnect =
+    ClientConnect(new InetSocketAddress(host, port))
 }

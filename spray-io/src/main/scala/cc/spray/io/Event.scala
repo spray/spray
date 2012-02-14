@@ -28,7 +28,7 @@ case class Connected(key: Key, tag: Any = ()) extends Event
 
 // connection-level events
 case class Closed(handle: Handle, reason: ConnectionClosedReason) extends Event
-case class CompletedSend(handle: Handle) extends Event
+case class SendCompleted(handle: Handle) extends Event
 case class Received(handle: Handle, buffer: ByteBuffer) extends Event
 
 case class CommandError(command: Command, error: Throwable) extends Event

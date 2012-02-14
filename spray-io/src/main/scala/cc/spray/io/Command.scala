@@ -30,7 +30,14 @@ case class Connect(handleCreator: ActorRef, address: SocketAddress, tag: Any) ex
 case object GetStats extends Command
 
 // commands on the connection-level
+trait ConnectionCommand extends Command {
+  def handle: Handle
+}
 
-case class Register(handle: Handle) extends Command
-case class Close(handle: Handle, reason: ConnectionClosedReason) extends Command
-case class Send(handle: Handle, buffers: Seq[ByteBuffer]) extends Command
+case class Register(handle: Handle) extends ConnectionCommand
+case class Close(handle: Handle, reason: ConnectionClosedReason) extends ConnectionCommand
+case class Send(handle: Handle, buffers: Seq[ByteBuffer]) extends ConnectionCommand
+
+object Send {
+  def apply(handle: Handle, buffer: ByteBuffer): Send = Send(handle, Seq(buffer))
+}

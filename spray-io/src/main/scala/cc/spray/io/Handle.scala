@@ -22,3 +22,5 @@ trait Handle {
   def key: Key
   def handler: ActorRef
 }
+
+case class SimpleHandle(key: Key, handler: ActorRef) extends Handle

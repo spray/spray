@@ -16,12 +16,14 @@
 
 package cc.spray.io
 
-import akka.actor.{ActorRef, Actor, ActorLogging}
+import akka.actor._
 
-abstract class IoPeer extends Actor with ActorLogging {
+
+abstract class IoPeerActor extends Actor with ActorLogging {
 
   def ioWorker: ActorRef
 
-  protected def createConnectionHandle(key: Key): Handle
+  protected def createConnectionHandle(key: Key): Handle =
+    SimpleHandle(key, self) // default implementation
 
 }

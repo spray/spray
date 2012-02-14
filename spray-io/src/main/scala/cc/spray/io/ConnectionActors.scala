@@ -19,18 +19,17 @@ package cc.spray.io
 import akka.actor.{PoisonPill, Props, Actor}
 
 
-trait ConnectionActors extends IoPeer {
+trait ConnectionActors extends IoPeerActor {
 
-  protected def createConnectionHandle(key: Key): Handle = {
+  override protected def createConnectionHandle(key: Key): Handle = {
     lazy val actor = new IoConnectionActor(key)
     context.actorOf(Props(actor))
     actor
   }
 
-  protected def buildConnectionPipelines(baseContext: Pipelines): Pipelines
+  protected def buildConnectionPipelines(basePipelines: Pipelines): Pipelines
 
   class IoConnectionActor(val key: Key) extends Actor with Handle {
-
     private val pipelines = buildConnectionPipelines {
       Pipelines(
         handle = this,

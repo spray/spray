@@ -17,7 +17,6 @@
 package cc.spray.io.config
 
 trait IoServerConfig {
-  def label: String
   def host: String
   def port: Int
   def bindingBacklog: Int
@@ -25,4 +24,12 @@ trait IoServerConfig {
 
 object IoServerConfig {
   val defaultBindingBacklog = 100
+
+  def apply(_host: String, _port: Int, _bindingBacklog: Int = defaultBindingBacklog) = {
+    new IoServerConfig {
+      def host = _host
+      def port = _port
+      def bindingBacklog = _bindingBacklog
+    }
+  }
 }

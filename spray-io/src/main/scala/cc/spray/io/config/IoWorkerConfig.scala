@@ -24,4 +24,11 @@ trait IoWorkerConfig {
 object IoWorkerConfig {
   val defaultThreadName = "spray-io-worker"
   val defaultReadBufferSize = 4096
+
+  def apply(_threadName: String = defaultThreadName, _readBufferSize: Int = defaultReadBufferSize) = {
+    new IoWorkerConfig {
+      def threadName = _threadName
+      def readBufferSize = _readBufferSize
+    }
+  }
 }

@@ -17,15 +17,15 @@
 package cc.spray.io
 
 import config.IoWorkerConfig
-import java.nio.channels.{SelectionKey, SocketChannel, ServerSocketChannel}
 import java.nio.channels.spi.SelectorProvider
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicInteger
 import annotation.tailrec
 import collection.mutable.ListBuffer
 import akka.actor.{Props, Actor, ActorLogging, ActorRef}
+import java.nio.channels.{CancelledKeyException, SelectionKey, SocketChannel, ServerSocketChannel}
 
-class IoWorker(config: IoWorkerConfig) extends Actor with ActorLogging {
+class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) extends Actor with ActorLogging {
   private lazy val ioThread = new IoThread(config)
 
   def thread: Thread = ioThread
@@ -128,7 +128,7 @@ class IoWorker(config: IoWorkerConfig) extends Actor with ActorLogging {
         val buffers = handle.key.writeBuffers
         if (writeToChannel(buffers.head)) {
           buffers.remove(0)
-          handle.handler ! CompletedSend(handle)
+          handle.handler ! SendCompleted(handle)
           if (buffers.isEmpty) handle.key.disable(OP_WRITE)
         }
       } catch {
@@ -169,7 +169,7 @@ class IoWorker(config: IoWorkerConfig) extends Actor with ActorLogging {
         val cmd = key.attachment.asInstanceOf[Bind]
         cmd.handleCreator ! Connected(Key(connectionKey))
       } catch {
-        case e => log.error("Accept error: could not accept new connection", e)
+        case e => log.error(e, "Accept error: could not accept new connection")
       }
     }
 
@@ -179,9 +179,9 @@ class IoWorker(config: IoWorkerConfig) extends Actor with ActorLogging {
         key.interestOps(0) // we don't enable any ops until we have a handle
         val cmd = key.attachment.asInstanceOf[Connect]
         log.debug("Connection established to {}", cmd.address)
-        cmd.handleCreator ! Connected(Key(key))
+        cmd.handleCreator ! Connected(Key(key), cmd.tag)
       } catch {
-        case e => log.error("Connect error: could not establish new connection", e)
+        case e => log.error(e, "Connect error: could not establish new connection")
       }
     }
 
@@ -202,8 +202,12 @@ class IoWorker(config: IoWorkerConfig) extends Actor with ActorLogging {
           case Stop => stopped = Some(sender)
         }
       } catch {
+        case e: CancelledKeyException if command.isInstanceOf[ConnectionCommand] =>
+          log.warning("Could not execute command '{}': connection reset by peer", command)
+          val handle = command.asInstanceOf[ConnectionCommand].handle
+          handle.handler ! Closed(handle, PeerClosed)
         case e =>
-          log.error("Error during execution of command '" + command + "'", e)
+          log.error(e, "Error during execution of command '{}'", command)
           sender ! CommandError(command, e)
       }
     }
@@ -235,7 +239,7 @@ class IoWorker(config: IoWorkerConfig) extends Actor with ActorLogging {
       if (channel.connect(cmd.address)) {
         log.debug("Connection immediately established to {}", cmd.address)
         val key = channel.register(selector, 0) // we don't enable any ops until we have a handle
-        cmd.handleCreator ! Connected(Key(key))
+        cmd.handleCreator ! Connected(Key(key), cmd.tag)
       } else {
         val key = channel.register(selector, OP_CONNECT)
         key.attach(cmd)
@@ -266,11 +270,13 @@ class IoWorker(config: IoWorkerConfig) extends Actor with ActorLogging {
     }
 
     def closeSelector() {
+      import collection.JavaConverters._
       try {
+        selector.keys.asScala.foreach(_.channel.close())
         selector.close()
       } catch {
         case e =>
-          log.error("Error closing selector", e)
+          log.error(e, "Error closing selector (key)")
       }
     }
   }

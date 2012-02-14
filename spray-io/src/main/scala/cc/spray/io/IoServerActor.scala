@@ -20,12 +20,12 @@ import config.IoServerConfig
 import java.net.InetSocketAddress
 import akka.actor.ActorRef
 
-abstract class IoServerActor(val config: IoServerConfig, val ioWorker: ActorRef) extends IoPeer {
+abstract class IoServerActor(val config: IoServerConfig, val ioWorker: ActorRef) extends IoPeerActor {
   private val endpoint = new InetSocketAddress(config.host, config.port)
   private var bindingKey: Option[Key] = None
 
   override def preStart() {
-    log.info("Starting {} on {}", config.label, endpoint)
+    log.info("Starting {} on {}", self.path, endpoint)
     ioWorker ! Bind(
       handleCreator = self,
       address = endpoint,
@@ -35,7 +35,7 @@ abstract class IoServerActor(val config: IoServerConfig, val ioWorker: ActorRef)
 
   override def postStop() {
     for (key <- bindingKey) {
-      log.info("Stopping {} on {}", config.label, endpoint)
+      log.info("Stopping {} on {}", self.path, endpoint)
       ioWorker ! Unbind(key)
     }
   }
@@ -43,7 +43,7 @@ abstract class IoServerActor(val config: IoServerConfig, val ioWorker: ActorRef)
   protected def receive = {
     case Bound(key) =>
       bindingKey = Some(key)
-      log.info("{} started on {}", config.label, endpoint)
+      log.info("{} started on {}", self.path, endpoint)
 
     case Connected(key, _) =>
       ioWorker ! Register(createConnectionHandle(key))
