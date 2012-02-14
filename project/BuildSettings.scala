@@ -3,6 +3,7 @@ import Keys._
 import ls.Plugin._
 
 object BuildSettings {
+  import Dependencies._
 
   lazy val basicSettings = Defaults.defaultSettings ++ lsSettings ++ Seq(
     version       := "1.0.0-SNAPSHOT",
@@ -30,6 +31,14 @@ object BuildSettings {
       Seq(file)
     },
 
+    libraryDependencies ++= Seq(
+      akkaActor % "provided",
+      specs2 % "test",
+      akkaSlf4j % "runtime",
+      slf4j % "runtime",
+      logback % "runtime"
+    ),
+
     // scaladoc
     (scalacOptions in doc) <<= (name, version).map { (n, v) => Seq("-doc-title", n + " " + v) },
 
@@ -54,5 +63,12 @@ object BuildSettings {
     publishLocal := ()
   )
 
-  lazy val exampleSettings = basicSettings ++ noPublishing
+  lazy val exampleSettings = basicSettings ++ noPublishing ++ Seq(
+    libraryDependencies ++= Seq(
+      akkaActor % "compile",
+      akkaSlf4j % "runtime",
+      slf4j % "runtime",
+      logback % "runtime"
+    )
+  )
 }

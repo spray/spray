@@ -2,7 +2,6 @@ import sbt._
 import Keys._
 
 object Build extends Build {
-  import Dependencies._
   import BuildSettings._
 
   // configure prompt to show current project
@@ -14,69 +13,43 @@ object Build extends Build {
   // Root Project
   // -------------------------------------------------------------------------------------------------------------------
 
-  lazy val root = Project(
-    "root",
-    file("."),
-    settings = basicSettings ++ noPublishing
-  ) aggregate (sprayCan, clientExample, serverExample)
+  lazy val root = Project("root",file("."))
+    .settings(basicSettings: _*)
+    .settings(noPublishing: _*)
+    .aggregate(sprayIo, sprayCan, examples)
 
 
   // -------------------------------------------------------------------------------------------------------------------
   // Sub Projects
   // -------------------------------------------------------------------------------------------------------------------
 
-  lazy val sprayIo = Project(
-    "spray-io",
-    file("spray-io"),
-    settings = moduleSettings ++ Seq(
-      libraryDependencies ++= Seq(
-        akkaActor % "provided",
-        specs2 % "test",
-        akkaSlf4j % "runtime",
-        slf4j % "runtime",
-        logback % "runtime"
-      )
-    )
-  )
+  lazy val sprayIo = Project("spray-io", file("spray-io"))
+    .settings(moduleSettings: _*)
 
-  lazy val sprayCan = Project(
-    "spray-can",
-    file("spray-can"),
-    settings = moduleSettings ++ Seq(
-      libraryDependencies ++= Seq(
-        akkaActor % "provided",
-        specs2 % "test",
-        akkaSlf4j % "runtime",
-        slf4j % "runtime",
-        logback % "runtime"
-      )
-    )
-  ) dependsOn(sprayIo)
+  lazy val sprayCan = Project("spray-can", file("spray-can"))
+    .settings(moduleSettings: _*)
+    .dependsOn(sprayIo)
 
-  lazy val clientExample = Project(
-    "client-example",
-    file("client-example"),
-    settings = exampleSettings ++ Seq(
-      libraryDependencies ++= Seq(
-        akkaActor % "compile",
-        akkaSlf4j % "runtime",
-        slf4j % "runtime",
-        logback % "runtime"
-      )
-    )
-  ) dependsOn (sprayCan)
 
-  lazy val serverExample = Project(
-    "server-example",
-    file("server-example"),
-    settings = exampleSettings ++ Seq(
-      libraryDependencies ++= Seq(
-        akkaActor % "compile",
-        akkaSlf4j % "runtime",
-        slf4j % "runtime",
-        logback % "runtime"
-      )
-    )
-  ) dependsOn (sprayCan)
+  // -------------------------------------------------------------------------------------------------------------------
+  // Example Projects
+  // -------------------------------------------------------------------------------------------------------------------
+
+  lazy val examples = Project("examples", file("examples"))
+    .settings(basicSettings: _*)
+    .settings(noPublishing: _*)
+    .aggregate(echoServerExample, httpClientExample, httpServerExample)
+
+  lazy val echoServerExample = Project("echo-server", file("examples/echo-server"))
+    .settings(exampleSettings: _*)
+    .dependsOn(sprayIo)
+
+  lazy val httpClientExample = Project("simple-http-client", file("examples/simple-http-client"))
+    .settings(exampleSettings: _*)
+    .dependsOn(sprayCan)
+
+  lazy val httpServerExample = Project("simple-http-server", file("examples/simple-http-server"))
+    .settings(exampleSettings: _*)
+    .dependsOn(sprayCan)
 
 }
