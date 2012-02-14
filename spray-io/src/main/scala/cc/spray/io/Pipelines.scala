@@ -18,9 +18,9 @@ package cc.spray.io
 
 case class Pipelines(
   handle: Handle,
-  upstream: Pipeline,
-  downstream: Pipeline
+  eventPipeline: Pipeline[Event],
+  commandPipeline: Pipeline[Command]
 ) {
-  def withUpstream(pipeline: Pipeline) = copy(upstream = pipeline)
-  def withDownstream(pipeline: Pipeline) = copy(downstream = pipeline)
+  def withEventPipeline(pipeline: Pipeline[Event]) = copy(eventPipeline = pipeline)
+  def withCommandPipeline(pipeline: Pipeline[Command]) = copy(commandPipeline = pipeline)
 }

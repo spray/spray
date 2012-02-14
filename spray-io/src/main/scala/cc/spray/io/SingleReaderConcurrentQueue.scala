@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicReference
 import annotation.tailrec
 
 /**
- * A fast, lock-free unbounded FIFO queue implementation that supports multiple concurrent writers (i.e. "enqueuers")
+ * A fast, lock-free, unbounded FIFO queue implementation that supports multiple concurrent writers (i.e. "enqueuers")
  * and one reader (i.e. "dequeuer"). The queue must be dequeued by the thread having created the queue (the reader
  * thread). Only the "enqueue" method is allowed to be called by multiple concurrent threads, all other methods only
  * produce meaningful results when called from the single reader thread.
@@ -36,7 +36,7 @@ final class SingleReaderConcurrentQueue[T] {
     val currentIn = in.get()
     val newIn = value :: currentIn
     if (!in.compareAndSet(currentIn, newIn)) {
-      enqueue(value)
+      enqueue(value) // retry
     }
   }
 

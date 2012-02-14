@@ -16,14 +16,13 @@
 
 package cc.spray.io
 
-import akka.actor.Actor
 import config.IoClientConfig
+import akka.actor.ActorRef
 
-abstract class IoClientActor(val config: IoClientConfig, val nioWorker: IoWorker) extends IoPeer with Actor {
+abstract class IoClientActor(val config: IoClientConfig, val ioWorker: ActorRef) extends IoPeer {
 
   override def preStart() {
     log.info("Starting {}", config.label)
-    nioWorker.start() // start if not started yet
   }
 
   override def postStop() {

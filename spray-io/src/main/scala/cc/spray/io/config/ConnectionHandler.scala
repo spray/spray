@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-package cc.spray.io
+package cc.spray.io.config
 
-import akka.actor.ActorRef
+import akka.actor.{Props, ActorRef}
 
-trait Handle {
-  def key: Key
-  def handler: ActorRef
-}
+sealed trait ConnectionHandler
+case class SingletonHandler(handler: ActorRef) extends ConnectionHandler
+case class PerConnectionHandler(handlerProps: Props) extends ConnectionHandler

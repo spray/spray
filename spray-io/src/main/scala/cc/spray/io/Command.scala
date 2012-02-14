@@ -18,46 +18,19 @@ package cc.spray.io
 
 import java.nio.ByteBuffer
 import java.net.SocketAddress
-import akka.actor.{ActorRef}
+import akka.actor.ActorRef
 
-sealed trait Command {
-  def errorReceiver: Option[ActorRef]
-}
+sealed trait Command
 
 // "super" commands not on the connection-level
-case class Stop(ackTo: Option[ActorRef] = None) extends Command {
-  def errorReceiver = ackTo
-}
-
-case class Bind(
-  handleCreator: ActorRef,
-  address: SocketAddress,
-  backlog: Int = 100,
-  ackTo: Option[ActorRef] = None
-) extends Command {
-  def errorReceiver = ackTo
-}
-
-case class Unbind(bindingKey: Key, ackTo: Option[ActorRef] = None) extends Command {
-  def errorReceiver = ackTo
-}
-
-case class Connect(handleCreator: ActorRef, address: SocketAddress, tag: Any) extends Command {
-  def errorReceiver = Some(handleCreator)
-}
-
-case class GetStats(deliverTo: ActorRef) extends Command {
-  def errorReceiver = Some(deliverTo)
-}
+private[io] case object Stop extends Command
+case class Bind(handleCreator: ActorRef, address: SocketAddress, backlog: Int = 100) extends Command
+case class Unbind(bindingKey: Key) extends Command
+case class Connect(handleCreator: ActorRef, address: SocketAddress, tag: Any) extends Command
+case object GetStats extends Command
 
 // commands on the connection-level
-sealed abstract class ConnectionCommand extends Command {
-  def handle: Handle
-  def errorReceiver = Some(handle.handler)
-}
 
-case class Register(handle: Handle) extends ConnectionCommand
-
-case class Close(handle: Handle, reason: ConnectionClosedReason) extends ConnectionCommand
-
-case class Send(handle: Handle, buffers: Seq[ByteBuffer]) extends ConnectionCommand
+case class Register(handle: Handle) extends Command
+case class Close(handle: Handle, reason: ConnectionClosedReason) extends Command
+case class Send(handle: Handle, buffers: Seq[ByteBuffer]) extends Command

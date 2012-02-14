@@ -16,13 +16,14 @@
 
 package cc.spray.io
 
-import akka.actor.Actor
+import akka.actor.{PoisonPill, Props, Actor}
+
 
 trait ConnectionActors extends IoPeer {
 
   protected def createConnectionHandle(key: Key): Handle = {
     lazy val actor = new IoConnectionActor(key)
-    Actor.actorOf(actor).start()
+    context.actorOf(Props(actor))
     actor
   }
 
@@ -30,27 +31,27 @@ trait ConnectionActors extends IoPeer {
 
   class IoConnectionActor(val key: Key) extends Actor with Handle {
 
-    private val context = buildConnectionPipelines {
+    private val pipelines = buildConnectionPipelines {
       Pipelines(
         handle = this,
-        upstream = {
+        eventPipeline = {
           case x: Closed =>
             log.debug("Stopping connection actor, connection was closed due to {}", x.reason)
-            self.stop()
-          case x: CommandError => log.warn("Received {}", x)
-          case x => log.warn("upstreamPipeline: dropped {}", x)
+            self ! PoisonPill
+          case x: CommandError => log.warning("Received {}", x)
+          case x => log.warning("eventPipeline: dropped {}", x)
         },
-        downstream = {
-          case x: Send => nioWorker ! x
-          case x: Close => nioWorker ! x
-          case x => log.warn("downstreamPipeline: dropped {}", x)
+        commandPipeline = {
+          case x: Send => ioWorker ! x
+          case x: Close => ioWorker ! x
+          case x => log.warning("commandPipeline: dropped {}", x)
         }
       )
     }
 
     protected def receive = {
-      case msg if self.channel == nioWorker => context.upstream(msg)
-      case msg => context.downstream(msg)
+      case x: Event => pipelines.eventPipeline(x)
+      case x: Command => pipelines.commandPipeline(x)
     }
 
     def handler = self

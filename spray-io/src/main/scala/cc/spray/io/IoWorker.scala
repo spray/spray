@@ -21,36 +21,33 @@ import java.nio.channels.{SelectionKey, SocketChannel, ServerSocketChannel}
 import java.nio.channels.spi.SelectorProvider
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicInteger
-import org.slf4j.LoggerFactory
 import annotation.tailrec
 import collection.mutable.ListBuffer
-import akka.actor.ActorRef
+import akka.actor.{Props, Actor, ActorLogging, ActorRef}
 
-class IoWorker(config: IoWorkerConfig) {
-  nioWorker =>
-  private val log = LoggerFactory.getLogger(getClass)
-  private lazy val _thread = new IoThread(config)
+class IoWorker(config: IoWorkerConfig) extends Actor with ActorLogging {
+  private lazy val ioThread = new IoThread(config)
 
-  def thread: Thread = _thread
+  def thread: Thread = ioThread
 
-  def start() {
-    _thread.start()
+  override def preStart() {
+    ioThread.start()
   }
 
-  def !(msg: Any)(implicit sender: UntypedChannel) {
-    msg match {
-      case cmd: Command => _thread.post(cmd)
-      case x => log.warn("Received non-command message '{}', ignoring...", x)
-    }
+  protected def receive = {
+    case cmd: Command => ioThread.post(cmd, sender)
   }
 
-  private class IoThread(config: IoWorkerConfig) extends Thread {
+  override def postStop() {
+    ioThread.post(Stop, context.system.deadLetters)
+  }
 
+  private class IoThread(config: IoWorkerConfig)(implicit self: ActorRef) extends Thread {
     import SelectionKey._
 
-    private val commandQueue = new SingleReaderConcurrentQueue[Command]
+    private val commandQueue = new SingleReaderConcurrentQueue[(Command, ActorRef)]
     private val selector = SelectorProvider.provider.openSelector
-    private var stopped: Option[Stop] = None
+    private var stopped: Option[ActorRef] = None
 
     // stats fields
     private var startTime = 0L
@@ -61,7 +58,6 @@ class IoWorker(config: IoWorkerConfig) {
     private var commandsExecuted = 0L
 
     setName(config.threadName + '-' + IoWorker.counter.incrementAndGet())
-    setDaemon(true)
 
     override def start() {
       if (getState == Thread.State.NEW) {
@@ -71,24 +67,25 @@ class IoWorker(config: IoWorkerConfig) {
     }
 
     // executed from other threads!
-    def post(cmd: Command) {
-      commandQueue.enqueue(cmd)
+    def post(cmd: Command, sender: ActorRef) {
+      commandQueue.enqueue((cmd, sender))
       selector.wakeup()
     }
 
     override def run() {
+      log.info("IoWorker thread '{}' started", Thread.currentThread.getName)
       while (stopped.isEmpty) {
         if (commandQueue.isEmpty) {
           select()
         } else {
-          runCommand(commandQueue.dequeue())
+          val cmdInstance = commandQueue.dequeue()
+          runCommand(cmdInstance._1, cmdInstance._2)
           commandsExecuted += 1
         }
       }
       closeSelector()
-      for (stopCmd <- stopped; stopAck <- stopCmd.ackTo) {
-        safeSend(stopAck, Stopped)
-      }
+      stopped.get ! Stopped
+      log.info("IoWorker thread '{}' stopped", Thread.currentThread.getName)
     }
 
     def select() {
@@ -105,7 +102,7 @@ class IoWorker(config: IoWorkerConfig) {
           else if (key.isReadable) read(key)
           else if (key.isAcceptable) accept(key)
           else if (key.isConnectable) connect(key)
-        } else log.warn("Invalid selection key: {}", key)
+        } else log.warning("Invalid selection key: {}", key)
       }
     }
 
@@ -131,12 +128,12 @@ class IoWorker(config: IoWorkerConfig) {
         val buffers = handle.key.writeBuffers
         if (writeToChannel(buffers.head)) {
           buffers.remove(0)
-          safeSend(handle.handler, CompletedSend(handle))
+          handle.handler ! CompletedSend(handle)
           if (buffers.isEmpty) handle.key.disable(OP_WRITE)
         }
       } catch {
         case e =>
-          log.warn("Write error: closing connection due to {}", e.toString)
+          log.warning("Write error: closing connection due to {}", e.toString)
           close(handle, IoError(e))
       }
     }
@@ -151,14 +148,14 @@ class IoWorker(config: IoWorkerConfig) {
           buffer.flip()
           log.debug("Read {} bytes", buffer.limit)
           bytesRead += buffer.limit
-          safeSend(handle.handler, Received(handle, buffer))
+          handle.handler ! Received(handle, buffer)
         } else {
           // if the peer shut down the socket cleanly, we do the same
           close(handle, PeerClosed)
         }
       } catch {
         case e =>
-          log.warn("Read error: closing connection due to {}", e.toString)
+          log.warning("Read error: closing connection due to {}", e.toString)
           close(handle, IoError(e))
       }
     }
@@ -170,10 +167,9 @@ class IoWorker(config: IoWorkerConfig) {
         val connectionKey = socketChannel.register(selector, 0) // we don't enable any ops until we have a handle
         log.debug("New connection accepted")
         val cmd = key.attachment.asInstanceOf[Bind]
-        safeSend(cmd.handleCreator, Connected(Key(connectionKey)))
+        cmd.handleCreator ! Connected(Key(connectionKey))
       } catch {
-        case e =>
-          log.error("Accept error: could not accept new connection", e)
+        case e => log.error("Accept error: could not accept new connection", e)
       }
     }
 
@@ -183,14 +179,13 @@ class IoWorker(config: IoWorkerConfig) {
         key.interestOps(0) // we don't enable any ops until we have a handle
         val cmd = key.attachment.asInstanceOf[Connect]
         log.debug("Connection established to {}", cmd.address)
-        safeSend(cmd.handleCreator, Connected(Key(key)))
+        cmd.handleCreator ! Connected(Key(key))
       } catch {
-        case e =>
-          log.error("Connect error: could not establish new connection", e)
+        case e => log.error("Connect error: could not establish new connection", e)
       }
     }
 
-    def runCommand(command: Command) {
+    def runCommand(command: Command, sender: ActorRef) {
       try {
         log.debug("Executing command {}", command)
         command match {
@@ -201,17 +196,15 @@ class IoWorker(config: IoWorkerConfig) {
 
           // SuperCommands
           case x: Connect => connect(x)
-          case x: Bind => bind(x)
-          case x: Unbind => unbind(x)
-          case x: GetStats => deliverStats(x)
-          case x: Stop => stopped = Some(x)
+          case x: Bind => bind(x, sender)
+          case x: Unbind => unbind(x, sender)
+          case GetStats => deliverStats(sender)
+          case Stop => stopped = Some(sender)
         }
       } catch {
         case e =>
           log.error("Error during execution of command '" + command + "'", e)
-          for (receiver <- command.errorReceiver) {
-            safeSend(receiver, CommandError(command, e))
-          }
+          sender ! CommandError(command, e)
       }
     }
 
@@ -232,7 +225,7 @@ class IoWorker(config: IoWorkerConfig) {
       val key = handle.key.selectionKey
       key.cancel()
       key.channel.close()
-      safeSend(handle.handler, Closed(handle, reason))
+      handle.handler ! Closed(handle, reason)
       connectionsClosed += 1
     }
 
@@ -242,7 +235,7 @@ class IoWorker(config: IoWorkerConfig) {
       if (channel.connect(cmd.address)) {
         log.debug("Connection immediately established to {}", cmd.address)
         val key = channel.register(selector, 0) // we don't enable any ops until we have a handle
-        safeSend(cmd.handleCreator, Connected(Key(key)))
+        cmd.handleCreator ! Connected(Key(key))
       } else {
         val key = channel.register(selector, OP_CONNECT)
         key.attach(cmd)
@@ -250,34 +243,26 @@ class IoWorker(config: IoWorkerConfig) {
       }
     }
 
-    def bind(cmd: Bind) {
+    def bind(cmd: Bind, sender: ActorRef) {
       val channel = ServerSocketChannel.open
       channel.configureBlocking(false)
       channel.socket.bind(cmd.address, cmd.backlog)
       val key = channel.register(selector, OP_ACCEPT)
       key.attach(cmd)
-      cmd.ackTo foreach (safeSend(_, Bound(Key(key))))
+      sender ! Bound(Key(key))
     }
 
-    def unbind(cmd: Unbind) {
+    def unbind(cmd: Unbind, sender: ActorRef) {
       val key = cmd.bindingKey.selectionKey
       key.cancel()
       key.channel.close()
-      cmd.ackTo foreach (safeSend(_, Unbound(cmd.bindingKey)))
+      sender ! Unbound(cmd.bindingKey)
     }
 
-    def deliverStats(cmd: GetStats) {
-      val stats = NioWorkerStats(System.currentTimeMillis - startTime, bytesRead, bytesWritten, connectionsOpened,
+    def deliverStats(sender: ActorRef) {
+      val stats = IoWorkerStats(System.currentTimeMillis - startTime, bytesRead, bytesWritten, connectionsOpened,
         connectionsClosed, commandsExecuted, commandQueue.size)
-      safeSend(cmd.deliverTo, stats)
-    }
-
-    def safeSend(receiver: ActorRef, message: Any) {
-      try {
-        receiver.!(message)(nioWorker)
-      } catch {
-        case e => LoggerFactory.getLogger(getClass).error("Could not send '" + message + "' to '" + receiver + "'", e)
-      }
+      sender ! stats
     }
 
     def closeSelector() {
@@ -295,3 +280,5 @@ class IoWorker(config: IoWorkerConfig) {
 object IoWorker {
   private val counter = new AtomicInteger
 }
+
+private[io] case class InitConnectionHandler(handlerProps: Props, selectionKey: SelectionKey)

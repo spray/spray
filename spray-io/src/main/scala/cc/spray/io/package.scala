@@ -18,6 +18,6 @@ package cc.spray
 
 package object io {
 
-  type Pipeline = Any => Unit
+  type Pipeline[T] = T => Unit
 
 }

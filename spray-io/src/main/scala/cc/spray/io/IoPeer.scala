@@ -16,11 +16,11 @@
 
 package cc.spray.io
 
-import util.Logging
+import akka.actor.{ActorRef, Actor, ActorLogging}
 
-abstract class IoPeer extends Logging {
+abstract class IoPeer extends Actor with ActorLogging {
 
-  def nioWorker: IoWorker
+  def ioWorker: ActorRef
 
   protected def createConnectionHandle(key: Key): Handle
 

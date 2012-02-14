@@ -14,10 +14,14 @@
  * limitations under the License.
  */
 
-package cc.spray.io.util
+package cc.spray.io
 
-import org.slf4j.LoggerFactory
-
-trait Logging {
-  lazy val log = LoggerFactory.getLogger(getClass)
-}
+case class IoWorkerStats(
+  uptime: Long,
+  bytesRead: Long,
+  bytesWritten: Long,
+  connectionsOpened: Long,
+  connectionsClosed: Long,
+  commandsExecuted: Long,
+  commandsQueued: Int
+)

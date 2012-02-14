@@ -18,21 +18,18 @@ package cc.spray.io
 
 import config.IoServerConfig
 import java.net.InetSocketAddress
-import akka.actor.Actor
+import akka.actor.ActorRef
 
-abstract class IoServerActor(val config: IoServerConfig, val ioWorker: IoWorker) extends IoPeer with Actor {
-
+abstract class IoServerActor(val config: IoServerConfig, val ioWorker: ActorRef) extends IoPeer {
   private val endpoint = new InetSocketAddress(config.host, config.port)
   private var bindingKey: Option[Key] = None
 
   override def preStart() {
     log.info("Starting {} on {}", config.label, endpoint)
-    ioWorker.start() // start if not started yet
     ioWorker ! Bind(
       handleCreator = self,
       address = endpoint,
-      backlog = config.bindingBacklog,
-      ackTo = Some(self)
+      backlog = config.bindingBacklog
     )
   }
 
@@ -52,6 +49,6 @@ abstract class IoServerActor(val config: IoServerConfig, val ioWorker: IoWorker)
       ioWorker ! Register(createConnectionHandle(key))
 
     case x: CommandError =>
-      log.warn("Received {}", x)
+      log.warning("Received {}", x)
   }
 }
