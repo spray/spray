@@ -1,7 +1,7 @@
 import sbt._
 import Keys._
 
-object SprayCanBuild extends Build {
+object Build extends Build {
   import Dependencies._
   import BuildSettings._
 
@@ -30,11 +30,11 @@ object SprayCanBuild extends Build {
     file("spray-io"),
     settings = moduleSettings ++ Seq(
       libraryDependencies ++= Seq(
-        Compile.slf4j,
-        Provided.akkaActor,
-        Test.specs2,
-        Test.akkaSlf4j,
-        Test.logback
+        akkaActor % "provided",
+        specs2 % "test",
+        akkaSlf4j % "runtime",
+        slf4j % "runtime",
+        logback % "runtime"
       )
     )
   )
@@ -44,11 +44,11 @@ object SprayCanBuild extends Build {
     file("spray-can"),
     settings = moduleSettings ++ Seq(
       libraryDependencies ++= Seq(
-        Compile.slf4j,
-        Provided.akkaActor,
-        Test.specs2,
-        Test.akkaSlf4j,
-        Test.logback
+        akkaActor % "provided",
+        specs2 % "test",
+        akkaSlf4j % "runtime",
+        slf4j % "runtime",
+        logback % "runtime"
       )
     )
   ) dependsOn(sprayIo)
@@ -58,9 +58,10 @@ object SprayCanBuild extends Build {
     file("client-example"),
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= Seq(
-        Compile.akkaActor,
-        Runtime.akkaSlf4j,
-        Runtime.logback
+        akkaActor % "compile",
+        akkaSlf4j % "runtime",
+        slf4j % "runtime",
+        logback % "runtime"
       )
     )
   ) dependsOn (sprayCan)
@@ -70,9 +71,10 @@ object SprayCanBuild extends Build {
     file("server-example"),
     settings = exampleSettings ++ Seq(
       libraryDependencies ++= Seq(
-        Compile.akkaActor,
-        Runtime.akkaSlf4j,
-        Runtime.logback
+        akkaActor % "compile",
+        akkaSlf4j % "runtime",
+        slf4j % "runtime",
+        logback % "runtime"
       )
     )
   ) dependsOn (sprayCan)
