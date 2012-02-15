@@ -48,7 +48,6 @@ object IoClient {
 
   ////////////// COMMANDS //////////////
   case class Connect(address: SocketAddress)
-
   object Connect {
     def apply(host: String, port: Int): Connect = Connect(new InetSocketAddress(host, port))
   }

@@ -5,12 +5,13 @@ import org.specs2.specification.Step
 import akka.pattern.ask
 import java.nio.ByteBuffer
 import akka.util.{Timeout, Duration}
-import akka.dispatch.Await
 import akka.actor._
+import akka.dispatch.{Future, Await}
+import org.specs2.matcher.Matcher
 
 class IoWorkerSpec extends Specification {
   implicit val timeout: Timeout = Duration("500 ms")
-  val system = ActorSystem("IoWorkerSpec")
+  implicit val system = ActorSystem("IoWorkerSpec")
   val port = 23456
 
   class TestServer(ioWorker: IoWorker) extends IoServer(ioWorker) {
@@ -38,6 +39,7 @@ class IoWorkerSpec extends Specification {
     "This spec exercises an IoWorker instance against itself" ^
                                                               Step(start())^
     "simple one-request dialog"                               ! oneRequestDialog^
+    "hammer time"                                             ! hammerTime^
                                                               Step(stop())
 
   def start() {
@@ -46,11 +48,23 @@ class IoWorkerSpec extends Specification {
   }
 
   def oneRequestDialog = {
-    val resp = for {
-      connected <- (client ? IoClient.Connect("localhost", port)).mapTo[IoClient.Connected]
-      response <- (client ? ("Echoooo" -> connected.handle)).mapTo[String]
-    } yield response
-    Await.result(resp, timeout.duration) === "Echoooo"
+    Await.result(request("Echoooo"), timeout.duration) === "Echoooo"
+  }
+
+  def hammerTime = {
+    val requests = Future.traverse((1 to 100).toList) { i => request("Ping" + i).map(i -> _) }
+    val beOk: Matcher[(Int, String)] = ({ t:(Int, String) => t._2 == "Ping" + t._1 }, "not ok")
+    Await.result(requests, timeout.duration) must beOk.forall
+  }
+
+  def request(payload: String) = {
+    for {
+      IoClient.Connected(handle) <- (client ? IoClient.Connect("localhost", port)).mapTo[IoClient.Connected]
+      response <- (client ? (payload -> handle)).mapTo[String]
+    } yield {
+      worker ! IoWorker.Close(handle, ProtocolClose)
+      response
+    }
   }
 
   def stop() {

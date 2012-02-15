@@ -24,15 +24,16 @@ import collection.mutable.ListBuffer
 import java.nio.channels.{CancelledKeyException, SelectionKey, SocketChannel, ServerSocketChannel}
 import java.net.SocketAddress
 import akka.actor.{ActorSystem, ActorRef}
-import akka.event.LoggingAdapter
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.{AtomicReference, AtomicInteger}
+import akka.event.{BusLogging, LoggingAdapter}
 
 // threadsafe
 class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
   import IoWorker._
 
-  private lazy val ioThread = new IoThread(config, system.log)
+  private lazy val log = new BusLogging(system.eventStream, "IoWorker", getClass)
+  private lazy val ioThread = new IoThread(config, log)
   private lazy val state = new AtomicReference[Any]('unstarted)
 
   /**
