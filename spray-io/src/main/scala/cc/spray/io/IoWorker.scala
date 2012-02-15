@@ -65,6 +65,7 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
     val latch = new CountDownLatch(1)
     if (state.compareAndSet(ioThread, latch)) {
       this ! Stop(latch)
+      system.shutdown()
       Some(latch)
     } else None
   }
