@@ -1,35 +1,32 @@
 package cc.spray.examples
 
-import cc.spray.io.config.IoServerConfig
-import akka.actor.{ActorLogging, ActorSystem, Props, ActorRef}
 import cc.spray.io._
+import akka.actor.{Props, ActorSystem}
 
 object Main extends App {
   val system = ActorSystem("EchoServer")
-  val ioWorker = system.actorOf(Props(new IoWorker()), name = "io-worker")
-  system.actorOf(Props(new EchoServer(ioWorker)), name = "echo-server")
+  val ioWorker = new IoWorker().start()
+  system.actorOf(Props(new EchoServer(ioWorker)), name = "echo-server") ! IoServer.Bind("localhost", 23456)
 }
 
-class EchoServer(ioWorker: ActorRef)
-  extends IoServerActor(IoServerConfig("localhost", 23456), ioWorker)
-  with ActorLogging {
+class EchoServer(ioWorker: IoWorker) extends IoServer(ioWorker) {
 
-  override protected def receive = super.receive orElse {
-
-    case Received(handle, buffer) =>
+  override def receive = super.receive orElse {
+    case IoWorker.Received(handle, buffer) =>
       new String(buffer.array).trim match {
         case "STOP" =>
           log.info("Shutting down")
+          ioWorker.stop()
           context.system.shutdown()
         case x =>
           log.debug("Received '{}'", x)
-          ioWorker ! Send(handle, buffer)
+          ioWorker ! IoWorker.Send(handle, buffer)
       }
 
-    case SendCompleted(_) =>
+    case IoWorker.SendCompleted(_) =>
       log.info("Send completed")
 
-    case Closed(_, reason) =>
+    case IoWorker.Closed(_, reason) =>
       log.info("Connection closed: {}", reason)
   }
 
