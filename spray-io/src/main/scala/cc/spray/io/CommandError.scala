@@ -14,22 +14,21 @@
  * limitations under the License.
  */
 
-package cc.spray.io.config
+package cc.spray.io
 
-trait IoServerConfig {
-  def host: String
-  def port: Int
-  def bindingBacklog: Int
-}
+case class CommandError(command: Command, error: Either[Throwable, String]) extends Event {
+  def toMessage = error match {
+    case Left(throwable) => throwable.toString
+    case Right(message) => message
+  }
 
-object IoServerConfig {
-  val defaultBindingBacklog = 100
-
-  def apply(_host: String, _port: Int, _bindingBacklog: Int = defaultBindingBacklog) = {
-    new IoServerConfig {
-      def host = _host
-      def port = _port
-      def bindingBacklog = _bindingBacklog
-    }
+  def toThrowable= error match {
+    case Left(throwable) => throwable
+    case Right(message) => new RuntimeException(message)
   }
 }
+
+object CommandError {
+  def apply(command: Command, error: Throwable): CommandError = apply(command, Left(error))
+  def apply(command: Command, error: String): CommandError = apply(command, Right(error))
+  }

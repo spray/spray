@@ -21,7 +21,7 @@ import akka.actor._
 
 abstract class IoPeerActor extends Actor with ActorLogging {
 
-  def ioWorker: ActorRef
+  def ioWorker: IoWorker
 
   protected def createConnectionHandle(key: Key): Handle =
     SimpleHandle(key, self) // default implementation

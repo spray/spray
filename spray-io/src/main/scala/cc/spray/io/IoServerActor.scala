@@ -16,39 +16,82 @@
 
 package cc.spray.io
 
-import config.IoServerConfig
-import java.net.InetSocketAddress
+import java.net.{SocketAddress, InetSocketAddress}
 import akka.actor.ActorRef
 
-abstract class IoServerActor(val config: IoServerConfig, val ioWorker: ActorRef) extends IoPeerActor {
-  private val endpoint = new InetSocketAddress(config.host, config.port)
-  private var bindingKey: Option[Key] = None
+abstract class IoServerActor(val ioWorker: IoWorker) extends IoPeerActor {
+  import IoServerActor._
+  var bindingKey: Option[Key] = None
+  var endpoint: Option[SocketAddress] = None
+  var state = unbound
 
-  override def preStart() {
-    log.info("Starting {} on {}", self.path, endpoint)
-    ioWorker ! Bind(
-      handleCreator = self,
-      address = endpoint,
-      backlog = config.bindingBacklog
-    )
-  }
-
-  override def postStop() {
-    for (key <- bindingKey) {
-      log.info("Stopping {} on {}", self.path, endpoint)
-      ioWorker ! Unbind(key)
+  def receive = {
+    new Receive {
+      def isDefinedAt(x: Any) = state.isDefinedAt(x)
+      def apply(x: Any) { state(x) }
+    } orElse {
+      case x: CommandError => log.warning("Received {}", x)
     }
   }
 
-  protected def receive = {
-    case Bound(key) =>
-      bindingKey = Some(key)
-      log.info("{} started on {}", self.path, endpoint)
+  lazy val unbound: Receive = {
+    case x: Bind =>
+      log.info("Starting {} on {}", self.path, x.endpoint)
+      endpoint = Some(x.endpoint)
+      state = binding
+      ioWorker ! IoWorker.Bind(self, x.endpoint, x.bindingBacklog, sender)
 
-    case Connected(key, _) =>
-      ioWorker ! Register(createConnectionHandle(key))
-
-    case x: CommandError =>
-      log.warning("Received {}", x)
+    case x: ServerCommand => sender ! CommandError(x, "Not yet bound")
   }
+
+  lazy val binding: Receive = {
+    case IoWorker.Bound(key, receiver: ActorRef) =>
+      bindingKey = Some(key)
+      state = bound
+      log.info("{} started on {}", self.path, endpoint.get)
+      receiver ! Bound(endpoint.get)
+
+    case x: ServerCommand => sender ! CommandError(x, "Still binding")
+  }
+
+  lazy val bound: Receive = {
+    case x: IoWorker.Connected =>
+      ioWorker ! IoWorker.Register(createConnectionHandle(x.key))
+
+    case Unbind =>
+      log.info("Stopping {} on {}", self.path, endpoint.get)
+      state = unbinding
+      ioWorker ! IoWorker.Unbind(bindingKey.get, sender)
+
+    case x: ServerCommand => sender ! CommandError(x, "Already bound")
+  }
+
+  lazy val unbinding: Receive = {
+    case IoWorker.Unbound(_, receiver: ActorRef) =>
+      log.info("{} stopped on {}", self.path, endpoint.get)
+      state = unbound
+      receiver ! Unbound(endpoint.get)
+      bindingKey = None
+      endpoint = None
+
+    case x: ServerCommand => sender ! CommandError(x, "Still unbinding")
+  }
+}
+
+object IoServerActor {
+  sealed trait ServerCommand extends Command
+
+  ////////////// COMMANDS //////////////
+  case class Bind(endpoint: SocketAddress, bindingBacklog: Int) extends ServerCommand
+  object Bind {
+    def apply(interface: String, port: Int, bindingBacklog: Int = 100): Bind =
+      Bind(new InetSocketAddress(interface, port), bindingBacklog)
+  }
+
+  case object Unbind extends ServerCommand
+
+
+  ////////////// EVENTS //////////////
+  case class Bound(endpoint: SocketAddress)
+  case class Unbound(endpoint: SocketAddress)
 }

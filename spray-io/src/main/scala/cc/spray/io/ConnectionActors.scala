@@ -18,7 +18,6 @@ package cc.spray.io
 
 import akka.actor.{PoisonPill, Props, Actor}
 
-
 trait ConnectionActors extends IoPeerActor {
 
   override protected def createConnectionHandle(key: Key): Handle = {
@@ -33,19 +32,23 @@ trait ConnectionActors extends IoPeerActor {
     private val pipelines = buildConnectionPipelines {
       Pipelines(
         handle = this,
-        eventPipeline = {
-          case x: Closed =>
-            log.debug("Stopping connection actor, connection was closed due to {}", x.reason)
-            self ! PoisonPill
-          case x: CommandError => log.warning("Received {}", x)
-          case x => log.warning("eventPipeline: dropped {}", x)
-        },
-        commandPipeline = {
-          case x: Send => ioWorker ! x
-          case x: Close => ioWorker ! x
-          case x => log.warning("commandPipeline: dropped {}", x)
-        }
+        eventPipeline = baseEventPipeline,
+        commandPipeline = baseCommandPipeline
       )
+    }
+
+    private def baseEventPipeline: Pipeline[Event] = {
+      case x: IoWorker.Closed =>
+        log.debug("Stopping connection actor, connection was closed due to {}", x.reason)
+        self ! PoisonPill
+      case x: CommandError => log.warning("Received {}", x)
+      case x => log.warning("eventPipeline: dropped {}", x)
+    }
+
+    private def baseCommandPipeline: Pipeline[Command] = {
+      case x: IoWorker.Send => ioWorker ! x
+      case x: IoWorker.Close => ioWorker ! x
+      case x => log.warning("commandPipeline: dropped {}", x)
     }
 
     protected def receive = {

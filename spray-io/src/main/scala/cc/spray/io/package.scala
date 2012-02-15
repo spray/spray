@@ -21,3 +21,10 @@ package object io {
   type Pipeline[T] = T => Unit
 
 }
+
+package io {
+
+  trait Command
+
+  trait Event
+}

@@ -19,35 +19,68 @@ package cc.spray.io
 import config.IoWorkerConfig
 import java.nio.channels.spi.SelectorProvider
 import java.nio.ByteBuffer
-import java.util.concurrent.atomic.AtomicInteger
 import annotation.tailrec
 import collection.mutable.ListBuffer
-import akka.actor.{Props, Actor, ActorLogging, ActorRef}
 import java.nio.channels.{CancelledKeyException, SelectionKey, SocketChannel, ServerSocketChannel}
+import java.net.SocketAddress
+import akka.actor.{ActorSystem, ActorRef}
+import akka.event.LoggingAdapter
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.{AtomicReference, AtomicInteger}
 
-class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) extends Actor with ActorLogging {
-  private lazy val ioThread = new IoThread(config)
+// threadsafe
+class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
+  import IoWorker._
 
-  def thread: Thread = ioThread
+  private lazy val ioThread = new IoThread(config, system.log)
+  private lazy val state = new AtomicReference[Any]('unstarted)
 
-  override def preStart() {
-    ioThread.start()
+  /**
+   * @return the IO thread if started and not yet stopped, otherwise None
+   */
+  def thread: Option[Thread] = {
+    state.get match {
+      case ioThread: Thread => Some(ioThread)
+      case _ => None
+    }
   }
 
-  protected def receive = {
-    case cmd: Command => ioThread.post(cmd, sender)
+  /**
+   * Starts the IoWorker if not yet started
+   * @return this instance
+   */
+  def start(): this.type = {
+    if (state.compareAndSet('unstarted, ioThread)) {
+      ioThread.start()
+    }
+    this
   }
 
-  override def postStop() {
-    ioThread.post(Stop, context.system.deadLetters)
+  /**
+   * Stops the IoWorker if not yet stopped. It cannot be restarted.
+   * @return A latch to await termination if desired, None if not yet started or already stopped
+   */
+  def stop(): Option[CountDownLatch] = {
+    val latch = new CountDownLatch(1)
+    if (state.compareAndSet(ioThread, latch)) {
+      this ! Stop(latch)
+      Some(latch)
+    } else None
   }
 
-  private class IoThread(config: IoWorkerConfig)(implicit self: ActorRef) extends Thread {
+  /**
+   * Posts a Command to the IoWorkers command queue.
+   */
+  def ! (cmd: Command)(implicit sender: ActorRef = system.deadLetters) {
+    ioThread.post(cmd, sender)
+  }
+
+  private class IoThread(config: IoWorkerConfig, log: LoggingAdapter) extends Thread {
     import SelectionKey._
 
     private val commandQueue = new SingleReaderConcurrentQueue[(Command, ActorRef)]
     private val selector = SelectorProvider.provider.openSelector
-    private var stopped: Option[ActorRef] = None
+    private var stopped: Option[CountDownLatch] = None
 
     // stats fields
     private var startTime = 0L
@@ -57,7 +90,7 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) extends Actor with Act
     private var connectionsClosed = 0L
     private var commandsExecuted = 0L
 
-    setName(config.threadName + '-' + IoWorker.counter.incrementAndGet())
+    setName(config.threadName + '-' + IoWorker.threadCounter.incrementAndGet())
 
     override def start() {
       if (getState == Thread.State.NEW) {
@@ -84,8 +117,8 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) extends Actor with Act
         }
       }
       closeSelector()
-      stopped.get ! Stopped
       log.info("IoWorker thread '{}' stopped", Thread.currentThread.getName)
+      stopped.get.countDown()
     }
 
     def select() {
@@ -110,6 +143,7 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) extends Actor with Act
       log.debug("Writing to connection")
       val handle = key.attachment.asInstanceOf[Handle]
       val channel = key.channel.asInstanceOf[SocketChannel]
+      val oldBytesWritten = bytesWritten
 
       @tailrec
       // returns true if the given buffers were completely written
@@ -131,6 +165,7 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) extends Actor with Act
           handle.handler ! SendCompleted(handle)
           if (buffers.isEmpty) handle.key.disable(OP_WRITE)
         }
+        log.debug("Wrote {} bytes", bytesWritten - oldBytesWritten)
       } catch {
         case e =>
           log.warning("Write error: closing connection due to {}", e.toString)
@@ -139,6 +174,7 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) extends Actor with Act
     }
 
     def read(key: SelectionKey) {
+      log.debug("Reading from connection")
       val handle = key.attachment.asInstanceOf[Handle]
       val channel = key.channel.asInstanceOf[SocketChannel]
       val buffer = ByteBuffer.allocate(config.readBufferSize)
@@ -167,7 +203,7 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) extends Actor with Act
         val connectionKey = socketChannel.register(selector, 0) // we don't enable any ops until we have a handle
         log.debug("New connection accepted")
         val cmd = key.attachment.asInstanceOf[Bind]
-        cmd.handleCreator ! Connected(Key(connectionKey))
+        cmd.handleCreator ! Connected(Key(connectionKey), ())
       } catch {
         case e => log.error(e, "Accept error: could not accept new connection")
       }
@@ -199,7 +235,9 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) extends Actor with Act
           case x: Bind => bind(x, sender)
           case x: Unbind => unbind(x, sender)
           case GetStats => deliverStats(sender)
-          case Stop => stopped = Some(sender)
+          case Stop(latch) => stopped = Some(latch)
+
+          case x => log.warning("Received unknown command '{}', ignoring ...", x)
         }
       } catch {
         case e: CancelledKeyException if command.isInstanceOf[ConnectionCommand] =>
@@ -253,14 +291,14 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) extends Actor with Act
       channel.socket.bind(cmd.address, cmd.backlog)
       val key = channel.register(selector, OP_ACCEPT)
       key.attach(cmd)
-      sender ! Bound(Key(key))
+      sender ! Bound(Key(key), cmd.tag)
     }
 
     def unbind(cmd: Unbind, sender: ActorRef) {
       val key = cmd.bindingKey.selectionKey
       key.cancel()
       key.channel.close()
-      sender ! Unbound(cmd.bindingKey)
+      sender ! Unbound(cmd.bindingKey, cmd.tag)
     }
 
     def deliverStats(sender: ActorRef) {
@@ -284,7 +322,40 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) extends Actor with Act
 }
 
 object IoWorker {
-  private val counter = new AtomicInteger
-}
+  private val system = ActorSystem("IoWorker")
+  private val threadCounter = new AtomicInteger
 
-private[io] case class InitConnectionHandler(handlerProps: Props, selectionKey: SelectionKey)
+  ////////////// COMMANDS //////////////
+
+  // "super" commands not on the connection-level
+  private[IoWorker] case class Stop(latch: CountDownLatch) extends Command
+  case class Bind(handleCreator: ActorRef, address: SocketAddress, backlog: Int, tag: Any) extends Command
+  case class Unbind(bindingKey: Key, tag: Any) extends Command
+  case class Connect(handleCreator: ActorRef, address: SocketAddress, tag: Any) extends Command
+  case object GetStats extends Command
+
+  // commands on the connection-level
+  trait ConnectionCommand extends Command {
+    def handle: Handle
+  }
+
+  case class Register(handle: Handle) extends ConnectionCommand
+  case class Close(handle: Handle, reason: ConnectionClosedReason) extends ConnectionCommand
+  case class Send(handle: Handle, buffers: Seq[ByteBuffer]) extends ConnectionCommand
+
+  object Send {
+    def apply(handle: Handle, buffer: ByteBuffer): Send = Send(handle, Seq(buffer))
+  }
+
+  ////////////// EVENTS //////////////
+
+  // "general" events not on the connection-level
+  case class Bound(bindingKey: Key, tag: Any) extends Event
+  case class Unbound(bindingKey: Key, tag: Any) extends Event
+  case class Connected(key: Key, tag: Any) extends Event
+
+  // connection-level events
+  case class Closed(handle: Handle, reason: ConnectionClosedReason) extends Event
+  case class SendCompleted(handle: Handle) extends Event
+  case class Received(handle: Handle, buffer: ByteBuffer) extends Event
+}

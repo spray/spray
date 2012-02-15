@@ -19,7 +19,8 @@ package cc.spray.io
 import akka.actor.ActorRef
 import java.net.{InetSocketAddress, SocketAddress}
 
-class IoClientActor(val ioWorker: ActorRef) extends IoPeerActor {
+class IoClientActor(val ioWorker: IoWorker) extends IoPeerActor {
+  import IoClientActor._
 
   override def preStart() {
     log.info("Starting {}", self.path)
@@ -30,22 +31,28 @@ class IoClientActor(val ioWorker: ActorRef) extends IoPeerActor {
   }
 
   protected def receive = {
-    case ClientConnect(address) =>
-      ioWorker ! Connect(self, address, sender)
+    case Connect(address) =>
+      ioWorker ! IoWorker.Connect(self, address, sender)
 
-    case Connected(key, receiver: ActorRef) =>
+    case IoWorker.Connected(key, receiver: ActorRef) =>
       val handle = createConnectionHandle(key)
-      ioWorker ! Register(handle)
-      receiver ! handle
+      ioWorker ! IoWorker.Register(handle)
+      receiver ! Connected(handle)
 
-    case x: CommandError =>
-      log.warning("Received {}", x)
+    case x: CommandError => log.warning("Received {}", x)
   }
 
 }
 
-case class ClientConnect(address: SocketAddress)
-object ClientConnect {
-  def apply(host: String, port: Int): ClientConnect =
-    ClientConnect(new InetSocketAddress(host, port))
+object IoClientActor {
+
+  ////////////// COMMANDS //////////////
+  case class Connect(address: SocketAddress)
+
+  object Connect {
+    def apply(host: String, port: Int): Connect = Connect(new InetSocketAddress(host, port))
+  }
+
+  ////////////// EVENTS //////////////
+  case class Connected(handle: Handle)
 }
