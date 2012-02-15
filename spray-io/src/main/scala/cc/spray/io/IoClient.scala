@@ -19,8 +19,8 @@ package cc.spray.io
 import akka.actor.ActorRef
 import java.net.{InetSocketAddress, SocketAddress}
 
-class IoClientActor(val ioWorker: IoWorker) extends IoPeerActor {
-  import IoClientActor._
+class IoClient(val ioWorker: IoWorker) extends IoPeer {
+  import IoClient._
 
   override def preStart() {
     log.info("Starting {}", self.path)
@@ -44,7 +44,7 @@ class IoClientActor(val ioWorker: IoWorker) extends IoPeerActor {
 
 }
 
-object IoClientActor {
+object IoClient {
 
   ////////////// COMMANDS //////////////
   case class Connect(address: SocketAddress)

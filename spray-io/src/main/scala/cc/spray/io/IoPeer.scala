@@ -19,7 +19,7 @@ package cc.spray.io
 import akka.actor._
 
 
-abstract class IoPeerActor extends Actor with ActorLogging {
+abstract class IoPeer extends Actor with ActorLogging {
 
   def ioWorker: IoWorker
 

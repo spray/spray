@@ -18,7 +18,7 @@ package cc.spray.io
 
 import akka.actor.{PoisonPill, Props, Actor}
 
-trait ConnectionActors extends IoPeerActor {
+trait ConnectionActors extends IoPeer {
 
   override protected def createConnectionHandle(key: Key): Handle = {
     lazy val actor = new IoConnectionActor(key)

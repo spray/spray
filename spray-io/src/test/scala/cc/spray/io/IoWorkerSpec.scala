@@ -13,15 +13,13 @@ class IoWorkerSpec extends Specification {
   val system = ActorSystem("IoWorkerSpec")
   val port = 23456
 
-  class TestServer(ioWorker: IoWorker) extends IoServerActor(ioWorker) {
+  class TestServer(ioWorker: IoWorker) extends IoServer(ioWorker) {
     override def receive = super.receive orElse {
-      case IoWorker.Received(handle, buffer) =>
-        log.info("MARK")
-        ioWorker ! IoWorker.Send(handle, buffer)
+      case IoWorker.Received(handle, buffer) => ioWorker ! IoWorker.Send(handle, buffer)
     }
   }
 
-  class TestClient(ioWorker: IoWorker) extends IoClientActor(ioWorker) {
+  class TestClient(ioWorker: IoWorker) extends IoClient(ioWorker) {
     var requests = Map.empty[Handle, ActorRef]
     override def receive = super.receive orElse {
       case (x: String, handle: Handle) =>
@@ -43,13 +41,13 @@ class IoWorkerSpec extends Specification {
                                                               Step(stop())
 
   def start() {
-    val bound = Await.result(server ? IoServerActor.Bind("localhost", port), timeout.duration)
-    assert(bound.isInstanceOf[IoServerActor.Bound])
+    val bound = Await.result(server ? IoServer.Bind("localhost", port), timeout.duration)
+    assert(bound.isInstanceOf[IoServer.Bound])
   }
 
   def oneRequestDialog = {
     val resp = for {
-      connected <- (client ? IoClientActor.Connect("localhost", port)).mapTo[IoClientActor.Connected]
+      connected <- (client ? IoClient.Connect("localhost", port)).mapTo[IoClient.Connected]
       response <- (client ? ("Echoooo" -> connected.handle)).mapTo[String]
     } yield response
     Await.result(resp, timeout.duration) === "Echoooo"

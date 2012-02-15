@@ -19,8 +19,8 @@ package cc.spray.io
 import java.net.{SocketAddress, InetSocketAddress}
 import akka.actor.ActorRef
 
-abstract class IoServerActor(val ioWorker: IoWorker) extends IoPeerActor {
-  import IoServerActor._
+abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
+  import IoServer._
   var bindingKey: Option[Key] = None
   var endpoint: Option[SocketAddress] = None
   var state = unbound
@@ -78,7 +78,7 @@ abstract class IoServerActor(val ioWorker: IoWorker) extends IoPeerActor {
   }
 }
 
-object IoServerActor {
+object IoServer {
   sealed trait ServerCommand extends Command
 
   ////////////// COMMANDS //////////////
