@@ -71,6 +71,12 @@ object HttpCharsets extends ObjectRegistry[String, HttpCharset] {
   val `UTF-32`      = register(new PredefCharset("UTF-32", "UTF32"))
   val `UTF-32BE`    = register(new PredefCharset("UTF-32BE"))
   val `UTF-32LE`    = register(new PredefCharset("UTF-32LE"))
+  val `windows-1250` = register(new PredefCharset("windows-1250", "cp1250", "cp5346"))
+  val `windows-1251` = register(new PredefCharset("windows-1251", "cp1251", "cp5347"))
+  val `windows-1252` = register(new PredefCharset("windows-1252", "cp1252", "cp5348"))
+  val `windows-1253` = register(new PredefCharset("windows-1253", "cp1253", "cp5349"))
+  val `windows-1254` = register(new PredefCharset("windows-1254", "cp1254", "cp5350"))
+  val `windows-1257` = register(new PredefCharset("windows-1257", "cp1257", "cp5353"))
 
   class CustomHttpCharset(_value: String, val aliases: Seq[String] = Nil) extends HttpCharset {
     val value = _value.toLowerCase.intern()
