@@ -39,7 +39,7 @@ object Dependencies {
     val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % V.slf4j           % "provided"
     val liftJson      = "net.liftweb"               %%  "lift-json"                 % V.liftJson        % "provided"
     val scalate       = "org.fusesource.scalate"    %   "scalate-core"              % "1.5.3"           % "provided"
-    val twirlApi      = "cc.spray"                  %%  "twirl-api"                 % "0.5.1-SNAPSHOT"  % "provided"
+    val twirlApi      = "cc.spray"                  %%  "twirl-api"                 % "0.5.1"           % "provided"
   }
 
   object Test {
