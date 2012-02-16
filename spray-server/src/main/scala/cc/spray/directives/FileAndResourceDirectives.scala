@@ -89,14 +89,16 @@ private[spray] trait FileAndResourceDirectives {
    */
   def getFromResource(resourceName: String, charset: Option[HttpCharset] = None,
                       resolver: ContentTypeResolver = DefaultContentTypeResolver): Route = {
-    detach {
-      get { ctx =>
-        responseFromResource(resourceName, resolver(resourceName, charset)) match {
-          case Some(response) => ctx.complete(response)
-          case None => ctx.reject() // reject without specific rejection => same as unmatched "path" directive
+    if (!resourceName.endsWith("/")) {
+      detach {
+        get { ctx =>
+          responseFromResource(resourceName, resolver(resourceName, charset)) match {
+            case Some(response) => ctx.complete(response)
+            case None => ctx.reject() // reject without specific rejection => same as unmatched "path" directive
+          }
         }
       }
-    }
+    } else _.reject() // don't serve the content of directories
   }
   
   /**
