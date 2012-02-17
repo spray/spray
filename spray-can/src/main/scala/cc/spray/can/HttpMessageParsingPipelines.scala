@@ -17,23 +17,22 @@
 package cc.spray.can
 
 import config.HttpParserConfig
-import model.{HttpMessagePart, HttpMessage}
-import cc.spray.io.Pipelines
-import nio.Pipelines
+import model.HttpMessage
 import java.nio.ByteBuffer
 import annotation.tailrec
 import parsing._
+import cc.spray.io._
 
-abstract class HttpMessageParsingPipelineStage {
+abstract class HttpMessageParsingPipelines(parserConfig: HttpParserConfig,
+                                           commandPL: Pipeline[Command],
+                                           eventPL: Pipeline[Event]) extends Pipelines {
   var currentParsingState = startParser
 
   def startParser: ParsingState
-  def parserConfig: HttpParserConfig
-  def pipelines: Pipelines
   def handleParseError(errorState: ErrorState)
 
   @tailrec
-  final def apply(buffer: ByteBuffer) {
+  final def parse(buffer: ByteBuffer) {
     currentParsingState match {
       case x: IntermediateState =>
         currentParsingState = x.read(buffer)
@@ -41,20 +40,27 @@ abstract class HttpMessageParsingPipelineStage {
           case x: IntermediateState => // wait for more input
 
           case x: HttpMessagePartCompletedState =>
-            dispatch(x.toHttpMessagePart)
-            if (buffer.remaining > 0) apply(buffer) // there might be more input in the buffer, so recurse
+            val messagePart = x.toHttpMessagePart
+            eventPL(messagePart) // dispatch
+            currentParsingState = messagePart match {
+              case _: HttpMessage => startParser
+              case _ => new ChunkParser(parserConfig)
+            }
+            if (buffer.remaining > 0) parse(buffer) // there might be more input in the buffer, so recurse
 
           case x: ErrorState => handleParseError(x)
         }
+
       case x: ErrorState => // if we are already in the errorstate we ignore all further input
     }
   }
 
-  def dispatch(messagePart: HttpMessagePart) {
-    pipelines.upstream(messagePart)
-    currentParsingState = messagePart match {
-      case _: HttpMessage => startParser
-      case _ => new ChunkParser(parserConfig)
+  def commandPipeline(command: Command) { commandPL(command) }
+
+  def eventPipeline(event: Event) {
+    event match {
+      case x: IoWorker.Received => parse(x.buffer)
+      case ev => eventPL(event)
     }
   }
 

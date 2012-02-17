@@ -20,7 +20,7 @@ package cc.spray.can.model
  * Both, the [[cc.spray.can.HttpServer]] as well as the [[cc.spray.can.HttpClient]] respond to
  * `GetStats` messages by replying with an instance of `Stats`.
  */
-case class ServerStats(
+case class HttpPeerStats(
   uptime: Long,
   requestsDispatched: Long,
   requestsTimedOut: Long,

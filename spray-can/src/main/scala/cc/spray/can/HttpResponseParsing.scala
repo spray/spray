@@ -17,27 +17,23 @@
 package cc.spray.can
 
 import config.HttpParserConfig
-import cc.spray.io.{Close, ProtocolError, Received, Pipelines}
-import nio.{Received, ProtocolError, Close, Pipelines}
+import akka.event.LoggingAdapter
 import parsing.{ErrorState, EmptyResponseParser}
-import cc.spray.io.util.Logging
-import util.Logging
+import cc.spray.io._
+import akka.actor.ActorContext
 
-object HttpResponseParsing extends Logging {
+object HttpResponseParsing {
 
-  def apply(config: HttpParserConfig)(thePipelines: Pipelines) = {
-    val piplelineStage = new HttpMessageParsingPipelineStage {
-      val startParser = new EmptyResponseParser(config)
-      def parserConfig = config
-      def pipelines = thePipelines
-      def handleParseError(state: ErrorState) {
-        log.warn("Received illegal response: {}", state.message)
-        pipelines.downstream(Close(pipelines.handle, ProtocolError(state.message)))
+  def apply(config: HttpParserConfig, log: LoggingAdapter) = new DoublePipelineStage {
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
+      new HttpMessageParsingPipelines(config, commandPL, eventPL) {
+        val startParser = new EmptyResponseParser(config)
+
+        def handleParseError(state: ErrorState) {
+          log.warning("Received illegal response: {}", state.message)
+          commandPL(IoPeer.Close(ProtocolError(state.message)))
+        }
       }
-    }
-    thePipelines.withUpstream {
-      case x: Received => piplelineStage(x.buffer)
-      case event => thePipelines.upstream(event)
     }
   }
 }

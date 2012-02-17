@@ -35,7 +35,7 @@ class ToCloseBodyParser(config: HttpParserConfig, messageLine: MessageLine, head
         if (body.length + array.length <= config.maxContentLength) {
           body = body concat array
           this
-        } else ErrorParser("HTTP message body size exceeds the configured limit of " + config.maxContentLength, 413)
+        } else ErrorState("HTTP message body size exceeds the configured limit of " + config.maxContentLength, 413)
       }
     }
   }

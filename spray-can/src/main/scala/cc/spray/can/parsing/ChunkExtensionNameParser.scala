@@ -35,7 +35,7 @@ class ChunkExtensionNameParser(config: HttpParserConfig, chunkSize: Int, extCoun
         case _ => ErrorState("Invalid character '" + cursor + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
       }
     } else {
-      ErrorParser("Chunk extension name exceeds the configured limit of " + config.maxChunkExtNameLength +
+      ErrorState("Chunk extension name exceeds the configured limit of " + config.maxChunkExtNameLength +
                   " characters (" + extName.toString.take(50) + "...)")
     }
   }

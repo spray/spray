@@ -19,14 +19,17 @@ package model
 
 import java.io.UnsupportedEncodingException
 import java.nio.charset.Charset
+import cc.spray.io.Event
 
-sealed trait HttpRequestPart
+sealed trait HttpMessagePart extends Event
 
-sealed trait HttpResponsePart
+sealed trait HttpRequestPart extends HttpMessagePart
 
-sealed trait HttpMessagePart
+sealed trait HttpResponsePart extends HttpMessagePart
 
-sealed trait HttpMessage extends HttpMessagePart {
+sealed trait HttpMessageStartPart extends HttpMessagePart
+
+sealed trait HttpMessage extends HttpMessageStartPart {
   def headers: List[HttpHeader]
   def body: Array[Byte]
   def protocol: HttpProtocol
@@ -149,12 +152,12 @@ object HttpResponse {
   }
 }
 
-case class ChunkedRequestStart(request: HttpRequest) extends HttpMessagePart with HttpRequestPart
+case class ChunkedRequestStart(request: HttpRequest) extends HttpMessageStartPart with HttpRequestPart
 
-case class ChunkedResponseStart(response: HttpResponse) extends HttpMessagePart with HttpResponsePart
+case class ChunkedResponseStart(response: HttpResponse) extends HttpMessageStartPart with HttpResponsePart
 
 case class MessageChunk(body: Array[Byte], extensions: List[ChunkExtension])
-  extends HttpMessagePart with HttpRequestPart with HttpResponsePart {
+  extends HttpRequestPart with HttpResponsePart {
   require(body.length > 0, "MessageChunk must not have empty body")
   def bodyAsString: String = bodyAsString("ISO-88591-1")
   def bodyAsString(charset: Charset): String = if (body.isEmpty) "" else new String(body, charset)
@@ -177,6 +180,6 @@ object MessageChunk {
 case class ChunkedMessageEnd(
   extensions: List[ChunkExtension],
   trailer: List[HttpHeader]
-) extends HttpMessagePart with HttpRequestPart with HttpResponsePart
+) extends HttpRequestPart with HttpResponsePart
 
 case class ChunkExtension(name: String, value: String)

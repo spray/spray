@@ -16,10 +16,9 @@
 
 package cc.spray
 
-import can.util.{PimpedAkkaChannel, PimpedByteArray, PimpedLinearSeq}
+import can.util.{PimpedByteArray, PimpedLinearSeq}
 import collection.immutable.LinearSeq
 import java.io.{BufferedReader, InputStreamReader}
-import akka.actor.{UntypedChannel, ActorRef, Actor}
 
 package object can {
 
@@ -29,16 +28,9 @@ package object can {
     new BufferedReader(new InputStreamReader(getClass.getResourceAsStream("/spray-can.version"))).readLine()
   }
 
-  private[can] def actor(id: String): ActorRef = {
-    val actors = Actor.registry.actorsFor(id)
-    assert(actors.length == 1, actors.length + " actors for id '" + id + "' found, expected exactly one")
-    actors.head
-  }
-
   // implicits
   implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq)
   implicit def pimpByteArray(array: Array[Byte]): PimpedByteArray = new PimpedByteArray(array)
-  implicit def pimpAkkaChannel(channel: UntypedChannel): PimpedAkkaChannel = new PimpedAkkaChannel(channel)
 
   val EmptyByteArray = new Array[Byte](0)
 }

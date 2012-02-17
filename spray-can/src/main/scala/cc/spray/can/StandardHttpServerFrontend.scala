@@ -14,44 +14,56 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray
+package can
 
 import model._
-import nio._
-import akka.actor.ActorRef
+import io._
 import collection.mutable.Queue
 import rendering.HttpResponsePartRenderingContext
-import cc.spray.io.Pipelines
+import akka.actor.ActorContext
 
 object StandardHttpServerFrontend {
 
-  def apply(requestActorFactory: => ActorRef)(pipelines: Pipelines) = {
-    val openRequests = Queue.empty[HttpRequest]
-    pipelines.copy(
-      upstream = {
-        case part: HttpRequestPart =>
-          part match {
-            case x: HttpRequest         => openRequests += x
-            case x: ChunkedRequestStart => openRequests += x.request
-            case _                      =>
-          }
-          requestActorFactory ! part
+  def apply() = new DoublePipelineStage {
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
+      val openRequests = Queue.empty[HttpRequest]
 
-        case event => pipelines.upstream(event)
-      },
-      downstream = {
-        case part: HttpResponsePart => pipelines.downstream {
-          if (openRequests.isEmpty) throw new IllegalStateException("Received ResponsePart for non-existing request")
-          val request = part match {
-            case _: HttpResponse      => openRequests.dequeue()
-            case _: ChunkedMessageEnd => openRequests.dequeue()
-            case _                    => openRequests.front
+      def commandPipeline(command: Command) {
+        commandPL {
+          command match {
+            case part: HttpResponsePart =>
+              if (openRequests.isEmpty) throw new IllegalStateException("Received ResponsePart for non-existing request")
+              val request = part match {
+                case _: HttpResponse      => openRequests.dequeue()
+                case _: ChunkedMessageEnd => openRequests.dequeue()
+                case _                    => openRequests.front
+              }
+              HttpResponsePartRenderingContext(part, request.method, request.protocol, request.connectionHeader)
+            case cmd => cmd
           }
-          HttpResponsePartRenderingContext(part, request.method, request.protocol, request.connectionHeader)
         }
-        case event => pipelines.downstream(event)
       }
-    )
+
+      def eventPipeline(event: Event) {
+        event match {
+          case x: HttpRequest =>
+            openRequests += x
+            commandPL(MessageHandler.DispatchNewMessage(x))
+          case x: ChunkedRequestStart =>
+            openRequests += x.request
+            commandPL(MessageHandler.DispatchNewMessage(x))
+          case x: HttpMessagePart =>
+            commandPL(MessageHandler.DispatchFollowupMessage(x))
+          case x: HttpServer.SendCompleted =>
+            commandPL(MessageHandler.DispatchFollowupMessage(x))
+          case x: HttpServer.Closed =>
+            commandPL(MessageHandler.DispatchFollowupMessage(x))
+          case ev => eventPL(ev)
+        }
+      }
+    }
+
   }
 
 }

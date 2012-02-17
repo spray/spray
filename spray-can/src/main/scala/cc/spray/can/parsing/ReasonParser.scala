@@ -32,7 +32,7 @@ class ReasonParser(config: HttpParserConfig, protocol: HttpProtocol, status: Int
         case _ => reason.append(cursor); this
       }
     } else {
-      ErrorParser("Reason phrase exceeds the configured limit of " + config.maxResponseReasonLength + " characters")
+      ErrorState("Reason phrase exceeds the configured limit of " + config.maxResponseReasonLength + " characters")
     }
   }
 

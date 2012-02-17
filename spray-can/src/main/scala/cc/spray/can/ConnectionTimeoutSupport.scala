@@ -14,15 +14,19 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray
+package can
 
 import config.ConnectionTimeoutConfig
-import nio._
-import cc.spray.io.Pipelines
+import io._
+import akka.actor.ActorContext
 
 object ConnectionTimeoutSupport {
 
-  def apply(config: ConnectionTimeoutConfig)(pipelines: Pipelines) = {
-    pipelines
+  def apply(config: ConnectionTimeoutConfig) = new DoublePipelineStage {
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
+      Pipelines(commandPL, eventPL)
+    }
   }
+
 }

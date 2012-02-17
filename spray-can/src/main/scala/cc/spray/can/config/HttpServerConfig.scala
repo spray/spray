@@ -17,8 +17,7 @@
 package cc.spray.can
 package config
 
-import cc.spray.io.config.{IoWorkerConfig, IoServerConfig}
-
+import cc.spray.io.IoWorkerConfig
 
 case class HttpServerConfig(
 
@@ -28,12 +27,6 @@ case class HttpServerConfig(
   // IoWorkerConfig
   threadName: String = IoWorkerConfig.defaultThreadName,
   readBufferSize: Int = IoWorkerConfig.defaultReadBufferSize,
-
-  // IoServerConfig
-  label: String = "spray-can HTTP server",
-  host: String = "localhost",
-  port: Int = 80,
-  bindingBacklog: Int = IoServerConfig.defaultBindingBacklog,
 
   // ConnectionTimeoutConfig
   idleTimeout: Long = ConnectionTimeoutConfig.defaultIdleTimeout,
@@ -51,4 +44,4 @@ case class HttpServerConfig(
   maxChunkExtCount: Int         = HttpParserConfig.defaultMaxChunkExtCount,
   maxChunkSize: Int             = HttpParserConfig.defaultMaxChunkSize
 
-) extends IoWorkerConfig with IoServerConfig with ConnectionTimeoutConfig with HttpParserConfig
+) extends IoWorkerConfig with ConnectionTimeoutConfig with HttpParserConfig

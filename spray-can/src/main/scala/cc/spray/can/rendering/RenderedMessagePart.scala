@@ -19,6 +19,7 @@ package rendering
 
 import java.nio.ByteBuffer
 import model._
+import cc.spray.io.Command
 
 case class HttpRequestPartRenderingContext(
   requestPart: HttpRequestPart,
@@ -31,6 +32,6 @@ case class HttpResponsePartRenderingContext(
   requestMethod: HttpMethod,
   requestProtocol: HttpProtocol,
   requestConnectionHeader: Option[String]
-)
+) extends Command
 
 case class RenderedMessagePart(buffers: List[ByteBuffer], closeConnection: Boolean = false)

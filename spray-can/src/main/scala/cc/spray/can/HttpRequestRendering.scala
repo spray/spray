@@ -16,22 +16,21 @@
 
 package cc.spray.can
 
-import nio._
 import rendering.{HttpRequestPartRenderingContext, HttpRequestRenderer}
-import cc.spray.io.Pipelines
+import akka.actor.ActorContext
+import cc.spray.io._
 
 object HttpRequestRendering {
 
-  def apply(userAgentHeader: String)(pipelines: Pipelines) = {
+  def apply(userAgentHeader: String) = new CommandPipelineStage {
     val renderer = new HttpRequestRenderer(userAgentHeader)
-    pipelines.withDownstream {
+
+    def build(context: ActorContext, commandPL: Pipeline[Command]) = {
       case ctx: HttpRequestPartRenderingContext =>
         val rendered = renderer.render(ctx)
-        pipelines.downstream {
-          Send(pipelines.handle, rendered.buffers)
-        }
+        commandPL(IoPeer.Send(rendered.buffers))
 
-      case event => pipelines.downstream(event)
+      case cmd => commandPL(cmd)
     }
   }
 }

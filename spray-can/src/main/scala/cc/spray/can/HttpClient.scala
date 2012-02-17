@@ -17,11 +17,7 @@
 package cc.spray.can
 
 import config.HttpClientConfig
-import nio._
-import java.lang.String
-import java.net.{InetAddress, InetSocketAddress}
-import akka.actor.{UntypedChannel, ActorRef, Channel}
-import cc.spray.io.{ConnectionActors, IoClientActor, IoWorker, Pipelines}
+import cc.spray.io._
 
 /**
  * Reacts to [[cc.spray.can.Connect]] messages by establishing a connection to the remote host. If there is an error
@@ -34,39 +30,25 @@ import cc.spray.io.{ConnectionActors, IoClientActor, IoWorker, Pipelines}
  * in case of errors).
  */
 class HttpClient(config: HttpClientConfig)
-                (nioWorker: IoWorker = new IoWorker(config))
-                extends IoClientActor(config, nioWorker) with ConnectionActors {
+                (ioWorker: IoWorker = new IoWorker(config))
+                extends IoClient(ioWorker) with ConnectionActors {
 
-  protected def receive = {
-    case Connect(host, port) =>
-      val address = new InetSocketAddress(host, port)
-      log.debug("Initiating new connection to {}", address)
-      nioWorker ! nio.Connect(self, address, self.channel)
 
-    case x@ nio.Connected(key, _) =>
-      val handle = createConnectionHandle(key)
-      nioWorker ! Register(handle)
-      handle.handler ! x
+  protected def pipelines = (
+    StandardHttpClientFrontend(log)
+    ~> HttpRequestRendering(config.userAgentHeader)
+    ~> HttpResponseParsing(config, log)
+    ~> ConnectionTimeoutSupport(config)
+  )
+}
 
-    case CommandError(nio.Connect(_, address, channel: UntypedChannel), error) =>
-      log.warn("Could not connect due to {}", error.toString)
-      channel.sendError(new HttpClientException("Could not connect to " + address, error))
-  }
+object HttpClient extends IoClientApi {
 
-  protected def buildConnectionPipelines(baseContext: Pipelines) = {
-    StandardHttpClientFrontend {
-      HttpRequestRendering(config.userAgentHeader) {
-        HttpResponseParsing(config) {
-          ConnectionTimeoutSupport(config) {
-            baseContext
-          }
-        }
-      }
-    }
-  }
+  ////////////// COMMANDS //////////////
+  // HttpRequestParts
+
+  ////////////// EVENTS //////////////
+  // HttpResponseParts
 
 }
 
-case class Connect(host: String, port: Int)
-case class Connected(connectionActor: ActorRef, remoteAddress: InetAddress)
-case class HttpClientException(msg: String, cause: Throwable) extends RuntimeException(msg, cause)

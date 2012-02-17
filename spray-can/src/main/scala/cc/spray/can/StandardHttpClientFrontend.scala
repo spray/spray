@@ -17,46 +17,34 @@
 package cc.spray.can
 
 import model._
-import nio._
-import collection.mutable.Queue
-import java.nio.channels.SocketChannel
-import akka.actor.{UntypedChannel, Channel}
-import cc.spray.io.util.Logging
-import util.Logging
-import cc.spray.io.Pipelines
+import cc.spray.io._
+import akka.event.LoggingAdapter
+import akka.actor.{ActorContext, ActorRef}
 
-object StandardHttpClientFrontend extends Logging {
+object StandardHttpClientFrontend {
 
-  def apply(pipelines: Pipelines) = {
-    val openRequests = Queue.empty[(HttpRequest, UntypedChannel)]
-    pipelines.copy(
-      upstream = {
-        case part: HttpResponsePart =>
-          if (!openRequests.isEmpty) {
-            val (request, channel) = part match {
-              case _: HttpResponse      => openRequests.dequeue()
-              case _: ChunkedMessageEnd => openRequests.dequeue()
-              case _                    => openRequests.front
-            }
-            channel.!(request)(pipelines.handle.handler)
-          } else log.warn("Received ResponsePart for non-existing request: {}", part)
+  def apply(log: LoggingAdapter) = new DoublePipelineStage {
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
+      var lastCommandSender: ActorRef = null
 
-        case event => pipelines.upstream(event)
-      },
-      downstream = {
-        case nio.Connected(_, channel: UntypedChannel) =>
-          val handle = pipelines.handle
-          channel ! Connected(handle.handler, handle.key.channel.asInstanceOf[SocketChannel].socket.getInetAddress)
-
-        case part: HttpRequestPart =>
-          part match {
-            case x: HttpRequest         => openRequests += x -> pipelines.handle.handler.channel
-            case x: ChunkedRequestStart => openRequests += x.request -> pipelines.handle.handler.channel
-            case _                      =>
-          }
-          pipelines.downstream(part)
+      def commandPipeline(command: Command) {
+        lastCommandSender = context.sender
+        commandPL(command)
       }
-    )
+
+      def eventPipeline(event: Event) {
+        event match {
+          case x: HttpResponsePart => dispatch(x)
+          case x: HttpClient.SendCompleted => dispatch(x)
+          case x: HttpClient.Closed => dispatch(x)
+          case ev => eventPL(ev)
+        }
+      }
+
+      def dispatch(msg: Any) {
+        if (lastCommandSender != null) commandPL(IoPeer.Dispatch(lastCommandSender, msg))
+      }
+    }
   }
 
 }

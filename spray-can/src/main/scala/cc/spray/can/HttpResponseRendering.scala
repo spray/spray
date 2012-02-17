@@ -14,30 +14,27 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray
+package can
 
-import nio._
 import rendering.{HttpResponsePartRenderingContext, HttpResponseRenderer}
-import cc.spray.io.{ProtocolClose, Pipelines}
+import io._
+import akka.actor.ActorContext
 
 object HttpResponseRendering {
 
-  def apply(serverHeader: String)(pipelines: Pipelines) = {
+  def apply(serverHeader: String) = new CommandPipelineStage {
     val renderer = new HttpResponseRenderer(serverHeader)
 
-    pipelines.withDownstream {
+    def build(context: ActorContext, commandPL: Pipeline[Command]) = {
       case ctx: HttpResponsePartRenderingContext =>
         val rendered = renderer.render(ctx)
-        pipelines.downstream {
-          Send(pipelines.handle, rendered.buffers)
-        }
+        commandPL(IoPeer.Send(rendered.buffers))
         if (rendered.closeConnection) {
-          pipelines.downstream {
-            Close(pipelines.handle, ProtocolClose)
-          }
+          commandPL(IoPeer.Close(ProtocolClose))
         }
 
-      case event => pipelines.downstream(event)
+      case cmd => commandPL(cmd)
     }
   }
 }

@@ -14,27 +14,31 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray
+package can
 
 import config.HttpServerConfig
-import nio._
-import akka.actor.ActorRef
-import cc.spray.io.{ConnectionActors, IoServerActor, IoWorker, Pipelines}
+import io._
 
-class HttpServer(config: HttpServerConfig, requestActorFactory: => ActorRef)
-                (nioWorker: IoWorker = new IoWorker(config))
-                extends IoServerActor(config, nioWorker) with ConnectionActors {
+class HttpServer(config: HttpServerConfig, messageHandler: MessageHandler)
+                (ioWorker: IoWorker = new IoWorker(config))
+                extends IoServer(ioWorker) with ConnectionActors {
 
-  protected def buildConnectionPipelines(baseContext: Pipelines) = {
-    StandardHttpServerFrontend(requestActorFactory) {
-      HttpRequestParsing(config) {
-        HttpResponseRendering(config.serverHeader) {
-          ConnectionTimeoutSupport(config) {
-            baseContext
-          }
-        }
-      }
-    }
-  }
+  protected def pipelines = (
+    StandardHttpServerFrontend()
+    ~> HttpRequestParsing(config, log)
+    ~> HttpResponseRendering(config.serverHeader)
+    ~> MessageHandlerDispatch(messageHandler)
+    ~> ConnectionTimeoutSupport(config)
+  )
+}
+
+object HttpServer extends IoServerApi {
+
+  ////////////// COMMANDS //////////////
+  // HttpRequestParts
+
+  ////////////// EVENTS //////////////
+  // HttpResponseParts
 
 }
