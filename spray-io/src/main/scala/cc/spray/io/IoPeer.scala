@@ -17,6 +17,7 @@
 package cc.spray.io
 
 import akka.actor._
+import java.nio.ByteBuffer
 
 
 abstract class IoPeer extends Actor with ActorLogging {
@@ -26,4 +27,20 @@ abstract class IoPeer extends Actor with ActorLogging {
   protected def createConnectionHandle(key: Key): Handle =
     SimpleHandle(key, self) // default implementation
 
+}
+
+object IoPeer {
+
+  ////////////// COMMANDS //////////////
+  case class Close(reason: ConnectionClosedReason) extends Command
+  case class Send(buffers: Seq[ByteBuffer]) extends Command
+  object Send {
+    def apply(buffer: ByteBuffer): Send = Send(Seq(buffer))
+  }
+  case class Dispatch(receiver: ActorRef, message: Any) extends Command
+
+  ////////////// EVENTS //////////////
+  type Closed = IoWorker.Closed
+  type SendCompleted = IoWorker.SendCompleted
+  type Received = IoWorker.Received
 }

@@ -1,3 +1,5 @@
+package cc.spray.io
+
 /*
  * Copyright (C) 2011, 2012 Mathias Doenitz
  *
@@ -14,10 +16,9 @@
  * limitations under the License.
  */
 
-package cc.spray.io.config
-
 trait IoWorkerConfig {
   def threadName: String
+
   def readBufferSize: Int
 }
 
@@ -28,6 +29,7 @@ object IoWorkerConfig {
   def apply(_threadName: String = defaultThreadName, _readBufferSize: Int = defaultReadBufferSize) = {
     new IoWorkerConfig {
       def threadName = _threadName
+
       def readBufferSize = _readBufferSize
     }
   }

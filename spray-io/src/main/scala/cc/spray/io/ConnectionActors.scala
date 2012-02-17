@@ -18,42 +18,40 @@ package cc.spray.io
 
 import akka.actor.{PoisonPill, Props, Actor}
 
+
 trait ConnectionActors extends IoPeer {
 
   override protected def createConnectionHandle(key: Key): Handle = {
-    lazy val actor = new IoConnectionActor(key)
+    lazy val actor = createConnectionActor(key)
     context.actorOf(Props(actor))
     actor
   }
 
-  protected def buildConnectionPipelines(basePipelines: Pipelines): Pipelines
+  protected def createConnectionActor(key: Key): IoConnectionActor = new IoConnectionActor(key)
+
+  protected def pipelines: DoublePipelineStage
 
   class IoConnectionActor(val key: Key) extends Actor with Handle {
-    private val pipelines = buildConnectionPipelines {
-      Pipelines(
-        handle = this,
-        eventPipeline = baseEventPipeline,
-        commandPipeline = baseCommandPipeline
-      )
+    private[this] val _pipelines = pipelines.build(context, baseCommandPipeline, baseEventPipeline)
+
+    protected def baseCommandPipeline: Pipeline[Command] = {
+      case x: IoPeer.Send => ioWorker ! IoWorker.Send(this, x.buffers)
+      case x: IoPeer.Close => ioWorker ! IoWorker.Close(this, x.reason)
+      case x: IoPeer.Dispatch => x.receiver ! x.message
+      case x => log.warning("commandPipeline: dropped {}", x)
     }
 
-    private def baseEventPipeline: Pipeline[Event] = {
-      case x: IoWorker.Closed =>
+    protected def baseEventPipeline: Pipeline[Event] = {
+      case x: IoPeer.Closed =>
         log.debug("Stopping connection actor, connection was closed due to {}", x.reason)
         self ! PoisonPill
       case x: CommandError => log.warning("Received {}", x)
       case x => log.warning("eventPipeline: dropped {}", x)
     }
 
-    private def baseCommandPipeline: Pipeline[Command] = {
-      case x: IoWorker.Send => ioWorker ! x
-      case x: IoWorker.Close => ioWorker ! x
-      case x => log.warning("commandPipeline: dropped {}", x)
-    }
-
     protected def receive = {
-      case x: Event => pipelines.eventPipeline(x)
-      case x: Command => pipelines.commandPipeline(x)
+      case x: Command => _pipelines.commandPipeline(x)
+      case x: Event => _pipelines.eventPipeline(x)
     }
 
     def handler = self

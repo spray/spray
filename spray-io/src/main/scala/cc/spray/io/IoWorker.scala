@@ -16,7 +16,6 @@
 
 package cc.spray.io
 
-import config.IoWorkerConfig
 import java.nio.channels.spi.SelectorProvider
 import java.nio.ByteBuffer
 import annotation.tailrec
@@ -344,7 +343,6 @@ object IoWorker {
   case class Register(handle: Handle) extends ConnectionCommand
   case class Close(handle: Handle, reason: ConnectionClosedReason) extends ConnectionCommand
   case class Send(handle: Handle, buffers: Seq[ByteBuffer]) extends ConnectionCommand
-
   object Send {
     def apply(handle: Handle, buffer: ByteBuffer): Send = Send(handle, Seq(buffer))
   }

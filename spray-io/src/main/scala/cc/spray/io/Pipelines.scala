@@ -16,11 +16,94 @@
 
 package cc.spray.io
 
-case class Pipelines(
-  handle: Handle,
-  eventPipeline: Pipeline[Event],
-  commandPipeline: Pipeline[Command]
-) {
-  def withEventPipeline(pipeline: Pipeline[Event]) = copy(eventPipeline = pipeline)
-  def withCommandPipeline(pipeline: Pipeline[Command]) = copy(commandPipeline = pipeline)
+import akka.actor.ActorContext
+
+trait Pipelines {
+  def commandPipeline(command: Command)
+  def eventPipeline(event: Event)
+}
+
+object Pipelines {
+  def apply(commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
+    def commandPipeline(command: Command) { commandPL(command) }
+    def eventPipeline(event: Event) { eventPL(event) }
+  }
+}
+
+object Pipeline {
+  val uninitialized: Pipeline[Any] = _ => throw new RuntimeException("Pipeline not yet initialized")
+}
+
+trait DoublePipelineStage { left =>
+
+  def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): Pipelines
+
+  def ~> (right: EventPipelineStage) = new DoublePipelineStage {
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
+      val leftPL = left.build(context, commandPL, eventPL)
+      Pipelines(leftPL.commandPipeline, right.build(context, leftPL.eventPipeline))
+    }
+  }
+
+  def ~> (right: CommandPipelineStage) = new DoublePipelineStage {
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
+      left.build(context, right.build(context, commandPL), eventPL)
+  }
+
+  def ~> (right: DoublePipelineStage) = new DoublePipelineStage {
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
+      var cplProxy: Pipeline[Command] = Pipeline.uninitialized
+      var eplProxy: Pipeline[Event] = Pipeline.uninitialized
+      val leftPL = left.build(context, cplProxy(_), eventPL)
+      val rightPL = right.build(context, commandPL, eplProxy(_))
+      cplProxy = rightPL.commandPipeline
+      eplProxy = leftPL.eventPipeline
+      Pipelines(leftPL.commandPipeline, rightPL.eventPipeline)
+    }
+  }
+}
+
+
+trait EventPipelineStage { left =>
+
+  def build(context: ActorContext, eventPL: Pipeline[Event]): Pipeline[Event]
+
+  def ~> (right: EventPipelineStage) = new EventPipelineStage {
+    def build(context: ActorContext, eventPL: Pipeline[Event]) =
+      right.build(context, left.build(context, eventPL))
+  }
+
+  def ~> (right: CommandPipelineStage) = new DoublePipelineStage {
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
+      Pipelines(right.build(context, commandPL), left.build(context, eventPL))
+  }
+
+  def ~> (right: DoublePipelineStage) = new DoublePipelineStage {
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
+      right.build(context, commandPL, left.build(context, eventPL))
+  }
+
+}
+
+trait CommandPipelineStage { left =>
+
+  def build(context: ActorContext, commandPL: Pipeline[Command]): Pipeline[Command]
+
+  def ~> (right: EventPipelineStage) = new DoublePipelineStage {
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
+      Pipelines(left.build(context, commandPL), right.build(context, eventPL))
+  }
+
+  def ~> (right: CommandPipelineStage) = new CommandPipelineStage {
+    def build(context: ActorContext, commandPL: Pipeline[Command]) =
+      left.build(context, right.build(context, commandPL))
+  }
+
+  def ~> (right: DoublePipelineStage) = new DoublePipelineStage {
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
+      val rightPL = right.build(context, commandPL, eventPL)
+      Pipelines(left.build(context, rightPL.commandPipeline), rightPL.eventPipeline)
+    }
+  }
+
 }
