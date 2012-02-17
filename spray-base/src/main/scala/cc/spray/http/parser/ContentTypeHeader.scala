@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-package cc.spray.http
+package cc.spray
+package http
 package parser
 
 import org.parboiled.scala._
@@ -36,7 +37,7 @@ private[parser] trait ContentTypeHeader {
     val mimeType = getMediaType(mainType, subType, params.get("boundary"))
     val charset = params.get("charset").map { charsetName =>
       HttpCharsets.getForKey(charsetName.toLowerCase).getOrElse {
-        if (cc.spray.SprayBaseSettings.RelaxedHeaderParsing)
+        if (SprayBaseSettings.RelaxedHeaderParsing)
           new HttpCharsets.CustomHttpCharset(charsetName)
         else throw new HttpException(BadRequest, "Unsupported charset: " + charsetName)
       }
