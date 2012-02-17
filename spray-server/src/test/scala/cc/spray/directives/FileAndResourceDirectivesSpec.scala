@@ -120,6 +120,11 @@ class FileAndResourceDirectivesSpec extends AbstractSprayTest {
         }.response.content mustEqual Some(HttpContent(`application/pdf`, ""))
       }
     }
+    "reject requests to directory resources" in {
+      test(HttpRequest(GET)) {
+        getFromResourceDirectory("subDirectory")
+      }.handled must beFalse
+    }
   }
   
 }

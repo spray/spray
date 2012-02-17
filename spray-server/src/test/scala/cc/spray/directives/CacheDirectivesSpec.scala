@@ -63,10 +63,16 @@ class CacheDirectivesSpec extends AbstractSprayTest {
         prime(countingService)        
       }.response.content.as[String] mustEqual Right("2")
     }
+    import CacheDirectives._
     "not cache responses for GETs if the request contains a Cache-Control: no-cache header" in {
-      test(HttpRequest(GET, headers = List(`Cache-Control`(CacheDirectives.`no-cache`)))) {
+      test(HttpRequest(GET, headers = List(`Cache-Control`(`no-cache`)))) {
         prime(countingService)
       }.response.content.as[String] mustEqual Right("3")
+    }
+    "not cache responses for GETs if the request contains a Cache-Control: max-age=0 header" in {
+      test(HttpRequest(GET, headers = List(`Cache-Control`(`max-age`(0))))) {
+        prime(countingService)
+      }.response.content.as[String] mustEqual Right("4")
     }
   }
 

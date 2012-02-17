@@ -89,6 +89,10 @@ class HttpHeaderSpec extends Specification { def is =
       example(`Content-Type`(`application/pdf`))_ ^
     "Content-Type: text/plain; charset=utf8" !
       example(`Content-Type`(ContentType(`text/plain`, `UTF-8`)), fix(_).replace("utf", "UTF-"))_ ^
+    "Content-Type: text/xml; charset=windows-1252" !
+      example(`Content-Type`(ContentType(`text/xml`, `windows-1252`)))_ ^
+    "Content-Type: text/plain; charset=fancy-pants" !
+      example(`Content-Type`(ContentType(`text/plain`, new CustomHttpCharset("FANCY-pants"))))_ ^
     "Content-Type: multipart/mixed; boundary=ABC123" !
       example(`Content-Type`(ContentType(new `multipart/mixed`(Some("ABC123")))), fix(_).replace("=", "=\"") + '"')_ ^
     p^

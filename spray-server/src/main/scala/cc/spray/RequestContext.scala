@@ -164,13 +164,13 @@ case class RequestContext(
 
   /**
    * Returns a copy of this context that cancels all rejections of type R with
-   * a [[cc.spray.RejectionRejection]]. 
+   * a [[cc.spray.RejectionRejection]].
    */
   def cancelRejectionsOfType[R <: Rejection :ClassManifest]: RequestContext = {
     val erasure = classManifest.erasure
     cancelRejections(erasure.isInstance(_))
   }
-  
+
   /**
    * Returns a copy of this context that cancels all rejections matching the given predicate with
    * a [[cc.spray.RejectionRejection]].
@@ -183,11 +183,10 @@ case class RequestContext(
    * instances receiving special handling.
    */
   def fail(error: Throwable) {
-    complete {
-      error match {
-        case HttpException(failure, reason) => HttpResponse(failure, reason)
-        case e => HttpResponse(InternalServerError, "Internal Server Error:\n" + e.toString)
-      }
+    error match {
+      case HttpException(NotFound, NotFound.defaultMessage) => reject()
+      case HttpException(failure, reason) => complete(HttpResponse(failure, reason))
+      case e => complete(HttpResponse(InternalServerError, "Internal Server Error:\n" + e.toString))
     }
   }
 
@@ -213,7 +212,7 @@ case class RequestContext(
   def fail[A :Marshaller](status: HttpFailure, headers: List[HttpHeader], obj: A) {
     complete(status, headers, obj)
   }
-  
+
   /**
    * Completes the request with redirection response of the given type to the given URI.
    * The default redirectionType is a temporary `302 Found`.

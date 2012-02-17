@@ -112,6 +112,20 @@ trait DefaultMarshallers extends MultipartMarshallers {
     }
   }
 
+  implicit def optionMarshaller[T : Marshaller] = new Marshaller[Option[T]] {
+    val m = marshaller[T]
+    def apply(sel: ContentTypeSelector) = m(sel) match {
+      case x: CantMarshal => x
+      case MarshalWith(f) => MarshalWith { ctx =>
+        val convert = f(ctx)
+        _ match {
+          case Some(value) => convert(value)
+          case None => ctx.handleError(HttpException(StatusCodes.NotFound))
+        }
+      }
+    }
+  }
+
   implicit def eitherMarshaller[A :Marshaller, B :Marshaller] = new Marshaller[Either[A, B]] {
     val ma = marshaller[A]
     val mb = marshaller[B]
