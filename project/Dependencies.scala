@@ -10,7 +10,7 @@ object Dependencies {
   )
 
   object V {
-    val akka      = "1.3"
+    val akka      = "1.3.1"
     val jetty     = "8.1.0.v20120127"
     val sprayCan  = "0.9.2"
     val sprayJson = "1.1.0"
