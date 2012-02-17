@@ -6,25 +6,27 @@ Changes since _spray_ 0.8.0:
 
 - Upgrades:
   - Scala 2.9.1
-  - Akka 1.3
+  - Akka 1.3.1
   - spray-json 1.1.0
   - spray-can 0.9.2
   - SBT 0.11.2
 - Changed dependency on akka-actor from scope 'compile' to scope 'provided'
 - Added support for chunked responses, including chunk compression and automatic file chunking
 - Added new directives: completeWith, redirect, autoChunk, dynamic, transformUnchunkedResponse, transformChunkedResponse
-- Added default Marshallers for Eithers, HttpResults, HttpExceptions, Streams, Futures and Array[Byte]
+- Added default Marshallers for Option, Either, HttpResult, HttpException, Stream, Future and Array[Byte]
 - Added support for JSON (de)serialization via lift-json
 - Added support for template rendering via Scalate
 - Added support for LDAP authentication
 - Added support for asynchronous and cached authentication
 - Added option for relaxed header parsing (issue #68)
 - Added DebuggingDirectives trait
+- Added TwirlSupport trait
 - Simplified custom rendering of Rejections to HttpResponses
 - Improved LruCache implementation to use com.googlecode.concurrentlinkedhashmap
 - Fixed #72 (Different HttpConduits sometimes and erroneously share connections)
 - Fixed #59 (Factor out Rejection Conversion)
-- Fixed #67 ('cacheResults' directive should honor 'Cache-Control: no-cache' request header)
+- Fixed #67 ('cacheResults' directive should honor 'Cache-Control: no-cache/max-age' request header)
+- Fixed getFromResource directive to not serve "content" of resources ending with slash
 - Fixed most occurrences of implicit ambiguities with SprayJsonSupport
 - Fixed several bugs in header parsing and rendering
 - Extended spray-example-spray-can to show off new streaming features
