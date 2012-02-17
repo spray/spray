@@ -35,9 +35,9 @@ class HttpClient(config: HttpClientConfig)
 
 
   protected def pipelines = (
-    StandardHttpClientFrontend(log)
-    ~> HttpRequestRendering(config.userAgentHeader)
-    ~> HttpResponseParsing(config, log)
+    ClientFrontend(log)
+    ~> RequestRendering(config.userAgentHeader)
+    ~> ResponseParsing(config, log)
     ~> ConnectionTimeoutSupport(config)
   )
 }

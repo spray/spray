@@ -22,11 +22,11 @@ import parsing.{ErrorState, EmptyResponseParser}
 import cc.spray.io._
 import akka.actor.ActorContext
 
-object HttpResponseParsing {
+object ResponseParsing {
 
   def apply(config: HttpParserConfig, log: LoggingAdapter) = new DoublePipelineStage {
     def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
-      new HttpMessageParsingPipelines(config, commandPL, eventPL) {
+      new MessageParsingPipelines(config, commandPL, eventPL) {
         val startParser = new EmptyResponseParser(config)
 
         def handleParseError(state: ErrorState) {

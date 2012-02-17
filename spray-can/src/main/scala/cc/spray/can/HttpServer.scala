@@ -25,9 +25,9 @@ class HttpServer(config: HttpServerConfig, messageHandler: MessageHandler)
                 extends IoServer(ioWorker) with ConnectionActors {
 
   protected def pipelines = (
-    StandardHttpServerFrontend()
-    ~> HttpRequestParsing(config, log)
-    ~> HttpResponseRendering(config.serverHeader)
+    ServerFrontend()
+    ~> RequestParsing(config, log)
+    ~> ResponseRendering(config.serverHeader)
     ~> MessageHandlerDispatch(messageHandler)
     ~> ConnectionTimeoutSupport(config)
   )

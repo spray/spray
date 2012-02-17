@@ -23,7 +23,7 @@ import collection.mutable.Queue
 import rendering.HttpResponsePartRenderingContext
 import akka.actor.ActorContext
 
-object StandardHttpServerFrontend {
+object ServerFrontend {
 
   def apply() = new DoublePipelineStage {
     def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {

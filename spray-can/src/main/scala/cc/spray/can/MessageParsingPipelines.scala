@@ -23,7 +23,7 @@ import annotation.tailrec
 import parsing._
 import cc.spray.io._
 
-abstract class HttpMessageParsingPipelines(parserConfig: HttpParserConfig,
+abstract class MessageParsingPipelines(parserConfig: HttpParserConfig,
                                            commandPL: Pipeline[Command],
                                            eventPL: Pipeline[Event]) extends Pipelines {
   var currentParsingState = startParser

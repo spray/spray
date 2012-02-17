@@ -25,11 +25,11 @@ import rendering.HttpResponsePartRenderingContext
 import akka.event.LoggingAdapter
 import akka.actor.ActorContext
 
-object HttpRequestParsing {
+object RequestParsing {
 
   def apply(config: HttpParserConfig, log: LoggingAdapter) = new DoublePipelineStage {
     def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
-      new HttpMessageParsingPipelines(config, commandPL, eventPL) {
+      new MessageParsingPipelines(config, commandPL, eventPL) {
         val startParser = new EmptyRequestParser(config)
 
         def handleParseError(state: ErrorState) {

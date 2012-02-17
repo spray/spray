@@ -21,7 +21,7 @@ import java.lang.{StringBuilder => JStringBuilder}
 import java.nio.ByteBuffer
 import model.{ChunkedMessageEnd, MessageChunk, ChunkedRequestStart, HttpRequest}
 
-class HttpRequestRenderer(userAgentHeader: String) extends HttpMessageRendering {
+class RequestRenderer(userAgentHeader: String) extends MessageRendering {
 
   def render(ctx: HttpRequestPartRenderingContext): RenderedMessagePart = {
     ctx.requestPart match {

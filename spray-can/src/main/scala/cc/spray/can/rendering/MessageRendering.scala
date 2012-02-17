@@ -22,7 +22,7 @@ import annotation.tailrec
 import java.nio.ByteBuffer
 import model.{ChunkedMessageEnd, MessageChunk, ChunkExtension, HttpHeader}
 
-private[rendering] trait HttpMessageRendering {
+private[rendering] trait MessageRendering {
   private val CrLf = "\r\n".getBytes("ASCII")
 
   protected def appendHeader(name: String, value: String, sb: JStringBuilder) =

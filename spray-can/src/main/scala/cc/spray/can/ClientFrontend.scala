@@ -21,7 +21,7 @@ import cc.spray.io._
 import akka.event.LoggingAdapter
 import akka.actor.{ActorContext, ActorRef}
 
-object StandardHttpClientFrontend {
+object ClientFrontend {
 
   def apply(log: LoggingAdapter) = new DoublePipelineStage {
     def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {

@@ -14,21 +14,25 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray
+package can
 
-import rendering.{HttpRequestPartRenderingContext, HttpRequestRenderer}
+import rendering.{HttpResponsePartRenderingContext, ResponseRenderer}
+import io._
 import akka.actor.ActorContext
-import cc.spray.io._
 
-object HttpRequestRendering {
+object ResponseRendering {
 
-  def apply(userAgentHeader: String) = new CommandPipelineStage {
-    val renderer = new HttpRequestRenderer(userAgentHeader)
+  def apply(serverHeader: String) = new CommandPipelineStage {
+    val renderer = new ResponseRenderer(serverHeader)
 
     def build(context: ActorContext, commandPL: Pipeline[Command]) = {
-      case ctx: HttpRequestPartRenderingContext =>
+      case ctx: HttpResponsePartRenderingContext =>
         val rendered = renderer.render(ctx)
         commandPL(IoPeer.Send(rendered.buffers))
+        if (rendered.closeConnection) {
+          commandPL(IoPeer.Close(ProtocolClose))
+        }
 
       case cmd => commandPL(cmd)
     }

@@ -23,7 +23,7 @@ import model._
 import HttpProtocols._
 import util.DateTime
 
-class HttpResponseRenderer(serverHeader: String) extends HttpMessageRendering {
+class ResponseRenderer(serverHeader: String) extends MessageRendering {
 
   private val serverHeaderPlusDateColonSP =
     if (serverHeader.isEmpty) "Date: " else "Server: " + serverHeader + "\r\nDate: "
