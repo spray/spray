@@ -44,7 +44,7 @@ class IoClient(val ioWorker: IoWorker) extends IoPeer {
 
 }
 
-object IoClient {
+trait IoClientApi extends IoPeerApi {
 
   ////////////// COMMANDS //////////////
   case class Connect(address: SocketAddress)
@@ -54,4 +54,7 @@ object IoClient {
 
   ////////////// EVENTS //////////////
   case class Connected(handle: Handle)
+
 }
+
+object IoClient extends IoClientApi

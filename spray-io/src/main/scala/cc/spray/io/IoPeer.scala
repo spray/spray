@@ -29,7 +29,7 @@ abstract class IoPeer extends Actor with ActorLogging {
 
 }
 
-object IoPeer {
+trait IoPeerApi {
 
   ////////////// COMMANDS //////////////
   case class Close(reason: ConnectionClosedReason) extends Command
@@ -37,10 +37,15 @@ object IoPeer {
   object Send {
     def apply(buffer: ByteBuffer): Send = Send(Seq(buffer))
   }
+
+  // only available with ConnectionActors mixin
   case class Dispatch(receiver: ActorRef, message: Any) extends Command
 
   ////////////// EVENTS //////////////
   type Closed = IoWorker.Closed
   type SendCompleted = IoWorker.SendCompleted
   type Received = IoWorker.Received
+
 }
+
+object IoPeer extends IoPeerApi

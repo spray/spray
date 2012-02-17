@@ -78,10 +78,11 @@ abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
   }
 }
 
-object IoServer {
-  sealed trait ServerCommand extends Command
+
+trait IoServerApi extends IoPeerApi {
 
   ////////////// COMMANDS //////////////
+  sealed trait ServerCommand extends Command
   case class Bind(endpoint: SocketAddress, bindingBacklog: Int) extends ServerCommand
   object Bind {
     def apply(interface: String, port: Int, bindingBacklog: Int = 100): Bind =
@@ -95,3 +96,5 @@ object IoServer {
   case class Bound(endpoint: SocketAddress)
   case class Unbound(endpoint: SocketAddress)
 }
+
+object IoServer extends IoServerApi

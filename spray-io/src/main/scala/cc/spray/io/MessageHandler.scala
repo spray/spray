@@ -27,8 +27,8 @@ case class PerMessageHandler(handlerProps: Props) extends MessageHandler
 object MessageHandler {
   ////////////// COMMANDS //////////////
   sealed trait DispatchCommand extends Command
-  case class DispatchMessage(message: Any) extends DispatchCommand
-  case class DispatchMessagePart(messagePart: Any) extends DispatchCommand
+  case class DispatchNewMessage(message: Any) extends DispatchCommand
+  case class DispatchFollowupMessage(messagePart: Any) extends DispatchCommand
 }
 
 object MessageHandlerDispatch {
@@ -48,10 +48,10 @@ object MessageHandlerDispatch {
         case PerMessageHandler(props) => {
           var handler: ActorRef = null
           _ match {
-            case x: DispatchMessage =>
+            case x: DispatchNewMessage =>
               handler = context.actorOf(props)
               IoPeer.Dispatch(handler, x)
-            case x: DispatchMessagePart =>
+            case x: DispatchFollowupMessage =>
               if (handler == null) throw new IllegalStateException // a MessagePart without a preceding Message?
               IoPeer.Dispatch(handler, x)
           }
