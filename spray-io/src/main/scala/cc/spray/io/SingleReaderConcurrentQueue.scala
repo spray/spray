@@ -42,13 +42,6 @@ final class SingleReaderConcurrentQueue[T] {
 
   def isEmpty = out.isEmpty && in.get.isEmpty
 
-  /**
-   * Returns the size of the queue at the time the method is called.
-   * (Since this method has complexity O(n) it might be slow and the queue might hold a lot more elements when the
-   * method returns)
-   */
-  def size = in.get.size + out.size
-
   def dequeue(): T = {
     val tail = if (out.isEmpty) in.getAndSet(Nil).reverse else out
     out = tail.tail

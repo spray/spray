@@ -22,6 +22,5 @@ case class IoWorkerStats(
   bytesWritten: Long,
   connectionsOpened: Long,
   connectionsClosed: Long,
-  commandsExecuted: Long,
-  commandsQueued: Int
+  commandsExecuted: Long
 )

@@ -304,7 +304,7 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
 
     def deliverStats(sender: ActorRef) {
       val stats = IoWorkerStats(System.currentTimeMillis - startTime, bytesRead, bytesWritten, connectionsOpened,
-        connectionsClosed, commandsExecuted, commandQueue.size)
+        connectionsClosed, commandsExecuted)
       sender ! stats
     }
 
