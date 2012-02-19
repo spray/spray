@@ -148,7 +148,7 @@ Here is one way to do it:
     class Color(val name: String, val red: Int, val green: Int, val blue: Int)
     
     object MyJsonProtocol extends DefaultJsonProtocol {
-      implicit object ColorJsonFormat extends JsonFormat[Color] {
+      implicit object ColorJsonFormat extends RootJsonFormat[Color] {
         def write(c: Color) =
           JsArray(JsString(c.name), JsNumber(c.red), JsNumber(c.green), JsNumber(c.blue))
 
@@ -171,7 +171,7 @@ You need to know that the color components are ordered "red, green, blue".
 Another way would be to serialize `Color`s as JSON objects:
 
     object MyJsonProtocol extends DefaultJsonProtocol {
-      implicit object ColorJsonFormat extends JsonFormat[Color] {
+      implicit object ColorJsonFormat extends RootJsonFormat[Color] {
         def write(c: Color) = JsObject(
           "name" -> JsString(c.name),
           "red" -> JsNumber(c.red),
@@ -190,6 +190,26 @@ Another way would be to serialize `Color`s as JSON objects:
 
 This is a bit more verbose in its definition and the resulting JSON but transports the field semantics over to the
 JSON side. Note that this is the approach _spray-json_ uses for case classes.
+
+
+### JsonFormat vs. RootJsonFormat
+
+According to the JSON specification not all of the defined JSON value types are allowed at the root level of a JSON
+document. A JSON string for example (like `"foo"`) does not constitute a legal JSON document by itself.
+Only JSON objects or JSON arrays are allowed as JSON document roots.
+
+In order to distinguish, on the type-level, "regular" JsonFormats from the ones producing root-level JSON objects or
+arrays _spray-json_ defines the [`RootJsonFormat`][1] type, which is nothing but a marker specialization of `JsonFormat`.
+Libraries supporting _spray-json_ as a means of document serialization might choose to depend on a `RootJsonFormat[T]`
+for a custom type `T` (rather than a "plain" `JsonFormat[T]`), so as to not allow the rendering of illegal document
+roots. E.g., the `SprayJsonSupport` trait of _spray-server_ is one notable example of such a case.
+
+All default converters in the `DefaultJsonProtocol` producing JSON objects or arrays are actually implemented as
+`RootJsonFormat`. When "manually" implementing a `JsonFormat` for a custom type `T` (rather than relying on case class
+support) you should think about whether you'd like to use instances of `T` as JSON document roots and choose between
+a "plain" `JsonFormat` and a `RootJsonFormat` accordingly.
+
+  [1]: http://spray.github.com/spray/api/spray-json/cc/spray/json/RootJsonFormat.html
 
 
 ### JsonFormats for recursive Types
