@@ -52,7 +52,7 @@ import nio.GetStats
       }, 20500, TimeUnit.MILLISECONDS)
 
     case RequestContext(HttpRequest(GET, "/stats", _, _, _), _, responder) => {
-      (serverActor ? GetStats).mapTo[ServerStats].onComplete { future =>
+      (serverActor ? GetStats).mapTo[HttpPeerStats].onComplete { future =>
         future.value.get match {
           case Right(stats) => responder.complete {
             response {

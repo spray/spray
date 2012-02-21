@@ -24,6 +24,7 @@ import model.{ChunkedMessageEnd, MessageChunk, ChunkExtension, HttpHeader}
 
 private[rendering] trait MessageRendering {
   private val CrLf = "\r\n".getBytes("ASCII")
+  private val SomeClose = Some("close")
 
   protected def appendHeader(name: String, value: String, sb: JStringBuilder) =
     appendLine(sb.append(name).append(':').append(' ').append(value))
@@ -75,7 +76,7 @@ private[rendering] trait MessageRendering {
     appendLine(appendChunkExtensions(chunk.extensions, sb.append("0")))
     appendHeaders(chunk.trailer, sb)
     appendLine(sb)
-    RenderedMessagePart(encode(sb) :: Nil, requestConnectionHeader.get == "close")
+    RenderedMessagePart(encode(sb) :: Nil, requestConnectionHeader == SomeClose)
   }
 
   @tailrec
