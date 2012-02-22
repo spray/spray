@@ -34,6 +34,7 @@ object BuildSettings {
     libraryDependencies ++= Seq(
       akkaActor % "provided",
       specs2 % "test",
+      akkaTestKit % "test",
       akkaSlf4j % "runtime",
       slf4j % "runtime",
       logback % "runtime"

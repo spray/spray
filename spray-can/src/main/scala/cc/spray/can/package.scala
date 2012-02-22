@@ -22,8 +22,6 @@ import java.io.{BufferedReader, InputStreamReader}
 
 package object can {
 
-  def make[A, U](a: A)(f: A => U): A = { f(a); a }
-
   lazy val SprayCanVersion: String = {
     new BufferedReader(new InputStreamReader(getClass.getResourceAsStream("/spray-can.version"))).readLine()
   }
@@ -32,5 +30,4 @@ package object can {
   implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq)
   implicit def pimpByteArray(array: Array[Byte]): PimpedByteArray = new PimpedByteArray(array)
 
-  val EmptyByteArray = new Array[Byte](0)
 }

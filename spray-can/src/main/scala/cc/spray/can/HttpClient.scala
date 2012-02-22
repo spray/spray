@@ -34,7 +34,7 @@ class HttpClient(config: HttpClientConfig)
                 extends IoClient(ioWorker) with ConnectionActors {
 
 
-  protected lazy val pipelines = (
+  protected lazy val pipeline = (
     ClientFrontend(log)
     ~> RequestRendering(config.userAgentHeader)
     ~> ResponseParsing(config, log)
@@ -42,13 +42,21 @@ class HttpClient(config: HttpClientConfig)
   )
 }
 
-object HttpClient extends IoClientApi {
+object HttpClient {
 
   ////////////// COMMANDS //////////////
-  // HttpRequestParts
+  // HttpRequestParts +
+  type Connect = IoClient.Connect;    val Connect = IoClient.Connect
+  type Close = IoClient.Close;        val Close = IoClient.Close
+  type Send = IoClient.Send;          val Send = IoClient.Send
+  type Dispatch = IoClient.Dispatch;  val Dispatch = IoClient.Dispatch
 
   ////////////// EVENTS //////////////
-  // HttpResponseParts
+  // HttpResponseParts +
+  type Connected = IoClient.Connected;          val Connected = IoClient.Connected
+  type Closed = IoClient.Closed;                val Closed = IoClient.Closed
+  type SendCompleted = IoClient.SendCompleted;  val SendCompleted = IoClient.SendCompleted
+  type Received = IoClient.Received;            val Received = IoClient.Received
 
 }
 

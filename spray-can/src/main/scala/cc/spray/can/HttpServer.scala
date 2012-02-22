@@ -19,26 +19,40 @@ package can
 
 import config.HttpServerConfig
 import io._
+import akka.event.LoggingAdapter
 
 class HttpServer(config: HttpServerConfig, messageHandler: MessageHandler)
                 (ioWorker: IoWorker = new IoWorker(config))
                 extends IoServer(ioWorker) with ConnectionActors {
 
-  protected lazy val pipelines = (
+  protected lazy val pipeline = HttpServer.pipeline(config, messageHandler, log)
+}
+
+object HttpServer {
+
+  private[can] def pipeline(config: HttpServerConfig, messageHandler: MessageHandler, log: LoggingAdapter) = (
     ServerFrontend()
     ~> RequestParsing(config, log)
     ~> ResponseRendering(config.serverHeader)
     ~> MessageHandlerDispatch(messageHandler)
     ~> ConnectionTimeoutSupport(config)
   )
-}
-
-object HttpServer extends IoServerApi {
 
   ////////////// COMMANDS //////////////
-  // HttpRequestParts
+  // HttpResponseParts +
+  type ServerCommand = IoServer.ServerCommand
+  type Bind = IoServer.Bind;          val Bind = IoServer.Bind
+  val Unbind = IoServer.Unbind
+  type Close = IoServer.Close;        val Close = IoServer.Close
+  type Send = IoServer.Send;          val Send = IoServer.Send
+  type Dispatch = IoServer.Dispatch;  val Dispatch = IoServer.Dispatch
 
   ////////////// EVENTS //////////////
-  // HttpResponseParts
+  // HttpRequestParts +
+  type Bound = IoServer.Bound;                  val Bound = IoServer.Bound
+  type Unbound = IoServer.Unbound;              val Unbound = IoServer.Unbound
+  type Closed = IoServer.Closed;                val Closed = IoServer.Closed
+  type SendCompleted = IoServer.SendCompleted;  val SendCompleted = IoServer.SendCompleted
+  type Received = IoServer.Received;            val Received = IoServer.Received
 
 }

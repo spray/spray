@@ -24,13 +24,13 @@ import java.nio.ByteBuffer
 class ToCloseBodyParser(config: HttpParserConfig, messageLine: MessageLine, headers: List[HttpHeader],
                         connectionHeader: Option[String]) extends IntermediateState {
 
-  private var body: Array[Byte] = EmptyByteArray
+  private var body: Array[Byte] = util.EmptyByteArray
 
   def read(buf: ByteBuffer) = {
     val array = new Array[Byte](buf.remaining)
     buf.get(array)
     body match {
-      case EmptyByteArray => body = array; this
+      case util.EmptyByteArray => body = array; this
       case _ => {
         if (body.length + array.length <= config.maxContentLength) {
           body = body concat array

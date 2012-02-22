@@ -60,7 +60,7 @@ abstract class MessageParsingPipelines(parserConfig: HttpParserConfig,
   def eventPipeline(event: Event) {
     event match {
       case x: IoWorker.Received => parse(x.buffer)
-      case ev => eventPL(event)
+      case ev => eventPL(ev)
     }
   }
 

@@ -25,8 +25,11 @@ import util.DateTime
 
 class ResponseRenderer(serverHeader: String) extends MessageRendering {
 
-  private val serverHeaderPlusDateColonSP =
-    if (serverHeader.isEmpty) "Date: " else "Server: " + serverHeader + "\r\nDate: "
+  private val serverHeaderPlusDateColonSP = serverHeader match {
+    case "" => "Date: "
+    case "test/no-date" => ""
+    case x => "Server: " + x + "\r\nDate: "
+  }
 
   def render(ctx: HttpResponsePartRenderingContext): RenderedMessagePart = {
     ctx.responsePart match {
@@ -90,7 +93,8 @@ class ResponseRenderer(serverHeader: String) extends MessageRendering {
     }
     val connectionHeaderValue = appendHeaders(headers, sb)
     val close = appendConnectionHeaderIfRequired(connectionHeaderValue, sb)
-    appendLine(sb.append(serverHeaderPlusDateColonSP).append(dateTimeNow.toRfc1123DateTimeString))
+    if (!serverHeaderPlusDateColonSP.isEmpty)
+      appendLine(sb.append(serverHeaderPlusDateColonSP).append(dateTimeNow.toRfc1123DateTimeString))
     (sb, close)
   }
 

@@ -19,9 +19,9 @@ package model
 
 import java.io.UnsupportedEncodingException
 import java.nio.charset.Charset
-import cc.spray.io.Event
+import cc.spray.io.{Command, Event}
 
-sealed trait HttpMessagePart extends Event
+sealed trait HttpMessagePart extends Command with Event
 
 sealed trait HttpRequestPart extends HttpMessagePart
 
@@ -39,7 +39,7 @@ case class HttpRequest(
   method: HttpMethod = HttpMethods.GET,
   uri: String = "/",
   headers: List[HttpHeader] = Nil,
-  body: Array[Byte] = EmptyByteArray,
+  body: Array[Byte] = util.EmptyByteArray,
   protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
 ) extends HttpMessage with HttpRequestPart {
   def withBody(body: String, charset: String = "ISO-8859-1") = copy(body = body.getBytes(charset))
@@ -55,7 +55,7 @@ object HttpRequest {
     req(method != null, "method must not be null")
     req(uri != null && !uri.isEmpty, "uri must not be null or empty")
     req(headers != null, "headers must not be null")
-    req(body != null, "body must not be null (you can use cc.spray.can.EmptyByteArray for an empty body)")
+    req(body != null, "body must not be null (you can use cc.spray.can.util.EmptyByteArray for an empty body)")
     headers.foreach { header =>
       if (header.name == "Content-Length" || header.name == "Transfer-Encoding" || header.name == "Host")
         throw new IllegalArgumentException(header.name + " header must not be set explicitly, it is set automatically")
@@ -67,7 +67,7 @@ object HttpRequest {
 case class HttpResponse(
   status: Int = 200,
   headers: List[HttpHeader] = Nil,
-  body: Array[Byte] = EmptyByteArray,
+  body: Array[Byte] = util.EmptyByteArray,
   protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
 ) extends HttpMessage with HttpResponsePart {
   def withBody(body: String, charset: String = "ISO-8859-1") = copy(body = body.getBytes(charset))
@@ -93,7 +93,7 @@ object HttpResponse {
     def req(cond: Boolean, msg: => String) { require(cond, "Illegal HttpResponse: " + msg) }
     req(100 <= status && status < 600, "Illegal HTTP status code: " + status)
     req(headers != null, "headers must not be null")
-    req(body != null, "body must not be null (you can use cc.spray.can.EmptyByteArray for an empty body)")
+    req(body != null, "body must not be null (you can use cc.spray.can.util.EmptyByteArray for an empty body)")
     headers.foreach { header =>
       if (header.name == "Content-Length" || header.name == "Transfer-Encoding" || header.name == "Date")
         throw new IllegalArgumentException(header.name + " header must not be set explicitly, it is set automatically")

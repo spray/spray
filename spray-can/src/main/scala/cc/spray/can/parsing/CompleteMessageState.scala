@@ -30,7 +30,7 @@ case class CompleteMessageState(
   messageLine: MessageLine,
   headers: List[HttpHeader] = Nil,
   connectionHeader: Option[String] = None,
-  body: Array[Byte] = EmptyByteArray
+  body: Array[Byte] = util.EmptyByteArray
 ) extends HttpMessageCompletedState {
 
   def toHttpMessagePart = messageLine match {
