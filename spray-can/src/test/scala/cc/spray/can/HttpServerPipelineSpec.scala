@@ -71,7 +71,6 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
            |"""
       }
     }
-    pipeline.clearResults()
     pipeline.runCommands(HttpResponse()) must produceOneCommand {
       send {
         """|HTTP/1.1 200 OK
@@ -81,6 +80,8 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
       }
     }
   }
+
+  /////////////////////////// SUPPORT ////////////////////////////////
 
   def singletonPipeline = testPipeline(SingletonHandler(singletonHandler))
 

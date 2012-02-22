@@ -66,16 +66,18 @@ abstract class PipelineSpec(name: String) extends Specification {
       collectedEvents.append(_))
 
     def runCommands(commands: Command*): TestPipelineResult = {
+      clear()
       commands.foreach(pipelines.commandPipeline)
       (collectedCommands.toList, collectedEvents.toList)
     }
 
     def runEvents(events: Event*): TestPipelineResult = {
+      clear()
       events.foreach(pipelines.eventPipeline)
       (collectedCommands.toList, collectedEvents.toList)
     }
 
-    def clearResults() {
+    private def clear() {
       collectedCommands.clear()
       collectedEvents.clear()
     }

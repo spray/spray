@@ -56,7 +56,7 @@ class PipelinesSpec extends Specification { def is =
 
   def ev(e: Char) = new EventPipelineStage {
     def build(context: ActorContext, eventPL: Pipeline[Event]) =
-      ev => { println(ev); eventPL(TestEvent(ev.asInstanceOf[TestEvent].s + e)) }
+      ev => eventPL(TestEvent(ev.asInstanceOf[TestEvent].s + e))
   }
 
   case class TestEvent(s: String) extends Event
