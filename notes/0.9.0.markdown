@@ -23,7 +23,8 @@ Changes since _spray_ 0.8.0:
 - Added TwirlSupport trait
 - Simplified custom rendering of Rejections to HttpResponses
 - Improved LruCache implementation to use com.googlecode.concurrentlinkedhashmap
-- Fixed #72 (Different HttpConduits sometimes and erroneously share connections)
+- Fixed #72 (spray-client: different HttpConduits sometimes and erroneously share connections)
+- Fixed #78 (spray-client: unexpected closing of connection not properly handled)
 - Fixed #59 (Factor out Rejection Conversion)
 - Fixed #67 ('cacheResults' directive should honor 'Cache-Control: no-cache/max-age' request header)
 - Fixed getFromResource directive to not serve "content" of resources ending with slash
