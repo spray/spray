@@ -22,6 +22,7 @@ import utils.AkkaConfSettings
 case class ConduitConfig(
   clientActorId: String = "spray-can-client",
   maxConnections: Int = 4,
+  maxRetries: Int = 5,
   dispatchStrategy: DispatchStrategy = new DispatchStrategies.NonPipelined
 ) {
 
@@ -29,8 +30,9 @@ case class ConduitConfig(
 
   override def toString =
     "ConduitConfig(\n" +
-    "  clientActorId     : " + clientActorId + "\n" +
-    "  maxConnections    : " + maxConnections + "\n" +
+    "  clientActorId : " + clientActorId + "\n" +
+    "  maxConnections: " + maxConnections + "\n" +
+    "  maxRetries    : " + maxRetries + "\n" +
     ")"
 }
 
@@ -44,4 +46,5 @@ object ConduitConfig {
 object AkkaConfConduitConfig extends AkkaConfSettings("spray.client.") {
   lazy val ClientActorId = configString("spray-can-client")
   lazy val MaxConnectionsPerConduit = configInt(4)
+  lazy val MaxRetries = configInt(5)
 }
