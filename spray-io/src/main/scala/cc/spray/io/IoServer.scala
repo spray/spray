@@ -78,8 +78,7 @@ abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
   }
 }
 
-
-trait IoServerApi extends IoPeerApi {
+object IoServer {
 
   ////////////// COMMANDS //////////////
   sealed trait ServerCommand extends Command
@@ -90,11 +89,16 @@ trait IoServerApi extends IoPeerApi {
   }
 
   case object Unbind extends ServerCommand
+  type Close = IoPeer.Close;        val Close = IoPeer.Close
+  type Send = IoPeer.Send;          val Send = IoPeer.Send
+  type Dispatch = IoPeer.Dispatch;  val Dispatch = IoPeer.Dispatch // only available with ConnectionActors mixin
 
 
   ////////////// EVENTS //////////////
   case class Bound(endpoint: SocketAddress)
   case class Unbound(endpoint: SocketAddress)
-}
+  type Closed = IoPeer.Closed;                val Closed = IoPeer.Closed
+  type SendCompleted = IoPeer.SendCompleted;  val SendCompleted = IoPeer.SendCompleted
+  type Received = IoPeer.Received;            val Received = IoPeer.Received
 
-object IoServer extends IoServerApi
+}

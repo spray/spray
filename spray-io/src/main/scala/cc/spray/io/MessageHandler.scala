@@ -26,9 +26,11 @@ case class PerMessageHandler(handlerProps: Props) extends MessageHandler
 
 object MessageHandler {
   ////////////// COMMANDS //////////////
-  sealed trait DispatchCommand extends Command
+  sealed trait DispatchCommand extends Command {
+    def message: Any
+  }
   case class DispatchNewMessage(message: Any) extends DispatchCommand
-  case class DispatchFollowupMessage(messagePart: Any) extends DispatchCommand
+  case class DispatchFollowupMessage(message: Any) extends DispatchCommand
 }
 
 object MessageHandlerDispatch {
@@ -39,11 +41,11 @@ object MessageHandlerDispatch {
 
       val dispatcher: DispatchCommand => IoPeer.Dispatch = messageHandler match {
         case SingletonHandler(handler) =>
-          IoPeer.Dispatch(handler, _)
+          cmd => IoPeer.Dispatch(handler, cmd.message)
 
         case PerConnectionHandler(props) =>
           val handler = context.actorOf(props)
-          IoPeer.Dispatch(handler, _)
+          cmd => IoPeer.Dispatch(handler, cmd.message)
 
         case PerMessageHandler(props) => {
           var handler: ActorRef = null

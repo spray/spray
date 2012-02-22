@@ -44,17 +44,21 @@ class IoClient(val ioWorker: IoWorker) extends IoPeer {
 
 }
 
-trait IoClientApi extends IoPeerApi {
+object IoClient {
 
   ////////////// COMMANDS //////////////
   case class Connect(address: SocketAddress)
   object Connect {
     def apply(host: String, port: Int): Connect = Connect(new InetSocketAddress(host, port))
   }
+  type Close = IoPeer.Close;        val Close = IoPeer.Close
+  type Send = IoPeer.Send;          val Send = IoPeer.Send
+  type Dispatch = IoPeer.Dispatch;  val Dispatch = IoPeer.Dispatch // only available with ConnectionActors mixin
 
   ////////////// EVENTS //////////////
   case class Connected(handle: Handle)
+  type Closed = IoPeer.Closed;                val Closed = IoPeer.Closed
+  type SendCompleted = IoPeer.SendCompleted;  val SendCompleted = IoPeer.SendCompleted
+  type Received = IoPeer.Received;            val Received = IoPeer.Received
 
 }
-
-object IoClient extends IoClientApi

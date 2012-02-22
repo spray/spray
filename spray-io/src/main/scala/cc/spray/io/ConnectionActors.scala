@@ -29,10 +29,10 @@ trait ConnectionActors extends IoPeer {
 
   protected def createConnectionActor(key: Key): IoConnectionActor = new IoConnectionActor(key)
 
-  protected def pipelines: DoublePipelineStage
+  protected def pipeline: DoublePipelineStage
 
   class IoConnectionActor(val key: Key) extends Actor with Handle {
-    private[this] val _pipelines = pipelines.build(context, baseCommandPipeline, baseEventPipeline)
+    private[this] val pipelines = pipeline.build(context, baseCommandPipeline, baseEventPipeline)
 
     protected def baseCommandPipeline: Pipeline[Command] = {
       case x: IoPeer.Send => ioWorker ! IoWorker.Send(this, x.buffers)
@@ -50,8 +50,8 @@ trait ConnectionActors extends IoPeer {
     }
 
     protected def receive = {
-      case x: Command => _pipelines.commandPipeline(x)
-      case x: Event => _pipelines.eventPipeline(x)
+      case x: Command => pipelines.commandPipeline(x)
+      case x: Event => pipelines.eventPipeline(x)
     }
 
     def handler = self

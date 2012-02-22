@@ -29,7 +29,7 @@ abstract class IoPeer extends Actor with ActorLogging {
 
 }
 
-trait IoPeerApi {
+object IoPeer {
 
   ////////////// COMMANDS //////////////
   case class Close(reason: ConnectionClosedReason) extends Command
@@ -42,10 +42,8 @@ trait IoPeerApi {
   case class Dispatch(receiver: ActorRef, message: Any) extends Command
 
   ////////////// EVENTS //////////////
-  type Closed = IoWorker.Closed
-  type SendCompleted = IoWorker.SendCompleted
-  type Received = IoWorker.Received
+  type Closed = IoWorker.Closed;                val Closed = IoWorker.Closed
+  type SendCompleted = IoWorker.SendCompleted;  val SendCompleted = IoWorker.SendCompleted
+  type Received = IoWorker.Received;            val Received = IoWorker.Received
 
 }
-
-object IoPeer extends IoPeerApi
