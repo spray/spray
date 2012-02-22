@@ -34,7 +34,7 @@ class HttpClient(config: HttpClientConfig)
                 extends IoClient(ioWorker) with ConnectionActors {
 
 
-  protected def pipelines = (
+  protected lazy val pipelines = (
     ClientFrontend(log)
     ~> RequestRendering(config.userAgentHeader)
     ~> ResponseParsing(config, log)

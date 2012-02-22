@@ -24,7 +24,7 @@ class HttpServer(config: HttpServerConfig, messageHandler: MessageHandler)
                 (ioWorker: IoWorker = new IoWorker(config))
                 extends IoServer(ioWorker) with ConnectionActors {
 
-  protected def pipelines = (
+  protected lazy val pipelines = (
     ServerFrontend()
     ~> RequestParsing(config, log)
     ~> ResponseRendering(config.serverHeader)

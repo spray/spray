@@ -45,4 +45,28 @@ object HttpParserConfig {
   val defaultMaxChunkExtValueLength = 256
   val defaultMaxChunkExtCount = 16
   val defaultMaxChunkSize = 1024 * 1024   // default chunk size limit = 1 MB
+
+  def apply(
+    _maxUriLength: Int = defaultMaxUriLength,
+    _maxResponseReasonLength: Int = defaultMaxResponseReasonLength,
+    _maxHeaderNameLength: Int = defaultMaxHeaderNameLength,
+    _maxHeaderValueLength: Int = defaultMaxHeaderValueLength,
+    _maxHeaderCount: Int = defaultMaxHeaderCount,
+    _maxContentLength: Int = defaultMaxContentLength,
+    _maxChunkExtNameLength: Int = defaultMaxChunkExtNameLength,
+    _maxChunkExtValueLength: Int = defaultMaxChunkExtValueLength,
+    _maxChunkExtCount: Int = defaultMaxChunkExtCount,
+    _maxChunkSize: Int = defaultMaxChunkSize
+  ) = new HttpParserConfig {
+    def maxUriLength = _maxUriLength
+    def maxResponseReasonLength = _maxResponseReasonLength
+    def maxHeaderNameLength = _maxHeaderNameLength
+    def maxHeaderValueLength = _maxHeaderValueLength
+    def maxHeaderCount = _maxHeaderCount
+    def maxContentLength = _maxContentLength
+    def maxChunkExtNameLength = _maxChunkExtNameLength
+    def maxChunkExtValueLength = _maxChunkExtValueLength
+    def maxChunkExtCount = _maxChunkExtCount
+    def maxChunkSize = defaultMaxChunkSize
+  }
 }
