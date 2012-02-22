@@ -36,7 +36,7 @@ class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitC
 
   def sendReceive(timeout: Long = Actor.defaultTimeout.duration.toMillis): SendReceive = { request =>
     make(new DefaultCompletableFuture[HttpResponse](timeout)) { future =>
-      mainActor ! Send(request, { result => future.complete(result); () })
+      mainActor ! Send(request, { result => future.complete(result); () }, config.maxRetries)
     }
   }
 
@@ -44,8 +44,10 @@ class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitC
     mainActor.stop()
   }
 
-  protected case class Send(request: HttpRequest, responder: Either[Throwable, HttpResponse] => Unit)
-    extends HttpRequestContext
+  protected case class Send(request: HttpRequest, responder: Either[Throwable, HttpResponse] => Unit, retriesLeft: Int)
+    extends HttpRequestContext {
+    def withRetriesDecremented = copy(retriesLeft = retriesLeft - 1)
+  }
 
   protected class MainActor extends Actor {
     case class ConnectionResult(conn: Conn, send: Send, result: Either[Throwable, HttpConnection])
@@ -55,13 +57,26 @@ class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitC
 
     protected def receive = {
       case send: Send => config.dispatchStrategy.dispatch(send, conns)
-      case Respond(conn, Send(request, responder), result) =>
-        log.debug("Dispatching '%s' response to %s", result.fold(_.toString, _.status.value), requestString(request), result)
-        if (result.isLeft || closeExpected(result.right.get)) {
+      case Respond(conn, send: Send, result@ Right(response)) =>
+        log.debug("Dispatching '%s' response to %s", response.status.value, requestString(send.request), response)
+        if (closeExpected(response)) {
           conn.pendingResponses = -1
           conn.httpConnection = None
         } else conn.pendingResponses -= 1
-        responder(result)
+        send.responder(result)
+        config.dispatchStrategy.onStateChange(conns)
+      case Respond(conn, send: Send, Left(error)) if send.retriesLeft > 0 =>
+        log.debug("Received '%s' in response to %s with %s retries left, retrying...", error.toString,
+          requestString(send.request), send.retriesLeft)
+        conn.pendingResponses = -1
+        conn.httpConnection = None
+        config.dispatchStrategy.onStateChange(conns)
+        config.dispatchStrategy.dispatch(send.withRetriesDecremented, conns)
+      case Respond(conn, send: Send, result@ Left(error)) =>
+        log.debug("Received '%s' in response to %s with no retries left, dispatching error...", error.toString, requestString(send.request))
+        conn.pendingResponses = -1
+        conn.httpConnection = None
+        send.responder(result)
         config.dispatchStrategy.onStateChange(conns)
       case ConnectionResult(conn, send, Right(httpConnection)) =>
         conn.httpConnection = Some(Right(httpConnection))

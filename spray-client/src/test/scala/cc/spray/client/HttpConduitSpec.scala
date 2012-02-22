@@ -19,21 +19,26 @@ package client
 
 import org.specs2.Specification
 import org.specs2.specification.Step
-import akka.actor.Actor
 import can.{HttpRequest => _, HttpResponse => _, _}
 import http._
+import utils._
 import DispatchStrategies._
+import akka.util.Duration
+import akka.actor.Actor
 
 class HttpConduitSpec extends Specification { def is =
                                                                               sequential^
                                                                               Step(start())^
-  "An HttpConduit with max. 4 connections and NonPipelined strategy should"  ^
-  "properly deliver the result of a simple request"                           ! oneRequest(new NonPipelined)^
-  "properly deliver the results of 100 requests"                              ! hundredRequests(new NonPipelined)^
+  "An HttpConduit with max. 4 connections and NonPipelined strategy should"   ^
+    "properly deliver the result of a simple request"                         ! oneRequest(new NonPipelined)^
+    "properly deliver the results of 100 requests"                            ! hundredRequests(new NonPipelined)^
                                                                               p^
-  "An HttpConduit with max. 4 connections and Pipelined strategy should"     ^
-  "properly deliver the result of a simple request"                           ! oneRequest(Pipelined)^
-  "properly deliver the results of 100 requests"                              ! hundredRequests(Pipelined)^
+  "An HttpConduit with max. 4 connections and Pipelined strategy should"      ^
+    "properly deliver the result of a simple request"                         ! oneRequest(Pipelined)^
+    "properly deliver the results of 100 requests"                            ! hundredRequests(Pipelined)^
+                                                                              p^
+  "An HttpConduit should"                                                     ^
+    "retry requests whose sending has failed"                                 ! retryFailedSend^
                                                                               Step(Actor.registry.shutdownAll())
 
 
@@ -62,6 +67,14 @@ class HttpConduitSpec extends Specification { def is =
     }.reduceLeft(_ and _)
   }
 
+  def retryFailedSend = {
+    val conduit = newConduit(Pipelined)
+    def send = conduit.sendReceive(HttpRequest())
+    val fut = send.delay(Duration("1000 ms")).flatMap(r1 => send.map(r2 => r1 -> r2))
+    val (r1, r2) = fut.get
+    r1.content === r2.content
+  }
+
   def newConduit(strategy: DispatchStrategy) = new HttpConduit(
     "127.0.0.1", 17242, ConduitConfig(clientActorId = "clienttest-client", dispatchStrategy = strategy)
   )
@@ -71,9 +84,11 @@ class HttpConduitSpec extends Specification { def is =
     Actor.actorOf(new HttpServer(ServerConfig(
       port = 17242,
       serviceActorId = "clienttest-server",
-      timeoutActorId = "clienttest-server"
+      timeoutActorId = "clienttest-server",
+      idleTimeout = 500,
+      reapingCycle = 100
     ))).start()
-    Actor.actorOf(new HttpClient(ClientConfig(clientActorId = "clienttest-client", requestTimeout = 1000))).start()
+    Actor.actorOf(new HttpClient(ClientConfig(clientActorId = "clienttest-client"))).start()
   }
 
 }

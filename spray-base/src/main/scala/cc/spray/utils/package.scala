@@ -18,6 +18,7 @@ package cc.spray
 
 import collection.immutable.LinearSeq
 import util.matching.Regex
+import akka.dispatch.Future
 
 package object utils {
 
@@ -37,6 +38,7 @@ package object utils {
   def make[A, U](a: A)(f: A => U): A = { f(a); a }
 
   // implicits
+  implicit def pimpFuture[T](future: Future[T]): PimpedFuture[T] = new PimpedFuture[T](future)
   implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq)
   implicit def pimpClass[A](clazz: Class[A]): PimpedClass[A] = new PimpedClass[A](clazz)
   implicit def pimpProduct(product: Product): PimpedProduct = new PimpedProduct(product)
