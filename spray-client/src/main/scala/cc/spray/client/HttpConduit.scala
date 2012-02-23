@@ -68,16 +68,10 @@ class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitC
       case Respond(conn, send: Send, Left(error)) if send.retriesLeft > 0 =>
         log.debug("Received '%s' in response to %s with %s retries left, retrying...", error.toString,
           requestString(send.request), send.retriesLeft)
-        conn.pendingResponses = -1
-        conn.httpConnection = None
-        config.dispatchStrategy.onStateChange(conns)
         config.dispatchStrategy.dispatch(send.withRetriesDecremented, conns)
       case Respond(conn, send: Send, result@ Left(error)) =>
         log.debug("Received '%s' in response to %s with no retries left, dispatching error...", error.toString, requestString(send.request))
-        conn.pendingResponses = -1
-        conn.httpConnection = None
         send.responder(result)
-        config.dispatchStrategy.onStateChange(conns)
       case ConnectionResult(conn, send, Right(httpConnection)) =>
         conn.httpConnection = Some(Right(httpConnection))
         conn.pendingResponses -= 1 // correct for +1 in dispatch
@@ -86,6 +80,12 @@ class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitC
         conn.httpConnection = None
         conn.pendingResponses = -1
         send.responder(Left(new PipelineException("Could not connect to %s:%s".format(host, port), error)))
+      case Clear(conn, httpConnection) =>
+        if (conn.httpConnection == Some(Right(httpConnection))) {
+          conn.pendingResponses = -1
+          conn.httpConnection = None
+          config.dispatchStrategy.onStateChange(conns)
+        }
     }
 
     def closeExpected(response: HttpResponse) = {
@@ -119,8 +119,13 @@ class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitC
           pendingResponses += 1
           def dispatchTo(connection: HttpConnection) {
             log.debug("Dispatching %s", requestString(send.request))
-            connection.send(toSprayCanRequest(send.request)).onComplete { future =>
-              self ! Respond(this, send, future.value.get.right.map(fromSprayCanResponse))
+            connection.send(toSprayCanRequest(send.request)).onComplete {
+              _.value.get match {
+                case Right(response) => self ! Respond(this, send, Right(fromSprayCanResponse(response)))
+                case Left(error) =>
+                  self ! Clear(this, connection)
+                  self ! Respond(this, send, Left(error))
+              }
             }
           }
           httpConnection.get match {
@@ -130,5 +135,7 @@ class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitC
         }
       }
     }
+
+    private case class Clear(conn: Conn, httpConnection: HttpConnection)
   }
 }

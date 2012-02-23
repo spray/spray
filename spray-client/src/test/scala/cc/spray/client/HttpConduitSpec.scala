@@ -25,13 +25,14 @@ import utils._
 import DispatchStrategies._
 import akka.util.Duration
 import akka.actor.Actor
+import akka.dispatch.Future
 
 class HttpConduitSpec extends Specification { def is =
                                                                               sequential^
                                                                               Step(start())^
   "An HttpConduit with max. 4 connections and NonPipelined strategy should"   ^
-    "properly deliver the result of a simple request"                         ! oneRequest(new NonPipelined)^
-    "properly deliver the results of 100 requests"                            ! hundredRequests(new NonPipelined)^
+    "properly deliver the result of a simple request"                         ! oneRequest(NonPipelined())^
+    "properly deliver the results of 100 requests"                            ! hundredRequests(NonPipelined())^
                                                                               p^
   "An HttpConduit with max. 4 connections and Pipelined strategy should"      ^
     "properly deliver the result of a simple request"                         ! oneRequest(Pipelined)^
@@ -39,6 +40,7 @@ class HttpConduitSpec extends Specification { def is =
                                                                               p^
   "An HttpConduit should"                                                     ^
     "retry requests whose sending has failed"                                 ! retryFailedSend^
+    "honor the pipelined strategy when retrying"                              ! retryPipelined^
                                                                               Step(Actor.registry.shutdownAll())
 
 
@@ -68,15 +70,24 @@ class HttpConduitSpec extends Specification { def is =
   }
 
   def retryFailedSend = {
-    val conduit = newConduit(Pipelined)
+    val conduit = newConduit(NonPipelined())
     def send = conduit.sendReceive(HttpRequest())
     val fut = send.delay(Duration("1000 ms")).flatMap(r1 => send.map(r2 => r1 -> r2))
     val (r1, r2) = fut.get
     r1.content === r2.content
   }
 
-  def newConduit(strategy: DispatchStrategy) = new HttpConduit(
-    "127.0.0.1", 17242, ConduitConfig(clientActorId = "clienttest-client", dispatchStrategy = strategy)
+  def retryPipelined = {
+    val conduit = newConduit(Pipelined, maxConnections = 1)
+    val requests = HttpRequest(uri = "/a") :: HttpRequest(uri = "/b") :: HttpRequest(uri = "/c") :: Nil
+    val future = Future.traverse(requests)(conduit.sendReceive).delay(Duration("1000 ms")).flatMap { responses1 =>
+      Future.traverse(requests)(conduit.sendReceive).map(responses2 => responses1.zip(responses2))
+    }
+    future.get.map { case (a, b) => a.content === b.content }.reduceLeft(_ and _)
+  }
+
+  def newConduit(strategy: DispatchStrategy, maxConnections: Int = 4) = new HttpConduit(
+    "127.0.0.1", 17242, ConduitConfig("clienttest-client", maxConnections, dispatchStrategy = strategy)
   )
 
   def start() {
