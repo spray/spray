@@ -76,4 +76,17 @@ class SimpleDirectivesSpec extends AbstractSprayTest {
     }
   }
 
+  "The 'cookie' directive" should {
+    "extract the respectively named cookie" in {
+      test(HttpRequest(headers = Cookie(HttpCookie("fancy", "pants")) :: Nil)) {
+        cookie("fancy") { echoComplete }
+      }.response.content.as[String] mustEqual Right("fancy=\"pants\"")
+    }
+    "reject the request if the cookie is not present" in {
+      test(HttpRequest()) {
+        cookie("fancy") { echoComplete }
+      }.rejections mustEqual Set(MissingCookieRejection("fancy"))
+    }
+  }
+
 }

@@ -18,9 +18,9 @@ package cc.spray
 package directives
 
 import utils._
+import util.matching.Regex
 import http._
 import HttpMethods._
-import util.matching.Regex
 
 private[spray] trait SimpleDirectives {
   this: BasicDirectives =>
@@ -101,5 +101,27 @@ private[spray] trait SimpleDirectives {
               "' must not contain more than one capturing group")
     }
   }
-  
+
+  /**
+   * Returns a route filter that extracts an HttpCookie with the given name.
+   * If the cookie is not present the request is rejected with a respective [[cc.spray.MissingCookieRejection]].
+   */
+  def cookie(name: String): SprayRoute1[HttpCookie] = optionalCookie(name).flatMap {
+    case Some(cookie) => Pass(cookie)
+    case None => Reject(MissingCookieRejection(name))
+  }
+
+  /**
+   * Returns a route filter that extracts an HttpCookie with the given name.
+   * If the cookie is not present the request is rejected with a respective [[cc.spray.MissingCookieRejection]].
+   */
+  def optionalCookie(name: String): SprayRoute1[Option[HttpCookie]] = filter1 { ctx =>
+    Pass {
+      ctx.request.headers.flatMap {
+        case HttpHeaders.Cookie(cookies) => cookies.find(_.name == name)
+        case _ => None
+      }.headOption
+    }
+  }
+
 }

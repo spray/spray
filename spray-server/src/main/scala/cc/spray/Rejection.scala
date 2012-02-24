@@ -119,10 +119,16 @@ case object AuthorizationFailedRejection extends Rejection
 
 /**
  * Rejection created by the 'authenticate' directive.
- * Signals that the request was rejected because no authorization was supplied 
+ * Signals that the request was rejected because no authorization was supplied
  */
 case class AuthenticationRequiredRejection(scheme: String, realm: String, params: Map[String, String] = Map.empty)
         extends Rejection
+
+/**
+ * Rejection created by the `cookie` directive.
+ * Signals that the request was rejected because a cookie was not found.
+ */
+case class MissingCookieRejection(cookieName: String) extends Rejection
 
 /**
  * Rejection created by the `validation` directive.

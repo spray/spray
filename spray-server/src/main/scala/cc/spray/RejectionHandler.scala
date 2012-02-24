@@ -41,6 +41,8 @@ object RejectionHandler {
       // TODO: add Allow header (required by the spec)
       val methods = rejections.collect { case MethodRejection(method) => method }
       HttpResponse(MethodNotAllowed, "HTTP method not allowed, supported methods: " + methods.mkString(", "))
+    case MissingCookieRejection(cookieName) :: _ =>
+      HttpResponse(BadRequest, "Request is missing required cookie '" + cookieName + '\'')
     case MissingFormFieldRejection(fieldName) :: _ =>
       HttpResponse(BadRequest, "Request is missing required form field '" + fieldName + '\'')
     case MissingQueryParamRejection(paramName) :: _ =>
