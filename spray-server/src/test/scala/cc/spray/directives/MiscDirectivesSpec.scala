@@ -26,8 +26,6 @@ import test.AbstractSprayTest
 
 class MiscDirectivesSpec extends AbstractSprayTest {
 
-  val reject: Route = _.reject()
-
   "respondWithStatus" should {
     "set the given status on successful responses" in {
       test(HttpRequest()) { 
@@ -36,7 +34,7 @@ class MiscDirectivesSpec extends AbstractSprayTest {
     }
     "leave rejections unaffected" in {
       test(HttpRequest()) { 
-        respondWithStatus(Created) { reject }
+        respondWithStatus(Created) { reject() }
       }.rejections mustEqual Set() 
     }
   }
@@ -49,7 +47,7 @@ class MiscDirectivesSpec extends AbstractSprayTest {
     }
     "leave rejections unaffected" in {
       test(HttpRequest()) { 
-        respondWithHeader(CustomHeader("custom", "custom")) { reject }
+        respondWithHeader(CustomHeader("custom", "custom")) { reject() }
       }.rejections mustEqual Set() 
     }
   }
@@ -62,7 +60,7 @@ class MiscDirectivesSpec extends AbstractSprayTest {
     }
     "leave rejections unaffected" in {
       test(HttpRequest()) { 
-        respondWithContentType(`application/json`) { reject }
+        respondWithContentType(`application/json`) { reject() }
       }.rejections mustEqual Set() 
     }
   }
@@ -102,7 +100,7 @@ class MiscDirectivesSpec extends AbstractSprayTest {
       }.response.content.get mustEqual HttpContent(ContentType(`application/javascript`), "someFunc([1,2,3])")
     }
     "not act on JSON responses if no jsonp parameter is present" in {
-      test(HttpRequest(uri = "/")) {
+      test(HttpRequest()) {
         jsonpWithParameter("jsonp") {
           respondWithContentType(`application/json`) {
             completeWith("[1,2,3]")
@@ -120,5 +118,19 @@ class MiscDirectivesSpec extends AbstractSprayTest {
       }.response.content.get mustEqual HttpContent(ContentType(`text/plain`), "[1,2,3]")
     }
   }
-  
+
+  "the redirect directive" should {
+    import StatusCodes._
+    "produce proper 'Found' redirections" in {
+      test(HttpRequest()) {
+        redirect("/foo", Found)
+      }.response mustEqual HttpResponse(302, Location("/foo") :: Nil,
+        HttpContent(`text/html`, "The requested resource temporarily resides under <a href=\"/foo\">this URI</a>."))
+    }
+    "produce proper 'NotModified' redirections" in {
+      test(HttpRequest()) {
+        redirect("/foo", NotModified)
+      }.response mustEqual HttpResponse(304, Location("/foo") :: Nil)
+    }
+  }
 }
