@@ -181,6 +181,8 @@ class SprayRoute1[A](filter: RouteFilter[Tuple1[A]]) extends SprayRoute(filter) 
   def & [B, C, D, E, F, G, H](other: SprayRoute7[B, C, D, E, F, G, H]) = new SprayRoute8[A, B, C, D, E, F, G, H](and(other))
   def & [B, C, D, E, F, G, H, I](other: SprayRoute8[B, C, D, E, F, G, H, I]) = new SprayRoute9[A, B, C, D, E, F, G, H, I](and(other))
   def as[T <: Product](deserializer: Deserializer[Tuple1[A], T]) = convert(deserializer)
+  def map[B](f: A => B): SprayRoute1[B] = new SprayRoute1[B](filter(_).map(t => Tuple1(f(t._1))))
+  def flatMap[B](f: A => FilterResult[Tuple1[B]]): SprayRoute1[B] = new SprayRoute1[B](filter(_).flatMap(t => f(t._1)))
 }
 
 /**
