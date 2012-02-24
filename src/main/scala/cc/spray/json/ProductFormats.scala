@@ -495,7 +495,10 @@ trait ProductFormats {
   protected def extractFieldNames(classManifest: ClassManifest[_]): Array[String] = {
     val clazz = classManifest.erasure
     try {
-      val copyDefaultMethods = clazz.getMethods.filter(_.getName.startsWith("copy$default$"))
+      // copy methods have the form copy$default$N(), we need to sort them in order, but must account for the fact
+      // that lexical sorting of ...8(), ...9(), ...10() is not correct, so we extract N and sort by N.toInt
+      val copyDefaultMethods = clazz.getMethods.filter(_.getName.startsWith("copy$default$")).sortBy(
+        _.getName.drop("copy$default$".length).takeWhile(_ != '(').toInt)
       val fields = clazz.getDeclaredFields.filterNot(_.getName.startsWith("$"))
       if (copyDefaultMethods.length != fields.length)
         sys.error("Case class declares additional fields")
@@ -503,8 +506,8 @@ trait ProductFormats {
         sys.error("Cannot determine field order")
       fields.map(_.getName)
     } catch {
-      case ex => throw new RuntimeException("Cannot automatically determine case class field names and order, " +
-        "please use the 'jsonFormat' overload with explicit field name specification", ex)
+      case ex => throw new RuntimeException("Cannot automatically determine case class field names and order " +
+        "for '" + clazz.getName + "', please use the 'jsonFormat' overload with explicit field name specification", ex)
     }
   }
 }
