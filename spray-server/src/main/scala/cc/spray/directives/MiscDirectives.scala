@@ -37,6 +37,12 @@ private[spray] trait MiscDirectives {
     _.redirect(uri, redirectionType)
 
   /**
+   * Rejects the request with the given rejections.
+   */
+  def reject(rejections: Rejection*): Route =
+    _.reject(rejections: _*)
+
+  /**
    * Returns a Route which checks the given condition before passing on the [[cc.spray.RequestContext]] to its inner
    * Route. If the condition failes the route is rejected with a [[cc.spray.ValidationRejection]].
    */
