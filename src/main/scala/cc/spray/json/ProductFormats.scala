@@ -501,9 +501,9 @@ trait ProductFormats {
         _.getName.drop("copy$default$".length).takeWhile(_ != '(').toInt)
       val fields = clazz.getDeclaredFields.filterNot(_.getName.startsWith("$"))
       if (copyDefaultMethods.length != fields.length)
-        sys.error("Case class declares additional fields")
+        sys.error("Case class " + clazz.getName + " declares additional fields")
       if (fields.zip(copyDefaultMethods).exists { case (f, m) => f.getType != m.getReturnType })
-        sys.error("Cannot determine field order")
+        sys.error("Cannot determine field order of case class " + clazz.getName)
       fields.map(_.getName)
     } catch {
       case ex => throw new RuntimeException("Cannot automatically determine case class field names and order " +
