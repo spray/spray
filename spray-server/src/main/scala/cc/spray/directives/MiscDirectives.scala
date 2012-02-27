@@ -65,6 +65,13 @@ private[spray] trait MiscDirectives {
     transformRequestContext(_.withResponseTransformed(f))
 
   /**
+   * Returns a Route which applies the given [[cc.spray.Rejection]] transformation function to all rejected responses
+   * of its inner Route.
+   */
+  def transformRejections(f: Set[Rejection] => Set[Rejection]) =
+    transformRequestContext(_.withRejectionsTransformed(f))
+
+  /**
    * Returns a Route which applies the given [[cc.spray.http.HttpResponse]] transformation function to all not-rejected
    * "regular" responses of its inner Route.
    */
@@ -114,6 +121,18 @@ private[spray] trait MiscDirectives {
    */
   def respondWithMediaType(mediaType: MediaType) = transformResponse { response =>
     response.copy(content = response.content.map(c => c.withContentType(ContentType(mediaType, c.contentType.charset))))
+  }
+
+  /**
+   * Extracts an HTTP header value using the given function.
+   * If the function is undefined for all headers the request is rejection with the [[cc.spray.MissingHeaderRejection]]
+   */
+  def headerValue[A](f: HttpHeader => Option[A]) = filter1 {
+    import utils._
+    _.request.headers.mapFind(f) match {
+      case Some(a) => Pass(a)
+      case None => Reject(MissingHeaderRejection)
+    }
   }
 
   /**

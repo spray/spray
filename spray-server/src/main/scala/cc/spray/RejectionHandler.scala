@@ -45,6 +45,8 @@ object RejectionHandler {
       HttpResponse(BadRequest, "Request is missing required cookie '" + cookieName + '\'')
     case MissingFormFieldRejection(fieldName) :: _ =>
       HttpResponse(BadRequest, "Request is missing required form field '" + fieldName + '\'')
+    case MissingHeaderRejection :: _ =>
+      HttpResponse(BadRequest, "Request is missing a required HTTP header")
     case MissingQueryParamRejection(paramName) :: _ =>
       HttpResponse(NotFound, "Request is missing required query parameter '" + paramName + '\'')
     case RequestEntityExpectedRejection :: _ =>

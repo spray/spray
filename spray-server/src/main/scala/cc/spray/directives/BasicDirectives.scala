@@ -90,6 +90,11 @@ private[spray] trait BasicDirectives {
    * A directive that does nothing but delegate route handling to its inner route.
    */
   def alwaysPass = filter(Pass.Always)
+
+  /**
+   * Returns a route that always extract the given value.
+   */
+  def provide[A](value: A) = filter1(_ => Pass(value))
 }
 
 sealed abstract class SprayRoute[T <: Product](val filter: RouteFilter[T]) { self =>
