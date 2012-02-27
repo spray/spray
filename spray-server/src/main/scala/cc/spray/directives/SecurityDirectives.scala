@@ -36,7 +36,21 @@ private[spray] trait SecurityDirectives {
    * - cannot be combined with other routes via the usual `&` and `|` operators
    */
   def authenticate[U](authenticator: GeneralAuthenticator[U]): (U => Route) => Route = { innerRoute => ctx =>
-    authenticator(ctx) onComplete {
+    authenticate(authenticator(ctx))(innerRoute)(ctx)
+  }
+
+  /**
+   * Wraps its inner Route with authentication support.
+   * Uses the given authenticator to authenticate the user and extract an object representing the users identity.
+   * It's up to the given authenticator how to deal with authentication failures of any kind.
+   *
+   * Note that this directive differs from most other directives in that it
+   * - automatically detaches its inner route from the enclosing actor scope, i.e. it runs its inner route
+   *   asynchronously in a private, per-request execution context
+   * - cannot be combined with other routes via the usual `&` and `|` operators
+   */
+  def authenticate[U](authentication: Future[Authentication[U]]): (U => Route) => Route = { innerRoute => ctx =>
+    authentication onComplete {
       new ((Future[Either[Rejection, U]]) => Unit) with ErrorHandling with Logging {
         def apply(future: Future[Either[Rejection, U]]) {
           future.value.get match {
