@@ -19,6 +19,7 @@ package directives
 
 import http._
 import StatusCodes.Redirection
+import HttpHeaders._
 
 private[spray] trait MiscDirectives {
   this: BasicDirectives with ParameterDirectives =>
@@ -132,6 +133,27 @@ private[spray] trait MiscDirectives {
     _.request.headers.mapFind(f) match {
       case Some(a) => Pass(a)
       case None => Reject(MissingHeaderRejection)
+    }
+  }
+
+  /**
+   * Extracts an HTTP header value using the given function.
+   * If the function is undefined for all headers the request is rejection with the [[cc.spray.MissingHeaderRejection]]
+   */
+  def headerValuePF[A](pf: PartialFunction[HttpHeader, A]) =
+    headerValue(pf.lift)
+
+  /**
+   * Directive extracting the IP of the client from the X-Forwarded-For or X-Real-IP header (if present) or from the
+   * sender IP of the HTTP request.
+   */
+  lazy val clientIP: SprayRoute1[String] = {
+    headerValuePF {
+      case x: `X-Forwarded-For` => x.ips(0).value
+    } | headerValuePF {
+      case CustomHeader("x-real-ip", ip) => ip
+    } | filter1 { ctx =>
+      Pass(ctx.remoteHost.value)
     }
   }
 

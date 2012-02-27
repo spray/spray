@@ -133,4 +133,22 @@ class MiscDirectivesSpec extends AbstractSprayTest {
       }.response mustEqual HttpResponse(304, Location("/foo") :: Nil)
     }
   }
+
+  "the clientIP directive" should {
+    "extract from a X-Forwarded-For header" in {
+      test(HttpRequest(headers = `X-Forwarded-For`("2.3.4.5") :: CustomHeader("x-real-ip", "1.2.3.4") :: Nil)) {
+        clientIP { echoComplete }
+      }.response.content.as[String] mustEqual Right("2.3.4.5")
+    }
+    "extract from a X-Real-IP header" in {
+      test(HttpRequest(headers = CustomHeader("x-real-ip", "1.2.3.4") :: Nil)) {
+        clientIP { echoComplete }
+      }.response.content.as[String] mustEqual Right("1.2.3.4")
+    }
+    "extract the requests sender IP" in {
+      test(HttpRequest()) {
+        clientIP { echoComplete }
+      }.response.content.as[String] mustEqual Right("127.0.0.1")
+    }
+  }
 }
