@@ -19,6 +19,7 @@ package directives
 
 import http._
 import StatusCodes.Redirection
+import HttpHeaders._
 
 private[spray] trait MiscDirectives {
   this: BasicDirectives with ParameterDirectives =>
@@ -35,6 +36,12 @@ private[spray] trait MiscDirectives {
    */
   def redirect(uri: String, redirectionType: Redirection = StatusCodes.Found): Route =
     _.redirect(uri, redirectionType)
+
+  /**
+   * Rejects the request with the given rejections.
+   */
+  def reject(rejections: Rejection*): Route =
+    _.reject(rejections: _*)
 
   /**
    * Returns a Route which checks the given condition before passing on the [[cc.spray.RequestContext]] to its inner
@@ -57,6 +64,13 @@ private[spray] trait MiscDirectives {
    */
   def transformResponse(f: HttpResponse => HttpResponse) =
     transformRequestContext(_.withResponseTransformed(f))
+
+  /**
+   * Returns a Route which applies the given [[cc.spray.Rejection]] transformation function to all rejected responses
+   * of its inner Route.
+   */
+  def transformRejections(f: Set[Rejection] => Set[Rejection]) =
+    transformRequestContext(_.withRejectionsTransformed(f))
 
   /**
    * Returns a Route which applies the given [[cc.spray.http.HttpResponse]] transformation function to all not-rejected
@@ -108,6 +122,39 @@ private[spray] trait MiscDirectives {
    */
   def respondWithMediaType(mediaType: MediaType) = transformResponse { response =>
     response.copy(content = response.content.map(c => c.withContentType(ContentType(mediaType, c.contentType.charset))))
+  }
+
+  /**
+   * Extracts an HTTP header value using the given function.
+   * If the function is undefined for all headers the request is rejection with the [[cc.spray.MissingHeaderRejection]]
+   */
+  def headerValue[A](f: HttpHeader => Option[A]) = filter1 {
+    import utils._
+    _.request.headers.mapFind(f) match {
+      case Some(a) => Pass(a)
+      case None => Reject(MissingHeaderRejection)
+    }
+  }
+
+  /**
+   * Extracts an HTTP header value using the given function.
+   * If the function is undefined for all headers the request is rejection with the [[cc.spray.MissingHeaderRejection]]
+   */
+  def headerValuePF[A](pf: PartialFunction[HttpHeader, A]) =
+    headerValue(pf.lift)
+
+  /**
+   * Directive extracting the IP of the client from the X-Forwarded-For or X-Real-IP header (if present) or from the
+   * sender IP of the HTTP request.
+   */
+  lazy val clientIP: SprayRoute1[String] = {
+    headerValuePF {
+      case x: `X-Forwarded-For` => x.ips(0).value
+    } | headerValuePF {
+      case CustomHeader("x-real-ip", ip) => ip
+    } | filter1 { ctx =>
+      Pass(ctx.remoteHost.value)
+    }
   }
 
   /**

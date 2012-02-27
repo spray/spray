@@ -24,7 +24,8 @@ package object spray {
   type Route = RequestContext => Unit
   type ContentTypeResolver = (String, Option[HttpCharset]) => ContentType
   type RouteFilter[T <: Product] = RequestContext => FilterResult[T]
-  type GeneralAuthenticator[U] = RequestContext => Future[Either[Rejection, U]]
+  type Authentication[U] = Either[Rejection, U]
+  type GeneralAuthenticator[U] = RequestContext => Future[Authentication[U]]
   type UserPassAuthenticator[U] = Option[(String, String)] => Future[Option[U]]
   type CacheKeyer = RequestContext => Option[Any]
   type RequiredParameterMatcher = Map[String, String] => Boolean

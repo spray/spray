@@ -18,9 +18,9 @@ package cc.spray
 package directives
 
 import utils._
+import util.matching.Regex
 import http._
 import HttpMethods._
-import util.matching.Regex
 
 private[spray] trait SimpleDirectives {
   this: BasicDirectives =>
@@ -101,5 +101,5 @@ private[spray] trait SimpleDirectives {
               "' must not contain more than one capturing group")
     }
   }
-  
+
 }

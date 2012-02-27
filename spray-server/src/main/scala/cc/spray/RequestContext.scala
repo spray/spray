@@ -218,17 +218,13 @@ case class RequestContext(
    * The default redirectionType is a temporary `302 Found`.
    */
   def redirect(uri: String, redirectionType: Redirection = Found) {
+    import utils._
     complete {
       HttpResponse(
         status = redirectionType,
         headers = Location(uri) :: Nil,
-        content = redirectionType match {
-          case Found =>
-            HttpContent(`text/html`, "The requested resource temporarily resides under <a href=\"" + uri + "\">this URI</a>.")
-          case MovedPermanently =>
-            HttpContent(`text/html`, "This and all future requests should be directed to <a href=\"" + uri + "\">this URI</a>.")
-          case _ => HttpContent(redirectionType.defaultMessage)
-        }
+        content = redirectionType.htmlTemplate.toOption.map(s => HttpContent(`text/html`, s format uri)),
+        protocol = HttpProtocols.`HTTP/1.1`
       )
     }
   }

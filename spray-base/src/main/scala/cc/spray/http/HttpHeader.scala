@@ -139,7 +139,7 @@ object HttpHeaders {
   case class `X-Forwarded-For`(ips: Seq[HttpIp]) extends HttpHeader {
     def value = ips.mkString(", ")
   }
-  
+
   case class `CustomHeader`(override val name: String, value: String) extends HttpHeader
 
   /////////////////////////////////////////////////////////////////////////////////////////

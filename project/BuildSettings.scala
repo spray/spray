@@ -6,7 +6,7 @@ import xml.transform.{RewriteRule, RuleTransformer}
 object BuildSettings {
 
   lazy val basicSettings = Seq[Setting[_]](
-    version       := "0.9.0-RC3",
+    version       := "0.9.0-RC4",
     homepage      := Some(new URL("http://spray.cc")),
     organization  := "cc.spray",
     organizationHomepage := Some(new URL("http://spray.cc")),

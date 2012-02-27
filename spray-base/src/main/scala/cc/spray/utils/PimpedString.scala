@@ -60,4 +60,9 @@ class PimpedString(underlying: String) {
     split(0)
   }
 
+  /**
+   * @return Some(String) if the underlying string is non-emtpy, None otherwise
+   */
+  def toOption: Option[String] =
+    if (underlying.isEmpty) None else Some(underlying)
 }
