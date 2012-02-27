@@ -76,7 +76,7 @@ object StatusCodes extends ObjectRegistry[Int, StatusCode] {
   val Transformation               = new Warning(214, "A transformation changed the content-coding of the response, or the entity-body of the response.")
   val MiscellaneousPersistent      = new Warning(299, "Miscellaneous persistent warning.")
 
-  val OK                           = new Success(200, "")
+  val OK                           = new Success(200, "OK")
   val Created                      = new Success(201, "The request has been fulfilled and resulted in a new resource being created.")
   val Accepted                     = new Success(202, "The request has been accepted for processing, but the processing has not been completed.")
   val NonAuthoritativeInformation  = new Success(203, "The server successfully processed the request, but is returning information that may be from another source.")
