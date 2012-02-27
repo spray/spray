@@ -12,7 +12,9 @@ Changes since _spray_ 0.8.0:
   - SBT 0.11.2
 - Changed dependency on akka-actor from scope 'compile' to scope 'provided'
 - Added support for chunked responses, including chunk compression and automatic file chunking
-- Added new directives: completeWith, redirect, autoChunk, dynamic, transformUnchunkedResponse, transformChunkedResponse
+- Added new directives: autoChunk, clientIP, completeWith, cookie, deleteCookie, dynamic, headerValue, headerValuePF,
+    optionalCookie, provide, redirect, reject, setCookie, transformChunkedResponse, transformRejections,
+    transformUnchunkedResponse,
 - Added default Marshallers for Option, Either, HttpResult, HttpException, Stream, Future and Array[Byte]
 - Added support for JSON (de)serialization via lift-json
 - Added support for template rendering via Scalate
@@ -21,6 +23,7 @@ Changes since _spray_ 0.8.0:
 - Added option for relaxed header parsing (issue #68)
 - Added DebuggingDirectives trait
 - Added TwirlSupport trait
+- Made FilterResult and SprayRoute1 monadic
 - Simplified custom rendering of Rejections to HttpResponses
 - Improved LruCache implementation to use com.googlecode.concurrentlinkedhashmap
 - Fixed #72 (spray-client: different HttpConduits sometimes and erroneously share connections)
