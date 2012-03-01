@@ -30,14 +30,14 @@ class PipelinesSpec extends Specification { def is =
 
   def example(stage: CommandPipelineStage, expected: String) = {
     var result: Option[String] = None
-    val pl = stage.build(null, cmd => result = Some(cmd.asInstanceOf[TestCommand].s))
+    val pl = stage.build(null, cmd => result = Some(cmd.asInstanceOf[TestCommand].s), devNull)
     pl(TestCommand(""))
     result === Some(expected)
   }
 
   def example(stage: EventPipelineStage, expected: String) = {
     var result: Option[String] = None
-    val pl = stage.build(null, ev => result = Some(ev.asInstanceOf[TestEvent].s))
+    val pl = stage.build(null, devNull, ev => result = Some(ev.asInstanceOf[TestEvent].s))
     pl(TestEvent(""))
     result === Some(expected)
   }
@@ -50,16 +50,18 @@ class PipelinesSpec extends Specification { def is =
   }
 
   def cmd(c: Char) = new CommandPipelineStage {
-    def build(context: ActorContext, commandPL: Pipeline[Command]) =
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
       cmd => commandPL(TestCommand(cmd.asInstanceOf[TestCommand].s + c))
   }
 
   def ev(e: Char) = new EventPipelineStage {
-    def build(context: ActorContext, eventPL: Pipeline[Event]) =
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
       ev => eventPL(TestEvent(ev.asInstanceOf[TestEvent].s + e))
   }
 
   case class TestEvent(s: String) extends Event
   case class TestCommand(s: String) extends Command
+
+  val devNull: Any => Unit = _ => ()
 
 }

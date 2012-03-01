@@ -41,13 +41,13 @@ trait DoublePipelineStage { left =>
   def ~> (right: EventPipelineStage) = new DoublePipelineStage {
     def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
       val leftPL = left.build(context, commandPL, eventPL)
-      Pipelines(leftPL.commandPipeline, right.build(context, leftPL.eventPipeline))
+      Pipelines(leftPL.commandPipeline, right.build(context, commandPL, leftPL.eventPipeline))
     }
   }
 
   def ~> (right: CommandPipelineStage) = new DoublePipelineStage {
     def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
-      left.build(context, right.build(context, commandPL), eventPL)
+      left.build(context, right.build(context, commandPL, eventPL), eventPL)
   }
 
   def ~> (right: DoublePipelineStage) = new DoublePipelineStage {
@@ -66,43 +66,43 @@ trait DoublePipelineStage { left =>
 
 trait EventPipelineStage { left =>
 
-  def build(context: ActorContext, eventPL: Pipeline[Event]): Pipeline[Event]
+  def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): Pipeline[Event]
 
   def ~> (right: EventPipelineStage) = new EventPipelineStage {
-    def build(context: ActorContext, eventPL: Pipeline[Event]) =
-      right.build(context, left.build(context, eventPL))
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
+      right.build(context, commandPL, left.build(context, commandPL, eventPL))
   }
 
   def ~> (right: CommandPipelineStage) = new DoublePipelineStage {
     def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
-      Pipelines(right.build(context, commandPL), left.build(context, eventPL))
+      Pipelines(right.build(context, commandPL, eventPL), left.build(context, commandPL, eventPL))
   }
 
   def ~> (right: DoublePipelineStage) = new DoublePipelineStage {
     def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
-      right.build(context, commandPL, left.build(context, eventPL))
+      right.build(context, commandPL, left.build(context, commandPL, eventPL))
   }
 
 }
 
 trait CommandPipelineStage { left =>
 
-  def build(context: ActorContext, commandPL: Pipeline[Command]): Pipeline[Command]
+  def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): Pipeline[Command]
 
   def ~> (right: EventPipelineStage) = new DoublePipelineStage {
     def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
-      Pipelines(left.build(context, commandPL), right.build(context, eventPL))
+      Pipelines(left.build(context, commandPL, eventPL), right.build(context, commandPL, eventPL))
   }
 
   def ~> (right: CommandPipelineStage) = new CommandPipelineStage {
-    def build(context: ActorContext, commandPL: Pipeline[Command]) =
-      left.build(context, right.build(context, commandPL))
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
+      left.build(context, right.build(context, commandPL, eventPL), eventPL)
   }
 
   def ~> (right: DoublePipelineStage) = new DoublePipelineStage {
     def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
       val rightPL = right.build(context, commandPL, eventPL)
-      Pipelines(left.build(context, rightPL.commandPipeline), rightPL.eventPipeline)
+      Pipelines(left.build(context, rightPL.commandPipeline, eventPL), rightPL.eventPipeline)
     }
   }
 

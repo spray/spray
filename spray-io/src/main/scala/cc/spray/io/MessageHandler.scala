@@ -37,7 +37,7 @@ object MessageHandlerDispatch {
   import MessageHandler._
 
   def apply(messageHandler: MessageHandler) = new CommandPipelineStage {
-    def build(context: ActorContext, commandPL: Pipeline[Command]) = {
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
 
       val dispatcher: DispatchCommand => IoPeer.Dispatch = messageHandler match {
         case SingletonHandler(handler) =>
