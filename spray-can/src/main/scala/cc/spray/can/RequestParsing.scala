@@ -27,7 +27,7 @@ import akka.actor.ActorContext
 
 object RequestParsing {
 
-  def apply(config: HttpParserConfig, log: LoggingAdapter) = new DoublePipelineStage {
+  def apply(config: HttpParserConfig, log: LoggingAdapter) = new EventPipelineStage {
     def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
       new MessageParsingPipelines(config, commandPL, eventPL) {
         lazy val startParser = new EmptyRequestParser(config)

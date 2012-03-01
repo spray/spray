@@ -26,7 +26,7 @@ object ResponseRendering {
   def apply(serverHeader: String) = new CommandPipelineStage {
     val renderer = new ResponseRenderer(serverHeader)
 
-    def build(context: ActorContext, commandPL: Pipeline[Command]) = {
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
       case ctx: HttpResponsePartRenderingContext =>
         val rendered = renderer.render(ctx)
         commandPL(IoPeer.Send(rendered.buffers))

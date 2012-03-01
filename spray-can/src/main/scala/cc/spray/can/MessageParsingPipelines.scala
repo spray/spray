@@ -25,7 +25,7 @@ import cc.spray.io._
 
 abstract class MessageParsingPipelines(parserConfig: HttpParserConfig,
                                            commandPL: Pipeline[Command],
-                                           eventPL: Pipeline[Event]) extends Pipelines {
+                                           eventPL: Pipeline[Event]) extends Pipeline[Event] {
   var currentParsingState = startParser
 
   def startParser: ParsingState
@@ -55,9 +55,7 @@ abstract class MessageParsingPipelines(parserConfig: HttpParserConfig,
     }
   }
 
-  def commandPipeline(command: Command) { commandPL(command) }
-
-  def eventPipeline(event: Event) {
+  def apply(event: Event) {
     event match {
       case x: IoWorker.Received => parse(x.buffer)
       case ev => eventPL(ev)

@@ -25,7 +25,7 @@ object RequestRendering {
   def apply(userAgentHeader: String) = new CommandPipelineStage {
     val renderer = new RequestRenderer(userAgentHeader)
 
-    def build(context: ActorContext, commandPL: Pipeline[Command]) = {
+    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
       case ctx: HttpRequestPartRenderingContext =>
         val rendered = renderer.render(ctx)
         commandPL(IoPeer.Send(rendered.buffers))
