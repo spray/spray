@@ -16,9 +16,10 @@
 
 package cc.spray
 
-import can.util.{PimpedByteArray, PimpedLinearSeq}
+import can.util.{PimpedByteArray, PimpedFuture, PimpedLinearSeq}
 import collection.immutable.LinearSeq
 import java.io.{BufferedReader, InputStreamReader}
+import akka.dispatch.Future
 
 package object can {
 
@@ -29,5 +30,5 @@ package object can {
   // implicits
   implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq)
   implicit def pimpByteArray(array: Array[Byte]): PimpedByteArray = new PimpedByteArray(array)
-
+  implicit def pimpFuture[A](fut: Future[A]): PimpedFuture[A] = new PimpedFuture[A](fut)
 }

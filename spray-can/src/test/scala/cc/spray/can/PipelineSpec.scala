@@ -27,13 +27,15 @@ import org.specs2.Specification
 abstract class PipelineSpec(name: String) extends Specification {
 
   implicit val system = ActorSystem(name)
-  val connectionActor = TestActorRef(new DummyActor)
-  val singletonHandler = TestActorRef(new DummyActor)
+  val connectionActor = TestActorRef(new DummyActor('connectionActor))
+  val singletonHandler = TestActorRef(new DummyActor('singletonHandler))
   val log = new BusLogging(system.eventStream, name, getClass)
 
-  class DummyActor extends Actor {
-    protected def receive = util.emptyPartialFunc
-
+  class DummyActor(name: Symbol) extends Actor {
+    def this(name: String) = this(Symbol(name))
+    protected def receive = {
+      case 'name => sender ! name
+    }
     def theContext = context
   }
 
