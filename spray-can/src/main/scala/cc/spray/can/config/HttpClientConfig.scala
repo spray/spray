@@ -18,6 +18,7 @@ package cc.spray.can
 package config
 
 import cc.spray.io.IoWorkerConfig
+import akka.util.Duration
 
 case class HttpClientConfig(
 
@@ -29,8 +30,8 @@ case class HttpClientConfig(
   readBufferSize: Int = IoWorkerConfig.defaultReadBufferSize,
 
   // ConnectionTimeoutConfig
-  idleTimeout: Long = ConnectionTimeoutConfig.defaultIdleTimeout,
-  reapingCycle: Long = ConnectionTimeoutConfig.defaultReapingCycle,
+  idleTimeout: Duration = ConnectionTimeoutConfig.defaultIdleTimeout,
+  reapingCycle: Duration = ConnectionTimeoutConfig.defaultReapingCycle,
 
   // HttpParserConfig
   maxUriLength: Int             = HttpParserConfig.defaultMaxUriLength,

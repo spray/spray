@@ -17,12 +17,14 @@
 package cc.spray.can
 package config
 
+import akka.util.Duration
+
 trait ConnectionTimeoutConfig {
-  def idleTimeout: Long
-  def reapingCycle: Long
+  def idleTimeout: Duration
+  def reapingCycle: Duration
 }
 
 object ConnectionTimeoutConfig {
-  val defaultIdleTimeout = 10000
-  val defaultReapingCycle = 500
+  val defaultIdleTimeout = Duration("10 sec")
+  val defaultReapingCycle = Duration("10 ms")
 }
