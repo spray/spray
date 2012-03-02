@@ -5,11 +5,10 @@ import akka.actor.{Props, ActorSystem}
 
 object Main extends App {
   val system = ActorSystem("EchoServer")
-  val ioWorker = new IoWorker().start()
-  system.actorOf(Props(new EchoServer(ioWorker)), name = "echo-server") ! IoServer.Bind("localhost", 23456)
+  system.actorOf(Props(new EchoServer), name = "echo-server") ! IoServer.Bind("localhost", 23456)
 }
 
-class EchoServer(ioWorker: IoWorker) extends IoServer(ioWorker) {
+class EchoServer extends IoServer {
 
   override def receive = super.receive orElse {
     case IoWorker.Received(handle, buffer) =>
@@ -19,7 +18,7 @@ class EchoServer(ioWorker: IoWorker) extends IoServer(ioWorker) {
           ioWorker.stop()
           context.system.shutdown()
         case x =>
-          log.debug("Received '{}'", x)
+          log.debug("Received '{}', echoing ...", x)
           ioWorker ! IoWorker.Send(handle, buffer)
       }
 
