@@ -30,8 +30,8 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
     "dispatch a simple HttpRequest to a singleton service actor" ! dispatchSimpleRequestToSingletonHandler^
     "correctly dispatch a fragmented HttpRequest" ! dispatchFragmentedRequest^
     "produce an error upon stray responses" ! strayResponse^
-    "correctly render a matched HttpResponse" ! renderResponse
-    "dispatch requests to the right service actor when using per-connection handlers" ! perConnectionHandlers
+    "correctly render a matched HttpResponse" ! renderResponse^
+    "dispatch requests to the right service actor when using per-connection handlers" ! perConnectionHandlers^
     "dispatch requests to the right service actor when using per-message handlers" ! perMessageHandlers
 
   def dispatchSimpleRequestToSingletonHandler = {
@@ -91,7 +91,7 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
     { receiver(chunkedRequestStart) === 'actor3 } and
     { receiver(requestChunk) === 'actor3 } and
     { receiver(requestChunk) === 'actor3 } and
-    { receiver(chunkedRequestEnd) === 'actor3 }
+    { receiver(chunkedRequestEnd) === 'actor3 } and
     { receiver(chunkedRequestStart) === 'actor4 }
   }
 
@@ -115,7 +115,7 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
                                |
                                |"""
 
-  val requestChunk = """|7"
+  val requestChunk = """|7
                         |body123
                         |"""
 

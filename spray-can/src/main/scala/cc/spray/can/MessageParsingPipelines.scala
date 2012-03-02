@@ -17,9 +17,9 @@
 package cc.spray.can
 
 import config.HttpParserConfig
-import model.HttpMessage
 import java.nio.ByteBuffer
 import annotation.tailrec
+import model.{ChunkedMessageEnd, HttpMessage}
 import parsing._
 import cc.spray.io._
 
@@ -44,6 +44,7 @@ abstract class MessageParsingPipelines(parserConfig: HttpParserConfig,
             eventPL(messagePart) // dispatch
             currentParsingState = messagePart match {
               case _: HttpMessage => startParser
+              case _: ChunkedMessageEnd => startParser
               case _ => new ChunkParser(parserConfig)
             }
             if (buffer.remaining > 0) parse(buffer) // there might be more input in the buffer, so recurse
