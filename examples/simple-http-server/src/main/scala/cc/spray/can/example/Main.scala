@@ -17,20 +17,21 @@
 package cc.spray.can
 package example
 
-import akka.config.Supervision._
-import akka.actor.{Supervisor, Actor}
+import akka.actor._
+import cc.spray.io.pipelines.MessageHandlerDispatch
+import cc.spray.io.IoWorker
+import cc.spray.io.util._
 
 object Main extends App {
-
-  /*// create, start and supervise the TestService actor, which holds our custom request handling logic
-  // as well as the HttpServer actor
-  Supervisor(
-    SupervisorConfig(
-      OneForOneStrategy(List(classOf[Exception]), 3, 100),
-      List(
-        Supervise(Actor.actorOf(new TestService("test-endpoint")), Permanent),
-        Supervise(Actor.actorOf(new HttpServer()), Permanent)
-      )
-    )
-  )*/
+  val system = ActorSystem("SimpleHttpServer")
+  val handler = system.actorOf(Props[TestService])
+  val ioWorker = new IoWorker().start()
+  val server = system.actorOf(
+    props = Props(new HttpServer(ioWorker, MessageHandlerDispatch.SingletonHandler(handler))),
+    name = "http-server"
+  )
+  server ! HttpServer.Bind("localhost", 8080)
+  system.watch(server).await // block until server is terminated
+  ioWorker.stop().get.await()
+  system.shutdown()
 }

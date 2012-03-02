@@ -17,81 +17,59 @@
 package cc.spray.can
 package example
 
-import org.slf4j.LoggerFactory
 import model._
-import java.util.concurrent.TimeUnit
-import akka.actor.{PoisonPill, Scheduler, Kill, Actor}
-import util.DateTime
-import cc.spray.io.GetStats
-import nio.GetStats
+import akka.util.duration._
+import akka.actor.{PoisonPill, ActorLogging, Actor}
+import cc.spray.io.util.DateTime
 
-/*class TestService(id: String) extends Actor {
+class TestService extends Actor with ActorLogging {
   import HttpMethods._
-
-  val log = LoggerFactory.getLogger(getClass)
-  self.id = id
 
   protected def receive = {
 
-    case RequestContext(HttpRequest(GET, "/", _, _, _), _, responder) =>
-      responder.complete(index)
+    case HttpRequest(GET, "/", _, _, _) =>
+      sender ! index
 
-    case RequestContext(HttpRequest(GET, "/ping", _, _, _), _, responder) =>
-      responder.complete(response("PONG!"))
+    case HttpRequest(GET, "/ping", _, _, _) =>
+      sender ! response("PONG!")
 
-    case RequestContext(HttpRequest(GET, "/stream", _, _, _), _, responder) =>
-      val streamHandler = responder.startChunkedResponse(HttpResponse(headers = defaultHeaders))
-      val chunkGenerator = Scheduler.schedule(
-        () => streamHandler.sendChunk(MessageChunk(DateTime.now.toIsoDateTimeString + ", ")),
-        100, 100, TimeUnit.MILLISECONDS
-      )
-      Scheduler.scheduleOnce(() => {
-        chunkGenerator.cancel(false)
-        streamHandler.sendChunk(MessageChunk("\nStopped..."))
-        streamHandler.close()
-      }, 20500, TimeUnit.MILLISECONDS)
-
-    case RequestContext(HttpRequest(GET, "/stats", _, _, _), _, responder) => {
-      (serverActor ? GetStats).mapTo[HttpPeerStats].onComplete { future =>
-        future.value.get match {
-          case Right(stats) => responder.complete {
-            response {
-              "Uptime              : " + (stats.uptime / 1000.0) + " sec\n" +
-              "Requests dispatched : " + stats.requestsDispatched + '\n' +
-              "Requests timed out  : " + stats.requestsTimedOut + '\n' +
-              "Requests open       : " + stats.requestsOpen + '\n' +
-              "Open connections    : " + stats.connectionsOpen + '\n'
-            }
-          }
-          case Left(ex) => responder.complete(response("Couldn't get server stats due to " + ex, status = 500))
+    case HttpRequest(GET, "/stream", _, _, _) =>
+      val savedSender = sender
+      savedSender ! ChunkedResponseStart(HttpResponse(headers = defaultHeaders))
+      val chunkGenerator = context.system.scheduler.schedule(100.millis, 100.millis, new Runnable {
+        def run() { savedSender ! MessageChunk(DateTime.now.toIsoDateTimeString + ", ") }
+      })
+      context.system.scheduler.scheduleOnce(20.seconds, new Runnable {
+        def run() {
+          chunkGenerator.cancel()
+          savedSender ! MessageChunk("\nStopped...")
+          savedSender ! ChunkedMessageEnd()
         }
-      }
-    }
+      })
 
-    case RequestContext(HttpRequest(GET, "/crash", _, _, _), _, responder) =>
-      responder.complete(response("Hai! (about to kill the HttpServer, watch the log for the automatic restart)"))
-      serverActor ! Kill
+//    case HttpRequest(GET, "/crash", _, _, _) =>
+//      sender ! response("Hai! (about to kill the HttpServer, watch the log for the automatic restart)")
+//      serverActor ! Kill
 
-    case RequestContext(HttpRequest(GET, "/timeout", _, _, _), _, _) =>
+    case HttpRequest(GET, "/timeout", _, _, _) =>
       // we simply drop the request triggering a timeout
 
-    case RequestContext(HttpRequest(GET, "/stop", _, _, _), _, responder) =>
-      responder.complete(response("Shutting down in 1 second ..."))
-      Scheduler.scheduleOnce(() => Actor.registry.actors.foreach(_ ! PoisonPill), 1000, TimeUnit.MILLISECONDS)
+    case HttpRequest(GET, "/stop", _, _, _) =>
+      sender ! response("Shutting down in 1 second ...")
+      context.system.scheduler.scheduleOnce(1.second, new Runnable { def run() { serverActor ! PoisonPill } })
 
-    case RequestContext(HttpRequest(_, _, _, _, _), _, responder) =>
-      responder.complete(response("Unknown resource!", 404))
+    case _: HttpRequest => sender ! response("Unknown resource!", 404)
 
-    /*case Timeout(method, uri, _, _, _, complete) => complete {
-      HttpResponse(status = 500).withBody("The " + method + " request to '" + uri + "' has timed out...")
-    }*/
+//    case Timeout(method, uri, _, _, _, complete) => complete {
+//      HttpResponse(status = 500).withBody("The " + method + " request to '" + uri + "' has timed out...")
+//    }
   }
 
   ////////////// helpers //////////////
 
   val defaultHeaders = List(HttpHeader("Content-Type", "text/plain"))
 
-  lazy val serverActor = Actor.registry.actorsFor("spray-can-server").head
+  lazy val serverActor = context.actorFor("/user/http-server")
 
   def response(msg: String, status: Int = 200) = HttpResponse(status, defaultHeaders , msg.getBytes("ISO-8859-1"))
 
@@ -113,4 +91,4 @@ import nio.GetStats
         </body>
       </html>.toString.getBytes("ISO-8859-1")
   )
-}*/
+}

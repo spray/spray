@@ -8,7 +8,7 @@ object Main extends App {
   system.actorOf(Props(new EchoServer), name = "echo-server") ! IoServer.Bind("localhost", 23456)
 }
 
-class EchoServer extends IoServer {
+class EchoServer extends IoServer(new IoWorker().start()) {
 
   override def receive = super.receive orElse {
     case IoWorker.Received(handle, buffer) =>
