@@ -23,16 +23,18 @@ import akka.pattern.ask
 import akka.util.{Duration, Timeout}
 import cc.spray.io.pipelines.{PerMessageHandler, PerConnectionHandler, SingletonHandler, MessageHandler}
 import java.util.concurrent.atomic.AtomicInteger
+import org.specs2.specification.Step
 
 class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { def is =
 
-  "The HttpServer should"^
+  "The HttpServerPipeline should"^
     "dispatch a simple HttpRequest to a singleton service actor" ! dispatchSimpleRequestToSingletonHandler^
     "correctly dispatch a fragmented HttpRequest" ! dispatchFragmentedRequest^
     "produce an error upon stray responses" ! strayResponse^
     "correctly render a matched HttpResponse" ! renderResponse^
     "dispatch requests to the right service actor when using per-connection handlers" ! perConnectionHandlers^
-    "dispatch requests to the right service actor when using per-message handlers" ! perMessageHandlers
+    "dispatch requests to the right service actor when using per-message handlers" ! perMessageHandlers^
+  Step(stop())
 
   def dispatchSimpleRequestToSingletonHandler = {
     singletonPipeline.runEvents {
@@ -64,12 +66,8 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
 
   def renderResponse = {
     val pipeline = singletonPipeline
-    pipeline.runEvents {
-      received(simpleRequest)
-    }
-    pipeline.runCommands(HttpResponse()) must produceOneCommand {
-      send(simpleResponse)
-    }
+    pipeline.runEvents(received(simpleRequest))
+    pipeline.runCommands(HttpResponse()) must produceOneCommand(send(simpleResponse))
   }
 
   def perConnectionHandlers = {
@@ -132,6 +130,11 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
     receiver.ask('name).get
   }
 
-  def testPipeline(messageHandler: MessageHandler) =
-    new TestPipeline(HttpServer.pipeline(HttpServerConfig(serverHeader = "test/no-date"), messageHandler, log))
+  def testPipeline(messageHandler: MessageHandler) = new TestPipeline(
+    HttpServer.pipeline(
+      HttpServerConfig(serverHeader = "test/no-date", idleTimeout = Duration("50 ms")),
+      messageHandler,
+      log
+    )
+  )
 }

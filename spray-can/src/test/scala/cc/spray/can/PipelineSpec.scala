@@ -46,6 +46,10 @@ abstract class PipelineSpec(name: String) extends Specification {
 
   def send(rawMessage: String): Command = SendString(prepareString(rawMessage))
 
+  def stop() {
+    system.shutdown()
+  }
+
   def produceOneCommand(command: Command) = {
     beEqualTo(List(command) -> Nil) ^^ { result: TestPipelineResult =>
       result._1.map {
