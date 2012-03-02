@@ -21,7 +21,7 @@ import model.{HttpResponse, HttpHeader, HttpRequest}
 import akka.actor.Props
 import akka.pattern.ask
 import akka.util.{Duration, Timeout}
-import cc.spray.io.{PerMessageHandler, PerConnectionHandler, MessageHandler, SingletonHandler}
+import cc.spray.io.pipelines.{PerMessageHandler, PerConnectionHandler, SingletonHandler, MessageHandler}
 import java.util.concurrent.atomic.AtomicInteger
 
 class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { def is =

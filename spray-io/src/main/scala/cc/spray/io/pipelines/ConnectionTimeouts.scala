@@ -14,17 +14,19 @@
  * limitations under the License.
  */
 
-package cc.spray
-package can
+package cc.spray.io
+package pipelines
 
-import config.ConnectionTimeoutConfig
-import io._
 import akka.actor.ActorContext
 import akka.util.Duration
+import akka.event.LoggingAdapter
 
-object ConnectionTimeoutSupport {
+object ConnectionTimeouts {
 
-  def apply(config: ConnectionTimeoutConfig) = new DoublePipelineStage {
+  def apply(config: ConnectionTimeoutConfig, log: LoggingAdapter): PipelineStage =
+    if (config.enableConnectionTimeouts) createPipelineStage(config, log) else EmptyPipelineStage
+
+  def createPipelineStage(config: ConnectionTimeoutConfig, log: LoggingAdapter) = new DoublePipelineStage {
     def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
       val reapingTrigger = context.system.scheduler.schedule(
         initialDelay = config.reapingCycle,
@@ -55,6 +57,7 @@ object ConnectionTimeoutSupport {
             eventPL(event)
           case ReapIdleConnections =>
             if (idleTimeout.isFinite && (lastActivity + idleTimeout.toMillis) < System.currentTimeMillis) {
+              log.debug("Closing connection due to idle timeout...")
               commandPL(IoPeer.Close(IdleTimeout))
             }
           case _ => eventPL(event)
@@ -68,6 +71,16 @@ object ConnectionTimeoutSupport {
 
   ////////////// EVENTS //////////////
   case object ReapIdleConnections extends Event
+}
 
+trait ConnectionTimeoutConfig {
+  def enableConnectionTimeouts: Boolean
+  def idleTimeout: Duration
+  def reapingCycle: Duration
+}
 
+object ConnectionTimeoutConfig {
+  val defaultEnableConnectionTimeouts = true
+  val defaultIdleTimeout = Duration("10 sec")
+  val defaultReapingCycle = Duration("10 ms")
 }

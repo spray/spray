@@ -17,8 +17,9 @@
 package cc.spray.can
 package config
 
-import cc.spray.io.IoWorkerConfig
 import akka.util.Duration
+import cc.spray.io.IoWorkerConfig
+import cc.spray.io.pipelines.ConnectionTimeoutConfig
 
 case class HttpServerConfig(
 
@@ -26,12 +27,13 @@ case class HttpServerConfig(
   serverHeader: String = "spray-can/" + SprayCanVersion,
 
   // IoWorkerConfig
-  threadName: String = IoWorkerConfig.defaultThreadName,
+  threadName: String  = IoWorkerConfig.defaultThreadName,
   readBufferSize: Int = IoWorkerConfig.defaultReadBufferSize,
 
   // ConnectionTimeoutConfig
-  idleTimeout: Duration = ConnectionTimeoutConfig.defaultIdleTimeout,
-  reapingCycle: Duration = ConnectionTimeoutConfig.defaultReapingCycle,
+  enableConnectionTimeouts: Boolean = ConnectionTimeoutConfig.defaultEnableConnectionTimeouts,
+  idleTimeout: Duration             = ConnectionTimeoutConfig.defaultIdleTimeout,
+  reapingCycle: Duration            = ConnectionTimeoutConfig.defaultReapingCycle,
 
   // HttpParserConfig
   maxUriLength: Int             = HttpParserConfig.defaultMaxUriLength,

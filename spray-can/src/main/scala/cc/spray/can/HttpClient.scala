@@ -18,6 +18,7 @@ package cc.spray.can
 
 import config.HttpClientConfig
 import cc.spray.io._
+import pipelines.ConnectionTimeouts
 
 /**
  * Reacts to [[cc.spray.can.Connect]] messages by establishing a connection to the remote host. If there is an error
@@ -38,7 +39,7 @@ class HttpClient(config: HttpClientConfig)
     ClientFrontend(log)
     ~> RequestRendering(config.userAgentHeader)
     ~> ResponseParsing(config, log)
-    ~> ConnectionTimeoutSupport(config)
+    ~> ConnectionTimeouts(config, log)
   )
 }
 

@@ -61,11 +61,14 @@ abstract class PipelineSpec(name: String) extends Specification {
 
   type TestPipelineResult = (List[Command], List[Event])
 
-  class TestPipeline(pipeline: DoublePipelineStage) {
+  class TestPipeline(pipeline: PipelineStage) {
     private val collectedCommands = ListBuffer.empty[Command]
     private val collectedEvents = ListBuffer.empty[Event]
-    private val pipelines = pipeline.build(connectionActor.underlyingActor.theContext, collectedCommands.append(_),
-      collectedEvents.append(_))
+    private val pipelines = pipeline.buildPipelines(
+      connectionActor.underlyingActor.theContext,
+      collectedCommands.append(_),
+      collectedEvents.append(_)
+    )
 
     def runCommands(commands: Command*): TestPipelineResult = {
       clear()

@@ -20,6 +20,7 @@ package can
 import model._
 import io._
 import collection.mutable.Queue
+import pipelines.MessageHandlerDispatch
 import rendering.HttpResponsePartRenderingContext
 import akka.actor.ActorContext
 
@@ -46,19 +47,20 @@ object ServerFrontend {
       }
 
       def eventPipeline(event: Event) {
+        import MessageHandlerDispatch._
         event match {
           case x: HttpRequest =>
             openRequests += x
-            commandPL(MessageHandler.DispatchNewMessage(x))
+            commandPL(DispatchNewMessage(x))
           case x: ChunkedRequestStart =>
             openRequests += x.request
-            commandPL(MessageHandler.DispatchNewMessage(x))
+            commandPL(DispatchNewMessage(x))
           case x: HttpMessagePart =>
-            commandPL(MessageHandler.DispatchFollowupMessage(x))
+            commandPL(DispatchFollowupMessage(x))
           case x: HttpServer.SendCompleted =>
-            commandPL(MessageHandler.DispatchFollowupMessage(x))
+            commandPL(DispatchFollowupMessage(x))
           case x: HttpServer.Closed =>
-            commandPL(MessageHandler.DispatchFollowupMessage(x))
+            commandPL(DispatchFollowupMessage(x))
           case ev => eventPL(ev)
         }
       }

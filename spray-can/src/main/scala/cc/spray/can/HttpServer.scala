@@ -20,6 +20,7 @@ package can
 import config.HttpServerConfig
 import io._
 import akka.event.LoggingAdapter
+import pipelines.{ConnectionTimeouts, MessageHandlerDispatch, MessageHandler}
 
 class HttpServer(config: HttpServerConfig, messageHandler: MessageHandler)
                 (ioWorker: IoWorker = new IoWorker(config))
@@ -30,12 +31,13 @@ class HttpServer(config: HttpServerConfig, messageHandler: MessageHandler)
 
 object HttpServer {
 
-  private[can] def pipeline(config: HttpServerConfig, messageHandler: MessageHandler, log: LoggingAdapter) = (
+  private[can] def pipeline(config: HttpServerConfig, messageHandler: MessageHandler,
+                            log: LoggingAdapter): PipelineStage = (
     ServerFrontend()
     ~> RequestParsing(config, log)
     ~> ResponseRendering(config.serverHeader)
     ~> MessageHandlerDispatch(messageHandler)
-    ~> ConnectionTimeoutSupport(config)
+    ~> ConnectionTimeouts(config, log)
   )
 
   ////////////// COMMANDS //////////////

@@ -15,26 +15,12 @@
  */
 
 package cc.spray.io
+package pipelines
 
 import akka.actor.{ActorContext, ActorRef, Props}
 
 
-sealed trait MessageHandler
-case class SingletonHandler(handler: ActorRef) extends MessageHandler
-case class PerConnectionHandler(handlerProps: Props) extends MessageHandler
-case class PerMessageHandler(handlerProps: Props) extends MessageHandler
-
-object MessageHandler {
-  ////////////// COMMANDS //////////////
-  sealed trait DispatchCommand extends Command {
-    def message: Any
-  }
-  case class DispatchNewMessage(message: Any) extends DispatchCommand
-  case class DispatchFollowupMessage(message: Any) extends DispatchCommand
-}
-
 object MessageHandlerDispatch {
-  import MessageHandler._
 
   def apply(messageHandler: MessageHandler) = new CommandPipelineStage {
     def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
@@ -67,4 +53,15 @@ object MessageHandlerDispatch {
     }
   }
 
+  ////////////// COMMANDS //////////////
+  sealed trait DispatchCommand extends Command {
+    def message: Any
+  }
+  case class DispatchNewMessage(message: Any) extends DispatchCommand
+  case class DispatchFollowupMessage(message: Any) extends DispatchCommand
 }
+
+sealed trait MessageHandler
+case class SingletonHandler(handler: ActorRef) extends MessageHandler
+case class PerConnectionHandler(handlerProps: Props) extends MessageHandler
+case class PerMessageHandler(handlerProps: Props) extends MessageHandler
