@@ -19,14 +19,13 @@ package can
 
 import rendering.{HttpResponsePartRenderingContext, ResponseRenderer}
 import io._
-import akka.actor.ActorContext
 
 object ResponseRendering {
 
   def apply(serverHeader: String) = new CommandPipelineStage {
     val renderer = new ResponseRenderer(serverHeader)
 
-    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
+    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
       case ctx: HttpResponsePartRenderingContext =>
         val rendered = renderer.render(ctx)
         commandPL(IoPeer.Send(rendered.buffers))

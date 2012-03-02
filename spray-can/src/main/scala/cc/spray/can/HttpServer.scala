@@ -20,18 +20,19 @@ package can
 import config.HttpServerConfig
 import io._
 import akka.event.LoggingAdapter
-import pipelines.{ConnectionTimeouts, MessageHandlerDispatch, MessageHandler}
+import pipelines.{ConnectionTimeouts, MessageHandlerDispatch}
 
-class HttpServer(config: HttpServerConfig, messageHandler: MessageHandler)
-                (ioWorker: IoWorker = new IoWorker(config))
-                extends IoServer(ioWorker) with ConnectionActors {
+class HttpServer(messageHandler: MessageHandlerDispatch.MessageHandler,
+                 config: HttpServerConfig = HttpServerConfig())
+                (ioWorker: IoWorker = new IoWorker(config).start())
+  extends IoServer(ioWorker) with ConnectionActors {
 
   protected lazy val pipeline = HttpServer.pipeline(config, messageHandler, log)
 }
 
 object HttpServer {
 
-  private[can] def pipeline(config: HttpServerConfig, messageHandler: MessageHandler,
+  private[can] def pipeline(config: HttpServerConfig, messageHandler: MessageHandlerDispatch.MessageHandler,
                             log: LoggingAdapter): PipelineStage = (
     ServerFrontend()
     ~> RequestParsing(config, log)

@@ -21,7 +21,7 @@ import model.{HttpResponse, HttpHeader, HttpRequest}
 import akka.actor.Props
 import akka.pattern.ask
 import akka.util.{Duration, Timeout}
-import cc.spray.io.pipelines.{PerMessageHandler, PerConnectionHandler, SingletonHandler, MessageHandler}
+import cc.spray.io.pipelines.MessageHandlerDispatch._
 import java.util.concurrent.atomic.AtomicInteger
 import org.specs2.specification.Step
 
@@ -71,8 +71,8 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
   }
 
   def perConnectionHandlers = {
-    val pipeline1 = testPipeline(PerConnectionHandler(Props(new DummyActor('actor1))))
-    val pipeline2 = testPipeline(PerConnectionHandler(Props(new DummyActor('actor2))))
+    val pipeline1 = testPipeline(PerConnectionHandler(_ => Props(new DummyActor('actor1))))
+    val pipeline2 = testPipeline(PerConnectionHandler(_ => Props(new DummyActor('actor2))))
     def receiver(pipeline: TestPipeline) = dispatchReceiverName(pipeline.runEvents(received(simpleRequest)));
     { receiver(pipeline1) === 'actor1 } and
     { receiver(pipeline2) === 'actor2 } and
@@ -82,7 +82,7 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
 
   def perMessageHandlers = {
     val counter = new AtomicInteger
-    val pipeline = testPipeline(PerMessageHandler(Props(new DummyActor("actor" + counter.incrementAndGet()))))
+    val pipeline = testPipeline(PerMessageHandler(_ => Props(new DummyActor("actor" + counter.incrementAndGet()))))
     def receiver(msg: String) = dispatchReceiverName(pipeline.runEvents(received(msg)));
     { receiver(simpleRequest) === 'actor1 } and
     { receiver(simpleRequest) === 'actor2 } and

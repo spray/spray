@@ -69,7 +69,7 @@ abstract class PipelineSpec(name: String) extends Specification {
     private val collectedCommands = ListBuffer.empty[Command]
     private val collectedEvents = ListBuffer.empty[Event]
     private val pipelines = pipeline.buildPipelines(
-      connectionActor.underlyingActor.theContext,
+      PipelineContext(null, connectionActor.underlyingActor.theContext),
       collectedCommands.append(_),
       collectedEvents.append(_)
     )

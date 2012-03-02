@@ -20,12 +20,11 @@ import config.HttpParserConfig
 import akka.event.LoggingAdapter
 import parsing.{ErrorState, EmptyResponseParser}
 import cc.spray.io._
-import akka.actor.ActorContext
 
 object ResponseParsing {
 
   def apply(config: HttpParserConfig, log: LoggingAdapter) = new EventPipelineStage {
-    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
+    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
       new MessageParsingPipelines(config, commandPL, eventPL) {
         lazy val startParser = new EmptyResponseParser(config)
 

@@ -22,12 +22,11 @@ import io._
 import collection.mutable.Queue
 import pipelines.MessageHandlerDispatch
 import rendering.HttpResponsePartRenderingContext
-import akka.actor.ActorContext
 
 object ServerFrontend {
 
   def apply() = new DoublePipelineStage {
-    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
+    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
       val openRequests = Queue.empty[HttpRequest]
 
       def commandPipeline(command: Command) {

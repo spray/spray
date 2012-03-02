@@ -19,16 +19,16 @@ package cc.spray.can
 import model._
 import cc.spray.io._
 import akka.event.LoggingAdapter
-import akka.actor.{ActorContext, ActorRef}
+import akka.actor.ActorRef
 
 object ClientFrontend {
 
   def apply(log: LoggingAdapter) = new DoublePipelineStage {
-    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
+    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
       var lastCommandSender: ActorRef = null
 
       def commandPipeline(command: Command) {
-        lastCommandSender = context.sender
+        lastCommandSender = context.connectionActorContext.sender
         commandPL(command)
       }
 

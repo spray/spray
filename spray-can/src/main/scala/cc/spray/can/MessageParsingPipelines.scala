@@ -24,8 +24,8 @@ import parsing._
 import cc.spray.io._
 
 abstract class MessageParsingPipelines(parserConfig: HttpParserConfig,
-                                           commandPL: Pipeline[Command],
-                                           eventPL: Pipeline[Event]) extends Pipeline[Event] {
+                                       commandPL: Pipeline[Command],
+                                       eventPL: Pipeline[Event]) extends Pipeline[Event] {
   var currentParsingState = startParser
 
   def startParser: ParsingState
