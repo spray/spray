@@ -1,7 +1,6 @@
 package cc.spray.io
 
 import org.specs2.Specification
-import akka.actor.ActorContext
 
 class PipelinesSpec extends Specification { def is =
 
@@ -37,17 +36,17 @@ class PipelinesSpec extends Specification { def is =
   }
 
   def cmd(c: Char) = new CommandPipelineStage {
-    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
+    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
       cmd => commandPL(TestCommand(cmd.asInstanceOf[TestCommand].s + c))
   }
 
   def ev(e: Char) = new EventPipelineStage {
-    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
+    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
       ev => eventPL(TestEvent(ev.asInstanceOf[TestEvent].s + e))
   }
 
   def dbl(c: Char, e: Char) = new DoublePipelineStage {
-    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = Pipelines(
+    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = Pipelines(
       commandPL = cmd => commandPL(TestCommand(cmd.asInstanceOf[TestCommand].s + c)),
       eventPL = ev => eventPL(TestEvent(ev.asInstanceOf[TestEvent].s + e))
     )

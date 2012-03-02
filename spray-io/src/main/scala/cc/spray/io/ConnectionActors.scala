@@ -32,7 +32,11 @@ trait ConnectionActors extends IoPeer {
   protected def pipeline: PipelineStage
 
   class IoConnectionActor(val key: Key) extends Actor with Handle {
-    private[this] val pipelines = pipeline.buildPipelines(context, baseCommandPipeline, baseEventPipeline)
+    private[this] val pipelines = pipeline.buildPipelines(
+      context = PipelineContext(key.channel, context),
+      commandPL = baseCommandPipeline,
+      eventPL = baseEventPipeline
+    )
 
     protected def baseCommandPipeline: Pipeline[Command] = {
       case x: IoPeer.Send => ioWorker ! IoWorker.Send(this, x.buffers)

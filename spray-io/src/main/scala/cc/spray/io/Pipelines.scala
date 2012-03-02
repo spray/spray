@@ -17,6 +17,7 @@
 package cc.spray.io
 
 import akka.actor.ActorContext
+import java.nio.channels.SocketChannel
 
 trait Pipelines {
   def commandPipeline(command: Command)
@@ -34,6 +35,8 @@ object Pipeline {
   val uninitialized: Pipeline[Any] = _ => throw new RuntimeException("Pipeline not yet initialized")
 }
 
+case class PipelineContext(channel: SocketChannel, connectionActorContext: ActorContext)
+
 sealed trait PipelineStage {
   type PS = PipelineStage       // alias for brevity
   type CPL = Pipeline[Command]  // alias for brevity
@@ -46,9 +49,9 @@ sealed trait PipelineStage {
   type Stage[Next <: PS] =
     Next#Select[AppendCommandStage, AppendEventStage, DoublePipelineStage, EmptyPipelineStage.type]
 
-  def build(context: ActorContext, commandPL: CPL, eventPL: EPL): BuildResult
+  def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): BuildResult
 
-  def buildPipelines(context: ActorContext, commandPL: CPL, eventPL: EPL): Pipelines
+  def buildPipelines(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines
 
   def ~> [Next <: PS](right: Next): Stage[Next]
 }
@@ -59,21 +62,21 @@ trait CommandPipelineStage extends PipelineStage { left =>
   type AppendCommandStage = CommandPipelineStage
   type AppendEventStage = DoublePipelineStage
 
-  def buildPipelines(ctx: ActorContext, cpl: CPL, epl: EPL) =
+  def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
     Pipelines(build(ctx, cpl, epl), epl)
 
   def ~> [Next <: PS](right: Next) = {
     right match {
       case x: CommandPipelineStage => new CommandPipelineStage {
-        def build(ctx: ActorContext, cpl: CPL, epl: EPL) =
+        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
           left.build(ctx, x.build(ctx, cpl, epl), epl)
       }
       case x: EventPipelineStage => new DoublePipelineStage {
-        def build(ctx: ActorContext, cpl: CPL, epl: EPL) =
+        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
           Pipelines(left.build(ctx, cpl, epl), x.build(ctx, cpl, epl))
       }
       case x: DoublePipelineStage => new DoublePipelineStage {
-        def build(ctx: ActorContext, cpl: CPL, epl: EPL) = {
+        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = {
           val rightPL = x.build(ctx, cpl, epl)
           Pipelines(left.build(ctx, rightPL.commandPipeline, epl), rightPL.eventPipeline)
         }
@@ -89,21 +92,21 @@ trait EventPipelineStage extends PipelineStage { left =>
   type AppendCommandStage = DoublePipelineStage
   type AppendEventStage = EventPipelineStage
 
-  def buildPipelines(ctx: ActorContext, cpl: CPL, epl: EPL) =
+  def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
     Pipelines(cpl, build(ctx, cpl, epl))
 
   def ~> [Next <: PS](right: Next) = {
     right match {
       case x: CommandPipelineStage => new DoublePipelineStage {
-        def build(ctx: ActorContext, cpl: CPL, epl: EPL) =
+        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
           Pipelines(x.build(ctx, cpl, epl), left.build(ctx, cpl, epl))
       }
       case x: EventPipelineStage => new EventPipelineStage {
-        def build(ctx: ActorContext, cpl: CPL, epl: EPL) =
+        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
           x.build(ctx, cpl, left.build(ctx, cpl, epl))
       }
       case x: DoublePipelineStage => new DoublePipelineStage {
-        def build(ctx: ActorContext, cpl: CPL, epl: EPL) =
+        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
           x.build(ctx, cpl, left.build(ctx, cpl, epl))
       }
       case EmptyPipelineStage => this
@@ -117,23 +120,23 @@ trait DoublePipelineStage extends PipelineStage { left =>
   type AppendCommandStage = DoublePipelineStage
   type AppendEventStage = DoublePipelineStage
 
-  def buildPipelines(ctx: ActorContext, cpl: CPL, epl: EPL) =
+  def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
     build(ctx, cpl, epl)
 
   def ~> [Next <: PS](right: Next) = {
     right match {
       case x: CommandPipelineStage => new DoublePipelineStage {
-        def build(ctx: ActorContext, cpl: CPL, epl: EPL) =
+        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
           left.build(ctx, x.build(ctx, cpl, epl), epl)
       }
       case x: EventPipelineStage => new DoublePipelineStage {
-        def build(ctx: ActorContext, cpl: CPL, epl: EPL) = {
+        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = {
           val leftPL = left.build(ctx, cpl, epl)
           Pipelines(leftPL.commandPipeline, x.build(ctx, cpl, leftPL.eventPipeline))
         }
       }
       case x: DoublePipelineStage => new DoublePipelineStage {
-        def build(ctx: ActorContext, cpl: CPL, epl: EPL) = {
+        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = {
           var cplProxy: CPL = Pipeline.uninitialized
           var eplProxy: EPL = Pipeline.uninitialized
           val leftPL = left.build(ctx, cplProxy(_), epl)
@@ -154,10 +157,10 @@ object EmptyPipelineStage extends PipelineStage {
   type AppendCommandStage = CommandPipelineStage
   type AppendEventStage = EventPipelineStage
 
-  def build(ctx: ActorContext, cpl: CPL, epl: EPL) =
+  def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
     Pipelines(cpl, epl)
 
-  def buildPipelines(ctx: ActorContext, cpl: CPL, epl: EPL) =
+  def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
     build(ctx, cpl, epl)
 
   def ~> [Next <: PS](right: Next) = right.asInstanceOf[Stage[Next]]

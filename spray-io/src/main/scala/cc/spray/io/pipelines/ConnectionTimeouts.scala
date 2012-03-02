@@ -17,7 +17,6 @@
 package cc.spray.io
 package pipelines
 
-import akka.actor.ActorContext
 import akka.util.Duration
 import akka.event.LoggingAdapter
 
@@ -27,11 +26,11 @@ object ConnectionTimeouts {
     if (config.enableConnectionTimeouts) createPipelineStage(config, log) else EmptyPipelineStage
 
   def createPipelineStage(config: ConnectionTimeoutConfig, log: LoggingAdapter) = new DoublePipelineStage {
-    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
-      val reapingTrigger = context.system.scheduler.schedule(
+    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
+      val reapingTrigger = context.connectionActorContext.system.scheduler.schedule(
         initialDelay = config.reapingCycle,
         frequency = config.reapingCycle,
-        receiver = context.self,
+        receiver = context.connectionActorContext.self,
         message = ReapIdleConnections
       )
       var idleTimeout = config.idleTimeout

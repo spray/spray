@@ -16,12 +16,12 @@
 
 package cc.spray.io
 
-import java.nio.channels.{Channel, SelectionKey}
 import java.nio.ByteBuffer
 import collection.mutable.ListBuffer
+import java.nio.channels.{SocketChannel, SelectionKey}
 
 sealed abstract class Key {
-  def channel: Channel
+  def channel: SocketChannel
 
   private[io] def selectionKey: SelectionKey
 
@@ -38,7 +38,7 @@ sealed abstract class Key {
 
 private[io] object Key {
   def apply(key: SelectionKey) = new Key {
-    def channel = key.channel
+    def channel = key.channel.asInstanceOf[SocketChannel]
     private[io] def selectionKey = key
   }
 }

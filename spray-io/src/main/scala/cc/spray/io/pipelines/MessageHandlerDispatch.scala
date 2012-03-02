@@ -17,27 +17,27 @@
 package cc.spray.io
 package pipelines
 
-import akka.actor.{ActorContext, ActorRef, Props}
-
+import akka.actor.{ActorRef, Props}
+import java.nio.channels.SocketChannel
 
 object MessageHandlerDispatch {
 
   def apply(messageHandler: MessageHandler) = new CommandPipelineStage {
-    def build(context: ActorContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
+    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
 
       val dispatcher: DispatchCommand => IoPeer.Dispatch = messageHandler match {
         case SingletonHandler(handler) =>
           cmd => IoPeer.Dispatch(handler, cmd.message)
 
-        case PerConnectionHandler(props) =>
-          val handler = context.actorOf(props)
+        case PerConnectionHandler(handlerPropsCreator) =>
+          val handler = context.connectionActorContext.actorOf(handlerPropsCreator(context.channel))
           cmd => IoPeer.Dispatch(handler, cmd.message)
 
-        case PerMessageHandler(props) => {
+        case PerMessageHandler(handlerPropsCreator) => {
           var handler: ActorRef = null
           _ match {
             case x: DispatchNewMessage =>
-              handler = context.actorOf(props)
+              handler = context.connectionActorContext.actorOf(handlerPropsCreator(context.channel))
               IoPeer.Dispatch(handler, x)
             case x: DispatchFollowupMessage =>
               if (handler == null) throw new IllegalStateException // a MessagePart without a preceding Message?
@@ -53,6 +53,11 @@ object MessageHandlerDispatch {
     }
   }
 
+  sealed trait MessageHandler
+  case class SingletonHandler(handler: ActorRef) extends MessageHandler
+  case class PerConnectionHandler(handlerPropsCreator: SocketChannel => Props) extends MessageHandler
+  case class PerMessageHandler(handlerPropsCreator: SocketChannel => Props) extends MessageHandler
+
   ////////////// COMMANDS //////////////
   sealed trait DispatchCommand extends Command {
     def message: Any
@@ -60,8 +65,3 @@ object MessageHandlerDispatch {
   case class DispatchNewMessage(message: Any) extends DispatchCommand
   case class DispatchFollowupMessage(message: Any) extends DispatchCommand
 }
-
-sealed trait MessageHandler
-case class SingletonHandler(handler: ActorRef) extends MessageHandler
-case class PerConnectionHandler(handlerProps: Props) extends MessageHandler
-case class PerMessageHandler(handlerProps: Props) extends MessageHandler
