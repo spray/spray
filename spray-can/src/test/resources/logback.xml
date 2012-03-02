@@ -16,7 +16,8 @@
         </encoder>
     </appender> -->
 
-    <logger name="akka" level="WARN" />
+    <logger name="akka" level="INFO" />
+    <logger name="cc.spray.io.IoWorker" level="INFO" />
 
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
