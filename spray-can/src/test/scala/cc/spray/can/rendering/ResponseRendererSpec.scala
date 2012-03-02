@@ -21,8 +21,7 @@ import org.specs2._
 import model._
 import HttpProtocols._
 import matcher.DataTables
-import java.nio.ByteBuffer
-import util.DateTime
+import cc.spray.io.util.DateTime
 
 class ResponseRendererSpec extends Specification with DataTables { def is =
 

@@ -16,19 +16,18 @@
 
 package cc.spray
 
-import can.util.{PimpedByteArray, PimpedFuture, PimpedLinearSeq}
-import collection.immutable.LinearSeq
 import java.io.{BufferedReader, InputStreamReader}
-import akka.dispatch.Future
 
 package object can {
 
-  lazy val SprayCanVersion: String = {
+  lazy val SprayCanVersion: String =
     new BufferedReader(new InputStreamReader(getClass.getResourceAsStream("/spray-can.version"))).readLine()
-  }
 
-  // implicits
-  implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq)
-  implicit def pimpByteArray(array: Array[Byte]): PimpedByteArray = new PimpedByteArray(array)
-  implicit def pimpFuture[A](fut: Future[A]): PimpedFuture[A] = new PimpedFuture[A](fut)
+  private[can] def isTokenChar(c: Char) = c match {
+    case x if 'a' <= x && x <= 'z' => true
+    case x if 'A' <= x && x <= 'Z' => true
+    case '-' => true
+    case '(' | ')' | '<' | '>' | '@' | ',' | ';' | ':' | '\\' | '"' | '/' | '[' | ']' | '?' | '=' | '{' | '}' => false
+    case x => 32 < x && x < 127
+  }
 }

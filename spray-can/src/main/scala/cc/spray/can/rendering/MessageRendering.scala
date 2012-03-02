@@ -85,7 +85,7 @@ private[rendering] trait MessageRendering {
       case Nil => sb
       case ChunkExtension(name, value) :: rest => appendChunkExtensions(rest, {
         sb.append(';').append(name).append('=')
-        if (value.forall(util.isTokenChar)) sb.append(value) else sb.append('"').append(value).append('"')
+        if (value.forall(isTokenChar)) sb.append(value) else sb.append('"').append(value).append('"')
       })
     }
   }

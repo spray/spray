@@ -14,17 +14,13 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray.io
+
+import collection.LinearSeq
+import akka.dispatch.Future
+import akka.actor.ActorSystem
 
 package object util {
-
-  private[can] def isTokenChar(c: Char) = c match {
-    case x if 'a' <= x && x <= 'z' => true
-    case x if 'A' <= x && x <= 'Z' => true
-    case '-' => true
-    case '(' | ')' | '<' | '>' | '@' | ',' | ';' | ':' | '\\' | '"' | '/' | '[' | ']' | '?' | '=' | '{' | '}' => false
-    case x => 32 < x && x < 127
-  }
 
   val EmptyByteArray = new Array[Byte](0)
 
@@ -40,5 +36,11 @@ package object util {
   }
 
   def make[A, U](a: A)(f: A => U): A = { f(a); a }
+
+  // implicits
+  implicit def pimpLinearSeq[A](seq: LinearSeq[A]): PimpedLinearSeq[A] = new PimpedLinearSeq[A](seq)
+  implicit def pimpByteArray(array: Array[Byte]): PimpedByteArray = new PimpedByteArray(array)
+  implicit def pimpFuture[A](fut: Future[A]): PimpedFuture[A] = new PimpedFuture[A](fut)
+  implicit def pimpActorSystem(system: ActorSystem): PimpedActorSystem = new PimpedActorSystem(system)
 
 }

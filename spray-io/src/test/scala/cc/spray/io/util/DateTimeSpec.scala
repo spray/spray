@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.can.util
+package cc.spray.io.util
 
 import org.specs2.mutable._
 import java.util.TimeZone

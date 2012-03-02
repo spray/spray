@@ -29,7 +29,7 @@ class ChunkExtensionNameParser(config: HttpParserConfig, chunkSize: Int, extCoun
   def handleChar(cursor: Char) = {
     if (extName.length <= config.maxChunkExtNameLength) {
       cursor match {
-        case x if util.isTokenChar(x) => extName.append(x); this
+        case x if isTokenChar(x) => extName.append(x); this
         case '=' => new ChunkExtensionValueParser(config, chunkSize, extCount, extensions, extName.toString)
         case ' ' | '\t' => this
         case _ => ErrorState("Invalid character '" + cursor + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")

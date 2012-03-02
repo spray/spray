@@ -20,17 +20,18 @@ package parsing
 import config.HttpParserConfig
 import model.{MessageLine, HttpHeader}
 import java.nio.ByteBuffer
+import cc.spray.io.util._
 
 class ToCloseBodyParser(config: HttpParserConfig, messageLine: MessageLine, headers: List[HttpHeader],
                         connectionHeader: Option[String]) extends IntermediateState {
 
-  private var body: Array[Byte] = util.EmptyByteArray
+  private var body: Array[Byte] = EmptyByteArray
 
   def read(buf: ByteBuffer) = {
     val array = new Array[Byte](buf.remaining)
     buf.get(array)
     body match {
-      case util.EmptyByteArray => body = array; this
+      case EmptyByteArray => body = array; this
       case _ => {
         if (body.length + array.length <= config.maxContentLength) {
           body = body concat array

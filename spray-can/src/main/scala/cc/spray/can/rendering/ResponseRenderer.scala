@@ -21,7 +21,7 @@ import java.lang.{StringBuilder => JStringBuilder}
 import java.nio.ByteBuffer
 import model._
 import HttpProtocols._
-import util.DateTime
+import cc.spray.io.util.DateTime
 
 class ResponseRenderer(serverHeader: String) extends MessageRendering {
 

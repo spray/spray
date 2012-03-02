@@ -18,6 +18,7 @@ package cc.spray.can
 package parsing
 
 import model._
+import cc.spray.io.util._
 
 
 sealed trait HttpMessagePartCompletedState extends ParsingState {
@@ -30,7 +31,7 @@ case class CompleteMessageState(
   messageLine: MessageLine,
   headers: List[HttpHeader] = Nil,
   connectionHeader: Option[String] = None,
-  body: Array[Byte] = util.EmptyByteArray
+  body: Array[Byte] = EmptyByteArray
 ) extends HttpMessageCompletedState {
 
   def toHttpMessagePart = messageLine match {

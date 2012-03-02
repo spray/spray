@@ -24,6 +24,7 @@ import akka.util.{Duration, Timeout}
 import cc.spray.io.pipelines.MessageHandlerDispatch._
 import java.util.concurrent.atomic.AtomicInteger
 import org.specs2.specification.Step
+import cc.spray.io.util._
 
 class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { def is =
 
@@ -127,7 +128,7 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
 
   def dispatchReceiverName(pipelineResult: TestPipelineResult) = {
     val (List(HttpServer.Dispatch(receiver, _)), _) = pipelineResult
-    receiver.ask('name).get
+    receiver.ask('name).await
   }
 
   def testPipeline(messageHandler: MessageHandler) = new TestPipeline(

@@ -45,7 +45,7 @@ class ChunkExtensionValueParser(config: HttpParserConfig, chunkSize: Int, extCou
         }
       } else {
         cursor match {
-          case x if util.isTokenChar(x) => extValue.append(x); this
+          case x if isTokenChar(x) => extValue.append(x); this
           case '"' if extValue.length == 0 => quoted = true; this
           case ' ' | '\t' | '\r' => this
           case ';' => next(new ChunkExtensionNameParser(config, chunkSize, extCount + 1, newExtensions))

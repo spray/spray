@@ -33,7 +33,7 @@ class HeaderNameParser(config: HttpParserConfig, messageLine: MessageLine, heade
   def handleChar(cursor: Char) = {
     if (headerName.length <= config.maxHeaderNameLength) {
       cursor match {
-        case x if util.isTokenChar(x) => headerName.append(toLowerCase(x)); this
+        case x if isTokenChar(x) => headerName.append(toLowerCase(x)); this
         case ':' => new LwsParser(valueParser)
         case '\r' if headerName.length == 0 => this
         case '\n' if headerName.length == 0 => headersComplete

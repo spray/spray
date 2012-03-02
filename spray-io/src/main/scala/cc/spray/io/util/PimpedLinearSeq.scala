@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package cc.spray.can.util
+package cc.spray.io.util
 
-import collection.immutable.LinearSeq
+import collection.LinearSeq
 import annotation.tailrec
 
 class PimpedLinearSeq[+A](underlying: LinearSeq[A]) {

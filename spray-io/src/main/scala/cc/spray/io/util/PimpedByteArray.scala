@@ -14,14 +14,18 @@
  * limitations under the License.
  */
 
-package cc.spray.can.util
+package cc.spray.io.util
 
-import akka.dispatch.{Await, Future}
-import akka.util.Timeout
+class PimpedByteArray(underlying: Array[Byte]) {
 
-class PimpedFuture[+A](underlying: Future[A]) {
-
-  def get(implicit timeout: Timeout): A =
-    Await.result(underlying, timeout.duration)
+  /**
+   * Creates a new Array[Byte] that is the concatenation of the underlying and the given one.
+   */
+  def concat(other: Array[Byte]) = {
+    val newArray = new Array[Byte](underlying.length + other.length)
+    System.arraycopy(underlying, 0, newArray, 0, underlying.length)
+    System.arraycopy(other, 0, newArray, underlying.length, other.length)
+    newArray
+  }
 
 }
