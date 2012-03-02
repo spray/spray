@@ -31,7 +31,7 @@ object Main extends App {
     name = "http-server"
   )
   server ! HttpServer.Bind("localhost", 8080)
-  system.watch(server).await // block until server is terminated
+  system.terminationOf(server).await // blocks
   ioWorker.stop().get.await()
   system.shutdown()
 }

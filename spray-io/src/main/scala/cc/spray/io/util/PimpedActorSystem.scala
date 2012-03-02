@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit
 
 class PimpedActorSystem(underlying: ActorSystem) {
 
-  def watch(subject: ActorRef): Future[Terminated] = {
+  def terminationOf(subject: ActorRef): Future[Terminated] = {
     underlying.actorOf {
       Props {
         new Actor {
