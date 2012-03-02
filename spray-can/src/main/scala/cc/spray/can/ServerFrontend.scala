@@ -22,18 +22,21 @@ import io._
 import collection.mutable.Queue
 import pipelines.MessageHandlerDispatch
 import rendering.HttpResponsePartRenderingContext
+import akka.event.LoggingAdapter
 
 object ServerFrontend {
 
-  def apply() = new DoublePipelineStage {
+  def apply(log: LoggingAdapter) = new DoublePipelineStage {
     def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
       val openRequests = Queue.empty[HttpRequest]
 
       def commandPipeline(command: Command) {
+        log.debug("Received command " + command)
         commandPL {
           command match {
             case part: HttpResponsePart =>
-              if (openRequests.isEmpty) throw new IllegalStateException("Received ResponsePart for non-existing request")
+              if (openRequests.isEmpty)
+                throw new IllegalStateException("Received ResponsePart '" + part + "' for non-existing request")
               val request = part match {
                 case _: HttpResponse      => openRequests.dequeue()
                 case _: ChunkedMessageEnd => openRequests.dequeue()
@@ -47,6 +50,7 @@ object ServerFrontend {
 
       def eventPipeline(event: Event) {
         import MessageHandlerDispatch._
+        log.debug("Received event " + event)
         event match {
           case x: HttpRequest =>
             openRequests += x

@@ -30,14 +30,16 @@ object MessageHandlerDispatch {
           cmd => IoPeer.Dispatch(handler, cmd.message)
 
         case PerConnectionHandler(handlerPropsCreator) =>
-          val handler = context.connectionActorContext.actorOf(handlerPropsCreator(context.channel))
+          val props = handlerPropsCreator(context.handle)
+          val handler = context.connectionActorContext.actorOf(props)
           cmd => IoPeer.Dispatch(handler, cmd.message)
 
         case PerMessageHandler(handlerPropsCreator) => {
           var handler: ActorRef = null
           _ match {
             case x: DispatchNewMessage =>
-              handler = context.connectionActorContext.actorOf(handlerPropsCreator(context.channel))
+              val props = handlerPropsCreator(context.handle)
+              handler = context.connectionActorContext.actorOf(props)
               IoPeer.Dispatch(handler, x)
             case x: DispatchFollowupMessage =>
               if (handler == null) throw new IllegalStateException // a MessagePart without a preceding Message?
@@ -55,8 +57,8 @@ object MessageHandlerDispatch {
 
   sealed trait MessageHandler
   case class SingletonHandler(handler: ActorRef) extends MessageHandler
-  case class PerConnectionHandler(handlerPropsCreator: SocketChannel => Props) extends MessageHandler
-  case class PerMessageHandler(handlerPropsCreator: SocketChannel => Props) extends MessageHandler
+  case class PerConnectionHandler(handlerPropsCreator: Handle => Props) extends MessageHandler
+  case class PerMessageHandler(handlerPropsCreator: Handle => Props) extends MessageHandler
 
   ////////////// COMMANDS //////////////
   sealed trait DispatchCommand extends Command {

@@ -17,7 +17,6 @@
 package cc.spray.io
 
 import akka.actor.ActorContext
-import java.nio.channels.SocketChannel
 
 trait Pipelines {
   def commandPipeline(command: Command)
@@ -35,7 +34,7 @@ object Pipeline {
   val uninitialized: Pipeline[Any] = _ => throw new RuntimeException("Pipeline not yet initialized")
 }
 
-case class PipelineContext(channel: SocketChannel, connectionActorContext: ActorContext)
+case class PipelineContext(handle: Handle, connectionActorContext: ActorContext)
 
 sealed trait PipelineStage {
   type PS = PipelineStage       // alias for brevity

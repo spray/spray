@@ -21,26 +21,25 @@ import akka.actor.{PoisonPill, Props, Actor}
 
 trait ConnectionActors extends IoPeer {
 
-  override protected def createConnectionHandle(key: Key): Handle = {
-    lazy val actor = createConnectionActor(key)
-    context.actorOf(Props(actor))
-    actor
+  override protected def createConnectionHandle(theKey: Key) = new Handle {
+    val key = theKey
+    val handler = context.actorOf(Props(createConnectionActor(this)))
   }
 
-  protected def createConnectionActor(key: Key): IoConnectionActor = new IoConnectionActor(key)
+  protected def createConnectionActor(handle: Handle): IoConnectionActor = new IoConnectionActor(handle)
 
   protected def pipeline: PipelineStage
 
-  class IoConnectionActor(val key: Key) extends Actor with Handle {
-    private[this] val pipelines = pipeline.buildPipelines(
-      context = PipelineContext(key.channel, context),
+  class IoConnectionActor(val handle: Handle) extends Actor {
+    private[this] lazy val pipelines = pipeline.buildPipelines(
+      context = PipelineContext(handle, context),
       commandPL = baseCommandPipeline,
       eventPL = baseEventPipeline
     )
 
     protected def baseCommandPipeline: Pipeline[Command] = {
-      case x: IoPeer.Send => ioWorker ! IoWorker.Send(this, x.buffers)
-      case x: IoPeer.Close => ioWorker ! IoWorker.Close(this, x.reason)
+      case x: IoPeer.Send => ioWorker ! IoWorker.Send(handle, x.buffers)
+      case x: IoPeer.Close => ioWorker ! IoWorker.Close(handle, x.reason)
       case x: IoPeer.Dispatch => x.receiver ! x.message
       case x => log.warning("commandPipeline: dropped {}", x)
     }
@@ -57,8 +56,6 @@ trait ConnectionActors extends IoPeer {
       case x: Command => pipelines.commandPipeline(x)
       case x: Event => pipelines.eventPipeline(x)
     }
-
-    def handler = self
   }
 
 }

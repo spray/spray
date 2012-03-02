@@ -19,7 +19,7 @@ package cc.spray.io
 import java.net.{SocketAddress, InetSocketAddress}
 import akka.actor.ActorRef
 
-abstract class IoServer(val ioWorker: IoWorker = new IoWorker().start()) extends IoPeer {
+abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
   import IoServer._
   var bindingKey: Option[Key] = None
   var endpoint: Option[SocketAddress] = None

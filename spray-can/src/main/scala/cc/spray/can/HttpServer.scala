@@ -22,9 +22,9 @@ import io._
 import akka.event.LoggingAdapter
 import pipelines.{ConnectionTimeouts, MessageHandlerDispatch}
 
-class HttpServer(messageHandler: MessageHandlerDispatch.MessageHandler,
+class HttpServer(ioWorker: IoWorker,
+                 messageHandler: MessageHandlerDispatch.MessageHandler,
                  config: HttpServerConfig = HttpServerConfig())
-                (ioWorker: IoWorker = new IoWorker(config).start())
   extends IoServer(ioWorker) with ConnectionActors {
 
   protected lazy val pipeline = HttpServer.pipeline(config, messageHandler, log)
@@ -34,7 +34,7 @@ object HttpServer {
 
   private[can] def pipeline(config: HttpServerConfig, messageHandler: MessageHandlerDispatch.MessageHandler,
                             log: LoggingAdapter): PipelineStage = (
-    ServerFrontend()
+    ServerFrontend(log)
     ~> RequestParsing(config, log)
     ~> ResponseRendering(config.serverHeader)
     ~> MessageHandlerDispatch(messageHandler)
