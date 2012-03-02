@@ -27,18 +27,12 @@ class PipelinesSpec extends Specification { def is =
     def toOption(s: String) = if (s.isEmpty) None else Some(s)
     var cmdResult: Option[String] = None
     var evResult: Option[String] = None
-    val pl = stage.build(null,
+    val pl = stage.buildPipelines(null,
       cmd => cmdResult = toOption(cmd.asInstanceOf[TestCommand].s),
       ev => evResult = toOption(ev.asInstanceOf[TestEvent].s)
     )
-    stage match {
-      case _: CommandPipelineStage => pl.asInstanceOf[Pipeline[Command]].apply(TestCommand(""))
-      case _: EventPipelineStage => pl.asInstanceOf[Pipeline[Event]].apply(TestEvent(""))
-      case _ =>
-        val pipelines = pl.asInstanceOf[Pipelines]
-        pipelines.commandPipeline(TestCommand(""))
-        pipelines.eventPipeline(TestEvent(""))
-    }
+    pl.commandPipeline(TestCommand(""))
+    pl.eventPipeline(TestEvent(""))
     (cmdResult === toOption(cmdExp)) and (evResult === toOption(evExp))
   }
 
