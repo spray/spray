@@ -472,3 +472,21 @@ object JavaUUID extends PathMatcher1[UUID] {
     }
   }
 }
+
+
+/**
+ * A PathMatcher that matches all characters except a slash '/'.
+ * Equivalent to a regex matcher `"[^/]+".r` but more efficient.
+ */
+object PathElement extends PathMatcher1[String] {
+  def apply(path: String) = {
+    @tailrec
+    def chars(index: Int): Option[(String, Tuple1[String])] = {
+      if (index == path.length || path.charAt(index) == '/')
+        if (index > 0) Some(path.substring(index), Tuple1(path.substring(0, index)))
+        else None
+      else chars(index + 1)
+    }
+    chars(0)
+  }
+}

@@ -223,4 +223,21 @@ class PathDirectivesSpec extends AbstractSprayTest {
     }
   }
 
+  "the predefined PathElement PathMatcher" should {
+    "properly extract chars at the path end into a String" in {
+      test(HttpRequest(uri = "/id/abc")) {
+        path("id" / PathElement) { echoComplete }
+      }.response.content.as[String] mustEqual Right("abc")
+    }
+    "properly extract chars in the middle of the path into a String" in {
+      test(HttpRequest(uri = "/id/yes/no")) {
+        path("id" / PathElement / "no") { echoComplete }
+      }.response.content.as[String] mustEqual Right("yes")
+    }
+    "reject empty matches" in {
+      test(HttpRequest(uri = "/id/")) {
+        path("id" / PathElement) { echoComplete }
+      }.handled must beFalse
+    }
+  }
 }
