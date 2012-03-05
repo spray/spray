@@ -45,6 +45,7 @@ object Dependencies {
   object Test {
     val specs2        = "org.specs2"                %%  "specs2"                    % "1.7.1"   % "test"
     val slf4j         = "org.slf4j"                 %   "slf4j-api"                 % V.slf4j   % "test"
+    val akkaSlf4j     = "se.scalablesolutions.akka" %   "akka-slf4j"                % V.akka    % "test"
     val logback       = "ch.qos.logback"            %   "logback-classic"           % V.logback % "test"
   }
 

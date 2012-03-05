@@ -64,6 +64,7 @@ object SprayBuild extends Build {
         Provided.akkaActor,
         Test.specs2,
         Test.slf4j,
+        Test.akkaSlf4j,
         Test.logback
       )
     )

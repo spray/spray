@@ -28,14 +28,15 @@ import HttpEncodings._
 class MessagePipeliningSpec extends Specification
   with MessagePipelining with DefaultMarshallers with DefaultUnmarshallers { def is =
 
-  "MessagePipelining should"                              ^
-  "work correctly for simple requests"                    ! testSimple^
-  "support marshalling"                                   ! testMarshalling^
-  "support unmarshalling"                                 ! testUnmarshalling^
-  "support request compression"                           ! testCompression^
-  "support response decompression"                        ! testDecompression^
-  "support request authentication"                        ! testAuthentication^
-                                                          end
+  "MessagePipelining should"                                ^
+  "work correctly for simple requests"                      ! testSimple^
+  "support marshalling"                                     ! testMarshalling^
+  "support unmarshalling"                                   ! testUnmarshalling^
+  "support request compression"                             ! testCompression^
+  "support response decompression"                          ! testDecompression^
+  "support request authentication"                          ! testAuthentication^
+  "throw an Exception when unmarshalling non-200 responses" ! testUnsuccessfulUnmarshalling^
+                                                            end
 
   val report: SendReceive = { request =>
     import request._
@@ -91,5 +92,10 @@ class MessagePipeliningSpec extends Specification
   def testAuthentication = {
     val pipeline = simpleRequest ~> authenticate(BasicHttpCredentials("bob", "1234")) ~> authenticatedEcho
     pipeline(Get()).get mustEqual HttpResponse(200)
+  }
+
+  def testUnsuccessfulUnmarshalling = {
+    val pipeline = simpleRequest[String] ~> echo ~> transformResponse(_.copy(status = 500)) ~> unmarshal[String]
+    pipeline(Get("/", "XXX")).get must throwAn(new UnsuccessfulResponseException(StatusCodes.InternalServerError))
   }
 }
