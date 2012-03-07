@@ -63,6 +63,11 @@ class ExpiringLruCacheSpec extends Specification {
       cache.store.toString mustEqual "{1=A, 3=C}" // expired entry 1 still there
       cache.get(1) must beNone // but not retrievable anymore
     }
+    "not cache exceptions" in {
+      val cache = lruCache[String](timeToIdle = Duration.Zero)
+      cache(1)((throw new RuntimeException("Naa")): String).get must throwA[RuntimeException]("Naa")
+      cache(1)("A").get mustEqual "A"
+    }
     "refresh an entries expiration time on cache hit" in {
       val cache = lruCache[String]()
       cache(1)("A").get mustEqual "A"

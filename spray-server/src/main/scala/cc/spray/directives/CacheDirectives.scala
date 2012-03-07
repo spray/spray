@@ -45,9 +45,10 @@ private[spray] trait CacheDirectives {
           case Some(key) => {
             cache(key) { completableFuture =>
               route {
-                ctx
+                ctx.withResponderTransformed { _
                   .withComplete(response => completableFuture.completeWithResult(Right(response)))
                   .withReject(rejections => completableFuture.completeWithResult(Left(rejections)))
+                }
               }
             } onResult {
               case Right(response) => ctx.responder.complete(response)

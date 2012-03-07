@@ -57,7 +57,12 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
   def fromFuture(key: Any)(future: => Future[V]): Future[V] = {
     val newFuture = new DefaultCompletableFuture[V](Long.MaxValue)
     store.putIfAbsent(key, newFuture) match {
-      case null => future.onComplete(f => newFuture.complete(f.value.get))
+      case null => future.onComplete { f =>
+        val value = f.value.get
+        newFuture.complete(value)
+        // in case of exceptions we remove the cache entry (i.e. try again later)
+        if (value.isLeft) store.remove(key, newFuture)
+      }
       case existingFuture => existingFuture
     }
   }
@@ -74,7 +79,7 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
  * the longest time are evicted first.
  * In addition this implementation supports time-to-idle expiration. The time-to-idle duration indicates how long the
  * entry can stay without having been accessed.
- * Note that expired entries are only evicted upon next access (or by being throws out by the capacity constraint), so
+ * Note that expired entries are only evicted upon next access (or by being thrown out by the capacity constraint), so
  * they might prevent gargabe collection of their values for longer than expected.
  *
  * @param timeToIdle the time-to-idle in millis, if zero time-to-idle expiration is disabled
@@ -106,7 +111,12 @@ final class ExpiringLruCache[V](maxCapacity: Int, initialCapacity: Int, timeToId
         case null => future
         case entry => if (isAlive(entry)) entry.future else future
       }
-      valueFuture.onComplete(f => newEntry.future.complete(f.value.get))
+      valueFuture.onComplete { f =>
+        val value = f.value.get
+        newEntry.future.complete(value)
+        // in case of exceptions we remove the cache entry (i.e. try again later)
+        if (value.isLeft) store.remove(key, newEntry)
+      }
     }
     store.get(key) match {
       case null => insert()
