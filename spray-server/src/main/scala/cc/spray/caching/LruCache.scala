@@ -25,15 +25,17 @@ import akka.dispatch.{CompletableFuture, DefaultCompletableFuture, Future}
 object LruCache {
   /**
    * Creates a new instance of either []cc.spray.caching.ExpiringLruCache]] or [[cc.spray.caching.SimpleLruCache]],
-   * depending on whether a timeToIdle is set or not.
+   * depending on whether a non-zero and finite timeToLive and/or timeToIdle is set or not.
    */
-  def apply[V](maxCapacity: Int = 500, initialCapacity: Int = 16, timeToIdle: Option[Duration] = None): Cache[V] = {
-    timeToIdle match {
-      case Some(duration) =>
-        new ExpiringLruCache[V](maxCapacity, initialCapacity, if (duration.finite_?) duration.toMillis else 0)
-      case None =>
-        new SimpleLruCache[V](maxCapacity, initialCapacity)
-    }
+  def apply[V](maxCapacity: Int = 500, initialCapacity: Int = 16,
+               timeToLive: Duration = Duration.Zero, timeToIdle: Duration = Duration.Zero): Cache[V] = {
+    import Duration._
+    def isNonZeroFinite(d: Duration) = d != Zero && d.isFinite
+    def millis(d: Duration) = if (isNonZeroFinite(d)) d.toMillis else 0L
+    if (isNonZeroFinite(timeToLive) || isNonZeroFinite(timeToIdle))
+      new ExpiringLruCache[V](maxCapacity, initialCapacity, millis(timeToLive), millis(timeToIdle))
+    else
+      new SimpleLruCache[V](maxCapacity, initialCapacity)
   }
 }
 
@@ -57,7 +59,12 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
   def fromFuture(key: Any)(future: => Future[V]): Future[V] = {
     val newFuture = new DefaultCompletableFuture[V](Long.MaxValue)
     store.putIfAbsent(key, newFuture) match {
-      case null => future.onComplete(f => newFuture.complete(f.value.get))
+      case null => future.onComplete { f =>
+        val value = f.value.get
+        newFuture.complete(value)
+        // in case of exceptions we remove the cache entry (i.e. try again later)
+        if (value.isLeft) store.remove(key, newFuture)
+      }
       case existingFuture => existingFuture
     }
   }
@@ -72,15 +79,22 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
  * The cache has a defined maximum number of entries is can store. After the maximum capacity has been reached new
  * entries cause old ones to be evicted in a last-recently-used manner, i.e. the entries that haven't been accessed for
  * the longest time are evicted first.
- * In addition this implementation supports time-to-idle expiration. The time-to-idle duration indicates how long the
- * entry can stay without having been accessed.
- * Note that expired entries are only evicted upon next access (or by being throws out by the capacity constraint), so
+ * In addition this implementation optionally supports time-to-live as well as time-to-idle expiration.
+ * The former provides an upper limit to the time period an entry is allowed to remain in the cache while the latter
+ * limits the maximum time an entry is kept without having been accessed. If both values are non-zero the time-to-live
+ * has to be strictly greater than the time-to-idle.
+ * Note that expired entries are only evicted upon next access (or by being thrown out by the capacity constraint), so
  * they might prevent gargabe collection of their values for longer than expected.
  *
- * @param timeToIdle the time-to-idle in millis, if zero time-to-idle expiration is disabled
+ * @param timeToLive the time-to-live in millis, zero for disabling ttl-expiration
+ * @param timeToIdle the time-to-idle in millis, zero for disabling tti-expiration
  */
-final class ExpiringLruCache[V](maxCapacity: Int, initialCapacity: Int, timeToIdle: Long) extends Cache[V] {
+final class ExpiringLruCache[V](maxCapacity: Int, initialCapacity: Int,
+                                timeToLive: Long, timeToIdle: Long) extends Cache[V] {
+  require(timeToLive >= 0, "timeToLive must not be negative")
   require(timeToIdle >= 0, "timeToIdle must not be negative")
+  require(timeToLive == 0 || timeToIdle == 0 || timeToLive > timeToIdle,
+    "timeToLive must be greater than timeToIdle, if both are non-zero")
 
   private[caching] val store = new ConcurrentLinkedHashMap.Builder[Any, Entry[V]]
     .initialCapacity(initialCapacity)
@@ -104,9 +118,20 @@ final class ExpiringLruCache[V](maxCapacity: Int, initialCapacity: Int, timeToId
       val newEntry = new Entry(new DefaultCompletableFuture[V](Long.MaxValue))
       val valueFuture = store.put(key, newEntry) match {
         case null => future
-        case entry => if (isAlive(entry)) entry.future else future
+        case entry => if (isAlive(entry)) {
+          // we date back the new entry we just inserted
+          // in the meantime someone might have already seen the too fresh timestamp we just put in,
+          // but since the original entry is also still alive this doesn't matter
+          newEntry.created = entry.created
+          entry.future
+        } else future
       }
-      valueFuture.onComplete(f => newEntry.future.complete(f.value.get))
+      valueFuture.onComplete { f =>
+        val value = f.value.get
+        newEntry.future.complete(value)
+        // in case of exceptions we remove the cache entry (i.e. try again later)
+        if (value.isLeft) store.remove(key, newEntry)
+      }
     }
     store.get(key) match {
       case null => insert()
@@ -125,11 +150,15 @@ final class ExpiringLruCache[V](maxCapacity: Int, initialCapacity: Int, timeToId
 
   def clear() { store.clear() }
 
-  private def isAlive(entry: Entry[V]) =
-    timeToIdle == 0 || (System.currentTimeMillis - entry.lastAccessed) < timeToIdle
+  private def isAlive(entry: Entry[V]) = {
+    val now = System.currentTimeMillis
+    (timeToLive == 0 || (now - entry.created) < timeToLive) &&
+    (timeToIdle == 0 || (now - entry.lastAccessed) < timeToIdle)
+  }
 }
 
 private[caching] class Entry[T](val future: CompletableFuture[T]) {
+  @volatile var created = System.currentTimeMillis
   @volatile var lastAccessed = System.currentTimeMillis
   def refresh() {
     // we dont care whether we overwrite a potentially newer value

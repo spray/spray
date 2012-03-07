@@ -16,8 +16,8 @@
         </encoder>
     </appender> -->
 
-    <logger name="akka" level="WARN" />
-    <logger name="cc.spray.can" level="WARN" />
+    <logger name="akka" level="OFF" />
+    <logger name="cc.spray" level="WARN" />
 
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>

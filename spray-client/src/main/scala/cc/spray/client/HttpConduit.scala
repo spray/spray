@@ -68,7 +68,9 @@ class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitC
       case Respond(conn, send: Send, Left(error)) if send.retriesLeft > 0 =>
         log.debug("Received '%s' in response to %s with %s retries left, retrying...", error.toString,
           requestString(send.request), send.retriesLeft)
-        config.dispatchStrategy.dispatch(send.withRetriesDecremented, conns)
+        // only decrease retry counter if we are the first request on this connection that failed
+        val retry = if (conn.httpConnection.isEmpty) send.withRetriesDecremented else send
+        config.dispatchStrategy.dispatch(retry, conns)
       case Respond(conn, send: Send, result@ Left(error)) =>
         log.debug("Received '%s' in response to %s with no retries left, dispatching error...", error.toString, requestString(send.request))
         send.responder(result)

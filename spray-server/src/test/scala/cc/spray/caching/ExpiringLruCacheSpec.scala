@@ -52,7 +52,7 @@ class ExpiringLruCacheSpec extends Specification {
       cache.store.toString mustEqual "{2=B, 3=C, 4=D}"
     }
     "expire old entries" in {
-      val cache = lruCache[String](timeToIdle = Duration("75 ms"))
+      val cache = lruCache[String](timeToLive = Duration("75 ms"))
       cache(1)("A").get mustEqual "A"
       cache(2)("B").get mustEqual "B"
       Thread.sleep(50)
@@ -62,6 +62,11 @@ class ExpiringLruCacheSpec extends Specification {
       cache.get(2) must beNone // removed on request
       cache.store.toString mustEqual "{1=A, 3=C}" // expired entry 1 still there
       cache.get(1) must beNone // but not retrievable anymore
+    }
+    "not cache exceptions" in {
+      val cache = lruCache[String]()
+      cache(1)((throw new RuntimeException("Naa")): String).get must throwA[RuntimeException]("Naa")
+      cache(1)("A").get mustEqual "A"
     }
     "refresh an entries expiration time on cache hit" in {
       val cache = lruCache[String]()
@@ -99,7 +104,8 @@ class ExpiringLruCacheSpec extends Specification {
     }
   }
 
-  def lruCache[T](maxCapacity: Int = 500, initialCapacity: Int = 16, timeToIdle: Duration = Duration("5 min")) =
-    new ExpiringLruCache[T](maxCapacity,  initialCapacity, timeToIdle.toMillis)
+  def lruCache[T](maxCapacity: Int = 500, initialCapacity: Int = 16,
+                  timeToLive: Duration = Duration.Zero, timeToIdle: Duration = Duration.Zero) =
+    new ExpiringLruCache[T](maxCapacity,  initialCapacity, timeToLive.toMillis, timeToIdle.toMillis)
 
 }

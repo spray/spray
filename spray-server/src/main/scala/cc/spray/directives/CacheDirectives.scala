@@ -45,9 +45,10 @@ private[spray] trait CacheDirectives {
           case Some(key) => {
             cache(key) { completableFuture =>
               route {
-                ctx
+                ctx.withResponderTransformed { _
                   .withComplete(response => completableFuture.completeWithResult(Right(response)))
                   .withReject(rejections => completableFuture.completeWithResult(Left(rejections)))
+                }
               }
             } onResult {
               case Right(response) => ctx.responder.complete(response)
@@ -62,7 +63,7 @@ private[spray] trait CacheDirectives {
 
   /**
    * Wraps its inner Route with caching support using a default [[cc.spray.caching.LruCache]] instance
-   * (max-entries = 500, initialCapacity = 16, time-to-idle: infinite) and the {{UriGetCacheKeyer}} which
+   * (max-entries = 500, initialCapacity = 16, time-to-idle: infinite) and the `CacheKeyers.UriGetCacheKeyer` which
    * only caches GET requests and uses the request URI as cache key.
    */
   lazy val cache = cacheResults(LruCache())
