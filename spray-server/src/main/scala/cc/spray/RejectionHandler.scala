@@ -26,9 +26,9 @@ object RejectionHandler {
     case AuthenticationRequiredRejection(scheme, realm, params) :: _ =>
       HttpResponse(Unauthorized, `WWW-Authenticate`(HttpChallenge(scheme, realm, params)) :: Nil, "The resource requires authentication, which was not supplied with the request")
     case AuthenticationFailedRejection(realm) :: _ =>
-      HttpResponse(Forbidden, "The supplied authentication is either invalid or not authorized to access this resource")
+      HttpResponse(Unauthorized, "The supplied authentication is invalid")
     case AuthorizationFailedRejection :: _ =>
-      HttpResponse(Forbidden, "The supplied authentication is either invalid or not authorized to access this resource")
+      HttpResponse(Forbidden, "The supplied authentication is not authorized to access this resource")
     case CorruptRequestEncodingRejection(msg) :: _ =>
       HttpResponse(BadRequest, "The requests encoding is corrupt:\n" + msg)
     case MalformedFormFieldRejection(msg, name) :: _ =>

@@ -92,11 +92,10 @@ class HttpServiceLogicSpec extends AbstractSprayTest {
     
     // REJECTIONS
 
-    "respond with Forbidden for requests resulting in an AuthorizationFailedRejection" in {
+    "respond with Forbidden for requests resulting in an AuthenticationFailedRejection" in {
       testService(HttpRequest(headers = Authorization(BasicHttpCredentials("bob", "")) :: Nil)) {
         authenticate(httpBasic()) { _ => completeWith(Ok) }
-      }.response mustEqual HttpResponse(Forbidden, "The supplied authentication is either invalid " +
-              "or not authorized to access this resource")
+      }.response mustEqual HttpResponse(Unauthorized, "The supplied authentication is invalid")
     }
     "respond with Unauthorized plus WWW-Authenticate header for AuthenticationRequiredRejections" in {
       testService(HttpRequest()) {
@@ -107,7 +106,7 @@ class HttpServiceLogicSpec extends AbstractSprayTest {
     "respond with Forbidden for requests resulting in an AuthorizationFailedRejection" in {
       testService(HttpRequest()) {
         authorize(false) { _ => completeWith(Ok) }
-      }.response mustEqual HttpResponse(Forbidden, "The supplied authentication is either invalid or not authorized to access this resource")
+      }.response mustEqual HttpResponse(Forbidden, "The supplied authentication is not authorized to access this resource")
     }
     "respond with BadRequest for requests resulting in a CorruptRequestEncodingRejection" in {
       testService(HttpRequest(headers = List(`Content-Encoding`(HttpEncodings.gzip)), content = Some(HttpContent(`text/plain`, "xyz")))) {
