@@ -1,3 +1,9 @@
+Version 1.1.1 (2012-03-13)
+--------------------------
+- Fixed significant performance problem in JsonParser
+- Improved automatic field name extraction for case classes
+
+
 Version 1.1 (2012-02-01)
 ------------------------
 - Added automatic case class field name extraction via new jsonFormatX overloads
