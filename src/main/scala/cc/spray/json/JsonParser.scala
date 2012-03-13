@@ -28,7 +28,7 @@ import java.lang.StringBuilder
 object JsonParser extends Parser {
 
   // the root rule
-  def Json = rule { WhiteSpace ~ Value ~ EOI }
+  lazy val Json = rule { WhiteSpace ~ Value ~ EOI }
 
   def JsonObject: Rule1[JsObject] = rule {
     "{ " ~ zeroOrMore(Pair, separator = ", ") ~ "} " ~~> (JsObject(_ :_*))
