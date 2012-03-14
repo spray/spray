@@ -20,7 +20,6 @@ package example
 import akka.actor._
 import cc.spray.io.pipelines.MessageHandlerDispatch
 import cc.spray.io.IoWorker
-import cc.spray.io.util._
 
 object Main extends App {
   val system = ActorSystem("SimpleHttpServer")
@@ -31,7 +30,7 @@ object Main extends App {
     name = "http-server"
   )
   server ! HttpServer.Bind("localhost", 8080)
-  system.terminationOf(server).await // blocks
-  ioWorker.stop().get.await()
-  system.shutdown()
+  system.registerOnTermination {
+    ioWorker.stop()
+  }
 }

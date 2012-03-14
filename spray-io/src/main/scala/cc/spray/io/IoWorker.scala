@@ -23,60 +23,73 @@ import collection.mutable.ListBuffer
 import java.nio.channels.{CancelledKeyException, SelectionKey, SocketChannel, ServerSocketChannel}
 import java.net.SocketAddress
 import akka.actor.{ActorSystem, ActorRef}
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.atomic.{AtomicReference, AtomicInteger}
 import akka.event.{BusLogging, LoggingAdapter}
+import java.util.concurrent.CountDownLatch
 
 // threadsafe
 class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
   import IoWorker._
 
-  private lazy val log = new BusLogging(system.eventStream, "IoWorker", getClass)
-  private lazy val ioThread = new IoThread(config, log)
-  private lazy val state = new AtomicReference[Any]('unstarted)
+  private var ioThread: Option[IoThread] = None
 
   /**
    * @return the IO thread if started and not yet stopped, otherwise None
    */
-  def thread: Option[Thread] = {
-    state.get match {
-      case ioThread: Thread => Some(ioThread)
-      case _ => None
-    }
-  }
+  def thread: Option[Thread] = lock.synchronized(ioThread)
 
   /**
    * Starts the IoWorker if not yet started
    * @return this instance
    */
   def start(): this.type = {
-    if (state.compareAndSet('unstarted, ioThread)) {
-      ioThread.start()
+    lock.synchronized {
+      if (ioThread.isEmpty) {
+        if (_system.isEmpty) _system = Some(ActorSystem("IoWorker"))
+        ioThread = Some {
+          new IoThread(
+            config = config,
+            name = config.threadName + '-' + _runningWorkers.size,
+            log = new BusLogging(_system.get.eventStream, "IoWorker", getClass)
+          )
+        }
+        _runningWorkers = _runningWorkers :+ this
+        ioThread.get.start()
+      }
     }
     this
   }
 
   /**
-   * Stops the IoWorker if not yet stopped. It cannot be restarted.
-   * @return A latch to await termination if desired, None if not yet started or already stopped
+   * Stops the IoWorker if not yet stopped.
+   * The method blocks until the IoWorker has been successfully terminated.
+   * It can be restarted by calling start().
    */
-  def stop(): Option[CountDownLatch] = {
-    val latch = new CountDownLatch(1)
-    if (state.compareAndSet(ioThread, latch)) {
-      this ! Stop(latch)
-      system.shutdown()
-      Some(latch)
-    } else None
+  def stop() {
+    lock.synchronized {
+      if (ioThread.isDefined) {
+        val latch = new CountDownLatch(1)
+        this ! Stop(latch)
+        latch.await()
+        ioThread = None
+        _runningWorkers = _runningWorkers.filter(_ != this)
+        if (_runningWorkers.isEmpty) {
+          _system.get.shutdown()
+          _system = None
+        }
+      }
+    }
   }
 
   /**
    * Posts a Command to the IoWorkers command queue.
    */
-  def ! (cmd: Command)(implicit sender: ActorRef = system.deadLetters) {
-    ioThread.post(cmd, sender)
+  def ! (cmd: Command)(implicit sender: ActorRef = null) {
+    if (ioThread.isEmpty)
+      throw new IllegalStateException("Cannot post message to unstarted IoWorker")
+    ioThread.get.post(cmd, if (sender != null) sender else _system.get.deadLetters)
   }
 
-  private class IoThread(config: IoWorkerConfig, log: LoggingAdapter) extends Thread {
+  private class IoThread(config: IoWorkerConfig, name: String, log: LoggingAdapter) extends Thread {
     import SelectionKey._
 
     private val commandQueue = new SingleReaderConcurrentQueue[(Command, ActorRef)]
@@ -91,7 +104,7 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
     private var connectionsClosed = 0L
     private var commandsExecuted = 0L
 
-    setName(config.threadName + '-' + IoWorker.threadCounter.incrementAndGet())
+    setName(name)
 
     override def start() {
       if (getState == Thread.State.NEW) {
@@ -323,8 +336,12 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
 }
 
 object IoWorker {
-  private val system = ActorSystem("IoWorker")
-  private val threadCounter = new AtomicInteger
+  private val lock = new AnyRef
+  private var _system: Option[ActorSystem] = None
+  private var _runningWorkers = Seq.empty[IoWorker]
+
+  def runningWorkers: Seq[IoWorker] =
+    lock.synchronized(_runningWorkers)
 
   ////////////// COMMANDS //////////////
 

@@ -56,7 +56,7 @@ class TestService extends Actor with ActorLogging {
 
     case HttpRequest(GET, "/stop", _, _, _) =>
       sender ! response("Shutting down in 1 second ...")
-      context.system.scheduler.scheduleOnce(1.second, new Runnable { def run() { serverActor ! PoisonPill } })
+      context.system.scheduler.scheduleOnce(1.second, new Runnable { def run() { context.system.shutdown() } })
 
     case _: HttpRequest => sender ! response("Unknown resource!", 404)
 

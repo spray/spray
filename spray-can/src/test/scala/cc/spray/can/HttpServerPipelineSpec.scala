@@ -28,6 +28,7 @@ import cc.spray.io.util._
 
 class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { def is =
 
+  sequential^
   "The HttpServerPipeline should"^
     "dispatch a simple HttpRequest to a singleton service actor" ! dispatchSimpleRequestToSingletonHandler^
     "correctly dispatch a fragmented HttpRequest" ! dispatchFragmentedRequest^

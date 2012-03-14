@@ -69,7 +69,7 @@ class IoWorkerSpec extends Specification {
 
   def stop() {
     system.shutdown()
-    worker.stop().get.await()
+    worker.stop()
   }
 
 }
