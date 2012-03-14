@@ -2,28 +2,8 @@ package cc.spray.io
 
 import org.specs2.Specification
 
-class PipelinesSpec extends Specification {
+class PipelinesSpec extends Specification { def is =
 
-  // compile time test
-  implicitly[CommandPipelineStage    #Append[CommandPipelineStage]     =:= CommandPipelineStage]
-  implicitly[CommandPipelineStage    #Append[EventPipelineStage]       =:= DoublePipelineStage]
-  implicitly[CommandPipelineStage    #Append[DoublePipelineStage]      =:= DoublePipelineStage]
-  implicitly[CommandPipelineStage    #Append[EmptyPipelineStage.type]  =:= CommandPipelineStage]
-  implicitly[EventPipelineStage      #Append[CommandPipelineStage]     =:= DoublePipelineStage]
-  implicitly[EventPipelineStage      #Append[EventPipelineStage]       =:= EventPipelineStage]
-  implicitly[EventPipelineStage      #Append[DoublePipelineStage]      =:= DoublePipelineStage]
-  implicitly[EventPipelineStage      #Append[EmptyPipelineStage.type]  =:= EventPipelineStage]
-  implicitly[DoublePipelineStage     #Append[CommandPipelineStage]     =:= DoublePipelineStage]
-  implicitly[DoublePipelineStage     #Append[EventPipelineStage]       =:= DoublePipelineStage]
-  implicitly[DoublePipelineStage     #Append[DoublePipelineStage]      =:= DoublePipelineStage]
-  implicitly[DoublePipelineStage     #Append[EmptyPipelineStage.type]  =:= DoublePipelineStage]
-  implicitly[EmptyPipelineStage.type #Append[CommandPipelineStage]     =:= CommandPipelineStage]
-  implicitly[EmptyPipelineStage.type #Append[EventPipelineStage]       =:= EventPipelineStage]
-  implicitly[EmptyPipelineStage.type #Append[DoublePipelineStage]      =:= DoublePipelineStage]
-  implicitly[EmptyPipelineStage.type #Append[EmptyPipelineStage.type]  =:= EmptyPipelineStage.type]
-
-  // run time test
-  def is =
   "The PipelineStage infrastructure must correctly combine the following pipeline stages:" ^
     "command ~> command" ! example(cmd('1') ~> cmd('2'), "12", "")^
     "command ~> event"   ! example(cmd('1') ~> ev('a'), "1", "a")^
@@ -77,7 +57,4 @@ class PipelinesSpec extends Specification {
 
   case class TestEvent(s: String) extends Event
   case class TestCommand(s: String) extends Command
-
-  val devNull: Any => Unit = _ => ()
-
 }

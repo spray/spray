@@ -37,30 +37,24 @@ object Pipeline {
 case class PipelineContext(handle: Handle, connectionActorContext: ActorContext)
 
 sealed trait PipelineStage {
-  type PS = PipelineStage       // alias for brevity
   type CPL = Pipeline[Command]  // alias for brevity
   type EPL = Pipeline[Event]    // alias for brevity
-
-  private[io] type Select[A <: PS, B <: PS, C <: PS, D <: PS] <: PS
   type BuildResult
-  type Append[Next <: PS] <:PS
 
   def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): BuildResult
 
   def buildPipelines(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines
 
-  def ~> [Next <: PS](right: Next): Append[Next]
+  def ~> (right: PipelineStage): PipelineStage
 }
 
 trait CommandPipelineStage extends PipelineStage { left =>
-  private[io] type Select[A <: PS, B <: PS, C <: PS, D <: PS] = A
   type BuildResult = CPL
-  type Append[Next <: PS] = Next#Select[CommandPipelineStage, DoublePipelineStage, DoublePipelineStage, CommandPipelineStage]
 
   def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
     Pipelines(build(ctx, cpl, epl), epl)
 
-  def ~> [Next <: PS](right: Next) = {
+  def ~> (right: PipelineStage) = {
     right match {
       case x: CommandPipelineStage => new CommandPipelineStage {
         def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
@@ -78,18 +72,16 @@ trait CommandPipelineStage extends PipelineStage { left =>
       }
       case EmptyPipelineStage => this
     }
-  }.asInstanceOf[Append[Next]]
+  }
 }
 
 trait EventPipelineStage extends PipelineStage { left =>
-  private[io] type Select[A <: PS, B <: PS, C <: PS, D <: PS] = B
   type BuildResult = EPL
-  type Append[Next <: PS] = Next#Select[DoublePipelineStage, EventPipelineStage, DoublePipelineStage, EventPipelineStage]
 
   def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
     Pipelines(cpl, build(ctx, cpl, epl))
 
-  def ~> [Next <: PS](right: Next) = {
+  def ~> (right: PipelineStage) = {
     right match {
       case x: CommandPipelineStage => new DoublePipelineStage {
         def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
@@ -105,18 +97,16 @@ trait EventPipelineStage extends PipelineStage { left =>
       }
       case EmptyPipelineStage => this
     }
-  }.asInstanceOf[Append[Next]]
+  }
 }
 
 trait DoublePipelineStage extends PipelineStage { left =>
-  private[io] type Select[A <: PS, B <: PS, C <: PS, D <: PS] = C
   type BuildResult = Pipelines
-  type Append[Next <: PS] = Next#Select[DoublePipelineStage, DoublePipelineStage, DoublePipelineStage, DoublePipelineStage]
 
   def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
     build(ctx, cpl, epl)
 
-  def ~> [Next <: PS](right: Next) = {
+  def ~> (right: PipelineStage) = {
     right match {
       case x: CommandPipelineStage => new DoublePipelineStage {
         def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
@@ -141,13 +131,11 @@ trait DoublePipelineStage extends PipelineStage { left =>
       }
       case EmptyPipelineStage => this
     }
-  }.asInstanceOf[Append[Next]]
+  }
 }
 
 object EmptyPipelineStage extends PipelineStage {
-  private[io] type Select[A <: PS, B <: PS, C <: PS, D <: PS] = D
   type BuildResult = Pipelines
-  type Append[Next <: PS] = Next#Select[CommandPipelineStage, EventPipelineStage, DoublePipelineStage, EmptyPipelineStage.type]
 
   def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
     Pipelines(cpl, epl)
@@ -155,5 +143,5 @@ object EmptyPipelineStage extends PipelineStage {
   def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
     build(ctx, cpl, epl)
 
-  def ~> [Next <: PS](right: Next) = right.asInstanceOf[Append[Next]]
+  def ~> (right: PipelineStage) = right
 }
