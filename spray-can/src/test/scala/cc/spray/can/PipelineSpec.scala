@@ -23,6 +23,7 @@ import java.nio.ByteBuffer
 import cc.spray.io._
 import akka.event.BusLogging
 import org.specs2.Specification
+import akka.util.Duration
 
 abstract class PipelineSpec(name: String) extends Specification {
 
@@ -50,8 +51,8 @@ abstract class PipelineSpec(name: String) extends Specification {
     system.shutdown()
   }
 
-  def produceOneCommand(command: Command) = {
-    beEqualTo(List(command) -> Nil) ^^ { result: TestPipelineResult =>
+  def produceCommands(commands: Command*) = {
+    beEqualTo(commands.toList -> Nil) ^^ { result: TestPipelineResult =>
       result._1.map {
         case IoPeer.Send(buffers) => SendString(buffers.map(buf => new String(buf.array, "US-ASCII")).mkString)
         case x => x
@@ -62,6 +63,7 @@ abstract class PipelineSpec(name: String) extends Specification {
   private def prepareString(s: String) = s.stripMargin.replace("\n", "\r\n")
 
   private case class SendString(string: String) extends Command
+  case class TestWait(duration: String) extends Command
 
   type TestPipelineResult = (List[Command], List[Event])
 
@@ -76,7 +78,10 @@ abstract class PipelineSpec(name: String) extends Specification {
 
     def runCommands(commands: Command*): TestPipelineResult = {
       clear()
-      commands.foreach(pipelines.commandPipeline)
+      commands.foreach {
+        case TestWait(duration) => Thread.sleep(Duration(duration).toMillis)
+        case x => pipelines.commandPipeline(x)
+      }
       (collectedCommands.toList, collectedEvents.toList)
     }
 

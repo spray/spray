@@ -25,6 +25,8 @@ import cc.spray.io.pipelines.MessageHandlerDispatch._
 import java.util.concurrent.atomic.AtomicInteger
 import org.specs2.specification.Step
 import cc.spray.io.util._
+import cc.spray.io.pipelines.TickGenerator
+import cc.spray.io.{IoPeer, IdleTimeout}
 
 class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { def is =
 
@@ -36,12 +38,13 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
     "correctly render a matched HttpResponse" ! renderResponse^
     "dispatch requests to the right service actor when using per-connection handlers" ! perConnectionHandlers^
     "dispatch requests to the right service actor when using per-message handlers" ! perMessageHandlers^
+    "close connections after idle timeout" ! testIdleTimeout^
   Step(stop())
 
   def dispatchSimpleRequestToSingletonHandler = {
     singletonPipeline.runEvents {
       received(simpleRequest)
-    } must produceOneCommand {
+    } must produceCommands {
       HttpServer.Dispatch(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))))
     }
   }
@@ -57,7 +60,7 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
            |
            |"""
       }
-    ) must produceOneCommand {
+    ) must produceCommands {
       HttpServer.Dispatch(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))))
     }
   }
@@ -69,7 +72,7 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
   def renderResponse = {
     val pipeline = singletonPipeline
     pipeline.runEvents(received(simpleRequest))
-    pipeline.runCommands(HttpResponse()) must produceOneCommand(send(simpleResponse))
+    pipeline.runCommands(HttpResponse()) must produceCommands(send(simpleResponse))
   }
 
   def perConnectionHandlers = {
@@ -93,6 +96,18 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
     { receiver(requestChunk) === 'actor3 } and
     { receiver(chunkedRequestEnd) === 'actor3 } and
     { receiver(chunkedRequestStart) === 'actor4 }
+  }
+
+  def testIdleTimeout = {
+    val pipeline = singletonPipeline
+    pipeline.runEvents(received(simpleRequest))
+    pipeline.runCommands(
+      TestWait("50 ms"),
+      TickGenerator.Tick
+    ) must produceCommands(
+      IoPeer.Close(IdleTimeout),
+      TickGenerator.Tick
+    )
   }
 
   /////////////////////////// SUPPORT ////////////////////////////////
@@ -134,7 +149,11 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
 
   def testPipeline(messageHandler: MessageHandler) = new TestPipeline(
     HttpServer.pipeline(
-      HttpServerConfig(serverHeader = "test/no-date", idleTimeout = Duration("50 ms")),
+      HttpServerConfig(
+        serverHeader = "test/no-date",
+        idleTimeout = Duration("50 ms"),
+        reapingCycle = Duration.Zero // don't enable the TickGenerator
+      ),
       messageHandler,
       log
     )

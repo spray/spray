@@ -18,7 +18,8 @@ package cc.spray.can
 
 import config.HttpClientConfig
 import cc.spray.io._
-import pipelines.ConnectionTimeouts
+import akka.util.Duration
+import pipelines.{TickGenerator, ConnectionTimeouts}
 
 /**
  * Reacts to [[cc.spray.can.Connect]] messages by establishing a connection to the remote host. If there is an error
@@ -34,13 +35,20 @@ class HttpClient(config: HttpClientConfig)
                 (ioWorker: IoWorker = new IoWorker(config))
                 extends IoClient(ioWorker) with ConnectionActors {
 
+  protected lazy val pipeline ={
+    val connectionTimeouts =
+      if (config.enableConnectionTimeouts) ConnectionTimeouts(config.idleTimeout, log)
+      else EmptyPipelineStage
+    val tickCycle =
+      if (config.enableConnectionTimeouts) config.reapingCycle
+      else Duration.Zero
 
-  protected lazy val pipeline = (
-    ClientFrontend(log)
-    ~> RequestRendering(config.userAgentHeader)
-    ~> ResponseParsing(config, log)
-    ~> ConnectionTimeouts(config, log)
-  )
+    ClientFrontend(log) ~>
+    RequestRendering(config.userAgentHeader) ~>
+    ResponseParsing(config, log) ~>
+    connectionTimeouts ~>
+    TickGenerator(tickCycle)
+  }
 }
 
 object HttpClient {

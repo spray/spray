@@ -22,64 +22,39 @@ import akka.event.LoggingAdapter
 
 object ConnectionTimeouts {
 
-  def apply(config: ConnectionTimeoutConfig, log: LoggingAdapter): PipelineStage =
-    if (config.enableConnectionTimeouts) createPipelineStage(config, log) else EmptyPipelineStage
-
-  def createPipelineStage(config: ConnectionTimeoutConfig, log: LoggingAdapter) = new DoublePipelineStage {
-    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
-      val reapingTrigger = context.connectionActorContext.system.scheduler.schedule(
-        initialDelay = config.reapingCycle,
-        frequency = config.reapingCycle,
-        receiver = context.connectionActorContext.self,
-        message = ReapIdleConnections
-      )
-      var idleTimeout = config.idleTimeout
+  def apply(idleTimeout: Duration, log: LoggingAdapter): PipelineStage = new DoublePipelineStage {
+    def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) = new Pipelines {
+      var timeout = idleTimeout
       var lastActivity = System.currentTimeMillis
 
       def commandPipeline(command: Command) {
         command match {
-          case x: SetIdleTimeout => idleTimeout = x.timeout
+          case TickGenerator.Tick =>
+            if (timeout.isFinite && (timeout != Duration.Zero) &&
+              (lastActivity + timeout.toMillis) < System.currentTimeMillis) {
+              log.debug("Closing connection due to idle timeout...")
+              commandPL(IoPeer.Close(IdleTimeout))
+            }
+            commandPL(command)
+          case x: SetIdleTimeout => timeout = x.timeout
           case _ => commandPL(command)
         }
       }
 
       def eventPipeline(event: Event) {
         event match {
-          case _: IoPeer.Received =>
-            lastActivity = System.currentTimeMillis
-            eventPL(event)
-          case _: IoPeer.SendCompleted =>
-            lastActivity = System.currentTimeMillis
-            eventPL(event)
-          case _: IoPeer.Closed =>
-            reapingTrigger.cancel()
-            eventPL(event)
-          case ReapIdleConnections =>
-            if (idleTimeout.isFinite && (lastActivity + idleTimeout.toMillis) < System.currentTimeMillis) {
-              log.debug("Closing connection due to idle timeout...")
-              commandPL(IoPeer.Close(IdleTimeout))
-            }
-          case _ => eventPL(event)
+          case _: IoPeer.Received      => lastActivity = System.currentTimeMillis
+          case _: IoPeer.SendCompleted => lastActivity = System.currentTimeMillis
+          case _ =>
         }
+        eventPL(event)
       }
     }
   }
 
   ////////////// COMMANDS //////////////
-  case class SetIdleTimeout(timeout: Duration) extends Command
-
-  ////////////// EVENTS //////////////
-  case object ReapIdleConnections extends Event
-}
-
-trait ConnectionTimeoutConfig {
-  def enableConnectionTimeouts: Boolean
-  def idleTimeout: Duration
-  def reapingCycle: Duration
-}
-
-object ConnectionTimeoutConfig {
-  val defaultEnableConnectionTimeouts = true
-  val defaultIdleTimeout = Duration("10 sec")
-  val defaultReapingCycle = Duration("10 ms")
+  case class SetIdleTimeout(timeout: Duration) extends Command {
+    require(timeout.isFinite, "timeout must not be infinite")
+    require(timeout >= Duration.Zero, "timeout must not be negative")
+  }
 }

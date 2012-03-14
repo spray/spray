@@ -18,7 +18,6 @@ package cc.spray.io
 package pipelines
 
 import akka.actor.{ActorRef, Props}
-import java.nio.channels.SocketChannel
 
 object MessageHandlerDispatch {
 

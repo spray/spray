@@ -20,7 +20,8 @@ package can
 import config.HttpServerConfig
 import io._
 import akka.event.LoggingAdapter
-import pipelines.{ConnectionTimeouts, MessageHandlerDispatch}
+import pipelines.{TickGenerator, ConnectionTimeouts, MessageHandlerDispatch}
+import akka.util.Duration
 
 class HttpServer(ioWorker: IoWorker,
                  messageHandler: MessageHandlerDispatch.MessageHandler,
@@ -33,13 +34,22 @@ class HttpServer(ioWorker: IoWorker,
 object HttpServer {
 
   private[can] def pipeline(config: HttpServerConfig, messageHandler: MessageHandlerDispatch.MessageHandler,
-                            log: LoggingAdapter): PipelineStage = (
-    ServerFrontend(log)
-    ~> RequestParsing(config, log)
-    ~> ResponseRendering(config.serverHeader)
-    ~> MessageHandlerDispatch(messageHandler)
-    ~> ConnectionTimeouts(config, log)
-  )
+                            log: LoggingAdapter): PipelineStage = {
+    val connectionTimeouts =
+      if (config.enableConnectionTimeouts) ConnectionTimeouts(config.idleTimeout, log)
+      else EmptyPipelineStage
+    val tickCycle =
+      if (config.enableConnectionTimeouts) config.reapingCycle
+      else Duration.Zero
+
+    ServerFrontend(log) ~>
+    RequestParsing(config, log) ~>
+    ResponseRendering(config.serverHeader) ~>
+    MessageHandlerDispatch(messageHandler) ~>
+    connectionTimeouts ~>
+    TickGenerator(tickCycle)
+  }
+
 
   ////////////// COMMANDS //////////////
   // HttpResponseParts +

@@ -19,7 +19,6 @@ package config
 
 import akka.util.Duration
 import cc.spray.io.IoWorkerConfig
-import cc.spray.io.pipelines.ConnectionTimeoutConfig
 
 case class HttpServerConfig(
 
@@ -31,9 +30,11 @@ case class HttpServerConfig(
   readBufferSize: Int = IoWorkerConfig.defaultReadBufferSize,
 
   // ConnectionTimeoutConfig
-  enableConnectionTimeouts: Boolean = ConnectionTimeoutConfig.defaultEnableConnectionTimeouts,
-  idleTimeout: Duration             = ConnectionTimeoutConfig.defaultIdleTimeout,
-  reapingCycle: Duration            = ConnectionTimeoutConfig.defaultReapingCycle,
+  enableConnectionTimeouts: Boolean = true,
+  idleTimeout: Duration = Duration("10 sec"),
+
+  // for connection idle and request timeouts
+  reapingCycle: Duration = Duration("100 ms"),
 
   // HttpParserConfig
   maxUriLength: Int             = HttpParserConfig.defaultMaxUriLength,
@@ -47,4 +48,4 @@ case class HttpServerConfig(
   maxChunkExtCount: Int         = HttpParserConfig.defaultMaxChunkExtCount,
   maxChunkSize: Int             = HttpParserConfig.defaultMaxChunkSize
 
-) extends IoWorkerConfig with ConnectionTimeoutConfig with HttpParserConfig
+) extends IoWorkerConfig with HttpParserConfig
