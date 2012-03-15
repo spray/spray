@@ -48,5 +48,5 @@ object TickGenerator {
   }
 
   ////////////// COMMANDS //////////////
-  case object Tick extends Command
+  case object Tick extends Command with Droppable
 }

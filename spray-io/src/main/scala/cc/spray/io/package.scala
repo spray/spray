@@ -27,4 +27,6 @@ package io {
   trait Command
 
   trait Event
+
+  trait Droppable // marker for Commands and Events
 }

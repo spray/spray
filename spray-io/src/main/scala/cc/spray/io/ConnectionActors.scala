@@ -41,6 +41,7 @@ trait ConnectionActors extends IoPeer {
       case x: IoPeer.Send => ioWorker ! IoWorker.Send(handle, x.buffers)
       case x: IoPeer.Close => ioWorker ! IoWorker.Close(handle, x.reason)
       case x: IoPeer.Dispatch => x.receiver ! x.message
+      case _: Droppable => // don't warn
       case x => log.warning("commandPipeline: dropped {}", x)
     }
 
@@ -49,6 +50,7 @@ trait ConnectionActors extends IoPeer {
         log.debug("Stopping connection actor, connection was closed due to {}", x.reason)
         self ! PoisonPill
       case x: CommandError => log.warning("Received {}", x)
+      case _: Droppable => // don't warn
       case x => log.warning("eventPipeline: dropped {}", x)
     }
 
