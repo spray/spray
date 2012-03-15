@@ -21,10 +21,10 @@ import java.nio.ByteBuffer
 import annotation.tailrec
 import collection.mutable.ListBuffer
 import java.nio.channels.{CancelledKeyException, SelectionKey, SocketChannel, ServerSocketChannel}
-import java.net.SocketAddress
 import akka.actor.{ActorSystem, ActorRef}
 import akka.event.{BusLogging, LoggingAdapter}
 import java.util.concurrent.CountDownLatch
+import java.net.{Socket, SocketAddress}
 
 // threadsafe
 class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
@@ -213,7 +213,7 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
     def accept(key: SelectionKey) {
       try {
         val socketChannel = key.channel.asInstanceOf[ServerSocketChannel].accept()
-        socketChannel.configureBlocking(false)
+        configure(socketChannel)
         val connectionKey = socketChannel.register(selector, 0) // we don't enable any ops until we have a handle
         log.debug("New connection accepted")
         val cmd = key.attachment.asInstanceOf[Bind]
@@ -221,6 +221,15 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
       } catch {
         case e => log.error(e, "Accept error: could not accept new connection")
       }
+    }
+
+    def configure(channel: SocketChannel) {
+      val socket = channel.socket
+      // tcpReceiveBufferSize needs to be set on the ServerSocket before the bind, so we don't set it here
+      if (config.tcpSendBufferSize.isDefined) socket.setSendBufferSize(config.tcpSendBufferSize.get)
+      if (config.tcpKeepAlive.isDefined)      socket.setKeepAlive(config.tcpKeepAlive.get)
+      if (config.tcpNoDelay.isDefined)        socket.setTcpNoDelay(config.tcpNoDelay.get)
+      channel.configureBlocking(false)
     }
 
     def connect(key: SelectionKey) {
@@ -287,7 +296,8 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
 
     def connect(cmd: Connect) {
       val channel = SocketChannel.open()
-      channel.configureBlocking(false)
+      configure(channel)
+      config.tcpReceiveBufferSize.foreach(channel.socket setReceiveBufferSize _)
       if (channel.connect(cmd.address)) {
         log.debug("Connection immediately established to {}", cmd.address)
         val key = channel.register(selector, 0) // we don't enable any ops until we have a handle
@@ -302,6 +312,7 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
     def bind(cmd: Bind, sender: ActorRef) {
       val channel = ServerSocketChannel.open
       channel.configureBlocking(false)
+      config.tcpReceiveBufferSize.foreach(channel.socket setReceiveBufferSize _)
       channel.socket.bind(cmd.address, cmd.backlog)
       val key = channel.register(selector, OP_ACCEPT)
       key.attach(cmd)

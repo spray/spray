@@ -29,6 +29,11 @@ case class HttpServerConfig(
   threadName: String  = IoWorkerConfig.defaultThreadName,
   readBufferSize: Int = IoWorkerConfig.defaultReadBufferSize,
 
+  tcpReceiveBufferSize: Option[Int] = IoWorkerConfig.defaultTcpReceiveBufferSize,
+  tcpSendBufferSize: Option[Int] = IoWorkerConfig.defaultTcpSendBufferSize,
+  tcpKeepAlive: Option[Boolean] = IoWorkerConfig.defaultTcpKeepAlive,
+  tcpNoDelay: Option[Boolean] = IoWorkerConfig.defaultTcpNoDelay,
+
   // ConnectionTimeoutConfig
   enableConnectionTimeouts: Boolean = true,
   idleTimeout: Duration = Duration("10 sec"),

@@ -1,5 +1,3 @@
-package cc.spray.io
-
 /*
  * Copyright (C) 2011, 2012 Mathias Doenitz
  *
@@ -16,21 +14,40 @@ package cc.spray.io
  * limitations under the License.
  */
 
+package cc.spray.io
+
 trait IoWorkerConfig {
   def threadName: String
-
   def readBufferSize: Int
+
+  def tcpReceiveBufferSize: Option[Int]
+  def tcpSendBufferSize: Option[Int]
+  def tcpKeepAlive: Option[Boolean]
+  def tcpNoDelay: Option[Boolean]
 }
 
 object IoWorkerConfig {
   val defaultThreadName = "spray-io-worker"
   val defaultReadBufferSize = 4096
 
-  def apply(_threadName: String = defaultThreadName, _readBufferSize: Int = defaultReadBufferSize) = {
+  val defaultTcpReceiveBufferSize: Option[Int] = None
+  val defaultTcpSendBufferSize: Option[Int] = None
+  val defaultTcpKeepAlive: Option[Boolean] = None
+  val defaultTcpNoDelay: Option[Boolean] = Some(true)
+
+  def apply(_threadName: String = defaultThreadName,
+            _readBufferSize: Int = defaultReadBufferSize,
+            _tcpReceiveBufferSize: Option[Int] = defaultTcpReceiveBufferSize,
+            _tcpSendBufferSize: Option[Int] = defaultTcpSendBufferSize,
+            _tcpKeepAlive: Option[Boolean] = defaultTcpKeepAlive,
+            _tcpNoDelay: Option[Boolean] = defaultTcpNoDelay) = {
     new IoWorkerConfig {
       def threadName = _threadName
-
       def readBufferSize = _readBufferSize
+      def tcpReceiveBufferSize = _tcpReceiveBufferSize
+      def tcpSendBufferSize = _tcpSendBufferSize
+      def tcpKeepAlive = _tcpKeepAlive
+      def tcpNoDelay = _tcpNoDelay
     }
   }
 }
