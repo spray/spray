@@ -33,7 +33,7 @@ object IoWorkerConfig {
   val defaultTcpReceiveBufferSize: Option[Int] = None
   val defaultTcpSendBufferSize: Option[Int] = None
   val defaultTcpKeepAlive: Option[Boolean] = None
-  val defaultTcpNoDelay: Option[Boolean] = Some(true)
+  val defaultTcpNoDelay: Option[Boolean] = None
 
   def apply(_threadName: String = defaultThreadName,
             _readBufferSize: Int = defaultReadBufferSize,
