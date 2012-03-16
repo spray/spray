@@ -21,13 +21,21 @@ import java.nio.ByteBuffer
 import annotation.tailrec
 import collection.mutable.ListBuffer
 import java.nio.channels.{CancelledKeyException, SelectionKey, SocketChannel, ServerSocketChannel}
-import akka.actor.{ActorSystem, ActorRef}
-import akka.event.{BusLogging, LoggingAdapter}
 import java.util.concurrent.CountDownLatch
 import java.net.SocketAddress
+import akka.event.{LoggingBus, BusLogging, LoggingAdapter}
+import akka.actor.{ActorSystem, ActorRef}
 
 // threadsafe
-class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
+class IoWorker(log: LoggingAdapter, config: IoWorkerConfig) {
+  def this(loggingBus: LoggingBus, config: IoWorkerConfig) =
+    this(new BusLogging(loggingBus, "IoWorker", getClass), config)
+  def this(loggingSystem: ActorSystem, config: IoWorkerConfig) =
+    this(loggingSystem.eventStream, config)
+  def this(loggingSystem: ActorSystem) = this(loggingSystem, IoWorkerConfig())
+  def this(loggingBus: LoggingBus) = this(loggingBus, IoWorkerConfig())
+  def this(log: LoggingAdapter) = this(log, IoWorkerConfig())
+
   import IoWorker._
 
   private var ioThread: Option[IoThread] = None
@@ -44,16 +52,9 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
   def start(): this.type = {
     lock.synchronized {
       if (ioThread.isEmpty) {
-        if (_system.isEmpty) _system = Some(ActorSystem("IoWorker"))
-        ioThread = Some {
-          new IoThread(
-            config = config,
-            name = config.threadName + '-' + _runningWorkers.size,
-            log = new BusLogging(_system.get.eventStream, "IoWorker", getClass)
-          )
-        }
-        _runningWorkers = _runningWorkers :+ this
+        ioThread = Some(new IoThread(config,config.threadName + '-' + _runningWorkers.size, log))
         ioThread.get.start()
+        _runningWorkers = _runningWorkers :+ this
       }
     }
     this
@@ -72,10 +73,6 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
         latch.await()
         ioThread = None
         _runningWorkers = _runningWorkers.filter(_ != this)
-        if (_runningWorkers.isEmpty) {
-          _system.get.shutdown()
-          _system = None
-        }
       }
     }
   }
@@ -86,7 +83,7 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
   def ! (cmd: Command)(implicit sender: ActorRef = null) {
     if (ioThread.isEmpty)
       throw new IllegalStateException("Cannot post message to unstarted IoWorker")
-    ioThread.get.post(cmd, if (sender != null) sender else _system.get.deadLetters)
+    ioThread.get.post(cmd, sender)
   }
 
   private class IoThread(config: IoWorkerConfig, name: String, log: LoggingAdapter) extends Thread {
@@ -269,7 +266,7 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
           handle.handler ! Closed(handle, PeerClosed)
         case e =>
           log.error(e, "Error during execution of command '{}'", command)
-          sender ! CommandError(command, e)
+          if (sender != null) sender ! CommandError(command, e)
       }
     }
 
@@ -316,20 +313,20 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
       channel.socket.bind(cmd.address, cmd.backlog)
       val key = channel.register(selector, OP_ACCEPT)
       key.attach(cmd)
-      sender ! Bound(Key(key), cmd.tag)
+      if (sender != null) sender ! Bound(Key(key), cmd.tag)
     }
 
     def unbind(cmd: Unbind, sender: ActorRef) {
       val key = cmd.bindingKey.selectionKey
       key.cancel()
       key.channel.close()
-      sender ! Unbound(cmd.bindingKey, cmd.tag)
+      if (sender != null) sender ! Unbound(cmd.bindingKey, cmd.tag)
     }
 
     def deliverStats(sender: ActorRef) {
       val stats = IoWorkerStats(System.currentTimeMillis - startTime, bytesRead, bytesWritten, connectionsOpened,
         connectionsClosed, commandsExecuted)
-      sender ! stats
+      if (sender != null) sender ! stats
     }
 
     def closeSelector() {
@@ -348,7 +345,6 @@ class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
 
 object IoWorker {
   private val lock = new AnyRef
-  private var _system: Option[ActorSystem] = None
   private var _runningWorkers = Seq.empty[IoWorker]
 
   def runningWorkers: Seq[IoWorker] =

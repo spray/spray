@@ -76,18 +76,14 @@ abstract class PipelineSpec(name: String) extends Specification {
       collectedEvents.append(_)
     )
 
-    def runCommands(commands: Command*): TestPipelineResult = {
+    def run(commandsAndEvents: AnyRef*): TestPipelineResult = {
       clear()
-      commands.foreach {
+      commandsAndEvents.foreach {
         case TestWait(duration) => Thread.sleep(Duration(duration).toMillis)
-        case x => pipelines.commandPipeline(x)
+        case x: Command => pipelines.commandPipeline(x)
+        case x: Event => pipelines.eventPipeline(x)
+        case _ => throw new IllegalArgumentException
       }
-      (collectedCommands.toList, collectedEvents.toList)
-    }
-
-    def runEvents(events: Event*): TestPipelineResult = {
-      clear()
-      events.foreach(pipelines.eventPipeline)
       (collectedCommands.toList, collectedEvents.toList)
     }
 

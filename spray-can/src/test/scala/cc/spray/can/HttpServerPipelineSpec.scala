@@ -42,7 +42,7 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
   Step(stop())
 
   def dispatchSimpleRequestToSingletonHandler = {
-    singletonPipeline.runEvents {
+    singletonPipeline.run {
       received(simpleRequest)
     } must produceCommands {
       HttpServer.Dispatch(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))))
@@ -50,7 +50,7 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
   }
 
   def dispatchFragmentedRequest = {
-    singletonPipeline.runEvents(
+    singletonPipeline.run(
       received {
         """|GET / HTTP/1.1
            |Host: te"""
@@ -66,19 +66,19 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
   }
 
   def strayResponse = {
-    singletonPipeline.runCommands(HttpResponse()) must throwAn[IllegalStateException]
+    singletonPipeline.run(HttpResponse()) must throwAn[IllegalStateException]
   }
 
   def renderResponse = {
     val pipeline = singletonPipeline
-    pipeline.runEvents(received(simpleRequest))
-    pipeline.runCommands(HttpResponse()) must produceCommands(send(simpleResponse))
+    pipeline.run(received(simpleRequest))
+    pipeline.run(HttpResponse()) must produceCommands(send(simpleResponse))
   }
 
   def perConnectionHandlers = {
     val pipeline1 = testPipeline(PerConnectionHandler(_ => Props(new DummyActor('actor1))))
     val pipeline2 = testPipeline(PerConnectionHandler(_ => Props(new DummyActor('actor2))))
-    def receiver(pipeline: TestPipeline) = dispatchReceiverName(pipeline.runEvents(received(simpleRequest)));
+    def receiver(pipeline: TestPipeline) = dispatchReceiverName(pipeline.run(received(simpleRequest)));
     { receiver(pipeline1) === 'actor1 } and
     { receiver(pipeline2) === 'actor2 } and
     { receiver(pipeline1) === 'actor1 } and
@@ -88,7 +88,7 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
   def perMessageHandlers = {
     val counter = new AtomicInteger
     val pipeline = testPipeline(PerMessageHandler(_ => Props(new DummyActor("actor" + counter.incrementAndGet()))))
-    def receiver(msg: String) = dispatchReceiverName(pipeline.runEvents(received(msg)));
+    def receiver(msg: String) = dispatchReceiverName(pipeline.run(received(msg)));
     { receiver(simpleRequest) === 'actor1 } and
     { receiver(simpleRequest) === 'actor2 } and
     { receiver(chunkedRequestStart) === 'actor3 } and
@@ -100,14 +100,11 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
 
   def testIdleTimeout = {
     val pipeline = singletonPipeline
-    pipeline.runEvents(received(simpleRequest))
-    pipeline.runCommands(
+    pipeline.run(received(simpleRequest))
+    pipeline.run(
       TestWait("50 ms"),
       TickGenerator.Tick
-    ) must produceCommands(
-      IoPeer.Close(IdleTimeout),
-      TickGenerator.Tick
-    )
+    ) mustEqual (List(IoPeer.Close(IdleTimeout)), List(TickGenerator.Tick))
   }
 
   /////////////////////////// SUPPORT ////////////////////////////////

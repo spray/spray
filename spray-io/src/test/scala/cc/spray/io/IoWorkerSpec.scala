@@ -31,7 +31,7 @@ class IoWorkerSpec extends Specification {
     }
   }
 
-  lazy val worker = new IoWorker().start()
+  lazy val worker = new IoWorker(system).start()
   lazy val server = system.actorOf(Props(new TestServer(worker)), name = "test-server")
   lazy val client = system.actorOf(Props(new TestClient(worker)), name = "test-client")
 

@@ -31,9 +31,8 @@ import pipelines.{TickGenerator, ConnectionTimeouts}
  * replied to with [[cc.spray.can.model.HttpResponsePart]] messages (or [[cc.spray.can.HttpClientException]] instances
  * in case of errors).
  */
-class HttpClient(config: HttpClientConfig)
-                (ioWorker: IoWorker = new IoWorker(config))
-                extends IoClient(ioWorker) with ConnectionActors {
+class HttpClient(ioWorker: IoWorker, config: HttpClientConfig)
+  extends IoClient(ioWorker) with ConnectionActors {
 
   protected lazy val pipeline ={
     val connectionTimeouts =

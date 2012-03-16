@@ -24,7 +24,7 @@ import cc.spray.io.IoWorker
 object Main extends App {
   val system = ActorSystem("SimpleHttpServer")
   val handler = system.actorOf(Props[TestService])
-  val ioWorker = new IoWorker().start()
+  val ioWorker = new IoWorker(system).start()
   val server = system.actorOf(
     props = Props(new HttpServer(ioWorker, MessageHandlerDispatch.SingletonHandler(handler))),
     name = "http-server"
