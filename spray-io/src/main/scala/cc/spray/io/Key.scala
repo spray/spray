@@ -27,12 +27,16 @@ sealed abstract class Key {
 
   private[io] val writeBuffers = ListBuffer.empty[ListBuffer[ByteBuffer]]
 
+  private[this] var _ops = 0
+
   private[io] def enable(ops: Int) {
-    selectionKey.interestOps(selectionKey.interestOps() | ops)
+    _ops |= ops
+    selectionKey.interestOps(_ops)
   }
 
   private[io] def disable(ops: Int) {
-    selectionKey.interestOps(selectionKey.interestOps() & ~ops)
+    _ops &= ~ops
+    selectionKey.interestOps(_ops)
   }
 }
 

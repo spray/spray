@@ -24,7 +24,7 @@ import java.nio.channels.{CancelledKeyException, SelectionKey, SocketChannel, Se
 import akka.actor.{ActorSystem, ActorRef}
 import akka.event.{BusLogging, LoggingAdapter}
 import java.util.concurrent.CountDownLatch
-import java.net.{Socket, SocketAddress}
+import java.net.SocketAddress
 
 // threadsafe
 class IoWorker(config: IoWorkerConfig = IoWorkerConfig()) {
