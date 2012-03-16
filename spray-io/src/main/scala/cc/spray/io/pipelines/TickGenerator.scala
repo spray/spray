@@ -32,7 +32,7 @@ object TickGenerator {
 
   private def createPipelineStage(period: Duration) = new EventPipelineStage {
     def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): EPL = {
-      val reapingTrigger = context.connectionActorContext.system.scheduler.schedule(
+      val generator = context.connectionActorContext.system.scheduler.schedule(
         initialDelay = period,
         frequency = period,
         receiver = context.connectionActorContext.self,
@@ -40,7 +40,7 @@ object TickGenerator {
       )
       _ match {
         case x: IoPeer.Closed =>
-          reapingTrigger.cancel()
+          generator.cancel()
           eventPL(x)
         case x => eventPL(x)
       }
@@ -48,5 +48,5 @@ object TickGenerator {
   }
 
   ////////////// COMMANDS //////////////
-  case object Tick extends Command with Droppable
+  case object Tick extends Event with Droppable
 }

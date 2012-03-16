@@ -29,13 +29,6 @@ object ConnectionTimeouts {
 
       def commandPipeline(command: Command) {
         command match {
-          case TickGenerator.Tick =>
-            if (timeout.isFinite && (timeout != Duration.Zero) &&
-              (lastActivity + timeout.toMillis) < System.currentTimeMillis) {
-              log.debug("Closing connection due to idle timeout...")
-              commandPL(IoPeer.Close(IdleTimeout))
-            }
-            commandPL(command)
           case x: SetIdleTimeout => timeout = x.timeout
           case _ => commandPL(command)
         }
@@ -45,6 +38,12 @@ object ConnectionTimeouts {
         event match {
           case _: IoPeer.Received      => lastActivity = System.currentTimeMillis
           case _: IoPeer.SendCompleted => lastActivity = System.currentTimeMillis
+          case TickGenerator.Tick      =>
+            if (timeout.isFinite && (timeout != Duration.Zero) &&
+              (lastActivity + timeout.toMillis) < System.currentTimeMillis) {
+              log.debug("Closing connection due to idle timeout...")
+              commandPL(IoPeer.Close(IdleTimeout))
+            }
           case _ =>
         }
         eventPL(event)
