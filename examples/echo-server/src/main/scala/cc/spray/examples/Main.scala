@@ -23,10 +23,10 @@ class EchoServer extends IoServer(new IoWorker().start()) {
       }
 
     case IoWorker.SendCompleted(_) =>
-      log.info("Send completed")
+      log.debug("Send completed")
 
     case IoWorker.Closed(_, reason) =>
-      log.info("Connection closed: {}", reason)
+      log.debug("Connection closed: {}", reason)
   }
 
 }
