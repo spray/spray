@@ -31,7 +31,6 @@ object ServerFrontend {
       val openRequests = Queue.empty[HttpRequest]
 
       def commandPipeline(command: Command) {
-        log.debug("Received command " + command)
         commandPL {
           command match {
             case part: HttpResponsePart =>
@@ -50,7 +49,6 @@ object ServerFrontend {
 
       def eventPipeline(event: Event) {
         import MessageHandlerDispatch._
-        log.debug("Received event " + event)
         event match {
           case x: HttpRequest =>
             openRequests += x

@@ -33,6 +33,69 @@ class HttpServer(ioWorker: IoWorker,
 
 object HttpServer {
 
+  // The HttpServer pipelines setup:
+  //
+  // |------------------------------------------------------------------------------------------
+  // | ServerFrontend: converts HttpMessagePart, IoPeer.Closed and IoPeer.SendCompleted to
+  // |                 MessageHandlerDispatch.DispatchCommand,
+  // |                 generates HttpResponsePartRenderingContext
+  // |------------------------------------------------------------------------------------------
+  //    /\                                |
+  //    | HttpMessagePart                 | HttpResponsePartRenderingContext
+  //    | IoPeer.Closed                   | MessageHandlerDispatch.DispatchNewMessage
+  //    | IoPeer.SendCompleted            | MessageHandlerDispatch.DispatchFollowupMessage
+  //    | TickGenerator.Tick              |
+  //    |                                \/
+  // |------------------------------------------------------------------------------------------
+  // | RequestParsing: converts IoPeer.Received to HttpMessagePart,
+  // |                 generates HttpResponsePartRenderingContext (in case of errors)
+  // |------------------------------------------------------------------------------------------
+  //    /\                                |
+  //    | IoPeer.Closed                   | MessageHandlerDispatch.DispatchNewMessage
+  //    | IoPeer.SendCompleted            | MessageHandlerDispatch.DispatchFollowupMessage
+  //    | IoPeer.Received                 | HttpResponsePartRenderingContext
+  //    | TickGenerator.Tick              |
+  //    |                                \/
+  // |------------------------------------------------------------------------------------------
+  // | ResponseRendering: converts HttpResponsePartRenderingContext
+  // |                    to IoPeer.Send and IoPeer.Close
+  // |------------------------------------------------------------------------------------------
+  //    /\                                |
+  //    | IoPeer.Closed                   | IoPeer.Send
+  //    | IoPeer.SendCompleted            | IoPeer.Close
+  //    | IoPeer.Received                 | MessageHandlerDispatch.DispatchNewMessage
+  //    | TickGenerator.Tick              | MessageHandlerDispatch.DispatchFollowupMessage
+  //    |                                \/
+  // |------------------------------------------------------------------------------------------
+  // | MessageHandlerDispatch: converts MessageHandlerDispatch.DispatchNewMessage and
+  // |                         MessageHandlerDispatch.DispatchFollowupMessage to IoPeer.Dispatch
+  // |------------------------------------------------------------------------------------------
+  //    /\                                |
+  //    | IoPeer.Closed                   | IoPeer.Send
+  //    | IoPeer.SendCompleted            | IoPeer.Close
+  //    | IoPeer.Received                 | IoPeer.Dispatch
+  //    | TickGenerator.Tick              |
+  //    |                                \/
+  // |------------------------------------------------------------------------------------------
+  // | ConnectionTimeouts: listens to events IoPeer.Received, IoPeer.SendCompleted and
+  // |                     TickGenerator.Tick, generates IoPeer.Close commands
+  // |------------------------------------------------------------------------------------------
+  //    /\                                |
+  //    | IoPeer.Closed                   | IoPeer.Send
+  //    | IoPeer.SendCompleted            | IoPeer.Close
+  //    | IoPeer.Received                 | IoPeer.Dispatch
+  //    | TickGenerator.Tick              |
+  //    |                                \/
+  // |------------------------------------------------------------------------------------------
+  // | TickGenerator: listens to event IoPeer.Closed,
+  // |                dispatches TickGenerator.Tick event to the head of the event PL
+  // |------------------------------------------------------------------------------------------
+  //    /\                                |
+  //    | IoPeer.Closed                   | IoPeer.Send
+  //    | IoPeer.SendCompleted            | IoPeer.Close
+  //    | IoPeer.Received                 | IoPeer.Dispatch
+  //    | TickGenerator.Tick              |
+  //    |                                \/
   private[can] def pipeline(config: HttpServerConfig, messageHandler: MessageHandlerDispatch.MessageHandler,
                             log: LoggingAdapter): PipelineStage = {
     val connectionTimeouts =
