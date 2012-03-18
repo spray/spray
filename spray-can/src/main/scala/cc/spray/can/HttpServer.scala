@@ -68,12 +68,12 @@ object HttpServer {
   //    |                                \/
   // |------------------------------------------------------------------------------------------
   // | MessageHandlerDispatch: converts MessageHandlerDispatch.DispatchNewMessage and
-  // |                         MessageHandlerDispatch.DispatchFollowupMessage to IoPeer.Dispatch
+  // |                         MessageHandlerDispatch.DispatchFollowupMessage to IoPeer.Tell
   // |------------------------------------------------------------------------------------------
   //    /\                                |
   //    | IoPeer.Closed                   | IoPeer.Send
   //    | IoPeer.SendCompleted            | IoPeer.Close
-  //    | IoPeer.Received                 | IoPeer.Dispatch
+  //    | IoPeer.Received                 | IoPeer.Tell
   //    | TickGenerator.Tick              |
   //    |                                \/
   // |------------------------------------------------------------------------------------------
@@ -83,7 +83,7 @@ object HttpServer {
   //    /\                                |
   //    | IoPeer.Closed                   | IoPeer.Send
   //    | IoPeer.SendCompleted            | IoPeer.Close
-  //    | IoPeer.Received                 | IoPeer.Dispatch
+  //    | IoPeer.Received                 | IoPeer.Tell
   //    | TickGenerator.Tick              |
   //    |                                \/
   // |------------------------------------------------------------------------------------------
@@ -93,35 +93,31 @@ object HttpServer {
   //    /\                                |
   //    | IoPeer.Closed                   | IoPeer.Send
   //    | IoPeer.SendCompleted            | IoPeer.Close
-  //    | IoPeer.Received                 | IoPeer.Dispatch
+  //    | IoPeer.Received                 | IoPeer.Tell
   //    | TickGenerator.Tick              |
   //    |                                \/
   private[can] def pipeline(config: HttpServerConfig, messageHandler: MessageHandlerDispatch.MessageHandler,
                             log: LoggingAdapter): PipelineStage = {
-    val connectionTimeouts =
-      if (config.enableConnectionTimeouts) ConnectionTimeouts(config.idleTimeout, log)
-      else EmptyPipelineStage
-    val tickCycle =
-      if (config.enableConnectionTimeouts) config.reapingCycle
-      else Duration.Zero
-
     ServerFrontend(log) ~>
     RequestParsing(config, log) ~>
     ResponseRendering(config.serverHeader) ~>
     MessageHandlerDispatch(messageHandler) ~>
-    connectionTimeouts ~>
-    TickGenerator(tickCycle)
+    PipelineStage.optional(config.idleTimeoutEnabled, ConnectionTimeouts(config.idleTimeout, log)) ~>
+    PipelineStage.optional(
+      (config.reapingCycle > Duration.Zero) && (config.idleTimeoutEnabled || config.requestTimeoutEnabled),
+      TickGenerator(config.reapingCycle)
+    )
   }
 
 
   ////////////// COMMANDS //////////////
   // HttpResponseParts +
   type ServerCommand = IoServer.ServerCommand
-  type Bind = IoServer.Bind;          val Bind = IoServer.Bind
+  type Bind = IoServer.Bind;    val Bind = IoServer.Bind
   val Unbind = IoServer.Unbind
-  type Close = IoServer.Close;        val Close = IoServer.Close
-  type Send = IoServer.Send;          val Send = IoServer.Send
-  type Dispatch = IoServer.Dispatch;  val Dispatch = IoServer.Dispatch
+  type Close = IoServer.Close;  val Close = IoServer.Close
+  type Send = IoServer.Send;    val Send = IoServer.Send
+  type Tell = IoServer.Tell;    val Tell = IoServer.Tell
 
   ////////////// EVENTS //////////////
   // HttpRequestParts +

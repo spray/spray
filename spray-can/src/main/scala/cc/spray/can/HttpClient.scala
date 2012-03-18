@@ -54,10 +54,10 @@ object HttpClient {
 
   ////////////// COMMANDS //////////////
   // HttpRequestParts +
-  type Connect = IoClient.Connect;    val Connect = IoClient.Connect
-  type Close = IoClient.Close;        val Close = IoClient.Close
-  type Send = IoClient.Send;          val Send = IoClient.Send
-  type Dispatch = IoClient.Dispatch;  val Dispatch = IoClient.Dispatch
+  type Connect = IoClient.Connect;  val Connect = IoClient.Connect
+  type Close = IoClient.Close;      val Close = IoClient.Close
+  type Send = IoClient.Send;        val Send = IoClient.Send
+  type Tell = IoClient.Tell;        val Tell = IoClient.Tell
 
   ////////////// EVENTS //////////////
   // HttpResponseParts +

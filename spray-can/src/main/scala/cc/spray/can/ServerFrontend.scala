@@ -52,16 +52,16 @@ object ServerFrontend {
         event match {
           case x: HttpRequest =>
             openRequests += x
-            commandPL(DispatchNewMessage(x))
+            commandPL(DispatchNewMessage(x, context.connectionActorContext.self))
           case x: ChunkedRequestStart =>
             openRequests += x.request
-            commandPL(DispatchNewMessage(x))
+            commandPL(DispatchNewMessage(x, context.connectionActorContext.self))
           case x: HttpMessagePart =>
-            commandPL(DispatchFollowupMessage(x))
+            commandPL(DispatchFollowupMessage(x, context.connectionActorContext.self))
           case x: HttpServer.SendCompleted =>
-            commandPL(DispatchFollowupMessage(x))
+            commandPL(DispatchFollowupMessage(x,context.connectionActorContext.self))
           case x: HttpServer.Closed =>
-            commandPL(DispatchFollowupMessage(x))
+            commandPL(DispatchFollowupMessage(x, context.connectionActorContext.self))
           case ev => eventPL(ev)
         }
       }

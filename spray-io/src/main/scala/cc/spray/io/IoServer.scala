@@ -89,9 +89,9 @@ object IoServer {
   }
 
   case object Unbind extends ServerCommand
-  type Close = IoPeer.Close;        val Close = IoPeer.Close
-  type Send = IoPeer.Send;          val Send = IoPeer.Send
-  type Dispatch = IoPeer.Dispatch;  val Dispatch = IoPeer.Dispatch // only available with ConnectionActors mixin
+  type Close = IoPeer.Close;  val Close = IoPeer.Close
+  type Send = IoPeer.Send;    val Send = IoPeer.Send
+  type Tell = IoPeer.Tell;    val Tell = IoPeer.Tell // only available with ConnectionActors mixin
 
 
   ////////////// EVENTS //////////////

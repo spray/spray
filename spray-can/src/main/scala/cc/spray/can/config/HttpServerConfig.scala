@@ -24,6 +24,9 @@ case class HttpServerConfig(
 
   // HttpServer
   serverHeader: String = "spray-can/" + SprayCanVersion,
+  idleTimeout: Duration = Duration("10 sec"),
+  requestTimeout: Duration = Duration("5 sec"),
+  reapingCycle: Duration = Duration("100 ms"),
 
   // IoWorkerConfig
   threadName: String  = IoWorkerConfig.defaultThreadName,
@@ -33,13 +36,6 @@ case class HttpServerConfig(
   tcpSendBufferSize: Option[Int] = IoWorkerConfig.defaultTcpSendBufferSize,
   tcpKeepAlive: Option[Boolean] = IoWorkerConfig.defaultTcpKeepAlive,
   tcpNoDelay: Option[Boolean] = IoWorkerConfig.defaultTcpNoDelay,
-
-  // ConnectionTimeoutConfig
-  enableConnectionTimeouts: Boolean = true,
-  idleTimeout: Duration = Duration("10 sec"),
-
-  // for connection idle and request timeouts
-  reapingCycle: Duration = Duration("100 ms"),
 
   // HttpParserConfig
   maxUriLength: Int             = HttpParserConfig.defaultMaxUriLength,
@@ -53,4 +49,24 @@ case class HttpServerConfig(
   maxChunkExtCount: Int         = HttpParserConfig.defaultMaxChunkExtCount,
   maxChunkSize: Int             = HttpParserConfig.defaultMaxChunkSize
 
-) extends IoWorkerConfig with HttpParserConfig
+) extends IoWorkerConfig with HttpParserConfig {
+  require(idleTimeout >= Duration.Zero, "idleTimeout must be >= 0")
+  require(requestTimeout >= Duration.Zero, "requestTimeout must be >= 0")
+  require(reapingCycle >= Duration.Zero, "reapingCycle must be >= 0")
+  require(readBufferSize > 0, "readBufferSize must be > 0")
+  require(tcpReceiveBufferSize.isEmpty || tcpReceiveBufferSize.get > 0, "tcpReceiveBufferSize must be > 0 if defined")
+  require(tcpSendBufferSize.isEmpty || tcpSendBufferSize.get > 0, "tcpSendBufferSize must be > 0 if defined")
+  require(maxUriLength > 0, "maxUriLength must be > 0")
+  require(maxResponseReasonLength > 0, "maxResponseReasonLength must be > 0")
+  require(maxHeaderNameLength > 0, "maxHeaderNameLength must be > 0")
+  require(maxHeaderValueLength > 0, "maxHeaderValueLength must be > 0")
+  require(maxHeaderCount > 0, "maxHeaderCount must be > 0")
+  require(maxContentLength > 0, "maxContentLength must be > 0")
+  require(maxChunkExtNameLength > 0, "maxChunkExtNameLength must be > 0")
+  require(maxChunkExtValueLength > 0, "maxChunkExtValueLength must be > 0")
+  require(maxChunkExtCount > 0, "maxChunkExtCount must be > 0")
+  require(maxChunkSize > 0, "maxChunkSize must be > 0")
+
+  def idleTimeoutEnabled = idleTimeout > Duration.Zero
+  def requestTimeoutEnabled = requestTimeout > Duration.Zero
+}

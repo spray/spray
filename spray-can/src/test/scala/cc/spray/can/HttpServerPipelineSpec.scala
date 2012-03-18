@@ -45,7 +45,7 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
     singletonPipeline.run {
       received(simpleRequest)
     } must produceCommands {
-      HttpServer.Dispatch(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))))
+      HttpServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), connectionActor)
     }
   }
 
@@ -61,7 +61,7 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
            |"""
       }
     ) must produceCommands {
-      HttpServer.Dispatch(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))))
+      HttpServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), connectionActor)
     }
   }
 
@@ -140,7 +140,7 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
   def singletonPipeline = testPipeline(SingletonHandler(singletonHandler))
 
   def dispatchReceiverName(pipelineResult: TestPipelineResult) = {
-    val (List(HttpServer.Dispatch(receiver, _)), _) = pipelineResult
+    val (List(HttpServer.Tell(receiver, _, _)), _) = pipelineResult
     receiver.ask('name).await
   }
 

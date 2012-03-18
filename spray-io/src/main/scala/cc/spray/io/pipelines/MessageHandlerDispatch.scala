@@ -24,25 +24,25 @@ object MessageHandlerDispatch {
   def apply(messageHandler: MessageHandler) = new CommandPipelineStage {
     def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
 
-      val dispatcher: DispatchCommand => IoPeer.Dispatch = messageHandler match {
+      val dispatcher: DispatchCommand => IoPeer.Tell = messageHandler match {
         case SingletonHandler(handler) =>
-          cmd => IoPeer.Dispatch(handler, cmd.message)
+          cmd => IoPeer.Tell(handler, cmd.message, cmd.sender)
 
         case PerConnectionHandler(handlerPropsCreator) =>
           val props = handlerPropsCreator(context.handle)
           val handler = context.connectionActorContext.actorOf(props)
-          cmd => IoPeer.Dispatch(handler, cmd.message)
+          cmd => IoPeer.Tell(handler, cmd.message, cmd.sender)
 
         case PerMessageHandler(handlerPropsCreator) => {
           var handler: ActorRef = null
           _ match {
-            case x: DispatchNewMessage =>
+            case cmd: DispatchNewMessage =>
               val props = handlerPropsCreator(context.handle)
               handler = context.connectionActorContext.actorOf(props)
-              IoPeer.Dispatch(handler, x)
-            case x: DispatchFollowupMessage =>
+              IoPeer.Tell(handler, cmd.message, cmd.sender)
+            case cmd: DispatchFollowupMessage =>
               if (handler == null) throw new IllegalStateException // a MessagePart without a preceding Message?
-              IoPeer.Dispatch(handler, x)
+              IoPeer.Tell(handler, cmd.message, cmd.sender)
           }
         }
       }
@@ -62,7 +62,8 @@ object MessageHandlerDispatch {
   ////////////// COMMANDS //////////////
   sealed trait DispatchCommand extends Command {
     def message: Any
+    def sender: ActorRef
   }
-  case class DispatchNewMessage(message: Any) extends DispatchCommand
-  case class DispatchFollowupMessage(message: Any) extends DispatchCommand
+  case class DispatchNewMessage(message: Any, sender: ActorRef) extends DispatchCommand
+  case class DispatchFollowupMessage(message: Any, sender: ActorRef) extends DispatchCommand
 }

@@ -22,38 +22,40 @@ import akka.event.LoggingAdapter
 
 object ConnectionTimeouts {
 
-  def apply(idleTimeout: Duration, log: LoggingAdapter): PipelineStage = new DoublePipelineStage {
-    def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) = new Pipelines {
-      var timeout = idleTimeout
-      var lastActivity = System.currentTimeMillis
+  def apply(idleTimeout: Duration, log: LoggingAdapter): PipelineStage = {
+    require(idleTimeout >= Duration.Zero, "timeout must not be negative")
 
-      def commandPipeline(command: Command) {
-        command match {
-          case x: SetIdleTimeout => timeout = x.timeout
-          case _ => commandPL(command)
-        }
-      }
+    new DoublePipelineStage {
+      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) = new Pipelines {
+        var timeout = idleTimeout
+        var lastActivity = System.currentTimeMillis
 
-      def eventPipeline(event: Event) {
-        event match {
-          case _: IoPeer.Received      => lastActivity = System.currentTimeMillis
-          case _: IoPeer.SendCompleted => lastActivity = System.currentTimeMillis
-          case TickGenerator.Tick      =>
-            if (timeout.isFinite && (timeout != Duration.Zero) &&
-              (lastActivity + timeout.toMillis) < System.currentTimeMillis) {
-              log.debug("Closing connection due to idle timeout...")
-              commandPL(IoPeer.Close(IdleTimeout))
-            }
-          case _ =>
+        def commandPipeline(command: Command) {
+          command match {
+            case x: SetIdleTimeout => timeout = x.timeout
+            case _ => commandPL(command)
+          }
         }
-        eventPL(event)
+
+        def eventPipeline(event: Event) {
+          event match {
+            case _: IoPeer.Received      => lastActivity = System.currentTimeMillis
+            case _: IoPeer.SendCompleted => lastActivity = System.currentTimeMillis
+            case TickGenerator.Tick      =>
+              if (timeout.isFinite && (lastActivity + timeout.toMillis) < System.currentTimeMillis) {
+                log.debug("Closing connection due to idle timeout...")
+                commandPL(IoPeer.Close(IdleTimeout))
+              }
+            case _ =>
+          }
+          eventPL(event)
+        }
       }
     }
   }
 
   ////////////// COMMANDS //////////////
   case class SetIdleTimeout(timeout: Duration) extends Command {
-    require(timeout.isFinite, "timeout must not be infinite")
     require(timeout >= Duration.Zero, "timeout must not be negative")
   }
 }

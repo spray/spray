@@ -39,7 +39,7 @@ object IoPeer {
   }
 
   // only available with ConnectionActors mixin
-  case class Dispatch(receiver: ActorRef, message: Any) extends Command
+  case class Tell(receiver: ActorRef, message: Any, sender: ActorRef) extends Command
 
   ////////////// EVENTS //////////////
   type Closed = IoWorker.Closed;                val Closed = IoWorker.Closed

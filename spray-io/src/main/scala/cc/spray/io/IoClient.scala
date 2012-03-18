@@ -51,9 +51,9 @@ object IoClient {
   object Connect {
     def apply(host: String, port: Int): Connect = Connect(new InetSocketAddress(host, port))
   }
-  type Close = IoPeer.Close;        val Close = IoPeer.Close
-  type Send = IoPeer.Send;          val Send = IoPeer.Send
-  type Dispatch = IoPeer.Dispatch;  val Dispatch = IoPeer.Dispatch // only available with ConnectionActors mixin
+  type Close = IoPeer.Close;  val Close = IoPeer.Close
+  type Send = IoPeer.Send;    val Send = IoPeer.Send
+  type Tell = IoPeer.Tell;    val Tell = IoPeer.Tell // only available with ConnectionActors mixin
 
   ////////////// EVENTS //////////////
   case class Connected(handle: Handle)
