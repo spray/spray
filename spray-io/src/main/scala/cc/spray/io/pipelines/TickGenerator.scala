@@ -30,7 +30,7 @@ object TickGenerator {
         val generator = context.connectionActorContext.system.scheduler.schedule(
           initialDelay = period,
           frequency = period,
-          receiver = context.connectionActorContext.self,
+          receiver = context.self,
           message = Tick
         )
         _ match {

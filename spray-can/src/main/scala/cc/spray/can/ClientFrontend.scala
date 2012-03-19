@@ -43,7 +43,7 @@ object ClientFrontend {
 
       def dispatch(msg: Any) {
         if (lastCommandSender != null)
-          commandPL(HttpClient.Tell(lastCommandSender, msg, context.connectionActorContext.self))
+          commandPL(HttpClient.Tell(lastCommandSender, msg, context.self))
       }
     }
   }

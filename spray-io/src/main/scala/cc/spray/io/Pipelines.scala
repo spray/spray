@@ -16,7 +16,8 @@
 
 package cc.spray.io
 
-import akka.actor.ActorContext
+import akka.actor.{ActorRef, ActorContext}
+
 
 trait Pipelines {
   def commandPipeline(command: Command)
@@ -34,7 +35,9 @@ object Pipeline {
   val uninitialized: Pipeline[Any] = _ => throw new RuntimeException("Pipeline not yet initialized")
 }
 
-case class PipelineContext(handle: Handle, connectionActorContext: ActorContext)
+case class PipelineContext(handle: Handle, connectionActorContext: ActorContext) {
+  def self: ActorRef = connectionActorContext.self
+}
 
 sealed trait PipelineStage {
   type CPL = Pipeline[Command]  // alias for brevity

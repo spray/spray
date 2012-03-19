@@ -30,7 +30,9 @@ sealed trait HttpResponsePart extends HttpMessagePart
 
 sealed trait HttpMessageStartPart extends HttpMessagePart
 
-sealed trait HttpMessage extends HttpMessageStartPart {
+sealed trait HttpMessageEndPart extends HttpMessagePart
+
+sealed trait HttpMessage extends HttpMessageEndPart {
   def headers: List[HttpHeader]
   def body: Array[Byte]
   def protocol: HttpProtocol
@@ -72,7 +74,6 @@ case class HttpResponse(
   protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
 ) extends HttpMessage with HttpResponsePart {
   def withBody(body: String, charset: String = "ISO-8859-1") = copy(body = body.getBytes(charset))
-
   def bodyAsString: String = if (body.isEmpty) "" else {
     val charset = headers.mapFind {
       case HttpHeader("Content-Type", HttpResponse.ContentTypeCharsetPattern(value)) => Some(value)
@@ -181,6 +182,6 @@ object MessageChunk {
 case class ChunkedMessageEnd(
   extensions: List[ChunkExtension] = Nil,
   trailer: List[HttpHeader] = Nil
-) extends HttpRequestPart with HttpResponsePart
+) extends HttpRequestPart with HttpResponsePart with HttpMessageEndPart
 
 case class ChunkExtension(name: String, value: String)

@@ -98,7 +98,7 @@ object HttpServer {
   //    |                                \/
   private[can] def pipeline(config: HttpServerConfig, messageHandler: MessageHandlerDispatch.MessageHandler,
                             log: LoggingAdapter): PipelineStage = {
-    ServerFrontend(log) ~>
+    ServerFrontend(config, log) ~>
     RequestParsing(config, log) ~>
     ResponseRendering(config.serverHeader) ~>
     MessageHandlerDispatch(messageHandler) ~>

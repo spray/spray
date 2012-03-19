@@ -27,6 +27,7 @@ case class HttpServerConfig(
   idleTimeout: Duration = Duration("10 sec"),
   requestTimeout: Duration = Duration("5 sec"),
   reapingCycle: Duration = Duration("100 ms"),
+  directSender: Boolean = false,
 
   // IoWorkerConfig
   threadName: String  = IoWorkerConfig.defaultThreadName,
