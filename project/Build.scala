@@ -23,12 +23,16 @@ object Build extends Build {
   // Sub Projects
   // -------------------------------------------------------------------------------------------------------------------
 
+  lazy val sprayCan = Project("spray-can", file("spray-can"))
+      .settings(moduleSettings: _*)
+      .dependsOn(sprayIo)
+
   lazy val sprayIo = Project("spray-io", file("spray-io"))
     .settings(moduleSettings: _*)
+    .dependsOn(sprayUtil)
 
-  lazy val sprayCan = Project("spray-can", file("spray-can"))
+  lazy val sprayUtil = Project("spray-util", file("spray-util"))
     .settings(moduleSettings: _*)
-    .dependsOn(sprayIo)
 
 
   // -------------------------------------------------------------------------------------------------------------------

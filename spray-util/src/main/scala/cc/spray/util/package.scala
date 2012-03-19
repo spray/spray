@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.io
+package cc.spray
 
 import collection.LinearSeq
 import akka.dispatch.Future

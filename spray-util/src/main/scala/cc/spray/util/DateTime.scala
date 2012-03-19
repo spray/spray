@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.io.util
+package cc.spray.util
 
 /**
  * Immutable, fast and efficient Date + Time implementation without any dependencies.

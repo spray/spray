@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.io.util
+package cc.spray.util
 
 import collection.LinearSeq
 import annotation.tailrec
