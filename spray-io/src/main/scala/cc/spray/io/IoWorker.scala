@@ -25,20 +25,21 @@ import java.util.concurrent.CountDownLatch
 import java.net.SocketAddress
 import akka.event.{LoggingBus, BusLogging, LoggingAdapter}
 import akka.actor.{ActorSystem, ActorRef}
+import com.typesafe.config.{ConfigFactory, Config}
 
 // threadsafe
-class IoWorker(log: LoggingAdapter, config: IoWorkerConfig) {
-  def this(loggingBus: LoggingBus, config: IoWorkerConfig) =
-    this(new BusLogging(loggingBus, "IoWorker", getClass), config)
-  def this(loggingSystem: ActorSystem, config: IoWorkerConfig) =
+class IoWorker(log: LoggingAdapter, config: Config) {
+  def this(loggingBus: LoggingBus, config: Config) =
+    this(new BusLogging(loggingBus, "IoWorker", classOf[IoWorker]), config)
+  def this(loggingSystem: ActorSystem, config: Config) =
     this(loggingSystem.eventStream, config)
-  def this(loggingSystem: ActorSystem) = this(loggingSystem, IoWorkerConfig())
-  def this(loggingBus: LoggingBus) = this(loggingBus, IoWorkerConfig())
-  def this(log: LoggingAdapter) = this(log, IoWorkerConfig())
+  def this(loggingSystem: ActorSystem) = this(loggingSystem, ConfigFactory.load())
+  def this(loggingBus: LoggingBus) = this(loggingBus, ConfigFactory.load())
+  def this(log: LoggingAdapter) = this(log, ConfigFactory.load())
 
   import IoWorker._
 
-  private var ioThread: Option[IoThread] = None
+  private[this] var ioThread: Option[IoThread] = None
 
   /**
    * @return the IO thread if started and not yet stopped, otherwise None
@@ -52,7 +53,7 @@ class IoWorker(log: LoggingAdapter, config: IoWorkerConfig) {
   def start(): this.type = {
     lock.synchronized {
       if (ioThread.isEmpty) {
-        ioThread = Some(new IoThread(config,config.threadName + '-' + _runningWorkers.size, log))
+        ioThread = Some(new IoThread(new IoWorkerSettings(config), log))
         ioThread.get.start()
         _runningWorkers = _runningWorkers :+ this
       }
@@ -86,7 +87,7 @@ class IoWorker(log: LoggingAdapter, config: IoWorkerConfig) {
     ioThread.get.post(cmd, sender)
   }
 
-  private class IoThread(config: IoWorkerConfig, name: String, log: LoggingAdapter) extends Thread {
+  private class IoThread(settings: IoWorkerSettings, log: LoggingAdapter) extends Thread {
     import SelectionKey._
 
     private val commandQueue = new SingleReaderConcurrentQueue[(Command, ActorRef)]
@@ -101,7 +102,7 @@ class IoWorker(log: LoggingAdapter, config: IoWorkerConfig) {
     private var connectionsClosed = 0L
     private var commandsExecuted = 0L
 
-    setName(name)
+    setName(settings.ThreadName + '-' + _runningWorkers.size)
 
     override def start() {
       if (getState == Thread.State.NEW) {
@@ -188,7 +189,7 @@ class IoWorker(log: LoggingAdapter, config: IoWorkerConfig) {
       log.debug("Reading from connection")
       val handle = key.attachment.asInstanceOf[Handle]
       val channel = key.channel.asInstanceOf[SocketChannel]
-      val buffer = ByteBuffer.allocate(config.readBufferSize)
+      val buffer = ByteBuffer.allocate(settings.ReadBufferSize.toInt)
 
       try {
         if (channel.read(buffer) > -1) {
@@ -223,9 +224,9 @@ class IoWorker(log: LoggingAdapter, config: IoWorkerConfig) {
     def configure(channel: SocketChannel) {
       val socket = channel.socket
       // tcpReceiveBufferSize needs to be set on the ServerSocket before the bind, so we don't set it here
-      if (config.tcpSendBufferSize.isDefined) socket.setSendBufferSize(config.tcpSendBufferSize.get)
-      if (config.tcpKeepAlive.isDefined)      socket.setKeepAlive(config.tcpKeepAlive.get)
-      if (config.tcpNoDelay.isDefined)        socket.setTcpNoDelay(config.tcpNoDelay.get)
+      if (settings.TcpSendBufferSize != 0) socket.setSendBufferSize(settings.TcpSendBufferSize.toInt)
+      if (settings.TcpKeepAlive != 0)      socket.setKeepAlive(settings.TcpKeepAlive > 0)
+      if (settings.TcpNoDelay != 0)        socket.setTcpNoDelay(settings.TcpNoDelay > 0)
       channel.configureBlocking(false)
     }
 
@@ -294,7 +295,8 @@ class IoWorker(log: LoggingAdapter, config: IoWorkerConfig) {
     def connect(cmd: Connect) {
       val channel = SocketChannel.open()
       configure(channel)
-      config.tcpReceiveBufferSize.foreach(channel.socket setReceiveBufferSize _)
+      if (settings.TcpReceiveBufferSize != 0)
+        channel.socket.setReceiveBufferSize(settings.TcpReceiveBufferSize.toInt)
       if (channel.connect(cmd.address)) {
         log.debug("Connection immediately established to {}", cmd.address)
         val key = channel.register(selector, 0) // we don't enable any ops until we have a handle
@@ -309,7 +311,8 @@ class IoWorker(log: LoggingAdapter, config: IoWorkerConfig) {
     def bind(cmd: Bind, sender: ActorRef) {
       val channel = ServerSocketChannel.open
       channel.configureBlocking(false)
-      config.tcpReceiveBufferSize.foreach(channel.socket setReceiveBufferSize _)
+      if (settings.TcpReceiveBufferSize != 0)
+        channel.socket.setReceiveBufferSize(settings.TcpReceiveBufferSize.toInt)
       channel.socket.bind(cmd.address, cmd.backlog)
       val key = channel.register(selector, OP_ACCEPT)
       key.attach(cmd)
