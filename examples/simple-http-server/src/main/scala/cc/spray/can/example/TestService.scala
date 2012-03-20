@@ -76,12 +76,10 @@ class TestService extends Actor with ActorLogging {
       context.children.foreach(_ ! CancelStream(sender, x.reason))
 
     case _: HttpServer.SendCompleted =>
-      // we don't care about send confirmations
+      // ignore send confirmations (they might even have been turned off in the application.conf)
   }
 
   ////////////// helpers //////////////
-
-  lazy val serverActor = context.actorFor("/user/http-server")
 
   val defaultHeaders = List(HttpHeader("Content-Type", "text/plain"))
 
