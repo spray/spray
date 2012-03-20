@@ -17,107 +17,155 @@
 package cc.spray
 package can
 
-import config.HttpServerConfig
 import model._
 import io._
-import pipelines.MessageHandlerDispatch
+import pipelines.{TickGenerator, MessageHandlerDispatch}
 import rendering.HttpResponsePartRenderingContext
 import akka.event.LoggingAdapter
 import akka.actor.ActorRef
 import akka.spray.MinimalActorRef
 import collection.mutable.Queue
 import annotation.tailrec
+import MessageHandlerDispatch._
 
 object ServerFrontend {
+  import HttpServer._
 
-  def apply(config: HttpServerConfig, log: LoggingAdapter) = new DoublePipelineStage {
-    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
-      val openRequests = Queue.empty[RequestRecord]
-      var requestTimeout = config.requestTimeout
-      var lastRequestSender: ActorRef = _
+  def apply(settings: ServerSettings,
+            messageHandler: MessageHandler,
+            timeoutResponse: HttpRequest => HttpResponse,
+            log: LoggingAdapter): DoublePipelineStage = {
+    new DoublePipelineStage {
+      def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): Pipelines = {
+        new Pipelines with MessageHandlerDispatch {
+          val openRequests = Queue.empty[RequestRecord]
+          val unconfirmedSends = Queue.empty[RequestRecord]
+          val handlerCreator = messageHandlerCreator(messageHandler, context)
+          var requestTimeout = settings.RequestTimeout
+          var timeoutTimeout = settings.TimeoutTimeout
 
-      @tailrec
-      def commandPipeline(command: Command) {
-        command match {
-          case part: HttpResponsePart with HttpMessageEndPart =>
-            ensureRequestOpenFor(part)
-            val rec = openRequests.head
-            dispatchPart(part, rec.request)
-            if (rec.hasQueuedResponses) {
-              commandPipeline(rec.dequeue)
-            } else {
-              openRequests.dequeue()
-              if (openRequests.head.hasQueuedResponses)
-                commandPipeline(openRequests.head.dequeue)
+          @tailrec
+          def commandPipeline(command: Command) {
+            command match {
+              case part: HttpResponsePart with HttpMessageEndPart =>
+                ensureRequestOpenFor(part)
+                val rec = openRequests.head
+                sendPart(part, rec)
+                if (rec.hasQueuedResponses) {
+                  commandPipeline(rec.dequeue)
+                } else {
+                  openRequests.dequeue()
+                  if (!openRequests.isEmpty && openRequests.head.hasQueuedResponses)
+                    commandPipeline(openRequests.head.dequeue)
+                }
+
+              case part: HttpResponsePart =>
+                ensureRequestOpenFor(part)
+                val rec = openRequests.head
+                rec.timestamp = 0L // disable request timeout checking once the first response part has come in
+                sendPart(part, rec)
+
+              case response: Response if response.rec == openRequests.head =>
+                commandPipeline(response.msg) // in order response, dispatch
+
+              case response: Response =>
+                response.rec.enqueue(response.msg) // out of order response, queue up
+
+              case x: SetRequestTimeout => requestTimeout = x.timeout.toMillis
+              case x: SetTimeoutTimeout => timeoutTimeout = x.timeout.toMillis
+
+              case cmd => commandPL(cmd)
             }
+          }
 
-          case part: HttpResponsePart =>
-            ensureRequestOpenFor(part)
-            val rec = openRequests.head
-            rec.timestamp = 0L // disable request timeout checking once the first response part has come in
-            dispatchPart(part, rec.request)
+          def eventPipeline(event: Event) {
+            event match {
+              case x: HttpRequest => dispatchNewMessage(x, x, System.currentTimeMillis)
+              case x: ChunkedRequestStart => dispatchNewMessage(x, x.request, 0L)
+              case x: MessageChunk => dispatchFollowupMessage(x)
+              case x: ChunkedMessageEnd =>
+                if (openRequests.isEmpty) throw new IllegalStateException
+                // only start request timeout checking after request has been completed
+                openRequests.last.timestamp = System.currentTimeMillis
+                dispatchFollowupMessage(x)
+              case x: SendCompleted =>
+                if (unconfirmedSends.isEmpty) throw new IllegalStateException
+                val rec = unconfirmedSends.dequeue()
+                commandPL(IoServer.Tell(rec.handler, x, rec.receiver))
+              case x: Closed =>
+                unconfirmedSends.foreach { rec =>
+                  commandPL(IoServer.Tell(rec.handler, x, rec.receiver))
+                }
+              case TickGenerator.Tick => checkForTimeouts()
+              case ev => eventPL(ev)
+            }
+          }
 
-          case response: Response if response.rec == openRequests.head =>
-            commandPipeline(response.msg) // in order response, dispatch
+          def sendPart(part: HttpResponsePart, rec: RequestRecord) {
+            commandPL {
+              import rec.request._
+              HttpResponsePartRenderingContext(part, method, protocol, connectionHeader)
+            }
+            unconfirmedSends.enqueue(rec)
+          }
 
-          case response: Response =>
-            response.rec.enqueue(response.msg) // out of order response, queue up
+          def ensureRequestOpenFor(part: HttpResponsePart) {
+            if (openRequests.isEmpty)
+              throw new IllegalStateException("Received ResponsePart '" + part + "' for non-existing request")
+          }
 
-          case cmd => commandPL(cmd)
-        }
-      }
+          def dispatchNewMessage(msg: Any, request: HttpRequest, timestamp: Long) {
+            val rec = new RequestRecord(request, handlerCreator(), timestamp)
+            rec.receiver = if (settings.DirectResponding) context.self else newReceiver(rec)
+            openRequests += rec
+            commandPL(IoServer.Tell(rec.handler, msg, rec.receiver))
+          }
 
-      def eventPipeline(event: Event) {
-        import MessageHandlerDispatch._
-        def dispatchNewMessage(msg: Any, rec: RequestRecord) {
-          openRequests += rec
-          lastRequestSender = requestSender(rec)
-          commandPL(DispatchNewMessage(msg, lastRequestSender))
-        }
-        def dispatchFollowupMessage(msg: Any) {
-          if (lastRequestSender == null) // part before start shouldn't be allowed by the request parsing stage
-            throw new IllegalStateException
-          commandPL(DispatchFollowupMessage(msg, lastRequestSender))
-        }
-        event match {
-          case x: HttpRequest => dispatchNewMessage(x, new RequestRecord(x, System.currentTimeMillis))
-          case x: ChunkedRequestStart => dispatchNewMessage(x, new RequestRecord(x.request, 0L))
-          case x: MessageChunk => dispatchFollowupMessage(x)
-          case x: ChunkedMessageEnd => // only start request timeout checking after request has been completed
-            if (openRequests.isEmpty) throw new IllegalStateException
-            openRequests.last.timestamp = System.currentTimeMillis
-            dispatchFollowupMessage(x)
-          case x: HttpServer.SendCompleted => dispatchFollowupMessage(x)
-          case x: HttpServer.Closed => dispatchFollowupMessage(x)
-          case ev => eventPL(ev)
-        }
-      }
+          def dispatchFollowupMessage(msg: Any) {
+            if (openRequests.isEmpty) // part before start shouldn't be allowed by the request parsing stage
+              throw new IllegalStateException
+            val rec = openRequests.last
+            commandPL(IoServer.Tell(rec.handler, msg, rec.receiver))
+          }
 
-      def dispatchPart(part: HttpResponsePart, request: HttpRequest) {
-        commandPL {
-          HttpResponsePartRenderingContext(part, request.method, request.protocol, request.connectionHeader)
-        }
-      }
+          def newReceiver(rec: RequestRecord): ActorRef = new MinimalActorRef(context.self) {
+            override def !(message: Any)(implicit sender: ActorRef) {
+              message match {
+                case x: Command =>
+                  context.self ! new Response(rec, x)
+                case _ =>
+                  throw new IllegalArgumentException("Illegal response " + message + " to HTTP request " + rec.request)
+              }
+            }
+          }
 
-      def ensureRequestOpenFor(part: HttpResponsePart) {
-        if (openRequests.isEmpty)
-          throw new IllegalStateException("Received ResponsePart '" + part + "' for non-existing request")
-      }
-
-      def requestSender(rec: RequestRecord): ActorRef = new MinimalActorRef(context.self) {
-        override def !(message: Any)(implicit sender: ActorRef) {
-          message match {
-            case x: Command =>
-              context.self ! new Response(rec, x)
-            case _ =>
-              throw new IllegalArgumentException("Illegal response " + message + " to HTTP request " + rec.request)
+          @tailrec
+          def checkForTimeouts() {
+            if (!openRequests.isEmpty && requestTimeout > 0) {
+              val rec = openRequests.head
+              if (rec.timestamp > 0) {
+                if (rec.timestamp + requestTimeout < System.currentTimeMillis) {
+                  val timeoutHandler = if (settings.TimeoutHandler.isEmpty) rec.handler
+                                       else context.connectionActorContext.actorFor(settings.TimeoutHandler)
+                  commandPipeline(IoServer.Tell(timeoutHandler, RequestTimeout(rec.request), rec.receiver))
+                  // we record the time of the Timeout dispatch as negative timestamp value
+                  rec.timestamp = -System.currentTimeMillis
+                }
+              } else if (rec.timestamp < 0 && timeoutTimeout > 0) {
+                if (-rec.timestamp + timeoutTimeout < System.currentTimeMillis) {
+                  commandPipeline(timeoutResponse(rec.request))
+                  checkForTimeouts() // check potentially pending requests for timeouts
+                }
+              }
+            }
           }
         }
       }
     }
   }
 
-  private class RequestRecord(val request: HttpRequest, var timestamp: Long) {
+  private class RequestRecord(val request: HttpRequest, val handler: ActorRef, var timestamp: Long) {
+    var receiver: ActorRef = _
     private var responses: Queue[Command] = _
     def enqueue(msg: Command) {
       if (responses == null) responses = Queue(msg)

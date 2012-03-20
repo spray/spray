@@ -18,7 +18,7 @@ package cc.spray.io
 
 import com.typesafe.config.{ConfigFactory, Config}
 
-class IoWorkerSettings(config: Config) {
+class IoWorkerSettings(config: Config = ConfigFactory.load()) {
   private[this] val c: Config = {
     val c = config.withFallback(ConfigFactory.defaultReference())
     c.checkValid(ConfigFactory.defaultReference(), "spray.io")

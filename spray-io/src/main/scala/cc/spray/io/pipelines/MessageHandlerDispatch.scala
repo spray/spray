@@ -19,51 +19,30 @@ package pipelines
 
 import akka.actor.{ActorRef, Props}
 
-object MessageHandlerDispatch {
 
-  def apply(messageHandler: MessageHandler) = new CommandPipelineStage {
-    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
+trait MessageHandlerDispatch {
+  import MessageHandlerDispatch._
 
-      val dispatcher: DispatchCommand => IoPeer.Tell = messageHandler match {
-        case SingletonHandler(handler) =>
-          cmd => IoPeer.Tell(handler, cmd.message, cmd.sender)
+  def messageHandlerCreator(messageHandler: MessageHandler, context: PipelineContext): () => ActorRef = {
+    messageHandler match {
+      case SingletonHandler(handler) => () => handler
 
-        case PerConnectionHandler(handlerPropsCreator) =>
-          val props = handlerPropsCreator(context.handle)
-          val handler = context.connectionActorContext.actorOf(props)
-          cmd => IoPeer.Tell(handler, cmd.message, cmd.sender)
+      case PerConnectionHandler(handlerPropsCreator) =>
+        val props = handlerPropsCreator(context.handle)
+        val handler = context.connectionActorContext.actorOf(props)
+        () => handler
 
-        case PerMessageHandler(handlerPropsCreator) => {
-          var handler: ActorRef = null
-          _ match {
-            case cmd: DispatchNewMessage =>
-              val props = handlerPropsCreator(context.handle)
-              handler = context.connectionActorContext.actorOf(props)
-              IoPeer.Tell(handler, cmd.message, cmd.sender)
-            case cmd: DispatchFollowupMessage =>
-              if (handler == null) throw new IllegalStateException // a MessagePart without a preceding Message?
-              IoPeer.Tell(handler, cmd.message, cmd.sender)
-          }
-        }
-      }
-
-      _ match {
-        case x: DispatchCommand => commandPL(dispatcher(x))
-        case cmd => commandPL(cmd)
-      }
+      case PerMessageHandler(handlerPropsCreator) => () =>
+        val props = handlerPropsCreator(context.handle)
+        context.connectionActorContext.actorOf(props)
     }
   }
 
+}
+
+object MessageHandlerDispatch {
   sealed trait MessageHandler
   case class SingletonHandler(handler: ActorRef) extends MessageHandler
   case class PerConnectionHandler(handlerPropsCreator: Handle => Props) extends MessageHandler
   case class PerMessageHandler(handlerPropsCreator: Handle => Props) extends MessageHandler
-
-  ////////////// COMMANDS //////////////
-  sealed trait DispatchCommand extends Command {
-    def message: Any
-    def sender: ActorRef
-  }
-  case class DispatchNewMessage(message: Any, sender: ActorRef) extends DispatchCommand
-  case class DispatchFollowupMessage(message: Any, sender: ActorRef) extends DispatchCommand
 }
