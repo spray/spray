@@ -23,6 +23,8 @@ import cc.spray.util.DateTime
 import akka.actor._
 import cc.spray.io.ConnectionClosedReason
 import cc.spray.can.HttpServer.RequestTimeout
+import akka.pattern.ask
+import akka.util.Timeout
 
 class TestService extends Actor with ActorLogging {
   import HttpMethods._
@@ -39,12 +41,22 @@ class TestService extends Actor with ActorLogging {
       val peer = sender // since the Props creator is executed asyncly we need to save the sender ref
       context.actorOf(Props(new Streamer(peer, 100)))
 
-//    case HttpRequest(GET, "/crash", _, _, _) =>
-//      sender ! response("Hai! (about to kill the HttpServer, watch the log for the automatic restart)")
-//      serverActor ! Kill
+    case HttpRequest(GET, "/stats", _, _, _) =>
+      val peer = sender
+      peer.ask(HttpServer.GetStats)(Timeout(1.second)).onSuccess {
+        case x: HttpServer.Stats => peer ! stats(x)
+      }
+
+    case HttpRequest(GET, "/crash", _, _, _) =>
+      sender ! response("About to throw an exception in the request handling actor, " +
+        "which will trigger an actor restart as defined by the default supervisor strategy")
+      throw new RuntimeException("BOOM!")
 
     case HttpRequest(GET, "/timeout", _, _, _) =>
-      // we simply drop the request triggering a timeout
+      log.info("Dropping request, triggering a timeout")
+
+    case HttpRequest(GET, "/timeout/timeout", _, _, _) =>
+      log.info("Dropping request, triggering a timeout")
 
     case HttpRequest(GET, "/stop", _, _, _) =>
       sender ! response("Shutting down in 1 second ...")
@@ -52,24 +64,29 @@ class TestService extends Actor with ActorLogging {
 
     case _: HttpRequest => sender ! response("Unknown resource!", 404)
 
-    case x: HttpServer.Closed =>
-      context.children.foreach(_ ! CancelStream(sender, x.reason))
-
-    case _: HttpServer.SendCompleted =>
-      // we don't care about send confirmations
+    case RequestTimeout(HttpRequest(_, "/timeout/timeout", _, _, _)) =>
+      log.info("Dropping RequestTimeout message")
 
     case RequestTimeout(request) =>
       sender ! HttpResponse(status = 500).withBody {
         "The " + request.method + " request to '" + request.uri + "' has timed out..."
       }
+
+    case x: HttpServer.Closed =>
+      context.children.foreach(_ ! CancelStream(sender, x.reason))
+
+    case _: HttpServer.SendCompleted =>
+      // we don't care about send confirmations
   }
 
   ////////////// helpers //////////////
 
   lazy val serverActor = context.actorFor("/user/http-server")
 
+  val defaultHeaders = List(HttpHeader("Content-Type", "text/plain"))
+
   def response(msg: String, status: Int = 200) =
-    HttpResponse(status, List(HttpHeader("Content-Type", "text/plain")), msg.getBytes("ISO-8859-1"))
+    HttpResponse(status, defaultHeaders, msg.getBytes("ISO-8859-1"))
 
   lazy val index = HttpResponse(
     headers = List(HttpHeader("Content-Type", "text/html")),
@@ -84,8 +101,29 @@ class TestService extends Actor with ActorLogging {
             <li><a href="/stats">/stats</a></li>
             <li><a href="/crash">/crash</a></li>
             <li><a href="/timeout">/timeout</a></li>
+            <li><a href="/timeout/timeout">/timeout/timeout</a></li>
             <li><a href="/stop">/stop</a></li>
           </ul>
+        </body>
+      </html>.toString.getBytes("ISO-8859-1")
+  )
+
+  def stats(s: HttpServer.Stats) = HttpResponse(
+    headers = List(HttpHeader("Content-Type", "text/html")),
+    body =
+      <html>
+        <body>
+          <h1>HttpServer Stats</h1>
+          <table>
+            <tr><td>totalRequests:</td><td>{s.totalRequests}</td></tr>
+            <tr><td>openRequests:</td><td>{s.openRequests}</td></tr>
+            <tr><td>maxOpenRequests:</td><td>{s.maxOpenRequests}</td></tr>
+            <tr><td>totalConnections:</td><td>{s.totalConnections}</td></tr>
+            <tr><td>openConnections:</td><td>{s.openConnections}</td></tr>
+            <tr><td>maxOpenConnections:</td><td>{s.maxOpenConnections}</td></tr>
+            <tr><td>requestTimeouts:</td><td>{s.requestTimeouts}</td></tr>
+            <tr><td>idleTimeouts:</td><td>{s.idleTimeouts}</td></tr>
+          </table>
         </body>
       </html>.toString.getBytes("ISO-8859-1")
   )
@@ -99,17 +137,17 @@ class TestService extends Actor with ActorLogging {
 
     protected def receive = {
       case 'Tick if count > 0 =>
-        log.debug("Sending response chunk ...")
+        log.info("Sending response chunk ...")
         peer ! MessageChunk(DateTime.now.toIsoDateTimeString + ", ")
         count -= 1
       case 'Tick =>
-        log.debug("Finalizing response stream ...")
+        log.info("Finalizing response stream ...")
         chunkGenerator.cancel()
         peer ! MessageChunk("\nStopped...")
         peer ! ChunkedMessageEnd()
         context.stop(self)
       case CancelStream(ref, reason) => if (ref == peer) {
-        log.debug("Canceling response stream due to {} ...", reason)
+        log.info("Canceling response stream due to {} ...", reason)
         chunkGenerator.cancel()
         context.stop(self)
       }
