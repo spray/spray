@@ -19,7 +19,7 @@ package cc.spray.can
 import com.typesafe.config.{ConfigFactory, Config}
 import parsing.ParserSettings
 
-private[can] class ServerSettings(config: Config = ConfigFactory.load()) {
+private[can] class ServerSettings(config: Config = ConfigFactory.load(), val ConfirmedSends: Boolean) {
   private[this] val c: Config = {
     val c = config.withFallback(ConfigFactory.defaultReference())
     c.checkValid(ConfigFactory.defaultReference(), "spray.can.server")

@@ -25,13 +25,14 @@ class IoWorkerSettings(config: Config = ConfigFactory.load()) {
     c.getConfig("spray.io")
   }
 
-  val ThreadName           = c getString "thread-name"
-  val ReadBufferSize       = c getBytes  "read-buffer-size"
+  val ThreadName           = c getString  "thread-name"
+  val ReadBufferSize       = c getBytes   "read-buffer-size"
+  val ConfirmSends         = c getBoolean "confirm-sends"
 
-  val TcpReceiveBufferSize = c getBytes  "tcp.receive-buffer-size"
-  val TcpSendBufferSize    = c getBytes  "tcp.send-buffer-size"
-  val TcpKeepAlive         = c getInt    "tcp.keep-alive"
-  val TcpNoDelay           = c getInt    "tcp.no-delay"
+  val TcpReceiveBufferSize = c getBytes   "tcp.receive-buffer-size"
+  val TcpSendBufferSize    = c getBytes   "tcp.send-buffer-size"
+  val TcpKeepAlive         = c getInt     "tcp.keep-alive"
+  val TcpNoDelay           = c getInt     "tcp.no-delay"
 
   require(ReadBufferSize       > 0,  "read-buffer-size must be > 0")
   require(TcpReceiveBufferSize >= 0, "receive-buffer-size must be >= 0")

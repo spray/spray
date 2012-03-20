@@ -30,7 +30,10 @@ class HttpServer(ioWorker: IoWorker,
                  config: Config = ConfigFactory.load())
   extends IoServer(ioWorker) with ConnectionActors {
 
-  protected lazy val pipeline = HttpServer.pipeline(config, messageHandler, timeoutResponse, log)
+  protected lazy val pipeline = {
+    val settings = new ServerSettings(config, ioWorker.settings.ConfirmSends)
+    HttpServer.pipeline(settings, messageHandler, timeoutResponse, log)
+  }
 
   /**
    * This methods determines the HttpResponse to sent back to the client if both the request handling actor
@@ -92,7 +95,7 @@ object HttpServer {
   //    |                                \/
   // |------------------------------------------------------------------------------------------
   // | TickGenerator: listens to event IoServer.Closed,
-  // |                dispatches TickGenerator.Tick event to the head of the event PL
+  // |                dispatches TickGenerator.Tick events to the head of the event PL
   // |------------------------------------------------------------------------------------------
   //    /\                                |
   //    | IoServer.Closed                 | IoServer.Send
@@ -100,12 +103,10 @@ object HttpServer {
   //    | IoServer.Received               | IoServer.Tell
   //    | TickGenerator.Tick              |
   //    |                                \/
-  private[can] def pipeline(config: Config,
+  private[can] def pipeline(settings: ServerSettings,
                             messageHandler: MessageHandlerDispatch.MessageHandler,
                             timeoutResponse: HttpRequest => HttpResponse,
                             log: LoggingAdapter): PipelineStage = {
-    val settings = new ServerSettings(config)
-
     ServerFrontend(settings, messageHandler, timeoutResponse, log) ~>
     RequestParsing(settings.ParserSettings, log) ~>
     ResponseRendering(settings.ServerHeader) ~>

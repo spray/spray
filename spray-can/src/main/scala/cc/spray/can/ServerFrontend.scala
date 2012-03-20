@@ -93,10 +93,12 @@ object ServerFrontend {
                 val rec = unconfirmedSends.dequeue()
                 commandPL(IoServer.Tell(rec.handler, x, rec.receiver))
               case x: Closed =>
-                unconfirmedSends.foreach { rec =>
-                  commandPL(IoServer.Tell(rec.handler, x, rec.receiver))
-                }
-              case TickGenerator.Tick => checkForTimeouts()
+                val dispatch: RequestRecord => Unit = r => commandPL(IoServer.Tell(r.handler, x, r.receiver))
+                unconfirmedSends.foreach(dispatch)
+                openRequests.foreach(dispatch)
+              case TickGenerator.Tick =>
+                checkForTimeouts()
+                eventPL(event)
               case ev => eventPL(ev)
             }
           }
@@ -106,7 +108,7 @@ object ServerFrontend {
               import rec.request._
               HttpResponsePartRenderingContext(part, method, protocol, connectionHeader)
             }
-            unconfirmedSends.enqueue(rec)
+            if (settings.ConfirmedSends) unconfirmedSends.enqueue(rec)
           }
 
           def ensureRequestOpenFor(part: HttpResponsePart) {

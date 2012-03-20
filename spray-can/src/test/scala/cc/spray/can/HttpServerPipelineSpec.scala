@@ -104,7 +104,7 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
     pipeline.run(
       TestWait("50 ms"),
       TickGenerator.Tick
-    ) must produceCommands(IoServer.Close(IdleTimeout))
+    ) mustEqual (List(IoServer.Close(IdleTimeout)), List(TickGenerator.Tick))
   }
 
   /////////////////////////// SUPPORT ////////////////////////////////
@@ -146,11 +146,14 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
 
   def testPipeline(messageHandler: MessageHandler) = new TestPipeline(
     HttpServer.pipeline(
-      ConfigFactory.parseString("""
-        spray.can.server.server-header = test/no-date
-        spray.can.server.idle-timeout = 50 ms
-        spray.can.server.reaping-cycle = 0  # don't enable the TickGenerator
-      """),
+      new ServerSettings(
+        ConfigFactory.parseString("""
+          spray.can.server.server-header = test/no-date
+          spray.can.server.idle-timeout = 50 ms
+          spray.can.server.reaping-cycle = 0  # don't enable the TickGenerator
+        """),
+        ConfirmedSends = true
+      ),
       messageHandler,
       req => HttpResponse(500).withBody("Timeout for " + req.uri),
       log

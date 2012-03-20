@@ -39,6 +39,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
 
   import IoWorker._
 
+  val settings = new IoWorkerSettings(config)
   private[this] var ioThread: Option[IoThread] = None
 
   /**
@@ -53,7 +54,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
   def start(): this.type = {
     lock.synchronized {
       if (ioThread.isEmpty) {
-        ioThread = Some(new IoThread(new IoWorkerSettings(config), log))
+        ioThread = Some(new IoThread(settings, log))
         ioThread.get.start()
         _runningWorkers = _runningWorkers :+ this
       }
@@ -174,7 +175,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
         val buffers = handle.key.writeBuffers
         if (writeToChannel(buffers.head)) {
           buffers.remove(0)
-          handle.handler ! SendCompleted(handle)
+          if (settings.ConfirmSends) handle.handler ! SendCompleted(handle)
           if (buffers.isEmpty) handle.key.disable(OP_WRITE)
         }
         log.debug("Wrote {} bytes", bytesWritten - oldBytesWritten)
