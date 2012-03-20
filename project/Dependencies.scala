@@ -7,7 +7,7 @@ object Dependencies {
   )
 
   object V {
-    val akka      = "2.0-RC3"
+    val akka      = "2.0"
     val logback   = "1.0.0"
   }
 
