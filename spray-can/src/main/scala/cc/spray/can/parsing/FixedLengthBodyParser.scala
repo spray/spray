@@ -17,16 +17,15 @@
 package cc.spray.can
 package parsing
 
-import config.HttpParserConfig
 import model.{HttpHeader, MessageLine}
 import java.nio.ByteBuffer
 
-class FixedLengthBodyParser(config: HttpParserConfig, messageLine: MessageLine, headers: List[HttpHeader],
+class FixedLengthBodyParser(settings: ParserSettings, messageLine: MessageLine, headers: List[HttpHeader],
                             connectionHeader: Option[String], totalBytes: Int) extends IntermediateState {
 
   require(totalBytes >= 0, "Content-Length must not be negative")
-  require(totalBytes <= config.maxContentLength,
-          "HTTP message Content-Length " + totalBytes + " exceeds the configured limit of " + config.maxContentLength)
+  require(totalBytes <= settings.MaxContentLength,
+          "HTTP message Content-Length " + totalBytes + " exceeds the configured limit of " + settings.MaxContentLength)
 
   val body = new Array[Byte](totalBytes)
   var bytesRead = 0

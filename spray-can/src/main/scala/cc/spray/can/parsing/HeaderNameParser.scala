@@ -18,20 +18,19 @@ package cc.spray.can
 package parsing
 
 import java.lang.{StringBuilder => JStringBuilder}
-import config.HttpParserConfig
 import annotation.tailrec
 import model._
 import HttpProtocols._
 
-class HeaderNameParser(config: HttpParserConfig, messageLine: MessageLine, headerCount: Int = 0,
+class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, headerCount: Int = 0,
                        headers: List[HttpHeader] = Nil) extends CharacterParser {
 
   val headerName = new JStringBuilder
 
-  def valueParser = new HeaderValueParser(config, messageLine, headerCount, headers, headerName.toString)
+  def valueParser = new HeaderValueParser(settings, messageLine, headerCount, headers, headerName.toString)
 
   def handleChar(cursor: Char) = {
-    if (headerName.length <= config.maxHeaderNameLength) {
+    if (headerName.length <= settings.MaxHeaderNameLength) {
       cursor match {
         case x if isTokenChar(x) => headerName.append(toLowerCase(x)); this
         case ':' => new LwsParser(valueParser)
@@ -41,7 +40,7 @@ class HeaderNameParser(config: HttpParserConfig, messageLine: MessageLine, heade
         case _ => ErrorState("Invalid character '" + cursor + "', expected TOKEN CHAR, LWS or COLON")
       }
     } else {
-      ErrorState("HTTP header name exceeds the configured limit of " + config.maxHeaderNameLength +
+      ErrorState("HTTP header name exceeds the configured limit of " + settings.MaxHeaderNameLength +
                   " characters (" + headerName.toString.take(50) + "...)")
     }
   }
@@ -76,12 +75,12 @@ class HeaderNameParser(config: HttpParserConfig, messageLine: MessageLine, heade
       case _ if contentLength.isDefined =>
         contentLength.get match {
           case "0" => CompleteMessageState(messageLine, headers, connection)
-          case value => try {new FixedLengthBodyParser(config, messageLine, headers, connection, value.toInt)}
+          case value => try {new FixedLengthBodyParser(settings, messageLine, headers, connection, value.toInt)}
           catch {case e: Exception => ErrorState("Invalid Content-Length header value: " + e.getMessage)}
         }
       case _: RequestLine => CompleteMessageState(messageLine, headers, connection)
       case x: StatusLine if connection == Some("close") || connection.isEmpty && x.protocol == `HTTP/1.0` =>
-        new ToCloseBodyParser(config, messageLine, headers, connection)
+        new ToCloseBodyParser(settings, messageLine, headers, connection)
       case _ => ErrorState("Content-Length header or chunked transfer encoding required", 411)
     }
   }

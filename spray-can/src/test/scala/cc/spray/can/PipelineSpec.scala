@@ -55,6 +55,7 @@ abstract class PipelineSpec(name: String) extends Specification {
     beEqualTo(commands.toList -> Nil) ^^ { result: TestPipelineResult =>
       result._1.map {
         case IoPeer.Send(buffers) => SendString(buffers.map(buf => new String(buf.array, "US-ASCII")).mkString)
+        case x: IoPeer.Tell => x.copy(sender = null)
         case x => x
       } -> result._2
     }

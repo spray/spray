@@ -16,10 +16,11 @@
 
 package cc.spray.can
 
-import config.HttpClientConfig
 import cc.spray.io._
 import akka.util.Duration
 import pipelines.{TickGenerator, ConnectionTimeouts}
+import com.typesafe.config.{Config, ConfigFactory}
+import java.util.concurrent.TimeUnit
 
 /**
  * Reacts to [[cc.spray.can.Connect]] messages by establishing a connection to the remote host. If there is an error
@@ -31,22 +32,20 @@ import pipelines.{TickGenerator, ConnectionTimeouts}
  * replied to with [[cc.spray.can.model.HttpResponsePart]] messages (or [[cc.spray.can.HttpClientException]] instances
  * in case of errors).
  */
-class HttpClient(ioWorker: IoWorker, config: HttpClientConfig)
+class HttpClient(ioWorker: IoWorker, config: Config = ConfigFactory.load())
   extends IoClient(ioWorker) with ConnectionActors {
 
-  protected lazy val pipeline ={
-    val connectionTimeouts =
-      if (config.enableConnectionTimeouts) ConnectionTimeouts(config.idleTimeout, log)
-      else EmptyPipelineStage
-    val tickCycle =
-      if (config.enableConnectionTimeouts) config.reapingCycle
-      else Duration.Zero
+  private[this] val settings = new ClientSettings(config)
 
+  protected lazy val pipeline: PipelineStage = {
     ClientFrontend(log) ~>
-    RequestRendering(config.userAgentHeader) ~>
-    ResponseParsing(config, log) ~>
-    connectionTimeouts ~>
-    TickGenerator(tickCycle)
+    RequestRendering(settings.UserAgentHeader) ~>
+    ResponseParsing(settings.ParserSettings, log) ~>
+    PipelineStage.optional(settings.IdleTimeout > 0, ConnectionTimeouts(settings.IdleTimeout, log)) ~>
+    PipelineStage.optional(
+      settings.ReapingCycle > 0 && settings.IdleTimeout > 0,
+      TickGenerator(Duration(settings.ReapingCycle, TimeUnit.MILLISECONDS))
+    )
   }
 }
 

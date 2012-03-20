@@ -20,7 +20,7 @@ package model
 import java.io.UnsupportedEncodingException
 import java.nio.charset.Charset
 import cc.spray.io.{Command, Event}
-import cc.spray.io.util._
+import cc.spray.util._
 
 sealed trait HttpMessagePart extends Command with Event
 

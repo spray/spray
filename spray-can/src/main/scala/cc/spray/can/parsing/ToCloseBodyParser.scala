@@ -17,12 +17,11 @@
 package cc.spray.can
 package parsing
 
-import config.HttpParserConfig
 import model.{MessageLine, HttpHeader}
 import java.nio.ByteBuffer
-import cc.spray.io.util._
+import cc.spray.util._
 
-class ToCloseBodyParser(config: HttpParserConfig, messageLine: MessageLine, headers: List[HttpHeader],
+class ToCloseBodyParser(settings: ParserSettings, messageLine: MessageLine, headers: List[HttpHeader],
                         connectionHeader: Option[String]) extends IntermediateState {
 
   private var body: Array[Byte] = EmptyByteArray
@@ -33,10 +32,10 @@ class ToCloseBodyParser(config: HttpParserConfig, messageLine: MessageLine, head
     body match {
       case EmptyByteArray => body = array; this
       case _ => {
-        if (body.length + array.length <= config.maxContentLength) {
+        if (body.length + array.length <= settings.MaxContentLength) {
           body = body concat array
           this
-        } else ErrorState("HTTP message body size exceeds the configured limit of " + config.maxContentLength, 413)
+        } else ErrorState("HTTP message body size exceeds the configured limit of " + settings.MaxContentLength, 413)
       }
     }
   }

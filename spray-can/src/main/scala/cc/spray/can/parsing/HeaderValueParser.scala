@@ -18,32 +18,31 @@ package cc.spray.can
 package parsing
 
 import java.lang.{StringBuilder => JStringBuilder}
-import config.HttpParserConfig
 import model.{HttpHeader, MessageLine}
 
-class HeaderValueParser(config: HttpParserConfig, messageLine: MessageLine, headerCount: Int,
+class HeaderValueParser(settings: ParserSettings, messageLine: MessageLine, headerCount: Int,
                         headers: List[HttpHeader], val headerName: String) extends CharacterParser {
 
   val headerValue = new JStringBuilder
   var space = false
 
   def nameParser =
-    new HeaderNameParser(config, messageLine, headerCount + 1, HttpHeader(headerName, headerValue.toString) :: headers)
+    new HeaderNameParser(settings, messageLine, headerCount + 1, HttpHeader(headerName, headerValue.toString) :: headers)
 
   def handleChar(cursor: Char) = {
-    if (headerValue.length <= config.maxHeaderValueLength) {
+    if (headerValue.length <= settings.MaxHeaderValueLength) {
       cursor match {
         case ' ' | '\t' | '\r' => space = true; new LwsParser(this).handleChar(cursor)
         case '\n' =>
-          if (headerCount < config.maxHeaderCount) nameParser
-          else ErrorState("HTTP message header count exceeds the configured limit of " + config.maxHeaderCount, 400)
+          if (headerCount < settings.MaxHeaderCount) nameParser
+          else ErrorState("HTTP message header count exceeds the configured limit of " + settings.MaxHeaderCount, 400)
         case _ =>
           if (space) {headerValue.append(' '); space = false}
           headerValue.append(cursor)
           this
       }
     } else {
-      ErrorState("HTTP header value exceeds the configured limit of " + config.maxHeaderValueLength +
+      ErrorState("HTTP header value exceeds the configured limit of " + settings.MaxHeaderValueLength +
                   " characters (header '" + headerName + "')")
     }
   }

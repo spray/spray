@@ -17,15 +17,13 @@
 package cc.spray.can
 package parsing
 
-import config.HttpParserConfig
-
-class ChunkParser(config: HttpParserConfig) extends CharacterParser {
+class ChunkParser(settings: ParserSettings) extends CharacterParser {
   var chunkSize = -1
 
   def handle(digit: Int) = {
     chunkSize = if (chunkSize == -1) digit else chunkSize * 16 + digit
-    if (chunkSize > config.maxChunkSize)
-      ErrorState("HTTP message chunk size exceeds the configured limit of " + config.maxChunkSize + " bytes")
+    if (chunkSize > settings.MaxChunkSize)
+      ErrorState("HTTP message chunk size exceeds the configured limit of " + settings.MaxChunkSize + " bytes")
     else this
   }
 
@@ -36,10 +34,10 @@ class ChunkParser(config: HttpParserConfig) extends CharacterParser {
     case ' ' | '\t' | '\r' => this
     case '\n' => chunkSize match {
       case -1 => ErrorState("Chunk size expected")
-      case 0 => new TrailerParser(config)
-      case _ => new ChunkBodyParser(config, chunkSize)
+      case 0 => new TrailerParser(settings)
+      case _ => new ChunkBodyParser(settings, chunkSize)
     }
-    case ';'  => new ChunkExtensionNameParser(config, chunkSize)
+    case ';'  => new ChunkExtensionNameParser(settings, chunkSize)
     case _ => ErrorState("Illegal chunk size")
   }
 

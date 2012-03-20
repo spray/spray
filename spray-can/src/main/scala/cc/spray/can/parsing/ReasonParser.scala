@@ -18,21 +18,20 @@ package cc.spray.can
 package parsing
 
 import java.lang.{StringBuilder => JStringBuilder}
-import config.HttpParserConfig
 import model.{StatusLine, HttpProtocol}
 
-class ReasonParser(config: HttpParserConfig, protocol: HttpProtocol, status: Int) extends CharacterParser {
+class ReasonParser(settings: ParserSettings, protocol: HttpProtocol, status: Int) extends CharacterParser {
   val reason = new JStringBuilder
 
   def handleChar(cursor: Char) = {
-    if (reason.length <= config.maxResponseReasonLength) {
+    if (reason.length <= settings.MaxResponseReasonLength) {
       cursor match {
         case '\r' => this
-        case '\n' => new HeaderNameParser(config, StatusLine(protocol, status, reason.toString))
+        case '\n' => new HeaderNameParser(settings, StatusLine(protocol, status, reason.toString))
         case _ => reason.append(cursor); this
       }
     } else {
-      ErrorState("Reason phrase exceeds the configured limit of " + config.maxResponseReasonLength + " characters")
+      ErrorState("Reason phrase exceeds the configured limit of " + settings.MaxResponseReasonLength + " characters")
     }
   }
 

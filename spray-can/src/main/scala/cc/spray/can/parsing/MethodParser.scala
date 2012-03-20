@@ -17,10 +17,9 @@
 package cc.spray.can
 package parsing
 
-import config.HttpParserConfig
 import model.HttpMethod
 
-class MethodParser(config: HttpParserConfig, method: HttpMethod, var pos: Int = 0) extends CharacterParser {
+class MethodParser(settings: ParserSettings, method: HttpMethod, var pos: Int = 0) extends CharacterParser {
 
   def handleChar(cursor: Char) = {
     pos += 1
@@ -34,7 +33,7 @@ class MethodParser(config: HttpParserConfig, method: HttpMethod, var pos: Int = 
       }
     } else {
       if (cursor == ' ') {
-        new UriParser(config, method)
+        new UriParser(settings, method)
       }
       else {
         badMethod

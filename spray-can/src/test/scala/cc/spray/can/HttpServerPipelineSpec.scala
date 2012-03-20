@@ -16,7 +16,6 @@
 
 package cc.spray.can
 
-import config.HttpServerConfig
 import model.{HttpResponse, HttpHeader, HttpRequest}
 import akka.actor.Props
 import akka.pattern.ask
@@ -24,9 +23,10 @@ import akka.util.{Duration, Timeout}
 import cc.spray.io.pipelines.MessageHandlerDispatch._
 import java.util.concurrent.atomic.AtomicInteger
 import org.specs2.specification.Step
-import cc.spray.io.util._
+import cc.spray.util._
 import cc.spray.io.pipelines.TickGenerator
-import cc.spray.io.{IoPeer, IdleTimeout}
+import com.typesafe.config.ConfigFactory
+import cc.spray.io.{IoServer, IdleTimeout}
 
 class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { def is =
 
@@ -45,7 +45,7 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
     singletonPipeline.run {
       received(simpleRequest)
     } must produceCommands {
-      HttpServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), connectionActor)
+      IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), null)
     }
   }
 
@@ -61,7 +61,7 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
            |"""
       }
     ) must produceCommands {
-      HttpServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), connectionActor)
+      IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), null)
     }
   }
 
@@ -104,7 +104,7 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
     pipeline.run(
       TestWait("50 ms"),
       TickGenerator.Tick
-    ) mustEqual (List(IoPeer.Close(IdleTimeout)), List(TickGenerator.Tick))
+    ) must produceCommands(IoServer.Close(IdleTimeout))
   }
 
   /////////////////////////// SUPPORT ////////////////////////////////
@@ -140,18 +140,19 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
   def singletonPipeline = testPipeline(SingletonHandler(singletonHandler))
 
   def dispatchReceiverName(pipelineResult: TestPipelineResult) = {
-    val (List(HttpServer.Tell(receiver, _, _)), _) = pipelineResult
+    val (List(IoServer.Tell(receiver, _, _)), _) = pipelineResult
     receiver.ask('name).await
   }
 
   def testPipeline(messageHandler: MessageHandler) = new TestPipeline(
     HttpServer.pipeline(
-      HttpServerConfig(
-        serverHeader = "test/no-date",
-        idleTimeout = Duration("50 ms"),
-        reapingCycle = Duration.Zero // don't enable the TickGenerator
-      ),
+      ConfigFactory.parseString("""
+        spray.can.server.server-header = test/no-date
+        spray.can.server.idle-timeout = 50 ms
+        spray.can.server.reaping-cycle = 0  # don't enable the TickGenerator
+      """),
       messageHandler,
+      req => HttpResponse(500).withBody("Timeout for " + req.uri),
       log
     )
   )

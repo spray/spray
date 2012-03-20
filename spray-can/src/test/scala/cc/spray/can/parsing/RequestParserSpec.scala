@@ -22,7 +22,6 @@ import java.nio.ByteBuffer
 import model._
 import HttpMethods._
 import HttpProtocols._
-import config.HttpParserConfig
 
 class RequestParserSpec extends Specification {
 
@@ -99,7 +98,7 @@ class RequestParserSpec extends Specification {
         )
       }
       "message chunk" in {
-        def chunkParser = new ChunkParser(HttpParserConfig())
+        def chunkParser = new ChunkParser(new ParserSettings())
         parse(chunkParser)("3\nabc\n") mustEqual (Nil, "abc")
         parse(chunkParser)("10 ;key= value ; another=one;and =more \n0123456789ABCDEF\n") mustEqual(
           List(
@@ -114,7 +113,7 @@ class RequestParserSpec extends Specification {
         parse(chunkParser)("bla") mustEqual ErrorState("Illegal chunk size")
       }
       "message end" in {
-        def chunkParser = new ChunkParser(HttpParserConfig())
+        def chunkParser = new ChunkParser(new ParserSettings())
         parse(chunkParser)("0\n\n") mustEqual (Nil, Nil)
         parse(chunkParser) {
           """|000;nice=true
@@ -192,7 +191,7 @@ class RequestParserSpec extends Specification {
     }
   }
 
-  def parse(startParser: IntermediateState = new EmptyRequestParser(HttpParserConfig())) = {
+  def parse(startParser: IntermediateState = new EmptyRequestParser(new ParserSettings())) = {
     RequestParserSpec.parse(startParser, extractFromCompleteMessage _) _
   }
 

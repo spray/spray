@@ -18,25 +18,24 @@ package cc.spray.can
 package parsing
 
 import java.lang.{StringBuilder => JStringBuilder}
-import config.HttpParserConfig
 import model.ChunkExtension
 
-class ChunkExtensionValueParser(config: HttpParserConfig, chunkSize: Int, extCount: Int,
+class ChunkExtensionValueParser(settings: ParserSettings, chunkSize: Int, extCount: Int,
                                 extensions: List[ChunkExtension], extName: String) extends CharacterParser {
 
   val extValue = new JStringBuilder
   var quoted = false
 
-  def next(parser: ParsingState) = if (extCount < config.maxChunkExtCount) {
+  def next(parser: ParsingState) = if (extCount < settings.MaxChunkExtCount) {
     parser
   } else {
-    ErrorState("Chunk extension count exceeds the configured limit of " + config.maxChunkExtCount, 400)
+    ErrorState("Chunk extension count exceeds the configured limit of " + settings.MaxChunkExtCount, 400)
   }
 
   def newExtensions = ChunkExtension(extName, extValue.toString) :: extensions
 
   def handleChar(cursor: Char) = {
-    if (extValue.length <= config.maxChunkExtValueLength) {
+    if (extValue.length <= settings.MaxChunkExtValueLength) {
       if (quoted) {
         cursor match {
           case '"' => quoted = false; this
@@ -48,16 +47,16 @@ class ChunkExtensionValueParser(config: HttpParserConfig, chunkSize: Int, extCou
           case x if isTokenChar(x) => extValue.append(x); this
           case '"' if extValue.length == 0 => quoted = true; this
           case ' ' | '\t' | '\r' => this
-          case ';' => next(new ChunkExtensionNameParser(config, chunkSize, extCount + 1, newExtensions))
+          case ';' => next(new ChunkExtensionNameParser(settings, chunkSize, extCount + 1, newExtensions))
           case '\n' => next {
-            if (chunkSize == 0) new TrailerParser(config, newExtensions)
-            else new ChunkBodyParser(config, chunkSize, newExtensions)
+            if (chunkSize == 0) new TrailerParser(settings, newExtensions)
+            else new ChunkBodyParser(settings, chunkSize, newExtensions)
           }
           case _ => ErrorState("Invalid character '" + cursor + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
         }
       }
     } else {
-      ErrorState("Chunk extension value exceeds the configured limit of " + config.maxChunkExtValueLength +
+      ErrorState("Chunk extension value exceeds the configured limit of " + settings.MaxChunkExtValueLength +
                   " characters (extension '" + extName + "')")
     }
   }

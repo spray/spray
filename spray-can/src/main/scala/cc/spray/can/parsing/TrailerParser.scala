@@ -17,15 +17,14 @@
 package cc.spray.can
 package parsing
 
-import config.HttpParserConfig
 import model.{ChunkExtension, HttpHeader}
 
-class TrailerParser(config: HttpParserConfig, extensions: List[ChunkExtension] = Nil, headerCount: Int = 0,
-                    headers: List[HttpHeader] = Nil) extends HeaderNameParser(config, null, headerCount, headers) {
+class TrailerParser(settings: ParserSettings, extensions: List[ChunkExtension] = Nil, headerCount: Int = 0,
+                    headers: List[HttpHeader] = Nil) extends HeaderNameParser(settings, null, headerCount, headers) {
 
-  override def valueParser = new HeaderValueParser(config, null, headerCount, headers, headerName.toString) {
+  override def valueParser = new HeaderValueParser(settings, null, headerCount, headers, headerName.toString) {
     override def nameParser =
-      new TrailerParser(config, extensions, headerCount + 1, HttpHeader(headerName, headerValue.toString) :: headers)
+      new TrailerParser(settings, extensions, headerCount + 1, HttpHeader(headerName, headerValue.toString) :: headers)
   }
 
   override def headersComplete = ChunkedEndState(extensions, headers)

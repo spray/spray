@@ -18,25 +18,24 @@ package cc.spray.can
 package parsing
 
 import model.HttpMethods
-import config.HttpParserConfig
 
-class EmptyRequestParser(config: HttpParserConfig) extends CharacterParser {
+class EmptyRequestParser(settings: ParserSettings) extends CharacterParser {
   import HttpMethods._
 
   def handleChar(cursor: Char) = cursor match {
-    case 'G' => new MethodParser(config, GET)
+    case 'G' => new MethodParser(settings, GET)
     case 'P' => new CharacterParser {
       override def handleChar(cursor: Char) = cursor match {
-        case 'O' => new MethodParser(config, POST, 1)
-        case 'U' => new MethodParser(config, PUT, 1)
+        case 'O' => new MethodParser(settings, POST, 1)
+        case 'U' => new MethodParser(settings, PUT, 1)
         case _ => badMethod
       }
     }
-    case 'D' => new MethodParser(config, DELETE)
-    case 'H' => new MethodParser(config, HEAD)
-    case 'O' => new MethodParser(config, OPTIONS)
-    case 'T' => new MethodParser(config, TRACE)
-    case 'C' => new MethodParser(config, CONNECT)
+    case 'D' => new MethodParser(settings, DELETE)
+    case 'H' => new MethodParser(settings, HEAD)
+    case 'O' => new MethodParser(settings, OPTIONS)
+    case 'T' => new MethodParser(settings, TRACE)
+    case 'C' => new MethodParser(settings, CONNECT)
     case _ => badMethod
   }
 }

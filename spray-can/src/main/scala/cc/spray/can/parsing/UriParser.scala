@@ -18,20 +18,19 @@ package cc.spray.can
 package parsing
 
 import java.lang.{StringBuilder => JStringBuilder}
-import config.HttpParserConfig
 import model.HttpMethod
 
-class UriParser(config: HttpParserConfig, method: HttpMethod) extends CharacterParser {
+class UriParser(settings: ParserSettings, method: HttpMethod) extends CharacterParser {
   val uri = new JStringBuilder
 
   def handleChar(cursor: Char) = {
-    if (uri.length <= config.maxUriLength) {
+    if (uri.length <= settings.MaxUriLength) {
       cursor match {
-        case ' ' => new RequestVersionParser(config, method, uri.toString)
+        case ' ' => new RequestVersionParser(settings, method, uri.toString)
         case _ => uri.append(cursor); this
       }
     } else {
-      ErrorState("URI length exceeds the configured limit of " + config.maxUriLength + " characters", 414)
+      ErrorState("URI length exceeds the configured limit of " + settings.MaxUriLength + " characters", 414)
     }
   }
 

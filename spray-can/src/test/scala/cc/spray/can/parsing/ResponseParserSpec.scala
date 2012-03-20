@@ -21,7 +21,6 @@ import org.specs2.mutable.Specification
 import model._
 import HttpProtocols._
 import HttpMethods._
-import config.HttpParserConfig
 
 class ResponseParserSpec extends Specification {
 
@@ -149,7 +148,7 @@ class ResponseParserSpec extends Specification {
     }
   }
 
-  def parse = RequestParserSpec.parse(new EmptyResponseParser(HttpParserConfig()), extractFromCompleteMessage _) _
+  def parse = RequestParserSpec.parse(new EmptyResponseParser(new ParserSettings()), extractFromCompleteMessage _) _
 
   def extractFromCompleteMessage(completeMessage: CompleteMessageState) = {
     val CompleteMessageState(StatusLine(protocol, status, reason), headers, connectionHeader, body) = completeMessage

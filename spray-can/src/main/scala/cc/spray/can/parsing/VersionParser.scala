@@ -17,7 +17,6 @@
 package cc.spray.can
 package parsing
 
-import config.HttpParserConfig
 import model.{RequestLine, HttpMethod, HttpProtocol}
 import model.HttpProtocols._
 
@@ -46,15 +45,15 @@ abstract class VersionParser extends CharacterParser {
   def badVersion = ErrorState("HTTP Version not supported", 505)
 }
 
-class RequestVersionParser(config: HttpParserConfig, method: HttpMethod, uri: String) extends VersionParser {
+class RequestVersionParser(settings: ParserSettings, method: HttpMethod, uri: String) extends VersionParser {
   def handleSuffix(cursor: Char) = pos match {
     case 8 => if (cursor == '\r') { pos = 9; this } else badVersion
-    case 9 => if (cursor == '\n') new HeaderNameParser(config, RequestLine(method, uri, protocol)) else badVersion
+    case 9 => if (cursor == '\n') new HeaderNameParser(settings, RequestLine(method, uri, protocol)) else badVersion
   }
 }
 
-class EmptyResponseParser(config: HttpParserConfig) extends VersionParser {
+class EmptyResponseParser(settings: ParserSettings) extends VersionParser {
   def handleSuffix(cursor: Char) = pos match {
-    case 8 => if (cursor == ' ') new StatusCodeParser(config, protocol) else badVersion
+    case 8 => if (cursor == ' ') new StatusCodeParser(settings, protocol) else badVersion
   }
 }

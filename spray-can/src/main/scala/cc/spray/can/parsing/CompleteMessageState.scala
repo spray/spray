@@ -18,7 +18,7 @@ package cc.spray.can
 package parsing
 
 import model._
-import cc.spray.io.util._
+import cc.spray.util._
 
 
 sealed trait HttpMessagePartCompletedState extends ParsingState {

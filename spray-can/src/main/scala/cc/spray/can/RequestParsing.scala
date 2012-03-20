@@ -17,19 +17,18 @@
 package cc.spray
 package can
 
-import config.HttpParserConfig
 import model.{HttpProtocols, HttpMethods, HttpHeader, HttpResponse}
 import io._
-import parsing.{ErrorState, EmptyRequestParser}
+import parsing.{ParserSettings, ErrorState, EmptyRequestParser}
 import rendering.HttpResponsePartRenderingContext
 import akka.event.LoggingAdapter
 
 object RequestParsing {
 
-  def apply(config: HttpParserConfig, log: LoggingAdapter) = new EventPipelineStage {
+  def apply(settings: ParserSettings, log: LoggingAdapter) = new EventPipelineStage {
     def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
-      new MessageParsingPipelines(config, commandPL, eventPL) {
-        lazy val startParser = new EmptyRequestParser(config)
+      new MessageParsingPipelines(settings, commandPL, eventPL) {
+        lazy val startParser = new EmptyRequestParser(settings)
 
         def handleParseError(state: ErrorState) {
           log.warning("Illegal request, responding with status {} and '{}'", state.status, state.message)
