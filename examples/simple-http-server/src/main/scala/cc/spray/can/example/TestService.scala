@@ -19,8 +19,10 @@ package example
 
 import model._
 import akka.util.duration._
-import akka.actor.{PoisonPill, ActorLogging, Actor}
-import cc.spray.io.util.DateTime
+import cc.spray.util.DateTime
+import akka.actor._
+import cc.spray.io.ConnectionClosedReason
+import cc.spray.can.HttpServer.RequestTimeout
 
 class TestService extends Actor with ActorLogging {
   import HttpMethods._
@@ -34,18 +36,8 @@ class TestService extends Actor with ActorLogging {
       sender ! response("PONG!")
 
     case HttpRequest(GET, "/stream", _, _, _) =>
-      val savedSender = sender
-      savedSender ! ChunkedResponseStart(HttpResponse(headers = defaultHeaders))
-      val chunkGenerator = context.system.scheduler.schedule(100.millis, 100.millis, new Runnable {
-        def run() { savedSender ! MessageChunk(DateTime.now.toIsoDateTimeString + ", ") }
-      })
-      context.system.scheduler.scheduleOnce(20.seconds, new Runnable {
-        def run() {
-          chunkGenerator.cancel()
-          savedSender ! MessageChunk("\nStopped...")
-          savedSender ! ChunkedMessageEnd()
-        }
-      })
+      val peer = sender // since the Props creator is executed asyncly we need to save the sender ref
+      context.actorOf(Props(new Streamer(peer, 100)))
 
 //    case HttpRequest(GET, "/crash", _, _, _) =>
 //      sender ! response("Hai! (about to kill the HttpServer, watch the log for the automatic restart)")
@@ -60,18 +52,24 @@ class TestService extends Actor with ActorLogging {
 
     case _: HttpRequest => sender ! response("Unknown resource!", 404)
 
-//    case Timeout(method, uri, _, _, _, complete) => complete {
-//      HttpResponse(status = 500).withBody("The " + method + " request to '" + uri + "' has timed out...")
-//    }
+    case x: HttpServer.Closed =>
+      context.children.foreach(_ ! CancelStream(sender, x.reason))
+
+    case _: HttpServer.SendCompleted =>
+      // we don't care about send confirmations
+
+    case RequestTimeout(request) =>
+      sender ! HttpResponse(status = 500).withBody {
+        "The " + request.method + " request to '" + request.uri + "' has timed out..."
+      }
   }
 
   ////////////// helpers //////////////
 
-  val defaultHeaders = List(HttpHeader("Content-Type", "text/plain"))
-
   lazy val serverActor = context.actorFor("/user/http-server")
 
-  def response(msg: String, status: Int = 200) = HttpResponse(status, defaultHeaders , msg.getBytes("ISO-8859-1"))
+  def response(msg: String, status: Int = 200) =
+    HttpResponse(status, List(HttpHeader("Content-Type", "text/plain")), msg.getBytes("ISO-8859-1"))
 
   lazy val index = HttpResponse(
     headers = List(HttpHeader("Content-Type", "text/html")),
@@ -91,4 +89,30 @@ class TestService extends Actor with ActorLogging {
         </body>
       </html>.toString.getBytes("ISO-8859-1")
   )
+
+  case class CancelStream(peer: ActorRef, reason: ConnectionClosedReason)
+
+  class Streamer(peer: ActorRef, var count: Int) extends Actor with ActorLogging {
+    log.debug("Starting streaming response ...")
+    peer ! ChunkedResponseStart(HttpResponse(headers = defaultHeaders).withBody(" " * 2048))
+    val chunkGenerator = context.system.scheduler.schedule(100.millis, 100.millis, self, 'Tick)
+
+    protected def receive = {
+      case 'Tick if count > 0 =>
+        log.debug("Sending response chunk ...")
+        peer ! MessageChunk(DateTime.now.toIsoDateTimeString + ", ")
+        count -= 1
+      case 'Tick =>
+        log.debug("Finalizing response stream ...")
+        chunkGenerator.cancel()
+        peer ! MessageChunk("\nStopped...")
+        peer ! ChunkedMessageEnd()
+        context.stop(self)
+      case CancelStream(ref, reason) => if (ref == peer) {
+        log.debug("Canceling response stream due to {} ...", reason)
+        chunkGenerator.cancel()
+        context.stop(self)
+      }
+    }
+  }
 }
