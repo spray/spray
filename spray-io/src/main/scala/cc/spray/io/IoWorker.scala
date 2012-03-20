@@ -286,6 +286,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
     }
 
     def close(handle: Handle, reason: ConnectionClosedReason) {
+      log.debug("Closing connection due to {}", reason)
       val key = handle.key.selectionKey
       key.cancel()
       key.channel.close()
