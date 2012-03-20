@@ -329,7 +329,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
     }
 
     def deliverStats(sender: ActorRef) {
-      val stats = IoWorkerStats(System.currentTimeMillis - startTime, bytesRead, bytesWritten, connectionsOpened,
+      val stats = Stats(System.currentTimeMillis - startTime, bytesRead, bytesWritten, connectionsOpened,
         connectionsClosed, commandsExecuted)
       if (sender != null) sender ! stats
     }
@@ -354,6 +354,15 @@ object IoWorker {
 
   def runningWorkers: Seq[IoWorker] =
     lock.synchronized(_runningWorkers)
+
+  case class Stats(
+    uptime: Long,
+    bytesRead: Long,
+    bytesWritten: Long,
+    connectionsOpened: Long,
+    connectionsClosed: Long,
+    commandsExecuted: Long
+  )
 
   ////////////// COMMANDS //////////////
 
