@@ -26,26 +26,34 @@ object ConnectionTimeouts {
     require(idleTimeout >= 0, "timeout must not be negative")
 
     new DoublePipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) = new Pipelines {
+      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
         var timeout = idleTimeout
         var lastActivity = System.currentTimeMillis
 
         def commandPipeline(command: Command) {
           command match {
-            case x: SetIdleTimeout => timeout = x.timeout.toMillis
+            case x: SetIdleTimeout =>
+              timeout = x.timeout.toMillis
+
+            case _: IoPeer.Send =>
+              commandPL(command)
+              lastActivity = System.currentTimeMillis
+
             case _ => commandPL(command)
           }
         }
 
         def eventPipeline(event: Event) {
           event match {
-            case _: IoPeer.Received      => lastActivity = System.currentTimeMillis
-            case _: IoPeer.SendCompleted => lastActivity = System.currentTimeMillis
-            case TickGenerator.Tick      =>
+            case _: IoPeer.Received =>
+              lastActivity = System.currentTimeMillis
+
+            case TickGenerator.Tick =>
               if (lastActivity + timeout < System.currentTimeMillis) {
                 log.debug("Closing connection due to idle timeout...")
                 commandPL(IoPeer.Close(IdleTimeout))
               }
+
             case _ =>
           }
           eventPL(event)
