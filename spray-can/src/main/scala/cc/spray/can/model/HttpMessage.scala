@@ -32,7 +32,7 @@ sealed trait HttpMessageStartPart extends HttpMessagePart
 
 sealed trait HttpMessageEndPart extends HttpMessagePart
 
-sealed trait HttpMessage extends HttpMessageEndPart {
+sealed trait HttpMessage extends HttpMessageStartPart with HttpMessageEndPart {
   def headers: List[HttpHeader]
   def body: Array[Byte]
   def protocol: HttpProtocol

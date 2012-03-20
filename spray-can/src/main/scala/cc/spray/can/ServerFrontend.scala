@@ -81,24 +81,31 @@ object ServerFrontend {
           def eventPipeline(event: Event) {
             event match {
               case x: HttpRequest => dispatchNewMessage(x, x, System.currentTimeMillis)
+
               case x: ChunkedRequestStart => dispatchNewMessage(x, x.request, 0L)
+
               case x: MessageChunk => dispatchFollowupMessage(x)
+
               case x: ChunkedMessageEnd =>
                 if (openRequests.isEmpty) throw new IllegalStateException
                 // only start request timeout checking after request has been completed
                 openRequests.last.timestamp = System.currentTimeMillis
                 dispatchFollowupMessage(x)
+
               case x: SendCompleted =>
                 if (unconfirmedSends.isEmpty) throw new IllegalStateException
                 val rec = unconfirmedSends.dequeue()
                 commandPL(IoServer.Tell(rec.handler, x, rec.receiver))
+
               case x: Closed =>
                 val dispatch: RequestRecord => Unit = r => commandPL(IoServer.Tell(r.handler, x, r.receiver))
                 unconfirmedSends.foreach(dispatch)
                 openRequests.foreach(dispatch)
+
               case TickGenerator.Tick =>
                 checkForTimeouts()
                 eventPL(event)
+
               case ev => eventPL(ev)
             }
           }

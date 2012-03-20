@@ -64,6 +64,15 @@ object HttpServer {
   //    | TickGenerator.Tick              |
   //    |                                \/
   // |------------------------------------------------------------------------------------------
+  // | StatsSupport: listens to most commands and events to collect statistics
+  // |------------------------------------------------------------------------------------------
+  //    /\                                |
+  //    | HttpMessagePart                 | HttpResponsePartRenderingContext
+  //    | IoServer.Closed                 | IoServer.Tell
+  //    | IoServer.SendCompleted          |
+  //    | TickGenerator.Tick              |
+  //    |                                \/
+  // |------------------------------------------------------------------------------------------
   // | RequestParsing: converts IoServer.Received to HttpMessagePart,
   // |                 generates HttpResponsePartRenderingContext (in case of errors)
   // |------------------------------------------------------------------------------------------
@@ -84,7 +93,7 @@ object HttpServer {
   //    | TickGenerator.Tick              |
   //    |                                \/
   // |------------------------------------------------------------------------------------------
-  // | ConnectionTimeouts: listens to events IoServer.Received, IoServer.SendCompleted and
+  // | ConnectionTimeouts: listens to IoServer.Received and IoServer.Send and
   // |                     TickGenerator.Tick, generates IoServer.Close commands
   // |------------------------------------------------------------------------------------------
   //    /\                                |
@@ -108,6 +117,7 @@ object HttpServer {
                             timeoutResponse: HttpRequest => HttpResponse,
                             log: LoggingAdapter): PipelineStage = {
     ServerFrontend(settings, messageHandler, timeoutResponse, log) ~>
+    PipelineStage.optional(settings.StatsSupport, StatsSupport()) ~>
     RequestParsing(settings.ParserSettings, log) ~>
     ResponseRendering(settings.ServerHeader) ~>
     PipelineStage.optional(settings.IdleTimeout > 0, ConnectionTimeouts(settings.IdleTimeout, log)) ~>
@@ -117,6 +127,16 @@ object HttpServer {
     )
   }
 
+  case class Stats(
+    totalRequests: Long,
+    openRequests: Long,
+    maxOpenRequests: Long,
+    totalConnections: Long,
+    openConnections: Long,
+    maxOpenConnections: Long,
+    requestTimeouts: Long,
+    idleTimeouts: Long
+  )
 
   ////////////// COMMANDS //////////////
   // HttpResponseParts +
@@ -133,6 +153,7 @@ object HttpServer {
     require(!timeout.isFinite, "timeout must not be infinite, set to zero to disable")
     require(timeout >= Duration.Zero, "timeout must not be negative")
   }
+  case object GetStats extends Command
 
   ////////////// EVENTS //////////////
   // HttpRequestParts +

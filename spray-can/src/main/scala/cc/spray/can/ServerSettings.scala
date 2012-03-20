@@ -32,6 +32,7 @@ private[can] class ServerSettings(config: Config = ConfigFactory.load(), val Con
   val TimeoutTimeout   = c getMilliseconds "timeout-timeout"
   val ReapingCycle     = c getMilliseconds "reaping-cycle"
   val DirectResponding = c getBoolean      "direct-responding"
+  val StatsSupport     = c getBoolean      "stats-support"
   val TimeoutHandler   = c getString       "timeout-handler"
 
   require(IdleTimeout    >= 0, "idle-timeout must be >= 0")
