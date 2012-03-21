@@ -21,6 +21,7 @@ import model.HttpMessageStartPart
 import rendering.HttpResponsePartRenderingContext
 import can.HttpServer.RequestTimeout
 import java.util.concurrent.atomic.AtomicLong
+import annotation.tailrec
 
 
 object StatsSupport {
@@ -35,13 +36,29 @@ object StatsSupport {
     val requestTimeouts    = new AtomicLong
     val idleTimeouts       = new AtomicLong
 
+    @tailrec
+    def adjustMaxOpenConnections() {
+      val co = connectionsOpened.get
+      val cc = connectionsClosed.get
+      val moc = maxOpenConnections.get
+      val currentMoc = co - cc
+      if (currentMoc > moc)
+        if (!maxOpenConnections.compareAndSet(moc, currentMoc)) adjustMaxOpenConnections()
+    }
+
+    @tailrec
+    def adjustMaxOpenRequests() {
+      val rqs = requestStarts.get
+      val rss = responseStarts.get
+      val mor = maxOpenRequests.get
+      val currentMor = rqs - rss
+      if (currentMor > mor)
+        if (!maxOpenRequests.compareAndSet(mor, currentMor)) adjustMaxOpenRequests()
+    }
+
     def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
-      {
-        val co = connectionsOpened.incrementAndGet()
-        val cc = connectionsClosed.get
-        val moc = maxOpenConnections.get
-        if (co - cc > moc) maxOpenConnections.compareAndSet(moc, co - cc)
-      }
+      connectionsOpened.incrementAndGet()
+      adjustMaxOpenConnections()
 
       def commandPipeline(command: Command) {
         command match {
@@ -53,7 +70,7 @@ object StatsSupport {
             requestTimeouts.incrementAndGet()
             commandPL(command)
 
-          case HttpServer.GetStats => commandPL {
+          case GetStats => commandPL {
             IoServer.Tell(
               receiver = context.connectionActorContext.sender,
               message = HttpServer.Stats(
@@ -69,6 +86,16 @@ object StatsSupport {
               sender = context.self
             )
           }
+          case ClearStats =>
+            requestStarts.set(0L)
+            responseStarts.set(0L)
+            maxOpenRequests.set(0L)
+            connectionsOpened.set(0L)
+            connectionsClosed.set(0L)
+            maxOpenConnections.set(0L)
+            requestTimeouts.set(0L)
+            idleTimeouts.set(0L)
+
           case _ => commandPL(command)
         }
       }
@@ -76,10 +103,8 @@ object StatsSupport {
       def eventPipeline(event: Event) {
         event match {
           case _: HttpMessageStartPart =>
-            val rqs = requestStarts.incrementAndGet()
-            val rss = responseStarts.get
-            val mor = maxOpenRequests.get
-            if (rqs - rss > mor) maxOpenRequests.compareAndSet(mor, rqs - rss)
+            requestStarts.incrementAndGet()
+            adjustMaxOpenRequests()
 
           case x: HttpServer.Closed =>
             connectionsClosed.incrementAndGet()
@@ -91,5 +116,10 @@ object StatsSupport {
       }
     }
   }
+
+  ////////////// COMMANDS //////////////
+
+  case object ClearStats extends Command
+  case object GetStats extends Command
 
 }
