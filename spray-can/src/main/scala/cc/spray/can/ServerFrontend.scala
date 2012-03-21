@@ -80,17 +80,17 @@ object ServerFrontend {
 
           def eventPipeline(event: Event) {
             event match {
-              case x: HttpRequest => dispatchNewMessage(x, x, System.currentTimeMillis)
+              case x: HttpRequest => dispatchRequestStart(x, x, System.currentTimeMillis)
 
-              case x: ChunkedRequestStart => dispatchNewMessage(x, x.request, 0L)
+              case x: ChunkedRequestStart => dispatchRequestStart(x, x.request, 0L)
 
-              case x: MessageChunk => dispatchFollowupMessage(x)
+              case x: MessageChunk => dispatchRequestChunk(x)
 
               case x: ChunkedMessageEnd =>
                 if (openRequests.isEmpty) throw new IllegalStateException
                 // only start request timeout checking after request has been completed
                 openRequests.last.timestamp = System.currentTimeMillis
-                dispatchFollowupMessage(x)
+                dispatchRequestChunk(x)
 
               case x: SendCompleted =>
                 if (unconfirmedSends.isEmpty) throw new IllegalStateException
@@ -123,18 +123,18 @@ object ServerFrontend {
               throw new IllegalStateException("Received ResponsePart '" + part + "' for non-existing request")
           }
 
-          def dispatchNewMessage(msg: Any, request: HttpRequest, timestamp: Long) {
+          def dispatchRequestStart(part: HttpRequestPart, request: HttpRequest, timestamp: Long) {
             val rec = new RequestRecord(request, handlerCreator(), timestamp)
             rec.receiver = if (settings.DirectResponding) context.self else newReceiver(rec)
             openRequests += rec
-            commandPL(IoServer.Tell(rec.handler, msg, rec.receiver))
+            commandPL(IoServer.Tell(rec.handler, part, rec.receiver))
           }
 
-          def dispatchFollowupMessage(msg: Any) {
+          def dispatchRequestChunk(part: HttpRequestPart) {
             if (openRequests.isEmpty) // part before start shouldn't be allowed by the request parsing stage
               throw new IllegalStateException
             val rec = openRequests.last
-            commandPL(IoServer.Tell(rec.handler, msg, rec.receiver))
+            commandPL(IoServer.Tell(rec.handler, part, rec.receiver))
           }
 
           def newReceiver(rec: RequestRecord): ActorRef = new MinimalActorRef(context.self) {
