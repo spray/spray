@@ -38,6 +38,9 @@ object IoPeer {
     def apply(buffer: ByteBuffer): Send = Send(Seq(buffer))
   }
 
+  case object StopReading extends Command
+  case object ResumeReading extends Command
+
   // only available with ConnectionActors mixin
   case class Tell(receiver: ActorRef, message: Any, sender: ActorRef) extends Command
 

@@ -53,6 +53,8 @@ object IoClient {
   }
   type Close = IoPeer.Close;  val Close = IoPeer.Close
   type Send = IoPeer.Send;    val Send = IoPeer.Send
+  val StopReading = IoPeer.StopReading
+  val ResumeReading = IoPeer.ResumeReading
   type Tell = IoPeer.Tell;    val Tell = IoPeer.Tell // only available with ConnectionActors mixin
 
   ////////////// EVENTS //////////////

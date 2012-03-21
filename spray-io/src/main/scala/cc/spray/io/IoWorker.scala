@@ -249,6 +249,8 @@ class IoWorker(log: LoggingAdapter, config: Config) {
         command match {
           // ConnectionCommands
           case x: Send => send(x)
+          case x: StopReading => x.handle.key.disable(OP_READ)
+          case x: ResumeReading => x.handle.key.enable(OP_READ)
           case x: Register => register(x)
           case x: Close => close(x.handle, x.reason)
 
@@ -384,6 +386,9 @@ object IoWorker {
   object Send {
     def apply(handle: Handle, buffer: ByteBuffer): Send = Send(handle, Seq(buffer))
   }
+
+  case class StopReading(handle: Handle) extends Command
+  case class ResumeReading(handle: Handle) extends Command
 
   ////////////// EVENTS //////////////
 
