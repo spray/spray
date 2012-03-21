@@ -19,12 +19,13 @@ package akka.spray
 import akka.actor.{InternalActorRef, ActorRef}
 
 /**
- * We need access to a minimal wrapper ActorRef in order to associate messages with
- * their replies transparently to the API user. The akka.actor.MinimalActorRef is
- * perfect for this but, unfortunately, is marked `private[akka]`, which is why
- * we need to "expose" it here.
+ * We need access to a minimal wrapper ActorRef in order to transparently associate messages with
+ * their replies. The akka.actor.MinimalActorRef is perfect for this but, unfortunately, is marked
+ * `private[akka]`, which is why we need to "expose" it here.
  */
-abstract class MinimalActorRef(related: ActorRef) extends akka.actor.MinimalActorRef {
+abstract class TempActorRef(related: ActorRef) extends akka.actor.MinimalActorRef {
   lazy val path = provider.tempPath()
   def provider = related.asInstanceOf[InternalActorRef].provider
 }
+
+
