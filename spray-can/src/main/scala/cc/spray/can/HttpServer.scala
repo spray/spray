@@ -50,73 +50,76 @@ class HttpServer(ioWorker: IoWorker,
 
 object HttpServer {
 
-  // The HttpServer pipelines setup:
-  //
-  // |------------------------------------------------------------------------------------------
-  // | ServerFrontend: converts HttpMessagePart, IoPeer.Closed and IoPeer.SendCompleted to
-  // |                 MessageHandlerDispatch.DispatchCommand,
-  // |                 generates HttpResponsePartRenderingContext
-  // |------------------------------------------------------------------------------------------
-  //    /\                                |
-  //    | HttpMessagePart                 | HttpResponsePartRenderingContext
-  //    | IoServer.Closed                 | IoServer.Tell
-  //    | IoServer.SendCompleted          |
-  //    | TickGenerator.Tick              |
-  //    |                                \/
-  // |------------------------------------------------------------------------------------------
-  // | StatsSupport: listens to most commands and events to collect statistics
-  // |------------------------------------------------------------------------------------------
-  //    /\                                |
-  //    | HttpMessagePart                 | HttpResponsePartRenderingContext
-  //    | IoServer.Closed                 | IoServer.Tell
-  //    | IoServer.SendCompleted          |
-  //    | TickGenerator.Tick              |
-  //    |                                \/
-  // |------------------------------------------------------------------------------------------
-  // | RequestParsing: converts IoServer.Received to HttpMessagePart,
-  // |                 generates HttpResponsePartRenderingContext (in case of errors)
-  // |------------------------------------------------------------------------------------------
-  //    /\                                |
-  //    | IoServer.Closed                 | HttpResponsePartRenderingContext
-  //    | IoServer.SendCompleted          | IoServer.Tell
-  //    | IoServer.Received               |
-  //    | TickGenerator.Tick              |
-  //    |                                \/
-  // |------------------------------------------------------------------------------------------
-  // | ResponseRendering: converts HttpResponsePartRenderingContext
-  // |                    to IoServer.Send and IoServer.Close
-  // |------------------------------------------------------------------------------------------
-  //    /\                                |
-  //    | IoServer.Closed                 | IoServer.Send
-  //    | IoServer.SendCompleted          | IoServer.Close
-  //    | IoServer.Received               | IoServer.Tell
-  //    | TickGenerator.Tick              |
-  //    |                                \/
-  // |------------------------------------------------------------------------------------------
-  // | ConnectionTimeouts: listens to IoServer.Received and IoServer.Send and
-  // |                     TickGenerator.Tick, generates IoServer.Close commands
-  // |------------------------------------------------------------------------------------------
-  //    /\                                |
-  //    | IoServer.Closed                 | IoServer.Send
-  //    | IoServer.SendCompleted          | IoServer.Close
-  //    | IoServer.Received               | IoServer.Tell
-  //    | TickGenerator.Tick              |
-  //    |                                \/
-  // |------------------------------------------------------------------------------------------
-  // | TickGenerator: listens to event IoServer.Closed,
-  // |                dispatches TickGenerator.Tick events to the head of the event PL
-  // |------------------------------------------------------------------------------------------
-  //    /\                                |
-  //    | IoServer.Closed                 | IoServer.Send
-  //    | IoServer.SendCompleted          | IoServer.Close
-  //    | IoServer.Received               | IoServer.Tell
-  //    | TickGenerator.Tick              |
-  //    |                                \/
+  /**
+   * The HttpServer pipelines setup:
+   *
+   * |------------------------------------------------------------------------------------------
+   * | ServerFrontend: converts HttpMessagePart, IoPeer.Closed and IoPeer.SendCompleted to
+   * |                 MessageHandlerDispatch.DispatchCommand,
+   * |                 generates HttpResponsePartRenderingContext
+   * |------------------------------------------------------------------------------------------
+   *    /\                                |
+   *    | HttpMessagePart                 | HttpResponsePartRenderingContext
+   *    | IoServer.Closed                 | IoServer.Tell
+   *    | IoServer.SendCompleted          |
+   *    | TickGenerator.Tick              |
+   *    |                                \/
+   * |------------------------------------------------------------------------------------------
+   * | StatsSupport: listens to most commands and events to collect statistics
+   * |------------------------------------------------------------------------------------------
+   *    /\                                |
+   *    | HttpMessagePart                 | HttpResponsePartRenderingContext
+   *    | IoServer.Closed                 | IoServer.Tell
+   *    | IoServer.SendCompleted          |
+   *    | TickGenerator.Tick              |
+   *    |                                \/
+   * |------------------------------------------------------------------------------------------
+   * | RequestParsing: converts IoServer.Received to HttpMessagePart,
+   * |                 generates HttpResponsePartRenderingContext (in case of errors)
+   * |------------------------------------------------------------------------------------------
+   *    /\                                |
+   *    | IoServer.Closed                 | HttpResponsePartRenderingContext
+   *    | IoServer.SendCompleted          | IoServer.Tell
+   *    | IoServer.Received               |
+   *    | TickGenerator.Tick              |
+   *    |                                \/
+   * |------------------------------------------------------------------------------------------
+   * | ResponseRendering: converts HttpResponsePartRenderingContext
+   * |                    to IoServer.Send and IoServer.Close
+   * |------------------------------------------------------------------------------------------
+   *    /\                                |
+   *    | IoServer.Closed                 | IoServer.Send
+   *    | IoServer.SendCompleted          | IoServer.Close
+   *    | IoServer.Received               | IoServer.Tell
+   *    | TickGenerator.Tick              |
+   *    |                                \/
+   * |------------------------------------------------------------------------------------------
+   * | ConnectionTimeouts: listens to IoServer.Received and IoServer.Send and
+   * |                     TickGenerator.Tick, generates IoServer.Close commands
+   * |------------------------------------------------------------------------------------------
+   *    /\                                |
+   *    | IoServer.Closed                 | IoServer.Send
+   *    | IoServer.SendCompleted          | IoServer.Close
+   *    | IoServer.Received               | IoServer.Tell
+   *    | TickGenerator.Tick              |
+   *    |                                \/
+   * |------------------------------------------------------------------------------------------
+   * | TickGenerator: listens to event IoServer.Closed,
+   * |                dispatches TickGenerator.Tick events to the head of the event PL
+   * |------------------------------------------------------------------------------------------
+   *    /\                                |
+   *    | IoServer.Closed                 | IoServer.Send
+   *    | IoServer.SendCompleted          | IoServer.Close
+   *    | IoServer.Received               | IoServer.Tell
+   *    | TickGenerator.Tick              |
+   *    |                                \/
+   */
   private[can] def pipeline(settings: ServerSettings,
                             messageHandler: MessageHandlerDispatch.MessageHandler,
                             timeoutResponse: HttpRequest => HttpResponse,
                             log: LoggingAdapter): PipelineStage = {
     ServerFrontend(settings, messageHandler, timeoutResponse, log) ~>
+    PipelineStage.optional(settings.PipeliningLimit > 0, PipeliningLimiter(settings.PipeliningLimit)) ~>
     PipelineStage.optional(settings.StatsSupport, StatsSupport()) ~>
     RequestParsing(settings.ParserSettings, log) ~>
     ResponseRendering(settings.ServerHeader) ~>
@@ -141,27 +144,21 @@ object HttpServer {
   ////////////// COMMANDS //////////////
   // HttpResponseParts +
   type ServerCommand = IoServer.ServerCommand
-  type Bind = IoServer.Bind;    val Bind = IoServer.Bind
+  type Bind = IoServer.Bind;                                  val Bind = IoServer.Bind
   val Unbind = IoServer.Unbind
-  type Close = IoServer.Close;  val Close = IoServer.Close
-
-  case class SetRequestTimeout(timeout: Duration) extends Command {
-    require(!timeout.isFinite, "timeout must not be infinite, set to zero to disable")
-    require(timeout >= Duration.Zero, "timeout must not be negative")
-  }
-  case class SetTimeoutTimeout(timeout: Duration) extends Command {
-    require(!timeout.isFinite, "timeout must not be infinite, set to zero to disable")
-    require(timeout >= Duration.Zero, "timeout must not be negative")
-  }
-  case object GetStats extends Command
+  type Close = IoServer.Close;                                val Close = IoServer.Close
+  type SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout;    val SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout
+  type SetRequestTimeout = ServerFrontend.SetRequestTimeout;  val SetRequestTimeout = ServerFrontend.SetRequestTimeout
+  type SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout;  val SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout
+  val ClearStats = StatsSupport.ClearStats
+  val GetStats = StatsSupport.GetStats
 
   ////////////// EVENTS //////////////
   // HttpRequestParts +
-  type Bound = IoServer.Bound;                  val Bound = IoServer.Bound
-  type Unbound = IoServer.Unbound;              val Unbound = IoServer.Unbound
-  type Closed = IoServer.Closed;                val Closed = IoServer.Closed
-  type SendCompleted = IoServer.SendCompleted;  val SendCompleted = IoServer.SendCompleted
-
-  case class RequestTimeout(request: HttpRequest) extends Event
+  type Bound = IoServer.Bound;                          val Bound = IoServer.Bound
+  type Unbound = IoServer.Unbound;                      val Unbound = IoServer.Unbound
+  type Closed = IoServer.Closed;                        val Closed = IoServer.Closed
+  type SendCompleted = IoServer.SendCompleted;          val SendCompleted = IoServer.SendCompleted
+  type RequestTimeout = ServerFrontend.RequestTimeout;  val RequestTimeout = ServerFrontend.RequestTimeout
 
 }

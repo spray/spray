@@ -26,7 +26,9 @@ import akka.event.LoggingAdapter
 object RequestParsing {
 
   def apply(settings: ParserSettings, log: LoggingAdapter) = new EventPipelineStage {
+
     def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
+
       new MessageParsingPipelines(settings, commandPL, eventPL) {
         lazy val startParser = new EmptyRequestParser(settings)
 

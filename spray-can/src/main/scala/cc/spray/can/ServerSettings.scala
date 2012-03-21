@@ -27,6 +27,7 @@ private[can] class ServerSettings(config: Config = ConfigFactory.load(), val Con
   }
 
   val ServerHeader     = c getString       "server-header"
+  val PipeliningLimit  = c getInt          "pipelining-limit"
   val IdleTimeout      = c getMilliseconds "idle-timeout"
   val RequestTimeout   = c getMilliseconds "request-timeout"
   val TimeoutTimeout   = c getMilliseconds "timeout-timeout"
@@ -35,10 +36,11 @@ private[can] class ServerSettings(config: Config = ConfigFactory.load(), val Con
   val StatsSupport     = c getBoolean      "stats-support"
   val TimeoutHandler   = c getString       "timeout-handler"
 
-  require(IdleTimeout    >= 0, "idle-timeout must be >= 0")
-  require(RequestTimeout >= 0, "request-timeout must be >= 0")
-  require(TimeoutTimeout >= 0, "timeout-timeout must be >= 0")
-  require(ReapingCycle   >= 0, "reaping-cycle must be >= 0")
+  require(PipeliningLimit >= 0, "pipelining-limit must be >= 0")
+  require(IdleTimeout     >= 0, "idle-timeout must be >= 0")
+  require(RequestTimeout  >= 0, "request-timeout must be >= 0")
+  require(TimeoutTimeout  >= 0, "timeout-timeout must be >= 0")
+  require(ReapingCycle    >= 0, "reaping-cycle must be >= 0")
 
   val ParserSettings = new ParserSettings(config)
 }

@@ -27,14 +27,15 @@ import akka.spray.MinimalActorRef
 import collection.mutable.Queue
 import annotation.tailrec
 import MessageHandlerDispatch._
+import akka.util.Duration
 
 object ServerFrontend {
-  import HttpServer._
 
   def apply(settings: ServerSettings,
             messageHandler: MessageHandler,
             timeoutResponse: HttpRequest => HttpResponse,
             log: LoggingAdapter): DoublePipelineStage = {
+
     new DoublePipelineStage {
       def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): Pipelines = {
         new Pipelines with MessageHandlerDispatch {
@@ -92,12 +93,12 @@ object ServerFrontend {
                 openRequests.last.timestamp = System.currentTimeMillis
                 dispatchRequestChunk(x)
 
-              case x: SendCompleted =>
+              case x: HttpServer.SendCompleted =>
                 if (unconfirmedSends.isEmpty) throw new IllegalStateException
                 val rec = unconfirmedSends.dequeue()
                 commandPL(IoServer.Tell(rec.handler, x, rec.receiver))
 
-              case x: Closed =>
+              case x: HttpServer.Closed =>
                 val dispatch: RequestRecord => Unit = r => commandPL(IoServer.Tell(r.handler, x, r.receiver))
                 unconfirmedSends.foreach(dispatch)
                 openRequests.foreach(dispatch)
@@ -185,5 +186,22 @@ object ServerFrontend {
   }
 
   private class Response(val rec: RequestRecord, val msg: Command) extends Command
+
+
+  ////////////// COMMANDS //////////////
+
+  case class SetRequestTimeout(timeout: Duration) extends Command {
+    require(!timeout.isFinite, "timeout must not be infinite, set to zero to disable")
+    require(timeout >= Duration.Zero, "timeout must not be negative")
+  }
+
+  case class SetTimeoutTimeout(timeout: Duration) extends Command {
+    require(!timeout.isFinite, "timeout must not be infinite, set to zero to disable")
+    require(timeout >= Duration.Zero, "timeout must not be negative")
+  }
+
+  ////////////// EVENTS //////////////
+
+  case class RequestTimeout(request: HttpRequest) extends Event
 
 }
