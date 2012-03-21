@@ -23,7 +23,7 @@ import akka.event.LoggingAdapter
 object ConnectionTimeouts {
 
   def apply(idleTimeout: Long, log: LoggingAdapter): PipelineStage = {
-    require(idleTimeout >= 0, "timeout must not be negative")
+    require(idleTimeout >= 0)
 
     new DoublePipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
@@ -49,7 +49,7 @@ object ConnectionTimeouts {
               lastActivity = System.currentTimeMillis
 
             case TickGenerator.Tick =>
-              if (lastActivity + timeout < System.currentTimeMillis) {
+              if (timeout > 0 && (lastActivity + timeout < System.currentTimeMillis)) {
                 log.debug("Closing connection due to idle timeout...")
                 commandPL(IoPeer.Close(IdleTimeout))
               }
@@ -63,6 +63,7 @@ object ConnectionTimeouts {
   }
 
   ////////////// COMMANDS //////////////
+
   case class SetIdleTimeout(timeout: Duration) extends Command {
     require(!timeout.isFinite, "timeout must not be infinite, set to zero to disable")
     require(timeout >= Duration.Zero, "timeout must not be negative")
