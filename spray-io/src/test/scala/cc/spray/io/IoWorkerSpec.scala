@@ -62,7 +62,7 @@ class IoWorkerSpec extends Specification {
       IoClient.Connected(handle) <- (client ? IoClient.Connect("localhost", port)).mapTo[IoClient.Connected]
       response <- (client ? (payload -> handle)).mapTo[String]
     } yield {
-      worker ! IoWorker.Close(handle, ProtocolClose)
+      worker ! IoWorker.Close(handle, CleanClose)
       response
     }
   }

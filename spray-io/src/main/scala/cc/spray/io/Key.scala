@@ -30,13 +30,17 @@ sealed abstract class Key {
   private[this] var _ops = 0
 
   private[io] def enable(ops: Int) {
-    _ops |= ops
-    selectionKey.interestOps(_ops)
+    if ((_ops & ops) == 0) {
+      _ops |= ops
+      selectionKey.interestOps(_ops)
+    }
   }
 
   private[io] def disable(ops: Int) {
-    _ops &= ~ops
-    selectionKey.interestOps(_ops)
+    if ((_ops & ops) != 0) {
+      _ops &= ~ops
+      selectionKey.interestOps(_ops)
+    }
   }
 }
 

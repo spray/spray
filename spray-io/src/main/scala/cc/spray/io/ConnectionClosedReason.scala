@@ -17,10 +17,32 @@
 package cc.spray.io
 
 sealed trait ConnectionClosedReason
-case object ProtocolClose extends ConnectionClosedReason
+
+/**
+ * The connection was actively and cleanly closed
+ * after all pending writes have been flushed.
+ */
+case object CleanClose extends ConnectionClosedReason
+
+/**
+ * The connection was closed by the peer.
+ */
 case object PeerClosed extends ConnectionClosedReason
+
+/**
+ * The connection was closed due to an idle timeout on the connection.
+ */
 case object IdleTimeout extends ConnectionClosedReason
+
+/**
+ * The connection was closed because the peer did not adhere to
+ * the higher-level protocol.
+ */
 case class ProtocolError(msg: String) extends ConnectionClosedReason
+
+/**
+ * The connection was closed due to an IO error.
+ */
 case class IoError(error: Throwable) extends ConnectionClosedReason
 
 

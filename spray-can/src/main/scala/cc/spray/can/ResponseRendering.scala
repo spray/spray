@@ -28,10 +28,11 @@ object ResponseRendering {
     def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
       case ctx: HttpResponsePartRenderingContext =>
         val rendered = renderer.render(ctx)
-        commandPL(IoPeer.Send(rendered.buffers))
-        if (rendered.closeConnection) {
-          commandPL(IoPeer.Close(ProtocolClose))
-        }
+        val buffers = rendered.buffers
+        if (!buffers.isEmpty)
+          commandPL(IoPeer.Send(buffers))
+        if (rendered.closeConnection)
+          commandPL(IoPeer.Close(CleanClose))
 
       case cmd => commandPL(cmd)
     }

@@ -174,11 +174,12 @@ class IoWorker(log: LoggingAdapter, config: Config) {
       try {
         val buffers = handle.key.writeBuffers
         if (writeToChannel(buffers.head)) {
-          buffers.remove(0)
-          if (settings.ConfirmSends) handle.handler ! SendCompleted(handle)
-          if (buffers.isEmpty) handle.key.disable(OP_WRITE)
-        }
-        log.debug("Wrote {} bytes", bytesWritten - oldBytesWritten)
+          if (buffers.remove(0) ne CleanCloseToken) {
+            if (settings.ConfirmSends) handle.handler ! SendCompleted(handle)
+            if (buffers.isEmpty) handle.key.disable(OP_WRITE)
+            log.debug("Wrote {} bytes", bytesWritten - oldBytesWritten)
+          } else close(handle, CleanClose)
+        } else log.debug("Wrote {} bytes, more pending", bytesWritten - oldBytesWritten)
       } catch {
         case e =>
           log.warning("Write error: closing connection due to {}", e.toString)
@@ -288,12 +289,18 @@ class IoWorker(log: LoggingAdapter, config: Config) {
     }
 
     def close(handle: Handle, reason: ConnectionClosedReason) {
-      log.debug("Closing connection due to {}", reason)
       val key = handle.key.selectionKey
-      key.cancel()
-      key.channel.close()
-      handle.handler ! Closed(handle, reason)
-      connectionsClosed += 1
+      if (key.isValid && reason == CleanClose && !handle.key.writeBuffers.isEmpty) {
+        log.debug("Scheduling connection close after write buffers flush")
+        handle.key.writeBuffers += CleanCloseToken
+        handle.key.enable(OP_WRITE)
+      } else {
+        log.debug("Closing connection due to {}", reason)
+        key.cancel()
+        key.channel.close()
+        handle.handler ! Closed(handle, reason)
+        connectionsClosed += 1
+      }
     }
 
     def connect(cmd: Connect) {
@@ -353,6 +360,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
 object IoWorker {
   private val lock = new AnyRef
   private var _runningWorkers = Seq.empty[IoWorker]
+  private val CleanCloseToken = ListBuffer.empty[ByteBuffer]
 
   def runningWorkers: Seq[IoWorker] =
     lock.synchronized(_runningWorkers)
