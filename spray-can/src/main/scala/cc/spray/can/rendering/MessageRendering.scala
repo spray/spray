@@ -61,22 +61,28 @@ private[rendering] trait MessageRendering {
     buf
   }
 
-  protected def renderChunk(chunk: MessageChunk): RenderedMessagePart =
-    RenderedMessagePart(renderChunk(chunk.extensions, chunk.body))
+  protected def renderChunk(chunk: MessageChunk, chunkless: Boolean): RenderedMessagePart =
+    RenderedMessagePart(renderChunk(chunk.extensions, chunk.body, chunkless))
 
-  protected def renderChunk(extensions: List[ChunkExtension], body: Array[Byte]): List[ByteBuffer] = {
-    val sb = new JStringBuilder(16)
-    sb.append(Integer.toHexString(body.length))
-    appendLine(appendChunkExtensions(extensions, sb))
-    encode(sb) :: ByteBuffer.wrap(body) :: ByteBuffer.wrap(CrLf) :: Nil
+  protected def renderChunk(extensions: List[ChunkExtension], body: Array[Byte],
+                            chunkless: Boolean): List[ByteBuffer] = {
+    if (!chunkless) {
+      val sb = new JStringBuilder(16)
+      sb.append(Integer.toHexString(body.length))
+      appendLine(appendChunkExtensions(extensions, sb))
+      encode(sb) :: ByteBuffer.wrap(body) :: ByteBuffer.wrap(CrLf) :: Nil
+    } else ByteBuffer.wrap(body) :: Nil
   }
 
-  protected def renderFinalChunk(chunk: ChunkedMessageEnd, requestConnectionHeader: Option[String] = None) = {
-    val sb = new JStringBuilder(16)
-    appendLine(appendChunkExtensions(chunk.extensions, sb.append("0")))
-    appendHeaders(chunk.trailer, sb)
-    appendLine(sb)
-    RenderedMessagePart(encode(sb) :: Nil, requestConnectionHeader == SomeClose)
+  protected def renderFinalChunk(chunk: ChunkedMessageEnd, requestConnectionHeader: Option[String] = None,
+                                 chunkless: Boolean = false): RenderedMessagePart = {
+    if (!chunkless) {
+      val sb = new JStringBuilder(16)
+      appendLine(appendChunkExtensions(chunk.extensions, sb.append("0")))
+      appendHeaders(chunk.trailer, sb)
+      appendLine(sb)
+      RenderedMessagePart(encode(sb) :: Nil, closeConnection = requestConnectionHeader == SomeClose)
+    } else RenderedMessagePart(Nil, closeConnection = true)
   }
 
   @tailrec

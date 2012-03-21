@@ -22,8 +22,8 @@ import io._
 
 object ResponseRendering {
 
-  def apply(serverHeader: String) = new CommandPipelineStage {
-    val renderer = new ResponseRenderer(serverHeader)
+  def apply(serverHeader: String, chunklessStreaming: Boolean) = new CommandPipelineStage {
+    val renderer = new ResponseRenderer(serverHeader, chunklessStreaming)
 
     def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
       case ctx: HttpResponsePartRenderingContext =>

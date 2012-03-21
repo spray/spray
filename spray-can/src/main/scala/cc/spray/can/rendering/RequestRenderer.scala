@@ -27,8 +27,8 @@ class RequestRenderer(userAgentHeader: String) extends MessageRendering {
     ctx.requestPart match {
       case x: HttpRequest => renderRequest(x, ctx.host, ctx.port)
       case x: ChunkedRequestStart => renderChunkedRequestStart(x.request, ctx.host, ctx.port)
-      case x: MessageChunk => renderChunk(x)
-      case x: ChunkedMessageEnd => renderFinalChunk(x)
+      case x: MessageChunk => renderChunk(x, chunkless = false)
+      case x: ChunkedMessageEnd => renderFinalChunk(x, chunkless = false)
     }
   }
 
@@ -49,7 +49,10 @@ class RequestRenderer(userAgentHeader: String) extends MessageRendering {
     val sb = renderRequestStart(request, host, port)
     appendHeader("Transfer-Encoding", "chunked", sb)
     appendLine(sb)
-    RenderedMessagePart(encode(sb) :: { if (request.body.length > 0) renderChunk(Nil, request.body) else Nil })
+    RenderedMessagePart(encode(sb) :: {
+      if (request.body.length > 0) renderChunk(Nil, request.body, chunkless = false)
+      else Nil
+    })
   }
 
   private def renderRequestStart(request: HttpRequest, host: String, port: Int) = {

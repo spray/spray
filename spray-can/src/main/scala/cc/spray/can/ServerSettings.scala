@@ -26,15 +26,16 @@ private[can] class ServerSettings(config: Config = ConfigFactory.load(), val Con
     c.getConfig("spray.can.server")
   }
 
-  val ServerHeader     = c getString       "server-header"
-  val PipeliningLimit  = c getInt          "pipelining-limit"
-  val IdleTimeout      = c getMilliseconds "idle-timeout"
-  val RequestTimeout   = c getMilliseconds "request-timeout"
-  val TimeoutTimeout   = c getMilliseconds "timeout-timeout"
-  val ReapingCycle     = c getMilliseconds "reaping-cycle"
-  val DirectResponding = c getBoolean      "direct-responding"
-  val StatsSupport     = c getBoolean      "stats-support"
-  val TimeoutHandler   = c getString       "timeout-handler"
+  val ServerHeader       = c getString       "server-header"
+  val PipeliningLimit    = c getInt          "pipelining-limit"
+  val IdleTimeout        = c getMilliseconds "idle-timeout"
+  val RequestTimeout     = c getMilliseconds "request-timeout"
+  val TimeoutTimeout     = c getMilliseconds "timeout-timeout"
+  val ReapingCycle       = c getMilliseconds "reaping-cycle"
+  val DirectResponding   = c getBoolean      "direct-responding"
+  val StatsSupport       = c getBoolean      "stats-support"
+  val TimeoutHandler     = c getString       "timeout-handler"
+  val ChunklessStreaming = c getBoolean      "chunkless-streaming"
 
   require(PipeliningLimit >= 0, "pipelining-limit must be >= 0")
   require(IdleTimeout     >= 0, "idle-timeout must be >= 0")

@@ -34,8 +34,12 @@ class ResponseRendererSpec extends Specification with DataTables { def is =
     "a chunked response with body"                          ! e6^
     "a response chunk"                                      ! e7^
     "a terminating response chunk"                          ! e8^
+    "a chunkless chunked response without body"             ! e9^
+    "a chunkless chunked response with body"                ! e10^
+    "a chunkless response chunk"                            ! e11^
+    "a chunkless terminating response chunk"                ! e12^
                                                             end^
-  "The 'Connection' header should be rendered correctly"    ! e9
+  "The 'Connection' header should be rendered correctly"    ! e13
 
   def e1 = prep() {
     HttpResponse(200, Nil)
@@ -104,21 +108,20 @@ class ResponseRendererSpec extends Specification with DataTables { def is =
   } mustEqual prep {
     """|HTTP/1.1 200 OK
        |Age: 30
-       |Connection: close
+       |Transfer-Encoding: chunked
        |Server: spray-can/1.0.0
        |Date: Thu, 25 Aug 2011 09:10:29 GMT
-       |Transfer-Encoding: chunked
        |
-       |""" -> true
+       |""" -> false
   }
 
   def e6 = prep() {
     ChunkedResponseStart(HttpResponse().withBody("Yahoooo"))
   } mustEqual prep {
     """|HTTP/1.1 200 OK
+       |Transfer-Encoding: chunked
        |Server: spray-can/1.0.0
        |Date: Thu, 25 Aug 2011 09:10:29 GMT
-       |Transfer-Encoding: chunked
        |
        |7
        |Yahoooo
@@ -146,9 +149,45 @@ class ResponseRendererSpec extends Specification with DataTables { def is =
        |""" -> false
   }
 
+  def e9 = prep(chunkless = true) {
+    ChunkedResponseStart(HttpResponse(200, List(HttpHeader("Age", "30"))))
+  } mustEqual prep {
+    """|HTTP/1.1 200 OK
+       |Age: 30
+       |Server: spray-can/1.0.0
+       |Date: Thu, 25 Aug 2011 09:10:29 GMT
+       |
+       |""" -> false
+  }
+
+  def e10 = prep(chunkless = true) {
+    ChunkedResponseStart(HttpResponse().withBody("Yahoooo"))
+  } mustEqual prep {
+    """|HTTP/1.1 200 OK
+       |Server: spray-can/1.0.0
+       |Date: Thu, 25 Aug 2011 09:10:29 GMT
+       |
+       |Yahoooo""" -> false
+  }
+
+  def e11 = prep(chunkless = true) {
+    MessageChunk(
+      "body123".getBytes("ISO-8859-1"),
+      List(ChunkExtension("key", "value"), ChunkExtension("another", "tl;dr"))
+    )
+  } mustEqual prep {
+    "body123" -> false
+  }
+
+  def e12 = prep(chunkless = true) {
+    ChunkedMessageEnd(Nil, List(HttpHeader("Age", "30"), HttpHeader("Cache-Control", "public")))
+  } mustEqual prep {
+    "" -> true
+  }
+
   val NONE: Option[String] = None
   
-  def e9 =
+  def e13 =
     "Client Version" | "Request"          | "Response"         | "Rendered"         | "Close" |
     `HTTP/1.1`       ! NONE               ! NONE               ! NONE               ! false   |
     `HTTP/1.1`       ! Some("close")      ! NONE               ! Some("close")      ! true    |
@@ -170,12 +209,11 @@ class ResponseRendererSpec extends Specification with DataTables { def is =
       }
     }
 
-  val renderer = new ResponseRenderer("spray-can/1.0.0") {
-    override val dateTimeNow = DateTime(2011, 8, 25, 9,10,29) // provide a stable date for testing
-  }
-
-  def prep(reqProtocol: HttpProtocol = `HTTP/1.1`, reqConnectionHeader: Option[String] = None)
-          (response: HttpResponsePart) = {
+  def prep(reqProtocol: HttpProtocol = `HTTP/1.1`, reqConnectionHeader: Option[String] = None,
+           chunkless: Boolean = false)(response: HttpResponsePart) = {
+    val renderer = new ResponseRenderer("spray-can/1.0.0", chunkless) {
+      override val dateTimeNow = DateTime(2011, 8, 25, 9,10,29) // provide a stable date for testing
+    }
     val sb = new java.lang.StringBuilder
     val RenderedMessagePart(buffers, closeAfterWrite) = renderer.render {
       HttpResponsePartRenderingContext(response, HttpMethods.GET, reqProtocol, reqConnectionHeader)
