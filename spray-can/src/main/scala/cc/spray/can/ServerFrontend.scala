@@ -23,11 +23,12 @@ import pipelines.{TickGenerator, MessageHandlerDispatch}
 import rendering.HttpResponsePartRenderingContext
 import akka.event.LoggingAdapter
 import akka.actor.ActorRef
-import akka.spray.MinimalActorRef
+import akka.spray.TempActorRef
 import collection.mutable.Queue
 import annotation.tailrec
 import MessageHandlerDispatch._
 import akka.util.Duration
+import java.util.concurrent.atomic.AtomicReference
 
 object ServerFrontend {
 
@@ -126,7 +127,7 @@ object ServerFrontend {
 
           def dispatchRequestStart(part: HttpRequestPart, request: HttpRequest, timestamp: Long) {
             val rec = new RequestRecord(request, handlerCreator(), timestamp)
-            rec.receiver = if (settings.DirectResponding) context.self else newReceiver(rec)
+            rec.receiver = if (settings.DirectResponding) context.self else new ReplyRef(rec, context.self)
             openRequests += rec
             commandPL(IoServer.Tell(rec.handler, part, rec.receiver))
           }
@@ -136,17 +137,6 @@ object ServerFrontend {
               throw new IllegalStateException
             val rec = openRequests.last
             commandPL(IoServer.Tell(rec.handler, part, rec.receiver))
-          }
-
-          def newReceiver(rec: RequestRecord): ActorRef = new MinimalActorRef(context.self) {
-            override def !(message: Any)(implicit sender: ActorRef) {
-              message match {
-                case x: Command =>
-                  context.self ! new Response(rec, x)
-                case _ =>
-                  throw new IllegalArgumentException("Illegal response " + message + " to HTTP request " + rec.request)
-              }
-            }
           }
 
           @tailrec
@@ -186,6 +176,36 @@ object ServerFrontend {
   }
 
   private class Response(val rec: RequestRecord, val msg: Command) extends Command
+
+  private class ReplyRef(rec: RequestRecord, self: ActorRef) extends TempActorRef(self) {
+    private[this] val state = new AtomicReference('uncompleted)
+    override def !(message: Any)(implicit sender: ActorRef) {
+      message match {
+        case x: HttpResponse                 => dispatch(x, 'uncompleted, 'completed)
+        case x: ChunkedResponseStart         => dispatch(x, 'uncompleted, 'chunking)
+        case x: MessageChunk                 => dispatch(x, 'chunking, 'chunking)
+        case x: ChunkedMessageEnd            => dispatch(x, 'chunking, 'completed)
+        case x: HttpServer.Close             => dispatch(x)
+        case x: HttpServer.SetIdleTimeout    => dispatch(x)
+        case x: HttpServer.SetRequestTimeout => dispatch(x)
+        case x: HttpServer.SetTimeoutTimeout => dispatch(x)
+        case _ => throw new IllegalArgumentException {
+          "Illegal response " + message + " to HTTP request to '" + rec.request.uri + "'"
+        }
+      }
+    }
+    private def dispatch(part: HttpResponsePart, expectedState: Symbol, newState: Symbol) {
+      if (state.compareAndSet(expectedState, newState))
+        self ! new Response(rec, part)
+      else throw new IllegalStateException {
+        "Cannot dispatch " + part.getClass.getSimpleName + " as response (part) for request to '" + rec.request.uri +
+        "' since current response state is '" + state.get + "' but should be '" + expectedState + "'"
+      }
+    }
+    private def dispatch(cmd: Command) {
+      self ! new Response(rec, cmd)
+    }
+  }
 
 
   ////////////// COMMANDS //////////////
