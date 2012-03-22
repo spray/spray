@@ -51,7 +51,7 @@ trait ConnectionActors extends IoPeer {
       case x: IoPeer.Closed =>
         log.debug("Stopping connection actor, connection was closed due to {}", x.reason)
         self ! PoisonPill
-      case x: CommandError => log.warning("Received {}", x)
+      case x: CommandException => log.warning("Received {}", x)
       case _: Droppable => // don't warn
       case x => log.warning("eventPipeline: dropped {}", x)
     }

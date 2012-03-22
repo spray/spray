@@ -16,19 +16,12 @@
 
 package cc.spray.io
 
-case class CommandError(command: Command, error: Either[Throwable, String]) extends Event {
-  def toMessage = error match {
-    case Left(throwable) => throwable.toString
-    case Right(message) => message
-  }
+case class CommandException(command: Command, message: String, cause: Throwable)
+  extends RuntimeException(message, cause) with Event
 
-  def toThrowable= error match {
-    case Left(throwable) => throwable
-    case Right(message) => new RuntimeException(message)
-  }
+object CommandException {
+  def apply(command: Command, message: String): CommandException =
+    apply(command, message, null)
+  def apply(command: Command, throwable: Throwable): CommandException =
+    apply(command, throwable.toString, throwable)
 }
-
-object CommandError {
-  def apply(command: Command, error: Throwable): CommandError = apply(command, Left(error))
-  def apply(command: Command, error: String): CommandError = apply(command, Right(error))
-  }

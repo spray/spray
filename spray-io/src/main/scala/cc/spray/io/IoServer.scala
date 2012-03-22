@@ -17,7 +17,8 @@
 package cc.spray.io
 
 import java.net.{SocketAddress, InetSocketAddress}
-import akka.actor.ActorRef
+import akka.actor.{Status, ActorRef}
+import cc.spray.util.Reply
 
 abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
   import IoServer._
@@ -30,7 +31,8 @@ abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
       def isDefinedAt(x: Any) = state.isDefinedAt(x)
       def apply(x: Any) { state(x) }
     } orElse {
-      case x: CommandError => log.warning("Received {}", x)
+      case Status.Failure(error) =>
+        log.warning("Received {}", error)
     }
   }
 
@@ -39,19 +41,21 @@ abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
       log.debug("Starting {} on {}", self.path, x.endpoint)
       endpoint = Some(x.endpoint)
       state = binding
-      ioWorker ! IoWorker.Bind(self, x.endpoint, x.bindingBacklog, sender)
+      ioWorker.tell(IoWorker.Bind(self, x.endpoint, x.bindingBacklog), Reply.withContext(sender))
 
-    case x: ServerCommand => sender ! CommandError(x, "Not yet bound")
+    case x: ServerCommand =>
+      sender ! Status.Failure(CommandException(x, "Not yet bound"))
   }
 
   lazy val binding: Receive = {
-    case IoWorker.Bound(key, receiver: ActorRef) =>
+    case Reply(IoWorker.Bound(key), originalSender: ActorRef) =>
       bindingKey = Some(key)
       state = bound
       log.info("{} started on {}", self.path, endpoint.get)
-      receiver ! Bound(endpoint.get)
+      originalSender ! Bound(endpoint.get)
 
-    case x: ServerCommand => sender ! CommandError(x, "Still binding")
+    case x: ServerCommand =>
+      sender ! Status.Failure(CommandException(x, "Still binding"))
   }
 
   lazy val bound: Receive = {
@@ -61,20 +65,22 @@ abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
     case Unbind =>
       log.debug("Stopping {} on {}", self.path, endpoint.get)
       state = unbinding
-      ioWorker ! IoWorker.Unbind(bindingKey.get, sender)
+      ioWorker.tell(IoWorker.Unbind(bindingKey.get), Reply.withContext(sender))
 
-    case x: ServerCommand => sender ! CommandError(x, "Already bound")
+    case x: ServerCommand =>
+      sender ! Status.Failure(CommandException(x, "Already bound"))
   }
 
   lazy val unbinding: Receive = {
-    case IoWorker.Unbound(_, receiver: ActorRef) =>
+    case Reply(_: IoWorker.Unbound, originalSender: ActorRef) =>
       log.info("{} stopped on {}", self.path, endpoint.get)
       state = unbound
-      receiver ! Unbound(endpoint.get)
+      originalSender ! Unbound(endpoint.get)
       bindingKey = None
       endpoint = None
 
-    case x: ServerCommand => sender ! CommandError(x, "Still unbinding")
+    case x: ServerCommand =>
+      sender ! Status.Failure(CommandException(x, "Still unbinding"))
   }
 }
 

@@ -16,8 +16,9 @@
 
 package cc.spray.io
 
-import akka.actor.ActorRef
 import java.net.{InetSocketAddress, SocketAddress}
+import cc.spray.util.Reply
+import akka.actor.{Status, ActorRef}
 
 class IoClient(val ioWorker: IoWorker) extends IoPeer {
   import IoClient._
@@ -32,14 +33,15 @@ class IoClient(val ioWorker: IoWorker) extends IoPeer {
 
   protected def receive = {
     case Connect(address) =>
-      ioWorker ! IoWorker.Connect(self, address, sender)
+      ioWorker.tell(IoWorker.Connect(address), Reply.withContext(sender))
 
-    case IoWorker.Connected(key, receiver: ActorRef) =>
+    case Reply(IoWorker.Connected(key), originalSender: ActorRef) =>
       val handle = createConnectionHandle(key)
       ioWorker ! IoWorker.Register(handle)
-      receiver ! Connected(handle)
+      originalSender ! Connected(handle)
 
-    case x: CommandError => log.warning("Received {}", x)
+    case Status.Failure(error) =>
+      log.warning("Received {}", error)
   }
 
 }

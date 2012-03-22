@@ -24,8 +24,8 @@ import java.nio.channels.{CancelledKeyException, SelectionKey, SocketChannel, Se
 import java.util.concurrent.CountDownLatch
 import java.net.SocketAddress
 import akka.event.{LoggingBus, BusLogging, LoggingAdapter}
-import akka.actor.{ActorSystem, ActorRef}
 import com.typesafe.config.{ConfigFactory, Config}
+import akka.actor.{Status, ActorSystem, ActorRef}
 
 // threadsafe
 class IoWorker(log: LoggingAdapter, config: Config) {
@@ -86,6 +86,13 @@ class IoWorker(log: LoggingAdapter, config: Config) {
     if (ioThread.isEmpty)
       throw new IllegalStateException("Cannot post message to unstarted IoWorker")
     ioThread.get.post(cmd, sender)
+  }
+
+  /**
+   * Posts a Command to the IoWorkers command queue.
+   */
+  def tell(cmd: Command, sender: ActorRef) {
+    this.!(cmd)(sender)
   }
 
   private class IoThread(settings: IoWorkerSettings, log: LoggingAdapter) extends Thread {
@@ -215,9 +222,9 @@ class IoWorker(log: LoggingAdapter, config: Config) {
         val socketChannel = key.channel.asInstanceOf[ServerSocketChannel].accept()
         configure(socketChannel)
         val connectionKey = socketChannel.register(selector, 0) // we don't enable any ops until we have a handle
-        log.debug("New connection accepted")
         val cmd = key.attachment.asInstanceOf[Bind]
-        cmd.handleCreator ! Connected(Key(connectionKey), ())
+        log.debug("New connection accepted on {}", cmd.address)
+        cmd.handleCreator ! Connected(Key(connectionKey))
       } catch {
         case e => log.error(e, "Accept error: could not accept new connection")
       }
@@ -236,9 +243,9 @@ class IoWorker(log: LoggingAdapter, config: Config) {
       try {
         key.channel.asInstanceOf[SocketChannel].finishConnect()
         key.interestOps(0) // we don't enable any ops until we have a handle
-        val cmd = key.attachment.asInstanceOf[Connect]
-        log.debug("Connection established to {}", cmd.address)
-        cmd.handleCreator ! Connected(Key(key), cmd.tag)
+        val cmdAndSender = key.attachment.asInstanceOf[(Connect, ActorRef)]
+        log.debug("Connection established to {}", cmdAndSender._1.address)
+        cmdAndSender._2 ! Connected(Key(key))
       } catch {
         case e => log.error(e, "Connect error: could not establish new connection")
       }
@@ -256,7 +263,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
           case x: Close => close(x.handle, x.reason)
 
           // SuperCommands
-          case x: Connect => connect(x)
+          case x: Connect => connect(x, sender)
           case x: Bind => bind(x, sender)
           case x: Unbind => unbind(x, sender)
           case GetStats => deliverStats(sender)
@@ -271,7 +278,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
           handle.handler ! Closed(handle, PeerClosed)
         case e =>
           log.error(e, "Error during execution of command '{}'", command)
-          if (sender != null) sender ! CommandError(command, e)
+          if (sender != null) sender ! Status.Failure(CommandException(command, e))
       }
     }
 
@@ -303,7 +310,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
       }
     }
 
-    def connect(cmd: Connect) {
+    def connect(cmd: Connect, sender: ActorRef) {
       val channel = SocketChannel.open()
       configure(channel)
       if (settings.TcpReceiveBufferSize != 0)
@@ -311,10 +318,10 @@ class IoWorker(log: LoggingAdapter, config: Config) {
       if (channel.connect(cmd.address)) {
         log.debug("Connection immediately established to {}", cmd.address)
         val key = channel.register(selector, 0) // we don't enable any ops until we have a handle
-        cmd.handleCreator ! Connected(Key(key), cmd.tag)
+        sender ! Connected(Key(key))
       } else {
         val key = channel.register(selector, OP_CONNECT)
-        key.attach(cmd)
+        key.attach((cmd, sender))
         log.debug("Connection request registered")
       }
     }
@@ -327,14 +334,14 @@ class IoWorker(log: LoggingAdapter, config: Config) {
       channel.socket.bind(cmd.address, cmd.backlog)
       val key = channel.register(selector, OP_ACCEPT)
       key.attach(cmd)
-      if (sender != null) sender ! Bound(Key(key), cmd.tag)
+      if (sender != null) sender ! Bound(Key(key))
     }
 
     def unbind(cmd: Unbind, sender: ActorRef) {
       val key = cmd.bindingKey.selectionKey
       key.cancel()
       key.channel.close()
-      if (sender != null) sender ! Unbound(cmd.bindingKey, cmd.tag)
+      if (sender != null) sender ! Unbound(cmd.bindingKey)
     }
 
     def deliverStats(sender: ActorRef) {
@@ -378,9 +385,9 @@ object IoWorker {
 
   // "super" commands not on the connection-level
   private[IoWorker] case class Stop(latch: CountDownLatch) extends Command
-  case class Bind(handleCreator: ActorRef, address: SocketAddress, backlog: Int, tag: Any) extends Command
-  case class Unbind(bindingKey: Key, tag: Any) extends Command
-  case class Connect(handleCreator: ActorRef, address: SocketAddress, tag: Any) extends Command
+  case class Bind(handleCreator: ActorRef, address: SocketAddress, backlog: Int) extends Command
+  case class Unbind(bindingKey: Key) extends Command
+  case class Connect(address: SocketAddress) extends Command
   case object GetStats extends Command
 
   // commands on the connection-level
@@ -394,16 +401,15 @@ object IoWorker {
   object Send {
     def apply(handle: Handle, buffer: ByteBuffer): Send = Send(handle, Seq(buffer))
   }
-
-  case class StopReading(handle: Handle) extends Command
-  case class ResumeReading(handle: Handle) extends Command
+  case class StopReading(handle: Handle) extends ConnectionCommand
+  case class ResumeReading(handle: Handle) extends ConnectionCommand
 
   ////////////// EVENTS //////////////
 
   // "general" events not on the connection-level
-  case class Bound(bindingKey: Key, tag: Any) extends Event
-  case class Unbound(bindingKey: Key, tag: Any) extends Event
-  case class Connected(key: Key, tag: Any) extends Event
+  case class Bound(bindingKey: Key) extends Event
+  case class Unbound(bindingKey: Key) extends Event
+  case class Connected(key: Key) extends Event
 
   // connection-level events
   case class Closed(handle: Handle, reason: ConnectionClosedReason) extends Event

@@ -6,8 +6,9 @@ import akka.pattern.ask
 import java.nio.ByteBuffer
 import akka.util.{Timeout, Duration}
 import akka.actor._
-import akka.dispatch.{Future, Await}
+import akka.dispatch.Future
 import org.specs2.matcher.Matcher
+import cc.spray.util._
 
 class IoWorkerSpec extends Specification {
   implicit val timeout: Timeout = Duration("500 ms")
@@ -43,18 +44,18 @@ class IoWorkerSpec extends Specification {
                                                               Step(stop())
 
   def start() {
-    val bound = Await.result(server ? IoServer.Bind("localhost", port), timeout.duration)
+    val bound = (server ? IoServer.Bind("localhost", port)).await
     assert(bound.isInstanceOf[IoServer.Bound])
   }
 
   def oneRequestDialog = {
-    Await.result(request("Echoooo"), timeout.duration) === "Echoooo"
+    request("Echoooo").await === "Echoooo"
   }
 
   def hammerTime = {
     val requests = Future.traverse((1 to 100).toList) { i => request("Ping" + i).map(i -> _) }
     val beOk: Matcher[(Int, String)] = ({ t:(Int, String) => t._2 == "Ping" + t._1 }, "not ok")
-    Await.result(requests, timeout.duration) must beOk.forall
+    requests.await must beOk.forall
   }
 
   def request(payload: String) = {
