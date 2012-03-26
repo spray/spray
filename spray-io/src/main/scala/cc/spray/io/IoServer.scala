@@ -41,14 +41,14 @@ abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
       log.debug("Starting {} on {}", self.path, x.endpoint)
       endpoint = Some(x.endpoint)
       state = binding
-      ioWorker.tell(IoWorker.Bind(self, x.endpoint, x.bindingBacklog), Reply.withContext(sender))
+      ioWorker.tell(IoWorker.Bind(self, x.endpoint, x.bindingBacklog), Reply.onceWithContext(sender))
 
     case x: ServerCommand =>
       sender ! Status.Failure(CommandException(x, "Not yet bound"))
   }
 
   lazy val binding: Receive = {
-    case Reply(IoWorker.Bound(key), originalSender: ActorRef) =>
+    case Reply(IoWorker.Bound(key), originalSender: ActorRef, _) =>
       bindingKey = Some(key)
       state = bound
       log.info("{} started on {}", self.path, endpoint.get)
@@ -65,14 +65,14 @@ abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
     case Unbind =>
       log.debug("Stopping {} on {}", self.path, endpoint.get)
       state = unbinding
-      ioWorker.tell(IoWorker.Unbind(bindingKey.get), Reply.withContext(sender))
+      ioWorker.tell(IoWorker.Unbind(bindingKey.get), Reply.onceWithContext(sender))
 
     case x: ServerCommand =>
       sender ! Status.Failure(CommandException(x, "Already bound"))
   }
 
   lazy val unbinding: Receive = {
-    case Reply(_: IoWorker.Unbound, originalSender: ActorRef) =>
+    case Reply(_: IoWorker.Unbound, originalSender: ActorRef, _) =>
       log.info("{} stopped on {}", self.path, endpoint.get)
       state = unbound
       originalSender ! Unbound(endpoint.get)

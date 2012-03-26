@@ -24,12 +24,23 @@ import akka.util.Duration
 class ReplySpec(_system: ActorSystem) extends TestKit(_system) with Specification with ImplicitSender {
   def this() = this(ActorSystem())
 
+  args(sequential = true)
+
   val echoRef = system.actorOf(Props(behavior = ctx => { case x => ctx.sender ! x }))
 
   "The Reply" should {
-    "be able to inject itself into a reply message" in {
-      echoRef.tell('Yeah, Reply.withContext(42))
-      receiveOne(Duration("1 second")) === Reply('Yeah, 42)
+    "be able to inject itself into a reply message when unregistered" in {
+      val contextRef = Reply.withContext(42)
+      echoRef.tell('Yeah, contextRef)
+      receiveOne(Duration("1 second")).asInstanceOf[Reply].copy(contextRef = null) === Reply('Yeah, 42, null)
+    }
+    "be able to inject itself into a reply message when registered" in {
+      val contextRef = Reply.withContext(43)
+      contextRef.hashCode // trigger registration
+      echoRef.tell('Yeah, contextRef)
+      val received = receiveOne(Duration("1 second"))
+      contextRef.stop() // unregister
+      received === Reply('Yeah, 43, contextRef)
     }
   }
 

@@ -33,9 +33,9 @@ class IoClient(val ioWorker: IoWorker) extends IoPeer {
 
   protected def receive = {
     case Connect(address) =>
-      ioWorker.tell(IoWorker.Connect(address), Reply.withContext(sender))
+      ioWorker.tell(IoWorker.Connect(address), Reply.onceWithContext(sender))
 
-    case Reply(IoWorker.Connected(key), originalSender: ActorRef) =>
+    case Reply(IoWorker.Connected(key), originalSender: ActorRef, _) =>
       val handle = createConnectionHandle(key)
       ioWorker ! IoWorker.Register(handle)
       originalSender ! Connected(handle)
