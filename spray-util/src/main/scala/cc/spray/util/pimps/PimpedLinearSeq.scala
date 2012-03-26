@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.util
+package cc.spray.util.pimps
 
 import collection.LinearSeq
 import annotation.tailrec
@@ -56,10 +56,11 @@ class PimpedLinearSeq[+A](underlying: LinearSeq[A]) {
   /**
    * Returns the first object of type B in the underlying sequence or `None`, if none is found.
    */
-  def findByType[B :ClassManifest]: Option[B] = {
+  def findByType[B: ClassManifest]: Option[B] = {
     val erasure = classManifest.erasure
-    mapFind { x =>
-      if (erasure.isInstance(x)) Some(x.asInstanceOf[B]) else None
+    mapFind {
+      x =>
+        if (erasure.isInstance(x)) Some(x.asInstanceOf[B]) else None
     }
   }
 

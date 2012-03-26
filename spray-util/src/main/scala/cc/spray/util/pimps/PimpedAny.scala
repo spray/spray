@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011 Mathias Doenitz
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,10 @@
  * limitations under the License.
  */
 
-package cc.spray.util
+package cc.spray.util.pimps
 
-import akka.dispatch.{Await, Future}
-import akka.util.{Duration, Timeout}
+class PimpedAny[T](underlying: T) {
 
-class PimpedFuture[+A](underlying: Future[A]) {
-
-  def await(implicit timeout: Timeout = Duration.Inf): A =
-    Await.result(underlying, timeout.duration)
+  def matches(pf: PartialFunction[T, Any]): Boolean = pf isDefinedAt underlying
 
 }

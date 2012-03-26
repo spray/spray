@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.util
+package cc.spray.util.pimps
 
 import akka.dispatch.Future
 import akka.actor._
@@ -30,6 +30,7 @@ class PimpedActorSystem(underlying: ActorSystem) {
       Props {
         new Actor {
           var receiver: Option[ActorRef] = None
+
           def receive = {
             case subject: ActorRef =>
               context.watch(subject)
@@ -40,7 +41,7 @@ class PimpedActorSystem(underlying: ActorSystem) {
           }
         }
       }
-    }    // TODO: replace with Duration.Inf once Akka #1883 is fixed
+    } // TODO: replace with Duration.Inf once Akka #1883 is fixed
   }.ask(subject)(Duration(Long.MaxValue, TimeUnit.NANOSECONDS)).mapTo[Terminated]
 
 }
