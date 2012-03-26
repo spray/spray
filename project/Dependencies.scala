@@ -14,7 +14,7 @@ object Dependencies {
   val akkaActor   = "com.typesafe.akka" %   "akka-actor"      % V.akka
   val akkaSlf4j   = "com.typesafe.akka" %   "akka-slf4j"      % V.akka
   val akkaTestKit = "com.typesafe.akka" %   "akka-testkit"    % V.akka
-  val specs2      = "org.specs2"        %%  "specs2"          % "1.7.1"
+  val specs2      = "org.specs2"        %%  "specs2"          % "1.8.2"
   val slf4j       = "org.slf4j"         %   "slf4j-api"       % "1.6.4"
   val logback     = "ch.qos.logback"    %   "logback-classic" % V.logback
 }
