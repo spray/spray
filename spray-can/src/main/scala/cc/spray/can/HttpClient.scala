@@ -23,8 +23,8 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.util.concurrent.TimeUnit
 
 /**
- * Reacts to [[cc.spray.can.Connect]] messages by establishing a connection to the remote host. If there is an error
- * the sender receives either an [[cc.spray.can.HttpClientException]].
+ * Reacts to [[cc.spray.can.HttpClient.Connect]] messages by establishing a connection to the remote host.
+ * If there is an error the sender receives either an [[cc.spray.can.HttpClientException]].
  * If the connection has been established successfully a new actor is spun up for the connection, which replies to the
  * sender of the [[cc.spray.can.Connect]] message with a [[cc.spray.can.Connected]] message.
  *
@@ -39,7 +39,7 @@ class HttpClient(ioWorker: IoWorker, config: Config = ConfigFactory.load())
 
   protected lazy val pipeline: PipelineStage = {
     ClientFrontend(log) ~>
-    RequestRendering(settings.UserAgentHeader) ~>
+    RequestRendering(settings.UserAgentHeader, settings.RequestSizeHint) ~>
     ResponseParsing(settings.ParserSettings, log) ~>
     PipelineStage.optional(settings.IdleTimeout > 0, ConnectionTimeouts(settings.IdleTimeout, log)) ~>
     PipelineStage.optional(

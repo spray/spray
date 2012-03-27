@@ -22,13 +22,13 @@ import io._
 import pipelines.{TickGenerator, MessageHandlerDispatch}
 import rendering.HttpResponsePartRenderingContext
 import akka.event.LoggingAdapter
-import akka.actor.ActorRef
-import akka.spray.TempActorRef
 import collection.mutable.Queue
 import annotation.tailrec
 import MessageHandlerDispatch._
 import akka.util.Duration
 import java.util.concurrent.atomic.AtomicReference
+import akka.actor.ActorRef
+import akka.spray.LazyActorRef
 
 object ServerFrontend {
 
@@ -177,9 +177,9 @@ object ServerFrontend {
 
   private class Response(val rec: RequestRecord, val msg: Command) extends Command
 
-  private class ReplyRef(rec: RequestRecord, self: ActorRef) extends TempActorRef(self) {
+  private class ReplyRef(rec: RequestRecord, self: ActorRef) extends LazyActorRef(self) {
     private[this] val state = new AtomicReference('uncompleted)
-    override def !(message: Any)(implicit sender: ActorRef) {
+    protected def deliver(message: Any, sender: ActorRef) {
       message match {
         case x: HttpResponse                 => dispatch(x, 'uncompleted, 'completed)
         case x: ChunkedResponseStart         => dispatch(x, 'uncompleted, 'chunking)
@@ -197,10 +197,10 @@ object ServerFrontend {
     private def dispatch(part: HttpResponsePart, expectedState: Symbol, newState: Symbol) {
       if (state.compareAndSet(expectedState, newState))
         self ! new Response(rec, part)
-      else throw new IllegalStateException {
+      else throw new IllegalStateException(
         "Cannot dispatch " + part.getClass.getSimpleName + " as response (part) for request to '" + rec.request.uri +
         "' since current response state is '" + state.get + "' but should be '" + expectedState + "'"
-      }
+      )
     }
     private def dispatch(cmd: Command) {
       self ! new Response(rec, cmd)

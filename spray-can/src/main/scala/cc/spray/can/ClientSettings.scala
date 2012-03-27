@@ -25,14 +25,16 @@ private[can] class ClientSettings(config: Config = ConfigFactory.load()) {
     c.checkValid(ConfigFactory.defaultReference(), "spray.can.server")
     c.getConfig("spray.can.server")
   }
-  val UserAgentHeader  = c getString       "user-agent-header"
-  val IdleTimeout      = c getMilliseconds "idle-timeout"
-  val RequestTimeout   = c getMilliseconds "request-timeout"
-  val ReapingCycle     = c getMilliseconds "reaping-cycle"
+  val UserAgentHeader = c getString       "user-agent-header"
+  val IdleTimeout     = c getMilliseconds "idle-timeout"
+  val RequestTimeout  = c getMilliseconds "request-timeout"
+  val ReapingCycle    = c getMilliseconds "reaping-cycle"
+  val RequestSizeHint = c getBytes        "request-size-hint" toInt
 
-  require(IdleTimeout    >= 0, "idle-timeout must be >= 0")
-  require(RequestTimeout >= 0, "request-timeout must be >= 0")
-  require(ReapingCycle   >= 0, "reaping-cycle must be >= 0")
+  require(IdleTimeout     >= 0, "idle-timeout must be >= 0")
+  require(RequestTimeout  >= 0, "request-timeout must be >= 0")
+  require(ReapingCycle    >= 0, "reaping-cycle must be >= 0")
+  require(RequestSizeHint >= 0, "request-size-hint must be >= 0")
 
   val ParserSettings = new ParserSettings(config)
 }

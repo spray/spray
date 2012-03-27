@@ -211,14 +211,14 @@ class ResponseRendererSpec extends Specification with DataTables { def is =
 
   def prep(reqProtocol: HttpProtocol = `HTTP/1.1`, reqConnectionHeader: Option[String] = None,
            chunkless: Boolean = false)(response: HttpResponsePart) = {
-    val renderer = new ResponseRenderer("spray-can/1.0.0", chunkless) {
+    val renderer = new ResponseRenderer("spray-can/1.0.0", chunkless, 256) {
       override val dateTimeNow = DateTime(2011, 8, 25, 9,10,29) // provide a stable date for testing
     }
     val sb = new java.lang.StringBuilder
     val RenderedMessagePart(buffers, closeAfterWrite) = renderer.render {
       HttpResponsePartRenderingContext(response, HttpMethods.GET, reqProtocol, reqConnectionHeader)
     }
-    buffers.foreach { buf => sb.append(new String(buf.array, "ASCII")) }
+    buffers.foreach { buf => while (buf.remaining > 0) sb.append(buf.get.toChar) }
     sb.toString -> closeAfterWrite
   }
 

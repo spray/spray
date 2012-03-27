@@ -22,19 +22,21 @@ import io._
 
 object ResponseRendering {
 
-  def apply(serverHeader: String, chunklessStreaming: Boolean) = new CommandPipelineStage {
-    val renderer = new ResponseRenderer(serverHeader, chunklessStreaming)
+  def apply(serverHeader: String, chunklessStreaming: Boolean, responseSizeHint: Int): CommandPipelineStage = {
+    new CommandPipelineStage {
+      val renderer = new ResponseRenderer(serverHeader, chunklessStreaming, responseSizeHint)
 
-    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
-      case ctx: HttpResponsePartRenderingContext =>
-        val rendered = renderer.render(ctx)
-        val buffers = rendered.buffers
-        if (!buffers.isEmpty)
-          commandPL(IoPeer.Send(buffers))
-        if (rendered.closeConnection)
-          commandPL(IoPeer.Close(CleanClose))
+      def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
+        case ctx: HttpResponsePartRenderingContext =>
+          val rendered = renderer.render(ctx)
+          val buffers = rendered.buffers
+          if (!buffers.isEmpty)
+            commandPL(IoPeer.Send(buffers))
+          if (rendered.closeConnection)
+            commandPL(IoPeer.Close(CleanClose))
 
-      case cmd => commandPL(cmd)
+        case cmd => commandPL(cmd)
+      }
     }
   }
 }

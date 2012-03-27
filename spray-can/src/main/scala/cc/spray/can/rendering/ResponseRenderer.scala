@@ -17,78 +17,94 @@
 package cc.spray.can
 package rendering
 
-import java.lang.{StringBuilder => JStringBuilder}
 import java.nio.ByteBuffer
 import model._
 import HttpProtocols._
-import cc.spray.util.DateTime
+import cc.spray.util._
+import cc.spray.io.ByteBufferBuilder
 
-class ResponseRenderer(serverHeader: String, chunklessStreaming: Boolean) extends MessageRendering {
+class ResponseRenderer(serverHeader: String,
+                       chunklessStreaming: Boolean,
+                       responseSizeHint: Int) extends MessageRendering {
 
-  private[this] val serverHeaderPlusDateColonSP = serverHeader match {
+  private[this] val serverHeaderPlusDateColonSP = (serverHeader match {
     case "" => "Date: "
     case x => "Server: " + x + "\r\nDate: "
-  }
+  }).getAsciiBytes
 
   def render(ctx: HttpResponsePartRenderingContext): RenderedMessagePart = {
     def chunkless = chunklessStreaming || ctx.requestProtocol == `HTTP/1.0`
     ctx.responsePart match {
       case x: HttpResponse => renderResponse(x, ctx)
       case x: ChunkedResponseStart => renderChunkedResponseStart(x.response, ctx, chunkless)
-      case x: MessageChunk => renderChunk(x, chunkless)
-      case x: ChunkedMessageEnd => renderFinalChunk(x, ctx.requestConnectionHeader, chunkless)
+      case x: MessageChunk =>
+        if (chunkless) RenderedMessagePart(ByteBuffer.wrap(x.body) :: Nil)
+        else renderChunk(x, responseSizeHint)
+      case x: ChunkedMessageEnd =>
+        if (chunkless) RenderedMessagePart(Nil, true)
+        else renderFinalChunk(x, responseSizeHint, ctx.requestConnectionHeader)
     }
   }
 
   private def renderResponse(response: HttpResponse, ctx: HttpResponsePartRenderingContext) = {
     import response._
 
-    val sb = new JStringBuilder(256)
-    val connectionHeaderValue = renderResponseStart(response, ctx, sb)
-    val close = appendConnectionHeaderIfRequired(response, ctx, connectionHeaderValue, sb)
-    appendServerAndDateHeader(sb)
+    val bb = ByteBufferBuilder(responseSizeHint)
+    val connectionHeaderValue = renderResponseStart(response, ctx, bb)
+    val close = appendConnectionHeaderIfRequired(response, ctx, connectionHeaderValue, bb)
+    appendServerAndDateHeader(bb)
 
     // don't set a Content-Length header for non-keepalive HTTP/1.0 responses (rely on body end by connection close)
-    if (response.protocol == `HTTP/1.1` || !close) appendHeader("Content-Length", body.length.toString, sb)
-    appendLine(sb)
-    val bodyBufs = if (body.length == 0 || ctx.requestMethod == HttpMethods.HEAD) Nil else ByteBuffer.wrap(body) :: Nil
-    RenderedMessagePart(encode(sb) :: bodyBufs, close)
+    if (response.protocol == `HTTP/1.1` || !close) appendHeader("Content-Length", body.length.toString, bb)
+
+    bb.append(MessageRendering.CrLf)
+    renderedMessagePart(bb, ctx.requestMethod, body, close)
   }
 
   private def renderChunkedResponseStart(response: HttpResponse, ctx: HttpResponsePartRenderingContext,
                                          chunkless: Boolean) = {
     import response._
 
-    val sb = new JStringBuilder(256)
-    renderResponseStart(response, ctx, sb)
-    if (!chunkless) appendHeader("Transfer-Encoding", "chunked", sb)
-    appendServerAndDateHeader(sb)
-    appendLine(sb)
-    val bodyBufs =
-      if (body.length == 0 || ctx.requestMethod == HttpMethods.HEAD) Nil
-      else renderChunk(Nil, body, chunkless)
-    RenderedMessagePart(encode(sb) :: bodyBufs, closeConnection = false)
+    val bb = ByteBufferBuilder(responseSizeHint)
+    renderResponseStart(response, ctx, bb)
+    if (!chunkless) appendHeader("Transfer-Encoding", "chunked", bb)
+    appendServerAndDateHeader(bb)
+
+    bb.append(MessageRendering.CrLf)
+    if (chunkless || body.length == 0 || ctx.requestMethod == HttpMethods.HEAD) {
+      renderedMessagePart(bb, ctx.requestMethod, body, false)
+    } else {
+      RenderedMessagePart(renderChunk(Nil, body, bb).toByteBuffer :: Nil)
+    }
   }
 
   private def renderResponseStart(response: HttpResponse, ctx: HttpResponsePartRenderingContext,
-                                  sb: JStringBuilder): Option[String] = {
+                                  bb: ByteBufferBuilder): Option[String] = {
     import response._
 
     if (status == 200 && protocol == `HTTP/1.1`) {
-      sb.append("HTTP/1.1 200 OK\r\n")
-    } else appendLine {
-      sb.append(protocol.name).append(' ').append(status).append(' ').append(HttpResponse.defaultReason(status))
+      bb.append(MessageRendering.DefaultStatusLine)
+    } else {
+      bb.append(protocol.name).append(' ').append(Integer.toString(status)).append(' ')
+        .append(HttpResponse.defaultReason(status)).append(MessageRendering.CrLf)
     }
-    appendHeaders(headers, sb)
+    appendHeaders(headers, bb)
   }
 
-  def appendConnectionHeaderIfRequired(response: HttpResponse, ctx: HttpResponsePartRenderingContext,
-                                       connectionHeaderValue: Option[String], sb: JStringBuilder): Boolean = {
+  private def renderedMessagePart(bb: ByteBufferBuilder, requestMethod: HttpMethod, body: Array[Byte],
+                                   close: Boolean) = {
+    if (body.length == 0 || requestMethod == HttpMethods.HEAD) RenderedMessagePart(bb.toByteBuffer :: Nil, close)
+    else if (bb.remainingCapacity >= body.length) RenderedMessagePart(bb.append(body).toByteBuffer :: Nil, close)
+    else RenderedMessagePart(bb.toByteBuffer :: ByteBuffer.wrap(body) :: Nil, close)
+  }
+
+  private def appendConnectionHeaderIfRequired(response: HttpResponse, ctx: HttpResponsePartRenderingContext,
+                                       connectionHeaderValue: Option[String], bb: ByteBufferBuilder): Boolean = {
     ctx.requestProtocol match {
       case `HTTP/1.0` => {
         if (connectionHeaderValue.isEmpty) {
           if (ctx.requestConnectionHeader.isDefined && ctx.requestConnectionHeader.get == "Keep-Alive") {
-            appendHeader("Connection", "Keep-Alive", sb)
+            appendHeader("Connection", "Keep-Alive", bb)
             false
           } else true
         } else !connectionHeaderValue.get.contains("Keep-Alive")
@@ -96,7 +112,7 @@ class ResponseRenderer(serverHeader: String, chunklessStreaming: Boolean) extend
       case `HTTP/1.1` => {
         if (connectionHeaderValue.isEmpty) {
           if (ctx.requestConnectionHeader.isDefined && ctx.requestConnectionHeader.get == "close") {
-            if (response.protocol == `HTTP/1.1`) appendHeader("Connection", "close", sb)
+            if (response.protocol == `HTTP/1.1`) appendHeader("Connection", "close", bb)
             true
           } else response.protocol == `HTTP/1.0`
         } else connectionHeaderValue.get.contains("close")
@@ -104,9 +120,9 @@ class ResponseRenderer(serverHeader: String, chunklessStreaming: Boolean) extend
     }
   }
 
-  def appendServerAndDateHeader(sb: JStringBuilder) {
+  def appendServerAndDateHeader(bb: ByteBufferBuilder) {
     if (!serverHeaderPlusDateColonSP.isEmpty)
-      appendLine(sb.append(serverHeaderPlusDateColonSP).append(dateTimeNow.toRfc1123DateTimeString))
+      bb.append(serverHeaderPlusDateColonSP).append(dateTimeNow.toRfc1123DateTimeString).append(MessageRendering.CrLf)
   }
 
   protected def dateTimeNow = DateTime.now  // split out so we can stabilize by overriding in tests

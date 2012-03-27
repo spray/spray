@@ -122,7 +122,7 @@ object HttpServer {
     PipelineStage.optional(settings.PipeliningLimit > 0, PipeliningLimiter(settings.PipeliningLimit)) ~>
     PipelineStage.optional(settings.StatsSupport, StatsSupport()) ~>
     RequestParsing(settings.ParserSettings, log) ~>
-    ResponseRendering(settings.ServerHeader, settings.ChunklessStreaming) ~>
+    ResponseRendering(settings.ServerHeader, settings.ChunklessStreaming, settings.ResponseSizeHint) ~>
     PipelineStage.optional(settings.IdleTimeout > 0, ConnectionTimeouts(settings.IdleTimeout, log)) ~>
     PipelineStage.optional(
       settings.ReapingCycle > 0 && (settings.IdleTimeout > 0 || settings.RequestTimeout > 0),

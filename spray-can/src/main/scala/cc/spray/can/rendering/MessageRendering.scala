@@ -17,20 +17,19 @@
 package cc.spray.can
 package rendering
 
-import java.lang.{StringBuilder => JStringBuilder}
 import annotation.tailrec
-import java.nio.ByteBuffer
 import model.{ChunkedMessageEnd, MessageChunk, ChunkExtension, HttpHeader}
+import cc.spray.util._
+import cc.spray.io.ByteBufferBuilder
 
 private[rendering] trait MessageRendering {
-  private val CrLf = "\r\n".getBytes("ASCII")
-  private val SomeClose = Some("close")
+  import MessageRendering._
 
-  protected def appendHeader(name: String, value: String, sb: JStringBuilder) =
-    appendLine(sb.append(name).append(':').append(' ').append(value))
+  protected def appendHeader(name: String, value: String, bb: ByteBufferBuilder) =
+    bb.append(name).append(':').append(' ').append(value).append(CrLf)
 
   @tailrec
-  protected final def appendHeaders(httpHeaders: List[HttpHeader], sb: JStringBuilder,
+  protected final def appendHeaders(httpHeaders: List[HttpHeader], bb: ByteBufferBuilder,
                     connectionHeaderValue: Option[String] = None): Option[String] = {
     if (httpHeaders.isEmpty) {
       connectionHeaderValue
@@ -41,58 +40,45 @@ private[rendering] trait MessageRendering {
           if (header.name == "Connection") Some(header.value) else None
         else connectionHeaderValue
       }
-      appendHeader(header.name, header.value, sb)
-      appendHeaders(httpHeaders.tail, sb, newConnectionHeaderValue)
+      appendHeader(header.name, header.value, bb)
+      appendHeaders(httpHeaders.tail, bb, newConnectionHeaderValue)
     }
   }
 
-  protected def appendLine(sb: JStringBuilder) = sb.append('\r').append('\n')
-
-  protected def encode(sb: JStringBuilder): ByteBuffer = {
-    val chars = new Array[Char](sb.length)
-    sb.getChars(0, sb.length, chars, 0)
-    val buf = ByteBuffer.allocate(sb.length)
-    var i = 0
-    while (i < chars.length) {
-      buf.put(chars(i).asInstanceOf[Byte])
-      i += 1
-    }
-    buf.flip()
-    buf
+  protected def renderChunk(chunk: MessageChunk, messageSizeHint: Int): RenderedMessagePart = {
+    val bb = ByteBufferBuilder(messageSizeHint)
+    renderChunk(chunk.extensions, chunk.body, bb)
+    RenderedMessagePart(bb.toByteBuffer :: Nil)
   }
 
-  protected def renderChunk(chunk: MessageChunk, chunkless: Boolean): RenderedMessagePart =
-    RenderedMessagePart(renderChunk(chunk.extensions, chunk.body, chunkless))
-
-  protected def renderChunk(extensions: List[ChunkExtension], body: Array[Byte],
-                            chunkless: Boolean): List[ByteBuffer] = {
-    if (!chunkless) {
-      val sb = new JStringBuilder(16)
-      sb.append(Integer.toHexString(body.length))
-      appendLine(appendChunkExtensions(extensions, sb))
-      encode(sb) :: ByteBuffer.wrap(body) :: ByteBuffer.wrap(CrLf) :: Nil
-    } else ByteBuffer.wrap(body) :: Nil
+  protected def renderChunk(extensions: List[ChunkExtension], body: Array[Byte], bb: ByteBufferBuilder) = {
+    bb.append(Integer.toHexString(body.length))
+    appendChunkExtensions(extensions, bb).append(CrLf).append(body).append(CrLf)
   }
 
-  protected def renderFinalChunk(chunk: ChunkedMessageEnd, requestConnectionHeader: Option[String] = None,
-                                 chunkless: Boolean = false): RenderedMessagePart = {
-    if (!chunkless) {
-      val sb = new JStringBuilder(16)
-      appendLine(appendChunkExtensions(chunk.extensions, sb.append("0")))
-      appendHeaders(chunk.trailer, sb)
-      appendLine(sb)
-      RenderedMessagePart(encode(sb) :: Nil, closeConnection = requestConnectionHeader == SomeClose)
-    } else RenderedMessagePart(Nil, closeConnection = true)
+  protected def renderFinalChunk(chunk: ChunkedMessageEnd, messageSizeHint: Int,
+                                 requestConnectionHeader: Option[String] = None): RenderedMessagePart = {
+    val bb = ByteBufferBuilder(messageSizeHint).append('0')
+    appendChunkExtensions(chunk.extensions, bb).append(CrLf)
+    appendHeaders(chunk.trailer, bb)
+    bb.append(CrLf)
+    RenderedMessagePart(bb.toByteBuffer :: Nil, closeConnection = requestConnectionHeader == SomeClose)
   }
 
   @tailrec
-  private def appendChunkExtensions(extensions: List[ChunkExtension], sb: JStringBuilder): JStringBuilder = {
+  private def appendChunkExtensions(extensions: List[ChunkExtension], bb: ByteBufferBuilder): ByteBufferBuilder = {
     extensions match {
-      case Nil => sb
+      case Nil => bb
       case ChunkExtension(name, value) :: rest => appendChunkExtensions(rest, {
-        sb.append(';').append(name).append('=')
-        if (value.forall(isTokenChar)) sb.append(value) else sb.append('"').append(value).append('"')
+        bb.append(';').append(name).append('=')
+        if (value.forall(isTokenChar)) bb.append(value) else bb.append('"').append(value).append('"')
       })
     }
   }
+}
+
+private[rendering] object MessageRendering {
+  val DefaultStatusLine = "HTTP/1.1 200 OK\r\n".getAsciiBytes
+  val CrLf = "\r\n".getAsciiBytes
+  val SomeClose = Some("close")
 }

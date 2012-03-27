@@ -103,16 +103,14 @@ class RequestRendererSpec extends Specification { def is =
        |"""
   }
 
-  val renderer = new RequestRenderer("spray-can/1.0.0")
+  val renderer = new RequestRenderer("spray-can/1.0.0", 256)
 
   def prep(part: HttpRequestPart) = {
     val RenderedMessagePart(buffers, false) = renderer.render {
       HttpRequestPartRenderingContext(part, "test.com", 8080)
     }
     val sb = new java.lang.StringBuilder()
-    buffers.foreach { buf =>
-      sb.append(new String(buf.array, "ASCII"))
-    }
+    buffers.foreach { buf => while (buf.remaining > 0) sb.append(buf.get.toChar) }
     sb.toString
   }
 

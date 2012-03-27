@@ -17,51 +17,49 @@
 package cc.spray.can
 package rendering
 
-import java.lang.{StringBuilder => JStringBuilder}
 import java.nio.ByteBuffer
 import model.{ChunkedMessageEnd, MessageChunk, ChunkedRequestStart, HttpRequest}
+import cc.spray.io.ByteBufferBuilder
 
-class RequestRenderer(userAgentHeader: String) extends MessageRendering {
+class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) extends MessageRendering {
 
   def render(ctx: HttpRequestPartRenderingContext): RenderedMessagePart = {
     ctx.requestPart match {
       case x: HttpRequest => renderRequest(x, ctx.host, ctx.port)
       case x: ChunkedRequestStart => renderChunkedRequestStart(x.request, ctx.host, ctx.port)
-      case x: MessageChunk => renderChunk(x, chunkless = false)
-      case x: ChunkedMessageEnd => renderFinalChunk(x, chunkless = false)
+      case x: MessageChunk => renderChunk(x, requestSizeHint)
+      case x: ChunkedMessageEnd => renderFinalChunk(x, requestSizeHint)
     }
   }
 
   private def renderRequest(request: HttpRequest, host: String, port: Int) = {
-    val sb = renderRequestStart(request, host, port)
-    val bodyBufs = if (request.body.length > 0) {
-      appendHeader("Content-Length", request.body.length.toString, sb)
-      appendLine(sb)
-      ByteBuffer.wrap(request.body) :: Nil
-    } else {
-      appendLine(sb)
-      Nil
+    val bb = renderRequestStart(request, host, port)
+    val rbl = request.body.length
+    RenderedMessagePart {
+      if (rbl > 0) {
+        appendHeader("Content-Length", rbl.toString, bb).append(MessageRendering.CrLf)
+        if (bb.remainingCapacity >= rbl) bb.append(request.body).toByteBuffer :: Nil
+        else bb.toByteBuffer :: ByteBuffer.wrap(request.body) :: Nil
+      } else bb.append(MessageRendering.CrLf).toByteBuffer :: Nil
     }
-    RenderedMessagePart(encode(sb) :: bodyBufs)
   }
 
   private def renderChunkedRequestStart(request: HttpRequest, host: String, port: Int) = {
-    val sb = renderRequestStart(request, host, port)
-    appendHeader("Transfer-Encoding", "chunked", sb)
-    appendLine(sb)
-    RenderedMessagePart(encode(sb) :: {
-      if (request.body.length > 0) renderChunk(Nil, request.body, chunkless = false)
-      else Nil
-    })
+    val bb = renderRequestStart(request, host, port)
+    appendHeader("Transfer-Encoding", "chunked", bb).append(MessageRendering.CrLf)
+    if (request.body.length > 0) renderChunk(Nil, request.body, bb)
+    RenderedMessagePart(bb.toByteBuffer :: Nil)
   }
 
   private def renderRequestStart(request: HttpRequest, host: String, port: Int) = {
     import request._
-    val sb = new JStringBuilder(256)
-    appendLine(sb.append(method.name).append(' ').append(uri).append(' ').append(protocol.name))
-    appendHeaders(headers, sb)
-    appendHeader("Host", if (port == 80) host else host + ':' + port, sb)
-    if (!userAgentHeader.isEmpty) appendHeader("User-Agent", userAgentHeader, sb)
-    sb
+    val bb = ByteBufferBuilder(requestSizeHint)
+    bb.append(method.name).append(' ').append(uri).append(' ').append(protocol.name).append(MessageRendering.CrLf)
+    appendHeaders(headers, bb)
+    bb.append("Host: ").append(host)
+    if (port != 80) bb.append(':').append(Integer.toString(port))
+    bb.append(MessageRendering.CrLf)
+    if (!userAgentHeader.isEmpty) appendHeader("User-Agent", userAgentHeader, bb)
+    bb
   }
 }

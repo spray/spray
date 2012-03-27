@@ -21,8 +21,8 @@ import cc.spray.io._
 
 object RequestRendering {
 
-  def apply(userAgentHeader: String) = new CommandPipelineStage {
-    val renderer = new RequestRenderer(userAgentHeader)
+  def apply(userAgentHeader: String, requestSizeHint: Int) = new CommandPipelineStage {
+    val renderer = new RequestRenderer(userAgentHeader, requestSizeHint)
 
     def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
       case ctx: HttpRequestPartRenderingContext =>
