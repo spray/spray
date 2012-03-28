@@ -23,206 +23,264 @@ import HttpProtocols._
 import matcher.DataTables
 import cc.spray.util.DateTime
 
-class ResponseRendererSpec extends Specification with DataTables { def is =
+class ResponseRendererSpec extends mutable.Specification with DataTables {
 
-  "The response preparation logic should properly render"   ^
-    "a response with status 200, no headers and no body"    ! e1^
-    "a response with status 304, a few headers and no body" ! e2^
-    "a response with status 400, a few headers and a body"  ! e3^
-    "a non-keepalive HTTP/1.0 message"                      ! e4^
-    "a chunked response without body"                       ! e5^
-    "a chunked response with body"                          ! e6^
-    "a response chunk"                                      ! e7^
-    "a terminating response chunk"                          ! e8^
-    "a chunkless chunked response without body"             ! e9^
-    "a chunkless chunked response with body"                ! e10^
-    "a chunkless response chunk"                            ! e11^
-    "a chunkless terminating response chunk"                ! e12^
-                                                            end^
-  "The 'Connection' header should be rendered correctly"    ! e13
+  "The response preparation logic" should {
+    "properly render" in {
 
-  def e1 = prep() {
-    HttpResponse(200, Nil)
-  } mustEqual prep {
-    """|HTTP/1.1 200 OK
-       |Server: spray-can/1.0.0
-       |Date: Thu, 25 Aug 2011 09:10:29 GMT
-       |Content-Length: 0
-       |
-       |""" -> false
-  }
+      "a response with status 200, no headers and no body" in {
+        Context(HttpResponse(200, Nil)) must beRenderedTo(
+          content = """|HTTP/1.1 200 OK
+                       |Server: spray-can/1.0.0
+                       |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                       |Content-Length: 0
+                       |
+                       |""",
+          close = false
+        )
+      }
 
-  def e2 = prep() {
-    HttpResponse(304, List(
-      HttpHeader("X-Fancy", "of course"),
-      HttpHeader("Age", "0")
-    ))
-  } mustEqual prep {
-    """|HTTP/1.1 304 Not Modified
-       |X-Fancy: of course
-       |Age: 0
-       |Server: spray-can/1.0.0
-       |Date: Thu, 25 Aug 2011 09:10:29 GMT
-       |Content-Length: 0
-       |
-       |""" -> false
-  }
+      "a response with status 304, a few headers and no body" in {
+        Context(
+            HttpResponse(304, List(
+              HttpHeader("X-Fancy", "of course"),
+              HttpHeader("Age", "0")
+            ))
+        ) must beRenderedTo(
+          content = """|HTTP/1.1 304 Not Modified
+                       |X-Fancy: of course
+                       |Age: 0
+                       |Server: spray-can/1.0.0
+                       |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                       |Content-Length: 0
+                       |
+                       |""",
+          close = false
+        )
+      }
 
-  def e3 = prep() {
-    HttpResponse(
-      status = 400,
-      headers = List(HttpHeader("Age", "30"), HttpHeader("Connection", "Keep-Alive")),
-      body = "Small f*ck up overhere!".getBytes("ASCII"),
-      protocol = `HTTP/1.0`
-    )
-  } mustEqual prep {
-    """|HTTP/1.0 400 Bad Request
-       |Age: 30
-       |Connection: Keep-Alive
-       |Server: spray-can/1.0.0
-       |Date: Thu, 25 Aug 2011 09:10:29 GMT
-       |Content-Length: 23
-       |
-       |Small f*ck up overhere!""" -> false
-  }
+      "a response with status 400, a few headers and a body" in {
+        Context(
+          HttpResponse(
+            status = 400,
+            headers = List(HttpHeader("Age", "30"), HttpHeader("Connection", "Keep-Alive")),
+            body = "Small f*ck up overhere!".getBytes,
+            protocol = `HTTP/1.0`
+          )
+        ) must beRenderedTo(
+          content = """|HTTP/1.0 400 Bad Request
+                       |Age: 30
+                       |Connection: Keep-Alive
+                       |Server: spray-can/1.0.0
+                       |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                       |Content-Length: 23
+                       |
+                       |Small f*ck up overhere!""",
+          close = false
+        )
+      }
 
-  def e4 = prep() {
-    HttpResponse(
-      status = 200,
-      headers = List(HttpHeader("Age", "30"), HttpHeader("Cache-Control", "public")),
-      body = "Small f*ck up overhere!".getBytes("ASCII"),
-      protocol = `HTTP/1.0`
-    )
-  } mustEqual prep {
-    """|HTTP/1.0 200 OK
-       |Age: 30
-       |Cache-Control: public
-       |Server: spray-can/1.0.0
-       |Date: Thu, 25 Aug 2011 09:10:29 GMT
-       |
-       |Small f*ck up overhere!""" -> true
-  }
+      "a response to a HEAD request" in {
+        Context(
+          response = HttpResponse(
+            headers = List(HttpHeader("Age", "30"), HttpHeader("Connection", "Keep-Alive")),
+            body = "Small f*ck up overhere!".getBytes,
+            protocol = `HTTP/1.1`
+          ),
+          requestMethod = HttpMethods.HEAD
+        ) must beRenderedTo(
+          content = """|HTTP/1.1 200 OK
+                       |Age: 30
+                       |Connection: Keep-Alive
+                       |Server: spray-can/1.0.0
+                       |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                       |Content-Length: 23
+                       |
+                       |""",
+          close = false
+        )
+      }
 
-  def e5 = prep(reqConnectionHeader = Some("close")) {
-    ChunkedResponseStart(HttpResponse(200, List(HttpHeader("Age", "30"))))
-  } mustEqual prep {
-    """|HTTP/1.1 200 OK
-       |Age: 30
-       |Transfer-Encoding: chunked
-       |Server: spray-can/1.0.0
-       |Date: Thu, 25 Aug 2011 09:10:29 GMT
-       |
-       |""" -> false
-  }
+      "a non-keepalive HTTP/1.0 message" in {
+        Context(
+          HttpResponse(
+            status = 200,
+            headers = List(HttpHeader("Age", "30"), HttpHeader("Cache-Control", "public")),
+            body = "Small f*ck up overhere!".getBytes("ASCII"),
+            protocol = `HTTP/1.0`
+          )
+        ) must beRenderedTo(
+          content = """|HTTP/1.0 200 OK
+                       |Age: 30
+                       |Cache-Control: public
+                       |Server: spray-can/1.0.0
+                       |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                       |
+                       |Small f*ck up overhere!""",
+          close = true
+        )
+      }
 
-  def e6 = prep() {
-    ChunkedResponseStart(HttpResponse().withBody("Yahoooo"))
-  } mustEqual prep {
-    """|HTTP/1.1 200 OK
-       |Transfer-Encoding: chunked
-       |Server: spray-can/1.0.0
-       |Date: Thu, 25 Aug 2011 09:10:29 GMT
-       |
-       |7
-       |Yahoooo
-       |""" -> false
-  }
+      "a chunked response without body" in {
+        Context(
+          response = ChunkedResponseStart(HttpResponse(200, List(HttpHeader("Age", "30")))),
+          requestConnectionHeader = Some("close")
+        ) must beRenderedTo(
+          content = """|HTTP/1.1 200 OK
+                       |Age: 30
+                       |Transfer-Encoding: chunked
+                       |Server: spray-can/1.0.0
+                       |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                       |
+                       |""",
+          close = false
+        )
+      }
 
-  def e7 = prep() {
-    MessageChunk(
-      "body123".getBytes("ISO-8859-1"),
-      List(ChunkExtension("key", "value"), ChunkExtension("another", "tl;dr"))
-    )
-  } mustEqual prep {
-    """|7;key=value;another="tl;dr"
-       |body123
-       |""" -> false
-  }
+      "a chunked response with body" in {
+        Context(ChunkedResponseStart(HttpResponse().withBody("Yahoooo"))) must beRenderedTo(
+          content = """|HTTP/1.1 200 OK
+                       |Transfer-Encoding: chunked
+                       |Server: spray-can/1.0.0
+                       |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                       |
+                       |7
+                       |Yahoooo
+                       |""",
+          close = false
+        )
+      }
 
-  def e8 = prep() {
-    ChunkedMessageEnd(Nil, List(HttpHeader("Age", "30"), HttpHeader("Cache-Control", "public")))
-  } mustEqual prep {
-    """|0
-       |Age: 30
-       |Cache-Control: public
-       |
-       |""" -> false
-  }
+      "a response chunk" in {
+        Context(
+          MessageChunk(
+            "body123".getBytes("ISO-8859-1"),
+            List(ChunkExtension("key", "value"), ChunkExtension("another", "tl;dr"))
+          )
+        ) must beRenderedTo(
+          content = """|7;key=value;another="tl;dr"
+                       |body123
+                       |""",
+          close = false
+        )
+      }
 
-  def e9 = prep(chunkless = true) {
-    ChunkedResponseStart(HttpResponse(200, List(HttpHeader("Age", "30"))))
-  } mustEqual prep {
-    """|HTTP/1.1 200 OK
-       |Age: 30
-       |Server: spray-can/1.0.0
-       |Date: Thu, 25 Aug 2011 09:10:29 GMT
-       |
-       |""" -> false
-  }
+      "a final response chunk" in {
+        Context(
+          ChunkedMessageEnd(Nil, List(HttpHeader("Age", "30"), HttpHeader("Cache-Control", "public")))
+        ) must beRenderedTo(
+          content = """|0
+                       |Age: 30
+                       |Cache-Control: public
+                       |
+                       |""",
+          close = false
+        )
+      }
 
-  def e10 = prep(chunkless = true) {
-    ChunkedResponseStart(HttpResponse().withBody("Yahoooo"))
-  } mustEqual prep {
-    """|HTTP/1.1 200 OK
-       |Server: spray-can/1.0.0
-       |Date: Thu, 25 Aug 2011 09:10:29 GMT
-       |
-       |Yahoooo""" -> false
-  }
+      "a chunkless chunked response without body" in {
+        Context(
+          response = ChunkedResponseStart(HttpResponse(200, List(HttpHeader("Age", "30")))),
+          chunkless = true
+        ) must beRenderedTo(
+          content = """|HTTP/1.1 200 OK
+                       |Age: 30
+                       |Server: spray-can/1.0.0
+                       |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                       |
+                       |""",
+          close = false
+        )
+      }
 
-  def e11 = prep(chunkless = true) {
-    MessageChunk(
-      "body123".getBytes("ISO-8859-1"),
-      List(ChunkExtension("key", "value"), ChunkExtension("another", "tl;dr"))
-    )
-  } mustEqual prep {
-    "body123" -> false
-  }
+      "a chunkless chunked response with body" in {
+        Context(
+          response = ChunkedResponseStart(HttpResponse().withBody("Yahoooo")),
+          chunkless = true
+        ) must beRenderedTo(
+          content = """|HTTP/1.1 200 OK
+                       |Server: spray-can/1.0.0
+                       |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                       |
+                       |Yahoooo""",
+          close = false
+        )
+      }
 
-  def e12 = prep(chunkless = true) {
-    ChunkedMessageEnd(Nil, List(HttpHeader("Age", "30"), HttpHeader("Cache-Control", "public")))
-  } mustEqual prep {
-    "" -> true
-  }
+      "a chunkless response chunk" in {
+        Context(
+          response = MessageChunk(
+            "body123".getBytes("ISO-8859-1"),
+            List(ChunkExtension("key", "value"), ChunkExtension("another", "tl;dr"))
+          ),
+          chunkless = true
+        ) must beRenderedTo(
+          content = "body123",
+          close = false
+        )
+      }
 
-  val NONE: Option[String] = None
-  
-  def e13 =
-    "Client Version" | "Request"          | "Response"         | "Rendered"         | "Close" |
-    `HTTP/1.1`       ! NONE               ! NONE               ! NONE               ! false   |
-    `HTTP/1.1`       ! Some("close")      ! NONE               ! Some("close")      ! true    |
-    `HTTP/1.1`       ! Some("Keep-Alive") ! NONE               ! NONE               ! false   |
-    `HTTP/1.0`       ! NONE               ! NONE               ! NONE               ! true    |
-    `HTTP/1.0`       ! Some("close")      ! NONE               ! NONE               ! true    |
-    `HTTP/1.0`       ! Some("Keep-Alive") ! NONE               ! Some("Keep-Alive") ! false   |
-    `HTTP/1.1`       ! NONE               ! Some("close")      ! Some("close")      ! true    |
-    `HTTP/1.0`       ! Some("close")      ! Some("Keep-Alive") ! Some("Keep-Alive") ! false   |> {
-      (reqProto, reqCH, resCH, renCH, close) =>
-      prep(reqProto, reqCH) {
-        HttpResponse(200, resCH.map(h => List(HttpHeader("Connection", h))).getOrElse(Nil))
-      } mustEqual prep {
-        "HTTP/1.1 200 OK\n" +
-        renCH.map("Connection: " + _ + "\n").getOrElse("") +
-        "Server: spray-can/1.0.0\n" +
-        "Date: Thu, 25 Aug 2011 09:10:29 GMT\n" +
-        "Content-Length: 0\n\n" -> close
+      "a chunkless final response chunk" in {
+        Context(
+          response = ChunkedMessageEnd(Nil, List(HttpHeader("Age", "30"), HttpHeader("Cache-Control", "public"))),
+          chunkless = true
+        ) must beRenderedTo(
+          content = "",
+          close = true
+        )
+      }
+
+      "The 'Connection' header should be rendered correctly" in {
+        val NONE: Option[String] = None
+
+        "Client Version" | "Request"          | "Response"         | "Rendered"         | "Close" |
+        `HTTP/1.1`       ! NONE               ! NONE               ! NONE               ! false   |
+        `HTTP/1.1`       ! Some("close")      ! NONE               ! Some("close")      ! true    |
+        `HTTP/1.1`       ! Some("Keep-Alive") ! NONE               ! NONE               ! false   |
+        `HTTP/1.0`       ! NONE               ! NONE               ! NONE               ! true    |
+        `HTTP/1.0`       ! Some("close")      ! NONE               ! NONE               ! true    |
+        `HTTP/1.0`       ! Some("Keep-Alive") ! NONE               ! Some("Keep-Alive") ! false   |
+        `HTTP/1.1`       ! NONE               ! Some("close")      ! Some("close")      ! true    |
+        `HTTP/1.0`       ! Some("close")      ! Some("Keep-Alive") ! Some("Keep-Alive") ! false   |> {
+
+          (reqProto, reqCH, resCH, renCH, close) => Context(
+            response = HttpResponse(200, resCH.map(h => List(HttpHeader("Connection", h))).getOrElse(Nil)),
+            requestProtocol = reqProto,
+            requestConnectionHeader = reqCH
+          ) must beRenderedTo(
+            content = "HTTP/1.1 200 OK\n" +
+                      renCH.map("Connection: " + _ + "\n").getOrElse("") +
+                      "Server: spray-can/1.0.0\n" +
+                      "Date: Thu, 25 Aug 2011 09:10:29 GMT\n" +
+                      "Content-Length: 0\n\n",
+            close = close
+          )
+        }
       }
     }
-
-  def prep(reqProtocol: HttpProtocol = `HTTP/1.1`, reqConnectionHeader: Option[String] = None,
-           chunkless: Boolean = false)(response: HttpResponsePart) = {
-    val renderer = new ResponseRenderer("spray-can/1.0.0", chunkless, 256) {
-      override val dateTimeNow = DateTime(2011, 8, 25, 9,10,29) // provide a stable date for testing
-    }
-    val sb = new java.lang.StringBuilder
-    val RenderedMessagePart(buffers, closeAfterWrite) = renderer.render {
-      HttpResponsePartRenderingContext(response, HttpMethods.GET, reqProtocol, reqConnectionHeader)
-    }
-    buffers.foreach { buf => while (buf.remaining > 0) sb.append(buf.get.toChar) }
-    sb.toString -> closeAfterWrite
   }
 
-  def prep(t: (String, Boolean)): (String, Boolean) = t._1.stripMargin.replace("\n", "\r\n") -> t._2
+  case class Context(
+    response: HttpResponsePart,
+    requestMethod: HttpMethod = HttpMethods.GET,
+    requestProtocol: HttpProtocol = `HTTP/1.1`,
+    requestConnectionHeader: Option[String] = None,
+    chunkless: Boolean = false
+  )
 
-  def prep(s: String): String = s.stripMargin.replace("\n", "\r\n")
+  def beRenderedTo(content: String, close: Boolean) = {
+    beEqualTo(content.stripMargin.replace("\n", "\r\n") -> close) ^^ { ctx: Context =>
+      import ctx._
+      val renderer = new ResponseRenderer("spray-can/1.0.0", chunkless, 256) {
+        override val dateTimeNow = DateTime(2011, 8, 25, 9,10,29) // provide a stable date for testing
+      }
+      val sb = new java.lang.StringBuilder
+      val RenderedMessagePart(buffers, closeAfterWrite) = renderer.render {
+        HttpResponsePartRenderingContext(response, requestMethod, requestProtocol, requestConnectionHeader)
+      }
+      buffers.foreach { buf => while (buf.remaining > 0) sb.append(buf.get.toChar) }
+      sb.toString -> closeAfterWrite
+    }
+  }
+
 }

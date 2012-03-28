@@ -17,7 +17,6 @@
 package cc.spray.can
 
 import model.{HttpResponse, HttpHeader, HttpRequest}
-import akka.actor.Props
 import akka.pattern.ask
 import akka.util.{Duration, Timeout}
 import cc.spray.io.pipelines.MessageHandlerDispatch._
@@ -27,84 +26,84 @@ import cc.spray.util._
 import cc.spray.io.pipelines.TickGenerator
 import com.typesafe.config.ConfigFactory
 import cc.spray.io.{IoServer, IdleTimeout}
+import cc.spray.io.test.PipelineStageTest
+import org.specs2.mutable.Specification
+import akka.testkit.TestActorRef
+import akka.actor.{Actor, Props}
+import cc.spray.io.IoWorker.StopReading
 
-class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { def is =
+class HttpServerPipelineSpec extends Specification with PipelineStageTest {
 
-  sequential^
-  "The HttpServerPipeline should"^
-    "dispatch a simple HttpRequest to a singleton service actor" ! dispatchSimpleRequestToSingletonHandler^
-    "correctly dispatch a fragmented HttpRequest" ! dispatchFragmentedRequest^
-    "produce an error upon stray responses" ! strayResponse^
-    "correctly render a matched HttpResponse" ! renderResponse^
-    "dispatch requests to the right service actor when using per-connection handlers" ! perConnectionHandlers^
-    "dispatch requests to the right service actor when using per-message handlers" ! perMessageHandlers^
-    "close connections after idle timeout" ! testIdleTimeout^
-  Step(stop())
+  "The HttpServerPipeline" should {
 
-  def dispatchSimpleRequestToSingletonHandler = {
-    singletonPipeline.run {
-      received(simpleRequest)
-    } must produceCommands {
-      IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), null)
+    "dispatch a simple HttpRequest to a singleton service actor" in {
+      singleHandlerFixture.apply(Received(simpleRequest)).commands.fixTells === Seq(
+        IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), null)
+      )
     }
-  }
 
-  def dispatchFragmentedRequest = {
-    singletonPipeline.run(
-      received {
-        """|GET / HTTP/1.1
-           |Host: te"""
-      },
-      received {
-        """|st.com
-           |
-           |"""
-      }
-    ) must produceCommands {
-      IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), null)
+    "correctly dispatch a fragmented HttpRequest" in {
+      singleHandlerFixture.apply(
+        Received {
+          """|GET / HTTP/1.1
+             |Host: te"""
+        },
+        Received {
+          """|st.com
+             |
+             |"""
+        }
+      ).commands.fixTells === Seq(
+        IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), null)
+      )
     }
-  }
 
-  def strayResponse = {
-    singletonPipeline.run(HttpResponse()) must throwAn[IllegalStateException]
-  }
+    "produce an error upon stray responses" in {
+      singleHandlerFixture.apply(HttpResponse()) must throwAn[IllegalStateException]
+    }
 
-  def renderResponse = {
-    val pipeline = singletonPipeline
-    pipeline.run(received(simpleRequest))
-    pipeline.run(HttpResponse()) must produceCommands(send(simpleResponse))
-  }
+    "correctly render a matched HttpResponse" in {
+      singleHandlerFixture(
+        Received(simpleRequest),
+        HttpResponse()
+      ).commands.fixSends.last === SendString(simpleResponse)
+    }
 
-  def perConnectionHandlers = {
-    val pipeline1 = testPipeline(PerConnectionHandler(_ => Props(new DummyActor('actor1))))
-    val pipeline2 = testPipeline(PerConnectionHandler(_ => Props(new DummyActor('actor2))))
-    def receiver(pipeline: TestPipeline) = dispatchReceiverName(pipeline.run(received(simpleRequest)));
-    { receiver(pipeline1) === 'actor1 } and
-    { receiver(pipeline2) === 'actor2 } and
-    { receiver(pipeline1) === 'actor1 } and
-    { receiver(pipeline2) === 'actor2 }
-  }
+    "dispatch requests to the right service actor when using per-connection handlers" in {
+      val counter = new AtomicInteger
+      testFixture(PerConnectionHandler(_ => Props(new NamedActor("actor" + counter.incrementAndGet())))).apply(
+        Received(simpleRequest),
+        Received(simpleRequest)
+      ).commands.map {
+        case IoServer.Tell(receiver, _, _) => SendString(receiver.ask('name).mapTo[String].await)
+      } === Seq(
+        SendString("actor1"),
+        SendString("actor1")
+      )
+    }
 
-  def perMessageHandlers = {
-    val counter = new AtomicInteger
-    val pipeline = testPipeline(PerMessageHandler(_ => Props(new DummyActor("actor" + counter.incrementAndGet()))))
-    def receiver(msg: String) = dispatchReceiverName(pipeline.run(received(msg)));
-    { receiver(simpleRequest) === 'actor1 } and
-    { receiver(simpleRequest) === 'actor2 } and
-    { receiver(chunkedRequestStart) === 'actor3 } and
-    { receiver(requestChunk) === 'actor3 } and
-    { receiver(requestChunk) === 'actor3 } and
-    { receiver(chunkedRequestEnd) === 'actor3 } and
-    { receiver(chunkedRequestStart) === 'actor4 }
-  }
-
-  def testIdleTimeout = {
-    val pipeline = singletonPipeline
-    pipeline.run(received(simpleRequest))
-    pipeline.run(
-      TestWait("50 ms"),
-      TickGenerator.Tick
-    ) mustEqual (List(IoServer.Close(IdleTimeout)), List(TickGenerator.Tick))
+    "dispatch requests to the right service actor when using per-message handlers" in {
+      val counter = new AtomicInteger
+      testFixture(PerMessageHandler(_ => Props(new NamedActor("actor" + counter.incrementAndGet())))).apply(
+        Received(simpleRequest),
+        Received(simpleRequest),
+        Received(chunkedRequestStart),
+        Received(requestChunk),
+        Received(requestChunk),
+        Received(chunkedRequestEnd),
+        Received(chunkedRequestStart)
+      ).commands.map {
+        case IoServer.Tell(receiver, _, _) => SendString(receiver.ask('name).mapTo[String].await)
+      } === Seq(
+        SendString("actor1"),
+        SendString("actor2"),
+        SendString("actor3"),
+        SendString("actor3"),
+        SendString("actor3"),
+        SendString("actor3"),
+        SendString("actor4")
+      )
+    }
   }
 
   /////////////////////////// SUPPORT ////////////////////////////////
@@ -117,6 +116,8 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
                          |"""
 
   val simpleResponse =  """|HTTP/1.1 200 OK
+                           |Server: spray/1.0
+                           |Date: XXXX
                            |Content-Length: 0
                            |
                            |"""
@@ -137,26 +138,35 @@ class HttpServerPipelineSpec extends PipelineSpec("HttpServerPipelineSpec") { de
                              |
                              |"""
 
-  def singletonPipeline = testPipeline(SingletonHandler(singletonHandler))
+  val connectionActor = TestActorRef(new NamedActor("connectionActor"))
+  val singletonHandler = TestActorRef(new NamedActor("singletonHandler"))
 
-  def dispatchReceiverName(pipelineResult: TestPipelineResult) = {
-    val (List(IoServer.Tell(receiver, _, _)), _) = pipelineResult
-    receiver.ask('name).await
+  class NamedActor(val name: String) extends Actor {
+    def receive = { case 'name => sender ! name}
+    def getContext = context
   }
 
-  def testPipeline(messageHandler: MessageHandler) = new TestPipeline(
-    HttpServer.pipeline(
-      new ServerSettings(
-        ConfigFactory.parseString("""
-          spray.can.server.server-header = test/no-date
-          spray.can.server.idle-timeout = 50 ms
-          spray.can.server.reaping-cycle = 0  # don't enable the TickGenerator
-        """),
-        ConfirmedSends = true
-      ),
-      messageHandler,
-      req => HttpResponse(500).withBody("Timeout for " + req.uri),
-      log
-    )
+  def singleHandlerFixture = testFixture(SingletonHandler(singletonHandler))
+
+  def testFixture(messageHandler: MessageHandler): Fixture = {
+    new Fixture(testPipeline(messageHandler)) {
+      override def getConnectionActorContext = connectionActor.underlyingActor.getContext
+    }
+  }
+
+  def testPipeline(messageHandler: MessageHandler) = HttpServer.pipeline(
+    new ServerSettings(
+      ConfigFactory.parseString("""
+        spray.can.server.server-header = spray/1.0
+        spray.can.server.idle-timeout = 50 ms
+        spray.can.server.reaping-cycle = 0  # don't enable the TickGenerator
+        spray.can.server.pipelining-limit = 10
+      """),
+      ConfirmedSends = true
+    ),
+    messageHandler,
+    req => HttpResponse(500).withBody("Timeout for " + req.uri),
+    system.log
   )
+
 }

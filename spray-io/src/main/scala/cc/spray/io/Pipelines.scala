@@ -35,8 +35,17 @@ object Pipeline {
   val uninitialized: Pipeline[Any] = _ => throw new RuntimeException("Pipeline not yet initialized")
 }
 
-case class PipelineContext(handle: Handle, connectionActorContext: ActorContext) {
+trait PipelineContext {
+  def handle: Handle
+  def connectionActorContext: ActorContext
   def self: ActorRef = connectionActorContext.self
+}
+
+object PipelineContext {
+  def apply(_handle: Handle, _connectionActorContext: ActorContext) = new PipelineContext {
+    def handle = _handle
+    def connectionActorContext = _connectionActorContext
+  }
 }
 
 sealed trait PipelineStage {
