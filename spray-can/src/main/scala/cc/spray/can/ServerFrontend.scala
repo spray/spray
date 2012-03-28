@@ -25,10 +25,10 @@ import akka.event.LoggingAdapter
 import collection.mutable.Queue
 import annotation.tailrec
 import MessageHandlerDispatch._
-import akka.util.Duration
 import java.util.concurrent.atomic.AtomicReference
-import akka.actor.ActorRef
 import akka.spray.LazyActorRef
+import akka.util.{Unsafe, Duration}
+import akka.actor.{Terminated, ActorContext, ActorRef}
 
 object ServerFrontend {
 
@@ -127,7 +127,9 @@ object ServerFrontend {
 
           def dispatchRequestStart(part: HttpRequestPart, request: HttpRequest, timestamp: Long) {
             val rec = new RequestRecord(request, handlerCreator(), timestamp)
-            rec.receiver = if (settings.DirectResponding) context.self else new ReplyRef(rec, context.self)
+            rec.receiver =
+              if (settings.DirectResponding) context.self
+              else new RequestRef(rec, context.connectionActorContext)
             openRequests += rec
             commandPL(IoServer.Tell(rec.handler, part, rec.receiver))
           }
@@ -177,36 +179,55 @@ object ServerFrontend {
 
   private class Response(val rec: RequestRecord, val msg: Command) extends Command
 
-  private class ReplyRef(rec: RequestRecord, self: ActorRef) extends LazyActorRef(self) {
-    private[this] val state = new AtomicReference('uncompleted)
-    protected def deliver(message: Any, sender: ActorRef) {
+  object RequestRef {
+    private val responseStateOffset = Unsafe.instance.objectFieldOffset(
+      classOf[RequestRef].getDeclaredField("_responseStateDoNotCallMeDirectly"))
+
+    sealed trait ResponseState
+    case object Uncompleted extends ResponseState
+    case object Completed extends ResponseState
+    case object Chunking extends ResponseState
+  }
+
+  private class RequestRef(rec: RequestRecord, context: ActorContext) extends LazyActorRef(context.self) {
+    import RequestRef._
+    @volatile private[this] var _responseStateDoNotCallMeDirectly: ResponseState = Uncompleted
+    protected def handle(message: Any, sender: ActorRef) {
       message match {
-        case x: HttpResponse                 => dispatch(x, 'uncompleted, 'completed)
-        case x: ChunkedResponseStart         => dispatch(x, 'uncompleted, 'chunking)
-        case x: MessageChunk                 => dispatch(x, 'chunking, 'chunking)
-        case x: ChunkedMessageEnd            => dispatch(x, 'chunking, 'completed)
-        case x: HttpServer.Close             => dispatch(x)
-        case x: HttpServer.SetIdleTimeout    => dispatch(x)
-        case x: HttpServer.SetRequestTimeout => dispatch(x)
-        case x: HttpServer.SetTimeoutTimeout => dispatch(x)
+        case x: HttpResponse                        => dispatch(x, Uncompleted, Completed)
+        case x: ChunkedResponseStart                => dispatch(x, Uncompleted, Completed)
+        case x: MessageChunk                        => dispatch(x, Chunking, Chunking)
+        case x: ChunkedMessageEnd                   => dispatch(x, Chunking, Completed)
+        case x: HttpServer.Close                    => dispatch(x)
+        case x: HttpServer.SetIdleTimeout           => dispatch(x)
+        case x: HttpServer.SetRequestTimeout        => dispatch(x)
+        case x: HttpServer.SetTimeoutTimeout        => dispatch(x)
+        case Terminated(ref) if ref == context.self => stop() // cleanup when the connection died
         case _ => throw new IllegalArgumentException {
           "Illegal response " + message + " to HTTP request to '" + rec.request.uri + "'"
         }
       }
     }
-    private def dispatch(part: HttpResponsePart, expectedState: Symbol, newState: Symbol) {
-      if (state.compareAndSet(expectedState, newState))
-        self ! new Response(rec, part)
-      else throw new IllegalStateException(
+    private def dispatch(part: HttpResponsePart, expectedState: ResponseState, newState: ResponseState) {
+      if (Unsafe.instance.compareAndSwapObject(this, responseStateOffset, expectedState, newState)) {
+        context.self ! new Response(rec, part)
+        if (newState == Completed) stop()
+      } else throw new IllegalStateException(
         "Cannot dispatch " + part.getClass.getSimpleName + " as response (part) for request to '" + rec.request.uri +
-        "' since current response state is '" + state.get + "' but should be '" + expectedState + "'"
+        "' since current response state is '" + Unsafe.instance.getObjectVolatile(this, responseStateOffset) +
+          "' but should be '" + expectedState + "'"
       )
     }
     private def dispatch(cmd: Command) {
-      self ! new Response(rec, cmd)
+      context.self ! new Response(rec, cmd)
+    }
+    override def onRegister() {
+      context.watch(context.self)
+    }
+    override def onUnregister() {
+      context.unwatch(context.self)
     }
   }
-
 
   ////////////// COMMANDS //////////////
 

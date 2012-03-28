@@ -48,7 +48,7 @@ abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
   }
 
   lazy val binding: Receive = {
-    case Reply(IoWorker.Bound(key), originalSender: ActorRef, _) =>
+    case Reply(IoWorker.Bound(key), originalSender: ActorRef) =>
       bindingKey = Some(key)
       state = bound
       log.info("{} started on {}", self.path, endpoint.get)
@@ -72,7 +72,7 @@ abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
   }
 
   lazy val unbinding: Receive = {
-    case Reply(_: IoWorker.Unbound, originalSender: ActorRef, _) =>
+    case Reply(_: IoWorker.Unbound, originalSender: ActorRef) =>
       log.info("{} stopped on {}", self.path, endpoint.get)
       state = unbound
       originalSender ! Unbound(endpoint.get)

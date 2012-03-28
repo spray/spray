@@ -19,17 +19,12 @@ package cc.spray.util
 import akka.actor.ActorRef
 import akka.spray.LazyActorRef
 
-case class Reply(reply: Any, context: Any, contextRef: LazyActorRef)
+case class Reply(reply: Any, context: Any)
 
 object Reply {
-  def withContext(context: Any)(implicit replyReceiver: ActorRef): LazyActorRef = new LazyActorRef(replyReceiver) {
-    def deliver(reply: Any, replySender: ActorRef) {
-      replyReceiver.tell(new Reply(reply, context, this), replySender)
-    }
-  }
   def onceWithContext(context: Any)(implicit replyReceiver: ActorRef): LazyActorRef = new LazyActorRef(replyReceiver) {
-    def deliver(reply: Any, replySender: ActorRef) {
-      replyReceiver.tell(new Reply(reply, context, this), replySender)
+    def handle(reply: Any, replySender: ActorRef) {
+      replyReceiver.tell(new Reply(reply, context), replySender)
       stop()
     }
   }
