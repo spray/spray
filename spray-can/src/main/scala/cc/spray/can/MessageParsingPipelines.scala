@@ -57,7 +57,7 @@ abstract class MessageParsingPipelines(settings: ParserSettings,
 
   def apply(event: Event) {
     event match {
-      case x: IoWorker.Received => parse(x.buffer)
+      case x: IoPeer.Received => parse(x.buffer)
       case ev => eventPL(ev)
     }
   }

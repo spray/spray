@@ -27,7 +27,7 @@ object ResponseParsing {
     def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): EPL = {
 
       new MessageParsingPipelines(settings, commandPL, eventPL) {
-        lazy val startParser = new EmptyResponseParser(settings)
+        def startParser = new EmptyResponseParser(settings)
 
         def handleParseError(state: ErrorState) {
           log.warning("Received illegal response: {}", state.message)

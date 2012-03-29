@@ -21,6 +21,7 @@ import akka.util.Duration
 import pipelines.{TickGenerator, ConnectionTimeouts}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.util.concurrent.TimeUnit
+import akka.event.LoggingAdapter
 
 /**
  * Reacts to [[cc.spray.can.HttpClient.Connect]] messages by establishing a connection to the remote host.
@@ -35,9 +36,13 @@ import java.util.concurrent.TimeUnit
 class HttpClient(ioWorker: IoWorker, config: Config = ConfigFactory.load())
   extends IoClient(ioWorker) with ConnectionActors {
 
-  private[this] val settings = new ClientSettings(config)
+  protected lazy val pipeline: PipelineStage =
+    HttpClient.pipeline(new ClientSettings(config), log)
+}
 
-  protected lazy val pipeline: PipelineStage = {
+object HttpClient {
+
+  private[can] def pipeline(settings: ClientSettings, log: LoggingAdapter): PipelineStage = {
     ClientFrontend(settings.RequestTimeout, log) ~>
     RequestRendering(settings.UserAgentHeader, settings.RequestSizeHint) ~>
     ResponseParsing(settings.ParserSettings, log) ~>
@@ -47,9 +52,6 @@ class HttpClient(ioWorker: IoWorker, config: Config = ConfigFactory.load())
       TickGenerator(Duration(settings.ReapingCycle, TimeUnit.MILLISECONDS))
     )
   }
-}
-
-object HttpClient {
 
   ////////////// COMMANDS //////////////
   // HttpRequestParts +

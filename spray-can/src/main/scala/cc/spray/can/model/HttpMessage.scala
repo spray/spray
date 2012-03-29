@@ -21,6 +21,7 @@ import java.io.UnsupportedEncodingException
 import java.nio.charset.Charset
 import cc.spray.io.{Command, Event}
 import cc.spray.util._
+import java.util.Arrays
 
 sealed trait HttpMessagePart extends Command with Event
 
@@ -49,6 +50,19 @@ case class HttpRequest(
   def connectionHeader: Option[String] = headers.mapFind {
     header => if (header.name == "connection") Some(header.value) else None
   }
+
+  override def hashCode() =
+    (((method.## * 31 + uri.##) * 31 + headers.##) * 31 + Arrays.hashCode(body)) * 31 + protocol.##
+
+  override def equals(obj: Any) = obj match {
+    case x: AnyRef if this eq x => true
+    case that: HttpRequest => that.method == method && that.uri == uri && that.headers == headers &&
+      Arrays.equals(that.body, body) && that.protocol == protocol
+    case _ => false
+  }
+
+  override def toString = "HttpRequest(" + method + ", " + uri + ", " + headers + ", " +
+    new String(body, "ASCII") + ", " + protocol + ')'
 }
 
 object HttpRequest {
@@ -85,6 +99,19 @@ case class HttpResponse(
       case e: UnsupportedEncodingException => "<unsupported charset in Content-Type-Header>"
     }
   }
+
+  override def hashCode() =
+    (((((status * 31) + headers.##) * 31) + Arrays.hashCode(body)) * 31) + protocol.##
+
+  override def equals(obj: Any) = obj match {
+    case x: AnyRef if this eq x => true
+    case that: HttpResponse =>
+      that.status == status && that.headers == headers && Arrays.equals(that.body, body) && that.protocol == protocol
+    case _ => false
+  }
+
+  override def toString = "HttpResponse(" + status + ", " + headers + ", " +
+    new String(body, "ASCII") + ", " + protocol + ')'
 }
 
 object HttpResponse {

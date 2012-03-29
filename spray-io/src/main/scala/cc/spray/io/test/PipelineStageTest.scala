@@ -6,6 +6,7 @@ import java.nio.ByteBuffer
 import akka.util.Duration
 import cc.spray.util._
 import akka.actor.{ActorContext, ActorSystem}
+import java.net.InetSocketAddress
 
 trait PipelineStageTest {
   implicit val system = ActorSystem()
@@ -13,7 +14,7 @@ trait PipelineStageTest {
   val dummyHandle = new Handle {
     def key = throw new UnsupportedOperationException
     def handler = throw new UnsupportedOperationException
-    def address = throw new UnsupportedOperationException
+    val address = new InetSocketAddress("example.com", 8080)
   }
 
   class Fixture(stage: PipelineStage) {
@@ -38,6 +39,7 @@ trait PipelineStageTest {
     private val _events = ListBuffer.empty[Event]
     def commands: Seq[Command] = _commands
     def events: Seq[Event] = _events
+    def commandsAndEvents: (Seq[Command], Seq[Event]) = (commands, events)
     val pipelines = stage.buildPipelines(context, x => _commands += x, x => _events += x)
   }
 
@@ -47,7 +49,7 @@ trait PipelineStageTest {
 
   def Received(rawMessage: String) = IoWorker.Received(dummyHandle, string2ByteBuffer(rawMessage))
   def Send(rawMessage: String) = IoPeer.Send(string2ByteBuffer(rawMessage))
-  def SendString(rawMessage: String) = SendStringCommand(prepString(rawMessage))
+  def SendString(rawMessage: String) = SendStringCommand(rawMessage)
   def Do(body: => Unit) = new Do(body)
   def Sleep(duration: String) = Do(Thread.sleep(Duration(duration).toMillis))
 
@@ -72,8 +74,7 @@ trait PipelineStageTest {
     }
   }
 
-  private def string2ByteBuffer(s: String) = ByteBuffer.wrap(prepString(s).getBytes("US-ASCII"))
-  private def prepString(s: String) = s.stripMargin.replace("\n", "\r\n")
+  protected def string2ByteBuffer(s: String) = ByteBuffer.wrap(s.getBytes("US-ASCII"))
 
   def cleanup() {
     system.shutdown()

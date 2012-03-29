@@ -21,20 +21,16 @@ import akka.pattern.ask
 import akka.util.{Duration, Timeout}
 import cc.spray.io.pipelines.MessageHandlerDispatch._
 import java.util.concurrent.atomic.AtomicInteger
-import org.specs2.specification.Step
 import cc.spray.util._
-import cc.spray.io.pipelines.TickGenerator
 import com.typesafe.config.ConfigFactory
-import cc.spray.io.{IoServer, IdleTimeout}
-import cc.spray.io.test.PipelineStageTest
 import org.specs2.mutable.Specification
 import akka.testkit.TestActorRef
 import akka.actor.{Actor, Props}
-import cc.spray.io.IoWorker.StopReading
+import cc.spray.io.IoServer
 
-class HttpServerPipelineSpec extends Specification with PipelineStageTest {
+class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
 
-  "The HttpServerPipeline" should {
+  "The HttpServer pipeline" should {
 
     "dispatch a simple HttpRequest to a singleton service actor" in {
       singleHandlerFixture.apply(Received(simpleRequest)).commands.fixTells === Seq(
@@ -45,13 +41,17 @@ class HttpServerPipelineSpec extends Specification with PipelineStageTest {
     "correctly dispatch a fragmented HttpRequest" in {
       singleHandlerFixture.apply(
         Received {
+          prep {
           """|GET / HTTP/1.1
              |Host: te"""
+          }
         },
         Received {
+          prep {
           """|st.com
              |
              |"""
+          }
         }
       ).commands.fixTells === Seq(
         IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), null)
@@ -110,33 +110,43 @@ class HttpServerPipelineSpec extends Specification with PipelineStageTest {
 
   implicit val timeout: Timeout = Duration("500 ms")
 
-  val simpleRequest = """|GET / HTTP/1.1
-                         |Host: test.com
-                         |
-                         |"""
+  val simpleRequest = prep {
+  """|GET / HTTP/1.1
+     |Host: test.com
+     |
+     |"""
+  }
 
-  val simpleResponse =  """|HTTP/1.1 200 OK
-                           |Server: spray/1.0
-                           |Date: XXXX
-                           |Content-Length: 0
-                           |
-                           |"""
+  val simpleResponse = prep {
+  """|HTTP/1.1 200 OK
+     |Server: spray/1.0
+     |Date: XXXX
+     |Content-Length: 0
+     |
+     |"""
+  }
 
-  val chunkedRequestStart = """|GET / HTTP/1.1
-                               |Host: test.com
-                               |Transfer-Encoding: chunked
-                               |
-                               |"""
+  val chunkedRequestStart = prep {
+  """|GET / HTTP/1.1
+     |Host: test.com
+     |Transfer-Encoding: chunked
+     |
+     |"""
+  }
 
-  val requestChunk = """|7
-                        |body123
-                        |"""
+  val requestChunk = prep {
+  """|7
+     |body123
+     |"""
+  }
 
-  val chunkedRequestEnd = """|0
-                             |Age: 30
-                             |Cache-Control: public
-                             |
-                             |"""
+  val chunkedRequestEnd = prep {
+  """|0
+     |Age: 30
+     |Cache-Control: public
+     |
+     |"""
+  }
 
   val connectionActor = TestActorRef(new NamedActor("connectionActor"))
   val singletonHandler = TestActorRef(new NamedActor("singletonHandler"))
