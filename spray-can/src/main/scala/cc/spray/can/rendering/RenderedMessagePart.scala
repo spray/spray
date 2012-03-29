@@ -25,7 +25,7 @@ case class HttpRequestPartRenderingContext(
   requestPart: HttpRequestPart,
   host: String,
   port: Int
-)
+) extends Command
 
 case class HttpResponsePartRenderingContext(
   responsePart: HttpResponsePart,

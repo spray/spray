@@ -22,8 +22,8 @@ import parsing.ParserSettings
 private[can] class ClientSettings(config: Config = ConfigFactory.load()) {
   private[this] val c: Config = {
     val c = config.withFallback(ConfigFactory.defaultReference())
-    c.checkValid(ConfigFactory.defaultReference(), "spray.can.server")
-    c.getConfig("spray.can.server")
+    c.checkValid(ConfigFactory.defaultReference(), "spray.can.client")
+    c.getConfig("spray.can.client")
   }
   val UserAgentHeader = c getString       "user-agent-header"
   val IdleTimeout     = c getMilliseconds "idle-timeout"

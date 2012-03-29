@@ -35,6 +35,11 @@ case object PeerClosed extends ConnectionClosedReason
 case object IdleTimeout extends ConnectionClosedReason
 
 /**
+ * The connection was closed due to a request not having been responded to in a timely fashion.
+ */
+case object RequestTimeout extends ConnectionClosedReason
+
+/**
  * The connection was closed because the peer did not adhere to
  * the higher-level protocol.
  */
