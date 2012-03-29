@@ -25,10 +25,9 @@ import akka.event.LoggingAdapter
 import collection.mutable.Queue
 import annotation.tailrec
 import MessageHandlerDispatch._
-import java.util.concurrent.atomic.AtomicReference
 import akka.spray.LazyActorRef
 import akka.util.{Unsafe, Duration}
-import akka.actor.{Terminated, ActorContext, ActorRef}
+import akka.actor.{ActorPath, Terminated, ActorContext, ActorRef}
 
 object ServerFrontend {
 
@@ -221,10 +220,14 @@ object ServerFrontend {
     private def dispatch(cmd: Command) {
       context.self ! new Response(rec, cmd)
     }
-    override def onRegister() {
+
+    override protected def register(path: ActorPath) {
+      super.register(path)
       context.watch(context.self)
     }
-    override def onUnregister() {
+
+    override protected def unregister(path: ActorPath) {
+      super.unregister(path)
       context.unwatch(context.self)
     }
   }

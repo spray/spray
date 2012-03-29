@@ -72,7 +72,7 @@ object StatsSupport {
 
           case GetStats => commandPL {
             IoServer.Tell(
-              receiver = context.connectionActorContext.sender,
+              receiver = context.sender,
               message = HttpServer.Stats(
                 totalRequests = requestStarts.get,
                 openRequests = requestStarts.get - responseStarts.get,

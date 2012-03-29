@@ -22,8 +22,10 @@ import parsing.{ParserSettings, ErrorState, EmptyResponseParser}
 
 object ResponseParsing {
 
-  def apply(settings: ParserSettings, log: LoggingAdapter) = new EventPipelineStage {
-    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
+  def apply(settings: ParserSettings, log: LoggingAdapter): EventPipelineStage = new EventPipelineStage {
+
+    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): EPL = {
+
       new MessageParsingPipelines(settings, commandPL, eventPL) {
         lazy val startParser = new EmptyResponseParser(settings)
 

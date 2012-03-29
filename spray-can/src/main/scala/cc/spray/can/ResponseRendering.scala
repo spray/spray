@@ -26,7 +26,7 @@ object ResponseRendering {
     new CommandPipelineStage {
       val renderer = new ResponseRenderer(serverHeader, chunklessStreaming, responseSizeHint)
 
-      def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = {
+      def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): CPL = {
         case ctx: HttpResponsePartRenderingContext =>
           val rendered = renderer.render(ctx)
           val buffers = rendered.buffers

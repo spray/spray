@@ -39,6 +39,7 @@ trait PipelineContext {
   def handle: Handle
   def connectionActorContext: ActorContext
   def self: ActorRef = connectionActorContext.self
+  def sender: ActorRef = connectionActorContext.sender
 }
 
 object PipelineContext {
