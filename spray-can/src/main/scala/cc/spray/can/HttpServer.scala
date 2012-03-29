@@ -65,13 +65,24 @@ object HttpServer {
    *    | TickGenerator.Tick              |
    *    |                                \/
    * |------------------------------------------------------------------------------------------
+   * | PipeliningLimiter: throttles incoming requests according to the PipeliningLimit, listens
+   * |                    to HttpResponsePartRenderingContext commands and HttpRequestPart events,
+   * |                    generates IoServer.StopReading and IoServer.ResumeReading commands
+   * |------------------------------------------------------------------------------------------
+   *    /\                                |
+   *    | HttpMessagePart                 | HttpResponsePartRenderingContext
+   *    | IoServer.Closed                 | IoServer.Tell
+   *    | IoServer.SendCompleted          | IoServer.StopReading
+   *    | TickGenerator.Tick              | IoServer.ResumeReading
+   *    |                                \/
+   * |------------------------------------------------------------------------------------------
    * | StatsSupport: listens to most commands and events to collect statistics
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | HttpMessagePart                 | HttpResponsePartRenderingContext
    *    | IoServer.Closed                 | IoServer.Tell
-   *    | IoServer.SendCompleted          |
-   *    | TickGenerator.Tick              |
+   *    | IoServer.SendCompleted          | IoServer.StopReading
+   *    | TickGenerator.Tick              | IoServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
    * | RequestParsing: converts IoServer.Received to HttpMessagePart,
@@ -80,8 +91,8 @@ object HttpServer {
    *    /\                                |
    *    | IoServer.Closed                 | HttpResponsePartRenderingContext
    *    | IoServer.SendCompleted          | IoServer.Tell
-   *    | IoServer.Received               |
-   *    | TickGenerator.Tick              |
+   *    | IoServer.Received               | IoServer.StopReading
+   *    | TickGenerator.Tick              | IoServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
    * | ResponseRendering: converts HttpResponsePartRenderingContext
@@ -91,7 +102,8 @@ object HttpServer {
    *    | IoServer.Closed                 | IoServer.Send
    *    | IoServer.SendCompleted          | IoServer.Close
    *    | IoServer.Received               | IoServer.Tell
-   *    | TickGenerator.Tick              |
+   *    | TickGenerator.Tick              | IoServer.StopReading
+   *    |                                 | IoServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
    * | ConnectionTimeouts: listens to IoServer.Received and IoServer.Send and
@@ -101,7 +113,8 @@ object HttpServer {
    *    | IoServer.Closed                 | IoServer.Send
    *    | IoServer.SendCompleted          | IoServer.Close
    *    | IoServer.Received               | IoServer.Tell
-   *    | TickGenerator.Tick              |
+   *    | TickGenerator.Tick              | IoServer.StopReading
+   *    |                                 | IoServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
    * | TickGenerator: listens to event IoServer.Closed,
@@ -111,7 +124,8 @@ object HttpServer {
    *    | IoServer.Closed                 | IoServer.Send
    *    | IoServer.SendCompleted          | IoServer.Close
    *    | IoServer.Received               | IoServer.Tell
-   *    | TickGenerator.Tick              |
+   *    | TickGenerator.Tick              | IoServer.StopReading
+   *    |                                 | IoServer.ResumeReading
    *    |                                \/
    */
   private[can] def pipeline(settings: ServerSettings,
