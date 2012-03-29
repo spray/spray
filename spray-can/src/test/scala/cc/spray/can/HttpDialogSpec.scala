@@ -42,9 +42,39 @@ class HttpDialogSpec extends Specification {
     "be able to complete a simple request/response dialog" in {
       HttpDialog(client, "localhost", port)
         .send(HttpRequest(uri = "/foo"))
-        .go()
+        .end
         .map(_.bodyAsString)
         .await === "/foo"
+    }
+    "be able to complete a pipelined 3 requests dialog" in {
+      HttpDialog(client, "localhost", port)
+        .send(HttpRequest(uri = "/foo"))
+        .send(HttpRequest(uri = "/bar"))
+        .send(HttpRequest(uri = "/baz"))
+        .end
+        .map(_.map(_.bodyAsString))
+        .await === "/foo" :: "/bar" :: "/baz" :: Nil
+    }
+    "be able to complete an unpipelined 3 requests dialog" in {
+      HttpDialog(client, "localhost", port)
+        .send(HttpRequest(uri = "/foo"))
+        .awaitResponse
+        .send(HttpRequest(uri = "/bar"))
+        .awaitResponse
+        .send(HttpRequest(uri = "/baz"))
+        .end
+        .map(_.map(_.bodyAsString))
+        .await === "/foo" :: "/bar" :: "/baz" :: Nil
+    }
+    "be able to complete a dialog with 3 replies" in {
+      HttpDialog(client, "localhost", port)
+        .send(HttpRequest(uri = "/foo"))
+        .reply(response => HttpRequest(uri = response.bodyAsString + "/a"))
+        .reply(response => HttpRequest(uri = response.bodyAsString + "/b"))
+        .reply(response => HttpRequest(uri = response.bodyAsString + "/c"))
+        .end
+        .map(_.bodyAsString)
+        .await === "/foo/a/b/c"
     }
   }
 
