@@ -17,10 +17,12 @@
 package cc.spray.io
 
 import akka.actor.ActorRef
+import java.net.InetSocketAddress
 
 trait Handle {
   def key: Key
   def handler: ActorRef
+  def address: InetSocketAddress
 }
 
-case class SimpleHandle(key: Key, handler: ActorRef) extends Handle
+case class SimpleHandle(key: Key, handler: ActorRef, address: InetSocketAddress) extends Handle

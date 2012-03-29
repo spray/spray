@@ -18,14 +18,15 @@ package cc.spray.io
 
 import akka.actor._
 import java.nio.ByteBuffer
+import java.net.InetSocketAddress
 
 
 abstract class IoPeer extends Actor with ActorLogging {
 
   def ioWorker: IoWorker
 
-  protected def createConnectionHandle(key: Key): Handle =
-    SimpleHandle(key, self) // default implementation
+  protected def createConnectionHandle(key: Key, address: InetSocketAddress): Handle =
+    SimpleHandle(key, self, address) // default implementation
 
 }
 

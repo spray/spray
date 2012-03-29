@@ -17,13 +17,15 @@
 package cc.spray.io
 
 import akka.actor.{PoisonPill, Props, Actor}
+import java.net.InetSocketAddress
 
 
 trait ConnectionActors extends IoPeer {
 
-  override protected def createConnectionHandle(theKey: Key) = new Handle {
+  override protected def createConnectionHandle(theKey: Key, theAddress: InetSocketAddress) = new Handle {
     val key = theKey
     val handler = context.actorOf(Props(createConnectionActor(this)))
+    val address = theAddress
   }
 
   protected def createConnectionActor(handle: Handle): IoConnectionActor = new IoConnectionActor(handle)

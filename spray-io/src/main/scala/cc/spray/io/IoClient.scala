@@ -32,11 +32,11 @@ class IoClient(val ioWorker: IoWorker) extends IoPeer {
   }
 
   protected def receive = {
-    case Connect(address) =>
-      ioWorker.tell(IoWorker.Connect(address), Reply.onceWithContext(sender))
+    case cmd@ Connect(address) =>
+      ioWorker.tell(IoWorker.Connect(address), Reply.withContext(cmd -> sender))
 
-    case Reply(IoWorker.Connected(key), originalSender: ActorRef) =>
-      val handle = createConnectionHandle(key)
+    case Reply(IoWorker.Connected(key, address), (connect: Connect, originalSender: ActorRef)) =>
+      val handle = createConnectionHandle(key, address)
       ioWorker ! IoWorker.Register(handle)
       originalSender ! Connected(handle)
 
@@ -49,7 +49,7 @@ class IoClient(val ioWorker: IoWorker) extends IoPeer {
 object IoClient {
 
   ////////////// COMMANDS //////////////
-  case class Connect(address: SocketAddress)
+  case class Connect(address: InetSocketAddress)
   object Connect {
     def apply(host: String, port: Int): Connect = Connect(new InetSocketAddress(host, port))
   }

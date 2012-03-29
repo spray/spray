@@ -16,15 +16,15 @@
 
 package cc.spray.io
 
-import java.net.{SocketAddress, InetSocketAddress}
+import java.net.InetSocketAddress
 import akka.actor.{Status, ActorRef}
 import cc.spray.util.Reply
 
 abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
   import IoServer._
-  var bindingKey: Option[Key] = None
-  var endpoint: Option[SocketAddress] = None
-  var state = unbound
+  private var bindingKey: Option[Key] = None
+  private var endpoint: Option[InetSocketAddress] = None
+  private var state = unbound
 
   def receive = {
     new Receive {
@@ -37,11 +37,11 @@ abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
   }
 
   lazy val unbound: Receive = {
-    case x: Bind =>
-      log.debug("Starting {} on {}", self.path, x.endpoint)
-      endpoint = Some(x.endpoint)
+    case Bind(endpoint, bindingBacklog) =>
+      log.debug("Starting {} on {}", self.path, endpoint)
+      this.endpoint = Some(endpoint)
       state = binding
-      ioWorker.tell(IoWorker.Bind(self, x.endpoint, x.bindingBacklog), Reply.onceWithContext(sender))
+      ioWorker.tell(IoWorker.Bind(self, endpoint, bindingBacklog), Reply.withContext(sender))
 
     case x: ServerCommand =>
       sender ! Status.Failure(CommandException(x, "Not yet bound"))
@@ -59,13 +59,13 @@ abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
   }
 
   lazy val bound: Receive = {
-    case x: IoWorker.Connected =>
-      ioWorker ! IoWorker.Register(createConnectionHandle(x.key))
+    case IoWorker.Connected(key, address) =>
+      ioWorker ! IoWorker.Register(createConnectionHandle(key, address))
 
     case Unbind =>
       log.debug("Stopping {} on {}", self.path, endpoint.get)
       state = unbinding
-      ioWorker.tell(IoWorker.Unbind(bindingKey.get), Reply.onceWithContext(sender))
+      ioWorker.tell(IoWorker.Unbind(bindingKey.get), Reply.withContext(sender))
 
     case x: ServerCommand =>
       sender ! Status.Failure(CommandException(x, "Already bound"))
@@ -88,7 +88,7 @@ object IoServer {
 
   ////////////// COMMANDS //////////////
   sealed trait ServerCommand extends Command
-  case class Bind(endpoint: SocketAddress, bindingBacklog: Int) extends ServerCommand
+  case class Bind(endpoint: InetSocketAddress, bindingBacklog: Int) extends ServerCommand
   object Bind {
     def apply(interface: String, port: Int, bindingBacklog: Int = 100): Bind =
       Bind(new InetSocketAddress(interface, port), bindingBacklog)
@@ -103,8 +103,8 @@ object IoServer {
 
 
   ////////////// EVENTS //////////////
-  case class Bound(endpoint: SocketAddress)
-  case class Unbound(endpoint: SocketAddress)
+  case class Bound(endpoint: InetSocketAddress)
+  case class Unbound(endpoint: InetSocketAddress)
   type Closed = IoPeer.Closed;                val Closed = IoPeer.Closed
   type SendCompleted = IoPeer.SendCompleted;  val SendCompleted = IoPeer.SendCompleted
   type Received = IoPeer.Received;            val Received = IoPeer.Received

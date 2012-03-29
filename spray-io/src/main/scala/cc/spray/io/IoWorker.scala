@@ -22,10 +22,10 @@ import annotation.tailrec
 import collection.mutable.ListBuffer
 import java.nio.channels.{CancelledKeyException, SelectionKey, SocketChannel, ServerSocketChannel}
 import java.util.concurrent.CountDownLatch
-import java.net.SocketAddress
 import akka.event.{LoggingBus, BusLogging, LoggingAdapter}
 import com.typesafe.config.{ConfigFactory, Config}
 import akka.actor.{Status, ActorSystem, ActorRef}
+import java.net.{InetSocketAddress, SocketAddress}
 
 // threadsafe
 class IoWorker(log: LoggingAdapter, config: Config) {
@@ -224,7 +224,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
         val connectionKey = socketChannel.register(selector, 0) // we don't enable any ops until we have a handle
         val cmd = key.attachment.asInstanceOf[Bind]
         log.debug("New connection accepted on {}", cmd.address)
-        cmd.handleCreator ! Connected(Key(connectionKey))
+        cmd.handleCreator ! Connected(Key(connectionKey), cmd.address)
       } catch {
         case e => log.error(e, "Accept error: could not accept new connection")
       }
@@ -244,8 +244,9 @@ class IoWorker(log: LoggingAdapter, config: Config) {
         key.channel.asInstanceOf[SocketChannel].finishConnect()
         key.interestOps(0) // we don't enable any ops until we have a handle
         val cmdAndSender = key.attachment.asInstanceOf[(Connect, ActorRef)]
-        log.debug("Connection established to {}", cmdAndSender._1.address)
-        cmdAndSender._2 ! Connected(Key(key))
+        val address = cmdAndSender._1.address
+        log.debug("Connection established to {}", address)
+        cmdAndSender._2 ! Connected(Key(key), address)
       } catch {
         case e => log.error(e, "Connect error: could not establish new connection")
       }
@@ -318,7 +319,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
       if (channel.connect(cmd.address)) {
         log.debug("Connection immediately established to {}", cmd.address)
         val key = channel.register(selector, 0) // we don't enable any ops until we have a handle
-        sender ! Connected(Key(key))
+        sender ! Connected(Key(key), cmd.address)
       } else {
         val key = channel.register(selector, OP_CONNECT)
         key.attach((cmd, sender))
@@ -385,9 +386,9 @@ object IoWorker {
 
   // "super" commands not on the connection-level
   private[IoWorker] case class Stop(latch: CountDownLatch) extends Command
-  case class Bind(handleCreator: ActorRef, address: SocketAddress, backlog: Int) extends Command
+  case class Bind(handleCreator: ActorRef, address: InetSocketAddress, backlog: Int) extends Command
   case class Unbind(bindingKey: Key) extends Command
-  case class Connect(address: SocketAddress) extends Command
+  case class Connect(address: InetSocketAddress) extends Command
   case object GetStats extends Command
 
   // commands on the connection-level
@@ -409,7 +410,7 @@ object IoWorker {
   // "general" events not on the connection-level
   case class Bound(bindingKey: Key) extends Event
   case class Unbound(bindingKey: Key) extends Event
-  case class Connected(key: Key) extends Event
+  case class Connected(key: Key, address: InetSocketAddress) extends Event
 
   // connection-level events
   case class Closed(handle: Handle, reason: ConnectionClosedReason) extends Event

@@ -13,14 +13,12 @@ trait PipelineStageTest {
   val dummyHandle = new Handle {
     def key = throw new UnsupportedOperationException
     def handler = throw new UnsupportedOperationException
+    def address = throw new UnsupportedOperationException
   }
 
   class Fixture(stage: PipelineStage) {
     val context = new PipelineContext {
-      def handle = new Handle {
-        def key = throw new UnsupportedOperationException
-        def handler = throw new UnsupportedOperationException
-      }
+      def handle = dummyHandle
       def connectionActorContext = getConnectionActorContext
     }
     def getConnectionActorContext: ActorContext = throw new UnsupportedOperationException
