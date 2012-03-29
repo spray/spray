@@ -22,7 +22,7 @@ import akka.actor._
 import akka.util.Unsafe
 
 abstract class LazyActorRef(val provider: ActorRefProvider) extends akka.actor.MinimalActorRef {
-  def this(related: ActorRef) = this(related.asInstanceOf[InternalActorRef].provider)
+  def this(related: ActorRef) = this(RefUtils.provider(related))
   import LazyActorRef._
 
   @volatile private[this] var _pathStateDoNotCallMeDirectly: AnyRef = _
@@ -53,8 +53,7 @@ abstract class LazyActorRef(val provider: ActorRefProvider) extends akka.actor.M
         var p: ActorPath = null
         try {
           p = provider.tempPath()
-          provider.registerTempActor(this, p)
-          onRegister()
+          register(p)
           p
         } finally { setState(p) }
       } else path
@@ -99,8 +98,7 @@ abstract class LazyActorRef(val provider: ActorRefProvider) extends akka.actor.M
             doStop()
             provider.deathWatch.publish(Terminated(this))
           } finally {
-            provider.unregisterTempActor(p)
-            onUnregister()
+            unregister(p)
           }
         } else stop()
       case Stopped | _: StoppedWithPath ⇒
@@ -114,9 +112,13 @@ abstract class LazyActorRef(val provider: ActorRefProvider) extends akka.actor.M
 
   protected def doStop() {}
 
-  protected def onRegister() {}
+  protected def register(path: ActorPath) {
+    provider.registerTempActor(this, path)
+  }
 
-  protected def onUnregister() {}
+  protected def unregister(path: ActorPath) {
+    provider.unregisterTempActor(path)
+  }
 }
 
 object LazyActorRef {

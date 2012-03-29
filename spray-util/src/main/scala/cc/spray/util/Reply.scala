@@ -16,16 +16,28 @@
 
 package cc.spray.util
 
-import akka.actor.ActorRef
 import akka.spray.LazyActorRef
+import akka.actor.{ActorPath, ActorRef}
 
 case class Reply(reply: Any, context: Any)
 
 object Reply {
-  def onceWithContext(context: Any)(implicit replyReceiver: ActorRef): LazyActorRef = new LazyActorRef(replyReceiver) {
+
+  /**
+   * Creates an ActorRef to be used as the sender of a message, which will forward all replies back to the
+   * actor this method was called in. All replies will be wrapped in a `Reply` instance holding the actual reply
+   * message as well as the context that was given as a parameter to this method.
+   * The overhead introduced by this mechanism of context keeping is really small, which makes it a viable solution
+   * for **local-only** messaging protocols.
+   *
+   * CAUTION: The ActorRef created by this method is **not** registered with any provider, meaning that it cannot
+   * be found via its path. It also will **not** be reachable from non-local JVMs!
+   */
+  def withContext(context: Any)(implicit replyReceiver: ActorRef): LazyActorRef = new LazyActorRef(replyReceiver) {
     def handle(reply: Any, replySender: ActorRef) {
       replyReceiver.tell(new Reply(reply, context), replySender)
-      stop()
     }
+    override protected def register(path: ActorPath) {}
+    override protected def unregister(path: ActorPath) {}
   }
 }
