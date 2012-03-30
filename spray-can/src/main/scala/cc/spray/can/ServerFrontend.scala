@@ -107,6 +107,10 @@ object ServerFrontend {
                 checkForTimeouts()
                 eventPL(event)
 
+              case x: CommandException =>
+                log.warning("Received {}, closing connection ...", x)
+                commandPL(HttpServer.Close(IoError(x)))
+
               case ev => eventPL(ev)
             }
           }
@@ -193,23 +197,21 @@ object ServerFrontend {
     @volatile private[this] var _responseStateDoNotCallMeDirectly: ResponseState = Uncompleted
     protected def handle(message: Any, sender: ActorRef) {
       message match {
-        case x: HttpResponse                        => dispatch(x, Uncompleted, Completed)
-        case x: ChunkedResponseStart                => dispatch(x, Uncompleted, Completed)
-        case x: MessageChunk                        => dispatch(x, Chunking, Chunking)
-        case x: ChunkedMessageEnd                   => dispatch(x, Chunking, Completed)
-        case x: HttpServer.Close                    => dispatch(x)
-        case x: HttpServer.SetIdleTimeout           => dispatch(x)
-        case x: HttpServer.SetRequestTimeout        => dispatch(x)
-        case x: HttpServer.SetTimeoutTimeout        => dispatch(x)
+        case x: HttpResponse         => dispatch(x, sender, Uncompleted, Completed)
+        case x: ChunkedResponseStart => dispatch(x, sender, Uncompleted, Chunking)
+        case x: MessageChunk         => dispatch(x, sender, Chunking, Chunking)
+        case x: ChunkedMessageEnd    => dispatch(x, sender, Chunking, Completed)
+        case x: Command              => dispatch(x, sender)
         case Terminated(ref) if ref == context.self => stop() // cleanup when the connection died
         case _ => throw new IllegalArgumentException {
           "Illegal response " + message + " to HTTP request to '" + rec.request.uri + "'"
         }
       }
     }
-    private def dispatch(part: HttpResponsePart, expectedState: ResponseState, newState: ResponseState) {
+    private def dispatch(part: HttpResponsePart, sender: ActorRef,
+                         expectedState: ResponseState, newState: ResponseState) {
       if (Unsafe.instance.compareAndSwapObject(this, responseStateOffset, expectedState, newState)) {
-        context.self ! new Response(rec, part)
+        context.self.tell(new Response(rec, part), sender)
         if (newState == Completed) stop()
       } else throw new IllegalStateException(
         "Cannot dispatch " + part.getClass.getSimpleName + " as response (part) for request to '" + rec.request.uri +
@@ -217,8 +219,8 @@ object ServerFrontend {
           "' but should be '" + expectedState + "'"
       )
     }
-    private def dispatch(cmd: Command) {
-      context.self ! new Response(rec, cmd)
+    private def dispatch(cmd: Command, sender: ActorRef) {
+      context.self.tell(new Response(rec, cmd), sender)
     }
 
     override protected def register(path: ActorPath) {

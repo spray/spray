@@ -109,6 +109,10 @@ object ClientFrontend {
             checkForTimeout()
             eventPL(event)
 
+          case x: CommandException =>
+            log.warning("Received {}, closing connection ...", x)
+            commandPL(HttpClient.Close(IoError(x)))
+
           case ev => eventPL(ev)
         }
       }
