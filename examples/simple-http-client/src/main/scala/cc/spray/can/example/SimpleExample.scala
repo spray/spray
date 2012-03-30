@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011, 2012 Mathias Doenitz
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,45 +17,50 @@
 package cc.spray.can
 package example
 
-/*
-import akka.config.Supervision._
-import org.slf4j.LoggerFactory
-import HttpMethods._
-import akka.actor.{PoisonPill, Supervisor, Actor}
+import cc.spray.io.IoWorker
+import akka.actor.{Props, ActorSystem}
+import model.HttpRequest
+
 
 object SimpleExample extends App {
-  val log = LoggerFactory.getLogger(getClass)
+  implicit val system = ActorSystem()
+  def log = system.log
 
-  // start and supervise the HttpClient actor
-  Supervisor(
-    SupervisorConfig(
-      OneForOneStrategy(List(classOf[Exception]), 3, 100),
-      List(Supervise(Actor.actorOf(new HttpClient()), Permanent))
-    )
+  // every spray-can HttpClient (and HttpServer) needs an IoWorker for low-level network IO
+  // (but several servers and/or clients can share one)
+  val ioWorker = new IoWorker(system).start()
+
+  // create and start the spray-can HttpClient
+  val httpClient = system.actorOf(
+    props = Props(new HttpClient(ioWorker)),
+    name = "http-client"
   )
 
   // create a very basic HttpDialog that results in a Future[HttpResponse]
-  import HttpClient._
-  val dialog = HttpDialog("github.com")
-          .send(HttpRequest(method = GET, uri = "/"))
-          .end
+  log.info("Dispatching GET request to github.com")
+  val responseF =
+    HttpDialog(httpClient, "github.com")
+      .send(HttpRequest(uri = "/"))
+      .end
 
-  // hook in our "continuation"
-  dialog.onComplete { future =>
-    future.value match {
-      case Some(Right(response)) => show(response)
-      case error => log.error("Error: {}", error)
+  // "hook in" our continuation
+  responseF.onComplete { result =>
+    result match {
+      case Right(response) =>
+        log.info(
+          """|Result from host:
+             |status : {}
+             |headers: {}
+             |body   : {}""".stripMargin,
+          response.status, response.headers.mkString("\n  ", "\n  ", ""), response.bodyAsString
+        )
+      case Left(error) =>
+        log.error("Could not get response due to {}", error)
     }
-    Actor.registry.actors.foreach(_ ! PoisonPill)
-  }
 
-  def show(response: HttpResponse) {
-    log.info(
-      """|Result from host:
-         |status : {}
-         |headers: {}
-         |body   : {}""".stripMargin,
-      Array(response.status: java.lang.Integer, response.headers, response.bodyAsString)
-    )
+    log.info("Shutting down...")
+    // always cleanup
+    system.shutdown()
+    ioWorker.stop()
   }
-}*/
+}
