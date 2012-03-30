@@ -16,7 +16,7 @@ object Build extends Build {
   lazy val root = Project("root",file("."))
     .settings(basicSettings: _*)
     .settings(noPublishing: _*)
-    .aggregate(sprayIo, sprayCan, examples)
+    .aggregate(sprayUtil, sprayIo, sprayCan, examples)
 
 
   // -------------------------------------------------------------------------------------------------------------------
