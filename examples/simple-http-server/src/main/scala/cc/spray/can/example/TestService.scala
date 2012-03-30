@@ -24,7 +24,6 @@ import akka.actor._
 import cc.spray.io.ConnectionClosedReason
 import cc.spray.can.HttpServer.RequestTimeout
 import akka.pattern.ask
-import akka.util.Timeout
 
 class TestService extends Actor with ActorLogging {
   import HttpMethods._
@@ -43,7 +42,7 @@ class TestService extends Actor with ActorLogging {
 
     case HttpRequest(GET, "/stats", _, _, _) =>
       val peer = sender
-      peer.ask(HttpServer.GetStats)(Timeout(1.second)).onSuccess {
+      peer.ask(HttpServer.GetStats)(1.second).onSuccess {
         case x: HttpServer.Stats => peer ! stats(x)
       }
 
