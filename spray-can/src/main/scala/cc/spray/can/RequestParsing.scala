@@ -30,7 +30,8 @@ object RequestParsing {
     def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): EPL = {
 
       new MessageParsingPipelines(settings, commandPL, eventPL) {
-        lazy val startParser = new EmptyRequestParser(settings)
+        val startParser = new EmptyRequestParser(settings)
+        currentParsingState = startParser
 
         def handleParseError(state: ErrorState) {
           log.warning("Illegal request, responding with status {} and '{}'", state.status, state.message)

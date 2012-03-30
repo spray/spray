@@ -28,6 +28,7 @@ object ResponseParsing {
 
       new MessageParsingPipelines(settings, commandPL, eventPL) {
         def startParser = new EmptyResponseParser(settings)
+        currentParsingState = startParser
 
         def handleParseError(state: ErrorState) {
           log.warning("Received illegal response: {}", state.message)

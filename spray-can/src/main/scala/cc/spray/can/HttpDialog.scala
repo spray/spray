@@ -23,9 +23,7 @@ import akka.util.Duration
 import collection.mutable.ListBuffer
 import model.{HttpResponsePart, HttpRequest, HttpResponse}
 import cc.spray.io.IoClient.IoClientException
-import cc.spray.io.{ProtocolError, CleanClose, ConnectionClosedReason}
-import akka.event.LoggingReceive
-
+import cc.spray.io.{ProtocolError, CleanClose}
 
 /**
  * An `HttpDialog` encapsulates an exchange of HTTP messages over the course of one connection.

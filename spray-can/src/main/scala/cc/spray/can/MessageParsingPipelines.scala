@@ -25,7 +25,7 @@ import cc.spray.io._
 abstract class MessageParsingPipelines(settings: ParserSettings,
                                        commandPL: Pipeline[Command],
                                        eventPL: Pipeline[Event]) extends Pipeline[Event] {
-  var currentParsingState = startParser
+  var currentParsingState: ParsingState = _
 
   def startParser: ParsingState
   def handleParseError(errorState: ErrorState)
