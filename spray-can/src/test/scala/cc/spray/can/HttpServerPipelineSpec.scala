@@ -171,6 +171,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         spray.can.server.idle-timeout = 50 ms
         spray.can.server.reaping-cycle = 0  # don't enable the TickGenerator
         spray.can.server.pipelining-limit = 10
+        spray.can.server.request-chunk-aggregation-limit = 0 # disable chunk aggregation
       """),
       ConfirmedSends = true
     ),

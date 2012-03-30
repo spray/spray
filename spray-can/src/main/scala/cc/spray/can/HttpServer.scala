@@ -65,6 +65,15 @@ object HttpServer {
    *    | TickGenerator.Tick              |
    *    |                                \/
    * |------------------------------------------------------------------------------------------
+   * | RequestChunkAggregation: listens to HttpMessagePart events, generates HttpRequest events
+   * |------------------------------------------------------------------------------------------
+   *    /\                                |
+   *    | HttpMessagePart                 | HttpResponsePartRenderingContext
+   *    | IoServer.Closed                 | IoServer.Tell
+   *    | IoServer.SendCompleted          |
+   *    | TickGenerator.Tick              |
+   *    |                                \/
+   * |------------------------------------------------------------------------------------------
    * | PipeliningLimiter: throttles incoming requests according to the PipeliningLimit, listens
    * |                    to HttpResponsePartRenderingContext commands and HttpRequestPart events,
    * |                    generates IoServer.StopReading and IoServer.ResumeReading commands
@@ -133,10 +142,12 @@ object HttpServer {
                             timeoutResponse: HttpRequest => HttpResponse,
                             log: LoggingAdapter): PipelineStage = {
     ServerFrontend(settings, messageHandler, timeoutResponse, log) ~>
+    PipelineStage.optional(settings.RequestChunkAggregationLimit > 0,
+      RequestChunkAggregation(settings.RequestChunkAggregationLimit.toInt)) ~>
     PipelineStage.optional(settings.PipeliningLimit > 0, PipeliningLimiter(settings.PipeliningLimit)) ~>
     PipelineStage.optional(settings.StatsSupport, StatsSupport()) ~>
     RequestParsing(settings.ParserSettings, log) ~>
-    ResponseRendering(settings.ServerHeader, settings.ChunklessStreaming, settings.ResponseSizeHint) ~>
+    ResponseRendering(settings.ServerHeader, settings.ChunklessStreaming, settings.ResponseSizeHint.toInt) ~>
     PipelineStage.optional(settings.IdleTimeout > 0, ConnectionTimeouts(settings.IdleTimeout, log)) ~>
     PipelineStage.optional(
       settings.ReapingCycle > 0 && (settings.IdleTimeout > 0 || settings.RequestTimeout > 0),

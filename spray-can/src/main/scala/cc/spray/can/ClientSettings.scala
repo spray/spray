@@ -25,16 +25,20 @@ private[can] class ClientSettings(config: Config = ConfigFactory.load()) {
     c.checkValid(ConfigFactory.defaultReference(), "spray.can.client")
     c.getConfig("spray.can.client")
   }
-  val UserAgentHeader = c getString       "user-agent-header"
-  val IdleTimeout     = c getMilliseconds "idle-timeout"
-  val RequestTimeout  = c getMilliseconds "request-timeout"
-  val ReapingCycle    = c getMilliseconds "reaping-cycle"
-  val RequestSizeHint = c getBytes        "request-size-hint" toInt
+  val UserAgentHeader               = c getString       "user-agent-header"
+  val IdleTimeout                   = c getMilliseconds "idle-timeout"
+  val RequestTimeout                = c getMilliseconds "request-timeout"
+  val ReapingCycle                  = c getMilliseconds "reaping-cycle"
+  val ResponseChunkAggregationLimit = c getBytes        "response-chunk-aggregation-limit"
+  val RequestSizeHint               = c getBytes        "request-size-hint"
 
-  require(IdleTimeout     >= 0, "idle-timeout must be >= 0")
-  require(RequestTimeout  >= 0, "request-timeout must be >= 0")
-  require(ReapingCycle    >= 0, "reaping-cycle must be >= 0")
-  require(RequestSizeHint >= 0, "request-size-hint must be >= 0")
+  require(IdleTimeout    >= 0, "idle-timeout must be >= 0")
+  require(RequestTimeout >= 0, "request-timeout must be >= 0")
+  require(ReapingCycle   >= 0, "reaping-cycle must be >= 0")
+  require(0 <= ResponseChunkAggregationLimit && ResponseChunkAggregationLimit <= Int.MaxValue,
+    "response-chunk-aggregation-limit must be >= 0 and <= Int.MaxValue")
+  require(0 <= RequestSizeHint && RequestSizeHint <= Int.MaxValue,
+    "request-size-hint must be >= 0 and <= Int.MaxValue")
 
   val ParserSettings = new ParserSettings(config)
 }
