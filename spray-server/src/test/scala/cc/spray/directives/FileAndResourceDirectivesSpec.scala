@@ -115,6 +115,11 @@ class FileAndResourceDirectivesSpec extends AbstractSprayTest {
         }.response.content mustEqual Some(HttpContent(`application/pdf`, ""))
       }
       "example 2" in {
+        test(HttpRequest(GET, "empty.pdf")) {
+          getFromResourceDirectory("subDirectory/")
+        }.response.content mustEqual Some(HttpContent(`application/pdf`, ""))
+      }
+      "example 3" in {
         test(HttpRequest(GET, "subDirectory/empty.pdf")) {
           getFromResourceDirectory("")
         }.response.content mustEqual Some(HttpContent(`application/pdf`, ""))

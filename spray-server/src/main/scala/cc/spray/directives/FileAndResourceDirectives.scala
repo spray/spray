@@ -150,7 +150,10 @@ private[spray] trait FileAndResourceDirectives {
   def getFromResourceDirectory(directoryName: String, charset: Option[HttpCharset] = None,
                                pathRewriter: String => String = identityFunc,
                                resolver: ContentTypeResolver = DefaultContentTypeResolver): Route = {
-    val base = if (directoryName.isEmpty) "" else directoryName + "/";
+    val base =
+      if (directoryName.isEmpty) ""
+      else if (directoryName.endsWith("/")) directoryName
+      else directoryName + "/";
     { ctx =>
       val subPath = if (ctx.unmatchedPath.startsWith("/")) ctx.unmatchedPath.substring(1) else ctx.unmatchedPath
       getFromResource(base + pathRewriter(subPath), charset, resolver).apply(ctx)
