@@ -16,7 +16,6 @@
 
 package cc.spray.io
 
-import java.net.{InetSocketAddress, SocketAddress}
 import cc.spray.util.Reply
 import akka.actor.{Status, ActorRef}
 
@@ -32,35 +31,33 @@ class IoClient(val ioWorker: IoWorker) extends IoPeer {
   }
 
   protected def receive = {
-    case cmd@ Connect(address) =>
-      ioWorker.tell(IoWorker.Connect(address), Reply.withContext(cmd -> sender))
+    case cmd: Connect =>
+      ioWorker.tell(cmd, Reply.withContext(sender))
 
-    case Reply(IoWorker.Connected(key, address), (connect: Connect, originalSender: ActorRef)) =>
+    case Reply(IoWorker.Connected(key, address), originalSender: ActorRef) =>
       val handle = createConnectionHandle(key, address)
       ioWorker ! IoWorker.Register(handle)
       originalSender ! Connected(handle)
 
-    case Status.Failure(error) =>
-      log.warning("Received {}", error)
+    case Reply(Status.Failure(CommandException(Connect(address), msg, cause)), originalSender: ActorRef) =>
+      originalSender ! Status.Failure(IoClientException("Couldn't connect to " + address, cause))
   }
-
 }
 
 object IoClient {
 
+  case class IoClientException(msg: String, cause: Throwable = null) extends RuntimeException(msg, cause)
+
   ////////////// COMMANDS //////////////
-  case class Connect(address: InetSocketAddress)
-  object Connect {
-    def apply(host: String, port: Int): Connect = Connect(new InetSocketAddress(host, port))
-  }
-  type Close = IoPeer.Close;  val Close = IoPeer.Close
-  type Send = IoPeer.Send;    val Send = IoPeer.Send
+  type Connect  = IoWorker.Connect; val Connect = IoWorker.Connect
+  type Close    = IoPeer.Close;     val Close = IoPeer.Close
+  type Send     = IoPeer.Send;      val Send = IoPeer.Send
+  type Tell     = IoPeer.Tell;      val Tell = IoPeer.Tell // only available with ConnectionActors mixin
   val StopReading = IoPeer.StopReading
   val ResumeReading = IoPeer.ResumeReading
-  type Tell = IoPeer.Tell;    val Tell = IoPeer.Tell // only available with ConnectionActors mixin
 
   ////////////// EVENTS //////////////
-  case class Connected(handle: Handle)
+  case class Connected(handle: Handle) extends Event
   type Closed = IoPeer.Closed;                val Closed = IoPeer.Closed
   type SendCompleted = IoPeer.SendCompleted;  val SendCompleted = IoPeer.SendCompleted
   type Received = IoPeer.Received;            val Received = IoPeer.Received

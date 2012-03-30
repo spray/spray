@@ -25,7 +25,7 @@ import java.util.concurrent.CountDownLatch
 import akka.event.{LoggingBus, BusLogging, LoggingAdapter}
 import com.typesafe.config.{ConfigFactory, Config}
 import akka.actor.{Status, ActorSystem, ActorRef}
-import java.net.{InetSocketAddress, SocketAddress}
+import java.net.InetSocketAddress
 
 // threadsafe
 class IoWorker(log: LoggingAdapter, config: Config) {
@@ -240,15 +240,16 @@ class IoWorker(log: LoggingAdapter, config: Config) {
     }
 
     def connect(key: SelectionKey) {
+      val (cmd@Connect(address), sender) = key.attachment.asInstanceOf[(Connect, ActorRef)]
       try {
         key.channel.asInstanceOf[SocketChannel].finishConnect()
         key.interestOps(0) // we don't enable any ops until we have a handle
-        val cmdAndSender = key.attachment.asInstanceOf[(Connect, ActorRef)]
-        val address = cmdAndSender._1.address
         log.debug("Connection established to {}", address)
-        cmdAndSender._2 ! Connected(Key(key), address)
+        sender ! Connected(Key(key), address)
       } catch {
-        case e => log.error(e, "Connect error: could not establish new connection")
+        case e =>
+          log.error(e, "Connect error: could not establish new connection to {}", address)
+          sender ! Status.Failure(CommandException(cmd, e))
       }
     }
 
@@ -389,6 +390,9 @@ object IoWorker {
   case class Bind(handleCreator: ActorRef, address: InetSocketAddress, backlog: Int) extends Command
   case class Unbind(bindingKey: Key) extends Command
   case class Connect(address: InetSocketAddress) extends Command
+  object Connect {
+    def apply(host: String, port: Int): Connect = Connect(new InetSocketAddress(host, port))
+  }
   case object GetStats extends Command
 
   // commands on the connection-level

@@ -16,8 +16,8 @@
 
 package cc.spray.io
 
-import akka.actor.{PoisonPill, Props, Actor}
 import java.net.InetSocketAddress
+import akka.actor.{Status, PoisonPill, Props, Actor}
 
 
 trait ConnectionActors extends IoPeer {
@@ -53,7 +53,6 @@ trait ConnectionActors extends IoPeer {
       case x: IoPeer.Closed =>
         log.debug("Stopping connection actor, connection was closed due to {}", x.reason)
         self ! PoisonPill
-      case x: CommandException => log.warning("Received {}", x)
       case _: Droppable => // don't warn
       case x => log.warning("eventPipeline: dropped {}", x)
     }
@@ -61,6 +60,7 @@ trait ConnectionActors extends IoPeer {
     protected def receive = {
       case x: Command => pipelines.commandPipeline(x)
       case x: Event => pipelines.eventPipeline(x)
+      case Status.Failure(x: CommandException) => pipelines.eventPipeline(x)
     }
   }
 
