@@ -1,0 +1,14 @@
+[spray-can](http://can.spray.cc) is a low-overhead, high-performance, fully asynchronous HTTP 1.1 server and client library
+implemented entirely in Scala on top of [Akka][].
+
+Both, the _spray-can_ server and the _spray-can_ client, sport the following features:
+
+* Low per-connection overhead for supporting thousands of concurrent connections
+* Efficient message parsing and processing logic for high throughput applications (> 50K requests/sec on ordinary consumer hardware)
+* Full support for HTTP/1.1 persistant connections
+* Full support for message pipelining
+* Full support for asynchronous HTTP streaming (i.e. "chunked" transfer encoding)
+* Akka-Actor and -Future based architecture for easy integration into your Akka applications
+* No dependencies except for JavaSE 6, Scala 2.9 and [Akka][] (actors module).
+
+  [Akka]: http://akka.io
