@@ -24,35 +24,41 @@ import model._
 object ResponseChunkAggregation {
 
   def apply(limit: Int): EventPipelineStage = new EventPipelineStage {
-    var response: HttpResponse = _
-    var bb: BufferBuilder = _
-    var closed = false
 
-    def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): EPL = {
-      case ChunkedResponseStart(res) => if (!closed) {
-        response = res
-        if (res.body.length <= limit) bb = BufferBuilder(res.body)
-        else closeWithError(commandPL)
+    def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): EPL = new EPL {
+      var response: HttpResponse = _
+      var bb: BufferBuilder = _
+      var closed = false
+
+      def apply(event: Event) {
+        event match {
+          case ChunkedResponseStart(res) => if (!closed) {
+            response = res
+            if (res.body.length <= limit) bb = BufferBuilder(res.body)
+            else closeWithError()
+          }
+
+          case MessageChunk(body, _) => if (!closed) {
+            if (bb.size + body.length <= limit) bb.append(body)
+            else closeWithError()
+          }
+
+          case _: ChunkedMessageEnd => if (!closed) {
+            eventPL(response.copy(body = bb.toArray))
+            response = null
+            bb = null
+          }
+
+          case ev => eventPL(ev)
+        }
       }
 
-      case MessageChunk(body, _) => if (!closed) {
-        if (bb.size + body.length <= limit) bb.append(body)
-        else closeWithError(commandPL)
+      def closeWithError() {
+        val msg = "Aggregated response entity greater than configured limit of " + limit + " bytes"
+        commandPL(HttpServer.Close(ProtocolError(msg)))
+        closed = true
       }
-
-      case _: ChunkedMessageEnd => if (!closed) {
-        eventPL(response.copy(body = bb.toArray))
-        response = null
-        bb = null
-      }
-
-      case ev => eventPL(ev)
     }
 
-    def closeWithError(commandPL: Pipeline[Command]) {
-      val msg = "Aggregated response entity greater than configured limit of " + limit + " bytes"
-      commandPL(HttpServer.Close(ProtocolError(msg)))
-      closed = true
-    }
   }
 }
