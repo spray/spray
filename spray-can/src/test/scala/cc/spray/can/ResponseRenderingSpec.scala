@@ -30,12 +30,7 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
     }
     "translate a simple HttpResponsePartRenderingContext into the corresponding Send command" in {
       fixture(
-        HttpResponsePartRenderingContext(
-          responsePart = HttpResponse(body = "Some Message".getBytes),
-          requestMethod = HttpMethods.GET,
-          requestProtocol = HttpProtocols.`HTTP/1.1`,
-          requestConnectionHeader = None
-        )
+        HttpResponsePartRenderingContext(HttpResponse().withBody("Some Message"))
       ).commands.fixSends === Seq(SendString(
         """|HTTP/1.1 200 OK
            |Server: spray/1.0
@@ -48,9 +43,8 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
     "append a Close command to the Send if the connection is to be closed" in {
       fixture(
         HttpResponsePartRenderingContext(
-          responsePart = HttpResponse(body = "Some Message".getBytes),
+          responsePart = HttpResponse().withBody("Some Message"),
           requestMethod = HttpMethods.HEAD,
-          requestProtocol = HttpProtocols.`HTTP/1.1`,
           requestConnectionHeader = Some("close")
         )
       ).commands.fixSends === Seq(

@@ -29,9 +29,9 @@ case class HttpRequestPartRenderingContext(
 
 case class HttpResponsePartRenderingContext(
   responsePart: HttpResponsePart,
-  requestMethod: HttpMethod,
-  requestProtocol: HttpProtocol,
-  requestConnectionHeader: Option[String]
+  requestMethod: HttpMethod = HttpMethods.GET,
+  requestProtocol: HttpProtocol = HttpProtocols.`HTTP/1.1`,
+  requestConnectionHeader: Option[String] = None
 ) extends Command
 
 case class RenderedMessagePart(buffers: List[ByteBuffer], closeConnection: Boolean = false)

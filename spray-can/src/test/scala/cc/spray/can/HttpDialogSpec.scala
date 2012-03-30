@@ -23,6 +23,8 @@ import akka.actor.{Props, ActorSystem}
 import io.IoWorker
 import io.pipelines.MessageHandlerDispatch.SingletonHandler
 import util._
+import akka.pattern.ask
+import akka.util.Duration
 
 class HttpDialogSpec extends Specification {
   implicit val system = ActorSystem()
@@ -33,7 +35,8 @@ class HttpDialogSpec extends Specification {
     val handler = system.actorOf(Props(behavior = ctx => {
       case x: HttpRequest => ctx.sender ! HttpResponse().withBody(x.uri)
     }))
-    system.actorOf(Props(new HttpServer(ioWorker, SingletonHandler(handler)))) ! HttpServer.Bind("localhost", port)
+    val server = system.actorOf(Props(new HttpServer(ioWorker, SingletonHandler(handler))))
+    server.ask(HttpServer.Bind("localhost", port))(Duration("1 s")).await
   }
 
   val client = system.actorOf(Props(new HttpClient(ioWorker)))

@@ -17,7 +17,7 @@
 package cc.spray
 package can
 
-import model.{HttpProtocols, HttpMethods, HttpHeader, HttpResponse}
+import model.{HttpHeader, HttpResponse}
 import io._
 import parsing.{ParserSettings, ErrorState, EmptyRequestParser}
 import rendering.HttpResponsePartRenderingContext
@@ -39,12 +39,11 @@ object RequestParsing {
             headers = List(HttpHeader("Content-Type", "text/plain"))
           ).withBody(state.message)
 
-          // In case of a request parsing error we probably stopped reading the request somewhere in between, where we
-          // cannot simply resume. Resetting to a known state is not easy either, so we need to close the connection to do so.
-          // This is done here by pretending the request contained a "Connection: close" header
-          commandPL {
-            HttpResponsePartRenderingContext(response, HttpMethods.GET, HttpProtocols.`HTTP/1.1`, Some("close"))
-          }
+          // In case of a request parsing error we probably stopped reading the request somewhere in between,
+          // where we cannot simply resume. Resetting to a known state is not easy either,
+          // so we need to close the connection to do so.
+          commandPL(HttpResponsePartRenderingContext(response))
+          commandPL(HttpServer.Close(ProtocolError(state.message)))
         }
       }
     }
