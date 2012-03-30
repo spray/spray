@@ -35,7 +35,7 @@ trait LiftJsonSupport {
    */
   implicit def liftJsonFormats: Formats
 
-  implicit def liftJsonUnmarshaller[A <: Product :Manifest] = new SimpleUnmarshaller[A] {
+  implicit def liftJsonUnmarshaller[A :Manifest] = new SimpleUnmarshaller[A] {
     val canUnmarshalFrom = ContentTypeRange(`application/json`) :: Nil
     def unmarshal(content: HttpContent) = protect {
       val jsonSource = DefaultUnmarshallers.StringUnmarshaller(content).right.get
