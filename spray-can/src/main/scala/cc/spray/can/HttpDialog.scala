@@ -17,12 +17,14 @@
 package cc.spray.can
 
 import cc.spray.util.Reply
-import model.{HttpRequest, HttpResponse}
 import akka.dispatch.{Promise, Future}
 import akka.actor._
 import akka.util.Duration
 import collection.mutable.ListBuffer
-import cc.spray.io.{CleanClose, ConnectionClosedReason}
+import model.{HttpResponsePart, HttpRequest, HttpResponse}
+import cc.spray.io.IoClient.IoClientException
+import cc.spray.io.{ProtocolError, CleanClose, ConnectionClosedReason}
+import akka.event.LoggingReceive
 
 
 /**
@@ -38,9 +40,7 @@ object HttpDialog {
   private case class ReplyAction(f: HttpResponse => HttpRequest) extends Action
   private case object AwaitResponseAction extends Action
 
-  class ConnectionClosedException(val reason: ConnectionClosedReason) extends RuntimeException(reason.toString)
-
-  private class DialogActor(result: Promise[AnyRef], client: ActorRef) extends Actor {
+  private class DialogActor(result: Promise[AnyRef], client: ActorRef, multiResponse: Boolean) extends Actor {
     val responses = ListBuffer.empty[HttpResponse]
     var connection: Option[ActorRef] = None
     var responsesPending = 0
@@ -73,10 +73,6 @@ object HttpDialog {
       case AwaitResponseAction :: remainingActions =>
         onResponse = Some(() => self ! remainingActions)
 
-      case Reply(HttpClient.Connected(handle), actions) =>
-        connection = Some(handle.handler)
-        self ! actions
-
       case x: HttpResponse =>
         responses += x
         responsesPending -= 1
@@ -85,17 +81,24 @@ object HttpDialog {
             onResponse = None
             task()
           case None => if (responsesPending == 0) {
-            responses.toList match {
-              case (singleResponse: HttpResponse) :: Nil  => complete(Right(singleResponse))
-              case severalResponses                       => complete(Right(severalResponses))
-            }
+            if (multiResponse) complete(Right(responses.toList))
+            else complete(Right(responses.head))
           }
         }
+
+      case _: HttpResponsePart =>
+        val msg = "The HttpDialog doesn't support chunked responses"
+        sender ! HttpClient.Close(ProtocolError(msg))
+        complete(Left(IoClientException(msg)))
+
+      case Reply(HttpClient.Connected(handle), actions) =>
+        connection = Some(handle.handler)
+        self ! actions
 
       case Reply(msg, _) => self ! msg // unpack all other with-context replies
 
       case HttpClient.Closed(_, reason) =>
-        complete(Left(new ConnectionClosedException(reason)))
+        complete(Left(IoClientException("Connection closed prematurely, reason: " + reason)))
 
       case _: HttpClient.SendCompleted => // drop potential write confirmations
 
@@ -109,9 +112,9 @@ object HttpDialog {
       actions += action
       this
     }
-    def runActions: Future[AnyRef] = {
+    def runActions(multiResponse: Boolean): Future[AnyRef] = {
       val result = Promise[AnyRef]()(system.dispatcher)
-      system.actorOf(Props(new DialogActor(result, client))) ! actions.toList
+      system.actorOf(Props(new DialogActor(result, client, multiResponse))) ! actions.toList
       result
     }
   }
@@ -120,14 +123,16 @@ object HttpDialog {
     /**
      * Triggers the execution of the scheduled HttpDialog actions and produces a future for the result.
      */
-    def end: Future[HttpResponse] = context.runActions.mapTo[HttpResponse]
+    def end: Future[HttpResponse] =
+      context.runActions(multiResponse = false).mapTo[HttpResponse]
   }
 
   sealed abstract class EndMultiResponse(private[HttpDialog] val context: Context) {
     /**
      * Triggers the execution of the scheduled HttpDialog actions and produces a future for the result.
      */
-    def end: Future[List[HttpResponse]] = context.runActions.mapTo[List[HttpResponse]]
+    def end: Future[List[HttpResponse]] =
+      context.runActions(multiResponse = true).mapTo[List[HttpResponse]]
   }
 
   sealed abstract class SendFirst(private[HttpDialog] val context: Context) {
@@ -141,6 +146,7 @@ object HttpDialog {
     def send(request: HttpRequest) =
       new EndSingleResponse(context.appendAction(SendAction(request)))
         with SendSubsequent
+        with SendMany
         with WaitIdle
         with AwaitResponse
         with Reply
@@ -159,8 +165,27 @@ object HttpDialog {
     def send(request: HttpRequest) =
       new EndMultiResponse(context.appendAction(SendAction(request)))
         with SendSubsequent
+        with SendMany
         with WaitIdle
         with AwaitResponse
+  }
+
+  sealed trait SendMany {
+    private[HttpDialog] def context: Context
+
+    /**
+     * Chains the sending of the given [[cc.spray.can.HttpRequest]] instances into the dialog.
+     * The requests will be sent as soon as the connection has been established and any `awaitResponse` and
+     * `waitIdle` tasks potentially chained in before this `send` have been completed.
+     * All of the given HttpRequests are send in a pipelined fashion, one right after the other.
+     */
+    def send(requests: Seq[HttpRequest]) = {
+      requests.foreach(req => context.appendAction(SendAction(req)))
+      new EndMultiResponse(context)
+        with SendSubsequent
+        with SendMany
+        with WaitIdle
+    }
   }
 
   sealed trait WaitIdle {
@@ -189,13 +214,13 @@ object HttpDialog {
     }
   }
 
-  sealed trait AwaitResponse { this: SendSubsequent with WaitIdle with AwaitResponse =>
+  sealed trait AwaitResponse { this: SendSubsequent with SendMany with WaitIdle with AwaitResponse =>
     private[HttpDialog] def context: Context
 
     /**
      * Delays all subsequent tasks until exactly one pending responses has come in.
      */
-    def awaitResponse: SendSubsequent with WaitIdle with AwaitResponse = {
+    def awaitResponse: SendSubsequent with SendMany with WaitIdle with AwaitResponse = {
       context.appendAction(AwaitResponseAction)
       this
     }
@@ -204,7 +229,9 @@ object HttpDialog {
   /**
    * Constructs a new `HttpDialog` for a connection to the given host and port.
    */
-  def apply(httpClient: ActorRef, host: String, port: Int = 80)(implicit system: ActorSystem): SendFirst =
-    new SendFirst(new Context(system, httpClient, ConnectAction(host, port))) with WaitIdle
+  def apply(httpClient: ActorRef, host: String, port: Int = 80)(implicit system: ActorSystem) =
+    new SendFirst(new Context(system, httpClient, ConnectAction(host, port)))
+      with SendMany
+      with WaitIdle
 
 }
