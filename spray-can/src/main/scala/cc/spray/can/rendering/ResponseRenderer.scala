@@ -21,7 +21,7 @@ import java.nio.ByteBuffer
 import model._
 import HttpProtocols._
 import cc.spray.util._
-import cc.spray.io.ByteBufferBuilder
+import cc.spray.io.BufferBuilder
 
 class ResponseRenderer(serverHeader: String,
                        chunklessStreaming: Boolean,
@@ -49,7 +49,7 @@ class ResponseRenderer(serverHeader: String,
   private def renderResponse(response: HttpResponse, ctx: HttpResponsePartRenderingContext) = {
     import response._
 
-    val bb = ByteBufferBuilder(responseSizeHint)
+    val bb = BufferBuilder(responseSizeHint)
     val connectionHeaderValue = renderResponseStart(response, ctx, bb)
     val close = appendConnectionHeaderIfRequired(response, ctx, connectionHeaderValue, bb)
     appendServerAndDateHeader(bb)
@@ -65,7 +65,7 @@ class ResponseRenderer(serverHeader: String,
                                          chunkless: Boolean) = {
     import response._
 
-    val bb = ByteBufferBuilder(responseSizeHint)
+    val bb = BufferBuilder(responseSizeHint)
     renderResponseStart(response, ctx, bb)
     if (!chunkless) appendHeader("Transfer-Encoding", "chunked", bb)
     appendServerAndDateHeader(bb)
@@ -79,7 +79,7 @@ class ResponseRenderer(serverHeader: String,
   }
 
   private def renderResponseStart(response: HttpResponse, ctx: HttpResponsePartRenderingContext,
-                                  bb: ByteBufferBuilder): Option[String] = {
+                                  bb: BufferBuilder): Option[String] = {
     import response._
 
     if (status == 200 && protocol == `HTTP/1.1`) {
@@ -91,7 +91,7 @@ class ResponseRenderer(serverHeader: String,
     appendHeaders(headers, bb)
   }
 
-  private def renderedMessagePart(bb: ByteBufferBuilder, requestMethod: HttpMethod, body: Array[Byte],
+  private def renderedMessagePart(bb: BufferBuilder, requestMethod: HttpMethod, body: Array[Byte],
                                    close: Boolean) = {
     if (body.length == 0 || requestMethod == HttpMethods.HEAD) RenderedMessagePart(bb.toByteBuffer :: Nil, close)
     else if (bb.remainingCapacity >= body.length) RenderedMessagePart(bb.append(body).toByteBuffer :: Nil, close)
@@ -99,7 +99,7 @@ class ResponseRenderer(serverHeader: String,
   }
 
   private def appendConnectionHeaderIfRequired(response: HttpResponse, ctx: HttpResponsePartRenderingContext,
-                                       connectionHeaderValue: Option[String], bb: ByteBufferBuilder): Boolean = {
+                                       connectionHeaderValue: Option[String], bb: BufferBuilder): Boolean = {
     ctx.requestProtocol match {
       case `HTTP/1.0` => {
         if (connectionHeaderValue.isEmpty) {
@@ -120,7 +120,7 @@ class ResponseRenderer(serverHeader: String,
     }
   }
 
-  def appendServerAndDateHeader(bb: ByteBufferBuilder) {
+  def appendServerAndDateHeader(bb: BufferBuilder) {
     if (!serverHeaderPlusDateColonSP.isEmpty)
       bb.append(serverHeaderPlusDateColonSP).append(dateTimeNow.toRfc1123DateTimeString).append(MessageRendering.CrLf)
   }

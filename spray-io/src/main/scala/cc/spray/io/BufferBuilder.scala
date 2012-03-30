@@ -4,14 +4,16 @@ import java.nio.charset.Charset
 import java.nio.ByteBuffer
 
 /**
- * A fast, mutable builder for heap-based ByteBuffers.
+ * A fast, mutable builder for byte arrays and heap-based ByteBuffers.
  */
-class ByteBufferBuilder(size: Int, array: Array[Byte]) {
-  if (size > array.length) throw new IllegalArgumentException
+class BufferBuilder protected(initialSize: Int, array: Array[Byte]) {
+  if (initialSize > array.length) throw new IllegalArgumentException
   private[this] var _array = array
-  private[this] var _size = size
+  private[this] var _size = initialSize
 
   def remainingCapacity: Int = _array.length - _size
+
+  def size: Int = _size
 
   def append(bytes: Array[Byte]): this.type = append(bytes, 0)
   def append(bytes: Array[Byte], padding: Int): this.type = {
@@ -66,16 +68,22 @@ class ByteBufferBuilder(size: Int, array: Array[Byte]) {
   }
 
   /**
-   * Gets the underlying array.
-   * CAUTION: For performance reasons it is not defensively copied!
+   * Gets the contents of the builder as a byte array.
+   * CAUTION: For performance reasons the content might not be defensively copied!
    */
-  def getArray = _array
+  def toArray: Array[Byte] = {
+    if (size < _array.length) {
+      val array = new Array[Byte](size)
+      System.arraycopy(_array, 0, array, 0, size)
+      array
+    } else _array
+  }
 
   /**
    * Wraps the underlying array in a ByteBuffer.
    * CAUTION: For performance reasons the underlying array is not defensively copied!
    */
-  def toByteBuffer = {
+  def toByteBuffer: ByteBuffer = {
     val bb = ByteBuffer.wrap(_array)
     bb.limit(_size)
     bb
@@ -93,8 +101,13 @@ class ByteBufferBuilder(size: Int, array: Array[Byte]) {
 
 }
 
-object ByteBufferBuilder {
-  def apply()                  : ByteBufferBuilder = new ByteBufferBuilder(0, cc.spray.util.EmptyByteArray)
-  def apply(size: Int)         : ByteBufferBuilder = new ByteBufferBuilder(0, new Array[Byte](size))
-  def apply(array: Array[Byte]): ByteBufferBuilder = new ByteBufferBuilder(array.length, array)
+object BufferBuilder {
+  def apply(): BufferBuilder =
+    new BufferBuilder(0, cc.spray.util.EmptyByteArray)
+
+  def apply(initialCapacity: Int): BufferBuilder =
+    new BufferBuilder(0, new Array[Byte](initialCapacity))
+
+  def apply(initialContent: Array[Byte]): BufferBuilder =
+    new BufferBuilder(initialContent.length, initialContent)
 }

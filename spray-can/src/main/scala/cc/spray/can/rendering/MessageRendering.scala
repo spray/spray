@@ -20,16 +20,16 @@ package rendering
 import annotation.tailrec
 import model.{ChunkedMessageEnd, MessageChunk, ChunkExtension, HttpHeader}
 import cc.spray.util._
-import cc.spray.io.ByteBufferBuilder
+import cc.spray.io.BufferBuilder
 
 private[rendering] trait MessageRendering {
   import MessageRendering._
 
-  protected def appendHeader(name: String, value: String, bb: ByteBufferBuilder) =
+  protected def appendHeader(name: String, value: String, bb: BufferBuilder) =
     bb.append(name).append(':').append(' ').append(value).append(CrLf)
 
   @tailrec
-  protected final def appendHeaders(httpHeaders: List[HttpHeader], bb: ByteBufferBuilder,
+  protected final def appendHeaders(httpHeaders: List[HttpHeader], bb: BufferBuilder,
                     connectionHeaderValue: Option[String] = None): Option[String] = {
     if (httpHeaders.isEmpty) {
       connectionHeaderValue
@@ -46,19 +46,19 @@ private[rendering] trait MessageRendering {
   }
 
   protected def renderChunk(chunk: MessageChunk, messageSizeHint: Int): RenderedMessagePart = {
-    val bb = ByteBufferBuilder(messageSizeHint)
+    val bb = BufferBuilder(messageSizeHint)
     renderChunk(chunk.extensions, chunk.body, bb)
     RenderedMessagePart(bb.toByteBuffer :: Nil)
   }
 
-  protected def renderChunk(extensions: List[ChunkExtension], body: Array[Byte], bb: ByteBufferBuilder) = {
+  protected def renderChunk(extensions: List[ChunkExtension], body: Array[Byte], bb: BufferBuilder) = {
     bb.append(Integer.toHexString(body.length))
     appendChunkExtensions(extensions, bb).append(CrLf).append(body).append(CrLf)
   }
 
   protected def renderFinalChunk(chunk: ChunkedMessageEnd, messageSizeHint: Int,
                                  requestConnectionHeader: Option[String] = None): RenderedMessagePart = {
-    val bb = ByteBufferBuilder(messageSizeHint).append('0')
+    val bb = BufferBuilder(messageSizeHint).append('0')
     appendChunkExtensions(chunk.extensions, bb).append(CrLf)
     appendHeaders(chunk.trailer, bb)
     bb.append(CrLf)
@@ -66,7 +66,7 @@ private[rendering] trait MessageRendering {
   }
 
   @tailrec
-  private def appendChunkExtensions(extensions: List[ChunkExtension], bb: ByteBufferBuilder): ByteBufferBuilder = {
+  private def appendChunkExtensions(extensions: List[ChunkExtension], bb: BufferBuilder): BufferBuilder = {
     extensions match {
       case Nil => bb
       case ChunkExtension(name, value) :: rest => appendChunkExtensions(rest, {

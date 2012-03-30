@@ -19,7 +19,7 @@ package rendering
 
 import java.nio.ByteBuffer
 import model.{ChunkedMessageEnd, MessageChunk, ChunkedRequestStart, HttpRequest}
-import cc.spray.io.ByteBufferBuilder
+import cc.spray.io.BufferBuilder
 
 class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) extends MessageRendering {
 
@@ -53,7 +53,7 @@ class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) extends Mes
 
   private def renderRequestStart(request: HttpRequest, host: String, port: Int) = {
     import request._
-    val bb = ByteBufferBuilder(requestSizeHint)
+    val bb = BufferBuilder(requestSizeHint)
     bb.append(method.name).append(' ').append(uri).append(' ').append(protocol.name).append(MessageRendering.CrLf)
     appendHeaders(headers, bb)
     bb.append("Host: ").append(host)
