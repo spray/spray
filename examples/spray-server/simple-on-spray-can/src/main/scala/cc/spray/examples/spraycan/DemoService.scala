@@ -8,7 +8,7 @@ import StatusCodes._
 import MediaTypes._
 import typeconversion.ChunkSender
 import can.{GetStats, Stats}
-import utils.{ActorHelpers, Logging}
+import util.{ActorHelpers, Logging}
 import akka.util.Duration
 import akka.util.duration._
 import ActorHelpers._

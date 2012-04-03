@@ -17,7 +17,7 @@
 package cc.spray
 package directives
 
-import utils._
+import util._
 import util.matching.Regex
 import annotation.tailrec
 
@@ -152,7 +152,7 @@ sealed trait PathMatcher[T <: Product] extends (String => Option[(String, T)])
  * A PathMatcher0 extends a function that takes the unmatched path part of the request URI and returns
  * 
  *  - None if not matched
- *  - Some(remainingPath, [[cc.spray.utils.Product0]]) if matched (i.e. extracts nothing) 
+ *  - Some(remainingPath, [[cc.spray.util.Product0]]) if matched (i.e. extracts nothing)
  */
 trait PathMatcher0 extends PathMatcher[Product0] {
   def / (sub: PathMatcher0) = this ~ Slash ~ sub

@@ -3,7 +3,7 @@ package test
 
 import http._
 import org.specs2.mutable._
-import utils.ConsoleLog
+import util.ConsoleLog
 
 abstract class AbstractSprayTest extends Specification with SprayTest with Directives {
 

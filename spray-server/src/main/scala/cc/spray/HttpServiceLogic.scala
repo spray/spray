@@ -19,7 +19,7 @@ package cc.spray
 import http._
 import StatusCodes._
 import HttpHeaders._
-import utils.{Logging, IllegalResponseException}
+import util.{Logging, IllegalResponseException}
 
 /**
  * The logic part of the [[cc.spray.HttpService]]. Contains the code for [[cc.spray.RequestContext]] creation as well

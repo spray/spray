@@ -18,7 +18,7 @@ package cc.spray
 import akka.actor.ActorRef
 import http._
 import typeconversion.ChunkSender
-import utils.ActorHelpers
+import util.ActorHelpers
 import java.net.InetAddress
 import SprayCanConversions._
 

@@ -21,7 +21,7 @@ import http._
 import org.parboiled.common.FileUtils
 import StatusCodes._
 import HttpHeaders._
-import utils.identityFunc
+import util.identityFunc
 import java.io.{FileInputStream, File}
 import java.util.Arrays
 import typeconversion.{DefaultMarshallers, SimpleMarshaller}

@@ -22,7 +22,7 @@ import javax.naming.{Context, NamingException, NamingEnumeration}
 import javax.naming.ldap.InitialLdapContext
 import javax.naming.directory.{SearchControls, SearchResult, Attribute}
 import collection.JavaConverters._
-import utils.Logging
+import util.Logging
 import akka.dispatch.{Future, AlreadyCompletedFuture}
 
 /**

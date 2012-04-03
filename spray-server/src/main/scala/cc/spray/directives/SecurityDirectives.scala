@@ -20,7 +20,7 @@ package directives
 import authentication.{BasicHttpAuthenticator, FromConfigUserPassAuthenticator}
 import http.StatusCodes._
 import akka.dispatch.Future
-import utils.Logging
+import util.Logging
 
 private[spray] trait SecurityDirectives {
   this: BasicDirectives =>

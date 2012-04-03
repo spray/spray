@@ -21,7 +21,7 @@ import org.specs2.Specification
 import org.specs2.specification.Step
 import can.{HttpRequest => _, HttpResponse => _, _}
 import http._
-import utils._
+import util._
 import DispatchStrategies._
 import akka.util.Duration
 import akka.actor.Actor

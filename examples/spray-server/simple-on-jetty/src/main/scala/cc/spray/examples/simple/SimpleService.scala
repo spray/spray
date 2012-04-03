@@ -1,7 +1,7 @@
 package cc.spray
 package examples.simple
 
-import utils.ActorHelpers._
+import util.ActorHelpers._
 import http.MediaTypes._
 import java.util.concurrent.TimeUnit
 import akka.actor.{Scheduler, Actor, Kill}

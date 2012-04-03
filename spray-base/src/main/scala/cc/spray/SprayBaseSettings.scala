@@ -16,7 +16,7 @@
 
 package cc.spray
 
-import utils.AkkaConfSettings
+import util.AkkaConfSettings
 
 object SprayBaseSettings extends AkkaConfSettings("spray.") {
   lazy val CompactJsonPrinting = configBool(false)

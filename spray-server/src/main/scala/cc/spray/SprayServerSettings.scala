@@ -16,7 +16,7 @@
 
 package cc.spray
 
-import utils.AkkaConfSettings
+import util.AkkaConfSettings
 
 object SprayServerSettings extends AkkaConfSettings("spray.") {
   lazy val RootActorId                = configString("spray-root-service")

@@ -17,7 +17,7 @@
 package cc.spray
 
 import http._
-import utils._
+import util._
 import akka.actor.{Actor, ActorRef}
 import java.util.concurrent.atomic.{AtomicInteger, AtomicBoolean}
 

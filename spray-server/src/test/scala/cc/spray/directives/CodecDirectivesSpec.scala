@@ -22,7 +22,7 @@ import HttpHeaders._
 import MediaTypes._
 import HttpCharsets._
 import test.AbstractSprayTest
-import utils._
+import util._
 import encoding._
 
 class CodecDirectivesSpec extends AbstractSprayTest {

@@ -129,7 +129,7 @@ private[spray] trait MiscDirectives {
    * If the function is undefined for all headers the request is rejection with the [[cc.spray.MissingHeaderRejection]]
    */
   def headerValue[A](f: HttpHeader => Option[A]) = filter1 {
-    import utils._
+    import util._
     _.request.headers.mapFind(f) match {
       case Some(a) => Pass(a)
       case None => Reject(MissingHeaderRejection)

@@ -18,7 +18,7 @@ package cc.spray
 
 import http._
 import akka.actor.Actor
-import utils._
+import util._
 
 /**
  * The actor part of the [[cc.spray.HttpService]].

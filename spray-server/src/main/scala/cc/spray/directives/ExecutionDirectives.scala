@@ -17,7 +17,7 @@
 package cc.spray
 package directives
 
-import utils.Logging
+import util.Logging
 import akka.actor.Actor
 import akka.dispatch.{Dispatchers, MessageDispatcher}
 

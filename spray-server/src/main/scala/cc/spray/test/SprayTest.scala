@@ -21,7 +21,7 @@ import cc.spray.RequestContext
 import http._
 import akka.util.Duration
 import akka.util.duration._
-import utils._
+import util._
 import java.lang.Class
 
 /**

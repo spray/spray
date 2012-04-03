@@ -8,7 +8,7 @@ import akka.config.Supervision._
 import akka.actor.{PoisonPill, Actor, Supervisor}
 import client.{Get, HttpConduit}
 import typeconversion.{SprayJsonSupport, DefaultMarshallers}
-import utils.Logging
+import util.Logging
 
 object Main extends App with Logging {
 

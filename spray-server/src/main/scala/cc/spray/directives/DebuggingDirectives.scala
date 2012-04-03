@@ -17,7 +17,7 @@
 package cc.spray
 package directives
 
-import utils.Logging
+import util.Logging
 import http.{HttpResponse, HttpRequest, HttpMessage}
 
 trait DebuggingDirectives {
@@ -32,8 +32,8 @@ trait DebuggingDirectives {
   def logChunkedResponse(marker: String) = transformChunkedResponse(logMessage("Chunked response", marker))
 
   def logRequestResponse(marker: String = "",
-                         showRequest: HttpRequest => Any = utils.identityFunc,
-                         showResponse: HttpResponse => Any = utils.identityFunc) = {
+                         showRequest: HttpRequest => Any = util.identityFunc,
+                         showResponse: HttpResponse => Any = util.identityFunc) = {
     transformRequestContext { ctx =>
       val mark = if (marker.isEmpty) marker else " " + marker
       val request2Show = showRequest(ctx.request)

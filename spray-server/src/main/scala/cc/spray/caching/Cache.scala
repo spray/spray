@@ -17,7 +17,7 @@
 package cc.spray
 package caching
 
-import utils._
+import util._
 import akka.dispatch._
 
 /**

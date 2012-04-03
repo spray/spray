@@ -18,7 +18,7 @@ package cc.spray
 package authentication
 
 import http._
-import utils._
+import util._
 import HttpHeaders._
 import akka.dispatch.Future
 

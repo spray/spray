@@ -17,7 +17,7 @@
 package cc.spray
 package client
 
-import utils._
+import util._
 import http._
 import akka.actor.Actor
 import akka.actor.Actor._

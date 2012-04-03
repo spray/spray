@@ -17,7 +17,7 @@
 package cc.spray
 package typeconversion
 
-import utils._
+import util._
 import http._
 import MediaTypes._
 import HttpHeaders._

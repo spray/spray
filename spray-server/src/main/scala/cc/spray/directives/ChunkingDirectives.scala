@@ -17,7 +17,7 @@
 package cc.spray
 package directives
 
-import utils.make
+import util.make
 import http.{ContentType, HttpContent}
 import typeconversion.{DefaultMarshallers, SimpleMarshaller}
 

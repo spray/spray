@@ -18,7 +18,7 @@ package cc.spray
 
 import http._
 import StatusCodes._
-import utils.{IllegalResponseException, Logging}
+import util.{IllegalResponseException, Logging}
 
 trait ErrorHandling {
   this: Logging =>

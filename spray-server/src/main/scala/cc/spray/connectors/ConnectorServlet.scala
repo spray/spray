@@ -17,10 +17,10 @@
 package cc.spray
 package connectors
 
-import utils.Logging
+import util.Logging
 import collection.JavaConversions._        ¸
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest, HttpServlet}
-import utils.ActorHelpers._
+import util.ActorHelpers._
 import http._
 import HttpHeaders._
 import StatusCodes._
@@ -81,7 +81,7 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
     contentLengthHeader.flatMap {
       case `Content-Length`(0) => None
       case `Content-Length`(contentLength) => {
-        val body = if (contentLength == 0) utils.EmptyByteArray else try {
+        val body = if (contentLength == 0) util.EmptyByteArray else try {
           val buf = new Array[Byte](contentLength)
           var bytesRead = 0
           while (bytesRead < contentLength) {

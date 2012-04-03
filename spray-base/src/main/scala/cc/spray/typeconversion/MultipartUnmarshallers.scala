@@ -26,7 +26,7 @@ import org.parboiled.common.FileUtils
 import HttpHeaders._
 import HttpCharsets._
 import org.jvnet.mimepull.{MIMEConfig, MIMEMessage}
-import utils._
+import util._
 
 trait MultipartUnmarshallers {
 

@@ -24,7 +24,7 @@ import HttpMethods._
 import StatusCodes._
 import MediaTypes._
 import test.AbstractSprayTest
-import utils.IllegalResponseException
+import util.IllegalResponseException
 import xml.NodeSeq
 import encoding._
 import akka.dispatch.AlreadyCompletedFuture

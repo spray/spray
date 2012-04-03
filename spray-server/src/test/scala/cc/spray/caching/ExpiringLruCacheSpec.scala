@@ -7,7 +7,7 @@ import akka.util.Duration
 import util.Random
 import akka.dispatch.Future
 import org.specs2.matcher.Matcher
-import cc.spray.utils.identityFunc
+import cc.spray.util.identityFunc
 
 class ExpiringLruCacheSpec extends Specification {
 

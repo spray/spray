@@ -20,7 +20,7 @@ package http
 
 import parser.HttpParser
 import java.lang.String
-import utils.Logging
+import util.Logging
 
 abstract class HttpHeader extends Product {
   val name = productPrefix.replace("$minus", "-")
