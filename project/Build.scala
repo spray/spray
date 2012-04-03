@@ -95,10 +95,18 @@ object Build extends Build {
   lazy val simpleHttpClient = Project("simple-http-client", file("examples/spray-can/simple-http-client"))
     .dependsOn(sprayCan)
     .settings(exampleSettings: _*)
+    .settings(libraryDependencies ++=
+      compile(akkaActor) ++
+      runtime(akkaSlf4j, logback, slf4j)
+    )
 
   lazy val simpleHttpServer = Project("simple-http-server", file("examples/spray-can/simple-http-server"))
     .dependsOn(sprayCan)
     .settings(exampleSettings: _*)
+    .settings(libraryDependencies ++=
+      compile(akkaActor) ++
+      runtime(akkaSlf4j, logback, slf4j)
+    )
 
   lazy val sprayClientExamples = Project("spray-client-examples", file("examples/spray-client"))
     .aggregate(simpleSprayClient)
@@ -115,6 +123,10 @@ object Build extends Build {
   lazy val echoServerExample = Project("echo-server", file("examples/spray-io/echo-server"))
     .dependsOn(sprayIo)
     .settings(exampleSettings: _*)
+    .settings(libraryDependencies ++=
+      compile(akkaActor) ++
+      runtime(akkaSlf4j, logback, slf4j)
+    )
 
   lazy val sprayServerExamples = Project("spray-server-examples", file("examples/spray-server"))
     .aggregate(calculator, markdownServer, simpleOnJetty, simpleOnSprayCan, stopwatch)

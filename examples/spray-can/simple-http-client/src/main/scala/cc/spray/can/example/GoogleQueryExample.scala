@@ -29,7 +29,7 @@ object GoogleQueryExample extends App {
 
   val requests = queries.map(q => HttpRequest(uri = "/search?q=" + q.replace(" ", "+")))
 
-  log.info("Running {} google queries in a single pipelined request...", requests.length)
+  log.info("Running {} google queries over a single connection using pipelined request...", requests.length)
   timed(HttpDialog(httpClient, "www.google.com").send(requests).end)
     .onSuccess(printResult andThen secondRun)
     .onFailure(printError andThen shutdown)
