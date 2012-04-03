@@ -28,7 +28,7 @@ import java.io.{IOException, InputStream}
 import util.Spray
 
 private[connectors] abstract class ConnectorServlet(containerName: String) extends HttpServlet {
-  import SprayServerSettings._
+  import SprayServletSettings._
   lazy val rootService = Spray.system.actorFor(RootActorPath)
   lazy val timeoutActor = if (TimeoutActorPath.isEmpty) rootService else Spray.system.actorFor(TimeoutActorPath)
   def log = Spray.system.log

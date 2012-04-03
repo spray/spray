@@ -17,18 +17,21 @@
 package cc.spray
 
 import com.typesafe.config.{ConfigFactory, Config}
+import collection.JavaConverters._
 
-object SprayServerSettings {
+
+object SprayServletSettings {
   private[this] val c: Config = {
     val c = ConfigFactory.load()
-    c.checkValid(ConfigFactory.defaultReference(), "spray.server")
-    c.getConfig("spray.server")
+    c.checkValid(ConfigFactory.defaultReference(), "spray.servlet")
+    c.getConfig("spray.servlet")
   }
 
-  val FileChunkingThresholdSize = c getBytes  "file-chunking-threshold-size"
-  val FileChunkingChunkSize     = c getBytes  "file-chunking-chunk-size"
-  val Users                     = c getConfig "users"
+  val BootClasses       = c.getStringList  ("boot").asScala.toList
+  val RootActorPath     = c getString       "root-actor-path"
+  val TimeoutActorPath  = c getString       "timeout-actor-path"
+  val RequestTimeout    = c getMilliseconds "request-timeout"
+  val RootPath          = c getString       "root-path"
 
-  require(FileChunkingThresholdSize >= 0, "file-chunking-threshold-size must be >= 0")
-  require(FileChunkingChunkSize     > 0, "file-chunking-chunk-size must be >= 0")
+  require(RequestTimeout >= 0, "request-timeout must be >= 0")
 }

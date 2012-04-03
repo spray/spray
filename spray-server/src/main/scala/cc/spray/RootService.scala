@@ -33,7 +33,7 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
     case services => handleMultipleServices(firstService :: services)
   }
 
-  protected val initialUnmatchedPath: String => String = SprayServerSettings.RootPath match {
+  protected val initialUnmatchedPath: String => String = SprayServletSettings.RootPath match {
     case "" => identityFunc
     case rootPath => { path =>
       if (path.startsWith(rootPath)) {

@@ -31,7 +31,7 @@ import util.Spray
  */
 class SprayCanRootService(firstService: ActorRef, moreServices: ActorRef*)
         extends RootService(firstService, moreServices: _*) {
-  import SprayServerSettings._
+  import SprayServletSettings._
 
   protected override def receive = {
     case request: can.model.HttpRequest => {
