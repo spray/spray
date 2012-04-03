@@ -39,7 +39,7 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
       if (path.startsWith(rootPath)) {
         path.substring(rootPath.length)
       } else {
-        log.warn("Received request outside of configured root-path, request uri '{}', configured root path '{}'", path, rootPath)
+        log.warning("Received request outside of configured root-path, request uri '{}', configured root path '{}'", path, rootPath)
         path
       }
     }
@@ -85,7 +85,7 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
     import context._
     log.debug("Received {} with one attached service, dispatching...", request)
     val newResponder = responder.withReject { rejections =>
-      if (!rejections.isEmpty) log.warn("Non-empty rejection set received in RootService, ignoring ...")
+      if (!rejections.isEmpty) log.warning("Non-empty rejection set received in RootService, ignoring ...")
       responder.complete(noServiceResponse(request))
     }
     service ! context.copy(responder = newResponder, unmatchedPath = initialUnmatchedPath(request.path))
@@ -99,10 +99,10 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
     val newResponder = responder.copy(
       complete = { response =>
         if (responded.compareAndSet(false, true)) responder.complete(response)
-        else log.warn("Received a second response for request '{}':\n\n{}\n\nIgnoring the additional response...", request, response)
+        else log.warning("Received a second response for request '{}':\n\n{}\n\nIgnoring the additional response...", request, response)
       },
       reject = { rejections =>
-        if (!rejections.isEmpty) log.warn("Non-empty rejection set received in RootService, ignoring ...")
+        if (!rejections.isEmpty) log.warning("Non-empty rejection set received in RootService, ignoring ...")
         if (rejected.decrementAndGet() == 0) responder.complete(noServiceResponse(request))
       }
     )

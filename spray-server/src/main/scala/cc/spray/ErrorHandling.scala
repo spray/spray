@@ -26,7 +26,7 @@ trait ErrorHandling {
   protected[spray] def responseForException(request: Any, e: Exception): HttpResponse = {
     e match {
       case HttpException(failure, reason) =>
-        log.warn("Request {} could not be handled normally, completing with {} response ({})",
+        log.warning("Request {} could not be handled normally, completing with {} response ({})",
           request, failure.value, reason)
         HttpResponse(failure, reason)
       case e: IllegalResponseException => throw e

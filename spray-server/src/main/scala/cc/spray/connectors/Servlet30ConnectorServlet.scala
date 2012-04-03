@@ -57,7 +57,7 @@ class Servlet30ConnectorServlet extends ConnectorServlet("Servlet API 3.0") {
       if (alreadyResponded.compareAndSet(false, true)) {
         respond(req, resp, response)
         asyncContext.complete()
-      } else log.warn("Received late response to {}, which already timed out, dropping response...", requestString(req))
+      } else log.warning("Received late response to {}, which already timed out, dropping response...", requestString(req))
     }
   }
 }

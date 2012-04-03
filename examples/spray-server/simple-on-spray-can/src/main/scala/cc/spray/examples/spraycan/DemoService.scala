@@ -104,7 +104,7 @@ trait DemoService extends Directives with Logging {
             case Right(_) =>
               chunkSender.sendChunk(MessageChunk("</ul><p>Finished.</p></body></html>"))
               chunkSender.close()
-            case Left(e) => log.warn("Stopping response streaming due to " + e)
+            case Left(e) => log.warning("Stopping response streaming due to " + e)
           }
         }
       }

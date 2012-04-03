@@ -41,7 +41,7 @@ class Tomcat6ConnectorServlet extends ConnectorServlet("Tomcat 6") with CometPro
             ev.close()
           }
         }
-        case CometEvent.EventSubType.CLIENT_DISCONNECT => log.warn("Client disconnected")
+        case CometEvent.EventSubType.CLIENT_DISCONNECT => log.warning("Client disconnected")
         case err => log.error("Unspecified Error during async processing: {}", err)
       }
       case CometEvent.EventType.READ => {}
