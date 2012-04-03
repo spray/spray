@@ -37,19 +37,19 @@ trait DebuggingDirectives {
     transformRequestContext { ctx =>
       val mark = if (marker.isEmpty) marker else " " + marker
       val request2Show = showRequest(ctx.request)
-      log.debug("Request%s: %s", mark, request2Show)
+      log.debug("Request{}: {}", mark, request2Show)
       ctx.withResponderTransformed { responder =>
         responder.copy(
           complete = { response =>
-            log.debug("Completed%s %s with %s", mark, request2Show, showResponse(response))
+            log.debug("Completed{} {} with {}", mark, request2Show, showResponse(response))
             responder.complete(response)
           },
           reject = { rejections =>
-            log.debug("Rejected%s %s with %s", mark, request2Show, rejections)
+            log.debug("Rejected{} {} with {}", mark, request2Show, rejections)
             responder.reject(rejections)
           },
           startChunkedResponse = { response =>
-            log.debug("Started chunked response for%s %s with %s", mark, request2Show, showResponse(response))
+            log.debug("Started chunked response for{} {} with {}", mark, request2Show, showResponse(response))
             responder.startChunkedResponse(response)
           }
         )
@@ -58,7 +58,7 @@ trait DebuggingDirectives {
   }
 
   private def logMessage[T <: HttpMessage[T]](prefix: String, marker: String)(msg: T) = {
-    log.debug("%s: %s", if (marker.isEmpty) prefix else prefix + ' ' + marker, msg)
+    log.debug("{}: {}", if (marker.isEmpty) prefix else prefix + ' ' + marker, msg)
     msg
   }
 

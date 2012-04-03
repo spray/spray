@@ -44,7 +44,7 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthentica
           authContext.close()
           config.createUserObject(entry)
         case Left(ex) =>
-          log.info("Could not authenticate credentials '%s'/'%s': %s", entry.fullName, pass, ex)
+          log.info("Could not authenticate credentials '{}'/'{}': {}", entry.fullName, pass, ex)
           None
       }
     }
@@ -53,11 +53,11 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthentica
       query(searchContext, user) match {
         case entry :: Nil => auth3(entry, pass)
         case Nil =>
-          log.warn("User '%s' not found (search filter '%s' and search base '%s'", user, config.searchFilter(user),
+          log.warn("User '{}' not found (search filter '{}' and search base '{}'", user, config.searchFilter(user),
             config.searchBase(user))
           None
         case entries =>
-          log.warn("Expected exactly one search result for search filter '%s' and search base '%s', but got %s",
+          log.warn("Expected exactly one search result for search filter '{}' and search base '{}', but got {}",
             config.searchFilter(user), config.searchBase(user), entries.size)
           None
       }
@@ -71,7 +71,7 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthentica
           searchContext.close()
           result
         case Left(ex) =>
-          log.warn("Could not authenticate with search credentials '%s'/'%s': %s", searchUser, searchPass, ex)
+          log.warn("Could not authenticate with search credentials '{}'/'{}': {}", searchUser, searchPass, ex)
           None
       }
     }

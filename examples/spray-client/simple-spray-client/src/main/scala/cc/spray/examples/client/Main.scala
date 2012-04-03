@@ -37,9 +37,9 @@ object Main extends App with Logging {
     val response = responseFuture.get
     log.info(
       """|Response for GET request to github.com:
-         |status : %s
-         |headers: %s
-         |body   : %s""".stripMargin,
+         |status : {}
+         |headers: {}
+         |body   : {}""".stripMargin,
       response.status.value, response.headers, response.content
     )
     conduit.close()
@@ -53,7 +53,7 @@ object Main extends App with Logging {
       val elevationPipeline = simpleRequest ~> sendReceive ~> unmarshal[GoogleApiResult[Elevation]]
     }
     val responseFuture = conduit.elevationPipeline(Get("/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))
-    log.info("The elevation of Mt. Everest is: %s m", responseFuture.get.results.head.elevation)
+    log.info("The elevation of Mt. Everest is: {} m", responseFuture.get.results.head.elevation)
     conduit.close()
   }
 }

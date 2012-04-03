@@ -18,7 +18,7 @@ package cc.spray
 package connectors
 
 import utils.Logging
-import collection.JavaConversions._
+import collection.JavaConversions._        ¸
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest, HttpServlet}
 import utils.ActorHelpers._
 import http._
@@ -34,9 +34,9 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
   var timeout: Int = _
 
   override def init() {
-    log.info("Initializing %s <=> Spray Connector", containerName)
+    log.info("Initializing {} <=> Spray Connector", containerName)
     timeout = SprayServerSettings.RequestTimeout
-    log.info("Async timeout for all requests is %s ms", timeout)
+    log.info("Async timeout for all requests is {} ms", timeout)
   }
 
   def requestContext(req: HttpServletRequest, resp: HttpServletResponse,
@@ -111,9 +111,9 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
         servletResponse.getOutputStream.write(content.buffer)
       }
     } catch {
-      case e: IOException => log.error("Could not write response body of %s, probably the request has either timed out" +
-        "or the client has disconnected (%s)", requestString(req), e)
-      case e: Exception => log.error(e, "Could not complete %s", requestString(req))
+      case e: IOException => log.error("Could not write response body of {}, probably the request has either timed out" +
+        "or the client has disconnected ({})", requestString(req), e)
+      case e: Exception => log.error(e, "Could not complete {}", requestString(req))
     }
   }
 
@@ -123,9 +123,9 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
         try {
           f(response)
         } catch {
-          case e: IllegalStateException => log.error("Could not complete %s, it probably timed out and has therefore" +
-            "already been completed (%s)", requestString(req), e)
-          case e: Exception => log.error("Could not complete %s due to %s", requestString(req), e)
+          case e: IllegalStateException => log.error("Could not complete {}, it probably timed out and has therefore" +
+            "already been completed ({})", requestString(req), e)
+          case e: Exception => log.error("Could not complete {} due to {}", requestString(req), e)
         }
       },
       reject = _ => throw new IllegalStateException
@@ -140,7 +140,7 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
       latch.countDown()
     }
     requestContext(req, resp, responder).foreach { context =>
-      log.error("Timeout of %s", context.request)
+      log.error("Timeout of {}", context.request)
       timeoutActor ! Timeout(context)
       latch.await(timeout, TimeUnit.MILLISECONDS) // give the timeoutActor another `timeout` ms for completing
     }

@@ -40,7 +40,7 @@ trait HttpServiceActor extends Actor with ErrorHandling with Logging with PostSt
   }
 
   override def preRestart(reason: Throwable) {
-    log.info("Restarting because of previous %s", reason)
+    log.info("Restarting because of previous {}", reason)
   }
 
   protected def receive = {

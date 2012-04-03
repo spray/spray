@@ -39,7 +39,7 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
       if (path.startsWith(rootPath)) {
         path.substring(rootPath.length)
       } else {
-        log.warn("Received request outside of configured root-path, request uri '%s', configured root path '%s'", path, rootPath)
+        log.warn("Received request outside of configured root-path, request uri '{}', configured root path '{}'", path, rootPath)
         path
       }
     }
@@ -63,7 +63,7 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
   }
 
   override def preRestart(reason: Throwable) {
-    log.info("Restarting spray RootService because of previous %s ...", reason.getClass.getName)
+    log.info("Restarting spray RootService because of previous {} ...", reason.getClass.getName)
   }
 
   override def postRestart(reason: Throwable) {
@@ -83,7 +83,7 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
 
   protected def handleOneService(service: ActorRef)(context: RequestContext) {
     import context._
-    log.debug("Received %s with one attached service, dispatching...", request)
+    log.debug("Received {} with one attached service, dispatching...", request)
     val newResponder = responder.withReject { rejections =>
       if (!rejections.isEmpty) log.warn("Non-empty rejection set received in RootService, ignoring ...")
       responder.complete(noServiceResponse(request))
@@ -93,13 +93,13 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
 
   protected def handleMultipleServices(services: List[ActorRef])(context: RequestContext) {
     import context._
-    log.debug("Received %s with %s attached services, dispatching...", request, services.size)
+    log.debug("Received {} with {} attached services, dispatching...", request, services.size)
     val responded = new AtomicBoolean(false)
     val rejected = new AtomicInteger(services.size)
     val newResponder = responder.copy(
       complete = { response =>
         if (responded.compareAndSet(false, true)) responder.complete(response)
-        else log.warn("Received a second response for request '%s':\n\n%s\n\nIgnoring the additional response...", request, response)
+        else log.warn("Received a second response for request '{}':\n\n{}\n\nIgnoring the additional response...", request, response)
       },
       reject = { rejections =>
         if (!rejections.isEmpty) log.warn("Non-empty rejection set received in RootService, ignoring ...")

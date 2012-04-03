@@ -58,7 +58,7 @@ class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitC
     protected def receive = {
       case send: Send => config.dispatchStrategy.dispatch(send, conns)
       case Respond(conn, send: Send, result@ Right(response)) =>
-        log.debug("Dispatching '%s' response to %s", response.status.value, requestString(send.request), response)
+        log.debug("Dispatching '{}' response to {}", response.status.value, requestString(send.request), response)
         if (closeExpected(response)) {
           conn.pendingResponses = -1
           conn.httpConnection = None
@@ -66,13 +66,13 @@ class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitC
         send.responder(result)
         config.dispatchStrategy.onStateChange(conns)
       case Respond(conn, send: Send, Left(error)) if send.retriesLeft > 0 =>
-        log.debug("Received '%s' in response to %s with %s retries left, retrying...", error.toString,
+        log.debug("Received '{}' in response to {} with {} retries left, retrying...", error.toString,
           requestString(send.request), send.retriesLeft)
         // only decrease retry counter if we are the first request on this connection that failed
         val retry = if (conn.httpConnection.isEmpty) send.withRetriesDecremented else send
         config.dispatchStrategy.dispatch(retry, conns)
       case Respond(conn, send: Send, result@ Left(error)) =>
-        log.debug("Received '%s' in response to %s with no retries left, dispatching error...", error.toString, requestString(send.request))
+        log.debug("Received '{}' in response to {} with no retries left, dispatching error...", error.toString, requestString(send.request))
         send.responder(result)
       case ConnectionResult(conn, send, Right(httpConnection)) =>
         conn.httpConnection = Some(Right(httpConnection))
@@ -111,7 +111,7 @@ class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitC
       def dispatch(requestCtx: HttpRequestContext) {
         val send = requestCtx.asInstanceOf[Send]
         if (httpConnection.isEmpty) {
-          log.debug("Opening new connection to %s:%s", host, port)
+          log.debug("Opening new connection to {}:{}", host, port)
           pendingResponses = 1
           val connectionFuture = (httpClient ? Connect(host, port)).mapTo[HttpConnection].onComplete { future =>
             self ! ConnectionResult(this, send, future.value.get)
@@ -120,7 +120,7 @@ class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitC
         } else {
           pendingResponses += 1
           def dispatchTo(connection: HttpConnection) {
-            log.debug("Dispatching %s", requestString(send.request))
+            log.debug("Dispatching {}", requestString(send.request))
             connection.send(toSprayCanRequest(send.request)).onComplete {
               _.value.get match {
                 case Right(response) => self ! Respond(this, send, Right(fromSprayCanResponse(response)))
