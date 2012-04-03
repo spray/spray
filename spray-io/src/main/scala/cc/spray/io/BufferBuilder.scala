@@ -110,4 +110,7 @@ object BufferBuilder {
 
   def apply(initialContent: Array[Byte]): BufferBuilder =
     new BufferBuilder(initialContent.length, initialContent)
+
+  def apply(string: String): BufferBuilder =
+    BufferBuilder(string.length).append(string)
 }
