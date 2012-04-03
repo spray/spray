@@ -1,10 +1,10 @@
 package cc.spray
 package examples.simple
 
-import util.ActorHelpers._
 import http.MediaTypes._
-import java.util.concurrent.TimeUnit
-import akka.actor.{Scheduler, Actor, Kill}
+import akka.actor.{Actor, Kill}
+import util.Spray
+import akka.util.duration._
 
 trait SimpleService extends Directives {
 
@@ -19,10 +19,8 @@ trait SimpleService extends Directives {
                 <p>Defined resources:</p>
                 <ul>
                   <li><a href="/ping">/ping</a></li>
-                  <li><a href="/crashRootService">/crashRootService</a></li>
-                  <li><a href="/crashHttpService">/crashHttpService</a></li>
                   <li><a href="/timeout">/timeout</a></li>
-                  <li><a href="/stop">/stop</a></li>
+                  <li><a href="/2nd">/2nd</a></li>
                 </ul>
               </body>
             </html>
@@ -35,27 +33,11 @@ trait SimpleService extends Directives {
         completeWith("PONG! " + body.getOrElse(""))
       }
     } ~
-    path("crashRootService") {
-      get { ctx =>
-        ctx.complete("About to kill the RootService...")
-        actor("spray-root-service") ! Kill
-      }
-    } ~
-    path("crashHttpService") {
-      get { ctx =>
-        ctx.complete("About to kill the HttpService...")
-        Actor.registry.actorsFor[HttpService].head ! Kill
-      }
-    } ~
     path("timeout") {
       get { ctx =>
-        Scheduler.scheduleOnce(() => ctx.complete("Too late!"), 1500, TimeUnit.MILLISECONDS)
-      }
-    } ~
-    path("stop") {
-      get { ctx =>
-        ctx.complete("Stopping all actors...")
-        Scheduler.scheduleOnce(() => Actor.registry.shutdownAll(), 100, TimeUnit.MILLISECONDS)
+        Spray.system.scheduler.scheduleOnce(1500.millis) {
+          ctx.complete("Too late!")
+        }
       }
     }
   }

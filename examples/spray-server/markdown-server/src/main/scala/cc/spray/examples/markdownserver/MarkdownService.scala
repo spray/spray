@@ -17,6 +17,9 @@ trait MarkdownService extends Directives {
           getFromResourceDirectory("www", pathRewriter = rewritePath)
         }
       }
+    } ~
+    path("") {
+      redirect("/doc")
     }
   }
   

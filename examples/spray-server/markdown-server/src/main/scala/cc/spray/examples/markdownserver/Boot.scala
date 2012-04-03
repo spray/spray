@@ -1,28 +1,20 @@
 package cc.spray
 package examples.markdownserver
 
-import akka.config.Supervision._
-import akka.actor.Supervisor
-import akka.actor.Actor._
-import cc.spray._
+import util.Spray
+import akka.actor.Props
 
 class Boot {
-  
   val mainModule = new MarkdownService {
     // bake your module cake here
   }
-  
-  val httpService = actorOf(new HttpService(mainModule.markdownService))
-  val rootService = actorOf(new RootService(httpService))
 
-  // start and supervise the created actors
-  Supervisor(
-    SupervisorConfig(
-      OneForOneStrategy(List(classOf[Exception]), 3, 100),
-      List(
-        Supervise(httpService, Permanent),
-        Supervise(rootService, Permanent)
-      )
-    )
+  val httpService = Spray.system.actorOf(
+    props = Props(new HttpService(mainModule.markdownService)),
+    name = "my-service"
+  )
+  val rootService = Spray.system.actorOf(
+    props = Props(new RootService(httpService)),
+    name = "spray-root-service" // must match the name in the config so the ConnectorServlet can find the actor
   )
 }

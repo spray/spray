@@ -1,30 +1,24 @@
 package cc.spray
 package examples.simple
 
-import akka.config.Supervision._
-import akka.actor.Supervisor
-import akka.actor.Actor._
-import cc.spray._
+import util.Spray
+import akka.actor.Props
 
 class Boot {
-  
   val mainModule = new SimpleService {
     // bake your module cake here
   }
-  
-  val httpService = actorOf(new HttpService(mainModule.simpleService))
-  val httpService2 = actorOf(new HttpService(mainModule.secondService))
-  val rootService = actorOf(new RootService(httpService, httpService2))
 
-  // start and supervise the created actors
-  Supervisor(
-    SupervisorConfig(
-      OneForOneStrategy(List(classOf[Exception]), 3, 100),
-      List(
-        Supervise(httpService, Permanent),
-        Supervise(httpService2, Permanent),
-        Supervise(rootService, Permanent)
-      )
-    )
+  val service1 = Spray.system.actorOf(
+    props = Props(new HttpService(mainModule.simpleService)),
+    name = "service1"
+  )
+  val service2 = Spray.system.actorOf(
+    props = Props(new HttpService(mainModule.secondService)),
+    name = "service2"
+  )
+  val rootService = Spray.system.actorOf(
+    props = Props(new RootService(service1, service2)),
+    name = "spray-root-service" // must match the name in the config so the ConnectorServlet can find the actor
   )
 }
