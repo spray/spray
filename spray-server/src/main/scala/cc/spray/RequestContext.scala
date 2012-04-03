@@ -152,7 +152,10 @@ case class RequestContext(
    * Schedules the completion of the request with result of the given future.
    */
   def complete(future: Future[HttpResponse]) {
-    future.onComplete(future => complete(future.resultOrException.get))
+    future.onComplete {
+      case Right(response) => complete(response)
+      case Left(error) => throw error
+    }
   }
 
   /**

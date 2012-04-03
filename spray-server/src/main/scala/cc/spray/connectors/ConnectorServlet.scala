@@ -17,25 +17,25 @@
 package cc.spray
 package connectors
 
-import util.Logging
-import collection.JavaConversions._        ¸
+import collection.JavaConversions._
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest, HttpServlet}
-import util.ActorHelpers._
 import http._
 import HttpHeaders._
 import StatusCodes._
 import MediaTypes._
 import java.util.concurrent.{TimeUnit, CountDownLatch}
 import java.io.{IOException, InputStream}
+import util.Spray
 
-private[connectors] abstract class ConnectorServlet(containerName: String) extends HttpServlet with Logging {
-  lazy val rootService = actor(SprayServerSettings.RootActorId)
-  lazy val timeoutActor = actor(SprayServerSettings.TimeoutActorId)
-  var timeout: Int = _
+private[connectors] abstract class ConnectorServlet(containerName: String) extends HttpServlet {
+  import SprayServerSettings._
+  lazy val rootService = Spray.system.actorFor(RootActorPath)
+  lazy val timeoutActor = if (TimeoutActorPath.isEmpty) rootService else Spray.system.actorFor(TimeoutActorPath)
+  def log = Spray.system.log
+  var timeout: Int = RequestTimeout.toInt
 
   override def init() {
     log.info("Initializing {} <=> Spray Connector", containerName)
-    timeout = SprayServerSettings.RequestTimeout
     log.info("Async timeout for all requests is {} ms", timeout)
   }
 

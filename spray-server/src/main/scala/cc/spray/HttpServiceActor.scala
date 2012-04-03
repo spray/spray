@@ -16,30 +16,24 @@
 
 package cc.spray
 
-import http._
-import akka.actor.Actor
-import util._
+import akka.actor.{ActorLogging, Actor}
 
 /**
  * The actor part of the [[cc.spray.HttpService]].
  */
-trait HttpServiceActor extends Actor with ErrorHandling with Logging with PostStart {
+trait HttpServiceActor extends Actor with ErrorHandling with ActorLogging {
   this: HttpServiceLogic =>
   
   override def preStart() {
-    log.debug("Starting ...")
+    log.debug("Starting HTTP Service ...")
     super.preStart()
-  }
-
-  def postStart() {
-    log.info("HTTP Service started")
   }
 
   override def postStop() {
     log.info("Stopped")
   }
 
-  override def preRestart(reason: Throwable) {
+  override def preRestart(reason: Throwable, message: Option[Any]) {
     log.info("Restarting because of previous {}", reason)
   }
 

@@ -22,8 +22,8 @@ import javax.naming.{Context, NamingException, NamingEnumeration}
 import javax.naming.ldap.InitialLdapContext
 import javax.naming.directory.{SearchControls, SearchResult, Attribute}
 import collection.JavaConverters._
-import util.Logging
-import akka.dispatch.{Future, AlreadyCompletedFuture}
+import akka.dispatch.{Promise, Future}
+import util.Spray
 
 /**
  * The LdapAuthenticator faciliates user/password authentication against an LDAP server.
@@ -35,7 +35,8 @@ import akka.dispatch.{Future, AlreadyCompletedFuture}
  * matching a given user name. If exactly one user entry is found another LDAP bind operation is performed using the
  * principal DN of the found user entry to validate the password.
  */
-class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthenticator[T] with Logging {
+class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthenticator[T] {
+  def log = Spray.system.log
 
   def apply(userPass: Option[(String, String)]) = {
     def auth3(entry: LdapQueryResult, pass: String) = {
@@ -77,15 +78,15 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthentica
     }
 
     userPass match {
-      case Some((user, pass)) => Future(auth1(user, pass))
+      case Some((user, pass)) => Future(auth1(user, pass))(Spray.system.dispatcher)
       case None =>
         log.warning("LdapAuthenticator.apply called with empty userPass, authentication not possible")
-        new AlreadyCompletedFuture(Right(None))
+        Promise.successful(None)(Spray.system.dispatcher)
     }
   }
 
   def ldapContext(user: String, pass: String): Either[Throwable, InitialLdapContext] = {
-    util.control.Exception.catching(classOf[NamingException]).either {
+    scala.util.control.Exception.catching(classOf[NamingException]).either {
       val env = new Hashtable[AnyRef, AnyRef]
       env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
       env.put(Context.SECURITY_PRINCIPAL, user)

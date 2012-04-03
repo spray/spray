@@ -17,9 +17,10 @@
 package cc.spray
 package directives
 
-import util._
-import util.matching.Regex
+import scala.util.matching.Regex
 import annotation.tailrec
+import util._
+import pimps.Product0
 
 private[spray] trait PathDirectives {
   this: BasicDirectives =>

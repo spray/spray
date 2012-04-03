@@ -17,8 +17,8 @@
 package cc.spray
 package directives
 
+import scala.util.matching.Regex
 import util._
-import util.matching.Regex
 import http._
 import HttpMethods._
 

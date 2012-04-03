@@ -17,8 +17,9 @@
 package cc.spray
 package caching
 
-import util._
 import akka.dispatch._
+import util.Spray
+import akka.util.NonFatal
 
 /**
  * General interface implemented by all spray cache implementations.
@@ -35,19 +36,21 @@ trait Cache[V] {
     /**
      * Wraps the given expression with caching support.
      */
-    def apply(expr: => V): Future[V] = apply { completableFuture =>
+    def apply(expr: => V): Future[V] = apply { promise =>
       try {
-        completableFuture.completeWithResult(expr)
+        promise.success(expr)
       } catch {
-        case e: Exception => completableFuture.completeWithException(e)
+        case NonFatal(e) => promise.failure(e)
       }
     }
 
     /**
      * Wraps the given function with caching support.
      */
-    def apply(func: CompletableFuture[V] => Unit): Future[V] = fromFuture(key) {
-      make(new DefaultCompletableFuture[V](Long.MaxValue))(func) // TODO: make timeout configurable
+    def apply(func: Promise[V] => Unit): Future[V] = fromFuture(key) {
+      val p = Promise[V]()(Spray.system.dispatcher)
+      func(p)
+      p
     }
   }
 

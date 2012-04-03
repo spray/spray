@@ -185,7 +185,7 @@ object FileChunking {
     val fis = new FileInputStream(file)
 
     def chunkStream(): Stream[FileChunk] = {
-      val buffer = new Array[Byte](SprayServerSettings.FileChunkingChunkSize)
+      val buffer = new Array[Byte](SprayServerSettings.FileChunkingChunkSize.toInt)
       val bytesRead = fis.read(buffer)
       if (bytesRead > 0) {
         val chunkBytes = if (bytesRead == buffer.length) buffer else Arrays.copyOfRange(buffer, 0, bytesRead)

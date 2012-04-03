@@ -24,15 +24,15 @@ import HttpMethods._
 import StatusCodes._
 import MediaTypes._
 import test.AbstractSprayTest
-import util.IllegalResponseException
+import util.{Spray, IllegalResponseException}
 import xml.NodeSeq
 import encoding._
-import akka.dispatch.AlreadyCompletedFuture
+import akka.dispatch.Promise
 
 class HttpServiceLogicSpec extends AbstractSprayTest {
   
   implicit val userPassAuth = new UserPassAuthenticator[BasicUserContext] {
-    def apply(userPass: Option[(String, String)]) = new AlreadyCompletedFuture(Right(None))
+    def apply(userPass: Option[(String, String)]) = Promise.successful(None)(Spray.system.dispatcher)
   }
   
   "The HttpServiceLogic" should {

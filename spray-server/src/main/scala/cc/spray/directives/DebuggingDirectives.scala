@@ -17,11 +17,11 @@
 package cc.spray
 package directives
 
-import util.Logging
 import http.{HttpResponse, HttpRequest, HttpMessage}
+import util.Spray
 
 trait DebuggingDirectives {
-  this: BasicDirectives with MiscDirectives with Logging =>
+  this: BasicDirectives with MiscDirectives =>
 
   def logRequest(marker: String = "") = transformRequest(logMessage("Request", marker))
 
@@ -61,5 +61,7 @@ trait DebuggingDirectives {
     log.debug("{}: {}", if (marker.isEmpty) prefix else prefix + ' ' + marker, msg)
     msg
   }
+
+  private def log = Spray.system.log
 
 }

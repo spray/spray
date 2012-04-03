@@ -23,7 +23,7 @@ import MediaTypes._
 import HttpHeaders._
 import HttpCharsets._
 import org.parboiled.common.FileUtils
-import util.Properties
+import scala.util.Properties
 import java.io.File
 import test.AbstractSprayTest
 

@@ -18,20 +18,19 @@ package cc.spray
 
 import http._
 import StatusCodes._
-import util.{IllegalResponseException, Logging}
+import util.{Spray, IllegalResponseException}
 
 trait ErrorHandling {
-  this: Logging =>
 
   protected[spray] def responseForException(request: Any, e: Exception): HttpResponse = {
     e match {
       case HttpException(failure, reason) =>
-        log.warning("Request {} could not be handled normally, completing with {} response ({})",
+        Spray.system.log.warning("Request {} could not be handled normally, completing with {} response ({})",
           request, failure.value, reason)
         HttpResponse(failure, reason)
       case e: IllegalResponseException => throw e
       case e: Exception =>
-        log.error(e, "Error during processing of request {}", request)
+        Spray.system.log.error(e, "Error during processing of request {}", request)
         HttpResponse(InternalServerError, "Internal Server Error:\n" + e.toString)
     }
   }

@@ -25,7 +25,7 @@ trait ChunkSender {
   /**
    * Sends the given [[cc.spray.http.MessageChunk]] back to the client and returns a Future that is completed when the
    * chunk has actually and successfully been dispatched to the network layer. Should the client prematurely close
-   * the connection the future is completed with a [[cc.spray.can.ClientClosedConnectionException]]
+   * the connection the future is completed with a [[cc.spray.ClientClosedConnectionException]]
    */
   def sendChunk(chunk: MessageChunk): Future[Unit]
 

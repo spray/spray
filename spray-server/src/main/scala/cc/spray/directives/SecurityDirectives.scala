@@ -20,7 +20,6 @@ package directives
 import authentication.{BasicHttpAuthenticator, FromConfigUserPassAuthenticator}
 import http.StatusCodes._
 import akka.dispatch.Future
-import util.Logging
 
 private[spray] trait SecurityDirectives {
   this: BasicDirectives =>
@@ -51,9 +50,9 @@ private[spray] trait SecurityDirectives {
    */
   def authenticate[U](authentication: Future[Authentication[U]]): (U => Route) => Route = { innerRoute => ctx =>
     authentication onComplete {
-      new ((Future[Either[Rejection, U]]) => Unit) with ErrorHandling with Logging {
-        def apply(future: Future[Either[Rejection, U]]) {
-          future.value.get match {
+      new (Either[Throwable, Either[Rejection, U]] => Unit) with ErrorHandling {
+        def apply(value: Either[Throwable, Either[Rejection, U]]) {
+          value match {
             case Right(Right(userContext)) =>
               try {
                 innerRoute(userContext)(ctx)

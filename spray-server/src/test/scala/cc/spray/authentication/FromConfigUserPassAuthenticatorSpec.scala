@@ -18,12 +18,13 @@ package cc.spray
 package authentication
 
 import org.specs2.mutable.Specification
+import util._
 
 class FromConfigUserPassAuthenticatorSpec extends Specification {
 
   "the FromConfigUserPassAuthenticator" should {
     "extract a BasicUserContext for users defined in the spray config" in {
-      FromConfigUserPassAuthenticator(Some("Alice", "banana")).get mustEqual Some(BasicUserContext("Alice"))
+      FromConfigUserPassAuthenticator(Some("Alice", "banana")).await mustEqual Some(BasicUserContext("Alice"))
     }
   }
 

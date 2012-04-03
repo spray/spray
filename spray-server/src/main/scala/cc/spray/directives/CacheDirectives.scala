@@ -43,14 +43,14 @@ private[spray] trait CacheDirectives {
       if (!noCachePresent) {
         keyer(ctx) match {
           case Some(key) => {
-            cache(key) { completableFuture =>
+            cache(key) { promise =>
               route {
                 ctx.withResponderTransformed { _
-                  .withComplete(response => completableFuture.completeWithResult(Right(response)))
-                  .withReject(rejections => completableFuture.completeWithResult(Left(rejections)))
+                  .withComplete(response => promise.success(Right(response)))
+                  .withReject(rejections => promise.success(Left(rejections)))
                 }
               }
-            } onResult {
+            } onSuccess {
               case Right(response) => ctx.responder.complete(response)
               case Left(rejections) => ctx.responder.reject(rejections)
             }

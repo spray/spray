@@ -47,8 +47,7 @@ trait SprayTest extends RouteResultComponent {
 
   implicit def wrapRoute(theRoute: Route)
                         (implicit theRejectionHandler: RejectionHandler = RejectionHandler.Default) = {
-    new HttpServiceLogic with Logging {
-      override lazy val log = NoLog // in the tests we don't log
+    new HttpServiceLogic {
       val route = theRoute
       def rejectionHandler = theRejectionHandler
     }
@@ -99,7 +98,7 @@ trait SprayTest extends RouteResultComponent {
   }
 
   def doFail(msg: String): Nothing = {
-    import util.control.Exception._
+    import scala.util.control.Exception._
     ignoring(classOf[ClassNotFoundException]) {
       // try generating a scalatest test failure
       throw Class.forName("org.scalatest.TestFailedException")

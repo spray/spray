@@ -27,6 +27,7 @@ import typeconversion._
 import xml.{XML, NodeSeq}
 import java.io.ByteArrayInputStream
 import akka.dispatch.Future
+import util.Spray
 
 class MarshallingDirectivesSpec extends AbstractSprayTest {
   
@@ -125,7 +126,7 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
   "RequestContext.complete(Future)" should {
     "correctly complete the request with the future result" in {
       test(HttpRequest()) {
-        completeWith(Future("yeah"))
+        completeWith(Future("yeah")(Spray.system.dispatcher))
       }.response.content.as[String] mustEqual Right("yeah")
     }
   }

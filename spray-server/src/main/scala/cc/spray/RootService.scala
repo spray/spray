@@ -18,16 +18,15 @@ package cc.spray
 
 import http._
 import util._
-import akka.actor.{Actor, ActorRef}
 import java.util.concurrent.atomic.{AtomicInteger, AtomicBoolean}
+import akka.actor.{ActorLogging, Actor, ActorRef}
 
 /**
  * The RootService actor is the central entrypoint for HTTP requests entering the ''spray'' infrastructure.
  * It is responsible for creating an [[cc.spray.http.HttpRequest]] object for the request as well as dispatching this
  *  [[cc.spray.http.HttpRequest]] object to all attached [[cc.spray.HttpService]]s. 
  */
-class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
-  with Logging with ErrorHandling with PostStart {
+class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor with ActorLogging with ErrorHandling {
 
   protected val handler: RequestContext => Unit = moreServices.toList match {
     case Nil => handleOneService(firstService)
@@ -35,7 +34,8 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
   }
 
   protected val initialUnmatchedPath: String => String = SprayServerSettings.RootPath match {
-    case Some(rootPath) => { path =>
+    case "" => identityFunc
+    case rootPath => { path =>
       if (path.startsWith(rootPath)) {
         path.substring(rootPath.length)
       } else {
@@ -43,26 +43,19 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
         path
       }
     }
-    case None => identityFunc
   }
-
-  self.id = SprayServerSettings.RootActorId
 
   override def preStart() {
     log.debug("Starting spray RootService ...")
-    super.preStart()
-  }
-
-  def postStart() {
     cc.spray.http.warmUp()
-    log.info("spray RootService started")
+    super.preStart()
   }
 
   override def postStop() {
     log.info("spray RootService stopped")
   }
 
-  override def preRestart(reason: Throwable) {
+  override def preRestart(reason: Throwable, message: Option[Any]) {
     log.info("Restarting spray RootService because of previous {} ...", reason.getClass.getName)
   }
 

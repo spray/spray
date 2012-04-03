@@ -21,17 +21,19 @@ import http._
 import HttpHeaders._
 import test.AbstractSprayTest
 import authentication.BasicUserContext
-import akka.dispatch.AlreadyCompletedFuture
+import util.Spray
+import akka.dispatch.{ExecutionContext, Promise}
 
 class SecurityDirectivesSpec extends AbstractSprayTest {
+  implicit def executor: ExecutionContext = Spray.system.dispatcher
 
   val dontAuth = new UserPassAuthenticator[BasicUserContext] {
-    def apply(userPass: Option[(String, String)]) = new AlreadyCompletedFuture(Right(None))
+    def apply(userPass: Option[(String, String)]) = Promise.successful(None)
   }
   
   val doAuth = new UserPassAuthenticator[BasicUserContext] {
     def apply(userPass: Option[(String, String)]) =
-      new AlreadyCompletedFuture(Right(Some(BasicUserContext(userPass.get._1))))
+      Promise.successful(Some(BasicUserContext(userPass.get._1)))
   }
   
   "the 'authenticate(HttpBasic())' directive" should {
