@@ -14,29 +14,6 @@
  * limitations under the License.
  */
 
-package cc.spray.utils
+package cc.spray.util
 
-import collection.immutable.LinearSeq
-
-class PimpedLinearSeq[+A](underlying: LinearSeq[A]) {
-  
-  def mapFind[B](f: A => Option[B]): Option[B] = {
-    var res: Option[B] = None
-    var these = underlying
-    while (res.isEmpty && !these.isEmpty) {
-      res = f(these.head)
-      these = these.tail
-    }
-    res
-  }
-  
-  def findByType[B :ClassManifest]: Option[B] = {
-    val erasure = classManifest.erasure
-    mapFind { x =>
-      if (erasure.isInstance(x)) {
-        Some(x.asInstanceOf[B])
-      } else None
-    }
-  }
-  
-}
+class IllegalResponseException(msg: String = "") extends RuntimeException(msg)
