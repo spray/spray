@@ -17,11 +17,11 @@
 package cc.spray
 package typeconversion
 
-import utils._
+import util._
 import http._
 import MediaTypes._
 import HttpHeaders._
-import util.Random
+import java.util.Random
 import org.parboiled.common.Base64
 import java.io.ByteArrayOutputStream
 

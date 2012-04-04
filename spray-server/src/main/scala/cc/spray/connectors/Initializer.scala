@@ -16,19 +16,62 @@
 
 package cc.spray.connectors
 
-import akka.actor.BootableActorLoaderService
-
+import akka.util.Switch
+import cc.spray.SprayServletSettings
+import akka.config.ConfigurationException
+import akka.actor.ActorSystem
 import javax.servlet.{ServletContextListener, ServletContextEvent}
-import akka.util.AkkaLoader
 
 class Initializer extends ServletContextListener {
-  lazy val loader = new AkkaLoader
-  
-  def contextDestroyed(e: ServletContextEvent) {
-    loader.shutdown()
-  }
-  
+  private val booted = new Switch(false)
+  private lazy val system = ActorSystem("servlet")
+
   def contextInitialized(e: ServletContextEvent) {
-    loader.boot(true, new BootableActorLoaderService {})
+    booted switchOn {
+      println("Starting spray application ...")
+      val ctx = e.getServletContext
+      val loader = getClass.getClassLoader
+
+      Thread.currentThread.setContextClassLoader(loader)
+
+      ctx.setAttribute(Initializer.SystemAttrName, system)
+
+      SprayServletSettings.BootClasses match {
+        case Nil =>
+          val e = new ConfigurationException("No boot classes configured. Please specify at least one boot class " +
+            "in the spray.servlet.boot-classes config setting.")
+          ctx.log(e.getMessage, e)
+
+        case classes => {
+          for (className <- classes) {
+            try {
+              loader
+                .loadClass(className)
+                .getConstructor(classOf[ActorSystem])
+                .newInstance(system)
+            } catch {
+              case e: ClassNotFoundException =>
+                ctx.log("Configured boot class " + className + " cannot be found", e)
+              case e: NoSuchMethodException =>
+                ctx.log("Configured boot class " + className + " does not define required constructor " +
+                  "with one parameter of type `akka.actor.ActorSystem`", e)
+              case e: Exception =>
+                ctx.log("Could not create instance of boot class " + className, e)
+            }
+          }
+        }
+      }
+    }
   }
+
+  def contextDestroyed(e: ServletContextEvent) {
+    booted switchOff {
+      println("Shutting down spray application ...")
+      system.shutdown()
+    }
+  }
+}
+
+object Initializer {
+  private[connectors] val SystemAttrName = "spray.servlet.system"
 }

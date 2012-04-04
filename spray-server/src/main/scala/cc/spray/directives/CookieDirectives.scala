@@ -62,7 +62,7 @@ private[spray] trait CookieDirectives {
    * A directive thats adds a Set-Cookie header expiring the given cookie to all responses of its inner route.
    */
   def deleteCookie(name: String, domain: String = "", path: String = ""): SprayRoute0 = {
-    import utils._
+    import util._
     deleteCookie(HttpCookie(name, "", domain = domain.toOption, path = path.toOption))
   }
 

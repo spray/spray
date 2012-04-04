@@ -144,7 +144,7 @@ case class RequestContext(
       def marshalTo(content: HttpContent) { complete(HttpResponse(status, headers, content)) }
       def handleError(error: Throwable) { fail(error) }
       def startChunkedMessage(contentType: ContentType) =
-        startChunkedResponse(HttpResponse(status, headers, HttpContent(contentType, utils.EmptyByteArray)))
+        startChunkedResponse(HttpResponse(status, headers, HttpContent(contentType, util.EmptyByteArray)))
     }
   }
 
@@ -152,7 +152,10 @@ case class RequestContext(
    * Schedules the completion of the request with result of the given future.
    */
   def complete(future: Future[HttpResponse]) {
-    future.onComplete(future => complete(future.resultOrException.get))
+    future.onComplete {
+      case Right(response) => complete(response)
+      case Left(error) => throw error
+    }
   }
 
   /**
@@ -218,7 +221,7 @@ case class RequestContext(
    * The default redirectionType is a temporary `302 Found`.
    */
   def redirect(uri: String, redirectionType: Redirection = Found) {
-    import utils._
+    import util._
     complete {
       HttpResponse(
         status = redirectionType,

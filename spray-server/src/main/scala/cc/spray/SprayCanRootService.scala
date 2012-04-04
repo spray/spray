@@ -15,67 +15,80 @@
  */
 package cc.spray
 
-import akka.actor.ActorRef
+import can.model.{ChunkedResponseStart, ChunkedMessageEnd}
+import can.server.HttpServer
 import http._
+import io.ConnectionClosedReason
 import typeconversion.ChunkSender
-import utils.ActorHelpers
-import java.net.InetAddress
 import SprayCanConversions._
+import akka.dispatch.{Promise, Future}
+import akka.util.Duration
+import akka.actor.ActorRef
+import akka.spray.UnregisteredActorRef
 
 /**
  * A specialized [[cc.spray.RootService]] for connector-less deployment on top of the ''spray-can'' `HttpServer`.
  */
 class SprayCanRootService(firstService: ActorRef, moreServices: ActorRef*)
         extends RootService(firstService, moreServices: _*) {
-
-  lazy val timeoutActor = ActorHelpers.actor(SprayServerSettings.TimeoutActorId)
+  import SprayServletSettings._
 
   protected override def receive = {
-    case context: can.RequestContext => {
-      import context._
+    case request: can.model.HttpRequest => {
       try {
-        handler(fromSprayCanContext(request, remoteAddress, sprayCanAdapterResponder(responder)))
-      } catch handleExceptions(request, responder.complete)
+        handler(contextForSprayCanRequest(request))
+      } catch handleExceptions(request)
     }
-    case can.Timeout(method, uri, protocol, headers, remoteAddress, complete) => {
-      val request = can.HttpRequest(method, uri, headers)
+    case HttpServer.RequestTimeout(request) => {
       try {
-        if (self == timeoutActor)
-          complete(toSprayCanResponse(timeoutResponse(fromSprayCanRequest(request))))
+        if (TimeoutActorPath == "")
+          sender ! toSprayCanResponse(timeoutResponse(fromSprayCanRequest(request)))
         else
-          timeoutActor ! Timeout(fromSprayCanContext(request, remoteAddress,
-            RequestResponder(response => complete(toSprayCanResponse(response)))))
-      } catch handleExceptions(request, complete)
+          context.actorFor(TimeoutActorPath) ! Timeout(contextForSprayCanRequest(request))
+      } catch handleExceptions(request)
     }
   }
 
-  protected def handleExceptions(request: can.HttpRequest,
-                                 complete: can.HttpResponse => Unit): PartialFunction[Throwable, Unit] = {
-    case e: Exception => complete(toSprayCanResponse(responseForException(request, e)))
+  protected def handleExceptions(request: can.model.HttpRequest): PartialFunction[Throwable, Unit] = {
+    case e: Exception => sender ! toSprayCanResponse(responseForException(request, e))
   }
 
-  protected def fromSprayCanContext(request: can.HttpRequest, remoteAddress: InetAddress,
-                                    responder: RequestResponder) = {
+  protected def contextForSprayCanRequest(request: can.model.HttpRequest) = {
     RequestContext(
       request = fromSprayCanRequest(request),
-      remoteHost = HttpIp(remoteAddress),
-      responder = responder
+      remoteHost = "127.0.0.1", // TODO: extract from X-Remote-Addr header (see issue #95)
+      responder = sprayCanAdapterResponder(sender)
     )
   }
 
-  protected def sprayCanAdapterResponder(canResponder: can.RequestResponder): RequestResponder = {
+  protected def sprayCanAdapterResponder(client: ActorRef): RequestResponder = {
     RequestResponder(
-      complete = response => canResponder.complete(toSprayCanResponse(response)),
+      complete = response => client ! toSprayCanResponse(response),
       startChunkedResponse = { response =>
-        val canChunkedResponder = canResponder.startChunkedResponse(toSprayCanResponse(response))
+        client ! ChunkedResponseStart(toSprayCanResponse(response))
         new ChunkSender {
-          def sendChunk(chunk: MessageChunk) = canChunkedResponder.sendChunk(toSprayCanMessageChunk(chunk))
+          def sendChunk(chunk: MessageChunk): Future[Unit] = {
+            val promise = Promise[Unit]()(context.dispatcher)
+            val ref = new UnregisteredActorRef(context) {
+              def handle(message: Any, sender: ActorRef) {
+                message match {
+                  case _: HttpServer.SendCompleted => promise.success(())
+                  case HttpServer.Closed(_, reason) =>
+                    if (!promise.isCompleted) promise.tryComplete(Left(new ClientClosedConnectionException(reason)))
+                }
+              }
+            }
+            client.tell(toSprayCanMessageChunk(chunk), ref)
+            promise
+          }
           def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
-            canChunkedResponder.close(extensions.map(toSprayCanChunkExtension), trailer.map(toSprayCanHeader))
+            client ! ChunkedMessageEnd(extensions.map(toSprayCanChunkExtension), trailer.map(toSprayCanHeader))
           }
         }
       },
-      resetConnectionTimeout = () => canResponder.resetConnectionTimeout()
+      resetConnectionTimeout = () => client ! HttpServer.SetIdleTimeout(Duration.Zero)
     )
   }
 }
+
+class ClientClosedConnectionException(reason: ConnectionClosedReason) extends RuntimeException(reason.toString)

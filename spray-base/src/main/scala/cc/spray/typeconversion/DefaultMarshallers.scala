@@ -22,8 +22,8 @@ import MediaTypes._
 import HttpCharsets._
 import xml.NodeSeq
 import java.nio.CharBuffer
-import akka.actor.{PoisonPill, Actor}
 import akka.dispatch.Future
+import akka.actor.{ActorRefFactory, Props, PoisonPill, Actor}
 
 trait DefaultMarshallers extends MultipartMarshallers {
 
@@ -72,12 +72,13 @@ trait DefaultMarshallers extends MultipartMarshallers {
     def apply(sel: ContentTypeSelector) = MarshalWith(_.handleError)
   }
 
-  implicit def streamMarshaller[T :Marshaller] = new Marshaller[Stream[T]] {
+  implicit def streamMarshaller[T](implicit marshaller: Marshaller[T],
+                                   refFactory: ActorRefFactory): Marshaller[Stream[T]] = new Marshaller[Stream[T]] {
     def apply(selector: ContentTypeSelector) = {
-      marshaller[T].apply(selector) match {
+      marshaller(selector) match {
         case x: CantMarshal => x
         case MarshalWith(converter) => MarshalWith { ctx => stream =>
-          Actor.actorOf(new ChunkingActor(ctx, stream, converter)).start() ! stream
+          refFactory.actorOf(Props(new ChunkingActor(ctx, stream, converter))) ! stream
         }
       }
     }
@@ -95,7 +96,7 @@ trait DefaultMarshallers extends MultipartMarshallers {
                 chunkSender = Some(ctx.startChunkedMessage(content.contentType))
                 chunkSender
               } foreach { sender =>
-                sender.sendChunk(MessageChunk(content.buffer)).onResult { case () =>
+                sender.sendChunk(MessageChunk(content.buffer)).onSuccess { case () =>
                   // we only send the next chunk when the previous has actually gone out
                   self ! {
                     if (remaining.isEmpty) {
@@ -152,10 +153,8 @@ trait DefaultMarshallers extends MultipartMarshallers {
       case MarshalWith(f) => MarshalWith { ctx =>
         val convert = f(ctx)
         _.onComplete {
-          _.value.get match {
-            case Right(value) => convert(value)
-            case Left(error) => ctx.handleError(error)
-          }
+          case Right(value) => convert(value)
+          case Left(error) => ctx.handleError(error)
         }
       }
     }

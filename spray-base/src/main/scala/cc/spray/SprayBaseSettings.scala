@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011 - 2012 Mathias Doenitz
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,16 @@
 
 package cc.spray
 
-import utils.AkkaConfSettings
+import com.typesafe.config.{Config, ConfigFactory}
 
-object SprayBaseSettings extends AkkaConfSettings("spray.") {
-  lazy val CompactJsonPrinting = configBool(false)
-  lazy val RelaxedHeaderParsing = configBool(false)
-  lazy val LoggingTarget       = configString("AkkaEventHandler")
+
+object SprayBaseSettings {
+  private[this] val c: Config = {
+    val c = ConfigFactory.load()
+    c.checkValid(ConfigFactory.defaultReference(), "spray")
+    c.getConfig("spray")
+  }
+
+  val CompactJsonPrinting  = c getBoolean "compact-json-printing"
+  val RelaxedHeaderParsing = c getBoolean "relaxed-header-parsing"
 }

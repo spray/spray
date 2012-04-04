@@ -20,7 +20,7 @@ package parser
 import org.parboiled.scala._
 import org.parboiled.errors.ParsingException
 import BasicRules._
-import cc.spray.utils.identityFunc
+import cc.spray.util.identityFunc
 
 // direct implementation of http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html
 private[parser] trait ProtocolParameterRules {

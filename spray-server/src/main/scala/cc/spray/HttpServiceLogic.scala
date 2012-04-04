@@ -19,15 +19,14 @@ package cc.spray
 import http._
 import StatusCodes._
 import HttpHeaders._
-import utils.{Logging, IllegalResponseException}
+import util.IllegalResponseException
 
 /**
  * The logic part of the [[cc.spray.HttpService]]. Contains the code for [[cc.spray.RequestContext]] creation as well
  * as translation of [[cc.spray.Rejection]]s and Exceptions to [[cc.spray.http.HttpResponse]]s. 
  */
 trait HttpServiceLogic extends ErrorHandling {
-  this: Logging =>
-  
+
   /**
    * The route of this HttpService
    */

@@ -17,33 +17,33 @@
 package cc.spray
 package directives
 
-import utils.Logging
-import akka.actor.Actor
-import akka.dispatch.{Dispatchers, MessageDispatcher}
+import akka.util.NonFatal
+import akka.actor.{ActorLogging, ActorSystem, Props, Actor}
 
 private[spray] trait ExecutionDirectives {
   this: BasicDirectives =>
 
-  def detachDispatcher: MessageDispatcher = Dispatchers.defaultGlobalDispatcher
+  implicit def actorSystem: ActorSystem
 
   /**
    * Returns a Route that executes its inner Route in the content of a newly spawned actor.
    */
   def detach = transformRoute { route => ctx =>
-    Actor.actorOf {
-      new Actor() with ErrorHandling with Logging {
-        self.dispatcher = detachDispatcher
-        def receive = {
-          case 'run => try {
-            route(ctx)
-          } catch {
-            case e: Exception => ctx.complete(responseForException(ctx.request, e))
-          } finally {
-            self.stop()
+    actorSystem.actorOf {
+      Props {
+        new Actor() with ErrorHandling with ActorLogging {
+          def receive = {
+            case ctx: RequestContext => try {
+              route(ctx)
+            } catch {
+              case NonFatal(e :Exception) => ctx.complete(responseForException(ctx.request, e))
+            } finally {
+              context.stop(self)
+            }
           }
         }
       }
-    }.start() ! 'run
+    } ! ctx
   }
 
   /**

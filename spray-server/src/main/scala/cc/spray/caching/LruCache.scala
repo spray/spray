@@ -20,7 +20,7 @@ package caching
 import akka.util.Duration
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import annotation.tailrec
-import akka.dispatch.{CompletableFuture, DefaultCompletableFuture, Future}
+import akka.dispatch.{Promise, ExecutionContext, Future}
 
 object LruCache {
   /**
@@ -56,14 +56,13 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
 
   def get(key: Any) = Option(store.get(key))
 
-  def fromFuture(key: Any)(future: => Future[V]): Future[V] = {
-    val newFuture = new DefaultCompletableFuture[V](Long.MaxValue)
-    store.putIfAbsent(key, newFuture) match {
-      case null => future.onComplete { f =>
-        val value = f.value.get
-        newFuture.complete(value)
+  def fromFuture(key: Any)(future: => Future[V])(implicit executor: ExecutionContext): Future[V] = {
+    val promise = Promise[V]()
+    store.putIfAbsent(key, promise) match {
+      case null => future.onComplete { value =>
+        promise.complete(value)
         // in case of exceptions we remove the cache entry (i.e. try again later)
-        if (value.isLeft) store.remove(key, newFuture)
+        if (value.isLeft) store.remove(key, promise)
       }
       case existingFuture => existingFuture
     }
@@ -106,16 +105,16 @@ final class ExpiringLruCache[V](maxCapacity: Int, initialCapacity: Int,
     case null => None
     case entry if (isAlive(entry)) =>
       entry.refresh()
-      Some(entry.future)
+      Some(entry.promise)
     case entry =>
       // remove entry, but only if it hasn't been removed and reinserted in the meantime
       if (store.remove(key, entry)) None // successfully removed
       else get(key) // nope, try again
   }
 
-  def fromFuture(key: Any)(future: => Future[V]): Future[V] = {
+  def fromFuture(key: Any)(future: => Future[V])(implicit executor: ExecutionContext): Future[V] = {
     def insert() = {
-      val newEntry = new Entry(new DefaultCompletableFuture[V](Long.MaxValue))
+      val newEntry = new Entry(Promise[V]())
       val valueFuture = store.put(key, newEntry) match {
         case null => future
         case entry => if (isAlive(entry)) {
@@ -123,12 +122,11 @@ final class ExpiringLruCache[V](maxCapacity: Int, initialCapacity: Int,
           // in the meantime someone might have already seen the too fresh timestamp we just put in,
           // but since the original entry is also still alive this doesn't matter
           newEntry.created = entry.created
-          entry.future
+          entry.promise
         } else future
       }
-      valueFuture.onComplete { f =>
-        val value = f.value.get
-        newEntry.future.complete(value)
+      valueFuture.onComplete { value =>
+        newEntry.promise.tryComplete(value)
         // in case of exceptions we remove the cache entry (i.e. try again later)
         if (value.isLeft) store.remove(key, newEntry)
       }
@@ -137,14 +135,14 @@ final class ExpiringLruCache[V](maxCapacity: Int, initialCapacity: Int,
       case null => insert()
       case entry if (isAlive(entry)) =>
         entry.refresh()
-        entry.future
+        entry.promise
       case entry => insert()
     }
   }
 
   def remove(key: Any) = store.remove(key) match {
     case null => None
-    case entry if (isAlive(entry)) => Some(entry.future)
+    case entry if (isAlive(entry)) => Some(entry.promise)
     case entry => None
   }
 
@@ -157,14 +155,14 @@ final class ExpiringLruCache[V](maxCapacity: Int, initialCapacity: Int,
   }
 }
 
-private[caching] class Entry[T](val future: CompletableFuture[T]) {
+private[caching] class Entry[T](val promise: Promise[T]) {
   @volatile var created = System.currentTimeMillis
   @volatile var lastAccessed = System.currentTimeMillis
   def refresh() {
     // we dont care whether we overwrite a potentially newer value
     lastAccessed = System.currentTimeMillis
   }
-  override def toString = future.value match {
+  override def toString = promise.value match {
     case Some(Right(value)) => value.toString
     case Some(Left(exception)) => exception.toString
     case None => "pending"

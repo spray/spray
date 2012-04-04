@@ -18,7 +18,7 @@
 package cc.spray
 package http
 
-import utils._
+import util._
 import HttpHeaders._
 import HttpCharsets._
 import HttpProtocols._

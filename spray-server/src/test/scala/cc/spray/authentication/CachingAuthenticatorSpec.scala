@@ -19,29 +19,37 @@ package authentication
 
 import org.specs2.mutable.Specification
 import java.util.concurrent.atomic.AtomicInteger
-import akka.dispatch.{Future, AlreadyCompletedFuture}
+import akka.dispatch.{Promise, Future}
+import util._
+import akka.actor.ActorSystem
 
 class CachingAuthenticatorSpec extends Specification {
+
+  implicit val system = ActorSystem()
 
   class CountingAuthenticator extends UserPassAuthenticator[Int] {
     val counter = new AtomicInteger
     def apply(userPass: Option[(String, String)]): Future[Option[Int]] =
-      new AlreadyCompletedFuture(Right(Some(counter.incrementAndGet())))
+      Promise.successful(Some(counter.incrementAndGet()))
   }
 
   val CountingAuthenticator = new CountingAuthenticator
-  val CachinggAuthenticator = new CountingAuthenticator with AuthenticationCaching[Int]
+  val CachinggAuthenticator = new CountingAuthenticator with AuthenticationCaching[Int] {
+    implicit def actorSystem = system
+  }
 
   "the AuthenticationCaching" should {
     "cache the auth results from the underlying UserPassAuthenticator" in {
       val dummyCreds = Some("", "")
-      CountingAuthenticator(dummyCreds).get mustEqual Some(1)
-      CountingAuthenticator(dummyCreds).get mustEqual Some(2)
-      CountingAuthenticator(dummyCreds).get mustEqual Some(3)
-      CachinggAuthenticator(dummyCreds).get mustEqual Some(1)
-      CachinggAuthenticator(dummyCreds).get mustEqual Some(1)
-      CachinggAuthenticator(dummyCreds).get mustEqual Some(1)
+      CountingAuthenticator(dummyCreds).await mustEqual Some(1)
+      CountingAuthenticator(dummyCreds).await mustEqual Some(2)
+      CountingAuthenticator(dummyCreds).await mustEqual Some(3)
+      CachinggAuthenticator(dummyCreds).await mustEqual Some(1)
+      CachinggAuthenticator(dummyCreds).await mustEqual Some(1)
+      CachinggAuthenticator(dummyCreds).await mustEqual Some(1)
     }
   }
+
+  step(system.shutdown())
 
 }

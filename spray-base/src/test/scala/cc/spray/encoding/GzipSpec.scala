@@ -53,7 +53,7 @@ class GzipSpec extends Specification with CodecSpecSupport {
   def ourGzip(bytes: Array[Byte]) = Gzip.newCompressor.compress(bytes).finish()
   def ourGunzip(bytes: Array[Byte]) = Gzip.newDecompressor.decompress(bytes)
 
-  lazy val corruptGzipContent = utils.make(gzip("Hello")) { _.update(14, 26.toByte) }
+  lazy val corruptGzipContent = util.make(gzip("Hello")) { _.update(14, 26.toByte) }
 
   def streamGzip(bytes: Array[Byte]) = {
     val output = new ByteArrayOutputStream()

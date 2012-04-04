@@ -17,53 +17,46 @@
 package cc.spray
 
 import http._
-import utils._
-import akka.actor.{Actor, ActorRef}
+import util._
 import java.util.concurrent.atomic.{AtomicInteger, AtomicBoolean}
+import akka.actor.{ActorLogging, Actor, ActorRef}
 
 /**
  * The RootService actor is the central entrypoint for HTTP requests entering the ''spray'' infrastructure.
  * It is responsible for creating an [[cc.spray.http.HttpRequest]] object for the request as well as dispatching this
  *  [[cc.spray.http.HttpRequest]] object to all attached [[cc.spray.HttpService]]s. 
  */
-class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
-  with Logging with ErrorHandling with PostStart {
+class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor with ActorLogging with ErrorHandling {
 
   protected val handler: RequestContext => Unit = moreServices.toList match {
     case Nil => handleOneService(firstService)
     case services => handleMultipleServices(firstService :: services)
   }
 
-  protected val initialUnmatchedPath: String => String = SprayServerSettings.RootPath match {
-    case Some(rootPath) => { path =>
+  protected val initialUnmatchedPath: String => String = SprayServletSettings.RootPath match {
+    case "" => identityFunc
+    case rootPath => { path =>
       if (path.startsWith(rootPath)) {
         path.substring(rootPath.length)
       } else {
-        log.warn("Received request outside of configured root-path, request uri '%s', configured root path '%s'", path, rootPath)
+        log.warning("Received request outside of configured root-path, request uri '{}', configured root path '{}'", path, rootPath)
         path
       }
     }
-    case None => identityFunc
   }
-
-  self.id = SprayServerSettings.RootActorId
 
   override def preStart() {
     log.debug("Starting spray RootService ...")
-    super.preStart()
-  }
-
-  def postStart() {
     cc.spray.http.warmUp()
-    log.info("spray RootService started")
+    super.preStart()
   }
 
   override def postStop() {
     log.info("spray RootService stopped")
   }
 
-  override def preRestart(reason: Throwable) {
-    log.info("Restarting spray RootService because of previous %s ...", reason.getClass.getName)
+  override def preRestart(reason: Throwable, message: Option[Any]) {
+    log.info("Restarting spray RootService because of previous {} ...", reason.getClass.getName)
   }
 
   override def postRestart(reason: Throwable) {
@@ -83,9 +76,9 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
 
   protected def handleOneService(service: ActorRef)(context: RequestContext) {
     import context._
-    log.debug("Received %s with one attached service, dispatching...", request)
+    log.debug("Received {} with one attached service, dispatching...", request)
     val newResponder = responder.withReject { rejections =>
-      if (!rejections.isEmpty) log.warn("Non-empty rejection set received in RootService, ignoring ...")
+      if (!rejections.isEmpty) log.warning("Non-empty rejection set received in RootService, ignoring ...")
       responder.complete(noServiceResponse(request))
     }
     service ! context.copy(responder = newResponder, unmatchedPath = initialUnmatchedPath(request.path))
@@ -93,16 +86,16 @@ class RootService(firstService: ActorRef, moreServices: ActorRef*) extends Actor
 
   protected def handleMultipleServices(services: List[ActorRef])(context: RequestContext) {
     import context._
-    log.debug("Received %s with %s attached services, dispatching...", request, services.size)
+    log.debug("Received {} with {} attached services, dispatching...", request, services.size)
     val responded = new AtomicBoolean(false)
     val rejected = new AtomicInteger(services.size)
     val newResponder = responder.copy(
       complete = { response =>
         if (responded.compareAndSet(false, true)) responder.complete(response)
-        else log.warn("Received a second response for request '%s':\n\n%s\n\nIgnoring the additional response...", request, response)
+        else log.warning("Received a second response for request '{}':\n\n{}\n\nIgnoring the additional response...", request, response)
       },
       reject = { rejections =>
-        if (!rejections.isEmpty) log.warn("Non-empty rejection set received in RootService, ignoring ...")
+        if (!rejections.isEmpty) log.warning("Non-empty rejection set received in RootService, ignoring ...")
         if (rejected.decrementAndGet() == 0) responder.complete(noServiceResponse(request))
       }
     )

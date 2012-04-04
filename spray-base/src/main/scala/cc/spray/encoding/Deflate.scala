@@ -63,7 +63,7 @@ class DeflateCompressor extends Compressor {
 
   def flush() = {
     // trick the deflater into flushing: switch compression level
-    deflater.setInput(utils.EmptyByteArray, 0, 0)
+    deflater.setInput(util.EmptyByteArray, 0, 0)
     deflater.setLevel(Deflater.NO_COMPRESSION)
     drain()
     deflater.setLevel(Deflater.BEST_COMPRESSION)

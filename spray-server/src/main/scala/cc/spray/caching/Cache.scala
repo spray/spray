@@ -17,8 +17,8 @@
 package cc.spray
 package caching
 
-import utils._
 import akka.dispatch._
+import akka.util.NonFatal
 
 /**
  * General interface implemented by all spray cache implementations.
@@ -30,24 +30,26 @@ trait Cache[V] {
    */
   def apply(key: Any) = new Key(key)
 
-  class Key(val key: Any) {
+  class Key(key: Any) {
 
     /**
      * Wraps the given expression with caching support.
      */
-    def apply(expr: => V): Future[V] = apply { completableFuture =>
+    def apply(expr: => V)(implicit executor: ExecutionContext): Future[V] = apply { promise =>
       try {
-        completableFuture.completeWithResult(expr)
+        promise.success(expr)
       } catch {
-        case e: Exception => completableFuture.completeWithException(e)
+        case NonFatal(e) => promise.failure(e)
       }
     }
 
     /**
      * Wraps the given function with caching support.
      */
-    def apply(func: CompletableFuture[V] => Unit): Future[V] = fromFuture(key) {
-      make(new DefaultCompletableFuture[V](Long.MaxValue))(func) // TODO: make timeout configurable
+    def apply(func: Promise[V] => Unit)(implicit executor: ExecutionContext): Future[V] = fromFuture(key) {
+      val p = Promise[V]()
+      func(p)
+      p
     }
   }
 
@@ -60,7 +62,7 @@ trait Cache[V] {
   /**
    * Supplies a cache entry for the given key from the given expression.
    */
-  def fromFuture(key: Any)(future: => Future[V]): Future[V]
+  def fromFuture(key: Any)(future: => Future[V])(implicit executor: ExecutionContext): Future[V]
 
   /**
    * Removes the cache item for the given key. Returns the removed item if it was found (and removed).

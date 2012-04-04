@@ -17,7 +17,7 @@
 package cc.spray
 package client
 
-import utils.AkkaConfSettings
+import util.AkkaConfSettings
 
 case class ConduitConfig(
   clientActorId: String = "spray-can-client",
