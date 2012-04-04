@@ -25,7 +25,7 @@ object Build extends Build {
   // -------------------------------------------------------------------------------------------------------------------
 
   lazy val sprayBase = Project("spray-base", file("spray-base"))
-    .dependsOn(sprayCan, sprayUtil)
+    .dependsOn(sprayUtil, sprayCan % "provided")
     .settings(moduleSettings: _*)
     .settings(libraryDependencies ++=
       compile(mimepull, parboiled) ++
@@ -62,7 +62,7 @@ object Build extends Build {
 
 
   lazy val sprayServer = Project("spray-server", file("spray-server"))
-    .dependsOn(sprayBase, sprayCan)
+    .dependsOn(sprayBase, sprayCan % "provided")
     .settings(moduleSettings: _*)
     .settings(libraryDependencies ++=
       compile(clHashMap) ++
