@@ -103,7 +103,9 @@ object ServerFrontend {
                     case _: SingletonHandler | _: PerConnectionHandler =>
                       commandPL(IoServer.Tell(handlerCreator(), x, context.self))
                     case _: PerMessageHandler =>
-                      // per-message handlers need to cleanup themselves upon response sending or send confirmation
+                      // per-message handlers do not receive Closed messages that are
+                      // not related to a specific request, they need to cleanup themselves
+                      // upon response sending or reception of the send confirmation
                   }
                 } else {
                   val dispatch: RequestRecord => Unit = r => commandPL(IoServer.Tell(r.handler, x, r.receiver))
@@ -128,6 +130,7 @@ object ServerFrontend {
               import rec.request._
               HttpResponsePartRenderingContext(part, method, protocol, connectionHeader)
             }
+            if (settings.ConfirmToSender) rec.handler = context.sender
             if (settings.ConfirmedSends) unconfirmedSends.enqueue(rec)
           }
 
@@ -177,7 +180,7 @@ object ServerFrontend {
     }
   }
 
-  private class RequestRecord(val request: HttpRequest, val handler: ActorRef, var timestamp: Long) {
+  private class RequestRecord(val request: HttpRequest, var handler: ActorRef, var timestamp: Long) {
     var receiver: ActorRef = _
     private var responses: Queue[Command] = _
     def enqueue(msg: Command) {
