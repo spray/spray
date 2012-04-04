@@ -33,7 +33,7 @@ trait AuthenticationCaching[U] extends UserPassAuthenticator[U] {
    */
   protected val authCache: Cache[Option[U]] = LruCache()
 
-  implicit def system: ActorSystem
+  implicit def actorSystem: ActorSystem
 
   abstract override def apply(userPass: Option[(String, String)]) = {
     authCache.fromFuture(userPass) {

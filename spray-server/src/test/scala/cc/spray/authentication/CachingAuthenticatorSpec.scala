@@ -35,7 +35,7 @@ class CachingAuthenticatorSpec extends Specification {
 
   val CountingAuthenticator = new CountingAuthenticator
   val CachinggAuthenticator = new CountingAuthenticator with AuthenticationCaching[Int] {
-    implicit def system = CachingAuthenticatorSpec.this.system
+    implicit def actorSystem = system
   }
 
   "the AuthenticationCaching" should {

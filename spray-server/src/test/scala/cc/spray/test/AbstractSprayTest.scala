@@ -11,5 +11,5 @@ abstract class AbstractSprayTest extends Specification with SprayTest with Direc
 
   def echoComplete[T]: T => Route = { x => completeWith(x.toString) }
 
-  override def map(fs: => Fragments) = fs ^ Step(system.shutdown())
+  override def map(fs: => Fragments) = fs ^ Step(actorSystem.shutdown())
 }

@@ -20,12 +20,12 @@ package directives
 import authentication.{BasicHttpAuthenticator, FromConfigUserPassAuthenticator}
 import http.StatusCodes._
 import akka.dispatch.Future
-import akka.actor.{ActorLogging, ActorSystem}
+import akka.actor.ActorSystem
 
 private[spray] trait SecurityDirectives {
   this: BasicDirectives =>
 
-  implicit def system: ActorSystem
+  implicit def actorSystem: ActorSystem
 
   /**
    * Wraps its inner Route with authentication support.
@@ -54,7 +54,7 @@ private[spray] trait SecurityDirectives {
   def authenticate[U](authentication: Future[Authentication[U]]): (U => Route) => Route = { innerRoute => ctx =>
     authentication onComplete {
       new (Either[Throwable, Either[Rejection, U]] => Unit) with ErrorHandling {
-        def log = system.log
+        def log = actorSystem.log
         def apply(value: Either[Throwable, Either[Rejection, U]]) {
           value match {
             case Right(Right(userContext)) =>

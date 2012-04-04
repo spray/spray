@@ -26,7 +26,7 @@ import akka.actor.ActorSystem
 private[spray] trait CacheDirectives {
   this: BasicDirectives =>
 
-  implicit def system: ActorSystem
+  implicit def actorSystem: ActorSystem
 
   /**
    * Wraps its inner Route with caching support using the given [[cc.spray.caching.Cache]] implementation and

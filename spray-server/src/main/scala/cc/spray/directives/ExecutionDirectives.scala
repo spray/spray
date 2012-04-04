@@ -23,13 +23,13 @@ import akka.actor.{ActorLogging, ActorSystem, Props, Actor}
 private[spray] trait ExecutionDirectives {
   this: BasicDirectives =>
 
-  def system: ActorSystem
+  implicit def actorSystem: ActorSystem
 
   /**
    * Returns a Route that executes its inner Route in the content of a newly spawned actor.
    */
   def detach = transformRoute { route => ctx =>
-    system.actorOf {
+    actorSystem.actorOf {
       Props {
         new Actor() with ErrorHandling with ActorLogging {
           def receive = {

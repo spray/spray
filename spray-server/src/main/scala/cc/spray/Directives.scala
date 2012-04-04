@@ -43,6 +43,6 @@ trait Directives
 
 object Directives {
   def apply(_system: ActorSystem): Directives = new Directives {
-    def system = _system
+    def actorSystem = _system
   }
 }

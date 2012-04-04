@@ -30,7 +30,7 @@ import akka.actor.ActorSystem
 private[spray] trait FileAndResourceDirectives {
   this: SimpleDirectives with ExecutionDirectives with MiscDirectives with DefaultMarshallers =>
 
-  def system: ActorSystem
+  implicit def actorSystem: ActorSystem
 
   /**
    * Returns a Route that completes GET requests with the content of the given file. The actual I/O operation is
@@ -64,7 +64,6 @@ private[spray] trait FileAndResourceDirectives {
             if (file.length() >= SprayServerSettings.FileChunkingThresholdSize) {
               import FileChunking._
               implicit val marshaller = fileChunkMarshaller(contentType)
-              implicit def sys = system
               ctx.complete(fileChunkStream(file))
             } else ctx.complete(responseFromFile(file, contentType).get)
           } else ctx.reject() // reject without specific rejection => same as unmatched "path" directive
