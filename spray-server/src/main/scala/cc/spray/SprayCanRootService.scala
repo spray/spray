@@ -15,15 +15,16 @@
  */
 package cc.spray
 
-import akka.actor.ActorRef
+import can.model.{ChunkedResponseStart, ChunkedMessageEnd}
 import can.server.HttpServer
-import can.model.ChunkedMessageEnd
 import http._
 import io.ConnectionClosedReason
 import typeconversion.ChunkSender
 import SprayCanConversions._
 import akka.dispatch.{Promise, Future}
 import akka.util.Duration
+import akka.actor.ActorRef
+import akka.spray.UnregisteredActorRef
 
 /**
  * A specialized [[cc.spray.RootService]] for connector-less deployment on top of the ''spray-can'' `HttpServer`.
@@ -56,25 +57,29 @@ class SprayCanRootService(firstService: ActorRef, moreServices: ActorRef*)
     RequestContext(
       request = fromSprayCanRequest(request),
       remoteHost = "127.0.0.1", // TODO: extract from X-Remote-Addr header (see issue #95)
-      responder = sprayCanAdapterResponder(sender: ActorRef)
+      responder = sprayCanAdapterResponder(sender)
     )
   }
-
-  protected val chunkTimeout = akka.util.Timeout(Duration("5 s"))
 
   protected def sprayCanAdapterResponder(client: ActorRef): RequestResponder = {
     RequestResponder(
       complete = response => client ! toSprayCanResponse(response),
       startChunkedResponse = { response =>
-        client ! toSprayCanResponse(response)
+        client ! ChunkedResponseStart(toSprayCanResponse(response))
         new ChunkSender {
           def sendChunk(chunk: MessageChunk): Future[Unit] = {
-            import akka.pattern.ask
-            implicit def executor = context.dispatcher
-            client.ask(toSprayCanMessageChunk(chunk))(chunkTimeout).flatMap[Unit] {
-              case _: HttpServer.SendCompleted => Promise.successful(())
-              case HttpServer.Closed(_, reason) => Promise.failed(new ClientClosedConnectionException(reason))
+            val promise = Promise[Unit]()(context.dispatcher)
+            val ref = new UnregisteredActorRef(context) {
+              def handle(message: Any, sender: ActorRef) {
+                message match {
+                  case _: HttpServer.SendCompleted => promise.success(())
+                  case HttpServer.Closed(_, reason) =>
+                    if (!promise.isCompleted) promise.tryComplete(Left(new ClientClosedConnectionException(reason)))
+                }
+              }
             }
+            client.tell(toSprayCanMessageChunk(chunk), ref)
+            promise
           }
           def close(extensions: List[ChunkExtension], trailer: List[HttpHeader]) {
             client ! ChunkedMessageEnd(extensions.map(toSprayCanChunkExtension), trailer.map(toSprayCanHeader))

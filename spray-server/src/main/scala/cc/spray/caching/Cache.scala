@@ -30,7 +30,7 @@ trait Cache[V] {
    */
   def apply(key: Any) = new Key(key)
 
-  class Key(val key: Any) {
+  class Key(key: Any) {
 
     /**
      * Wraps the given expression with caching support.
