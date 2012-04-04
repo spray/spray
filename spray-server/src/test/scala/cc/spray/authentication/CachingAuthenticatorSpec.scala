@@ -21,17 +21,22 @@ import org.specs2.mutable.Specification
 import java.util.concurrent.atomic.AtomicInteger
 import akka.dispatch.{Promise, Future}
 import util._
+import akka.actor.ActorSystem
 
 class CachingAuthenticatorSpec extends Specification {
+
+  implicit val system = ActorSystem()
 
   class CountingAuthenticator extends UserPassAuthenticator[Int] {
     val counter = new AtomicInteger
     def apply(userPass: Option[(String, String)]): Future[Option[Int]] =
-      Promise.successful(Some(counter.incrementAndGet()))(Spray.system.dispatcher)
+      Promise.successful(Some(counter.incrementAndGet()))
   }
 
   val CountingAuthenticator = new CountingAuthenticator
-  val CachinggAuthenticator = new CountingAuthenticator with AuthenticationCaching[Int]
+  val CachinggAuthenticator = new CountingAuthenticator with AuthenticationCaching[Int] {
+    implicit def system = CachingAuthenticatorSpec.this.system
+  }
 
   "the AuthenticationCaching" should {
     "cache the auth results from the underlying UserPassAuthenticator" in {
@@ -44,5 +49,7 @@ class CachingAuthenticatorSpec extends Specification {
       CachinggAuthenticator(dummyCreds).await mustEqual Some(1)
     }
   }
+
+  step(system.shutdown())
 
 }

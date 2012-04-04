@@ -18,6 +18,7 @@ package cc.spray
 package authentication
 
 import caching.{LruCache, Cache}
+import akka.actor.ActorSystem
 
 
 /**
@@ -31,6 +32,8 @@ trait AuthenticationCaching[U] extends UserPassAuthenticator[U] {
    * Override for customization of caching attributes.
    */
   protected val authCache: Cache[Option[U]] = LruCache()
+
+  implicit def system: ActorSystem
 
   abstract override def apply(userPass: Option[(String, String)]) = {
     authCache.fromFuture(userPass) {

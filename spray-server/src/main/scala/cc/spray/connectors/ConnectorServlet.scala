@@ -25,16 +25,20 @@ import StatusCodes._
 import MediaTypes._
 import java.util.concurrent.{TimeUnit, CountDownLatch}
 import java.io.{IOException, InputStream}
-import util.Spray
+import akka.actor.ActorSystem
 
-private[connectors] abstract class ConnectorServlet(containerName: String) extends HttpServlet {
+private[connectors] abstract class ConnectorServlet extends HttpServlet {
   import SprayServletSettings._
-  lazy val rootService = Spray.system.actorFor(RootActorPath)
-  lazy val timeoutActor = if (TimeoutActorPath.isEmpty) rootService else Spray.system.actorFor(TimeoutActorPath)
-  def log = Spray.system.log
+  var system: ActorSystem = _
+  lazy val rootService = system.actorFor(RootActorPath)
+  lazy val timeoutActor = if (TimeoutActorPath.isEmpty) rootService else system.actorFor(TimeoutActorPath)
+  def log = system.log
   var timeout: Int = RequestTimeout.toInt
 
+  def containerName: String
+
   override def init() {
+    system = getServletContext.getAttribute(Initializer.SystemAttrName).asInstanceOf[ActorSystem]
     log.info("Initializing {} <=> Spray Connector", containerName)
     log.info("Async timeout for all requests is {} ms", timeout)
   }

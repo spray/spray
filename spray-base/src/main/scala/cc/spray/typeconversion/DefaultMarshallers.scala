@@ -23,8 +23,7 @@ import HttpCharsets._
 import xml.NodeSeq
 import java.nio.CharBuffer
 import akka.dispatch.Future
-import akka.actor.{Props, PoisonPill, Actor}
-import util.Spray
+import akka.actor.{ActorRefFactory, Props, PoisonPill, Actor}
 
 trait DefaultMarshallers extends MultipartMarshallers {
 
@@ -73,12 +72,13 @@ trait DefaultMarshallers extends MultipartMarshallers {
     def apply(sel: ContentTypeSelector) = MarshalWith(_.handleError)
   }
 
-  implicit def streamMarshaller[T](implicit marshaller: Marshaller[T]) = new Marshaller[Stream[T]] {
+  implicit def streamMarshaller[T](implicit marshaller: Marshaller[T],
+                                   refFactory: ActorRefFactory): Marshaller[Stream[T]] = new Marshaller[Stream[T]] {
     def apply(selector: ContentTypeSelector) = {
       marshaller(selector) match {
         case x: CantMarshal => x
         case MarshalWith(converter) => MarshalWith { ctx => stream =>
-          Spray.system.actorOf(Props(new ChunkingActor(ctx, stream, converter))) ! stream
+          refFactory.actorOf(Props(new ChunkingActor(ctx, stream, converter))) ! stream
         }
       }
     }

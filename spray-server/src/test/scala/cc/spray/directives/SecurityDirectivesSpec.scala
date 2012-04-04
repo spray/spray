@@ -21,11 +21,9 @@ import http._
 import HttpHeaders._
 import test.AbstractSprayTest
 import authentication.BasicUserContext
-import util.Spray
 import akka.dispatch.{ExecutionContext, Promise}
 
 class SecurityDirectivesSpec extends AbstractSprayTest {
-  implicit def executor: ExecutionContext = Spray.system.dispatcher
 
   val dontAuth = new UserPassAuthenticator[BasicUserContext] {
     def apply(userPass: Option[(String, String)]) = Promise.successful(None)

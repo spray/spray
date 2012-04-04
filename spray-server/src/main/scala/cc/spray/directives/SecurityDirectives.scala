@@ -20,9 +20,12 @@ package directives
 import authentication.{BasicHttpAuthenticator, FromConfigUserPassAuthenticator}
 import http.StatusCodes._
 import akka.dispatch.Future
+import akka.actor.{ActorLogging, ActorSystem}
 
 private[spray] trait SecurityDirectives {
   this: BasicDirectives =>
+
+  implicit def system: ActorSystem
 
   /**
    * Wraps its inner Route with authentication support.
@@ -51,6 +54,7 @@ private[spray] trait SecurityDirectives {
   def authenticate[U](authentication: Future[Authentication[U]]): (U => Route) => Route = { innerRoute => ctx =>
     authentication onComplete {
       new (Either[Throwable, Either[Rejection, U]] => Unit) with ErrorHandling {
+        def log = system.log
         def apply(value: Either[Throwable, Either[Rejection, U]]) {
           value match {
             case Right(Right(userContext)) =>
@@ -85,6 +89,6 @@ private[spray] trait SecurityDirectives {
    * Convenience method for the creation of a BasicHttpAuthenticator instance.
    */
   def httpBasic[U](realm: String = "Secured Resource",
-                   authenticator: UserPassAuthenticator[U] = FromConfigUserPassAuthenticator): BasicHttpAuthenticator[U] =
+                   authenticator: UserPassAuthenticator[U] = FromConfigUserPassAuthenticator()) =
       new BasicHttpAuthenticator[U](realm, authenticator)
 }

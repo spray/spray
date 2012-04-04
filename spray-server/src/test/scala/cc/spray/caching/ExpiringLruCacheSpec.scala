@@ -22,10 +22,11 @@ import akka.util.Duration
 import java.util.Random
 import org.specs2.matcher.Matcher
 import cc.spray.util._
-import akka.dispatch.{ExecutionContext, Future}
+import akka.dispatch.Future
+import akka.actor.ActorSystem
 
 class ExpiringLruCacheSpec extends Specification {
-  implicit def executor: ExecutionContext = Spray.system.dispatcher
+  implicit val system = ActorSystem()
 
   "An LruCache" should {
     "be initially empty" in {
@@ -119,6 +120,8 @@ class ExpiringLruCacheSpec extends Specification {
       views.transpose must beConsistent.forall
     }
   }
+
+  step(system.shutdown())
 
   def lruCache[T](maxCapacity: Int = 500, initialCapacity: Int = 16,
                   timeToLive: Duration = Duration.Zero, timeToIdle: Duration = Duration.Zero) =

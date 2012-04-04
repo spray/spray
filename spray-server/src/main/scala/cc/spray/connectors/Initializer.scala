@@ -17,35 +17,55 @@
 package cc.spray.connectors
 
 import javax.servlet.{ServletContextListener, ServletContextEvent}
-import cc.spray.util.Spray
 import akka.util.Switch
 import cc.spray.SprayServletSettings
 import akka.config.ConfigurationException
+import akka.actor.ActorSystem
 
 class Initializer extends ServletContextListener {
   private val booted = new Switch(false)
+  private lazy val system = ActorSystem("servlet")
 
   def contextInitialized(e: ServletContextEvent) {
     booted switchOn {
       println("Starting spray application ...")
       val loader = getClass.getClassLoader
       Thread.currentThread.setContextClassLoader(loader)
+
+      e.getServletContext.setAttribute(Initializer.SystemAttrName, system)
+
       SprayServletSettings.BootClasses match {
         case Nil =>
           throw new ConfigurationException("No boot classes configured. " +
               "Please specify at least one boot class in the spray.servlet.boot-classes config setting.")
         case classes =>
           for (className <- classes) {
-            loader.loadClass(className).newInstance()
+            systemConstructor(loader, className).newInstance(system)
           }
       }
+    }
+  }
+
+  private def systemConstructor(loader: ClassLoader, className: String) = {
+    try {
+      loader.loadClass(className).getConstructor(classOf[ActorSystem])
+    } catch {
+      case e: ClassNotFoundException =>
+        throw new ConfigurationException("Configured boot class " + className + " cannot be found", e)
+      case e: NoSuchMethodException =>
+        throw new ConfigurationException("Configured boot class " + className +
+          " does not define required constructor with one parameter of type `akka.actor.ActorSystem`", e)
     }
   }
 
   def contextDestroyed(e: ServletContextEvent) {
     booted switchOff {
       println("Shutting down spray application ...")
-      Spray.system.shutdown()
+      system.shutdown()
     }
   }
+}
+
+object Initializer {
+  private[connectors] val SystemAttrName = "spray.servlet.system"
 }

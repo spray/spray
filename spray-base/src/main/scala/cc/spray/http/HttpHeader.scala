@@ -20,7 +20,6 @@ package http
 
 import parser.HttpParser
 import java.lang.String
-import util.Spray
 
 abstract class HttpHeader extends Product {
   val name = productPrefix.replace("$minus", "-")
@@ -36,7 +35,7 @@ object HttpHeader {
         case Left(error) =>
           val msg = "Illegal HTTP header '" + name + "':\n" + error
           if (SprayBaseSettings.RelaxedHeaderParsing) {
-            Spray.system.log.warning(msg)
+            //log.warning(msg)
             HttpHeaders.CustomHeader(name, value)
           } else throw new HttpException(StatusCodes.BadRequest, msg)
         case Right(header) => header

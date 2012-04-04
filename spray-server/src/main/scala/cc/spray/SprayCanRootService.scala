@@ -24,7 +24,6 @@ import typeconversion.ChunkSender
 import SprayCanConversions._
 import akka.dispatch.{Promise, Future}
 import akka.util.Duration
-import util.Spray
 
 /**
  * A specialized [[cc.spray.RootService]] for connector-less deployment on top of the ''spray-can'' `HttpServer`.

@@ -23,7 +23,7 @@ import javax.naming.ldap.InitialLdapContext
 import javax.naming.directory.{SearchControls, SearchResult, Attribute}
 import collection.JavaConverters._
 import akka.dispatch.{Promise, Future}
-import util.Spray
+import akka.actor.ActorSystem
 
 /**
  * The LdapAuthenticator faciliates user/password authentication against an LDAP server.
@@ -35,8 +35,8 @@ import util.Spray
  * matching a given user name. If exactly one user entry is found another LDAP bind operation is performed using the
  * principal DN of the found user entry to validate the password.
  */
-class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthenticator[T] {
-  def log = Spray.system.log
+class LdapAuthenticator[T](config: LdapAuthConfig[T])(implicit system: ActorSystem) extends UserPassAuthenticator[T] {
+  def log = system.log
 
   def apply(userPass: Option[(String, String)]) = {
     def auth3(entry: LdapQueryResult, pass: String) = {
@@ -78,10 +78,10 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthentica
     }
 
     userPass match {
-      case Some((user, pass)) => Future(auth1(user, pass))(Spray.system.dispatcher)
+      case Some((user, pass)) => Future(auth1(user, pass))
       case None =>
         log.warning("LdapAuthenticator.apply called with empty userPass, authentication not possible")
-        Promise.successful(None)(Spray.system.dispatcher)
+        Promise.successful(None)
     }
   }
 
@@ -134,5 +134,5 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthentica
 }
 
 object LdapAuthenticator {
-  def apply[T](config: LdapAuthConfig[T]) = new LdapAuthenticator(config)
+  def apply[T](config: LdapAuthConfig[T])(implicit system: ActorSystem) = new LdapAuthenticator(config)
 }

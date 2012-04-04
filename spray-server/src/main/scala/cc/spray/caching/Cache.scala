@@ -18,7 +18,6 @@ package cc.spray
 package caching
 
 import akka.dispatch._
-import util.Spray
 import akka.util.NonFatal
 
 /**
@@ -36,7 +35,7 @@ trait Cache[V] {
     /**
      * Wraps the given expression with caching support.
      */
-    def apply(expr: => V): Future[V] = apply { promise =>
+    def apply(expr: => V)(implicit executor: ExecutionContext): Future[V] = apply { promise =>
       try {
         promise.success(expr)
       } catch {
@@ -47,8 +46,8 @@ trait Cache[V] {
     /**
      * Wraps the given function with caching support.
      */
-    def apply(func: Promise[V] => Unit): Future[V] = fromFuture(key) {
-      val p = Promise[V]()(Spray.system.dispatcher)
+    def apply(func: Promise[V] => Unit)(implicit executor: ExecutionContext): Future[V] = fromFuture(key) {
+      val p = Promise[V]()
       func(p)
       p
     }
@@ -63,7 +62,7 @@ trait Cache[V] {
   /**
    * Supplies a cache entry for the given key from the given expression.
    */
-  def fromFuture(key: Any)(future: => Future[V]): Future[V]
+  def fromFuture(key: Any)(future: => Future[V])(implicit executor: ExecutionContext): Future[V]
 
   /**
    * Removes the cache item for the given key. Returns the removed item if it was found (and removed).

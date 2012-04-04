@@ -21,7 +21,6 @@ import akka.util.Duration
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import annotation.tailrec
 import akka.dispatch.{Promise, ExecutionContext, Future}
-import util.Spray
 
 object LruCache {
   /**
@@ -57,8 +56,8 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
 
   def get(key: Any) = Option(store.get(key))
 
-  def fromFuture(key: Any)(future: => Future[V]): Future[V] = {
-    val promise = Promise[V]()(Spray.system.dispatcher)
+  def fromFuture(key: Any)(future: => Future[V])(implicit executor: ExecutionContext): Future[V] = {
+    val promise = Promise[V]()
     store.putIfAbsent(key, promise) match {
       case null => future.onComplete { value =>
         promise.complete(value)
@@ -113,9 +112,9 @@ final class ExpiringLruCache[V](maxCapacity: Int, initialCapacity: Int,
       else get(key) // nope, try again
   }
 
-  def fromFuture(key: Any)(future: => Future[V]): Future[V] = {
+  def fromFuture(key: Any)(future: => Future[V])(implicit executor: ExecutionContext): Future[V] = {
     def insert() = {
-      val newEntry = new Entry(Promise[V]()(Spray.system.dispatcher))
+      val newEntry = new Entry(Promise[V]())
       val valueFuture = store.put(key, newEntry) match {
         case null => future
         case entry => if (isAlive(entry)) {

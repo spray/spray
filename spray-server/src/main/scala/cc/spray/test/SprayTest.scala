@@ -23,6 +23,7 @@ import akka.util.Duration
 import akka.util.duration._
 import util._
 import java.lang.Class
+import akka.actor.ActorSystem
 
 /**
  * Mix this trait into the class or trait containing your route and service tests.
@@ -30,6 +31,11 @@ import java.lang.Class
  * request examples.
  */
 trait SprayTest extends RouteResultComponent {
+
+  // we spin up a dedicated ActorSystem for the test
+  // CAUTION: you need to make sure to explicitly shut it down after all examples in this test have run,
+  // e.g., with specs2 you need to add a `step(system.shutdown())` to your test
+  implicit val system = ActorSystem()
 
   def test(request: HttpRequest, timeout: Duration = 1000.millis)(route: Route): RoutingResultWrapper = {
     val routeResult = new RouteResult
@@ -48,6 +54,7 @@ trait SprayTest extends RouteResultComponent {
   implicit def wrapRoute(theRoute: Route)
                         (implicit theRejectionHandler: RejectionHandler = RejectionHandler.Default) = {
     new HttpServiceLogic {
+      def log = system.log
       val route = theRoute
       def rejectionHandler = theRejectionHandler
     }

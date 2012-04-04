@@ -17,9 +17,8 @@
 package cc.spray
 package authentication
 
-import akka.dispatch.Promise
 import com.typesafe.config.ConfigException
-import util.Spray
+import akka.dispatch.{ExecutionContext, Promise}
 
 
 /**
@@ -36,17 +35,21 @@ import util.Spray
  * }
  * }}}
  */
-object FromConfigUserPassAuthenticator extends UserPassAuthenticator[BasicUserContext] {
-  def apply(userPass: Option[(String, String)]) = Promise.successful(
-    userPass.flatMap {
-      case (user, pass) => {
-        try {
-          val pw = SprayServerSettings.Users.getString(user)
-          if (pw == pass) Some(BasicUserContext(user)) else None
-        } catch {
-          case _: ConfigException => None
+object FromConfigUserPassAuthenticator {
+  def apply()(implicit executor: ExecutionContext): UserPassAuthenticator[BasicUserContext] = {
+    new UserPassAuthenticator[BasicUserContext] {
+      def apply(userPass: Option[(String, String)]) = Promise.successful(
+        userPass.flatMap {
+          case (user, pass) => {
+            try {
+              val pw = SprayServerSettings.Users.getString(user)
+              if (pw == pass) Some(BasicUserContext(user)) else None
+            } catch {
+              case _: ConfigException => None
+            }
+          }
         }
-      }
+      )
     }
-  )(Spray.system.dispatcher)
+  }
 }

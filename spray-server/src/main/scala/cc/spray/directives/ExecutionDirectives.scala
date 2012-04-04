@@ -17,20 +17,21 @@
 package cc.spray
 package directives
 
-import util.Spray
-import akka.actor.{Props, Actor}
 import akka.util.NonFatal
+import akka.actor.{ActorLogging, ActorSystem, Props, Actor}
 
 private[spray] trait ExecutionDirectives {
   this: BasicDirectives =>
+
+  def system: ActorSystem
 
   /**
    * Returns a Route that executes its inner Route in the content of a newly spawned actor.
    */
   def detach = transformRoute { route => ctx =>
-    Spray.system.actorOf {
+    system.actorOf {
       Props {
-        new Actor() with ErrorHandling {
+        new Actor() with ErrorHandling with ActorLogging {
           def receive = {
             case ctx: RequestContext => try {
               route(ctx)

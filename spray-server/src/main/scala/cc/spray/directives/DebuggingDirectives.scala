@@ -18,10 +18,12 @@ package cc.spray
 package directives
 
 import http.{HttpResponse, HttpRequest, HttpMessage}
-import util.Spray
+import akka.actor.ActorSystem
 
 trait DebuggingDirectives {
   this: BasicDirectives with MiscDirectives =>
+
+  def system: ActorSystem
 
   def logRequest(marker: String = "") = transformRequest(logMessage("Request", marker))
 
@@ -62,6 +64,5 @@ trait DebuggingDirectives {
     msg
   }
 
-  private def log = Spray.system.log
-
+  private def log = system.log
 }

@@ -24,7 +24,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * The spray connector servlet for Jetty 7.
  */
-class Jetty7ConnectorServlet extends ConnectorServlet("Jetty 7") {
+class Jetty7ConnectorServlet extends ConnectorServlet {
+
+  def containerName = "Jetty 7"
 
   override def service(req: HttpServletRequest, resp: HttpServletResponse) {
     requestContext(req, resp, responder(req, resp)).foreach(rootService ! _)

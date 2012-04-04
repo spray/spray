@@ -24,7 +24,7 @@ import HttpMethods._
 import StatusCodes._
 import MediaTypes._
 import test.AbstractSprayTest
-import util.{Spray, IllegalResponseException}
+import util.IllegalResponseException
 import xml.NodeSeq
 import encoding._
 import akka.dispatch.Promise
@@ -32,7 +32,7 @@ import akka.dispatch.Promise
 class HttpServiceLogicSpec extends AbstractSprayTest {
   
   implicit val userPassAuth = new UserPassAuthenticator[BasicUserContext] {
-    def apply(userPass: Option[(String, String)]) = Promise.successful(None)(Spray.system.dispatcher)
+    def apply(userPass: Option[(String, String)]) = Promise.successful(None)
   }
   
   "The HttpServiceLogic" should {

@@ -24,7 +24,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * The spray connector servlet for all servlet 3.0 containers.
  */
-class Servlet30ConnectorServlet extends ConnectorServlet("Servlet API 3.0") {
+class Servlet30ConnectorServlet extends ConnectorServlet {
+
+  def containerName = "Servlet API 3.0"
 
   override def service(req: HttpServletRequest, resp: HttpServletResponse) {
     requestContext(req, resp, responder(req, resp)).foreach(rootService ! _)

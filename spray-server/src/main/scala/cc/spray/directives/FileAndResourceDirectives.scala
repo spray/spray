@@ -24,10 +24,13 @@ import HttpHeaders._
 import util.identityFunc
 import java.io.{FileInputStream, File}
 import java.util.Arrays
-import typeconversion.{DefaultMarshallers, SimpleMarshaller}
+import typeconversion.{Marshaller, DefaultMarshallers, SimpleMarshaller}
+import akka.actor.ActorSystem
 
 private[spray] trait FileAndResourceDirectives {
   this: SimpleDirectives with ExecutionDirectives with MiscDirectives with DefaultMarshallers =>
+
+  def system: ActorSystem
 
   /**
    * Returns a Route that completes GET requests with the content of the given file. The actual I/O operation is
@@ -61,6 +64,7 @@ private[spray] trait FileAndResourceDirectives {
             if (file.length() >= SprayServerSettings.FileChunkingThresholdSize) {
               import FileChunking._
               implicit val marshaller = fileChunkMarshaller(contentType)
+              implicit def sys = system
               ctx.complete(fileChunkStream(file))
             } else ctx.complete(responseFromFile(file, contentType).get)
           } else ctx.reject() // reject without specific rejection => same as unmatched "path" directive
@@ -195,7 +199,7 @@ object FileChunking {
     chunkStream()
   }
 
-  def fileChunkMarshaller(contentType: ContentType) = new SimpleMarshaller[FileChunk] {
+  def fileChunkMarshaller(contentType: ContentType): Marshaller[FileChunk] = new SimpleMarshaller[FileChunk] {
     val canMarshalTo = contentType :: Nil
     def marshal(value: FileChunk, contentType: ContentType) = HttpContent(contentType, value.buffer)
   }

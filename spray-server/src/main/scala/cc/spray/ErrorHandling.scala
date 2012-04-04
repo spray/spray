@@ -18,19 +18,21 @@ package cc.spray
 
 import http._
 import StatusCodes._
-import util.{Spray, IllegalResponseException}
+import util.IllegalResponseException
+import akka.event.LoggingAdapter
 
 trait ErrorHandling {
+  def log: LoggingAdapter
 
   protected[spray] def responseForException(request: Any, e: Exception): HttpResponse = {
     e match {
       case HttpException(failure, reason) =>
-        Spray.system.log.warning("Request {} could not be handled normally, completing with {} response ({})",
+        log.warning("Request {} could not be handled normally, completing with {} response ({})",
           request, failure.value, reason)
         HttpResponse(failure, reason)
       case e: IllegalResponseException => throw e
       case e: Exception =>
-        Spray.system.log.error(e, "Error during processing of request {}", request)
+        log.error(e, "Error during processing of request {}", request)
         HttpResponse(InternalServerError, "Internal Server Error:\n" + e.toString)
     }
   }
