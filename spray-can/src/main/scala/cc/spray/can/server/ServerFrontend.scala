@@ -202,9 +202,9 @@ object ServerFrontend {
         case x: ChunkedMessageEnd    => dispatch(x, sender, Chunking, Completed)
         case x: Command              => dispatch(x, sender)
         case Terminated(ref) if ref == context.self => stop() // cleanup when the connection died
-        case _ => throw new IllegalArgumentException {
-          "Illegal response " + message + " to HTTP request to '" + rec.request.uri + "'"
-        }
+        case x =>
+          context.system.log.warning("Illegal response " + x + " to HTTP request to '" + rec.request.uri + "'")
+          provider.deadLetters ! x
       }
     }
     private def dispatch(part: HttpResponsePart, sender: ActorRef,
@@ -212,11 +212,12 @@ object ServerFrontend {
       if (Unsafe.instance.compareAndSwapObject(this, responseStateOffset, expectedState, newState)) {
         context.self.tell(new Response(rec, part), sender)
         if (newState == Completed) stop()
-      } else throw new IllegalStateException(
-        "Cannot dispatch " + part.getClass.getSimpleName + " as response (part) for request to '" + rec.request.uri +
-        "' since current response state is '" + Unsafe.instance.getObjectVolatile(this, responseStateOffset) +
-          "' but should be '" + expectedState + "'"
-      )
+      } else {
+        context.system.log.warning("Cannot dispatch " + part.getClass.getSimpleName +
+          " as response (part) for request to '" + rec.request.uri + "' since current response state is '" +
+          Unsafe.instance.getObjectVolatile(this, responseStateOffset) + "' but should be '" + expectedState + "'")
+        provider.deadLetters ! part
+      }
     }
     private def dispatch(cmd: Command, sender: ActorRef) {
       context.self.tell(new Response(rec, cmd), sender)
