@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package example
+package cc.spray.can.example
 
-import akka.actor._
 import cc.spray.io.pipelines.MessageHandlerDispatch
 import cc.spray.io.IoWorker
+import cc.spray.can.server.HttpServer
+import akka.actor._
 
 object Main extends App {
   // we need an ActorSystem to host our application in

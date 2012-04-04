@@ -1,24 +1,20 @@
-package cc.spray
-package examples.spraycan
+package cc.spray.examples.spraycan
 
-import java.util.concurrent.TimeUnit
-import akka.actor._
-import http._
-import StatusCodes._
-import MediaTypes._
-import typeconversion.ChunkSender
-import can.{GetStats, Stats}
-import util.{ActorHelpers, Logging}
-import akka.util.Duration
-import akka.util.duration._
-import ActorHelpers._
 import java.io.File
 import org.parboiled.common.FileUtils
-import encoding.{Deflate, Gzip}
+import akka.util.Duration
+import akka.util.duration._
+import cc.spray.http._
+import cc.spray.typeconversion.ChunkSender
+import cc.spray.encoding.Gzip
+import cc.spray.can.server.HttpServer
+import cc.spray.{RequestContext, Directives}
+import StatusCodes._
+import MediaTypes._
 
-trait DemoService extends Directives with Logging {
+trait DemoService extends Directives {
 
-  val helloService = {
+  val demoService = {
     get {
       path("") {
         respondWithMediaType(`text/html`) { // XML is marshalled to `text/xml` by default, so we simply override here
@@ -46,28 +42,19 @@ trait DemoService extends Directives with Logging {
         cache { ctx =>
           in(800.millis) {
             ctx.complete("This resource is only slow the first time!\n" +
-              "It was produced on " + DateTime.now.toIsoDateTimeString)
+              "It was produced on " + DateTime.now.toIsoDateTimeString + "\n\n" +
+              "(Note that your browser will likely enforce a cache invalidation with a\n" +
+              "`Cache-Control: max-age=0` header, so you might need to `curl` this\n" +
+              "resource in order to be able to see the cache effect!)")
           }
         }
       }
     } ~
     (post | parameter('method ! "post")) {
-      path("crash-root-service") { ctx =>
-        ctx.complete("Killing the spray root actor in 1 second...")
-        in(1000.millis) {
-          actor(SprayServerSettings.RootActorId) ! Kill
-        }
-      } ~
-      path("crash-spray-can-server") { ctx =>
-        ctx.complete("Killing the spray-can-server actor in 1 second...")
-        in(1000.millis) {
-          actor("spray-can-server") ! Kill
-        }
-      } ~
       path("stop") { ctx =>
         ctx.complete("Shutting down in 1 second...")
         in(1000.millis) {
-          Actor.registry.foreach(_ ! PoisonPill)
+          actorSystem.shutdown()
         }
       }
     }
@@ -85,8 +72,6 @@ trait DemoService extends Directives with Logging {
           <li><a href="/stats">/stats</a></li>
           <li><a href="/timeout">/timeout</a></li>
           <li><a href="/cached">/cached</a></li>
-          <li><a href="/crash-root-service?method=post">/crash-root-service</a></li>
-          <li><a href="/crash-spray-can-server?method=post">/crash-spray-can-server</a></li>
           <li><a href="/stop?method=post">/stop</a></li>
         </ul>
       </body>
@@ -99,13 +84,11 @@ trait DemoService extends Directives with Logging {
         .sendChunk(MessageChunk("<li>" + DateTime.now.toIsoDateTimeString + "</li>"))
         .onComplete {
           // we use the successful sending of a chunk as trigger for scheduling the next chunk
-          _.value.get match {
-            case Right(_) if remaining > 0 => sendNext(remaining - 1)(chunkSender)
-            case Right(_) =>
-              chunkSender.sendChunk(MessageChunk("</ul><p>Finished.</p></body></html>"))
-              chunkSender.close()
-            case Left(e) => log.warning("Stopping response streaming due to " + e)
-          }
+          case Right(_) if remaining > 0 => sendNext(remaining - 1)(chunkSender)
+          case Right(_) =>
+            chunkSender.sendChunk(MessageChunk("</ul><p>Finished.</p></body></html>"))
+            chunkSender.close()
+          case Left(e) => actorSystem.log.warning("Stopping response streaming due to {}", e)
         }
       }
     }
@@ -115,22 +98,25 @@ trait DemoService extends Directives with Logging {
   }
 
   def showServerStats(ctx: RequestContext) {
-    (sprayCanServerActor ? GetStats).mapTo[Stats].onComplete {
-      _.value.get match {
-        case Right(stats) => ctx.complete {
-          "Uptime              : " + (stats.uptime / 1000.0) + " sec\n" +
-          "Requests dispatched : " + stats.requestsDispatched + '\n' +
-          "Requests timed out  : " + stats.requestsTimedOut + '\n' +
-          "Requests open       : " + stats.requestsOpen + '\n' +
-          "Open connections    : " + stats.connectionsOpen + '\n'
-        }
-        case Left(ex) => ctx.complete(500, "Couldn't get server stats due to " + ex)
+    import akka.pattern.ask
+    httpServer.ask(HttpServer.GetStats)(1.second).mapTo[HttpServer.Stats].onComplete {
+      case Right(stats) => ctx.complete {
+        "Uptime                : " + stats.uptime.printHMS + '\n' +
+        "Total requests        : " + stats.totalRequests + '\n' +
+        "Open requests         : " + stats.openRequests + '\n' +
+        "Max open requests     : " + stats.maxOpenRequests + '\n' +
+        "Total connections     : " + stats.totalConnections + '\n' +
+        "Open connections      : " + stats.openConnections + '\n' +
+        "Max open connections  : " + stats.maxOpenConnections + '\n' +
+        "Requests timed out    : " + stats.requestTimeouts + '\n' +
+        "Connections timed out : " + stats.idleTimeouts + '\n'
       }
+      case Left(ex) => ctx.complete(500, "Couldn't get server stats due to " + ex.getMessage)
     }
   }
 
   def in[U](duration: Duration)(body: => U) {
-    Scheduler.scheduleOnce(() => body, duration.toMillis, TimeUnit.MILLISECONDS)
+    actorSystem.scheduler.scheduleOnce(duration, new Runnable { def run() { body } })
   }
 
   lazy val largeTempFile = {
@@ -140,6 +126,6 @@ trait DemoService extends Directives with Logging {
     file
   }
 
-  lazy val sprayCanServerActor = Actor.registry.actorsFor("spray-can-server").head
+  lazy val httpServer = actorSystem.actorFor("user/http-server")
 
 }

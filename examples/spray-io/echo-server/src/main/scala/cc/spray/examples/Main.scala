@@ -12,7 +12,7 @@ object Main extends App {
   server.ask(IoServer.Bind("localhost", 23456))(1.second) onSuccess {
     case IoServer.Bound(endpoint) =>
       println("\nBound echo-server to " + endpoint)
-      println("Run `telnet localhost 23456` and type something. Type `STOP` to exit...\n")
+      println("Run `telnet localhost 23456`, type something and press RETURN. Type `STOP` to exit...\n")
   }
 }
 

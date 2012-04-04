@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package example
+package cc.spray.can.example
 
-import model._
-import akka.util.duration._
+import cc.spray.can.model._
+import cc.spray.can.server.HttpServer
 import cc.spray.util.DateTime
-import akka.actor._
 import cc.spray.io.ConnectionClosedReason
-import cc.spray.can.HttpServer.RequestTimeout
+import akka.util.duration._
+import akka.actor._
 import akka.pattern.ask
 
 class TestService extends Actor with ActorLogging {
@@ -41,9 +40,9 @@ class TestService extends Actor with ActorLogging {
       context.actorOf(Props(new Streamer(peer, 100)))
 
     case HttpRequest(GET, "/stats", _, _, _) =>
-      val peer = sender
-      peer.ask(HttpServer.GetStats)(1.second).onSuccess {
-        case x: HttpServer.Stats => peer ! stats(x)
+      val client = sender
+      context.actorFor("../http-server").ask(HttpServer.GetStats)(1.second).onSuccess {
+        case x: HttpServer.Stats => client ! statsPresentation(x)
       }
 
     case HttpRequest(GET, "/crash", _, _, _) =>
@@ -63,10 +62,10 @@ class TestService extends Actor with ActorLogging {
 
     case _: HttpRequest => sender ! response("Unknown resource!", 404)
 
-    case RequestTimeout(HttpRequest(_, "/timeout/timeout", _, _, _)) =>
+    case HttpServer.RequestTimeout(HttpRequest(_, "/timeout/timeout", _, _, _)) =>
       log.info("Dropping RequestTimeout message")
 
-    case RequestTimeout(request) =>
+    case HttpServer.RequestTimeout(request) =>
       sender ! HttpResponse(status = 500).withBody {
         "The " + request.method + " request to '" + request.uri + "' has timed out..."
       }
@@ -105,13 +104,14 @@ class TestService extends Actor with ActorLogging {
       </html>.toString.getBytes("ISO-8859-1")
   )
 
-  def stats(s: HttpServer.Stats) = HttpResponse(
+  def statsPresentation(s: HttpServer.Stats) = HttpResponse(
     headers = List(HttpHeader("Content-Type", "text/html")),
     body =
       <html>
         <body>
           <h1>HttpServer Stats</h1>
           <table>
+            <tr><td>uptime:</td><td>{s.uptime.printHMS}</td></tr>
             <tr><td>totalRequests:</td><td>{s.totalRequests}</td></tr>
             <tr><td>openRequests:</td><td>{s.openRequests}</td></tr>
             <tr><td>maxOpenRequests:</td><td>{s.maxOpenRequests}</td></tr>

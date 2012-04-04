@@ -1,8 +1,8 @@
 package cc.spray.can.example
 
-import cc.spray.io.IoWorker
-import cc.spray.can.{HttpDialog, HttpClient}
+import cc.spray.can.client.{HttpDialog, HttpClient}
 import cc.spray.can.model.{HttpResponse, HttpRequest}
+import cc.spray.io.IoWorker
 import akka.dispatch.Future
 import akka.actor.{ActorSystem, Props}
 
@@ -29,7 +29,7 @@ object GoogleQueryExample extends App {
 
   val requests = queries.map(q => HttpRequest(uri = "/search?q=" + q.replace(" ", "+")))
 
-  log.info("Running {} google queries over a single connection using pipelined request...", requests.length)
+  log.info("Running {} google queries over a single connection using pipelined requests...", requests.length)
   timed(HttpDialog(httpClient, "www.google.com").send(requests).end)
     .onSuccess(printResult andThen secondRun)
     .onFailure(printError andThen shutdown)

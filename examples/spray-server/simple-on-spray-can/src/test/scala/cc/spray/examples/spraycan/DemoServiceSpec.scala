@@ -13,17 +13,17 @@ class DemoServiceSpec extends Specification with SprayTest with DemoService {
   "The DemoService" should {
     "return a greeting for GET requests to the root path" in {
       testService(HttpRequest(GET, "/")) {
-        helloService
+        demoService
       }.response.content.as[String].right.get must contain("Say hello")
     }
     "leave GET requests to other paths unhandled" in {
       testService(HttpRequest(GET, "/kermit")) {
-        helloService
+        demoService
       }.handled must beFalse
     }
     "return a MethodNotAllowed error for PUT requests to the root path" in {
       testService(HttpRequest(PUT, "/")) {
-        helloService
+        demoService
       }.response mustEqual HttpResponse(MethodNotAllowed, "HTTP method not allowed, supported methods: GET, POST")
     }
   }

@@ -2,8 +2,6 @@ package cc.spray
 package examples.simple
 
 import http.MediaTypes._
-import akka.actor.{Actor, Kill}
-import util.Spray
 import akka.util.duration._
 
 trait SimpleService extends Directives {
@@ -35,7 +33,7 @@ trait SimpleService extends Directives {
     } ~
     path("timeout") {
       get { ctx =>
-        Spray.system.scheduler.scheduleOnce(1500.millis) {
+        actorSystem.scheduler.scheduleOnce(1500.millis) {
           ctx.complete("Too late!")
         }
       }
