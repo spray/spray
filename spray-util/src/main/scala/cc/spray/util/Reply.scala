@@ -16,8 +16,8 @@
 
 package cc.spray.util
 
-import akka.spray.LazyActorRef
-import akka.actor.{ActorPath, ActorRef}
+import akka.actor.ActorRef
+import akka.spray.UnregisteredActorRef
 
 case class Reply(reply: Any, context: Any)
 
@@ -30,14 +30,15 @@ object Reply {
    * The overhead introduced by this mechanism of context keeping is really small, which makes it a viable solution
    * for **local-only** messaging protocols.
    *
-   * CAUTION: The ActorRef created by this method is **not** registered with any provider, meaning that it cannot
-   * be found via its path. It also will **not** be reachable from non-local JVMs!
+   * CAUTION: This ActorRef is _not_ addressable from a non-local JVM and it also breaks some otherwise
+   * valid invariants like `system.actorFor(ref.path.toString).equals(ref)` in the local-only context.
+   * It should therefore be used only in purely local environments and in consideration of the limitations.
    */
-  def withContext(context: Any)(implicit replyReceiver: ActorRef): LazyActorRef = new LazyActorRef(replyReceiver) {
-    def handle(reply: Any, replySender: ActorRef) {
-      replyReceiver.tell(new Reply(reply, context), replySender)
+  def withContext(context: Any)(implicit replyReceiver: ActorRef): UnregisteredActorRef = {
+    new UnregisteredActorRef(replyReceiver) {
+      def handle(reply: Any, replySender: ActorRef) {
+        replyReceiver.tell(new Reply(reply, context), replySender)
+      }
     }
-    override protected def register(path: ActorPath) {}
-    override protected def unregister(path: ActorPath) {}
   }
 }

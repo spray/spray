@@ -21,8 +21,23 @@ import akka.dispatch.{Terminate, SystemMessage}
 import akka.actor._
 import akka.util.Unsafe
 
+/**
+ * An ActorRef which
+ * - offers the ability to hook caller-side logic into a `tell`
+ * - is registered lazily
+ *
+ * CAUTION: In order to prevent memory leaks you need to make sure that the
+ * ref is explicitly stopped via `stop` in _all_ cases, even if `tell`/bang is never called!
+ */
 abstract class LazyActorRef(val provider: ActorRefProvider) extends akka.actor.MinimalActorRef {
   def this(related: ActorRef) = this(RefUtils.provider(related))
+  def this(system: ActorSystem) = this {
+    system match {
+      case x: ExtendedActorSystem => x.provider
+      case _ => throw new IllegalArgumentException("Unsupported ActorSystem implementation")
+    }
+  }
+  def this(context: ActorContext) = this(context.system)
   import LazyActorRef._
 
   @volatile private[this] var _pathStateDoNotCallMeDirectly: AnyRef = _
@@ -90,12 +105,12 @@ abstract class LazyActorRef(val provider: ActorRefProvider) extends akka.actor.M
     pathState match {
       case null ⇒
         // if path was never queried nobody can possibly be watching us, so we don't have to publish termination either
-        if (updateState(null, Stopped)) doStop()
+        if (updateState(null, Stopped)) onStop()
         else stop()
       case p: ActorPath ⇒
         if (updateState(p, StoppedWithPath(p))) {
           try {
-            doStop()
+            onStop()
             provider.deathWatch.publish(Terminated(this))
           } finally {
             unregister(p)
@@ -110,7 +125,7 @@ abstract class LazyActorRef(val provider: ActorRefProvider) extends akka.actor.M
 
   protected def handle(message: Any, sender: ActorRef)
 
-  protected def doStop() {}
+  protected def onStop() {}
 
   protected def register(path: ActorPath) {
     provider.registerTempActor(this, path)
