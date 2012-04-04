@@ -178,6 +178,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
     ),
     messageHandler,
     req => HttpResponse(500).withBody("Timeout for " + req.uri),
+    new StatsSupport.StatsHolder,
     system.log
   )
 

@@ -23,6 +23,7 @@ import akka.event.LoggingAdapter
 import akka.util.Duration
 import com.typesafe.config.{ConfigFactory, Config}
 import java.util.concurrent.TimeUnit
+import cc.spray.can.server.StatsSupport.StatsHolder
 
 class HttpServer(ioWorker: IoWorker,
                  messageHandler: MessageHandlerDispatch.MessageHandler,
@@ -31,7 +32,14 @@ class HttpServer(ioWorker: IoWorker,
 
   protected lazy val pipeline = {
     val settings = new ServerSettings(config, ioWorker.settings.ConfirmSends)
-    HttpServer.pipeline(settings, messageHandler, timeoutResponse, log)
+    HttpServer.pipeline(settings, messageHandler, timeoutResponse, statsHolder, log)
+  }
+
+  protected lazy val statsHolder = new StatsHolder
+
+  override def receive = super.receive orElse {
+    case HttpServer.GetStats    => sender ! statsHolder.toStats
+    case HttpServer.ClearStats  => statsHolder.clear()
   }
 
   /**
@@ -139,12 +147,13 @@ object HttpServer {
   private[can] def pipeline(settings: ServerSettings,
                             messageHandler: MessageHandlerDispatch.MessageHandler,
                             timeoutResponse: HttpRequest => HttpResponse,
+                            statsHolder: => StatsHolder,
                             log: LoggingAdapter): PipelineStage = {
     ServerFrontend(settings, messageHandler, timeoutResponse, log) ~>
     PipelineStage.optional(settings.RequestChunkAggregationLimit > 0,
       RequestChunkAggregation(settings.RequestChunkAggregationLimit.toInt)) ~>
     PipelineStage.optional(settings.PipeliningLimit > 0, PipeliningLimiter(settings.PipeliningLimit)) ~>
-    PipelineStage.optional(settings.StatsSupport, StatsSupport()) ~>
+    PipelineStage.optional(settings.StatsSupport, StatsSupport(statsHolder)) ~>
     RequestParsing(settings.ParserSettings, log) ~>
     ResponseRendering(settings.ServerHeader, settings.ChunklessStreaming, settings.ResponseSizeHint.toInt) ~>
     PipelineStage.optional(settings.IdleTimeout > 0, ConnectionTimeouts(settings.IdleTimeout, log)) ~>
@@ -155,6 +164,7 @@ object HttpServer {
   }
 
   case class Stats(
+    uptime: Duration,
     totalRequests: Long,
     openRequests: Long,
     maxOpenRequests: Long,
@@ -174,8 +184,8 @@ object HttpServer {
   type SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout;    val SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout
   type SetRequestTimeout = ServerFrontend.SetRequestTimeout;  val SetRequestTimeout = ServerFrontend.SetRequestTimeout
   type SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout;  val SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout
-  val ClearStats = StatsSupport.ClearStats
-  val GetStats = StatsSupport.GetStats
+  case object ClearStats extends Command
+  case object GetStats extends Command
 
   ////////////// EVENTS //////////////
   // HttpRequestParts +

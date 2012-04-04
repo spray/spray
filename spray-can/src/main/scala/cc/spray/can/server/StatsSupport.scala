@@ -20,11 +20,14 @@ import cc.spray.can.rendering.HttpResponsePartRenderingContext
 import cc.spray.io._
 import java.util.concurrent.atomic.AtomicLong
 import annotation.tailrec
+import akka.util.Duration
+import java.util.concurrent.TimeUnit
 
 
 object StatsSupport {
 
-  def apply() = new DoublePipelineStage {
+  class StatsHolder {
+    val startTimestamp     = System.currentTimeMillis
     val requestStarts      = new AtomicLong
     val responseStarts     = new AtomicLong
     val maxOpenRequests    = new AtomicLong
@@ -35,7 +38,7 @@ object StatsSupport {
     val idleTimeouts       = new AtomicLong
 
     @tailrec
-    def adjustMaxOpenConnections() {
+    final def adjustMaxOpenConnections() {
       val co = connectionsOpened.get
       val cc = connectionsClosed.get
       val moc = maxOpenConnections.get
@@ -45,7 +48,7 @@ object StatsSupport {
     }
 
     @tailrec
-    def adjustMaxOpenRequests() {
+    final def adjustMaxOpenRequests() {
       val rqs = requestStarts.get
       val rss = responseStarts.get
       val mor = maxOpenRequests.get
@@ -54,7 +57,34 @@ object StatsSupport {
         if (!maxOpenRequests.compareAndSet(mor, currentMor)) adjustMaxOpenRequests()
     }
 
+    def toStats = HttpServer.Stats(
+      uptime = Duration(System.currentTimeMillis - startTimestamp, TimeUnit.MILLISECONDS),
+      totalRequests = requestStarts.get,
+      openRequests = requestStarts.get - responseStarts.get,
+      maxOpenRequests = maxOpenRequests.get,
+      totalConnections = connectionsOpened.get,
+      openConnections = connectionsOpened.get - connectionsClosed.get,
+      maxOpenConnections = maxOpenConnections.get,
+      requestTimeouts = requestTimeouts.get,
+      idleTimeouts = idleTimeouts.get
+    )
+
+    def clear() {
+      requestStarts.set(0L)
+      responseStarts.set(0L)
+      maxOpenRequests.set(0L)
+      connectionsOpened.set(0L)
+      connectionsClosed.set(0L)
+      maxOpenConnections.set(0L)
+      requestTimeouts.set(0L)
+      idleTimeouts.set(0L)
+    }
+  }
+
+  def apply(holder: StatsHolder) = new DoublePipelineStage {
+
     def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
+      import holder._
       connectionsOpened.incrementAndGet()
       adjustMaxOpenConnections()
 
@@ -67,32 +97,6 @@ object StatsSupport {
           case x: IoServer.Tell if x.message.isInstanceOf[HttpServer.RequestTimeout] =>
             requestTimeouts.incrementAndGet()
             commandPL(command)
-
-          case GetStats => commandPL {
-            IoServer.Tell(
-              receiver = context.sender,
-              message = HttpServer.Stats(
-                totalRequests = requestStarts.get,
-                openRequests = requestStarts.get - responseStarts.get,
-                maxOpenRequests = maxOpenRequests.get,
-                totalConnections = connectionsOpened.get,
-                openConnections = connectionsOpened.get - connectionsClosed.get,
-                maxOpenConnections = maxOpenConnections.get,
-                requestTimeouts = requestTimeouts.get,
-                idleTimeouts = idleTimeouts.get
-              ),
-              sender = context.self
-            )
-          }
-          case ClearStats =>
-            requestStarts.set(0L)
-            responseStarts.set(0L)
-            maxOpenRequests.set(0L)
-            connectionsOpened.set(0L)
-            connectionsClosed.set(0L)
-            maxOpenConnections.set(0L)
-            requestTimeouts.set(0L)
-            idleTimeouts.set(0L)
 
           case _ => commandPL(command)
         }
@@ -114,10 +118,5 @@ object StatsSupport {
       }
     }
   }
-
-  ////////////// COMMANDS //////////////
-
-  case object ClearStats extends Command
-  case object GetStats extends Command
 
 }
