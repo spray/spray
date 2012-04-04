@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray.can.client
 
-import org.specs2.mutable.Specification
-import parsing.ParserSettings
+import cc.spray.can.parsing.ParserSettings
+import cc.spray.can.HttpPipelineStageSpec
 import cc.spray.io.Event
+import org.specs2.mutable.Specification
 
 class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
 

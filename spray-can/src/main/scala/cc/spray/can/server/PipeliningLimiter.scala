@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray
-package can
+package cc.spray.can.server
 
-import io._
+import cc.spray.can.model.{HttpMessageEndPart, HttpRequestPart}
+import cc.spray.can.rendering.HttpResponsePartRenderingContext
+import cc.spray.io._
 import collection.mutable.Queue
-import model.{HttpMessageEndPart, HttpRequestPart}
-import rendering.HttpResponsePartRenderingContext
 import annotation.tailrec
 
 

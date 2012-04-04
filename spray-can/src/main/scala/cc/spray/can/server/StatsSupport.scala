@@ -13,13 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package cc.spray
-package can
+package cc.spray.can.server
 
-import io._
-import model.HttpMessageStartPart
-import rendering.HttpResponsePartRenderingContext
-import can.HttpServer.RequestTimeout
+import cc.spray.can.model.HttpMessageStartPart
+import cc.spray.can.rendering.HttpResponsePartRenderingContext
+import cc.spray.io._
 import java.util.concurrent.atomic.AtomicLong
 import annotation.tailrec
 
@@ -66,7 +64,7 @@ object StatsSupport {
             responseStarts.incrementAndGet()
             commandPL(command)
 
-          case x: IoServer.Tell if x.message.isInstanceOf[RequestTimeout] =>
+          case x: IoServer.Tell if x.message.isInstanceOf[HttpServer.RequestTimeout] =>
             requestTimeouts.incrementAndGet()
             commandPL(command)
 

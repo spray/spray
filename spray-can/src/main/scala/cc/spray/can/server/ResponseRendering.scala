@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-package cc.spray
-package can
+package cc.spray.can.server
 
-import rendering.{HttpResponsePartRenderingContext, ResponseRenderer}
-import io._
+import cc.spray.can.rendering.{HttpResponsePartRenderingContext, ResponseRenderer}
+import cc.spray.io._
 
 object ResponseRendering {
 

@@ -14,14 +14,9 @@
  * limitations under the License.
  */
 
-package cc.spray
+package cc.spray.can
 
-import java.io.{BufferedReader, InputStreamReader}
-
-package object can {
-
-  lazy val SprayCanVersion: String =
-    new BufferedReader(new InputStreamReader(getClass.getResourceAsStream("/spray-can.version"))).readLine()
+package object parsing {
 
   private[can] def isTokenChar(c: Char) = c match {
     case x if 'a' <= x && x <= 'z' => true

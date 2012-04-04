@@ -14,40 +14,28 @@
  * limitations under the License.
  */
 
-package cc.spray
-package can
+package cc.spray.can
+package client
 
-import model.{HttpHeader, HttpResponse}
-import io._
-import parsing.{ParserSettings, ErrorState, EmptyRequestParser}
-import rendering.HttpResponsePartRenderingContext
 import akka.event.LoggingAdapter
+import cc.spray.io._
+import parsing._
 
-object RequestParsing {
+object ResponseParsing {
 
   def apply(settings: ParserSettings, log: LoggingAdapter): EventPipelineStage = new EventPipelineStage {
 
     def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): EPL = {
 
       new MessageParsingPipelines(settings, commandPL, eventPL) {
-        val startParser = new EmptyRequestParser(settings)
+        def startParser = new EmptyResponseParser(settings)
         currentParsingState = startParser
 
         def handleParseError(state: ErrorState) {
-          log.warning("Illegal request, responding with status {} and '{}'", state.status, state.message)
-          val response = HttpResponse(
-            status = state.status,
-            headers = List(HttpHeader("Content-Type", "text/plain"))
-          ).withBody(state.message)
-
-          // In case of a request parsing error we probably stopped reading the request somewhere in between,
-          // where we cannot simply resume. Resetting to a known state is not easy either,
-          // so we need to close the connection to do so.
-          commandPL(HttpResponsePartRenderingContext(response))
-          commandPL(HttpServer.Close(ProtocolError(state.message)))
+          log.warning("Received illegal response: {}", state.message)
+          commandPL(IoPeer.Close(ProtocolError(state.message)))
         }
       }
     }
   }
-
 }

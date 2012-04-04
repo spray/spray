@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray.can.parsing
 
 import java.nio.ByteBuffer
 import annotation.tailrec
-import model.{ChunkedMessageEnd, HttpMessage}
-import parsing._
+import cc.spray.can.model.{ChunkedMessageEnd, HttpMessage}
 import cc.spray.io._
 
 abstract class MessageParsingPipelines(settings: ParserSettings,

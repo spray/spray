@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray
-package can
+package cc.spray.can.server
 
-import model._
-import io._
+import cc.spray.can.model._
+import cc.spray.can.rendering.HttpResponsePartRenderingContext
+import cc.spray.io._
 import pipelines.{TickGenerator, MessageHandlerDispatch}
-import rendering.HttpResponsePartRenderingContext
 import akka.event.LoggingAdapter
 import collection.mutable.Queue
 import annotation.tailrec

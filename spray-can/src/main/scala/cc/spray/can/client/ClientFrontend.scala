@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray.can.client
 
-import model._
+import cc.spray.can.model._
+import cc.spray.can.rendering.HttpRequestPartRenderingContext
 import cc.spray.io._
 import akka.event.LoggingAdapter
+import akka.util.Duration
 import akka.actor.ActorRef
 import collection.mutable.Queue
 import pipelines.TickGenerator
-import rendering.HttpRequestPartRenderingContext
-import akka.util.Duration
 
 object ClientFrontend {
 

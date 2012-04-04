@@ -15,6 +15,7 @@
  */
 
 package cc.spray.can
+package client
 
 import cc.spray.io._
 import akka.util.Duration

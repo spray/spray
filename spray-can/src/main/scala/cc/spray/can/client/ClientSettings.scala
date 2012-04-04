@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray.can.client
 
+import cc.spray.can.parsing.ParserSettings
 import com.typesafe.config.{ConfigFactory, Config}
-import parsing.ParserSettings
 
 private[can] class ClientSettings(config: Config = ConfigFactory.load()) {
   private[this] val c: Config = {

@@ -16,7 +16,7 @@
 package cc.spray
 
 import akka.actor.ActorRef
-import can.HttpServer
+import can.server.HttpServer
 import can.model.ChunkedMessageEnd
 import http._
 import io.ConnectionClosedReason

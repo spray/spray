@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package rendering
+package cc.spray.can.rendering
 
-import annotation.tailrec
-import model.{ChunkedMessageEnd, MessageChunk, ChunkExtension, HttpHeader}
+import cc.spray.can.model._
+import cc.spray.can.parsing.isTokenChar
 import cc.spray.util._
 import cc.spray.io.BufferBuilder
+import annotation.tailrec
 
 private[rendering] trait MessageRendering {
   import MessageRendering._

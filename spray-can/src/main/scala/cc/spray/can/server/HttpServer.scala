@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-package cc.spray
-package can
+package cc.spray.can.server
 
-import io._
+import cc.spray.can.model.{HttpHeader, HttpResponse, HttpRequest}
+import cc.spray.io._
+import pipelines.{MessageHandlerDispatch, TickGenerator, ConnectionTimeouts}
 import akka.event.LoggingAdapter
 import akka.util.Duration
-import model.{HttpHeader, HttpResponse, HttpRequest}
-import pipelines.{MessageHandlerDispatch, TickGenerator, ConnectionTimeouts}
 import com.typesafe.config.{ConfigFactory, Config}
 import java.util.concurrent.TimeUnit
 

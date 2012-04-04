@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray.can.client
 
+import cc.spray.can.HttpPipelineStageSpec
+import cc.spray.io.IoPeer
 import org.specs2.mutable.Specification
 import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActorRef
 import akka.actor.Actor
-import cc.spray.io.IoPeer
 
 class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
 

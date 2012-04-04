@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-package cc.spray
-package can
+package cc.spray.can.client
 
-import model.{HttpResponse, HttpRequest}
-import org.specs2.mutable.Specification
+import cc.spray.can.model.{HttpResponse, HttpRequest}
+import cc.spray.can.server.HttpServer
+import cc.spray.io.IoWorker
+import cc.spray.io.pipelines.MessageHandlerDispatch.SingletonHandler
+import cc.spray.util._
 import akka.actor.{Props, ActorSystem}
-import io.IoWorker
-import io.pipelines.MessageHandlerDispatch.SingletonHandler
-import util._
 import akka.pattern.ask
 import akka.util.Duration
+import org.specs2.mutable.Specification
 
 class HttpDialogSpec extends Specification {
   implicit val system = ActorSystem()

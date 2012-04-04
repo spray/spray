@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-package cc.spray
-package can
+package cc.spray.can.client
 
-import io._
-import model._
+import cc.spray.io._
+import cc.spray.can.model._
 
 
 object ResponseChunkAggregation {
@@ -55,7 +54,7 @@ object ResponseChunkAggregation {
 
       def closeWithError() {
         val msg = "Aggregated response entity greater than configured limit of " + limit + " bytes"
-        commandPL(HttpServer.Close(ProtocolError(msg)))
+        commandPL(HttpClient.Close(ProtocolError(msg)))
         closed = true
       }
     }

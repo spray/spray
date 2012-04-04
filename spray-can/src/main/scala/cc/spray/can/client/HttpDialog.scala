@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray.can.client
 
 import cc.spray.util.Reply
+import cc.spray.io.IoClient.IoClientException
+import cc.spray.io.{ProtocolError, CleanClose}
+import cc.spray.can.model.{HttpResponsePart, HttpRequest, HttpResponse}
 import akka.dispatch.{Promise, Future}
 import akka.actor._
 import akka.util.Duration
 import collection.mutable.ListBuffer
-import model.{HttpResponsePart, HttpRequest, HttpResponse}
-import cc.spray.io.IoClient.IoClientException
-import cc.spray.io.{ProtocolError, CleanClose}
 
 /**
  * An `HttpDialog` encapsulates an exchange of HTTP messages over the course of one connection.

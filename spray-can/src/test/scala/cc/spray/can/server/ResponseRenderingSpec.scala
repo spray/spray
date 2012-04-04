@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray.can.server
 
-import model.{HttpProtocols, HttpMethods, HttpResponse}
-import org.specs2.mutable.Specification
-import rendering.HttpResponsePartRenderingContext
+import cc.spray.can.model.{HttpMethods, HttpResponse}
+import cc.spray.can.rendering.HttpResponsePartRenderingContext
 import cc.spray.io.{CleanClose, IoPeer, Command}
+import org.specs2.mutable.Specification
+import cc.spray.can.HttpPipelineStageSpec
 
 class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
 

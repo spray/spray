@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-package cc.spray
-package can
+package cc.spray.can.server
 
-import io._
-import model._
-import rendering.HttpResponsePartRenderingContext
+import cc.spray.io._
+import cc.spray.can.model._
+import cc.spray.can.rendering.HttpResponsePartRenderingContext
 
 
 object RequestChunkAggregation {

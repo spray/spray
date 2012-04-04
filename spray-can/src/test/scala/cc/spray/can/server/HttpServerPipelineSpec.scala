@@ -14,19 +14,20 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray.can.server
 
-import model.{HttpResponse, HttpHeader, HttpRequest}
-import akka.pattern.ask
-import akka.util.{Duration, Timeout}
+import cc.spray.can.model.{HttpResponse, HttpHeader, HttpRequest}
+import cc.spray.can.HttpPipelineStageSpec
+import cc.spray.io.IoServer
 import cc.spray.io.pipelines.MessageHandlerDispatch._
-import java.util.concurrent.atomic.AtomicInteger
 import cc.spray.util._
+import akka.pattern.ask
+import akka.testkit.TestActorRef
+import akka.util.{Duration, Timeout}
+import akka.actor.{Actor, Props}
 import com.typesafe.config.ConfigFactory
 import org.specs2.mutable.Specification
-import akka.testkit.TestActorRef
-import akka.actor.{Actor, Props}
-import cc.spray.io.IoServer
+import java.util.concurrent.atomic.AtomicInteger
 
 class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
 
