@@ -98,9 +98,18 @@ object ServerFrontend {
                 commandPL(IoServer.Tell(rec.handler, x, rec.receiver))
 
               case x: HttpServer.Closed =>
-                val dispatch: RequestRecord => Unit = r => commandPL(IoServer.Tell(r.handler, x, r.receiver))
-                unconfirmedSends.foreach(dispatch)
-                openRequests.foreach(dispatch)
+                if (unconfirmedSends.isEmpty && openRequests.isEmpty) {
+                  messageHandler match {
+                    case _: SingletonHandler | _: PerConnectionHandler =>
+                      commandPL(IoServer.Tell(handlerCreator(), x, context.self))
+                    case _: PerMessageHandler =>
+                      // per-message handlers need to cleanup themselves upon response sending or send confirmation
+                  }
+                } else {
+                  val dispatch: RequestRecord => Unit = r => commandPL(IoServer.Tell(r.handler, x, r.receiver))
+                  unconfirmedSends.foreach(dispatch)
+                  openRequests.foreach(dispatch)
+                }
 
               case TickGenerator.Tick =>
                 checkForTimeouts()
