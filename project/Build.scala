@@ -73,7 +73,7 @@ object Build extends Build {
 
   lazy val sprayUtil = Project("spray-util", file("spray-util"))
     .settings(moduleSettings: _*)
-    .settings(buildInfoSettings: _*)
+    .settings(sprayVersionConfGeneration: _*)
     .settings(libraryDependencies ++=
       provided(akkaActor) ++
       test(akkaTestKit, specs2)
