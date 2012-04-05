@@ -19,10 +19,36 @@ package cc.spray.io
 import akka.actor.ActorRef
 import java.net.InetSocketAddress
 
+/**
+ * A handle for a network connection.
+ */
 trait Handle {
+  /**
+   * The key identifying the network connection.
+   */
   def key: Key
+
+  /**
+   * The actor handling events coming in from the network.
+   */
   def handler: ActorRef
+
+  /**
+   * The remote address this connection is attached to.
+   */
   def address: InetSocketAddress
+
+  /**
+   * The ActorRef that originally commanded the establishment of this connection.
+   * In the case of a client connection the sender of the `Connect` command,
+   * in the case of a server connection the sender of the `Bind` command.
+   */
+  def commander: ActorRef
 }
 
-case class SimpleHandle(key: Key, handler: ActorRef, address: InetSocketAddress) extends Handle
+case class SimpleHandle(
+  key: Key,
+  handler: ActorRef,
+  address: InetSocketAddress,
+  commander: ActorRef
+) extends Handle

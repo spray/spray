@@ -17,15 +17,18 @@
 package cc.spray.io
 
 import java.net.InetSocketAddress
-import akka.actor.{Status, PoisonPill, Props, Actor}
+import akka.actor.{ActorRef, Status, Props, Actor}
 
 
-trait ConnectionActors extends IoPeer {
+trait ConnectionActors extends IoPeer { ioPeer =>
 
-  override protected def createConnectionHandle(theKey: Key, theAddress: InetSocketAddress) = new Handle {
-    val key = theKey
-    val handler = context.actorOf(Props(createConnectionActor(this)))
-    val address = theAddress
+  override protected def createConnectionHandle(theKey: Key, theAddress: InetSocketAddress, theCommander: ActorRef) = {
+    new Handle {
+      val key = theKey
+      val handler = context.actorOf(Props(createConnectionActor(this)))
+      val address = theAddress
+      val commander = theCommander
+    }
   }
 
   protected def createConnectionActor(handle: Handle): IoConnectionActor = new IoConnectionActor(handle)
@@ -52,7 +55,8 @@ trait ConnectionActors extends IoPeer {
     protected def baseEventPipeline: Pipeline[Event] = {
       case x: IoPeer.Closed =>
         log.debug("Stopping connection actor, connection was closed due to {}", x.reason)
-        self ! PoisonPill
+        context.stop(self)
+        ioPeer.self ! x // inform our owner of our closing
       case _: Droppable => // don't warn
       case x => log.warning("eventPipeline: dropped {}", x)
     }

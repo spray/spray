@@ -34,10 +34,14 @@ class IoClient(val ioWorker: IoWorker) extends IoPeer {
     case cmd: Connect =>
       ioWorker.tell(cmd, Reply.withContext(sender))
 
-    case Reply(IoWorker.Connected(key, address), originalSender: ActorRef) =>
-      val handle = createConnectionHandle(key, address)
+    case Reply(IoWorker.Connected(key, address), commander: ActorRef) =>
+      val handle = createConnectionHandle(key, address, commander)
       ioWorker ! IoWorker.Register(handle)
-      originalSender ! Connected(handle)
+      commander ! Connected(handle)
+
+    case x: Closed =>
+      // inform the original connection commander of the closing
+      x.handle.commander ! x
 
     case Reply(Status.Failure(CommandException(Connect(address), msg, cause)), originalSender: ActorRef) =>
       originalSender ! Status.Failure(IoClientException("Couldn't connect to " + address, cause))

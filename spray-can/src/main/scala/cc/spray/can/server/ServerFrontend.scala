@@ -112,6 +112,7 @@ object ServerFrontend {
                   unconfirmedSends.foreach(dispatch)
                   openRequests.foreach(dispatch)
                 }
+                eventPL(event) // terminates the connection actor
 
               case TickGenerator.Tick =>
                 checkForTimeouts()

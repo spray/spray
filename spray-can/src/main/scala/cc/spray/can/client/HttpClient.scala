@@ -28,7 +28,7 @@ import akka.event.LoggingAdapter
  * Reacts to [[cc.spray.can.HttpClient.Connect]] messages by establishing a connection to the remote host.
  * If there is an error the sender receives either an [[cc.spray.can.HttpClientException]].
  * If the connection has been established successfully a new actor is spun up for the connection, which replies to the
- * sender of the [[cc.spray.can.HttpClient.Connect]] message with an [[akka.actor.Status.Failure]] message.
+ * sender of the [[cc.spray.can.HttpClient.Connect]] message with a [[cc.spray.can.HttpClient.Connected]] message.
  *
  * You can then send [[cc.spray.can.model.HttpRequestPart]] instances to the connection actor, which are going to be
  * replied to with [[cc.spray.can.model.HttpResponsePart]] messages (or [[akka.actor.Status.Failure]] instances

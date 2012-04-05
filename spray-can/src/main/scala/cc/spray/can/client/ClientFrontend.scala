@@ -104,6 +104,7 @@ object ClientFrontend {
 
           case x: HttpClient.Closed =>
             openRequests.foreach(rec => dispatch(rec.sender, x))
+            eventPL(event) // terminates the connection actor and informs the original commander
 
           case TickGenerator.Tick =>
             checkForTimeout()

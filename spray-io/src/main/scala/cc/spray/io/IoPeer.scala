@@ -25,8 +25,8 @@ abstract class IoPeer extends Actor with ActorLogging {
 
   def ioWorker: IoWorker
 
-  protected def createConnectionHandle(key: Key, address: InetSocketAddress): Handle =
-    SimpleHandle(key, self, address) // default implementation
+  protected def createConnectionHandle(key: Key, address: InetSocketAddress, commander: ActorRef): Handle =
+    SimpleHandle(key, self, address, commander) // default implementation
 
 }
 

@@ -31,6 +31,9 @@ abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
       def isDefinedAt(x: Any) = state.isDefinedAt(x)
       def apply(x: Any) { state(x) }
     } orElse {
+      case _: Closed =>
+        // by default we drop information about a closed connection here
+
       case Status.Failure(error) =>
         log.warning("Received {}", error)
     }
@@ -41,26 +44,27 @@ abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
       log.debug("Starting {} on {}", self.path, endpoint)
       this.endpoint = Some(endpoint)
       state = binding
-      ioWorker.tell(IoWorker.Bind(self, endpoint, bindingBacklog), Reply.withContext(sender))
+      val replyWithCommander = Reply.withContext(sender)
+      ioWorker.tell(IoWorker.Bind(replyWithCommander, endpoint, bindingBacklog), replyWithCommander)
 
     case x: ServerCommand =>
       sender ! Status.Failure(CommandException(x, "Not yet bound"))
   }
 
   lazy val binding: Receive = {
-    case Reply(IoWorker.Bound(key), originalSender: ActorRef) =>
+    case Reply(IoWorker.Bound(key), commander: ActorRef) =>
       bindingKey = Some(key)
       state = bound
       log.info("{} started on {}", self.path, endpoint.get)
-      originalSender ! Bound(endpoint.get)
+      commander ! Bound(endpoint.get)
 
     case x: ServerCommand =>
       sender ! Status.Failure(CommandException(x, "Still binding"))
   }
 
   lazy val bound: Receive = {
-    case IoWorker.Connected(key, address) =>
-      ioWorker ! IoWorker.Register(createConnectionHandle(key, address))
+    case Reply(IoWorker.Connected(key, address), commander: ActorRef) =>
+      ioWorker ! IoWorker.Register(createConnectionHandle(key, address, commander))
 
     case Unbind =>
       log.debug("Stopping {} on {}", self.path, endpoint.get)
