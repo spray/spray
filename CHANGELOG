@@ -1,3 +1,10 @@
+Version 1.0.0-M1 (2012-04-05)
+-----------------------------
+- Moved spray-can sources into spray codebase
+- Added spray-io component (and spray-util for common code)
+- Upgraded all components and examples to Akka 2.0
+
+
 Version 0.9.0 (2012-03-07)
 --------------------------
 - Fixed another problem in the request retry logic (spray-client)

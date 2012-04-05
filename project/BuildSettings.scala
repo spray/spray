@@ -1,13 +1,12 @@
 import sbt._
 import Keys._
 import com.github.siasia.WebPlugin._
-import sbtbuildinfo.Plugin._
 import ls.Plugin._
 
 object BuildSettings {
 
   lazy val basicSettings = seq(
-    version               := "0.9.0",
+    version               := "1.0-M1",
     homepage              := Some(new URL("http://spray.cc")),
     organization          := "cc.spray",
     organizationHomepage  := Some(new URL("http://spray.cc")),
@@ -50,10 +49,16 @@ object BuildSettings {
     publishLocal := ()
   )
 
-  lazy val buildInfoSettings = sbtbuildinfo.Plugin.buildInfoSettings ++ seq(
-    sourceGenerators in Compile <+= buildInfo,
-    buildInfoKeys := Seq[Scoped](name, version, scalaVersion, sbtVersion),
-    buildInfoPackage := "cc.spray"
+  lazy val generateSprayVersionConf = TaskKey[Seq[File]]("generate-spray-version-conf",
+    "Create a reference.conf file in the managed resources folder that contains a spray.version = ... setting")
+
+  lazy val sprayVersionConfGeneration = seq(
+    resourceGenerators in Compile <+= generateSprayVersionConf,
+    generateSprayVersionConf <<= (resourceManaged in Compile, version) map { (dir, v) =>
+      val file = dir / "reference.conf"
+      IO.write(file, """spray.version = "%s"""" format v)
+      Seq(file)
+    }
   )
 
   lazy val exampleSettings = basicSettings ++ noPublishing

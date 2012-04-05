@@ -19,7 +19,7 @@ class ConnectionTimeoutsSpec extends Specification with PipelineStageTest {
     "upon a Tick, create a Close command if the idle timeout expired" in {
       fixture(
         Received("Some Message"),
-        Sleep("50 ms"),
+        Sleep("60 ms"),
         TickGenerator.Tick
       ).commands === Seq(IoPeer.Close(IdleTimeout))
     }

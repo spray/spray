@@ -29,7 +29,7 @@ object Build extends Build {
     .settings(moduleSettings: _*)
     .settings(libraryDependencies ++=
       compile(mimepull, parboiled) ++
-      provided(akkaActor, sprayJson, slf4j, liftJson, twirlApi) ++
+      provided(akkaActor, sprayJson, liftJson, twirlApi) ++
       test(specs2)
     )
 
@@ -73,7 +73,7 @@ object Build extends Build {
 
   lazy val sprayUtil = Project("spray-util", file("spray-util"))
     .settings(moduleSettings: _*)
-    .settings(buildInfoSettings: _*)
+    .settings(sprayVersionConfGeneration: _*)
     .settings(libraryDependencies ++=
       provided(akkaActor) ++
       test(akkaTestKit, specs2)
