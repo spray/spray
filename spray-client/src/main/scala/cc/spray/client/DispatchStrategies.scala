@@ -81,7 +81,7 @@ object DispatchStrategies {
       }
     }
 
-    def findAvailableConnection(conns: Seq[HttpConn]) = {
+    def findAvailableConnection(conns: Seq[HttpConn]): Option[HttpConn] = {
       conns.find(_.pendingResponses == 0) orElse { // if possible dispatch to idle connections
         conns.find(_.pendingResponses == -1) // otherwise look for unconnected connections
       }

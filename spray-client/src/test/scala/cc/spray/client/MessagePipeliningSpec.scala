@@ -14,29 +14,62 @@
  * limitations under the License.
  */
 
-package cc.spray
-package client
+package cc.spray.client
 
-import akka.dispatch._
-import http._
-import org.specs2.Specification
-import typeconversion.{DefaultMarshallers, DefaultUnmarshallers}
-import encoding.Gzip
+import cc.spray.http._
+import cc.spray.typeconversion.{DefaultMarshallers, DefaultUnmarshallers}
+import cc.spray.encoding.Gzip
 import HttpHeaders._
 import HttpEncodings._
+import akka.dispatch.Promise
+import akka.actor.ActorSystem
+import cc.spray.util._
+import org.specs2.mutable.Specification
 
-class MessagePipeliningSpec extends Specification
-  with MessagePipelining with DefaultMarshallers with DefaultUnmarshallers { def is =
+class MessagePipeliningSpec extends Specification with MessagePipelining {
+  import DefaultMarshallers._
+  import DefaultUnmarshallers._
 
-  "MessagePipelining should"                                ^
-  "work correctly for simple requests"                      ! testSimple^
-  "support marshalling"                                     ! testMarshalling^
-  "support unmarshalling"                                   ! testUnmarshalling^
-  "support request compression"                             ! testCompression^
-  "support response decompression"                          ! testDecompression^
-  "support request authentication"                          ! testAuthentication^
-  "throw an Exception when unmarshalling non-200 responses" ! testUnsuccessfulUnmarshalling^
-                                                            end
+  implicit val system = ActorSystem()
+
+  "MessagePipelining" should {
+    "work correctly for simple requests" in {
+      val pipeline = simpleRequest ~> report
+      pipeline(Get("/abc")).await === HttpResponse(200, "GET|/abc|None")
+    }
+
+    "support marshalling" in {
+      val pipeline = simpleRequest[String] ~> report
+      pipeline(Get("/abc", "Hello")).await === HttpResponse(200, "GET|/abc|Some(Right(Hello))")
+    }
+
+    "support unmarshalling" in {
+      val pipeline = simpleRequest ~> report ~> unmarshal[String]
+      pipeline(Get("/abc")).await === "GET|/abc|None"
+    }
+
+    "support request compression" in {
+      val pipeline = simpleRequest[String] ~> encode(Gzip) ~> reportDecoding
+      pipeline(Get("/abc", "Hello")).await === HttpResponse(200, "GET|/abc|Some(Right(Hello))")
+    }
+
+    "support response decompression" in {
+      val pipeline = simpleRequest[String] ~> encode(Gzip) ~> echo ~> decode(Gzip)
+      pipeline(Get("/abc", "Hello")).await === HttpResponse(200, List(`Content-Encoding`(gzip)), "Hello")
+    }
+
+    "support request authentication" in {
+      val pipeline = simpleRequest ~> authenticate(BasicHttpCredentials("bob", "1234")) ~> authenticatedEcho
+      pipeline(Get()).await === HttpResponse(200)
+    }
+
+    "throw an Exception when unmarshalling non-200 responses" in {
+      val pipeline = simpleRequest[String] ~> echo ~> transformResponse(_.copy(status = 500)) ~> unmarshal[String]
+      pipeline(Get("/", "XXX")).await must throwAn(new UnsuccessfulResponseException(StatusCodes.InternalServerError))
+    }
+  }
+
+  step(system.shutdown())
 
   val report: SendReceive = { request =>
     import request._
@@ -61,41 +94,6 @@ class MessagePipeliningSpec extends Specification
     )
   }
 
-  def completed(response: HttpResponse) =
-    new DefaultCompletableFuture[HttpResponse](Long.MaxValue).completeWithResult(response)
+  def completed(response: HttpResponse) = Promise.successful(response)
 
-  def testSimple = {
-    val pipeline = simpleRequest ~> report
-    pipeline(Get("/abc")).get mustEqual HttpResponse(200, "GET|/abc|None")
-  }
-
-  def testMarshalling = {
-    val pipeline = simpleRequest[String] ~> report
-    pipeline(Get("/abc", "Hello")).get mustEqual HttpResponse(200, "GET|/abc|Some(Right(Hello))")
-  }
-
-  def testUnmarshalling = {
-    val pipeline = simpleRequest ~> report ~> unmarshal[String]
-    pipeline(Get("/abc")).get mustEqual "GET|/abc|None"
-  }
-
-  def testCompression = {
-    val pipeline = simpleRequest[String] ~> encode(Gzip) ~> reportDecoding
-    pipeline(Get("/abc", "Hello")).get mustEqual HttpResponse(200, "GET|/abc|Some(Right(Hello))")
-  }
-
-  def testDecompression = {
-    val pipeline = simpleRequest[String] ~> encode(Gzip) ~> echo ~> decode(Gzip)
-    pipeline(Get("/abc", "Hello")).get mustEqual HttpResponse(200, List(`Content-Encoding`(gzip)), "Hello")
-  }
-
-  def testAuthentication = {
-    val pipeline = simpleRequest ~> authenticate(BasicHttpCredentials("bob", "1234")) ~> authenticatedEcho
-    pipeline(Get()).get mustEqual HttpResponse(200)
-  }
-
-  def testUnsuccessfulUnmarshalling = {
-    val pipeline = simpleRequest[String] ~> echo ~> transformResponse(_.copy(status = 500)) ~> unmarshal[String]
-    pipeline(Get("/", "XXX")).get must throwAn(new UnsuccessfulResponseException(StatusCodes.InternalServerError))
-  }
 }

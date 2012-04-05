@@ -14,14 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray
+package cc.spray.client
 
-import http.StatusCode
-
-package object client {
-
-}
 
 class PipelineException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
-
-class UnsuccessfulResponseException(val responseStatus: StatusCode) extends RuntimeException
