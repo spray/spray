@@ -66,6 +66,7 @@ class ExpiringLruCacheSpec extends Specification {
       cache(3)("C").await mustEqual "C"
       cache.store.toString mustEqual "{2=B, 1=A, 3=C}"
       cache(4)("D")
+      Thread.sleep(10)
       cache.store.toString mustEqual "{2=B, 3=C, 4=D}"
     }
     "expire old entries" in {

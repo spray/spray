@@ -35,7 +35,7 @@ import akka.actor.{Actor, Props, ActorSystem}
 class HttpConduitSpec extends Specification {
   implicit val system = ActorSystem()
 
-  def is =
+  def is =                                                                    sequential^
   "An HttpConduit with max. 4 connections and NonPipelined strategy should"   ^
     "properly deliver the result of a simple request"                         ! oneRequest(NonPipelined())^
     "properly deliver the results of 100 requests"                            ! hundredRequests(NonPipelined())^
@@ -85,7 +85,7 @@ class HttpConduitSpec extends Specification {
 
   def hundredRequests(strategy: DispatchStrategy) = {
     val conduit = newConduit(strategy)
-    val requests = Seq.tabulate(100)(index => HttpRequest(uri = "/" + index))
+    val requests = Seq.tabulate(10)(index => HttpRequest(uri = "/" + index))
     val responseFutures = requests.map(conduit.sendReceive(_))
     responseFutures.zipWithIndex.map { case (future, index) =>
       future.await.copy(headers = Nil) === HttpResponse(200, "GET|/" + index)
