@@ -1,59 +1,64 @@
-package cc.spray
-package examples.client
+package cc.spray.examples.client
 
-import http._
-import HttpMethods._
-import can.HttpClient
-import akka.config.Supervision._
-import akka.actor.{PoisonPill, Actor, Supervisor}
-import client.{Get, HttpConduit}
-import typeconversion.{SprayJsonSupport, DefaultMarshallers}
-import util.Logging
+import akka.actor.{Props, ActorSystem}
+import cc.spray.io.IoWorker
+import cc.spray.can.client.HttpClient
+import cc.spray.typeconversion.SprayJsonSupport
+import cc.spray.client.{Get, HttpConduit}
+import cc.spray.http.{HttpMethods, HttpRequest}
+import cc.spray.util._
 
-object Main extends App with Logging {
 
-  // start and supervise the spray-can HttpClient actor
-  Supervisor(
-    SupervisorConfig(
-      OneForOneStrategy(List(classOf[Exception]), 3, 100),
-      List(Supervise(Actor.actorOf(new HttpClient()), Permanent))
-    )
+object Main extends App {
+
+  implicit val system = ActorSystem()
+  def log = system.log
+
+  // every spray-can HttpClient (and HttpServer) needs an IoWorker for low-level network IO
+  // (but several servers and/or clients can share one)
+  val ioWorker = new IoWorker(system).start()
+
+  // create and start a spray-can HttpClient
+  val httpClient = system.actorOf(
+    props = Props(new HttpClient(ioWorker)),
+    name = "http-client"
   )
 
   fetchAndShowGithubDotCom()
 
   fetchAndShowHeightOfMtEverest()
 
-  Actor.registry.actors.foreach(_ ! PoisonPill)
+  system.shutdown()
+  ioWorker.stop()
 
   ///////////////////////////////////////////////////
 
   def fetchAndShowGithubDotCom() {
-    // the HttpConduit gives us access to an HTTP server, it manages a pool of connections
-    val conduit = new HttpConduit("github.com")
+    // an HttpConduit gives us access to an HTTP server, it manages a pool of connections
+    val conduit = new HttpConduit(httpClient, "github.com")
 
     // send a simple request
-    val responseFuture = conduit.sendReceive(HttpRequest(method = GET, uri = "/"))
-    val response = responseFuture.get
+    val responseFuture = conduit.sendReceive(HttpRequest(method = HttpMethods.GET, uri = "/"))
+    val response = responseFuture.await
     log.info(
       """|Response for GET request to github.com:
          |status : {}
          |headers: {}
          |body   : {}""".stripMargin,
-      response.status.value, response.headers, response.content
+      response.status.value, response.headers.mkString("\n  ", "\n  ", ""), response.content
     )
-    conduit.close()
+    conduit.close() // the conduit should be closed when all operations on it have been completed
   }
 
   def fetchAndShowHeightOfMtEverest() {
     log.info("Requesting the elevation of Mt. Everest from Googles Elevation API...")
-    val conduit = new HttpConduit("maps.googleapis.com")
+    val conduit = new HttpConduit(httpClient, "maps.googleapis.com")
       with SprayJsonSupport
       with ElevationJsonProtocol {
       val elevationPipeline = simpleRequest ~> sendReceive ~> unmarshal[GoogleApiResult[Elevation]]
     }
-    val responseFuture = conduit.elevationPipeline(Get("/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))
-    log.info("The elevation of Mt. Everest is: {} m", responseFuture.get.results.head.elevation)
+    val responseF = conduit.elevationPipeline(Get("/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))
+    log.info("The elevation of Mt. Everest is: {} m", responseF.await.results.head.elevation)
     conduit.close()
   }
 }

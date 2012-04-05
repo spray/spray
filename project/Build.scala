@@ -115,6 +115,10 @@ object Build extends Build {
   lazy val simpleSprayClient = Project("simple-spray-client", file("examples/spray-client/simple-spray-client"))
     .dependsOn(sprayClient)
     .settings(exampleSettings: _*)
+    .settings(libraryDependencies ++=
+      compile(akkaActor, sprayJson) ++
+      runtime(akkaSlf4j, logback, slf4j)
+    )
 
   lazy val sprayIoExamples = Project("spray-io-examples", file("examples/spray-io"))
     .aggregate(echoServerExample)
