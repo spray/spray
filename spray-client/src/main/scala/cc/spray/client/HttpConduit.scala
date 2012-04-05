@@ -14,130 +14,192 @@
  * limitations under the License.
  */
 
-package cc.spray
-package client
+package cc.spray.client
 
-import utils._
-import http._
-import akka.actor.Actor
-import akka.actor.Actor._
-import can.{HttpConnection, Connect}
-import akka.dispatch.{DefaultCompletableFuture, Future}
-import HttpProtocols._
+import cc.spray.http._
+import cc.spray.can.client.HttpClient
+import cc.spray.util._
+import com.typesafe.config.{Config, ConfigFactory}
+import akka.actor._
+import akka.dispatch.Promise
+import collection.mutable.Queue
+import cc.spray.SprayCanConversions
 import SprayCanConversions._
+import cc.spray.io.{CleanClose, ConnectionClosedReason, Handle}
 
-class HttpConduit(host: String, port: Int = 80, config: ConduitConfig = ConduitConfig.fromAkkaConf)
-  extends MessagePipelining with Logging {
 
-  protected lazy val httpClient = ActorHelpers.actor(config.clientActorId)
-  protected val mainActor = actorOf(new MainActor).start()
+class HttpConduit(httpClient: ActorRef,
+                  host: String,
+                  port: Int = 80,
+                  dispatchStrategy: DispatchStrategy = DispatchStrategies.NonPipelined(),
+                  config: Config = ConfigFactory.load())
+                 (implicit system: ActorSystem) extends MessagePipelining {
 
-  val sendReceive: SendReceive = sendReceive()
+  private val settings = new ConduitSettings(config)
+  private val mainActor = system.actorOf(Props(new MainActor))
 
-  def sendReceive(timeout: Long = Actor.defaultTimeout.duration.toMillis): SendReceive = { request =>
-    make(new DefaultCompletableFuture[HttpResponse](timeout)) { future =>
-      mainActor ! Send(request, { result => future.complete(result); () }, config.maxRetries)
-    }
+  val sendReceive: SendReceive = { request =>
+    val promise = Promise[HttpResponse]()
+    mainActor ! RequestContext(request, settings.MaxRetries, promise)
+    promise
   }
 
   def close() {
-    mainActor.stop()
+    mainActor ! Stop
   }
 
-  protected case class Send(request: HttpRequest, responder: Either[Throwable, HttpResponse] => Unit, retriesLeft: Int)
-    extends HttpRequestContext {
+  private case object Stop
+  private case class RequestContext(request: HttpRequest, retriesLeft: Int,
+                                      result: Promise[HttpResponse]) extends HttpRequestContext {
     def withRetriesDecremented = copy(retriesLeft = retriesLeft - 1)
   }
 
-  protected class MainActor extends Actor {
-    case class ConnectionResult(conn: Conn, send: Send, result: Either[Throwable, HttpConnection])
-    case class Respond(conn: Conn, send: Send, result: Either[Throwable, HttpResponse])
+  private class MainActor extends Actor with ActorLogging {
+    val conns = Vector.tabulate(settings.MaxConnections)(i => new Conn(i + 1))
+    context.watch(httpClient)
 
-    val conns = Seq.fill(config.maxConnections)(new Conn)
+    def receive = {
+      case x: RequestContext =>
+        dispatchStrategy.dispatch(x, conns)
 
-    protected def receive = {
-      case send: Send => config.dispatchStrategy.dispatch(send, conns)
-      case Respond(conn, send: Send, result@ Right(response)) =>
-        log.debug("Dispatching '%s' response to %s", response.status.value, requestString(send.request), response)
-        if (closeExpected(response)) {
-          conn.pendingResponses = -1
-          conn.httpConnection = None
-        } else conn.pendingResponses -= 1
-        send.responder(result)
-        config.dispatchStrategy.onStateChange(conns)
-      case Respond(conn, send: Send, Left(error)) if send.retriesLeft > 0 =>
-        log.debug("Received '%s' in response to %s with %s retries left, retrying...", error.toString,
-          requestString(send.request), send.retriesLeft)
-        // only decrease retry counter if we are the first request on this connection that failed
-        val retry = if (conn.httpConnection.isEmpty) send.withRetriesDecremented else send
-        config.dispatchStrategy.dispatch(retry, conns)
-      case Respond(conn, send: Send, result@ Left(error)) =>
-        log.debug("Received '%s' in response to %s with no retries left, dispatching error...", error.toString, requestString(send.request))
-        send.responder(result)
-      case ConnectionResult(conn, send, Right(httpConnection)) =>
-        conn.httpConnection = Some(Right(httpConnection))
-        conn.pendingResponses -= 1 // correct for +1 in dispatch
-        conn.dispatch(send)
-      case ConnectionResult(conn, send, Left(error)) =>
-        conn.httpConnection = None
-        conn.pendingResponses = -1
-        send.responder(Left(new PipelineException("Could not connect to %s:%s".format(host, port), error)))
-      case Clear(conn, httpConnection) =>
-        if (conn.httpConnection == Some(Right(httpConnection))) {
-          conn.pendingResponses = -1
-          conn.httpConnection = None
-          config.dispatchStrategy.onStateChange(conns)
+      case Reply(response: cc.spray.can.model.HttpResponse, (conn: Conn, ctx: RequestContext, _)) =>
+        conn.deliverResponse(ctx.request, fromSprayCanResponse(response), ctx.result)
+        dispatchStrategy.onStateChange(conns)
+
+      case Reply(_: HttpClient.SendCompleted, _) =>
+        // ignore
+
+      case Reply(problem, (conn: Conn, ctx: RequestContext, handle: Handle)) =>
+        val error = problem match {
+          case Status.Failure(error) => error
+          case HttpClient.Closed(_, reason) => new RuntimeException("Connection closed, reason: " + reason)
         }
+        conn.retry(ctx, handle, error).foreach(dispatchStrategy.dispatch(_, conns))
+        dispatchStrategy.onStateChange(conns)
+
+      case Reply(HttpClient.Connected(handle), conn: Conn) =>
+        conn.connected(handle)
+
+      case Reply(Status.Failure(error), conn: Conn) =>
+        conn.connectFailed(error)
+        dispatchStrategy.onStateChange(conns)
+
+      case Reply(HttpClient.Closed(handle, reason), conn: Conn) =>
+        conn.closed(handle, reason)
+        dispatchStrategy.onStateChange(conns)
+
+      case Terminated(client) if client == httpClient =>
+        stop()
+
+      case Stop =>
+        context.unwatch(httpClient)
+        stop()
     }
 
-    def closeExpected(response: HttpResponse) = {
-      import response._
-      import HttpHeaders._
-      protocol match {
-        case `HTTP/1.0` => !headers.exists({ case Connection(Seq("Keep-Alive")) => true ; case _ => false })
-        case `HTTP/1.1` => headers.exists({ case Connection(Seq("close")) => true ; case _ => false })
-      }
+    def stop() {
+      conns.foreach(_.close())
+      context.stop(self)
     }
 
-    def requestString(request: HttpRequest) = {
+    def requestString(request: HttpRequest) =
       "%s request to http://%s:%s%s".format(request.method, host, port, request.uri)
-    }
 
-    class Conn extends HttpConn {
-      implicit val timeout = Actor.Timeout(Long.MaxValue) // in scope for '? Connect(...)' call below
+    class Conn(index: Int) extends HttpConn {
+      private sealed trait ConnectionState
+      private case object Unconnected extends ConnectionState
+      private case object Connecting extends ConnectionState
+      private case class Connected(handle: Handle) extends ConnectionState
+
+      private var connection: ConnectionState = Unconnected
+      private val pendingRequests = Queue.empty[RequestContext]
       var pendingResponses: Int = -1
-      var httpConnection: Option[Either[Future[HttpConnection], HttpConnection]] = None
 
-      def dispatch(requestCtx: HttpRequestContext) {
-        val send = requestCtx.asInstanceOf[Send]
-        if (httpConnection.isEmpty) {
-          log.debug("Opening new connection to %s:%s", host, port)
-          pendingResponses = 1
-          val connectionFuture = (httpClient ? Connect(host, port)).mapTo[HttpConnection].onComplete { future =>
-            self ! ConnectionResult(this, send, future.value.get)
-          }
-          httpConnection = Some(Left(connectionFuture))
-        } else {
-          pendingResponses += 1
-          def dispatchTo(connection: HttpConnection) {
-            log.debug("Dispatching %s", requestString(send.request))
-            connection.send(toSprayCanRequest(send.request)).onComplete {
-              _.value.get match {
-                case Right(response) => self ! Respond(this, send, Right(fromSprayCanResponse(response)))
-                case Left(error) =>
-                  self ! Clear(this, connection)
-                  self ! Respond(this, send, Left(error))
-              }
-            }
-          }
-          httpConnection.get match {
-            case Right(connection) => dispatchTo(connection)
-            case Left(future) => future.onResult { case connection => dispatchTo(connection) }
-          }
+      def dispatch(ctx: HttpRequestContext) {
+        connection match {
+          case Unconnected =>
+            log.debug("Opening connection {} to {}:{}", index, host, port)
+            pendingResponses = 0
+            connection = Connecting
+            httpClient.tell(HttpClient.Connect(host, port), Reply.withContext(this))
+            dispatch(ctx)
+
+          case Connecting =>
+            pendingRequests.enqueue(ctx.asInstanceOf[RequestContext])
+            pendingResponses += 1
+
+          case Connected(handle) =>
+            dispatch(ctx, handle)
+            pendingResponses += 1
         }
       }
-    }
 
-    private case class Clear(conn: Conn, httpConnection: HttpConnection)
+      def dispatch(ctx: HttpRequestContext, handle: Handle) {
+        log.debug("Dispatching {} across connection {}", requestString(ctx.request), index)
+        handle.handler.tell(toSprayCanRequest(ctx.request), Reply.withContext((this, ctx, handle)))
+      }
+
+      def connected(handle: Handle) {
+        connection = Connected(handle)
+        log.debug("Connected connection {}, dispatching {} pending requests", index, pendingRequests.length)
+        while (!pendingRequests.isEmpty) dispatch(pendingRequests.dequeue(), handle)
+      }
+
+      def connectFailed(error: Throwable) {
+        while (!pendingRequests.isEmpty) pendingRequests.dequeue().result.failure(error)
+        clear()
+      }
+
+      def deliverResponse(request: HttpRequest, response: HttpResponse, result: Promise[HttpResponse]) {
+        import HttpProtocols._
+        def closeExpected = response.protocol match {
+          case `HTTP/1.0` => !response.headers.exists(_ matches { case HttpHeaders.Connection(Seq("Keep-Alive")) => })
+          case `HTTP/1.1` => response.headers.exists(_ matches { case HttpHeaders.Connection(Seq("close")) => })
+        }
+        log.debug("Dispatching {} response to {}", response.status.value, requestString(request))
+        result.success(response)
+        if (closeExpected) clear()
+        else pendingResponses -= 1
+      }
+
+      def retry(ctx: RequestContext, errorHandle: Handle, error: Throwable): Option[RequestContext] = {
+        def retryWith(ctx: RequestContext) = {
+          log.debug("Received '{}' in response to {} with {} retries left, retrying...",
+            error, requestString(ctx.request), ctx.retriesLeft)
+          Some(ctx)
+        }
+        if (connection == Connected(errorHandle)) {
+          // only the first of a potential series of failed requests on the connection gets here
+          clear()
+          if (ctx.retriesLeft == 0) {
+            log.debug("Received '{}' in response to {} with no retries left, dispatching error...",
+              error, requestString(ctx.request))
+            ctx.result.failure(error)
+            None
+          } else retryWith(ctx.withRetriesDecremented)
+        } else retryWith(ctx)
+      }
+
+      def closed(handle: Handle, reason: ConnectionClosedReason) {
+        if (connection == Connected(handle)) {
+          log.debug("Connection {} lost due to {}", index, reason)
+          clear()
+        }
+      }
+
+      def close() {
+        connection match {
+          case Connected(handle) =>
+            log.debug("Closing connection {} to due HttpConduit being closed", index)
+            handle.handler ! HttpClient.Close(CleanClose)
+          case _ =>
+        }
+      }
+
+      def clear() {
+        pendingResponses = -1
+        connection = Unconnected
+      }
+    }
   }
+
 }

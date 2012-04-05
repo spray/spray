@@ -17,7 +17,9 @@
 package cc.spray
 package authentication
 
-import akka.dispatch.AlreadyCompletedFuture
+import com.typesafe.config.ConfigException
+import akka.dispatch.{ExecutionContext, Promise}
+
 
 /**
  * A UserPassAuthenticator that uses plain-text username/password definitions from the spray/akka config file
@@ -33,20 +35,21 @@ import akka.dispatch.AlreadyCompletedFuture
  * }
  * }}}
  */
-object FromConfigUserPassAuthenticator extends UserPassAuthenticator[BasicUserContext] {
-  def apply(userPass: Option[(String, String)]) = new AlreadyCompletedFuture(
-    Right {
-      userPass.flatMap {
-        case (user, pass) => {
-          akka.config.Config.config.getString("spray.users." + user).flatMap { pw =>
-            if (pw == pass) {
-              Some(BasicUserContext(user))
-            } else {
-              None
+object FromConfigUserPassAuthenticator {
+  def apply()(implicit executor: ExecutionContext): UserPassAuthenticator[BasicUserContext] = {
+    new UserPassAuthenticator[BasicUserContext] {
+      def apply(userPass: Option[(String, String)]) = Promise.successful(
+        userPass.flatMap {
+          case (user, pass) => {
+            try {
+              val pw = SprayServerSettings.Users.getString(user)
+              if (pw == pass) Some(BasicUserContext(user)) else None
+            } catch {
+              case _: ConfigException => None
             }
           }
         }
-      }
+      )
     }
-  )
+  }
 }

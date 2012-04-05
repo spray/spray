@@ -16,7 +16,8 @@
 
 package cc.spray
 
-import utils._
+import util._
+import pimps.Product0
 
 /**
  * The FilterResult represents the two different filtering outcomes of RouteFilters:

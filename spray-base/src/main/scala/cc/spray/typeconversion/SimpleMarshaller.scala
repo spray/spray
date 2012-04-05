@@ -18,7 +18,7 @@ package cc.spray
 package typeconversion
 
 import http._
-import utils._
+import util._
 
 abstract class SimpleMarshaller[A] extends Marshaller[A] {
 

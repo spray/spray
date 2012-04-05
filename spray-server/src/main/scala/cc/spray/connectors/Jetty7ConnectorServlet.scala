@@ -24,7 +24,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * The spray connector servlet for Jetty 7.
  */
-class Jetty7ConnectorServlet extends ConnectorServlet("Jetty 7") {
+class Jetty7ConnectorServlet extends ConnectorServlet {
+
+  def containerName = "Jetty 7"
 
   override def service(req: HttpServletRequest, resp: HttpServletResponse) {
     requestContext(req, resp, responder(req, resp)).foreach(rootService ! _)
@@ -49,7 +51,7 @@ class Jetty7ConnectorServlet extends ConnectorServlet("Jetty 7") {
       if (alreadyResponded.compareAndSet(false, true)) {
         respond(req, resp, response)
         continuation.complete()
-      } else log.warn("Received late response to %s, which already timed out, dropping response...", requestString(req))
+      } else log.warning("Received late response to {}, which already timed out, dropping response...", requestString(req))
     }
   }
   

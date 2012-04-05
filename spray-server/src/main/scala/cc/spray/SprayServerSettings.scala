@@ -16,15 +16,19 @@
 
 package cc.spray
 
-import utils.AkkaConfSettings
+import com.typesafe.config.{ConfigFactory, Config}
 
-object SprayServerSettings extends AkkaConfSettings("spray.") {
-  lazy val RootActorId                = configString("spray-root-service")
-  lazy val TimeoutActorId             = configString("spray-root-service")
-  lazy val RequestTimeout             = configInt(1000)
-  lazy val RootPath                   = configString
-  lazy val FileChunkingThresholdSize  = configLong(Long.MaxValue) // in bytes
-  lazy val FileChunkingChunkSize      = configInt(512 * 1024) // 512 KB
+object SprayServerSettings {
+  private[this] val c: Config = {
+    val c = ConfigFactory.load()
+    c.checkValid(ConfigFactory.defaultReference(), "spray.server")
+    c.getConfig("spray.server")
+  }
 
-  warnOnUndefinedExcept("CompactJsonPrinting", "LoggingTarget")
+  val FileChunkingThresholdSize = c getBytes  "file-chunking-threshold-size"
+  val FileChunkingChunkSize     = c getBytes  "file-chunking-chunk-size"
+  val Users                     = c getConfig "users"
+
+  require(FileChunkingThresholdSize >= 0, "file-chunking-threshold-size must be >= 0")
+  require(FileChunkingChunkSize     > 0, "file-chunking-chunk-size must be >= 0")
 }

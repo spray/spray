@@ -18,6 +18,7 @@ package cc.spray
 
 import directives._
 import typeconversion._
+import akka.actor.ActorSystem
 
 /**
  * Directives is the central trait you should mix in to get access to ''sprays'' Route building directives.
@@ -40,4 +41,8 @@ trait Directives
         with FromStringDeserializers
         with ReceptaclePimps
 
-object Directives extends Directives
+object Directives {
+  def apply(_system: ActorSystem): Directives = new Directives {
+    def actorSystem = _system
+  }
+}

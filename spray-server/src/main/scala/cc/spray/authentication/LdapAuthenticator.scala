@@ -22,8 +22,8 @@ import javax.naming.{Context, NamingException, NamingEnumeration}
 import javax.naming.ldap.InitialLdapContext
 import javax.naming.directory.{SearchControls, SearchResult, Attribute}
 import collection.JavaConverters._
-import utils.Logging
-import akka.dispatch.{Future, AlreadyCompletedFuture}
+import akka.dispatch.{Promise, Future}
+import akka.actor.ActorSystem
 
 /**
  * The LdapAuthenticator faciliates user/password authentication against an LDAP server.
@@ -35,7 +35,8 @@ import akka.dispatch.{Future, AlreadyCompletedFuture}
  * matching a given user name. If exactly one user entry is found another LDAP bind operation is performed using the
  * principal DN of the found user entry to validate the password.
  */
-class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthenticator[T] with Logging {
+class LdapAuthenticator[T](config: LdapAuthConfig[T])(implicit system: ActorSystem) extends UserPassAuthenticator[T] {
+  def log = system.log
 
   def apply(userPass: Option[(String, String)]) = {
     def auth3(entry: LdapQueryResult, pass: String) = {
@@ -44,7 +45,7 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthentica
           authContext.close()
           config.createUserObject(entry)
         case Left(ex) =>
-          log.info("Could not authenticate credentials '%s'/'%s': %s", entry.fullName, pass, ex)
+          log.info("Could not authenticate credentials '{}'/'{}': {}", entry.fullName, pass, ex)
           None
       }
     }
@@ -53,11 +54,11 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthentica
       query(searchContext, user) match {
         case entry :: Nil => auth3(entry, pass)
         case Nil =>
-          log.warn("User '%s' not found (search filter '%s' and search base '%s'", user, config.searchFilter(user),
+          log.warning("User '{}' not found (search filter '{}' and search base '{}'", user, config.searchFilter(user),
             config.searchBase(user))
           None
         case entries =>
-          log.warn("Expected exactly one search result for search filter '%s' and search base '%s', but got %s",
+          log.warning("Expected exactly one search result for search filter '{}' and search base '{}', but got {}",
             config.searchFilter(user), config.searchBase(user), entries.size)
           None
       }
@@ -71,7 +72,7 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthentica
           searchContext.close()
           result
         case Left(ex) =>
-          log.warn("Could not authenticate with search credentials '%s'/'%s': %s", searchUser, searchPass, ex)
+          log.warning("Could not authenticate with search credentials '{}'/'{}': {}", searchUser, searchPass, ex)
           None
       }
     }
@@ -79,13 +80,13 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthentica
     userPass match {
       case Some((user, pass)) => Future(auth1(user, pass))
       case None =>
-        log.warn("LdapAuthenticator.apply called with empty userPass, authentication not possible")
-        new AlreadyCompletedFuture(Right(None))
+        log.warning("LdapAuthenticator.apply called with empty userPass, authentication not possible")
+        Promise.successful(None)
     }
   }
 
   def ldapContext(user: String, pass: String): Either[Throwable, InitialLdapContext] = {
-    util.control.Exception.catching(classOf[NamingException]).either {
+    scala.util.control.Exception.catching(classOf[NamingException]).either {
       val env = new Hashtable[AnyRef, AnyRef]
       env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
       env.put(Context.SECURITY_PRINCIPAL, user)
@@ -133,5 +134,5 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T]) extends UserPassAuthentica
 }
 
 object LdapAuthenticator {
-  def apply[T](config: LdapAuthConfig[T]) = new LdapAuthenticator(config)
+  def apply[T](config: LdapAuthConfig[T])(implicit system: ActorSystem) = new LdapAuthenticator(config)
 }

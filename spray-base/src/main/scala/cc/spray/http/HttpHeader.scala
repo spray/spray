@@ -20,7 +20,6 @@ package http
 
 import parser.HttpParser
 import java.lang.String
-import utils.Logging
 
 abstract class HttpHeader extends Product {
   val name = productPrefix.replace("$minus", "-")
@@ -28,7 +27,7 @@ abstract class HttpHeader extends Product {
   override def toString = name + ": " + value
 }
 
-object HttpHeader extends Logging {
+object HttpHeader {
   def apply(name: String, value: String): HttpHeader = {
     HttpParser.rules.get(name.trim.toUpperCase.replace('-', '_')) match {
       case None => HttpHeaders.CustomHeader(name, value)
@@ -36,7 +35,7 @@ object HttpHeader extends Logging {
         case Left(error) =>
           val msg = "Illegal HTTP header '" + name + "':\n" + error
           if (SprayBaseSettings.RelaxedHeaderParsing) {
-            log.warn(msg)
+            //log.warning(msg)
             HttpHeaders.CustomHeader(name, value)
           } else throw new HttpException(StatusCodes.BadRequest, msg)
         case Right(header) => header

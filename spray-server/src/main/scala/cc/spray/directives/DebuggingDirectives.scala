@@ -17,11 +17,13 @@
 package cc.spray
 package directives
 
-import utils.Logging
 import http.{HttpResponse, HttpRequest, HttpMessage}
+import akka.actor.ActorSystem
 
 trait DebuggingDirectives {
-  this: BasicDirectives with MiscDirectives with Logging =>
+  this: BasicDirectives with MiscDirectives =>
+
+  def system: ActorSystem
 
   def logRequest(marker: String = "") = transformRequest(logMessage("Request", marker))
 
@@ -32,24 +34,24 @@ trait DebuggingDirectives {
   def logChunkedResponse(marker: String) = transformChunkedResponse(logMessage("Chunked response", marker))
 
   def logRequestResponse(marker: String = "",
-                         showRequest: HttpRequest => Any = utils.identityFunc,
-                         showResponse: HttpResponse => Any = utils.identityFunc) = {
+                         showRequest: HttpRequest => Any = util.identityFunc,
+                         showResponse: HttpResponse => Any = util.identityFunc) = {
     transformRequestContext { ctx =>
       val mark = if (marker.isEmpty) marker else " " + marker
       val request2Show = showRequest(ctx.request)
-      log.debug("Request%s: %s", mark, request2Show)
+      log.debug("Request{}: {}", mark, request2Show)
       ctx.withResponderTransformed { responder =>
         responder.copy(
           complete = { response =>
-            log.debug("Completed%s %s with %s", mark, request2Show, showResponse(response))
+            log.debug("Completed{} {} with {}", mark, request2Show, showResponse(response))
             responder.complete(response)
           },
           reject = { rejections =>
-            log.debug("Rejected%s %s with %s", mark, request2Show, rejections)
+            log.debug("Rejected{} {} with {}", mark, request2Show, rejections)
             responder.reject(rejections)
           },
           startChunkedResponse = { response =>
-            log.debug("Started chunked response for%s %s with %s", mark, request2Show, showResponse(response))
+            log.debug("Started chunked response for{} {} with {}", mark, request2Show, showResponse(response))
             responder.startChunkedResponse(response)
           }
         )
@@ -58,8 +60,9 @@ trait DebuggingDirectives {
   }
 
   private def logMessage[T <: HttpMessage[T]](prefix: String, marker: String)(msg: T) = {
-    log.debug("%s: %s", if (marker.isEmpty) prefix else prefix + ' ' + marker, msg)
+    log.debug("{}: {}", if (marker.isEmpty) prefix else prefix + ' ' + marker, msg)
     msg
   }
 
+  private def log = system.log
 }

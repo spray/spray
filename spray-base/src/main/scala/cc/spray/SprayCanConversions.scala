@@ -26,7 +26,7 @@ import collection.breakOut
 
 object SprayCanConversions {
 
-  def fromSprayCanRequest(request: can.HttpRequest) = {
+  def fromSprayCanRequest(request: can.model.HttpRequest) = {
     val (contentType, _, regularHeaders) = parseFromRaw(request.headers)
     HttpRequest(
       method = fromSprayCanMethod(request.method),
@@ -38,7 +38,7 @@ object SprayCanConversions {
   }
 
   def toSprayCanRequest(request: HttpRequest) = {
-    can.HttpRequest(
+    can.model.HttpRequest(
       method = toSprayCanMethod(request.method),
       uri = request.uri,
       headers = toSprayCanHeaders(request.headers, request.content),
@@ -46,35 +46,35 @@ object SprayCanConversions {
     )
   }
 
-  def fromSprayCanMethod(method: can.HttpMethod) = method match {
-    case can.HttpMethods.GET     => GET
-    case can.HttpMethods.POST    => POST
-    case can.HttpMethods.PUT     => PUT
-    case can.HttpMethods.DELETE  => DELETE
-    case can.HttpMethods.HEAD    => HEAD
-    case can.HttpMethods.OPTIONS => OPTIONS
-    case can.HttpMethods.TRACE   => TRACE
-    case can.HttpMethods.CONNECT => throw HttpException(StatusCodes.MethodNotAllowed)
+  def fromSprayCanMethod(method: can.model.HttpMethod) = method match {
+    case can.model.HttpMethods.GET     => GET
+    case can.model.HttpMethods.POST    => POST
+    case can.model.HttpMethods.PUT     => PUT
+    case can.model.HttpMethods.DELETE  => DELETE
+    case can.model.HttpMethods.HEAD    => HEAD
+    case can.model.HttpMethods.OPTIONS => OPTIONS
+    case can.model.HttpMethods.TRACE   => TRACE
+    case can.model.HttpMethods.CONNECT => throw HttpException(StatusCodes.MethodNotAllowed)
   }
 
   def toSprayCanMethod(method: HttpMethod) = method match {
-    case GET     => can.HttpMethods.GET
-    case POST    => can.HttpMethods.POST
-    case PUT     => can.HttpMethods.PUT
-    case DELETE  => can.HttpMethods.DELETE
-    case HEAD    => can.HttpMethods.HEAD
-    case OPTIONS => can.HttpMethods.OPTIONS
-    case TRACE   => can.HttpMethods.TRACE
+    case GET     => can.model.HttpMethods.GET
+    case POST    => can.model.HttpMethods.POST
+    case PUT     => can.model.HttpMethods.PUT
+    case DELETE  => can.model.HttpMethods.DELETE
+    case HEAD    => can.model.HttpMethods.HEAD
+    case OPTIONS => can.model.HttpMethods.OPTIONS
+    case TRACE   => can.model.HttpMethods.TRACE
   }
 
-  def fromSprayCanProtocol(protocol: can.HttpProtocol) = protocol match {
-    case can.HttpProtocols.`HTTP/1.0` => `HTTP/1.0`
-    case can.HttpProtocols.`HTTP/1.1` => `HTTP/1.1`
+  def fromSprayCanProtocol(protocol: can.model.HttpProtocol) = protocol match {
+    case can.model.HttpProtocols.`HTTP/1.0` => `HTTP/1.0`
+    case can.model.HttpProtocols.`HTTP/1.1` => `HTTP/1.1`
   }
 
   def toSprayCanProtocol(protocol: HttpProtocol) = protocol match {
-    case `HTTP/1.0` => can.HttpProtocols.`HTTP/1.0`
-    case `HTTP/1.1` => can.HttpProtocols.`HTTP/1.1`
+    case `HTTP/1.0` => can.model.HttpProtocols.`HTTP/1.0`
+    case `HTTP/1.1` => can.model.HttpProtocols.`HTTP/1.1`
   }
 
   def fromSprayCanBody(contentTypeHeader: Option[HttpHeaders.`Content-Type`], body: Array[Byte]) = {
@@ -85,10 +85,10 @@ object SprayCanConversions {
   }
 
   def toSprayCanBody(content: Option[HttpContent]) = {
-    content.map(_.buffer).getOrElse(can.EmptyByteArray)
+    content.map(_.buffer).getOrElse(util.EmptyByteArray)
   }
 
-  def fromSprayCanResponse(response: can.HttpResponse) = {
+  def fromSprayCanResponse(response: can.model.HttpResponse) = {
     val (contentType, _, regularHeaders) = parseFromRaw(response.headers)
     new HttpResponse(
       status = response.status,
@@ -98,7 +98,7 @@ object SprayCanConversions {
     )
   }
 
-  def toSprayCanResponse(response: HttpResponse) = can.HttpResponse(
+  def toSprayCanResponse(response: HttpResponse) = can.model.HttpResponse(
     status = response.status.value,
     headers = toSprayCanHeaders(response.headers, response.content),
     body = toSprayCanBody(response.content),
@@ -106,15 +106,15 @@ object SprayCanConversions {
   )
 
   def toSprayCanHeaders(headers: List[HttpHeader], content: Option[HttpContent]) = {
-    val canHeaders: ListBuffer[can.HttpHeader] = headers.map(toSprayCanHeader) (breakOut)
-    content.foreach(c => canHeaders += can.HttpHeader("Content-Type", c.contentType.value))
+    val canHeaders: ListBuffer[can.model.HttpHeader] = headers.map(toSprayCanHeader) (breakOut)
+    content.foreach(c => canHeaders += can.model.HttpHeader("Content-Type", c.contentType.value))
     canHeaders.toList
   }
 
-  def toSprayCanHeader(header: HttpHeader) = can.HttpHeader(header.name, header.value)
+  def toSprayCanHeader(header: HttpHeader) = can.model.HttpHeader(header.name, header.value)
 
   def toSprayCanMessageChunk(chunk: MessageChunk) =
-    can.MessageChunk(chunk.body, chunk.extensions.map(toSprayCanChunkExtension))
+    can.model.MessageChunk(chunk.body, chunk.extensions.map(toSprayCanChunkExtension))
 
-  def toSprayCanChunkExtension(ext: ChunkExtension) = can.ChunkExtension(ext.name, ext.value)
+  def toSprayCanChunkExtension(ext: ChunkExtension) = can.model.ChunkExtension(ext.name, ext.value)
 }

@@ -17,26 +17,30 @@
 package cc.spray
 package connectors
 
-import utils.Logging
 import collection.JavaConversions._
 import javax.servlet.http.{HttpServletResponse, HttpServletRequest, HttpServlet}
-import utils.ActorHelpers._
 import http._
 import HttpHeaders._
 import StatusCodes._
 import MediaTypes._
 import java.util.concurrent.{TimeUnit, CountDownLatch}
 import java.io.{IOException, InputStream}
+import akka.actor.ActorSystem
 
-private[connectors] abstract class ConnectorServlet(containerName: String) extends HttpServlet with Logging {
-  lazy val rootService = actor(SprayServerSettings.RootActorId)
-  lazy val timeoutActor = actor(SprayServerSettings.TimeoutActorId)
-  var timeout: Int = _
+private[connectors] abstract class ConnectorServlet extends HttpServlet {
+  import SprayServletSettings._
+  var system: ActorSystem = _
+  lazy val rootService = system.actorFor(RootActorPath)
+  lazy val timeoutActor = if (TimeoutActorPath.isEmpty) rootService else system.actorFor(TimeoutActorPath)
+  def log = system.log
+  var timeout: Int = RequestTimeout.toInt
+
+  def containerName: String
 
   override def init() {
-    log.info("Initializing %s <=> Spray Connector", containerName)
-    timeout = SprayServerSettings.RequestTimeout
-    log.info("Async timeout for all requests is %s ms", timeout)
+    system = getServletContext.getAttribute(Initializer.SystemAttrName).asInstanceOf[ActorSystem]
+    log.info("Initializing {} <=> Spray Connector", containerName)
+    log.info("Async timeout for all requests is {} ms", timeout)
   }
 
   def requestContext(req: HttpServletRequest, resp: HttpServletResponse,
@@ -81,7 +85,7 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
     contentLengthHeader.flatMap {
       case `Content-Length`(0) => None
       case `Content-Length`(contentLength) => {
-        val body = if (contentLength == 0) utils.EmptyByteArray else try {
+        val body = if (contentLength == 0) util.EmptyByteArray else try {
           val buf = new Array[Byte](contentLength)
           var bytesRead = 0
           while (bytesRead < contentLength) {
@@ -111,9 +115,9 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
         servletResponse.getOutputStream.write(content.buffer)
       }
     } catch {
-      case e: IOException => log.error("Could not write response body of %s, probably the request has either timed out" +
-        "or the client has disconnected (%s)", requestString(req), e)
-      case e: Exception => log.error(e, "Could not complete %s", requestString(req))
+      case e: IOException => log.error("Could not write response body of {}, probably the request has either timed out" +
+        "or the client has disconnected ({})", requestString(req), e)
+      case e: Exception => log.error(e, "Could not complete {}", requestString(req))
     }
   }
 
@@ -123,9 +127,9 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
         try {
           f(response)
         } catch {
-          case e: IllegalStateException => log.error("Could not complete %s, it probably timed out and has therefore" +
-            "already been completed (%s)", requestString(req), e)
-          case e: Exception => log.error("Could not complete %s due to %s", requestString(req), e)
+          case e: IllegalStateException => log.error("Could not complete {}, it probably timed out and has therefore" +
+            "already been completed ({})", requestString(req), e)
+          case e: Exception => log.error("Could not complete {} due to {}", requestString(req), e)
         }
       },
       reject = _ => throw new IllegalStateException
@@ -140,7 +144,7 @@ private[connectors] abstract class ConnectorServlet(containerName: String) exten
       latch.countDown()
     }
     requestContext(req, resp, responder).foreach { context =>
-      log.error("Timeout of %s", context.request)
+      log.error("Timeout of {}", context.request)
       timeoutActor ! Timeout(context)
       latch.await(timeout, TimeUnit.MILLISECONDS) // give the timeoutActor another `timeout` ms for completing
     }

@@ -18,13 +18,17 @@ package cc.spray
 package authentication
 
 import org.specs2.mutable.Specification
+import akka.actor.ActorSystem
+import util._
 
 class FromConfigUserPassAuthenticatorSpec extends Specification {
+  implicit val system = ActorSystem()
 
   "the FromConfigUserPassAuthenticator" should {
     "extract a BasicUserContext for users defined in the spray config" in {
-      FromConfigUserPassAuthenticator(Some("Alice", "banana")).get mustEqual Some(BasicUserContext("Alice"))
+      FromConfigUserPassAuthenticator().apply(Some("Alice", "banana")).await mustEqual Some(BasicUserContext("Alice"))
     }
   }
 
+  step(system.shutdown())
 }

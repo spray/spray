@@ -24,7 +24,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * The spray connector servlet for all servlet 3.0 containers.
  */
-class Servlet30ConnectorServlet extends ConnectorServlet("Servlet API 3.0") {
+class Servlet30ConnectorServlet extends ConnectorServlet {
+
+  def containerName = "Servlet API 3.0"
 
   override def service(req: HttpServletRequest, resp: HttpServletResponse) {
     requestContext(req, resp, responder(req, resp)).foreach(rootService ! _)
@@ -45,8 +47,8 @@ class Servlet30ConnectorServlet extends ConnectorServlet("Servlet API 3.0") {
         }
         def onError(event: AsyncEvent) {
           event.getThrowable match {
-            case null => log.error("Unspecified Error during async processing of %s", requestString(req))
-            case ex => log.error(ex, "Error during async processing of %s", requestString(req))
+            case null => log.error("Unspecified Error during async processing of {}", requestString(req))
+            case ex => log.error(ex, "Error during async processing of {}", requestString(req))
           }
         }
         def onStartAsync(event: AsyncEvent) {}
@@ -57,7 +59,7 @@ class Servlet30ConnectorServlet extends ConnectorServlet("Servlet API 3.0") {
       if (alreadyResponded.compareAndSet(false, true)) {
         respond(req, resp, response)
         asyncContext.complete()
-      } else log.warn("Received late response to %s, which already timed out, dropping response...", requestString(req))
+      } else log.warning("Received late response to {}, which already timed out, dropping response...", requestString(req))
     }
   }
 }

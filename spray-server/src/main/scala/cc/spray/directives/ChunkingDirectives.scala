@@ -17,12 +17,14 @@
 package cc.spray
 package directives
 
-import utils.make
-import http.{ContentType, HttpContent}
-import typeconversion.{DefaultMarshallers, SimpleMarshaller}
+import util.make
+import typeconversion.DefaultMarshallers
+import akka.actor.ActorSystem
 
 private[spray] trait ChunkingDirectives {
   this: BasicDirectives =>
+
+  implicit def actorSystem: ActorSystem
 
   /**
    * Automatically converts a non-rejected response from its inner route into a chunked response of which each chunk

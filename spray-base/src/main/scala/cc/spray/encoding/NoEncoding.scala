@@ -41,7 +41,7 @@ class NoEncodingCompressor(private var buffer: Array[Byte]) extends Compressor {
   def finish() = buffer
 }
 
-object NoEncodingCompressor extends NoEncodingCompressor(utils.EmptyByteArray)
+object NoEncodingCompressor extends NoEncodingCompressor(util.EmptyByteArray)
 
 object NoEncodingDecompressor extends Decompressor {
   override def decompress(buffer: Array[Byte]) = buffer

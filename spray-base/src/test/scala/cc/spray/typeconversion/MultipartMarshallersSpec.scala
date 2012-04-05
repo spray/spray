@@ -22,7 +22,7 @@ import MediaTypes._
 import HttpCharsets._
 import HttpHeaders._
 import org.specs2.mutable.Specification
-import util.Random
+import java.util.Random
 
 class MultipartMarshallersSpec extends Specification with DefaultMarshallers {
   override protected lazy val multipartBoundaryRandom = new Random(0) // fix for stable value

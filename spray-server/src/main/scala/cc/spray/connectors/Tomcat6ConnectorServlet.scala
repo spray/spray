@@ -23,11 +23,13 @@ import org.apache.catalina.{CometEvent, CometProcessor}
 /**
  * The spray connector servlet for Tomcat 6.
  */
-class Tomcat6ConnectorServlet extends ConnectorServlet("Tomcat 6") with CometProcessor {
+class Tomcat6ConnectorServlet extends ConnectorServlet with CometProcessor {
+
+  def containerName = "Tomcat 6"
 
   override def service(req: HttpServletRequest, resp: HttpServletResponse) {
     throw new RuntimeException("The Tomcat6ConnectorServlet does not support the standard blocking Servlet API, " +
-            "you need to enable support for asynchronous HTTP in your Tomcat6 server instance!") 
+            "you need to enable support for asynchronous HTTP in your Tomcat6 server instance!")
   }
 
   def event(ev: CometEvent) {
@@ -41,8 +43,8 @@ class Tomcat6ConnectorServlet extends ConnectorServlet("Tomcat 6") with CometPro
             ev.close()
           }
         }
-        case CometEvent.EventSubType.CLIENT_DISCONNECT => log.warn("Client disconnected")
-        case err => log.error("Unspecified Error during async processing: %s", err)
+        case CometEvent.EventSubType.CLIENT_DISCONNECT => log.warning("Client disconnected")
+        case err => log.error("Unspecified Error during async processing: {}", err)
       }
       case CometEvent.EventType.READ => {}
       case CometEvent.EventType.END => {}

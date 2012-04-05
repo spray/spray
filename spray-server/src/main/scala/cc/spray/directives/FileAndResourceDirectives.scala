@@ -21,13 +21,16 @@ import http._
 import org.parboiled.common.FileUtils
 import StatusCodes._
 import HttpHeaders._
-import utils.identityFunc
+import util.identityFunc
 import java.io.{FileInputStream, File}
 import java.util.Arrays
-import typeconversion.{DefaultMarshallers, SimpleMarshaller}
+import typeconversion.{Marshaller, DefaultMarshallers, SimpleMarshaller}
+import akka.actor.ActorSystem
 
 private[spray] trait FileAndResourceDirectives {
   this: SimpleDirectives with ExecutionDirectives with MiscDirectives with DefaultMarshallers =>
+
+  implicit def actorSystem: ActorSystem
 
   /**
    * Returns a Route that completes GET requests with the content of the given file. The actual I/O operation is
@@ -150,7 +153,10 @@ private[spray] trait FileAndResourceDirectives {
   def getFromResourceDirectory(directoryName: String, charset: Option[HttpCharset] = None,
                                pathRewriter: String => String = identityFunc,
                                resolver: ContentTypeResolver = DefaultContentTypeResolver): Route = {
-    val base = if (directoryName.isEmpty) "" else directoryName + "/";
+    val base =
+      if (directoryName.isEmpty) ""
+      else if (directoryName.endsWith("/")) directoryName
+      else directoryName + "/";
     { ctx =>
       val subPath = if (ctx.unmatchedPath.startsWith("/")) ctx.unmatchedPath.substring(1) else ctx.unmatchedPath
       getFromResource(base + pathRewriter(subPath), charset, resolver).apply(ctx)
@@ -182,7 +188,7 @@ object FileChunking {
     val fis = new FileInputStream(file)
 
     def chunkStream(): Stream[FileChunk] = {
-      val buffer = new Array[Byte](SprayServerSettings.FileChunkingChunkSize)
+      val buffer = new Array[Byte](SprayServerSettings.FileChunkingChunkSize.toInt)
       val bytesRead = fis.read(buffer)
       if (bytesRead > 0) {
         val chunkBytes = if (bytesRead == buffer.length) buffer else Arrays.copyOfRange(buffer, 0, bytesRead)
@@ -192,7 +198,7 @@ object FileChunking {
     chunkStream()
   }
 
-  def fileChunkMarshaller(contentType: ContentType) = new SimpleMarshaller[FileChunk] {
+  def fileChunkMarshaller(contentType: ContentType): Marshaller[FileChunk] = new SimpleMarshaller[FileChunk] {
     val canMarshalTo = contentType :: Nil
     def marshal(value: FileChunk, contentType: ContentType) = HttpContent(contentType, value.buffer)
   }
