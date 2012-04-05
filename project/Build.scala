@@ -29,7 +29,7 @@ object Build extends Build {
     .settings(moduleSettings: _*)
     .settings(libraryDependencies ++=
       compile(mimepull, parboiled) ++
-      provided(akkaActor, sprayJson, slf4j, liftJson, twirlApi) ++
+      provided(akkaActor, sprayJson, liftJson, twirlApi) ++
       test(specs2)
     )
 
