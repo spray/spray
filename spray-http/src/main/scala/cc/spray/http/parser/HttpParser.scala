@@ -39,16 +39,38 @@ object HttpParser extends SprayParser with ProtocolParameterRules with Additiona
   {
 
   // all string literals automatically receive a trailing optional whitespace
-  override implicit def toRule(string :String) : Rule0 = {
+  override implicit def toRule(string :String): Rule0 =
     super.toRule(string) ~ BasicRules.OptWS
+
+  val rules: Map[String, Rule1[HttpHeader]] =
+    HttpParser
+      .getClass
+      .getMethods
+      .filter(_.getName.forall(!_.isLower)) // only the header rules have no lower-case letter in their name
+      .map { method =>
+        method.getName.toLowerCase.replace('_', '-') -> method.invoke(HttpParser).asInstanceOf[Rule1[HttpHeader]]
+      } (collection.breakOut)
+
+  def parseHeader(header: HttpHeader): Either[String, HttpHeader] = {
+    header match {
+      case x@ HttpHeaders.RawHeader(name, value) =>
+        rules.get(x.lowercaseName) match {
+          case Some(rule) => parse(rule, value).left.map("Illegal HTTP header '" + name + "':\n" + _)
+          case None => Right(x) // if we don't have a rule for the header we leave it unparsed
+        }
+      case x => Right(x) // already parsed
+    }
   }
 
-  lazy val rules: Map[String, Rule1[HttpHeader]] = {
-    // cache all the rules for public rule methods that have no lower-case letter in their name
-    // (which are all the header rules)
-    HttpParser.getClass.getMethods.filter(_.getName.forall(!_.isLower)).map { method =>
-      method.getName -> method.invoke(HttpParser).asInstanceOf[Rule1[HttpHeader]]
-    } (collection.breakOut)
+  def parseHeaders(headers: Seq[HttpHeader]): (Seq[String], Seq[HttpHeader]) = {
+    val errors = Vector.newBuilder[String]
+    val parsedHeaders = Vector.newBuilder[HttpHeader]
+    headers.foreach {
+      parseHeader(_) match {
+        case Right(parsed) => parsedHeaders += parsed
+        case Left(error) => errors += error
+      }
+    }
+    (errors.result(), parsedHeaders.result())
   }
-
 }

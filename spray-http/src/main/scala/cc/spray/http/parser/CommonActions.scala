@@ -18,6 +18,7 @@ package cc.spray.http
 package parser
 
 import cc.spray.http.MediaTypes._
+import org.parboiled.errors.ParsingException
 
 private[parser] trait CommonActions {
   
@@ -36,5 +37,11 @@ private[parser] trait CommonActions {
         MediaTypes.getForKey((mainLower, subType.toLowerCase)).getOrElse(new CustomMediaType(mainType, subType))
     }
   }
-  
+
+  val getCharset: String => HttpCharset = { charsetName =>
+    HttpCharsets
+      .getForKey(charsetName.toLowerCase)
+      .orElse(HttpCharsets.CustomHttpCharset(charsetName))
+      .getOrElse(throw new ParsingException("Unsupported charset: " + charsetName))
+  }
 }

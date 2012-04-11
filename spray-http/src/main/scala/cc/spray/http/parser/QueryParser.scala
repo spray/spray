@@ -19,10 +19,12 @@ package parser
 
 import org.parboiled.scala._
 import java.net.URLDecoder
+import java.io.UnsupportedEncodingException
+import org.parboiled.errors.ParsingException
 
 object QueryParser extends SprayParser {
   
-  def QueryString: Rule1[Map[String, String]] = rule (
+  val QueryString: Rule1[Map[String, String]] = rule (
       EOI ~ push(Map.empty[String, String])
     | zeroOrMore(QueryParameter, separator = "&") ~ EOI ~~> (_.toMap)
   )
@@ -32,19 +34,18 @@ object QueryParser extends SprayParser {
   }
   
   def QueryParameterComponent = rule {
-    zeroOrMore(!anyOf("&=") ~ ANY) ~> (s => URLDecoder.decode(s, "UTF8"))
-  }
-  
-  def parse(queryString: String): Map[String, String] = {
-    try {
-      parse(QueryString, queryString) match {
-        case Left(error) => throw new RuntimeException(error)
-        case Right(parameterMap) => parameterMap
+    zeroOrMore(!anyOf("&=") ~ ANY) ~> { s =>
+      try URLDecoder.decode(s, "UTF8")
+      catch {
+        case e: IllegalArgumentException =>
+          throw new ParsingException("Illegal query string: " + e.getMessage)
+        case e: UnsupportedEncodingException =>
+          throw new ParsingException("Unsupported character encoding in query string: " + e.getMessage)
       }
-    } catch {
-      case e: Exception => throw new HttpException(StatusCodes.BadRequest,
-          "Illegal query string '" + queryString + "':\n" + e.getMessage)
     }
   }
+  
+  def parseQueryString(queryString: String): Either[String, Map[String, String]] =
+    parse(QueryString, queryString)
   
 }

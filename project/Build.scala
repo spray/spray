@@ -55,7 +55,6 @@ object Build extends Build with DocSupport {
 
 
   lazy val sprayHttp = Project("spray-http", file("spray-http"))
-    .dependsOn(sprayUtil)
     .settings(moduleSettings: _*)
     .settings(libraryDependencies ++=
       compile(mimepull, parboiled) ++

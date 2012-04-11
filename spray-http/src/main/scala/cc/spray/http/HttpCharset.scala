@@ -26,7 +26,7 @@ sealed abstract class HttpCharsetRange {
 }
 
 sealed abstract class HttpCharset extends HttpCharsetRange {
-  lazy val nioCharset: Charset = Charset.forName(value)
+  val nioCharset: Charset = Charset.forName(value)
   def aliases: Seq[String]
   def matches(charset: HttpCharset) = this == charset
   override def equals(obj: Any) = obj match {
@@ -78,5 +78,14 @@ object HttpCharsets extends ObjectRegistry[String, HttpCharset] {
   val `windows-1254` = register(new PredefCharset("windows-1254", "cp1254", "cp5350"))
   val `windows-1257` = register(new PredefCharset("windows-1257", "cp1257", "cp5353"))
 
-  case class CustomHttpCharset(value: String, aliases: Seq[String] = Nil) extends HttpCharset
+  class CustomHttpCharset private (val value: String, val aliases: Seq[String]) extends HttpCharset
+  object CustomHttpCharset {
+    def apply(value: String, aliases: Seq[String] = Nil): Option[CustomHttpCharset] = {
+      try {
+        Some(new CustomHttpCharset(value.toLowerCase, aliases))
+      } catch {
+        case e: java.nio.charset.UnsupportedCharsetException => None
+      }
+    }
+  }
 }

@@ -18,7 +18,6 @@ package cc.spray.http
 package parser
 
 import org.parboiled.scala._
-import cc.spray.util.identityFunc
 
 // direct implementation of http://www.w3.org/Protocols/rfc2616/rfc2616-sec2.html#sec2
 private[spray] object BasicRules extends Parser {

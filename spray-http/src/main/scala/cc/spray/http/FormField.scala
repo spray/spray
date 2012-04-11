@@ -16,9 +16,14 @@
 
 package cc.spray.http
 
-case class HttpException(failure: HttpFailure, reason: String = "") extends RuntimeException(reason)
+sealed trait FormField {
+  //def as[A :FormFieldConverter]: Either[DeserializationError, A]
+}
 
-object HttpException {
-  def apply(failure: HttpFailure) = new HttpException(failure, failure.defaultMessage)
-  def apply(failure: HttpFailure, cause: Throwable) = new HttpException(failure, cause.getMessage)
+trait UrlEncodedFormField extends FormField {
+  def raw: Option[String]
+}
+
+trait MultipartFormField extends FormField {
+  def raw: Option[BodyPart]
 }

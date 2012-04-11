@@ -16,51 +16,45 @@
 
 package cc.spray.http
 
+import java.nio.charset.Charset
+import java.net.{URISyntaxException, URI}
 import HttpHeaders._
+import HttpCharsets._
+import parser.{QueryParser, HttpParser}
 
-abstract class HttpMessage[T <: HttpMessage[T]] {
+sealed trait HttpMessagePart
 
-  /**
-   * The HTTP headers of the request or response.
-   */
-  def headers: List[HttpHeader]
+sealed trait HttpRequestPart extends HttpMessagePart
 
-  /**
-   * The entity body of the request or response.
-   */
-  def content: Option[HttpContent]
+sealed trait HttpResponsePart extends HttpMessagePart
 
-  /**
-   * Creates a copy of this message replacing the headers with the given ones.
-   */
-  def withHeaders(headers: List[HttpHeader]): T
+sealed trait HttpMessageStart extends HttpMessagePart
 
-  /**
-   * Creates a copy of this message replacing the content with the given one.
-   */
-  def withContent(content: Option[HttpContent]): T
+sealed trait HttpMessageEnd extends HttpMessagePart
 
-  /**
-   * Creates a copy of this message replacing the headers and content with the given ones.
-   */
-  def withHeadersAndContent(headers: List[HttpHeader], content: Option[HttpContent]): T
+sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
+  type Self <: HttpMessage
 
-  /**
-   * Creates a copy of this message with the heders transformed by the given function.
-   */
-  def withHeadersTransformed(f: List[HttpHeader] => List[HttpHeader]): T = {
-    val transformed = f(headers)
-    if (transformed eq headers) this.asInstanceOf[T] else withHeaders(transformed)
+  def headers: Seq[HttpHeader]
+  def entity: HttpEntity
+  def protocol: HttpProtocol
+
+  def parseHeaders: (Seq[String], Self) = {
+    val (errors, parsed) = HttpParser.parseHeaders(headers)
+    (errors, withHeaders(parsed))
   }
 
-  /**
-   * Creates a copy of this message with the content transformed by the given function.
-   */
-  def withContentTransformed(f: HttpContent => HttpContent): T = content match {
-    case Some(content) =>
-      val transformed = f(content)
-      if (transformed eq content) this.asInstanceOf[T] else withContent(Some(transformed))
-    case None => this.asInstanceOf[T]
+  def withHeaders(headers: Seq[HttpHeader]): Self
+  def withEntity(entity: HttpEntity): Self
+  def withHeadersAndEntity(headers: Seq[HttpHeader], entity: HttpEntity): Self
+
+  def withHeadersTransformed(f: Seq[HttpHeader] => Seq[HttpHeader]): Self = {
+    val transformed = f(headers)
+    if (transformed eq headers) this.asInstanceOf[Self] else withHeaders(transformed)
+  }
+  def withEntityTransformed(f: HttpEntity => HttpEntity): Self = {
+    val transformed = f(entity)
+    if (transformed eq entity) this.asInstanceOf[Self] else withEntity(transformed)
   }
 
   /**
@@ -72,9 +66,221 @@ abstract class HttpMessage[T <: HttpMessage[T]] {
    * The content encoding as specified by the Content-Encoding header. If no Content-Encoding header is present the
    * default value 'identity' is returned.
    */
-  lazy val encoding = headers.collect { case `Content-Encoding`(enc) => enc } match {
+  def encoding = headers.collect { case `Content-Encoding`(enc) => enc } match {
     case enc :: _ => enc
     case Nil => HttpEncodings.identity
   }
-  
 }
+
+
+/**
+ * Sprays immutable model of an HTTP request.
+ * The `uri` member contains the the undecoded URI of the request as it appears in the HTTP message,
+ * i.e. just the path, query and fragment string without scheme and authority (host and port).
+ */
+final class HttpRequest private(
+  val method: HttpMethod,
+  val uri: String,
+  val headers: Seq[HttpHeader],
+  val entity: HttpEntity,
+  val protocol: HttpProtocol,
+  val URI: URI,
+  val queryParams: Map[String, String]) extends HttpMessage with HttpRequestPart {
+
+  type Self = HttpRequest
+
+  def path     = if (URI.getPath     == null) "" else URI.getPath
+  def query    = if (URI.getQuery    == null) "" else URI.getQuery
+  def rawQuery = if (URI.getRawQuery == null) "" else URI.getRawQuery
+  def fragment = if (URI.getFragment == null) "" else URI.getFragment
+
+  /**
+   * Parses the `uri` to create a copy of this request with the `URI` member updated or an error message
+   * if the `uri` cannot be parsed.
+   */
+  def parseUri: Either[String, HttpRequest] = {
+    try Right(copy(URI = new URI(uri)))
+    catch {
+      case e: URISyntaxException => Left("Illegal URI: " + e.getMessage)
+    }
+  }
+
+  /**
+   * Parses the query string to create a copy of this request with the `queryParams` member updated
+   * or an error message if the query string cannot be parsed.
+   * This method will implicitly call `parseUri` if this has not yet been done for this request.
+   */
+  def parseQuery: Either[String, HttpRequest] = {
+    def doParseQuery(req: HttpRequest) =
+      QueryParser.parseQueryString(req.rawQuery).right.map(params => req.copy(queryParams = params))
+    if (URI eq HttpRequest.DefaultURI) parseUri.right.flatMap(doParseQuery)
+    else doParseQuery(this)
+  }
+
+  def copy(method: HttpMethod = method, uri: String = uri, headers: Seq[HttpHeader] = headers,
+           entity: HttpEntity = entity, protocol: HttpProtocol = protocol, URI: URI = URI,
+           queryParams: Map[String, String] = queryParams): HttpRequest =
+    new HttpRequest(method, uri, headers, entity, protocol, URI, queryParams)
+
+  override def hashCode(): Int = (((((method.## * 31) + uri.##) * 31) + headers.##) * 31 + entity.##) + protocol.##
+  override def equals(that: Any) = that match {
+    case x: HttpRequest => (this eq x) ||
+      method == x.method && uri == x.uri && headers == x.headers && entity == x.entity && protocol == x.protocol
+    case _ => false
+  }
+  override def toString = "HttpRequest(%s, %s, %s, %s, %s)" format (method, uri, headers, entity, protocol)
+
+  lazy val acceptedMediaRanges: Seq[MediaRange] = {
+    // TODO: sort by preference
+    for (Accept(mediaRanges) <- headers; range <- mediaRanges) yield range
+  }
+
+  lazy val acceptedCharsetRanges: Seq[HttpCharsetRange] = {
+    // TODO: sort by preference
+    for (`Accept-Charset`(charsetRanges) <- headers; range <- charsetRanges) yield range
+  }
+
+  lazy val acceptedEncodingRanges: Seq[HttpEncodingRange] = {
+    // TODO: sort by preference
+    for (`Accept-Encoding`(encodingRanges) <- headers; range <- encodingRanges) yield range
+  }
+
+  lazy val cookies: Seq[HttpCookie] = for (`Cookie`(cookies) <- headers; cookie <- cookies) yield cookie
+
+  /**
+   * Determines whether the given mediatype is accepted by the client.
+   */
+  def isMediaTypeAccepted(mediaType: MediaType) = {
+    // according to the HTTP spec a client has to accept all mime types if no Accept header is sent with the request
+    // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
+    acceptedMediaRanges.isEmpty || acceptedMediaRanges.exists(_.matches(mediaType))
+  }
+
+  /**
+   * Determines whether the given charset is accepted by the client.
+   */
+  def isCharsetAccepted(charset: HttpCharset) = {
+    // according to the HTTP spec a client has to accept all charsets if no Accept-Charset header is sent with the request
+    // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.2
+    acceptedCharsetRanges.isEmpty || acceptedCharsetRanges.exists(_.matches(charset))
+  }
+
+  /**
+   * Determines whether the given encoding is accepted by the client.
+   */
+  def isEncodingAccepted(encoding: HttpEncoding) = {
+    // according to the HTTP spec the server MAY assume that the client will accept any content coding if no
+    // Accept-Encoding header is sent with the request (http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.3)
+    // this is what we do here
+    acceptedEncodingRanges.isEmpty || encoding == HttpEncodings.identity ||
+      acceptedEncodingRanges.exists(_.matches(encoding))
+  }
+
+  /**
+   * Determines whether the given content-type is accepted by the client.
+   */
+  def isContentTypeAccepted(ct: ContentType) = {
+    isMediaTypeAccepted(ct.mediaType) && (ct.noCharsetDefined || isCharsetAccepted(ct.definedCharset.get))
+  }
+
+  /**
+   * Determines whether the given content-type is accepted by the client.
+   * If the given content-type does not contain a charset an accepted charset is selected, i.e. the method guarantees
+   * that, if a content-type instance is returned within the option it will contain a charset.
+   */
+  def acceptableContentType(contentType: ContentType): Option[ContentType] = {
+    if (isContentTypeAccepted(contentType)) Some {
+      if (contentType.isCharsetDefined) contentType
+      else ContentType(contentType.mediaType, acceptedCharset)
+    } else None
+  }
+
+  /**
+   * Returns a charset that is accepted by the client.
+   */
+  def acceptedCharset: HttpCharset = {
+    if (isCharsetAccepted(`ISO-8859-1`)) `ISO-8859-1`
+    else acceptedCharsetRanges match {
+      case (cs: HttpCharset) :: _ => cs
+      case _ => throw new IllegalStateException // a HttpCharsetRange that is not `*` ?
+    }
+  }
+
+  def withHeaders(headers: Seq[HttpHeader]) = copy(headers = headers)
+  def withEntity(entity: HttpEntity) = copy(entity = entity)
+  def withHeadersAndEntity(headers: Seq[HttpHeader], entity: HttpEntity) = copy(headers = headers, entity = entity)
+}
+
+object HttpRequest {
+  val DefaultURI = new URI("")
+
+  def apply(method: HttpMethod = HttpMethods.GET,
+            uri: String = "/",
+            headers: Seq[HttpHeader] = Nil,
+            entity: HttpEntity = EmptyEntity,
+            protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`): HttpRequest = {
+    new HttpRequest(method, uri, headers, entity, protocol, DefaultURI, Map.empty)
+  }
+
+  def unapply(request: HttpRequest): Option[(HttpMethod, String, Seq[HttpHeader], HttpEntity, HttpProtocol)] = {
+    import request._
+    Some(method, uri, headers, entity, protocol)
+  }
+}
+
+
+/**
+ * Sprays immutable model of an HTTP response.
+ */
+case class HttpResponse(status: StatusCode = StatusCodes.OK,
+                        headers: Seq[HttpHeader] = Nil,
+                        entity: HttpEntity = EmptyEntity,
+                        protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`) extends HttpMessage with HttpResponsePart{
+  type Self = HttpResponse
+
+  def withHeaders(headers: Seq[HttpHeader]) = copy(headers = headers)
+  def withEntity(entity: HttpEntity) = copy(entity = entity)
+  def withHeadersAndEntity(headers: Seq[HttpHeader], entity: HttpEntity) = copy(headers = headers, entity = entity)
+}
+
+/**
+ * Instance of this class represent the individual chunks of a chunked HTTP message (request or response).
+ */
+case class MessageChunk(body: Array[Byte], extensions: Seq[ChunkExtension]) {
+  require(body.length > 0, "MessageChunk must not have empty body")
+  def bodyAsString: String = bodyAsString(HttpCharsets.`ISO-8859-1`.nioCharset)
+  def bodyAsString(charset: HttpCharset): String = bodyAsString(charset.nioCharset)
+  def bodyAsString(charset: Charset): String = if (body.isEmpty) "" else new String(body, charset)
+  def bodyAsString(charset: String): String = if (body.isEmpty) "" else new String(body, charset)
+}
+
+object MessageChunk {
+  import HttpCharsets._
+  def apply(body: String): MessageChunk =
+    apply(body, Nil)
+  def apply(body: String, charset: HttpCharset): MessageChunk =
+    apply(body, charset, Nil)
+  def apply(body: String, extensions: Seq[ChunkExtension]): MessageChunk =
+    apply(body, `ISO-8859-1`, extensions)
+  def apply(body: String, charset: HttpCharset, extensions: Seq[ChunkExtension]): MessageChunk =
+    apply(body.getBytes(charset.nioCharset), extensions)
+  def apply(body: Array[Byte]): MessageChunk =
+    apply(body, Nil)
+}
+
+case class ChunkedRequestStart(request: HttpRequest) extends HttpMessageStart with HttpRequestPart
+
+case class ChunkedResponseStart(response: HttpResponse) extends HttpMessageStart with HttpResponsePart
+
+case class ChunkedMessageEnd(
+  extensions: Seq[ChunkExtension] = Nil,
+  trailer: Seq[HttpHeader] = Nil
+) extends HttpRequestPart with HttpResponsePart with HttpMessageEnd {
+  if (!trailer.isEmpty) {
+    require(trailer.forall(_.isNot("content-length")), "Content-Length header is not allowed in trailer")
+    require(trailer.forall(_.isNot("transfer-encoding")), "Transfer-Encoding header is not allowed in trailer")
+    require(trailer.forall(_.isNot("trailer")), "Trailer header is not allowed in trailer")
+  }
+}
+
+case class ChunkExtension(name: String, value: String)

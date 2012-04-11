@@ -19,7 +19,6 @@ package http
 package parser
 
 import org.parboiled.scala._
-import StatusCodes._
 import HttpHeaders._
 
 private[parser] trait ContentTypeHeader {
@@ -31,13 +30,7 @@ private[parser] trait ContentTypeHeader {
   
   private def createContentTypeHeader(mainType: String, subType: String, params: Map[String, String]) = {
     val mimeType = getMediaType(mainType, subType, params.get("boundary"))
-    val charset = params.get("charset").map { charsetName =>
-      HttpCharsets.getForKey(charsetName.toLowerCase).getOrElse {
-        if (SprayBaseSettings.RelaxedHeaderParsing)
-          new HttpCharsets.CustomHttpCharset(charsetName)
-        else throw new HttpException(BadRequest, "Unsupported charset: " + charsetName)
-      }
-    }
+    val charset = params.get("charset").map(getCharset)
     `Content-Type`(ContentType(mimeType, charset))
   }
   

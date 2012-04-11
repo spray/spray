@@ -30,7 +30,7 @@ package object util {
   val EmptyByteArray = new Array[Byte](0)
 
   def identityFunc[T]: T => T = _identityFunc.asInstanceOf[T => T]
-  private lazy val _identityFunc: Any => Any = x => x
+  private val _identityFunc: Any => Any = x => x
 
   // TODO: remove and replace with equivalent from the standard library once the resolution to issue 25578
   // (https://codereview.scala-lang.org/fisheye/changelog/scala-svn?cs=25578) has made it into a release
@@ -51,15 +51,18 @@ package object util {
   }
 
   // implicits
-  implicit def pimpActorSystem(system: ActorSystem)     : PimpedActorSystem     = new PimpedActorSystem(system)
-  implicit def pimpActorRefFactory(f: ActorRefFactory)  : PimpedActorRefFactory = new PimpedActorRefFactory(f)
-  implicit def pimpAny[T](any: T)                       : PimpedAny[T]          = new PimpedAny(any)
-  implicit def pimpByteArray(array: Array[Byte])        : PimpedByteArray       = new PimpedByteArray(array)
-  implicit def pimpByteBuffer(buf: ByteBuffer)          : PimpedByteBuffer      = new PimpedByteBuffer(buf)
-  implicit def pimpClass[A](clazz: Class[A])            : PimpedClass[A]        = new PimpedClass[A](clazz)
-  implicit def pimpFuture[A](fut: Future[A])            : PimpedFuture[A]       = new PimpedFuture[A](fut)
-  implicit def pimpLinearSeq[A](seq: LinearSeq[A])      : PimpedLinearSeq[A]    = new PimpedLinearSeq[A](seq)
-  implicit def pimpProduct(product: Product)            : PimpedProduct         = new PimpedProduct(product)
-  implicit def pimpRegex(regex: Regex)                  : PimpedRegex           = new PimpedRegex(regex)
-  implicit def pimpString(s: String)                    : PimpedString          = new PimpedString(s)
+  implicit def pimpActorSystem(system: ActorSystem)     :PimpedActorSystem     = new PimpedActorSystem(system)
+  implicit def pimpActorRefFactory(f: ActorRefFactory)  :PimpedActorRefFactory = new PimpedActorRefFactory(f)
+  implicit def pimpAny[T](any: T)                       :PimpedAny[T]          = new PimpedAny(any)
+  implicit def pimpByteArray(array: Array[Byte])        :PimpedByteArray       = new PimpedByteArray(array)
+  implicit def pimpByteBuffer(buf: ByteBuffer)          :PimpedByteBuffer      = new PimpedByteBuffer(buf)
+  implicit def pimpClass[A](clazz: Class[A])            :PimpedClass[A]        = new PimpedClass[A](clazz)
+  implicit def pimpFuture[A](fut: Future[A])            :PimpedFuture[A]       = new PimpedFuture[A](fut)
+  implicit def pimpSeq[A](seq: Seq[A])                  :PimpedSeq[A]          = seq match {
+    case x: LinearSeq[_] => new PimpedLinearSeq[A](x)
+    case x: IndexedSeq[_] => new PimpedIndexedSeq[A](x)
+  }
+  implicit def pimpProduct(product: Product)            :PimpedProduct         = new PimpedProduct(product)
+  implicit def pimpRegex(regex: Regex)                  :PimpedRegex           = new PimpedRegex(regex)
+  implicit def pimpString(s: String)                    :PimpedString          = new PimpedString(s)
 }

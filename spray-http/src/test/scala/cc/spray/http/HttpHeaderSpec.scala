@@ -23,6 +23,7 @@ import MediaRanges._
 import HttpCharsets._
 import HttpEncodings._
 import LanguageRanges._
+import parser.HttpParser
 import RangeUnits._
 import CacheDirectives._
 
@@ -30,7 +31,6 @@ class HttpHeaderSpec extends Specification {
 
   val EOL = System.getProperty("line.separator")
   val `application/vnd.spray` = MediaTypes.register(CustomMediaType("application/vnd.spray"))
-  val `fancy-pants` = HttpCharsets.register(CustomHttpCharset("FANCY-pants"))
 
   def is =
 
@@ -101,8 +101,8 @@ class HttpHeaderSpec extends Specification {
       example(`Content-Type`(ContentType(`text/plain`, `UTF-8`)), fix(_).replace("utf", "UTF-"))_ ^
     "Content-Type: text/xml; charset=windows-1252" !
       example(`Content-Type`(ContentType(`text/xml`, `windows-1252`)))_ ^
-    "Content-Type: text/plain; charset=FANCY-pants" !
-      example(`Content-Type`(ContentType(`text/plain`, `fancy-pants`)))_ ^
+    "Content-Type: text/plain; charset=fancy-pants" !
+      errorExample("Illegal HTTP header 'Content-Type':\nUnsupported charset: fancy-pants")_ ^
     "Content-Type: multipart/mixed; boundary=ABC123" !
       example(`Content-Type`(ContentType(new `multipart/mixed`(Some("ABC123")))), fix(_).replace("=", "=\"") + '"')_ ^
     p^
@@ -155,14 +155,19 @@ class HttpHeaderSpec extends Specification {
     "X-Forwarded-For: 1.2.3.4" ! example(`X-Forwarded-For`("1.2.3.4"))_ ^
     "X-Forwarded-For: 234.123.5.6, 8.8.8.8" ! example(`X-Forwarded-For`("234.123.5.6", "8.8.8.8"))_ ^
     p^
-    "X-Space-Ranger: no, this rock!" ! example(CustomHeader("X-Space-Ranger", "no, this rock!"))_
+    "X-Space-Ranger: no, this rock!" ! example(RawHeader("X-Space-Ranger", "no, this rock!"))_
 
 
   def example(expected: HttpHeader, fix: String => String = fix)(line: String) = {
     val Array(name, value) = line.split(": ", 2)
-    (HttpHeader(name, value) mustEqual expected) and (expected.toString mustEqual fix(line))
+    (HttpParser.parseHeader(RawHeader(name, value)) === Right(expected)) and (expected.toString === fix(line))
   }
 
   def fix(line: String) = line.replaceAll("""\s*;\s*q=\d?(\.\d)?""", "").replaceAll("""\s\s+""", " ")
+
+  def errorExample(expectedError: String)(line: String) = {
+    val Array(name, value) = line.split(": ", 2)
+    HttpParser.parseHeader(RawHeader(name, value)) === Left(expectedError)
+  }
 
 }

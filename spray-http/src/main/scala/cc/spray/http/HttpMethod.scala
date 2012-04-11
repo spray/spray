@@ -27,6 +27,7 @@ object HttpMethods extends ObjectRegistry[String, HttpMethod] {
   val GET     = new HttpMethod("GET")
   val HEAD    = new HttpMethod("HEAD")
   val OPTIONS = new HttpMethod("OPTIONS")
+  val PATCH   = new HttpMethod("PATCH")
   val POST    = new HttpMethod("POST")
   val PUT     = new HttpMethod("PUT")
   val TRACE   = new HttpMethod("TRACE")

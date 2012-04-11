@@ -23,8 +23,7 @@ class HttpRequestSpec extends Specification { def is =
 
   "The HttpRequest should properly deconstruct" ^
     "simple URIs without query part" ! {
-      pathAndQueryParams(HttpRequest(uri = "/ab/c")) mustEqual
-        "/ab/c" -> Map.empty
+      pathAndQueryParams(HttpRequest(uri = "/ab/c")) === "/ab/c" -> Map.empty
     } ^
     "URIs with a simple query part" ! {
       pathAndQueryParams(HttpRequest(uri = "/?a=b&xyz=123")) mustEqual
@@ -35,5 +34,8 @@ class HttpRequestSpec extends Specification { def is =
         "/squery" -> Map("Id" -> "3", "Eu" -> "/sch/i.html?_animal=cat")
     }
 
-  def pathAndQueryParams(req: HttpRequest) = req.path -> req.queryParams
+  def pathAndQueryParams(request: HttpRequest) = {
+    val req = request.parseQuery.right.get
+    req.path -> req.queryParams
+  }
 }

@@ -16,9 +16,12 @@
 
 package cc.spray
 
+import http.HttpHeaders.RawHeader
+
 package object http {
 
-  type HttpResult[+T] = Either[HttpException, T]
+  def identityFunc[T]: T => T = _identityFunc.asInstanceOf[T => T]
+  private val _identityFunc: Any => Any = x => x
 
   /**
    * Warms up the cc.spray.http module by triggering the loading of most classes in this package,
@@ -26,22 +29,20 @@ package object http {
    */
   def warmUp() {
     HttpRequest(
-      method = HttpMethods.GET,
-      uri = "",
       headers = List(
-        HttpHeader("Accept", "*/*,text/plain,custom/custom"),
-        HttpHeader("Accept-Charset", "*,UTF-8,custom"),
-        HttpHeader("Accept-Encoding", "gzip,custom"),
-        HttpHeader("Accept-Language", "*,de-de,custom"),
-        HttpHeader("Cache-Control", "no-cache"),
-        HttpHeader("Connection", "close"),
-        HttpHeader("Cookie", "spray=cool"),
-        HttpHeader("Content-Encoding", "deflate"),
-        HttpHeader("Content-Length", "42"),
-        HttpHeader("Content-Type", "application/json"),
-        HttpHeader("Fancy-Custom-Header", "yeah")
+        RawHeader("Accept", "*/*,text/plain,custom/custom"),
+        RawHeader("Accept-Charset", "*,UTF-8,custom"),
+        RawHeader("Accept-Encoding", "gzip,custom"),
+        RawHeader("Accept-Language", "*,de-de,custom"),
+        RawHeader("Cache-Control", "no-cache"),
+        RawHeader("Connection", "close"),
+        RawHeader("Cookie", "spray=cool"),
+        RawHeader("Content-Encoding", "deflate"),
+        RawHeader("Content-Length", "42"),
+        RawHeader("Content-Type", "application/json"),
+        RawHeader("Fancy-Custom-Header", "yeah")
       ),
-      content = Some(HttpContent("spray rocks!"))
+      entity = "spray rocks!"
     )
     HttpResponse(status = 200)
     HttpIp.fromString("127.0.0.1")

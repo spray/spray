@@ -22,7 +22,7 @@ import BasicRules._
 import HttpCharsets._
 
 private[parser] trait AcceptCharsetHeader {
-  this: Parser with ProtocolParameterRules =>
+  this: Parser with ProtocolParameterRules with CommonActions =>
 
   def ACCEPT_CHARSET = rule (
     oneOrMore(CharsetRangeDecl, separator = ListSep) ~ EOI ~~> (HttpHeaders.`Accept-Charset`(_))
@@ -33,8 +33,7 @@ private[parser] trait AcceptCharsetHeader {
   )
   
   def CharsetRangeDef = rule (
-      "*" ~ push(`*`)
-    | Charset ~~> (x => HttpCharsets.getForKey(x.toLowerCase).getOrElse(new CustomHttpCharset(x)))
+      "*" ~ push(`*`) | Charset ~~> getCharset
   )
   
   def CharsetQuality = rule {

@@ -23,27 +23,33 @@ class QueryParserSpec extends Specification {
   
   "The QueryParser" should {
     "correctly extract complete key value pairs" in {
-      QueryParser.parse("key=value") mustEqual Map("key" -> "value")
-      QueryParser.parse("key=value&key2=value2") mustEqual Map("key" -> "value", "key2" -> "value2")
+      QueryParser.parseQueryString("key=value") === Right(Map("key" -> "value"))
+      QueryParser.parseQueryString("key=value&key2=value2") === Right(Map("key" -> "value", "key2" -> "value2"))
     }
     "decode URL-encoded keys and values" in {
-      QueryParser.parse("ke%25y=value") mustEqual Map("ke%y" -> "value")
-      QueryParser.parse("key=value%26&key2=value2") mustEqual Map("key" -> "value&", "key2" -> "value2")
+      QueryParser.parseQueryString("ke%25y=value") === Right(Map("ke%y" -> "value"))
+      QueryParser.parseQueryString("key=value%26&key2=value2") === Right(Map("key" -> "value&", "key2" -> "value2"))
     }
     "return an empty Map for an empty query string" in {
-      QueryParser.parse("") mustEqual Map()
+      QueryParser.parseQueryString("") === Right(Map())
     }
     "return an empty value for keys without a value following the '=' and keys without following '='" in {
-      QueryParser.parse("key=&key2") mustEqual Map("key" -> "", "key2" -> "")
+      QueryParser.parseQueryString("key=&key2") === Right(Map("key" -> "", "key2" -> ""))
     }
     "accept empty key value pairs" in {
-      QueryParser.parse("&&b&") mustEqual Map("b" -> "", "" -> "")
+      QueryParser.parseQueryString("&&b&") === Right(Map("b" -> "", "" -> ""))
     }
-    "throw a proper HttpException on illegal query strings" in {
-      QueryParser.parse("a=b=c") must throwA[HttpException]
+    "produce a proper error message on illegal query strings" in {
+      QueryParser.parseQueryString("a=b=c") === Left {
+        """|Invalid input '=', expected '&' or EOI (line 1, pos 4):
+           |a=b=c
+           |   ^
+           |""".stripMargin
+      }
     }
     "throw a proper HttpException on illegal URL encodings" in {
-      QueryParser.parse("a=b%G") must throwA[HttpException]
+      QueryParser.parseQueryString("a=b%G") ===
+        Left("Illegal query string: URLDecoder: Incomplete trailing escape (%) pattern")
     }
   }
   

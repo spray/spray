@@ -19,35 +19,37 @@ package cc.spray.http
 import HttpCharsets._
 
 case class ContentTypeRange(mediaRange: MediaRange, charsetRange: HttpCharsetRange = `*`) {
-  def value: String = if (charsetRange == `*`) mediaRange.value else {
-    mediaRange.value + "; charset=" + charsetRange.value
+  def value: String = charsetRange match {
+    case `*` => mediaRange.value
+    case x: HttpCharset => mediaRange.value + "; charset=" + x.value
   }
   def matches(contentType: ContentType) = {
     mediaRange.matches(contentType.mediaType) &&
-            (charsetRange == `*` || contentType.charset.map(charsetRange.matches(_)).getOrElse(false))
+            ((charsetRange eq `*`) || contentType.definedCharset.map(charsetRange.matches(_)).getOrElse(false))
   }
-  
   override def toString = "ContentTypeRange(" + value + ')'
 }
 
-case class ContentType(mediaType: MediaType, charset: Option[HttpCharset]) {
-  def value: String = charset match {
+case class ContentType(mediaType: MediaType, definedCharset: Option[HttpCharset]) {
+  def value: String = definedCharset match {
     // don't print the charset parameter if it's the default charset
-    case Some(cs) if (!mediaType.isText || cs != `ISO-8859-1`)=> mediaType.value + "; charset=" + cs.value
+    case Some(cs) if (!mediaType.isText || cs != `ISO-8859-1`) => mediaType.value + "; charset=" + cs.value
     case _ => mediaType.value
   }
 
-  override def equals(obj: Any) = obj match {
-    case x: ContentType => (this eq x) || mediaType == x.mediaType && charset == x.charset
-    case _ => false
-  }
+  def withCharset(charset: HttpCharset) = copy(definedCharset = Some(charset))
 
-  def withCharset(charset: HttpCharset) = copy(charset = Some(charset))
+  def isCharsetDefined = definedCharset.isDefined
+  def noCharsetDefined = definedCharset.isEmpty
+
+  def charset: HttpCharset = definedCharset.getOrElse(`ISO-8859-1`)
 }
 
 object ContentType {
+  val DefaultTextPlain = ContentType(MediaTypes.`text/plain`, `ISO-8859-1`)
+
   def apply(mediaType: MediaType, charset: HttpCharset): ContentType = apply(mediaType, Some(charset))
   def apply(mediaType: MediaType): ContentType = apply(mediaType, None)
   
-  implicit def fromMimeType(mimeType: MediaType): ContentType = apply(mimeType) 
-}                     
+  implicit def fromMimeType(mimeType: MediaType): ContentType = apply(mimeType)
+}
