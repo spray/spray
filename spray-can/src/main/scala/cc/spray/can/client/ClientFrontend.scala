@@ -150,7 +150,7 @@ object ClientFrontend {
   ////////////// COMMANDS //////////////
 
   case class SetRequestTimeout(timeout: Duration) extends Command {
-    require(!timeout.isFinite, "timeout must not be infinite, set to zero to disable")
+    require(timeout.isFinite, "timeout must not be infinite, set to zero to disable")
     require(timeout >= Duration.Zero, "timeout must not be negative")
   }
 }
