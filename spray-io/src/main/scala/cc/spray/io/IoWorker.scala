@@ -111,6 +111,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
     private var commandsExecuted = 0L
 
     setName(settings.ThreadName + '-' + _runningWorkers.size)
+    setDaemon(true)
 
     override def start() {
       if (getState == Thread.State.NEW) {
