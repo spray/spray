@@ -21,6 +21,7 @@ import akka.dispatch.Future
 import akka.actor.ActorSystem
 import scala.util.matching.Regex
 import util.pimps._
+import annotation.tailrec
 
 package object util {
 
@@ -38,6 +39,14 @@ package object util {
   }
 
   def make[A, U](a: A)(f: A => U): A = { f(a); a }
+
+  @tailrec
+  def tfor[@specialized T](i: T)(test: T => Boolean, inc: T => T)(f: T => Unit) {
+    if(test(i)) {
+      f(i)
+      tfor(inc(i))(test, inc)(f)
+    }
+  }
 
   // implicits
   implicit def pimpActorSystem(system: ActorSystem) : PimpedActorSystem   = new PimpedActorSystem(system)
