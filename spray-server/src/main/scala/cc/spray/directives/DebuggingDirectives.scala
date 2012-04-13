@@ -23,7 +23,7 @@ import akka.actor.ActorSystem
 trait DebuggingDirectives {
   this: BasicDirectives with MiscDirectives =>
 
-  def system: ActorSystem
+  def actorSystem: ActorSystem
 
   def logRequest(marker: String = "") = transformRequest(logMessage("Request", marker))
 
@@ -64,5 +64,5 @@ trait DebuggingDirectives {
     msg
   }
 
-  private def log = system.log
+  private def log = actorSystem.log
 }
