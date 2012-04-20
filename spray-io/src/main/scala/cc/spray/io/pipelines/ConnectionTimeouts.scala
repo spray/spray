@@ -30,7 +30,7 @@ object ConnectionTimeouts {
         var timeout = idleTimeout
         var lastActivity = System.currentTimeMillis
 
-        def commandPipeline(command: Command) {
+        val commandPipeline: CPL = { command =>
           command match {
             case x: SetIdleTimeout =>
               timeout = x.timeout.toMillis
@@ -43,7 +43,7 @@ object ConnectionTimeouts {
           }
         }
 
-        def eventPipeline(event: Event) {
+        val eventPipeline: EPL = { event =>
           event match {
             case _: IoPeer.Received =>
               lastActivity = System.currentTimeMillis

@@ -34,7 +34,7 @@ object ClientFrontend {
       val openRequests = Queue.empty[RequestRecord]
       var requestTimeout = initialRequestTimeout
 
-      def commandPipeline(command: Command) {
+      val commandPipeline: CPL = { command =>
         command match {
           case x: HttpRequest =>
             if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
@@ -79,7 +79,7 @@ object ClientFrontend {
         }
       }
 
-      def eventPipeline(event: Event) {
+      val eventPipeline: EPL = { event =>
         event match {
           case x: HttpMessageEndPart =>
             if (!openRequests.isEmpty) {

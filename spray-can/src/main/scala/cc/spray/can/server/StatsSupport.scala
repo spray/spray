@@ -88,7 +88,7 @@ object StatsSupport {
       connectionsOpened.incrementAndGet()
       adjustMaxOpenConnections()
 
-      def commandPipeline(command: Command) {
+      val commandPipeline: CPL = { command =>
         command match {
           case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageStartPart] =>
             responseStarts.incrementAndGet()
@@ -102,7 +102,7 @@ object StatsSupport {
         }
       }
 
-      def eventPipeline(event: Event) {
+      val eventPipeline: EPL = { event =>
         event match {
           case _: HttpMessageStartPart =>
             requestStarts.incrementAndGet()

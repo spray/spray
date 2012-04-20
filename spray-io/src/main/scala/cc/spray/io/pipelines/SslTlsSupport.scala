@@ -25,7 +25,7 @@ object SslTlsSupport {
 
     def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
 
-      def commandPipeline(command: Command) {
+      val commandPipeline: CPL = { command =>
         command match {
           case IoPeer.Send(buffers) =>
             // ... perform actual encryption via SslEngine
@@ -37,7 +37,7 @@ object SslTlsSupport {
         }
       }
 
-      def eventPipeline(event: Event) {
+      val eventPipeline: EPL = { event =>
         event match {
           case IoPeer.Received(handle, buffer) =>
             // ... perform actual decryption via SslEngine

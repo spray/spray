@@ -34,7 +34,7 @@ object PipeliningLimiter {
       var limit = pipeliningLimit
       var readingStopped = false
 
-      def commandPipeline(command: Command) {
+      val commandPipeline: CPL = { command =>
         command match {
           case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEndPart] =>
             openRequests -= 1
@@ -48,7 +48,7 @@ object PipeliningLimiter {
         }
       }
 
-      def eventPipeline(event: Event) {
+      val eventPipeline: EPL = { event =>
         event match {
           case x: HttpRequestPart =>
             if (openRequests == limit) {
