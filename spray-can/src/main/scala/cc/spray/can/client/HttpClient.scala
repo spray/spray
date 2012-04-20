@@ -26,7 +26,6 @@ import akka.event.LoggingAdapter
 
 /**
  * Reacts to [[cc.spray.can.HttpClient.Connect]] messages by establishing a connection to the remote host.
- * If there is an error the sender receives either an [[cc.spray.can.HttpClientException]].
  * If the connection has been established successfully a new actor is spun up for the connection, which replies to the
  * sender of the [[cc.spray.can.HttpClient.Connect]] message with a [[cc.spray.can.HttpClient.Connected]] message.
  *
@@ -58,10 +57,11 @@ object HttpClient {
 
   ////////////// COMMANDS //////////////
   // HttpRequestParts +
-  type Connect = IoClient.Connect;  val Connect = IoClient.Connect
-  type Close = IoClient.Close;      val Close = IoClient.Close
-  type Send = IoClient.Send;        val Send = IoClient.Send
-  type Tell = IoClient.Tell;        val Tell = IoClient.Tell
+  type Connect = IoClient.Connect;                           val Connect = IoClient.Connect
+  type Close = IoClient.Close;                               val Close = IoClient.Close
+  type Send = IoClient.Send;                                 val Send = IoClient.Send
+  type Tell = IoClient.Tell;                                 val Tell = IoClient.Tell
+  type SetRequestTimeout = ClientFrontend.SetRequestTimeout; val SetRequestTimeout = ClientFrontend.SetRequestTimeout
 
   ////////////// EVENTS //////////////
   // HttpResponseParts +

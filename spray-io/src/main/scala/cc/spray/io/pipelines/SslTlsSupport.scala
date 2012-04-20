@@ -36,14 +36,14 @@ object SslTlsSupport {
         val pendingEncrypts = Queue.empty[ByteBuffer]
         val pendingDecrypts = Queue.empty[ByteBuffer]
 
-        def commandPipeline(command: Command) {
+        val commandPipeline: CPL = { command =>
           command match {
             case IoPeer.Send(buffers) => encrypt(buffers.toArray)
             case _ => commandPL(command)
           }
         }
 
-        def eventPipeline(event: Event) {
+        val eventPipeline: EPL =  { event =>
           event match {
             case IoPeer.Received(_, buffer) => decrypt(buffer)
             case _ => eventPL(event)

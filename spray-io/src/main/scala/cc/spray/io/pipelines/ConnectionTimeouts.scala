@@ -30,7 +30,7 @@ object ConnectionTimeouts {
         var timeout = idleTimeout
         var lastActivity = System.currentTimeMillis
 
-        def commandPipeline(command: Command) {
+        val commandPipeline: CPL = { command =>
           command match {
             case x: SetIdleTimeout =>
               timeout = x.timeout.toMillis
@@ -43,7 +43,7 @@ object ConnectionTimeouts {
           }
         }
 
-        def eventPipeline(event: Event) {
+        val eventPipeline: EPL = { event =>
           event match {
             case _: IoPeer.Received =>
               lastActivity = System.currentTimeMillis
@@ -65,7 +65,7 @@ object ConnectionTimeouts {
   ////////////// COMMANDS //////////////
 
   case class SetIdleTimeout(timeout: Duration) extends Command {
-    require(!timeout.isFinite, "timeout must not be infinite, set to zero to disable")
+    require(timeout.isFinite, "timeout must not be infinite, set to zero to disable")
     require(timeout >= Duration.Zero, "timeout must not be negative")
   }
 }

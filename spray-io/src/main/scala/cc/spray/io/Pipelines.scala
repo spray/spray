@@ -20,14 +20,14 @@ import akka.actor.{ActorRef, ActorContext}
 
 
 trait Pipelines {
-  def commandPipeline(command: Command)
-  def eventPipeline(event: Event)
+  def commandPipeline: Pipeline[Command]
+  def eventPipeline: Pipeline[Event]
 }
 
 object Pipelines {
   def apply(commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
-    def commandPipeline(command: Command) { commandPL(command) }
-    def eventPipeline(event: Event) { eventPL(event) }
+    val commandPipeline = commandPL
+    val eventPipeline = eventPL
   }
 }
 

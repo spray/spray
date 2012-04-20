@@ -34,7 +34,7 @@ object ClientFrontend {
       val openRequests = Queue.empty[RequestRecord]
       var requestTimeout = initialRequestTimeout
 
-      def commandPipeline(command: Command) {
+      val commandPipeline: CPL = { command =>
         command match {
           case x: HttpRequest =>
             if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
@@ -79,7 +79,7 @@ object ClientFrontend {
         }
       }
 
-      def eventPipeline(event: Event) {
+      val eventPipeline: EPL = { event =>
         event match {
           case x: HttpMessageEndPart =>
             if (!openRequests.isEmpty) {
@@ -150,7 +150,7 @@ object ClientFrontend {
   ////////////// COMMANDS //////////////
 
   case class SetRequestTimeout(timeout: Duration) extends Command {
-    require(!timeout.isFinite, "timeout must not be infinite, set to zero to disable")
+    require(timeout.isFinite, "timeout must not be infinite, set to zero to disable")
     require(timeout >= Duration.Zero, "timeout must not be negative")
   }
 }

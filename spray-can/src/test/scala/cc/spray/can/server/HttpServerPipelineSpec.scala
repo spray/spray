@@ -34,13 +34,13 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
   "The HttpServer pipeline" should {
 
     "dispatch a simple HttpRequest to a singleton service actor" in {
-      singleHandlerFixture.apply(Received(simpleRequest)).commands.fixTells === Seq(
+      singleHandlerFixture(Received(simpleRequest)).commands.fixTells === Seq(
         IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), null)
       )
     }
 
     "correctly dispatch a fragmented HttpRequest" in {
-      singleHandlerFixture.apply(
+      singleHandlerFixture(
         Received {
           prep {
           """|GET / HTTP/1.1
@@ -60,7 +60,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
     }
 
     "produce an error upon stray responses" in {
-      singleHandlerFixture.apply(HttpResponse()) must throwAn[IllegalStateException]
+      singleHandlerFixture(HttpResponse()) must throwAn[IllegalStateException]
     }
 
     "correctly render a matched HttpResponse" in {
@@ -104,6 +104,24 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         SendString("actor3"),
         SendString("actor4")
       )
+    }
+
+    "correctly dispatch SendCompleted message" in {
+      "to the sender of an HttpResponse" in {
+        singleHandlerFixture(
+          Received(simpleRequest),
+          HttpResponse()
+        ).commands.fixSends.last === SendString(simpleResponse)
+      }
+      "to the sender of a ChunkedResponseStart" in {
+        pending
+      }
+      "to the sender of a MessageChunk" in {
+        pending
+      }
+      "to the sender of a ChunkedMessageEnd" in {
+        pending
+      }
     }
   }
 

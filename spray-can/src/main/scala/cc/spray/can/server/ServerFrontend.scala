@@ -44,19 +44,18 @@ object ServerFrontend {
           var requestTimeout = settings.RequestTimeout
           var timeoutTimeout = settings.TimeoutTimeout
 
-          @tailrec
-          def commandPipeline(command: Command) {
+          val commandPipeline: CPL = { command =>
             command match {
               case part: HttpResponsePart with HttpMessageEndPart =>
                 ensureRequestOpenFor(part)
                 val rec = openRequests.head
                 sendPart(part, rec)
                 if (rec.hasQueuedResponses) {
-                  commandPipeline(rec.dequeue)
+                  context.self ! rec.dequeue
                 } else {
                   openRequests.dequeue()
                   if (!openRequests.isEmpty && openRequests.head.hasQueuedResponses)
-                    commandPipeline(openRequests.head.dequeue)
+                    context.self ! openRequests.head.dequeue
                 }
 
               case part: HttpResponsePart =>
@@ -78,7 +77,7 @@ object ServerFrontend {
             }
           }
 
-          def eventPipeline(event: Event) {
+          val eventPipeline: EPL = { event =>
             event match {
               case x: HttpRequest => dispatchRequestStart(x, x, System.currentTimeMillis)
 
@@ -250,12 +249,12 @@ object ServerFrontend {
   ////////////// COMMANDS //////////////
 
   case class SetRequestTimeout(timeout: Duration) extends Command {
-    require(!timeout.isFinite, "timeout must not be infinite, set to zero to disable")
+    require(timeout.isFinite, "timeout must not be infinite, set to zero to disable")
     require(timeout >= Duration.Zero, "timeout must not be negative")
   }
 
   case class SetTimeoutTimeout(timeout: Duration) extends Command {
-    require(!timeout.isFinite, "timeout must not be infinite, set to zero to disable")
+    require(timeout.isFinite, "timeout must not be infinite, set to zero to disable")
     require(timeout >= Duration.Zero, "timeout must not be negative")
   }
 
