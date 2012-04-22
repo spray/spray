@@ -19,10 +19,12 @@ package cc.spray.io.pipelines
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
 import annotation.tailrec
+import collection.mutable.ArrayBuffer
+import cc.spray.io.pipelines.SslBufferPool._
 
 
 /**
- * A ByteBuffer pool reducing the number of ByteBuffer allocations in the SslTlsSupport.
+ * A ByteBuffer pool reduces the number of ByteBuffer allocations in the SslTlsSupport.
  * The reason why SslTlsSupport requires a buffer pool is because the
  * current SSLEngine implementation always requires a 17KiB buffer for
  * every 'wrap' and 'unwrap' operation.  In most cases, the actual size of the
@@ -30,7 +32,7 @@ import annotation.tailrec
  * buffer for every 'wrap' and 'unwrap' operation wastes a lot of memory
  * bandwidth, resulting in application performance degradation.
  *
- * This implementation is loosely based on the one from Netty.
+ * This implementation is very loosely based on the one from Netty.
  */
 object SslBufferPool {
 
@@ -42,25 +44,39 @@ object SslBufferPool {
   private val Locked = 1
 
   private[this] val state = new AtomicInteger(Unlocked)
-  @volatile  private[this] var pool = Vector(newBuffer)
-  @volatile  private[this] var index = 0
+  private[this] val pool = new AtomicReference(List.empty[ByteBuffer])
+
+  /**
+   * Returns the size of the current buffer pool.
+   */
+  def size: Int = pool.get.size
 
   @tailrec
   def acquire(): ByteBuffer = {
     if (state.compareAndSet(Unlocked, Locked)) {
-      if (index < pool.length) {
-        val buffer = pool(index)
-        index += 1
-        buffer
-      } else {
-
+      try {
+        pool.get match {
+          case Nil => newBuffer // we have no more buffer available, so we need to create a new one
+          case buf :: tail =>
+            pool.set(tail)
+            buf
+        }
+      } finally {
+        state.set(Unlocked)
       }
     } else acquire() // spin while locked
-    if (index == 0) {
-        return ByteBuffer.allocate(MAX_PACKET_SIZE);
-    } else {
-        return (ByteBuffer) pool[-- index].clear();
-    }
+  }
+
+  @tailrec
+  def release(buf: ByteBuffer) {
+    if (state.compareAndSet(Unlocked, Locked)) {
+      try {
+        buf.clear() // ensure that we never have dirty buffers in the pool
+        pool.set(buf :: pool.get)
+      } finally {
+        state.set(Unlocked)
+      }
+    } else release(buf) // spin while locked
   }
 
   private def newBuffer = ByteBuffer.allocate(MaxPacketSize)
