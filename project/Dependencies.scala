@@ -14,9 +14,9 @@ object Dependencies {
   def runtime   (deps: ModuleID*): Seq[ModuleID] = deps map (_ % "runtime")
   def container (deps: ModuleID*): Seq[ModuleID] = deps map (_ % "container")
 
-  val akkaActor     = "com.typesafe.akka"                       %   "akka-actor"                  % "2.0"
-  val akkaSlf4j     = "com.typesafe.akka"                       %   "akka-slf4j"                  % "2.0"
-  val akkaTestKit   = "com.typesafe.akka"                       %   "akka-testkit"                % "2.0"
+  val akkaActor     = "com.typesafe.akka"                       %   "akka-actor"                  % "2.0.1"
+  val akkaSlf4j     = "com.typesafe.akka"                       %   "akka-slf4j"                  % "2.0.1"
+  val akkaTestKit   = "com.typesafe.akka"                       %   "akka-testkit"                % "2.0.1"
   val clHashMap     = "com.googlecode.concurrentlinkedhashmap"  %   "concurrentlinkedhashmap-lru" % "1.2"
   val jetty7Async   = "org.eclipse.jetty"                       %   "jetty-continuation"          % "7.5.1.v20110908"
   val jettyWebApp   = "org.eclipse.jetty"                       %   "jetty-webapp"                % "8.1.0.v20120127"
