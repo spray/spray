@@ -116,7 +116,7 @@ sealed abstract class MediaType extends MediaRange {
   override def matches(mediaType: MediaType) = this == mediaType
 
   override def equals(obj: Any) = obj match {
-    case x: MediaType => (this eq x) || (mainType eq x.mainType) && (subType eq x.subType)
+    case x: MediaType => (this eq x) || mainType == x.mainType && subType == x.subType
     case _ => false
   }
 
@@ -128,9 +128,12 @@ object MediaType {
   def unapply(mimeType: MediaType): Option[(String, String)] = Some(mimeType.mainType, mimeType.subType)
 }
 
-object MediaTypes extends ObjectRegistry[String, MediaType] {
+object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   
-  def register(mediaType: MediaType): MediaType = { register(mediaType, mediaType.value); mediaType }
+  def register(mediaType: MediaType): MediaType = {
+    register(mediaType, mediaType.mainType -> mediaType.subType)
+    mediaType
+  }
   
   def forExtension(ext: String): Option[MediaType] = {
     val extLower = ext.toLowerCase
@@ -234,9 +237,8 @@ object MediaTypes extends ObjectRegistry[String, MediaType] {
    * HTTP layer you need to create an instance, register it via `MediaTypes.register` and use this instance in
    * your custom Marshallers and Unmarshallers.
    */
-  class CustomMediaType(val mainType: String, val subType: String, val fileExtensions: Seq[String] = Nil)
+  class CustomMediaType private[http](val mainType: String, val subType: String, val fileExtensions: Seq[String] = Nil)
           extends MediaType {
-    require(value == value.toLowerCase, "For best performance custom media types must be defined in lowercase")
     override def isApplication = mainType == "application"
     override def isAudio       = mainType == "audio"
     override def isImage       = mainType == "image"

@@ -26,7 +26,11 @@ import LanguageRanges._
 import RangeUnits._
 import CacheDirectives._
 
-class HttpHeaderSpec extends Specification { def is =
+class HttpHeaderSpec extends Specification {
+
+  val `application/vnd.spray` = MediaTypes.register(CustomMediaType("application/vnd.spray"))
+
+  def is =
 
   "The HTTP header model must correctly parse and render the following examples" ^
     p^
@@ -36,6 +40,8 @@ class HttpHeaderSpec extends Specification { def is =
       example(Accept(`text/plain`, `text/html`, `text/css`))_ ^
     "Accept: text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2" !
       example(Accept(`text/html`, `image/gif`, `image/jpeg`, `*/*`, `*/*`), fix(_).replace("*,", "*/*,"))_ ^
+    "Accept: application/vnd.spray" !
+      example(Accept(`application/vnd.spray`))_ ^
     p^
     "Accept-Charset: utf8; q=0.5, *" !
       example(`Accept-Charset`(`UTF-8`, HttpCharsets.`*`), fix(_).replace("utf", "UTF-"))_ ^

@@ -32,9 +32,9 @@ private[parser] trait CommonActions {
         case "encrypted"   => new `multipart/encrypted`  (boundary)
         case custom        => new MultipartMediaType(custom, boundary)
       }
-      case main =>
-        val value = main + "/" + subType.toLowerCase
-        MediaTypes.getForKey(value).getOrElse(MediaTypes.CustomMediaType(value))
+      case mainLower =>
+        val subLower = subType.toLowerCase
+        MediaTypes.getForKey((mainLower, subLower)).getOrElse(new MediaTypes.CustomMediaType(mainLower, subLower))
     }
   }
   
