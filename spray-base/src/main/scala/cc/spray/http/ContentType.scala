@@ -38,7 +38,7 @@ case class ContentType(mediaType: MediaType, charset: Option[HttpCharset]) {
   }
 
   override def equals(obj: Any) = obj match {
-    case x: ContentType => mediaType == x.mediaType && charset == x.charset
+    case x: ContentType => (this eq x) || mediaType == x.mediaType && charset == x.charset
     case _ => false
   }
 

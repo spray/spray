@@ -25,7 +25,7 @@ sealed abstract class ContentDisposition {
 object ContentDispositions extends ObjectRegistry[String, ContentDisposition] {
   
   def register(disposition: ContentDisposition): ContentDisposition = {
-    register(disposition, disposition.value)
+    register(disposition, disposition.value.toLowerCase)
     disposition
   }
   

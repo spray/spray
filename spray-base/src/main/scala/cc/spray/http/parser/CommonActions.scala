@@ -33,8 +33,7 @@ private[parser] trait CommonActions {
         case custom        => new MultipartMediaType(custom, boundary)
       }
       case mainLower =>
-        val subLower = subType.toLowerCase
-        MediaTypes.getForKey((mainLower, subLower)).getOrElse(new MediaTypes.CustomMediaType(mainLower, subLower))
+        MediaTypes.getForKey((mainLower, subType.toLowerCase)).getOrElse(CustomMediaType(mainType, subType))
     }
   }
   

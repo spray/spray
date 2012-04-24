@@ -29,6 +29,7 @@ import CacheDirectives._
 class HttpHeaderSpec extends Specification {
 
   val `application/vnd.spray` = MediaTypes.register(CustomMediaType("application/vnd.spray"))
+  val `fancy-pants` = HttpCharsets.register(CustomHttpCharset("FANCY-pants"))
 
   def is =
 
@@ -97,8 +98,8 @@ class HttpHeaderSpec extends Specification {
       example(`Content-Type`(ContentType(`text/plain`, `UTF-8`)), fix(_).replace("utf", "UTF-"))_ ^
     "Content-Type: text/xml; charset=windows-1252" !
       example(`Content-Type`(ContentType(`text/xml`, `windows-1252`)))_ ^
-    "Content-Type: text/plain; charset=fancy-pants" !
-      example(`Content-Type`(ContentType(`text/plain`, new CustomHttpCharset("FANCY-pants"))))_ ^
+    "Content-Type: text/plain; charset=FANCY-pants" !
+      example(`Content-Type`(ContentType(`text/plain`, `fancy-pants`)))_ ^
     "Content-Type: multipart/mixed; boundary=ABC123" !
       example(`Content-Type`(ContentType(new `multipart/mixed`(Some("ABC123")))), fix(_).replace("=", "=\"") + '"')_ ^
     p^

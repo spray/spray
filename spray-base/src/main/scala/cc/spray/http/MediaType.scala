@@ -36,7 +36,10 @@ sealed abstract class MediaRange {
 
 object MediaRanges extends ObjectRegistry[String, MediaRange] {
   
-  def register(mediaRange: MediaRange): MediaRange = { register(mediaRange, mediaRange.mainType); mediaRange }
+  def register(mediaRange: MediaRange): MediaRange = {
+    register(mediaRange, mediaRange.mainType.toLowerCase)
+    mediaRange
+  }
   
   val `*/*` = register {
     new MediaRange {
@@ -95,7 +98,6 @@ object MediaRanges extends ObjectRegistry[String, MediaRange] {
   }
   
   case class CustomMediaRange(mainType: String) extends MediaRange {
-    require(mainType == mainType.toLowerCase, "For best performance custom media ranges must be defined in lowercase")
     def matches(mediaType: MediaType) = mediaType.mainType == mainType
     override def isApplication = mainType == "application"
     override def isAudio       = mainType == "audio"
@@ -131,7 +133,7 @@ object MediaType {
 object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   
   def register(mediaType: MediaType): MediaType = {
-    register(mediaType, mediaType.mainType -> mediaType.subType)
+    register(mediaType, mediaType.mainType.toLowerCase -> mediaType.subType.toLowerCase)
     mediaType
   }
   
@@ -227,7 +229,7 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
 
   object CustomMediaType {
     def apply(value: String, fileExtensions: String*) = {
-      val parts = value.toLowerCase.split('/')
+      val parts = value.split('/')
       new CustomMediaType(parts(0), parts(1), fileExtensions)
     }
   }
@@ -237,7 +239,7 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
    * HTTP layer you need to create an instance, register it via `MediaTypes.register` and use this instance in
    * your custom Marshallers and Unmarshallers.
    */
-  class CustomMediaType private[http](val mainType: String, val subType: String, val fileExtensions: Seq[String] = Nil)
+  case class CustomMediaType(mainType: String, subType: String, fileExtensions: Seq[String] = Nil)
           extends MediaType {
     override def isApplication = mainType == "application"
     override def isAudio       = mainType == "audio"
