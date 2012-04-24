@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray.can.client
 
-import rendering.{HttpRequestPartRenderingContext, RequestRenderer}
+import cc.spray.can.rendering.{HttpRequestPartRenderingContext, RequestRenderer}
 import cc.spray.io._
 
 object RequestRendering {
