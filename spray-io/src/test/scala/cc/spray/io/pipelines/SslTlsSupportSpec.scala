@@ -28,6 +28,7 @@ import java.nio.ByteBuffer
 import akka.util.{Duration, Timeout}
 import cc.spray.io._
 import akka.actor.{ActorRef, Props, ActorSystem}
+import com.typesafe.config.ConfigFactory
 
 class SslTlsSupportSpec extends Specification {
   implicit val system = ActorSystem()
@@ -36,27 +37,26 @@ class SslTlsSupportSpec extends Specification {
   val sslContext = createSslContext("/ssl-test-keystore.jks", "")
   val serverThread = new ServerThread
   serverThread.start()
-  val ioWorker = new IoWorker(system).start()
+  val ioWorker = new IoWorker(system, ConfigFactory.parseString("spray.io.confirm-sends = off")).start()
 
   sequential
 
   "The SslTlsSupportSpec" should {
     "have a working SSLSocket client/server infrastructure" in {
-//      socketSendReceive("1+2") === "3"
-//      socketSendReceive("12+24") === "36"
-      pending
+      socketSendReceive("1+2") === "3"
+      socketSendReceive("12+24") === "36"
     }
   }
 
   "The SslTlsSupport" should {
     implicit val timeOut: Timeout = Duration("1 s")
     "be able to complete a simple request/response dialog from the client-side" in {
-//      import IoClient._
-//      val Connected(handle) = system.actorOf(Props(new SslClientActor), "ssl-client).ask(Connect("localhost", port)).await
-//      val Received(_, buf) = handle.handler.ask(Send(ByteBuffer.wrap("3+4\n".getBytes))).await
-//      handle.handler ! IoClient.Close(CleanClose)
-//      buf.asString === "7\n"
-      pending
+      import IoClient._
+      val Connected(handle) = system.actorOf(Props(new SslClientActor), "ssl-client")
+        .ask(Connect("localhost", port)).await
+      val Received(_, buf) = handle.handler.ask(Send(ByteBuffer.wrap("3+4\n".getBytes))).await
+      handle.handler ! IoClient.Close(CleanClose)
+      buf.drainToString === "7\n"
     }
     "be able to complete a simple request/response dialog from the server-side" in {
       import IoServer._
@@ -134,8 +134,11 @@ class SslTlsSupportSpec extends Specification {
     def frontEnd = new EventPipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): EPL = {
         case IoServer.Received(_, buf) =>
-          log.debug("Server received: {}", buf.asString)
-          commandPL(IoServer.Send(ByteBuffer.wrap(serverResponse(buf.asString).getBytes)))
+          val input = buf.drainToString.dropRight(1)
+          log.debug("Server received: {}", input)
+          val response = serverResponse(input)
+          commandPL(IoServer.Send(ByteBuffer.wrap(response.getBytes)))
+          log.debug("Server sent: {}", response.dropRight(1))
         case ev => eventPL(ev)
       }
     }

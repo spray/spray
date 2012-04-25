@@ -44,5 +44,5 @@ class BufferBuilderSpec extends Specification {
     }
   }
 
-  def haveContent(s: String) = beEqualTo(s) ^^ { bb: BufferBuilder => bb.toByteBuffer.asString }
+  def haveContent(s: String) = beEqualTo(s) ^^ { bb: BufferBuilder => bb.toByteBuffer.drainToString }
 }

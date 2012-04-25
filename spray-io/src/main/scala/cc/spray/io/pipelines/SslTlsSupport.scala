@@ -23,26 +23,27 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import javax.net.ssl.{SSLException, SSLEngineResult, SSLEngine}
 import SSLEngineResult.Status._
-import SSLEngineResult.HandshakeStatus._
 import collection.mutable.Queue
 import annotation.tailrec
+import javax.net.ssl.SSLEngineResult.HandshakeStatus._
 
 object SslTlsSupport {
+  private val EmptyByteBufferArray = new Array[ByteBuffer](0)
 
   def apply(engineCreator: InetSocketAddress => SSLEngine, log: LoggingAdapter): PipelineStage = {
     new DoublePipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
         val engine = engineCreator(context.handle.address)
-        val pendingEncrypts = Queue.empty[ByteBuffer]
-        val pendingDecrypts = Queue.empty[ByteBuffer]
-        var receptacle: ByteBuffer = _ // holds incoming data that are too small to be decrypted
+        val pendingSends = Queue.empty[ByteBuffer]
+        var receptacle: ByteBuffer = _ // holds incoming data that are too small to be decrypted yet
 
         val commandPipeline: CPL = {
           case IoPeer.Send(buffers) =>
-            if (pendingEncrypts.isEmpty) withTempBuf(encrypt(buffers.toArray, fromQueue = false))
-            else queueNonEmptyForSending(buffers.toArray)
+            if (pendingSends.isEmpty) withTempBuf(encrypt(buffers.toArray, _))
+            else queueNonEmpty(buffers.toArray)
 
           case x: IoPeer.Close =>
+            log.debug("Closing SSLEngine due to reception of {}", x)
             engine.closeOutbound()
             withTempBuf(closeEngine)
             commandPL(x)
@@ -52,21 +53,16 @@ object SslTlsSupport {
 
         val eventPipeline: EPL = {
           case IoPeer.Received(_, buffer) =>
-            if (receptacle != null) {
-              val r = receptacle; receptacle = null
-              withTempBuf(decrypt(r.concat(buffer), fromQueue = false))
-            } else if (pendingDecrypts.isEmpty)
-              withTempBuf(decrypt(buffer, fromQueue = false))
-            else queueNonEmptyForReceiving(buffer)
+            val buf = if (receptacle != null) {
+              val r = receptacle; receptacle = null; r.concat(buffer)
+            } else buffer
+            withTempBuf(decrypt(buf, _))
 
           case x: IoPeer.Closed =>
-            if (!engine.isOutboundDone) withTempBuf(
-              tempBuf => {
-                engine.closeInbound()
-                closeEngine(tempBuf)
-              },
-              ignoreSSLExceptions = true
-            )
+            if (!engine.isOutboundDone) {
+              try engine.closeInbound()
+              catch { case e: SSLException => } // ignore warning about possible possible truncation attacks
+            }
             eventPL(x)
 
           case ev => eventPL(ev)
@@ -74,33 +70,26 @@ object SslTlsSupport {
 
         /**
          * Encrypts the given buffers and dispatches the results to the commandPL as IoPeer.Send messages.
-         * Returns `true` if the SSLEngine is ready to send more data, false otherwise.
          */
         @tailrec
-        def encrypt(buffers: Array[ByteBuffer], fromQueue: Boolean)(tempBuf: ByteBuffer): Boolean = {
-          log.debug("Encrypting {} buffers with {} bytes", buffers.size, buffers.map(_.remaining).mkString(","))
+        def encrypt(buffers: Array[ByteBuffer], tempBuf: ByteBuffer, fromQueue: Boolean = false) {
+          log.debug("Encrypting {} buffers with {} bytes", buffers.length, buffers.map(_.remaining).mkString(","))
           tempBuf.clear()
           val result = engine.wrap(buffers, tempBuf)
           tempBuf.flip()
           if (tempBuf.remaining > 0) commandPL(IoPeer.Send(tempBuf.copyContent :: Nil))
           result.getStatus match {
             case OK => result.getHandshakeStatus match {
-              case NOT_HANDSHAKING | FINISHED | NEED_WRAP =>
-                if (!contentLeft(buffers)) {
-                  processPendingDecrypts(tempBuf)
-                  true
-                } else encrypt(buffers, fromQueue)(tempBuf)
-              case NEED_UNWRAP if !pendingDecrypts.isEmpty =>
-                processPendingDecrypts(tempBuf)
-                encrypt(buffers, fromQueue)(tempBuf)
+              case NOT_HANDSHAKING | FINISHED =>
+                if (contentLeft(buffers)) encrypt(buffers, tempBuf, fromQueue)
+              case NEED_WRAP => encrypt(buffers, tempBuf, fromQueue)
               case NEED_UNWRAP =>
                 // output that has been queued before needs to go to the front of the queue, "new" output to the back
-                if (fromQueue) frontQueueNonEmptyForSending(buffers)
-                else queueNonEmptyForSending(buffers)
-                false
+                if (fromQueue) frontQueueNonEmpty(buffers)
+                else queueNonEmpty(buffers)
               case NEED_TASK =>
                 runDelegatedTasks()
-                encrypt(buffers, fromQueue)(tempBuf)
+                encrypt(buffers, tempBuf, fromQueue)
             }
             case CLOSED =>
               if (contentLeft(buffers))
@@ -115,10 +104,9 @@ object SslTlsSupport {
 
         /**
          * Decrypts the given buffer and dispatches the results to the eventPL as an IoPeer.Received message.
-         * Returns `true` if the SSLEngine is ready to received more data, false otherwise.
          */
         @tailrec
-        def decrypt(buffer: ByteBuffer, fromQueue: Boolean)(tempBuf: ByteBuffer): Boolean = {
+        def decrypt(buffer: ByteBuffer, tempBuf: ByteBuffer) {
           log.debug("Decrypting buffer with {} bytes", buffer.remaining)
           tempBuf.clear()
           val result = engine.unwrap(buffer, tempBuf)
@@ -126,75 +114,52 @@ object SslTlsSupport {
           if (tempBuf.remaining > 0) eventPL(IoPeer.Received(context.handle, tempBuf.copyContent))
           result.getStatus match {
             case OK => result.getHandshakeStatus match {
-              case NOT_HANDSHAKING | FINISHED | NEED_UNWRAP =>
-                if (buffer.remaining == 0) {
-                  processPendingEncrypts(tempBuf)
-                  true
-                } else decrypt(buffer, fromQueue)(tempBuf)
-              case NEED_WRAP if !pendingEncrypts.isEmpty =>
-                processPendingEncrypts(tempBuf)
-                buffer.remaining > 0 && decrypt(buffer, fromQueue)(tempBuf)
+              case NOT_HANDSHAKING | FINISHED =>
+                if (buffer.remaining > 0) decrypt(buffer, tempBuf)
+                else processPendingSends(tempBuf)
+              case NEED_UNWRAP => decrypt(buffer, tempBuf)
               case NEED_WRAP =>
-                // input that has been queued before needs to go to the front of the queue, "new" input to the back
-                if (fromQueue) frontQueueNonEmptyForReceiving(buffer)
-                else queueNonEmptyForReceiving(buffer)
-                false
+                if (pendingSends.isEmpty) encrypt(EmptyByteBufferArray, tempBuf)
+                else processPendingSends(tempBuf)
+                if (buffer.remaining > 0) decrypt(buffer, tempBuf)
               case NEED_TASK =>
                 runDelegatedTasks()
-                buffer.remaining > 0 && decrypt(buffer, fromQueue)(tempBuf)
+                decrypt(buffer, tempBuf)
             }
             case CLOSED =>
               if (!engine.isOutboundDone)
                 commandPL(IoPeer.Close(ProtocolError("SSLEngine closed prematurely while receiving")))
-              false
             case BUFFER_UNDERFLOW =>
-              if (pendingDecrypts.isEmpty) {
-                receptacle = buffer
-                false
-              } else decrypt(buffer.concat(drainToArray(pendingDecrypts)), false)(tempBuf)
+              receptacle = buffer // save buffer so we can append the next one to it
             case BUFFER_OVERFLOW =>
               throw new IllegalStateException // the SslBufferPool should make sure that buffers are never too small
           }
         }
 
-        def withTempBuf(f: ByteBuffer => Boolean, ignoreSSLExceptions: Boolean = false): Boolean = {
+        def withTempBuf(f: ByteBuffer => Unit) {
           val tempBuf = SslBufferPool.acquire()
           try f(tempBuf)
           catch {
-            case e: SSLException =>
-              if (!ignoreSSLExceptions) commandPL(IoPeer.Close(ProtocolError(e.toString)))
-              false
+            case e: SSLException => commandPL(IoPeer.Close(ProtocolError(e.toString)))
           }
           finally SslBufferPool.release(tempBuf)
         }
 
         @tailrec
-        def queueNonEmptyForSending(buffers: Array[ByteBuffer], ix: Int = 0) {
+        def queueNonEmpty(buffers: Array[ByteBuffer], ix: Int = 0) {
           if (ix < buffers.length) {
             val b = buffers(ix)
-            if (b.remaining > 0) pendingEncrypts.enqueue(b)
-            queueNonEmptyForSending(buffers, ix + 1)
+            if (b.remaining > 0) pendingSends.enqueue(b)
+            queueNonEmpty(buffers, ix + 1)
           }
         }
 
         @tailrec
-        def frontQueueNonEmptyForSending(buffers: Array[ByteBuffer], ix: Int = 1) {
+        def frontQueueNonEmpty(buffers: Array[ByteBuffer], ix: Int = 1) {
           if (ix <= buffers.length) {
             val b = buffers(buffers.length - ix)
-            if (b.remaining > 0) b +=: pendingEncrypts
-            frontQueueNonEmptyForSending(buffers, ix + 1)
-          }
-        }
-
-        def queueNonEmptyForReceiving(buffer: ByteBuffer) {
-          if (buffer.remaining > 0) {
-            pendingDecrypts.enqueue(buffer)
-          }
-        }
-
-        def frontQueueNonEmptyForReceiving(buffer: ByteBuffer) {
-          if (buffer.remaining > 0) {
-            buffer +=: pendingDecrypts
+            if (b.remaining > 0) b +=: pendingSends
+            frontQueueNonEmpty(buffers, ix + 1)
           }
         }
 
@@ -215,30 +180,20 @@ object SslTlsSupport {
           }
         }
 
-        @tailrec
-        def processPendingDecrypts(tempBuf: ByteBuffer) {
-          if (!pendingDecrypts.isEmpty && decrypt(pendingDecrypts.dequeue(), fromQueue = true)(tempBuf))
-            processPendingDecrypts(tempBuf)
+        def processPendingSends(tempBuf: ByteBuffer) {
+          if (!pendingSends.isEmpty) {
+            val array = pendingSends.toArray
+            pendingSends.clear()
+            encrypt(array, tempBuf, fromQueue = true)
+          }
         }
 
         @tailrec
-        def processPendingEncrypts(tempBuf: ByteBuffer) {
-          if (!pendingEncrypts.isEmpty && encrypt(drainToArray(pendingEncrypts), fromQueue = true)(tempBuf))
-            processPendingEncrypts(tempBuf)
-        }
-
-        def drainToArray(queue: Queue[ByteBuffer]): Array[ByteBuffer] = {
-          val array = queue.toArray
-          queue.clear()
-          array
-        }
-
-        @tailrec
-        def closeEngine(tempBuf: ByteBuffer): Boolean = {
+        def closeEngine(tempBuf: ByteBuffer) {
           if (!engine.isOutboundDone) {
-            encrypt(new Array(0), fromQueue = false)(tempBuf)
+            encrypt(EmptyByteBufferArray, tempBuf)
             closeEngine(tempBuf)
-          } else false
+          }
         }
       }
     }

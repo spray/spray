@@ -36,7 +36,7 @@ class SslBufferPoolSpec extends Specification {
           val buf2 = SslBufferPool.acquire()
           buf2.put(buf)
           buf2.flip()
-          val result = buf2.asString
+          val result = buf2.drainToString
           SslBufferPool.release(buf)
           SslBufferPool.release(buf2)
           result -> nonce
