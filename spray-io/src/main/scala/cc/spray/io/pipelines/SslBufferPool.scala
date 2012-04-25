@@ -17,11 +17,8 @@
 package cc.spray.io.pipelines
 
 import java.nio.ByteBuffer
-import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
+import java.util.concurrent.atomic.AtomicInteger
 import annotation.tailrec
-import collection.mutable.ArrayBuffer
-import cc.spray.io.pipelines.SslBufferPool._
-
 
 /**
  * A ByteBuffer pool reduces the number of ByteBuffer allocations in the SslTlsSupport.
@@ -44,26 +41,23 @@ object SslBufferPool {
   private val Locked = 1
 
   private[this] val state = new AtomicInteger(Unlocked)
-  private[this] val pool = new AtomicReference(List.empty[ByteBuffer])
+  @volatile private[this] var pool: List[ByteBuffer] = Nil
 
   /**
    * Returns the size of the current buffer pool.
+   * CAUTION: this method has complexity O(n), with n being the size of the pool
    */
-  def size: Int = pool.get.size
+  def size: Int = pool.size
 
   @tailrec
   def acquire(): ByteBuffer = {
     if (state.compareAndSet(Unlocked, Locked)) {
-      try {
-        pool.get match {
-          case Nil => newBuffer // we have no more buffer available, so we need to create a new one
-          case buf :: tail =>
-            pool.set(tail)
-            buf
-        }
-      } finally {
-        state.set(Unlocked)
-      }
+      try pool match {
+        case Nil => ByteBuffer.allocate(MaxPacketSize) // we have no more buffer available, so create a new one
+        case buf :: tail =>
+          pool = tail
+          buf
+      } finally state.set(Unlocked)
     } else acquire() // spin while locked
   }
 
@@ -72,12 +66,8 @@ object SslBufferPool {
     if (state.compareAndSet(Unlocked, Locked)) {
       try {
         buf.clear() // ensure that we never have dirty buffers in the pool
-        pool.set(buf :: pool.get)
-      } finally {
-        state.set(Unlocked)
-      }
+        pool = buf :: pool
+      } finally state.set(Unlocked)
     } else release(buf) // spin while locked
   }
-
-  private def newBuffer = ByteBuffer.allocate(MaxPacketSize)
 }

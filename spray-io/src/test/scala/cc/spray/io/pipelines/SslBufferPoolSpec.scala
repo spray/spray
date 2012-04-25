@@ -17,10 +17,9 @@
 package cc.spray.io.pipelines
 
 import org.specs2.mutable.Specification
-import java.nio.ByteBuffer
 import util.Random
 import akka.dispatch.Future
-import cc.spray.util.pimpFuture
+import cc.spray.util._
 import akka.actor.ActorSystem
 
 class SslBufferPoolSpec extends Specification {
@@ -37,19 +36,13 @@ class SslBufferPoolSpec extends Specification {
           val buf2 = SslBufferPool.acquire()
           buf2.put(buf)
           buf2.flip()
-          val result = content(buf2)
+          val result = buf2.asString
           SslBufferPool.release(buf)
           SslBufferPool.release(buf2)
           result -> nonce
         }
       }.await.map(t => t._1 === t._2).reduceLeft(_ and _)
     }
-  }
-
-  def content(buf: ByteBuffer) = {
-    val sb = new java.lang.StringBuilder
-    while (buf.remaining > 0) sb.append(buf.get.toChar)
-    sb.toString
   }
 
 }

@@ -17,6 +17,7 @@
 package cc.spray.io
 
 import org.specs2.mutable.Specification
+import cc.spray.util._
 
 class BufferBuilderSpec extends Specification {
 
@@ -43,10 +44,5 @@ class BufferBuilderSpec extends Specification {
     }
   }
 
-  def haveContent(s: String) = beEqualTo(s) ^^ { bb: BufferBuilder =>
-    val buf = bb.toByteBuffer
-    val sb = new java.lang.StringBuilder
-    while (buf.remaining > 0) sb.append(buf.get.toChar)
-    sb.toString
-  }
+  def haveContent(s: String) = beEqualTo(s) ^^ { bb: BufferBuilder => bb.toByteBuffer.asString }
 }
