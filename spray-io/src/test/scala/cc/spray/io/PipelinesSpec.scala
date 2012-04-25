@@ -17,52 +17,60 @@
 package cc.spray.io
 
 import org.specs2.Specification
+import collection.mutable.ListBuffer
 
 class PipelinesSpec extends Specification { def is =
 
   "The PipelineStage infrastructure must correctly combine the following pipeline stages:" ^
-    "command ~> command" ! example(cmd('1') ~> cmd('2'), "12", "")^
-    "command ~> event"   ! example(cmd('1') ~> ev('a'), "1", "a")^
-    "command ~> double"  ! example(cmd('1') ~> dbl('2', 'a'), "12", "a")^
-    "command ~> empty"   ! example(cmd('1') ~> empty, "1", "")^
-    "event ~> command"   ! example(ev('a') ~> cmd('1'), "1", "a")^
-    "event ~> event"     ! example(ev('a') ~> ev('b'), "", "ba")^
-    "event ~> double"    ! example(ev('a') ~> dbl('1', 'b'), "1", "ba")^
-    "event ~> empty"     ! example(ev('a') ~> empty, "", "a")^
-    "double ~> command"  ! example(dbl('1', 'a') ~> cmd('2'), "12", "a")^
-    "double ~> event"    ! example(dbl('1', 'a') ~> ev('b'), "1", "ba")^
-    "double ~> double"   ! example(dbl('1', 'a') ~> dbl('2', 'b'), "12", "ba")^
-    "double ~> empty"    ! example(dbl('1', 'a') ~> empty, "1", "a")^
-    "empty ~> command"   ! example(empty ~> cmd('1'), "1", "")^
-    "empty ~> event"     ! example(empty ~> ev('a'), "", "a")^
-    "empty ~> double"    ! example(empty ~> dbl('1', 'a'), "1", "a")^
-    "empty ~> empty"     ! example(empty ~> empty, "", "")
+    "command ~> command" ! example(cmd("1") ~> cmd("2"), "x12+2,1 | +x")^
+    "command ~> event"   ! example(cmd("1") ~> ev("a"), "x1+1 | a+xa")^
+    "command ~> double"  ! example(cmd("1") ~> dbl("2", "a"), "x12+1 | +xa")^
+    "command ~> empty"   ! example(cmd("1") ~> empty, "x1+1 | +x")^
+    "event ~> command"   ! example(ev("a") ~> cmd("1"), "x1+1 | a+xa")^
+    "event ~> event"     ! example(ev("a") ~> ev("b"), "x+ | b,a+xba")^
+    "event ~> double"    ! example(ev("a") ~> dbl("1", "b"), "x1+ | a1+xba")^
+    "event ~> empty"     ! example(ev("a") ~> empty, "x+ | a+xa")^
+    "double ~> command"  ! example(dbl("1", "a") ~> cmd("2"), "x12+2a | +xa")^
+    "double ~> event"    ! example(dbl("1", "a") ~> ev("b"), "x1+ | b+xba")^
+    "double ~> double"   ! example(dbl("1", "a") ~> dbl("2", "b"), "x12+ | +xba")^
+    "double ~> empty"    ! example(dbl("1", "a") ~> empty, "x1+ | +xa")^
+    "empty ~> command"   ! example(empty ~> cmd("1"), "x1+1 | +x")^
+    "empty ~> event"     ! example(empty ~> ev("a"), "x+ | a+xa")^
+    "empty ~> double"    ! example(empty ~> dbl("1", "a"), "x1+ | +xa")^
+    "empty ~> empty"     ! example(empty ~> empty, "x+ | +x")
 
 
-  def example(stage: PipelineStage, cmdExp: String, evExp: String) = {
-    def toOption(s: String) = if (s.isEmpty) None else Some(s)
-    var cmdResult: Option[String] = None
-    var evResult: Option[String] = None
+  def example(stage: PipelineStage, expected: String) = {
+    val cmdResult = ListBuffer.empty[String]
+    val evResult = ListBuffer.empty[String]
     val pl = stage.buildPipelines(null,
-      cmd => cmdResult = toOption(cmd.asInstanceOf[TestCommand].s),
-      ev => evResult = toOption(ev.asInstanceOf[TestEvent].s)
+      cmd => cmdResult += cmd.asInstanceOf[TestCommand].s,
+      ev => evResult += ev.asInstanceOf[TestEvent].s
     )
-    pl.commandPipeline(TestCommand(""))
-    pl.eventPipeline(TestEvent(""))
-    (cmdResult === toOption(cmdExp)) and (evResult === toOption(evExp))
+    pl.commandPipeline(TestCommand("x"))
+    val cmdTest = cmdResult.mkString(",") + '+' + evResult.mkString(",")
+    cmdResult.clear()
+    evResult.clear()
+    pl.eventPipeline(TestEvent("x"))
+    val evTest = cmdResult.mkString(",") + '+' + evResult.mkString(",")
+    cmdTest + " | " + evTest === expected
   }
 
-  def cmd(c: Char) = new CommandPipelineStage {
-    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
-      cmd => commandPL(TestCommand(cmd.asInstanceOf[TestCommand].s + c))
+  def cmd(c: String) = new CommandPipelineStage {
+    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = { cmd =>
+      commandPL(TestCommand(cmd.asInstanceOf[TestCommand].s + c))
+      eventPL(TestEvent(c))
+    }
   }
 
-  def ev(e: Char) = new EventPipelineStage {
-    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) =
-      ev => eventPL(TestEvent(ev.asInstanceOf[TestEvent].s + e))
+  def ev(e: String) = new EventPipelineStage {
+    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = { ev =>
+      commandPL(TestCommand(e))
+      eventPL(TestEvent(ev.asInstanceOf[TestEvent].s + e))
+    }
   }
 
-  def dbl(c: Char, e: Char) = new DoublePipelineStage {
+  def dbl(c: String, e: String) = new DoublePipelineStage {
     def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = Pipelines(
       commandPL = cmd => commandPL(TestCommand(cmd.asInstanceOf[TestCommand].s + c)),
       eventPL = ev => eventPL(TestEvent(ev.asInstanceOf[TestEvent].s + e))
