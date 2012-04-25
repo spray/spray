@@ -300,16 +300,18 @@ class IoWorker(log: LoggingAdapter, config: Config) {
 
     def close(handle: Handle, reason: ConnectionClosedReason) {
       val key = handle.key.selectionKey
-      if (key.isValid && reason == CleanClose && !handle.key.writeBuffers.isEmpty) {
-        log.debug("Scheduling connection close after write buffers flush")
-        handle.key.writeBuffers += CleanCloseToken
-        handle.key.enable(OP_WRITE)
-      } else {
-        log.debug("Closing connection due to {}", reason)
-        key.cancel()
-        key.channel.close()
-        handle.handler ! Closed(handle, reason)
-        connectionsClosed += 1
+      if (key.isValid) {
+        if (reason == CleanClose && !handle.key.writeBuffers.isEmpty) {
+          log.debug("Scheduling connection close after write buffers flush")
+          handle.key.writeBuffers += CleanCloseToken
+          handle.key.enable(OP_WRITE)
+        } else {
+          log.debug("Closing connection due to {}", reason)
+          key.cancel()
+          key.channel.close()
+          handle.handler ! Closed(handle, reason)
+          connectionsClosed += 1
+        }
       }
     }
 
