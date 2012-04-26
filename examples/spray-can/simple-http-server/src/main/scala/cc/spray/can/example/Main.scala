@@ -16,10 +16,12 @@
 
 package cc.spray.can.example
 
-import cc.spray.io.pipelines.MessageHandlerDispatch
 import cc.spray.io.IoWorker
 import cc.spray.can.server.HttpServer
 import akka.actor._
+import java.security.{SecureRandom, KeyStore}
+import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
+import cc.spray.io.pipelines.{ServerSSLEngineProvider, MessageHandlerDispatch}
 
 object Main extends App {
   // we need an ActorSystem to host our application in
@@ -47,5 +49,30 @@ object Main extends App {
   // our IoWorker into the shutdown of the applications ActorSystem
   system.registerOnTermination {
     ioWorker.stop()
+  }
+
+  /////////////// for SSL support (if enabled in application.conf) ////////////////
+
+  implicit def sslContext: SSLContext = {
+    val keyStoreResource = "/ssl-test-keystore.jks"
+    val password = ""
+
+    val keyStore = KeyStore.getInstance("jks")
+    keyStore.load(getClass.getResourceAsStream(keyStoreResource), password.toCharArray)
+    val keyManagerFactory = KeyManagerFactory.getInstance("SunX509")
+    keyManagerFactory.init(keyStore, password.toCharArray)
+    val trustManagerFactory = TrustManagerFactory.getInstance("SunX509")
+    trustManagerFactory.init(keyStore)
+    val context = SSLContext.getInstance("TLS")
+    context.init(keyManagerFactory.getKeyManagers, trustManagerFactory.getTrustManagers, new SecureRandom)
+    context
+  }
+
+  implicit def sslEngineProvider: ServerSSLEngineProvider = {
+    ServerSSLEngineProvider.defaultWithEngineCustomization { engine =>
+      engine.setEnabledCipherSuites(Array("TLS_RSA_WITH_AES_256_CBC_SHA"))
+      engine.setEnabledProtocols(Array("SSLv3", "TLSv1"))
+      engine
+    }
   }
 }
