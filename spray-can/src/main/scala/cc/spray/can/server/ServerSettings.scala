@@ -27,6 +27,7 @@ private[can] class ServerSettings(config: Config = ConfigFactory.load(), val Con
   }
 
   val ServerHeader                  = c getString       "server-header"
+  val SSLEncryption                 = c getBoolean      "ssl-encryption"
   val PipeliningLimit               = c getInt          "pipelining-limit"
   val IdleTimeout                   = c getMilliseconds "idle-timeout"
   val RequestTimeout                = c getMilliseconds "request-timeout"

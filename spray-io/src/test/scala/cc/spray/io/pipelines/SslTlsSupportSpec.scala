@@ -18,10 +18,8 @@ package cc.spray.io.pipelines
 import org.specs2.mutable.Specification
 import annotation.tailrec
 import javax.net.ssl._
-import java.security.{SecureRandom, KeyStore}
 import java.io.{BufferedWriter, OutputStreamWriter, InputStreamReader, BufferedReader}
 import scala.Boolean
-import java.net.InetSocketAddress
 import akka.pattern.ask
 import cc.spray.util._
 import java.nio.ByteBuffer
@@ -29,12 +27,13 @@ import akka.util.{Duration, Timeout}
 import cc.spray.io._
 import akka.actor.{ActorRef, Props, ActorSystem}
 import com.typesafe.config.ConfigFactory
+import java.security.{KeyStore, SecureRandom}
 
 class SslTlsSupportSpec extends Specification {
   implicit val system = ActorSystem()
+  implicit val sslContext = createSslContext("/ssl-test-keystore.jks", "")
   def log = system.log
   val port = 23454
-  val sslContext = createSslContext("/ssl-test-keystore.jks", "")
   val serverThread = new ServerThread
   serverThread.start()
   val ioWorker = new IoWorker(system, ConfigFactory.parseString("spray.io.confirm-sends = off")).start()
@@ -76,7 +75,7 @@ class SslTlsSupportSpec extends Specification {
     ioWorker.stop()
   }
 
-  def createSslContext(keyStoreResource: String, password: String) = {
+  def createSslContext(keyStoreResource: String, password: String): SSLContext = {
     val keyStore = KeyStore.getInstance("jks")
     keyStore.load(getClass.getResourceAsStream(keyStoreResource), password.toCharArray)
     val keyManagerFactory = KeyManagerFactory.getInstance("SunX509")
@@ -108,7 +107,7 @@ class SslTlsSupportSpec extends Specification {
   }
 
   class SslClientActor extends IoClient(ioWorker) with ConnectionActors {
-    protected def pipeline = frontEnd ~> SslTlsSupport(createSslEngine, log)
+    protected def pipeline = frontEnd ~> SslTlsSupport(ClientSSLEngineProvider.default, log)
     def frontEnd = new DoublePipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) = new Pipelines {
         var receiver: ActorRef = _
@@ -122,15 +121,10 @@ class SslTlsSupportSpec extends Specification {
         }
       }
     }
-    def createSslEngine(address: InetSocketAddress) = {
-      val engine = sslContext.createSSLEngine()
-      engine.setUseClientMode(true)
-      engine
-    }
   }
 
   class SslServerActor extends IoServer(ioWorker) with ConnectionActors {
-    protected def pipeline = frontEnd ~> SslTlsSupport(createSslEngine, log)
+    protected def pipeline = frontEnd ~> SslTlsSupport(ServerSSLEngineProvider.default, log)
     def frontEnd = new EventPipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): EPL = {
         case IoServer.Received(_, buf) =>
@@ -141,11 +135,6 @@ class SslTlsSupportSpec extends Specification {
           log.debug("Server sent: {}", response.dropRight(1))
         case ev => eventPL(ev)
       }
-    }
-    def createSslEngine(address: InetSocketAddress) = {
-      val engine = sslContext.createSSLEngine()
-      engine.setUseClientMode(false)
-      engine
     }
   }
 

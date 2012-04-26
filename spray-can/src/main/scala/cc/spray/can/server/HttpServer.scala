@@ -18,16 +18,17 @@ package cc.spray.can.server
 
 import cc.spray.can.model.{HttpHeader, HttpResponse, HttpRequest}
 import cc.spray.io._
-import pipelines.{MessageHandlerDispatch, TickGenerator, ConnectionTimeouts}
 import akka.event.LoggingAdapter
 import akka.util.Duration
 import com.typesafe.config.{ConfigFactory, Config}
 import java.util.concurrent.TimeUnit
 import cc.spray.can.server.StatsSupport.StatsHolder
+import pipelines._
 
 class HttpServer(ioWorker: IoWorker,
                  messageHandler: MessageHandlerDispatch.MessageHandler,
                  config: Config = ConfigFactory.load())
+                (implicit sslEngineProvider: ServerSSLEngineProvider)
   extends IoServer(ioWorker) with ConnectionActors {
 
   protected lazy val pipeline = {
@@ -61,7 +62,7 @@ object HttpServer {
    * The HttpServer pipelines setup:
    *
    * |------------------------------------------------------------------------------------------
-   * | ServerFrontend: converts HttpMessagePart, IoPeer.Closed and IoPeer.SendCompleted to
+   * | ServerFrontend: converts HttpMessagePart, Closed and SendCompleted events to
    * |                 MessageHandlerDispatch.DispatchCommand,
    * |                 generates HttpResponsePartRenderingContext
    * |------------------------------------------------------------------------------------------
@@ -83,7 +84,7 @@ object HttpServer {
    * |------------------------------------------------------------------------------------------
    * | PipeliningLimiter: throttles incoming requests according to the PipeliningLimit, listens
    * |                    to HttpResponsePartRenderingContext commands and HttpRequestPart events,
-   * |                    generates IoServer.StopReading and IoServer.ResumeReading commands
+   * |                    generates StopReading and ResumeReading commands
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | HttpMessagePart                 | HttpResponsePartRenderingContext
@@ -101,7 +102,7 @@ object HttpServer {
    *    | TickGenerator.Tick              | IoServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
-   * | RequestParsing: converts IoServer.Received to HttpMessagePart,
+   * | RequestParsing: converts Received events to HttpMessagePart,
    * |                 generates HttpResponsePartRenderingContext (in case of errors)
    * |------------------------------------------------------------------------------------------
    *    /\                                |
@@ -112,7 +113,7 @@ object HttpServer {
    *    |                                \/
    * |------------------------------------------------------------------------------------------
    * | ResponseRendering: converts HttpResponsePartRenderingContext
-   * |                    to IoServer.Send and IoServer.Close
+   * |                    to Send and Close commands
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | IoServer.Closed                 | IoServer.Send
@@ -122,8 +123,8 @@ object HttpServer {
    *    |                                 | IoServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
-   * | ConnectionTimeouts: listens to IoServer.Received and IoServer.Send and
-   * |                     TickGenerator.Tick, generates IoServer.Close commands
+   * | ConnectionTimeouts: listens to Received events and Send commands and
+   * |                     TickGenerator.Tick, generates Close commands
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | IoServer.Closed                 | IoServer.Send
@@ -133,7 +134,18 @@ object HttpServer {
    *    |                                 | IoServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
-   * | TickGenerator: listens to event IoServer.Closed,
+   * | SslTlsSupport: listens to event Send and Close commands and Received events,
+   * |                provides transparent encryption/decryption in both directions
+   * |------------------------------------------------------------------------------------------
+   *    /\                                |
+   *    | IoServer.Closed                 | IoServer.Send
+   *    | IoServer.SendCompleted          | IoServer.Close
+   *    | IoServer.Received               | IoServer.Tell
+   *    | TickGenerator.Tick              | IoServer.StopReading
+   *    |                                 | IoServer.ResumeReading
+   *    |                                \/
+   * |------------------------------------------------------------------------------------------
+   * | TickGenerator: listens to Closed events,
    * |                dispatches TickGenerator.Tick events to the head of the event PL
    * |------------------------------------------------------------------------------------------
    *    /\                                |
@@ -148,7 +160,8 @@ object HttpServer {
                             messageHandler: MessageHandlerDispatch.MessageHandler,
                             timeoutResponse: HttpRequest => HttpResponse,
                             statsHolder: => StatsHolder,
-                            log: LoggingAdapter): PipelineStage = {
+                            log: LoggingAdapter)
+                           (implicit sslEngineProvider: ServerSSLEngineProvider): PipelineStage = {
     ServerFrontend(settings, messageHandler, timeoutResponse, log) ~>
     PipelineStage.optional(settings.RequestChunkAggregationLimit > 0,
       RequestChunkAggregation(settings.RequestChunkAggregationLimit.toInt)) ~>
@@ -157,6 +170,7 @@ object HttpServer {
     RequestParsing(settings.ParserSettings, log) ~>
     ResponseRendering(settings.ServerHeader, settings.ChunklessStreaming, settings.ResponseSizeHint.toInt) ~>
     PipelineStage.optional(settings.IdleTimeout > 0, ConnectionTimeouts(settings.IdleTimeout, log)) ~>
+    PipelineStage.optional(settings.SSLEncryption, SslTlsSupport(sslEngineProvider, log)) ~>
     PipelineStage.optional(
       settings.ReapingCycle > 0 && (settings.IdleTimeout > 0 || settings.RequestTimeout > 0),
       TickGenerator(Duration(settings.ReapingCycle, TimeUnit.MILLISECONDS))

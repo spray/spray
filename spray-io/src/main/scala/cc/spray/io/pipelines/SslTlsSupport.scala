@@ -21,19 +21,20 @@ import cc.spray.util._
 import akka.event.LoggingAdapter
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
-import javax.net.ssl.{SSLException, SSLEngineResult, SSLEngine}
+import javax.net.ssl.{SSLContext, SSLException, SSLEngineResult, SSLEngine}
+import javax.net.ssl.SSLEngineResult.HandshakeStatus._
 import SSLEngineResult.Status._
 import collection.mutable.Queue
 import annotation.tailrec
-import javax.net.ssl.SSLEngineResult.HandshakeStatus._
+import scala.Array
 
 object SslTlsSupport {
   private val EmptyByteBufferArray = new Array[ByteBuffer](0)
 
-  def apply(engineCreator: InetSocketAddress => SSLEngine, log: LoggingAdapter): PipelineStage = {
+  def apply(engineProvider: InetSocketAddress => SSLEngine, log: LoggingAdapter): PipelineStage = {
     new DoublePipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
-        val engine = engineCreator(context.handle.address)
+        val engine = engineProvider(context.handle.address)
         val pendingSends = Queue.empty[ByteBuffer]
         var receptacle: ByteBuffer = _ // holds incoming data that are too small to be decrypted yet
 
@@ -140,7 +141,9 @@ object SslTlsSupport {
           val tempBuf = SslBufferPool.acquire()
           try f(tempBuf)
           catch {
-            case e: SSLException => commandPL(IoPeer.Close(ProtocolError(e.toString)))
+            case e: SSLException =>
+              log.warning("Closing encrypted connection due to {}",e)
+              commandPL(IoPeer.Close(ProtocolError(e.toString)))
           }
           finally SslBufferPool.release(tempBuf)
         }
@@ -196,6 +199,63 @@ object SslTlsSupport {
           }
         }
       }
+    }
+  }
+}
+
+trait ServerSSLEngineProvider extends (InetSocketAddress => SSLEngine)
+object ServerSSLEngineProvider {
+  def defaultWithEngineCustomization(f: SSLEngine => SSLEngine)
+                                    (implicit contextProvider: SSLContextProvider): ServerSSLEngineProvider = {
+    default.andThen(f)
+  }
+  implicit def default(implicit contextProvider: SSLContextProvider): ServerSSLEngineProvider = {
+    new ServerSSLEngineProvider {
+      val context = contextProvider.createSSLContext
+      def apply(address: InetSocketAddress) = {
+        val engine = context.createSSLEngine(address.getHostName, address.getPort)
+        engine.setUseClientMode(false)
+        engine
+      }
+    }
+  }
+  implicit def fromFunc(f: InetSocketAddress => SSLEngine): ServerSSLEngineProvider = {
+    new ServerSSLEngineProvider {
+      def apply(address: InetSocketAddress) = f(address)
+    }
+  }
+}
+
+trait ClientSSLEngineProvider extends (InetSocketAddress => SSLEngine)
+object ClientSSLEngineProvider {
+  def defaultWithEngineCustomization(f: SSLEngine => SSLEngine)
+                                    (implicit contextProvider: SSLContextProvider): ClientSSLEngineProvider = {
+    default.andThen(f)
+  }
+  implicit def default(implicit contextProvider: SSLContextProvider): ClientSSLEngineProvider = {
+    new ClientSSLEngineProvider {
+      val context = contextProvider.createSSLContext
+      def apply(address: InetSocketAddress) = {
+        val engine = context.createSSLEngine(address.getHostName, address.getPort)
+        engine.setUseClientMode(true)
+        engine
+      }
+    }
+  }
+  implicit def fromFunc(f: InetSocketAddress => SSLEngine): ClientSSLEngineProvider = {
+    new ClientSSLEngineProvider {
+      def apply(address: InetSocketAddress) = f(address)
+    }
+  }
+}
+
+trait SSLContextProvider {
+  def createSSLContext: SSLContext
+}
+object SSLContextProvider {
+  implicit def forContext(implicit context: SSLContext = SSLContext.getDefault): SSLContextProvider = {
+    new SSLContextProvider {
+      def createSSLContext = context
     }
   }
 }
