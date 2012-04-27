@@ -88,33 +88,30 @@ object StatsSupport {
       connectionsOpened.incrementAndGet()
       adjustMaxOpenConnections()
 
-      val commandPipeline: CPL = { command =>
-        command match {
-          case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageStartPart] =>
-            responseStarts.incrementAndGet()
-            commandPL(command)
+      val commandPipeline: CPL = {
+        case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageStartPart] =>
+          responseStarts.incrementAndGet()
+          commandPL(x)
 
-          case x: IoServer.Tell if x.message.isInstanceOf[HttpServer.RequestTimeout] =>
-            requestTimeouts.incrementAndGet()
-            commandPL(command)
+        case x: IoServer.Tell if x.message.isInstanceOf[HttpServer.RequestTimeout] =>
+          requestTimeouts.incrementAndGet()
+          commandPL(x)
 
-          case _ => commandPL(command)
-        }
+        case cmd => commandPL(cmd)
       }
 
-      val eventPipeline: EPL = { event =>
-        event match {
-          case _: HttpMessageStartPart =>
-            requestStarts.incrementAndGet()
-            adjustMaxOpenRequests()
+      val eventPipeline: EPL = {
+        case x: HttpMessageStartPart =>
+          requestStarts.incrementAndGet()
+          adjustMaxOpenRequests()
+          eventPL(x)
 
-          case x: HttpServer.Closed =>
-            connectionsClosed.incrementAndGet()
-            if (x.reason == IdleTimeout) idleTimeouts.incrementAndGet()
+        case x: HttpServer.Closed =>
+          connectionsClosed.incrementAndGet()
+          if (x.reason == IdleTimeout) idleTimeouts.incrementAndGet()
+          eventPL(x)
 
-          case _ =>
-        }
-        eventPL(event)
+        case ev => eventPL(ev)
       }
     }
   }

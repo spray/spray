@@ -44,85 +44,81 @@ object ServerFrontend {
           var requestTimeout = settings.RequestTimeout
           var timeoutTimeout = settings.TimeoutTimeout
 
-          val commandPipeline: CPL = { command =>
-            command match {
-              case part: HttpResponsePart with HttpMessageEndPart =>
-                ensureRequestOpenFor(part)
-                val rec = openRequests.head
-                sendPart(part, rec)
-                if (rec.hasQueuedResponses) {
-                  context.self ! rec.dequeue
-                } else {
-                  openRequests.dequeue()
-                  if (!openRequests.isEmpty && openRequests.head.hasQueuedResponses)
-                    context.self ! openRequests.head.dequeue
-                }
+          val commandPipeline: CPL = {
+            case part: HttpResponsePart with HttpMessageEndPart =>
+              ensureRequestOpenFor(part)
+              val rec = openRequests.head
+              sendPart(part, rec)
+              if (rec.hasQueuedResponses) {
+                context.self ! rec.dequeue
+              } else {
+                openRequests.dequeue()
+                if (!openRequests.isEmpty && openRequests.head.hasQueuedResponses)
+                  context.self ! openRequests.head.dequeue
+              }
 
-              case part: HttpResponsePart =>
-                ensureRequestOpenFor(part)
-                val rec = openRequests.head
-                rec.timestamp = 0L // disable request timeout checking once the first response part has come in
-                sendPart(part, rec)
+            case part: HttpResponsePart =>
+              ensureRequestOpenFor(part)
+              val rec = openRequests.head
+              rec.timestamp = 0L // disable request timeout checking once the first response part has come in
+              sendPart(part, rec)
 
-              case response: Response if response.rec == openRequests.head =>
-                commandPipeline(response.msg) // in order response, dispatch
+            case response: Response if response.rec == openRequests.head =>
+              commandPipeline(response.msg) // in order response, dispatch
 
-              case response: Response =>
-                response.rec.enqueue(response.msg) // out of order response, queue up
+            case response: Response =>
+              response.rec.enqueue(response.msg) // out of order response, queue up
 
-              case x: SetRequestTimeout => requestTimeout = x.timeout.toMillis
-              case x: SetTimeoutTimeout => timeoutTimeout = x.timeout.toMillis
+            case x: SetRequestTimeout => requestTimeout = x.timeout.toMillis
+            case x: SetTimeoutTimeout => timeoutTimeout = x.timeout.toMillis
 
-              case cmd => commandPL(cmd)
-            }
+            case cmd => commandPL(cmd)
           }
 
-          val eventPipeline: EPL = { event =>
-            event match {
-              case x: HttpRequest => dispatchRequestStart(x, x, System.currentTimeMillis)
+          val eventPipeline: EPL = {
+            case x: HttpRequest => dispatchRequestStart(x, x, System.currentTimeMillis)
 
-              case x: ChunkedRequestStart => dispatchRequestStart(x, x.request, 0L)
+            case x: ChunkedRequestStart => dispatchRequestStart(x, x.request, 0L)
 
-              case x: MessageChunk => dispatchRequestChunk(x)
+            case x: MessageChunk => dispatchRequestChunk(x)
 
-              case x: ChunkedMessageEnd =>
-                if (openRequests.isEmpty) throw new IllegalStateException
-                // only start request timeout checking after request has been completed
-                openRequests.last.timestamp = System.currentTimeMillis
-                dispatchRequestChunk(x)
+            case x: ChunkedMessageEnd =>
+              if (openRequests.isEmpty) throw new IllegalStateException
+              // only start request timeout checking after request has been completed
+              openRequests.last.timestamp = System.currentTimeMillis
+              dispatchRequestChunk(x)
 
-              case x: HttpServer.SendCompleted =>
-                if (unconfirmedSends.isEmpty) throw new IllegalStateException
-                val rec = unconfirmedSends.dequeue()
-                commandPL(IoServer.Tell(rec.handler, x, rec.receiver))
+            case x: HttpServer.SendCompleted =>
+              if (unconfirmedSends.isEmpty) throw new IllegalStateException
+              val rec = unconfirmedSends.dequeue()
+              commandPL(IoServer.Tell(rec.handler, x, rec.receiver))
 
-              case x: HttpServer.Closed =>
-                if (unconfirmedSends.isEmpty && openRequests.isEmpty) {
-                  messageHandler match {
-                    case _: SingletonHandler | _: PerConnectionHandler =>
-                      commandPL(IoServer.Tell(handlerCreator(), x, context.self))
-                    case _: PerMessageHandler =>
-                      // per-message handlers do not receive Closed messages that are
-                      // not related to a specific request, they need to cleanup themselves
-                      // upon response sending or reception of the send confirmation
-                  }
-                } else {
-                  val dispatch: RequestRecord => Unit = r => commandPL(IoServer.Tell(r.handler, x, r.receiver))
-                  unconfirmedSends.foreach(dispatch)
-                  openRequests.foreach(dispatch)
+            case x: HttpServer.Closed =>
+              if (unconfirmedSends.isEmpty && openRequests.isEmpty) {
+                messageHandler match {
+                  case _: SingletonHandler | _: PerConnectionHandler =>
+                    commandPL(IoServer.Tell(handlerCreator(), x, context.self))
+                  case _: PerMessageHandler =>
+                    // per-message handlers do not receive Closed messages that are
+                    // not related to a specific request, they need to cleanup themselves
+                    // upon response sending or reception of the send confirmation
                 }
-                eventPL(event) // terminates the connection actor
+              } else {
+                val dispatch: RequestRecord => Unit = r => commandPL(IoServer.Tell(r.handler, x, r.receiver))
+                unconfirmedSends.foreach(dispatch)
+                openRequests.foreach(dispatch)
+              }
+              eventPL(x) // terminates the connection actor
 
-              case TickGenerator.Tick =>
-                checkForTimeouts()
-                eventPL(event)
+            case TickGenerator.Tick =>
+              checkForTimeouts()
+              eventPL(TickGenerator.Tick)
 
-              case x: CommandException =>
-                log.warning("Received {}, closing connection ...", x)
-                commandPL(HttpServer.Close(IoError(x)))
+            case x: CommandException =>
+              log.warning("Received {}, closing connection ...", x)
+              commandPL(HttpServer.Close(IoError(x)))
 
-              case ev => eventPL(ev)
-            }
+            case ev => eventPL(ev)
           }
 
           def sendPart(part: HttpResponsePart, rec: RequestRecord) {

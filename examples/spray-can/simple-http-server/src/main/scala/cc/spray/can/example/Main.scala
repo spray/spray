@@ -53,6 +53,8 @@ object Main extends App {
 
   /////////////// for SSL support (if enabled in application.conf) ////////////////
 
+  // if there is no SSLContext in scope implicitly the HttpServer uses the default SSLContext,
+  // since we want non-default setting in this example we make a custom SSLContext available here
   implicit def sslContext: SSLContext = {
     val keyStoreResource = "/ssl-test-keystore.jks"
     val password = ""
@@ -68,8 +70,11 @@ object Main extends App {
     context
   }
 
+  // if there is no ServerSSLEngineProvider in scope implicitly the HttpServer uses the default one,
+  // since we want to explicitly enable cipher suites and protocols we make a custom ServerSSLEngineProvider
+  // available here
   implicit def sslEngineProvider: ServerSSLEngineProvider = {
-    ServerSSLEngineProvider.defaultWithEngineCustomization { engine =>
+    ServerSSLEngineProvider { engine =>
       engine.setEnabledCipherSuites(Array("TLS_RSA_WITH_AES_256_CBC_SHA"))
       engine.setEnabledProtocols(Array("SSLv3", "TLSv1"))
       engine

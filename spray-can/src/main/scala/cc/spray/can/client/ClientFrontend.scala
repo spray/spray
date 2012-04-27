@@ -34,88 +34,84 @@ object ClientFrontend {
       val openRequests = Queue.empty[RequestRecord]
       var requestTimeout = initialRequestTimeout
 
-      val commandPipeline: CPL = { command =>
-        command match {
-          case x: HttpRequest =>
-            if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
-              render(x)
-              openRequests.enqueue(new RequestRecord(x, context.sender, timestamp = System.currentTimeMillis))
-            } else {
-              log.warning("Received new HttpRequest before previous chunking request was finished, " +
-                "forwarding to deadletters ...")
-              forwardToDeadLetters(x)
-            }
+      val commandPipeline: CPL = {
+        case x: HttpRequest =>
+          if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
+            render(x)
+            openRequests.enqueue(new RequestRecord(x, context.sender, timestamp = System.currentTimeMillis))
+          } else {
+            log.warning("Received new HttpRequest before previous chunking request was finished, " +
+              "forwarding to deadletters ...")
+            forwardToDeadLetters(x)
+          }
 
-          case x: ChunkedRequestStart =>
-            if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
-              render(x)
-              openRequests.enqueue(new RequestRecord(x, context.sender, timestamp = 0))
-            } else {
-              log.warning("Received new ChunkedRequestStart before previous chunking request was finished, " +
-                "forwarding to deadletters ...")
-              forwardToDeadLetters(x)
-            }
+        case x: ChunkedRequestStart =>
+          if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
+            render(x)
+            openRequests.enqueue(new RequestRecord(x, context.sender, timestamp = 0))
+          } else {
+            log.warning("Received new ChunkedRequestStart before previous chunking request was finished, " +
+              "forwarding to deadletters ...")
+            forwardToDeadLetters(x)
+          }
 
-          case x: MessageChunk =>
-            if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
-              render(x)
-            } else {
-              log.warning("Received MessageChunk outside of chunking request context, ignoring...")
-              forwardToDeadLetters(x)
-            }
+        case x: MessageChunk =>
+          if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
+            render(x)
+          } else {
+            log.warning("Received MessageChunk outside of chunking request context, ignoring...")
+            forwardToDeadLetters(x)
+          }
 
-          case x: ChunkedMessageEnd =>
-            if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
-              render(x)
-              openRequests.last.timestamp = System.currentTimeMillis // only start timer once the request is completed
-            } else {
-              log.warning("Received ChunkedMessageEnd outside of chunking request context, ignoring...")
-              forwardToDeadLetters(x)
-            }
+        case x: ChunkedMessageEnd =>
+          if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
+            render(x)
+            openRequests.last.timestamp = System.currentTimeMillis // only start timer once the request is completed
+          } else {
+            log.warning("Received ChunkedMessageEnd outside of chunking request context, ignoring...")
+            forwardToDeadLetters(x)
+          }
 
-          case x: SetRequestTimeout => requestTimeout = x.timeout.toMillis
+        case x: SetRequestTimeout => requestTimeout = x.timeout.toMillis
 
-          case cmd => commandPL(cmd)
-        }
+        case cmd => commandPL(cmd)
       }
 
-      val eventPipeline: EPL = { event =>
-        event match {
-          case x: HttpMessageEndPart =>
-            if (!openRequests.isEmpty) {
-              dispatch(openRequests.dequeue().sender, x)
-            } else {
-              log.warning("Received unmatched {}, closing connection due to protocol error", x)
-              commandPL(HttpClient.Close(ProtocolError("Received unmatched response part " + x)))
-            }
+      val eventPipeline: EPL = {
+        case x: HttpMessageEndPart =>
+          if (!openRequests.isEmpty) {
+            dispatch(openRequests.dequeue().sender, x)
+          } else {
+            log.warning("Received unmatched {}, closing connection due to protocol error", x)
+            commandPL(HttpClient.Close(ProtocolError("Received unmatched response part " + x)))
+          }
 
-          case x: HttpMessagePart =>
-            if (!openRequests.isEmpty) {
-              dispatch(openRequests.head.sender, x)
-            } else {
-              log.warning("Received unmatched {}, closing connection due to protocol error", x)
-              commandPL(HttpClient.Close(ProtocolError("Received unmatched response part " + x)))
-            }
+        case x: HttpMessagePart =>
+          if (!openRequests.isEmpty) {
+            dispatch(openRequests.head.sender, x)
+          } else {
+            log.warning("Received unmatched {}, closing connection due to protocol error", x)
+            commandPL(HttpClient.Close(ProtocolError("Received unmatched response part " + x)))
+          }
 
-          case x: HttpClient.SendCompleted =>
-            if (!openRequests.isEmpty) {
-              dispatch(openRequests.head.sender, x)
-            } else log.warning("Received stray SendCompleted")
+        case x: HttpClient.SendCompleted =>
+          if (!openRequests.isEmpty) {
+            dispatch(openRequests.head.sender, x)
+          } else log.warning("Received stray SendCompleted")
 
-          case x: HttpClient.Closed =>
-            openRequests.foreach(rec => dispatch(rec.sender, x))
-            eventPL(event) // terminates the connection actor and informs the original commander
+        case x: HttpClient.Closed =>
+          openRequests.foreach(rec => dispatch(rec.sender, x))
+          eventPL(x) // terminates the connection actor and informs the original commander
 
-          case TickGenerator.Tick =>
-            checkForTimeout()
-            eventPL(event)
+        case TickGenerator.Tick =>
+          checkForTimeout()
+          eventPL(TickGenerator.Tick)
 
-          case x: CommandException =>
-            log.warning("Received {}, closing connection ...", x)
-            commandPL(HttpClient.Close(IoError(x)))
+        case x: CommandException =>
+          log.warning("Received {}, closing connection ...", x)
+          commandPL(HttpClient.Close(IoError(x)))
 
-          case ev => eventPL(ev)
-        }
+        case ev => eventPL(ev)
       }
 
       def forwardToDeadLetters(x: AnyRef) {

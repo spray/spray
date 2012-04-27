@@ -34,33 +34,29 @@ object PipeliningLimiter {
       var limit = pipeliningLimit
       var readingStopped = false
 
-      val commandPipeline: CPL = { command =>
-        command match {
-          case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEndPart] =>
-            openRequests -= 1
-            commandPL(command)
-            if (parkedRequestParts != null && !parkedRequestParts.isEmpty) {
-              unparkOneRequest()
-              if (parkedRequestParts.isEmpty) resumeReading()
-            }
+      val commandPipeline: CPL = {
+        case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEndPart] =>
+          openRequests -= 1
+          commandPL(x)
+          if (parkedRequestParts != null && !parkedRequestParts.isEmpty) {
+            unparkOneRequest()
+            if (parkedRequestParts.isEmpty) resumeReading()
+          }
 
-          case _ => commandPL(command)
-        }
+        case cmd => commandPL(cmd)
       }
 
-      val eventPipeline: EPL = { event =>
-        event match {
-          case x: HttpRequestPart =>
-            if (openRequests == limit) {
-              stopReading()
-              park(x)
-            } else {
-              if (x.isInstanceOf[HttpMessageEndPart]) openRequests += 1
-              eventPL(event)
-            }
+      val eventPipeline: EPL = {
+        case x: HttpRequestPart =>
+          if (openRequests == limit) {
+            stopReading()
+            park(x)
+          } else {
+            if (x.isInstanceOf[HttpMessageEndPart]) openRequests += 1
+            eventPL(x)
+          }
 
-          case _ => eventPL(event)
-        }
+        case ev => eventPL(ev)
       }
 
       def stopReading() {

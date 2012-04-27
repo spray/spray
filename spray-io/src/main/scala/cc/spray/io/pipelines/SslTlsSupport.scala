@@ -205,18 +205,14 @@ object SslTlsSupport {
 
 trait ServerSSLEngineProvider extends (InetSocketAddress => SSLEngine)
 object ServerSSLEngineProvider {
-  def defaultWithEngineCustomization(f: SSLEngine => SSLEngine)
-                                    (implicit contextProvider: SSLContextProvider): ServerSSLEngineProvider = {
+  def apply(f: SSLEngine => SSLEngine)(implicit cp: SSLContextProvider): ServerSSLEngineProvider =
     default.andThen(f)
-  }
-  implicit def default(implicit contextProvider: SSLContextProvider): ServerSSLEngineProvider = {
+
+  implicit def default(implicit cp: SSLContextProvider): ServerSSLEngineProvider = {
     new ServerSSLEngineProvider {
-      val context = contextProvider.createSSLContext
-      def apply(address: InetSocketAddress) = {
-        val engine = context.createSSLEngine(address.getHostName, address.getPort)
-        engine.setUseClientMode(false)
-        engine
-      }
+      val context = cp.createSSLContext
+      def apply(a: InetSocketAddress) =
+        make(context.createSSLEngine(a.getHostName, a.getPort))(_.setUseClientMode(false))
     }
   }
   implicit def fromFunc(f: InetSocketAddress => SSLEngine): ServerSSLEngineProvider = {
@@ -228,18 +224,14 @@ object ServerSSLEngineProvider {
 
 trait ClientSSLEngineProvider extends (InetSocketAddress => SSLEngine)
 object ClientSSLEngineProvider {
-  def defaultWithEngineCustomization(f: SSLEngine => SSLEngine)
-                                    (implicit contextProvider: SSLContextProvider): ClientSSLEngineProvider = {
+  def apply(f: SSLEngine => SSLEngine)(implicit cp: SSLContextProvider): ClientSSLEngineProvider =
     default.andThen(f)
-  }
-  implicit def default(implicit contextProvider: SSLContextProvider): ClientSSLEngineProvider = {
+
+  implicit def default(implicit cp: SSLContextProvider): ClientSSLEngineProvider = {
     new ClientSSLEngineProvider {
-      val context = contextProvider.createSSLContext
-      def apply(address: InetSocketAddress) = {
-        val engine = context.createSSLEngine(address.getHostName, address.getPort)
-        engine.setUseClientMode(true)
-        engine
-      }
+      val context = cp.createSSLContext
+      def apply(a: InetSocketAddress) =
+        make(context.createSSLEngine(a.getHostName, a.getPort))(_.setUseClientMode(true))
     }
   }
   implicit def fromFunc(f: InetSocketAddress => SSLEngine): ClientSSLEngineProvider = {
