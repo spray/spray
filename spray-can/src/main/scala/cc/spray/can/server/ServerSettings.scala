@@ -19,10 +19,10 @@ package cc.spray.can.server
 import cc.spray.can.parsing.ParserSettings
 import com.typesafe.config.{ConfigFactory, Config}
 
-private[can] class ServerSettings(config: Config = ConfigFactory.load(), val ConfirmedSends: Boolean) {
+private[can] class ServerSettings(config: Config = ConfigFactory.load, val ConfirmedSends: Boolean) {
   private[this] val c: Config = {
-    val c = config.withFallback(ConfigFactory.defaultReference())
-    c.checkValid(ConfigFactory.defaultReference(), "spray.can.server")
+    val c = config.withFallback(ConfigFactory.defaultReference)
+    c.checkValid(ConfigFactory.defaultReference, "spray.can.server")
     c.getConfig("spray.can.server")
   }
 
@@ -41,6 +41,8 @@ private[can] class ServerSettings(config: Config = ConfigFactory.load(), val Con
   val RequestChunkAggregationLimit  = c getBytes        "request-chunk-aggregation-limit"
   val ResponseSizeHint              = c getBytes        "response-size-hint"
 
+  val ParserSettings = new ParserSettings(c.getConfig("parsing"))
+
   require(PipeliningLimit >= 0, "pipelining-limit must be >= 0")
   require(IdleTimeout     >= 0, "idle-timeout must be >= 0")
   require(RequestTimeout  >= 0, "request-timeout must be >= 0")
@@ -50,6 +52,4 @@ private[can] class ServerSettings(config: Config = ConfigFactory.load(), val Con
     "request-chunk-aggregation-limit must be >= 0 and <= Int.MaxValue")
   require(0 <= ResponseSizeHint && ResponseSizeHint <= Int.MaxValue,
     "response-size-hint must be >= 0 and <= Int.MaxValue")
-
-  val ParserSettings = new ParserSettings(config)
 }
