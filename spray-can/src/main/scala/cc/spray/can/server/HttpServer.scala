@@ -27,7 +27,7 @@ import pipelines._
 
 class HttpServer(ioWorker: IoWorker,
                  messageHandler: MessageHandlerDispatch.MessageHandler,
-                 config: Config = ConfigFactory.load())
+                 config: Config = ConfigFactory.load)
                 (implicit sslEngineProvider: ServerSSLEngineProvider)
   extends IoServer(ioWorker) with ConnectionActors {
 

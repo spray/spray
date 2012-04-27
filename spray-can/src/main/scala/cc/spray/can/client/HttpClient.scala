@@ -19,10 +19,10 @@ package client
 
 import cc.spray.io._
 import akka.util.Duration
-import pipelines.{TickGenerator, ConnectionTimeouts}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.util.concurrent.TimeUnit
 import akka.event.LoggingAdapter
+import pipelines.{SslTlsSupport, ClientSSLEngineProvider, TickGenerator, ConnectionTimeouts}
 
 /**
  * Reacts to [[cc.spray.can.HttpClient.Connect]] messages by establishing a connection to the remote host.
@@ -33,7 +33,9 @@ import akka.event.LoggingAdapter
  * replied to with [[cc.spray.can.model.HttpResponsePart]] messages (or [[akka.actor.Status.Failure]] instances
  * in case of errors).
  */
-class HttpClient(ioWorker: IoWorker, config: Config = ConfigFactory.load())
+class HttpClient(ioWorker: IoWorker,
+                 config: Config = ConfigFactory.load)
+                (implicit sslEngineProvider: ClientSSLEngineProvider)
   extends IoClient(ioWorker) with ConnectionActors {
 
   protected lazy val pipeline: PipelineStage =
@@ -42,13 +44,16 @@ class HttpClient(ioWorker: IoWorker, config: Config = ConfigFactory.load())
 
 object HttpClient {
 
-  private[can] def pipeline(settings: ClientSettings, log: LoggingAdapter): PipelineStage = {
+  private[can] def pipeline(settings: ClientSettings,
+                            log: LoggingAdapter)
+                           (implicit sslEngineProvider: ClientSSLEngineProvider): PipelineStage = {
     ClientFrontend(settings.RequestTimeout, log) ~>
     PipelineStage.optional(settings.ResponseChunkAggregationLimit > 0,
       ResponseChunkAggregation(settings.ResponseChunkAggregationLimit.toInt)) ~>
     RequestRendering(settings.UserAgentHeader, settings.RequestSizeHint.toInt) ~>
     ResponseParsing(settings.ParserSettings, log) ~>
     PipelineStage.optional(settings.IdleTimeout > 0, ConnectionTimeouts(settings.IdleTimeout, log)) ~>
+    PipelineStage.optional(settings.SSLEncryption, SslTlsSupport(sslEngineProvider, log)) ~>
     PipelineStage.optional(
       settings.ReapingCycle > 0 && settings.IdleTimeout > 0,
       TickGenerator(Duration(settings.ReapingCycle, TimeUnit.MILLISECONDS))
