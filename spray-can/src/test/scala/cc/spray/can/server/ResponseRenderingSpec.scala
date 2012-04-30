@@ -21,6 +21,7 @@ import cc.spray.can.rendering.HttpResponsePartRenderingContext
 import cc.spray.io.{CleanClose, IoPeer, Command}
 import org.specs2.mutable.Specification
 import cc.spray.can.HttpPipelineStageSpec
+import com.typesafe.config.ConfigFactory
 
 class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
 
@@ -71,9 +72,12 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
 
   val fixture = new Fixture(
     ResponseRendering(
-      serverHeader = "spray/1.0",
-      chunklessStreaming = false,
-      responseSizeHint = 256
+      new ServerSettings(
+        ConfigFactory.parseString("""
+          spray.can.server.server-header = spray/1.0
+          spray.can.server.response-size-hint = 256
+        """)
+      )
     )
   )
 

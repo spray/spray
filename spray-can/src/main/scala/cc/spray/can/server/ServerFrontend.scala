@@ -88,7 +88,7 @@ object ServerFrontend {
               openRequests.last.timestamp = System.currentTimeMillis
               dispatchRequestChunk(x)
 
-            case x: HttpServer.SendCompleted =>
+            case x: HttpServer.AckSend =>
               if (unconfirmedSends.isEmpty) throw new IllegalStateException
               val rec = unconfirmedSends.dequeue()
               commandPL(IoServer.Tell(rec.handler, x, rec.receiver))
@@ -126,8 +126,11 @@ object ServerFrontend {
               import rec.request._
               HttpResponsePartRenderingContext(part, method, protocol, connectionHeader)
             }
-            if (settings.ConfirmToSender) rec.handler = context.sender
-            if (settings.ConfirmedSends) unconfirmedSends.enqueue(rec)
+            if (settings.AckSends) {
+              // remember the sender so we can send `AckSend` and potential `Closed` messages to it
+              rec.handler = context.sender
+              unconfirmedSends.enqueue(rec)
+            }
           }
 
           def ensureRequestOpenFor(part: HttpResponsePart) {

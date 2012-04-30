@@ -94,10 +94,10 @@ object ClientFrontend {
             commandPL(HttpClient.Close(ProtocolError("Received unmatched response part " + x)))
           }
 
-        case x: HttpClient.SendCompleted =>
+        case x: HttpClient.AckSend =>
           if (!openRequests.isEmpty) {
             dispatch(openRequests.head.sender, x)
-          } else log.warning("Received stray SendCompleted")
+          } else throw new IllegalStateException
 
         case x: HttpClient.Closed =>
           openRequests.foreach(rec => dispatch(rec.sender, x))

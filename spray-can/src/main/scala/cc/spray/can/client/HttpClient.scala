@@ -50,7 +50,7 @@ object HttpClient {
     ClientFrontend(settings.RequestTimeout, log) ~>
     PipelineStage.optional(settings.ResponseChunkAggregationLimit > 0,
       ResponseChunkAggregation(settings.ResponseChunkAggregationLimit.toInt)) ~>
-    RequestRendering(settings.UserAgentHeader, settings.RequestSizeHint.toInt) ~>
+    RequestRendering(settings) ~>
     ResponseParsing(settings.ParserSettings, log) ~>
     PipelineStage.optional(settings.IdleTimeout > 0, ConnectionTimeouts(settings.IdleTimeout, log)) ~>
     PipelineStage.optional(settings.SSLEncryption, SslTlsSupport(sslEngineProvider, log)) ~>
@@ -71,9 +71,9 @@ object HttpClient {
   ////////////// EVENTS //////////////
   // HttpResponseParts +
   val Connected = IoClient.Connected
-  type Closed = IoClient.Closed;                val Closed = IoClient.Closed
-  type SendCompleted = IoClient.SendCompleted;  val SendCompleted = IoClient.SendCompleted
-  type Received = IoClient.Received;            val Received = IoClient.Received
+  type Closed = IoClient.Closed;     val Closed = IoClient.Closed
+  type AckSend = IoClient.AckSend;   val AckSend = IoClient.AckSend
+  type Received = IoClient.Received; val Received = IoClient.Received
 
 }
 

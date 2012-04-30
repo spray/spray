@@ -21,13 +21,13 @@ import cc.spray.io._
 
 object RequestRendering {
 
-  def apply(userAgentHeader: String, requestSizeHint: Int): CommandPipelineStage = new CommandPipelineStage {
-    val renderer = new RequestRenderer(userAgentHeader, requestSizeHint)
+  def apply(settings: ClientSettings): CommandPipelineStage = new CommandPipelineStage {
+    val renderer = new RequestRenderer(settings.UserAgentHeader, settings.RequestSizeHint.toInt)
 
     def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): CPL = {
       case ctx: HttpRequestPartRenderingContext =>
         val rendered = renderer.render(ctx)
-        commandPL(IoPeer.Send(rendered.buffers))
+        commandPL(IoPeer.Send(rendered.buffers, settings.AckSends))
 
       case cmd => commandPL(cmd)
     }

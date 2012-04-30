@@ -32,7 +32,7 @@ class HttpServer(ioWorker: IoWorker,
   extends IoServer(ioWorker) with ConnectionActors {
 
   protected lazy val pipeline = {
-    val settings = new ServerSettings(config, ioWorker.settings.ConfirmSends)
+    val settings = new ServerSettings(config)
     HttpServer.pipeline(settings, messageHandler, timeoutResponse, statsHolder, log)
   }
 
@@ -69,7 +69,7 @@ object HttpServer {
    *    /\                                |
    *    | HttpMessagePart                 | HttpResponsePartRenderingContext
    *    | IoServer.Closed                 | IoServer.Tell
-   *    | IoServer.SendCompleted          |
+   *    | IoServer.AckSend                |
    *    | TickGenerator.Tick              |
    *    |                                \/
    * |------------------------------------------------------------------------------------------
@@ -78,7 +78,7 @@ object HttpServer {
    *    /\                                |
    *    | HttpMessagePart                 | HttpResponsePartRenderingContext
    *    | IoServer.Closed                 | IoServer.Tell
-   *    | IoServer.SendCompleted          |
+   *    | IoServer.AckSend                |
    *    | TickGenerator.Tick              |
    *    |                                \/
    * |------------------------------------------------------------------------------------------
@@ -89,7 +89,7 @@ object HttpServer {
    *    /\                                |
    *    | HttpMessagePart                 | HttpResponsePartRenderingContext
    *    | IoServer.Closed                 | IoServer.Tell
-   *    | IoServer.SendCompleted          | IoServer.StopReading
+   *    | IoServer.AckSend                | IoServer.StopReading
    *    | TickGenerator.Tick              | IoServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
@@ -98,7 +98,7 @@ object HttpServer {
    *    /\                                |
    *    | HttpMessagePart                 | HttpResponsePartRenderingContext
    *    | IoServer.Closed                 | IoServer.Tell
-   *    | IoServer.SendCompleted          | IoServer.StopReading
+   *    | IoServer.AckSend                | IoServer.StopReading
    *    | TickGenerator.Tick              | IoServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
@@ -107,7 +107,7 @@ object HttpServer {
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | IoServer.Closed                 | HttpResponsePartRenderingContext
-   *    | IoServer.SendCompleted          | IoServer.Tell
+   *    | IoServer.AckSend                | IoServer.Tell
    *    | IoServer.Received               | IoServer.StopReading
    *    | TickGenerator.Tick              | IoServer.ResumeReading
    *    |                                \/
@@ -117,7 +117,7 @@ object HttpServer {
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | IoServer.Closed                 | IoServer.Send
-   *    | IoServer.SendCompleted          | IoServer.Close
+   *    | IoServer.AckSend                | IoServer.Close
    *    | IoServer.Received               | IoServer.Tell
    *    | TickGenerator.Tick              | IoServer.StopReading
    *    |                                 | IoServer.ResumeReading
@@ -128,7 +128,7 @@ object HttpServer {
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | IoServer.Closed                 | IoServer.Send
-   *    | IoServer.SendCompleted          | IoServer.Close
+   *    | IoServer.AckSend                | IoServer.Close
    *    | IoServer.Received               | IoServer.Tell
    *    | TickGenerator.Tick              | IoServer.StopReading
    *    |                                 | IoServer.ResumeReading
@@ -139,7 +139,7 @@ object HttpServer {
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | IoServer.Closed                 | IoServer.Send
-   *    | IoServer.SendCompleted          | IoServer.Close
+   *    | IoServer.AckSend                | IoServer.Close
    *    | IoServer.Received               | IoServer.Tell
    *    | TickGenerator.Tick              | IoServer.StopReading
    *    |                                 | IoServer.ResumeReading
@@ -150,7 +150,7 @@ object HttpServer {
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | IoServer.Closed                 | IoServer.Send
-   *    | IoServer.SendCompleted          | IoServer.Close
+   *    | IoServer.AckSend                | IoServer.Close
    *    | IoServer.Received               | IoServer.Tell
    *    | TickGenerator.Tick              | IoServer.StopReading
    *    |                                 | IoServer.ResumeReading
@@ -168,7 +168,7 @@ object HttpServer {
     PipelineStage.optional(settings.PipeliningLimit > 0, PipeliningLimiter(settings.PipeliningLimit)) ~>
     PipelineStage.optional(settings.StatsSupport, StatsSupport(statsHolder)) ~>
     RequestParsing(settings.ParserSettings, log) ~>
-    ResponseRendering(settings.ServerHeader, settings.ChunklessStreaming, settings.ResponseSizeHint.toInt) ~>
+    ResponseRendering(settings) ~>
     PipelineStage.optional(settings.IdleTimeout > 0, ConnectionTimeouts(settings.IdleTimeout, log)) ~>
     PipelineStage.optional(settings.SSLEncryption, SslTlsSupport(sslEngineProvider, log)) ~>
     PipelineStage.optional(
@@ -206,7 +206,7 @@ object HttpServer {
   type Bound = IoServer.Bound;                          val Bound = IoServer.Bound
   type Unbound = IoServer.Unbound;                      val Unbound = IoServer.Unbound
   type Closed = IoServer.Closed;                        val Closed = IoServer.Closed
-  type SendCompleted = IoServer.SendCompleted;          val SendCompleted = IoServer.SendCompleted
+  type AckSend = IoServer.AckSend;                      val AckSend = IoServer.AckSend
   type RequestTimeout = ServerFrontend.RequestTimeout;  val RequestTimeout = ServerFrontend.RequestTimeout
 
 }

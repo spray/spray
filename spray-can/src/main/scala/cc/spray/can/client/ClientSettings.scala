@@ -30,6 +30,7 @@ private[can] class ClientSettings(config: Config = ConfigFactory.load) {
   val IdleTimeout                   = c getMilliseconds "idle-timeout"
   val RequestTimeout                = c getMilliseconds "request-timeout"
   val ReapingCycle                  = c getMilliseconds "reaping-cycle"
+  val AckSends                      = c getBoolean      "ack-sends"
   val ResponseChunkAggregationLimit = c getBytes        "response-chunk-aggregation-limit"
   val RequestSizeHint               = c getBytes        "request-size-hint"
 

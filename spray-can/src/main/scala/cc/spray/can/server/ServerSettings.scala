@@ -19,7 +19,7 @@ package cc.spray.can.server
 import cc.spray.can.parsing.ParserSettings
 import com.typesafe.config.{ConfigFactory, Config}
 
-private[can] class ServerSettings(config: Config = ConfigFactory.load, val ConfirmedSends: Boolean) {
+private[can] class ServerSettings(config: Config = ConfigFactory.load) {
   private[this] val c: Config = {
     val c = config.withFallback(ConfigFactory.defaultReference)
     c.checkValid(ConfigFactory.defaultReference, "spray.can.server")
@@ -33,11 +33,11 @@ private[can] class ServerSettings(config: Config = ConfigFactory.load, val Confi
   val RequestTimeout                = c getMilliseconds "request-timeout"
   val TimeoutTimeout                = c getMilliseconds "timeout-timeout"
   val ReapingCycle                  = c getMilliseconds "reaping-cycle"
+  val AckSends                      = c getBoolean      "ack-sends"
   val DirectResponding              = c getBoolean      "direct-responding"
   val StatsSupport                  = c getBoolean      "stats-support"
   val TimeoutHandler                = c getString       "timeout-handler"
   val ChunklessStreaming            = c getBoolean      "chunkless-streaming"
-  val ConfirmToSender               = c getBoolean      "confirm-to-sender"
   val RequestChunkAggregationLimit  = c getBytes        "request-chunk-aggregation-limit"
   val ResponseSizeHint              = c getBytes        "response-size-hint"
 

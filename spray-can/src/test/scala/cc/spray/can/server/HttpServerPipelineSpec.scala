@@ -191,8 +191,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         spray.can.server.reaping-cycle = 0  # don't enable the TickGenerator
         spray.can.server.pipelining-limit = 10
         spray.can.server.request-chunk-aggregation-limit = 0 # disable chunk aggregation
-      """),
-      ConfirmedSends = true
+      """)
     ),
     messageHandler,
     req => HttpResponse(500).withBody("Timeout for " + req.uri),
