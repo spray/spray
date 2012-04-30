@@ -72,9 +72,6 @@ class TestService extends Actor with ActorLogging {
 
     case x: HttpServer.Closed =>
       context.children.foreach(_ ! CancelStream(sender, x.reason))
-
-    case _: HttpServer.SendCompleted =>
-      // ignore send confirmations (they might even have been turned off in the application.conf)
   }
 
   ////////////// helpers //////////////

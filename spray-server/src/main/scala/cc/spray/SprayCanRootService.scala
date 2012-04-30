@@ -72,7 +72,7 @@ class SprayCanRootService(firstService: ActorRef, moreServices: ActorRef*)
             val ref = new UnregisteredActorRef(context) {
               def handle(message: Any, sender: ActorRef) {
                 message match {
-                  case _: HttpServer.SendCompleted => promise.success(())
+                  case _: HttpServer.AckSend => promise.success(())
                   case HttpServer.Closed(_, reason) =>
                     if (!promise.isCompleted) promise.tryComplete(Left(new ClientClosedConnectionException(reason)))
                 }

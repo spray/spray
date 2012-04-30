@@ -66,7 +66,7 @@ class HttpConduit(httpClient: ActorRef,
         conn.deliverResponse(ctx.request, fromSprayCanResponse(response), ctx.result)
         dispatchStrategy.onStateChange(conns)
 
-      case Reply(_: HttpClient.SendCompleted, _) =>
+      case Reply(_: HttpClient.AckSend, _) =>
         // ignore
 
       case Reply(problem, (conn: Conn, ctx: RequestContext, handle: Handle)) =>
