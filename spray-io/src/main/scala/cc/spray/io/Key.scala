@@ -16,16 +16,18 @@
 
 package cc.spray.io
 
-import java.nio.ByteBuffer
-import collection.mutable.ListBuffer
 import java.nio.channels.{SocketChannel, SelectionKey}
+import collection.mutable.Queue
 
 sealed abstract class Key {
   def channel: SocketChannel
 
   private[io] def selectionKey: SelectionKey
 
-  private[io] val writeBuffers = ListBuffer.empty[ListBuffer[ByteBuffer]]
+  // the writeQueue contains instances of either ByteBuffer, PerformCleanClose or AckTo
+  // we don't introduce a dedicated sealed trait for this since we want to save the extra
+  // allocation that would be required for wrapping the ByteBuffers
+  private[io] val writeQueue = Queue.empty[AnyRef]
 
   private[this] var _ops = 0
 

@@ -27,7 +27,6 @@ class IoWorkerSettings(config: Config = ConfigFactory.load()) {
 
   val ThreadName           = c getString  "thread-name"
   val ReadBufferSize       = c getBytes   "read-buffer-size"
-  val ConfirmSends         = c getBoolean "confirm-sends"
 
   val TcpReceiveBufferSize = c getBytes   "tcp.receive-buffer-size"
   val TcpSendBufferSize    = c getBytes   "tcp.send-buffer-size"

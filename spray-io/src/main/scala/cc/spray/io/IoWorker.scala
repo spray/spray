@@ -165,30 +165,30 @@ class IoWorker(log: LoggingAdapter, config: Config) {
       val handle = key.attachment.asInstanceOf[Handle]
       val channel = key.channel.asInstanceOf[SocketChannel]
       val oldBytesWritten = bytesWritten
+      val writeQueue = handle.key.writeQueue
 
       @tailrec
-      // returns true if the given buffers were completely written
-      def writeToChannel(buffers: ListBuffer[ByteBuffer]): Boolean = {
-        if (!buffers.isEmpty) {
-          bytesWritten += channel.write(buffers.head)
-          if (buffers.head.remaining == 0) {
-            // if we were able to write the whole buffer
-            buffers.remove(0)
-            writeToChannel(buffers) // we continue with the next buffer
-          } else false // otherwise we cannot drop the head and need to continue with it next time
-        } else true
+      def writeToChannel() {
+        if (!writeQueue.isEmpty) {
+          writeQueue.dequeue() match {
+            case buf: ByteBuffer =>
+              bytesWritten += channel.write(buf)
+              if (buf.remaining == 0) writeToChannel() // we continue with the next buffer
+              else {
+                buf +=: writeQueue // we cannot drop the head and need to continue with it next time
+                log.debug("Wrote {} bytes, more pending", bytesWritten - oldBytesWritten)
+              }
+            case AckTo(receiver) => receiver ! AckSend(handle)
+            case PerformCleanClose => close(handle, CleanClose)
+          }
+        } else {
+          handle.key.disable(OP_WRITE)
+          log.debug("Wrote {} bytes", bytesWritten - oldBytesWritten)
+        }
       }
 
-      try {
-        val buffers = handle.key.writeBuffers
-        if (writeToChannel(buffers.head)) {
-          if (buffers.remove(0) ne CleanCloseToken) {
-            if (settings.ConfirmSends) handle.handler ! SendCompleted(handle)
-            if (buffers.isEmpty) handle.key.disable(OP_WRITE)
-            log.debug("Wrote {} bytes", bytesWritten - oldBytesWritten)
-          } else close(handle, CleanClose)
-        } else log.debug("Wrote {} bytes, more pending", bytesWritten - oldBytesWritten)
-      } catch {
+      try writeToChannel()
+      catch {
         case e =>
           log.warning("Write error: closing connection due to {}", e.toString)
           close(handle, IoError(e))
@@ -259,11 +259,11 @@ class IoWorker(log: LoggingAdapter, config: Config) {
         log.debug("Executing command {}", command)
         command match {
           // ConnectionCommands
-          case x: Send => send(x)
+          case x: Send => send(x, sender)
           case x: StopReading => x.handle.key.disable(OP_READ)
           case x: ResumeReading => x.handle.key.enable(OP_READ)
           case x: Register => register(x)
-          case x: Close => close(x.handle, x.reason)
+          case x: Close => scheduleClose(x.handle, x.reason)
 
           // SuperCommands
           case x: Connect => connect(x, sender)
@@ -285,9 +285,10 @@ class IoWorker(log: LoggingAdapter, config: Config) {
       }
     }
 
-    def send(cmd: Send) {
+    def send(cmd: Send, sender: ActorRef) {
       val key = cmd.handle.key
-      key.writeBuffers += ListBuffer(cmd.buffers: _*)
+      key.writeQueue ++= cmd.buffers
+      if (cmd.ack && sender != null) key.writeQueue += AckTo(sender)
       key.enable(OP_WRITE)
     }
 
@@ -298,37 +299,43 @@ class IoWorker(log: LoggingAdapter, config: Config) {
       connectionsOpened += 1
     }
 
+    def scheduleClose(handle: Handle, reason: ConnectionClosedReason) {
+      val key = handle.key.selectionKey
+      if (key.isValid) {
+        if (reason == CleanClose && !handle.key.writeQueue.isEmpty) {
+          log.debug("Scheduling connection close after writeQueue flush")
+          handle.key.writeQueue += PerformCleanClose
+        } else close(handle, reason)
+      }
+    }
+
     def close(handle: Handle, reason: ConnectionClosedReason) {
       val key = handle.key.selectionKey
       if (key.isValid) {
-        if (reason == CleanClose && !handle.key.writeBuffers.isEmpty) {
-          log.debug("Scheduling connection close after write buffers flush")
-          handle.key.writeBuffers += CleanCloseToken
-          handle.key.enable(OP_WRITE)
-        } else {
-          log.debug("Closing connection due to {}", reason)
-          key.cancel()
-          key.channel.close()
-          handle.handler ! Closed(handle, reason)
-          connectionsClosed += 1
-        }
+        log.debug("Closing connection due to {}", reason)
+        key.cancel()
+        key.channel.close()
+        handle.handler ! Closed(handle, reason)
+        connectionsClosed += 1
       }
     }
 
     def connect(cmd: Connect, sender: ActorRef) {
-      val channel = SocketChannel.open()
-      configure(channel)
-      if (settings.TcpReceiveBufferSize != 0)
-        channel.socket.setReceiveBufferSize(settings.TcpReceiveBufferSize.toInt)
-      if (channel.connect(cmd.address)) {
-        log.debug("Connection immediately established to {}", cmd.address)
-        val key = channel.register(selector, 0) // we don't enable any ops until we have a handle
-        sender ! Connected(Key(key), cmd.address)
-      } else {
-        val key = channel.register(selector, OP_CONNECT)
-        key.attach((cmd, sender))
-        log.debug("Connection request registered")
-      }
+      if (sender != null) {
+        val channel = SocketChannel.open()
+        configure(channel)
+        if (settings.TcpReceiveBufferSize != 0)
+          channel.socket.setReceiveBufferSize(settings.TcpReceiveBufferSize.toInt)
+        if (channel.connect(cmd.address)) {
+          log.debug("Connection immediately established to {}", cmd.address)
+          val key = channel.register(selector, 0) // we don't enable any ops until we have a handle
+          sender ! Connected(Key(key), cmd.address)
+        } else {
+          val key = channel.register(selector, OP_CONNECT)
+          key.attach((cmd, sender))
+          log.debug("Connection request registered")
+        }
+      } else log.error("Cannot execute Connect command from unknown sender")
     }
 
     def bind(cmd: Bind, sender: ActorRef) {
@@ -372,7 +379,6 @@ class IoWorker(log: LoggingAdapter, config: Config) {
 object IoWorker {
   private val lock = new AnyRef
   private var _runningWorkers = Seq.empty[IoWorker]
-  private val CleanCloseToken = ListBuffer.empty[ByteBuffer]
 
   def runningWorkers: Seq[IoWorker] =
     lock.synchronized(_runningWorkers)
@@ -385,6 +391,10 @@ object IoWorker {
     connectionsClosed: Long,
     commandsExecuted: Long
   )
+
+  // these two things can be elements of a Keys writeQueue in addition to a raw ByteBuffer
+  private[io] case class AckTo(receiver: ActorRef)
+  private[io] case object PerformCleanClose
 
   ////////////// COMMANDS //////////////
 
@@ -405,9 +415,10 @@ object IoWorker {
 
   case class Register(handle: Handle) extends ConnectionCommand
   case class Close(handle: Handle, reason: ConnectionClosedReason) extends ConnectionCommand
-  case class Send(handle: Handle, buffers: Seq[ByteBuffer]) extends ConnectionCommand
+  case class Send(handle: Handle, buffers: Seq[ByteBuffer], ack: Boolean = true) extends ConnectionCommand
   object Send {
-    def apply(handle: Handle, buffer: ByteBuffer): Send = Send(handle, Seq(buffer))
+    def apply(handle: Handle, buffer: ByteBuffer): Send = apply(handle, buffer, true)
+    def apply(handle: Handle, buffer: ByteBuffer, ack: Boolean): Send = new Send(handle, buffer :: Nil, ack)
   }
   case class StopReading(handle: Handle) extends ConnectionCommand
   case class ResumeReading(handle: Handle) extends ConnectionCommand
@@ -421,6 +432,6 @@ object IoWorker {
 
   // connection-level events
   case class Closed(handle: Handle, reason: ConnectionClosedReason) extends Event
-  case class SendCompleted(handle: Handle) extends Event
+  case class AckSend(handle: Handle) extends Event
   case class Received(handle: Handle, buffer: ByteBuffer) extends Event
 }

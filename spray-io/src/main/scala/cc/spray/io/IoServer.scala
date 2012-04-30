@@ -109,8 +109,8 @@ object IoServer {
   ////////////// EVENTS //////////////
   case class Bound(endpoint: InetSocketAddress)
   case class Unbound(endpoint: InetSocketAddress)
-  type Closed = IoPeer.Closed;                val Closed = IoPeer.Closed
-  type SendCompleted = IoPeer.SendCompleted;  val SendCompleted = IoPeer.SendCompleted
-  type Received = IoPeer.Received;            val Received = IoPeer.Received
+  type Closed = IoPeer.Closed;     val Closed = IoPeer.Closed
+  type AckSend = IoPeer.AckSend;   val AckSend = IoPeer.AckSend
+  type Received = IoPeer.Received; val Received = IoPeer.Received
 
 }

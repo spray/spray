@@ -59,7 +59,7 @@ trait PipelineStageTest {
   implicit def pimpCommandSeq[T](commands: Seq[Command]) = new PimpedCommandSeq[T](commands)
   class PimpedCommandSeq[T](underlying: Seq[Command]) {
     def fixSends = underlying.map {
-      case IoPeer.Send(bufs) => SendStringCommand {
+      case IoPeer.Send(bufs, _) => SendStringCommand {
         val sb = new java.lang.StringBuilder
         for (b <- bufs) while (b.remaining > 0) sb.append(b.get.toChar)
         sb.toString.fastSplit('\n').map {

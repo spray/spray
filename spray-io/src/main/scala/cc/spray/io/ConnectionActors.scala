@@ -43,13 +43,13 @@ trait ConnectionActors extends IoPeer { ioPeer =>
     )
 
     protected def baseCommandPipeline: Pipeline[Command] = {
-      case x: IoPeer.Send => ioWorker ! IoWorker.Send(handle, x.buffers)
-      case x: IoPeer.Close => ioWorker ! IoWorker.Close(handle, x.reason)
-      case IoPeer.StopReading => ioWorker ! IoWorker.StopReading(handle)
-      case IoPeer.ResumeReading => ioWorker ! IoWorker.ResumeReading(handle)
-      case x: IoPeer.Tell => x.receiver.tell(x.message, x.sender)
+      case IoPeer.Send(buffers, ack)          => ioWorker ! IoWorker.Send(handle, buffers, ack)
+      case IoPeer.Close(reason)               => ioWorker ! IoWorker.Close(handle, reason)
+      case IoPeer.StopReading                 => ioWorker ! IoWorker.StopReading(handle)
+      case IoPeer.ResumeReading               => ioWorker ! IoWorker.ResumeReading(handle)
+      case IoPeer.Tell(receiver, msg, sender) => receiver.tell(msg, sender)
       case _: Droppable => // don't warn
-      case x => log.warning("commandPipeline: dropped {}", x)
+      case cmd => log.warning("commandPipeline: dropped {}", cmd)
     }
 
     protected def baseEventPipeline: Pipeline[Event] = {
@@ -58,7 +58,7 @@ trait ConnectionActors extends IoPeer { ioPeer =>
         context.stop(self)
         ioPeer.self ! x // inform our owner of our closing
       case _: Droppable => // don't warn
-      case x => log.warning("eventPipeline: dropped {}", x)
+      case ev => log.warning("eventPipeline: dropped {}", ev)
     }
 
     protected def receive = {

@@ -34,9 +34,10 @@ object IoPeer {
 
   ////////////// COMMANDS //////////////
   case class Close(reason: ConnectionClosedReason) extends Command
-  case class Send(buffers: Seq[ByteBuffer]) extends Command
+  case class Send(buffers: Seq[ByteBuffer], ack: Boolean = true) extends Command
   object Send {
-    def apply(buffer: ByteBuffer): Send = Send(Seq(buffer))
+    def apply(buffer: ByteBuffer): Send = apply(buffer, true)
+    def apply(buffer: ByteBuffer, ack: Boolean): Send = new Send(buffer :: Nil, ack)
   }
 
   case object StopReading extends Command
@@ -46,8 +47,8 @@ object IoPeer {
   case class Tell(receiver: ActorRef, message: Any, sender: ActorRef) extends Command
 
   ////////////// EVENTS //////////////
-  type Closed = IoWorker.Closed;                val Closed = IoWorker.Closed
-  type SendCompleted = IoWorker.SendCompleted;  val SendCompleted = IoWorker.SendCompleted
-  type Received = IoWorker.Received;            val Received = IoWorker.Received
+  type Closed = IoWorker.Closed;     val Closed = IoWorker.Closed
+  type AckSend = IoWorker.AckSend;   val AckSend = IoWorker.AckSend
+  type Received = IoWorker.Received; val Received = IoWorker.Received
 
 }
