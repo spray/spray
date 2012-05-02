@@ -44,7 +44,7 @@ private[parser] trait SimpleHeaders {
   }
 
   def HOST = rule {
-    Token ~ OptWS ~ optional(":" ~ oneOrMore(Digit) ~> (_.toInt)) ~ EOI ~~> Host
+    (Token | IPv6Reference) ~ OptWS ~ optional(":" ~ oneOrMore(Digit) ~> (_.toInt)) ~ EOI ~~> Host
   }
 
   def LAST_MODIFIED = rule {
