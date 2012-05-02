@@ -1,5 +1,4 @@
-#########
- credits
-#########
+Credits
+=======
 
 (coming)

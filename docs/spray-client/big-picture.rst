@@ -1,4 +1,4 @@
-Organisations using spray
+spray-client: Big Picture
 =========================
 
 (coming)

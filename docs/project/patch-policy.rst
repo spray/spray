@@ -1,5 +1,4 @@
-##############
- patch-policy
-##############
+Patch Policy
+============
 
 (coming)

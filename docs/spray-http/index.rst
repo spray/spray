@@ -1,5 +1,5 @@
-spray-io
-========
+spray-http
+==========
 
 .. toctree::
    :maxdepth: 2

@@ -1,5 +1,5 @@
-spray-io
-========
+spray-servlet
+=============
 
 .. toctree::
    :maxdepth: 2

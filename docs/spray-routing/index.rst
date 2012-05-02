@@ -1,5 +1,5 @@
-spray-io
-========
+spray-routing
+=============
 
 .. toctree::
    :maxdepth: 2

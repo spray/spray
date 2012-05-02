@@ -4,4 +4,4 @@ spray-can
 .. toctree::
    :maxdepth: 2
 
-   overview
+   big-picture

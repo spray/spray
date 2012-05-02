@@ -1,5 +1,4 @@
-##########
- scaladoc
-##########
+Scaladoc
+========
 
 (coming)
