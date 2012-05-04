@@ -230,6 +230,7 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   object CustomMediaType {
     def apply(value: String, fileExtensions: String*) = {
       val parts = value.split('/')
+      if (parts.length != 2) throw new IllegalArgumentException(value + " is not a valid media-type")
       new CustomMediaType(parts(0), parts(1), fileExtensions)
     }
   }

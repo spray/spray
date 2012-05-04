@@ -43,12 +43,14 @@ class HttpHeaderSpec extends Specification {
       example(Accept(`text/html`, `image/gif`, `image/jpeg`, `*/*`, `*/*`), fix(_).replace("*,", "*/*,"))_ ^
     "Accept: application/vnd.spray" !
       example(Accept(`application/vnd.spray`))_ ^
+    "Accept: */*, text/plain, custom/custom" !
+      example(Accept(`*/*`, `text/plain`, CustomMediaType("custom/custom")))_ ^
     p^
     "Accept-Charset: utf8; q=0.5, *" !
       example(`Accept-Charset`(`UTF-8`, HttpCharsets.`*`), fix(_).replace("utf", "UTF-"))_ ^
     p^
     "Accept-Encoding: compress, gzip, fancy" !
-      example(`Accept-Encoding`(compress, gzip, new CustomHttpEncoding("fancy")))_ ^
+      example(`Accept-Encoding`(compress, gzip, CustomHttpEncoding("fancy")))_ ^
     "Accept-Encoding: gzip;q=1.0, identity; q=0.5, *;q=0" !
       example(`Accept-Encoding`(gzip, identity, HttpEncodings.`*`))_ ^
     p^
@@ -88,7 +90,7 @@ class HttpHeaderSpec extends Specification {
       example(`Content-Disposition`("attachment", Map("name" -> "field1", "filename" -> "file.txt")))_ ^
     p^
     "Content-Encoding: gzip"   ! example(`Content-Encoding`(gzip))_ ^
-    "Content-Encoding: pipapo" ! example(`Content-Encoding`(new CustomHttpEncoding("pipapo")))_ ^
+    "Content-Encoding: pipapo" ! example(`Content-Encoding`(CustomHttpEncoding("pipapo")))_ ^
     p^
     "Content-Length: 42" ! example(`Content-Length`(42))_ ^
     p^
