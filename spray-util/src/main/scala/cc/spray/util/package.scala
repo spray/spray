@@ -26,6 +26,7 @@ import java.nio.ByteBuffer
 
 package object util {
 
+  val EOL = System.getProperty("line.separator")
   val EmptyByteArray = new Array[Byte](0)
 
   def identityFunc[T]: T => T = _identityFunc.asInstanceOf[T => T]

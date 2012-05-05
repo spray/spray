@@ -21,7 +21,7 @@ import org.specs2._
 import model._
 import HttpProtocols._
 import matcher.DataTables
-import cc.spray.util.DateTime
+import cc.spray.util._
 
 class ResponseRendererSpec extends mutable.Specification with DataTables {
 
@@ -269,7 +269,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
   )
 
   def beRenderedTo(content: String, close: Boolean) = {
-    beEqualTo(content.stripMargin.replace("\n", "\r\n") -> close) ^^ { ctx: Context =>
+    beEqualTo(content.stripMargin.replace(EOL, "\r\n") -> close) ^^ { ctx: Context =>
       import ctx._
       val renderer = new ResponseRenderer("spray-can/1.0.0", chunkless, 256) {
         override val dateTimeNow = DateTime(2011, 8, 25, 9,10,29) // provide a stable date for testing

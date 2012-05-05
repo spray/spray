@@ -28,6 +28,7 @@ import CacheDirectives._
 
 class HttpHeaderSpec extends Specification {
 
+  val EOL = System.getProperty("line.separator")
   val `application/vnd.spray` = MediaTypes.register(CustomMediaType("application/vnd.spray"))
   val `fancy-pants` = HttpCharsets.register(CustomHttpCharset("FANCY-pants"))
 
@@ -141,7 +142,7 @@ class HttpHeaderSpec extends Specification {
                          realm="testrealm@host.com",
                          qop="auth,auth-int",
                          nonce=dcd98b7102dd2f0e8b11d0f600bfb0c093,
-                         opaque="5ccc069c403ebaf9f0171e9517f40e41"""".replace("\n", "\r\n") !
+                         opaque="5ccc069c403ebaf9f0171e9517f40e41"""".replace(EOL, "\r\n") !
       example(`WWW-Authenticate`(HttpChallenge("Digest", "testrealm@host.com", Map("qop" -> "auth,auth-int",
         "nonce" -> "dcd98b7102dd2f0e8b11d0f600bfb0c093", "opaque" -> "5ccc069c403ebaf9f0171e9517f40e41"))),
         fix(_).replace("=d", "=\"d").replace("093,", "093\",").replace(", ", ","))_ ^

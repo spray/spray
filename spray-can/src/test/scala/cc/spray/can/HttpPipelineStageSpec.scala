@@ -71,5 +71,5 @@ trait HttpPipelineStageSpec extends PipelineStageTest {
        |%s"""
   }.format(content.length, content)
 
-  def prep(s: String) = s.stripMargin.replace("\n", "\r\n")
+  def prep(s: String) = s.stripMargin.replace(EOL, "\r\n")
 }
