@@ -28,19 +28,19 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
   "The ResponseRendering PipelineStage" should {
     "be transparent to unrelated commands" in {
       val command = new Command {}
-      fixture(command).commands === Seq(command)
+      fixture(command) must produce(commands = Seq(command))
     }
     "translate a simple HttpResponsePartRenderingContext into the corresponding Send command" in {
       fixture(
         HttpResponsePartRenderingContext(HttpResponse().withBody("Some Message"))
-      ).commands.fixSends === Seq(SendString(
+      ) must produce(commands = Seq(SendString(
         """|HTTP/1.1 200 OK
            |Server: spray/1.0
            |Date: XXXX
            |Content-Length: 12
            |
            |Some Message"""
-      ))
+      )))
     }
     "append a Close command to the Send if the connection is to be closed" in {
       fixture(
@@ -49,7 +49,7 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
           requestMethod = HttpMethods.HEAD,
           requestConnectionHeader = Some("close")
         )
-      ).commands.fixSends === Seq(
+      ) must produce(commands = Seq(
         SendString(
           """|HTTP/1.1 200 OK
              |Connection: close
@@ -60,7 +60,7 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
              |"""
         ),
         IoPeer.Close(CleanClose)
-      )
+      ))
     }
   }
 

@@ -47,11 +47,13 @@ class ConnectionTimeoutsSpec extends Specification with PipelineStageTest {
       ).commands === Seq()
     }
     "reset the idle timer on Send commands" in {
-      fixture(
-        Sleep("50 ms"),
-        Send("Some Message"),
-        TickGenerator.Tick
-      ).commands.fixSends === Seq(SendString("Some Message"))
+      fixSends {
+        fixture(
+          Sleep("50 ms"),
+          Send("Some Message"),
+          TickGenerator.Tick
+        ).commands
+      } === Seq(SendString("Some Message"))
     }
   }
 

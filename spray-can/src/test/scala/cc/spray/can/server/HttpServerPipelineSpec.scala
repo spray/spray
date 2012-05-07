@@ -16,26 +16,29 @@
 
 package cc.spray.can.server
 
-import cc.spray.can.model.{HttpResponse, HttpHeader, HttpRequest}
 import cc.spray.can.HttpPipelineStageSpec
-import cc.spray.io.IoServer
 import cc.spray.io.pipelines.MessageHandlerDispatch._
 import cc.spray.util._
 import akka.pattern.ask
 import akka.testkit.TestActorRef
 import akka.util.{Duration, Timeout}
-import akka.actor.{Actor, Props}
 import com.typesafe.config.ConfigFactory
 import org.specs2.mutable.Specification
 import java.util.concurrent.atomic.AtomicInteger
+import cc.spray.io._
+import akka.actor.{Actor, Props}
+import cc.spray.can.model._
 
 class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
 
   "The HttpServer pipeline" should {
 
     "dispatch a simple HttpRequest to a singleton service actor" in {
-      singleHandlerFixture(Received(simpleRequest)).commands.fixTells === Seq(
-        IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), null)
+      singleHandlerFixture(Received(simpleRequest)) must produce(
+        commands = Seq(
+          IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), IgnoreSender)
+        ),
+        ignoreTellSender = true
       )
     }
 
@@ -54,8 +57,11 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
              |"""
           }
         }
-      ).commands.fixTells === Seq(
-        IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), null)
+      ) must produce(
+        commands = Seq(
+          IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), IgnoreSender)
+        ),
+        ignoreTellSender = true
       )
     }
 
@@ -67,7 +73,13 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       singleHandlerFixture(
         Received(simpleRequest),
         HttpResponse()
-      ).commands.fixSends.last === SendString(simpleResponse)
+      ) must produce(
+        commands = Seq(
+          IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), IgnoreSender),
+          SendString(simpleResponse)
+        ),
+        ignoreTellSender = true
+      )
     }
 
     "dispatch requests to the right service actor when using per-connection handlers" in {
@@ -89,9 +101,9 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         Received(simpleRequest),
         Received(simpleRequest),
         Received(chunkedRequestStart),
-        Received(requestChunk),
-        Received(requestChunk),
-        Received(chunkedRequestEnd),
+        Received(messageChunk),
+        Received(messageChunk),
+        Received(chunkedMessageEnd),
         Received(chunkedRequestStart)
       ).commands.map {
         case IoServer.Tell(receiver, _, _) => SendString(receiver.ask('name).mapTo[String].await)
@@ -106,21 +118,50 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       )
     }
 
-    "correctly dispatch SendCompleted message" in {
+    "correctly dispatch AckSend messages" in {
       "to the sender of an HttpResponse" in {
+        val actor = system.actorOf(Props(new NamedActor("someActor")))
         singleHandlerFixture(
           Received(simpleRequest),
-          HttpResponse()
-        ).commands.fixSends.last === SendString(simpleResponse)
+          Message(HttpResponse(), sender = actor),
+          ClearCommandAndEventCollectors,
+          IoWorker.AckSend(dummyHandle)
+        ) must produce(
+          commands = Seq(
+            IoServer.Tell(actor, IoServer.AckSend(dummyHandle), IgnoreSender)
+          ),
+          ignoreTellSender = true
+        )
       }
-      "to the sender of a ChunkedResponseStart" in {
-        pending
-      }
-      "to the sender of a MessageChunk" in {
-        pending
-      }
-      "to the sender of a ChunkedMessageEnd" in {
-        pending
+      "to the senders of a ChunkedResponseStart, MessageChunk and ChunkedMessageEnd" in {
+        val actor1 = system.actorOf(Props(new NamedActor("actor1")))
+        val actor2 = system.actorOf(Props(new NamedActor("actor2")))
+        val actor3 = system.actorOf(Props(new NamedActor("actor3")))
+        val actor4 = system.actorOf(Props(new NamedActor("actor4")))
+        singleHandlerFixture(
+          Received(simpleRequest),
+          ClearCommandAndEventCollectors,
+          Message(ChunkedResponseStart(HttpResponse()), sender = actor1),
+          IoWorker.AckSend(dummyHandle),
+          Message(MessageChunk("part 1"), sender = actor2),
+          IoWorker.AckSend(dummyHandle),
+          Message(MessageChunk("part 2"), sender = actor3),
+          Message(ChunkedMessageEnd(), sender = actor4),
+          IoWorker.AckSend(dummyHandle),
+          IoWorker.AckSend(dummyHandle)
+        ) must produce(
+          commands = Seq(
+            SendString(chunkedResponseStart),
+            IoServer.Tell(actor1, IoServer.AckSend(dummyHandle), IgnoreSender),
+            SendString(prep("6\npart 1\n")),
+            IoServer.Tell(actor2, IoServer.AckSend(dummyHandle), IgnoreSender),
+            SendString(prep("6\npart 2\n")),
+            SendString(prep("0\n\n")),
+            IoServer.Tell(actor3, IoServer.AckSend(dummyHandle), IgnoreSender),
+            IoServer.Tell(actor4, IoServer.AckSend(dummyHandle), IgnoreSender)
+          ),
+          ignoreTellSender = true
+        )
       }
     }
   }
@@ -153,13 +194,22 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
      |"""
   }
 
-  val requestChunk = prep {
+  val chunkedResponseStart = prep {
+  """|HTTP/1.1 200 OK
+     |Transfer-Encoding: chunked
+     |Server: spray/1.0
+     |Date: XXXX
+     |
+     |"""
+  }
+
+  val messageChunk = prep {
   """|7
      |body123
      |"""
   }
 
-  val chunkedRequestEnd = prep {
+  val chunkedMessageEnd = prep {
   """|0
      |Age: 30
      |Cache-Control: public

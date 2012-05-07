@@ -26,19 +26,16 @@ class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
   "The ResponseParsing PipelineStage" should {
     "be transparent to unrelated events" in {
       val event = new Event {}
-      fixture(event).events === Seq(event)
+      fixture(event) must produce(events = Seq(event))
     }
     "parse a simple response and produce the corresponding event" in {
-      fixture(Received(rawResponse("foo"))).events === Seq(response("foo"))
+      fixture(Received(rawResponse("foo"))) must produce(events = Seq(response("foo")))
     }
     "parse a double response and produce the corresponding events" in {
-      fixture(Received(rawResponse("foo") + rawResponse("bar"))).commandsAndEvents === (
-        Seq(),
-        Seq(
-          response("foo"),
-          response("bar")
-        )
-      )
+      fixture(Received(rawResponse("foo") + rawResponse("bar"))) must produce(events = Seq(
+        response("foo"),
+        response("bar")
+      ))
     }
   }
 

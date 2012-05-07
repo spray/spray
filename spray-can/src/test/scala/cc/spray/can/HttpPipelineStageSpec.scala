@@ -18,8 +18,30 @@ package cc.spray.can
 
 import cc.spray.io.test.PipelineStageTest
 import model.{HttpHeader, HttpResponse, HttpRequest}
+import org.specs2.matcher.BeEqualTo
+import cc.spray.io.{IoPeer, Event, Command}
+import cc.spray.util._
 
 trait HttpPipelineStageSpec extends PipelineStageTest {
+
+  def produce(commands: Seq[Command] = Nil,
+              events: Seq[Event] = Nil,
+              ignoreTellSender: Boolean = false) = {
+    new BeEqualTo(commands -> events) ^^ { (pr: PipelineRun) =>
+      pr.commands.map {
+        case x: IoPeer.Tell if ignoreTellSender => x.copy(sender = IgnoreSender)
+        case IoPeer.Send(bufs, _) => SendStringCommand {
+          val sb = new java.lang.StringBuilder
+          for (b <- bufs) while (b.remaining > 0) sb.append(b.get.toChar)
+          sb.toString.fastSplit('\n').map {
+            case s if s.startsWith("Date:") => "Date: XXXX\r"
+            case s => s
+          }.mkString("\n")
+        }
+        case x => x
+      } -> pr.events
+    }
+  }
 
   def request(content: String = "") = HttpRequest().withBody(content)
 

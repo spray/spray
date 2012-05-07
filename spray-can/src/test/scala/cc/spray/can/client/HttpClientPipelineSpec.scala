@@ -28,17 +28,17 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
   "The HttpClient pipeline" should {
 
     "send out a simple HttpRequest to the server" in {
-      testFixture(request()).commands.fixSends === Seq(SendString(rawRequest()))
+      testFixture(request()) must produce(commands = Seq(SendString(rawRequest())))
     }
 
     "dispatch an incoming HttpResponse back to the sender" in {
       testFixture(
         request(),
         Received(rawResponse())
-      ).commands.fixSends === Seq(
+      ) must produce(commands = Seq(
         SendString(rawRequest()),
         IoPeer.Tell(system.deadLetters, response(), connectionActor)
-      )
+      ))
     }
 
     "properly complete a 3 requests pipelined dialog" in {
@@ -49,14 +49,14 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
         Received(rawResponse("Response 1")),
         Received(rawResponse("Response 2")),
         Received(rawResponse("Response 3"))
-      ).commands.fixSends === Seq(
+      ) must produce(commands = Seq(
         SendString(rawRequest("Request 1")),
         SendString(rawRequest("Request 2")),
         SendString(rawRequest("Request 3")),
         IoPeer.Tell(system.deadLetters, response("Response 1"), connectionActor),
         IoPeer.Tell(system.deadLetters, response("Response 2"), connectionActor),
         IoPeer.Tell(system.deadLetters, response("Response 3"), connectionActor)
-      )
+      ))
     }
 
   }
