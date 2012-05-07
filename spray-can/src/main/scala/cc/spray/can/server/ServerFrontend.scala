@@ -39,7 +39,7 @@ object ServerFrontend {
       def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): Pipelines = {
         new Pipelines with MessageHandlerDispatch {
           val openRequests = Queue.empty[RequestRecord]
-          val unconfirmedSends = Queue.empty[RequestRecord]
+          val openSends = Queue.empty[IoServer.Tell]
           val handlerCreator = messageHandlerCreator(messageHandler, context)
           var requestTimeout = settings.RequestTimeout
           var timeoutTimeout = settings.TimeoutTimeout
@@ -89,12 +89,11 @@ object ServerFrontend {
               dispatchRequestChunk(x)
 
             case x: HttpServer.AckSend =>
-              if (unconfirmedSends.isEmpty) throw new IllegalStateException
-              val rec = unconfirmedSends.dequeue()
-              commandPL(IoServer.Tell(rec.handler, x, rec.receiver))
+              if (openSends.isEmpty) throw new IllegalStateException
+              commandPL(openSends.dequeue().copy(message = x))
 
             case x: HttpServer.Closed =>
-              if (unconfirmedSends.isEmpty && openRequests.isEmpty) {
+              if (openSends.isEmpty && openRequests.isEmpty) {
                 messageHandler match {
                   case _: SingletonHandler | _: PerConnectionHandler =>
                     commandPL(IoServer.Tell(handlerCreator(), x, context.self))
@@ -104,9 +103,8 @@ object ServerFrontend {
                     // upon response sending or reception of the send confirmation
                 }
               } else {
-                val dispatch: RequestRecord => Unit = r => commandPL(IoServer.Tell(r.handler, x, r.receiver))
-                unconfirmedSends.foreach(dispatch)
-                openRequests.foreach(dispatch)
+                openSends.foreach(tell => commandPL(tell.copy(message = x)))
+                openRequests.foreach(r => commandPL(IoServer.Tell(r.handler, x, r.receiver)))
               }
               eventPL(x) // terminates the connection actor
 
@@ -127,9 +125,8 @@ object ServerFrontend {
               HttpResponsePartRenderingContext(part, method, protocol, connectionHeader)
             }
             if (settings.AckSends) {
-              // remember the sender so we can send `AckSend` and potential `Closed` messages to it
-              rec.handler = context.sender
-              unconfirmedSends.enqueue(rec)
+              // prepare the IoServer.Tell command to use for `AckSend` and potential `Closed` messages
+              openSends.enqueue(IoServer.Tell(context.sender, (), rec.receiver))
             }
           }
 
@@ -179,7 +176,7 @@ object ServerFrontend {
     }
   }
 
-  private class RequestRecord(val request: HttpRequest, var handler: ActorRef, var timestamp: Long) {
+  private class RequestRecord(val request: HttpRequest, val handler: ActorRef, var timestamp: Long) {
     var receiver: ActorRef = _
     private var responses: Queue[Command] = _
     def enqueue(msg: Command) {
