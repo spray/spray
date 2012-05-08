@@ -68,4 +68,11 @@ private[spray] object BasicRules extends Parser {
   def OptWS = rule { zeroOrMore(LWS) }
   
   def ListSep = rule { oneOrMore("," ~ OptWS) }
+
+  // Do not accept scoped IPv6 address as it should not be in the Host header:
+  //  - WONTFIX in Apache 2 https://issues.apache.org/bugzilla/show_bug.cgi?id=35122
+  //  - FIXED in mozilla https://bugzilla.mozilla.org/show_bug.cgi?id=464162
+  def IPv6Address = rule { oneOrMore(Hex | anyOf(":.")) }
+
+  def IPv6Reference: Rule1[String] = rule { group("[" ~ IPv6Address ~ "]") ~> identityFunc }
 }

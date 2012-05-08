@@ -119,6 +119,10 @@ class HttpHeaderSpec extends Specification {
     "Host: www.spray.cc:8080" ! example(Host("www.spray.cc", Some(8080)))_ ^
     "Host: spray.cc" ! example(Host("spray.cc"))_ ^
     p^
+    "Host: [2001:db8::1]:8080" ! example(Host("[2001:db8::1]", Some(8080)))_ ^
+    "Host: [2001:db8::1]" ! example(Host("[2001:db8::1]"))_ ^
+    "Host: [::FFFF:129.144.52.38]" ! example(Host("[::FFFF:129.144.52.38]"))_ ^
+    p^
     "Last-Modified: Wed, 13 Jul 2011 08:12:31 GMT" ! example(`Last-Modified`(DateTime(2011, 7, 13, 8, 12, 31)))_ ^
     p^
     "Set-Cookie: SID=31d4d96e407aad42" !
