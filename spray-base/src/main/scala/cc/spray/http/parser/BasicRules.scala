@@ -35,7 +35,7 @@ private[spray] object BasicRules extends Parser {
   
   def Digit = rule { "0" - "9" }
 
-  def AlphaNum = Alpha | Digit
+  def AlphaNum = rule { Alpha | Digit }
   
   def CTL = rule { "\u0000" - "\u001F" | "\u001F" }
   
@@ -69,9 +69,7 @@ private[spray] object BasicRules extends Parser {
   
   def ListSep = rule { oneOrMore("," ~ OptWS) }
 
-  // Do not accept scoped IPv6 address as it should not be in the Host header:
-  //  - WONTFIX in Apache 2 https://issues.apache.org/bugzilla/show_bug.cgi?id=35122
-  //  - FIXED in mozilla https://bugzilla.mozilla.org/show_bug.cgi?id=464162
+  // we don't match scoped IPv6 addresses
   def IPv6Address = rule { oneOrMore(Hex | anyOf(":.")) }
 
   def IPv6Reference: Rule1[String] = rule { group("[" ~ IPv6Address ~ "]") ~> identityFunc }
