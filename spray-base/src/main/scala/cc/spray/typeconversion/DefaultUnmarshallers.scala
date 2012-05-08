@@ -69,10 +69,12 @@ trait DefaultUnmarshallers extends MultipartUnmarshallers {
       FormData {
         val data = DefaultUnmarshallers.StringUnmarshaller(content).right.get
         val charset = content.contentType.charset.getOrElse(`ISO-8859-1`).aliases.head
-        data.fastSplit('&').map {
-          _.fastSplit('=') match {
-            case key :: value :: Nil => (decode(key, charset), decode(value, charset))
-            case _ => throw new IllegalArgumentException("'" + data + "' is not a valid form content")
+        data.fastSplit('&').flatMap {
+          case "" => Nil
+          case string => string.fastSplit('=') match {
+            case key :: value :: Nil => Some(decode(key, charset), decode(value, charset))
+            case _ => throw new IllegalArgumentException("'" + data + "' is not a valid form content: '" +
+              string +"' does not constitute valid key=value pair")
           }
         } (collection.breakOut)
       }
