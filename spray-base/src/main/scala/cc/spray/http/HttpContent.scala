@@ -58,7 +58,7 @@ object HttpContent {
             def as[A: FormFieldConverter] = converter[A].urlEncodedFieldConverter match {
               case Some(conv) => conv(raw)
               case None => Left(UnsupportedContentType("Field '" + fieldName +
-                                "' can only be read from 'application/x-www-form-urlencoded' form content"))
+                                "' can only be read from 'multipart/form-data' form content"))
             }
           }
         }
@@ -68,7 +68,7 @@ object HttpContent {
             def as[A: FormFieldConverter] = converter[A].multipartFieldConverter match {
               case Some(conv) => conv(raw.flatMap(_.content))
               case None => Left(UnsupportedContentType("Field '" + fieldName +
-                                "' can only be read from 'multipart/form-data' form content"))
+                                "' can only be read from 'application/x-www-form-urlencoded' form content"))
             }
           }
         }
