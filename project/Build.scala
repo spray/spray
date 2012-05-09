@@ -18,6 +18,7 @@ object Build extends Build {
     .aggregate(examples, sprayBase, sprayCan, sprayClient, sprayIo, sprayServer, sprayUtil)
     .settings(basicSettings: _*)
     .settings(noPublishing: _*)
+    .settings(DocSupport.settings: _*)
 
 
   // -------------------------------------------------------------------------------------------------------------------

@@ -8,8 +8,8 @@ source_encoding = 'utf-8'
 master_doc = 'index'
 project = u'spray'
 copyright = u'2011-2012 spray.cc.'
-version = '1.0-M1'
-release = '1.0-M1'
+version = '$VERSION$'
+release = '$VERSION$'
 exclude_patterns = []
 
 # -- Options for HTML output ---------------------------------------------------
@@ -22,6 +22,7 @@ html_use_smartypants = True
 html_add_permalinks = None
 htmlhelp_basename = 'spraydoc'
 todo_include_todos = True
+html_copy_source = False
 
 # -- Options for LaTeX output --------------------------------------------------
 latex_elements = {

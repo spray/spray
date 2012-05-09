@@ -1,19 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
-{%- set reldelim1 = reldelim1 is not defined and ' &raquo;' or reldelim1 %}
-{%- set reldelim2 = reldelim2 is not defined and ' |' or reldelim2 %}
-{%- set render_sidebar = (not embedded) and (not theme_nosidebar|tobool) and (sidebars != []) %}
 {%- set url_root = pathto('', 1) %}
-{# XXX necessary? #}
 {%- if url_root == '#' %}{% set url_root = '' %}{% endif %}
-{%- if not embedded and docstitle %}
-{%- set titlesuffix = " | "|safe + docstitle|e %}
-{%- else %}
-{%- set titlesuffix = "" %}
-{%- endif %}
 <head>
   <meta charset="{{ encoding }}">
-  <title>spray.cc</title>
+  <title>{{ title|striptags|e }} | spray {{ version }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="">
   <meta name="author" content="">
@@ -29,6 +20,24 @@
   <!--[if lt IE 9]>
     <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
   <![endif]-->
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js" type="text/javascript"></script>
+
+  <script type="text/javascript">
+    $(function() {
+      $("#content-nav li.current").last().addClass("active");
+      $("#content-nav ul").addClass("nav nav-list").first().prepend('<li class="nav-header">Content</li>');
+      $.getJSON('/releases.json', function(data) {
+      // var data = $.parseJSON('{ "latest": "/latest/", "1.0-M1" : "/1.0-M1/" }');
+        $.each(data, function(v, uri) {
+          $("#releases-nav").append(
+            v == "{{ version }}" ?
+              '<li class="current-release">'+ v + '</li>' :
+              '<li><a href="' + uri + '">' + v + '</a></li>'
+          );
+        });
+      });
+    });
+  </script>
 
   <style lang="text/css">
     .hero-unit {
@@ -62,8 +71,15 @@
 
   <div class="container-fluid">
     <div class="row-fluid">
-      <div class="span2 well" id="sidebar">
-        {{ toctree(maxdepth=-1) }}
+      <div class="span2">
+        <div class="well sidebar-nav" id="content-nav">
+          {{ toctree(maxdepth=-1) }}
+        </div>
+        <div class="well sidebar-nav">
+          <ul class="nav nav-list" id="releases-nav">
+            <li class="nav-header">Releases</li>
+          </ul>
+        </div>
       </div>
       <div class="span10" id="body">
         {% block body %} {% endblock %}
@@ -81,8 +97,7 @@
         {% endtrans %}
       </p>
     </footer>
-
-  </div><!--/.fluid-container-->
+  </div>
 
 </body>
 </html>
