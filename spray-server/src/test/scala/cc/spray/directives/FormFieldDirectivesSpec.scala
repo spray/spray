@@ -61,7 +61,7 @@ class FormFieldDirectivesSpec extends AbstractSprayTest with Directives {
           completeWith(firstName + age + sex + vip)
         }
       }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(
-        "Field 'VIP' can only be read from 'application/x-www-form-urlencoded' form content"))
+        "Field 'VIP' can only be read from 'multipart/form-data' form content"))
     }
     "create a proper error message if only a urlencoded deserializer is available for a multipart field" in {
       test(HttpRequest(content = Some(multipartForm.toHttpContent))) {
@@ -69,7 +69,7 @@ class FormFieldDirectivesSpec extends AbstractSprayTest with Directives {
           completeWith(firstName + age + sex + vip)
         }
       }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection(
-        "Field 'VIP' can only be read from 'multipart/form-data' form content"))
+        "Field 'VIP' can only be read from 'application/x-www-form-urlencoded' form content"))
     }
   }
 
