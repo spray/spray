@@ -110,7 +110,7 @@ class RequestParserSpec extends Specification {
           "0123456789ABCDEF"
         )
         parse(chunkParser)("15 ;\n") mustEqual
-          ErrorState("Invalid character '\\r', expected TOKEN CHAR, SPACE, TAB or EQUAL")
+          ErrorState("Invalid character '\\u000d', expected TOKEN CHAR, SPACE, TAB or EQUAL")
         parse(chunkParser)("bla") mustEqual ErrorState("Illegal chunk size")
       }
       "message end" in {

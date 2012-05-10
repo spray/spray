@@ -18,10 +18,10 @@ package cc.spray.can
 package parsing
 
 import model._
-import cc.spray.util._
 
+sealed trait FinalParsingState extends ParsingState
 
-sealed trait HttpMessagePartCompletedState extends ParsingState {
+sealed trait HttpMessagePartCompletedState extends FinalParsingState {
   def toHttpMessagePart: HttpMessagePart
 }
 
@@ -31,7 +31,7 @@ case class CompleteMessageState(
   messageLine: MessageLine,
   headers: List[HttpHeader] = Nil,
   connectionHeader: Option[String] = None,
-  body: Array[Byte] = EmptyByteArray
+  body: Array[Byte] = cc.spray.util.EmptyByteArray
 ) extends HttpMessageCompletedState {
 
   def toHttpMessagePart = messageLine match {
@@ -70,3 +70,7 @@ case class ChunkedEndState(
 
   def toHttpMessagePart = ChunkedMessageEnd(extensions, trailer)
 }
+
+
+case class Expect100ContinueState(next: ParsingState) extends FinalParsingState
+case class ErrorState(message: String, status: Int = 400) extends FinalParsingState

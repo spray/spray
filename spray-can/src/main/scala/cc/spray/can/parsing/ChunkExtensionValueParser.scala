@@ -52,7 +52,7 @@ class ChunkExtensionValueParser(settings: ParserSettings, chunkSize: Int, extCou
             if (chunkSize == 0) new TrailerParser(settings, newExtensions)
             else new ChunkBodyParser(settings, chunkSize, newExtensions)
           }
-          case _ => ErrorState("Invalid character '" + cursor + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
+          case _ => ErrorState("Invalid character '" + escape(cursor) + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
         }
       }
     } else {

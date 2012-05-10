@@ -31,6 +31,9 @@ object ResponseParsing {
         def startParser = new EmptyResponseParser(settings)
         currentParsingState = startParser
 
+        def handleExpect100Continue(nextState: ParsingState) =
+          ErrorState("'Expect: 100-continue' is not allowed in HTTP responses")
+
         def handleParseError(state: ErrorState) {
           log.warning("Received illegal response: {}", state.message)
           commandPL(IoPeer.Close(ProtocolError(state.message)))

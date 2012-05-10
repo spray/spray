@@ -37,7 +37,7 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
         case '\r' if headerName.length == 0 => this
         case '\n' if headerName.length == 0 => headersComplete
         case ' ' | '\t' | '\r' => new LwsParser(this).handleChar(cursor)
-        case _ => ErrorState("Invalid character '" + cursor + "', expected TOKEN CHAR, LWS or COLON")
+        case _ => ErrorState("Invalid character '" + escape(cursor) + "', expected TOKEN CHAR, LWS or COLON")
       }
     } else {
       ErrorState("HTTP header name exceeds the configured limit of " + settings.MaxHeaderNameLength +
@@ -47,47 +47,66 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
 
   def toLowerCase(c: Char) = if ('A' <= c && c <= 'Z') (c + 32).toChar else c
 
-  def headersComplete = traverse(headers, None, None, None, false)
+  def headersComplete = traverse(headers, None, None, None, false, false)
 
   @tailrec
-  private def traverse(remaining: List[HttpHeader], connection: Option[String], contentLength: Option[String],
-               transferEncoding: Option[String], hostHeaderPresent: Boolean): ParsingState = {
-    if (!remaining.isEmpty) {
-      remaining.head.name match {
-        case "content-length" =>
-          if (contentLength.isEmpty) {
-            traverse(remaining.tail, connection, Some(remaining.head.value), transferEncoding, hostHeaderPresent)
-          } else ErrorState("HTTP message must not contain more than one Content-Length header", 400)
-        case "transfer-encoding" => traverse(remaining.tail, connection, contentLength, Some(remaining.head.value), hostHeaderPresent)
-        case "connection" => traverse(remaining.tail, Some(remaining.head.value), contentLength, transferEncoding, hostHeaderPresent)
-        case "host" =>
-          if (!hostHeaderPresent) traverse(remaining.tail, connection, contentLength, transferEncoding, true)
-          else ErrorState("HTTP message must not contain more than one Host header", 400)
-        case _ => traverse(remaining.tail, connection, contentLength, transferEncoding, hostHeaderPresent)
-      }
-    } else messageLine match { // rfc2616 sec. 4.4
-      case x: RequestLine if x.protocol == `HTTP/1.1` && !hostHeaderPresent =>
-        ErrorState("Host header required", 400)
-      case _ if messageBodyDisallowed =>
-        CompleteMessageState(messageLine, headers, connection)
-      case _ if transferEncoding.isDefined && transferEncoding.get != "identity" =>
-        ChunkedStartState(messageLine, headers, connection)
-      case _ if contentLength.isDefined =>
-        contentLength.get match {
-          case "0" => CompleteMessageState(messageLine, headers, connection)
-          case value => try {new FixedLengthBodyParser(settings, messageLine, headers, connection, value.toInt)}
-          catch {case e: Exception => ErrorState("Invalid Content-Length header value: " + e.getMessage)}
-        }
-      case _: RequestLine => CompleteMessageState(messageLine, headers, connection)
-      case x: StatusLine if connection == Some("close") || connection.isEmpty && x.protocol == `HTTP/1.0` =>
-        new ToCloseBodyParser(settings, messageLine, headers, connection)
-      case _ => ErrorState("Content-Length header or chunked transfer encoding required", 411)
+  private def traverse(rest: List[HttpHeader], cHeader: Option[String], clHeader: Option[String],
+                       teHeader: Option[String], hostPresent: Boolean, e100Present: Boolean): ParsingState = {
+    rest match {
+      case Nil =>
+        val next = nextState(cHeader, clHeader, teHeader, hostPresent)
+        if (e100Present) Expect100ContinueState(next) else next
+
+      case HttpHeader("content-length", value) :: tail =>
+        if (clHeader.isEmpty) {
+          traverse(tail, cHeader, Some(value), teHeader, hostPresent, e100Present)
+        } else ErrorState("HTTP message must not contain more than one Content-Length header", 400)
+
+      case HttpHeader("host", _) :: tail =>
+        if (!hostPresent) traverse(tail, cHeader, clHeader, teHeader, true, e100Present)
+        else ErrorState("HTTP message must not contain more than one Host header", 400)
+
+      case HttpHeader("connection", value) :: tail =>
+        traverse(tail, Some(value), clHeader, teHeader, hostPresent, e100Present)
+
+      case HttpHeader("transfer-encoding", value) :: tail =>
+        traverse(tail, cHeader, clHeader, Some(value), hostPresent, e100Present)
+
+      case HttpHeader("expect", value) :: tail =>
+        if (value == "100-continue") traverse(tail, cHeader, clHeader, teHeader, hostPresent, true)
+        else ErrorState("Expectation '" + value + "' is not supported by this server", 417)
+
+      case _ :: tail => traverse(tail, cHeader, clHeader, teHeader, hostPresent, e100Present)
     }
   }
 
-  def messageBodyDisallowed = messageLine match {
-    case _: RequestLine => false // there can always be a body in a request
-    case x: StatusLine => // certain responses never have a body
-      (x.status / 100 == 1) || x.status == 204 || x.status == 304
+  private def nextState(cHeader: Option[String], clHeader: Option[String], teHeader: Option[String],
+                        hostPresent: Boolean) = {
+    // rfc2616 sec. 4.4
+    messageLine match {
+      case RequestLine(_, _, `HTTP/1.1`) if !hostPresent =>
+        ErrorState("Host header required", 400)
+
+      // certain responses never have a body
+      case StatusLine(_, status, _) if (status <= 199 && status > 100) || status == 204 || status == 304 =>
+        CompleteMessageState(messageLine, headers, cHeader)
+
+      case _ if teHeader.isDefined && teHeader.get != "identity" =>
+        ChunkedStartState(messageLine, headers, cHeader)
+
+      case _ if clHeader.isDefined => clHeader.get match {
+        case "0" => CompleteMessageState(messageLine, headers, cHeader)
+        case value =>
+          try new FixedLengthBodyParser(settings, messageLine, headers, cHeader, value.toInt)
+          catch { case e: Exception => ErrorState("Invalid Content-Length header value: " + e.getMessage) }
+      }
+
+      case _: RequestLine => CompleteMessageState(messageLine, headers, cHeader)
+
+      case x: StatusLine if cHeader.isDefined && cHeader.get == "close" || cHeader.isEmpty && x.protocol == `HTTP/1.0` =>
+        new ToCloseBodyParser(settings, messageLine, headers, cHeader)
+
+      case _ => ErrorState("Content-Length header or chunked transfer encoding required", 411)
+    }
   }
 }

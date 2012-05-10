@@ -18,8 +18,8 @@ package cc.spray.can.parsing
 
 import java.nio.ByteBuffer
 import annotation.tailrec
-import cc.spray.can.model.{ChunkedMessageEnd, HttpMessage}
 import cc.spray.io._
+import cc.spray.can.model.{HttpMessageEndPart, ChunkedMessageEnd, HttpMessage}
 
 abstract class MessageParsingPipelines(settings: ParserSettings,
                                        commandPL: Pipeline[Command],
@@ -27,30 +27,37 @@ abstract class MessageParsingPipelines(settings: ParserSettings,
   var currentParsingState: ParsingState = _
 
   def startParser: ParsingState
+
+  def handleExpect100Continue(nextState: ParsingState): ParsingState
+
   def handleParseError(errorState: ErrorState)
 
   @tailrec
   final def parse(buffer: ByteBuffer) {
     currentParsingState match {
       case x: IntermediateState =>
-        currentParsingState = x.read(buffer)
-        currentParsingState match {
-          case x: IntermediateState => // wait for more input
+        if (buffer.remaining > 0) {
+          currentParsingState = x.read(buffer)
+          parse(buffer)
+        } // else wait for more input
 
-          case x: HttpMessagePartCompletedState =>
-            val messagePart = x.toHttpMessagePart
-            eventPL(messagePart) // dispatch
-            currentParsingState = messagePart match {
-              case _: HttpMessage => startParser
-              case _: ChunkedMessageEnd => startParser
-              case _ => new ChunkParser(settings)
-            }
-            if (buffer.remaining > 0) parse(buffer) // there might be more input in the buffer, so recurse
+      case x: HttpMessagePartCompletedState =>
+        val messagePart = x.toHttpMessagePart
+        currentParsingState =
+          if (messagePart.isInstanceOf[HttpMessageEndPart]) startParser
+          else new ChunkParser(settings)
+        eventPL(messagePart) // dispatch
+        parse(buffer)
 
-          case x: ErrorState => handleParseError(x)
-        }
+      case Expect100ContinueState(nextState) =>
+        currentParsingState = handleExpect100Continue(nextState)
+        parse(buffer)
 
-      case x: ErrorState => // if we are already in the errorstate we ignore all further input
+      case ErrorState(_, -1) => // if we already handled the error state we ignore all further input
+
+      case x: ErrorState =>
+        handleParseError(x)
+        currentParsingState = ErrorState("", -1) // set to "special" ErrorState that ignores all further input
     }
   }
 

@@ -25,4 +25,8 @@ package object parsing {
     case '(' | ')' | '<' | '>' | '@' | ',' | ';' | ':' | '\\' | '"' | '/' | '[' | ']' | '?' | '=' | '{' | '}' => false
     case x => 32 < x && x < 127
   }
+
+  private[can] def escape(c: Char): String =
+    if (Character.isISOControl(c)) String.format("\\u%04x", c: java.lang.Integer)
+    else String.valueOf(c)
 }

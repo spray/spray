@@ -21,8 +21,11 @@ import cc.spray.can.parsing._
 import cc.spray.can.rendering.HttpResponsePartRenderingContext
 import cc.spray.io._
 import akka.event.LoggingAdapter
+import java.nio.ByteBuffer
 
 object RequestParsing {
+
+  lazy val continue = "HTTP/1.1 100 Continue\r\n\r\n".getBytes("ASCII")
 
   def apply(settings: ParserSettings, log: LoggingAdapter): EventPipelineStage = new EventPipelineStage {
 
@@ -31,6 +34,11 @@ object RequestParsing {
       new MessageParsingPipelines(settings, commandPL, eventPL) {
         val startParser = new EmptyRequestParser(settings)
         currentParsingState = startParser
+
+        def handleExpect100Continue(nextState: ParsingState) = {
+          commandPL(IoPeer.Send(ByteBuffer.wrap(continue), ack = false))
+          nextState
+        }
 
         def handleParseError(state: ErrorState) {
           log.warning("Illegal request, responding with status {} and '{}'", state.status, state.message)

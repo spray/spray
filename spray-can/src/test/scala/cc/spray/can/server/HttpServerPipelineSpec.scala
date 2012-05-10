@@ -164,6 +164,39 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         )
       }
     }
+
+    "correctly handle 'Expected: 100-continue' headers" in {
+      singleHandlerFixture(
+        Received {
+          prep {
+            """|GET / HTTP/1.1
+              |Host: test.com
+              |Content-Length: 12
+              |Expect: 100-continue
+              |
+              |bodybodybody"""
+          }
+        },
+        HttpResponse()
+      ) must produce(
+        commands = Seq(
+          SendString("HTTP/1.1 100 Continue\r\n\r\n"),
+          IoServer.Tell(
+            singletonHandler,
+            HttpRequest(
+              headers = List(
+                HttpHeader("expect", "100-continue"),
+                HttpHeader("content-length", "12"),
+                HttpHeader("host", "test.com")
+              )
+            ).withBody("bodybodybody"),
+            IgnoreSender
+          ),
+          SendString(simpleResponse)
+        ),
+        ignoreTellSender = true
+      )
+    }
   }
 
   /////////////////////////// SUPPORT ////////////////////////////////
