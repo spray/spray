@@ -1,3 +1,5 @@
+.. _spray-can:
+
 spray-can
 =========
 

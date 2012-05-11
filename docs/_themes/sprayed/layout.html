@@ -22,39 +22,32 @@
   <![endif]-->
   <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js" type="text/javascript"></script>
 
+  <!-- prettify content sidebar using the awesome Font Awesome - http://fortawesome.github.com/Font-Awesome -->
   <script type="text/javascript">
     $(function() {
       $("#content-nav li.current").last().addClass("active");
       $("#content-nav ul").addClass("nav nav-list").first().prepend('<li class="nav-header">Content</li>');
+      $("#content-nav > ul > li > a")
+        .first().prepend('<i class="icon-flag"></i> ').end()
+        .slice(1, -1).prepend('<i class="icon-book"></i> ').end()
+        .last().prepend('<i class="icon-info-sign"></i> ');
       $.getJSON('/releases.json', function(data) {
       // var data = $.parseJSON('{ "latest": "/latest/", "1.0-M1" : "/1.0-M1/" }');
         $.each(data, function(v, uri) {
           $("#releases-nav").append(
             v == "{{ version }}" ?
-              '<li class="current-release">'+ v + '</li>' :
+              '<li class="current-release">'+ v + ' <i class="icon-chevron-left"></i></li>' :
               '<li><a href="' + uri + '">' + v + '</a></li>'
           );
         });
       });
     });
   </script>
-
-  <style lang="text/css">
-    .hero-unit {
-      background-image: url("{{ pathto('_static/spray-logo.png', 1) }}") !important;
-      background-repeat: no-repeat !important;
-      background-position: 30px 50px;
-    }
-    .hero-unit div.section {
-      padding-left: 500px !important;
-    }
-  </style>
 </head>
 
 <body>
   <a id="forkme" href="https://github.com/spray/spray">
-    <img src="https://a248.e.akamai.net/assets.github.com/img/e6bef7a091f5f3138b8cd40bc3e114258dd68ddf/687474703a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f7265645f6161303030302e706e67"
-         alt="Fork me on GitHub">
+    <img src="https://s3.amazonaws.com/github/ribbons/forkme_right_red_aa0000.png" alt="Fork me on GitHub">
   </a>
   <div class="navbar">
     <div class="navbar-inner container-fluid" id="top-bar">
@@ -71,7 +64,7 @@
 
   <div class="container-fluid">
     <div class="row-fluid">
-      <div class="span2">
+      <div class="span3">
         <div class="well sidebar-nav" id="content-nav">
           {{ toctree(maxdepth=-1) }}
         </div>
@@ -81,7 +74,7 @@
           </ul>
         </div>
       </div>
-      <div class="span10" id="body">
+      <div class="span9" id="main">
         {% block body %} {% endblock %}
       </div>
     </div>

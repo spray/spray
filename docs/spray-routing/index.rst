@@ -1,3 +1,5 @@
+.. _spray-routing:
+
 spray-routing
 =============
 

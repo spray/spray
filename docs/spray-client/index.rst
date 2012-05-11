@@ -1,3 +1,5 @@
+.. _spray-client:
+
 spray-client
 ============
 

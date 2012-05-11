@@ -1,3 +1,5 @@
+.. _spray-io:
+
 spray-io
 ========
 

@@ -13,51 +13,63 @@
 // Base CSS
 @import "type.less";
 @import "code.less";
-@import "forms.less";
+//@import "forms.less";
 @import "tables.less";
 
 // Components: common
-@import "sprites.less";
-@import "dropdowns.less";
+//@import "sprites.less";
+//@import "dropdowns.less";
 @import "wells.less";
-@import "component-animations.less";
-@import "close.less";
+//@import "component-animations.less";
+//@import "close.less";
 
 // Components: Buttons & Alerts
 @import "buttons.less";
-@import "button-groups.less";
-@import "alerts.less"; // Note: alerts share common CSS with buttons and thus have styles in buttons.less
+//@import "button-groups.less";
+//@import "alerts.less"; // Note: alerts share common CSS with buttons and thus have styles in buttons.less
 
 // Components: Nav
 @import "navs.less";
 @import "navbar.less";
 @import "breadcrumbs.less";
-@import "pagination.less";
-@import "pager.less";
+//@import "pagination.less";
+//@import "pager.less";
 
 // Components: Popovers
-@import "modals.less";
-@import "tooltip.less";
-@import "popovers.less";
+//@import "modals.less";
+//@import "tooltip.less";
+//@import "popovers.less";
 
 // Components: Misc
-@import "thumbnails.less";
-@import "labels-badges.less";
-@import "progress-bars.less";
-@import "accordion.less";
-@import "carousel.less";
+//@import "thumbnails.less";
+//@import "labels-badges.less";
+//@import "progress-bars.less";
+//@import "accordion.less";
+//@import "carousel.less";
 @import "hero-unit.less";
 
 // Utility classes
 @import "utilities.less"; // Has to be last to override when necessary
 
+// RESPONSIVE STUFF
+@import "responsive-utilities.less";
+@import "responsive-767px-max.less";
+@import "responsive-768px-979px.less";
+@import "responsive-1200px-min.less";
+
+@import "font-awesome.less";
+
 a:hover { text-decoration: none }
 #forkme { position: absolute; top: 0; right: 0; border: 0; z-index: 1035 }
-#top-bar { -webkit-border-radius: 0; -moz-border-radius: 0; border-radius: 0; }
+#top-bar { -webkit-border-radius: 0; -moz-border-radius: 0; border-radius: 0 }
 #top-bar small { color: #FEB41C }
 .hero-unit p { margin-top: 1em }
 .hero-unit .toctree-wrapper { display: none }
 footer p { text-align: center; color: @grayLight }
-.sidebar-nav { padding: 9px 0; }
-.sidebar-nav .nav .nav-header { font-size: 12px; color: @navbarBackground; }
-.sidebar-nav .current-release { background-color: #eee; margin: 0 -15px; padding-left: 15px; }
+.sidebar-nav { padding: 9px 0 }
+.sidebar-nav .nav .nav-header { font-size: 12px; color: @navbarBackground }
+.sidebar-nav .current-release { margin: 0 -15px; padding-left: 15px }
+#main { max-width: 700px }
+dd { margin-bottom: 10px }
+.section img { margin: 1em 0 }
+.hero-unit img { margin-bottom: 30px }

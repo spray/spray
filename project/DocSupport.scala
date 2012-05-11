@@ -98,7 +98,8 @@ object DocSupport {
     val json = IO.listFiles(pubDir, DirectoryFilter).view
       .map(_.getName)
       .filterNot(_ == ".git")
-      .map(f => """"%s": "/%s/"""".format(f, f))
+      .map(""""%1$s": "/%1$s/"""".format(_))
+      .:+(""""0.9": "https://github.com/spray/spray/wiki/"""")
       .mkString("{\n  ", ",\n  ", "\n}")
     IO.write(pubDir / "releases.json", json)
   }

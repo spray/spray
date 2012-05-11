@@ -1,3 +1,5 @@
+.. _spray-http:
+
 spray-http
 ==========
 

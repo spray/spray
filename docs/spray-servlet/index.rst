@@ -1,3 +1,5 @@
+.. _spray-servlet:
+
 spray-servlet
 =============
 
