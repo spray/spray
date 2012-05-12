@@ -57,13 +57,12 @@ trait MessagePipelining {
   }
 
   def unmarshal[T :Unmarshaller] = transformResponse { response: HttpResponse =>
-    response.status match {
-      case StatusCodes.OK => unmarshaller[T].apply(response.content) match {
+    if (response.status.isSuccess)
+      unmarshaller[T].apply(response.content) match {
         case Right(value) => value
         case Left(error) => throw new PipelineException(error.toString) // "unwrap" the error into the future
       }
-      case status => throw new UnsuccessfulResponseException(status)
-    }
+    else throw new UnsuccessfulResponseException(response.status)
   }
 
   def transformResponse[A, B](f: A => B): Future[A] => Future[B] = _.map(f)
