@@ -27,5 +27,6 @@ case class RequestLine(
 case class StatusLine(
   protocol: HttpProtocol,
   status: Int,
-  reason: String
+  reason: String,
+  isResponseToHeadRequest: Boolean = false
 ) extends MessageLine

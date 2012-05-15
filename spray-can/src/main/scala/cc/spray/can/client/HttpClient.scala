@@ -50,8 +50,8 @@ object HttpClient {
     ClientFrontend(settings.RequestTimeout, log) ~>
     PipelineStage.optional(settings.ResponseChunkAggregationLimit > 0,
       ResponseChunkAggregation(settings.ResponseChunkAggregationLimit.toInt)) ~>
-    RequestRendering(settings) ~>
     ResponseParsing(settings.ParserSettings, log) ~>
+    RequestRendering(settings) ~>
     PipelineStage.optional(settings.IdleTimeout > 0, ConnectionTimeouts(settings.IdleTimeout, log)) ~>
     PipelineStage.optional(settings.SSLEncryption, SslTlsSupport(sslEngineProvider, log)) ~>
     PipelineStage.optional(

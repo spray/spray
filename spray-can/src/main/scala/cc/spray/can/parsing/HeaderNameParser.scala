@@ -88,7 +88,7 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
         ErrorState("Host header required", 400)
 
       // certain responses never have a body
-      case StatusLine(_, status, _) if (status <= 199 && status > 100) || status == 204 || status == 304 =>
+      case StatusLine(_, status, _, hr) if hr || (status <= 199 && status > 100) || status == 204 || status == 304 =>
         CompleteMessageState(messageLine, headers, cHeader)
 
       case _ if teHeader.isDefined && teHeader.get != "identity" =>

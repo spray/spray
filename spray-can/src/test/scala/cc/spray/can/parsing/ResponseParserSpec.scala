@@ -20,7 +20,6 @@ package parsing
 import org.specs2.mutable.Specification
 import model._
 import HttpProtocols._
-import HttpMethods._
 
 class ResponseParserSpec extends Specification {
 
@@ -74,6 +73,18 @@ class ResponseParserSpec extends Specification {
           HttpHeader("accept", "*/*"),
           HttpHeader("user-agent", "curl/7.19.7 abc xyz")
         ), None, "")
+      }
+
+      "to a HEAD request" in {
+        RequestParserSpec.parse(new EmptyResponseParser(new ParserSettings(), true), cc.spray.util.identityFunc) {
+          """|HTTP/1.1 500 Internal Server Error
+             |Content-Length: 17
+             |
+             |"""
+        } mustEqual CompleteMessageState(
+          messageLine = StatusLine(`HTTP/1.1`, 500, "Internal Server Error", true),
+          headers = List(HttpHeader("content-length", "17"))
+        )
       }
     }
 
@@ -148,10 +159,11 @@ class ResponseParserSpec extends Specification {
     }
   }
 
-  def parse = RequestParserSpec.parse(new EmptyResponseParser(new ParserSettings()), extractFromCompleteMessage _) _
+  def parse =
+    RequestParserSpec.parse(new EmptyResponseParser(new ParserSettings(), false), extractFromCompleteMessage _) _
 
   def extractFromCompleteMessage(completeMessage: CompleteMessageState) = {
-    val CompleteMessageState(StatusLine(protocol, status, reason), headers, connectionHeader, body) = completeMessage
+    val CompleteMessageState(StatusLine(protocol, status, reason, _), headers, connectionHeader, body) = completeMessage
     (protocol, status, reason, headers, connectionHeader, new String(body, "ISO-8859-1"))
   }
 

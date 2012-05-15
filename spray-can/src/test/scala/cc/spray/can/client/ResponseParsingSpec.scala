@@ -18,8 +18,9 @@ package cc.spray.can.client
 
 import cc.spray.can.parsing.ParserSettings
 import cc.spray.can.HttpPipelineStageSpec
-import cc.spray.io.Event
 import org.specs2.mutable.Specification
+import cc.spray.can.rendering.HttpRequestPartRenderingContext
+import cc.spray.io.{ProtocolError, Event}
 
 class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
 
@@ -29,13 +30,45 @@ class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
       fixture(event) must produce(events = Seq(event))
     }
     "parse a simple response and produce the corresponding event" in {
-      fixture(Received(rawResponse("foo"))) must produce(events = Seq(response("foo")))
+      fixture(
+        HttpRequestPartRenderingContext(request(), "localhost", 80),
+        ClearCommandAndEventCollectors,
+        Received(rawResponse("foo"))
+      ) must produce(events = Seq(response("foo")))
     }
     "parse a double response and produce the corresponding events" in {
-      fixture(Received(rawResponse("foo") + rawResponse("bar"))) must produce(events = Seq(
+      fixture(
+        HttpRequestPartRenderingContext(request(), "localhost", 80),
+        HttpRequestPartRenderingContext(request(), "localhost", 80),
+        ClearCommandAndEventCollectors,
+        Received(rawResponse("foo") + rawResponse("bar"))
+      ) must produce(events = Seq(
         response("foo"),
         response("bar")
       ))
+    }
+    "trigger an error on unmatched responses" in {
+      "example 1" in {
+        fixture(Received(rawResponse("foo"))) must produce(
+          commands = Seq(HttpClient.Close(ProtocolError("Response to non-existent request")))
+        )
+      }
+      "example 2" in {
+        fixture(
+          HttpRequestPartRenderingContext(request(), "localhost", 80),
+          HttpRequestPartRenderingContext(request(), "localhost", 80),
+          ClearCommandAndEventCollectors,
+          Received(rawResponse("foo")),
+          Received(rawResponse("bar")),
+          Received(rawResponse("baz"))
+        ) must produce(
+          commands = Seq(HttpClient.Close(ProtocolError("Response to non-existent request"))),
+          events = Seq(
+            response("foo"),
+            response("bar")
+          )
+        )
+      }
     }
   }
 

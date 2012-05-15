@@ -52,8 +52,8 @@ class RequestVersionParser(settings: ParserSettings, method: HttpMethod, uri: St
   }
 }
 
-class EmptyResponseParser(settings: ParserSettings) extends VersionParser {
+class EmptyResponseParser(settings: ParserSettings, isResponseToHeadRequest: Boolean) extends VersionParser {
   def handleSuffix(cursor: Char) = pos match {
-    case 8 => if (cursor == ' ') new StatusCodeParser(settings, protocol) else badVersion
+    case 8 => if (cursor == ' ') new StatusCodeParser(settings, protocol, isResponseToHeadRequest) else badVersion
   }
 }

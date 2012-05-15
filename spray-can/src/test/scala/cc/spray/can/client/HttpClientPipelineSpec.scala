@@ -22,6 +22,7 @@ import org.specs2.mutable.Specification
 import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActorRef
 import akka.actor.Actor
+import cc.spray.can.model.{HttpRequest, HttpMethods}
 
 class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
 
@@ -59,6 +60,24 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
       ))
     }
 
+    "properly handle responses to HEAD requests" in {
+      testFixture(
+        HttpRequest(method = HttpMethods.HEAD),
+        Received {
+          prep {
+            """|HTTP/1.1 200 OK
+               |Server: spray/1.0
+               |Date: Thu, 25 Aug 2011 09:10:29 GMT
+               |Content-Length: 8
+               |
+               |"""
+          }
+        }
+      ) must produce(commands = Seq(
+        SendString(rawRequest(method = "HEAD")),
+        IoPeer.Tell(system.deadLetters, response("12345678").withBody(""), connectionActor)
+      ))
+    }
   }
 
   /////////////////////////// SUPPORT ////////////////////////////////

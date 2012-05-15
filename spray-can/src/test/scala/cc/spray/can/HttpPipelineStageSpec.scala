@@ -45,13 +45,13 @@ trait HttpPipelineStageSpec extends PipelineStageTest {
 
   def request(content: String = "") = HttpRequest().withBody(content)
 
-  def rawRequest(content: String = "") = prep {
-    """|GET / HTTP/1.1
+  def rawRequest(content: String = "", method: String = "GET") = prep {
+    """|%s / HTTP/1.1
        |Host: example.com:8080
        |User-Agent: spray/1.0
        |%s
        |%s"""
-  }.format(if (content.isEmpty) "" else "Content-Length: %s\r\n".format(content.length), content)
+  }.format(method, if (content.isEmpty) "" else "Content-Length: %s\r\n".format(content.length), content)
 
   def response(content: String = "") = HttpResponse(
     status = 200,
