@@ -197,6 +197,35 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         ignoreTellSender = true
       )
     }
+
+    "dispatch HEAD requests as GET requests (and suppress sending of their bodies)" in {
+      singleHandlerFixture(
+        Received {
+          prep {
+            """|HEAD / HTTP/1.1
+              |Host: test.com
+              |
+              |"""
+          }
+        },
+        HttpResponse().withBody("1234567")
+      ) must produce(
+        commands = Seq(
+          IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), IgnoreSender),
+          SendString {
+            prep {
+            """|HTTP/1.1 200 OK
+               |Server: spray/1.0
+               |Date: XXXX
+               |Content-Length: 7
+               |
+               |"""
+            }
+          }
+        ),
+        ignoreTellSender = true
+      )
+    }
   }
 
   /////////////////////////// SUPPORT ////////////////////////////////

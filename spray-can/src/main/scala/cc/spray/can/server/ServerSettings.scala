@@ -36,6 +36,7 @@ private[can] class ServerSettings(config: Config = ConfigFactory.load) {
   val AckSends                      = c getBoolean      "ack-sends"
   val DirectResponding              = c getBoolean      "direct-responding"
   val StatsSupport                  = c getBoolean      "stats-support"
+  val TransparentHeadRequests       = c getBoolean      "transparent-head-requests"
   val TimeoutHandler                = c getString       "timeout-handler"
   val ChunklessStreaming            = c getBoolean      "chunkless-streaming"
   val RequestChunkAggregationLimit  = c getBytes        "request-chunk-aggregation-limit"

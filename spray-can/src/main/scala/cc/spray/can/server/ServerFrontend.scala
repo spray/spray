@@ -141,7 +141,11 @@ object ServerFrontend {
               if (settings.DirectResponding) context.self
               else new RequestRef(rec, context.connectionActorContext)
             openRequests += rec
-            commandPL(IoServer.Tell(rec.handler, part, rec.receiver))
+            val partToDispatch: HttpRequestPart =
+              if (request.method != HttpMethods.HEAD || !settings.TransparentHeadRequests) part
+              else if (part.isInstanceOf[HttpRequest]) request.copy(method = HttpMethods.GET)
+              else ChunkedRequestStart(request.copy(method = HttpMethods.GET))
+            commandPL(IoServer.Tell(rec.handler, partToDispatch, rec.receiver))
           }
 
           def dispatchRequestChunk(part: HttpRequestPart) {
