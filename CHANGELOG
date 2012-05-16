@@ -1,3 +1,56 @@
+Version 1.0-M2 (2012-05-16)
+---------------------------
+- spray-io
+
+  + Added SslTlsSupport pipeline stage
+  + Fixed SetTimeout messages not working
+  + Fixed closing of already closed connections improperly handled
+  + Fixed bug in wiring of certain pipeline stages
+  + Dropped `confirm-sends` config setting, added `ack:Boolean` field to IoWorker.Send
+  + Renamed `SendCompleted` event to `AckSend`
+  + Made IoWorkerThread daemonic
+  + Improved pipeline architecture for reduced call stack depth
+
+- spray-can
+
+  + Added SSL/TLS support to HttpServer and HttpClient
+  + Added `ack-sends` setting to client and server config
+  + Added 'transparent-head-requests' server config setting
+  + Added HttpClient.SetRequestTimeout message
+  + Fixed HttpServer not handling 'Expect: 100-continue' headers
+  + Fixed HttpClient not properly handling HEAD requests to resources containing a message body
+  + Fixed #99 (getFromFile(Name) sometimes throws IllegalStateException when streaming file content)
+  + Fixed SetTimeout messages not working
+  + Enabled validity verification on HttpRequests and HttpResponses
+  + Extended HttpDialog to also accept ActorContexts as dispatcher container
+
+- spray-base
+
+  + http: fixed custom mediatypes not being matched
+  + http: fixed ArrayIndexOutOfBoundsException during header parsing of unregistered CustomMediaTypes
+  + http: fixed IPv6 Host header parsing failure
+  + Fixed #108 (FormDataUnmarshaller should be more resilient)
+  + Fixed incorrect error message in HttpContentExtractor
+  + Fixed several memory leaks in streamMarshaller
+
+- spray-server
+
+  + Fixed actorSystem dependency in DebuggingDirectives incorrectly named
+  + Make ErrorHandling#responseForException public
+
+- spray-client
+
+  + Improve `unmarshal` pipeline step to accept all 2xx responses instead of only 200
+
+- general
+
+  + Added basic, but still incomplete, sphinx-based documentation system for new spray website
+  + Upgraded to Akka 2.0.1
+  + Extended simple-http-server and simple-http-client examples with optional SSL/TLS support
+  + Fixed EOL related test failures on Windows
+  + Lots of smaller fixes and improvements
+
+
 Version 1.0-M1 (2012-04-05)
 ---------------------------
 - Moved spray-can sources into spray codebase
