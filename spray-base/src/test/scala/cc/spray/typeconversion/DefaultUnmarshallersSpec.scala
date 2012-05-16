@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,10 +53,15 @@ class DefaultUnmarshallersSpec extends Specification with DefaultUnmarshallers {
         "email=test%40there.com&password=&username=dirk").as[FormData] mustEqual
               Right(FormData(Map("email" -> "test@there.com", "password" -> "", "username" -> "dirk")))
     }
+    "be lenient on empty key/value pairs" in {
+      HttpContent(ContentType(`application/x-www-form-urlencoded`, `ISO-8859-1`),
+        "&key=value&&key2=&").as[FormData] mustEqual Right(FormData(Map("key" -> "value", "key2" -> "")))
+    }
     "reject illegal form content" in (
       HttpContent(ContentType(`application/x-www-form-urlencoded`, `ISO-8859-1`),
         "key=really=not_good").as[FormData] mustEqual
-              Left(MalformedContent("'key=really=not_good' is not a valid form content"))
+              Left(MalformedContent("'key=really=not_good' is not a valid form content: " +
+                "'key=really=not_good' does not constitute valid key=value pair"))
     )
   }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,10 @@ sealed abstract class MediaRange {
 
 object MediaRanges extends ObjectRegistry[String, MediaRange] {
   
-  def register(mediaRange: MediaRange): MediaRange = { register(mediaRange, mediaRange.mainType); mediaRange }
+  def register(mediaRange: MediaRange): MediaRange = {
+    register(mediaRange, mediaRange.mainType.toLowerCase)
+    mediaRange
+  }
   
   val `*/*` = register {
     new MediaRange {
@@ -95,7 +98,6 @@ object MediaRanges extends ObjectRegistry[String, MediaRange] {
   }
   
   case class CustomMediaRange(mainType: String) extends MediaRange {
-    require(mainType == mainType.toLowerCase, "For best performance custom media ranges must be defined in lowercase")
     def matches(mediaType: MediaType) = mediaType.mainType == mainType
     override def isApplication = mainType == "application"
     override def isAudio       = mainType == "audio"
@@ -116,7 +118,7 @@ sealed abstract class MediaType extends MediaRange {
   override def matches(mediaType: MediaType) = this == mediaType
 
   override def equals(obj: Any) = obj match {
-    case x: MediaType => (this eq x) || (mainType eq x.mainType) && (subType eq x.subType)
+    case x: MediaType => (this eq x) || mainType == x.mainType && subType == x.subType
     case _ => false
   }
 
@@ -128,9 +130,12 @@ object MediaType {
   def unapply(mimeType: MediaType): Option[(String, String)] = Some(mimeType.mainType, mimeType.subType)
 }
 
-object MediaTypes extends ObjectRegistry[String, MediaType] {
+object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   
-  def register(mediaType: MediaType): MediaType = { register(mediaType, mediaType.value); mediaType }
+  def register(mediaType: MediaType): MediaType = {
+    register(mediaType, mediaType.mainType.toLowerCase -> mediaType.subType.toLowerCase)
+    mediaType
+  }
   
   def forExtension(ext: String): Option[MediaType] = {
     val extLower = ext.toLowerCase
@@ -224,7 +229,8 @@ object MediaTypes extends ObjectRegistry[String, MediaType] {
 
   object CustomMediaType {
     def apply(value: String, fileExtensions: String*) = {
-      val parts = value.toLowerCase.split('/')
+      val parts = value.split('/')
+      if (parts.length != 2) throw new IllegalArgumentException(value + " is not a valid media-type")
       new CustomMediaType(parts(0), parts(1), fileExtensions)
     }
   }
@@ -234,9 +240,8 @@ object MediaTypes extends ObjectRegistry[String, MediaType] {
    * HTTP layer you need to create an instance, register it via `MediaTypes.register` and use this instance in
    * your custom Marshallers and Unmarshallers.
    */
-  class CustomMediaType(val mainType: String, val subType: String, val fileExtensions: Seq[String] = Nil)
+  case class CustomMediaType(mainType: String, subType: String, fileExtensions: Seq[String] = Nil)
           extends MediaType {
-    require(value == value.toLowerCase, "For best performance custom media types must be defined in lowercase")
     override def isApplication = mainType == "application"
     override def isAudio       = mainType == "audio"
     override def isImage       = mainType == "image"

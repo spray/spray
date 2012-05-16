@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,20 +20,84 @@ package client
 import akka.event.LoggingAdapter
 import cc.spray.io._
 import parsing._
+import rendering.HttpRequestPartRenderingContext
+import collection.mutable.Queue
+import model._
+import java.nio.ByteBuffer
+import annotation.tailrec
 
 object ResponseParsing {
 
-  def apply(settings: ParserSettings, log: LoggingAdapter): EventPipelineStage = new EventPipelineStage {
+  private val UnmatchedResponseErrorState = ErrorState("Response to non-existent request")
 
-    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): EPL = {
+  def apply(settings: ParserSettings, log: LoggingAdapter): DoublePipelineStage = new DoublePipelineStage {
 
-      new MessageParsingPipelines(settings, commandPL, eventPL) {
-        def startParser = new EmptyResponseParser(settings)
-        currentParsingState = startParser
+    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): Pipelines = {
 
-        def handleParseError(state: ErrorState) {
-          log.warning("Received illegal response: {}", state.message)
-          commandPL(IoPeer.Close(ProtocolError(state.message)))
+      new Pipelines {
+        var currentParsingState: ParsingState = UnmatchedResponseErrorState
+        val openRequestMethods = Queue.empty[HttpMethod]
+
+        def startParser = new EmptyResponseParser(settings, openRequestMethods.head == HttpMethods.HEAD)
+
+        @tailrec
+        final def parse(buffer: ByteBuffer) {
+          currentParsingState match {
+            case x: IntermediateState =>
+              if (buffer.remaining > 0) {
+                currentParsingState = x.read(buffer)
+                parse(buffer)
+              } // else wait for more input
+
+            case x: HttpMessagePartCompletedState => x.toHttpMessagePart match {
+              case part: HttpMessageEndPart =>
+                eventPL(part)
+                openRequestMethods.dequeue()
+                if (openRequestMethods.isEmpty) {
+                  currentParsingState = UnmatchedResponseErrorState
+                  if (buffer.remaining > 0) parse(buffer) // trigger error if buffer is not empty
+                } else {
+                  currentParsingState = startParser
+                  parse(buffer)
+                }
+              case part =>
+                eventPL(part)
+                currentParsingState = new ChunkParser(settings)
+                parse(buffer)
+            }
+
+            case _: Expect100ContinueState =>
+              currentParsingState = ErrorState("'Expect: 100-continue' is not allowed in HTTP responses")
+              parse(buffer) // trigger error
+
+            case ErrorState(_, -1) => // if we already handled the error state we ignore all further input
+
+            case ErrorState(message, _) =>
+              log.warning("Received illegal response: {}", message)
+              commandPL(IoPeer.Close(ProtocolError(message)))
+              currentParsingState = ErrorState("", -1) // set to "special" ErrorState that ignores all further input
+          }
+        }
+
+        val commandPipeline: CPL = {
+          case x: HttpRequestPartRenderingContext =>
+            def register(req: HttpRequest) {
+              openRequestMethods.enqueue(req.method)
+              if (currentParsingState eq UnmatchedResponseErrorState) currentParsingState = startParser
+            }
+            x.requestPart match {
+              case x: HttpRequest => register(x)
+              case x: ChunkedRequestStart => register(x.request)
+              case _ =>
+            }
+            commandPL(x)
+
+          case cmd => commandPL(cmd)
+        }
+
+        val eventPipeline: EPL = {
+          case x: IoPeer.Received => parse(x.buffer)
+          case ev => eventPL(ev)
         }
       }
     }

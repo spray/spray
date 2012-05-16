@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@ sealed abstract class HttpCharset extends HttpCharsetRange {
   def aliases: Seq[String]
   def matches(charset: HttpCharset) = this == charset
   override def equals(obj: Any) = obj match {
-    case x: HttpCharset => (this eq x) || (value eq x.value)
+    case x: HttpCharset => (this eq x) || value == x.value
     case _ => false
   }
   override def hashCode() = value.##
@@ -46,7 +46,7 @@ object HttpCharsets extends ObjectRegistry[String, HttpCharset] {
     charset
   }
   
-  val `*` = new HttpCharsetRange {
+  val `*`: HttpCharsetRange = new HttpCharsetRange {
     def value = "*"
     def matches(charset: HttpCharset) = true
   }
@@ -78,7 +78,5 @@ object HttpCharsets extends ObjectRegistry[String, HttpCharset] {
   val `windows-1254` = register(new PredefCharset("windows-1254", "cp1254", "cp5350"))
   val `windows-1257` = register(new PredefCharset("windows-1257", "cp1257", "cp5353"))
 
-  class CustomHttpCharset(_value: String, val aliases: Seq[String] = Nil) extends HttpCharset {
-    val value = _value.toLowerCase.intern()
-  }
+  case class CustomHttpCharset(value: String, aliases: Seq[String] = Nil) extends HttpCharset
 }

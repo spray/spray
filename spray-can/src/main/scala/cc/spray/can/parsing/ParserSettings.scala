@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,23 +18,19 @@ package cc.spray.can.parsing
 
 import com.typesafe.config.{ConfigFactory, Config}
 
-private[can] class ParserSettings(config: Config = ConfigFactory.load()) {
-  private[this] val c: Config = {
-    val c = config.withFallback(ConfigFactory.defaultReference())
-    c.checkValid(ConfigFactory.defaultReference(), "spray.can.parsing")
-    c.getConfig("spray.can.parsing")
-  }
+private[can] class ParserSettings(config: Config = ConfigFactory.load.getConfig("spray.can.parsing")) {
+  config.checkValid(ConfigFactory.defaultReference.getConfig("spray.can.parsing"))
 
-  val MaxUriLength            = c getBytes "max-uri-length"
-  val MaxResponseReasonLength = c getBytes "max-response-reason-length"
-  val MaxHeaderNameLength     = c getBytes "max-header-name-length"
-  val MaxHeaderValueLength    = c getBytes "max-header-value-length"
-  val MaxHeaderCount          = c getBytes "max-header-count"
-  val MaxContentLength        = c getBytes "max-content-length"
-  val MaxChunkExtNameLength   = c getBytes "max-chunk-ext-name-length"
-  val MaxChunkExtValueLength  = c getBytes "max-chunk-ext-value-length"
-  val MaxChunkExtCount        = c getBytes "max-chunk-ext-count"
-  val MaxChunkSize            = c getBytes "max-chunk-size"
+  val MaxUriLength            = config getBytes "max-uri-length"
+  val MaxResponseReasonLength = config getBytes "max-response-reason-length"
+  val MaxHeaderNameLength     = config getBytes "max-header-name-length"
+  val MaxHeaderValueLength    = config getBytes "max-header-value-length"
+  val MaxHeaderCount          = config getBytes "max-header-count"
+  val MaxContentLength        = config getBytes "max-content-length"
+  val MaxChunkExtNameLength   = config getBytes "max-chunk-ext-name-length"
+  val MaxChunkExtValueLength  = config getBytes "max-chunk-ext-value-length"
+  val MaxChunkExtCount        = config getBytes "max-chunk-ext-count"
+  val MaxChunkSize            = config getBytes "max-chunk-size"
 
   require(MaxUriLength            > 0, "max-uri-length must be > 0")
   require(MaxResponseReasonLength > 0, "max-response-reason-length must be > 0")

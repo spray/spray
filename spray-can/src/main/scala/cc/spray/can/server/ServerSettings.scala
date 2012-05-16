@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,26 +19,30 @@ package cc.spray.can.server
 import cc.spray.can.parsing.ParserSettings
 import com.typesafe.config.{ConfigFactory, Config}
 
-private[can] class ServerSettings(config: Config = ConfigFactory.load(), val ConfirmedSends: Boolean) {
+private[can] class ServerSettings(config: Config = ConfigFactory.load) {
   private[this] val c: Config = {
-    val c = config.withFallback(ConfigFactory.defaultReference())
-    c.checkValid(ConfigFactory.defaultReference(), "spray.can.server")
+    val c = config.withFallback(ConfigFactory.defaultReference)
+    c.checkValid(ConfigFactory.defaultReference, "spray.can.server")
     c.getConfig("spray.can.server")
   }
 
   val ServerHeader                  = c getString       "server-header"
+  val SSLEncryption                 = c getBoolean      "ssl-encryption"
   val PipeliningLimit               = c getInt          "pipelining-limit"
   val IdleTimeout                   = c getMilliseconds "idle-timeout"
   val RequestTimeout                = c getMilliseconds "request-timeout"
   val TimeoutTimeout                = c getMilliseconds "timeout-timeout"
   val ReapingCycle                  = c getMilliseconds "reaping-cycle"
+  val AckSends                      = c getBoolean      "ack-sends"
   val DirectResponding              = c getBoolean      "direct-responding"
   val StatsSupport                  = c getBoolean      "stats-support"
+  val TransparentHeadRequests       = c getBoolean      "transparent-head-requests"
   val TimeoutHandler                = c getString       "timeout-handler"
   val ChunklessStreaming            = c getBoolean      "chunkless-streaming"
-  val ConfirmToSender               = c getBoolean      "confirm-to-sender"
   val RequestChunkAggregationLimit  = c getBytes        "request-chunk-aggregation-limit"
   val ResponseSizeHint              = c getBytes        "response-size-hint"
+
+  val ParserSettings = new ParserSettings(c.getConfig("parsing"))
 
   require(PipeliningLimit >= 0, "pipelining-limit must be >= 0")
   require(IdleTimeout     >= 0, "idle-timeout must be >= 0")
@@ -49,6 +53,4 @@ private[can] class ServerSettings(config: Config = ConfigFactory.load(), val Con
     "request-chunk-aggregation-limit must be >= 0 and <= Int.MaxValue")
   require(0 <= ResponseSizeHint && ResponseSizeHint <= Int.MaxValue,
     "response-size-hint must be >= 0 and <= Int.MaxValue")
-
-  val ParserSettings = new ParserSettings(config)
 }

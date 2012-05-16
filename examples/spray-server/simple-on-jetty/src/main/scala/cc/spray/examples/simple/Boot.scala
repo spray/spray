@@ -26,7 +26,7 @@ class Boot(system: ActorSystem) {
     name = "spray-root-service" // must match the name in the config so the ConnectorServlet can find the actor
   )
   system.registerOnTermination {
-    // put additional cleanup code clear
+    // put additional cleanup code here
     system.log.info("Application shut down")
   }
 

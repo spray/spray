@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ class IoWorkerSettings(config: Config = ConfigFactory.load()) {
 
   val ThreadName           = c getString  "thread-name"
   val ReadBufferSize       = c getBytes   "read-buffer-size"
-  val ConfirmSends         = c getBoolean "confirm-sends"
 
   val TcpReceiveBufferSize = c getBytes   "tcp.receive-buffer-size"
   val TcpSendBufferSize    = c getBytes   "tcp.send-buffer-size"

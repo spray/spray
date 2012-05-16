@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,4 +25,8 @@ package object parsing {
     case '(' | ')' | '<' | '>' | '@' | ',' | ';' | ':' | '\\' | '"' | '/' | '[' | ']' | '?' | '=' | '{' | '}' => false
     case x => 32 < x && x < 127
   }
+
+  private[can] def escape(c: Char): String =
+    if (Character.isISOControl(c)) String.format("\\u%04x", c: java.lang.Integer)
+    else String.valueOf(c)
 }

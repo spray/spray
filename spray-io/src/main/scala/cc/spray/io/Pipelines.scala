@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,14 +20,14 @@ import akka.actor.{ActorRef, ActorContext}
 
 
 trait Pipelines {
-  def commandPipeline(command: Command)
-  def eventPipeline(event: Event)
+  def commandPipeline: Pipeline[Command]
+  def eventPipeline: Pipeline[Event]
 }
 
 object Pipelines {
   def apply(commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
-    def commandPipeline(command: Command) { commandPL(command) }
-    def eventPipeline(event: Event) { eventPL(event) }
+    val commandPipeline = commandPL
+    val eventPipeline = eventPL
   }
 }
 
@@ -72,7 +72,7 @@ trait CommandPipelineStage extends PipelineStage { left =>
   def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
     Pipelines(build(ctx, cpl, epl), epl)
 
-  def ~> (right: PipelineStage) = {
+  def ~> (right: PipelineStage): PipelineStage = {
     right match {
       case x: CommandPipelineStage => new CommandPipelineStage {
         def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
@@ -99,7 +99,7 @@ trait EventPipelineStage extends PipelineStage { left =>
   def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
     Pipelines(cpl, build(ctx, cpl, epl))
 
-  def ~> (right: PipelineStage) = {
+  def ~> (right: PipelineStage): PipelineStage = {
     right match {
       case x: CommandPipelineStage => new DoublePipelineStage {
         def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
@@ -110,8 +110,12 @@ trait EventPipelineStage extends PipelineStage { left =>
           x.build(ctx, cpl, left.build(ctx, cpl, epl))
       }
       case x: DoublePipelineStage => new DoublePipelineStage {
-        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
-          x.build(ctx, cpl, left.build(ctx, cpl, epl))
+        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = {
+          var cplProxy: CPL = Pipeline.uninitialized
+          val result = x.build(ctx, cpl, left.build(ctx, cplProxy(_), epl))
+          cplProxy = result.commandPipeline
+          result
+        }
       }
       case EmptyPipelineStage => this
     }
@@ -124,11 +128,15 @@ trait DoublePipelineStage extends PipelineStage { left =>
   def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
     build(ctx, cpl, epl)
 
-  def ~> (right: PipelineStage) = {
+  def ~> (right: PipelineStage): PipelineStage = {
     right match {
       case x: CommandPipelineStage => new DoublePipelineStage {
-        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
-          left.build(ctx, x.build(ctx, cpl, epl), epl)
+        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = {
+          var eplProxy: EPL = Pipeline.uninitialized
+          val result = left.build(ctx, x.build(ctx, cpl, eplProxy(_)), epl)
+          eplProxy = result.eventPipeline
+          result
+        }
       }
       case x: EventPipelineStage => new DoublePipelineStage {
         def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = {

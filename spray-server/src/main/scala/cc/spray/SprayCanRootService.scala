@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,7 +72,7 @@ class SprayCanRootService(firstService: ActorRef, moreServices: ActorRef*)
             val ref = new UnregisteredActorRef(context) {
               def handle(message: Any, sender: ActorRef) {
                 message match {
-                  case _: HttpServer.SendCompleted => promise.success(())
+                  case _: HttpServer.AckSend => promise.success(())
                   case HttpServer.Closed(_, reason) =>
                     if (!promise.isCompleted) promise.tryComplete(Left(new ClientClosedConnectionException(reason)))
                 }

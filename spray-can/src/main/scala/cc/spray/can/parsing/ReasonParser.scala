@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,14 +20,16 @@ package parsing
 import java.lang.{StringBuilder => JStringBuilder}
 import model.{StatusLine, HttpProtocol}
 
-class ReasonParser(settings: ParserSettings, protocol: HttpProtocol, status: Int) extends CharacterParser {
+class ReasonParser(settings: ParserSettings, protocol: HttpProtocol, status: Int, isResponseToHeadRequest: Boolean)
+    extends CharacterParser {
   val reason = new JStringBuilder
 
   def handleChar(cursor: Char) = {
     if (reason.length <= settings.MaxResponseReasonLength) {
       cursor match {
         case '\r' => this
-        case '\n' => new HeaderNameParser(settings, StatusLine(protocol, status, reason.toString))
+        case '\n' => new HeaderNameParser(settings,
+          StatusLine(protocol, status, reason.toString, isResponseToHeadRequest))
         case _ => reason.append(cursor); this
       }
     } else {

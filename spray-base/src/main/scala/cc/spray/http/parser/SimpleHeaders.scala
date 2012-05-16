@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,8 +43,11 @@ private[parser] trait SimpleHeaders {
     HttpDate ~ EOI ~~> Date
   }
 
+  // Do not accept scoped IPv6 addresses as they should not appear in the Host header,
+  // see also https://issues.apache.org/bugzilla/show_bug.cgi?id=35122 (WONTFIX in Apache 2 issue) and
+  // https://bugzilla.mozilla.org/show_bug.cgi?id=464162 (FIXED in mozilla)
   def HOST = rule {
-    Token ~ OptWS ~ optional(":" ~ oneOrMore(Digit) ~> (_.toInt)) ~ EOI ~~> Host
+    (Token | IPv6Reference) ~ OptWS ~ optional(":" ~ oneOrMore(Digit) ~> (_.toInt)) ~ EOI ~~> Host
   }
 
   def LAST_MODIFIED = rule {

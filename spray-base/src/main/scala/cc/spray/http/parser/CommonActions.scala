@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,9 +32,8 @@ private[parser] trait CommonActions {
         case "encrypted"   => new `multipart/encrypted`  (boundary)
         case custom        => new MultipartMediaType(custom, boundary)
       }
-      case main =>
-        val value = main + "/" + subType.toLowerCase
-        MediaTypes.getForKey(value).getOrElse(MediaTypes.CustomMediaType(value))
+      case mainLower =>
+        MediaTypes.getForKey((mainLower, subType.toLowerCase)).getOrElse(new CustomMediaType(mainType, subType))
     }
   }
   

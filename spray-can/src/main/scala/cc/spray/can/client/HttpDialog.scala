@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -98,21 +98,27 @@ object HttpDialog {
       case HttpClient.Closed(_, reason) =>
         complete(Left(IoClientException("Connection closed prematurely, reason: " + reason)))
 
-      case _: HttpClient.SendCompleted => // drop potential write confirmations
+      case _: HttpClient.AckSend => // drop potential write confirmations
 
       case Status.Failure(cause) => complete(Left(cause))
     }
   }
 
-  private class Context(system: ActorSystem, client: ActorRef, connect: ConnectAction) {
+  private class Context(refFactory: ActorRefFactory, client: ActorRef, connect: ConnectAction) {
     private var actions = ListBuffer[Action](connect)
     def appendAction(action: Action): this.type = {
       actions += action
       this
     }
     def runActions(multiResponse: Boolean): Future[AnyRef] = {
-      val result = Promise[AnyRef]()(system.dispatcher)
-      system.actorOf(Props(new DialogActor(result, client, multiResponse))) ! actions.toList
+      val result = Promise[AnyRef]() {
+        refFactory match {
+          case x: ActorContext => x.dispatcher
+          case x: ActorSystem => x.dispatcher
+          case x => throw new IllegalArgumentException("Unsupported ActorRefFactory '" + x + "'")
+        }
+      }
+      refFactory.actorOf(Props(new DialogActor(result, client, multiResponse))) ! actions.toList
       result
     }
   }
@@ -227,8 +233,8 @@ object HttpDialog {
   /**
    * Constructs a new `HttpDialog` for a connection to the given host and port.
    */
-  def apply(httpClient: ActorRef, host: String, port: Int = 80)(implicit system: ActorSystem) =
-    new SendFirst(new Context(system, httpClient, ConnectAction(host, port)))
+  def apply(httpClient: ActorRef, host: String, port: Int = 80)(implicit refFactory: ActorRefFactory) =
+    new SendFirst(new Context(refFactory, httpClient, ConnectAction(host, port)))
       with SendMany
       with WaitIdle
 

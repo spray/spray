@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,10 @@
 package cc.spray.can
 package parsing
 
-import model.{HttpProtocol}
+import model.HttpProtocol
 
-class StatusCodeParser(settings: ParserSettings, protocol: HttpProtocol) extends CharacterParser {
+class StatusCodeParser(settings: ParserSettings, protocol: HttpProtocol, isResponseToHeadRequest: Boolean)
+    extends CharacterParser {
   var pos = 0
   var status = 0
 
@@ -27,7 +28,7 @@ class StatusCodeParser(settings: ParserSettings, protocol: HttpProtocol) extends
     case 0 => if ('1' <= cursor && cursor <= '5') { pos = 1; status = (cursor - '0') * 100; this } else badStatus
     case 1 => if ('0' <= cursor && cursor <= '9') { pos = 2; status += (cursor - '0') * 10; this } else badStatus
     case 2 => if ('0' <= cursor && cursor <= '9') { pos = 3; status += cursor - '0'; this } else badStatus
-    case 3 => if (cursor == ' ') new ReasonParser(settings, protocol, status) else badStatus
+    case 3 => if (cursor == ' ') new ReasonParser(settings, protocol, status, isResponseToHeadRequest) else badStatus
   }
 
   def badStatus = ErrorState("Illegal response status code")

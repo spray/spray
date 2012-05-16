@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import MediaTypes._
 import HttpCharsets._
 import HttpHeaders._
 import org.specs2.mutable.Specification
+import util.EOL
 
 class MultipartUnmarshallersSpec extends Specification with DefaultUnmarshallers {
   
@@ -74,7 +75,7 @@ class MultipartUnmarshallersSpec extends Specification with DefaultUnmarshallers
           Seq(
             BodyPart(Nil,
               Some(HttpContent(ContentType(`text/plain`, Some(`US-ASCII`)),
-                "first part, with a trailing linebreak\n"))
+                "first part, with a trailing linebreak" + EOL))
             ),
             BodyPart(
               List(

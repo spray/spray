@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,33 +34,29 @@ object PipeliningLimiter {
       var limit = pipeliningLimit
       var readingStopped = false
 
-      def commandPipeline(command: Command) {
-        command match {
-          case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEndPart] =>
-            openRequests -= 1
-            commandPL(command)
-            if (parkedRequestParts != null && !parkedRequestParts.isEmpty) {
-              unparkOneRequest()
-              if (parkedRequestParts.isEmpty) resumeReading()
-            }
+      val commandPipeline: CPL = {
+        case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEndPart] =>
+          openRequests -= 1
+          commandPL(x)
+          if (parkedRequestParts != null && !parkedRequestParts.isEmpty) {
+            unparkOneRequest()
+            if (parkedRequestParts.isEmpty) resumeReading()
+          }
 
-          case _ => commandPL(command)
-        }
+        case cmd => commandPL(cmd)
       }
 
-      def eventPipeline(event: Event) {
-        event match {
-          case x: HttpRequestPart =>
-            if (openRequests == limit) {
-              stopReading()
-              park(x)
-            } else {
-              if (x.isInstanceOf[HttpMessageEndPart]) openRequests += 1
-              eventPL(event)
-            }
+      val eventPipeline: EPL = {
+        case x: HttpRequestPart =>
+          if (openRequests == limit) {
+            stopReading()
+            park(x)
+          } else {
+            if (x.isInstanceOf[HttpMessageEndPart]) openRequests += 1
+            eventPL(x)
+          }
 
-          case _ => eventPL(event)
-        }
+        case ev => eventPL(ev)
       }
 
       def stopReading() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,13 @@ import LanguageRanges._
 import RangeUnits._
 import CacheDirectives._
 
-class HttpHeaderSpec extends Specification { def is =
+class HttpHeaderSpec extends Specification {
+
+  val EOL = System.getProperty("line.separator")
+  val `application/vnd.spray` = MediaTypes.register(CustomMediaType("application/vnd.spray"))
+  val `fancy-pants` = HttpCharsets.register(CustomHttpCharset("FANCY-pants"))
+
+  def is =
 
   "The HTTP header model must correctly parse and render the following examples" ^
     p^
@@ -36,12 +42,16 @@ class HttpHeaderSpec extends Specification { def is =
       example(Accept(`text/plain`, `text/html`, `text/css`))_ ^
     "Accept: text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2" !
       example(Accept(`text/html`, `image/gif`, `image/jpeg`, `*/*`, `*/*`), fix(_).replace("*,", "*/*,"))_ ^
+    "Accept: application/vnd.spray" !
+      example(Accept(`application/vnd.spray`))_ ^
+    "Accept: */*, text/plain, custom/custom" !
+      example(Accept(`*/*`, `text/plain`, CustomMediaType("custom/custom")))_ ^
     p^
     "Accept-Charset: utf8; q=0.5, *" !
       example(`Accept-Charset`(`UTF-8`, HttpCharsets.`*`), fix(_).replace("utf", "UTF-"))_ ^
     p^
     "Accept-Encoding: compress, gzip, fancy" !
-      example(`Accept-Encoding`(compress, gzip, new CustomHttpEncoding("fancy")))_ ^
+      example(`Accept-Encoding`(compress, gzip, CustomHttpEncoding("fancy")))_ ^
     "Accept-Encoding: gzip;q=1.0, identity; q=0.5, *;q=0" !
       example(`Accept-Encoding`(gzip, identity, HttpEncodings.`*`))_ ^
     p^
@@ -81,7 +91,7 @@ class HttpHeaderSpec extends Specification { def is =
       example(`Content-Disposition`("attachment", Map("name" -> "field1", "filename" -> "file.txt")))_ ^
     p^
     "Content-Encoding: gzip"   ! example(`Content-Encoding`(gzip))_ ^
-    "Content-Encoding: pipapo" ! example(`Content-Encoding`(new CustomHttpEncoding("pipapo")))_ ^
+    "Content-Encoding: pipapo" ! example(`Content-Encoding`(CustomHttpEncoding("pipapo")))_ ^
     p^
     "Content-Length: 42" ! example(`Content-Length`(42))_ ^
     p^
@@ -91,8 +101,8 @@ class HttpHeaderSpec extends Specification { def is =
       example(`Content-Type`(ContentType(`text/plain`, `UTF-8`)), fix(_).replace("utf", "UTF-"))_ ^
     "Content-Type: text/xml; charset=windows-1252" !
       example(`Content-Type`(ContentType(`text/xml`, `windows-1252`)))_ ^
-    "Content-Type: text/plain; charset=fancy-pants" !
-      example(`Content-Type`(ContentType(`text/plain`, new CustomHttpCharset("FANCY-pants"))))_ ^
+    "Content-Type: text/plain; charset=FANCY-pants" !
+      example(`Content-Type`(ContentType(`text/plain`, `fancy-pants`)))_ ^
     "Content-Type: multipart/mixed; boundary=ABC123" !
       example(`Content-Type`(ContentType(new `multipart/mixed`(Some("ABC123")))), fix(_).replace("=", "=\"") + '"')_ ^
     p^
@@ -109,6 +119,9 @@ class HttpHeaderSpec extends Specification { def is =
     p^
     "Host: www.spray.cc:8080" ! example(Host("www.spray.cc", Some(8080)))_ ^
     "Host: spray.cc" ! example(Host("spray.cc"))_ ^
+    "Host: [2001:db8::1]:8080" ! example(Host("[2001:db8::1]", Some(8080)))_ ^
+    "Host: [2001:db8::1]" ! example(Host("[2001:db8::1]"))_ ^
+    "Host: [::FFFF:129.144.52.38]" ! example(Host("[::FFFF:129.144.52.38]"))_ ^
     p^
     "Last-Modified: Wed, 13 Jul 2011 08:12:31 GMT" ! example(`Last-Modified`(DateTime(2011, 7, 13, 8, 12, 31)))_ ^
     p^
@@ -129,7 +142,7 @@ class HttpHeaderSpec extends Specification { def is =
                          realm="testrealm@host.com",
                          qop="auth,auth-int",
                          nonce=dcd98b7102dd2f0e8b11d0f600bfb0c093,
-                         opaque="5ccc069c403ebaf9f0171e9517f40e41"""".replace("\n", "\r\n") !
+                         opaque="5ccc069c403ebaf9f0171e9517f40e41"""".replace(EOL, "\r\n") !
       example(`WWW-Authenticate`(HttpChallenge("Digest", "testrealm@host.com", Map("qop" -> "auth,auth-int",
         "nonce" -> "dcd98b7102dd2f0e8b11d0f600bfb0c093", "opaque" -> "5ccc069c403ebaf9f0171e9517f40e41"))),
         fix(_).replace("=d", "=\"d").replace("093,", "093\",").replace(", ", ","))_ ^

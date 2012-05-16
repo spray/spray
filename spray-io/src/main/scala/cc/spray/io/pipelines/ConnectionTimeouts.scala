@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,33 +30,30 @@ object ConnectionTimeouts {
         var timeout = idleTimeout
         var lastActivity = System.currentTimeMillis
 
-        def commandPipeline(command: Command) {
-          command match {
-            case x: SetIdleTimeout =>
-              timeout = x.timeout.toMillis
+        val commandPipeline: CPL = {
+          case x: SetIdleTimeout =>
+            timeout = x.timeout.toMillis
 
-            case _: IoPeer.Send =>
-              commandPL(command)
-              lastActivity = System.currentTimeMillis
+          case x: IoPeer.Send =>
+            commandPL(x)
+            lastActivity = System.currentTimeMillis
 
-            case _ => commandPL(command)
-          }
+          case cmd => commandPL(cmd)
         }
 
-        def eventPipeline(event: Event) {
-          event match {
-            case _: IoPeer.Received =>
-              lastActivity = System.currentTimeMillis
+        val eventPipeline: EPL = {
+          case x: IoPeer.Received =>
+            lastActivity = System.currentTimeMillis
+            eventPL(x)
 
-            case TickGenerator.Tick =>
-              if (timeout > 0 && (lastActivity + timeout < System.currentTimeMillis)) {
-                log.debug("Closing connection due to idle timeout...")
-                commandPL(IoPeer.Close(IdleTimeout))
-              }
+          case TickGenerator.Tick =>
+            if (timeout > 0 && (lastActivity + timeout < System.currentTimeMillis)) {
+              log.debug("Closing connection due to idle timeout...")
+              commandPL(IoPeer.Close(IdleTimeout))
+            }
+            eventPL(TickGenerator.Tick)
 
-            case _ =>
-          }
-          eventPL(event)
+          case ev => eventPL(ev)
         }
       }
     }
@@ -65,7 +62,7 @@ object ConnectionTimeouts {
   ////////////// COMMANDS //////////////
 
   case class SetIdleTimeout(timeout: Duration) extends Command {
-    require(!timeout.isFinite, "timeout must not be infinite, set to zero to disable")
+    require(timeout.isFinite, "timeout must not be infinite, set to zero to disable")
     require(timeout >= Duration.Zero, "timeout must not be negative")
   }
 }

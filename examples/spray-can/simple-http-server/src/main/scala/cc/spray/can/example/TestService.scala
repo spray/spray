@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,9 +72,6 @@ class TestService extends Actor with ActorLogging {
 
     case x: HttpServer.Closed =>
       context.children.foreach(_ ! CancelStream(sender, x.reason))
-
-    case _: HttpServer.SendCompleted =>
-      // ignore send confirmations (they might even have been turned off in the application.conf)
   }
 
   ////////////// helpers //////////////

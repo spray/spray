@@ -31,7 +31,7 @@ class EchoServer(ioWorker: IoWorker) extends IoServer(ioWorker) {
           ioWorker ! IoWorker.Send(handle, buffer)
       }
 
-    case IoWorker.SendCompleted(_) =>
+    case IoWorker.AckSend(_) =>
       log.debug("Send completed")
 
     case IoWorker.Closed(_, reason) =>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,18 +19,22 @@ package cc.spray.can.client
 import cc.spray.can.parsing.ParserSettings
 import com.typesafe.config.{ConfigFactory, Config}
 
-private[can] class ClientSettings(config: Config = ConfigFactory.load()) {
+private[can] class ClientSettings(config: Config = ConfigFactory.load) {
   private[this] val c: Config = {
-    val c = config.withFallback(ConfigFactory.defaultReference())
-    c.checkValid(ConfigFactory.defaultReference(), "spray.can.client")
+    val c = config.withFallback(ConfigFactory.defaultReference)
+    c.checkValid(ConfigFactory.defaultReference, "spray.can.client")
     c.getConfig("spray.can.client")
   }
   val UserAgentHeader               = c getString       "user-agent-header"
+  val SSLEncryption                 = c getBoolean      "ssl-encryption"
   val IdleTimeout                   = c getMilliseconds "idle-timeout"
   val RequestTimeout                = c getMilliseconds "request-timeout"
   val ReapingCycle                  = c getMilliseconds "reaping-cycle"
+  val AckSends                      = c getBoolean      "ack-sends"
   val ResponseChunkAggregationLimit = c getBytes        "response-chunk-aggregation-limit"
   val RequestSizeHint               = c getBytes        "request-size-hint"
+
+  val ParserSettings = new ParserSettings(c.getConfig("parsing"))
 
   require(IdleTimeout    >= 0, "idle-timeout must be >= 0")
   require(RequestTimeout >= 0, "request-timeout must be >= 0")
@@ -39,6 +43,4 @@ private[can] class ClientSettings(config: Config = ConfigFactory.load()) {
     "response-chunk-aggregation-limit must be >= 0 and <= Int.MaxValue")
   require(0 <= RequestSizeHint && RequestSizeHint <= Int.MaxValue,
     "request-size-hint must be >= 0 and <= Int.MaxValue")
-
-  val ParserSettings = new ParserSettings(config)
 }

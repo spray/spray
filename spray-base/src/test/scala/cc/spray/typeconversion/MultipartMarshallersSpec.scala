@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import HttpCharsets._
 import HttpHeaders._
 import org.specs2.mutable.Specification
 import java.util.Random
+import util.EOL
 
 class MultipartMarshallersSpec extends Specification with DefaultMarshallers {
   override protected lazy val multipartBoundaryRandom = new Random(0) // fix for stable value
@@ -35,7 +36,7 @@ class MultipartMarshallersSpec extends Specification with DefaultMarshallers {
         Seq(BodyPart(HttpContent(ContentType(`text/plain`, `US-ASCII`), "")))
       ).toHttpContent mustEqual HttpContent(ContentType(new `multipart/mixed`(Some("YLQguzhR2dR6y5M9vnA5m/bJ"))),
         """|--YLQguzhR2dR6y5M9vnA5m/bJ
-           |--YLQguzhR2dR6y5M9vnA5m/bJ--""".stripMargin.replace("\n", "\r\n")
+           |--YLQguzhR2dR6y5M9vnA5m/bJ--""".stripMargin.replace(EOL, "\r\n")
       )
     }
     "correctly marshal multipart content with one part" in {
@@ -52,7 +53,7 @@ class MultipartMarshallersSpec extends Specification with DefaultMarshallers {
            |Content-Type: text/plain; charset=UTF-8
            |
            |test@there.com
-           |--OvAdT7dw6YwDJfQdPrr4mG2n--""".stripMargin.replace("\n", "\r\n")
+           |--OvAdT7dw6YwDJfQdPrr4mG2n--""".stripMargin.replace(EOL, "\r\n")
       )
     }
     "correctly marshal multipart content with two different parts" in {
@@ -76,7 +77,7 @@ class MultipartMarshallersSpec extends Specification with DefaultMarshallers {
            |Content-Type: application/octet-stream
            |
            |filecontent
-           |--K81NVUvwtUAjwptiTenvnC+T--""".stripMargin.replace("\n", "\r\n")
+           |--K81NVUvwtUAjwptiTenvnC+T--""".stripMargin.replace(EOL, "\r\n")
       )
     }
   }
@@ -95,7 +96,7 @@ class MultipartMarshallersSpec extends Specification with DefaultMarshallers {
            |Content-Type: text/xml
            |
            |<int>42</int>
-           |--WA+a+wgbEuEHsegF8rT18PHQ--""".stripMargin.replace("\n", "\r\n")
+           |--WA+a+wgbEuEHsegF8rT18PHQ--""".stripMargin.replace(EOL, "\r\n")
       )
     }
   }

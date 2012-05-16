@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ private[spray] object BasicRules extends Parser {
   
   def Digit = rule { "0" - "9" }
 
-  def AlphaNum = Alpha | Digit
+  def AlphaNum = rule { Alpha | Digit }
   
   def CTL = rule { "\u0000" - "\u001F" | "\u001F" }
   
@@ -68,4 +68,9 @@ private[spray] object BasicRules extends Parser {
   def OptWS = rule { zeroOrMore(LWS) }
   
   def ListSep = rule { oneOrMore("," ~ OptWS) }
+
+  // we don't match scoped IPv6 addresses
+  def IPv6Address = rule { oneOrMore(Hex | anyOf(":.")) }
+
+  def IPv6Reference: Rule1[String] = rule { group("[" ~ IPv6Address ~ "]") ~> identityFunc }
 }

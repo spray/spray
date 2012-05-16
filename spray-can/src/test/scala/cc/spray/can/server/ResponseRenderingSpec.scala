@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,25 +21,26 @@ import cc.spray.can.rendering.HttpResponsePartRenderingContext
 import cc.spray.io.{CleanClose, IoPeer, Command}
 import org.specs2.mutable.Specification
 import cc.spray.can.HttpPipelineStageSpec
+import com.typesafe.config.ConfigFactory
 
 class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
 
   "The ResponseRendering PipelineStage" should {
     "be transparent to unrelated commands" in {
       val command = new Command {}
-      fixture(command).commands === Seq(command)
+      fixture(command) must produce(commands = Seq(command))
     }
     "translate a simple HttpResponsePartRenderingContext into the corresponding Send command" in {
       fixture(
         HttpResponsePartRenderingContext(HttpResponse().withBody("Some Message"))
-      ).commands.fixSends === Seq(SendString(
+      ) must produce(commands = Seq(SendString(
         """|HTTP/1.1 200 OK
            |Server: spray/1.0
            |Date: XXXX
            |Content-Length: 12
            |
            |Some Message"""
-      ))
+      )))
     }
     "append a Close command to the Send if the connection is to be closed" in {
       fixture(
@@ -48,7 +49,7 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
           requestMethod = HttpMethods.HEAD,
           requestConnectionHeader = Some("close")
         )
-      ).commands.fixSends === Seq(
+      ) must produce(commands = Seq(
         SendString(
           """|HTTP/1.1 200 OK
              |Connection: close
@@ -59,7 +60,7 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
              |"""
         ),
         IoPeer.Close(CleanClose)
-      )
+      ))
     }
   }
 
@@ -71,9 +72,12 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
 
   val fixture = new Fixture(
     ResponseRendering(
-      serverHeader = "spray/1.0",
-      chunklessStreaming = false,
-      responseSizeHint = 256
+      new ServerSettings(
+        ConfigFactory.parseString("""
+          spray.can.server.server-header = spray/1.0
+          spray.can.server.response-size-hint = 256
+        """)
+      )
     )
   )
 

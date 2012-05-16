@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ class ChunkExtensionValueParser(settings: ParserSettings, chunkSize: Int, extCou
             if (chunkSize == 0) new TrailerParser(settings, newExtensions)
             else new ChunkBodyParser(settings, chunkSize, newExtensions)
           }
-          case _ => ErrorState("Invalid character '" + cursor + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
+          case _ => ErrorState("Invalid character '" + escape(cursor) + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
         }
       }
     } else {

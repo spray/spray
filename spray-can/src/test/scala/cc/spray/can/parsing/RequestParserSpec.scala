@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import java.nio.ByteBuffer
 import model._
 import HttpMethods._
 import HttpProtocols._
+import cc.spray.util.EOL
 
 class RequestParserSpec extends Specification {
 
@@ -109,7 +110,7 @@ class RequestParserSpec extends Specification {
           "0123456789ABCDEF"
         )
         parse(chunkParser)("15 ;\n") mustEqual
-          ErrorState("Invalid character '\\r', expected TOKEN CHAR, SPACE, TAB or EQUAL")
+          ErrorState("Invalid character '\\u000d', expected TOKEN CHAR, SPACE, TAB or EQUAL")
         parse(chunkParser)("bla") mustEqual ErrorState("Illegal chunk size")
       }
       "message end" in {
@@ -204,7 +205,8 @@ class RequestParserSpec extends Specification {
 object RequestParserSpec {
   def parse(startParser: => IntermediateState,
             extractFromCompleteMessage: CompleteMessageState => AnyRef)(response: String): AnyRef = {
-    val req = response.stripMargin.replace("\n", "\r\n")
+    // Some tests use multiline strings and some use one line with "\n" separators
+    val req = response.stripMargin.replace(EOL, "\n").replace("\n", "\r\n")
     val buf = ByteBuffer.wrap(req.getBytes("US-ASCII"))
     startParser.read(buf) match {
       case x: CompleteMessageState => extractFromCompleteMessage(x)

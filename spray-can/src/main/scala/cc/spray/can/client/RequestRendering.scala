@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package cc.spray.can.client
 
-import rendering.{HttpRequestPartRenderingContext, RequestRenderer}
+import cc.spray.can.rendering.{HttpRequestPartRenderingContext, RequestRenderer}
 import cc.spray.io._
 
 object RequestRendering {
 
-  def apply(userAgentHeader: String, requestSizeHint: Int): CommandPipelineStage = new CommandPipelineStage {
-    val renderer = new RequestRenderer(userAgentHeader, requestSizeHint)
+  def apply(settings: ClientSettings): CommandPipelineStage = new CommandPipelineStage {
+    val renderer = new RequestRenderer(settings.UserAgentHeader, settings.RequestSizeHint.toInt)
 
     def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): CPL = {
       case ctx: HttpRequestPartRenderingContext =>
         val rendered = renderer.render(ctx)
-        commandPL(IoPeer.Send(rendered.buffers))
+        commandPL(IoPeer.Send(rendered.buffers, settings.AckSends))
 
       case cmd => commandPL(cmd)
     }

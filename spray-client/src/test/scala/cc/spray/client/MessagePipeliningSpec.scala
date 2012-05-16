@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,7 +63,17 @@ class MessagePipeliningSpec extends Specification with MessagePipelining {
       pipeline(Get()).await === HttpResponse(200)
     }
 
-    "throw an Exception when unmarshalling non-200 responses" in {
+		"allow success for any status codes representing success" in {
+      val pipeline = simpleRequest ~> report ~> transformResponse(_.copy(status = 201)) ~> unmarshal[String]
+      pipeline(Get("/abc")).await === "GET|/abc|None"
+    }
+
+		"throw an Exception when unmarshalling client error responses" in {
+      val pipeline = simpleRequest[String] ~> echo ~> transformResponse(_.copy(status = 400)) ~> unmarshal[String]
+      pipeline(Get("/", "XXX")).await must throwAn(new UnsuccessfulResponseException(StatusCodes.BadRequest))
+    }
+
+    "throw an Exception when unmarshalling server error responses" in {
       val pipeline = simpleRequest[String] ~> echo ~> transformResponse(_.copy(status = 500)) ~> unmarshal[String]
       pipeline(Get("/", "XXX")).await must throwAn(new UnsuccessfulResponseException(StatusCodes.InternalServerError))
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,12 +44,12 @@ class FormFieldSpec extends Specification with DefaultUnmarshallers with Default
 
     "return an error when accessing a field of www-urlencoded forms for which no FromStringOptionDeserializer is available" in {
       formData.toHttpContent.formField("age").right.get.as[NodeSeq] mustEqual
-        Left(UnsupportedContentType("Field 'age' can only be read from 'application/x-www-form-urlencoded' form content"))
+        Left(UnsupportedContentType("Field 'age' can only be read from 'multipart/form-data' form content"))
     }
 
     "return an error when accessing a field of multipart forms for which no Unmarshaller is available" in {
       multipartFormData.toHttpContent.formField("age").right.get.as[Int] mustEqual
-        Left(UnsupportedContentType("Field 'age' can only be read from 'multipart/form-data' form content"))
+        Left(UnsupportedContentType("Field 'age' can only be read from 'application/x-www-form-urlencoded' form content"))
     }
   }
 

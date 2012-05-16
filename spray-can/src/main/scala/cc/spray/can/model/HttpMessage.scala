@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,19 @@ case class HttpRequest(
   body: Array[Byte] = EmptyByteArray,
   protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
 ) extends HttpMessage with HttpRequestPart {
+
+  @inline private def req(cond: Boolean, msg: String) {
+    if (!cond) throw new IllegalArgumentException("Illegal HttpRequest: " + msg)
+  }
+  req(method != null, "method must not be null")
+  req(uri != null && !uri.isEmpty, "uri must not be null or empty")
+  req(headers != null, "headers must not be null")
+  req(body != null, "body must not be null (you can use cc.spray.io.util.EmptyByteArray for an empty body)")
+  headers.foreach { header =>
+    if (header.name == "Content-Length" || header.name == "Transfer-Encoding" || header.name == "Host")
+      throw new IllegalArgumentException(header.name + " header must not be set explicitly, it is set automatically")
+  }
+
   def withBody(body: String, charset: String = "ISO-8859-1") = copy(body = body.getBytes(charset))
   def connectionHeader: Option[String] = headers.mapFind {
     header => if (header.name == "connection") Some(header.value) else None
@@ -65,28 +78,26 @@ case class HttpRequest(
     new String(body, "ASCII") + ", " + protocol + ')'
 }
 
-object HttpRequest {
-  def verify(request: HttpRequest) = {
-    import request._
-    def req(cond: Boolean, msg: => String) { require(cond, "Illegal HttpRequest: " + msg) }
-    req(method != null, "method must not be null")
-    req(uri != null && !uri.isEmpty, "uri must not be null or empty")
-    req(headers != null, "headers must not be null")
-    req(body != null, "body must not be null (you can use cc.spray.io.util.EmptyByteArray for an empty body)")
-    headers.foreach { header =>
-      if (header.name == "Content-Length" || header.name == "Transfer-Encoding" || header.name == "Host")
-        throw new IllegalArgumentException(header.name + " header must not be set explicitly, it is set automatically")
-    }
-    request
-  }
-}
-
 case class HttpResponse(
   status: Int = 200,
   headers: List[HttpHeader] = Nil,
   body: Array[Byte] = EmptyByteArray,
   protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
 ) extends HttpMessage with HttpResponsePart {
+
+  @inline private def req(cond: Boolean, msg: => String) {
+    if (!cond) throw new IllegalArgumentException("Illegal HttpResponse: " + msg)
+  }
+  req(100 <= status && status < 600, "Illegal HTTP status code: " + status)
+  req(headers != null, "headers must not be null")
+  req(body != null, "body must not be null (you can use cc.spray.io.util.EmptyByteArray for an empty body)")
+  headers.foreach { header =>
+    if (header.name == "Content-Length" || header.name == "Transfer-Encoding" || header.name == "Date")
+      throw new IllegalArgumentException(header.name + " header must not be set explicitly, it is set automatically")
+  }
+  req(body.length == 0 || status / 100 > 1 && status != 204 && status != 304, "Illegal HTTP response: " +
+          "responses with status code " + status + " must not have a message body")
+
   def withBody(body: String, charset: String = "ISO-8859-1") = copy(body = body.getBytes(charset))
   def bodyAsString: String = if (body.isEmpty) "" else {
     val charset = headers.mapFind {
@@ -116,21 +127,6 @@ case class HttpResponse(
 
 object HttpResponse {
   private val ContentTypeCharsetPattern = """.*charset=([-\w]+)""".r
-
-  def verify(response: HttpResponse) = {
-    import response._
-    def req(cond: Boolean, msg: => String) { require(cond, "Illegal HttpResponse: " + msg) }
-    req(100 <= status && status < 600, "Illegal HTTP status code: " + status)
-    req(headers != null, "headers must not be null")
-    req(body != null, "body must not be null (you can use cc.spray.io.util.EmptyByteArray for an empty body)")
-    headers.foreach { header =>
-      if (header.name == "Content-Length" || header.name == "Transfer-Encoding" || header.name == "Date")
-        throw new IllegalArgumentException(header.name + " header must not be set explicitly, it is set automatically")
-    }
-    req(body.length == 0 || status / 100 > 1 && status != 204 && status != 304, "Illegal HTTP response: " +
-            "responses with status code " + status + " must not have a message body")
-    response
-  }
 
   def defaultReason(statusCode: Int) = statusCode match {
     case 100 => "Continue"

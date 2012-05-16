@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,16 +40,13 @@ abstract class CharacterParser extends IntermediateState {
   def read(buf: ByteBuffer): ParsingState = {
     @tailrec
     def read(parser: ParsingState): ParsingState = parser match {
-      case x: CharacterParser => {
-        if (buf.remaining() > 0) {
-          val cursor = buf.get().asInstanceOf[Char] // simple US-ASCII encoding conversion
+      case x: CharacterParser =>
+        if (buf.remaining > 0) {
+          val cursor = buf.get.asInstanceOf[Char] // simple US-ASCII encoding conversion
           read(x.handleChar(cursor))
-        } else {
-          x
-        }
-      }
+        } else x
       case x: IntermediateState => x.read(buf) // a body parser
-      case x => x // complete or error
+      case x: FinalParsingState => x
     }
     read(this)
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,23 +22,24 @@ import org.specs2.mutable.Specification
 import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActorRef
 import akka.actor.Actor
+import cc.spray.can.model.{HttpRequest, HttpMethods}
 
 class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
 
   "The HttpClient pipeline" should {
 
     "send out a simple HttpRequest to the server" in {
-      testFixture(request()).commands.fixSends === Seq(SendString(rawRequest()))
+      testFixture(request()) must produce(commands = Seq(SendString(rawRequest())))
     }
 
     "dispatch an incoming HttpResponse back to the sender" in {
       testFixture(
         request(),
         Received(rawResponse())
-      ).commands.fixSends === Seq(
+      ) must produce(commands = Seq(
         SendString(rawRequest()),
         IoPeer.Tell(system.deadLetters, response(), connectionActor)
-      )
+      ))
     }
 
     "properly complete a 3 requests pipelined dialog" in {
@@ -49,16 +50,34 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
         Received(rawResponse("Response 1")),
         Received(rawResponse("Response 2")),
         Received(rawResponse("Response 3"))
-      ).commands.fixSends === Seq(
+      ) must produce(commands = Seq(
         SendString(rawRequest("Request 1")),
         SendString(rawRequest("Request 2")),
         SendString(rawRequest("Request 3")),
         IoPeer.Tell(system.deadLetters, response("Response 1"), connectionActor),
         IoPeer.Tell(system.deadLetters, response("Response 2"), connectionActor),
         IoPeer.Tell(system.deadLetters, response("Response 3"), connectionActor)
-      )
+      ))
     }
 
+    "properly handle responses to HEAD requests" in {
+      testFixture(
+        HttpRequest(method = HttpMethods.HEAD),
+        Received {
+          prep {
+            """|HTTP/1.1 200 OK
+               |Server: spray/1.0
+               |Date: Thu, 25 Aug 2011 09:10:29 GMT
+               |Content-Length: 8
+               |
+               |"""
+          }
+        }
+      ) must produce(commands = Seq(
+        SendString(rawRequest(method = "HEAD")),
+        IoPeer.Tell(system.deadLetters, response("12345678").withBody(""), connectionActor)
+      ))
+    }
   }
 
   /////////////////////////// SUPPORT ////////////////////////////////

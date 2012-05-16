@@ -6,7 +6,7 @@ import ls.Plugin._
 object BuildSettings {
 
   lazy val basicSettings = seq(
-    version               := "1.0-M1",
+    version               := "1.0-M2",
     homepage              := Some(new URL("http://spray.cc")),
     organization          := "cc.spray",
     organizationHomepage  := Some(new URL("http://spray.cc")),

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,14 +19,13 @@ package client
 
 import cc.spray.io._
 import akka.util.Duration
-import pipelines.{TickGenerator, ConnectionTimeouts}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.util.concurrent.TimeUnit
 import akka.event.LoggingAdapter
+import pipelines.{SslTlsSupport, ClientSSLEngineProvider, TickGenerator, ConnectionTimeouts}
 
 /**
  * Reacts to [[cc.spray.can.HttpClient.Connect]] messages by establishing a connection to the remote host.
- * If there is an error the sender receives either an [[cc.spray.can.HttpClientException]].
  * If the connection has been established successfully a new actor is spun up for the connection, which replies to the
  * sender of the [[cc.spray.can.HttpClient.Connect]] message with a [[cc.spray.can.HttpClient.Connected]] message.
  *
@@ -34,7 +33,9 @@ import akka.event.LoggingAdapter
  * replied to with [[cc.spray.can.model.HttpResponsePart]] messages (or [[akka.actor.Status.Failure]] instances
  * in case of errors).
  */
-class HttpClient(ioWorker: IoWorker, config: Config = ConfigFactory.load())
+class HttpClient(ioWorker: IoWorker,
+                 config: Config = ConfigFactory.load)
+                (implicit sslEngineProvider: ClientSSLEngineProvider)
   extends IoClient(ioWorker) with ConnectionActors {
 
   protected lazy val pipeline: PipelineStage =
@@ -43,13 +44,16 @@ class HttpClient(ioWorker: IoWorker, config: Config = ConfigFactory.load())
 
 object HttpClient {
 
-  private[can] def pipeline(settings: ClientSettings, log: LoggingAdapter): PipelineStage = {
+  private[can] def pipeline(settings: ClientSettings,
+                            log: LoggingAdapter)
+                           (implicit sslEngineProvider: ClientSSLEngineProvider): PipelineStage = {
     ClientFrontend(settings.RequestTimeout, log) ~>
     PipelineStage.optional(settings.ResponseChunkAggregationLimit > 0,
       ResponseChunkAggregation(settings.ResponseChunkAggregationLimit.toInt)) ~>
-    RequestRendering(settings.UserAgentHeader, settings.RequestSizeHint.toInt) ~>
     ResponseParsing(settings.ParserSettings, log) ~>
+    RequestRendering(settings) ~>
     PipelineStage.optional(settings.IdleTimeout > 0, ConnectionTimeouts(settings.IdleTimeout, log)) ~>
+    PipelineStage.optional(settings.SSLEncryption, SslTlsSupport(sslEngineProvider, log)) ~>
     PipelineStage.optional(
       settings.ReapingCycle > 0 && settings.IdleTimeout > 0,
       TickGenerator(Duration(settings.ReapingCycle, TimeUnit.MILLISECONDS))
@@ -58,17 +62,18 @@ object HttpClient {
 
   ////////////// COMMANDS //////////////
   // HttpRequestParts +
-  type Connect = IoClient.Connect;  val Connect = IoClient.Connect
-  type Close = IoClient.Close;      val Close = IoClient.Close
-  type Send = IoClient.Send;        val Send = IoClient.Send
-  type Tell = IoClient.Tell;        val Tell = IoClient.Tell
+  type Connect = IoClient.Connect;                           val Connect = IoClient.Connect
+  type Close = IoClient.Close;                               val Close = IoClient.Close
+  type Send = IoClient.Send;                                 val Send = IoClient.Send
+  type Tell = IoClient.Tell;                                 val Tell = IoClient.Tell
+  type SetRequestTimeout = ClientFrontend.SetRequestTimeout; val SetRequestTimeout = ClientFrontend.SetRequestTimeout
 
   ////////////// EVENTS //////////////
   // HttpResponseParts +
   val Connected = IoClient.Connected
-  type Closed = IoClient.Closed;                val Closed = IoClient.Closed
-  type SendCompleted = IoClient.SendCompleted;  val SendCompleted = IoClient.SendCompleted
-  type Received = IoClient.Received;            val Received = IoClient.Received
+  type Closed = IoClient.Closed;     val Closed = IoClient.Closed
+  type AckSend = IoClient.AckSend;   val AckSend = IoClient.AckSend
+  type Received = IoClient.Received; val Received = IoClient.Received
 
 }
 

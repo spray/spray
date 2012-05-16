@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import akka.actor.ActorSystem
 trait DebuggingDirectives {
   this: BasicDirectives with MiscDirectives =>
 
-  def system: ActorSystem
+  def actorSystem: ActorSystem
 
   def logRequest(marker: String = "") = transformRequest(logMessage("Request", marker))
 
@@ -64,5 +64,5 @@ trait DebuggingDirectives {
     msg
   }
 
-  private def log = system.log
+  private def log = actorSystem.log
 }

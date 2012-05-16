@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,16 +21,20 @@ import cc.spray.io._
 
 object ResponseRendering {
 
-  def apply(serverHeader: String, chunklessStreaming: Boolean, responseSizeHint: Int): CommandPipelineStage = {
+  def apply(settings: ServerSettings): CommandPipelineStage = {
     new CommandPipelineStage {
-      val renderer = new ResponseRenderer(serverHeader, chunklessStreaming, responseSizeHint)
+      val renderer = new ResponseRenderer(
+        settings.ServerHeader,
+        settings.ChunklessStreaming,
+        settings.ResponseSizeHint.toInt
+      )
 
       def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): CPL = {
         case ctx: HttpResponsePartRenderingContext =>
           val rendered = renderer.render(ctx)
           val buffers = rendered.buffers
           if (!buffers.isEmpty)
-            commandPL(IoPeer.Send(buffers))
+            commandPL(IoPeer.Send(buffers, settings.AckSends))
           if (rendered.closeConnection)
             commandPL(IoPeer.Close(CleanClose))
 

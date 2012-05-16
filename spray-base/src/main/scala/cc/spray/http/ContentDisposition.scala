@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ sealed abstract class ContentDisposition {
 object ContentDispositions extends ObjectRegistry[String, ContentDisposition] {
   
   def register(disposition: ContentDisposition): ContentDisposition = {
-    register(disposition, disposition.value)
+    register(disposition, disposition.value.toLowerCase)
     disposition
   }
   

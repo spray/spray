@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,9 +21,12 @@ import akka.dispatch.Future
 import akka.actor.ActorSystem
 import scala.util.matching.Regex
 import util.pimps._
+import annotation.tailrec
+import java.nio.ByteBuffer
 
 package object util {
 
+  val EOL = System.getProperty("line.separator")
   val EmptyByteArray = new Array[Byte](0)
 
   def identityFunc[T]: T => T = _identityFunc.asInstanceOf[T => T]
@@ -39,10 +42,19 @@ package object util {
 
   def make[A, U](a: A)(f: A => U): A = { f(a); a }
 
+  @tailrec
+  def tfor[@specialized T](i: T)(test: T => Boolean, inc: T => T)(f: T => Unit) {
+    if(test(i)) {
+      f(i)
+      tfor(inc(i))(test, inc)(f)
+    }
+  }
+
   // implicits
   implicit def pimpActorSystem(system: ActorSystem) : PimpedActorSystem   = new PimpedActorSystem(system)
   implicit def pimpAny[T](any: T)                   : PimpedAny[T]        = new PimpedAny(any)
   implicit def pimpByteArray(array: Array[Byte])    : PimpedByteArray     = new PimpedByteArray(array)
+  implicit def pimpByteBuffer(buf: ByteBuffer)      : PimpedByteBuffer    = new PimpedByteBuffer(buf)
   implicit def pimpClass[A](clazz: Class[A])        : PimpedClass[A]      = new PimpedClass[A](clazz)
   implicit def pimpFuture[A](fut: Future[A])        : PimpedFuture[A]     = new PimpedFuture[A](fut)
   implicit def pimpLinearSeq[A](seq: LinearSeq[A])  : PimpedLinearSeq[A]  = new PimpedLinearSeq[A](seq)

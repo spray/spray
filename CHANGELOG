@@ -1,3 +1,56 @@
+Version 1.0-M2 (2012-05-16)
+---------------------------
+- spray-io
+
+  + Added SslTlsSupport pipeline stage
+  + Fixed SetTimeout messages not working
+  + Fixed closing of already closed connections improperly handled
+  + Fixed bug in wiring of certain pipeline stages
+  + Dropped `confirm-sends` config setting, added `ack:Boolean` field to IoWorker.Send
+  + Renamed `SendCompleted` event to `AckSend`
+  + Made IoWorkerThread daemonic
+  + Improved pipeline architecture for reduced call stack depth
+
+- spray-can
+
+  + Added SSL/TLS support to HttpServer and HttpClient
+  + Added `ack-sends` setting to client and server config
+  + Added 'transparent-head-requests' server config setting
+  + Added HttpClient.SetRequestTimeout message
+  + Fixed HttpServer not handling 'Expect: 100-continue' headers
+  + Fixed HttpClient not properly handling HEAD requests to resources containing a message body
+  + Fixed #99 (getFromFile(Name) sometimes throws IllegalStateException when streaming file content)
+  + Fixed SetTimeout messages not working
+  + Enabled validity verification on HttpRequests and HttpResponses
+  + Extended HttpDialog to also accept ActorContexts as dispatcher container
+
+- spray-base
+
+  + http: fixed custom mediatypes not being matched
+  + http: fixed ArrayIndexOutOfBoundsException during header parsing of unregistered CustomMediaTypes
+  + http: fixed IPv6 Host header parsing failure
+  + Fixed #108 (FormDataUnmarshaller should be more resilient)
+  + Fixed incorrect error message in HttpContentExtractor
+  + Fixed several memory leaks in streamMarshaller
+
+- spray-server
+
+  + Fixed actorSystem dependency in DebuggingDirectives incorrectly named
+  + Make ErrorHandling#responseForException public
+
+- spray-client
+
+  + Improve `unmarshal` pipeline step to accept all 2xx responses instead of only 200
+
+- general
+
+  + Added basic, but still incomplete, sphinx-based documentation system for new spray website
+  + Upgraded to Akka 2.0.1
+  + Extended simple-http-server and simple-http-client examples with optional SSL/TLS support
+  + Fixed EOL related test failures on Windows
+  + Lots of smaller fixes and improvements
+
+
 Version 1.0-M1 (2012-04-05)
 ---------------------------
 - Moved spray-can sources into spray codebase
@@ -45,11 +98,13 @@ Version 0.9.0-RC2 (2012-02-17)
 Version 0.9.0-RC1 (2012-02-03)
 ------------------------------
 - Upgrades:
-  - Scala 2.9.1
-  - Akka 1.3
-  - spray-json 1.1.0
-  - spray-can 0.9.2
-  - SBT 0.11.2
+
+  + Scala 2.9.1
+  + Akka 1.3
+  + spray-json 1.1.0
+  + spray-can 0.9.2
+  + SBT 0.11.2
+
 - Changed dependency on akka-actor from scope 'compile' to scope 'provided'
 - Added support for chunked responses, including chunk compression and automatic file chunking
 - Added new directives: completeWith, redirect, autoChunk, dynamic, transformUnchunkedResponse, transformChunkedResponse
@@ -74,19 +129,23 @@ Version 0.9.0-RC1 (2012-02-03)
 Version 0.8.0 (2011-11-16)
 --------------------------
 - Upgrades:
-  - Scala 2.9.1
-  - Akka 1.2
-  - spray-json 1.0.1
-  - SBT 0.11.1 (many thx to Steffen for contributing the original buildfile)
+
+  + Scala 2.9.1
+  + Akka 1.2
+  + spray-json 1.0.1
+  + SBT 0.11.1 (many thx to Steffen for contributing the original buildfile)
+
 - Support for 'application/x-www-form-urlencoded' as well as 'multipart/form-data' form content (many thx to Julien for contributing a lot of the implementation)
 - Support for `multipart/mixed` content (un)marshalling
 - Support for spray-can as the first non-servlet-container web server
 - Completely rewritten spray-client, now based on the new spray-can HttpClient
 - Completely rewritten servlet connector layer for improved performance and stability
 - Three new example projects:
-  - spray-client-example
-  - spray-example-simple
-  - spray-example-spray-can
+
+  + spray-client-example
+  + spray-example-simple
+  + spray-example-spray-can
+
 - Unified SimpleParsers and Unmarshallers into a joint `Deserializer` hierarchy
 - Removed `optionalContent` directive (use `content(as[Option[T]])` instead)
 - Renamed `spray-http` module to `spray-base`
@@ -101,17 +160,20 @@ Version 0.8.0 (2011-11-16)
 Version 0.7.0 (2011-07-27)
 --------------------------
 A great number of changes and improvements, most importantly:
+
 - removed dependency on Akka Mist
 - upgraded to Scala 2.9.0-1 and Akka 1.1.3
 - split into spray-server, spray-client and spray-http
 - added support for
-  - gzip/deflate encodings
-  - authentication/authorization (incl. HTTP Basic Auth)
-  - proper server-side caching
-  - even better path and parameter matching
-  - case class extractions
-  - spray-json (un)marshalling
-  - Tomcat 6
+
+  + gzip/deflate encodings
+  + authentication/authorization (incl. HTTP Basic Auth)
+  + proper server-side caching
+  + even better path and parameter matching
+  + case class extractions
+  + spray-json (un)marshalling
+  + Tomcat 6
+
 - closed 27 tickets
 
 

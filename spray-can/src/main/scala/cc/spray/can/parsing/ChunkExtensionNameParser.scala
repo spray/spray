@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ class ChunkExtensionNameParser(settings: ParserSettings, chunkSize: Int, extCoun
         case x if isTokenChar(x) => extName.append(x); this
         case '=' => new ChunkExtensionValueParser(settings, chunkSize, extCount, extensions, extName.toString)
         case ' ' | '\t' => this
-        case _ => ErrorState("Invalid character '" + cursor + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
+        case _ => ErrorState("Invalid character '" + escape(cursor) + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
       }
     } else {
       ErrorState("Chunk extension name exceeds the configured limit of " + settings.MaxChunkExtNameLength +

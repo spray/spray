@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,7 @@ sealed abstract class HttpEncodingRange {
 sealed abstract class HttpEncoding extends HttpEncodingRange {
   def matches(encoding: HttpEncoding) = this == encoding
   override def equals(obj: Any) = obj match {
-    case x: HttpEncoding => (this eq x) || (value eq x.value)
+    case x: HttpEncoding => (this eq x) || value == x.value
     case _ => false
   }
   override def hashCode() = value.##
@@ -36,9 +36,12 @@ sealed abstract class HttpEncoding extends HttpEncodingRange {
 // see http://www.iana.org/assignments/http-parameters/http-parameters.xml
 object HttpEncodings extends ObjectRegistry[String, HttpEncoding] {
   
-  def register(encoding: HttpEncoding): HttpEncoding = { register(encoding, encoding.value); encoding }
+  def register(encoding: HttpEncoding): HttpEncoding = {
+    register(encoding, encoding.value.toLowerCase)
+    encoding
+  }
   
-  val `*` = new HttpEncodingRange {
+  val `*`: HttpEncodingRange = new HttpEncodingRange {
     def value = "*"
     def matches(encoding: HttpEncoding) = true
   }
@@ -53,7 +56,5 @@ object HttpEncodings extends ObjectRegistry[String, HttpEncoding] {
   val `x-compress`  = register(new PredefEncoding("x-compress"))
   val `x-zip`       = register(new PredefEncoding("x-zip"))
 
-  class CustomHttpEncoding(_value: String) extends HttpEncoding {
-    val value = _value.toLowerCase.intern()
-  }
+  case class CustomHttpEncoding(value: String) extends HttpEncoding
 }

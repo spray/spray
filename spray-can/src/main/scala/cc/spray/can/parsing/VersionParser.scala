@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,8 +52,8 @@ class RequestVersionParser(settings: ParserSettings, method: HttpMethod, uri: St
   }
 }
 
-class EmptyResponseParser(settings: ParserSettings) extends VersionParser {
+class EmptyResponseParser(settings: ParserSettings, isResponseToHeadRequest: Boolean) extends VersionParser {
   def handleSuffix(cursor: Char) = pos match {
-    case 8 => if (cursor == ' ') new StatusCodeParser(settings, protocol) else badVersion
+    case 8 => if (cursor == ' ') new StatusCodeParser(settings, protocol, isResponseToHeadRequest) else badVersion
   }
 }

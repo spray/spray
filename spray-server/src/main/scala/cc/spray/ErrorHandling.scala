@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import akka.event.LoggingAdapter
 trait ErrorHandling {
   def log: LoggingAdapter
 
-  protected[spray] def responseForException(request: Any, e: Exception): HttpResponse = {
+  def responseForException(request: Any, e: Exception): HttpResponse = {
     e match {
       case HttpException(failure, reason) =>
         log.warning("Request {} could not be handled normally, completing with {} response ({})",

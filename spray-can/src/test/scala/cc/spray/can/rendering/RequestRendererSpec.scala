@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ package rendering
 import model._
 import HttpMethods._
 import org.specs2.mutable.Specification
+import cc.spray.util.EOL
 
 class RequestRendererSpec extends Specification {
 
@@ -106,7 +107,7 @@ class RequestRendererSpec extends Specification {
   val renderer = new RequestRenderer("spray-can/1.0.0", 256)
 
   def beRenderedTo(content: String) = {
-    beEqualTo(content.stripMargin.replace("\n", "\r\n")) ^^ { part: HttpRequestPart =>
+    beEqualTo(content.stripMargin.replace(EOL, "\r\n")) ^^ { part: HttpRequestPart =>
       val RenderedMessagePart(buffers, false) = renderer.render {
         HttpRequestPartRenderingContext(part, "test.com", 8080)
       }

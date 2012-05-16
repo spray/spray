@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ case class ContentType(mediaType: MediaType, charset: Option[HttpCharset]) {
   }
 
   override def equals(obj: Any) = obj match {
-    case x: ContentType => mediaType == x.mediaType && charset == x.charset
+    case x: ContentType => (this eq x) || mediaType == x.mediaType && charset == x.charset
     case _ => false
   }
 

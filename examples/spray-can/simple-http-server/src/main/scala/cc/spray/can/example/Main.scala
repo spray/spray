@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,12 @@
 
 package cc.spray.can.example
 
-import cc.spray.io.pipelines.MessageHandlerDispatch
 import cc.spray.io.IoWorker
 import cc.spray.can.server.HttpServer
 import akka.actor._
+import java.security.{SecureRandom, KeyStore}
+import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
+import cc.spray.io.pipelines.{ServerSSLEngineProvider, MessageHandlerDispatch}
 
 object Main extends App {
   // we need an ActorSystem to host our application in
@@ -47,5 +49,35 @@ object Main extends App {
   // our IoWorker into the shutdown of the applications ActorSystem
   system.registerOnTermination {
     ioWorker.stop()
+  }
+
+  /////////////// for SSL support (if enabled in application.conf) ////////////////
+
+  // if there is no SSLContext in scope implicitly the HttpServer uses the default SSLContext,
+  // since we want non-default setting in this example we make a custom SSLContext available here
+  implicit def sslContext: SSLContext = {
+    val keyStoreResource = "/ssl-test-keystore.jks"
+    val password = ""
+
+    val keyStore = KeyStore.getInstance("jks")
+    keyStore.load(getClass.getResourceAsStream(keyStoreResource), password.toCharArray)
+    val keyManagerFactory = KeyManagerFactory.getInstance("SunX509")
+    keyManagerFactory.init(keyStore, password.toCharArray)
+    val trustManagerFactory = TrustManagerFactory.getInstance("SunX509")
+    trustManagerFactory.init(keyStore)
+    val context = SSLContext.getInstance("TLS")
+    context.init(keyManagerFactory.getKeyManagers, trustManagerFactory.getTrustManagers, new SecureRandom)
+    context
+  }
+
+  // if there is no ServerSSLEngineProvider in scope implicitly the HttpServer uses the default one,
+  // since we want to explicitly enable cipher suites and protocols we make a custom ServerSSLEngineProvider
+  // available here
+  implicit def sslEngineProvider: ServerSSLEngineProvider = {
+    ServerSSLEngineProvider { engine =>
+      engine.setEnabledCipherSuites(Array("TLS_RSA_WITH_AES_256_CBC_SHA"))
+      engine.setEnabledProtocols(Array("SSLv3", "TLSv1"))
+      engine
+    }
   }
 }

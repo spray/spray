@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,27 +18,57 @@ package cc.spray.can.client
 
 import cc.spray.can.parsing.ParserSettings
 import cc.spray.can.HttpPipelineStageSpec
-import cc.spray.io.Event
 import org.specs2.mutable.Specification
+import cc.spray.can.rendering.HttpRequestPartRenderingContext
+import cc.spray.io.{ProtocolError, Event}
 
 class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
 
   "The ResponseParsing PipelineStage" should {
     "be transparent to unrelated events" in {
       val event = new Event {}
-      fixture(event).events === Seq(event)
+      fixture(event) must produce(events = Seq(event))
     }
     "parse a simple response and produce the corresponding event" in {
-      fixture(Received(rawResponse("foo"))).events === Seq(response("foo"))
+      fixture(
+        HttpRequestPartRenderingContext(request(), "localhost", 80),
+        ClearCommandAndEventCollectors,
+        Received(rawResponse("foo"))
+      ) must produce(events = Seq(response("foo")))
     }
     "parse a double response and produce the corresponding events" in {
-      fixture(Received(rawResponse("foo") + rawResponse("bar"))).commandsAndEvents === (
-        Seq(),
-        Seq(
-          response("foo"),
-          response("bar")
+      fixture(
+        HttpRequestPartRenderingContext(request(), "localhost", 80),
+        HttpRequestPartRenderingContext(request(), "localhost", 80),
+        ClearCommandAndEventCollectors,
+        Received(rawResponse("foo") + rawResponse("bar"))
+      ) must produce(events = Seq(
+        response("foo"),
+        response("bar")
+      ))
+    }
+    "trigger an error on unmatched responses" in {
+      "example 1" in {
+        fixture(Received(rawResponse("foo"))) must produce(
+          commands = Seq(HttpClient.Close(ProtocolError("Response to non-existent request")))
         )
-      )
+      }
+      "example 2" in {
+        fixture(
+          HttpRequestPartRenderingContext(request(), "localhost", 80),
+          HttpRequestPartRenderingContext(request(), "localhost", 80),
+          ClearCommandAndEventCollectors,
+          Received(rawResponse("foo")),
+          Received(rawResponse("bar")),
+          Received(rawResponse("baz"))
+        ) must produce(
+          commands = Seq(HttpClient.Close(ProtocolError("Response to non-existent request"))),
+          events = Seq(
+            response("foo"),
+            response("bar")
+          )
+        )
+      }
     }
   }
 

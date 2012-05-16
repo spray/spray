@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Mathias Doenitz
+ * Copyright (C) 2011-2012 spray.cc
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ class HttpConduit(httpClient: ActorRef,
         conn.deliverResponse(ctx.request, fromSprayCanResponse(response), ctx.result)
         dispatchStrategy.onStateChange(conns)
 
-      case Reply(_: HttpClient.SendCompleted, _) =>
+      case Reply(_: HttpClient.AckSend, _) =>
         // ignore
 
       case Reply(problem, (conn: Conn, ctx: RequestContext, handle: Handle)) =>
