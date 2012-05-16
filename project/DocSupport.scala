@@ -21,9 +21,9 @@ trait DocSupport {
     docTarget := "html",
 
     commands += Command.args("make-docs", "[-o]") { (state, args) =>
-      reapply(state, docVersion := "latest", docTarget := "html")
-      val extracted = Project.extract(state)
-      val (_, result) = extracted.runTask(doMakeDocs, state)
+      val tempState = reapply(state, docVersion := "latest", docTarget := "html")
+      val extracted = Project.extract(tempState)
+      val (_, result) = extracted.runTask(doMakeDocs, tempState)
       if (args == Seq("-o")) openBrowser("file://localhost" + result + "/index.html")
       state
     },
@@ -51,9 +51,9 @@ trait DocSupport {
     },
 
     commands += Command.single("move-scaladoc") { (state, arg) =>
-      reapply(state, docVersion := arg)
-      val extracted = Project.extract(state)
-      extracted.runTask(doMoveScaladoc, state)
+      val tempState = reapply(state, docVersion := arg)
+      val extracted = Project.extract(tempState)
+      extracted.runTask(doMoveScaladoc, tempState)
       state
     },
 
@@ -82,10 +82,10 @@ trait DocSupport {
 
     commands += Command.single("update-docs") { (state, arg) =>
       val log = colorLog(state)
-      reapply(state, docVersion := arg, docTarget := "dirhtml")
-      val extracted = Project.extract(state)
-      val (_, htmlDir) = extracted.runTask(doMakeDocs, state)
-      val (_, siteDir) = extracted.runTask(doMoveScaladoc, state)
+      val tempState = reapply(state, docVersion := arg, docTarget := "dirhtml")
+      val extracted = Project.extract(tempState)
+      val (_, htmlDir) = extracted.runTask(doMakeDocs, tempState)
+      val (_, siteDir) = extracted.runTask(doMoveScaladoc, tempState)
       val versionDir = siteDir / arg
       log("[YELLOW]Moving '" + htmlDir + "' to '" + versionDir + "' ...")
       if (!versionDir.exists) log("[MAGENTA]'" + versionDir + "' doesn't exist yet, creating ...")
@@ -98,6 +98,7 @@ trait DocSupport {
         .filterNot(x => x == ".git" || x == "api")
         .map(""""%1$s": "/%1$s/"""".format(_))
         .:+(""""0.9": "https://github.com/spray/spray/wiki/"""")
+        .sorted(Ordering.String.reverse)
         .mkString("{\n  ", ",\n  ", "\n}")
       IO.write(siteDir / "releases.json", json)
 
