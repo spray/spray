@@ -1,4 +1,0 @@
-Scaladoc
-========
-
-(coming)

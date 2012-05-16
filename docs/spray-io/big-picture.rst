@@ -1,4 +1,4 @@
-spray-io: Big Picture
-=====================
+Big Picture
+===========
 
 (coming)

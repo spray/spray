@@ -1,4 +1,4 @@
-spray-can: Big Picture
-======================
+Big Picture
+===========
 
 (coming)

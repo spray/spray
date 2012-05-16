@@ -1,7 +1,7 @@
 import sbt._
 import Keys._
 
-object Build extends Build {
+object Build extends Build with DocSupport {
   import BuildSettings._
   import Dependencies._
 
@@ -18,7 +18,7 @@ object Build extends Build {
     .aggregate(examples, sprayBase, sprayCan, sprayClient, sprayIo, sprayServer, sprayUtil)
     .settings(basicSettings: _*)
     .settings(noPublishing: _*)
-    .settings(DocSupport.settings: _*)
+    .settings(docSupportSettings: _*)
 
 
   // -------------------------------------------------------------------------------------------------------------------

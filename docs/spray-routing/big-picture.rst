@@ -1,4 +1,4 @@
-spray-routing: Big Picture
-==========================
+Big Picture
+===========
 
 (coming)

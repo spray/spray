@@ -469,5 +469,6 @@ footer p{text-align:center;color:#999999;}
 .sidebar-nav .current-release{margin:0 -15px;padding-left:15px;}
 #main{max-width:700px;}
 dd{margin-bottom:10px;}
-.section img{margin:1em 0;}
 .hero-unit img{margin-bottom:30px;}
+.section h1{border-bottom:1px solid #CCC;margin-bottom:0.5em;}
+.section img{margin:1em 0;}

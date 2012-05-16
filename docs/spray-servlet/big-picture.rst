@@ -1,4 +1,4 @@
-spray-servlet: Big Picture
-==========================
+Big Picture
+===========
 
 (coming)

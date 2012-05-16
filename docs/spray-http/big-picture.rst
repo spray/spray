@@ -1,4 +1,4 @@
-spray-http: Big Picture
-=======================
+Big Picture
+===========
 
 (coming)

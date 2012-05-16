@@ -1,4 +1,4 @@
-spray-client: Big Picture
-=========================
+Big Picture
+===========
 
 (coming)
