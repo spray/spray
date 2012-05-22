@@ -73,7 +73,7 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
         traverse(tail, cHeader, clHeader, Some(value), hostPresent, e100Present)
 
       case HttpHeader("expect", value) :: tail =>
-        if (value == "100-continue") traverse(tail, cHeader, clHeader, teHeader, hostPresent, true)
+        if (value.toLowerCase == "100-continue") traverse(tail, cHeader, clHeader, teHeader, hostPresent, true)
         else ErrorState("Expectation '" + value + "' is not supported by this server", 417)
 
       case _ :: tail => traverse(tail, cHeader, clHeader, teHeader, hostPresent, e100Present)

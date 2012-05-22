@@ -166,36 +166,40 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
     }
 
     "correctly handle 'Expected: 100-continue' headers" in {
-      singleHandlerFixture(
-        Received {
-          prep {
-            """|GET / HTTP/1.1
-              |Host: test.com
-              |Content-Length: 12
-              |Expect: 100-continue
-              |
-              |bodybodybody"""
-          }
-        },
-        HttpResponse()
-      ) must produce(
-        commands = Seq(
-          SendString("HTTP/1.1 100 Continue\r\n\r\n"),
-          IoServer.Tell(
-            singletonHandler,
-            HttpRequest(
-              headers = List(
-                HttpHeader("expect", "100-continue"),
-                HttpHeader("content-length", "12"),
-                HttpHeader("host", "test.com")
-              )
-            ).withBody("bodybodybody"),
-            IgnoreSender
+      def example(expectValue: String) = {
+        singleHandlerFixture(
+          Received {
+            prep {
+              """|GET / HTTP/1.1
+                |Host: test.com
+                |Content-Length: 12
+                |Expect: %s
+                |
+                |bodybodybody""".format(expectValue)
+            }
+          },
+          HttpResponse()
+        ) must produce(
+          commands = Seq(
+            SendString("HTTP/1.1 100 Continue\r\n\r\n"),
+            IoServer.Tell(
+              singletonHandler,
+              HttpRequest(
+                headers = List(
+                  HttpHeader("expect", expectValue),
+                  HttpHeader("content-length", "12"),
+                  HttpHeader("host", "test.com")
+                )
+              ).withBody("bodybodybody"),
+              IgnoreSender
+            ),
+            SendString(simpleResponse)
           ),
-          SendString(simpleResponse)
-        ),
-        ignoreTellSender = true
-      )
+          ignoreTellSender = true
+        )
+      }
+      "with a header value fully matching the spec" in example("100-continue")
+      "with a header value containing illegal casing" in example("100-Continue")
     }
 
     "dispatch HEAD requests as GET requests (and suppress sending of their bodies)" in {
