@@ -33,13 +33,13 @@ class HttpConduit(httpClient: ActorRef,
                   port: Int = 80,
                   dispatchStrategy: DispatchStrategy = DispatchStrategies.NonPipelined(),
                   config: Config = ConfigFactory.load())
-                 (implicit system: ActorSystem) extends MessagePipelining {
+                 (implicit refFactory: ActorRefFactory) extends MessagePipelining {
 
   private val settings = new ConduitSettings(config)
-  private val mainActor = system.actorOf(Props(new MainActor))
+  private val mainActor = refFactory.actorOf(Props(new MainActor))
 
   val sendReceive: SendReceive = { request =>
-    val promise = Promise[HttpResponse]()
+    val promise = Promise[HttpResponse]()(refFactory.messageDispatcher)
     mainActor ! RequestContext(request, settings.MaxRetries, promise)
     promise
   }

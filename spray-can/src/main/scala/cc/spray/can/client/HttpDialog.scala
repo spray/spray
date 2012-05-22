@@ -16,7 +16,7 @@
 
 package cc.spray.can.client
 
-import cc.spray.util.Reply
+import cc.spray.util._
 import cc.spray.io.IoClient.IoClientException
 import cc.spray.io.{ProtocolError, CleanClose}
 import cc.spray.can.model.{HttpResponsePart, HttpRequest, HttpResponse}
@@ -111,13 +111,7 @@ object HttpDialog {
       this
     }
     def runActions(multiResponse: Boolean): Future[AnyRef] = {
-      val result = Promise[AnyRef]() {
-        refFactory match {
-          case x: ActorContext => x.dispatcher
-          case x: ActorSystem => x.dispatcher
-          case x => throw new IllegalArgumentException("Unsupported ActorRefFactory '" + x + "'")
-        }
-      }
+      val result = Promise[AnyRef]()(refFactory.messageDispatcher)
       refFactory.actorOf(Props(new DialogActor(result, client, multiResponse))) ! actions.toList
       result
     }

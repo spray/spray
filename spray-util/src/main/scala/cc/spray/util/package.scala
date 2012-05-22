@@ -18,11 +18,11 @@ package cc.spray
 
 import collection.LinearSeq
 import akka.dispatch.Future
-import akka.actor.ActorSystem
 import scala.util.matching.Regex
 import util.pimps._
 import annotation.tailrec
 import java.nio.ByteBuffer
+import akka.actor.{ActorRefFactory, ActorSystem}
 
 package object util {
 
@@ -51,14 +51,15 @@ package object util {
   }
 
   // implicits
-  implicit def pimpActorSystem(system: ActorSystem) : PimpedActorSystem   = new PimpedActorSystem(system)
-  implicit def pimpAny[T](any: T)                   : PimpedAny[T]        = new PimpedAny(any)
-  implicit def pimpByteArray(array: Array[Byte])    : PimpedByteArray     = new PimpedByteArray(array)
-  implicit def pimpByteBuffer(buf: ByteBuffer)      : PimpedByteBuffer    = new PimpedByteBuffer(buf)
-  implicit def pimpClass[A](clazz: Class[A])        : PimpedClass[A]      = new PimpedClass[A](clazz)
-  implicit def pimpFuture[A](fut: Future[A])        : PimpedFuture[A]     = new PimpedFuture[A](fut)
-  implicit def pimpLinearSeq[A](seq: LinearSeq[A])  : PimpedLinearSeq[A]  = new PimpedLinearSeq[A](seq)
-  implicit def pimpProduct(product: Product)        : PimpedProduct       = new PimpedProduct(product)
-  implicit def pimpRegex(regex: Regex)              : PimpedRegex         = new PimpedRegex(regex)
-  implicit def pimpString(s: String)                : PimpedString        = new PimpedString(s)
+  implicit def pimpActorSystem(system: ActorSystem)     : PimpedActorSystem     = new PimpedActorSystem(system)
+  implicit def pimpActorRefFactory(f: ActorRefFactory)  : PimpedActorRefFactory = new PimpedActorRefFactory(f)
+  implicit def pimpAny[T](any: T)                       : PimpedAny[T]          = new PimpedAny(any)
+  implicit def pimpByteArray(array: Array[Byte])        : PimpedByteArray       = new PimpedByteArray(array)
+  implicit def pimpByteBuffer(buf: ByteBuffer)          : PimpedByteBuffer      = new PimpedByteBuffer(buf)
+  implicit def pimpClass[A](clazz: Class[A])            : PimpedClass[A]        = new PimpedClass[A](clazz)
+  implicit def pimpFuture[A](fut: Future[A])            : PimpedFuture[A]       = new PimpedFuture[A](fut)
+  implicit def pimpLinearSeq[A](seq: LinearSeq[A])      : PimpedLinearSeq[A]    = new PimpedLinearSeq[A](seq)
+  implicit def pimpProduct(product: Product)            : PimpedProduct         = new PimpedProduct(product)
+  implicit def pimpRegex(regex: Regex)                  : PimpedRegex           = new PimpedRegex(regex)
+  implicit def pimpString(s: String)                    : PimpedString          = new PimpedString(s)
 }
