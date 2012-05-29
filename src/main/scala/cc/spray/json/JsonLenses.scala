@@ -73,10 +73,11 @@ object JsonLenses {
     def apply(value: SafeJsValue): SafeJsValue
   }
 
-  trait Projection[M[_]] {
-    type ThenScalar
-
+  trait Updateable {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue
+  }
+  trait Projection[M[_]] extends Updateable {
+    type ThenScalar
     def retr: JsValue => Validated[M[JsValue]]
     def mapValue[T](value: M[JsValue])(f: JsValue => Validated[T]): Validated[M[T]]
 
@@ -125,7 +126,7 @@ object JsonLenses {
 
   type SeqProjection = Projection[Seq]
 
-  trait ProjectionImpl[M[_]] extends Projection[M] {
+  trait ProjectionImpl[M[_]] extends Projection[M] { outer =>
     def getSecure[T: MonadicReader]: JsValue => Validated[M[T]] =
       p => retr(p).flatMap(mapValue(_)(_.as[T]))
 
@@ -135,6 +136,11 @@ object JsonLenses {
     def ![U](op: Operation): Update = new Update {
       def apply(parent: JsValue): JsValue =
         updated(op(_))(parent).getOrThrow
+    }
+
+    abstract class Joined(next: Updateable) extends Updateable {
+      def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
+        outer.updated(_.flatMap(next.updated(f)))(parent)
     }
   }
 
@@ -146,33 +152,57 @@ object JsonLenses {
       value => getSecure[U] apply value exists f
 
     def andThen(next: ScalarProjection): ScalarProjection =
-      new ScalarProjectionImpl {
-        def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
-          outer.updated(_.flatMap(next.updated(f)))(parent)
-
+      new Joined(next) with ScalarProjectionImpl {
         def retr: JsValue => SafeJsValue = parent =>
           for {
             outerV <- outer.retr(parent)
             innerV <- next.retr(outerV)
           } yield innerV
-
       }
 
-    def andThen(next: OptProjection): OptProjection = ???
+    def andThen(next: OptProjection): OptProjection = new Joined(next) with OptProjectionImpl {
+      def retr: JsValue => Validated[Option[JsValue]] = parent =>
+        for {
+          outerV <- outer.retr(parent)
+          innerV <- next.retr(outerV)
+        } yield innerV
+    }
   }
 
-  trait OptProjectionImpl extends OptProjection with ProjectionImpl[Option] {
+  trait OptProjectionImpl extends OptProjection with ProjectionImpl[Option] { outer =>
     def mapValue[T](value: Option[JsValue])(f: JsValue => Validated[T]): Validated[Option[T]] =
-      value.map(f) match {
+      swap(value.map(f))
+
+    def is[U: MonadicReader](f: U => Boolean): JsPred = ???
+
+    def andThen(next: ScalarProjection): OptProjection  = new Joined(next) with OptProjectionImpl {
+      def retr: JsValue => Validated[Option[JsValue]] = parent =>
+        for {
+          outerV <- outer.retr(parent)
+          innerV <- swap(outerV.map(next.retr))
+        } yield innerV
+    }
+    def andThen(next: OptProjection): OptProjection = new Joined(next) with OptProjectionImpl {
+      def retr: JsValue => Validated[Option[JsValue]] = parent =>
+        for {
+          outerV <- outer.retr(parent)
+          innerV <- swap(outerV.flatMap(x => swap(next.retr(x))))
+        } yield innerV
+    }
+
+    def swap[T](v: Option[Validated[T]]): Validated[Option[T]] =
+      v match {
         case None => Right(None)
         case Some(Right(x)) => Right(Some(x))
         case Some(Left(e)) => Left(e)
       }
 
-    def is[U: MonadicReader](f: U => Boolean): JsPred = ???
-
-    def andThen(next: ScalarProjection): OptProjection = ???
-    def andThen(next: OptProjection): OptProjection = ???
+    def swap[T](v: Validated[Option[T]]): Option[Validated[T]] =
+      v match {
+        case Right(None) => None
+        case Right(Some(v)) => Some(Right(v))
+        case Left(e) => Some(Left(e))
+      }
   }
 
   def field(name: String): ScalarProjection = new ScalarProjectionImpl {

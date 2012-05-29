@@ -46,6 +46,19 @@ class JsonLensesSpec extends Specification {
           """["a", "b", 2, 5, 8, 3]""" extract JsonLenses.find(JsonLenses.value.is[Int](_ < 4)).get[Int] must beSome(2)
           """["a", "b", 2, 5, 8, 3]""" extract JsonLenses.find(JsonLenses.value.is[String](_ == "unknown")).get[Int] must beNone
         }
+        "nested finding" in {
+          val lens = JsonLenses.find("a".is[Int](_ == 12)) / "b" / "c" andThen JsonLenses.find(JsonLenses.value.is[Int](_ == 5))
+
+          "existing" in {
+            """[{"a": 12, "b": {"c": [2, 5]}}, 13]""" extract lens.get[Int] must beSome(5)
+          }
+          "missing in first find" in {
+            """[{"a": 2, "b": {"c": [5]}}, 13]""" extract lens.get[Int] must beNone
+          }
+          "missing in second find" in {
+            """[{"a": 2, "b": {"c": [7]}}, 13]""" extract lens.get[Int] must beNone
+          }
+        }
       }
     }
 
@@ -98,6 +111,19 @@ class JsonLensesSpec extends Specification {
           """["a", "b", 2, 5, 8, 3]""" update (JsonLenses.find(JsonLenses.value.is[Int](_ < 4)) ! set("test")) must be_json(
             """["a", "b", "test", 5, 8, 3]"""
           )
+        }
+        "nested" in {
+          val lens = JsonLenses.find("a".is[Int](_ == 12)) / "b" / "c" andThen JsonLenses.find(JsonLenses.value.is[Int](_ == 5))
+
+          "existing" in {
+            """[{"a": 12, "b": {"c": [2, 5]}}, 13]""" update (lens ! set(42)) must be_json("""[{"a": 12, "b": {"c": [2, 42]}}, 13]""")
+          }
+          "missing in first find" in {
+            """[{"a": 2, "b": {"c": [5]}}, 13]""" update (lens ! set(42)) must be_json("""[{"a": 2, "b": {"c": [5]}}, 13]""")
+          }
+          "missing in second find" in {
+            """[{"a": 2, "b": {"c": [7]}}, 13]""" update (lens ! set(42)) must be_json("""[{"a": 2, "b": {"c": [7]}}, 13]""")
+          }
         }
       }
     }
