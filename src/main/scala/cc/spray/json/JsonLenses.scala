@@ -57,28 +57,24 @@ object JsonLenses {
     implicit def joinOptOpt: Conv[Option, Option, Option] = null
     implicit def joinOptSeq: Conv[Option, Seq, Seq] = null
   }*/
+  trait ProjectionImpl[M[_]] extends Projection[M] {
+    def ![U](op: Operation): Update = new Update {
+      def apply(parent: JsValue): JsValue =
+        updated(op(_))(parent)
+    }
+  }
 
   trait ScalarProjection extends Projection[Id] {
     def /(next: ScalarProjection): ScalarProjection
     def /(next: OptProjection): OptProjection
   }
-  trait OptProjection extends Projection[Option] {
+  trait OptProjection extends Projection[Option]
 
-  }
   type SeqProjection = Projection[Seq]
 
-  trait ScalarProjectionImpl extends ScalarProjection {
-    outer =>
-    def updated(f: JsValue => JsValue)(parent: JsValue): JsValue
-
-    def retr: JsValue => JsValue
-
+  trait ScalarProjectionImpl extends ScalarProjection with ProjectionImpl[Id] { outer =>
     def get[T: JsonReader]: JsValue => T =
       p => retr(p).convertTo[T]
-
-    def ![U](op: Operation): Update = new Update {
-      def apply(parent: JsValue): JsValue = updated(op(_))(parent)
-    }
 
     def is[U: JsonReader](f: U => Boolean): JsPred =
       value => f(get[U] apply (value))
@@ -95,16 +91,11 @@ object JsonLenses {
     def /(next: OptProjection): OptProjection = null
   }
 
-  trait OptProjectionImpl extends OptProjection {
-    def ![U](op: Operation): Update = new Update {
-      def apply(parent: JsValue): JsValue =
-        updated(op(_))(parent)
-    }
-
+  trait OptProjectionImpl extends OptProjection with ProjectionImpl[Option] {
     def get[T: JsonReader]: JsValue => Option[T] =
       p => retr(p).map(_.convertTo[T])
 
-    def is[U: JsonReader](f: U => Boolean): JsonLenses.JsPred = null
+    def is[U: JsonReader](f: U => Boolean): JsPred = null
   }
 
   def field(name: String): ScalarProjection = new ScalarProjectionImpl {
