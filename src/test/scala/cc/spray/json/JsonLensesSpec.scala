@@ -101,7 +101,7 @@ class JsonLensesSpec extends Specification {
         }
         "missing" in {
           val simple = JsonParser( """{"n": 12}""")
-          simple.update(field("z") ! updated[Int](_ + 1)) must throwAn[Exception]("Need a value to operate on")
+          simple.update(field("z") ! updated[Int](_ + 1)) must throwAn[Exception]("""Expected field 'z' in '{"n":12}'""")
         }
       }
       "set field of member" in {

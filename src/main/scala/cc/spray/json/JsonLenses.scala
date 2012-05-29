@@ -31,6 +31,14 @@ object JsonLenses {
       safe(js.convertTo[T])
   }
 
+  case class ValidateOption[T](option: Option[T]) {
+    def getOrError(message: => String): Validated[T] = option match {
+      case Some(t) => Right(t)
+      case None => unexpected(message)
+    }
+  }
+  implicit def validateOption[T](o: Option[T]): ValidateOption[T] = ValidateOption(o)
+
   trait Update {
     def apply(value: JsValue): JsValue
 
@@ -62,13 +70,13 @@ object JsonLenses {
   implicit def updatable(value: JsValue): RichJsValue = RichJsValue(value)
 
   trait Operation {
-    def apply(value: Option[JsValue]): SafeJsValue
+    def apply(value: SafeJsValue): SafeJsValue
   }
 
   trait Projection[M[_]] {
     type ThenScalar
 
-    def updated(f: Option[JsValue] => SafeJsValue)(parent: JsValue): SafeJsValue
+    def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue
     def retr: JsValue => Validated[M[JsValue]]
     def mapValue[T](value: M[JsValue])(f: JsValue => Validated[T]): Validated[M[T]]
 
@@ -139,7 +147,7 @@ object JsonLenses {
 
     def andThen(next: ScalarProjection): ScalarProjection =
       new ScalarProjectionImpl {
-        def updated(f: Option[JsValue] => SafeJsValue)(parent: JsValue): SafeJsValue =
+        def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
           outer.updated(v => v.map(Right(_)).getOrElse(unexpected("Missing parent value")).flatMap(next.updated(f)))(parent)
 
         def retr: JsValue => SafeJsValue = parent =>
@@ -168,20 +176,17 @@ object JsonLenses {
   }
 
   def field(name: String): ScalarProjection = new ScalarProjectionImpl {
-    def updated(f: Option[JsValue] => SafeJsValue)(parent: JsValue): SafeJsValue =
+    def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
       for {
-        child <- getField(parent)
-        res   <- f(child)
+        res   <- f(getField(parent))
       }
        yield JsObject(fields = parent.asJsObject.fields + (name -> res))
 
     def retr: JsValue => SafeJsValue = v =>
-      getField(v).flatMap {
-        _.map(Right(_)).getOrElse(unexpected("Expected field '%s' in '%s'" format (name, v)))
-      }
+      getField(v)
 
-    def getField(v: JsValue): Validated[Option[JsValue]] = asObj(v) map { o =>
-      o.fields.get(name)
+    def getField(v: JsValue): SafeJsValue = asObj(v) flatMap { o =>
+      o.fields.get(name).getOrError("Expected field '%s' in '%s'" format (name, v))
     }
     def asObj(v: JsValue): Validated[JsObject] = v match {
       case o: JsObject =>
@@ -192,11 +197,11 @@ object JsonLenses {
   }
 
   def element(idx: Int): ScalarProjection = new ScalarProjectionImpl {
-    def updated(f: Option[JsValue] => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
+    def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
       case JsArray(elements) =>
         if (idx < elements.size) {
           val (headEls, element::tail) = elements.splitAt(idx)
-          f(Some(element)) map (v => JsArray(headEls ::: v :: tail))
+          f(Right(element)) map (v => JsArray(headEls ::: v :: tail))
         } else
           unexpected("Too little elements in array: %s size: %d index: %d" format (parent, elements.size, idx))
       case e@_ =>
@@ -217,8 +222,8 @@ object JsonLenses {
    * The identity projection which operates on the current element itself
    */
   val value: ScalarProjection = new ScalarProjectionImpl {
-    def updated(f: Option[JsValue] => SafeJsValue)(parent: JsValue): SafeJsValue =
-      f(Some(parent))
+    def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
+      f(Right(parent))
 
     def retr: JsValue => SafeJsValue = x => Right(x)
   }
@@ -226,11 +231,11 @@ object JsonLenses {
   def elements: SeqProjection = ???
 
   def find(pred: JsPred): OptProjection = new OptProjectionImpl {
-    def updated(f: Option[JsValue] => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
+    def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
       case JsArray(elements) =>
         elements.span(x => !pred(x)) match {
           case (prefix, element :: suffix) =>
-            f(Some(element)) map (v => JsArray(prefix ::: v :: suffix))
+            f(Right(element)) map (v => JsArray(prefix ::: v :: suffix))
 
           // element not found, do nothing
           case _ =>
@@ -246,17 +251,14 @@ object JsonLenses {
   }
 
   def set[T: JsonWriter](t: T): Operation = new Operation {
-    def apply(value: Option[JsValue]): SafeJsValue =
+    def apply(value: SafeJsValue): SafeJsValue =
       Right(jsonWriter[T].write(t))
   }
 
   trait MapOperation extends Operation {
     def apply(value: JsValue): SafeJsValue
 
-    def apply(value: Option[JsValue]): SafeJsValue = value match {
-      case Some(x) => apply(x)
-      case None => unexpected("Need a value to operate on")
-    }
+    def apply(value: SafeJsValue): SafeJsValue = value.flatMap(apply)
   }
 
   def updated[T: MonadicReader: JsonWriter](f: T => T): Operation = new MapOperation {
