@@ -75,6 +75,11 @@ class JsonLensesSpec extends Specification {
 
         json update ("n" / "b" ! set(23)) must be_json( """{"n": {"b": 23}}""")
       }
+      "create field of member" in {
+        val json = JsonParser( """{"n": {"b": 4}}""")
+
+        json update ("n" / "c" ! set(23)) must be_json( """{"n": {"b": 4, "c": 23}}""")
+      }
       "update field of member" in {
         val json = JsonParser( """{"n": {"b": 4}}""")
 
