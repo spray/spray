@@ -7,22 +7,6 @@ import org.specs2.matcher.{BeMatching, Matcher}
 import java.util.regex.Pattern
 
 class JsonLensesSpec extends Specification {
-  val json = JsonParser(
-    """{
-      |  "n": 2,
-      |  "els": [
-      |     {
-      |       "name": "John",
-      |       "money": 23
-      |     },
-      |     {
-      |       "name": "Paul",
-      |       "money": 42
-      |     }
-      |  ]
-      |}
-    """.stripMargin)
-
   import JsonLenses._
 
   val n = field("n")
@@ -30,11 +14,12 @@ class JsonLensesSpec extends Specification {
   "Lenses" should {
     "access" in {
       "field" in {
+        val json = JsonParser("""{"n": 2}""")
         "existing" in {
           json extract "n".get[Int] must be_==(2)
         }
         "missing" in {
-          json extract "z".get[Int] must throwAn[Exception]("""Expected field 'z' in '{"n":2,"els":[{"name":"John","money":23},{"name":"Paul","money":42}]}'""")
+          json extract "z".get[Int] must throwAn[Exception]("""Expected field 'z' in '{"n":2}'""")
         }
         "wrong type" in {
           json extract "n".get[String] must throwA[DeserializationException]("Expected String as JsString, but got 2")
