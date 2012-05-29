@@ -1,8 +1,29 @@
 package cc.spray.json
 
+import annotation.unchecked.uncheckedVariance
+
 object JsonLenses {
   type JsPred = JsValue => Boolean
   type Id[T] = T
+  type Validated[T] = Either[Exception, T]
+  type SafeJsValue = Validated[JsValue]
+
+  implicit def rightBiasEither[A, B](e: Either[A, B]): Either.RightProjection[A, B] = e.right
+
+  trait MonadicReader[T] {
+    def read(js: JsValue): Validated[T]
+  }
+  def safe[T](body: => T): Validated[T] =
+    try {
+      Right(body)
+    } catch {
+      case e: Exception => Left(e)
+    }
+
+  implicit def safeReader[T: JsonReader]: MonadicReader[T] = new MonadicReader[T] {
+    def read(js: JsValue): Validated[T] =
+      safe(js.convertTo[T])
+  }
 
   trait Update {
     def apply(value: JsValue): JsValue
@@ -16,30 +37,47 @@ object JsonLenses {
     def apply[M[_]](p: Projection[M]): M[T]
   }
 
-  case class Updatable(value: JsValue) {
+  trait A {
+    type X[_]
+  }
+  case class RichJsValue(value: JsValue) {
     def update(updater: Update): JsValue = updater(value)
+    def update[T: JsonWriter, M[_]](proj: Projection[M], pValue: T): JsValue = proj ! set(pValue) apply value
     def extract[T](f: JsValue => T): T = f(value)
-    def extract[T: JsonReader]: Extractor[T] = new Extractor[T] {
-      def apply[M[_]](p: Projection[M]): M[T] = p.get[T] apply (value)
+    def extract[T: MonadicReader]: Extractor[T] = new Extractor[T] {
+      def apply[M[_]](p: Projection[M]): M[T] = p.get[T] apply value
     }
+    def apply[T: MonadicReader](p: Projection[Id]): T = p.get[T] apply value
+
+    def as[T: MonadicReader]: Validated[T] =
+      implicitly[MonadicReader[T]].read(value)
   }
 
-  implicit def updatable(value: JsValue): Updatable = Updatable(value)
+  implicit def updatable(value: JsValue): RichJsValue = RichJsValue(value)
 
   trait Operation {
-    def apply(value: JsValue): JsValue
+    def apply(value: JsValue): SafeJsValue
   }
 
   trait Projection[M[_]] {
-    def updated(f: JsValue => JsValue)(parent: JsValue): JsValue
-    def retr: JsValue => M[JsValue]
-    def mapValue[T](value: M[JsValue])(f: JsValue => T): M[T]
+    type ThenScalar
 
-    def get[T: JsonReader]: JsValue => M[T]
+    def updated(f: JsValue => SafeJsValue)(parent: JsValue): SafeJsValue
+    def retr: JsValue => Validated[M[JsValue]]
+    def mapValue[T](value: M[JsValue])(f: JsValue => Validated[T]): Validated[M[T]]
+
+    def getSecure[T: MonadicReader]: JsValue => Validated[M[T]]
+    def get[T: MonadicReader]: JsValue => M[T]
     def ![U](op: Operation): Update
 
     //def is(f: M[T] => Boolean): JsPred
-    def is[U: JsonReader](f: U => Boolean): JsPred
+    def is[U: MonadicReader](f: U => Boolean): JsPred
+
+    def andThen(next: ScalarProjection): ThenScalar
+
+    def /(fieldName: String) = this andThen fieldName
+    def apply(idx: Int) = element(idx)
+    def element(idx: Int) = this andThen JsonLenses.element(idx)
 
     //def /[M2[_], R[_]](next: Projection[M2])(implicit conv: Conv[M, M2, R]): Projection[R]
   }
@@ -59,109 +97,148 @@ object JsonLenses {
     implicit def joinOptSeq: Conv[Option, Seq, Seq] = ???
   }*/
   trait ScalarProjection extends Projection[Id] {
-    def /(next: ScalarProjection): ScalarProjection
-    def /(next: OptProjection): OptProjection
+    type ThenScalar = ScalarProjection
+
+    def andThen(next: ScalarProjection): ScalarProjection
+    def andThen(next: OptProjection): OptProjection
   }
   trait OptProjection extends Projection[Option] {
-    def /(next: ScalarProjection): OptProjection
-    def /(next: OptProjection): OptProjection
+    type ThenScalar = OptProjection
+
+    def andThen(next: ScalarProjection): OptProjection
+    def andThen(next: OptProjection): OptProjection
   }
 
   type SeqProjection = Projection[Seq]
 
   trait ProjectionImpl[M[_]] extends Projection[M] {
-    def get[T: JsonReader]: JsValue => M[T] =
-      p => mapValue(retr(p))(_.convertTo[T])
+    def getSecure[T: MonadicReader]: JsValue => Validated[M[T]] =
+      p => retr(p).flatMap(mapValue(_)(_.as[T]))
+
+    def get[T: MonadicReader]: JsValue => M[T] =
+      p => getSecure[T].apply(p) match {
+        case Right(e) => e
+        case Left(e) =>
+          throw e
+      }
 
     def ![U](op: Operation): Update = new Update {
       def apply(parent: JsValue): JsValue =
-        updated(op(_))(parent)
+        updated(op(_))(parent).get
     }
   }
 
   trait ScalarProjectionImpl extends ScalarProjection with ProjectionImpl[Id] { outer =>
-    def mapValue[T](value: JsValue)(f: JsValue => T): T =
+    def mapValue[T](value: JsValue)(f: JsValue => Validated[T]): Validated[T] =
       f(value)
 
-    def is[U: JsonReader](f: U => Boolean): JsPred =
-      value => f(get[U] apply value)
+    def is[U: MonadicReader](f: U => Boolean): JsPred =
+      value => getSecure[U] apply value exists f
 
-    def /(next: ScalarProjection): ScalarProjection =
+    def andThen(next: ScalarProjection): ScalarProjection =
       new ScalarProjectionImpl {
-        def updated(f: JsValue => JsValue)(parent: JsValue): JsValue =
+        def updated(f: JsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
           outer.updated(next.updated(f))(parent)
 
-        def retr: JsValue => JsValue = parent =>
-          next.retr(outer.retr(parent))
+        def retr: JsValue => SafeJsValue = parent =>
+          for {
+            outerV <- outer.retr(parent)
+            innerV <- next.retr(outerV)
+          } yield innerV
+
       }
 
-    def /(next: OptProjection): OptProjection = ???
+    def andThen(next: OptProjection): OptProjection = ???
   }
 
   trait OptProjectionImpl extends OptProjection with ProjectionImpl[Option] {
-    def mapValue[T](value: Option[JsValue])(f: JsValue => T): Option[T] = value.map(f)
+    def mapValue[T](value: Option[JsValue])(f: JsValue => Validated[T]): Validated[Option[T]] =
+      value.map(f) match {
+        case None => Right(None)
+        case Some(Right(x)) => Right(Some(x))
+        case Some(Left(e)) => Left(e)
+      }
 
-    def is[U: JsonReader](f: U => Boolean): JsPred = ???
+    def is[U: MonadicReader](f: U => Boolean): JsPred = ???
 
-    def /(next: ScalarProjection): OptProjection = ???
-    def /(next: OptProjection): OptProjection = ???
+    def andThen(next: ScalarProjection): OptProjection = ???
+    def andThen(next: OptProjection): OptProjection = ???
   }
 
   def field(name: String): ScalarProjection = new ScalarProjectionImpl {
-    def updated(f: (JsValue) => JsValue)(parent: JsValue): JsValue =
-      JsObject(fields = parent.asJsObject.fields + (name -> f(retr(parent))))
+    def updated(f: JsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
+      for {
+        child <- retr(parent)
+        res   <- f(child)
+      }
+       yield JsObject(fields = parent.asJsObject.fields + (name -> res))
 
-    def retr: JsValue => JsValue = _.asJsObject.fields(name)
+    def retr: JsValue => SafeJsValue = {
+      case o: JsObject => Right(o.fields(name))
+      case e@_ => Left(new IllegalArgumentException("Not a json object: "+e))
+    }
   }
 
   def element(idx: Int): ScalarProjection = new ScalarProjectionImpl {
-    def updated(f: JsValue => JsValue)(parent: JsValue): JsValue = {
-      val theArray = parent.asInstanceOf[JsArray]
-      val (headEls, element::tail) = theArray.elements.splitAt(idx)
-      JsArray(headEls ::: f(element) :: tail)
+    def updated(f: JsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
+      case JsArray(elements) =>
+        val (headEls, element::tail) = elements.splitAt(idx)
+        f(element) map (v => JsArray(headEls ::: v :: tail))
+      case e@_ => Left(new IllegalArgumentException("Not a json array: "+e))
     }
 
-    def retr: JsValue => JsValue =
-      _.asInstanceOf[JsArray].elements(idx)
+    def retr: JsValue => SafeJsValue = {
+      case a@JsArray(elements) =>
+        if (idx < elements.size)
+          Right(elements(idx))
+        else
+          Left(new IndexOutOfBoundsException("Too little elements in array: %s size: %d index: %d" format (a, elements.size, idx)))
+      case e@_ => Left(new IllegalArgumentException("Not a json array: "+e))
+    }
   }
 
   /**
    * The identity projection which operates on the current element itself
    */
   val value: ScalarProjection = new ScalarProjectionImpl {
-    def updated(f: JsValue => JsValue)(parent: JsValue): JsValue =
+    def updated(f: JsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
       f(parent)
 
-    def retr: JsValue => JsValue = identity
+    def retr: JsValue => SafeJsValue = x => Right(x)
   }
 
   def elements: SeqProjection = ???
 
   def find(pred: JsPred): OptProjection = new OptProjectionImpl {
-    def updated(f: JsValue => JsValue)(parent: JsValue): JsValue = {
-      parent.asInstanceOf[JsArray].elements.span(x => !pred(x)) match {
-        case (prefix, element :: suffix) =>
-          JsArray(prefix ::: f(element) :: suffix)
+    def updated(f: JsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
+      case JsArray(elements) =>
+        elements.span(x => !pred(x)) match {
+          case (prefix, element :: suffix) =>
+            f(element) map (v => JsArray(prefix ::: v :: suffix))
 
-        // element not found, do nothing
-        case _ => parent
-      }
+          // element not found, do nothing
+          case _ =>
+            Right(parent)
+        }
+      case e@_ => Left(new IllegalArgumentException("Not a json array: "+e))
     }
 
-    def retr: JsValue => Option[JsValue] =
-      _.asInstanceOf[JsArray].elements.find(pred)
+    def retr: JsValue => Validated[Option[JsValue]] = {
+      case JsArray(elements) => Right(elements.find(pred))
+      case e@_ => Left(new IllegalArgumentException("Not a json array: "+e))
+    }
   }
 
   def filter(pred: JsPred): SeqProjection = ???
 
   def set[T: JsonWriter](t: T): Operation = new Operation {
-    def apply(value: JsValue): JsValue =
-      jsonWriter[T].write(t)
+    def apply(value: JsValue): SafeJsValue =
+      Right(jsonWriter[T].write(t))
   }
 
-  def updated[T: JsonFormat](f: T => T): Operation = new Operation {
-    def apply(value: JsValue): JsValue =
-      jsonWriter[T].write(f(jsonReader[T].read(value)))
+  def updated[T: MonadicReader: JsonWriter](f: T => T): Operation = new Operation {
+    def apply(value: JsValue): SafeJsValue =
+      value.as[T] map (v => jsonWriter[T].write(f(v)))
   }
 
   def append(update: Update): Operation = ???

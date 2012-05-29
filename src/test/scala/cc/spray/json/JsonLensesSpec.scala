@@ -55,7 +55,7 @@ class JsonLensesSpec extends Specification {
           val json = JsonParser("""["a", "b", 2, 5, 8, 3]""")
 
           json extract JsonLenses.find(JsonLenses.value.is[Int](_ < 4)).get[Int] must beSome(2)
-          json extract JsonLenses.find(JsonLenses.value.is[String](_ < "unknown")).get[Int] must beNone
+          json extract JsonLenses.find(JsonLenses.value.is[String](_ == "unknown")).get[Int] must beNone
         }
       }
     }
