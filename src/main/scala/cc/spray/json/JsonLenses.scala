@@ -7,7 +7,7 @@ object JsonLenses {
   trait Update {
     def apply(value: JsValue): JsValue
 
-    def &&(next: Update): Update = null
+    def &&(next: Update): Update = ???
   }
 
   implicit def strToField(name: String): ScalarProjection = field(name)
@@ -35,8 +35,8 @@ object JsonLenses {
     def retr: JsValue => M[JsValue]
     def mapValue[T](value: M[JsValue])(f: JsValue => T): M[T]
 
-    def ![U](op: Operation): Update
     def get[T: JsonReader]: JsValue => M[T]
+    def ![U](op: Operation): Update
 
     //def is(f: M[T] => Boolean): JsPred
     def is[U: JsonReader](f: U => Boolean): JsPred
@@ -50,13 +50,13 @@ object JsonLenses {
   }
   object Conv {
     implicit def joinScalar[M2[_]]: Conv[Id, M2, M2] = new Conv[Id, M2, M2] {
-      def flatMap[T](first: T, second: M2[T])(op: (T, T) => T): M2[T] = null.asInstanceOf[M2[T]]
+      def flatMap[T](first: T, second: M2[T])(op: (T, T) => T): M2[T] = ???.asInstanceOf[M2[T]]
 
     }
-    implicit def joinSeq[M2[_]]: Conv[Seq, M2, Seq] = null
-    implicit def joinOptId: Conv[Option, Id, Option] = null
-    implicit def joinOptOpt: Conv[Option, Option, Option] = null
-    implicit def joinOptSeq: Conv[Option, Seq, Seq] = null
+    implicit def joinSeq[M2[_]]: Conv[Seq, M2, Seq] = ???
+    implicit def joinOptId: Conv[Option, Id, Option] = ???
+    implicit def joinOptOpt: Conv[Option, Option, Option] = ???
+    implicit def joinOptSeq: Conv[Option, Seq, Seq] = ???
   }*/
   trait ScalarProjection extends Projection[Id] {
     def /(next: ScalarProjection): ScalarProjection
@@ -84,7 +84,7 @@ object JsonLenses {
       f(value)
 
     def is[U: JsonReader](f: U => Boolean): JsPred =
-      value => f(get[U] apply (value))
+      value => f(get[U] apply value)
 
     def /(next: ScalarProjection): ScalarProjection =
       new ScalarProjectionImpl {
@@ -95,16 +95,16 @@ object JsonLenses {
           next.retr(outer.retr(parent))
       }
 
-    def /(next: OptProjection): OptProjection = null
+    def /(next: OptProjection): OptProjection = ???
   }
 
   trait OptProjectionImpl extends OptProjection with ProjectionImpl[Option] {
     def mapValue[T](value: Option[JsValue])(f: JsValue => T): Option[T] = value.map(f)
 
-    def is[U: JsonReader](f: U => Boolean): JsPred = null
+    def is[U: JsonReader](f: U => Boolean): JsPred = ???
 
-    def /(next: ScalarProjection): OptProjection = null
-    def /(next: OptProjection): OptProjection = null
+    def /(next: ScalarProjection): OptProjection = ???
+    def /(next: OptProjection): OptProjection = ???
   }
 
   def field(name: String): ScalarProjection = new ScalarProjectionImpl {
@@ -135,7 +135,7 @@ object JsonLenses {
     def retr: JsValue => JsValue = identity
   }
 
-  def elements: SeqProjection = null
+  def elements: SeqProjection = ???
 
   def find(pred: JsPred): OptProjection = new OptProjectionImpl {
     def updated(f: JsValue => JsValue)(parent: JsValue): JsValue = {
@@ -152,7 +152,7 @@ object JsonLenses {
       _.asInstanceOf[JsArray].elements.find(pred)
   }
 
-  def filter(pred: JsPred): SeqProjection = null
+  def filter(pred: JsPred): SeqProjection = ???
 
   def set[T: JsonWriter](t: T): Operation = new Operation {
     def apply(value: JsValue): JsValue =
@@ -164,9 +164,11 @@ object JsonLenses {
       jsonWriter[T].write(f(jsonReader[T].read(value)))
   }
 
-  def append(update: Update): Operation = null
+  def append(update: Update): Operation = ???
 
-  def update(update: Update): Operation = null
+  def update(update: Update): Operation = ???
 
-  def extract[M[_], T](value: Projection[M])(f: M[T] => Update): Operation = null
+  def extract[M[_], T](value: Projection[M])(f: M[T] => Update): Operation = ???
+
+  def ??? = sys.error("NYI")
 }
