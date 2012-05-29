@@ -34,7 +34,7 @@ class JsonLensesSpec extends Specification {
           json extract "n".get[Int] must be_==(2)
         }
         "missing" in {
-          json extract "z".get[Int] must throwAn[IllegalArgumentException]("""Expected field 'z' in '{"n":2,"els":[{"name":"John","money":23},{"name":"Paul","money":42}]}'""")
+          json extract "z".get[Int] must throwAn[Exception]("""Expected field 'z' in '{"n":2,"els":[{"name":"John","money":23},{"name":"Paul","money":42}]}'""")
         }
         "wrong type" in {
           json extract "n".get[String] must throwA[DeserializationException]("Expected String as JsString, but got 2")
@@ -101,7 +101,7 @@ class JsonLensesSpec extends Specification {
         }
         "missing" in {
           val simple = JsonParser( """{"n": 12}""")
-          simple.update(field("z") ! updated[Int](_ + 1)) must throwAn[IllegalArgumentException]("Need a value to operate on")
+          simple.update(field("z") ! updated[Int](_ + 1)) must throwAn[Exception]("Need a value to operate on")
         }
       }
       "set field of member" in {
@@ -115,7 +115,11 @@ class JsonLensesSpec extends Specification {
 
           json update ("n" / "b" ! updated[Int](1 +)) must be_json( """{"n": {"b": 5}}""")
         }
+        "parent missing" in {
+          val json = JsonParser( """{"x": {"b": 4}}""")
 
+          json update ("n" / "b" ! updated[Int](1 +)) must throwAn[Exception]("Missing parent value")
+        }
       }
       "set element of array" in {
         val json = JsonParser("""["a", "b", 2, 5, 8, 3]""")

@@ -1,7 +1,5 @@
 package cc.spray.json
 
-import annotation.unchecked.uncheckedVariance
-
 object JsonLenses {
   type JsPred = JsValue => Boolean
   type Id[T] = T
@@ -142,7 +140,7 @@ object JsonLenses {
     def andThen(next: ScalarProjection): ScalarProjection =
       new ScalarProjectionImpl {
         def updated(f: Option[JsValue] => SafeJsValue)(parent: JsValue): SafeJsValue =
-          outer.updated(v => next.updated(f)(v.get))(parent)
+          outer.updated(v => v.map(Right(_)).getOrElse(unexpected("Missing parent value")).flatMap(next.updated(f)))(parent)
 
         def retr: JsValue => SafeJsValue = parent =>
           for {
@@ -179,7 +177,7 @@ object JsonLenses {
 
     def retr: JsValue => SafeJsValue = v =>
       getField(v).flatMap {
-        _.map(Right(_)).getOrElse(Left(new IllegalArgumentException("Expected field '%s' in '%s'" format (name, v))))
+        _.map(Right(_)).getOrElse(unexpected("Expected field '%s' in '%s'" format (name, v)))
       }
 
     def getField(v: JsValue): Validated[Option[JsValue]] = asObj(v) map { o =>
@@ -189,7 +187,7 @@ object JsonLenses {
       case o: JsObject =>
         Right(o)
       case e@_ =>
-        Left(new IllegalArgumentException("Not a json object: "+e))
+        unexpected("Not a json object: "+e)
     }
   }
 
@@ -200,9 +198,9 @@ object JsonLenses {
           val (headEls, element::tail) = elements.splitAt(idx)
           f(Some(element)) map (v => JsArray(headEls ::: v :: tail))
         } else
-          Left(new IndexOutOfBoundsException("Too little elements in array: %s size: %d index: %d" format (parent, elements.size, idx)))
+          unexpected("Too little elements in array: %s size: %d index: %d" format (parent, elements.size, idx))
       case e@_ =>
-        Left(new IllegalArgumentException("Not a json array: "+e))
+        unexpected("Not a json array: "+e)
     }
 
     def retr: JsValue => SafeJsValue = {
@@ -210,8 +208,8 @@ object JsonLenses {
         if (idx < elements.size)
           Right(elements(idx))
         else
-          Left(new IndexOutOfBoundsException("Too little elements in array: %s size: %d index: %d" format (a, elements.size, idx)))
-      case e@_ => Left(new IllegalArgumentException("Not a json array: "+e))
+          outOfBounds("Too little elements in array: %s size: %d index: %d" format (a, elements.size, idx))
+      case e@_ => unexpected("Not a json array: "+e)
     }
   }
 
@@ -238,12 +236,12 @@ object JsonLenses {
           case _ =>
             Right(parent)
         }
-      case e@_ => Left(new IllegalArgumentException("Not a json array: "+e))
+      case e@_ => unexpected("Not a json array: "+e)
     }
 
     def retr: JsValue => Validated[Option[JsValue]] = {
       case JsArray(elements) => Right(elements.find(pred))
-      case e@_ => Left(new IllegalArgumentException("Not a json array: "+e))
+      case e@_ => unexpected("Not a json array: "+e)
     }
   }
 
@@ -257,7 +255,7 @@ object JsonLenses {
 
     def apply(value: Option[JsValue]): SafeJsValue = value match {
       case Some(x) => apply(x)
-      case None => Left(new IllegalArgumentException("Need a value to operate on"))
+      case None => unexpected("Need a value to operate on")
     }
   }
 
@@ -273,4 +271,7 @@ object JsonLenses {
   def extract[M[_], T](value: Projection[M])(f: M[T] => Update): Operation = ???
 
   def ??? = sys.error("NYI")
+
+  def unexpected(message: String) = Left(new RuntimeException(message))
+  def outOfBounds(message: String) = Left(new IndexOutOfBoundsException(message))
 }
