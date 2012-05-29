@@ -10,6 +10,14 @@ object JsonLenses {
 
   implicit def rightBiasEither[A, B](e: Either[A, B]): Either.RightProjection[A, B] = e.right
 
+  case class GetOrThrow[B](e: Either[Throwable, B]) {
+    def getOrThrow: B = e match {
+      case Right(b) => b
+      case Left(e) => throw e
+    }
+  }
+  implicit def orThrow[B](e: Either[Throwable, B]): GetOrThrow[B] = GetOrThrow(e)
+
   trait MonadicReader[T] {
     def read(js: JsValue): Validated[T]
   }
@@ -116,15 +124,11 @@ object JsonLenses {
       p => retr(p).flatMap(mapValue(_)(_.as[T]))
 
     def get[T: MonadicReader]: JsValue => M[T] =
-      p => getSecure[T].apply(p) match {
-        case Right(e) => e
-        case Left(e) =>
-          throw e
-      }
+      p => getSecure[T].apply(p).getOrThrow
 
     def ![U](op: Operation): Update = new Update {
       def apply(parent: JsValue): JsValue =
-        updated(op(_))(parent).get
+        updated(op(_))(parent).getOrThrow
     }
   }
 
@@ -175,7 +179,7 @@ object JsonLenses {
 
     def retr: JsValue => SafeJsValue = v =>
       getField(v).flatMap {
-        _.map(Right(_)).getOrElse(Left(new IllegalArgumentException("Missing field '%s' in '%s'" format (name, v))))
+        _.map(Right(_)).getOrElse(Left(new IllegalArgumentException("Expected field '%s' in '%s'" format (name, v))))
       }
 
     def getField(v: JsValue): Validated[Option[JsValue]] = asObj(v) map { o =>
@@ -243,8 +247,6 @@ object JsonLenses {
     }
   }
 
-  def filter(pred: JsPred): SeqProjection = ???
-
   def set[T: JsonWriter](t: T): Operation = new Operation {
     def apply(value: Option[JsValue]): SafeJsValue =
       Right(jsonWriter[T].write(t))
@@ -255,7 +257,7 @@ object JsonLenses {
 
     def apply(value: Option[JsValue]): SafeJsValue = value match {
       case Some(x) => apply(x)
-      case None => Left(new IllegalArgumentException("Need a value operate on"))
+      case None => Left(new IllegalArgumentException("Need a value to operate on"))
     }
   }
 
@@ -264,8 +266,8 @@ object JsonLenses {
       value.as[T] map (v => jsonWriter[T].write(f(v)))
   }
 
+  def filter(pred: JsPred): SeqProjection = ???
   def append(update: Update): Operation = ???
-
   def update(update: Update): Operation = ???
 
   def extract[M[_], T](value: Projection[M])(f: M[T] => Update): Operation = ???

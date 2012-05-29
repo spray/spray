@@ -3,6 +3,8 @@ package cc.spray.json
 import DefaultJsonProtocol._
 
 import org.specs2.mutable.Specification
+import org.specs2.matcher.{BeMatching, Matcher}
+import java.util.regex.Pattern
 
 class JsonLensesSpec extends Specification {
   val json = JsonParser(
@@ -28,7 +30,15 @@ class JsonLensesSpec extends Specification {
   "Lenses" should {
     "access" in {
       "field" in {
-        json extract "n".get[Int] must be_==(2)
+        "existing" in {
+          json extract "n".get[Int] must be_==(2)
+        }
+        "missing" in {
+          json extract "z".get[Int] must throwAn[IllegalArgumentException]("""Expected field 'z' in '{"n":2,"els":[{"name":"John","money":23},{"name":"Paul","money":42}]}'""")
+        }
+        "wrong type" in {
+          json extract "n".get[String] must throwA[DeserializationException]("Expected String as JsString, but got 2")
+        }
       }
       "field of member" in {
         val json = JsonParser("""{"n": {"b": 4}}""")
@@ -36,9 +46,16 @@ class JsonLensesSpec extends Specification {
         json extract ("n" / "b").get[Int] must be_==(4)
       }
       "element of array" in {
-        val json = JsonParser("""["a", "b", 2, 5, 8, 3]""")
+        "existing" in {
+          val json = JsonParser("""["a", "b", 2, 5, 8, 3]""")
 
-        json extract element(3).get[Int] must be_==(5)
+          json extract element(3).get[Int] must be_==(5)
+        }
+        "out of bounds" in {
+          val json = JsonParser("""["a", "b", 2, 5, 8, 3]""")
+
+          json extract element(38).get[Int] must throwAn[IndexOutOfBoundsException]("Too little elements in array: [\"a\",\"b\",2,5,8,3] size: 6 index: 38")
+        }
       }
       "finding an element" in {
         "in a homogenous array" in {
@@ -62,28 +79,43 @@ class JsonLensesSpec extends Specification {
 
     "modify" in {
       "set field" in {
-        val simple = JsonParser( """{"n": 12}""")
+        "existing" in {
+          val simple = JsonParser( """{"n": 12}""")
 
-        simple.update(n ! set(23)) must be_json( """{"n": 23}""")
+          simple.update(n ! set(23)) must be_json( """{"n": 23}""")
+        }
+        "missing" in {
+          val json = JsonParser( """{"n": {"b": 4}}""")
+
+          json update ("n" / "c" ! set(23)) must be_json( """{"n": {"b": 4, "c": 23}}""")
+        }
       }
       "update field" in {
-        val simple = JsonParser( """{"n": 12}""")
-        simple.update(n ! updated[Int](_ + 1)) must be_json( """{"n": 13}""")
+        "existing" in {
+          val simple = JsonParser( """{"n": 12}""")
+          simple.update(n ! updated[Int](_ + 1)) must be_json( """{"n": 13}""")
+        }
+        "wrong type" in {
+          val simple = JsonParser( """{"n": 12}""")
+          simple.update(n ! updated[String](_ + "test")) must throwA[DeserializationException]("Expected String as JsString, but got 12")
+        }
+        "missing" in {
+          val simple = JsonParser( """{"n": 12}""")
+          simple.update(field("z") ! updated[Int](_ + 1)) must throwAn[IllegalArgumentException]("Need a value to operate on")
+        }
       }
       "set field of member" in {
         val json = JsonParser( """{"n": {"b": 4}}""")
 
         json update ("n" / "b" ! set(23)) must be_json( """{"n": {"b": 23}}""")
       }
-      "create field of member" in {
-        val json = JsonParser( """{"n": {"b": 4}}""")
-
-        json update ("n" / "c" ! set(23)) must be_json( """{"n": {"b": 4, "c": 23}}""")
-      }
       "update field of member" in {
-        val json = JsonParser( """{"n": {"b": 4}}""")
+        "existing" in {
+          val json = JsonParser( """{"n": {"b": 4}}""")
 
-        json update ("n" / "b" ! updated[Int](1 +)) must be_json( """{"n": {"b": 5}}""")
+          json update ("n" / "b" ! updated[Int](1 +)) must be_json( """{"n": {"b": 5}}""")
+        }
+
       }
       "set element of array" in {
         val json = JsonParser("""["a", "b", 2, 5, 8, 3]""")
@@ -116,4 +148,8 @@ class JsonLensesSpec extends Specification {
 
   def be_json(json: String) =
     be_==(JsonParser(json))
+
+  override def throwA[E <: Throwable](message: String = ".*")(implicit m: ClassManifest[E]): Matcher[Any] = {
+    throwA(m).like { case e => createExpectable(e.getMessage).applyMatcher(new BeMatching(".*"+Pattern.quote(message)+".*")) }
+  }
 }
