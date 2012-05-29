@@ -28,12 +28,17 @@ class JsonLensesSpec extends Specification {
   "Lenses" should {
     "access" in {
       "field" in {
-        n.get[Int].apply(json) must be_==(2)
+        "n".get[Int].apply(json) must be_==(2)
       }
       "field of member" in {
-        val json = JsonParser( """{"n": {"b": 4}}""")
+        val json = JsonParser("""{"n": {"b": 4}}""")
 
         ("n" / "b").get[Int].apply(json) must be_==(4)
+      }
+      "element of array" in {
+        val json = JsonParser("""["a", "b", 2, 5, 8, 3]""")
+
+        json extract element(3).get[Int] must be_==(5)
       }
     }
 
@@ -56,6 +61,11 @@ class JsonLensesSpec extends Specification {
         val json = JsonParser( """{"n": {"b": 4}}""")
 
         json update ("n" / "b" ! updated[Int](1 +)) must be_json( """{"n": {"b": 5}}""")
+      }
+      "set element of array" in {
+        val json = JsonParser("""["a", "b", 2, 5, 8, 3]""")
+
+        json update (element(3) ! set(35)) must be_json("""["a", "b", 2, 35, 8, 3]""")
       }
     }
   }
