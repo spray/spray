@@ -148,7 +148,7 @@ object JsonLenses {
     def andThen(next: ScalarProjection): ScalarProjection =
       new ScalarProjectionImpl {
         def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
-          outer.updated(v => v.map(Right(_)).getOrElse(unexpected("Missing parent value")).flatMap(next.updated(f)))(parent)
+          outer.updated(_.flatMap(next.updated(f)))(parent)
 
         def retr: JsValue => SafeJsValue = parent =>
           for {

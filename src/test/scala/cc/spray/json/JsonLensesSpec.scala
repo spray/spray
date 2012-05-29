@@ -77,7 +77,7 @@ class JsonLensesSpec extends Specification {
           """{"n": {"b": 4}}""" update ("n" / "b" ! updated[Int](1 +)) must be_json( """{"n": {"b": 5}}""")
         }
         "parent missing" in {
-          """{"x": {"b": 4}}""" update ("n" / "b" ! updated[Int](1 +)) must throwAn[Exception]("Missing parent value")
+          """{"x": {"b": 4}}""" update ("n" / "b" ! updated[Int](1 +)) must throwAn[Exception]("""Expected field 'n' in '{"x":{"b":4}}'""")
         }
       }
       "set element of array" in {
