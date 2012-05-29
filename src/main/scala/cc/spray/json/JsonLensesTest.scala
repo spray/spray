@@ -18,7 +18,7 @@ object JsonLensesTest extends App {
 
   ("els" / element(1) / "money").get[Int]: (JsValue => Int)
 
-  //("els" / find("money".is[Int](_ < 30)) / "name").get[String]: (JsValue => Option[String])
+  ("els" / find("money".is[Int](_ < 30)) / "name").get[String]: (JsValue => Option[String])
 
   /*
   ("els" / elements / "money").get[Int]: (JsValue => Seq[Int])

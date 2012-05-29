@@ -33,6 +33,7 @@ object JsonLenses {
   trait Projection[M[_]] {
     def updated(f: JsValue => JsValue)(parent: JsValue): JsValue
     def retr: JsValue => M[JsValue]
+    def mapValue[T](value: M[JsValue])(f: JsValue => T): M[T]
 
     def ![U](op: Operation): Update
     def get[T: JsonReader]: JsValue => M[T]
@@ -57,24 +58,30 @@ object JsonLenses {
     implicit def joinOptOpt: Conv[Option, Option, Option] = null
     implicit def joinOptSeq: Conv[Option, Seq, Seq] = null
   }*/
+  trait ScalarProjection extends Projection[Id] {
+    def /(next: ScalarProjection): ScalarProjection
+    def /(next: OptProjection): OptProjection
+  }
+  trait OptProjection extends Projection[Option] {
+    def /(next: ScalarProjection): OptProjection
+    def /(next: OptProjection): OptProjection
+  }
+
+  type SeqProjection = Projection[Seq]
+
   trait ProjectionImpl[M[_]] extends Projection[M] {
+    def get[T: JsonReader]: JsValue => M[T] =
+      p => mapValue(retr(p))(_.convertTo[T])
+
     def ![U](op: Operation): Update = new Update {
       def apply(parent: JsValue): JsValue =
         updated(op(_))(parent)
     }
   }
 
-  trait ScalarProjection extends Projection[Id] {
-    def /(next: ScalarProjection): ScalarProjection
-    def /(next: OptProjection): OptProjection
-  }
-  trait OptProjection extends Projection[Option]
-
-  type SeqProjection = Projection[Seq]
-
   trait ScalarProjectionImpl extends ScalarProjection with ProjectionImpl[Id] { outer =>
-    def get[T: JsonReader]: JsValue => T =
-      p => retr(p).convertTo[T]
+    def mapValue[T](value: JsValue)(f: JsValue => T): T =
+      f(value)
 
     def is[U: JsonReader](f: U => Boolean): JsPred =
       value => f(get[U] apply (value))
@@ -92,10 +99,12 @@ object JsonLenses {
   }
 
   trait OptProjectionImpl extends OptProjection with ProjectionImpl[Option] {
-    def get[T: JsonReader]: JsValue => Option[T] =
-      p => retr(p).map(_.convertTo[T])
+    def mapValue[T](value: Option[JsValue])(f: JsValue => T): Option[T] = value.map(f)
 
     def is[U: JsonReader](f: U => Boolean): JsPred = null
+
+    def /(next: ScalarProjection): OptProjection = null
+    def /(next: OptProjection): OptProjection = null
   }
 
   def field(name: String): ScalarProjection = new ScalarProjectionImpl {
@@ -146,11 +155,13 @@ object JsonLenses {
   def filter(pred: JsPred): SeqProjection = null
 
   def set[T: JsonWriter](t: T): Operation = new Operation {
-    def apply(value: JsValue): JsValue = jsonWriter[T].write(t)
+    def apply(value: JsValue): JsValue =
+      jsonWriter[T].write(t)
   }
 
   def updated[T: JsonFormat](f: T => T): Operation = new Operation {
-    def apply(value: JsValue): JsValue = jsonWriter[T].write(f(jsonReader[T].read(value)))
+    def apply(value: JsValue): JsValue =
+      jsonWriter[T].write(f(jsonReader[T].read(value)))
   }
 
   def append(update: Update): Operation = null
