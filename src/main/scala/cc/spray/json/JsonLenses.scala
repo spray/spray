@@ -2,6 +2,7 @@ package cc.spray.json
 
 object JsonLenses {
   type JsPred = JsValue => Boolean
+  type Id[T] = T
 
   trait Update {
     def apply(value: JsValue): JsValue
@@ -33,11 +34,11 @@ object JsonLenses {
     def updated(f: JsValue => JsValue)(parent: JsValue): JsValue
     def retr: JsValue => M[JsValue]
 
-    def ![U](update: Operation): Update
+    def ![U](op: Operation): Update
     def get[T: JsonReader]: JsValue => M[T]
 
     //def is(f: M[T] => Boolean): JsPred
-    def is[U](f: U => Boolean): JsPred
+    def is[U: JsonReader](f: U => Boolean): JsPred
 
     //def /[M2[_], R[_]](next: Projection[M2])(implicit conv: Conv[M, M2, R]): Projection[R]
   }
@@ -59,13 +60,14 @@ object JsonLenses {
 
   trait ScalarProjection extends Projection[Id] {
     def /(next: ScalarProjection): ScalarProjection
+    def /(next: OptProjection): OptProjection
   }
-  type OptProjection = Projection[Option]
+  trait OptProjection extends Projection[Option] {
+
+  }
   type SeqProjection = Projection[Seq]
 
-  type Id[T] = T
-
-  trait SimpleProjection extends ScalarProjection {
+  trait ScalarProjectionImpl extends ScalarProjection {
     outer =>
     def updated(f: JsValue => JsValue)(parent: JsValue): JsValue
 
@@ -78,26 +80,41 @@ object JsonLenses {
       def apply(parent: JsValue): JsValue = updated(op(_))(parent)
     }
 
-    def is[U](f: U => Boolean): JsPred = null
+    def is[U: JsonReader](f: U => Boolean): JsPred =
+      value => f(get[U] apply (value))
 
     def /(next: ScalarProjection): ScalarProjection =
-      new SimpleProjection {
+      new ScalarProjectionImpl {
         def updated(f: JsValue => JsValue)(parent: JsValue): JsValue =
           outer.updated(next.updated(f))(parent)
 
         def retr: JsValue => JsValue = parent =>
           next.retr(outer.retr(parent))
       }
+
+    def /(next: OptProjection): OptProjection = null
   }
 
-  def field(name: String): ScalarProjection = new SimpleProjection {
+  trait OptProjectionImpl extends OptProjection {
+    def ![U](op: Operation): Update = new Update {
+      def apply(parent: JsValue): JsValue =
+        updated(op(_))(parent)
+    }
+
+    def get[T: JsonReader]: JsValue => Option[T] =
+      p => retr(p).map(_.convertTo[T])
+
+    def is[U: JsonReader](f: U => Boolean): JsonLenses.JsPred = null
+  }
+
+  def field(name: String): ScalarProjection = new ScalarProjectionImpl {
     def updated(f: (JsValue) => JsValue)(parent: JsValue): JsValue =
       JsObject(fields = parent.asJsObject.fields + (name -> f(retr(parent))))
 
     def retr: JsValue => JsValue = _.asJsObject.fields(name)
   }
 
-  def element(idx: Int): ScalarProjection = new SimpleProjection {
+  def element(idx: Int): ScalarProjection = new ScalarProjectionImpl {
     def updated(f: JsValue => JsValue)(parent: JsValue): JsValue = {
       val theArray = parent.asInstanceOf[JsArray]
       val (headEls, element::tail) = theArray.elements.splitAt(idx)
@@ -108,9 +125,32 @@ object JsonLenses {
       _.asInstanceOf[JsArray].elements(idx)
   }
 
+  /**
+   * The identity projection which operates on the current element itself
+   */
+  val value: ScalarProjection = new ScalarProjectionImpl {
+    def updated(f: JsValue => JsValue)(parent: JsValue): JsValue =
+      f(parent)
+
+    def retr: JsValue => JsValue = identity
+  }
+
   def elements: SeqProjection = null
 
-  def find(pred: JsPred): OptProjection = null
+  def find(pred: JsPred): OptProjection = new OptProjectionImpl {
+    def updated(f: JsValue => JsValue)(parent: JsValue): JsValue = {
+      parent.asInstanceOf[JsArray].elements.span(x => !pred(x)) match {
+        case (prefix, element :: suffix) =>
+          JsArray(prefix ::: f(element) :: suffix)
+
+        // element not found, do nothing
+        case _ => parent
+      }
+    }
+
+    def retr: JsValue => Option[JsValue] =
+      _.asInstanceOf[JsArray].elements.find(pred)
+  }
 
   def filter(pred: JsPred): SeqProjection = null
 
