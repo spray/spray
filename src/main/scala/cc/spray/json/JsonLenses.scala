@@ -1,6 +1,6 @@
 package cc.spray.json
 
-object Lens2 {
+object JsonLenses {
   type JsPred = JsValue => Boolean
 
   trait Update {
@@ -95,7 +95,7 @@ object Lens2 {
       def apply(parent: JsValue): JsValue = updated(op(_))(parent)
     }
 
-    def set[T: JsonWriter](t: T): Update = this ! Lens2.set(t)
+    def set[T: JsonWriter](t: T): Update = this ! JsonLenses.set(t)
 
     def is[U](f: U => Boolean): JsPred = null
 

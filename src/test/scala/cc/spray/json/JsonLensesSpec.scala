@@ -4,7 +4,7 @@ import DefaultJsonProtocol._
 
 import org.specs2.mutable.Specification
 
-class Updater2Spec extends Specification {
+class JsonLensesSpec extends Specification {
   val json = JsonParser(
     """{
       |  "n": 2,
@@ -21,7 +21,7 @@ class Updater2Spec extends Specification {
       |}
     """.stripMargin)
 
-  import Lens2._
+  import JsonLenses._
 
   val n = field("n")
 

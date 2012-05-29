@@ -2,8 +2,8 @@ package cc.spray.json
 
 import DefaultJsonProtocol._
 
-object U2Test extends App {
-  import Lens2._
+object JsonLensesTest extends App {
+  import JsonLenses._
 
   "n" ! set(3)
   "els" ! append {
