@@ -1,5 +1,7 @@
 package cc.spray.json
 
+import annotation.tailrec
+
 object JsonLenses {
   type JsPred = JsValue => Boolean
   type Id[T] = T
@@ -77,7 +79,7 @@ object JsonLenses {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue
   }
   trait Projection[M[_]] extends Updateable {
-    type ThenScalar
+    type AndScalar
     def retr: JsValue => Validated[M[JsValue]]
     def mapValue[T](value: M[JsValue])(f: JsValue => Validated[T]): Validated[M[T]]
 
@@ -85,48 +87,42 @@ object JsonLenses {
     def get[T: MonadicReader]: JsValue => M[T]
     def ![U](op: Operation): Update
 
-    //def is(f: M[T] => Boolean): JsPred
     def is[U: MonadicReader](f: U => Boolean): JsPred
 
-    def andThen(next: ScalarProjection): ThenScalar
+    def andThen(next: ScalarProjection): AndScalar
+    def andThen(next: SeqProjection): SeqProjection
 
     def /(fieldName: String) = this andThen fieldName
     def apply(idx: Int) = element(idx)
     def element(idx: Int) = this andThen JsonLenses.element(idx)
-
-    //def /[M2[_], R[_]](next: Projection[M2])(implicit conv: Conv[M, M2, R]): Projection[R]
   }
 
-  /*
-  trait Conv[M[_], M2[_], R[_]] {
-    //def flatMap[T](first: M[T], second: M2[T])(op: (T, T) => T): R[T]
-  }
-  object Conv {
-    implicit def joinScalar[M2[_]]: Conv[Id, M2, M2] = new Conv[Id, M2, M2] {
-      def flatMap[T](first: T, second: M2[T])(op: (T, T) => T): M2[T] = ???.asInstanceOf[M2[T]]
-
-    }
-    implicit def joinSeq[M2[_]]: Conv[Seq, M2, Seq] = ???
-    implicit def joinOptId: Conv[Option, Id, Option] = ???
-    implicit def joinOptOpt: Conv[Option, Option, Option] = ???
-    implicit def joinOptSeq: Conv[Option, Seq, Seq] = ???
-  }*/
   trait ScalarProjection extends Projection[Id] {
-    type ThenScalar = ScalarProjection
+    type AndScalar = ScalarProjection
 
-    def andThen(next: ScalarProjection): ScalarProjection
     def andThen(next: OptProjection): OptProjection
   }
   trait OptProjection extends Projection[Option] {
-    type ThenScalar = OptProjection
+    type AndScalar = OptProjection
 
-    def andThen(next: ScalarProjection): OptProjection
     def andThen(next: OptProjection): OptProjection
   }
 
-  type SeqProjection = Projection[Seq]
+  trait SeqProjection extends Projection[Seq] {
+    type AndScalar = SeqProjection
+
+    def andThen(next: OptProjection): SeqProjection
+  }
+
+  trait Monad[M[_]] {
+    def map[T, U](els: M[JsValue])(f: JsValue => U): M[U]
+    def flatMap[T, U](els: M[JsValue])(f: JsValue => Seq[U]): Seq[U]
+    def allRight[T](v: M[Validated[T]]): Validated[M[T]]
+  }
 
   trait ProjectionImpl[M[_]] extends Projection[M] { outer =>
+    def mon: Monad[M]
+
     def getSecure[T: MonadicReader]: JsValue => Validated[M[T]] =
       p => retr(p).flatMap(mapValue(_)(_.as[T]))
 
@@ -142,22 +138,52 @@ object JsonLenses {
       def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
         outer.updated(_.flatMap(next.updated(f)))(parent)
     }
+
+    def mapValue[T](value: M[JsValue])(f: JsValue => Validated[T]): Validated[M[T]] =
+      mon.allRight(mon.map(value)(f))
+
+    def is[U: MonadicReader](f: (U) => Boolean): JsonLenses.JsPred = ???
+
+    def build(next: Updateable)(f: JsValue => Validated[M[JsValue]]): AndScalar
+
+    def andThen(next: ScalarProjection): AndScalar =
+      build(next) { parent =>
+        for {
+          outerV <- outer.retr(parent)
+          innerV <- mon.allRight(mon.map(outerV)(next.retr))
+        } yield innerV
+      }
+
+    def andThen(next: SeqProjection): SeqProjection = new Joined(next) with SeqProjectionImpl {
+      def retr: JsValue => Validated[Seq[JsValue]] = parent =>
+        for {
+          outerV <- outer.retr(parent)
+          innerV <- allRightF(outer.mon.flatMap(outerV)(x => swap(next.retr(x))))
+        } yield innerV
+    }
+
+    def swap[T](x: Validated[Seq[T]]): Seq[Validated[T]] = x match {
+      case Right(x) => x.map(Right(_))
+      case Left(e) => List(Left(e))
+    }
   }
 
   trait ScalarProjectionImpl extends ScalarProjection with ProjectionImpl[Id] { outer =>
-    def mapValue[T](value: JsValue)(f: JsValue => Validated[T]): Validated[T] =
-      f(value)
-
-    def is[U: MonadicReader](f: U => Boolean): JsPred =
+    override def is[U: MonadicReader](f: U => Boolean): JsPred =
       value => getSecure[U] apply value exists f
 
-    def andThen(next: ScalarProjection): ScalarProjection =
+    def mon: Monad[Id] = new Monad[Id] {
+      def map[T, U](els: JsValue)(f: JsValue => U): U = f(els)
+
+      def flatMap[T, U](els: JsValue)(f: JsValue => Seq[U]): Seq[U] =
+        f(els)
+
+      def allRight[T](v: Validated[T]): Validated[T] = v
+    }
+
+    def build(next: Updateable)(f: JsValue => Validated[JsValue]): ScalarProjection =
       new Joined(next) with ScalarProjectionImpl {
-        def retr: JsValue => SafeJsValue = parent =>
-          for {
-            outerV <- outer.retr(parent)
-            innerV <- next.retr(outerV)
-          } yield innerV
+        def retr: JsValue => Validated[JsValue] = f
       }
 
     def andThen(next: OptProjection): OptProjection = new Joined(next) with OptProjectionImpl {
@@ -170,32 +196,33 @@ object JsonLenses {
   }
 
   trait OptProjectionImpl extends OptProjection with ProjectionImpl[Option] { outer =>
-    def mapValue[T](value: Option[JsValue])(f: JsValue => Validated[T]): Validated[Option[T]] =
-      swap(value.map(f))
+    def mon: Monad[Option] = new Monad[Option] {
+      def map[T, U](els: Option[JsValue])(f: JsValue => U): Option[U] =
+        els.map(f)
 
-    def is[U: MonadicReader](f: U => Boolean): JsPred = ???
+      def flatMap[T, U](els: Option[JsValue])(f: JsValue => Seq[U]): Seq[U] =
+        els.toSeq.flatMap(f)
 
-    def andThen(next: ScalarProjection): OptProjection  = new Joined(next) with OptProjectionImpl {
-      def retr: JsValue => Validated[Option[JsValue]] = parent =>
-        for {
-          outerV <- outer.retr(parent)
-          innerV <- swap(outerV.map(next.retr))
-        } yield innerV
+      def allRight[T](v: Option[Validated[T]]): Validated[Option[T]] =
+        v match {
+          case None => Right(None)
+          case Some(Right(x)) => Right(Some(x))
+          case Some(Left(e)) => Left(e)
+        }
     }
+
+    def build(next: Updateable)(f: JsValue => Validated[Option[JsValue]]): OptProjection =
+      new Joined(next) with OptProjectionImpl {
+        def retr: JsValue => Validated[Option[JsValue]] = f
+      }
+
     def andThen(next: OptProjection): OptProjection = new Joined(next) with OptProjectionImpl {
       def retr: JsValue => Validated[Option[JsValue]] = parent =>
         for {
           outerV <- outer.retr(parent)
-          innerV <- swap(outerV.flatMap(x => swap(next.retr(x))))
+          innerV <- mon.allRight(outerV.flatMap(x => swap(next.retr(x))))
         } yield innerV
     }
-
-    def swap[T](v: Option[Validated[T]]): Validated[Option[T]] =
-      v match {
-        case None => Right(None)
-        case Some(Right(x)) => Right(Some(x))
-        case Some(Left(e)) => Left(e)
-      }
 
     def swap[T](v: Validated[Option[T]]): Option[Validated[T]] =
       v match {
@@ -205,10 +232,31 @@ object JsonLenses {
       }
   }
 
+  trait SeqProjectionImpl extends SeqProjection with ProjectionImpl[Seq] { outer =>
+    def mon: Monad[Seq] = new Monad[Seq] {
+      def map[T, U](els: Seq[JsValue])(f: JsValue => U): Seq[U] =
+        els.map(f)
+
+      override def flatMap[T, U](els: Seq[JsValue])(f: JsValue => Seq[U]): Seq[U] =
+        els.flatMap(f)
+
+      def allRight[T](v: Seq[Validated[T]]): Validated[Seq[T]] =
+        allRightF(v)
+    }
+
+
+    def build(next: Updateable)(f: JsValue => Validated[Seq[JsValue]]): SeqProjection =
+      new Joined(next) with SeqProjectionImpl {
+        def retr: JsValue => Validated[Seq[JsValue]] = f
+      }
+
+    def andThen(next: OptProjection): SeqProjection = ???
+  }
+
   def field(name: String): ScalarProjection = new ScalarProjectionImpl {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
       for {
-        res   <- f(getField(parent))
+        res <- f(getField(parent))
       }
        yield JsObject(fields = parent.asJsObject.fields + (name -> res))
 
@@ -258,8 +306,32 @@ object JsonLenses {
     def retr: JsValue => SafeJsValue = x => Right(x)
   }
 
-  def elements: SeqProjection = ???
+  def elements: SeqProjection = new SeqProjectionImpl {
+    def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
+      case JsArray(elements) =>
+        mapAllRight(elements)(v => f(Right(v))) map (JsArray(_: _*))
+      case e@_ => unexpected("Not a json array: "+e)
+    }
 
+    def retr: JsValue => Validated[Seq[JsValue]] = {
+      case JsArray(elements) => Right(elements)
+      case e@_ => unexpected("Not a json array: "+e)
+    }
+  }
+  def filter(pred: JsPred): SeqProjection = new SeqProjectionImpl {
+    def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
+      //case JsArray(elements) =>
+
+
+      case e@_ => unexpected("Not a json array: "+e)
+    }
+
+    def retr: JsValue => Validated[Seq[JsValue]] = {
+      case JsArray(elements) =>
+        Right(elements.filter(pred))
+      case e@_ => unexpected("Not a json array: "+e)
+    }
+  }
   def find(pred: JsPred): OptProjection = new OptProjectionImpl {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
       case JsArray(elements) =>
@@ -296,7 +368,6 @@ object JsonLenses {
       value.as[T] map (v => jsonWriter[T].write(f(v)))
   }
 
-  def filter(pred: JsPred): SeqProjection = ???
   def append(update: Update): Operation = ???
   def update(update: Update): Operation = ???
 
@@ -306,4 +377,19 @@ object JsonLenses {
 
   def unexpected(message: String) = Left(new RuntimeException(message))
   def outOfBounds(message: String) = Left(new IndexOutOfBoundsException(message))
+
+  def mapAllRight[T, U](l: List[T])(f: T => Validated[U]): Validated[Seq[U]] = {
+    def inner(l: List[T]): Validated[List[U]] = l match {
+      case head :: tail =>
+        for {
+          headM <- f(head)
+          tailM <- inner(tail)
+        } yield headM :: tailM
+      case Nil =>
+        Right(Nil)
+    }
+    inner(l)
+  }
+  def allRightF[T](l: Seq[Validated[T]]): Validated[Seq[T]] =
+    mapAllRight(l.toList)(identity)
 }

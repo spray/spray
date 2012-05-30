@@ -60,6 +60,31 @@ class JsonLensesSpec extends Specification with SpecHelpers {
           }
         }
       }
+      "all elements of an array" in {
+        "simple" in {
+          """[18, 23, 2, 5, 8, 3]""" extract elements.get[Int] must be_==(Seq(18, 23, 2, 5, 8, 3))
+        }
+        "which is a scalar element" in {
+          """{"a": [1, 2, 3, 4]}""" extract ("a" andThen elements).get[Int] must be_==(Seq(1, 2, 3, 4))
+        }
+        "field of an array element" in {
+          """[{"a": 1}, {"a": 2}]""" extract (elements andThen "a").get[Int] must be_==(Seq(1, 2))
+        }
+        "nested" in {
+          """[[1, 2], [3, 4]]""" extract (elements andThen elements).get[Int] must be_==(Seq(1, 2, 3, 4))
+        }
+        "if outer is no array" in {
+          """{"a": 5}""" extract (elements / "a").get[Int] must throwAn[Exception]("""Not a json array: {"a":5}""")
+          """{"a": 5}""" extract (elements andThen elements).get[Int] must throwAn[Exception]("""Not a json array: {"a":5}""")
+        }
+        "if inner is no array" in {
+          """[{}, {}]""" extract (elements andThen elements).get[Int] must throwAn[Exception]("""Not a json array: {}""")
+          """{"a": 5}""" extract ("a" andThen elements).get[Int] must throwAn[Exception]("""Not a json array: 5""")
+        }
+      }
+      /*"filtered elements of an array" in {
+
+      }*/
     }
 
     "modify" in {
