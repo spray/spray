@@ -94,7 +94,7 @@ object JsonLenses {
     def apply(idx: Int) = element(idx)
     def element(idx: Int) = this andThen JsonLenses.element(idx)
 
-    def mon: Monad[M]
+    def ops: Ops[M]
   }
 
   type ScalarProjection = Projection[Id]
@@ -102,28 +102,21 @@ object JsonLenses {
   type SeqProjection = Projection[Seq]
 
   trait Join[M1[_], M2[_], R[_]] {
-    def get(outer: Monad[M1], inner: Monad[M2]): Monad[R]
+    def get(outer: Ops[M1], inner: Ops[M2]): Ops[R]
   }
   object Join {
-    implicit def joinWithSeq[M2[_]]: Join[Seq, M2, Seq] = new Join[Seq, M2, Seq] {
-      def get(outer: Monad[Seq], inner: Monad[M2]): Monad[Seq] = outer
-    }
-    implicit def joinWithScalar[M2[_]]: Join[Id, M2, M2] = new Join[Id, M2, M2] {
-      def get(outer: Monad[Id], inner: Monad[M2]): Monad[M2] = inner
+    def apply[M1[_], M2[_], R[_]](f: ((Ops[M1], Ops[M2])) => Ops[R]): Join[M1, M2, R] = new Join[M1, M2, R] {
+      def get(outer: Ops[M1], inner: Ops[M2]): Ops[R] = f(outer, inner)
     }
 
-    implicit def joinWithOptionWithId = new Join[Option, Id, Option] {
-      def get(outer: Monad[Option], inner: Monad[Id]): Monad[Option] = outer
-    }
-    implicit def joinOptionWithOption = new Join[Option, Option, Option] {
-      def get(outer: Monad[Option], inner: Monad[Option]): Monad[Option] = outer
-    }
-    implicit def joinOptionWithSeq = new Join[Option, Seq, Seq] {
-      def get(outer: Monad[Option], inner: Monad[Seq]): Monad[Seq] = inner
-    }
+    implicit def joinWithSeq[M2[_]]: Join[Seq, M2, Seq] = Join(_._1)
+    implicit def joinWithScalar[M2[_]]: Join[Id, M2, M2] = Join(_._2)
+    implicit def joinWithOptionWithId: Join[Option, Id, Option] = Join(_._1)
+    implicit def joinOptionWithOption: Join[Option, Option, Option] = Join(_._1)
+    implicit def joinOptionWithSeq: Join[Option, Seq, Seq] = Join(_._2)
   }
 
-  trait Monad[M[_]] {
+  trait Ops[M[_]] {
     def flatMap[T, U](els: M[JsValue])(f: JsValue => Seq[U]): Seq[U]
     def allRight[T](v: Seq[Validated[T]]): Validated[M[T]]
     def swap[T](v: Validated[M[T]]): Seq[Validated[T]]
@@ -150,16 +143,16 @@ object JsonLenses {
     }
 
     def mapValue[T](value: M[JsValue])(f: JsValue => Validated[T]): Validated[M[T]] =
-      mon.allRight(mon.map(value)(f))
+      ops.allRight(ops.map(value)(f))
 
     def is[U: MonadicReader](f: (U) => Boolean): JsonLenses.JsPred = ???
 
     def andThen[M2[_], R[_]](next: Projection[M2])(implicit ev: Join[M2, M, R]): Projection[R] = new Joined(next) with ProjectionImpl[R] {
-      def mon: Monad[R] = ev.get(next.mon, outer.mon)
+      val ops: Ops[R] = ev.get(next.ops, outer.ops)
       def retr: JsValue => Validated[R[JsValue]] = parent =>
         for {
           outerV <- outer.retr(parent)
-          innerV <- mon.allRight(outer.mon.flatMap(outerV)(x => next.mon.swap(next.retr(x))))
+          innerV <- ops.allRight(outer.ops.flatMap(outerV)(x => next.ops.swap(next.retr(x))))
         } yield innerV
     }
   }
@@ -168,7 +161,7 @@ object JsonLenses {
     override def is[U: MonadicReader](f: U => Boolean): JsPred =
       value => getSecure[U] apply value exists f
 
-    def mon: Monad[Id] = new Monad[Id] {
+    def ops: Ops[Id] = new Ops[Id] {
       def flatMap[T, U](els: JsValue)(f: JsValue => Seq[U]): Seq[U] = f(els)
       def allRight[T](v: Seq[Validated[T]]): Validated[T] = v.head
       def swap[T](v: Validated[T]): Seq[Validated[T]] = Seq(v)
@@ -176,7 +169,7 @@ object JsonLenses {
   }
 
   trait OptProjectionImpl extends OptProjection with ProjectionImpl[Option] { outer =>
-    def mon: Monad[Option] = new Monad[Option] {
+    def ops: Ops[Option] = new Ops[Option] {
       def flatMap[T, U](els: Option[JsValue])(f: JsValue => Seq[U]): Seq[U] =
         els.toSeq.flatMap(f)
 
@@ -196,7 +189,7 @@ object JsonLenses {
   }
 
   trait SeqProjectionImpl extends SeqProjection with ProjectionImpl[Seq] { outer =>
-    def mon: Monad[Seq] = new Monad[Seq] {
+    def ops: Ops[Seq] = new Ops[Seq] {
       def flatMap[T, U](els: Seq[JsValue])(f: JsValue => Seq[U]): Seq[U] =
         els.flatMap(f)
 
