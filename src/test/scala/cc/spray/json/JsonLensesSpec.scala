@@ -93,7 +93,11 @@ class JsonLensesSpec extends Specification with SpecHelpers {
           """{"n": 12}""" update (n ! set(23)) must be_json( """{"n": 23}""")
         }
         "missing" in {
-          """{"n": {"b": 4}}""" update ("n" / "c" ! set(23)) must be_json( """{"n": {"b": 4, "c": 23}}""")
+          """{"n": {"b": 4}}""" update ("n" / "c" ! set(23)) must be_json("""{"n": {"b": 4, "c": 23}}""")
+        }
+        "twice" in {
+          val a = field("a")
+          """{"a": 5}""" update (a ! set(23) && a ! set(15)) must be_json("""{"a": 15}""")
         }
       }
       "update field" in {

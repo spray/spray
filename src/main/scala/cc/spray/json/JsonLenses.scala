@@ -41,10 +41,12 @@ object JsonLenses {
   }
   implicit def validateOption[T](o: Option[T]): ValidateOption[T] = ValidateOption(o)
 
-  trait Update {
+  trait Update { outer =>
     def apply(value: JsValue): JsValue
 
-    def &&(next: Update): Update = ???
+    def &&(next: Update): Update = new Update {
+      def apply(value: JsValue): JsValue = next(outer(value))
+    }
   }
 
   implicit def strToField(name: String): ScalarProjection = field(name)
