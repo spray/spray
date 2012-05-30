@@ -305,7 +305,7 @@ object JsonLenses {
 
   def set[T: JsonWriter](t: T): Operation = new Operation {
     def apply(value: SafeJsValue): SafeJsValue =
-      Right(jsonWriter[T].write(t))
+      Right(t.toJson)
   }
 
   trait MapOperation extends Operation {
@@ -316,7 +316,7 @@ object JsonLenses {
 
   def updated[T: MonadicReader: JsonWriter](f: T => T): Operation = new MapOperation {
     def apply(value: JsValue): SafeJsValue =
-      value.as[T] map (v => jsonWriter[T].write(f(v)))
+      value.as[T] map (v => f(v).toJson)
   }
 
   def append(update: Update): Operation = ???
