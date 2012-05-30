@@ -114,12 +114,48 @@ object JsonLenses {
   }
 
   trait Ops[M[_]] {
-    def flatMap[T, U](els: M[JsValue])(f: JsValue => Seq[U]): Seq[U]
+    def flatMap[T, U](els: M[T])(f: T => Seq[U]): Seq[U]
     def allRight[T](v: Seq[Validated[T]]): Validated[M[T]]
     def swap[T](v: Validated[M[T]]): Seq[Validated[T]]
 
-    def map[T, U](els: M[JsValue])(f: JsValue => U): Seq[U] =
+    def map[T, U](els: M[T])(f: T => U): Seq[U] =
       flatMap(els)(v => Seq(f(v)))
+  }
+  object Ops {
+    implicit def idOps: Ops[Id] = new Ops[Id] {
+      def flatMap[T, U](els: T)(f: T => Seq[U]): Seq[U] = f(els)
+      def allRight[T](v: Seq[Validated[T]]): Validated[T] = v.head
+      def swap[T](v: Validated[T]): Seq[Validated[T]] = Seq(v)
+    }
+    implicit def optionOps: Ops[Option] = new Ops[Option] {
+      def flatMap[T, U](els: Option[T])(f: T => Seq[U]): Seq[U] =
+        els.toSeq.flatMap(f)
+
+      def allRight[T](v: Seq[Validated[T]]): Validated[Option[T]] =
+        v match {
+          case Nil => Right(None)
+          case Seq(Right(x)) => Right(Some(x))
+          case Seq(Left(e)) => Left(e)
+        }
+
+      def swap[T](v: Validated[Option[T]]): Seq[Validated[T]] = v match {
+        case Right(Some(x)) => Seq(Right(x))
+        case Right(None) => Nil
+        case Left(e) => Seq(Left(e))
+      }
+    }
+    implicit def seqOps: Ops[Seq] = new Ops[Seq] {
+      def flatMap[T, U](els: Seq[T])(f: T => Seq[U]): Seq[U] =
+        els.flatMap(f)
+
+      def allRight[T](v: Seq[Validated[T]]): Validated[Seq[T]] =
+        allRightF(v)
+
+      def swap[T](x: Validated[Seq[T]]): Seq[Validated[T]] = x match {
+        case Right(x) => x.map(Right(_))
+        case Left(e) => List(Left(e))
+      }
+    }
   }
 
   trait ProjectionImpl[M[_]] extends Projection[M] { outer =>
@@ -142,7 +178,8 @@ object JsonLenses {
     def mapValue[T](value: M[JsValue])(f: JsValue => Validated[T]): Validated[M[T]] =
       ops.allRight(ops.map(value)(f))
 
-    def is[U: MonadicReader](f: (U) => Boolean): JsonLenses.JsPred = ???
+    def is[U: MonadicReader](f: U => Boolean): JsPred =
+      value => getSecure[U] apply value exists (x => ops.map(x)(f).forall(identity))
 
     def andThen[M2[_], R[_]](next: Projection[M2])(implicit ev: Join[M2, M, R]): Projection[R] = new Joined(next) with ProjectionImpl[R] {
       val ops: Ops[R] = ev.get(next.ops, outer.ops)
@@ -153,54 +190,9 @@ object JsonLenses {
         } yield innerV
     }
   }
+  abstract class Proj[M[_]](implicit val ops: Ops[M]) extends ProjectionImpl[M]
 
-  trait ScalarProjectionImpl extends ScalarProjection with ProjectionImpl[Id] { outer =>
-    override def is[U: MonadicReader](f: U => Boolean): JsPred =
-      value => getSecure[U] apply value exists f
-
-    def ops: Ops[Id] = new Ops[Id] {
-      def flatMap[T, U](els: JsValue)(f: JsValue => Seq[U]): Seq[U] = f(els)
-      def allRight[T](v: Seq[Validated[T]]): Validated[T] = v.head
-      def swap[T](v: Validated[T]): Seq[Validated[T]] = Seq(v)
-    }
-  }
-
-  trait OptProjectionImpl extends OptProjection with ProjectionImpl[Option] { outer =>
-    def ops: Ops[Option] = new Ops[Option] {
-      def flatMap[T, U](els: Option[JsValue])(f: JsValue => Seq[U]): Seq[U] =
-        els.toSeq.flatMap(f)
-
-      def allRight[T](v: Seq[Validated[T]]): Validated[Option[T]] =
-        v match {
-          case Nil => Right(None)
-          case Seq(Right(x)) => Right(Some(x))
-          case Seq(Left(e)) => Left(e)
-        }
-
-      def swap[T](v: Validated[Option[T]]): Seq[Validated[T]] = v match {
-        case Right(Some(x)) => Seq(Right(x))
-        case Right(None) => Nil
-        case Left(e) => Seq(Left(e))
-      }
-    }
-  }
-
-  trait SeqProjectionImpl extends SeqProjection with ProjectionImpl[Seq] { outer =>
-    def ops: Ops[Seq] = new Ops[Seq] {
-      def flatMap[T, U](els: Seq[JsValue])(f: JsValue => Seq[U]): Seq[U] =
-        els.flatMap(f)
-
-      def allRight[T](v: Seq[Validated[T]]): Validated[Seq[T]] =
-        allRightF(v)
-
-      def swap[T](x: Validated[Seq[T]]): Seq[Validated[T]] = x match {
-        case Right(x) => x.map(Right(_))
-        case Left(e) => List(Left(e))
-      }
-    }
-  }
-
-  def field(name: String): ScalarProjection = new ScalarProjectionImpl {
+  def field(name: String): ScalarProjection = new Proj[Id] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
       for {
         res <- f(getField(parent))
@@ -221,7 +213,7 @@ object JsonLenses {
     }
   }
 
-  def element(idx: Int): ScalarProjection = new ScalarProjectionImpl {
+  def element(idx: Int): ScalarProjection = new Proj[Id] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
       case JsArray(elements) =>
         if (idx < elements.size) {
@@ -246,14 +238,14 @@ object JsonLenses {
   /**
    * The identity projection which operates on the current element itself
    */
-  val value: ScalarProjection = new ScalarProjectionImpl {
+  val value: ScalarProjection = new Proj[Id] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
       f(Right(parent))
 
     def retr: JsValue => SafeJsValue = x => Right(x)
   }
 
-  def elements: SeqProjection = new SeqProjectionImpl {
+  def elements: SeqProjection = new Proj[Seq] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
       case JsArray(elements) =>
         mapAllRight(elements)(v => f(Right(v))) map (JsArray(_: _*))
@@ -265,7 +257,7 @@ object JsonLenses {
       case e@_ => unexpected("Not a json array: "+e)
     }
   }
-  def filter(pred: JsPred): SeqProjection = new SeqProjectionImpl {
+  def filter(pred: JsPred): SeqProjection = new Proj[Seq] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
       //case JsArray(elements) =>
 
@@ -279,7 +271,7 @@ object JsonLenses {
       case e@_ => unexpected("Not a json array: "+e)
     }
   }
-  def find(pred: JsPred): OptProjection = new OptProjectionImpl {
+  def find(pred: JsPred): OptProjection = new Proj[Option] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
       case JsArray(elements) =>
         elements.span(x => !pred(x)) match {
