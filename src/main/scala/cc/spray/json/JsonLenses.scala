@@ -87,11 +87,7 @@ object JsonLenses {
 
     def is[U: MonadicReader](f: U => Boolean): JsPred
 
-    def andThen[M2[_], R[_]](next: Projection[M2])(implicit ev: Join[M2, M, R]): Projection[R]
-
-    def /(fieldName: String) = this andThen fieldName
-    def apply(idx: Int) = element(idx)
-    def element(idx: Int) = this andThen JsonLenses.element(idx)
+    def /[M2[_], R[_]](next: Projection[M2])(implicit ev: Join[M2, M, R]): Projection[R]
 
     def ops: Ops[M]
   }
@@ -193,7 +189,7 @@ object JsonLenses {
     def is[U: MonadicReader](f: U => Boolean): JsPred =
       value => getSecure[U] apply value exists (x => ops.map(x)(f).forall(identity))
 
-    def andThen[M2[_], R[_]](next: Projection[M2])(implicit ev: Join[M2, M, R]): Projection[R] = new Joined(next) with ProjectionImpl[R] {
+    def /[M2[_], R[_]](next: Projection[M2])(implicit ev: Join[M2, M, R]): Projection[R] = new Joined(next) with ProjectionImpl[R] {
       val ops: Ops[R] = ev.get(next.ops, outer.ops)
       def retr: JsValue => Validated[R[JsValue]] = parent =>
         for {

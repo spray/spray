@@ -47,7 +47,7 @@ class JsonLensesSpec extends Specification with SpecHelpers {
           """["a", "b", 2, 5, 8, 3]""" extract JsonLenses.find(JsonLenses.value.is[String](_ == "unknown")).get[Int] must beNone
         }
         "nested finding" in {
-          val lens = JsonLenses.find("a".is[Int](_ == 12)) / "b" / "c" andThen JsonLenses.find(JsonLenses.value.is[Int](_ == 5))
+          val lens = JsonLenses.find("a".is[Int](_ == 12)) / "b" / "c" / JsonLenses.find(JsonLenses.value.is[Int](_ == 5))
 
           "existing" in {
             """[{"a": 12, "b": {"c": [2, 5]}}, 13]""" extract lens.get[Int] must beSome(5)
@@ -65,21 +65,21 @@ class JsonLensesSpec extends Specification with SpecHelpers {
           """[18, 23, 2, 5, 8, 3]""" extract elements.get[Int] must be_==(Seq(18, 23, 2, 5, 8, 3))
         }
         "which is a scalar element" in {
-          """{"a": [1, 2, 3, 4]}""" extract ("a" andThen elements).get[Int] must be_==(Seq(1, 2, 3, 4))
+          """{"a": [1, 2, 3, 4]}""" extract ("a" / elements).get[Int] must be_==(Seq(1, 2, 3, 4))
         }
         "field of an array element" in {
-          """[{"a": 1}, {"a": 2}]""" extract (elements andThen "a").get[Int] must be_==(Seq(1, 2))
+          """[{"a": 1}, {"a": 2}]""" extract (elements / "a").get[Int] must be_==(Seq(1, 2))
         }
         "nested" in {
-          """[[1, 2], [3, 4]]""" extract (elements andThen elements).get[Int] must be_==(Seq(1, 2, 3, 4))
+          """[[1, 2], [3, 4]]""" extract (elements / elements).get[Int] must be_==(Seq(1, 2, 3, 4))
         }
         "if outer is no array" in {
           """{"a": 5}""" extract (elements / "a").get[Int] must throwAn[Exception]("""Not a json array: {"a":5}""")
-          """{"a": 5}""" extract (elements andThen elements).get[Int] must throwAn[Exception]("""Not a json array: {"a":5}""")
+          """{"a": 5}""" extract (elements / elements).get[Int] must throwAn[Exception]("""Not a json array: {"a":5}""")
         }
         "if inner is no array" in {
-          """[{}, {}]""" extract (elements andThen elements).get[Int] must throwAn[Exception]("""Not a json array: {}""")
-          """{"a": 5}""" extract ("a" andThen elements).get[Int] must throwAn[Exception]("""Not a json array: 5""")
+          """[{}, {}]""" extract (elements / elements).get[Int] must throwAn[Exception]("""Not a json array: {}""")
+          """{"a": 5}""" extract ("a" / elements).get[Int] must throwAn[Exception]("""Not a json array: 5""")
         }
       }
       /*"filtered elements of an array" in {
@@ -142,7 +142,7 @@ class JsonLensesSpec extends Specification with SpecHelpers {
           )
         }
         "nested" in {
-          val lens = JsonLenses.find("a".is[Int](_ == 12)) / "b" / "c" andThen JsonLenses.find(JsonLenses.value.is[Int](_ == 5))
+          val lens = JsonLenses.find("a".is[Int](_ == 12)) / "b" / "c" / JsonLenses.find(JsonLenses.value.is[Int](_ == 5))
 
           "existing" in {
             """[{"a": 12, "b": {"c": [2, 5]}}, 13]""" update (lens ! set(42)) must be_json("""[{"a": 12, "b": {"c": [2, 42]}}, 13]""")
