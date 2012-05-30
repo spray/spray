@@ -53,9 +53,6 @@ object JsonLenses {
     def apply[M[_]](p: Projection[M]): M[T]
   }
 
-  trait A {
-    type X[_]
-  }
   case class RichJsValue(value: JsValue) {
     def update(updater: Update): JsValue = updater(value)
     def update[T: JsonWriter, M[_]](proj: Projection[M], pValue: T): JsValue = proj ! set(pValue) apply value
