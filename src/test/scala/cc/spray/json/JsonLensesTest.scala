@@ -20,14 +20,14 @@ object JsonLensesTest extends App {
   val json = JsonParser("test")
   val newJson = json("els" / "money") = 12
 
-  val i = json[Int]("els" / "money")
+  val i = json.extract[Int]("els" / "money")
 
-  ("els" / element(1) / "money").get[Int]: (JsValue => Int)
+  ("els" / element(1) / "money").get[Int] _: (JsValue => Int)
 
   ("els" / find("money".is[Int](_ < 30)) / "name").get[String]: (JsValue => Option[String])
 
-  ("els" / * / "money").get[Int]: (JsValue => Seq[Int])
-  ("els" / filter("money".is[Int](_ < 30)) / "name").get[String]: (JsValue => Seq[String])
+  ("els" / * / "money").get[Int] _: (JsValue => Seq[Int])
+  ("els" / filter("money".is[Int](_ < 30)) / "name").get[String] _: (JsValue => Seq[String])
   "els" / filter("money".is[Int](_ < 30)) / "name" ! updated[String]("Richman " + _)
 
   //: JsValue => JsValue

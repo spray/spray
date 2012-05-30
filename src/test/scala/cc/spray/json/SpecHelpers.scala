@@ -19,15 +19,5 @@ trait SpecHelpers {
     }
   }
 
-  case class RichTestString(string: String) {
-    def js = JsonParser(string)
-
-    def extract[T: MonadicReader]: Extractor[T] = js.extract[T]
-
-    def extract[T](f: JsValue => T): T = f(js)
-
-    def update(updater: Update): JsValue = updater(js)
-  }
-
-  implicit def richTestString(string: String): RichTestString = RichTestString(string)
+  implicit def richTestString(string: String): RichJsValue = RichJsValue(JsonParser(string))
 }

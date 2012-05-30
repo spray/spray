@@ -8,6 +8,12 @@ object JsonLenses {
   type Validated[T] = Either[Exception, T]
   type SafeJsValue = Validated[JsValue]
 
+  type Operation = SafeJsValue => SafeJsValue
+
+  type ScalarProjection = Projection[Id]
+  type OptProjection = Projection[Option]
+  type SeqProjection = Projection[Seq]
+
   implicit def rightBiasEither[A, B](e: Either[A, B]): Either.RightProjection[A, B] = e.right
 
   case class GetOrThrow[B](e: Either[Throwable, B]) {
@@ -41,7 +47,7 @@ object JsonLenses {
   }
   implicit def validateOption[T](o: Option[T]): ValidateOption[T] = ValidateOption(o)
 
-  trait Update { outer =>
+  trait Update extends (JsValue => JsValue) { outer =>
     def apply(value: JsValue): JsValue
 
     def &&(next: Update): Update = new Update {
@@ -50,19 +56,20 @@ object JsonLenses {
   }
 
   implicit def strToField(name: String): ScalarProjection = field(name)
-
-  trait Extractor[T] {
-    def apply[M[_]](p: Projection[M]): M[T]
-  }
+  implicit def symbolToField(sym: Symbol): ScalarProjection = field(sym.name)
 
   case class RichJsValue(value: JsValue) {
     def update(updater: Update): JsValue = updater(value)
-    def update[T: JsonWriter, M[_]](proj: Projection[M], pValue: T): JsValue = proj ! set(pValue) apply value
-    def extract[T](f: JsValue => T): T = f(value)
-    def extract[T: MonadicReader]: Extractor[T] = new Extractor[T] {
-      def apply[M[_]](p: Projection[M]): M[T] = p.get[T] apply value
-    }
-    def apply[T: MonadicReader](p: Projection[Id]): T = p.get[T] apply value
+    def update[T: JsonWriter, M[_]](lens: UpdateLens, pValue: T): JsValue = lens ! set(pValue) apply value
+
+    // This can't be simplified because we don't want the type constructor
+    // of projection to appear in the type paramater list.
+    def extract[T: MonadicReader](p: Projection[Id]): T =
+      p.get[T](value)
+    def extract[T: MonadicReader](p: Projection[Option]): Option[T] =
+      p.get[T](value)
+    def extract[T: MonadicReader](p: Projection[Seq]): Seq[T] =
+      p.get[T](value)
 
     def as[T: MonadicReader]: Validated[T] =
       implicitly[MonadicReader[T]].read(value)
@@ -70,31 +77,70 @@ object JsonLenses {
 
   implicit def updatable(value: JsValue): RichJsValue = RichJsValue(value)
 
-  trait Operation {
-    def apply(value: SafeJsValue): SafeJsValue
+  /**
+   * The UpdateLens is the central interface for updating a child element somewhere
+   * deep down a hierarchy of a JsValue.
+   */
+  trait UpdateLens {
+    /**
+     * Applies function `f` on the child of the `parent` denoted by this UpdateLens
+     * and returns a `Right` of the parent with the child element updated.
+     *
+     * The value passed to `f` may be `Left(e)` if the child could not be found
+     * in which case particular operations may still succeed. Function `f` may return
+     * `Left(error)` in case the operation fails.
+     *
+     * `updated` returns `Left(error)` if the update operation or any of any intermediate
+     * projections fail.
+     */
+    def updated(f: Operation)(parent: JsValue): SafeJsValue
+
+    def !(op: Operation): Update
   }
 
-  trait Updateable {
-    def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue
-  }
-  trait Projection[M[_]] extends Updateable {
+  /**
+   * The read lens can extract child values out of a JsValue hierarchy. A read lens
+   * is parameterized with a type constructor. This allows to extracts not only scalar
+   * values but also sequences or optional values.
+   * @tparam M
+   */
+  trait ReadLens[M[_]] {
+    /**
+     * Given a parent JsValue, tries to extract the child value.
+     * @return `Right(value)` if the projection succeeds. `Left(error)` if the projection
+     *        fails.
+     */
     def retr: JsValue => Validated[M[JsValue]]
-    def mapValue[T](value: M[JsValue])(f: JsValue => Validated[T]): Validated[M[T]]
 
-    def getSecure[T: MonadicReader]: JsValue => Validated[M[T]]
-    def get[T: MonadicReader]: JsValue => M[T]
-    def ![U](op: Operation): Update
+    /**
+     * Given a parent JsValue extracts and tries to convert the JsValue into
+     * a value of type `T`
+     */
+    def tryGet[T: MonadicReader](value: JsValue): Validated[M[T]]
 
+    /**
+     * Given a parent JsValue extracts and converts a JsValue into a value of
+     * type `T` or throws an exception.
+     */
+    def get[T: MonadicReader](value: JsValue): M[T]
+
+    /**
+     * Lifts a predicate for a converted value for this lens up to the
+     * parent level.
+     */
     def is[U: MonadicReader](f: U => Boolean): JsPred
+  }
 
+  /**
+   * A projection combines read and update functions of UpdateLens and ReadLens into
+   * combinable chunks.
+   * @tparam M
+   */
+  trait Projection[M[_]] extends UpdateLens with ReadLens[M] {
     def /[M2[_], R[_]](next: Projection[M2])(implicit ev: Join[M2, M, R]): Projection[R]
 
     def ops: Ops[M]
   }
-
-  type ScalarProjection = Projection[Id]
-  type OptProjection = Projection[Option]
-  type SeqProjection = Projection[Seq]
 
   trait Join[M1[_], M2[_], R[_]] {
     def get(outer: Ops[M1], inner: Ops[M2]): Ops[R]
@@ -167,36 +213,34 @@ object JsonLenses {
   }
 
   trait ProjectionImpl[M[_]] extends Projection[M] { outer =>
-    def getSecure[T: MonadicReader]: JsValue => Validated[M[T]] =
-      p => retr(p).flatMap(mapValue(_)(_.as[T]))
+    def tryGet[T: MonadicReader](p: JsValue): Validated[M[T]] =
+      retr(p).flatMap(mapValue(_)(_.as[T]))
 
-    def get[T: MonadicReader]: JsValue => M[T] =
-      p => getSecure[T].apply(p).getOrThrow
+    def get[T: MonadicReader](p: JsValue): M[T] =
+      tryGet[T](p).getOrThrow
 
-    def ![U](op: Operation): Update = new Update {
+    def !(op: Operation): Update = new Update {
       def apply(parent: JsValue): JsValue =
-        updated(op(_))(parent).getOrThrow
+        updated(op)(parent).getOrThrow
     }
 
-    abstract class Joined(next: Updateable) extends Updateable {
-      def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
-        outer.updated(_.flatMap(next.updated(f)))(parent)
-    }
+    def is[U: MonadicReader](f: U => Boolean): JsPred = value =>
+      tryGet[U](value) exists (x => ops.map(x)(f).forall(identity))
 
-    def mapValue[T](value: M[JsValue])(f: JsValue => Validated[T]): Validated[M[T]] =
-      ops.allRight(ops.map(value)(f))
-
-    def is[U: MonadicReader](f: U => Boolean): JsPred =
-      value => getSecure[U] apply value exists (x => ops.map(x)(f).forall(identity))
-
-    def /[M2[_], R[_]](next: Projection[M2])(implicit ev: Join[M2, M, R]): Projection[R] = new Joined(next) with ProjectionImpl[R] {
+    def /[M2[_], R[_]](next: Projection[M2])(implicit ev: Join[M2, M, R]): Projection[R] = new ProjectionImpl[R] {
       val ops: Ops[R] = ev.get(next.ops, outer.ops)
       def retr: JsValue => Validated[R[JsValue]] = parent =>
         for {
           outerV <- outer.retr(parent)
           innerV <- ops.allRight(outer.ops.flatMap(outerV)(x => next.ops.toSeq(next.retr(x))))
         } yield innerV
+
+      def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
+        outer.updated(_.flatMap(next.updated(f)))(parent)
     }
+
+    private[this] def mapValue[T](value: M[JsValue])(f: JsValue => Validated[T]): Validated[M[T]] =
+      ops.allRight(ops.map(value)(f))
   }
   abstract class Proj[M[_]](implicit val ops: Ops[M]) extends ProjectionImpl[M]
 
@@ -271,10 +315,10 @@ object JsonLenses {
 
   def filter(pred: JsPred): SeqProjection = new Proj[Seq] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
-      //case JsArray(elements) =>
+      case JsArray(elements) =>
+        ops.allRight(elements.map(x => if (pred(x)) f(Right(x)) else Right(x))).map(JsArray(_: _*))
 
-
-      case e@_ => unexpected("Not a json array: "+e)
+      case e@_ =>unexpected("Not a json array: "+e)
     }
 
     def retr: JsValue => Validated[Seq[JsValue]] = {
@@ -305,6 +349,7 @@ object JsonLenses {
 
   def set[T: JsonWriter](t: T): Operation = new Operation {
     def apply(value: SafeJsValue): SafeJsValue =
+      // ignore existence of old value
       Right(t.toJson)
   }
 

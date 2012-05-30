@@ -37,19 +37,19 @@ class JsonPathTests extends Specification with SpecHelpers {
 
   "Examples" should {
     "All authors" in {
-      json extract ("store" / "book" / * / "author").get[String] must be_==(Seq("Nigel Rees", "Evelyn Waugh"))
+      json.extract[String](("store" / "book" / * / "author")) must be_==(Seq("Nigel Rees", "Evelyn Waugh"))
     }
     "Author of first book" in {
-      json extract ("store" / "book" / element(0) / "author").get[String] must be_==("Nigel Rees")
+      json.extract[String](("store" / "book" / element(0) / "author")) must be_==("Nigel Rees")
     }
     "Books with category 'reference'" in {
-      json extract ("store" / "book" / filter("category".is[String](_ == "reference")) / "title").get[String] must be_==(Seq("Sayings of the Century"))
+      json.extract[String](("store" / "book" / filter("category".is[String](_ == "reference")) / "title")) must be_==(Seq("Sayings of the Century"))
     }
     "Books that cost more than 10 USD" in {
-      json extract ("store" / "book" / filter("price".is[Double](_ >= 10)) / "title").get[String] must be_==(Seq("Sword of Honour"))
+      json.extract[String](("store" / "book" / filter("price".is[Double](_ >= 10)) / "title")) must be_==(Seq("Sword of Honour"))
     }
     "All books that have isbn" in {
-      json extract ("store" / "book" / filter("isbn".is[JsValue](_ => true)) / "title").get[String] must be_==(Seq("Sword of Honour"))
+      json.extract[String](("store" / "book" / filter("isbn".is[JsValue](_ => true)) / "title")) must be_==(Seq("Sword of Honour"))
     }
     "All prices" in todo
   }
