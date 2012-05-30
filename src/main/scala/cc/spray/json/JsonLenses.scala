@@ -148,8 +148,18 @@ object JsonLenses {
       def flatMap[T, U](els: Seq[T])(f: T => Seq[U]): Seq[U] =
         els.flatMap(f)
 
-      def allRight[T](v: Seq[Validated[T]]): Validated[Seq[T]] =
-        allRightF(v)
+      def allRight[T](v: Seq[Validated[T]]): Validated[Seq[T]] = {
+        def inner(l: List[Validated[T]]): Validated[List[T]] = l match {
+          case head :: tail =>
+            for {
+              headM <- head
+              tailM <- inner(tail)
+            } yield headM :: tailM
+          case Nil =>
+            Right(Nil)
+        }
+        inner(v.toList)
+      }
 
       def toSeq[T](x: Validated[Seq[T]]): Seq[Validated[T]] = x match {
         case Right(x) => x.map(Right(_))
@@ -248,7 +258,7 @@ object JsonLenses {
   def elements: SeqProjection = new Proj[Seq] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
       case JsArray(elements) =>
-        mapAllRight(elements)(v => f(Right(v))) map (JsArray(_: _*))
+        ops.allRight(elements.map(x => f(Right(x)))).map(JsArray(_: _*))
       case e@_ => unexpected("Not a json array: "+e)
     }
 
@@ -316,19 +326,4 @@ object JsonLenses {
 
   def unexpected(message: String) = Left(new RuntimeException(message))
   def outOfBounds(message: String) = Left(new IndexOutOfBoundsException(message))
-
-  def mapAllRight[T, U](l: List[T])(f: T => Validated[U]): Validated[Seq[U]] = {
-    def inner(l: List[T]): Validated[List[U]] = l match {
-      case head :: tail =>
-        for {
-          headM <- f(head)
-          tailM <- inner(tail)
-        } yield headM :: tailM
-      case Nil =>
-        Right(Nil)
-    }
-    inner(l)
-  }
-  def allRightF[T](l: Seq[Validated[T]]): Validated[Seq[T]] =
-    mapAllRight(l.toList)(identity)
 }
