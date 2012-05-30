@@ -37,7 +37,7 @@ class JsonPathTests extends Specification with SpecHelpers {
 
   "Examples" should {
     "All authors" in {
-      json extract ("store" / "book" / elements / "author").get[String] must be_==(Seq("Nigel Rees", "Evelyn Waugh"))
+      json extract ("store" / "book" / * / "author").get[String] must be_==(Seq("Nigel Rees", "Evelyn Waugh"))
     }
     "Author of first book" in {
       json extract ("store" / "book" / element(0) / "author").get[String] must be_==("Nigel Rees")

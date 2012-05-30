@@ -253,7 +253,7 @@ object JsonLenses {
     def retr: JsValue => SafeJsValue = x => Right(x)
   }
 
-  def elements: SeqProjection = new Proj[Seq] {
+  val elements: SeqProjection = new Proj[Seq] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
       case JsArray(elements) =>
         ops.allRight(elements.map(x => f(Right(x)))).map(JsArray(_: _*))
@@ -265,6 +265,10 @@ object JsonLenses {
       case e@_ => unexpected("Not a json array: "+e)
     }
   }
+
+  /** Alias for `elements` */
+  def * = elements
+
   def filter(pred: JsPred): SeqProjection = new Proj[Seq] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
       //case JsArray(elements) =>
