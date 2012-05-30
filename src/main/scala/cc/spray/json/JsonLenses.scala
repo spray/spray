@@ -116,7 +116,7 @@ object JsonLenses {
   trait Ops[M[_]] {
     def flatMap[T, U](els: M[T])(f: T => Seq[U]): Seq[U]
     def allRight[T](v: Seq[Validated[T]]): Validated[M[T]]
-    def swap[T](v: Validated[M[T]]): Seq[Validated[T]]
+    def toSeq[T](v: Validated[M[T]]): Seq[Validated[T]]
 
     def map[T, U](els: M[T])(f: T => U): Seq[U] =
       flatMap(els)(v => Seq(f(v)))
@@ -125,7 +125,7 @@ object JsonLenses {
     implicit def idOps: Ops[Id] = new Ops[Id] {
       def flatMap[T, U](els: T)(f: T => Seq[U]): Seq[U] = f(els)
       def allRight[T](v: Seq[Validated[T]]): Validated[T] = v.head
-      def swap[T](v: Validated[T]): Seq[Validated[T]] = Seq(v)
+      def toSeq[T](v: Validated[T]): Seq[Validated[T]] = Seq(v)
     }
     implicit def optionOps: Ops[Option] = new Ops[Option] {
       def flatMap[T, U](els: Option[T])(f: T => Seq[U]): Seq[U] =
@@ -138,7 +138,7 @@ object JsonLenses {
           case Seq(Left(e)) => Left(e)
         }
 
-      def swap[T](v: Validated[Option[T]]): Seq[Validated[T]] = v match {
+      def toSeq[T](v: Validated[Option[T]]): Seq[Validated[T]] = v match {
         case Right(Some(x)) => Seq(Right(x))
         case Right(None) => Nil
         case Left(e) => Seq(Left(e))
@@ -151,7 +151,7 @@ object JsonLenses {
       def allRight[T](v: Seq[Validated[T]]): Validated[Seq[T]] =
         allRightF(v)
 
-      def swap[T](x: Validated[Seq[T]]): Seq[Validated[T]] = x match {
+      def toSeq[T](x: Validated[Seq[T]]): Seq[Validated[T]] = x match {
         case Right(x) => x.map(Right(_))
         case Left(e) => List(Left(e))
       }
@@ -186,7 +186,7 @@ object JsonLenses {
       def retr: JsValue => Validated[R[JsValue]] = parent =>
         for {
           outerV <- outer.retr(parent)
-          innerV <- ops.allRight(outer.ops.flatMap(outerV)(x => next.ops.swap(next.retr(x))))
+          innerV <- ops.allRight(outer.ops.flatMap(outerV)(x => next.ops.toSeq(next.retr(x))))
         } yield innerV
     }
   }
