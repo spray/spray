@@ -25,7 +25,7 @@ private[parser] trait AuthorizationHeader {
   this: Parser with ProtocolParameterRules with AdditionalRules =>
 
   def AUTHORIZATION = rule {
-    CredentialDef ~~> HttpHeaders.`Authorization` 
+    CredentialDef ~ EOI ~~> HttpHeaders.`Authorization`
   }
   
   def CredentialDef = rule {
@@ -37,7 +37,7 @@ private[parser] trait AuthorizationHeader {
   }
   
   def BasicCookie = rule {
-    oneOrMore(anyOf(Base64.rfc2045.getAlphabet))
+    oneOrMore(anyOf(Base64.rfc2045.getAlphabet) | ch('='))
   }
   
   def OtherCredentialDef = rule (

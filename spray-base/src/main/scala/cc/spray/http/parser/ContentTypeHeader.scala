@@ -26,11 +26,7 @@ private[parser] trait ContentTypeHeader {
   this: Parser with ProtocolParameterRules with CommonActions =>
 
   def CONTENT_TYPE = rule (
-    MediaTypeDecl ~ EOI
-  )
-  
-  def MediaTypeDecl = rule (
-    MediaTypeDef ~~> (createContentTypeHeader(_, _, _))
+    MediaTypeDef ~ EOI ~~> (createContentTypeHeader(_, _, _))
   )
   
   private def createContentTypeHeader(mainType: String, subType: String, params: Map[String, String]) = {
