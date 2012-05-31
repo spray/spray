@@ -6,15 +6,15 @@ package lenses
  *
  * Supported containers are
  *
- *   * `Id` for scalar values
- *   * `Option` for optional values
- *   * `Seq` for a vector of values
+ *   - `Id` for scalar values
+ *   - `Option` for optional values
+ *   - `Seq` for a vector of values
  *
  * Those container types form an ordering from most specific to most abstract:
  *
- *   * `Id` contains always one value
- *   * `Option` contains always zero or one value
- *   * `Seq` can contain any number of values
+ *   - `Id` contains always one value
+ *   - `Option` contains always zero or one value
+ *   - `Seq` can contain any number of values
  *
  * The rule to determine what the result type of joining two container types is that the result
  * is as generic as the more generic of both of the input types.

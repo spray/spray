@@ -1,6 +1,10 @@
 package cc.spray.json
 package lenses
 
+/**
+ * The AST for a json-path. Basically follows the specification at
+ * [[http://goessner.net/articles/JsonPath/]]
+ */
 object JsonPath {
   sealed trait Path
   case object Root extends Path

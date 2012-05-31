@@ -4,6 +4,10 @@ package lenses
 import org.parboiled.scala._
 import org.parboiled.errors.{ErrorUtils, ParsingException}
 
+/**
+ * A parser for json-path expression as specified here:
+ * [[http://goessner.net/articles/JsonPath/]]
+ */
 object JsonPathParser extends Parser {
   def JsonPathExpr = rule { Path ~ EOI }
 

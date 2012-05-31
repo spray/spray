@@ -2,6 +2,9 @@ package cc.spray.json
 package lenses
 
 trait ScalarLenses {
+  /**
+   * Accesses a field of a JsObject.
+   */
   def field(name: String): ScalarProjection = new Proj[Id] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
       for (updatedValue <- f(retr(parent)))
@@ -18,6 +21,9 @@ trait ScalarLenses {
     }
   }
 
+  /**
+   * Accesses an element of a JsArray.
+   */
   def element(idx: Int): ScalarProjection = new Proj[Id] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
       case JsArray(elements) =>

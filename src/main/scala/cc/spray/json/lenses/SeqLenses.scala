@@ -2,6 +2,10 @@ package cc.spray.json
 package lenses
 
 trait SeqLenses {
+  /**
+   * The projection which just converts another Projection into one of a
+   * Seq value.
+   */
   val asSeq: SeqProjection = new Proj[Seq] {
     def updated(f: Operation)(parent: JsValue): SafeJsValue =
       f(Right(parent))
@@ -9,6 +13,9 @@ trait SeqLenses {
     def retr: JsValue => Validated[Seq[JsValue]] = x => Right(Seq(x))
   }
 
+  /**
+   * All the elements of a JsArray.
+   */
   val elements: SeqProjection = new Proj[Seq] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
       case JsArray(elements) =>
@@ -25,6 +32,9 @@ trait SeqLenses {
   /**Alias for `elements`*/
   def * = elements
 
+  /**
+   * All the values of a JsArray which match the predicate.
+   */
   def filter(pred: JsPred): SeqProjection = new Proj[Seq] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
       case JsArray(elements) =>

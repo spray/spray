@@ -2,7 +2,9 @@ package cc.spray.json
 package lenses
 
 trait JsonPathIntegration { self: ScalarLenses with SeqLenses =>
-
+  /**
+   * Create a projection from a json-path expression.
+   */
   def fromPath(path: String): Projection[Seq] =
     fromPath(JsonPathParser(path))
 
