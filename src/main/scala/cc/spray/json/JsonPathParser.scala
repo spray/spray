@@ -2,7 +2,6 @@ package cc.spray.json
 
 import org.parboiled.scala._
 import org.parboiled.errors.{ErrorUtils, ParsingException}
-import com.sun.xml.internal.bind.WhiteSpaceProcessor
 
 object JsonPathParser extends Parser {
   def JsonPathExpr = rule { Path ~ EOI }
@@ -42,24 +41,28 @@ object JsonPathParser extends Parser {
   }
 
   def Predicate: Rule1[JsonPath.Predicate] = rule {
-    Lt | Eq | Exists
+    Lt | Gt | Eq | Exists
   }
   def Eq: Rule1[JsonPath.Eq] = rule { op("==")(JsonPath.Eq) }
   def Lt: Rule1[JsonPath.Lt] = rule { op("<")(JsonPath.Lt) }
+  def Gt: Rule1[JsonPath.Gt] = rule { op(">")(JsonPath.Gt) }
   def Exists: Rule1[JsonPath.Exists] = rule {
     Path ~~> JsonPath.Exists
   }
 
-  def op[T](op: String)(cons: (JsonPath.Expr, JsonPath.Expr) => T) =
-    Expr ~ WhiteSpace ~ op ~ WhiteSpace ~ Expr ~~> cons
+  def op[T](op: String)(cons: (JsonPath.Expr, JsonPath.SimpleExpr) => T) =
+    Expr ~ WhiteSpace ~ op ~ WhiteSpace ~ SimpleExpr ~~> cons
 
   def Expr: Rule1[JsonPath.Expr] = rule {
     Path ~~> JsonPath.PathExpr |
-    Constant
+    SimpleExpr
   }
-  def Constant: Rule1[JsonPath.Constant] = rule {
-    JsonParser.Integer ~> (d => JsonPath.Constant(d.toInt)) |
-    SingleQuotedString ~~> JsonPath.Constant
+  def SimpleExpr: Rule1[JsonPath.SimpleExpr] = rule {
+    JsConstant ~~> JsonPath.Constant
+  }
+  def JsConstant: Rule1[JsValue] = rule {
+    JsonParser.JsonNumber |
+    SingleQuotedString ~~> (JsString(_))
   }
 
   val WhiteSpaceChars = " \n\r\t\f"
@@ -98,11 +101,31 @@ object JsonPath {
   case class ByPredicate(expr: Predicate) extends Projection
 
   sealed trait Predicate
-  case class Eq(expr1: Expr, expr2: Expr) extends Predicate
-  case class Lt(expr1: Expr, expr2: Expr) extends Predicate
+  sealed trait BinOpPredicate extends Predicate {
+    def expr1: Expr
+    def expr2: SimpleExpr
+
+    def predicate(v1: JsValue, v2: JsValue): Boolean
+  }
+  case class Eq(expr1: Expr, expr2: SimpleExpr) extends BinOpPredicate {
+    def predicate(v1: JsValue, v2: JsValue): Boolean = v1 == v2
+  }
+  case class Lt(expr1: Expr, expr2: SimpleExpr) extends BinOpPredicate {
+    def predicate(v1: JsValue, v2: JsValue): Boolean = (v1, v2) match {
+      case (JsNumber(n1), JsNumber(n2)) => n1 < n2
+      case _ => false
+    }
+  }
+  case class Gt(expr1: Expr, expr2: SimpleExpr) extends BinOpPredicate {
+    def predicate(v1: JsValue, v2: JsValue): Boolean = (v1, v2) match {
+      case (JsNumber(n1), JsNumber(n2)) => n1 > n2
+      case _ => false
+    }
+  }
   case class Exists(path: Path) extends Predicate
 
   sealed trait Expr
+  sealed trait SimpleExpr extends Expr
   case class PathExpr(path: Path) extends Expr
-  case class Constant(value: Any) extends Expr
+  case class Constant(value: JsValue) extends SimpleExpr
 }

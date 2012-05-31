@@ -24,10 +24,10 @@ class JsonPathSpecs extends Specification {
       }
       "by predicate" in {
         "eq" in {
-          parse("$[?(@.id == 'test')]") must be_==(Selection(Root, ByPredicate(Eq(PathExpr(Selection(Root, ByField("id"))), Constant("test")))))
+          parse("$[?(@.id == 'test')]") must be_==(Selection(Root, ByPredicate(Eq(PathExpr(Selection(Root, ByField("id"))), Constant(JsString("test"))))))
         }
         "lt" in {
-          parse("$[?(@.id < 12)]") must be_==(Selection(Root, ByPredicate(Lt(PathExpr(Selection(Root, ByField("id"))), Constant(12)))))
+          parse("$[?(@.id < 12)]") must be_==(Selection(Root, ByPredicate(Lt(PathExpr(Selection(Root, ByField("id"))), Constant(JsNumber(12))))))
         }
         "exists" in {
           parse("$[?(@.id)]") must be_==(Selection(Root, ByPredicate(Exists(Selection(Root, ByField("id"))))))
