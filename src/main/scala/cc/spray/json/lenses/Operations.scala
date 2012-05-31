@@ -14,7 +14,7 @@ trait Operations {
     def apply(value: SafeJsValue): SafeJsValue = value.flatMap(apply)
   }
 
-  def updated[T: MonadicReader : JsonWriter](f: T => T): Operation = new MapOperation {
+  def updated[T: Reader : JsonWriter](f: T => T): Operation = new MapOperation {
     def apply(value: JsValue): SafeJsValue =
       value.as[T] map (v => f(v).toJson)
   }

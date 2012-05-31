@@ -19,17 +19,17 @@ trait ReadLens[M[_]] {
    * Given a parent JsValue extracts and tries to convert the JsValue into
    * a value of type `T`
    */
-  def tryGet[T: MonadicReader](value: JsValue): Validated[M[T]]
+  def tryGet[T: Reader](value: JsValue): Validated[M[T]]
 
   /**
    * Given a parent JsValue extracts and converts a JsValue into a value of
    * type `T` or throws an exception.
    */
-  def get[T: MonadicReader](value: JsValue): M[T]
+  def get[T: Reader](value: JsValue): M[T]
 
   /**
    * Lifts a predicate for a converted value for this lens up to the
    * parent level.
    */
-  def is[U: MonadicReader](f: U => Boolean): JsPred
+  def is[U: Reader](f: U => Boolean): JsPred
 }

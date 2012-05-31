@@ -27,12 +27,12 @@ package object lenses {
 
   implicit def orThrow[B](e: Either[Throwable, B]): GetOrThrow[B] = GetOrThrow(e)
 
-  trait MonadicReader[T] {
+  trait Reader[T] {
     def read(js: JsValue): Validated[T]
   }
 
-  object MonadicReader {
-    implicit def safeMonadicReader[T: JsonReader]: MonadicReader[T] = new MonadicReader[T] {
+  object Reader {
+    implicit def safeMonadicReader[T: JsonReader]: Reader[T] = new Reader[T] {
       def read(js: JsValue): Validated[T] =
         safe(js.convertTo[T])
     }
@@ -62,17 +62,17 @@ package object lenses {
 
     // This can't be simplified because we don't want the type constructor
     // of projection to appear in the type paramater list.
-    def extract[T: MonadicReader](p: Projection[Id]): T =
+    def extract[T: Reader](p: Projection[Id]): T =
       p.get[T](value)
 
-    def extract[T: MonadicReader](p: Projection[Option]): Option[T] =
+    def extract[T: Reader](p: Projection[Option]): Option[T] =
       p.get[T](value)
 
-    def extract[T: MonadicReader](p: Projection[Seq]): Seq[T] =
+    def extract[T: Reader](p: Projection[Seq]): Seq[T] =
       p.get[T](value)
 
-    def as[T: MonadicReader]: Validated[T] =
-      implicitly[MonadicReader[T]].read(value)
+    def as[T: Reader]: Validated[T] =
+      implicitly[Reader[T]].read(value)
   }
 
   implicit def updatable(value: JsValue): RichJsValue = RichJsValue(value)

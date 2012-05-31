@@ -25,10 +25,10 @@ trait Projection[M[_]] extends UpdateLens with ReadLens[M] {
  */
 trait ProjectionImpl[M[_]] extends Projection[M] {
   outer =>
-  def tryGet[T: MonadicReader](p: JsValue): Validated[M[T]] =
+  def tryGet[T: Reader](p: JsValue): Validated[M[T]] =
     retr(p).flatMap(mapValue(_)(_.as[T]))
 
-  def get[T: MonadicReader](p: JsValue): M[T] =
+  def get[T: Reader](p: JsValue): M[T] =
     tryGet[T](p).getOrThrow
 
   def !(op: Operation): Update = new Update {
@@ -36,7 +36,7 @@ trait ProjectionImpl[M[_]] extends Projection[M] {
       updated(op)(parent).getOrThrow
   }
 
-  def is[U: MonadicReader](f: U => Boolean): JsPred = value =>
+  def is[U: Reader](f: U => Boolean): JsPred = value =>
     tryGet[U](value) exists (x => ops.map(x)(f).forall(identity))
 
   def /[M2[_], R[_]](next: Projection[M2])(implicit ev: Join[M2, M, R]): Projection[R] = new ProjectionImpl[R] {
