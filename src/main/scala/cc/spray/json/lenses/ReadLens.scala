@@ -29,7 +29,8 @@ trait ReadLens[M[_]] {
 
   /**
    * Lifts a predicate for a converted value for this lens up to the
-   * parent level.
+   * parent level. The returned predicate will return false for values
+   * which fail to read.
    */
   def is[U: Reader](f: U => Boolean): JsPred
 }
