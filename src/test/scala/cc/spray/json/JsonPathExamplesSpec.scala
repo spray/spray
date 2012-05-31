@@ -7,7 +7,7 @@ package cc.spray.json
 
 import org.specs2.mutable.Specification
 
-class JsonPathTests extends Specification with SpecHelpers {
+class JsonPathExamplesSpec extends Specification with SpecHelpers {
   import JsonLenses._
   import DefaultJsonProtocol._
 
