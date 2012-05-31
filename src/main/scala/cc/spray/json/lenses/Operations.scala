@@ -24,9 +24,9 @@ trait Operations {
   }
 
   /**
-   * The `updated` operation applies a function on the (converted) value
+   * The `modify` operation applies a function on the (converted) value
    */
-  def updated[T: Reader : JsonWriter](f: T => T): Operation = new MapOperation {
+  def modify[T: Reader : JsonWriter](f: T => T): Operation = new MapOperation {
     def apply(value: JsValue): SafeJsValue =
       value.as[T] map (v => f(v).toJson)
   }

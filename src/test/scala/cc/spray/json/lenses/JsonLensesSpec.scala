@@ -105,13 +105,13 @@ class JsonLensesSpec extends Specification with SpecHelpers {
       }
       "update field" in {
         "existing" in {
-          """{"n": 12}""" update (n ! updated[Int](_ + 1)) must be_json( """{"n": 13}""")
+          """{"n": 12}""" update (n ! modify[Int](_ + 1)) must be_json( """{"n": 13}""")
         }
         "wrong type" in {
-          """{"n": 12}""" update (n ! updated[String](_ + "test")) must throwA[DeserializationException]("Expected String as JsString, but got 12")
+          """{"n": 12}""" update (n ! modify[String](_ + "test")) must throwA[DeserializationException]("Expected String as JsString, but got 12")
         }
         "missing" in {
-          """{"n": 12}""" update (field("z") ! updated[Int](_ + 1)) must throwAn[Exception]( """Expected field 'z' in '{"n":12}'""")
+          """{"n": 12}""" update (field("z") ! modify[Int](_ + 1)) must throwAn[Exception]( """Expected field 'z' in '{"n":12}'""")
         }
       }
       "set field of member" in {
@@ -119,10 +119,10 @@ class JsonLensesSpec extends Specification with SpecHelpers {
       }
       "update field of member" in {
         "existing" in {
-          """{"n": {"b": 4}}""" update ("n" / "b" ! updated[Int](1 +)) must be_json( """{"n": {"b": 5}}""")
+          """{"n": {"b": 4}}""" update ("n" / "b" ! modify[Int](1 +)) must be_json( """{"n": {"b": 5}}""")
         }
         "parent missing" in {
-          """{"x": {"b": 4}}""" update ("n" / "b" ! updated[Int](1 +)) must throwAn[Exception]( """Expected field 'n' in '{"x":{"b":4}}'""")
+          """{"x": {"b": 4}}""" update ("n" / "b" ! modify[Int](1 +)) must throwAn[Exception]( """Expected field 'n' in '{"x":{"b":4}}'""")
         }
       }
       "set element of array" in {

@@ -17,7 +17,7 @@ object JsonLensesTest extends App {
   "els" / element(1) ! update {
     "money" ! set(38) &&
       "name" ! set("Testperson")
-  } && "n" ! updated[Int](_ + 1)
+  } && "n" ! modify[Int](_ + 1)
 
   val json = JsonParser("test")
   val newJson = json("els" / "money") = 12
@@ -30,12 +30,12 @@ object JsonLensesTest extends App {
 
   ("els" / * / "money").get[Int] _: (JsValue => Seq[Int])
   ("els" / filter("money".is[Int](_ < 30)) / "name").get[String] _: (JsValue => Seq[String])
-  "els" / filter("money".is[Int](_ < 30)) / "name" ! updated[String]("Richman " + _)
+  "els" / filter("money".is[Int](_ < 30)) / "name" ! modify[String]("Richman " + _)
 
   //: JsValue => JsValue
 
   def updateMoney(x: Int) =
-    "money" ! updated[Int](_ + x)
+    "money" ! modify[Int](_ + x)
 
   "els" / * ! update(updateMoney(12))
   "els" / * ! extract("name") {
