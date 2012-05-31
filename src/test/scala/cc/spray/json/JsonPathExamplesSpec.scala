@@ -36,21 +36,43 @@ class JsonPathExamplesSpec extends Specification with SpecHelpers {
     """.stripMargin)
 
   "Examples" should {
-    "All authors" in {
-      json.extract[String](("store" / "book" / * / "author")) must be_==(Seq("Nigel Rees", "Evelyn Waugh"))
+    "with Scala syntax" in {
+      "All authors" in {
+        json.extract[String](("store" / "book" / * / "author")) must be_==(Seq("Nigel Rees", "Evelyn Waugh"))
+      }
+      "Author of first book" in {
+        json.extract[String](("store" / "book" / element(0) / "author")) must be_==("Nigel Rees")
+      }
+      "Books with category 'reference'" in {
+        json.extract[String](("store" / "book" / filter("category".is[String](_ == "reference")) / "title")) must be_==(Seq("Sayings of the Century"))
+      }
+      "Books that cost more than 10 USD" in {
+        json.extract[String](("store" / "book" / filter("price".is[Double](_ >= 10)) / "title")) must be_==(Seq("Sword of Honour"))
+      }
+      "All books that have isbn" in {
+        json.extract[String](("store" / "book" / filter("isbn".is[JsValue](_ => true)) / "title")) must be_==(Seq("Sword of Honour"))
+      }
+      "All prices" in todo
     }
-    "Author of first book" in {
-      json.extract[String](("store" / "book" / element(0) / "author")) must be_==("Nigel Rees")
+    "With Json-Path syntax" in {
+      import JsonLenses.fromPath
+
+      "All authors" in {
+        json.extract[String](fromPath("$.store.book[*].author")) must be_==(Seq("Nigel Rees", "Evelyn Waugh"))
+      }
+      "Author of first book" in {
+        json.extract[String](fromPath("$.store.book[0].author")) must be_==(Seq("Nigel Rees"))
+      }
+      "Books with category 'reference'" in {
+        json.extract[String](fromPath("$.store.book[?(@.category == 'reference')].title")) must be_==(Seq("Sayings of the Century"))
+      }
+      "Books that cost more than 10 USD" in {
+        json.extract[String](fromPath("$.store.book[?(@.price > 10)].title")) must be_==(Seq("Sword of Honour"))
+      }
+      "All books that have isbn" in {
+        json.extract[String](fromPath("$.store.book[?(@.isbn)].title")) must be_==(Seq("Sword of Honour"))
+      }
+      "All prices" in todo
     }
-    "Books with category 'reference'" in {
-      json.extract[String](("store" / "book" / filter("category".is[String](_ == "reference")) / "title")) must be_==(Seq("Sayings of the Century"))
-    }
-    "Books that cost more than 10 USD" in {
-      json.extract[String](("store" / "book" / filter("price".is[Double](_ >= 10)) / "title")) must be_==(Seq("Sword of Honour"))
-    }
-    "All books that have isbn" in {
-      json.extract[String](("store" / "book" / filter("isbn".is[JsValue](_ => true)) / "title")) must be_==(Seq("Sword of Honour"))
-    }
-    "All prices" in todo
   }
 }
