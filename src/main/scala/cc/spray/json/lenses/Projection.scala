@@ -4,9 +4,14 @@ package lenses
 /**
  * A projection combines read and update functions of UpdateLens and ReadLens into
  * combinable chunks.
- * @tparam M
+ *
+ * A projection can either operate on a scalar value, or on an optional value, or on a
+ * sequence value. This is denoted by the `M[_]` type constructor.
  */
 trait Projection[M[_]] extends UpdateLens with ReadLens[M] {
+  /**
+   * Combines two projections.
+   */
   def /[M2[_], R[_]](next: Projection[M2])(implicit ev: Join[M2, M, R]): Projection[R]
 
   def toSeq: Projection[Seq]

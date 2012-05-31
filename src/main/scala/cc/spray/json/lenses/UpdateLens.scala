@@ -1,8 +1,7 @@
 package cc.spray.json
 package lenses
 
-trait Update extends (JsValue => JsValue) {
-  outer =>
+trait Update extends (JsValue => JsValue) { outer =>
   def apply(value: JsValue): JsValue
 
   def &&(next: Update): Update = new Update {

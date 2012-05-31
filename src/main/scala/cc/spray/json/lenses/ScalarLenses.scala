@@ -4,24 +4,17 @@ package lenses
 trait ScalarLenses {
   def field(name: String): ScalarProjection = new Proj[Id] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
-      for {
-        res <- f(getField(parent))
-      }
-      yield JsObject(fields = parent.asJsObject.fields + (name -> res))
+      for (updatedValue <- f(retr(parent)))
+        // asJsObject is already guarded by getField above, FIXME: is it really?
+        yield JsObject(fields = parent.asJsObject.fields + (name -> updatedValue))
 
-    def retr: JsValue => SafeJsValue = v =>
-      getField(v)
-
-    def getField(v: JsValue): SafeJsValue = asObj(v) flatMap {
-      o =>
-        o.fields.get(name).getOrError("Expected field '%s' in '%s'" format(name, v))
+    def retr: JsValue => SafeJsValue = v => asObj(v) flatMap {
+      _.fields.get(name).getOrError("Expected field '%s' in '%s'" format(name, v))
     }
 
     def asObj(v: JsValue): Validated[JsObject] = v match {
-      case o: JsObject =>
-        Right(o)
-      case e@_ =>
-        unexpected("Not a json object: " + e)
+      case o: JsObject => Right(o)
+      case e@_         => unexpected("Not a json object: " + e)
     }
   }
 
