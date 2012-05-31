@@ -12,7 +12,8 @@ It has the following features
 ### Example
 
 Given this example json document:
-```json
+```scala
+val json = """
 { "store": {
     "book": [
       { "category": "reference",
@@ -32,7 +33,7 @@ Given this example json document:
       "price": 19.95
     }
   }
-}
+}""".asJson
 ```
 
 All authors in this document are addressed by
@@ -44,7 +45,6 @@ In _json-lenses_ speak this is called a _projection_. You can use a projection t
 values.
 
 ```scala
-val json = // read and parse json from somewhere
 val authorNames = json.extract[String](allAuthors)
 ```
 
