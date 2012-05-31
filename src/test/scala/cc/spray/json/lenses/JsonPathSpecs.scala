@@ -1,8 +1,10 @@
 package cc.spray.json
+package lenses
 
 import org.specs2.mutable.Specification
 
 class JsonPathSpecs extends Specification {
+
   import JsonPath._
 
   "JsonPath parser" should {
