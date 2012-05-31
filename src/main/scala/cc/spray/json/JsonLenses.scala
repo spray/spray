@@ -27,17 +27,19 @@ object JsonLenses {
   trait MonadicReader[T] {
     def read(js: JsValue): Validated[T]
   }
+  object MonadicReader {
+    implicit def safeMonadicReader[T: JsonReader]: MonadicReader[T] = new MonadicReader[T] {
+      def read(js: JsValue): Validated[T] =
+        safe(js.convertTo[T])
+      }
+  }
+
   def safe[T](body: => T): Validated[T] =
     try {
       Right(body)
     } catch {
       case e: Exception => Left(e)
     }
-
-  implicit def safeReader[T: JsonReader]: MonadicReader[T] = new MonadicReader[T] {
-    def read(js: JsValue): Validated[T] =
-      safe(js.convertTo[T])
-  }
 
   case class ValidateOption[T](option: Option[T]) {
     def getOrError(message: => String): Validated[T] = option match {
