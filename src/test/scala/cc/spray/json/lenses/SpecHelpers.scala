@@ -1,7 +1,6 @@
 package cc.spray.json
 package lenses
 
-import lenses.JsonLenses
 import org.specs2.mutable.Specification
 import cc.spray.json.JsonParser
 
