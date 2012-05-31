@@ -2,7 +2,7 @@ package cc.spray.json
 
 import org.specs2.mutable.Specification
 
-class JsonPathParserSpecs extends Specification {
+class JsonPathSpecs extends Specification {
   import JsonPath._
 
   "JsonPath parser" should {
@@ -13,7 +13,7 @@ class JsonPathParserSpecs extends Specification {
       parse("$.test.test2") must be_==(Selection(Selection(Root, ByField("test")), ByField("test2")))
     }
     "wildcard selection" in {
-      parse("$.a.*.c") must be_==(Selection(Selection(Selection(Root, ByField("a")), AllElements), ByField("c")))
+      parse("$.a[*].c") must be_==(Selection(Selection(Selection(Root, ByField("a")), AllElements), ByField("c")))
     }
     "element selection" in {
       "of root" in {
@@ -21,6 +21,17 @@ class JsonPathParserSpecs extends Specification {
       }
       "of field" in {
         parse("$['abc']") must be_==(Selection(Root, ByField("abc")))
+      }
+      "by predicate" in {
+        "eq" in {
+          parse("$[?(@.id == 'test')]") must be_==(Selection(Root, ByPredicate(Eq(PathExpr(Selection(Root, ByField("id"))), Constant("test")))))
+        }
+        "lt" in {
+          parse("$[?(@.id < 12)]") must be_==(Selection(Root, ByPredicate(Lt(PathExpr(Selection(Root, ByField("id"))), Constant(12)))))
+        }
+        "exists" in {
+          parse("$[?(@.id)]") must be_==(Selection(Root, ByPredicate(Exists(Selection(Root, ByField("id"))))))
+        }
       }
     }
   }
