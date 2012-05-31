@@ -3,15 +3,17 @@ _json-lenses_ is a library to query and update [JSON] data structures.
 It has the following features
 
  * A type-safe syntax to address elements in a json data structure
- * Retrieve or update the addressed elements
+ * Retrieve addressed elements
+ * Easily update addressed elements of the immutable spray-json representation
  * Addressed elements can be of several cardinalities: scalar values, optional
    values, and sequences of values
  * Experimental support for [json-path] syntax
 
-### Examples
+### Example
 
 Given this example json document:
-{{{
+```scala
+val json = """
 { "store": {
     "book": [
       { "category": "reference",
@@ -31,8 +33,31 @@ Given this example json document:
       "price": 19.95
     }
   }
-}
-}}}
+}""".asJson
+```
+
+All authors in this document are addressed by
+```scala
+val allAuthors = 'store / 'book / * / 'author
+```
+
+In _json-lenses_ speak this is called a _projection_. You can use a projection to retrieve or update the addressed
+values.
+
+```scala
+val authorNames = json.extract[String](allAuthors)
+```
+
+To update values use one of the defined operations. To overwrite a value use `set`, to change a value
+based on the previous value use `modify`.
+
+```scala
+// overwrite all authors' names to "ABC"
+val newJson1 = json.update(allAuthors ! set[String]("ABC"))
+
+// prepend authors' names with "Ms or Mr "
+val newJson2 = json.update(allAuthors ! modify[String]("Ms or Mr " + _))
+```
 
 ### Installation
 
