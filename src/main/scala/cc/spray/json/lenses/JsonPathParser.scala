@@ -14,9 +14,6 @@ object JsonPathParser extends Parser {
     anyOf("$@") ~ push(JsonPath.Root)
   }
 
-  /*
-   * To remove the left-recursion I had to factor out Root to here
-   */
   def OptionalSelection : ReductionRule1[JsonPath.Path, JsonPath.Path] = rule {
     Projection ~~> JsonPath.Selection ~ OptionalSelection |
     EMPTY ~~> identity
