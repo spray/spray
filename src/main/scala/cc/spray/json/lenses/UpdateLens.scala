@@ -4,6 +4,9 @@ package lenses
 trait Update extends (JsValue => JsValue) { outer =>
   def apply(value: JsValue): JsValue
 
+  def apply(jsonString: String): String =
+    apply(JsonParser(jsonString)).toString()
+
   def &&(next: Update): Update = new Update {
     def apply(value: JsValue): JsValue = next(outer(value))
   }
