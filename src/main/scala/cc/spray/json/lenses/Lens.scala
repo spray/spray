@@ -40,16 +40,8 @@ abstract class LensImpl[M[_]](implicit val ops: Ops[M]) extends Lens[M] { outer 
   def is[U: Reader](f: U => Boolean): JsPred = value =>
     tryGet[U](value) exists (x => ops.map(x)(f).forall(identity))
 
-  def /[M2[_], R[_]](next: Lens[M2])(implicit ev: Join[M2, M, R]): Lens[R] = new LensImpl[R]()(ev.get(next.ops, outer.ops)) {
-    def retr: JsValue => Validated[R[JsValue]] = parent =>
-      for {
-        outerV <- outer.retr(parent)
-        innerV <- ops.allRight(outer.ops.flatMap(outerV)(x => next.ops.toSeq(next.retr(x))))
-      } yield innerV
-
-    def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
-      outer.updated(_.flatMap(next.updated(f)))(parent)
-  }
+  def /[M2[_], R[_]](next: Lens[M2])(implicit ev: Join[M2, M, R]): Lens[R] =
+    JsonLenses.combine(this, next)
 
   def toSeq: Lens[Seq] = this / SeqLenses.asSeq
 
