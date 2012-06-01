@@ -20,6 +20,4 @@ trait SpecHelpers {
       case e => createExpectable(e.getMessage).applyMatcher(new BeMatching(".*" + Pattern.quote(message) + ".*"))
     }
   }
-
-  implicit def richTestString(string: String): RichJsValue = RichJsValue(JsonParser(string))
 }

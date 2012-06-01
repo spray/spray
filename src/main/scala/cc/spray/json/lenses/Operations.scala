@@ -4,7 +4,7 @@ package lenses
 /**
  * Defines a set of operations to update Json values.
  */
-trait Operations {
+trait Operations { _: ExtraImplicits =>
   /**
    * The set operation sets or creates a value.
    */
@@ -36,4 +36,4 @@ trait Operations {
   def extract[M[_], T](value: Projection[M])(f: M[T] => Update): Operation = ???
 }
 
-object Operations extends Operations
+object Operations extends Operations with ExtraImplicits

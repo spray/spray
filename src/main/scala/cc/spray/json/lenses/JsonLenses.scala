@@ -10,9 +10,9 @@ object JsonLenses extends
   OptionLenses with
   SeqLenses with
   Operations with
-  JsonPathIntegration {
+  JsonPathIntegration with
+  ExtraImplicits {
 
   implicit def strToField(name: String): ScalarProjection = field(name)
   implicit def symbolToField(sym: Symbol): ScalarProjection = field(sym.name)
-
 }

@@ -23,8 +23,9 @@ trait Projection[M[_]] extends UpdateLens with ReadLens[M] {
  * This implements most of the methods of `Projection`. Implementors of a new type of projection
  * must implement `retr` for the read side of the lens and `updated` for the update side of the lens.
  */
-trait ProjectionImpl[M[_]] extends Projection[M] {
-  outer =>
+trait ProjectionImpl[M[_]] extends Projection[M] { outer =>
+  import ExtraImplicits.richValue
+
   def tryGet[T: Reader](p: JsValue): Validated[M[T]] =
     retr(p).flatMap(mapValue(_)(_.as[T]))
 
