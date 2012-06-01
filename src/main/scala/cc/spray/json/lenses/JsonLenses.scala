@@ -13,6 +13,6 @@ object JsonLenses extends
   JsonPathIntegration with
   ExtraImplicits {
 
-  implicit def strToField(name: String): ScalarProjection = field(name)
-  implicit def symbolToField(sym: Symbol): ScalarProjection = field(sym.name)
+  implicit def strToField(name: String): ScalarLens = field(name)
+  implicit def symbolToField(sym: Symbol): ScalarLens = field(sym.name)
 }

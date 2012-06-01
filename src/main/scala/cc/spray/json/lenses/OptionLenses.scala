@@ -5,7 +5,7 @@ trait OptionLenses {
   /**
    * Operates on the first element of an JsArray which matches the predicate.
    */
-  def find(pred: JsPred): OptProjection = new Proj[Option] {
+  def find(pred: JsPred): OptLens = new LensImpl[Option] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
       case JsArray(elements) =>
         elements.span(x => !pred(x)) match {

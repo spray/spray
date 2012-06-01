@@ -3,17 +3,17 @@ package lenses
 
 trait JsonPathIntegration { self: ScalarLenses with SeqLenses =>
   /**
-   * Create a projection from a json-path expression.
+   * Create a Lens from a json-path expression.
    */
-  def fromPath(path: String): Projection[Seq] =
+  def fromPath(path: String): Lens[Seq] =
     fromPath(JsonPathParser(path))
 
-  def fromPath(ast: JsonPath.Path): Projection[Seq] = {
-    def convertPath(path: JsonPath.Path): Projection[Seq] = path match {
+  def fromPath(ast: JsonPath.Path): Lens[Seq] = {
+    def convertPath(path: JsonPath.Path): Lens[Seq] = path match {
       case JsonPath.Root => value.toSeq
-      case JsonPath.Selection(inner, proj) => convertPath(inner) / convertProjection(proj)
+      case JsonPath.Selection(inner, proj) => convertPath(inner) / convertLens(proj)
     }
-    def convertProjection(proj: JsonPath.Projection): Projection[Seq] =
+    def convertLens(proj: JsonPath.Projection): Lens[Seq] =
       proj match {
         case JsonPath.ByField(name) => field(name).toSeq
         case JsonPath.ByIndex(i) => element(i).toSeq

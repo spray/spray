@@ -8,9 +8,9 @@ package object lenses {
 
   type Operation = SafeJsValue => SafeJsValue
 
-  type ScalarProjection = Projection[Id]
-  type OptProjection = Projection[Option]
-  type SeqProjection = Projection[Seq]
+  type ScalarLens = Lens[Id]
+  type OptLens = Lens[Option]
+  type SeqLens = Lens[Seq]
 
   def ??? = sys.error("NYI")
   def unexpected(message: String) = Left(new RuntimeException(message))

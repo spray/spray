@@ -3,10 +3,10 @@ package lenses
 
 trait SeqLenses {
   /**
-   * The projection which just converts another Projection into one of a
+   * The lens which just converts another Lens into one of a
    * Seq value.
    */
-  val asSeq: SeqProjection = new Proj[Seq] {
+  val asSeq: SeqLens = new LensImpl[Seq] {
     def updated(f: Operation)(parent: JsValue): SafeJsValue =
       f(Right(parent))
 
@@ -16,7 +16,7 @@ trait SeqLenses {
   /**
    * All the elements of a JsArray.
    */
-  val elements: SeqProjection = new Proj[Seq] {
+  val elements: SeqLens = new LensImpl[Seq] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
       case JsArray(elements) =>
         ops.allRight(elements.map(x => f(Right(x)))).map(JsArray(_: _*))
@@ -35,7 +35,7 @@ trait SeqLenses {
   /**
    * All the values of a JsArray which match the predicate.
    */
-  def filter(pred: JsPred): SeqProjection = new Proj[Seq] {
+  def filter(pred: JsPred): SeqLens = new LensImpl[Seq] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
       case JsArray(elements) =>
         ops.allRight(elements.map(x => if (pred(x)) f(Right(x)) else Right(x))).map(JsArray(_: _*))

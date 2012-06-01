@@ -41,7 +41,7 @@ All authors in this document are addressed by
 val allAuthors = 'store / 'book / * / 'author
 ```
 
-In _json-lenses_ speak this is called a _projection_. You can use a projection to retrieve or update the addressed
+This is called a lens. You can use a lens to retrieve or update the addressed
 values.
 
 ```scala

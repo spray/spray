@@ -5,7 +5,7 @@ trait ScalarLenses {
   /**
    * Accesses a field of a JsObject.
    */
-  def field(name: String): ScalarProjection = new Proj[Id] {
+  def field(name: String): ScalarLens = new LensImpl[Id] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
       for (updatedValue <- f(retr(parent)))
         // asJsObject is already guarded by getField above, FIXME: is it really?
@@ -24,7 +24,7 @@ trait ScalarLenses {
   /**
    * Accesses an element of a JsArray.
    */
-  def element(idx: Int): ScalarProjection = new Proj[Id] {
+  def element(idx: Int): ScalarLens = new LensImpl[Id] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue = parent match {
       case JsArray(elements) =>
         if (idx < elements.size) {
@@ -47,9 +47,9 @@ trait ScalarLenses {
   }
 
   /**
-   * The identity projection which operates on the current element itself
+   * The identity lens which operates on the current element itself
    */
-  val value: ScalarProjection = new Proj[Id] {
+  val value: ScalarLens = new LensImpl[Id] {
     def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue =
       f(Right(parent))
 

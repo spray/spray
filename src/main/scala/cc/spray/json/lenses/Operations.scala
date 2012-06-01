@@ -33,7 +33,7 @@ trait Operations { _: ExtraImplicits =>
 
   def append(update: Update): Operation = ???
   def update(update: Update): Operation = ???
-  def extract[M[_], T](value: Projection[M])(f: M[T] => Update): Operation = ???
+  def extract[M[_], T](value: Lens[M])(f: M[T] => Update): Operation = ???
 }
 
 object Operations extends Operations with ExtraImplicits

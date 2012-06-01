@@ -11,14 +11,14 @@ trait ExtraImplicits {
       lens ! Operations.set(pValue) apply value
 
     // This can't be simplified because we don't want the type constructor
-    // of projection to appear in the type paramater list.
-    def extract[T: Reader](p: Projection[Id]): T =
+    // for Lens[M] to appear in the type paramater list.
+    def extract[T: Reader](p: Lens[Id]): T =
       p.get[T](value)
 
-    def extract[T: Reader](p: Projection[Option]): Option[T] =
+    def extract[T: Reader](p: Lens[Option]): Option[T] =
       p.get[T](value)
 
-    def extract[T: Reader](p: Projection[Seq]): Seq[T] =
+    def extract[T: Reader](p: Lens[Seq]): Seq[T] =
       p.get[T](value)
 
     def as[T: Reader]: Validated[T] =

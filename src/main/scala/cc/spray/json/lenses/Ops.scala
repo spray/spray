@@ -7,7 +7,7 @@ package cc.spray.json.lenses
  *
  * This could probably made more general but the methods defined here comprise
  * exactly the set of operations needed to allow combining different kinds of
- * projections.
+ * lenses.
  */
 trait Ops[M[_]] {
   def flatMap[T, U](els: M[T])(f: T => Seq[U]): Seq[U]

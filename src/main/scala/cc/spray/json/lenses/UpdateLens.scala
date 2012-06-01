@@ -26,7 +26,7 @@ trait UpdateLens {
    * `Left(error)` in case the operation fails.
    *
    * `updated` returns `Left(error)` if the update operation or any of any intermediate
-   * projections fail.
+   * lens fails.
    */
   def updated(f: Operation)(parent: JsValue): SafeJsValue
 
