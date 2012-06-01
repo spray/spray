@@ -29,6 +29,12 @@ trait SeqLenses {
     }
   }
 
+  /**
+   * Like `elements` but filters elements where the `inner` lens doesn't apply
+   */
+  def allMatching[M[_]](inner: Lens[M]): SeqLens =
+    filter(inner.retr(_).isRight) / inner.toSeq
+
   /**Alias for `elements`*/
   def * = elements
 
