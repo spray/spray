@@ -10,7 +10,7 @@ package lenses
  */
 trait Lens[M[_]] extends UpdateLens with ReadLens[M] {
   /**
-   * Combines two lenses.
+   * A shortcut for the `combine` lens which combines two lenses.
    */
   def /[M2[_], R[_]](next: Lens[M2])(implicit ev: Join[M2, M, R]): Lens[R]
 
