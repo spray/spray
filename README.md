@@ -188,8 +188,8 @@ To extract a value from json data using a lens you can use either `lens.get[T](j
 which returns an `Either` value you can match on (or use `Either`'s functions) to check for errors.
 
 To update a value use either `(lens ! operation).apply(json)` or `json.update(lens ! operation)`. You can
-also use the fancy `val newJson = json(lens) = "abc"` syntax if you like that. These operations throw an exception
-in the error case. Use `lens.updated(operation)(json)` to get an `Either` result to process errors.
+also use the fancy `val newJson = json(lens) = "abc"` to set a value if you like that syntax. These operations 
+throw an exception in the error case. Use `lens.updated(operation)(json)` to get an `Either` result to process errors.
 
 #### [json-path] support
 
