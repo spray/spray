@@ -90,7 +90,7 @@ this form (almost, in reality it's a bit more complicated):
 // not the real code
 trait Lens {
   def retr: JsValue => JsValue
-  def def updated(f: JsValue => JsValue)(parent: JsValue): JsValue
+  def updated(f: JsValue => JsValue)(parent: JsValue): JsValue
 }
 ```
 
@@ -115,12 +115,37 @@ trait Lens[M[_]] {
 ```
 
 Scalar lenses are of type `Lens[Id]` (`Id` being defined as the identity type constructor, so `Id[T] == T`).
-Optional lenses are of type `Lens[Option]`. Lenses returning a sequence of values are of type `Lens[Seq]`.
-
+Optional lenses are of type `Lens[Option]`. Lenses returning a sequence of values are of type `Lens[Seq]`. An
+interesting thing happens when two lenses of different cardinality are joined: The rule is to always return a lens
+of the more general container type, i.e. the one with the greater cardinality. See the source code of `JsonLenses.combine`
+and the `Join` type class to see how this is done.
 
 #### Error handling
 
+To support proper error handling and recovery from errors (in some cases) failure is is always assumed as a
+possible outcome. This is reflected by returning an `Either` value from almost all functions which may fail. The
+real declaration of the `Lens` type therefore looks more like this:
+
+```scala
+type Validated[T] = Either[Exception, T]
+type SafeJsValue = Validated[JsValue]
+
+trait Lens[M[_]] {
+  def retr: JsValue => Validated[M[JsValue]]
+  def updated(f: SafeJsValue => SafeJsValue)(parent: JsValue): SafeJsValue
+}
+```
+
+The result of `retr` is not always a `Right(jsValue)` but may fail with `Left(exception)` as well. The same
+for `updated`: the update operation may also fail. However, in the update case there are two other possibilities
+encoded as well: Retrieval of a value may fail but the update operation `f` may still succeed (for example, when
+setting a previously undefined value) or the update operation itself fails in which case the complete update
+operation fails as well.
+
 #### Predefined lenses
+
+When working with lenses you normally don't have to worry about the details but you can just choose and combine lenses
+from the following list.
 
 ##### Field access
  * `field(name: String)`: This lens assumes that the target value is a json object and selects the field
@@ -133,7 +158,11 @@ Optional lenses are of type `Lens[Option]`. Lenses returning a sequence of value
    one you have to make sure that the next lens will match for all the elements of the array, otherwise it is an
    error. Use `allMatching` if you want to exclude elements not matching nested lenses.
  * `element(idx: Int)`: Selects the element of a json array with the given index.
- * `find(predicate: JsValue => Boolean)`:
+ * `find(predicate: JsValue => Boolean)`: Selects all elements of a json array which match a certain predicated.
+   In the common case you don't want to work directly on `JsValue`s so you can use lenses as well to define the
+   predicate. Use `Lens.is[T](pred: T => Boolean)` to lift a predicate from the value level to the `JsValue` level.
+   E.g. use `'fullName.is[String](_ startsWith "Joe")` to create a predicate which checks if a value is a json object
+   and its field `fullName` is a string starting with `"Joe"`.
  * `allMatching(next: Lens)`: A combination of `combine` and `elements`. Selects elements matching the `next` lens 
    and then applies the `next` lens.
 
@@ -141,7 +170,7 @@ Optional lenses are of type `Lens[Option]`. Lenses returning a sequence of value
 
  * `combine`: This lens combines two lenses by executing the second one on the result of the first one.
    Use it to access nested elements. Because its use is so common there's a shortcut operator, `Lens./`,
-   which you can use to 'chain' lenses: e.g. `'abc / 'def` access field 'def' inside the object in field 'abc'
+   which you can use to 'chain' lenses: e.g. use `'abc / 'def` access field 'def' inside the object in field 'abc'
    of the root json value passed to the lens.
 
 #### Predefined update operations
