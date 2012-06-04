@@ -28,3 +28,5 @@ ghpages.settings
 git.remoteRepo := "git@github.com:jrudolph/json-lenses.git"
 
 releaseSettings
+
+lsSettings
