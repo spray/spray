@@ -60,8 +60,8 @@ To update values use one of the defined operations. To overwrite a value use `se
 based on the previous value use `modify`.
 
 ```scala
-// overwrite all authors' names to "ABC"
-val newJson1 = json.update(allAuthors ! set[String]("ABC"))
+// overwrite all authors' names to "John Doe"
+val newJson1 = json.update(allAuthors ! set[String]("John Doe"))
 
 // prepend authors' names with "Ms or Mr "
 val newJson2 = json.update(allAuthors ! modify[String]("Ms or Mr " + _))
@@ -175,7 +175,21 @@ from the following list.
 
 #### Predefined update operations
 
+Currently, there are these update operations defined:
 
+ * `set[T: JsonWriter](t: => T)` uses the `JsonWriter` to set the value to a constant value.
+ * `modify[T: JsonFormat](f: T => T)` applies an update function to an existing value. The value has to be
+   serializable from and to `T`.
+
+#### Using lenses to extract or update json data
+
+To extract a value from json data using a lens you can use either `lens.get[T](json)` or the equivalent
+`json.extract[T](lens)` which both throw an exception in case something fails or use `lens.tryGet[T](json)`
+which returns an `Either` value you can match on (or use `Either`'s functions) to check for errors.
+
+To update a value use either `(lens ! operation).apply(json)` or `json.update(lens ! operation)`. You can
+also use the fancy `val newJson = json(lens) = "abc"` syntax if you like that. These operations throw an exception
+in the error case. Use `lens.updated(operation)(json)` to get an `Either` result to process errors.
 
 #### [json-path] support
 
