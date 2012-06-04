@@ -2,7 +2,7 @@ _json-lenses_ is a library to query and update [JSON] data.
 
 It has the following features
 
- * A Scala DSL to select elements in json data
+ * Create queries similar to xpath in a native Scala DSL
  * Retrieve selected elements
  * Easily update selected elements of the immutable spray-json representation
  * Selected elements can be of several cardinalities: scalar values, optional
