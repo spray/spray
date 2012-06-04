@@ -203,10 +203,21 @@ of the syntax of json-path is supported. Please file an issue if something is mi
 You can find the documentation for the _json-lenses_ API here:
 <http://jrudolph.github.com/json-lenses/api>
 
+## What's missing
+
+ * Richer set of operations (e.g. append and delete elements from arrays)
+ * ...
+
+Please file an issue at the [issue tracker] if you need something.
+
 ## Future
 
 It is planned that the json lenses will eventually move out of their incubator and
 will then be integrated into [spray-json] proper.
+
+## Mailing list
+
+Please use the [spray-user] mailing list to discuss json-lenses issues.
 
 ## License
 
@@ -215,6 +226,8 @@ _spray-json_ is licensed under [APL 2.0].
 [APL 2.0]: http://www.apache.org/licenses/LICENSE-2.0
 [JSON]: http://json.org
 [spray-json]: https://github.com/spray/spray-json
+[spray-user]: http://groups.google.com/group/spray-user/
 [json-path]: http://goessner.net/articles/JsonPath/
 [so-lenses]: http://stackoverflow.com/a/5597750/7647
 [lenses]: http://www.cis.upenn.edu/~bcpierce/papers/lenses-etapsslides.pdf
+[issue tracker]: https://github.com/jrudolph/json-lenses/issues
