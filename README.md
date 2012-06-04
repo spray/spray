@@ -200,8 +200,7 @@ of the syntax of json-path is supported. Please file an issue if something is mi
 
 ## API Documentation
 
-You can find the documentation for the _json-lenses_ API here:
-<http://jrudolph.github.com/json-lenses/api>
+You can find the documentation for the _json-lenses_ API [here][scaladoc].
 
 ## What's missing
 
@@ -231,3 +230,4 @@ _spray-json_ is licensed under [APL 2.0].
 [so-lenses]: http://stackoverflow.com/a/5597750/7647
 [lenses]: http://www.cis.upenn.edu/~bcpierce/papers/lenses-etapsslides.pdf
 [issue tracker]: https://github.com/jrudolph/json-lenses/issues
+[scaladoc]: http://jrudolph.github.com/json-lenses/latest/api

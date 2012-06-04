@@ -18,3 +18,11 @@ pomExtra :=
                            "jrudolph", "Johannes Rudolph")
 
 useGpg := true
+
+site.settings
+
+site.includeScaladoc()
+
+ghpages.settings
+
+git.remoteRepo := "git@github.com:jrudolph/json-lenses.git"
