@@ -8,7 +8,7 @@ trait Operations { _: ExtraImplicits =>
   /**
    * The set operation sets or creates a value.
    */
-  def set[T: JsonWriter](t: T): Operation = new Operation {
+  def set[T: JsonWriter](t: => T): Operation = new Operation {
     def apply(value: SafeJsValue): SafeJsValue =
     // ignore existence of old value
       Right(t.toJson)
