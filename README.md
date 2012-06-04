@@ -1,11 +1,11 @@
-_json-lenses_ is a library to query and update [JSON] data structures.
+_json-lenses_ is a library to query and update [JSON] data.
 
 It has the following features
 
- * A type-safe syntax to address elements in a json data structure
- * Retrieve addressed elements
- * Easily update addressed elements of the immutable spray-json representation
- * Addressed elements can be of several cardinalities: scalar values, optional
+ * A Scala DSL to select elements in json data
+ * Retrieve selected elements
+ * Easily update selected elements of the immutable spray-json representation
+ * Selected elements can be of several cardinalities: scalar values, optional
    values, and sequences of values
  * Experimental support for [json-path] syntax
 
@@ -115,10 +115,12 @@ trait Lens[M[_]] {
 ```
 
 Scalar lenses are of type `Lens[Id]` (`Id` being defined as the identity type constructor, so `Id[T] == T`).
-Optional lenses are of type `Lens[Option]`. Lenses returning a sequence of values are of type `Lens[Seq]`. An
-interesting thing happens when two lenses of different cardinality are joined: The rule is to always return a lens
-of the more general container type, i.e. the one with the greater cardinality. See the source code of `JsonLenses.combine`
-and the `Join` type class to see how this is done.
+Optional lenses are of type `Lens[Option]`. Lenses returning a sequence of values are of type `Lens[Seq]`.
+
+It's interesting what happens when two lenses of different cardinality are joined: The rule is to always return a lens
+of the more general container type, i.e. the one with the greater cardinality. Joining two lenses of sequences of values
+results in a flattened sequence of all the results. See the source code of `JsonLenses.combine` and the `Join` type class
+to see how this is done.
 
 #### Error handling
 

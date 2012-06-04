@@ -1,0 +1,12 @@
+This is the initial release of _json-lenses_, a Scala DSL to select values in json data
+
+Features:
+
+ * Retrieve selected elements
+ * Easily update selected elements of the immutable spray-json representation
+ * Selected elements can be of several cardinalities: scalar values, optional
+   values, and sequences of values
+ * Experimental support for [json-path][json-path] syntax
+
+[spray-json]: https://github.com/spray/spray-json/
+[json-path]: http://goessner.net/articles/JsonPath/
