@@ -9,6 +9,12 @@ It has the following features
    values, and sequences of values
  * Experimental support for [json-path] syntax
 
+### Usage
+
+If you use SBT you can include _json-lenses_ in your project with
+
+    "net.virtual-void" %%  "json-lenses" % "0.5.0"
+
 ### Example
 
 Given this example json document:
@@ -58,12 +64,6 @@ val newJson1 = json.update(allAuthors ! set[String]("ABC"))
 // prepend authors' names with "Ms or Mr "
 val newJson2 = json.update(allAuthors ! modify[String]("Ms or Mr " + _))
 ```
-
-### Installation
-
-If you use SBT you can include _json-lenses_ in your project with
-
-    "net.virtual-void" %%  "json-lenses" % "0.5.0"
 
 ### API Documentation
 
