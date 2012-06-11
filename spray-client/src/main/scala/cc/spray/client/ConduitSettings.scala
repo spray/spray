@@ -21,9 +21,8 @@ import com.typesafe.config.{Config, ConfigFactory}
 
 class ConduitSettings(config: Config = ConfigFactory.load()) {
   private[this] val c: Config = {
-    val c = ConfigFactory.load()
-    c.checkValid(ConfigFactory.defaultReference(), "spray.client")
-    c.getConfig("spray.client")
+    config.checkValid(ConfigFactory.defaultReference(), "spray.client")
+    config.getConfig("spray.client")
   }
 
   val MaxConnections = c getInt "max-connections"
