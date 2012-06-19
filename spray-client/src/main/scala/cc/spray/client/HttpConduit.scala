@@ -74,7 +74,8 @@ class HttpConduit(httpClient: ActorRef,
           case Status.Failure(error) => error
           case HttpClient.Closed(_, reason) => new RuntimeException("Connection closed, reason: " + reason)
         }
-        conn.retry(ctx, handle, error).foreach(dispatchStrategy.dispatch(_, conns))
+        if (ctx.request.method == HttpMethods.POST) conn.deliverError(ctx, error)
+        else conn.retry(ctx, handle, error).foreach(dispatchStrategy.dispatch(_, conns))
         dispatchStrategy.onStateChange(conns)
 
       case Reply(HttpClient.Connected(handle), conn: Conn) =>
@@ -171,12 +172,16 @@ class HttpConduit(httpClient: ActorRef,
           // only the first of a potential series of failed requests on the connection gets here
           clear()
           if (ctx.retriesLeft == 0) {
-            log.debug("Received '{}' in response to {} with no retries left, dispatching error...",
-              error, requestString(ctx.request))
-            ctx.result.failure(error)
+            deliverError(ctx, error)
             None
           } else retryWith(ctx.withRetriesDecremented)
         } else retryWith(ctx)
+      }
+
+      def deliverError(ctx: RequestContext, error: Throwable) {
+        log.debug("Received '{}' in response to {} with no retries left, dispatching error...",
+          error, requestString(ctx.request))
+        ctx.result.failure(error)
       }
 
       def closed(handle: Handle, reason: ConnectionClosedReason) {

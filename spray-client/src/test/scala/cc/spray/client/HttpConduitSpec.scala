@@ -25,7 +25,7 @@ import akka.pattern.ask
 import cc.spray.can.client.HttpClient
 import cc.spray.can.server.HttpServer
 import cc.spray.can.model.{HttpRequest => CHttpRequest, HttpResponse => CHttpResponse, HttpHeader => CHttpHeader}
-import cc.spray.http.{HttpResponse, HttpRequest}
+import cc.spray.http.{HttpMethods, HttpResponse, HttpRequest}
 import cc.spray.io.IoWorker
 import cc.spray.io.pipelines.MessageHandlerDispatch._
 import cc.spray.util._
@@ -72,10 +72,11 @@ class HttpConduitSpec extends Specification {
     system.actorOf(Props(new HttpClient(ioWorker)))
   }
 
-  def newConduit(strategy: DispatchStrategy, maxConnections: Int = 4) = new HttpConduit(client, "127.0.0.1", port,
-    config = ConfigFactory.parseString("spray.client.max-connections = " + maxConnections),
-    dispatchStrategy = strategy
-  )
+  def newConduit(strategy: DispatchStrategy, maxConnections: Int = 4) =
+    new HttpConduit(client, "127.0.0.1", port,
+      config = ConfigFactory.parseString("spray.client.max-connections = " + maxConnections),
+      dispatchStrategy = strategy
+    )
 
   def oneRequest(strategy: DispatchStrategy) = {
     newConduit(strategy).sendReceive(HttpRequest())
@@ -111,6 +112,12 @@ class HttpConduitSpec extends Specification {
       Future.traverse(requests)(conduit.sendReceive).map(responses2 => responses1.zip(responses2))
     }
     future.await.map { case (a, b) => a.content === b.content }.reduceLeft(_ and _)
+  }
+
+  def retryPosts = {
+    val conduit = newConduit(Pipelined, maxConnections = 1)
+    conduit.sendReceive(HttpRequest(HttpMethods.POST, "/reply1of3/a")).await must
+      throwA(new RuntimeException("Connection closed, reason: RequestTimeout"))
   }
 
 }
