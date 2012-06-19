@@ -63,11 +63,13 @@ object ServerFrontend {
               rec.timestamp = 0L // disable request timeout checking once the first response part has come in
               sendPart(part, rec)
 
-            case response: Response if response.rec == openRequests.head =>
-              commandPipeline(response.msg) // in order response, dispatch
-
             case response: Response =>
-              response.rec.enqueue(response.msg) // out of order response, queue up
+              if (openRequests.isEmpty)
+                log.warning("Received response without matching request, dropping... ")
+              else if (response.rec == openRequests.head)
+                commandPipeline(response.msg) // in order response, dispatch
+              else
+                response.rec.enqueue(response.msg) // out of order response, queue up
 
             case x: SetRequestTimeout => requestTimeout = x.timeout.toMillis
             case x: SetTimeoutTimeout => timeoutTimeout = x.timeout.toMillis
