@@ -178,7 +178,9 @@ class IoWorker(log: LoggingAdapter, config: Config) {
                 buf +=: writeQueue // we cannot drop the head and need to continue with it next time
                 log.debug("Wrote {} bytes, more pending", bytesWritten - oldBytesWritten)
               }
-            case AckTo(receiver) => receiver ! AckSend(handle)
+            case AckTo(receiver) =>
+              receiver ! AckSend(handle)
+              writeToChannel()
             case PerformCleanClose => close(handle, CleanClose)
           }
         } else {
