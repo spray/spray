@@ -62,9 +62,9 @@ object HttpParser extends SprayParser with ProtocolParameterRules with Additiona
     }
   }
 
-  def parseHeaders(headers: Seq[HttpHeader]): (Seq[String], Seq[HttpHeader]) = {
-    val errors = Vector.newBuilder[String]
-    val parsedHeaders = Vector.newBuilder[HttpHeader]
+  def parseHeaders(headers: List[HttpHeader]): (List[String], List[HttpHeader]) = {
+    val errors = List.newBuilder[String]
+    val parsedHeaders = List.newBuilder[HttpHeader]
     headers.foreach {
       parseHeader(_) match {
         case Right(parsed) => parsedHeaders += parsed
@@ -73,4 +73,7 @@ object HttpParser extends SprayParser with ProtocolParameterRules with Additiona
     }
     (errors.result(), parsedHeaders.result())
   }
+
+  def parseContentType(contentType: String): Either[String, ContentType] =
+    parse(HttpParser.ContentTypeHeaderValue, contentType)
 }

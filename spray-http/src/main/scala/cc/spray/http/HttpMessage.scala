@@ -18,9 +18,11 @@ package cc.spray.http
 
 import java.nio.charset.Charset
 import java.net.{URISyntaxException, URI}
+import annotation.tailrec
+import cc.spray.http.parser.{QueryParser, HttpParser}
 import HttpHeaders._
 import HttpCharsets._
-import parser.{QueryParser, HttpParser}
+
 
 sealed trait HttpMessagePart
 
@@ -35,20 +37,20 @@ sealed trait HttpMessageEnd extends HttpMessagePart
 sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
   type Self <: HttpMessage
 
-  def headers: Seq[HttpHeader]
+  def headers: List[HttpHeader]
   def entity: HttpEntity
   def protocol: HttpProtocol
 
-  def parseHeaders: (Seq[String], Self) = {
+  def parseHeaders: (List[String], Self) = {
     val (errors, parsed) = HttpParser.parseHeaders(headers)
     (errors, withHeaders(parsed))
   }
 
-  def withHeaders(headers: Seq[HttpHeader]): Self
+  def withHeaders(headers: List[HttpHeader]): Self
   def withEntity(entity: HttpEntity): Self
-  def withHeadersAndEntity(headers: Seq[HttpHeader], entity: HttpEntity): Self
+  def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity): Self
 
-  def withHeadersTransformed(f: Seq[HttpHeader] => Seq[HttpHeader]): Self = {
+  def withHeadersTransformed(f: List[HttpHeader] => List[HttpHeader]): Self = {
     val transformed = f(headers)
     if (transformed eq headers) this.asInstanceOf[Self] else withHeaders(transformed)
   }
@@ -70,6 +72,14 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
     case enc :: _ => enc
     case Nil => HttpEncodings.identity
   }
+
+  def header[T <: HttpHeader :ClassManifest]: Option[T] = {
+    val erasure = classManifest[T].erasure
+    @tailrec def next(headers: List[HttpHeader]): Option[T] =
+      if (headers.isEmpty) None
+      else if (erasure.isInstance(headers.head)) Some(headers.head.asInstanceOf[T]) else next(headers.tail)
+    next(headers)
+  }
 }
 
 
@@ -81,7 +91,7 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
 final class HttpRequest private(
   val method: HttpMethod,
   val uri: String,
-  val headers: Seq[HttpHeader],
+  val headers: List[HttpHeader],
   val entity: HttpEntity,
   val protocol: HttpProtocol,
   val URI: URI,
@@ -117,7 +127,7 @@ final class HttpRequest private(
     else doParseQuery(this)
   }
 
-  def copy(method: HttpMethod = method, uri: String = uri, headers: Seq[HttpHeader] = headers,
+  def copy(method: HttpMethod = method, uri: String = uri, headers: List[HttpHeader] = headers,
            entity: HttpEntity = entity, protocol: HttpProtocol = protocol, URI: URI = URI,
            queryParams: Map[String, String] = queryParams): HttpRequest =
     new HttpRequest(method, uri, headers, entity, protocol, URI, queryParams)
@@ -130,22 +140,22 @@ final class HttpRequest private(
   }
   override def toString = "HttpRequest(%s, %s, %s, %s, %s)" format (method, uri, headers, entity, protocol)
 
-  lazy val acceptedMediaRanges: Seq[MediaRange] = {
+  lazy val acceptedMediaRanges: List[MediaRange] = {
     // TODO: sort by preference
     for (Accept(mediaRanges) <- headers; range <- mediaRanges) yield range
   }
 
-  lazy val acceptedCharsetRanges: Seq[HttpCharsetRange] = {
+  lazy val acceptedCharsetRanges: List[HttpCharsetRange] = {
     // TODO: sort by preference
     for (`Accept-Charset`(charsetRanges) <- headers; range <- charsetRanges) yield range
   }
 
-  lazy val acceptedEncodingRanges: Seq[HttpEncodingRange] = {
+  lazy val acceptedEncodingRanges: List[HttpEncodingRange] = {
     // TODO: sort by preference
     for (`Accept-Encoding`(encodingRanges) <- headers; range <- encodingRanges) yield range
   }
 
-  lazy val cookies: Seq[HttpCookie] = for (`Cookie`(cookies) <- headers; cookie <- cookies) yield cookie
+  lazy val cookies: List[HttpCookie] = for (`Cookie`(cookies) <- headers; cookie <- cookies) yield cookie
 
   /**
    * Determines whether the given mediatype is accepted by the client.
@@ -206,9 +216,9 @@ final class HttpRequest private(
     }
   }
 
-  def withHeaders(headers: Seq[HttpHeader]) = copy(headers = headers)
+  def withHeaders(headers: List[HttpHeader]) = copy(headers = headers)
   def withEntity(entity: HttpEntity) = copy(entity = entity)
-  def withHeadersAndEntity(headers: Seq[HttpHeader], entity: HttpEntity) = copy(headers = headers, entity = entity)
+  def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) = copy(headers = headers, entity = entity)
 }
 
 object HttpRequest {
@@ -216,13 +226,13 @@ object HttpRequest {
 
   def apply(method: HttpMethod = HttpMethods.GET,
             uri: String = "/",
-            headers: Seq[HttpHeader] = Nil,
+            headers: List[HttpHeader] = Nil,
             entity: HttpEntity = EmptyEntity,
             protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`): HttpRequest = {
     new HttpRequest(method, uri, headers, entity, protocol, DefaultURI, Map.empty)
   }
 
-  def unapply(request: HttpRequest): Option[(HttpMethod, String, Seq[HttpHeader], HttpEntity, HttpProtocol)] = {
+  def unapply(request: HttpRequest): Option[(HttpMethod, String, List[HttpHeader], HttpEntity, HttpProtocol)] = {
     import request._
     Some(method, uri, headers, entity, protocol)
   }
@@ -233,20 +243,20 @@ object HttpRequest {
  * Sprays immutable model of an HTTP response.
  */
 case class HttpResponse(status: StatusCode = StatusCodes.OK,
-                        headers: Seq[HttpHeader] = Nil,
+                        headers: List[HttpHeader] = Nil,
                         entity: HttpEntity = EmptyEntity,
                         protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`) extends HttpMessage with HttpResponsePart{
   type Self = HttpResponse
 
-  def withHeaders(headers: Seq[HttpHeader]) = copy(headers = headers)
+  def withHeaders(headers: List[HttpHeader]) = copy(headers = headers)
   def withEntity(entity: HttpEntity) = copy(entity = entity)
-  def withHeadersAndEntity(headers: Seq[HttpHeader], entity: HttpEntity) = copy(headers = headers, entity = entity)
+  def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) = copy(headers = headers, entity = entity)
 }
 
 /**
  * Instance of this class represent the individual chunks of a chunked HTTP message (request or response).
  */
-case class MessageChunk(body: Array[Byte], extensions: Seq[ChunkExtension]) {
+case class MessageChunk(body: Array[Byte], extensions: List[ChunkExtension]) extends HttpRequestPart with HttpResponsePart {
   require(body.length > 0, "MessageChunk must not have empty body")
   def bodyAsString: String = bodyAsString(HttpCharsets.`ISO-8859-1`.nioCharset)
   def bodyAsString(charset: HttpCharset): String = bodyAsString(charset.nioCharset)
@@ -260,9 +270,9 @@ object MessageChunk {
     apply(body, Nil)
   def apply(body: String, charset: HttpCharset): MessageChunk =
     apply(body, charset, Nil)
-  def apply(body: String, extensions: Seq[ChunkExtension]): MessageChunk =
+  def apply(body: String, extensions: List[ChunkExtension]): MessageChunk =
     apply(body, `ISO-8859-1`, extensions)
-  def apply(body: String, charset: HttpCharset, extensions: Seq[ChunkExtension]): MessageChunk =
+  def apply(body: String, charset: HttpCharset, extensions: List[ChunkExtension]): MessageChunk =
     apply(body.getBytes(charset.nioCharset), extensions)
   def apply(body: Array[Byte]): MessageChunk =
     apply(body, Nil)
@@ -273,8 +283,8 @@ case class ChunkedRequestStart(request: HttpRequest) extends HttpMessageStart wi
 case class ChunkedResponseStart(response: HttpResponse) extends HttpMessageStart with HttpResponsePart
 
 case class ChunkedMessageEnd(
-  extensions: Seq[ChunkExtension] = Nil,
-  trailer: Seq[HttpHeader] = Nil
+  extensions: List[ChunkExtension] = Nil,
+  trailer: List[HttpHeader] = Nil
 ) extends HttpRequestPart with HttpResponsePart with HttpMessageEnd {
   if (!trailer.isEmpty) {
     require(trailer.forall(_.isNot("content-length")), "Content-Length header is not allowed in trailer")

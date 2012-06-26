@@ -17,7 +17,7 @@
 
 package cc.spray.http
 
-class HttpProtocol private[http] (value: String) {
+class HttpProtocol private[http] (val value: String) {
   override def toString = value
   HttpProtocols.register(this, value)
 }

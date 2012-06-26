@@ -20,18 +20,22 @@ import java.util.Arrays
 
 sealed trait HttpEntity {
   def isEmpty: Boolean
+  def buffer: Array[Byte]
   def map(f: (ContentType, Array[Byte]) => (ContentType, Array[Byte])): HttpEntity
   def flatMap(f: (ContentType, Array[Byte]) => HttpEntity): HttpEntity
   def foreach(f: (ContentType, Array[Byte]) => Unit)
   def orElse(other: HttpEntity): HttpEntity
+  def asString: String
 }
 
 case object EmptyEntity extends HttpEntity {
   def isEmpty: Boolean = true
+  val buffer = new Array[Byte](0)
   def map(f: (ContentType, Array[Byte]) => (ContentType, Array[Byte])): HttpEntity = this
   def flatMap(f: (ContentType, Array[Byte]) => HttpEntity): HttpEntity = this
   def foreach(f: (ContentType, Array[Byte]) => Unit) {}
   def orElse(other: HttpEntity): HttpEntity = other
+  def asString = ""
 }
 
 case class HttpBody(contentType: ContentType, buffer: Array[Byte]) extends HttpEntity {
@@ -43,12 +47,10 @@ case class HttpBody(contentType: ContentType, buffer: Array[Byte]) extends HttpE
   def flatMap(f: (ContentType, Array[Byte]) => HttpEntity): HttpEntity = f(contentType, buffer)
   def foreach(f: (ContentType, Array[Byte]) => Unit) { f(contentType, buffer) }
   def orElse(other: HttpEntity): HttpEntity = this
+  def asString = new String(buffer, contentType.charset.nioCharset)
 
   override def toString =
-    if (buffer.length < 50)
-      "HttpBody(" + contentType + ',' + new String(buffer, contentType.charset.nioCharset) + ')'
-    else
-      "HttpBody(" + contentType + ',' + new String(buffer, contentType.charset.nioCharset).take(50) + "...)"
+    "HttpBody(" + contentType + ',' + (if (buffer.length < 50) asString.take(50) + "..." else asString) + ')'
 
   override def hashCode = contentType.## * 31 + Arrays.hashCode(buffer)
   override def equals(obj: Any) = obj match {
@@ -58,13 +60,14 @@ case class HttpBody(contentType: ContentType, buffer: Array[Byte]) extends HttpE
 }
 
 object HttpEntity {
-  def apply(string: String): HttpEntity = apply(ContentType.DefaultTextPlain, string)
+  implicit def apply(string: String): HttpEntity =
+    if (string.isEmpty) EmptyEntity else apply(ContentType.`text/plain`, string)
+
+  implicit def apply(buffer: Array[Byte]): HttpEntity =
+    if (buffer.length == 0) EmptyEntity else HttpBody(ContentType.`application/octet-stream`, buffer)
 
   def apply(contentType: ContentType, string: String): HttpEntity =
     new HttpBody(contentType, string.getBytes(contentType.charset.nioCharset))
-
-  implicit def string2HttpEntity(s: String): HttpEntity =
-    if (s.isEmpty) EmptyEntity else apply(s)
 }
 
 

@@ -46,7 +46,8 @@ case class ContentType(mediaType: MediaType, definedCharset: Option[HttpCharset]
 }
 
 object ContentType {
-  val DefaultTextPlain = ContentType(MediaTypes.`text/plain`, `ISO-8859-1`)
+  val `text/plain` = ContentType(MediaTypes.`text/plain`)
+  val `application/octet-stream` = ContentType(MediaTypes.`application/octet-stream`)
 
   def apply(mediaType: MediaType, charset: HttpCharset): ContentType = apply(mediaType, Some(charset))
   def apply(mediaType: MediaType): ContentType = apply(mediaType, None)
