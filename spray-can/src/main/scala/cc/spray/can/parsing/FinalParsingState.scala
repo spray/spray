@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package parsing
+package cc.spray.can.parsing
 
-import model._
+import cc.spray.can.{StatusLine, RequestLine, MessageLine}
+import cc.spray.util.EmptyByteArray
+import cc.spray.http._
+import parser.HttpParser
+
 
 sealed trait FinalParsingState extends ParsingState
 
@@ -31,26 +34,32 @@ case class CompleteMessageState(
   messageLine: MessageLine,
   headers: List[HttpHeader] = Nil,
   connectionHeader: Option[String] = None,
-  body: Array[Byte] = cc.spray.util.EmptyByteArray
+  contentType: Option[ContentType] = None,
+  body: Array[Byte] = EmptyByteArray
 ) extends HttpMessageCompletedState {
 
   def toHttpMessagePart = messageLine match {
-    case x: RequestLine => HttpRequest(x.method, x.uri, headers, body, x.protocol)
-    case x: StatusLine => HttpResponse(x.status, headers, body, x.protocol)
+    case x: RequestLine => HttpRequest(x.method, x.uri, headers, entity, x.protocol)
+    case x: StatusLine => HttpResponse(x.status, headers, entity, x.protocol)
   }
+
+  def entity = if (contentType.isEmpty) HttpEntity(body) else HttpBody(contentType.get, body)
 }
 
 
 case class ChunkedStartState(
   messageLine: MessageLine,
   headers: List[HttpHeader] = Nil,
-  connectionHeader: Option[String] = None
+  connectionHeader: Option[String] = None,
+  contentType: Option[ContentType] = None
 ) extends HttpMessagePartCompletedState {
 
   def toHttpMessagePart = messageLine match {
-    case x: RequestLine => ChunkedRequestStart(HttpRequest(x.method, x.uri, headers))
-    case x: StatusLine => ChunkedResponseStart(HttpResponse(x.status, headers))
+    case x: RequestLine => ChunkedRequestStart(HttpRequest(x.method, x.uri, headers, entity))
+    case x: StatusLine => ChunkedResponseStart(HttpResponse(x.status, headers, entity))
   }
+
+  def entity = if (contentType.isEmpty) EmptyEntity else HttpBody(contentType.get, EmptyByteArray)
 }
 
 

@@ -16,14 +16,16 @@
 
 package cc.spray.can.client
 
-import cc.spray.can.model._
-import cc.spray.can.rendering.HttpRequestPartRenderingContext
-import cc.spray.io._
 import akka.event.LoggingAdapter
 import akka.util.Duration
 import akka.actor.ActorRef
 import collection.mutable.Queue
-import pipelines.TickGenerator
+import cc.spray.can.{HttpEvent, HttpCommand}
+import cc.spray.can.rendering.HttpRequestPartRenderingContext
+import cc.spray.io.pipelines.TickGenerator
+import cc.spray.http._
+import cc.spray.io._
+
 
 object ClientFrontend {
 
@@ -35,7 +37,7 @@ object ClientFrontend {
       var requestTimeout = initialRequestTimeout
 
       val commandPipeline: CPL = {
-        case x: HttpRequest =>
+        case HttpCommand(x: HttpRequest) =>
           if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
             render(x)
             openRequests.enqueue(new RequestRecord(x, context.sender, timestamp = System.currentTimeMillis))
@@ -45,7 +47,7 @@ object ClientFrontend {
             forwardToDeadLetters(x)
           }
 
-        case x: ChunkedRequestStart =>
+        case HttpCommand(x: ChunkedRequestStart) =>
           if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
             render(x)
             openRequests.enqueue(new RequestRecord(x, context.sender, timestamp = 0))
@@ -55,7 +57,7 @@ object ClientFrontend {
             forwardToDeadLetters(x)
           }
 
-        case x: MessageChunk =>
+        case HttpCommand(x: MessageChunk) =>
           if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
             render(x)
           } else {
@@ -63,7 +65,7 @@ object ClientFrontend {
             forwardToDeadLetters(x)
           }
 
-        case x: ChunkedMessageEnd =>
+        case HttpCommand(x: ChunkedMessageEnd) =>
           if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
             render(x)
             openRequests.last.timestamp = System.currentTimeMillis // only start timer once the request is completed
@@ -78,7 +80,7 @@ object ClientFrontend {
       }
 
       val eventPipeline: EPL = {
-        case x: HttpMessageEndPart =>
+        case HttpEvent(x: HttpMessageEnd) =>
           if (!openRequests.isEmpty) {
             dispatch(openRequests.dequeue().sender, x)
           } else {
@@ -86,7 +88,7 @@ object ClientFrontend {
             commandPL(HttpClient.Close(ProtocolError("Received unmatched response part " + x)))
           }
 
-        case x: HttpMessagePart =>
+        case HttpEvent(x: HttpMessagePart) =>
           if (!openRequests.isEmpty) {
             dispatch(openRequests.head.sender, x)
           } else {
@@ -138,7 +140,7 @@ object ClientFrontend {
   }
 
   private class RequestRecord(
-    val request: HttpRequestPart with HttpMessageStartPart,
+    val request: HttpRequestPart with HttpMessageStart,
     val sender: ActorRef,
     var timestamp: Long
   )

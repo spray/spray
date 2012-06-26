@@ -17,12 +17,14 @@
 package cc.spray.can
 package client
 
-import cc.spray.io._
 import akka.util.Duration
 import com.typesafe.config.{Config, ConfigFactory}
 import java.util.concurrent.TimeUnit
 import akka.event.LoggingAdapter
-import pipelines.{SslTlsSupport, ClientSSLEngineProvider, TickGenerator, ConnectionTimeouts}
+import cc.spray.io.pipelines._
+import cc.spray.io._
+import cc.spray.http.HttpRequest
+
 
 /**
  * Reacts to [[cc.spray.can.HttpClient.Connect]] messages by establishing a connection to the remote host.
@@ -40,6 +42,12 @@ class HttpClient(ioWorker: IoWorker,
 
   protected lazy val pipeline: PipelineStage =
     HttpClient.pipeline(new ClientSettings(config), log)
+
+  override protected def createConnectionActor(handle: Handle): IoConnectionActor = new IoConnectionActor(handle) {
+    override def receive = super.receive orElse {
+      case x: HttpRequest => pipelines.commandPipeline(HttpCommand(x))
+    }
+  }
 }
 
 object HttpClient {

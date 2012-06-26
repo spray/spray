@@ -18,6 +18,7 @@ package cc.spray.can.parsing
 
 import com.typesafe.config.{ConfigFactory, Config}
 
+
 private[can] class ParserSettings(config: Config = ConfigFactory.load.getConfig("spray.can.parsing")) {
   config.checkValid(ConfigFactory.defaultReference.getConfig("spray.can.parsing"))
 

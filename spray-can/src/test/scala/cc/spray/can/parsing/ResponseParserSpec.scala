@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package parsing
+package cc.spray.can.parsing
 
 import org.specs2.mutable.Specification
-import model._
+import cc.spray.can.StatusLine
+import cc.spray.http._
+import HttpHeaders._
 import HttpProtocols._
+
 
 class ResponseParserSpec extends Specification {
 
@@ -30,7 +32,7 @@ class ResponseParserSpec extends Specification {
           """|HTTP/1.1 200 OK
              |
              |"""
-        } mustEqual ErrorState("Content-Length header or chunked transfer encoding required", 411)
+        } === ErrorState("Content-Length header or chunked transfer encoding required", 411)
       }
 
       "with one header, a body, but no Content-Length header" in {
@@ -39,7 +41,7 @@ class ResponseParserSpec extends Specification {
              |Host: api.example.com
              |
              |Foobs"""
-        } mustEqual (`HTTP/1.0`, 404, "Not Found", List(HttpHeader("host", "api.example.com")), None, "Foobs")
+        } === (`HTTP/1.0`, 404, "Not Found", List(RawHeader("host", "api.example.com")), None, None, "Foobs")
       }
 
       "with 4 headers and a body" in {
@@ -51,12 +53,12 @@ class ResponseParserSpec extends Specification {
              |Content-Length    : 17
              |
              |Shake your BOODY!"""
-        } mustEqual (`HTTP/1.1`, 500, "Internal Server Error", List(
-          HttpHeader("content-length", "17"),
-          HttpHeader("connection", "close"),
-          HttpHeader("transfer-encoding", "identity"),
-          HttpHeader("user-agent", "curl/7.19.7 xyz")
-        ), Some("close"), "Shake your BOODY!")
+        } === (`HTTP/1.1`, 500, "Internal Server Error", List(
+          RawHeader("content-length", "17"),
+          RawHeader("connection", "close"),
+          RawHeader("transfer-encoding", "identity"),
+          RawHeader("user-agent", "curl/7.19.7 xyz")
+        ), Some("close"), None, "Shake your BOODY!")
       }
 
       "with multi-line headers" in {
@@ -67,23 +69,25 @@ class ResponseParserSpec extends Specification {
              |    xyz
              |Accept
              | : */*  """ + """
+             |Content-type: application/json
              |
              |"""
-        } mustEqual (`HTTP/1.0`, 200, "OK", List(
-          HttpHeader("accept", "*/*"),
-          HttpHeader("user-agent", "curl/7.19.7 abc xyz")
-        ), None, "")
+        } === (`HTTP/1.0`, 200, "OK", List(
+          RawHeader("content-type", "application/json"),
+          RawHeader("accept", "*/*"),
+          RawHeader("user-agent", "curl/7.19.7 abc xyz")
+        ), None, Some(ContentType(MediaTypes.`application/json`)), "")
       }
 
       "to a HEAD request" in {
-        RequestParserSpec.parse(new EmptyResponseParser(new ParserSettings(), true), cc.spray.util.identityFunc) {
+        RequestParserSpec.parse(new EmptyResponseParser(new ParserSettings(), true), identityFunc) {
           """|HTTP/1.1 500 Internal Server Error
              |Content-Length: 17
              |
              |"""
-        } mustEqual CompleteMessageState(
+        } === CompleteMessageState(
           messageLine = StatusLine(`HTTP/1.1`, 500, "Internal Server Error", true),
-          headers = List(HttpHeader("content-length", "17"))
+          headers = List(RawHeader("content-length", "17"))
         )
       }
     }
@@ -97,9 +101,9 @@ class ResponseParserSpec extends Specification {
              |
              |3
              |abc"""
-        } mustEqual ChunkedStartState(
+        } === ChunkedStartState(
           StatusLine(`HTTP/1.1`, 200, "OK"),
-          List(HttpHeader("transfer-encoding", "chunked"), HttpHeader("user-agent", "curl/7.19.7")),
+          List(RawHeader("transfer-encoding", "chunked"), RawHeader("user-agent", "curl/7.19.7")),
           None
         )
       }
@@ -107,16 +111,16 @@ class ResponseParserSpec extends Specification {
 
     "reject a response with" in {
       "HTTP version 1.2" in {
-        parse("HTTP/1.2 200 OK\r\n") mustEqual ErrorState("HTTP Version not supported", 505)
+        parse("HTTP/1.2 200 OK\r\n") === ErrorState("HTTP Version not supported", 505)
       }
 
       "an illegal status code" in {
-        parse("HTTP/1.1 700 Something") mustEqual ErrorState("Illegal response status code")
-        parse("HTTP/1.1 2000 Something") mustEqual ErrorState("Illegal response status code")
+        parse("HTTP/1.1 700 Something") === ErrorState("Illegal response status code")
+        parse("HTTP/1.1 2000 Something") === ErrorState("Illegal response status code")
       }
 
       "a response status reason longer than 64 chars" in {
-        parse("HTTP/1.1 250 x" + "xxxx" * 16 + "\r\n") mustEqual
+        parse("HTTP/1.1 250 x" + "xxxx" * 16 + "\r\n") ===
                 ErrorState("Reason phrase exceeds the configured limit of 64 characters")
       }
 
@@ -124,21 +128,21 @@ class ResponseParserSpec extends Specification {
         parse {
           """|HTTP/1.1 200 OK
              |User@Agent: curl/7.19.7"""
-        } mustEqual ErrorState("Invalid character '@', expected TOKEN CHAR, LWS or COLON")
+        } === ErrorState("Invalid character '@', expected TOKEN CHAR, LWS or COLON")
       }
 
       "with a header name longer than 64 chars" in {
         parse {
           """|HTTP/1.1 200 OK
              |UserxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxAgent: curl/7.19.7"""
-        } mustEqual ErrorState("HTTP header name exceeds the configured limit of 64 characters (userxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...)")
+        } === ErrorState("HTTP header name exceeds the configured limit of 64 characters (userxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...)")
       }
 
       "with a header-value longer than 8192 chars" in {
         parse {
           """|HTTP/1.1 200 OK
              |Fancy: 0""" + ("12345678" * 1024) + "\r\n"
-        } mustEqual ErrorState("HTTP header value exceeds the configured limit of 8192 characters (header 'fancy')", 400)
+        } === ErrorState("HTTP header value exceeds the configured limit of 8192 characters (header 'fancy')", 400)
       }
 
       "with an invalid Content-Length header value" in {
@@ -147,13 +151,13 @@ class ResponseParserSpec extends Specification {
              |Content-Length: 1.5
              |
              |abc"""
-        } mustEqual ErrorState("Invalid Content-Length header value: For input string: \"1.5\"", 400)
+        } === ErrorState("Invalid Content-Length header value: For input string: \"1.5\"", 400)
         parse {
           """|HTTP/1.1 200 OK
              |Content-Length: -3
              |
              |abc"""
-        } mustEqual ErrorState("Invalid Content-Length header value: " +
+        } === ErrorState("Invalid Content-Length header value: " +
                 "requirement failed: Content-Length must not be negative", 400)
       }
     }
@@ -163,8 +167,9 @@ class ResponseParserSpec extends Specification {
     RequestParserSpec.parse(new EmptyResponseParser(new ParserSettings(), false), extractFromCompleteMessage _) _
 
   def extractFromCompleteMessage(completeMessage: CompleteMessageState) = {
-    val CompleteMessageState(StatusLine(protocol, status, reason, _), headers, connectionHeader, body) = completeMessage
-    (protocol, status, reason, headers, connectionHeader, new String(body, "ISO-8859-1"))
+    import completeMessage._
+    val StatusLine(protocol, status, reason, _) = messageLine
+    (protocol, status, reason, headers, connectionHeader, contentType, new String(body, "ISO-8859-1"))
   }
 
 }

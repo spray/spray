@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package parsing
+package cc.spray.can.parsing
 
 import java.lang.{StringBuilder => JStringBuilder}
-import model.HttpMethod
+import cc.spray.http.HttpMethod
+
 
 class UriParser(settings: ParserSettings, method: HttpMethod) extends CharacterParser {
   val uri = new JStringBuilder

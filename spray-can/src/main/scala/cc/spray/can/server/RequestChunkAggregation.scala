@@ -16,9 +16,10 @@
 
 package cc.spray.can.server
 
-import cc.spray.io._
-import cc.spray.can.model._
 import cc.spray.can.rendering.HttpResponsePartRenderingContext
+import cc.spray.can.HttpEvent
+import cc.spray.io._
+import cc.spray.http._
 
 
 object RequestChunkAggregation {
@@ -32,19 +33,19 @@ object RequestChunkAggregation {
 
       def apply(event: Event) {
         event match {
-          case ChunkedRequestStart(req) => if (!closed) {
+          case HttpEvent(ChunkedRequestStart(req)) => if (!closed) {
             request = req
-            if (req.body.length <= limit) bb = BufferBuilder(req.body)
+            if (req.entity.buffer.length <= limit) bb = BufferBuilder(req.entity.buffer)
             else closeWithError()
           }
 
-          case MessageChunk(body, _) => if (!closed) {
+          case HttpEvent(MessageChunk(body, _)) => if (!closed) {
             if (bb.size + body.length <= limit) bb.append(body)
             else closeWithError()
           }
 
-          case _: ChunkedMessageEnd => if (!closed) {
-            eventPL(request.copy(body = bb.toArray))
+          case HttpEvent(_: ChunkedMessageEnd) => if (!closed) {
+            eventPL(HttpEvent(request.copy(entity = request.entity.map((ct, _) => ct -> bb.toArray))))
             request = null
             bb = null
           }
@@ -55,7 +56,7 @@ object RequestChunkAggregation {
 
       def closeWithError() {
         val msg = "Aggregated request entity greater than configured limit of " + limit + " bytes"
-        commandPL(HttpResponsePartRenderingContext(HttpResponse(413).withBody(msg)))
+        commandPL(HttpResponsePartRenderingContext(HttpResponse(413).withEntity(msg)))
         commandPL(HttpServer.Close(ProtocolError(msg)))
         closed = true
       }

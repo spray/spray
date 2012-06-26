@@ -16,14 +16,15 @@
 
 package cc.spray.can.client
 
-import cc.spray.util._
+import collection.mutable.ListBuffer
+import akka.dispatch.{Promise, Future}
+import akka.util.Duration
+import akka.actor._
 import cc.spray.io.IoClient.IoClientException
 import cc.spray.io.{ProtocolError, CleanClose}
-import cc.spray.can.model.{HttpResponsePart, HttpRequest, HttpResponse}
-import akka.dispatch.{Promise, Future}
-import akka.actor._
-import akka.util.Duration
-import collection.mutable.ListBuffer
+import cc.spray.util._
+import cc.spray.http._
+
 
 /**
  * An `HttpDialog` encapsulates an exchange of HTTP messages over the course of one connection.

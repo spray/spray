@@ -37,7 +37,7 @@ object Build extends Build with DocSupport {
 
 
   lazy val sprayCan = Project("spray-can", file("spray-can"))
-    .dependsOn(sprayIo)
+    .dependsOn(sprayIo, sprayHttp, sprayUtil)
     .settings(moduleSettings: _*)
     .settings(libraryDependencies ++=
       provided(akkaActor) ++

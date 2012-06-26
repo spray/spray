@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package rendering
+package cc.spray.can.rendering
 
+import org.specs2.matcher.DataTables
 import org.specs2._
-import model._
-import HttpProtocols._
-import matcher.DataTables
 import cc.spray.util._
+import cc.spray.http._
+import HttpHeaders.RawHeader
+import HttpProtocols._
+
 
 class ResponseRendererSpec extends mutable.Specification with DataTables {
 
@@ -42,10 +43,10 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
 
       "a response with status 304, a few headers and no body" in {
         Context(
-            HttpResponse(304, List(
-              HttpHeader("X-Fancy", "of course"),
-              HttpHeader("Age", "0")
-            ))
+          HttpResponse(304, List(
+            RawHeader("X-Fancy", "of course"),
+            RawHeader("Age", "0")
+          ))
         ) must beRenderedTo(
           content = """|HTTP/1.1 304 Not Modified
                        |X-Fancy: of course
@@ -63,16 +64,16 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         Context(
           HttpResponse(
             status = 400,
-            headers = List(HttpHeader("Age", "30"), HttpHeader("Connection", "Keep-Alive")),
-            body = "Small f*ck up overhere!".getBytes,
+            headers = List(RawHeader("Age", "30"), RawHeader("Connection", "Keep-Alive")),
             protocol = `HTTP/1.0`
-          )
+          ).withEntity("Small f*ck up overhere!")
         ) must beRenderedTo(
           content = """|HTTP/1.0 400 Bad Request
                        |Age: 30
                        |Connection: Keep-Alive
                        |Server: spray-can/1.0.0
                        |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                       |Content-Type: text/plain
                        |Content-Length: 23
                        |
                        |Small f*ck up overhere!""",
@@ -83,10 +84,9 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
       "a response to a HEAD request" in {
         Context(
           response = HttpResponse(
-            headers = List(HttpHeader("Age", "30"), HttpHeader("Connection", "Keep-Alive")),
-            body = "Small f*ck up overhere!".getBytes,
+            headers = List(RawHeader("Age", "30"), RawHeader("Connection", "Keep-Alive")),
             protocol = `HTTP/1.1`
-          ),
+          ).withEntity("Small f*ck up overhere!"),
           requestMethod = HttpMethods.HEAD
         ) must beRenderedTo(
           content = """|HTTP/1.1 200 OK
@@ -94,6 +94,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
                        |Connection: Keep-Alive
                        |Server: spray-can/1.0.0
                        |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                       |Content-Type: text/plain
                        |Content-Length: 23
                        |
                        |""",
@@ -105,16 +106,16 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         Context(
           HttpResponse(
             status = 200,
-            headers = List(HttpHeader("Age", "30"), HttpHeader("Cache-Control", "public")),
-            body = "Small f*ck up overhere!".getBytes("ASCII"),
+            headers = List(RawHeader("Age", "30"), RawHeader("Cache-Control", "public")),
             protocol = `HTTP/1.0`
-          )
+          ).withEntity("Small f*ck up overhere!")
         ) must beRenderedTo(
           content = """|HTTP/1.0 200 OK
                        |Age: 30
                        |Cache-Control: public
                        |Server: spray-can/1.0.0
                        |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                       |Content-Type: text/plain
                        |
                        |Small f*ck up overhere!""",
           close = true
@@ -123,7 +124,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
 
       "a chunked response without body" in {
         Context(
-          response = ChunkedResponseStart(HttpResponse(200, List(HttpHeader("Age", "30")))),
+          response = ChunkedResponseStart(HttpResponse(200, List(RawHeader("Age", "30")))),
           requestConnectionHeader = Some("close")
         ) must beRenderedTo(
           content = """|HTTP/1.1 200 OK
@@ -138,11 +139,12 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
       }
 
       "a chunked response with body" in {
-        Context(ChunkedResponseStart(HttpResponse().withBody("Yahoooo"))) must beRenderedTo(
+        Context(ChunkedResponseStart(HttpResponse().withEntity("Yahoooo"))) must beRenderedTo(
           content = """|HTTP/1.1 200 OK
                        |Transfer-Encoding: chunked
                        |Server: spray-can/1.0.0
                        |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                       |Content-Type: text/plain
                        |
                        |7
                        |Yahoooo
@@ -167,7 +169,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
 
       "a final response chunk" in {
         Context(
-          ChunkedMessageEnd(Nil, List(HttpHeader("Age", "30"), HttpHeader("Cache-Control", "public")))
+          ChunkedMessageEnd(Nil, List(RawHeader("Age", "30"), RawHeader("Cache-Control", "public")))
         ) must beRenderedTo(
           content = """|0
                        |Age: 30
@@ -180,7 +182,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
 
       "a chunkless chunked response without body" in {
         Context(
-          response = ChunkedResponseStart(HttpResponse(200, List(HttpHeader("Age", "30")))),
+          response = ChunkedResponseStart(HttpResponse(200, List(RawHeader("Age", "30")))),
           chunkless = true
         ) must beRenderedTo(
           content = """|HTTP/1.1 200 OK
@@ -195,12 +197,13 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
 
       "a chunkless chunked response with body" in {
         Context(
-          response = ChunkedResponseStart(HttpResponse().withBody("Yahoooo")),
+          response = ChunkedResponseStart(HttpResponse().withEntity("Yahoooo")),
           chunkless = true
         ) must beRenderedTo(
           content = """|HTTP/1.1 200 OK
                        |Server: spray-can/1.0.0
                        |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                       |Content-Type: text/plain
                        |
                        |Yahoooo""",
           close = false
@@ -222,7 +225,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
 
       "a chunkless final response chunk" in {
         Context(
-          response = ChunkedMessageEnd(Nil, List(HttpHeader("Age", "30"), HttpHeader("Cache-Control", "public"))),
+          response = ChunkedMessageEnd(Nil, List(RawHeader("Age", "30"), RawHeader("Cache-Control", "public"))),
           chunkless = true
         ) must beRenderedTo(
           content = "",
@@ -244,7 +247,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         `HTTP/1.0`       ! Some("close")      ! Some("Keep-Alive") ! Some("Keep-Alive") ! false   |> {
 
           (reqProto, reqCH, resCH, renCH, close) => Context(
-            response = HttpResponse(200, resCH.map(h => List(HttpHeader("Connection", h))).getOrElse(Nil)),
+            response = HttpResponse(200, resCH.map(h => List(RawHeader("Connection", h))).getOrElse(Nil)),
             requestProtocol = reqProto,
             requestConnectionHeader = reqCH
           ) must beRenderedTo(

@@ -16,14 +16,17 @@
 
 package cc.spray.can.server
 
-import cc.spray.can.model.{HttpHeader, HttpResponse, HttpRequest}
-import cc.spray.io._
 import akka.event.LoggingAdapter
 import akka.util.Duration
 import com.typesafe.config.{ConfigFactory, Config}
 import java.util.concurrent.TimeUnit
 import cc.spray.can.server.StatsSupport.StatsHolder
-import pipelines._
+import cc.spray.can.HttpCommand
+import cc.spray.io.pipelines._
+import cc.spray.io._
+import cc.spray.http._
+import HttpHeaders.RawHeader
+
 
 class HttpServer(ioWorker: IoWorker,
                  messageHandler: MessageHandlerDispatch.MessageHandler,
@@ -43,14 +46,20 @@ class HttpServer(ioWorker: IoWorker,
     case HttpServer.ClearStats  => statsHolder.clear()
   }
 
+  override protected def createConnectionActor(handle: Handle): IoConnectionActor = new IoConnectionActor(handle) {
+    override def receive = super.receive orElse {
+      case x: HttpResponse => pipelines.commandPipeline(HttpCommand(x))
+    }
+  }
+
   /**
    * This methods determines the HttpResponse to sent back to the client if both the request handling actor
    * as well as the timeout actor do not produce timely responses with regard to the configured timeout periods.
    */
   protected def timeoutResponse(request: HttpRequest): HttpResponse = HttpResponse(
     status = 500,
-    headers = List(HttpHeader("Content-Type", "text/plain"))
-  ).withBody {
+    headers = List(RawHeader("Content-Type", "text/plain"))
+  ).withEntity {
     "Ooops! The server was not able to produce a timely response to your request.\n" +
     "Please try again in a short while!"
   }

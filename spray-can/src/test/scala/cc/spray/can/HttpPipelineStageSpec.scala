@@ -17,10 +17,12 @@
 package cc.spray.can
 
 import cc.spray.io.test.PipelineStageTest
-import model.{HttpHeader, HttpResponse, HttpRequest}
 import org.specs2.matcher.BeEqualTo
 import cc.spray.io.{IoPeer, Event, Command}
 import cc.spray.util._
+import cc.spray.http._
+import HttpHeaders.RawHeader
+
 
 trait HttpPipelineStageSpec extends PipelineStageTest {
 
@@ -43,30 +45,60 @@ trait HttpPipelineStageSpec extends PipelineStageTest {
     }
   }
 
-  def request(content: String = "") = HttpRequest().withBody(content)
+  def request(content: String = "") = HttpRequest().withEntity(content)
 
-  def rawRequest(content: String = "", method: String = "GET") = prep {
+  def emptyRawRequest(method: String = "GET") = prep {
     """|%s / HTTP/1.1
        |Host: example.com:8080
        |User-Agent: spray/1.0
-       |%s
-       |%s"""
-  }.format(method, if (content.isEmpty) "" else "Content-Length: %s\r\n".format(content.length), content)
+       |
+       |"""
+  }.format(method)
 
-  def response(content: String = "") = HttpResponse(
+  def rawRequest(content: String, method: String = "GET") = prep {
+    """|%s / HTTP/1.1
+       |Host: example.com:8080
+       |User-Agent: spray/1.0
+       |Content-Type: text/plain
+       |Content-Length: %s
+       |
+       |%s"""
+  }.format(method, content.length, content)
+
+  def response = HttpResponse(
     status = 200,
     headers = List(
-      HttpHeader("content-length", content.length.toString),
-      HttpHeader("date", "Thu, 25 Aug 2011 09:10:29 GMT"),
-      HttpHeader("server", "spray/1.0")
+      RawHeader("content-length", "0"),
+      RawHeader("date", "Thu, 25 Aug 2011 09:10:29 GMT"),
+      RawHeader("server", "spray/1.0")
     )
-  ).withBody(content)
+  )
 
-  def rawResponse(content: String = "") = prep {
+  def response(content: String) = HttpResponse(
+    status = 200,
+    headers = List(
+      RawHeader("content-type", "text/plain"),
+      RawHeader("content-length", content.length.toString),
+      RawHeader("date", "Thu, 25 Aug 2011 09:10:29 GMT"),
+      RawHeader("server", "spray/1.0")
+    )
+  ).withEntity(content)
+
+  def rawResponse = prep {
+    """|HTTP/1.1 200 OK
+       |Server: spray/1.0
+       |Date: Thu, 25 Aug 2011 09:10:29 GMT
+       |Content-Length: 0
+       |
+       |"""
+  }
+
+  def rawResponse(content: String) = prep {
     """|HTTP/1.1 200 OK
        |Server: spray/1.0
        |Date: Thu, 25 Aug 2011 09:10:29 GMT
        |Content-Length: %s
+       |Content-Type: text/plain
        |
        |%s"""
   }.format(content.length, content)

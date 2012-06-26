@@ -16,13 +16,16 @@
 
 package cc.spray.can.server
 
-import cc.spray.can.parsing._
-import cc.spray.can.rendering.HttpResponsePartRenderingContext
-import cc.spray.io._
 import akka.event.LoggingAdapter
 import java.nio.ByteBuffer
 import annotation.tailrec
-import cc.spray.can.model.{HttpMessageEndPart, HttpHeader, HttpResponse}
+import cc.spray.can.rendering.HttpResponsePartRenderingContext
+import cc.spray.can.HttpEvent
+import cc.spray.can.parsing._
+import cc.spray.io._
+import cc.spray.http._
+import HttpHeaders.RawHeader
+
 
 object RequestParsing {
 
@@ -47,9 +50,9 @@ object RequestParsing {
 
             case x: HttpMessagePartCompletedState =>
               val messagePart = x.toHttpMessagePart
-              eventPL(messagePart)
+              eventPL(HttpEvent(messagePart))
               currentParsingState =
-                if (messagePart.isInstanceOf[HttpMessageEndPart]) startParser
+                if (messagePart.isInstanceOf[HttpMessageEnd]) startParser
                 else new ChunkParser(settings)
               parse(buffer)
 
@@ -70,8 +73,8 @@ object RequestParsing {
           log.warning("Illegal request, responding with status {} and '{}'", state.status, state.message)
           val response = HttpResponse(
             status = state.status,
-            headers = List(HttpHeader("Content-Type", "text/plain"))
-          ).withBody(state.message)
+            headers = List(RawHeader("Content-Type", "text/plain"))
+          ).withEntity(state.message)
 
           // In case of a request parsing error we probably stopped reading the request somewhere in between,
           // where we cannot simply resume. Resetting to a known state is not easy either,

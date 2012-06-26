@@ -19,6 +19,7 @@ package cc.spray.can.server
 import cc.spray.can.rendering.{HttpResponsePartRenderingContext, ResponseRenderer}
 import cc.spray.io._
 
+
 object ResponseRendering {
 
   def apply(settings: ServerSettings): CommandPipelineStage = {

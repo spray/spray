@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package parsing
+package cc.spray.can.parsing
 
-import model.ChunkExtension
 import annotation.tailrec
 import java.nio.ByteBuffer
+import cc.spray.http.ChunkExtension
+
 
 class ChunkBodyParser(settings: ParserSettings, chunkSize: Int,
                       extensions: List[ChunkExtension] = Nil) extends IntermediateState {

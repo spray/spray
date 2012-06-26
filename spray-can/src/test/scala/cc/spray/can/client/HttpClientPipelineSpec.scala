@@ -16,37 +16,38 @@
 
 package cc.spray.can.client
 
-import cc.spray.can.HttpPipelineStageSpec
-import cc.spray.io.IoPeer
 import org.specs2.mutable.Specification
 import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActorRef
 import akka.actor.Actor
-import cc.spray.can.model.{HttpRequest, HttpMethods}
+import cc.spray.can.{HttpCommand, HttpPipelineStageSpec}
+import cc.spray.io.IoPeer
+import cc.spray.http._
+
 
 class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
 
   "The HttpClient pipeline" should {
 
     "send out a simple HttpRequest to the server" in {
-      testFixture(request()) must produce(commands = Seq(SendString(rawRequest())))
+      testFixture(HttpCommand(request())) must produce(commands = Seq(SendString(emptyRawRequest())))
     }
 
     "dispatch an incoming HttpResponse back to the sender" in {
       testFixture(
-        request(),
-        Received(rawResponse())
+        HttpCommand(request()),
+        Received(rawResponse)
       ) must produce(commands = Seq(
-        SendString(rawRequest()),
-        IoPeer.Tell(system.deadLetters, response(), connectionActor)
+        SendString(emptyRawRequest()),
+        IoPeer.Tell(system.deadLetters, response, connectionActor)
       ))
     }
 
     "properly complete a 3 requests pipelined dialog" in {
       testFixture(
-        request("Request 1"),
-        request("Request 2"),
-        request("Request 3"),
+        HttpCommand(request("Request 1")),
+        HttpCommand(request("Request 2")),
+        HttpCommand(request("Request 3")),
         Received(rawResponse("Response 1")),
         Received(rawResponse("Response 2")),
         Received(rawResponse("Response 3"))
@@ -62,20 +63,21 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
 
     "properly handle responses to HEAD requests" in {
       testFixture(
-        HttpRequest(method = HttpMethods.HEAD),
+        HttpCommand(HttpRequest(method = HttpMethods.HEAD)),
         Received {
           prep {
             """|HTTP/1.1 200 OK
                |Server: spray/1.0
                |Date: Thu, 25 Aug 2011 09:10:29 GMT
                |Content-Length: 8
+               |Content-Type: text/plain
                |
                |"""
           }
         }
       ) must produce(commands = Seq(
-        SendString(rawRequest(method = "HEAD")),
-        IoPeer.Tell(system.deadLetters, response("12345678").withBody(""), connectionActor)
+        SendString(emptyRawRequest(method = "HEAD")),
+        IoPeer.Tell(system.deadLetters, response("12345678").withEntity(""), connectionActor)
       ))
     }
   }

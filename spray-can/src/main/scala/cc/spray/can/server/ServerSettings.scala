@@ -19,6 +19,7 @@ package cc.spray.can.server
 import cc.spray.can.parsing.ParserSettings
 import com.typesafe.config.{ConfigFactory, Config}
 
+
 private[can] class ServerSettings(config: Config = ConfigFactory.load) {
   private[this] val c: Config = {
     val c = config.withFallback(ConfigFactory.defaultReference)

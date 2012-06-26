@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
-package cc.spray.can.model
+package cc.spray.can
+
+import cc.spray.http._
+
 
 sealed trait MessageLine
 
@@ -30,3 +33,17 @@ case class StatusLine(
   reason: String,
   isResponseToHeadRequest: Boolean = false
 ) extends MessageLine
+
+object Trailer {
+  def verify(trailer: List[HttpHeader]) = {
+    if (!trailer.isEmpty) {
+      require(trailer.forall(_.name != "Content-Length"), "Content-Length header is not allowed in trailer")
+      require(trailer.forall(_.name != "Transfer-Encoding"), "Transfer-Encoding header is not allowed in trailer")
+      require(trailer.forall(_.name != "Trailer"), "Trailer header is not allowed in trailer")
+    }
+    trailer
+  }
+}
+
+case class HttpCommand(cmd: HttpMessagePart) extends cc.spray.io.Command
+case class HttpEvent(ev: HttpMessagePart) extends cc.spray.io.Event

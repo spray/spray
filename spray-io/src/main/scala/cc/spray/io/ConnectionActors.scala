@@ -36,7 +36,7 @@ trait ConnectionActors extends IoPeer { ioPeer =>
   protected def pipeline: PipelineStage
 
   class IoConnectionActor(val handle: Handle) extends Actor {
-    private[this] lazy val pipelines = pipeline.buildPipelines(
+    protected lazy val pipelines = pipeline.buildPipelines(
       context = PipelineContext(handle, context),
       commandPL = baseCommandPipeline,
       eventPL = baseEventPipeline

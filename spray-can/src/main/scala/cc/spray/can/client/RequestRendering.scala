@@ -19,6 +19,7 @@ package cc.spray.can.client
 import cc.spray.can.rendering.{HttpRequestPartRenderingContext, RequestRenderer}
 import cc.spray.io._
 
+
 object RequestRendering {
 
   def apply(settings: ClientSettings): CommandPipelineStage = new CommandPipelineStage {

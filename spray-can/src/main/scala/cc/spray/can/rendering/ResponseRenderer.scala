@@ -18,10 +18,11 @@ package cc.spray.can
 package rendering
 
 import java.nio.ByteBuffer
-import model._
-import HttpProtocols._
-import cc.spray.util._
 import cc.spray.io.BufferBuilder
+import cc.spray.util._
+import cc.spray.http._
+import HttpProtocols._
+
 
 class ResponseRenderer(serverHeader: String,
                        chunklessStreaming: Boolean,
@@ -41,7 +42,7 @@ class ResponseRenderer(serverHeader: String,
         if (chunkless) RenderedMessagePart(ByteBuffer.wrap(x.body) :: Nil)
         else renderChunk(x, responseSizeHint)
       case x: ChunkedMessageEnd =>
-        if (chunkless) RenderedMessagePart(Nil, true)
+        if (chunkless) RenderedMessagePart(Nil, closeConnection = true)
         else renderFinalChunk(x, responseSizeHint, ctx.requestConnectionHeader)
     }
   }
@@ -53,12 +54,13 @@ class ResponseRenderer(serverHeader: String,
     val connectionHeaderValue = renderResponseStart(response, ctx, bb)
     val close = appendConnectionHeaderIfRequired(response, ctx, connectionHeaderValue, bb)
     appendServerAndDateHeader(bb)
+    appendContentTypeHeaderIfRequired(entity, bb)
 
     // don't set a Content-Length header for non-keepalive HTTP/1.0 responses (rely on body end by connection close)
-    if (response.protocol == `HTTP/1.1` || !close) appendHeader("Content-Length", body.length.toString, bb)
+    if (response.protocol == `HTTP/1.1` || !close) appendHeader("Content-Length", entity.buffer.length.toString, bb)
 
     bb.append(MessageRendering.CrLf)
-    renderedMessagePart(bb, ctx.requestMethod, body, close)
+    renderedMessagePart(bb, ctx.requestMethod, entity, close)
   }
 
   private def renderChunkedResponseStart(response: HttpResponse, ctx: HttpResponsePartRenderingContext,
@@ -69,12 +71,13 @@ class ResponseRenderer(serverHeader: String,
     renderResponseStart(response, ctx, bb)
     if (!chunkless) appendHeader("Transfer-Encoding", "chunked", bb)
     appendServerAndDateHeader(bb)
+    appendContentTypeHeaderIfRequired(entity, bb)
 
     bb.append(MessageRendering.CrLf)
-    if (chunkless || body.length == 0 || ctx.requestMethod == HttpMethods.HEAD) {
-      renderedMessagePart(bb, ctx.requestMethod, body, false)
+    if (chunkless || entity.buffer.length == 0 || ctx.requestMethod == HttpMethods.HEAD) {
+      renderedMessagePart(bb, ctx.requestMethod, entity, close = false)
     } else {
-      RenderedMessagePart(renderChunk(Nil, body, bb).toByteBuffer :: Nil)
+      RenderedMessagePart(renderChunk(Nil, entity.buffer, bb).toByteBuffer :: Nil)
     }
   }
 
@@ -85,17 +88,19 @@ class ResponseRenderer(serverHeader: String,
     if (status == 200 && protocol == `HTTP/1.1`) {
       bb.append(MessageRendering.DefaultStatusLine)
     } else {
-      bb.append(protocol.name).append(' ').append(Integer.toString(status)).append(' ')
-        .append(HttpResponse.defaultReason(status)).append(MessageRendering.CrLf)
+      bb.append(protocol.value).append(' ').append(Integer.toString(status.value)).append(' ')
+        .append(status.reason).append(MessageRendering.CrLf)
     }
     appendHeaders(headers, bb)
   }
 
-  private def renderedMessagePart(bb: BufferBuilder, requestMethod: HttpMethod, body: Array[Byte],
-                                   close: Boolean) = {
-    if (body.length == 0 || requestMethod == HttpMethods.HEAD) RenderedMessagePart(bb.toByteBuffer :: Nil, close)
-    else if (bb.remainingCapacity >= body.length) RenderedMessagePart(bb.append(body).toByteBuffer :: Nil, close)
-    else RenderedMessagePart(bb.toByteBuffer :: ByteBuffer.wrap(body) :: Nil, close)
+  private def renderedMessagePart(bb: BufferBuilder, requestMethod: HttpMethod, entity: HttpEntity, close: Boolean) = {
+    if (entity.buffer.length == 0 || requestMethod == HttpMethods.HEAD)
+      RenderedMessagePart(bb.toByteBuffer :: Nil, close)
+    else if (bb.remainingCapacity >= entity.buffer.length)
+      RenderedMessagePart(bb.append(entity.buffer).toByteBuffer :: Nil, close)
+    else
+      RenderedMessagePart(bb.toByteBuffer :: ByteBuffer.wrap(entity.buffer) :: Nil, close)
   }
 
   private def appendConnectionHeaderIfRequired(response: HttpResponse, ctx: HttpResponsePartRenderingContext,

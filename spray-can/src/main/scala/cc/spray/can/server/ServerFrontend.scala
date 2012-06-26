@@ -16,17 +16,19 @@
 
 package cc.spray.can.server
 
-import cc.spray.can.model._
-import cc.spray.can.rendering.HttpResponsePartRenderingContext
-import cc.spray.io._
-import pipelines.{TickGenerator, MessageHandlerDispatch}
 import akka.event.LoggingAdapter
 import collection.mutable.Queue
 import annotation.tailrec
-import MessageHandlerDispatch._
 import akka.spray.LazyActorRef
 import akka.util.{Unsafe, Duration}
 import akka.actor.{ActorPath, Terminated, ActorContext, ActorRef}
+import cc.spray.can.rendering.HttpResponsePartRenderingContext
+import cc.spray.can.{HttpEvent, HttpCommand}
+import cc.spray.io.pipelines.{TickGenerator, MessageHandlerDispatch}
+import cc.spray.io._
+import cc.spray.http._
+import MessageHandlerDispatch._
+
 
 object ServerFrontend {
 
@@ -45,7 +47,7 @@ object ServerFrontend {
           var timeoutTimeout = settings.TimeoutTimeout
 
           val commandPipeline: CPL = {
-            case part: HttpResponsePart with HttpMessageEndPart =>
+            case HttpCommand(part: HttpResponsePart with HttpMessageEnd) =>
               ensureRequestOpenFor(part)
               val rec = openRequests.head
               sendPart(part, rec)
@@ -57,7 +59,7 @@ object ServerFrontend {
                   context.self ! openRequests.head.dequeue
               }
 
-            case part: HttpResponsePart =>
+            case HttpCommand(part: HttpResponsePart) =>
               ensureRequestOpenFor(part)
               val rec = openRequests.head
               rec.timestamp = 0L // disable request timeout checking once the first response part has come in
@@ -78,13 +80,13 @@ object ServerFrontend {
           }
 
           val eventPipeline: EPL = {
-            case x: HttpRequest => dispatchRequestStart(x, x, System.currentTimeMillis)
+            case HttpEvent(x: HttpRequest) => dispatchRequestStart(x, x, System.currentTimeMillis)
 
-            case x: ChunkedRequestStart => dispatchRequestStart(x, x.request, 0L)
+            case HttpEvent(x: ChunkedRequestStart) => dispatchRequestStart(x, x.request, 0L)
 
-            case x: MessageChunk => dispatchRequestChunk(x)
+            case HttpEvent(x: MessageChunk) => dispatchRequestChunk(x)
 
-            case x: ChunkedMessageEnd =>
+            case HttpEvent(x: ChunkedMessageEnd) =>
               if (openRequests.isEmpty) throw new IllegalStateException
               // only start request timeout checking after request has been completed
               openRequests.last.timestamp = System.currentTimeMillis
@@ -124,6 +126,11 @@ object ServerFrontend {
           def sendPart(part: HttpResponsePart, rec: RequestRecord) {
             commandPL {
               import rec.request._
+              import cc.spray.util.pimpSeq
+              val connectionHeader = headers.mapFind {
+                case x: HttpHeaders.Connection => Some(x.value)
+                case _ => None
+              }
               HttpResponsePartRenderingContext(part, method, protocol, connectionHeader)
             }
             if (settings.AckSends) {
@@ -171,7 +178,7 @@ object ServerFrontend {
                 }
               } else if (rec.timestamp < 0 && timeoutTimeout > 0) {
                 if (-rec.timestamp + timeoutTimeout < System.currentTimeMillis) {
-                  commandPipeline(timeoutResponse(rec.request))
+                  commandPipeline(HttpCommand(timeoutResponse(rec.request)))
                   checkForTimeouts() // check potentially pending requests for timeouts
                 }
               }
@@ -224,7 +231,7 @@ object ServerFrontend {
     private def dispatch(part: HttpResponsePart, sender: ActorRef,
                          expectedState: ResponseState, newState: ResponseState) {
       if (Unsafe.instance.compareAndSwapObject(this, responseStateOffset, expectedState, newState)) {
-        context.self.tell(new Response(rec, part), sender)
+        context.self.tell(new Response(rec, HttpCommand(part)), sender)
         if (newState == Completed) stop()
       } else {
         context.system.log.warning("Cannot dispatch " + part.getClass.getSimpleName +
