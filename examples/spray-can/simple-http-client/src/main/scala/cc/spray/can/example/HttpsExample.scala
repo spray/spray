@@ -2,9 +2,10 @@ package cc.spray.can.example
 
 import cc.spray.io.IoWorker
 import cc.spray.can.client.{HttpDialog, HttpClient}
-import cc.spray.can.model.HttpRequest
 import akka.actor.{Props, ActorSystem}
 import com.typesafe.config.ConfigFactory
+import cc.spray.http.HttpRequest
+
 
 object HttpsExample extends App {
   implicit val system = ActorSystem()
@@ -40,7 +41,7 @@ object HttpsExample extends App {
                |body   : {} bytes""".stripMargin,
             response.status,
             response.headers.mkString("\n  ", "\n  ", ""),
-            response.body.length
+            response.entity.buffer.length
           )
         case Left(error) =>
           log.error("Could not get response due to {}", error)

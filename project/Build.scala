@@ -121,7 +121,7 @@ object Build extends Build with DocSupport {
     .settings(exampleSettings: _*)
 
   lazy val simpleHttpClient = Project("simple-http-client", file("examples/spray-can/simple-http-client"))
-    .dependsOn(sprayCan)
+    .dependsOn(sprayCan, sprayHttp)
     .settings(exampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++

@@ -1,10 +1,11 @@
 package cc.spray.can.example
 
 import cc.spray.can.client.{HttpDialog, HttpClient}
-import cc.spray.can.model.{HttpResponse, HttpRequest}
 import cc.spray.io.IoWorker
 import akka.dispatch.Future
 import akka.actor.{ActorSystem, Props}
+import cc.spray.http.{HttpResponse, HttpRequest}
+
 
 object GoogleQueryExample extends App {
   implicit val system = ActorSystem()
@@ -44,7 +45,7 @@ object GoogleQueryExample extends App {
 
   def printResult: PartialFunction[(Seq[HttpResponse], Long), Unit] = {
     case (responses, time) =>
-      log.info(responses.map(_.bodyAsString.length).mkString("Result bytes: ", ", ", "."))
+      log.info(responses.map(_.entity.asString.length).mkString("Result bytes: ", ", ", "."))
       val rate = queries.size * 1000 / time
       log.info("Completed: {} requests in {} ms at a rate of  {} req/sec\n", queries.size, time, rate)
   }
