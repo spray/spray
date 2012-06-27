@@ -16,12 +16,13 @@
 
 package cc.spray.can.example
 
-import cc.spray.io.IoWorker
-import cc.spray.can.server.HttpServer
-import akka.actor._
 import java.security.{SecureRandom, KeyStore}
 import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
+import cc.spray.io.IoWorker
 import cc.spray.io.pipelines.{ServerSSLEngineProvider, MessageHandlerDispatch}
+import cc.spray.can.server.HttpServer
+import akka.actor._
+
 
 object Main extends App {
   // we need an ActorSystem to host our application in

@@ -16,13 +16,15 @@
 
 package cc.spray.can.example
 
-import cc.spray.can.model._
-import cc.spray.can.server.HttpServer
-import cc.spray.util.DateTime
+import akka.pattern.ask
 import cc.spray.io.ConnectionClosedReason
+import cc.spray.can.server.HttpServer
 import akka.util.duration._
 import akka.actor._
-import akka.pattern.ask
+import cc.spray.http._
+import HttpMethods._
+import MediaTypes._
+
 
 class TestService extends Actor with ActorLogging {
   import HttpMethods._
@@ -33,7 +35,7 @@ class TestService extends Actor with ActorLogging {
       sender ! index
 
     case HttpRequest(GET, "/ping", _, _, _) =>
-      sender ! response("PONG!")
+      sender ! HttpResponse(entity = "PONG!")
 
     case HttpRequest(GET, "/stream", _, _, _) =>
       val peer = sender // since the Props creator is executed asyncly we need to save the sender ref
@@ -46,7 +48,7 @@ class TestService extends Actor with ActorLogging {
       }
 
     case HttpRequest(GET, "/crash", _, _, _) =>
-      sender ! response("About to throw an exception in the request handling actor, " +
+      sender ! HttpResponse(entity = "About to throw an exception in the request handling actor, " +
         "which will trigger an actor restart as defined by the default supervisor strategy")
       throw new RuntimeException("BOOM!")
 
@@ -57,18 +59,19 @@ class TestService extends Actor with ActorLogging {
       log.info("Dropping request, triggering a timeout")
 
     case HttpRequest(GET, "/stop", _, _, _) =>
-      sender ! response("Shutting down in 1 second ...")
+      sender ! HttpResponse(entity = "Shutting down in 1 second ...")
       context.system.scheduler.scheduleOnce(1.second, new Runnable { def run() { context.system.shutdown() } })
 
-    case _: HttpRequest => sender ! response("Unknown resource!", 404)
+    case _: HttpRequest => sender ! HttpResponse(status = 404, entity = "Unknown resource!")
 
     case HttpServer.RequestTimeout(HttpRequest(_, "/timeout/timeout", _, _, _)) =>
       log.info("Dropping RequestTimeout message")
 
     case HttpServer.RequestTimeout(request) =>
-      sender ! HttpResponse(status = 500).withBody {
-        "The " + request.method + " request to '" + request.uri + "' has timed out..."
-      }
+      sender ! HttpResponse(
+        status = 500,
+        entity = "The " + request.method + " request to '" + request.uri + "' has timed out..."
+      )
 
     case x: HttpServer.Closed =>
       context.children.foreach(_ ! CancelStream(sender, x.reason))
@@ -76,14 +79,8 @@ class TestService extends Actor with ActorLogging {
 
   ////////////// helpers //////////////
 
-  val defaultHeaders = List(HttpHeader("Content-Type", "text/plain"))
-
-  def response(msg: String, status: Int = 200) =
-    HttpResponse(status, defaultHeaders, msg.getBytes("ISO-8859-1"))
-
   lazy val index = HttpResponse(
-    headers = List(HttpHeader("Content-Type", "text/html")),
-    body =
+    entity = HttpEntity(`text/html`,
       <html>
         <body>
           <h1>Say hello to <i>spray-can</i>!</h1>
@@ -98,12 +95,12 @@ class TestService extends Actor with ActorLogging {
             <li><a href="/stop">/stop</a></li>
           </ul>
         </body>
-      </html>.toString.getBytes("ISO-8859-1")
+      </html>.toString
+    )
   )
 
   def statsPresentation(s: HttpServer.Stats) = HttpResponse(
-    headers = List(HttpHeader("Content-Type", "text/html")),
-    body =
+    entity = HttpEntity(`text/html`,
       <html>
         <body>
           <h1>HttpServer Stats</h1>
@@ -119,14 +116,15 @@ class TestService extends Actor with ActorLogging {
             <tr><td>idleTimeouts:</td><td>{s.idleTimeouts}</td></tr>
           </table>
         </body>
-      </html>.toString.getBytes("ISO-8859-1")
+      </html>.toString
+    )
   )
 
   case class CancelStream(peer: ActorRef, reason: ConnectionClosedReason)
 
   class Streamer(peer: ActorRef, var count: Int) extends Actor with ActorLogging {
     log.debug("Starting streaming response ...")
-    peer ! ChunkedResponseStart(HttpResponse(headers = defaultHeaders).withBody(" " * 2048))
+    peer ! ChunkedResponseStart(HttpResponse(entity = " " * 2048))
     val chunkGenerator = context.system.scheduler.schedule(100.millis, 100.millis, self, 'Tick)
 
     protected def receive = {
