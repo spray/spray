@@ -250,7 +250,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         `HTTP/1.0`       ! Some("close")      ! Some("Keep-Alive") ! Some("Keep-Alive") ! false   |> {
 
           (reqProto, reqCH, resCH, renCH, close) => Context(
-            response = HttpResponse(200, resCH.map(h => List(RawHeader("Connection", h))).getOrElse(Nil)),
+            response = HttpResponse(200, resCH.map(h => List(HttpHeaders.Connection(h))).getOrElse(Nil)),
             requestProtocol = reqProto,
             requestConnectionHeader = reqCH
           ) must beRenderedTo(

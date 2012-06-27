@@ -48,11 +48,17 @@ object RequestParsing {
                 parse(buffer)
               } // else wait for more input
 
-            case x: HttpMessagePartCompletedState =>
-              val messagePart = x.toHttpMessagePart
-              eventPL(HttpEvent(messagePart))
+            case x: HttpMessageStartCompletedState =>
+              eventPL(HttpMessageStartEvent(x.toHttpMessagePart, x.connectionHeader))
               currentParsingState =
-                if (messagePart.isInstanceOf[HttpMessageEnd]) startParser
+                if (x.isInstanceOf[HttpMessageEndCompletedState]) startParser
+                else new ChunkParser(settings)
+              parse(buffer)
+
+            case x: HttpMessagePartCompletedState =>
+              eventPL(HttpEvent(x.toHttpMessagePart))
+              currentParsingState =
+                if (x.isInstanceOf[HttpMessageEndCompletedState]) startParser
                 else new ChunkParser(settings)
               parse(buffer)
 
@@ -90,4 +96,7 @@ object RequestParsing {
     }
   }
 
+  ////////////// EVENTS //////////////
+
+  case class HttpMessageStartEvent(messagePart: HttpMessageStart, connectionHeader: Option[String]) extends Event
 }

@@ -19,7 +19,6 @@ package cc.spray.can.parsing
 import cc.spray.can.{StatusLine, RequestLine, MessageLine}
 import cc.spray.util.EmptyByteArray
 import cc.spray.http._
-import parser.HttpParser
 
 
 sealed trait FinalParsingState extends ParsingState
@@ -28,7 +27,15 @@ sealed trait HttpMessagePartCompletedState extends FinalParsingState {
   def toHttpMessagePart: HttpMessagePart
 }
 
-sealed trait HttpMessageCompletedState extends HttpMessagePartCompletedState
+sealed trait HttpMessageStartCompletedState extends HttpMessagePartCompletedState {
+  def toHttpMessagePart: HttpMessageStart
+  def messageLine: MessageLine
+  def headers: List[HttpHeader]
+  def connectionHeader: Option[String]
+  def contentType: Option[ContentType]
+}
+
+sealed trait HttpMessageEndCompletedState extends HttpMessagePartCompletedState
 
 case class CompleteMessageState(
   messageLine: MessageLine,
@@ -36,7 +43,7 @@ case class CompleteMessageState(
   connectionHeader: Option[String] = None,
   contentType: Option[ContentType] = None,
   body: Array[Byte] = EmptyByteArray
-) extends HttpMessageCompletedState {
+) extends HttpMessageStartCompletedState with HttpMessageEndCompletedState {
 
   def toHttpMessagePart = messageLine match {
     case x: RequestLine => HttpRequest(x.method, x.uri, headers, entity, x.protocol)
@@ -52,7 +59,7 @@ case class ChunkedStartState(
   headers: List[HttpHeader] = Nil,
   connectionHeader: Option[String] = None,
   contentType: Option[ContentType] = None
-) extends HttpMessagePartCompletedState {
+) extends HttpMessageStartCompletedState {
 
   def toHttpMessagePart = messageLine match {
     case x: RequestLine => ChunkedRequestStart(HttpRequest(x.method, x.uri, headers, entity))
@@ -75,7 +82,7 @@ case class ChunkedChunkState(
 case class ChunkedEndState(
   extensions: List[ChunkExtension],
   trailer: List[HttpHeader]
-) extends HttpMessageCompletedState {
+) extends HttpMessageEndCompletedState {
 
   def toHttpMessagePart = ChunkedMessageEnd(extensions, trailer)
 }

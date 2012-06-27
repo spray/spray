@@ -24,6 +24,7 @@ import akka.util.{Unsafe, Duration}
 import akka.actor.{ActorPath, Terminated, ActorContext, ActorRef}
 import cc.spray.can.rendering.HttpResponsePartRenderingContext
 import cc.spray.can.{HttpEvent, HttpCommand}
+import cc.spray.can.server.RequestParsing.HttpMessageStartEvent
 import cc.spray.io.pipelines.{TickGenerator, MessageHandlerDispatch}
 import cc.spray.io._
 import cc.spray.http._
@@ -80,9 +81,11 @@ object ServerFrontend {
           }
 
           val eventPipeline: EPL = {
-            case HttpEvent(x: HttpRequest) => dispatchRequestStart(x, x, System.currentTimeMillis)
+            case HttpMessageStartEvent(x: HttpRequest, connectionHeader) =>
+              dispatchRequestStart(x, x, connectionHeader, System.currentTimeMillis)
 
-            case HttpEvent(x: ChunkedRequestStart) => dispatchRequestStart(x, x.request, 0L)
+            case HttpMessageStartEvent(x: ChunkedRequestStart, connectionHeader) =>
+              dispatchRequestStart(x, x.request, connectionHeader, 0L)
 
             case HttpEvent(x: MessageChunk) => dispatchRequestChunk(x)
 
@@ -126,12 +129,7 @@ object ServerFrontend {
           def sendPart(part: HttpResponsePart, rec: RequestRecord) {
             commandPL {
               import rec.request._
-              import cc.spray.util.pimpSeq
-              val connectionHeader = headers.mapFind {
-                case x: HttpHeaders.Connection => Some(x.value)
-                case _ => None
-              }
-              HttpResponsePartRenderingContext(part, method, protocol, connectionHeader)
+              HttpResponsePartRenderingContext(part, method, protocol, rec.connectionHeader)
             }
             if (settings.AckSends) {
               // prepare the IoServer.Tell command to use for `AckSend` and potential `Closed` messages
@@ -144,8 +142,9 @@ object ServerFrontend {
               throw new IllegalStateException("Received ResponsePart '" + part + "' for non-existing request")
           }
 
-          def dispatchRequestStart(part: HttpRequestPart, request: HttpRequest, timestamp: Long) {
-            val rec = new RequestRecord(request, handlerCreator(), timestamp)
+          def dispatchRequestStart(part: HttpRequestPart, request: HttpRequest, connectionHeader: Option[String],
+                                   timestamp: Long) {
+            val rec = new RequestRecord(request, connectionHeader, handlerCreator(), timestamp)
             rec.receiver =
               if (settings.DirectResponding) context.self
               else new RequestRef(rec, context.connectionActorContext)
@@ -189,7 +188,8 @@ object ServerFrontend {
     }
   }
 
-  private class RequestRecord(val request: HttpRequest, val handler: ActorRef, var timestamp: Long) {
+  private class RequestRecord(val request: HttpRequest, val connectionHeader: Option[String],
+                              val handler: ActorRef, var timestamp: Long) {
     var receiver: ActorRef = _
     private var responses: Queue[Command] = _
     def enqueue(msg: Command) {
