@@ -71,10 +71,7 @@ object RequestParsing {
 
         def handleParseError(state: ErrorState) {
           log.warning("Illegal request, responding with status {} and '{}'", state.status, state.message)
-          val response = HttpResponse(
-            status = state.status,
-            headers = List(RawHeader("Content-Type", "text/plain"))
-          ).withEntity(state.message)
+          val response = HttpResponse(status = state.status, entity = state.message)
 
           // In case of a request parsing error we probably stopped reading the request somewhere in between,
           // where we cannot simply resume. Resetting to a known state is not easy either,

@@ -81,8 +81,9 @@ trait HttpPipelineStageSpec extends PipelineStageTest {
       RawHeader("content-length", content.length.toString),
       RawHeader("date", "Thu, 25 Aug 2011 09:10:29 GMT"),
       RawHeader("server", "spray/1.0")
-    )
-  ).withEntity(content)
+    ),
+    entity = content
+  )
 
   def rawResponse = prep {
     """|HTTP/1.1 200 OK

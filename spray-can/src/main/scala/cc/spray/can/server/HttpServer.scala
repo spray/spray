@@ -25,7 +25,6 @@ import cc.spray.can.HttpCommand
 import cc.spray.io.pipelines._
 import cc.spray.io._
 import cc.spray.http._
-import HttpHeaders.RawHeader
 
 
 class HttpServer(ioWorker: IoWorker,
@@ -58,11 +57,9 @@ class HttpServer(ioWorker: IoWorker,
    */
   protected def timeoutResponse(request: HttpRequest): HttpResponse = HttpResponse(
     status = 500,
-    headers = List(RawHeader("Content-Type", "text/plain"))
-  ).withEntity {
-    "Ooops! The server was not able to produce a timely response to your request.\n" +
-    "Please try again in a short while!"
-  }
+    entity = "Ooops! The server was not able to produce a timely response to your request.\n" +
+      "Please try again in a short while!"
+  )
 }
 
 object HttpServer {

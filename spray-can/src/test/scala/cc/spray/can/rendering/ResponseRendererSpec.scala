@@ -65,8 +65,9 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           HttpResponse(
             status = 400,
             headers = List(RawHeader("Age", "30"), RawHeader("Connection", "Keep-Alive")),
-            protocol = `HTTP/1.0`
-          ).withEntity("Small f*ck up overhere!")
+            protocol = `HTTP/1.0`,
+            entity = "Small f*ck up overhere!"
+          )
         ) must beRenderedTo(
           content = """|HTTP/1.0 400 Bad Request
                        |Age: 30
@@ -85,8 +86,9 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         Context(
           response = HttpResponse(
             headers = List(RawHeader("Age", "30"), RawHeader("Connection", "Keep-Alive")),
-            protocol = `HTTP/1.1`
-          ).withEntity("Small f*ck up overhere!"),
+            protocol = `HTTP/1.1`,
+            entity = "Small f*ck up overhere!"
+          ),
           requestMethod = HttpMethods.HEAD
         ) must beRenderedTo(
           content = """|HTTP/1.1 200 OK
@@ -107,8 +109,9 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           HttpResponse(
             status = 200,
             headers = List(RawHeader("Age", "30"), RawHeader("Cache-Control", "public")),
-            protocol = `HTTP/1.0`
-          ).withEntity("Small f*ck up overhere!")
+            protocol = `HTTP/1.0`,
+            entity = "Small f*ck up overhere!"
+          )
         ) must beRenderedTo(
           content = """|HTTP/1.0 200 OK
                        |Age: 30
@@ -139,7 +142,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
       }
 
       "a chunked response with body" in {
-        Context(ChunkedResponseStart(HttpResponse().withEntity("Yahoooo"))) must beRenderedTo(
+        Context(ChunkedResponseStart(HttpResponse(entity = "Yahoooo"))) must beRenderedTo(
           content = """|HTTP/1.1 200 OK
                        |Transfer-Encoding: chunked
                        |Server: spray-can/1.0.0
@@ -197,7 +200,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
 
       "a chunkless chunked response with body" in {
         Context(
-          response = ChunkedResponseStart(HttpResponse().withEntity("Yahoooo")),
+          response = ChunkedResponseStart(HttpResponse(entity = "Yahoooo")),
           chunkless = true
         ) must beRenderedTo(
           content = """|HTTP/1.1 200 OK

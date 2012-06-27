@@ -34,9 +34,7 @@ class HttpDialogSpec extends Specification {
 
   step {
     val handler = system.actorOf(Props(behavior = ctx => {
-      case x: HttpRequest =>
-        system.log.debug("********** Received: " + x)
-        ctx.sender ! HttpResponse().withEntity(x.uri)
+      case x: HttpRequest => ctx.sender ! HttpResponse(entity = x.uri)
     }))
     val server = system.actorOf(Props(new HttpServer(ioWorker, SingletonHandler(handler))))
     server.ask(HttpServer.Bind("localhost", port))(Duration("1 s")).await
