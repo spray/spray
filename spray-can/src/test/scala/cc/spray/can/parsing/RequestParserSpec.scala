@@ -31,7 +31,7 @@ class RequestParserSpec extends Specification {
   "The request parsing logic" should {
     "properly parse a request" in {
       "without headers and body" in {
-        parse() {
+        parse {
           """|GET / HTTP/1.0
              |
              |"""
@@ -39,7 +39,7 @@ class RequestParserSpec extends Specification {
       }
 
       "with one header" in {
-        parse() {
+        parse {
           """|GET / HTTP/1.1
              |Host: example.com
              |
@@ -48,7 +48,7 @@ class RequestParserSpec extends Specification {
       }
 
       "with 4 headers and a body" in {
-        parse() {
+        parse {
           """|POST /resource/yes HTTP/1.0
              |User-Agent: curl/7.19.7 xyz
              |Transfer-Encoding:identity
@@ -65,7 +65,7 @@ class RequestParserSpec extends Specification {
       }
 
       "with multi-line headers" in {
-        parse() {
+        parse {
           """|DELETE /abc HTTP/1.1
              |User-Agent: curl/7.19.7
              | abc
@@ -87,7 +87,7 @@ class RequestParserSpec extends Specification {
 
     "properly parse a chunked" in {
       "request start" in {
-        parse() {
+        parse {
           """|PATCH /data HTTP/1.1
              |Transfer-Encoding: chunked
              |Connection: lalelu
@@ -140,48 +140,48 @@ class RequestParserSpec extends Specification {
 
     "reject a request with" in {
       "an illegal HTTP method" in {
-        parse()("get") === ErrorState("Unsupported HTTP method", 501)
-        parse()("GETX") === ErrorState("Unsupported HTTP method", 501)
+        parse("get") === ErrorState("Unsupported HTTP method", 501)
+        parse("GETX") === ErrorState("Unsupported HTTP method", 501)
       }
 
       "an URI longer than 2048 chars" in {
-        parse()("GET x" + "xxxx" * 512 + " HTTP/1.1") ===
+        parse("GET x" + "xxxx" * 512 + " HTTP/1.1") ===
                 ErrorState("URI length exceeds the configured limit of 2048 characters", 414)
       }
 
       "HTTP version 1.2" in {
-        parse()("GET / HTTP/1.2\r\n") === ErrorState("HTTP Version not supported", 505)
+        parse("GET / HTTP/1.2\r\n") === ErrorState("HTTP Version not supported", 505)
       }
 
       "with an illegal char in a header name" in {
-        parse() {
+        parse {
           """|GET / HTTP/1.1
              |User@Agent: curl/7.19.7"""
         } === ErrorState("Invalid character '@', expected TOKEN CHAR, LWS or COLON")
       }
 
       "with a header name longer than 64 chars" in {
-        parse() {
+        parse {
           """|GET / HTTP/1.1
              |UserxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxAgent: curl/7.19.7"""
         } === ErrorState("HTTP header name exceeds the configured limit of 64 characters (userxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...)")
       }
 
       "with a header-value longer than 8192 chars" in {
-        parse() {
+        parse {
           """|GET / HTTP/1.1
              |Fancy: 0""" + ("12345678" * 1024) + "\r\n"
         } === ErrorState("HTTP header value exceeds the configured limit of 8192 characters (header 'fancy')", 400)
       }
 
       "with an invalid Content-Length header value" in {
-        parse() {
+        parse {
           """|GET / HTTP/1.0
              |Content-Length: 1.5
              |
              |abc"""
         } === ErrorState("Invalid Content-Length header value: For input string: \"1.5\"", 400)
-        parse() {
+        parse {
           """|GET / HTTP/1.0
              |Content-Length: -3
              |
@@ -191,7 +191,7 @@ class RequestParserSpec extends Specification {
       }
 
       "a required Host header missing" in {
-        parse() {
+        parse {
           """|GET / HTTP/1.1
              |
              |"""
@@ -200,7 +200,9 @@ class RequestParserSpec extends Specification {
     }
   }
 
-  def parse(startParser: IntermediateState = new EmptyRequestParser(new ParserSettings())) = {
+  def parse: String => AnyRef = parse(new EmptyRequestParser(new ParserSettings()))
+  
+  def parse(startParser: IntermediateState): String => AnyRef = {
     RequestParserSpec.parse(startParser, extractFromCompleteMessage _) _
   }
 
