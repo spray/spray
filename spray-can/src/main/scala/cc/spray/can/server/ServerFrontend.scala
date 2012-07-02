@@ -171,7 +171,7 @@ object ServerFrontend {
                 if (rec.timestamp + requestTimeout < System.currentTimeMillis) {
                   val timeoutHandler = if (settings.TimeoutHandler.isEmpty) rec.handler
                                        else context.connectionActorContext.actorFor(settings.TimeoutHandler)
-                  commandPipeline(IoServer.Tell(timeoutHandler, RequestTimeout(rec.request), rec.receiver))
+                  commandPipeline(IoServer.Tell(timeoutHandler, Timeout(rec.request), rec.receiver))
                   // we record the time of the Timeout dispatch as negative timestamp value
                   rec.timestamp = -System.currentTimeMillis
                 }
@@ -266,9 +266,5 @@ object ServerFrontend {
     require(timeout.isFinite, "timeout must not be infinite, set to zero to disable")
     require(timeout >= Duration.Zero, "timeout must not be negative")
   }
-
-  ////////////// EVENTS //////////////
-
-  case class RequestTimeout(request: HttpRequest) extends Event
 
 }

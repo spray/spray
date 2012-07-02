@@ -213,6 +213,5 @@ object HttpServer {
   type Unbound = IoServer.Unbound;                      val Unbound = IoServer.Unbound
   type Closed = IoServer.Closed;                        val Closed = IoServer.Closed
   type AckSend = IoServer.AckSend;                      val AckSend = IoServer.AckSend
-  type RequestTimeout = ServerFrontend.RequestTimeout;  val RequestTimeout = ServerFrontend.RequestTimeout
 
 }

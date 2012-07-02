@@ -20,7 +20,7 @@ import annotation.tailrec
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
 import cc.spray.can.rendering.HttpResponsePartRenderingContext
-import cc.spray.http.HttpMessageStart
+import cc.spray.http.{Timeout, HttpMessageStart}
 import cc.spray.can.HttpEvent
 import cc.spray.io._
 
@@ -94,7 +94,7 @@ object StatsSupport {
           responseStarts.incrementAndGet()
           commandPL(x)
 
-        case x: IoServer.Tell if x.message.isInstanceOf[HttpServer.RequestTimeout] =>
+        case x: IoServer.Tell if x.message.isInstanceOf[Timeout] =>
           requestTimeouts.incrementAndGet()
           commandPL(x)
 
