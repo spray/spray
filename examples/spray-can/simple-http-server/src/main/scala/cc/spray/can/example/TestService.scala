@@ -49,7 +49,7 @@ class TestService extends Actor with ActorLogging {
 
     case HttpRequest(GET, "/crash", _, _, _) =>
       sender ! HttpResponse(entity = "About to throw an exception in the request handling actor, " +
-        "which will trigger an actor restart as defined by the default supervisor strategy")
+        "which triggers an actor restart")
       throw new RuntimeException("BOOM!")
 
     case HttpRequest(GET, "/timeout", _, _, _) =>

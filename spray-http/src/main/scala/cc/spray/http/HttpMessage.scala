@@ -30,12 +30,16 @@ sealed trait HttpRequestPart extends HttpMessagePart
 
 sealed trait HttpResponsePart extends HttpMessagePart
 
-sealed trait HttpMessageStart extends HttpMessagePart
+sealed trait HttpMessageStart extends HttpMessagePart {
+  def message: HttpMessage
+}
 
 sealed trait HttpMessageEnd extends HttpMessagePart
 
 sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
   type Self <: HttpMessage
+
+  def message = this
 
   def headers: List[HttpHeader]
   def entity: HttpEntity
@@ -278,9 +282,13 @@ object MessageChunk {
     apply(body, Nil)
 }
 
-case class ChunkedRequestStart(request: HttpRequest) extends HttpMessageStart with HttpRequestPart
+case class ChunkedRequestStart(request: HttpRequest) extends HttpMessageStart with HttpRequestPart {
+  def message = request
+}
 
-case class ChunkedResponseStart(response: HttpResponse) extends HttpMessageStart with HttpResponsePart
+case class ChunkedResponseStart(response: HttpResponse) extends HttpMessageStart with HttpResponsePart {
+  def message = response
+}
 
 case class ChunkedMessageEnd(
   extensions: List[ChunkExtension] = Nil,

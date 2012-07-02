@@ -91,7 +91,7 @@ object Build extends Build with DocSupport {
 
 
   lazy val sprayServlet = Project("spray-servlet", file("spray-servlet"))
-    .dependsOn(sprayHttp)
+    .dependsOn(sprayHttp, sprayUtil)
     .settings(moduleSettings: _*)
     .settings(libraryDependencies ++=
       provided(akkaActor, jetty7Async, servlet30, tomcat6Async) ++
@@ -209,6 +209,21 @@ object Build extends Build with DocSupport {
       compile(akkaActor) ++
       test(specs2) ++
       runtime(akkaSlf4j, logback) ++
+      container(jettyWebApp)
+    )
+
+  lazy val sprayServletExamples = Project("spray-servlet-examples", file("examples/spray-servlet"))
+    .aggregate(simpleSprayServletServer)
+    .settings(exampleSettings: _*)
+
+  lazy val simpleSprayServletServer = Project("simple-spray-servlet-server",
+                                              file("examples/spray-servlet/simple-spray-servlet-server"))
+    .dependsOn(sprayHttp, sprayServlet)
+    .settings(jettyExampleSettings: _*)
+    .settings(exampleSettings: _*)
+    .settings(libraryDependencies ++=
+      compile(akkaActor) ++
+      runtime(akkaSlf4j, logback, slf4j) ++
       container(jettyWebApp)
     )
 }
