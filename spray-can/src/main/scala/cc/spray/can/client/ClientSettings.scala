@@ -16,16 +16,14 @@
 
 package cc.spray.can.client
 
-import cc.spray.can.parsing.ParserSettings
 import com.typesafe.config.{ConfigFactory, Config}
+import cc.spray.can.parsing.ParserSettings
+import cc.spray.util.ConfigUtils
 
 
 private[can] class ClientSettings(config: Config = ConfigFactory.load) {
-  private[this] val c: Config = {
-    val c = config.withFallback(ConfigFactory.defaultReference)
-    c.checkValid(ConfigFactory.defaultReference, "spray.can.client")
-    c.getConfig("spray.can.client")
-  }
+  private[this] val c: Config = ConfigUtils.prepareSubConfig(config, "spray.can.client")
+
   val UserAgentHeader               = c getString       "user-agent-header"
   val SSLEncryption                 = c getBoolean      "ssl-encryption"
   val IdleTimeout                   = c getMilliseconds "idle-timeout"

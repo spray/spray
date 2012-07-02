@@ -16,16 +16,13 @@
 
 package cc.spray.can.server
 
-import cc.spray.can.parsing.ParserSettings
 import com.typesafe.config.{ConfigFactory, Config}
+import cc.spray.can.parsing.ParserSettings
+import cc.spray.util.ConfigUtils
 
 
 private[can] class ServerSettings(config: Config = ConfigFactory.load) {
-  private[this] val c: Config = {
-    val c = config.withFallback(ConfigFactory.defaultReference)
-    c.checkValid(ConfigFactory.defaultReference, "spray.can.server")
-    c.getConfig("spray.can.server")
-  }
+  private[this] val c: Config = ConfigUtils.prepareSubConfig(config, "spray.can.server")
 
   val ServerHeader                  = c getString       "server-header"
   val SSLEncryption                 = c getBoolean      "ssl-encryption"
