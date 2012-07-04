@@ -47,8 +47,8 @@ object ModelConverter {
       method = toHttpMethod(hsRequest.getMethod),
       uri = rebuildUri(hsRequest),
       headers = rawHeaders,
-      protocol = toHttpProtocol(hsRequest.getProtocol),
-      entity = toHttpEntity(hsRequest, contentType, contentLength)
+      entity = toHttpEntity(hsRequest, contentType, contentLength),
+      protocol = toHttpProtocol(hsRequest.getProtocol)
     )
   }
 
@@ -89,5 +89,3 @@ object ModelConverter {
     throw HttpException(if (inner != null) message + inner.getMessage else message, status)
 
 }
-
-private[servlet] case class HttpException(message: String, status: StatusCode) extends RuntimeException(message)

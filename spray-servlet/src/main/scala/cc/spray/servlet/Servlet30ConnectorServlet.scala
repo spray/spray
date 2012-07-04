@@ -20,7 +20,7 @@ import java.io.IOException
 import java.util.concurrent.{TimeUnit, CountDownLatch}
 import javax.servlet.{AsyncEvent, AsyncListener}
 import javax.servlet.http.{HttpServlet, HttpServletResponse, HttpServletRequest}
-import java.util.concurrent.atomic.{AtomicInteger, AtomicBoolean}
+import java.util.concurrent.atomic.AtomicInteger
 import akka.actor.{ActorRef, ActorSystem}
 import akka.util.NonFatal
 import akka.spray.UnregisteredActorRef
@@ -31,7 +31,6 @@ import cc.spray.http._
  * The spray connector servlet for all servlet 3.0 containers.
  */
 class Servlet30ConnectorServlet extends HttpServlet {
-  val containerName = "Servlet API 3.0"
   var system: ActorSystem = _
   var serviceActor: ActorRef = _
   var settings: ConnectorSettings = _
@@ -48,7 +47,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
     serviceActor = getServletContext.getAttribute(ServiceActorAttrName).asInstanceOf[ActorRef]
     settings = getServletContext.getAttribute(SettingsAttrName).asInstanceOf[ConnectorSettings]
     timeoutHandler = if (settings.TimeoutHandler.isEmpty) serviceActor else system.actorFor(settings.TimeoutHandler)
-    log.info("Initialized {} <=> Spray Connector", containerName)
+    log.info("Initialized Servlet API 3.0 <=> Spray Connector")
   }
 
   override def service(hsRequest: HttpServletRequest, hsResponse: HttpServletResponse) {
@@ -59,7 +58,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
       serviceActor.tell(request, responder)
     } catch {
       case HttpException(msg, status) =>
-        writeResponse(HttpResponse(status, entity = msg), hsResponse, request) {}
+        writeResponse(HttpResponse(status, msg), hsResponse, request) {}
       case NonFatal(e) =>
         writeResponse(HttpResponse(500, entity = "Internal Server Error:\n" + e), hsResponse, request) {}
     }

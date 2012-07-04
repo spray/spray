@@ -315,7 +315,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       """)
     ),
     messageHandler,
-    req => HttpResponse(status = 500, entity = "Timeout for " + req.uri),
+    req => HttpResponse(500, "Timeout for " + req.uri),
     new StatsSupport.StatsHolder,
     system.log
   )

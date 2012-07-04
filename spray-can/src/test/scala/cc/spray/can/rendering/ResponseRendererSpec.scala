@@ -30,7 +30,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
     "properly render" in {
 
       "a response with status 200, no headers and no body" in {
-        Context(HttpResponse(200, Nil)) must beRenderedTo(
+        Context(HttpResponse(200)) must beRenderedTo(
           content = """|HTTP/1.1 200 OK
                        |Server: spray-can/1.0.0
                        |Date: Thu, 25 Aug 2011 09:10:29 GMT
@@ -43,7 +43,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
 
       "a response with status 304, a few headers and no body" in {
         Context(
-          HttpResponse(304, List(
+          HttpResponse(304, headers = List(
             RawHeader("X-Fancy", "of course"),
             RawHeader("Age", "0")
           ))
@@ -65,8 +65,8 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           HttpResponse(
             status = 400,
             headers = List(RawHeader("Age", "30"), RawHeader("Connection", "Keep-Alive")),
-            protocol = `HTTP/1.0`,
-            entity = "Small f*ck up overhere!"
+            entity = "Small f*ck up overhere!",
+            protocol = `HTTP/1.0`
           )
         ) must beRenderedTo(
           content = """|HTTP/1.0 400 Bad Request
@@ -86,7 +86,6 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         Context(
           response = HttpResponse(
             headers = List(RawHeader("Age", "30"), RawHeader("Connection", "Keep-Alive")),
-            protocol = `HTTP/1.1`,
             entity = "Small f*ck up overhere!"
           ),
           requestMethod = HttpMethods.HEAD
@@ -127,7 +126,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
 
       "a chunked response without body" in {
         Context(
-          response = ChunkedResponseStart(HttpResponse(200, List(RawHeader("Age", "30")))),
+          response = ChunkedResponseStart(HttpResponse(200, headers = List(RawHeader("Age", "30")))),
           requestConnectionHeader = Some("close")
         ) must beRenderedTo(
           content = """|HTTP/1.1 200 OK
@@ -185,7 +184,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
 
       "a chunkless chunked response without body" in {
         Context(
-          response = ChunkedResponseStart(HttpResponse(200, List(RawHeader("Age", "30")))),
+          response = ChunkedResponseStart(HttpResponse(200, headers = List(RawHeader("Age", "30")))),
           chunkless = true
         ) must beRenderedTo(
           content = """|HTTP/1.1 200 OK
@@ -250,7 +249,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         `HTTP/1.0`       ! Some("close")      ! Some("Keep-Alive") ! Some("Keep-Alive") ! false   |> {
 
           (reqProto, reqCH, resCH, renCH, close) => Context(
-            response = HttpResponse(200, resCH.map(h => List(HttpHeaders.Connection(h))).getOrElse(Nil)),
+            response = HttpResponse(200, headers = resCH.map(h => List(HttpHeaders.Connection(h))).getOrElse(Nil)),
             requestProtocol = reqProto,
             requestConnectionHeader = reqCH
           ) must beRenderedTo(

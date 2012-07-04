@@ -47,7 +47,7 @@ case class CompleteMessageState(
 
   def toHttpMessagePart = messageLine match {
     case x: RequestLine => HttpRequest(x.method, x.uri, headers, entity, x.protocol)
-    case x: StatusLine => HttpResponse(x.status, headers, entity, x.protocol)
+    case x: StatusLine => HttpResponse(x.status, entity, headers, x.protocol)
   }
 
   def entity = if (contentType.isEmpty) HttpEntity(body) else HttpBody(contentType.get, body)
@@ -63,7 +63,7 @@ case class ChunkedStartState(
 
   def toHttpMessagePart = messageLine match {
     case x: RequestLine => ChunkedRequestStart(HttpRequest(x.method, x.uri, headers, entity))
-    case x: StatusLine => ChunkedResponseStart(HttpResponse(x.status, headers, entity))
+    case x: StatusLine => ChunkedResponseStart(HttpResponse(x.status, entity, headers))
   }
 
   def entity = if (contentType.isEmpty) EmptyEntity else HttpBody(contentType.get, EmptyByteArray)

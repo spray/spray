@@ -33,16 +33,13 @@ class TestService extends Actor with ActorLogging {
     case HttpRequest(GET, "/timeout/timeout", _, _, _) =>
       log.info("Dropping request, triggering a timeout")
 
-    case _: HttpRequest => sender ! HttpResponse(status = 404, entity = "Unknown resource!")
+    case _: HttpRequest => sender ! HttpResponse(404, "Unknown resource!")
 
     case Timeout(HttpRequest(_, "/timeout/timeout", _, _, _)) =>
       log.info("Dropping Timeout message")
 
     case Timeout(request: HttpRequest) =>
-      sender ! HttpResponse(
-        status = 500,
-        entity = "The " + request.method + " request to '" + request.uri + "' has timed out..."
-      )
+      sender ! HttpResponse(500, "The " + request.method + " request to '" + request.uri + "' has timed out...")
 
     case ServletError(error) =>
       context.children.foreach(_ ! CancelStream(sender, error))

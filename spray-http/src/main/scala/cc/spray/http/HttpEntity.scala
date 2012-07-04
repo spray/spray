@@ -26,6 +26,7 @@ sealed trait HttpEntity {
   def foreach(f: (ContentType, Array[Byte]) => Unit)
   def orElse(other: HttpEntity): HttpEntity
   def asString: String
+  def toOption: Option[HttpBody]
 }
 
 case object EmptyEntity extends HttpEntity {
@@ -36,6 +37,7 @@ case object EmptyEntity extends HttpEntity {
   def foreach(f: (ContentType, Array[Byte]) => Unit) {}
   def orElse(other: HttpEntity): HttpEntity = other
   def asString = ""
+  def toOption = None
 }
 
 case class HttpBody(contentType: ContentType, buffer: Array[Byte]) extends HttpEntity {
@@ -48,6 +50,7 @@ case class HttpBody(contentType: ContentType, buffer: Array[Byte]) extends HttpE
   def foreach(f: (ContentType, Array[Byte]) => Unit) { f(contentType, buffer) }
   def orElse(other: HttpEntity): HttpEntity = this
   def asString = new String(buffer, contentType.charset.nioCharset)
+  def toOption = Some(this)
 
   override def toString =
     "HttpBody(" + contentType + ',' + (if (buffer.length < 50) asString.take(50) + "..." else asString) + ')'
@@ -59,15 +62,22 @@ case class HttpBody(contentType: ContentType, buffer: Array[Byte]) extends HttpE
   }
 }
 
+object HttpBody {
+  def apply(contentType: ContentType, string: String) =
+    new HttpBody(contentType, string.getBytes(contentType.charset.nioCharset))
+}
+
 object HttpEntity {
   implicit def apply(string: String): HttpEntity =
-    if (string.isEmpty) EmptyEntity else apply(ContentType.`text/plain`, string)
+    if (string.isEmpty) EmptyEntity else HttpBody(ContentType.`text/plain`, string)
 
   implicit def apply(buffer: Array[Byte]): HttpEntity =
     if (buffer.length == 0) EmptyEntity else HttpBody(ContentType.`application/octet-stream`, buffer)
 
-  def apply(contentType: ContentType, string: String): HttpEntity =
-    new HttpBody(contentType, string.getBytes(contentType.charset.nioCharset))
+  implicit def apply(optionalBody: Option[HttpBody]): HttpEntity = optionalBody match {
+    case Some(body) => body
+    case None => EmptyEntity
+  }
 }
 
 

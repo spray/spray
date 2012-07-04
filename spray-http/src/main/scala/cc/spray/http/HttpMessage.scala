@@ -247,8 +247,8 @@ object HttpRequest {
  * Sprays immutable model of an HTTP response.
  */
 case class HttpResponse(status: StatusCode = StatusCodes.OK,
-                        headers: List[HttpHeader] = Nil,
                         entity: HttpEntity = EmptyEntity,
+                        headers: List[HttpHeader] = Nil,
                         protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`) extends HttpMessage with HttpResponsePart{
   type Self = HttpResponse
 

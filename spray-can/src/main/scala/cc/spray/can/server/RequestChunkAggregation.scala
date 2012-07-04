@@ -56,7 +56,7 @@ object RequestChunkAggregation {
 
       def closeWithError() {
         val msg = "Aggregated request entity greater than configured limit of " + limit + " bytes"
-        commandPL(HttpResponsePartRenderingContext(HttpResponse(status = 413, entity = msg)))
+        commandPL(HttpResponsePartRenderingContext(HttpResponse(413, msg)))
         commandPL(HttpServer.Close(ProtocolError(msg)))
         closed = true
       }
