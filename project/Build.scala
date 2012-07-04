@@ -16,7 +16,7 @@ object Build extends Build with DocSupport {
 
   lazy val root = Project("root",file("."))
     .aggregate(examples, sprayBase, sprayCan, sprayClient, sprayHttp,
-      sprayHttpPlus, sprayIo, sprayServer, sprayServlet, sprayUtil)
+      sprayHttpx, sprayIo, sprayServer, sprayServlet, sprayUtil)
     .settings(basicSettings: _*)
     .settings(noPublishing: _*)
     .settings(docSupportSettings: _*)
@@ -57,15 +57,16 @@ object Build extends Build with DocSupport {
   lazy val sprayHttp = Project("spray-http", file("spray-http"))
     .settings(moduleSettings: _*)
     .settings(libraryDependencies ++=
-      compile(mimepull, parboiled) ++
+      compile(parboiled) ++
       test(specs2)
     )
 
 
-  lazy val sprayHttpPlus = Project("spray-http-plus", file("spray-http-plus"))
+  lazy val sprayHttpx = Project("spray-httpx", file("spray-httpx"))
     .dependsOn(sprayHttp)
     .settings(moduleSettings: _*)
     .settings(libraryDependencies ++=
+      compile(mimepull) ++
       provided(akkaActor) ++
       test(akkaSlf4j, logback, slf4j, specs2)
     )
