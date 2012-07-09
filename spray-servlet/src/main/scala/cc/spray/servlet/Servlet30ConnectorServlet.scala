@@ -57,7 +57,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
       val responder = createResponder(hsRequest, hsResponse, request)
       serviceActor.tell(request, responder)
     } catch {
-      case HttpException(msg, status) =>
+      case HttpException(status, msg) =>
         writeResponse(HttpResponse(status, msg), hsResponse, request) {}
       case NonFatal(e) =>
         writeResponse(HttpResponse(500, entity = "Internal Server Error:\n" + e), hsResponse, request) {}

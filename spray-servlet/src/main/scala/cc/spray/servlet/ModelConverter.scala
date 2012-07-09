@@ -86,6 +86,6 @@ object ModelConverter {
   }
 
   private def fail(message: String, inner: Exception = null, status: StatusCode = BadRequest) =
-    throw HttpException(if (inner != null) message + inner.getMessage else message, status)
+    throw HttpException(status, if (inner != null) message + inner.getMessage else message)
 
 }
