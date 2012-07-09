@@ -30,6 +30,10 @@ case class ContentTypeRange(mediaRange: MediaRange, charsetRange: HttpCharsetRan
   override def toString = "ContentTypeRange(" + value + ')'
 }
 
+object ContentTypeRange {
+  implicit def fromMediaRange(mediaRange: MediaRange): ContentTypeRange = apply(mediaRange)
+}
+
 case class ContentType(mediaType: MediaType, definedCharset: Option[HttpCharset]) {
   def value: String = definedCharset match {
     // don't print the charset parameter if it's the default charset
@@ -52,5 +56,5 @@ object ContentType {
   def apply(mediaType: MediaType, charset: HttpCharset): ContentType = apply(mediaType, Some(charset))
   def apply(mediaType: MediaType): ContentType = apply(mediaType, None)
   
-  implicit def fromMimeType(mimeType: MediaType): ContentType = apply(mimeType)
+  implicit def fromMediaType(mediaType: MediaType): ContentType = apply(mediaType)
 }

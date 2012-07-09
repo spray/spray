@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2011-2012 spray.cc
- * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +17,30 @@
 package cc.spray.http
 
 
-/**
- * Basic model for multipart content as defind in RFC 2046.
- * If you are looking for a model for `multipart/form-data` you should be using [[cc.spray.http.MultipartFormData]].
- */
-case class MultipartContent(parts: Seq[BodyPart])
-
-object MultipartContent {
-  val Empty = MultipartContent(Nil)
+sealed trait HttpForm {
+  type FieldType
+  def fields: Map[String, FieldType]
 }
 
 /**
- * Model for one part of a multipart message.
+ * Model for `application/x-www-form-urlencoded` form data.
  */
-case class BodyPart(entity: HttpEntity, headers: List[HttpHeader] = Nil)
+case class FormData(fields: Map[String, String]) extends HttpForm {
+  type FieldType = String
+}
+
+object FormData {
+  val Empty = FormData(Map.empty)
+}
+
+
+/**
+ * Model for `multipart/form-data` content as defined in RFC 2388.
+ */
+case class MultipartFormData(fields: Map[String, BodyPart]) extends HttpForm {
+  type FieldType = BodyPart
+}
+
+object MultipartFormData {
+  val Empty = MultipartFormData(Map.empty)
+}

@@ -39,7 +39,9 @@ sealed trait HttpMessageEnd extends HttpMessagePart
 sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
   type Self <: HttpMessage
 
-  def message = this
+  def message: Self
+  def isRequest: Boolean
+  def isResponse: Boolean
 
   def headers: List[HttpHeader]
   def entity: HttpEntity
@@ -54,14 +56,8 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
   def withEntity(entity: HttpEntity): Self
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity): Self
 
-  def withHeadersTransformed(f: List[HttpHeader] => List[HttpHeader]): Self = {
-    val transformed = f(headers)
-    if (transformed eq headers) this.asInstanceOf[Self] else withHeaders(transformed)
-  }
-  def withEntityTransformed(f: HttpEntity => HttpEntity): Self = {
-    val transformed = f(entity)
-    if (transformed eq entity) this.asInstanceOf[Self] else withEntity(transformed)
-  }
+  def withHeadersTransformed(f: List[HttpHeader] => List[HttpHeader]): Self = withHeaders(f(headers))
+  def withEntityTransformed(f: HttpEntity => HttpEntity): Self = withEntity(f(entity))
 
   /**
    * Returns true if a Content-Encoding header is present. 
@@ -84,6 +80,8 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
       else if (erasure.isInstance(headers.head)) Some(headers.head.asInstanceOf[T]) else next(headers.tail)
     next(headers)
   }
+
+  def as[T](implicit f: Self => T): T = f(message)
 }
 
 
@@ -102,6 +100,10 @@ final class HttpRequest private(
   val queryParams: Map[String, String]) extends HttpMessage with HttpRequestPart {
 
   type Self = HttpRequest
+
+  def message = this
+  def isRequest = true
+  def isResponse = false
 
   def path     = if (URI.getPath     == null) "" else URI.getPath
   def query    = if (URI.getQuery    == null) "" else URI.getQuery
@@ -220,9 +222,10 @@ final class HttpRequest private(
     }
   }
 
-  def withHeaders(headers: List[HttpHeader]) = copy(headers = headers)
-  def withEntity(entity: HttpEntity) = copy(entity = entity)
-  def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) = copy(headers = headers, entity = entity)
+  def withHeaders(headers: List[HttpHeader]) = if (headers eq this.headers) this else copy(headers = headers)
+  def withEntity(entity: HttpEntity) = if (entity eq this.entity) this else copy(entity = entity)
+  def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) =
+    if ((headers eq this.headers) && (entity eq this.entity)) this else copy(headers = headers, entity = entity)
 }
 
 object HttpRequest {
@@ -251,6 +254,10 @@ case class HttpResponse(status: StatusCode = StatusCodes.OK,
                         headers: List[HttpHeader] = Nil,
                         protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`) extends HttpMessage with HttpResponsePart{
   type Self = HttpResponse
+
+  def message = this
+  def isRequest = false
+  def isResponse = true
 
   def withHeaders(headers: List[HttpHeader]) = copy(headers = headers)
   def withEntity(entity: HttpEntity) = copy(entity = entity)
