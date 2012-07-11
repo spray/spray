@@ -3,11 +3,14 @@ import Keys._
 import scala.Console.{RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE}
 
 trait DocSupport {
-  def sprayBase: Project
   def sprayCan: Project
   def sprayClient: Project
+  def sprayHttp: Project
+  def sprayHttpx: Project
   def sprayIo: Project
-  def sprayServer: Project
+  def sprayRouting: Project
+  def sprayServlet: Project
+  def sprayTestKit: Project
   def sprayUtil: Project
 
   val docVersion = SettingKey[String]("doc-version", "The version of the produced documentation")
@@ -57,14 +60,17 @@ trait DocSupport {
       state
     },
 
-    doMoveScaladoc <<= (siteDir, docVersion, state,
-      doc in (sprayBase, Compile),
-      doc in (sprayCan, Compile),
-      doc in (sprayClient, Compile),
-      doc in (sprayIo, Compile),
-      doc in (sprayServer, Compile),
-      doc in (sprayUtil, Compile)
-    ) map { (siteDir, version, state, docBase, docCan, docClient, docIo, docServer, docUtil) =>
+    doMoveScaladoc <<= (siteDir, docVersion, state
+      //doc in (sprayCan, Compile),
+      //doc in (sprayClient, Compile),
+      //doc in (sprayHttp, Compile),
+      //doc in (sprayHttpx, Compile),
+      //doc in (sprayIo, Compile),
+      //doc in (sprayRouting, Compile),
+      //doc in (sprayServlet, Compile),
+      //doc in (sprayTestKit, Compile),
+      //doc in (sprayUtil, Compile)
+    ) map { (siteDir, version, state) => //, docCan, docClient, docHttp, docHttpx, docIo, docRouting, docServlet, docTestKit, docUtil) =>
       val log = colorLog(state)
       def move(docDir: File) {
         assert(docDir.getName == "api")
@@ -76,7 +82,7 @@ trait DocSupport {
         IO.delete(versionDir)
         if (!docDir.renameTo(versionDir)) sys.error("Couldn't move '" + docDir + "' to '" + versionDir + "'")
       }
-      List(docBase, docCan, docClient, docIo, docServer, docUtil) foreach move
+      //List(docCan, docClient, docHttp, docHttpx, docIo, docRouting, docServlet, docTestKit, docUtil) foreach move
       siteDir
     },
 
