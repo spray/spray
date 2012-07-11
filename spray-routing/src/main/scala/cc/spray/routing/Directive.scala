@@ -54,10 +54,16 @@ object Directive {
   def requestTransforming(f: HttpRequest => HttpRequest) = wrapping { inner => ctx =>
     inner(ctx.withRequestTransformed(f))
   }
-  def responseTransforming(f: Any => Any) = wrapping { inner => ctx =>
-    inner(ctx.withResponseTransformed(f))
+  def routeResponseTransforming(f: Any => Any) = wrapping { inner => ctx =>
+    inner(ctx.withRouteResponseTransformed(f))
   }
-  def filtering[T <: HNil](f: RequestContext => FilterResult[T])(implicit fdb: FilteringDirectiveBuilder[T]) = fdb(f)
+  def httpResponseTransforming(f: HttpResponse => HttpResponse) = wrapping { inner => ctx =>
+    inner(ctx.withHttpResponseTransformed(f))
+  }
+  def responseTransformingPF(f: PartialFunction[Any, Any]) = wrapping { inner => ctx =>
+    inner(ctx.withResponseTransformedPF(f))
+  }
+  def filtering[T <: HList](f: RequestContext => FilterResult[T])(implicit fdb: FilteringDirectiveBuilder[T]) = fdb(f)
 
   implicit def pimpApply[T <: HNil](directive: Directive[T])(implicit hac: HApplyConverter[T]): hac.Out = hac(directive)
 }
@@ -112,7 +118,7 @@ object FilteringDirectiveBuilder extends LowerPriorityFilteringDirectiveBuilders
 }
 
 sealed abstract class LowerPriorityFilteringDirectiveBuilders {
-  implicit def fdb[T <: HNil] = new FilteringDirectiveBuilder[T] {
+  implicit def fdb[T <: HList] = new FilteringDirectiveBuilder[T] {
     type Out = Directive[T]
     def apply(filter: RequestContext => FilterResult[T]) = new Out {
       def happly(inner: T => Route) = { ctx =>

@@ -58,12 +58,28 @@ case class RequestContext(
   /**
    * Returns a copy of this context with the given response transformation function chained into the response chain.
    */
-  def withResponseTransformed(f: Any => Any) = withHandlerTransformed { previousHandler =>
+  def withRouteResponseTransformed(f: Any => Any) = withHandlerTransformed { previousHandler =>
     new UnregisteredActorRef(handler) {
       def handle(message: Any, sender: ActorRef) {
         previousHandler.tell(f(message), sender)
       }
     }
+  }
+
+  /**
+   * Returns a copy of this context with the given response transformation function chained into the response chain.
+   */
+  def withHttpResponseTransformed(f: HttpResponse => HttpResponse) = withRouteResponseTransformed {
+    case x: HttpResponse => f(x)
+    case ChunkedResponseStart(x) => ChunkedResponseStart(f(x))
+    case x => x
+  }
+
+  /**
+   * Returns a copy of this context with the given response transformation function chained into the response chain.
+   */
+  def withResponseTransformedPF(f: PartialFunction[Any, Any]) = withRouteResponseTransformed { message =>
+    if (f.isDefinedAt(message)) f(message) else message
   }
 
   /**
@@ -78,16 +94,9 @@ case class RequestContext(
   }
 
   /**
-   * Returns a copy of this context with the given response transformation function chained into the response chain.
-   */
-  def withResponseTransformedPF(f: PartialFunction[Any, Any]) = withResponseTransformed { message =>
-    if (f.isDefinedAt(message)) f(message) else message
-  }
-
-  /**
    * Returns a copy of this context with the given rejection transformation function chained into the response chain.
    */
-  def withRejectionsTransformed(f: Seq[Rejection] => Seq[Rejection]) = withResponseTransformed {
+  def withRejectionsTransformed(f: Seq[Rejection] => Seq[Rejection]) = withRouteResponseTransformed {
     case Rejected(rejections) => Rejected(f(rejections))
     case x => x
   }
