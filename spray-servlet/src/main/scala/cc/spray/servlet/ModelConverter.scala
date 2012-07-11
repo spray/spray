@@ -20,14 +20,15 @@ import java.io.IOException
 import javax.servlet.http.HttpServletRequest
 import cc.spray.util.EmptyByteArray
 import cc.spray.http.parser.HttpParser
+import cc.spray.util._
 import cc.spray.http._
-import HttpHeaders.RawHeader
+import HttpHeaders._
 import StatusCodes._
 
 
 object ModelConverter {
 
-  def toHttpRequest(hsRequest: HttpServletRequest): HttpRequest = {
+  def toHttpRequest(hsRequest: HttpServletRequest)(implicit settings: ConnectorSettings): HttpRequest = {
     import collection.JavaConverters._
     var contentType: ContentType = null
     var contentLength: Int = 0
@@ -46,7 +47,7 @@ object ModelConverter {
     HttpRequest(
       method = toHttpMethod(hsRequest.getMethod),
       uri = rebuildUri(hsRequest),
-      headers = rawHeaders,
+      headers = addRemoteAddressHeader(hsRequest, rawHeaders),
       entity = toHttpEntity(hsRequest, contentType, contentLength),
       protocol = toHttpProtocol(hsRequest.getProtocol)
     )
@@ -59,6 +60,12 @@ object ModelConverter {
     val uri = hsRequest.getRequestURI
     val queryString = hsRequest.getQueryString
     if (queryString != null && queryString.length > 0) uri + '?' + queryString else uri
+  }
+
+  def addRemoteAddressHeader(hsr: HttpServletRequest, headers: List[HttpHeader])
+                            (implicit settings: ConnectorSettings): List[HttpHeader] = {
+    if (settings.RemoteAddressHeader) `Remote-Address`(hsr.getRemoteAddr) :: headers
+    else headers
   }
 
   def toHttpProtocol(name: String) =

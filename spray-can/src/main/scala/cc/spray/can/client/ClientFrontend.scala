@@ -31,8 +31,8 @@ object ClientFrontend {
 
   def apply(initialRequestTimeout: Long, log: LoggingAdapter) = new DoublePipelineStage {
     def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
-      val host = context.handle.address.getHostName
-      val port = context.handle.address.getPort
+      val host = context.handle.remoteAddress.getHostName
+      val port = context.handle.remoteAddress.getPort
       val openRequests = Queue.empty[RequestRecord]
       var requestTimeout = initialRequestTimeout
 

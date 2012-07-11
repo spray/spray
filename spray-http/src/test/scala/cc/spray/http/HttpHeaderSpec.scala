@@ -125,6 +125,8 @@ class HttpHeaderSpec extends Specification {
     p^
     "Last-Modified: Wed, 13 Jul 2011 08:12:31 GMT" ! example(`Last-Modified`(DateTime(2011, 7, 13, 8, 12, 31)))_ ^
     p^
+    "Remote-Address: 111.22.3.4" ! example(`Remote-Address`("111.22.3.4"))_ ^
+    p^
     "Set-Cookie: SID=31d4d96e407aad42" !
       example(`Set-Cookie`(HttpCookie("SID", "31d4d96e407aad42")), fix(_).replace("=", "=\"") + '"')_ ^
     "Set-Cookie: SID=\"31d4d96e407aad42\"; Domain=example.com; Path=/" !

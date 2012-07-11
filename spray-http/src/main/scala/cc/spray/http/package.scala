@@ -20,9 +20,6 @@ import http.HttpHeaders.RawHeader
 
 package object http {
 
-  private[http] def identityFunc[T]: T => T = _identityFunc.asInstanceOf[T => T]
-  private val _identityFunc: Any => Any = x => x
-
   /**
    * Warms up the cc.spray.http module by triggering the loading of most classes in this package,
    * so as to increase the speed of the first usage.

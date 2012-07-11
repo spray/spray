@@ -23,11 +23,12 @@ import cc.spray.util.ConfigUtils
 private[servlet] class ConnectorSettings(config: Config = ConfigFactory.load) {
   private[this] val c: Config = ConfigUtils.prepareSubConfig(config, "spray.servlet")
 
-  val BootClass       = c getString       "boot-class"
-  val RequestTimeout  = c getMilliseconds "request-timeout"
-  val TimeoutTimeout  = c getMilliseconds "timeout-timeout"
-  val RootPath        = c getString       "root-path"
-  val TimeoutHandler  = c getString       "timeout-handler"
+  val BootClass           = c getString       "boot-class"
+  val RequestTimeout      = c getMilliseconds "request-timeout"
+  val TimeoutTimeout      = c getMilliseconds "timeout-timeout"
+  val RootPath            = c getString       "root-path"
+  val TimeoutHandler      = c getString       "timeout-handler"
+  val RemoteAddressHeader = c getBoolean      "remote-address-header"
 
   require(!BootClass.isEmpty,
     "No boot class configured. Please specify a boot class FQN in the spray.servlet.boot-class config setting.")

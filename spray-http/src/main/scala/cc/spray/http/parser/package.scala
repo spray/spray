@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2011-2012 spray.cc
- * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,14 +16,10 @@
 
 package cc.spray.http
 
-import java.net.InetAddress
 
-case class HttpIp(ip: InetAddress) {
-  def value: String = ip.getHostAddress
-  override def toString = value
-}
+package object parser {
 
-object HttpIp {
-  implicit def fromString(s: String) = HttpIp(InetAddress.getByName(s))
-  implicit def fromInetAddress(a: InetAddress) = HttpIp(a)
+  private val _identityFunc: Any => Any = x => x
+  def identityFunc[T]: T => T = _identityFunc.asInstanceOf[T => T]
+
 }

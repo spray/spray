@@ -32,7 +32,7 @@ object SslTlsSupport {
   def apply(engineProvider: InetSocketAddress => SSLEngine, log: LoggingAdapter): PipelineStage = {
     new DoublePipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
-        val engine = engineProvider(context.handle.address)
+        val engine = engineProvider(context.handle.remoteAddress)
         val pendingSends = Queue.empty[Send]
         var inboundReceptacle: ByteBuffer = _ // holds incoming data that are too small to be decrypted yet
 

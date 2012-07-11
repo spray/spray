@@ -33,7 +33,7 @@ import cc.spray.http._
 class Servlet30ConnectorServlet extends HttpServlet {
   var system: ActorSystem = _
   var serviceActor: ActorRef = _
-  var settings: ConnectorSettings = _
+  implicit var settings: ConnectorSettings = _
   var timeoutHandler: ActorRef = _
   def log = system.log
 

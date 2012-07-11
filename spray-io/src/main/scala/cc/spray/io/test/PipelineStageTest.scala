@@ -29,7 +29,7 @@ trait PipelineStageTest {
   val dummyHandle = new Handle {
     def key = throw new UnsupportedOperationException
     def handler = throw new UnsupportedOperationException
-    val address = new InetSocketAddress("example.com", 8080)
+    val remoteAddress = new InetSocketAddress("example.com", 8080)
     def commander = throw new UnsupportedOperationException
   }
 

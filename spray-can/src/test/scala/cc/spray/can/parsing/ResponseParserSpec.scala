@@ -18,6 +18,7 @@ package cc.spray.can.parsing
 
 import org.specs2.mutable.Specification
 import cc.spray.can.StatusLine
+import cc.spray.util._
 import cc.spray.http._
 import HttpHeaders._
 import HttpProtocols._

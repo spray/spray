@@ -54,6 +54,10 @@ private[parser] trait SimpleHeaders {
     HttpDate ~ EOI ~~> `Last-Modified`
   }
 
+  def REMOTE_ADDRESS = rule {
+    Ip ~ EOI ~~> `Remote-Address`
+  }
+
   def X_FORWARDED_FOR = rule {
     oneOrMore(Ip, separator = ListSep) ~ EOI ~~> (`X-Forwarded-For`(_))
   }

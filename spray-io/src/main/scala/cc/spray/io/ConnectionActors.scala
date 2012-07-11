@@ -26,7 +26,7 @@ trait ConnectionActors extends IoPeer { ioPeer =>
     new Handle {
       val key = theKey
       val handler = context.actorOf(Props(createConnectionActor(this)))
-      val address = theAddress
+      val remoteAddress = theAddress
       val commander = theCommander
     }
   }

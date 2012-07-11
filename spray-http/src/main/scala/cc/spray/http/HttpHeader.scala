@@ -142,6 +142,12 @@ object HttpHeaders {
     def value = absoluteUri
   }
 
+  case class `Remote-Address`(ip: HttpIp) extends HttpHeader {
+    def name = "Remote-Address"
+    def lowercaseName = "remote-address"
+    def value = ip.value
+  }
+
   case class `Set-Cookie`(cookie: HttpCookie) extends HttpHeader {
     def name = "Set-Cookie"
     def lowercaseName = "set-cookie"

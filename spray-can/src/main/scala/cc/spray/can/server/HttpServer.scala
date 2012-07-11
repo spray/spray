@@ -168,16 +168,18 @@ object HttpServer {
                             statsHolder: => StatsHolder,
                             log: LoggingAdapter)
                            (implicit sslEngineProvider: ServerSSLEngineProvider): PipelineStage = {
+    import PipelineStage.optional
     ServerFrontend(settings, messageHandler, timeoutResponse, log) ~>
-    PipelineStage.optional(settings.RequestChunkAggregationLimit > 0,
+    optional(settings.RequestChunkAggregationLimit > 0,
       RequestChunkAggregation(settings.RequestChunkAggregationLimit.toInt)) ~>
-    PipelineStage.optional(settings.PipeliningLimit > 0, PipeliningLimiter(settings.PipeliningLimit)) ~>
-    PipelineStage.optional(settings.StatsSupport, StatsSupport(statsHolder)) ~>
+    optional(settings.PipeliningLimit > 0, PipeliningLimiter(settings.PipeliningLimit)) ~>
+    optional(settings.StatsSupport, StatsSupport(statsHolder)) ~>
+    optional(settings.RemoteAddressHeader, RemoteAddressHeaderSupport()) ~>
     RequestParsing(settings.ParserSettings, log) ~>
     ResponseRendering(settings) ~>
-    PipelineStage.optional(settings.IdleTimeout > 0, ConnectionTimeouts(settings.IdleTimeout, log)) ~>
-    PipelineStage.optional(settings.SSLEncryption, SslTlsSupport(sslEngineProvider, log)) ~>
-    PipelineStage.optional(
+    optional(settings.IdleTimeout > 0, ConnectionTimeouts(settings.IdleTimeout, log)) ~>
+    optional(settings.SSLEncryption, SslTlsSupport(sslEngineProvider, log)) ~>
+    optional(
       settings.ReapingCycle > 0 && (settings.IdleTimeout > 0 || settings.RequestTimeout > 0),
       TickGenerator(Duration(settings.ReapingCycle, TimeUnit.MILLISECONDS))
     )
