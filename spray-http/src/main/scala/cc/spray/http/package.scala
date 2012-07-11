@@ -20,7 +20,7 @@ import http.HttpHeaders.RawHeader
 
 package object http {
 
-  def identityFunc[T]: T => T = _identityFunc.asInstanceOf[T => T]
+  private[http] def identityFunc[T]: T => T = _identityFunc.asInstanceOf[T => T]
   private val _identityFunc: Any => Any = x => x
 
   /**

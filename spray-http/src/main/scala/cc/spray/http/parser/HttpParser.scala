@@ -64,14 +64,13 @@ object HttpParser extends SprayParser with ProtocolParameterRules with Additiona
 
   def parseHeaders(headers: List[HttpHeader]): (List[String], List[HttpHeader]) = {
     val errors = List.newBuilder[String]
-    val parsedHeaders = List.newBuilder[HttpHeader]
-    headers.foreach {
-      parseHeader(_) match {
-        case Right(parsed) => parsedHeaders += parsed
-        case Left(error) => errors += error
+    val parsedHeaders = headers.map { header =>
+      parseHeader(header) match {
+        case Right(parsed) => parsed
+        case Left(error) => errors += error; header
       }
     }
-    (errors.result(), parsedHeaders.result())
+    (errors.result(), parsedHeaders)
   }
 
   def parseContentType(contentType: String): Either[String, ContentType] =

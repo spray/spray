@@ -41,6 +41,7 @@ case class ContentType(mediaType: MediaType, definedCharset: Option[HttpCharset]
     case _ => mediaType.value
   }
 
+  def withMediaType(mediaType: MediaType) = copy(mediaType = mediaType)
   def withCharset(charset: HttpCharset) = copy(definedCharset = Some(charset))
 
   def isCharsetDefined = definedCharset.isDefined
