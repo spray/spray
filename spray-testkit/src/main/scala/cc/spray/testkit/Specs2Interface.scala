@@ -17,10 +17,13 @@
 package cc.spray.testkit
 
 import org.specs2.execute.{Failure, FailureException}
+import org.specs2.specification.{SpecificationStructure, Fragments, Step}
 
 
-trait Specs2Interface extends TestFrameworkInterface {
+trait Specs2Interface extends TestFrameworkInterface with SpecificationStructure {
 
   def failTest(msg: String) = throw new FailureException(Failure(msg))
+
+  override def map(fs: => Fragments) = super.map(fs).add(Step(cleanUp()))
 
 }

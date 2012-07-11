@@ -27,6 +27,7 @@ import cc.spray.util.NotImplementedException
 
 
 trait RouteResultComponent {
+
   def system: ActorSystem
   def failTest(msg: String): Nothing
 
