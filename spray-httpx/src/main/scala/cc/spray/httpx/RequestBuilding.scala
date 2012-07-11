@@ -18,16 +18,18 @@ package cc.spray.httpx
 
 import cc.spray.httpx.encoding.Encoder
 import cc.spray.httpx.marshalling._
+import cc.spray.http.parser.HttpParser
 import cc.spray.http._
 import HttpMethods._
+import HttpHeaders._
 
 
 trait RequestBuilding {
 
   private[httpx] sealed abstract class RequestBuilder {
     def method: HttpMethod
-    def apply[T :Marshaller](): HttpRequest = apply("/")
-    def apply[T :Marshaller](uri: String): HttpRequest = apply(uri, None)
+    def apply(): HttpRequest = apply("/")
+    def apply(uri: String): HttpRequest = apply[String](uri, None)
     def apply[T :Marshaller](uri: String, content: T): HttpRequest = apply(uri, Some(content))
     def apply[T :Marshaller](uri: String, content: Option[T]): HttpRequest = {
       HttpRequest(method, uri,
@@ -52,16 +54,20 @@ trait RequestBuilding {
 
   def addHeader(header: HttpHeader): RequestTransformer = _.withHeadersTransformed(header :: _)
 
+  def addHeader(headerName: String, headerValue: String): RequestTransformer = {
+    val rawHeader = RawHeader(headerName, headerValue)
+    addHeader(HttpParser.parseHeader(rawHeader).left.flatMap(_ => Right(rawHeader)).right.get)
+  }
+
   def addHeaders(first: HttpHeader, more: HttpHeader*): RequestTransformer = addHeaders(first :: more.toList)
 
   def addHeaders(headers: List[HttpHeader]): RequestTransformer = _.withHeadersTransformed(headers ::: _)
 
   def authenticate(credentials: BasicHttpCredentials) = addHeader(HttpHeaders.Authorization(credentials))
 
-  implicit def concatRequestTransformers(f: RequestTransformer) = new ConcatenatedRequestTransformer(f)
-  class ConcatenatedRequestTransformer(f: RequestTransformer) extends RequestTransformer {
-    def apply(request: HttpRequest) = f(request)
-    def ~> (g: RequestTransformer) = new ConcatenatedRequestTransformer(g compose f)
+  implicit def request2TransformableHttpRequest(request: HttpRequest) = new TransformableHttpRequest(request)
+  class TransformableHttpRequest(request: HttpRequest) {
+    def ~> (f: RequestTransformer) = f(request)
   }
 }
 
