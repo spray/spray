@@ -14,16 +14,11 @@
  * limitations under the License.
  */
 
-package cc.spray.http
+package cc.spray.testkit
 
-sealed trait FormField {
-  //def as[A :FormFieldConverter]: Either[DeserializationError, A]
-}
 
-trait UrlEncodedFormField extends FormField {
-  def raw: Option[String]
-}
+trait TestFrameworkInterface {
 
-trait MultipartFormField extends FormField {
-  def raw: Option[BodyPart]
+  def failTest(msg: String): Nothing
+
 }

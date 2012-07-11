@@ -14,6 +14,13 @@
  * limitations under the License.
  */
 
-package cc.spray.util
+package cc.spray.testkit
 
-class IllegalResponseException(msg: String = "") extends RuntimeException(msg)
+import org.specs2.execute.{Failure, FailureException}
+
+
+trait Specs2Interface extends TestFrameworkInterface {
+
+  def failTest(msg: String) = throw new FailureException(Failure(msg))
+
+}
