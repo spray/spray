@@ -19,6 +19,7 @@ package cc.spray.routing
 import akka.event.LoggingAdapter
 import akka.util.NonFatal
 import cc.spray.http._
+import StatusCodes._
 
 
 trait ExceptionHandler extends ExceptionHandler.PF
@@ -36,10 +37,11 @@ object ExceptionHandler {
     case HttpException(failure, msg) => log => ctx =>
       log.warning("Request {} could not be handled normally, completing with {} response ({})",
         ctx.request, failure.value, msg)
-      HttpResponse(failure, msg)
+      ctx.complete(failure, msg)
+
     case NonFatal(e) => log => ctx =>
       log.error(e, "Error during processing of request {}", ctx.request)
-      StatusCodes.InternalServerError :HttpResponse
+      ctx.complete(InternalServerError)
   }
 
 }

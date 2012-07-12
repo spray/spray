@@ -22,13 +22,14 @@ trait RouteConcatenation {
   implicit def pimpRouteWithConcatenation(route: Route) = new RouteConcatenation(route: Route)
 
   class RouteConcatenation(route: Route) {
+
     /**
      * Returns a Route that chains two Routes. If the first Route rejects the request the second route is given a
      * chance to act upon the request.
      */
-    def ~ (other: Route): Route = { ctx =>
+    def ~(other: Route): Route = { ctx =>
       route {
-        ctx.withResponseHandling {
+        ctx.withRouteResponseHandling {
           case Rejected(rejections) => other(ctx.withRejectionsTransformed(rejections ++ _))
         }
       }

@@ -18,8 +18,5 @@
 package cc.spray.http
 
 
-case class HttpException(status: StatusCode, message: String) extends RuntimeException(message)
-
-object HttpException {
-  def apply(status: StatusCode): HttpException = new HttpException(status, status.defaultMessage)
-}
+case class HttpException(status: StatusCode, message: String = "")
+  extends RuntimeException(if (message.isEmpty) status.defaultMessage else message)

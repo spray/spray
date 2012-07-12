@@ -18,7 +18,7 @@ package cc.spray.routing
 
 import collection.GenTraversableOnce
 import akka.dispatch.Future
-import akka.actor.ActorRef
+import akka.actor.{Status, ActorRef}
 import akka.spray.UnregisteredActorRef
 import cc.spray.util._
 import cc.spray.http._
@@ -69,6 +69,13 @@ case class RequestContext(
   /**
    * Returns a copy of this context with the given response transformation function chained into the response chain.
    */
+  def withRouteResponseTransformedPF(f: PartialFunction[Any, Any]) = withRouteResponseTransformed { message =>
+    if (f.isDefinedAt(message)) f(message) else message
+  }
+
+  /**
+   * Returns a copy of this context with the given response transformation function chained into the response chain.
+   */
   def withHttpResponseTransformed(f: HttpResponse => HttpResponse) = withRouteResponseTransformed {
     case x: HttpResponse => f(x)
     case ChunkedResponseStart(x) => ChunkedResponseStart(f(x))
@@ -76,16 +83,9 @@ case class RequestContext(
   }
 
   /**
-   * Returns a copy of this context with the given response transformation function chained into the response chain.
-   */
-  def withResponseTransformedPF(f: PartialFunction[Any, Any]) = withRouteResponseTransformed { message =>
-    if (f.isDefinedAt(message)) f(message) else message
-  }
-
-  /**
    * Returns a copy of this context with the given function handling a part of the response space.
    */
-  def withResponseHandling(f: PartialFunction[Any, Unit]) = withHandlerTransformed { previousHandler =>
+  def withRouteResponseHandling(f: PartialFunction[Any, Unit]) = withHandlerTransformed { previousHandler =>
     new UnregisteredActorRef(handler) {
       def handle(message: Any, sender: ActorRef) {
         if (f.isDefinedAt(message)) f(message) else previousHandler.tell(message, sender)
@@ -151,6 +151,13 @@ case class RequestContext(
   }
 
   /**
+   * Completes the request with the given status and the respective default message in the entity.
+   */
+  def complete(status: StatusCode)(implicit sender: SenderRef) {
+    complete(status: HttpResponse)
+  }
+
+  /**
    * Schedules the completion of the request with result of the given future.
    */
   def complete(future: Future[HttpResponse])(implicit sender: SenderRef) {
@@ -168,39 +175,19 @@ case class RequestContext(
   }
 
   /**
-   * Completes the request with a response corresponding to the given Throwable, with [[cc.spray.http.HttpException]]
-   * instances receiving special handling.
+   * Creates an HttpException with the given properties and bubbles it up the response chain,
+   * where it is dealt with by the closest `handleExceptions` directive and its ExceptionHandler.
    */
-  def fail(error: Throwable) {
-    error match {
-      case HttpException(NotFound, NotFound.defaultMessage) => reject()
-      case HttpException(failure, reason) => complete(HttpResponse(failure, reason))
-      case NonFatal(e) => complete(HttpResponse(InternalServerError, "Internal Server Error:\n" + e.toString))
-    }
+  def fail(status: StatusCode, message: String = "")(implicit sender: SenderRef) {
+    fail(HttpException(status, message))
   }
 
   /**
-   * Completes the request with the given [[cc.spray.http.HttpFailure]].
+   * Bubbles the given error up the response chain, where it is dealt with by the closest `handleExceptions`
+   * directive and its ExceptionHandler.
    */
-  def fail(status: HttpFailure) {
-    fail(status, status.defaultMessage)
-  }
-
-  /**
-   * Completes the request with the given status and the response entity created by marshalling the given object using
-   * the in-scope marshaller for the type.
-   */
-  def fail[T](status: HttpFailure, obj: T)(implicit marshaller: Marshaller[T], sender: SenderRef) {
-    fail(status, Nil, obj)
-  }
-
-  /**
-   * Completes the request with the given status, headers and the response entity created by marshalling the
-   * given object using the in-scope marshaller for the type.
-   */
-  def fail[T](status: HttpFailure, headers: List[HttpHeader], obj: T)
-             (implicit marshaller: Marshaller[T], sender: SenderRef) {
-    complete(status, headers, obj)
+  def fail(error: Throwable)(implicit sender: SenderRef) {
+    handler ! Status.Failure(error)
   }
 
   private class DefaultMarshallingContext(status: StatusCode, headers: List[HttpHeader],

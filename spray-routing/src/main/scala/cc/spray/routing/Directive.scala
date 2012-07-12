@@ -17,7 +17,7 @@
 package cc.spray.routing
 
 import shapeless._
-import cc.spray.http._
+
 
 abstract class Directive[A <: HList] { self =>
   def happly(f: A => Route): Route
@@ -25,7 +25,7 @@ abstract class Directive[A <: HList] { self =>
   def | (that: Directive[A]) = new Directive[A] {
     def happly(f: A => Route) = { ctx =>
       self.happly(f) {
-        ctx.withResponseHandling {
+        ctx.withRouteResponseHandling {
           case Rejected(rejections) => that.happly(f) {
             ctx.withRejectionsTransformed(rejections ++ _)
           }
@@ -45,26 +45,6 @@ abstract class Directive[A <: HList] { self =>
 }
 
 object Directive {
-  def wrapping(f: Route => Route) = new Directive0 {
-    def apply(inner: Route) = f(inner)
-  }
-  def requestContextTransforming(f: RequestContext => RequestContext) = wrapping { inner => ctx =>
-    inner(f(ctx))
-  }
-  def requestTransforming(f: HttpRequest => HttpRequest) = wrapping { inner => ctx =>
-    inner(ctx.withRequestTransformed(f))
-  }
-  def routeResponseTransforming(f: Any => Any) = wrapping { inner => ctx =>
-    inner(ctx.withRouteResponseTransformed(f))
-  }
-  def httpResponseTransforming(f: HttpResponse => HttpResponse) = wrapping { inner => ctx =>
-    inner(ctx.withHttpResponseTransformed(f))
-  }
-  def responseTransformingPF(f: PartialFunction[Any, Any]) = wrapping { inner => ctx =>
-    inner(ctx.withResponseTransformedPF(f))
-  }
-  def filtering[T <: HList](f: RequestContext => FilterResult[T])(implicit fdb: FilteringDirectiveBuilder[T]) = fdb(f)
-
   implicit def pimpApply[T <: HNil](directive: Directive[T])(implicit hac: HApplyConverter[T]): hac.Out = hac(directive)
 }
 
@@ -74,7 +54,7 @@ abstract class Directive0 extends Directive[HNil] { self =>
   override def | (that: Directive[HNil]) = new Directive0 {
     def apply(inner: Route) = { ctx =>
       self(inner) {
-        ctx.withResponseHandling {
+        ctx.withRouteResponseHandling {
           case Rejected(rejections) => that.happly(_ => inner) {
             ctx.withRejectionsTransformed(rejections ++ _)
           }
@@ -95,37 +75,6 @@ object HApplyConverter {
     def apply(directive: Directive[A :: HNil]): Out = { f =>
       directive.happly {
         case a :: HNil => f(a)
-      }
-    }
-  }
-}
-
-sealed abstract class FilteringDirectiveBuilder[T <: HList] {
-  type Out <: Directive[T]
-  def apply(f: RequestContext => FilterResult[T]): Out
-}
-
-object FilteringDirectiveBuilder extends LowerPriorityFilteringDirectiveBuilders {
-  implicit val fdb0 = new FilteringDirectiveBuilder[HNil] {
-    type Out = Directive0
-    def apply(filter: RequestContext => FilterResult[HNil]) = Directive.wrapping { inner => ctx =>
-      filter(ctx) match {
-        case _: Pass[_] => inner(ctx)
-        case Reject(rejections) => ctx.reject(rejections: _*)
-      }
-    }
-  }
-}
-
-sealed abstract class LowerPriorityFilteringDirectiveBuilders {
-  implicit def fdb[T <: HList] = new FilteringDirectiveBuilder[T] {
-    type Out = Directive[T]
-    def apply(filter: RequestContext => FilterResult[T]) = new Out {
-      def happly(inner: T => Route) = { ctx =>
-        filter(ctx) match {
-          case Pass(values) => inner(values)(ctx)
-          case Reject(rejections) => ctx.reject(rejections: _*)
-        }
       }
     }
   }

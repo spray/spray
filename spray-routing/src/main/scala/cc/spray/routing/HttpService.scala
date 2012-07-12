@@ -27,19 +27,15 @@ trait HttpService extends Directives {
     def fail: RejectionHandler.PF = {
       case x: Rejection => sys.error("Unhandled rejection: " + x)
     }
-
-    // the rejectionHandler is static (does not depend on the request), so we prebuild it here
-    val rejectionHandler = rh orElse RejectionHandler.Default orElse fail
+    val fullRoute =
+      handleExceptions(eh) {
+        handleRejections(rh orElse RejectionHandler.Default orElse fail) {
+          route
+        }
+      }
 
     {
-      case request: HttpRequest =>
-        val fullRoute =
-          handleExceptions(eh) {
-            handleRejections(rejectionHandler) {
-              route
-            }
-          }
-        fullRoute(RequestContext(request, sender))
+      case request: HttpRequest => fullRoute(RequestContext(request, sender))
     }
   }
 
