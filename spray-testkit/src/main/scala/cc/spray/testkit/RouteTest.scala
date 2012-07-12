@@ -44,11 +44,14 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
 
   def check[T](body: => T): RouteResult => T = dynRR.withValue(_)(body)
 
+  def handled: Boolean = { assertInCheck(); dynRR.value.handled }
+
   def response: HttpResponse = { assertInCheck(); dynRR.value.response }
   def entity: HttpEntity = response.entity
   def entityAs[T :Unmarshaller] = entity.as[T].fold(error => failTest(error.toString), identityFunc)
   def body: HttpBody = entity.toOption.getOrElse(failTest("Response has no entity"))
   def contentType: ContentType = body.contentType
+  def mediaType: ContentType = contentType.mediaType
   def headers: List[HttpHeader] = response.headers
   def header[T <: HttpHeader :ClassManifest]: Option[T] = response.header[T]
   def header(name: String): Option[HttpHeader] = response.headers.mapFind(h => if (h.name == name) Some(h) else None)
@@ -63,6 +66,7 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   implicit def pimpHttpRequestWithTildeArrow(request: HttpRequest) = new HttpRequestWithTildeArrow(request)
   class HttpRequestWithTildeArrow(request: HttpRequest) {
     def ~> [A, B](f: A => B)(implicit ta: TildeArrow[A, B]): ta.Out = ta(request, f)
+    def ~> (header: HttpHeader) = addHeader(header)(request)
   }
 
   private abstract class TildeArrow[A, B] {
