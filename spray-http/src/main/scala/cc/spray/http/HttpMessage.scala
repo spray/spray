@@ -110,6 +110,17 @@ final class HttpRequest private(
   def rawQuery = if (URI.getRawQuery == null) "" else URI.getRawQuery
   def fragment = if (URI.getFragment == null) "" else URI.getFragment
 
+  def host: String = hostHeader(headers).map(_.host).getOrElse("")
+  def port: Option[Int] = hostHeader(headers).map(_.port).getOrElse(None)
+  def hostAndPort: String = hostHeader(headers).map(_.value).getOrElse("")
+
+  @tailrec
+  private def hostHeader(headers: List[HttpHeader]): Option[Host] = headers match {
+    case Nil => None
+    case (x: Host) :: _ => Some(x)
+    case _ => hostHeader(headers.tail)
+  }
+
   /**
    * Parses the `uri` to create a copy of this request with the `URI` member updated or an error message
    * if the `uri` cannot be parsed.
