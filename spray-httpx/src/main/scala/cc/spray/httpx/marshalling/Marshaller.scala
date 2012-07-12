@@ -16,13 +16,20 @@
 
 package cc.spray.httpx.marshalling
 
-import cc.spray.http.{HttpEntity, ContentType}
 import akka.actor.ActorRef
+import akka.util.NonFatal
+import cc.spray.http.{HttpEntity, ContentType}
 import cc.spray.util._
 
 
 trait Marshaller[-T] extends (ContentTypeSelector => Either[AcceptableContentTypes, Marshalling[T]])
-trait Marshalling[-T] extends ((T, MarshallingContext) => Unit)
+
+trait Marshalling[-T] extends ((T, MarshallingContext) => Unit) {
+  def runSafe(value: T, ctx: MarshallingContext) {
+    try apply(value, ctx)
+    catch { case NonFatal(e) => ctx.handleError(e) }
+  }
+}
 
 object Marshaller extends BasicMarshallers
   with MetaMarshallers
@@ -59,10 +66,29 @@ object Marshaller extends BasicMarshallers
 }
 
 trait MarshallingContext { self =>
+  /**
+   * Receives the end product entity of a Marshalling.
+   */
   def marshalTo(entity: HttpEntity)
+
+  /**
+   * Handles the given error.
+   * Calling this method rather than throwing the exception directly allows the error to transcend thread boundaries
+   * and contexts, e.g. when channeling an error from a future execution back to the original scope.
+   */
   def handleError(error: Throwable)
+
+  /**
+   * Uses the given entity to start a chunked response stream.
+   * The method returns an ActorRef that should be used as the channel for subsequent [[cc.spray.http.MessageChunk]]
+   * instances and the finalizing [[cc.spray.http.ChunkedMessageEnd]].
+   */
   def startChunkedMessage(entity: HttpEntity): ActorRef
 
+  /**
+   * Creates a new MarshallingContext based on this one, that overrides the Content-Type of the produced entity
+   * with the given one.
+   */
   def withContentTypeOverriding(contentType: ContentType): MarshallingContext =
    new MarshallingContext {
      def marshalTo(entity: HttpEntity) { self.marshalTo(overrideContentType(entity)) }

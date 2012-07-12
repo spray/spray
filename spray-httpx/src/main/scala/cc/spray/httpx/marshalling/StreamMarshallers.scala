@@ -49,12 +49,12 @@ class ChunkingActor[T](ctx: MarshallingContext, marshalling: Marshalling[T]) ext
           connectionActor ! MessageChunk(entity.buffer)
         }
         def handleError(error: Throwable) {
-          ctx.handleError(error)
           context.stop(self)
+          ctx.handleError(error)
         }
         def startChunkedMessage(entity: HttpEntity) = sys.error("Cannot marshal a stream of streams")
       }
-      marshalling(current.asInstanceOf[T], chunkingCtx)
+      marshalling.runSafe(current.asInstanceOf[T], chunkingCtx)
       remaining = rest
 
     case x if x.getClass.getName == "cc.spray.io.IoWorker$AckSend$" =>

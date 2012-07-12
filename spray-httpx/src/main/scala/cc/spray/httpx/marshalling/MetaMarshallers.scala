@@ -17,6 +17,7 @@
 package cc.spray.httpx.marshalling
 
 import akka.dispatch.Future
+import akka.util.NonFatal
 import cc.spray.http._
 
 
@@ -28,7 +29,7 @@ trait MetaMarshallers {
         new Marshalling[Option[T]] {
           def apply(value: Option[T], ctx: MarshallingContext) {
             value match {
-              case Some(v) => marshalling(v, ctx)
+              case Some(v) => marshalling.runSafe(v, ctx)
               case None => ctx.handleError(HttpException(StatusCodes.NotFound))
             }
           }
@@ -44,8 +45,8 @@ trait MetaMarshallers {
             new Marshalling[Either[A, B]] {
               def apply(value: Either[A, B], ctx: MarshallingContext) {
                 value match {
-                  case Right(b) => marshallingB(b, ctx)
-                  case Left(a) => marshallingA(a, ctx)
+                  case Right(b) => marshallingB.runSafe(b, ctx)
+                  case Left(a) => marshallingA.runSafe(a, ctx)
                 }
               }
             }
@@ -60,7 +61,7 @@ trait MetaMarshallers {
         new Marshalling[Future[T]] {
           def apply(value: Future[T], ctx: MarshallingContext) {
             value.onComplete {
-              case Right(v) => marshalling(v, ctx)
+              case Right(v) => marshalling.runSafe(v, ctx)
               case Left(error) => ctx.handleError(error)
             }
           }

@@ -35,7 +35,7 @@ package object marshalling {
             def handleError(error: Throwable) { result = Some(Left(error)) }
             def startChunkedMessage(entity: HttpEntity) = throw new UnsupportedOperationException
           }
-          marshalling(value, ctx)
+          marshalling.runSafe(value, ctx)
         case Left(_) =>
           // our selector never rejects a content-type, so why does the marshaller not produce a marshalling?
           throw new IllegalStateException
