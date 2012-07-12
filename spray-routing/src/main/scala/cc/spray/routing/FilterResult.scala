@@ -32,11 +32,12 @@ object Pass {
   val Empty = Pass[HNil](HNil)
 }
 
-case class Reject(rejections: Seq[Rejection] = Nil) extends FilterResult[Nothing] {
+case class Reject(rejections: Seq[Rejection]) extends FilterResult[Nothing] {
   def map[B <: HList](f: Nothing => B): FilterResult[B] = this
   def flatMap[B <: HList](f: Nothing => FilterResult[B]): FilterResult[B] = this
 }
 
 object Reject {
+  val Empty = Reject(Nil)
   def apply(rejection: Rejection): Reject = apply(rejection :: Nil)
 }

@@ -18,6 +18,7 @@ package cc.spray.routing
 package directives
 
 import cc.spray.http.{HttpResponse, HttpRequest}
+import cc.spray.util.identityFunc
 import shapeless._
 
 
@@ -48,6 +49,13 @@ trait BasicDirectives {
   }
 
   def filter[T <: HList](f: RequestContext => FilterResult[T])(implicit fdb: FilteringDirectiveBuilder[T]) = fdb(f)
+
+  def nop = transformInnerRoute(identityFunc)
+
+  def provide[T](value: T): Directive[T :: HNil] = new Directive[T :: HNil] {
+    val list = value :: HNil
+    def happly(f: (T :: HNil) => Route): Route = f(list)
+  }
 }
 
 object BasicDirectives extends BasicDirectives

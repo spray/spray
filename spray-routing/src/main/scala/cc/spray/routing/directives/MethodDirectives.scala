@@ -59,4 +59,4 @@ trait MethodDirectives {
 
 }
 
-object MethodDirectives extends MethodDirectives with BasicDirectives
+object MethodDirectives extends HostDirectives with BasicDirectives

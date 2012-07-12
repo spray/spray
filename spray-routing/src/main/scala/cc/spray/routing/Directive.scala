@@ -19,11 +19,11 @@ package cc.spray.routing
 import shapeless._
 
 
-abstract class Directive[A <: HList] { self =>
-  def happly(f: A => Route): Route
+abstract class Directive[L <: HList] { self =>
+  def happly(f: L => Route): Route
 
-  def | (that: Directive[A]) = new Directive[A] {
-    def happly(f: A => Route) = { ctx =>
+  def | (that: Directive[L]) = new Directive[L] {
+    def happly(f: L => Route) = { ctx =>
       self.happly(f) {
         ctx.withRouteResponseHandling {
           case Rejected(rejections) => that.happly(f) {
@@ -34,23 +34,38 @@ abstract class Directive[A <: HList] { self =>
     }
   }
 
-  def & [B <: HList](that: Directive[B])(implicit prepend : Prepend[A, B]) = new Directive[prepend.Out] {
-    def happly(f: prepend.Out => Route) =
-      that.happly { valuesB =>
-        self.happly { valuesA =>
-          f(valuesA ::: valuesB)
+  def & [L2 <: HList](that: Directive[L2])(implicit prepend : Prepend[L, L2]): Directive[prepend.Out] =
+    new Directive[prepend.Out] {
+      def happly(f: prepend.Out => Route): Route =
+        that.happly { values2 =>
+          self.happly { values =>
+            f(values ::: values2)
+          }
         }
-      }
-  }
+    }
+
+  def map[HF](f: HF)(implicit m: Mapper[HF, L]): Directive[m.Out] = transformed(_.map(f))
+
+  def flatMap[HF](f: HF)(implicit fm: FlatMapper[HF, L]): Directive[fm.Out] = transformed(_.flatMap(f))
+
+  def transformed[L2 <: HList](f: L => L2): Directive[L2] =
+    new Directive[L2] {
+      def happly(g: L2 => Route) = self.happly { values => g(f(values)) }
+    }
 }
 
 object Directive {
-  implicit def pimpApply[T <: HNil](directive: Directive[T])(implicit hac: HApplyConverter[T]): hac.Out = hac(directive)
+  implicit def pimpApply[L <: HList](directive: Directive[L])
+                                    (implicit hac: ApplyConverter[L]): hac.In => Route = { f =>
+    directive.happly(hac(f))
+  }
 }
 
 abstract class Directive0 extends Directive[HNil] { self =>
   def happly(f: HNil => Route) = apply(f(HNil))
+
   def apply(inner: Route): Route
+
   override def | (that: Directive[HNil]) = new Directive0 {
     def apply(inner: Route) = { ctx =>
       self(inner) {
@@ -59,22 +74,6 @@ abstract class Directive0 extends Directive[HNil] { self =>
             ctx.withRejectionsTransformed(rejections ++ _)
           }
         }
-      }
-    }
-  }
-}
-
-sealed abstract class HApplyConverter[T <: HList] {
-  type Out
-  def apply(directive: Directive[T]): Out
-}
-
-object HApplyConverter {
-  implicit def hac1[A]: HApplyConverter[A :: HNil] = new HApplyConverter[A :: HNil] {
-    type Out = ((A) => Route) => Route
-    def apply(directive: Directive[A :: HNil]): Out = { f =>
-      directive.happly {
-        case a :: HNil => f(a)
       }
     }
   }

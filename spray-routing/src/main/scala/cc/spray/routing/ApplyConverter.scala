@@ -16,13 +16,19 @@
 
 package cc.spray.routing
 
-import directives._
+import shapeless._
 
 
-trait Directives extends RouteConcatenation
-  with BasicDirectives
-  with HostDirectives
-  with MethodDirectives
-  with MiscDirectives
-  with RespondWithDirectives
-  with RouteDirectives
+sealed abstract class ApplyConverter[L <: HList] {
+  type In
+  def apply(f: In): L => Route
+}
+
+object ApplyConverter {
+  implicit def hac1[A] = new ApplyConverter[A :: HNil] {
+    type In = A => Route
+    def apply(f: In) = {
+      case a :: HNil => f(a)
+    }
+  }
+}
