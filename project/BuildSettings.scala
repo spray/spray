@@ -16,7 +16,7 @@ object BuildSettings {
     licenses              := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
     scalaVersion          := "2.9.2",
     resolvers             ++= Dependencies.resolutionRepos,
-    scalacOptions         := Seq("-Ydependent-method-types", "-deprecation", "-encoding", "utf8")
+    scalacOptions         := Seq("-Ydependent-method-types", "-unchecked", "-deprecation", "-encoding", "utf8")
   )
 
   lazy val moduleSettings = basicSettings ++ seq(
@@ -32,7 +32,7 @@ object BuildSettings {
         "spray nexus" at {
           // public uri is repo.spray.cc, we use an SSH tunnel to the nexus here
           "http://localhost:42424/content/repositories/" + {
-            if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else"releases/"
+            if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else "releases/"
           }
         }
       }
