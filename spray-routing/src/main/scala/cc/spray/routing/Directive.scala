@@ -16,6 +16,7 @@
 
 package cc.spray.routing
 
+import cc.spray.httpx.unmarshalling.{MalformedContent, Deserializer}
 import shapeless._
 
 
@@ -34,15 +35,25 @@ abstract class Directive[L <: HList] { self =>
     }
   }
 
-  def & [L2 <: HList](that: Directive[L2])(implicit prepend : Prepend[L, L2]): Directive[prepend.Out] =
-    new Directive[prepend.Out] {
-      def happly(f: prepend.Out => Route): Route =
+  def & [L2 <: HList](that: Directive[L2])(implicit prepend : Prepend[L, L2]) = new Directive[prepend.Out] {
+    def happly(f: prepend.Out => Route) =
+      self.happly { values =>
         that.happly { values2 =>
-          self.happly { values =>
-            f(values ::: values2)
-          }
+          f(values ::: values2)
         }
-    }
+      }
+  }
+
+  def as[T](deserializer: HListDeserializer[L, T]) = new Directive[T :: HNil] {
+    def happly(f: T :: HNil => Route) =
+      self.happly { values => ctx =>
+        deserializer(values) match {
+          case Right(t) => f(t :: HNil)(ctx)
+          case Left(MalformedContent(msg)) => ctx.reject(ValidationRejection(msg))
+          case Left(error) => ctx.reject(ValidationRejection(error.toString))
+        }
+      }
+  }
 
   def map[HF](f: HF)(implicit m: Mapper[HF, L]): Directive[m.Out] = transformed(_.map(f))
 
@@ -76,5 +87,15 @@ abstract class Directive0 extends Directive[HNil] { self =>
         }
       }
     }
+  }
+}
+
+object Directive0 {
+  def apply(f: Route => Route) = new Directive0 {
+    def apply(inner: Route) = f(inner)
+  }
+
+  implicit def fromGeneral(d: Directive[HNil]) = new Directive0 {
+    def apply(inner: Route) = happly(_ => inner)
   }
 }

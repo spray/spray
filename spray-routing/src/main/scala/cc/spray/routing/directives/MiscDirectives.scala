@@ -27,7 +27,7 @@ import MediaTypes._
 
 
 trait MiscDirectives {
-  this: BasicDirectives =>
+  import BasicDirectives._
 
   def log: LoggingAdapter
 
@@ -35,38 +35,39 @@ trait MiscDirectives {
    * Transforms exceptions thrown during evaluation of its inner route using the given
    * [[cc.spray.routing.ExceptionHandler]].
    */
-  def handleExceptions(handler: ExceptionHandler) = transformInnerRoute { inner => ctx =>
-    val handleError = handler andThen (_(log)(ctx))
-    try inner {
-      ctx.withRouteResponseHandling {
-        case Status.Failure(error) if handleError.isDefinedAt(error) => handleError(error)
+  def handleExceptions(handler: ExceptionHandler): Directive0 =
+    transformInnerRoute { inner => ctx =>
+      val handleError = handler andThen (_(log)(ctx))
+      try inner {
+        ctx.withRouteResponseHandling {
+          case Status.Failure(error) if handleError.isDefinedAt(error) => handleError(error)
+        }
       }
+      catch handleError
     }
-    catch handleError
-  }
 
   /**
    * Transforms exceptions thrown during evaluation of its inner route using the given
    * [[cc.spray.routing.ExceptionHandler]].
    */
-  def handleRejections(handler: RejectionHandler) = transformRouteResponse {
-    case Rejected(rejections) if handler.isDefinedAt(rejections) => handler(rejections)
-    case x => x
-  }
+  def handleRejections(handler: RejectionHandler): Directive0 =
+    transformRouteResponse {
+      case Rejected(rejections) if handler.isDefinedAt(rejections) => handler(rejections)
+      case x => x
+    }
 
   /**
    * Returns a Directive which checks the given condition before passing on the [[cc.spray.routing.RequestContext]] to
    * its inner Route. If the condition fails the route is rejected with a [[cc.spray.routing.ValidationRejection]].
    */
-  def validate(check: => Boolean, errorMsg: String) = filter { _ =>
-    if (check) Pass.Empty else Reject(ValidationRejection(errorMsg))
-  }
+  def validate(check: => Boolean, errorMsg: String): Directive0 =
+    filter { _ => if (check) Pass.Empty else Reject(ValidationRejection(errorMsg)) }
 
   /**
    * Extracts an HTTP header value using the given function. If the function is undefined for all headers the request
    * is rejection with the [[cc.spray.routing.MissingHeaderRejection]]
    */
-  def headerValue[T](f: HttpHeader => Option[T]) = filter {
+  def headerValue[T](f: HttpHeader => Option[T]): Directive[T :: HNil] = filter {
     _.request.headers.mapFind(f) match {
       case Some(a) => Pass(a :: HNil)
       case None => Reject(MissingHeaderRejection)
@@ -77,15 +78,15 @@ trait MiscDirectives {
    * Extracts an HTTP header value using the given partial function. If the function is undefined for all headers
    * the request is rejection with the [[cc.spray.routing.MissingHeaderRejection]]
    */
-  def headerValuePF[T](pf: PartialFunction[HttpHeader, T]) = headerValue(pf.lift)
+  def headerValuePF[T](pf: PartialFunction[HttpHeader, T]): Directive[T :: HNil] = headerValue(pf.lift)
 
   /**
    * Directive extracting the IP of the client from either the X-Forwarded-For, Remote-Address or X-Real-IP header.
    */
   lazy val clientIP: Directive[HttpIp :: HNil] =
-    headerValuePF { case `X-Forwarded-For`(ips) => ips.head } |
-    headerValuePF { case `Remote-Address`(ip) => ip } |
-    headerValuePF { case RawHeader("x-real-ip", ip) => ip }
+    (headerValuePF { case `X-Forwarded-For`(ips) => ips.head }) |
+    (headerValuePF { case `Remote-Address`(ip) => ip }) |
+    (headerValuePF { case RawHeader("x-real-ip", ip) => ip })
 
   /**
    * Wraps the inner Route with JSONP support. If a query parameter with the given name is present in the request and
@@ -93,7 +94,7 @@ trait MiscDirectives {
    * to a Javascript function having the name of query parameters value. Additionally the content-type is changed from
    * `application/json` to `application/javascript` in these cases.
    */
-  def jsonpWithParameter(parameterName: String) = transformRequestContext { ctx =>
+  def jsonpWithParameter(parameterName: String): Directive0 = transformRequestContext { ctx =>
     ctx.withHttpResponseTransformed {
       _.withEntityTransformed {
         case body@ HttpBody(ct@ ContentType(`application/json`, _), buffer) =>

@@ -52,6 +52,11 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
     (errors, withHeaders(parsed))
   }
 
+  def parseHeadersToEither: Either[String, Self] = parseHeaders match {
+    case (Nil, self) => Right(self)
+    case (errors, _) => Left("Illegal header(s): " + errors.mkString(", "))
+  }
+
   def withHeaders(headers: List[HttpHeader]): Self
   def withEntity(entity: HttpEntity): Self
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity): Self
@@ -97,7 +102,7 @@ final class HttpRequest private(
   val entity: HttpEntity,
   val protocol: HttpProtocol,
   val URI: URI,
-  val queryParams: Map[String, String]) extends HttpMessage with HttpRequestPart {
+  val queryParams: QueryParams) extends HttpMessage with HttpRequestPart {
 
   type Self = HttpRequest
 
@@ -126,8 +131,9 @@ final class HttpRequest private(
    * if the `uri` cannot be parsed.
    */
   def parseUri: Either[String, HttpRequest] = {
-    try Right(copy(URI = new URI(uri)))
-    catch {
+    try Right {
+      if (URI eq HttpRequest.DefaultURI) copy(URI = new URI(uri)) else this
+    } catch {
       case e: URISyntaxException => Left("Illegal URI: " + e.getMessage)
     }
   }
@@ -138,11 +144,19 @@ final class HttpRequest private(
    * This method will implicitly call `parseUri` if this has not yet been done for this request.
    */
   def parseQuery: Either[String, HttpRequest] = {
-    def doParseQuery(req: HttpRequest) =
-      QueryParser.parseQueryString(req.rawQuery).right.map(params => req.copy(queryParams = params))
+    def doParseQuery(req: HttpRequest) = {
+      if (req.rawQuery.isEmpty) Right(this)
+      else QueryParser.parseQueryString(req.rawQuery).right.map(params => req.copy(queryParams = params))
+    }
     if (URI eq HttpRequest.DefaultURI) parseUri.right.flatMap(doParseQuery)
     else doParseQuery(this)
   }
+
+  /**
+   * Parses the headers, uri and query string of this request and returns either a new HttpRequest with all
+   * the parsed data in place or an error message.
+   */
+  def parseAll: Either[String, HttpRequest] = parseHeadersToEither.right.flatMap(_.parseQuery)
 
   def copy(method: HttpMethod = method, uri: String = uri, headers: List[HttpHeader] = headers,
            entity: HttpEntity = entity, protocol: HttpProtocol = protocol, URI: URI = URI,

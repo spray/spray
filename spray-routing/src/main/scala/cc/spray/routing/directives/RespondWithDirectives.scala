@@ -21,26 +21,24 @@ import cc.spray.http._
 
 
 trait RespondWithDirectives {
-  this: BasicDirectives =>
+  import BasicDirectives._
 
   /**
    * Returns a Route that sets the given response status on all not-rejected responses of its inner Route.
    */
-  def respondWithStatus(responseStatus: StatusCode) = transformHttpResponse {
-    _.copy(status = responseStatus)
-  }
+  def respondWithStatus(responseStatus: StatusCode): Directive0 =
+    transformHttpResponse { _.copy(status = responseStatus) }
 
   /**
    * Returns a Route that adds the given response header to all not-rejected responses of its inner Route.
    */
-  def respondWithHeader(responseHeader: HttpHeader) = transformHttpResponse { response =>
-    response.copy(headers = responseHeader :: response.headers)
-  }
+  def respondWithHeader(responseHeader: HttpHeader): Directive0 =
+    transformHttpResponse { response => response.copy(headers = responseHeader :: response.headers) }
 
   /**
    * Returns a Route that adds the given response headers to all not-rejected responses of its inner Route.
    */
-  def respondWithHeaders(responseHeaders: HttpHeader*) = {
+  def respondWithHeaders(responseHeaders: HttpHeader*): Directive0 = {
     val headers = responseHeaders.toList
     transformHttpResponse { response =>
       response.copy(headers = headers ::: response.headers)
@@ -51,17 +49,19 @@ trait RespondWithDirectives {
    * Returns a Route that sets the Content-Type of non-empty, non-rejected responses of its inner Route to the given
    * ContentType.
    */
-  def respondWithContentType(contentType: ContentType) = transformHttpResponse { response =>
-    response.copy(entity = response.entity.map((ct, buffer) => (contentType, buffer)))
-  }
+  def respondWithContentType(contentType: ContentType): Directive0 =
+    transformHttpResponse { response =>
+      response.copy(entity = response.entity.map((ct, buffer) => (contentType, buffer)))
+    }
 
   /**
    * Returns a Route that sets the media-type of non-empty, non-rejected responses of its inner Route to the given
    * one.
    */
-  def respondWithMediaType(mediaType: MediaType) = transformHttpResponse { response =>
-    response.copy(entity = response.entity.map((ct, buffer) => (ct.withMediaType(mediaType), buffer)))
-  }
+  def respondWithMediaType(mediaType: MediaType): Directive0 =
+    transformHttpResponse { response =>
+      response.copy(entity = response.entity.map((ct, buffer) => (ct.withMediaType(mediaType), buffer)))
+    }
 }
 
-object RespondWithDirectives extends RespondWithDirectives with BasicDirectives
+object RespondWithDirectives extends RespondWithDirectives

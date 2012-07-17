@@ -22,9 +22,10 @@ import java.net.URLDecoder
 import java.io.UnsupportedEncodingException
 import org.parboiled.errors.ParsingException
 
+
 object QueryParser extends SprayParser {
   
-  val QueryString: Rule1[Map[String, String]] = rule (
+  val QueryString: Rule1[QueryParams] = rule (
       EOI ~ push(Map.empty[String, String])
     | zeroOrMore(QueryParameter, separator = "&") ~ EOI ~~> (_.toMap)
   )
@@ -45,7 +46,7 @@ object QueryParser extends SprayParser {
     }
   }
   
-  def parseQueryString(queryString: String): Either[String, Map[String, String]] =
+  def parseQueryString(queryString: String): Either[String, QueryParams] =
     parse(QueryString, queryString)
   
 }

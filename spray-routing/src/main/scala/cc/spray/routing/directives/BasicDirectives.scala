@@ -24,37 +24,30 @@ import shapeless._
 
 trait BasicDirectives {
 
-  def transformInnerRoute(f: Route => Route) = new Directive0 {
-    def apply(inner: Route) = f(inner)
-  }
+  def transformInnerRoute(f: Route => Route): Directive0 = Directive0(f)
 
-  def transformRequestContext(f: RequestContext => RequestContext) = transformInnerRoute { inner => ctx =>
-    inner(f(ctx))
-  }
+  def transformRequestContext(f: RequestContext => RequestContext): Directive0 =
+    transformInnerRoute { inner => ctx => inner(f(ctx)) }
 
-  def transformRequest(f: HttpRequest => HttpRequest) = transformInnerRoute { inner => ctx =>
-    inner(ctx.withRequestTransformed(f))
-  }
+  def transformRequest(f: HttpRequest => HttpRequest): Directive0 =
+    transformInnerRoute { inner => ctx => inner(ctx.withRequestTransformed(f)) }
 
-  def transformRouteResponse(f: Any => Any) = transformInnerRoute { inner => ctx =>
-    inner(ctx.withRouteResponseTransformed(f))
-  }
+  def transformRouteResponse(f: Any => Any): Directive0 =
+    transformInnerRoute { inner => ctx => inner(ctx.withRouteResponseTransformed(f)) }
 
-  def transformHttpResponse(f: HttpResponse => HttpResponse) = transformInnerRoute { inner => ctx =>
-    inner(ctx.withHttpResponseTransformed(f))
-  }
+  def transformHttpResponse(f: HttpResponse => HttpResponse): Directive0 =
+    transformInnerRoute { inner => ctx => inner(ctx.withHttpResponseTransformed(f)) }
 
-  def transformRouteResponsePF(f: PartialFunction[Any, Any]) = transformInnerRoute { inner => ctx =>
-    inner(ctx.withRouteResponseTransformedPF(f))
-  }
+  def transformRouteResponsePF(f: PartialFunction[Any, Any]): Directive0 =
+    transformInnerRoute { inner => ctx => inner(ctx.withRouteResponseTransformedPF(f)) }
 
-  def filter[T <: HList](f: RequestContext => FilterResult[T])(implicit fdb: FilteringDirectiveBuilder[T]) = fdb(f)
+  def filter[T <: HList](f: RequestContext => FilterResult[T])
+                        (implicit fdb: FilteringDirectiveBuilder[T]): fdb.Out = fdb(f)
 
   def nop = transformInnerRoute(identityFunc)
 
-  def provide[T](value: T): Directive[T :: HNil] = new Directive[T :: HNil] {
-    val list = value :: HNil
-    def happly(f: (T :: HNil) => Route): Route = f(list)
+  def provide[L <: HList](values: L) = new Directive[L] {
+    def happly(f: L => Route) = f(values)
   }
 }
 
@@ -79,10 +72,10 @@ object FilteringDirectiveBuilder extends LowerPriorityFilteringDirectiveBuilders
 }
 
 sealed abstract class LowerPriorityFilteringDirectiveBuilders {
-  implicit def fdb[T <: HList] = new FilteringDirectiveBuilder[T] {
-    type Out = Directive[T]
-    def apply(filter: RequestContext => FilterResult[T]) = new Out {
-      def happly(inner: T => Route) = { ctx =>
+  implicit def fdb[L <: HList] = new FilteringDirectiveBuilder[L] {
+    type Out = Directive[L]
+    def apply(filter: RequestContext => FilterResult[L]) = new Out {
+      def happly(inner: L => Route) = { ctx =>
         filter(ctx) match {
           case Pass(values) => inner(values)(ctx)
           case Reject(rejections) => ctx.reject(rejections: _*)

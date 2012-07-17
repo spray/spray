@@ -22,7 +22,7 @@ import cc.spray.http.HttpMethods._
 
 
 trait MethodDirectives {
-  this: BasicDirectives =>
+  import BasicDirectives._
 
   /**
    * A route filter that rejects all non-DELETE requests.
@@ -49,14 +49,12 @@ trait MethodDirectives {
    */
   val put = method(PUT)
 
-
   /**
    * Returns a route filter that rejects all requests whose HTTP method does not match the given one.
    */
-  def method(m: HttpMethod) = filter { ctx =>
+  def method(m: HttpMethod): Directive0 = filter { ctx =>
     if (ctx.request.method == m) Pass.Empty else Reject(MethodRejection(m))
   }
-
 }
 
-object MethodDirectives extends HostDirectives with BasicDirectives
+object MethodDirectives extends HostDirectives

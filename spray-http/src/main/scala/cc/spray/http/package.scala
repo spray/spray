@@ -18,7 +18,10 @@ package cc.spray
 
 import http.HttpHeaders.RawHeader
 
+
 package object http {
+
+  type QueryParams = Map[String, String]
 
   /**
    * Warms up the cc.spray.http module by triggering the loading of most classes in this package,

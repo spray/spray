@@ -85,7 +85,7 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
         val routeResult = new RouteResult(timeout.duration)
         route {
           RequestContext(
-            request = request,
+            request = request.parseAll.fold(sys.error, identityFunc),
             handler = routeResult.handler,
             unmatchedPath = request.path
           )

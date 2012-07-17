@@ -23,7 +23,7 @@ import shapeless._
 
 
 trait HostDirectives {
-  this: BasicDirectives =>
+  import BasicDirectives._
 
   /**
    * Rejects all requests with a host name different from the given one.
@@ -60,4 +60,4 @@ trait HostDirectives {
 
 }
 
-object HostDirectives extends HostDirectives with BasicDirectives
+object HostDirectives extends HostDirectives

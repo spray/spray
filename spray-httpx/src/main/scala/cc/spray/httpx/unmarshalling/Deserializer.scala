@@ -19,7 +19,16 @@ package cc.spray.httpx.unmarshalling
 import akka.util.NonFatal
 
 
-trait Deserializer[A, B] extends (A => Deserialized[B])
+trait Deserializer[A, B] extends (A => Deserialized[B]) { self =>
+
+  def withDefaultValue(defaultValue: B): Deserializer[A, B] =
+    new Deserializer[A, B] {
+      def apply(value: A) = self(value).left.flatMap {
+        case ContentExpected => Right(defaultValue)
+        case error => Left(error)
+      }
+    }
+}
 
 object Deserializer extends DeserializerLowerPriorityImplicits
   with BasicUnmarshallers
