@@ -16,12 +16,13 @@
 
 package cc.spray
 
-import shapeless.HList
+import shapeless.{HNil, HList}
 
 
 package object routing {
 
   type Route = RequestContext => Unit
   type RouteFilter[+T <: HList] = RequestContext => FilterResult[T]
+  type Directive0 = Directive[HNil]
 
 }

@@ -24,7 +24,9 @@ import shapeless._
 
 trait BasicDirectives {
 
-  def transformInnerRoute(f: Route => Route): Directive0 = Directive0(f)
+  def transformInnerRoute(f: Route => Route): Directive0 = new Directive0 {
+    def happly(inner: HNil => Route) = f(inner(HNil))
+  }
 
   def transformRequestContext(f: RequestContext => RequestContext): Directive0 =
     transformInnerRoute { inner => ctx => inner(f(ctx)) }

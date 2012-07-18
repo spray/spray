@@ -71,31 +71,3 @@ object Directive {
     directive.happly(hac(f))
   }
 }
-
-abstract class Directive0 extends Directive[HNil] { self =>
-  def happly(f: HNil => Route) = apply(f(HNil))
-
-  def apply(inner: Route): Route
-
-  override def | (that: Directive[HNil]) = new Directive0 {
-    def apply(inner: Route) = { ctx =>
-      self(inner) {
-        ctx.withRouteResponseHandling {
-          case Rejected(rejections) => that.happly(_ => inner) {
-            ctx.withRejectionsTransformed(rejections ++ _)
-          }
-        }
-      }
-    }
-  }
-}
-
-object Directive0 {
-  def apply(f: Route => Route) = new Directive0 {
-    def apply(inner: Route) = f(inner)
-  }
-
-  implicit def fromGeneral(d: Directive[HNil]) = new Directive0 {
-    def apply(inner: Route) = happly(_ => inner)
-  }
-}
