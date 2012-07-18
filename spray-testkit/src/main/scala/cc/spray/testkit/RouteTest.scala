@@ -83,11 +83,12 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
       type Out = RouteResult
       def apply(request: HttpRequest, route: Route) = {
         val routeResult = new RouteResult(timeout.duration)
+        val parsedRequest = request.parseAll.fold(sys.error, identityFunc)
         route {
           RequestContext(
-            request = request.parseAll.fold(sys.error, identityFunc),
+            request = parsedRequest,
             handler = routeResult.handler,
-            unmatchedPath = request.path
+            unmatchedPath = parsedRequest.path
           )
         }
         // since the route might detach we block until the route actually completes or times out

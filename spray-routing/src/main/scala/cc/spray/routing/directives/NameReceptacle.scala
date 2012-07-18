@@ -27,8 +27,8 @@ sealed class NameReceptacle[T](val name: String, val deserializer: FSOD[T]) {
 }
 
 trait ToNameReceptaclePimps {
-  implicit def fromSymbol(symbol: Symbol)(implicit fsod: FSOD[String]) = new NameReceptacle(symbol.name, fsod)
-  implicit def fromString(string: String)(implicit fsod: FSOD[String]) = new NameReceptacle(string, fsod)
+  implicit def symbol2NR(symbol: Symbol)(implicit fsod: FSOD[String]) = new NameReceptacle(symbol.name, fsod)
+  implicit def string2NR(string: String)(implicit fsod: FSOD[String]) = new NameReceptacle(string, fsod)
 }
 
 class RequiredValueReceptacle[T](val name: String, val requiredValue: T, val deserializer: FSOD[T])

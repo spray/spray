@@ -64,7 +64,7 @@ object FilteringDirectiveBuilder extends LowerPriorityFilteringDirectiveBuilders
     type Out = Directive0
     def apply(filter: RequestContext => FilterResult[HNil]) = BasicDirectives.transformInnerRoute { inner => ctx =>
       filter(ctx) match {
-        case _: Pass[_] => inner(ctx)
+        case Pass(HNil, transform) => inner(transform(ctx))
         case Reject(rejections) => ctx.reject(rejections: _*)
       }
     }
@@ -77,7 +77,7 @@ sealed abstract class LowerPriorityFilteringDirectiveBuilders {
     def apply(filter: RequestContext => FilterResult[L]) = new Out {
       def happly(inner: L => Route) = { ctx =>
         filter(ctx) match {
-          case Pass(values) => inner(values)(ctx)
+          case Pass(values, transform) => inner(values)(transform(ctx))
           case Reject(rejections) => ctx.reject(rejections: _*)
         }
       }

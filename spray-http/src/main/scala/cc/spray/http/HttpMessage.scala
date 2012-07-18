@@ -145,7 +145,7 @@ final class HttpRequest private(
    */
   def parseQuery: Either[String, HttpRequest] = {
     def doParseQuery(req: HttpRequest) = {
-      if (req.rawQuery.isEmpty) Right(this)
+      if (req.rawQuery.isEmpty) Right(req)
       else QueryParser.parseQueryString(req.rawQuery).right.map(params => req.copy(queryParams = params))
     }
     if (URI eq HttpRequest.DefaultURI) parseUri.right.flatMap(doParseQuery)

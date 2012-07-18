@@ -17,6 +17,7 @@
 package cc.spray.routing
 
 import shapeless.{HNil, HList}
+import cc.spray.util._
 
 
 sealed trait FilterResult[+A <: HList] {
@@ -24,7 +25,8 @@ sealed trait FilterResult[+A <: HList] {
   def flatMap[B <: HList](f: A => FilterResult[B]): FilterResult[B]
 }
 
-case class Pass[+A <: HList](values: A) extends FilterResult[A] {
+case class Pass[+A <: HList](values: A,
+                             transform: RequestContext => RequestContext = identityFunc) extends FilterResult[A] {
   def map[B <: HList](f: A => B): FilterResult[B] = Pass(f(values))
   def flatMap[B <: HList](f: A => FilterResult[B]): FilterResult[B] = f(values)
 }

@@ -25,6 +25,13 @@ sealed abstract class ApplyConverter[L <: HList] {
 }
 
 object ApplyConverter {
+  implicit val hac0 = new ApplyConverter[HNil] {
+    type In = Route
+    def apply(fn: In) = {
+      case HNil => fn
+    }
+  }
+
   implicit def hac1[A] = new ApplyConverter[A :: HNil] {
     type In = A => Route
     def apply(fn: In) = {

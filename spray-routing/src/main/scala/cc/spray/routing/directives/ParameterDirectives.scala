@@ -148,6 +148,9 @@ trait ParameterDirectives extends ToNameReceptaclePimps {
 
 }
 
+object ParameterDirectives extends ParameterDirectives
+
+
 sealed trait ParamDefs[L <: HList] {
   type Out <: HList
   def extract: Out

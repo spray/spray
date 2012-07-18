@@ -62,7 +62,6 @@ package object util {
     case x: LinearSeq[_] => new PimpedLinearSeq[A](x)
     case x: IndexedSeq[_] => new PimpedIndexedSeq[A](x)
   }
-  implicit def pimpProduct(product: Product)            :PimpedProduct         = new PimpedProduct(product)
   implicit def pimpRegex(regex: Regex)                  :PimpedRegex           = new PimpedRegex(regex)
   implicit def pimpString(s: String)                    :PimpedString          = new PimpedString(s)
   implicit def pimpEither[A, B](either: Either[A, B])   :Either.RightProjection[A, B] = either.right

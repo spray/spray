@@ -35,7 +35,7 @@ abstract class Directive[L <: HList] { self =>
     }
   }
 
-  def & [L2 <: HList](that: Directive[L2])(implicit prepend : Prepend[L, L2]) = new Directive[prepend.Out] {
+  def & [R <: HList](that: Directive[R])(implicit prepend : Prepend[L, R]) = new Directive[prepend.Out] {
     def happly(f: prepend.Out => Route) =
       self.happly { values =>
         that.happly { values2 =>
@@ -59,9 +59,9 @@ abstract class Directive[L <: HList] { self =>
 
   def flatMap[HF](f: HF)(implicit fm: FlatMapper[HF, L]): Directive[fm.Out] = transformed(_.flatMap(f))
 
-  def transformed[L2 <: HList](f: L => L2): Directive[L2] =
-    new Directive[L2] {
-      def happly(g: L2 => Route) = self.happly { values => g(f(values)) }
+  def transformed[R <: HList](f: L => R): Directive[R] =
+    new Directive[R] {
+      def happly(g: R => Route) = self.happly { values => g(f(values)) }
     }
 }
 
