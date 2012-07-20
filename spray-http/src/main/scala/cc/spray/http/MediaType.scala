@@ -193,6 +193,7 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   val `application/zip`                   = register(new ApplicationMediaType("zip", "zip"))
                                              
   val `audio/basic`                       = register(new AudioMediaType("basic", "au", "snd"))
+  val `audio/midi`                        = register(new AudioMediaType("midi", "mid", "kar"))
   val `audio/mp4`                         = register(new AudioMediaType("mp4", "mp4"))
   val `audio/mpeg`                        = register(new AudioMediaType("mpeg", "mpg", "mpeg", "mpga", "mpe", "mp3", "mp2"))
   val `audio/ogg`                         = register(new AudioMediaType("ogg", "ogg"))
