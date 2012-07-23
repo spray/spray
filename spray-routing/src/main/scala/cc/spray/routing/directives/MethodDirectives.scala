@@ -50,11 +50,11 @@ trait MethodDirectives {
   val put = method(PUT)
 
   /**
-   * Returns a route filter that rejects all requests whose HTTP method does not match the given one.
+   * Rejects all requests whose HTTP method does not match the given one.
    */
   def method(m: HttpMethod): Directive0 = filter { ctx =>
     if (ctx.request.method == m) Pass.Empty else Reject(MethodRejection(m))
-  }
+  } & cancelAllRejectionsOfType[MethodRejection]
 }
 
 object MethodDirectives extends HostDirectives

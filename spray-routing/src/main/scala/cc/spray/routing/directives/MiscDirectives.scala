@@ -52,7 +52,8 @@ trait MiscDirectives {
    */
   def handleRejections(handler: RejectionHandler): Directive0 =
     transformRouteResponse {
-      case Rejected(rejections) if handler.isDefinedAt(rejections) => handler(rejections)
+      case Rejected(rejections) if handler.isDefinedAt(rejections) =>
+        handler(RejectionHandler.applyTransformations(rejections))
       case x => x
     }
 
@@ -94,19 +95,17 @@ trait MiscDirectives {
    * to a Javascript function having the name of query parameters value. Additionally the content-type is changed from
    * `application/json` to `application/javascript` in these cases.
    */
-  def jsonpWithParameter(parameterName: String): Directive0 = transformRequestContext { ctx =>
-    ctx.withHttpResponseTransformed {
-      _.withEntityTransformed {
-        case body@ HttpBody(ct@ ContentType(`application/json`, _), buffer) =>
-          ctx.request.queryParams.get(parameterName) match {
-            case Some(wrapper) => HttpBody(
-              ct.withMediaType(`application/javascript`),
-              wrapper + '(' + new String(buffer, ct.charset.nioCharset) + ')'
-            )
-            case None => body
-          }
+  def jsonpWithParameter(parameterName: String): Directive0 = {
+    import ParameterDirectives._
+    parameter(parameterName?).flatMap {
+      case Some(wrapper) :: HNil => transformHttpResponseEntity {
+        case HttpBody(ct@ ContentType(`application/json`, _), buffer) => HttpBody(
+          contentType = ct.withMediaType(`application/javascript`),
+          string = wrapper + '(' + new String(buffer, ct.charset.nioCharset) + ')'
+        )
         case entity => entity
       }
+      case _ => nop
     }
   }
 

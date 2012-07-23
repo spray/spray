@@ -83,6 +83,18 @@ case class RequestContext(
   }
 
   /**
+   * Returns a copy of this context with the given response transformation function chained into the response chain.
+   */
+  def withHttpResponseEntityTransformed(f: HttpEntity => HttpEntity) =
+    withHttpResponseTransformed(_.withEntityTransformed(f))
+
+  /**
+   * Returns a copy of this context with the given response transformation function chained into the response chain.
+   */
+  def withHttpResponseHeadersTransformed(f: List[HttpHeader] => List[HttpHeader]) =
+    withHttpResponseTransformed(_.withHeadersTransformed(f))
+
+  /**
    * Returns a copy of this context with the given function handling a part of the response space.
    */
   def withRouteResponseHandling(f: PartialFunction[Any, Unit]) = withHandlerTransformed { previousHandler =>

@@ -40,9 +40,7 @@ trait RespondWithDirectives {
    */
   def respondWithHeaders(responseHeaders: HttpHeader*): Directive0 = {
     val headers = responseHeaders.toList
-    transformHttpResponse { response =>
-      response.copy(headers = headers ::: response.headers)
-    }
+    transformHttpResponse { response => response.copy(headers = headers ::: response.headers) }
   }
 
   /**

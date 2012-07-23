@@ -29,7 +29,6 @@ object RejectionHandler {
   implicit def fromPF(pf: PF): RejectionHandler =
     new RejectionHandler {
       def isDefinedAt(rejections: Seq[Rejection]) = pf.isDefinedAt(rejections)
-
       def apply(rejections: Seq[Rejection]) = pf(rejections)
     }
 
@@ -90,4 +89,14 @@ object RejectionHandler {
       HttpResponse(BadRequest, msg)
   }
 
+  /**
+   * Filters out all TransformationRejections from the given sequence and applies them (in order) to the
+   * remaining rejections.
+   */
+  def applyTransformations(rejections: Seq[Rejection]): Seq[Rejection] = {
+    val (transformations, rest) = rejections.partition(_.isInstanceOf[TransformationRejection])
+    (rest /: transformations.asInstanceOf[Seq[TransformationRejection]]) {
+      case (remaining, transformation) => transformation.transform(remaining)
+    }
+  }
 }

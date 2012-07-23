@@ -17,8 +17,8 @@
 package cc.spray.routing
 package directives
 
-import cc.spray.http.{HttpResponse, HttpRequest}
 import cc.spray.util.identityFunc
+import cc.spray.http._
 import shapeless._
 
 
@@ -32,16 +32,25 @@ trait BasicDirectives {
     transformInnerRoute { inner => ctx => inner(f(ctx)) }
 
   def transformRequest(f: HttpRequest => HttpRequest): Directive0 =
-    transformInnerRoute { inner => ctx => inner(ctx.withRequestTransformed(f)) }
+    transformRequestContext(_.withRequestTransformed(f))
 
   def transformRouteResponse(f: Any => Any): Directive0 =
-    transformInnerRoute { inner => ctx => inner(ctx.withRouteResponseTransformed(f)) }
-
-  def transformHttpResponse(f: HttpResponse => HttpResponse): Directive0 =
-    transformInnerRoute { inner => ctx => inner(ctx.withHttpResponseTransformed(f)) }
+    transformRequestContext(_.withRouteResponseTransformed(f))
 
   def transformRouteResponsePF(f: PartialFunction[Any, Any]): Directive0 =
-    transformInnerRoute { inner => ctx => inner(ctx.withRouteResponseTransformedPF(f)) }
+    transformRequestContext(_.withRouteResponseTransformedPF(f))
+
+  def transformHttpResponse(f: HttpResponse => HttpResponse): Directive0 =
+    transformRequestContext(_.withHttpResponseTransformed(f))
+
+  def transformHttpResponseEntity(f: HttpEntity => HttpEntity): Directive0 =
+    transformRequestContext(_.withHttpResponseEntityTransformed(f))
+
+  def transformHttpResponseHeaders(f: List[HttpHeader] => List[HttpHeader]): Directive0 =
+    transformRequestContext(_.withHttpResponseHeadersTransformed(f))
+
+  def transformRejections(f: Seq[Rejection] => Seq[Rejection]): Directive0 =
+    transformRequestContext(_.withRejectionsTransformed(f))
 
   def filter[T <: HList](f: RequestContext => FilterResult[T])
                         (implicit fdb: FilteringDirectiveBuilder[T]): fdb.Out = fdb(f)
@@ -50,6 +59,11 @@ trait BasicDirectives {
 
   def provide[L <: HList](values: L) = new Directive[L] {
     def happly(f: L => Route) = f(values)
+  }
+
+  def cancelAllRejectionsOfType[T <: Rejection :ClassManifest]: Directive0 = {
+    val erasure = classManifest[T].erasure
+    transformRejections(_ :+ TransformationRejection(_.filterNot(erasure.isInstance(_))))
   }
 }
 

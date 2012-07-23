@@ -55,14 +55,13 @@ abstract class Directive[L <: HList] { self =>
       }
   }
 
-  def map[HF](f: HF)(implicit m: Mapper[HF, L]): Directive[m.Out] = transformed(_.map(f))
+  def map[R <: HList](f: L => R) = new Directive[R] {
+    def happly(g: R => Route) = self.happly { values => g(f(values)) }
+  }
 
-  def flatMap[HF](f: HF)(implicit fm: FlatMapper[HF, L]): Directive[fm.Out] = transformed(_.flatMap(f))
-
-  def transformed[R <: HList](f: L => R): Directive[R] =
-    new Directive[R] {
-      def happly(g: R => Route) = self.happly { values => g(f(values)) }
-    }
+  def flatMap[R <: HList](f: L => Directive[R]) = new Directive[R] {
+    def happly(g: R => Route) = self.happly { values => f(values).happly(g) }
+  }
 }
 
 object Directive {

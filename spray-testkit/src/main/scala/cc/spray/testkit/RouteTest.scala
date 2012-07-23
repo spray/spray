@@ -57,7 +57,10 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   def header(name: String): Option[HttpHeader] = response.headers.mapFind(h => if (h.name == name) Some(h) else None)
   def status: StatusCode = response.status
 
-  def rejections: Seq[Rejection] = { assertInCheck(); dynRR.value.rejections }
+  def rejections: Seq[Rejection] = {
+    assertInCheck()
+    RejectionHandler.applyTransformations(dynRR.value.rejections)
+  }
   def rejection: Rejection = {
     val r = rejections
     if (r.size == 1) r.head else failTest("Expected a single rejection but got %s (%s)".format(r.size, r))
