@@ -20,90 +20,87 @@ import cc.spray.http._
 
 
 sealed trait FormFieldExtractor {
-  def field(name: String): Deserialized[FormField]
+  type Field <: FormField
+  def field(name: String): Field
 }
 
 object FormFieldExtractor {
-  private def fail(fieldName: String, expected: String) =
-    Left(UnsupportedContentType("Field '%s' can only be read from '%s' form content".format(fieldName, expected)))
-  private def fail(fieldName: String) =
-    Left(MalformedContent("Form data do not contain a field with name '" + fieldName + "'"))
-
   def apply(form: HttpForm): FormFieldExtractor = form match {
     case FormData(fields) => new FormFieldExtractor {
-      def field(name: String) = fields.get(name) match {
-        case Some(value) => Right {
-          new UrlEncodedFormField {
-            def raw = value
-            def as[T](implicit ffc: FormFieldConverter[T]) = ffc.urlEncodedFieldConverter match {
-              case Some(conv) => conv(value)
-              case None => fail(name, "multipart/form-data")
-            }
-          }
-        }
-        case None => fail(name)
-      }
+      type Field = UrlEncodedFormField
+      def field(name: String) = new UrlEncodedFormField(name, fields.get(name))
     }
-
     case MultipartFormData(fields) => new FormFieldExtractor {
-      def field(name: String) = fields.get(name) match {
-        case Some(value) => Right {
-          new MultipartFormField {
-            def raw = value
-            def as[T](implicit ffc: FormFieldConverter[T]) = ffc.multipartFieldConverter match {
-              case Some(conv) => conv(value.entity)
-              case None => fail(name, "application/x-www-form-urlencoded")
-            }
-          }
-        }
-        case None => fail(name)
-      }
+      type Field = MultipartFormField
+      def field(name: String) = new MultipartFormField(name, fields.get(name))
     }
   }
 }
 
-sealed trait FormField {
+sealed abstract class FormField {
+  type Raw
+  def name: String
+  def rawValue: Option[Raw]
+  def exists = rawValue.isDefined
   def as[T :FormFieldConverter]: Deserialized[T]
+
+  protected def fail(fieldName: String, expected: String) =
+    Left(UnsupportedContentType("Field '%s' can only be read from '%s' form content".format(fieldName, expected)))
 }
 
-trait UrlEncodedFormField extends FormField {
-  def raw: String
-}
-
-trait MultipartFormField extends FormField {
-  def raw: BodyPart
-}
-
-sealed trait FormFieldConverter[T] {
-  def urlEncodedFieldConverter: Option[FromStringDeserializer[T]]
-  def multipartFieldConverter: Option[Unmarshaller[T]]
-}
-
-object FormFieldConverter extends FormFieldConverterLowerPriorityImplicits {
-  implicit def dualModeFormFieldConverter[T :FromStringDeserializer :Unmarshaller] = new FormFieldConverter[T] {
-    lazy val urlEncodedFieldConverter = Some(implicitly[FromStringDeserializer[T]])
-    lazy val multipartFieldConverter = Some(implicitly[Unmarshaller[T]])
+class UrlEncodedFormField(val name: String, val rawValue: Option[String]) extends FormField {
+  type Raw = String
+  def as[T](implicit ffc: FormFieldConverter[T]) = ffc.urlEncodedFieldConverter match {
+    case Some(conv) => conv(rawValue)
+    case None => fail(name, "multipart/form-data")
   }
 }
 
-private[unmarshalling] abstract class FormFieldConverterLowerPriorityImplicits
-  extends FormFieldConverterLowerPriorityImplicits2 {
-  implicit def urlEncodedFormFieldConverter[T :FromStringDeserializer] = new FormFieldConverter[T] {
-    lazy val urlEncodedFieldConverter = Some(implicitly[FromStringDeserializer[T]])
+class MultipartFormField(val name: String, val rawValue: Option[BodyPart]) extends FormField {
+  type Raw = BodyPart
+  def as[T](implicit ffc: FormFieldConverter[T]) = ffc.multipartFieldConverter match {
+    case Some(conv) => conv(rawValue.map(_.entity))
+    case None => fail(name, "application/x-www-form-urlencoded")
+  }
+}
+
+
+import cc.spray.httpx.unmarshalling.{FromStringOptionDeserializer => FSOD, FromEntityOptionUnmarshaller => FEOU}
+
+sealed abstract class FormFieldConverter[T] { self =>
+  def urlEncodedFieldConverter: Option[FSOD[T]]
+  def multipartFieldConverter: Option[FEOU[T]]
+  def withDefault(default: T): FormFieldConverter[T] =
+    new FormFieldConverter[T] {
+      lazy val urlEncodedFieldConverter = self.urlEncodedFieldConverter.map(_.withDefaultValue(default))
+      lazy val multipartFieldConverter = self.multipartFieldConverter.map(_.withDefaultValue(default))
+    }
+}
+
+object FormFieldConverter extends FfcLowerPrioImplicits {
+  implicit def dualModeFormFieldConverter[T :FSOD :FEOU] = new FormFieldConverter[T] {
+    lazy val urlEncodedFieldConverter = Some(implicitly[FSOD[T]])
+    lazy val multipartFieldConverter = Some(implicitly[FEOU[T]])
+  }
+  def fromFSOD[T](fsod: FSOD[T])(implicit feou: FEOU[T] = null) =
+    if (feou == null) urlEncodedFormFieldConverter(fsod) else dualModeFormFieldConverter(fsod, feou)
+}
+
+private[unmarshalling] abstract class FfcLowerPrioImplicits extends FfcLowerPrioImplicits2 {
+  implicit def urlEncodedFormFieldConverter[T :FSOD] = new FormFieldConverter[T] {
+    lazy val urlEncodedFieldConverter = Some(implicitly[FSOD[T]])
     def multipartFieldConverter = None
   }
 
-  implicit def multiPartFormFieldConverter[T :Unmarshaller] = new FormFieldConverter[T] {
+  implicit def multiPartFormFieldConverter[T :FEOU] = new FormFieldConverter[T] {
     def urlEncodedFieldConverter = None
-    lazy val multipartFieldConverter = Some(implicitly[Unmarshaller[T]])
+    lazy val multipartFieldConverter = Some(implicitly[FEOU[T]])
   }
 }
 
-private[unmarshalling] abstract class FormFieldConverterLowerPriorityImplicits2 {
-  implicit def liftToTargetOption[T](implicit ffc: FormFieldConverter[T]) = {
-    new FormFieldConverter[Option[T]] {
-      lazy val urlEncodedFieldConverter = ffc.urlEncodedFieldConverter.map(Deserializer.liftToTargetOption(_))
-      lazy val multipartFieldConverter = ffc.multipartFieldConverter.map(Deserializer.liftToTargetOption(_))
-    }
+private[unmarshalling] abstract class FfcLowerPrioImplicits2 {
+  implicit def liftToTargetOption[T](implicit ffc: FormFieldConverter[T]) = new FormFieldConverter[Option[T]] {
+    lazy val urlEncodedFieldConverter = ffc.urlEncodedFieldConverter.map(Deserializer.liftToTargetOption(_))
+    lazy val multipartFieldConverter = ffc.multipartFieldConverter.map(Deserializer.liftToTargetOption(_))
   }
 }

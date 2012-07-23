@@ -18,25 +18,24 @@ package cc.spray.routing
 package directives
 
 import java.lang.IllegalStateException
-import cc.spray.httpx.unmarshalling._
-import cc.spray.http.QueryParams
-import shapeless._
 import util.DynamicVariable
+import shapeless._
+import cc.spray.httpx.unmarshalling.{FromStringOptionDeserializer => FSOD, _}
+import cc.spray.http.QueryParams
+import directives.{ParameterMatcher => PM}
 
 
 trait ParameterDirectives extends ToNameReceptaclePimps {
   import BasicDirectives._
 
-  private type NR[T] = NameReceptacle[T]
-
   /**
    * Rejects the request if the query parameter with the given definition cannot be found.
    * If it can be found the parameter value are extracted and passed as argument to the inner Route.
    */
-  def parameter[T](nr: NR[T]): Directive[T :: HNil] = filter { ctx =>
-    nr.deserializer(ctx.request.queryParams.get(nr.name)) match {
+  def parameter[T](pm: PM[T]): Directive[T :: HNil] = filter { ctx =>
+    pm.deserializer(ctx.request.queryParams.get(pm.paramName)) match {
       case Right(value) => Pass(value :: HNil)
-      case Left(error) => Reject(toRejection(error, nr.name))
+      case Left(error) => Reject(toRejection(error, pm.paramName))
     }
   }
   
@@ -44,61 +43,61 @@ trait ParameterDirectives extends ToNameReceptaclePimps {
    * Rejects the request if the query parameters with the given definitions cannot be found.
    * If they can be found the parameter values are extracted and passed as arguments to the inner Route.
    */
-  def parameters[A, B](a: NR[A], b: NR[B]): Directive[A :: B :: HNil] =
+  def parameters[A, B](a: PM[A], b: PM[B]): Directive[A :: B :: HNil] =
     parameter(a) & parameter(b)
 
   /**
    * Rejects the request if the query parameters with the given definitions cannot be found.
    * If they can be found the parameter values are extracted and passed as arguments to the inner Route.
    */
-  def parameters[A, B, C](a: NR[A], b: NR[B], c: NR[C]): Directive[A :: B :: C :: HNil] =
+  def parameters[A, B, C](a: PM[A], b: PM[B], c: PM[C]): Directive[A :: B :: C :: HNil] =
     parameters(a, b) & parameter(c)
 
   /**
    * Rejects the request if the query parameters with the given definitions cannot be found.
    * If they can be found the parameter values are extracted and passed as arguments to the inner Route.
    */
-  def parameters[A, B, C, D](a: NR[A], b: NR[B], c: NR[C], d: NR[D]): Directive[A :: B :: C :: D :: HNil] =
+  def parameters[A, B, C, D](a: PM[A], b: PM[B], c: PM[C], d: PM[D]): Directive[A :: B :: C :: D :: HNil] =
     parameters(a, b, c) & parameter(d)
 
   /**
    * Rejects the request if the query parameters with the given definitions cannot be found.
    * If they can be found the parameter values are extracted and passed as arguments to the inner Route.
    */
-  def parameters[A, B, C, D, E](a: NR[A], b: NR[B], c: NR[C], d: NR[D],
-                                e: NR[E]): Directive[A :: B :: C :: D :: E :: HNil] =
+  def parameters[A, B, C, D, E](a: PM[A], b: PM[B], c: PM[C], d: PM[D],
+                                e: PM[E]): Directive[A :: B :: C :: D :: E :: HNil] =
     parameters(a, b, c, d) & parameter(e)
 
   /**
    * Rejects the request if the query parameters with the given definitions cannot be found.
    * If they can be found the parameter values are extracted and passed as arguments to the inner Route.
    */
-  def parameters[A, B, C, D, E, F](a: NR[A], b: NR[B], c: NR[C], d: NR[D], e: NR[E],
-                                   f: NR[F]): Directive[A :: B :: C :: D :: E :: F :: HNil] =
+  def parameters[A, B, C, D, E, F](a: PM[A], b: PM[B], c: PM[C], d: PM[D], e: PM[E],
+                                   f: PM[F]): Directive[A :: B :: C :: D :: E :: F :: HNil] =
     parameters(a, b, c, d, e) & parameter(f)
 
   /**
    * Rejects the request if the query parameters with the given definitions cannot be found.
    * If they can be found the parameter values are extracted and passed as arguments to the inner Route.
    */
-  def parameters[A, B, C, D, E, F, G](a: NR[A], b: NR[B], c: NR[C], d: NR[D], e: NR[E], f: NR[F],
-                                      g: NR[G]): Directive[A :: B :: C :: D :: E :: F :: G :: HNil] =
+  def parameters[A, B, C, D, E, F, G](a: PM[A], b: PM[B], c: PM[C], d: PM[D], e: PM[E], f: PM[F],
+                                      g: PM[G]): Directive[A :: B :: C :: D :: E :: F :: G :: HNil] =
     parameters(a, b, c, d, e, f) & parameter(g)
 
   /**
    * Rejects the request if the query parameters with the given definitions cannot be found.
    * If they can be found the parameter values are extracted and passed as arguments to the inner Route.
    */
-  def parameters[A, B, C, D, E, F, G, H](a: NR[A], b: NR[B], c: NR[C], d: NR[D], e: NR[E], f: NR[F], g: NR[G],
-                                         h: NR[H]): Directive[A :: B :: C :: D :: E :: F :: G :: H :: HNil] =
+  def parameters[A, B, C, D, E, F, G, H](a: PM[A], b: PM[B], c: PM[C], d: PM[D], e: PM[E], f: PM[F], g: PM[G],
+                                         h: PM[H]): Directive[A :: B :: C :: D :: E :: F :: G :: H :: HNil] =
     parameters(a, b, c, d, e, f, g) & parameter(h)
 
   /**
    * Rejects the request if the query parameters with the given definitions cannot be found.
    * If they can be found the parameter values are extracted and passed as arguments to the inner Route.
    */
-  def parameters[A, B, C, D, E, F, G, H, I](a: NR[A], b: NR[B], c: NR[C], d: NR[D], e: NR[E], f: NR[F], g: NR[G], h: NR[H],
-                                            i: NR[I]): Directive[A :: B :: C :: D :: E :: F :: G :: H :: I :: HNil] =
+  def parameters[A, B, C, D, E, F, G, H, I](a: PM[A], b: PM[B], c: PM[C], d: PM[D], e: PM[E], f: PM[F], g: PM[G], h: PM[H],
+                                            i: PM[I]): Directive[A :: B :: C :: D :: E :: F :: G :: H :: I :: HNil] =
     parameters(a, b, c, d, e, f, g, h) & parameter(i)
 
   /**
@@ -133,22 +132,42 @@ trait ParameterDirectives extends ToNameReceptaclePimps {
   /**
    * Rejects the request if the query parameter with the given name cannot be found or does not have the required value.
    */
-  def parameter(rvr: RequiredValueReceptacle[_]): Directive0 = filter { ctx =>
-    rvr.deserializer(ctx.request.queryParams.get(rvr.name)) match {
-      case Right(value) if value == rvr.requiredValue => Pass.Empty
-      case _ => Reject.Empty
+  def parameter(pm: RequiredParameterMatcher): Directive0 = filter { ctx =>
+    pm.deserializer(ctx.request.queryParams.get(pm.paramName)) match {
+      case Right(value) if value == pm.requiredValue => Pass.Empty
+      case _ => Reject.Empty 
     }
   }
 
   /**
    * Rejects the request if the query parameters with the given names cannot be found or do not have the required values.
    */
-  def parameters(rvr: RequiredValueReceptacle[_], more: RequiredValueReceptacle[_]*): Directive0 =
+  def parameters(rvr: RequiredParameterMatcher, more: RequiredParameterMatcher*): Directive0 =
     (rvr +: more).map(parameter(_)).reduceLeft(_ & _)
-
 }
 
 object ParameterDirectives extends ParameterDirectives
+
+
+case class ParameterMatcher[T](paramName: String, deserializer: FSOD[T])
+object ParameterMatcher extends ToNameReceptaclePimps {
+  implicit def fromString(s: String)(implicit fsod: FSOD[String]) = PM[String](s, fsod)
+  implicit def fromSymbol(s: Symbol)(implicit fsod: FSOD[String]) = PM[String](s.name, fsod)
+  implicit def fromNDesR[T](nr: NameDeserializerReceptacle[T]) = PM[T](nr.name, nr.deserializer)
+  implicit def fromNDefR[T](nr: NameDefaultReceptacle[T])(implicit fsod: FSOD[T]) =
+    PM[T](nr.name, fsod.withDefaultValue(nr.default))
+  implicit def fromNDesDefR[T](nr: NameDeserializerDefaultReceptacle[T]) =
+    PM[T](nr.name, nr.deserializer.withDefaultValue(nr.default))
+  implicit def fromNR[T](nr: NameReceptacle[T])(implicit fsod: FSOD[T]) = PM[T](nr.name, fsod)
+}
+
+case class RequiredParameterMatcher(paramName: String, deserializer: FSOD[_], requiredValue: Any)
+object RequiredParameterMatcher {
+  implicit def fromRVR[T](rvr: RequiredValueReceptacle[T])(implicit fsod: FSOD[T]) =
+    RequiredParameterMatcher(rvr.name, fsod, rvr.requiredValue)
+  implicit def fromRVDR[T](rvr: RequiredValueDeserializerReceptacle[T]) =
+    RequiredParameterMatcher(rvr.name, rvr.deserializer, rvr.requiredValue)
+}
 
 
 sealed trait ParamDefs[L <: HList] {
@@ -167,15 +186,13 @@ object ParamDefs {
 private[directives] object ExtractParams extends Poly1 {
   val queryParams = new DynamicVariable[QueryParams](null)
 
-  private def extract[T](name: String)(implicit fsod: FromStringOptionDeserializer[T]): T = {
-    fsod(queryParams.value.get(name)) match {
+  implicit def from[A, B](implicit pmFor: A => PM[B]) = at[A] { paramDef =>
+    val pm = pmFor(paramDef)
+    pm.deserializer(queryParams.value.get(pm.paramName)) match {
       case Right(value) => value
-      case Left(error) => throw Error(name, error)
+      case Left(error) => throw Error(pm.paramName, error)
     }
   }
-  implicit def fromSymbol = at[Symbol] { symbol => extract[String](symbol.name) }
-  implicit def fromString = at[String] { string => extract[String](string) }
-  implicit def fromNameReceptacle[T] = at[NameReceptacle[T]] { nr => extract[T](nr.name)(nr.deserializer) }
 
   case class Error(paramName: String, error: DeserializationError) extends RuntimeException
 }

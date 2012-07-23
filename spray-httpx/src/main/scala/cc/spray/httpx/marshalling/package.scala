@@ -16,6 +16,7 @@
 
 package cc.spray.httpx
 
+import cc.spray.util.identityFunc
 import cc.spray.http.{ContentType, HttpEntity}
 import akka.util.NonFatal
 
@@ -45,4 +46,6 @@ package object marshalling {
       case NonFatal(e) => Left(e)
     }
   }
+
+  def marshalUnsafe[T :Marshaller](value: T): HttpEntity = marshal(value).fold(throw _, identityFunc)
 }

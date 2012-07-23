@@ -62,14 +62,14 @@ object PathDirectives extends PathDirectives
 trait PathMatcher[L <: HList] extends (String => PathMatcher.Matching[L]) { self =>
   import PathMatcher._
 
-  def / [R <: HList](other: PathMatcher[R])(implicit prepender : Prepender[L, R]) =
+  def / [R <: HList](other: PathMatcher[R])(implicit prepender: Prepender[L, R]) =
     this ~ PathMatchers.Slash ~ other
 
   def | (other: PathMatcher[L]) = new PathMatcher[L] {
     def apply(path: String) = self(path).orElse(other(path))
   }
 
-  def ~ [R <: HList](other: PathMatcher[R])(implicit prepender : Prepender[L, R]): PathMatcher[prepender.Out] =
+  def ~ [R <: HList](other: PathMatcher[R])(implicit prepender: Prepender[L, R]): PathMatcher[prepender.Out] =
     mapMatching {
       case Matched(restL, valuesL) => other(restL).mapValues(prepender(valuesL, _))
       case Unmatched => Unmatched

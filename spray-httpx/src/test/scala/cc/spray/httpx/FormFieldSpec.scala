@@ -35,47 +35,40 @@ class FormFieldSpec extends Specification {
     "properly allow access to the fields of www-urlencoded forms" in {
       marshal(formData)
         .flatMap(_.as[HttpForm])
-        .flatMap(_.field("surname"))
-        .flatMap(_.as[String]) === Right("Smith")
+        .flatMap(_.field("surname").as[String]) === Right("Smith")
 
       marshal(formData)
         .flatMap(_.as[HttpForm])
-        .flatMap(_.field("age"))
-        .flatMap(_.as[Int]) === Right(42)
+        .flatMap(_.field("age").as[Int]) === Right(42)
     }
 
     "properly allow access to the fields of www-urlencoded forms containing special chars" in {
       marshal(FormData(Map("name" -> "Smith&Wesson")))
         .flatMap(_.as[HttpForm])
-        .flatMap(_.field("name"))
-        .flatMap(_.as[String]) === Right("Smith&Wesson")
+        .flatMap(_.field("name").as[String]) === Right("Smith&Wesson")
     }
 
     "properly allow access to the fields of multipart/form-data forms" in {
       marshal(multipartFormData)
         .flatMap(_.as[HttpForm])
-        .flatMap(_.field("surname"))
-        .flatMap(_.as[String]) === Right("Smith")
+        .flatMap(_.field("surname").as[String]) === Right("Smith")
 
       marshal(multipartFormData)
         .flatMap(_.as[HttpForm])
-        .flatMap(_.field("age"))
-        .flatMap(_.as[NodeSeq]) === Right(<int>42</int>)
+        .flatMap(_.field("age").as[NodeSeq]) === Right(<int>42</int>)
     }
 
     "return an error when accessing a field of www-urlencoded forms for which no FromStringOptionDeserializer is available" in {
       marshal(formData)
         .flatMap(_.as[HttpForm])
-        .flatMap(_.field("age"))
-        .flatMap(_.as[NodeSeq]) ===
+        .flatMap(_.field("age").as[NodeSeq]) ===
         Left(UnsupportedContentType("Field 'age' can only be read from 'multipart/form-data' form content"))
     }
 
     "return an error when accessing a field of multipart forms for which no Unmarshaller is available" in {
       marshal(multipartFormData)
         .flatMap(_.as[HttpForm])
-        .flatMap(_.field("age"))
-        .flatMap(_.as[Int]) ===
+        .flatMap(_.field("age").as[Int]) ===
         Left(UnsupportedContentType("Field 'age' can only be read from 'application/x-www-form-urlencoded' form content"))
     }
   }

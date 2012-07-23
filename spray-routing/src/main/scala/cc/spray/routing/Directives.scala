@@ -21,6 +21,7 @@ import directives._
 
 trait Directives extends RouteConcatenation
   with BasicDirectives
+  with FormFieldDirectives
   with HostDirectives
   with MethodDirectives
   with MiscDirectives
