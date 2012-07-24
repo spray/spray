@@ -17,7 +17,7 @@ object Dependencies {
   val akkaActor     = "com.typesafe.akka"                       %   "akka-actor"                  % "2.0.2"
   val akkaSlf4j     = "com.typesafe.akka"                       %   "akka-slf4j"                  % "2.0.2"
   val akkaTestKit   = "com.typesafe.akka"                       %   "akka-testkit"                % "2.0.2"
-  val clHashMap     = "com.googlecode.concurrentlinkedhashmap"  %   "concurrentlinkedhashmap-lru" % "1.2"
+  val clHashMap     = "com.googlecode.concurrentlinkedhashmap"  %   "concurrentlinkedhashmap-lru" % "1.3.1"
   val jetty7Async   = "org.eclipse.jetty"                       %   "jetty-continuation"          % "7.5.1.v20110908"
   val jettyWebApp   = "org.eclipse.jetty"                       %   "jetty-webapp"                % "8.1.0.v20120127"
   val liftJson      = "net.liftweb"                             %   "lift-json_2.9.1"             % "2.4"

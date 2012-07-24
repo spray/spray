@@ -16,7 +16,7 @@
 
 package cc.spray.routing
 
-import cc.spray.httpx.unmarshalling.{MalformedContent, Deserializer}
+import cc.spray.httpx.unmarshalling.MalformedContent
 import shapeless._
 
 
@@ -62,11 +62,14 @@ abstract class Directive[L <: HList] { self =>
   def flatMap[R <: HList](f: L => Directive[R]) = new Directive[R] {
     def happly(g: R => Route) = self.happly { values => f(values).happly(g) }
   }
+
+  def require(predicate: L => Boolean) = new Directive0 {
+    def happly(f: HNil => Route) =
+      self.happly { values => ctx => if (predicate(values)) f(HNil)(ctx) else ctx.reject() }
+  }
 }
 
 object Directive {
   implicit def pimpApply[L <: HList](directive: Directive[L])
-                                    (implicit hac: ApplyConverter[L]): hac.In => Route = { f =>
-    directive.happly(hac(f))
-  }
+                                    (implicit hac: ApplyConverter[L]): hac.In => Route = f => directive.happly(hac(f))
 }

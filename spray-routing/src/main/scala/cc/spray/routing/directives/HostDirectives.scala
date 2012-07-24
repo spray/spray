@@ -26,6 +26,11 @@ trait HostDirectives {
   import BasicDirectives._
 
   /**
+   * Extracts the hostname part of the Host header value in the request.
+   */
+  def hostName: Directive[String :: HNil] = filter { ctx => Pass(ctx.request.host :: HNil) }
+
+  /**
    * Rejects all requests with a host name different from the given one.
    */
   def host(hostName: String): Directive0 = host(_ == hostName)
@@ -33,9 +38,7 @@ trait HostDirectives {
   /**
    * Rejects all requests for whose host name the given predicate function return false.
    */
-  def host(predicate: String => Boolean): Directive0 = filter { ctx =>
-    if (predicate(ctx.request.host)) Pass.Empty else Reject.Empty
-  }
+  def host(predicate: String => Boolean): Directive0 = hostName.require { case hn :: HNil => predicate(hn) }
 
   /**
    * Rejects all requests with a host name that doesn't have a prefix matching the given regular expression.

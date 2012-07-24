@@ -75,7 +75,7 @@ sealed abstract class FilteringDirectiveBuilder[T <: HList] {
   def apply(f: RequestContext => FilterResult[T]): Out
 }
 
-object FilteringDirectiveBuilder extends LowerPriorityFilteringDirectiveBuilders {
+object FilteringDirectiveBuilder extends LowPriorityFilteringDirectiveBuilder {
   implicit val fdb0 = new FilteringDirectiveBuilder[HNil] {
     type Out = Directive0
     def apply(filter: RequestContext => FilterResult[HNil]) = BasicDirectives.transformInnerRoute { inner => ctx =>
@@ -87,7 +87,7 @@ object FilteringDirectiveBuilder extends LowerPriorityFilteringDirectiveBuilders
   }
 }
 
-sealed abstract class LowerPriorityFilteringDirectiveBuilders {
+sealed abstract class LowPriorityFilteringDirectiveBuilder {
   implicit def fdb[L <: HList] = new FilteringDirectiveBuilder[L] {
     type Out = Directive[L]
     def apply(filter: RequestContext => FilterResult[L]) = new Out {

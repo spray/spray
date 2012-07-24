@@ -26,6 +26,16 @@ object Build extends Build with DocSupport {
   // Modules
   // -------------------------------------------------------------------------------------------------------------------
 
+  lazy val sprayCaching = Project("spray-caching", file("spray-caching"))
+    .dependsOn(sprayUtil)
+    .settings(moduleSettings: _*)
+    .settings(libraryDependencies ++=
+      provided(akkaActor) ++
+      compile(clHashMap) ++
+      test(specs2)
+    )
+
+
   lazy val sprayCan = Project("spray-can", file("spray-can"))
     .dependsOn(sprayIo, sprayHttp, sprayUtil)
     .settings(moduleSettings: _*)
@@ -72,7 +82,7 @@ object Build extends Build with DocSupport {
 
 
   lazy val sprayRouting = Project("spray-routing", file("spray-routing"))
-    .dependsOn(sprayHttp, sprayHttpx, sprayUtil)
+    .dependsOn(sprayCaching % "optional", sprayHttp, sprayHttpx, sprayUtil)
     .settings(moduleSettings: _*)
     .settings(libraryDependencies ++=
       compile(shapeless) ++
@@ -81,7 +91,7 @@ object Build extends Build with DocSupport {
 
 
   lazy val sprayRoutingTests = Project("spray-routing-tests", file("spray-routing-tests"))
-    .dependsOn(sprayHttp, sprayHttpx, sprayTestKit, sprayUtil)
+    .dependsOn(sprayCaching, sprayHttp, sprayHttpx, sprayRouting, sprayTestKit, sprayUtil)
     .settings(moduleSettings: _*)
     .settings(libraryDependencies ++=
       compile(shapeless) ++
