@@ -14,24 +14,20 @@
  * limitations under the License.
  */
 
-package cc.spray.util
-
-import com.typesafe.config.{Config, ConfigFactory}
-import collection.JavaConverters._
-import java.net.InetAddress
+package cc.spray.httpx.marshalling
 
 
-object ConfigUtils {
+trait ChunkingContext {
+  def isAckSend(msg: Any): Boolean
+  def isClosed(msg: Any): Boolean
+}
 
-  def prepareSubConfig(config: Config, path: String): Config = {
-    val c = config.withFallback(referenceConfig)
-    c.checkValid(referenceConfig, path)
-    c.getConfig(path)
-  }
+object ChunkingContext {
+  case object DefaultAckSend
+  case object DefaultClosed
 
-  lazy val referenceConfig = ConfigFactory.defaultReference withFallback sprayConfigAdditions
-
-  def sprayConfigAdditions: Config = ConfigFactory.parseMap {
-    Map("spray.hostname" -> tryOrElse(InetAddress.getLocalHost.getHostName, _ => "")).asJava
+  implicit val Default = new ChunkingContext {
+    def isAckSend(msg: Any) = msg == DefaultAckSend
+    def isClosed(msg: Any) = msg == DefaultClosed
   }
 }

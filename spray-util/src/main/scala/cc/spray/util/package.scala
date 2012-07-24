@@ -16,13 +16,15 @@
 
 package cc.spray
 
-import collection.LinearSeq
-import akka.dispatch.Future
-import scala.util.matching.Regex
-import util.pimps._
-import annotation.tailrec
 import java.nio.ByteBuffer
+import scala.collection.LinearSeq
+import scala.util.matching.Regex
+import akka.util.NonFatal
+import akka.dispatch.Future
 import akka.actor.{ActorRefFactory, ActorSystem}
+import annotation.tailrec
+import util.pimps._
+
 
 package object util {
 
@@ -49,6 +51,11 @@ package object util {
       tfor(inc(i))(test, inc)(f)
     }
   }
+
+  def tryToEither[T](body: => T): Either[Throwable, T] = tryOrElse(Right(body), Left(_))
+
+  def tryOrElse[A, B >: A](body: => A, onError: Throwable => B): B =
+    try body catch { case NonFatal(e) => onError(e) }
 
   // implicits
   implicit def pimpActorSystem(system: ActorSystem)     :PimpedActorSystem     = new PimpedActorSystem(system)

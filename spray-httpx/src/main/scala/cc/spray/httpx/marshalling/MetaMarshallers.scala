@@ -17,7 +17,6 @@
 package cc.spray.httpx.marshalling
 
 import akka.dispatch.Future
-import akka.util.NonFatal
 import cc.spray.http._
 
 

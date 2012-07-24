@@ -16,9 +16,12 @@
 
 package cc.spray.httpx
 
+import akka.util.{Timeout, NonFatal}
+import akka.util.duration._
+import akka.actor.ActorSystem
 import cc.spray.util.identityFunc
 import cc.spray.http.{ContentType, HttpEntity}
-import akka.util.NonFatal
+import java.util.concurrent.TimeUnit
 
 
 package object marshalling {
@@ -26,26 +29,33 @@ package object marshalling {
   type ContentTypeSelector = ContentType => Option[ContentType]
   type AcceptableContentTypes = Seq[ContentType]
 
-  def marshal[T](value: T)(implicit marshaller: Marshaller[T]): Either[Throwable, HttpEntity] = {
+  def marshal[T](value: T)(implicit marshaller: Marshaller[T], system: ActorSystem = null,
+                           timeout: Timeout = 1.second): Either[Throwable, HttpEntity] = {
+    val ctx = marshalCollecting(value)
+    ctx.entity match {
+      case Some(entity) => Right(entity)
+      case None =>
+        Left(ctx.error.getOrElse(new RuntimeException("Marshaller for %s did not produce result" format value)))
+    }
+  }
+
+  def marshalCollecting[T](value: T)(implicit marshaller: Marshaller[T], system: ActorSystem = null,
+                                     timeout: Timeout = 1.second): CollectingMarshallingContext = {
+    val ctx = new CollectingMarshallingContext
     try {
-      var result: Option[Either[Throwable, HttpEntity]] = None
       marshaller(Some(_)) match { // we always convert to the first CT the marshaller can marshal to
         case Right(marshalling) =>
-          val ctx = new MarshallingContext {
-            def marshalTo(entity: HttpEntity) { result = Some(Right(entity)) }
-            def handleError(error: Throwable) { result = Some(Left(error)) }
-            def startChunkedMessage(entity: HttpEntity) = throw new UnsupportedOperationException
-          }
           marshalling.runSafe(value, ctx)
+          ctx.latch.await(timeout.duration.toMillis, TimeUnit.MILLISECONDS)
         case Left(_) =>
-          // our selector never rejects a content-type, so why does the marshaller not produce a marshalling?
-          throw new IllegalStateException
+          ctx.handleError(new RuntimeException("Marshaller did non produce a marshalling"))
       }
-      result.getOrElse(sys.error("Marshaller for %s did not produce result" format value))
     } catch {
-      case NonFatal(e) => Left(e)
+      case NonFatal(e) => ctx.handleError(e)
     }
+    ctx
   }
 
   def marshalUnsafe[T :Marshaller](value: T): HttpEntity = marshal(value).fold(throw _, identityFunc)
 }
+

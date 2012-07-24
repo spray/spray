@@ -47,7 +47,7 @@ trait BasicMarshallers {
     }
 
   implicit val NodeSeqMarshaller =
-    Marshaller.delegate[NodeSeq, String](`text/xml`, `text/html`, `application/xhtml+xml`)((xml, _) => xml.toString)
+    Marshaller.delegate[NodeSeq, String](`text/xml`, `text/html`, `application/xhtml+xml`)(_.toString)
 
   implicit val FormDataMarshaller =
     Marshaller.delegate[FormData, String](`application/x-www-form-urlencoded`) { (formData, contentType) =>

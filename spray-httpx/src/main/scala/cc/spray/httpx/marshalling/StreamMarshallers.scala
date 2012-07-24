@@ -22,13 +22,13 @@ import cc.spray.http._
 
 trait StreamMarshallers {
 
-  implicit def streamMarshaller[T](implicit marshaller: Marshaller[T],
-                                   refFactory: ActorRefFactory): Marshaller[Stream[T]] = new Marshaller[Stream[T]] {
+  implicit def streamMarshaller[T](implicit marshaller: Marshaller[T], refFactory: ActorRefFactory,
+                                    chunkingCtx: ChunkingContext): Marshaller[Stream[T]] = new Marshaller[Stream[T]] {
 
     def apply(selector: ContentTypeSelector) = marshaller(selector).right.map { marshalling =>
       new Marshalling[Stream[T]] {
         def apply(value: Stream[T], ctx: MarshallingContext) {
-          refFactory.actorOf(Props(new ChunkingActor(ctx, marshalling))) ! value
+          refFactory.actorOf(Props(new ChunkingActor(ctx, marshalling, chunkingCtx))) ! value
         }
       }
     }
@@ -36,7 +36,8 @@ trait StreamMarshallers {
 
 }
 
-class ChunkingActor[T](ctx: MarshallingContext, marshalling: Marshalling[T]) extends Actor {
+class ChunkingActor[T](ctx: MarshallingContext, marshalling: Marshalling[T], chunkingCtx: ChunkingContext)
+  extends Actor {
   var connectionActor: ActorRef = _
   var remaining: Stream[_] = _
 
@@ -46,25 +47,26 @@ class ChunkingActor[T](ctx: MarshallingContext, marshalling: Marshalling[T]) ext
       val chunkingCtx = new MarshallingContext {
         def marshalTo(entity: HttpEntity) {
           if (connectionActor == null) connectionActor = ctx.startChunkedMessage(entity)
-          connectionActor ! MessageChunk(entity.buffer)
+          else connectionActor ! MessageChunk(entity.buffer)
         }
         def handleError(error: Throwable) {
           context.stop(self)
           ctx.handleError(error)
         }
-        def startChunkedMessage(entity: HttpEntity) = sys.error("Cannot marshal a stream of streams")
+        def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) =
+          sys.error("Cannot marshal a stream of streams")
       }
       marshalling.runSafe(current.asInstanceOf[T], chunkingCtx)
       remaining = rest
 
-    case x if x.getClass.getName == "cc.spray.io.IoWorker$AckSend$" =>
+    case x if chunkingCtx.isAckSend(x) =>
       assert(remaining != null, "Unmatched AckSend")
       if (remaining.isEmpty) {
         connectionActor ! ChunkedMessageEnd()
         context.stop(self)
       } else self ! remaining
 
-    case x if x.getClass.getName == "cc.spray.io.IoWorker$Closed$" =>
+    case x if chunkingCtx.isClosed(x) =>
       context.stop(self)
   }
 }

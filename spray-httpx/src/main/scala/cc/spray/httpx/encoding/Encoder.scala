@@ -39,7 +39,7 @@ trait Encoder {
     case _ => message.message
   }
 
-  def startEncoding[T <: HttpMessage](message: HttpMessage#Self): Option[(HttpMessage#Self, Compressor)] = {
+  def startEncoding[T <: HttpMessage](message: T): Option[(T#Self, Compressor)] = {
     if (handles(message) && !message.isEncodingSpecified) {
       message.entity.toOption.map { case HttpBody(contentType, buffer) =>
         val compressor = newCompressor
