@@ -17,8 +17,6 @@
 package cc.spray.routing
 package directives
 
-import akka.event.LoggingAdapter
-import akka.actor.Status
 import shapeless._
 import cc.spray.http._
 import cc.spray.util._
@@ -28,23 +26,6 @@ import MediaTypes._
 
 trait MiscDirectives {
   import BasicDirectives._
-
-  def log: LoggingAdapter
-
-  /**
-   * Transforms exceptions thrown during evaluation of its inner route using the given
-   * [[cc.spray.routing.ExceptionHandler]].
-   */
-  def handleExceptions(handler: ExceptionHandler): Directive0 =
-    transformInnerRoute { inner => ctx =>
-      val handleError = handler andThen (_(log)(ctx))
-      try inner {
-        ctx.withRouteResponseHandling {
-          case Status.Failure(error) if handleError.isDefinedAt(error) => handleError(error)
-        }
-      }
-      catch handleError
-    }
 
   /**
    * Transforms exceptions thrown during evaluation of its inner route using the given
@@ -110,6 +91,38 @@ trait MiscDirectives {
   }
 
   /**
+   * A Directive0 that always passes the request on to its inner route
+   * (i.e. does nothing with the request or the response).
+   */
+  def nop: Directive0 = transformInnerRoute(identityFunc)
+
+  /**
+   * Injects the given values into a directive.
+   */
+  def provide[L <: HList](values: L): Directive[L] = new Directive[L] {
+    def happly(f: L => Route) = f(values)
+  }
+
+  /**
+   * Adds a TransformRejection cancelling all rejections of the given type to the list of rejections potentially
+   * coming back from its inner route.
+   */
+  def cancelAllRejectionsOfType[T <: Rejection :ClassManifest]: Directive0 = {
+    val erasure = classManifest[T].erasure
+    transformRejections(_ :+ TransformationRejection(_.filterNot(erasure.isInstance(_))))
+  }
+
+  /**
+   * Rejects the request if its entity is not empty.
+   */
+  def requestEntityEmpty: Directive0 = filter { ctx => if (ctx.request.entity.isEmpty) Pass.Empty else Reject.Empty }
+
+  /**
+   * Rejects the request if its entity is empty.
+   */
+  def requestEntityPresent: Directive0 = filter { ctx => if (ctx.request.entity.isEmpty) Reject.Empty else Pass.Empty }
+
+  /**
    * Stops the current Route processing by throwing an HttpException that will be caught by the next enclosing
    * `handleExceptions` directive and its ExceptionHandler or the enclosing Actor.
    * Failures produced in this way circumvent the usual response chain.
@@ -118,3 +131,5 @@ trait MiscDirectives {
    */
   def hardFail(status: StatusCode, message: String = "") = throw HttpException(status, message)
 }
+
+object MiscDirectives extends MiscDirectives

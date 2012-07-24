@@ -22,8 +22,8 @@ import java.util.concurrent.{TimeUnit, CountDownLatch}
 import akka.actor.{ActorRef, ActorSystem}
 import akka.spray.UnregisteredActorRef
 import cc.spray.routing.{Rejected, Rejection}
+import cc.spray.httpx.marshalling.ChunkingContext
 import cc.spray.http._
-import cc.spray.util.NotImplementedException
 
 
 trait RouteResultComponent {
@@ -45,6 +45,8 @@ trait RouteResultComponent {
 
     private[testkit] val handler = new UnregisteredActorRef(system) {
       def handle(message: Any, sender: ActorRef) {
+        def verifiedSender =
+          if (sender != null) sender else sys.error("Received message " + message + " from unknown sender (null)")
         message match {
           case x: HttpResponse =>
             saveResult(Right(x))
@@ -53,11 +55,14 @@ trait RouteResultComponent {
             saveResult(Left(rejections))
             latch.countDown()
           case ChunkedResponseStart(x) =>
-            throw new NotImplementedException // TODO
-          case MessageChunk(buffer, extensions) =>
-            throw new NotImplementedException // TODO
+            saveResult(Right(x))
+            verifiedSender.tell(ChunkingContext.DefaultAckSend, this)
+          case x: MessageChunk =>
+            synchronized { _chunks += x }
+            verifiedSender.tell(ChunkingContext.DefaultAckSend, this)
           case ChunkedMessageEnd(extensions, trailer) =>
-            throw new NotImplementedException // TODO
+            synchronized { _closingExtensions = extensions; _trailer = trailer }
+            latch.countDown()
         }
       }
     }

@@ -23,6 +23,7 @@ import cc.spray.http.HttpMethods._
 
 trait MethodDirectives {
   import BasicDirectives._
+  import MiscDirectives._
 
   /**
    * A route filter that rejects all non-DELETE requests.

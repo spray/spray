@@ -29,8 +29,8 @@ trait RouteConcatenation {
      */
     def ~(other: Route): Route = { ctx =>
       route {
-        ctx.withRouteResponseHandling {
-          case Rejected(rejections) => other(ctx.withRejectionsTransformed(rejections ++ _))
+        ctx.withRejectionHandling { rejections =>
+          other(ctx.mapRejections(rejections ++ _))
         }
       }
     }

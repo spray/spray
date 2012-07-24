@@ -16,8 +16,8 @@
 
 package cc.spray.caching
 
-import akka.util.NonFatal
 import akka.dispatch._
+import cc.spray.util.tryOrElse
 
 
 /**
@@ -36,11 +36,7 @@ trait Cache[V] {
      * Wraps the given expression with caching support.
      */
     def apply(expr: => V)(implicit executor: ExecutionContext): Future[V] = apply { promise =>
-      try {
-        promise.success(expr)
-      } catch {
-        case NonFatal(e) => promise.failure(e)
-      }
+      tryOrElse(promise.success(expr), promise.failure)
     }
 
     /**

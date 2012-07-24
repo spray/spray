@@ -26,10 +26,8 @@ abstract class Directive[L <: HList] { self =>
   def | (that: Directive[L]) = new Directive[L] {
     def happly(f: L => Route) = { ctx =>
       self.happly(f) {
-        ctx.withRouteResponseHandling {
-          case Rejected(rejections) => that.happly(f) {
-            ctx.withRejectionsTransformed(rejections ++ _)
-          }
+        ctx.withRejectionHandling { rejections =>
+          that.happly(f)(ctx.mapRejections(rejections ++ _))
         }
       }
     }

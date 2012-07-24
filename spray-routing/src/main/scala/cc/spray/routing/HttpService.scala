@@ -24,19 +24,23 @@ trait HttpService extends Directives {
   this: Actor with ActorLogging =>
 
   def runRoute(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler): Receive = {
-    def fail: RejectionHandler.PF = {
-      case x: Rejection => sys.error("Unhandled rejection: " + x)
-    }
-    val fullRoute =
-      handleExceptions(eh) {
-        handleRejections(rh orElse RejectionHandler.Default orElse fail) {
-          route
-        }
-      }
-
+    val sealedRoute = sealRoute.apply(route);
     {
-      case request: HttpRequest => fullRoute(RequestContext(request, sender))
+      case request: HttpRequest => sealedRoute {
+        RequestContext(request, handler = sender).withDefaultSender(self)
+      }
     }
   }
+
+  def sealRoute(implicit eh: ExceptionHandler, rh: RejectionHandler) =
+    handleExceptions(eh) & handleRejections(sealRejectionHandler(rh))
+
+  def sealRejectionHandler(rh: RejectionHandler) =
+    rh orElse RejectionHandler.Default orElse handleUnhandledRejections
+
+  def handleUnhandledRejections: RejectionHandler.PF = {
+    case x :: _ => sys.error("Unhandled rejection: " + x)
+  }
+
 
 }
