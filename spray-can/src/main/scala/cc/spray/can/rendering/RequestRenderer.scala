@@ -53,7 +53,7 @@ class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) extends Mes
   }
 
   private def renderRequestStart(request: HttpRequest, host: String, port: Int) = {
-    import request._
+    import request.{host => _, port => _, _}
     val bb = BufferBuilder(requestSizeHint)
     bb.append(method.value).append(' ').append(uri).append(' ').append(protocol.value).append(MessageRendering.CrLf)
     appendHeaders(headers, bb)
