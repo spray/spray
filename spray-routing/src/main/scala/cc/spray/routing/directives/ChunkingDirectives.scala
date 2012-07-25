@@ -26,7 +26,7 @@ import cc.spray.util._
 trait ChunkingDirectives {
   import BasicDirectives._
 
-  def system: ActorSystem
+  implicit def system: ActorSystem
 
   /**
    * Automatically converts a non-rejected response from its inner route into a chunked response of which each chunk
@@ -44,7 +44,6 @@ trait ChunkingDirectives {
           else Stream.cons(chunkBuf(buffer.length - ix), Stream.Empty)
         }
         implicit val byteArrayMarshaller = Marshaller.delegate[Array[Byte], Array[Byte]](contentType)(identityFunc[Array[Byte]])
-        implicit val refFactory = system
         ctx.complete(split(0))
     }
   }
