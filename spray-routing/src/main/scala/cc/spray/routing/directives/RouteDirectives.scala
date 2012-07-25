@@ -17,10 +17,11 @@
 package cc.spray.routing
 package directives
 
+import akka.dispatch.Future
 import cc.spray.httpx.marshalling.Marshaller
 import cc.spray.http._
 import StatusCodes._
-import akka.dispatch.Future
+import shapeless.HList
 
 
 trait RouteDirectives {
@@ -28,60 +29,95 @@ trait RouteDirectives {
   /**
    * Rejects the request with the given rejections.
    */
-  def reject(rejections: Rejection*): Route = _.reject(rejections: _*)
+  def reject(rejections: Rejection*): StandardRoute = new StandardRoute {
+    def apply(ctx: RequestContext) { ctx.reject(rejections: _*)}
+  }
 
   /**
    * Completes the request with redirection response of the given type to the given URI.
    * The default redirectionType is a temporary `302 Found`.
    */
-  def redirect(uri: String, redirectionType: Redirection = Found): Route = _.redirect(uri, redirectionType)
+  def redirect(uri: String, redirectionType: Redirection = Found): StandardRoute = new StandardRoute {
+    def apply(ctx: RequestContext) { ctx.redirect(uri, redirectionType) }
+  }
 
   /**
    * Completes the request with status "200 Ok" and the response entity created by marshalling the given object using
    * the in-scope marshaller for the type.
    */
-  def complete[T :Marshaller](obj: T): Route = complete(OK, obj)
+  def complete[T :Marshaller](obj: T): StandardRoute = complete(OK, obj)
 
   /**
    * Completes the request with the given status and the response entity created by marshalling the given object using
    * the in-scope marshaller for the type.
    */
-  def complete[T :Marshaller](status: StatusCode, obj: T): Route = complete(status, Nil, obj)
+  def complete[T :Marshaller](status: StatusCode, obj: T): StandardRoute = complete(status, Nil, obj)
 
   /**
    * Completes the request with the given status, headers and the response entity created by marshalling the
    * given object using the in-scope marshaller for the type.
    */
-  def complete[T :Marshaller](status: StatusCode, headers: List[HttpHeader], obj: T): Route =
-    _.complete(status, headers, obj)
+  def complete[T :Marshaller](status: StatusCode, headers: List[HttpHeader], obj: T): StandardRoute =
+    new StandardRoute {
+      def apply(ctx: RequestContext) { ctx.complete(status, headers, obj) }
+    }
 
   /**
    * Completes the request with the given status and the respective default message in the entity.
    */
-  def complete(status: StatusCode): Route = complete(status: HttpResponse)
+  def complete(status: StatusCode): StandardRoute = complete(status: HttpResponse)
 
   /**
    * Schedules the completion of the request with result of the given future.
    */
-  def complete(future: Future[HttpResponse]): Route = _.complete(future)
+  def complete(future: Future[HttpResponse]): StandardRoute = new StandardRoute {
+    def apply(ctx: RequestContext) { ctx.complete(future) }
+  }
 
   /**
    * Completes the request with the given [[cc.spray.http.HttpResponse]].
    */
-  def complete(response: HttpResponse): Route = _.complete(response)
+  def complete(response: HttpResponse): StandardRoute = new StandardRoute {
+    def apply(ctx: RequestContext) { ctx.complete(response) }
+  }
 
   /**
    * Creates an HttpException with the given properties and bubbles it up the response chain,
    * where it is dealt with by the closest `handleExceptions` directive and its ExceptionHandler.
    */
-  def fail(status: StatusCode, message: String = ""): Route = fail(HttpException(status, message))
+  def fail(status: StatusCode, message: String = ""): StandardRoute = fail(HttpException(status, message))
 
   /**
    * Bubbles the given error up the response chain, where it is dealt with by the closest `handleExceptions`
    * directive and its ExceptionHandler.
    */
-  def fail(error: Throwable): Route = _.fail(error)
+  def fail(error: Throwable): StandardRoute = new StandardRoute {
+    def apply(ctx: RequestContext) { ctx.fail(error) }
+  }
 
 }
 
 object RouteDirectives extends RouteDirectives
+
+
+/**
+ * A Route that can be implicitly converted into a Directive (fitting any signature).
+ */
+trait StandardRoute extends Route {
+  def toDirective[L <: HList]: Directive[L] = StandardRoute.toDirective(this)
+}
+
+object StandardRoute {
+  def apply(route: Route): StandardRoute = route match {
+    case x: StandardRoute => x
+    case x => new StandardRoute { def apply(ctx: RequestContext) { x(ctx) } }
+  }
+
+  /**
+   * Converts the route into a directive that never passes the request to its inner route
+   * (and always returns its underlying route).
+   */
+  implicit def toDirective[L <: HList](route: Route) = new Directive[L] {
+    def happly(f: L => Route) = route
+  }
+}

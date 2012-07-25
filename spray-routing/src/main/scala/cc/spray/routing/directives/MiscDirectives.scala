@@ -31,12 +31,12 @@ trait MiscDirectives {
    * Transforms exceptions thrown during evaluation of its inner route using the given
    * [[cc.spray.routing.ExceptionHandler]].
    */
-  def handleRejections(handler: RejectionHandler): Directive0 =
-    transformRouteResponse {
-      case Rejected(rejections) if handler.isDefinedAt(rejections) =>
-        handler(RejectionHandler.applyTransformations(rejections))
-      case x => x
+  def handleRejections(handler: RejectionHandler): Directive0 = mapRequestContext { ctx =>
+    ctx.withRejectionHandling { rejections =>
+      if (handler.isDefinedAt(rejections)) handler(RejectionHandler.applyTransformations(rejections))
+      else ctx.reject(rejections: _*)
     }
+  }
 
   /**
    * Returns a Directive which checks the given condition before passing on the [[cc.spray.routing.RequestContext]] to
@@ -52,7 +52,7 @@ trait MiscDirectives {
   def headerValue[T](f: HttpHeader => Option[T]): Directive[T :: HNil] = filter {
     _.request.headers.mapFind(f) match {
       case Some(a) => Pass(a :: HNil)
-      case None => Reject(MissingHeaderRejection)
+      case None => Reject.Empty
     }
   }
 
@@ -79,7 +79,7 @@ trait MiscDirectives {
   def jsonpWithParameter(parameterName: String): Directive0 = {
     import ParameterDirectives._
     parameter(parameterName?).flatMap {
-      case Some(wrapper) :: HNil => transformHttpResponseEntity {
+      case Some(wrapper) :: HNil => mapHttpResponseEntity {
         case HttpBody(ct@ ContentType(`application/json`, _), buffer) => HttpBody(
           contentType = ct.withMediaType(`application/javascript`),
           string = wrapper + '(' + new String(buffer, ct.charset.nioCharset) + ')'
@@ -94,7 +94,7 @@ trait MiscDirectives {
    * A Directive0 that always passes the request on to its inner route
    * (i.e. does nothing with the request or the response).
    */
-  def nop: Directive0 = transformInnerRoute(identityFunc)
+  def nop: Directive0 = mapInnerRoute(identityFunc)
 
   /**
    * Injects the given values into a directive.
@@ -109,7 +109,7 @@ trait MiscDirectives {
    */
   def cancelAllRejectionsOfType[T <: Rejection :ClassManifest]: Directive0 = {
     val erasure = classManifest[T].erasure
-    transformRejections(_ :+ TransformationRejection(_.filterNot(erasure.isInstance(_))))
+    mapRejections(_ :+ TransformationRejection(_.filterNot(erasure.isInstance(_))))
   }
 
   /**

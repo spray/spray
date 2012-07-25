@@ -30,7 +30,7 @@ trait EncodingDirectives {
    * Wraps its inner Route with decoding support using the given Decoder.
    */
   def decodeRequest(decoder: Decoder): Directive0 = {
-    def applyDecoder = transformInnerRoute { inner => ctx =>
+    def applyDecoder = mapInnerRoute { inner => ctx =>
       tryToEither(decoder.decode(ctx.request)) match {
         case Right(decodedRequest) => inner(ctx.copy(request = decodedRequest))
         case Left(error) => ctx.reject(CorruptRequestEncodingRejection(error.getMessage))
@@ -55,7 +55,7 @@ trait EncodingDirectives {
    */
   def encodeResponse(encoder: Encoder) = {
     @volatile var compressor: Compressor = null
-    def applyEncoder = transformRequestContext { ctx =>
+    def applyEncoder = mapRequestContext { ctx =>
       ctx.flatMapRouteResponse {
         case response: HttpResponse => encoder.encode(response) :: Nil
         case x@ ChunkedResponseStart(response) => encoder.startEncoding(response) match {

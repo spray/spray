@@ -61,7 +61,7 @@ trait CachingDirectives {
    */
   def alwaysCacheResults(cache: Cache[Either[Seq[Rejection], HttpResponse]],
                          keyer: CacheKeyer = CacheKeyers.UriGetCacheKeyer): Directive0 =
-    transformInnerRoute { route => ctx =>
+    mapInnerRoute { route => ctx =>
       keyer(ctx) match {
         case Some(key) =>
           implicit val executionContext = system

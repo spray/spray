@@ -27,20 +27,20 @@ trait RespondWithDirectives {
    * Returns a Route that sets the given response status on all not-rejected responses of its inner Route.
    */
   def respondWithStatus(responseStatus: StatusCode): Directive0 =
-    transformHttpResponse { _.copy(status = responseStatus) }
+    mapHttpResponse { _.copy(status = responseStatus) }
 
   /**
    * Returns a Route that adds the given response header to all not-rejected responses of its inner Route.
    */
   def respondWithHeader(responseHeader: HttpHeader): Directive0 =
-    transformHttpResponse { response => response.copy(headers = responseHeader :: response.headers) }
+    mapHttpResponse { response => response.copy(headers = responseHeader :: response.headers) }
 
   /**
    * Returns a Route that adds the given response headers to all not-rejected responses of its inner Route.
    */
   def respondWithHeaders(responseHeaders: HttpHeader*): Directive0 = {
     val headers = responseHeaders.toList
-    transformHttpResponse { response => response.copy(headers = headers ::: response.headers) }
+    mapHttpResponse { response => response.copy(headers = headers ::: response.headers) }
   }
 
   /**
@@ -48,7 +48,7 @@ trait RespondWithDirectives {
    * ContentType.
    */
   def respondWithContentType(contentType: ContentType): Directive0 =
-    transformHttpResponse { response =>
+    mapHttpResponse { response =>
       response.copy(entity = response.entity.map((ct, buffer) => (contentType, buffer)))
     }
 
@@ -57,7 +57,7 @@ trait RespondWithDirectives {
    * one.
    */
   def respondWithMediaType(mediaType: MediaType): Directive0 =
-    transformHttpResponse { response =>
+    mapHttpResponse { response =>
       response.copy(entity = response.entity.map((ct, buffer) => (ct.withMediaType(mediaType), buffer)))
     }
 }

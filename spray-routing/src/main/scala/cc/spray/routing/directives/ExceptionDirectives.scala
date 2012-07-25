@@ -31,7 +31,7 @@ trait ExceptionDirectives {
    * [[cc.spray.routing.ExceptionHandler]].
    */
   def handleExceptions(handler: ExceptionHandler): Directive0 =
-    transformInnerRoute {
+    mapInnerRoute {
       inner => ctx =>
         val handleError = handler andThen (_(log)(ctx))
         try inner {

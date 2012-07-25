@@ -126,14 +126,6 @@ case class AuthenticationRequiredRejection(scheme: String, realm: String, params
 case class MissingCookieRejection(cookieName: String) extends Rejection
 
 /**
- * Rejection created by the `headerValue` directive.
- * Signals that the request was rejected because a required header was not found.
- * This rejection is not meant to be bubbled up to the client but should usually be dealt with in the application,
- * normally by substitution with a default value or transformation in another, more expressive rejection.
- */
-case object MissingHeaderRejection extends Rejection
-
-/**
  * Rejection created by the `validation` directive.
  */
 case class ValidationRejection(message: String) extends Rejection

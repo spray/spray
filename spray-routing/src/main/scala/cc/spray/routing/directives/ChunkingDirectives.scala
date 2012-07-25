@@ -33,7 +33,7 @@ trait ChunkingDirectives {
    * (save the very last) has the given size.
    * If the response content from the inner route is smaller than chunkSize a "regular", unchunked response is produced.
    */
-  def autoChunk(chunkSize: Int) = transformRequestContext { ctx =>
+  def autoChunk(chunkSize: Int) = mapRequestContext { ctx =>
     ctx.withRouteResponseHandling {
       case HttpResponse(_, HttpBody(contentType, buffer), _, _) if buffer.length > chunkSize =>
         def split(ix: Int): Stream[Array[Byte]] = {

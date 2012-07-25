@@ -17,39 +17,49 @@
 package cc.spray.routing
 package directives
 
+import akka.actor.ActorRef
 import shapeless._
 import cc.spray.http._
 
 
 trait BasicDirectives {
 
-  def transformInnerRoute(f: Route => Route): Directive0 = new Directive0 {
+  def mapInnerRoute(f: Route => Route): Directive0 = new Directive0 {
     def happly(inner: HNil => Route) = f(inner(HNil))
   }
 
-  def transformRequestContext(f: RequestContext => RequestContext): Directive0 =
-    transformInnerRoute { inner => ctx => inner(f(ctx)) }
+  def mapRequestContext(f: RequestContext => RequestContext): Directive0 =
+    mapInnerRoute { inner => ctx => inner(f(ctx)) }
 
-  def transformRequest(f: HttpRequest => HttpRequest): Directive0 =
-    transformRequestContext(_.mapRequest(f))
+  def mapRequest(f: HttpRequest => HttpRequest): Directive0 =
+    mapRequestContext(_.mapRequest(f))
 
-  def transformRouteResponse(f: Any => Any): Directive0 =
-    transformRequestContext(_.mapRouteResponse(f))
+  def mapHandler(f: ActorRef => ActorRef): Directive0 =
+    mapRequestContext(_.mapHandler(f))
 
-  def transformRouteResponsePF(f: PartialFunction[Any, Any]): Directive0 =
-    transformRequestContext(_.mapRouteResponsePF(f))
+  def mapRouteResponse(f: Any => Any): Directive0 =
+    mapRequestContext(_.mapRouteResponse(f))
 
-  def transformHttpResponse(f: HttpResponse => HttpResponse): Directive0 =
-    transformRequestContext(_.mapHttpResponse(f))
+  def mapRouteResponsePF(f: PartialFunction[Any, Any]): Directive0 =
+    mapRequestContext(_.mapRouteResponsePF(f))
 
-  def transformHttpResponseEntity(f: HttpEntity => HttpEntity): Directive0 =
-    transformRequestContext(_.mapHttpResponseEntity(f))
+  def flatMapRouteResponse(f: Any => Seq[Any]): Directive0 =
+    mapRequestContext(_.flatMapRouteResponse(f))
 
-  def transformHttpResponseHeaders(f: List[HttpHeader] => List[HttpHeader]): Directive0 =
-    transformRequestContext(_.mapHttpResponseHeaders(f))
+  def flatMapRouteResponsePF(f: PartialFunction[Any, Seq[Any]]): Directive0 =
+    mapRequestContext(_.flatMapRouteResponsePF(f))
 
-  def transformRejections(f: Seq[Rejection] => Seq[Rejection]): Directive0 =
-    transformRequestContext(_.mapRejections(f))
+  def mapHttpResponse(f: HttpResponse => HttpResponse): Directive0 =
+    mapRequestContext(_.mapHttpResponse(f))
+
+  def mapHttpResponseEntity(f: HttpEntity => HttpEntity): Directive0 =
+    mapRequestContext(_.mapHttpResponseEntity(f))
+
+  def mapHttpResponseHeaders(f: List[HttpHeader] => List[HttpHeader]): Directive0 =
+    mapRequestContext(_.mapHttpResponseHeaders(f))
+
+  def mapRejections(f: Seq[Rejection] => Seq[Rejection]): Directive0 =
+    mapRequestContext(_.mapRejections(f))
 
   def filter[T <: HList](f: RequestContext => FilterResult[T])
                         (implicit fdb: FilteringDirectiveBuilder[T]): fdb.Out = fdb(f)
@@ -66,7 +76,7 @@ sealed abstract class FilteringDirectiveBuilder[T <: HList] {
 object FilteringDirectiveBuilder extends LowPriorityFilteringDirectiveBuilder {
   implicit val fdb0 = new FilteringDirectiveBuilder[HNil] {
     type Out = Directive0
-    def apply(filter: RequestContext => FilterResult[HNil]) = BasicDirectives.transformInnerRoute { inner => ctx =>
+    def apply(filter: RequestContext => FilterResult[HNil]) = BasicDirectives.mapInnerRoute { inner => ctx =>
       filter(ctx) match {
         case Pass(HNil, transform) => inner(transform(ctx))
         case Reject(rejections) => ctx.reject(rejections: _*)
