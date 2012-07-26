@@ -29,13 +29,7 @@ import akka.actor._
  */
 abstract class UnregisteredActorRef(provider: ActorRefProvider) extends LazyActorRef(provider) {
   def this(related: ActorRef) = this(RefUtils.provider(related))
-  def this(system: ActorSystem) = this {
-    system match {
-      case x: ExtendedActorSystem => x.provider
-      case _ => throw new IllegalArgumentException("Unsupported ActorSystem implementation")
-    }
-  }
-  def this(context: ActorContext) = this(context.system)
+  def this(actorRefFactory: ActorRefFactory) = this(RefUtils.provider(actorRefFactory))
 
   override protected def register(path: ActorPath) {}
 

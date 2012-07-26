@@ -16,13 +16,19 @@
 
 package akka.spray
 
-import akka.actor.{InternalActorRef, ActorRefProvider, ActorRef}
+import akka.actor._
 
 
 object RefUtils {
 
   def provider(ref: ActorRef): ActorRefProvider =
     asInternalActorRef(ref).provider
+
+  def provider(actorRefFactory: ActorRefFactory): ActorRefProvider = actorRefFactory match {
+    case x: ActorContext => provider(x.system)
+    case x: ExtendedActorSystem => x.provider
+    case x: ActorSystem => throw new IllegalArgumentException("Unsupported ActorSystem implementation: " + x)
+  }
 
   def isLocal(ref: ActorRef): Boolean =
     asInternalActorRef(ref).isLocal

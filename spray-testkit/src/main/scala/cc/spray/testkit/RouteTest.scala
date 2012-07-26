@@ -30,9 +30,12 @@ import cc.spray.util._
 trait RouteTest extends RequestBuilding with RouteResultComponent {
   this: TestFrameworkInterface =>
 
-  implicit val system = ActorSystem()
   implicit val routeTestTimeout = RouteTestTimeout(1.second)
+  val system = ActorSystem()
   def log = system.log
+
+  // all actors created by directives in the tests are created directly underneath the system
+  def actorRefFactory = system
 
   def cleanUp() { system.shutdown() }
 

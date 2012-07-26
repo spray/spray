@@ -19,7 +19,7 @@ package cc.spray.testkit
 import collection.mutable.ListBuffer
 import akka.util.Duration
 import java.util.concurrent.{TimeUnit, CountDownLatch}
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{ActorRefFactory, ActorRef}
 import akka.spray.UnregisteredActorRef
 import cc.spray.routing.{Rejected, Rejection}
 import cc.spray.httpx.marshalling.ChunkingContext
@@ -28,7 +28,7 @@ import cc.spray.http._
 
 trait RouteResultComponent {
 
-  def system: ActorSystem
+  def actorRefFactory: ActorRefFactory
   def failTest(msg: String): Nothing
 
   /**
@@ -43,7 +43,7 @@ trait RouteResultComponent {
     private[this] val latch = new CountDownLatch(1)
     private[this] var virginal = true
 
-    private[testkit] val handler = new UnregisteredActorRef(system) {
+    private[testkit] val handler = new UnregisteredActorRef(actorRefFactory) {
       def handle(message: Any, sender: ActorRef) {
         def verifiedSender =
           if (sender != null) sender else sys.error("Received message " + message + " from unknown sender (null)")

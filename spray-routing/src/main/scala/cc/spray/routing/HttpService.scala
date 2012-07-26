@@ -23,7 +23,8 @@ import cc.spray.http.HttpRequest
 trait HttpService extends Directives {
   this: Actor with ActorLogging =>
 
-  def system = context.system
+  // all actor created by directives are created underneath the HttpService actor
+  implicit def actorRefFactory = context
 
   def runRoute(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler): Receive = {
     val sealedRoute = sealRoute.apply(route);

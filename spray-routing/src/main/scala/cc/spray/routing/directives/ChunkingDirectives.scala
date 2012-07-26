@@ -17,7 +17,7 @@
 package cc.spray.routing
 package directives
 
-import akka.actor.ActorSystem
+import akka.actor.ActorRefFactory
 import cc.spray.http.{HttpBody, HttpResponse}
 import cc.spray.httpx.marshalling.Marshaller
 import cc.spray.util._
@@ -26,7 +26,7 @@ import cc.spray.util._
 trait ChunkingDirectives {
   import BasicDirectives._
 
-  implicit def system: ActorSystem
+  implicit def actorRefFactory: ActorRefFactory
 
   /**
    * Automatically converts a non-rejected response from its inner route into a chunked response of which each chunk
