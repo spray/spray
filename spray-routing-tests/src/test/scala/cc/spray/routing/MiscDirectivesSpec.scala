@@ -155,4 +155,19 @@ class MiscDirectivesSpec extends RoutingSpec {
       } ~> check { entityAs[String] === "1.2.3.4" }
     }
   }
+
+  "the 'dynamic' directive" should {
+    "cause its inner route to be revaluated for every request anew" in {
+      var a = ""
+      val staticRoute = get { a += "x"; complete(a) }
+      val dynamicRoute = get { dynamic { a += "x"; complete(a) } }
+      def expect(route: Route, s: String) = Get() ~> route ~> check { entityAs[String] === s }
+      expect(staticRoute, "x")
+      expect(staticRoute, "x")
+      expect(staticRoute, "x")
+      expect(dynamicRoute, "xx")
+      expect(dynamicRoute, "xxx")
+      expect(dynamicRoute, "xxxx")
+    }
+  }
 }

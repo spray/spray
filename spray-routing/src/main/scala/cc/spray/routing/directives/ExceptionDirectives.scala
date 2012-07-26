@@ -30,16 +30,14 @@ trait ExceptionDirectives {
    * Transforms exceptions thrown during evaluation of its inner route using the given
    * [[cc.spray.routing.ExceptionHandler]].
    */
-  def handleExceptions(handler: ExceptionHandler): Directive0 =
-    mapInnerRoute {
-      inner => ctx =>
-        val handleError = handler andThen (_(log)(ctx))
-        try inner {
-          ctx.withRouteResponseHandling {
-            case Status.Failure(error) if handleError.isDefinedAt(error) => handleError(error)
-          }
-        }
-        catch handleError
+  def handleExceptions(handler: ExceptionHandler): Directive0 = mapInnerRoute { inner => ctx =>
+    val handleError = handler andThen (_(log)(ctx))
+    try inner {
+      ctx.withRouteResponseHandling {
+        case Status.Failure(error) if handleError.isDefinedAt(error) => handleError(error)
+      }
     }
+    catch handleError
+  }
 
 }

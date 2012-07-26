@@ -123,6 +123,18 @@ trait MiscDirectives {
   def requestEntityPresent: Directive0 = filter { ctx => if (ctx.request.entity.isEmpty) Reject.Empty else Pass.Empty }
 
   /**
+   * A directive thats evaluates its inner Route for every request anew. Note that this directive has no additional
+   * effect, when used inside (or some level underneath) a directive extracting one or more values, since everything
+   * inside a directive extracing values is _always_ reevaluted for every request.
+   *
+   * Also Note that this directive differs from most other directives in that it cannot be combined with other routes
+   * via the usual `&` and `|` operators.
+   */
+  object dynamic {
+    def apply(inner: => Route): Route = ctx => inner(ctx)
+  }
+
+  /**
    * Stops the current Route processing by throwing an HttpException that will be caught by the next enclosing
    * `handleExceptions` directive and its ExceptionHandler or the enclosing Actor.
    * Failures produced in this way circumvent the usual response chain.

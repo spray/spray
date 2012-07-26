@@ -23,6 +23,8 @@ import cc.spray.http.HttpRequest
 trait HttpService extends Directives {
   this: Actor with ActorLogging =>
 
+  def system = context.system
+
   def runRoute(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler): Receive = {
     val sealedRoute = sealRoute.apply(route);
     {
@@ -32,10 +34,10 @@ trait HttpService extends Directives {
     }
   }
 
-  def sealRoute(implicit eh: ExceptionHandler, rh: RejectionHandler) =
+  def sealRoute(implicit eh: ExceptionHandler, rh: RejectionHandler): Directive0 =
     handleExceptions(eh) & handleRejections(sealRejectionHandler(rh))
 
-  def sealRejectionHandler(rh: RejectionHandler) =
+  def sealRejectionHandler(rh: RejectionHandler): RejectionHandler =
     rh orElse RejectionHandler.Default orElse handleUnhandledRejections
 
   def handleUnhandledRejections: RejectionHandler.PF = {
