@@ -82,11 +82,11 @@ trait MiscDirectives {
       case Some(wrapper) :: HNil => mapHttpResponseEntity {
         case HttpBody(ct@ ContentType(`application/json`, _), buffer) => HttpBody(
           contentType = ct.withMediaType(`application/javascript`),
-          string = wrapper + '(' + new String(buffer, ct.charset.nioCharset) + ')'
+          string = wrapper + '(' + buffer.asString(ct.charset.nioCharset) + ')'
         )
         case entity => entity
       }
-      case _ => nop
+      case _ => noop
     }
   }
 
@@ -94,7 +94,7 @@ trait MiscDirectives {
    * A Directive0 that always passes the request on to its inner route
    * (i.e. does nothing with the request or the response).
    */
-  def nop: Directive0 = mapInnerRoute(identityFunc)
+  def noop: Directive0 = mapInnerRoute(identityFunc)
 
   /**
    * Injects the given values into a directive.

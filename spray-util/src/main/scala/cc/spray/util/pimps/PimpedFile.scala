@@ -17,23 +17,13 @@
 package cc.spray.util
 package pimps
 
-import java.nio.charset.Charset
+import java.io.{FileInputStream, File}
 
 
-class PimpedByteArray(underlying: Array[Byte]) {
+class PimpedFile(underlying: File) {
 
-  /**
-   * Creates a new Array[Byte] that is the concatenation of the underlying and the given one.
-   */
-  def concat(other: Array[Byte]) = {
-    val newArray = new Array[Byte](underlying.length + other.length)
-    System.arraycopy(underlying, 0, newArray, 0, underlying.length)
-    System.arraycopy(other, 0, newArray, underlying.length, other.length)
-    newArray
-  }
+  def toByteArrayStream(chunkSize: Int): Stream[Array[Byte]] =
+    new FileInputStream(underlying).toByteArrayStream(chunkSize)
 
-  def asString: String = asString(UTF8)
-
-  def asString(charset: Charset): String = new String(underlying, charset)
 
 }

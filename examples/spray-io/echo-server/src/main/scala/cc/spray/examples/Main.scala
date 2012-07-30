@@ -1,9 +1,10 @@
 package cc.spray.examples
 
-import cc.spray.io._
 import akka.actor.{Props, ActorSystem}
 import akka.pattern.ask
 import akka.util.duration._
+import cc.spray.util._
+import cc.spray.io._
 
 object Main extends App {
   val system = ActorSystem("EchoServer")
@@ -20,7 +21,7 @@ class EchoServer(ioWorker: IoWorker) extends IoServer(ioWorker) {
 
   override def receive = super.receive orElse {
     case IoWorker.Received(handle, buffer) =>
-      new String(buffer.array).trim match {
+      buffer.array.asString.trim match {
         case "STOP" =>
           ioWorker ! IoWorker.Send(handle, BufferBuilder("Shutting down...").toByteBuffer)
           log.info("Shutting down")

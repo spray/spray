@@ -18,8 +18,8 @@ package cc.spray.can.parsing
 
 import java.nio.ByteBuffer
 import org.specs2.mutable.Specification
-import cc.spray.util.EOL
 import cc.spray.can.RequestLine
+import cc.spray.util._
 import cc.spray.http._
 import HttpHeaders._
 import HttpMethods._
@@ -209,7 +209,7 @@ class RequestParserSpec extends Specification {
   def extractFromCompleteMessage(completeMessage: CompleteMessageState) = {
     import completeMessage._
     val RequestLine(method, uri, protocol) = messageLine
-    (method, uri, protocol, headers, connectionHeader, contentType, new String(body, "ISO-8859-1"))
+    (method, uri, protocol, headers, connectionHeader, contentType, body.asString("ISO-8859-1"))
   }
 }
 
@@ -222,7 +222,7 @@ object RequestParserSpec {
     startParser.read(buf) match {
       case x: CompleteMessageState => extractFromCompleteMessage(x)
       case x: ToCloseBodyParser => extractFromCompleteMessage(x.complete)
-      case ChunkedChunkState(extensions, body) => (extensions, new String(body, "ISO-8859-1"))
+      case ChunkedChunkState(extensions, body) => (extensions, body.asString("ISO-8859-1"))
       case ChunkedEndState(extensions, trailer) => (extensions, trailer)
       case x => x
     }

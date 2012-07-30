@@ -17,23 +17,19 @@
 package cc.spray.util
 package pimps
 
-import java.nio.charset.Charset
+import java.io.InputStream
+import java.util.Arrays
 
 
-class PimpedByteArray(underlying: Array[Byte]) {
+class PimpedInputStream(underlying: InputStream) {
 
-  /**
-   * Creates a new Array[Byte] that is the concatenation of the underlying and the given one.
-   */
-  def concat(other: Array[Byte]) = {
-    val newArray = new Array[Byte](underlying.length + other.length)
-    System.arraycopy(underlying, 0, newArray, 0, underlying.length)
-    System.arraycopy(other, 0, newArray, underlying.length, other.length)
-    newArray
+  def toByteArrayStream(chunkSize: Int): Stream[Array[Byte]] = {
+    val buffer = new Array[Byte](chunkSize)
+    val bytesRead = underlying.read(buffer)
+    if (bytesRead > 0) {
+      val bytes = if (bytesRead == buffer.length) buffer else Arrays.copyOfRange(buffer, 0, bytesRead)
+      bytes #:: toByteArrayStream(chunkSize)
+    } else Stream.Empty
   }
-
-  def asString: String = asString(UTF8)
-
-  def asString(charset: Charset): String = new String(underlying, charset)
 
 }

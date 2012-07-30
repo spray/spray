@@ -170,7 +170,7 @@ class ResponseParserSpec extends Specification {
   def extractFromCompleteMessage(completeMessage: CompleteMessageState) = {
     import completeMessage._
     val StatusLine(protocol, status, reason, _) = messageLine
-    (protocol, status, reason, headers, connectionHeader, contentType, new String(body, "ISO-8859-1"))
+    (protocol, status, reason, headers, connectionHeader, contentType, body.asString("ISO-8859-1"))
   }
 
 }

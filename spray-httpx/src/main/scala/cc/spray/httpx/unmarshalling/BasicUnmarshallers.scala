@@ -43,7 +43,7 @@ trait BasicUnmarshallers {
   implicit val StringUnmarshaller = new Unmarshaller[String] {
     def apply(entity: HttpEntity) = Right { // we can convert anything to a String
       entity match {
-        case HttpBody(contentType, buffer) => new String(buffer, contentType.charset.nioCharset)
+        case HttpBody(contentType, buffer) => buffer.asString(contentType.charset.nioCharset)
         case EmptyEntity => ""
       }
     }
@@ -59,7 +59,7 @@ trait BasicUnmarshallers {
   implicit val FormDataUnmarshaller =
     Unmarshaller[FormData](`application/x-www-form-urlencoded`) {
       case HttpBody(contentType, buffer) => FormData {
-        val data = new String(buffer, contentType.charset.nioCharset)
+        val data = buffer.asString(contentType.charset.nioCharset)
         val charset = contentType.charset.value
         data.fastSplit('&').flatMap {
           case "" => Nil

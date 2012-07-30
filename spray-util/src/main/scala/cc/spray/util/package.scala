@@ -24,17 +24,20 @@ import akka.dispatch.Future
 import akka.actor.{ActorRefFactory, ActorSystem}
 import annotation.tailrec
 import util.pimps._
+import java.io.{InputStream, File}
+import java.nio.charset.Charset
 
 
 package object util {
 
   val EOL = System.getProperty("line.separator")
+  val UTF8 = Charset.forName("UTF8")
   val EmptyByteArray = new Array[Byte](0)
 
   def identityFunc[T]: T => T = _identityFunc.asInstanceOf[T => T]
   private val _identityFunc: Any => Any = x => x
 
-  def make[A, U](a: A)(f: A => U): A = { f(a); a }
+  def make[T, U](a: T)(f: T => U): T = { f(a); a }
 
   @tailrec
   def tfor[@specialized T](i: T)(test: T => Boolean, inc: T => T)(f: T => Unit) {
@@ -55,11 +58,13 @@ package object util {
   implicit def pimpAny[T](any: T)                       :PimpedAny[T]          = new PimpedAny(any)
   implicit def pimpByteArray(array: Array[Byte])        :PimpedByteArray       = new PimpedByteArray(array)
   implicit def pimpByteBuffer(buf: ByteBuffer)          :PimpedByteBuffer      = new PimpedByteBuffer(buf)
-  implicit def pimpClass[A](clazz: Class[A])            :PimpedClass[A]        = new PimpedClass[A](clazz)
-  implicit def pimpFuture[A](fut: Future[A])            :PimpedFuture[A]       = new PimpedFuture[A](fut)
-  implicit def pimpSeq[A](seq: Seq[A])                  :PimpedSeq[A]          = seq match {
-    case x: LinearSeq[_] => new PimpedLinearSeq[A](x)
-    case x: IndexedSeq[_] => new PimpedIndexedSeq[A](x)
+  implicit def pimpClass[T](clazz: Class[T])            :PimpedClass[T]        = new PimpedClass[T](clazz)
+  implicit def pimpFile(file: File)                     :PimpedFile            = new PimpedFile(file)
+  implicit def pimpFuture[T](fut: Future[T])            :PimpedFuture[T]       = new PimpedFuture[T](fut)
+  implicit def pimpInputStream(inputStream: InputStream):PimpedInputStream     = new PimpedInputStream(inputStream)
+  implicit def pimpSeq[T](seq: Seq[T])                  :PimpedSeq[T]          = seq match {
+    case x: LinearSeq[_] => new PimpedLinearSeq[T](x)
+    case x: IndexedSeq[_] => new PimpedIndexedSeq[T](x)
   }
   implicit def pimpRegex(regex: Regex)                  :PimpedRegex           = new PimpedRegex(regex)
   implicit def pimpString(s: String)                    :PimpedString          = new PimpedString(s)
