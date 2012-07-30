@@ -17,6 +17,7 @@
 package cc.spray.routing
 
 import cc.spray.httpx.unmarshalling.MalformedContent
+import directives.{RouteDirectives, MiscDirectives}
 import shapeless._
 
 
@@ -33,11 +34,11 @@ abstract class Directive[L <: HList] { self =>
     }
   }
 
-  def & [R <: HList](that: Directive[R])(implicit prepend : Prepend[L, R]) = new Directive[prepend.Out] {
-    def happly(f: prepend.Out => Route) =
+  def & [R <: HList](concat: ConcatMagnet[L, R]) = new Directive[concat.Out] {
+    def happly(f: concat.Out => Route) =
       self.happly { values =>
-        that.happly { values2 =>
-          f(values ::: values2)
+        concat.that.happly { values2 =>
+          f(concat(values, values2))
         }
       }
   }
@@ -70,4 +71,24 @@ abstract class Directive[L <: HList] { self =>
 object Directive {
   implicit def pimpApply[L <: HList](directive: Directive[L])
                                     (implicit hac: ApplyConverter[L]): hac.In => Route = f => directive.happly(hac(f))
+
+  def getOrReject[T]: (Option[T] :: HNil) => Directive[T :: HNil] = {
+    case Some(value) :: HNil => MiscDirectives.provide(value :: HNil)
+    case _ => RouteDirectives.reject()
+  }
+}
+
+trait ConcatMagnet[L <: HList, R <: HList] {
+  type Out <: HList
+  def that: Directive[R]
+  def apply(prefix : L, suffix : R) : Out
+}
+
+object ConcatMagnet {
+  implicit def fromR[L <: HList, R <: HList](other: Directive[R])
+                    (implicit p: Prepender[L, R]) = new ConcatMagnet[L, R] {
+    type Out = p.Out
+    def that = other
+    def apply(prefix: L, suffix: R) = p(prefix, suffix)
+  }
 }

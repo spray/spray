@@ -40,8 +40,9 @@ private[routing] abstract class PrependerLowerPrioImplicits1 extends PrependerLo
 }
 
 private[routing] abstract class PrependerLowerPrioImplicits2 {
-  implicit def defaultPrepender[L <: HList, R <: HList](implicit p: Prepend[L, R]) = new Prepender[L, R] {
-    type Out = p.Out
+  implicit def defaultPrepender[L <: HList, R <: HList, Out0 <: HList]
+                               (implicit p: PrependAux[L, R, Out0]) = new Prepender[L, R] {
+    type Out = Out0
     def apply(prefix: L, suffix: R) = p(prefix, suffix)
   }
 }

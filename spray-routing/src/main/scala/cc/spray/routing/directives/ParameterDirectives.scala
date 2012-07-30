@@ -18,181 +18,188 @@ package cc.spray.routing
 package directives
 
 import java.lang.IllegalStateException
-import util.DynamicVariable
-import shapeless._
-import cc.spray.httpx.unmarshalling.{FromStringOptionDeserializer => FSOD, _}
 import cc.spray.http.QueryParams
-import directives.{ParameterMatcher => PM}
+import shapeless._
 
 
 trait ParameterDirectives extends ToNameReceptaclePimps {
-  import BasicDirectives._
-
-  /**
-   * Rejects the request if the query parameter with the given definition cannot be found.
-   * If it can be found the parameter value are extracted and passed as argument to the inner Route.
-   */
-  def parameter[T](pm: PM[T]): Directive[T :: HNil] = filter { ctx =>
-    pm.deserializer(ctx.request.queryParams.get(pm.paramName)) match {
-      case Right(value) => Pass(value :: HNil)
-      case Left(error) => Reject(toRejection(error, pm.paramName))
-    }
-  }
-  
-  /**
-   * Rejects the request if the query parameters with the given definitions cannot be found.
-   * If they can be found the parameter values are extracted and passed as arguments to the inner Route.
-   */
-  def parameters[A, B](a: PM[A], b: PM[B]): Directive[A :: B :: HNil] =
-    parameter(a) & parameter(b)
-
-  /**
-   * Rejects the request if the query parameters with the given definitions cannot be found.
-   * If they can be found the parameter values are extracted and passed as arguments to the inner Route.
-   */
-  def parameters[A, B, C](a: PM[A], b: PM[B], c: PM[C]): Directive[A :: B :: C :: HNil] =
-    parameters(a, b) & parameter(c)
-
-  /**
-   * Rejects the request if the query parameters with the given definitions cannot be found.
-   * If they can be found the parameter values are extracted and passed as arguments to the inner Route.
-   */
-  def parameters[A, B, C, D](a: PM[A], b: PM[B], c: PM[C], d: PM[D]): Directive[A :: B :: C :: D :: HNil] =
-    parameters(a, b, c) & parameter(d)
-
-  /**
-   * Rejects the request if the query parameters with the given definitions cannot be found.
-   * If they can be found the parameter values are extracted and passed as arguments to the inner Route.
-   */
-  def parameters[A, B, C, D, E](a: PM[A], b: PM[B], c: PM[C], d: PM[D],
-                                e: PM[E]): Directive[A :: B :: C :: D :: E :: HNil] =
-    parameters(a, b, c, d) & parameter(e)
-
-  /**
-   * Rejects the request if the query parameters with the given definitions cannot be found.
-   * If they can be found the parameter values are extracted and passed as arguments to the inner Route.
-   */
-  def parameters[A, B, C, D, E, F](a: PM[A], b: PM[B], c: PM[C], d: PM[D], e: PM[E],
-                                   f: PM[F]): Directive[A :: B :: C :: D :: E :: F :: HNil] =
-    parameters(a, b, c, d, e) & parameter(f)
-
-  /**
-   * Rejects the request if the query parameters with the given definitions cannot be found.
-   * If they can be found the parameter values are extracted and passed as arguments to the inner Route.
-   */
-  def parameters[A, B, C, D, E, F, G](a: PM[A], b: PM[B], c: PM[C], d: PM[D], e: PM[E], f: PM[F],
-                                      g: PM[G]): Directive[A :: B :: C :: D :: E :: F :: G :: HNil] =
-    parameters(a, b, c, d, e, f) & parameter(g)
-
-  /**
-   * Rejects the request if the query parameters with the given definitions cannot be found.
-   * If they can be found the parameter values are extracted and passed as arguments to the inner Route.
-   */
-  def parameters[A, B, C, D, E, F, G, H](a: PM[A], b: PM[B], c: PM[C], d: PM[D], e: PM[E], f: PM[F], g: PM[G],
-                                         h: PM[H]): Directive[A :: B :: C :: D :: E :: F :: G :: H :: HNil] =
-    parameters(a, b, c, d, e, f, g) & parameter(h)
-
-  /**
-   * Rejects the request if the query parameters with the given definitions cannot be found.
-   * If they can be found the parameter values are extracted and passed as arguments to the inner Route.
-   */
-  def parameters[A, B, C, D, E, F, G, H, I](a: PM[A], b: PM[B], c: PM[C], d: PM[D], e: PM[E], f: PM[F], g: PM[G], h: PM[H],
-                                            i: PM[I]): Directive[A :: B :: C :: D :: E :: F :: G :: H :: I :: HNil] =
-    parameters(a, b, c, d, e, f, g, h) & parameter(i)
-
-  /**
-   * Rejects the request if the query parameters with the given definitions cannot be found.
-   * If they can be found the parameter values are extracted and passed as arguments to the inner Route.
-   */
-  def parameters[L <: HList](paramDefs: ParamDefs[L]): Directive[paramDefs.Out] =
-    new Directive[paramDefs.Out] {
-      def happly(inner: paramDefs.Out => Route) = { ctx =>
-        try ExtractParams.queryParams.withValue(ctx.request.queryParams) {
-          inner(paramDefs.extract)(ctx)
-        } catch {
-          case ExtractParams.Error(name, error) => ctx.reject(toRejection(error, name))
-        }
-      }
-    }
-
-  private def toRejection(error: DeserializationError, paramName: String): Rejection = {
-    error match {
-      case ContentExpected => MissingQueryParamRejection(paramName)
-      case MalformedContent(errorMsg) => MalformedQueryParamRejection(errorMsg, paramName)
-      case x: UnsupportedContentType => throw new IllegalStateException(x.toString)
-    }
-  }
 
   /**
    * Extracts the requests query parameters as a Map[String, String].
    */
   def parameterMap: Directive[QueryParams :: HNil] =
-    filter { ctx => Pass(ctx.request.queryParams :: HNil) }
+    BasicDirectives.filter { ctx => Pass(ctx.request.queryParams :: HNil) }
 
   /**
-   * Rejects the request if the query parameter with the given name cannot be found or does not have the required value.
+   * Rejects the request if the query parameter matcher(s) defined by the definition(s) don't match.
    */
-  def parameter(pm: RequiredParameterMatcher): Directive0 = filter { ctx =>
-    pm.deserializer(ctx.request.queryParams.get(pm.paramName)) match {
-      case Right(value) if value == pm.requiredValue => Pass.Empty
-      case _ => Reject.Empty 
-    }
-  }
+  def parameter(pdm: ParamDefMagnet): pdm.Out = pdm()
 
   /**
-   * Rejects the request if the query parameters with the given names cannot be found or do not have the required values.
+   * Rejects the request if the query parameter matcher(s) defined by the definition(s) don't match.
    */
-  def parameters(rvr: RequiredParameterMatcher, more: RequiredParameterMatcher*): Directive0 =
-    (rvr +: more).map(parameter(_)).reduceLeft(_ & _)
+  def parameters(pdm: ParamDefMagnet): pdm.Out = pdm()
+
 }
 
 object ParameterDirectives extends ParameterDirectives
 
 
-case class ParameterMatcher[T](paramName: String, deserializer: FSOD[T])
-object ParameterMatcher extends ToNameReceptaclePimps {
-  implicit def fromString(s: String)(implicit fsod: FSOD[String]) = PM[String](s, fsod)
-  implicit def fromSymbol(s: Symbol)(implicit fsod: FSOD[String]) = PM[String](s.name, fsod)
-  implicit def fromNDesR[T](nr: NameDeserializerReceptacle[T]) = PM[T](nr.name, nr.deserializer)
-  implicit def fromNDefR[T](nr: NameDefaultReceptacle[T])(implicit fsod: FSOD[T]) =
-    PM[T](nr.name, fsod.withDefaultValue(nr.default))
-  implicit def fromNDesDefR[T](nr: NameDeserializerDefaultReceptacle[T]) =
-    PM[T](nr.name, nr.deserializer.withDefaultValue(nr.default))
-  implicit def fromNR[T](nr: NameReceptacle[T])(implicit fsod: FSOD[T]) = PM[T](nr.name, fsod)
+trait ParamDefMagnet {
+  type Out
+  def apply(): Out
 }
 
-case class RequiredParameterMatcher(paramName: String, deserializer: FSOD[_], requiredValue: Any)
-object RequiredParameterMatcher {
-  implicit def fromRVR[T](rvr: RequiredValueReceptacle[T])(implicit fsod: FSOD[T]) =
-    RequiredParameterMatcher(rvr.name, fsod, rvr.requiredValue)
-  implicit def fromRVDR[T](rvr: RequiredValueDeserializerReceptacle[T]) =
-    RequiredParameterMatcher(rvr.name, rvr.deserializer, rvr.requiredValue)
-}
+object ParamDefMagnet extends ToNameReceptaclePimps {
+  import cc.spray.routing.directives.{ParamDefMagnetAux => PDMA}
 
-
-sealed trait ParamDefs[L <: HList] {
-  type Out <: HList
-  def extract: Out
-}
-object ParamDefs {
-  implicit def fromDefs[L <: HList](defs: L)(implicit mapper: Mapper[ExtractParams.type, L]) =
-    new ParamDefs[L] {
-      type Out = mapper.Out
-      def extract = defs.map(ExtractParams)
-    }
-}
-
-
-private[directives] object ExtractParams extends Poly1 {
-  val queryParams = new DynamicVariable[QueryParams](null)
-
-  implicit def from[A, B](implicit pmFor: A => PM[B]) = at[A] { paramDef =>
-    val pm = pmFor(paramDef)
-    pm.deserializer(queryParams.value.get(pm.paramName)) match {
-      case Right(value) => value
-      case Left(error) => throw Error(pm.paramName, error)
-    }
+  def apply[T](value: T)(implicit pdma: PDMA[T]) = new ParamDefMagnet {
+    type Out = pdma.Out
+    def apply() = pdma(value)
   }
+  implicit def for1[T :PDMA](value: T) = apply[T](value)
+  implicit def for2[T <: Product2[_, _] :PDMA](value: T) = apply(value)
+  implicit def for3[T <: Product3[_, _, _] :PDMA](value: T) = apply(value)
+  implicit def for4[T <: Product4[_, _, _, _] :PDMA](value: T) = apply(value)
+  implicit def for5[T <: Product5[_, _, _, _, _] :PDMA](value: T) = apply(value)
+  implicit def for6[T <: Product6[_, _, _, _, _, _] :PDMA](value: T) = apply(value)
+  implicit def for7[T <: Product7[_, _, _, _, _, _, _] :PDMA](value: T) = apply(value)
+  implicit def for8[T <: Product8[_, _, _, _, _, _, _, _] :PDMA](value: T) = apply(value)
+  implicit def for9[T <: Product9[_, _, _, _, _, _, _, _, _] :PDMA](value: T) = apply(value)
+}
 
-  case class Error(paramName: String, error: DeserializationError) extends RuntimeException
+
+trait ParamDefMagnetAux[T] {
+  type Out
+  def apply(value: T): Out
+}
+
+object ParamDefMagnetAux {
+  import shapeless.{HList => HL, PrependAux => PA}
+
+  type PDC[T, L <: HL] = ParamDefConverter[T, Directive[L]]
+
+  implicit def for1[A, LA](implicit a: ParamDefConverter[A, LA]) =
+    new ParamDefMagnetAux[A] {
+      type Out = LA
+      def apply(value: A) = a(value)
+    }
+  implicit def for2[A, B, LA <: HL, LB <: HL, R <: HL](implicit a: PDC[A, LA], b: PDC[B, LB], p: PA[LA, LB, R]) =
+    new ParamDefMagnetAux[(A, B)] {
+      type Out = Directive[R]
+      def apply(t: (A, B)) = a(t._1) & b(t._2)
+    }
+  implicit def for3[A, B, C, LA <: HL, LB <: HL, LC <: HL, R1 <: HL, R <: HL]
+    (implicit a: PDC[A, LA], b: PDC[B, LB], c: PDC[C, LC], p1: PA[LA, LB, R1], p2: PA[R1, LC, R]) =
+    new ParamDefMagnetAux[(A, B, C)] {
+      type Out = Directive[R]
+      def apply(t: (A, B, C)) = a(t._1) & b(t._2) & c(t._3)
+    }
+  implicit def for4[A, B, C, D, LA <: HL, LB <: HL, LC <: HL, LD <: HL, R1 <: HL, R2 <: HL, R <: HL]
+    (implicit a: PDC[A, LA], b: PDC[B, LB], c: PDC[C, LC], d: PDC[D, LD],
+     p1: PA[LA, LB, R1], p2: PA[R1, LC, R2], p3: PA[R2, LD, R]) =
+    new ParamDefMagnetAux[(A, B, C, D)] {
+      type Out = Directive[R]
+      def apply(t: (A, B, C, D)) = a(t._1) & b(t._2) & c(t._3) & d(t._4)
+    }
+  implicit def for5[A, B, C, D, E, LA <: HL, LB <: HL, LC <: HL, LD <: HL, LE <: HL, R1 <: HL, R2 <: HL, R3 <: HL, R <: HL]
+    (implicit a: PDC[A, LA], b: PDC[B, LB], c: PDC[C, LC], d: PDC[D, LD], e: PDC[E, LE],
+     p1: PA[LA, LB, R1], p2: PA[R1, LC, R2], p3: PA[R2, LD, R3], p4: PA[R3, LE, R]) =
+    new ParamDefMagnetAux[(A, B, C, D, E)] {
+      type Out = Directive[R]
+      def apply(t: (A, B, C, D, E)) = a(t._1) & b(t._2) & c(t._3) & d(t._4) & e(t._5)
+    }
+  implicit def for6[A, B, C, D, E, F, LA <: HL, LB <: HL, LC <: HL, LD <: HL, LE <: HL, LF <: HL, R1 <: HL, R2 <: HL, R3 <: HL, R4 <: HL, R <: HL]
+    (implicit a: PDC[A, LA], b: PDC[B, LB], c: PDC[C, LC], d: PDC[D, LD], e: PDC[E, LE], f: PDC[F, LF],
+     p1: PA[LA, LB, R1], p2: PA[R1, LC, R2], p3: PA[R2, LD, R3], p4: PA[R3, LE, R4], p5: PA[R4, LF, R]) =
+    new ParamDefMagnetAux[(A, B, C, D, E, F)] {
+      type Out = Directive[R]
+      def apply(t: (A, B, C, D, E, F)) = a(t._1) & b(t._2) & c(t._3) & d(t._4) & e(t._5) & f(t._6)
+    }
+  implicit def for7[A, B, C, D, E, F, G, LA <: HL, LB <: HL, LC <: HL, LD <: HL, LE <: HL, LF <: HL, LG <: HL, R1 <: HL, R2 <: HL, R3 <: HL, R4 <: HL, R5 <: HL, R <: HL]
+    (implicit a: PDC[A, LA], b: PDC[B, LB], c: PDC[C, LC], d: PDC[D, LD], e: PDC[E, LE], f: PDC[F, LF], g: PDC[G, LG],
+     p1: PA[LA, LB, R1], p2: PA[R1, LC, R2], p3: PA[R2, LD, R3], p4: PA[R3, LE, R4], p5: PA[R4, LF, R5], p6: PA[R5, LG, R]) =
+    new ParamDefMagnetAux[(A, B, C, D, E, F, G)] {
+      type Out = Directive[R]
+      def apply(t: (A, B, C, D, E, F, G)) = a(t._1) & b(t._2) & c(t._3) & d(t._4) & e(t._5) & f(t._6) & g(t._7)
+    }
+  implicit def for8[A, B, C, D, E, F, G, H, LA <: HL, LB <: HL, LC <: HL, LD <: HL, LE <: HL, LF <: HL, LG <: HL, LH <: HL, R1 <: HL, R2 <: HL, R3 <: HL, R4 <: HL, R5 <: HL, R6 <: HL, R <: HL]
+    (implicit a: PDC[A, LA], b: PDC[B, LB], c: PDC[C, LC], d: PDC[D, LD], e: PDC[E, LE], f: PDC[F, LF], g: PDC[G, LG], h: PDC[H, LH],
+     p1: PA[LA, LB, R1], p2: PA[R1, LC, R2], p3: PA[R2, LD, R3], p4: PA[R3, LE, R4], p5: PA[R4, LF, R5], p6: PA[R5, LG, R6], p7: PA[R6, LH, R]) =
+    new ParamDefMagnetAux[(A, B, C, D, E, F, G, H)] {
+      type Out = Directive[R]
+      def apply(t: (A, B, C, D, E, F, G, H)) = a(t._1) & b(t._2) & c(t._3) & d(t._4) & e(t._5) & f(t._6) & g(t._7) & h(t._8)
+    }
+  implicit def for9[A, B, C, D, E, F, G, H, I, LA <: HL, LB <: HL, LC <: HL, LD <: HL, LE <: HL, LF <: HL, LG <: HL, LH <: HL, LI <: HL, R1 <: HL, R2 <: HL, R3 <: HL, R4 <: HL, R5 <: HL, R6 <: HL, R7 <: HL, R <: HL]
+    (implicit a: PDC[A, LA], b: PDC[B, LB], c: PDC[C, LC], d: PDC[D, LD], e: PDC[E, LE], f: PDC[F, LF], g: PDC[G, LG], h: PDC[H, LH], i: PDC[I, LI],
+     p1: PA[LA, LB, R1], p2: PA[R1, LC, R2], p3: PA[R2, LD, R3], p4: PA[R3, LE, R4], p5: PA[R4, LF, R5], p6: PA[R5, LG, R6], p7: PA[R6, LH, R7], p8: PA[R7, LI, R]) =
+    new ParamDefMagnetAux[(A, B, C, D, E, F, G, H, I)] {
+      type Out = Directive[R]
+      def apply(t: (A, B, C, D, E, F, G, H, I)) = a(t._1) & b(t._2) & c(t._3) & d(t._4) & e(t._5) & f(t._6) & g(t._7) & h(t._8) & i(t._9)
+    }
+}
+
+
+trait ParamDefConverter[A, B] extends (A => B)
+
+object ParamDefConverter {
+  import cc.spray.httpx.unmarshalling.{FromStringOptionDeserializer => FSOD, _}
+
+  /************ "regular" parameter extraction ******************/
+
+  private def extractParameter[T, R](f: T => Directive[R :: HNil]) = new ParamDefConverter[T, Directive[R :: HNil]] {
+    def apply(value: T) = f(value) 
+  }    
+  private def filter[R](paramName: String, fsod: FSOD[R]) = BasicDirectives.filter { ctx =>
+    fsod(ctx.request.queryParams.get(paramName)) match {
+      case Right(x) => Pass(x :: HNil)
+      case Left(ContentExpected) => Reject(MissingQueryParamRejection(paramName))
+      case Left(MalformedContent(errorMsg)) => Reject(MalformedQueryParamRejection(errorMsg, paramName))
+      case Left(x: UnsupportedContentType) => throw new IllegalStateException(x.toString)
+    }
+  } 
+  implicit def forString(implicit fsod: FSOD[String]) =
+    extractParameter[String, String](s => filter(s, fsod))
+  implicit def forSymbol(implicit fsod: FSOD[String]) =
+    extractParameter[Symbol, String](s => filter(s.name, fsod))
+  implicit def forNDesR[T] =
+    extractParameter[NameDeserializerReceptacle[T], T](nr => filter(nr.name, nr.deserializer))
+  implicit def forNDefR[T](implicit fsod: FSOD[T]) =
+    extractParameter[NameDefaultReceptacle[T], T](nr => filter(nr.name, fsod.withDefaultValue(nr.default)))
+  implicit def forNDesDefR[T] =
+    extractParameter[NameDeserializerDefaultReceptacle[T], T](nr => filter(nr.name, nr.deserializer.withDefaultValue(nr.default)))
+  implicit def forNR[T](implicit fsod: FSOD[T]) =
+    extractParameter[NameReceptacle[T], T](nr => filter(nr.name, fsod))
+
+
+  /************ required parameter support ******************/
+
+  private def requireParameter[T](f: T => Directive0) = new ParamDefConverter[T, Directive0] {
+    def apply(value: T) = f(value)
+  }
+  private def requiredFilter(paramName: String, fsod: FSOD[_], requiredValue: Any): Directive0 =
+    BasicDirectives.filter { ctx =>
+      fsod(ctx.request.queryParams.get(paramName)) match {
+        case Right(value) if value == requiredValue => Pass.Empty
+        case _ => Reject.Empty
+      }
+    }
+  implicit def forRVR[T](implicit fsod: FSOD[T]) =
+    requireParameter[RequiredValueReceptacle[T]](rvr => requiredFilter(rvr.name, fsod, rvr.requiredValue))
+  implicit def forRVDR[T] =
+    requireParameter[RequiredValueDeserializerReceptacle[T]](rvr => requiredFilter(rvr.name, rvr.deserializer, rvr.requiredValue))
+
+
+  /************ HListed parameter definition support ******************/
+
+  implicit def forHList[L <: HList](implicit folder: LeftFolder[L, Directive0, MapReduce.type]) =
+    new ParamDefConverter[L, folder.Out] {
+      def apply(list: L) = list.foldLeft(MiscDirectives.noop)(MapReduce)
+    }
+
+  object MapReduce extends Poly2 {
+    implicit def from[T, LA <: HList, LB <: HList, Out <: HList]
+                     (implicit pdc: ParamDefConverter[T, Directive[LB]], p: PrependAux[LA, LB, Out]) =
+      at[Directive[LA], T] { (a, t) => a & pdc(t) }
+  }
 }

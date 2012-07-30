@@ -138,17 +138,17 @@ class ParameterDirectivesSpec extends RoutingSpec {
   "The 'parameter' requirement directive" should {
     "block requests that do not contain the required parameter" in {
       Get("/person?age=19") ~> {
-        parameter('nose ! "large") { complete(Ok) }
+        parameter('nose ! "large") { completeOk }
       } ~> check { handled must beFalse }
     }
     "block requests that contain the required parameter but with an unmatching value" in {
       Get("/person?age=19&nose=small") ~> {
-        parameter('nose ! "large") { complete(Ok) }
+        parameter('nose ! "large") { completeOk }
       } ~> check { handled must beFalse }
     }
     "let requests pass that contain the required parameter with its required value" in {
       Get("/person?nose=large&eyes=blue") ~> {
-        parameter('nose ! "large") { complete(Ok) }
+        parameter('nose ! "large") { completeOk }
       } ~> check { response === Ok }
     }
     "be useable for method tunneling" in {
