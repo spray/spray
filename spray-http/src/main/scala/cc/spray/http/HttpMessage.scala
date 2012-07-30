@@ -61,8 +61,8 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
   def withEntity(entity: HttpEntity): Self
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity): Self
 
-  def withHeadersTransformed(f: List[HttpHeader] => List[HttpHeader]): Self = withHeaders(f(headers))
-  def withEntityTransformed(f: HttpEntity => HttpEntity): Self = withEntity(f(entity))
+  def mapHeaders(f: List[HttpHeader] => List[HttpHeader]): Self = withHeaders(f(headers))
+  def mapEntity(f: HttpEntity => HttpEntity): Self = withEntity(f(entity))
 
   /**
    * Returns true if a Content-Encoding header is present. 

@@ -52,7 +52,7 @@ trait RequestBuilding {
 
   def encode(encoder: Encoder): RequestTransformer = encoder.encode(_)
 
-  def addHeader(header: HttpHeader): RequestTransformer = _.withHeadersTransformed(header :: _)
+  def addHeader(header: HttpHeader): RequestTransformer = _.mapHeaders(header :: _)
 
   def addHeader(headerName: String, headerValue: String): RequestTransformer = {
     val rawHeader = RawHeader(headerName, headerValue)
@@ -61,7 +61,7 @@ trait RequestBuilding {
 
   def addHeaders(first: HttpHeader, more: HttpHeader*): RequestTransformer = addHeaders(first :: more.toList)
 
-  def addHeaders(headers: List[HttpHeader]): RequestTransformer = _.withHeadersTransformed(headers ::: _)
+  def addHeaders(headers: List[HttpHeader]): RequestTransformer = _.mapHeaders(headers ::: _)
 
   def authenticate(credentials: BasicHttpCredentials) = addHeader(HttpHeaders.Authorization(credentials))
 

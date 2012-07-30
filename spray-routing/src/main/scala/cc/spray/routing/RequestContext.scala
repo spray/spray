@@ -103,13 +103,13 @@ case class RequestContext(
    * Returns a copy of this context with the given response transformation function chained into the response chain.
    */
   def mapHttpResponseEntity(f: HttpEntity => HttpEntity) =
-    mapHttpResponse(_.withEntityTransformed(f))
+    mapHttpResponse(_.mapEntity(f))
 
   /**
    * Returns a copy of this context with the given response transformation function chained into the response chain.
    */
   def mapHttpResponseHeaders(f: List[HttpHeader] => List[HttpHeader]) =
-    mapHttpResponse(_.withHeadersTransformed(f))
+    mapHttpResponse(_.mapHeaders(f))
 
   /**
    * Returns a copy of this context with the given rejection transformation function chained into the response chain.

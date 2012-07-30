@@ -58,4 +58,4 @@ trait MethodDirectives {
   } & cancelAllRejectionsOfType[MethodRejection]
 }
 
-object MethodDirectives extends HostDirectives
+object MethodDirectives extends MethodDirectives

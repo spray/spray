@@ -16,11 +16,6 @@
 
 package cc.spray.routing
 
-import cc.spray.http._
-import HttpHeaders._
-import MediaTypes._
-import HttpCharsets._
-
 
 class CaseClassExtractionSpec extends RoutingSpec {
 

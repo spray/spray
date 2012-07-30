@@ -26,7 +26,7 @@ object RemoteAddressHeaderSupport {
   def apply(): EventPipelineStage = new EventPipelineStage {
     def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): EPL = new EPL {
       val raHeader = `Remote-Address`(context.handle.remoteAddress.getAddress)
-      def appendHeader(request: HttpRequest) = request.withHeadersTransformed(raHeader :: _)
+      def appendHeader(request: HttpRequest) = request.mapHeaders(raHeader :: _)
 
       def apply(ev: Event) {
         ev match {
