@@ -20,8 +20,8 @@ import com.typesafe.config.{ConfigFactory, Config}
 import cc.spray.util.ConfigUtils
 
 
-private[servlet] class ConnectorSettings(config: Config = ConfigFactory.load) {
-  private[this] val c: Config = ConfigUtils.prepareSubConfig(config, "spray.servlet")
+class ConnectorSettings(config: Config = ConfigFactory.load) {
+  protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.servlet")
 
   val BootClass           = c getString       "boot-class"
   val RequestTimeout      = c getMilliseconds "request-timeout"

@@ -21,8 +21,8 @@ import cc.spray.can.parsing.ParserSettings
 import cc.spray.util.ConfigUtils
 
 
-private[can] class ServerSettings(config: Config = ConfigFactory.load) {
-  private[this] val c: Config = ConfigUtils.prepareSubConfig(config, "spray.can.server")
+class ServerSettings(config: Config = ConfigFactory.load) {
+  protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.can.server")
 
   val ServerHeader                  = c getString       "server-header"
   val SSLEncryption                 = c getBoolean      "ssl-encryption"
