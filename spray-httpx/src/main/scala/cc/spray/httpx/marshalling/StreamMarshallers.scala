@@ -21,52 +21,54 @@ import cc.spray.http._
 
 
 trait StreamMarshallers {
-
   implicit def streamMarshaller[T](implicit marshaller: Marshaller[T], refFactory: ActorRefFactory,
-                                    chunkingCtx: ChunkingContext): Marshaller[Stream[T]] = new Marshaller[Stream[T]] {
-
-    def apply(selector: ContentTypeSelector) = marshaller(selector).right.map { marshalling =>
-      new Marshalling[Stream[T]] {
-        def apply(value: Stream[T], ctx: MarshallingContext) {
-          refFactory.actorOf(Props(new ChunkingActor(ctx, marshalling, chunkingCtx))) ! value
+                                   chunkingCtx: ChunkingContext): Marshaller[Stream[T]] =
+    new Marshaller[Stream[T]] {
+      def apply(selector: ContentTypeSelector) = marshaller(selector).right.map { marshalling =>
+        new Marshalling[Stream[T]] {
+          def apply(value: Stream[T], ctx: MarshallingContext) {
+            refFactory.actorOf(Props(new StreamMarshallers.ChunkingActor(ctx, marshalling, chunkingCtx))) ! value
+          }
         }
       }
     }
-  }
-
 }
 
-class ChunkingActor[T](ctx: MarshallingContext, marshalling: Marshalling[T], chunkingCtx: ChunkingContext)
-  extends Actor {
-  var connectionActor: ActorRef = _
-  var remaining: Stream[_] = _
+object StreamMarshallers extends StreamMarshallers {
+  class ChunkingActor[T](ctx: MarshallingContext, marshalling: Marshalling[T], chunkingCtx: ChunkingContext)
+    extends Actor {
+    var connectionActor: ActorRef = _
+    var remaining: Stream[_] = _
 
-  def receive = {
+    def receive = {
 
-    case current #:: rest =>
-      val chunkingCtx = new MarshallingContext {
-        def marshalTo(entity: HttpEntity) {
-          if (connectionActor == null) connectionActor = ctx.startChunkedMessage(entity)
-          else connectionActor ! MessageChunk(entity.buffer)
+      case current #:: rest =>
+        val chunkingCtx = new MarshallingContext {
+          def marshalTo(entity: HttpEntity) {
+            if (connectionActor == null) connectionActor = ctx.startChunkedMessage(entity)
+            else connectionActor ! MessageChunk(entity.buffer)
+          }
+          def handleError(error: Throwable) {
+            context.stop(self)
+            ctx.handleError(error)
+          }
+          def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) =
+            sys.error("Cannot marshal a stream of streams")
         }
-        def handleError(error: Throwable) {
+        marshalling.runSafe(current.asInstanceOf[T], chunkingCtx)
+        remaining = rest
+
+      case x if chunkingCtx.isAckSend(x) =>
+        assert(remaining != null, "Unmatched AckSend")
+        if (remaining.isEmpty) {
+          connectionActor ! ChunkedMessageEnd()
           context.stop(self)
-          ctx.handleError(error)
-        }
-        def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) =
-          sys.error("Cannot marshal a stream of streams")
-      }
-      marshalling.runSafe(current.asInstanceOf[T], chunkingCtx)
-      remaining = rest
+        } else self ! remaining
 
-    case x if chunkingCtx.isAckSend(x) =>
-      assert(remaining != null, "Unmatched AckSend")
-      if (remaining.isEmpty) {
-        connectionActor ! ChunkedMessageEnd()
+      case x if chunkingCtx.isClosed(x) =>
         context.stop(self)
-      } else self ! remaining
-
-    case x if chunkingCtx.isClosed(x) =>
-      context.stop(self)
+    }
   }
 }
+
+

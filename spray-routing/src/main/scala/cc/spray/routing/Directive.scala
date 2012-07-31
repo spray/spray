@@ -17,7 +17,6 @@
 package cc.spray.routing
 
 import cc.spray.httpx.unmarshalling.MalformedContent
-import directives.{RouteDirectives, MiscDirectives}
 import shapeless._
 
 
@@ -71,11 +70,6 @@ abstract class Directive[L <: HList] { self =>
 object Directive {
   implicit def pimpApply[L <: HList](directive: Directive[L])
                                     (implicit hac: ApplyConverter[L]): hac.In => Route = f => directive.happly(hac(f))
-
-  def getOrReject[T]: (Option[T] :: HNil) => Directive[T :: HNil] = {
-    case Some(value) :: HNil => MiscDirectives.provide(value :: HNil)
-    case _ => RouteDirectives.reject()
-  }
 }
 
 trait ConcatMagnet[L <: HList, R <: HList] {

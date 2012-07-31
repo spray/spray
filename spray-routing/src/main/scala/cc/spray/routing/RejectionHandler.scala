@@ -32,7 +32,7 @@ object RejectionHandler {
       def apply(rejections: Seq[Rejection]) = pf(rejections)
     }
 
-  val Default = fromPF {
+  implicit val Default = fromPF {
     case AuthenticationRequiredRejection(scheme, realm, params) :: _ =>
       HttpResponse(Unauthorized,
         headers = `WWW-Authenticate`(HttpChallenge(scheme, realm, params)) :: Nil,
@@ -49,11 +49,9 @@ object RejectionHandler {
       HttpResponse(BadRequest, "The query parameter '" + name + "' was malformed:\n" + msg)
     case MalformedRequestContentRejection(msg) :: _ =>
       HttpResponse(BadRequest, "The request content was malformed:\n" + msg)
-    case rejections if rejections.head.isInstanceOf[MethodRejection] =>
+    case rejections@ (MethodRejection(_) :: _) =>
       // TODO: add Allow header (required by the spec)
-      val methods = rejections.collect {
-        case MethodRejection(method) => method
-      }
+      val methods = rejections.collect { case MethodRejection(method) => method }
       HttpResponse(MethodNotAllowed, "HTTP method not allowed, supported methods: " + methods.mkString(", "))
     case MissingCookieRejection(cookieName) :: _ =>
       HttpResponse(BadRequest, "Request is missing required cookie '" + cookieName + '\'')
@@ -63,25 +61,17 @@ object RejectionHandler {
       HttpResponse(NotFound, "Request is missing required query parameter '" + paramName + '\'')
     case RequestEntityExpectedRejection :: _ =>
       HttpResponse(BadRequest, "Request entity expected but not supplied")
-    case rejections if rejections.head.isInstanceOf[UnacceptedResponseContentTypeRejection] =>
-      val supported = rejections.flatMap {
-        case UnacceptedResponseContentTypeRejection(supported) => supported
-      }
+    case rejections@ (UnacceptedResponseContentTypeRejection(_) :: _) =>
+      val supported = rejections.flatMap { case UnacceptedResponseContentTypeRejection(supported) => supported }
       HttpResponse(NotAcceptable, "Resource representation is only available with these Content-Types:\n" + supported.map(_.value).mkString("\n"))
-    case rejections if rejections.head.isInstanceOf[UnacceptedResponseEncodingRejection] =>
-      val supported = rejections.collect {
-        case UnacceptedResponseEncodingRejection(supported) => supported
-      }
+    case rejections@ (UnacceptedResponseEncodingRejection(_) :: _) =>
+      val supported = rejections.collect { case UnacceptedResponseEncodingRejection(supported) => supported }
       HttpResponse(NotAcceptable, "Resource representation is only available with these Content-Encodings:\n" + supported.map(_.value).mkString("\n"))
-    case rejections if rejections.head.isInstanceOf[UnsupportedRequestContentTypeRejection] =>
-      val supported = rejections.collect {
-        case UnsupportedRequestContentTypeRejection(supported) => supported
-      }
+    case rejections@ (UnsupportedRequestContentTypeRejection(_) :: _) =>
+      val supported = rejections.collect { case UnsupportedRequestContentTypeRejection(supported) => supported }
       HttpResponse(UnsupportedMediaType, "There was a problem with the requests Content-Type:\n" + supported.mkString(" or "))
-    case rejections if rejections.head.isInstanceOf[UnsupportedRequestEncodingRejection] =>
-      val supported = rejections.collect {
-        case UnsupportedRequestEncodingRejection(supported) => supported
-      }
+    case rejections@ (UnsupportedRequestEncodingRejection(_) :: _) =>
+      val supported = rejections.collect { case UnsupportedRequestEncodingRejection(supported) => supported }
       HttpResponse(BadRequest, "The requests Content-Encoding must be one the following:\n" + supported.map(_.value).mkString("\n"))
     case ValidationRejection(msg) :: _ =>
       HttpResponse(BadRequest, msg)

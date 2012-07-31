@@ -19,7 +19,7 @@ package directives
 
 import akka.actor.ActorRefFactory
 import cc.spray.http.{HttpBody, HttpResponse}
-import cc.spray.httpx.marshalling.Marshaller
+import cc.spray.httpx.marshalling.BasicMarshallers
 import cc.spray.util._
 
 
@@ -43,7 +43,7 @@ trait ChunkingDirectives {
           if (ix < buffer.length - chunkSize) Stream.cons(chunkBuf(chunkSize), split(ix + chunkSize))
           else Stream.cons(chunkBuf(buffer.length - ix), Stream.Empty)
         }
-        implicit val byteArrayMarshaller = Marshaller.delegate[Array[Byte], Array[Byte]](contentType)(identityFunc[Array[Byte]])
+        implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(contentType)
         ctx.complete(split(0))
     }
   }

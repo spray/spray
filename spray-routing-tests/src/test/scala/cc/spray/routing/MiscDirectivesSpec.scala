@@ -52,19 +52,6 @@ class MiscDirectivesSpec extends RoutingSpec {
     }
   }
   
-  "respondWithContentType" should {
-    "set the content type of successful responses" in {
-      Get() ~> {
-        respondWithContentType(`application/json`) { complete("plaintext") }
-      } ~> check { entity === HttpBody(`application/json`, "plaintext") }
-    }
-    "leave rejections unaffected" in {
-      Get() ~> {
-        respondWithContentType(`application/json`) { reject() }
-      } ~> check { rejections === Nil }
-    }
-  }
-  
   "routes created by the concatenation operator '~'" should {
     "yield the first sub route if it succeeded" in {
       Get() ~> {
@@ -90,30 +77,25 @@ class MiscDirectivesSpec extends RoutingSpec {
   }
 
   "the jsonpWithParameter directive" should {
-    "convert JSON responses to corresponding javascript respones according to the given JSONP parameter" in {
+    val jsonResponse = HttpResponse(entity = HttpBody(`application/json`, "[1,2,3]"))
+    "convert JSON responses to corresponding javascript responses according to the given JSONP parameter" in {
       Get("/?jsonp=someFunc") ~> {
         jsonpWithParameter("jsonp") {
-          respondWithContentType(`application/json`) {
-            complete("[1,2,3]")
-          }
+          complete(jsonResponse)
         }
       } ~> check { entity === HttpBody(`application/javascript`, "someFunc([1,2,3])") }
     }
     "not act on JSON responses if no jsonp parameter is present" in {
       Get() ~> {
         jsonpWithParameter("jsonp") {
-          respondWithContentType(`application/json`) {
-            complete("[1,2,3]")
-          }
+          complete(jsonResponse)
         }
-      } ~> check { entity === HttpBody(`application/json`, "[1,2,3]") }
+      } ~> check { entity === jsonResponse.entity }
     }
     "not act on non-JSON responses even if a jsonp parameter is present" in {
       Get("/?jsonp=someFunc") ~> {
         jsonpWithParameter("jsonp") {
-          respondWithContentType(`text/plain`) {
-            complete("[1,2,3]")
-          }
+          complete(HttpResponse(entity = HttpBody(`text/plain`, "[1,2,3]")))
         }
       } ~> check { entity === HttpBody(`text/plain`, "[1,2,3]") }
     }

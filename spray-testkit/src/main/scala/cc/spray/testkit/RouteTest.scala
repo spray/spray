@@ -34,6 +34,8 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   val system = ActorSystem()
   def log = system.log
 
+  val settings = new RoutingSettings()
+
   // all actors created by directives in the tests are created directly underneath the system
   def actorRefFactory = system
 
@@ -54,7 +56,9 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   def entityAs[T :Unmarshaller] = entity.as[T].fold(error => failTest(error.toString), identityFunc)
   def body: HttpBody = entity.toOption.getOrElse(failTest("Response has no entity"))
   def contentType: ContentType = body.contentType
-  def mediaType: ContentType = contentType.mediaType
+  def mediaType: MediaType = contentType.mediaType
+  def charset: HttpCharset = contentType.charset
+  def definedCharset: Option[HttpCharset] = contentType.definedCharset
   def headers: List[HttpHeader] = response.headers
   def header[T <: HttpHeader :ClassManifest]: Option[T] = response.header[T]
   def header(name: String): Option[HttpHeader] = response.headers.mapFind(h => if (h.name == name) Some(h) else None)

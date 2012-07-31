@@ -16,12 +16,11 @@
 
 package cc.spray.routing
 
-import directives.DebuggingDirectives
 import akka.event.LoggingAdapter
 import cc.spray.util.EOL
 
 
-class DebuggingDirectivesSpec extends RoutingSpec with DebuggingDirectives {
+class DebuggingDirectivesSpec extends RoutingSpec {
   sequential
 
   var debugMsg = ""

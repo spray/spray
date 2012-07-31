@@ -16,23 +16,7 @@
 
 package cc.spray.routing
 
-import directives._
 
-
-trait Directives extends RouteConcatenation
-  with BasicDirectives
-  with ChunkingDirectives
-  with CookieDirectives
-  with DebuggingDirectives
-  with DetachDirectives
-  with EncodingDirectives
-  with ExceptionDirectives
-  with FileAndResourceDirectives
-  with FormFieldDirectives
-  with HostDirectives
-  with MethodDirectives
-  with MiscDirectives
-  with ParameterDirectives
-  with PathDirectives
-  with RespondWithDirectives
-  with RouteDirectives
+object Route {
+  def apply(f: Route): Route = f
+}

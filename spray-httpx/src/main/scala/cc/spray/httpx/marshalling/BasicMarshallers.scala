@@ -24,10 +24,12 @@ import MediaTypes._
 
 trait BasicMarshallers {
 
-  implicit val ByteArrayMarshaller =
-    Marshaller[Array[Byte]](ContentType.`application/octet-stream`) { (value, contentType, ctx) =>
-      ctx.marshalTo(HttpEntity(value))
+  def byteArrayMarshaller(contentType: ContentType) =
+    Marshaller[Array[Byte]](contentType) { (value, ct, ctx) =>
+      ctx.marshalTo(HttpBody(ct, value))
     }
+
+  implicit val ByteArrayMarshaller = byteArrayMarshaller(ContentType.`application/octet-stream`)
 
   implicit val CharArrayMarshaller =
     Marshaller[Array[Char]](ContentType.`text/plain`) { (value, contentType, ctx) =>

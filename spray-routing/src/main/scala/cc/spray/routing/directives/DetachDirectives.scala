@@ -24,7 +24,9 @@ import akka.actor._
 trait DetachDirectives {
   import BasicDirectives._
 
-  protected def context: ActorContext
+  // needs to be implicit, so other directive traits using DetachDirectives as a self-type can use it implicitly
+  // (e.g. FileAndResourceDirectives)
+  implicit def actorRefFactory: ActorRefFactory
 
   /**
    * Executes its inner Route in the context of the given actor.
@@ -38,7 +40,7 @@ trait DetachDirectives {
    * Returns a function creating a new SingleRequestServiceActor for a given Route.
    */
   def singleRequestServiceActor(implicit eh: ExceptionHandler, rh: RejectionHandler): Route => ActorRef =
-    route => context.actorOf(Props(new SingleRequestServiceActor(route)))
+    route => actorRefFactory.actorOf(Props(new SingleRequestServiceActor(route)))
 }
 
 

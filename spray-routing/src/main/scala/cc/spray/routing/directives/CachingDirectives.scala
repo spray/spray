@@ -24,7 +24,7 @@ import cc.spray.http._
 import CacheDirectives._
 import HttpHeaders._
 
-
+// not mixed into cc.spray.routing.Directives due to its dependency on com.googlecode.concurrentlinkedhashmap
 trait CachingDirectives {
   import BasicDirectives._
 
