@@ -32,11 +32,13 @@ trait ParameterDirectives extends ToNameReceptaclePimps {
 
   /**
    * Rejects the request if the query parameter matcher(s) defined by the definition(s) don't match.
+   * Otherwise the parameter value(s) are extracted and passed to the inner route.
    */
   def parameter(pdm: ParamDefMagnet): pdm.Out = pdm()
 
   /**
    * Rejects the request if the query parameter matcher(s) defined by the definition(s) don't match.
+   * Otherwise the parameter value(s) are extracted and passed to the inner route.
    */
   def parameters(pdm: ParamDefMagnet): pdm.Out = pdm()
 
@@ -62,7 +64,7 @@ trait ParamDefMagnet2[T] {
   def apply(value: T): Out
 }
 object ParamDefMagnet2 {
-  implicit def forOne[A, B](implicit pdma: ParamDefMagnetAux[A, B]) = new ParamDefMagnet2[A] {
+  implicit def apply[A, B](implicit pdma: ParamDefMagnetAux[A, B]) = new ParamDefMagnet2[A] {
     type Out = B
     def apply(value: A) = pdma(value)
   }

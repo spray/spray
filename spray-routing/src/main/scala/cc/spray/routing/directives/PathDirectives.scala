@@ -33,13 +33,13 @@ trait PathDirectives extends PathMatcherImplicits {
    * Rejects the request if the unmatchedPath of the [[cc.spray.routing.RequestContext]] is not matched by the
    * given PathMatcher. If matched the value extracted by the PathMatcher is passed on to the inner Route.
    */
-  def path[L <: HList](pm: PathMatcher[L]) = pathPrefix(pm ~ PathEnd)
+  def path[L <: HList](pm: PathMatcher[L]): Directive[L] = pathPrefix(pm ~ PathEnd)
 
   /**
    * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does have a prefix
    * that matches the given PathMatcher.
    */
-  def pathPrefix[L <: HList](pm: PathMatcher[L]) = {
+  def pathPrefix[L <: HList](pm: PathMatcher[L]): Directive[L] = {
     val matcher = Slash ~ pm
     filter { ctx =>
       matcher(ctx.unmatchedPath) match {

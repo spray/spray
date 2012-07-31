@@ -17,157 +17,114 @@
 package cc.spray.routing
 package directives
 
-import util.DynamicVariable
 import shapeless._
-import cc.spray.httpx.unmarshalling.{FromStringOptionDeserializer => FSOD, Unmarshaller => UM, FormFieldConverter => FFC, _}
 import cc.spray.http._
-import directives.{FieldMatcher => FM}
 
 
 trait FormFieldDirectives extends ToNameReceptaclePimps {
-  import BasicDirectives._
-
-  /**                         
-   * Rejects the request if the form field with the given definition cannot be found.
-   * If it can be found the field value are extracted and passed as argument to the inner Route.
-   */
-  def formField[T](fm: FM[T]): Directive[T :: HNil] = filter { ctx =>
-    ctx.request.entity.as(fm) match {
-      case Right(value) => Pass(value :: HNil)
-      case Left(error) => Reject(toRejection(error, fm.fieldName))
-    }
-  }
 
   /**
-   * Rejects the request if the form fields with the given definitions cannot be found.
-   * If they can be found the field values are extracted and passed as arguments to the inner Route.
+   * Extracts the requests query parameters as a Map[String, String].
    */
-  def formFields[A, B](a: FM[A], b: FM[B]): Directive[A :: B :: HNil] =
-    formField(a) & formField(b)
+  //def httpForm: Directive[HttpForm :: HNil] =
+  //  contentAs HttpForm
 
   /**
-   * Rejects the request if the form fields with the given definitions cannot be found.
-   * If they can be found the field values are extracted and passed as arguments to the inner Route.
+   * Rejects the request if the form field parameter matcher(s) defined by the definition(s) don't match.
+   * Otherwise the field content(s) are extracted and passed to the inner route.
    */
-  def formFields[A, B, C](a: FM[A], b: FM[B], c: FM[C]): Directive[A :: B :: C :: HNil] =
-    formFields(a, b) & formField(c)
+  def formField(fdm: FieldDefMagnet): fdm.Out = fdm()
 
   /**
-   * Rejects the request if the form fields with the given definitions cannot be found.
-   * If they can be found the field values are extracted and passed as arguments to the inner Route.
+   * Rejects the request if the form field parameter matcher(s) defined by the definition(s) don't match.
+   * Otherwise the field content(s) are extracted and passed to the inner route.
    */
-  def formFields[A, B, C, D](a: FM[A], b: FM[B], c: FM[C], d: FM[D]): Directive[A :: B :: C :: D :: HNil] =
-    formFields(a, b, c) & formField(d)
-
-  /**
-   * Rejects the request if the form fields with the given definitions cannot be found.
-   * If they can be found the field values are extracted and passed as arguments to the inner Route.
-   */
-  def formFields[A, B, C, D, E](a: FM[A], b: FM[B], c: FM[C], d: FM[D],
-                                e: FM[E]): Directive[A :: B :: C :: D :: E :: HNil] =
-    formFields(a, b, c, d) & formField(e)
-
-  /**
-   * Rejects the request if the form fields with the given definitions cannot be found.
-   * If they can be found the field values are extracted and passed as arguments to the inner Route.
-   */
-  def formFields[A, B, C, D, E, F](a: FM[A], b: FM[B], c: FM[C], d: FM[D], e: FM[E],
-                                   f: FM[F]): Directive[A :: B :: C :: D :: E :: F :: HNil] =
-    formFields(a, b, c, d, e) & formField(f)
-
-  /**
-   * Rejects the request if the form fields with the given definitions cannot be found.
-   * If they can be found the field values are extracted and passed as arguments to the inner Route.
-   */
-  def formFields[A, B, C, D, E, F, G](a: FM[A], b: FM[B], c: FM[C], d: FM[D], e: FM[E], f: FM[F],
-                                      g: FM[G]): Directive[A :: B :: C :: D :: E :: F :: G :: HNil] =
-    formFields(a, b, c, d, e, f) & formField(g)
-
-  /**
-   * Rejects the request if the form fields with the given definitions cannot be found.
-   * If they can be found the field values are extracted and passed as arguments to the inner Route.
-   */
-  def formFields[A, B, C, D, E, F, G, H](a: FM[A], b: FM[B], c: FM[C], d: FM[D], e: FM[E], f: FM[F], g: FM[G],
-                                         h: FM[H]): Directive[A :: B :: C :: D :: E :: F :: G :: H :: HNil] =
-    formFields(a, b, c, d, e, f, g) & formField(h)
-
-  /**
-   * Rejects the request if the form fields with the given definitions cannot be found.
-   * If they can be found the field values are extracted and passed as arguments to the inner Route.
-   */
-  def formFields[A, B, C, D, E, F, G, H, I](a: FM[A], b: FM[B], c: FM[C], d: FM[D], e: FM[E], f: FM[F], g: FM[G], h: FM[H],
-                                            i: FM[I]): Directive[A :: B :: C :: D :: E :: F :: G :: H :: I :: HNil] =
-    formFields(a, b, c, d, e, f, g, h) & formField(i)
-
-  /**
-   * Rejects the request if the form fields with the given definitions cannot be found.
-   * If they can be found the field values are extracted and passed as arguments to the inner Route.
-   */
-  def formFields[L <: HList](fieldDefs: FieldDefs[L]): Directive[fieldDefs.Out] =
-    new Directive[fieldDefs.Out] {
-      def happly(inner: fieldDefs.Out => Route) = { ctx =>
-        try ExtractFields.entity.withValue(ctx.request.entity) {
-          inner(fieldDefs.extract)(ctx)
-        } catch {
-          case ExtractFields.Error(name, error) => ctx.reject(toRejection(error, name))
-        }
-      }
-    }
-
-  private def toRejection(error: DeserializationError, fieldName: String): Rejection = {
-    error match {
-      case ContentExpected => MissingFormFieldRejection(fieldName)
-      case MalformedContent(msg) => MalformedFormFieldRejection(msg, fieldName)
-      case UnsupportedContentType(msg) => UnsupportedRequestContentTypeRejection(msg)
-    }
-  }
+  def formFields(fdm: FieldDefMagnet): fdm.Out = fdm()
 
 }
 
 object FormFieldDirectives extends FormFieldDirectives
 
 
-sealed abstract class FieldMatcher[T](val fieldName: String) extends UM[T]
-
-object FieldMatcher extends ToNameReceptaclePimps {
-  implicit def fromString(s: String)(implicit a: FSOD[String], b: UM[HttpForm], c: FFC[String]) = fromNR[String](s)
-  implicit def fromSymbol(s: Symbol)(implicit a: FSOD[String], b: UM[HttpForm], c: FFC[String]) = fromNR[String](s)
-  implicit def fromNDesR[T](nr: NameDeserializerReceptacle[T])(implicit ev: UM[HttpForm]): FM[T] =
-    fromNR(NameReceptacle[T](nr.name))(ev, FFC.fromFSOD(nr.deserializer))
-  implicit def fromNDefR[T](nr: NameDefaultReceptacle[T])(implicit ev1: UM[HttpForm], ev2: FFC[T]): FM[T] =
-    fromNR(NameReceptacle[T](nr.name))(ev1, ev2.withDefault(nr.default))
-  implicit def fromNDesDefR[T](nr: NameDeserializerDefaultReceptacle[T])(implicit ev: UM[HttpForm]): FM[T] =
-    fromNR(NameReceptacle[T](nr.name))(ev, FFC.fromFSOD(nr.deserializer.withDefaultValue(nr.default)))
-  implicit def fromNR[T](nr: NameReceptacle[T])(implicit ev1: UM[HttpForm], ev2: FFC[T]): FM[T] =
-    new FM[T](nr.name) {
-      def apply(entity: HttpEntity): Deserialized[T] = entity.as[HttpForm].right.flatMap(_.field(fieldName).as[T])
-    }
+trait FieldDefMagnet {
+  type Out
+  def apply(): Out
 }
-
-
-sealed trait FieldDefs[L <: HList] {
-  type Out <: HList
-  def extract: Out
-}
-object FieldDefs {
-  implicit def fromDefs[L <: HList](defs: L)(implicit mapper: Mapper[ExtractFields.type, L]) =
-    new FieldDefs[L] {
-      type Out = mapper.Out
-      def extract = defs.map(ExtractFields)
-    }
-}
-
-
-private[directives] object ExtractFields extends Poly1 {
-  val entity = new DynamicVariable[HttpEntity](null)
-
-  implicit def from[A, B](implicit fmFor: A => FM[B]) = at[A] { fieldDef =>
-    val fm = fmFor(fieldDef)
-    entity.value.as(fm) match {
-      case Right(value) => value
-      case Left(error) => throw Error(fm.fieldName, error)
-    }
+object FieldDefMagnet {
+  implicit def apply[T](value: T)(implicit fdm2: FieldDefMagnet2[T]) = new FieldDefMagnet {
+    type Out = fdm2.Out
+    def apply() = fdm2(value)
   }
+}
 
-  case class Error(paramName: String, error: DeserializationError) extends RuntimeException
+
+trait FieldDefMagnet2[T] {
+  type Out
+  def apply(value: T): Out
+}
+object FieldDefMagnet2 {
+  implicit def apply[A, B](implicit fdma: FieldDefMagnetAux[A, B]) = new FieldDefMagnet2[A] {
+    type Out = B
+    def apply(value: A) = fdma(value)
+  }
+}
+
+
+trait FieldDefMagnetAux[A, B] extends (A => B)
+
+object FieldDefMagnetAux extends ToNameReceptaclePimps {
+  import cc.spray.httpx.unmarshalling.{Unmarshaller => UM, FormFieldConverter => FFC, FromEntityOptionUnmarshaller => FEOU, _}
+
+  def apply[A, B](f: A => B) = new FieldDefMagnetAux[A, B] { def apply(value: A) = f(value) }
+
+  /************ "regular" field extraction ******************/
+
+  def extractField[A, B](f: A => Directive[B :: HNil]) = FieldDefMagnetAux[A, Directive[B :: HNil]](f)
+  
+  private def filter[A, B](nr: NameReceptacle[A])(implicit ev1: UM[HttpForm], ev2: FFC[B]) =
+    BasicDirectives.filter { ctx =>
+      ctx.request.entity.as[HttpForm].right.flatMap(_.field(nr.name).as[B]) match {
+        case Right(value) => Pass(value :: HNil)
+        case Left(ContentExpected) => Reject(MissingFormFieldRejection(nr.name))
+        case Left(MalformedContent(msg)) => Reject(MalformedFormFieldRejection(msg, nr.name))
+        case Left(UnsupportedContentType(msg)) => Reject(UnsupportedRequestContentTypeRejection(msg))
+      }
+    }
+  implicit def forString(implicit ev1: UM[HttpForm], ev2: FFC[String]) =
+    extractField[String, String](string => filter(string))
+  implicit def forSymbol(implicit ev1: UM[HttpForm], ev2: FFC[String]) =
+    extractField[Symbol, String](symbol => filter(symbol))
+  implicit def forNDesR[T](implicit ev1: UM[HttpForm], ev2: FEOU[T] = null) =
+    extractField[NameDeserializerReceptacle[T], T] { ndr =>
+      filter(NameReceptacle[T](ndr.name))(ev1, FFC.fromFSOD(ndr.deserializer))
+    }
+  implicit def forNDefR[T](implicit ev1: UM[HttpForm], ev2: FFC[T]) =
+    extractField[NameDefaultReceptacle[T], T] { ndr =>
+      filter(NameReceptacle[T](ndr.name))(ev1, ev2.withDefault(ndr.default))
+    }
+  implicit def forNDesDefR[T](implicit ev1: UM[HttpForm], ev2: FEOU[T] = null) =
+    extractField[NameDeserializerDefaultReceptacle[T], T] { ndr =>
+      filter(NameReceptacle[T](ndr.name))(ev1, FFC.fromFSOD(ndr.deserializer.withDefaultValue(ndr.default)))
+    }
+  implicit def forNR[T](implicit ev1: UM[HttpForm], ev2: FFC[T]) =
+    extractField[NameReceptacle[T], T](nr => filter(nr))
+  
+  
+  /************ tuple support ******************/
+
+  implicit def forTuple[T <: Product, L <: HList, Out]
+    (implicit hla: HListerAux[T, L], fdma: FieldDefMagnetAux[L, Out]) =
+    FieldDefMagnetAux[T, Out](tuple => fdma(hla(tuple)))
+
+
+  /************ HList support ******************/
+
+  implicit def forHList[L <: HList](implicit f: LeftFolder[L, Directive0, MapReduce.type]) =
+    FieldDefMagnetAux[L, f.Out](_.foldLeft(MiscDirectives.noop)(MapReduce))
+
+  object MapReduce extends Poly2 {
+    implicit def from[T, LA <: HList, LB <: HList, Out <: HList]
+      (implicit fdma: FieldDefMagnetAux[T, Directive[LB]], ev: PrependAux[LA, LB, Out]) =
+      at[Directive[LA], T] { (a, t) => a & fdma(t) }
+  }
 }
