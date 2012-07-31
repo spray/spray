@@ -16,16 +16,17 @@
 
 package cc.spray.io
 
+import java.util.concurrent.CountDownLatch
 import java.nio.channels.spi.SelectorProvider
 import java.nio.ByteBuffer
-import annotation.tailrec
-import collection.mutable.ListBuffer
 import java.nio.channels.{CancelledKeyException, SelectionKey, SocketChannel, ServerSocketChannel}
-import java.util.concurrent.CountDownLatch
-import akka.event.{LoggingBus, BusLogging, LoggingAdapter}
-import com.typesafe.config.{ConfigFactory, Config}
-import akka.actor.{Status, ActorSystem, ActorRef}
 import java.net.InetSocketAddress
+import akka.event.{LoggingBus, BusLogging, LoggingAdapter}
+import akka.actor.{Status, ActorSystem, ActorRef}
+import akka.util.NonFatal
+import com.typesafe.config.{ConfigFactory, Config}
+import annotation.tailrec
+
 
 // threadsafe
 class IoWorker(log: LoggingAdapter, config: Config) {
@@ -191,7 +192,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
 
       try writeToChannel()
       catch {
-        case e =>
+        case NonFatal(e) =>
           log.warning("Write error: closing connection due to {}", e.toString)
           close(handle, IoError(e))
       }
@@ -214,7 +215,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
           close(handle, PeerClosed)
         }
       } catch {
-        case e =>
+        case NonFatal(e) =>
           log.warning("Read error: closing connection due to {}", e.toString)
           close(handle, IoError(e))
       }
@@ -222,14 +223,14 @@ class IoWorker(log: LoggingAdapter, config: Config) {
 
     def accept(key: SelectionKey) {
       try {
-        val socketChannel = key.channel.asInstanceOf[ServerSocketChannel].accept()
-        configure(socketChannel)
-        val connectionKey = socketChannel.register(selector, 0) // we don't enable any ops until we have a handle
+        val channel = key.channel.asInstanceOf[ServerSocketChannel].accept()
+        configure(channel)
+        val connectionKey = channel.register(selector, 0) // we don't enable any ops until we have a handle
         val cmd = key.attachment.asInstanceOf[Bind]
         log.debug("New connection accepted on {}", cmd.address)
         cmd.handleCreator ! Connected(Key(connectionKey), cmd.address)
       } catch {
-        case e => log.error(e, "Accept error: could not accept new connection")
+        case NonFatal(e) => log.error(e, "Accept error: could not accept new connection")
       }
     }
 
@@ -243,14 +244,14 @@ class IoWorker(log: LoggingAdapter, config: Config) {
     }
 
     def connect(key: SelectionKey) {
-      val (cmd@Connect(address), sender) = key.attachment.asInstanceOf[(Connect, ActorRef)]
+      val (cmd@Connect(address, _), sender) = key.attachment.asInstanceOf[(Connect, ActorRef)]
       try {
         key.channel.asInstanceOf[SocketChannel].finishConnect()
         key.interestOps(0) // we don't enable any ops until we have a handle
         log.debug("Connection established to {}", address)
         sender ! Connected(Key(key), address)
       } catch {
-        case e =>
+        case NonFatal(e) =>
           log.error(e, "Connect error: could not establish new connection to {}", address)
           sender ! Status.Failure(CommandException(cmd, e))
       }
@@ -326,6 +327,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
       if (sender != null) {
         val channel = SocketChannel.open()
         configure(channel)
+        cmd.localAddress.foreach(channel.socket().bind(_))
         if (settings.TcpReceiveBufferSize != 0)
           channel.socket.setReceiveBufferSize(settings.TcpReceiveBufferSize.toInt)
         if (channel.connect(cmd.address)) {
@@ -370,7 +372,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
         selector.keys.asScala.foreach(_.channel.close())
         selector.close()
       } catch {
-        case e =>
+        case NonFatal(e) =>
           log.error(e, "Error closing selector (key)")
       }
     }
@@ -404,7 +406,7 @@ object IoWorker {
   private[IoWorker] case class Stop(latch: CountDownLatch) extends Command
   case class Bind(handleCreator: ActorRef, address: InetSocketAddress, backlog: Int) extends Command
   case class Unbind(bindingKey: Key) extends Command
-  case class Connect(address: InetSocketAddress) extends Command
+  case class Connect(address: InetSocketAddress, localAddress: Option[InetSocketAddress] = None) extends Command
   object Connect {
     def apply(host: String, port: Int): Connect = Connect(new InetSocketAddress(host, port))
   }
@@ -419,7 +421,7 @@ object IoWorker {
   case class Close(handle: Handle, reason: ConnectionClosedReason) extends ConnectionCommand
   case class Send(handle: Handle, buffers: Seq[ByteBuffer], ack: Boolean = true) extends ConnectionCommand
   object Send {
-    def apply(handle: Handle, buffer: ByteBuffer): Send = apply(handle, buffer, true)
+    def apply(handle: Handle, buffer: ByteBuffer): Send = apply(handle, buffer, ack = true)
     def apply(handle: Handle, buffer: ByteBuffer, ack: Boolean): Send = new Send(handle, buffer :: Nil, ack)
   }
   case class StopReading(handle: Handle) extends ConnectionCommand
