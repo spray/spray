@@ -18,31 +18,20 @@ package cc.spray.routing
 
 import shapeless._
 
-// temporary patch layer required until https://github.com/milessabin/shapeless/pull/9 has made it into a release
-
-trait Prepender[L <: HList, R <: HList] {
+trait Prepender[P <: HList, S <: HList] {
   type Out <: HList
-  def apply(prefix : L, suffix : R) : Out
+  def apply(prefix : P, suffix : S) : Out
 }
 
-object Prepender extends PrependerLowerPrioImplicits1 {
-  implicit def hnilPrepender1[L <: HList, R <: HNil] = new Prepender[L, R] {
-    type Out = L
-    def apply(prefix: L, suffix: R) = prefix
+object Prepender {
+  implicit def hnilPrepend[P <: HList, S <: HNil] = new Prepender[P, S] {
+    type Out = P
+    def apply(prefix: P, suffix: S) = prefix
   }
-}
 
-private[routing] abstract class PrependerLowerPrioImplicits1 extends PrependerLowerPrioImplicits2 {
-  implicit def hnilPrepender2[L <: HNil, R <: HList] = new Prepender[L, R] {
-    type Out = R
-    def apply(prefix: L, suffix: R) = suffix
-  }
-}
-
-private[routing] abstract class PrependerLowerPrioImplicits2 {
-  implicit def defaultPrepender[L <: HList, R <: HList, Out0 <: HList]
-                               (implicit p: PrependAux[L, R, Out0]) = new Prepender[L, R] {
-    type Out = Out0
-    def apply(prefix: L, suffix: R) = p(prefix, suffix)
-  }
+  implicit def apply[P <: HList, S <: HList, Out0 <: HList](implicit prepend : PrependAux[P, S, Out0]) =
+    new Prepender[P, S] {
+      type Out = Out0
+      def apply(prefix : P, suffix : S) : Out = prepend(prefix, suffix)
+    }
 }
