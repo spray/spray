@@ -19,6 +19,11 @@ package cc.spray.routing
 import cc.spray.httpx.unmarshalling.{MalformedContent, DeserializationError, Deserializer}
 import shapeless._
 
+// TODO: simplify by rebasing on a shapeless fold
+// I don't think we can get around spelling out 22 different cases without giving up on our short
+// directive.as(CaseClass) notation (since we have to provide a dedicated magnet for the proper
+// apply function type (e.g. (A, B, C) => CC), but we might be able to simplify the implementation
+// of the 22 cases by converting into an HList that can then be mapped/folded over
 
 trait HListDeserializer[L <: HList, T] extends Deserializer[L, T]
 
@@ -51,7 +56,7 @@ object HListDeserializer {
     case left: Left[_, _] => throw new BubbleLeftException(left)
   }
 
-  implicit def hld1[Z <: Product, A, AA]
+  implicit def hld1[Z, A, AA]
       (construct: AA => Z)
       (implicit qa: DS[A, AA]) =
     create[A :: HNil, Z] {
@@ -60,7 +65,7 @@ object HListDeserializer {
       )
     }
 
-  implicit def hld2[Z <: Product, A, AA, B, BB]
+  implicit def hld2[Z, A, AA, B, BB]
       (construct: (AA, BB) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB]) =
     create[A :: B :: HNil, Z] {
@@ -70,7 +75,7 @@ object HListDeserializer {
       )
     }
 
-  implicit def hld3[Z <: Product, A, AA, B, BB, C, CC]
+  implicit def hld3[Z, A, AA, B, BB, C, CC]
       (construct: (AA, BB, CC) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC]) =
     create[A :: B :: C :: HNil, Z] {
@@ -81,7 +86,7 @@ object HListDeserializer {
       )
     }
 
-  implicit def hld4[Z <: Product, A, AA, B, BB, C, CC, D, DD]
+  implicit def hld4[Z, A, AA, B, BB, C, CC, D, DD]
       (construct: (AA, BB, CC, DD) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD]) =
     create[A :: B :: C :: D :: HNil, Z] {
@@ -93,7 +98,7 @@ object HListDeserializer {
       )
     }
 
-  implicit def hld5[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE]
+  implicit def hld5[Z, A, AA, B, BB, C, CC, D, DD, E, EE]
       (construct: (AA, BB, CC, DD, EE) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE]) =
     create[A :: B :: C :: D :: E :: HNil, Z] {
@@ -106,7 +111,7 @@ object HListDeserializer {
       )
     }
 
-  implicit def hld6[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF]
+  implicit def hld6[Z, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF]
       (construct: (AA, BB, CC, DD, EE, FF) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE], qf: DS[F, FF]) =
     create[A :: B :: C :: D :: E :: F :: HNil, Z] {
@@ -120,7 +125,7 @@ object HListDeserializer {
       )
     }
 
-  implicit def hld7[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG]
+  implicit def hld7[Z, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG]
       (construct: (AA, BB, CC, DD, EE, FF, GG) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE], qf: DS[F, FF],
        qg: DS[G, GG]) =
@@ -136,7 +141,7 @@ object HListDeserializer {
       )
     }
 
-  implicit def hld8[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH]
+  implicit def hld8[Z, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH]
       (construct: (AA, BB, CC, DD, EE, FF, GG, HH) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE], qf: DS[F, FF], qg: DS[G, GG],
        qh: DS[H, HH]) =
@@ -153,7 +158,7 @@ object HListDeserializer {
       )
     }
 
-  implicit def hld9[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II]
+  implicit def hld9[Z, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II]
       (construct: (AA, BB, CC, DD, EE, FF, GG, HH, II) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE], qf: DS[F, FF], qg: DS[G, GG],
        qh: DS[H, HH], qi: DS[I, II]) =
@@ -171,7 +176,7 @@ object HListDeserializer {
       )
     }
 
-  implicit def hld10[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ]
+  implicit def hld10[Z, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ]
       (construct: (AA, BB, CC, DD, EE, FF, GG, HH, II, JJ) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE], qf: DS[F, FF], qg: DS[G, GG],
        qh: DS[H, HH], qi: DS[I, II], qj: DS[J, JJ]) =
@@ -190,7 +195,7 @@ object HListDeserializer {
       )
     }
 
-  implicit def hld11[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK]
+  implicit def hld11[Z, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK]
       (construct: (AA, BB, CC, DD, EE, FF, GG, HH, II, JJ, KK) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE], qf: DS[F, FF], qg: DS[G, GG],
        qh: DS[H, HH], qi: DS[I, II], qj: DS[J, JJ], qk: DS[K, KK]) =
@@ -210,7 +215,7 @@ object HListDeserializer {
       )
     }
 
-  implicit def hld12[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL]
+  implicit def hld12[Z, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL]
       (construct: (AA, BB, CC, DD, EE, FF, GG, HH, II, JJ, KK, LL) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE], qf: DS[F, FF], qg: DS[G, GG],
        qh: DS[H, HH], qi: DS[I, II], qj: DS[J, JJ], qk: DS[K, KK], ql: DS[L, LL]) =
@@ -231,7 +236,7 @@ object HListDeserializer {
       )
     }
   
-  implicit def hld13[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM]
+  implicit def hld13[Z, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM]
       (construct: (AA, BB, CC, DD, EE, FF, GG, HH, II, JJ, KK, LL, MM) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE], qf: DS[F, FF], qg: DS[G, GG],
        qh: DS[H, HH], qi: DS[I, II], qj: DS[J, JJ], qk: DS[K, KK], ql: DS[L, LL], qm: DS[M, MM]) =
@@ -253,7 +258,7 @@ object HListDeserializer {
       )
     }
   
-  implicit def hld14[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN]
+  implicit def hld14[Z, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN]
       (construct: (AA, BB, CC, DD, EE, FF, GG, HH, II, JJ, KK, LL, MM, NN) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE], qf: DS[F, FF], qg: DS[G, GG],
        qh: DS[H, HH], qi: DS[I, II], qj: DS[J, JJ], qk: DS[K, KK], ql: DS[L, LL], qm: DS[M, MM], qn: DS[N, NN]) =
@@ -276,7 +281,7 @@ object HListDeserializer {
       )
     }
   
-  implicit def hld15[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN, O, OO]
+  implicit def hld15[Z, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN, O, OO]
       (construct: (AA, BB, CC, DD, EE, FF, GG, HH, II, JJ, KK, LL, MM, NN, OO) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE], qf: DS[F, FF], qg: DS[G, GG],
        qh: DS[H, HH], qi: DS[I, II], qj: DS[J, JJ], qk: DS[K, KK], ql: DS[L, LL], qm: DS[M, MM], qn: DS[N, NN],
@@ -301,7 +306,7 @@ object HListDeserializer {
       )
     }
   
-  implicit def hld16[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN, O, OO, P, PP]
+  implicit def hld16[Z, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN, O, OO, P, PP]
       (construct: (AA, BB, CC, DD, EE, FF, GG, HH, II, JJ, KK, LL, MM, NN, OO, PP) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE], qf: DS[F, FF], qg: DS[G, GG],
        qh: DS[H, HH], qi: DS[I, II], qj: DS[J, JJ], qk: DS[K, KK], ql: DS[L, LL], qm: DS[M, MM], qn: DS[N, NN],
@@ -327,7 +332,7 @@ object HListDeserializer {
       )
     }
   
-  implicit def hld17[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN, O, OO, P, PP, Q, QQ]
+  implicit def hld17[Z, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN, O, OO, P, PP, Q, QQ]
       (construct: (AA, BB, CC, DD, EE, FF, GG, HH, II, JJ, KK, LL, MM, NN, OO, PP, QQ) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE], qf: DS[F, FF], qg: DS[G, GG],
        qh: DS[H, HH], qi: DS[I, II], qj: DS[J, JJ], qk: DS[K, KK], ql: DS[L, LL], qm: DS[M, MM], qn: DS[N, NN],
@@ -354,7 +359,7 @@ object HListDeserializer {
       )
     }
   
-  implicit def hld18[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN, O, OO, P, PP, Q, QQ, R, RR]
+  implicit def hld18[Z, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN, O, OO, P, PP, Q, QQ, R, RR]
       (construct: (AA, BB, CC, DD, EE, FF, GG, HH, II, JJ, KK, LL, MM, NN, OO, PP, QQ, RR) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE], qf: DS[F, FF], qg: DS[G, GG],
        qh: DS[H, HH], qi: DS[I, II], qj: DS[J, JJ], qk: DS[K, KK], ql: DS[L, LL], qm: DS[M, MM], qn: DS[N, NN],
@@ -382,7 +387,7 @@ object HListDeserializer {
       )
     }
   
-  implicit def hld19[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN, O, OO, P, PP, Q, QQ, R, RR, S, SS]
+  implicit def hld19[Z, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN, O, OO, P, PP, Q, QQ, R, RR, S, SS]
       (construct: (AA, BB, CC, DD, EE, FF, GG, HH, II, JJ, KK, LL, MM, NN, OO, PP, QQ, RR, SS) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE], qf: DS[F, FF], qg: DS[G, GG],
        qh: DS[H, HH], qi: DS[I, II], qj: DS[J, JJ], qk: DS[K, KK], ql: DS[L, LL], qm: DS[M, MM], qn: DS[N, NN],
@@ -411,7 +416,7 @@ object HListDeserializer {
       )
     }
 
-  implicit def hld20[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN, O, OO, P, PP, Q, QQ, R, RR, S, SS, T, TT]
+  implicit def hld20[Z, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN, O, OO, P, PP, Q, QQ, R, RR, S, SS, T, TT]
       (construct: (AA, BB, CC, DD, EE, FF, GG, HH, II, JJ, KK, LL, MM, NN, OO, PP, QQ, RR, SS, TT) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE], qf: DS[F, FF], qg: DS[G, GG],
        qh: DS[H, HH], qi: DS[I, II], qj: DS[J, JJ], qk: DS[K, KK], ql: DS[L, LL], qm: DS[M, MM], qn: DS[N, NN],
@@ -441,7 +446,7 @@ object HListDeserializer {
       )
     }
 
-  implicit def hld21[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN, O, OO, P, PP, Q, QQ, R, RR, S, SS, T, TT, U, UU]
+  implicit def hld21[Z, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN, O, OO, P, PP, Q, QQ, R, RR, S, SS, T, TT, U, UU]
       (construct: (AA, BB, CC, DD, EE, FF, GG, HH, II, JJ, KK, LL, MM, NN, OO, PP, QQ, RR, SS, TT, UU) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE], qf: DS[F, FF], qg: DS[G, GG],
        qh: DS[H, HH], qi: DS[I, II], qj: DS[J, JJ], qk: DS[K, KK], ql: DS[L, LL], qm: DS[M, MM], qn: DS[N, NN],
@@ -472,7 +477,7 @@ object HListDeserializer {
       )
     }
 
-  implicit def hld22[Z <: Product, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN, O, OO, P, PP, Q, QQ, R, RR, S, SS, T, TT, U, UU, V, VV]
+  implicit def hld22[Z, A, AA, B, BB, C, CC, D, DD, E, EE, F, FF, G, GG, H, HH, I, II, J, JJ, K, KK, L, LL, M, MM, N, NN, O, OO, P, PP, Q, QQ, R, RR, S, SS, T, TT, U, UU, V, VV]
       (construct: (AA, BB, CC, DD, EE, FF, GG, HH, II, JJ, KK, LL, MM, NN, OO, PP, QQ, RR, SS, TT, UU, VV) => Z)
       (implicit qa: DS[A, AA], qb: DS[B, BB], qc: DS[C, CC], qd: DS[D, DD], qe: DS[E, EE], qf: DS[F, FF], qg: DS[G, GG],
        qh: DS[H, HH], qi: DS[I, II], qj: DS[J, JJ], qk: DS[K, KK], ql: DS[L, LL], qm: DS[M, MM], qn: DS[N, NN],
