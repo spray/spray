@@ -18,6 +18,7 @@ package cc.spray.routing
 package directives
 
 import akka.event.LoggingAdapter
+import akka.event.Logging._
 import cc.spray.util.identityFunc
 import cc.spray.http._
 
@@ -27,33 +28,37 @@ trait DebuggingDirectives {
 
   def log: LoggingAdapter
 
-  def logRequest(marker: String = "") = mapRequest(logMessage("Request", marker))
+  def logRequest(marker: String = "", level: LogLevel = DebugLevel): Directive0 =
+    mapRequest(logMessage("Request", marker, level))
 
-  def logHttpResponse(marker: String = "") = mapHttpResponse(logMessage("Response", marker))
+  def logHttpResponse(marker: String = "", level: LogLevel = DebugLevel): Directive0 =
+    mapHttpResponse(logMessage("Response", marker, level))
 
-  def logRouteResponse(marker: String = "") = mapRouteResponse(logMessage("Response", marker))
+  def logRouteResponse(marker: String = "", level: LogLevel = DebugLevel): Directive0 =
+    mapRouteResponse(logMessage("Response", marker, level))
 
-  def logRequestResponse(marker: String = "",
+  def logRequestResponse(marker: String = "", level: LogLevel = DebugLevel,
                          showRequest: HttpRequest => Any = identityFunc,
-                         showResponse: HttpResponse => Any = identityFunc) = mapRequestContext { ctx =>
-    val mark = if (marker.isEmpty) marker else " " + marker
-    val request2Show = showRequest(ctx.request)
-    log.debug("Request{}: {}", mark, request2Show)
-    ctx.mapRouteResponse { msg =>
-      msg match {
-        case response: HttpResponse =>
-          log.debug("Completed{}:\n  Request: {}\n  Response: {}", mark, request2Show, showResponse(response))
-        case Rejected(rejections) =>
-          log.debug("Rejected{}:\n Request: {}\n  Rejections: {}", mark, request2Show, rejections)
-        case other =>
-          log.debug("Route response{}:\n  Request: {}\n  Response: {}", mark, request2Show, other)
+                         showResponse: HttpResponse => Any = identityFunc): Directive0 =
+    mapRequestContext { ctx =>
+      val mark = if (marker.isEmpty) marker else " " + marker
+      val request2Show = showRequest(ctx.request)
+      log.log(level, "Request{}: {}", mark, request2Show)
+      ctx.mapRouteResponse { msg =>
+        msg match {
+          case response: HttpResponse =>
+            log.log(level, "Completed{}:\n  Request: {}\n  Response: {}", mark, request2Show, showResponse(response))
+          case Rejected(rejections) =>
+            log.log(level, "Rejected{}:\n Request: {}\n  Rejections: {}", mark, request2Show, rejections)
+          case other =>
+            log.log(level, "Route response{}:\n  Request: {}\n  Response: {}", mark, request2Show, other)
+        }
+        msg
       }
-      msg
     }
-  }
 
-  private def logMessage[T](prefix: String, marker: String)(msg: T): T = {
-    log.debug("{}: {}", if (marker.isEmpty) prefix else prefix + ' ' + marker, msg)
+  private def logMessage[T](prefix: String, marker: String, level: LogLevel)(msg: T): T = {
+    log.log(level, "{}: {}", if (marker.isEmpty) prefix else prefix + ' ' + marker, msg)
     msg
   }
 }
