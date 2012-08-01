@@ -103,6 +103,7 @@ trait MiscDirectives {
     def happly(f: L => Route) = f(values)
   }
 
+  // TODO: remove implicit parameter by introducing a magnet
   /**
    * Adds a TransformRejection cancelling all rejections of the given type to the list of rejections potentially
    * coming back from its inner route.
@@ -110,6 +111,17 @@ trait MiscDirectives {
   def cancelAllRejectionsOfType[T <: Rejection :ClassManifest]: Directive0 = {
     val erasure = classManifest[T].erasure
     mapRejections(_ :+ TransformationRejection(_.filterNot(erasure.isInstance(_))))
+  }
+
+  // TODO: remove implicit parameter by introducing a magnet
+  /**
+   * Adds a TransformRejection cancelling all rejections of the given type to the list of rejections potentially
+   * coming back from its inner route.
+   */
+  def cancelAllRejectionsOfTypes[A <: Rejection :ClassManifest, B <: Rejection :ClassManifest]: Directive0 = {
+    val erasureA = classManifest[A].erasure
+    val erasureB = classManifest[B].erasure
+    mapRejections(_ :+ TransformationRejection(_.filterNot(r => erasureA.isInstance(r) || erasureB.isInstance(r))))
   }
 
   /**

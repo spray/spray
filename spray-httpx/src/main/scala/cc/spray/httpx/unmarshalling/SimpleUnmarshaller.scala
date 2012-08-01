@@ -46,10 +46,11 @@ abstract class SimpleUnmarshaller[T] extends Unmarshaller[T] {
 }
 
 object Unmarshaller {
-  def apply[T](unmarshalFrom: ContentTypeRange*)(f: HttpEntity => T): Unmarshaller[T] =
+  def apply[T](unmarshalFrom: ContentTypeRange*)(f: PartialFunction[HttpEntity, T]): Unmarshaller[T] =
     new SimpleUnmarshaller[T] {
       val canUnmarshalFrom = unmarshalFrom
-      def unmarshal(entity: HttpEntity) = protect(f(entity))
+      def unmarshal(entity: HttpEntity) =
+        if (f.isDefinedAt(entity)) protect(f(entity)) else Left(ContentExpected)
     }
 
 }

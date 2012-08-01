@@ -36,4 +36,6 @@ class PimpedByteArray(underlying: Array[Byte]) {
 
   def asString(charset: Charset): String = new String(underlying, charset)
 
+  def asString(charset: String): String = new String(underlying, charset)
+
 }

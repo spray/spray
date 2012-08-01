@@ -68,13 +68,6 @@ trait RouteDirectives {
   def complete(status: StatusCode): StandardRoute = complete(status: HttpResponse)
 
   /**
-   * Schedules the completion of the request with result of the given future.
-   */
-  def complete(future: Future[HttpResponse]): StandardRoute = new StandardRoute {
-    def apply(ctx: RequestContext) { ctx.complete(future) }
-  }
-
-  /**
    * Completes the request with the given [[cc.spray.http.HttpResponse]].
    */
   def complete(response: HttpResponse): StandardRoute = new StandardRoute {

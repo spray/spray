@@ -3,7 +3,6 @@ import sbt._
 object Dependencies {
 
   val resolutionRepos = Seq(
-    "typesafe repo"   at "http://repo.typesafe.com/typesafe/releases/",
     "glassfish repo"  at "http://download.java.net/maven/glassfish/",
     "spray repo"      at "http://repo.spray.cc/"
   )

@@ -199,7 +199,7 @@ case class RequestContext(
    */
   def complete[T](status: StatusCode, headers: List[HttpHeader], obj: T)(implicit marshaller: Marshaller[T]) {
     marshaller(request.acceptableContentType) match {
-      case Right(marshalling) => marshalling(obj, new DefaultMarshallingContext(status, headers))
+      case Right(marshalling) => marshalling(obj, marshallingContext(status, headers))
       case Left(acceptableContentTypes) => reject(UnacceptedResponseContentTypeRejection(acceptableContentTypes))
     }
   }
@@ -209,16 +209,6 @@ case class RequestContext(
    */
   def complete(status: StatusCode) {
     complete(status: HttpResponse)
-  }
-
-  /**
-   * Schedules the completion of the request with result of the given future.
-   */
-  def complete(future: Future[HttpResponse]) {
-    future.onComplete {
-      case Right(response) => complete(response)
-      case Left(error) => throw error
-    }
   }
 
   /**
@@ -244,15 +234,19 @@ case class RequestContext(
     handler ! Status.Failure(error)
   }
 
-  private class DefaultMarshallingContext(status: StatusCode, headers: List[HttpHeader]) extends MarshallingContext {
-    def marshalTo(entity: HttpEntity) { complete(response(entity)) }
-    def handleError(error: Throwable) { fail(error) }
-    def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) = {
-      handler.tell(ChunkedResponseStart(response(entity)), sender)
-      handler
+  /**
+   * Creates a MarshallingContext using the given status code and response headers.
+   */
+  def marshallingContext(status: StatusCode, headers: List[HttpHeader]): MarshallingContext =
+    new MarshallingContext {
+      def marshalTo(entity: HttpEntity) { complete(response(entity)) }
+      def handleError(error: Throwable) { fail(error) }
+      def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) = {
+        handler.tell(ChunkedResponseStart(response(entity)), sender)
+        handler
+      }
+      def response(entity: HttpEntity) = HttpResponse(status, entity, headers)
     }
-    def response(entity: HttpEntity) = HttpResponse(status, entity, headers)
-  }
 }
 
 case class Rejected(rejections: Seq[Rejection]) {

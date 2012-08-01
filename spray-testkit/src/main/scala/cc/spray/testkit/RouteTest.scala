@@ -52,9 +52,8 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   def result = { assertInCheck(); dynRR.value }
   def handled: Boolean = result.handled
   def response: HttpResponse = result.response
-  def entity: HttpEntity = response.entity
-  def entityAs[T :Unmarshaller] = entity.as[T].fold(error => failTest(error.toString), identityFunc)
-  def body: HttpBody = entity.toOption.getOrElse(failTest("Response has no entity"))
+  def entityAs[T :Unmarshaller] = response.entity.as[T].fold(error => failTest(error.toString), identityFunc)
+  def body: HttpBody = response.entity.toOption.getOrElse(failTest("Response has no entity"))
   def contentType: ContentType = body.contentType
   def mediaType: MediaType = contentType.mediaType
   def charset: HttpCharset = contentType.charset

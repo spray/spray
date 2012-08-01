@@ -61,6 +61,7 @@ trait BasicDirectives {
   def mapRejections(f: Seq[Rejection] => Seq[Rejection]): Directive0 =
     mapRequestContext(_.mapRejections(f))
 
+  // TODO: remove implicit parameter by introducing a magnet
   def filter[T <: HList](f: RequestContext => FilterResult[T])
                         (implicit fdb: FilteringDirectiveBuilder[T]): fdb.Out = fdb(f)
 }

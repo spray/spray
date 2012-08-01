@@ -85,13 +85,13 @@ class EncodingDirectivesSpec extends RoutingSpec {
         encodeResponse(Gzip) { yeah }
       } ~> check {
         response must haveContentEncoding(HttpEncodings.gzip)
-        entity === HttpBody(ContentType(`text/plain`, `ISO-8859-1`), yeahGzipped)
+        body === HttpBody(ContentType(`text/plain`, `ISO-8859-1`), yeahGzipped)
       }
     }
     "encode the response content with GZIP if the request has no Accept-Encoding header" in {
       Get() ~> {
         encodeResponse(Gzip) { yeah }
-      } ~> check { entity === HttpBody(ContentType(`text/plain`, `ISO-8859-1`), yeahGzipped) }
+      } ~> check { body === HttpBody(ContentType(`text/plain`, `ISO-8859-1`), yeahGzipped) }
     }
     "reject the request if the client does not accept GZIP encoding" in {
       Get() ~> addHeader(`Accept-Encoding`(HttpEncodings.identity)) ~> {

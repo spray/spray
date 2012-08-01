@@ -18,7 +18,7 @@ package cc.spray.httpx
 
 import akka.util.{Timeout, NonFatal}
 import akka.util.duration._
-import akka.actor.ActorSystem
+import akka.actor.ActorRefFactory
 import cc.spray.util.identityFunc
 import cc.spray.http.{ContentType, HttpEntity}
 import java.util.concurrent.TimeUnit
@@ -29,7 +29,7 @@ package object marshalling {
   type ContentTypeSelector = ContentType => Option[ContentType]
   type AcceptableContentTypes = Seq[ContentType]
 
-  def marshal[T](value: T)(implicit marshaller: Marshaller[T], system: ActorSystem = null,
+  def marshal[T](value: T)(implicit marshaller: Marshaller[T], actorRefFactory: ActorRefFactory = null,
                            timeout: Timeout = 1.second): Either[Throwable, HttpEntity] = {
     val ctx = marshalCollecting(value)
     ctx.entity match {
@@ -39,7 +39,7 @@ package object marshalling {
     }
   }
 
-  def marshalCollecting[T](value: T)(implicit marshaller: Marshaller[T], system: ActorSystem = null,
+  def marshalCollecting[T](value: T)(implicit marshaller: Marshaller[T], actorRefFactory: ActorRefFactory = null,
                                      timeout: Timeout = 1.second): CollectingMarshallingContext = {
     val ctx = new CollectingMarshallingContext
     try {

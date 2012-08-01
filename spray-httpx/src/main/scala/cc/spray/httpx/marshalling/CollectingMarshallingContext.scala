@@ -19,12 +19,12 @@ package cc.spray.httpx.marshalling
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.CountDownLatch
 import akka.spray.UnregisteredActorRef
-import akka.actor.{ActorSystem, ActorRef}
+import akka.actor.{ActorRefFactory, ActorRef}
 import cc.spray.http._
 import annotation.tailrec
 
 
-class CollectingMarshallingContext(implicit system: ActorSystem = null) extends MarshallingContext {
+class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = null) extends MarshallingContext {
   private val _entity = new AtomicReference[Option[HttpEntity]](None)
   private val _error = new AtomicReference[Option[Throwable]](None)
   private val _chunkedMessageEnd = new AtomicReference[Option[ChunkedMessageEnd]](None)
@@ -47,11 +47,11 @@ class CollectingMarshallingContext(implicit system: ActorSystem = null) extends 
   }
 
   def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) = {
-    require(system != null, "Chunked responses can only be collected if an ActorSystem is provided")
+    require(actorRefFactory != null, "Chunked responses can only be collected if an ActorRefFactory is provided")
     if (!_entity.compareAndSet(None, Some(entity)))
       sys.error("`marshalTo` or `startChunkedMessage` was already called")
 
-    val ref = new UnregisteredActorRef(system) {
+    val ref = new UnregisteredActorRef(actorRefFactory) {
       def handle(message: Any, sender: ActorRef) {
         message match {
           case x: MessageChunk =>

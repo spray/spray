@@ -65,6 +65,18 @@ trait BasicMarshallers {
       }
     }
   }
+
+  // CAUTION: when marshalling HttpEntities directly there is no support for content negotiation!
+  implicit val HttpEntityMarshaller =
+    new Marshaller[HttpEntity] {
+      def apply(selector: ContentTypeSelector) = Right {
+        new Marshalling[HttpEntity] {
+          def apply(value: HttpEntity, ctx: MarshallingContext) {
+            ctx.marshalTo(value)
+          }
+        }
+      }
+    }
 }
 
 object BasicMarshallers extends BasicMarshallers
