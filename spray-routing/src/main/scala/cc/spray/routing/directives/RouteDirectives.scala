@@ -17,11 +17,10 @@
 package cc.spray.routing
 package directives
 
-import akka.dispatch.Future
+import shapeless.HList
 import cc.spray.httpx.marshalling.Marshaller
 import cc.spray.http._
 import StatusCodes._
-import shapeless.HList
 
 
 trait RouteDirectives {

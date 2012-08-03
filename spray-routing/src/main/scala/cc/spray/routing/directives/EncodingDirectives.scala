@@ -39,7 +39,7 @@ trait EncodingDirectives {
     requestEntityEmpty | (
       requestEncodedWith(decoder.encoding) &
       applyDecoder &
-      cancelAllRejectionsOfType[UnsupportedRequestEncodingRejection]
+      cancelAllRejections(ofType[UnsupportedRequestEncodingRejection])
     )
   }
 
@@ -47,7 +47,8 @@ trait EncodingDirectives {
    * Rejects the request with an UnsupportedRequestEncodingRejection if its encoding doesn't match the given one.
    */
   def requestEncodedWith(encoding: HttpEncoding): Directive0 = filter { ctx =>
-    if (ctx.request.encoding == encoding) Pass.Empty else Reject(UnsupportedRequestEncodingRejection(encoding))
+    if (ctx.request.encoding == encoding) Pass.Empty
+    else Reject(UnsupportedRequestEncodingRejection(encoding))
   }
 
   /**
@@ -74,7 +75,7 @@ trait EncodingDirectives {
     }
     responseEncodingAccepted(encoder.encoding) &
     applyEncoder &
-    cancelAllRejectionsOfType[UnacceptedResponseEncodingRejection]
+    cancelAllRejections(ofType[UnacceptedResponseEncodingRejection])
   }
 
   /**
@@ -82,7 +83,8 @@ trait EncodingDirectives {
    * if the given encoding is not accepted for the response.
    */
   def responseEncodingAccepted(encoding: HttpEncoding): Directive0 = filter { ctx =>
-    if (ctx.request.isEncodingAccepted(encoding)) Pass.Empty else Reject(UnacceptedResponseEncodingRejection(encoding))
+    if (ctx.request.isEncodingAccepted(encoding)) Pass.Empty
+    else Reject(UnacceptedResponseEncodingRejection(encoding))
   }
 
 }

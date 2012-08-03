@@ -16,17 +16,17 @@
 
 package cc.spray.routing
 
-import akka.actor.{ActorLogging, Actor}
+import akka.actor.{ActorRefFactory, ActorLogging, Actor}
 import cc.spray.http.HttpRequest
 
 
 trait HttpService extends Directives {
   this: Actor with ActorLogging =>
 
-  val settings = new RoutingSettings()
+  implicit val settings = new RoutingSettings()
 
   // all actors created by directives are created underneath the HttpService actor
-  implicit def actorRefFactory = context
+  implicit def actorRefFactory: ActorRefFactory = context
 
   def runRoute(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler): Receive = {
     val sealedRoute = sealRoute.apply(route);

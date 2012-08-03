@@ -39,7 +39,7 @@ trait MarshallingDirectives {
       case Left(UnsupportedContentType(supported)) => Reject(UnsupportedRequestContentTypeRejection(supported))
       case Left(MalformedContent(error)) => Reject(MalformedRequestContentRejection(error))
     }
-  } & cancelAllRejectionsOfTypes[RequestEntityExpectedRejection.type, UnsupportedRequestContentTypeRejection]
+  } & cancelAllRejections(ofTypes(RequestEntityExpectedRejection.getClass, classOf[UnsupportedRequestContentTypeRejection]))
 
   /**
    * Returns the in-scope Unmarshaller for the given type.
@@ -56,7 +56,7 @@ trait MarshallingDirectives {
       case Right(marshalling) => Pass((marshalling(_:T, ctx.marshallingContext(status, headers))) :: HNil)
       case Left(onlyTo) => Reject(UnacceptedResponseContentTypeRejection(onlyTo))
     }
-  } & cancelAllRejectionsOfType[UnacceptedResponseContentTypeRejection]
+  } & cancelAllRejections(ofType[UnacceptedResponseContentTypeRejection])
 
   /**
    * Returns the in-scope Marshaller for the given type.
@@ -71,3 +71,5 @@ trait MarshallingDirectives {
     entity(um) { a => RouteDirectives.complete(f(a)) }
 
 }
+
+object MarshallingDirectives extends MarshallingDirectives

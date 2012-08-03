@@ -27,7 +27,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
 
   def resetDebugMsg() { debugMsg = "" }
 
-  override val log = new LoggingAdapter {
+  implicit val log = new LoggingAdapter {
     def isErrorEnabled = true
     def isWarningEnabled = true
     def isInfoEnabled = true

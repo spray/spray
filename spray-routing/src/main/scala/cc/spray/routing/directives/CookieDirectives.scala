@@ -24,6 +24,7 @@ import HttpHeaders._
 
 
 trait CookieDirectives {
+  import BasicDirectives._
   import MiscDirectives._
   import RouteDirectives._
   import RespondWithDirectives._
@@ -43,7 +44,7 @@ trait CookieDirectives {
    * If the cookie is not present a value of `None` is extracted.
    */
   def optionalCookie(name: String): Directive[Option[HttpCookie] :: HNil] =
-    cookie(name).map(_.map(shapeless.option)) | provide(None :: HNil)
+    cookie(name).map(_.map(shapeless.option)) | provide(None)
 
   /**
    * Adds a Set-Cookie header with the given cookie to all responses of its inner route.

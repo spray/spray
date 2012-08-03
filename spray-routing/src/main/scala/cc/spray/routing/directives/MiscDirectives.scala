@@ -28,17 +28,6 @@ trait MiscDirectives {
   import BasicDirectives._
 
   /**
-   * Transforms exceptions thrown during evaluation of its inner route using the given
-   * [[cc.spray.routing.ExceptionHandler]].
-   */
-  def handleRejections(handler: RejectionHandler): Directive0 = mapRequestContext { ctx =>
-    ctx.withRejectionHandling { rejections =>
-      if (handler.isDefinedAt(rejections)) handler(RejectionHandler.applyTransformations(rejections))
-      else ctx.reject(rejections: _*)
-    }
-  }
-
-  /**
    * Returns a Directive which checks the given condition before passing on the [[cc.spray.routing.RequestContext]] to
    * its inner Route. If the condition fails the route is rejected with a [[cc.spray.routing.ValidationRejection]].
    */
@@ -91,37 +80,19 @@ trait MiscDirectives {
   }
 
   /**
-   * A Directive0 that always passes the request on to its inner route
-   * (i.e. does nothing with the request or the response).
+   * Adds a TransformRejection cancelling all rejections for which the fiven filter function returns true
+   * to the list of rejections potentially coming back from the inner route.
    */
-  def noop: Directive0 = mapInnerRoute(identityFunc)
+  def cancelAllRejections(cancelFilter: Rejection => Boolean): Directive0 =
+    mapRejections(_ :+ TransformationRejection(_.filterNot(cancelFilter)))
 
-  /**
-   * Injects the given values into a directive.
-   */
-  def provide[L <: HList](values: L): Directive[L] = new Directive[L] {
-    def happly(f: L => Route) = f(values)
-  }
-
-  // TODO: remove implicit parameter by introducing a magnet
-  /**
-   * Adds a TransformRejection cancelling all rejections of the given type to the list of rejections potentially
-   * coming back from its inner route.
-   */
-  def cancelAllRejectionsOfType[T <: Rejection :ClassManifest]: Directive0 = {
+  def ofType[T <: Rejection :ClassManifest]: Rejection => Boolean = {
     val erasure = classManifest[T].erasure
-    mapRejections(_ :+ TransformationRejection(_.filterNot(erasure.isInstance(_))))
+    erasure.isInstance(_)
   }
 
-  // TODO: remove implicit parameter by introducing a magnet
-  /**
-   * Adds a TransformRejection cancelling all rejections of the given type to the list of rejections potentially
-   * coming back from its inner route.
-   */
-  def cancelAllRejectionsOfTypes[A <: Rejection :ClassManifest, B <: Rejection :ClassManifest]: Directive0 = {
-    val erasureA = classManifest[A].erasure
-    val erasureB = classManifest[B].erasure
-    mapRejections(_ :+ TransformationRejection(_.filterNot(r => erasureA.isInstance(r) || erasureB.isInstance(r))))
+  def ofTypes(classes: Class[_]*): Rejection => Boolean = { rejection =>
+    classes.exists(_.isInstance(rejection))
   }
 
   /**
@@ -133,18 +104,6 @@ trait MiscDirectives {
    * Rejects the request if its entity is empty.
    */
   def requestEntityPresent: Directive0 = filter { ctx => if (ctx.request.entity.isEmpty) Reject.Empty else Pass.Empty }
-
-  /**
-   * A directive thats evaluates its inner Route for every request anew. Note that this directive has no additional
-   * effect, when used inside (or some level underneath) a directive extracting one or more values, since everything
-   * inside a directive extracing values is _always_ reevaluted for every request.
-   *
-   * Also Note that this directive differs from most other directives in that it cannot be combined with other routes
-   * via the usual `&` and `|` operators.
-   */
-  object dynamic {
-    def apply(inner: => Route): Route = ctx => inner(ctx)
-  }
 
   /**
    * Stops the current Route processing by throwing an HttpException that will be caught by the next enclosing

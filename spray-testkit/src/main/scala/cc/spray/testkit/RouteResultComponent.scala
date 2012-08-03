@@ -28,13 +28,12 @@ import cc.spray.http._
 
 trait RouteResultComponent {
 
-  def actorRefFactory: ActorRefFactory
   def failTest(msg: String): Nothing
 
   /**
    * A receptacle for the response, rejections and potentially generated response chunks created by a route.
    */
-  class RouteResult(timeout: Duration) { outer =>
+  class RouteResult(timeout: Duration)(implicit actorRefFactory: ActorRefFactory) {
     private[this] var _response: Option[HttpResponse] = None
     private[this] var _rejections: Option[Seq[Rejection]] = None
     private[this] val _chunks = ListBuffer.empty[MessageChunk]

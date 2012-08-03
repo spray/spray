@@ -17,29 +17,27 @@
 package cc.spray.routing
 package directives
 
-import akka.event.LoggingAdapter
 import akka.event.Logging._
-import cc.spray.util.identityFunc
+import cc.spray.util.{LoggingContext, identityFunc}
 import cc.spray.http._
 
 
 trait DebuggingDirectives {
   import BasicDirectives._
 
-  def log: LoggingAdapter
+  def logRequest(mm: MarkerMagnet, level: LogLevel = DebugLevel): Directive0 =
+    mapRequest(logMessage("Request", mm, level))
 
-  def logRequest(marker: String = "", level: LogLevel = DebugLevel): Directive0 =
-    mapRequest(logMessage("Request", marker, level))
+  def logHttpResponse(mm: MarkerMagnet, level: LogLevel = DebugLevel): Directive0 =
+    mapHttpResponse(logMessage("Response", mm, level))
 
-  def logHttpResponse(marker: String = "", level: LogLevel = DebugLevel): Directive0 =
-    mapHttpResponse(logMessage("Response", marker, level))
+  def logRouteResponse(mm: MarkerMagnet, level: LogLevel = DebugLevel): Directive0 =
+    mapRouteResponse(logMessage("Response", mm, level))
 
-  def logRouteResponse(marker: String = "", level: LogLevel = DebugLevel): Directive0 =
-    mapRouteResponse(logMessage("Response", marker, level))
-
-  def logRequestResponse(marker: String = "", level: LogLevel = DebugLevel,
+  def logRequestResponse(mm: MarkerMagnet, level: LogLevel = DebugLevel,
                          showRequest: HttpRequest => Any = identityFunc,
-                         showResponse: HttpResponse => Any = identityFunc): Directive0 =
+                         showResponse: HttpResponse => Any = identityFunc): Directive0 = {
+    import mm._
     mapRequestContext { ctx =>
       val mark = if (marker.isEmpty) marker else " " + marker
       val request2Show = showRequest(ctx.request)
@@ -56,9 +54,20 @@ trait DebuggingDirectives {
         msg
       }
     }
+  }
 
-  private def logMessage[T](prefix: String, marker: String, level: LogLevel)(msg: T): T = {
+  private def logMessage[T](prefix: String, mm: MarkerMagnet, level: LogLevel)(msg: T): T = {
+    import mm._
     log.log(level, "{}: {}", if (marker.isEmpty) prefix else prefix + ' ' + marker, msg)
     msg
   }
+}
+
+object DebuggingDirectives extends DebuggingDirectives
+
+
+class MarkerMagnet(val marker: String, val log: LoggingContext)
+
+object MarkerMagnet {
+  implicit def apply(marker: String)(implicit log: LoggingContext) = new MarkerMagnet(marker, log)
 }

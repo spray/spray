@@ -24,7 +24,5 @@ package object routing {
   type Route = RequestContext => Unit
   type RouteFilter[+T <: HList] = RequestContext => FilterResult[T]
   type Directive0 = Directive[HNil]
-  type CacheKeyer = RequestContext => Option[Any]
-  type CacheKeyFilter = RequestContext => Boolean
 
 }

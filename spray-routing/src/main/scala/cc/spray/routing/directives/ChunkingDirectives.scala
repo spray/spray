@@ -26,14 +26,13 @@ import cc.spray.util._
 trait ChunkingDirectives {
   import BasicDirectives._
 
-  implicit def actorRefFactory: ActorRefFactory
-
   /**
    * Automatically converts a non-rejected response from its inner route into a chunked response of which each chunk
    * (save the very last) has the given size.
    * If the response content from the inner route is smaller than chunkSize a "regular", unchunked response is produced.
    */
-  def autoChunk(chunkSize: Int) = mapRequestContext { ctx =>
+  def autoChunk(csm: ChunkSizeMagnet) = mapRequestContext { ctx =>
+    import csm._
     ctx.withRouteResponseHandling {
       case HttpResponse(_, HttpBody(contentType, buffer), _, _) if buffer.length > chunkSize =>
         def split(ix: Int): Stream[Array[Byte]] = {
@@ -48,4 +47,19 @@ trait ChunkingDirectives {
     }
   }
 
+}
+
+object ChunkingDirectives extends ChunkingDirectives
+
+
+trait ChunkSizeMagnet{
+  def chunkSize: Int
+  implicit def refFactory: ActorRefFactory
+}
+
+object ChunkSizeMagnet {
+  implicit def fromInt(size: Int)(implicit factory: ActorRefFactory) = new ChunkSizeMagnet {
+    def chunkSize = size
+    def refFactory = factory
+  }
 }

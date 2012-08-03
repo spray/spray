@@ -137,7 +137,7 @@ object ParamDefMagnetAux {
   /************ HList support ******************/
 
   implicit def forHList[L <: HList](implicit f: LeftFolder[L, Directive0, MapReduce.type]) =
-    ParamDefMagnetAux[L, f.Out](_.foldLeft(MiscDirectives.noop)(MapReduce))
+    ParamDefMagnetAux[L, f.Out](_.foldLeft(BasicDirectives.noop)(MapReduce))
 
   object MapReduce extends Poly2 {
     implicit def from[T, LA <: HList, LB <: HList, Out <: HList]

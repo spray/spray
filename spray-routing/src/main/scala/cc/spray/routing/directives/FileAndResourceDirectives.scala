@@ -18,23 +18,22 @@ package cc.spray.routing
 package directives
 
 import java.io.File
+import java.net.{URL, URLConnection}
 import org.parboiled.common.FileUtils
+import akka.actor.ActorRefFactory
 import cc.spray.httpx.marshalling.BasicMarshallers
 import cc.spray.util._
 import cc.spray.http._
 import HttpHeaders._
 import shapeless._
-import java.net.{URL, URLConnection}
 
 
 trait FileAndResourceDirectives {
-  this: DetachDirectives =>
+  import BasicDirectives._
+  import ExecutionDirectives._
   import MethodDirectives._
   import RespondWithDirectives._
   import RouteDirectives._
-  import MiscDirectives._
-
-  def settings: RoutingSettings
 
   /**
    * A Route that completes GET requests with the content of the given file. The actual I/O operation is
@@ -42,7 +41,8 @@ trait FileAndResourceDirectives {
    * some other thread !). If the file cannot be found or read the request is rejected.
    */
   def getFromFileName(fileName: String, charset: Option[HttpCharset] = None)
-                     (implicit resolver: ContentTypeResolver, eh: ExceptionHandler, rh: RejectionHandler): Route =
+                     (implicit settings: RoutingSettings, resolver: ContentTypeResolver,
+                      refFactory: ActorRefFactory, eh: ExceptionHandler, rh: RejectionHandler): Route =
     getFromFile(new File(fileName), charset)
 
   /**
@@ -51,8 +51,9 @@ trait FileAndResourceDirectives {
    * some other thread !). If the file cannot be found or read the request is rejected.
    */
   def getFromFile(file: File, charset: Option[HttpCharset] = None)
-                 (implicit resolver: ContentTypeResolver, eh: ExceptionHandler, rh: RejectionHandler): Route = {
-    (detachGets & respondWithLastModifiedHeader(file.lastModified)) { ctx =>
+                 (implicit settings: RoutingSettings, resolver: ContentTypeResolver,
+                  refFactory: ActorRefFactory, eh: ExceptionHandler, rh: RejectionHandler): Route = {
+    (get & detachTo(singleRequestServiceActor) & respondWithLastModifiedHeader(file.lastModified)) { ctx =>
       if (file.isFile && file.canRead) {
         implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(resolver(file.getName, charset))
         if (file.length >= settings.FileChunkingThresholdSize)
@@ -75,9 +76,11 @@ trait FileAndResourceDirectives {
    * If the file cannot be found or read the Route rejects the request.
    */
   def getFromResource(resourceName: String, charset: Option[HttpCharset] = None)
-                     (implicit resolver: ContentTypeResolver, eh: ExceptionHandler, rh: RejectionHandler): Route = {
+                     (implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory, eh: ExceptionHandler,
+                      rh: RejectionHandler): Route = {
     if (!resourceName.endsWith("/")) {
-      (detachGets & provide(Option(getClass.getClassLoader.getResource(resourceName)) :: HNil))
+      def resource = getClass.getClassLoader.getResource(resourceName)
+      (get & detachTo(singleRequestServiceActor) & provide(Option(resource)))
         .flatMap(openConnection) { urlConn =>
           implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(resolver(resourceName, charset))
           respondWithLastModifiedHeader(urlConn.getLastModified) {
@@ -88,7 +91,7 @@ trait FileAndResourceDirectives {
   }
 
   private def openConnection: Option[URL] :: HNil => Directive[URLConnection :: HNil] = {
-    case Some(url) :: HNil => provide(url.openConnection() :: HNil)
+    case Some(url) :: HNil => provide(url.openConnection())
     case _ => reject()
   }
 
@@ -100,8 +103,8 @@ trait FileAndResourceDirectives {
    * current thread. If the file cannot be read the Route rejects the request.
    */
   def getFromDirectory(directoryName: String, charset: Option[HttpCharset] = None)
-                      (implicit pathRewriter: PathRewriter, resolver: ContentTypeResolver,
-                       eh: ExceptionHandler, rh: RejectionHandler): Route = {
+                      (implicit pathRewriter: PathRewriter, settings: RoutingSettings, resolver: ContentTypeResolver,
+                       refFactory: ActorRefFactory, eh: ExceptionHandler, rh: RejectionHandler): Route = {
     val base = if (directoryName.endsWith("/")) directoryName else directoryName + "/"
     Route { ctx =>
       val subPath = if (ctx.unmatchedPath.startsWith("/")) ctx.unmatchedPath.substring(1) else ctx.unmatchedPath
@@ -115,7 +118,7 @@ trait FileAndResourceDirectives {
    */
   def getFromResourceDirectory(directoryName: String, charset: Option[HttpCharset] = None)
                               (implicit pathRewriter: PathRewriter, resolver: ContentTypeResolver,
-                               eh: ExceptionHandler, rh: RejectionHandler): Route = {
+                               refFactory: ActorRefFactory, eh: ExceptionHandler, rh: RejectionHandler): Route = {
     val base =
       if (directoryName.isEmpty) ""
       else if (directoryName.endsWith("/")) directoryName
@@ -126,9 +129,10 @@ trait FileAndResourceDirectives {
     }
   }
 
-  private def detachGets(implicit eh: ExceptionHandler, rh: RejectionHandler): Directive0 =
-    get & detachTo(singleRequestServiceActor)
 }
+
+object FileAndResourceDirectives extends FileAndResourceDirectives
+
 
 trait ContentTypeResolver {
   def apply(fileName: String, charset: Option[HttpCharset]): ContentType

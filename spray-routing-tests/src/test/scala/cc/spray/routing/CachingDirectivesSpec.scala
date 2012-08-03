@@ -29,7 +29,7 @@ class CachingDirectivesSpec extends RoutingSpec with CachingDirectives {
 
   val countingService = {
     var i = 0
-    cacheResults(LruCache()) {
+    cache(routeCache()) {
       _.complete {
         i += 1
         i.toString
@@ -38,7 +38,7 @@ class CachingDirectivesSpec extends RoutingSpec with CachingDirectives {
   }
   val errorService = {
     var i = 0
-    cache { _.complete { i += 1; HttpResponse(500 + i) } }
+    cache(routeCache()) { _.complete { i += 1; HttpResponse(500 + i) } }
   }
   def prime(route: Route) = make(route) { _(RequestContext(HttpRequest(), system.deadLetters)) }
 

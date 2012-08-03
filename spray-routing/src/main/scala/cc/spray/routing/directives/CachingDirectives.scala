@@ -17,27 +17,28 @@
 package cc.spray.routing
 package directives
 
-import akka.actor.ActorSystem
-import akka.event.LoggingAdapter
+import akka.actor.ActorRefFactory
+import akka.dispatch.ExecutionContext
+import akka.util.Duration
+import cc.spray.util._
 import cc.spray.caching._
 import cc.spray.http._
 import CacheDirectives._
 import HttpHeaders._
+import HttpMethods._
+
 
 // not mixed into cc.spray.routing.Directives due to its dependency on com.googlecode.concurrentlinkedhashmap
 trait CachingDirectives {
   import BasicDirectives._
 
-  def system: ActorSystem
-  def log: LoggingAdapter
+  type RouteResponse = Either[Seq[Rejection], HttpResponse]
 
   /**
    * Wraps its inner Route with caching support using the given [[cc.spray.caching.Cache]] implementation and
-   * keyer function.
+   * the in-scope keyer function.
    */
-  def cacheResults(cache: Cache[Either[Seq[Rejection], HttpResponse]],
-                   keyer: CacheKeyer = CacheKeyers.UriGetCacheKeyer) =
-    cachingProhibited | alwaysCacheResults(cache, keyer)
+  def cache(csm: CacheSpecMagnet): Directive0 = cachingProhibited | alwaysCache(csm)
 
   /**
    * Rejects the request if it doesn't contain a `Cache-Control` header with either a `no-cache` or `max-age=0` setting.
@@ -56,22 +57,22 @@ trait CachingDirectives {
 
   /**
    * Wraps its inner Route with caching support using the given [[cc.spray.caching.Cache]] implementation and
-   * keyer function. Note that routes producing streaming responses cannot be wrapped with this directive.
+   * in-scope keyer function. Note that routes producing streaming responses cannot be wrapped with this directive.
    * Route responses other than HttpResponse or Rejections trigger a "500 Internal Server Error" response.
    */
-  def alwaysCacheResults(cache: Cache[Either[Seq[Rejection], HttpResponse]],
-                         keyer: CacheKeyer = CacheKeyers.UriGetCacheKeyer): Directive0 =
+  def alwaysCache(csm: CacheSpecMagnet): Directive0 = {
+    import csm._
     mapInnerRoute { route => ctx =>
-      keyer(ctx) match {
+      liftedKeyer(ctx) match {
         case Some(key) =>
-          implicit val executionContext = system
-          cache(key) { promise =>
+          responseCache(key) { promise =>
             route {
               ctx.withRouteResponseHandling {
                 case response: HttpResponse => promise.success(Right(response))
                 case Reject(rejections) => promise.success(Left(rejections))
                 case x =>
-                  log.error("Route responses other than HttpResponse or Rejections cannot be cached (received: {})", x)
+                  implicitly[LoggingContext].error("Route responses other than HttpResponse or " +
+                    "Rejections cannot be cached (received: {})", x)
                   promise.failure(HttpException(500))
               }
             }
@@ -84,24 +85,44 @@ trait CachingDirectives {
         case _ => route(ctx)
       }
     }
+  }
 
-  /**
-   * Wraps its inner Route with caching support using a default [[cc.spray.caching.LruCache]] instance
-   * (max-entries = 500, initialCapacity = 16, time-to-idle: infinite) and the `CacheKeyers.UriGetCacheKeyer` which
-   * only caches GET requests and uses the request URI as cache key.
-   */
-  lazy val cache = cacheResults(LruCache())
+  def routeCache(maxCapacity: Int = 500, initialCapacity: Int = 16, timeToLive: Duration = Duration.Zero,
+                 timeToIdle: Duration = Duration.Zero): Cache[RouteResponse] =
+    LruCache(maxCapacity, initialCapacity, timeToLive, timeToIdle)
+}
+
+object CachingDirectives extends CachingDirectives
+
+
+trait CacheSpecMagnet {
+  def responseCache: Cache[CachingDirectives.RouteResponse]
+  def liftedKeyer: RequestContext => Option[Any]
+  implicit def executionContext: ExecutionContext
+  implicit def refFactory: ActorRefFactory
+}
+
+object CacheSpecMagnet {
+  implicit def apply(cache: Cache[CachingDirectives.RouteResponse])
+                    (implicit keyer: CacheKeyer, factory: ActorRefFactory) =
+    new CacheSpecMagnet {
+      def responseCache = cache
+      def liftedKeyer = keyer.lift
+      implicit def executionContext = factory.messageDispatcher
+      implicit def refFactory = factory
+    }
 }
 
 
-object CacheKeyers {
+trait CacheKeyer extends (PartialFunction[RequestContext, Any])
 
-  case class FilteredCacheKeyer(filter: CacheKeyFilter, inner: CacheKeyer) extends CacheKeyer {
-    def apply(ctx: RequestContext) = if (filter(ctx)) inner(ctx) else None
-    def & (f: CacheKeyFilter) = FilteredCacheKeyer(c => filter(c) && f(c), inner)
+object CacheKeyer {
+  implicit val Default: CacheKeyer = CacheKeyer {
+    case RequestContext(HttpRequest(GET, uri, _, _, _), _, _) => uri
   }
 
-  val GetFilter: CacheKeyFilter = { _.request.method == HttpMethods.GET }
-  val UriKeyer: CacheKeyer = { c => Some(c.request.uri) }
-  val UriGetCacheKeyer = FilteredCacheKeyer(GetFilter, UriKeyer)
+  def apply(f: PartialFunction[RequestContext, Any]) = new CacheKeyer {
+    def isDefinedAt(ctx: RequestContext) = f.isDefinedAt(ctx)
+    def apply(ctx: RequestContext) = f(ctx)
+  }
 }

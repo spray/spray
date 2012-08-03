@@ -55,7 +55,7 @@ trait MethodDirectives {
    */
   def method(m: HttpMethod): Directive0 = filter { ctx =>
     if (ctx.request.method == m) Pass.Empty else Reject(MethodRejection(m))
-  } & cancelAllRejectionsOfType[MethodRejection]
+  } & cancelAllRejections(ofType[MethodRejection])
 }
 
 object MethodDirectives extends MethodDirectives

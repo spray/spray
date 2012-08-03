@@ -19,6 +19,7 @@ package directives
 
 import akka.actor.ActorRef
 import shapeless._
+import cc.spray.util._
 import cc.spray.http._
 
 
@@ -61,41 +62,46 @@ trait BasicDirectives {
   def mapRejections(f: Seq[Rejection] => Seq[Rejection]): Directive0 =
     mapRequestContext(_.mapRejections(f))
 
-  // TODO: remove implicit parameter by introducing a magnet
-  def filter[T <: HList](f: RequestContext => FilterResult[T])
-                        (implicit fdb: FilteringDirectiveBuilder[T]): fdb.Out = fdb(f)
-}
-
-object BasicDirectives extends BasicDirectives
-
-
-sealed abstract class FilteringDirectiveBuilder[T <: HList] {
-  type Out <: Directive[T]
-  def apply(f: RequestContext => FilterResult[T]): Out
-}
-
-object FilteringDirectiveBuilder extends LowPriorityFilteringDirectiveBuilder {
-  implicit val fdb0 = new FilteringDirectiveBuilder[HNil] {
-    type Out = Directive0
-    def apply(filter: RequestContext => FilterResult[HNil]) = BasicDirectives.mapInnerRoute { inner => ctx =>
-      filter(ctx) match {
-        case Pass(HNil, transform) => inner(transform(ctx))
-        case Reject(rejections) => ctx.reject(rejections: _*)
-      }
-    }
-  }
-}
-
-sealed abstract class LowPriorityFilteringDirectiveBuilder {
-  implicit def fdb[L <: HList] = new FilteringDirectiveBuilder[L] {
-    type Out = Directive[L]
-    def apply(filter: RequestContext => FilterResult[L]) = new Out {
+  def filter[L <: HList](f: RequestContext => FilterResult[L]): Directive[L] =
+    new Directive[L] {
       def happly(inner: L => Route) = { ctx =>
-        filter(ctx) match {
+        f(ctx) match {
           case Pass(values, transform) => inner(values)(transform(ctx))
           case Reject(rejections) => ctx.reject(rejections: _*)
         }
       }
     }
+
+  /**
+   * A Directive0 that always passes the request on to its inner route
+   * (i.e. does nothing with the request or the response).
+   */
+  def noop: Directive0 = mapInnerRoute(identityFunc)
+
+  /**
+   * Injects the given values into a directive.
+   */
+  def provide[T](value: T): Directive[T :: HNil] = hprovide(value :: HNil)
+
+  /**
+   * Injects the given values into a directive.
+   */
+  def hprovide[L <: HList](values: L): Directive[L] = new Directive[L] {
+    def happly(f: L => Route) = f(values)
+  }
+
+  /**
+   * Extracts a single value using the given function.
+   */
+  def extract[T](f: RequestContext => T): Directive[T :: HNil] =
+    hextract(ctx => f(ctx) :: HNil)
+
+  /**
+   * Extracts a number of values using the given function.
+   */
+  def hextract[L <: HList](f: RequestContext => L): Directive[L] = new Directive[L] {
+    def happly(inner: L => Route) = ctx => inner(f(ctx))(ctx)
   }
 }
+
+object BasicDirectives extends BasicDirectives
