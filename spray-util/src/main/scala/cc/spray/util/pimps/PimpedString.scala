@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-package cc.spray.util.pimps
+package cc.spray.util
+package pimps
 
 
 import scala.annotation.tailrec
@@ -87,4 +88,12 @@ class PimpedString(underlying: String) {
     }
     array
   }
+
+  /**
+   * Tests two strings for value equality avoiding timing attacks.
+   * Note that this function still leaks information about the length of each string as well as
+   * whether the two strings have the same length.
+   */
+  def secure_== (other: String): Boolean = getAsciiBytes secure_== other.getAsciiBytes
+
 }

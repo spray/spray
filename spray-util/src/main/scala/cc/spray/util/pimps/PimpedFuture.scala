@@ -17,13 +17,17 @@
 package cc.spray.util.pimps
 
 import akka.util.{Duration, Timeout}
-import akka.dispatch._
 import akka.actor.ActorSystem
+import akka.dispatch._
+
 
 class PimpedFuture[+A](underlying: Future[A]) {
 
   def await(implicit timeout: Timeout = Duration.Inf): A =
     Await.result(underlying, timeout.duration)
+
+  def ready(implicit timeout: Timeout = Duration.Inf): Future[A] =
+    Await.ready(underlying, timeout.duration)
 
   def delay(duration: Duration)(implicit system: ActorSystem): Future[A] = {
     val promise = Promise[A]()(system.dispatcher)
