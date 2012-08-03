@@ -6,6 +6,8 @@ Version 1.0-M3 (2012-xx-xx)
 - renamed transform... directives to map...
 - Default Unmarshallers now accept emtpy input where it makes sense
 - Marshalling and Unmarshalling infrastructure completely redone
+- !Directive is gone
+- 'httpBasic' => BasicAuth
 
 
 Version 1.0-M2 (2012-05-16)

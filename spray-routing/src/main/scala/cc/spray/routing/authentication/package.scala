@@ -16,24 +16,28 @@
 
 package cc.spray.routing
 
-import directives._
+import akka.dispatch.Future
 
 
-trait Directives extends RouteConcatenation
-  with BasicDirectives
-  with ChunkingDirectives
-  with CookieDirectives
-  with DebuggingDirectives
-  with EncodingDirectives
-  with ExecutionDirectives
-  with FileAndResourceDirectives
-  with FormFieldDirectives
-  with HostDirectives
-  with MarshallingDirectives
-  with MethodDirectives
-  with MiscDirectives
-  with ParameterDirectives
-  with PathDirectives
-  with RespondWithDirectives
-  with RouteDirectives
-  with SecurityDirectives
+package object authentication {
+
+  type ContextAuthenticator[T] = RequestContext => Future[Authentication[T]]
+  type Authentication[T] = Either[Rejection, T]
+  type UserPassAuthenticator[T] = Option[UserPass] => Future[Option[T]]
+
+}
+
+package authentication {
+
+  /**
+   * Simple case class model of a username/password combination.
+   */
+  case class UserPass(user: String, pass: String)
+
+  /**
+   * A very basic user context object.
+   * In your application you probably want to use some more specific custom class.
+   */
+  case class BasicUserContext(username: String)
+
+}
