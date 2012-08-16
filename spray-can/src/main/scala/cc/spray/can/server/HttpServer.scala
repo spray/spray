@@ -22,7 +22,7 @@ import com.typesafe.config.{ConfigFactory, Config}
 import java.util.concurrent.TimeUnit
 import cc.spray.can.server.StatsSupport.StatsHolder
 import cc.spray.can.HttpCommand
-import cc.spray.io.pipelines._
+import cc.spray.io.pipelining._
 import cc.spray.io._
 import cc.spray.http._
 

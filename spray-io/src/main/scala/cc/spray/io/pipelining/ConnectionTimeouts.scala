@@ -15,7 +15,7 @@
  */
 
 package cc.spray.io
-package pipelines
+package pipelining
 
 import akka.util.Duration
 import akka.event.LoggingAdapter

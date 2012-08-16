@@ -27,7 +27,7 @@ import cc.spray.can.server.HttpServer
 import cc.spray.can.model.{HttpRequest => CHttpRequest, HttpResponse => CHttpResponse, HttpHeader => CHttpHeader}
 import cc.spray.http.{HttpMethods, HttpResponse, HttpRequest}
 import cc.spray.io.IoWorker
-import cc.spray.io.pipelines.MessageHandlerDispatch._
+import cc.spray.io.pipelining.MessageHandlerDispatch._
 import cc.spray.util._
 import DispatchStrategies._
 import akka.actor.{Actor, Props, ActorSystem}

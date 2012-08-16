@@ -19,7 +19,7 @@ package cc.spray.can.example
 import java.security.{SecureRandom, KeyStore}
 import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 import cc.spray.io.IoWorker
-import cc.spray.io.pipelines.{ServerSSLEngineProvider, MessageHandlerDispatch}
+import cc.spray.io.pipelining.{ServerSSLEngineProvider, MessageHandlerDispatch}
 import cc.spray.can.server.HttpServer
 import akka.actor._
 

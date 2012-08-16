@@ -24,7 +24,7 @@ import org.specs2.mutable.Specification
 import java.util.concurrent.atomic.AtomicInteger
 import akka.actor.{Actor, Props}
 import cc.spray.can.{HttpCommand, HttpPipelineStageSpec}
-import cc.spray.io.pipelines.MessageHandlerDispatch._
+import cc.spray.io.pipelining.MessageHandlerDispatch._
 import cc.spray.util._
 import cc.spray.io._
 import cc.spray.http._

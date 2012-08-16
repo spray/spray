@@ -4,7 +4,7 @@ package examples.spraycan
 import can.server.HttpServer
 import akka.actor.{Props, ActorSystem}
 import io.IoWorker
-import io.pipelines.MessageHandlerDispatch
+import io.pipelining.MessageHandlerDispatch
 
 object Boot extends App {
 

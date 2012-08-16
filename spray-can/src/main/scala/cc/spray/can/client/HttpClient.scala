@@ -21,7 +21,7 @@ import akka.util.Duration
 import com.typesafe.config.{Config, ConfigFactory}
 import java.util.concurrent.TimeUnit
 import akka.event.LoggingAdapter
-import cc.spray.io.pipelines._
+import cc.spray.io.pipelining._
 import cc.spray.io._
 import cc.spray.http.HttpRequest
 

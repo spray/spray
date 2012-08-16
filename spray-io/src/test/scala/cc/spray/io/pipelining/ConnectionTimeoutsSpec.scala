@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.io.pipelines
+package cc.spray.io.pipelining
 
 import org.specs2.mutable.Specification
 import cc.spray.io.test.PipelineStageTest

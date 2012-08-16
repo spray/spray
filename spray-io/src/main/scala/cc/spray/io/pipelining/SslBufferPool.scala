@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.io.pipelines
+package cc.spray.io.pipelining
 
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicInteger

@@ -15,7 +15,7 @@
  */
 
 package cc.spray.io
-package pipelines
+package pipelining
 
 import cc.spray.util._
 import akka.event.LoggingAdapter
