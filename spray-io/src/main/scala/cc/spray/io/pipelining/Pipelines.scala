@@ -15,6 +15,7 @@
  */
 
 package cc.spray.io
+package pipelining
 
 import akka.actor.{ActorRef, ActorContext}
 

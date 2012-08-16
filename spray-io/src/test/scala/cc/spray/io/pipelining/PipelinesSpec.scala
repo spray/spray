@@ -15,9 +15,11 @@
  */
 
 package cc.spray.io
+package pipelining
 
 import org.specs2.Specification
 import collection.mutable.ListBuffer
+
 
 class PipelinesSpec extends Specification { def is =
 

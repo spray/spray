@@ -16,6 +16,7 @@
 
 package cc.spray.can
 
+import cc.spray.io.pipelining.PipelineStageTest
 import cc.spray.io.test.PipelineStageTest
 import org.specs2.matcher.BeEqualTo
 import cc.spray.io.{IoPeer, Event, Command}

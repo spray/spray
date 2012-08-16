@@ -17,8 +17,8 @@
 package cc.spray.io.pipelining
 
 import org.specs2.mutable.Specification
-import cc.spray.io.test.PipelineStageTest
 import cc.spray.io.{IoPeer, IdleTimeout, Event, Command}
+
 
 class ConnectionTimeoutsSpec extends Specification with PipelineStageTest {
   val fixture = new Fixture(ConnectionTimeouts(50, system.log))

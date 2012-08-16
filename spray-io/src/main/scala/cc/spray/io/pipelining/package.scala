@@ -14,13 +14,10 @@
  * limitations under the License.
  */
 
-package cc.spray
+package cc.spray.io
 
-package io {
+package object pipelining {
 
-  trait Command
+  type Pipeline[-T] = T => Unit
 
-  trait Event
-
-  trait Droppable // marker for Commands and Events
 }

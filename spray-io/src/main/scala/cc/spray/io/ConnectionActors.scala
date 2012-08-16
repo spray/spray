@@ -18,6 +18,7 @@ package cc.spray.io
 
 import java.net.InetSocketAddress
 import akka.actor.{ActorRef, Status, Props, Actor}
+import pipelining._
 
 
 trait ConnectionActors extends IoPeer { ioPeer =>

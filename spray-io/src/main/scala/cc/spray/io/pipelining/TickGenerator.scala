@@ -22,7 +22,7 @@ import akka.util.Duration
 object TickGenerator {
 
   def apply(period: Duration): PipelineStage = {
-    require(period.isFinite, "period must not be infinite")
+    require(period.finite_?, "period must not be infinite")
     require(period > Duration.Zero, "period must be positive")
 
     new EventPipelineStage {

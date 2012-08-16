@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.io.test
+package cc.spray.io.pipelining
 
 import collection.mutable.ListBuffer
 import cc.spray.io._
@@ -22,6 +22,7 @@ import java.nio.ByteBuffer
 import akka.util.Duration
 import java.net.InetSocketAddress
 import akka.actor.{ActorRef, ActorContext, ActorSystem}
+
 
 trait PipelineStageTest {
   implicit val system = ActorSystem()
