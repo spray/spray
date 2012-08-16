@@ -25,7 +25,7 @@ import akka.actor.{ActorPath, Terminated, ActorContext, ActorRef}
 import cc.spray.can.rendering.HttpResponsePartRenderingContext
 import cc.spray.can.{HttpEvent, HttpCommand}
 import cc.spray.can.server.RequestParsing.HttpMessageStartEvent
-import cc.spray.io.pipelining.{TickGenerator, MessageHandlerDispatch}
+import cc.spray.io.pipelining._
 import cc.spray.io._
 import cc.spray.http._
 import MessageHandlerDispatch._

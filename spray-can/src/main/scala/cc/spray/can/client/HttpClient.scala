@@ -17,9 +17,7 @@
 package cc.spray.can
 package client
 
-import akka.util.Duration
 import com.typesafe.config.{Config, ConfigFactory}
-import java.util.concurrent.TimeUnit
 import akka.event.LoggingAdapter
 import cc.spray.io.pipelining._
 import cc.spray.io._
@@ -35,13 +33,15 @@ import cc.spray.http.HttpRequest
  * replied to with [[cc.spray.can.model.HttpResponsePart]] messages (or [[akka.actor.Status.Failure]] instances
  * in case of errors).
  */
-class HttpClient(ioWorker: IoWorker,
-                 config: Config = ConfigFactory.load)
-                (implicit sslEngineProvider: ClientSSLEngineProvider)
+class HttpClient(ioWorker: IoWorker, settings: ClientSettings)(implicit sslEngineProvider: ClientSSLEngineProvider)
   extends IoClient(ioWorker) with ConnectionActors {
 
-  protected lazy val pipeline: PipelineStage =
-    HttpClient.pipeline(new ClientSettings(config), log)
+  def this(ioWorker: IoWorker, config: Config)(implicit sslEngineProvider: ClientSSLEngineProvider) =
+    this(ioWorker, new ClientSettings(config))
+  def this(ioWorker: IoWorker)(implicit sslEngineProvider: ClientSSLEngineProvider) =
+    this(ioWorker, ConfigFactory.load())
+
+  protected lazy val pipeline: PipelineStage = HttpClient.pipeline(settings, log)
 
   override protected def createConnectionActor(handle: Handle): IoConnectionActor = new IoConnectionActor(handle) {
     override def receive = super.receive orElse {
@@ -55,17 +55,14 @@ object HttpClient {
   private[can] def pipeline(settings: ClientSettings,
                             log: LoggingAdapter)
                            (implicit sslEngineProvider: ClientSSLEngineProvider): PipelineStage = {
-    ClientFrontend(settings.RequestTimeout, log) ~>
-    PipelineStage.optional(settings.ResponseChunkAggregationLimit > 0,
-      ResponseChunkAggregation(settings.ResponseChunkAggregationLimit.toInt)) ~>
-    ResponseParsing(settings.ParserSettings, log) ~>
-    RequestRendering(settings) ~>
-    PipelineStage.optional(settings.IdleTimeout > 0, ConnectionTimeouts(settings.IdleTimeout, log)) ~>
-    PipelineStage.optional(settings.SSLEncryption, SslTlsSupport(sslEngineProvider, log)) ~>
-    PipelineStage.optional(
-      settings.ReapingCycle > 0 && settings.IdleTimeout > 0,
-      TickGenerator(Duration(settings.ReapingCycle, TimeUnit.MILLISECONDS))
-    )
+    import settings._
+    ClientFrontend(RequestTimeout, log) >>
+    (ResponseChunkAggregationLimit > 0) ? ResponseChunkAggregation(ResponseChunkAggregationLimit.toInt) >>
+    ResponseParsing(ParserSettings, log) >>
+    RequestRendering(settings) >>
+    (settings.IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
+    SSLEncryption ? SslTlsSupport(sslEngineProvider, log) >>
+    (ReapingCycle > 0 && IdleTimeout > 0) ? TickGenerator(ReapingCycle)
   }
 
   ////////////// COMMANDS //////////////

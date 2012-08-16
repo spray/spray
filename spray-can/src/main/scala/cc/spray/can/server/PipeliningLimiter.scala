@@ -19,9 +19,10 @@ package cc.spray.can.server
 import collection.mutable.Queue
 import annotation.tailrec
 import cc.spray.can.rendering.HttpResponsePartRenderingContext
-import cc.spray.io._
+import cc.spray.can.HttpEvent
 import cc.spray.http._
-import cc.spray.can.{HttpEvent, HttpCommand}
+import cc.spray.io._
+import cc.spray.io.pipelining._
 
 
 object PipeliningLimiter {

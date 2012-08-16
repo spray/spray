@@ -19,7 +19,6 @@ package cc.spray.can.server
 import akka.event.LoggingAdapter
 import akka.util.Duration
 import com.typesafe.config.{ConfigFactory, Config}
-import java.util.concurrent.TimeUnit
 import cc.spray.can.server.StatsSupport.StatsHolder
 import cc.spray.can.HttpCommand
 import cc.spray.io.pipelining._
@@ -27,16 +26,17 @@ import cc.spray.io._
 import cc.spray.http._
 
 
-class HttpServer(ioWorker: IoWorker,
-                 messageHandler: MessageHandlerDispatch.MessageHandler,
-                 config: Config = ConfigFactory.load)
-                (implicit sslEngineProvider: ServerSSLEngineProvider)
+class HttpServer(ioWorker: IoWorker, messageHandler: MessageHandlerDispatch.MessageHandler,
+                 settings: ServerSettings)(implicit sslEngineProvider: ServerSSLEngineProvider)
   extends IoServer(ioWorker) with ConnectionActors {
 
-  protected lazy val pipeline = {
-    val settings = new ServerSettings(config)
+  def this(ioWorker: IoWorker, messageHandler: MessageHandlerDispatch.MessageHandler, config: Config)
+          (implicit sslEngineProvider: ServerSSLEngineProvider) = this(ioWorker, messageHandler, new ServerSettings(config))
+  def this(ioWorker: IoWorker, messageHandler: MessageHandlerDispatch.MessageHandler)
+          (implicit sslEngineProvider: ServerSSLEngineProvider) = this(ioWorker, messageHandler, ConfigFactory.load())
+
+  protected lazy val pipeline =
     HttpServer.pipeline(settings, messageHandler, timeoutResponse, statsHolder, log)
-  }
 
   protected lazy val statsHolder = new StatsHolder
 
@@ -168,21 +168,17 @@ object HttpServer {
                             statsHolder: => StatsHolder,
                             log: LoggingAdapter)
                            (implicit sslEngineProvider: ServerSSLEngineProvider): PipelineStage = {
-    import PipelineStage.optional
-    ServerFrontend(settings, messageHandler, timeoutResponse, log) ~>
-    optional(settings.RequestChunkAggregationLimit > 0,
-      RequestChunkAggregation(settings.RequestChunkAggregationLimit.toInt)) ~>
-    optional(settings.PipeliningLimit > 0, PipeliningLimiter(settings.PipeliningLimit)) ~>
-    optional(settings.StatsSupport, StatsSupport(statsHolder)) ~>
-    optional(settings.RemoteAddressHeader, RemoteAddressHeaderSupport()) ~>
-    RequestParsing(settings.ParserSettings, log) ~>
-    ResponseRendering(settings) ~>
-    optional(settings.IdleTimeout > 0, ConnectionTimeouts(settings.IdleTimeout, log)) ~>
-    optional(settings.SSLEncryption, SslTlsSupport(sslEngineProvider, log)) ~>
-    optional(
-      settings.ReapingCycle > 0 && (settings.IdleTimeout > 0 || settings.RequestTimeout > 0),
-      TickGenerator(Duration(settings.ReapingCycle, TimeUnit.MILLISECONDS))
-    )
+    import settings.{StatsSupport => _, _}
+    ServerFrontend(settings, messageHandler, timeoutResponse, log) >>
+    (RequestChunkAggregationLimit > 0) ? RequestChunkAggregation(RequestChunkAggregationLimit.toInt) >>
+    (PipeliningLimit > 0) ? PipeliningLimiter(settings.PipeliningLimit) >>
+    settings.StatsSupport ? StatsSupport(statsHolder) >>
+    RemoteAddressHeader ? RemoteAddressHeaderSupport() >>
+    RequestParsing(ParserSettings, log) >>
+    ResponseRendering(settings) >>
+    (IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
+    SSLEncryption ? SslTlsSupport(sslEngineProvider, log) >>
+    (ReapingCycle > 0 && (IdleTimeout > 0 || RequestTimeout > 0)) ? TickGenerator(ReapingCycle)
   }
 
   case class Stats(

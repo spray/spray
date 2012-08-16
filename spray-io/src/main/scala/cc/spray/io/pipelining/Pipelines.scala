@@ -62,11 +62,6 @@ sealed trait PipelineStage {
   def >> (right: PipelineStage): PipelineStage
 }
 
-object PipelineStage {
-  def optional(condition: Boolean, stage: => PipelineStage): PipelineStage =
-    if (condition) stage else EmptyPipelineStage
-}
-
 trait CommandPipelineStage extends PipelineStage { left =>
   type BuildResult = CPL
 

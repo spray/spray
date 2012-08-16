@@ -19,10 +19,11 @@ import java.util.concurrent.atomic.AtomicLong
 import annotation.tailrec
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
-import cc.spray.can.rendering.HttpResponsePartRenderingContext
 import cc.spray.http.{Timeout, HttpMessageStart}
+import cc.spray.can.rendering.HttpResponsePartRenderingContext
 import cc.spray.can.HttpEvent
 import cc.spray.io._
+import cc.spray.io.pipelining._
 
 
 object StatsSupport {

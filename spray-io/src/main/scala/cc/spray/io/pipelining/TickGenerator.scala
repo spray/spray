@@ -18,8 +18,12 @@ package cc.spray.io
 package pipelining
 
 import akka.util.Duration
+import java.util.concurrent.TimeUnit
+
 
 object TickGenerator {
+
+  def apply(millis: Long): PipelineStage = apply(Duration(millis, TimeUnit.MILLISECONDS))
 
   def apply(period: Duration): PipelineStage = {
     require(period.finite_?, "period must not be infinite")

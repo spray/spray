@@ -21,10 +21,11 @@ import collection.mutable.Queue
 import java.nio.ByteBuffer
 import annotation.tailrec
 import cc.spray.can.rendering.HttpRequestPartRenderingContext
-import cc.spray.io._
-import cc.spray.http._
-import cc.spray.can.parsing._
 import cc.spray.can.HttpEvent
+import cc.spray.can.parsing._
+import cc.spray.http._
+import cc.spray.io._
+import cc.spray.io.pipelining._
 
 
 object ResponseParsing {

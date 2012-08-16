@@ -23,8 +23,8 @@ import cc.spray.can.rendering.HttpResponsePartRenderingContext
 import cc.spray.can.HttpEvent
 import cc.spray.can.parsing._
 import cc.spray.io._
+import cc.spray.io.pipelining._
 import cc.spray.http._
-import HttpHeaders.RawHeader
 
 
 object RequestParsing {

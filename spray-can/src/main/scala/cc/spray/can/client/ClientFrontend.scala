@@ -22,7 +22,7 @@ import akka.actor.ActorRef
 import collection.mutable.Queue
 import cc.spray.can.{HttpEvent, HttpCommand}
 import cc.spray.can.rendering.HttpRequestPartRenderingContext
-import cc.spray.io.pipelining.TickGenerator
+import cc.spray.io.pipelining._
 import cc.spray.http._
 import cc.spray.io._
 

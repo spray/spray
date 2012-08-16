@@ -18,6 +18,7 @@ package cc.spray.can.client
 
 import cc.spray.can.rendering.{HttpRequestPartRenderingContext, RequestRenderer}
 import cc.spray.io._
+import cc.spray.io.pipelining._
 
 
 object RequestRendering {
