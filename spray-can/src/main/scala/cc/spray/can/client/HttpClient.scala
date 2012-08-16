@@ -17,7 +17,6 @@
 package cc.spray.can
 package client
 
-import com.typesafe.config.{Config, ConfigFactory}
 import akka.event.LoggingAdapter
 import cc.spray.io.pipelining._
 import cc.spray.io._
@@ -33,13 +32,8 @@ import cc.spray.http.HttpRequest
  * replied to with [[cc.spray.can.model.HttpResponsePart]] messages (or [[akka.actor.Status.Failure]] instances
  * in case of errors).
  */
-class HttpClient(ioWorker: IoWorker, settings: ClientSettings)(implicit sslEngineProvider: ClientSSLEngineProvider)
-  extends IoClient(ioWorker) with ConnectionActors {
-
-  def this(ioWorker: IoWorker, config: Config)(implicit sslEngineProvider: ClientSSLEngineProvider) =
-    this(ioWorker, new ClientSettings(config))
-  def this(ioWorker: IoWorker)(implicit sslEngineProvider: ClientSSLEngineProvider) =
-    this(ioWorker, ConfigFactory.load())
+class HttpClient(ioWorker: IoWorker, settings: ClientSettings = ClientSettings())
+                (implicit sslEngineProvider: ClientSSLEngineProvider) extends IoClient(ioWorker) with ConnectionActors {
 
   protected lazy val pipeline: PipelineStage = HttpClient.pipeline(settings, log)
 

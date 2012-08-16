@@ -35,7 +35,7 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   // all actors created by directives in the tests are created directly underneath the system
   implicit def actorRefFactory = system
   implicit val routeTestTimeout = RouteTestTimeout(1.second)
-  implicit val settings = new RoutingSettings()
+  implicit val settings = RoutingSettings()
 
   def cleanUp() { system.shutdown() }
 

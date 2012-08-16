@@ -16,11 +16,11 @@
 
 package cc.spray.servlet
 
-import com.typesafe.config.{ConfigFactory, Config}
 import cc.spray.util.ConfigUtils
+import com.typesafe.config.Config
 
 
-class ConnectorSettings(config: Config = ConfigFactory.load) {
+class ConnectorSettings(config: Config) {
   protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.servlet")
 
   val BootClass           = c getString       "boot-class"

@@ -53,3 +53,8 @@ class ServerSettings(config: Config = ConfigFactory.load) {
   require(0 <= ResponseSizeHint && ResponseSizeHint <= Int.MaxValue,
     "response-size-hint must be >= 0 and <= Int.MaxValue")
 }
+
+object ServerSettings {
+  implicit def apply(): ServerSettings = apply(ConfigFactory.load())
+  implicit def apply(config: Config): ServerSettings = new ServerSettings(config)
+}

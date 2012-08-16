@@ -21,7 +21,7 @@ import cc.spray.can.parsing.ParserSettings
 import cc.spray.util.ConfigUtils
 
 
-class ClientSettings(config: Config = ConfigFactory.load) {
+class ClientSettings(config: Config) {
   protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.can.client")
 
   val UserAgentHeader               = c getString       "user-agent-header"
@@ -42,4 +42,9 @@ class ClientSettings(config: Config = ConfigFactory.load) {
     "response-chunk-aggregation-limit must be >= 0 and <= Int.MaxValue")
   require(0 <= RequestSizeHint && RequestSizeHint <= Int.MaxValue,
     "request-size-hint must be >= 0 and <= Int.MaxValue")
+}
+
+object ClientSettings {
+  implicit def apply(): ClientSettings = apply(ConfigFactory.load())
+  implicit def apply(config: Config): ClientSettings = new ClientSettings(config)
 }

@@ -20,7 +20,7 @@ import com.typesafe.config.{ConfigFactory, Config}
 import cc.spray.util.ConfigUtils
 
 
-class RoutingSettings(config: Config = ConfigFactory.load()) {
+class RoutingSettings(config: Config) {
   protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.routing")
 
   val FileChunkingThresholdSize = c getBytes  "file-chunking-threshold-size"
@@ -29,4 +29,9 @@ class RoutingSettings(config: Config = ConfigFactory.load()) {
 
   require(FileChunkingThresholdSize >= 0, "file-chunking-threshold-size must be >= 0")
   require(FileChunkingChunkSize     > 0, "file-chunking-chunk-size must be > 0")
+}
+
+object RoutingSettings {
+  implicit def apply(): RoutingSettings = apply(ConfigFactory.load())
+  implicit def apply(config: Config): RoutingSettings = new RoutingSettings(config)
 }

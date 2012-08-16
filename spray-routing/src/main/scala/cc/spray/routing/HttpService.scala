@@ -23,7 +23,7 @@ import cc.spray.http.HttpRequest
 trait HttpService extends Directives {
   this: Actor with ActorLogging =>
 
-  implicit val settings = new RoutingSettings()
+  implicit val settings = RoutingSettings()
 
   // all actors created by directives are created underneath the HttpService actor
   implicit def actorRefFactory: ActorRefFactory = context

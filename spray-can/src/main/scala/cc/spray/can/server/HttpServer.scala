@@ -18,7 +18,6 @@ package cc.spray.can.server
 
 import akka.event.LoggingAdapter
 import akka.util.Duration
-import com.typesafe.config.{ConfigFactory, Config}
 import cc.spray.can.server.StatsSupport.StatsHolder
 import cc.spray.can.HttpCommand
 import cc.spray.io.pipelining._
@@ -27,13 +26,8 @@ import cc.spray.http._
 
 
 class HttpServer(ioWorker: IoWorker, messageHandler: MessageHandlerDispatch.MessageHandler,
-                 settings: ServerSettings)(implicit sslEngineProvider: ServerSSLEngineProvider)
+                 settings: ServerSettings = ServerSettings())(implicit sslEngineProvider: ServerSSLEngineProvider)
   extends IoServer(ioWorker) with ConnectionActors {
-
-  def this(ioWorker: IoWorker, messageHandler: MessageHandlerDispatch.MessageHandler, config: Config)
-          (implicit sslEngineProvider: ServerSSLEngineProvider) = this(ioWorker, messageHandler, new ServerSettings(config))
-  def this(ioWorker: IoWorker, messageHandler: MessageHandlerDispatch.MessageHandler)
-          (implicit sslEngineProvider: ServerSSLEngineProvider) = this(ioWorker, messageHandler, ConfigFactory.load())
 
   protected lazy val pipeline =
     HttpServer.pipeline(settings, messageHandler, timeoutResponse, statsHolder, log)

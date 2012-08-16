@@ -24,16 +24,14 @@ import java.net.InetSocketAddress
 import akka.event.{LoggingBus, BusLogging, LoggingAdapter}
 import akka.actor.{Status, ActorSystem, ActorRef}
 import akka.util.NonFatal
-import com.typesafe.config.{ConfigFactory, Config}
 import annotation.tailrec
 
 
 // threadsafe
 class IoWorker(log: LoggingAdapter, settings: IoWorkerSettings) {
-  def this(log: LoggingAdapter, config: Config) = this(log, new IoWorkerSettings(config))
-  def this(bus: LoggingBus, config: Config) = this(new BusLogging(bus, "IoWorker", classOf[IoWorker]), config)
-  def this(loggingSystem: ActorSystem, config: Config) = this(loggingSystem.eventStream, config)
-  def this(loggingSystem: ActorSystem) = this(loggingSystem, ConfigFactory.load())
+  def this(bus: LoggingBus, settings: IoWorkerSettings) = this(new BusLogging(bus, "IoWorker", classOf[IoWorker]), settings)
+  def this(loggingSystem: ActorSystem, settings: IoWorkerSettings) = this(loggingSystem.eventStream, settings)
+  def this(loggingSystem: ActorSystem) = this(loggingSystem, IoWorkerSettings())
 
   import IoWorker._
 
