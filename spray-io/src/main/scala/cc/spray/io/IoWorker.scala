@@ -29,24 +29,20 @@ import annotation.tailrec
 
 
 // threadsafe
-class IoWorker(log: LoggingAdapter, config: Config) {
-  def this(loggingBus: LoggingBus, config: Config) =
-    this(new BusLogging(loggingBus, "IoWorker", classOf[IoWorker]), config)
-  def this(loggingSystem: ActorSystem, config: Config) =
-    this(loggingSystem.eventStream, config)
+class IoWorker(log: LoggingAdapter, settings: IoWorkerSettings) {
+  def this(log: LoggingAdapter, config: Config) = this(log, new IoWorkerSettings(config))
+  def this(bus: LoggingBus, config: Config) = this(new BusLogging(bus, "IoWorker", classOf[IoWorker]), config)
+  def this(loggingSystem: ActorSystem, config: Config) = this(loggingSystem.eventStream, config)
   def this(loggingSystem: ActorSystem) = this(loggingSystem, ConfigFactory.load())
-  def this(loggingBus: LoggingBus) = this(loggingBus, ConfigFactory.load())
-  def this(log: LoggingAdapter) = this(log, ConfigFactory.load())
 
   import IoWorker._
 
-  val settings = new IoWorkerSettings(config)
-  private[this] var ioThread: Option[IoThread] = None
+  private[this] var ioThread: IoThread = _
 
   /**
    * @return the IO thread if started and not yet stopped, otherwise None
    */
-  def thread: Option[Thread] = lock.synchronized(ioThread)
+  def thread: Option[Thread] = lock.synchronized(Option(ioThread))
 
   /**
    * Starts the IoWorker if not yet started
@@ -54,9 +50,9 @@ class IoWorker(log: LoggingAdapter, config: Config) {
    */
   def start(): this.type = {
     lock.synchronized {
-      if (ioThread.isEmpty) {
-        ioThread = Some(new IoThread(settings, log))
-        ioThread.get.start()
+      if (ioThread == null) {
+        ioThread = new IoThread(settings, log)
+        ioThread.start()
         _runningWorkers = _runningWorkers :+ this
       }
     }
@@ -70,11 +66,11 @@ class IoWorker(log: LoggingAdapter, config: Config) {
    */
   def stop() {
     lock.synchronized {
-      if (ioThread.isDefined) {
+      if (ioThread != null) {
         val latch = new CountDownLatch(1)
         this ! Stop(latch)
         latch.await()
-        ioThread = None
+        ioThread = null
         _runningWorkers = _runningWorkers.filter(_ != this)
       }
     }
@@ -84,9 +80,8 @@ class IoWorker(log: LoggingAdapter, config: Config) {
    * Posts a Command to the IoWorkers command queue.
    */
   def ! (cmd: Command)(implicit sender: ActorRef = null) {
-    if (ioThread.isEmpty)
-      throw new IllegalStateException("Cannot post message to unstarted IoWorker")
-    ioThread.get.post(cmd, sender)
+    if (ioThread == null) throw new IllegalStateException("Cannot post message to unstarted IoWorker")
+    ioThread.post(cmd, sender)
   }
 
   /**
@@ -101,7 +96,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
 
     private val commandQueue = new SingleReaderConcurrentQueue[(Command, ActorRef)]
     private val selector = SelectorProvider.provider.openSelector
-    private var stopped: Option[CountDownLatch] = None
+    private var stopped: CountDownLatch = _
 
     // stats fields
     private var startTime = 0L
@@ -129,7 +124,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
 
     override def run() {
       log.info("IoWorker thread '{}' started", Thread.currentThread.getName)
-      while (stopped.isEmpty) {
+      while (stopped == null) {
         if (commandQueue.isEmpty) {
           select()
         } else {
@@ -140,7 +135,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
       }
       closeSelector()
       log.info("IoWorker thread '{}' stopped", Thread.currentThread.getName)
-      stopped.get.countDown()
+      stopped.countDown()
     }
 
     def select() {
@@ -273,7 +268,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
           case x: Bind => bind(x, sender)
           case x: Unbind => unbind(x, sender)
           case GetStats => deliverStats(sender)
-          case Stop(latch) => stopped = Some(latch)
+          case Stop(latch) => stopped = latch
 
           case x => log.warning("Received unknown command '{}', ignoring ...", x)
         }
