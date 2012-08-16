@@ -107,7 +107,7 @@ class SslTlsSupportSpec extends Specification {
   }
 
   class SslClientActor extends IoClient(ioWorker) with ConnectionActors {
-    protected def pipeline = frontEnd ~> SslTlsSupport(ClientSSLEngineProvider.default, log)
+    protected def pipeline = frontEnd >> SslTlsSupport(ClientSSLEngineProvider.default, log)
     def frontEnd = new DoublePipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) = new Pipelines {
         var receiver: ActorRef = _
@@ -124,7 +124,7 @@ class SslTlsSupportSpec extends Specification {
   }
 
   class SslServerActor extends IoServer(ioWorker) with ConnectionActors {
-    protected def pipeline = frontEnd ~> SslTlsSupport(ServerSSLEngineProvider.default, log)
+    protected def pipeline = frontEnd >> SslTlsSupport(ServerSSLEngineProvider.default, log)
     def frontEnd = new EventPipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): EPL = {
         case IoServer.Received(_, buf) =>

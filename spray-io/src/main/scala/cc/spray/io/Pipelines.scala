@@ -58,7 +58,7 @@ sealed trait PipelineStage {
 
   def buildPipelines(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines
 
-  def ~> (right: PipelineStage): PipelineStage
+  def >> (right: PipelineStage): PipelineStage
 }
 
 object PipelineStage {
@@ -72,7 +72,7 @@ trait CommandPipelineStage extends PipelineStage { left =>
   def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
     Pipelines(build(ctx, cpl, epl), epl)
 
-  def ~> (right: PipelineStage): PipelineStage = {
+  def >> (right: PipelineStage): PipelineStage = {
     right match {
       case x: CommandPipelineStage => new CommandPipelineStage {
         def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
@@ -99,7 +99,7 @@ trait EventPipelineStage extends PipelineStage { left =>
   def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
     Pipelines(cpl, build(ctx, cpl, epl))
 
-  def ~> (right: PipelineStage): PipelineStage = {
+  def >> (right: PipelineStage): PipelineStage = {
     right match {
       case x: CommandPipelineStage => new DoublePipelineStage {
         def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
@@ -128,7 +128,7 @@ trait DoublePipelineStage extends PipelineStage { left =>
   def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
     build(ctx, cpl, epl)
 
-  def ~> (right: PipelineStage): PipelineStage = {
+  def >> (right: PipelineStage): PipelineStage = {
     right match {
       case x: CommandPipelineStage => new DoublePipelineStage {
         def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = {
@@ -169,5 +169,5 @@ object EmptyPipelineStage extends PipelineStage {
   def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
     build(ctx, cpl, epl)
 
-  def ~> (right: PipelineStage) = right
+  def >> (right: PipelineStage) = right
 }
