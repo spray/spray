@@ -40,9 +40,14 @@ private[parser] trait AuthorizationHeader {
     oneOrMore(anyOf(Base64.rfc2045.getAlphabet) | ch('='))
   }
   
-  def OtherCredentialDef = rule (
-    AuthScheme ~ zeroOrMore(AuthParam, separator = ListSep)
-        ~~> ((scheme, params) => OtherHttpCredentials(scheme, params.toMap))
+  def OtherCredentialDef = rule {
+    AuthScheme ~ OtherCredentialParams ~~> OtherHttpCredentials
+  }
+
+  def OtherCredentialParams = rule (
+      oneOrMore(AuthParam, separator = ListSep) ~~> (_.toMap)
+    | (Token | QuotedString) ~~> (param => Map("" -> param))
+    | push(Map.empty[String, String])
   )
 
 }
