@@ -152,9 +152,10 @@ class HttpConduit(httpClient: ActorRef,
 
       def deliverResponse(request: HttpRequest, response: HttpResponse, result: Promise[HttpResponse]) {
         import HttpProtocols._
+        import HttpHeaders._
         def closeExpected = response.protocol match {
-          case `HTTP/1.0` => !response.headers.exists(_ matches { case HttpHeaders.Connection(Seq("Keep-Alive")) => })
-          case `HTTP/1.1` => response.headers.exists(_ matches { case HttpHeaders.Connection(Seq("close")) => })
+          case `HTTP/1.0` => !response.headers.exists(_ matches { case x: Connection if x.hasKeepAlive => })
+          case `HTTP/1.1` => response.headers.exists(_ matches { case x: Connection if x.hasClose => })
         }
         log.debug("Dispatching {} response to {}", response.status.value, requestString(request))
         result.success(response)

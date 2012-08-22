@@ -85,6 +85,8 @@ object HttpHeaders {
   object `Connection` { def apply(first: String, more: String*): `Connection` = apply(first +: more) }
   case class `Connection`(connectionTokens: Seq[String]) extends HttpHeader {
     def value = connectionTokens.mkString(", ")
+    def hasClose = connectionTokens.exists(_.toLowerCase == "close")
+    def hasKeepAlive = connectionTokens.exists(_.toLowerCase == "keep-alive")
   }
 
   // see http://tools.ietf.org/html/rfc2183
