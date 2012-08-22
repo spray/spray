@@ -106,7 +106,7 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
       case StatusLine(_, status, _, hr) if hr || (100 < status && status <= 199 && status > 100) || status == 204 || status == 304 =>
         CompleteMessageState(messageLine, headers, cHeader)
 
-      case _ if teHeader.isDefined && teHeader.get != "identity" =>
+      case _ if teHeader.isDefined && teHeader.get.toLowerCase != "identity" =>
         ChunkedStartState(messageLine, headers, cHeader, ctHeader)
 
       case _ if clHeader.isDefined => clHeader.get match {
@@ -118,7 +118,7 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
 
       case _: RequestLine => CompleteMessageState(messageLine, headers, cHeader, ctHeader)
 
-      case x: StatusLine if cHeader.isDefined && cHeader.get == "close" || cHeader.isEmpty && x.protocol == `HTTP/1.0` =>
+      case x: StatusLine if cHeader.isDefined && cHeader.get.toLowerCase == "close" || cHeader.isEmpty && x.protocol == `HTTP/1.0` =>
         new ToCloseBodyParser(settings, messageLine, headers, cHeader, ctHeader)
 
       case _ => ErrorState("Content-Length header or chunked transfer encoding required", 411)
