@@ -55,6 +55,12 @@ class MarshallingDirectivesSpec extends RoutingSpec {
           "Expected 'text/xml' or 'text/html' or 'application/xhtml+xml'")
       }
     }
+    "cancel UnsupportedRequestContentTypeRejections if a subsequent `contentAs` succeeds" in {
+      Put("/", HttpBody(`text/plain`, "yeah")) ~> {
+        entity(as[NodeSeq]) { _ => completeOk } ~
+        entity(as[String]) { _ => validate(false, "Problem") { completeOk } }
+      } ~> check { rejection === ValidationRejection("Problem") }
+    }
     "extract an Option[T] from the requests HttpContent using the in-scope Unmarshaller" in {
       Put("/", <p>cool</p>) ~> {
         entity(as[Option[NodeSeq]]) { echoComplete }
