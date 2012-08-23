@@ -34,7 +34,7 @@ private[spray] trait MarshallingDirectives extends DefaultMarshallers with Defau
       case Right(a) => Pass.withTransform(a) {
         _.cancelRejections {
           case RequestEntityExpectedRejection => true
-          case _: UnsupportedContentType => true
+          case _: UnsupportedRequestContentTypeRejection => true
           case _ => false
         }
       }

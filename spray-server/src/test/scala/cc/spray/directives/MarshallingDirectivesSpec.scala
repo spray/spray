@@ -59,6 +59,12 @@ class MarshallingDirectivesSpec extends AbstractSprayTest {
         content(as[NodeSeq]) { _ => completeWith(Ok) }
       }.rejections mustEqual Set(UnsupportedRequestContentTypeRejection("Expected 'text/xml' or 'text/html' or 'application/xhtml+xml'"))
     }
+    "cancel UnsupportedRequestContentTypeRejections if a subsequent `contentAs` succeeds" in {
+      test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/plain`), "yeah")))) {
+        content(as[NodeSeq]) { _ => completeWith(Ok) } ~
+        content(as[String]) { _ => validate(false, "Problem") { completeWith(Ok) } }
+      }.rejections mustEqual Set(ValidationRejection("Problem"))
+    }
     "extract an Option[A] from the requests HttpContent using the in-scope Unmarshaller" in {
       test(HttpRequest(PUT, content = Some(HttpContent(ContentType(`text/xml`), "<p>cool</p>")))) {
         content(as[Option[NodeSeq]]) { optXml => completeWith(optXml.get) }
