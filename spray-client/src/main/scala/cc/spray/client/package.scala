@@ -14,7 +14,19 @@
  * limitations under the License.
  */
 
-package cc.spray.client
+package cc.spray
+
+import akka.dispatch.Future
+import cc.spray.http._
 
 
-class PipelineException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
+package object client {
+
+  type SendReceive = HttpRequest => Future[HttpResponse]
+
+}
+
+package client {
+  class PipelineException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
+  class UnsuccessfulResponseException(val responseStatus: StatusCode) extends RuntimeException
+}
