@@ -16,19 +16,19 @@
 
 package cc.spray.http
 
-class HttpMethod private[http] (val value: String) {
+class HttpMethod private[http] (val value: String, val isSafe: Boolean, val isIdempotent: Boolean) {
   override def toString = value
-  
+
   HttpMethods.register(this, value)
 }
 
 object HttpMethods extends ObjectRegistry[String, HttpMethod] {
-  val DELETE  = new HttpMethod("DELETE")
-  val GET     = new HttpMethod("GET")
-  val HEAD    = new HttpMethod("HEAD")
-  val OPTIONS = new HttpMethod("OPTIONS")
-  val PATCH   = new HttpMethod("PATCH")
-  val POST    = new HttpMethod("POST")
-  val PUT     = new HttpMethod("PUT")
-  val TRACE   = new HttpMethod("TRACE")
+  val DELETE  = new HttpMethod("DELETE" , isSafe = false, isIdempotent = true)
+  val GET     = new HttpMethod("GET"    , isSafe = true , isIdempotent = true)
+  val HEAD    = new HttpMethod("HEAD"   , isSafe = true , isIdempotent = true)
+  val OPTIONS = new HttpMethod("OPTIONS", isSafe = false, isIdempotent = true)
+  val PATCH   = new HttpMethod("PATCH"  , isSafe = false, isIdempotent = false)
+  val POST    = new HttpMethod("POST"   , isSafe = false, isIdempotent = false)
+  val PUT     = new HttpMethod("PUT"    , isSafe = false, isIdempotent = true)
+  val TRACE   = new HttpMethod("TRACE"  , isSafe = false, isIdempotent = true)
 }

@@ -84,6 +84,8 @@ object HttpHeaders {
     def name = "Connection"
     def lowercaseName = "connection"
     def value = connectionTokens.mkString(", ")
+    def hasClose = connectionTokens.exists(_.toLowerCase == "close")
+    def hasKeepAlive = connectionTokens.exists(_.toLowerCase == "keep-alive")
   }
 
   // see http://tools.ietf.org/html/rfc2183

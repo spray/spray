@@ -63,13 +63,15 @@ case class HttpBody(contentType: ContentType, buffer: Array[Byte]) extends HttpE
 }
 
 object HttpBody {
-  def apply(contentType: ContentType, string: String) =
+  def apply(contentType: ContentType, string: String): HttpBody =
     new HttpBody(contentType, string.getBytes(contentType.charset.nioCharset))
+  def apply(body: String): HttpBody =
+    HttpBody(ContentType.`text/plain`, body)
 }
 
 object HttpEntity {
   implicit def apply(string: String): HttpEntity =
-    if (string.isEmpty) EmptyEntity else HttpBody(ContentType.`text/plain`, string)
+    if (string.isEmpty) EmptyEntity else HttpBody(string)
 
   implicit def apply(buffer: Array[Byte]): HttpEntity =
     if (buffer.length == 0) EmptyEntity else HttpBody(ContentType.`application/octet-stream`, buffer)

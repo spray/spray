@@ -247,6 +247,8 @@ final class HttpRequest private(
     }
   }
 
+  def canBeRetried = method.isIdempotent
+
   def withHeaders(headers: List[HttpHeader]) = if (headers eq this.headers) this else copy(headers = headers)
   def withEntity(entity: HttpEntity) = if (entity eq this.entity) this else copy(entity = entity)
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) =
