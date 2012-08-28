@@ -1,8 +1,8 @@
 package cc.spray.can.example
 
+import akka.actor.{Props, ActorSystem}
 import cc.spray.io.IoWorker
 import cc.spray.can.client.{HttpDialog, HttpClient}
-import akka.actor.{Props, ActorSystem}
 import cc.spray.http.HttpRequest
 
 
@@ -28,23 +28,25 @@ object SimpleExample extends App {
       .end
 
   // "hook in" our continuation
-  responseF.onComplete { result =>
-    result match {
-      case Right(response) =>
-        log.info(
-          """|Result from host:
-             |status : {}
-             |headers: {}
-             |body   : {}""".stripMargin,
-          response.status, response.headers.mkString("\n  ", "\n  ", ""), response.entity.asString
-        )
-      case Left(error) =>
-        log.error("Could not get response due to {}", error)
-    }
+  responseF onComplete {
+    case Right(response) =>
+      log.info(
+        """|Result from host:
+           |status : {}
+           |headers: {}
+           |body   : {}""".stripMargin,
+        response.status, response.headers.mkString("\n  ", "\n  ", ""), response.entity.asString
+      )
+      system.shutdown()
 
-    log.info("Shutting down...")
-    // always cleanup
-    system.shutdown()
+    case Left(error) =>
+      log.error("Could not get response due to {}", error)
+      system.shutdown()
+  }
+
+  // finally we drop the main thread but hook the shutdown of
+  // our IoWorker into the shutdown of the applications ActorSystem
+  system.registerOnTermination {
     ioWorker.stop()
   }
 }

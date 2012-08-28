@@ -1,9 +1,9 @@
 package cc.spray.can.example
 
-import cc.spray.can.client.{HttpDialog, HttpClient}
-import cc.spray.io.IoWorker
 import akka.dispatch.Future
 import akka.actor.{ActorSystem, Props}
+import cc.spray.io.IoWorker
+import cc.spray.can.client.{HttpDialog, HttpClient}
 import cc.spray.http.{HttpResponse, HttpRequest}
 
 
@@ -35,17 +35,23 @@ object GoogleQueryExample extends App {
     .onSuccess(printResult andThen secondRun)
     .onFailure(printError andThen shutdown)
 
-  def secondRun: PartialFunction[Any, Unit] = {
-    case _ =>
-      log.info("Running google queries as separate requests (in parallel) ...")
-      timed(Future.sequence(requests.map(r => HttpDialog(httpClient, "www.google.com").send(r).end)))
-        .onSuccess(printResult andThen shutdown)
-        .onFailure(printError andThen shutdown)
+  // finally we drop the main thread but hook the shutdown of
+  // our IoWorker into the shutdown of the applications ActorSystem
+  system.registerOnTermination {
+    ioWorker.stop()
+  }
+
+  def secondRun: PartialFunction[Any, Unit] = { case _ =>
+    log.info("Running google queries as separate requests (in parallel) ...")
+    def httpDialog(r: HttpRequest) = HttpDialog(httpClient, "www.google.com").send(r).end
+    timed(Future.sequence(requests.map(httpDialog)))
+      .onSuccess(printResult andThen shutdown)
+      .onFailure(printError andThen shutdown)
   }
 
   def printResult: PartialFunction[(Seq[HttpResponse], Long), Unit] = {
     case (responses, time) =>
-      log.info(responses.map(_.entity.asString.length).mkString("Result bytes: ", ", ", "."))
+      log.info(responses.map(_.entity.buffer.length).mkString("Result bytes: ", ", ", "."))
       val rate = queries.size * 1000 / time
       log.info("Completed: {} requests in {} ms at a rate of  {} req/sec\n", queries.size, time, rate)
   }
@@ -54,10 +60,8 @@ object GoogleQueryExample extends App {
     case e: Exception => log.error("Error: {}", e)
   }
 
-  def shutdown: PartialFunction[Any, Unit] = {
-    case _ =>
-      system.shutdown()
-      ioWorker.stop()
+  def shutdown: PartialFunction[Any, Unit] = { case _ =>
+    system.shutdown()
   }
 
   def timed[T](block: => Future[T]) = {

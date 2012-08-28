@@ -1,15 +1,14 @@
 package cc.spray.can.example
 
+import com.typesafe.config.ConfigFactory
+import akka.actor.{Props, ActorSystem}
 import cc.spray.io.IoWorker
 import cc.spray.can.client.{HttpDialog, HttpClient}
-import akka.actor.{Props, ActorSystem}
-import com.typesafe.config.ConfigFactory
 import cc.spray.http.HttpRequest
 
 
 object HttpsExample extends App {
   implicit val system = ActorSystem()
-
   def log = system.log
 
   // every spray-can HttpClient (and HttpServer) needs an IoWorker for low-level network IO
@@ -30,26 +29,28 @@ object HttpsExample extends App {
       .end
 
   // "hook in" our continuation
-  responseF.onComplete {
-    result =>
-      result match {
-        case Right(response) =>
-          log.info(
-            """|Result from host:
-               |status : {}
-               |headers: {}
-               |body   : {} bytes""".stripMargin,
-            response.status,
-            response.headers.mkString("\n  ", "\n  ", ""),
-            response.entity.buffer.length
-          )
-        case Left(error) =>
-          log.error("Could not get response due to {}", error)
-      }
-
-      log.info("Shutting down...")
-      // always cleanup
+  responseF onComplete {
+    case Right(response) =>
+      log.info(
+        """|Result from host:
+           |status : {}
+           |headers: {}
+           |body   : {} bytes""".stripMargin,
+        response.status,
+        response.headers.mkString("\n  ", "\n  ", ""),
+        response.entity.buffer.length
+      )
       system.shutdown()
-      ioWorker.stop()
+
+    case Left(error) =>
+      log.error("Could not get response due to {}", error)
+      system.shutdown()
   }
+
+  // finally we drop the main thread but hook the shutdown of
+  // our IoWorker into the shutdown of the applications ActorSystem
+  system.registerOnTermination {
+    ioWorker.stop()
+  }
+
 }
