@@ -17,15 +17,15 @@
 package cc.spray
 
 import java.nio.ByteBuffer
-import scala.collection.LinearSeq
-import scala.util.matching.Regex
-import akka.util.NonFatal
-import akka.dispatch.Future
-import akka.actor.{ActorRefFactory, ActorSystem}
-import annotation.tailrec
-import util.pimps._
 import java.io.{InputStream, File}
 import java.nio.charset.Charset
+import scala.collection.LinearSeq
+import scala.util.matching.Regex
+import annotation.tailrec
+import akka.util.NonFatal
+import akka.dispatch.Future
+import akka.actor._
+import util.pimps._
 
 
 package object util {
@@ -51,6 +51,21 @@ package object util {
 
   def tryOrElse[A, B >: A](body: => A, onError: Throwable => B): B =
     try body catch { case NonFatal(e) => onError(e) }
+
+  private[this] var eventStreamLogger: ActorRef = _
+  def logEventStream(channel: Class[_])(implicit system: ActorSystem) {
+    synchronized {
+      if (eventStreamLogger == null) {
+        eventStreamLogger = system.actorOf(Props(new Actor with ActorLogging {
+          def receive = { case x => log.debug(x.toString) }
+        }), name = "event-stream-logger")
+      }
+    }
+    system.eventStream.subscribe(eventStreamLogger, channel)
+  }
+  def logEventStreamOf[T](implicit classManifest: ClassManifest[T], system: ActorSystem) {
+    logEventStream(classManifest.erasure)
+  }
 
   // implicits
   implicit def pimpActorSystem(system: ActorSystem)     :PimpedActorSystem     = new PimpedActorSystem(system)
