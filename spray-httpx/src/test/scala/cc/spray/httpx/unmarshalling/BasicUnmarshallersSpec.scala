@@ -27,13 +27,13 @@ class BasicUnmarshallersSpec extends Specification {
   
   "The StringUnmarshaller" should {
     "decode `text/plain` content in ISO-8859-1 to Strings" in {
-      HttpEntity("Hällö").as[String] === Right("Hällö")
+      HttpBody("Hällö").as[String] === Right("Hällö")
     }
   }
 
   "The CharArrayUnmarshaller" should {
     "decode `text/plain` content in ISO-8859-1 to char arrays" in {
-      HttpEntity("Hällö").as[Array[Char]].right.get.mkString === "Hällö"
+      HttpBody("Hällö").as[Array[Char]].right.get.mkString === "Hällö"
     }
   }
 

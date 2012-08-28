@@ -21,8 +21,8 @@ import cc.spray.http._
 import HttpMethods._
 import HttpHeaders._
 
-class RequestBuildingSpec extends Specification {
-  import RequestBuilding._
+
+class RequestBuildingSpec extends Specification with RequestBuilding {
 
   "The RequestBuilding trait" should {
     "construct simple requests" >> {

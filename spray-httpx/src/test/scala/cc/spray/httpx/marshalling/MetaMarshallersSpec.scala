@@ -26,7 +26,7 @@ class MetaMarshallersSpec extends Specification {
   "The eitherMarshaller" should {
     "properly marshal an Either instance" in {
       type MyEither = Either[Throwable, String]
-      marshal[MyEither](Right("Yes")) === Right(HttpEntity("Yes"))
+      marshal[MyEither](Right("Yes")) === Right(HttpBody("Yes"))
       val exception = HttpException(Locked, "Naa!")
       marshal[MyEither](Left(exception)) === Left(exception)
     }

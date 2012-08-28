@@ -16,6 +16,7 @@
 
 package cc.spray.httpx
 
+import akka.dispatch.Future
 import cc.spray.httpx.unmarshalling._
 import cc.spray.httpx.encoding.Decoder
 import cc.spray.http._
@@ -36,14 +37,31 @@ trait ResponseTransformation {
     else throw new UnsuccessfulResponseException(response.status)
   }
 
-  implicit def concatResponseTransformers(f: ResponseTransformer) = new ConcatenatedResponseTransformer(f)
-  class ConcatenatedResponseTransformer(f: ResponseTransformer) extends ResponseTransformer {
-    def apply(response: HttpResponse) = f(response)
-    def ~> (g: ResponseTransformer) = new ConcatenatedResponseTransformer(g compose f)
+  implicit def pimpWithResponseTransformation[A, B](f: A => B) = new PimpedResponseTransformer(f)
+  class PimpedResponseTransformer[A, B](f: A => B) extends (A => B) {
+    def apply(input: A) = f(input)
+    def ~> [AA, BB, R](g: AA => BB)(implicit aux: TransformerAux[A, B, AA, BB, R]) =
+      new PimpedResponseTransformer[A, R](aux(f, g))
   }
 }
 
 object ResponseTransformation extends ResponseTransformation
+
+trait TransformerAux[A, B, AA, BB, R] {
+  def apply(f: A => B, g: AA => BB): A => R
+}
+
+object TransformerAux {
+  implicit def aux1[A, B, C] = new TransformerAux[A, B, B, C, C] {
+    def apply(f: A => B, g: B => C) = f andThen g
+  }
+  implicit def aux2[A, B, C] = new TransformerAux[A, Future[B], B, C, Future[C]] {
+    def apply(f: A => Future[B], g: B => C) = f(_).map(g)
+  }
+  implicit def aux3[A, B, C] = new TransformerAux[A, Future[B], B, Future[C], Future[C]] {
+    def apply(f: A => Future[B], g: B => Future[C]) = f(_).flatMap(g)
+  }
+} 
 
 class PipelineException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
 class UnsuccessfulResponseException(val responseStatus: StatusCode) extends RuntimeException

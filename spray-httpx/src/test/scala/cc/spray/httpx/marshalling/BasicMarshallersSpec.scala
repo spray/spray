@@ -25,13 +25,13 @@ class BasicMarshallersSpec extends Specification {
   
   "The StringMarshaller" should {
     "encode strings to `text/plain` content in ISO-8859-1 if the client accepts it" in {
-      marshal("Hällö") === Right(HttpEntity("Hällö"))
+      marshal("Hällö") === Right(HttpBody("Hällö"))
     }
   }
 
   "The CharArrayMarshaller" should {
     "encode char arrays to `text/plain` content in ISO-8859-1 if the client accepts it" in {
-      marshal("Hällö".toCharArray) === Right(HttpEntity("Hällö"))
+      marshal("Hällö".toCharArray) === Right(HttpBody("Hällö"))
     }
   }
 

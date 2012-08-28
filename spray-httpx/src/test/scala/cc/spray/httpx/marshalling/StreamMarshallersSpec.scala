@@ -28,7 +28,7 @@ class StreamMarshallersSpec extends Specification {
     "properly marshal a Stream instance" in {
       val stream = "abc" #:: "def" #:: "ghi" #:: "jkl" #:: Stream.empty
       val ctx = marshalCollecting(stream)
-      ctx.entity === Some(HttpEntity("abc"))
+      ctx.entity === Some(HttpBody("abc"))
       ctx.chunks.map(_.bodyAsString) === Seq("def", "ghi", "jkl")
       ctx.chunkedMessageEnd === Some(ChunkedMessageEnd())
     }

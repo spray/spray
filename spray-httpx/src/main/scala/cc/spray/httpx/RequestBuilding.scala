@@ -67,7 +67,7 @@ trait RequestBuilding {
 
   implicit def request2TransformableHttpRequest(request: HttpRequest) = new TransformableHttpRequest(request)
   class TransformableHttpRequest(request: HttpRequest) {
-    def ~> (f: RequestTransformer) = f(request)
+    def ~> [T](f: HttpRequest => T) = f(request)
     def ~> (header: HttpHeader) = addHeader(header)(request)
   }
 }
