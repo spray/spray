@@ -16,12 +16,12 @@
 
 package cc.spray.routing
 
-import akka.actor.{ActorRefFactory, ActorLogging, Actor}
+import akka.actor.{ActorRefFactory, Actor}
 import cc.spray.http.HttpRequest
 
 
 trait HttpService extends Directives {
-  this: Actor with ActorLogging =>
+  this: Actor =>
 
   implicit val settings = RoutingSettings()
 

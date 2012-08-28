@@ -96,7 +96,7 @@ object ExceptionHandlerMagnet {
  * before shutting itself down.
  */
 class SingleRequestServiceActor(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler)
-  extends Actor with HttpService with ActorLogging {
+  extends Actor with HttpService {
 
   val sealedRoute = sealRoute.apply(route)
 
