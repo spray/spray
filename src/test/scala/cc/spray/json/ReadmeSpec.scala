@@ -23,12 +23,12 @@ class ReadmeSpec extends Specification {
   "The Usage snippets" should {
     "behave as expected" in {
       import DefaultJsonProtocol._
-      
+
       val source = """{ "some": "JSON source" }"""
       val jsonAst = source.asJson
       jsonAst mustEqual JsObject("some" -> JsString("JSON source"))
-      
-      val json2 = jsonAst.prettyPrint
+
+      val json2 = jsonAst.formatPretty
       json2 mustEqual
               """{
                 |  "some": "JSON source"
@@ -48,7 +48,7 @@ class ReadmeSpec extends Specification {
         implicit val colorFormat = jsonFormat4(Color)
       }
       import MyJsonProtocol._
-      color.toJson.convertTo[Color] mustEqual color
+      color.toJson.as[Color] mustEqual color
     }
   }
 
@@ -60,39 +60,41 @@ class ReadmeSpec extends Specification {
             JsArray(JsString(c.name), JsNumber(c.red), JsNumber(c.green), JsNumber(c.blue))
 
           def read(value: JsValue) = value match {
-            case JsArray(JsString(name) :: JsNumber(red) :: JsNumber(green) :: JsNumber(blue) :: Nil) =>
-              new Color(name, red.toInt, green.toInt, blue.toInt)
+            case JsArray(Seq(JsString(name), JsNumber(red), JsNumber(green), JsNumber(blue))) =>
+              Validated(new Color(name, red.toInt, green.toInt, blue.toInt))
             case _ => deserializationError("Color expected")
           }
         }
       }
       import MyJsonProtocol._
-      color.toJson.convertTo[Color] mustEqual color
+
+      color.toJson.as[Color] mustEqual color
     }
   }
 
   "The non case class (object) example" should {
-    "behave as expected" in {
-      object MyJsonProtocol extends DefaultJsonProtocol {
-        implicit object ColorJsonFormat extends JsonFormat[Color] {
-          def write(c: Color) = JsObject(
-            "name" -> JsString(c.name),
-            "red" -> JsNumber(c.red),
-            "green" -> JsNumber(c.green),
-            "blue" -> JsNumber(c.blue)
-          )
-          def read(value: JsValue) = {
-            value.asJsObject.getFields("name", "red", "green", "blue") match {
-              case Seq(JsString(name), JsNumber(red), JsNumber(green), JsNumber(blue)) =>
-                new Color(name, red.toInt, green.toInt, blue.toInt)
-              case _ => throw new DeserializationException("Color expected")
+      "behave as expected" in {
+        object MyJsonProtocol extends DefaultJsonProtocol {
+          implicit object ColorJsonFormat extends JsonFormat[Color] {
+            def write(c: Color) = JsObject(
+              "name" -> JsString(c.name),
+              "red" -> JsNumber(c.red),
+              "green" -> JsNumber(c.green),
+              "blue" -> JsNumber(c.blue)
+            )
+            def read(json: JsValue) = {
+              for {
+                name: String <- json("name")
+                red: Int <- json("red")
+                green: Int <- json("green")
+                blue: Int <- json("blue")
+              } yield Color(name, red, green, blue)
             }
           }
         }
+        import MyJsonProtocol._
+        color.toJson.as[Color] mustEqual color
       }
-      import MyJsonProtocol._
-      color.toJson.convertTo[Color] mustEqual color
     }
-  }
-  
+
 }

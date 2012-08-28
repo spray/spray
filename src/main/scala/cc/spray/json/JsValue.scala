@@ -24,33 +24,36 @@ import collection.immutable.ListMap
 /**
   * The general type of a JSON AST node.
  */
-sealed abstract class JsValue {
-  override def toString = compactPrint
+sealed abstract class JsValue extends Dynamic {
+  override def toString = formatCompact
   def toString(printer: (JsValue => String)) = printer(this)
-  def compactPrint = CompactPrinter(this)
-  def prettyPrint = PrettyPrinter(this)
-  def convertTo[T :JsonReader]: T = jsonReader[T].read(this)
+  def formatCompact = CompactFormatter(this)
+  def formatPretty = PrettyFormatter(this)
 
-  /**
-   * Returns `this` if this JsValue is a JsObject, otherwise throws a DeserializationException with the given error msg.
-   */
-  def asJsObject(errorMsg: String = "JSON object expected"): JsObject = deserializationError(errorMsg)
+  def toValidated[T :JsonReader]: Validated[T] = jsonReader[T].read(this)
+  def toOption[T :JsonReader]: Option[T] = toValidated[T].toOption
+  def toEither[T :JsonReader]: Either[Throwable, T] = toValidated[T].toEither
+  def as[T :JsonReader]: T = toValidated[T].get
 
-  /**
-   * Returns `this` if this JsValue is a JsObject, otherwise throws a DeserializationException.
-   */
-  def asJsObject: JsObject = asJsObject()
+  def applyDynamic(key: String)(index: Int = -1): Validated[JsValue] =
+    if (index == -1) apply(key) else apply(key).flatMap(_.apply(index))
+  def apply(index: Int): Validated[JsValue] =
+    deserializationError("Expected JsArray but got " + getClass.getSimpleName)
+  def apply(key: String): Validated[JsValue] =
+    deserializationError("Expected JsObject but got " + getClass.getSimpleName)
 
-  @deprecated("Superceded by 'convertTo'", "1.1.0")
-  def fromJson[T :JsonReader]: T = convertTo
+  @deprecated("Superceded by 'as'", "1.1.0")
+  def fromJson[T :JsonReader]: T = as
 }
 
 /**
   * A JSON object.
  */
 case class JsObject(fields: Map[String, JsValue]) extends JsValue {
-  override def asJsObject(errorMsg: String) = this
-  def getFields(fieldNames: String*): Seq[JsValue] = fieldNames.flatMap(fields.get)
+  override def apply(key: String) = fields.get(key) match {
+    case Some(value) => Success(value)
+    case None => deserializationError("Member '" + key + "' not found")
+  }
 }
 object JsObject {
   // we use a ListMap in order to preserve the field order
@@ -61,7 +64,9 @@ object JsObject {
 /**
   * A JSON array.
  */
-case class JsArray(elements: List[JsValue]) extends JsValue
+case class JsArray(elements: collection.immutable.Seq[JsValue]) extends JsValue {
+  override def apply(index: Int) = Validated(elements(index))
+}
 object JsArray {
   def apply(elements: JsValue*) = new JsArray(elements.toList)
 }
@@ -70,7 +75,6 @@ object JsArray {
   * A JSON string.
  */
 case class JsString(value: String) extends JsValue
-
 object JsString {
   def apply(value: Symbol) = new JsString(value.name)
 }

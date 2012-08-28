@@ -20,8 +20,10 @@ package object json {
 
   type JsField = (String, JsValue)
 
-  def deserializationError(msg: String, cause: Throwable = null) = throw new DeserializationException(msg, cause)
-  def serializationError(msg: String) = throw new SerializationException(msg)
+  def deserializationError[T](msg: String, cause: Throwable = null): Validated[T] =
+    Failure(new DeserializationException(msg, cause))
+  def serializationError(msg: String) =
+    throw new SerializationException(msg)
 
   def jsonReader[T](implicit reader: JsonReader[T]) = reader
   def jsonWriter[T](implicit writer: JsonWriter[T]) = writer 

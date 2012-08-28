@@ -18,11 +18,11 @@ package cc.spray.json
 
 import org.specs2.mutable._
 
-class PrettyPrinterSpec extends Specification {
+class PrettyFormatterSpec extends Specification {
 
-  "The PrettyPrinter" should {
+  "The PrettyFormatter" should {
     "print a more complicated JsObject nicely aligned" in {
-      PrettyPrinter {
+      PrettyFormatter {
         JsonParser {
           """|{
              |  "simpleKey" : "some value",

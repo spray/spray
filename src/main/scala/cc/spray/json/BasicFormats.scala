@@ -22,106 +22,109 @@ package cc.spray.json
  */
 trait BasicFormats {
 
-  implicit object IntJsonFormat extends JsonFormat[Int] {
+  implicit lazy val IntJsonFormat: JsonFormat[Int] = new JsonFormat[Int] {
     def write(x: Int) = JsNumber(x)
     def read(value: JsValue) = value match {
-      case JsNumber(x) => x.intValue
+      case x: JsNumber => Success(x.value.intValue)
       case x => deserializationError("Expected Int as JsNumber, but got " + x)
     }
   }
 
-  implicit object LongJsonFormat extends JsonFormat[Long] {
+  implicit lazy val LongJsonFormat: JsonFormat[Long] = new JsonFormat[Long] {
     def write(x: Long) = JsNumber(x)
     def read(value: JsValue) = value match {
-      case JsNumber(x) => x.longValue
+      case x: JsNumber => Success(x.value.longValue)
       case x => deserializationError("Expected Long as JsNumber, but got " + x)
     }
   }
 
-  implicit object FloatJsonFormat extends JsonFormat[Float] {
+  implicit lazy val FloatJsonFormat: JsonFormat[Float] = new JsonFormat[Float] {
     def write(x: Float) = JsNumber(x)
     def read(value: JsValue) = value match {
-      case JsNumber(x) => x.floatValue
-      case JsNull      => Float.NaN
+      case x: JsNumber => Success(x.value.floatValue)
+      case JsNull      => Success(Float.NaN)
       case x => deserializationError("Expected Float as JsNumber, but got " + x)
     }
   }
 
-  implicit object DoubleJsonFormat extends JsonFormat[Double] {
+  implicit lazy val DoubleJsonFormat: JsonFormat[Double] = new JsonFormat[Double] {
     def write(x: Double) = JsNumber(x)
     def read(value: JsValue) = value match {
-      case JsNumber(x) => x.doubleValue
-      case JsNull      => Double.NaN
+      case x: JsNumber => Success(x.value.doubleValue)
+      case JsNull      => Success(Double.NaN)
       case x => deserializationError("Expected Double as JsNumber, but got " + x)
     }
   }
 
-  implicit object ByteJsonFormat extends JsonFormat[Byte] {
+  implicit lazy val ByteJsonFormat: JsonFormat[Byte] = new JsonFormat[Byte] {
     def write(x: Byte) = JsNumber(x)
     def read(value: JsValue) = value match {
-      case JsNumber(x) => x.byteValue
+      case x: JsNumber => Success(x.value.byteValue)
       case x => deserializationError("Expected Byte as JsNumber, but got " + x)
     }
   }
   
-  implicit object ShortJsonFormat extends JsonFormat[Short] {
+  implicit lazy val ShortJsonFormat: JsonFormat[Short] = new JsonFormat[Short] {
     def write(x: Short) = JsNumber(x)
     def read(value: JsValue) = value match {
-      case JsNumber(x) => x.shortValue
+      case x: JsNumber => Success(x.value.shortValue)
       case x => deserializationError("Expected Short as JsNumber, but got " + x)
     }
   }
 
-  implicit object BigDecimalJsonFormat extends JsonFormat[BigDecimal] {
+  implicit lazy val BigDecimalJsonFormat: JsonFormat[BigDecimal] = new JsonFormat[BigDecimal] {
     def write(x: BigDecimal) = JsNumber(x)
     def read(value: JsValue) = value match {
-      case JsNumber(x) => x
+      case x: JsNumber => Success(x.value)
       case x => deserializationError("Expected BigDecimal as JsNumber, but got " + x)
     }
   }
 
-  implicit object BigIntJsonFormat extends JsonFormat[BigInt] {
+  implicit lazy val BigIntJsonFormat: JsonFormat[BigInt] = new JsonFormat[BigInt] {
     def write(x: BigInt) = JsNumber(x)
     def read(value: JsValue) = value match {
-      case JsNumber(x) => x.toBigInt
+      case x: JsNumber => Success(x.value.toBigInt)
       case x => deserializationError("Expected BigInt as JsNumber, but got " + x)
     }
   }
 
-  implicit object UnitJsonFormat extends JsonFormat[Unit] {
+  implicit lazy val UnitJsonFormat: JsonFormat[Unit] = new JsonFormat[Unit] {
     def write(x: Unit) = JsNumber(1)
-    def read(value: JsValue) {}
+    def read(value: JsValue) = value match {
+      case x: JsNumber if x.value == 1 => Success(())
+      case x => deserializationError("Expected Unit as JsNumber(1), but got " + x)
+    }
   }
 
-  implicit object BooleanJsonFormat extends JsonFormat[Boolean] {
+  implicit lazy val BooleanJsonFormat: JsonFormat[Boolean] = new JsonFormat[Boolean] {
     def write(x: Boolean) = JsBoolean(x)
     def read(value: JsValue) = value match {
-      case JsTrue => true
-      case JsFalse => false
+      case JsTrue => Success(true)
+      case JsFalse => Success(false)
       case x => deserializationError("Expected JsBoolean, but got " + x)
     }
   }
 
-  implicit object CharJsonFormat extends JsonFormat[Char] {
+  implicit lazy val CharJsonFormat: JsonFormat[Char] = new JsonFormat[Char] {
     def write(x: Char) = JsString(String.valueOf(x))
     def read(value: JsValue) = value match {
-      case JsString(x) if x.length == 1 => x.charAt(0)
+      case x: JsString if x.value.length == 1 => Success(x.value.charAt(0))
       case x => deserializationError("Expected Char as single-character JsString, but got " + x)
     }
   }
   
-  implicit object StringJsonFormat extends JsonFormat[String] {
+  implicit lazy val StringJsonFormat: JsonFormat[String] = new JsonFormat[String] {
     def write(x: String) = JsString(x)
     def read(value: JsValue) = value match {
-      case JsString(x) => x
+      case x: JsString => Success(x.value)
       case x => deserializationError("Expected String as JsString, but got " + x)
     }
   }
   
-  implicit object SymbolJsonFormat extends JsonFormat[Symbol] {
+  implicit lazy val SymbolJsonFormat: JsonFormat[Symbol] = new JsonFormat[Symbol] {
     def write(x: Symbol) = JsString(x.name)
     def read(value: JsValue) = value match {
-      case JsString(x) => Symbol(x)
+      case x: JsString => Success(Symbol(x.value))
       case x => deserializationError("Expected Symbol as JsString, but got " + x)
     }
   }

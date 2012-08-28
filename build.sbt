@@ -16,7 +16,7 @@ licenses := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.
 
 scalaVersion := "2.9.2"
 
-scalacOptions := Seq("-deprecation", "-encoding", "utf8")
+scalacOptions := Seq("-deprecation", "-encoding", "utf8", "-Xexperimental")
 
 libraryDependencies ++= Seq(
   "org.parboiled" % "parboiled-scala" % "1.0.2" % "compile",
