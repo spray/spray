@@ -17,20 +17,18 @@
 package cc.spray.can.example
 
 import akka.pattern.ask
-import cc.spray.io.ConnectionClosedReason
-import cc.spray.can.server.HttpServer
 import akka.util.duration._
 import akka.actor._
+import cc.spray.io.ConnectionClosedReason
+import cc.spray.can.server.HttpServer
 import cc.spray.http._
 import HttpMethods._
 import MediaTypes._
 
 
 class TestService extends Actor with ActorLogging {
-  import HttpMethods._
 
-  protected def receive = {
-
+  def receive = {
     case HttpRequest(GET, "/", _, _, _) =>
       sender ! index
 
@@ -52,10 +50,7 @@ class TestService extends Actor with ActorLogging {
         "which triggers an actor restart")
       throw new RuntimeException("BOOM!")
 
-    case HttpRequest(GET, "/timeout", _, _, _) =>
-      log.info("Dropping request, triggering a timeout")
-
-    case HttpRequest(GET, "/timeout/timeout", _, _, _) =>
+    case HttpRequest(GET, uri, _, _, _) if uri.startsWith("/timeout") =>
       log.info("Dropping request, triggering a timeout")
 
     case HttpRequest(GET, "/stop", _, _, _) =>
@@ -64,13 +59,13 @@ class TestService extends Actor with ActorLogging {
 
     case _: HttpRequest => sender ! HttpResponse(status = 404, entity = "Unknown resource!")
 
-    case HttpServer.RequestTimeout(HttpRequest(_, "/timeout/timeout", _, _, _)) =>
+    case Timeout(HttpRequest(_, "/timeout/timeout", _, _, _)) =>
       log.info("Dropping RequestTimeout message")
 
-    case HttpServer.RequestTimeout(request) =>
+    case Timeout(HttpRequest(method, uri, _, _, _)) =>
       sender ! HttpResponse(
         status = 500,
-        entity = "The " + request.method + " request to '" + request.uri + "' has timed out..."
+        entity = "The " + method + " request to '" + uri + "' has timed out..."
       )
 
     case x: HttpServer.Closed =>
@@ -80,7 +75,7 @@ class TestService extends Actor with ActorLogging {
   ////////////// helpers //////////////
 
   lazy val index = HttpResponse(
-    entity = HttpEntity(`text/html`,
+    entity = HttpBody(`text/html`,
       <html>
         <body>
           <h1>Say hello to <i>spray-can</i>!</h1>
@@ -100,7 +95,7 @@ class TestService extends Actor with ActorLogging {
   )
 
   def statsPresentation(s: HttpServer.Stats) = HttpResponse(
-    entity = HttpEntity(`text/html`,
+    entity = HttpBody(`text/html`,
       <html>
         <body>
           <h1>HttpServer Stats</h1>
@@ -127,7 +122,7 @@ class TestService extends Actor with ActorLogging {
     peer ! ChunkedResponseStart(HttpResponse(entity = " " * 2048))
     val chunkGenerator = context.system.scheduler.schedule(100.millis, 100.millis, self, 'Tick)
 
-    protected def receive = {
+    def receive = {
       case 'Tick if count > 0 =>
         log.info("Sending response chunk ...")
         peer ! MessageChunk(DateTime.now.toIsoDateTimeString + ", ")

@@ -18,22 +18,22 @@ package cc.spray.can.example
 
 import java.security.{SecureRandom, KeyStore}
 import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
+import akka.actor._
 import cc.spray.io.IoWorker
 import cc.spray.io.pipelining.{ServerSSLEngineProvider, MessageHandlerDispatch}
 import cc.spray.can.server.HttpServer
-import akka.actor._
 
 
 object Main extends App {
   // we need an ActorSystem to host our application in
   val system = ActorSystem("SimpleHttpServer")
 
-  // the handler actor replies to incoming HttpRequests
-  val handler = system.actorOf(Props[TestService])
-
   // every spray-can HttpServer (and HttpClient) needs an IoWorker for low-level network IO
   // (but several servers and/or clients can share one)
   val ioWorker = new IoWorker(system).start()
+
+  // the handler actor replies to incoming HttpRequests
+  val handler = system.actorOf(Props[TestService])
 
   // create and start the spray-can HttpServer, telling it that we want requests to be
   // handled by our singleton handler
@@ -55,7 +55,7 @@ object Main extends App {
   /////////////// for SSL support (if enabled in application.conf) ////////////////
 
   // if there is no SSLContext in scope implicitly the HttpServer uses the default SSLContext,
-  // since we want non-default setting in this example we make a custom SSLContext available here
+  // since we want non-default settings in this example we make a custom SSLContext available here
   implicit def sslContext: SSLContext = {
     val keyStoreResource = "/ssl-test-keystore.jks"
     val password = ""
