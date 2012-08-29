@@ -26,7 +26,7 @@ import cc.spray.can.server.HttpServer
 
 object Main extends App {
   // we need an ActorSystem to host our application in
-  val system = ActorSystem("SimpleHttpServer")
+  val system = ActorSystem("simple-http-server")
 
   // every spray-can HttpServer (and HttpClient) needs an IoWorker for low-level network IO
   // (but several servers and/or clients can share one)

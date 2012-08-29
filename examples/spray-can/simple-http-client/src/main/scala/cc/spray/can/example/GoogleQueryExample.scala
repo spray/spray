@@ -8,7 +8,8 @@ import cc.spray.http.{HttpResponse, HttpRequest}
 
 
 object GoogleQueryExample extends App {
-  implicit val system = ActorSystem()
+  // we need an ActorSystem to host our application in
+    val system = ActorSystem("google-query-example")
   def log = system.log
 
   // every spray-can HttpClient (and HttpServer) needs an IoWorker for low-level network IO
