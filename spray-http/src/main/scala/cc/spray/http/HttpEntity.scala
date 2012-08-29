@@ -44,7 +44,7 @@ case class HttpBody(contentType: ContentType, buffer: Array[Byte]) extends HttpE
   def isEmpty: Boolean = false
   def map(f: (ContentType, Array[Byte]) => (ContentType, Array[Byte])): HttpEntity = {
     val (ct, buf) = f(contentType, buffer)
-    new HttpBody(ct, buf)
+    if (ct != contentType || (buf ne buffer)) new HttpBody(ct, buf) else this
   }
   def flatMap(f: (ContentType, Array[Byte]) => HttpEntity): HttpEntity = f(contentType, buffer)
   def foreach(f: (ContentType, Array[Byte]) => Unit) { f(contentType, buffer) }

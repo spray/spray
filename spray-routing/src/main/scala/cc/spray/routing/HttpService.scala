@@ -25,9 +25,6 @@ trait HttpService extends Directives {
 
   implicit val settings = RoutingSettings()
 
-  // all actors created by directives are created underneath the HttpService actor
-  implicit def actorRefFactory: ActorRefFactory = context
-
   def runRoute(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler): Receive = {
     val sealedRoute = sealRoute.apply(route);
     {

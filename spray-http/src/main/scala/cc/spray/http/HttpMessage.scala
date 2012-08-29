@@ -171,22 +171,22 @@ final class HttpRequest private(
   }
   override def toString = "HttpRequest(%s, %s, %s, %s, %s)" format (method, uri, headers, entity, protocol)
 
-  lazy val acceptedMediaRanges: List[MediaRange] = {
+  def acceptedMediaRanges: List[MediaRange] = {
     // TODO: sort by preference
     for (Accept(mediaRanges) <- headers; range <- mediaRanges) yield range
   }
 
-  lazy val acceptedCharsetRanges: List[HttpCharsetRange] = {
+  def acceptedCharsetRanges: List[HttpCharsetRange] = {
     // TODO: sort by preference
     for (`Accept-Charset`(charsetRanges) <- headers; range <- charsetRanges) yield range
   }
 
-  lazy val acceptedEncodingRanges: List[HttpEncodingRange] = {
+  def acceptedEncodingRanges: List[HttpEncodingRange] = {
     // TODO: sort by preference
     for (`Accept-Encoding`(encodingRanges) <- headers; range <- encodingRanges) yield range
   }
 
-  lazy val cookies: List[HttpCookie] = for (`Cookie`(cookies) <- headers; cookie <- cookies) yield cookie
+  def cookies: List[HttpCookie] = for (`Cookie`(cookies) <- headers; cookie <- cookies) yield cookie
 
   /**
    * Determines whether the given mediatype is accepted by the client.
@@ -194,7 +194,8 @@ final class HttpRequest private(
   def isMediaTypeAccepted(mediaType: MediaType) = {
     // according to the HTTP spec a client has to accept all mime types if no Accept header is sent with the request
     // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.1
-    acceptedMediaRanges.isEmpty || acceptedMediaRanges.exists(_.matches(mediaType))
+    val ranges = acceptedMediaRanges
+    ranges.isEmpty || ranges.exists(_.matches(mediaType))
   }
 
   /**
@@ -203,7 +204,8 @@ final class HttpRequest private(
   def isCharsetAccepted(charset: HttpCharset) = {
     // according to the HTTP spec a client has to accept all charsets if no Accept-Charset header is sent with the request
     // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.2
-    acceptedCharsetRanges.isEmpty || acceptedCharsetRanges.exists(_.matches(charset))
+    val ranges = acceptedCharsetRanges
+    ranges.isEmpty || ranges.exists(_.matches(charset))
   }
 
   /**
@@ -213,8 +215,8 @@ final class HttpRequest private(
     // according to the HTTP spec the server MAY assume that the client will accept any content coding if no
     // Accept-Encoding header is sent with the request (http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.3)
     // this is what we do here
-    acceptedEncodingRanges.isEmpty || encoding == HttpEncodings.identity ||
-      acceptedEncodingRanges.exists(_.matches(encoding))
+    val ranges = acceptedEncodingRanges
+    ranges.isEmpty || encoding == HttpEncodings.identity || ranges.exists(_.matches(encoding))
   }
 
   /**
