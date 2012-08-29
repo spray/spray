@@ -1,10 +1,14 @@
 import sbt._
+import java.net.URL
 
 object Dependencies {
 
   val resolutionRepos = Seq(
     "glassfish repo"  at "http://download.java.net/maven/glassfish/",
-    "spray repo"      at "http://repo.spray.cc/"
+    "spray repo"      at "http://repo.spray.cc/",
+    Resolver.url("sbt-plugin-releases",
+      new URL("http://scalasbt.artifactoryonline.com/scalasbt/sbt-plugin-releases/"))(
+        Resolver.ivyStylePatterns)
   )
 
   def compile   (deps: ModuleID*): Seq[ModuleID] = deps map (_ % "compile")
@@ -30,6 +34,6 @@ object Dependencies {
   val slf4j         = "org.slf4j"                               %   "slf4j-api"                   % "1.6.4"
   val specs2        = "org.specs2"                              %%  "specs2"                      % "1.11"
   val sprayJson     = "cc.spray"                                %%  "spray-json"                  % "1.1.1"
-  val twirlApi      = "cc.spray"                                %%  "twirl-api"                   % "0.5.2"
+  val twirlApi      = "cc.spray"                                %%  "twirl-api"                   % "0.5.4"
 
 }

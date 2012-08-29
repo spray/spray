@@ -55,7 +55,5 @@ object ContentType {
   val `application/octet-stream` = ContentType(MediaTypes.`application/octet-stream`)
 
   def apply(mediaType: MediaType, charset: HttpCharset): ContentType = apply(mediaType, Some(charset))
-  def apply(mediaType: MediaType): ContentType = apply(mediaType, None)
-  
-  implicit def fromMediaType(mediaType: MediaType): ContentType = apply(mediaType)
+  implicit def apply(mediaType: MediaType): ContentType = apply(mediaType, None)
 }

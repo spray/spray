@@ -67,7 +67,7 @@ object Build extends Build with DocSupport {
     .settings(moduleSettings: _*)
     .settings(libraryDependencies ++=
       compile(mimepull) ++
-      provided(akkaActor) ++
+      provided(akkaActor, sprayJson, liftJson, twirlApi) ++
       test(specs2)
     )
 
