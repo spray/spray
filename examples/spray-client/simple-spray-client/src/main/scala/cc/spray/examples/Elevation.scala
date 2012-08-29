@@ -1,7 +1,7 @@
-package cc.spray
-package examples.client
+package cc.spray.examples
 
-import json.{JsonFormat, DefaultJsonProtocol}
+import cc.spray.json.{JsonFormat, DefaultJsonProtocol}
+
 
 case class Elevation(location: Location, elevation: Double)
 case class Location(lat: Double, lng: Double)

@@ -1,4 +1,4 @@
-package cc.spray.examples.client
+package cc.spray.examples
 
 import akka.actor.{Props, ActorSystem}
 import cc.spray.io.IoWorker

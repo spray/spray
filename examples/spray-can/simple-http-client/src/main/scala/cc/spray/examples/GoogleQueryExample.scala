@@ -1,4 +1,4 @@
-package cc.spray.can.example
+package cc.spray.examples
 
 import akka.dispatch.Future
 import akka.actor.{ActorSystem, Props}
@@ -9,7 +9,8 @@ import cc.spray.http.{HttpResponse, HttpRequest}
 
 object GoogleQueryExample extends App {
   // we need an ActorSystem to host our application in
-    val system = ActorSystem("google-query-example")
+  val system = ActorSystem("google-query-example")
+
   def log = system.log
 
   // every spray-can HttpClient (and HttpServer) needs an IoWorker for low-level network IO
@@ -42,12 +43,13 @@ object GoogleQueryExample extends App {
     ioWorker.stop()
   }
 
-  def secondRun: PartialFunction[Any, Unit] = { case _ =>
-    log.info("Running google queries as separate requests (in parallel) ...")
-    def httpDialog(r: HttpRequest) = HttpDialog(httpClient, "www.google.com").send(r).end
-    timed(Future.sequence(requests.map(httpDialog)))
-      .onSuccess(printResult andThen shutdown)
-      .onFailure(printError andThen shutdown)
+  def secondRun: PartialFunction[Any, Unit] = {
+    case _ =>
+      log.info("Running google queries as separate requests (in parallel) ...")
+      def httpDialog(r: HttpRequest) = HttpDialog(httpClient, "www.google.com").send(r).end
+      timed(Future.sequence(requests.map(httpDialog)))
+        .onSuccess(printResult andThen shutdown)
+        .onFailure(printError andThen shutdown)
   }
 
   def printResult: PartialFunction[(Seq[HttpResponse], Long), Unit] = {
@@ -61,8 +63,9 @@ object GoogleQueryExample extends App {
     case e: Exception => log.error("Error: {}", e)
   }
 
-  def shutdown: PartialFunction[Any, Unit] = { case _ =>
-    system.shutdown()
+  def shutdown: PartialFunction[Any, Unit] = {
+    case _ =>
+      system.shutdown()
   }
 
   def timed[T](block: => Future[T]) = {
