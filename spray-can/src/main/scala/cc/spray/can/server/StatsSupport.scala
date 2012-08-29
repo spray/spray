@@ -21,7 +21,7 @@ import akka.util.Duration
 import java.util.concurrent.TimeUnit
 import cc.spray.http.{Timeout, HttpMessageStart}
 import cc.spray.can.rendering.HttpResponsePartRenderingContext
-import cc.spray.can.HttpEvent
+import cc.spray.can.server.RequestParsing.HttpMessageStartEvent
 import cc.spray.io._
 import cc.spray.io.pipelining._
 
@@ -103,7 +103,7 @@ object StatsSupport {
       }
 
       val eventPipeline: EPL = {
-        case ev@ HttpEvent(_: HttpMessageStart) =>
+        case ev: HttpMessageStartEvent =>
           requestStarts.incrementAndGet()
           adjustMaxOpenRequests()
           eventPL(ev)

@@ -25,18 +25,20 @@ import cc.spray.io._
 import cc.spray.http._
 
 
-class HttpServer(ioWorker: IoWorker, messageHandler: MessageHandlerDispatch.MessageHandler,
-                 settings: ServerSettings = ServerSettings())(implicit sslEngineProvider: ServerSSLEngineProvider)
-  extends IoServer(ioWorker) with ConnectionActors {
+class HttpServer(ioWorker: IoWorker,
+                 messageHandler: MessageHandlerDispatch.MessageHandler,
+                 settings: ServerSettings = ServerSettings())
+                (implicit sslEngineProvider: ServerSSLEngineProvider) extends IoServer(ioWorker) with ConnectionActors {
 
-  protected lazy val pipeline =
+  protected val statsHolder: Option[StatsHolder] =
+    if (settings.StatsSupport) Some(new StatsHolder) else None
+
+  protected val pipeline =
     HttpServer.pipeline(settings, messageHandler, timeoutResponse, statsHolder, log)
 
-  protected lazy val statsHolder = new StatsHolder
-
   override def receive = super.receive orElse {
-    case HttpServer.GetStats    => sender ! statsHolder.toStats
-    case HttpServer.ClearStats  => statsHolder.clear()
+    case HttpServer.GetStats    => statsHolder.foreach(holder => sender ! holder.toStats)
+    case HttpServer.ClearStats  => statsHolder.foreach(_.clear())
   }
 
   override protected def createConnectionActor(handle: Handle): IoConnectionActor = new IoConnectionActor(handle) {
@@ -159,14 +161,14 @@ object HttpServer {
   private[can] def pipeline(settings: ServerSettings,
                             messageHandler: MessageHandlerDispatch.MessageHandler,
                             timeoutResponse: HttpRequest => HttpResponse,
-                            statsHolder: => StatsHolder,
+                            statsHolder: Option[StatsHolder],
                             log: LoggingAdapter)
                            (implicit sslEngineProvider: ServerSSLEngineProvider): PipelineStage = {
     import settings.{StatsSupport => _, _}
     ServerFrontend(settings, messageHandler, timeoutResponse, log) >>
     (RequestChunkAggregationLimit > 0) ? RequestChunkAggregation(RequestChunkAggregationLimit.toInt) >>
     (PipeliningLimit > 0) ? PipeliningLimiter(settings.PipeliningLimit) >>
-    settings.StatsSupport ? StatsSupport(statsHolder) >>
+    settings.StatsSupport ? StatsSupport(statsHolder.get) >>
     RemoteAddressHeader ? RemoteAddressHeaderSupport() >>
     RequestParsing(ParserSettings, log) >>
     ResponseRendering(settings) >>
