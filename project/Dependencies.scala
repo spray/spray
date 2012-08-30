@@ -4,8 +4,9 @@ import java.net.URL
 object Dependencies {
 
   val resolutionRepos = Seq(
-    "glassfish repo"  at "http://download.java.net/maven/glassfish/",
-    "spray repo"      at "http://repo.spray.cc/",
+    "typesafe repo"  at "http://repo.typesafe.com/typesafe/releases/",
+    "glassfish repo" at "http://download.java.net/maven/glassfish/",
+    "spray repo"     at "http://repo.spray.cc/",
     Resolver.url("sbt-plugin-releases",
       new URL("http://scalasbt.artifactoryonline.com/scalasbt/sbt-plugin-releases/"))(
         Resolver.ivyStylePatterns)
@@ -17,9 +18,9 @@ object Dependencies {
   def runtime   (deps: ModuleID*): Seq[ModuleID] = deps map (_ % "runtime")
   def container (deps: ModuleID*): Seq[ModuleID] = deps map (_ % "container")
 
-  val akkaActor     = "com.typesafe.akka"                       %   "akka-actor"                  % "2.0.2"
-  val akkaSlf4j     = "com.typesafe.akka"                       %   "akka-slf4j"                  % "2.0.2"
-  val akkaTestKit   = "com.typesafe.akka"                       %   "akka-testkit"                % "2.0.2"
+  val akkaActor     = "com.typesafe.akka"                       %   "akka-actor"                  % "2.0.3"
+  val akkaSlf4j     = "com.typesafe.akka"                       %   "akka-slf4j"                  % "2.0.3"
+  val akkaTestKit   = "com.typesafe.akka"                       %   "akka-testkit"                % "2.0.3"
   val clHashMap     = "com.googlecode.concurrentlinkedhashmap"  %   "concurrentlinkedhashmap-lru" % "1.3.1"
   val jettyWebApp   = "org.eclipse.jetty"                       %   "jetty-webapp"                % "8.1.0.v20120127"
   val liftJson      = "net.liftweb"                             %   "lift-json_2.9.1"             % "2.4"
