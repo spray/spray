@@ -173,7 +173,7 @@ trait DocSupport {
 
     // We don't want to be able to save the settings that are applied herewith.
     // Just using an empty string works fine and in case the user calls `session save`, empty lines will be generated.
-    val newSession = session.appendSettings(append.map((_, "")))
+    val newSession = session.appendSettings(append.map((_, List(""))))
     BuiltinCommands.reapply(newSession, structure, state)
   }
 }
