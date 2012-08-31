@@ -47,8 +47,11 @@ trait ExecutionDirectives {
   def handleRejections(handler: RejectionHandler): Directive0 =
     mapRequestContext { ctx =>
       ctx.withRejectionHandling { rejections =>
-        if (handler.isDefinedAt(rejections)) handler(RejectionHandler.applyTransformations(rejections))
-        else ctx.reject(rejections: _*)
+        if (handler.isDefinedAt(rejections)) {
+          val filteredRejections = RejectionHandler.applyTransformations(rejections)
+          val responseForRejections = handler(filteredRejections)
+          ctx.complete(responseForRejections)
+        } else ctx.reject(rejections: _*)
       }
     }
 
@@ -97,8 +100,8 @@ object ExceptionHandlerMagnet {
  */
 class SingleRequestServiceActor(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler)
   extends Actor with HttpService {
-
-  val sealedRoute = sealRoute.apply(route)
+  def actorRefFactory = context
+  val sealedRoute = sealRoute(route)
 
   def receive = {
     case ctx: RequestContext =>
