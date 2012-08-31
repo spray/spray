@@ -18,6 +18,7 @@ package cc.spray.routing
 package directives
 
 import shapeless._
+import akka.actor.{ActorContext, ActorSystem, ActorRefFactory}
 import cc.spray.http._
 import cc.spray.util._
 import HttpHeaders._
@@ -113,6 +114,16 @@ trait MiscDirectives {
    * should be appropriate for most cases.
    */
   def hardFail(status: StatusCode, message: String = "") = throw HttpException(status, message)
+
+  /**
+   * Not a directive, but a helper function that provides access to the ActorSystem we are running in.
+   */
+  def actorSystem(implicit refFactory: ActorRefFactory): ActorSystem = {
+    refFactory match {
+      case x: ActorContext => x.system
+      case x: ActorSystem => x
+    }
+  }
 }
 
 object MiscDirectives extends MiscDirectives
