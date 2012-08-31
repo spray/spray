@@ -9,7 +9,7 @@ import cc.spray.http.HttpRequest
 
 object HttpsExample extends App {
   // we need an ActorSystem to host our application in
-  val system = ActorSystem("https-example")
+  implicit val system = ActorSystem("https-example")
   def log = system.log
 
   // every spray-can HttpClient (and HttpServer) needs an IoWorker for low-level network IO

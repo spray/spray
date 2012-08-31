@@ -9,7 +9,7 @@ import cc.spray.http.{HttpResponse, HttpRequest}
 
 object GoogleQueryExample extends App {
   // we need an ActorSystem to host our application in
-  val system = ActorSystem("google-query-example")
+  implicit val system = ActorSystem("google-query-example")
 
   def log = system.log
 
