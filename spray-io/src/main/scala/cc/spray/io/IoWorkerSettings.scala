@@ -37,6 +37,6 @@ class IoWorkerSettings(config: Config) {
 }
 
 object IoWorkerSettings {
-  implicit def apply(): IoWorkerSettings = apply(ConfigFactory.load())
+  def apply(): IoWorkerSettings = apply(ConfigFactory.load())
   implicit def apply(config: Config): IoWorkerSettings = new IoWorkerSettings(config)
 }

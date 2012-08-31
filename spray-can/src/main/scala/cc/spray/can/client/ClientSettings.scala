@@ -45,6 +45,6 @@ class ClientSettings(config: Config) {
 }
 
 object ClientSettings {
-  implicit def apply(): ClientSettings = apply(ConfigFactory.load())
+  def apply(): ClientSettings = apply(ConfigFactory.load())
   implicit def apply(config: Config): ClientSettings = new ClientSettings(config)
 }

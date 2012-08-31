@@ -31,6 +31,6 @@ class ConduitSettings(config: Config) {
 }
 
 object ConduitSettings {
-  implicit def apply(): ConduitSettings = apply(ConfigFactory.load())
+  def apply(): ConduitSettings = apply(ConfigFactory.load())
   implicit def apply(config: Config): ConduitSettings = new ConduitSettings(config)
 }
