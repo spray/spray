@@ -26,9 +26,9 @@ trait ConnectionActors extends IoPeer { ioPeer =>
   override protected def createConnectionHandle(theKey: Key, theAddress: InetSocketAddress, theCommander: ActorRef) = {
     new Handle {
       val key = theKey
-      val handler = context.actorOf(Props(createConnectionActor(this)))
       val remoteAddress = theAddress
       val commander = theCommander
+      val handler = context.actorOf(Props(createConnectionActor(this))) // must be initialized last
     }
   }
 

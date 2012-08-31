@@ -35,7 +35,7 @@ import cc.spray.http.HttpRequest
 class HttpClient(ioWorker: IoWorker, settings: ClientSettings = ClientSettings())
                 (implicit sslEngineProvider: ClientSSLEngineProvider) extends IoClient(ioWorker) with ConnectionActors {
 
-  protected lazy val pipeline: PipelineStage = HttpClient.pipeline(settings, log)
+  protected val pipeline: PipelineStage = HttpClient.pipeline(settings, log)
 
   override protected def createConnectionActor(handle: Handle): IoConnectionActor = new IoConnectionActor(handle) {
     override def receive = super.receive orElse {
