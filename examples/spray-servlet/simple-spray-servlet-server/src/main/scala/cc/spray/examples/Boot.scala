@@ -1,9 +1,10 @@
-package cc.spray.servlet.example
+package cc.spray.examples
 
 import akka.actor.{Props, ActorSystem}
+import cc.spray.servlet.WebBoot
 
 
-class Boot {
+class Boot extends WebBoot {
   // we need an ActorSystem to host our application in
   val system = ActorSystem("example")
 

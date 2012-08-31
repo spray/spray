@@ -1,16 +1,16 @@
-package cc.spray.servlet.example
+package cc.spray.examples
 
 import akka.util.duration._
 import akka.actor._
+import cc.spray.servlet.ServletError
 import cc.spray.http._
 import MediaTypes._
-import cc.spray.servlet.ServletError
+import HttpMethods._
 
 
 class TestService extends Actor with ActorLogging {
-  import HttpMethods._
 
-  protected def receive = {
+  def receive = {
 
     case HttpRequest(GET, "/", _, _, _) =>
       sender ! index
@@ -48,7 +48,7 @@ class TestService extends Actor with ActorLogging {
   ////////////// helpers //////////////
 
   lazy val index = HttpResponse(
-    entity = HttpEntity(`text/html`,
+    entity = HttpBody(`text/html`,
       <html>
         <body>
           <h1>Say hello to <i>spray-servlet</i>!</h1>

@@ -189,7 +189,7 @@ object Build extends Build with DocSupport {
       compile(akkaActor) ++
       test(specs2) ++
       runtime(akkaSlf4j, logback) ++
-      container(jettyWebApp)
+      container(jettyWebApp, servlet30)
     )
 
   lazy val markdownServer = Project("markdown-server", file("examples/spray-routing/markdown-server"))
@@ -198,7 +198,7 @@ object Build extends Build with DocSupport {
     .settings(libraryDependencies ++=
       compile(akkaActor, pegdown) ++
       test(specs2) ++
-      container(jettyWebApp)
+      container(jettyWebApp, servlet30)
     )
 
   lazy val simpleOnJetty = Project("simple-on-jetty", file("examples/spray-routing/simple-on-jetty"))
@@ -208,7 +208,7 @@ object Build extends Build with DocSupport {
       compile(akkaActor) ++
       test(specs2) ++
       runtime(akkaSlf4j, logback) ++
-      container(jettyWebApp)
+      container(jettyWebApp, servlet30)
     )
 
   lazy val simpleOnSprayCan = Project("simple-on-spray-can", file("examples/spray-routing/simple-on-spray-can"))
@@ -227,7 +227,7 @@ object Build extends Build with DocSupport {
       compile(akkaActor) ++
       test(specs2) ++
       runtime(akkaSlf4j, logback) ++
-      container(jettyWebApp)
+      container(jettyWebApp, servlet30)
     )
 
   lazy val sprayServletExamples = Project("spray-servlet-examples", file("examples/spray-servlet"))
@@ -242,6 +242,6 @@ object Build extends Build with DocSupport {
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
       runtime(akkaSlf4j, logback) ++
-      container(jettyWebApp)
+      container(jettyWebApp, servlet30)
     )
 }
