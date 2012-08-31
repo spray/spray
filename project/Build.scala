@@ -183,7 +183,7 @@ object Build extends Build with DocSupport {
     .settings(exampleSettings: _*)
 
   lazy val simpleOnJetty = Project("simple-on-jetty", file("examples/spray-routing/simple-on-jetty"))
-    .dependsOn(sprayHttp, sprayHttpx)
+    .dependsOn(sprayCaching, sprayServlet, sprayRouting, sprayTestKit % "test")
     .settings(jettyExampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
