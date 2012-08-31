@@ -17,17 +17,18 @@
 package cc.spray.httpx.marshalling
 
 import akka.actor._
+import cc.spray.util.model.{IOClosed, IOSent}
 import cc.spray.http._
 
 
 trait StreamMarshallers {
-  implicit def streamMarshaller[T](implicit marshaller: Marshaller[T], refFactory: ActorRefFactory,
-                                   chunkingCtx: ChunkingContext): Marshaller[Stream[T]] =
+  implicit def streamMarshaller[T](implicit marshaller: Marshaller[T],
+                                   refFactory: ActorRefFactory): Marshaller[Stream[T]] =
     new Marshaller[Stream[T]] {
       def apply(selector: ContentTypeSelector) = marshaller(selector).right.map { marshalling =>
         new Marshalling[Stream[T]] {
           def apply(value: Stream[T], ctx: MarshallingContext) {
-            refFactory.actorOf(Props(new StreamMarshallers.ChunkingActor(ctx, marshalling, chunkingCtx))) ! value
+            refFactory.actorOf(Props(new StreamMarshallers.ChunkingActor(ctx, marshalling))) ! value
           }
         }
       }
@@ -35,7 +36,7 @@ trait StreamMarshallers {
 }
 
 object StreamMarshallers extends StreamMarshallers {
-  class ChunkingActor[T](ctx: MarshallingContext, marshalling: Marshalling[T], chunkingCtx: ChunkingContext)
+  class ChunkingActor[T](ctx: MarshallingContext, marshalling: Marshalling[T])
     extends Actor {
     var connectionActor: ActorRef = _
     var remaining: Stream[_] = _
@@ -58,14 +59,14 @@ object StreamMarshallers extends StreamMarshallers {
         marshalling.runSafe(current.asInstanceOf[T], chunkingCtx)
         remaining = rest
 
-      case x if chunkingCtx.isAckSend(x) =>
+      case _: IOSent =>
         assert(remaining != null, "Unmatched AckSend")
         if (remaining.isEmpty) {
           connectionActor ! ChunkedMessageEnd()
           context.stop(self)
         } else self ! remaining
 
-      case x if chunkingCtx.isClosed(x) =>
+      case _: IOClosed =>
         context.stop(self)
     }
   }

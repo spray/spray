@@ -22,7 +22,7 @@ import java.util.concurrent.{TimeUnit, CountDownLatch}
 import akka.actor.{ActorRefFactory, ActorRef}
 import akka.spray.UnregisteredActorRef
 import cc.spray.routing.{Rejected, Rejection}
-import cc.spray.httpx.marshalling.ChunkingContext
+import cc.spray.util.model.DefaultIOSent
 import cc.spray.http._
 
 
@@ -55,10 +55,10 @@ trait RouteResultComponent {
             latch.countDown()
           case ChunkedResponseStart(x) =>
             saveResult(Right(x))
-            verifiedSender.tell(ChunkingContext.DefaultAckSend, this)
+            verifiedSender.tell(DefaultIOSent, this)
           case x: MessageChunk =>
             synchronized { _chunks += x }
-            verifiedSender.tell(ChunkingContext.DefaultAckSend, this)
+            verifiedSender.tell(DefaultIOSent, this)
           case ChunkedMessageEnd(extensions, trailer) =>
             synchronized { _closingExtensions = extensions; _trailer = trailer }
             latch.countDown()

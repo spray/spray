@@ -18,12 +18,17 @@ package cc.spray.httpx.marshalling
 
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.CountDownLatch
+import annotation.tailrec
 import akka.spray.UnregisteredActorRef
 import akka.actor.{ActorRefFactory, ActorRef}
+import cc.spray.util.model.DefaultIOSent
 import cc.spray.http._
-import annotation.tailrec
 
 
+/**
+ * A MarshallingContext serving as a marshalling receptacle, collecting the output of another Marshaller
+ * for subsequent postprocessing.
+ */
 class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = null) extends MarshallingContext {
   private val _entity = new AtomicReference[Option[HttpEntity]](None)
   private val _error = new AtomicReference[Option[Throwable]](None)
@@ -59,7 +64,7 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
               if (!_chunks.compareAndSet(current, _chunks.get :+ x)) updateChunks(_chunks.get)
             }
             updateChunks(_chunks.get)
-            sender.tell(ChunkingContext.DefaultAckSend, this)
+            sender.tell(DefaultIOSent, this)
 
           case x: ChunkedMessageEnd =>
             if (!_chunkedMessageEnd.compareAndSet(None, Some(x)))
@@ -68,7 +73,7 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
         }
       }
     }
-    sender.tell(ChunkingContext.DefaultAckSend, ref)
+    sender.tell(DefaultIOSent, ref)
     ref
   }
 }

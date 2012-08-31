@@ -14,20 +14,17 @@
  * limitations under the License.
  */
 
-package cc.spray.httpx.marshalling
+package cc.spray.util.model
 
+// generally available marker traits
+//
+// they are defined here in spray-util because spray-util is the only module that is
+// available to all other spray modules (except spray-http) and we can this way mark
+// spray-io events with these marker traits and identify the events in spray-httpx
+// (for example) without introducing a dependency on spray-io
+trait IOSent
+trait IOClosed
 
-trait ChunkingContext {
-  def isAckSend(msg: Any): Boolean
-  def isClosed(msg: Any): Boolean
-}
-
-object ChunkingContext {
-  case object DefaultAckSend
-  case object DefaultClosed
-
-  implicit val Default = new ChunkingContext {
-    def isAckSend(msg: Any) = msg == DefaultAckSend
-    def isClosed(msg: Any) = msg == DefaultClosed
-  }
-}
+// default implementations
+object DefaultIOSent extends IOSent
+object DefaultIOClosed extends IOClosed
