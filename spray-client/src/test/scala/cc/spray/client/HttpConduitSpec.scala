@@ -16,101 +16,119 @@
 
 package cc.spray.client
 
-import org.specs2.Specification
-import org.specs2.specification.Step
+import org.specs2.mutable.Specification
 import com.typesafe.config.ConfigFactory
 import akka.util.Duration
 import akka.dispatch.Future
 import akka.pattern.ask
+import akka.actor._
 import cc.spray.can.client.HttpClient
 import cc.spray.can.server.HttpServer
-import cc.spray.can.model.{HttpRequest => CHttpRequest, HttpResponse => CHttpResponse, HttpHeader => CHttpHeader}
-import cc.spray.http.{HttpResponse, HttpRequest}
 import cc.spray.io.IoWorker
-import cc.spray.io.pipelines.MessageHandlerDispatch._
+import cc.spray.io.pipelining.MessageHandlerDispatch.SingletonHandler
+import cc.spray.http._
 import cc.spray.util._
 import DispatchStrategies._
-import akka.actor.{Actor, Props, ActorSystem}
+import HttpHeaders._
+import util.Random
+
 
 class HttpConduitSpec extends Specification {
+  sequential
   implicit val system = ActorSystem()
 
-  def is =                                                                    sequential^
-  "An HttpConduit with max. 4 connections and NonPipelined strategy should"   ^
-    "properly deliver the result of a simple request"                         ! oneRequest(NonPipelined())^
-    "properly deliver the results of 100 requests"                            ! hundredRequests(NonPipelined())^
-                                                                              p^
-  "An HttpConduit with max. 4 connections and Pipelined strategy should"      ^
-    "properly deliver the result of a simple request"                         ! oneRequest(Pipelined)^
-    "properly deliver the results of 100 requests"                            ! hundredRequests(Pipelined)^
-                                                                              p^
-  "An HttpConduit should"                                                     ^
-    "retry requests whose sending has failed"                                 ! retryFailedSend^
-    "honor the pipelined strategy when retrying"                              ! retryPipelined^
-                                                                              Step(system.shutdown())
+  //logEventStreamOf[UnhandledMessage]
 
   val port = 17242
   val client = {
     val ioWorker = new IoWorker(system).start()
     system.registerOnTermination(ioWorker.stop())
-    def response = CHttpResponse(headers = List(CHttpHeader("Content-Type", "text/plain; charset=ISO-8859-1")))
+    def response(s: String) = HttpResponse(entity = HttpBody(s), headers = List(`Content-Type`(ContentType.`text/plain`)))
     val handler = system.actorOf(Props(
-      new Actor {
-        var counter = 0
+      new Actor with ActorLogging {
+        var dropNext = true
+        val random = new Random(39)
         def receive = {
-          case x: CHttpRequest if x.uri.startsWith("/reply1of3") && ({counter += 1; counter} % 3) != 0 => // drop
-          case CHttpRequest(method, uri, _, body, _) => sender ! response.withBody {
-            method + "|" + uri + (if (body.length == 0) "" else "|" + new String(body, "ASCII"))
-          }
-          case HttpServer.RequestTimeout(request) => sender ! response.withBody("TIMEOUT")
+          case x: HttpRequest if x.uri.startsWith("/drop1of2") && dropNext =>
+            log.debug("Dropping " + x)
+            dropNext = random.nextBoolean()
+          case x@ HttpRequest(method, uri, _, entity, _) =>
+            log.debug("Responding with " + x)
+            dropNext = random.nextBoolean()
+            sender ! response(method + "|" + uri + (if (entity.isEmpty) "" else "|" + entity.asString))
+          case Timeout(request) => sender ! response("TIMEOUT")
         }
       }
-    ))
-    system.actorOf(Props(new HttpServer(ioWorker, SingletonHandler(handler))))
+    ), "handler")
+    system.actorOf(Props(new HttpServer(ioWorker, SingletonHandler(handler))), "http-server")
       .ask(HttpServer.Bind("localhost", port))(Duration("1 s"))
       .await // block until the server is actually bound
-    system.actorOf(Props(new HttpClient(ioWorker)))
+    system.actorOf(Props(new HttpClient(ioWorker)), "http-client")
   }
 
-  def newConduit(strategy: DispatchStrategy, maxConnections: Int = 4) = new HttpConduit(client, "127.0.0.1", port,
-    config = ConfigFactory.parseString("spray.client.max-connections = " + maxConnections),
-    dispatchStrategy = strategy
-  )
+  "An HttpConduit with max. 4 connections and NonPipelined strategy" should {
+    "properly deliver the result of a simple request" in {
+      oneRequest(NonPipelined())
+    }
+    "properly deliver the results of 100 requests" in {
+      hundredRequests(NonPipelined())
+    }
+  }
+  "An HttpConduit with max. 4 connections and Pipelined strategy" should {
+    "properly deliver the result of a simple request" in {
+      oneRequest(Pipelined)
+    }
+    "properly deliver the results of 100 requests" in {
+      hundredRequests(Pipelined)
+    }
+  }
+
+  "An HttpConduit" should {
+    "retry GET requests whose sending has failed" in {
+      val pipeline = newConduitPipeline(NonPipelined())
+      def send = pipeline(HttpRequest(uri = "/drop1of2"))
+      val fut = send.flatMap(r1 => send.map(r2 => r1 -> r2))
+      val (r1, r2) = fut.await
+      r1.entity === r2.entity
+    }
+    "honor the pipelined strategy when retrying" in {
+      val pipeline = newConduitPipeline(Pipelined, maxConnections = 1)
+      val requests = List(
+        HttpRequest(uri = "/drop1of2/a"),
+        HttpRequest(uri = "/drop1of2/b"),
+        HttpRequest(uri = "/drop1of2/c")
+      )
+      val future = Future.traverse(requests)(pipeline).flatMap { responses1 =>
+        Future.traverse(requests)(pipeline).map(responses2 => responses1.zip(responses2))
+      }
+      future.await.map { case (a, b) => a.entity === b.entity }.reduceLeft(_ and _)
+    }
+  }
+
+  step(system.shutdown())
+
+  def newConduitPipeline(strategy: DispatchStrategy, maxConnections: Int = 4) = {
+    val conduit = system.actorOf(Props {
+      new HttpConduit(client, "127.0.0.1", port,
+        settings = ConfigFactory.parseString("spray.client.max-connections = " + maxConnections),
+        dispatchStrategy = strategy
+      )
+    })
+    HttpConduit.sendReceive(conduit)
+  }
 
   def oneRequest(strategy: DispatchStrategy) = {
-    newConduit(strategy).sendReceive(HttpRequest())
-      .await
-      .copy(headers = Nil) === HttpResponse(200, "GET|/")
+    val pipeline = newConduitPipeline(strategy)
+    pipeline(HttpRequest()).await.copy(headers = Nil) === HttpResponse(200, "GET|/")
   }
 
   def hundredRequests(strategy: DispatchStrategy) = {
-    val conduit = newConduit(strategy)
+    val pipeline = newConduitPipeline(strategy)
     val requests = Seq.tabulate(10)(index => HttpRequest(uri = "/" + index))
-    val responseFutures = requests.map(conduit.sendReceive(_))
+    val responseFutures = requests.map(pipeline)
     responseFutures.zipWithIndex.map { case (future, index) =>
       future.await.copy(headers = Nil) === HttpResponse(200, "GET|/" + index)
     }.reduceLeft(_ and _)
-  }
-
-  def retryFailedSend = {
-    val conduit = newConduit(NonPipelined())
-    def send = conduit.sendReceive(HttpRequest(uri = "/reply1of3"))
-    val fut = send.flatMap(r1 => send.map(r2 => r1 -> r2))
-    val (r1, r2) = fut.await
-    r1.content === r2.content
-  }
-
-  def retryPipelined = {
-    val conduit = newConduit(Pipelined, maxConnections = 1)
-    val requests = List(
-      HttpRequest(uri = "/reply1of3/a"),
-      HttpRequest(uri = "/reply1of3/b"),
-      HttpRequest(uri = "/reply1of3/c")
-    )
-    val future = Future.traverse(requests)(conduit.sendReceive).flatMap { responses1 =>
-      Future.traverse(requests)(conduit.sendReceive).map(responses2 => responses1.zip(responses2))
-    }
-    future.await.map { case (a, b) => a.content === b.content }.reduceLeft(_ and _)
   }
 
 }

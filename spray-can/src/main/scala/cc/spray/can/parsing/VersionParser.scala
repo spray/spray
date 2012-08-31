@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package parsing
+package cc.spray.can.parsing
 
-import model.{RequestLine, HttpMethod, HttpProtocol}
-import model.HttpProtocols._
+import cc.spray.can.RequestLine
+import cc.spray.http.{HttpMethod, HttpProtocol}
+import cc.spray.http.HttpProtocols._
+
 
 abstract class VersionParser extends CharacterParser {
   var pos = 0

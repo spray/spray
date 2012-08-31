@@ -16,6 +16,7 @@
 
 package cc.spray.can
 
+
 package object parsing {
 
   private[can] def isTokenChar(c: Char) = c match {

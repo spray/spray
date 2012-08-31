@@ -17,13 +17,11 @@
 package cc.spray.io
 
 import com.typesafe.config.{ConfigFactory, Config}
+import cc.spray.util.ConfigUtils
 
-class IoWorkerSettings(config: Config = ConfigFactory.load()) {
-  private[this] val c: Config = {
-    val c = config.withFallback(ConfigFactory.defaultReference())
-    c.checkValid(ConfigFactory.defaultReference(), "spray.io")
-    c.getConfig("spray.io")
-  }
+
+class IoWorkerSettings(config: Config) {
+  protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.io")
 
   val ThreadName           = c getString  "thread-name"
   val ReadBufferSize       = c getBytes   "read-buffer-size"
@@ -36,4 +34,9 @@ class IoWorkerSettings(config: Config = ConfigFactory.load()) {
   require(ReadBufferSize       > 0,  "read-buffer-size must be > 0")
   require(TcpReceiveBufferSize >= 0, "receive-buffer-size must be >= 0")
   require(TcpSendBufferSize    >= 0, "send-buffer-size must be >= 0")
+}
+
+object IoWorkerSettings {
+  def apply(): IoWorkerSettings = apply(ConfigFactory.load())
+  implicit def apply(config: Config): IoWorkerSettings = new IoWorkerSettings(config)
 }

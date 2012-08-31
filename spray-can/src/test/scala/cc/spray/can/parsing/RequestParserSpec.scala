@@ -14,39 +14,41 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package parsing
+package cc.spray.can.parsing
 
-import org.specs2.mutable.Specification
 import java.nio.ByteBuffer
-import model._
+import org.specs2.mutable.Specification
+import cc.spray.can.RequestLine
+import cc.spray.util._
+import cc.spray.http._
+import HttpHeaders._
 import HttpMethods._
 import HttpProtocols._
-import cc.spray.util.EOL
+
 
 class RequestParserSpec extends Specification {
 
   "The request parsing logic" should {
     "properly parse a request" in {
       "without headers and body" in {
-        parse() {
+        parse {
           """|GET / HTTP/1.0
              |
              |"""
-        } mustEqual (GET, "/", `HTTP/1.0`, Nil, None, "")
+        } === (GET, "/", `HTTP/1.0`, Nil, None, None, "")
       }
 
       "with one header" in {
-        parse() {
+        parse {
           """|GET / HTTP/1.1
              |Host: example.com
              |
              |"""
-        } mustEqual (GET, "/", `HTTP/1.1`, List(HttpHeader("host", "example.com")), None, "")
+        } === (GET, "/", `HTTP/1.1`, List(RawHeader("host", "example.com")), None, None, "")
       }
 
       "with 4 headers and a body" in {
-        parse() {
+        parse {
           """|POST /resource/yes HTTP/1.0
              |User-Agent: curl/7.19.7 xyz
              |Transfer-Encoding:identity
@@ -54,16 +56,16 @@ class RequestParserSpec extends Specification {
              |Content-length    : 17
              |
              |Shake your BOODY!"""
-        } mustEqual (POST, "/resource/yes", `HTTP/1.0`, List(
-          HttpHeader("content-length", "17"),
-          HttpHeader("connection", "close"),
-          HttpHeader("transfer-encoding", "identity"),
-          HttpHeader("user-agent", "curl/7.19.7 xyz")
-        ), Some("close"), "Shake your BOODY!")
+        } === (POST, "/resource/yes", `HTTP/1.0`, List(
+          RawHeader("content-length", "17"),
+          RawHeader("connection", "close"),
+          RawHeader("transfer-encoding", "identity"),
+          RawHeader("user-agent", "curl/7.19.7 xyz")
+        ), Some("close"), None, "Shake your BOODY!")
       }
 
       "with multi-line headers" in {
-        parse() {
+        parse {
           """|DELETE /abc HTTP/1.1
              |User-Agent: curl/7.19.7
              | abc
@@ -71,20 +73,22 @@ class RequestParserSpec extends Specification {
              |Accept
              | : */*  """ + """
              |Host: example.com
+             |Content-type: application/json
              |
              |"""
-        } mustEqual (DELETE, "/abc", `HTTP/1.1`, List(
-          HttpHeader("host", "example.com"),
-          HttpHeader("accept", "*/*"),
-          HttpHeader("user-agent", "curl/7.19.7 abc xyz")
-        ), None, "")
+        } === (DELETE, "/abc", `HTTP/1.1`, List(
+          RawHeader("content-type", "application/json"),
+          RawHeader("host", "example.com"),
+          RawHeader("accept", "*/*"),
+          RawHeader("user-agent", "curl/7.19.7 abc xyz")
+        ), None, Some(ContentType(MediaTypes.`application/json`)), "")
       }
     }
 
     "properly parse a chunked" in {
       "request start" in {
-        parse() {
-          """|PUT /data HTTP/1.1
+        parse {
+          """|PATCH /data HTTP/1.1
              |Transfer-Encoding: chunked
              |Connection: lalelu
              |Host: ping
@@ -92,16 +96,20 @@ class RequestParserSpec extends Specification {
              |3
              |abc
              |"""
-        } mustEqual ChunkedStartState(
-          RequestLine(PUT, "/data", `HTTP/1.1`),
-          List(HttpHeader("host", "ping"), HttpHeader("connection", "lalelu"), HttpHeader("transfer-encoding", "chunked")),
+        } === ChunkedStartState(
+          RequestLine(PATCH, "/data", `HTTP/1.1`),
+          List(
+            RawHeader("host", "ping"),
+            RawHeader("connection", "lalelu"),
+            RawHeader("transfer-encoding", "chunked")
+          ),
           Some("lalelu")
         )
       }
       "message chunk" in {
         def chunkParser = new ChunkParser(new ParserSettings())
-        parse(chunkParser)("3\nabc\n") mustEqual (Nil, "abc")
-        parse(chunkParser)("10 ;key= value ; another=one;and =more \n0123456789ABCDEF\n") mustEqual(
+        parse(chunkParser)("3\nabc\n") === (Nil, "abc")
+        parse(chunkParser)("10 ;key= value ; another=one;and =more \n0123456789ABCDEF\n") === (
           List(
             ChunkExtension("and", "more"),
             ChunkExtension("another", "one"),
@@ -109,13 +117,13 @@ class RequestParserSpec extends Specification {
           ),
           "0123456789ABCDEF"
         )
-        parse(chunkParser)("15 ;\n") mustEqual
+        parse(chunkParser)("15 ;\n") ===
           ErrorState("Invalid character '\\u000d', expected TOKEN CHAR, SPACE, TAB or EQUAL")
-        parse(chunkParser)("bla") mustEqual ErrorState("Illegal chunk size")
+        parse(chunkParser)("bla") === ErrorState("Illegal chunk size")
       }
       "message end" in {
         def chunkParser = new ChunkParser(new ParserSettings())
-        parse(chunkParser)("0\n\n") mustEqual (Nil, Nil)
+        parse(chunkParser)("0\n\n") === (Nil, Nil)
         parse(chunkParser) {
           """|000;nice=true
              |Foo: pip
@@ -123,82 +131,85 @@ class RequestParserSpec extends Specification {
              |Bar: xyz
              |
              |"""
-        } mustEqual (
+        } === (
           List(ChunkExtension("nice", "true")),
-          List(HttpHeader("bar", "xyz"), HttpHeader("foo", "pip apo"))
+          List(RawHeader("bar", "xyz"), RawHeader("foo", "pip apo"))
         )
       }
     }
 
     "reject a request with" in {
       "an illegal HTTP method" in {
-        parse()("get") mustEqual ErrorState("Unsupported HTTP method", 501)
-        parse()("GETX") mustEqual ErrorState("Unsupported HTTP method", 501)
+        parse("get") === ErrorState("Unsupported HTTP method", 501)
+        parse("GETX") === ErrorState("Unsupported HTTP method", 501)
       }
 
       "an URI longer than 2048 chars" in {
-        parse()("GET x" + "xxxx" * 512 + " HTTP/1.1") mustEqual
+        parse("GET x" + "xxxx" * 512 + " HTTP/1.1") ===
                 ErrorState("URI length exceeds the configured limit of 2048 characters", 414)
       }
 
       "HTTP version 1.2" in {
-        parse()("GET / HTTP/1.2\r\n") mustEqual ErrorState("HTTP Version not supported", 505)
+        parse("GET / HTTP/1.2\r\n") === ErrorState("HTTP Version not supported", 505)
       }
 
       "with an illegal char in a header name" in {
-        parse() {
+        parse {
           """|GET / HTTP/1.1
              |User@Agent: curl/7.19.7"""
-        } mustEqual ErrorState("Invalid character '@', expected TOKEN CHAR, LWS or COLON")
+        } === ErrorState("Invalid character '@', expected TOKEN CHAR, LWS or COLON")
       }
 
       "with a header name longer than 64 chars" in {
-        parse() {
+        parse {
           """|GET / HTTP/1.1
              |UserxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxAgent: curl/7.19.7"""
-        } mustEqual ErrorState("HTTP header name exceeds the configured limit of 64 characters (userxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...)")
+        } === ErrorState("HTTP header name exceeds the configured limit of 64 characters (userxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...)")
       }
 
       "with a header-value longer than 8192 chars" in {
-        parse() {
+        parse {
           """|GET / HTTP/1.1
              |Fancy: 0""" + ("12345678" * 1024) + "\r\n"
-        } mustEqual ErrorState("HTTP header value exceeds the configured limit of 8192 characters (header 'fancy')", 400)
+        } === ErrorState("HTTP header value exceeds the configured limit of 8192 characters (header 'fancy')", 400)
       }
 
       "with an invalid Content-Length header value" in {
-        parse() {
+        parse {
           """|GET / HTTP/1.0
              |Content-Length: 1.5
              |
              |abc"""
-        } mustEqual ErrorState("Invalid Content-Length header value: For input string: \"1.5\"", 400)
-        parse() {
+        } === ErrorState("Invalid Content-Length header value: For input string: \"1.5\"", 400)
+        parse {
           """|GET / HTTP/1.0
              |Content-Length: -3
              |
              |abc"""
-        } mustEqual ErrorState("Invalid Content-Length header value: " +
+        } === ErrorState("Invalid Content-Length header value: " +
                 "requirement failed: Content-Length must not be negative", 400)
       }
 
       "a required Host header missing" in {
-        parse() {
+        parse {
           """|GET / HTTP/1.1
              |
              |"""
-        } mustEqual ErrorState("Host header required", 400)
+        } === ErrorState("Host header required", 400)
       }
     }
   }
 
-  def parse(startParser: IntermediateState = new EmptyRequestParser(new ParserSettings())) = {
+  def parse: String => AnyRef = parse(new EmptyRequestParser(new ParserSettings()))
+  
+  def parse(startParser: IntermediateState): String => AnyRef = {
     RequestParserSpec.parse(startParser, extractFromCompleteMessage _) _
   }
 
   def extractFromCompleteMessage(completeMessage: CompleteMessageState) = {
-    val CompleteMessageState(RequestLine(method, uri, protocol), headers, connectionHeader, body) = completeMessage
-    (method, uri, protocol, headers, connectionHeader, new String(body, "ISO-8859-1"))
+    import completeMessage._
+    val RequestLine(method, uri, protocol) = messageLine
+    (method, uri, protocol, headers, connectionHeader, contentType, body.asString("ISO-8859-1"))
   }
 }
 
@@ -211,7 +222,7 @@ object RequestParserSpec {
     startParser.read(buf) match {
       case x: CompleteMessageState => extractFromCompleteMessage(x)
       case x: ToCloseBodyParser => extractFromCompleteMessage(x.complete)
-      case ChunkedChunkState(extensions, body) => (extensions, new String(body, "ISO-8859-1"))
+      case ChunkedChunkState(extensions, body) => (extensions, body.asString("ISO-8859-1"))
       case ChunkedEndState(extensions, trailer) => (extensions, trailer)
       case x => x
     }

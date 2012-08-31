@@ -20,7 +20,7 @@ sealed trait ConnectionClosedReason
 
 /**
  * The connection was actively and cleanly closed
- * after all pending writes have been flushed.
+ * after all pending writes had been flushed.
  */
 case object CleanClose extends ConnectionClosedReason
 

@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package rendering
+package cc.spray.can.rendering
 
 import java.nio.ByteBuffer
-import model._
 import cc.spray.io.Command
+import cc.spray.http._
+
 
 case class HttpRequestPartRenderingContext(
   requestPart: HttpRequestPart,

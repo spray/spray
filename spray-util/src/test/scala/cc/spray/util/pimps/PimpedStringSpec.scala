@@ -63,4 +63,15 @@ class PimpedStringSpec extends Specification {
     }
   }
 
+  "secure_==" should {
+    "properly compare two strings for equality" in {
+      ("foo" secure_== "foo") must beTrue
+      ("FoO" secure_== "FoO") must beTrue
+      ("" secure_== "") must beTrue
+
+      ("FoO" secure_== "Foo") must beFalse
+      ("FoO" secure_== "") must beFalse
+      ("FoO" secure_== "FoObar") must beFalse
+    }
+  }
 }

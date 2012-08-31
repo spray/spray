@@ -43,7 +43,7 @@ class IoClient(val ioWorker: IoWorker) extends IoPeer {
       // inform the original connection commander of the closing
       x.handle.commander ! x
 
-    case Reply(Status.Failure(CommandException(Connect(address), msg, cause)), originalSender: ActorRef) =>
+    case Reply(Status.Failure(CommandException(Connect(address, _), msg, cause)), originalSender: ActorRef) =>
       originalSender ! Status.Failure(IoClientException("Couldn't connect to " + address, cause))
   }
 }

@@ -16,190 +16,87 @@
 
 package cc.spray.client
 
-import cc.spray.http._
-import cc.spray.can.client.HttpClient
-import cc.spray.util._
-import com.typesafe.config.{Config, ConfigFactory}
+import akka.dispatch.{Promise, Future}
+import akka.spray.{RefUtils, UnregisteredActorRef}
 import akka.actor._
-import akka.dispatch.Promise
-import collection.mutable.Queue
-import cc.spray.SprayCanConversions
-import SprayCanConversions._
-import cc.spray.io.{CleanClose, ConnectionClosedReason, Handle}
+import cc.spray.can.client.HttpClient
+import cc.spray.httpx.{ResponseTransformation, RequestBuilding}
+import cc.spray.http._
+import cc.spray.util._
+import cc.spray.io._
 
 
-class HttpConduit(httpClient: ActorRef,
-                  host: String,
-                  port: Int = 80,
+class HttpConduit(val httpClient: ActorRef,
+                  val host: String,
+                  val port: Int = 80,
                   dispatchStrategy: DispatchStrategy = DispatchStrategies.NonPipelined(),
-                  config: Config = ConfigFactory.load())
-                 (implicit system: ActorSystem) extends MessagePipelining {
+                  settings: ConduitSettings = ConduitSettings())
+  extends Actor with ActorLogging with ConnComponent {
 
-  private val settings = new ConduitSettings(config)
-  private val mainActor = system.actorOf(Props(new MainActor))
+  val conns = Vector.tabulate(settings.MaxConnections)(i => new Conn(i + 1))
+  context.watch(httpClient)
 
-  val sendReceive: SendReceive = { request =>
-    val promise = Promise[HttpResponse]()
-    mainActor ! RequestContext(request, settings.MaxRetries, promise)
-    promise
+  override def postStop() {
+    conns.foreach(_.close())
+    context.unwatch(httpClient)
   }
 
-  def close() {
-    mainActor ! Stop
-  }
+  def receive = {
+    case x: HttpRequest =>
+      dispatchStrategy.dispatch(RequestContext(x, settings.MaxRetries, sender), conns)
 
-  private case object Stop
-  private case class RequestContext(request: HttpRequest, retriesLeft: Int,
-                                      result: Promise[HttpResponse]) extends HttpRequestContext {
-    def withRetriesDecremented = copy(retriesLeft = retriesLeft - 1)
-  }
+    case Reply(response: HttpResponse, (conn: Conn, ctx: RequestContext, _)) =>
+      conn.deliverResponse(ctx.request, response, ctx.sender)
+      dispatchStrategy.onStateChange(conns)
 
-  private class MainActor extends Actor with ActorLogging {
-    val conns = Vector.tabulate(settings.MaxConnections)(i => new Conn(i + 1))
-    context.watch(httpClient)
+    case Reply(_: HttpClient.AckSend, _) =>
+      // ignore
 
-    def receive = {
-      case x: RequestContext =>
-        dispatchStrategy.dispatch(x, conns)
+    case Reply(problem, (conn: Conn, ctx: RequestContext, handle: Handle)) =>
+      val error = problem match {
+        case Status.Failure(e) => e
+        case HttpClient.Closed(_, reason) => new RuntimeException("Connection closed, reason: " + reason)
+      }
+      if (!ctx.request.canBeRetried) conn.deliverError(ctx, error)
+      else conn.retry(ctx, handle, error).foreach(dispatchStrategy.dispatch(_, conns))
+      dispatchStrategy.onStateChange(conns)
 
-      case Reply(response: cc.spray.can.model.HttpResponse, (conn: Conn, ctx: RequestContext, _)) =>
-        conn.deliverResponse(ctx.request, fromSprayCanResponse(response), ctx.result)
-        dispatchStrategy.onStateChange(conns)
+    case Reply(HttpClient.Connected(handle), conn: Conn) =>
+      conn.connected(handle)
 
-      case Reply(_: HttpClient.AckSend, _) =>
-        // ignore
+    case Reply(Status.Failure(error), conn: Conn) =>
+      conn.connectFailed(error)
+      dispatchStrategy.onStateChange(conns)
 
-      case Reply(problem, (conn: Conn, ctx: RequestContext, handle: Handle)) =>
-        val error = problem match {
-          case Status.Failure(error) => error
-          case HttpClient.Closed(_, reason) => new RuntimeException("Connection closed, reason: " + reason)
-        }
-        conn.retry(ctx, handle, error).foreach(dispatchStrategy.dispatch(_, conns))
-        dispatchStrategy.onStateChange(conns)
+    case Reply(HttpClient.Closed(handle, reason), conn: Conn) =>
+      conn.closed(handle, reason)
+      dispatchStrategy.onStateChange(conns)
 
-      case Reply(HttpClient.Connected(handle), conn: Conn) =>
-        conn.connected(handle)
-
-      case Reply(Status.Failure(error), conn: Conn) =>
-        conn.connectFailed(error)
-        dispatchStrategy.onStateChange(conns)
-
-      case Reply(HttpClient.Closed(handle, reason), conn: Conn) =>
-        conn.closed(handle, reason)
-        dispatchStrategy.onStateChange(conns)
-
-      case Terminated(client) if client == httpClient =>
-        stop()
-
-      case Stop =>
-        context.unwatch(httpClient)
-        stop()
-    }
-
-    def stop() {
-      conns.foreach(_.close())
+    case Terminated(client) if client == httpClient =>
       context.stop(self)
-    }
+  }
+}
 
-    def requestString(request: HttpRequest) =
-      "%s request to http://%s:%s%s".format(request.method, host, port, request.uri)
+object HttpConduit extends RequestBuilding with ResponseTransformation {
 
-    class Conn(index: Int) extends HttpConn {
-      private sealed trait ConnectionState
-      private case object Unconnected extends ConnectionState
-      private case object Connecting extends ConnectionState
-      private case class Connected(handle: Handle) extends ConnectionState
-
-      private var connection: ConnectionState = Unconnected
-      private val pendingRequests = Queue.empty[RequestContext]
-      var pendingResponses: Int = -1
-
-      def dispatch(ctx: HttpRequestContext) {
-        connection match {
-          case Unconnected =>
-            log.debug("Opening connection {} to {}:{}", index, host, port)
-            pendingResponses = 0
-            connection = Connecting
-            httpClient.tell(HttpClient.Connect(host, port), Reply.withContext(this))
-            dispatch(ctx)
-
-          case Connecting =>
-            pendingRequests.enqueue(ctx.asInstanceOf[RequestContext])
-            pendingResponses += 1
-
-          case Connected(handle) =>
-            dispatch(ctx, handle)
-            pendingResponses += 1
+  def sendReceive(httpConduitRef: ActorRef): HttpRequest => Future[HttpResponse] = {
+    val provider = RefUtils.provider(httpConduitRef)
+    request => {
+      val promise = Promise[HttpResponse]()(provider.dispatcher)
+      val receiver = new UnregisteredActorRef(provider) {
+        def handle(message: Any, sender: ActorRef) {
+          message match {
+            case x: HttpResponse => promise.success(x)
+            case Status.Failure(error) => promise.failure(error)
+          }
         }
       }
-
-      def dispatch(ctx: HttpRequestContext, handle: Handle) {
-        log.debug("Dispatching {} across connection {}", requestString(ctx.request), index)
-        handle.handler.tell(toSprayCanRequest(ctx.request), Reply.withContext((this, ctx, handle)))
-      }
-
-      def connected(handle: Handle) {
-        connection = Connected(handle)
-        log.debug("Connected connection {}, dispatching {} pending requests", index, pendingRequests.length)
-        while (!pendingRequests.isEmpty) dispatch(pendingRequests.dequeue(), handle)
-      }
-
-      def connectFailed(error: Throwable) {
-        while (!pendingRequests.isEmpty) pendingRequests.dequeue().result.failure(error)
-        clear()
-      }
-
-      def deliverResponse(request: HttpRequest, response: HttpResponse, result: Promise[HttpResponse]) {
-        import HttpProtocols._
-        def closeExpected = response.protocol match {
-          case `HTTP/1.0` => !response.headers.exists(_ matches { case HttpHeaders.Connection(Seq("Keep-Alive")) => })
-          case `HTTP/1.1` => response.headers.exists(_ matches { case HttpHeaders.Connection(Seq("close")) => })
-        }
-        log.debug("Dispatching {} response to {}", response.status.value, requestString(request))
-        result.success(response)
-        if (closeExpected) clear()
-        else pendingResponses -= 1
-      }
-
-      def retry(ctx: RequestContext, errorHandle: Handle, error: Throwable): Option[RequestContext] = {
-        def retryWith(ctx: RequestContext) = {
-          log.debug("Received '{}' in response to {} with {} retries left, retrying...",
-            error, requestString(ctx.request), ctx.retriesLeft)
-          Some(ctx)
-        }
-        if (connection == Connected(errorHandle)) {
-          // only the first of a potential series of failed requests on the connection gets here
-          clear()
-          if (ctx.retriesLeft == 0) {
-            log.debug("Received '{}' in response to {} with no retries left, dispatching error...",
-              error, requestString(ctx.request))
-            ctx.result.failure(error)
-            None
-          } else retryWith(ctx.withRetriesDecremented)
-        } else retryWith(ctx)
-      }
-
-      def closed(handle: Handle, reason: ConnectionClosedReason) {
-        if (connection == Connected(handle)) {
-          log.debug("Connection {} lost due to {}", index, reason)
-          clear()
-        }
-      }
-
-      def close() {
-        connection match {
-          case Connected(handle) =>
-            log.debug("Closing connection {} to due HttpConduit being closed", index)
-            handle.handler ! HttpClient.Close(CleanClose)
-          case _ =>
-        }
-      }
-
-      def clear() {
-        pendingResponses = -1
-        connection = Unconnected
-      }
+      httpConduitRef.tell(request, receiver)
+      promise
     }
   }
+}
 
+case class RequestContext(request: HttpRequest, retriesLeft: Int, sender: ActorRef) extends HttpRequestContext {
+  def withRetriesDecremented = copy(retriesLeft = retriesLeft - 1)
 }

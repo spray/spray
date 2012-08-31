@@ -14,20 +14,21 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package parsing
+package cc.spray.can.parsing
 
 import java.lang.{StringBuilder => JStringBuilder}
-import model.{HttpHeader, MessageLine}
+import cc.spray.can.MessageLine
+import cc.spray.http.HttpHeaders.RawHeader
+
 
 class HeaderValueParser(settings: ParserSettings, messageLine: MessageLine, headerCount: Int,
-                        headers: List[HttpHeader], val headerName: String) extends CharacterParser {
+                        headers: List[RawHeader], val headerName: String) extends CharacterParser {
 
   val headerValue = new JStringBuilder
   var space = false
 
   def nameParser =
-    new HeaderNameParser(settings, messageLine, headerCount + 1, HttpHeader(headerName, headerValue.toString) :: headers)
+    new HeaderNameParser(settings, messageLine, headerCount + 1, RawHeader(headerName, headerValue.toString) :: headers)
 
   def handleChar(cursor: Char) = {
     if (headerValue.length <= settings.MaxHeaderValueLength) {

@@ -16,11 +16,12 @@
 
 package cc.spray.can.client
 
-import cc.spray.can.parsing.ParserSettings
-import cc.spray.can.HttpPipelineStageSpec
 import org.specs2.mutable.Specification
+import cc.spray.can.parsing.ParserSettings
+import cc.spray.can.{HttpEvent, HttpPipelineStageSpec}
 import cc.spray.can.rendering.HttpRequestPartRenderingContext
 import cc.spray.io.{ProtocolError, Event}
+
 
 class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
 
@@ -34,7 +35,7 @@ class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
         HttpRequestPartRenderingContext(request(), "localhost", 80),
         ClearCommandAndEventCollectors,
         Received(rawResponse("foo"))
-      ) must produce(events = Seq(response("foo")))
+      ) must produce(events = Seq(HttpEvent(response("foo"))))
     }
     "parse a double response and produce the corresponding events" in {
       fixture(
@@ -43,8 +44,8 @@ class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
         ClearCommandAndEventCollectors,
         Received(rawResponse("foo") + rawResponse("bar"))
       ) must produce(events = Seq(
-        response("foo"),
-        response("bar")
+        HttpEvent(response("foo")),
+        HttpEvent(response("bar"))
       ))
     }
     "trigger an error on unmatched responses" in {
@@ -64,8 +65,8 @@ class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
         ) must produce(
           commands = Seq(HttpClient.Close(ProtocolError("Response to non-existent request"))),
           events = Seq(
-            response("foo"),
-            response("bar")
+            HttpEvent(response("foo")),
+            HttpEvent(response("bar"))
           )
         )
       }

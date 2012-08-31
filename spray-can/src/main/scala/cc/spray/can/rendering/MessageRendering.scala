@@ -16,11 +16,12 @@
 
 package cc.spray.can.rendering
 
-import cc.spray.can.model._
-import cc.spray.can.parsing.isTokenChar
-import cc.spray.util._
-import cc.spray.io.BufferBuilder
 import annotation.tailrec
+import cc.spray.can.parsing.isTokenChar
+import cc.spray.io.BufferBuilder
+import cc.spray.util._
+import cc.spray.http._
+
 
 private[rendering] trait MessageRendering {
   import MessageRendering._
@@ -37,12 +38,19 @@ private[rendering] trait MessageRendering {
       val header = httpHeaders.head
       val newConnectionHeaderValue = {
         if (connectionHeaderValue.isEmpty)
-          if (header.name == "Connection") Some(header.value) else None
+          if (header.name.equalsIgnoreCase("Connection")) Some(header.value)
+          else None
         else connectionHeaderValue
       }
-      appendHeader(header.name, header.value, bb)
+      // we never render the Content-Type header here (since its part of the HttpEntity)
+      if (!header.name.equalsIgnoreCase("Content-Type")) appendHeader(header.name, header.value, bb)
       appendHeaders(httpHeaders.tail, bb, newConnectionHeaderValue)
     }
+  }
+
+  protected def appendContentTypeHeaderIfRequired(entity: HttpEntity, bb: BufferBuilder) = {
+    if (!entity.isEmpty) appendHeader("Content-Type", entity.asInstanceOf[HttpBody].contentType.value, bb)
+    else bb
   }
 
   protected def renderChunk(chunk: MessageChunk, messageSizeHint: Int): RenderedMessagePart = {

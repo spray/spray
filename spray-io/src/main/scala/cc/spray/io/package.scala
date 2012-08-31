@@ -16,12 +16,6 @@
 
 package cc.spray
 
-package object io {
-
-  type Pipeline[-T] = T => Unit
-
-}
-
 package io {
 
   trait Command

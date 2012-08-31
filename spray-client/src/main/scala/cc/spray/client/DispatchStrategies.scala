@@ -17,8 +17,9 @@
 package cc.spray
 package client
 
-import http._
 import collection.mutable.Queue
+import http._
+
 
 /**
  * Abstraction over the logic of how to dispatch outgoing requests to one of several connections.

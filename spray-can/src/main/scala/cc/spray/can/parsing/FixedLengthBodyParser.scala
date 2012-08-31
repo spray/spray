@@ -14,14 +14,20 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package parsing
+package cc.spray.can.parsing
 
-import model.{HttpHeader, MessageLine}
 import java.nio.ByteBuffer
+import cc.spray.can.MessageLine
+import cc.spray.http.HttpHeaders.RawHeader
+import cc.spray.http.ContentType
 
-class FixedLengthBodyParser(settings: ParserSettings, messageLine: MessageLine, headers: List[HttpHeader],
-                            connectionHeader: Option[String], totalBytes: Int) extends IntermediateState {
+
+class FixedLengthBodyParser(settings: ParserSettings,
+                            messageLine: MessageLine,
+                            headers: List[RawHeader],
+                            connectionHeader: Option[String],
+                            contentType: Option[ContentType],
+                            totalBytes: Int) extends IntermediateState {
 
   require(totalBytes >= 0, "Content-Length must not be negative")
   require(totalBytes <= settings.MaxContentLength,
@@ -34,7 +40,8 @@ class FixedLengthBodyParser(settings: ParserSettings, messageLine: MessageLine, 
     val remaining = scala.math.min(buf.remaining, totalBytes - bytesRead)
     buf.get(body, bytesRead, remaining)
     bytesRead += remaining
-    if (bytesRead == totalBytes) CompleteMessageState(messageLine, headers, connectionHeader, body) else this
+    if (bytesRead == totalBytes) CompleteMessageState(messageLine, headers, connectionHeader, contentType, body)
+    else this
   }
 
 }

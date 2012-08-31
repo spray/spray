@@ -15,13 +15,15 @@
  */
 package cc.spray.can.server
 
-import cc.spray.can.model.HttpMessageStartPart
-import cc.spray.can.rendering.HttpResponsePartRenderingContext
-import cc.spray.io._
 import java.util.concurrent.atomic.AtomicLong
 import annotation.tailrec
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
+import cc.spray.http.{Timeout, HttpMessageStart}
+import cc.spray.can.rendering.HttpResponsePartRenderingContext
+import cc.spray.can.server.RequestParsing.HttpMessageStartEvent
+import cc.spray.io._
+import cc.spray.io.pipelining._
 
 
 object StatsSupport {
@@ -89,11 +91,11 @@ object StatsSupport {
       adjustMaxOpenConnections()
 
       val commandPipeline: CPL = {
-        case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageStartPart] =>
+        case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageStart] =>
           responseStarts.incrementAndGet()
           commandPL(x)
 
-        case x: IoServer.Tell if x.message.isInstanceOf[HttpServer.RequestTimeout] =>
+        case x: IoServer.Tell if x.message.isInstanceOf[Timeout] =>
           requestTimeouts.incrementAndGet()
           commandPL(x)
 
@@ -101,10 +103,10 @@ object StatsSupport {
       }
 
       val eventPipeline: EPL = {
-        case x: HttpMessageStartPart =>
+        case ev: HttpMessageStartEvent =>
           requestStarts.incrementAndGet()
           adjustMaxOpenRequests()
-          eventPL(x)
+          eventPL(ev)
 
         case x: HttpServer.Closed =>
           connectionsClosed.incrementAndGet()

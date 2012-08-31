@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package rendering
+package cc.spray.can.rendering
 
 import java.nio.ByteBuffer
-import model.{ChunkedMessageEnd, MessageChunk, ChunkedRequestStart, HttpRequest}
 import cc.spray.io.BufferBuilder
+import cc.spray.http._
+
 
 class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) extends MessageRendering {
 
@@ -34,12 +34,12 @@ class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) extends Mes
 
   private def renderRequest(request: HttpRequest, host: String, port: Int) = {
     val bb = renderRequestStart(request, host, port)
-    val rbl = request.body.length
+    val rbl = request.entity.buffer.length
     RenderedMessagePart {
       if (rbl > 0) {
         appendHeader("Content-Length", rbl.toString, bb).append(MessageRendering.CrLf)
-        if (bb.remainingCapacity >= rbl) bb.append(request.body).toByteBuffer :: Nil
-        else bb.toByteBuffer :: ByteBuffer.wrap(request.body) :: Nil
+        if (bb.remainingCapacity >= rbl) bb.append(request.entity.buffer).toByteBuffer :: Nil
+        else bb.toByteBuffer :: ByteBuffer.wrap(request.entity.buffer) :: Nil
       } else bb.append(MessageRendering.CrLf).toByteBuffer :: Nil
     }
   }
@@ -47,19 +47,20 @@ class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) extends Mes
   private def renderChunkedRequestStart(request: HttpRequest, host: String, port: Int) = {
     val bb = renderRequestStart(request, host, port)
     appendHeader("Transfer-Encoding", "chunked", bb).append(MessageRendering.CrLf)
-    if (request.body.length > 0) renderChunk(Nil, request.body, bb)
+    val body = request.entity.buffer
+    if (body.length > 0) renderChunk(Nil, body, bb)
     RenderedMessagePart(bb.toByteBuffer :: Nil)
   }
 
   private def renderRequestStart(request: HttpRequest, host: String, port: Int) = {
-    import request._
+    import request.{host => _, port => _, _}
     val bb = BufferBuilder(requestSizeHint)
-    bb.append(method.name).append(' ').append(uri).append(' ').append(protocol.name).append(MessageRendering.CrLf)
+    bb.append(method.value).append(' ').append(uri).append(' ').append(protocol.value).append(MessageRendering.CrLf)
     appendHeaders(headers, bb)
     bb.append("Host: ").append(host)
     if (port != 80) bb.append(':').append(Integer.toString(port))
     bb.append(MessageRendering.CrLf)
     if (!userAgentHeader.isEmpty) appendHeader("User-Agent", userAgentHeader, bb)
-    bb
+    appendContentTypeHeaderIfRequired(request.entity, bb)
   }
 }

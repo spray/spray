@@ -14,30 +14,22 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package parsing
+package cc.spray.can.parsing
 
-import model.HttpMethod
+import cc.spray.http.HttpMethod
+
 
 class MethodParser(settings: ParserSettings, method: HttpMethod, var pos: Int = 0) extends CharacterParser {
 
   def handleChar(cursor: Char) = {
     pos += 1
-    if (pos < method.name.length()) {
-      val current = method.name.charAt(pos)
-      if (cursor == current) {
-        this
-      }
-      else {
-        badMethod
-      }
+    if (pos < method.value.length()) {
+      val current = method.value.charAt(pos)
+      if (cursor == current) this
+      else badMethod
     } else {
-      if (cursor == ' ') {
-        new UriParser(settings, method)
-      }
-      else {
-        badMethod
-      }
+      if (cursor == ' ') new UriParser(settings, method)
+      else badMethod
     }
   }
 

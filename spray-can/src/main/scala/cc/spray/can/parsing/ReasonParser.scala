@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package parsing
+package cc.spray.can.parsing
 
 import java.lang.{StringBuilder => JStringBuilder}
-import model.{StatusLine, HttpProtocol}
+import cc.spray.http.HttpProtocol
+import cc.spray.can.StatusLine
+
 
 class ReasonParser(settings: ParserSettings, protocol: HttpProtocol, status: Int, isResponseToHeadRequest: Boolean)
     extends CharacterParser {

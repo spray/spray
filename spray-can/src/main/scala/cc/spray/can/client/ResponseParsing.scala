@@ -14,17 +14,19 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package client
+package cc.spray.can.client
 
 import akka.event.LoggingAdapter
-import cc.spray.io._
-import parsing._
-import rendering.HttpRequestPartRenderingContext
 import collection.mutable.Queue
-import model._
 import java.nio.ByteBuffer
 import annotation.tailrec
+import cc.spray.can.rendering.HttpRequestPartRenderingContext
+import cc.spray.can.HttpEvent
+import cc.spray.can.parsing._
+import cc.spray.http._
+import cc.spray.io._
+import cc.spray.io.pipelining._
+
 
 object ResponseParsing {
 
@@ -50,8 +52,8 @@ object ResponseParsing {
               } // else wait for more input
 
             case x: HttpMessagePartCompletedState => x.toHttpMessagePart match {
-              case part: HttpMessageEndPart =>
-                eventPL(part)
+              case part: HttpMessageEnd =>
+                eventPL(HttpEvent(part))
                 openRequestMethods.dequeue()
                 if (openRequestMethods.isEmpty) {
                   currentParsingState = UnmatchedResponseErrorState
@@ -61,7 +63,7 @@ object ResponseParsing {
                   parse(buffer)
                 }
               case part =>
-                eventPL(part)
+                eventPL(HttpEvent(part))
                 currentParsingState = new ChunkParser(settings)
                 parse(buffer)
             }

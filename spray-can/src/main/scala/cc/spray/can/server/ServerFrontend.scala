@@ -16,17 +16,20 @@
 
 package cc.spray.can.server
 
-import cc.spray.can.model._
-import cc.spray.can.rendering.HttpResponsePartRenderingContext
-import cc.spray.io._
-import pipelines.{TickGenerator, MessageHandlerDispatch}
 import akka.event.LoggingAdapter
 import collection.mutable.Queue
 import annotation.tailrec
-import MessageHandlerDispatch._
 import akka.spray.LazyActorRef
 import akka.util.{Unsafe, Duration}
 import akka.actor.{ActorPath, Terminated, ActorContext, ActorRef}
+import cc.spray.can.rendering.HttpResponsePartRenderingContext
+import cc.spray.can.{HttpEvent, HttpCommand}
+import cc.spray.can.server.RequestParsing.HttpMessageStartEvent
+import cc.spray.io.pipelining._
+import cc.spray.io._
+import cc.spray.http._
+import MessageHandlerDispatch._
+
 
 object ServerFrontend {
 
@@ -45,7 +48,7 @@ object ServerFrontend {
           var timeoutTimeout = settings.TimeoutTimeout
 
           val commandPipeline: CPL = {
-            case part: HttpResponsePart with HttpMessageEndPart =>
+            case HttpCommand(part: HttpResponsePart with HttpMessageEnd) =>
               ensureRequestOpenFor(part)
               val rec = openRequests.head
               sendPart(part, rec)
@@ -57,17 +60,19 @@ object ServerFrontend {
                   context.self ! openRequests.head.dequeue
               }
 
-            case part: HttpResponsePart =>
+            case HttpCommand(part: HttpResponsePart) =>
               ensureRequestOpenFor(part)
               val rec = openRequests.head
               rec.timestamp = 0L // disable request timeout checking once the first response part has come in
               sendPart(part, rec)
 
-            case response: Response if response.rec == openRequests.head =>
-              commandPipeline(response.msg) // in order response, dispatch
-
             case response: Response =>
-              response.rec.enqueue(response.msg) // out of order response, queue up
+              if (openRequests.isEmpty)
+                log.warning("Received response without matching request, dropping... ")
+              else if (response.rec == openRequests.head)
+                commandPipeline(response.msg) // in order response, dispatch
+              else
+                response.rec.enqueue(response.msg) // out of order response, queue up
 
             case x: SetRequestTimeout => requestTimeout = x.timeout.toMillis
             case x: SetTimeoutTimeout => timeoutTimeout = x.timeout.toMillis
@@ -76,13 +81,15 @@ object ServerFrontend {
           }
 
           val eventPipeline: EPL = {
-            case x: HttpRequest => dispatchRequestStart(x, x, System.currentTimeMillis)
+            case HttpMessageStartEvent(x: HttpRequest, connectionHeader) =>
+              dispatchRequestStart(x, x, connectionHeader, System.currentTimeMillis)
 
-            case x: ChunkedRequestStart => dispatchRequestStart(x, x.request, 0L)
+            case HttpMessageStartEvent(x: ChunkedRequestStart, connectionHeader) =>
+              dispatchRequestStart(x, x.request, connectionHeader, 0L)
 
-            case x: MessageChunk => dispatchRequestChunk(x)
+            case HttpEvent(x: MessageChunk) => dispatchRequestChunk(x)
 
-            case x: ChunkedMessageEnd =>
+            case HttpEvent(x: ChunkedMessageEnd) =>
               if (openRequests.isEmpty) throw new IllegalStateException
               // only start request timeout checking after request has been completed
               openRequests.last.timestamp = System.currentTimeMillis
@@ -122,7 +129,7 @@ object ServerFrontend {
           def sendPart(part: HttpResponsePart, rec: RequestRecord) {
             commandPL {
               import rec.request._
-              HttpResponsePartRenderingContext(part, method, protocol, connectionHeader)
+              HttpResponsePartRenderingContext(part, method, protocol, rec.connectionHeader)
             }
             if (settings.AckSends) {
               // prepare the IoServer.Tell command to use for `AckSend` and potential `Closed` messages
@@ -135,8 +142,9 @@ object ServerFrontend {
               throw new IllegalStateException("Received ResponsePart '" + part + "' for non-existing request")
           }
 
-          def dispatchRequestStart(part: HttpRequestPart, request: HttpRequest, timestamp: Long) {
-            val rec = new RequestRecord(request, handlerCreator(), timestamp)
+          def dispatchRequestStart(part: HttpRequestPart, request: HttpRequest, connectionHeader: Option[String],
+                                   timestamp: Long) {
+            val rec = new RequestRecord(request, connectionHeader, handlerCreator(), timestamp)
             rec.receiver =
               if (settings.DirectResponding) context.self
               else new RequestRef(rec, context.connectionActorContext)
@@ -163,13 +171,13 @@ object ServerFrontend {
                 if (rec.timestamp + requestTimeout < System.currentTimeMillis) {
                   val timeoutHandler = if (settings.TimeoutHandler.isEmpty) rec.handler
                                        else context.connectionActorContext.actorFor(settings.TimeoutHandler)
-                  commandPipeline(IoServer.Tell(timeoutHandler, RequestTimeout(rec.request), rec.receiver))
+                  commandPipeline(IoServer.Tell(timeoutHandler, Timeout(rec.request), rec.receiver))
                   // we record the time of the Timeout dispatch as negative timestamp value
                   rec.timestamp = -System.currentTimeMillis
                 }
               } else if (rec.timestamp < 0 && timeoutTimeout > 0) {
                 if (-rec.timestamp + timeoutTimeout < System.currentTimeMillis) {
-                  commandPipeline(timeoutResponse(rec.request))
+                  commandPipeline(HttpCommand(timeoutResponse(rec.request)))
                   checkForTimeouts() // check potentially pending requests for timeouts
                 }
               }
@@ -180,7 +188,8 @@ object ServerFrontend {
     }
   }
 
-  private class RequestRecord(val request: HttpRequest, val handler: ActorRef, var timestamp: Long) {
+  private class RequestRecord(val request: HttpRequest, val connectionHeader: Option[String],
+                              val handler: ActorRef, var timestamp: Long) {
     var receiver: ActorRef = _
     private var responses: Queue[Command] = _
     def enqueue(msg: Command) {
@@ -222,7 +231,7 @@ object ServerFrontend {
     private def dispatch(part: HttpResponsePart, sender: ActorRef,
                          expectedState: ResponseState, newState: ResponseState) {
       if (Unsafe.instance.compareAndSwapObject(this, responseStateOffset, expectedState, newState)) {
-        context.self.tell(new Response(rec, part), sender)
+        context.self.tell(new Response(rec, HttpCommand(part)), sender)
         if (newState == Completed) stop()
       } else {
         context.system.log.warning("Cannot dispatch " + part.getClass.getSimpleName +
@@ -257,9 +266,5 @@ object ServerFrontend {
     require(timeout.isFinite, "timeout must not be infinite, set to zero to disable")
     require(timeout >= Duration.Zero, "timeout must not be negative")
   }
-
-  ////////////// EVENTS //////////////
-
-  case class RequestTimeout(request: HttpRequest) extends Event
 
 }

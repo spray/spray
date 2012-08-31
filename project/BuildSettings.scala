@@ -1,12 +1,11 @@
 import sbt._
 import Keys._
-import com.github.siasia.WebPlugin._
 import ls.Plugin._
 
 object BuildSettings {
 
   lazy val basicSettings = seq(
-    version               := "1.0-M2",
+    version               := "1.0-M3-SNAPSHOT",
     homepage              := Some(new URL("http://spray.cc")),
     organization          := "cc.spray",
     organizationHomepage  := Some(new URL("http://spray.cc")),
@@ -14,9 +13,9 @@ object BuildSettings {
                              "web services on top of Akka",
     startYear             := Some(2011),
     licenses              := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
-    scalaVersion          := "2.9.1",
+    scalaVersion          := "2.9.2",
     resolvers             ++= Dependencies.resolutionRepos,
-    scalacOptions         := Seq("-deprecation", "-encoding", "utf8")
+    scalacOptions         := Seq("-Ydependent-method-types", "-unchecked", "-deprecation", "-encoding", "utf8")
   )
 
   lazy val moduleSettings = basicSettings ++ seq(
@@ -32,7 +31,7 @@ object BuildSettings {
         "spray nexus" at {
           // public uri is repo.spray.cc, we use an SSH tunnel to the nexus here
           "http://localhost:42424/content/repositories/" + {
-            if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else"releases/"
+            if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else "releases/"
           }
         }
       }
@@ -63,5 +62,30 @@ object BuildSettings {
 
   lazy val exampleSettings = basicSettings ++ noPublishing
 
-  lazy val jettyExampleSettings = exampleSettings ++ webSettings
+  import com.github.siasia.WebPlugin._
+  lazy val jettyExampleSettings = exampleSettings ++ webSettings // ++ disableJettyLogSettings
+
+  import com.github.siasia.PluginKeys._
+  lazy val disableJettyLogSettings = inConfig(container.Configuration) {
+    seq(
+      start <<= (state, port, apps, customConfiguration, configurationFiles, configurationXml) map {
+        (state, port, apps, cc, cf, cx) => state.get(container.attribute).get.start(port, None, NopLogger, apps, cc, cf, cx)
+      }
+    )
+  }
+
+  // an SBT AbstractLogger that logs to /dev/nul
+  object NopLogger extends AbstractLogger {
+    def getLevel = Level.Error
+    def setLevel(newLevel: Level.Value) {}
+    def setTrace(flag: Int) {}
+    def getTrace = 0
+    def successEnabled = false
+    def setSuccessEnabled(flag: Boolean) {}
+    def control(event: ControlEvent.Value, message: => String) {}
+    def logAll(events: Seq[LogEvent]) {}
+    def trace(t: => Throwable) {}
+    def success(message: => String) {}
+    def log(level: Level.Value, message: => String) {}
+  }
 }

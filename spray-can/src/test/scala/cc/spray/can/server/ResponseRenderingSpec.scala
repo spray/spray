@@ -16,12 +16,13 @@
 
 package cc.spray.can.server
 
-import cc.spray.can.model.{HttpMethods, HttpResponse}
+import com.typesafe.config.ConfigFactory
+import org.specs2.mutable.Specification
 import cc.spray.can.rendering.HttpResponsePartRenderingContext
 import cc.spray.io.{CleanClose, IoPeer, Command}
-import org.specs2.mutable.Specification
 import cc.spray.can.HttpPipelineStageSpec
-import com.typesafe.config.ConfigFactory
+import cc.spray.http._
+
 
 class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
 
@@ -32,11 +33,12 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
     }
     "translate a simple HttpResponsePartRenderingContext into the corresponding Send command" in {
       fixture(
-        HttpResponsePartRenderingContext(HttpResponse().withBody("Some Message"))
+        HttpResponsePartRenderingContext(HttpResponse(entity = "Some Message"))
       ) must produce(commands = Seq(SendString(
         """|HTTP/1.1 200 OK
            |Server: spray/1.0
            |Date: XXXX
+           |Content-Type: text/plain
            |Content-Length: 12
            |
            |Some Message"""
@@ -45,7 +47,7 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
     "append a Close command to the Send if the connection is to be closed" in {
       fixture(
         HttpResponsePartRenderingContext(
-          responsePart = HttpResponse().withBody("Some Message"),
+          responsePart = HttpResponse(entity = "Some Message"),
           requestMethod = HttpMethods.HEAD,
           requestConnectionHeader = Some("close")
         )
@@ -55,6 +57,7 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
              |Connection: close
              |Server: spray/1.0
              |Date: XXXX
+             |Content-Type: text/plain
              |Content-Length: 12
              |
              |"""

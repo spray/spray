@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package parsing
+package cc.spray.can.parsing
 
-import model.HttpProtocol
+import cc.spray.http.HttpProtocol
+
 
 class StatusCodeParser(settings: ParserSettings, protocol: HttpProtocol, isResponseToHeadRequest: Boolean)
     extends CharacterParser {

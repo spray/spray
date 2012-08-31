@@ -16,15 +16,14 @@
 
 package cc.spray.can.client
 
-import cc.spray.can.parsing.ParserSettings
 import com.typesafe.config.{ConfigFactory, Config}
+import cc.spray.can.parsing.ParserSettings
+import cc.spray.util.ConfigUtils
 
-private[can] class ClientSettings(config: Config = ConfigFactory.load) {
-  private[this] val c: Config = {
-    val c = config.withFallback(ConfigFactory.defaultReference)
-    c.checkValid(ConfigFactory.defaultReference, "spray.can.client")
-    c.getConfig("spray.can.client")
-  }
+
+class ClientSettings(config: Config) {
+  protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.can.client")
+
   val UserAgentHeader               = c getString       "user-agent-header"
   val SSLEncryption                 = c getBoolean      "ssl-encryption"
   val IdleTimeout                   = c getMilliseconds "idle-timeout"
@@ -43,4 +42,9 @@ private[can] class ClientSettings(config: Config = ConfigFactory.load) {
     "response-chunk-aggregation-limit must be >= 0 and <= Int.MaxValue")
   require(0 <= RequestSizeHint && RequestSizeHint <= Int.MaxValue,
     "request-size-hint must be >= 0 and <= Int.MaxValue")
+}
+
+object ClientSettings {
+  def apply(): ClientSettings = apply(ConfigFactory.load())
+  implicit def apply(config: Config): ClientSettings = new ClientSettings(config)
 }

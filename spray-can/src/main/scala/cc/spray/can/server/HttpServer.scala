@@ -16,31 +16,35 @@
 
 package cc.spray.can.server
 
-import cc.spray.can.model.{HttpHeader, HttpResponse, HttpRequest}
-import cc.spray.io._
 import akka.event.LoggingAdapter
 import akka.util.Duration
-import com.typesafe.config.{ConfigFactory, Config}
-import java.util.concurrent.TimeUnit
 import cc.spray.can.server.StatsSupport.StatsHolder
-import pipelines._
+import cc.spray.can.HttpCommand
+import cc.spray.io.pipelining._
+import cc.spray.io._
+import cc.spray.http._
+
 
 class HttpServer(ioWorker: IoWorker,
                  messageHandler: MessageHandlerDispatch.MessageHandler,
-                 config: Config = ConfigFactory.load)
-                (implicit sslEngineProvider: ServerSSLEngineProvider)
-  extends IoServer(ioWorker) with ConnectionActors {
+                 settings: ServerSettings = ServerSettings())
+                (implicit sslEngineProvider: ServerSSLEngineProvider) extends IoServer(ioWorker) with ConnectionActors {
 
-  protected lazy val pipeline = {
-    val settings = new ServerSettings(config)
+  protected val statsHolder: Option[StatsHolder] =
+    if (settings.StatsSupport) Some(new StatsHolder) else None
+
+  protected val pipeline =
     HttpServer.pipeline(settings, messageHandler, timeoutResponse, statsHolder, log)
-  }
-
-  protected lazy val statsHolder = new StatsHolder
 
   override def receive = super.receive orElse {
-    case HttpServer.GetStats    => sender ! statsHolder.toStats
-    case HttpServer.ClearStats  => statsHolder.clear()
+    case HttpServer.GetStats    => statsHolder.foreach(holder => sender ! holder.toStats)
+    case HttpServer.ClearStats  => statsHolder.foreach(_.clear())
+  }
+
+  override protected def createConnectionActor(handle: Handle): IoConnectionActor = new IoConnectionActor(handle) {
+    override def receive = super.receive orElse {
+      case x: HttpResponse => pipelines.commandPipeline(HttpCommand(x))
+    }
   }
 
   /**
@@ -49,11 +53,9 @@ class HttpServer(ioWorker: IoWorker,
    */
   protected def timeoutResponse(request: HttpRequest): HttpResponse = HttpResponse(
     status = 500,
-    headers = List(HttpHeader("Content-Type", "text/plain"))
-  ).withBody {
-    "Ooops! The server was not able to produce a timely response to your request.\n" +
-    "Please try again in a short while!"
-  }
+    entity = "Ooops! The server was not able to produce a timely response to your request.\n" +
+      "Please try again in a short while!"
+  )
 }
 
 object HttpServer {
@@ -159,22 +161,20 @@ object HttpServer {
   private[can] def pipeline(settings: ServerSettings,
                             messageHandler: MessageHandlerDispatch.MessageHandler,
                             timeoutResponse: HttpRequest => HttpResponse,
-                            statsHolder: => StatsHolder,
+                            statsHolder: Option[StatsHolder],
                             log: LoggingAdapter)
                            (implicit sslEngineProvider: ServerSSLEngineProvider): PipelineStage = {
-    ServerFrontend(settings, messageHandler, timeoutResponse, log) ~>
-    PipelineStage.optional(settings.RequestChunkAggregationLimit > 0,
-      RequestChunkAggregation(settings.RequestChunkAggregationLimit.toInt)) ~>
-    PipelineStage.optional(settings.PipeliningLimit > 0, PipeliningLimiter(settings.PipeliningLimit)) ~>
-    PipelineStage.optional(settings.StatsSupport, StatsSupport(statsHolder)) ~>
-    RequestParsing(settings.ParserSettings, log) ~>
-    ResponseRendering(settings) ~>
-    PipelineStage.optional(settings.IdleTimeout > 0, ConnectionTimeouts(settings.IdleTimeout, log)) ~>
-    PipelineStage.optional(settings.SSLEncryption, SslTlsSupport(sslEngineProvider, log)) ~>
-    PipelineStage.optional(
-      settings.ReapingCycle > 0 && (settings.IdleTimeout > 0 || settings.RequestTimeout > 0),
-      TickGenerator(Duration(settings.ReapingCycle, TimeUnit.MILLISECONDS))
-    )
+    import settings.{StatsSupport => _, _}
+    ServerFrontend(settings, messageHandler, timeoutResponse, log) >>
+    (RequestChunkAggregationLimit > 0) ? RequestChunkAggregation(RequestChunkAggregationLimit.toInt) >>
+    (PipeliningLimit > 0) ? PipeliningLimiter(settings.PipeliningLimit) >>
+    settings.StatsSupport ? StatsSupport(statsHolder.get) >>
+    RemoteAddressHeader ? RemoteAddressHeaderSupport() >>
+    RequestParsing(ParserSettings, log) >>
+    ResponseRendering(settings) >>
+    (IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
+    SSLEncryption ? SslTlsSupport(sslEngineProvider, log) >>
+    (ReapingCycle > 0 && (IdleTimeout > 0 || RequestTimeout > 0)) ? TickGenerator(ReapingCycle)
   }
 
   case class Stats(
@@ -207,6 +207,5 @@ object HttpServer {
   type Unbound = IoServer.Unbound;                      val Unbound = IoServer.Unbound
   type Closed = IoServer.Closed;                        val Closed = IoServer.Closed
   type AckSend = IoServer.AckSend;                      val AckSend = IoServer.AckSend
-  type RequestTimeout = ServerFrontend.RequestTimeout;  val RequestTimeout = ServerFrontend.RequestTimeout
 
 }

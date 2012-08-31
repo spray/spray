@@ -36,7 +36,7 @@ trait Handle {
   /**
    * The remote address this connection is attached to.
    */
-  def address: InetSocketAddress
+  def remoteAddress: InetSocketAddress
 
   /**
    * The ActorRef that originally commanded the establishment of this connection.
@@ -49,6 +49,6 @@ trait Handle {
 case class SimpleHandle(
   key: Key,
   handler: ActorRef,
-  address: InetSocketAddress,
+  remoteAddress: InetSocketAddress,
   commander: ActorRef
 ) extends Handle

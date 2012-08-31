@@ -16,15 +16,13 @@
 
 package cc.spray.can.server
 
-import cc.spray.can.parsing.ParserSettings
 import com.typesafe.config.{ConfigFactory, Config}
+import cc.spray.can.parsing.ParserSettings
+import cc.spray.util.ConfigUtils
 
-private[can] class ServerSettings(config: Config = ConfigFactory.load) {
-  private[this] val c: Config = {
-    val c = config.withFallback(ConfigFactory.defaultReference)
-    c.checkValid(ConfigFactory.defaultReference, "spray.can.server")
-    c.getConfig("spray.can.server")
-  }
+
+class ServerSettings(config: Config = ConfigFactory.load) {
+  protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.can.server")
 
   val ServerHeader                  = c getString       "server-header"
   val SSLEncryption                 = c getBoolean      "ssl-encryption"
@@ -36,6 +34,7 @@ private[can] class ServerSettings(config: Config = ConfigFactory.load) {
   val AckSends                      = c getBoolean      "ack-sends"
   val DirectResponding              = c getBoolean      "direct-responding"
   val StatsSupport                  = c getBoolean      "stats-support"
+  val RemoteAddressHeader           = c getBoolean      "remote-address-header"
   val TransparentHeadRequests       = c getBoolean      "transparent-head-requests"
   val TimeoutHandler                = c getString       "timeout-handler"
   val ChunklessStreaming            = c getBoolean      "chunkless-streaming"
@@ -53,4 +52,9 @@ private[can] class ServerSettings(config: Config = ConfigFactory.load) {
     "request-chunk-aggregation-limit must be >= 0 and <= Int.MaxValue")
   require(0 <= ResponseSizeHint && ResponseSizeHint <= Int.MaxValue,
     "response-size-hint must be >= 0 and <= Int.MaxValue")
+}
+
+object ServerSettings {
+  def apply(): ServerSettings = apply(ConfigFactory.load())
+  implicit def apply(config: Config): ServerSettings = new ServerSettings(config)
 }

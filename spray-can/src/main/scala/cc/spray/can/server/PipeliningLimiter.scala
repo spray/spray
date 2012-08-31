@@ -16,11 +16,13 @@
 
 package cc.spray.can.server
 
-import cc.spray.can.model.{HttpMessageEndPart, HttpRequestPart}
-import cc.spray.can.rendering.HttpResponsePartRenderingContext
-import cc.spray.io._
 import collection.mutable.Queue
 import annotation.tailrec
+import cc.spray.can.rendering.HttpResponsePartRenderingContext
+import cc.spray.can.HttpEvent
+import cc.spray.http._
+import cc.spray.io._
+import cc.spray.io.pipelining._
 
 
 object PipeliningLimiter {
@@ -35,7 +37,7 @@ object PipeliningLimiter {
       var readingStopped = false
 
       val commandPipeline: CPL = {
-        case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEndPart] =>
+        case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEnd] =>
           openRequests -= 1
           commandPL(x)
           if (parkedRequestParts != null && !parkedRequestParts.isEmpty) {
@@ -47,13 +49,13 @@ object PipeliningLimiter {
       }
 
       val eventPipeline: EPL = {
-        case x: HttpRequestPart =>
+        case ev@ HttpEvent(x: HttpRequestPart) =>
           if (openRequests == limit) {
             stopReading()
             park(x)
           } else {
-            if (x.isInstanceOf[HttpMessageEndPart]) openRequests += 1
-            eventPL(x)
+            if (x.isInstanceOf[HttpMessageEnd]) openRequests += 1
+            eventPL(ev)
           }
 
         case ev => eventPL(ev)
@@ -82,11 +84,11 @@ object PipeliningLimiter {
       def unparkOneRequest() {
         if (!parkedRequestParts.isEmpty) {
           parkedRequestParts.dequeue() match {
-            case part: HttpMessageEndPart =>
+            case part: HttpMessageEnd =>
               openRequests += 1
-              eventPL(part)
+              eventPL(HttpEvent(part))
             case part =>
-              eventPL(part)
+              eventPL(HttpEvent(part))
               unparkOneRequest()
           }
         }

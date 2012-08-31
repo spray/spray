@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package parsing
+package cc.spray.can.parsing
 
-import model.{ChunkExtension, HttpHeader}
+import cc.spray.http.ChunkExtension
+import cc.spray.http.HttpHeaders.RawHeader
+
 
 class TrailerParser(settings: ParserSettings, extensions: List[ChunkExtension] = Nil, headerCount: Int = 0,
-                    headers: List[HttpHeader] = Nil) extends HeaderNameParser(settings, null, headerCount, headers) {
+                    headers: List[RawHeader] = Nil) extends HeaderNameParser(settings, null, headerCount, headers) {
 
   override def valueParser = new HeaderValueParser(settings, null, headerCount, headers, headerName.toString) {
     override def nameParser =
-      new TrailerParser(settings, extensions, headerCount + 1, HttpHeader(headerName, headerValue.toString) :: headers)
+      new TrailerParser(settings, extensions, headerCount + 1, RawHeader(headerName, headerValue.toString) :: headers)
   }
 
   override def headersComplete = ChunkedEndState(extensions, headers)

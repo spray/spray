@@ -14,13 +14,11 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package parsing
+package cc.spray.can.parsing
 
-import model.HttpMethods
 
 class EmptyRequestParser(settings: ParserSettings) extends CharacterParser {
-  import HttpMethods._
+  import cc.spray.http.HttpMethods._
 
   def handleChar(cursor: Char) = cursor match {
     case 'G' => new MethodParser(settings, GET)
@@ -28,6 +26,7 @@ class EmptyRequestParser(settings: ParserSettings) extends CharacterParser {
       override def handleChar(cursor: Char) = cursor match {
         case 'O' => new MethodParser(settings, POST, 1)
         case 'U' => new MethodParser(settings, PUT, 1)
+        case 'A' => new MethodParser(settings, PATCH, 1)
         case _ => badMethod
       }
     }
@@ -35,7 +34,6 @@ class EmptyRequestParser(settings: ParserSettings) extends CharacterParser {
     case 'H' => new MethodParser(settings, HEAD)
     case 'O' => new MethodParser(settings, OPTIONS)
     case 'T' => new MethodParser(settings, TRACE)
-    case 'C' => new MethodParser(settings, CONNECT)
     case _ => badMethod
   }
 }

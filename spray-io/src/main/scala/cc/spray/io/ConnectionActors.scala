@@ -18,6 +18,7 @@ package cc.spray.io
 
 import java.net.InetSocketAddress
 import akka.actor.{ActorRef, Status, Props, Actor}
+import pipelining._
 
 
 trait ConnectionActors extends IoPeer { ioPeer =>
@@ -25,9 +26,9 @@ trait ConnectionActors extends IoPeer { ioPeer =>
   override protected def createConnectionHandle(theKey: Key, theAddress: InetSocketAddress, theCommander: ActorRef) = {
     new Handle {
       val key = theKey
-      val handler = context.actorOf(Props(createConnectionActor(this)))
-      val address = theAddress
+      val remoteAddress = theAddress
       val commander = theCommander
+      val handler = context.actorOf(Props(createConnectionActor(this))) // must be initialized last
     }
   }
 
@@ -36,7 +37,7 @@ trait ConnectionActors extends IoPeer { ioPeer =>
   protected def pipeline: PipelineStage
 
   class IoConnectionActor(val handle: Handle) extends Actor {
-    private[this] lazy val pipelines = pipeline.buildPipelines(
+    protected val pipelines = pipeline.buildPipelines(
       context = PipelineContext(handle, context),
       commandPL = baseCommandPipeline,
       eventPL = baseEventPipeline

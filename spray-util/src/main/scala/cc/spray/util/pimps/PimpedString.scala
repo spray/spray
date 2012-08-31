@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-package cc.spray.util.pimps
+package cc.spray.util
+package pimps
 
 
 import scala.annotation.tailrec
@@ -63,10 +64,16 @@ class PimpedString(underlying: String) {
   }
 
   /**
-   * @return Some(String) if the underlying string is non-emtpy, None otherwise
+   * Returns Some(String) if the underlying string is non-emtpy, None otherwise
    */
   def toOption: Option[String] =
     if (underlying.isEmpty) None else Some(underlying)
+
+  /**
+   * If the underlying string is null the method returns the empty string, otherwise the underlying string.
+   */
+  def nullAsEmpty: String =
+    if (underlying == null) "" else underlying
 
   /**
    * Returns the ASCII encoded bytes of this string.
@@ -81,4 +88,12 @@ class PimpedString(underlying: String) {
     }
     array
   }
+
+  /**
+   * Tests two strings for value equality avoiding timing attacks.
+   * Note that this function still leaks information about the length of each string as well as
+   * whether the two strings have the same length.
+   */
+  def secure_== (other: String): Boolean = getAsciiBytes secure_== other.getAsciiBytes
+
 }

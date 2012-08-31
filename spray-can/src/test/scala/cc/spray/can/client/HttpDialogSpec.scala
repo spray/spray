@@ -16,15 +16,16 @@
 
 package cc.spray.can.client
 
-import cc.spray.can.model.{HttpResponse, HttpRequest}
-import cc.spray.can.server.HttpServer
-import cc.spray.io.IoWorker
-import cc.spray.io.pipelines.MessageHandlerDispatch.SingletonHandler
-import cc.spray.util._
 import akka.actor.{Props, ActorSystem}
 import akka.pattern.ask
 import akka.util.Duration
 import org.specs2.mutable.Specification
+import cc.spray.can.server.HttpServer
+import cc.spray.io.IoWorker
+import cc.spray.io.pipelining.MessageHandlerDispatch.SingletonHandler
+import cc.spray.util._
+import cc.spray.http._
+
 
 class HttpDialogSpec extends Specification {
   implicit val system = ActorSystem()
@@ -33,7 +34,7 @@ class HttpDialogSpec extends Specification {
 
   step {
     val handler = system.actorOf(Props(behavior = ctx => {
-      case x: HttpRequest => ctx.sender ! HttpResponse().withBody(x.uri)
+      case x: HttpRequest => ctx.sender ! HttpResponse(entity = x.uri)
     }))
     val server = system.actorOf(Props(new HttpServer(ioWorker, SingletonHandler(handler))))
     server.ask(HttpServer.Bind("localhost", port))(Duration("1 s")).await
@@ -46,7 +47,7 @@ class HttpDialogSpec extends Specification {
       HttpDialog(client, "localhost", port)
         .send(HttpRequest(uri = "/foo"))
         .end
-        .map(_.bodyAsString)
+        .map(_.entity.asString)
         .await === "/foo"
     }
     "be able to complete a pipelined 3 requests dialog" in {
@@ -55,7 +56,7 @@ class HttpDialogSpec extends Specification {
         .send(HttpRequest(uri = "/bar"))
         .send(HttpRequest(uri = "/baz"))
         .end
-        .map(_.map(_.bodyAsString))
+        .map(_.map(_.entity.asString))
         .await === "/foo" :: "/bar" :: "/baz" :: Nil
     }
     "be able to complete an unpipelined 3 requests dialog" in {
@@ -66,17 +67,17 @@ class HttpDialogSpec extends Specification {
         .awaitResponse
         .send(HttpRequest(uri = "/baz"))
         .end
-        .map(_.map(_.bodyAsString))
+        .map(_.map(_.entity.asString))
         .await === "/foo" :: "/bar" :: "/baz" :: Nil
     }
     "be able to complete a dialog with 3 replies" in {
       HttpDialog(client, "localhost", port)
         .send(HttpRequest(uri = "/foo"))
-        .reply(response => HttpRequest(uri = response.bodyAsString + "/a"))
-        .reply(response => HttpRequest(uri = response.bodyAsString + "/b"))
-        .reply(response => HttpRequest(uri = response.bodyAsString + "/c"))
+        .reply(response => HttpRequest(uri = response.entity.asString + "/a"))
+        .reply(response => HttpRequest(uri = response.entity.asString + "/b"))
+        .reply(response => HttpRequest(uri = response.entity.asString + "/c"))
         .end
-        .map(_.bodyAsString)
+        .map(_.entity.asString)
         .await === "/foo/a/b/c"
     }
   }

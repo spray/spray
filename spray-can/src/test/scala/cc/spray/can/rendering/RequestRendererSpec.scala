@@ -17,10 +17,12 @@
 package cc.spray.can
 package rendering
 
-import model._
-import HttpMethods._
 import org.specs2.mutable.Specification
 import cc.spray.util.EOL
+import cc.spray.http._
+import HttpMethods._
+import HttpHeaders.RawHeader
+
 
 class RequestRendererSpec extends Specification {
 
@@ -42,8 +44,8 @@ class RequestRendererSpec extends Specification {
           method = POST,
           uri = "/abc/xyz",
           headers = List(
-            HttpHeader("X-Fancy", "naa"),
-            HttpHeader("Age", "0")
+            RawHeader("X-Fancy", "naa"),
+            RawHeader("Age", "0")
           )
         ) must beRenderedTo {
           """|POST /abc/xyz HTTP/1.1
@@ -61,16 +63,16 @@ class RequestRendererSpec extends Specification {
           method = PUT,
           uri = "/abc/xyz",
           headers = List(
-            HttpHeader("X-Fancy", "naa"),
-            HttpHeader("Cache-Control", "public")
-          ),
-          body = "The content please!".getBytes("ISO-8859-1")
-        ) must beRenderedTo {
+            RawHeader("X-Fancy", "naa"),
+            RawHeader("Cache-Control", "public")
+          )
+        ).withEntity("The content please!") must beRenderedTo {
           """|PUT /abc/xyz HTTP/1.1
              |X-Fancy: naa
              |Cache-Control: public
              |Host: test.com:8080
              |User-Agent: spray-can/1.0.0
+             |Content-Type: text/plain
              |Content-Length: 19
              |
              |The content please!"""
@@ -90,10 +92,11 @@ class RequestRendererSpec extends Specification {
 
       "POST request start (chunked) with body" in {
         ChunkedRequestStart(HttpRequest(POST, "/abc/xyz")
-          .withBody("ABCDEFGHIJKLMNOPQRSTUVWXYZ")) must beRenderedTo {
+          .withEntity("ABCDEFGHIJKLMNOPQRSTUVWXYZ")) must beRenderedTo {
           """|POST /abc/xyz HTTP/1.1
              |Host: test.com:8080
              |User-Agent: spray-can/1.0.0
+             |Content-Type: text/plain
              |Transfer-Encoding: chunked
              |
              |1a

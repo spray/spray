@@ -16,36 +16,32 @@
 
 package cc.spray.io
 
+import java.util.concurrent.CountDownLatch
 import java.nio.channels.spi.SelectorProvider
 import java.nio.ByteBuffer
-import annotation.tailrec
-import collection.mutable.ListBuffer
 import java.nio.channels.{CancelledKeyException, SelectionKey, SocketChannel, ServerSocketChannel}
-import java.util.concurrent.CountDownLatch
-import akka.event.{LoggingBus, BusLogging, LoggingAdapter}
-import com.typesafe.config.{ConfigFactory, Config}
-import akka.actor.{Status, ActorSystem, ActorRef}
 import java.net.InetSocketAddress
+import annotation.tailrec
+import akka.event.{LoggingBus, BusLogging, LoggingAdapter}
+import akka.actor.{Status, ActorSystem, ActorRef}
+import akka.util.NonFatal
+import cc.spray.util.model.{IOClosed, IOSent}
+
 
 // threadsafe
-class IoWorker(log: LoggingAdapter, config: Config) {
-  def this(loggingBus: LoggingBus, config: Config) =
-    this(new BusLogging(loggingBus, "IoWorker", classOf[IoWorker]), config)
-  def this(loggingSystem: ActorSystem, config: Config) =
-    this(loggingSystem.eventStream, config)
-  def this(loggingSystem: ActorSystem) = this(loggingSystem, ConfigFactory.load())
-  def this(loggingBus: LoggingBus) = this(loggingBus, ConfigFactory.load())
-  def this(log: LoggingAdapter) = this(log, ConfigFactory.load())
+class IoWorker(log: LoggingAdapter, settings: IoWorkerSettings) {
+  def this(bus: LoggingBus, settings: IoWorkerSettings) = this(new BusLogging(bus, "IoWorker", classOf[IoWorker]), settings)
+  def this(loggingSystem: ActorSystem, settings: IoWorkerSettings) = this(loggingSystem.eventStream, settings)
+  def this(loggingSystem: ActorSystem) = this(loggingSystem, IoWorkerSettings())
 
   import IoWorker._
 
-  val settings = new IoWorkerSettings(config)
-  private[this] var ioThread: Option[IoThread] = None
+  private[this] var ioThread: IoThread = _
 
   /**
    * @return the IO thread if started and not yet stopped, otherwise None
    */
-  def thread: Option[Thread] = lock.synchronized(ioThread)
+  def thread: Option[Thread] = lock.synchronized(Option(ioThread))
 
   /**
    * Starts the IoWorker if not yet started
@@ -53,9 +49,9 @@ class IoWorker(log: LoggingAdapter, config: Config) {
    */
   def start(): this.type = {
     lock.synchronized {
-      if (ioThread.isEmpty) {
-        ioThread = Some(new IoThread(settings, log))
-        ioThread.get.start()
+      if (ioThread == null) {
+        ioThread = new IoThread(settings, log)
+        ioThread.start()
         _runningWorkers = _runningWorkers :+ this
       }
     }
@@ -69,11 +65,11 @@ class IoWorker(log: LoggingAdapter, config: Config) {
    */
   def stop() {
     lock.synchronized {
-      if (ioThread.isDefined) {
+      if (ioThread != null) {
         val latch = new CountDownLatch(1)
         this ! Stop(latch)
         latch.await()
-        ioThread = None
+        ioThread = null
         _runningWorkers = _runningWorkers.filter(_ != this)
       }
     }
@@ -83,9 +79,8 @@ class IoWorker(log: LoggingAdapter, config: Config) {
    * Posts a Command to the IoWorkers command queue.
    */
   def ! (cmd: Command)(implicit sender: ActorRef = null) {
-    if (ioThread.isEmpty)
-      throw new IllegalStateException("Cannot post message to unstarted IoWorker")
-    ioThread.get.post(cmd, sender)
+    if (ioThread == null) throw new IllegalStateException("Cannot post message to unstarted IoWorker")
+    ioThread.post(cmd, sender)
   }
 
   /**
@@ -100,7 +95,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
 
     private val commandQueue = new SingleReaderConcurrentQueue[(Command, ActorRef)]
     private val selector = SelectorProvider.provider.openSelector
-    private var stopped: Option[CountDownLatch] = None
+    private var stopped: CountDownLatch = _
 
     // stats fields
     private var startTime = 0L
@@ -128,7 +123,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
 
     override def run() {
       log.info("IoWorker thread '{}' started", Thread.currentThread.getName)
-      while (stopped.isEmpty) {
+      while (stopped == null) {
         if (commandQueue.isEmpty) {
           select()
         } else {
@@ -139,7 +134,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
       }
       closeSelector()
       log.info("IoWorker thread '{}' stopped", Thread.currentThread.getName)
-      stopped.get.countDown()
+      stopped.countDown()
     }
 
     def select() {
@@ -178,7 +173,9 @@ class IoWorker(log: LoggingAdapter, config: Config) {
                 buf +=: writeQueue // we cannot drop the head and need to continue with it next time
                 log.debug("Wrote {} bytes, more pending", bytesWritten - oldBytesWritten)
               }
-            case AckTo(receiver) => receiver ! AckSend(handle)
+            case AckTo(receiver) =>
+              receiver ! AckSend(handle)
+              writeToChannel()
             case PerformCleanClose => close(handle, CleanClose)
           }
         } else {
@@ -189,7 +186,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
 
       try writeToChannel()
       catch {
-        case e =>
+        case NonFatal(e) =>
           log.warning("Write error: closing connection due to {}", e.toString)
           close(handle, IoError(e))
       }
@@ -212,7 +209,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
           close(handle, PeerClosed)
         }
       } catch {
-        case e =>
+        case NonFatal(e) =>
           log.warning("Read error: closing connection due to {}", e.toString)
           close(handle, IoError(e))
       }
@@ -220,14 +217,14 @@ class IoWorker(log: LoggingAdapter, config: Config) {
 
     def accept(key: SelectionKey) {
       try {
-        val socketChannel = key.channel.asInstanceOf[ServerSocketChannel].accept()
-        configure(socketChannel)
-        val connectionKey = socketChannel.register(selector, 0) // we don't enable any ops until we have a handle
+        val channel = key.channel.asInstanceOf[ServerSocketChannel].accept()
+        configure(channel)
+        val connectionKey = channel.register(selector, 0) // we don't enable any ops until we have a handle
         val cmd = key.attachment.asInstanceOf[Bind]
         log.debug("New connection accepted on {}", cmd.address)
         cmd.handleCreator ! Connected(Key(connectionKey), cmd.address)
       } catch {
-        case e => log.error(e, "Accept error: could not accept new connection")
+        case NonFatal(e) => log.error(e, "Accept error: could not accept new connection")
       }
     }
 
@@ -241,14 +238,14 @@ class IoWorker(log: LoggingAdapter, config: Config) {
     }
 
     def connect(key: SelectionKey) {
-      val (cmd@Connect(address), sender) = key.attachment.asInstanceOf[(Connect, ActorRef)]
+      val (cmd@Connect(address, _), sender) = key.attachment.asInstanceOf[(Connect, ActorRef)]
       try {
         key.channel.asInstanceOf[SocketChannel].finishConnect()
         key.interestOps(0) // we don't enable any ops until we have a handle
         log.debug("Connection established to {}", address)
         sender ! Connected(Key(key), address)
       } catch {
-        case e =>
+        case NonFatal(e) =>
           log.error(e, "Connect error: could not establish new connection to {}", address)
           sender ! Status.Failure(CommandException(cmd, e))
       }
@@ -270,7 +267,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
           case x: Bind => bind(x, sender)
           case x: Unbind => unbind(x, sender)
           case GetStats => deliverStats(sender)
-          case Stop(latch) => stopped = Some(latch)
+          case Stop(latch) => stopped = latch
 
           case x => log.warning("Received unknown command '{}', ignoring ...", x)
         }
@@ -324,6 +321,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
       if (sender != null) {
         val channel = SocketChannel.open()
         configure(channel)
+        cmd.localAddress.foreach(channel.socket().bind(_))
         if (settings.TcpReceiveBufferSize != 0)
           channel.socket.setReceiveBufferSize(settings.TcpReceiveBufferSize.toInt)
         if (channel.connect(cmd.address)) {
@@ -368,7 +366,7 @@ class IoWorker(log: LoggingAdapter, config: Config) {
         selector.keys.asScala.foreach(_.channel.close())
         selector.close()
       } catch {
-        case e =>
+        case NonFatal(e) =>
           log.error(e, "Error closing selector (key)")
       }
     }
@@ -392,7 +390,7 @@ object IoWorker {
     commandsExecuted: Long
   )
 
-  // these two things can be elements of a Keys writeQueue in addition to a raw ByteBuffer
+  // these two things can be elements of a Keys writeQueue (in addition to a raw ByteBuffer)
   private[io] case class AckTo(receiver: ActorRef)
   private[io] case object PerformCleanClose
 
@@ -402,7 +400,7 @@ object IoWorker {
   private[IoWorker] case class Stop(latch: CountDownLatch) extends Command
   case class Bind(handleCreator: ActorRef, address: InetSocketAddress, backlog: Int) extends Command
   case class Unbind(bindingKey: Key) extends Command
-  case class Connect(address: InetSocketAddress) extends Command
+  case class Connect(address: InetSocketAddress, localAddress: Option[InetSocketAddress] = None) extends Command
   object Connect {
     def apply(host: String, port: Int): Connect = Connect(new InetSocketAddress(host, port))
   }
@@ -417,7 +415,7 @@ object IoWorker {
   case class Close(handle: Handle, reason: ConnectionClosedReason) extends ConnectionCommand
   case class Send(handle: Handle, buffers: Seq[ByteBuffer], ack: Boolean = true) extends ConnectionCommand
   object Send {
-    def apply(handle: Handle, buffer: ByteBuffer): Send = apply(handle, buffer, true)
+    def apply(handle: Handle, buffer: ByteBuffer): Send = apply(handle, buffer, ack = true)
     def apply(handle: Handle, buffer: ByteBuffer, ack: Boolean): Send = new Send(handle, buffer :: Nil, ack)
   }
   case class StopReading(handle: Handle) extends ConnectionCommand
@@ -431,7 +429,7 @@ object IoWorker {
   case class Connected(key: Key, address: InetSocketAddress) extends Event
 
   // connection-level events
-  case class Closed(handle: Handle, reason: ConnectionClosedReason) extends Event
-  case class AckSend(handle: Handle) extends Event
+  case class Closed(handle: Handle, reason: ConnectionClosedReason) extends Event with IOClosed
+  case class AckSend(handle: Handle) extends Event with IOSent
   case class Received(handle: Handle, buffer: ByteBuffer) extends Event
 }

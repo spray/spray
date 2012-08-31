@@ -14,15 +14,20 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package parsing
+package cc.spray.can.parsing
 
-import model.{MessageLine, HttpHeader}
 import java.nio.ByteBuffer
+import cc.spray.http.HttpHeaders.RawHeader
+import cc.spray.http.ContentType
+import cc.spray.can.MessageLine
 import cc.spray.util._
 
-class ToCloseBodyParser(settings: ParserSettings, messageLine: MessageLine, headers: List[HttpHeader],
-                        connectionHeader: Option[String]) extends IntermediateState {
+
+class ToCloseBodyParser(settings: ParserSettings,
+                        messageLine: MessageLine,
+                        headers: List[RawHeader],
+                        connectionHeader: Option[String],
+                        contentType: Option[ContentType]) extends IntermediateState {
 
   private var body: Array[Byte] = EmptyByteArray
 
@@ -40,5 +45,5 @@ class ToCloseBodyParser(settings: ParserSettings, messageLine: MessageLine, head
     }
   }
 
-  def complete = CompleteMessageState(messageLine, headers, connectionHeader, body)
+  def complete = CompleteMessageState(messageLine, headers, connectionHeader, contentType, body)
 }

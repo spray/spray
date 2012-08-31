@@ -17,18 +17,20 @@
 package cc.spray.client
 
 import com.typesafe.config.{Config, ConfigFactory}
+import cc.spray.util.ConfigUtils
 
 
-class ConduitSettings(config: Config = ConfigFactory.load()) {
-  private[this] val c: Config = {
-    val c = ConfigFactory.load()
-    c.checkValid(ConfigFactory.defaultReference(), "spray.client")
-    c.getConfig("spray.client")
-  }
+class ConduitSettings(config: Config) {
+  protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.client")
 
   val MaxConnections = c getInt "max-connections"
   val MaxRetries     = c getInt "max-retries"
 
   require(MaxConnections >  0, "max-connections must be > 0")
   require(MaxRetries     >= 0, "max-retries must be >= 0")
+}
+
+object ConduitSettings {
+  def apply(): ConduitSettings = apply(ConfigFactory.load())
+  implicit def apply(config: Config): ConduitSettings = new ConduitSettings(config)
 }

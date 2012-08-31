@@ -16,8 +16,10 @@
 
 package cc.spray.can.client
 
+import cc.spray.can.HttpEvent
+import cc.spray.http._
 import cc.spray.io._
-import cc.spray.can.model._
+import cc.spray.io.pipelining._
 
 
 object ResponseChunkAggregation {
@@ -31,19 +33,19 @@ object ResponseChunkAggregation {
 
       def apply(event: Event) {
         event match {
-          case ChunkedResponseStart(res) => if (!closed) {
+          case HttpEvent(ChunkedResponseStart(res)) => if (!closed) {
             response = res
-            if (res.body.length <= limit) bb = BufferBuilder(res.body)
+            if (res.entity.buffer.length <= limit) bb = BufferBuilder(res.entity.buffer)
             else closeWithError()
           }
 
-          case MessageChunk(body, _) => if (!closed) {
+          case HttpEvent(MessageChunk(body, _)) => if (!closed) {
             if (bb.size + body.length <= limit) bb.append(body)
             else closeWithError()
           }
 
-          case _: ChunkedMessageEnd => if (!closed) {
-            eventPL(response.copy(body = bb.toArray))
+          case HttpEvent(_: ChunkedMessageEnd) => if (!closed) {
+            eventPL(HttpEvent(response.copy(entity = response.entity.map((ct, _) => ct -> bb.toArray))))
             response = null
             bb = null
           }

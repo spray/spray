@@ -16,18 +16,20 @@
 
 package cc.spray.can.server
 
-import cc.spray.can.HttpPipelineStageSpec
-import cc.spray.io.pipelines.MessageHandlerDispatch._
-import cc.spray.util._
 import akka.pattern.ask
 import akka.testkit.TestActorRef
 import akka.util.{Duration, Timeout}
 import com.typesafe.config.ConfigFactory
 import org.specs2.mutable.Specification
 import java.util.concurrent.atomic.AtomicInteger
-import cc.spray.io._
 import akka.actor.{Actor, Props}
-import cc.spray.can.model._
+import cc.spray.can.{HttpCommand, HttpPipelineStageSpec}
+import cc.spray.io.pipelining.MessageHandlerDispatch._
+import cc.spray.util._
+import cc.spray.io._
+import cc.spray.http._
+import HttpHeaders.RawHeader
+
 
 class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
 
@@ -36,7 +38,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
     "dispatch a simple HttpRequest to a singleton service actor" in {
       singleHandlerFixture(Received(simpleRequest)) must produce(
         commands = Seq(
-          IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), IgnoreSender)
+          IoServer.Tell(singletonHandler, HttpRequest(headers = List(RawHeader("host", "test.com"))), IgnoreSender)
         ),
         ignoreTellSender = true
       )
@@ -59,23 +61,23 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         }
       ) must produce(
         commands = Seq(
-          IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), IgnoreSender)
+          IoServer.Tell(singletonHandler, HttpRequest(headers = List(RawHeader("host", "test.com"))), IgnoreSender)
         ),
         ignoreTellSender = true
       )
     }
 
     "produce an error upon stray responses" in {
-      singleHandlerFixture(HttpResponse()) must throwAn[IllegalStateException]
+      singleHandlerFixture(HttpCommand(HttpResponse())) must throwAn[IllegalStateException]
     }
 
     "correctly render a matched HttpResponse" in {
       singleHandlerFixture(
         Received(simpleRequest),
-        HttpResponse()
+        HttpCommand(HttpResponse())
       ) must produce(
         commands = Seq(
-          IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), IgnoreSender),
+          IoServer.Tell(singletonHandler, HttpRequest(headers = List(RawHeader("host", "test.com"))), IgnoreSender),
           SendString(simpleResponse)
         ),
         ignoreTellSender = true
@@ -123,7 +125,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         val actor = system.actorOf(Props(new NamedActor("someActor")))
         singleHandlerFixture(
           Received(simpleRequest),
-          Message(HttpResponse(), sender = actor),
+          Message(HttpCommand(HttpResponse()), sender = actor),
           ClearCommandAndEventCollectors,
           IoWorker.AckSend(dummyHandle)
         ) must produce(
@@ -141,12 +143,12 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         singleHandlerFixture(
           Received(simpleRequest),
           ClearCommandAndEventCollectors,
-          Message(ChunkedResponseStart(HttpResponse()), sender = actor1),
+          Message(HttpCommand(ChunkedResponseStart(HttpResponse())), sender = actor1),
           IoWorker.AckSend(dummyHandle),
-          Message(MessageChunk("part 1"), sender = actor2),
+          Message(HttpCommand(MessageChunk("part 1")), sender = actor2),
           IoWorker.AckSend(dummyHandle),
-          Message(MessageChunk("part 2"), sender = actor3),
-          Message(ChunkedMessageEnd(), sender = actor4),
+          Message(HttpCommand(MessageChunk("part 2")), sender = actor3),
+          Message(HttpCommand(ChunkedMessageEnd()), sender = actor4),
           IoWorker.AckSend(dummyHandle),
           IoWorker.AckSend(dummyHandle)
         ) must produce(
@@ -166,36 +168,42 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
     }
 
     "correctly handle 'Expected: 100-continue' headers" in {
-      singleHandlerFixture(
-        Received {
-          prep {
-            """|GET / HTTP/1.1
-              |Host: test.com
-              |Content-Length: 12
-              |Expect: 100-continue
-              |
-              |bodybodybody"""
-          }
-        },
-        HttpResponse()
-      ) must produce(
-        commands = Seq(
-          SendString("HTTP/1.1 100 Continue\r\n\r\n"),
-          IoServer.Tell(
-            singletonHandler,
-            HttpRequest(
-              headers = List(
-                HttpHeader("expect", "100-continue"),
-                HttpHeader("content-length", "12"),
-                HttpHeader("host", "test.com")
-              )
-            ).withBody("bodybodybody"),
-            IgnoreSender
+      def example(expectValue: String) = {
+        singleHandlerFixture(
+          Received {
+            prep {
+              """|GET / HTTP/1.1
+                |Host: test.com
+                |Content-Type: text/plain
+                |Content-Length: 12
+                |Expect: %s
+                |
+                |bodybodybody""".format(expectValue)
+            }
+          },
+          HttpCommand(HttpResponse())
+        ) must produce(
+          commands = Seq(
+            SendString("HTTP/1.1 100 Continue\r\n\r\n"),
+            IoServer.Tell(
+              singletonHandler,
+              HttpRequest(
+                headers = List(
+                  RawHeader("expect", expectValue),
+                  RawHeader("content-length", "12"),
+                  RawHeader("content-type", "text/plain"),
+                  RawHeader("host", "test.com")
+                )
+              ).withEntity("bodybodybody"),
+              IgnoreSender
+            ),
+            SendString(simpleResponse)
           ),
-          SendString(simpleResponse)
-        ),
-        ignoreTellSender = true
-      )
+          ignoreTellSender = true
+        )
+      }
+      "with a header value fully matching the spec" in example("100-continue")
+      "with a header value containing illegal casing" in example("100-Continue")
     }
 
     "dispatch HEAD requests as GET requests (and suppress sending of their bodies)" in {
@@ -208,15 +216,16 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
               |"""
           }
         },
-        HttpResponse().withBody("1234567")
+        HttpCommand(HttpResponse(entity = "1234567"))
       ) must produce(
         commands = Seq(
-          IoServer.Tell(singletonHandler, HttpRequest(headers = List(HttpHeader("host", "test.com"))), IgnoreSender),
+          IoServer.Tell(singletonHandler, HttpRequest(headers = List(RawHeader("host", "test.com"))), IgnoreSender),
           SendString {
             prep {
             """|HTTP/1.1 200 OK
                |Server: spray/1.0
                |Date: XXXX
+               |Content-Type: text/plain
                |Content-Length: 7
                |
                |"""
@@ -306,8 +315,8 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       """)
     ),
     messageHandler,
-    req => HttpResponse(500).withBody("Timeout for " + req.uri),
-    new StatsSupport.StatsHolder,
+    req => HttpResponse(500, "Timeout for " + req.uri),
+    Some(new StatsSupport.StatsHolder),
     system.log
   )
 

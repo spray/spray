@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package cc.spray.can
-package parsing
+package cc.spray.can.parsing
 
 import java.lang.{StringBuilder => JStringBuilder}
-import model.ChunkExtension
+import cc.spray.http.ChunkExtension
+
 
 class ChunkExtensionNameParser(settings: ParserSettings, chunkSize: Int, extCount: Int = 0,
                                extensions: List[ChunkExtension] = Nil) extends CharacterParser {
