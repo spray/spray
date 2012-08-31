@@ -20,7 +20,7 @@ import com.typesafe.config.{ConfigFactory, Config}
 import cc.spray.util.ConfigUtils
 
 
-class IoWorkerSettings(config: Config) {
+class IOBridgeSettings(config: Config) {
   protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.io")
 
   val ThreadName           = c getString  "thread-name"
@@ -36,7 +36,7 @@ class IoWorkerSettings(config: Config) {
   require(TcpSendBufferSize    >= 0, "send-buffer-size must be >= 0")
 }
 
-object IoWorkerSettings {
-  def apply(): IoWorkerSettings = apply(ConfigFactory.load())
-  implicit def apply(config: Config): IoWorkerSettings = new IoWorkerSettings(config)
+object IOBridgeSettings {
+  def apply(): IOBridgeSettings = apply(ConfigFactory.load())
+  implicit def apply(config: Config): IOBridgeSettings = new IOBridgeSettings(config)
 }

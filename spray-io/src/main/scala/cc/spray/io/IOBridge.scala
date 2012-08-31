@@ -29,10 +29,10 @@ import cc.spray.util.model.{IOClosed, IOSent}
 
 
 // threadsafe
-class IOBridge(log: LoggingAdapter, settings: IoWorkerSettings) {
-  def this(bus: LoggingBus, settings: IoWorkerSettings) = this(new BusLogging(bus, "IOBridge", classOf[IOBridge]), settings)
-  def this(loggingSystem: ActorSystem, settings: IoWorkerSettings) = this(loggingSystem.eventStream, settings)
-  def this(loggingSystem: ActorSystem) = this(loggingSystem, IoWorkerSettings())
+class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
+  def this(bus: LoggingBus, settings: IOBridgeSettings) = this(new BusLogging(bus, "IOBridge", classOf[IOBridge]), settings)
+  def this(loggingSystem: ActorSystem, settings: IOBridgeSettings) = this(loggingSystem.eventStream, settings)
+  def this(loggingSystem: ActorSystem) = this(loggingSystem, IOBridgeSettings())
 
   import IOBridge._
 
@@ -90,7 +90,7 @@ class IOBridge(log: LoggingAdapter, settings: IoWorkerSettings) {
     this.!(cmd)(sender)
   }
 
-  private class IoThread(settings: IoWorkerSettings, log: LoggingAdapter) extends Thread {
+  private class IoThread(settings: IOBridgeSettings, log: LoggingAdapter) extends Thread {
     import SelectionKey._
 
     private val commandQueue = new SingleReaderConcurrentQueue[(Command, ActorRef)]
