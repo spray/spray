@@ -35,9 +35,8 @@ final class SingleReaderConcurrentQueue[T] {
   def enqueue(value: T) {
     val currentIn = in.get()
     val newIn = value :: currentIn
-    if (!in.compareAndSet(currentIn, newIn)) {
+    if (!in.compareAndSet(currentIn, newIn))
       enqueue(value) // retry
-    }
   }
 
   def isEmpty = out.isEmpty && in.get.isEmpty

@@ -82,7 +82,7 @@ trait CachingDirectives {
             case Left(error) => ctx.fail(error)
           }
 
-        case _ => route(ctx)
+        case None => route(ctx)
       }
     }
   }
