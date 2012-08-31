@@ -31,36 +31,34 @@ class Initializer extends ServletContextListener {
       println("Starting spray application ...")
       val servletContext = ev.getServletContext
 
-      def missingMemberError(className: String, member: String): PartialFunction[Throwable, Unit] = {
-        case e@ (_: NoSuchMethodException | _: ClassCastException) =>
-          servletContext.log("Configured boot class " + className + " does not define a " + member, e)
-      }
-
-      def notFoundError(className: String): PartialFunction[Throwable, Unit] = {
-        case e: ClassNotFoundException =>
-          servletContext.log("Configured boot class " + className + " cannot be found", e)
-      }
-
       try {
         val classLoader = ActorSystem.asInstanceOf[{ def findClassLoader(): ClassLoader }].findClassLoader()
         val config = ConfigFactory.load(classLoader)
         val settings = new ConnectorSettings(config)
         servletContext.setAttribute(Initializer.SettingsAttrName, settings)
+        def configuredBootClass = "Configured boot class " + settings.BootClass
         try {
           val bootClass = classLoader.loadClass(settings.BootClass)
           val constructor = bootClass.getConstructor()
           try {
             val boot = constructor.newInstance()
-            val system = boot.asInstanceOf[{ def system: ActorSystem }].system
-            actorSystem = Some(system)
-            servletContext.setAttribute(Initializer.SystemAttrName, system)
-            try {
-              val serviceActor = boot.asInstanceOf[{ def serviceActor: ActorRef }].serviceActor
-              servletContext.setAttribute(Initializer.ServiceActorAttrName, serviceActor)
-            } catch missingMemberError(settings.BootClass, "`def serviceActor: ActorRef` member")
-          } catch missingMemberError(settings.BootClass, "`def system: ActorSystem` member")
-        } catch missingMemberError(settings.BootClass, "default constructor") orElse notFoundError(settings.BootClass)
-      } catch { case NonFatal(e) => servletContext.log(e.getMessage, e) }
+            val webBoot = boot.asInstanceOf[WebBoot]
+            actorSystem = Some(webBoot.system)
+            servletContext.setAttribute(Initializer.SystemAttrName, actorSystem.get)
+            servletContext.setAttribute(Initializer.ServiceActorAttrName, webBoot.serviceActor)
+          } catch {
+            case e: ClassCastException =>
+              servletContext.log(configuredBootClass + " does not implement cc.spray.servlet.WebBoot", e)
+          }
+        } catch {
+          case e: ClassNotFoundException =>
+            servletContext.log(configuredBootClass + " cannot be found", e)
+          case e: NoSuchMethodException=>
+            servletContext.log(configuredBootClass + " does not define a default constructor", e)
+        }
+      } catch {
+        case NonFatal(e) => servletContext.log(e.getMessage, e)
+      }
     }
   }
 

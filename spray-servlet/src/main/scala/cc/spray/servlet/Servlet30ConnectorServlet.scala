@@ -21,7 +21,7 @@ import java.util.concurrent.{TimeUnit, CountDownLatch}
 import javax.servlet.{AsyncEvent, AsyncListener}
 import javax.servlet.http.{HttpServlet, HttpServletResponse, HttpServletRequest}
 import java.util.concurrent.atomic.AtomicInteger
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{UnhandledMessage, ActorRef, ActorSystem}
 import akka.util.NonFatal
 import akka.spray.UnregisteredActorRef
 import cc.spray.http._
@@ -47,6 +47,9 @@ class Servlet30ConnectorServlet extends HttpServlet {
     serviceActor = getServletContext.getAttribute(ServiceActorAttrName).asInstanceOf[ActorRef]
     settings = getServletContext.getAttribute(SettingsAttrName).asInstanceOf[ConnectorSettings]
     timeoutHandler = if (settings.TimeoutHandler.isEmpty) serviceActor else system.actorFor(settings.TimeoutHandler)
+    require(system != null, "No ActorSystem configured")
+    require(serviceActor != null, "No ServiceActor configured")
+    require(settings != null, "No ConnectorSettings configured")
     log.info("Initialized Servlet API 3.0 <=> Spray Connector")
   }
 
@@ -136,7 +139,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
                 log.warning("Received a ChunkedMessageEnd for a request that was already completed, dropping ...\nRequest: {}", req)
             }
 
-          case _ => system.deadLetters.tell(message, sender)
+          case x => system.eventStream.publish(UnhandledMessage(x, sender, this))
         }
       }
     }
