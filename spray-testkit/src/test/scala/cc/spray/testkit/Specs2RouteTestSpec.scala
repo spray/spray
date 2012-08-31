@@ -29,18 +29,18 @@ class Specs2RouteTestSpec extends Specification with Directives with Specs2Route
   "The routing infrastructure should support" >> {
 
     "the most simple and direct route" in {
-      Get() ~> { (_:RequestContext).complete(HttpResponse()) } ~> (_.response) === HttpResponse()
+      Get() ~> complete(HttpResponse()) ~> (_.response) === HttpResponse()
     }
 
     "a basic directive" in {
-      Get() ~> completeWith("abc") ~> check {
+      Get() ~> complete("abc") ~> check {
         body === HttpBody(ContentType(`text/plain`, `ISO-8859-1`), "abc")
       }
     }
 
     "proper rejection collection" in {
       Post("/abc", "content") ~> {
-        (get | put) { completeWith("naah") }
+        (get | put) { complete("naah") }
       } ~> check {
         rejections === List(MethodRejection(GET), MethodRejection(PUT))
       }

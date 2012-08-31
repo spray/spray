@@ -40,7 +40,7 @@ class ScalatestRouteTestSpec extends FreeSpec with MustMatchers with Directives 
     "a test using a directive and some checks" in {
       val pinkHeader = RawHeader("Fancy", "pink")
       Get() ~> addHeader(pinkHeader) ~> {
-        respondWithHeader(pinkHeader) { completeWith("abc") }
+        respondWithHeader(pinkHeader) { complete("abc") }
       } ~> check {
         status must be === OK
         body must be === HttpBody(ContentType(`text/plain`, `ISO-8859-1`), "abc")
@@ -51,7 +51,7 @@ class ScalatestRouteTestSpec extends FreeSpec with MustMatchers with Directives 
     "proper rejection collection" in {
       Post("/abc", "content") ~> {
         (get | put) {
-          completeWith("naah")
+          complete("naah")
         }
       } ~> check {
         rejections must be === List(MethodRejection(GET), MethodRejection(PUT))
