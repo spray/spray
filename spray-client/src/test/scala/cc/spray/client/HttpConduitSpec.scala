@@ -21,7 +21,6 @@ import com.typesafe.config.ConfigFactory
 import akka.util.Duration
 import akka.dispatch.Future
 import akka.pattern.ask
-import akka.event.Logging
 import akka.actor._
 import cc.spray.can.client.HttpClient
 import cc.spray.can.server.HttpServer
@@ -61,10 +60,10 @@ class HttpConduitSpec extends Specification {
         }
       }
     ), "handler")
-    system.actorOf(Props(new HttpServer(ioWorker, SingletonHandler(handler))), "httpServer")
+    system.actorOf(Props(new HttpServer(ioWorker, SingletonHandler(handler))), "http-server")
       .ask(HttpServer.Bind("localhost", port))(Duration("1 s"))
       .await // block until the server is actually bound
-    system.actorOf(Props(new HttpClient(ioWorker)), "httpClient")
+    system.actorOf(Props(new HttpClient(ioWorker)), "http-client")
   }
 
   "An HttpConduit with max. 4 connections and NonPipelined strategy" should {

@@ -27,6 +27,7 @@ import parser.HttpParser
 import RangeUnits._
 import CacheDirectives._
 
+
 class HttpHeaderSpec extends Specification {
 
   val EOL = System.getProperty("line.separator")
