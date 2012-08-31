@@ -1,14 +1,18 @@
 Version 1.0-M3 (2012-xx-xx)
 ---------------------------
 
+- Completely refactored suite module structure
 - Removed `respondWithContentType` directive (didn't play well with content negotiation)
 - Changed `parameters` directive with one argument
-- renamed transform... directives to map...
+- Renamed transform... directives to map...
+- Renamed IoWorker to IOBridge
+- Renamed `fail` directives to `failWith`
+- Renamed `completeWith` directives to `complete`
 - Default Unmarshallers now accept emtpy input where it makes sense
 - Marshalling and Unmarshalling infrastructure completely redone
 - !Directive is gone
 - 'httpBasic' => BasicAuth
-- Renamed IoWorker to IOBridge
+- ...
 
 
 Version 1.0-M2 (2012-05-16)

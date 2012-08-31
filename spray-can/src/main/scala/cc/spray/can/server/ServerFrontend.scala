@@ -42,7 +42,7 @@ object ServerFrontend {
       def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): Pipelines = {
         new Pipelines with MessageHandlerDispatch {
           val openRequests = Queue.empty[RequestRecord]
-          val openSends = Queue.empty[IoServer.Tell]
+          val openSends = Queue.empty[IOServer.Tell]
           val handlerCreator = messageHandlerCreator(messageHandler, context)
           var requestTimeout = settings.RequestTimeout
           var timeoutTimeout = settings.TimeoutTimeout
@@ -103,7 +103,7 @@ object ServerFrontend {
               if (openSends.isEmpty && openRequests.isEmpty) {
                 messageHandler match {
                   case _: SingletonHandler | _: PerConnectionHandler =>
-                    commandPL(IoServer.Tell(handlerCreator(), x, context.self))
+                    commandPL(IOServer.Tell(handlerCreator(), x, context.self))
                   case _: PerMessageHandler =>
                     // per-message handlers do not receive Closed messages that are
                     // not related to a specific request, they need to cleanup themselves
@@ -111,7 +111,7 @@ object ServerFrontend {
                 }
               } else {
                 openSends.foreach(tell => commandPL(tell.copy(message = x)))
-                openRequests.foreach(r => commandPL(IoServer.Tell(r.handler, x, r.receiver)))
+                openRequests.foreach(r => commandPL(IOServer.Tell(r.handler, x, r.receiver)))
               }
               eventPL(x) // terminates the connection actor
 
@@ -121,7 +121,7 @@ object ServerFrontend {
 
             case x: CommandException =>
               log.warning("Received {}, closing connection ...", x)
-              commandPL(HttpServer.Close(IoError(x)))
+              commandPL(HttpServer.Close(IOError(x)))
 
             case ev => eventPL(ev)
           }
@@ -132,8 +132,8 @@ object ServerFrontend {
               HttpResponsePartRenderingContext(part, method, protocol, rec.connectionHeader)
             }
             if (settings.AckSends) {
-              // prepare the IoServer.Tell command to use for `AckSend` and potential `Closed` messages
-              openSends.enqueue(IoServer.Tell(context.sender, (), rec.receiver))
+              // prepare the IOServer.Tell command to use for `AckSend` and potential `Closed` messages
+              openSends.enqueue(IOServer.Tell(context.sender, (), rec.receiver))
             }
           }
 
@@ -153,14 +153,14 @@ object ServerFrontend {
               if (request.method != HttpMethods.HEAD || !settings.TransparentHeadRequests) part
               else if (part.isInstanceOf[HttpRequest]) request.copy(method = HttpMethods.GET)
               else ChunkedRequestStart(request.copy(method = HttpMethods.GET))
-            commandPL(IoServer.Tell(rec.handler, partToDispatch, rec.receiver))
+            commandPL(IOServer.Tell(rec.handler, partToDispatch, rec.receiver))
           }
 
           def dispatchRequestChunk(part: HttpRequestPart) {
             if (openRequests.isEmpty) // part before start shouldn't be allowed by the request parsing stage
               throw new IllegalStateException
             val rec = openRequests.last
-            commandPL(IoServer.Tell(rec.handler, part, rec.receiver))
+            commandPL(IOServer.Tell(rec.handler, part, rec.receiver))
           }
 
           @tailrec
@@ -171,7 +171,7 @@ object ServerFrontend {
                 if (rec.timestamp + requestTimeout < System.currentTimeMillis) {
                   val timeoutHandler = if (settings.TimeoutHandler.isEmpty) rec.handler
                                        else context.connectionActorContext.actorFor(settings.TimeoutHandler)
-                  commandPipeline(IoServer.Tell(timeoutHandler, Timeout(rec.request), rec.receiver))
+                  commandPipeline(IOServer.Tell(timeoutHandler, Timeout(rec.request), rec.receiver))
                   // we record the time of the Timeout dispatch as negative timestamp value
                   rec.timestamp = -System.currentTimeMillis
                 }

@@ -29,7 +29,7 @@ object RequestRendering {
     def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): CPL = {
       case ctx: HttpRequestPartRenderingContext =>
         val rendered = renderer.render(ctx)
-        commandPL(IoPeer.Send(rendered.buffers, settings.AckSends))
+        commandPL(IOPeer.Send(rendered.buffers, settings.AckSends))
 
       case cmd => commandPL(cmd)
     }

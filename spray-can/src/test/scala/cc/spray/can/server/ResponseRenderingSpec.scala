@@ -19,7 +19,7 @@ package cc.spray.can.server
 import com.typesafe.config.ConfigFactory
 import org.specs2.mutable.Specification
 import cc.spray.can.rendering.HttpResponsePartRenderingContext
-import cc.spray.io.{CleanClose, IoPeer, Command}
+import cc.spray.io.{CleanClose, IOPeer, Command}
 import cc.spray.can.HttpPipelineStageSpec
 import cc.spray.http._
 
@@ -62,7 +62,7 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
              |
              |"""
         ),
-        IoPeer.Close(CleanClose)
+        IOPeer.Close(CleanClose)
       ))
     }
   }

@@ -95,7 +95,7 @@ object StatsSupport {
           responseStarts.incrementAndGet()
           commandPL(x)
 
-        case x: IoServer.Tell if x.message.isInstanceOf[Timeout] =>
+        case x: IOServer.Tell if x.message.isInstanceOf[Timeout] =>
           requestTimeouts.incrementAndGet()
           commandPL(x)
 

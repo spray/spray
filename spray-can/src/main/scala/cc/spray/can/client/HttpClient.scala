@@ -33,11 +33,11 @@ import cc.spray.http.HttpRequest
  * in case of errors).
  */
 class HttpClient(ioBridge: IOBridge, settings: ClientSettings = ClientSettings())
-                (implicit sslEngineProvider: ClientSSLEngineProvider) extends IoClient(ioBridge) with ConnectionActors {
+                (implicit sslEngineProvider: ClientSSLEngineProvider) extends IOClient(ioBridge) with ConnectionActors {
 
   protected val pipeline: PipelineStage = HttpClient.pipeline(settings, log)
 
-  override protected def createConnectionActor(handle: Handle): IoConnectionActor = new IoConnectionActor(handle) {
+  override protected def createConnectionActor(handle: Handle): IOConnectionActor = new IOConnectionActor(handle) {
     override def receive = super.receive orElse {
       case x: HttpRequest => pipelines.commandPipeline(HttpCommand(x))
     }
@@ -61,18 +61,18 @@ object HttpClient {
 
   ////////////// COMMANDS //////////////
   // HttpRequestParts +
-  type Connect = IoClient.Connect;                           val Connect = IoClient.Connect
-  type Close = IoClient.Close;                               val Close = IoClient.Close
-  type Send = IoClient.Send;                                 val Send = IoClient.Send
-  type Tell = IoClient.Tell;                                 val Tell = IoClient.Tell
+  type Connect = IOClient.Connect;                           val Connect = IOClient.Connect
+  type Close = IOClient.Close;                               val Close = IOClient.Close
+  type Send = IOClient.Send;                                 val Send = IOClient.Send
+  type Tell = IOClient.Tell;                                 val Tell = IOClient.Tell
   type SetRequestTimeout = ClientFrontend.SetRequestTimeout; val SetRequestTimeout = ClientFrontend.SetRequestTimeout
 
   ////////////// EVENTS //////////////
   // HttpResponseParts +
-  val Connected = IoClient.Connected
-  type Closed = IoClient.Closed;     val Closed = IoClient.Closed
-  type AckSend = IoClient.AckSend;   val AckSend = IoClient.AckSend
-  type Received = IoClient.Received; val Received = IoClient.Received
+  val Connected = IOClient.Connected
+  type Closed = IOClient.Closed;     val Closed = IOClient.Closed
+  type AckSend = IOClient.AckSend;   val AckSend = IOClient.AckSend
+  type Received = IOClient.Received; val Received = IOClient.Received
 
 }
 

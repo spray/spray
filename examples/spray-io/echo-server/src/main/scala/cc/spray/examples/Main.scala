@@ -23,9 +23,9 @@ object Main extends App {
   // we bind the server to a port on localhost and hook
   // in a continuation that informs us when bound
   server
-    .ask(IoServer.Bind("localhost", 23456))(1.second)
+    .ask(IOServer.Bind("localhost", 23456))(1.second)
     .onSuccess {
-    case IoServer.Bound(endpoint) =>
+    case IOServer.Bound(endpoint) =>
       println("\nBound echo-server to " + endpoint)
       println("Run `telnet localhost 23456`, type something and press RETURN. Type `STOP` to exit...\n")
   }
@@ -37,7 +37,7 @@ object Main extends App {
   }
 }
 
-class EchoServer(ioBridge: IOBridge) extends IoServer(ioBridge) {
+class EchoServer(ioBridge: IOBridge) extends IOServer(ioBridge) {
 
   override def receive = super.receive orElse {
     case IOBridge.Received(handle, buffer) =>

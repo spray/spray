@@ -7,7 +7,7 @@ trait DocSupport {
   def sprayClient: Project
   def sprayHttp: Project
   def sprayHttpx: Project
-  def sprayIo: Project
+  def sprayIO: Project
   def sprayRouting: Project
   def sprayServlet: Project
   def sprayTestKit: Project
@@ -65,12 +65,12 @@ trait DocSupport {
       //doc in (sprayClient, Compile),
       //doc in (sprayHttp, Compile),
       //doc in (sprayHttpx, Compile),
-      //doc in (sprayIo, Compile),
+      //doc in (sprayIO, Compile),
       //doc in (sprayRouting, Compile),
       //doc in (sprayServlet, Compile),
       //doc in (sprayTestKit, Compile),
       //doc in (sprayUtil, Compile)
-    ) map { (siteDir, version, state) => //, docCan, docClient, docHttp, docHttpx, docIo, docRouting, docServlet, docTestKit, docUtil) =>
+    ) map { (siteDir, version, state) => //, docCan, docClient, docHttp, docHttpx, docIO, docRouting, docServlet, docTestKit, docUtil) =>
       val log = colorLog(state)
       def move(docDir: File) {
         assert(docDir.getName == "api")
@@ -82,7 +82,7 @@ trait DocSupport {
         IO.delete(versionDir)
         if (!docDir.renameTo(versionDir)) sys.error("Couldn't move '" + docDir + "' to '" + versionDir + "'")
       }
-      //List(docCan, docClient, docHttp, docHttpx, docIo, docRouting, docServlet, docTestKit, docUtil) foreach move
+      //List(docCan, docClient, docHttp, docHttpx, docIO, docRouting, docServlet, docTestKit, docUtil) foreach move
       siteDir
     },
 

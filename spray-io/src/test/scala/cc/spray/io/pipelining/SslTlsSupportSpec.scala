@@ -50,15 +50,15 @@ class SslTlsSupportSpec extends Specification {
   "The SslTlsSupport" should {
     implicit val timeOut: Timeout = Duration("1 s")
     "be able to complete a simple request/response dialog from the client-side" in {
-      import IoClient._
+      import IOClient._
       val Connected(handle) = system.actorOf(Props(new SslClientActor), "ssl-client")
         .ask(Connect("localhost", port)).await
       val Received(_, buf) = handle.handler.ask(Send(ByteBuffer.wrap("3+4\n".getBytes))).await
-      handle.handler ! IoClient.Close(CleanClose)
+      handle.handler ! IOClient.Close(CleanClose)
       buf.drainToString === "7\n"
     }
     "be able to complete a simple request/response dialog from the server-side" in {
-      import IoServer._
+      import IOServer._
       system.actorOf(Props(new SslServerActor), "ssl-server").ask(Bind("localhost", port + 1)).await
       socketSendReceive("20+6", port + 1) === "26"
     }
@@ -106,32 +106,32 @@ class SslTlsSupportSpec extends Specification {
     reader -> writer
   }
 
-  class SslClientActor extends IoClient(ioBridge) with ConnectionActors {
+  class SslClientActor extends IOClient(ioBridge) with ConnectionActors {
     protected def pipeline = frontEnd >> SslTlsSupport(ClientSSLEngineProvider.default, log)
     def frontEnd = new DoublePipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) = new Pipelines {
         var receiver: ActorRef = _
         val commandPipeline: CPL = {
-          case x: IoClient.Send => receiver = context.sender; commandPL(x)
+          case x: IOClient.Send => receiver = context.sender; commandPL(x)
           case cmd => commandPL(cmd)
         }
         val eventPipeline: EPL = {
-          case x: IoClient.Received => receiver ! x
+          case x: IOClient.Received => receiver ! x
           case ev => eventPL(ev)
         }
       }
     }
   }
 
-  class SslServerActor extends IoServer(ioBridge) with ConnectionActors {
+  class SslServerActor extends IOServer(ioBridge) with ConnectionActors {
     protected def pipeline = frontEnd >> SslTlsSupport(ServerSSLEngineProvider.default, log)
     def frontEnd = new EventPipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): EPL = {
-        case IoServer.Received(_, buf) =>
+        case IOServer.Received(_, buf) =>
           val input = buf.drainToString.dropRight(1)
           log.debug("Server received: {}", input)
           val response = serverResponse(input)
-          commandPL(IoServer.Send(ByteBuffer.wrap(response.getBytes)))
+          commandPL(IOServer.Send(ByteBuffer.wrap(response.getBytes)))
           log.debug("Server sent: {}", response.dropRight(1))
         case ev => eventPL(ev)
       }

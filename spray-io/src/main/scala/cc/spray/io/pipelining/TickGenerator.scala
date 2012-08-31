@@ -38,7 +38,7 @@ object TickGenerator {
           message = Tick
         )
         _ match {
-          case x: IoPeer.Closed =>
+          case x: IOPeer.Closed =>
             generator.cancel()
             eventPL(x)
           case x => eventPL(x)

@@ -21,7 +21,7 @@ import akka.actor.{ActorRef, Status, Props, Actor}
 import pipelining._
 
 
-trait ConnectionActors extends IoPeer { ioPeer =>
+trait ConnectionActors extends IOPeer { ioPeer =>
 
   override protected def createConnectionHandle(theKey: Key, theAddress: InetSocketAddress, theCommander: ActorRef) = {
     new Handle {
@@ -32,11 +32,11 @@ trait ConnectionActors extends IoPeer { ioPeer =>
     }
   }
 
-  protected def createConnectionActor(handle: Handle): IoConnectionActor = new IoConnectionActor(handle)
+  protected def createConnectionActor(handle: Handle): IOConnectionActor = new IOConnectionActor(handle)
 
   protected def pipeline: PipelineStage
 
-  class IoConnectionActor(val handle: Handle) extends Actor {
+  class IOConnectionActor(val handle: Handle) extends Actor {
     protected val pipelines = pipeline.buildPipelines(
       context = PipelineContext(handle, context),
       commandPL = baseCommandPipeline,
@@ -44,17 +44,17 @@ trait ConnectionActors extends IoPeer { ioPeer =>
     )
 
     protected def baseCommandPipeline: Pipeline[Command] = {
-      case IoPeer.Send(buffers, ack)          => ioBridge ! IOBridge.Send(handle, buffers, ack)
-      case IoPeer.Close(reason)               => ioBridge ! IOBridge.Close(handle, reason)
-      case IoPeer.StopReading                 => ioBridge ! IOBridge.StopReading(handle)
-      case IoPeer.ResumeReading               => ioBridge ! IOBridge.ResumeReading(handle)
-      case IoPeer.Tell(receiver, msg, sender) => receiver.tell(msg, sender)
+      case IOPeer.Send(buffers, ack)          => ioBridge ! IOBridge.Send(handle, buffers, ack)
+      case IOPeer.Close(reason)               => ioBridge ! IOBridge.Close(handle, reason)
+      case IOPeer.StopReading                 => ioBridge ! IOBridge.StopReading(handle)
+      case IOPeer.ResumeReading               => ioBridge ! IOBridge.ResumeReading(handle)
+      case IOPeer.Tell(receiver, msg, sender) => receiver.tell(msg, sender)
       case _: Droppable => // don't warn
       case cmd => log.warning("commandPipeline: dropped {}", cmd)
     }
 
     protected def baseEventPipeline: Pipeline[Event] = {
-      case x: IoPeer.Closed =>
+      case x: IOPeer.Closed =>
         log.debug("Stopping connection actor, connection was closed due to {}", x.reason)
         context.stop(self)
         ioPeer.self ! x // inform our owner of our closing

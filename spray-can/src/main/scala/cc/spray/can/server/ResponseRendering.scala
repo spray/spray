@@ -36,9 +36,9 @@ object ResponseRendering {
           val rendered = renderer.render(ctx)
           val buffers = rendered.buffers
           if (!buffers.isEmpty)
-            commandPL(IoPeer.Send(buffers, settings.AckSends))
+            commandPL(IOPeer.Send(buffers, settings.AckSends))
           if (rendered.closeConnection)
-            commandPL(IoPeer.Close(CleanClose))
+            commandPL(IOPeer.Close(CleanClose))
 
         case cmd => commandPL(cmd)
       }

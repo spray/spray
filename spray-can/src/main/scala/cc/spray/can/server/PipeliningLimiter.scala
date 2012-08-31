@@ -64,14 +64,14 @@ object PipeliningLimiter {
       def stopReading() {
         if (!readingStopped) {
           readingStopped = true
-          commandPL(IoServer.StopReading)
+          commandPL(IOServer.StopReading)
         }
       }
 
       def resumeReading() {
         if (readingStopped) {
           readingStopped = false
-          commandPL(IoServer.ResumeReading)
+          commandPL(IOServer.ResumeReading)
         }
       }
 

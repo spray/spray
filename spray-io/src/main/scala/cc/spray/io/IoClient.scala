@@ -19,8 +19,8 @@ package cc.spray.io
 import cc.spray.util.Reply
 import akka.actor.{Status, ActorRef}
 
-class IoClient(val ioBridge: IOBridge) extends IoPeer {
-  import IoClient._
+class IOClient(val ioBridge: IOBridge) extends IOPeer {
+  import IOClient._
 
   override def preStart() {
     log.info("Starting {}", self.path)
@@ -44,26 +44,26 @@ class IoClient(val ioBridge: IOBridge) extends IoPeer {
       x.handle.commander ! x
 
     case Reply(Status.Failure(CommandException(Connect(address, _), msg, cause)), originalSender: ActorRef) =>
-      originalSender ! Status.Failure(IoClientException("Couldn't connect to " + address, cause))
+      originalSender ! Status.Failure(IOClientException("Couldn't connect to " + address, cause))
   }
 }
 
-object IoClient {
+object IOClient {
 
-  case class IoClientException(msg: String, cause: Throwable = null) extends RuntimeException(msg, cause)
+  case class IOClientException(msg: String, cause: Throwable = null) extends RuntimeException(msg, cause)
 
   ////////////// COMMANDS //////////////
   type Connect  = IOBridge.Connect; val Connect = IOBridge.Connect
-  type Close    = IoPeer.Close;     val Close = IoPeer.Close
-  type Send     = IoPeer.Send;      val Send = IoPeer.Send
-  type Tell     = IoPeer.Tell;      val Tell = IoPeer.Tell // only available with ConnectionActors mixin
-  val StopReading = IoPeer.StopReading
-  val ResumeReading = IoPeer.ResumeReading
+  type Close    = IOPeer.Close;     val Close = IOPeer.Close
+  type Send     = IOPeer.Send;      val Send = IOPeer.Send
+  type Tell     = IOPeer.Tell;      val Tell = IOPeer.Tell // only available with ConnectionActors mixin
+  val StopReading = IOPeer.StopReading
+  val ResumeReading = IOPeer.ResumeReading
 
   ////////////// EVENTS //////////////
   case class Connected(handle: Handle) extends Event
-  type Closed = IoPeer.Closed;     val Closed = IoPeer.Closed
-  type AckSend = IoPeer.AckSend;   val AckSend = IoPeer.AckSend
-  type Received = IoPeer.Received; val Received = IoPeer.Received
+  type Closed = IOPeer.Closed;     val Closed = IOPeer.Closed
+  type AckSend = IOPeer.AckSend;   val AckSend = IOPeer.AckSend
+  type Received = IOPeer.Received; val Received = IOPeer.Received
 
 }

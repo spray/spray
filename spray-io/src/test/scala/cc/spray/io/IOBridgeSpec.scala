@@ -38,7 +38,7 @@ class IOBridgeSpec extends Specification {
 
   "An IOBridge" should {
     "properly bind a test server" in {
-      (server ? IoServer.Bind("localhost", port)).await must beAnInstanceOf[IoServer.Bound]
+      (server ? IOServer.Bind("localhost", port)).await must beAnInstanceOf[IOServer.Bound]
     }
     "properly complete a one-request dialog" in {
       request("Echoooo").await === "Echoooo"
@@ -55,13 +55,13 @@ class IOBridgeSpec extends Specification {
     bridge.stop()
   }
 
-  class TestServer(ioBridge: IOBridge) extends IoServer(ioBridge) {
+  class TestServer(ioBridge: IOBridge) extends IOServer(ioBridge) {
     override def receive = super.receive orElse {
       case IOBridge.Received(handle, buffer) => ioBridge ! IOBridge.Send(handle, buffer)
     }
   }
 
-  class TestClient(ioBridge: IOBridge) extends IoClient(ioBridge) {
+  class TestClient(ioBridge: IOBridge) extends IOClient(ioBridge) {
     var requests = Map.empty[Handle, ActorRef]
     override def receive = super.receive orElse {
       case (x: String, handle: Handle) =>
@@ -74,7 +74,7 @@ class IOBridgeSpec extends Specification {
 
   def request(payload: String) = {
     for {
-      IoClient.Connected(handle) <- (client ? IoClient.Connect("localhost", port)).mapTo[IoClient.Connected]
+      IOClient.Connected(handle) <- (client ? IOClient.Connect("localhost", port)).mapTo[IOClient.Connected]
       response <- (client ? (payload -> handle)).mapTo[String]
     } yield {
       bridge ! IOBridge.Close(handle, CleanClose)

@@ -111,7 +111,7 @@ object ClientFrontend {
 
         case x: CommandException =>
           log.warning("Received {}, closing connection ...", x)
-          commandPL(HttpClient.Close(IoError(x)))
+          commandPL(HttpClient.Close(IOError(x)))
 
         case ev => eventPL(ev)
       }

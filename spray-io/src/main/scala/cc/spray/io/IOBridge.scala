@@ -36,7 +36,7 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
 
   import IOBridge._
 
-  private[this] var ioThread: IoThread = _
+  private[this] var ioThread: IOThread = _
 
   /**
    * @return the IO thread if started and not yet stopped, otherwise None
@@ -50,7 +50,7 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
   def start(): this.type = {
     lock.synchronized {
       if (ioThread == null) {
-        ioThread = new IoThread(settings, log)
+        ioThread = new IOThread(settings, log)
         ioThread.start()
         _runningBridges = _runningBridges :+ this
       }
@@ -90,7 +90,7 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
     this.!(cmd)(sender)
   }
 
-  private class IoThread(settings: IOBridgeSettings, log: LoggingAdapter) extends Thread {
+  private class IOThread(settings: IOBridgeSettings, log: LoggingAdapter) extends Thread {
     import SelectionKey._
 
     private val commandQueue = new SingleReaderConcurrentQueue[(Command, ActorRef)]
@@ -188,7 +188,7 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
       catch {
         case NonFatal(e) =>
           log.warning("Write error: closing connection due to {}", e.toString)
-          close(handle, IoError(e))
+          close(handle, IOError(e))
       }
     }
 
@@ -211,7 +211,7 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
       } catch {
         case NonFatal(e) =>
           log.warning("Read error: closing connection due to {}", e.toString)
-          close(handle, IoError(e))
+          close(handle, IOError(e))
       }
     }
 

@@ -20,7 +20,7 @@ import collection.mutable.ListBuffer
 import akka.dispatch.{Promise, Future}
 import akka.util.Duration
 import akka.actor._
-import cc.spray.io.IoClient.IoClientException
+import cc.spray.io.IOClient.IOClientException
 import cc.spray.io.{ProtocolError, CleanClose}
 import cc.spray.util._
 import cc.spray.http._
@@ -88,7 +88,7 @@ object HttpDialog {
       case _: HttpResponsePart =>
         val msg = "The HttpDialog doesn't support chunked responses"
         sender ! HttpClient.Close(ProtocolError(msg))
-        complete(Left(IoClientException(msg)))
+        complete(Left(IOClientException(msg)))
 
       case Reply(HttpClient.Connected(handle), actions) =>
         connection = Some(handle.handler)
@@ -97,7 +97,7 @@ object HttpDialog {
       case Reply(msg, _) => self ! msg // unpack all other with-context replies
 
       case HttpClient.Closed(_, reason) =>
-        complete(Left(IoClientException("Connection closed prematurely, reason: " + reason)))
+        complete(Left(IOClientException("Connection closed prematurely, reason: " + reason)))
 
       case _: HttpClient.AckSend => // drop potential write confirmations
 

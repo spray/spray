@@ -16,7 +16,7 @@ object Build extends Build with DocSupport {
 
   lazy val root = Project("root",file("."))
     .aggregate(examples, sprayCaching, sprayCan, sprayClient, sprayHttp, sprayHttpx,
-      sprayIo, sprayRouting, sprayRoutingTests, sprayServlet, sprayTestKit, sprayUtil)
+      sprayIO, sprayRouting, sprayRoutingTests, sprayServlet, sprayTestKit, sprayUtil)
     .settings(basicSettings: _*)
     .settings(noPublishing: _*)
     .settings(docSupportSettings: _*)
@@ -37,7 +37,7 @@ object Build extends Build with DocSupport {
 
 
   lazy val sprayCan = Project("spray-can", file("spray-can"))
-    .dependsOn(sprayIo, sprayHttp, sprayUtil)
+    .dependsOn(sprayIO, sprayHttp, sprayUtil)
     .settings(moduleSettings: _*)
     .settings(libraryDependencies ++=
       provided(akkaActor) ++
@@ -72,7 +72,7 @@ object Build extends Build with DocSupport {
     )
 
 
-  lazy val sprayIo = Project("spray-io", file("spray-io"))
+  lazy val sprayIO = Project("spray-io", file("spray-io"))
     .dependsOn(sprayUtil)
     .settings(moduleSettings: _*)
     .settings(libraryDependencies ++=
@@ -131,7 +131,7 @@ object Build extends Build with DocSupport {
   // -------------------------------------------------------------------------------------------------------------------
 
   lazy val examples = Project("examples", file("examples"))
-    .aggregate(sprayCanExamples, sprayClientExamples, sprayIoExamples, sprayRoutingExamples)
+    .aggregate(sprayCanExamples, sprayClientExamples, sprayIOExamples, sprayRoutingExamples)
     .settings(exampleSettings: _*)
 
   lazy val sprayCanExamples = Project("spray-can-examples", file("examples/spray-can"))
@@ -166,12 +166,12 @@ object Build extends Build with DocSupport {
       runtime(akkaSlf4j, logback)
     )
 
-  lazy val sprayIoExamples = Project("spray-io-examples", file("examples/spray-io"))
+  lazy val sprayIOExamples = Project("spray-io-examples", file("examples/spray-io"))
     .aggregate(echoServerExample)
     .settings(exampleSettings: _*)
 
   lazy val echoServerExample = Project("echo-server", file("examples/spray-io/echo-server"))
-    .dependsOn(sprayIo)
+    .dependsOn(sprayIO)
     .settings(exampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++

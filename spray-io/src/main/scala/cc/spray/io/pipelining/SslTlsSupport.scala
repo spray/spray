@@ -37,11 +37,11 @@ object SslTlsSupport {
         var inboundReceptacle: ByteBuffer = _ // holds incoming data that are too small to be decrypted yet
 
         val commandPipeline: CPL = {
-          case x@ IoPeer.Send(buffers, ack) =>
+          case x@ IOPeer.Send(buffers, ack) =>
             if (pendingSends.isEmpty) withTempBuf(encrypt(Send(x), _))
             else pendingSends += Send(x)
 
-          case x: IoPeer.Close =>
+          case x: IOPeer.Close =>
             log.debug("Closing SSLEngine due to reception of {}", x)
             engine.closeOutbound()
             withTempBuf(closeEngine)
@@ -51,13 +51,13 @@ object SslTlsSupport {
         }
 
         val eventPipeline: EPL = {
-          case IoPeer.Received(_, buffer) =>
+          case IOPeer.Received(_, buffer) =>
             val buf = if (inboundReceptacle != null) {
               val r = inboundReceptacle; inboundReceptacle = null; r.concat(buffer)
             } else buffer
             withTempBuf(decrypt(buf, _))
 
-          case x: IoPeer.Closed =>
+          case x: IOPeer.Closed =>
             if (!engine.isOutboundDone) {
               try engine.closeInbound()
               catch { case e: SSLException => } // ignore warning about possible possible truncation attacks
@@ -68,7 +68,7 @@ object SslTlsSupport {
         }
 
         /**
-         * Encrypts the given buffers and dispatches the results to the commandPL as IoPeer.Send messages.
+         * Encrypts the given buffers and dispatches the results to the commandPL as IOPeer.Send messages.
          */
         @tailrec
         def encrypt(send: Send, tempBuf: ByteBuffer, fromQueue: Boolean = false) {
@@ -80,7 +80,7 @@ object SslTlsSupport {
           val postContentLeft = contentLeft()
           tempBuf.flip()
           if (tempBuf.remaining > 0) commandPL {
-            IoPeer.Send(tempBuf.copyContent :: Nil, sendAckAndPreContentLeft && !postContentLeft)
+            IOPeer.Send(tempBuf.copyContent :: Nil, sendAckAndPreContentLeft && !postContentLeft)
           }
           result.getStatus match {
             case OK => result.getHandshakeStatus match {
@@ -95,7 +95,7 @@ object SslTlsSupport {
                 encrypt(send, tempBuf, fromQueue)
             }
             case CLOSED =>
-              if (postContentLeft) commandPL(IoPeer.Close(ProtocolError("SSLEngine closed prematurely while sending")))
+              if (postContentLeft) commandPL(IOPeer.Close(ProtocolError("SSLEngine closed prematurely while sending")))
               false
             case BUFFER_OVERFLOW =>
               throw new IllegalStateException // the SslBufferPool should make sure that buffers are never too small
@@ -105,7 +105,7 @@ object SslTlsSupport {
         }
 
         /**
-         * Decrypts the given buffer and dispatches the results to the eventPL as an IoPeer.Received message.
+         * Decrypts the given buffer and dispatches the results to the eventPL as an IOPeer.Received message.
          */
         @tailrec
         def decrypt(buffer: ByteBuffer, tempBuf: ByteBuffer) {
@@ -113,7 +113,7 @@ object SslTlsSupport {
           tempBuf.clear()
           val result = engine.unwrap(buffer, tempBuf)
           tempBuf.flip()
-          if (tempBuf.remaining > 0) eventPL(IoPeer.Received(context.handle, tempBuf.copyContent))
+          if (tempBuf.remaining > 0) eventPL(IOPeer.Received(context.handle, tempBuf.copyContent))
           result.getStatus match {
             case OK => result.getHandshakeStatus match {
               case NOT_HANDSHAKING | FINISHED =>
@@ -130,7 +130,7 @@ object SslTlsSupport {
             }
             case CLOSED =>
               if (!engine.isOutboundDone)
-                commandPL(IoPeer.Close(ProtocolError("SSLEngine closed prematurely while receiving")))
+                commandPL(IOPeer.Close(ProtocolError("SSLEngine closed prematurely while receiving")))
             case BUFFER_UNDERFLOW =>
               inboundReceptacle = buffer // save buffer so we can append the next one to it
             case BUFFER_OVERFLOW =>
@@ -144,7 +144,7 @@ object SslTlsSupport {
           catch {
             case e: SSLException =>
               log.error(e, "Closing encrypted connection due to {}", e)
-              commandPL(IoPeer.Close(ProtocolError(e.toString)))
+              commandPL(IOPeer.Close(ProtocolError(e.toString)))
           }
           finally SslBufferPool.release(tempBuf)
         }
@@ -192,7 +192,7 @@ object SslTlsSupport {
   }
   private object Send {
     val Empty = new Send(new Array(0), false)
-    def apply(x: IoPeer.Send) = new Send(x.buffers.toArray, x.ack)
+    def apply(x: IOPeer.Send) = new Send(x.buffers.toArray, x.ack)
   }
 }
 

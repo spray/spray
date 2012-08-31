@@ -63,7 +63,7 @@ object RequestParsing {
               parse(buffer)
 
             case Expect100ContinueState(nextState) =>
-              commandPL(IoPeer.Send(ByteBuffer.wrap(continue), ack = false))
+              commandPL(IOPeer.Send(ByteBuffer.wrap(continue), ack = false))
               currentParsingState = nextState
               parse(buffer)
 
@@ -88,7 +88,7 @@ object RequestParsing {
 
         def apply(event: Event) {
           event match {
-            case x: IoPeer.Received => parse(x.buffer)
+            case x: IOPeer.Received => parse(x.buffer)
             case ev => eventPL(ev)
           }
         }

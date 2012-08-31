@@ -21,7 +21,7 @@ import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActorRef
 import akka.actor.Actor
 import cc.spray.can.{HttpCommand, HttpPipelineStageSpec}
-import cc.spray.io.IoPeer
+import cc.spray.io.IOPeer
 import cc.spray.http._
 
 
@@ -39,7 +39,7 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
         Received(rawResponse)
       ) must produce(commands = Seq(
         SendString(emptyRawRequest()),
-        IoPeer.Tell(system.deadLetters, response, connectionActor)
+        IOPeer.Tell(system.deadLetters, response, connectionActor)
       ))
     }
 
@@ -55,9 +55,9 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
         SendString(rawRequest("Request 1")),
         SendString(rawRequest("Request 2")),
         SendString(rawRequest("Request 3")),
-        IoPeer.Tell(system.deadLetters, response("Response 1"), connectionActor),
-        IoPeer.Tell(system.deadLetters, response("Response 2"), connectionActor),
-        IoPeer.Tell(system.deadLetters, response("Response 3"), connectionActor)
+        IOPeer.Tell(system.deadLetters, response("Response 1"), connectionActor),
+        IOPeer.Tell(system.deadLetters, response("Response 2"), connectionActor),
+        IOPeer.Tell(system.deadLetters, response("Response 3"), connectionActor)
       ))
     }
 
@@ -77,7 +77,7 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
         }
       ) must produce(commands = Seq(
         SendString(emptyRawRequest(method = "HEAD")),
-        IoPeer.Tell(system.deadLetters, response("12345678").withEntity(""), connectionActor)
+        IOPeer.Tell(system.deadLetters, response("12345678").withEntity(""), connectionActor)
       ))
     }
   }

@@ -20,8 +20,8 @@ import java.net.InetSocketAddress
 import akka.actor.{Status, ActorRef}
 import cc.spray.util.Reply
 
-abstract class IoServer(val ioBridge: IOBridge) extends IoPeer {
-  import IoServer._
+abstract class IOServer(val ioBridge: IOBridge) extends IOPeer {
+  import IOServer._
   private var bindingKey: Option[Key] = None
   private var endpoint: Option[InetSocketAddress] = None
   private var state = unbound
@@ -88,7 +88,7 @@ abstract class IoServer(val ioBridge: IOBridge) extends IoPeer {
   }
 }
 
-object IoServer {
+object IOServer {
 
   ////////////// COMMANDS //////////////
   sealed trait ServerCommand extends Command
@@ -99,18 +99,18 @@ object IoServer {
   }
 
   case object Unbind extends ServerCommand
-  type Close = IoPeer.Close;  val Close = IoPeer.Close
-  type Send = IoPeer.Send;    val Send = IoPeer.Send
-  val StopReading = IoPeer.StopReading
-  val ResumeReading = IoPeer.ResumeReading
-  type Tell = IoPeer.Tell;    val Tell = IoPeer.Tell // only available with ConnectionActors mixin
+  type Close = IOPeer.Close;  val Close = IOPeer.Close
+  type Send = IOPeer.Send;    val Send = IOPeer.Send
+  val StopReading = IOPeer.StopReading
+  val ResumeReading = IOPeer.ResumeReading
+  type Tell = IOPeer.Tell;    val Tell = IOPeer.Tell // only available with ConnectionActors mixin
 
 
   ////////////// EVENTS //////////////
   case class Bound(endpoint: InetSocketAddress)
   case class Unbound(endpoint: InetSocketAddress)
-  type Closed = IoPeer.Closed;     val Closed = IoPeer.Closed
-  type AckSend = IoPeer.AckSend;   val AckSend = IoPeer.AckSend
-  type Received = IoPeer.Received; val Received = IoPeer.Received
+  type Closed = IOPeer.Closed;     val Closed = IOPeer.Closed
+  type AckSend = IOPeer.AckSend;   val AckSend = IOPeer.AckSend
+  type Received = IOPeer.Received; val Received = IOPeer.Received
 
 }

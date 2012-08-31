@@ -28,7 +28,7 @@ import cc.spray.http._
 class HttpServer(ioBridge: IOBridge,
                  messageHandler: MessageHandlerDispatch.MessageHandler,
                  settings: ServerSettings = ServerSettings())
-                (implicit sslEngineProvider: ServerSSLEngineProvider) extends IoServer(ioBridge) with ConnectionActors {
+                (implicit sslEngineProvider: ServerSSLEngineProvider) extends IOServer(ioBridge) with ConnectionActors {
 
   protected val statsHolder: Option[StatsHolder] =
     if (settings.StatsSupport) Some(new StatsHolder) else None
@@ -41,7 +41,7 @@ class HttpServer(ioBridge: IOBridge,
     case HttpServer.ClearStats  => statsHolder.foreach(_.clear())
   }
 
-  override protected def createConnectionActor(handle: Handle): IoConnectionActor = new IoConnectionActor(handle) {
+  override protected def createConnectionActor(handle: Handle): IOConnectionActor = new IOConnectionActor(handle) {
     override def receive = super.receive orElse {
       case x: HttpResponse => pipelines.commandPipeline(HttpCommand(x))
     }
@@ -70,8 +70,8 @@ object HttpServer {
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | HttpMessagePart                 | HttpResponsePartRenderingContext
-   *    | IoServer.Closed                 | IoServer.Tell
-   *    | IoServer.AckSend                |
+   *    | IOServer.Closed                 | IOServer.Tell
+   *    | IOServer.AckSend                |
    *    | TickGenerator.Tick              |
    *    |                                \/
    * |------------------------------------------------------------------------------------------
@@ -79,8 +79,8 @@ object HttpServer {
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | HttpMessagePart                 | HttpResponsePartRenderingContext
-   *    | IoServer.Closed                 | IoServer.Tell
-   *    | IoServer.AckSend                |
+   *    | IOServer.Closed                 | IOServer.Tell
+   *    | IOServer.AckSend                |
    *    | TickGenerator.Tick              |
    *    |                                \/
    * |------------------------------------------------------------------------------------------
@@ -90,72 +90,72 @@ object HttpServer {
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | HttpMessagePart                 | HttpResponsePartRenderingContext
-   *    | IoServer.Closed                 | IoServer.Tell
-   *    | IoServer.AckSend                | IoServer.StopReading
-   *    | TickGenerator.Tick              | IoServer.ResumeReading
+   *    | IOServer.Closed                 | IOServer.Tell
+   *    | IOServer.AckSend                | IOServer.StopReading
+   *    | TickGenerator.Tick              | IOServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
    * | StatsSupport: listens to most commands and events to collect statistics
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | HttpMessagePart                 | HttpResponsePartRenderingContext
-   *    | IoServer.Closed                 | IoServer.Tell
-   *    | IoServer.AckSend                | IoServer.StopReading
-   *    | TickGenerator.Tick              | IoServer.ResumeReading
+   *    | IOServer.Closed                 | IOServer.Tell
+   *    | IOServer.AckSend                | IOServer.StopReading
+   *    | TickGenerator.Tick              | IOServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
    * | RequestParsing: converts Received events to HttpMessagePart,
    * |                 generates HttpResponsePartRenderingContext (in case of errors)
    * |------------------------------------------------------------------------------------------
    *    /\                                |
-   *    | IoServer.Closed                 | HttpResponsePartRenderingContext
-   *    | IoServer.AckSend                | IoServer.Tell
-   *    | IoServer.Received               | IoServer.StopReading
-   *    | TickGenerator.Tick              | IoServer.ResumeReading
+   *    | IOServer.Closed                 | HttpResponsePartRenderingContext
+   *    | IOServer.AckSend                | IOServer.Tell
+   *    | IOServer.Received               | IOServer.StopReading
+   *    | TickGenerator.Tick              | IOServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
    * | ResponseRendering: converts HttpResponsePartRenderingContext
    * |                    to Send and Close commands
    * |------------------------------------------------------------------------------------------
    *    /\                                |
-   *    | IoServer.Closed                 | IoServer.Send
-   *    | IoServer.AckSend                | IoServer.Close
-   *    | IoServer.Received               | IoServer.Tell
-   *    | TickGenerator.Tick              | IoServer.StopReading
-   *    |                                 | IoServer.ResumeReading
+   *    | IOServer.Closed                 | IOServer.Send
+   *    | IOServer.AckSend                | IOServer.Close
+   *    | IOServer.Received               | IOServer.Tell
+   *    | TickGenerator.Tick              | IOServer.StopReading
+   *    |                                 | IOServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
    * | ConnectionTimeouts: listens to Received events and Send commands and
    * |                     TickGenerator.Tick, generates Close commands
    * |------------------------------------------------------------------------------------------
    *    /\                                |
-   *    | IoServer.Closed                 | IoServer.Send
-   *    | IoServer.AckSend                | IoServer.Close
-   *    | IoServer.Received               | IoServer.Tell
-   *    | TickGenerator.Tick              | IoServer.StopReading
-   *    |                                 | IoServer.ResumeReading
+   *    | IOServer.Closed                 | IOServer.Send
+   *    | IOServer.AckSend                | IOServer.Close
+   *    | IOServer.Received               | IOServer.Tell
+   *    | TickGenerator.Tick              | IOServer.StopReading
+   *    |                                 | IOServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
    * | SslTlsSupport: listens to event Send and Close commands and Received events,
    * |                provides transparent encryption/decryption in both directions
    * |------------------------------------------------------------------------------------------
    *    /\                                |
-   *    | IoServer.Closed                 | IoServer.Send
-   *    | IoServer.AckSend                | IoServer.Close
-   *    | IoServer.Received               | IoServer.Tell
-   *    | TickGenerator.Tick              | IoServer.StopReading
-   *    |                                 | IoServer.ResumeReading
+   *    | IOServer.Closed                 | IOServer.Send
+   *    | IOServer.AckSend                | IOServer.Close
+   *    | IOServer.Received               | IOServer.Tell
+   *    | TickGenerator.Tick              | IOServer.StopReading
+   *    |                                 | IOServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
    * | TickGenerator: listens to Closed events,
    * |                dispatches TickGenerator.Tick events to the head of the event PL
    * |------------------------------------------------------------------------------------------
    *    /\                                |
-   *    | IoServer.Closed                 | IoServer.Send
-   *    | IoServer.AckSend                | IoServer.Close
-   *    | IoServer.Received               | IoServer.Tell
-   *    | TickGenerator.Tick              | IoServer.StopReading
-   *    |                                 | IoServer.ResumeReading
+   *    | IOServer.Closed                 | IOServer.Send
+   *    | IOServer.AckSend                | IOServer.Close
+   *    | IOServer.Received               | IOServer.Tell
+   *    | TickGenerator.Tick              | IOServer.StopReading
+   *    |                                 | IOServer.ResumeReading
    *    |                                \/
    */
   private[can] def pipeline(settings: ServerSettings,
@@ -191,10 +191,10 @@ object HttpServer {
 
   ////////////// COMMANDS //////////////
   // HttpResponseParts +
-  type ServerCommand = IoServer.ServerCommand
-  type Bind = IoServer.Bind;                                  val Bind = IoServer.Bind
-  val Unbind = IoServer.Unbind
-  type Close = IoServer.Close;                                val Close = IoServer.Close
+  type ServerCommand = IOServer.ServerCommand
+  type Bind = IOServer.Bind;                                  val Bind = IOServer.Bind
+  val Unbind = IOServer.Unbind
+  type Close = IOServer.Close;                                val Close = IOServer.Close
   type SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout;    val SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout
   type SetRequestTimeout = ServerFrontend.SetRequestTimeout;  val SetRequestTimeout = ServerFrontend.SetRequestTimeout
   type SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout;  val SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout
@@ -203,9 +203,9 @@ object HttpServer {
 
   ////////////// EVENTS //////////////
   // HttpRequestParts +
-  type Bound = IoServer.Bound;                          val Bound = IoServer.Bound
-  type Unbound = IoServer.Unbound;                      val Unbound = IoServer.Unbound
-  type Closed = IoServer.Closed;                        val Closed = IoServer.Closed
-  type AckSend = IoServer.AckSend;                      val AckSend = IoServer.AckSend
+  type Bound = IOServer.Bound;                          val Bound = IOServer.Bound
+  type Unbound = IOServer.Unbound;                      val Unbound = IOServer.Unbound
+  type Closed = IOServer.Closed;                        val Closed = IOServer.Closed
+  type AckSend = IOServer.AckSend;                      val AckSend = IOServer.AckSend
 
 }

@@ -38,7 +38,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
     "dispatch a simple HttpRequest to a singleton service actor" in {
       singleHandlerFixture(Received(simpleRequest)) must produce(
         commands = Seq(
-          IoServer.Tell(singletonHandler, HttpRequest(headers = List(RawHeader("host", "test.com"))), IgnoreSender)
+          IOServer.Tell(singletonHandler, HttpRequest(headers = List(RawHeader("host", "test.com"))), IgnoreSender)
         ),
         ignoreTellSender = true
       )
@@ -61,7 +61,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         }
       ) must produce(
         commands = Seq(
-          IoServer.Tell(singletonHandler, HttpRequest(headers = List(RawHeader("host", "test.com"))), IgnoreSender)
+          IOServer.Tell(singletonHandler, HttpRequest(headers = List(RawHeader("host", "test.com"))), IgnoreSender)
         ),
         ignoreTellSender = true
       )
@@ -77,7 +77,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         HttpCommand(HttpResponse())
       ) must produce(
         commands = Seq(
-          IoServer.Tell(singletonHandler, HttpRequest(headers = List(RawHeader("host", "test.com"))), IgnoreSender),
+          IOServer.Tell(singletonHandler, HttpRequest(headers = List(RawHeader("host", "test.com"))), IgnoreSender),
           SendString(simpleResponse)
         ),
         ignoreTellSender = true
@@ -90,7 +90,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         Received(simpleRequest),
         Received(simpleRequest)
       ).commands.map {
-        case IoServer.Tell(receiver, _, _) => SendString(receiver.ask('name).mapTo[String].await)
+        case IOServer.Tell(receiver, _, _) => SendString(receiver.ask('name).mapTo[String].await)
       } === Seq(
         SendString("actor1"),
         SendString("actor1")
@@ -108,7 +108,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         Received(chunkedMessageEnd),
         Received(chunkedRequestStart)
       ).commands.map {
-        case IoServer.Tell(receiver, _, _) => SendString(receiver.ask('name).mapTo[String].await)
+        case IOServer.Tell(receiver, _, _) => SendString(receiver.ask('name).mapTo[String].await)
       } === Seq(
         SendString("actor1"),
         SendString("actor2"),
@@ -130,7 +130,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
           IOBridge.AckSend(dummyHandle)
         ) must produce(
           commands = Seq(
-            IoServer.Tell(actor, IoServer.AckSend(dummyHandle), IgnoreSender)
+            IOServer.Tell(actor, IOServer.AckSend(dummyHandle), IgnoreSender)
           ),
           ignoreTellSender = true
         )
@@ -154,13 +154,13 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         ) must produce(
           commands = Seq(
             SendString(chunkedResponseStart),
-            IoServer.Tell(actor1, IoServer.AckSend(dummyHandle), IgnoreSender),
+            IOServer.Tell(actor1, IOServer.AckSend(dummyHandle), IgnoreSender),
             SendString(prep("6\npart 1\n")),
-            IoServer.Tell(actor2, IoServer.AckSend(dummyHandle), IgnoreSender),
+            IOServer.Tell(actor2, IOServer.AckSend(dummyHandle), IgnoreSender),
             SendString(prep("6\npart 2\n")),
             SendString(prep("0\n\n")),
-            IoServer.Tell(actor3, IoServer.AckSend(dummyHandle), IgnoreSender),
-            IoServer.Tell(actor4, IoServer.AckSend(dummyHandle), IgnoreSender)
+            IOServer.Tell(actor3, IOServer.AckSend(dummyHandle), IgnoreSender),
+            IOServer.Tell(actor4, IOServer.AckSend(dummyHandle), IgnoreSender)
           ),
           ignoreTellSender = true
         )
@@ -185,7 +185,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         ) must produce(
           commands = Seq(
             SendString("HTTP/1.1 100 Continue\r\n\r\n"),
-            IoServer.Tell(
+            IOServer.Tell(
               singletonHandler,
               HttpRequest(
                 headers = List(
@@ -219,7 +219,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         HttpCommand(HttpResponse(entity = "1234567"))
       ) must produce(
         commands = Seq(
-          IoServer.Tell(singletonHandler, HttpRequest(headers = List(RawHeader("host", "test.com"))), IgnoreSender),
+          IOServer.Tell(singletonHandler, HttpRequest(headers = List(RawHeader("host", "test.com"))), IgnoreSender),
           SendString {
             prep {
             """|HTTP/1.1 200 OK

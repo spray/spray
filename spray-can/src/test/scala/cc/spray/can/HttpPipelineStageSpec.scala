@@ -18,7 +18,7 @@ package cc.spray.can
 
 import cc.spray.io.pipelining.PipelineStageTest
 import org.specs2.matcher.BeEqualTo
-import cc.spray.io.{IoPeer, Event, Command}
+import cc.spray.io.{IOPeer, Event, Command}
 import cc.spray.util._
 import cc.spray.http._
 import HttpHeaders.RawHeader
@@ -31,8 +31,8 @@ trait HttpPipelineStageSpec extends PipelineStageTest {
               ignoreTellSender: Boolean = false) = {
     new BeEqualTo(commands -> events) ^^ { (pr: PipelineRun) =>
       pr.commands.map {
-        case x: IoPeer.Tell if ignoreTellSender => x.copy(sender = IgnoreSender)
-        case IoPeer.Send(bufs, _) => SendStringCommand {
+        case x: IOPeer.Tell if ignoreTellSender => x.copy(sender = IgnoreSender)
+        case IOPeer.Send(bufs, _) => SendStringCommand {
           val sb = new java.lang.StringBuilder
           for (b <- bufs) while (b.remaining > 0) sb.append(b.get.toChar)
           sb.toString.fastSplit('\n').map {

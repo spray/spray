@@ -76,7 +76,7 @@ object ResponseParsing {
 
             case ErrorState(message, _) =>
               log.warning("Received illegal response: {}", message)
-              commandPL(IoPeer.Close(ProtocolError(message)))
+              commandPL(IOPeer.Close(ProtocolError(message)))
               currentParsingState = ErrorState("", -1) // set to "special" ErrorState that ignores all further input
           }
         }
@@ -98,7 +98,7 @@ object ResponseParsing {
         }
 
         val eventPipeline: EPL = {
-          case x: IoPeer.Received => parse(x.buffer)
+          case x: IOPeer.Received => parse(x.buffer)
           case ev => eventPL(ev)
         }
       }

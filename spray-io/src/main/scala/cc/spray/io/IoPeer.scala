@@ -21,7 +21,7 @@ import java.nio.ByteBuffer
 import java.net.InetSocketAddress
 
 
-abstract class IoPeer extends Actor with ActorLogging {
+abstract class IOPeer extends Actor with ActorLogging {
 
   def ioBridge: IOBridge
 
@@ -30,7 +30,7 @@ abstract class IoPeer extends Actor with ActorLogging {
 
 }
 
-object IoPeer {
+object IOPeer {
 
   ////////////// COMMANDS //////////////
   case class Close(reason: ConnectionClosedReason) extends Command

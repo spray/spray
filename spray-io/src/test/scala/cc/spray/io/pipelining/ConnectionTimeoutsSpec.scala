@@ -17,7 +17,7 @@
 package cc.spray.io.pipelining
 
 import org.specs2.mutable.Specification
-import cc.spray.io.{IoPeer, IdleTimeout, Event, Command}
+import cc.spray.io.{IOPeer, IdleTimeout, Event, Command}
 
 
 class ConnectionTimeoutsSpec extends Specification with PipelineStageTest {
@@ -37,7 +37,7 @@ class ConnectionTimeoutsSpec extends Specification with PipelineStageTest {
         Received("Some Message"),
         Sleep("60 ms"),
         TickGenerator.Tick
-      ).commands === Seq(IoPeer.Close(IdleTimeout))
+      ).commands === Seq(IOPeer.Close(IdleTimeout))
     }
     "reset the idle timer on Received events" in {
       fixture(

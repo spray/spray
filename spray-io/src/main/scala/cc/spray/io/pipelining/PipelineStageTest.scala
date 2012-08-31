@@ -67,7 +67,7 @@ trait PipelineStageTest {
   val ClearCommandAndEventCollectors = Do(_.clear())
 
   def Received(rawMessage: String) = IOBridge.Received(dummyHandle, string2ByteBuffer(rawMessage))
-  def Send(rawMessage: String) = IoPeer.Send(string2ByteBuffer(rawMessage))
+  def Send(rawMessage: String) = IOPeer.Send(string2ByteBuffer(rawMessage))
   def SendString(rawMessage: String) = SendStringCommand(rawMessage)
   def Sleep(duration: String) = Do(_ => Thread.sleep(Duration(duration).toMillis))
 
@@ -80,7 +80,7 @@ trait PipelineStageTest {
   }
 
   def fixSends(commands: Seq[Command]) = commands.map {
-    case IoPeer.Send(bufs, _) => SendStringCommand {
+    case IOPeer.Send(bufs, _) => SendStringCommand {
       val sb = new java.lang.StringBuilder
       for (b <- bufs) while (b.remaining > 0) sb.append(b.get.toChar)
       sb.toString
@@ -89,7 +89,7 @@ trait PipelineStageTest {
   }
 
   def fixTells(commands: Seq[Command]) = commands.map {
-    case x: IoPeer.Tell => x.copy(sender = IgnoreSender)
+    case x: IOPeer.Tell => x.copy(sender = IgnoreSender)
     case x => x
   }
 

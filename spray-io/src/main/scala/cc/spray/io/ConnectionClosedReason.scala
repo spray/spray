@@ -48,7 +48,7 @@ case class ProtocolError(msg: String) extends ConnectionClosedReason
 /**
  * The connection was closed due to an IO error.
  */
-case class IoError(error: Throwable) extends ConnectionClosedReason
+case class IOError(error: Throwable) extends ConnectionClosedReason
 
 
 
