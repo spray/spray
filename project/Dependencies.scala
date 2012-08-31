@@ -32,7 +32,6 @@ object Dependencies {
   val servlet30     = "org.glassfish"                           %   "javax.servlet"               % "3.0"
   val shapeless     = "com.chuusai"                             %%  "shapeless"                   % "1.2.2"
   val scalatest     = "org.scalatest"                           %%  "scalatest"                   % "1.8"
-  val slf4j         = "org.slf4j"                               %   "slf4j-api"                   % "1.6.4"
   val specs2        = "org.specs2"                              %%  "specs2"                      % "1.11"
   val sprayJson     = "cc.spray"                                %%  "spray-json"                  % "1.1.1"
   val twirlApi      = "cc.spray"                                %%  "twirl-api"                   % "0.5.4"

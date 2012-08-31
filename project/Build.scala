@@ -143,7 +143,7 @@ object Build extends Build with DocSupport {
     .settings(exampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
-      runtime(akkaSlf4j, logback, slf4j)
+      runtime(akkaSlf4j, logback)
     )
 
   lazy val simpleHttpServer = Project("simple-http-server", file("examples/spray-can/simple-http-server"))
@@ -151,7 +151,7 @@ object Build extends Build with DocSupport {
     .settings(exampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
-      runtime(akkaSlf4j, logback, slf4j)
+      runtime(akkaSlf4j, logback)
     )
 
   lazy val sprayClientExamples = Project("spray-client-examples", file("examples/spray-client"))
@@ -163,7 +163,7 @@ object Build extends Build with DocSupport {
     .settings(exampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor, sprayJson) ++
-      runtime(akkaSlf4j, logback, slf4j)
+      runtime(akkaSlf4j, logback)
     )
 
   lazy val sprayIoExamples = Project("spray-io-examples", file("examples/spray-io"))
@@ -175,7 +175,7 @@ object Build extends Build with DocSupport {
     .settings(exampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
-      runtime(akkaSlf4j, logback, slf4j)
+      runtime(akkaSlf4j, logback)
     )
 
   lazy val sprayRoutingExamples = Project("spray-routing-examples", file("examples/spray-routing"))
@@ -212,7 +212,7 @@ object Build extends Build with DocSupport {
     )
 
   lazy val simpleOnSprayCan = Project("simple-on-spray-can", file("examples/spray-routing/simple-on-spray-can"))
-    .dependsOn(sprayHttp, sprayHttpx)
+    .dependsOn(sprayCaching, sprayCan, sprayRouting, sprayTestKit % "test")
     .settings(exampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
@@ -241,7 +241,7 @@ object Build extends Build with DocSupport {
     .settings(exampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
-      runtime(akkaSlf4j, logback, slf4j) ++
+      runtime(akkaSlf4j, logback) ++
       container(jettyWebApp)
     )
 }
