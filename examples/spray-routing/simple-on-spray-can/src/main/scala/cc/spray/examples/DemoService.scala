@@ -1,28 +1,46 @@
-package cc.spray.examples.spraycan
+package cc.spray.examples
 
 import java.io.File
 import org.parboiled.common.FileUtils
 import akka.util.Duration
 import akka.util.duration._
-import cc.spray.http._
-import cc.spray.typeconversion.ChunkSender
-import cc.spray.encoding.Gzip
+import akka.actor.{ActorLogging, Props, Actor}
+import akka.pattern.ask
+import cc.spray.routing.{HttpService, RequestContext}
+import cc.spray.routing.directives.CachingDirectives
 import cc.spray.can.server.HttpServer
-import cc.spray.{RequestContext, Directives}
-import StatusCodes._
+import cc.spray.httpx.encoding.Gzip
+import cc.spray.http._
 import MediaTypes._
+import CachingDirectives._
 
-trait DemoService extends Directives {
 
-  val demoService = {
+// we don't implement our route structure directly in the service actor because
+// we want to be able to test it independently, without having to spin up an actor
+class DemoServiceActor extends Actor with DemoService {
+
+  // the HttpService trait defines only one abstract member, which
+  // connects the services environment to the enclosing actor or test
+  def actorRefFactory = context
+
+  // this actor only runs our route, but you could add
+  // other things here, like request stream processing
+  def receive = runRoute(demoRoute)
+}
+
+
+// this trait defines our service behavior independently from the service actor
+trait DemoService extends HttpService {
+
+  val demoRoute = {
     get {
       path("") {
         respondWithMediaType(`text/html`) { // XML is marshalled to `text/xml` by default, so we simply override here
-          completeWith(index)
+          complete(index)
         }
       } ~
       path("ping") {
-        completeWith("PONG!")
+        complete("PONG!")
       } ~
       path("stream") {
         sendStreamingResponse
@@ -39,8 +57,8 @@ trait DemoService extends Directives {
         // we simply let the request drop to provoke a timeout
       } ~
       path("cached") {
-        cache { ctx =>
-          in(800.millis) {
+        cache(simpleRouteCache) { ctx =>
+          in(1500.millis) {
             ctx.complete("This resource is only slow the first time!\n" +
               "It was produced on " + DateTime.now.toIsoDateTimeString + "\n\n" +
               "(Note that your browser will likely enforce a cache invalidation with a\n" +
@@ -60,10 +78,12 @@ trait DemoService extends Directives {
     }
   }
 
+  lazy val simpleRouteCache = routeCache()
+
   lazy val index =
     <html>
       <body>
-        <h1>Say hello to <i>spray</i> on <i>spray-can</i>!</h1>
+        <h1>Say hello to <i>spray-routing</i> on <i>spray-can</i>!</h1>
         <p>Defined resources:</p>
         <ul>
           <li><a href="/ping">/ping</a></li>
@@ -78,28 +98,38 @@ trait DemoService extends Directives {
     </html>
 
   def sendStreamingResponse(ctx: RequestContext) {
-    def sendNext(remaining: Int)(chunkSender: ChunkSender) {
-      in(500.millis) {
-        chunkSender
-        .sendChunk(MessageChunk("<li>" + DateTime.now.toIsoDateTimeString + "</li>"))
-        .onComplete {
-          // we use the successful sending of a chunk as trigger for scheduling the next chunk
-          case Right(_) if remaining > 0 => sendNext(remaining - 1)(chunkSender)
-          case Right(_) =>
-            chunkSender.sendChunk(MessageChunk("</ul><p>Finished.</p></body></html>"))
-            chunkSender.close()
-          case Left(e) => actorSystem.log.warning("Stopping response streaming due to {}", e)
+    actorRefFactory.actorOf(
+      Props {
+        new Actor with ActorLogging {
+          var remainingChunks = 16
+          def receive = {
+            case 'Start =>
+              // we prepend 2048 "empty" bytes to push the browser to immediately start displaying the incoming chunks
+              val htmlStart = " " * 2048 + "<html><body><h2>A streaming response</h2><p>(for 15 seconds)<ul>"
+              ctx.handler ! ChunkedResponseStart(HttpResponse(entity = HttpBody(`text/html`, htmlStart)))
+            case _: HttpServer.AckSend if remainingChunks > 0 =>
+              // we use the successful sending of a chunk as trigger for scheduling the next chunk
+              remainingChunks -= 1
+              in(500.millis) {
+                ctx.handler ! MessageChunk("<li>" + DateTime.now.toIsoDateTimeString + "</li>")
+              }
+            case _: HttpServer.AckSend =>
+              ctx.handler ! MessageChunk("</ul><p>Finished.</p></body></html>")
+              ctx.handler ! ChunkedMessageEnd()
+              context.stop(self)
+            case HttpServer.Closed(_, reason) =>
+              log.warning("Stopping response streaming due to {}", reason)
+          }
         }
-      }
-    }
-    // we prepend 2048 "empty" bytes to push the browser to immediately start displaying the incoming chunks
-    val htmlStart = " " * 2048 + "<html><body><h2>A streaming response</h2><p>(for 15 seconds)<ul>"
-    ctx.startChunkedResponse(OK, HttpContent(`text/html`, htmlStart)) foreach sendNext(15)
+      }, "streaming-actor"
+    ) ! 'Start
   }
 
   def showServerStats(ctx: RequestContext) {
-    import akka.pattern.ask
-    httpServer.ask(HttpServer.GetStats)(1.second).mapTo[HttpServer.Stats].onComplete {
+    actorRefFactory.actorFor("../http-server")
+      .ask(HttpServer.GetStats)(1.second)
+      .mapTo[HttpServer.Stats]
+      .onComplete {
       case Right(stats) => ctx.complete {
         "Uptime                : " + stats.uptime.printHMS + '\n' +
         "Total requests        : " + stats.totalRequests + '\n' +
@@ -125,7 +155,5 @@ trait DemoService extends Directives {
     file.deleteOnExit()
     file
   }
-
-  lazy val httpServer = actorSystem.actorFor("user/http-server")
 
 }
