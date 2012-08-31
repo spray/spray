@@ -25,6 +25,7 @@ class DemoServiceActor extends Actor with DemoService {
 
   // this actor only runs our route, but you could add
   // other things here, like request stream processing
+  // or timeout handling
   def receive = runRoute(demoRoute)
 }
 

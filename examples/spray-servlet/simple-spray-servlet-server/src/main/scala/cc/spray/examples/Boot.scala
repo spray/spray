@@ -4,7 +4,11 @@ import akka.actor.{Props, ActorSystem}
 import cc.spray.servlet.WebBoot
 
 
+// this class is instantiated by the servlet initializer
+// it needs to have a default constructor and implement
+// the cc.spray.servlet.WebBoot trait
 class Boot extends WebBoot {
+
   // we need an ActorSystem to host our application in
   val system = ActorSystem("example")
 

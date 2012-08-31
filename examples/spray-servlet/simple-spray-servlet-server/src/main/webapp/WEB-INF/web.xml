@@ -12,8 +12,6 @@
     <servlet>
         <servlet-name>SprayConnectorServlet</servlet-name>
         <servlet-class>cc.spray.servlet.Servlet30ConnectorServlet</servlet-class>
-        <!-- <servlet-class>cc.spray.servlet.Jetty7ConnectorServlet</servlet-class> -->
-        <!-- <servlet-class>cc.spray.servlet.Tomcat6ConnectorServlet</servlet-class> -->
         <async-supported>true</async-supported>
     </servlet>
 
