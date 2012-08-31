@@ -146,7 +146,7 @@ object DateTime {
     val minute = check(minute_, 0 <= minute_ && minute_ <= 59, "minute_ must be >= 0 and <= 59")
     val second = check(second_, 0 <= second_ && second_ <= 59, "second must be >= 0 and <= 59")
 
-    lazy val (clicks, weekday) = {
+    val (clicks, weekday) = {
       // compute yearday from month/monthday
       val m = month - 1
       var d = (m % 7) * 30 + (m % 7 + 1) / 2 + day
@@ -179,7 +179,7 @@ object DateTime {
       "DateTime value must be >= " + DateTime.MinValue + " and <= " + DateTime.MaxValue)
 
     // based on a fast RFC1123 implementation (C) 2000 by Tim Kientzle <kientzle@acm.org>
-    lazy val (year, month, day, hour, minute, second, weekday, isLeapYear) = {
+    val (year, month, day, hour, minute, second, weekday, isLeapYear) = {
       // compute day number, seconds since beginning of day
       var s = clicks
       if (s >= 0) s /= 1000 // seconds since 1 Jan 1970
