@@ -16,26 +16,67 @@
 
 package cc.spray.routing
 
-import akka.actor.{ActorRefFactory, Actor}
-import cc.spray.http.HttpRequest
+import akka.util.NonFatal
+import akka.actor._
+import cc.spray.http.{HttpException, HttpRequest}
+import cc.spray.util.LoggingContext
 
 
 trait HttpService extends Directives {
-  this: Actor =>
 
+  /**
+   * An ActorRefFactory needs to be supplied by the class mixing us in
+   * (mostly either the service actor or the service test)
+   */
+  implicit def actorRefFactory: ActorRefFactory
+
+  /**
+   * Normally you configure via the application.conf on the classpath,
+   * but you can also override this member.
+   */
   implicit val settings = RoutingSettings()
 
-  def runRoute(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler): Receive = {
-    val sealedRoute = sealRoute.apply(route);
+  val log = LoggingContext.fromActorRefFactory
+
+  /**
+   * Supplies the actor behavior for executing the given route.
+   * The argument is a call-by-name parameter to work around issues with the initialization order
+   * when mixing into an Actor. Even though call-by-name the method only evaluates the parameter once.
+   */
+  def runRoute(route: => Route)
+              (implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext): Actor.Receive = {
+    // we don't use a lazy val for the 'sealedRoute' member here, since we can be sure to be running in an Actor
+    // (we require an implicit ActorContext) and can therefore avoid the "lazy val"-synchronization
+    var sr: Route = null
+    def sealedRoute: Route = { if (sr == null) sr = sealRoute(route); sr }
+    def contextFor(req: HttpRequest) = RequestContext(req, ac.sender, req.path).withDefaultSender(ac.self)
+
     {
-      case request: HttpRequest => sealedRoute {
-        RequestContext(request, handler = sender).withDefaultSender(self)
-      }
+      case request: HttpRequest =>
+        try {
+          request.parseQuery.parseHeaders match {
+            case ("", parsedRequest) =>
+              sealedRoute(contextFor(parsedRequest))
+            case (errorMsg, parsedRequest) if settings.RelaxedHeaderParsing =>
+              log.warning("Request {}: {}", request, errorMsg)
+              sealedRoute(contextFor(parsedRequest))
+            case (errorMsg, _) =>
+              throw new HttpException(400, errorMsg)
+          }
+        } catch {
+          case NonFatal(e) =>
+            val handler = if (eh.isDefinedAt(e)) eh else ExceptionHandler.Default
+            val errorRoute = handler(e)(log)
+            errorRoute(contextFor(request))
+        }
     }
   }
 
-  def sealRoute(implicit eh: ExceptionHandler, rh: RejectionHandler): Directive0 =
-    handleExceptions(eh) & handleRejections(sealRejectionHandler(rh))
+  /**
+   * "Seals" a route by wrapping it with exception handling and rejection conversion.
+   */
+  def sealRoute(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler): Route =
+    (handleExceptions(eh) & handleRejections(sealRejectionHandler(rh)))(route)
 
   def sealRejectionHandler(rh: RejectionHandler): RejectionHandler =
     rh orElse RejectionHandler.Default orElse handleUnhandledRejections
@@ -43,6 +84,4 @@ trait HttpService extends Directives {
   def handleUnhandledRejections: RejectionHandler.PF = {
     case x :: _ => sys.error("Unhandled rejection: " + x)
   }
-
-
 }

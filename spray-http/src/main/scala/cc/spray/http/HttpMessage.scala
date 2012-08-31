@@ -47,14 +47,15 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
   def entity: HttpEntity
   def protocol: HttpProtocol
 
-  def parseHeaders: (List[String], Self) = {
+  def parseHeaders: (String, Self) = {
     val (errors, parsed) = HttpParser.parseHeaders(headers)
-    (errors, withHeaders(parsed))
+    val errorMsg = if (errors.isEmpty) "" else "Illegal header(s): " + errors.mkString(", ")
+    (errorMsg, withHeaders(parsed))
   }
 
   def parseHeadersToEither: Either[String, Self] = parseHeaders match {
-    case (Nil, self) => Right(self)
-    case (errors, _) => Left("Illegal header(s): " + errors.mkString(", "))
+    case ("", self) => Right(self)
+    case (errorMsg, _) => Left(errorMsg)
   }
 
   def withHeaders(headers: List[HttpHeader]): Self
@@ -127,36 +128,49 @@ final class HttpRequest private(
   }
 
   /**
-   * Parses the `uri` to create a copy of this request with the `URI` member updated or an error message
-   * if the `uri` cannot be parsed.
+   * Parses the `uri` to create a copy of this request with the `URI` member updated
+   * or throws an HttpException if the `uri` cannot be parsed.
+   *
+   * @throws HttpException with status = BadRequest if the uri is illegal
    */
-  def parseUri: Either[String, HttpRequest] = {
-    try Right {
+  def parseUri: HttpRequest = {
+    try {
       if (URI eq HttpRequest.DefaultURI) copy(URI = new URI(uri)) else this
     } catch {
-      case e: URISyntaxException => Left("Illegal URI: " + e.getMessage)
+      case e: URISyntaxException => throw new HttpException(400, "Illegal URI: " + e.getMessage)
     }
   }
 
   /**
-   * Parses the query string to create a copy of this request with the `queryParams` member updated
-   * or an error message if the query string cannot be parsed.
+   * Parses the query string to create a copy of this request with the `queryParams` member updated.
+   * If the query string cannot be parsed an HttpException will be thrown.
    * This method will implicitly call `parseUri` if this has not yet been done for this request.
+   *
+   * @throws HttpException with status = BadRequest if the query string is illegal
    */
-  def parseQuery: Either[String, HttpRequest] = {
+  def parseQuery: HttpRequest = {
     def doParseQuery(req: HttpRequest) = {
-      if (req.rawQuery.isEmpty) Right(req)
-      else QueryParser.parseQueryString(req.rawQuery).right.map(params => req.copy(queryParams = params))
+      if (!req.rawQuery.isEmpty) {
+        QueryParser.parseQueryString(req.rawQuery) match {
+          case Right(params) => req.copy(queryParams = params)
+          case Left(errorMsg) => throw new HttpException(400, errorMsg)
+        }
+      } else req
     }
-    if (URI eq HttpRequest.DefaultURI) parseUri.right.flatMap(doParseQuery)
+    if (URI eq HttpRequest.DefaultURI) doParseQuery(parseUri)
     else doParseQuery(this)
   }
 
   /**
    * Parses the headers, uri and query string of this request and returns either a new HttpRequest with all
-   * the parsed data in place or an error message.
+   * the parsed data in place or throws an HttpException
+   *
+   * @throws HttpException with status = BadRequest if the query string, uri or a header is illegal
    */
-  def parseAll: Either[String, HttpRequest] = parseHeadersToEither.right.flatMap(_.parseQuery)
+  def parseAll: HttpRequest = parseHeadersToEither match {
+    case Right(request) => request.parseQuery
+    case Left(errorMsg) => throw new HttpException(400, errorMsg)
+  }
 
   def copy(method: HttpMethod = method, uri: String = uri, headers: List[HttpHeader] = headers,
            entity: HttpEntity = entity, protocol: HttpProtocol = protocol, URI: URI = URI,
