@@ -222,15 +222,15 @@ case class RequestContext(
    * Creates an HttpException with the given properties and bubbles it up the response chain,
    * where it is dealt with by the closest `handleExceptions` directive and its ExceptionHandler.
    */
-  def fail(status: StatusCode, message: String = "") {
-    fail(HttpException(status, message))
+  def failWith(status: StatusCode, message: String = "") {
+    failWith(HttpException(status, message))
   }
 
   /**
    * Bubbles the given error up the response chain, where it is dealt with by the closest `handleExceptions`
    * directive and its ExceptionHandler.
    */
-  def fail(error: Throwable) {
+  def failWith(error: Throwable) {
     handler ! Status.Failure(error)
   }
 
@@ -240,7 +240,7 @@ case class RequestContext(
   def marshallingContext(status: StatusCode, headers: List[HttpHeader]): MarshallingContext =
     new MarshallingContext {
       def marshalTo(entity: HttpEntity) { complete(response(entity)) }
-      def handleError(error: Throwable) { fail(error) }
+      def handleError(error: Throwable) { failWith(error) }
       def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) = {
         handler.tell(ChunkedResponseStart(response(entity)), sender)
         handler

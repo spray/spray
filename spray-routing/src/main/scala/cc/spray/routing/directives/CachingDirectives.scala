@@ -79,7 +79,7 @@ trait CachingDirectives {
           } onComplete {
             case Right(Right(response)) => ctx.complete(response)
             case Right(Left(rejections)) => ctx.reject(rejections: _*)
-            case Left(error) => ctx.fail(error)
+            case Left(error) => ctx.failWith(error)
           }
 
         case None => route(ctx)

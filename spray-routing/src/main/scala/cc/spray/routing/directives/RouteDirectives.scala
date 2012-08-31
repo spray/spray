@@ -77,14 +77,14 @@ trait RouteDirectives {
    * Creates an HttpException with the given properties and bubbles it up the response chain,
    * where it is dealt with by the closest `handleExceptions` directive and its ExceptionHandler.
    */
-  def fail(status: StatusCode, message: String = ""): StandardRoute = fail(HttpException(status, message))
+  def failWith(status: StatusCode, message: String = ""): StandardRoute = failWith(HttpException(status, message))
 
   /**
    * Bubbles the given error up the response chain, where it is dealt with by the closest `handleExceptions`
    * directive and its ExceptionHandler.
    */
-  def fail(error: Throwable): StandardRoute = new StandardRoute {
-    def apply(ctx: RequestContext) { ctx.fail(error) }
+  def failWith(error: Throwable): StandardRoute = new StandardRoute {
+    def apply(ctx: RequestContext) { ctx.failWith(error) }
   }
 
 }

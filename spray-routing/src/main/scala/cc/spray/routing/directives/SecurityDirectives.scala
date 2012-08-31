@@ -59,7 +59,7 @@ object AuthMagnet {
       case Right(Right(user)) => f(user :: HNil)(ctx)
       case Right(Left(rejection)) => ctx.reject(rejection)
       case Left(error) if eh.isDefinedAt(error) => eh(error)(log)(ctx)
-      case Left(error) => ctx.fail(error)
+      case Left(error) => ctx.failWith(error)
     }
   }
 
