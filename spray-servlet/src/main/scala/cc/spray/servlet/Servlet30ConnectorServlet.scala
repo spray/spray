@@ -24,11 +24,12 @@ import java.util.concurrent.atomic.AtomicInteger
 import akka.actor.{UnhandledMessage, ActorRef, ActorSystem}
 import akka.util.NonFatal
 import akka.spray.UnregisteredActorRef
+import cc.spray.util.model.{DefaultIOClosed, DefaultIOSent}
 import cc.spray.http._
 
 
 /**
- * The spray connector servlet for all servlet 3.0 containers.
+ * The connector servlet for all servlet 3.0 containers.
  */
 class Servlet30ConnectorServlet extends HttpServlet {
   var system: ActorSystem = _
@@ -36,10 +37,6 @@ class Servlet30ConnectorServlet extends HttpServlet {
   implicit var settings: ConnectorSettings = _
   var timeoutHandler: ActorRef = _
   def log = system.log
-
-  val OPEN = 0
-  val STARTED = 1
-  val COMPLETED = 2
 
   override def init() {
     import Initializer._
@@ -57,7 +54,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
     def request = "%s request to '%s'" format (hsRequest.getMethod, ModelConverter.rebuildUri(hsRequest))
     try {
       val request = ModelConverter.toHttpRequest(hsRequest)
-      val responder = createResponder(hsRequest, hsResponse, request)
+      val responder = new Responder(hsRequest, hsResponse, request)
       serviceActor.tell(request, responder)
     } catch {
       case HttpException(status, msg) =>
@@ -67,80 +64,89 @@ class Servlet30ConnectorServlet extends HttpServlet {
     }
   }
 
-  def createResponder(hsRequest: HttpServletRequest, hsResponse: HttpServletResponse, req: HttpRequest): ActorRef = {
-    new UnregisteredActorRef(system) {
-      val state = new AtomicInteger(OPEN)
-      val asyncContext = hsRequest.startAsync()
-      asyncContext.setTimeout(settings.RequestTimeout)
-      asyncContext.addListener {
-        new AsyncListener {
-          def onTimeout(event: AsyncEvent) {
-            handleTimeout(hsResponse, req)
-            // when this method returns the timed out request is automatically completed
-          }
-          def onError(event: AsyncEvent) {
-            event.getThrowable match {
-              case null => log.error("Unspecified Error during async processing of {}", req)
-              case ex => log.error(ex, "Error during async processing of {}", req)
-            }
-          }
-          def onStartAsync(event: AsyncEvent) {}
-          def onComplete(event: AsyncEvent) {}
+  class Responder(hsRequest: HttpServletRequest, hsResponse: HttpServletResponse, req: HttpRequest)
+    extends UnregisteredActorRef(system) {
+
+    val OPEN = 0
+    val STARTED = 1
+    val COMPLETED = 2
+
+    val state = new AtomicInteger(OPEN)
+    val asyncContext = hsRequest.startAsync()
+    asyncContext.setTimeout(settings.RequestTimeout)
+    asyncContext.addListener {
+      new AsyncListener {
+        def onTimeout(event: AsyncEvent) {
+          handleTimeout(hsResponse, req)
+          asyncContext.complete()
         }
-      }
-
-      def handleError(error: Option[Throwable]) {
-        error match {
-          case None =>
-          case Some(error) =>
-            serviceActor.tell(ServletError(error), this)
-            asyncContext.complete() // we call complete here in order to "cancel" the timeout
+        def onError(event: AsyncEvent) {
+          event.getThrowable match {
+            case null => log.error("Unspecified Error during async processing of {}", req)
+            case ex => log.error(ex, "Error during async processing of {}", req)
+          }
         }
+        def onStartAsync(event: AsyncEvent) {}
+        def onComplete(event: AsyncEvent) {}
       }
+    }
 
-      def handle(message: Any, sender: ActorRef) {
-        message match {
-          case response: HttpResponse =>
-            if (state.compareAndSet(OPEN, COMPLETED)) {
-              handleError(writeResponse(response, hsResponse, req) { asyncContext.complete() })
-            } else state.get match {
-              case STARTED =>
-                log.warning("Received an HttpResponse after a ChunkedResponseStart, dropping ...\nRequest: {}\nResponse: {}", req, response)
-              case COMPLETED =>
-                log.warning("Received a second response for a request that was already completed, dropping ...\nRequest: {}\nResponse: {}", req, response)
-            }
+    def postProcess(error: Option[Throwable], sender: ActorRef, notification: AnyRef = DefaultIOSent) {
+      error match {
+        case None =>
+          sender.tell(notification, this)
+        case Some(e) =>
+          serviceActor.tell(ServletError(e), this)
+          asyncContext.complete()
+      }
+    }
 
-          case response: ChunkedResponseStart =>
-            if (state.compareAndSet(OPEN, STARTED)) {
-              handleError(writeResponse(response, hsResponse, req) {})
-            } else state.get match {
-              case STARTED =>
-                log.warning("Received a second ChunkedResponseStart, dropping ...\nRequest: {}\nResponse: {}", req, response)
-              case COMPLETED =>
-                log.warning("Received a ChunkedResponseStart for a request that was already completed, dropping ...\nRequest: {}\nResponse: {}", req, response)
-            }
-
-          case MessageChunk(body, _) => state.get match {
-            case OPEN =>
-              log.warning("Received a MessageChunk before a ChunkedResponseStart, dropping ...\nRequest: {}\nChunk: {} bytes\n", req, body.length)
+    def handle(message: Any, sender: ActorRef) {
+      message match {
+        case response: HttpResponse =>
+          if (state.compareAndSet(OPEN, COMPLETED)) {
+            val result = writeResponse(response, hsResponse, req) { asyncContext.complete() }
+            postProcess(result, sender)
+          } else state.get match {
             case STARTED =>
-              handleError(writeChunk(body, hsResponse, req))
+              log.warning("Received an HttpResponse after a ChunkedResponseStart, dropping ...\nRequest: {}\nResponse: {}", req, response)
             case COMPLETED =>
-              log.warning("Received a MessageChunk for a request that was already completed, dropping ...\nRequest: {}\nChunk: {} bytes", req, body.length)
+              log.warning("Received a second response for a request that was already completed, dropping ...\nRequest: {}\nResponse: {}", req, response)
           }
 
-          case _: ChunkedMessageEnd =>
-            if (state.compareAndSet(STARTED, COMPLETED)) {
-              handleError(closeResponseStream(hsResponse, req) { asyncContext.complete() })
-            } else state.get match {
-              case OPEN =>
-                log.warning("Received a ChunkedMessageEnd before a ChunkedResponseStart, dropping ...\nRequest: {}", req)
-              case COMPLETED =>
-                log.warning("Received a ChunkedMessageEnd for a request that was already completed, dropping ...\nRequest: {}", req)
-            }
+        case response: ChunkedResponseStart =>
+          if (state.compareAndSet(OPEN, STARTED)) {
+            val result = writeResponse(response, hsResponse, req) {}
+            postProcess(result, sender)
+          } else state.get match {
+            case STARTED =>
+              log.warning("Received a second ChunkedResponseStart, dropping ...\nRequest: {}\nResponse: {}", req, response)
+            case COMPLETED =>
+              log.warning("Received a ChunkedResponseStart for a request that was already completed, dropping ...\nRequest: {}\nResponse: {}", req, response)
+          }
 
-          case x => system.eventStream.publish(UnhandledMessage(x, sender, this))
+        case MessageChunk(body, _) => state.get match {
+          case OPEN =>
+            log.warning("Received a MessageChunk before a ChunkedResponseStart, dropping ...\nRequest: {}\nChunk: {} bytes\n", req, body.length)
+          case STARTED =>
+            val result = writeChunk(body, hsResponse, req)
+            postProcess(result, sender)
+          case COMPLETED =>
+            log.warning("Received a MessageChunk for a request that was already completed, dropping ...\nRequest: {}\nChunk: {} bytes", req, body.length)
         }
+
+        case _: ChunkedMessageEnd =>
+          if (state.compareAndSet(STARTED, COMPLETED)) {
+            val result = closeResponseStream(hsResponse, req) { asyncContext.complete() }
+            postProcess(result, sender, DefaultIOClosed)
+          } else state.get match {
+            case OPEN =>
+              log.warning("Received a ChunkedMessageEnd before a ChunkedResponseStart, dropping ...\nRequest: {}", req)
+            case COMPLETED =>
+              log.warning("Received a ChunkedMessageEnd for a request that was already completed, dropping ...\nRequest: {}", req)
+          }
+
+        case x => system.eventStream.publish(UnhandledMessage(x, sender, this))
       }
     }
   }
