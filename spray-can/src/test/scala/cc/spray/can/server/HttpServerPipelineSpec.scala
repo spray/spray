@@ -127,7 +127,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
           Received(simpleRequest),
           Message(HttpCommand(HttpResponse()), sender = actor),
           ClearCommandAndEventCollectors,
-          IoWorker.AckSend(dummyHandle)
+          IOBridge.AckSend(dummyHandle)
         ) must produce(
           commands = Seq(
             IoServer.Tell(actor, IoServer.AckSend(dummyHandle), IgnoreSender)
@@ -144,13 +144,13 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
           Received(simpleRequest),
           ClearCommandAndEventCollectors,
           Message(HttpCommand(ChunkedResponseStart(HttpResponse())), sender = actor1),
-          IoWorker.AckSend(dummyHandle),
+          IOBridge.AckSend(dummyHandle),
           Message(HttpCommand(MessageChunk("part 1")), sender = actor2),
-          IoWorker.AckSend(dummyHandle),
+          IOBridge.AckSend(dummyHandle),
           Message(HttpCommand(MessageChunk("part 2")), sender = actor3),
           Message(HttpCommand(ChunkedMessageEnd()), sender = actor4),
-          IoWorker.AckSend(dummyHandle),
-          IoWorker.AckSend(dummyHandle)
+          IOBridge.AckSend(dummyHandle),
+          IOBridge.AckSend(dummyHandle)
         ) must produce(
           commands = Seq(
             SendString(chunkedResponseStart),

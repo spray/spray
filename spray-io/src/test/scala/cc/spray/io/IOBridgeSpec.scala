@@ -25,18 +25,18 @@ import org.specs2.matcher.Matcher
 import cc.spray.util._
 import org.specs2.mutable.Specification
 
-class IoWorkerSpec extends Specification {
+class IOBridgeSpec extends Specification {
   implicit val timeout: Timeout = Duration("500 ms")
-  implicit val system = ActorSystem("IoWorkerSpec")
+  implicit val system = ActorSystem("IOBridgeSpec")
   val port = 23456
 
-  lazy val worker = new IoWorker(system).start()
-  lazy val server = system.actorOf(Props(new TestServer(worker)), name = "test-server")
-  lazy val client = system.actorOf(Props(new TestClient(worker)), name = "test-client")
+  lazy val bridge = new IOBridge(system).start()
+  lazy val server = system.actorOf(Props(new TestServer(bridge)), name = "test-server")
+  lazy val client = system.actorOf(Props(new TestClient(bridge)), name = "test-client")
 
   sequential
 
-  "An IoWorker" should {
+  "An IOBridge" should {
     "properly bind a test server" in {
       (server ? IoServer.Bind("localhost", port)).await must beAnInstanceOf[IoServer.Bound]
     }
@@ -52,22 +52,22 @@ class IoWorkerSpec extends Specification {
 
   step {
     system.shutdown()
-    worker.stop()
+    bridge.stop()
   }
 
-  class TestServer(ioWorker: IoWorker) extends IoServer(ioWorker) {
+  class TestServer(ioBridge: IOBridge) extends IoServer(ioBridge) {
     override def receive = super.receive orElse {
-      case IoWorker.Received(handle, buffer) => ioWorker ! IoWorker.Send(handle, buffer)
+      case IOBridge.Received(handle, buffer) => ioBridge ! IOBridge.Send(handle, buffer)
     }
   }
 
-  class TestClient(ioWorker: IoWorker) extends IoClient(ioWorker) {
+  class TestClient(ioBridge: IOBridge) extends IoClient(ioBridge) {
     var requests = Map.empty[Handle, ActorRef]
     override def receive = super.receive orElse {
       case (x: String, handle: Handle) =>
         requests += handle -> sender
-        ioWorker ! IoWorker.Send(handle, ByteBuffer.wrap(x.getBytes))
-      case IoWorker.Received(handle, buffer) =>
+        ioBridge ! IOBridge.Send(handle, ByteBuffer.wrap(x.getBytes))
+      case IOBridge.Received(handle, buffer) =>
         requests(handle) ! new String(buffer.array, 0, buffer.limit)
     }
   }
@@ -77,7 +77,7 @@ class IoWorkerSpec extends Specification {
       IoClient.Connected(handle) <- (client ? IoClient.Connect("localhost", port)).mapTo[IoClient.Connected]
       response <- (client ? (payload -> handle)).mapTo[String]
     } yield {
-      worker ! IoWorker.Close(handle, CleanClose)
+      bridge ! IOBridge.Close(handle, CleanClose)
       response
     }
   }

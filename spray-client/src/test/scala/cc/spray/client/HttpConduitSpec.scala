@@ -24,7 +24,7 @@ import akka.pattern.ask
 import akka.actor._
 import cc.spray.can.client.HttpClient
 import cc.spray.can.server.HttpServer
-import cc.spray.io.IoWorker
+import cc.spray.io.IOBridge
 import cc.spray.io.pipelining.MessageHandlerDispatch.SingletonHandler
 import cc.spray.http._
 import cc.spray.util._
@@ -41,8 +41,8 @@ class HttpConduitSpec extends Specification {
 
   val port = 17242
   val client = {
-    val ioWorker = new IoWorker(system).start()
-    system.registerOnTermination(ioWorker.stop())
+    val ioBridge = new IOBridge(system).start()
+    system.registerOnTermination(ioBridge.stop())
     def response(s: String) = HttpResponse(entity = HttpBody(s), headers = List(`Content-Type`(ContentType.`text/plain`)))
     val handler = system.actorOf(Props(
       new Actor with ActorLogging {
@@ -60,10 +60,10 @@ class HttpConduitSpec extends Specification {
         }
       }
     ), "handler")
-    system.actorOf(Props(new HttpServer(ioWorker, SingletonHandler(handler))), "http-server")
+    system.actorOf(Props(new HttpServer(ioBridge, SingletonHandler(handler))), "http-server")
       .ask(HttpServer.Bind("localhost", port))(Duration("1 s"))
       .await // block until the server is actually bound
-    system.actorOf(Props(new HttpClient(ioWorker)), "http-client")
+    system.actorOf(Props(new HttpClient(ioBridge)), "http-client")
   }
 
   "An HttpConduit with max. 4 connections and NonPipelined strategy" should {

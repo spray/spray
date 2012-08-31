@@ -32,8 +32,8 @@ import cc.spray.http.HttpRequest
  * replied to with [[cc.spray.can.model.HttpResponsePart]] messages (or [[akka.actor.Status.Failure]] instances
  * in case of errors).
  */
-class HttpClient(ioWorker: IoWorker, settings: ClientSettings = ClientSettings())
-                (implicit sslEngineProvider: ClientSSLEngineProvider) extends IoClient(ioWorker) with ConnectionActors {
+class HttpClient(ioBridge: IOBridge, settings: ClientSettings = ClientSettings())
+                (implicit sslEngineProvider: ClientSSLEngineProvider) extends IoClient(ioBridge) with ConnectionActors {
 
   protected val pipeline: PipelineStage = HttpClient.pipeline(settings, log)
 

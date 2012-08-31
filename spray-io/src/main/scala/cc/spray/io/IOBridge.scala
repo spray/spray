@@ -29,12 +29,12 @@ import cc.spray.util.model.{IOClosed, IOSent}
 
 
 // threadsafe
-class IoWorker(log: LoggingAdapter, settings: IoWorkerSettings) {
-  def this(bus: LoggingBus, settings: IoWorkerSettings) = this(new BusLogging(bus, "IoWorker", classOf[IoWorker]), settings)
+class IOBridge(log: LoggingAdapter, settings: IoWorkerSettings) {
+  def this(bus: LoggingBus, settings: IoWorkerSettings) = this(new BusLogging(bus, "IOBridge", classOf[IOBridge]), settings)
   def this(loggingSystem: ActorSystem, settings: IoWorkerSettings) = this(loggingSystem.eventStream, settings)
   def this(loggingSystem: ActorSystem) = this(loggingSystem, IoWorkerSettings())
 
-  import IoWorker._
+  import IOBridge._
 
   private[this] var ioThread: IoThread = _
 
@@ -44,7 +44,7 @@ class IoWorker(log: LoggingAdapter, settings: IoWorkerSettings) {
   def thread: Option[Thread] = lock.synchronized(Option(ioThread))
 
   /**
-   * Starts the IoWorker if not yet started
+   * Starts the IOBridge if not yet started
    * @return this instance
    */
   def start(): this.type = {
@@ -52,15 +52,15 @@ class IoWorker(log: LoggingAdapter, settings: IoWorkerSettings) {
       if (ioThread == null) {
         ioThread = new IoThread(settings, log)
         ioThread.start()
-        _runningWorkers = _runningWorkers :+ this
+        _runningBridges = _runningBridges :+ this
       }
     }
     this
   }
 
   /**
-   * Stops the IoWorker if not yet stopped.
-   * The method blocks until the IoWorker has been successfully terminated.
+   * Stops the IOBridge if not yet stopped.
+   * The method blocks until the IOBridge has been successfully terminated.
    * It can be restarted by calling start().
    */
   def stop() {
@@ -70,21 +70,21 @@ class IoWorker(log: LoggingAdapter, settings: IoWorkerSettings) {
         this ! Stop(latch)
         latch.await()
         ioThread = null
-        _runningWorkers = _runningWorkers.filter(_ != this)
+        _runningBridges = _runningBridges.filter(_ != this)
       }
     }
   }
 
   /**
-   * Posts a Command to the IoWorkers command queue.
+   * Posts a Command to the IOBridges command queue.
    */
   def ! (cmd: Command)(implicit sender: ActorRef = null) {
-    if (ioThread == null) throw new IllegalStateException("Cannot post message to unstarted IoWorker")
+    if (ioThread == null) throw new IllegalStateException("Cannot post message to unstarted IOBridge")
     ioThread.post(cmd, sender)
   }
 
   /**
-   * Posts a Command to the IoWorkers command queue.
+   * Posts a Command to the IOBridges command queue.
    */
   def tell(cmd: Command, sender: ActorRef) {
     this.!(cmd)(sender)
@@ -105,7 +105,7 @@ class IoWorker(log: LoggingAdapter, settings: IoWorkerSettings) {
     private var connectionsClosed = 0L
     private var commandsExecuted = 0L
 
-    setName(settings.ThreadName + '-' + _runningWorkers.size)
+    setName(settings.ThreadName + '-' + _runningBridges.size)
     setDaemon(true)
 
     override def start() {
@@ -122,7 +122,7 @@ class IoWorker(log: LoggingAdapter, settings: IoWorkerSettings) {
     }
 
     override def run() {
-      log.info("IoWorker thread '{}' started", Thread.currentThread.getName)
+      log.info("IOBridge thread '{}' started", Thread.currentThread.getName)
       while (stopped == null) {
         if (commandQueue.isEmpty) {
           select()
@@ -133,7 +133,7 @@ class IoWorker(log: LoggingAdapter, settings: IoWorkerSettings) {
         }
       }
       closeSelector()
-      log.info("IoWorker thread '{}' stopped", Thread.currentThread.getName)
+      log.info("IOBridge thread '{}' stopped", Thread.currentThread.getName)
       stopped.countDown()
     }
 
@@ -374,12 +374,12 @@ class IoWorker(log: LoggingAdapter, settings: IoWorkerSettings) {
 
 }
 
-object IoWorker {
+object IOBridge {
   private val lock = new AnyRef
-  private var _runningWorkers = Seq.empty[IoWorker]
+  private var _runningBridges = Seq.empty[IOBridge]
 
-  def runningWorkers: Seq[IoWorker] =
-    lock.synchronized(_runningWorkers)
+  def runningBridges: Seq[IOBridge] =
+    lock.synchronized(_runningBridges)
 
   case class Stats(
     uptime: Long,
@@ -397,7 +397,7 @@ object IoWorker {
   ////////////// COMMANDS //////////////
 
   // "super" commands not on the connection-level
-  private[IoWorker] case class Stop(latch: CountDownLatch) extends Command
+  private[IOBridge] case class Stop(latch: CountDownLatch) extends Command
   case class Bind(handleCreator: ActorRef, address: InetSocketAddress, backlog: Int) extends Command
   case class Unbind(bindingKey: Key) extends Command
   case class Connect(address: InetSocketAddress, localAddress: Option[InetSocketAddress] = None) extends Command

@@ -21,7 +21,7 @@ import akka.pattern.ask
 import akka.util.Duration
 import org.specs2.mutable.Specification
 import cc.spray.can.server.HttpServer
-import cc.spray.io.IoWorker
+import cc.spray.io.IOBridge
 import cc.spray.io.pipelining.MessageHandlerDispatch.SingletonHandler
 import cc.spray.util._
 import cc.spray.http._
@@ -29,18 +29,18 @@ import cc.spray.http._
 
 class HttpDialogSpec extends Specification {
   implicit val system = ActorSystem()
-  val ioWorker = new IoWorker(system).start()
+  val ioBridge = new IOBridge(system).start()
   val port = 8899
 
   step {
     val handler = system.actorOf(Props(behavior = ctx => {
       case x: HttpRequest => ctx.sender ! HttpResponse(entity = x.uri)
     }))
-    val server = system.actorOf(Props(new HttpServer(ioWorker, SingletonHandler(handler))))
+    val server = system.actorOf(Props(new HttpServer(ioBridge, SingletonHandler(handler))))
     server.ask(HttpServer.Bind("localhost", port))(Duration("1 s")).await
   }
 
-  val client = system.actorOf(Props(new HttpClient(ioWorker)))
+  val client = system.actorOf(Props(new HttpClient(ioBridge)))
 
   "An HttpDialog" should {
     "be able to complete a simple request/response dialog" in {
@@ -84,7 +84,7 @@ class HttpDialogSpec extends Specification {
 
   step {
     system.shutdown()
-    ioWorker.stop()
+    ioBridge.stop()
   }
 
 }

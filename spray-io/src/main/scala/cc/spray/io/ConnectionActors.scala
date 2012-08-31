@@ -44,10 +44,10 @@ trait ConnectionActors extends IoPeer { ioPeer =>
     )
 
     protected def baseCommandPipeline: Pipeline[Command] = {
-      case IoPeer.Send(buffers, ack)          => ioWorker ! IoWorker.Send(handle, buffers, ack)
-      case IoPeer.Close(reason)               => ioWorker ! IoWorker.Close(handle, reason)
-      case IoPeer.StopReading                 => ioWorker ! IoWorker.StopReading(handle)
-      case IoPeer.ResumeReading               => ioWorker ! IoWorker.ResumeReading(handle)
+      case IoPeer.Send(buffers, ack)          => ioBridge ! IOBridge.Send(handle, buffers, ack)
+      case IoPeer.Close(reason)               => ioBridge ! IOBridge.Close(handle, reason)
+      case IoPeer.StopReading                 => ioBridge ! IOBridge.StopReading(handle)
+      case IoPeer.ResumeReading               => ioBridge ! IOBridge.ResumeReading(handle)
       case IoPeer.Tell(receiver, msg, sender) => receiver.tell(msg, sender)
       case _: Droppable => // don't warn
       case cmd => log.warning("commandPipeline: dropped {}", cmd)

@@ -25,10 +25,10 @@ import cc.spray.io._
 import cc.spray.http._
 
 
-class HttpServer(ioWorker: IoWorker,
+class HttpServer(ioBridge: IOBridge,
                  messageHandler: MessageHandlerDispatch.MessageHandler,
                  settings: ServerSettings = ServerSettings())
-                (implicit sslEngineProvider: ServerSSLEngineProvider) extends IoServer(ioWorker) with ConnectionActors {
+                (implicit sslEngineProvider: ServerSSLEngineProvider) extends IoServer(ioBridge) with ConnectionActors {
 
   protected val statsHolder: Option[StatsHolder] =
     if (settings.StatsSupport) Some(new StatsHolder) else None

@@ -66,7 +66,7 @@ trait PipelineStageTest {
 
   val ClearCommandAndEventCollectors = Do(_.clear())
 
-  def Received(rawMessage: String) = IoWorker.Received(dummyHandle, string2ByteBuffer(rawMessage))
+  def Received(rawMessage: String) = IOBridge.Received(dummyHandle, string2ByteBuffer(rawMessage))
   def Send(rawMessage: String) = IoPeer.Send(string2ByteBuffer(rawMessage))
   def SendString(rawMessage: String) = SendStringCommand(rawMessage)
   def Sleep(duration: String) = Do(_ => Thread.sleep(Duration(duration).toMillis))

@@ -36,7 +36,7 @@ class SslTlsSupportSpec extends Specification {
   val port = 23454
   val serverThread = new ServerThread
   serverThread.start()
-  val ioWorker = new IoWorker(system, ConfigFactory.parseString("spray.io.confirm-sends = off")).start()
+  val ioBridge = new IOBridge(system, ConfigFactory.parseString("spray.io.confirm-sends = off")).start()
 
   sequential
 
@@ -72,7 +72,7 @@ class SslTlsSupportSpec extends Specification {
 
   step {
     system.shutdown()
-    ioWorker.stop()
+    ioBridge.stop()
   }
 
   def createSslContext(keyStoreResource: String, password: String): SSLContext = {
@@ -106,7 +106,7 @@ class SslTlsSupportSpec extends Specification {
     reader -> writer
   }
 
-  class SslClientActor extends IoClient(ioWorker) with ConnectionActors {
+  class SslClientActor extends IoClient(ioBridge) with ConnectionActors {
     protected def pipeline = frontEnd >> SslTlsSupport(ClientSSLEngineProvider.default, log)
     def frontEnd = new DoublePipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) = new Pipelines {
@@ -123,7 +123,7 @@ class SslTlsSupportSpec extends Specification {
     }
   }
 
-  class SslServerActor extends IoServer(ioWorker) with ConnectionActors {
+  class SslServerActor extends IoServer(ioBridge) with ConnectionActors {
     protected def pipeline = frontEnd >> SslTlsSupport(ServerSSLEngineProvider.default, log)
     def frontEnd = new EventPipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): EPL = {

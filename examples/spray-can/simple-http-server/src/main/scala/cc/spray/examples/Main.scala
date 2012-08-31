@@ -3,7 +3,7 @@ package cc.spray.examples
 import java.security.{SecureRandom, KeyStore}
 import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 import akka.actor._
-import cc.spray.io.IoWorker
+import cc.spray.io.IOBridge
 import cc.spray.io.pipelining.{ServerSSLEngineProvider, MessageHandlerDispatch}
 import cc.spray.can.server.HttpServer
 
@@ -12,9 +12,9 @@ object Main extends App {
   // we need an ActorSystem to host our application in
   val system = ActorSystem("simple-http-server")
 
-  // every spray-can HttpServer (and HttpClient) needs an IoWorker for low-level network IO
+  // every spray-can HttpServer (and HttpClient) needs an IOBridge for low-level network IO
   // (but several servers and/or clients can share one)
-  val ioWorker = new IoWorker(system).start()
+  val ioBridge = new IOBridge(system).start()
 
   // the handler actor replies to incoming HttpRequests
   val handler = system.actorOf(Props[TestService])
@@ -22,7 +22,7 @@ object Main extends App {
   // create and start the spray-can HttpServer, telling it that we want requests to be
   // handled by our singleton handler
   val server = system.actorOf(
-    props = Props(new HttpServer(ioWorker, MessageHandlerDispatch.SingletonHandler(handler))),
+    props = Props(new HttpServer(ioBridge, MessageHandlerDispatch.SingletonHandler(handler))),
     name = "http-server"
   )
 
@@ -31,9 +31,9 @@ object Main extends App {
   server ! HttpServer.Bind("localhost", 8080)
 
   // finally we drop the main thread but hook the shutdown of
-  // our IoWorker into the shutdown of the applications ActorSystem
+  // our IOBridge into the shutdown of the applications ActorSystem
   system.registerOnTermination {
-    ioWorker.stop()
+    ioBridge.stop()
   }
 
   /////////////// for SSL support (if enabled in application.conf) ////////////////

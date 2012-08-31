@@ -11,12 +11,12 @@ object Main extends App {
   // we need an ActorSystem to host our application in
   val system = ActorSystem("echo-server")
 
-  // create and start an IoWorker
-  val ioWorker = new IoWorker(system).start()
+  // create and start an IOBridge
+  val ioBridge = new IOBridge(system).start()
 
   // and our actual server "service" actor
   val server = system.actorOf(
-    Props(new EchoServer(ioWorker)),
+    Props(new EchoServer(ioBridge)),
     name = "echo-server"
   )
 
@@ -31,30 +31,30 @@ object Main extends App {
   }
 
   // finally we drop the main thread but hook the shutdown of
-  // our IoWorker into the shutdown of the applications ActorSystem
+  // our IOBridge into the shutdown of the applications ActorSystem
   system.registerOnTermination {
-    ioWorker.stop()
+    ioBridge.stop()
   }
 }
 
-class EchoServer(ioWorker: IoWorker) extends IoServer(ioWorker) {
+class EchoServer(ioBridge: IOBridge) extends IoServer(ioBridge) {
 
   override def receive = super.receive orElse {
-    case IoWorker.Received(handle, buffer) =>
+    case IOBridge.Received(handle, buffer) =>
       buffer.array.asString.trim match {
         case "STOP" =>
-          ioWorker ! IoWorker.Send(handle, BufferBuilder("Shutting down...").toByteBuffer)
+          ioBridge ! IOBridge.Send(handle, BufferBuilder("Shutting down...").toByteBuffer)
           log.info("Shutting down")
           context.system.shutdown()
         case x =>
           log.debug("Received '{}', echoing ...", x)
-          ioWorker ! IoWorker.Send(handle, buffer)
+          ioBridge ! IOBridge.Send(handle, buffer)
       }
 
-    case IoWorker.AckSend(_) =>
+    case IOBridge.AckSend(_) =>
       log.debug("Send completed")
 
-    case IoWorker.Closed(_, reason) =>
+    case IOBridge.Closed(_, reason) =>
       log.debug("Connection closed: {}", reason)
   }
 

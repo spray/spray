@@ -20,7 +20,7 @@ import java.net.InetSocketAddress
 import akka.actor.{Status, ActorRef}
 import cc.spray.util.Reply
 
-abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
+abstract class IoServer(val ioBridge: IOBridge) extends IoPeer {
   import IoServer._
   private var bindingKey: Option[Key] = None
   private var endpoint: Option[InetSocketAddress] = None
@@ -45,14 +45,14 @@ abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
       this.endpoint = Some(endpoint)
       state = binding
       val replyWithCommander = Reply.withContext(sender)
-      ioWorker.tell(IoWorker.Bind(replyWithCommander, endpoint, bindingBacklog), replyWithCommander)
+      ioBridge.tell(IOBridge.Bind(replyWithCommander, endpoint, bindingBacklog), replyWithCommander)
 
     case x: ServerCommand =>
       sender ! Status.Failure(CommandException(x, "Not yet bound"))
   }
 
   lazy val binding: Receive = {
-    case Reply(IoWorker.Bound(key), commander: ActorRef) =>
+    case Reply(IOBridge.Bound(key), commander: ActorRef) =>
       bindingKey = Some(key)
       state = bound
       log.info("{} started on {}", self.path, endpoint.get)
@@ -63,20 +63,20 @@ abstract class IoServer(val ioWorker: IoWorker) extends IoPeer {
   }
 
   lazy val bound: Receive = {
-    case Reply(IoWorker.Connected(key, address), commander: ActorRef) =>
-      ioWorker ! IoWorker.Register(createConnectionHandle(key, address, commander))
+    case Reply(IOBridge.Connected(key, address), commander: ActorRef) =>
+      ioBridge ! IOBridge.Register(createConnectionHandle(key, address, commander))
 
     case Unbind =>
       log.debug("Stopping {} on {}", self.path, endpoint.get)
       state = unbinding
-      ioWorker.tell(IoWorker.Unbind(bindingKey.get), Reply.withContext(sender))
+      ioBridge.tell(IOBridge.Unbind(bindingKey.get), Reply.withContext(sender))
 
     case x: ServerCommand =>
       sender ! Status.Failure(CommandException(x, "Already bound"))
   }
 
   lazy val unbinding: Receive = {
-    case Reply(_: IoWorker.Unbound, originalSender: ActorRef) =>
+    case Reply(_: IOBridge.Unbound, originalSender: ActorRef) =>
       log.info("{} stopped on {}", self.path, endpoint.get)
       state = unbound
       originalSender ! Unbound(endpoint.get)

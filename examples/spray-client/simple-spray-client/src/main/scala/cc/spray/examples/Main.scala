@@ -1,7 +1,7 @@
 package cc.spray.examples
 
 import akka.actor.{Props, ActorSystem}
-import cc.spray.io.IoWorker
+import cc.spray.io.IOBridge
 import cc.spray.can.client.HttpClient
 import cc.spray.client.HttpConduit
 import cc.spray.httpx.SprayJsonSupport
@@ -13,26 +13,26 @@ object Main extends App {
   val system = ActorSystem("simple-spray-client")
   def log = system.log
 
-  // every spray-can HttpClient (and HttpServer) needs an IoWorker for low-level network IO
+  // every spray-can HttpClient (and HttpServer) needs an IOBridge for low-level network IO
   // (but several servers and/or clients can share one)
-  val ioWorker = new IoWorker(system).start()
+  val ioBridge = new IOBridge(system).start()
 
-  // since the ioWorker is not an actor it needs to be stopped separately,
-  // here we hook the shutdown of our IoWorker into the shutdown of the applications ActorSystem
-  system.registerOnTermination(ioWorker.stop())
+  // since the ioBridge is not an actor it needs to be stopped separately,
+  // here we hook the shutdown of our IOBridge into the shutdown of the applications ActorSystem
+  system.registerOnTermination(ioBridge.stop())
 
   // create and start a spray-can HttpClient
   val httpClient = system.actorOf(
-    props = Props(new HttpClient(ioWorker)),
+    props = Props(new HttpClient(ioBridge)),
     name = "http-client"
   )
 
   startExample1()
 
   // finally we drop the main thread but hook the shutdown of
-  // our IoWorker into the shutdown of the applications ActorSystem
+  // our IOBridge into the shutdown of the applications ActorSystem
   system.registerOnTermination {
-    ioWorker.stop()
+    ioBridge.stop()
   }
 
   ///////////////////////////////////////////////////

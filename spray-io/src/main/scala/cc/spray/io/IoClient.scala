@@ -19,7 +19,7 @@ package cc.spray.io
 import cc.spray.util.Reply
 import akka.actor.{Status, ActorRef}
 
-class IoClient(val ioWorker: IoWorker) extends IoPeer {
+class IoClient(val ioBridge: IOBridge) extends IoPeer {
   import IoClient._
 
   override def preStart() {
@@ -32,11 +32,11 @@ class IoClient(val ioWorker: IoWorker) extends IoPeer {
 
   protected def receive = {
     case cmd: Connect =>
-      ioWorker.tell(cmd, Reply.withContext(sender))
+      ioBridge.tell(cmd, Reply.withContext(sender))
 
-    case Reply(IoWorker.Connected(key, address), commander: ActorRef) =>
+    case Reply(IOBridge.Connected(key, address), commander: ActorRef) =>
       val handle = createConnectionHandle(key, address, commander)
-      ioWorker ! IoWorker.Register(handle)
+      ioBridge ! IOBridge.Register(handle)
       commander ! Connected(handle)
 
     case x: Closed =>
@@ -53,7 +53,7 @@ object IoClient {
   case class IoClientException(msg: String, cause: Throwable = null) extends RuntimeException(msg, cause)
 
   ////////////// COMMANDS //////////////
-  type Connect  = IoWorker.Connect; val Connect = IoWorker.Connect
+  type Connect  = IOBridge.Connect; val Connect = IOBridge.Connect
   type Close    = IoPeer.Close;     val Close = IoPeer.Close
   type Send     = IoPeer.Send;      val Send = IoPeer.Send
   type Tell     = IoPeer.Tell;      val Tell = IoPeer.Tell // only available with ConnectionActors mixin

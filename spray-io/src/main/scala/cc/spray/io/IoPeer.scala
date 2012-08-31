@@ -23,7 +23,7 @@ import java.net.InetSocketAddress
 
 abstract class IoPeer extends Actor with ActorLogging {
 
-  def ioWorker: IoWorker
+  def ioBridge: IOBridge
 
   protected def createConnectionHandle(key: Key, address: InetSocketAddress, commander: ActorRef): Handle =
     SimpleHandle(key, self, address, commander) // default implementation
@@ -47,8 +47,8 @@ object IoPeer {
   case class Tell(receiver: ActorRef, message: Any, sender: ActorRef) extends Command
 
   ////////////// EVENTS //////////////
-  type Closed = IoWorker.Closed;     val Closed = IoWorker.Closed
-  type AckSend = IoWorker.AckSend;   val AckSend = IoWorker.AckSend
-  type Received = IoWorker.Received; val Received = IoWorker.Received
+  type Closed = IOBridge.Closed;     val Closed = IOBridge.Closed
+  type AckSend = IOBridge.AckSend;   val AckSend = IOBridge.AckSend
+  type Received = IOBridge.Received; val Received = IOBridge.Received
 
 }
