@@ -18,8 +18,9 @@ package cc.spray.routing
 
 import akka.util.NonFatal
 import akka.actor._
-import cc.spray.http.{HttpException, HttpRequest}
 import cc.spray.util.LoggingContext
+import cc.spray.http._
+import StatusCodes._
 
 
 trait HttpService extends Directives {
@@ -61,11 +62,11 @@ trait HttpService extends Directives {
               log.warning("Request {}: {}", request, errorMsg)
               sealedRoute(contextFor(parsedRequest))
             case (errorMsg, _) =>
-              throw new HttpException(400, errorMsg)
+              throw new IllegalRequestException(BadRequest, RequestErrorInfo(errorMsg))
           }
         } catch {
           case NonFatal(e) =>
-            val handler = if (eh.isDefinedAt(e)) eh else ExceptionHandler.Default
+            val handler = if (eh.isDefinedAt(e)) eh else ExceptionHandler.default
             val errorRoute = handler(e)(log)
             errorRoute(contextFor(request))
         }

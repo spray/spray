@@ -17,7 +17,7 @@
 package cc.spray.can.parsing
 
 import java.lang.{StringBuilder => JStringBuilder}
-import cc.spray.http.HttpMethod
+import cc.spray.http.{HttpMethod, StatusCodes}
 
 
 class UriParser(settings: ParserSettings, method: HttpMethod) extends CharacterParser {
@@ -30,7 +30,8 @@ class UriParser(settings: ParserSettings, method: HttpMethod) extends CharacterP
         case _ => uri.append(cursor); this
       }
     } else {
-      ErrorState("URI length exceeds the configured limit of " + settings.MaxUriLength + " characters", 414)
+      ErrorState(StatusCodes.RequestUriTooLong,
+        "URI length exceeds the configured limit of " + settings.MaxUriLength + " characters")
     }
   }
 

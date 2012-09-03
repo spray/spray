@@ -35,7 +35,7 @@ class ChunkExtensionNameParser(settings: ParserSettings, chunkSize: Int, extCoun
       }
     } else {
       ErrorState("Chunk extension name exceeds the configured limit of " + settings.MaxChunkExtNameLength +
-                  " characters (" + extName.toString.take(50) + "...)")
+                  " characters", "extension '" + extName.toString.take(50) + "...'")
     }
   }
 

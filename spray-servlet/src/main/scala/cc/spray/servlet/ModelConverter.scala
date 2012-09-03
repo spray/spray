@@ -18,9 +18,9 @@ package cc.spray.servlet
 
 import java.io.IOException
 import javax.servlet.http.HttpServletRequest
+import akka.event.LoggingAdapter
 import cc.spray.util.EmptyByteArray
 import cc.spray.http.parser.HttpParser
-import cc.spray.util._
 import cc.spray.http._
 import HttpHeaders._
 import StatusCodes._
@@ -28,7 +28,8 @@ import StatusCodes._
 
 object ModelConverter {
 
-  def toHttpRequest(hsRequest: HttpServletRequest)(implicit settings: ConnectorSettings): HttpRequest = {
+  def toHttpRequest(hsRequest: HttpServletRequest)
+                   (implicit settings: ConnectorSettings, log: LoggingAdapter): HttpRequest = {
     import collection.JavaConverters._
     var contentType: ContentType = null
     var contentLength: Int = 0
@@ -37,9 +38,17 @@ object ModelConverter {
       val lcName = name.toLowerCase
       lcName match {
         case "content-type" =>
-          contentType = HttpParser.parseContentType(value).fold(e => fail("Illegal Content-Type: " + e), identityFunc)
+          contentType = HttpParser.parseContentType(value) match {
+            case Right(x) => x
+            case Left(errorInfo) => throw new IllegalRequestException(BadRequest, errorInfo)
+          }
         case "content-length" =>
-          contentLength = try value.toInt catch { case e: NumberFormatException => fail("Illegal Content-Length: ", e) }
+          contentLength =
+            try value.toInt
+            catch {
+              case e: NumberFormatException =>
+                throw new IllegalRequestException(BadRequest, RequestErrorInfo("Illegal Content-Length", e.getMessage))
+            }
         case _ =>
       }
       RawHeader(lcName, value)
@@ -54,7 +63,8 @@ object ModelConverter {
   }
 
   def toHttpMethod(name: String) =
-    HttpMethods.getForKey(name).getOrElse(fail("Illegal HTTP method: " + name))
+    HttpMethods.getForKey(name)
+      .getOrElse(throw new IllegalRequestException(MethodNotAllowed, RequestErrorInfo("Illegal HTTP method", name)))
 
   def rebuildUri(hsRequest: HttpServletRequest) = {
     val uri = hsRequest.getRequestURI
@@ -69,9 +79,11 @@ object ModelConverter {
   }
 
   def toHttpProtocol(name: String) =
-    HttpProtocols.getForKey(name).getOrElse(fail("Illegal HTTP protocol: " + name))
+    HttpProtocols.getForKey(name)
+      .getOrElse(throw new IllegalRequestException(BadRequest, "Illegal HTTP protocol", name))
 
-  def toHttpEntity(hsRequest: HttpServletRequest, contentType: ContentType, contentLength: Int): HttpEntity = {
+  def toHttpEntity(hsRequest: HttpServletRequest, contentType: ContentType, contentLength: Int)
+                  (implicit log: LoggingAdapter): HttpEntity = {
     def body: Array[Byte] = {
       if (contentLength > 0) {
         try {
@@ -81,18 +93,18 @@ object ModelConverter {
           while (bytesRead < contentLength) {
             val count = inputStream.read(buf, bytesRead, contentLength - bytesRead)
             if (count >= 0) bytesRead += count
-            else fail("Illegal Servlet request entity, expected length " + contentLength + " but only has length " + bytesRead)
+            else throw new RequestProcessingException(InternalServerError, "Illegal Servlet request entity, " +
+              "expected length " + contentLength + " but only has length " + bytesRead)
           }
           buf
         } catch {
-          case e: IOException => fail("Could not read request entity due to ", e, InternalServerError)
+          case e: IOException =>
+            log.error(e, "Could not read request entity")
+            throw new RequestProcessingException(InternalServerError, "Could not read request entity")
         }
       } else EmptyByteArray
     }
     if (contentType == null) HttpEntity(body) else HttpBody(contentType, body)
   }
-
-  private def fail(message: String, inner: Exception = null, status: StatusCode = BadRequest) =
-    throw HttpException(status, if (inner != null) message + inner.getMessage else message)
 
 }

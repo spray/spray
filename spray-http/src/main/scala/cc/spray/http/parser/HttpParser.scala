@@ -55,7 +55,7 @@ object HttpParser extends SprayParser with ProtocolParameterRules with Additiona
     header match {
       case x@ HttpHeaders.RawHeader(name, value) =>
         rules.get(x.lowercaseName) match {
-          case Some(rule) => parse(rule, value).left.map("Illegal HTTP header '" + name + "':\n" + _)
+          case Some(rule) => parse(rule, value).left.map("Illegal HTTP header '" + name + "': " + _.formatPretty)
           case None => Right(x) // if we don't have a rule for the header we leave it unparsed
         }
       case x => Right(x) // already parsed
@@ -73,6 +73,6 @@ object HttpParser extends SprayParser with ProtocolParameterRules with Additiona
     (errors.result(), parsedHeaders)
   }
 
-  def parseContentType(contentType: String): Either[String, ContentType] =
-    parse(HttpParser.ContentTypeHeaderValue, contentType)
+  def parseContentType(contentType: String): Either[RequestErrorInfo, ContentType] =
+    parse(HttpParser.ContentTypeHeaderValue, contentType).left.map(_.withFallbackSummary("Illegal Content-Type"))
 }

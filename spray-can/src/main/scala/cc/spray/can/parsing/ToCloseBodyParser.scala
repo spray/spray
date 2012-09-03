@@ -17,10 +17,11 @@
 package cc.spray.can.parsing
 
 import java.nio.ByteBuffer
-import cc.spray.http.HttpHeaders.RawHeader
-import cc.spray.http.ContentType
 import cc.spray.can.MessageLine
 import cc.spray.util._
+import cc.spray.http._
+import HttpHeaders.RawHeader
+import StatusCodes.RequestEntityTooLarge
 
 
 class ToCloseBodyParser(settings: ParserSettings,
@@ -40,7 +41,8 @@ class ToCloseBodyParser(settings: ParserSettings,
         if (body.length + array.length <= settings.MaxContentLength) {
           body = body concat array
           this
-        } else ErrorState("HTTP message body size exceeds the configured limit of " + settings.MaxContentLength, 413)
+        } else ErrorState(RequestEntityTooLarge, "HTTP message body size exceeds the configured limit of " +
+          settings.MaxContentLength)
       }
     }
   }

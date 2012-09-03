@@ -18,6 +18,7 @@ package cc.spray.can.parsing
 
 import annotation.tailrec
 import java.nio.ByteBuffer
+import cc.spray.http.StatusCodes.NotImplemented
 
 
 /**
@@ -54,5 +55,5 @@ abstract class CharacterParser extends IntermediateState {
 
   def handleChar(cursor: Char): ParsingState
 
-  def badMethod = ErrorState("Unsupported HTTP method", 501)
+  def badMethod = ErrorState(NotImplemented)
 }

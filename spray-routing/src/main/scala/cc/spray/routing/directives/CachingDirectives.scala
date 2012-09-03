@@ -71,9 +71,8 @@ trait CachingDirectives {
                 case response: HttpResponse => promise.success(Right(response))
                 case Reject(rejections) => promise.success(Left(rejections))
                 case x =>
-                  implicitly[LoggingContext].error("Route responses other than HttpResponse or " +
-                    "Rejections cannot be cached (received: {})", x)
-                  promise.failure(HttpException(500))
+                  log.error("Route responses other than HttpResponse or Rejections cannot be cached (received: {})", x)
+                  promise.failure(RequestProcessingException(StatusCodes.InternalServerError))
               }
             }
           } onComplete {
@@ -98,18 +97,18 @@ object CachingDirectives extends CachingDirectives
 trait CacheSpecMagnet {
   def responseCache: Cache[CachingDirectives.RouteResponse]
   def liftedKeyer: RequestContext => Option[Any]
+  def log: LoggingContext
   implicit def executionContext: ExecutionContext
-  implicit def refFactory: ActorRefFactory
 }
 
 object CacheSpecMagnet {
   implicit def apply(cache: Cache[CachingDirectives.RouteResponse])
-                    (implicit keyer: CacheKeyer, factory: ActorRefFactory) =
+                    (implicit keyer: CacheKeyer, factory: ActorRefFactory, lc: LoggingContext) =
     new CacheSpecMagnet {
       def responseCache = cache
       def liftedKeyer = keyer.lift
+      def log = lc
       implicit def executionContext = factory.messageDispatcher
-      implicit def refFactory = factory
     }
 }
 

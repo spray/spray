@@ -29,7 +29,7 @@ class ChunkExtensionValueParser(settings: ParserSettings, chunkSize: Int, extCou
   def next(parser: ParsingState) = if (extCount < settings.MaxChunkExtCount) {
     parser
   } else {
-    ErrorState("Chunk extension count exceeds the configured limit of " + settings.MaxChunkExtCount, 400)
+    ErrorState("Chunk extension count exceeds the configured limit of " + settings.MaxChunkExtCount)
   }
 
   def newExtensions = ChunkExtension(extName, extValue.toString) :: extensions
@@ -57,7 +57,7 @@ class ChunkExtensionValueParser(settings: ParserSettings, chunkSize: Int, extCou
       }
     } else {
       ErrorState("Chunk extension value exceeds the configured limit of " + settings.MaxChunkExtValueLength +
-                  " characters (extension '" + extName + "')")
+                  " characters", "extension '" + extName + "'")
     }
   }
 

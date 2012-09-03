@@ -24,6 +24,7 @@ sealed abstract class StatusCode {
   def isSuccess: Boolean
   def isFailure: Boolean
   override def toString = "StatusCode(" + value + ", " + reason + ')'
+  def formatPretty = value.toString + ' ' + reason
 
   StatusCodes.register(this, value)
 }
@@ -88,7 +89,7 @@ object StatusCodes extends ObjectRegistry[Int, StatusCode] {
   val LengthRequired               = new ClientError(411, "Length Required", "The request did not specify the length of its content, which is required by the requested resource.")
   val PreconditionFailed           = new ClientError(412, "Precondition Failed", "The server does not meet one of the preconditions that the requester put on the request.")
   val RequestEntityTooLarge        = new ClientError(413, "Request Entity Too Large", "The request is larger than the server is willing or able to process.")
-  val RequestTooLong               = new ClientError(414, "Request-URI Too Long", "The URI provided was too long for the server to process.")
+  val RequestUriTooLong            = new ClientError(414, "Request-URI Too Long", "The URI provided was too long for the server to process.")
   val UnsupportedMediaType         = new ClientError(415, "Unsupported Media Type", "The request entity has a media type which the server or resource does not support.")
   val RequestedRangeNotSatisfiable = new ClientError(416, "Requested Range Not Satisfiable", "The client has asked for a portion of the file, but the server cannot supply that portion.")
   val ExpectationFailed            = new ClientError(417, "Expectation Failed", "The server cannot meet the requirements of the Expect request-header field.")

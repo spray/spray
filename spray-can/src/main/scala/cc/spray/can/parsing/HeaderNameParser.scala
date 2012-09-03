@@ -19,10 +19,10 @@ package cc.spray.can.parsing
 import java.lang.{StringBuilder => JStringBuilder}
 import annotation.tailrec
 import cc.spray.can.{StatusLine, RequestLine, MessageLine}
-import cc.spray.http.{ContentType, HttpProtocols}
-import cc.spray.http.HttpHeaders.RawHeader
-import HttpProtocols._
 import cc.spray.http.parser.HttpParser
+import cc.spray.http._
+import HttpHeaders._
+import HttpProtocols._
 
 
 class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, headerCount: Int = 0,
@@ -44,7 +44,7 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
       }
     } else {
       ErrorState("HTTP header name exceeds the configured limit of " + settings.MaxHeaderNameLength +
-                  " characters (" + headerName.toString.take(50) + "...)")
+                  " characters", "header '" + headerName.toString.take(50) + "...'")
     }
   }
 
@@ -68,17 +68,17 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
       case RawHeader("content-length", value) :: tail =>
         if (clHeader.isEmpty) {
           traverse(tail, cHeader, Some(value), ctHeader, teHeader, hostPresent, e100Present)
-        } else ErrorState("HTTP message must not contain more than one Content-Length header", 400)
+        } else ErrorState("HTTP message must not contain more than one Content-Length header")
 
       case RawHeader("content-type", value) :: tail =>
         if (ctHeader.isEmpty) HttpParser.parseContentType(value) match {
           case Right(ct) => traverse(tail, cHeader, clHeader, Some(ct), teHeader, hostPresent, e100Present)
-          case Left(error) => ErrorState("Illegal Content-Type header: " + error, 400)
-        } else ErrorState("HTTP message must not contain more than one Content-Type header", 400)
+          case Left(RequestErrorInfo(summary, detail)) => ErrorState(summary, detail)
+        } else ErrorState("HTTP message must not contain more than one Content-Type header")
 
       case RawHeader("host", _) :: tail =>
         if (!hostPresent) traverse(tail, cHeader, clHeader, ctHeader, teHeader, true, e100Present)
-        else ErrorState("HTTP message must not contain more than one Host header", 400)
+        else ErrorState("HTTP message must not contain more than one Host header")
 
       case RawHeader("connection", value) :: tail =>
         traverse(tail, Some(value), clHeader, ctHeader, teHeader, hostPresent, e100Present)
@@ -88,7 +88,7 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
 
       case RawHeader("expect", value) :: tail =>
         if (value.toLowerCase == "100-continue") traverse(tail, cHeader, clHeader, ctHeader, teHeader, hostPresent, true)
-        else ErrorState("Expectation '" + value + "' is not supported by this server", 417)
+        else ErrorState(StatusCodes.ExpectationFailed, "Expectation '" + value + "' is not supported by this server")
 
       case _ :: tail => traverse(tail, cHeader, clHeader, ctHeader, teHeader, hostPresent, e100Present)
     }
@@ -100,7 +100,7 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
     // rfc2616 sec. 4.4
     messageLine match {
       case RequestLine(_, _, `HTTP/1.1`) if !hostPresent =>
-        ErrorState("Host header required", 400)
+        ErrorState("Host header required")
 
       // certain responses never have a body
       case StatusLine(_, status, _, hr) if hr || (100 < status && status <= 199 && status > 100) || status == 204 || status == 304 =>
@@ -113,7 +113,10 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
         case "0" => CompleteMessageState(messageLine, headers, cHeader, ctHeader)
         case value =>
           try new FixedLengthBodyParser(settings, messageLine, headers, cHeader, ctHeader, value.toInt)
-          catch { case e: Exception => ErrorState("Invalid Content-Length header value: " + e.getMessage) }
+          catch {
+            case e@ (_:IllegalArgumentException | _:NumberFormatException) =>
+              ErrorState("Invalid Content-Length header value: " + e.getMessage)
+          }
       }
 
       case _: RequestLine => CompleteMessageState(messageLine, headers, cHeader, ctHeader)
@@ -121,7 +124,7 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
       case x: StatusLine if cHeader.isDefined && cHeader.get.toLowerCase == "close" || cHeader.isEmpty && x.protocol == `HTTP/1.0` =>
         new ToCloseBodyParser(settings, messageLine, headers, cHeader, ctHeader)
 
-      case _ => ErrorState("Content-Length header or chunked transfer encoding required", 411)
+      case _ => ErrorState(StatusCodes.LengthRequired, "Content-Length header or chunked transfer encoding required")
     }
   }
 }

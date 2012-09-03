@@ -89,4 +89,15 @@ case class ChunkedEndState(
 
 
 case class Expect100ContinueState(next: ParsingState) extends FinalParsingState
-case class ErrorState(message: String, status: Int = 400) extends FinalParsingState
+
+case class ErrorState(status: StatusCode, summary: String, detail: String) extends FinalParsingState {
+  def message = if (detail.isEmpty) summary else summary + ": " + detail
+}
+
+object ErrorState {
+  val Dead = ErrorState(StatusCodes.OK, "", "")
+  def apply(summary: String): ErrorState = apply(summary, "")
+  def apply(summary: String, detail: String): ErrorState = apply(StatusCodes.BadRequest, summary, detail)
+  def apply(status: StatusCode, summary: String): ErrorState = apply(status, summary, "")
+  def apply(status: StatusCode): ErrorState = apply(status, status.defaultMessage)
+}

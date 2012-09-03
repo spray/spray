@@ -31,7 +31,8 @@ object RequestParsing {
 
   lazy val continue = "HTTP/1.1 100 Continue\r\n\r\n".getBytes("ASCII")
 
-  def apply(settings: ParserSettings, log: LoggingAdapter): EventPipelineStage = new EventPipelineStage {
+  def apply(settings: ParserSettings, verboseErrorMessages: Boolean,
+            log: LoggingAdapter): EventPipelineStage = new EventPipelineStage {
     val startParser = new EmptyRequestParser(settings)
 
     def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): EPL = {
@@ -67,17 +68,18 @@ object RequestParsing {
               currentParsingState = nextState
               parse(buffer)
 
-            case ErrorState(_, -1) => // if we already handled the error state we ignore all further input
+            case ErrorState.Dead => // if we already handled the error state we ignore all further input
 
             case x: ErrorState =>
               handleParseError(x)
-              currentParsingState = ErrorState("", -1) // set to "special" ErrorState that ignores all further input
+              currentParsingState = ErrorState.Dead // set to "special" ErrorState that ignores all further input
           }
         }
 
         def handleParseError(state: ErrorState) {
           log.warning("Illegal request, responding with status {} and '{}'", state.status, state.message)
-          val response = HttpResponse(state.status, state.message)
+          val msg = if (verboseErrorMessages) state.message else state.summary
+          val response = HttpResponse(state.status, msg)
 
           // In case of a request parsing error we probably stopped reading the request somewhere in between,
           // where we cannot simply resume. Resetting to a known state is not easy either,

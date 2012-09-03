@@ -107,15 +107,6 @@ trait MiscDirectives {
   def requestEntityPresent: Directive0 = filter { ctx => if (ctx.request.entity.isEmpty) Reject.Empty else Pass.Empty }
 
   /**
-   * Stops the current Route processing by throwing an HttpException that will be caught by the next enclosing
-   * `handleExceptions` directive and its ExceptionHandler or the enclosing Actor.
-   * Failures produced in this way circumvent the usual response chain.
-   * Usually you should only use this directive if you know what you are doing, the "regular" `fail` directive
-   * should be appropriate for most cases.
-   */
-  def hardFail(status: StatusCode, message: String = "") = throw HttpException(status, message)
-
-  /**
    * Not a directive, but a helper function that provides access to the ActorSystem we are running in.
    */
   def actorSystem(implicit refFactory: ActorRefFactory): ActorSystem = {

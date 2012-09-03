@@ -22,6 +22,7 @@ import annotation.tailrec
 import cc.spray.http.parser.{QueryParser, HttpParser}
 import HttpHeaders._
 import HttpCharsets._
+import StatusCodes._
 
 
 sealed trait HttpMessagePart
@@ -49,7 +50,7 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
 
   def parseHeaders: (String, Self) = {
     val (errors, parsed) = HttpParser.parseHeaders(headers)
-    val errorMsg = if (errors.isEmpty) "" else "Illegal header(s): " + errors.mkString(", ")
+    val errorMsg = if (errors.isEmpty) "" else "HTTP message contains illegal headers: " + errors.mkString(", ")
     (errorMsg, withHeaders(parsed))
   }
 
@@ -137,7 +138,7 @@ final class HttpRequest private(
     try {
       if (URI eq HttpRequest.DefaultURI) copy(URI = new URI(uri)) else this
     } catch {
-      case e: URISyntaxException => throw new HttpException(400, "Illegal URI: " + e.getMessage)
+      case e: URISyntaxException => throw new IllegalRequestException(BadRequest, "Illegal URI", e.getMessage)
     }
   }
 
@@ -153,7 +154,7 @@ final class HttpRequest private(
       if (!req.rawQuery.isEmpty) {
         QueryParser.parseQueryString(req.rawQuery) match {
           case Right(params) => req.copy(queryParams = params)
-          case Left(errorMsg) => throw new HttpException(400, errorMsg)
+          case Left(errorInfo) => throw new IllegalRequestException(BadRequest, errorInfo)
         }
       } else req
     }
@@ -169,7 +170,7 @@ final class HttpRequest private(
    */
   def parseAll: HttpRequest = parseHeadersToEither match {
     case Right(request) => request.parseQuery
-    case Left(errorMsg) => throw new HttpException(400, errorMsg)
+    case Left(errorMsg) => throw new IllegalRequestException(BadRequest, RequestErrorInfo(errorMsg))
   }
 
   def copy(method: HttpMethod = method, uri: String = uri, headers: List[HttpHeader] = headers,

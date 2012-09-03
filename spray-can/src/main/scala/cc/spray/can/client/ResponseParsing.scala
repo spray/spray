@@ -72,12 +72,12 @@ object ResponseParsing {
               currentParsingState = ErrorState("'Expect: 100-continue' is not allowed in HTTP responses")
               parse(buffer) // trigger error
 
-            case ErrorState(_, -1) => // if we already handled the error state we ignore all further input
+            case ErrorState.Dead => // if we already handled the error state we ignore all further input
 
-            case ErrorState(message, _) =>
-              log.warning("Received illegal response: {}", message)
-              commandPL(IOPeer.Close(ProtocolError(message)))
-              currentParsingState = ErrorState("", -1) // set to "special" ErrorState that ignores all further input
+            case x: ErrorState =>
+              log.warning("Received illegal response: {}", x.message)
+              commandPL(IOPeer.Close(ProtocolError(x.message)))
+              currentParsingState = ErrorState.Dead // set to "special" ErrorState that ignores all further input
           }
         }
 

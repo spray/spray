@@ -24,6 +24,7 @@ import cc.spray.http._
 import HttpHeaders._
 import HttpMethods._
 import HttpProtocols._
+import StatusCodes._
 
 
 class RequestParserSpec extends Specification {
@@ -140,17 +141,17 @@ class RequestParserSpec extends Specification {
 
     "reject a request with" in {
       "an illegal HTTP method" in {
-        parse("get") === ErrorState("Unsupported HTTP method", 501)
-        parse("GETX") === ErrorState("Unsupported HTTP method", 501)
+        parse("get") === ErrorState(NotImplemented)
+        parse("GETX") === ErrorState(NotImplemented)
       }
 
       "an URI longer than 2048 chars" in {
         parse("GET x" + "xxxx" * 512 + " HTTP/1.1") ===
-                ErrorState("URI length exceeds the configured limit of 2048 characters", 414)
+                ErrorState(RequestUriTooLong, "URI length exceeds the configured limit of 2048 characters")
       }
 
       "HTTP version 1.2" in {
-        parse("GET / HTTP/1.2\r\n") === ErrorState("HTTP Version not supported", 505)
+        parse("GET / HTTP/1.2\r\n") === ErrorState(HTTPVersionNotSupported)
       }
 
       "with an illegal char in a header name" in {
@@ -164,14 +165,15 @@ class RequestParserSpec extends Specification {
         parse {
           """|GET / HTTP/1.1
              |UserxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxAgent: curl/7.19.7"""
-        } === ErrorState("HTTP header name exceeds the configured limit of 64 characters (userxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...)")
+        } === ErrorState("HTTP header name exceeds the configured limit of 64 characters",
+          "header 'userxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...'")
       }
 
       "with a header-value longer than 8192 chars" in {
         parse {
           """|GET / HTTP/1.1
              |Fancy: 0""" + ("12345678" * 1024) + "\r\n"
-        } === ErrorState("HTTP header value exceeds the configured limit of 8192 characters (header 'fancy')", 400)
+        } === ErrorState("HTTP header value exceeds the configured limit of 8192 characters", "header 'fancy'")
       }
 
       "with an invalid Content-Length header value" in {
@@ -180,14 +182,14 @@ class RequestParserSpec extends Specification {
              |Content-Length: 1.5
              |
              |abc"""
-        } === ErrorState("Invalid Content-Length header value: For input string: \"1.5\"", 400)
+        } === ErrorState("Invalid Content-Length header value: For input string: \"1.5\"")
         parse {
           """|GET / HTTP/1.0
              |Content-Length: -3
              |
              |abc"""
         } === ErrorState("Invalid Content-Length header value: " +
-                "requirement failed: Content-Length must not be negative", 400)
+                "requirement failed: Content-Length must not be negative")
       }
 
       "a required Host header missing" in {
@@ -195,7 +197,7 @@ class RequestParserSpec extends Specification {
           """|GET / HTTP/1.1
              |
              |"""
-        } === ErrorState("Host header required", 400)
+        } === ErrorState("Host header required")
       }
     }
   }

@@ -46,7 +46,7 @@ object QueryParser extends SprayParser {
     }
   }
   
-  def parseQueryString(queryString: String): Either[String, QueryParams] =
-    parse(QueryString, queryString)
+  def parseQueryString(queryString: String): Either[RequestErrorInfo, QueryParams] =
+    parse(QueryString, queryString).left.map(_.withFallbackSummary("Illegal query string"))
   
 }

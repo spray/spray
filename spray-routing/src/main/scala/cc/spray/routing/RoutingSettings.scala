@@ -24,6 +24,7 @@ class RoutingSettings(config: Config) {
   protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.routing")
 
   val RelaxedHeaderParsing      = c getBoolean "relaxed-header-parsing"
+  val VerboseErrorMessages      = c getBoolean "verbose-error-messages"
   val FileChunkingThresholdSize = c getBytes   "file-chunking-threshold-size"
   val FileChunkingChunkSize     = c getBytes   "file-chunking-chunk-size"
   val Users                     = c getConfig  "users"

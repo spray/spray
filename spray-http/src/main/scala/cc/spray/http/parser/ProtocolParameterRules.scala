@@ -57,7 +57,7 @@ private[parser] trait ProtocolParameterRules {
   private def createDateTime(year: Int, month: Int, day: Int, hour: Int, min: Int, sec: Int, wkday: Int) = {
     val dt = DateTime(year, month, day, hour, min, sec)
     if (dt.weekday != wkday)
-      throw new ParsingException("Illegal weekday in date (is '" + DateTime.WEEKDAYS(wkday) +
+      throw new ParsingException("Illegal weekday in date: is '" + DateTime.WEEKDAYS(wkday) +
         "' but should be '" + DateTime.WEEKDAYS(dt.weekday) + "')" + dt)
     dt
   }

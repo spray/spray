@@ -17,8 +17,9 @@
 package cc.spray.can.parsing
 
 import cc.spray.can.RequestLine
-import cc.spray.http.{HttpMethod, HttpProtocol}
-import cc.spray.http.HttpProtocols._
+import cc.spray.http._
+import HttpProtocols._
+import StatusCodes._
 
 
 abstract class VersionParser extends CharacterParser {
@@ -43,7 +44,7 @@ abstract class VersionParser extends CharacterParser {
 
   def handleSuffix(cursor: Char): ParsingState
 
-  def badVersion = ErrorState("HTTP Version not supported", 505)
+  def badVersion = ErrorState(HTTPVersionNotSupported)
 }
 
 class RequestVersionParser(settings: ParserSettings, method: HttpMethod, uri: String) extends VersionParser {

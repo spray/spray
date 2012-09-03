@@ -33,7 +33,7 @@ class ResponseParserSpec extends Specification {
           """|HTTP/1.1 200 OK
              |
              |"""
-        } === ErrorState("Content-Length header or chunked transfer encoding required", 411)
+        } === ErrorState(StatusCodes.LengthRequired, "Content-Length header or chunked transfer encoding required")
       }
 
       "with one header, a body, but no Content-Length header" in {
@@ -112,7 +112,7 @@ class ResponseParserSpec extends Specification {
 
     "reject a response with" in {
       "HTTP version 1.2" in {
-        parse("HTTP/1.2 200 OK\r\n") === ErrorState("HTTP Version not supported", 505)
+        parse("HTTP/1.2 200 OK\r\n") === ErrorState(StatusCodes.HTTPVersionNotSupported)
       }
 
       "an illegal status code" in {
@@ -136,14 +136,15 @@ class ResponseParserSpec extends Specification {
         parse {
           """|HTTP/1.1 200 OK
              |UserxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxAgent: curl/7.19.7"""
-        } === ErrorState("HTTP header name exceeds the configured limit of 64 characters (userxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...)")
+        } === ErrorState("HTTP header name exceeds the configured limit of 64 characters",
+          "header 'userxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...'")
       }
 
       "with a header-value longer than 8192 chars" in {
         parse {
           """|HTTP/1.1 200 OK
              |Fancy: 0""" + ("12345678" * 1024) + "\r\n"
-        } === ErrorState("HTTP header value exceeds the configured limit of 8192 characters (header 'fancy')", 400)
+        } === ErrorState("HTTP header value exceeds the configured limit of 8192 characters", "header 'fancy'")
       }
 
       "with an invalid Content-Length header value" in {
@@ -152,14 +153,14 @@ class ResponseParserSpec extends Specification {
              |Content-Length: 1.5
              |
              |abc"""
-        } === ErrorState("Invalid Content-Length header value: For input string: \"1.5\"", 400)
+        } === ErrorState("Invalid Content-Length header value: For input string: \"1.5\"")
         parse {
           """|HTTP/1.1 200 OK
              |Content-Length: -3
              |
              |abc"""
         } === ErrorState("Invalid Content-Length header value: " +
-                "requirement failed: Content-Length must not be negative", 400)
+                "requirement failed: Content-Length must not be negative")
       }
     }
   }

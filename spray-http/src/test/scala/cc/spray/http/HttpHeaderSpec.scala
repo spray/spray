@@ -107,7 +107,7 @@ class HttpHeaderSpec extends Specification {
     "Content-Type: text/xml; charset=windows-1252" !
       example(`Content-Type`(ContentType(`text/xml`, `windows-1252`)))_ ^
     "Content-Type: text/plain; charset=fancy-pants" !
-      errorExample("Illegal HTTP header 'Content-Type':\nUnsupported charset: fancy-pants")_ ^
+      errorExample("Illegal HTTP header 'Content-Type': Unsupported charset: fancy-pants")_ ^
     "Content-Type: multipart/mixed; boundary=ABC123" !
       example(`Content-Type`(ContentType(new `multipart/mixed`(Some("ABC123")))), fix(_).replace("=", "=\"") + '"')_ ^
     p^

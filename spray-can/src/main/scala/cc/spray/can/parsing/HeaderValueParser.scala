@@ -36,7 +36,7 @@ class HeaderValueParser(settings: ParserSettings, messageLine: MessageLine, head
         case ' ' | '\t' | '\r' => space = true; new LwsParser(this).handleChar(cursor)
         case '\n' =>
           if (headerCount < settings.MaxHeaderCount) nameParser
-          else ErrorState("HTTP message header count exceeds the configured limit of " + settings.MaxHeaderCount, 400)
+          else ErrorState("HTTP message header count exceeds the configured limit of " + settings.MaxHeaderCount)
         case _ =>
           if (space) {headerValue.append(' '); space = false}
           headerValue.append(cursor)
@@ -44,7 +44,7 @@ class HeaderValueParser(settings: ParserSettings, messageLine: MessageLine, head
       }
     } else {
       ErrorState("HTTP header value exceeds the configured limit of " + settings.MaxHeaderValueLength +
-                  " characters (header '" + headerName + "')")
+                  " characters", "header '" + headerName + "'")
     }
   }
 }

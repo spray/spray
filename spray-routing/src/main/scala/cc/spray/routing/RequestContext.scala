@@ -219,14 +219,6 @@ case class RequestContext(
   }
 
   /**
-   * Creates an HttpException with the given properties and bubbles it up the response chain,
-   * where it is dealt with by the closest `handleExceptions` directive and its ExceptionHandler.
-   */
-  def failWith(status: StatusCode, message: String = "") {
-    failWith(HttpException(status, message))
-  }
-
-  /**
    * Bubbles the given error up the response chain, where it is dealt with by the closest `handleExceptions`
    * directive and its ExceptionHandler.
    */

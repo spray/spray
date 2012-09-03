@@ -38,6 +38,7 @@ class ServerSettings(config: Config = ConfigFactory.load) {
   val TransparentHeadRequests       = c getBoolean      "transparent-head-requests"
   val TimeoutHandler                = c getString       "timeout-handler"
   val ChunklessStreaming            = c getBoolean      "chunkless-streaming"
+  val VerboseErrorMessages          = c getBoolean      "verbose-error-messages"
   val RequestChunkAggregationLimit  = c getBytes        "request-chunk-aggregation-limit"
   val ResponseSizeHint              = c getBytes        "response-size-hint"
 

@@ -34,9 +34,9 @@ import cc.spray.http._
 class Servlet30ConnectorServlet extends HttpServlet {
   var system: ActorSystem = _
   var serviceActor: ActorRef = _
-  implicit var settings: ConnectorSettings = _
   var timeoutHandler: ActorRef = _
-  def log = system.log
+  implicit var settings: ConnectorSettings = _
+  implicit def log = system.log
 
   override def init() {
     import Initializer._
@@ -57,10 +57,16 @@ class Servlet30ConnectorServlet extends HttpServlet {
       val responder = new Responder(hsRequest, hsResponse, request)
       serviceActor.tell(request, responder)
     } catch {
-      case HttpException(status, msg) =>
+      case IllegalRequestException(status, summary, detail) =>
+        log.warning("Illegal request {}\n\t{}: {}\n\tCompleting with '{}' response", request, summary, detail, status)
+        val msg = if (settings.VerboseErrorMessages) summary + ": " + detail else summary
+        writeResponse(HttpResponse(status, msg), hsResponse, request) {}
+      case RequestProcessingException(status, msg) =>
+        log.warning("Request {} could not be handled normally\n\t{}\n\tCompleting with '{}' response", request, msg, status)
         writeResponse(HttpResponse(status, msg), hsResponse, request) {}
       case NonFatal(e) =>
-        writeResponse(HttpResponse(500, entity = "Internal Server Error:\n" + e), hsResponse, request) {}
+        log.error(e, "Error during processing of request {}", request)
+        writeResponse(HttpResponse(500, entity = "The request could not be handled"), hsResponse, request) {}
     }
   }
 

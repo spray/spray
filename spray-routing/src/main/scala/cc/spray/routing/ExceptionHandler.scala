@@ -33,11 +33,17 @@ object ExceptionHandler {
       def apply(error: Throwable) = pf(error)
     }
 
-  implicit val Default = fromPF {
-    case HttpException(failure, msg) => log => ctx =>
-      log.warning("Request {} could not be handled normally, completing with {} response ({})",
-        ctx.request, failure.value, msg)
-      ctx.complete(failure, msg)
+  implicit def default(implicit settings: RoutingSettings) = fromPF {
+    case x@ IllegalRequestException(status, summary, detail) => log => ctx =>
+      log.warning("Illegal request {}\n\t{}: {}\n\tCompleting with '{}' response",
+        ctx.request, summary, detail, status)
+      val msg = if (settings.VerboseErrorMessages) x.getMessage else summary
+      ctx.complete(status, msg)
+
+    case RequestProcessingException(status, message) => log => ctx =>
+      log.warning("Request {} could not be handled normally\n\t{}\n\tCompleting with '{}' response",
+        ctx.request, message, status)
+      ctx.complete(status, message)
 
     case NonFatal(e) => log => ctx =>
       log.error(e, "Error during processing of request {}", ctx.request)

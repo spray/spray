@@ -170,7 +170,7 @@ object HttpServer {
     (PipeliningLimit > 0) ? PipeliningLimiter(settings.PipeliningLimit) >>
     settings.StatsSupport ? StatsSupport(statsHolder.get) >>
     RemoteAddressHeader ? RemoteAddressHeaderSupport() >>
-    RequestParsing(ParserSettings, log) >>
+    RequestParsing(ParserSettings, VerboseErrorMessages, log) >>
     ResponseRendering(settings) >>
     (IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
     SSLEncryption ? SslTlsSupport(sslEngineProvider, log) >>
