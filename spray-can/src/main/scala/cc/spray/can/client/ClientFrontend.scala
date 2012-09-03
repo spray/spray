@@ -96,7 +96,7 @@ object ClientFrontend {
             commandPL(HttpClient.Close(ProtocolError("Received unmatched response part " + x)))
           }
 
-        case x: HttpClient.AckSend =>
+        case x: HttpClient.SentOk =>
           if (!openRequests.isEmpty) {
             dispatch(openRequests.head.sender, x)
           } else throw new IllegalStateException

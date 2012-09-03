@@ -63,7 +63,7 @@ object IOClient {
   ////////////// EVENTS //////////////
   case class Connected(handle: Handle) extends Event
   type Closed = IOPeer.Closed;     val Closed = IOPeer.Closed
-  type AckSend = IOPeer.AckSend;   val AckSend = IOPeer.AckSend
+  type SentOk = IOPeer.SentOk;     val SentOk = IOPeer.SentOk
   type Received = IOPeer.Received; val Received = IOPeer.Received
 
 }

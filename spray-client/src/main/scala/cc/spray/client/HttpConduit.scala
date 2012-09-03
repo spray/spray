@@ -49,7 +49,7 @@ class HttpConduit(val httpClient: ActorRef,
       conn.deliverResponse(ctx.request, response, ctx.sender)
       dispatchStrategy.onStateChange(conns)
 
-    case Reply(_: HttpClient.AckSend, _) =>
+    case Reply(_: HttpClient.SentOk, _) =>
       // ignore
 
     case Reply(problem, (conn: Conn, ctx: RequestContext, handle: Handle)) =>

@@ -174,7 +174,7 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
                 log.debug("Wrote {} bytes, more pending", bytesWritten - oldBytesWritten)
               }
             case AckTo(receiver) =>
-              receiver ! AckSend(handle)
+              receiver ! SentOk(handle)
               writeToChannel()
             case PerformCleanClose => close(handle, CleanClose)
           }
@@ -430,6 +430,6 @@ object IOBridge {
 
   // connection-level events
   case class Closed(handle: Handle, reason: ConnectionClosedReason) extends Event with IOClosed
-  case class AckSend(handle: Handle) extends Event with IOSent
+  case class SentOk(handle: Handle) extends Event with IOSent
   case class Received(handle: Handle, buffer: ByteBuffer) extends Event
 }

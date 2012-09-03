@@ -51,7 +51,7 @@ class EchoServer(ioBridge: IOBridge) extends IOServer(ioBridge) {
           ioBridge ! IOBridge.Send(handle, buffer)
       }
 
-    case IOBridge.AckSend(_) =>
+    case IOBridge.SentOk(_) =>
       log.debug("Send completed")
 
     case IOBridge.Closed(_, reason) =>

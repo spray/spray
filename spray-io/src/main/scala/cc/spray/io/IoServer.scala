@@ -110,7 +110,7 @@ object IOServer {
   case class Bound(endpoint: InetSocketAddress)
   case class Unbound(endpoint: InetSocketAddress)
   type Closed = IOPeer.Closed;     val Closed = IOPeer.Closed
-  type AckSend = IOPeer.AckSend;   val AckSend = IOPeer.AckSend
+  type SentOk = IOPeer.SentOk;     val SentOk = IOPeer.SentOk
   type Received = IOPeer.Received; val Received = IOPeer.Received
 
 }

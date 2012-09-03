@@ -25,7 +25,7 @@ sealed abstract class Key {
   private[io] def selectionKey: SelectionKey
 
   // the writeQueue contains instances of either ByteBuffer, PerformCleanClose or AckTo
-  // we don't introduce a dedicated sealed trait for this since we want to save the extra
+  // we don't introduce a dedicated algebraic datatype for this since we want to save the extra
   // allocation that would be required for wrapping the ByteBuffers
   private[io] val writeQueue = Queue.empty[AnyRef]
 

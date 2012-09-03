@@ -99,7 +99,7 @@ object HttpDialog {
       case HttpClient.Closed(_, reason) =>
         complete(Left(IOClientException("Connection closed prematurely, reason: " + reason)))
 
-      case _: HttpClient.AckSend => // drop potential write confirmations
+      case _: HttpClient.SentOk => // drop potential write confirmations
 
       case Status.Failure(cause) => complete(Left(cause))
     }

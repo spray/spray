@@ -71,7 +71,7 @@ object HttpServer {
    *    /\                                |
    *    | HttpMessagePart                 | HttpResponsePartRenderingContext
    *    | IOServer.Closed                 | IOServer.Tell
-   *    | IOServer.AckSend                |
+   *    | IOServer.SentOk                |
    *    | TickGenerator.Tick              |
    *    |                                \/
    * |------------------------------------------------------------------------------------------
@@ -80,7 +80,7 @@ object HttpServer {
    *    /\                                |
    *    | HttpMessagePart                 | HttpResponsePartRenderingContext
    *    | IOServer.Closed                 | IOServer.Tell
-   *    | IOServer.AckSend                |
+   *    | IOServer.SentOk                |
    *    | TickGenerator.Tick              |
    *    |                                \/
    * |------------------------------------------------------------------------------------------
@@ -91,7 +91,7 @@ object HttpServer {
    *    /\                                |
    *    | HttpMessagePart                 | HttpResponsePartRenderingContext
    *    | IOServer.Closed                 | IOServer.Tell
-   *    | IOServer.AckSend                | IOServer.StopReading
+   *    | IOServer.SentOk                | IOServer.StopReading
    *    | TickGenerator.Tick              | IOServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
@@ -100,7 +100,7 @@ object HttpServer {
    *    /\                                |
    *    | HttpMessagePart                 | HttpResponsePartRenderingContext
    *    | IOServer.Closed                 | IOServer.Tell
-   *    | IOServer.AckSend                | IOServer.StopReading
+   *    | IOServer.SentOk                | IOServer.StopReading
    *    | TickGenerator.Tick              | IOServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
@@ -109,7 +109,7 @@ object HttpServer {
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | IOServer.Closed                 | HttpResponsePartRenderingContext
-   *    | IOServer.AckSend                | IOServer.Tell
+   *    | IOServer.SentOk                | IOServer.Tell
    *    | IOServer.Received               | IOServer.StopReading
    *    | TickGenerator.Tick              | IOServer.ResumeReading
    *    |                                \/
@@ -119,7 +119,7 @@ object HttpServer {
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | IOServer.Closed                 | IOServer.Send
-   *    | IOServer.AckSend                | IOServer.Close
+   *    | IOServer.SentOk                | IOServer.Close
    *    | IOServer.Received               | IOServer.Tell
    *    | TickGenerator.Tick              | IOServer.StopReading
    *    |                                 | IOServer.ResumeReading
@@ -130,7 +130,7 @@ object HttpServer {
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | IOServer.Closed                 | IOServer.Send
-   *    | IOServer.AckSend                | IOServer.Close
+   *    | IOServer.SentOk                | IOServer.Close
    *    | IOServer.Received               | IOServer.Tell
    *    | TickGenerator.Tick              | IOServer.StopReading
    *    |                                 | IOServer.ResumeReading
@@ -141,7 +141,7 @@ object HttpServer {
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | IOServer.Closed                 | IOServer.Send
-   *    | IOServer.AckSend                | IOServer.Close
+   *    | IOServer.SentOk                | IOServer.Close
    *    | IOServer.Received               | IOServer.Tell
    *    | TickGenerator.Tick              | IOServer.StopReading
    *    |                                 | IOServer.ResumeReading
@@ -152,7 +152,7 @@ object HttpServer {
    * |------------------------------------------------------------------------------------------
    *    /\                                |
    *    | IOServer.Closed                 | IOServer.Send
-   *    | IOServer.AckSend                | IOServer.Close
+   *    | IOServer.SentOk                | IOServer.Close
    *    | IOServer.Received               | IOServer.Tell
    *    | TickGenerator.Tick              | IOServer.StopReading
    *    |                                 | IOServer.ResumeReading
@@ -206,6 +206,6 @@ object HttpServer {
   type Bound = IOServer.Bound;                          val Bound = IOServer.Bound
   type Unbound = IOServer.Unbound;                      val Unbound = IOServer.Unbound
   type Closed = IOServer.Closed;                        val Closed = IOServer.Closed
-  type AckSend = IOServer.AckSend;                      val AckSend = IOServer.AckSend
+  type SentOk = IOServer.SentOk;                        val SentOk = IOServer.SentOk
 
 }

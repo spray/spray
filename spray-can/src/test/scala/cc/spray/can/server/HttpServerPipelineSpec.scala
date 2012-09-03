@@ -120,17 +120,17 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       )
     }
 
-    "correctly dispatch AckSend messages" in {
+    "correctly dispatch SentOk messages" in {
       "to the sender of an HttpResponse" in {
         val actor = system.actorOf(Props(new NamedActor("someActor")))
         singleHandlerFixture(
           Received(simpleRequest),
           Message(HttpCommand(HttpResponse()), sender = actor),
           ClearCommandAndEventCollectors,
-          IOBridge.AckSend(dummyHandle)
+          IOBridge.SentOk(dummyHandle)
         ) must produce(
           commands = Seq(
-            IOServer.Tell(actor, IOServer.AckSend(dummyHandle), IgnoreSender)
+            IOServer.Tell(actor, IOServer.SentOk(dummyHandle), IgnoreSender)
           ),
           ignoreTellSender = true
         )
@@ -144,23 +144,23 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
           Received(simpleRequest),
           ClearCommandAndEventCollectors,
           Message(HttpCommand(ChunkedResponseStart(HttpResponse())), sender = actor1),
-          IOBridge.AckSend(dummyHandle),
+          IOBridge.SentOk(dummyHandle),
           Message(HttpCommand(MessageChunk("part 1")), sender = actor2),
-          IOBridge.AckSend(dummyHandle),
+          IOBridge.SentOk(dummyHandle),
           Message(HttpCommand(MessageChunk("part 2")), sender = actor3),
           Message(HttpCommand(ChunkedMessageEnd()), sender = actor4),
-          IOBridge.AckSend(dummyHandle),
-          IOBridge.AckSend(dummyHandle)
+          IOBridge.SentOk(dummyHandle),
+          IOBridge.SentOk(dummyHandle)
         ) must produce(
           commands = Seq(
             SendString(chunkedResponseStart),
-            IOServer.Tell(actor1, IOServer.AckSend(dummyHandle), IgnoreSender),
+            IOServer.Tell(actor1, IOServer.SentOk(dummyHandle), IgnoreSender),
             SendString(prep("6\npart 1\n")),
-            IOServer.Tell(actor2, IOServer.AckSend(dummyHandle), IgnoreSender),
+            IOServer.Tell(actor2, IOServer.SentOk(dummyHandle), IgnoreSender),
             SendString(prep("6\npart 2\n")),
             SendString(prep("0\n\n")),
-            IOServer.Tell(actor3, IOServer.AckSend(dummyHandle), IgnoreSender),
-            IOServer.Tell(actor4, IOServer.AckSend(dummyHandle), IgnoreSender)
+            IOServer.Tell(actor3, IOServer.SentOk(dummyHandle), IgnoreSender),
+            IOServer.Tell(actor4, IOServer.SentOk(dummyHandle), IgnoreSender)
           ),
           ignoreTellSender = true
         )

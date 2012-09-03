@@ -95,7 +95,7 @@ object ServerFrontend {
               openRequests.last.timestamp = System.currentTimeMillis
               dispatchRequestChunk(x)
 
-            case x: HttpServer.AckSend =>
+            case x: HttpServer.SentOk =>
               if (openSends.isEmpty) throw new IllegalStateException
               commandPL(openSends.dequeue().copy(message = x))
 
@@ -132,7 +132,7 @@ object ServerFrontend {
               HttpResponsePartRenderingContext(part, method, protocol, rec.connectionHeader)
             }
             if (settings.AckSends) {
-              // prepare the IOServer.Tell command to use for `AckSend` and potential `Closed` messages
+              // prepare the IOServer.Tell command to use for `SentOk` and potential `Closed` messages
               openSends.enqueue(IOServer.Tell(context.sender, (), rec.receiver))
             }
           }

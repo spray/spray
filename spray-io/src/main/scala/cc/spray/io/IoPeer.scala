@@ -48,7 +48,7 @@ object IOPeer {
 
   ////////////// EVENTS //////////////
   type Closed = IOBridge.Closed;     val Closed = IOBridge.Closed
-  type AckSend = IOBridge.AckSend;   val AckSend = IOBridge.AckSend
+  type SentOk = IOBridge.SentOk;     val SentOk = IOBridge.SentOk
   type Received = IOBridge.Received; val Received = IOBridge.Received
 
 }
