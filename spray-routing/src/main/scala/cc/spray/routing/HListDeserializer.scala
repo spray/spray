@@ -46,7 +46,7 @@ object HListDeserializer {
       try Right(deserialize(list))
       catch {
         case e: BubbleLeftException => e.left.asInstanceOf[Left[DeserializationError, T]]
-        case e: IllegalArgumentException => Left(MalformedContent(e.getMessage))
+        case e: IllegalArgumentException => Left(MalformedContent(e.getMessage, e))
       }
     }
   }

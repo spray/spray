@@ -41,7 +41,7 @@ object Deserializer extends DeserializerLowerPriorityImplicits
       def apply(a: A) = {
         try Right(f(a))
         catch {
-          case NonFatal(ex) => Left(MalformedContent(ex.toString))
+          case NonFatal(ex) => Left(MalformedContent(ex.toString, ex))
         }
       }
     }

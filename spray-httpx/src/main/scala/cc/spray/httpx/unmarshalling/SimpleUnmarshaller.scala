@@ -40,7 +40,7 @@ abstract class SimpleUnmarshaller[T] extends Unmarshaller[T] {
   protected def protect(f: => T): Either[DeserializationError, T] = {
     try Right(f)
     catch {
-      case NonFatal(ex) => Left(MalformedContent(ex.getMessage))
+      case NonFatal(ex) => Left(MalformedContent(ex.getMessage, ex))
     }
   }
 }

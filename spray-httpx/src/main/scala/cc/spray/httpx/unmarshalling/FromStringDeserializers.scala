@@ -81,7 +81,8 @@ trait FromStringDeserializers {
 
   private def numberFormatError(value: String,
                                 target: String): PartialFunction[Throwable, Either[DeserializationError, Nothing]] = {
-    case _: NumberFormatException => Left(MalformedContent("'%s' is not a valid %s value" format (value, target)))
+    case e: NumberFormatException =>
+      Left(MalformedContent("'%s' is not a valid %s value" format (value, target), e))
   }
 
   implicit val String2BooleanConverter = new FromStringDeserializer[Boolean] {

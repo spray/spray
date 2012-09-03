@@ -50,7 +50,7 @@ abstract class Directive[L <: HList] { self =>
         self.happly { values => ctx =>
           deserializer(values) match {
             case Right(t) => f(t :: HNil)(ctx)
-            case Left(MalformedContent(msg)) => ctx.reject(ValidationRejection(msg))
+            case Left(MalformedContent(msg, _)) => ctx.reject(ValidationRejection(msg))
             case Left(error) => ctx.reject(ValidationRejection(error.toString))
           }
         }

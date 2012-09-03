@@ -79,10 +79,11 @@ class MultipartUnmarshallersSpec extends Specification  {
         )
       }
     }
-    "reject illegal multipart content" in (
-      HttpBody(new `multipart/mixed`(Some("12345")), "--noob").as[MultipartContent] ===
-        Left(MalformedContent("Missing start boundary"))
-    )
+    "reject illegal multipart content" in {
+      (HttpBody(new `multipart/mixed`(Some("12345")), "--noob").as[MultipartContent] match {
+        case Left(MalformedContent("Missing start boundary", _)) => true
+      }) must beTrue
+    }
   }
 
   "The MultipartFormDataUnmarshaller" should {
@@ -116,21 +117,21 @@ class MultipartUnmarshallersSpec extends Specification  {
         case (name, BodyPart(entity, _)) => name + ": " + entity.as[String].get
       }.mkString("|") === "email: test@there.com|userfile: filecontent"
     }
-    "reject illegal multipart content" in (
-      HttpBody(new `multipart/form-data`(Some("XYZABC")), "--noboundary--").as[MultipartFormData] ===
-        Left(MalformedContent("Missing start boundary"))
-    )
+    "reject illegal multipart content" in {
+      (HttpBody(new `multipart/form-data`(Some("XYZABC")), "--noboundary--").as[MultipartFormData] match {
+        case Left(MalformedContent("Missing start boundary", _)) => true
+      }) must beTrue
+    }
     "reject illegal form-data content" in {
-      HttpBody(new `multipart/form-data`(Some("XYZABC")),
+      val Msg = "Illegal multipart/form-data content: unnamed body part (no Content-Disposition header or no 'name' parameter)"
+      (HttpBody(new `multipart/form-data`(Some("XYZABC")),
         """|--XYZABC
            |content-disposition: form-data; named="email"
            |
            |test@there.com
-           |--XYZABC--""".stripMargin).as[MultipartFormData] === Left {
-        MalformedContent {
-          "Illegal multipart/form-data content: unnamed body part (no Content-Disposition header or no 'name' parameter)"
-        }
-      }
+           |--XYZABC--""".stripMargin).as[MultipartFormData] match {
+        case Left(MalformedContent(Msg, _)) => true
+      }) must beTrue
     }
   }
 

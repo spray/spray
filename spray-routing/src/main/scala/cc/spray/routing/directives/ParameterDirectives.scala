@@ -86,7 +86,7 @@ object ParamDefMagnetAux {
     fsod(ctx.request.queryParams.get(paramName)) match {
       case Right(x) => Pass(x :: HNil)
       case Left(ContentExpected) => Reject(MissingQueryParamRejection(paramName))
-      case Left(MalformedContent(errorMsg)) => Reject(MalformedQueryParamRejection(errorMsg, paramName))
+      case Left(MalformedContent(error, _)) => Reject(MalformedQueryParamRejection(error, paramName))
       case Left(x: UnsupportedContentType) => throw new IllegalStateException(x.toString)
     }
   } 
