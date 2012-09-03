@@ -86,7 +86,7 @@ object Build extends Build with DocSupport {
     .settings(moduleSettings: _*)
     .settings(libraryDependencies ++=
       compile(shapeless) ++
-      provided(akkaActor)
+      provided(akkaActor, scalate)
     )
 
 
@@ -96,7 +96,7 @@ object Build extends Build with DocSupport {
     .settings(libraryDependencies ++=
       compile(shapeless) ++
       provided(akkaActor) ++
-      test(specs2)
+      test(specs2, scalate)
     )
 
 

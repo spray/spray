@@ -51,7 +51,7 @@ class GzipSpec extends Specification with CodecSpecSupport {
       ourGunzip(Array(gzip("Hello,"), gzip(" dear "), gzip("User!")).flatten) must readAs("Hello, dear User!")
     }
     "throw an error on corrupt input" in {
-      ourGunzip(corruptGzipContent) must throwA[ZipException]("invalid literal/length code")
+      ourGunzip(corruptGzipContent) must throwA[ZipException]("(invalid literal/length code|Corrupt data \\(CRC32 checksum error\\))")
     }
     "not throw an error if a subsequent block is corrupt" in {
       ourGunzip(Array(gzip("Hello,"), gzip(" dear "), corruptGzipContent).flatten) must readAs("Hello, dear ")
