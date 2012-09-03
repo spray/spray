@@ -80,6 +80,13 @@ class HttpDialogSpec extends Specification {
         .map(_.entity.asString)
         .await === "/foo/a/b/c"
     }
+    "properly deliver error messages from the server" in {
+      HttpDialog(client, "localhost", port)
+        .send(HttpRequest(uri = "/abc/" + ("x" * 2048)))
+        .end
+        .await.withHeaders(Nil) ===
+        HttpResponse(StatusCodes.RequestUriTooLong, "URI length exceeds the configured limit of 2048 characters")
+    }
   }
 
   step {

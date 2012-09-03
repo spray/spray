@@ -96,8 +96,10 @@ object ServerFrontend {
               dispatchRequestChunk(x)
 
             case x: HttpServer.SentOk =>
-              if (openSends.isEmpty) throw new IllegalStateException
-              commandPL(openSends.dequeue().copy(message = x))
+              // if openSends is empty we are seeing the SentOk for an error message, that was triggered
+              // by a down-stream pipeline stage (e.g. because of an request parsing problem)
+              if (!openSends.isEmpty)
+                commandPL(openSends.dequeue().copy(message = x))
 
             case x: HttpServer.Closed =>
               if (openSends.isEmpty && openRequests.isEmpty) {
