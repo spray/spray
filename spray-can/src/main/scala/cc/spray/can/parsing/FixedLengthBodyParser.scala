@@ -22,16 +22,13 @@ import cc.spray.http.HttpHeaders.RawHeader
 import cc.spray.http.ContentType
 
 
-class FixedLengthBodyParser(settings: ParserSettings,
-                            messageLine: MessageLine,
+class FixedLengthBodyParser(messageLine: MessageLine,
                             headers: List[RawHeader],
                             connectionHeader: Option[String],
                             contentType: Option[ContentType],
                             totalBytes: Int) extends IntermediateState {
 
   require(totalBytes >= 0, "Content-Length must not be negative")
-  require(totalBytes <= settings.MaxContentLength,
-          "HTTP message Content-Length " + totalBytes + " exceeds the configured limit of " + settings.MaxContentLength)
 
   val body = new Array[Byte](totalBytes)
   var bytesRead = 0

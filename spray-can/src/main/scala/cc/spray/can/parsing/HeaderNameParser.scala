@@ -23,6 +23,7 @@ import cc.spray.http.parser.HttpParser
 import cc.spray.http._
 import HttpHeaders._
 import HttpProtocols._
+import StatusCodes._
 
 
 class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, headerCount: Int = 0,
@@ -88,7 +89,7 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
 
       case RawHeader("expect", value) :: tail =>
         if (value.toLowerCase == "100-continue") traverse(tail, cHeader, clHeader, ctHeader, teHeader, hostPresent, true)
-        else ErrorState(StatusCodes.ExpectationFailed, "Expectation '" + value + "' is not supported by this server")
+        else ErrorState(ExpectationFailed, "Expectation '" + value + "' is not supported by this server")
 
       case _ :: tail => traverse(tail, cHeader, clHeader, ctHeader, teHeader, hostPresent, e100Present)
     }
@@ -112,7 +113,13 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
       case _ if clHeader.isDefined => clHeader.get match {
         case "0" => CompleteMessageState(messageLine, headers, cHeader, ctHeader)
         case value =>
-          try new FixedLengthBodyParser(settings, messageLine, headers, cHeader, ctHeader, value.toInt)
+          try {
+            val contentLength = value.toInt
+            if (contentLength <= settings.MaxContentLength)
+              new FixedLengthBodyParser(messageLine, headers, cHeader, ctHeader, contentLength)
+            else ErrorState(RequestEntityTooLarge, "HTTP message Content-Length " + value +
+              " exceeds the configured limit of " + settings.MaxContentLength)
+          }
           catch {
             case e@ (_:IllegalArgumentException | _:NumberFormatException) =>
               ErrorState("Invalid Content-Length header value: " + e.getMessage)
@@ -124,7 +131,7 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
       case x: StatusLine if cHeader.isDefined && cHeader.get.toLowerCase == "close" || cHeader.isEmpty && x.protocol == `HTTP/1.0` =>
         new ToCloseBodyParser(settings, messageLine, headers, cHeader, ctHeader)
 
-      case _ => ErrorState(StatusCodes.LengthRequired, "Content-Length header or chunked transfer encoding required")
+      case _ => ErrorState(LengthRequired, "Content-Length header or chunked transfer encoding required")
     }
   }
 }
