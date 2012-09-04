@@ -30,9 +30,11 @@ class ConnectorSettings(config: Config) {
   val TimeoutHandler       = c getString       "timeout-handler"
   val RemoteAddressHeader  = c getBoolean      "remote-address-header"
   val VerboseErrorMessages = c getBoolean      "verbose-error-messages"
+  val MaxContentLength     = c getBytes        "max-content-length"
 
   require(!BootClass.isEmpty,
     "No boot class configured. Please specify a boot class FQN in the spray.servlet.boot-class config setting.")
   require(RequestTimeout >= 0, "request-timeout must be >= 0")
   require(TimeoutTimeout >= 0, "timeout-timeout must be >= 0")
+  require(MaxContentLength > 0, "max-content-length must be > 0")
 }

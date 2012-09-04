@@ -83,25 +83,28 @@ object ModelConverter {
       .getOrElse(throw new IllegalRequestException(BadRequest, "Illegal HTTP protocol", name))
 
   def toHttpEntity(hsRequest: HttpServletRequest, contentType: ContentType, contentLength: Int)
-                  (implicit log: LoggingAdapter): HttpEntity = {
+                  (implicit settings: ConnectorSettings, log: LoggingAdapter): HttpEntity = {
     def body: Array[Byte] = {
       if (contentLength > 0) {
-        try {
-          val buf = new Array[Byte](contentLength)
-          val inputStream = hsRequest.getInputStream
-          var bytesRead = 0
-          while (bytesRead < contentLength) {
-            val count = inputStream.read(buf, bytesRead, contentLength - bytesRead)
-            if (count >= 0) bytesRead += count
-            else throw new RequestProcessingException(InternalServerError, "Illegal Servlet request entity, " +
-              "expected length " + contentLength + " but only has length " + bytesRead)
+        if (contentLength <= settings.MaxContentLength) {
+          try {
+            val buf = new Array[Byte](contentLength)
+            val inputStream = hsRequest.getInputStream
+            var bytesRead = 0
+            while (bytesRead < contentLength) {
+              val count = inputStream.read(buf, bytesRead, contentLength - bytesRead)
+              if (count >= 0) bytesRead += count
+              else throw new RequestProcessingException(InternalServerError, "Illegal Servlet request entity, " +
+                "expected length " + contentLength + " but only has length " + bytesRead)
+            }
+            buf
+          } catch {
+            case e: IOException =>
+              log.error(e, "Could not read request entity")
+              throw new RequestProcessingException(InternalServerError, "Could not read request entity")
           }
-          buf
-        } catch {
-          case e: IOException =>
-            log.error(e, "Could not read request entity")
-            throw new RequestProcessingException(InternalServerError, "Could not read request entity")
-        }
+        } else throw new IllegalRequestException(RequestEntityTooLarge, "HTTP message Content-Length " +
+          contentLength + " exceeds the configured limit of " + settings.MaxContentLength)
       } else EmptyByteArray
     }
     if (contentType == null) HttpEntity(body) else HttpBody(contentType, body)
