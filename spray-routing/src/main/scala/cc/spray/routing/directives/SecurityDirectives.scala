@@ -54,17 +54,15 @@ trait AuthMagnet {
 
 object AuthMagnet {
   private def applyAuth[T](auth: Future[Authentication[T]], f: (T :: HNil) => Route, ctx: RequestContext)
-                          (implicit eh: ExceptionHandler, log: LoggingContext) = {
+                          (implicit log: LoggingContext) = {
     auth.onComplete {
       case Right(Right(user)) => f(user :: HNil)(ctx)
       case Right(Left(rejection)) => ctx.reject(rejection)
-      case Left(error) if eh.isDefinedAt(error) => eh(error)(log)(ctx)
       case Left(error) => ctx.failWith(error)
     }
   }
 
-  implicit def fromFutureAuth[T](auth: Future[Authentication[T]])
-                                (implicit eh: ExceptionHandler, log: LoggingContext) =
+  implicit def fromFutureAuth[T](auth: Future[Authentication[T]])(implicit log: LoggingContext) =
     new AuthMagnet {
       type Out = T :: HNil
       def apply() = new Directive[Out] {
@@ -72,8 +70,7 @@ object AuthMagnet {
       }
     }
 
-  implicit def fromContextAuthenticator[T](auth: ContextAuthenticator[T])
-                                          (implicit eh: ExceptionHandler, log: LoggingContext) =
+  implicit def fromContextAuthenticator[T](auth: ContextAuthenticator[T])(implicit log: LoggingContext) =
     new AuthMagnet {
       type Out = T :: HNil
       def apply() = new Directive[Out] {

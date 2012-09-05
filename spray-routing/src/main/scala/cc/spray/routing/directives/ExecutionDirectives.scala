@@ -19,6 +19,7 @@ package directives
 
 import cc.spray.util.LoggingContext
 import akka.actor._
+import akka.util.NonFatal
 
 
 trait ExecutionDirectives {
@@ -34,7 +35,7 @@ trait ExecutionDirectives {
       val handleError = handler andThen (_(log)(ctx))
       try inner {
         ctx.withRouteResponseHandling {
-          case Status.Failure(error) if handleError.isDefinedAt(error) => handleError(error)
+          case Status.Failure(error) if handler.isDefinedAt(error) => handleError(error)
         }
       }
       catch handleError
@@ -78,8 +79,7 @@ trait ExecutionDirectives {
   /**
    * Returns a function creating a new SingleRequestServiceActor for a given Route.
    */
-  def singleRequestServiceActor(implicit refFactory: ActorRefFactory, eh: ExceptionHandler,
-                                rh: RejectionHandler): Route => ActorRef =
+  def singleRequestServiceActor(implicit refFactory: ActorRefFactory): Route => ActorRef =
     route => refFactory.actorOf(Props(new SingleRequestServiceActor(route)))
 }
 
@@ -98,14 +98,11 @@ object ExceptionHandlerMagnet {
  * An HttpService actor that reacts to an incoming RequestContext message by running it in the given Route
  * before shutting itself down.
  */
-class SingleRequestServiceActor(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler)
-  extends Actor with HttpService {
-  def actorRefFactory = context
-  val sealedRoute = sealRoute(route)
-
+class SingleRequestServiceActor(route: Route) extends Actor {
   def receive = {
     case ctx: RequestContext =>
-      try sealedRoute(ctx)
+      try route(ctx)
+      catch { case NonFatal(e) => ctx.failWith(e) }
       finally context.stop(self)
   }
 }

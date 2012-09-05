@@ -33,6 +33,7 @@ object RejectionHandler {
     }
 
   implicit val Default = fromPF {
+    case Nil => HttpResponse(NotFound, "The requested resource could not be found.")
     case AuthenticationRequiredRejection(scheme, realm, params) :: _ =>
       HttpResponse(Unauthorized,
         headers = `WWW-Authenticate`(HttpChallenge(scheme, realm, params)) :: Nil,

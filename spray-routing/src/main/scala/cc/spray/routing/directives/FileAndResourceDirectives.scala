@@ -42,7 +42,7 @@ trait FileAndResourceDirectives {
    */
   def getFromFileName(fileName: String, charset: Option[HttpCharset] = None)
                      (implicit settings: RoutingSettings, resolver: ContentTypeResolver,
-                      refFactory: ActorRefFactory, eh: ExceptionHandler, rh: RejectionHandler): Route =
+                      refFactory: ActorRefFactory): Route =
     getFromFile(new File(fileName), charset)
 
   /**
@@ -52,7 +52,7 @@ trait FileAndResourceDirectives {
    */
   def getFromFile(file: File, charset: Option[HttpCharset] = None)
                  (implicit settings: RoutingSettings, resolver: ContentTypeResolver,
-                  refFactory: ActorRefFactory, eh: ExceptionHandler, rh: RejectionHandler): Route = {
+                  refFactory: ActorRefFactory): Route = {
     (get & detachTo(singleRequestServiceActor) & respondWithLastModifiedHeader(file.lastModified)) { ctx =>
       if (file.isFile && file.canRead) {
         implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(resolver(file.getName, charset))
@@ -76,8 +76,7 @@ trait FileAndResourceDirectives {
    * If the file cannot be found or read the Route rejects the request.
    */
   def getFromResource(resourceName: String, charset: Option[HttpCharset] = None)
-                     (implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory, eh: ExceptionHandler,
-                      rh: RejectionHandler): Route = {
+                     (implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route = {
     if (!resourceName.endsWith("/")) {
       def resource = getClass.getClassLoader.getResource(resourceName)
       (get & detachTo(singleRequestServiceActor) & provide(Option(resource)))
@@ -103,12 +102,12 @@ trait FileAndResourceDirectives {
    * current thread. If the file cannot be read the Route rejects the request.
    */
   def getFromDirectory(directoryName: String, charset: Option[HttpCharset] = None)
-                      (implicit pathRewriter: PathRewriter, settings: RoutingSettings, resolver: ContentTypeResolver,
-                       refFactory: ActorRefFactory, eh: ExceptionHandler, rh: RejectionHandler): Route = {
+                      (implicit settings: RoutingSettings, resolver: ContentTypeResolver,
+                       refFactory: ActorRefFactory): Route = {
     val base = if (directoryName.endsWith("/")) directoryName else directoryName + "/"
     Route { ctx =>
       val subPath = if (ctx.unmatchedPath.startsWith("/")) ctx.unmatchedPath.substring(1) else ctx.unmatchedPath
-      getFromFileName(base + pathRewriter(subPath), charset).apply(ctx)
+      getFromFileName(base + subPath, charset).apply(ctx)
     }
   }
 
@@ -117,15 +116,14 @@ trait FileAndResourceDirectives {
    * "resource directory".
    */
   def getFromResourceDirectory(directoryName: String, charset: Option[HttpCharset] = None)
-                              (implicit pathRewriter: PathRewriter, resolver: ContentTypeResolver,
-                               refFactory: ActorRefFactory, eh: ExceptionHandler, rh: RejectionHandler): Route = {
+                              (implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route = {
     val base =
       if (directoryName.isEmpty) ""
       else if (directoryName.endsWith("/")) directoryName
       else directoryName + "/"
     Route { ctx =>
       val subPath = if (ctx.unmatchedPath.startsWith("/")) ctx.unmatchedPath.substring(1) else ctx.unmatchedPath
-      getFromResource(base + pathRewriter(subPath), charset).apply(ctx)
+      getFromResource(base + subPath, charset).apply(ctx)
     }
   }
 
@@ -150,15 +148,5 @@ object ContentTypeResolver {
         definedCharset = charset
       )
     }
-  }
-}
-
-trait PathRewriter extends (String => String)
-
-object PathRewriter {
-  implicit val Default = PathRewriter(identityFunc)
-
-  def apply(f: String => String) = new PathRewriter {
-    def apply(s: String) = f(s)
   }
 }
