@@ -152,4 +152,14 @@ class MiscDirectivesSpec extends RoutingSpec {
       expect(dynamicRoute, "xxxx")
     }
   }
+
+  "The `rewriteUnmatchedPath` directive" should {
+    "rewrite the unmatched path" in {
+      Get("/abc") ~> {
+        rewriteUnmatchedPath(_ + "/def") {
+          path("abc/def") { completeOk }
+        }
+      } ~> check { response === Ok }
+    }
+  }
 }

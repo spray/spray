@@ -120,6 +120,14 @@ case class RequestContext(
   }
 
   /**
+   * Returns a copy of this context with the unmatchedPath transformed by the given function.
+   */
+  def mapUnmatchedPath(f: String => String) = {
+    val transformed = f(unmatchedPath)
+    if (transformed == unmatchedPath) this else copy(unmatchedPath = transformed)
+  }
+
+  /**
    * Returns a copy of this context with the given function handling a part of the response space.
    */
   def withRouteResponseHandling(f: PartialFunction[Any, Unit]) = mapHandler { previousHandler =>
