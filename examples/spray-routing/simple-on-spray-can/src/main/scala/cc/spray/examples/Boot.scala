@@ -19,14 +19,14 @@ object Boot extends App {
 
   // create and start the spray-can HttpServer, telling it that
   // we want requests to be handled by our singleton service actor
-  val sprayCanServer = system.actorOf(
+  val httpServer = system.actorOf(
     Props(new HttpServer(ioBridge, MessageHandlerDispatch.SingletonHandler(service))),
     name = "http-server"
   )
 
   // a running HttpServer can be bound, unbound and rebound
   // initially to need to tell it where to bind to
-  sprayCanServer ! HttpServer.Bind("localhost", 8080)
+  httpServer ! HttpServer.Bind("localhost", 8080)
 
   // finally we drop the main thread but hook the shutdown of
   // our IOBridge into the shutdown of the applications ActorSystem
