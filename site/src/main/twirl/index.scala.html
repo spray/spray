@@ -1,0 +1,35 @@
+@()
+
+@import cc.spray.site._
+
+<section class="mainContentWrap">
+  <div class="container mainContent">
+    <div class="span12">
+
+      <ul class="nav">
+
+        @anchor(node: ContentNode) = {
+          <a href="@node.absoluteUri">@node.name</a>
+        }
+
+        @nextLevel(node: ContentNode) = {
+          <ul>
+            @node.children.map(item)
+          </ul>
+        }
+
+        @item(node: ContentNode) = {
+          @if(node.isLeaf) {
+            <li>@anchor(node)</li>
+          } else {
+            <li>@anchor(node) @nextLevel(node)</li>
+          }
+        }
+
+        @RootNode.children.map(item)
+
+      </ul>
+
+    </div>
+  </div>
+</section>

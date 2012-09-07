@@ -1,0 +1,37 @@
+@()
+
+@import cc.spray.site._
+
+<ul class="nav">
+
+  <li><a href="/home">Home</a></li>
+
+  @anchor(node: ContentNode, caret: Boolean) = {
+    <a href="@node.absoluteUri">@node.name@if(caret){<b class="caret"></b>}</a>
+  }
+
+  @nextLevel(node: ContentNode) = {
+    <ul class="dropdown-menu">
+      @node.children.map(item(false))
+    </ul>
+  }
+
+  @item(goDown: Boolean)(node: ContentNode) = {
+    @if(goDown && !node.isLeaf) {
+      @if(node.isLast) {
+        <li class="last dropdown">@anchor(node, true) @nextLevel(node)</li>
+      } else {
+        <li class="dropdown">@anchor(node, true) @nextLevel(node)</li>
+      }
+    } else {
+      @if(node.isLast) {
+        <li class="last">@anchor(node, false)</li>
+      } else {
+        <li>@anchor(node, false)</li>
+      }
+    }
+  }
+
+  @RootNode.children.map(item(true))
+
+</ul>

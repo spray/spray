@@ -1,0 +1,22 @@
+@(contentNode: cc.spray.site.ContentNode)
+
+<div class="row-fluid breadcrumb-row">
+  <ul class="breadcrumb">
+
+    @level(node: cc.spray.site.ContentNode) = {
+      @if(node.isRoot) {
+        <li><a href="/">Home</a> <span class="divider">/</span></li>
+      } else {
+        @level(node.parent)
+        @if(node == contentNode) {
+          <li class="active">@node.name</li>
+        } else {
+          <li><a href="@node.absoluteUri">@node.name</a> <span class="divider">/</span></li>
+        }
+      }
+    }
+
+    @level(contentNode)
+
+  </ul>
+</div>

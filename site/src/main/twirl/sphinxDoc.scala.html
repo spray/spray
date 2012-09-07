@@ -1,0 +1,40 @@
+@(node: cc.spray.site.ContentNode)
+
+<section class="mainContentWrap">
+  <div class="container mainContent">
+
+    @breadcrumbs(node)
+
+    <div class="row-fluid">
+
+      @sidebar(node)
+
+      <!--main content-->
+      <div class="span9">
+        <div class="row-fluid">
+          <div class="innerSpacer left">
+
+            <!--body search widget for mobile-->
+            <div class="row-fluid body-search">
+              <div class="span12 widget_search">
+                <form class="form-inline" action="#" method="get" role="search">
+                  <input type="text" class="input-medium span3"  placeholder="Search...">
+                  <button class="icon-search" type="submit"></button>
+                </form>
+              </div>
+            </div>
+
+            <div class="row-fluid">
+              <div class="span12">
+                @HtmlFormat.raw(node.body)
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+
+    </div>
+  </div>
+</section>

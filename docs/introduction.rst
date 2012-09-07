@@ -42,7 +42,7 @@ Components
 
 Currently the *spray* suite consists of these components:
 
-.. image:: images/components.svg
+.. image:: /images/components.svg
 
 :ref:`spray-http`
   An immutable model of HTTP requests, responses and common headers. This component is completely stand-alone, it

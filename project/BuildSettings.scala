@@ -2,6 +2,7 @@ import sbt._
 import Keys._
 import ls.Plugin._
 
+
 object BuildSettings {
 
   lazy val basicSettings = seq(
@@ -18,7 +19,7 @@ object BuildSettings {
     scalacOptions         := Seq("-Ydependent-method-types", "-unchecked", "-deprecation", "-encoding", "utf8")
   )
 
-  lazy val moduleSettings = basicSettings ++ seq(
+  lazy val sprayModuleSettings = basicSettings ++ seq(
     // scaladoc settings
     (scalacOptions in doc) <++= (name, version).map { (n, v) => Seq("-doc-title", n, "-doc-version", v) },
 
@@ -60,6 +61,9 @@ object BuildSettings {
     }
   )
 
+  lazy val siteSettings = basicSettings ++ noPublishing ++
+    twirl.sbt.TwirlPlugin.Twirl.settings ++ cc.spray.revolver.RevolverPlugin.Revolver.settings
+
   lazy val exampleSettings = basicSettings ++ noPublishing
 
   import com.github.siasia.WebPlugin._
@@ -69,23 +73,10 @@ object BuildSettings {
   lazy val disableJettyLogSettings = inConfig(container.Configuration) {
     seq(
       start <<= (state, port, apps, customConfiguration, configurationFiles, configurationXml) map {
-        (state, port, apps, cc, cf, cx) => state.get(container.attribute).get.start(port, None, NopLogger, apps, cc, cf, cx)
+        (state, port, apps, cc, cf, cx) =>
+          state.get(container.attribute).get.start(port, None, Utils.NopLogger, apps, cc, cf, cx)
       }
     )
   }
 
-  // an SBT AbstractLogger that logs to /dev/nul
-  object NopLogger extends AbstractLogger {
-    def getLevel = Level.Error
-    def setLevel(newLevel: Level.Value) {}
-    def setTrace(flag: Int) {}
-    def getTrace = 0
-    def successEnabled = false
-    def setSuccessEnabled(flag: Boolean) {}
-    def control(event: ControlEvent.Value, message: => String) {}
-    def logAll(events: Seq[LogEvent]) {}
-    def trace(t: => Throwable) {}
-    def success(message: => String) {}
-    def log(level: Level.Value, message: => String) {}
-  }
 }

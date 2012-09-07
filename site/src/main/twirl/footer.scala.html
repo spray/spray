@@ -1,0 +1,28 @@
+@()
+
+<footer>
+
+  <section class="footerLower">
+    <div class="container">
+      <div class="row-fluid">
+        <div class="span2 copyright"><p>&copy; 2012+ spray.cc</p></div>
+        <div class="span8 footNav">
+          <a href="/">Home</a><span>&#124;</span>
+
+          @cc.spray.site.RootNode.children.map { node =>
+            <a href="@node.absoluteUri">@node.name</a><span>&#124;</span>
+          }
+
+          <a href="/index">Index</a>
+        </div>
+        <div class="span2 smedia">
+          <a href="https://github.com/spray/spray" data-rel="tooltip" data-position="bottom" title="Github" class="sm-icon sm-icon-github"></a>
+          <a href="/support" data-rel="tooltip" data-position="bottom" title="Email"  class="sm-icon sm-icon-e-mail"></a>
+          <a href="#" data-rel="tooltip" data-position="bottom" title="Skype"  class="sm-icon sm-icon-skype"></a>
+          <a href="http://twitter.com/spraycc" data-position="bottom" data-rel="tooltip" title="Follow Us on Twitter" class="sm-icon sm-icon-twitter"></a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</footer>
