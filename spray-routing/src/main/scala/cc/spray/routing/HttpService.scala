@@ -25,6 +25,8 @@ import StatusCodes._
 
 trait HttpService extends Directives {
 
+  warmUp() // trigger the loading of most classes in spray-http
+
   /**
    * An ActorRefFactory needs to be supplied by the class mixing us in
    * (mostly either the service actor or the service test)
@@ -35,21 +37,16 @@ trait HttpService extends Directives {
    * Normally you configure via the application.conf on the classpath,
    * but you can also override this member.
    */
-  implicit val settings = RoutingSettings.Default
+  implicit lazy val settings = RoutingSettings.Default
 
-  val log = LoggingContext.fromActorRefFactory
+  // must be lazy due to initialization order issue when mixing into an actor
+  lazy val log = LoggingContext.fromActorRefFactory
 
   /**
    * Supplies the actor behavior for executing the given route.
-   * The argument is a call-by-name parameter to work around issues with the initialization order
-   * when mixing into an Actor. Even though call-by-name the method only evaluates the parameter once.
    */
-  def runRoute(route: => Route)
-              (implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext): Actor.Receive = {
-    // we don't use a lazy val for the 'sealedRoute' member here, since we can be sure to be running in an Actor
-    // (we require an implicit ActorContext) and can therefore avoid the "lazy val"-synchronization
-    var sr: Route = null
-    def sealedRoute: Route = { if (sr == null) sr = sealRoute(route); sr }
+  def runRoute(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext): Actor.Receive = {
+    val sealedRoute = sealRoute(route)
     def contextFor(req: HttpRequest) = RequestContext(req, ac.sender, req.path).withDefaultSender(ac.self)
 
     {
