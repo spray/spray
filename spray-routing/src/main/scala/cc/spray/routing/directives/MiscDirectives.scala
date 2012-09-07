@@ -112,6 +112,16 @@ trait MiscDirectives {
   def rewriteUnmatchedPath(f: String => String): Directive0 = mapRequestContext(_.mapUnmatchedPath(f))
 
   /**
+   * Converts responses with an empty entity into (empty) rejections.
+   * This way you can, for example, have the marshalling of a ''None'' option be treated as if the request could
+   * not be matched.
+   */
+  def rejectEmptyResponse: Directive0 = mapRouteResponse {
+    case HttpResponse(_, EmptyEntity, _, _) => Rejected(Nil)
+    case x => x
+  }
+
+  /**
    * Not a directive, but a helper function that provides access to the ActorSystem we are running in.
    */
   def actorSystem(implicit refFactory: ActorRefFactory): ActorSystem = {

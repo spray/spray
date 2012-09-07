@@ -29,7 +29,7 @@ trait MetaMarshallers {
           def apply(value: Option[T], ctx: MarshallingContext) {
             value match {
               case Some(v) => marshalling.runSafe(v, ctx)
-              case None => ctx.handleError(new IllegalRequestException(StatusCodes.NotFound))
+              case None => ctx.marshalTo(EmptyEntity)
             }
           }
         }
