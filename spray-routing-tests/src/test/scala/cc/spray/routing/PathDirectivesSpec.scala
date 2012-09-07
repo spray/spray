@@ -18,7 +18,6 @@ package cc.spray.routing
 
 
 class PathDirectivesSpec extends RoutingSpec {
-  import directives.PathMatchers._
 
   "routes created with the path(string) combinator" should {
     "block completely unmatching requests" in {

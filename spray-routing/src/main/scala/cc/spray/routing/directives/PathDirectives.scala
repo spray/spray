@@ -27,7 +27,6 @@ import cc.spray.util._
 trait PathDirectives extends PathMatcherImplicits {
   import BasicDirectives.filter
   import PathMatcher._
-  import PathMatchers.{Slash, PathEnd}
 
   /**
    * Rejects the request if the unmatchedPath of the [[cc.spray.routing.RequestContext]] is not matched by the
@@ -156,7 +155,7 @@ trait PathMatcherImplicits {
 }
 
 
-object PathMatchers {
+trait PathMatchers {
   import PathMatcher._
 
   /**
@@ -294,3 +293,5 @@ object PathMatchers {
     }
   }
 }
+
+object PathMatchers extends PathMatchers
