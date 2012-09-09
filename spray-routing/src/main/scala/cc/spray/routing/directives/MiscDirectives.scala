@@ -112,6 +112,14 @@ trait MiscDirectives {
   def rewriteUnmatchedPath(f: String => String): Directive0 = mapRequestContext(_.mapUnmatchedPath(f))
 
   /**
+   * Rejects empty requests with a RequestEntityExpectedRejection.
+   * Non-empty requests are passed on unchanged to the inner route.
+   */
+  def rejectEmptyRequests: Directive0 = filter { ctx =>
+    if (ctx.request.entity.isEmpty) Reject(RequestEntityExpectedRejection) else Pass.Empty
+  }
+
+  /**
    * Converts responses with an empty entity into (empty) rejections.
    * This way you can, for example, have the marshalling of a ''None'' option be treated as if the request could
    * not be matched.
