@@ -33,9 +33,9 @@ trait BasicUnmarshallers {
   implicit val CharArrayUnmarshaller = new Unmarshaller[Array[Char]] {
     def apply(entity: HttpEntity) = Right { // we can convert anything to a char array
       entity match {
-        case EmptyEntity => new Array[Char](0)
         case HttpBody(contentType, buffer) =>
           contentType.charset.nioCharset.decode(ByteBuffer.wrap(buffer)).array()
+        case EmptyEntity => new Array[Char](0)
       }
     }
   }

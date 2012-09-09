@@ -53,4 +53,8 @@ object Unmarshaller {
         if (f.isDefinedAt(entity)) protect(f(entity)) else Left(ContentExpected)
     }
 
+  def forNonEmpty[T](implicit um: Unmarshaller[T]): Unmarshaller[T] =
+    new Unmarshaller[T] {
+      def apply(entity: HttpEntity) = if (entity.isEmpty) Left(ContentExpected) else um(entity)
+    }
 }
