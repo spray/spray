@@ -21,7 +21,7 @@ import annotation.tailrec
 import cc.spray.http._
 
 
-abstract class Gzip extends Decoder with Encoder {
+class Gzip(val messageFilter: HttpMessage => Boolean) extends Decoder with Encoder {
   val encoding = HttpEncodings.gzip
   def newCompressor = new GzipCompressor
   def newDecompressor = new GzipDecompressor
@@ -30,15 +30,8 @@ abstract class Gzip extends Decoder with Encoder {
 /**
  * An encoder and decoder for the HTTP 'gzip' encoding.
  */
-object Gzip extends Gzip { self =>
-
-  def apply(minContentSize: Int) = new Gzip {
-    override def handles(message: HttpMessage) = self.handles(message) && message.entity.buffer.length >= minContentSize
-  }
-
-  def apply(predicate: HttpMessage => Boolean) = new Gzip {
-    override def handles(message: HttpMessage) = predicate(message)
-  }
+object Gzip extends Gzip(Encoder.DefaultFilter) {
+  def apply(messageFilter: MessagePredicate) = new Gzip(messageFilter)
 }
 
 object GzipCompressor {

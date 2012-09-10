@@ -29,7 +29,7 @@ object NoEncoding extends Decoder with Encoder {
   override def encode[T <: HttpMessage](message: T) = message.message
   override def decode[T <: HttpMessage](message: T) = message.message
 
-  override def handles(message: HttpMessage) = false
+  val messageFilter: HttpMessage => Boolean = _ => false
 
   def newCompressor = NoEncodingCompressor
   def newDecompressor = NoEncodingDecompressor

@@ -22,7 +22,7 @@ import cc.spray.util.EmptyByteArray
 import cc.spray.http._
 
 
-abstract class Deflate extends Decoder with Encoder {
+class Deflate(val messageFilter: HttpMessage => Boolean) extends Decoder with Encoder {
   val encoding = HttpEncodings.deflate
   def newCompressor = new DeflateCompressor
   def newDecompressor = new DeflateDecompressor
@@ -31,15 +31,8 @@ abstract class Deflate extends Decoder with Encoder {
 /**
  * An encoder and decoder for the HTTP 'deflate' encoding.
  */
-object Deflate extends Deflate { self =>
-
-  def apply(minContentSize: Int) = new Deflate {
-    override def handles(message: HttpMessage) = self.handles(message) && message.entity.buffer.length >= minContentSize
-  }
-
-  def apply(predicate: HttpMessage => Boolean) = new Deflate {
-    override def handles(message: HttpMessage) = predicate(message)
-  }
+object Deflate extends Deflate(Encoder.DefaultFilter) {
+  def apply(messageFilter: MessagePredicate) = new Deflate(messageFilter)
 }
 
 class DeflateCompressor extends Compressor {
