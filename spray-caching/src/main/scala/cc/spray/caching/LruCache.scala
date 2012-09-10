@@ -41,7 +41,7 @@ object LruCache {
 
 /**
  * A thread-safe implementation of [[cc.spray.caching.cache]].
- * The cache has a defined maximum number of entries is can store. After the maximum capacity has been reached new
+ * The cache has a defined maximum number of entries it can store. After the maximum capacity is reached new
  * entries cause old ones to be evicted in a last-recently-used manner, i.e. the entries that haven't been accessed for
  * the longest time are evicted first.
  */

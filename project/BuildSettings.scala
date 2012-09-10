@@ -64,6 +64,10 @@ object BuildSettings {
   lazy val siteSettings = basicSettings ++ noPublishing ++
     twirl.sbt.TwirlPlugin.Twirl.settings ++ cc.spray.revolver.RevolverPlugin.Revolver.settings
 
+  lazy val docsSettings = basicSettings ++ noPublishing ++ seq(
+    unmanagedSourceDirectories in Test <<= baseDirectory { _ ** "code" get }
+  )
+
   lazy val exampleSettings = basicSettings ++ noPublishing
 
   import com.github.siasia.WebPlugin._

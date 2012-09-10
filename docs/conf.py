@@ -2,7 +2,8 @@ import sys, os
 
 # -- General configuration -----------------------------------------------------
 
-extensions = ['sphinx.ext.todo']
+sys.path.append(os.path.abspath('_sphinx/exts'))
+extensions = ['sphinx.ext.todo', 'includecode', 'sphinx.ext.graphviz']
 source_suffix = '.rst'
 source_encoding = 'utf-8'
 master_doc = 'index'
@@ -11,6 +12,7 @@ copyright = u'2011-2012 spray.cc.'
 version = '$VERSION$'
 release = '$VERSION$'
 exclude_patterns = []
+highlight_language = 'scala'
 
 # -- Options for HTML output ---------------------------------------------------
 html_title = u'spray'
