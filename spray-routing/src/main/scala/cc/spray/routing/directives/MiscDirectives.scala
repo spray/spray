@@ -107,7 +107,7 @@ trait MiscDirectives {
   def requestEntityPresent: Directive0 = filter { ctx => if (ctx.request.entity.isEmpty) Reject.Empty else Pass.Empty }
 
   /**
-   * Transformed the unmatchedPath of the RequestContext using the given function.
+   * Transforms the unmatchedPath of the RequestContext using the given function.
    */
   def rewriteUnmatchedPath(f: String => String): Directive0 = mapRequestContext(_.mapUnmatchedPath(f))
 
