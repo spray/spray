@@ -1,4 +1,4 @@
-@()
+@(pageNode: cc.spray.site.ContentNode)
 
 @import cc.spray.site._
 
@@ -16,19 +16,22 @@
     </ul>
   }
 
+  @classes(node: ContentNode, first: String = null) = @{
+    List(
+      Option(first).toList,
+      if (node.isLast) "last" :: Nil else Nil,
+      if (pageNode.isDescendantOf(node)) "active" :: Nil else Nil
+    ).flatten match {
+      case Nil => ""
+      case x => x.mkString(" class=\"", " ", "\"")
+    }
+  }
+
   @item(goDown: Boolean)(node: ContentNode) = {
     @if(goDown && !node.isLeaf) {
-      @if(node.isLast) {
-        <li class="last dropdown">@anchor(node, true) @nextLevel(node)</li>
-      } else {
-        <li class="dropdown">@anchor(node, true) @nextLevel(node)</li>
-      }
+      <li@HtmlFormat.raw(classes(node, "dropdown"))>@anchor(node, true) @nextLevel(node)</li>
     } else {
-      @if(node.isLast) {
-        <li class="last">@anchor(node, false)</li>
-      } else {
-        <li>@anchor(node, false)</li>
-      }
+      <li@HtmlFormat.raw(classes(node))>@anchor(node, false)</li>
     }
   }
 

@@ -3,7 +3,7 @@ body, p { font-size: 14px; }
 footer .sm-icon { float: right; }
 footer { margin-top: 45px; }
 
-.brand { opacity: 0.2; }
+.page-home .brand { opacity: 0.2; }
 
 .hero .logo { padding-top: 7%; }
 .hero .tagline { padding-top: 7%; }

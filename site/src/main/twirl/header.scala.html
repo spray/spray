@@ -1,4 +1,4 @@
-@()
+@(node: cc.spray.site.ContentNode)
 
 <header class="navbar navbar-fixed-top" id="top">
   <div class="navbar-inner">
@@ -21,7 +21,7 @@
           <a href="http://twitter.com/spraycc" data-position="bottom" data-rel="tooltip" title="Follow Us on Twitter" class="sm-icon sm-icon-twitter"></a>
         </div>
 
-        @html.menu()
+        @html.menu(node)
 
       </div>
 

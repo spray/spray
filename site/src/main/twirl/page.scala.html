@@ -1,4 +1,4 @@
-@(content: Any)
+@(content: Any, node: cc.spray.site.ContentNode = cc.spray.site.RootNode)
 
 <!DOCTYPE HTML>
 <!--[if IE 7 ]>    <html class="ie7 no-js" lang="en"> <![endif]-->
@@ -25,9 +25,9 @@
     <link rel="shortcut icon" href="favicon.png" />
 </head>
 
-<body>
+<body class="@if(node == cc.spray.site.RootNode) {page-home} else {page-doc}">
 
-@html.header()
+@html.header(node)
 
 @content
 

@@ -46,12 +46,20 @@ class SiteServiceActor extends Actor with HttpService {
         } ~
         path(Rest) { docPath =>
           rejectEmptyResponse {
-            complete(RootNode.find(docPath).map(node => page(sphinxDoc(node))))
+            complete(render(docPath))
           }
         } ~
         complete(page(error404())) // fallback response is 404
       }
     }
   }
+
+  def render(docPath: String) =
+    RootNode.find(docPath) map { node =>
+      SphinxDoc.load(node.uri).orElse(SphinxDoc.load(node.uri + "index")) match {
+        case Some(SphinxDoc(body)) => page(sphinxDoc(node, body), node)
+        case None => throw new RuntimeException("SphinxDoc for uri '%s' not found" format node.uri)
+      }
+    }
 
 }

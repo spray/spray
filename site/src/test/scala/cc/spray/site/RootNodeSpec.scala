@@ -20,6 +20,7 @@ import org.specs2.mutable.Specification
 
 
 class RootNodeSpec extends Specification {
+  skipAll  // comment out to enable
 
   "The ContentNode" should {
     "correctly load from the Sphinx output" in {
@@ -28,8 +29,8 @@ class RootNodeSpec extends Specification {
       success
     }
     "properly find a node by uri" in {
-      RootNode.find("documentation/spray-io/big-picture").toString ===
-        "Some(Big Picture: documentation/spray-io/big-picture)"
+      RootNode.find("documentation/spray-io/big-picture/").toString ===
+        "Some(Big Picture: documentation/spray-io/big-picture/)"
     }
   }
 

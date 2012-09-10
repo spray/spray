@@ -30,7 +30,8 @@ object SphinxDoc {
   import JsonProtocol._
 
   def load(docPath: String): Option[SphinxDoc] = {
-    loadFrom("sphinx/json/%s.fjson".format(docPath))
+    val path = if (docPath.endsWith("/")) docPath.dropRight(1) else docPath
+    loadFrom("sphinx/json/%s.fjson".format(path))
   }
 
   def loadFrom(resourceName: String): Option[SphinxDoc] = {
