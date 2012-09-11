@@ -32,7 +32,6 @@ sealed abstract class StatusCode {
 object StatusCode {
   import StatusCodes._
   implicit def int2StatusCode(code: Int): StatusCode = getForKey(code).getOrElse(InternalServerError)
-  implicit def code2HttpResponse(code: StatusCode): HttpResponse = HttpResponse(code, code.defaultMessage)
 }
 
 sealed abstract class HttpSuccess extends StatusCode {

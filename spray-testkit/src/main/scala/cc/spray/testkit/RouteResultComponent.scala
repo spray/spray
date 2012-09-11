@@ -21,7 +21,7 @@ import akka.util.Duration
 import java.util.concurrent.{TimeUnit, CountDownLatch}
 import akka.actor.{ActorRefFactory, ActorRef}
 import akka.spray.UnregisteredActorRef
-import cc.spray.routing.{Rejected, Rejection}
+import cc.spray.routing.{RejectionHandler, Rejected, Rejection}
 import cc.spray.util.model.DefaultIOSent
 import cc.spray.http._
 
@@ -88,7 +88,7 @@ trait RouteResultComponent {
     def handled: Boolean = synchronized { _response.isDefined }
     def response: HttpResponse = synchronized {
       _response.getOrElse {
-        _rejections.foreach(r => failTest("Request was rejected with " + r))
+        _rejections.foreach(r => failTest("Request was rejected with " + RejectionHandler.applyTransformations(r)))
         failNotCompletedNotRejected()
       }
     }

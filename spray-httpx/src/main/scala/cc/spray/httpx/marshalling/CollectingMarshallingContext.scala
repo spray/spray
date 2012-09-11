@@ -17,7 +17,7 @@
 package cc.spray.httpx.marshalling
 
 import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.CountDownLatch
+import java.util.concurrent.{TimeUnit, CountDownLatch}
 import annotation.tailrec
 import akka.spray.UnregisteredActorRef
 import akka.actor.{ActorRefFactory, ActorRef}
@@ -26,7 +26,7 @@ import cc.spray.http._
 
 
 /**
- * A MarshallingContext serving as a marshalling receptacle, collecting the output of another Marshaller
+ * A MarshallingContext serving as a marshalling receptacle, collecting the output of a Marshaller
  * for subsequent postprocessing.
  */
 class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = null) extends MarshallingContext {
@@ -34,12 +34,19 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
   private val _error = new AtomicReference[Option[Throwable]](None)
   private val _chunkedMessageEnd = new AtomicReference[Option[ChunkedMessageEnd]](None)
   private val _chunks = new AtomicReference[Seq[MessageChunk]](Vector.empty)
-  val latch = new CountDownLatch(1)
+  private val latch = new CountDownLatch(1)
 
   def entity: Option[HttpEntity] = _entity.get
   def error: Option[Throwable] = _error.get
   def chunks: Seq[MessageChunk] = _chunks.get
   def chunkedMessageEnd: Option[ChunkedMessageEnd] = _chunkedMessageEnd.get
+
+  // we always convert to the first CT the marshaller can marshal to
+  def tryAccept(contentType: ContentType) = Some(contentType)
+
+  def rejectMarshalling(supported: Seq[ContentType]) {
+    handleError(new RuntimeException("Marshaller rejected marshalling, only supports " + supported))
+  }
 
   def marshalTo(entity: HttpEntity) {
     if (!_entity.compareAndSet(None, Some(entity))) sys.error("`marshalTo` called more than once")
@@ -75,5 +82,9 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
     }
     sender.tell(DefaultIOSent, ref)
     ref
+  }
+
+  def awaitResults(implicit timeout: akka.util.Timeout) {
+    latch.await(timeout.duration.toMillis, TimeUnit.MILLISECONDS)
   }
 }

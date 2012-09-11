@@ -50,13 +50,11 @@ trait MarshallingDirectives {
    * Uses the marshaller for the given type to produce a completion function that is passed to its inner route.
    * You can use it do decouple marshaller resolution from request completion.
    */
-  def produce[T](mm: Marshaller[T], status: StatusCode = StatusCodes.OK,
-                 headers: List[HttpHeader] = Nil): Directive[(T => Unit) :: HNil] = filter { ctx =>
-    mm(ctx.request.acceptableContentType) match {
-      case Right(marshalling) => Pass((marshalling(_:T, ctx.marshallingContext(status, headers))) :: HNil)
-      case Left(onlyTo) => Reject(UnacceptedResponseContentTypeRejection(onlyTo))
-    }
-  } & cancelAllRejections(ofType[UnacceptedResponseContentTypeRejection])
+  def produce[T](marshaller: Marshaller[T], status: StatusCode = StatusCodes.OK,
+                 headers: List[HttpHeader] = Nil): Directive[(T => Unit) :: HNil] =
+    extract { ctx => (value: T) =>
+      marshaller(value, ctx.marshallingContext(status, headers))
+    } & cancelAllRejections(ofType[UnacceptedResponseContentTypeRejection])
 
   /**
    * Returns the in-scope Marshaller for the given type.

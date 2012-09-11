@@ -62,11 +62,6 @@ trait RouteDirectives {
     }
 
   /**
-   * Completes the request with the given status and the respective default message in the entity.
-   */
-  def complete(status: StatusCode): StandardRoute = complete(status: HttpResponse)
-
-  /**
    * Completes the request with the given [[cc.spray.http.HttpResponse]].
    */
   def complete(response: HttpResponse): StandardRoute = new StandardRoute {

@@ -21,6 +21,20 @@ import akka.actor.ActorRef
 
 
 trait MarshallingContext { self =>
+
+  /**
+   * Determines whether the given ContentType is acceptable.
+   * If the given ContentType does not define a charset an accepted charset is selected, i.e. the method guarantees
+   * that, if a ContentType instance is returned within the option, it will contain a defined charset.
+   */
+  def tryAccept(contentType: ContentType): Option[ContentType]
+
+  /**
+   * Signals that the Marshaller rejects the marshalling request because
+   * none of its target ContentTypes is accepted.
+   */
+  def rejectMarshalling(supported: Seq[ContentType])
+
   /**
    * Receives the end product entity of a Marshalling.
    */
@@ -41,15 +55,28 @@ trait MarshallingContext { self =>
   def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef): ActorRef
 
   /**
-   * Creates a new MarshallingContext based on this one, that overrides the Content-Type of the produced entity
+   * Creates a new MarshallingContext based on this one, that overrides the ContentType of the produced entity
    * with the given one.
    */
   def withContentTypeOverriding(contentType: ContentType): MarshallingContext =
-   new MarshallingContext {
-     def marshalTo(entity: HttpEntity) { self.marshalTo(overrideContentType(entity)) }
-     def handleError(error: Throwable) { self.handleError(error) }
-     def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) =
+   new DelegatingMarshallingContext(self) {
+     override def tryAccept(ct: ContentType) =
+       Some(if (contentType.isCharsetDefined) ct.withCharset(contentType.charset) else ct)
+     override def marshalTo(entity: HttpEntity) { self.marshalTo(overrideContentType(entity)) }
+     override def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) =
        self.startChunkedMessage(overrideContentType(entity))
      def overrideContentType(entity: HttpEntity) = entity.map((ct, buf) => (contentType, buf))
    }
+}
+
+/**
+ * A convenience helper base class simplifying the construction of MarshallingContext that
+ * wrap another MarshallingContext with some extra logic.
+ */
+class DelegatingMarshallingContext(underlying: MarshallingContext) extends MarshallingContext {
+  def tryAccept(contentType: ContentType) = underlying.tryAccept(contentType)
+  def rejectMarshalling(supported: Seq[ContentType]) { underlying.rejectMarshalling(supported) }
+  def marshalTo(entity: HttpEntity) { underlying.marshalTo(entity) }
+  def handleError(error: Throwable) { underlying.handleError(error) }
+  def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) = underlying.startChunkedMessage(entity)
 }

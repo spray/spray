@@ -22,41 +22,35 @@ import cc.spray.http._
 
 
 trait StreamMarshallers {
-  implicit def streamMarshaller[T](implicit marshaller: Marshaller[T],
-                                   refFactory: ActorRefFactory): Marshaller[Stream[T]] =
-    new Marshaller[Stream[T]] {
-      def apply(selector: ContentTypeSelector) = marshaller(selector).right.map { marshalling =>
-        new Marshalling[Stream[T]] {
-          def apply(value: Stream[T], ctx: MarshallingContext) {
-            refFactory.actorOf(Props(new StreamMarshallers.ChunkingActor(ctx, marshalling))) ! value
-          }
-        }
-      }
+
+  implicit def streamMarshaller[T](implicit marshaller: Marshaller[T], refFactory: ActorRefFactory) =
+    Marshaller[Stream[T]] { (value, ctx) =>
+      refFactory.actorOf(Props(new StreamMarshallers.ChunkingActor(marshaller, ctx))) ! value
     }
 }
 
 object StreamMarshallers extends StreamMarshallers {
-  class ChunkingActor[T](ctx: MarshallingContext, marshalling: Marshalling[T])
-    extends Actor {
+
+  class ChunkingActor[T](marshaller: Marshaller[T], ctx: MarshallingContext) extends Actor {
     var connectionActor: ActorRef = _
     var remaining: Stream[_] = _
 
     def receive = {
 
       case current #:: rest =>
-        val chunkingCtx = new MarshallingContext {
-          def marshalTo(entity: HttpEntity) {
+        val chunkingCtx = new DelegatingMarshallingContext(ctx) {
+          override def marshalTo(entity: HttpEntity) {
             if (connectionActor == null) connectionActor = ctx.startChunkedMessage(entity)
             else connectionActor ! MessageChunk(entity.buffer)
           }
-          def handleError(error: Throwable) {
+          override def handleError(error: Throwable) {
             context.stop(self)
             ctx.handleError(error)
           }
-          def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) =
+          override def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) =
             sys.error("Cannot marshal a stream of streams")
         }
-        marshalling.runSafe(current.asInstanceOf[T], chunkingCtx)
+        marshaller(current.asInstanceOf[T], chunkingCtx)
         remaining = rest
 
       case _: IOSent =>

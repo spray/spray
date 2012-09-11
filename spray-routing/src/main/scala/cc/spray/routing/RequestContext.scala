@@ -206,17 +206,7 @@ case class RequestContext(
    * given object using the in-scope marshaller for the type.
    */
   def complete[T](status: StatusCode, headers: List[HttpHeader], obj: T)(implicit marshaller: Marshaller[T]) {
-    marshaller(request.acceptableContentType) match {
-      case Right(marshalling) => marshalling(obj, marshallingContext(status, headers))
-      case Left(acceptableContentTypes) => reject(UnacceptedResponseContentTypeRejection(acceptableContentTypes))
-    }
-  }
-
-  /**
-   * Completes the request with the given status and the respective default message in the entity.
-   */
-  def complete(status: StatusCode) {
-    complete(status: HttpResponse)
+    marshaller(obj, marshallingContext(status, headers))
   }
 
   /**
@@ -239,6 +229,8 @@ case class RequestContext(
    */
   def marshallingContext(status: StatusCode, headers: List[HttpHeader]): MarshallingContext =
     new MarshallingContext {
+      def tryAccept(contentType: ContentType) = request.acceptableContentType(contentType)
+      def rejectMarshalling(onlyTo: Seq[ContentType]) { reject(UnacceptedResponseContentTypeRejection(onlyTo)) }
       def marshalTo(entity: HttpEntity) { complete(response(entity)) }
       def handleError(error: Throwable) { failWith(error) }
       def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) = {

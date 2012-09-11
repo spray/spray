@@ -243,8 +243,8 @@ final class HttpRequest private(
 
   /**
    * Determines whether the given content-type is accepted by the client.
-   * If the given content-type does not contain a charset an accepted charset is selected, i.e. the method guarantees
-   * that, if a content-type instance is returned within the option it will contain a charset.
+   * If the given ContentType does not define a charset an accepted charset is selected, i.e. the method guarantees
+   * that, if a ContentType instance is returned within the option, it will contain a defined charset.
    */
   def acceptableContentType(contentType: ContentType): Option[ContentType] = {
     if (isContentTypeAccepted(contentType)) Some {

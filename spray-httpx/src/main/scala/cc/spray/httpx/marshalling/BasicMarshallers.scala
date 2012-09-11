@@ -25,14 +25,14 @@ import MediaTypes._
 trait BasicMarshallers {
 
   def byteArrayMarshaller(contentType: ContentType) =
-    Marshaller[Array[Byte]](contentType) { (value, ct, ctx) =>
+    Marshaller.of[Array[Byte]](contentType) { (value, ct, ctx) =>
       ctx.marshalTo(HttpBody(ct, value))
     }
 
   implicit val ByteArrayMarshaller = byteArrayMarshaller(ContentType.`application/octet-stream`)
 
   implicit val CharArrayMarshaller =
-    Marshaller[Array[Char]](ContentType.`text/plain`) { (value, contentType, ctx) =>
+    Marshaller.of[Array[Char]](ContentType.`text/plain`) { (value, contentType, ctx) =>
       ctx.marshalTo {
         if (value.length > 0) {
           val nioCharset = contentType.charset.nioCharset
@@ -44,7 +44,7 @@ trait BasicMarshallers {
     }
 
   implicit val StringMarshaller =
-    Marshaller[String](ContentType.`text/plain`) { (value, contentType, ctx) =>
+    Marshaller.of[String](ContentType.`text/plain`) { (value, contentType, ctx) =>
       ctx.marshalTo(if (value.isEmpty) EmptyEntity else HttpBody(contentType, value))
     }
 
@@ -58,25 +58,27 @@ trait BasicMarshallers {
       formData.fields.map { case (key, value) => encode(key, charset) + '=' + encode(value, charset) }.mkString("&")
     }
 
-  implicit val ThrowableMarshaller = new Marshaller[Throwable] {
-    def apply(selector: ContentTypeSelector) = Right {
-      new Marshalling[Throwable] {
-        def apply(error: Throwable, ctx: MarshallingContext) { ctx.handleError(error) }
+  implicit val ThrowableMarshaller = Marshaller[Throwable] { (value, ctx) => ctx.handleError(value) }
+
+  implicit val StatusCodeMarshaller = Marshaller[StatusCode] { (value, ctx) =>
+    value match {
+      case StatusCodes.NoContent => ctx.marshalTo(EmptyEntity)
+      case status => ctx.tryAccept(ContentType.`text/plain`) match {
+        case Some(contentType) => ctx.marshalTo(HttpBody(contentType, status.defaultMessage))
+        case None => ctx.rejectMarshalling(Seq(ContentType.`text/plain`))
       }
     }
   }
 
-  // CAUTION: when marshalling HttpEntities directly there is no support for content negotiation!
-  implicit val HttpEntityMarshaller =
-    new Marshaller[HttpEntity] {
-      def apply(selector: ContentTypeSelector) = Right {
-        new Marshalling[HttpEntity] {
-          def apply(value: HttpEntity, ctx: MarshallingContext) {
-            ctx.marshalTo(value)
-          }
-        }
+  implicit val HttpEntityMarshaller = Marshaller[HttpEntity] { (value, ctx) =>
+    value match {
+      case EmptyEntity => ctx.marshalTo(EmptyEntity)
+      case body@ HttpBody(contentType, _) => ctx.tryAccept(contentType) match {
+        case Some(_) => ctx.marshalTo(body) // we do NOT use the accepted CT here, since we do not want to recode
+        case None => ctx.rejectMarshalling(Seq(contentType))
       }
     }
+  }
 }
 
 object BasicMarshallers extends BasicMarshallers

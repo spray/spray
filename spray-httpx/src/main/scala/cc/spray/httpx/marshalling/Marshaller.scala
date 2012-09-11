@@ -20,12 +20,8 @@ import cc.spray.http.ContentType
 import cc.spray.util._
 
 
-trait Marshaller[-T] extends (ContentTypeSelector => Either[AcceptableContentTypes, Marshalling[T]])
-
-trait Marshalling[-T] extends ((T, MarshallingContext) => Unit) {
-  def runSafe(value: T, ctx: MarshallingContext) {
-    tryOrElse(apply(value, ctx), ctx.handleError)
-  }
+trait Marshaller[-T] {
+  def apply(value: T, ctx: MarshallingContext)
 }
 
 object Marshaller extends BasicMarshallers
@@ -33,17 +29,20 @@ object Marshaller extends BasicMarshallers
   with StreamMarshallers
   with MultipartMarshallers {
 
-  def apply[T](marshalTo: ContentType*)(f: (T, ContentType, MarshallingContext) => Unit): Marshaller[T] =
+  def apply[T](f: (T, MarshallingContext) => Unit): Marshaller[T] =
     new Marshaller[T] {
-      def apply(selector: ContentTypeSelector) = marshalTo.mapFind(selector) match {
-        case Some(contentType) => Right {
-          new Marshalling[T] {
-            def apply(value: T, ctx: MarshallingContext) {
-              f(value, contentType, ctx)
-            }
-          }
+      def apply(value: T, ctx: MarshallingContext) {
+        f(value, ctx)
+      }
+    }
+
+  def of[T](marshalTo: ContentType*)(f: (T, ContentType, MarshallingContext) => Unit): Marshaller[T] =
+    new Marshaller[T] {
+      def apply(value: T, ctx: MarshallingContext) {
+        marshalTo.mapFind(ctx.tryAccept) match {
+          case Some(contentType) => f(value, contentType, ctx)
+          case None => ctx.rejectMarshalling(marshalTo)
         }
-        case None => Left(marshalTo)
       }
     }
 
@@ -52,17 +51,8 @@ object Marshaller extends BasicMarshallers
   class MarshallerDelegation[A, B](marshalTo: Seq[ContentType]) {
     def apply(f: A => B)(implicit mb: Marshaller[B]): Marshaller[A] = apply((a, ct) => f(a))
     def apply(f: (A, ContentType) => B)(implicit mb: Marshaller[B]): Marshaller[A] =
-      new Marshaller[A] {
-        def apply(selector: ContentTypeSelector) = marshalTo.mapFind(selector) match {
-          case Some(contentType) => mb(Some(_)).right.map { marshallingB =>
-            new Marshalling[A] {
-              def apply(value: A, ctx: MarshallingContext) {
-                marshallingB(f(value, contentType), ctx.withContentTypeOverriding(contentType))
-              }
-            }
-          }
-          case None => Left(marshalTo)
-        }
+      Marshaller.of[A](marshalTo: _*) { (value, contentType, ctx) =>
+        mb(f(value, contentType), ctx.withContentTypeOverriding(contentType))
       }
   }
 }

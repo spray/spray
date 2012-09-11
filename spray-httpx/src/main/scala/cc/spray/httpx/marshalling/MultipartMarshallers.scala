@@ -22,6 +22,8 @@ import org.parboiled.common.Base64
 import cc.spray.http._
 import MediaTypes._
 import HttpHeaders._
+import sun.font.DelegatingShape
+import akka.actor.ActorRef
 
 
 trait MultipartMarshallers {
@@ -37,7 +39,7 @@ trait MultipartMarshallers {
   }
 
   implicit def multipartContentMarshaller =
-    Marshaller[MultipartContent](new `multipart/mixed`(Some(randomBoundary))) { (value, contentType, ctx) =>
+    Marshaller.of[MultipartContent](new `multipart/mixed`(Some(randomBoundary))) { (value, contentType, ctx) =>
       val out = new ByteArrayOutputStream(1024)
       val boundary = contentType.mediaType.asInstanceOf[MultipartMediaType].boundary.get
 
@@ -74,28 +76,30 @@ trait MultipartMarshallers {
     }
 
   implicit def multipartFormDataMarshaller(implicit mcm: Marshaller[MultipartContent]) =
-    new Marshaller[MultipartFormData] {
-      def apply(selector: ContentTypeSelector) = selector(`multipart/form-data`) match {
-        case _: Some[_] =>
-          var boundary: Option[String] = None
-          mcm { ct =>
-            boundary = ct.mediaType.asInstanceOf[MultipartMediaType].boundary
-            Some(ct)
-          }.right.map { marshalling =>
-          new Marshalling[MultipartFormData] {
-            def apply(value: MultipartFormData, ctx: MarshallingContext) {
-              val mpc = MultipartContent {
-                value.fields.map {
-                  case (name, part) => part.copy(
-                    headers = `Content-Disposition`("form-data", Map("name" -> name)) :: part.headers
-                  )
-                } (collection.breakOut)
-              }
-              marshalling(mpc, ctx.withContentTypeOverriding(new `multipart/form-data`(boundary)))
+    Marshaller[MultipartFormData] { (value, ctx) =>
+      ctx.tryAccept(`multipart/form-data`) match {
+        case None => ctx.rejectMarshalling(Seq(`multipart/form-data`))
+        case _ => mcm(
+          value = MultipartContent {
+            value.fields.map {
+              case (name, part) => part.copy(
+                headers = `Content-Disposition`("form-data", Map("name" -> name)) :: part.headers
+              )
+            } (collection.breakOut)
+          },
+          ctx = new DelegatingMarshallingContext(ctx) {
+            var boundary: Option[String] = None
+            override def tryAccept(contentType: ContentType) = {
+              boundary = contentType.mediaType.asInstanceOf[MultipartMediaType].boundary
+              Some(contentType)
             }
+            override def marshalTo(entity: HttpEntity) { ctx.marshalTo(overrideContentType(entity)) }
+            override def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) =
+              ctx.startChunkedMessage(overrideContentType(entity))
+            def overrideContentType(entity: HttpEntity) =
+              entity.map((ct, buf) => (new `multipart/form-data`(boundary), buf))
           }
-        }
-        case None => Left(Seq(`multipart/form-data`))
+        )
       }
     }
 }
