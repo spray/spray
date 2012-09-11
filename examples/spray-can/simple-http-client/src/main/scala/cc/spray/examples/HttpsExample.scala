@@ -25,7 +25,7 @@ object HttpsExample extends App {
   // create a very basic HttpDialog that results in a Future[HttpResponse]
   log.info("Dispatching GET request to github.com")
   val responseF =
-    HttpDialog(httpClient, "github.com", port = 443)
+    HttpDialog(httpClient, "github.com", port = 443, ssl = true)
       .send(HttpRequest(uri = "/spray/spray"))
       .end
 

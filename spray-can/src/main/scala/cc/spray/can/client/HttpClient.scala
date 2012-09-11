@@ -55,9 +55,16 @@ object HttpClient {
     ResponseParsing(ParserSettings, log) >>
     RequestRendering(settings) >>
     (settings.IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
-    SSLEncryption ? SslTlsSupport(sslEngineProvider, log) >>
+    SSLEncryption ? SslTlsSupport(sslEngineProvider, log, _.handle.tag == SslEnabled) >>
     (ReapingCycle > 0 && IdleTimeout > 0) ? TickGenerator(ReapingCycle)
   }
+
+  /**
+   * Object to be used as `tag` member of `Connect` commands in order to activate SSL encryption on the connection.
+   * Note that SSL encryption is only generally available for the HttpClient if the respective config setting is
+   * enabled. Using the `SslEnabled` tag while `SSLEncryption` is off in the settings has no effect.
+   */
+  case object SslEnabled
 
   ////////////// COMMANDS //////////////
   // HttpRequestParts +

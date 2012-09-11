@@ -29,9 +29,14 @@ import annotation.tailrec
 import scala.Array
 
 object SslTlsSupport {
-  def apply(engineProvider: InetSocketAddress => SSLEngine, log: LoggingAdapter): PipelineStage = {
+  def apply(engineProvider: InetSocketAddress => SSLEngine, log: LoggingAdapter,
+            sslEnabled: PipelineContext => Boolean = _ => true): PipelineStage = {
     new DoublePipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
+      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+        if (sslEnabled(context)) new SslPipelines(context, commandPL, eventPL)
+        else Pipelines(commandPL, eventPL)
+
+      final class SslPipelines(context: PipelineContext, commandPL: CPL, eventPL: EPL) extends Pipelines {
         val engine = engineProvider(context.handle.remoteAddress)
         val pendingSends = Queue.empty[Send]
         var inboundReceptacle: ByteBuffer = _ // holds incoming data that are too small to be decrypted yet
