@@ -20,7 +20,7 @@ import java.util.concurrent.CountDownLatch
 import java.nio.channels.spi.SelectorProvider
 import java.nio.ByteBuffer
 import java.nio.channels.{CancelledKeyException, SelectionKey, SocketChannel, ServerSocketChannel}
-import java.net.InetSocketAddress
+import java.net.{InetAddress, InetSocketAddress}
 import annotation.tailrec
 import akka.event.{LoggingBus, BusLogging, LoggingAdapter}
 import akka.actor.{Status, ActorSystem, ActorRef}
@@ -222,7 +222,8 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
         val connectionKey = channel.register(selector, 0) // we don't enable any ops until we have a handle
         val cmd = key.attachment.asInstanceOf[Bind]
         log.debug("New connection accepted on {}", cmd.address)
-        cmd.handleCreator ! Connected(Key(connectionKey), cmd.address)
+        val localAddress = channel.socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]
+        cmd.handleCreator ! Connected(Key(connectionKey), cmd.address, localAddress, cmd.tag)
       } catch {
         case NonFatal(e) => log.error(e, "Accept error: could not accept new connection")
       }
@@ -238,12 +239,14 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
     }
 
     def connect(key: SelectionKey) {
-      val (cmd@Connect(address, _), sender) = key.attachment.asInstanceOf[(Connect, ActorRef)]
+      val (cmd@Connect(address, _, tag), sender) = key.attachment.asInstanceOf[(Connect, ActorRef)]
       try {
-        key.channel.asInstanceOf[SocketChannel].finishConnect()
+        val channel = key.channel.asInstanceOf[SocketChannel]
+        channel.finishConnect()
         key.interestOps(0) // we don't enable any ops until we have a handle
         log.debug("Connection established to {}", address)
-        sender ! Connected(Key(key), address)
+        val localAddress = channel.socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]
+        sender ! Connected(Key(key), address, localAddress, tag)
       } catch {
         case NonFatal(e) =>
           log.error(e, "Connect error: could not establish new connection to {}", address)
@@ -324,10 +327,11 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
         cmd.localAddress.foreach(channel.socket().bind(_))
         if (settings.TcpReceiveBufferSize != 0)
           channel.socket.setReceiveBufferSize(settings.TcpReceiveBufferSize.toInt)
-        if (channel.connect(cmd.address)) {
-          log.debug("Connection immediately established to {}", cmd.address)
+        if (channel.connect(cmd.remoteAddress)) {
+          log.debug("Connection immediately established to {}", cmd.remoteAddress)
           val key = channel.register(selector, 0) // we don't enable any ops until we have a handle
-          sender ! Connected(Key(key), cmd.address)
+          val localAddress = channel.socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]
+          sender ! Connected(Key(key), cmd.remoteAddress, localAddress, cmd.tag)
         } else {
           val key = channel.register(selector, OP_CONNECT)
           key.attach((cmd, sender))
@@ -344,7 +348,7 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
       channel.socket.bind(cmd.address, cmd.backlog)
       val key = channel.register(selector, OP_ACCEPT)
       key.attach(cmd)
-      if (sender != null) sender ! Bound(Key(key))
+      if (sender != null) sender ! Bound(Key(key), cmd.tag)
     }
 
     def unbind(cmd: Unbind, sender: ActorRef) {
@@ -398,11 +402,15 @@ object IOBridge {
 
   // "super" commands not on the connection-level
   private[IOBridge] case class Stop(latch: CountDownLatch) extends Command
-  case class Bind(handleCreator: ActorRef, address: InetSocketAddress, backlog: Int) extends Command
+  case class Bind(handleCreator: ActorRef, address: InetSocketAddress, backlog: Int,
+                  tag: Any = ()) extends Command
   case class Unbind(bindingKey: Key) extends Command
-  case class Connect(address: InetSocketAddress, localAddress: Option[InetSocketAddress] = None) extends Command
+  case class Connect(remoteAddress: InetSocketAddress, localAddress: Option[InetSocketAddress] = None,
+                     tag: Any = ()) extends Command
   object Connect {
-    def apply(host: String, port: Int): Connect = Connect(new InetSocketAddress(host, port))
+    def apply(host: String, port: Int): Connect = apply(host, port, ())
+    def apply(host: String, port: Int, tag: Any): Connect =
+      Connect(new InetSocketAddress(host, port), None, tag)
   }
   case object GetStats extends Command
 
@@ -424,9 +432,10 @@ object IOBridge {
   ////////////// EVENTS //////////////
 
   // "general" events not on the connection-level
-  case class Bound(bindingKey: Key) extends Event
+  case class Bound(bindingKey: Key, tag: Any) extends Event
   case class Unbound(bindingKey: Key) extends Event
-  case class Connected(key: Key, address: InetSocketAddress) extends Event
+  case class Connected(key: Key, remoteAddress: InetSocketAddress, localAddress: InetSocketAddress,
+                       tag: Any) extends Event
 
   // connection-level events
   case class Closed(handle: Handle, reason: ConnectionClosedReason) extends Event with IOClosed

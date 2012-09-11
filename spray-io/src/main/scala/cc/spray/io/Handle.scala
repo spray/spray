@@ -39,16 +39,29 @@ trait Handle {
   def remoteAddress: InetSocketAddress
 
   /**
+   * The local address this connection is attached to.
+   */
+  def localAddress: InetSocketAddress
+
+  /**
    * The ActorRef that originally commanded the establishment of this connection.
    * In the case of a client connection the sender of the `Connect` command,
    * in the case of a server connection the sender of the `Bind` command.
    */
   def commander: ActorRef
+
+  /**
+   * A custom, application-defined tag object that can be attached to a Bind or Connect command and
+   * is made available to the application here. It is not used for any purpose inside of spray-io itself.
+   */
+  def tag: Any
 }
 
 case class SimpleHandle(
   key: Key,
   handler: ActorRef,
   remoteAddress: InetSocketAddress,
-  commander: ActorRef
+  localAddress: InetSocketAddress,
+  commander: ActorRef,
+  tag: Any
 ) extends Handle

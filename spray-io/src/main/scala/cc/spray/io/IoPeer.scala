@@ -25,9 +25,9 @@ abstract class IOPeer extends Actor with ActorLogging {
 
   def ioBridge: IOBridge
 
-  protected def createConnectionHandle(key: Key, address: InetSocketAddress, commander: ActorRef): Handle =
-    SimpleHandle(key, self, address, commander) // default implementation
-
+  protected def createConnectionHandle(key: Key, remoteAddress: InetSocketAddress, localAddress: InetSocketAddress,
+                                       commander: ActorRef, tag: Any): Handle =
+    SimpleHandle(key, self, remoteAddress, localAddress, commander, tag) // default implementation
 }
 
 object IOPeer {

@@ -52,19 +52,20 @@ abstract class IOServer(val ioBridge: IOBridge) extends IOPeer {
   }
 
   lazy val binding: Receive = {
-    case Reply(IOBridge.Bound(key), commander: ActorRef) =>
+    case Reply(IOBridge.Bound(key, tag), commander: ActorRef) =>
       bindingKey = Some(key)
       state = bound
       log.info("{} started on {}", self.path, endpoint.get)
-      commander ! Bound(endpoint.get)
+      commander ! Bound(endpoint.get, tag)
 
     case x: ServerCommand =>
       sender ! Status.Failure(CommandException(x, "Still binding"))
   }
 
   lazy val bound: Receive = {
-    case Reply(IOBridge.Connected(key, address), commander: ActorRef) =>
-      ioBridge ! IOBridge.Register(createConnectionHandle(key, address, commander))
+    case Reply(IOBridge.Connected(key, remoteAddress, localAddress, tag), commander: ActorRef) =>
+      val handle = createConnectionHandle(key, remoteAddress, localAddress, commander, tag)
+      ioBridge ! IOBridge.Register(handle)
 
     case Unbind =>
       log.debug("Stopping {} on {}", self.path, endpoint.get)
@@ -107,7 +108,7 @@ object IOServer {
 
 
   ////////////// EVENTS //////////////
-  case class Bound(endpoint: InetSocketAddress)
+  case class Bound(endpoint: InetSocketAddress, tag: Any)
   case class Unbound(endpoint: InetSocketAddress)
   type Closed = IOPeer.Closed;     val Closed = IOPeer.Closed
   type SentOk = IOPeer.SentOk;     val SentOk = IOPeer.SentOk

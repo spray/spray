@@ -31,7 +31,9 @@ trait PipelineStageTest {
     def key = throw new UnsupportedOperationException
     def handler = throw new UnsupportedOperationException
     val remoteAddress = new InetSocketAddress("example.com", 8080)
+    def localAddress = throw new UnsupportedOperationException
     def commander = throw new UnsupportedOperationException
+    def tag = ()
   }
 
   class Fixture(stage: PipelineStage) {

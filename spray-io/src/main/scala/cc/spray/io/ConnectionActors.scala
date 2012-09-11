@@ -23,11 +23,14 @@ import pipelining._
 
 trait ConnectionActors extends IOPeer { ioPeer =>
 
-  override protected def createConnectionHandle(theKey: Key, theAddress: InetSocketAddress, theCommander: ActorRef) = {
+  override protected def createConnectionHandle(_key: Key, _remoteAddress: InetSocketAddress,
+                                                _localAddress: InetSocketAddress, _commander: ActorRef, _tag: Any) = {
     new Handle {
-      val key = theKey
-      val remoteAddress = theAddress
-      val commander = theCommander
+      val key = _key
+      val remoteAddress = _remoteAddress
+      val localAddress = _localAddress
+      val commander = _commander
+      val tag = _tag
       val handler = context.actorOf(Props(createConnectionActor(this))) // must be initialized last
     }
   }
@@ -37,13 +40,15 @@ trait ConnectionActors extends IOPeer { ioPeer =>
   protected def pipeline: PipelineStage
 
   class IOConnectionActor(val handle: Handle) extends Actor {
-    protected val pipelines = pipeline.buildPipelines(
-      context = PipelineContext(handle, context),
+    val pipelines = pipeline.buildPipelines(
+      context = createPipelineContext,
       commandPL = baseCommandPipeline,
       eventPL = baseEventPipeline
     )
 
-    protected def baseCommandPipeline: Pipeline[Command] = {
+    def createPipelineContext: PipelineContext = PipelineContext(handle, context)
+
+    def baseCommandPipeline: Pipeline[Command] = {
       case IOPeer.Send(buffers, ack)          => ioBridge ! IOBridge.Send(handle, buffers, ack)
       case IOPeer.Close(reason)               => ioBridge ! IOBridge.Close(handle, reason)
       case IOPeer.StopReading                 => ioBridge ! IOBridge.StopReading(handle)
@@ -53,7 +58,7 @@ trait ConnectionActors extends IOPeer { ioPeer =>
       case cmd => log.warning("commandPipeline: dropped {}", cmd)
     }
 
-    protected def baseEventPipeline: Pipeline[Event] = {
+    def baseEventPipeline: Pipeline[Event] = {
       case x: IOPeer.Closed =>
         log.debug("Stopping connection actor, connection was closed due to {}", x.reason)
         context.stop(self)
@@ -62,7 +67,7 @@ trait ConnectionActors extends IOPeer { ioPeer =>
       case ev => log.warning("eventPipeline: dropped {}", ev)
     }
 
-    protected def receive = {
+    def receive = {
       case x: Command => pipelines.commandPipeline(x)
       case x: Event => pipelines.eventPipeline(x)
       case Status.Failure(x: CommandException) => pipelines.eventPipeline(x)

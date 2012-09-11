@@ -34,8 +34,8 @@ class IOClient(val ioBridge: IOBridge) extends IOPeer {
     case cmd: Connect =>
       ioBridge.tell(cmd, Reply.withContext(sender))
 
-    case Reply(IOBridge.Connected(key, address), commander: ActorRef) =>
-      val handle = createConnectionHandle(key, address, commander)
+    case Reply(IOBridge.Connected(key, remoteAddress, localAddress, tag), commander: ActorRef) =>
+      val handle = createConnectionHandle(key, remoteAddress, localAddress, commander, tag)
       ioBridge ! IOBridge.Register(handle)
       commander ! Connected(handle)
 
@@ -43,8 +43,8 @@ class IOClient(val ioBridge: IOBridge) extends IOPeer {
       // inform the original connection commander of the closing
       x.handle.commander ! x
 
-    case Reply(Status.Failure(CommandException(Connect(address, _), msg, cause)), originalSender: ActorRef) =>
-      originalSender ! Status.Failure(IOClientException("Couldn't connect to " + address, cause))
+    case Reply(Status.Failure(CommandException(Connect(remoteAddress, _, _), msg, cause)), commander: ActorRef) =>
+      commander ! Status.Failure(IOClientException("Couldn't connect to " + remoteAddress, cause))
   }
 }
 
