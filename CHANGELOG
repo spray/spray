@@ -12,6 +12,7 @@ Version 1.0-M3 (2012-xx-xx)
 - Marshalling and Unmarshalling infrastructure completely redone
 - !Directive is gone
 - 'httpBasic' => BasicAuth
+- dependent-method-types now required compiler setting
 - ...
 
 

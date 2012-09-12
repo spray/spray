@@ -1,4 +1,0 @@
-Organisations using spray
-=========================
-
-(coming)

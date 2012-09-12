@@ -30,7 +30,7 @@ sealed trait ContentNode {
   def isLast = parent.children.last == this
   def isLeaf = children.isEmpty
   def level: Int = if (isRoot) 0 else parent.level + 1
-  def absoluteUri = if (uri.startsWith("http://") || uri.startsWith("/")) uri else "/" + uri
+  def absoluteUri = if (uri.startsWith("http") || uri.startsWith("/")) uri else "/" + uri
   def isDescendantOf(node: ContentNode): Boolean = node == this || !isRoot && parent.isDescendantOf(node)
 
   def find(uri: String): Option[ContentNode] = {

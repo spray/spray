@@ -12,5 +12,6 @@ Netty_
   Netty is an excellent choice if you need to build asynchronous event-driven network applications with Java.
   *spray* adopted Nettys upstream/downstream pipelining approach for its :ref:`spray-io` module.
 
+
 .. _BlueEyes: https://github.com/jdegoes/blueeyes
 .. _Netty: https://www.jboss.org/netty/

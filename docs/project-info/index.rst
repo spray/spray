@@ -1,17 +1,16 @@
 Project Info
 ============
 
-dfsgdfsgsdg
-
 .. toctree::
    :maxdepth: 1
 
-   mailing-list
-   building-spray
+   current-versions
+   maven-repository
    issue-tracking
+   building-spray
    patch-policy
    changelog
-   license
    credits
-   organisations-using-spray
+   references
    sponsors
+   license

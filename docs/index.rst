@@ -3,4 +3,4 @@
    introduction
    documentation/index
    project-info/index
-   support
+   contact

@@ -19,6 +19,7 @@ package cc.spray.site
 import akka.actor.Actor
 import cc.spray.httpx.encoding.Gzip
 import cc.spray.httpx.TwirlSupport._
+import cc.spray.http.StatusCodes
 import cc.spray.routing._
 import html._
 
@@ -49,7 +50,7 @@ class SiteServiceActor extends Actor with HttpService {
             complete(render(docPath))
           }
         } ~
-        complete(page(error404())) // fallback response is 404
+        complete(StatusCodes.NotFound, page(error404())) // fallback response is 404
       }
     }
   }

@@ -16,6 +16,24 @@ be put into the cache, which all later requests "hook into". As soon as the firs
 ones complete as well. This minimizes processing time and server load for all requests.
 
 
+Dependencies
+------------
+
+Apart from the Scala library (see :ref:`current-versions` chapter) *spray-caching* depends on
+
+- Akka-Actor (with 'provided' scope, i.e. you need to pull it in yourself)
+- `concurrentlinkedhashmap 1.3.1`__
+- :ref:`spray-util`
+
+__ http://code.google.com/p/concurrentlinkedhashmap/
+
+
+Installation
+------------
+
+The :ref:`maven-repo` chapter contains all the info about how to pull *spray-caching* into your classpath.
+
+
 The `Cache` Interface
 ---------------------
 

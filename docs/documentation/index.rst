@@ -14,3 +14,4 @@ sdfgsdfgs
    spray-routing/index
    spray-servlet/index
    spray-testkit/index
+   spray-util/index

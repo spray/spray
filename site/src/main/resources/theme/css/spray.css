@@ -1,7 +1,23 @@
 body, p { font-size: 14px; }
 
-footer .sm-icon { float: right; }
+.navbar .nav { margin-top: 60px; }
+@media (min-width: 768px) and (max-width: 979px) {
+    .navbar .nav { margin-top: 55px; }
+}
+@media (max-width: 767px) {
+    .navbar .brand {
+        background: url(/img/logo-small.png) no-repeat;
+        background-position-x: 18px;
+    }
+}
+
+header .smedia { top: 20px; }
+
+footer .poweredBy { text-align: right; font-size: 12px; color: #bbb; }
+.footerLower .copyright { font-size: 12px; color: #bbb; margin: 0; }
 footer { margin-top: 45px; }
+footer .footNav { text-align: center; }
+.footerLower .footNav a, .footerLower .footNav span { float: none; }
 
 .page-home .brand { opacity: 0.2; }
 
@@ -23,7 +39,7 @@ footer { margin-top: 45px; }
 .nav-list > li > a { padding-left: 35px; text-indent: -20px; }
 
 
-.section h1, .section h2, .section h3, .section p, .section li, .section dt, .section dd {
+.section h1, .section h2, .section h3, .section p, .section li, .section dt, .section dd, .section table {
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
     color: #515161;
     text-rendering: optimizelegibility;
@@ -52,29 +68,15 @@ footer { margin-top: 45px; }
     font-weight: bold;
 }
 
-.section p {
-    line-height: 20px;
-    margin: 0 0 10px;
-}
-
-.section li {
-    line-height: 20px;
-    margin: 0 0 10px;
-}
-
-.section dt {
-    line-height: 20px;
-}
-
-.section dd {
-    line-height: 20px;
-    margin-left: 10px;
-    margin-bottom: 10px;
-}
-
-.section img {
-    margin: 1em 0;
-}
+.section p, .section table { line-height: 20px; margin: 0 0 10px; }
+.section li { line-height: 20px; margin: 0 0 10px; }
+.section dt { line-height: 20px; }
+.section dd { line-height: 20px; margin-left: 10px; margin-bottom: 10px; }
+.section img { margin: 1em 0; }
+.section table.field-list { text-align: left; }
+.section th.field-name { padding-right: 5px; }
+.section .toctree-wrapper li { margin: 0; }
+#changelog li { margin: 0; }
 
 tt.literal {
     padding: 1px 2px;
@@ -100,7 +102,7 @@ tt.literal {
     color: #C09853;
 }
 
-.admonition-title { font-weight: bold; }
+.section .admonition-title { font-weight: bold; margin: 0; }
 
 .note {
     background-color: #D9EDF7;
