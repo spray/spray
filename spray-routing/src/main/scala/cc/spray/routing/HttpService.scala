@@ -44,9 +44,16 @@ trait HttpService extends Directives {
 
   /**
    * Supplies the actor behavior for executing the given route.
+   *
+   * Note that the route parameter is call-by-name to alleviate initialization order issues when
+   * mixing into an Actor.
    */
-  def runRoute(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext): Actor.Receive = {
-    val sealedRoute = sealRoute(route)
+  def runRoute(route: => Route)
+              (implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext): Actor.Receive = {
+    // we don't use a lazy val for the 'sealedRoute' member here, since we can be sure to be running in an Actor
+    // (we require an implicit ActorContext) and can therefore avoid the "lazy val"-synchronization
+    var sr: Route = null
+    def sealedRoute: Route = { if (sr == null) sr = sealRoute(route); sr }
     def contextFor(req: HttpRequest) = RequestContext(req, ac.sender, req.path).withDefaultSender(ac.self)
 
     {
