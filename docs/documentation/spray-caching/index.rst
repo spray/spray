@@ -62,8 +62,8 @@ as is the case within an ``Actor`` implementation. Otherwise you need to bring a
 Example
 -------
 
-.. includecode:: ../code/docs/caching/CacheExamplesSpec.scala
-   :include: imports1,simple-caching-example
+.. includecode:: ../code/docs/CachingExamplesSpec.scala
+   :example: example-1
 
 
 Cache Implementations

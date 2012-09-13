@@ -38,6 +38,7 @@ footer .footNav { text-align: center; }
 .nav-list > .active > a > i { opacity: 1; }
 .nav-list > li > a { padding-left: 35px; text-indent: -20px; }
 
+.tooltip { z-index: 1035; }
 
 .section h1, .section h2, .section h3, .section p, .section li, .section dt, .section dd, .section table {
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
@@ -94,18 +95,20 @@ tt.literal {
     padding: 8px 35px 8px 14px;
     margin-bottom: 18px;
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
-    background-color: #FCF8E3;
-    border: 1px solid #FBEED5;
+    border: 1px solid black;
     -webkit-border-radius: 4px;
     -moz-border-radius: 4px;
     border-radius: 4px;
     color: #C09853;
 }
 
-.section .admonition-title { font-weight: bold; margin: 0; }
+.admonition tt.literal { background: none; border-color: #BBB; }
 
-.note {
-    background-color: #D9EDF7;
-    border-color: #BCE8F1;
-    color: #3A87AD;
-}
+.admonition .admonition-title { font-weight: bold; margin: 0; }
+.admonition.note { background-color: #D9EDF7; border-color: #BCE8F1; }
+.admonition.note .admonition-title { color: #3A87AD; }
+.admonition.caution { background-color: #F2DEDE; border-color: #EED3D7; }
+.admonition.caution .admonition-title { color: #B94A48; }
+.admonition.admonition-side-note { background-color: #DFF0D8; border-color: #D6E9C6; }
+.admonition.admonition-side-note .admonition-title { color: #468847; }
+

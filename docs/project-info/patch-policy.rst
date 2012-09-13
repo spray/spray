@@ -13,7 +13,7 @@ Pull Requests
 
 If you'd like to submit a code contribution please fork the `spray github repository`_ and `send us pull request`_
 against the ``master`` branch (or the respective release branch, depending on what version your patch is targeting).
-Be prepared that we might ask you to go through some iterations of discussion and refinements before merging.
+Please keep in mind that we might ask you to go through some iterations of discussion and refinements before merging.
 
 
 .. _spray github repository: https://github.com/spray/spray/

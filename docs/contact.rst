@@ -6,7 +6,7 @@ Contact
 Mailing List
 ------------
 
-In most cases the active and friendly `spray mailing list`_ is likely the best place for your needs with regard to
+In most cases the active and friendly `spray mailing list`_ is probably the best place for your needs with regard to
 support, feedback and general discussion.
 
 .. note:: Your first post after signup is going to be moderated (for spam protection), but we'll immediately

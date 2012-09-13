@@ -20,7 +20,7 @@ import akka.actor._
 
 /**
  * An ActorRef which
- * - offers the ability to hook caller-side logic into a `tell`
+ * - offers the ability to hook caller-side logic into the reply message path
  * - is never registered anywhere, i.e. can be GCed as soon the receiver drops it or is GCed itself
  *
  * CAUTION: This ActorRef is _not_ addressable from a non-local JVM and it also breaks some otherwise

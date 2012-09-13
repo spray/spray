@@ -1,7 +1,7 @@
 Documentation
 =============
 
-sdfgsdfgs
+This is the index of all documentation chapters for the different modules of the *spray* suite:
 
 .. toctree::
 

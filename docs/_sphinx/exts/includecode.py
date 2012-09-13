@@ -15,17 +15,7 @@ class IncludeCode(Directive):
     optional_arguments = 0
     final_argument_whitespace = False
     option_spec = {
-        'section':      directives.unchanged_required,
-        'comment':      directives.unchanged_required,
-        'marker':       directives.unchanged_required,
-        'include':      directives.unchanged_required,
-        'exclude':      directives.unchanged_required,
-        'hideexcludes': directives.flag,
-        'linenos':      directives.flag,
-        'language':     directives.unchanged_required,
-        'encoding':     directives.encoding,
-        'prepend':      directives.unchanged_required,
-        'append':       directives.unchanged_required,
+        'example':      directives.unchanged_required
     }
 
     def run(self):
@@ -67,70 +57,22 @@ class IncludeCode(Directive):
                 'be wrong, try giving an :encoding: option' %
                 (encoding, filename))]
 
-        comment = self.options.get('comment', '//')
-        marker = self.options.get('marker', comment + '#')
-        lenm = len(marker)
-        if not section:
-            section = self.options.get('section')
-        include_sections = self.options.get('include', '')
-        exclude_sections = self.options.get('exclude', '')
-        include = set(include_sections.split(',')) if include_sections else set()
-        exclude = set(exclude_sections.split(',')) if exclude_sections else set()
-        hideexcludes = 'hideexcludes' in self.options
-        if section:
-            include |= set([section])
-        within = set()
+        example = self.options.get('example')
+        current_examples = ""
         res = []
-        excluding = False
         for line in lines:
-            index = line.find(marker)
-            if index >= 0:
-                section_name = line[index+lenm:].strip()
-                if section_name in within:
-                    within ^= set([section_name])
-                    if excluding and not (exclude & within):
-                        excluding = False
-                else:
-                    within |= set([section_name])
-                    if not excluding and (exclude & within):
-                        excluding = True
-                        if not hideexcludes:
-                            res.append(' ' * index + comment + ' ' + section_name.replace('-', ' ') + ' ...\n')
-            elif not (exclude & within) and (not include or (include & within)):
-                res.append(line)
-        lines = res
+            comment = line.split("//", 1)[1] if line.find("//") > 0 else ""
+            if len(line) > 2 and line[2] == '"':
+                current_examples = line[2:]
+            elif len(line) > 2 and line[2] == '}':
+                current_examples = ""
+            elif current_examples.find(example) >= 0 and comment.find("hide") == -1:
+                res.append(line[4:].rstrip() + '\n')
+            elif comment.find(example) >= 0:
+                res.append(line.split("//", 1)[0].strip() + '\n')
 
-        def countwhile(predicate, iterable):
-            count = 0
-            for x in iterable:
-                if predicate(x):
-                    count += 1
-                else:
-                    return count
-
-        nonempty = filter(lambda l: l.strip(), lines)
-        tabcounts = map(lambda l: countwhile(lambda c: c == ' ', l), nonempty)
-        tabshift = min(tabcounts) if tabcounts else 0
-
-        if tabshift > 0:
-            lines = map(lambda l: l[tabshift:] if len(l) > tabshift else l, lines)
-
-        prepend = self.options.get('prepend')
-        append  = self.options.get('append')
-        if prepend:
-           lines.insert(0, prepend + '\n')
-        if append:
-           lines.append(append + '\n')
-
-        text = ''.join(lines)
+        text = ''.join(res)
         retnode = nodes.literal_block(text, text, source=fn)
-        retnode.line = 1
-        retnode.attributes['line_number'] = self.lineno
-        language = self.options.get('language')
-        if language:
-            retnode['language'] = language
-        if 'linenos' in self.options:
-            retnode['linenos'] = True
         document.settings.env.note_dependency(rel_fn)
         return [retnode]
 
