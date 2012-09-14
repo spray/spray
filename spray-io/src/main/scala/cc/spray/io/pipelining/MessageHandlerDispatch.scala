@@ -17,7 +17,7 @@
 package cc.spray.io
 package pipelining
 
-import akka.actor.{ActorRef, Props}
+import akka.actor.ActorRef
 
 
 trait MessageHandlerDispatch {
@@ -27,14 +27,12 @@ trait MessageHandlerDispatch {
     messageHandler match {
       case SingletonHandler(handler) => () => handler
 
-      case PerConnectionHandler(handlerPropsCreator) =>
-        val props = handlerPropsCreator(context.handle)
-        val handler = context.connectionActorContext.actorOf(props)
+      case PerConnectionHandler(handlerCreator) =>
+        val handler = handlerCreator(context)
         () => handler
 
-      case PerMessageHandler(handlerPropsCreator) => () =>
-        val props = handlerPropsCreator(context.handle)
-        context.connectionActorContext.actorOf(props)
+      case PerMessageHandler(handlerCreator) =>
+        () => handlerCreator(context)
     }
   }
 
@@ -43,6 +41,6 @@ trait MessageHandlerDispatch {
 object MessageHandlerDispatch {
   sealed trait MessageHandler
   case class SingletonHandler(handler: ActorRef) extends MessageHandler
-  case class PerConnectionHandler(handlerPropsCreator: Handle => Props) extends MessageHandler
-  case class PerMessageHandler(handlerPropsCreator: Handle => Props) extends MessageHandler
+  case class PerConnectionHandler(handlerCreator: PipelineContext => ActorRef) extends MessageHandler
+  case class PerMessageHandler(handlerCreator: PipelineContext => ActorRef) extends MessageHandler
 }
