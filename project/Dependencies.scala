@@ -25,7 +25,7 @@ object Dependencies {
   val servlet30     = "org.eclipse.jetty.orbit"                 %   "javax.servlet"               % "3.0.0.v201112011016" artifacts Artifact("javax.servlet", "jar", "jar")
   val liftJson      = "net.liftweb"                             %   "lift-json_2.9.1"             % "2.4"
   val logback       = "ch.qos.logback"                          %   "logback-classic"             % "1.0.0"
-  val mimepull      = "org.jvnet"                               %   "mimepull"                    % "1.6"
+  val mimepull      = "org.jvnet.mimepull"                      %   "mimepull"                    % "1.8"
   val parboiled     = "org.parboiled"                           %   "parboiled-scala"             % "1.0.2"
   val pegdown       = "org.pegdown"                             %   "pegdown"                     % "1.1.0"
   val scalate       = "org.fusesource.scalate"                  %   "scalate-core"                % "1.5.3"
