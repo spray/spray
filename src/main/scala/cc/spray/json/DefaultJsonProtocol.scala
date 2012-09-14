@@ -17,20 +17,6 @@
 
 package cc.spray.json
 
-/**
-  * Provides all the predefined JsonFormats.
- */
+@deprecated("DefaultJsonProtocol isn't needed any more. To get access to `jsonFormat` etc. " +
+            "extend or import `ProductFormats`", "2.0.0")
 trait DefaultJsonProtocol
-        extends BasicFormats
-        with StandardFormats
-        with CollectionFormats
-        with ProductFormats
-        with AdditionalFormats {
-
-  // enables automatic from JSON conversion in for comprehensions
-  protected implicit def pimpFuncWithFromJsonConversion[A :JsonFormat, B](f: A => B): JsValue => B =
-    json => f(json.as[A])
-
-}
-
-object DefaultJsonProtocol extends DefaultJsonProtocol

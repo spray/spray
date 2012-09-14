@@ -18,7 +18,7 @@ package cc.spray.json
 
 import org.specs2.mutable._
 
-class StandardFormatsSpec extends Specification with DefaultJsonProtocol {
+class StandardFormatsSpec extends Specification {
 
   "The optionFormat" should {
     "convert None to JsNull" in {

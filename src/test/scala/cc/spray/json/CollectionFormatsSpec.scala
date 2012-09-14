@@ -19,7 +19,7 @@ package cc.spray.json
 import org.specs2.mutable._
 import java.util.Arrays
 
-class CollectionFormatsSpec extends Specification with DefaultJsonProtocol {
+class CollectionFormatsSpec extends Specification {
 
   "The listFormat" should {
     val list = List(1, 2, 3)

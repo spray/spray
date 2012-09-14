@@ -30,6 +30,10 @@ package object json {
 
   implicit def pimpAny[T](any: T) = new PimpedAny(any)
   implicit def pimpString(string: String) = new PimpedString(string)
+
+  // really?
+  implicit def pimpFuncWithFromJsonConversion[A :JsonFormat, B](f: A => B): JsValue => B =
+    json => f(json.as[A])
 }
 
 package json {

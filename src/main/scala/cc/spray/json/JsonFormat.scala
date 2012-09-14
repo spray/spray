@@ -31,6 +31,7 @@ object JsonReader {
   implicit def func2Reader[T](f: JsValue => T): JsonReader[T] = new JsonReader[T] {
     def read(json: JsValue) = Validated(f(json))
   }
+  implicit def jsonReaderFromFormat[T](implicit format: JsonFormat[T]): JsonReader[T] = format
 }
 
 /**
@@ -45,12 +46,17 @@ object JsonWriter {
   implicit def func2Writer[T](f: T => JsValue): JsonWriter[T] = new JsonWriter[T] {
     def write(obj: T) = f(obj)
   }
+  implicit def jsonWriterFromFormat[T](implicit format: JsonFormat[T]): JsonWriter[T] = format
 }
 
 /**
   * Provides the JSON deserialization and serialization for type T.
  */
 trait JsonFormat[T] extends JsonReader[T] with JsonWriter[T]
+object JsonFormat
+  extends BasicFormats
+  with    CollectionFormats
+  with    StandardFormats
 
 /**
  * A special JsonReader capable of reading a legal JSON root object, i.e. either a JSON array or a JSON object.

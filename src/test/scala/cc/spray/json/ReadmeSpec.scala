@@ -22,8 +22,6 @@ class ReadmeSpec extends Specification {
 
   "The Usage snippets" should {
     "behave as expected" in {
-      import DefaultJsonProtocol._
-
       val source = """{ "some": "JSON source" }"""
       val jsonAst = source.asJson
       jsonAst mustEqual JsObject("some" -> JsString("JSON source"))
@@ -44,7 +42,7 @@ class ReadmeSpec extends Specification {
 
   "The case class example" should {
     "behave as expected" in {
-      object MyJsonProtocol extends DefaultJsonProtocol {
+      object MyJsonProtocol extends ProductFormats {
         implicit val colorFormat = jsonFormat4(Color)
       }
       import MyJsonProtocol._
@@ -54,7 +52,7 @@ class ReadmeSpec extends Specification {
 
   "The non case class (array) example" should {
     "behave as expected" in {
-      object MyJsonProtocol extends DefaultJsonProtocol {
+      object MyJsonProtocol {
         implicit object ColorJsonFormat extends JsonFormat[Color] {
           def write(c: Color) =
             JsArray(JsString(c.name), JsNumber(c.red), JsNumber(c.green), JsNumber(c.blue))
@@ -74,7 +72,7 @@ class ReadmeSpec extends Specification {
 
   "The non case class (object) example" should {
       "behave as expected" in {
-        object MyJsonProtocol extends DefaultJsonProtocol {
+        object MyJsonProtocol {
           implicit object ColorJsonFormat extends JsonFormat[Color] {
             def write(c: Color) = JsObject(
               "name" -> JsString(c.name),

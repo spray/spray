@@ -18,7 +18,7 @@ package cc.spray.json
 
 import org.specs2.mutable._
 
-class BasicFormatsSpec extends Specification with DefaultJsonProtocol {
+class BasicFormatsSpec extends Specification {
 
   "The IntJsonFormat" should {
     "convert an Int to a JsNumber" in {

@@ -21,12 +21,6 @@ package cc.spray.json
   * Provides additional JsonFormats and helpers.
  */
 trait AdditionalFormats {
-
-  implicit lazy val JsValueFormat: JsonFormat[JsValue] = new JsonFormat[JsValue] {
-    def write(value: JsValue) = value
-    def read(value: JsValue) = Success(value)
-  }
-
   /**
    * Constructs a JsonFormat from its two parts, JsonReader and JsonWriter.
    */

@@ -23,13 +23,12 @@ class ProductFormatsSpec extends Specification {
   case class Test2(a: Int, b: Option[Double])
   case class Test3[A, B](as: List[A], bs: List[B])
 
-  trait TestProtocol {
-    this: DefaultJsonProtocol =>
+  trait TestProtocol extends ProductFormats {
     implicit val test2Format = jsonFormat2(Test2)
     implicit def test3Format[A: JsonFormat, B: JsonFormat] = jsonFormat2(Test3.apply[A, B])
   }
-  object TestProtocol1 extends DefaultJsonProtocol with TestProtocol
-  object TestProtocol2 extends DefaultJsonProtocol with TestProtocol with NullOptions
+  object TestProtocol1 extends TestProtocol
+  object TestProtocol2 extends TestProtocol with NullOptions
 
   "A JsonFormat created with `jsonFormat`, for a case class with 2 elements," should {
     import TestProtocol1._

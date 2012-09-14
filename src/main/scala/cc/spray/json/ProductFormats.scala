@@ -543,6 +543,8 @@ trait ProductFormats {
   }
 }
 
+object ProductFormats extends ProductFormats
+
 /**
  * This trait supplies an alternative rendering mode for optional case class members.
  * Normally optional members that are undefined (`None`) are not rendered at all.
@@ -551,8 +553,6 @@ trait ProductFormats {
  * optional members as `None`.)
  */
 trait NullOptions extends ProductFormats {
-  this: StandardFormats =>
-
   override protected def productElement2Field[T](fieldName: String, p: Product, ix: Int, rest: List[JsField])
                                                 (implicit writer: JsonWriter[T]) = {
     val value = p.productElement(ix).asInstanceOf[T]

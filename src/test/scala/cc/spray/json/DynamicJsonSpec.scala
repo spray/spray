@@ -6,7 +6,7 @@ import org.specs2.Specification
  * Based on the tests provided with LiquidJson:
  * https://github.com/mighdoll/liquidJson
  */
-class DynamicJsonSpec extends Specification with DefaultJsonProtocol {
+class DynamicJsonSpec extends Specification {
   val arrayJson   = """ { "array": [3,1,4,5] } """.asJson
   val numberJson  = """ { "number": 9, "float": 1.5 } """.asJson
   val stringJson  = """ { "name": "lee", "surname": "mighty" } """.asJson

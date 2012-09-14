@@ -22,13 +22,12 @@ class AdditionalFormatsSpec extends Specification {
 
   case class Foo(id: Long, name: String, foos: Option[List[Foo]] = None)
 
-  object FooProtocol extends DefaultJsonProtocol {
-    implicit val FooProtocol: JsonFormat[Foo] = lazyFormat(jsonFormat(Foo, "id", "name", "foos"))
+  object Foo extends AdditionalFormats with ProductFormats {
+    implicit val fooFormat: JsonFormat[Foo] = lazyFormat(jsonFormat(Foo.apply, "id", "name", "foos"))
   }
 
   "The lazyFormat wrapper" should {
     "enable recursive format definitions" in {
-      import FooProtocol._
       Foo(1, "a", Some(Foo(2, "b", Some(Foo(3, "c") :: Nil)) :: Foo(4, "d") :: Nil)).toJson.toString mustEqual
         """{"id":1,"name":"a","foos":[{"id":2,"name":"b","foos":[{"id":3,"name":"c"}]},{"id":4,"name":"d"}]}"""
     }
