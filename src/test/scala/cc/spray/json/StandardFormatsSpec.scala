@@ -26,13 +26,13 @@ class StandardFormatsSpec extends Specification with DefaultJsonProtocol {
     }
     "convert JsNull to None" in {
       JsNull.as[Option[Int]] mustEqual None
-    } 
+    }
     "convert Some(Hello) to JsString(Hello)" in {
       Some("Hello").asInstanceOf[Option[String]].toJson mustEqual JsString("Hello")
     }
     "convert JsString(Hello) to Some(Hello)" in {
       JsString("Hello").as[Option[String]] mustEqual Some("Hello")
-    } 
+    }
   }
 
   "The eitherFormat" should {
@@ -52,7 +52,7 @@ class StandardFormatsSpec extends Specification with DefaultJsonProtocol {
       JsString("Hello").as[Either[Int, String]] mustEqual Right("Hello")
     }
   }
-  
+
   "The tuple1Format" should {
     "convert (42) to a JsNumber" in {
       Tuple1(42).toJson mustEqual JsNumber(42)
@@ -61,7 +61,7 @@ class StandardFormatsSpec extends Specification with DefaultJsonProtocol {
       JsNumber(42).as[Tuple1[Int]] mustEqual Tuple1(42)
     }
   }
-  
+
   "The tuple2Format" should {
     val json = JsArray(JsNumber(42), JsNumber(4.2))
     "convert (42, 4.2) to a JsArray" in {
@@ -71,5 +71,5 @@ class StandardFormatsSpec extends Specification with DefaultJsonProtocol {
       json.as[(Int, Double)] mustEqual (42, 4.2)
     }
   }
-  
+
 }

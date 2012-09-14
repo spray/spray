@@ -26,8 +26,8 @@ package object json {
     throw new SerializationException(msg)
 
   def jsonReader[T](implicit reader: JsonReader[T]) = reader
-  def jsonWriter[T](implicit writer: JsonWriter[T]) = writer 
-  
+  def jsonWriter[T](implicit writer: JsonWriter[T]) = writer
+
   implicit def pimpAny[T](any: T) = new PimpedAny(any)
   implicit def pimpString(string: String) = new PimpedString(string)
 }
