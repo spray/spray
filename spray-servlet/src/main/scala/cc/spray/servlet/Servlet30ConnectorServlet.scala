@@ -179,7 +179,13 @@ class Servlet30ConnectorServlet extends HttpServlet {
     try {
       val resp = response.message.asInstanceOf[HttpResponse]
       hsResponse.setStatus(resp.status.value)
-      resp.headers.foreach(header => hsResponse.addHeader(header.name, header.value))
+      resp.headers.foreach { header =>
+        header.lowercaseName match {
+          case "content-type"   => // we never render these headers here, because their production is the
+          case "content-length" => // responsibility of the spray-servlet layer, not the user
+          case _ => hsResponse.addHeader(header.name, header.value)
+        }
+      }
       resp.entity.foreach { (contentType, buffer) =>
         hsResponse.addHeader("Content-Type", contentType.value)
         if (response.isInstanceOf[HttpResponse]) hsResponse.addHeader("Content-Length", buffer.length.toString)

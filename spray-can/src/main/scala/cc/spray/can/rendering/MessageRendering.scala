@@ -42,8 +42,16 @@ private[rendering] trait MessageRendering {
           else None
         else connectionHeaderValue
       }
-      // we never render the Content-Type header here (since its part of the HttpEntity)
-      if (!header.name.equalsIgnoreCase("Content-Type")) appendHeader(header.name, header.value, bb)
+      header.lowercaseName match {
+        case "content-type"      => // we never render these headers here,
+        case "content-length"    => // because their production is the
+        case "transfer-encoding" => // responsibility of the spray-can layer,
+        case "host"              => // not the user
+        case "date"              =>
+        case "server"            =>
+        case "user-agent"        =>
+        case _ => appendHeader(header.name, header.value, bb)
+      }
       appendHeaders(httpHeaders.tail, bb, newConnectionHeaderValue)
     }
   }
