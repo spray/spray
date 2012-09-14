@@ -18,6 +18,7 @@ package cc.spray.can.server
 
 import com.typesafe.config.ConfigFactory
 import org.specs2.mutable.Specification
+import akka.actor.ActorSystem
 import cc.spray.can.rendering.HttpResponsePartRenderingContext
 import cc.spray.io.{CleanClose, IOPeer, Command}
 import cc.spray.can.HttpPipelineStageSpec
@@ -25,24 +26,29 @@ import cc.spray.http._
 
 
 class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
+  val system = ActorSystem()
 
   "The ResponseRendering PipelineStage" should {
     "be transparent to unrelated commands" in {
-      val command = new Command {}
-      fixture(command) must produce(commands = Seq(command))
+      val cmd = new Command {}
+      fixture(cmd).checkResult {
+        command === cmd
+      }
     }
     "translate a simple HttpResponsePartRenderingContext into the corresponding Send command" in {
       fixture(
         HttpResponsePartRenderingContext(HttpResponse(entity = "Some Message"))
-      ) must produce(commands = Seq(SendString(
-        """|HTTP/1.1 200 OK
-           |Server: spray/1.0
-           |Date: XXXX
-           |Content-Type: text/plain
-           |Content-Length: 12
-           |
-           |Some Message"""
-      )))
+      ).checkResult {
+        command === SendString(
+          """|HTTP/1.1 200 OK
+            |Server: spray/1.0
+            |Date: XXXX
+            |Content-Type: text/plain
+            |Content-Length: 12
+            |
+            |Some Message"""
+        )
+      }
     }
     "append a Close command to the Send if the connection is to be closed" in {
       fixture(
@@ -51,8 +57,8 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
           requestMethod = HttpMethods.HEAD,
           requestConnectionHeader = Some("close")
         )
-      ) must produce(commands = Seq(
-        SendString(
+      ).checkResult {
+        commands(0) === SendString {
           """|HTTP/1.1 200 OK
              |Connection: close
              |Server: spray/1.0
@@ -61,15 +67,13 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
              |Content-Length: 12
              |
              |"""
-        ),
-        IOPeer.Close(CleanClose)
-      ))
+        }
+        commands(1) === IOPeer.Close(CleanClose)
+      }
     }
   }
 
-  step {
-    cleanup()
-  }
+  step(system.shutdown())
 
   /////////////////////////// SUPPORT ////////////////////////////////
 

@@ -17,17 +17,20 @@
 package cc.spray.io.pipelining
 
 import collection.mutable.ListBuffer
-import cc.spray.io._
+import util.DynamicVariable
 import java.nio.ByteBuffer
-import akka.util.Duration
 import java.net.InetSocketAddress
+import akka.util.Duration
 import akka.actor.{ActorRef, ActorContext, ActorSystem}
+import akka.spray.UnregisteredActorRef
+import cc.spray.io._
+import cc.spray.util._
 
 
 trait PipelineStageTest {
-  implicit val system = ActorSystem()
+  implicit def system: ActorSystem
 
-  val dummyHandle = new Handle {
+  lazy val testHandle = new Handle {
     def key = throw new UnsupportedOperationException
     def handler = throw new UnsupportedOperationException
     val remoteAddress = new InetSocketAddress("example.com", 8080)
@@ -36,12 +39,23 @@ trait PipelineStageTest {
     def tag = ()
   }
 
+  lazy val sender1 = unregisteredActorRef
+  lazy val sender2 = unregisteredActorRef
+  lazy val sender3 = unregisteredActorRef
+  lazy val sender4 = unregisteredActorRef
+
+  def unregisteredActorRef = new UnregisteredActorRef(system) {
+    protected def handle(message: Any, sender: ActorRef) {
+      throw new UnsupportedOperationException
+    }
+  }
+
   class Fixture(stage: PipelineStage) {
-    private var msgSender = system.deadLetters
+    private var msgSender: ActorRef = null
     val context = new PipelineContext {
-      def handle = dummyHandle
+      def handle = testHandle
       def connectionActorContext = getConnectionActorContext
-      override def sender = msgSender
+      override def sender = if (msgSender != null) msgSender else sys.error("No message sender set")
     }
     def getConnectionActorContext: ActorContext = throw new UnsupportedOperationException
     def apply(cmdsAndEvents: AnyRef*) = process(new PipelineRun(stage, context), cmdsAndEvents.toList)
@@ -61,14 +75,41 @@ trait PipelineStageTest {
     def events: Seq[Event] = _events
     def clear() { _commands.clear(); _events.clear() }
     val pipelines = stage.buildPipelines(context, x => _commands += x, x => _events += x)
+    def checkResult[T](body: => T): T = dynPR.withValue(this)(body)
+  }
+
+  private val dynPR = new DynamicVariable[PipelineRun](null)
+
+  def result = {
+    if (dynPR.value == null) sys.error("This value is only available inside of a `check` construct!")
+    dynPR.value
+  }
+  def commands = result.commands.map {
+    case IOPeer.Send(bufs, _) => SendStringCommand {
+      val sb = new java.lang.StringBuilder
+      for (b <- bufs) sb.append(b.copyContent.drainToString)
+      sb.toString
+    }
+    case x => x
+  }
+  def events = result.events
+  def command: Command = {
+    val c = commands
+    if (c.size == 1) c.head else sys.error("Expected a single command but got %s (%s)".format(c.size, c))
+  }
+  def event: Event = {
+    val e = events
+    if (e.size == 1) e.head else sys.error("Expected a single event but got %s (%s)".format(e.size, e))
   }
 
   case class Message(msg: AnyRef, sender: ActorRef) extends Command
   case class Do(f: PipelineRun => Unit) extends Command
 
-  val ClearCommandAndEventCollectors = Do(_.clear())
+  implicit def pimpAnyRefWithFrom(msg: AnyRef): { def from(s: ActorRef): Command } =
+    new { def from(s: ActorRef) = Message(msg, s) }
 
-  def Received(rawMessage: String) = IOBridge.Received(dummyHandle, string2ByteBuffer(rawMessage))
+  val ClearCommandAndEventCollectors = Do(_.clear())
+  def Received(rawMessage: String) = IOBridge.Received(testHandle, string2ByteBuffer(rawMessage))
   def Send(rawMessage: String) = IOPeer.Send(string2ByteBuffer(rawMessage))
   def SendString(rawMessage: String) = SendStringCommand(rawMessage)
   def Sleep(duration: String) = Do(_ => Thread.sleep(Duration(duration).toMillis))
@@ -76,19 +117,6 @@ trait PipelineStageTest {
   case class SendStringCommand(string: String) extends Command
 
   protected def string2ByteBuffer(s: String) = ByteBuffer.wrap(s.getBytes("US-ASCII"))
-
-  def cleanup() {
-    system.shutdown()
-  }
-
-  def fixSends(commands: Seq[Command]) = commands.map {
-    case IOPeer.Send(bufs, _) => SendStringCommand {
-      val sb = new java.lang.StringBuilder
-      for (b <- bufs) while (b.remaining > 0) sb.append(b.get.toChar)
-      sb.toString
-    }
-    case x => x
-  }
 
   def fixTells(commands: Seq[Command]) = commands.map {
     case x: IOPeer.Tell => x.copy(sender = IgnoreSender)

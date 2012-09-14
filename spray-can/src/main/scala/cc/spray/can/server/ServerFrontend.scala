@@ -17,7 +17,7 @@
 package cc.spray.can.server
 
 import akka.event.LoggingAdapter
-import collection.mutable.Queue
+import collection.mutable
 import annotation.tailrec
 import akka.spray.LazyActorRef
 import akka.util.{Unsafe, Duration}
@@ -41,8 +41,8 @@ object ServerFrontend {
     new DoublePipelineStage {
       def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): Pipelines = {
         new Pipelines with MessageHandlerDispatch {
-          val openRequests = Queue.empty[RequestRecord]
-          val openSends = Queue.empty[IOServer.Tell]
+          val openRequests = mutable.Queue.empty[RequestRecord]
+          val openSends = mutable.Queue.empty[IOServer.Tell]
           val handlerCreator = messageHandlerCreator(messageHandler, context)
           var requestTimeout = settings.RequestTimeout
           var timeoutTimeout = settings.TimeoutTimeout
@@ -193,9 +193,9 @@ object ServerFrontend {
   private class RequestRecord(val request: HttpRequest, val connectionHeader: Option[String],
                               val handler: ActorRef, var timestamp: Long) {
     var receiver: ActorRef = _
-    private var responses: Queue[Command] = _
+    private var responses: mutable.Queue[Command] = _
     def enqueue(msg: Command) {
-      if (responses == null) responses = Queue(msg)
+      if (responses == null) responses = mutable.Queue(msg)
       else responses.enqueue(msg)
     }
     def hasQueuedResponses = responses != null && !responses.isEmpty

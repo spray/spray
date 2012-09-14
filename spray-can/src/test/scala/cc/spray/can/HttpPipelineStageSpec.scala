@@ -17,8 +17,7 @@
 package cc.spray.can
 
 import cc.spray.io.pipelining.PipelineStageTest
-import org.specs2.matcher.BeEqualTo
-import cc.spray.io.{IOPeer, Event, Command}
+import cc.spray.io._
 import cc.spray.util._
 import cc.spray.http._
 import HttpHeaders.RawHeader
@@ -26,24 +25,18 @@ import HttpHeaders.RawHeader
 
 trait HttpPipelineStageSpec extends PipelineStageTest {
 
-  def produce(commands: Seq[Command] = Nil,
-              events: Seq[Event] = Nil,
-              ignoreTellSender: Boolean = false) = {
-    new BeEqualTo(commands -> events) ^^ { (pr: PipelineRun) =>
-      pr.commands.map {
-        case x: IOPeer.Tell if ignoreTellSender => x.copy(sender = IgnoreSender)
-        case IOPeer.Send(bufs, _) => SendStringCommand {
-          val sb = new java.lang.StringBuilder
-          for (b <- bufs) while (b.remaining > 0) sb.append(b.get.toChar)
-          sb.toString.fastSplit('\n').map {
-            case s if s.startsWith("Date:") => "Date: XXXX\r"
-            case s => s
-          }.mkString("\n")
-        }
-        case x => x
-      } -> pr.events
+  override def commands = super.commands.map {
+    case SendStringCommand(string) => SendStringCommand {
+      string.fastSplit('\n').map {
+        case s if s.startsWith("Date:") => "Date: XXXX\r"
+        case s => s
+      }.mkString("\n")
     }
+    case x => x
   }
+
+  implicit def pimpCommandWithFrom(cmd: Command): { def asTell: IOPeer.Tell } =
+    new { def asTell = cmd.asInstanceOf[IOPeer.Tell] }
 
   def request(content: String = "") = HttpRequest().withEntity(content)
 

@@ -24,7 +24,7 @@ class PimpedByteBuffer(underlying: ByteBuffer) {
   /**
    * Converts the contents of the underlying ByteBuffer into a String using the US-ASCII charset.
    */
-  def drainToString = {
+  def drainToString: String = {
     val sb = new java.lang.StringBuilder
     while (underlying.remaining > 0) sb.append(underlying.get.toChar)
     sb.toString
@@ -33,7 +33,7 @@ class PimpedByteBuffer(underlying: ByteBuffer) {
   /**
    * Copies the current contents of the underlying buffer into a new ByteBuffer.
    */
-  def copyContent = {
+  def copyContent: ByteBuffer = {
     if (!underlying.hasArray) throw new IllegalArgumentException
     val array = new Array[Byte](underlying.remaining)
     System.arraycopy(underlying.array, underlying.position, array, 0, underlying.remaining)

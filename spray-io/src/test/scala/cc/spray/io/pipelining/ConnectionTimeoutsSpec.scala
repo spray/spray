@@ -17,47 +17,55 @@
 package cc.spray.io.pipelining
 
 import org.specs2.mutable.Specification
-import cc.spray.io.{IOPeer, IdleTimeout, Event, Command}
+import akka.actor.ActorSystem
+import cc.spray.io._
 
 
 class ConnectionTimeoutsSpec extends Specification with PipelineStageTest {
+  val system = ActorSystem()
   val fixture = new Fixture(ConnectionTimeouts(50, system.log))
 
   "The ConnectionTimeouts PipelineStage" should {
     "be transparent to unrelated commands" in {
-      val command = new Command {}
-      fixture(command).commands === Seq(command)
+      val cmd = new Command {}
+      fixture(cmd).checkResult {
+        command === cmd
+      }
     }
     "be transparent to unrelated events" in {
-      val event = new Event {}
-      fixture(event).events === Seq(event)
+      val ev = new Event {}
+      fixture(ev).checkResult {
+        event === ev
+      }
     }
     "upon a Tick, create a Close command if the idle timeout expired" in {
       fixture(
         Received("Some Message"),
         Sleep("60 ms"),
         TickGenerator.Tick
-      ).commands === Seq(IOPeer.Close(IdleTimeout))
+      ).checkResult {
+        command === IOPeer.Close(IdleTimeout)
+      }
     }
     "reset the idle timer on Received events" in {
       fixture(
-        Sleep("50 ms"),
+        Sleep("60 ms"),
         Received("Some Message"),
         TickGenerator.Tick
-      ).commands === Seq()
+      ).checkResult {
+        commands must beEmpty
+      }
     }
     "reset the idle timer on Send commands" in {
-      fixSends {
-        fixture(
-          Sleep("50 ms"),
-          Send("Some Message"),
-          TickGenerator.Tick
-        ).commands
-      } === Seq(SendString("Some Message"))
+      fixture(
+        Sleep("50 ms"),
+        Send("Some Message"),
+        TickGenerator.Tick
+      ).checkResult {
+        command === SendString("Some Message")
+      }
     }
   }
 
-  step {
-    cleanup()
-  }
+  step(system.shutdown())
 }

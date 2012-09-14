@@ -22,7 +22,7 @@ import akka.util.{Duration, Timeout}
 import com.typesafe.config.ConfigFactory
 import org.specs2.mutable.Specification
 import java.util.concurrent.atomic.AtomicInteger
-import akka.actor.{Actor, Props}
+import akka.actor.{ActorSystem, Actor, Props}
 import cc.spray.can.{HttpCommand, HttpPipelineStageSpec}
 import cc.spray.io.pipelining.MessageHandlerDispatch._
 import cc.spray.util._
@@ -32,16 +32,17 @@ import HttpHeaders.RawHeader
 
 
 class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
+  implicit val system = ActorSystem()
 
   "The HttpServer pipeline" should {
 
     "dispatch a simple HttpRequest to a singleton service actor" in {
-      singleHandlerFixture(Received(simpleRequest)) must produce(
-        commands = Seq(
-          IOServer.Tell(singletonHandler, HttpRequest(headers = List(RawHeader("host", "test.com"))), IgnoreSender)
-        ),
-        ignoreTellSender = true
-      )
+      singleHandlerFixture {
+        Received(simpleRequest)
+      }.checkResult {
+        command.asTell.receiver === singletonHandler
+        command.asTell.message === HttpRequest(headers = List(RawHeader("host", "test.com")))
+      }
     }
 
     "correctly dispatch a fragmented HttpRequest" in {
@@ -59,47 +60,47 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
              |"""
           }
         }
-      ) must produce(
-        commands = Seq(
-          IOServer.Tell(singletonHandler, HttpRequest(headers = List(RawHeader("host", "test.com"))), IgnoreSender)
-        ),
-        ignoreTellSender = true
-      )
+      ).checkResult {
+        command.asTell.receiver === singletonHandler
+        command.asTell.message === HttpRequest(headers = List(RawHeader("host", "test.com")))
+      }
     }
 
     "produce an error upon stray responses" in {
-      singleHandlerFixture(HttpCommand(HttpResponse())) must throwAn[IllegalStateException]
+      singleHandlerFixture(
+        HttpCommand(HttpResponse())
+      ) must throwAn[IllegalStateException]
     }
 
     "correctly render a matched HttpResponse" in {
       singleHandlerFixture(
         Received(simpleRequest),
-        HttpCommand(HttpResponse())
-      ) must produce(
-        commands = Seq(
-          IOServer.Tell(singletonHandler, HttpRequest(headers = List(RawHeader("host", "test.com"))), IgnoreSender),
-          SendString(simpleResponse)
-        ),
-        ignoreTellSender = true
-      )
+        HttpCommand(HttpResponse()) from sender1
+      ).checkResult {
+        commands(0).asTell.receiver === singletonHandler
+        commands(0).asTell.message === HttpRequest(headers = List(RawHeader("host", "test.com")))
+        commands(1) === SendString(simpleResponse)
+      }
     }
 
     "dispatch requests to the right service actor when using per-connection handlers" in {
       val counter = new AtomicInteger
-      testFixture(PerConnectionHandler(_ => Props(new NamedActor("actor" + counter.incrementAndGet())))).apply(
+      fixture(PerConnectionHandler(_ => Props(new NamedActor("actor" + counter.incrementAndGet())))).apply(
         Received(simpleRequest),
         Received(simpleRequest)
-      ).commands.map {
-        case IOServer.Tell(receiver, _, _) => SendString(receiver.ask('name).mapTo[String].await)
-      } === Seq(
-        SendString("actor1"),
-        SendString("actor1")
-      )
+      ).checkResult {
+        commands.map {
+          case IOServer.Tell(receiver, _, _) => SendString(receiver.ask('name).mapTo[String].await)
+        } === Seq(
+          SendString("actor1"),
+          SendString("actor1") // dispatched to the same handler, since we are testing "one connection"
+        )
+      }
     }
 
     "dispatch requests to the right service actor when using per-message handlers" in {
       val counter = new AtomicInteger
-      testFixture(PerMessageHandler(_ => Props(new NamedActor("actor" + counter.incrementAndGet())))).apply(
+      fixture(PerMessageHandler(_ => Props(new NamedActor("actor" + counter.incrementAndGet())))).apply(
         Received(simpleRequest),
         Received(simpleRequest),
         Received(chunkedRequestStart),
@@ -107,63 +108,59 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         Received(messageChunk),
         Received(chunkedMessageEnd),
         Received(chunkedRequestStart)
-      ).commands.map {
-        case IOServer.Tell(receiver, _, _) => SendString(receiver.ask('name).mapTo[String].await)
-      } === Seq(
-        SendString("actor1"),
-        SendString("actor2"),
-        SendString("actor3"),
-        SendString("actor3"),
-        SendString("actor3"),
-        SendString("actor3"),
-        SendString("actor4")
-      )
+      ).checkResult {
+        commands.map {
+          case IOServer.Tell(receiver, _, _) => SendString(receiver.ask('name).mapTo[String].await)
+        } === Seq(
+          SendString("actor1"),
+          SendString("actor2"),
+          SendString("actor3"),
+          SendString("actor3"),
+          SendString("actor3"),
+          SendString("actor3"),
+          SendString("actor4")
+        )
+      }
     }
 
     "correctly dispatch SentOk messages" in {
       "to the sender of an HttpResponse" in {
-        val actor = system.actorOf(Props(new NamedActor("someActor")))
         singleHandlerFixture(
           Received(simpleRequest),
-          Message(HttpCommand(HttpResponse()), sender = actor),
+          HttpCommand(HttpResponse()) from sender1,
           ClearCommandAndEventCollectors,
-          IOBridge.SentOk(dummyHandle)
-        ) must produce(
-          commands = Seq(
-            IOServer.Tell(actor, IOServer.SentOk(dummyHandle), IgnoreSender)
-          ),
-          ignoreTellSender = true
-        )
+          IOBridge.SentOk(testHandle)
+        ).checkResult {
+          command.asTell.receiver === sender1
+          command.asTell.message === IOServer.SentOk(testHandle)
+        }
       }
       "to the senders of a ChunkedResponseStart, MessageChunk and ChunkedMessageEnd" in {
-        val actor1 = system.actorOf(Props(new NamedActor("actor1")))
-        val actor2 = system.actorOf(Props(new NamedActor("actor2")))
-        val actor3 = system.actorOf(Props(new NamedActor("actor3")))
-        val actor4 = system.actorOf(Props(new NamedActor("actor4")))
         singleHandlerFixture(
           Received(simpleRequest),
           ClearCommandAndEventCollectors,
-          Message(HttpCommand(ChunkedResponseStart(HttpResponse())), sender = actor1),
-          IOBridge.SentOk(dummyHandle),
-          Message(HttpCommand(MessageChunk("part 1")), sender = actor2),
-          IOBridge.SentOk(dummyHandle),
-          Message(HttpCommand(MessageChunk("part 2")), sender = actor3),
-          Message(HttpCommand(ChunkedMessageEnd()), sender = actor4),
-          IOBridge.SentOk(dummyHandle),
-          IOBridge.SentOk(dummyHandle)
-        ) must produce(
-          commands = Seq(
-            SendString(chunkedResponseStart),
-            IOServer.Tell(actor1, IOServer.SentOk(dummyHandle), IgnoreSender),
-            SendString(prep("6\npart 1\n")),
-            IOServer.Tell(actor2, IOServer.SentOk(dummyHandle), IgnoreSender),
-            SendString(prep("6\npart 2\n")),
-            SendString(prep("0\n\n")),
-            IOServer.Tell(actor3, IOServer.SentOk(dummyHandle), IgnoreSender),
-            IOServer.Tell(actor4, IOServer.SentOk(dummyHandle), IgnoreSender)
-          ),
-          ignoreTellSender = true
-        )
+          HttpCommand(ChunkedResponseStart(HttpResponse())) from sender1,
+          IOBridge.SentOk(testHandle),
+          HttpCommand(MessageChunk("part 1")) from sender2,
+          IOBridge.SentOk(testHandle),
+          HttpCommand(MessageChunk("part 2")) from sender3,
+          HttpCommand(ChunkedMessageEnd()) from sender4,
+          IOBridge.SentOk(testHandle),
+          IOBridge.SentOk(testHandle)
+        ).checkResult {
+          commands(0) === SendString(chunkedResponseStart)
+          commands(1).asTell.receiver === sender1
+          commands(1).asTell.message === IOServer.SentOk(testHandle)
+          commands(2) === SendString(prep("6\npart 1\n"))
+          commands(3).asTell.receiver === sender2
+          commands(3).asTell.message === IOServer.SentOk(testHandle)
+          commands(4) === SendString(prep("6\npart 2\n"))
+          commands(5) === SendString(prep("0\n\n"))
+          commands(6).asTell.receiver === sender3
+          commands(6).asTell.message === IOServer.SentOk(testHandle)
+          commands(7).asTell.receiver === sender4
+          commands(7).asTell.message === IOServer.SentOk(testHandle)
+        }
       }
     }
 
@@ -181,26 +178,20 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
                 |bodybodybody""".format(expectValue)
             }
           },
-          HttpCommand(HttpResponse())
-        ) must produce(
-          commands = Seq(
-            SendString("HTTP/1.1 100 Continue\r\n\r\n"),
-            IOServer.Tell(
-              singletonHandler,
-              HttpRequest(
-                headers = List(
-                  RawHeader("expect", expectValue),
-                  RawHeader("content-length", "12"),
-                  RawHeader("content-type", "text/plain"),
-                  RawHeader("host", "test.com")
-                )
-              ).withEntity("bodybodybody"),
-              IgnoreSender
-            ),
-            SendString(simpleResponse)
-          ),
-          ignoreTellSender = true
-        )
+          HttpCommand(HttpResponse()) from sender1
+        ).checkResult {
+          commands(0) === SendString("HTTP/1.1 100 Continue\r\n\r\n")
+          commands(1).asTell.receiver === singletonHandler
+          commands(1).asTell.message === HttpRequest(
+            headers = List(
+              RawHeader("expect", expectValue),
+              RawHeader("content-length", "12"),
+              RawHeader("content-type", "text/plain"),
+              RawHeader("host", "test.com")
+            )
+          ).withEntity("bodybodybody")
+          commands(2) === SendString(simpleResponse)
+        }
       }
       "with a header value fully matching the spec" in example("100-continue")
       "with a header value containing illegal casing" in example("100-Continue")
@@ -216,26 +207,26 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
               |"""
           }
         },
-        HttpCommand(HttpResponse(entity = "1234567"))
-      ) must produce(
-        commands = Seq(
-          IOServer.Tell(singletonHandler, HttpRequest(headers = List(RawHeader("host", "test.com"))), IgnoreSender),
-          SendString {
-            prep {
-            """|HTTP/1.1 200 OK
-               |Server: spray/1.0
-               |Date: XXXX
-               |Content-Type: text/plain
-               |Content-Length: 7
-               |
-               |"""
-            }
+        HttpCommand(HttpResponse(entity = "1234567")) from sender1
+      ).checkResult {
+        commands(0).asTell.receiver === singletonHandler
+        commands(0).asTell.message === HttpRequest(headers = List(RawHeader("host", "test.com")))
+        commands(1) === SendString {
+          prep {
+          """|HTTP/1.1 200 OK
+             |Server: spray/1.0
+             |Date: XXXX
+             |Content-Type: text/plain
+             |Content-Length: 7
+             |
+             |"""
           }
-        ),
-        ignoreTellSender = true
-      )
+        }
+      }
     }
   }
+
+  step(system.shutdown())
 
   /////////////////////////// SUPPORT ////////////////////////////////
 
@@ -296,9 +287,9 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
     def getContext = context
   }
 
-  def singleHandlerFixture = testFixture(SingletonHandler(singletonHandler))
+  def singleHandlerFixture = fixture(SingletonHandler(singletonHandler))
 
-  def testFixture(messageHandler: MessageHandler): Fixture = {
+  def fixture(messageHandler: MessageHandler): Fixture = {
     new Fixture(testPipeline(messageHandler)) {
       override def getConnectionActorContext = connectionActor.underlyingActor.getContext
     }

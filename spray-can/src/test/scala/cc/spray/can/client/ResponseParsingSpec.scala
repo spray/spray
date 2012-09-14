@@ -17,6 +17,7 @@
 package cc.spray.can.client
 
 import org.specs2.mutable.Specification
+import akka.actor.ActorSystem
 import cc.spray.can.parsing.ParserSettings
 import cc.spray.can.{HttpEvent, HttpPipelineStageSpec}
 import cc.spray.can.rendering.HttpRequestPartRenderingContext
@@ -24,18 +25,24 @@ import cc.spray.io.{ProtocolError, Event}
 
 
 class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
+  val system = ActorSystem()
+  val fixture = new Fixture(ResponseParsing(new ParserSettings(), system.log))
 
   "The ResponseParsing PipelineStage" should {
     "be transparent to unrelated events" in {
-      val event = new Event {}
-      fixture(event) must produce(events = Seq(event))
+      val ev = new Event {}
+      fixture(ev).checkResult {
+        event === ev
+      }
     }
     "parse a simple response and produce the corresponding event" in {
       fixture(
         HttpRequestPartRenderingContext(request(), "localhost", 80),
         ClearCommandAndEventCollectors,
         Received(rawResponse("foo"))
-      ) must produce(events = Seq(HttpEvent(response("foo"))))
+      ).checkResult {
+        event === HttpEvent(response("foo"))
+      }
     }
     "parse a double response and produce the corresponding events" in {
       fixture(
@@ -43,16 +50,16 @@ class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
         HttpRequestPartRenderingContext(request(), "localhost", 80),
         ClearCommandAndEventCollectors,
         Received(rawResponse("foo") + rawResponse("bar"))
-      ) must produce(events = Seq(
-        HttpEvent(response("foo")),
-        HttpEvent(response("bar"))
-      ))
+      ).checkResult {
+        events(0) === HttpEvent(response("foo"))
+        events(1) === HttpEvent(response("bar"))
+      }
     }
     "trigger an error on unmatched responses" in {
       "example 1" in {
-        fixture(Received(rawResponse("foo"))) must produce(
-          commands = Seq(HttpClient.Close(ProtocolError("Response to non-existent request")))
-        )
+        fixture(Received(rawResponse("foo"))).checkResult {
+          command === HttpClient.Close(ProtocolError("Response to non-existent request"))
+        }
       }
       "example 2" in {
         fixture(
@@ -62,23 +69,14 @@ class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
           Received(rawResponse("foo")),
           Received(rawResponse("bar")),
           Received(rawResponse("baz"))
-        ) must produce(
-          commands = Seq(HttpClient.Close(ProtocolError("Response to non-existent request"))),
-          events = Seq(
-            HttpEvent(response("foo")),
-            HttpEvent(response("bar"))
-          )
-        )
+        ).checkResult {
+          command === HttpClient.Close(ProtocolError("Response to non-existent request"))
+          events(0) === HttpEvent(response("foo"))
+          events(1) === HttpEvent(response("bar"))
+        }
       }
     }
   }
 
-  step {
-    cleanup()
-  }
-
-  /////////////////////////// SUPPORT ////////////////////////////////
-
-  val fixture = new Fixture(ResponseParsing(new ParserSettings(), system.log))
-
+  step(system.shutdown())
 }

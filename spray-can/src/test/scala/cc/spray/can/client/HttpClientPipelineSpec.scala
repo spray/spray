@@ -19,51 +19,56 @@ package cc.spray.can.client
 import org.specs2.mutable.Specification
 import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActorRef
-import akka.actor.Actor
+import akka.actor.{ActorSystem, Actor}
 import cc.spray.can.{HttpCommand, HttpPipelineStageSpec}
 import cc.spray.io.IOPeer
 import cc.spray.http._
 
 
 class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
+  implicit val system = ActorSystem()
 
   "The HttpClient pipeline" should {
 
     "send out a simple HttpRequest to the server" in {
-      testFixture(HttpCommand(request())) must produce(commands = Seq(SendString(emptyRawRequest())))
+      fixture(
+        HttpCommand(request()) from sender1
+      ).checkResult {
+        command === SendString(emptyRawRequest())
+      }
     }
 
     "dispatch an incoming HttpResponse back to the sender" in {
-      testFixture(
-        HttpCommand(request()),
+      fixture(
+        HttpCommand(request()) from sender1,
         Received(rawResponse)
-      ) must produce(commands = Seq(
-        SendString(emptyRawRequest()),
-        IOPeer.Tell(system.deadLetters, response, connectionActor)
-      ))
+      ).checkResult {
+        commands(0) === SendString(emptyRawRequest())
+        commands(1) === IOPeer.Tell(sender1, response, connectionActor)
+      }
     }
 
     "properly complete a 3 requests pipelined dialog" in {
-      testFixture(
-        HttpCommand(request("Request 1")),
-        HttpCommand(request("Request 2")),
-        HttpCommand(request("Request 3")),
+      fixture(
+        HttpCommand(request("Request 1")) from sender1,
+        HttpCommand(request("Request 2")) from sender2,
+        HttpCommand(request("Request 3")) from sender1,
         Received(rawResponse("Response 1")),
         Received(rawResponse("Response 2")),
         Received(rawResponse("Response 3"))
-      ) must produce(commands = Seq(
-        SendString(rawRequest("Request 1")),
-        SendString(rawRequest("Request 2")),
-        SendString(rawRequest("Request 3")),
-        IOPeer.Tell(system.deadLetters, response("Response 1"), connectionActor),
-        IOPeer.Tell(system.deadLetters, response("Response 2"), connectionActor),
-        IOPeer.Tell(system.deadLetters, response("Response 3"), connectionActor)
-      ))
+      ).checkResult {
+        commands(0) === SendString(rawRequest("Request 1"))
+        commands(1) === SendString(rawRequest("Request 2"))
+        commands(2) === SendString(rawRequest("Request 3"))
+        commands(3) === IOPeer.Tell(sender1, response("Response 1"), connectionActor)
+        commands(4) === IOPeer.Tell(sender2, response("Response 2"), connectionActor)
+        commands(5) === IOPeer.Tell(sender1, response("Response 3"), connectionActor)
+      }
     }
 
     "properly handle responses to HEAD requests" in {
-      testFixture(
-        HttpCommand(HttpRequest(method = HttpMethods.HEAD)),
+      fixture(
+        HttpCommand(HttpRequest(method = HttpMethods.HEAD)) from sender1,
         Received {
           prep {
             """|HTTP/1.1 200 OK
@@ -75,12 +80,14 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
                |"""
           }
         }
-      ) must produce(commands = Seq(
-        SendString(emptyRawRequest(method = "HEAD")),
-        IOPeer.Tell(system.deadLetters, response("12345678").withEntity(""), connectionActor)
-      ))
+      ).checkResult {
+        commands(0) === SendString(emptyRawRequest(method = "HEAD"))
+        commands(1) === IOPeer.Tell(sender1, response("12345678").withEntity(""), connectionActor)
+      }
     }
   }
+
+  step(system.shutdown())
 
   /////////////////////////// SUPPORT ////////////////////////////////
 
@@ -91,7 +98,7 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
     def getContext = context
   }
 
-  def testFixture: Fixture = {
+  def fixture: Fixture = {
     new Fixture(testPipeline) {
       override def getConnectionActorContext = connectionActor.underlyingActor.getContext
     }
