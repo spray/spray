@@ -80,7 +80,7 @@ Currently the *spray* suite consists of these modules:
 
 spray-json_
   A lightweight, clean and simple JSON implementation in Scala. Because it neither depends on any other part of *spray*
-  nor on Akka and is only an optional dependency of :ref:`spray-client` and :ref:`spray-routing` it doesn't live in
+  nor on Akka and is only an optional dependency of :ref:`spray-client` and :ref:`spray-httpx` it doesn't live in
   the main *spray* repository, but rather in `its own github repository`__
 
 __ spray-json_

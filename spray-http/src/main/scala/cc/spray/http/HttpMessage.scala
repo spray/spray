@@ -48,6 +48,13 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
   def entity: HttpEntity
   def protocol: HttpProtocol
 
+  /**
+   * Tries to parse all RawHeaders in the headers list that spray has a higher-level model for and
+   * returns an error message together with a copy of this message with the headers list updated respectively.
+   * If there were no errors in the header parsing process the returned error string is empty.
+   * Otherwise the error message is accompanied by a new message object in which all headers that were parsed
+   * without errors have been "upgraded". Invalid headers remain RawHeader instances in this case.
+   */
   def parseHeaders: (String, Self) = {
     val (errors, parsed) = HttpParser.parseHeaders(headers)
     val errorMsg = if (errors.isEmpty) "" else "HTTP message contains illegal headers: " + errors.mkString(", ")

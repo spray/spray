@@ -6,17 +6,12 @@ spray-util
 The *spray-util* module contains a number of smaller helper classes that are used by all other *spray* modules,
 except :ref:`spray-http`, which is kept intentionally free of other *spray* dependencies.
 
-The main content of *spray-util* can roughly be split into two parts:
-
-- Pimps_
-- `Akka Helpers`_
-
 
 Dependencies
 ------------
 
-Apart from the Scala library (see :ref:`current-versions` chapter) *spray-util* depends on
-Akka-Actor (with 'provided' scope, i.e. you need to pull it in yourself)
+Apart from the Scala library (see :ref:`current-versions` chapter) *spray-util* only depends on
+Akka-Actor (with 'provided' scope, i.e. you need to pull it in yourself).
 
 
 
@@ -125,7 +120,7 @@ For example:
    :example: example-4
 
 So, by using a ``Reply.withContext`` call as the sender of a ``tell`` you can attach a custom "context" object to a
-message, which you are going to receive together with all reply messages in an instance of the ``Reply`` case class.
+message, which you are going to receive together with each reply messages in an instance of the ``Reply`` case class.
 This can be very handy in a number of situations, where you'd like to channel some local context through a
 request/response cycle with another actor. The overhead introduced by this mechanism of context keeping is really
 small, which makes it a viable solution for *local-only* messaging protocols.
