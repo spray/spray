@@ -4,7 +4,7 @@ import java.security.{SecureRandom, KeyStore}
 import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 import akka.actor._
 import cc.spray.io.IOBridge
-import cc.spray.io.pipelining.{ServerSSLEngineProvider, MessageHandlerDispatch}
+import cc.spray.io.pipelining.{SingletonHandler, ServerSSLEngineProvider}
 import cc.spray.can.server.HttpServer
 
 
@@ -22,7 +22,7 @@ object Main extends App {
   // create and start the spray-can HttpServer, telling it that we want requests to be
   // handled by our singleton handler
   val server = system.actorOf(
-    props = Props(new HttpServer(ioBridge, MessageHandlerDispatch.SingletonHandler(handler))),
+    props = Props(new HttpServer(ioBridge, SingletonHandler(handler))),
     name = "http-server"
   )
 

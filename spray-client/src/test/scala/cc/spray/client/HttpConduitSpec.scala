@@ -25,7 +25,7 @@ import akka.actor._
 import cc.spray.can.client.HttpClient
 import cc.spray.can.server.HttpServer
 import cc.spray.io.IOBridge
-import cc.spray.io.pipelining.MessageHandlerDispatch.SingletonHandler
+import cc.spray.io.pipelining.SingletonHandler
 import cc.spray.http._
 import cc.spray.util._
 import DispatchStrategies._

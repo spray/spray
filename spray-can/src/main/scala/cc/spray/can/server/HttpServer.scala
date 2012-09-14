@@ -25,9 +25,7 @@ import cc.spray.io._
 import cc.spray.http._
 
 
-class HttpServer(ioBridge: IOBridge,
-                 messageHandler: MessageHandlerDispatch.MessageHandler,
-                 settings: ServerSettings = ServerSettings())
+class HttpServer(ioBridge: IOBridge, messageHandler: MessageHandler, settings: ServerSettings = ServerSettings())
                 (implicit sslEngineProvider: ServerSSLEngineProvider) extends IOServer(ioBridge) with ConnectionActors {
 
   protected val statsHolder: Option[StatsHolder] =
@@ -159,7 +157,7 @@ object HttpServer {
    *    |                                \/
    */
   private[can] def pipeline(settings: ServerSettings,
-                            messageHandler: MessageHandlerDispatch.MessageHandler,
+                            messageHandler: MessageHandler,
                             timeoutResponse: HttpRequest => HttpResponse,
                             statsHolder: Option[StatsHolder],
                             log: LoggingAdapter)

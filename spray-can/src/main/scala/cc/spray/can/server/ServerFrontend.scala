@@ -28,7 +28,6 @@ import cc.spray.can.server.RequestParsing.HttpMessageStartEvent
 import cc.spray.io.pipelining._
 import cc.spray.io._
 import cc.spray.http._
-import MessageHandlerDispatch._
 
 
 object ServerFrontend {
@@ -40,10 +39,10 @@ object ServerFrontend {
 
     new DoublePipelineStage {
       def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): Pipelines = {
-        new Pipelines with MessageHandlerDispatch {
+        new Pipelines {
           val openRequests = mutable.Queue.empty[RequestRecord]
           val openSends = mutable.Queue.empty[IOServer.Tell]
-          val handlerCreator = messageHandlerCreator(messageHandler, context)
+          val handlerCreator = messageHandler(context)
           var requestTimeout = settings.RequestTimeout
           var timeoutTimeout = settings.TimeoutTimeout
 

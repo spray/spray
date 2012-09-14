@@ -22,7 +22,7 @@ import akka.util.Duration
 import org.specs2.mutable.Specification
 import cc.spray.can.server.HttpServer
 import cc.spray.io.IOBridge
-import cc.spray.io.pipelining.MessageHandlerDispatch.SingletonHandler
+import cc.spray.io.pipelining.SingletonHandler
 import cc.spray.util._
 import cc.spray.http._
 

@@ -3,7 +3,7 @@ package cc.spray.examples
 import akka.actor.{Props, ActorSystem}
 import cc.spray.can.server.HttpServer
 import cc.spray.io.IOBridge
-import cc.spray.io.pipelining.MessageHandlerDispatch
+import cc.spray.io.pipelining.SingletonHandler
 
 
 object Boot extends App {
@@ -20,7 +20,7 @@ object Boot extends App {
   // create and start the spray-can HttpServer, telling it that
   // we want requests to be handled by our singleton service actor
   val httpServer = system.actorOf(
-    Props(new HttpServer(ioBridge, MessageHandlerDispatch.SingletonHandler(service))),
+    Props(new HttpServer(ioBridge, SingletonHandler(service))),
     name = "http-server"
   )
 
