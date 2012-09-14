@@ -16,7 +16,6 @@
 
 package cc.spray.can.server
 
-import akka.pattern.ask
 import akka.testkit.TestActorRef
 import akka.util.{Duration, Timeout}
 import com.typesafe.config.ConfigFactory
@@ -25,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import akka.actor.{ActorSystem, Actor, Props}
 import cc.spray.can.{HttpCommand, HttpPipelineStageSpec}
 import cc.spray.io.pipelining.MessageHandlerDispatch._
-import cc.spray.util._
+import cc.spray.io.pipelining.PipelineContext
 import cc.spray.io._
 import cc.spray.http._
 import HttpHeaders.RawHeader
@@ -45,7 +44,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       }
     }
 
-    "correctly dispatch a fragmented HttpRequest" in {
+    "dispatch a fragmented HttpRequest" in {
       singleHandlerFixture(
         Received {
           prep {
@@ -72,7 +71,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       ) must throwAn[IllegalStateException]
     }
 
-    "correctly render a matched HttpResponse" in {
+    "render a matched HttpResponse" in {
       singleHandlerFixture(
         Received(simpleRequest),
         HttpCommand(HttpResponse()) from sender1
@@ -85,12 +84,14 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
 
     "dispatch requests to the right service actor when using per-connection handlers" in {
       val counter = new AtomicInteger
-      fixture(PerConnectionHandler(_ => Props(new NamedActor("actor" + counter.incrementAndGet())))).apply(
+      def createHandler(ctx: PipelineContext) =
+        ctx.connectionActorContext.actorOf(Props(new DummyActor), "actor" + counter.incrementAndGet())
+      fixture(PerConnectionHandler(createHandler)).apply(
         Received(simpleRequest),
         Received(simpleRequest)
       ).checkResult {
         commands.map {
-          case IOServer.Tell(receiver, _, _) => SendString(receiver.ask('name).mapTo[String].await)
+          case IOServer.Tell(receiver, _, _) => SendString(receiver.path.name)
         } === Seq(
           SendString("actor1"),
           SendString("actor1") // dispatched to the same handler, since we are testing "one connection"
@@ -100,7 +101,9 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
 
     "dispatch requests to the right service actor when using per-message handlers" in {
       val counter = new AtomicInteger
-      fixture(PerMessageHandler(_ => Props(new NamedActor("actor" + counter.incrementAndGet())))).apply(
+      def createHandler(ctx: PipelineContext) =
+        ctx.connectionActorContext.actorOf(Props(new DummyActor), "actr" + counter.incrementAndGet())
+      fixture(PerMessageHandler(createHandler)).apply(
         Received(simpleRequest),
         Received(simpleRequest),
         Received(chunkedRequestStart),
@@ -110,20 +113,20 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         Received(chunkedRequestStart)
       ).checkResult {
         commands.map {
-          case IOServer.Tell(receiver, _, _) => SendString(receiver.ask('name).mapTo[String].await)
+          case IOServer.Tell(receiver, _, _) => SendString(receiver.path.name)
         } === Seq(
-          SendString("actor1"),
-          SendString("actor2"),
-          SendString("actor3"),
-          SendString("actor3"),
-          SendString("actor3"),
-          SendString("actor3"),
-          SendString("actor4")
+          SendString("actr1"),
+          SendString("actr2"),
+          SendString("actr3"),
+          SendString("actr3"),
+          SendString("actr3"),
+          SendString("actr3"),
+          SendString("actr4")
         )
       }
     }
 
-    "correctly dispatch SentOk messages" in {
+    "dispatch SentOk messages" in {
       "to the sender of an HttpResponse" in {
         singleHandlerFixture(
           Received(simpleRequest),
@@ -164,7 +167,90 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       }
     }
 
-    "correctly handle 'Expected: 100-continue' headers" in {
+    "dispatch Closed messages" in {
+      "to the handler if no request is open" in {
+        singleHandlerFixture(
+          IOPeer.Closed(testHandle, PeerClosed)
+        ).checkResult {
+          command.asTell.receiver === singletonHandler
+          command.asTell.message === IOPeer.Closed(testHandle, PeerClosed)
+        }
+      }
+      "to the handler if a request is open" in {
+        singleHandlerFixture(
+          Received(simpleRequest),
+          ClearCommandAndEventCollectors,
+          IOPeer.Closed(testHandle, PeerClosed)
+        ).checkResult {
+          command.asTell.receiver === singletonHandler
+          command.asTell.message === IOPeer.Closed(testHandle, PeerClosed)
+        }
+      }
+      "to the response sender if a response has been sent but not yet confirmed" in {
+        singleHandlerFixture(
+          Received(simpleRequest),
+          HttpCommand(HttpResponse()) from sender1,
+          ClearCommandAndEventCollectors,
+          IOPeer.Closed(testHandle, PeerClosed)
+        ).checkResult {
+          command.asTell.receiver === sender1
+          command.asTell.message === IOPeer.Closed(testHandle, PeerClosed)
+        }
+      }
+      "to the handler if a response has been sent and confirmed" in {
+        singleHandlerFixture(
+          Received(simpleRequest),
+          HttpCommand(HttpResponse()) from sender1,
+          IOPeer.SentOk(testHandle),
+          ClearCommandAndEventCollectors,
+          IOPeer.Closed(testHandle, PeerClosed)
+        ).checkResult {
+          command.asTell.receiver === singletonHandler
+          command.asTell.message === IOPeer.Closed(testHandle, PeerClosed)
+        }
+      }
+      "to the response sender of a chunk stream if a chunk has been sent but not yet confirmed" in {
+        singleHandlerFixture(
+          Received(simpleRequest),
+          HttpCommand(ChunkedResponseStart(HttpResponse())) from sender1,
+          ClearCommandAndEventCollectors,
+          IOPeer.Closed(testHandle, PeerClosed)
+        ).checkResult {
+          command.asTell.receiver === sender1
+          command.asTell.message === IOPeer.Closed(testHandle, PeerClosed)
+        }
+      }
+      "to the response sender of a chunk stream if a chunk has been sent and confirmed" in {
+        singleHandlerFixture(
+          Received(simpleRequest),
+          HttpCommand(ChunkedResponseStart(HttpResponse())) from sender1,
+          IOPeer.SentOk(testHandle),
+          ClearCommandAndEventCollectors,
+          IOPeer.Closed(testHandle, PeerClosed)
+        ).checkResult {
+          command.asTell.receiver === sender1
+          command.asTell.message === IOPeer.Closed(testHandle, PeerClosed)
+        }
+      }
+      "to the handler if a final chunk has been sent and confirmed" in {
+        singleHandlerFixture(
+          Received(simpleRequest),
+          HttpCommand(ChunkedResponseStart(HttpResponse())) from sender1,
+          HttpCommand(MessageChunk("yes")) from sender1,
+          HttpCommand(ChunkedMessageEnd()) from sender1,
+          IOPeer.SentOk(testHandle),
+          IOPeer.SentOk(testHandle),
+          IOPeer.SentOk(testHandle),
+          ClearCommandAndEventCollectors,
+          IOPeer.Closed(testHandle, PeerClosed)
+        ).checkResult {
+          command.asTell.receiver === singletonHandler
+          command.asTell.message === IOPeer.Closed(testHandle, PeerClosed)
+        }
+      }
+    }
+
+    "handle 'Expected: 100-continue' headers" in {
       def example(expectValue: String) = {
         singleHandlerFixture(
           Received {
@@ -279,11 +365,11 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
      |"""
   }
 
-  val connectionActor = TestActorRef(new NamedActor("connectionActor"))
-  val singletonHandler = TestActorRef(new NamedActor("singletonHandler"))
+  val connectionActor = TestActorRef(new DummyActor, "connectionActor")
+  val singletonHandler = TestActorRef(new DummyActor, "singletonHandler")
 
-  class NamedActor(val name: String) extends Actor {
-    def receive = { case 'name => sender ! name}
+  class DummyActor extends Actor {
+    def receive = { case _ => throw new UnsupportedOperationException }
     def getContext = context
   }
 
