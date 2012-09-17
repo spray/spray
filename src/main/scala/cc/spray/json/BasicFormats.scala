@@ -21,20 +21,31 @@ package cc.spray.json
   * Provides the JsonFormats for the most important Scala types.
  */
 trait BasicFormats {
+  implicit lazy val ByteJsonFormat: JsonFormat[Byte] =
+    new NumberFormat[Byte](_.byteValue(), JsNumber(_))
 
-  implicit lazy val IntJsonFormat: JsonFormat[Int] = new JsonFormat[Int] {
-    def write(x: Int) = JsNumber(x)
-    def read(value: JsValue) = value match {
-      case x: JsNumber => Success(x.value.intValue)
-      case x => deserializationError("Expected Int as JsNumber, but got " + x)
-    }
-  }
+  implicit lazy val ShortJsonFormat: JsonFormat[Short] =
+    new NumberFormat[Short](_.shortValue(), JsNumber(_))
 
-  implicit lazy val LongJsonFormat: JsonFormat[Long] = new JsonFormat[Long] {
-    def write(x: Long) = JsNumber(x)
-    def read(value: JsValue) = value match {
-      case x: JsNumber => Success(x.value.longValue)
-      case x => deserializationError("Expected Long as JsNumber, but got " + x)
+  implicit lazy val IntJsonFormat: JsonFormat[Int] =
+    new NumberFormat[Int](_.intValue(), JsNumber.apply)
+
+  implicit lazy val LongJsonFormat: JsonFormat[Long] =
+    new NumberFormat[Long](_.longValue(), JsNumber.apply)
+
+  implicit lazy val BigDecimalJsonFormat: JsonFormat[BigDecimal] =
+    new NumberFormat[BigDecimal](identity, JsNumber.apply)
+
+  implicit lazy val BigIntJsonFormat: JsonFormat[BigInt] =
+    new NumberFormat[BigInt](_.toBigInt(), JsNumber.apply)
+
+  class NumberFormat[T: ClassManifest](reader: BigDecimal => T, writer: T => JsNumber) extends JsonFormat[T] {
+    val typeName = classManifest[T].erasure.getSimpleName
+
+    def write(obj: T): JsValue = writer(obj)
+    def read(json: JsValue): Validated[T] = json match {
+      case x: JsNumber => Success(reader(x.value))
+      case x => deserializationError("Expected %s as JsNumber, but got %s" format (typeName, x))
     }
   }
 
@@ -53,38 +64,6 @@ trait BasicFormats {
       case x: JsNumber => Success(x.value.doubleValue)
       case JsNull      => Success(Double.NaN)
       case x => deserializationError("Expected Double as JsNumber, but got " + x)
-    }
-  }
-
-  implicit lazy val ByteJsonFormat: JsonFormat[Byte] = new JsonFormat[Byte] {
-    def write(x: Byte) = JsNumber(x)
-    def read(value: JsValue) = value match {
-      case x: JsNumber => Success(x.value.byteValue)
-      case x => deserializationError("Expected Byte as JsNumber, but got " + x)
-    }
-  }
-  
-  implicit lazy val ShortJsonFormat: JsonFormat[Short] = new JsonFormat[Short] {
-    def write(x: Short) = JsNumber(x)
-    def read(value: JsValue) = value match {
-      case x: JsNumber => Success(x.value.shortValue)
-      case x => deserializationError("Expected Short as JsNumber, but got " + x)
-    }
-  }
-
-  implicit lazy val BigDecimalJsonFormat: JsonFormat[BigDecimal] = new JsonFormat[BigDecimal] {
-    def write(x: BigDecimal) = JsNumber(x)
-    def read(value: JsValue) = value match {
-      case x: JsNumber => Success(x.value)
-      case x => deserializationError("Expected BigDecimal as JsNumber, but got " + x)
-    }
-  }
-
-  implicit lazy val BigIntJsonFormat: JsonFormat[BigInt] = new JsonFormat[BigInt] {
-    def write(x: BigInt) = JsNumber(x)
-    def read(value: JsValue) = value match {
-      case x: JsNumber => Success(x.value.toBigInt)
-      case x => deserializationError("Expected BigInt as JsNumber, but got " + x)
     }
   }
 
@@ -112,7 +91,7 @@ trait BasicFormats {
       case x => deserializationError("Expected Char as single-character JsString, but got " + x)
     }
   }
-  
+
   implicit lazy val StringJsonFormat: JsonFormat[String] = new JsonFormat[String] {
     def write(x: String) = JsString(x)
     def read(value: JsValue) = value match {
@@ -120,7 +99,7 @@ trait BasicFormats {
       case x => deserializationError("Expected String as JsString, but got " + x)
     }
   }
-  
+
   implicit lazy val SymbolJsonFormat: JsonFormat[Symbol] = new JsonFormat[Symbol] {
     def write(x: Symbol) = JsString(x.name)
     def read(value: JsValue) = value match {
@@ -128,5 +107,5 @@ trait BasicFormats {
       case x => deserializationError("Expected Symbol as JsString, but got " + x)
     }
   }
-  
+
 }

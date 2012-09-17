@@ -54,7 +54,7 @@ class DynamicJsonSpec extends Specification {
       p^
     "raise exceptions for" ^
       "illegal String to Int conversions" ! {
-        stringJson.name.as[Option[Int]] must throwA[DeserializationException]("Expected Int as JsNumber, but got \"lee\"")
+        stringJson.name.as[Option[Int]] must throwA[DeserializationException]("Expected int as JsNumber, but got \"lee\"")
       } ^
       "out-of-bounds array access" ! {
         arrayJson.array(5).as[Int] must throwAn[IndexOutOfBoundsException]("5")
