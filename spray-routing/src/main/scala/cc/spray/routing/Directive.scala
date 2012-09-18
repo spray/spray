@@ -16,8 +16,9 @@
 
 package cc.spray.routing
 
-import cc.spray.httpx.unmarshalling.MalformedContent
 import shapeless._
+import akka.dispatch.Future
+import cc.spray.httpx.unmarshalling.MalformedContent
 
 
 abstract class Directive[L <: HList] { self =>
@@ -66,8 +67,18 @@ abstract class Directive[L <: HList] { self =>
       def happly(g: R => Route) = self.happly { values => f(values).happly(g) }
     }
 
-  def require[T](predicate: T => Boolean)(implicit ev: L =:= (T :: HNil)) =
-    hrequire { ev(_) match { case t :: HNil => predicate(t) } }
+  def unwrapFuture[R](implicit ev: L <:< (Future[R] :: HNil), hl: HListable[R]) =
+    new Directive[hl.Out] {
+      def happly(f: hl.Out => Route) = self.happly { list => ctx =>
+        list.head.onComplete {
+          case Right(values) => f(hl(values))(ctx)
+          case Left(error) => ctx.failWith(error)
+        }
+      }
+    }
+
+  def require[T](predicate: T => Boolean)(implicit ev: L <:< (T :: HNil)) =
+    hrequire { list => predicate(list.head) }
 
   def hrequire(predicate: L => Boolean) =
     new Directive0 {
