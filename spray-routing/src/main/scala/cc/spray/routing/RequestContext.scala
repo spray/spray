@@ -59,8 +59,8 @@ case class RequestContext(
    */
   def mapRouteResponse(f: Any => Any) = mapHandler { previousHandler =>
     new UnregisteredActorRef(handler) {
-      def handle(message: Any, sender: ActorRef) {
-        previousHandler.tell(f(message), sender)
+      def handle(message: Any)(implicit sender: ActorRef) {
+        previousHandler ! f(message)
       }
     }
   }
@@ -70,8 +70,8 @@ case class RequestContext(
    */
   def flatMapRouteResponse(f: Any => Seq[Any]) = mapHandler { previousHandler =>
     new UnregisteredActorRef(handler) {
-      def handle(message: Any, sender: ActorRef) {
-        f(message).foreach(previousHandler.tell(_, sender))
+      def handle(message: Any)(implicit sender: ActorRef) {
+        f(message).foreach(previousHandler ! _)
       }
     }
   }
@@ -132,8 +132,8 @@ case class RequestContext(
    */
   def withRouteResponseHandling(f: PartialFunction[Any, Unit]) = mapHandler { previousHandler =>
     new UnregisteredActorRef(handler) {
-      def handle(message: Any, sender: ActorRef) {
-        if (f.isDefinedAt(message)) f(message) else previousHandler.tell(message, sender)
+      def handle(message: Any)(implicit sender: ActorRef) {
+        if (f.isDefinedAt(message)) f(message) else previousHandler ! message
       }
     }
   }
@@ -143,10 +143,10 @@ case class RequestContext(
    */
   def withRejectionHandling(f: Seq[Rejection] => Unit) = mapHandler { previousHandler =>
     new UnregisteredActorRef(handler) {
-      def handle(message: Any, sender: ActorRef) {
+      def handle(message: Any)(implicit sender: ActorRef) {
         message match {
           case Rejected(rejections) => f(rejections)
-          case x => previousHandler.tell(x, sender)
+          case x => previousHandler ! x
         }
       }
     }
@@ -158,7 +158,7 @@ case class RequestContext(
    */
   def withDefaultSender(defaultSender: ActorRef) = copy(
     handler = new UnregisteredActorRef(handler) {
-      def handle(message: Any, sender: ActorRef) {
+      def handle(message: Any)(implicit sender: ActorRef) {
         handler.tell(message, if (sender == null) defaultSender else sender)
       }
     }

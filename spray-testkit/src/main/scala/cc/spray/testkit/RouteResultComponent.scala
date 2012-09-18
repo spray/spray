@@ -43,7 +43,7 @@ trait RouteResultComponent {
     private[this] var virginal = true
 
     private[testkit] val handler = new UnregisteredActorRef(actorRefFactory) {
-      def handle(message: Any, sender: ActorRef) {
+      def handle(message: Any)(implicit sender: ActorRef) {
         def verifiedSender =
           if (sender != null) sender else sys.error("Received message " + message + " from unknown sender (null)")
         message match {

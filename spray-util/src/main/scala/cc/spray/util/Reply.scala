@@ -36,7 +36,7 @@ object Reply {
    */
   def withContext(context: Any)(implicit replyReceiver: ActorRef): UnregisteredActorRef = {
     new UnregisteredActorRef(replyReceiver) {
-      def handle(reply: Any, replySender: ActorRef) {
+      def handle(reply: Any)(implicit replySender: ActorRef) {
         replyReceiver.tell(new Reply(reply, context), replySender)
       }
     }

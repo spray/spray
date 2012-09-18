@@ -107,7 +107,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
       }
     }
 
-    def handle(message: Any, sender: ActorRef) {
+    def handle(message: Any)(implicit sender: ActorRef) {
       message match {
         case response: HttpResponse =>
           if (state.compareAndSet(OPEN, COMPLETED)) {
@@ -161,10 +161,10 @@ class Servlet30ConnectorServlet extends HttpServlet {
     log.warning("Timeout of {}", req)
     val latch = new CountDownLatch(1)
     val responder = new UnregisteredActorRef(system) {
-      def handle(message: Any, sender: ActorRef) {
+      def handle(message: Any)(implicit sender: ActorRef) {
         message match {
           case x: HttpResponse => writeResponse(x, hsResponse, req) { latch.countDown() }
-          case _ => system.deadLetters.tell(message, sender)
+          case x => system.eventStream.publish(UnhandledMessage(x, sender, this))
         }
       }
     }

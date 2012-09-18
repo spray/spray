@@ -84,7 +84,7 @@ abstract class LazyActorRef(val provider: ActorRefProvider) extends akka.actor.M
   override def !(message: Any)(implicit sender: ActorRef = null) {
     pathState match {
       case Stopped | _: StoppedWithPath ⇒ provider.deadLetters ! message
-      case _ ⇒ handle(message, sender)
+      case _ ⇒ handle(message)
     }
   }
 
@@ -123,7 +123,7 @@ abstract class LazyActorRef(val provider: ActorRefProvider) extends akka.actor.M
 
   // callbacks
 
-  protected def handle(message: Any, sender: ActorRef)
+  protected def handle(message: Any)(implicit sender: ActorRef)
 
   protected def onStop() {}
 

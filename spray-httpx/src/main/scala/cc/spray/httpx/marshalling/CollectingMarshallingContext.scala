@@ -64,7 +64,7 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
       sys.error("`marshalTo` or `startChunkedMessage` was already called")
 
     val ref = new UnregisteredActorRef(actorRefFactory) {
-      def handle(message: Any, sender: ActorRef) {
+      def handle(message: Any)(implicit sender: ActorRef) {
         message match {
           case x: MessageChunk =>
             @tailrec def updateChunks(current: Seq[MessageChunk]) {

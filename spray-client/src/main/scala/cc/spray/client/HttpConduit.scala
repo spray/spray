@@ -84,7 +84,7 @@ object HttpConduit extends RequestBuilding with ResponseTransformation {
     request => {
       val promise = Promise[HttpResponse]()(provider.dispatcher)
       val receiver = new UnregisteredActorRef(provider) {
-        def handle(message: Any, sender: ActorRef) {
+        def handle(message: Any)(implicit sender: ActorRef) {
           message match {
             case x: HttpResponse => promise.success(x)
             case Status.Failure(error) => promise.failure(error)
