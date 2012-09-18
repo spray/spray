@@ -289,7 +289,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       }
     }
 
-    "dispatch Timeout messages in case of a request timeout and the dispatch respective response" in {
+    "dispatch Timeout messages in case of a request timeout (and dispatch respective response)" in {
       singleHandlerPipeline.test {
         val Commands(Tell(`singletonHandler`, _, peer)) = processAndClear(Received(simpleRequest))
         Thread.sleep(60)
@@ -305,8 +305,19 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         Thread.sleep(60)
         val Commands(Tell(`singletonHandler`, cc.spray.http.Timeout(_), `peer`)) = processAndClear(TickGenerator.Tick)
         Thread.sleep(30)
-        val Commands(HttpCommand(response: HttpResponse)) = processAndClear(TickGenerator.Tick)
-        response.status === StatusCodes.InternalServerError
+        val Commands(message, HttpServer.Close(CleanClose)) = processAndClear(TickGenerator.Tick)
+        message === SendString {
+          prep {
+            """|HTTP/1.1 500 Internal Server Error
+               |Connection: close
+               |Server: spray/1.0
+               |Date: XXXX
+               |Content-Type: text/plain
+               |Content-Length: 13
+               |
+               |Timeout for /"""
+          }
+        }
       }
     }
   }
