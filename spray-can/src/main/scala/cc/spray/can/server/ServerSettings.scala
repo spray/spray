@@ -32,7 +32,6 @@ class ServerSettings(config: Config = ConfigFactory.load) {
   val TimeoutTimeout                = c getMilliseconds "timeout-timeout"
   val ReapingCycle                  = c getMilliseconds "reaping-cycle"
   val AckSends                      = c getBoolean      "ack-sends"
-  val DirectResponding              = c getBoolean      "direct-responding"
   val StatsSupport                  = c getBoolean      "stats-support"
   val RemoteAddressHeader           = c getBoolean      "remote-address-header"
   val TransparentHeadRequests       = c getBoolean      "transparent-head-requests"
@@ -44,7 +43,7 @@ class ServerSettings(config: Config = ConfigFactory.load) {
 
   val ParserSettings = new ParserSettings(c.getConfig("parsing"))
 
-  require(PipeliningLimit >= 0, "pipelining-limit must be >= 0")
+  require(0 < PipeliningLimit && PipeliningLimit <= 16, "pipelining-limit must be > 0 and <= 16")
   require(IdleTimeout     >= 0, "idle-timeout must be >= 0")
   require(RequestTimeout  >= 0, "request-timeout must be >= 0")
   require(TimeoutTimeout  >= 0, "timeout-timeout must be >= 0")

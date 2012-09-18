@@ -30,54 +30,50 @@ import HttpHeaders.RawHeader
 
 
 class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
-  implicit val system = ActorSystem()
+  implicit val system: ActorSystem = ActorSystem()
 
   "The HttpServer pipeline" should {
 
     "dispatch a simple HttpRequest to a singleton service actor" in {
-      singleHandlerFixture {
-        Received(simpleRequest)
-      }.checkResult {
-        command.asTell.receiver === singletonHandler
-        command.asTell.message === HttpRequest(headers = List(RawHeader("host", "test.com")))
+      singleHandlerPipeline.test {
+        val Commands(Tell(`singletonHandler`, message, _)) = process(Received(simpleRequest))
+        message === HttpRequest(headers = List(RawHeader("host", "test.com")))
       }
     }
 
     "dispatch a fragmented HttpRequest" in {
-      singleHandlerFixture(
-        Received {
-          prep {
-          """|GET / HTTP/1.1
-             |Host: te"""
+      singleHandlerPipeline.test {
+        val Commands(Tell(`singletonHandler`, message, _)) = process(
+          Received {
+            prep {
+            """|GET / HTTP/1.1
+               |Host: te"""
+            }
+          },
+          Received {
+            prep {
+            """|st.com
+               |
+               |"""
+            }
           }
-        },
-        Received {
-          prep {
-          """|st.com
-             |
-             |"""
-          }
-        }
-      ).checkResult {
-        command.asTell.receiver === singletonHandler
-        command.asTell.message === HttpRequest(headers = List(RawHeader("host", "test.com")))
+        )
+        message === HttpRequest(headers = List(RawHeader("host", "test.com")))
       }
     }
 
     "produce an error upon stray responses" in {
-      singleHandlerFixture(
-        HttpCommand(HttpResponse())
-      ) must throwAn[IllegalStateException]
+      singleHandlerPipeline.test {
+        process(HttpCommand(HttpResponse())) must throwAn[IllegalStateException]
+      }
     }
 
     "render a matched HttpResponse" in {
-      singleHandlerFixture(
-        Received(simpleRequest),
-        HttpCommand(HttpResponse()) from sender1
-      ).checkResult {
-        commands(0).asTell.receiver === singletonHandler
-        commands(0).asTell.message === HttpRequest(headers = List(RawHeader("host", "test.com")))
-        commands(1) === SendString(simpleResponse)
+      singleHandlerPipeline.test {
+        val Commands(Tell(`singletonHandler`, message, peer)) = processAndClear(Received(simpleRequest))
+        message === HttpRequest(headers = List(RawHeader("host", "test.com")))
+        peer.tell(HttpCommand(HttpResponse()), sender1)
+        result.commands(0) === SendString(simpleResponse)
       }
     }
 
@@ -85,16 +81,15 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       val counter = new AtomicInteger
       def createHandler(ctx: PipelineContext) =
         ctx.connectionActorContext.actorOf(Props(new DummyActor), "actor" + counter.incrementAndGet())
-      fixture(PerConnectionHandler(createHandler)).apply(
-        Received(simpleRequest),
-        Received(simpleRequest)
-      ).checkResult {
-        commands.map {
-          case IOServer.Tell(receiver, _, _) => SendString(receiver.path.name)
-        } === Seq(
-          SendString("actor1"),
-          SendString("actor1") // dispatched to the same handler, since we are testing "one connection"
+      testPipeline(PerConnectionHandler(createHandler)).test {
+        val Commands(
+          Tell(ActorPathName("actor1"), _, _),
+          Tell(ActorPathName("actor1"), _, _)
+        ) = process(
+          Received(simpleRequest),
+          Received(simpleRequest)
         )
+        success
       }
     }
 
@@ -102,172 +97,155 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       val counter = new AtomicInteger
       def createHandler(ctx: PipelineContext) =
         ctx.connectionActorContext.actorOf(Props(new DummyActor), "actr" + counter.incrementAndGet())
-      fixture(PerMessageHandler(createHandler)).apply(
-        Received(simpleRequest),
-        Received(simpleRequest),
-        Received(chunkedRequestStart),
-        Received(messageChunk),
-        Received(messageChunk),
-        Received(chunkedMessageEnd),
-        Received(chunkedRequestStart)
-      ).checkResult {
-        commands.map {
-          case IOServer.Tell(receiver, _, _) => SendString(receiver.path.name)
-        } === Seq(
-          SendString("actr1"),
-          SendString("actr2"),
-          SendString("actr3"),
-          SendString("actr3"),
-          SendString("actr3"),
-          SendString("actr3"),
-          SendString("actr4")
+      testPipeline(PerMessageHandler(createHandler)).test {
+        val Commands(
+          Tell(ActorPathName("actr1"), _, _),
+          Tell(ActorPathName("actr2"), _, _),
+          Tell(ActorPathName("actr3"), _, _),
+          Tell(ActorPathName("actr3"), _, _),
+          Tell(ActorPathName("actr3"), _, _),
+          Tell(ActorPathName("actr3"), _, _),
+          Tell(ActorPathName("actr4"), _, _)
+        ) = process(
+          Received(simpleRequest),
+          Received(simpleRequest),
+          Received(chunkedRequestStart),
+          Received(messageChunk),
+          Received(messageChunk),
+          Received(chunkedMessageEnd),
+          Received(chunkedRequestStart)
         )
+        success
       }
     }
 
     "dispatch SentOk messages" in {
       "to the sender of an HttpResponse" in {
-        singleHandlerFixture(
-          Received(simpleRequest),
-          HttpCommand(HttpResponse()) from sender1,
-          ClearCommandAndEventCollectors,
-          IOBridge.SentOk(testHandle)
-        ).checkResult {
-          command.asTell.receiver === sender1
-          command.asTell.message === IOServer.SentOk(testHandle)
+        singleHandlerPipeline.test {
+          val Commands(Tell(_, _, peer)) = process(Received(simpleRequest))
+          peer.tell(HttpCommand(HttpResponse()), sender1)
+          val Commands(Tell(receiver, SentOk(`testHandle`), _)) = clearAndProcess(SentOk(testHandle))
+          receiver === sender1
         }
       }
       "to the senders of a ChunkedResponseStart, MessageChunk and ChunkedMessageEnd" in {
-        singleHandlerFixture(
-          Received(simpleRequest),
-          ClearCommandAndEventCollectors,
-          HttpCommand(ChunkedResponseStart(HttpResponse())) from sender1,
-          IOBridge.SentOk(testHandle),
-          HttpCommand(MessageChunk("part 1")) from sender2,
-          IOBridge.SentOk(testHandle),
-          HttpCommand(MessageChunk("part 2")) from sender3,
-          HttpCommand(ChunkedMessageEnd()) from sender4,
-          IOBridge.SentOk(testHandle),
-          IOBridge.SentOk(testHandle)
-        ).checkResult {
-          commands(0) === SendString(chunkedResponseStart)
-          commands(1).asTell.receiver === sender1
-          commands(1).asTell.message === IOServer.SentOk(testHandle)
+        singleHandlerPipeline.test {
+          val Commands(Tell(_, _, peer)) = processAndClear(Received(simpleRequest))
+          peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse())), sender1)
+          process(SentOk(testHandle))
+          peer.tell(HttpCommand(MessageChunk("part 1")), sender2)
+          process(SentOk(testHandle))
+          peer.tell(HttpCommand(MessageChunk("part 2")), sender3)
+          peer.tell(HttpCommand(ChunkedMessageEnd()), sender4)
+          val Commands(commands@ _*) = process(SentOk(testHandle), SentOk(testHandle))
+
+          commands(0) === SendString(`chunkedResponseStart`)
+          val Tell(`sender1`, SentOk(`testHandle`), _) = commands(1)
           commands(2) === SendString(prep("6\npart 1\n"))
-          commands(3).asTell.receiver === sender2
-          commands(3).asTell.message === IOServer.SentOk(testHandle)
+          val Tell(`sender2`, SentOk(`testHandle`), _) = commands(3)
           commands(4) === SendString(prep("6\npart 2\n"))
           commands(5) === SendString(prep("0\n\n"))
-          commands(6).asTell.receiver === sender3
-          commands(6).asTell.message === IOServer.SentOk(testHandle)
-          commands(7).asTell.receiver === sender4
-          commands(7).asTell.message === IOServer.SentOk(testHandle)
+          val Tell(`sender4`, SentOk(`testHandle`), _) = commands(6) // remember: only the last sender receives the SentOk
+          val Tell(`sender4`, SentOk(`testHandle`), _) = commands(7)
+          success
         }
       }
     }
 
     "dispatch Closed messages" in {
+      val CLOSED = Closed(`testHandle`, PeerClosed)
       "to the handler if no request is open" in {
-        singleHandlerFixture(
-          IOPeer.Closed(testHandle, PeerClosed)
-        ).checkResult {
-          command.asTell.receiver === singletonHandler
-          command.asTell.message === IOPeer.Closed(testHandle, PeerClosed)
+        singleHandlerPipeline.test {
+          val Commands(Tell(receiver, CLOSED, _)) = process(CLOSED)
+          receiver === singletonHandler
         }
       }
       "to the handler if a request is open" in {
-        singleHandlerFixture(
-          Received(simpleRequest),
-          ClearCommandAndEventCollectors,
-          IOPeer.Closed(testHandle, PeerClosed)
-        ).checkResult {
-          command.asTell.receiver === singletonHandler
-          command.asTell.message === IOPeer.Closed(testHandle, PeerClosed)
+        singleHandlerPipeline.test {
+          processAndClear(Received(simpleRequest))
+          val Commands(Tell(receiver, CLOSED, _)) = process(CLOSED)
+          receiver === singletonHandler
         }
       }
       "to the response sender if a response has been sent but not yet confirmed" in {
-        singleHandlerFixture(
-          Received(simpleRequest),
-          HttpCommand(HttpResponse()) from sender1,
-          ClearCommandAndEventCollectors,
-          IOPeer.Closed(testHandle, PeerClosed)
-        ).checkResult {
-          command.asTell.receiver === sender1
-          command.asTell.message === IOPeer.Closed(testHandle, PeerClosed)
+        singleHandlerPipeline.test {
+          val Commands(Tell(_, _, peer)) = process(Received(simpleRequest))
+          peer.tell(HttpCommand(HttpResponse()), sender1)
+          val Commands(Tell(receiver, CLOSED, _)) = clearAndProcess(CLOSED)
+          receiver === sender1
         }
       }
       "to the handler if a response has been sent and confirmed" in {
-        singleHandlerFixture(
-          Received(simpleRequest),
-          HttpCommand(HttpResponse()) from sender1,
-          IOPeer.SentOk(testHandle),
-          ClearCommandAndEventCollectors,
-          IOPeer.Closed(testHandle, PeerClosed)
-        ).checkResult {
-          command.asTell.receiver === singletonHandler
-          command.asTell.message === IOPeer.Closed(testHandle, PeerClosed)
+        singleHandlerPipeline.test {
+          val Commands(Tell(_, _, peer)) = process(Received(simpleRequest))
+          peer.tell(HttpCommand(HttpResponse()), sender1)
+          process(SentOk(testHandle))
+          val Commands(Tell(receiver, CLOSED, _)) = clearAndProcess(CLOSED)
+          receiver === singletonHandler
         }
       }
       "to the response sender of a chunk stream if a chunk has been sent but not yet confirmed" in {
-        singleHandlerFixture(
-          Received(simpleRequest),
-          HttpCommand(ChunkedResponseStart(HttpResponse())) from sender1,
-          ClearCommandAndEventCollectors,
-          IOPeer.Closed(testHandle, PeerClosed)
-        ).checkResult {
-          command.asTell.receiver === sender1
-          command.asTell.message === IOPeer.Closed(testHandle, PeerClosed)
+        singleHandlerPipeline.test {
+          val Commands(Tell(_, _, peer)) = process(Received(simpleRequest))
+          peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse())), sender1)
+          val Commands(Tell(receiver, CLOSED, _)) = clearAndProcess(CLOSED)
+          receiver === sender1
         }
       }
-      "to the response sender of a chunk stream if a chunk has been sent and confirmed" in {
-        singleHandlerFixture(
-          Received(simpleRequest),
-          HttpCommand(ChunkedResponseStart(HttpResponse())) from sender1,
-          IOPeer.SentOk(testHandle),
-          ClearCommandAndEventCollectors,
-          IOPeer.Closed(testHandle, PeerClosed)
-        ).checkResult {
-          command.asTell.receiver === sender1
-          command.asTell.message === IOPeer.Closed(testHandle, PeerClosed)
+      "to the last response sender of a chunk stream if a chunk has been sent and confirmed" in {
+        singleHandlerPipeline.test {
+          val Commands(Tell(_, _, peer)) = process(Received(simpleRequest))
+          peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse())), sender1)
+          peer.tell(HttpCommand(MessageChunk("bla")), sender2)
+          process(SentOk(testHandle), SentOk(testHandle))
+          val Commands(Tell(receiver, CLOSED, _)) = clearAndProcess(CLOSED)
+          receiver === sender2
         }
       }
-      "to the handler if a final chunk has been sent and confirmed" in {
-        singleHandlerFixture(
-          Received(simpleRequest),
-          HttpCommand(ChunkedResponseStart(HttpResponse())) from sender1,
-          HttpCommand(MessageChunk("yes")) from sender1,
-          HttpCommand(ChunkedMessageEnd()) from sender1,
-          IOPeer.SentOk(testHandle),
-          IOPeer.SentOk(testHandle),
-          IOPeer.SentOk(testHandle),
-          ClearCommandAndEventCollectors,
-          IOPeer.Closed(testHandle, PeerClosed)
-        ).checkResult {
-          command.asTell.receiver === singletonHandler
-          command.asTell.message === IOPeer.Closed(testHandle, PeerClosed)
+      "to the last response sender if a final chunk has been sent but not yet confirmed" in {
+        singleHandlerPipeline.test {
+          val Commands(Tell(_, _, peer)) = process(Received(simpleRequest))
+          peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse())), sender1)
+          peer.tell(HttpCommand(MessageChunk("bla")), sender2)
+          peer.tell(HttpCommand(ChunkedMessageEnd()), sender3)
+          process(SentOk(testHandle), SentOk(testHandle))
+          val Commands(Tell(receiver, CLOSED, _)) = clearAndProcess(CLOSED)
+          receiver === sender3
+        }
+      }
+      "to the handler if a final chunk has been sent but not yet confirmed" in {
+        singleHandlerPipeline.test {
+          val Commands(Tell(_, _, peer)) = process(Received(simpleRequest))
+          peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse())), sender1)
+          peer.tell(HttpCommand(MessageChunk("bla")), sender2)
+          peer.tell(HttpCommand(ChunkedMessageEnd()), sender3)
+          process(SentOk(testHandle), SentOk(testHandle), SentOk(testHandle))
+          val Commands(Tell(receiver, CLOSED, _)) = clearAndProcess(CLOSED)
+          receiver === singletonHandler
         }
       }
     }
 
     "handle 'Expected: 100-continue' headers" in {
       def example(expectValue: String) = {
-        singleHandlerFixture(
-          Received {
-            prep {
-              """|GET / HTTP/1.1
-                |Host: test.com
-                |Content-Type: text/plain
-                |Content-Length: 12
-                |Expect: %s
-                |
-                |bodybodybody""".format(expectValue)
+        singleHandlerPipeline.test {
+          val Commands(message, Tell(`singletonHandler`, request, peer)) = processAndClear {
+            Received {
+              prep {
+                """|GET / HTTP/1.1
+                  |Host: test.com
+                  |Content-Type: text/plain
+                  |Content-Length: 12
+                  |Expect: %s
+                  |
+                  |bodybodybody""".format(expectValue)
+              }
             }
-          },
-          HttpCommand(HttpResponse()) from sender1
-        ).checkResult {
-          commands(0) === SendString("HTTP/1.1 100 Continue\r\n\r\n")
-          commands(1).asTell.receiver === singletonHandler
-          commands(1).asTell.message === HttpRequest(
+          }
+          peer.tell(HttpCommand(HttpResponse()), sender1)
+
+          message === SendString("HTTP/1.1 100 Continue\r\n\r\n")
+          request === HttpRequest(
             headers = List(
               RawHeader("expect", expectValue),
               RawHeader("content-length", "12"),
@@ -275,7 +253,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
               RawHeader("host", "test.com")
             )
           ).withEntity("bodybodybody")
-          commands(2) === SendString(simpleResponse)
+          result.commands(0) === SendString(simpleResponse)
         }
       }
       "with a header value fully matching the spec" in example("100-continue")
@@ -283,20 +261,21 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
     }
 
     "dispatch HEAD requests as GET requests (and suppress sending of their bodies)" in {
-      singleHandlerFixture(
-        Received {
-          prep {
-            """|HEAD / HTTP/1.1
-              |Host: test.com
-              |
-              |"""
+      singleHandlerPipeline.test {
+        val Commands(Tell(`singletonHandler`, request, peer)) = processAndClear {
+          Received {
+            prep {
+              """|HEAD / HTTP/1.1
+                |Host: test.com
+                |
+                |"""
+            }
           }
-        },
-        HttpCommand(HttpResponse(entity = "1234567")) from sender1
-      ).checkResult {
-        commands(0).asTell.receiver === singletonHandler
-        commands(0).asTell.message === HttpRequest(headers = List(RawHeader("host", "test.com")))
-        commands(1) === SendString {
+        }
+        peer.tell(HttpCommand(HttpResponse(entity = "1234567")), sender1)
+
+        request === HttpRequest(headers = List(RawHeader("host", "test.com")))
+        result.commands(0) === SendString {
           prep {
           """|HTTP/1.1 200 OK
              |Server: spray/1.0
@@ -309,11 +288,32 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         }
       }
     }
+
+    "dispatch Timeout messages in case of a request timeout and the dispatch respective response" in {
+      singleHandlerPipeline.test {
+        val Commands(Tell(`singletonHandler`, _, peer)) = processAndClear(Received(simpleRequest))
+        Thread.sleep(60)
+        val Commands(Tell(`singletonHandler`, cc.spray.http.Timeout(_), `peer`)) = processAndClear(TickGenerator.Tick)
+        peer.tell(HttpCommand(HttpResponse()), sender1)
+        result.commands(0) === SendString(simpleResponse)
+      }
+    }
+
+    "dispatch the default timeout response if the Timeout timed out" in {
+      singleHandlerPipeline.test {
+        val Commands(Tell(`singletonHandler`, _, peer)) = processAndClear(Received(simpleRequest))
+        Thread.sleep(60)
+        val Commands(Tell(`singletonHandler`, cc.spray.http.Timeout(_), `peer`)) = processAndClear(TickGenerator.Tick)
+        Thread.sleep(30)
+        val Commands(HttpCommand(response: HttpResponse)) = processAndClear(TickGenerator.Tick)
+        response.status === StatusCodes.InternalServerError
+      }
+    }
   }
 
   step(system.shutdown())
 
-  /////////////////////////// SUPPORT ////////////////////////////////
+  ///////////////////////// SUPPORT ////////////////////////
 
   implicit val timeout: Timeout = Duration("500 ms")
 
@@ -368,23 +368,24 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
   val singletonHandler = TestActorRef(new DummyActor, "singletonHandler")
 
   class DummyActor extends Actor {
-    def receive = { case _ => throw new UnsupportedOperationException }
+    def receive = {
+      case x: Command => currentTestPipelines.commandPipeline(x)
+      case x: Event => currentTestPipelines.eventPipeline(x)
+    }
     def getContext = context
   }
 
-  def singleHandlerFixture = fixture(SingletonHandler(singletonHandler))
+  override def connectionActorContext = connectionActor.underlyingActor.getContext
 
-  def fixture(messageHandler: MessageHandler): Fixture = {
-    new Fixture(testPipeline(messageHandler)) {
-      override def getConnectionActorContext = connectionActor.underlyingActor.getContext
-    }
-  }
+  val singleHandlerPipeline = testPipeline(SingletonHandler(singletonHandler))
 
   def testPipeline(messageHandler: MessageHandler) = HttpServer.pipeline(
     new ServerSettings(
       ConfigFactory.parseString("""
         spray.can.server.server-header = spray/1.0
-        spray.can.server.idle-timeout = 50 ms
+        spray.can.server.idle-timeout = 100 ms
+        spray.can.server.request-timeout = 50 ms
+        spray.can.server.timeout-timeout = 20 ms
         spray.can.server.reaping-cycle = 0  # don't enable the TickGenerator
         spray.can.server.pipelining-limit = 10
         spray.can.server.request-chunk-aggregation-limit = 0 # disable chunk aggregation
@@ -395,5 +396,5 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
     Some(new StatsSupport.StatsHolder),
     system.log
   )
-
 }
+

@@ -20,14 +20,14 @@ import collection.mutable.ListBuffer
 import util.DynamicVariable
 import java.nio.ByteBuffer
 import java.net.InetSocketAddress
-import akka.util.Duration
 import akka.actor.{ActorRef, ActorContext, ActorSystem}
 import akka.spray.UnregisteredActorRef
 import cc.spray.io._
 import cc.spray.util._
+import annotation.tailrec
 
 
-trait PipelineStageTest {
+trait PipelineStageTest { test =>
   implicit def system: ActorSystem
 
   lazy val testHandle = new Handle {
@@ -45,83 +45,105 @@ trait PipelineStageTest {
   lazy val sender4 = unregisteredActorRef
 
   def unregisteredActorRef = new UnregisteredActorRef(system) {
-    protected def handle(message: Any, sender: ActorRef) {
+    def handle(message: Any)(implicit sender: ActorRef) {
       throw new UnsupportedOperationException
     }
   }
 
-  class Fixture(stage: PipelineStage) {
-    private var msgSender: ActorRef = null
-    val context = new PipelineContext {
-      def handle = testHandle
-      def connectionActorContext = getConnectionActorContext
-      override def sender = if (msgSender != null) msgSender else sys.error("No message sender set")
+  def connectionActorContext: ActorContext = throw new UnsupportedOperationException
+
+  implicit def pimpPipelineStageWithTest(stage: PipelineStage): { def test[T](body: => T): T } =
+    new { def test[T](body: => T): T = new Fixture(stage).run(body) }
+
+  private class Fixture(stage: PipelineStage) {
+    var msgSender: ActorRef = null
+    val commands = ListBuffer.empty[Command]
+    val events = ListBuffer.empty[Event]
+    val pipelines = {
+      val context = new PipelineContext {
+        def handle = testHandle
+        def connectionActorContext = test.connectionActorContext
+        override def sender = if (msgSender != null) msgSender else sys.error("No message sender set")
+      }
+      stage.buildPipelines(context, x => commands += x, x => events += x)
     }
-    def getConnectionActorContext: ActorContext = throw new UnsupportedOperationException
-    def apply(cmdsAndEvents: AnyRef*) = process(new PipelineRun(stage, context), cmdsAndEvents.toList)
-    def process(run: PipelineRun, cmdsAndEvents: List[AnyRef]): PipelineRun = cmdsAndEvents match {
-      case Nil                        => run
-      case Do(f) :: rest              => f(run); process(run, rest)
-      case Message(msg, sndr) :: rest => msgSender = sndr; process(run, msg :: rest)
-      case (x: Command) :: rest       => run.pipelines.commandPipeline(x); process(run, rest)
-      case (x: Event) :: rest         => run.pipelines.eventPipeline(x); process(run, rest)
-    }
+    def clear() { commands.clear(); events.clear() }
+    def run[T](body: => T): T = dynFixture.withValue(this)(body)
   }
 
-  class PipelineRun(stage: PipelineStage, context: PipelineContext) {
-    private val _commands = ListBuffer.empty[Command]
-    private val _events = ListBuffer.empty[Event]
-    def commands: Seq[Command] = _commands
-    def events: Seq[Event] = _events
-    def clear() { _commands.clear(); _events.clear() }
-    val pipelines = stage.buildPipelines(context, x => _commands += x, x => _events += x)
-    def checkResult[T](body: => T): T = dynPR.withValue(this)(body)
+  private val dynFixture = new DynamicVariable[Fixture](null)
+
+  private def fixture = {
+    if (dynFixture.value == null) sys.error("This value is only available inside of a `test` construct!")
+    dynFixture.value
   }
 
-  private val dynPR = new DynamicVariable[PipelineRun](null)
+  case class ProcessResult(commands: List[Command], events: List[Event])
 
-  def result = {
-    if (dynPR.value == null) sys.error("This value is only available inside of a `check` construct!")
-    dynPR.value
+  def currentTestPipelines: Pipelines = fixture.pipelines
+
+  def result = ProcessResult(
+    extractCommands(fixture.commands.toList),
+    extractEvents(fixture.events.toList)
+  )
+
+  def clear() { fixture.clear() }
+
+  def clearAndProcess(cmdsAndEvents: AnyRef*): ProcessResult = {
+    clear()
+    process(cmdsAndEvents.toList)
   }
-  def commands = result.commands.map {
-    case IOPeer.Send(bufs, _) => SendStringCommand {
+
+  def processAndClear(cmdsAndEvents: AnyRef*): ProcessResult = {
+    val x = process(cmdsAndEvents.toList)
+    clear()
+    x
+  }
+
+  def process(cmdsAndEvents: AnyRef*): ProcessResult = process(cmdsAndEvents.toList)
+
+  @tailrec
+  final def process(cmdsAndEvents: List[AnyRef]): ProcessResult = cmdsAndEvents match {
+    case Nil                        => result
+    case Message(msg, sndr) :: rest => fixture.msgSender = sndr; process(msg :: rest)
+    case (x: Command) :: rest       => fixture.pipelines.commandPipeline(x); process(rest)
+    case (x: Event) :: rest         => fixture.pipelines.eventPipeline(x); process(rest)
+  }
+
+  def extractCommands(commands: List[Command]): List[Command] = commands.map {
+    case IOPeer.Send(bufs, _) => SendString {
       val sb = new java.lang.StringBuilder
       for (b <- bufs) sb.append(b.copyContent.drainToString)
       sb.toString
     }
     case x => x
   }
-  def events = result.events
-  def command: Command = {
-    val c = commands
-    if (c.size == 1) c.head else sys.error("Expected a single command but got %s (%s)".format(c.size, c))
+
+  def extractEvents(events: List[Event]): List[Event] = events
+
+  object CommandsAndEvents {
+    def unapply(pr: ProcessResult): Option[(List[Command], List[Event])] =
+      Some(extractCommands(pr.commands), extractEvents(pr.events))
   }
-  def event: Event = {
-    val e = events
-    if (e.size == 1) e.head else sys.error("Expected a single event but got %s (%s)".format(e.size, e))
+  object Commands {
+    def unapplySeq(pr: ProcessResult): Option[Seq[Command]] = Some(pr.commands)
+  }
+  object Events {
+    def unapplySeq(pr: ProcessResult): Option[Seq[Event]] = Some(pr.events)
+  }
+  object ActorPathName {
+    def unapply(ref: ActorRef): Option[String] = Some(ref.path.name)
   }
 
   case class Message(msg: AnyRef, sender: ActorRef) extends Command
-  case class Do(f: PipelineRun => Unit) extends Command
 
   implicit def pimpAnyRefWithFrom(msg: AnyRef): { def from(s: ActorRef): Command } =
     new { def from(s: ActorRef) = Message(msg, s) }
 
-  val ClearCommandAndEventCollectors = Do(_.clear())
   def Received(rawMessage: String) = IOBridge.Received(testHandle, string2ByteBuffer(rawMessage))
   def Send(rawMessage: String) = IOPeer.Send(string2ByteBuffer(rawMessage))
-  def SendString(rawMessage: String) = SendStringCommand(rawMessage)
-  def Sleep(duration: String) = Do(_ => Thread.sleep(Duration(duration).toMillis))
 
-  case class SendStringCommand(string: String) extends Command
+  case class SendString(string: String) extends Command
 
   protected def string2ByteBuffer(s: String) = ByteBuffer.wrap(s.getBytes("US-ASCII"))
-
-  def fixTells(commands: Seq[Command]) = commands.map {
-    case x: IOPeer.Tell => x.copy(sender = IgnoreSender)
-    case x => x
-  }
-
-  def IgnoreSender: ActorRef = null
 }

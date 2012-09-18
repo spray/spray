@@ -31,15 +31,15 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
   "The ResponseRendering PipelineStage" should {
     "be transparent to unrelated commands" in {
       val cmd = new Command {}
-      fixture(cmd).checkResult {
+      pipelineStage.test {
+        val Commands(command) = process(cmd)
         command === cmd
       }
     }
     "translate a simple HttpResponsePartRenderingContext into the corresponding Send command" in {
-      fixture(
-        HttpResponsePartRenderingContext(HttpResponse(entity = "Some Message"))
-      ).checkResult {
-        command === SendString(
+      pipelineStage.test {
+        val Commands(command) = process(HttpResponsePartRenderingContext(HttpResponse(entity = "Some Message")))
+        command === sendString {
           """|HTTP/1.1 200 OK
             |Server: spray/1.0
             |Date: XXXX
@@ -47,18 +47,19 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
             |Content-Length: 12
             |
             |Some Message"""
-        )
+        }
       }
     }
     "append a Close command to the Send if the connection is to be closed" in {
-      fixture(
-        HttpResponsePartRenderingContext(
-          responsePart = HttpResponse(entity = "Some Message"),
-          requestMethod = HttpMethods.HEAD,
-          requestConnectionHeader = Some("close")
+      pipelineStage.test {
+        val Commands(commands@ _*) = process(
+          HttpResponsePartRenderingContext(
+            responsePart = HttpResponse(entity = "Some Message"),
+            requestMethod = HttpMethods.HEAD,
+            requestConnectionHeader = Some("close")
+          )
         )
-      ).checkResult {
-        commands(0) === SendString {
+        commands(0) === sendString {
           """|HTTP/1.1 200 OK
              |Connection: close
              |Server: spray/1.0
@@ -77,7 +78,7 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
 
   /////////////////////////// SUPPORT ////////////////////////////////
 
-  val fixture = new Fixture(
+  val pipelineStage =
     ResponseRendering(
       new ServerSettings(
         ConfigFactory.parseString("""
@@ -86,7 +87,6 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
         """)
       )
     )
-  )
 
-  override def SendString(rawMessage: String) = super.SendString(prep(rawMessage))
+  def sendString(rawMessage: String) = SendString(prep(rawMessage))
 }

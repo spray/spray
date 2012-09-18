@@ -31,58 +31,60 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
   "The HttpClient pipeline" should {
 
     "send out a simple HttpRequest to the server" in {
-      fixture(
-        HttpCommand(request()) from sender1
-      ).checkResult {
+      pipeline.test {
+        val Commands(command) = process(HttpCommand(request()) from sender1)
         command === SendString(emptyRawRequest())
       }
     }
 
     "dispatch an incoming HttpResponse back to the sender" in {
-      fixture(
-        HttpCommand(request()) from sender1,
-        Received(rawResponse)
-      ).checkResult {
+      pipeline.test {
+        val Commands(commands@ _*) = process(
+          HttpCommand(request()) from sender1,
+          Received(rawResponse)
+        )
         commands(0) === SendString(emptyRawRequest())
-        commands(1) === IOPeer.Tell(sender1, response, connectionActor)
+        commands(1) === Tell(sender1, response, connectionActor)
       }
     }
 
     "properly complete a 3 requests pipelined dialog" in {
-      fixture(
-        HttpCommand(request("Request 1")) from sender1,
-        HttpCommand(request("Request 2")) from sender2,
-        HttpCommand(request("Request 3")) from sender1,
-        Received(rawResponse("Response 1")),
-        Received(rawResponse("Response 2")),
-        Received(rawResponse("Response 3"))
-      ).checkResult {
+      pipeline.test {
+        val Commands(commands@ _*) = process(
+          HttpCommand(request("Request 1")) from sender1,
+          HttpCommand(request("Request 2")) from sender2,
+          HttpCommand(request("Request 3")) from sender1,
+          Received(rawResponse("Response 1")),
+          Received(rawResponse("Response 2")),
+          Received(rawResponse("Response 3"))
+        )
         commands(0) === SendString(rawRequest("Request 1"))
         commands(1) === SendString(rawRequest("Request 2"))
         commands(2) === SendString(rawRequest("Request 3"))
-        commands(3) === IOPeer.Tell(sender1, response("Response 1"), connectionActor)
-        commands(4) === IOPeer.Tell(sender2, response("Response 2"), connectionActor)
-        commands(5) === IOPeer.Tell(sender1, response("Response 3"), connectionActor)
+        commands(3) === Tell(sender1, response("Response 1"), connectionActor)
+        commands(4) === Tell(sender2, response("Response 2"), connectionActor)
+        commands(5) === Tell(sender1, response("Response 3"), connectionActor)
       }
     }
 
     "properly handle responses to HEAD requests" in {
-      fixture(
-        HttpCommand(HttpRequest(method = HttpMethods.HEAD)) from sender1,
-        Received {
-          prep {
-            """|HTTP/1.1 200 OK
-               |Server: spray/1.0
-               |Date: Thu, 25 Aug 2011 09:10:29 GMT
-               |Content-Length: 8
-               |Content-Type: text/plain
-               |
-               |"""
+      pipeline.test {
+        val Commands(commands@ _*) = process(
+          HttpCommand(HttpRequest(method = HttpMethods.HEAD)) from sender1,
+          Received {
+            prep {
+              """|HTTP/1.1 200 OK
+                 |Server: spray/1.0
+                 |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                 |Content-Length: 8
+                 |Content-Type: text/plain
+                 |
+                 |"""
+            }
           }
-        }
-      ).checkResult {
+        )
         commands(0) === SendString(emptyRawRequest(method = "HEAD"))
-        commands(1) === IOPeer.Tell(sender1, response("12345678").withEntity(""), connectionActor)
+        commands(1) === Tell(sender1, response("12345678").withEntity(""), connectionActor)
       }
     }
   }
@@ -93,18 +95,14 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
 
   val connectionActor = TestActorRef(new NamedActor("connectionActor"))
 
+  override def connectionActorContext = connectionActor.underlyingActor.getContext
+
   class NamedActor(val name: String) extends Actor {
     def receive = { case 'name => sender ! name}
     def getContext = context
   }
 
-  def fixture: Fixture = {
-    new Fixture(testPipeline) {
-      override def getConnectionActorContext = connectionActor.underlyingActor.getContext
-    }
-  }
-
-  def testPipeline = HttpClient.pipeline(
+  val pipeline = HttpClient.pipeline(
     new ClientSettings(
       ConfigFactory.parseString("""
         spray.can.client.user-agent-header = spray/1.0

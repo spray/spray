@@ -24,19 +24,20 @@ import HttpHeaders.RawHeader
 
 
 trait HttpPipelineStageSpec extends PipelineStageTest {
+  val Tell = IOPeer.Tell
+  val SentOk = IOPeer.SentOk
+  val Closed = IOPeer.Closed
 
-  override def commands = super.commands.map {
-    case SendStringCommand(string) => SendStringCommand {
-      string.fastSplit('\n').map {
-        case s if s.startsWith("Date:") => "Date: XXXX\r"
-        case s => s
-      }.mkString("\n")
+  override def extractCommands(commands: List[Command]) =
+    super.extractCommands(commands).map {
+      case SendString(string) => SendString {
+        string.fastSplit('\n').map {
+          case s if s.startsWith("Date:") => "Date: XXXX\r"
+          case s => s
+        }.mkString("\n")
+      }
+      case x => x
     }
-    case x => x
-  }
-
-  implicit def pimpCommandWithFrom(cmd: Command): { def asTell: IOPeer.Tell } =
-    new { def asTell = cmd.asInstanceOf[IOPeer.Tell] }
 
   def request(content: String = "") = HttpRequest().withEntity(content)
 

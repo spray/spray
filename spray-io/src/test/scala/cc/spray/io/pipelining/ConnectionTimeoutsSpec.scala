@@ -23,45 +23,48 @@ import cc.spray.io._
 
 class ConnectionTimeoutsSpec extends Specification with PipelineStageTest {
   val system = ActorSystem()
-  val fixture = new Fixture(ConnectionTimeouts(50, system.log))
+  val stage = ConnectionTimeouts(50, system.log)
 
   "The ConnectionTimeouts PipelineStage" should {
     "be transparent to unrelated commands" in {
       val cmd = new Command {}
-      fixture(cmd).checkResult {
+      stage.test {
+        val Commands(command) = process(cmd)
         command === cmd
       }
     }
     "be transparent to unrelated events" in {
       val ev = new Event {}
-      fixture(ev).checkResult {
+      stage.test {
+        val Events(event) = process(ev)
         event === ev
       }
     }
     "upon a Tick, create a Close command if the idle timeout expired" in {
-      fixture(
-        Received("Some Message"),
-        Sleep("60 ms"),
-        TickGenerator.Tick
-      ).checkResult {
+      stage.test {
+        processAndClear(Received("Some Message"))
+        Thread.sleep(60)
+        val Commands(command) = process(TickGenerator.Tick)
         command === IOPeer.Close(IdleTimeout)
       }
     }
     "reset the idle timer on Received events" in {
-      fixture(
-        Sleep("60 ms"),
-        Received("Some Message"),
-        TickGenerator.Tick
-      ).checkResult {
+      stage.test {
+        Thread.sleep(60)
+        val Commands(commands@ _*) = process(
+          Received("Some Message"),
+          TickGenerator.Tick
+        )
         commands must beEmpty
       }
     }
     "reset the idle timer on Send commands" in {
-      fixture(
-        Sleep("50 ms"),
-        Send("Some Message"),
-        TickGenerator.Tick
-      ).checkResult {
+      stage.test {
+        Thread.sleep(60)
+        val Commands(command) = process(
+          Send("Some Message"),
+          TickGenerator.Tick
+        )
         command === SendString("Some Message")
       }
     }

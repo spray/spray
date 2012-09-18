@@ -26,51 +26,53 @@ import cc.spray.io.{ProtocolError, Event}
 
 class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
   val system = ActorSystem()
-  val fixture = new Fixture(ResponseParsing(new ParserSettings(), system.log))
+  val pipelineStage = ResponseParsing(new ParserSettings(), system.log)
 
   "The ResponseParsing PipelineStage" should {
     "be transparent to unrelated events" in {
       val ev = new Event {}
-      fixture(ev).checkResult {
+      pipelineStage.test {
+        val Events(event) = process(ev)
         event === ev
       }
     }
     "parse a simple response and produce the corresponding event" in {
-      fixture(
-        HttpRequestPartRenderingContext(request(), "localhost", 80),
-        ClearCommandAndEventCollectors,
-        Received(rawResponse("foo"))
-      ).checkResult {
+      pipelineStage.test {
+        process(HttpRequestPartRenderingContext(request(), "localhost", 80))
+        val Events(event) = process(Received(rawResponse("foo")))
         event === HttpEvent(response("foo"))
       }
     }
     "parse a double response and produce the corresponding events" in {
-      fixture(
-        HttpRequestPartRenderingContext(request(), "localhost", 80),
-        HttpRequestPartRenderingContext(request(), "localhost", 80),
-        ClearCommandAndEventCollectors,
-        Received(rawResponse("foo") + rawResponse("bar"))
-      ).checkResult {
+      pipelineStage.test {
+        val Events(events@ _*) = process(
+          HttpRequestPartRenderingContext(request(), "localhost", 80),
+          HttpRequestPartRenderingContext(request(), "localhost", 80),
+          Received(rawResponse("foo") + rawResponse("bar"))
+        )
         events(0) === HttpEvent(response("foo"))
         events(1) === HttpEvent(response("bar"))
       }
     }
     "trigger an error on unmatched responses" in {
       "example 1" in {
-        fixture(Received(rawResponse("foo"))).checkResult {
+        pipelineStage.test {
+          val Commands(command) = process(Received(rawResponse("foo")))
           command === HttpClient.Close(ProtocolError("Response to non-existent request"))
         }
       }
       "example 2" in {
-        fixture(
-          HttpRequestPartRenderingContext(request(), "localhost", 80),
-          HttpRequestPartRenderingContext(request(), "localhost", 80),
-          ClearCommandAndEventCollectors,
-          Received(rawResponse("foo")),
-          Received(rawResponse("bar")),
-          Received(rawResponse("baz"))
-        ).checkResult {
-          command === HttpClient.Close(ProtocolError("Response to non-existent request"))
+        pipelineStage.test {
+          process(
+            HttpRequestPartRenderingContext(request(), "localhost", 80),
+            HttpRequestPartRenderingContext(request(), "localhost", 80)
+          )
+          val CommandsAndEvents(commands, events) = clearAndProcess(
+            Received(rawResponse("foo")),
+            Received(rawResponse("bar")),
+            Received(rawResponse("baz"))
+          )
+          commands(0) === HttpClient.Close(ProtocolError("Response to non-existent request"))
           events(0) === HttpEvent(response("foo"))
           events(1) === HttpEvent(response("bar"))
         }
