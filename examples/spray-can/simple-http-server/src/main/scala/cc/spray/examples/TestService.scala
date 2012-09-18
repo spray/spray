@@ -44,16 +44,13 @@ class TestService extends Actor with ActorLogging {
     case _: HttpRequest => sender ! HttpResponse(status = 404, entity = "Unknown resource!")
 
     case Timeout(HttpRequest(_, "/timeout/timeout", _, _, _)) =>
-      log.info("Dropping RequestTimeout message")
+      log.info("Dropping Timeout message")
 
     case Timeout(HttpRequest(method, uri, _, _, _)) =>
       sender ! HttpResponse(
         status = 500,
         entity = "The " + method + " request to '" + uri + "' has timed out..."
       )
-
-    case x: HttpServer.Closed =>
-      context.children.foreach(_ ! CancelStream(sender, x.reason))
   }
 
   ////////////// helpers //////////////
@@ -99,8 +96,6 @@ class TestService extends Actor with ActorLogging {
     )
   )
 
-  case class CancelStream(peer: ActorRef, reason: ConnectionClosedReason)
-
   class Streamer(peer: ActorRef, var count: Int) extends Actor with ActorLogging {
     log.debug("Starting streaming response ...")
     peer ! ChunkedResponseStart(HttpResponse(entity = " " * 2048))
@@ -111,17 +106,18 @@ class TestService extends Actor with ActorLogging {
         log.info("Sending response chunk ...")
         peer ! MessageChunk(DateTime.now.toIsoDateTimeString + ", ")
         count -= 1
+
       case 'Tick =>
         log.info("Finalizing response stream ...")
         chunkGenerator.cancel()
         peer ! MessageChunk("\nStopped...")
         peer ! ChunkedMessageEnd()
         context.stop(self)
-      case CancelStream(ref, reason) => if (ref == peer) {
+
+      case HttpServer.Closed(_, reason) =>
         log.info("Canceling response stream due to {} ...", reason)
         chunkGenerator.cancel()
         context.stop(self)
-      }
     }
   }
 }

@@ -103,11 +103,12 @@ trait DemoService extends HttpService {
       Props {
         new Actor with ActorLogging {
           var remainingChunks = 16
+
+          // we prepend 2048 "empty" bytes to push the browser to immediately start displaying the incoming chunks
+          val htmlStart = " " * 2048 + "<html><body><h2>A streaming response</h2><p>(for 15 seconds)<ul>"
+          ctx.handler ! ChunkedResponseStart(HttpResponse(entity = HttpBody(`text/html`, htmlStart)))
+
           def receive = {
-            case 'Start =>
-              // we prepend 2048 "empty" bytes to push the browser to immediately start displaying the incoming chunks
-              val htmlStart = " " * 2048 + "<html><body><h2>A streaming response</h2><p>(for 15 seconds)<ul>"
-              ctx.handler ! ChunkedResponseStart(HttpResponse(entity = HttpBody(`text/html`, htmlStart)))
             case _: HttpServer.SentOk if remainingChunks > 0 =>
               // we use the successful sending of a chunk as trigger for scheduling the next chunk
               remainingChunks -= 1
@@ -118,12 +119,13 @@ trait DemoService extends HttpService {
               ctx.handler ! MessageChunk("</ul><p>Finished.</p></body></html>")
               ctx.handler ! ChunkedMessageEnd()
               context.stop(self)
+
             case HttpServer.Closed(_, reason) =>
               log.warning("Stopping response streaming due to {}", reason)
           }
         }
-      }, "streaming-actor"
-    ) ! 'Start
+      }
+    )
   }
 
   def showServerStats(ctx: RequestContext) {
