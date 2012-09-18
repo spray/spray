@@ -18,18 +18,21 @@ package cc.spray.routing
 package directives
 
 import akka.dispatch.Future
-import cc.spray.routing.authentication._
-import cc.spray.util.LoggingContext
 import shapeless._
+import cc.spray.routing.authentication._
+import BasicDirectives._
 
 
 trait SecurityDirectives {
-  import BasicDirectives._
 
   /**
    * Wraps its inner Route with authentication support.
    */
-  def authenticate(am: AuthMagnet): Directive[am.Out] = am()
+  def authenticate[T](am: AuthMagnet[T]): Directive[T :: HNil] =
+    am().unwrapFuture.flatMap {
+      case Right(user) :: HNil => provide(user)
+      case Left(rejection) :: HNil => RouteDirectives.reject(rejection)
+    }
 
   /**
    * Applies the given authorization check to the request.
@@ -47,34 +50,19 @@ trait SecurityDirectives {
 
 }
 
-trait AuthMagnet {
-  type Out <: HList
-  def apply(): Directive[Out]
+trait AuthMagnet[T] {
+  def apply(): Directive[Future[Authentication[T]] :: HNil]
 }
 
 object AuthMagnet {
-  private def applyAuth[T](auth: Future[Authentication[T]], f: (T :: HNil) => Route, ctx: RequestContext)
-                          (implicit log: LoggingContext) = {
-    auth.onComplete {
-      case Right(Right(user)) => f(user :: HNil)(ctx)
-      case Right(Left(rejection)) => ctx.reject(rejection)
-      case Left(error) => ctx.failWith(error)
-    }
-  }
 
-  implicit def fromFutureAuth[T](auth: Future[Authentication[T]])(implicit log: LoggingContext) =
-    new AuthMagnet {
-      type Out = T :: HNil
-      def apply() = new Directive[Out] {
-        def happly(f: Out => Route) = ctx => applyAuth(auth, f, ctx)
-      }
+  implicit def fromFutureAuth[T](auth: Future[Authentication[T]]) =
+    new AuthMagnet[T] {
+      def apply() = provide(auth)
     }
 
-  implicit def fromContextAuthenticator[T](auth: ContextAuthenticator[T])(implicit log: LoggingContext) =
-    new AuthMagnet {
-      type Out = T :: HNil
-      def apply() = new Directive[Out] {
-        def happly(f: Out => Route) = ctx => applyAuth(auth(ctx), f, ctx)
-      }
+  implicit def fromContextAuthenticator[T](auth: ContextAuthenticator[T]) =
+    new AuthMagnet[T] {
+      def apply() = extract(auth)
     }
 }

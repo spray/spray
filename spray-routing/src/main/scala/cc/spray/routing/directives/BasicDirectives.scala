@@ -79,7 +79,7 @@ trait BasicDirectives {
   def noop: Directive0 = mapInnerRoute(identityFunc)
 
   /**
-   * Injects the given values into a directive.
+   * Injects the given value into a directive.
    */
   def provide[T](value: T): Directive[T :: HNil] = hprovide(value :: HNil)
 
