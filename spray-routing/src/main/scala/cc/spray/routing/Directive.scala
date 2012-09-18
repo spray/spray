@@ -35,14 +35,9 @@ abstract class Directive[L <: HList] { self =>
       }
     }
 
-  def & [R <: HList](concat: ConcatMagnet[L, R]) =
+  def & (concat: ConcatMagnet[L]) =
     new Directive[concat.Out] {
-      def happly(f: concat.Out => Route) =
-        self.happly { values =>
-          concat.that.happly { values2 =>
-            f(concat(values, values2))
-          }
-        }
+      def happly(f: concat.Out => Route) = self.happly(concat(f))
     }
 
   def as[T](deserializer: HListDeserializer[L, T]) =
@@ -92,17 +87,19 @@ object Directive {
                                     (implicit hac: ApplyConverter[L]): hac.In => Route = f => directive.happly(hac(f))
 }
 
-trait ConcatMagnet[L <: HList, R <: HList] {
+trait ConcatMagnet[L <: HList] {
   type Out <: HList
-  def that: Directive[R]
-  def apply(prefix : L, suffix : R) : Out
+  def apply(f: Out => Route): L => Route
 }
 
 object ConcatMagnet {
   implicit def fromR[L <: HList, R <: HList](other: Directive[R])
-                    (implicit p: Prepender[L, R]) = new ConcatMagnet[L, R] {
+                    (implicit p: Prepender[L, R]) = new ConcatMagnet[L] {
     type Out = p.Out
-    def that = other
-    def apply(prefix: L, suffix: R) = p(prefix, suffix)
+    def apply(f: Out => Route) = { prefix =>
+      other.happly { suffix =>
+        f(p(prefix, suffix))
+      }
+    }
   }
 }
