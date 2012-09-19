@@ -292,7 +292,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
     "dispatch Timeout messages in case of a request timeout (and dispatch respective response)" in {
       singleHandlerPipeline.test {
         val Commands(Tell(`singletonHandler`, _, peer)) = processAndClear(Received(simpleRequest))
-        Thread.sleep(60)
+        Thread.sleep(50)
         val Commands(Tell(`singletonHandler`, cc.spray.http.Timeout(_), `peer`)) = processAndClear(TickGenerator.Tick)
         peer.tell(HttpCommand(HttpResponse()), sender1)
         result.commands(0) === SendString(simpleResponse)
@@ -302,7 +302,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
     "dispatch the default timeout response if the Timeout timed out" in {
       singleHandlerPipeline.test {
         val Commands(Tell(`singletonHandler`, _, peer)) = processAndClear(Received(simpleRequest))
-        Thread.sleep(60)
+        Thread.sleep(50)
         val Commands(Tell(`singletonHandler`, cc.spray.http.Timeout(_), `peer`)) = processAndClear(TickGenerator.Tick)
         Thread.sleep(30)
         val Commands(message, HttpServer.Close(CleanClose)) = processAndClear(TickGenerator.Tick)
@@ -396,7 +396,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         spray.can.server.server-header = spray/1.0
         spray.can.server.idle-timeout = 100 ms
         spray.can.server.request-timeout = 50 ms
-        spray.can.server.timeout-timeout = 20 ms
+        spray.can.server.timeout-timeout = 30 ms
         spray.can.server.reaping-cycle = 0  # don't enable the TickGenerator
         spray.can.server.pipelining-limit = 10
         spray.can.server.request-chunk-aggregation-limit = 0 # disable chunk aggregation
