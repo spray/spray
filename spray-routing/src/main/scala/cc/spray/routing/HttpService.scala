@@ -17,8 +17,9 @@
 package cc.spray.routing
 
 import akka.util.NonFatal
+import akka.dispatch.ExecutionContext
 import akka.actor._
-import cc.spray.util.LoggingContext
+import cc.spray.util._
 import cc.spray.http._
 import StatusCodes._
 
@@ -32,6 +33,11 @@ trait HttpService extends Directives {
    * (mostly either the service actor or the service test)
    */
   implicit def actorRefFactory: ActorRefFactory
+
+  /**
+   * Supplies an ExecutionContext (mainly for Future scheduling) from the actorRefFactory.
+   */
+  implicit def executionContext: ExecutionContext = actorRefFactory.messageDispatcher
 
   /**
    * Normally you configure via the application.conf on the classpath,
