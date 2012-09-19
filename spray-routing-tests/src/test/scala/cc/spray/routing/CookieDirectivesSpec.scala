@@ -33,6 +33,11 @@ class CookieDirectivesSpec extends RoutingSpec {
         cookie("fancy") { echoComplete }
       } ~> check { rejection === MissingCookieRejection("fancy") }
     }
+    "properly pass through inner rejections" in {
+      Get() ~> addHeader(Cookie(HttpCookie("fancy", "pants"))) ~> {
+        cookie("fancy") { c => reject(ValidationRejection("Dont like " + c.content)) }
+      } ~> check { rejection === ValidationRejection("Dont like pants") }
+    }
   }
 
   "The 'deleteCookie' directive" should {
