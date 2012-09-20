@@ -21,7 +21,8 @@ import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActorRef
 import akka.actor.{ActorSystem, Actor}
 import cc.spray.can.{HttpCommand, HttpPipelineStageSpec}
-import cc.spray.io.IOPeer
+import cc.spray.io.{PeerClosed, IOPeer}
+import cc.spray.util._
 import cc.spray.http._
 
 
@@ -85,6 +86,32 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
         )
         commands(0) === SendString(emptyRawRequest(method = "HEAD"))
         commands(1) === Tell(sender1, response("12345678").withEntity(""), connectionActor)
+      }
+    }
+
+    "properly parse and dispatch 'to-close' responses" in {
+      pipeline.test {
+        processAndClear(HttpCommand(request()) from sender1)
+        val Commands(
+          Tell(
+            `sender1`,
+            HttpResponse(StatusCodes.OK, HttpBody(ContentType.`application/octet-stream`, body), _, _),
+            `connectionActor`
+          )
+        ) = process(
+          Received {
+            prep {
+              """|HTTP/1.1 200 OK
+                |Server: spray/1.0
+                |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                |Connection: close
+                |
+                |Yeah"""
+            }
+          },
+          IOPeer.Closed(testHandle, PeerClosed)
+        )
+        body.asString === "Yeah"
       }
     }
   }

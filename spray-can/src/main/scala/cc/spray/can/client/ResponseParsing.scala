@@ -22,6 +22,7 @@ import java.nio.ByteBuffer
 import annotation.tailrec
 import cc.spray.can.rendering.HttpRequestPartRenderingContext
 import cc.spray.can.HttpEvent
+import cc.spray.util.EmptyByteArray
 import cc.spray.can.parsing._
 import cc.spray.http._
 import cc.spray.io._
@@ -99,6 +100,16 @@ object ResponseParsing {
 
         val eventPipeline: EPL = {
           case x: IOPeer.Received => parse(x.buffer)
+
+          case ev@IOPeer.Closed(_, PeerClosed) =>
+            currentParsingState match {
+              case x: ToCloseBodyParser =>
+                currentParsingState = x.complete
+                parse(ByteBuffer.wrap(EmptyByteArray))
+              case _ =>
+            }
+            eventPL(ev)
+
           case ev => eventPL(ev)
         }
       }
