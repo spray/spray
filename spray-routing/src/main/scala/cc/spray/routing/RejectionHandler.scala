@@ -24,12 +24,12 @@ import HttpHeaders._
 trait RejectionHandler extends RejectionHandler.PF
 
 object RejectionHandler {
-  type PF = PartialFunction[Seq[Rejection], HttpResponse]
+  type PF = PartialFunction[List[Rejection], HttpResponse]
 
   implicit def fromPF(pf: PF): RejectionHandler =
     new RejectionHandler {
-      def isDefinedAt(rejections: Seq[Rejection]) = pf.isDefinedAt(rejections)
-      def apply(rejections: Seq[Rejection]) = pf(rejections)
+      def isDefinedAt(rejections: List[Rejection]) = pf.isDefinedAt(rejections)
+      def apply(rejections: List[Rejection]) = pf(rejections)
     }
 
   implicit val Default = fromPF {
@@ -82,7 +82,7 @@ object RejectionHandler {
    * Filters out all TransformationRejections from the given sequence and applies them (in order) to the
    * remaining rejections.
    */
-  def applyTransformations(rejections: Seq[Rejection]): Seq[Rejection] = {
+  def applyTransformations(rejections: List[Rejection]): List[Rejection] = {
     val (transformations, rest) = rejections.partition(_.isInstanceOf[TransformationRejection])
     (rest /: transformations.asInstanceOf[Seq[TransformationRejection]]) {
       case (remaining, transformation) => transformation.transform(remaining)

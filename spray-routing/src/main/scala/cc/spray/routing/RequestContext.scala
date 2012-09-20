@@ -114,7 +114,7 @@ case class RequestContext(
   /**
    * Returns a copy of this context with the given rejection transformation function chained into the response chain.
    */
-  def mapRejections(f: Seq[Rejection] => Seq[Rejection]) = mapRouteResponse {
+  def mapRejections(f: List[Rejection] => List[Rejection]) = mapRouteResponse {
     case Rejected(rejections) => Rejected(f(rejections))
     case x => x
   }
@@ -141,7 +141,7 @@ case class RequestContext(
   /**
    * Returns a copy of this context with the given rejection handling function chained into the response chain.
    */
-  def withRejectionHandling(f: Seq[Rejection] => Unit) = mapHandler { previousHandler =>
+  def withRejectionHandling(f: List[Rejection] => Unit) = mapHandler { previousHandler =>
     new UnregisteredActorRef(handler) {
       def handle(message: Any)(implicit sender: ActorRef) {
         message match {
@@ -168,7 +168,7 @@ case class RequestContext(
    * Rejects the request with the given rejections.
    */
   def reject(rejections: Rejection*) {
-    handler ! Rejected(rejections)
+    handler ! Rejected(rejections.toList)
   }
 
   /**
@@ -241,7 +241,7 @@ case class RequestContext(
     }
 }
 
-case class Rejected(rejections: Seq[Rejection]) {
+case class Rejected(rejections: List[Rejection]) {
   def map(f: Rejection => Rejection) = Rejected(rejections.map(f))
   def flatMap(f: Rejection => GenTraversableOnce[Rejection]) = Rejected(rejections.flatMap(f))
 }

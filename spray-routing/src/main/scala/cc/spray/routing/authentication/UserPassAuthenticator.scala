@@ -32,7 +32,7 @@ object UserPassAuthenticator {
    * Creats a UserPassAuthenticator that uses plain-text username/password definitions from a given
    * spray/akka config file section for authentication. The config section should look like this:
    * {{{
-   *   users {
+   *   spray.routing.users {
    *     username = "password"
    *     ...
    *   }

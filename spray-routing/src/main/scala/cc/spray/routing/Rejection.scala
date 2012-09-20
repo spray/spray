@@ -148,7 +148,7 @@ case class ValidationRejection(message: String) extends Rejection
  * MethodRejection added by the ``get`` directive is cancelled by the ``put`` directive (since the HTTP method
  * did indeed match.
  */
-case class TransformationRejection(transform: Seq[Rejection] => Seq[Rejection]) extends Rejection
+case class TransformationRejection(transform: List[Rejection] => List[Rejection]) extends Rejection
 
 /**
  * An exception wrapping a Rejection.

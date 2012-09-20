@@ -59,7 +59,7 @@ trait BasicDirectives {
   def mapHttpResponseHeaders(f: List[HttpHeader] => List[HttpHeader]): Directive0 =
     mapRequestContext(_.mapHttpResponseHeaders(f))
 
-  def mapRejections(f: Seq[Rejection] => Seq[Rejection]): Directive0 =
+  def mapRejections(f: List[Rejection] => List[Rejection]): Directive0 =
     mapRequestContext(_.mapRejections(f))
 
   def filter[L <: HList](f: RequestContext => FilterResult[L]): Directive[L] =

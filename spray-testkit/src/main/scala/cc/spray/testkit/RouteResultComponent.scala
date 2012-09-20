@@ -35,7 +35,7 @@ trait RouteResultComponent {
    */
   class RouteResult(timeout: Duration)(implicit actorRefFactory: ActorRefFactory) {
     private[this] var _response: Option[HttpResponse] = None
-    private[this] var _rejections: Option[Seq[Rejection]] = None
+    private[this] var _rejections: Option[List[Rejection]] = None
     private[this] val _chunks = ListBuffer.empty[MessageChunk]
     private[this] var _closingExtensions: List[ChunkExtension] = Nil
     private[this] var _trailer: List[HttpHeader] = Nil
@@ -71,7 +71,7 @@ trait RouteResultComponent {
       this
     }
 
-    private def saveResult(result: Either[Seq[Rejection], HttpResponse]) {
+    private def saveResult(result: Either[List[Rejection], HttpResponse]) {
       synchronized {
         if (!virginal) failTest("Route completed/rejected more than once")
         result match {
@@ -92,7 +92,7 @@ trait RouteResultComponent {
         failNotCompletedNotRejected()
       }
     }
-    def rejections: Seq[Rejection] = synchronized {
+    def rejections: List[Rejection] = synchronized {
       _rejections.getOrElse {
         _response.foreach(resp => failTest("Request was not rejected, response was " + resp))
         failNotCompletedNotRejected()
