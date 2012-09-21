@@ -55,8 +55,8 @@ trait EncodingDirectives {
    * Wraps its inner Route with encoding support using the given Encoder.
    */
   def encodeResponse(encoder: Encoder) = {
-    @volatile var compressor: Compressor = null
     def applyEncoder = mapRequestContext { ctx =>
+      @volatile var compressor: Compressor = null
       ctx.flatMapRouteResponse {
         case response: HttpResponse => encoder.encode(response) :: Nil
         case x@ ChunkedResponseStart(response) => encoder.startEncoding(response) match {
