@@ -15,7 +15,7 @@ class IncludeCode(Directive):
     optional_arguments = 0
     final_argument_whitespace = False
     option_spec = {
-        'example':      directives.unchanged_required
+        'snippet': directives.unchanged_required
     }
 
     def run(self):
@@ -24,8 +24,7 @@ class IncludeCode(Directive):
         (filename, sep, section) = arg0.partition('#')
 
         if not document.settings.file_insertion_enabled:
-            return [document.reporter.warning('File insertion disabled',
-                                              line=self.lineno)]
+            return [document.reporter.warning('File insertion disabled', line=self.lineno)]
         env = document.settings.env
         if filename.startswith('/') or filename.startswith(os.sep):
             rel_fn = filename[1:]
@@ -57,21 +56,33 @@ class IncludeCode(Directive):
                 'be wrong, try giving an :encoding: option' %
                 (encoding, filename))]
 
-        example = self.options.get('example')
-        current_examples = ""
+        snippet = self.options.get('snippet')
+        current_snippets = ""
         res = []
         for line in lines:
-            comment = line.split("//", 1)[1] if line.find("//") > 0 else ""
-            if len(line) > 2 and line[2] == '"':
-                current_examples = line[2:]
-            elif len(line) > 2 and line[2] == '}':
-                current_examples = ""
-            elif current_examples.find(example) >= 0 and comment.find("hide") == -1:
-                res.append(line[4:].rstrip() + '\n')
-            elif comment.find(example) >= 0:
-                res.append(line.split("//", 1)[0].strip() + '\n')
+            comment = line.split("//", 1)[1] if line.find("//") >= 0 else ""
+            if comment.startswith("#"):
+                current_snippets = comment
+                indent = line.find("//")
+            elif len(line) > 2 and line[2] == '"':
+                current_snippets = line[2:]
+                indent = 4
+            elif comment == "#" and current_snippets.startswith("#"):
+                current_snippets = ""
+            elif len(line) > 2 and line[2] == '}' and not current_snippets.startswith("#"):
+                current_snippets = ""
+            elif current_snippets.find(snippet) >= 0 and comment.find("hide") == -1:
+                res.append(line[indent:].rstrip() + '\n')
+            elif comment.find(snippet) >= 0:
+                array = line.split("//", 1)
+                l = array[0].rstrip() if array[1].startswith("/") > 0 else array[0].strip()
+                res.append(l + '\n')
 
         text = ''.join(res)
+
+        if text == "":
+            return [document.reporter.warning('Empty source inclusion!', line=self.lineno)]
+
         retnode = nodes.literal_block(text, text, source=fn)
         document.settings.env.note_dependency(rel_fn)
         return [retnode]

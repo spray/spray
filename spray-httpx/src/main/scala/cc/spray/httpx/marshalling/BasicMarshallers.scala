@@ -43,13 +43,19 @@ trait BasicMarshallers {
       }
     }
 
+  //# string-marshaller (for docs, don't remove this comment!)
   implicit val StringMarshaller =
     Marshaller.of[String](ContentType.`text/plain`) { (value, contentType, ctx) =>
       ctx.marshalTo(if (value.isEmpty) EmptyEntity else HttpBody(contentType, value))
     }
+  //#
 
+  //# nodeseq-marshaller (for docs, don't remove this comment!)
   implicit val NodeSeqMarshaller =
-    Marshaller.delegate[NodeSeq, String](`text/xml`, `text/html`, `application/xhtml+xml`)(_.toString)
+    Marshaller.delegate[NodeSeq, String](
+      `text/xml`, `text/html`, `application/xhtml+xml`
+    )(_.toString)
+  //#
 
   implicit val FormDataMarshaller =
     Marshaller.delegate[FormData, String](`application/x-www-form-urlencoded`) { (formData, contentType) =>

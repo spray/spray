@@ -2,14 +2,15 @@ package docs
 
 import org.specs2.mutable.Specification
 
-import akka.dispatch.Future                 // example-1
-import akka.actor.ActorSystem               // example-1
-import cc.spray.caching.{LruCache, Cache}   // example-1
-import cc.spray.util._                      // example-1
+//# example-1
+import akka.dispatch.Future
+import akka.actor.ActorSystem
+import cc.spray.caching.{LruCache, Cache}
+import cc.spray.util._
 
+//#
 
 class CachingExamplesSpec extends Specification {
-                                      // example-1
   implicit val system = ActorSystem() // example-1
 
   "example-1" in {

@@ -19,14 +19,14 @@ package cc.spray.httpx.marshalling
 import cc.spray.http.ContentType
 import cc.spray.util._
 
-
+//# source-quote (for docs, don't remove this comment!)
 trait Marshaller[-T] {
   def apply(value: T, ctx: MarshallingContext)
 }
+//#
 
 object Marshaller extends BasicMarshallers
   with MetaMarshallers
-  with StreamMarshallers
   with MultipartMarshallers {
 
   def apply[T](f: (T, MarshallingContext) => Unit): Marshaller[T] =

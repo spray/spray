@@ -63,7 +63,7 @@ Example
 -------
 
 .. includecode:: ../code/docs/CachingExamplesSpec.scala
-   :example: example-1
+   :snippet: example-1
 
 
 Cache Implementations
