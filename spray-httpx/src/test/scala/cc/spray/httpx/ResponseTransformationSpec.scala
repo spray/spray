@@ -56,7 +56,7 @@ class ResponseTransformationSpec extends Specification with RequestBuilding with
     }
 
     "support request authentication" in {
-      val pipeline = authenticate(BasicHttpCredentials("bob", "1234")) ~> authenticatedEcho
+      val pipeline = addCredentials(BasicHttpCredentials("bob", "1234")) ~> authenticatedEcho
       pipeline(Get()).await === HttpResponse(200)
     }
 

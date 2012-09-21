@@ -63,7 +63,7 @@ trait RequestBuilding {
 
   def addHeaders(headers: List[HttpHeader]): RequestTransformer = _.mapHeaders(headers ::: _)
 
-  def authenticate(credentials: BasicHttpCredentials) = addHeader(HttpHeaders.Authorization(credentials))
+  def addCredentials(credentials: BasicHttpCredentials) = addHeader(HttpHeaders.Authorization(credentials))
 
   implicit def request2TransformableHttpRequest(request: HttpRequest) = new TransformableHttpRequest(request)
   class TransformableHttpRequest(request: HttpRequest) {
