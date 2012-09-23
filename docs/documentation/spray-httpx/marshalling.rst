@@ -1,3 +1,5 @@
+.. _marshalling:
+
 Marshalling
 ===========
 
@@ -24,6 +26,9 @@ why *spray* Marshallers are designed in this way:
   execution.)
 - Marshallers can produce more than one response part, i.e. a stream of response chunks.
 
+.. _MarshallingContext: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/cc/spray/httpx/marshalling/MarshallingContext.scala
+.. _content negotiation: http://en.wikipedia.org/wiki/Content_negotiation
+
 
 Default Marshallers
 -------------------
@@ -37,6 +42,7 @@ Default Marshallers
   - ``Array[Byte]``
   - ``Array[Char]``
   - ``String``
+  - ``NodeSeq``
   - ``Throwable``
   - ``cc.spray.http.FormData``
   - ``cc.spray.http.StatusCode``
@@ -72,6 +78,8 @@ through the companion object of the ``Marshaller`` trait. This means that they a
 be explicitly imported. Additionally, you can simply "override" them by bringing your own custom version into local
 scope.
 
+.. _type class: http://stackoverflow.com/questions/5408861/what-are-type-classes-in-scala-useful-for
+
 
 Custom Marshallers
 ------------------
@@ -94,6 +102,8 @@ As another example, here is a ``Marshaller`` definition for a custom type ``Pers
 
 As can be seen in this example you best define the ``Marshaller`` for ``T`` in the companion object of ``T``.
 This way your marshaller is always in-scope, without any `import tax`_.
+
+.. _import tax: http://eed3si9n.com/revisiting-implicits-without-import-tax
 
 
 Deriving Marshallers
@@ -137,9 +147,3 @@ Because the second form of wrapping is less attractive there is no real helper i
 We generally do not want to encourage such type of design. (With one exception: Simply overriding the Content-Type of
 another ``Marshaller`` can be done efficiently. This is why the ``MarshallingContext`` already comes with a
 ``withContentTypeOverriding`` copy helper.)
-
-
-.. _MarshallingContext: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/cc/spray/httpx/marshalling/MarshallingContext.scala
-.. _content negotiation: http://en.wikipedia.org/wiki/Content_negotiation
-.. _type class: http://stackoverflow.com/questions/5408861/what-are-type-classes-in-scala-useful-for
-.. _import tax: http://eed3si9n.com/revisiting-implicits-without-import-tax

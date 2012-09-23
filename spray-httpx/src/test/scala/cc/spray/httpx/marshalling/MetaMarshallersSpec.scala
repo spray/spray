@@ -17,12 +17,14 @@
 package cc.spray.httpx.marshalling
 
 import org.specs2.mutable.Specification
+import akka.actor.ActorSystem
 import cc.spray.http._
 import StatusCodes._
 
 
 class MetaMarshallersSpec extends Specification {
-  
+  implicit val system = ActorSystem()
+
   "The eitherMarshaller" should {
     "properly marshal an Either instance" in {
       type MyEither = Either[Throwable, String]
@@ -32,4 +34,15 @@ class MetaMarshallersSpec extends Specification {
     }
   }
 
+  "The streamMarshaller" should {
+    "properly marshal a Stream instance" in {
+      val stream = "abc" #:: "def" #:: "ghi" #:: "jkl" #:: Stream.empty
+      val ctx = marshalCollecting(stream)
+      ctx.entity === Some(HttpBody("abc"))
+      ctx.chunks.map(_.bodyAsString) === Seq("def", "ghi", "jkl")
+      ctx.chunkedMessageEnd === Some(ChunkedMessageEnd())
+    }
+  }
+
+  step(system.shutdown())
 }

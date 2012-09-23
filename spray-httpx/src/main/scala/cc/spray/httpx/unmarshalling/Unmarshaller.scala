@@ -53,6 +53,12 @@ object Unmarshaller {
         if (f.isDefinedAt(entity)) protect(f(entity)) else Left(ContentExpected)
     }
 
+  def delegate[A, B](unmarshalFrom: ContentTypeRange*)(f: A => B)(implicit mb: Unmarshaller[A]): Unmarshaller[B] =
+    new SimpleUnmarshaller[B] {
+      val canUnmarshalFrom = unmarshalFrom
+      def unmarshal(entity: HttpEntity) = mb(entity).right.flatMap(a => protect(f(a)))
+    }
+
   def forNonEmpty[T](implicit um: Unmarshaller[T]): Unmarshaller[T] =
     new Unmarshaller[T] {
       def apply(entity: HttpEntity) = if (entity.isEmpty) Left(ContentExpected) else um(entity)

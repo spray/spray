@@ -40,6 +40,7 @@ trait BasicUnmarshallers {
     }
   }
 
+  //# string-unmarshaller (for docs, don't remove this comment!)
   implicit val StringUnmarshaller = new Unmarshaller[String] {
     def apply(entity: HttpEntity) = Right { // we can convert anything to a String
       entity match {
@@ -48,13 +49,16 @@ trait BasicUnmarshallers {
       }
     }
   }
+  //#
 
+  //# nodeseq-unmarshaller (for docs, don't remove this comment!)
   implicit val NodeSeqUnmarshaller =
     Unmarshaller[NodeSeq](`text/xml`, `text/html`, `application/xhtml+xml`) {
       case HttpBody(contentType, buffer) =>
         XML.load(new InputStreamReader(new ByteArrayInputStream(buffer), contentType.charset.nioCharset))
       case EmptyEntity => NodeSeq.Empty
     }
+  //#
 
   implicit val FormDataUnmarshaller =
     Unmarshaller[FormData](`application/x-www-form-urlencoded`) {
