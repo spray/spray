@@ -3,6 +3,7 @@ package docs
 import org.specs2.mutable.Specification
 import cc.spray.httpx.unmarshalling.ContentExpected
 import cc.spray.http.EmptyEntity
+import xml.NodeSeq
 
 
 class UnmarshallingExamplesSpec extends Specification {
@@ -54,9 +55,11 @@ class UnmarshallingExamplesSpec extends Specification {
   }
 
   "example-3" in {
-    implicit val myStringUnmarshaller = Unmarshaller.forNonEmpty[String]
+    import cc.spray.http.MediaTypes.`text/xml`
 
-    HttpBody("Yeah").as[String] === Right("Yeah")
-    EmptyEntity.as[String] === Left(ContentExpected)
+    implicit val myNodeSeqUnmarshaller = Unmarshaller.forNonEmpty[NodeSeq]
+
+    HttpBody(`text/xml`, "<xml>yeah</xml>").as[NodeSeq] === Right(<xml>yeah</xml>)
+    EmptyEntity.as[NodeSeq] === Left(ContentExpected)
   }
 }

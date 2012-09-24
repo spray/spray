@@ -40,16 +40,9 @@ trait BasicUnmarshallers {
     }
   }
 
-  //# string-unmarshaller (for docs, don't remove this comment!)
   implicit val StringUnmarshaller = new Unmarshaller[String] {
-    def apply(entity: HttpEntity) = Right { // we can convert anything to a String
-      entity match {
-        case HttpBody(contentType, buffer) => buffer.asString(contentType.charset.nioCharset)
-        case EmptyEntity => ""
-      }
-    }
+    def apply(entity: HttpEntity) = Right(entity.asString)
   }
-  //#
 
   //# nodeseq-unmarshaller (for docs, don't remove this comment!)
   implicit val NodeSeqUnmarshaller =

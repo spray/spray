@@ -124,15 +124,10 @@ Unmarshaller.forNonEmpty
 In addition to ``Unmarshaller.delegate`` there is also another "deriving Unmarshaller builder" called
 ``Unmarshaller.forNonEmpty``. It "modifies" an existing Unmarshaller to not accept empty entities.
 
-For example, the pre-defined ``StringUnmarshaller`` is defined like this:
-
-.. includecode:: /../spray-httpx/src/main/scala/cc/spray/httpx/unmarshalling/BasicUnmarshallers.scala
-   :snippet: string-unmarshaller
-
-As you can see it accepts empty entities as a valid representation of the empty string.
-It might be, however, that in your application context empty entities are not allowed.
-In order to achieve this, instead of "overriding" the existing ``StringMarshaller`` with an all-custom re-implementation
-you could be doing this:
+For example, the default ``NodeSeqMarshaller`` (see above) accepts empty entities as a valid representation of
+``NodeSeq.Empty``. It might be, however, that in your application context empty entities are not allowed.
+In order to achieve this, instead of "overriding" the existing ``NodeSeqMarshaller`` with an all-custom
+re-implementation you could be doing this:
 
 .. includecode:: ../code/docs/UnmarshallingExamplesSpec.scala
    :snippet: example-3

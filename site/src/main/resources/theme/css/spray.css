@@ -40,6 +40,8 @@ footer .footNav { text-align: center; }
 
 .tooltip { z-index: 1035; }
 
+pre { margin-bottom: 1em; }
+
 .section h1, .section h2, .section h3, .section p, .section li, .section dt, .section dd, .section table {
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
     color: #515161;

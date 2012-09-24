@@ -81,7 +81,7 @@ class IncludeCode(Directive):
         text = ''.join(res)
 
         if text == "":
-            return [document.reporter.warning('Empty source inclusion!', line=self.lineno)]
+            return [document.reporter.warning('Snippet "' + snippet + '" not found!', line=self.lineno)]
 
         retnode = nodes.literal_block(text, text, source=fn)
         document.settings.env.note_dependency(rel_fn)
