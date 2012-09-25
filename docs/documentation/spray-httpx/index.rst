@@ -8,7 +8,6 @@ the server-side (:ref:`spray-routing`) or client-side (:ref:`spray-client`) modu
 used by both of them.
 
 .. toctree::
-   :maxdepth: 2
 
    dependencies
    installation

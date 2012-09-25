@@ -36,7 +36,7 @@ object IOPeer {
   case class Close(reason: ConnectionClosedReason) extends Command
   case class Send(buffers: Seq[ByteBuffer], ack: Boolean = true) extends Command
   object Send {
-    def apply(buffer: ByteBuffer): Send = apply(buffer, true)
+    def apply(buffer: ByteBuffer): Send = apply(buffer, ack = true)
     def apply(buffer: ByteBuffer, ack: Boolean): Send = new Send(buffer :: Nil, ack)
   }
 

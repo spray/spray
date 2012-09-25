@@ -11,8 +11,8 @@ the more structured header models from raw, unstructured header name/value pairs
 Dependencies
 ------------
 
-*spray-http* is stand-alone in that it has no dependency on any other *spray* module. You can therefore use it directly
-and independently for any other type of HTTP work you might be doing.
+*spray-http* is stand-alone in that it has no dependency on any other *spray* module and not even Akka.
+You can therefore use it directly and independently for any other type of HTTP work you might be doing.
 
 Apart from the Scala library (see :ref:`current-versions` chapter) *spray-http* only depends on parboiled_,
 a lightweight PEG parsing library providing the basis for the header parser. Since parboiled_ is also written and

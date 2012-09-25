@@ -44,7 +44,7 @@ trait BasicUnmarshallers {
     def apply(entity: HttpEntity) = Right(entity.asString)
   }
 
-  //# nodeseq-unmarshaller (for docs, don't remove this comment!)
+  //# nodeseq-unmarshaller
   implicit val NodeSeqUnmarshaller =
     Unmarshaller[NodeSeq](`text/xml`, `text/html`, `application/xhtml+xml`) {
       case HttpBody(contentType, buffer) =>

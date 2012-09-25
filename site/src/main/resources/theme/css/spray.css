@@ -40,7 +40,7 @@ footer .footNav { text-align: center; }
 
 .tooltip { z-index: 1035; }
 
-pre { margin-bottom: 1em; }
+pre { margin-bottom: 1em; white-space: pre; word-wrap: normal; overflow: auto; }
 
 .section h1, .section h2, .section h3, .section p, .section li, .section dt, .section dd, .section table {
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
@@ -82,8 +82,9 @@ pre { margin-bottom: 1em; }
 #changelog li { margin: 0; }
 .section ul.tight li { margin: 0; }
 .section ul.tight li > ul { margin-top: 0; }
-.section .toctree-wrapper li { margin: 0; }
-.section .toctree-wrapper li > ul { margin-top: 0; }
+.section div.container { text-align: center; }
+.section div.toctree-wrapper li { text-align: left; margin: 0; }
+.section div.toctree-wrapper li > ul { margin-top: 0; }
 
 tt.literal {
     padding: 1px 2px;

@@ -400,12 +400,17 @@ object IOBridge {
 
   ////////////// COMMANDS //////////////
 
-  // "super" commands not on the connection-level
   private[IOBridge] case class Stop(latch: CountDownLatch) extends Command
-  case class Bind(handleCreator: ActorRef, address: InetSocketAddress, backlog: Int,
+
+  //# public-commands
+  // general commands not on the connection-level
+  case class Bind(handleCreator: ActorRef,
+                  address: InetSocketAddress,
+                  backlog: Int,
                   tag: Any = ()) extends Command
   case class Unbind(bindingKey: Key) extends Command
-  case class Connect(remoteAddress: InetSocketAddress, localAddress: Option[InetSocketAddress] = None,
+  case class Connect(remoteAddress: InetSocketAddress,
+                     localAddress: Option[InetSocketAddress] = None,
                      tag: Any = ()) extends Command
   object Connect {
     def apply(host: String, port: Int): Connect = apply(host, port, ())
@@ -414,31 +419,41 @@ object IOBridge {
   }
   case object GetStats extends Command
 
-  // commands on the connection-level
+  // connection-level commands
   trait ConnectionCommand extends Command {
     def handle: Handle
   }
-
   case class Register(handle: Handle) extends ConnectionCommand
-  case class Close(handle: Handle, reason: ConnectionClosedReason) extends ConnectionCommand
-  case class Send(handle: Handle, buffers: Seq[ByteBuffer], ack: Boolean = true) extends ConnectionCommand
+  case class Close(handle: Handle,
+                   reason: ConnectionClosedReason) extends ConnectionCommand
+  case class Send(handle: Handle,
+                  buffers: Seq[ByteBuffer],
+                  ack: Boolean = true) extends ConnectionCommand
   object Send {
-    def apply(handle: Handle, buffer: ByteBuffer): Send = apply(handle, buffer, ack = true)
-    def apply(handle: Handle, buffer: ByteBuffer, ack: Boolean): Send = new Send(handle, buffer :: Nil, ack)
+    def apply(handle: Handle, buffer: ByteBuffer): Send =
+      apply(handle, buffer, ack = true)
+    def apply(handle: Handle, buffer: ByteBuffer, ack: Boolean): Send =
+      new Send(handle, buffer :: Nil, ack)
   }
   case class StopReading(handle: Handle) extends ConnectionCommand
   case class ResumeReading(handle: Handle) extends ConnectionCommand
+  //#
 
   ////////////// EVENTS //////////////
 
+  //# public-events
   // "general" events not on the connection-level
   case class Bound(bindingKey: Key, tag: Any) extends Event
   case class Unbound(bindingKey: Key) extends Event
-  case class Connected(key: Key, remoteAddress: InetSocketAddress, localAddress: InetSocketAddress,
+  case class Connected(key: Key,
+                       remoteAddress: InetSocketAddress,
+                       localAddress: InetSocketAddress,
                        tag: Any) extends Event
 
   // connection-level events
-  case class Closed(handle: Handle, reason: ConnectionClosedReason) extends Event with IOClosed
+  case class Closed(handle: Handle,
+                    reason: ConnectionClosedReason) extends Event with IOClosed
   case class SentOk(handle: Handle) extends Event with IOSent
   case class Received(handle: Handle, buffer: ByteBuffer) extends Event
+  //#
 }

@@ -19,6 +19,7 @@ package cc.spray.io
 import akka.actor.ActorRef
 import java.net.InetSocketAddress
 
+//# source-quote
 /**
  * A handle for a network connection.
  */
@@ -51,11 +52,13 @@ trait Handle {
   def commander: ActorRef
 
   /**
-   * A custom, application-defined tag object that can be attached to a Bind or Connect command and
-   * is made available to the application here. It is not used for any purpose inside of spray-io itself.
+   * A custom, application-defined tag object that can be attached to a Bind or
+   * Connect command and is made available to the application through the handle.
+   * It is not used for any purpose inside of spray-io itself.
    */
   def tag: Any
 }
+//#
 
 case class SimpleHandle(
   key: Key,

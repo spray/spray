@@ -19,7 +19,7 @@ package cc.spray.httpx.marshalling
 import cc.spray.http.ContentType
 import cc.spray.util._
 
-//# source-quote (for docs, don't remove this comment!)
+//# source-quote
 trait Marshaller[-T] {
   def apply(value: T, ctx: MarshallingContext)
 }
