@@ -304,8 +304,8 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         val Commands(Tell(`singletonHandler`, _, peer)) = processAndClear(Received(simpleRequest))
         Thread.sleep(50)
         val Commands(Tell(`singletonHandler`, cc.spray.http.Timeout(_), `peer`)) = processAndClear(TickGenerator.Tick)
-        Thread.sleep(30)
-        val Commands(message, HttpServer.Close(CleanClose)) = processAndClear(TickGenerator.Tick)
+        Thread.sleep(35)
+        val Commands(message, HttpServer.Close(CleanClose)) = process(TickGenerator.Tick)
         message === SendString {
           prep {
             """|HTTP/1.1 500 Internal Server Error

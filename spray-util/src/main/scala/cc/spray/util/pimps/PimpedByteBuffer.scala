@@ -33,7 +33,7 @@ class PimpedByteBuffer(underlying: ByteBuffer) {
   /**
    * Copies the current contents of the underlying buffer into a new ByteBuffer.
    */
-  def copyContent: ByteBuffer = {
+  def copy: ByteBuffer = {
     if (!underlying.hasArray) throw new IllegalArgumentException
     val array = new Array[Byte](underlying.remaining)
     System.arraycopy(underlying.array, underlying.position, array, 0, underlying.remaining)

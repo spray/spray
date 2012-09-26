@@ -78,7 +78,7 @@ trait PipelineStageTest { test =>
     dynFixture.value
   }
 
-  case class ProcessResult(commands: List[Command], events: List[Event])
+  case class ProcessResult(commands: List[Command], events: List[Event]) // source-quote-result
 
   def currentTestPipelines: Pipelines = fixture.pipelines
 
@@ -89,6 +89,7 @@ trait PipelineStageTest { test =>
 
   def clear() { fixture.clear() }
 
+  //# source-quote-clears
   def clearAndProcess(cmdsAndEvents: AnyRef*): ProcessResult = {
     clear()
     process(cmdsAndEvents.toList)
@@ -99,8 +100,10 @@ trait PipelineStageTest { test =>
     clear()
     x
   }
+  //#
 
-  def process(cmdsAndEvents: AnyRef*): ProcessResult = process(cmdsAndEvents.toList)
+  def process(cmdsAndEvents: AnyRef*): ProcessResult = // source-quote-process
+    process(cmdsAndEvents.toList)
 
   @tailrec
   final def process(cmdsAndEvents: List[AnyRef]): ProcessResult = cmdsAndEvents match {
@@ -113,18 +116,17 @@ trait PipelineStageTest { test =>
   def extractCommands(commands: List[Command]): List[Command] = commands.map {
     case IOPeer.Send(bufs, _) => SendString {
       val sb = new java.lang.StringBuilder
-      for (b <- bufs) sb.append(b.copyContent.drainToString)
+      for (b <- bufs) sb.append(b.duplicate.drainToString)
       sb.toString
     }
     case x => x
   }
 
-  def extractEvents(events: List[Event]): List[Event] = events
-
-  object CommandsAndEvents {
-    def unapply(pr: ProcessResult): Option[(List[Command], List[Event])] =
-      Some(extractCommands(pr.commands), extractEvents(pr.events))
+  def extractEvents(events: List[Event]): List[Event] = events.map {
+    case IOPeer.Received(_, buffer) => ReceivedString(buffer.duplicate.drainToString)
+    case x => x
   }
+
   object Commands {
     def unapplySeq(pr: ProcessResult): Option[Seq[Command]] = Some(pr.commands)
   }
@@ -135,15 +137,16 @@ trait PipelineStageTest { test =>
     def unapply(ref: ActorRef): Option[String] = Some(ref.path.name)
   }
 
-  case class Message(msg: AnyRef, sender: ActorRef) extends Command
+  case class Message(msg: AnyRef, sender: ActorRef) // source-quote-message
 
   implicit def pimpAnyRefWithFrom(msg: AnyRef): { def from(s: ActorRef): Command } =
     new { def from(s: ActorRef) = Message(msg, s) }
 
-  def Received(rawMessage: String) = IOBridge.Received(testHandle, string2ByteBuffer(rawMessage))
   def Send(rawMessage: String) = IOPeer.Send(string2ByteBuffer(rawMessage))
+  def Received(rawMessage: String) = IOBridge.Received(testHandle, string2ByteBuffer(rawMessage))
 
   case class SendString(string: String) extends Command
+  case class ReceivedString(string: String) extends Event
 
   protected def string2ByteBuffer(s: String) = ByteBuffer.wrap(s.getBytes("US-ASCII"))
 }

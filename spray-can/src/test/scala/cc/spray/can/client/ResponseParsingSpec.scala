@@ -67,7 +67,7 @@ class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
             HttpRequestPartRenderingContext(request(), "localhost", 80),
             HttpRequestPartRenderingContext(request(), "localhost", 80)
           )
-          val CommandsAndEvents(commands, events) = clearAndProcess(
+          val ProcessResult(commands, events) = clearAndProcess(
             Received(rawResponse("foo")),
             Received(rawResponse("bar")),
             Received(rawResponse("baz"))

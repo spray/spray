@@ -85,7 +85,7 @@ object SslTlsSupport {
           val postContentLeft = contentLeft()
           tempBuf.flip()
           if (tempBuf.remaining > 0) commandPL {
-            IOPeer.Send(tempBuf.copyContent :: Nil, sendAckAndPreContentLeft && !postContentLeft)
+            IOPeer.Send(tempBuf.copy :: Nil, sendAckAndPreContentLeft && !postContentLeft)
           }
           result.getStatus match {
             case OK => result.getHandshakeStatus match {
@@ -118,7 +118,7 @@ object SslTlsSupport {
           tempBuf.clear()
           val result = engine.unwrap(buffer, tempBuf)
           tempBuf.flip()
-          if (tempBuf.remaining > 0) eventPL(IOPeer.Received(context.handle, tempBuf.copyContent))
+          if (tempBuf.remaining > 0) eventPL(IOPeer.Received(context.handle, tempBuf.copy))
           result.getStatus match {
             case OK => result.getHandshakeStatus match {
               case NOT_HANDSHAKING | FINISHED =>

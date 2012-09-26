@@ -120,7 +120,17 @@ that complete a request with an error response whenever a request parsing error 
 Also, all pipeline code is always executed in the context of the connection actor and therefore isolated to a specific
 connection. As such, keeping mutable, connection-specific state within a pipeline stage is not a problem.
 
-All this allows for pipeline stages to be very flexible and relatively easy to write.
+When another actor gets a hold of the connection actors ``ActorRef`` (e.g. because a pipeline stage sent an
+``IOPeer.Tell`` command using the connection actor as ``sender``) and itself sends a message to the connection actor,
+this message hits the connection actors ``receive`` behavior, which is defined like this:
+
+.. includecode:: /../spray-io/src/main/scala/cc/spray/io/ConnectionActors.scala
+   :snippet: receive
+
+As you can see the connection actor feeds all incoming messages directly into its respective pipeline. This behavior can
+also be useful from within a pipeline stage itself, because it allows any stage to push a command or event into the
+*beginning* of the respective pipeline, rather than just its own downstream pipeline "tail". All that stage has to do is
+to send the message to its own connection actor.
 
 __ https://github.com/spray/spray/blob/master/spray-can/src/main/scala/cc/spray/can/server/RequestParsing.scala
 
@@ -212,6 +222,30 @@ command and event pipelines are built for a new connection, which is why "switch
 any overhead.
 
 .. _HttpClient: https://github.com/spray/spray/blob/master/spray-can/src/main/scala/cc/spray/can/client/HttpClient.scala
+
+
+The Final Stages
+----------------
+
+Both pipelines, the command- as well as the event pipeline, are always terminated by stages provided by the connection
+actor itself. The following, an except of the `IOConnectionActor sources`__, is their definition:
+
+__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/ConnectionActors.scala
+
+.. includecode:: /../spray-io/src/main/scala/cc/spray/io/ConnectionActors.scala
+   :snippet: final-stages
+
+The final stage of the command pipeline translates most of the defined messages into their ``IOBridge`` counterparts
+and sends them off to the bridge. There is one command, ``IOPeer.Tell``, which does not follow this pattern.
+This command simply encapsulates an Actor ``tell`` call into a ``Command`` message. Whenever a pipeline stage would like
+to send a message to an actor it should push an ``IOPeer.Tell`` command into the command pipeline rather than
+calling ``actorRef.tell`` directly. This design has two benefits:
+
+- Other downstream pipeline stages can react to, and maybe even modify the ``Tell``.
+- The stage remains independently testable, without the need to fire up actors. (Check out the :ref:`testing-pipelines`
+  chapter for more info on this.)
+
+The final stage of the event pipeline only reacts to ``Closed`` messages. It stops the connection actor as a result.
 
 
 FAQ

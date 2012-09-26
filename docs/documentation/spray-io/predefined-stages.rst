@@ -1,4 +1,54 @@
 Predefined Stages
 =================
 
-dsfdsf
+*spray-io* comes with a number of predefined pipeline stages, which you can "bake into" you own pipeline stack, where
+you seem fit.
+
+
+TickGenerator
+-------------
+
+The TickGenerator__ forms a simple ``EventPipelineStage`` that generates ``Tick`` events in regular intervals.
+This is its implementation:
+
+ __ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/pipelining/TickGenerator.scala
+
+.. includecode:: /../spray-io/src/main/scala/cc/spray/io/pipelining/TickGenerator.scala
+   :snippet: source-quote
+
+The ``TickGenerator`` provides the triggers for all timeout checking stages in *spray-io* and :ref:`spray-can`, but, of
+course, you can also use it for other purposes.
+
+
+.. _ConnectionTimeouts:
+
+ConnectionTimeouts
+------------------
+
+The ConnectionTimeouts__ pipeline stage provides support for the automatic closing of idle connection after a
+configurable time period. The stage is modeled as a ``DoublePipelineStage`` that listens for outgoing ``Send`` commands
+as well as incoming ``Received`` events and updates a ``lastActivity`` timestamp, whenever it sees one such message.
+
+It requires a TickGenerator_ stage further down in the stack and uses its ``Tick`` messages as a trigger for checking,
+whether the connection has been idle for longer than the allowed time frame. If so, a ``Close`` command is issued.
+
+__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/pipelining/ConnectionTimeouts.scala
+
+
+SslTlsSupport
+-------------
+
+The SslTlsSupport__ pipeline stage provides for transparent encryption of outgoing ``Send`` commands as well as
+decryption of incoming ``Received`` commands. Just add it as a lower-level stage to your pipeline stack, whenever you
+need SSL/TLS encryption, and all your network communication will be SSL encrypted automatically.
+
+The ``SslTlsSupport`` also allows for the enabling/disabling of the encryption stage on a per-connection basis.
+The ``SslTlsSupport.apply`` methods takes an ``sslEnabled`` parameter of type ``PipelineContext => Boolean``.
+The function you supply for this parameter is called whenever a new pipeline instance is constructed (i.e. after the
+establishment of a new connection) and its result determines whether to enable the encryption or not.
+
+The :ref:`spray-can` ``HttpClient``, for example, uses this facility to allow for the enabling/disabling of SSL
+encryption via the ``tag`` member of the ``Connect`` command. The argument it passes for the ``sslEnabled`` parameter
+is this: ``_.handle.tag == HttpClient.SslEnabled``.
+
+__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/pipelining/SslTlsSupport.scala

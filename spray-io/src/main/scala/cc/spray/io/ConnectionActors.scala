@@ -21,7 +21,7 @@ import akka.actor.{ActorRef, Status, Props, Actor}
 import pipelining._
 
 
-trait ConnectionActors extends IOPeer { ioPeer =>
+trait ConnectionActors extends IOPeer {
 
   override protected def createConnectionHandle(_key: Key, _remoteAddress: InetSocketAddress,
                                                 _localAddress: InetSocketAddress, _commander: ActorRef, _tag: Any) = {
@@ -48,6 +48,7 @@ trait ConnectionActors extends IOPeer { ioPeer =>
 
     def createPipelineContext: PipelineContext = PipelineContext(handle, context)
 
+    //# final-stages
     def baseCommandPipeline: Pipeline[Command] = {
       case IOPeer.Send(buffers, ack)          => ioBridge ! IOBridge.Send(handle, buffers, ack)
       case IOPeer.Close(reason)               => ioBridge ! IOBridge.Close(handle, reason)
@@ -62,16 +63,19 @@ trait ConnectionActors extends IOPeer { ioPeer =>
       case x: IOPeer.Closed =>
         log.debug("Stopping connection actor, connection was closed due to {}", x.reason)
         context.stop(self)
-        ioPeer.self ! x // inform our owner of our closing
+        context.parent ! x // also inform our parent of our closing
       case _: Droppable => // don't warn
       case ev => log.warning("eventPipeline: dropped {}", ev)
     }
+    //#
 
+    //# receive
     def receive = {
       case x: Command => pipelines.commandPipeline(x)
       case x: Event => pipelines.eventPipeline(x)
       case Status.Failure(x: CommandException) => pipelines.eventPipeline(x)
     }
+    //#
   }
 
 }

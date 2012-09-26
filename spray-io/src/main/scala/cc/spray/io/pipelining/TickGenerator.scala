@@ -21,6 +21,7 @@ import akka.util.Duration
 import java.util.concurrent.TimeUnit
 
 
+//# source-quote
 object TickGenerator {
 
   def apply(millis: Long): PipelineStage = apply(Duration(millis, TimeUnit.MILLISECONDS))
@@ -50,3 +51,4 @@ object TickGenerator {
   ////////////// COMMANDS //////////////
   case object Tick extends Event with Droppable
 }
+//#
