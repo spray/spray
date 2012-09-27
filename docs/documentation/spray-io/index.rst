@@ -20,3 +20,4 @@ We like to think of it a basic version of Netty_ for Scala.
    pipelining
    predefined-stages
    testing-pipelines
+   examples

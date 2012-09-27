@@ -51,4 +51,14 @@ The :ref:`spray-can` ``HttpClient``, for example, uses this facility to allow fo
 encryption via the ``tag`` member of the ``Connect`` command. The argument it passes for the ``sslEnabled`` parameter
 is this: ``_.handle.tag == HttpClient.SslEnabled``.
 
+The ``SslTlsSupport`` stage requires also requires an ``engineProvider`` parameter, which is a function
+``InetSocketAddress => SSLEngine``. The easiest way to specify an argument for this parameter is to use the default
+``ServerSSLEngineProvider`` or ``ClientSSLEngineProvider``, depending on whether you are using the encryption stage
+on the client- or the server-side, e.g.::
+
+    val engineProvider = ServerSSLEngineProvider.default
+
+In order to make this line compile you also need to bring into scope either an implicit ``javax.net.ssl.SSLContext``
+or an implicit ``SSLContextProvider``.
+
 __ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/pipelining/SslTlsSupport.scala
