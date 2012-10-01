@@ -17,7 +17,7 @@
 package cc.spray.io
 
 import java.net.InetSocketAddress
-import akka.actor.{ActorRef, Status, Props, Actor}
+import akka.actor._
 import pipelining._
 
 
@@ -74,6 +74,7 @@ trait ConnectionActors extends IOPeer {
       case x: Command => pipelines.commandPipeline(x)
       case x: Event => pipelines.eventPipeline(x)
       case Status.Failure(x: CommandException) => pipelines.eventPipeline(x)
+      case Terminated(actor) => pipelines.eventPipeline(IOPeer.ActorDeath(actor))
     }
     //#
   }

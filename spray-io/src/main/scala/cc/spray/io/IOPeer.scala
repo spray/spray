@@ -51,4 +51,6 @@ object IOPeer {
   type SentOk = IOBridge.SentOk;     val SentOk = IOBridge.SentOk
   type Received = IOBridge.Received; val Received = IOBridge.Received
 
+  // only available with ConnectionActors mixin
+  case class ActorDeath(actor: ActorRef) extends Event
 }

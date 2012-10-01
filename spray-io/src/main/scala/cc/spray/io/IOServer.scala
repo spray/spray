@@ -110,8 +110,8 @@ object IOServer {
   ////////////// EVENTS //////////////
   case class Bound(endpoint: InetSocketAddress, tag: Any)
   case class Unbound(endpoint: InetSocketAddress)
-  type Closed = IOPeer.Closed;     val Closed = IOPeer.Closed
-  type SentOk = IOPeer.SentOk;     val SentOk = IOPeer.SentOk
-  type Received = IOPeer.Received; val Received = IOPeer.Received
-
+  type Closed = IOPeer.Closed;         val Closed = IOPeer.Closed
+  type SentOk = IOPeer.SentOk;         val SentOk = IOPeer.SentOk
+  type Received = IOPeer.Received;     val Received = IOPeer.Received
+  type ActorDeath = IOPeer.ActorDeath; val ActorDeath = IOPeer.ActorDeath
 }

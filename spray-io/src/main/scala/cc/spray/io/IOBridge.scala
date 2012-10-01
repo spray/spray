@@ -385,6 +385,10 @@ object IOBridge {
   def runningBridges: Seq[IOBridge] =
     lock.synchronized(_runningBridges)
 
+  def stopAll() {
+    runningBridges.foreach(_.stop())
+  }
+
   case class Stats(
     uptime: Long,
     bytesRead: Long,
