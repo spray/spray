@@ -11,7 +11,7 @@ Dependencies
 ------------
 
 Apart from the Scala library (see :ref:`current-versions` chapter) *spray-util* only depends on
-akka-actor (with 'provided' scope, i.e. you need to pull it in yourself).
+*akka-actor* (with 'provided' scope, i.e. you need to pull it in yourself).
 
 
 
@@ -53,6 +53,7 @@ Akka Helpers
 - `Reply.withContext`_
 - LoggingContext_
 
+.. _UnregisteredActorRef:
 
 UnregisteredActorRef
 ~~~~~~~~~~~~~~~~~~~~

@@ -5,10 +5,12 @@ The ``/examples/spray-can/`` directory of the *spray* repository
 contains a number of example projects for *spray-can*, which are described here.
 
 
+.. _simple-http-client:
+
 simple-http-client
 ------------------
 
-This example demonstrates how you can use the ``cc.spray.can.client.HttpDialog`` to perform simple,
+This example demonstrates how you can use the ``HttpClient`` and ``HttpDialog`` to perform simple,
 low-level HTTP client logic.
 
 Follow these steps to run it on your machine:
@@ -28,10 +30,12 @@ Follow these steps to run it on your machine:
 4. Type either **1**, **2** or **3** and press **RETURN**
 
 
+.. _simple-http-server:
+
 simple-http-server
 ------------------
 
-This examples implements a very simple web-site with built with the ``cc.spray.can.server.HttpServer``.
+This examples implements a very simple web-site built with the *spray-can* ``HttpServer``.
 It shows off various features like streaming, stats support and timeout handling.
 
 Follow these steps to run it on your machine:

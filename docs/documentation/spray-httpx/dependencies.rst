@@ -3,10 +3,10 @@ Dependencies
 
 Apart from the Scala library (see :ref:`current-versions` chapter) *spray-httpx* depends on
 
+- :ref:`spray-http`
+- :ref:`spray-util`
 - `MIME pull`_
-
-- Akka-Actor (with 'provided' scope, i.e. you need to pull it in yourself)
-
+- akka-actor (with 'provided' scope, i.e. you need to pull it in yourself)
 - Optionally (you need to provide these if you'd like to use the respective *spray-httpx* feature):
 
   * spray-json_ (for SprayJsonSupport)

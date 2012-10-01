@@ -102,6 +102,15 @@ object HttpServer {
    *    | TickGenerator.Tick              | IOServer.ResumeReading
    *    |                                \/
    * |------------------------------------------------------------------------------------------
+   * | RemoteAddressHeaderSupport: add `Remote-Address` headers to incoming requests
+   * |------------------------------------------------------------------------------------------
+   *    /\                                |
+   *    | HttpMessagePart                 | HttpResponsePartRenderingContext
+   *    | IOServer.Closed                 | IOServer.Tell
+   *    | IOServer.SentOk                | IOServer.StopReading
+   *    | TickGenerator.Tick              | IOServer.ResumeReading
+   *    |                                \/
+   * |------------------------------------------------------------------------------------------
    * | RequestParsing: converts Received events to HttpMessagePart,
    * |                 generates HttpResponsePartRenderingContext (in case of errors)
    * |------------------------------------------------------------------------------------------
@@ -201,9 +210,9 @@ object HttpServer {
 
   ////////////// EVENTS //////////////
   // HttpRequestParts +
-  type Bound = IOServer.Bound;                          val Bound = IOServer.Bound
-  type Unbound = IOServer.Unbound;                      val Unbound = IOServer.Unbound
-  type Closed = IOServer.Closed;                        val Closed = IOServer.Closed
-  type SentOk = IOServer.SentOk;                        val SentOk = IOServer.SentOk
+  type Bound = IOServer.Bound;     val Bound = IOServer.Bound
+  type Unbound = IOServer.Unbound; val Unbound = IOServer.Unbound
+  type Closed = IOServer.Closed;   val Closed = IOServer.Closed
+  type SentOk = IOServer.SentOk;   val SentOk = IOServer.SentOk
 
 }

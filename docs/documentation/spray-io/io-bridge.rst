@@ -67,7 +67,7 @@ These are all the defined commands:
 And here is what action they instruct the bridge to perform:
 
 Bind
-  Listen for incoming connections on a particular port. The sender receives a ``Bound`` event upon completion.
+  Start listening for incoming connections on a particular port. The sender receives a ``Bound`` event upon completion.
 
 Unbind
   Revert a previous ``Bind``. The sender receives an ``Unbound`` event upon completion.

@@ -18,9 +18,9 @@ package cc.spray.can
 package client
 
 import akka.event.LoggingAdapter
+import cc.spray.http.{HttpMessagePart, HttpRequestPart}
 import cc.spray.io.pipelining._
 import cc.spray.io._
-import cc.spray.http.HttpRequest
 
 
 /**
@@ -39,7 +39,7 @@ class HttpClient(ioBridge: IOBridge, settings: ClientSettings = ClientSettings()
 
   override protected def createConnectionActor(handle: Handle): IOConnectionActor = new IOConnectionActor(handle) {
     override def receive = super.receive orElse {
-      case x: HttpRequest => pipelines.commandPipeline(HttpCommand(x))
+      case x: HttpMessagePart with HttpRequestPart => pipelines.commandPipeline(HttpCommand(x))
     }
   }
 }
@@ -62,7 +62,7 @@ object HttpClient {
   /**
    * Object to be used as `tag` member of `Connect` commands in order to activate SSL encryption on the connection.
    * Note that SSL encryption is only generally available for the HttpClient if the respective config setting is
-   * enabled. Using the `SslEnabled` tag while `SSLEncryption` is off in the settings has no effect.
+   * enabled. Using the `SslEnabled` tag while `ssl-encryption` is off in the settings has no effect.
    */
   case object SslEnabled
 
@@ -72,6 +72,7 @@ object HttpClient {
   type Close = IOClient.Close;                               val Close = IOClient.Close
   type Send = IOClient.Send;                                 val Send = IOClient.Send
   type Tell = IOClient.Tell;                                 val Tell = IOClient.Tell
+  type SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout;   val SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout
   type SetRequestTimeout = ClientFrontend.SetRequestTimeout; val SetRequestTimeout = ClientFrontend.SetRequestTimeout
 
   ////////////// EVENTS //////////////
