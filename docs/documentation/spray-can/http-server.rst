@@ -46,7 +46,7 @@ Basic Architecture
 The *spray-can* ``HttpServer`` is implemented as an Akka actor, which talks to an underlying :ref:`IOBridge` and spawns
 new child actors for every new connection. These connection actors process the requests coming in across the connection
 and dispatch them as immutable :ref:`spray-http` ``HttpRequest`` instances to a "handler" actor provided by the
-application. The handler responds to a request by simply replying with an ``HttpResponse`` instance::
+application. The handler completes a request by simply replying with an ``HttpResponse`` instance::
 
     def receive = {
       case HttpRequest(...) => sender ! HttpResponse(...)
@@ -226,7 +226,7 @@ All these command messages are defined in the ``HttpServer`` companion object.
 HTTP Headers
 ------------
 
-The *spray-can* ``HttpServer`` always passes all received headers on to your application. Additionally the values of the
+The *spray-can* ``HttpServer`` always passes all received headers on to the application. Additionally the values of the
 following request headers are interpreted by the server itself:
 
 .. rst-class:: tight

@@ -18,6 +18,8 @@ package cc.spray.servlet
 
 import akka.actor.{ActorRef, ActorSystem}
 
+
+//# source-quote
 /**
  * Trait that must be implemented by the Boot class.
  */
@@ -33,3 +35,4 @@ trait WebBoot {
    */
   def serviceActor: ActorRef
 }
+//#

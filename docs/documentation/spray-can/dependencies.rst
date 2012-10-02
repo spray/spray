@@ -3,6 +3,8 @@ Dependencies
 
 Apart from the Scala library (see :ref:`current-versions` chapter) *spray-can* depends on
 
+.. rst-class:: tight
+
 - :ref:`spray-io`
 - :ref:`spray-http`
 - :ref:`spray-util`

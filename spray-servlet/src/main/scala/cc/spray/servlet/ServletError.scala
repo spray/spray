@@ -16,5 +16,6 @@
 
 package cc.spray.servlet
 
-
+//# source-quote
 case class ServletError(error: Throwable)
+//#
