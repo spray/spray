@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import akka.actor.{UnhandledMessage, ActorRef, ActorSystem}
 import akka.util.NonFatal
 import akka.spray.UnregisteredActorRef
-import cc.spray.util.model.{DefaultIOClosed, DefaultIOSent}
+import cc.spray.util.model.DefaultIOSent
 import cc.spray.http._
 
 
@@ -97,10 +97,10 @@ class Servlet30ConnectorServlet extends HttpServlet {
       }
     }
 
-    def postProcess(error: Option[Throwable], sender: ActorRef, notification: AnyRef = DefaultIOSent) {
+    def postProcess(error: Option[Throwable], sender: ActorRef) {
       error match {
         case None =>
-          sender.tell(notification, this)
+          if (settings.AckSends) sender.tell(DefaultIOSent, this)
         case Some(e) =>
           serviceActor.tell(ServletError(e), this)
           asyncContext.complete()
@@ -144,7 +144,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
         case _: ChunkedMessageEnd =>
           if (state.compareAndSet(STARTED, COMPLETED)) {
             val result = closeResponseStream(hsResponse, req) { asyncContext.complete() }
-            postProcess(result, sender, DefaultIOClosed)
+            postProcess(result, sender)
           } else state.get match {
             case OPEN =>
               log.warning("Received a ChunkedMessageEnd before a ChunkedResponseStart, dropping ...\nRequest: {}", req)

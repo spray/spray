@@ -28,6 +28,7 @@ class ConnectorSettings(config: Config) {
   val TimeoutTimeout       = c getMilliseconds "timeout-timeout"
   val RootPath             = c getString       "root-path"
   val TimeoutHandler       = c getString       "timeout-handler"
+  val AckSends             = c getBoolean      "ack-sends"
   val RemoteAddressHeader  = c getBoolean      "remote-address-header"
   val VerboseErrorMessages = c getBoolean      "verbose-error-messages"
   val MaxContentLength     = c getBytes        "max-content-length"
