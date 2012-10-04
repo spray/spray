@@ -29,8 +29,8 @@ import cc.spray.io._
 class HttpConduit(val httpClient: ActorRef,
                   val host: String,
                   val port: Int = 80,
-                  dispatchStrategy: DispatchStrategy = DispatchStrategies.NonPipelined(),
-                  settings: ConduitSettings = ConduitSettings())
+                  val dispatchStrategy: DispatchStrategy = DispatchStrategies.NonPipelined(),
+                  val settings: ConduitSettings = ConduitSettings())
   extends Actor with ActorLogging with ConnComponent {
 
   val conns = Vector.tabulate(settings.MaxConnections)(i => new Conn(i + 1))
