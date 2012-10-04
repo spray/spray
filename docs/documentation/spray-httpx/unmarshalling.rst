@@ -26,8 +26,6 @@ Default Unmarshallers
 
 *spray-httpx* comes with pre-defined Unmarshallers for the following types:
 
-.. rst-class:: tight
-
 - ``Array[Byte]``
 - ``Array[Char]``
 - ``String``
@@ -39,8 +37,6 @@ Default Unmarshallers
 - ``cc.spray.http.MultipartFormData``
 
 The relevant sources are:
-
-.. rst-class:: tight
 
 - Deserializer_
 - BasicUnmarshallers_

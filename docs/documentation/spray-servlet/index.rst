@@ -12,8 +12,6 @@ Dependencies
 
 Apart from the Scala library (see :ref:`current-versions` chapter) *spray-can* depends on
 
-.. rst-class:: tight
-
 - :ref:`spray-http`
 - :ref:`spray-util`
 - akka-actor (with 'provided' scope, i.e. you need to pull it in yourself)
@@ -23,7 +21,7 @@ Apart from the Scala library (see :ref:`current-versions` chapter) *spray-can* d
 Installation
 ------------
 
-The :ref:`maven-repo` chapter contains all the info about how to pull *spray-util* into your classpath.
+The :ref:`maven-repo` chapter contains all the info about how to pull *spray-servlet* into your classpath.
 
 
 Configuration
@@ -116,8 +114,6 @@ Chunked Responses
 
 Alternatively to a single ``HttpResponse`` instance the handler can choose to respond to the request sender with the
 following sequence of individual messages:
-
-.. rst-class:: tight
 
 - One ``ChunkedResponseStart``
 - Zero or more ``MessageChunks``

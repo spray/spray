@@ -1,4 +1,4 @@
-.. _request-building:
+.. _RequestBuilding:
 
 Request Building
 ================
@@ -6,8 +6,8 @@ Request Building
 When you work with *spray* you'll occasionally want to construct HTTP requests, e.g. when talking to an HTTP server
 with :ref:`spray-client` or when writing tests for your server-side API with :ref:`spray-testkit`.
 
-For making request construction more convenient *spray-httpx* provides the RequestBuilding_ trait, that defines a simple
-DSL for assembling HTTP requests in a concise and readable manner.
+For making request construction more convenient *spray-httpx* provides the RequestBuilding__ trait, that defines a
+simple DSL for assembling HTTP requests in a concise and readable manner.
 
 Take a look at these examples:
 
@@ -15,4 +15,4 @@ Take a look at these examples:
    :snippet: example-1
 
 
-.. _RequestBuilding: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/cc/spray/httpx/RequestBuilding.scala
+__ https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/cc/spray/httpx/RequestBuilding.scala

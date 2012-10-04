@@ -35,9 +35,9 @@ Default Marshallers
 
 *spray-httpx* comes with pre-defined Marshallers for the following types:
 
-- BasicMarshallers_
+.. rst-class:: wide
 
-  .. rst-class:: tight
+- BasicMarshallers_
 
   - ``Array[Byte]``
   - ``Array[Char]``
@@ -50,16 +50,12 @@ Default Marshallers
 
 - MetaMarshallers_
 
-  .. rst-class:: tight
-
   - ``Option[T]``
   - ``Either[A, B]``
   - ``Future[T]``
   - ``Stream[T]``
 
 - MultipartMarshallers_
-
-  .. rst-class:: tight
 
   - ``cc.spray.http.MultipartContent``
   - ``cc.spray.http.MultipartFormData``

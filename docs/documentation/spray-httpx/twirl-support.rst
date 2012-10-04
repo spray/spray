@@ -4,7 +4,7 @@ Twirl Support
 Twirl_ complements *spray* with templating support.
 
 The TwirlSupport_ trait provides the tiny glue layer required for being able to use twirl templates directly in
-:ref:`spray-routing` routes and :ref:`request building <request-building>`.
+:ref:`spray-routing` routes and :ref:`request building <RequestBuilding>`.
 
 Simply mix in the ``TwirlSupport`` trait or ``import cc.spray.httpx.TwirlSupport._``.
 

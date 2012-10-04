@@ -40,6 +40,8 @@ The `Cache` Interface
 All *spray-caching* cache implementations implement the Cache_ trait, which allow you to interact with the cache
 in through six methods:
 
+.. rst-class:: wide
+
 - ``def apply(key: Any)(expr: => V): Future[V]`` wraps an "expensive" expression with caching support.
 
 - ``def fromFuture(key: Any)(future: => Future[V]): Future[V]`` is similar, but allows the expression to produce

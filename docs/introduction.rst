@@ -49,7 +49,7 @@ Currently the *spray* suite consists of these modules:
   A low-level, low-overhead, high-performance HTTP server and client built on top of :ref:`spray-io`.
 
 :ref:`spray-client`
-  An HTTP client providing a higher-level interface than the low-level :ref:`spray-can` ``HttpClient``,
+  An HTTP client providing a higher-level interface than the low-level :ref:`spray-can` :ref:`HttpClient`,
   which it builds on.
 
 :ref:`spray-http`
@@ -66,8 +66,8 @@ Currently the *spray* suite consists of these modules:
   We like to think of it a basic version of Netty_ for Scala.
 
 :ref:`spray-servlet`
-  An adapter layer providing (a subset of) the :ref:`spray-can` server interface on top of the Servlet API. With it
-  you can use :ref:`spray-routing` in a servlet container.
+  An adapter layer providing (a subset of) the *spray-can* :ref:`HttpServer` interface on top of the Servlet API.
+  Enables the use of :ref:`spray-routing` in a servlet container.
 
 :ref:`spray-routing`
   A high-level routing DSL for elegantly defining RESTful web services.

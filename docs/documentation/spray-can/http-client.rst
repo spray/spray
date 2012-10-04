@@ -1,3 +1,5 @@
+.. _HttpClient:
+
 HttpClient
 ==========
 
@@ -51,8 +53,6 @@ Chunked Requests
 
 Alternatively to a single ``HttpRequest`` the application can choose to send the sequence of individual messages:
 
-.. rst-class:: tight
-
 - One ``ChunkedRequestStart``
 - Zero or more ``MessageChunks``
 - One ``ChunkedMessageEnd``
@@ -68,8 +68,6 @@ Chunked Responses
 If the ``response-chunk-aggregation-limit`` config setting is set to zero the client also dispatches the individual
 response parts of chunked requests back to the application. In these cases a full response consists of the following
 messages:
-
-.. rst-class:: tight
 
 - One ``ChunkedResponseStart``
 - Zero or more ``MessageChunks``
@@ -126,8 +124,6 @@ HTTP Headers
 The *spray-can* ``HttpClient`` always passes all received headers back to your application. Additionally the values of
 the following request headers are interpreted by the client itself:
 
-.. rst-class:: tight
-
 - ``Content-Length``
 - ``Content-Type``
 - ``Transfer-Encoding``
@@ -136,8 +132,6 @@ All other headers are of no interest to the server layer.
 
 If your ``HttpRequest`` instances include any of the following headers they will be ignored and *not* rendered into
 the request going out to the client (as the client sets these request headers itself):
-
-.. rst-class:: tight
 
 - ``Content-Type``
 - ``Content-Length``
