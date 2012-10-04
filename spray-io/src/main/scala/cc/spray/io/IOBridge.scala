@@ -222,8 +222,9 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
         val connectionKey = channel.register(selector, 0) // we don't enable any ops until we have a handle
         val cmd = key.attachment.asInstanceOf[Bind]
         log.debug("New connection accepted on {}", cmd.address)
+        val remoteAddress = channel.socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress]
         val localAddress = channel.socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]
-        cmd.handleCreator ! Connected(Key(connectionKey), cmd.address, localAddress, cmd.tag)
+        cmd.handleCreator ! Connected(Key(connectionKey), remoteAddress, localAddress, cmd.tag)
       } catch {
         case NonFatal(e) => log.error(e, "Accept error: could not accept new connection")
       }
