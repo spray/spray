@@ -16,16 +16,16 @@ class UtilExamplesSpec extends Specification {
 
   val echoActor = system.actorOf {
     Props {
-      ctx => {
-        case msg => ctx.sender ! msg.toString
+      new Actor {
+        def receive = { case msg => sender ! msg.toString }
       }
     }
   }
 
   val logToConsoleActor = system.actorOf {
     Props {
-      ctx => {
-        case msg => println(msg)
+      new Actor {
+        def receive = { case msg => println(msg) }
       }
     }
   }
@@ -41,10 +41,12 @@ class UtilExamplesSpec extends Specification {
     def modReplyActor(receiver: ActorRef) =
       system.actorOf {
         Props {
-          ctx => {
-            case msg =>
-              receiver ! ("The answer is: " + msg)
-              ctx.stop(ctx.self)
+          new Actor {
+            def receive = {
+              case msg =>
+                receiver ! "The answer is: " + msg
+                context.stop(self)
+            }
           }
         }
       }
@@ -59,7 +61,7 @@ class UtilExamplesSpec extends Specification {
     def modReply(receiver: ActorRef) =
       new UnregisteredActorRef(system) {
         def handle(msg: Any)(implicit sender: ActorRef) {
-          receiver ! ("The answer is: " + msg)
+          receiver ! "The answer is: " + msg
         }
       }
 
@@ -72,8 +74,8 @@ class UtilExamplesSpec extends Specification {
 
     val echoActor = system.actorOf {
       Props {
-        ctx => {
-          case msg => ctx.sender ! msg.toString
+        new Actor {
+          def receive = { case msg => sender ! msg.toString }
         }
       }
     }
