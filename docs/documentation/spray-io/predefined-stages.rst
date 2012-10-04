@@ -52,7 +52,7 @@ encryption via the ``tag`` member of the ``Connect`` command. The argument it pa
 is this: ``_.handle.tag == HttpClient.SslEnabled``.
 
 The ``SslTlsSupport`` stage requires also requires an ``engineProvider`` parameter, which is a function
-``InetSocketAddress => SSLEngine``. The easiest way to specify an argument for this parameter is to use the default
+``PipelineContext => SSLEngine``. The easiest way to specify an argument for this parameter is to use the default
 ``ServerSSLEngineProvider`` or ``ClientSSLEngineProvider``, depending on whether you are using the encryption stage
 on the client- or the server-side, e.g.::
 
