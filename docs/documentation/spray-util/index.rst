@@ -58,7 +58,7 @@ Akka Helpers
 UnregisteredActorRef
 ~~~~~~~~~~~~~~~~~~~~
 
-The UnregisteredActorRef_ is an ActorRef, which
+The UnregisteredActorRef__ is an ActorRef, which
 
 - offers the ability to hook caller-side logic into the reply message path
 - is never registered anywhere, i.e. can be GCed as soon the receiver drops it or is GCed itself
@@ -103,10 +103,17 @@ message paths and which is very lightweight, because it is *not* registered. In 
 function to stay in place for as long as the first actor holds on to its reference. As soon as its reference is dropped
 it can be GCed. No need to supply shutdown logic.
 
-.. caution:: Since an UnregisteredActorRef is not registered it is *not* addressable from a non-local JVM
+.. caution:: Since an ``UnregisteredActorRef`` is not registered it is *not* addressable from a non-local JVM
    (i.e. remotely) and it also breaks some otherwise valid Akka invariants like
    ``system.actorFor(ref.path.toString).equals(ref)`` in the local-only context.
    It should therefore be used only in purely local environments and in full consideration of its limitations.
+
+   However, it is possible to make an ``UnregisteredActorRef`` reachable remotely by explicitly wrapping it with a
+   registered ``ActorRef``. The ``UnregisteredActorRef`` provides three different ``register...`` methods for this
+   purpose (check `the sources`_ for more details on this).
+
+__ `the sources`_
+.. _the sources: https://github.com/spray/spray/blob/master/spray-util/src/main/scala/akka/spray/UnregisteredActorRef.scala
 
 
 Reply.withContext
