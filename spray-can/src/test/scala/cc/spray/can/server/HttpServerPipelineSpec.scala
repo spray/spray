@@ -302,9 +302,9 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
     "dispatch the default timeout response if the Timeout timed out" in {
       singleHandlerPipeline.test {
         val Commands(Tell(`singletonHandler`, _, peer)) = processAndClear(Received(simpleRequest))
-        Thread.sleep(52)
+        Thread.sleep(55)
         val Commands(Tell(`singletonHandler`, cc.spray.http.Timeout(_), `peer`)) = processAndClear(TickGenerator.Tick)
-        Thread.sleep(32)
+        Thread.sleep(35)
         val Commands(message, HttpServer.Close(CleanClose)) = process(TickGenerator.Tick)
         message === SendString {
           prep {
@@ -394,7 +394,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
     new ServerSettings(
       ConfigFactory.parseString("""
         spray.can.server.server-header = spray/1.0
-        spray.can.server.idle-timeout = 100 ms
+        spray.can.server.idle-timeout = 150 ms
         spray.can.server.request-timeout = 50 ms
         spray.can.server.timeout-timeout = 30 ms
         spray.can.server.reaping-cycle = 0  # don't enable the TickGenerator
