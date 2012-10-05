@@ -108,5 +108,5 @@ has to be strictly greater than the time-to-idle.
 
 
 .. _Cache: https://github.com/spray/spray/blob/master/spray-caching/src/main/scala/cc/spray/caching/Cache.scala
-.. _`SimpleLruCache and ExpiringLruCache`: https://github.com/spray/spray/blob/master/spray-caching/src/main/scala/cc/spray/caching/LruCache.scala
+.. _SimpleLruCache and ExpiringLruCache: https://github.com/spray/spray/blob/master/spray-caching/src/main/scala/cc/spray/caching/LruCache.scala
 .. _concurrentlinkedhashmap: http://code.google.com/p/concurrentlinkedhashmap/

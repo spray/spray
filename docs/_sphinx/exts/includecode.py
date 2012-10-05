@@ -48,13 +48,13 @@ class IncludeCode(Directive):
             f.close()
         except (IOError, OSError):
             return [document.reporter.warning(
-                'Include file %r not found or reading it failed' % filename,
+                'Include file %r not found or reading it failed' % fn,
                 line=self.lineno)]
         except UnicodeError:
             return [document.reporter.warning(
                 'Encoding %r used for reading included file %r seems to '
                 'be wrong, try giving an :encoding: option' %
-                (encoding, filename))]
+                (encoding, fn))]
 
         snippet = self.options.get('snippet')
         current_snippets = ""

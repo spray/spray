@@ -28,27 +28,27 @@ trait MethodDirectives {
   /**
    * A route filter that rejects all non-DELETE requests.
    */
-  val delete = method(DELETE)
+  val delete = method(DELETE) // source-quote
 
   /**
    * A route filter that rejects all non-GET requests.
    */
-  val get = method(GET)
+  val get = method(GET) // source-quote
 
   /**
    * A route filter that rejects all non-PATCH requests.
    */
-  val patch = method(PATCH)
+  val patch = method(PATCH) // source-quote
 
   /**
    * A route filter that rejects all non-POST requests.
    */
-  val post = method(POST)
+  val post = method(POST) // source-quote
 
   /**
    * A route filter that rejects all non-PUT requests.
    */
-  val put = method(PUT)
+  val put = method(PUT) // source-quote
 
   /**
    * Rejects all requests whose HTTP method does not match the given one.

@@ -217,7 +217,7 @@ contains a number of example projects for *spray-servlet*.
 simple-spray-servlet-server
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This examples implements a very simple web-site built on top of *spray-servlet*.
+This example implements a very simple web-site built on top of *spray-servlet*.
 It shows off various features like streaming and timeout handling.
 
 Follow these steps to run it on your machine:

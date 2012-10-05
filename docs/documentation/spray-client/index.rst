@@ -135,3 +135,33 @@ completing the response future with an exception.
 
 .. note:: Only idempotent requests, as defined by the HTTP spec, are retried. Requests with HTTP methods ``POST`` or
    ``PATCH`` are not considered idempotent and therefore *never* retried.
+
+
+Example
+-------
+
+The ``/examples/spray-client/`` directory of the *spray* repository
+contains a number of example projects for *spray-client*.
+
+
+simple-spray-client
+~~~~~~~~~~~~~~~~~~~
+
+This example shows off how to use *spray-client* by performing two things
+
+- fetch the github homepage (a very simple GET)
+- query the Googles Elevation API to retrieve the elevation of Mt. Everest
+
+Follow these steps to run it on your machine:
+
+1. Clone the *spray* repository::
+
+    git clone git://github.com/spray/spray.git
+
+2. Change into the base directory::
+
+    cd spray
+
+3. Run SBT::
+
+    sbt "project simple-spray-client" run
