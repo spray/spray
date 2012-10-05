@@ -63,10 +63,16 @@ trait DemoService extends HttpService {
             ctx.complete("This resource is only slow the first time!\n" +
               "It was produced on " + DateTime.now.toIsoDateTimeString + "\n\n" +
               "(Note that your browser will likely enforce a cache invalidation with a\n" +
-              "`Cache-Control: max-age=0` header, so you might need to `curl` this\n" +
+              "`Cache-Control: max-age=0` header when you click 'reload', so you might need to `curl` this\n" +
               "resource in order to be able to see the cache effect!)")
           }
         }
+      } ~
+      path("crash") { ctx =>
+        throw new RuntimeException("crash boom bang")
+      } ~
+      path("fail") {
+        failWith(new RuntimeException("aaaahhh"))
       }
     } ~
     (post | parameter('method ! "post")) {
@@ -93,6 +99,8 @@ trait DemoService extends HttpService {
           <li><a href="/stats">/stats</a></li>
           <li><a href="/timeout">/timeout</a></li>
           <li><a href="/cached">/cached</a></li>
+          <li><a href="/crash">/crash</a></li>
+          <li><a href="/fail">/fail</a></li>
           <li><a href="/stop?method=post">/stop</a></li>
         </ul>
       </body>
