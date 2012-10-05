@@ -35,8 +35,8 @@ trait BasicDirectives {
   def mapRequest(f: HttpRequest => HttpRequest): Directive0 =
     mapRequestContext(_.mapRequest(f))
 
-  def mapHandler(f: ActorRef => ActorRef): Directive0 =
-    mapRequestContext(_.mapHandler(f))
+  def mapResponder(f: ActorRef => ActorRef): Directive0 =
+    mapRequestContext(_.mapResponder(f))
 
   def mapRouteResponse(f: Any => Any): Directive0 =
     mapRequestContext(_.mapRouteResponse(f))

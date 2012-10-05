@@ -106,18 +106,18 @@ trait DemoService extends HttpService {
 
           // we prepend 2048 "empty" bytes to push the browser to immediately start displaying the incoming chunks
           val htmlStart = " " * 2048 + "<html><body><h2>A streaming response</h2><p>(for 15 seconds)<ul>"
-          ctx.handler ! ChunkedResponseStart(HttpResponse(entity = HttpBody(`text/html`, htmlStart)))
+          ctx.responder ! ChunkedResponseStart(HttpResponse(entity = HttpBody(`text/html`, htmlStart)))
 
           def receive = {
             case _: HttpServer.SentOk if remainingChunks > 0 =>
               // we use the successful sending of a chunk as trigger for scheduling the next chunk
               remainingChunks -= 1
               in(500.millis) {
-                ctx.handler ! MessageChunk("<li>" + DateTime.now.toIsoDateTimeString + "</li>")
+                ctx.responder ! MessageChunk("<li>" + DateTime.now.toIsoDateTimeString + "</li>")
               }
             case _: HttpServer.SentOk =>
-              ctx.handler ! MessageChunk("</ul><p>Finished.</p></body></html>")
-              ctx.handler ! ChunkedMessageEnd()
+              ctx.responder ! MessageChunk("</ul><p>Finished.</p></body></html>")
+              ctx.responder ! ChunkedMessageEnd()
               context.stop(self)
 
             case HttpServer.Closed(_, reason) =>
