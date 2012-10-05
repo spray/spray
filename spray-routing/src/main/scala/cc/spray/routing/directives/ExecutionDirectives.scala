@@ -32,7 +32,7 @@ trait ExecutionDirectives {
   def handleExceptions(ehm: ExceptionHandlerMagnet): Directive0 =
     mapInnerRoute { inner => ctx =>
       import ehm._
-      val handleError = handler andThen (_(log)(ctx))
+      def handleError = handler andThen (_(log)(ctx))
       try inner {
         ctx.withRouteResponseHandling {
           case Status.Failure(error) if handler.isDefinedAt(error) => handleError(error)
