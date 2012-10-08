@@ -37,6 +37,8 @@ Installation
 
 The :ref:`maven-repo` chapter contains all the info about how to pull *spray-client* into your classpath.
 
+Afterwards just ``import cc.spray.client._`` to bring all relevant identifiers into scope.
+
 
 Configuration
 -------------

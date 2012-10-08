@@ -33,6 +33,8 @@ Installation
 
 The :ref:`maven-repo` chapter contains all the info about how to pull *spray-caching* into your classpath.
 
+Afterwards just ``import cc.spray.caching._`` to bring all relevant identifiers into scope.
+
 
 The `Cache` Interface
 ---------------------
