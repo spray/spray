@@ -22,7 +22,6 @@ import cc.spray.can.rendering.HttpResponsePartRenderingContext
 import cc.spray.can.HttpEvent
 import cc.spray.http._
 import cc.spray.io._
-import cc.spray.io.pipelining._
 
 
 object PipeliningLimiter {

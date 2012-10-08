@@ -16,6 +16,18 @@
 
 package cc.spray
 
+
+package object io {
+  type Pipeline[-T] = T => Unit
+
+  implicit def pimpBooleanWithOptionalPipelineStageOperator(condition: Boolean) = new PimpedBoolean(condition)
+  class PimpedBoolean(condition: Boolean) {
+    // unfortunately we cannot use the nicer right-associative `?:` operator due to
+    // https://issues.scala-lang.org/browse/SI-1980
+    def ? (stage: => PipelineStage) = if (condition) stage else EmptyPipelineStage
+  }
+}
+
 package io {
 
   trait Command

@@ -18,8 +18,7 @@ package cc.spray.site
 
 import akka.actor.{Props, ActorSystem}
 import cc.spray.can.server.HttpServer
-import cc.spray.io.IOBridge
-import cc.spray.io.pipelining.SingletonHandler
+import cc.spray.io._
 
 
 object Boot extends App {

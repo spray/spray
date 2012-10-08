@@ -7,12 +7,11 @@ import akka.util.Duration
 import akka.pattern.ask
 import akka.actor.{Props, ActorSystem}           // setup
 import akka.dispatch.Future                      // setup
-import cc.spray.io.pipelining.SingletonHandler
-import cc.spray.io.IOBridge                      // setup
 import cc.spray.json.DefaultJsonProtocol
 import cc.spray.can.client.HttpClient            // setup
 import cc.spray.can.server.HttpServer
 import cc.spray.client.HttpConduit               // setup
+import cc.spray.io._                             // setup
 import cc.spray.util._
 import cc.spray.http._                           // setup
 import HttpMethods._                             // setup

@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import akka.actor.{ActorSystem, Actor, Props}
 import cc.spray.can.{HttpCommand, HttpPipelineStageSpec}
 import cc.spray.io._
-import cc.spray.io.pipelining._
 import cc.spray.http._
 import HttpHeaders.RawHeader
 

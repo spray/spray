@@ -54,7 +54,7 @@ So, when seen from the outside a pipeline appears simply as a sink for messages 
 The ``build`` method of a pipeline stage is called every time a new connection actor is created. Apart from the
 ``PipelineContext``, which is defined like this:
 
-.. includecode:: /../spray-io/src/main/scala/cc/spray/io/pipelining/Pipelines.scala
+.. includecode:: /../spray-io/src/main/scala/cc/spray/io/Pipelines.scala
    :snippet: pipeline-context
 
 the ``build`` method receives its downstream "tail" pipelines as arguments.
@@ -195,7 +195,7 @@ although slightly simpler manner. Check out the ResponseRendering__ stage of the
 example of a ``CommandPipelineStage``, or the TickGenerator__ as an ``EventPipelineStage`` example.
 
 __ https://github.com/spray/spray/blob/master/spray-can/src/main/scala/cc/spray/can/server/ResponseRendering.scala
-__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/pipelining/TickGenerator.scala
+__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/TickGenerator.scala
 
 
 Combining Pipeline Stages

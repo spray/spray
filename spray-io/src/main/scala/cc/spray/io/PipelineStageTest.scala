@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.io.pipelining
+package cc.spray.io
 
 import collection.mutable.ListBuffer
 import util.DynamicVariable

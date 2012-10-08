@@ -15,11 +15,9 @@
  */
 
 package cc.spray.io
-package pipelining
 
 import cc.spray.util._
 import akka.event.LoggingAdapter
-import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import javax.net.ssl.{SSLContext, SSLException, SSLEngineResult, SSLEngine}
 import javax.net.ssl.SSLEngineResult.HandshakeStatus._
@@ -27,6 +25,7 @@ import SSLEngineResult.Status._
 import collection.mutable.Queue
 import annotation.tailrec
 import scala.Array
+
 
 object SslTlsSupport {
   def apply(engineProvider: PipelineContext => SSLEngine, log: LoggingAdapter,
@@ -201,7 +200,7 @@ object SslTlsSupport {
   }
 }
 
-private[pipelining] sealed abstract class SSLEngineProviderCompanion {
+private[io] sealed abstract class SSLEngineProviderCompanion {
   type Self <: (PipelineContext => SSLEngine)
   protected def clientMode: Boolean
 

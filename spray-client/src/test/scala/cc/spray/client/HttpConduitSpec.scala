@@ -18,6 +18,7 @@ package cc.spray.client
 
 import org.specs2.mutable.Specification
 import com.typesafe.config.ConfigFactory
+import util.Random
 import akka.util.Duration
 import akka.dispatch.Future
 import akka.pattern.ask
@@ -25,13 +26,11 @@ import akka.actor._
 import cc.spray.can.client.HttpClient
 import cc.spray.can.server.HttpServer
 import cc.spray.httpx.encoding.Gzip
-import cc.spray.io.IOBridge
-import cc.spray.io.pipelining.SingletonHandler
+import cc.spray.io._
 import cc.spray.http._
 import cc.spray.util._
 import DispatchStrategies._
 import HttpHeaders._
-import util.Random
 
 
 class HttpConduitSpec extends Specification {

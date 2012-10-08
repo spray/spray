@@ -2,10 +2,9 @@ package cc.spray.examples
 
 import java.security.{SecureRandom, KeyStore}
 import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
-import akka.actor._
-import cc.spray.io.IOBridge
-import cc.spray.io.pipelining.{SingletonHandler, ServerSSLEngineProvider}
 import cc.spray.can.server.HttpServer
+import cc.spray.io._
+import akka.actor._
 
 
 object Main extends App {

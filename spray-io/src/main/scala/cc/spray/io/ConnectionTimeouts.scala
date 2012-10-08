@@ -15,10 +15,10 @@
  */
 
 package cc.spray.io
-package pipelining
 
 import akka.util.Duration
 import akka.event.LoggingAdapter
+
 
 object ConnectionTimeouts {
 

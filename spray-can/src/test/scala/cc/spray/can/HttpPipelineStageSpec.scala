@@ -16,7 +16,6 @@
 
 package cc.spray.can
 
-import cc.spray.io.pipelining.PipelineStageTest
 import cc.spray.io._
 import cc.spray.util._
 import cc.spray.http._

@@ -19,9 +19,8 @@ package cc.spray.can.server
 import collection.mutable
 import akka.actor.{ActorContext, ActorRef}
 import akka.event.LoggingAdapter
-import cc.spray.io.{Command, IOServer}
-import cc.spray.io.pipelining.Pipeline
 import cc.spray.can.rendering.HttpResponsePartRenderingContext
+import cc.spray.io._
 import cc.spray.http._
 
 

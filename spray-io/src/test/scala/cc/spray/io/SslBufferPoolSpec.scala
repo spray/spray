@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package cc.spray.io.pipelining
+package cc.spray.io
 
 import org.specs2.mutable.Specification
 import util.Random
 import akka.dispatch.Future
 import cc.spray.util._
 import akka.actor.ActorSystem
+
 
 class SslBufferPoolSpec extends Specification {
   implicit val system = ActorSystem()
