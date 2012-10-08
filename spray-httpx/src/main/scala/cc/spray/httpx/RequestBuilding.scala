@@ -25,6 +25,7 @@ import HttpHeaders._
 
 
 trait RequestBuilding {
+  import RequestBuilding.RequestTransformer
 
   private[httpx] sealed abstract class RequestBuilder {
     def method: HttpMethod
@@ -72,4 +73,6 @@ trait RequestBuilding {
   }
 }
 
-object RequestBuilding extends RequestBuilding
+object RequestBuilding extends RequestBuilding {
+  type RequestTransformer = HttpRequest => HttpRequest
+}

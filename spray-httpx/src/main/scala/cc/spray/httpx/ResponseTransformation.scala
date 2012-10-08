@@ -23,6 +23,7 @@ import cc.spray.http._
 
 
 trait ResponseTransformation {
+  import ResponseTransformation.ResponseTransformer
 
   def decode(decoder: Decoder): ResponseTransformer = { response =>
     if (response.encoding == decoder.encoding) decoder.decode(response) else response
@@ -45,7 +46,9 @@ trait ResponseTransformation {
   }
 }
 
-object ResponseTransformation extends ResponseTransformation
+object ResponseTransformation extends ResponseTransformation {
+  type ResponseTransformer = HttpResponse => HttpResponse
+}
 
 trait TransformerAux[A, B, AA, BB, R] {
   def apply(f: A => B, g: AA => BB): A => R
