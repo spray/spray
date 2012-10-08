@@ -29,6 +29,7 @@ import cc.spray.io._
 class HttpConduit(val httpClient: ActorRef,
                   val host: String,
                   val port: Int = 80,
+                  val sslEnabled: Boolean = false,
                   val dispatchStrategy: DispatchStrategy = DispatchStrategies.NonPipelined(),
                   val settings: ConduitSettings = ConduitSettings())
   extends Actor with ActorLogging with ConnComponent {
