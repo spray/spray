@@ -49,7 +49,7 @@ object ObjectFieldFormat {
     extra(apply(_fieldName))
 
   /**
-   * The most basic CaseClassFieldFormat which maps a value directly to
+   * The most basic ObjectFieldFormats which maps a value directly to
    * one field of a json object.
    */
   def apply[T: JsonFormat](fieldName: String) =
@@ -75,7 +75,7 @@ trait ObjectFieldFormatBuilderImplicits {
   }
   implicit def toRichFieldName(fieldName: String): RichFieldName = RichFieldName(fieldName)
 
-  // we include that here as well, so that CCFF's methods can be used directly on the
+  // we include that here as well, so that ObjectFieldFormat's methods can be used directly on the
   // field names
   implicit def liftFieldName[T: ExtraFormat: JsonFormat](fieldName: String) =
     ObjectFieldFormat.liftFieldName(fieldName)
@@ -90,7 +90,7 @@ trait ObjectFieldFormatBuilderImplicits {
 }
 
 /**
- * Defines extra behavior which can be added to CaseClassFieldFormats based on type.
+ * Defines extra behavior which can be added to ObjectFieldFormats based on type.
  * Is currently only used to define the default behavior of options which are usually
  * represented as missing fields (and not with their default option format).
  */

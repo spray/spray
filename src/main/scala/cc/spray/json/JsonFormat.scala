@@ -52,11 +52,18 @@ object JsonWriter {
 /**
   * Provides the JSON deserialization and serialization for type T.
  */
-trait JsonFormat[T] extends JsonReader[T] with JsonWriter[T]
+trait JsonFormat[T] extends JsonReader[T] with JsonWriter[T] { outer =>
+  def map[U](f1: T => U, f2: U => T): JsonFormat[U] = new JsonFormat[U] {
+    def write(obj: U): JsValue = outer.write(f2(obj))
+    def read(json: JsValue): Validated[U] = outer.read(json).map(f1)
+  }
+}
 object JsonFormat
   extends BasicFormats
   with    CollectionFormats
-  with    StandardFormats
+  with    StandardFormats {
+  def get[T](implicit format: JsonFormat[T]): JsonFormat[T] = format
+}
 
 /**
  * A special JsonReader capable of reading a legal JSON root object, i.e. either a JSON array or a JSON object.

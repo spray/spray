@@ -20,18 +20,18 @@ import org.specs2.mutable._
 
 class ProductFormatsSpec extends Specification {
 
-  case class Test2(a: Int, b: Option[Double])
-  case class Test3[A, B](as: List[A], bs: List[B])
+  case class Test(a: Int)
 
-  trait TestProtocol extends ProductFormats {
-    implicit val test2Format = jsonFormat2(Test2)
+  case class Test2(a: Int, b: Option[Double])
+  object Test2 extends ProductFormats {
+    implicit val test2Format = jsonFormat(Test2.apply _)("a", "b")
+  }
+  case class Test3[A, B](as: List[A], bs: List[B])
+  object Test3 extends ProductFormats {
     implicit def test3Format[A: JsonFormat, B: JsonFormat] = jsonFormat2(Test3.apply[A, B])
   }
-  object TestProtocol1 extends TestProtocol
-  object TestProtocol2 extends TestProtocol with NullOptions
 
   "A JsonFormat created with `jsonFormat`, for a case class with 2 elements," should {
-    import TestProtocol1._
     val obj = Test2(42, Some(4.2))
     val json = JsObject("a" -> JsNumber(42), "b" -> JsNumber(4.2))
     "convert to a respective JsObject" in {
@@ -63,13 +63,13 @@ class ProductFormatsSpec extends Specification {
 
   "A JsonProtocol mixing in NullOptions" should {
     "render `None` members to `null`" in {
-      import TestProtocol2._
+      import ProductFormats._
+      implicit val test2Format = jsonFormat(Test2.apply _)("a", "b".optionAsNull)
       Test2(42, None).toJson mustEqual JsObject("a" -> JsNumber(42), "b" -> JsNull)
     }
   }
 
   "A JsonFormat for a generic case class and created with `jsonFormat`" should {
-    import TestProtocol1._
     val obj = Test3(42 :: 43 :: Nil, "x" :: "y" :: "z" :: Nil)
     val json = JsObject(
       "as" -> JsArray(JsNumber(42), JsNumber(43)),
@@ -83,4 +83,36 @@ class ProductFormatsSpec extends Specification {
     }
   }
 
+  "A JsonFormat for a product" should {
+    "be customizable" in {
+      import ProductFormats._
+
+      "by mapping formats" in {
+        implicit val format = jsonFormat(Test)("a".as[String].using(_.toInt, _.toString))
+
+        Test(5).toJson must be_==(JsObject("a" -> JsString("5")))
+      }
+      "by ignoring some product fields" in {
+        implicit val format = jsonFormat(Test)(ignore(35))
+
+        JsObject().as[Test] must be_==(Test(35))
+        Test(1276).toJson must be_==(JsObject())
+      }
+      "by interpreting a value as the missing field" in {
+        implicit val format = jsonFormat(Test)("a".withMissingFieldAt(24))
+
+        JsObject().as[Test] must be_==(Test(24))
+        Test(24).toJson must be_==(JsObject())
+
+        JsObject("a" -> JsNumber(39)).as[Test] must be_==(Test(39))
+        Test(39).toJson must be_==(JsObject("a" -> JsNumber(39)))
+      }
+      "by setting defaults for possibly missing elements" in {
+        implicit val format = jsonFormat(Test)("a".withDefault(12))
+
+        JsObject().as[Test] must be_==(Test(12))
+        Test(12).toJson must be_==(JsObject("a" -> JsNumber(12)))
+      }
+    }
+  }
 }
