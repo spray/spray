@@ -36,8 +36,16 @@ object Deflate extends Deflate(Encoder.DefaultFilter) {
 }
 
 class DeflateCompressor extends Compressor {
-  protected lazy val deflater = new Deflater(Deflater.BEST_COMPRESSION, false)
+  protected lazy val deflater = {
+    val res = new Deflater(Deflater.BEST_COMPRESSION, false)
+    dictionary.foreach { d =>
+      res.setDictionary(d)
+    }
+    res
+  }
   private val outputBuf = new Array[Byte](1024) // use a working buffer of size 1 KB)
+
+  def dictionary: Option[Array[Byte]] = None
 
   def compress(buffer: Array[Byte]) = {
     @tailrec
@@ -88,7 +96,7 @@ class DeflateDecompressor extends Decompressor {
     def doDecompress(off: Int) {
       inflater.setInput(buffer, off, math.min(1024, buffer.length - off))
       drain()
-      if (inflater.needsDictionary) throw new ZipException("ZLIB dictionary missing")
+      if (inflater.needsDictionary) inflater.setDictionary(dictionary.getOrElse(throw new ZipException("ZLIB dictionary missing")))
       val nextOffset = off + 1024
       if (nextOffset < buffer.length && !inflater.finished()) doDecompress(nextOffset)
     }
@@ -111,4 +119,6 @@ class DeflateDecompressor extends Decompressor {
       drain()
     }
   }
+
+  protected def dictionary: Option[Array[Byte]] = None
 }
