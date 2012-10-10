@@ -17,6 +17,8 @@ class FrameHeaderParser(inflater: Inflater) extends ReadBytePart(8) {
 class FrameDataReader(inflater: Inflater, header: Array[Byte], length: Int) extends ReadBytePart(length) {
   import Conversions._
   import Spdy2._
+  import ControlFrameTypes._
+  import Flags._
 
   def finished(dataBytes: Array[Byte]): ParsingState = {
     val Array(h1, h2, h3, h4, flagsB, _*) = header
@@ -30,9 +32,6 @@ class FrameDataReader(inflater: Inflater, header: Array[Byte], length: Int) exte
         FrameParsingError(ErrorCodes.UNSUPPORTED_VERSION)
       }
       else {
-        import ControlFrameTypes._
-        import Flags._
-
         val tpe = u2be(h3, h4)
         println("Got control frame "+tpe)
 
@@ -74,7 +73,7 @@ class FrameDataReader(inflater: Inflater, header: Array[Byte], length: Int) exte
 
             val settings = (0 until numSettings).map(readSetting)
 
-            Settings(FLAG_SETTINGS_CLEAR_PREVIOUSLY_PERSISTED_SETTINGS(flags), settings)
+            Settings(Flags.FLAG_SETTINGS_CLEAR_PREVIOUSLY_PERSISTED_SETTINGS(flags), settings)
 
           case PING =>
             val id = u4be(dataBytes(0), dataBytes(1), dataBytes(2), dataBytes(3))
@@ -85,7 +84,7 @@ class FrameDataReader(inflater: Inflater, header: Array[Byte], length: Int) exte
       }
     } else { // data frame
       val streamId = u4be(h1, h2, h3, h4)
-      DataFrame(streamId, flags, length, dataBytes)
+      DataFrame(streamId, FLAG_FIN(flags), dataBytes)
     }
   }
 

@@ -3,6 +3,7 @@ package cc.spray.can.spdy
 import cc.spray.can.parsing.ParsingState
 
 sealed trait Frame extends ParsingState
+case class FrameParsingError(errorCode: Int) extends ParsingState
 
 sealed trait ControlFrame extends Frame
 
@@ -14,5 +15,4 @@ case class Ping(pingId: Int, rawData: Array[Byte]) extends ControlFrame
 case class Setting(id: Int, flags: Int, value: Int)
 case class Settings(clearPersistedSettings: Boolean, settings: Seq[Setting]) extends ControlFrame
 
-case class DataFrame(streamId: Int, flags: Int, length: Int, data: Array[Byte]) extends Frame
-case class FrameParsingError(errorCode: Int) extends Frame
+case class DataFrame(streamId: Int, fin: Boolean, data: Array[Byte]) extends Frame

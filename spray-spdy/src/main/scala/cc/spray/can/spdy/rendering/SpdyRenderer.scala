@@ -15,6 +15,14 @@ class SpdyRenderer {
     override def dictionary: Option[Array[Byte]] = Some(Spdy2.dictionary)
   }
 
+  def renderFrame(frame: Frame): ByteBuffer = frame match {
+    case SynReply(id, fin, kvs) =>
+      renderSynReply(id, fin, kvs)
+
+    case DataFrame(id, fin, data) =>
+      renderDataFrame(id, fin, data)
+  }
+
   def renderSynReply(streamId: Int, fin: Boolean, keyValues: Map[String, String]): ByteBuffer = {
     val dataBuffer = renderKeyValues(keyValues)
     val length = dataBuffer.limit + 6

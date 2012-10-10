@@ -13,9 +13,10 @@ import cc.spray.http.HttpHeaders.RawHeader
 import cc.spray.util.Reply
 import cc.spray.http.HttpHeaders.RawHeader
 import cc.spray.io.ProtocolError
+import akka.actor.ActorRef
 
 object SpdyFraming {
-  def apply(messageHandler: MessageHandler): DoublePipelineStage = new DoublePipelineStage {
+  def apply(): DoublePipelineStage = new DoublePipelineStage {
     def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): BuildResult = new Pipelines {
       val inflater = new Inflater()
       def startParser = new parsing.FrameHeaderParser(inflater)
@@ -23,7 +24,6 @@ object SpdyFraming {
       val renderer = new rendering.SpdyRenderer
 
       var currentParsingState: ParsingState = startParser
-      val handler = messageHandler(context)()
 
       @tailrec
       def parse(buffer: ByteBuffer) {
@@ -34,31 +34,8 @@ object SpdyFraming {
               parse(buffer)
             } // else wait for more input
 
-          case x: SynStream =>
-            println("Got syn stream "+x)
-            if (x.fin) {
-              val req = requestFromKV(x.keyValues)
-              commandPL(IOServer.Tell(handler, req, Reply.withContext(x.streamId)(context.connectionActorContext.self)))
-            }
-
-            currentParsingState = startParser
-            parse(buffer)
-
-          case x: RstStream =>
-            println("Stream got cancelled "+x)
-            currentParsingState = startParser
-            parse(buffer)
-
-          case x: Settings =>
-            println("Ignoring settings for now "+x+" remaining bytes "+buffer.remaining())
-
-            currentParsingState = startParser
-            parse(buffer)
-
-          case Ping(id, data) =>
-            println("Got ping "+id)
-
-            commandPL(IOServer.Send(ByteBuffer.wrap(data)))
+          case f: Frame =>
+            eventPL(SpdyFrameReceived(f))
 
             currentParsingState = startParser
             parse(buffer)
@@ -82,18 +59,8 @@ object SpdyFraming {
       }
 
       def commandPipeline: CPL = {
-        case ReplyToStream(streamId, response, dataComplete) =>
-          val fin = response.entity.buffer.isEmpty
-          commandPL(IOServer.Send(renderer.renderSynReply(streamId, fin, responseToKV(response))))
-
-          if (!fin)
-            commandPL(IOServer.Send(renderer.renderDataFrame(streamId, dataComplete, response.entity.buffer)))
-
-        case SendStreamData(streamId, data) =>
-          commandPL(IOServer.Send(renderer.renderDataFrame(streamId, false, data)))
-
-        case CloseStream(streamId) =>
-          commandPL(IOServer.Send(renderer.renderDataFrame(streamId, true, Array.empty)))
+        case SendSpdyFrame(frame) =>
+          commandPL(IOServer.Send(renderer.renderFrame(frame)))
 
         case x =>
           println("Got command "+x)
@@ -102,31 +69,11 @@ object SpdyFraming {
     }
   }
 
-  val SpecialKeys = Set("method", "version", "url")
-  def requestFromKV(kv: Map[String, String]): HttpRequest = {
 
-    val method = HttpMethods.getForKey(kv("method")).get
-    val uri = kv("url")
-    val headers = kv.filterNot(kv => SpecialKeys(kv._1)).map {
-      case (k, v) => RawHeader(k, v)
-    }.toList
-    val protocol = HttpProtocols.getForKey(kv("version")).get
+  // EVENTS
+  case class SpdyFrameReceived(frame: Frame) extends Event
 
-    HttpRequest(method = method, uri = uri, headers = headers, protocol = protocol)
-  }
-  def responseToKV(response: HttpResponse): Map[String, String] = {
-    println("Headers "+response.headers)
-    Map(
-      "status" -> response.status.value.toString,
-      "version" -> response.protocol.value,
-      "content-type" -> response.entity.asInstanceOf[HttpBody].contentType.value
-    ) ++ response.headers.map { header =>
-      (header.name.toLowerCase, header.value)
-    }
-  }
-
-  case class ReplyToStream(streamId: Int, response: HttpResponse, dataComplete: Boolean) extends Command
-  case class SendStreamData(streamId: Int, body: Array[Byte]) extends Command
-  case class CloseStream(streamId: Int) extends Command
+  // COMMANDS
+  case class SendSpdyFrame(frame: Frame) extends Command
 }
 
