@@ -5,12 +5,11 @@ import cc.spray.http.HttpEntity
 import java.io.{ByteArrayOutputStream, ByteArrayInputStream}
 import java.util.zip.{Inflater, Deflater, DeflaterOutputStream}
 import cc.spray.can.parsing.{IntermediateState, ParsingState}
+import cc.spray.httpx.encoding.DeflateCompressor
 
 class SpdyRenderer {
-  val deflater = {
-    val res = new Deflater
-    res.setDictionary(Conversions.dictionary)
-    res
+  val compressor = new DeflateCompressor {
+    override def dictionary: Option[Array[Byte]] = Some(Conversions.dictionary)
   }
 
   def renderResponseHeader(streamId: Int, fin: Boolean, keyValues: Map[String, String]): ByteBuffer = {
@@ -99,21 +98,7 @@ class SpdyRenderer {
     }
     os.close()
 
-    /*val baos2 = new ByteArrayOutputStream()
-    val deflated = new DeflaterOutputStream(baos2, deflater)
-    deflated.write(os.toByteArray)
-    deflated.close*/
-
-
-
-    deflater.setInput(os.toByteArray)
-    //deflater.finish()
-    val buf = new Array[Byte](10000)
-    val deflated = deflater.deflate(buf, 0, buf.length, Deflater.SYNC_FLUSH)
-
-    //println("Data bytes are "+baos2.toByteArray.map(_ formatted "%02x").mkString(" "))
-    //ByteBuffer.wrap(baos., 0, deflated)
-    ByteBuffer.wrap(buf, 0, deflated)
+    ByteBuffer.wrap(compressor.compress(os.toByteArray).flush())
   }
 }
 
