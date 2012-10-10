@@ -38,12 +38,6 @@ class HttpServer(ioBridge: IOBridge, messageHandler: MessageHandler, settings: S
     case HttpServer.ClearStats  => statsHolder.foreach(_.clear())
   }
 
-  override protected def createConnectionActor(handle: Handle): IOConnectionActor = new IOConnectionActor(handle) {
-    override def receive = super.receive orElse {
-      case x: HttpResponse => pipelines.commandPipeline(HttpCommand(x))
-    }
-  }
-
   /**
    * This methods determines the HttpResponse to sent back to the client if both the request handling actor
    * as well as the timeout actor do not produce timely responses with regard to the configured timeout periods.
