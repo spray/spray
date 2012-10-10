@@ -64,7 +64,7 @@ class IncludeCode(Directive):
             if comment.startswith("#"):
                 current_snippets = comment
                 indent = line.find("//")
-            elif len(line) > 2 and line[2] == '"':
+            elif len(line) > 2 and line[2] == '"' and current_snippets == "":
                 current_snippets = line[2:]
                 indent = 4
             elif comment == "#" and current_snippets.startswith("#"):

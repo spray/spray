@@ -1,4 +1,0 @@
-Big Picture
-===========
-
-(coming)

@@ -21,9 +21,9 @@ Dependencies
 
 Apart from the Scala library (see :ref:`current-versions` chapter) *spray-caching* depends on
 
-- akka-actor (with 'provided' scope, i.e. you need to pull it in yourself)
-- `concurrentlinkedhashmap 1.3.1`__
 - :ref:`spray-util`
+- `concurrentlinkedhashmap 1.3.1`__
+- akka-actor (with 'provided' scope, i.e. you need to pull it in yourself)
 
 __ http://code.google.com/p/concurrentlinkedhashmap/
 

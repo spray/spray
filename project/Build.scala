@@ -113,8 +113,7 @@ object Build extends Build with DocSupport {
     .dependsOn(sprayHttp, sprayHttpx, sprayRouting, sprayUtil)
     .settings(sprayModuleSettings: _*)
     .settings(libraryDependencies ++=
-      compile(scalatest, specs2) ++
-      provided(akkaActor)
+      provided(akkaActor, scalatest, specs2)
     )
 
 
