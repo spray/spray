@@ -47,7 +47,7 @@ The ``SslTlsSupport.apply`` methods takes an ``sslEnabled`` parameter of type ``
 The function you supply for this parameter is called whenever a new pipeline instance is constructed (i.e. after the
 establishment of a new connection) and its result determines whether to enable the encryption or not.
 
-The :ref:`spray-can` ``HttpClient``, for example, uses this facility to allow for the enabling/disabling of SSL
+The :ref:`spray-can` :ref:`HttpClient`, for example, uses this facility to allow for the enabling/disabling of SSL
 encryption via the ``tag`` member of the ``Connect`` command. The argument it passes for the ``sslEnabled`` parameter
 is this: ``_.handle.tag == HttpClient.SslEnabled``.
 

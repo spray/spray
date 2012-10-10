@@ -1,0 +1,6 @@
+.. _-responseEncodingAccepted-:
+
+responseEncodingAccepted
+========================
+
+(todo)

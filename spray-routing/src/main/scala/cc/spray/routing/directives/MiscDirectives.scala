@@ -81,7 +81,7 @@ trait MiscDirectives {
   }
 
   /**
-   * Adds a TransformRejection cancelling all rejections for which the fiven filter function returns true
+   * Adds a TransformationRejection cancelling all rejections for which the given filter function returns true
    * to the list of rejections potentially coming back from the inner route.
    */
   def cancelAllRejections(cancelFilter: Rejection => Boolean): Directive0 =

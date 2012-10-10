@@ -64,7 +64,7 @@ trait FileAndResourceDirectives {
   }
 
   /**
-   * Adds a Last-Modified header to all HttpResponses from its inner route.
+   * Adds a Last-Modified header to all HttpResponses from its inner Route.
    */
   def respondWithLastModifiedHeader(timestamp: Long): Directive0 =
     respondWithHeader(`Last-Modified`(DateTime(math.min(timestamp, System.currentTimeMillis))))

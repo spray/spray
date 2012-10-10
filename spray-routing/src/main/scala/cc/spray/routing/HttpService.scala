@@ -80,6 +80,8 @@ trait HttpService extends Directives {
             val errorRoute = handler(e)(log)
             errorRoute(contextFor(request))
         }
+
+      case Timeout(request: HttpRequest) => runRoute(timeoutRoute)(eh, rh, ac)(request)
     }
   }
 
@@ -95,4 +97,17 @@ trait HttpService extends Directives {
   def handleUnhandledRejections: RejectionHandler.PF = {
     case x :: _ => sys.error("Unhandled rejection: " + x)
   }
+
+  //# timeout-route
+  def timeoutRoute: Route = complete(
+    status = InternalServerError,
+    obj = "The server was not able to produce a timely response to your request."
+  )
+  //#
+}
+
+trait HttpServiceActor extends HttpService {
+  this: Actor =>
+
+  def actorRefFactory = context
 }

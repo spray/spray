@@ -114,7 +114,7 @@ Execution Model
 Since pipelines are simple functions ``T => Unit`` (with ``T`` being either ``Command`` or ``Event``) each stage is
 in complete control of the message flow. It can not only modify messages, it can also hold, discard or multiply them in
 any way. Additionally it can generate messages of the opposite type and push them into the respective downstream tail
-pipeline. For example, the RequestParsing__ EventPipelineStage of the :ref:`spray-can` ``HttpServer`` generates commands
+pipeline. For example, the RequestParsing__ EventPipelineStage of the :ref:`spray-can` :ref:`HttpServer` generates commands
 that complete a request with an error response whenever a request parsing error is encountered.
 
 Also, all pipeline code is always executed in the context of the connection actor and therefore isolated to a specific
@@ -191,7 +191,7 @@ structured, might give you a good starting point::
 
 
 This template shows a full ``DoublePipelineStage``. Command- and EventPipelineStages can be created in a very similar
-although slightly simpler manner. Check out the ResponseRendering__ stage of the :ref:`spray-can` ``HttpServer`` as an
+although slightly simpler manner. Check out the ResponseRendering__ stage of the :ref:`spray-can` :ref:`HttpServer` as an
 example of a ``CommandPipelineStage``, or the TickGenerator__ as an ``EventPipelineStage`` example.
 
 __ https://github.com/spray/spray/blob/master/spray-can/src/main/scala/cc/spray/can/server/ResponseRendering.scala

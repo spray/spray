@@ -1,0 +1,6 @@
+.. _-getFromResource-:
+
+getFromResource
+===============
+
+(todo)

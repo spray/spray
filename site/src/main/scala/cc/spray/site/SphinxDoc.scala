@@ -37,7 +37,7 @@ object SphinxDoc {
   def loadFrom(resourceName: String): Option[SphinxDoc] = {
     val nullableJsonSource = FileUtils.readAllTextFromResource(resourceName)
     Option(nullableJsonSource).map { jsonSource =>
-      val patchedJsonSource = jsonSource.replace("\\u00b6", "&#182;")
+      val patchedJsonSource = jsonSource.replace("\\u00b6", "&#182;").replace(""" border=\"1\"""", "")
       val jsonAst = patchedJsonSource.asJson
       jsonAst.convertTo[SphinxDoc]
     }

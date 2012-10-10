@@ -31,7 +31,7 @@ __ https://github.com/spray/spray/blob/master/spray-can/src/main/scala/cc/spray/
 
 Another (admittedly very contrived and overly simplified) example is presented here:
 
-.. includecode:: ../code/docs/IOClientExamplesSpec.scala
+.. includecode:: code/docs/IOClientExamplesSpec.scala
    :snippet: example-1
 
 Note than this example uses blocking calls to wait for future results, which is something that you probably do not

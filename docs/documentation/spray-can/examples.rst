@@ -10,7 +10,7 @@ contains a number of example projects for *spray-can*, which are described here.
 simple-http-client
 ------------------
 
-This example demonstrates how you can use the ``HttpClient`` and ``HttpDialog`` to perform simple,
+This example demonstrates how you can use the :ref:`HttpClient` and :ref:`HttpDialog` to perform simple,
 low-level HTTP client logic.
 
 Follow these steps to run it on your machine:
@@ -35,7 +35,7 @@ Follow these steps to run it on your machine:
 simple-http-server
 ------------------
 
-This examples implements a very simple web-site built with the *spray-can* ``HttpServer``.
+This examples implements a very simple web-site built with the *spray-can* :ref:`HttpServer`.
 It shows off various features like streaming, stats support and timeout handling.
 
 Follow these steps to run it on your machine:

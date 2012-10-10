@@ -93,7 +93,7 @@ The default ``StringMarshaller`` for example is defined with it:
 
 As another example, here is a ``Marshaller`` definition for a custom type ``Person``:
 
-.. includecode:: ../code/docs/MarshallingExamplesSpec.scala
+.. includecode:: code/docs/MarshallingExamplesSpec.scala
    :snippet: example-1
 
 As can be seen in this example you best define the ``Marshaller`` for ``T`` in the companion object of ``T``.

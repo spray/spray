@@ -24,12 +24,6 @@ import cc.spray.http._
 trait FormFieldDirectives extends ToNameReceptaclePimps {
 
   /**
-   * Extracts the requests query parameters as a Map[String, String].
-   */
-  //def httpForm: Directive[HttpForm :: HNil] =
-  //  contentAs HttpForm
-
-  /**
    * Rejects the request if the form field parameter matcher(s) defined by the definition(s) don't match.
    * Otherwise the field content(s) are extracted and passed to the inner route.
    */

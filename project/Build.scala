@@ -145,7 +145,7 @@ object Build extends Build with DocSupport {
     .dependsOn(sprayCaching, sprayCan, sprayClient, sprayHttp, sprayHttpx, sprayIO, sprayRouting,
                sprayServlet, sprayTestKit, sprayUtil)
     .settings(docsSettings: _*)
-    .settings(libraryDependencies ++= test(akkaActor, sprayJson, specs2))
+    .settings(libraryDependencies ++= test(akkaActor, akkaTestKit, sprayJson, specs2))
 
 
   // -------------------------------------------------------------------------------------------------------------------

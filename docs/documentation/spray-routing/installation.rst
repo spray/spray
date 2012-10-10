@@ -3,6 +3,8 @@ Installation
 
 The :ref:`maven-repo` chapter contains all the info about how to pull *spray-can* into your classpath.
 
+Afterwards just ``import cc.spray.routing._`` to bring all relevant identifiers into scope.
+
 Also, if you are using *spray-routing* with Scala 2.9.x, make sure to include the following with your build definition::
 
   scalacOptions += "-Ydependent-method-types"

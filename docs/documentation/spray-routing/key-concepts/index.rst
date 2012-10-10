@@ -11,6 +11,7 @@ effectively:
    directives
    rejections
    exception-handling
+   timeout-handling
 
 
 

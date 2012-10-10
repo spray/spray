@@ -54,9 +54,9 @@ abstract class Directive[L <: HList] { self =>
         }
     }
 
-  def map[R <: HList](f: L => R) =
-    new Directive[R] {
-      def happly(g: R => Route) = self.happly { values => g(f(values)) }
+  def map[R](f: L => R)(implicit hl: HListable[R]) =
+    new Directive[hl.Out] {
+      def happly(g: hl.Out => Route) = self.happly { values => g(hl(f(values))) }
     }
 
   def flatMap[R <: HList](f: L => Directive[R]) =

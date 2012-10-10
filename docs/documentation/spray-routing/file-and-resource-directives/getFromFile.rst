@@ -1,0 +1,6 @@
+.. _-getFromFile-:
+
+getFromFile
+===========
+
+(todo)

@@ -57,7 +57,7 @@ object Main extends App {
 
       case Left(error) =>
         log.error(error, "Couldn't get http://github.com")
-        system.shutdown()
+        system.shutdown() // also stops all conduits (since they are actors)
     }
   }
 
@@ -77,11 +77,11 @@ object Main extends App {
     responseF onComplete {
       case Right(response) =>
         log.info("The elevation of Mt. Everest is: {} m", response.results.head.elevation)
-        system.shutdown()
+        system.shutdown() // also stops all conduits (since they are actors)
 
       case Left(error) =>
         log.error(error, "Couldn't get elevation")
-        system.shutdown()
+        system.shutdown() // also stops all conduits (since they are actors)
     }
   }
 }

@@ -77,7 +77,7 @@ The default ``NodeSeqMarshaller`` for example is defined with it:
 
 As another example, here is an ``Unmarshaller`` definition for a custom type ``Person``:
 
-.. includecode:: ../code/docs/UnmarshallingExamplesSpec.scala
+.. includecode:: code/docs/UnmarshallingExamplesSpec.scala
    :snippet: example-1
 
 As can be seen in this example you best define the ``Unmarshaller`` for ``T`` in the companion object of ``T``.
@@ -111,7 +111,7 @@ by providing a function ``A => B``::
 For example, by using ``Unmarshaller.delegate`` the ``Unmarshaller[Person]`` from the example above could be simplified
 to this:
 
-.. includecode:: ../code/docs/UnmarshallingExamplesSpec.scala
+.. includecode:: code/docs/UnmarshallingExamplesSpec.scala
    :snippet: example-2
 
 Unmarshaller.forNonEmpty
@@ -125,5 +125,5 @@ For example, the default ``NodeSeqMarshaller`` (see above) accepts empty entitie
 In order to achieve this, instead of "overriding" the existing ``NodeSeqMarshaller`` with an all-custom
 re-implementation you could be doing this:
 
-.. includecode:: ../code/docs/UnmarshallingExamplesSpec.scala
+.. includecode:: code/docs/UnmarshallingExamplesSpec.scala
    :snippet: example-3

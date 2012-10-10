@@ -42,7 +42,7 @@ or shorter::
 
   _.complete("Response")
 
-or even shorter (using the ``complete`` directive)::
+or even shorter (using the :ref:`-complete-` directive)::
 
   complete("Response")
 
@@ -70,3 +70,41 @@ The last point is achieved with the simple operator ``~``, which is available to
 implicit "extension". The first two points are provided by so-called :ref:`Directives`, of which a large number is
 already predefined by *spray-routing* and which you can also easily create yourself.
 :ref:`Directives` deliver most of *spray-routings* power and flexibility.
+
+
+The Routing Tree
+----------------
+
+Essentially, when you combine directives and custom routes via nesting and the ``~`` operator, you build a routing
+structure that forms a tree. When a request comes in it is injected into this tree at the root and flows down through
+all the branches in a depth-first manner until either some node completes it or it is fully rejected.
+
+Consider this schematic example::
+
+  val route =
+    a {
+      b {
+        c {
+          ... // route 1
+        } ~
+        d {
+          ... // route 2
+        } ~
+        ... // route 3
+      } ~
+      e {
+        ... // route 4
+      }
+    }
+
+Here five directives form a routing tree.
+
+.. rst-class:: wide
+
+- Route 1 will only be reached if directives ``a``, ``b`` and ``c`` all let the request pass through.
+- Route 2 will run if ``a`` and ``b`` pass, ``c`` rejects and ``d`` passes.
+- Route 3 will run if ``a`` and ``b`` pass, but ``c`` and ``d`` reject.
+
+Route 3 can therefore be seen as a "catch-all" route that only kicks in, if routes chained into preceding positions
+reject. This mechanism can make complex filtering logic quite easy to implement: simply put the most
+specific cases up front and the most general cases in the back.

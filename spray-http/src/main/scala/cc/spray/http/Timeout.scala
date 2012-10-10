@@ -18,4 +18,4 @@
 package cc.spray.http
 
 
-case class Timeout(request: HttpRequestPart with HttpMessageStart)
+case class Timeout(request: HttpRequestPart with HttpMessageStart) // source-quote

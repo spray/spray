@@ -24,7 +24,7 @@ import shapeless._
 import cc.spray.util._
 
 
-trait PathDirectives extends PathMatcherImplicits {
+trait PathDirectives extends PathMatcherImplicits with PathMatchers {
   import BasicDirectives.filter
   import PathMatcher._
 

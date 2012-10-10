@@ -1,0 +1,6 @@
+.. _-cookie-:
+
+cookie
+======
+
+(todo)

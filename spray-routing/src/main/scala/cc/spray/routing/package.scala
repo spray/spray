@@ -17,10 +17,9 @@
 package cc.spray
 
 import shapeless.{HNil, HList}
-import cc.spray.routing.directives.PathMatchers
 
 
-package object routing extends PathMatchers {
+package object routing {
 
   type Route = RequestContext => Unit
   type RouteFilter[+T <: HList] = RequestContext => FilterResult[T]

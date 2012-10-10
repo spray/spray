@@ -1,0 +1,6 @@
+.. _-handleRejections-:
+
+handleRejections
+================
+
+(todo)

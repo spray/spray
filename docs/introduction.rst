@@ -91,7 +91,6 @@ __ spray-json_
 .. _netty: http://www.jboss.org/netty
 .. _scalatest: http://scalatest.org
 .. _specs2: http://specs2.org
-.. _spray-json: https://github.com/spray/spray-json
 
 
 Philosophy
@@ -137,7 +136,7 @@ might even make such an approach gain attractiveness.
 
 Currently a *spray*-based web development stack might consist of (a subset of) these components:
 
-:ref:`spray-can` ``HttpServer``
+:ref:`spray-can` :ref:`HttpServer`
   The web-server. Receives HTTP request and sends out responses. Optionally terminates SSL.
 
 :ref:`spray-routing`
@@ -164,6 +163,9 @@ sbt-js_
 
 SLICK_
   Library for elegant database query and access.
+
+spray-json_
+  Library for clean and idiomatic JSON reading and writing.
 
 sbt-assembly_
   SBT-plugin for single-fat-JAR-deployment.
@@ -192,5 +194,6 @@ regard...
 .. _CoffeeScript: http://coffeescript.org/
 .. _sbt-js: https://github.com/untyped/sbt-plugins/tree/master/sbt-js
 .. _SLICK: http://slick.typesafe.com/
+.. _spray-json: https://github.com/spray/spray-json
 .. _sbt-assembly: https://github.com/sbt/sbt-assembly
 .. _A client-side frontend framework: http://blog.stevensanderson.com/2012/08/01/rich-javascript-applications-the-seven-frameworks-throne-of-js-2012/

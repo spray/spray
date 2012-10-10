@@ -108,7 +108,7 @@ Custom Media-Types
 *spray-http* defines the most important media types from the `IANA MIME media type registry`_ in the MediaTypes_
 object, which also acts as a registry that you can register your own ``CustomMediaType`` instances with:
 
-.. includecode:: ../code/docs/CustomHttpExtensionExamplesSpec.scala
+.. includecode:: code/docs/CustomHttpExtensionExamplesSpec.scala
    :snippet: custom-media-type
 
 Once registered the custom type will be properly resolved, e.g. for incoming requests by :ref:`spray-routing` or

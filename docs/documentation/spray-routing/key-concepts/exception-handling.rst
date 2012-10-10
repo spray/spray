@@ -1,3 +1,5 @@
+.. _Exception Handling:
+
 Exception Handling
 ==================
 
@@ -24,5 +26,5 @@ have put somewhere into your route structure.
 
 Here is an example:
 
-.. includecode:: ../../code/docs/ExceptionHandlerExamplesSpec.scala
+.. includecode:: ../code/docs/ExceptionHandlerExamplesSpec.scala
    :snippet: example-1

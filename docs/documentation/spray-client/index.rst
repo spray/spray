@@ -16,7 +16,7 @@ low-level :ref:`HttpClient` that is part of the :ref:`spray-can` module. It spor
 - Actor-based architecture for easy integration into your Akka applications
 
 Currently, HTTP streaming (i.e. chunked transfer encoding) is not yet fully supported on the *spray-client* level
-(even though the underlying *spray-can* ``HttpClient`` does support it), i.e. you cannot send chunked requests and
+(even though the underlying *spray-can* :ref:`HttpClient` does support it), i.e. you cannot send chunked requests and
 the ``spray.can.client.response-chunk-aggregation-limit`` config setting must be non-zero).
 
 
@@ -70,18 +70,18 @@ simply create a new instance for every new target server the application needs t
 
 The ``HttpConduit`` is a regular actor, so you create one like this:
 
-.. includecode:: ../code/docs/HttpConduitExamplesSpec.scala
+.. includecode:: code/docs/HttpConduitExamplesSpec.scala
    :snippet: setup
 
 Once you have a reference to a conduit you typically create a "pipeline" around it. In the simplest case this looks like
 this:
 
-.. includecode:: ../code/docs/HttpConduitExamplesSpec.scala
+.. includecode:: code/docs/HttpConduitExamplesSpec.scala
    :snippet: simple-pipeline
 
 In this case the pipeline has the type ``HttpRequest => Future[Response]``, so you can use it like this:
 
-.. includecode:: ../code/docs/HttpConduitExamplesSpec.scala
+.. includecode:: code/docs/HttpConduitExamplesSpec.scala
    :snippet: response-future
 
 
@@ -95,7 +95,7 @@ concept of a "Message Pipeline".
 
 Check out this snippet:
 
-.. includecode:: ../code/docs/HttpConduitExamplesSpec.scala
+.. includecode:: code/docs/HttpConduitExamplesSpec.scala
    :snippet: example-2
 
 This defines a more complex pipeline that takes an ``HttpRequest``, adds headers and compresses its entity before
@@ -111,7 +111,7 @@ automatic marshalling of custom types.
 Dispatch Strategy
 -----------------
 
-Apart from the underlying ``HttpClient`` instance to use and the target servers hostname/port the ``HttpConduit``
+Apart from the underlying :ref:`HttpClient` instance to use and the target servers hostname/port the ``HttpConduit``
 constructor takes a ``DispatchStrategy`` instance (with ``NonPipelined`` being the default).
 A ``DispatchStrategy`` determines how outgoing requests are scheduled across the several connections the conduit
 manages. Currently *spray-client* comes with two predefined strategies, which schedule requests across connections

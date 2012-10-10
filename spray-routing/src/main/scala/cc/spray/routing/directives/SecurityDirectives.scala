@@ -54,8 +54,8 @@ class AuthMagnet[T](val value: Directive[Future[Authentication[T]] :: HNil])
 
 object AuthMagnet {
   implicit def fromFutureAuth[T](auth: Future[Authentication[T]]) =
-    new AuthMagnet[T](provide(auth))
+    new AuthMagnet(provide(auth))
 
   implicit def fromContextAuthenticator[T](auth: ContextAuthenticator[T]) =
-    new AuthMagnet[T](extract(auth))
+    new AuthMagnet(extract(auth))
 }

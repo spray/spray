@@ -6,18 +6,18 @@ Directives
 "Directives" are small building blocks of which you can construct arbitrarily complex route structures.
 Here is a simple example of a route built from directives:
 
-.. includecode:: ../../code/docs/DirectiveExamplesSpec.scala
+.. includecode:: ../code/docs/DirectiveExamplesSpec.scala
    :snippet: example-1
 
 The general anatomy of a directive is as follows::
 
     name(arguments) { extractions =>
-      ... // inner route
+      ... // inner Route
     }
 
-It has a name, zero or more arguments and optionally an inner route. Additionally directives can "extract" a number of
+It has a name, zero or more arguments and optionally an inner Route. Additionally directives can "extract" a number of
 values and make them available to their inner routes as function arguments. When seen "from the outside" a directive
-with its inner route form an expression of type ``Route`` (see the :ref:`Routes` chapter for more details).
+with its inner Route form an expression of type ``Route`` (see the :ref:`Routes` chapter for more details).
 
 
 What Directives do
@@ -27,16 +27,16 @@ A directive does one or more of the following:
 
 .. rst-class:: wide
 
-* Transform the incoming ``RequestContext`` before passing it on to its inner route
+* Transform the incoming ``RequestContext`` before passing it on to its inner Route
 * Filter the ``RequestContext`` according to some logic, i.e. only pass on certain requests and reject all others
-* Extract values from the ``RequestContext`` and make them available to its inner route as "extractions"
+* Extract values from the ``RequestContext`` and make them available to its inner Route as "extractions"
 * Complete the request
 
 The first point deserves some more discussion. A ``RequestContext`` is the central object that is passed on through a
 route structure and, potentially, in between actors. It's immutable but light-weight and can therefore be copied
 quickly. When a directive receives a ``RequestContext`` instance from the outside it can decide to pass this instance on
-unchanged to its inner route or it can create a copy of the ``RequestContext`` instance, with one or more changes, and
-pass on this copy to its inner route. Typically this is good for two things:
+unchanged to its inner Route or it can create a copy of the ``RequestContext`` instance, with one or more changes, and
+pass on this copy to its inner Route. Typically this is good for two things:
 
 * Transforming the ``HttpRequest`` instance
 * "Hooking in" another response transformation function into the responder chain.
@@ -59,7 +59,7 @@ Consider the following hypothetical route structure of three nested directives a
     }
 
 Assume that *foo* and *baz* "hook in" response transformation logic whereas *bar* leaves the ``responder`` of the
-``RequestContext`` it receives unchanged before passing it on to its inner route. This is what happens when the
+``RequestContext`` it receives unchanged before passing it on to its inner Route. This is what happens when the
 ``complete("Hello")`` is called:
 
 1. The ``complete`` method creates an ``HttpResponse`` an sends it to responder of the ``RequestContext``.
@@ -80,37 +80,37 @@ Composing Directives
 As you have seen from the examples presented so far the "normal" way of composing directives is nesting. Let's take
 another look at the example from above:
 
-.. includecode:: ../../code/docs/DirectiveExamplesSpec.scala
+.. includecode:: ../code/docs/DirectiveExamplesSpec.scala
    :snippet: example-2
 
 Here the ``get`` and ``put`` directives are chained together with the ``~`` operator to form a higher-level route that
-serves as the inner route of the ``path`` directive. To make this structure more explicit you could also write the whole
+serves as the inner Route of the ``path`` directive. To make this structure more explicit you could also write the whole
 thing like this:
 
-.. includecode:: ../../code/docs/DirectiveExamplesSpec.scala
+.. includecode:: ../code/docs/DirectiveExamplesSpec.scala
    :snippet: example-3
 
 What you can't see from this snippet is that directives are not implemented as simple methods but rather as stand-alone
 objects of type ``Directive``. This gives you more flexibility when composing directives. For example you can
 also use the ``|`` operator on directives. Here is yet another way to write the example:
 
-.. includecode:: ../../code/docs/DirectiveExamplesSpec.scala
+.. includecode:: ../code/docs/DirectiveExamplesSpec.scala
    :snippet: example-4
 
 If you have a larger route structure where the ``(get | put)`` snippet appears several times you could also factor it
 out like this:
 
-.. includecode:: ../../code/docs/DirectiveExamplesSpec.scala
+.. includecode:: ../code/docs/DirectiveExamplesSpec.scala
    :snippet: example-5
 
 As an alternative to nesting you can also use the `&` operator:
 
-.. includecode:: ../../code/docs/DirectiveExamplesSpec.scala
+.. includecode:: ../code/docs/DirectiveExamplesSpec.scala
    :snippet: example-6
 
 And once again, you can factor things out if you want:
 
-.. includecode:: ../../code/docs/DirectiveExamplesSpec.scala
+.. includecode:: ../code/docs/DirectiveExamplesSpec.scala
    :snippet: example-7
 
 This type of combining directives with the ``|`` and ``&`` operators as well as "saving" more complex directive
@@ -121,17 +121,17 @@ directly manipulating the ``RequestContext``, in order to get to the request met
 "extract" the method name in a special directive, so that we can express our inner-most route with a simple
 ``complete``. As it turns out this is easy with the ``extract`` directive:
 
-.. includecode:: ../../code/docs/DirectiveExamplesSpec.scala
+.. includecode:: ../code/docs/DirectiveExamplesSpec.scala
    :snippet: example-8
 
 Or differently:
 
-.. includecode:: ../../code/docs/DirectiveExamplesSpec.scala
+.. includecode:: ../code/docs/DirectiveExamplesSpec.scala
    :snippet: example-9
 
 Now, pushing the "factoring out" of directive configurations to its extreme, we end up with this:
 
-.. includecode:: ../../code/docs/DirectiveExamplesSpec.scala
+.. includecode:: ../code/docs/DirectiveExamplesSpec.scala
    :snippet: example-A
 
 Note that going this far with "compressing" several directives into a single one probably doesn't result in the most

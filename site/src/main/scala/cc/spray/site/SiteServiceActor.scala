@@ -24,8 +24,7 @@ import cc.spray.routing._
 import html._
 
 
-class SiteServiceActor extends Actor with HttpService {
-  def actorRefFactory = context
+class SiteServiceActor extends Actor with HttpServiceActor {
 
   def receive = runRoute {
     dynamic { // for proper support of twirl + sbt-revolver during development, can be removed in production

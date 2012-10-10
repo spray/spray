@@ -1,0 +1,6 @@
+.. _-rejectEmptyRequests-:
+
+rejectEmptyRequests
+===================
+
+(todo)

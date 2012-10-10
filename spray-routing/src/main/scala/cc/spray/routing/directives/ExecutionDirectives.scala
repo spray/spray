@@ -42,8 +42,8 @@ trait ExecutionDirectives {
     }
 
   /**
-   * Transforms exceptions thrown during evaluation of its inner route using the given
-   * [[cc.spray.routing.ExceptionHandler]].
+   * Transforms rejections produced by its inner route using the given
+   * [[cc.spray.routing.RejectionHandler]].
    */
   def handleRejections(handler: RejectionHandler): Directive0 =
     mapRequestContext { ctx =>
@@ -69,9 +69,8 @@ trait ExecutionDirectives {
   }
 
   /**
-   * Executes its inner Route in the context of the given actor.
-   * Note that the parameter is a by-Name parameter, so the argument expression is going to be
-   * re-evaluated for every request anew.
+   * Executes its inner Route in the context of the actor returned by the given function.
+   * Note that the parameter function is re-evaluated for every request anew.
    */
   def detachTo(serviceActor: Route => ActorRef): Directive0 =
     mapInnerRoute { route => ctx => serviceActor(route) ! ctx }

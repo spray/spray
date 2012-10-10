@@ -11,7 +11,7 @@ simple DSL for assembling HTTP requests in a concise and readable manner.
 
 Take a look at these examples:
 
-.. includecode:: ../code/docs/RequestBuildingExamplesSpec.scala
+.. includecode:: code/docs/RequestBuildingExamplesSpec.scala
    :snippet: example-1
 
 

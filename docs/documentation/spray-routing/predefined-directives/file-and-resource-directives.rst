@@ -1,6 +1,0 @@
-.. _FileAndResourceDirectives:
-
-FileAndResourceDirectives
-=========================
-
-(coming)

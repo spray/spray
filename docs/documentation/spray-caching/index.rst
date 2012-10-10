@@ -66,7 +66,7 @@ as is the case within an ``Actor`` implementation. Otherwise you need to bring a
 Example
 -------
 
-.. includecode:: ../code/docs/CachingExamplesSpec.scala
+.. includecode:: code/docs/CachingExamplesSpec.scala
    :snippet: example-1
 
 

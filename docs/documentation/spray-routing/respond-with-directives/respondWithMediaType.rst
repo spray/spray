@@ -1,0 +1,6 @@
+.. _-respondWithMediaType-:
+
+respondWithMediaType
+====================
+
+(todo)

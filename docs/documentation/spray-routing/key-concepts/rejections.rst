@@ -8,7 +8,7 @@ that allows a second route to get a go at a request if the first route "rejected
 used by *spray-routing* for maintaining a more functional overall architecture and in order to be able to properly
 handle all kinds of error scenarios.
 
-When a filtering directive, like the ``get`` directive, cannot let the request pass through to its inner route because
+When a filtering directive, like the ``get`` directive, cannot let the request pass through to its inner Route because
 the filter condition is not satisfied (e.g. because the incoming request is not a GET request) the directive doesn't
 immediately complete the request with an error response. Doing so would make it impossible for other routes chained in
 after the failing filter to get a chance to handle the request.
@@ -21,6 +21,19 @@ If the request cannot be completed by (a branch of) the route structure an enclo
 can be used to convert a set of rejections into an ``HttpResponse`` (which, in most cases, will be an error response).
 The ``runRoute`` wrapper defined the ``HttpService`` trait internally wraps its argument route with the
 ``handleRejections`` directive in order to "catch" and handle any rejection.
+
+
+Predefined Rejections
+---------------------
+
+A rejection encapsulates a specific reason why a Route was not able to handle a request. It is modeled as an object of
+type ``Rejection``. *spray-routing* comes with a set of `predefined rejections`__, which are used by various
+:ref:`predefined directives <Predefined Directives>`.
+
+Rejections are gathered up over the course of a Route evaluation and finally converted to ``HttpResponse`` replies by
+the :ref:`-handleRejections-` directive, if there was no way for the request to be completed.
+
+__ https://github.com/spray/spray/blob/master/spray-routing/src/main/scala/cc/spray/routing/Rejection.scala
 
 
 RejectionHandler
@@ -43,43 +56,42 @@ have put somewhere into your route structure.
 
 Here is an example:
 
-.. includecode:: ../../code/docs/RejectionHandlerExamplesSpec.scala
+.. includecode:: ../code/docs/RejectionHandlerExamplesSpec.scala
    :snippet: example-1
 
 
-The Routing Tree
+Rejection Cancellation
+----------------------
+
+As you can see from its definition above the ``RejectionHandler`` handles not single rejections, but a whole lists of
+them. This is because some route structure produce several "reasons", why a request could not be handled.
+
+Take this route structure for example:
+
+.. includecode:: ../code/docs/RejectionHandlerExamplesSpec.scala
+   :snippet: example-2
+
+For uncompressed POST requests this route structure could yield two rejections:
+
+- a ``MethodRejection`` produced by the :ref:`-get-` directive (which rejected because the request is not a GET request)
+- an ``UnsupportedRequestEncodingRejection`` produced by the :ref:`-decodeRequest-` directive (which only accepts
+  gzip-compressed requests)
+
+In reality the route even generates one more rejection, a ``TransformationRejection`` produced by the :ref:`-post-`
+directive. It "cancels" all other potentially existing *MethodRejections*, since they are invalid after the
+:ref:`-post-` directive allowed the request to pass (after all, the route structure *can* deal with POST requests).
+These types of rejection cancellations are resolved *before* a ``RejectionHandler`` sees the rejection list.
+So, for the example above the ``RejectionHandler`` will be presented with only a single-element rejection list,
+containing nothing but the ``UnsupportedRequestEncodingRejection``.
+
+
+Empty Rejections
 ----------------
 
-Essentially, when you combine directives and custom routes via nesting and the ``~`` operator, you build a routing
-structure that forms a tree. When a request comes in it is injected into this tree at the root and flows down through
-all the branches in a depth-first manner until either some node completes it or it is fully rejected.
+Since rejections are passed around in lists you might ask yourself what the semantics of an empty rejection list are.
+In fact, empty rejection lists have well defined semantics. They signal that a request was not handled because the
+respective resource could not be found. *spray-routing* reserves the special status of "empty rejection" to this most
+common failure a service is likely to produce.
 
-Consider this schematic example::
-
-  val route =
-    a {
-      b {
-        c {
-          ... // route 1
-        } ~
-        d {
-          ... // route 2
-        } ~
-        ... // route 3
-      } ~
-      e {
-        ... // route 4
-      }
-    }
-
-Here five directives form a routing tree.
-
-.. rst-class:: wide
-
-- Route 1 will only be reached if directives ``a``, ``b`` and ``c`` all let the request pass through.
-- Route 2 will run if ``a`` and ``b`` pass, ``c`` rejects and ``d`` passes.
-- Route 3 will run if ``a`` and ``b`` pass, but ``c`` and ``d`` reject.
-
-Route 3 can therefore be seen as a "catch-all" route that only kicks in, if routes chained into preceding positions
-reject. This mechanism can make complex filtering logic quite easy to implement: simply put the most
-specific cases up front and the most general cases in the back.
+So, for example, if the :ref:`-path-` directive rejects a request, it does so with an empty rejection list. The
+:ref:`-host-` directive behaves in the same way.

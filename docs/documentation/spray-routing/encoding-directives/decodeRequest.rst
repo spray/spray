@@ -1,0 +1,6 @@
+.. _-decodeRequest-:
+
+decodeRequest
+=============
+
+(todo)

@@ -71,14 +71,14 @@ into the message stream coming back from the receiver as replies to the message 
 
 Check out this example:
 
-.. includecode:: ../code/docs/UtilExamplesSpec.scala
+.. includecode:: code/docs/UtilExamplesSpec.scala
    :snippet: example-1
 
 In this example the reply of an actor is channeled to a second actor, which simply logs it to the console.
 Now suppose that you want to modify the replies from the first actor before they reach the second actor.
 You could do it this way:
 
-.. includecode:: ../code/docs/UtilExamplesSpec.scala
+.. includecode:: code/docs/UtilExamplesSpec.scala
    :snippet: example-2
 
 This works but has a number of disadvantages. Firstly, we have to spin up a full actor just to inject the modification
@@ -97,7 +97,7 @@ for the shutdown, but what if we don't?
 
 With *sprays* UnregisteredActorRef we could inject the transformation logic like this:
 
-.. includecode:: ../code/docs/UtilExamplesSpec.scala
+.. includecode:: code/docs/UtilExamplesSpec.scala
    :snippet: example-3
 
 Essentially the UnregisteredActorRef allows us to wrap custom logic into an ActorRef, which you can inject into
@@ -126,7 +126,7 @@ back from an Actor as response to a specific tell.
 
 For example:
 
-.. includecode:: ../code/docs/UtilExamplesSpec.scala
+.. includecode:: code/docs/UtilExamplesSpec.scala
    :snippet: example-4
 
 So, by using a ``Reply.withContext`` call as the sender of a ``tell`` you can attach a custom "context" object to a

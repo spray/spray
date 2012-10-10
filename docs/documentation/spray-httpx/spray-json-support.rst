@@ -10,7 +10,7 @@ Just mix in ``cc.spray.httpx.SprayJsonSupport`` or ``import cc.spray.httpx.Spray
 
 For example:
 
-.. includecode:: ../code/docs/SprayJsonSupportExamplesSpec.scala
+.. includecode:: code/docs/SprayJsonSupportExamplesSpec.scala
    :snippet: example-1
 
 If you bring an implicit ``cc.spray.json.JsonPrinter`` into scope the marshaller will use it. Otherwise it uses the

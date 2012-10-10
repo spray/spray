@@ -31,7 +31,7 @@ Lifecycle
 
 In most cases you'll want to create and shutdown an ``IOBridge`` like this:
 
-.. includecode:: ../code/docs/IOBridgeExamplesSpec.scala
+.. includecode:: code/docs/IOBridgeExamplesSpec.scala
    :snippet: example-1
 
 Even though the construction of an ``IOBridge`` is easiest as shown in this example (with a single ``ActorSystem``

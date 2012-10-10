@@ -1,0 +1,6 @@
+.. _-mapRejections-:
+
+mapRejections
+=============
+
+(todo)

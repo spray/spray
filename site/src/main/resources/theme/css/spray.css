@@ -36,7 +36,8 @@ footer .footNav { text-align: center; }
 
 .nav-list > .active i { opacity: 0.6; }
 .nav-list > .active > a > i { opacity: 1; }
-.nav-list > li > a { padding-left: 35px; text-indent: -20px; }
+.nav-list > li > a { padding-left: 35px; }
+.nav-list > li > a > i { position: absolute; margin-left: -20px; }
 
 .tooltip { z-index: 1035; }
 

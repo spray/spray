@@ -27,7 +27,7 @@ trait ChunkingDirectives {
   import BasicDirectives._
 
   /**
-   * Automatically converts a non-rejected response from its inner route into a chunked response of which each chunk
+   * Automatically converts non-rejected responses from its inner route into chunked responses of which each chunk
    * (save the very last) has the given size.
    * If the response content from the inner route is smaller than chunkSize a "regular", unchunked response is produced.
    */

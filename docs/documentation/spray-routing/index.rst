@@ -15,7 +15,8 @@ together with :ref:`spray-servlet`.
    configuration
    key-concepts/index
    advanced-topics/index
-   predefined-directives/index
+   predefined-directives-alphabetically
+   predefined-directives-by-trait
    examples
 
 
@@ -24,7 +25,7 @@ Minimal Example
 
 This is what a very basic *spray-routing* service definition:
 
-.. includecode:: ../code/docs/HttpServiceExamplesSpec.scala
+.. includecode:: code/docs/HttpServiceExamplesSpec.scala
  :snippet: minimal-example
 
 
@@ -37,7 +38,7 @@ The following is a *spray-routing* route definition that tries to show off a few
 not really do anything useful but its definition should give you a feel for what an actual API definition with
 *spray-routing* will look like:
 
-.. includecode:: ../code/docs/HttpServiceExamplesSpec.scala
+.. includecode:: code/docs/HttpServiceExamplesSpec.scala
  :snippet: longer-example
 
 

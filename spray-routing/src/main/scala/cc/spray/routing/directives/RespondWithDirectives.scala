@@ -24,7 +24,7 @@ trait RespondWithDirectives {
   import BasicDirectives._
 
   /**
-   * Sets the given response status on all HTTP responses of its inner Route.
+   * Overrides the given response status on all HTTP responses of its inner Route.
    */
   def respondWithStatus(responseStatus: StatusCode): Directive0 =
     mapHttpResponse(_.copy(status = responseStatus))

@@ -1,0 +1,6 @@
+.. _-entity-:
+
+entity
+======
+
+(todo)

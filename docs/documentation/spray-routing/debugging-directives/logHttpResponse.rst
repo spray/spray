@@ -1,0 +1,6 @@
+.. _-logHttpResponse-:
+
+logHttpResponse
+===============
+
+(todo)

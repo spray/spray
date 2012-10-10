@@ -1,0 +1,6 @@
+.. _-mapHttpResponseEntity-:
+
+mapHttpResponseEntity
+=====================
+
+(todo)
