@@ -17,7 +17,7 @@ object Build extends Build with DocSupport {
 
   lazy val root = Project("root",file("."))
     .aggregate(docs, examples, site, sprayCaching, sprayCan, sprayClient, sprayHttp, sprayHttpx,
-      sprayIO, sprayRouting, sprayRoutingTests, sprayServlet, sprayTestKit, sprayUtil)
+      sprayIO, sprayRouting, sprayRoutingTests, sprayServlet, spraySpdy, sprayTestKit, sprayUtil)
     .settings(basicSettings: _*)
     .settings(noPublishing: _*)
     .settings(moveApiDocsSettings: _*)
@@ -106,6 +106,15 @@ object Build extends Build with DocSupport {
     .settings(sprayModuleSettings: _*)
     .settings(libraryDependencies ++=
       provided(akkaActor, servlet30)
+    )
+
+
+  lazy val spraySpdy = Project("spray-spdy", file("spray-spdy"))
+    .dependsOn(sprayCan, sprayHttpx)
+    .settings(sprayModuleSettings: _*)
+    .settings(libraryDependencies ++=
+      provided(akkaActor) ++
+      test(akkaTestKit, specs2)
     )
 
 
