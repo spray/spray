@@ -1,4 +1,5 @@
 package cc.spray.can.spdy
+package rendering
 
 import java.nio.ByteBuffer
 import cc.spray.http.HttpEntity
@@ -8,11 +9,13 @@ import cc.spray.can.parsing.{IntermediateState, ParsingState}
 import cc.spray.httpx.encoding.DeflateCompressor
 
 class SpdyRenderer {
+  import Spdy2._
+
   val compressor = new DeflateCompressor {
-    override def dictionary: Option[Array[Byte]] = Some(Conversions.dictionary)
+    override def dictionary: Option[Array[Byte]] = Some(Spdy2.dictionary)
   }
 
-  def renderResponseHeader(streamId: Int, fin: Boolean, keyValues: Map[String, String]): ByteBuffer = {
+  def renderSynReply(streamId: Int, fin: Boolean, keyValues: Map[String, String]): ByteBuffer = {
     val dataBuffer = renderKeyValues(keyValues)
     val length = dataBuffer.limit + 6
 
@@ -55,7 +58,7 @@ class SpdyRenderer {
     case x => x
   }
 
-  def renderResponseData(streamId: Int, fin: Boolean, data: Array[Byte]): ByteBuffer = {
+  def renderDataFrame(streamId: Int, fin: Boolean, data: Array[Byte]): ByteBuffer = {
     val buffer = ByteBuffer.allocate(1000000)
 
     def putByte(b: Int) {
@@ -77,7 +80,6 @@ class SpdyRenderer {
 
   def renderKeyValues(keyValues: Map[String, String]): ByteBuffer = {
     val os = new ByteArrayOutputStream()
-
 
     def u2(i: Int) {
       require(i < Short.MaxValue)
@@ -103,6 +105,6 @@ class SpdyRenderer {
 }
 
 object TestRendering extends App {
-  val result = (new SpdyRenderer).renderResponseHeader(1, false, Map("status" -> "200", "version" -> "HTTP/1.1", "test" -> "blub"))
+  val result = (new SpdyRenderer).renderSynReply(1, false, Map("status" -> "200", "version" -> "HTTP/1.1", "test" -> "blub"))
   println(result)
 }

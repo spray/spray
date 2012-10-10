@@ -1,4 +1,5 @@
 package cc.spray.can.spdy
+package server
 
 import akka.event.LoggingAdapter
 import akka.util.Duration

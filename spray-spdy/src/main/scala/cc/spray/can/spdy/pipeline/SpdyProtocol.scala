@@ -17,9 +17,9 @@ object SpdyProtocol {
   def apply(messageHandler: MessageHandler): DoublePipelineStage = new DoublePipelineStage {
     def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): BuildResult = new Pipelines {
       val inflater = new Inflater()
-      def startParser = new FrameHeaderParser(inflater)
+      def startParser = new parsing.FrameHeaderParser(inflater)
 
-      val renderer = new SpdyRenderer
+      val renderer = new rendering.SpdyRenderer
 
       var currentParsingState: ParsingState = startParser
       val handler = messageHandler(context)()
@@ -83,16 +83,16 @@ object SpdyProtocol {
       def commandPipeline: CPL = {
         case ReplyToStream(streamId, response, dataComplete) =>
           val fin = response.entity.buffer.isEmpty
-          commandPL(IOServer.Send(renderer.renderResponseHeader(streamId, fin, responseToKV(response))))
+          commandPL(IOServer.Send(renderer.renderSynReply(streamId, fin, responseToKV(response))))
 
           if (!fin)
-            commandPL(IOServer.Send(renderer.renderResponseData(streamId, dataComplete, response.entity.buffer)))
+            commandPL(IOServer.Send(renderer.renderDataFrame(streamId, dataComplete, response.entity.buffer)))
 
         case SendStreamData(streamId, data) =>
-          commandPL(IOServer.Send(renderer.renderResponseData(streamId, false, data)))
+          commandPL(IOServer.Send(renderer.renderDataFrame(streamId, false, data)))
 
         case CloseStream(streamId) =>
-          commandPL(IOServer.Send(renderer.renderResponseData(streamId, true, Array.empty)))
+          commandPL(IOServer.Send(renderer.renderDataFrame(streamId, true, Array.empty)))
 
         case x =>
           println("Got command "+x)
