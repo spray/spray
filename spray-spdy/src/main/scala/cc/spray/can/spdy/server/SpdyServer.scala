@@ -3,8 +3,6 @@ package server
 
 import akka.event.LoggingAdapter
 import akka.util.Duration
-import cc.spray.can.server.StatsSupport.StatsHolder
-import cc.spray.can.HttpCommand
 import cc.spray.io.pipelining._
 import cc.spray.io._
 import cc.spray.http._
@@ -21,17 +19,13 @@ import cc.spray.can.HttpCommand
 import cc.spray.http.HttpRequest
 import cc.spray.io.pipelining.PipelineStage
 import cc.spray.can.server.ServerFrontend
-import cc.spray.can.server.RequestChunkAggregation
-import cc.spray.can.server.PipeliningLimiter
-import cc.spray.can.server.StatsSupport
-import cc.spray.can.server.RemoteAddressHeaderSupport
-import cc.spray.can.server.RequestParsing
-import cc.spray.can.server.ResponseRendering
 import cc.spray.io.pipelining.ConnectionTimeouts
 import cc.spray.io.pipelining.SslTlsSupport
 import cc.spray.io.pipelining.TickGenerator
 import cc.spray.io.Command
 import cc.spray.util.Reply
+
+import pipeline.SpdyFraming
 
 
 class SpdyHttpServer(ioBridge: IOBridge, messageHandler: MessageHandler, settings: ServerSettings = ServerSettings())
@@ -44,13 +38,13 @@ class SpdyHttpServer(ioBridge: IOBridge, messageHandler: MessageHandler, setting
     override def receive = super.receive orElse {
       case Reply(response: HttpResponse, streamId: Int) =>
         println("Got reply for "+streamId)
-        pipelines.commandPipeline(SpdyProtocol.ReplyToStream(streamId, response, true))
+        pipelines.commandPipeline(SpdyFraming.ReplyToStream(streamId, response, true))
       case Reply(ChunkedResponseStart(response), streamId: Int) =>
-        pipelines.commandPipeline(SpdyProtocol.ReplyToStream(streamId, response, false))
+        pipelines.commandPipeline(SpdyFraming.ReplyToStream(streamId, response, false))
       case Reply(MessageChunk(body, exts), streamId: Int) =>
-        pipelines.commandPipeline(SpdyProtocol.SendStreamData(streamId, body))
+        pipelines.commandPipeline(SpdyFraming.SendStreamData(streamId, body))
       case Reply(response: ChunkedMessageEnd, streamId: Int) =>
-        pipelines.commandPipeline(SpdyProtocol.CloseStream(streamId))
+        pipelines.commandPipeline(SpdyFraming.CloseStream(streamId))
       case x: HttpResponse => pipelines.commandPipeline(HttpCommand(x))
     }
   }
@@ -186,7 +180,7 @@ object SpdyHttpServer {
     //RequestParsing(ParserSettings, VerboseErrorMessages, log) >>
     //ResponseRendering(settings) >>
     //HttpOnSpdy() >>
-    SpdyProtocol(messageHandler) >>
+    SpdyFraming(messageHandler) >>
     //(IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
     SSLEncryption ? SslTlsSupport(sslEngineProvider, log) >>
     (ReapingCycle > 0 && (IdleTimeout > 0 || RequestTimeout > 0)) ? TickGenerator(ReapingCycle)

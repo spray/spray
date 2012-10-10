@@ -1,4 +1,5 @@
 package cc.spray.can.spdy
+package pipeline
 
 import cc.spray.io.pipelining.{MessageHandler, Pipelines, PipelineContext, DoublePipelineStage}
 import cc.spray.io.{ProtocolError, IOServer, Event, Command}
@@ -13,7 +14,7 @@ import cc.spray.util.Reply
 import cc.spray.http.HttpHeaders.RawHeader
 import cc.spray.io.ProtocolError
 
-object SpdyProtocol {
+object SpdyFraming {
   def apply(messageHandler: MessageHandler): DoublePipelineStage = new DoublePipelineStage {
     def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): BuildResult = new Pipelines {
       val inflater = new Inflater()
@@ -129,16 +130,3 @@ object SpdyProtocol {
   case class CloseStream(streamId: Int) extends Command
 }
 
-object HttpOnSpdy {
-  def apply(): DoublePipelineStage = new DoublePipelineStage {
-    def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): BuildResult = new Pipelines {
-      def eventPipeline: (Event) => Unit = {
-        case x => eventPL(x)
-      }
-
-      def commandPipeline: (Command) => Unit = {
-        case x => commandPL(x)
-      }
-    }
-  }
-}
