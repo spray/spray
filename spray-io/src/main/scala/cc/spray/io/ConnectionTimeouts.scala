@@ -26,7 +26,7 @@ object ConnectionTimeouts {
   def apply(idleTimeout: Long, log: LoggingAdapter): PipelineStage = {
     require(idleTimeout >= 0)
 
-    new DoublePipelineStage {
+    new PipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
         var timeout = idleTimeout
         var lastActivity = System.currentTimeMillis

@@ -16,69 +16,50 @@
 
 package cc.spray.io
 
-import org.specs2.Specification
-import collection.mutable.ListBuffer
+import org.specs2.mutable.Specification
 
 
-class PipelinesSpec extends Specification { def is =
+class PipelinesSpec extends Specification {
 
-  "The PipelineStage infrastructure must correctly combine the following pipeline stages:" ^
-    "command >> command" ! example(cmd("1") >> cmd("2"), "x12+2,1 | +x")^
-    "command >> event"   ! example(cmd("1") >> ev("a"), "x1+1 | a+xa")^
-    "command >> double"  ! example(cmd("1") >> dbl("2", "a"), "x12+1 | +xa")^
-    "command >> empty"   ! example(cmd("1") >> empty, "x1+1 | +x")^
-    "event >> command"   ! example(ev("a") >> cmd("1"), "x1+1 | a+xa")^
-    "event >> event"     ! example(ev("a") >> ev("b"), "x+ | b,a+xba")^
-    "event >> double"    ! example(ev("a") >> dbl("1", "b"), "x1+ | a1+xba")^
-    "event >> empty"     ! example(ev("a") >> empty, "x+ | a+xa")^
-    "double >> command"  ! example(dbl("1", "a") >> cmd("2"), "x12+2a | +xa")^
-    "double >> event"    ! example(dbl("1", "a") >> ev("b"), "x1+ | b+xba")^
-    "double >> double"   ! example(dbl("1", "a") >> dbl("2", "b"), "x12+ | +xba")^
-    "double >> empty"    ! example(dbl("1", "a") >> empty, "x1+ | +xa")^
-    "empty >> command"   ! example(empty >> cmd("1"), "x1+1 | +x")^
-    "empty >> event"     ! example(empty >> ev("a"), "x+ | a+xa")^
-    "empty >> double"    ! example(empty >> dbl("1", "a"), "x1+ | +xa")^
-    "empty >> empty"     ! example(empty >> empty, "x+ | +x")
+  "The >> must correctly combine two PipelineStages" >> {
+    val a = new TestStage('A')
+    val b = new TestStage('B')
+    val c = a >> b
 
-
-  def example(stage: PipelineStage, expected: String) = {
-    val cmdResult = ListBuffer.empty[String]
-    val evResult = ListBuffer.empty[String]
-    val pl = stage.buildPipelines(null,
-      cmd => cmdResult += cmd.asInstanceOf[TestCommand].s,
-      ev => evResult += ev.asInstanceOf[TestEvent].s
-    )
-    pl.commandPipeline(TestCommand("x"))
-    val cmdTest = cmdResult.mkString(",") + '+' + evResult.mkString(",")
-    cmdResult.clear()
-    evResult.clear()
-    pl.eventPipeline(TestEvent("x"))
-    val evTest = cmdResult.mkString(",") + '+' + evResult.mkString(",")
-    cmdTest + " | " + evTest === expected
-  }
-
-  def cmd(c: String) = new CommandPipelineStage {
-    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = { cmd =>
-      commandPL(TestCommand(cmd.asInstanceOf[TestCommand].s + c))
-      eventPL(TestEvent(c))
+    "example-1" in {
+      test(c, TestCommand(".")) === (".AB", "")
+    }
+    "example-2" in {
+      test(c, TestEvent(".")) === ("", ".BA")
     }
   }
 
-  def ev(e: String) = new EventPipelineStage {
-    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = { ev =>
-      commandPL(TestCommand(e))
-      eventPL(TestEvent(ev.asInstanceOf[TestEvent].s + e))
-    }
-  }
-
-  def dbl(c: String, e: String) = new DoublePipelineStage {
-    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = Pipelines(
-      commandPL = cmd => commandPL(TestCommand(cmd.asInstanceOf[TestCommand].s + c)),
-      eventPL = ev => eventPL(TestEvent(ev.asInstanceOf[TestEvent].s + e))
+  def test(stage: PipelineStage, cmdOrEv: AnyRef) = {
+    var commandResult: String = ""
+    var eventResult: String = ""
+    val pl = stage.build(
+      context = null,
+      commandPL = { case TestCommand(s) => commandResult = s },
+      eventPL = { case TestEvent(s) => eventResult = s }
     )
+    cmdOrEv match {
+      case cmd: Command => pl.commandPipeline(cmd)
+      case ev: Event => pl.eventPipeline(ev)
+    }
+    (commandResult, eventResult)
   }
 
-  val empty = EmptyPipelineStage
+  class TestStage(c: Char) extends PipelineStage {
+    def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) =
+      new Pipelines {
+        val commandPipeline: CPL = {
+          case TestCommand(s) => commandPL(TestCommand(s + c))
+        }
+        val eventPipeline: EPL = {
+          case TestEvent(s) => eventPL(TestEvent(s + c))
+        }
+      }
+  }
 
   case class TestEvent(s: String) extends Event
   case class TestCommand(s: String) extends Command

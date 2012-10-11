@@ -22,7 +22,7 @@ import java.nio.ByteBuffer
 import javax.net.ssl.{SSLContext, SSLException, SSLEngineResult, SSLEngine}
 import javax.net.ssl.SSLEngineResult.HandshakeStatus._
 import SSLEngineResult.Status._
-import collection.mutable.Queue
+import collection.mutable
 import annotation.tailrec
 import scala.Array
 
@@ -30,14 +30,14 @@ import scala.Array
 object SslTlsSupport {
   def apply(engineProvider: PipelineContext => SSLEngine, log: LoggingAdapter,
             sslEnabled: PipelineContext => Boolean = _ => true): PipelineStage = {
-    new DoublePipelineStage {
+    new PipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         if (sslEnabled(context)) new SslPipelines(context, commandPL, eventPL)
         else Pipelines(commandPL, eventPL)
 
       final class SslPipelines(context: PipelineContext, commandPL: CPL, eventPL: EPL) extends Pipelines {
         val engine = engineProvider(context)
-        val pendingSends = Queue.empty[Send]
+        val pendingSends = mutable.Queue.empty[Send]
         var inboundReceptacle: ByteBuffer = _ // holds incoming data that are too small to be decrypted yet
 
         val commandPipeline: CPL = {

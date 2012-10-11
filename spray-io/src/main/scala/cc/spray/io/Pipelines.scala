@@ -51,120 +51,35 @@ object PipelineContext {
   }
 }
 
-sealed trait PipelineStage {
+trait PipelineStage { left =>
   type CPL = Pipeline[Command]  // alias for brevity
   type EPL = Pipeline[Event]    // alias for brevity
-  type BuildResult
 
-  def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): BuildResult
+  def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines
 
-  def buildPipelines(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines
-
-  def >> (right: PipelineStage): PipelineStage
-}
-
-trait CommandPipelineStage extends PipelineStage { left =>
-  type BuildResult = CPL
-
-  def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
-    Pipelines(build(ctx, cpl, epl), epl)
-
-  def >> (right: PipelineStage): PipelineStage = {
-    right match {
-      case x: CommandPipelineStage => new CommandPipelineStage {
-        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
-          left.build(ctx, x.build(ctx, cpl, epl), epl)
+  def >> (right: PipelineStage): PipelineStage =
+    if (right == EmptyPipelineStage) this
+    else new PipelineStage {
+      def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = {
+        var cplProxy: CPL = Pipeline.uninitialized
+        var eplProxy: EPL = Pipeline.uninitialized
+        val cplProxyPoint: CPL = cplProxy(_)
+        val eplProxyPoint: EPL = eplProxy(_)
+        val leftPL = left.build(ctx, cplProxyPoint, epl)
+        val rightPL = right.build(ctx, cpl, eplProxyPoint)
+        cplProxy = rightPL.commandPipeline
+        eplProxy = leftPL.eventPipeline
+        Pipelines(
+          commandPL = (if (leftPL.commandPipeline == cplProxyPoint) rightPL else leftPL).commandPipeline,
+          eventPL = (if (rightPL.eventPipeline == eplProxyPoint) leftPL else rightPL).eventPipeline
+        )
       }
-      case x: EventPipelineStage => new DoublePipelineStage {
-        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
-          Pipelines(left.build(ctx, cpl, epl), x.build(ctx, cpl, epl))
-      }
-      case x: DoublePipelineStage => new DoublePipelineStage {
-        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = {
-          val rightPL = x.build(ctx, cpl, epl)
-          Pipelines(left.build(ctx, rightPL.commandPipeline, epl), rightPL.eventPipeline)
-        }
-      }
-      case EmptyPipelineStage => this
     }
-  }
-}
-
-trait EventPipelineStage extends PipelineStage { left =>
-  type BuildResult = EPL
-
-  def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
-    Pipelines(cpl, build(ctx, cpl, epl))
-
-  def >> (right: PipelineStage): PipelineStage = {
-    right match {
-      case x: CommandPipelineStage => new DoublePipelineStage {
-        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
-          Pipelines(x.build(ctx, cpl, epl), left.build(ctx, cpl, epl))
-      }
-      case x: EventPipelineStage => new EventPipelineStage {
-        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
-          x.build(ctx, cpl, left.build(ctx, cpl, epl))
-      }
-      case x: DoublePipelineStage => new DoublePipelineStage {
-        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = {
-          var cplProxy: CPL = Pipeline.uninitialized
-          val result = x.build(ctx, cpl, left.build(ctx, cplProxy(_), epl))
-          cplProxy = result.commandPipeline
-          result
-        }
-      }
-      case EmptyPipelineStage => this
-    }
-  }
-}
-
-trait DoublePipelineStage extends PipelineStage { left =>
-  type BuildResult = Pipelines
-
-  def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
-    build(ctx, cpl, epl)
-
-  def >> (right: PipelineStage): PipelineStage = {
-    right match {
-      case x: CommandPipelineStage => new DoublePipelineStage {
-        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = {
-          var eplProxy: EPL = Pipeline.uninitialized
-          val result = left.build(ctx, x.build(ctx, cpl, eplProxy(_)), epl)
-          eplProxy = result.eventPipeline
-          result
-        }
-      }
-      case x: EventPipelineStage => new DoublePipelineStage {
-        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = {
-          val leftPL = left.build(ctx, cpl, epl)
-          Pipelines(leftPL.commandPipeline, x.build(ctx, cpl, leftPL.eventPipeline))
-        }
-      }
-      case x: DoublePipelineStage => new DoublePipelineStage {
-        def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = {
-          var cplProxy: CPL = Pipeline.uninitialized
-          var eplProxy: EPL = Pipeline.uninitialized
-          val leftPL = left.build(ctx, cplProxy(_), epl)
-          val rightPL = x.build(ctx, cpl, eplProxy(_))
-          cplProxy = rightPL.commandPipeline
-          eplProxy = leftPL.eventPipeline
-          Pipelines(leftPL.commandPipeline, rightPL.eventPipeline)
-        }
-      }
-      case EmptyPipelineStage => this
-    }
-  }
 }
 
 object EmptyPipelineStage extends PipelineStage {
-  type BuildResult = Pipelines
 
-  def build(ctx: PipelineContext, cpl: CPL, epl: EPL) =
-    Pipelines(cpl, epl)
+  def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = Pipelines(cpl, epl)
 
-  def buildPipelines(ctx: PipelineContext, cpl: CPL, epl: EPL) =
-    build(ctx, cpl, epl)
-
-  def >> (right: PipelineStage) = right
+  override def >> (right: PipelineStage) = right
 }

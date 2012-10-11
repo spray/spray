@@ -39,7 +39,7 @@ trait ConnectionActors extends IOPeer {
   protected def pipeline: PipelineStage
 
   class IOConnectionActor(val handle: Handle) extends Actor {
-    val pipelines = pipeline.buildPipelines(
+    val pipelines = pipeline.build(
       context = createPipelineContext,
       commandPL = baseCommandPipeline,
       eventPL = baseEventPipeline

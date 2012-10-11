@@ -29,21 +29,25 @@ object TickGenerator {
     require(period.finite_?, "period must not be infinite")
     require(period > Duration.Zero, "period must be positive")
 
-    new EventPipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): EPL = {
-        val generator = context.connectionActorContext.system.scheduler.schedule(
-          initialDelay = period,
-          frequency = period,
-          receiver = context.self,
-          message = Tick
-        )
-        _ match {
-          case x: IOPeer.Closed =>
-            generator.cancel()
-            eventPL(x)
-          case x => eventPL(x)
+    new PipelineStage {
+      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+        new Pipelines {
+          val generator = context.connectionActorContext.system.scheduler.schedule(
+            initialDelay = period,
+            frequency = period,
+            receiver = context.self,
+            message = Tick
+          )
+
+          val commandPipeline = commandPL
+
+          val eventPipeline: EPL = {
+            case x: IOPeer.Closed =>
+              generator.cancel()
+              eventPL(x)
+            case x => eventPL(x)
+          }
         }
-      }
     }
   }
 

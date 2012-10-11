@@ -109,7 +109,7 @@ class SslTlsSupportSpec extends Specification {
 
   class SslClientActor extends IOClient(ioBridge) with ConnectionActors {
     protected def pipeline = frontEnd >> SslTlsSupport(ClientSSLEngineProvider.default, log)
-    def frontEnd = new DoublePipelineStage {
+    def frontEnd = new PipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) = new Pipelines {
         var receiver: ActorRef = _
         val commandPipeline: CPL = {
@@ -126,16 +126,20 @@ class SslTlsSupportSpec extends Specification {
 
   class SslServerActor extends IOServer(ioBridge) with ConnectionActors {
     protected def pipeline = frontEnd >> SslTlsSupport(ServerSSLEngineProvider.default, log)
-    def frontEnd = new EventPipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): EPL = {
-        case IOServer.Received(_, buf) =>
-          val input = buf.drainToString.dropRight(1)
-          log.debug("Server received: {}", input)
-          val response = serverResponse(input)
-          commandPL(IOServer.Send(ByteBuffer.wrap(response.getBytes)))
-          log.debug("Server sent: {}", response.dropRight(1))
-        case ev => eventPL(ev)
-      }
+    def frontEnd: PipelineStage = new PipelineStage {
+      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+        new Pipelines {
+          val commandPipeline = commandPL
+          val eventPipeline: EPL = {
+            case IOServer.Received(_, buf) =>
+              val input = buf.drainToString.dropRight(1)
+              log.debug("Server received: {}", input)
+              val response = serverResponse(input)
+              commandPL(IOServer.Send(ByteBuffer.wrap(response.getBytes)))
+              log.debug("Server sent: {}", response.dropRight(1))
+            case ev => eventPL(ev)
+          }
+        }
     }
   }
 
