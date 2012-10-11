@@ -28,7 +28,8 @@ object HttpOnSpdy {
                 val req = requestFromKV(x.keyValues)
                 val ctx = createStreamContext(x.streamId)
                 ctx.pipelines.eventPipeline(HttpEvent(req))
-              }
+              } else
+                throw new UnsupportedOperationException("Can't handle requests with contents, right now")
 
             case x: RstStream =>
               println("Stream got cancelled "+x)
@@ -53,14 +54,14 @@ object HttpOnSpdy {
 
       def createStreamContext(_streamId: Int): SpdyContext = new SpdyContext { ctx =>
         def streamId: Int = _streamId
-        val pipelines: Pipelines = innerPipeline.buildPipelines(context, streamCommandPipeline, streamEventPipeline)
+        val pipelines: Pipelines = innerPipeline.buildPipelines(context, createStreamCommandPipeline, createStreamEventPipeline)
 
-        def streamEventPipeline: EPL = unpackHttpEvent andThen {
+        def createStreamEventPipeline: EPL = unpackHttpEvent andThen {
           case req: HttpRequest =>
             println("Sending to handler")
             commandPL(IOServer.Tell(handler, req, Reply.withContext(ctx)(context.connectionActorContext.self)))
         }
-        def streamCommandPipeline: Command => Unit = unpackHttpCommand.andThen {
+        def createStreamCommandPipeline: CPL = unpackHttpCommand.andThen {
           case response: HttpResponse =>
             println("Got reply for "+streamId)
 
