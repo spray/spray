@@ -19,33 +19,29 @@ object SpdyStreamManager {
       def eventPipeline: EPL = {
         case SpdyFrameReceived(frame) =>
           frame match {
-            case x: SynStream =>
-              val ctx = createStreamContext(x.streamId)
-              ctx.pipelines.eventPipeline(StreamOpened(x.keyValues, x.fin))
+            case SynStream(streamId, associatedTo, priority, fin, uni, headers) =>
+              val ctx = createStreamContext(streamId)
+              ctx.pipelines.eventPipeline(StreamOpened(headers, fin))
 
-            case x: RstStream =>
-              val ctx = contextFor(x.streamId)
+            case RstStream(streamId, statusCode) =>
+              val ctx = contextFor(streamId)
               ctx.close()
-              ctx.pipelines.eventPipeline(StreamAborted(x.statusCode))
+              ctx.pipelines.eventPipeline(StreamAborted(statusCode))
 
             case x: Settings =>
               println("Ignoring settings for now "+x)
 
             case Ping(id, data) =>
-              println("Got ping "+id)
-
               commandPL(IOServer.Send(ByteBuffer.wrap(data)))
 
-            case d: DataFrame =>
-              val ctx = contextFor(d.streamId)
-              ctx.pipelines.eventPipeline(StreamDataReceived(d.data, d.fin))
+            case DataFrame(streamId, fin, data) =>
+              val ctx = contextFor(streamId)
+              ctx.pipelines.eventPipeline(StreamDataReceived(data, fin))
           }
         case x => eventPL(x)
       }
 
-      def commandPipeline: CPL = {
-        case x => commandPL(x)
-      }
+      def commandPipeline: CPL = commandPL
 
       def createStreamContext(streamId: Int): SpdyContext = {
         if (incomingStreams.contains(streamId))

@@ -73,7 +73,6 @@ object HttpOnSpdy {
     HttpRequest(method = method, uri = uri, headers = headers, protocol = protocol)
   }
   def responseToKV(response: HttpResponse): Map[String, String] = {
-    println("Headers "+response.headers)
     Map(
       "status" -> response.status.value.toString,
       "version" -> response.protocol.value,

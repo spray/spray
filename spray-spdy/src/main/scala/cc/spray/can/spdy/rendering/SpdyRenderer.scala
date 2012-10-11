@@ -27,7 +27,7 @@ class SpdyRenderer {
     val dataBuffer = renderKeyValues(keyValues)
     val length = dataBuffer.limit + 6
 
-    println("Length is "+length)
+    //println("Length is "+length)
 
     val buffer = ByteBuffer.allocate(10000)
 

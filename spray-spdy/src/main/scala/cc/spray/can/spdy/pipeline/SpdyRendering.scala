@@ -10,12 +10,8 @@ object SpdyRendering {
       val renderer = new rendering.SpdyRenderer
 
       {
-        case SendSpdyFrame(frame) =>
-          commandPL(IOServer.Send(renderer.renderFrame(frame)))
-
-        case x =>
-          println("Got command "+x)
-          commandPL(x)
+        case SendSpdyFrame(frame) => commandPL(IOServer.Send(renderer.renderFrame(frame)))
+        case x => commandPL(x)
       }
     }
   }

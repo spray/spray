@@ -33,7 +33,6 @@ class FrameDataReader(inflater: Inflater, header: Array[Byte], length: Int) exte
       }
       else {
         val tpe = u2be(h3, h4)
-        println("Got control frame "+tpe)
 
         tpe match {
           case SYN_STREAM =>
