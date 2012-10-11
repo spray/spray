@@ -56,12 +56,12 @@ object HttpOnSpdy {
         def streamId: Int = _streamId
         val pipelines: Pipelines = innerPipeline.buildPipelines(context, createStreamCommandPipeline, createStreamEventPipeline)
 
-        def createStreamEventPipeline: EPL = unpackHttpEvent andThen {
+        def createStreamEventPipeline: EPL = unpackHttpEvent {
           case req: HttpRequest =>
-            println("Sending to handler")
+
             commandPL(IOServer.Tell(handler, req, Reply.withContext(ctx)(context.connectionActorContext.self)))
         }
-        def createStreamCommandPipeline: CPL = unpackHttpCommand.andThen {
+        def createStreamCommandPipeline: CPL = unpackHttpCommand {
           case response: HttpResponse =>
             println("Got reply for "+streamId)
 
@@ -87,11 +87,13 @@ object HttpOnSpdy {
         }
       }
 
-      def unpackHttpEvent: PartialFunction[Event, HttpRequestPart] = {
-        case HttpEvent(e: HttpRequestPart) => e
+      def unpackHttpEvent(inner: HttpRequestPart => Unit): EPL = {
+        case HttpEvent(e: HttpRequestPart) => inner(e)
+        case e => eventPL(e)
       }
-      def unpackHttpCommand: PartialFunction[Command, HttpResponsePart] = {
-        case HttpCommand(c: HttpResponsePart) => c
+      def unpackHttpCommand(inner: HttpResponsePart => Unit): CPL = {
+        case HttpCommand(c: HttpResponsePart) => inner(c)
+        case c => commandPL(c)
       }
 
       def send(frame: Frame) {
