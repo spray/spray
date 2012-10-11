@@ -10,7 +10,8 @@ import cc.spray.util.Reply
 import cc.spray.http._
 import cc.spray.http.HttpHeaders.RawHeader
 
-import SpdyFraming.{SendSpdyFrame, SpdyFrameReceived}
+import SpdyParsing.SpdyFrameReceived
+import SpdyRendering.SendSpdyFrame
 
 object HttpOnSpdy {
   def apply(messageHandler: MessageHandler): DoublePipelineStage = new DoublePipelineStage {

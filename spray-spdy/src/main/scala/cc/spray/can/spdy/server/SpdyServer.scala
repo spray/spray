@@ -24,7 +24,7 @@ import cc.spray.io.pipelining.TickGenerator
 import cc.spray.io.Command
 import cc.spray.util.Reply
 
-import pipeline.{HttpOnSpdy, SpdyFraming}
+import pipeline.{SpdyRendering, HttpOnSpdy, SpdyParsing}
 
 
 class SpdyHttpServer(ioBridge: IOBridge, messageHandler: MessageHandler, settings: ServerSettings = ServerSettings())
@@ -178,7 +178,8 @@ object SpdyHttpServer {
     //settings.StatsSupport ? StatsSupport(statsHolder.get) >>
     //RemoteAddressHeader ? RemoteAddressHeaderSupport() >>
     HttpOnSpdy(messageHandler) >>
-    SpdyFraming() >>
+    SpdyRendering() >>
+    SpdyParsing() >>
     //(IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
     SSLEncryption ? SslTlsSupport(sslEngineProvider, log) >>
     (ReapingCycle > 0 && (IdleTimeout > 0 || RequestTimeout > 0)) ? TickGenerator(ReapingCycle)
