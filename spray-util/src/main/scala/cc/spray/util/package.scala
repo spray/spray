@@ -53,7 +53,7 @@ package object util {
     try body catch { case NonFatal(e) => onError(e) }
 
   private[this] var eventStreamLogger: ActorRef = _
-  def logEventStream(channel: Class[_])(implicit system: ActorSystem) {
+  def installEventStreamLoggerFor(channel: Class[_])(implicit system: ActorSystem) {
     synchronized {
       if (eventStreamLogger == null) {
         eventStreamLogger = system.actorOf(Props(new Actor with ActorLogging {
@@ -63,8 +63,8 @@ package object util {
     }
     system.eventStream.subscribe(eventStreamLogger, channel)
   }
-  def logEventStreamOf[T](implicit classManifest: ClassManifest[T], system: ActorSystem) {
-    logEventStream(classManifest.erasure)
+  def installEventStreamLoggerFor[T](implicit classManifest: ClassManifest[T], system: ActorSystem) {
+    installEventStreamLoggerFor(classManifest.erasure)
   }
 
   // implicits
