@@ -25,9 +25,6 @@ class IOClientExamplesSpec extends Specification {
       case IOClient.Received(handle, buffer) =>
         pingSender.foreach(_ ! EchoClient.PingResponse(buffer.drainToString))
 
-      case IOClient.SentOk(_) =>
-        log.debug("Send completed")
-
       case IOClient.Closed(_, reason) =>
         log.debug("Connection closed: {}", reason)
     }

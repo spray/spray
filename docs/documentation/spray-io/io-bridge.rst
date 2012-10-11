@@ -88,8 +88,8 @@ Close
   completed. The handler of the connection receives a ``Closed`` event after the connection has been closed.
 
 Send
-  Write the contents of the given ByteBuffers to the handles connection. If ``ack`` is true the sender receives a
-  ``SentOk`` event when all bytes have been successfully written to the socket.
+  Write the contents of the given ByteBuffers to the handles connection. If ``ack`` is defined the sender receives its
+  content as a "send confirmation" message when all bytes have been successfully written to the socket.
 
 StopReading
   Stop reading from the handles connection.
@@ -119,9 +119,6 @@ Connected
 
 Closed
   Sent after a connection has been closed.
-
-SentOk
-  Sent as a confirmation of a preceding ``Send`` command with ``ack`` true.
 
 Received
   Sent after a chunk of data has been read from the connections socket. Will never contain more than the number of

@@ -18,11 +18,12 @@ package cc.spray.io
 
 import akka.actor.{ActorRef, ActorContext}
 
-
+//# pipelines
 trait Pipelines {
   def commandPipeline: Pipeline[Command]
   def eventPipeline: Pipeline[Event]
 }
+//#
 
 object Pipelines {
   def apply(commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
@@ -35,14 +36,12 @@ object Pipeline {
   val uninitialized: Pipeline[Any] = _ => throw new RuntimeException("Pipeline not yet initialized")
 }
 
-//# pipeline-context
 trait PipelineContext {
   def handle: Handle
   def connectionActorContext: ActorContext
   def self: ActorRef = connectionActorContext.self
   def sender: ActorRef = connectionActorContext.sender
 }
-//#
 
 object PipelineContext {
   def apply(_handle: Handle, _connectionActorContext: ActorContext) = new PipelineContext {

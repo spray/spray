@@ -4,11 +4,12 @@ Predefined Stages
 *spray-io* comes with a number of predefined pipeline stages, which you can "bake into" you own pipeline stack, where
 you seem fit.
 
+.. _TickGenerator:
 
 TickGenerator
 -------------
 
-The TickGenerator__ forms a simple ``EventPipelineStage`` that generates ``Tick`` events in regular intervals.
+The TickGenerator__ forms a simple ``event-only stage`` that generates ``Tick`` events in regular intervals.
 This is its implementation:
 
  __ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/TickGenerator.scala
@@ -26,7 +27,7 @@ ConnectionTimeouts
 ------------------
 
 The ConnectionTimeouts__ pipeline stage provides support for the automatic closing of idle connection after a
-configurable time period. The stage is modeled as a ``DoublePipelineStage`` that listens for outgoing ``Send`` commands
+configurable time period. The stage is modeled as a ``full stage`` that listens for outgoing ``Send`` commands
 as well as incoming ``Received`` events and updates a ``lastActivity`` timestamp, whenever it sees one such message.
 
 It requires a TickGenerator_ stage further down in the stack and uses its ``Tick`` messages as a trigger for checking,
