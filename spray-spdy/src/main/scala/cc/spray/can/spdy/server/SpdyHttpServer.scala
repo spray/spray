@@ -12,10 +12,8 @@ import cc.spray.util.Reply
 
 import pipeline._
 import pipeline.SpdyStreamManager.SpdyContext
-import scala.Some
 import cc.spray.http.HttpResponse
 import cc.spray.can.HttpCommand
-
 
 class SpdyHttpServer(ioBridge: IOBridge, messageHandler: MessageHandler, settings: ServerSettings = ServerSettings())
                 (implicit sslEngineProvider: ServerSSLEngineProvider) extends IOServer(ioBridge) with ConnectionActors {
@@ -165,17 +163,35 @@ object SpdyHttpServer {
                             log: LoggingAdapter)
                            (implicit sslEngineProvider: ServerSSLEngineProvider): PipelineStage = {
     import settings.{StatsSupport => _, _}
-    SpdyStreamManager(messageHandler, HttpHelper.unwrapHttpEvent, log) {
+    def protocols =
+      TlsNpnSupportedProtocols(
+        "http/1.1",
+        "spdy/2"   -> spdy2Pipeline,
+        "http/1.1" -> httpPipeline)
+
+    def spdy2Pipeline =
+      SpdyStreamManager(messageHandler, HttpHelper.unwrapHttpEvent, log) {
+        (RequestChunkAggregationLimit > 0) ? RequestChunkAggregation(RequestChunkAggregationLimit.toInt) >>
+        (PipeliningLimit > 0) ? PipeliningLimiter(settings.PipeliningLimit) >>
+        settings.StatsSupport ? StatsSupport(statsHolder.get) >>
+        RemoteAddressHeader ? RemoteAddressHeaderSupport() >>
+        HttpOnSpdy()
+      } >>
+      SpdyRendering() >>
+      SpdyParsing()
+
+    def httpPipeline =
+      ServerFrontend(settings, messageHandler, timeoutResponse, log) >>
       (RequestChunkAggregationLimit > 0) ? RequestChunkAggregation(RequestChunkAggregationLimit.toInt) >>
       (PipeliningLimit > 0) ? PipeliningLimiter(settings.PipeliningLimit) >>
       settings.StatsSupport ? StatsSupport(statsHolder.get) >>
       RemoteAddressHeader ? RemoteAddressHeaderSupport() >>
-      HttpOnSpdy()
-    } >>
-    SpdyRendering() >>
-    SpdyParsing() >>
+      RequestParsing(ParserSettings, VerboseErrorMessages, log) >>
+      ResponseRendering(settings) >>
+      (IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log)
+
     //(IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
-    SSLEncryption ? SslTlsSupport(sslEngineProvider, log) >>
+    SSLEncryption ? SslTlsSupport(sslEngineProvider, log, supportedProtocols = Some(protocols)) >>
     (ReapingCycle > 0 && (IdleTimeout > 0 || RequestTimeout > 0)) ? TickGenerator(ReapingCycle)
   }
 
