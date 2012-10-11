@@ -48,10 +48,10 @@ class EchoServer(ioBridge: IOBridge) extends IOServer(ioBridge) {
           context.system.shutdown()
         case x =>
           log.debug("Received '{}', echoing ...", x)
-          ioBridge ! IOBridge.Send(handle, buffer)
+          ioBridge ! IOBridge.Send(handle, buffer, Some('SentOk))
       }
 
-    case IOBridge.SentOk(_) =>
+    case 'SentOk =>
       log.debug("Send completed")
 
     case IOBridge.Closed(_, reason) =>

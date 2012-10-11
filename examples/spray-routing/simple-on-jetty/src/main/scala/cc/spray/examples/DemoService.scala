@@ -7,7 +7,7 @@ import akka.util.duration._
 import akka.actor.{ActorLogging, Props, Actor}
 import cc.spray.routing.{HttpService, RequestContext}
 import cc.spray.routing.directives.CachingDirectives
-import cc.spray.util.model.{IOClosed, IOSent}
+import cc.spray.util.IOClosed
 import cc.spray.httpx.encoding.Gzip
 import cc.spray.http._
 import MediaTypes._
@@ -42,7 +42,15 @@ trait DemoService extends HttpService {
       path("ping") {
         complete("PONG!")
       } ~
-      path("stream") {
+      path("stream1") {
+        respondWithMediaType(`text/html`) {
+          // we detach in order to move the blocking code inside the simpleStringStream off the service actor
+          detachTo(singleRequestServiceActor) {
+            complete(simpleStringStream)
+          }
+        }
+      } ~
+      path("stream2") {
         sendStreamingResponse
       } ~
       path("stream-large-file") {
@@ -76,7 +84,8 @@ trait DemoService extends HttpService {
         <p>Defined resources:</p>
         <ul>
           <li><a href="/ping">/ping</a></li>
-          <li><a href="/stream">/stream</a> (push-mode)</li>
+          <li><a href="/stream1">/stream1</a> (via a Stream[T])</li>
+          <li><a href="/stream2">/stream2</a> (manually)</li>
           <li><a href="/stream-large-file">/stream-large-file</a></li>
           <li><a href="/timeout">/timeout</a></li>
           <li><a href="/cached">/cached</a></li>
@@ -84,32 +93,49 @@ trait DemoService extends HttpService {
       </body>
     </html>
 
+  // we prepend 2048 "empty" bytes to push the browser to immediately start displaying the incoming chunks
+  lazy val streamStart = " " * 2048 + "<html><body><h2>A streaming response</h2><p>(for 5 seconds)<ul>"
+  lazy val streamEnd = "</ul><p>Finished.</p></body></html>"
+
+  def simpleStringStream: Stream[String] = {
+    val secondStream = Stream.continually {
+      // CAUTION: we block here to delay the stream generation for you to be able to follow it in your browser,
+      // this is only done for the purpose of this demo, blocking in actor code should otherwise be avoided
+      Thread.sleep(250)
+      "<li>" + DateTime.now.toIsoDateTimeString + "</li>"
+    }
+    streamStart #:: secondStream.take(16) #::: streamEnd #:: Stream.empty
+  }
+
+  // simple case class whose instances we use as send confirmation message for streaming chunks
+  case class Ok(remaining: Int)
+
   def sendStreamingResponse(ctx: RequestContext) {
     actorRefFactory.actorOf(
       Props {
         new Actor with ActorLogging {
-          var remainingChunks = 16
+          // we use the successful sending of a chunk as trigger for scheduling the next chunk
+          val responseStart = HttpResponse(entity = HttpBody(`text/html`, streamStart))
+          ctx.responder ! ChunkedResponseStart(responseStart).withSentAck(Ok(16))
+
           def receive = {
-            case 'Start =>
-              // we prepend 2048 "empty" bytes to push the browser to immediately start displaying the incoming chunks
-              val htmlStart = " " * 2048 + "<html><body><h2>A streaming response</h2><p>(for 15 seconds)<ul>"
-              ctx.responder ! ChunkedResponseStart(HttpResponse(entity = HttpBody(`text/html`, htmlStart)))
-            case _: IOSent if remainingChunks > 0 =>
-              // we use the successful sending of a chunk as trigger for scheduling the next chunk
-              remainingChunks -= 1
-              in(300.millis) {
-                ctx.responder ! MessageChunk("<li>" + DateTime.now.toIsoDateTimeString + "</li>")
-              }
-            case _: IOSent =>
-              ctx.responder ! MessageChunk("</ul><p>Finished.</p></body></html>")
+            case Ok(0) =>
+              ctx.responder ! MessageChunk(streamEnd)
               ctx.responder ! ChunkedMessageEnd()
               context.stop(self)
-            case _: IOClosed =>
-              log.warning("Stopping response streaming")
+
+            case Ok(remaining) =>
+              in(250.millis) {
+                val nextChunk = MessageChunk("<li>" + DateTime.now.toIsoDateTimeString + "</li>")
+                ctx.responder ! nextChunk.withSentAck(Ok(remaining - 1))
+              }
+
+            case x :IOClosed =>
+              log.warning("Stopping response streaming due to {}", x.reason)
           }
         }
-      }, "streaming-actor"
-    ) ! 'Start
+      }
+    )
   }
 
   def in[U](duration: Duration)(body: => U) {

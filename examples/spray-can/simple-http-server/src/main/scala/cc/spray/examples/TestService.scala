@@ -3,7 +3,6 @@ package cc.spray.examples
 import akka.pattern.ask
 import akka.util.duration._
 import akka.actor._
-import cc.spray.io.ConnectionClosedReason
 import cc.spray.can.server.HttpServer
 import cc.spray.http._
 import HttpMethods._
@@ -21,7 +20,7 @@ class TestService extends Actor with ActorLogging {
 
     case HttpRequest(GET, "/stream", _, _, _) =>
       val peer = sender // since the Props creator is executed asyncly we need to save the sender ref
-      context.actorOf(Props(new Streamer(peer, 100)))
+      context.actorOf(Props(new Streamer(peer, 25)))
 
     case HttpRequest(GET, "/stats", _, _, _) =>
       val client = sender
@@ -96,27 +95,30 @@ class TestService extends Actor with ActorLogging {
     )
   )
 
-  class Streamer(peer: ActorRef, var count: Int) extends Actor with ActorLogging {
+  // simple case class whose instances we use as send confirmation message for streaming chunks
+  case class Ok(remaining: Int)
+
+  class Streamer(peer: ActorRef, count: Int) extends Actor with ActorLogging {
     log.debug("Starting streaming response ...")
-    peer ! ChunkedResponseStart(HttpResponse(entity = " " * 2048))
-    val chunkGenerator = context.system.scheduler.schedule(100.millis, 100.millis, self, 'Tick)
+
+    // we use the successful sending of a chunk as trigger for scheduling the next chunk
+    peer ! ChunkedResponseStart(HttpResponse(entity = " " * 2048)).withSentAck(Ok(count))
 
     def receive = {
-      case 'Tick if count > 0 =>
-        log.info("Sending response chunk ...")
-        peer ! MessageChunk(DateTime.now.toIsoDateTimeString + ", ")
-        count -= 1
-
-      case 'Tick =>
+      case Ok(0) =>
         log.info("Finalizing response stream ...")
-        chunkGenerator.cancel()
         peer ! MessageChunk("\nStopped...")
         peer ! ChunkedMessageEnd()
         context.stop(self)
 
+      case Ok(remaining) =>
+        log.info("Sending response chunk ...")
+        context.system.scheduler.scheduleOnce(100.millis) {
+          peer ! MessageChunk(DateTime.now.toIsoDateTimeString + ", ").withSentAck(Ok(remaining - 1))
+        }
+
       case HttpServer.Closed(_, reason) =>
         log.info("Canceling response stream due to {} ...", reason)
-        chunkGenerator.cancel()
         context.stop(self)
     }
   }
