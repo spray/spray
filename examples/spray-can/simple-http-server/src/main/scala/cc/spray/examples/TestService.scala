@@ -8,12 +8,13 @@ import cc.spray.can.server.HttpServer
 import cc.spray.http._
 import HttpMethods._
 import MediaTypes._
-
+import cc.spray.can.spdy.server.SpdyHttpServer
 
 class TestService extends Actor with ActorLogging {
 
   def receive = {
     case HttpRequest(GET, "/", _, _, _) =>
+      println("Should serve /")
       sender ! index
 
     case HttpRequest(GET, "/ping", _, _, _) =>
@@ -25,7 +26,8 @@ class TestService extends Actor with ActorLogging {
 
     case HttpRequest(GET, "/stats", _, _, _) =>
       val client = sender
-      context.actorFor("../http-server").ask(HttpServer.GetStats)(1.second).onSuccess {
+      println("Should get stats")
+      context.actorFor("../spdy-http-server").ask(HttpServer.GetStats)(1.second).onSuccess {
         case x: HttpServer.Stats => client ! statsPresentation(x)
       }
 
@@ -98,7 +100,7 @@ class TestService extends Actor with ActorLogging {
 
   class Streamer(peer: ActorRef, var count: Int) extends Actor with ActorLogging {
     log.debug("Starting streaming response ...")
-    peer ! ChunkedResponseStart(HttpResponse(entity = " " * 2048))
+    peer ! ChunkedResponseStart(HttpResponse(entity = HttpBody(`text/plain`, " " * 2048 + "\n")))
     val chunkGenerator = context.system.scheduler.schedule(100.millis, 100.millis, self, 'Tick)
 
     def receive = {

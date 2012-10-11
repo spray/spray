@@ -114,7 +114,7 @@ object HttpDialog {
     }
     def runActions(multiResponse: Boolean): Future[AnyRef] = {
       val result = Promise[AnyRef]()(refFactory.messageDispatcher)
-      refFactory.actorOf(Props(new DialogActor(result, client, multiResponse))) ! actions.toList
+      refFactory.actorOf(Props(new DialogActor(result, client, multiResponse)), "Dialog"+connect.host+":"+connect.port) ! actions.toList
       result
     }
   }

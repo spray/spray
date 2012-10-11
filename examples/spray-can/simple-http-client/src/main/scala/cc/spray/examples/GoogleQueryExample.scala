@@ -1,10 +1,11 @@
 package cc.spray.examples
 
 import akka.dispatch.Future
-import akka.actor.{ActorSystem, Props}
+import akka.actor.{UnhandledMessage, DeadLetter, ActorSystem, Props}
 import cc.spray.io.IOBridge
 import cc.spray.can.client.{HttpDialog, HttpClient}
 import cc.spray.http.{HttpResponse, HttpRequest}
+import cc.spray.can.spdy.client.SpdyHttpClient
 
 
 object GoogleQueryExample extends App {
@@ -19,9 +20,11 @@ object GoogleQueryExample extends App {
 
   // create and start the spray-can HttpClient
   val httpClient = system.actorOf(
-    props = Props(new HttpClient(ioBridge)),
+    props = Props(new SpdyHttpClient(ioBridge)),
     name = "http-client"
   )
+  cc.spray.util.logEventStreamOf[DeadLetter]
+  cc.spray.util.logEventStreamOf[UnhandledMessage]
 
   val queries = Seq("iphone 4 case", "hdmi cable", "iphone 4 screen protector", "iphone charger", "nail art",
     "iphone 3gs case", "coupons", "hello kitty", "wii remote", "iphone 4", "htc evo case", "headphones",
@@ -33,7 +36,7 @@ object GoogleQueryExample extends App {
   val requests = queries.map(q => HttpRequest(uri = "/search?q=" + q.replace(" ", "+")))
 
   log.info("Running {} google queries over a single connection using pipelined requests...", requests.length)
-  timed(HttpDialog(httpClient, "www.google.com").send(requests).end)
+  timed(HttpDialog(httpClient, "www.google.com", 443, true).send(requests).end)
     .onSuccess(printResult andThen secondRun)
     .onFailure(printError andThen shutdown)
 
@@ -42,6 +45,9 @@ object GoogleQueryExample extends App {
   system.registerOnTermination {
     ioBridge.stop()
   }
+
+  Thread.sleep(15000)
+  system.shutdown()
 
   def secondRun: PartialFunction[Any, Unit] = {
     case _ =>

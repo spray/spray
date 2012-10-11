@@ -1,3 +1,4 @@
+import java.io.File
 import sbt._
 import Keys._
 
@@ -44,7 +45,6 @@ object Build extends Build with DocSupport {
       provided(akkaActor) ++
       test(akkaTestKit, specs2)
     )
-
 
   lazy val sprayClient = Project("spray-client", file("spray-client"))
     .dependsOn(sprayCan, sprayHttp, sprayHttpx, sprayUtil)
@@ -142,7 +142,7 @@ object Build extends Build with DocSupport {
   // -------------------------------------------------------------------------------------------------------------------
 
   lazy val site = Project("site", file("site"))
-    .dependsOn(sprayCan, sprayRouting)
+    .dependsOn(sprayCan, sprayRouting, spraySpdy)
     .settings(siteSettings: _*)
     .settings(SphinxSupport.settings: _*)
     .settings(libraryDependencies ++=
@@ -150,6 +150,7 @@ object Build extends Build with DocSupport {
       runtime(akkaSlf4j, logback) ++
       test(specs2)
     )
+    .settings(spraySpdyUserSettings: _*)
 
   lazy val docs = Project("docs", file("docs"))
     .dependsOn(sprayCaching, sprayCan, sprayClient, sprayHttp, sprayHttpx, sprayIO, sprayRouting,
@@ -171,20 +172,32 @@ object Build extends Build with DocSupport {
     .settings(exampleSettings: _*)
 
   lazy val simpleHttpClient = Project("simple-http-client", file("examples/spray-can/simple-http-client"))
-    .dependsOn(sprayCan, sprayHttp)
+    .dependsOn(sprayCan, sprayHttp, spraySpdy)
     .settings(exampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
       runtime(akkaSlf4j, logback)
     )
+    .settings(spraySpdyUserSettings: _*)
 
   lazy val simpleHttpServer = Project("simple-http-server", file("examples/spray-can/simple-http-server"))
-    .dependsOn(sprayCan, sprayHttp)
+    .dependsOn(sprayCan, sprayHttp, spraySpdy)
     .settings(exampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
       runtime(akkaSlf4j, logback)
     )
+    .settings(cc.spray.revolver.RevolverPlugin.Revolver.settings: _*)
+    .settings(spraySpdyUserSettings: _*)
+
+  lazy val npnBoot = "org.mortbay.jetty.npn" % "npn-boot" % "8.1.2.v20120308"// % BootCP
+  lazy val spraySpdyUserSettings = seq(
+    libraryDependencies ++= runtime(npnBoot),
+    fork in run := true,
+    javaOptions <+= (externalDependencyClasspath in Runtime) map { cp =>
+      "-Xbootclasspath/p:"+cp.map(_.data.getAbsolutePath).filter(_.contains("npn-boot")).mkString(File.pathSeparator)
+    }
+  )
 
   lazy val sprayClientExamples = Project("spray-client-examples", file("examples/spray-client"))
     .aggregate(simpleSprayClient)

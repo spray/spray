@@ -24,8 +24,10 @@ import javax.net.ssl.SSLEngineResult.HandshakeStatus._
 import SSLEngineResult.Status._
 import collection.mutable.Queue
 import annotation.tailrec
-import org.eclipse.jetty.npn.NextProtoNego.ServerProvider
+import org.eclipse.jetty.npn.NextProtoNego.{ClientProvider, ServerProvider}
 import org.eclipse.jetty.npn.NextProtoNego
+import java.util
+import akka.actor.ActorRef
 
 object SslTlsSupport {
   def apply(engineProvider: PipelineContext => SSLEngine, log: LoggingAdapter,
@@ -42,6 +44,9 @@ object SslTlsSupport {
         var eventPLUpstream = _eventPL
         var commandPLTop: CPL = sslCommandPipeline
 
+        var handshakeReady = false
+        val pendingCommands = Queue.empty[(Command, ActorRef)]
+
         val pendingSends = Queue.empty[Send]
         var inboundReceptacle: ByteBuffer = _ // holds incoming data that are too small to be decrypted yet
 
@@ -50,6 +55,7 @@ object SslTlsSupport {
 
         def sslCommandPipeline: CPL = {
           case x@ IOPeer.Send(buffers, ack) =>
+            println("Should send %s bytes" format buffers.map(_.remaining()).sum)
             if (pendingSends.isEmpty) withTempBuf(encrypt(Send(x), _))
             else pendingSends += Send(x)
 
@@ -58,6 +64,14 @@ object SslTlsSupport {
             engine.closeOutbound()
             withTempBuf(closeEngine)
             commandPL(x)
+
+          case cmd if !handshakeReady =>
+            log.info("Queing command for after handshake")
+            pendingCommands.enqueue((cmd, context.sender))
+
+          //case cmd if handshakeReady =>
+            //Thread.dumpStack()
+            //log.warning("Got command here "+cmd)
 
           case cmd => commandPL(cmd)
         }
@@ -80,17 +94,18 @@ object SslTlsSupport {
         }
 
         if (supportedProtocols.isDefined) { // TLS-NPN-Nego should be used
+          import scala.collection.JavaConverters._
           val supported = supportedProtocols.get
+          val protocolNames = supported.pipelinesPerProtocol.map(_._1)
+          log.info("NPN with supported protocols: {}", protocolNames.mkString(", "))
+
           engineProvider match {
             case _: ServerSSLEngineProvider =>
-              object NPNProvider extends ServerProvider {
-                import scala.collection.JavaConverters._
-                val _protocols = supported.pipelinesPerProtocol.map(_._1)
-
+              object NPNServerProvider extends ServerProvider {
                 def unsupported() {
                   protocolSelected(supported.defaultProtocol)
                 }
-                def protocols(): java.util.List[String] = _protocols.asJava
+                def protocols(): java.util.List[String] = protocolNames.asJava
                 def protocolSelected(protocol: String) {
                   val stage = supported.pipelinesPerProtocol.find(_._1 == protocol).get._2
                   val pls = stage.buildPipelines(context, sslCommandPipeline, _ => () /* we ignore things flowing out of the pipe at the top */)
@@ -103,11 +118,50 @@ object SslTlsSupport {
               }
               // we already make sure that we choose the first protocol in case *we* don't support
               // NPN (bootCP missing)
-              NPNProvider.unsupported()
-              NextProtoNego.put(engine, NPNProvider)
+              NPNServerProvider.unsupported()
+              NextProtoNego.put(engine, NPNServerProvider)
 
-            case _ =>
-              throw new UnsupportedOperationException("TLS-NPN not supported for SSL clients yet")
+            case _: ClientSSLEngineProvider =>
+              log.info("Switching on client side TLS-NPN")
+              NextProtoNego.debug = true
+
+              object NPNClientProvider extends ClientProvider {
+                def supports(): Boolean = {
+                  println("Supports was called")
+                  true
+                }
+                def unsupported() {
+                  println("Unsupported was called")
+                  //selectProtocol(util.Arrays.asList(supported.defaultProtocol))
+                }
+                def selectProtocol(protocols: util.List[String]): String = {
+                  println("selectProtocol was called")
+                  val chosen = protocols.asScala.find(protocolNames.contains).getOrElse {
+                    log.warning("No protocol supported ({}) from offered ones ({}).", protocolNames.mkString(", "), protocols.asScala.mkString(", "))
+                    supported.defaultProtocol
+                  }
+
+                  println("Chose "+chosen)
+                  //if (chosen != supported.defaultProtocol) {
+                    val stage = supported.pipelinesPerProtocol.find(_._1 == chosen).get._2
+                    val pls = stage.buildPipelines(context, sslCommandPipeline, _ => () /* we ignore things flowing out of the pipe at the top */)
+
+                    // the idea is that we rewire the pipelines so that the chosen protocol
+                    // pipeline is now on top of us
+                    eventPLUpstream = pls.eventPipeline
+                    commandPLTop = pls.commandPipeline
+                  //}
+
+                  chosen
+                }
+              }
+              //NPNProvider.unsupported()
+              NextProtoNego.put(engine, NPNClientProvider)
+              engine.beginHandshake()
+              //sslCommandPipeline(IOPeer.Send(ByteBuffer.allocate(0), false))
+              println("At creation sender is "+context.handle.commander)
+              //context.self.tell(IOPeer.Send(ByteBuffer.allocate(0), false), context.sender)
+              withTempBuf(encrypt(Send(Array.empty, false), _))
           }
         }
 
@@ -127,8 +181,15 @@ object SslTlsSupport {
             IOPeer.Send(tempBuf.copy :: Nil, sendAckAndPreContentLeft && !postContentLeft)
           }
           result.getStatus match {
-            case OK => result.getHandshakeStatus match {
+            case OK =>
+              println("Now at handshakeStatus "+result.getHandshakeStatus)
+              result.getHandshakeStatus match {
               case NOT_HANDSHAKING | FINISHED =>
+                if (!handshakeReady) {
+                  handshakeReady = true
+                  pendingCommands.foreach { case (cmd, sender) => context.self.tell(cmd, sender) }
+                }
+
                 if (postContentLeft) encrypt(send, tempBuf, fromQueue)
               case NEED_WRAP => encrypt(send, tempBuf, fromQueue)
               case NEED_UNWRAP =>

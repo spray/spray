@@ -10,7 +10,7 @@ object SphinxSupport {
 
   val settings = seq(
 
-    sphinxScript := Path.userHome / ".penv" / "sphinx" / "bin" / "sphinx-build",
+    sphinxScript := Path("/usr") / "bin" / "sphinx-build",
 
     sourceDirectory in sphinxCompile <<= baseDirectory { _.getParentFile / "docs" },
 

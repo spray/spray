@@ -35,5 +35,5 @@ object Dependencies {
   val specs2        = "org.specs2"                              %%  "specs2"                      % "1.11"
   val sprayJson     = "cc.spray"                                %%  "spray-json"                  % "1.1.1"
   val twirlApi      = "cc.spray"                                %%  "twirl-api"                   % "0.5.4"
-
+  val commonsLang   = "commons-lang"                            %   "commons-lang"                % "2.6"
 }

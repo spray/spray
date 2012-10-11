@@ -23,8 +23,13 @@ object Spdy2 {
     val FLAG_SETTINGS_CLEAR_PREVIOUSLY_PERSISTED_SETTINGS = flag(0x01)
   }
   object ErrorCodes {
-    val PROTOCOL_ERROR = 1
-    val UNSUPPORTED_VERSION = 4
+    val PROTOCOL_ERROR      = 1 // This is a generic error, and should only be used if a more specific error is not available. The receiver of this error will likely abort the entire session and possibly return an error to the user.
+    val INVALID_STREAM      = 2 // should be returned when a frame is received for a stream which is not active. The receiver of this error will likely log a communications error.
+    val REFUSED_STREAM      = 3 // This is error indicates that the stream was refused before any processing has been done on the stream.  This means that request can be safely retried.
+    val UNSUPPORTED_VERSION = 4 // Indicates that the receiver of a stream does not support the SPDY version requested.
+    val CANCEL              = 5 // Used by the creator of a stream to indicate that the stream is no longer needed.
+    val INTERNAL_ERROR      = 6 // The endpoint processing the stream has encountered an error.
+    val FLOW_CONTROL_ERROR  = 7
   }
 
   val dictionary = (

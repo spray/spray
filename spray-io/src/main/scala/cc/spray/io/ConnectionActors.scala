@@ -30,7 +30,7 @@ trait ConnectionActors extends IOPeer {
       val localAddress = _localAddress
       val commander = _commander
       val tag = _tag
-      val handler = context.actorOf(Props(createConnectionActor(this))) // must be initialized last
+      val handler = context.actorOf(Props(createConnectionActor(this)), "connection-"+remoteAddress.getHostName+":"+remoteAddress.getPort) // must be initialized last
     }
   }
 
@@ -55,7 +55,9 @@ trait ConnectionActors extends IOPeer {
       case IOPeer.ResumeReading               => ioBridge ! IOBridge.ResumeReading(handle)
       case IOPeer.Tell(receiver, msg, sender) => receiver.tell(msg, sender)
       case _: Droppable => // don't warn
-      case cmd => log.warning("commandPipeline: dropped {}", cmd)
+      case cmd =>
+        //Thread.dumpStack()
+        log.warning("commandPipeline: dropped {}", cmd)
     }
 
     def baseEventPipeline: Pipeline[Event] = {
@@ -64,7 +66,9 @@ trait ConnectionActors extends IOPeer {
         context.stop(self)
         context.parent ! x // also inform our parent of our closing
       case _: Droppable => // don't warn
-      case ev => log.warning("eventPipeline: dropped {}", ev)
+      case ev =>
+        //Thread.dumpStack()
+        log.warning("eventPipeline: dropped {}", ev)
     }
     //#
 
