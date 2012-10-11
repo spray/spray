@@ -3,18 +3,19 @@ package pipeline
 
 import java.nio.ByteBuffer
 
-import cc.spray.io.pipelining.{MessageHandler, Pipelines, PipelineContext, DoublePipelineStage}
+import cc.spray.io.pipelining._
 import cc.spray.io.{IOServer, Command, Event}
 import cc.spray.util.Reply
 
 import cc.spray.http._
 import cc.spray.http.HttpHeaders.RawHeader
-
-import SpdyParsing.SpdyFrameReceived
-import SpdyRendering.SendSpdyFrame
+import cc.spray.http.HttpResponse
+import pipeline.SpdyParsing.SpdyFrameReceived
+import pipeline.SpdyRendering.SendSpdyFrame
+import cc.spray.can.{HttpEvent, HttpCommand}
 
 object HttpOnSpdy {
-  def apply(messageHandler: MessageHandler): DoublePipelineStage = new DoublePipelineStage {
+  def apply(messageHandler: MessageHandler)(innerPipeline: PipelineStage): DoublePipelineStage = new DoublePipelineStage {
     def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): BuildResult = new Pipelines {
       val handler = messageHandler(context)()
 
@@ -25,12 +26,12 @@ object HttpOnSpdy {
               println("Got syn stream "+x)
               if (x.fin) {
                 val req = requestFromKV(x.keyValues)
-                commandPL(IOServer.Tell(handler, req, Reply.withContext(x.streamId)(context.connectionActorContext.self)))
+                val ctx = createStreamContext(x.streamId)
+                ctx.pipelines.eventPipeline(HttpEvent(req))
               }
 
             case x: RstStream =>
               println("Stream got cancelled "+x)
-
 
             case x: Settings =>
               println("Ignoring settings for now "+x)
@@ -47,20 +48,49 @@ object HttpOnSpdy {
       }
 
       def commandPipeline: (Command) => Unit = {
-        case ReplyToStream(streamId, response, dataComplete) =>
-          val fin = response.entity.buffer.isEmpty
-          send(SynReply(streamId, fin, responseToKV(response)))
-
-          if (!fin)
-            send(DataFrame(streamId, dataComplete, response.entity.buffer))
-
-        case SendStreamData(streamId, data) =>
-          send(DataFrame(streamId, false, data))
-
-        case CloseStream(streamId) =>
-          send(DataFrame(streamId, true, Array.empty))
-
         case x => commandPL(x)
+      }
+
+      def createStreamContext(_streamId: Int): SpdyContext = new SpdyContext { ctx =>
+        def streamId: Int = _streamId
+        val pipelines: Pipelines = innerPipeline.buildPipelines(context, streamCommandPipeline, streamEventPipeline)
+
+        def streamEventPipeline: EPL = unpackHttpEvent andThen {
+          case req: HttpRequest =>
+            println("Sending to handler")
+            commandPL(IOServer.Tell(handler, req, Reply.withContext(ctx)(context.connectionActorContext.self)))
+        }
+        def streamCommandPipeline: Command => Unit = unpackHttpCommand.andThen {
+          case response: HttpResponse =>
+            println("Got reply for "+streamId)
+
+            val fin = response.entity.buffer.isEmpty
+            send(SynReply(streamId, fin, responseToKV(response)))
+
+            if (!fin)
+              send(DataFrame(streamId, true, response.entity.buffer))
+
+          case ChunkedResponseStart(response) =>
+            val fin = response.entity.buffer.isEmpty
+            send(SynReply(streamId, fin, responseToKV(response)))
+
+            if (!fin)
+              send(DataFrame(streamId, false, response.entity.buffer))
+
+          case MessageChunk(body, exts) =>
+
+            send(DataFrame(streamId, false, body))
+
+          case response: ChunkedMessageEnd =>
+            send(DataFrame(streamId, true, Array.empty))
+        }
+      }
+
+      def unpackHttpEvent: PartialFunction[Event, HttpRequestPart] = {
+        case HttpEvent(e: HttpRequestPart) => e
+      }
+      def unpackHttpCommand: PartialFunction[Command, HttpResponsePart] = {
+        case HttpCommand(c: HttpResponsePart) => c
       }
 
       def send(frame: Frame) {
@@ -92,8 +122,9 @@ object HttpOnSpdy {
     }
   }
 
-  // COMMANDS
-  case class ReplyToStream(streamId: Int, response: HttpResponse, dataComplete: Boolean) extends Command
-  case class SendStreamData(streamId: Int, body: Array[Byte]) extends Command
-  case class CloseStream(streamId: Int) extends Command
+  trait SpdyContext {
+    def streamId: Int
+    def pipelines: Pipelines
+  }
+  case class CommandWithSpdyCtx(ctx: SpdyContext, msg: Any) extends Command
 }

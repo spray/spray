@@ -8,7 +8,7 @@ import cc.spray.io._
 import cc.spray.http._
 import cc.spray.io.IOBridge
 import cc.spray.io.pipelining.MessageHandler
-import cc.spray.can.server.{RequestChunkAggregation, ServerSettings, ServerFrontend}
+import cc.spray.can.server._
 import cc.spray.io.pipelining.ServerSSLEngineProvider
 import cc.spray.io.IOServer
 import cc.spray.io.ConnectionActors
@@ -25,26 +25,35 @@ import cc.spray.io.Command
 import cc.spray.util.Reply
 
 import pipeline.{SpdyRendering, HttpOnSpdy, SpdyParsing}
+import cc.spray.http.ChunkedResponseStart
+import cc.spray.http.ChunkedMessageEnd
+import cc.spray.http.HttpResponse
+import cc.spray.can.HttpCommand
+import cc.spray.http.ChunkedResponseStart
+import cc.spray.http.ChunkedMessageEnd
+import cc.spray.http.HttpResponse
+import cc.spray.can.HttpCommand
+import pipeline.HttpOnSpdy.{SpdyContext, CommandWithSpdyCtx}
 
 
 class SpdyHttpServer(ioBridge: IOBridge, messageHandler: MessageHandler, settings: ServerSettings = ServerSettings())
                 (implicit sslEngineProvider: ServerSSLEngineProvider) extends IOServer(ioBridge) with ConnectionActors {
 
+  protected val statsHolder: Option[StatsHolder] =
+    if (settings.StatsSupport) Some(new StatsHolder) else None
+
+  override def receive = super.receive orElse {
+    case HttpServer.GetStats    => statsHolder.foreach(holder => sender ! holder.toStats)
+    case HttpServer.ClearStats  => statsHolder.foreach(_.clear())
+  }
+
   protected val pipeline =
-    SpdyHttpServer.pipeline(settings, messageHandler, timeoutResponse, log)
+    SpdyHttpServer.pipeline(settings, messageHandler, timeoutResponse, statsHolder, log)
 
   override protected def createConnectionActor(handle: Handle): IOConnectionActor = new IOConnectionActor(handle) {
     override def receive = super.receive orElse {
-      case Reply(response: HttpResponse, streamId: Int) =>
-        println("Got reply for "+streamId)
-        pipelines.commandPipeline(HttpOnSpdy.ReplyToStream(streamId, response, true))
-      case Reply(ChunkedResponseStart(response), streamId: Int) =>
-        pipelines.commandPipeline(HttpOnSpdy.ReplyToStream(streamId, response, false))
-      case Reply(MessageChunk(body, exts), streamId: Int) =>
-        pipelines.commandPipeline(HttpOnSpdy.SendStreamData(streamId, body))
-      case Reply(response: ChunkedMessageEnd, streamId: Int) =>
-        pipelines.commandPipeline(HttpOnSpdy.CloseStream(streamId))
-      case x: HttpResponse => pipelines.commandPipeline(HttpCommand(x))
+      case Reply(msg: HttpMessagePart, ctx: SpdyContext) =>
+        ctx.pipelines.commandPipeline(HttpCommand(msg))
     }
   }
 
@@ -171,13 +180,16 @@ object SpdyHttpServer {
   def pipeline(settings: ServerSettings,
                             messageHandler: MessageHandler,
                             timeoutResponse: HttpRequest => HttpResponse,
+                            statsHolder: Option[StatsHolder],
                             log: LoggingAdapter)
                            (implicit sslEngineProvider: ServerSSLEngineProvider): PipelineStage = {
     import settings.{StatsSupport => _, _}
-    //(RequestChunkAggregationLimit > 0) ? RequestChunkAggregation(RequestChunkAggregationLimit.toInt) >>
-    //settings.StatsSupport ? StatsSupport(statsHolder.get) >>
-    //RemoteAddressHeader ? RemoteAddressHeaderSupport() >>
-    HttpOnSpdy(messageHandler) >>
+    HttpOnSpdy(messageHandler) {
+      (RequestChunkAggregationLimit > 0) ? RequestChunkAggregation(RequestChunkAggregationLimit.toInt) >>
+      (PipeliningLimit > 0) ? PipeliningLimiter(settings.PipeliningLimit) >>
+      settings.StatsSupport ? StatsSupport(statsHolder.get) >>
+      RemoteAddressHeader ? RemoteAddressHeaderSupport()
+    } >>
     SpdyRendering() >>
     SpdyParsing() >>
     //(IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
