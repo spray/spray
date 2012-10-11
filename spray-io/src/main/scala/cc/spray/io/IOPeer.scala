@@ -19,6 +19,7 @@ package cc.spray.io
 import akka.actor._
 import java.nio.ByteBuffer
 import java.net.InetSocketAddress
+import cc.spray.util.ConnectionClosedReason
 
 
 abstract class IOPeer extends Actor with ActorLogging {
@@ -34,10 +35,10 @@ object IOPeer {
 
   ////////////// COMMANDS //////////////
   case class Close(reason: ConnectionClosedReason) extends Command
-  case class Send(buffers: Seq[ByteBuffer], ack: Boolean = true) extends Command
+  case class Send(buffers: Seq[ByteBuffer], ack: Option[Any]) extends Command
   object Send {
-    def apply(buffer: ByteBuffer): Send = apply(buffer, ack = true)
-    def apply(buffer: ByteBuffer, ack: Boolean): Send = new Send(buffer :: Nil, ack)
+    def apply(buffer: ByteBuffer): Send = apply(buffer, None)
+    def apply(buffer: ByteBuffer, ack: Option[Any]): Send = new Send(buffer :: Nil, ack)
   }
 
   case object StopReading extends Command
@@ -48,9 +49,9 @@ object IOPeer {
 
   ////////////// EVENTS //////////////
   type Closed = IOBridge.Closed;     val Closed = IOBridge.Closed
-  type SentOk = IOBridge.SentOk;     val SentOk = IOBridge.SentOk
   type Received = IOBridge.Received; val Received = IOBridge.Received
 
   // only available with ConnectionActors mixin
   case class ActorDeath(actor: ActorRef) extends Event
+  case class AckEvent(ack: Any) extends Event
 }

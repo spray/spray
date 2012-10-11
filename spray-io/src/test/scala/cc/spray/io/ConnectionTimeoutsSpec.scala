@@ -18,7 +18,7 @@ package cc.spray.io
 
 import org.specs2.mutable.Specification
 import akka.actor.ActorSystem
-import cc.spray.io._
+import cc.spray.util.IdleTimeout
 
 
 class ConnectionTimeoutsSpec extends Specification with PipelineStageTest {

@@ -14,8 +14,20 @@
  * limitations under the License.
  */
 
-package cc.spray.io
+package cc.spray.util
 
+
+// generally available trait modelling "connection closed" events,
+// defined here in spray-util because spray-util is the only module that is
+// available to all other spray modules (except spray-http) and we can this way
+// use this trait in spray-io, spray-servlet and spray-httpx
+trait IOClosed {
+  def reason: ConnectionClosedReason
+}
+
+/**
+ * Simple sum type modelling the various reasons for why a connection was closed.
+ */
 sealed trait ConnectionClosedReason
 
 /**

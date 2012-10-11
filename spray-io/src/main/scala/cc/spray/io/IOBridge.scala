@@ -20,12 +20,12 @@ import java.util.concurrent.CountDownLatch
 import java.nio.channels.spi.SelectorProvider
 import java.nio.ByteBuffer
 import java.nio.channels.{CancelledKeyException, SelectionKey, SocketChannel, ServerSocketChannel}
-import java.net.{InetAddress, InetSocketAddress}
+import java.net.InetSocketAddress
 import annotation.tailrec
 import akka.event.{LoggingBus, BusLogging, LoggingAdapter}
 import akka.actor.{Status, ActorSystem, ActorRef}
 import akka.util.NonFatal
-import cc.spray.util.model.{IOClosed, IOSent}
+import cc.spray.util._
 
 
 // threadsafe
@@ -173,8 +173,8 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
                 buf +=: writeQueue // we cannot drop the head and need to continue with it next time
                 log.debug("Wrote {} bytes, more pending", bytesWritten - oldBytesWritten)
               }
-            case AckTo(receiver) =>
-              receiver ! SentOk(handle)
+            case Ack(receiver, msg) =>
+              receiver ! msg
               writeToChannel()
             case PerformCleanClose => close(handle, CleanClose)
           }
@@ -289,7 +289,7 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
     def send(cmd: Send, sender: ActorRef) {
       val key = cmd.handle.key
       key.writeQueue ++= cmd.buffers
-      if (cmd.ack && sender != null) key.writeQueue += AckTo(sender)
+      if (cmd.ack.isDefined && sender != null) key.writeQueue += Ack(sender, cmd.ack.get)
       key.enable(OP_WRITE)
     }
 
@@ -400,7 +400,7 @@ object IOBridge {
   )
 
   // these two things can be elements of a Keys writeQueue (in addition to a raw ByteBuffer)
-  private[io] case class AckTo(receiver: ActorRef)
+  private[io] case class Ack(receiver: ActorRef, msg: Any)
   private[io] case object PerformCleanClose
 
   ////////////// COMMANDS //////////////
@@ -433,11 +433,11 @@ object IOBridge {
                    reason: ConnectionClosedReason) extends ConnectionCommand
   case class Send(handle: Handle,
                   buffers: Seq[ByteBuffer],
-                  ack: Boolean = true) extends ConnectionCommand
+                  ack: Option[Any] = None) extends ConnectionCommand
   object Send {
     def apply(handle: Handle, buffer: ByteBuffer): Send =
-      apply(handle, buffer, ack = true)
-    def apply(handle: Handle, buffer: ByteBuffer, ack: Boolean): Send =
+      apply(handle, buffer, None)
+    def apply(handle: Handle, buffer: ByteBuffer, ack: Option[Any]): Send =
       new Send(handle, buffer :: Nil, ack)
   }
   case class StopReading(handle: Handle) extends ConnectionCommand
@@ -458,7 +458,6 @@ object IOBridge {
   // connection-level events
   case class Closed(handle: Handle,
                     reason: ConnectionClosedReason) extends Event with IOClosed
-  case class SentOk(handle: Handle) extends Event with IOSent
   case class Received(handle: Handle, buffer: ByteBuffer) extends Event
   //#
 }

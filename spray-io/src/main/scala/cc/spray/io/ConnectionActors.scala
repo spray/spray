@@ -49,7 +49,7 @@ trait ConnectionActors extends IOPeer {
 
     //# final-stages
     def baseCommandPipeline: Pipeline[Command] = {
-      case IOPeer.Send(buffers, ack)          => ioBridge ! IOBridge.Send(handle, buffers, ack)
+      case IOPeer.Send(buffers, ack)          => ioBridge ! IOBridge.Send(handle, buffers, eventize(ack))
       case IOPeer.Close(reason)               => ioBridge ! IOBridge.Close(handle, reason)
       case IOPeer.StopReading                 => ioBridge ! IOBridge.StopReading(handle)
       case IOPeer.ResumeReading               => ioBridge ! IOBridge.ResumeReading(handle)
@@ -68,6 +68,11 @@ trait ConnectionActors extends IOPeer {
     }
     //#
 
+    def eventize(ack: Option[Any]) = ack match {
+      case None | Some(_: Event) => ack
+      case Some(x) => Some(IOPeer.AckEvent(x))
+    }
+
     //# receive
     def receive = {
       case x: Command => pipelines.commandPipeline(x)
@@ -77,5 +82,4 @@ trait ConnectionActors extends IOPeer {
     }
     //#
   }
-
 }

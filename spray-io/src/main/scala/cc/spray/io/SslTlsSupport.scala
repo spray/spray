@@ -41,7 +41,7 @@ object SslTlsSupport {
         var inboundReceptacle: ByteBuffer = _ // holds incoming data that are too small to be decrypted yet
 
         val commandPipeline: CPL = {
-          case x@ IOPeer.Send(buffers, ack) =>
+          case x: IOPeer.Send =>
             if (pendingSends.isEmpty) withTempBuf(encrypt(Send(x), _))
             else pendingSends += Send(x)
 
@@ -79,12 +79,13 @@ object SslTlsSupport {
           import send._
           log.debug("Encrypting {} buffers with {} bytes", buffers.length, buffers.map(_.remaining).mkString(","))
           tempBuf.clear()
-          val sendAckAndPreContentLeft = ack && contentLeft()
+          val ackDefinedAndPreContentLeft = ack.isDefined && contentLeft()
           val result = engine.wrap(buffers, tempBuf)
           val postContentLeft = contentLeft()
           tempBuf.flip()
           if (tempBuf.remaining > 0) commandPL {
-            IOPeer.Send(tempBuf.copy :: Nil, sendAckAndPreContentLeft && !postContentLeft)
+            val sendAck = if (ackDefinedAndPreContentLeft && !postContentLeft) ack else None
+            IOPeer.Send(tempBuf.copy :: Nil, sendAck)
           }
           result.getStatus match {
             case OK => result.getHandshakeStatus match {
@@ -185,7 +186,7 @@ object SslTlsSupport {
     }
   }
 
-  private final case class Send(buffers: Array[ByteBuffer], ack: Boolean) {
+  private final case class Send(buffers: Array[ByteBuffer], ack: Option[Any]) {
     @tailrec
     def contentLeft(ix: Int = 0): Boolean = {
       if (ix < buffers.length) {
@@ -195,7 +196,7 @@ object SslTlsSupport {
     }
   }
   private object Send {
-    val Empty = new Send(new Array(0), false)
+    val Empty = new Send(new Array(0), None)
     def apply(x: IOPeer.Send) = new Send(x.buffers.toArray, x.ack)
   }
 }

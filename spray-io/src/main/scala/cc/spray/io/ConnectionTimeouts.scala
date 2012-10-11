@@ -18,6 +18,7 @@ package cc.spray.io
 
 import akka.util.Duration
 import akka.event.LoggingAdapter
+import cc.spray.util.IdleTimeout
 
 
 object ConnectionTimeouts {
