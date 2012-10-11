@@ -42,14 +42,8 @@ object SpdyParsing {
       }
 
       {
-        case x: IOServer.Received =>
-          //println("Got "+x.buffer.limit()+" bytes "+(x.buffer.get(0) & 0xff).toHexString+" in state "+currentParsingState)
-          parse(x.buffer)
-          //println("Afterwards in state "+currentParsingState)
-
-        case x =>
-          //println("Got "+x)
-          eventPL(x)
+        case x: IOServer.Received => parse(x.buffer)
+        case x => eventPL(x)
       }
     }
   }
