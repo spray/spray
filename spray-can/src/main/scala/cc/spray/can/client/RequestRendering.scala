@@ -22,15 +22,21 @@ import cc.spray.io._
 
 object RequestRendering {
 
-  def apply(settings: ClientSettings): CommandPipelineStage = new CommandPipelineStage {
-    val renderer = new RequestRenderer(settings.UserAgentHeader, settings.RequestSizeHint.toInt)
+  def apply(settings: ClientSettings): PipelineStage =
+    new PipelineStage {
+      val renderer = new RequestRenderer(settings.UserAgentHeader, settings.RequestSizeHint.toInt)
 
-    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): CPL = {
-      case ctx: HttpRequestPartRenderingContext =>
-        val rendered = renderer.render(ctx)
-        commandPL(IOPeer.Send(rendered.buffers, ctx.sentAck))
+      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+        new Pipelines {
+          val commandPipeline: CPL = {
+            case ctx: HttpRequestPartRenderingContext =>
+              val rendered = renderer.render(ctx)
+              commandPL(IOPeer.Send(rendered.buffers, ctx.sentAck))
 
-      case cmd => commandPL(cmd)
+            case cmd => commandPL(cmd)
+          }
+
+          val eventPipeline = eventPL
+        }
     }
-  }
 }

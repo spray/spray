@@ -16,7 +16,7 @@
 
 package cc.spray.can.server
 
-import collection.mutable.Queue
+import collection.mutable
 import annotation.tailrec
 import cc.spray.can.rendering.HttpResponsePartRenderingContext
 import cc.spray.can.HttpEvent
@@ -26,73 +26,74 @@ import cc.spray.io._
 
 object PipeliningLimiter {
 
-  def apply(pipeliningLimit: Int) = new DoublePipelineStage {
-    require(pipeliningLimit > 0)
+  def apply(pipeliningLimit: Int): PipelineStage =
+    new PipelineStage {
+      require(pipeliningLimit > 0)
 
-    def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
-      var parkedRequestParts: Queue[HttpRequestPart] = _
-      var openRequests = 0
-      var limit = pipeliningLimit
-      var readingStopped = false
+      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+        new Pipelines {
+          var parkedRequestParts: mutable.Queue[HttpRequestPart] = _
+          var openRequests = 0
+          var limit = pipeliningLimit
+          var readingStopped = false
 
-      val commandPipeline: CPL = {
-        case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEnd] =>
-          openRequests -= 1
-          commandPL(x)
-          if (parkedRequestParts != null && !parkedRequestParts.isEmpty) {
-            unparkOneRequest()
-            if (parkedRequestParts.isEmpty) resumeReading()
+          val commandPipeline: CPL = {
+            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEnd] =>
+              openRequests -= 1
+              commandPL(x)
+              if (parkedRequestParts != null && !parkedRequestParts.isEmpty) {
+                unparkOneRequest()
+                if (parkedRequestParts.isEmpty) resumeReading()
+              }
+
+            case cmd => commandPL(cmd)
           }
 
-        case cmd => commandPL(cmd)
-      }
+          val eventPipeline: EPL = {
+            case ev@ HttpEvent(x: HttpRequestPart) =>
+              if (openRequests == limit) {
+                stopReading()
+                park(x)
+              } else {
+                if (x.isInstanceOf[HttpMessageEnd]) openRequests += 1
+                eventPL(ev)
+              }
 
-      val eventPipeline: EPL = {
-        case ev@ HttpEvent(x: HttpRequestPart) =>
-          if (openRequests == limit) {
-            stopReading()
-            park(x)
-          } else {
-            if (x.isInstanceOf[HttpMessageEnd]) openRequests += 1
-            eventPL(ev)
+            case ev => eventPL(ev)
           }
 
-        case ev => eventPL(ev)
-      }
+          def stopReading() {
+            if (!readingStopped) {
+              readingStopped = true
+              commandPL(IOServer.StopReading)
+            }
+          }
 
-      def stopReading() {
-        if (!readingStopped) {
-          readingStopped = true
-          commandPL(IOServer.StopReading)
-        }
-      }
+          def resumeReading() {
+            if (readingStopped) {
+              readingStopped = false
+              commandPL(IOServer.ResumeReading)
+            }
+          }
 
-      def resumeReading() {
-        if (readingStopped) {
-          readingStopped = false
-          commandPL(IOServer.ResumeReading)
-        }
-      }
+          def park(part: HttpRequestPart) {
+            if (parkedRequestParts == null) parkedRequestParts = mutable.Queue(part)
+            else parkedRequestParts.enqueue(part)
+          }
 
-      def park(part: HttpRequestPart) {
-        if (parkedRequestParts == null) parkedRequestParts = Queue(part)
-        else parkedRequestParts.enqueue(part)
-      }
-
-      @tailrec
-      def unparkOneRequest() {
-        if (!parkedRequestParts.isEmpty) {
-          parkedRequestParts.dequeue() match {
-            case part: HttpMessageEnd =>
-              openRequests += 1
-              eventPL(HttpEvent(part))
-            case part =>
-              eventPL(HttpEvent(part))
-              unparkOneRequest()
+          @tailrec
+          def unparkOneRequest() {
+            if (!parkedRequestParts.isEmpty) {
+              parkedRequestParts.dequeue() match {
+                case part: HttpMessageEnd =>
+                  openRequests += 1
+                  eventPL(HttpEvent(part))
+                case part =>
+                  eventPL(HttpEvent(part))
+                  unparkOneRequest()
+              }
+            }
           }
         }
-      }
     }
-  }
-
 }

@@ -83,39 +83,39 @@ object StatsSupport {
     }
   }
 
-  def apply(holder: StatsHolder) = new DoublePipelineStage {
+  def apply(holder: StatsHolder): PipelineStage =
+    new PipelineStage {
+      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+        new Pipelines {
+          import holder._
+          connectionsOpened.incrementAndGet()
+          adjustMaxOpenConnections()
 
-    def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
-      import holder._
-      connectionsOpened.incrementAndGet()
-      adjustMaxOpenConnections()
+          val commandPipeline: CPL = {
+            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageStart] =>
+              responseStarts.incrementAndGet()
+              commandPL(x)
 
-      val commandPipeline: CPL = {
-        case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageStart] =>
-          responseStarts.incrementAndGet()
-          commandPL(x)
+            case x: IOServer.Tell if x.message.isInstanceOf[Timeout] =>
+              requestTimeouts.incrementAndGet()
+              commandPL(x)
 
-        case x: IOServer.Tell if x.message.isInstanceOf[Timeout] =>
-          requestTimeouts.incrementAndGet()
-          commandPL(x)
+            case cmd => commandPL(cmd)
+          }
 
-        case cmd => commandPL(cmd)
-      }
+          val eventPipeline: EPL = {
+            case ev: HttpMessageStartEvent =>
+              requestStarts.incrementAndGet()
+              adjustMaxOpenRequests()
+              eventPL(ev)
 
-      val eventPipeline: EPL = {
-        case ev: HttpMessageStartEvent =>
-          requestStarts.incrementAndGet()
-          adjustMaxOpenRequests()
-          eventPL(ev)
+            case x: HttpServer.Closed =>
+              connectionsClosed.incrementAndGet()
+              if (x.reason == IdleTimeout) idleTimeouts.incrementAndGet()
+              eventPL(x)
 
-        case x: HttpServer.Closed =>
-          connectionsClosed.incrementAndGet()
-          if (x.reason == IdleTimeout) idleTimeouts.incrementAndGet()
-          eventPL(x)
-
-        case ev => eventPL(ev)
-      }
+            case ev => eventPL(ev)
+          }
+        }
     }
-  }
-
 }

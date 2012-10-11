@@ -23,28 +23,28 @@ import HttpHeaders._
 
 object RemoteAddressHeaderSupport {
 
-  def apply(): EventPipelineStage = new EventPipelineStage {
-    def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): EPL = new EPL {
-      val raHeader = `Remote-Address`(context.handle.remoteAddress.getAddress)
-      def appendHeader(request: HttpRequest) = request.mapHeaders(raHeader :: _)
+  def apply(): PipelineStage =
+    new PipelineStage {
+      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+        new Pipelines {
+          val raHeader = `Remote-Address`(context.handle.remoteAddress.getAddress)
+          def appendHeader(request: HttpRequest) = request.mapHeaders(raHeader :: _)
 
-      def apply(ev: Event) {
-        ev match {
-          case x: RequestParsing.HttpMessageStartEvent => eventPL {
-            x.copy(
-              messagePart = x.messagePart match {
-                case request: HttpRequest => appendHeader(request)
-                case ChunkedRequestStart(request) => ChunkedRequestStart(appendHeader(request))
-                case _ => throw new IllegalStateException
-              }
-            )
+          val commandPipeline = commandPL
+
+          val eventPipeline: EPL = {
+            case x: RequestParsing.HttpMessageStartEvent => eventPL {
+              x.copy(
+                messagePart = x.messagePart match {
+                  case request: HttpRequest => appendHeader(request)
+                  case ChunkedRequestStart(request) => ChunkedRequestStart(appendHeader(request))
+                  case _ => throw new IllegalStateException
+                }
+              )
+            }
+
+            case ev => eventPL(ev)
           }
-
-          case ev => eventPL(ev)
         }
-      }
     }
-
-  }
-
 }

@@ -23,25 +23,29 @@ import cc.spray.io._
 
 object ResponseRendering {
 
-  def apply(settings: ServerSettings): CommandPipelineStage = {
-    new CommandPipelineStage {
+  def apply(settings: ServerSettings): PipelineStage =
+    new PipelineStage {
       val renderer = new ResponseRenderer(
         settings.ServerHeader,
         settings.ChunklessStreaming,
         settings.ResponseSizeHint.toInt
       )
 
-      def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): CPL = {
-        case ctx: HttpResponsePartRenderingContext =>
-          val rendered = renderer.render(ctx)
-          val buffers = rendered.buffers
-          if (!buffers.isEmpty)
-            commandPL(IOPeer.Send(buffers, ctx.sentAck))
-          if (rendered.closeConnection)
-            commandPL(IOPeer.Close(CleanClose))
+      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+        new Pipelines {
+          val commandPipeline: CPL = {
+            case ctx: HttpResponsePartRenderingContext =>
+              val rendered = renderer.render(ctx)
+              val buffers = rendered.buffers
+              if (!buffers.isEmpty)
+                commandPL(IOPeer.Send(buffers, ctx.sentAck))
+              if (rendered.closeConnection)
+                commandPL(IOPeer.Close(CleanClose))
 
-        case cmd => commandPL(cmd)
-      }
+            case cmd => commandPL(cmd)
+          }
+
+          val eventPipeline = eventPL
+        }
     }
-  }
 }

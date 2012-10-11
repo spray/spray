@@ -17,7 +17,7 @@
 package cc.spray.can.client
 
 import akka.event.LoggingAdapter
-import collection.mutable.Queue
+import collection.mutable
 import java.nio.ByteBuffer
 import annotation.tailrec
 import cc.spray.can.rendering.HttpRequestPartRenderingContext
@@ -33,86 +33,84 @@ object ResponseParsing {
 
   private val UnmatchedResponseErrorState = ErrorState("Response to non-existent request")
 
-  def apply(settings: ParserSettings, log: LoggingAdapter): DoublePipelineStage = new DoublePipelineStage {
+  def apply(settings: ParserSettings, log: LoggingAdapter): PipelineStage =
+    new PipelineStage {
+      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+        new Pipelines {
+          var currentParsingState: ParsingState = UnmatchedResponseErrorState
+          val openRequestMethods = mutable.Queue.empty[HttpMethod]
 
-    def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): Pipelines = {
+          def startParser = new EmptyResponseParser(settings, openRequestMethods.head == HttpMethods.HEAD)
 
-      new Pipelines {
-        var currentParsingState: ParsingState = UnmatchedResponseErrorState
-        val openRequestMethods = Queue.empty[HttpMethod]
-
-        def startParser = new EmptyResponseParser(settings, openRequestMethods.head == HttpMethods.HEAD)
-
-        @tailrec
-        final def parse(buffer: ByteBuffer) {
-          currentParsingState match {
-            case x: IntermediateState =>
-              if (buffer.remaining > 0) {
-                currentParsingState = x.read(buffer)
-                parse(buffer)
-              } // else wait for more input
-
-            case x: HttpMessagePartCompletedState => x.toHttpMessagePart match {
-              case part: HttpMessageEnd =>
-                eventPL(HttpEvent(part))
-                openRequestMethods.dequeue()
-                if (openRequestMethods.isEmpty) {
-                  currentParsingState = UnmatchedResponseErrorState
-                  if (buffer.remaining > 0) parse(buffer) // trigger error if buffer is not empty
-                } else {
-                  currentParsingState = startParser
+          @tailrec
+          final def parse(buffer: ByteBuffer) {
+            currentParsingState match {
+              case x: IntermediateState =>
+                if (buffer.remaining > 0) {
+                  currentParsingState = x.read(buffer)
                   parse(buffer)
-                }
-              case part =>
-                eventPL(HttpEvent(part))
-                currentParsingState = new ChunkParser(settings)
-                parse(buffer)
+                } // else wait for more input
+
+              case x: HttpMessagePartCompletedState => x.toHttpMessagePart match {
+                case part: HttpMessageEnd =>
+                  eventPL(HttpEvent(part))
+                  openRequestMethods.dequeue()
+                  if (openRequestMethods.isEmpty) {
+                    currentParsingState = UnmatchedResponseErrorState
+                    if (buffer.remaining > 0) parse(buffer) // trigger error if buffer is not empty
+                  } else {
+                    currentParsingState = startParser
+                    parse(buffer)
+                  }
+                case part =>
+                  eventPL(HttpEvent(part))
+                  currentParsingState = new ChunkParser(settings)
+                  parse(buffer)
+              }
+
+              case _: Expect100ContinueState =>
+                currentParsingState = ErrorState("'Expect: 100-continue' is not allowed in HTTP responses")
+                parse(buffer) // trigger error
+
+              case ErrorState.Dead => // if we already handled the error state we ignore all further input
+
+              case x: ErrorState =>
+                log.warning("Received illegal response: {}", x.message)
+                commandPL(IOPeer.Close(ProtocolError(x.message)))
+                currentParsingState = ErrorState.Dead // set to "special" ErrorState that ignores all further input
             }
+          }
 
-            case _: Expect100ContinueState =>
-              currentParsingState = ErrorState("'Expect: 100-continue' is not allowed in HTTP responses")
-              parse(buffer) // trigger error
+          val commandPipeline: CPL = {
+            case x: HttpRequestPartRenderingContext =>
+              def register(req: HttpRequest) {
+                openRequestMethods.enqueue(req.method)
+                if (currentParsingState eq UnmatchedResponseErrorState) currentParsingState = startParser
+              }
+              x.requestPart match {
+                case x: HttpRequest => register(x)
+                case x: ChunkedRequestStart => register(x.request)
+                case _ =>
+              }
+              commandPL(x)
 
-            case ErrorState.Dead => // if we already handled the error state we ignore all further input
+            case cmd => commandPL(cmd)
+          }
 
-            case x: ErrorState =>
-              log.warning("Received illegal response: {}", x.message)
-              commandPL(IOPeer.Close(ProtocolError(x.message)))
-              currentParsingState = ErrorState.Dead // set to "special" ErrorState that ignores all further input
+          val eventPipeline: EPL = {
+            case x: IOPeer.Received => parse(x.buffer)
+
+            case ev@IOPeer.Closed(_, PeerClosed) =>
+              currentParsingState match {
+                case x: ToCloseBodyParser =>
+                  currentParsingState = x.complete
+                  parse(ByteBuffer.wrap(EmptyByteArray))
+                case _ =>
+              }
+              eventPL(ev)
+
+            case ev => eventPL(ev)
           }
         }
-
-        val commandPipeline: CPL = {
-          case x: HttpRequestPartRenderingContext =>
-            def register(req: HttpRequest) {
-              openRequestMethods.enqueue(req.method)
-              if (currentParsingState eq UnmatchedResponseErrorState) currentParsingState = startParser
-            }
-            x.requestPart match {
-              case x: HttpRequest => register(x)
-              case x: ChunkedRequestStart => register(x.request)
-              case _ =>
-            }
-            commandPL(x)
-
-          case cmd => commandPL(cmd)
-        }
-
-        val eventPipeline: EPL = {
-          case x: IOPeer.Received => parse(x.buffer)
-
-          case ev@IOPeer.Closed(_, PeerClosed) =>
-            currentParsingState match {
-              case x: ToCloseBodyParser =>
-                currentParsingState = x.complete
-                parse(ByteBuffer.wrap(EmptyByteArray))
-              case _ =>
-            }
-            eventPL(ev)
-
-          case ev => eventPL(ev)
-        }
-      }
     }
-  }
 }

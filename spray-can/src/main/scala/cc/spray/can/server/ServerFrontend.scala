@@ -30,10 +30,10 @@ object ServerFrontend {
   def apply(serverSettings: ServerSettings,
             messageHandler: MessageHandler,
             timeoutResponse: HttpRequest => HttpResponse,
-            loggingAdapter: LoggingAdapter): DoublePipelineStage = {
+            loggingAdapter: LoggingAdapter): PipelineStage = {
 
-    new DoublePipelineStage {
-      def build(context: PipelineContext, commandPL: Pipeline[Command], eventPL: Pipeline[Event]): Pipelines = {
+    new PipelineStage {
+      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = {
         new Pipelines with OpenRequestComponent {
           private var firstOpenRequest: OpenRequest = EmptyOpenRequest
           private var firstUnconfirmed: OpenRequest = EmptyOpenRequest

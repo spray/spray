@@ -24,42 +24,42 @@ import cc.spray.io._
 
 object ResponseChunkAggregation {
 
-  def apply(limit: Int): EventPipelineStage = new EventPipelineStage {
+  def apply(limit: Int): PipelineStage =
+    new PipelineStage {
+      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+        new Pipelines {
+          var response: HttpResponse = _
+          var bb: BufferBuilder = _
+          var closed = false
 
-    def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): EPL = new EPL {
-      var response: HttpResponse = _
-      var bb: BufferBuilder = _
-      var closed = false
+          val commandPipeline = commandPL
 
-      def apply(event: Event) {
-        event match {
-          case HttpEvent(ChunkedResponseStart(res)) => if (!closed) {
-            response = res
-            if (res.entity.buffer.length <= limit) bb = BufferBuilder(res.entity.buffer)
-            else closeWithError()
+          val eventPipeline: EPL = {
+            case HttpEvent(ChunkedResponseStart(res)) => if (!closed) {
+              response = res
+              if (res.entity.buffer.length <= limit) bb = BufferBuilder(res.entity.buffer)
+              else closeWithError()
+            }
+
+            case HttpEvent(MessageChunk(body, _)) => if (!closed) {
+              if (bb.size + body.length <= limit) bb.append(body)
+              else closeWithError()
+            }
+
+            case HttpEvent(_: ChunkedMessageEnd) => if (!closed) {
+              eventPL(HttpEvent(response.copy(entity = response.entity.map((ct, _) => ct -> bb.toArray))))
+              response = null
+              bb = null
+            }
+
+            case ev => eventPL(ev)
           }
 
-          case HttpEvent(MessageChunk(body, _)) => if (!closed) {
-            if (bb.size + body.length <= limit) bb.append(body)
-            else closeWithError()
+          def closeWithError() {
+            val msg = "Aggregated response entity greater than configured limit of " + limit + " bytes"
+            commandPL(HttpClient.Close(ProtocolError(msg)))
+            closed = true
           }
-
-          case HttpEvent(_: ChunkedMessageEnd) => if (!closed) {
-            eventPL(HttpEvent(response.copy(entity = response.entity.map((ct, _) => ct -> bb.toArray))))
-            response = null
-            bb = null
-          }
-
-          case ev => eventPL(ev)
         }
-      }
-
-      def closeWithError() {
-        val msg = "Aggregated response entity greater than configured limit of " + limit + " bytes"
-        commandPL(HttpClient.Close(ProtocolError(msg)))
-        closed = true
-      }
     }
-
-  }
 }
