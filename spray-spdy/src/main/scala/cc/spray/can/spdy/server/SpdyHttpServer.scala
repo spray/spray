@@ -22,10 +22,13 @@ import cc.spray.io.pipelining.TickGenerator
 import cc.spray.io.Command
 import cc.spray.util.Reply
 
-import pipeline.{SpdyRendering, HttpOnSpdy, SpdyParsing}
+import pipeline._
 import cc.spray.http.HttpResponse
 import cc.spray.can.HttpCommand
-import pipeline.HttpOnSpdy.SpdyContext
+import pipeline.SpdyStreamManager.SpdyContext
+import scala.Some
+import cc.spray.http.HttpResponse
+import cc.spray.can.HttpCommand
 
 
 class SpdyHttpServer(ioBridge: IOBridge, messageHandler: MessageHandler, settings: ServerSettings = ServerSettings())
@@ -176,11 +179,12 @@ object SpdyHttpServer {
                             log: LoggingAdapter)
                            (implicit sslEngineProvider: ServerSSLEngineProvider): PipelineStage = {
     import settings.{StatsSupport => _, _}
-    HttpOnSpdy(messageHandler) {
+    SpdyStreamManager(messageHandler, HttpHelper.unwrapHttpEvent) {
       (RequestChunkAggregationLimit > 0) ? RequestChunkAggregation(RequestChunkAggregationLimit.toInt) >>
       (PipeliningLimit > 0) ? PipeliningLimiter(settings.PipeliningLimit) >>
       settings.StatsSupport ? StatsSupport(statsHolder.get) >>
-      RemoteAddressHeader ? RemoteAddressHeaderSupport()
+      RemoteAddressHeader ? RemoteAddressHeaderSupport() >>
+      HttpOnSpdy()
     } >>
     SpdyRendering() >>
     SpdyParsing() >>

@@ -1,103 +1,54 @@
 package cc.spray.can.spdy
 package pipeline
 
-import java.nio.ByteBuffer
-
 import cc.spray.io.pipelining._
-import cc.spray.io.{IOServer, Command, Event}
-import cc.spray.util.Reply
 
 import cc.spray.http._
 import cc.spray.http.HttpHeaders.RawHeader
 import cc.spray.http.HttpResponse
-import pipeline.SpdyParsing.SpdyFrameReceived
-import pipeline.SpdyRendering.SendSpdyFrame
 import cc.spray.can.{HttpEvent, HttpCommand}
+import pipeline.SpdyStreamManager.{StreamSendData, StreamReply, StreamDataReceived, StreamOpened}
 
 object HttpOnSpdy {
-  def apply(messageHandler: MessageHandler)(innerPipeline: PipelineStage): DoublePipelineStage = new DoublePipelineStage {
+  def apply(): DoublePipelineStage = new DoublePipelineStage {
     def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): BuildResult = new Pipelines {
-      val handler = messageHandler(context)()
 
-      def eventPipeline: (Event) => Unit = {
-        case SpdyFrameReceived(frame) =>
-          frame match {
-            case x: SynStream =>
-              println("Got syn stream "+x)
-              if (x.fin) {
-                val req = requestFromKV(x.keyValues)
-                val ctx = createStreamContext(x.streamId)
-                ctx.pipelines.eventPipeline(HttpEvent(req))
-              } else
-                throw new UnsupportedOperationException("Can't handle requests with contents, right now")
-
-            case x: RstStream =>
-              println("Stream got cancelled "+x)
-
-            case x: Settings =>
-              println("Ignoring settings for now "+x)
-
-            case Ping(id, data) =>
-              println("Got ping "+id)
-
-              commandPL(IOServer.Send(ByteBuffer.wrap(data)))
-
-            case d: DataFrame =>
-              throw new UnsupportedOperationException("Receiving data not supported currently")
-          }
+      def eventPipeline: EPL = {
+        case StreamOpened(headers, finished) =>
+          if (finished) {
+            eventPL(HttpEvent(requestFromKV(headers)))
+          } else
+            throw new UnsupportedOperationException("Can't handle requests with contents, right now")
+        case StreamDataReceived(data, finished) =>
         case x => eventPL(x)
       }
 
-      def commandPipeline: (Command) => Unit = {
-        case x => commandPL(x)
+      def commandPipeline: CPL = unpackHttpCommand {
+        case response: HttpResponse =>
+          val fin = response.entity.buffer.isEmpty
+          commandPL(StreamReply(responseToKV(response), fin))
+
+          if (!fin)
+            commandPL(StreamSendData(response.entity.buffer, true))
+
+        case ChunkedResponseStart(response) =>
+          val fin = response.entity.buffer.isEmpty
+          commandPL(StreamReply(responseToKV(response), fin))
+
+          if (!fin)
+            commandPL(StreamSendData(response.entity.buffer, false))
+
+        case MessageChunk(body, exts) =>
+          commandPL(StreamSendData(body, false))
+
+        case response: ChunkedMessageEnd =>
+          // TODO: maybe use a dedicated Command for this
+          commandPL(StreamSendData(Array.empty, true))
       }
 
-      def createStreamContext(_streamId: Int): SpdyContext = new SpdyContext { ctx =>
-        def streamId: Int = _streamId
-        val pipelines: Pipelines = innerPipeline.buildPipelines(context, createStreamCommandPipeline, createStreamEventPipeline)
-
-        def createStreamEventPipeline: EPL = unpackHttpEvent {
-          case req: HttpRequest =>
-
-            commandPL(IOServer.Tell(handler, req, Reply.withContext(ctx)(context.connectionActorContext.self)))
-        }
-        def createStreamCommandPipeline: CPL = unpackHttpCommand {
-          case response: HttpResponse =>
-            println("Got reply for "+streamId)
-
-            val fin = response.entity.buffer.isEmpty
-            send(SynReply(streamId, fin, responseToKV(response)))
-
-            if (!fin)
-              send(DataFrame(streamId, true, response.entity.buffer))
-
-          case ChunkedResponseStart(response) =>
-            val fin = response.entity.buffer.isEmpty
-            send(SynReply(streamId, fin, responseToKV(response)))
-
-            if (!fin)
-              send(DataFrame(streamId, false, response.entity.buffer))
-
-          case MessageChunk(body, exts) =>
-
-            send(DataFrame(streamId, false, body))
-
-          case response: ChunkedMessageEnd =>
-            send(DataFrame(streamId, true, Array.empty))
-        }
-      }
-
-      def unpackHttpEvent(inner: HttpRequestPart => Unit): EPL = {
-        case HttpEvent(e: HttpRequestPart) => inner(e)
-        case e => eventPL(e)
-      }
       def unpackHttpCommand(inner: HttpResponsePart => Unit): CPL = {
         case HttpCommand(c: HttpResponsePart) => inner(c)
         case c => commandPL(c)
-      }
-
-      def send(frame: Frame) {
-        commandPL(SendSpdyFrame(frame))
       }
     }
   }
@@ -124,10 +75,4 @@ object HttpOnSpdy {
       (header.name.toLowerCase, header.value)
     }
   }
-
-  trait SpdyContext {
-    def streamId: Int
-    def pipelines: Pipelines
-  }
-  case class CommandWithSpdyCtx(ctx: SpdyContext, msg: Any) extends Command
 }
