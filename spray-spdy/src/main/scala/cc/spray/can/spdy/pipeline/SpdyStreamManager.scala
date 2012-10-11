@@ -10,12 +10,12 @@ import pipeline.SpdyRendering.SendSpdyFrame
 
 object SpdyStreamManager {
   def apply(messageHandler: MessageHandler, eventExtractor: Event => Any)(innerPipeline: PipelineStage): DoublePipelineStage = new DoublePipelineStage {
-    def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): BuildResult = new Pipelines {
+    def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
       val handler = messageHandler(context)()
 
       //val streamCtx = collection.mutable.Map.empty[Int, SpdyContext]
 
-      def eventPipeline: (Event) => Unit = {
+      def eventPipeline: EPL = {
         case SpdyFrameReceived(frame) =>
           frame match {
             case x: SynStream =>
@@ -39,7 +39,7 @@ object SpdyStreamManager {
         case x => eventPL(x)
       }
 
-      def commandPipeline: (Command) => Unit = {
+      def commandPipeline: CPL = {
         case x => commandPL(x)
       }
 

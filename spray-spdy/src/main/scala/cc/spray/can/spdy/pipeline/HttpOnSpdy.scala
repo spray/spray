@@ -42,7 +42,7 @@ object HttpOnSpdy {
           commandPL(StreamSendData(body, false))
 
         case response: ChunkedMessageEnd =>
-          // TODO: maybe use a dedicated Command for this
+          // TODO: maybe use a dedicated Command for (half-)closing a connection
           commandPL(StreamSendData(Array.empty, true))
       }
 
