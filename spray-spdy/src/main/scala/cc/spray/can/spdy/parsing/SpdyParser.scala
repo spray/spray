@@ -94,7 +94,7 @@ class FrameDataReader(inflater: Inflater, header: Array[Byte], length: Int) exte
 
     inflater.setInput(data)
 
-    dump(data)
+    //dump(data)
 
 
     val buf = new Array[Byte](1000)
@@ -109,10 +109,10 @@ class FrameDataReader(inflater: Inflater, header: Array[Byte], length: Int) exte
       val read2 = inflater.inflate(buf, cur, 1000 - cur)
       cur += read
     //}
-    println("Finished "+inflater.finished())
+    //println("Finished "+inflater.finished())
 
     val is = new ByteArrayInputStream(buf)
-    dump(buf)
+    //dump(buf)
 
 
     def u2(): Int = u2be(is.read.toByte, is.read.toByte)
@@ -133,7 +133,7 @@ class FrameDataReader(inflater: Inflater, header: Array[Byte], length: Int) exte
       utf8StringOfLength(u2())
 
     val entries = u2()
-    println("Should read %d entries" format entries)
+    //println("Should read %d entries" format entries)
 
     @tailrec def readEntries(remaining: Int, current: Seq[(String, String)]): Seq[(String, String)] = {
       if (remaining > 0) {
