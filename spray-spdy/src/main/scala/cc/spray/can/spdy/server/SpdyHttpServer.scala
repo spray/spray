@@ -14,8 +14,6 @@ import cc.spray.io.IOServer
 import cc.spray.io.ConnectionActors
 import cc.spray.can.server.StatsSupport.StatsHolder
 import cc.spray.io.Handle
-import cc.spray.http.HttpResponse
-import cc.spray.can.HttpCommand
 import cc.spray.http.HttpRequest
 import cc.spray.io.pipelining.PipelineStage
 import cc.spray.io.pipelining.ConnectionTimeouts
@@ -25,15 +23,9 @@ import cc.spray.io.Command
 import cc.spray.util.Reply
 
 import pipeline.{SpdyRendering, HttpOnSpdy, SpdyParsing}
-import cc.spray.http.ChunkedResponseStart
-import cc.spray.http.ChunkedMessageEnd
 import cc.spray.http.HttpResponse
 import cc.spray.can.HttpCommand
-import cc.spray.http.ChunkedResponseStart
-import cc.spray.http.ChunkedMessageEnd
-import cc.spray.http.HttpResponse
-import cc.spray.can.HttpCommand
-import pipeline.HttpOnSpdy.{SpdyContext, CommandWithSpdyCtx}
+import pipeline.HttpOnSpdy.SpdyContext
 
 
 class SpdyHttpServer(ioBridge: IOBridge, messageHandler: MessageHandler, settings: ServerSettings = ServerSettings())
