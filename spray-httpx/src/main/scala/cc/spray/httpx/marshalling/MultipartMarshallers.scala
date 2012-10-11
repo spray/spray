@@ -94,8 +94,8 @@ trait MultipartMarshallers {
               Some(contentType)
             }
             override def marshalTo(entity: HttpEntity) { ctx.marshalTo(overrideContentType(entity)) }
-            override def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) =
-              ctx.startChunkedMessage(overrideContentType(entity))
+            override def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any])(implicit sender: ActorRef) =
+              ctx.startChunkedMessage(overrideContentType(entity), sentAck)
             def overrideContentType(entity: HttpEntity) =
               entity.map((ct, buf) => (new `multipart/form-data`(boundary), buf))
           }

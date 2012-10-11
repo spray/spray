@@ -57,11 +57,9 @@ class BasicUnmarshallersSpec extends Specification {
         Right(FormData(Map("key" -> "value", "key2" -> "")))
     }
     "reject illegal form content" in {
-      val Msg = "'key=really=not_good' is not a valid form content: " +
-            "'key=really=not_good' does not constitute a valid key=value pair"
-      (HttpBody(`application/x-www-form-urlencoded`, "key=really=not_good").as[FormData] match {
-        case Left(MalformedContent(Msg, _)) => true
-      }) must beTrue
+      val Left(MalformedContent(msg, _)) = HttpBody(`application/x-www-form-urlencoded`, "key=really=not_good").as[FormData]
+      msg === "'key=really=not_good' is not a valid form content: " +
+        "'key=really=not_good' does not constitute a valid key=value pair"
     }
   }
 

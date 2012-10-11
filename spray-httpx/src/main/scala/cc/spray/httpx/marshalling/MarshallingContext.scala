@@ -51,8 +51,10 @@ trait MarshallingContext { self =>
    * Uses the given entity to start a chunked response stream.
    * The method returns an ActorRef that should be used as the channel for subsequent [[cc.spray.http.MessageChunk]]
    * instances and the finalizing [[cc.spray.http.ChunkedMessageEnd]].
+   * If a sentAck is defined it will be sent back to the sender after the initial message part has been successfully
+   * passed to the network.
    */
-  def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef): ActorRef
+  def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any] = None)(implicit sender: ActorRef): ActorRef
 
   /**
    * Creates a new MarshallingContext based on this one, that overrides the ContentType of the produced entity
@@ -63,8 +65,8 @@ trait MarshallingContext { self =>
      override def tryAccept(ct: ContentType) =
        Some(if (contentType.isCharsetDefined) ct.withCharset(contentType.charset) else ct)
      override def marshalTo(entity: HttpEntity) { self.marshalTo(overrideContentType(entity)) }
-     override def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) =
-       self.startChunkedMessage(overrideContentType(entity))
+     override def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any])(implicit sender: ActorRef) =
+       self.startChunkedMessage(overrideContentType(entity), sentAck)
      def overrideContentType(entity: HttpEntity) = entity.map((ct, buf) => (contentType, buf))
    }
 }
@@ -78,5 +80,6 @@ class DelegatingMarshallingContext(underlying: MarshallingContext) extends Marsh
   def rejectMarshalling(supported: Seq[ContentType]) { underlying.rejectMarshalling(supported) }
   def marshalTo(entity: HttpEntity) { underlying.marshalTo(entity) }
   def handleError(error: Throwable) { underlying.handleError(error) }
-  def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) = underlying.startChunkedMessage(entity)
+  def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any] = None)(implicit sender: ActorRef) =
+    underlying.startChunkedMessage(entity, sentAck)
 }

@@ -125,7 +125,7 @@ trait MiscDirectives {
    * not be matched.
    */
   def rejectEmptyResponse: Directive0 = mapRouteResponse {
-    case HttpResponse(_, EmptyEntity, _, _) => Rejected(Nil)
+    case HttpMessagePartWrapper(HttpResponse(_, EmptyEntity, _, _), _) => Rejected(Nil)
     case x => x
   }
 

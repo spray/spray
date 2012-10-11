@@ -93,9 +93,31 @@ case class RequestContext(
   /**
    * Returns a copy of this context with the given response transformation function chained into the response chain.
    */
+  def mapHttpResponsePartResponse(f: HttpResponsePart => HttpResponsePart) = mapRouteResponse {
+    case x: HttpResponsePart => f(x)
+    case Confirmed(x: HttpResponsePart, ack) => Confirmed(f(x), ack)
+    case x => x
+  }
+
+  /**
+   * Returns a copy of this context with the given response transformation function chained into the response chain.
+   */
+  def flatMapHttpResponsePartResponse(f: HttpResponsePart => Seq[HttpResponsePart]) = flatMapRouteResponse {
+    case x: HttpResponsePart => f(x)
+    case Confirmed(x: HttpResponsePart, ack) =>
+      val parts = f(x)
+      parts.updated(parts.size-1, Confirmed(parts.last, ack))
+    case x => x :: Nil
+  }
+
+  /**
+   * Returns a copy of this context with the given response transformation function chained into the response chain.
+   */
   def mapHttpResponse(f: HttpResponse => HttpResponse) = mapRouteResponse {
     case x: HttpResponse => f(x)
     case ChunkedResponseStart(x) => ChunkedResponseStart(f(x))
+    case Confirmed(ChunkedResponseStart(x), ack) => Confirmed(ChunkedResponseStart(f(x)), ack)
+    case Confirmed(x: HttpResponse, ack) => Confirmed(f(x), ack)
     case x => x
   }
 
@@ -233,8 +255,10 @@ case class RequestContext(
       def rejectMarshalling(onlyTo: Seq[ContentType]) { reject(UnacceptedResponseContentTypeRejection(onlyTo)) }
       def marshalTo(entity: HttpEntity) { complete(response(entity)) }
       def handleError(error: Throwable) { failWith(error) }
-      def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) = {
-        responder.tell(ChunkedResponseStart(response(entity)), sender)
+      def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any])(implicit sender: ActorRef) = {
+        val chunkStart = ChunkedResponseStart(response(entity))
+        val wrapper = if (sentAck.isEmpty) chunkStart else Confirmed(chunkStart, sentAck)
+        responder.tell(wrapper, sender)
         responder
       }
       def response(entity: HttpEntity) = HttpResponse(status, entity, headers)

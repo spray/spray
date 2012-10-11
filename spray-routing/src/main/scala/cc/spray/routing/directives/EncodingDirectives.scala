@@ -57,7 +57,7 @@ trait EncodingDirectives {
   def encodeResponse(encoder: Encoder) = {
     def applyEncoder = mapRequestContext { ctx =>
       @volatile var compressor: Compressor = null
-      ctx.flatMapRouteResponse {
+      ctx.flatMapHttpResponsePartResponse {
         case response: HttpResponse => encoder.encode(response) :: Nil
         case x@ ChunkedResponseStart(response) => encoder.startEncoding(response) match {
           case Some((compressedResponse, c)) =>
@@ -67,7 +67,7 @@ trait EncodingDirectives {
         }
         case MessageChunk(body, exts) if compressor != null =>
           MessageChunk(compressor.compress(body).flush(), exts) :: Nil
-        case x@ ChunkedMessageEnd if compressor != null =>
+        case x: ChunkedMessageEnd if compressor != null =>
           val body = compressor.finish()
           if (body.length > 0) MessageChunk(body) :: x :: Nil else x :: Nil
         case x => x :: Nil

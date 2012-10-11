@@ -24,8 +24,8 @@ import java.util.concurrent.atomic.AtomicInteger
 import akka.actor.{UnhandledMessage, ActorRef, ActorSystem}
 import akka.util.NonFatal
 import akka.spray.UnregisteredActorRef
-import cc.spray.util.model.DefaultIOSent
 import cc.spray.http._
+import cc.spray.util._
 
 
 /**
@@ -97,59 +97,63 @@ class Servlet30ConnectorServlet extends HttpServlet {
       }
     }
 
-    def postProcess(error: Option[Throwable], sender: ActorRef) {
+    def postProcess(error: Option[Throwable], sentAck: Option[Any], close: Boolean)(implicit sender: ActorRef) {
       error match {
         case None =>
-          if (settings.AckSends) sender.tell(DefaultIOSent, this)
+          sentAck.foreach(sender.tell(_, this))
+          if (close) sender.tell(Closed(CleanClose), this)
         case Some(e) =>
-          serviceActor.tell(ServletError(e), this)
+          sender.tell(Closed(IOError(e)), this)
           asyncContext.complete()
       }
     }
 
     def handle(message: Any)(implicit sender: ActorRef) {
       message match {
-        case response: HttpResponse =>
-          if (state.compareAndSet(OPEN, COMPLETED)) {
-            val result = writeResponse(response, hsResponse, req) { asyncContext.complete() }
-            postProcess(result, sender)
-          } else state.get match {
-            case STARTED =>
-              log.warning("Received an HttpResponse after a ChunkedResponseStart, dropping ...\nRequest: {}\nResponse: {}", req, response)
-            case COMPLETED =>
-              log.warning("Received a second response for a request that was already completed, dropping ...\nRequest: {}\nResponse: {}", req, response)
-          }
+        case wrapper: HttpMessagePartWrapper if wrapper.messagePart.isInstanceOf[HttpResponsePart] =>
+          wrapper.messagePart.asInstanceOf[HttpResponsePart] match {
+            case response: HttpResponse =>
+              if (state.compareAndSet(OPEN, COMPLETED)) {
+                val error = writeResponse(response, hsResponse, req) { asyncContext.complete() }
+                postProcess(error, wrapper.sentAck, close = true)
+              } else state.get match {
+                case STARTED =>
+                  log.warning("Received an HttpResponse after a ChunkedResponseStart, dropping ...\nRequest: {}\nResponse: {}", req, response)
+                case COMPLETED =>
+                  log.warning("Received a second response for a request that was already completed, dropping ...\nRequest: {}\nResponse: {}", req, response)
+              }
 
-        case response: ChunkedResponseStart =>
-          if (state.compareAndSet(OPEN, STARTED)) {
-            val result = writeResponse(response, hsResponse, req) {}
-            postProcess(result, sender)
-          } else state.get match {
-            case STARTED =>
-              log.warning("Received a second ChunkedResponseStart, dropping ...\nRequest: {}\nResponse: {}", req, response)
-            case COMPLETED =>
-              log.warning("Received a ChunkedResponseStart for a request that was already completed, dropping ...\nRequest: {}\nResponse: {}", req, response)
-          }
+            case response: ChunkedResponseStart =>
+              if (state.compareAndSet(OPEN, STARTED)) {
+                val error = writeResponse(response, hsResponse, req) {}
+                postProcess(error, wrapper.sentAck, close = false)
+              } else state.get match {
+                case STARTED =>
+                  log.warning("Received a second ChunkedResponseStart, dropping ...\nRequest: {}\nResponse: {}", req, response)
+                case COMPLETED =>
+                  log.warning("Received a ChunkedResponseStart for a request that was already completed, dropping ...\nRequest: {}\nResponse: {}", req, response)
+              }
 
-        case MessageChunk(body, _) => state.get match {
-          case OPEN =>
-            log.warning("Received a MessageChunk before a ChunkedResponseStart, dropping ...\nRequest: {}\nChunk: {} bytes\n", req, body.length)
-          case STARTED =>
-            val result = writeChunk(body, hsResponse, req)
-            postProcess(result, sender)
-          case COMPLETED =>
-            log.warning("Received a MessageChunk for a request that was already completed, dropping ...\nRequest: {}\nChunk: {} bytes", req, body.length)
-        }
+            case MessageChunk(body, _) => state.get match {
+              case OPEN =>
+                log.warning("Received a MessageChunk before a ChunkedResponseStart, dropping ...\nRequest: {}\nChunk: {} bytes\n", req, body.length)
+              case STARTED =>
+                val error = writeChunk(body, hsResponse, req)
+                postProcess(error, wrapper.sentAck, close = false)
+              case COMPLETED =>
+                log.warning("Received a MessageChunk for a request that was already completed, dropping ...\nRequest: {}\nChunk: {} bytes", req, body.length)
+            }
 
-        case _: ChunkedMessageEnd =>
-          if (state.compareAndSet(STARTED, COMPLETED)) {
-            val result = closeResponseStream(hsResponse, req) { asyncContext.complete() }
-            postProcess(result, sender)
-          } else state.get match {
-            case OPEN =>
-              log.warning("Received a ChunkedMessageEnd before a ChunkedResponseStart, dropping ...\nRequest: {}", req)
-            case COMPLETED =>
-              log.warning("Received a ChunkedMessageEnd for a request that was already completed, dropping ...\nRequest: {}", req)
+            case _: ChunkedMessageEnd =>
+              if (state.compareAndSet(STARTED, COMPLETED)) {
+                val error = closeResponseStream(hsResponse, req) { asyncContext.complete() }
+                postProcess(error, wrapper.sentAck, close = true)
+              } else state.get match {
+                case OPEN =>
+                  log.warning("Received a ChunkedMessageEnd before a ChunkedResponseStart, dropping ...\nRequest: {}", req)
+                case COMPLETED =>
+                  log.warning("Received a ChunkedMessageEnd for a request that was already completed, dropping ...\nRequest: {}", req)
+              }
           }
 
         case x => system.eventStream.publish(UnhandledMessage(x, sender, this))
@@ -243,4 +247,6 @@ class Servlet30ConnectorServlet extends HttpServlet {
       "Please try again in a short while!"
   )
 
+  case class Closed(reason: ConnectionClosedReason) extends IOClosed
 }
+

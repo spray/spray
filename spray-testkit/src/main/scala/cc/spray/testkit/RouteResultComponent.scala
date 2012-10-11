@@ -22,7 +22,6 @@ import java.util.concurrent.{TimeUnit, CountDownLatch}
 import akka.actor.{ActorRefFactory, ActorRef}
 import akka.spray.UnregisteredActorRef
 import cc.spray.routing.{RejectionHandler, Rejected, Rejection}
-import cc.spray.util.model.DefaultIOSent
 import cc.spray.http._
 
 
@@ -47,19 +46,19 @@ trait RouteResultComponent {
         def verifiedSender =
           if (sender != null) sender else sys.error("Received message " + message + " from unknown sender (null)")
         message match {
-          case x: HttpResponse =>
+          case HttpMessagePartWrapper(x: HttpResponse, _) =>
             saveResult(Right(x))
             latch.countDown()
           case Rejected(rejections) =>
             saveResult(Left(rejections))
             latch.countDown()
-          case ChunkedResponseStart(x) =>
+          case HttpMessagePartWrapper(ChunkedResponseStart(x), sentAck) =>
             saveResult(Right(x))
-            verifiedSender.tell(DefaultIOSent, this)
-          case x: MessageChunk =>
+            sentAck.foreach(verifiedSender.tell(_, this))
+          case HttpMessagePartWrapper(x: MessageChunk, sentAck) =>
             synchronized { _chunks += x }
-            verifiedSender.tell(DefaultIOSent, this)
-          case ChunkedMessageEnd(extensions, trailer) =>
+            sentAck.foreach(verifiedSender.tell(_, this))
+          case HttpMessagePartWrapper(ChunkedMessageEnd(extensions, trailer), _) =>
             synchronized { _closingExtensions = extensions; _trailer = trailer }
             latch.countDown()
         }

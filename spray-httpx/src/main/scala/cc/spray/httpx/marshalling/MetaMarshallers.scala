@@ -18,7 +18,7 @@ package cc.spray.httpx.marshalling
 
 import akka.dispatch.Future
 import akka.actor.{ActorRef, Actor, Props, ActorRefFactory}
-import cc.spray.util.model.{IOClosed, IOSent}
+import cc.spray.util.IOClosed
 import cc.spray.http._
 
 
@@ -55,31 +55,29 @@ trait MetaMarshallers {
 }
 
 object MetaMarshallers extends MetaMarshallers {
+  private case class SentOk(remaining: Stream[_])
 
   class ChunkingActor[T](marshaller: Marshaller[T], ctx: MarshallingContext) extends Actor {
     var connectionActor: ActorRef = _
-    var remaining: Stream[_] = _
 
     def receive = {
 
       case current #:: rest =>
         val chunkingCtx = new DelegatingMarshallingContext(ctx) {
           override def marshalTo(entity: HttpEntity) {
-            if (connectionActor == null) connectionActor = ctx.startChunkedMessage(entity)
-            else connectionActor ! MessageChunk(entity.buffer)
+            if (connectionActor == null) connectionActor = ctx.startChunkedMessage(entity, Some(SentOk(rest)))
+            else connectionActor ! MessageChunk(entity.buffer).withSentAck(SentOk(rest))
           }
           override def handleError(error: Throwable) {
             context.stop(self)
             ctx.handleError(error)
           }
-          override def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) =
+          override def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any])(implicit sender: ActorRef) =
             sys.error("Cannot marshal a stream of streams")
         }
         marshaller(current.asInstanceOf[T], chunkingCtx)
-        remaining = rest
 
-      case _: IOSent =>
-        assert(remaining != null, "Unmatched AckSend")
+      case SentOk(remaining) =>
         if (remaining.isEmpty) {
           connectionActor ! ChunkedMessageEnd()
           context.stop(self)

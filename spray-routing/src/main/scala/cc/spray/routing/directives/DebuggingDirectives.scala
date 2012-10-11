@@ -44,7 +44,7 @@ trait DebuggingDirectives {
       log.log(level, "Request{}: {}", mark, request2Show)
       ctx.mapRouteResponse { msg =>
         msg match {
-          case response: HttpResponse =>
+          case HttpMessagePartWrapper(response: HttpResponse, _) =>
             log.log(level, "Completed{}:\n  Request: {}\n  Response: {}", mark, request2Show, showResponse(response))
           case Rejected(rejections) =>
             log.log(level, "Rejected{}:\n Request: {}\n  Rejections: {}", mark, request2Show, rejections)
