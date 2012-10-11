@@ -41,7 +41,9 @@ trait ConnComponent {
           log.debug("Opening connection {} to {}:{}", index, host, port)
           pendingResponses = 0
           connection = Connecting
-          httpClient.tell(HttpClient.Connect(host, port), Reply.withContext(this))
+          import HttpClient._
+          val connect = if (sslEnabled) Connect(host, port, SslEnabled) else Connect(host, port)
+          httpClient.tell(connect, Reply.withContext(this))
           dispatch(ctx)
 
         case Connecting =>
@@ -78,7 +80,10 @@ trait ConnComponent {
         case `HTTP/1.1` => response.headers.exists(_ matches { case x: Connection if x.hasClose => })
       }
       log.debug("Dispatching {} response to {}", response.status.value, requestString(request))
-      sender ! response
+      val (errors, parsedResponse) = response.parseHeaders
+      if (settings.WarnOnIllegalHeaders && !errors.isEmpty)
+        log.warning("Problem with {} response to {}, {}", response.status.value, requestString(request), errors)
+      sender ! parsedResponse
       if (closeExpected) clear()
       else pendingResponses -= 1
     }

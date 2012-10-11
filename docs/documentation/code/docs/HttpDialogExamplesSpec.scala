@@ -5,10 +5,9 @@ import akka.actor.{Props, ActorSystem}                // example-1
 import akka.dispatch.Future                           // example-1
 import akka.util.Duration
 import akka.pattern.ask
-import cc.spray.io.pipelining.SingletonHandler
-import cc.spray.io.IOBridge                           // example-1
 import cc.spray.can.client.{HttpDialog, HttpClient}   // example-1
 import cc.spray.can.server.HttpServer
+import cc.spray.io._                                  // example-1
 import cc.spray.util._
 import cc.spray.http._                                // example-1
 import HttpMethods._                                  // example-1

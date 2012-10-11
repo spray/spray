@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.io.pipelining
+package cc.spray.io
 
 import collection.mutable.ListBuffer
 import util.DynamicVariable
@@ -139,8 +139,10 @@ trait PipelineStageTest { test =>
 
   case class Message(msg: AnyRef, sender: ActorRef) // source-quote-message
 
-  implicit def pimpAnyRefWithFrom(msg: AnyRef): { def from(s: ActorRef): Command } =
-    new { def from(s: ActorRef) = Message(msg, s) }
+  implicit def pimpAnyRefWithFrom(msg: AnyRef) = new PimpedAnyRef(msg)
+  class PimpedAnyRef(msg: AnyRef) {
+    def from(sender: ActorRef) = Message(msg, sender)
+  }
 
   def Send(rawMessage: String) = IOPeer.Send(string2ByteBuffer(rawMessage))
   def Received(rawMessage: String) = IOBridge.Received(testHandle, string2ByteBuffer(rawMessage))

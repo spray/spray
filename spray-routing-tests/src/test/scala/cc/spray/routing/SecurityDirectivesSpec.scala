@@ -30,7 +30,7 @@ class SecurityDirectivesSpec extends RoutingSpec {
     Promise.successful(Some(BasicUserContext(userPassOption.get.user)))
   }
 
-  "the 'authenticate(HttpBasic())' directive" should {
+  "the 'authenticate(BasicAuth())' directive" should {
     "reject requests without Authorization header with an AuthenticationRequiredRejection" in {
       Get() ~> {
         authenticate(BasicAuth(dontAuth, "Realm")) { echoComplete }

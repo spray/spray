@@ -18,7 +18,6 @@ package cc.spray.io
 
 import java.net.InetSocketAddress
 import akka.actor._
-import pipelining._
 
 
 trait ConnectionActors extends IOPeer {

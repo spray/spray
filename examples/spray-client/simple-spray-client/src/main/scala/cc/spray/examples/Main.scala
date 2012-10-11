@@ -29,12 +29,6 @@ object Main extends App {
 
   startExample1()
 
-  // finally we drop the main thread but hook the shutdown of
-  // our IOBridge into the shutdown of the applications ActorSystem
-  system.registerOnTermination {
-    ioBridge.stop()
-  }
-
   ///////////////////////////////////////////////////
 
   def startExample1() {

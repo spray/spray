@@ -15,11 +15,9 @@
  */
 
 package cc.spray.io
-package pipelining
 
 import cc.spray.util._
 import akka.event.LoggingAdapter
-import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import javax.net.ssl.{SSLContext, SSLException, SSLEngineResult, SSLEngine}
 import javax.net.ssl.SSLEngineResult.HandshakeStatus._
@@ -28,8 +26,9 @@ import collection.mutable.Queue
 import annotation.tailrec
 import scala.Array
 
+
 object SslTlsSupport {
-  def apply(engineProvider: InetSocketAddress => SSLEngine, log: LoggingAdapter,
+  def apply(engineProvider: PipelineContext => SSLEngine, log: LoggingAdapter,
             sslEnabled: PipelineContext => Boolean = _ => true): PipelineStage = {
     new DoublePipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
@@ -37,7 +36,7 @@ object SslTlsSupport {
         else Pipelines(commandPL, eventPL)
 
       final class SslPipelines(context: PipelineContext, commandPL: CPL, eventPL: EPL) extends Pipelines {
-        val engine = engineProvider(context.handle.remoteAddress)
+        val engine = engineProvider(context)
         val pendingSends = Queue.empty[Send]
         var inboundReceptacle: ByteBuffer = _ // holds incoming data that are too small to be decrypted yet
 
@@ -201,51 +200,57 @@ object SslTlsSupport {
   }
 }
 
-trait ServerSSLEngineProvider extends (InetSocketAddress => SSLEngine)
-object ServerSSLEngineProvider {
-  def apply(f: SSLEngine => SSLEngine)(implicit cp: SSLContextProvider): ServerSSLEngineProvider =
-    default.andThen(f)
+private[io] sealed abstract class SSLEngineProviderCompanion {
+  type Self <: (PipelineContext => SSLEngine)
+  protected def clientMode: Boolean
 
-  implicit def default(implicit cp: SSLContextProvider): ServerSSLEngineProvider = {
+  protected def fromFunc(f: PipelineContext => SSLEngine): Self
+
+  def apply(f: SSLEngine => SSLEngine)(implicit cp: SSLContextProvider): Self =
+    fromFunc(default.andThen(f))
+
+  implicit def default(implicit cp: SSLContextProvider): Self =
+    fromFunc { plc =>
+      val sslContext = cp(plc)
+      val remoteAddress = plc.handle.remoteAddress
+      val engine = sslContext.createSSLEngine(remoteAddress.getHostName, remoteAddress.getPort)
+      engine.setUseClientMode(clientMode)
+      engine
+    }
+}
+
+trait ServerSSLEngineProvider extends (PipelineContext => SSLEngine)
+object ServerSSLEngineProvider extends SSLEngineProviderCompanion {
+  type Self = ServerSSLEngineProvider
+  protected def clientMode = false
+
+  implicit def fromFunc(f: PipelineContext => SSLEngine): Self = {
     new ServerSSLEngineProvider {
-      val context = cp.createSSLContext
-      def apply(a: InetSocketAddress) =
-        make(context.createSSLEngine(a.getHostName, a.getPort))(_.setUseClientMode(false))
-    }
-  }
-  implicit def fromFunc(f: InetSocketAddress => SSLEngine): ServerSSLEngineProvider = {
-    new ServerSSLEngineProvider {
-      def apply(address: InetSocketAddress) = f(address)
+      def apply(plc: PipelineContext) = f(plc)
     }
   }
 }
 
-trait ClientSSLEngineProvider extends (InetSocketAddress => SSLEngine)
-object ClientSSLEngineProvider {
-  def apply(f: SSLEngine => SSLEngine)(implicit cp: SSLContextProvider): ClientSSLEngineProvider =
-    default.andThen(f)
+trait ClientSSLEngineProvider extends (PipelineContext => SSLEngine)
+object ClientSSLEngineProvider extends SSLEngineProviderCompanion {
+  type Self = ClientSSLEngineProvider
+  protected def clientMode = true
 
-  implicit def default(implicit cp: SSLContextProvider): ClientSSLEngineProvider = {
+  implicit def fromFunc(f: PipelineContext => SSLEngine): Self = {
     new ClientSSLEngineProvider {
-      val context = cp.createSSLContext
-      def apply(a: InetSocketAddress) =
-        make(context.createSSLEngine(a.getHostName, a.getPort))(_.setUseClientMode(true))
-    }
-  }
-  implicit def fromFunc(f: InetSocketAddress => SSLEngine): ClientSSLEngineProvider = {
-    new ClientSSLEngineProvider {
-      def apply(address: InetSocketAddress) = f(address)
+      def apply(plc: PipelineContext) = f(plc)
     }
   }
 }
 
-trait SSLContextProvider {
-  def createSSLContext: SSLContext
-}
+trait SSLContextProvider extends (PipelineContext => SSLContext)
 object SSLContextProvider {
-  implicit def forContext(implicit context: SSLContext = SSLContext.getDefault): SSLContextProvider = {
+  implicit def forContext(implicit context: SSLContext = SSLContext.getDefault): SSLContextProvider =
+    fromFunc(_ => context)
+
+  implicit def fromFunc(f: PipelineContext => SSLContext): SSLContextProvider = {
     new SSLContextProvider {
-      def createSSLContext = context
+      def apply(plc: PipelineContext) = f(plc)
     }
   }
 }

@@ -1,14 +1,13 @@
 package cc.spray.can.spdy
 package pipeline
 
-import cc.spray.io.pipelining._
+import cc.spray.io._
 
 import cc.spray.http._
 import cc.spray.http.HttpHeaders.RawHeader
 import cc.spray.http.HttpResponse
 import cc.spray.can.{HttpEvent, HttpCommand}
 import cc.spray.can.server.HttpServer
-import cc.spray.io.PeerClosed
 
 import pipeline.SpdyStreamManager._
 

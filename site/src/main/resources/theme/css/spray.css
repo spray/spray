@@ -74,17 +74,17 @@ pre { margin-bottom: 1em; white-space: pre; word-wrap: normal; overflow: auto; }
 .section p, .section table { line-height: 20px; margin: 0 0 10px; }
 .section li { line-height: 20px; margin: 0 0 10px; }
 .section li > ul { margin-top: 10px; }
+.section ul li { margin: 0; }
+.section ul.wide > li { margin-top: 10px; }
+.section ul li > ul { margin-top: 0; }
 .section dt { line-height: 20px; }
 .section dd { line-height: 20px; margin-left: 10px; margin-bottom: 10px; }
 .section img { margin: 1em 0; }
 .section table.field-list { text-align: left; }
 .section th.field-name { padding-right: 5px; }
 #changelog li { margin: 0; }
-.section ul.tight li { margin: 0; }
-.section ul.tight li > ul { margin-top: 0; }
 .section div.container { text-align: center; }
 .section div.toctree-wrapper li { text-align: left; margin: 0; }
-.section div.toctree-wrapper li > ul { margin-top: 0; }
 
 tt.literal {
     padding: 1px 2px;

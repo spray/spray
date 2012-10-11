@@ -20,7 +20,6 @@ import akka.event.LoggingAdapter
 import akka.util.Duration
 import cc.spray.can.server.RequestParsing.HttpMessageStartEvent
 import cc.spray.can.{HttpEvent, HttpCommand}
-import cc.spray.io.pipelining._
 import cc.spray.http._
 import cc.spray.io._
 

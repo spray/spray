@@ -17,7 +17,6 @@
 package cc.spray.can.server
 
 import cc.spray.io._
-import cc.spray.io.pipelining._
 import cc.spray.http._
 import HttpHeaders._
 

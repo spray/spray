@@ -33,12 +33,16 @@ Installation
 
 The :ref:`maven-repo` chapter contains all the info about how to pull *spray-caching* into your classpath.
 
+Afterwards just ``import cc.spray.caching._`` to bring all relevant identifiers into scope.
+
 
 The `Cache` Interface
 ---------------------
 
 All *spray-caching* cache implementations implement the Cache_ trait, which allow you to interact with the cache
 in through six methods:
+
+.. rst-class:: wide
 
 - ``def apply(key: Any)(expr: => V): Future[V]`` wraps an "expensive" expression with caching support.
 
@@ -106,5 +110,5 @@ has to be strictly greater than the time-to-idle.
 
 
 .. _Cache: https://github.com/spray/spray/blob/master/spray-caching/src/main/scala/cc/spray/caching/Cache.scala
-.. _`SimpleLruCache and ExpiringLruCache`: https://github.com/spray/spray/blob/master/spray-caching/src/main/scala/cc/spray/caching/LruCache.scala
+.. _SimpleLruCache and ExpiringLruCache: https://github.com/spray/spray/blob/master/spray-caching/src/main/scala/cc/spray/caching/LruCache.scala
 .. _concurrentlinkedhashmap: http://code.google.com/p/concurrentlinkedhashmap/

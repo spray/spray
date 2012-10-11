@@ -19,7 +19,6 @@ package client
 
 import akka.event.LoggingAdapter
 import cc.spray.http.{HttpMessagePart, HttpRequestPart}
-import cc.spray.io.pipelining._
 import cc.spray.io._
 
 

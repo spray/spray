@@ -1,8 +1,7 @@
 package cc.spray.can.spdy
 package pipeline
 
-import cc.spray.io.pipelining.{PipelineContext, CommandPipelineStage}
-import cc.spray.io.{IOServer, Command}
+import cc.spray.io._
 
 object SpdyRendering {
   def apply(): CommandPipelineStage = new CommandPipelineStage {

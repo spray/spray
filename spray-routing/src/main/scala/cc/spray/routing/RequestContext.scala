@@ -34,7 +34,7 @@ import MediaTypes._
  */
 case class RequestContext(
   request: HttpRequest,
-  handler: ActorRef,
+  responder: ActorRef,
   unmatchedPath: String = ""
 ) {
 
@@ -47,20 +47,20 @@ case class RequestContext(
   }
 
   /**
-   * Returns a copy of this context with the handler transformed by the given function.
+   * Returns a copy of this context with the responder transformed by the given function.
    */
-  def mapHandler(f: ActorRef => ActorRef) = {
-    val transformed = f(handler)
-    if (transformed eq handler) this else copy(handler = transformed)
+  def mapResponder(f: ActorRef => ActorRef) = {
+    val transformed = f(responder)
+    if (transformed eq responder) this else copy(responder = transformed)
   }
 
   /**
    * Returns a copy of this context with the given response transformation function chained into the response chain.
    */
-  def mapRouteResponse(f: Any => Any) = mapHandler { previousHandler =>
-    new UnregisteredActorRef(handler) {
+  def mapRouteResponse(f: Any => Any) = mapResponder { previousResponder =>
+    new UnregisteredActorRef(responder) {
       def handle(message: Any)(implicit sender: ActorRef) {
-        previousHandler ! f(message)
+        previousResponder ! f(message)
       }
     }
   }
@@ -68,10 +68,10 @@ case class RequestContext(
   /**
    * Returns a copy of this context with the given response transformation function chained into the response chain.
    */
-  def flatMapRouteResponse(f: Any => Seq[Any]) = mapHandler { previousHandler =>
-    new UnregisteredActorRef(handler) {
+  def flatMapRouteResponse(f: Any => Seq[Any]) = mapResponder { previousResponder =>
+    new UnregisteredActorRef(responder) {
       def handle(message: Any)(implicit sender: ActorRef) {
-        f(message).foreach(previousHandler ! _)
+        f(message).foreach(previousResponder ! _)
       }
     }
   }
@@ -130,10 +130,10 @@ case class RequestContext(
   /**
    * Returns a copy of this context with the given function handling a part of the response space.
    */
-  def withRouteResponseHandling(f: PartialFunction[Any, Unit]) = mapHandler { previousHandler =>
-    new UnregisteredActorRef(handler) {
+  def withRouteResponseHandling(f: PartialFunction[Any, Unit]) = mapResponder { previousResponder =>
+    new UnregisteredActorRef(responder) {
       def handle(message: Any)(implicit sender: ActorRef) {
-        if (f.isDefinedAt(message)) f(message) else previousHandler ! message
+        if (f.isDefinedAt(message)) f(message) else previousResponder ! message
       }
     }
   }
@@ -141,25 +141,25 @@ case class RequestContext(
   /**
    * Returns a copy of this context with the given rejection handling function chained into the response chain.
    */
-  def withRejectionHandling(f: List[Rejection] => Unit) = mapHandler { previousHandler =>
-    new UnregisteredActorRef(handler) {
+  def withRejectionHandling(f: List[Rejection] => Unit) = mapResponder { previousResponder =>
+    new UnregisteredActorRef(responder) {
       def handle(message: Any)(implicit sender: ActorRef) {
         message match {
           case Rejected(rejections) => f(rejections)
-          case x => previousHandler ! x
+          case x => previousResponder ! x
         }
       }
     }
   }
 
   /**
-   * Returns a copy of this context that automatically sets the sender of all messages to its handler to the given
+   * Returns a copy of this context that automatically sets the sender of all messages to its responder to the given
    * one, if no explicit sender is passed along from upstream.
    */
   def withDefaultSender(defaultSender: ActorRef) = copy(
-    handler = new UnregisteredActorRef(handler) {
+    responder = new UnregisteredActorRef(responder) {
       def handle(message: Any)(implicit sender: ActorRef) {
-        handler.tell(message, if (sender == null) defaultSender else sender)
+        responder.tell(message, if (sender == null) defaultSender else sender)
       }
     }
   )
@@ -168,7 +168,7 @@ case class RequestContext(
    * Rejects the request with the given rejections.
    */
   def reject(rejections: Rejection*) {
-    handler ! Rejected(rejections.toList)
+    responder ! Rejected(rejections.toList)
   }
 
   /**
@@ -213,7 +213,7 @@ case class RequestContext(
    * Completes the request with the given [[cc.spray.http.HttpResponse]].
    */
   def complete(response: HttpResponse) {
-    handler ! response
+    responder ! response
   }
 
   /**
@@ -221,7 +221,7 @@ case class RequestContext(
    * directive and its ExceptionHandler.
    */
   def failWith(error: Throwable) {
-    handler ! Status.Failure(error)
+    responder ! Status.Failure(error)
   }
 
   /**
@@ -234,8 +234,8 @@ case class RequestContext(
       def marshalTo(entity: HttpEntity) { complete(response(entity)) }
       def handleError(error: Throwable) { failWith(error) }
       def startChunkedMessage(entity: HttpEntity)(implicit sender: ActorRef) = {
-        handler.tell(ChunkedResponseStart(response(entity)), sender)
-        handler
+        responder.tell(ChunkedResponseStart(response(entity)), sender)
+        responder
       }
       def response(entity: HttpEntity) = HttpResponse(status, entity, headers)
     }

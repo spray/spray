@@ -26,8 +26,6 @@ Default Unmarshallers
 
 *spray-httpx* comes with pre-defined Unmarshallers for the following types:
 
-.. rst-class:: tight
-
 - ``Array[Byte]``
 - ``Array[Char]``
 - ``String``
@@ -39,8 +37,6 @@ Default Unmarshallers
 - ``cc.spray.http.MultipartFormData``
 
 The relevant sources are:
-
-.. rst-class:: tight
 
 - Deserializer_
 - BasicUnmarshallers_
@@ -69,7 +65,7 @@ Custom Unmarshallers
 --------------------
 
 *spray-httpx* gives you a few convenience tools for constructing Unmarshallers for your own types.
-One is the ``Marshaller.apply`` helper, which is defined as such::
+One is the ``Unmarshaller.apply`` helper, which is defined as such::
 
     def apply[T](unmarshalFrom: ContentTypeRange*)
                 (f: PartialFunction[HttpEntity, T]): Unmarshaller[T]

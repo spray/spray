@@ -11,9 +11,9 @@ TickGenerator
 The TickGenerator__ forms a simple ``EventPipelineStage`` that generates ``Tick`` events in regular intervals.
 This is its implementation:
 
- __ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/pipelining/TickGenerator.scala
+ __ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/TickGenerator.scala
 
-.. includecode:: /../spray-io/src/main/scala/cc/spray/io/pipelining/TickGenerator.scala
+.. includecode:: /../spray-io/src/main/scala/cc/spray/io/TickGenerator.scala
    :snippet: source-quote
 
 The ``TickGenerator`` provides the triggers for all timeout checking stages in *spray-io* and :ref:`spray-can`, but, of
@@ -32,7 +32,7 @@ as well as incoming ``Received`` events and updates a ``lastActivity`` timestamp
 It requires a TickGenerator_ stage further down in the stack and uses its ``Tick`` messages as a trigger for checking,
 whether the connection has been idle for longer than the allowed time frame. If so, a ``Close`` command is issued.
 
-__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/pipelining/ConnectionTimeouts.scala
+__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/ConnectionTimeouts.scala
 
 
 SslTlsSupport
@@ -52,7 +52,7 @@ encryption via the ``tag`` member of the ``Connect`` command. The argument it pa
 is this: ``_.handle.tag == HttpClient.SslEnabled``.
 
 The ``SslTlsSupport`` stage requires also requires an ``engineProvider`` parameter, which is a function
-``InetSocketAddress => SSLEngine``. The easiest way to specify an argument for this parameter is to use the default
+``PipelineContext => SSLEngine``. The easiest way to specify an argument for this parameter is to use the default
 ``ServerSSLEngineProvider`` or ``ClientSSLEngineProvider``, depending on whether you are using the encryption stage
 on the client- or the server-side, e.g.::
 
@@ -61,4 +61,4 @@ on the client- or the server-side, e.g.::
 In order to make this line compile you also need to bring into scope either an implicit ``javax.net.ssl.SSLContext``
 or an implicit ``SSLContextProvider``.
 
-__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/pipelining/SslTlsSupport.scala
+__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/SslTlsSupport.scala

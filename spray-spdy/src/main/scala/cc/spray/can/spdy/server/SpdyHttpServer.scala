@@ -3,28 +3,14 @@ package server
 
 import akka.event.LoggingAdapter
 import akka.util.Duration
-import cc.spray.io.pipelining._
 import cc.spray.io._
 import cc.spray.http._
-import cc.spray.io.IOBridge
-import cc.spray.io.pipelining.MessageHandler
 import cc.spray.can.server._
-import cc.spray.io.pipelining.ServerSSLEngineProvider
-import cc.spray.io.IOServer
-import cc.spray.io.ConnectionActors
 import cc.spray.can.server.StatsSupport.StatsHolder
-import cc.spray.io.Handle
 import cc.spray.http.HttpRequest
-import cc.spray.io.pipelining.PipelineStage
-import cc.spray.io.pipelining.ConnectionTimeouts
-import cc.spray.io.pipelining.SslTlsSupport
-import cc.spray.io.pipelining.TickGenerator
-import cc.spray.io.Command
 import cc.spray.util.Reply
 
 import pipeline._
-import cc.spray.http.HttpResponse
-import cc.spray.can.HttpCommand
 import pipeline.SpdyStreamManager.SpdyContext
 import scala.Some
 import cc.spray.http.HttpResponse

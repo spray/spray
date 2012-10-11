@@ -93,7 +93,7 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
         route {
           RequestContext(
             request = parsedRequest,
-            handler = routeResult.handler,
+            responder = routeResult.handler,
             unmatchedPath = parsedRequest.path
           )
         }

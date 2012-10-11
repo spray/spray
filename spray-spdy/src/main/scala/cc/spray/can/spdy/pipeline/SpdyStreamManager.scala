@@ -1,13 +1,16 @@
 package cc.spray.can.spdy
 package pipeline
 
-import cc.spray.io.pipelining._
-import cc.spray.io.{IOServer, Event, Command}
 import java.nio.ByteBuffer
+
+import akka.event.LoggingAdapter
+
 import cc.spray.util.Reply
+import cc.spray.io._
+
 import pipeline.SpdyParsing.SpdyFrameReceived
 import pipeline.SpdyRendering.SendSpdyFrame
-import akka.event.LoggingAdapter
+
 
 object SpdyStreamManager {
   def apply(messageHandler: MessageHandler, eventExtractor: Event => Any, log: LoggingAdapter)(innerPipeline: PipelineStage): DoublePipelineStage = new DoublePipelineStage {

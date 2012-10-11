@@ -15,7 +15,6 @@
  */
 
 package cc.spray.io
-package pipelining
 
 import akka.util.Duration
 import java.util.concurrent.TimeUnit

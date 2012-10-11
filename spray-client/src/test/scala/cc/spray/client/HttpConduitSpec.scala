@@ -18,19 +18,19 @@ package cc.spray.client
 
 import org.specs2.mutable.Specification
 import com.typesafe.config.ConfigFactory
+import util.Random
 import akka.util.Duration
 import akka.dispatch.Future
 import akka.pattern.ask
 import akka.actor._
 import cc.spray.can.client.HttpClient
 import cc.spray.can.server.HttpServer
-import cc.spray.io.IOBridge
-import cc.spray.io.pipelining.SingletonHandler
+import cc.spray.httpx.encoding.Gzip
+import cc.spray.io._
 import cc.spray.http._
 import cc.spray.util._
 import DispatchStrategies._
 import HttpHeaders._
-import util.Random
 
 
 class HttpConduitSpec extends Specification {
@@ -49,6 +49,8 @@ class HttpConduitSpec extends Specification {
         var dropNext = true
         val random = new Random(39)
         def receive = {
+          case HttpRequest(_, "/compressedResponse", _, _, _) =>
+            sender ! Gzip.encode(HttpResponse(entity = "content"))
           case x: HttpRequest if x.uri.startsWith("/drop1of2") && dropNext =>
             log.debug("Dropping " + x)
             dropNext = random.nextBoolean()
@@ -102,6 +104,12 @@ class HttpConduitSpec extends Specification {
         Future.traverse(requests)(pipeline).map(responses2 => responses1.zip(responses2))
       }
       future.await.map { case (a, b) => a.entity === b.entity }.reduceLeft(_ and _)
+    }
+    "deliver the incoming responses fully parsed" in {
+      import HttpConduit._
+      val pipeline = newConduitPipeline(NonPipelined())
+      val response = pipeline(Get("/compressedResponse")).await
+      response.encoding === HttpEncodings.gzip
     }
   }
 

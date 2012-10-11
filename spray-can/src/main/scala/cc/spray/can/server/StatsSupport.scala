@@ -23,7 +23,6 @@ import cc.spray.http.{Timeout, HttpMessageStart}
 import cc.spray.can.rendering.HttpResponsePartRenderingContext
 import cc.spray.can.server.RequestParsing.HttpMessageStartEvent
 import cc.spray.io._
-import cc.spray.io.pipelining._
 
 
 object StatsSupport {

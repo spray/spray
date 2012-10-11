@@ -16,18 +16,22 @@
 
 package cc.spray.io
 
-import pipelining.{EmptyPipelineStage, PipelineStage}
+import akka.actor.ActorRef
 
 
-package object pipelining {
+sealed trait MessageHandler extends (PipelineContext => () => ActorRef)
 
-  type Pipeline[-T] = T => Unit
-
-  implicit def pimpBooleanWithOptionalPipelineStageOperator(condition: Boolean) = new PimpedBoolean(condition)
+case class SingletonHandler(handler: ActorRef) extends MessageHandler {
+  def apply(ctx: PipelineContext) = () => handler
 }
 
-class PimpedBoolean(condition: Boolean) {
-  // unfortunately we cannot use the nicer right-associative `?:` operator due to
-  // https://issues.scala-lang.org/browse/SI-1980
-  def ? (stage: => PipelineStage) = if (condition) stage else EmptyPipelineStage
+case class PerConnectionHandler(handlerCreator: PipelineContext => ActorRef) extends MessageHandler {
+  def apply(ctx: PipelineContext) = {
+    val handler = handlerCreator(ctx)
+    () => handler
+  }
+}
+
+case class PerMessageHandler(handlerCreator: PipelineContext => ActorRef) extends MessageHandler {
+  def apply(ctx: PipelineContext) = () => handlerCreator(ctx)
 }

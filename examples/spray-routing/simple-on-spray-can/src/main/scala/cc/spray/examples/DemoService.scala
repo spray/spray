@@ -63,10 +63,16 @@ trait DemoService extends HttpService {
             ctx.complete("This resource is only slow the first time!\n" +
               "It was produced on " + DateTime.now.toIsoDateTimeString + "\n\n" +
               "(Note that your browser will likely enforce a cache invalidation with a\n" +
-              "`Cache-Control: max-age=0` header, so you might need to `curl` this\n" +
+              "`Cache-Control: max-age=0` header when you click 'reload', so you might need to `curl` this\n" +
               "resource in order to be able to see the cache effect!)")
           }
         }
+      } ~
+      path("crash") { ctx =>
+        throw new RuntimeException("crash boom bang")
+      } ~
+      path("fail") {
+        failWith(new RuntimeException("aaaahhh"))
       }
     } ~
     (post | parameter('method ! "post")) {
@@ -93,6 +99,8 @@ trait DemoService extends HttpService {
           <li><a href="/stats">/stats</a></li>
           <li><a href="/timeout">/timeout</a></li>
           <li><a href="/cached">/cached</a></li>
+          <li><a href="/crash">/crash</a></li>
+          <li><a href="/fail">/fail</a></li>
           <li><a href="/stop?method=post">/stop</a></li>
         </ul>
       </body>
@@ -106,18 +114,18 @@ trait DemoService extends HttpService {
 
           // we prepend 2048 "empty" bytes to push the browser to immediately start displaying the incoming chunks
           val htmlStart = " " * 2048 + "<html><body><h2>A streaming response</h2><p>(for 15 seconds)<ul>"
-          ctx.handler ! ChunkedResponseStart(HttpResponse(entity = HttpBody(`text/html`, htmlStart)))
+          ctx.responder ! ChunkedResponseStart(HttpResponse(entity = HttpBody(`text/html`, htmlStart)))
 
           def receive = {
             case _: HttpServer.SentOk if remainingChunks > 0 =>
               // we use the successful sending of a chunk as trigger for scheduling the next chunk
               remainingChunks -= 1
               in(500.millis) {
-                ctx.handler ! MessageChunk("<li>" + DateTime.now.toIsoDateTimeString + "</li>")
+                ctx.responder ! MessageChunk("<li>" + DateTime.now.toIsoDateTimeString + "</li>")
               }
             case _: HttpServer.SentOk =>
-              ctx.handler ! MessageChunk("</ul><p>Finished.</p></body></html>")
-              ctx.handler ! ChunkedMessageEnd()
+              ctx.responder ! MessageChunk("</ul><p>Finished.</p></body></html>")
+              ctx.responder ! ChunkedMessageEnd()
               context.stop(self)
 
             case HttpServer.Closed(_, reason) =>

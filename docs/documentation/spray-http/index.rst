@@ -26,6 +26,8 @@ Installation
 
 The :ref:`maven-repo` chapter contains all the info about how to pull *spray-http* into your classpath.
 
+Afterwards just ``import cc.spray.http._`` to bring all relevant identifiers into scope.
+
 
 Overview
 --------
@@ -100,5 +102,18 @@ non-empty variant of an ``HttpEntity``. The value of the ``Content-Type`` header
 class (i.e. "upgraded") even by the low-level :ref:`spray-can` and :ref:`spray-servlet` layers.
 
 
+Custom Media-Types
+------------------
 
+*spray-http* defines the most important media types from the `IANA MIME media type registry`_ in the MediaTypes_
+object, which also acts as a registry that you can register your own ``CustomMediaType`` instances with:
 
+.. includecode:: ../code/docs/CustomHttpExtensionExamplesSpec.scala
+   :snippet: custom-media-type
+
+Once registered the custom type will be properly resolved, e.g. for incoming requests by :ref:`spray-routing` or
+incoming responses by :ref:`spray-client`. File extension resolution (as used for example by the
+:ref:`FileAndResourceDirectives`) will work as expected.
+
+.. _IANA MIME media type registry: http://www.iana.org/assignments/media-types/index.html
+.. _MediaTypes: https://github.com/spray/spray/blob/master/spray-http/src/main/scala/cc/spray/http/MediaType.scala

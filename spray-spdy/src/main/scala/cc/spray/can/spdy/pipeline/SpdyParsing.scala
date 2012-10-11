@@ -6,8 +6,7 @@ import java.nio.ByteBuffer
 
 import java.util.zip.Inflater
 
-import cc.spray.io.pipelining._
-import cc.spray.io.{ProtocolError, IOServer, Event}
+import cc.spray.io._
 
 import cc.spray.can.parsing.{IntermediateState, ParsingState}
 

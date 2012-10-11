@@ -19,6 +19,7 @@ package cc.spray.routing
 import directives._
 
 
+//# source-quote
 trait Directives extends RouteConcatenation
   with BasicDirectives
   with ChunkingDirectives
@@ -39,3 +40,4 @@ trait Directives extends RouteConcatenation
   with SecurityDirectives
 
 object Directives extends Directives
+//#

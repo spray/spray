@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package cc.spray.io.pipelining
+package cc.spray.io
 
 import org.specs2.mutable.Specification
 import annotation.tailrec
@@ -28,6 +28,7 @@ import cc.spray.io._
 import akka.actor.{ActorRef, Props, ActorSystem}
 import com.typesafe.config.ConfigFactory
 import java.security.{KeyStore, SecureRandom}
+
 
 class SslTlsSupportSpec extends Specification {
   implicit val system = ActorSystem()

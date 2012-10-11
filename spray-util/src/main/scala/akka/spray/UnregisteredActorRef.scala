@@ -17,6 +17,7 @@
 package akka.spray
 
 import akka.actor._
+import akka.util.Timeout
 
 /**
  * An ActorRef which
@@ -26,12 +27,62 @@ import akka.actor._
  * CAUTION: This ActorRef is _not_ addressable from a non-local JVM and it also breaks some otherwise
  * valid invariants like `system.actorFor(ref.path.toString).equals(ref)` in the local-only context.
  * It should therefore be used only in purely local environments and in consideration of the limitations.
+ * You can, however, manually wrap it with a registered ActorRef using one of the register... calls.
  */
-abstract class UnregisteredActorRef(provider: ActorRefProvider) extends LazyActorRef(provider) {
+abstract class UnregisteredActorRef(p: ActorRefProvider) extends LazyActorRef(p) { unregistered =>
   def this(related: ActorRef) = this(RefUtils.provider(related))
   def this(actorRefFactory: ActorRefFactory) = this(RefUtils.provider(actorRefFactory))
 
   override protected def register(path: ActorPath) {}
 
   override protected def unregister(path: ActorPath) {}
+
+  /**
+   * Produces a LazyActorRef that wraps this UnregisteredActorRef.
+   * The resulting ActorRef is reachable from remote JVMs, but can only receive a single reply, which
+   * has to arrive within the given timeout period.
+   */
+  def registerForSingleResponse(timeout: Timeout): ActorRef =
+    registerForMultiResponse(UnregisteredActorRef.EveryMessageIsLastResponse, timeout)
+
+  /**
+   * Produces a LazyActorRef that wraps this UnregisteredActorRef.
+   * The resulting ActorRef is reachable from remote JVMs and can receive several replies.
+   * However, the last one must be identifiable and has to arrive within the given timeout period.
+   */
+  def registerForMultiResponse(isLastResponse: Any => Boolean, timeout: Timeout): ActorRef =
+    new LazyActorRef(provider) {
+      val timer = provider.scheduler.scheduleOnce(timeout.duration) {
+        stop()
+      }
+      def handle(message: Any)(implicit sender: ActorRef) {
+        unregistered.handle(message)
+        if (isLastResponse(message)) {
+          stop()
+          timer.cancel()
+        }
+      }
+    }
+
+  /**
+   * Produces a LazyActorRef that wraps this UnregisteredActorRef.
+   * The resulting ActorRef is reachable from remote JVMs and can receive any number of replies.
+   * Its lifetime is tied to the given actor, i.e. it is automatically stopped and unregistered when the given
+   * actor terminates.
+   */
+  def registerWithDeathWatch(dieWith: ActorRef): ActorRef =
+    new LazyActorRef(provider) {
+      provider.deathWatch.subscribe(this, dieWith)
+
+      def handle(message: Any)(implicit sender: ActorRef) {
+        message match {
+          case Terminated(`dieWith`) => stop()
+          case msg => unregistered.handle(msg)
+        }
+      }
+    }
+}
+
+object UnregisteredActorRef {
+  val EveryMessageIsLastResponse = (_:Any) => true
 }

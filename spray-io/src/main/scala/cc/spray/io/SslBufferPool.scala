@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.io.pipelining
+package cc.spray.io
 
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicInteger
 import annotation.tailrec
+
 
 /**
  * A ByteBuffer pool reduces the number of ByteBuffer allocations in the SslTlsSupport.

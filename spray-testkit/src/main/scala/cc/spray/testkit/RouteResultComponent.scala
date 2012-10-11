@@ -88,7 +88,12 @@ trait RouteResultComponent {
     def handled: Boolean = synchronized { _response.isDefined }
     def response: HttpResponse = synchronized {
       _response.getOrElse {
-        _rejections.foreach(r => failTest("Request was rejected with " + RejectionHandler.applyTransformations(r)))
+        _rejections.foreach {
+          RejectionHandler.applyTransformations(_) match {
+            case Nil => failTest("Request was not handled")
+            case r => failTest("Request was rejected with " + r)
+          }
+        }
         failNotCompletedNotRejected()
       }
     }

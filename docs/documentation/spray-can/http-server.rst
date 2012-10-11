@@ -26,8 +26,6 @@ Design Philosophy
 
 The *spray-can* ``HttpServer`` is scoped with a clear focus on the essential functionality of an HTTP/1.1 server:
 
-.. rst-class:: tight
-
 - Connection management
 - Message parsing and header separation
 - Timeout management (for requests and connections)
@@ -122,8 +120,6 @@ If the ``request-chunk-aggregation-limit`` config setting is set to zero the ser
 request parts of chunked requests to the handler actor. In these cases a full request consists of the following
 messages:
 
-.. rst-class:: tight
-
 - One ``ChunkedRequestStart``
 - Zero or more ``MessageChunks``
 - One ``ChunkedMessageEnd``
@@ -137,8 +133,6 @@ Chunked Responses
 
 Alternatively to a single ``HttpResponse`` instance the handler can choose to respond to the request sender with the
 following sequence of individual messages:
-
-.. rst-class:: tight
 
 - One ``ChunkedResponseStart``
 - Zero or more ``MessageChunks``
@@ -172,8 +166,6 @@ a design the application will never produce more data than the network can handl
 doesn't necessarily have to be the one that sent the part. For example, consider the following sequence of actions
 after a request has been received by the handler actor:
 
-.. rst-class:: tight
-
 - The handler actor sends a ``ChunkedResponseStart`` and waits for a ``SentOk``.
 - Actor ``A`` sends a ``MessageChunk`` and waits for a ``SentOk``.
 - Actor ``B`` sends a ``MessageChunk`` and *does not* wait for a ``SentOk``.
@@ -192,8 +184,6 @@ When a connection is closed, for whatever reason, the server dispatches a ``Clos
 Exactly which actor receives it depends on the current state of request processing.
 
 The ``HttpServer`` sends ``Closed`` events coming in from the underlying :ref:`IOBridge` to
-
-.. rst-class:: tight
 
 - the handler actor, if no request is currently open and the application doesn't use ``Per-Message`` handlers.
 - the handler actor, if a request is currently open and no response part has yet been received.
@@ -229,8 +219,6 @@ HTTP Headers
 The *spray-can* ``HttpServer`` always passes all received headers on to the application. Additionally the values of the
 following request headers are interpreted by the server itself:
 
-.. rst-class:: tight
-
 - ``Connection``
 - ``Content-Length``
 - ``Content-Type``
@@ -249,8 +237,6 @@ HTTP/1.1 capabilities without sending a ``Connection: close`` header).
 
 If your ``HttpResponse`` instances include any of the following headers they will be ignored and *not* rendered into
 the response going out to the client (as the server sets these response headers itself):
-
-.. rst-class:: tight
 
 - ``Content-Type``
 - ``Content-Length``
