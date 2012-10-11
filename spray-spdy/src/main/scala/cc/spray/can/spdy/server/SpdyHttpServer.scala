@@ -179,7 +179,7 @@ object SpdyHttpServer {
                             log: LoggingAdapter)
                            (implicit sslEngineProvider: ServerSSLEngineProvider): PipelineStage = {
     import settings.{StatsSupport => _, _}
-    SpdyStreamManager(messageHandler, HttpHelper.unwrapHttpEvent) {
+    SpdyStreamManager(messageHandler, HttpHelper.unwrapHttpEvent, log) {
       (RequestChunkAggregationLimit > 0) ? RequestChunkAggregation(RequestChunkAggregationLimit.toInt) >>
       (PipeliningLimit > 0) ? PipeliningLimiter(settings.PipeliningLimit) >>
       settings.StatsSupport ? StatsSupport(statsHolder.get) >>

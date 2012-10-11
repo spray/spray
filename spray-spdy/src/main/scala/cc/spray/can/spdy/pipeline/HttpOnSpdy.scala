@@ -7,7 +7,10 @@ import cc.spray.http._
 import cc.spray.http.HttpHeaders.RawHeader
 import cc.spray.http.HttpResponse
 import cc.spray.can.{HttpEvent, HttpCommand}
-import pipeline.SpdyStreamManager.{StreamSendData, StreamReply, StreamDataReceived, StreamOpened}
+import cc.spray.can.server.HttpServer
+import cc.spray.io.PeerClosed
+
+import pipeline.SpdyStreamManager._
 
 object HttpOnSpdy {
   def apply(): DoublePipelineStage = new DoublePipelineStage {
@@ -19,7 +22,11 @@ object HttpOnSpdy {
             eventPL(HttpEvent(requestFromKV(headers)))
           } else
             throw new UnsupportedOperationException("Can't handle requests with contents, right now")
-        case StreamDataReceived(data, finished) =>
+        // TODO: implement request content handling
+        // case StreamDataReceived(data, finished) =>
+        case StreamAborted(cause) =>
+          // TODO: properly translate cause
+          eventPL(HttpServer.Closed(context.handle, PeerClosed))
         case x => eventPL(x)
       }
 

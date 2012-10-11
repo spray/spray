@@ -7,13 +7,14 @@ import java.nio.ByteBuffer
 import cc.spray.util.Reply
 import pipeline.SpdyParsing.SpdyFrameReceived
 import pipeline.SpdyRendering.SendSpdyFrame
+import akka.event.LoggingAdapter
 
 object SpdyStreamManager {
-  def apply(messageHandler: MessageHandler, eventExtractor: Event => Any)(innerPipeline: PipelineStage): DoublePipelineStage = new DoublePipelineStage {
+  def apply(messageHandler: MessageHandler, eventExtractor: Event => Any, log: LoggingAdapter)(innerPipeline: PipelineStage): DoublePipelineStage = new DoublePipelineStage {
     def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
       val handler = messageHandler(context)()
 
-      //val streamCtx = collection.mutable.Map.empty[Int, SpdyContext]
+      val incomingStreams = collection.mutable.Map.empty[Int, SpdyContext]
 
       def eventPipeline: EPL = {
         case SpdyFrameReceived(frame) =>
@@ -23,7 +24,9 @@ object SpdyStreamManager {
               ctx.pipelines.eventPipeline(StreamOpened(x.keyValues, x.fin))
 
             case x: RstStream =>
-              println("Stream got cancelled "+x)
+              val ctx = contextFor(x.streamId)
+              ctx.close()
+              ctx.pipelines.eventPipeline(StreamAborted(x.statusCode))
 
             case x: Settings =>
               println("Ignoring settings for now "+x)
@@ -34,7 +37,8 @@ object SpdyStreamManager {
               commandPL(IOServer.Send(ByteBuffer.wrap(data)))
 
             case d: DataFrame =>
-              throw new UnsupportedOperationException("Receiving data not supported currently")
+              val ctx = contextFor(d.streamId)
+              ctx.pipelines.eventPipeline(StreamDataReceived(d.data, d.fin))
           }
         case x => eventPL(x)
       }
@@ -43,23 +47,66 @@ object SpdyStreamManager {
         case x => commandPL(x)
       }
 
-      def createStreamContext(_streamId: Int): SpdyContext = new SpdyContext { spdyCtx =>
-        def streamId: Int = _streamId
-        val pipelines: Pipelines = innerPipeline.buildPipelines(context, baseStreamCommandPipeline, baseStreamEventPipeline)
+      def createStreamContext(streamId: Int): SpdyContext = {
+        if (incomingStreams.contains(streamId))
+          throw new IllegalStateException("Tried to create a stream twice "+streamId)
 
-        def baseStreamEventPipeline: EPL = {
-          case event =>
-            commandPL(IOServer.Tell(handler, eventExtractor(event), Reply.withContext(spdyCtx)(context.connectionActorContext.self)))
-        }
-        def baseStreamCommandPipeline: CPL = {
-          case StreamReply(headers, fin) =>
-            send(SynReply(streamId, fin, headers))
-          case StreamSendData(data, fin) =>
-            send(DataFrame(streamId, fin, data))
-        }
+        val res = streamContextFor(streamId)
+        incomingStreams(streamId) = res
+        res
+      }
+      def contextFor(streamId: Int): SpdyContext = {
+        if (incomingStreams.contains(streamId))
+          incomingStreams(streamId)
+        else
+          throw new IllegalStateException("Tried to access invalid stream")
       }
 
-      def send(frame: Frame) {
+      def streamContextFor(_streamId: Int): SpdyContext =
+        new SpdyContext { spdyCtx =>
+          var streamClosed = false
+          var lastSender = handler
+          def streamId: Int = _streamId
+          val pipelines: Pipelines = innerPipeline.buildPipelines(context, baseStreamCommandPipeline, baseStreamEventPipeline)
+
+          def baseStreamEventPipeline: EPL = {
+            case event =>
+              commandPL(IOServer.Tell(lastSender, eventExtractor(event), Reply.withContext(spdyCtx)(context.connectionActorContext.self)))
+          }
+          def baseStreamCommandPipeline: CPL = {
+            case StreamReply(headers, fin) =>
+              send(SynReply(streamId, fin, headers), fin)
+
+            case StreamSendData(data, fin) =>
+              send(DataFrame(streamId, fin, data), fin)
+
+            case StreamAbort(cause) =>
+              send(RstStream(streamId, cause), true)
+          }
+
+          def close() {
+            close(true)
+          }
+          def close(shouldDo: Boolean) {
+            if (streamClosed) {
+              throw new IllegalArgumentException("Can't operate on closed connection")
+            } else if (shouldDo) {
+              streamClosed = true
+              incomingStreams.remove(streamId)
+            }
+          }
+          def send(frame: Frame, shouldClose: Boolean) {
+            if (!streamClosed) {
+              lastSender = context.connectionActorContext.sender
+
+              sendFrame(frame)
+              close(shouldClose)
+            }
+            else
+              log.warning("Tried to send to closed stream: "+frame)
+          }
+        }
+      def sendFrame(frame: Frame) {
         commandPL(SendSpdyFrame(frame))
       }
     }
@@ -67,6 +114,8 @@ object SpdyStreamManager {
   trait SpdyContext {
     def streamId: Int
     def pipelines: Pipelines
+
+    def close()
   }
 
   // EVENTS
