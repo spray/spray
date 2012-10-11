@@ -21,7 +21,8 @@ import akka.actor.ActorSystem
 import cc.spray.can.parsing.ParserSettings
 import cc.spray.can.{HttpEvent, HttpPipelineStageSpec}
 import cc.spray.can.rendering.HttpRequestPartRenderingContext
-import cc.spray.io.{ProtocolError, Event}
+import cc.spray.util.ProtocolError
+import cc.spray.io.Event
 
 
 class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {

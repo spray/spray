@@ -26,6 +26,7 @@ import cc.spray.util.EmptyByteArray
 import cc.spray.can.parsing._
 import cc.spray.http._
 import cc.spray.io._
+import cc.spray.util._
 
 
 object ResponseParsing {

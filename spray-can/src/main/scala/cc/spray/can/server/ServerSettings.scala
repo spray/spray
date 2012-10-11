@@ -31,7 +31,6 @@ class ServerSettings(config: Config = ConfigFactory.load) {
   val RequestTimeout                = c getMilliseconds "request-timeout"
   val TimeoutTimeout                = c getMilliseconds "timeout-timeout"
   val ReapingCycle                  = c getMilliseconds "reaping-cycle"
-  val AckSends                      = c getBoolean      "ack-sends"
   val StatsSupport                  = c getBoolean      "stats-support"
   val RemoteAddressHeader           = c getBoolean      "remote-address-header"
   val TransparentHeadRequests       = c getBoolean      "transparent-head-requests"

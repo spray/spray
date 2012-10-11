@@ -25,6 +25,7 @@ import akka.actor.{ActorSystem, Actor, Props}
 import cc.spray.can.{HttpCommand, HttpPipelineStageSpec}
 import cc.spray.io._
 import cc.spray.http._
+import cc.spray.util._
 import HttpHeaders.RawHeader
 
 
@@ -118,34 +119,36 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       }
     }
 
-    "dispatch SentOk messages" in {
+    "dispatch SentAck messages" in {
       "to the sender of an HttpResponse" in {
         singleHandlerPipeline.test {
           val Commands(Tell(_, _, peer)) = process(Received(simpleRequest))
-          peer.tell(HttpCommand(HttpResponse()), sender1)
-          val Commands(Tell(receiver, SentOk(`testHandle`), _)) = clearAndProcess(SentOk(testHandle))
+          peer.tell(HttpCommand(HttpResponse().withSentAck(1)), sender1)
+          val Commands(Tell(receiver, 1, _)) = clearAndProcess(AckEventWithReceiver(1, sender1))
           receiver === sender1
         }
       }
       "to the senders of a ChunkedResponseStart, MessageChunk and ChunkedMessageEnd" in {
         singleHandlerPipeline.test {
           val Commands(Tell(_, _, peer)) = processAndClear(Received(simpleRequest))
-          peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse())), sender1)
-          process(SentOk(testHandle))
-          peer.tell(HttpCommand(MessageChunk("part 1")), sender2)
-          process(SentOk(testHandle))
-          peer.tell(HttpCommand(MessageChunk("part 2")), sender3)
-          peer.tell(HttpCommand(ChunkedMessageEnd()), sender4)
-          val Commands(commands@ _*) = process(SentOk(testHandle), SentOk(testHandle))
+          peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse()).withSentAck(1)), sender1)
+          process(AckEventWithReceiver(1, sender1))
+          peer.tell(HttpCommand(MessageChunk("part 1").withSentAck(2)), sender2)
+          process(AckEventWithReceiver(2, sender2))
+          peer.tell(HttpCommand(MessageChunk("part 2")), sender2)
+          peer.tell(HttpCommand(MessageChunk("part 3").withSentAck(3)), sender3)
+          peer.tell(HttpCommand(ChunkedMessageEnd().withSentAck(4)), sender4)
+          val Commands(commands@ _*) = process(AckEventWithReceiver(3, sender3), AckEventWithReceiver(4, sender4))
 
           commands(0) === SendString(`chunkedResponseStart`)
-          val Tell(`sender1`, SentOk(`testHandle`), _) = commands(1)
+          val Tell(`sender1`, 1, _) = commands(1)
           commands(2) === SendString(prep("6\npart 1\n"))
-          val Tell(`sender2`, SentOk(`testHandle`), _) = commands(3)
+          val Tell(`sender2`, 2, _) = commands(3)
           commands(4) === SendString(prep("6\npart 2\n"))
-          commands(5) === SendString(prep("0\n\n"))
-          val Tell(`sender4`, SentOk(`testHandle`), _) = commands(6) // remember: only the last sender receives the SentOk
-          val Tell(`sender4`, SentOk(`testHandle`), _) = commands(7)
+          commands(5) === SendString(prep("6\npart 3\n"))
+          commands(6) === SendString(prep("0\n\n"))
+          val Tell(`sender3`, 3, _) = commands(7)
+          val Tell(`sender4`, 4, _) = commands(8)
           success
         }
       }
@@ -169,7 +172,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       "to the response sender if a response has been sent but not yet confirmed" in {
         singleHandlerPipeline.test {
           val Commands(Tell(_, _, peer)) = process(Received(simpleRequest))
-          peer.tell(HttpCommand(HttpResponse()), sender1)
+          peer.tell(HttpCommand(HttpResponse().withSentAck(42)), sender1)
           val Commands(Tell(receiver, CLOSED, _)) = clearAndProcess(CLOSED)
           receiver === sender1
         }
@@ -177,8 +180,16 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       "to the handler if a response has been sent and confirmed" in {
         singleHandlerPipeline.test {
           val Commands(Tell(_, _, peer)) = process(Received(simpleRequest))
+          peer.tell(HttpCommand(HttpResponse().withSentAck(42)), sender1)
+          process(AckEventWithReceiver(42, sender1))
+          val Commands(Tell(receiver, CLOSED, _)) = clearAndProcess(CLOSED)
+          receiver === singletonHandler
+        }
+      }
+      "to the handler if a response has been sent without ack" in {
+        singleHandlerPipeline.test {
+          val Commands(Tell(_, _, peer)) = process(Received(simpleRequest))
           peer.tell(HttpCommand(HttpResponse()), sender1)
-          process(SentOk(testHandle))
           val Commands(Tell(receiver, CLOSED, _)) = clearAndProcess(CLOSED)
           receiver === singletonHandler
         }
@@ -186,7 +197,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       "to the response sender of a chunk stream if a chunk has been sent but not yet confirmed" in {
         singleHandlerPipeline.test {
           val Commands(Tell(_, _, peer)) = process(Received(simpleRequest))
-          peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse())), sender1)
+          peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse()).withSentAck(12)), sender1)
           val Commands(Tell(receiver, CLOSED, _)) = clearAndProcess(CLOSED)
           receiver === sender1
         }
@@ -195,8 +206,8 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         singleHandlerPipeline.test {
           val Commands(Tell(_, _, peer)) = process(Received(simpleRequest))
           peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse())), sender1)
-          peer.tell(HttpCommand(MessageChunk("bla")), sender2)
-          process(SentOk(testHandle), SentOk(testHandle))
+          peer.tell(HttpCommand(MessageChunk("bla").withSentAck(12)), sender2)
+          process(AckEventWithReceiver(12, sender2))
           val Commands(Tell(receiver, CLOSED, _)) = clearAndProcess(CLOSED)
           receiver === sender2
         }
@@ -204,23 +215,35 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       "to the last response sender if a final chunk has been sent but not yet confirmed" in {
         singleHandlerPipeline.test {
           val Commands(Tell(_, _, peer)) = process(Received(simpleRequest))
-          peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse())), sender1)
+          peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse()).withSentAck(1)), sender1)
           peer.tell(HttpCommand(MessageChunk("bla")), sender2)
-          peer.tell(HttpCommand(ChunkedMessageEnd()), sender3)
-          process(SentOk(testHandle), SentOk(testHandle))
+          peer.tell(HttpCommand(ChunkedMessageEnd().withSentAck(2)), sender3)
+          process(AckEventWithReceiver(2, sender3))
           val Commands(Tell(receiver, CLOSED, _)) = clearAndProcess(CLOSED)
           receiver === sender3
         }
       }
-      "to the handler if a final chunk has been sent but not yet confirmed" in {
-        singleHandlerPipeline.test {
-          val Commands(Tell(_, _, peer)) = process(Received(simpleRequest))
-          peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse())), sender1)
-          peer.tell(HttpCommand(MessageChunk("bla")), sender2)
-          peer.tell(HttpCommand(ChunkedMessageEnd()), sender3)
-          process(SentOk(testHandle), SentOk(testHandle), SentOk(testHandle))
-          val Commands(Tell(receiver, CLOSED, _)) = clearAndProcess(CLOSED)
-          receiver === singletonHandler
+      "to the handler if a final chunk has been sent and no confirmation is open" in {
+        "example 1" in {
+          singleHandlerPipeline.test {
+            val Commands(Tell(_, _, peer)) = process(Received(simpleRequest))
+            peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse())), sender1)
+            peer.tell(HttpCommand(MessageChunk("bla")), sender2)
+            peer.tell(HttpCommand(ChunkedMessageEnd()), sender3)
+            val Commands(Tell(receiver, CLOSED, _)) = clearAndProcess(CLOSED)
+            receiver === singletonHandler
+          }
+        }
+        "example 1" in {
+          singleHandlerPipeline.test {
+            val Commands(Tell(_, _, peer)) = process(Received(simpleRequest))
+            peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse()).withSentAck(1)), sender1)
+            peer.tell(HttpCommand(MessageChunk("bla")), sender2)
+            peer.tell(HttpCommand(ChunkedMessageEnd().withSentAck(2)), sender3)
+            process(AckEventWithReceiver(1, sender1), AckEventWithReceiver(2, sender3))
+            val Commands(Tell(receiver, CLOSED, _)) = clearAndProcess(CLOSED)
+            receiver === singletonHandler
+          }
         }
       }
     }

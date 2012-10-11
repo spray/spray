@@ -42,10 +42,13 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
 
   def handle(message: Any)(implicit sender: ActorRef) {
     message match {
-      case x: HttpResponse         => dispatch(x, Uncompleted, Completed)
-      case x: ChunkedResponseStart => dispatch(x, Uncompleted, Chunking)
-      case x: MessageChunk         => dispatch(x, Chunking, Chunking)
-      case x: ChunkedMessageEnd    => dispatch(x, Chunking, Completed)
+      case x: HttpMessagePartWrapper if x.messagePart.isInstanceOf[HttpResponsePart] =>
+        x.messagePart.asInstanceOf[HttpResponsePart] match {
+          case _: HttpResponse         => dispatch(x, Uncompleted, Completed)
+          case _: ChunkedResponseStart => dispatch(x, Uncompleted, Chunking)
+          case _: MessageChunk         => dispatch(x, Chunking, Chunking)
+          case _: ChunkedMessageEnd    => dispatch(x, Chunking, Completed)
+        }
       case x: Command              => dispatch(x)
       case x =>
         openRequest.log.warning("Illegal response " + x + " to " + requestInfo)
@@ -53,15 +56,15 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
     }
   }
 
-  private def dispatch(part: HttpResponsePart, expectedState: ResponseState, newState: ResponseState)
+  private def dispatch(msg: HttpMessagePartWrapper, expectedState: ResponseState, newState: ResponseState)
                       (implicit sender: ActorRef) {
     if (Unsafe.instance.compareAndSwapObject(this, responseStateOffset, expectedState, newState)) {
-      dispatch(new Response(openRequest, HttpCommand(part)))
+      dispatch(new Response(openRequest, HttpCommand(msg)))
     } else {
-      openRequest.log.warning("Cannot dispatch " + part.getClass.getSimpleName +
+      openRequest.log.warning("Cannot dispatch " + msg.messagePart.getClass.getSimpleName +
         " as response (part) for " + requestInfo + " since current response state is '" +
         Unsafe.instance.getObjectVolatile(this, responseStateOffset) + "' but should be '" + expectedState + '\'')
-      unhandledMessage(part)
+      unhandledMessage(msg)
     }
   }
 

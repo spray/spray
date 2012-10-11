@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit
 import cc.spray.http.{Timeout, HttpMessageStart}
 import cc.spray.can.rendering.HttpResponsePartRenderingContext
 import cc.spray.can.server.RequestParsing.HttpMessageStartEvent
+import cc.spray.util.IdleTimeout
 import cc.spray.io._
 
 

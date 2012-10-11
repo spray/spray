@@ -78,8 +78,6 @@ object HttpClient {
   // HttpResponseParts +
   val Connected = IOClient.Connected
   type Closed = IOClient.Closed;     val Closed = IOClient.Closed
-  type SentOk = IOClient.SentOk;     val SentOk = IOClient.SentOk
   type Received = IOClient.Received; val Received = IOClient.Received
-
 }
 

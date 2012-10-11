@@ -24,14 +24,16 @@ import cc.spray.http._
 case class HttpRequestPartRenderingContext(
   requestPart: HttpRequestPart,
   host: String,
-  port: Int
+  port: Int,
+  sentAck: Option[Any] = None
 ) extends Command
 
 case class HttpResponsePartRenderingContext(
   responsePart: HttpResponsePart,
   requestMethod: HttpMethod = HttpMethods.GET,
   requestProtocol: HttpProtocol = HttpProtocols.`HTTP/1.1`,
-  requestConnectionHeader: Option[String] = None
+  requestConnectionHeader: Option[String] = None,
+  sentAck: Option[Any] = None
 ) extends Command
 
 case class RenderedMessagePart(buffers: List[ByteBuffer], closeConnection: Boolean = false)

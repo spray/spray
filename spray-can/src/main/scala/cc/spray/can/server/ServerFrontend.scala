@@ -20,6 +20,7 @@ import akka.event.LoggingAdapter
 import akka.util.Duration
 import cc.spray.can.server.RequestParsing.HttpMessageStartEvent
 import cc.spray.can.{HttpEvent, HttpCommand}
+import cc.spray.util.IOError
 import cc.spray.http._
 import cc.spray.io._
 
@@ -56,15 +57,14 @@ object ServerFrontend {
             case Response(openRequest, command) if openRequest == firstOpenRequest =>
               commandPipeline(command) // "unpack" the command and recurse
 
-            case HttpCommand(x: HttpResponsePart with HttpMessageEnd) =>
+            case HttpCommand(x: HttpMessagePartWrapper) if x.messagePart.isInstanceOf[HttpResponsePart] =>
               // we can only see this command either after having "unpacked" a Response
               // or after an openRequest has begun dispatching its queued commands,
               // in both cases the firstOpenRequest member is valid and current
-              firstOpenRequest = firstOpenRequest.handleResponseEndAndReturnNextOpenRequest(x)
-
-            case HttpCommand(x: HttpResponsePart) =>
-              // same comment as above
-              firstOpenRequest.handleResponsePart(x)
+              if (x.messagePart.isInstanceOf[HttpMessageEnd]) {
+                firstOpenRequest = firstOpenRequest.handleResponseEndAndReturnNextOpenRequest(x)
+                firstUnconfirmed = firstUnconfirmed.nextIfNoAcksPending
+              } else firstOpenRequest.handleResponsePart(x)
 
             case Response(openRequest, command) =>
               // a response for a non-current openRequest has to be queued
@@ -92,8 +92,8 @@ object ServerFrontend {
             case HttpEvent(x: ChunkedMessageEnd) =>
               firstOpenRequest.handleChunkedMessageEnd(x)
 
-            case x: HttpServer.SentOk =>
-              firstUnconfirmed = firstUnconfirmed.handleSentOkAndReturnNextUnconfirmed(x)
+            case x: AckEventWithReceiver =>
+              firstUnconfirmed = firstUnconfirmed.handleSentAckAndReturnNextUnconfirmed(x)
 
             case x: HttpServer.Closed =>
               if (firstUnconfirmed.isEmpty)
@@ -118,7 +118,7 @@ object ServerFrontend {
             val nextOpenRequest = new DefaultOpenRequest(request, connectionHeader, timestamp)
             firstOpenRequest = firstOpenRequest.appendToEndOfChain(nextOpenRequest)
             nextOpenRequest.dispatchInitialRequestPartToHandler()
-            if (settings.AckSends && firstUnconfirmed.isEmpty) firstUnconfirmed = firstOpenRequest
+            if (firstUnconfirmed.isEmpty) firstUnconfirmed = firstOpenRequest
           }
         }
       }

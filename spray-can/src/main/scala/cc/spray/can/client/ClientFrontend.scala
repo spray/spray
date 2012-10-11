@@ -24,6 +24,7 @@ import cc.spray.can.{HttpEvent, HttpCommand}
 import cc.spray.can.rendering.HttpRequestPartRenderingContext
 import cc.spray.http._
 import cc.spray.io._
+import cc.spray.util._
 
 
 object ClientFrontend {
@@ -36,41 +37,44 @@ object ClientFrontend {
       var requestTimeout = initialRequestTimeout
 
       val commandPipeline: CPL = {
-        case HttpCommand(x: HttpRequest) =>
-          if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
-            render(x)
-            openRequests.enqueue(new RequestRecord(x, context.sender, timestamp = System.currentTimeMillis))
-          } else {
-            log.warning("Received new HttpRequest before previous chunking request was finished, " +
-              "forwarding to deadletters ...")
-            forwardToDeadLetters(x)
-          }
+        case HttpCommand(wrapper: HttpMessagePartWrapper) if wrapper.messagePart.isInstanceOf[HttpRequestPart] =>
+          wrapper.messagePart.asInstanceOf[HttpRequestPart] match {
+            case x: HttpRequest =>
+              if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
+                render(wrapper)
+                openRequests.enqueue(new RequestRecord(x, context.sender, timestamp = System.currentTimeMillis))
+              } else {
+                log.warning("Received new HttpRequest before previous chunking request was finished, " +
+                  "forwarding to deadletters ...")
+                forwardToDeadLetters(x)
+              }
 
-        case HttpCommand(x: ChunkedRequestStart) =>
-          if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
-            render(x)
-            openRequests.enqueue(new RequestRecord(x, context.sender, timestamp = 0))
-          } else {
-            log.warning("Received new ChunkedRequestStart before previous chunking request was finished, " +
-              "forwarding to deadletters ...")
-            forwardToDeadLetters(x)
-          }
+            case x: ChunkedRequestStart =>
+              if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
+                render(wrapper)
+                openRequests.enqueue(new RequestRecord(x, context.sender, timestamp = 0))
+              } else {
+                log.warning("Received new ChunkedRequestStart before previous chunking request was finished, " +
+                  "forwarding to deadletters ...")
+                forwardToDeadLetters(x)
+              }
 
-        case HttpCommand(x: MessageChunk) =>
-          if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
-            render(x)
-          } else {
-            log.warning("Received MessageChunk outside of chunking request context, ignoring...")
-            forwardToDeadLetters(x)
-          }
+            case x: MessageChunk =>
+              if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
+                render(wrapper)
+              } else {
+                log.warning("Received MessageChunk outside of chunking request context, ignoring...")
+                forwardToDeadLetters(x)
+              }
 
-        case HttpCommand(x: ChunkedMessageEnd) =>
-          if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
-            render(x)
-            openRequests.last.timestamp = System.currentTimeMillis // only start timer once the request is completed
-          } else {
-            log.warning("Received ChunkedMessageEnd outside of chunking request context, ignoring...")
-            forwardToDeadLetters(x)
+            case x: ChunkedMessageEnd =>
+              if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
+                render(wrapper)
+                openRequests.last.timestamp = System.currentTimeMillis // only start timer once the request is completed
+              } else {
+                log.warning("Received ChunkedMessageEnd outside of chunking request context, ignoring...")
+                forwardToDeadLetters(x)
+              }
           }
 
         case x: SetRequestTimeout => requestTimeout = x.timeout.toMillis
@@ -95,9 +99,9 @@ object ClientFrontend {
             commandPL(HttpClient.Close(ProtocolError("Received unmatched response part " + x)))
           }
 
-        case x: HttpClient.SentOk =>
+        case IOClient.AckEvent(ack) =>
           if (!openRequests.isEmpty) {
-            dispatch(openRequests.head.sender, x)
+            dispatch(openRequests.head.sender, ack)
           } else throw new IllegalStateException
 
         case x: HttpClient.Closed =>
@@ -119,11 +123,11 @@ object ClientFrontend {
         context.connectionActorContext.system.deadLetters ! x
       }
 
-      def render(part: HttpRequestPart) {
-        commandPL(HttpRequestPartRenderingContext(part, host, port))
+      def render(part: HttpMessagePartWrapper) {
+        commandPL(HttpRequestPartRenderingContext(part.asInstanceOf[HttpRequestPart], host, port, part.sentAck))
       }
 
-      def dispatch(receiver: ActorRef, msg: AnyRef) {
+      def dispatch(receiver: ActorRef, msg: Any) {
         commandPL(HttpClient.Tell(receiver, msg, context.self))
       }
 

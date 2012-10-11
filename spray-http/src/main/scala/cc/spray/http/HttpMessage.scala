@@ -24,8 +24,23 @@ import HttpHeaders._
 import HttpCharsets._
 import StatusCodes._
 
+sealed trait HttpMessagePartWrapper {
+  def messagePart: HttpMessagePart
+  def sentAck: Option[Any]
+}
 
-sealed trait HttpMessagePart
+case class Confirmed(messagePart: HttpMessagePart, sentAck: Option[Any]) extends HttpMessagePartWrapper
+
+object HttpMessagePartWrapper {
+  def unapply(x: HttpMessagePartWrapper): Option[(HttpMessagePart, Option[Any])] = Some(x.messagePart, x.sentAck)
+}
+
+
+sealed trait HttpMessagePart extends HttpMessagePartWrapper {
+  def messagePart = this
+  def sentAck: Option[Any] = None
+  def withSentAck(ack: Any) = Confirmed(this, Some(ack))
+}
 
 sealed trait HttpRequestPart extends HttpMessagePart
 

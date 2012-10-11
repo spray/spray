@@ -21,7 +21,6 @@ import akka.dispatch.{Promise, Future}
 import akka.util.Duration
 import akka.actor._
 import cc.spray.io.IOClient.IOClientException
-import cc.spray.io.{ProtocolError, CleanClose}
 import cc.spray.util._
 import cc.spray.http._
 
@@ -99,8 +98,6 @@ object HttpDialog {
 
       case HttpClient.Closed(_, reason) =>
         complete(Left(IOClientException("Connection closed prematurely, reason: " + reason)))
-
-      case _: HttpClient.SentOk => // drop potential write confirmations
 
       case Status.Failure(cause) => complete(Left(cause))
     }

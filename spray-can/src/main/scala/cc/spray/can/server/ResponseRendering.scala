@@ -17,6 +17,7 @@
 package cc.spray.can.server
 
 import cc.spray.can.rendering.{HttpResponsePartRenderingContext, ResponseRenderer}
+import cc.spray.util.CleanClose
 import cc.spray.io._
 
 
@@ -35,7 +36,7 @@ object ResponseRendering {
           val rendered = renderer.render(ctx)
           val buffers = rendered.buffers
           if (!buffers.isEmpty)
-            commandPL(IOPeer.Send(buffers, settings.AckSends))
+            commandPL(IOPeer.Send(buffers, ctx.sentAck))
           if (rendered.closeConnection)
             commandPL(IOPeer.Close(CleanClose))
 

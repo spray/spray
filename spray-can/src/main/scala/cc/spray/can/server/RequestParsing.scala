@@ -21,6 +21,7 @@ import java.nio.ByteBuffer
 import annotation.tailrec
 import cc.spray.can.rendering.HttpResponsePartRenderingContext
 import cc.spray.can.HttpEvent
+import cc.spray.util.ProtocolError
 import cc.spray.can.parsing._
 import cc.spray.io._
 import cc.spray.http._
@@ -63,7 +64,7 @@ object RequestParsing {
               parse(buffer)
 
             case Expect100ContinueState(nextState) =>
-              commandPL(IOPeer.Send(ByteBuffer.wrap(continue), ack = false))
+              commandPL(IOPeer.Send(ByteBuffer.wrap(continue)))
               currentParsingState = nextState
               parse(buffer)
 

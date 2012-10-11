@@ -206,6 +206,4 @@ object HttpServer {
   type Bound = IOServer.Bound;     val Bound = IOServer.Bound
   type Unbound = IOServer.Unbound; val Unbound = IOServer.Unbound
   type Closed = IOServer.Closed;   val Closed = IOServer.Closed
-  type SentOk = IOServer.SentOk;   val SentOk = IOServer.SentOk
-
 }

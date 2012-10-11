@@ -20,8 +20,9 @@ import com.typesafe.config.ConfigFactory
 import org.specs2.mutable.Specification
 import akka.actor.ActorSystem
 import cc.spray.can.rendering.HttpResponsePartRenderingContext
-import cc.spray.io.{CleanClose, IOPeer, Command}
+import cc.spray.io.{IOPeer, Command}
 import cc.spray.can.HttpPipelineStageSpec
+import cc.spray.util.CleanClose
 import cc.spray.http._
 
 

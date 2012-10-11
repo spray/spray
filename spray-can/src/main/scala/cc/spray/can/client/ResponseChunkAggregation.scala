@@ -17,6 +17,7 @@
 package cc.spray.can.client
 
 import cc.spray.can.HttpEvent
+import cc.spray.util.ProtocolError
 import cc.spray.http._
 import cc.spray.io._
 

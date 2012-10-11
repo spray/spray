@@ -21,7 +21,7 @@ import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActorRef
 import akka.actor.{ActorSystem, Actor}
 import cc.spray.can.{HttpCommand, HttpPipelineStageSpec}
-import cc.spray.io.{PeerClosed, IOPeer}
+import cc.spray.io.IOPeer
 import cc.spray.util._
 import cc.spray.http._
 

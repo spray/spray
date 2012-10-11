@@ -33,16 +33,17 @@ sealed trait OpenRequest {
   def dispatchInitialRequestPartToHandler()
   def dispatchNextQueuedResponse()
   def checkForTimeout(now: Long)
+  def nextIfNoAcksPending: OpenRequest
 
   // commands
-  def handleResponseEndAndReturnNextOpenRequest(part: HttpResponsePart): OpenRequest
-  def handleResponsePart(part: HttpResponsePart)
+  def handleResponseEndAndReturnNextOpenRequest(part: HttpMessagePartWrapper): OpenRequest
+  def handleResponsePart(part: HttpMessagePartWrapper)
   def enqueueCommand(command: Command)
 
   // events
   def handleMessageChunk(chunk: MessageChunk)
   def handleChunkedMessageEnd(part: ChunkedMessageEnd)
-  def handleSentOkAndReturnNextUnconfirmed(ev: HttpServer.SentOk): OpenRequest
+  def handleSentAckAndReturnNextUnconfirmed(ev: AckEventWithReceiver): OpenRequest
   def handleClosed(ev: HttpServer.Closed)
 }
 
@@ -64,7 +65,7 @@ trait OpenRequestComponent { component =>
     private[this] var handler = handlerCreator()
     private[this] var nextInChain: OpenRequest = EmptyOpenRequest
     private[this] var responseQueue: mutable.Queue[Command] = _
-    private[this] var outstandingSentOks: Int = 1000 // we use an offset of 1000 for as long as the response is not finished
+    private[this] var pendingSentAcks: Int = 1000 // we use an offset of 1000 for as long as the response is not finished
 
     def connectionActorContext = component.connectionActorContext
     def log = component.log
@@ -109,19 +110,21 @@ trait OpenRequestComponent { component =>
       nextInChain.checkForTimeout(now) // we accept non-tail recursion since HTTP pipeline depth is limited (and small)
     }
 
+    def nextIfNoAcksPending = if (pendingSentAcks == 0) nextInChain else this
+
     /***** COMMANDS *****/
 
-    def handleResponseEndAndReturnNextOpenRequest(part: HttpResponsePart) = {
-      handler = connectionActorContext.sender // remember who to forward (potentially coming) SendOk events to
+    def handleResponseEndAndReturnNextOpenRequest(part: HttpMessagePartWrapper) = {
+      handler = connectionActorContext.sender // remember who to send Closed events to
       sendPart(part)
-      outstandingSentOks -= 1000 // remove initial offset to signal that the last part has gone out
+      pendingSentAcks -= 1000 // remove initial offset to signal that the last part has gone out
       nextInChain.dispatchNextQueuedResponse()
       nextInChain
     }
 
-    def handleResponsePart(part: HttpResponsePart) {
+    def handleResponsePart(part: HttpMessagePartWrapper) {
       timestamp = 0L // disable request timeout checking once the first response part has come in
-      handler = connectionActorContext.sender // remember who to forward (potentially coming) SendOk events to
+      handler = connectionActorContext.sender // remember who to send Closed events to
       sendPart(part)
       dispatchNextQueuedResponse()
       this
@@ -152,11 +155,11 @@ trait OpenRequestComponent { component =>
         nextInChain.handleChunkedMessageEnd(part)
     }
 
-    def handleSentOkAndReturnNextUnconfirmed(ev: HttpServer.SentOk) = {
-      downstreamCommandPL(IOServer.Tell(handler, ev, receiverRef))
-      outstandingSentOks -= 1
-      // drop this openRequest from the unconfirmed list if we have seen the SentOk for the final response part
-      if (outstandingSentOks == 0) nextInChain else this
+    def handleSentAckAndReturnNextUnconfirmed(ev: AckEventWithReceiver) = {
+      downstreamCommandPL(IOServer.Tell(ev.receiver, ev.ack, receiverRef))
+      pendingSentAcks -= 1
+      // drop this openRequest from the unconfirmed list if we have seen the SentAck for the final response part
+      if (pendingSentAcks == 0) nextInChain else this
     }
 
     def handleClosed(ev: HttpServer.Closed) {
@@ -165,10 +168,12 @@ trait OpenRequestComponent { component =>
 
     /***** PRIVATE *****/
 
-    private def sendPart(part: HttpResponsePart) {
-      val cmd = HttpResponsePartRenderingContext(part, request.method, request.protocol, connectionHeader)
+    private def sendPart(part: HttpMessagePartWrapper) {
+      val sentAck = if (part.sentAck.isEmpty) None else Some(AckEventWithReceiver(part.sentAck.get, handler))
+      val cmd = HttpResponsePartRenderingContext(part.messagePart.asInstanceOf[HttpResponsePart], request.method,
+                                                 request.protocol, connectionHeader, sentAck)
       downstreamCommandPL(cmd)
-      outstandingSentOks += 1
+      if (part.sentAck.isDefined) pendingSentAcks += 1
     }
 
     private def responsesQueued = responseQueue != null && !responseQueue.isEmpty
@@ -184,12 +189,13 @@ trait OpenRequestComponent { component =>
     def dispatchInitialRequestPartToHandler() { throw new IllegalStateException }
     def dispatchNextQueuedResponse() {}
     def checkForTimeout(now: Long) {}
+    def nextIfNoAcksPending = throw new IllegalStateException
 
     // commands
-    def handleResponseEndAndReturnNextOpenRequest(part: HttpResponsePart) =
+    def handleResponseEndAndReturnNextOpenRequest(part: HttpMessagePartWrapper) =
       handleResponsePart(part)
 
-    def handleResponsePart(part: HttpResponsePart): Nothing =
+    def handleResponsePart(part: HttpMessagePartWrapper): Nothing =
       throw new IllegalStateException("Received ResponsePart '" + part + "' for non-existing request")
 
     def enqueueCommand(command: Command) {}
@@ -198,12 +204,8 @@ trait OpenRequestComponent { component =>
     def handleMessageChunk(chunk: MessageChunk) { throw new IllegalStateException }
     def handleChunkedMessageEnd(part: ChunkedMessageEnd) { throw new IllegalStateException }
 
-    def handleSentOkAndReturnNextUnconfirmed(ev: HttpServer.SentOk) = {
-      // we are seeing the SentOk for an error message, that was triggered
-      // by a downstream pipeline stage (e.g. because of a request parsing problem)
-      // so, we simply ignore it here
-      this
-    }
+    def handleSentAckAndReturnNextUnconfirmed(ev: AckEventWithReceiver) =
+      throw new IllegalStateException("Received unmatched send confirmation: " + ev.ack)
 
     def handleClosed(ev: HttpServer.Closed) {
       if (handlerReceivesClosedEvents)
@@ -212,3 +214,5 @@ trait OpenRequestComponent { component =>
   }
 
 }
+
+private[server] case class AckEventWithReceiver(ack: Any, receiver: ActorRef) extends Event
