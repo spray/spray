@@ -13,6 +13,7 @@ together with :ref:`spray-servlet`.
    dependencies
    installation
    configuration
+   getting-started
    key-concepts/index
    advanced-topics/index
    predefined-directives-alphabetically

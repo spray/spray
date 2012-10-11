@@ -60,11 +60,11 @@ class IncludeCode(Directive):
         current_snippets = ""
         res = []
         for line in lines:
-            comment = line.split("//", 1)[1] if line.find("//") >= 0 else ""
-            if comment.startswith("#"):
+            comment = line.rstrip().split("//", 1)[1] if line.find("//") >= 0 else ""
+            if comment.startswith("#") and len(comment) > 1:
                 current_snippets = comment
                 indent = line.find("//")
-            elif len(line) > 2 and line[2] == '"' and current_snippets == "":
+            elif len(line) > 2 and line[2] == '"' and not current_snippets.startswith("#"):
                 current_snippets = line[2:]
                 indent = 4
             elif comment == "#" and current_snippets.startswith("#"):

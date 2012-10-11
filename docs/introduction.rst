@@ -185,6 +185,22 @@ interesting alternative to a "classic", server-side web framework. We'd love to 
 regard...
 
 
+This Site
+~~~~~~~~~
+
+One example of a simple website running on a *spray*-based stack is this site (http://spray.io). Here is the stack we
+use for *spray.io*:
+
+- :ref:`spray-can` :ref:`HttpServer`
+- :ref:`spray-routing`
+- sbt-revolver_
+- twirl_
+- a custom SBT extension for compiling Sphinx_ sources to JSON
+- spray-json_ (for reading Sphinx_ output)
+- sbt-assembly_
+- Mentor_ (a simple **non-free** HTML5 template)
+
+
 .. _sbt-revolver: https://github.com/spray/sbt-revolver
 .. _twirl: https://github.com/spray/twirl
 .. _play 2.0: http://www.playframework.org/
@@ -197,3 +213,5 @@ regard...
 .. _spray-json: https://github.com/spray/spray-json
 .. _sbt-assembly: https://github.com/sbt/sbt-assembly
 .. _A client-side frontend framework: http://blog.stevensanderson.com/2012/08/01/rich-javascript-applications-the-seven-frameworks-throne-of-js-2012/
+.. _Sphinx: http://sphinx.pocoo.org/
+.. _Mentor: http://demo.pixelentity.com/?mentor_html
