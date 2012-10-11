@@ -88,10 +88,13 @@ the connection, upon which the application receives a ``Closed(RequestTimeout)``
 Send Confirmations
 ~~~~~~~~~~~~~~~~~~
 
-If not disabled in the client config via the ``ack-sends`` setting the client dispatches ``SentOk`` messages to the
-application as soon as a request (part) has been successfully written to the connections socket. This confirmation
-message can be used, for example, to trigger the sending of the next request part in a request streaming scenario.
-With such a design the application will never produce more data than the network can handle.
+If required the client can reply with a "send confirmation" message to every request (part) received by the application.
+You request a send confirmation by modifying a request part with the ``withSentAck`` method (see the server-side
+:ref:`HttpServer Send Confirmations` section for example code).
+Confirmation messages are especially helpful for triggering the sending of the next request part in a request
+streaming scenario, since with such a design the application will never produce more data than the network can handle.
+
+Send confirmations are always dispatched to the actor, which sent the respective request (part).
 
 
 Closed Notifications

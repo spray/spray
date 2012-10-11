@@ -138,25 +138,29 @@ error response (which you can change by overriding the ``timeoutResponse`` metho
 Send Confirmations
 ~~~~~~~~~~~~~~~~~~
 
-If not disabled via the ``ack-sends`` config setting the connector servlet replies with a DefaultIOSent__ message to the
-sender of a response (part) as soon as it has been successfully passed on to the servlet container
-(The ``DefaultIOSent`` message implements the same ``IOSent`` marker interface as its ``SentOk`` counterpart used by the
-*spray-can* :ref:`HttpServer`).
-This confirmation message can be used, for example, to trigger the sending of the next response part in a response
-streaming scenario. With such a design the application will never produce more data than the servlet container can
+If required the connector servlet can reply with a "send confirmation" message to every response (part) coming in from
+the application. You request a send confirmation by modifying a response part with the ``withSentAck`` method
+(see the :ref:`HttpServer Send Confirmations` section of the *spray-can* ``HttpServer`` documentation for example code).
+Confirmation messages are especially helpful for triggering the sending of the next response part in a response
+streaming scenario, since with such a design the application will never produce more data than the servlet container can
 handle.
 
-__ https://github.com/spray/spray/blob/master/spray-util/src/main/scala/cc/spray/util/model/IOSent.scala
+Send confirmations are always dispatched to the actor, which sent the respective response (part).
 
 
-Error Messages
-~~~~~~~~~~~~~~
+Closed Notifications
+~~~~~~~~~~~~~~~~~~~~
 
-Any exception that the container throws when the connector servlet tries to write a response (part) to it is wrapped
-in a ``ServletError`` instance and sent back to the sender of the response (part):
+The Servlet API completely hides the actual management of the HTTP connections from the application. Therefore the
+connector servlet has no real way of finding out whether a connection was closed or not. However, if the connection
+was closed unexpectedly for whatever reason a subsequent attempt to write to it usually fails with an ``IOException``.
+In order to adhere to same message protocol as the *spray-can* :ref:`HttpServer` the connector servlet therefore
+dispatches any exception, which the servlet container throws when a response (part) is written, back to the application
+wrapped in an ``cc.spray.util.IOClosed`` message.
 
-.. includecode:: /../spray-servlet/src/main/scala/cc/spray/servlet/ServletError.scala
-   :snippet: source-quote
+In addition the connector servlet also dispatches ``IOClosed`` notification messages after the final part of a response
+has been successfully written to the servlet container. This allows the application to use the same execution model for
+*spray-servlet* as it would for the *spray-can* :ref:`HttpServer`.
 
 
 HTTP Headers
@@ -188,10 +192,12 @@ Chunked Responses
   these messages to the servlet container one by one, with ``flush`` calls in between. The way the servlet container
   interprets these calls is up to its implementation.
 
-``Closed`` Messages
+*Closed* Messages
   The Servlet API completely hides the actual management of the HTTP connections from the application. Therefore the
-  connector servlet has no way of finding out whether a connection was closed or not and thus does not send any
-  ``Closed`` messages to the application in the way the *spray-can* :ref:`HttpServer` does.
+  connector servlet has no way of finding out whether a connection was closed or not. In order to provide a similar
+  message protocol as *spray-can* the connector servlet therefore simply assumes that all connections are closed after
+  the final part of a response has been written, no matter whether the servlet container actually uses persistent
+  connections or not.
 
 Timeout Semantics
   When working with chunked responses the semantics of the ``request-timeout`` config setting are different.

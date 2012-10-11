@@ -44,11 +44,10 @@ Basic Architecture
 The *spray-can* ``HttpServer`` is implemented as an Akka actor, which talks to an underlying :ref:`IOBridge` and spawns
 new child actors for every new connection. These connection actors process the requests coming in across the connection
 and dispatch them as immutable :ref:`spray-http` ``HttpRequest`` instances to a "handler" actor provided by the
-application. The handler completes a request by simply replying with an ``HttpResponse`` instance::
+application. The handler completes a request by simply replying with an ``HttpResponse`` instance:
 
-    def receive = {
-      case HttpRequest(...) => sender ! HttpResponse(...)
-    }
+.. includecode:: code/docs/HttpServerExamplesSpec.scala
+   :snippet: example-1
 
 Additionally the handler is informed of the closing of connections, the successful sending of responses (optionally)
 as well as any errors occurring on the network side (the details of which are explained in the `Message Protocol`_
@@ -153,28 +152,23 @@ complete the request within the time period configured as ``timeout-timeout``. O
 its deadline for completing the request will the ``HttpServer`` complete the request itself with a "hard-coded" error
 response (which you can change by overriding the ``timeoutResponse`` method).
 
+.. _HttpServer Send Confirmations:
 
 Send Confirmations
 ~~~~~~~~~~~~~~~~~~
 
-If not disabled in the server config via the ``ack-sends`` setting the server dispatches ``SentOk`` messages to the
-handler as soon as a response (part) has been successfully written to the connections socket. This confirmation message
-can be used, for example, to trigger the sending of the next response part in a response streaming scenario. With such
-a design the application will never produce more data than the network can handle.
+If required the server can reply with a "send confirmation" message to every response (part) coming in from the
+handler. You request a send confirmation by modifying a response part with the ``withSentAck`` method. For example,
+the following handler logic receives the String "ok" as an actor message after the response has been successfully
+written to the connections socket:
 
-``SentOk`` messages are always sent to the sender of the last response part received for a request. Note that this
-doesn't necessarily have to be the one that sent the part. For example, consider the following sequence of actions
-after a request has been received by the handler actor:
+.. includecode:: code/docs/HttpServerExamplesSpec.scala
+   :snippet: example-2
 
-- The handler actor sends a ``ChunkedResponseStart`` and waits for a ``SentOk``.
-- Actor ``A`` sends a ``MessageChunk`` and waits for a ``SentOk``.
-- Actor ``B`` sends a ``MessageChunk`` and *does not* wait for a ``SentOk``.
-- Actor ``C`` sends a ``MessageChunk`` right after ``B`` has sent its chunk.
+Confirmation messages are especially helpful for triggering the sending of the next response part in a response
+streaming scenario, since with such a design the application will never produce more data than the network can handle.
 
-In this example it might be that the server receives the chunk from ``C`` before the send confirmation for the chunk
-from ``B`` has arrived from the :ref:`IOBridge`. In this case ``C`` will receive two ``SentOk`` messages.
-Since, in practice such actor setups should be quite rare we have decided to accept this limitation in exchange for
-the simplicity and better performance of the current implementation.
+Send confirmations are always dispatched to the actor, which sent the respective response (part).
 
 
 Closed Notifications
@@ -187,8 +181,9 @@ The ``HttpServer`` sends ``Closed`` events coming in from the underlying :ref:`I
 
 - the handler actor, if no request is currently open and the application doesn't use ``Per-Message`` handlers.
 - the handler actor, if a request is currently open and no response part has yet been received.
-- the sender of the last response part received by the server if the part is a ``ChunkedResponseStart`` or a ``MessageChunk``.
-- the sender of the last response part received if ``ack-sends`` is enabled and a ``SentOk`` was not yet dispatched.
+- the sender of the last response part received by the server if the part is a ``ChunkedResponseStart`` or a
+  ``MessageChunk``.
+- the sender of the last response part received if a send confirmation was requested but not dispatched.
 
 .. note:: The application can always choose to actively close a connection by sending a ``Close`` command to the sender
    of a request. However, during normal operation it is encouraged to make use of the ``Connection`` header to signal
