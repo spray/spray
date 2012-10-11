@@ -15,7 +15,7 @@ object SpdyParsing {
   def apply(): EventPipelineStage = new EventPipelineStage {
     def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): EPL = {
       val inflater = new Inflater()
-      def startParser = new parsing.FrameHeaderParser(inflater)
+      def startParser = new parsing.FrameHeaderReader(inflater)
 
       var currentParsingState: ParsingState = startParser
 

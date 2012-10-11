@@ -7,7 +7,7 @@ import java.util.zip.{InflaterInputStream, Inflater, Deflater, DeflaterInputStre
 import java.io.ByteArrayInputStream
 import annotation.tailrec
 
-class FrameHeaderParser(inflater: Inflater) extends ReadBytePart(8) {
+class FrameHeaderReader(inflater: Inflater) extends ReadBytePart(8) {
   def finished(bytes: Array[Byte]): ParsingState = {
     val Array(_, _, _, _, _, l1, l2, l3) = bytes
     new FrameDataReader(inflater, bytes, Conversions.u3be(l1, l2, l3))
