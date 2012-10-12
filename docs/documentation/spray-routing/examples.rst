@@ -6,6 +6,7 @@ Complete Examples
 The ``/examples/spray-routing/`` directory of the *spray* repository
 contains a number of example projects for *spray-routing*, which are described here.
 
+.. _simple-on-spray-can:
 
 simple-on-spray-can
 -------------------

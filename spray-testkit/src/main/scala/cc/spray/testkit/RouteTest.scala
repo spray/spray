@@ -56,11 +56,11 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   def header[T <: HttpHeader :ClassManifest]: Option[T] = response.header[T]
   def header(name: String): Option[HttpHeader] = response.headers.mapFind(h => if (h.name == name) Some(h) else None)
   def status: StatusCode = response.status
-  def chunks = result.chunks
-  def closingExtensions = result.closingExtensions
-  def trailer = result.trailer
+  def chunks: List[MessageChunk] = result.chunks
+  def closingExtensions: List[ChunkExtension] = result.closingExtensions
+  def trailer: List[HttpHeader] = result.trailer
 
-  def rejections: Seq[Rejection] = {
+  def rejections: List[Rejection] = {
     assertInCheck()
     RejectionHandler.applyTransformations(dynRR.value.rejections)
   }
