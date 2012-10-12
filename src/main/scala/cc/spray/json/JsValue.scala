@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package cc.spray.json
+package spray.json
 
 import collection.immutable.ListMap
 

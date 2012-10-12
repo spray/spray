@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package cc.spray.json
+package spray.json
 
 /**
   * Provides the JsonFormats for the most important Scala types.

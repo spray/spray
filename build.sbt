@@ -2,9 +2,9 @@ name := "spray-json"
 
 version := "1.1.2"
 
-organization := "cc.spray"
+organization := "io.spray"
 
-organizationHomepage := Some(new URL("http://spray.cc"))
+organizationHomepage := Some(new URL("http://spray.io"))
 
 description := "A Scala library for easy and idiomatic JSON (de)serialization"
 
@@ -37,7 +37,7 @@ publishMavenStyle := true
 publishTo <<= version { version =>
   Some {
     "spray repo" at {
-      // public uri is repo.spray.cc, we use an SSH tunnel to the nexus here
+      // public uri is repo.spray.io, we use an SSH tunnel to the nexus here
       "http://localhost:42424/content/repositories/" + {
         if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else"releases/"
       }
@@ -57,4 +57,4 @@ seq(lsSettings:_*)
 
 (LsKeys.docsUrl in LsKeys.lsync) := Some(new URL("http://spray.github.com/spray/api/spray-json/"))
 
-(externalResolvers in LsKeys.lsync) := Seq("spray repo" at "http://repo.spray.cc")
+(externalResolvers in LsKeys.lsync) := Seq("spray repo" at "http://repo.spray.io")

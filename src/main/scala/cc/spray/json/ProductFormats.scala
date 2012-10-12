@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.json
+package spray.json
 
 /**
  * Provides the helpers for constructing custom JsonFormat implementations for types implementing the Product trait

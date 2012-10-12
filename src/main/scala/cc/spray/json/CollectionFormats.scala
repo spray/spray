@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package cc.spray.json
+package spray.json
 
 trait CollectionFormats {
 
@@ -43,7 +43,7 @@ trait CollectionFormats {
   
   /**
     * Supplies the JsonFormat for Maps. The implicitly available JsonFormat for the key type K must
-    * always write JsStrings, otherwise a [[cc.spray.json.SerializationException]] will be thrown.
+    * always write JsStrings, otherwise a [[spray.json.SerializationException]] will be thrown.
    */
   implicit def mapFormat[K :JsonFormat, V :JsonFormat] = new RootJsonFormat[Map[K, V]] {
     def write(m: Map[K, V]) = JsObject {

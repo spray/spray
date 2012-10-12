@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray
+package spray
 
 package object json {
 

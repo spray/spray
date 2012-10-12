@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.json
+package spray.json
 
 import java.lang.StringBuilder
 

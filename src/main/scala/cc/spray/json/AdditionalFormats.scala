@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package cc.spray.json
+package spray.json
 
 /**
   * Provides additional JsonFormats and helpers

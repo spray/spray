@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.json
+package spray.json
 
 import org.specs2.mutable._
 import java.util.Arrays

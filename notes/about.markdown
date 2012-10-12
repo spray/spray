@@ -7,6 +7,6 @@ It sports the following features:
 * Choice of either compact or pretty JSON-to-string printing
 * Type-class based (de)serialization of custom objects (no reflection, no intrusion)
 
-  [spray-json]: http://json.spray.cc
+  [spray-json]: http://json.spray.io
   [JSON]: http://json.org
   [parboiled]: http://parboiled.org
