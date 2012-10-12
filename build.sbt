@@ -1,6 +1,6 @@
 name := "spray-json"
 
-version := "1.1.1"
+version := "1.1.2"
 
 organization := "cc.spray"
 
@@ -14,13 +14,13 @@ startYear := Some(2011)
 
 licenses := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt"))
 
-scalaVersion := "2.9.1"
+scalaVersion := "2.9.2"
 
 scalacOptions := Seq("-deprecation", "-encoding", "utf8")
 
 libraryDependencies ++= Seq(
-  "org.parboiled" % "parboiled-scala" % "1.0.2" % "compile",
-  "org.specs2" %% "specs2" % "1.7.1" % "test"
+  "org.parboiled" %% "parboiled-scala" % "1.1.1" % "compile",
+  "org.specs2" %% "specs2" % "1.12.2" % "test"
 )
 
 scaladocOptions <<= (name, version).map { (n, v) => Seq("-doc-title", n + " " + v) }
