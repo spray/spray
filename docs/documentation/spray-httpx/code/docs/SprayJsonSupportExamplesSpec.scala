@@ -7,7 +7,7 @@ class SprayJsonSupportExamplesSpec extends Specification {
 
   //# example-1
   import spray.httpx.unmarshalling.pimpHttpEntity
-  import cc.spray.json.DefaultJsonProtocol
+  import spray.json.DefaultJsonProtocol
   import spray.httpx.marshalling._
   import spray.http._
   import MediaTypes.`application/json`

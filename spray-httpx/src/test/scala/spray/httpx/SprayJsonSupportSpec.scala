@@ -17,7 +17,7 @@
 package spray.httpx
 
 import org.specs2.mutable.Specification
-import cc.spray.json._
+import spray.json._
 import spray.http._
 import spray.httpx.unmarshalling._
 import spray.httpx.marshalling._

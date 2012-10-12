@@ -1,6 +1,6 @@
 package spray.examples
 
-import cc.spray.json.{JsonFormat, DefaultJsonProtocol}
+import spray.json.{JsonFormat, DefaultJsonProtocol}
 
 
 case class Elevation(location: Location, elevation: Double)

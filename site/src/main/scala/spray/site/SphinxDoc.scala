@@ -17,7 +17,7 @@
 package spray.site
 
 import org.parboiled.common.FileUtils
-import cc.spray.json._
+import spray.json._
 
 
 object JsonProtocol extends DefaultJsonProtocol {

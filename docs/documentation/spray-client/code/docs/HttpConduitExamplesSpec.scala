@@ -7,7 +7,7 @@ import akka.util.Duration
 import akka.pattern.ask
 import akka.actor.{Props, ActorSystem}           // setup
 import akka.dispatch.Future                      // setup
-import cc.spray.json.DefaultJsonProtocol
+import spray.json.DefaultJsonProtocol
 import spray.can.client.HttpClient            // setup
 import spray.can.server.HttpServer
 import spray.client.HttpConduit               // setup

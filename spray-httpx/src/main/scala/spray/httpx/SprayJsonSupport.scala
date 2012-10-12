@@ -18,7 +18,7 @@ package spray.httpx
 
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling.Unmarshaller
-import cc.spray.json._
+import spray.json._
 import spray.http._
 import MediaTypes._
 
