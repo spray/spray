@@ -6,4 +6,6 @@ addSbtPlugin("cc.spray" % "sbt-revolver" % "0.6.1")
 
 addSbtPlugin("cc.spray" % "sbt-twirl" % "0.5.4")
 
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.8.4")
+
 resolvers += "akka repo" at "http://repo.akka.io/releases/" // to be removed when upgrading to the next sbt-twirl version

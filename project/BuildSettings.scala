@@ -6,7 +6,7 @@ import ls.Plugin._
 object BuildSettings {
 
   lazy val basicSettings = seq(
-    version               := "1.0-M3-SNAPSHOT",
+    version               := "1.0-M3",
     homepage              := Some(new URL("http://spray.io")),
     organization          := "io.spray",
     organizationHomepage  := Some(new URL("http://spray.io")),
@@ -61,8 +61,15 @@ object BuildSettings {
     }
   )
 
+  import sbtassembly.Plugin._
+  import AssemblyKeys._
   lazy val siteSettings = basicSettings ++ noPublishing ++
-    twirl.sbt.TwirlPlugin.Twirl.settings ++ cc.spray.revolver.RevolverPlugin.Revolver.settings
+    twirl.sbt.TwirlPlugin.Twirl.settings ++ cc.spray.revolver.RevolverPlugin.Revolver.settings ++
+    assemblySettings ++ seq(
+      mainClass in assembly := Some("spray.site.Boot"),
+      jarName in assembly := "site.jar",
+      test in assembly := {}
+    )
 
   lazy val docsSettings = basicSettings ++ noPublishing ++ seq(
     unmanagedSourceDirectories in Test <<= baseDirectory { _ ** "code" get }

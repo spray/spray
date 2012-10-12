@@ -1,18 +1,15 @@
-Version 1.0-M3 (2012-xx-xx)
+Version 1.0-M3 (2012-10-12)
 ---------------------------
+Largest refactoring in the history of the project.
+Lots of breaking changes. Most importantly:
 
-- Completely refactored suite module structure
-- Removed `respondWithContentType` directive (didn't play well with content negotiation)
-- Changed `parameters` directive with one argument
-- Renamed transform... directives to map...
-- Renamed IoWorker to IOBridge
-- Renamed `fail` directives to `failWith`
-- Renamed `completeWith` directives to `complete`
-- Default Unmarshallers now accept emtpy input where it makes sense
-- Marshalling and Unmarshalling infrastructure completely redone
-- !Directive is gone
-- 'httpBasic' => BasicAuth
-- dependent-method-types now required compiler setting
+- Completely new documentation at http://spray.io
+- Renamed group id from "cc.spray" to "io.spray"
+- Renamed packages from "cc.spray..." to simply "spray..."
+- Completely refactored suite module structure (from 4 to 10+1 modules)
+- Improved naming of many identifiers across the board
+- Completely new architecture underneath routing DSL
+- Completely new Marshalling and Unmarshalling infrastructure
 - ...
 
 
