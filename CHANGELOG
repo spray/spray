@@ -1,3 +1,10 @@
+Version 1.2 (2012-10-12)
+------------------------
+- Upgraded to Scala 2.9.2 and parboiled 1.1.1
+- Renamed group id from "cc.spray" to "io.spray"
+- Renamed package from "cc.spray.json" to "spray.json"
+
+
 Version 1.1.1 (2012-03-13)
 --------------------------
 - Fixed significant performance problem in JsonParser
