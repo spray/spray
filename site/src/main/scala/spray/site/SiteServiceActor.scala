@@ -17,6 +17,7 @@
 package spray.site
 
 import akka.actor.Actor
+import akka.event.Logging
 import spray.httpx.encoding.Gzip
 import spray.httpx.TwirlSupport._
 import spray.http.StatusCodes
@@ -29,27 +30,29 @@ class SiteServiceActor extends Actor with HttpServiceActor {
   def receive = runRoute {
     dynamic { // for proper support of twirl + sbt-revolver during development, can be removed in production
       (get & encodeResponse(Gzip)) {
-        path("") {
-          redirect("/home")
-        } ~
-        path("home") {
-          complete(page(home()))
-        } ~
-        path("index") {
-          complete(page(index()))
-        } ~
         getFromResourceDirectory {
           "theme"
         } ~
         pathPrefix("_images") {
           getFromResourceDirectory("sphinx/json/_images")
         } ~
-        path(Rest) { docPath =>
-          rejectEmptyResponse {
-            complete(render(docPath))
-          }
-        } ~
-        complete(StatusCodes.NotFound, page(error404())) // fallback response is 404
+        logRequest("IN", Logging.InfoLevel) {
+          path("") {
+            redirect("/home")
+          } ~
+          path("home") {
+            complete(page(home()))
+          } ~
+          path("index") {
+            complete(page(index()))
+          } ~
+          path(Rest) { docPath =>
+            rejectEmptyResponse {
+              complete(render(docPath))
+            }
+          } ~
+          complete(StatusCodes.NotFound, page(error404())) // fallback response is 404
+        }
       }
     }
   }

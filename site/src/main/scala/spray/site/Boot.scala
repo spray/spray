@@ -41,7 +41,8 @@ object Boot extends App {
 
   // a running HttpServer can be bound, unbound and rebound
   // initially to need to tell it where to bind to
-  httpServer ! HttpServer.Bind("localhost", 8080)
+  val settings = SiteSettings.Default
+  httpServer ! HttpServer.Bind(settings.Interface, settings.Port)
 
   // finally we drop the main thread but hook the shutdown of
   // our IOBridge into the shutdown of the applications ActorSystem
