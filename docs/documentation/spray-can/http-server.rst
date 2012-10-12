@@ -78,7 +78,7 @@ Message Protocol
 A running ``HttpServer`` actor understands the following command messages
 (they are all defined in the HttpServer__ companion object):
 
-__ https://github.com/spray/spray/blob/master/spray-can/src/main/scala/cc/spray/can/server/HttpServer.scala
+__ https://github.com/spray/spray/blob/master/spray-can/src/main/scala/spray/can/server/HttpServer.scala
 
 Bind
   Start listening for incoming connections on a particular port. The sender receives a ``Bound`` event upon completion.
@@ -146,7 +146,7 @@ Request Timeouts
 ~~~~~~~~~~~~~~~~
 
 If the handler does not respond to a request within the configured ``request-timeout`` period a
-``cc.spray.http.Timeout`` message is sent to the timeout handler, which can be the "regular" handler itself or
+``spray.http.Timeout`` message is sent to the timeout handler, which can be the "regular" handler itself or
 another actor (depending on the ``timeout-handler`` config setting). The timeout handler then has the chance to
 complete the request within the time period configured as ``timeout-timeout``. Only if the timeout handler also misses
 its deadline for completing the request will the ``HttpServer`` complete the request itself with a "hard-coded" error

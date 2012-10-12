@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package cc.spray.http.parser
+package spray.http.parser
 
 import org.parboiled.scala._
 import org.parboiled.errors.{ParserRuntimeException, ParsingException, ErrorUtils}
-import cc.spray.http.RequestErrorInfo
+import spray.http.RequestErrorInfo
 
 
 private[parser] trait SprayParser extends Parser {

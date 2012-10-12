@@ -31,7 +31,7 @@ The :ref:`maven-repo` chapter contains all the info about how to pull *spray-cac
 However, since you normally don't need to have access to *spray-caching* from your production code, you should limit
 the dependency to the ``test`` scope::
 
-    libraryDependencies += "cc.spray" % "spray-can" % version % "test"
+    libraryDependencies += "io.spray" % "spray-can" % version % "test"
 
 Currently *spray-testkit* supports the two most popular scala testing frameworks, scalatest_ and specs2_. Depending on
 which one you are using you need to mix either the ``ScalatestRouteTest`` or the ``Specs2RouteTest`` trait into your
@@ -134,9 +134,9 @@ Examples
 A full example of how an API service definition can be structured in order to be testable with *spray-testkit* and
 without actor involvement is shown with the :ref:`simple-on-spray-can` example. This__ is its test definition.
 
-__ https://github.com/spray/spray/blob/master/examples/spray-routing/simple-on-spray-can/src/test/scala/cc/spray/examples/DemoServiceSpec.scala
+__ https://github.com/spray/spray/blob/master/examples/spray-routing/simple-on-spray-can/src/test/scala/spray/examples/DemoServiceSpec.scala
 
 Another great pool of examples are the tests for all the predefined directives in :ref:`spray-routing`.
 They can be found here__.
 
-__ https://github.com/spray/spray/tree/master/spray-routing-tests/src/test/scala/cc/spray/routing
+__ https://github.com/spray/spray/tree/master/spray-routing-tests/src/test/scala/spray/routing

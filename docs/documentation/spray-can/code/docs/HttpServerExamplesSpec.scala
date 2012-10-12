@@ -2,7 +2,7 @@ package docs
 
 import org.specs2.mutable.Specification
 import akka.actor.Actor
-import cc.spray.http._
+import spray.http._
 import HttpMethods._
 
 

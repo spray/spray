@@ -3,7 +3,7 @@ Installation
 
 The :ref:`maven-repo` chapter contains all the info about how to pull *spray-can* into your classpath.
 
-Afterwards just ``import cc.spray.routing._`` to bring all relevant identifiers into scope.
+Afterwards just ``import spray.routing._`` to bring all relevant identifiers into scope.
 
 Also, if you are using *spray-routing* with Scala 2.9.x, make sure to include the following with your build definition::
 
@@ -11,7 +11,7 @@ Also, if you are using *spray-routing* with Scala 2.9.x, make sure to include th
 
 If you don't have *dependent-method-types* enabled you will be seeing compiler errors such as this::
 
-    [error]  found   : cc.spray.routing.directives.StandardRoute
+    [error]  found   : spray.routing.directives.StandardRoute
     [error]  required: hac.In
     [error]             complete("PONG!")
     [error]                     ^

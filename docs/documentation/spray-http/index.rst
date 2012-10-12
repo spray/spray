@@ -26,7 +26,7 @@ Installation
 
 The :ref:`maven-repo` chapter contains all the info about how to pull *spray-http* into your classpath.
 
-Afterwards just ``import cc.spray.http._`` to bring all relevant identifiers into scope.
+Afterwards just ``import spray.http._`` to bring all relevant identifiers into scope.
 
 
 Overview
@@ -35,7 +35,7 @@ Overview
 Since *spray-http* provides the central HTTP data structures for *spray* you will find the following import
 in quite a few places around the *spray* code base (and probably your own code as well)::
 
-    import cc.spray.http._
+    import spray.http._
 
 This brings in scope all of the relevant things that are defined here_ and that you'll want to work with, mainly:
 
@@ -64,7 +64,7 @@ In order to develop a better understanding for how *spray* models HTTP you proba
 around the `spray-http sources`_ (ideally with an IDE that supports proper code navigation).
 
 .. _here: `spray-http sources`_
-.. _spray-http sources: https://github.com/spray/spray/tree/master/spray-http/src/main/scala/cc/spray/http
+.. _spray-http sources: https://github.com/spray/spray/tree/master/spray-http/src/main/scala/spray/http
 
 
 2-Stage Message Parsing
@@ -116,4 +116,4 @@ incoming responses by :ref:`spray-client`. File extension resolution (as used fo
 :ref:`FileAndResourceDirectives`) will work as expected.
 
 .. _IANA MIME media type registry: http://www.iana.org/assignments/media-types/index.html
-.. _MediaTypes: https://github.com/spray/spray/blob/master/spray-http/src/main/scala/cc/spray/http/MediaType.scala
+.. _MediaTypes: https://github.com/spray/spray/blob/master/spray-http/src/main/scala/spray/http/MediaType.scala

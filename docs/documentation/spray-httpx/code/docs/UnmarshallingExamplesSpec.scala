@@ -1,18 +1,18 @@
 package docs
 
 import org.specs2.mutable.Specification
-import cc.spray.httpx.unmarshalling.ContentExpected
-import cc.spray.http.EmptyEntity
+import spray.httpx.unmarshalling.ContentExpected
+import spray.http.EmptyEntity
 import xml.NodeSeq
 
 
 class UnmarshallingExamplesSpec extends Specification {
 
   //# example-1
-  import cc.spray.http.HttpBody
-  import cc.spray.util.pimpByteArray
-  import cc.spray.httpx.unmarshalling.{Unmarshaller, pimpHttpEntity}
-  import cc.spray.http.MediaTypes._
+  import spray.http.HttpBody
+  import spray.util.pimpByteArray
+  import spray.httpx.unmarshalling.{Unmarshaller, pimpHttpEntity}
+  import spray.http.MediaTypes._
 
   val `application/vnd.acme.person` =
     register(CustomMediaType("application/vnd.acme.person"))
@@ -55,7 +55,7 @@ class UnmarshallingExamplesSpec extends Specification {
   }
 
   "example-3" in {
-    import cc.spray.http.MediaTypes.`text/xml`
+    import spray.http.MediaTypes.`text/xml`
 
     implicit val myNodeSeqUnmarshaller = Unmarshaller.forNonEmpty[NodeSeq]
 

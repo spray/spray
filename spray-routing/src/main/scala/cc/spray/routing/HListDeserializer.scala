@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 
-import cc.spray.httpx.unmarshalling.{MalformedContent, DeserializationError, Deserializer}
+import spray.httpx.unmarshalling.{MalformedContent, DeserializationError, Deserializer}
 import shapeless._
 
 // TODO: simplify by rebasing on a shapeless fold

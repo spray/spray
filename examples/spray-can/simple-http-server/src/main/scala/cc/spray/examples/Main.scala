@@ -1,9 +1,9 @@
-package cc.spray.examples
+package spray.examples
 
 import java.security.{SecureRandom, KeyStore}
 import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
-import cc.spray.can.server.HttpServer
-import cc.spray.io._
+import spray.can.server.HttpServer
+import spray.io._
 import akka.actor._
 
 

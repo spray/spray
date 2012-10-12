@@ -2,9 +2,9 @@ package docs
 
 //# source-quote
 import org.specs2.mutable.Specification
-import cc.spray.testkit.Specs2RouteTest
-import cc.spray.routing.HttpService
-import cc.spray.http.StatusCodes._
+import spray.testkit.Specs2RouteTest
+import spray.routing.HttpService
+import spray.http.StatusCodes._
 
 
 class FullTestKitExampleSpec extends Specification with Specs2RouteTest with HttpService {

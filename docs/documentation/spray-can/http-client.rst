@@ -37,7 +37,7 @@ in the HttpClient__ companion object). The client will attempt to connect to the
 an ``HttpClient.Connected`` event after the connection has been established, or a ``Status.Failure`` message
 (which is automatically turned into Future failures if the ``Connect`` was sent with an ``ask``).
 
-__ https://github.com/spray/spray/blob/master/spray-can/src/main/scala/cc/spray/can/client/HttpClient.scala
+__ https://github.com/spray/spray/blob/master/spray-can/src/main/scala/spray/can/client/HttpClient.scala
 
 After the connection has been established the application then sends an ``HttpRequest`` to the sender of the
 ``Connected`` message (which is the connection actor responsible for the connection). After having received and parsed
@@ -103,7 +103,7 @@ Closed Notifications
 When a connection is closed, for whatever reason, the ``HttpClient`` dispatches a ``Closed`` event message to the
 application. This message carries a ``reason`` member whose possible values are define here__.
 
-__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/ConnectionClosedReason.scala
+__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/spray/io/ConnectionClosedReason.scala
 
 
 Connection Configuration

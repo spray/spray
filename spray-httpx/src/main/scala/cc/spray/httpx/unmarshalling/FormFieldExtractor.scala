@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package cc.spray.httpx.unmarshalling
+package spray.httpx.unmarshalling
 
-import cc.spray.http._
+import spray.http._
 
 
 sealed trait FormFieldExtractor {
@@ -65,7 +65,7 @@ class MultipartFormField(val name: String, val rawValue: Option[BodyPart]) exten
 }
 
 
-import cc.spray.httpx.unmarshalling.{FromStringOptionDeserializer => FSOD, FromEntityOptionUnmarshaller => FEOU}
+import spray.httpx.unmarshalling.{FromStringOptionDeserializer => FSOD, FromEntityOptionUnmarshaller => FEOU}
 
 sealed abstract class FormFieldConverter[T] { self =>
   def urlEncodedFieldConverter: Option[FSOD[T]]

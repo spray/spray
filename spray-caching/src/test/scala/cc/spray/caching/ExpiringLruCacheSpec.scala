@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.caching
+package spray.caching
 
 import java.util.Random
 import java.util.concurrent.CountDownLatch
@@ -23,7 +23,7 @@ import akka.util.Duration
 import akka.dispatch.Future
 import org.specs2.mutable.Specification
 import org.specs2.matcher.Matcher
-import cc.spray.util._
+import spray.util._
 
 
 class ExpiringLruCacheSpec extends Specification {

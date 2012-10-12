@@ -1,17 +1,17 @@
 package docs
 
 import org.specs2.mutable.Specification
-import cc.spray.httpx.marshalling.Marshaller
+import spray.httpx.marshalling.Marshaller
 
 
 class RequestBuildingExamplesSpec extends Specification {
 
   "example-1" in {
-    import cc.spray.http._
+    import spray.http._
     import HttpMethods._
     import HttpHeaders._
     import MediaTypes._
-    import cc.spray.httpx.RequestBuilding._
+    import spray.httpx.RequestBuilding._
 
     // simple GET requests
     Get() === HttpRequest(method = GET)

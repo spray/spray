@@ -1,8 +1,8 @@
 package docs
 
 import org.specs2.mutable.Specification
-import cc.spray.testkit.Specs2RouteTest
-import cc.spray.routing.{ValidationRejection, HttpService}
+import spray.testkit.Specs2RouteTest
+import spray.routing.{ValidationRejection, HttpService}
 
 
 class CaseClassExtractionExamplesSpec extends Specification with Specs2RouteTest with HttpService {

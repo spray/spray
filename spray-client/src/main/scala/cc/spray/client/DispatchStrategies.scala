@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray
+package spray
 package client
 
 import collection.mutable.Queue
@@ -38,7 +38,7 @@ trait DispatchStrategy {
 }
 
 /**
- * Abstraction over HTTP connections in the context of a [[cc.spray.client.DispatchStrategy]]
+ * Abstraction over HTTP connections in the context of a [[spray.client.DispatchStrategy]]
  */
 trait HttpConn {
   /**
@@ -60,7 +60,7 @@ trait HttpRequestContext {
 object DispatchStrategies {
 
   /**
-   * Defines a [[cc.spray.client.DispatchStrategy]] with the following logic:
+   * Defines a [[spray.client.DispatchStrategy]] with the following logic:
    *  - Dispatch to the first idle connection in the pool, if there is one.
    *  - If none is idle, dispatch to the first unconnected connection, if there is one.
    *  - If all are already connected, store the request and send it as soon as one
@@ -94,7 +94,7 @@ object DispatchStrategies {
   }
 
   /**
-   * Defines a [[cc.spray.client.DispatchStrategy]] with the following logic:
+   * Defines a [[spray.client.DispatchStrategy]] with the following logic:
    *  - Dispatch to the first idle connection in the pool, if there is one.
    *  - If none is idle, dispatch to the first unconnected connection, if there is one.
    *  - If all are already connected, dispatch to the connection with the least open requests.

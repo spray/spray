@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-package cc.spray.testkit
+package spray.testkit
 
 import akka.actor.ActorSystem
 import akka.util.duration._
 import org.scalatest.Suite
 import util.DynamicVariable
-import cc.spray.routing._
-import cc.spray.httpx.unmarshalling._
-import cc.spray.httpx._
-import cc.spray.http._
-import cc.spray.util._
+import spray.routing._
+import spray.httpx.unmarshalling._
+import spray.httpx._
+import spray.http._
+import spray.util._
 
 
 trait RouteTest extends RequestBuilding with RouteResultComponent {

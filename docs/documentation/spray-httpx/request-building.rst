@@ -15,4 +15,4 @@ Take a look at these examples:
    :snippet: example-1
 
 
-__ https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/cc/spray/httpx/RequestBuilding.scala
+__ https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/RequestBuilding.scala

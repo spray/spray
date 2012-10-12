@@ -5,8 +5,8 @@ import org.specs2.mutable.Specification
 //# example-1
 import akka.dispatch.Future
 import akka.actor.ActorSystem
-import cc.spray.caching.{LruCache, Cache}
-import cc.spray.util._
+import spray.caching.{LruCache, Cache}
+import spray.util._
 
 //#
 

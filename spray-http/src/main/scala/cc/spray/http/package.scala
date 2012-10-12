@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray
+package spray
 
 import http.HttpHeaders.RawHeader
 
@@ -24,7 +24,7 @@ package object http {
   type QueryParams = Map[String, String]
 
   /**
-   * Warms up the cc.spray.http module by triggering the loading of most classes in this package,
+   * Warms up the spray.http module by triggering the loading of most classes in this package,
    * so as to increase the speed of the first usage.
    */
   def warmUp() {

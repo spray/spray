@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 package directives
 
 import shapeless._
-import cc.spray.http._
+import spray.http._
 
 
 trait FormFieldDirectives extends ToNameReceptaclePimps {
@@ -67,7 +67,7 @@ object FieldDefMagnet2 {
 trait FieldDefMagnetAux[A, B] extends (A => B)
 
 object FieldDefMagnetAux extends ToNameReceptaclePimps {
-  import cc.spray.httpx.unmarshalling.{Unmarshaller => UM, FormFieldConverter => FFC, FromEntityOptionUnmarshaller => FEOU, _}
+  import spray.httpx.unmarshalling.{Unmarshaller => UM, FormFieldConverter => FFC, FromEntityOptionUnmarshaller => FEOU, _}
 
   def apply[A, B](f: A => B) = new FieldDefMagnetAux[A, B] { def apply(value: A) = f(value) }
 

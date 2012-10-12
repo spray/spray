@@ -1,4 +1,4 @@
-The [spray](http://spray.cc) team is gladly announcing the availability of release 0.8.0 of the _spray_ suite.
+The [spray](http://spray.io) team is gladly announcing the availability of release 0.8.0 of the _spray_ suite.
 A lot of work went into this latest incarnation of tools to make building RESTful web services with Scala and
 Akka even more productive and fun.
 
@@ -14,9 +14,9 @@ The most important changes:
 * Unified SimpleParsers and Unmarshallers into a joint `Deserializer` hierarchy
 * Removed `optionalContent` directive (use `content(as[Option[T]])` instead)
 * Renamed `spray-http` module to `spray-base`
-* Renamed cc.spray.marshalling to cc.spray.typeconversion
+* Renamed spray.marshalling to spray.typeconversion
 * Renamed SprayJsonMarshalling to SprayJsonSupport
-* Moved encoding/decoding to for cc.spray.encoding
+* Moved encoding/decoding to for spray.encoding
 * Simplified case class extraction, now `as(T)` rather than `as(instanceOf(T))`
 * Simplified SprayTest infrastructure making the 'DontDetach' trait obsolete
 * Lots of other fixes, additions and improvements

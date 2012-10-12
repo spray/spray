@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 package directives
 
 import java.io.File
 import java.net.{URL, URLConnection}
 import org.parboiled.common.FileUtils
 import akka.actor.ActorRefFactory
-import cc.spray.httpx.marshalling.BasicMarshallers
-import cc.spray.util._
-import cc.spray.http._
+import spray.httpx.marshalling.BasicMarshallers
+import spray.util._
+import spray.http._
 import HttpHeaders._
 import shapeless._
 
@@ -96,7 +96,7 @@ trait FileAndResourceDirectives {
 
   /**
    * Returns a Route that completes GET requests with the content of a file underneath the given directory.
-   * The unmatchedPath of the [[cc.spray.RequestContext]] is first transformed by the given pathRewriter function before
+   * The unmatchedPath of the [[spray.RequestContext]] is first transformed by the given pathRewriter function before
    * being appended to the given directoryName to build the final fileName.
    * The actual I/O operation is running detached in the context of a newly spawned actor, so it doesn't block the
    * current thread. If the file cannot be read the Route rejects the request.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package cc.spray.servlet
+package spray.servlet
 
 import java.io.IOException
 import javax.servlet.http.HttpServletRequest
 import akka.event.LoggingAdapter
-import cc.spray.util.EmptyByteArray
-import cc.spray.http.parser.HttpParser
-import cc.spray.http._
+import spray.util.EmptyByteArray
+import spray.http.parser.HttpParser
+import spray.http._
 import HttpHeaders._
 import StatusCodes._
 

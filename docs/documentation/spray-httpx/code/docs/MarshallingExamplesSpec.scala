@@ -6,9 +6,9 @@ import org.specs2.mutable.Specification
 class MarshallingExamplesSpec extends Specification {
 
   //# example-1
-  import cc.spray.http.HttpBody
-  import cc.spray.httpx.marshalling._
-  import cc.spray.http.MediaTypes._
+  import spray.http.HttpBody
+  import spray.httpx.marshalling._
+  import spray.http.MediaTypes._
 
   val `application/vnd.acme.person` =
     register(CustomMediaType("application/vnd.acme.person"))

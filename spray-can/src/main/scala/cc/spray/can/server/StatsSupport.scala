@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,17 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package cc.spray.can.server
+package spray.can.server
 
 import java.util.concurrent.atomic.AtomicLong
 import annotation.tailrec
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
-import cc.spray.http.{Timeout, HttpMessageStart}
-import cc.spray.can.rendering.HttpResponsePartRenderingContext
-import cc.spray.can.server.RequestParsing.HttpMessageStartEvent
-import cc.spray.util.IdleTimeout
-import cc.spray.io._
+import spray.http.{Timeout, HttpMessageStart}
+import spray.can.rendering.HttpResponsePartRenderingContext
+import spray.can.server.RequestParsing.HttpMessageStartEvent
+import spray.util.IdleTimeout
+import spray.io._
 
 
 object StatsSupport {

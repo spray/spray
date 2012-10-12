@@ -1,5 +1,5 @@
-Starting with this release _spray-can_ artifacts live on <http://repo.spray.cc/>
-and will have group id `cc.spray` rather than `cc.spray.can` as before.
+Starting with this release _spray-can_ artifacts live on <http://repo.spray.io/>
+and will have group id `cc.spray` rather than `spray.can` as before.
 
 This is a primarily a maintenance release:
 

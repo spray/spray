@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.io
+package spray.io
 
 import org.specs2.mutable.Specification
 import util.Random
 import akka.dispatch.Future
-import cc.spray.util._
+import spray.util._
 import akka.actor.ActorSystem
 
 

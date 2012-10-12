@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package cc.spray.can.client
+package spray.can.client
 
-import cc.spray.can.rendering.{HttpRequestPartRenderingContext, RequestRenderer}
-import cc.spray.io._
+import spray.can.rendering.{HttpRequestPartRenderingContext, RequestRenderer}
+import spray.io._
 
 
 object RequestRendering {

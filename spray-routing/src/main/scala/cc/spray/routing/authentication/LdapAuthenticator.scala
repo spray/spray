@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 package authentication
 
 import java.util.Hashtable
@@ -24,7 +24,7 @@ import javax.naming.directory.{SearchControls, SearchResult, Attribute}
 import collection.JavaConverters._
 import akka.dispatch.{ExecutionContext, Promise, Future}
 import akka.actor.ActorSystem
-import cc.spray.util.LoggingContext
+import spray.util.LoggingContext
 
 
 /**

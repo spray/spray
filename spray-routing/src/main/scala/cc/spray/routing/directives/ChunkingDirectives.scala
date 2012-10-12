@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 package directives
 
 import akka.actor.ActorRefFactory
-import cc.spray.http.{HttpBody, HttpResponse}
-import cc.spray.httpx.marshalling.BasicMarshallers
-import cc.spray.util._
+import spray.http.{HttpBody, HttpResponse}
+import spray.httpx.marshalling.BasicMarshallers
+import spray.util._
 
 
 trait ChunkingDirectives {

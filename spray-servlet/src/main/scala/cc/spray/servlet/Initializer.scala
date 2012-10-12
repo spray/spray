@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.servlet
+package spray.servlet
 
 import akka.util.{NonFatal, Switch}
 import akka.actor.{ActorRef, ActorSystem}
@@ -48,7 +48,7 @@ class Initializer extends ServletContextListener {
             servletContext.setAttribute(Initializer.ServiceActorAttrName, webBoot.serviceActor)
           } catch {
             case e: ClassCastException =>
-              servletContext.log(configuredBootClass + " does not implement cc.spray.servlet.WebBoot", e)
+              servletContext.log(configuredBootClass + " does not implement spray.servlet.WebBoot", e)
           }
         } catch {
           case e: ClassNotFoundException =>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 package directives
 
 import java.lang.IllegalStateException
-import cc.spray.http.QueryParams
+import spray.http.QueryParams
 import shapeless._
 
 
@@ -74,7 +74,7 @@ object ParamDefMagnet2 {
 trait ParamDefMagnetAux[A, B] extends (A => B)
 
 object ParamDefMagnetAux {
-  import cc.spray.httpx.unmarshalling.{FromStringOptionDeserializer => FSOD, _}
+  import spray.httpx.unmarshalling.{FromStringOptionDeserializer => FSOD, _}
 
   def apply[A, B](f: A => B) = new ParamDefMagnetAux[A, B] { def apply(value: A) = f(value) }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-package cc.spray.can.server
+package spray.can.server
 
 import akka.event.LoggingAdapter
 import akka.util.Duration
-import cc.spray.can.server.RequestParsing.HttpMessageStartEvent
-import cc.spray.can.{HttpEvent, HttpCommand}
-import cc.spray.util.IOError
-import cc.spray.http._
-import cc.spray.io._
+import spray.can.server.RequestParsing.HttpMessageStartEvent
+import spray.can.{HttpEvent, HttpCommand}
+import spray.util.IOError
+import spray.http._
+import spray.io._
 
 
 object ServerFrontend {

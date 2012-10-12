@@ -12,9 +12,9 @@ TickGenerator
 The TickGenerator__ forms a simple ``event-only stage`` that generates ``Tick`` events in regular intervals.
 This is its implementation:
 
- __ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/TickGenerator.scala
+ __ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/spray/io/TickGenerator.scala
 
-.. includecode:: /../spray-io/src/main/scala/cc/spray/io/TickGenerator.scala
+.. includecode:: /../spray-io/src/main/scala/spray/io/TickGenerator.scala
    :snippet: source-quote
 
 The ``TickGenerator`` provides the triggers for all timeout checking stages in *spray-io* and :ref:`spray-can`, but, of
@@ -33,7 +33,7 @@ as well as incoming ``Received`` events and updates a ``lastActivity`` timestamp
 It requires a TickGenerator_ stage further down in the stack and uses its ``Tick`` messages as a trigger for checking,
 whether the connection has been idle for longer than the allowed time frame. If so, a ``Close`` command is issued.
 
-__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/ConnectionTimeouts.scala
+__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/spray/io/ConnectionTimeouts.scala
 
 
 SslTlsSupport
@@ -62,4 +62,4 @@ on the client- or the server-side, e.g.::
 In order to make this line compile you also need to bring into scope either an implicit ``javax.net.ssl.SSLContext``
 or an implicit ``SSLContextProvider``.
 
-__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/SslTlsSupport.scala
+__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/spray/io/SslTlsSupport.scala

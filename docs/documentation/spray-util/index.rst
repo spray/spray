@@ -20,7 +20,7 @@ Installation
 
 The :ref:`maven-repo` chapter contains all the info about how to pull *spray-util* into your classpath.
 
-Afterwards just ``import cc.spray.util._`` to bring all relevant identifiers into scope.
+Afterwards just ``import spray.util._`` to bring all relevant identifiers into scope.
 
 
 Pimps
@@ -28,13 +28,13 @@ Pimps
 
 *spray-util* provides a number of convenient "extensions" to standard Scala and Akka classes.
 
-The currently available pimps can be found here__. Their hooks are placed in the ``cc.spray.util`` `package object`__,
+The currently available pimps can be found here__. Their hooks are placed in the ``spray.util`` `package object`__,
 you bring them in scope with the following import::
 
-  import cc.spray.util._
+  import spray.util._
 
-__ https://github.com/spray/spray/tree/master/spray-util/src/main/scala/cc/spray/util/pimps
-__ https://github.com/spray/spray/blob/master/spray-util/src/main/scala/cc/spray/util/package.scala
+__ https://github.com/spray/spray/tree/master/spray-util/src/main/scala/spray/util/pimps
+__ https://github.com/spray/spray/blob/master/spray-util/src/main/scala/spray/util/package.scala
 
 .. admonition:: Side Note
 

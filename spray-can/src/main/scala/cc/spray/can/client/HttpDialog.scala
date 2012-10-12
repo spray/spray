@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-package cc.spray.can.client
+package spray.can.client
 
 import collection.mutable.ListBuffer
 import akka.dispatch.{Promise, Future}
 import akka.util.Duration
 import akka.actor._
-import cc.spray.io.IOClient.IOClientException
-import cc.spray.util._
-import cc.spray.http._
+import spray.io.IOClient.IOClientException
+import spray.util._
+import spray.http._
 
 
 /**
@@ -134,7 +134,7 @@ object HttpDialog {
 
   sealed abstract class SendFirst(private[HttpDialog] val context: Context) {
     /**
-     * Chains the sending of the given [[cc.spray.can.model.HttpRequest]] into the dialog.
+     * Chains the sending of the given [[spray.can.model.HttpRequest]] into the dialog.
      * The request will be sent as soon as the connection has been established and any `awaitResponse` and
      * `waitIdle` tasks potentially chained in before this `send` have been completed.
      * Several `send` tasks not separated by `awaitResponse`/`waitIdle` will cause the corresponding requests
@@ -153,7 +153,7 @@ object HttpDialog {
     private[HttpDialog] def context: Context
 
     /**
-     * Chains the sending of the given [[cc.spray.can.model.HttpRequest]] into the dialog.
+     * Chains the sending of the given [[spray.can.model.HttpRequest]] into the dialog.
      * The request will be sent as soon as the connection has been established and any `awaitResponse` and
      * `waitIdle` tasks potentially chained in before this `send` have been completed.
      * Several `send` tasks not separated by `awaitResponse`/`waitIdle` will cause the corresponding requests
@@ -171,7 +171,7 @@ object HttpDialog {
     private[HttpDialog] def context: Context
 
     /**
-     * Chains the sending of the given [[cc.spray.can.HttpRequest]] instances into the dialog.
+     * Chains the sending of the given [[spray.can.HttpRequest]] instances into the dialog.
      * The requests will be sent as soon as the connection has been established and any `awaitResponse` and
      * `waitIdle` tasks potentially chained in before this `send` have been completed.
      * All of the given HttpRequests are send in a pipelined fashion, one right after the other.

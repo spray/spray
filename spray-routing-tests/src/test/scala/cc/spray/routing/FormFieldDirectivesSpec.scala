@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 
 import shapeless.HNil
-import cc.spray.httpx.marshalling.marshalUnsafe
-import cc.spray.httpx.unmarshalling.FromStringDeserializers.HexInt
-import cc.spray.http._
+import spray.httpx.marshalling.marshalUnsafe
+import spray.httpx.unmarshalling.FromStringDeserializers.HexInt
+import spray.http._
 
 
 class FormFieldDirectivesSpec extends RoutingSpec {

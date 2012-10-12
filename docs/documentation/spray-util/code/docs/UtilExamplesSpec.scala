@@ -4,7 +4,7 @@ import org.specs2.mutable.Specification
 import akka.util.Timeout
 import akka.actor._      // example-1, example-4
 import akka.pattern.ask  // example-4
-import cc.spray.util._   // example-4
+import spray.util._   // example-4
 
 
 class UtilExamplesSpec extends Specification {

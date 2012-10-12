@@ -60,7 +60,7 @@ The ``build`` method of a ``PipelineStage`` is called every time a new connectio
 The result of the ``build`` method is an instance of the ``Pipelines`` trait, which simply groups together the new
 command and event pipelines, after the stage has prepended them with its own logic:
 
-.. includecode:: /../spray-io/src/main/scala/cc/spray/io/Pipelines.scala
+.. includecode:: /../spray-io/src/main/scala/spray/io/Pipelines.scala
    :snippet: pipelines
 
 The dotted lines in the following diagram illustrate what the ``build`` method returns:
@@ -84,7 +84,7 @@ When another actor gets a hold of the connection actors ``ActorRef`` (e.g. becau
 ``IOPeer.Tell`` command using the connection actor as ``sender``) and itself sends a message to the connection actor,
 this message hits the connection actors ``receive`` behavior, which is defined like this:
 
-.. includecode:: /../spray-io/src/main/scala/cc/spray/io/ConnectionActors.scala
+.. includecode:: /../spray-io/src/main/scala/spray/io/ConnectionActors.scala
    :snippet: receive
 
 As you can see the connection actor feeds all incoming ``Command`` or ``Event`` messages directly into its respective
@@ -92,7 +92,7 @@ pipeline. This behavior can also be useful from within a pipeline stage itself, 
 command or event into the *beginning* of the respective pipeline, rather than just its own downstream pipeline "tail".
 All that stage has to do is to send the message to its own connection actor.
 
-__ https://github.com/spray/spray/blob/master/spray-can/src/main/scala/cc/spray/can/server/RequestParsing.scala
+__ https://github.com/spray/spray/blob/master/spray-can/src/main/scala/spray/can/server/RequestParsing.scala
 
 
 Creating Pipeline Stages
@@ -159,7 +159,7 @@ implement the ``eventPipeline`` member of the ``Pipelines`` trait as such::
 Check out the ResponseRendering__ stage of the :ref:`spray-can` :ref:`HttpServer` as an
 example of a "command-only stage" and the :ref:`TickGenerator` as an "event-only stage" example.
 
-__ https://github.com/spray/spray/blob/master/spray-can/src/main/scala/cc/spray/can/server/ResponseRendering.scala
+__ https://github.com/spray/spray/blob/master/spray-can/src/main/scala/spray/can/server/ResponseRendering.scala
 
 
 Combining Pipeline Stages
@@ -185,7 +185,7 @@ expression before the ``?`` is false. The ``EmptyPipelineStage`` singleton objec
 combining pipeline stages. Its ``build`` method doesn't append any logic to either pipeline, so "switched off"
 PipelineStages do not introduce any overhead.
 
-.. _HttpClient: https://github.com/spray/spray/blob/master/spray-can/src/main/scala/cc/spray/can/client/HttpClient.scala
+.. _HttpClient: https://github.com/spray/spray/blob/master/spray-can/src/main/scala/spray/can/client/HttpClient.scala
 
 
 The Final Stages
@@ -194,9 +194,9 @@ The Final Stages
 Both pipelines, the command as well as the event pipeline, are always terminated by stages provided by the connection
 actor itself. The following, an excerpt of the `IOConnectionActor sources`__, is their definition:
 
-__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/ConnectionActors.scala
+__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/spray/io/ConnectionActors.scala
 
-.. includecode:: /../spray-io/src/main/scala/cc/spray/io/ConnectionActors.scala
+.. includecode:: /../spray-io/src/main/scala/spray/io/ConnectionActors.scala
    :snippet: final-stages
 
 The final stage of the command pipeline translates most of the defined messages into their ``IOBridge`` counterparts

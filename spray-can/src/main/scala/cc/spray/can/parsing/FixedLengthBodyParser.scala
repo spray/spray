@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.can.parsing
+package spray.can.parsing
 
 import java.nio.ByteBuffer
-import cc.spray.can.MessageLine
-import cc.spray.http.HttpHeaders.RawHeader
-import cc.spray.http.ContentType
+import spray.can.MessageLine
+import spray.http.HttpHeaders.RawHeader
+import spray.http.ContentType
 
 
 class FixedLengthBodyParser(messageLine: MessageLine,

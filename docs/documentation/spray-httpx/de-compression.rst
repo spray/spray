@@ -7,10 +7,10 @@ text), are compression algorithms.
 
 Currently *spray* supports the compression and decompression of HTTP requests and responses with the ``gzip`` or
 ``deflate`` encodings. The core logic for this, which is shared by the :ref:`spray-client` and :ref:`spray-routing`
-modules for the client- and server-side (respectively), lives in the `cc.spray.httpx.encoding`_ package.
+modules for the client- and server-side (respectively), lives in the `spray.httpx.encoding`_ package.
 
 .. _HTTP spec: http://www.w3.org/Protocols/rfc2616/rfc2616.html
-.. _cc.spray.httpx.encoding: https://github.com/spray/spray/tree/master/spray-httpx/src/main/scala/cc/spray/httpx/encoding
+.. _spray.httpx.encoding: https://github.com/spray/spray/tree/master/spray-httpx/src/main/scala/spray/httpx/encoding
 
 
 Compression of Chunk Streams

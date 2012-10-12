@@ -1,12 +1,12 @@
-package cc.spray.examples
+package spray.examples
 
 import akka.actor.{Props, ActorSystem}
-import cc.spray.servlet.WebBoot
+import spray.servlet.WebBoot
 
 
 // this class is instantiated by the servlet initializer
 // it needs to have a default constructor and implement
-// the cc.spray.servlet.WebBoot trait
+// the spray.servlet.WebBoot trait
 class Boot extends WebBoot {
 
   // we need an ActorSystem to host our application in

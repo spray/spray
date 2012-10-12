@@ -7,9 +7,9 @@ object BuildSettings {
 
   lazy val basicSettings = seq(
     version               := "1.0-M3-SNAPSHOT",
-    homepage              := Some(new URL("http://spray.cc")),
-    organization          := "cc.spray",
-    organizationHomepage  := Some(new URL("http://spray.cc")),
+    homepage              := Some(new URL("http://spray.io")),
+    organization          := "io.spray",
+    organizationHomepage  := Some(new URL("http://spray.io")),
     description           := "A suite of lightweight Scala libraries for building and consuming RESTful " +
                              "web services on top of Akka",
     startYear             := Some(2011),
@@ -30,7 +30,7 @@ object BuildSettings {
     publishTo <<= version { version =>
       Some {
         "spray nexus" at {
-          // public uri is repo.spray.cc, we use an SSH tunnel to the nexus here
+          // public uri is repo.spray.io, we use an SSH tunnel to the nexus here
           "http://localhost:42424/content/repositories/" + {
             if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else "releases/"
           }
@@ -41,7 +41,7 @@ object BuildSettings {
     // LS
     (LsKeys.tags in LsKeys.lsync) := Seq("http", "server", "client", "async"),
     (LsKeys.docsUrl in LsKeys.lsync) := Some(new URL("http://spray.github.com/spray/api/spray-can/")),
-    (externalResolvers in LsKeys.lsync) := Seq("spray repo" at "http://repo.spray.cc")
+    (externalResolvers in LsKeys.lsync) := Seq("spray repo" at "http://repo.spray.io")
   )
 
   lazy val noPublishing = seq(

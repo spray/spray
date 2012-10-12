@@ -1,8 +1,8 @@
-package cc.spray.examples
+package spray.examples
 
 import akka.actor.{Props, ActorSystem}
-import cc.spray.can.server.HttpServer
-import cc.spray.io._
+import spray.can.server.HttpServer
+import spray.io._
 
 
 object Boot extends App {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package cc.spray.can.server
+package spray.can.server
 
-import cc.spray.can.rendering.HttpResponsePartRenderingContext
-import cc.spray.can.HttpEvent
-import cc.spray.util.ProtocolError
-import cc.spray.io._
-import cc.spray.http._
+import spray.can.rendering.HttpResponsePartRenderingContext
+import spray.can.HttpEvent
+import spray.util.ProtocolError
+import spray.io._
+import spray.http._
 
 
 object RequestChunkAggregation {

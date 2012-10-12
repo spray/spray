@@ -33,7 +33,7 @@ type ``Rejection``. *spray-routing* comes with a set of `predefined rejections`_
 Rejections are gathered up over the course of a Route evaluation and finally converted to ``HttpResponse`` replies by
 the :ref:`-handleRejections-` directive, if there was no way for the request to be completed.
 
-__ https://github.com/spray/spray/blob/master/spray-routing/src/main/scala/cc/spray/routing/Rejection.scala
+__ https://github.com/spray/spray/blob/master/spray-routing/src/main/scala/spray/routing/Rejection.scala
 
 
 RejectionHandler
@@ -44,7 +44,7 @@ RejectionHandler__, which is defined like this::
 
     trait RejectionHandler extends PartialFunction[List[Rejection], HttpResponse]
 
-__ https://github.com/spray/spray/blob/master/spray-routing/src/main/scala/cc/spray/routing/RejectionHandler.scala
+__ https://github.com/spray/spray/blob/master/spray-routing/src/main/scala/spray/routing/RejectionHandler.scala
 
 Since a ``RejectionHandler`` is a partial function it can choose, which rejections it would like to handle and
 which not. Unhandled rejections will simply continue to flow through the route structure. The top-most

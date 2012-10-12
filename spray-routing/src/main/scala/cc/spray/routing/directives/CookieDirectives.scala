@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 package directives
 
 import shapeless._
-import cc.spray.util._
-import cc.spray.http._
+import spray.util._
+import spray.http._
 import HttpHeaders._
 
 
@@ -31,7 +31,7 @@ trait CookieDirectives {
 
   /**
    * Extracts an HttpCookie with the given name. If the cookie is not present the
-   * request is rejected with a respective [[cc.spray.routing.MissingCookieRejection]].
+   * request is rejected with a respective [[spray.routing.MissingCookieRejection]].
    */
   def cookie(name: String): Directive[HttpCookie :: HNil] =
     headerValue {

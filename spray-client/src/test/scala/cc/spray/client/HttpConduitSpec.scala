@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.client
+package spray.client
 
 import org.specs2.mutable.Specification
 import com.typesafe.config.ConfigFactory
@@ -23,12 +23,12 @@ import akka.util.Duration
 import akka.dispatch.Future
 import akka.pattern.ask
 import akka.actor._
-import cc.spray.can.client.HttpClient
-import cc.spray.can.server.HttpServer
-import cc.spray.httpx.encoding.Gzip
-import cc.spray.io._
-import cc.spray.http._
-import cc.spray.util._
+import spray.can.client.HttpClient
+import spray.can.server.HttpServer
+import spray.httpx.encoding.Gzip
+import spray.io._
+import spray.http._
+import spray.util._
 import DispatchStrategies._
 import HttpHeaders._
 

@@ -6,7 +6,7 @@ spray-json Support
 The SprayJsonSupport_ trait provides a ``Marshaller`` and ``Unmarshaller`` for every type ``T`` that an implicit
 ``cc.spray.json.RootJsonReader`` and/or ``cc.spray.json.RootJsonWriter`` (respectively) is available for.
 
-Just mix in ``cc.spray.httpx.SprayJsonSupport`` or ``import cc.spray.httpx.SprayJsonSupport._``.
+Just mix in ``spray.httpx.SprayJsonSupport`` or ``import spray.httpx.SprayJsonSupport._``.
 
 For example:
 
@@ -20,5 +20,5 @@ default ``cc.spray.json.PrettyPrinter``.
    project yourself. Check the spray-json_ documentation for information on how to do this.
 
 
-.. _SprayJsonSupport: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/cc/spray/httpx/SprayJsonSupport.scala
+.. _SprayJsonSupport: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/SprayJsonSupport.scala
 .. _spray-json: https://github.com/spray/spray-json

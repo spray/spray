@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.caching
+package spray.caching
 
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import annotation.tailrec
@@ -24,7 +24,7 @@ import akka.util.Duration
 
 object LruCache {
   /**
-   * Creates a new instance of either []cc.spray.caching.ExpiringLruCache]] or [[cc.spray.caching.SimpleLruCache]],
+   * Creates a new instance of either []spray.caching.ExpiringLruCache]] or [[spray.caching.SimpleLruCache]],
    * depending on whether a non-zero and finite timeToLive and/or timeToIdle is set or not.
    */
   def apply[V](maxCapacity: Int = 500, initialCapacity: Int = 16,
@@ -40,7 +40,7 @@ object LruCache {
 }
 
 /**
- * A thread-safe implementation of [[cc.spray.caching.cache]].
+ * A thread-safe implementation of [[spray.caching.cache]].
  * The cache has a defined maximum number of entries it can store. After the maximum capacity is reached new
  * entries cause old ones to be evicted in a last-recently-used manner, i.e. the entries that haven't been accessed for
  * the longest time are evicted first.
@@ -74,7 +74,7 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
 }
 
 /**
- * A thread-safe implementation of [[cc.spray.caching.cache]].
+ * A thread-safe implementation of [[spray.caching.cache]].
  * The cache has a defined maximum number of entries is can store. After the maximum capacity has been reached new
  * entries cause old ones to be evicted in a last-recently-used manner, i.e. the entries that haven't been accessed for
  * the longest time are evicted first.

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package cc.spray.site
+package spray.site
 
 import akka.actor.Actor
-import cc.spray.httpx.encoding.Gzip
-import cc.spray.httpx.TwirlSupport._
-import cc.spray.http.StatusCodes
-import cc.spray.routing._
+import spray.httpx.encoding.Gzip
+import spray.httpx.TwirlSupport._
+import spray.http.StatusCodes
+import spray.routing._
 import html._
 
 

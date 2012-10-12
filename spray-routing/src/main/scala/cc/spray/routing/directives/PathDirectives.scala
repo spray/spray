@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 package directives
 
 import java.util.UUID
 import scala.util.matching.Regex
 import annotation.tailrec
 import shapeless._
-import cc.spray.util._
+import spray.util._
 
 
 trait PathDirectives extends PathMatcherImplicits with PathMatchers {
@@ -29,13 +29,13 @@ trait PathDirectives extends PathMatcherImplicits with PathMatchers {
   import PathMatcher._
 
   /**
-   * Rejects the request if the unmatchedPath of the [[cc.spray.routing.RequestContext]] is not matched by the
+   * Rejects the request if the unmatchedPath of the [[spray.routing.RequestContext]] is not matched by the
    * given PathMatcher. If matched the value extracted by the PathMatcher is passed on to the inner Route.
    */
   def path[L <: HList](pm: PathMatcher[L]): Directive[L] = pathPrefix(pm ~ PathEnd)
 
   /**
-   * Returns a Route that rejects the request if the unmatchedPath of the [[cc.spray.RequestContext]] does have a prefix
+   * Returns a Route that rejects the request if the unmatchedPath of the [[spray.RequestContext]] does have a prefix
    * that matches the given PathMatcher.
    */
   def pathPrefix[L <: HList](pm: PathMatcher[L]): Directive[L] = {
@@ -104,7 +104,7 @@ object PathMatcher extends PathMatcherImplicits {
   }
 
   /**
-   * Creates a [[cc.spray.routing.directives.PathMatcher]] that extracts the given value if the given path prefix
+   * Creates a [[spray.routing.directives.PathMatcher]] that extracts the given value if the given path prefix
    * can be matched.
    */
   def apply[T](prefix: String, value: T) = new PathMatcher[T :: HNil] {
@@ -146,7 +146,7 @@ trait PathMatcherImplicits {
             "' must not contain more than one capturing group")
   }
   /**
-   * Creates a [[cc.spray.directives.PathMatcher1]] from the given Map of path prefixes to extracted values.
+   * Creates a [[spray.directives.PathMatcher1]] from the given Map of path prefixes to extracted values.
    * If the unmatched path starts with one of the maps keys the matcher consumes this path prefix and extracts the
    * corresponding map value.
    */

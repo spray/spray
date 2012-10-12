@@ -7,7 +7,7 @@ class IOBridgeExamplesSpec extends Specification {
 
   "example-1" in {
     import akka.actor.ActorSystem
-    import cc.spray.io.IOBridge
+    import spray.io.IOBridge
 
     val system = ActorSystem()
 

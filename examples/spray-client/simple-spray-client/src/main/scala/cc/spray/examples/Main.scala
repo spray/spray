@@ -1,11 +1,11 @@
-package cc.spray.examples
+package spray.examples
 
 import akka.actor.{Props, ActorSystem}
-import cc.spray.io.IOBridge
-import cc.spray.can.client.HttpClient
-import cc.spray.client.HttpConduit
-import cc.spray.httpx.SprayJsonSupport
-import cc.spray.http._
+import spray.io.IOBridge
+import spray.can.client.HttpClient
+import spray.client.HttpConduit
+import spray.httpx.SprayJsonSupport
+import spray.http._
 
 
 object Main extends App {

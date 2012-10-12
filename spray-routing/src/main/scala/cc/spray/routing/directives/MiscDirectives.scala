@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 package directives
 
 import shapeless._
 import akka.actor.{ActorContext, ActorSystem, ActorRefFactory}
-import cc.spray.http._
-import cc.spray.util._
+import spray.http._
+import spray.util._
 import HttpHeaders._
 import MediaTypes._
 
@@ -29,15 +29,15 @@ trait MiscDirectives {
   import BasicDirectives._
 
   /**
-   * Returns a Directive which checks the given condition before passing on the [[cc.spray.routing.RequestContext]] to
-   * its inner Route. If the condition fails the route is rejected with a [[cc.spray.routing.ValidationRejection]].
+   * Returns a Directive which checks the given condition before passing on the [[spray.routing.RequestContext]] to
+   * its inner Route. If the condition fails the route is rejected with a [[spray.routing.ValidationRejection]].
    */
   def validate(check: => Boolean, errorMsg: String): Directive0 =
     filter { _ => if (check) Pass.Empty else Reject(ValidationRejection(errorMsg)) }
 
   /**
    * Extracts an HTTP header value using the given function. If the function is undefined for all headers the request
-   * is rejection with the [[cc.spray.routing.MissingHeaderRejection]]
+   * is rejection with the [[spray.routing.MissingHeaderRejection]]
    */
   def headerValue[T](f: HttpHeader => Option[T]): Directive[T :: HNil] = filter {
     _.request.headers.mapFind(f) match {
@@ -48,7 +48,7 @@ trait MiscDirectives {
 
   /**
    * Extracts an HTTP header value using the given partial function. If the function is undefined for all headers
-   * the request is rejection with the [[cc.spray.routing.MissingHeaderRejection]]
+   * the request is rejection with the [[spray.routing.MissingHeaderRejection]]
    */
   def headerValuePF[T](pf: PartialFunction[HttpHeader, T]): Directive[T :: HNil] = headerValue(pf.lift)
 

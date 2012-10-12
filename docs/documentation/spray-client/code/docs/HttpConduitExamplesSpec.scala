@@ -8,12 +8,12 @@ import akka.pattern.ask
 import akka.actor.{Props, ActorSystem}           // setup
 import akka.dispatch.Future                      // setup
 import cc.spray.json.DefaultJsonProtocol
-import cc.spray.can.client.HttpClient            // setup
-import cc.spray.can.server.HttpServer
-import cc.spray.client.HttpConduit               // setup
-import cc.spray.io._                             // setup
-import cc.spray.util._
-import cc.spray.http._                           // setup
+import spray.can.client.HttpClient            // setup
+import spray.can.server.HttpServer
+import spray.client.HttpConduit               // setup
+import spray.io._                             // setup
+import spray.util._
+import spray.http._                           // setup
 import HttpMethods._                             // setup
 
 
@@ -35,7 +35,7 @@ class HttpConduitExamplesSpec extends Specification {
   step {
     val handler = system.actorOf(Props(behavior = ctx => {
       case x@HttpRequest(POST, "/orders", _, _, _) =>
-        import cc.spray.httpx.encoding.{Gzip, Deflate}
+        import spray.httpx.encoding.{Gzip, Deflate}
         ctx.sender ! Deflate.encode(HttpResponse(entity = Gzip.decode(x).entity))
       case x: HttpRequest => ctx.sender ! HttpResponse(entity = x.uri)
     }))
@@ -50,8 +50,8 @@ class HttpConduitExamplesSpec extends Specification {
   }
 
   "example-2" in {
-    import cc.spray.httpx.encoding.{Gzip, Deflate}
-    import cc.spray.httpx.SprayJsonSupport._
+    import spray.httpx.encoding.{Gzip, Deflate}
+    import spray.httpx.SprayJsonSupport._
 
     case class Order(id: Int)
     case class OrderConfirmation(id: Int)

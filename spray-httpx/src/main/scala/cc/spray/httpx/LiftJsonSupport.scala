@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package cc.spray.httpx
+package spray.httpx
 
 import net.liftweb.json.Serialization._
 import net.liftweb.json._
-import cc.spray.httpx.marshalling.Marshaller
-import cc.spray.httpx.unmarshalling.Unmarshaller
-import cc.spray.http._
+import spray.httpx.marshalling.Marshaller
+import spray.httpx.unmarshalling.Unmarshaller
+import spray.http._
 import MediaTypes._
 
 

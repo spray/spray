@@ -31,7 +31,7 @@ Process
 
 The most important helper is ``process``:
 
-.. includecode:: /../spray-io/src/main/scala/cc/spray/io/PipelineStageTest.scala
+.. includecode:: /../spray-io/src/main/scala/spray/io/PipelineStageTest.scala
    :snippet: source-quote-process
 
 It allows you to push a number of commands and/or events into the respective ends of the pipeline stage and collect
@@ -45,7 +45,7 @@ the commands and events produced by the stage::
 
 The result produced by the ``process`` method is an instance of ``ProcessResult``, which is defined as such:
 
-.. includecode:: /../spray-io/src/main/scala/cc/spray/io/PipelineStageTest.scala
+.. includecode:: /../spray-io/src/main/scala/spray/io/PipelineStageTest.scala
    :snippet: source-quote-result
 
 It contains a "snapshot" of the current state of the internal message collector. If you call ``process`` several times
@@ -61,7 +61,7 @@ is equivalent to this one::
 You can clear the message collector with ``clear()``. Also there are two variants of ``process``, which combine it with
 a ``clear()``:
 
-.. includecode:: /../spray-io/src/main/scala/cc/spray/io/PipelineStageTest.scala
+.. includecode:: /../spray-io/src/main/scala/spray/io/PipelineStageTest.scala
    :snippet: source-quote-clears
 
 
@@ -118,7 +118,7 @@ Messages to and from Actors
 Sometimes pipelines stage logic needs to use the ``sender`` reference of an incoming message. In order to simulate the
 reception of a message from a specific sender the ``PipelineStageTest`` provides the ``Message`` type:
 
-.. includecode:: /../spray-io/src/main/scala/cc/spray/io/PipelineStageTest.scala
+.. includecode:: /../spray-io/src/main/scala/spray/io/PipelineStageTest.scala
    :snippet: source-quote-message
 
 For example, to feed the pipeline stage with a ``Send`` command sent by ``sender1`` you would say::
@@ -131,6 +131,6 @@ message sending like any other command (and verify it using the techniques expla
 downstream stages in the command pipeline to see the ``Tell`` and potentially modify or react to it.
 
 
-.. _PipelineStageTest: https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/PipelineStageTest.scala
-.. _ConnectionTimeoutsSpec: https://github.com/spray/spray/blob/master/spray-io/src/test/scala/cc/spray/io/ConnectionTimeoutsSpec.scala
+.. _PipelineStageTest: https://github.com/spray/spray/blob/master/spray-io/src/main/scala/spray/io/PipelineStageTest.scala
+.. _ConnectionTimeoutsSpec: https://github.com/spray/spray/blob/master/spray-io/src/test/scala/spray/io/ConnectionTimeoutsSpec.scala
 .. _specs2: http://specs2.org

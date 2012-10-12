@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 package directives
 
 import akka.dispatch.Future
 import shapeless._
-import cc.spray.routing.authentication._
+import spray.routing.authentication._
 import BasicDirectives._
 
 
@@ -36,13 +36,13 @@ trait SecurityDirectives {
 
   /**
    * Applies the given authorization check to the request.
-   * If the check fails the route is rejected with an [[cc.spray.AuthorizationFailedRejection]].
+   * If the check fails the route is rejected with an [[spray.AuthorizationFailedRejection]].
    */
   def authorize(check: => Boolean): Directive0 = authorize(_ => check)
 
   /**
    * Applies the given authorization check to the request.
-   * If the check fails the route is rejected with an [[cc.spray.AuthorizationFailedRejection]].
+   * If the check fails the route is rejected with an [[spray.AuthorizationFailedRejection]].
    */
   def authorize(check: RequestContext => Boolean): Directive0 = filter { ctx =>
     if (check(ctx)) Pass.Empty else Reject(AuthorizationFailedRejection)

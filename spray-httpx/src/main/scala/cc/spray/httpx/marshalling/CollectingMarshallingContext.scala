@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package cc.spray.httpx.marshalling
+package spray.httpx.marshalling
 
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.{TimeUnit, CountDownLatch}
 import annotation.tailrec
 import akka.spray.UnregisteredActorRef
 import akka.actor.{ActorRefFactory, ActorRef}
-import cc.spray.http._
+import spray.http._
 
 
 /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package cc.spray.can.server
+package spray.can.server
 
 import com.typesafe.config.ConfigFactory
 import org.specs2.mutable.Specification
 import akka.actor.ActorSystem
-import cc.spray.can.rendering.HttpResponsePartRenderingContext
-import cc.spray.io.{IOPeer, Command}
-import cc.spray.can.HttpPipelineStageSpec
-import cc.spray.util.CleanClose
-import cc.spray.http._
+import spray.can.rendering.HttpResponsePartRenderingContext
+import spray.io.{IOPeer, Command}
+import spray.can.HttpPipelineStageSpec
+import spray.util.CleanClose
+import spray.http._
 
 
 class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {

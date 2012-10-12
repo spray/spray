@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 
 import shapeless.HNil
 
@@ -62,7 +62,7 @@ class ParameterDirectivesSpec extends RoutingSpec {
   }
 
   "when used with 'as(HexInt)' the parameter directive" should {
-    import cc.spray.httpx.unmarshalling.FromStringDeserializers.HexInt
+    import spray.httpx.unmarshalling.FromStringDeserializers.HexInt
     "extract parameter values as Int" in {
       Get("/?amount=1f") ~> {
         parameter('amount.as(HexInt)) { echoComplete }

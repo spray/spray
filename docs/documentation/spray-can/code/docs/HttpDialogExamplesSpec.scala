@@ -5,11 +5,11 @@ import akka.actor.{Props, ActorSystem}                // example-1
 import akka.dispatch.Future                           // example-1
 import akka.util.Duration
 import akka.pattern.ask
-import cc.spray.can.client.{HttpDialog, HttpClient}   // example-1
-import cc.spray.can.server.HttpServer
-import cc.spray.io._                                  // example-1
-import cc.spray.util._
-import cc.spray.http._                                // example-1
+import spray.can.client.{HttpDialog, HttpClient}   // example-1
+import spray.can.server.HttpServer
+import spray.io._                                  // example-1
+import spray.util._
+import spray.http._                                // example-1
 import HttpMethods._                                  // example-1
 
 
@@ -42,7 +42,7 @@ class HttpDialogExamplesSpec extends Specification {
   }
 
   "example-2" in {
-    import cc.spray.httpx.RequestBuilding._
+    import spray.httpx.RequestBuilding._
 
     val responses: Future[Seq[HttpResponse]] =
       HttpDialog(client, targetHostName, port)
@@ -54,7 +54,7 @@ class HttpDialogExamplesSpec extends Specification {
   }
 
   "example-3" in {
-    import cc.spray.httpx.RequestBuilding._ // hide
+    import spray.httpx.RequestBuilding._ // hide
 
     val responses: Future[Seq[HttpResponse]] =
       HttpDialog(client, targetHostName, port)
@@ -66,7 +66,7 @@ class HttpDialogExamplesSpec extends Specification {
   }
 
   "example-4" in {
-    import cc.spray.httpx.RequestBuilding._ // hide
+    import spray.httpx.RequestBuilding._ // hide
 
     val response: Future[HttpResponse] =
       HttpDialog(client, targetHostName, port)

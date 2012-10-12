@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.httpx
+package spray.httpx
 
-import cc.spray.httpx.encoding.Encoder
-import cc.spray.httpx.marshalling._
-import cc.spray.http.parser.HttpParser
-import cc.spray.http._
+import spray.httpx.encoding.Encoder
+import spray.httpx.marshalling._
+import spray.http.parser.HttpParser
+import spray.http._
 import HttpMethods._
 import HttpHeaders._
 

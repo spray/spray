@@ -1,10 +1,10 @@
-package cc.spray.examples
+package spray.examples
 
 import akka.dispatch.Future
 import akka.actor.{ActorSystem, Props}
-import cc.spray.io.IOBridge
-import cc.spray.can.client.{HttpDialog, HttpClient}
-import cc.spray.http.{HttpResponse, HttpRequest}
+import spray.io.IOBridge
+import spray.can.client.{HttpDialog, HttpClient}
+import spray.http.{HttpResponse, HttpRequest}
 
 
 object GoogleQueryExample extends App {

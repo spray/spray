@@ -1,8 +1,8 @@
 package docs
 
 import org.specs2.mutable.Specification
-import cc.spray.testkit.Specs2RouteTest
-import cc.spray.routing.HttpService
+import spray.testkit.Specs2RouteTest
+import spray.routing.HttpService
 import akka.actor.Actor
 
 
@@ -10,8 +10,8 @@ class RejectionHandlerExamplesSpec extends Specification with Specs2RouteTest wi
   implicit def actorRefFactory = system
 
   //# example-1
-  import cc.spray.routing._
-  import cc.spray.http._
+  import spray.routing._
+  import spray.http._
   import StatusCodes._
 
   implicit val myRejectionHandler = RejectionHandler.fromPF {
@@ -26,7 +26,7 @@ class RejectionHandlerExamplesSpec extends Specification with Specs2RouteTest wi
   }
   //#
 
-  def `<my-route-definition>`: cc.spray.routing.Route = null
+  def `<my-route-definition>`: spray.routing.Route = null
 
   "example" in {
     Get() ~> sealRoute(reject(MissingCookieRejection("abc"))) ~> check {
@@ -35,7 +35,7 @@ class RejectionHandlerExamplesSpec extends Specification with Specs2RouteTest wi
   }
 
   "example-2" in {
-    import cc.spray.httpx.encoding._
+    import spray.httpx.encoding._
 
     val route =
       path("order") {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-package cc.spray.testkit
+package spray.testkit
 
 import collection.mutable.ListBuffer
 import akka.util.Duration
 import java.util.concurrent.{TimeUnit, CountDownLatch}
 import akka.actor.{ActorRefFactory, ActorRef}
 import akka.spray.UnregisteredActorRef
-import cc.spray.routing.{RejectionHandler, Rejected, Rejection}
-import cc.spray.http._
+import spray.routing.{RejectionHandler, Rejected, Rejection}
+import spray.http._
 
 
 trait RouteResultComponent {

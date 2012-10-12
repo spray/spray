@@ -1,10 +1,10 @@
-package cc.spray.examples
+package spray.examples
 
 import akka.pattern.ask
 import akka.util.duration._
 import akka.actor._
-import cc.spray.can.server.HttpServer
-import cc.spray.http._
+import spray.can.server.HttpServer
+import spray.http._
 import HttpMethods._
 import MediaTypes._
 

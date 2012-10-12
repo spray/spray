@@ -1,4 +1,4 @@
-package cc.spray.examples
+package spray.examples
 
 import cc.spray.json.{JsonFormat, DefaultJsonProtocol}
 

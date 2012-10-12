@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package cc.spray.can.parsing
+package spray.can.parsing
 
-import cc.spray.can.RequestLine
-import cc.spray.http._
+import spray.can.RequestLine
+import spray.http._
 import HttpProtocols._
 import StatusCodes._
 

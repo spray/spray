@@ -1,10 +1,10 @@
-package cc.spray.examples
+package spray.examples
 
 import com.typesafe.config.ConfigFactory
 import akka.actor.{Props, ActorSystem}
-import cc.spray.io.IOBridge
-import cc.spray.can.client.{HttpDialog, HttpClient}
-import cc.spray.http.HttpRequest
+import spray.io.IOBridge
+import spray.can.client.{HttpDialog, HttpClient}
+import spray.http.HttpRequest
 
 
 object HttpsExample extends App {

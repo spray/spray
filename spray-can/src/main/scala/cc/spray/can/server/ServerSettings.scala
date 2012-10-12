@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package cc.spray.can.server
+package spray.can.server
 
 import com.typesafe.config.{ConfigFactory, Config}
-import cc.spray.can.parsing.ParserSettings
-import cc.spray.util.ConfigUtils
+import spray.can.parsing.ParserSettings
+import spray.util.ConfigUtils
 
 
 class ServerSettings(config: Config = ConfigFactory.load) {

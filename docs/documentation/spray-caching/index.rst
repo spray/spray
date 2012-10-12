@@ -33,7 +33,7 @@ Installation
 
 The :ref:`maven-repo` chapter contains all the info about how to pull *spray-caching* into your classpath.
 
-Afterwards just ``import cc.spray.caching._`` to bring all relevant identifiers into scope.
+Afterwards just ``import spray.caching._`` to bring all relevant identifiers into scope.
 
 
 The `Cache` Interface
@@ -109,6 +109,6 @@ has to be strictly greater than the time-to-idle.
    they might prevent gargabe collection of their values for longer than expected.
 
 
-.. _Cache: https://github.com/spray/spray/blob/master/spray-caching/src/main/scala/cc/spray/caching/Cache.scala
-.. _SimpleLruCache and ExpiringLruCache: https://github.com/spray/spray/blob/master/spray-caching/src/main/scala/cc/spray/caching/LruCache.scala
+.. _Cache: https://github.com/spray/spray/blob/master/spray-caching/src/main/scala/spray/caching/Cache.scala
+.. _SimpleLruCache and ExpiringLruCache: https://github.com/spray/spray/blob/master/spray-caching/src/main/scala/spray/caching/LruCache.scala
 .. _concurrentlinkedhashmap: http://code.google.com/p/concurrentlinkedhashmap/

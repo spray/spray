@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.servlet
+package spray.servlet
 
 import java.io.IOException
 import java.util.concurrent.{TimeUnit, CountDownLatch}
@@ -24,8 +24,8 @@ import java.util.concurrent.atomic.AtomicInteger
 import akka.actor.{UnhandledMessage, ActorRef, ActorSystem}
 import akka.util.NonFatal
 import akka.spray.UnregisteredActorRef
-import cc.spray.http._
-import cc.spray.util._
+import spray.http._
+import spray.util._
 
 
 /**

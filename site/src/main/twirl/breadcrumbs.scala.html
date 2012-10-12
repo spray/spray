@@ -1,9 +1,9 @@
-@(contentNode: cc.spray.site.ContentNode)
+@(contentNode: spray.site.ContentNode)
 
 <div class="row-fluid breadcrumb-row">
   <ul class="breadcrumb">
 
-    @level(node: cc.spray.site.ContentNode) = {
+    @level(node: spray.site.ContentNode) = {
       @if(node.isRoot) {
         <li><a href="/">Home</a> <span class="divider">/</span></li>
       } else {

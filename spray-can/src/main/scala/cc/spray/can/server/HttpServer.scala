@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package cc.spray.can.server
+package spray.can.server
 
 import akka.event.LoggingAdapter
 import akka.util.Duration
-import cc.spray.can.server.StatsSupport.StatsHolder
-import cc.spray.can.HttpCommand
-import cc.spray.io._
-import cc.spray.http._
+import spray.can.server.StatsSupport.StatsHolder
+import spray.can.HttpCommand
+import spray.io._
+import spray.http._
 
 
 class HttpServer(ioBridge: IOBridge, messageHandler: MessageHandler, settings: ServerSettings = ServerSettings())

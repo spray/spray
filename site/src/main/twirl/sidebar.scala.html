@@ -1,4 +1,4 @@
-@(contentNode: cc.spray.site.ContentNode)
+@(contentNode: spray.site.ContentNode)
 
 <aside class="span3 sidebar">
 
@@ -6,7 +6,7 @@
     <ul class="nav nav-list">
       <li class="nav-header">@if(contentNode.parent.isRoot){Contents} else {@contentNode.parent.name}</li>
 
-      @anchor(node: cc.spray.site.ContentNode, icon: String) = {
+      @anchor(node: spray.site.ContentNode, icon: String) = {
         <a href="@node.absoluteUri"><i class="@icon"></i> @node.name</a>
       }
 
@@ -18,7 +18,7 @@
         }
       }
 
-      @item(node: cc.spray.site.ContentNode) = {
+      @item(node: spray.site.ContentNode) = {
         @if(node == contentNode) {
           <li class="active">
             @anchor(node, "icon-white " + icon(node.level))

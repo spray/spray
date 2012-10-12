@@ -1,10 +1,10 @@
 package docs
 
 import org.specs2.mutable.Specification
-import cc.spray.testkit.Specs2RouteTest
+import spray.testkit.Specs2RouteTest
 
 //# example-1
-import cc.spray.routing._
+import spray.routing._
 import Directives._
 
 //#

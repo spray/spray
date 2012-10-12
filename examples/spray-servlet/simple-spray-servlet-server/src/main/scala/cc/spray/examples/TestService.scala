@@ -1,9 +1,9 @@
-package cc.spray.examples
+package spray.examples
 
 import akka.util.duration._
 import akka.actor._
-import cc.spray.servlet.ServletError
-import cc.spray.http._
+import spray.servlet.ServletError
+import spray.http._
 import MediaTypes._
 import HttpMethods._
 

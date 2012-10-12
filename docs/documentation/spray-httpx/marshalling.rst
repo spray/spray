@@ -11,7 +11,7 @@ In *spray* "Marshalling" means the conversion of an object of type ``T`` into an
 
 Marshalling for instances of type ``T`` is performed by a ``Marshaller[T]``, which is defined like this:
 
-.. includecode:: /../spray-httpx/src/main/scala/cc/spray/httpx/marshalling/Marshaller.scala
+.. includecode:: /../spray-httpx/src/main/scala/spray/httpx/marshalling/Marshaller.scala
    :snippet: source-quote
 
 So, a ``Marshaller`` is not a plain function ``T => HttpEntity``, as might be initially expected. Rather it uses the
@@ -26,7 +26,7 @@ why *spray* Marshallers are designed in this way:
   execution.)
 - Marshallers can produce more than one response part, i.e. a stream of response chunks.
 
-.. _MarshallingContext: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/cc/spray/httpx/marshalling/MarshallingContext.scala
+.. _MarshallingContext: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/marshalling/MarshallingContext.scala
 .. _content negotiation: http://en.wikipedia.org/wiki/Content_negotiation
 
 
@@ -44,9 +44,9 @@ Default Marshallers
   - ``String``
   - ``NodeSeq``
   - ``Throwable``
-  - ``cc.spray.http.FormData``
-  - ``cc.spray.http.StatusCode``
-  - ``cc.spray.http.HttpEntity``
+  - ``spray.http.FormData``
+  - ``spray.http.StatusCode``
+  - ``spray.http.HttpEntity``
 
 - MetaMarshallers_
 
@@ -57,12 +57,12 @@ Default Marshallers
 
 - MultipartMarshallers_
 
-  - ``cc.spray.http.MultipartContent``
-  - ``cc.spray.http.MultipartFormData``
+  - ``spray.http.MultipartContent``
+  - ``spray.http.MultipartFormData``
 
-.. _BasicMarshallers: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/cc/spray/httpx/marshalling/BasicMarshallers.scala
-.. _MetaMarshallers: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/cc/spray/httpx/marshalling/MetaMarshallers.scala
-.. _MultipartMarshallers: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/cc/spray/httpx/marshalling/MultipartMarshallers.scala
+.. _BasicMarshallers: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/marshalling/BasicMarshallers.scala
+.. _MetaMarshallers: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/marshalling/MetaMarshallers.scala
+.. _MultipartMarshallers: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/marshalling/MultipartMarshallers.scala
 
 
 Implicit Resolution
@@ -88,7 +88,7 @@ One is the ``Marshaller.of`` helper, which is defined as such::
 
 The default ``StringMarshaller`` for example is defined with it:
 
-.. includecode:: /../spray-httpx/src/main/scala/cc/spray/httpx/marshalling/BasicMarshallers.scala
+.. includecode:: /../spray-httpx/src/main/scala/spray/httpx/marshalling/BasicMarshallers.scala
    :snippet: string-marshaller
 
 As another example, here is a ``Marshaller`` definition for a custom type ``Person``:
@@ -123,7 +123,7 @@ by providing a function ``A => B``::
 
 This is used, for example, by the ``NodeSeqMarshaller``, which delegates to the ``StringMarshaller`` like this:
 
-.. includecode:: /../spray-httpx/src/main/scala/cc/spray/httpx/marshalling/BasicMarshallers.scala
+.. includecode:: /../spray-httpx/src/main/scala/spray/httpx/marshalling/BasicMarshallers.scala
    :snippet: nodeseq-marshaller
 
 There is also a second overload of the ``delegate`` helper that takes a function ``(A, ContentType) => B`` rather than

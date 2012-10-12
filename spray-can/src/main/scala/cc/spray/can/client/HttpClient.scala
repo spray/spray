@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,21 @@
  * limitations under the License.
  */
 
-package cc.spray.can
+package spray.can
 package client
 
 import akka.event.LoggingAdapter
-import cc.spray.http.{HttpMessagePart, HttpRequestPart}
-import cc.spray.io._
+import spray.http.{HttpMessagePart, HttpRequestPart}
+import spray.io._
 
 
 /**
- * Reacts to [[cc.spray.can.HttpClient.Connect]] messages by establishing a connection to the remote host.
+ * Reacts to [[spray.can.HttpClient.Connect]] messages by establishing a connection to the remote host.
  * If the connection has been established successfully a new actor is spun up for the connection, which replies to the
- * sender of the [[cc.spray.can.HttpClient.Connect]] message with a [[cc.spray.can.HttpClient.Connected]] message.
+ * sender of the [[spray.can.HttpClient.Connect]] message with a [[spray.can.HttpClient.Connected]] message.
  *
- * You can then send [[cc.spray.can.model.HttpRequestPart]] instances to the connection actor, which are going to be
- * replied to with [[cc.spray.can.model.HttpResponsePart]] messages (or [[akka.actor.Status.Failure]] instances
+ * You can then send [[spray.can.model.HttpRequestPart]] instances to the connection actor, which are going to be
+ * replied to with [[spray.can.model.HttpResponsePart]] messages (or [[akka.actor.Status.Failure]] instances
  * in case of errors).
  */
 class HttpClient(ioBridge: IOBridge, settings: ClientSettings = ClientSettings())

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.can.rendering
+package spray.can.rendering
 
 import org.specs2.matcher.DataTables
 import org.specs2._
-import cc.spray.util._
-import cc.spray.http._
+import spray.util._
+import spray.http._
 import HttpHeaders.RawHeader
 import HttpProtocols._
 

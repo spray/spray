@@ -5,7 +5,7 @@ object Dependencies {
 
   val resolutionRepos = Seq(
     "typesafe repo"  at "http://repo.typesafe.com/typesafe/releases/",
-    "spray repo"     at "http://repo.spray.cc/",
+    "spray repo"     at "http://repo.spray.io/",
     Resolver.url("sbt-plugin-releases",
       new URL("http://scalasbt.artifactoryonline.com/scalasbt/sbt-plugin-releases/"))(
         Resolver.ivyStylePatterns)

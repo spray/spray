@@ -1,10 +1,10 @@
-package cc.spray.examples
+package spray.examples
 
 import akka.actor.{Props, ActorSystem}
 import akka.pattern.ask
 import akka.util.duration._
-import cc.spray.util._
-import cc.spray.io._
+import spray.util._
+import spray.io._
 
 
 object Main extends App {

@@ -14,7 +14,7 @@ A streaming response is started by sending a ``ChunkedResponseStart`` message to
 response is terminated with a ``ChunkedMessageEnd`` message.
 
 In order to not flood the network with chunks that it might not be able to currently digest it's always a good idea to
-not send out another chunk before having received a ``cc.spray.util.model.IOSent`` confirmation message from the
+not send out another chunk before having received a ``spray.util.model.IOSent`` confirmation message from the
 underlying layer.
 
 The :ref:`Complete Examples` both contain sample code, which shows how to send a streaming response that is "pulled"

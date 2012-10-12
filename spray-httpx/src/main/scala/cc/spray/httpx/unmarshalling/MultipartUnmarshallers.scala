@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-package cc.spray.httpx.unmarshalling
+package spray.httpx.unmarshalling
 
 import java.io.{ByteArrayOutputStream, ByteArrayInputStream}
 import org.jvnet.mimepull.{MIMEMessage, MIMEConfig}
 import org.parboiled.common.FileUtils
 import collection.JavaConverters._
-import cc.spray.http.parser.HttpParser
-import cc.spray.util._
-import cc.spray.http._
+import spray.http.parser.HttpParser
+import spray.util._
+import spray.http._
 import MediaTypes._
 import MediaRanges._
 import HttpHeaders._

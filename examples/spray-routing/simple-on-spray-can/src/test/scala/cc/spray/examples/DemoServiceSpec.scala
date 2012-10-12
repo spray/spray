@@ -1,8 +1,8 @@
-package cc.spray.examples
+package spray.examples
 
 import org.specs2.mutable.Specification
-import cc.spray.testkit.Specs2RouteTest
-import cc.spray.http._
+import spray.testkit.Specs2RouteTest
+import spray.http._
 import StatusCodes._
 
 

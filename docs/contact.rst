@@ -18,7 +18,7 @@ Twitter
 
 If you `follow us on twitter`__ we'll keep you informed about new developments as well as general news around *spray*.
 
-__ http://twitter.com/spraycc
+__ http://twitter.com/sprayio
 
 
 Email
@@ -26,7 +26,7 @@ Email
 
 If you feel that the mailing list is not appropriate for your request, you can also mail us under
 
-``info (at) spray (dot) cc``
+``info (at) spray (dot) io``
 
 
 Skype / GTalk / Jabber

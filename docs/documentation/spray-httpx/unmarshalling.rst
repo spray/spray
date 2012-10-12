@@ -31,10 +31,10 @@ Default Unmarshallers
 - ``String``
 - ``NodeSeq``
 - ``Option[T]``
-- ``cc.spray.http.FormData``
-- ``cc.spray.http.HttpForm``
-- ``cc.spray.http.MultipartContent``
-- ``cc.spray.http.MultipartFormData``
+- ``spray.http.FormData``
+- ``spray.http.HttpForm``
+- ``spray.http.MultipartContent``
+- ``spray.http.MultipartFormData``
 
 The relevant sources are:
 
@@ -43,10 +43,10 @@ The relevant sources are:
 - MetaUnmarshallers_
 - MultipartUnmarshallers_
 
-.. _Deserializer: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/cc/spray/httpx/unmarshalling/Deserializer.scala
-.. _BasicUnmarshallers: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/cc/spray/httpx/unmarshalling/BasicUnmarshallers.scala
-.. _MetaUnmarshallers: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/cc/spray/httpx/unmarshalling/MetaUnmarshallers.scala
-.. _MultipartUnmarshallers: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/cc/spray/httpx/unmarshalling/MultipartUnmarshallers.scala
+.. _Deserializer: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/unmarshalling/Deserializer.scala
+.. _BasicUnmarshallers: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/unmarshalling/BasicUnmarshallers.scala
+.. _MetaUnmarshallers: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/unmarshalling/MetaUnmarshallers.scala
+.. _MultipartUnmarshallers: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/unmarshalling/MultipartUnmarshallers.scala
 
 
 Implicit Resolution
@@ -72,7 +72,7 @@ One is the ``Unmarshaller.apply`` helper, which is defined as such::
 
 The default ``NodeSeqMarshaller`` for example is defined with it:
 
-.. includecode:: /../spray-httpx/src/main/scala/cc/spray/httpx/unmarshalling/BasicUnmarshallers.scala
+.. includecode:: /../spray-httpx/src/main/scala/spray/httpx/unmarshalling/BasicUnmarshallers.scala
    :snippet: nodeseq-unmarshaller
 
 As another example, here is an ``Unmarshaller`` definition for a custom type ``Person``:

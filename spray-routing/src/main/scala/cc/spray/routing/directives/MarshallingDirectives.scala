@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 package directives
 
 import shapeless._
-import cc.spray.httpx.marshalling._
-import cc.spray.httpx.unmarshalling._
-import cc.spray.http._
+import spray.httpx.marshalling._
+import spray.httpx.unmarshalling._
+import spray.http._
 
 
 trait MarshallingDirectives {
@@ -29,7 +29,7 @@ trait MarshallingDirectives {
 
   /**
    * Unmarshalls the requests entity to the given type passes it to its inner Route.
-   * If there is a problem with unmarshalling the request is rejected with the [[cc.spray.routing.Rejection]]
+   * If there is a problem with unmarshalling the request is rejected with the [[spray.routing.Rejection]]
    * produced by the unmarshaller.
    */
   def entity[T](um: Unmarshaller[T]): Directive[T :: HNil] = filter { ctx =>

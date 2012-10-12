@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package cc.spray.httpx.marshalling
+package spray.httpx.marshalling
 
-import cc.spray.http.{ContentType, HttpEntity}
+import spray.http.{ContentType, HttpEntity}
 import akka.actor.ActorRef
 
 
@@ -49,8 +49,8 @@ trait MarshallingContext { self =>
 
   /**
    * Uses the given entity to start a chunked response stream.
-   * The method returns an ActorRef that should be used as the channel for subsequent [[cc.spray.http.MessageChunk]]
-   * instances and the finalizing [[cc.spray.http.ChunkedMessageEnd]].
+   * The method returns an ActorRef that should be used as the channel for subsequent [[spray.http.MessageChunk]]
+   * instances and the finalizing [[spray.http.ChunkedMessageEnd]].
    * If a sentAck is defined it will be sent back to the sender after the initial message part has been successfully
    * passed to the network.
    */

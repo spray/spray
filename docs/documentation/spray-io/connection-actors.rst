@@ -19,4 +19,4 @@ the ConnectionActors__ trait forms the basis.
 
 __ sources_
 __ sources_
-.. _sources: https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/ConnectionActors.scala
+.. _sources: https://github.com/spray/spray/blob/master/spray-io/src/main/scala/spray/io/ConnectionActors.scala

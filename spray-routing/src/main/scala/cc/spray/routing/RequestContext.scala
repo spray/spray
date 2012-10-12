@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 
 import collection.GenTraversableOnce
 import akka.dispatch.Future
 import akka.actor.{Status, ActorRef}
 import akka.spray.UnregisteredActorRef
-import cc.spray.httpx.marshalling.{MarshallingContext, Marshaller}
-import cc.spray.util._
-import cc.spray.http._
+import spray.httpx.marshalling.{MarshallingContext, Marshaller}
+import spray.util._
+import spray.http._
 import StatusCodes._
 import HttpHeaders._
 import MediaTypes._
 
 
 /**
- * Immutable object encapsulating the context of an [[cc.spray.http.HttpRequest]]
+ * Immutable object encapsulating the context of an [[spray.http.HttpRequest]]
  * as it flows through a ''spray'' Route structure.
  */
 case class RequestContext(
@@ -232,7 +232,7 @@ case class RequestContext(
   }
 
   /**
-   * Completes the request with the given [[cc.spray.http.HttpResponse]].
+   * Completes the request with the given [[spray.http.HttpResponse]].
    */
   def complete(response: HttpResponse) {
     responder ! response

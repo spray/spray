@@ -1,8 +1,8 @@
 package docs
 
 import org.specs2.mutable.Specification
-import cc.spray.testkit.Specs2RouteTest
-import cc.spray.routing.{Route, HttpService}
+import spray.testkit.Specs2RouteTest
+import spray.routing.{Route, HttpService}
 import akka.actor.Actor
 
 
@@ -10,8 +10,8 @@ class ExceptionHandlerExamplesSpec extends Specification with Specs2RouteTest wi
   implicit def actorRefFactory = system
 
   //# example-1
-  import cc.spray.http.StatusCodes._
-  import cc.spray.routing._
+  import spray.http.StatusCodes._
+  import spray.routing._
 
   implicit val myExceptionHandler = ExceptionHandler.fromPF {
     case e: ArithmeticException => log => ctx =>

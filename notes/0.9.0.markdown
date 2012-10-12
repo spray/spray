@@ -1,4 +1,4 @@
-The [spray](http://spray.cc) team is proudly announcing the availability of the release 0.9.0 of the _spray_ suite.
+The [spray](http://spray.io) team is proudly announcing the availability of the release 0.9.0 of the _spray_ suite.
 A lot of work went into this latest incarnation of tools to make building RESTful web services with Scala and [Akka][]
 even more productive and fun.
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,28 +14,28 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 package directives
 
 import akka.actor.ActorRefFactory
 import akka.dispatch.ExecutionContext
 import akka.util.Duration
-import cc.spray.util._
-import cc.spray.caching._
-import cc.spray.http._
+import spray.util._
+import spray.caching._
+import spray.http._
 import CacheDirectives._
 import HttpHeaders._
 import HttpMethods._
 
 
-// not mixed into cc.spray.routing.Directives due to its dependency on com.googlecode.concurrentlinkedhashmap
+// not mixed into spray.routing.Directives due to its dependency on com.googlecode.concurrentlinkedhashmap
 trait CachingDirectives {
   import BasicDirectives._
 
   type RouteResponse = Either[Seq[Rejection], HttpResponse]
 
   /**
-   * Wraps its inner Route with caching support using the given [[cc.spray.caching.Cache]] implementation and
+   * Wraps its inner Route with caching support using the given [[spray.caching.Cache]] implementation and
    * the in-scope keyer function.
    */
   def cache(csm: CacheSpecMagnet): Directive0 = cachingProhibited | alwaysCache(csm)
@@ -56,7 +56,7 @@ trait CachingDirectives {
   }
 
   /**
-   * Wraps its inner Route with caching support using the given [[cc.spray.caching.Cache]] implementation and
+   * Wraps its inner Route with caching support using the given [[spray.caching.Cache]] implementation and
    * in-scope keyer function. Note that routes producing streaming responses cannot be wrapped with this directive.
    * Route responses other than HttpResponse or Rejections trigger a "500 Internal Server Error" response.
    */

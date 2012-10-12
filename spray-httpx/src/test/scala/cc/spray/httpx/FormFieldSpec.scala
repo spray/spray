@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-package cc.spray.httpx
+package spray.httpx
 
 import xml.NodeSeq
 import org.specs2.mutable.Specification
-import cc.spray.util._
-import cc.spray.http._
+import spray.util._
+import spray.http._
 
 
 class FormFieldSpec extends Specification {
-  import cc.spray.httpx.marshalling._
-  import cc.spray.httpx.unmarshalling._
+  import spray.httpx.marshalling._
+  import spray.httpx.unmarshalling._
 
   val formData =
     FormData(Map("surname" -> "Smith", "age" -> "42"))

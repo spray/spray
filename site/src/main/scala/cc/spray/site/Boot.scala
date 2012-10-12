@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package cc.spray.site
+package spray.site
 
 import akka.actor.{Props, ActorSystem}
-import cc.spray.can.server.HttpServer
-import cc.spray.io._
+import spray.can.server.HttpServer
+import spray.io._
 
 
 object Boot extends App {

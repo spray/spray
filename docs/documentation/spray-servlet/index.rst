@@ -69,17 +69,17 @@ similar to `this one`__ from the `simple-spray-servlet-server`_ example.
 
 __ https://github.com/spray/spray/blob/master/examples/spray-servlet/simple-spray-servlet-server/src/main/webapp/WEB-INF/web.xml
 
-The ``web.xml`` registers a ``ServletContextListener`` (``cc.spray.servlet.Initializer``), which initializes the
+The ``web.xml`` registers a ``ServletContextListener`` (``spray.servlet.Initializer``), which initializes the
 application when the servlet is started. The ``Initializer`` loads the configured ``boot-class`` and instantiates it
 using the default constructor, which must be available. The boot class must implement the ``WebBoot`` trait, which is
 defined like this:
 
-.. includecode:: /../spray-servlet/src/main/scala/cc/spray/servlet/WebBoot.scala
+.. includecode:: /../spray-servlet/src/main/scala/spray/servlet/WebBoot.scala
    :snippet: source-quote
 
 A very basic boot class implementation is `this one`__ from the `simple-spray-servlet-server`_ example.
 
-__ https://github.com/spray/spray/blob/master/examples/spray-servlet/simple-spray-servlet-server/src/main/scala/cc/spray/examples/Boot.scala
+__ https://github.com/spray/spray/blob/master/examples/spray-servlet/simple-spray-servlet-server/src/main/scala/spray/examples/Boot.scala
 
 The boot class is responsible for creating the Akka ``ActorSystem`` for the application as well as the service actor.
 When the application is shut down by the servlet container the ``Initializer`` shuts down the ``ActorSystem``, which
@@ -128,7 +128,7 @@ Request Timeouts
 ~~~~~~~~~~~~~~~~
 
 If the service actor does not complete a request within the configured ``request-timeout`` period a
-``cc.spray.http.Timeout`` message is sent to the timeout handler, which can be the service actor itself or
+``spray.http.Timeout`` message is sent to the timeout handler, which can be the service actor itself or
 another actor (depending on the ``timeout-handler`` config setting). The timeout handler then has the chance to
 complete the request within the time period configured as ``timeout-timeout``. Only if the timeout handler also misses
 its deadline for completing the request will the connector servlet complete the request itself with a "hard-coded"
@@ -156,7 +156,7 @@ connector servlet has no real way of finding out whether a connection was closed
 was closed unexpectedly for whatever reason a subsequent attempt to write to it usually fails with an ``IOException``.
 In order to adhere to same message protocol as the *spray-can* :ref:`HttpServer` the connector servlet therefore
 dispatches any exception, which the servlet container throws when a response (part) is written, back to the application
-wrapped in an ``cc.spray.util.IOClosed`` message.
+wrapped in an ``spray.util.IOClosed`` message.
 
 In addition the connector servlet also dispatches ``IOClosed`` notification messages after the final part of a response
 has been successfully written to the servlet container. This allows the application to use the same execution model for

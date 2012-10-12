@@ -4,14 +4,14 @@ import org.specs2.mutable.Specification
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
-import cc.spray.testkit.Specs2RouteTest
+import spray.testkit.Specs2RouteTest
 import xml.NodeSeq
 
 
 class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
 
   //# minimal-example
-  import cc.spray.routing.HttpService
+  import spray.routing.HttpService
 
   trait SimpleService extends HttpService {
     val route =
@@ -26,8 +26,8 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
   //#
 
   trait MyApp {
-    import cc.spray.httpx.unmarshalling._
-    import cc.spray.httpx.marshalling._
+    import spray.httpx.unmarshalling._
+    import spray.httpx.marshalling._
     type Money = Double
     type TransactionResult = String
     case class Order(email: String, amount: Money)
@@ -43,10 +43,10 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
 
   //# longer-example
   import akka.util.Duration
-  import cc.spray.httpx.encoding._
-  import cc.spray.routing.authentication.BasicAuth
-  import cc.spray.routing.directives.CachingDirectives._
-  import cc.spray.routing.directives.PathMatchers._
+  import spray.httpx.encoding._
+  import spray.routing.authentication.BasicAuth
+  import spray.routing.directives.CachingDirectives._
+  import spray.routing.directives.PathMatchers._
 
   trait LongerService extends HttpService with MyApp {
 
@@ -143,11 +143,11 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
     val service = new LongerService {
       def actorRefFactory = system
     }
-    Get("/oldApi/1") ~> service.route ~> check { status === cc.spray.http.StatusCodes.Found }
+    Get("/oldApi/1") ~> service.route ~> check { status === spray.http.StatusCodes.Found }
   }
 
   "example-3" in {
-    import cc.spray.http._
+    import spray.http._
     import HttpMethods._
 
     class MyHttpService extends Actor {
@@ -159,7 +159,7 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
   }
 
   "example-4" in {
-    import cc.spray.routing._
+    import spray.routing._
 
     class MyHttpService extends Actor with HttpServiceActor {
 

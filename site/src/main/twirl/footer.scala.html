@@ -5,11 +5,11 @@
   <section class="footerLower">
     <div class="container">
       <div class="row-fluid">
-        <div class="span2 copyright">&copy; 2012+ spray.cc</div>
+        <div class="span2 copyright">&copy; 2012+ spray.io</div>
         <div class="span8 footNav">
           <a href="/">Home</a><span>&#124;</span>
 
-          @cc.spray.site.RootNode.children.map { node =>
+          @spray.site.RootNode.children.map { node =>
             <a href="@node.absoluteUri">@node.name</a><span>&#124;</span>
           }
 

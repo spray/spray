@@ -26,10 +26,10 @@ The basic technique is explained in the chapter about :ref:`Composing Directives
 Another example are the MethodDirectives__, which are simply instances of a preconfigured :ref:`-method-` directive,
 such as:
 
-.. includecode:: /../spray-routing/src/main/scala/cc/spray/routing/directives/MethodDirectives.scala
+.. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/MethodDirectives.scala
    :snippet: source-quote
 
-__ https://github.com/spray/spray/blob/master/spray-routing/src/main/scala/cc/spray/routing/directives/MethodDirectives.scala
+__ https://github.com/spray/spray/blob/master/spray-routing/src/main/scala/spray/routing/directives/MethodDirectives.scala
 
 
 The low-level directives that most often form the basis of higher-level "named configuration" directives are grouped
@@ -42,7 +42,7 @@ Transforming Directives
 The second option for creating new directives is to transform an existing one using one of the "transformation methods",
 which are defined on the Directive__ class, the base class of all "regular" directives.
 
-__ https://github.com/spray/spray/blob/master/spray-routing/src/main/scala/cc/spray/routing/Directive.scala
+__ https://github.com/spray/spray/blob/master/spray-routing/src/main/scala/spray/routing/Directive.scala
 
 Apart from the combinator operators (``|`` and ``&``) and the case-class extractor (``as[T]``) there are these
 transformations defined on all ``Directive[L <: HList]`` instances:

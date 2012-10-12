@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 
-import cc.spray.http.HttpHeaders.Host
+import spray.http.HttpHeaders.Host
 import shapeless._
 
 
@@ -27,14 +27,14 @@ class HostDirectivesSpec extends RoutingSpec {
     "in its simple String form" in {
 
       "block requests to unmatched hosts" in {
-        Get() ~> Host("spray.cc") ~> {
+        Get() ~> Host("spray.io") ~> {
           host("spray.com") { completeOk }
         } ~> check { handled === false }
       }
 
       "let requests to matching hosts pass" in {
-        Get() ~> Host("spray.cc") ~> {
-          host("spray.cc") { completeOk }
+        Get() ~> Host("spray.io") ~> {
+          host("spray.io") { completeOk }
         } ~> check { response === Ok }
       }
     }
@@ -42,30 +42,30 @@ class HostDirectivesSpec extends RoutingSpec {
     "in its simple RegEx form" in {
 
       "block requests to unmatched hosts" in {
-        Get() ~> Host("spray.cc") ~> {
+        Get() ~> Host("spray.io") ~> {
           host("hairspray.*".r) { echoComplete }
         } ~> check { handled === false }
       }
 
       "let requests to matching hosts pass and extract the full host" in {
-        Get() ~> Host("spray.cc") ~> {
+        Get() ~> Host("spray.io") ~> {
           host("spra.*".r) { echoComplete }
-        } ~> check { entityAs[String] === "spray.cc" }
+        } ~> check { entityAs[String] === "spray.io" }
       }
     }
 
     "in its group RegEx form" in {
 
       "block requests to unmatched hosts" in {
-        Get() ~> Host("spray.cc") ~> {
+        Get() ~> Host("spray.io") ~> {
           host("hairspray(.*)".r) { echoComplete }
         } ~> check { handled === false }
       }
 
       "let requests to matching hosts pass and extract the full host" in {
-        Get() ~> Host("spray.cc") ~> {
+        Get() ~> Host("spray.io") ~> {
           host("spra(.*)".r) { echoComplete }
-        } ~> check { entityAs[String] === "y.cc" }
+        } ~> check { entityAs[String] === "y.io" }
       }
     }
   }

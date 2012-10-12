@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package cc.spray.httpx.unmarshalling
+package spray.httpx.unmarshalling
 
 import akka.util.NonFatal
-import cc.spray.http._
+import spray.http._
 
 
 abstract class SimpleUnmarshaller[T] extends Unmarshaller[T] {
@@ -35,7 +35,7 @@ abstract class SimpleUnmarshaller[T] extends Unmarshaller[T] {
 
   /**
    * Helper method for turning exceptions occuring during evaluation of the named parameter into
-   * [[cc.spray.httpx.unmarshalling.MalformedContent]] instances.
+   * [[spray.httpx.unmarshalling.MalformedContent]] instances.
    */
   protected def protect(f: => T): Either[DeserializationError, T] = {
     try Right(f)

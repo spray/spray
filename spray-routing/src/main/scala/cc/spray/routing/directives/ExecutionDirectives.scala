@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 package directives
 
-import cc.spray.util.LoggingContext
+import spray.util.LoggingContext
 import akka.actor._
 import akka.util.NonFatal
 
@@ -27,7 +27,7 @@ trait ExecutionDirectives {
 
   /**
    * Transforms exceptions thrown during evaluation of its inner route using the given
-   * [[cc.spray.routing.ExceptionHandler]].
+   * [[spray.routing.ExceptionHandler]].
    */
   def handleExceptions(ehm: ExceptionHandlerMagnet): Directive0 =
     mapInnerRoute { inner => ctx =>
@@ -43,7 +43,7 @@ trait ExecutionDirectives {
 
   /**
    * Transforms rejections produced by its inner route using the given
-   * [[cc.spray.routing.RejectionHandler]].
+   * [[spray.routing.RejectionHandler]].
    */
   def handleRejections(handler: RejectionHandler): Directive0 =
     mapRequestContext { ctx =>

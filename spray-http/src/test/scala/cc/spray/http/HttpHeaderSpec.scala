@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.http
+package spray.http
 
 import org.specs2.Specification
 import HttpHeaders._
@@ -122,8 +122,8 @@ class HttpHeaderSpec extends Specification {
     "Date: Wed, 13 Jul 2011 08:12:31 GMT" ! example(Date(DateTime(2011, 7, 13, 8, 12, 31)))_ ^
     "Date: Fri, 23 Mar 1804 12:11:10 GMT" ! example(Date(DateTime(1804, 3, 23, 12, 11, 10)))_ ^
     p^
-    "Host: www.spray.cc:8080" ! example(Host("www.spray.cc", Some(8080)))_ ^
-    "Host: spray.cc" ! example(Host("spray.cc"))_ ^
+    "Host: www.spray.io:8080" ! example(Host("www.spray.io", Some(8080)))_ ^
+    "Host: spray.io" ! example(Host("spray.io"))_ ^
     "Host: [2001:db8::1]:8080" ! example(Host("[2001:db8::1]", Some(8080)))_ ^
     "Host: [2001:db8::1]" ! example(Host("[2001:db8::1]"))_ ^
     "Host: [::FFFF:129.144.52.38]" ! example(Host("[::FFFF:129.144.52.38]"))_ ^

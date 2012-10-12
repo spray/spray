@@ -6,12 +6,12 @@
 <web-app>
 
     <listener>
-        <listener-class>cc.spray.servlet.Initializer</listener-class>
+        <listener-class>spray.servlet.Initializer</listener-class>
     </listener>
 
     <servlet>
         <servlet-name>SprayConnectorServlet</servlet-name>
-        <servlet-class>cc.spray.servlet.Servlet30ConnectorServlet</servlet-class>
+        <servlet-class>spray.servlet.Servlet30ConnectorServlet</servlet-class>
         <async-supported>true</async-supported>
     </servlet>
 

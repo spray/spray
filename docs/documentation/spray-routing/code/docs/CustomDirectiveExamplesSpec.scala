@@ -1,15 +1,15 @@
 package docs
 
 import org.specs2.mutable.Specification
-import cc.spray.testkit.Specs2RouteTest
-import cc.spray.routing.HttpService
+import spray.testkit.Specs2RouteTest
+import spray.routing.HttpService
 
 
 class CustomDirectiveExamplesSpec extends Specification with Specs2RouteTest {
 
   "example-1" in {
     import shapeless._
-    import cc.spray.routing._
+    import spray.routing._
     import Directives._
 
     val twoIntParameters: Directive[Int :: Int :: HNil] =
@@ -28,7 +28,7 @@ class CustomDirectiveExamplesSpec extends Specification with Specs2RouteTest {
 
   "example-2" in {
     import shapeless._
-    import cc.spray.routing._
+    import spray.routing._
     import Directives._
 
     val intParameter: Directive[Int :: HNil] = parameter('a.as[Int])

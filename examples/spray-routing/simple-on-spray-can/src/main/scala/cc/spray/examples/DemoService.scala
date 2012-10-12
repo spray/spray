@@ -1,4 +1,4 @@
-package cc.spray.examples
+package spray.examples
 
 import java.io.File
 import org.parboiled.common.FileUtils
@@ -6,11 +6,11 @@ import akka.util.Duration
 import akka.util.duration._
 import akka.actor.{ActorLogging, Props, Actor}
 import akka.pattern.ask
-import cc.spray.routing.{HttpService, RequestContext}
-import cc.spray.routing.directives.CachingDirectives
-import cc.spray.can.server.HttpServer
-import cc.spray.httpx.encoding.Gzip
-import cc.spray.http._
+import spray.routing.{HttpService, RequestContext}
+import spray.routing.directives.CachingDirectives
+import spray.can.server.HttpServer
+import spray.httpx.encoding.Gzip
+import spray.http._
 import MediaTypes._
 import CachingDirectives._
 

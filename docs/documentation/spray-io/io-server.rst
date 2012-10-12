@@ -28,12 +28,12 @@ Examples
 One example of a network server based on the ``IOServer`` is the *spray-can* :ref:`HttpServer`. You might find
 `its sources`__ quite readable.
 
-__ https://github.com/spray/spray/blob/master/spray-can/src/main/scala/cc/spray/can/server/HttpServer.scala
+__ https://github.com/spray/spray/blob/master/spray-can/src/main/scala/spray/can/server/HttpServer.scala
 
 Another example is the ``echo-server`` implementation that can be found here__.
 It presents a simple echo server that you can ``telnet`` to.
 
-__ https://github.com/spray/spray/blob/master/examples/spray-io/echo-server/src/main/scala/cc/spray/examples/Main.scala
+__ https://github.com/spray/spray/blob/master/examples/spray-io/echo-server/src/main/scala/spray/examples/Main.scala
 
 To run it, simply check out the *spray* codebase and run ``sbt "project echo-server" run``.
 
@@ -46,6 +46,6 @@ in the actors companion object. In this regard the ``IOServer`` is no exception,
 that an ``IOServer`` works with in `its companion object`__
 
 __ source_
-.. _source: https://github.com/spray/spray/blob/master/spray-io/src/main/scala/cc/spray/io/IOServer.scala
+.. _source: https://github.com/spray/spray/blob/master/spray-io/src/main/scala/spray/io/IOServer.scala
 
 

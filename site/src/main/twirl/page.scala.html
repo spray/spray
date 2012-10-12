@@ -1,4 +1,4 @@
-@(content: Any, node: cc.spray.site.ContentNode = cc.spray.site.RootNode)
+@(content: Any, node: spray.site.ContentNode = spray.site.RootNode)
 
 <!DOCTYPE HTML>
 <!--[if IE 7 ]>    <html class="ie7 no-js" lang="en"> <![endif]-->
@@ -7,7 +7,7 @@
 <!--[if (gte IE 9)|!(IE)]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
 <head>
     <meta charset="utf-8" />
-    <title>spray.cc</title>
+    <title>spray.io</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
     <meta name="description" content="" />
     <meta name="author" content="" />
@@ -26,7 +26,7 @@
     <link rel="shortcut icon" href="/favicon.png" />
 </head>
 
-<body class="@if(node == cc.spray.site.RootNode) {page-home} else {page-doc}">
+<body class="@if(node == spray.site.RootNode) {page-home} else {page-doc}">
 
 @html.header(node)
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package cc.spray.httpx.encoding
+package spray.httpx.encoding
 
 import java.util.zip.{DataFormatException, ZipException, Inflater, Deflater}
 import annotation.tailrec
-import cc.spray.util.EmptyByteArray
-import cc.spray.http._
+import spray.util.EmptyByteArray
+import spray.http._
 
 
 class Deflate(val messageFilter: HttpMessage => Boolean) extends Decoder with Encoder {

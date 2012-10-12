@@ -5,5 +5,5 @@ The :ref:`maven-repo` chapter contains all the info about how to pull *spray-can
 
 Afterwards use the following imports to bring all relevant identifiers into scope:
 
-- ``import cc.spray.can.client._`` for everything related to the :ref:`HttpClient` and the :ref:`HttpDialog`
-- ``import cc.spray.can.server._`` for everything related to the :ref:`HttpServer`
+- ``import spray.can.client._`` for everything related to the :ref:`HttpClient` and the :ref:`HttpDialog`
+- ``import spray.can.server._`` for everything related to the :ref:`HttpServer`

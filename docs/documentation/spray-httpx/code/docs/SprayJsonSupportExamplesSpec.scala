@@ -6,10 +6,10 @@ import org.specs2.mutable.Specification
 class SprayJsonSupportExamplesSpec extends Specification {
 
   //# example-1
-  import cc.spray.httpx.unmarshalling.pimpHttpEntity
+  import spray.httpx.unmarshalling.pimpHttpEntity
   import cc.spray.json.DefaultJsonProtocol
-  import cc.spray.httpx.marshalling._
-  import cc.spray.http._
+  import spray.httpx.marshalling._
+  import spray.http._
   import MediaTypes.`application/json`
 
   case class Person(name: String, firstName: String, age: Int)
@@ -22,7 +22,7 @@ class SprayJsonSupportExamplesSpec extends Specification {
 
   "example-1" in {
     import MyJsonProtocol._
-    import cc.spray.httpx.SprayJsonSupport._
+    import spray.httpx.SprayJsonSupport._
 
     val bob = Person("Bob", "Parr", 32)
     val body = HttpBody(`application/json`,

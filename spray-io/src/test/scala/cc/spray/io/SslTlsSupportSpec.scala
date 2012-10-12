@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package cc.spray.io
+package spray.io
 
 import org.specs2.mutable.Specification
 import annotation.tailrec
@@ -21,10 +21,10 @@ import javax.net.ssl._
 import java.io.{BufferedWriter, OutputStreamWriter, InputStreamReader, BufferedReader}
 import scala.Boolean
 import akka.pattern.ask
-import cc.spray.util._
+import spray.util._
 import java.nio.ByteBuffer
 import akka.util.{Duration, Timeout}
-import cc.spray.io._
+import spray.io._
 import akka.actor.{ActorRef, Props, ActorSystem}
 import com.typesafe.config.ConfigFactory
 import java.security.{KeyStore, SecureRandom}

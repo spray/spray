@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-package cc.spray.can.client
+package spray.can.client
 
 import org.specs2.mutable.Specification
 import akka.actor.ActorSystem
-import cc.spray.can.parsing.ParserSettings
-import cc.spray.can.{HttpEvent, HttpPipelineStageSpec}
-import cc.spray.can.rendering.HttpRequestPartRenderingContext
-import cc.spray.util.ProtocolError
-import cc.spray.io.Event
+import spray.can.parsing.ParserSettings
+import spray.can.{HttpEvent, HttpPipelineStageSpec}
+import spray.can.rendering.HttpRequestPartRenderingContext
+import spray.util.ProtocolError
+import spray.io.Event
 
 
 class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {

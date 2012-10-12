@@ -9,8 +9,8 @@ class IOClientExamplesSpec extends Specification {
   import akka.util.{Duration, Timeout}
   import akka.pattern.ask
   import akka.actor._
-  import cc.spray.util._
-  import cc.spray.io._
+  import spray.util._
+  import spray.io._
 
   class EchoClient(ioBridge: IOBridge) extends IOClient(ioBridge) {
     var pingSender: Option[ActorRef] = None

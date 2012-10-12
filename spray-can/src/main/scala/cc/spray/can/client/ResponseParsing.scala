@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-package cc.spray.can.client
+package spray.can.client
 
 import akka.event.LoggingAdapter
 import collection.mutable
 import java.nio.ByteBuffer
 import annotation.tailrec
-import cc.spray.can.rendering.HttpRequestPartRenderingContext
-import cc.spray.can.HttpEvent
-import cc.spray.util.EmptyByteArray
-import cc.spray.can.parsing._
-import cc.spray.http._
-import cc.spray.io._
-import cc.spray.util._
+import spray.can.rendering.HttpRequestPartRenderingContext
+import spray.can.HttpEvent
+import spray.util.EmptyByteArray
+import spray.can.parsing._
+import spray.http._
+import spray.io._
+import spray.util._
 
 
 object ResponseParsing {

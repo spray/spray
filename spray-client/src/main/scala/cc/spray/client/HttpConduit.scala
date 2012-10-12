@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package cc.spray.client
+package spray.client
 
 import akka.dispatch.{Promise, Future}
 import akka.spray.{RefUtils, UnregisteredActorRef}
 import akka.actor._
-import cc.spray.can.client.HttpClient
-import cc.spray.httpx.{ResponseTransformation, RequestBuilding}
-import cc.spray.http._
-import cc.spray.util._
-import cc.spray.io._
+import spray.can.client.HttpClient
+import spray.httpx.{ResponseTransformation, RequestBuilding}
+import spray.http._
+import spray.util._
+import spray.io._
 
 
 class HttpConduit(val httpClient: ActorRef,

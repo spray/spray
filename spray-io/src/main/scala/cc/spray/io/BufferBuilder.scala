@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.io
+package spray.io
 
 import java.nio.charset.Charset
 import java.nio.ByteBuffer
@@ -119,7 +119,7 @@ class BufferBuilder protected(initialSize: Int, array: Array[Byte]) {
 
 object BufferBuilder {
   def apply(): BufferBuilder =
-    new BufferBuilder(0, cc.spray.util.EmptyByteArray)
+    new BufferBuilder(0, spray.util.EmptyByteArray)
 
   def apply(initialCapacity: Int): BufferBuilder =
     new BufferBuilder(0, new Array[Byte](initialCapacity))

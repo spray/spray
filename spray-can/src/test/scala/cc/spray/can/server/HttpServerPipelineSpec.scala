@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package cc.spray.can.server
+package spray.can.server
 
 import akka.testkit.TestActorRef
 import akka.util.{Duration, Timeout}
@@ -22,10 +22,10 @@ import com.typesafe.config.ConfigFactory
 import org.specs2.mutable.Specification
 import java.util.concurrent.atomic.AtomicInteger
 import akka.actor.{ActorSystem, Actor, Props}
-import cc.spray.can.{HttpCommand, HttpPipelineStageSpec}
-import cc.spray.io._
-import cc.spray.http._
-import cc.spray.util._
+import spray.can.{HttpCommand, HttpPipelineStageSpec}
+import spray.io._
+import spray.http._
+import spray.util._
 import HttpHeaders.RawHeader
 
 
@@ -315,7 +315,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       singleHandlerPipeline.test {
         val Commands(Tell(`singletonHandler`, _, peer)) = processAndClear(Received(simpleRequest))
         Thread.sleep(50)
-        val Commands(Tell(`singletonHandler`, cc.spray.http.Timeout(_), `peer`)) = processAndClear(TickGenerator.Tick)
+        val Commands(Tell(`singletonHandler`, spray.http.Timeout(_), `peer`)) = processAndClear(TickGenerator.Tick)
         peer.tell(HttpCommand(HttpResponse()), sender1)
         result.commands(0) === SendString(simpleResponse)
       }
@@ -325,7 +325,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       singleHandlerPipeline.test {
         val Commands(Tell(`singletonHandler`, _, peer)) = processAndClear(Received(simpleRequest))
         Thread.sleep(55)
-        val Commands(Tell(`singletonHandler`, cc.spray.http.Timeout(_), `peer`)) = processAndClear(TickGenerator.Tick)
+        val Commands(Tell(`singletonHandler`, spray.http.Timeout(_), `peer`)) = processAndClear(TickGenerator.Tick)
         Thread.sleep(35)
         val Commands(message, HttpServer.Close(CleanClose)) = process(TickGenerator.Tick)
         message === SendString {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.cc
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package cc.spray.routing
+package spray.routing
 
 import org.specs2.mutable.Specification
-import cc.spray.testkit.Specs2RouteTest
-import cc.spray.http.{HttpResponse, StatusCodes}
+import spray.testkit.Specs2RouteTest
+import spray.http.{HttpResponse, StatusCodes}
 
 
 trait RoutingSpec extends Specification with Directives with Specs2RouteTest {
