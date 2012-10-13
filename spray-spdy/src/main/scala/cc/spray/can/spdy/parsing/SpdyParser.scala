@@ -10,7 +10,15 @@ import annotation.tailrec
 class FrameHeaderReader(inflater: Inflater) extends ReadBytePart(8) {
   def finished(bytes: Array[Byte]): ParsingState = {
     val Array(_, _, _, _, _, l1, l2, l3) = bytes
-    new FrameDataReader(inflater, bytes, Conversions.u3be(l1, l2, l3))
+
+    val length = Conversions.u3be(l1, l2, l3)
+    val res = new FrameDataReader(inflater, bytes, length)
+
+    // TODO: think more about where this shortcut really belongs
+    if (length == 0)
+      res.finished(Array.empty)
+    else
+      res
   }
 }
 
