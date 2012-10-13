@@ -170,7 +170,7 @@ object SpdyHttpServer {
         "http/1.1" -> httpPipeline)
 
     def spdy2Pipeline =
-      SpdyStreamManager(messageHandler, HttpHelper.unwrapHttpEvent, log) {
+      SpdyStreamManager(HttpHelper.unwrapHttpEvent, log) {
         (RequestChunkAggregationLimit > 0) ? RequestChunkAggregation(RequestChunkAggregationLimit.toInt) >>
         (PipeliningLimit > 0) ? PipeliningLimiter(settings.PipeliningLimit) >>
         settings.StatsSupport ? StatsSupport(statsHolder.get) >>
@@ -178,7 +178,8 @@ object SpdyHttpServer {
         HttpOnSpdy()
       } >>
       SpdyRendering() >>
-      SpdyParsing()
+      SpdyParsing() >>
+      Frontend(messageHandler)
 
     def httpPipeline =
       ServerFrontend(settings, messageHandler, timeoutResponse, log) >>

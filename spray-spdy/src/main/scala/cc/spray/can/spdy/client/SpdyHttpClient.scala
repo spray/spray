@@ -33,7 +33,7 @@ class SpdyHttpClient(ioBridge: IOBridge, settings: ClientSettings = ClientSettin
 
   override protected def createConnectionActor(handle: Handle): IOConnectionActor = new IOConnectionActor(handle) {
     override def receive = super.receive orElse {
-      case x: HttpMessagePart with HttpRequestPart => pipelines.commandPipeline(HttpCommand(x))
+      case x: HttpMessagePart with HttpRequestPart => super.receive(HttpCommand(x))
     }
   }
 }
@@ -49,12 +49,18 @@ object SpdyHttpClient {
       TlsNpnSupportedProtocols(
         "http/1.1",
         "http/1.1" -> httpPipeline
-        //,"spdy/2"   -> spdy2Pipeline
+        ,"spdy/2"   -> spdy2Pipeline
         )
 
     def spdy2Pipeline =
+      HttpOnSpdy.acceptRequests() >>
+      SpdyStreamManager(HttpHelper.unwrapHttpEvent, log, client = true) {
+        (ResponseChunkAggregationLimit > 0) ? ResponseChunkAggregation(ResponseChunkAggregationLimit.toInt) >>
+        HttpOnSpdy(client = true)
+      } >>
       SpdyRendering() >>
-      SpdyParsing()
+      SpdyParsing() >>
+      Frontend()
 
     def httpPipeline =
       ClientFrontend(RequestTimeout, log) >>

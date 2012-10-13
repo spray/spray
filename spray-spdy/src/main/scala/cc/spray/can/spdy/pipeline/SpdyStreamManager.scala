@@ -13,18 +13,20 @@ import pipeline.SpdyRendering.SendSpdyFrame
 
 
 object SpdyStreamManager {
-  def apply(messageHandler: MessageHandler, eventExtractor: Event => Any, log: LoggingAdapter)(innerPipeline: PipelineStage): DoublePipelineStage = new DoublePipelineStage {
+  def apply(eventExtractor: Event => Any, log: LoggingAdapter, client: Boolean = false)(innerPipeline: PipelineStage): DoublePipelineStage = new DoublePipelineStage {
     def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
-      val handler = messageHandler(context)()
-
       val incomingStreams = collection.mutable.Map.empty[Int, SpdyContext]
 
       def eventPipeline: EPL = {
         case SpdyFrameReceived(frame) =>
           frame match {
             case SynStream(streamId, associatedTo, priority, fin, uni, headers) =>
-              val ctx = createStreamContext(streamId)
+              val ctx = createStreamContext(streamId, Frontend.MessageHandler)
               ctx.pipelines.eventPipeline(StreamOpened(headers, fin))
+
+            case SynReply(streamId, fin, headers) =>
+              val ctx = contextFor(streamId)
+              ctx.pipelines.eventPipeline(StreamReplied(headers, fin))
 
             case RstStream(streamId, statusCode) =>
               val ctx = contextFor(streamId)
@@ -37,20 +39,34 @@ object SpdyStreamManager {
             case Ping(id, data) =>
               commandPL(IOServer.Send(ByteBuffer.wrap(data)))
 
-            case DataFrame(streamId, fin, data) =>
+            case d@DataFrame(streamId, fin, data) =>
+              //println("Got DataFrame "+d)
               val ctx = contextFor(streamId)
               ctx.pipelines.eventPipeline(StreamDataReceived(data, fin))
           }
         case x => eventPL(x)
       }
 
-      def commandPipeline: CPL = commandPL
+      var upcomingStreamId = if (client) 1 else 2
+      def nextStreamId(): Int = {
+        val res = upcomingStreamId
+        upcomingStreamId += 2
+        res
+      }
 
-      def createStreamContext(streamId: Int): SpdyContext = {
+      def commandPipeline: CPL = {
+        case StreamOpen(headers, finished) =>
+          val id = nextStreamId()
+          createStreamContext(id, Frontend.Other(context.sender))
+          sendFrame(SynStream(id, 0, 0, finished, false, headers))
+        case c => commandPL(c)
+      }
+
+      def createStreamContext(streamId: Int, endpoint: Frontend.Receiver): SpdyContext = {
         if (incomingStreams.contains(streamId))
           throw new IllegalStateException("Tried to create a stream twice "+streamId)
 
-        val res = streamContextFor(streamId)
+        val res = streamContextFor(streamId, endpoint)
         incomingStreams(streamId) = res
         res
       }
@@ -61,16 +77,16 @@ object SpdyStreamManager {
           throw new IllegalStateException("Tried to access invalid stream")
       }
 
-      def streamContextFor(_streamId: Int): SpdyContext =
+      def streamContextFor(_streamId: Int, endpoint: Frontend.Receiver): SpdyContext =
         new SpdyContext { spdyCtx =>
           var streamClosed = false
-          var lastSender = handler
+          var lastSender: Frontend.Receiver = endpoint
           def streamId: Int = _streamId
           val pipelines: Pipelines = innerPipeline.buildPipelines(context, baseStreamCommandPipeline, baseStreamEventPipeline)
 
           def baseStreamEventPipeline: EPL = {
             case event =>
-              commandPL(IOServer.Tell(lastSender, eventExtractor(event), Reply.withContext(spdyCtx)(context.connectionActorContext.self)))
+              commandPL(Frontend.Tell(lastSender, eventExtractor(event), Reply.withContext(spdyCtx)(context.connectionActorContext.self)))
           }
           def baseStreamCommandPipeline: CPL = {
             case StreamReply(headers, fin) =>
@@ -96,7 +112,7 @@ object SpdyStreamManager {
           }
           def send(frame: Frame, shouldClose: Boolean) {
             if (!streamClosed) {
-              lastSender = context.connectionActorContext.sender
+              lastSender = Frontend.Other(context.connectionActorContext.sender)
 
               sendFrame(frame)
               close(shouldClose)
@@ -119,10 +135,12 @@ object SpdyStreamManager {
 
   // EVENTS
   case class StreamOpened(headers: Map[String, String], finished: Boolean) extends Event
+  case class StreamReplied(header: Map[String, String], finished: Boolean) extends Event
   case class StreamDataReceived(data: Array[Byte], finished: Boolean) extends Event
   case class StreamAborted(cause: Int) extends Event
 
   // COMMANDS
+  case class StreamOpen(headers: Map[String, String], finished: Boolean) extends Command
   case class StreamReply(headers: Map[String, String], finished: Boolean) extends Command
   case class StreamSendData(data: Array[Byte], finished: Boolean) extends Command
   case class StreamAbort(cause: Int) extends Command
