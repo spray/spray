@@ -19,5 +19,11 @@ object Conversions {
   def u3le(b1: Byte, b2: Byte, b3: Byte): Int =
     (((b3 << 8) | b2) << 8) | b1
 
-  def flag(flag: Int): Int => Boolean = cand => (cand & flag) == flag
+  case class Flag(mask: Int) {
+    def apply(cand: Int): Boolean = (cand & mask) == mask
+    def apply(set: Boolean): Int = if (set) mask else 0
+
+    //def value(set: Boolean) = apply(set)
+  }
+  def flag(mask: Int): Flag = Flag(mask)
 }

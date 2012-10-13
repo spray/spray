@@ -7,20 +7,55 @@ import java.io.{ByteArrayOutputStream, ByteArrayInputStream}
 import java.util.zip.{Inflater, Deflater, DeflaterOutputStream}
 import cc.spray.can.parsing.{IntermediateState, ParsingState}
 import cc.spray.httpx.encoding.DeflateCompressor
+import parsing.FrameHeaderReader
+import annotation.tailrec
 
 class SpdyRenderer {
   import Spdy2._
+  import Flags._
 
   val compressor = new DeflateCompressor {
     override def dictionary: Option[Array[Byte]] = Some(Spdy2.dictionary)
   }
 
   def renderFrame(frame: Frame): ByteBuffer = frame match {
+    case syn: SynStream =>
+      renderSynStream(syn)
     case SynReply(id, fin, kvs) =>
       renderSynReply(id, fin, kvs)
 
     case DataFrame(id, fin, data) =>
       renderDataFrame(id, fin, data)
+  }
+
+  def renderSynStream(syn: SynStream): ByteBuffer = {
+    val dataBuffer = renderKeyValues(syn.keyValues)
+    val length = dataBuffer.limit + 10
+
+    val buffer = ByteBuffer.allocate(10000)
+
+    def putByte(b: Int) {
+      require(b < 256)
+      buffer.put(b.toByte)
+    }
+
+    putByte(0x80) // Control frame
+    putByte(0x02) // version 2
+    buffer.putShort(ControlFrameTypes.SYN_STREAM.toShort) // type 2 SYN_REPLY
+    putByte(FLAG_FIN(syn.fin) | FLAG_FIN(syn.unidirectional)) // flags
+    putByte((length >> 16) & 0xff)
+    putByte((length >> 8) & 0xff)
+    putByte((length) & 0xff)
+    buffer.putInt(syn.streamId & 0x7fffffff)
+    buffer.putInt(syn.associatedTo & 0x7fffffff)
+    putByte(syn.priority << 6)
+    putByte(0)
+    buffer.put(dataBuffer)
+    buffer.flip()
+
+    check(buffer.slice())
+
+    buffer
   }
 
   def renderSynReply(streamId: Int, fin: Boolean, keyValues: Map[String, String]): ByteBuffer = {
@@ -58,11 +93,16 @@ class SpdyRenderer {
     val buf = new Array[Byte](buffer.limit)
     buffer.slice().get(buf)
     println("Bytes: "+buf.map(_ formatted "%02x").mkString(" "))
-    println("Result is "+readToEnd(new FrameHeaderParser(new Inflater), buffer))*/
+    println("Result is "+readToEnd(new FrameHeaderReader(new Inflater), buffer))*/
   }
   def readToEnd(state: ParsingState, buffer: ByteBuffer): ParsingState = state match {
-    case x: IntermediateState =>
-      readToEnd(x.read(buffer), buffer)
+    case x: IntermediateState if buffer.remaining() > 0 =>
+      val oldRemaining = buffer.remaining()
+      val read = x.read(buffer)
+      if (oldRemaining == buffer.remaining())
+        throw new IllegalStateException("Parser makes no progress")
+      else
+        readToEnd(read, buffer)
     case x => x
   }
 
