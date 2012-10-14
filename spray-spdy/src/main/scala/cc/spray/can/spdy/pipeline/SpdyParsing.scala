@@ -28,6 +28,7 @@ object SpdyParsing {
             } // else wait for more input
 
           case f: Frame =>
+            //println("Got frame "+f.getClass)
             eventPL(SpdyFrameReceived(f))
 
             currentParsingState = startParser
@@ -41,7 +42,9 @@ object SpdyParsing {
       }
 
       {
-        case x: IOServer.Received => parse(x.buffer)
+        case x: IOServer.Received =>
+          parse(x.buffer)
+          //println("After parsing at "+currentParsingState)
         case x => eventPL(x)
       }
     }

@@ -30,7 +30,7 @@ trait ConnectionActors extends IOPeer {
       val localAddress = _localAddress
       val commander = _commander
       val tag = _tag
-      val handler = context.actorOf(Props(createConnectionActor(this)), "connection-"+remoteAddress.getHostName+":"+remoteAddress.getPort) // must be initialized last
+      val handler = context.actorOf(Props(createConnectionActor(this)), "connection-"+localAddress.getHostName+":"+localAddress.getPort+"--"+remoteAddress.getHostName+":"+remoteAddress.getPort) // must be initialized last
     }
   }
 
@@ -47,14 +47,35 @@ trait ConnectionActors extends IOPeer {
 
     def createPipelineContext: PipelineContext = PipelineContext(handle, context)
 
+    def trace(msg: String, args: Any*) {
+      if (false) args match {
+        case Seq() => log.info(msg)
+        case Seq(a) => log.info(msg, a)
+        case Seq(a, b) => log.info(msg, a, b)
+        case Seq(a, b, c) => log.info(msg, a, b, c)
+      }
+
+    }
+
     //# final-stages
     def baseCommandPipeline: Pipeline[Command] = {
-      case IOPeer.Send(buffers, ack)          => ioBridge ! IOBridge.Send(handle, buffers, ack)
-      case IOPeer.Close(reason)               => ioBridge ! IOBridge.Close(handle, reason)
-      case IOPeer.StopReading                 => ioBridge ! IOBridge.StopReading(handle)
-      case IOPeer.ResumeReading               => ioBridge ! IOBridge.ResumeReading(handle)
-      case IOPeer.Tell(receiver, msg, sender) => receiver.tell(msg, sender)
-      case _: Droppable => // don't warn
+      case IOPeer.Send(buffers, ack)          =>
+        trace("<- Send({})", buffers.map(_.remaining).sum)
+        ioBridge ! IOBridge.Send(handle, buffers, ack)
+      case IOPeer.Close(reason)               =>
+        trace("<- Close({})", reason)
+        ioBridge ! IOBridge.Close(handle, reason)
+      case IOPeer.StopReading                 =>
+        trace("<- StopReading")
+        ioBridge ! IOBridge.StopReading(handle)
+      case IOPeer.ResumeReading               =>
+        trace("<- ResumeReadingReading")
+        ioBridge ! IOBridge.ResumeReading(handle)
+      case IOPeer.Tell(receiver, msg, sender) =>
+        trace("<- Tell({} -> {}, {})", sender, receiver, msg.getClass)
+        receiver.tell(msg, sender)
+      case x: Droppable => // don't warn
+        trace("Dropped Command: {}", x)
       case cmd =>
         //Thread.dumpStack()
         log.warning("commandPipeline: dropped {}", cmd)
@@ -65,7 +86,8 @@ trait ConnectionActors extends IOPeer {
         log.debug("Stopping connection actor, connection was closed due to {}", x.reason)
         context.stop(self)
         context.parent ! x // also inform our parent of our closing
-      case _: Droppable => // don't warn
+      case x: Droppable => // don't warn
+        trace("Dropped Event: {}", x)
       case ev =>
         //Thread.dumpStack()
         log.warning("eventPipeline: dropped {}", ev)
@@ -74,10 +96,18 @@ trait ConnectionActors extends IOPeer {
 
     //# receive
     def receive = {
-      case x: Command => pipelines.commandPipeline(x)
-      case x: Event => pipelines.eventPipeline(x)
-      case Status.Failure(x: CommandException) => pipelines.eventPipeline(x)
-      case Terminated(actor) => pipelines.eventPipeline(IOPeer.ActorDeath(actor))
+      case x: Command =>
+        trace("-> Command: {}", x)
+        pipelines.commandPipeline(x)
+      case x: Event =>
+        trace("-> Event: {}", x)
+        pipelines.eventPipeline(x)
+      case Status.Failure(x: CommandException) =>
+        trace("-> Failure: {}", x)
+        pipelines.eventPipeline(x)
+      case Terminated(actor) =>
+        trace("-> Terminated: {}", actor)
+        pipelines.eventPipeline(IOPeer.ActorDeath(actor))
     }
     //#
   }

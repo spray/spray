@@ -85,6 +85,15 @@ class FrameDataReader(inflater: Inflater, header: Array[Byte], length: Int) exte
           case PING =>
             val id = u4be(dataBytes(0), dataBytes(1), dataBytes(2), dataBytes(3))
             Ping(id, header ++ dataBytes)
+
+          case HEADERS =>
+            println("Received headers")
+
+            val streamId = u4be(dataBytes(0), dataBytes(1), dataBytes(2), dataBytes(3)) & 0x7fffffff
+            val headers = readHeaders(inflater, dataBytes.drop(6))
+
+            Headers(streamId, headers)
+
           case _ =>
             FrameParsingError(ErrorCodes.PROTOCOL_ERROR)
         }

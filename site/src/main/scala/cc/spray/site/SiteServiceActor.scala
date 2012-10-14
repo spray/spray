@@ -19,9 +19,10 @@ package cc.spray.site
 import akka.actor.Actor
 import cc.spray.httpx.encoding.Gzip
 import cc.spray.httpx.TwirlSupport._
-import cc.spray.http.StatusCodes
+import cc.spray.http.{HttpRequest, StatusCodes}
 import cc.spray.routing._
 import html._
+import cc.spray.can.spdy.server.SpdyHttpServer
 
 
 class SiteServiceActor extends Actor with HttpService {
@@ -33,8 +34,19 @@ class SiteServiceActor extends Actor with HttpService {
         path("") {
           redirect("/home")
         } ~
-        path("home") {
-          complete(page(home()))
+        path("home") { ctx =>
+          println("Sending push")
+
+          sender ! SpdyHttpServer.ServerPush(HttpRequest(uri = "/css/mentor.min.css"))
+          sender ! SpdyHttpServer.ServerPush(HttpRequest(uri = "/css/skin_blue.css"))
+          sender ! SpdyHttpServer.ServerPush(HttpRequest(uri = "/css/spray.css"))
+          sender ! SpdyHttpServer.ServerPush(HttpRequest(uri = "/css/pygments.css"))
+          sender ! SpdyHttpServer.ServerPush(HttpRequest(uri = "/js/mentor.min.js"))
+          sender ! SpdyHttpServer.ServerPush(HttpRequest(uri = "/js/spray.js"))
+
+          //sender ! SpdyHttpServer.ServerPush(HttpRequest(uri = "/img/logo.png"))
+
+          ctx.complete(page(home()))
         } ~
         path("index") {
           complete(page(index()))

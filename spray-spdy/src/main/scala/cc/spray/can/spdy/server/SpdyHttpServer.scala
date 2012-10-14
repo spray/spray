@@ -32,7 +32,10 @@ class SpdyHttpServer(ioBridge: IOBridge, messageHandler: MessageHandler, setting
   override protected def createConnectionActor(handle: Handle): IOConnectionActor = new IOConnectionActor(handle) {
     override def receive = super.receive orElse {
       case Reply(msg: HttpMessagePart, ctx: SpdyContext) =>
+        println("Got result for "+ctx.streamId)
         ctx.pipelines.commandPipeline(HttpCommand(msg))
+      case Reply(cmd: Command, ctx: SpdyContext) =>
+        ctx.pipelines.commandPipeline(cmd)
     }
   }
 
@@ -192,8 +195,8 @@ object SpdyHttpServer {
       (IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log)
 
     //(IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
-    SSLEncryption ? SslTlsSupport(sslEngineProvider, log, supportedProtocols = Some(protocols)) >>
-    (ReapingCycle > 0 && (IdleTimeout > 0 || RequestTimeout > 0)) ? TickGenerator(ReapingCycle)
+    SSLEncryption ? SslTlsSupport(sslEngineProvider, log, supportedProtocols = Some(protocols))
+    //(ReapingCycle > 0 && (IdleTimeout > 0 || RequestTimeout > 0)) ? TickGenerator(ReapingCycle)
   }
 
   case class Stats(
@@ -220,11 +223,12 @@ object SpdyHttpServer {
   case object ClearStats extends Command
   case object GetStats extends Command
 
+  case class ServerPush(request: HttpRequest) extends Command
+
   ////////////// EVENTS //////////////
   // HttpRequestParts +
   type Bound = IOServer.Bound;     val Bound = IOServer.Bound
   type Unbound = IOServer.Unbound; val Unbound = IOServer.Unbound
   type Closed = IOServer.Closed;   val Closed = IOServer.Closed
   type SentOk = IOServer.SentOk;   val SentOk = IOServer.SentOk
-
 }

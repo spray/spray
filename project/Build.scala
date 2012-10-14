@@ -151,6 +151,7 @@ object Build extends Build with DocSupport {
       test(specs2)
     )
     .settings(spraySpdyUserSettings: _*)
+    .settings(sbtassembly.Plugin.assemblySettings: _*)
 
   lazy val docs = Project("docs", file("docs"))
     .dependsOn(sprayCaching, sprayCan, sprayClient, sprayHttp, sprayHttpx, sprayIO, sprayRouting,

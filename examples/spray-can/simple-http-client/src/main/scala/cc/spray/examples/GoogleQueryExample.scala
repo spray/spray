@@ -37,8 +37,8 @@ object GoogleQueryExample extends App {
 
   log.info("Running {} google queries over a single connection using pipelined requests...", requests.length)
   timed(HttpDialog(httpClient, "www.google.com", 443, true).send(requests).end)
-    .onSuccess(printResult andThen secondRun)
-    .onFailure(printError andThen shutdown)
+    .onSuccess(printResult)
+    .onFailure(printError)
 
   // finally we drop the main thread but hook the shutdown of
   // our IOBridge into the shutdown of the applications ActorSystem
@@ -52,7 +52,7 @@ object GoogleQueryExample extends App {
   def secondRun: PartialFunction[Any, Unit] = {
     case _ =>
       log.info("Running google queries as separate requests (in parallel) ...")
-      def httpDialog(r: HttpRequest) = HttpDialog(httpClient, "www.google.com").send(r).end
+      def httpDialog(r: HttpRequest) = HttpDialog(httpClient, "www.google.com", 443, true).send(r).end
       timed(Future.sequence(requests.map(httpDialog)))
         .onSuccess(printResult andThen shutdown)
         .onFailure(printError andThen shutdown)

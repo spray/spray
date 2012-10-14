@@ -44,7 +44,7 @@ object SslTlsSupport {
         var eventPLUpstream = _eventPL
         var commandPLTop: CPL = sslCommandPipeline
 
-        var handshakeReady = false
+        var handshakeReady = supportedProtocols.isEmpty
         val pendingCommands = Queue.empty[(Command, ActorRef)]
 
         val pendingSends = Queue.empty[Send]
@@ -55,7 +55,6 @@ object SslTlsSupport {
 
         def sslCommandPipeline: CPL = {
           case x@ IOPeer.Send(buffers, ack) =>
-            println("Should send %s bytes" format buffers.map(_.remaining()).sum)
             if (pendingSends.isEmpty) withTempBuf(encrypt(Send(x), _))
             else pendingSends += Send(x)
 
@@ -66,7 +65,7 @@ object SslTlsSupport {
             commandPL(x)
 
           case cmd if !handshakeReady =>
-            log.info("Queing command for after handshake")
+            log.info("Queing command for after handshake: "+cmd)
             pendingCommands.enqueue((cmd, context.sender))
 
           //case cmd if handshakeReady =>
@@ -114,6 +113,10 @@ object SslTlsSupport {
                   // pipeline is now on top of us
                   eventPLUpstream = pls.eventPipeline
                   commandPLTop = pls.commandPipeline
+
+                  handshakeReady = true
+                  pendingCommands.foreach { case (cmd, sender) => context.self.tell(cmd, sender) }
+                  pendingCommands.clear()
                 }
               }
               // we already make sure that we choose the first protocol in case *we* don't support
@@ -150,6 +153,12 @@ object SslTlsSupport {
                     // pipeline is now on top of us
                     eventPLUpstream = pls.eventPipeline
                     commandPLTop = pls.commandPipeline
+
+                    handshakeReady = true
+                    pendingCommands.foreach { case (cmd, sender) => context.self.tell(cmd, sender) }
+                    pendingCommands.clear()
+
+
                   //}
 
                   chosen
@@ -182,14 +191,8 @@ object SslTlsSupport {
           }
           result.getStatus match {
             case OK =>
-              println("Now at handshakeStatus "+result.getHandshakeStatus)
               result.getHandshakeStatus match {
               case NOT_HANDSHAKING | FINISHED =>
-                if (!handshakeReady) {
-                  handshakeReady = true
-                  pendingCommands.foreach { case (cmd, sender) => context.self.tell(cmd, sender) }
-                }
-
                 if (postContentLeft) encrypt(send, tempBuf, fromQueue)
               case NEED_WRAP => encrypt(send, tempBuf, fromQueue)
               case NEED_UNWRAP =>

@@ -24,6 +24,9 @@ class SpdyRenderer {
     case SynReply(id, fin, kvs) =>
       renderSynReply(id, fin, kvs)
 
+    case h: Headers =>
+      renderHeaders(h)
+
     case DataFrame(id, fin, data) =>
       renderDataFrame(id, fin, data)
   }
@@ -79,6 +82,35 @@ class SpdyRenderer {
     putByte((length >> 8) & 0xff)
     putByte((length) & 0xff)
     buffer.putInt(streamId & 0x7fffffff)
+    buffer.putShort(0) // reserved
+    buffer.put(dataBuffer)
+    buffer.flip()
+
+    check(buffer.slice())
+
+    buffer
+  }
+  def renderHeaders(headers: Headers): ByteBuffer = {
+    val dataBuffer = renderKeyValues(headers.keyValues)
+    val length = dataBuffer.limit + 6
+
+    //println("Length is "+length)
+
+    val buffer = ByteBuffer.allocate(10000)
+
+    def putByte(b: Int) {
+      require(b < 256)
+      buffer.put(b.toByte)
+    }
+
+    putByte(0x80) // Control frame
+    putByte(0x02) // version 2
+    buffer.putShort(ControlFrameTypes.HEADERS.toShort) // type 2 SYN_REPLY
+    putByte(0) // flags
+    putByte((length >> 16) & 0xff)
+    putByte((length >> 8) & 0xff)
+    putByte((length) & 0xff)
+    buffer.putInt(headers.streamId & 0x7fffffff)
     buffer.putShort(0) // reserved
     buffer.put(dataBuffer)
     buffer.flip()

@@ -62,11 +62,11 @@ object SpdyStreamManager {
         case c => commandPL(c)
       }
 
-      def createStreamContext(streamId: Int, endpoint: Frontend.Receiver): SpdyContext = {
+      def createStreamContext(streamId: Int, endpoint: Frontend.Receiver, associatedTo: Option[Int] = None): SpdyContext = {
         if (incomingStreams.contains(streamId))
           throw new IllegalStateException("Tried to create a stream twice "+streamId)
 
-        val res = streamContextFor(streamId, endpoint)
+        val res = streamContextFor(streamId, endpoint, associatedTo)
         incomingStreams(streamId) = res
         res
       }
@@ -77,7 +77,7 @@ object SpdyStreamManager {
           throw new IllegalStateException("Tried to access invalid stream")
       }
 
-      def streamContextFor(_streamId: Int, endpoint: Frontend.Receiver): SpdyContext =
+      def streamContextFor(_streamId: Int, endpoint: Frontend.Receiver, associatedTo: Option[Int]): SpdyContext =
         new SpdyContext { spdyCtx =>
           var streamClosed = false
           var lastSender: Frontend.Receiver = endpoint
@@ -90,13 +90,29 @@ object SpdyStreamManager {
           }
           def baseStreamCommandPipeline: CPL = {
             case StreamReply(headers, fin) =>
-              send(SynReply(streamId, fin, headers), fin)
+              if (associatedTo.isEmpty)
+                send(SynReply(streamId, fin, headers), fin)
+              else {
+                println("Got associated stream")
+                // HACK: removing the url here is http specific
+                val hs = headers.filterKeys(_ != "url")
+                //println("Headers "+hs)
+                send(Headers(streamId, hs), false)
+                //if (fin)
+                //  baseStreamCommandPipeline(StreamSendData(Array.empty, true))
+                //send(SynStream(streamId, associatedTo.get, 0, fin, true, headers), fin)
+              }
 
             case StreamSendData(data, fin) =>
               send(DataFrame(streamId, fin, data), fin)
 
             case StreamAbort(cause) =>
               send(RstStream(streamId, cause), true)
+
+            case StreamOpenAssociated(headers, withCtx) =>
+              val assocId = nextStreamId()
+              send(SynStream(assocId, streamId, 0, false, false, headers), false)
+              withCtx(createStreamContext(assocId, lastSender, Some(streamId)))
           }
 
           def close() {
@@ -141,6 +157,7 @@ object SpdyStreamManager {
 
   // COMMANDS
   case class StreamOpen(headers: Map[String, String], finished: Boolean) extends Command
+  case class StreamOpenAssociated(headers: Map[String, String], withCtx: SpdyContext => Unit) extends Command
   case class StreamReply(headers: Map[String, String], finished: Boolean) extends Command
   case class StreamSendData(data: Array[Byte], finished: Boolean) extends Command
   case class StreamAbort(cause: Int) extends Command

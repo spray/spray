@@ -24,6 +24,7 @@ import cc.spray.io.IOClient.IOClientException
 import cc.spray.io.{ProtocolError, CleanClose}
 import cc.spray.util._
 import cc.spray.http._
+import java.util.concurrent.atomic.AtomicInteger
 
 
 /**
@@ -38,6 +39,8 @@ object HttpDialog {
   private case class WaitIdleAction(duration: Duration) extends Action
   private case class ReplyAction(f: HttpResponse => HttpRequest) extends Action
   private case object AwaitResponseAction extends Action
+
+  val dialogId = new AtomicInteger
 
   private class DialogActor(result: Promise[AnyRef], client: ActorRef, multiResponse: Boolean) extends Actor {
     val responses = ListBuffer.empty[HttpResponse]
@@ -114,7 +117,7 @@ object HttpDialog {
     }
     def runActions(multiResponse: Boolean): Future[AnyRef] = {
       val result = Promise[AnyRef]()(refFactory.messageDispatcher)
-      refFactory.actorOf(Props(new DialogActor(result, client, multiResponse)), "Dialog"+connect.host+":"+connect.port) ! actions.toList
+      refFactory.actorOf(Props(new DialogActor(result, client, multiResponse)), "Dialog"+dialogId.incrementAndGet()+"-"+connect.host+":"+connect.port) ! actions.toList
       result
     }
   }

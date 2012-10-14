@@ -11,6 +11,7 @@ import cc.spray.can.server.HttpServer
 
 import parser.HttpParser
 import pipeline.SpdyStreamManager._
+import server.SpdyHttpServer.ServerPush
 
 object HttpOnSpdy {
   def apply(client: Boolean = false): DoublePipelineStage = new DoublePipelineStage {
@@ -18,7 +19,6 @@ object HttpOnSpdy {
 
       def eventPipeline: EPL = {
         case StreamOpened(headers, finished) =>
-          println("Got new stream "+headers)
           if (finished) {
             eventPL(HttpEvent(requestFromKV(headers)))
           } else
@@ -70,9 +70,18 @@ object HttpOnSpdy {
         case response: ChunkedMessageEnd =>
           // TODO: maybe use a dedicated Command for (half-)closing a connection
           commandPL(StreamSendData(Array.empty, true))
+
       }
       def unpackHttpCommand(inner: HttpMessagePart => Unit): Command => Unit = {
         case HttpCommand(c: HttpMessagePart) => inner(c)
+
+        case ServerPush(request) =>
+          println("Got push")
+          require(request.entity.isEmpty)
+          commandPL(StreamOpenAssociated(Map("url" -> ("https://localhost:8081"+request.uri)), { ctx =>
+            println("Running pushed request")
+            ctx.pipelines.eventPipeline(HttpEvent(request))
+          }))
         case c => commandPL(c)
       }
     }
