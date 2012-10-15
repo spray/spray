@@ -11,11 +11,13 @@ It sports the following features:
 ### Installation
 
 _spray-json_ is available from the [repo.spray.io] repository.
-The latest release is `1.2` and is built against Scala 2.9.2.
+The latest release is `1.2.1` and is built against Scala 2.9.2 as well as Scala 2.10.0-RC1.
 
 If you use SBT you can include _spray-json_ in your project with
 
-    "io.spray" %%  "spray-json" % "1.2"
+    "io.spray" %%  "spray-json" % "1.2.1" cross CrossVersion.full
+
+(the trailing "cross CrossVersion.full" modifier is only required for SBT 0.12.x)
 
 _spray-json_ has only one dependency: the parsing library [parboiled][]
 (which is also a dependency of _spray-http_, so if you use _spray-json_ together with other modules of the *spray*

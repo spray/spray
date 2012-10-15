@@ -1,6 +1,6 @@
 name := "spray-json"
 
-version := "1.2"
+version := "1.2.1"
 
 organization := "io.spray"
 
@@ -14,12 +14,19 @@ startYear := Some(2011)
 
 licenses := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt"))
 
-scalaVersion := "2.9.2"
+scalaVersion := "2.10.0-RC1"
 
-scalacOptions := Seq("-deprecation", "-encoding", "utf8")
+scalacOptions <<= scalaVersion map {
+  case x if x startsWith "2.9" =>
+    Seq("-unchecked", "-deprecation", "-encoding", "utf8")
+  case x if x startsWith "2.10" =>
+    Seq("-feature", "-language:implicitConversions", "-unchecked", "-deprecation", "-encoding", "utf8")
+}
+
+resolvers += "sonatype releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
 libraryDependencies ++= Seq(
-  "org.parboiled" %% "parboiled-scala" % "1.1.1" % "compile",
+  "org.parboiled" %% "parboiled-scala" % "1.1.2" % "compile",
   "org.specs2" %% "specs2" % "1.12.2" % "test"
 )
 
@@ -30,7 +37,9 @@ scaladocOptions <<= (name, version).map { (n, v) => Seq("-doc-title", n + " " + 
 // publishing
 ///////////////
 
-credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
+crossScalaVersions := Seq("2.9.2", "2.10.0-RC1")
+
+scalaBinaryVersion <<= scalaVersion(sV => if (CrossVersion.isStable(sV)) CrossVersion.binaryScalaVersion(sV) else sV)
 
 publishMavenStyle := true
 

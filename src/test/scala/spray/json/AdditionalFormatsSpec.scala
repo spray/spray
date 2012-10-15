@@ -58,7 +58,7 @@ class AdditionalFormatsSpec extends Specification {
   case class Foo(id: Long, name: String, foos: Option[List[Foo]] = None)
 
   object FooProtocol extends DefaultJsonProtocol {
-    implicit val FooProtocol: JsonFormat[Foo] = lazyFormat(jsonFormat(Foo, "id", "name", "foos"))
+    implicit val fooProtocol: JsonFormat[Foo] = lazyFormat(jsonFormat(Foo, "id", "name", "foos"))
   }
 
   "The lazyFormat wrapper" should {

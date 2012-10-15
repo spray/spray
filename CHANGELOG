@@ -1,3 +1,9 @@
+Version 1.2.1 (2012-10-15)
+--------------------------
+- Upgraded to parboiled 1.1.2
+- Cross-published for Scala 2.9.2 and Scala 2.10.0-RC1
+
+
 Version 1.2 (2012-10-12)
 ------------------------
 - Upgraded to Scala 2.9.2 and parboiled 1.1.1
@@ -11,8 +17,8 @@ Version 1.1.1 (2012-03-13)
 - Improved automatic field name extraction for case classes
 
 
-Version 1.1 (2012-02-01)
-------------------------
+Version 1.1.0 (2012-02-01)
+--------------------------
 - Added automatic case class field name extraction via new jsonFormatX overloads
 - Added 'asJson' pimp to Strings
 - Added RootJsonFormat (JsonFormat for types corresponding to JSON document roots)
