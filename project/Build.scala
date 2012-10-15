@@ -88,7 +88,7 @@ object Build extends Build with DocSupport {
     .settings(spray.boilerplate.BoilerplatePlugin.Boilerplate.settings: _*)
     .settings(libraryDependencies ++=
       compile(shapeless) ++
-      provided(akkaActor, scalate)
+      provided(akkaActor)
     )
 
 
@@ -98,7 +98,7 @@ object Build extends Build with DocSupport {
     .settings(libraryDependencies ++=
       compile(shapeless) ++
       provided(akkaActor) ++
-      test(specs2, scalate)
+      test(specs2)
     )
 
 
