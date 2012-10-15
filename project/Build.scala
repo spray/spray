@@ -68,7 +68,7 @@ object Build extends Build with DocSupport {
     .settings(sprayModuleSettings: _*)
     .settings(libraryDependencies ++=
       compile(mimepull) ++
-      provided(akkaActor, sprayJson, liftJson, twirlApi) ++
+      provided(akkaActor, sprayJson, twirlApi) ++
       test(specs2)
     )
 
