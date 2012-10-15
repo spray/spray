@@ -24,7 +24,6 @@ object BuildSettings {
     (scalacOptions in doc) <++= (name, version).map { (n, v) => Seq("-doc-title", n, "-doc-version", v) },
 
     // publishing
-    credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
     crossPaths := false,
     publishMavenStyle := true,
     publishTo <<= version { version =>
@@ -64,7 +63,7 @@ object BuildSettings {
   import sbtassembly.Plugin._
   import AssemblyKeys._
   lazy val siteSettings = basicSettings ++ noPublishing ++
-    twirl.sbt.TwirlPlugin.Twirl.settings ++ cc.spray.revolver.RevolverPlugin.Revolver.settings ++
+    twirl.sbt.TwirlPlugin.Twirl.settings ++ spray.revolver.RevolverPlugin.Revolver.settings ++
     assemblySettings ++ seq(
       mainClass in assembly := Some("spray.site.Boot"),
       jarName in assembly := "site.jar",

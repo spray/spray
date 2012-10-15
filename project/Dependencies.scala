@@ -1,14 +1,10 @@
 import sbt._
-import java.net.URL
 
 object Dependencies {
 
   val resolutionRepos = Seq(
-    "typesafe repo"  at "http://repo.typesafe.com/typesafe/releases/",
-    "spray repo"     at "http://repo.spray.io/",
-    Resolver.url("sbt-plugin-releases",
-      new URL("http://scalasbt.artifactoryonline.com/scalasbt/sbt-plugin-releases/"))(
-        Resolver.ivyStylePatterns)
+    "sonatype releases"  at "https://oss.sonatype.org/content/repositories/releases/",
+    "spray repo"         at "http://repo.spray.io/"
   )
 
   def compile   (deps: ModuleID*): Seq[ModuleID] = deps map (_ % "compile")
@@ -26,13 +22,13 @@ object Dependencies {
   val liftJson      = "net.liftweb"                             %   "lift-json_2.9.1"             % "2.4"
   val logback       = "ch.qos.logback"                          %   "logback-classic"             % "1.0.0"
   val mimepull      = "org.jvnet.mimepull"                      %   "mimepull"                    % "1.8"
-  val parboiled     = "org.parboiled"                           %%  "parboiled-scala"             % "1.1.1"
+  val parboiled     = "org.parboiled"                           %%  "parboiled-scala"             % "1.1.2"
   val pegdown       = "org.pegdown"                             %   "pegdown"                     % "1.1.0"
   val scalate       = "org.fusesource.scalate"                  %   "scalate-core"                % "1.5.3"
   val shapeless     = "com.chuusai"                             %%  "shapeless"                   % "1.2.2"
   val scalatest     = "org.scalatest"                           %%  "scalatest"                   % "1.8"
   val specs2        = "org.specs2"                              %%  "specs2"                      % "1.12.2"
-  val sprayJson     = "io.spray"                                %%  "spray-json"                  % "1.2"
-  val twirlApi      = "cc.spray"                                %%  "twirl-api"                   % "0.5.4"
+  val sprayJson     = "io.spray"                                %%  "spray-json"                  % "1.2.1"
+  val twirlApi      = "io.spray"                                %%  "twirl-api"                   % "0.6.0"
 
 }
