@@ -22,6 +22,7 @@ import shapeless.{HNil, HList}
 package object routing {
 
   type Route = RequestContext => Unit
+  type RouteGenerator[T] = T => Route
   type RouteFilter[+T <: HList] = RequestContext => FilterResult[T]
   type Directive0 = Directive[HNil]
 
@@ -30,5 +31,13 @@ package object routing {
   // will move back once the issue is fixed
   object Route {
     def apply(f: Route): Route = f
+
+    /**
+     * Converts the route into a directive that never passes the request to its inner route
+     * (and always returns its underlying route).
+     */
+    def toDirective[L <: HList](route: Route): Directive[L] = new Directive[L] {
+      def happly(f: L => Route) = route
+    }
   }
 }
