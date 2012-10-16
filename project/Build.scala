@@ -85,6 +85,7 @@ object Build extends Build with DocSupport {
   lazy val sprayRouting = Project("spray-routing", file("spray-routing"))
     .dependsOn(sprayCaching % "provided", sprayHttp, sprayHttpx, sprayUtil)
     .settings(sprayModuleSettings: _*)
+    .settings(spray.boilerplate.BoilerplatePlugin.Boilerplate.settings: _*)
     .settings(libraryDependencies ++=
       compile(shapeless) ++
       provided(akkaActor, scalate)
