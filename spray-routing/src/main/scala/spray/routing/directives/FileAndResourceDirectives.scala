@@ -40,28 +40,31 @@ trait FileAndResourceDirectives {
    * running detached in the context of a newly spawned actor, so it doesn't block the current thread (but potentially
    * some other thread !). If the file cannot be found or read the request is rejected.
    */
-  def getFromFileName(fileName: String, charset: Option[HttpCharset] = None)
-                     (implicit settings: RoutingSettings, resolver: ContentTypeResolver,
-                      refFactory: ActorRefFactory): Route =
-    getFromFile(new File(fileName), charset)
+  def getFromFileName(fileName: String)(implicit settings: RoutingSettings, resolver: ContentTypeResolver,
+                      refFactory: ActorRefFactory): StandardRoute =
+    getFromFile(new File(fileName))
 
   /**
    * A Route that completes GET requests with the content of the given file. The actual I/O operation is
    * running detached in the context of a newly spawned actor, so it doesn't block the current thread (but potentially
    * some other thread !). If the file cannot be found or read the request is rejected.
    */
-  def getFromFile(file: File, charset: Option[HttpCharset] = None)
-                 (implicit settings: RoutingSettings, resolver: ContentTypeResolver,
-                  refFactory: ActorRefFactory): Route = {
-    (get & detachTo(singleRequestServiceActor) & respondWithLastModifiedHeader(file.lastModified)) { ctx =>
-      if (file.isFile && file.canRead) {
-        implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(resolver(file.getName, charset))
-        if (file.length >= settings.FileChunkingThresholdSize)
-          ctx.complete(file.toByteArrayStream(settings.FileChunkingChunkSize.toInt))
-        else ctx.complete(FileUtils.readAllBytes(file))
-      } else ctx.reject() // reject without specific rejection => same as unmatched "path" directive
+  def getFromFile(file: File)(implicit settings: RoutingSettings, resolver: ContentTypeResolver,
+                  refFactory: ActorRefFactory): StandardRoute =
+    StandardRoute {
+      get {
+        detachTo(singleRequestServiceActor) {
+          respondWithLastModifiedHeader(file.lastModified) {
+            if (file.isFile && file.canRead) {
+              implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(resolver(file.getName))
+              if (file.length >= settings.FileChunkingThresholdSize)
+                complete(file.toByteArrayStream(settings.FileChunkingChunkSize.toInt))
+              else complete(FileUtils.readAllBytes(file))
+            } else reject() // reject without specific rejection => same as unmatched "path" directive
+          }
+        }
+      }
     }
-  }
 
   /**
    * Adds a Last-Modified header to all HttpResponses from its inner Route.
@@ -75,24 +78,24 @@ trait FileAndResourceDirectives {
    * some other thread !).
    * If the file cannot be found or read the Route rejects the request.
    */
-  def getFromResource(resourceName: String, charset: Option[HttpCharset] = None)
-                     (implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route = {
-    if (!resourceName.endsWith("/")) {
-      def resource = getClass.getClassLoader.getResource(resourceName)
-      (get & detachTo(singleRequestServiceActor) & provide(Option(resource)))
-        .flatMap(openConnection) { urlConn =>
-          implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(resolver(resourceName, charset))
-          respondWithLastModifiedHeader(urlConn.getLastModified) {
-            complete(FileUtils.readAllBytes(urlConn.getInputStream))
+  def getFromResource(resourceName: String)
+                     (implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory): StandardRoute =
+    StandardRoute {
+      def openConnection: Option[URL] :: HNil => Directive[URLConnection :: HNil] = {
+        case Some(url) :: HNil => provide(url.openConnection())
+        case _ => reject()
+      }
+      if (!resourceName.endsWith("/")) {
+        def resource = getClass.getClassLoader.getResource(resourceName)
+        (get & detachTo(singleRequestServiceActor) & provide(Option(resource)))
+          .flatMap(openConnection) { urlConn =>
+            implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(resolver(resourceName))
+            respondWithLastModifiedHeader(urlConn.getLastModified) {
+              complete(FileUtils.readAllBytes(urlConn.getInputStream))
+            }
           }
-        }
-    } else reject() // don't serve the content of directories
-  }
-
-  private def openConnection: Option[URL] :: HNil => Directive[URLConnection :: HNil] = {
-    case Some(url) :: HNil => provide(url.openConnection())
-    case _ => reject()
-  }
+      } else reject() // don't serve the content of directories
+    }
 
   /**
    * Returns a Route that completes GET requests with the content of a file underneath the given directory.
@@ -101,31 +104,33 @@ trait FileAndResourceDirectives {
    * The actual I/O operation is running detached in the context of a newly spawned actor, so it doesn't block the
    * current thread. If the file cannot be read the Route rejects the request.
    */
-  def getFromDirectory(directoryName: String, charset: Option[HttpCharset] = None)
+  def getFromDirectory(directoryName: String)
                       (implicit settings: RoutingSettings, resolver: ContentTypeResolver,
-                       refFactory: ActorRefFactory): Route = {
-    val base = if (directoryName.endsWith("/")) directoryName else directoryName + "/"
-    Route { ctx =>
-      val subPath = if (ctx.unmatchedPath.startsWith("/")) ctx.unmatchedPath.substring(1) else ctx.unmatchedPath
-      getFromFileName(base + subPath, charset).apply(ctx)
+                       refFactory: ActorRefFactory): StandardRoute =
+    StandardRoute {
+      val base = if (directoryName.endsWith("/")) directoryName else directoryName + "/"
+      extract(_.unmatchedPath) { unmatchedPath =>
+        val subPath = if (unmatchedPath.startsWith("/")) unmatchedPath.substring(1) else unmatchedPath
+        getFromFileName(base + subPath)
+      }
     }
-  }
 
   /**
    * Same as "getFromDirectory" except that the file is not fetched from the file system but rather from a
    * "resource directory".
    */
-  def getFromResourceDirectory(directoryName: String, charset: Option[HttpCharset] = None)
-                              (implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route = {
-    val base =
-      if (directoryName.isEmpty) ""
-      else if (directoryName.endsWith("/")) directoryName
-      else directoryName + "/"
-    Route { ctx =>
-      val subPath = if (ctx.unmatchedPath.startsWith("/")) ctx.unmatchedPath.substring(1) else ctx.unmatchedPath
-      getFromResource(base + subPath, charset).apply(ctx)
+  def getFromResourceDirectory(directoryName: String)
+                              (implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route =
+    StandardRoute {
+      val base =
+        if (directoryName.isEmpty) ""
+        else if (directoryName.endsWith("/")) directoryName
+        else directoryName + "/"
+      extract(_.unmatchedPath) { unmatchedPath =>
+        val subPath = if (unmatchedPath.startsWith("/")) unmatchedPath.substring(1) else unmatchedPath
+        getFromResource(base + subPath)
+      }
     }
-  }
 
 }
 
@@ -133,20 +138,18 @@ object FileAndResourceDirectives extends FileAndResourceDirectives
 
 
 trait ContentTypeResolver {
-  def apply(fileName: String, charset: Option[HttpCharset]): ContentType
+  def apply(fileName: String): ContentType
 }
 
 object ContentTypeResolver {
   implicit val Default = new ContentTypeResolver {
-    def apply(fileName: String, charset: Option[HttpCharset]) = {
-      val ext = fileName.lastIndexOf('.') match {
-        case -1 => ""
-        case x => fileName.substring(x + 1)
-      }
-      ContentType(
-        mediaType = MediaTypes.forExtension(ext).getOrElse(MediaTypes.`application/octet-stream`),
-        definedCharset = charset
-      )
+    def apply(fileName: String) = ContentType {
+      MediaTypes.forExtension(
+        fileName.lastIndexOf('.') match {
+          case -1 => ""
+          case x => fileName.substring(x + 1)
+        }
+      ).getOrElse(MediaTypes.`application/octet-stream`)
     }
   }
 }
