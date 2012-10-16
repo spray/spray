@@ -26,7 +26,7 @@ scalacOptions <<= scalaVersion map {
 resolvers += "sonatype releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
 libraryDependencies ++= Seq(
-  "org.parboiled" %% "parboiled-scala" % "1.1.2" % "compile",
+  "org.parboiled" %% "parboiled-scala" % "1.1.3" % "compile",
   "org.specs2" %% "specs2" % "1.12.2" % "test"
 )
 
