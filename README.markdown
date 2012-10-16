@@ -1,1 +1,1 @@
-## Please see <http://spray.io/> for all documentation
+Please see <http://spray.io/> for all documentation
