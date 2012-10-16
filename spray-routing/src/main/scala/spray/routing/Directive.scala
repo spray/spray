@@ -18,7 +18,6 @@ package spray.routing
 
 import shapeless._
 import akka.dispatch.Future
-import directives.StandardRoute
 import spray.httpx.unmarshalling.MalformedContent
 
 

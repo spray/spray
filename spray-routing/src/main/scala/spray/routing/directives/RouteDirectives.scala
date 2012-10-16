@@ -56,27 +56,6 @@ trait RouteDirectives {
 object RouteDirectives extends RouteDirectives
 
 
-/**
- * A Route that can be implicitly converted into a Directive (fitting any signature).
- */
-trait StandardRoute extends Route {
-  def toDirective[L <: HList]: Directive[L] = StandardRoute.toDirective(this)
-}
-
-object StandardRoute {
-  def apply(route: Route): StandardRoute = route match {
-    case x: StandardRoute => x
-    case x => new StandardRoute { def apply(ctx: RequestContext) { x(ctx) } }
-  }
-
-  /**
-   * Converts the route into a directive that never passes the request to its inner route
-   * (and always returns its underlying route).
-   */
-  implicit def toDirective[L <: HList](route: Route): Directive[L] = Route.toDirective(route)
-}
-
-
 trait CompletionMagnet {
   def route: StandardRoute
 }
