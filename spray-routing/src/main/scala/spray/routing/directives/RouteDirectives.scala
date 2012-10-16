@@ -17,6 +17,7 @@
 package spray.routing
 package directives
 
+import scala.concurrent.{ExecutionContext, Future}
 import spray.httpx.marshalling.Marshaller
 import spray.http._
 import StatusCodes._
@@ -62,20 +63,30 @@ trait CompletionMagnet {
 }
 
 object CompletionMagnet {
-  implicit def fromObject[T :Marshaller](obj: T) = new CompletionMagnet {
-    def route: StandardRoute = new CompletionRoute(OK, Nil, obj)
-  }
-  implicit def fromStatusObject[T :Marshaller](tuple: (StatusCode, T)) = new CompletionMagnet {
-    def route: StandardRoute = new CompletionRoute(tuple._1, Nil, tuple._2)
-  }
-  implicit def fromStatusHeadersObject[T :Marshaller](tuple: (StatusCode, List[HttpHeader], T)) = new CompletionMagnet {
-    def route: StandardRoute = new CompletionRoute(tuple._1, tuple._2, tuple._3)
-  }
-  implicit def fromHttpResponse(response: HttpResponse) = new CompletionMagnet {
-    def route = new StandardRoute {
-      def apply(ctx: RequestContext) { ctx.complete(response) }
+  implicit def fromObject[T :Marshaller](obj: T) =
+    new CompletionMagnet {
+      def route: StandardRoute = new CompletionRoute(OK, Nil, obj)
     }
-  }
+  implicit def fromStatusObject[T :Marshaller](tuple: (StatusCode, T)) =
+    new CompletionMagnet {
+      def route: StandardRoute = new CompletionRoute(tuple._1, Nil, tuple._2)
+    }
+  implicit def fromStatusHeadersObject[T :Marshaller](tuple: (StatusCode, List[HttpHeader], T)) =
+    new CompletionMagnet {
+      def route: StandardRoute = new CompletionRoute(tuple._1, tuple._2, tuple._3)
+    }
+  implicit def fromHttpResponse(response: HttpResponse) =
+    new CompletionMagnet {
+      def route = new StandardRoute {
+        def apply(ctx: RequestContext) { ctx.complete(response) }
+      }
+    }
+  implicit def fromHttpResponseFuture(future: Future[HttpResponse])(implicit ec: ExecutionContext) =
+    new CompletionMagnet {
+      def route = new StandardRoute {
+        def apply(ctx: RequestContext) { ctx.complete(future) }
+      }
+    }
 
   private class CompletionRoute[T :Marshaller](status: StatusCode, headers: List[HttpHeader], obj: T)
     extends StandardRoute {
