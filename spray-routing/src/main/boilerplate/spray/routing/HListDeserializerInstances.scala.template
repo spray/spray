@@ -16,19 +16,19 @@
 
 package spray.routing
 
+import spray.httpx.unmarshalling.{MalformedContent, DeserializationError, Deserializer}
 import shapeless._
 
+abstract class HListDeserializerInstances { self: HListDeserializer.type =>
+[#  implicit def hld1[Z, [#T1, R1#]]
+      (construct: ([#R1#]) => Z)
+      (implicit [#q1: DS[T1, R1]#]) =
+    create[[#T1# :: ] :: HNil, Z] {
+      case [#t1# :: ] :: HNil => construct(
+        [#get(q1(t1))#,
+        ]
+      )
+    }#
 
-abstract class ApplyConverter[L <: HList] {
-  type In
-  def apply(f: In): L => Route
-}
-
-object ApplyConverter extends ApplyConverterInstances {
-  implicit val hac0 = new ApplyConverter[HNil] {
-    type In = Route
-    def apply(fn: In) = {
-      case HNil => fn
-    }
-  }
+]
 }
