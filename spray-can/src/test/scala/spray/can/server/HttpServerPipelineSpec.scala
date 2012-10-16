@@ -416,7 +416,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
     new ServerSettings(
       ConfigFactory.parseString("""
         spray.can.server.server-header = spray/1.0
-        spray.can.server.idle-timeout = 150 ms
+        spray.can.server.idle-timeout = 250 ms
         spray.can.server.request-timeout = 50 ms
         spray.can.server.timeout-timeout = 30 ms
         spray.can.server.reaping-cycle = 0  # don't enable the TickGenerator
