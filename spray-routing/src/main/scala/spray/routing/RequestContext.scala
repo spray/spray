@@ -239,6 +239,16 @@ case class RequestContext(
   }
 
   /**
+   * Schedules the completion of the request with result of the given future.
+   */
+  def complete(future: Future[HttpResponse]) {
+    future.onComplete {
+      case Right(response) => complete(response)
+      case Left(error) => failWith(error)
+    }
+  }
+
+  /**
    * Bubbles the given error up the response chain, where it is dealt with by the closest `handleExceptions`
    * directive and its ExceptionHandler.
    */

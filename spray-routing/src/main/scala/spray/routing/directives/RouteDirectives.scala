@@ -18,6 +18,7 @@ package spray.routing
 package directives
 
 import shapeless.HList
+import akka.dispatch.Future
 import spray.httpx.marshalling.Marshaller
 import spray.http._
 import StatusCodes._
@@ -93,6 +94,11 @@ object CompletionMagnet {
   implicit def fromHttpResponse(response: HttpResponse) = new CompletionMagnet {
     def route = new StandardRoute {
       def apply(ctx: RequestContext) { ctx.complete(response) }
+    }
+  }
+  implicit def fromHttpResponseFuture(future: Future[HttpResponse]) = new CompletionMagnet {
+    def route = new StandardRoute {
+      def apply(ctx: RequestContext) { ctx.complete(future) }
     }
   }
 
