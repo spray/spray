@@ -40,33 +40,7 @@ trait RouteDirectives {
     def apply(ctx: RequestContext) { ctx.redirect(uri, redirectionType) }
   }
 
-  /**
-   * Completes the request with status "200 Ok" and the response entity created by marshalling the given object using
-   * the in-scope marshaller for the type.
-   */
-  def complete[T :Marshaller](obj: T): StandardRoute = complete(OK, obj)
-
-  /**
-   * Completes the request with the given status and the response entity created by marshalling the given object using
-   * the in-scope marshaller for the type.
-   */
-  def complete[T :Marshaller](status: StatusCode, obj: T): StandardRoute = complete(status, Nil, obj)
-
-  /**
-   * Completes the request with the given status, headers and the response entity created by marshalling the
-   * given object using the in-scope marshaller for the type.
-   */
-  def complete[T :Marshaller](status: StatusCode, headers: List[HttpHeader], obj: T): StandardRoute =
-    new StandardRoute {
-      def apply(ctx: RequestContext) { ctx.complete(status, headers, obj) }
-    }
-
-  /**
-   * Completes the request with the given [[spray.http.HttpResponse]].
-   */
-  def complete(response: HttpResponse): StandardRoute = new StandardRoute {
-    def apply(ctx: RequestContext) { ctx.complete(response) }
-  }
+  def complete: CompletionMagnet => StandardRoute = _.route
 
   /**
    * Bubbles the given error up the response chain, where it is dealt with by the closest `handleExceptions`
@@ -98,7 +72,32 @@ object StandardRoute {
    * Converts the route into a directive that never passes the request to its inner route
    * (and always returns its underlying route).
    */
-  implicit def toDirective[L <: HList](route: Route) = new Directive[L] {
-    def happly(f: L => Route) = route
+  implicit def toDirective[L <: HList](route: Route): Directive[L] = Route.toDirective(route)
+}
+
+
+trait CompletionMagnet {
+  def route: StandardRoute
+}
+
+object CompletionMagnet {
+  implicit def fromObject[T :Marshaller](obj: T) = new CompletionMagnet {
+    def route: StandardRoute = new CompletionRoute(OK, Nil, obj)
+  }
+  implicit def fromStatusObject[T :Marshaller](tuple: (StatusCode, T)) = new CompletionMagnet {
+    def route: StandardRoute = new CompletionRoute(tuple._1, Nil, tuple._2)
+  }
+  implicit def fromStatusHeadersObject[T :Marshaller](tuple: (StatusCode, List[HttpHeader], T)) = new CompletionMagnet {
+    def route: StandardRoute = new CompletionRoute(tuple._1, tuple._2, tuple._3)
+  }
+  implicit def fromHttpResponse(response: HttpResponse) = new CompletionMagnet {
+    def route = new StandardRoute {
+      def apply(ctx: RequestContext) { ctx.complete(response) }
+    }
+  }
+
+  private class CompletionRoute[T :Marshaller](status: StatusCode, headers: List[HttpHeader], obj: T)
+    extends StandardRoute {
+    def apply(ctx: RequestContext) { ctx.complete(status, headers, obj) }
   }
 }

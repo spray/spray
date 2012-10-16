@@ -18,13 +18,14 @@ package spray.routing
 
 import shapeless._
 import akka.dispatch.Future
+import directives.StandardRoute
 import spray.httpx.unmarshalling.MalformedContent
 
 
 abstract class Directive[L <: HList] { self =>
   def happly(f: L => Route): Route
 
-  def | (that: Directive[L]) =
+  def | (that: Directive[L]): Directive[L] =
     new Directive[L] {
       def happly(f: L => Route) = { ctx =>
         @volatile var rejectedFromInnerRoute = false
@@ -37,10 +38,7 @@ abstract class Directive[L <: HList] { self =>
       }
     }
 
-  def & (concat: ConcatMagnet[L]) =
-    new Directive[concat.Out] {
-      def happly(f: concat.Out => Route) = self.happly(concat(f))
-    }
+  def & (magnet: ConjunctionMagnet[L]): magnet.Out = magnet(this)
 
   def as[T](deserializer: HListDeserializer[L, T]) =
     new Directive[T :: HNil] {
@@ -89,19 +87,36 @@ object Directive {
                                     (implicit hac: ApplyConverter[L]): hac.In => Route = f => directive.happly(hac(f))
 }
 
-trait ConcatMagnet[L <: HList] {
-  type Out <: HList
-  def apply(f: Out => Route): L => Route
+trait ConjunctionMagnet[L <: HList] {
+  type Out
+  def apply(underlying: Directive[L]): Out
 }
 
-object ConcatMagnet {
-  implicit def fromR[L <: HList, R <: HList](other: Directive[R])
-                    (implicit p: Prepender[L, R]) = new ConcatMagnet[L] {
-    type Out = p.Out
-    def apply(f: Out => Route) = { prefix =>
-      other.happly { suffix =>
-        f(p(prefix, suffix))
-      }
+object ConjunctionMagnet {
+  implicit def fromDirective[L <: HList, R <: HList](other: Directive[R])(implicit p: Prepender[L, R]) =
+    new ConjunctionMagnet[L] {
+      type Out = Directive[p.Out]
+      def apply(underlying: Directive[L]): Out =
+        new Directive[p.Out] {
+          def happly(f: p.Out => Route) =
+            underlying.happly { prefix =>
+              other.happly { suffix =>
+                f(p(prefix, suffix))
+              }
+            }
+        }
+    }
+
+  implicit def fromStandardRoute[L <: HList](route: StandardRoute) =
+    new ConjunctionMagnet[L] {
+      type Out = StandardRoute
+      def apply(underlying: Directive[L]): Out = StandardRoute(underlying.happly(_ => route))
+    }
+
+  implicit def fromRouteGenerator[T, R <: Route](generator: T => R) = new ConjunctionMagnet[HNil] {
+    type Out = RouteGenerator[T]
+    def apply(underlying: Directive0): Out = { value =>
+      underlying.happly(_ => generator(value))
     }
   }
 }

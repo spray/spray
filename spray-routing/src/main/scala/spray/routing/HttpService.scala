@@ -100,8 +100,8 @@ trait HttpService extends Directives {
 
   //# timeout-route
   def timeoutRoute: Route = complete(
-    status = InternalServerError,
-    obj = "The server was not able to produce a timely response to your request."
+    InternalServerError,
+    "The server was not able to produce a timely response to your request."
   )
   //#
 }

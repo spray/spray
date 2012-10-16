@@ -16,17 +16,16 @@
 
 package spray.routing
 
-import shapeless.HList
 
+class RouteDirectivesSpec extends RoutingSpec {
 
-object Route {
-  def apply(f: Route): Route = f
-
-  /**
-   * Converts the route into a directive that never passes the request to its inner route
-   * (and always returns its underlying route).
-   */
-  def toDirective[L <: HList](route: Route): Directive[L] = new Directive[L] {
-    def happly(f: L => Route) = route
+  "The `complete` directive" should {
+    "by chainable with the `&` operator" in {
+      Get() ~> (get & complete("yeah")) ~> check { entityAs[String] === "yeah" }
+    }
+    "allow for factoring out a StandardRoute" in {
+      Get() ~> (get & complete)("yeah") ~> check { entityAs[String] === "yeah" }
+    }
   }
+  
 }
