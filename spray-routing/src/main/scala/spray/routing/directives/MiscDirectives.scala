@@ -113,6 +113,11 @@ trait MiscDirectives {
   def rewriteUnmatchedPath(f: String => String): Directive0 = mapRequestContext(_.mapUnmatchedPath(f))
 
   /**
+   * Extracts the unmatched path from the RequestContext.
+   */
+  def unmatchedPath: Directive[String :: HNil] = extract(_.unmatchedPath)
+
+  /**
    * Rejects empty requests with a RequestEntityExpectedRejection.
    * Non-empty requests are passed on unchanged to the inner route.
    */
