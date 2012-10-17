@@ -37,3 +37,5 @@ trait RouteConcatenation {
   }
 
 }
+
+object RouteConcatenation extends RouteConcatenation
