@@ -103,7 +103,7 @@ to the application logic and responds by sending an ``HttpResponse`` instance to
 
 The ``ActorRef`` used as the sender of an ``HttpRequest`` received by the handler is unique to the
 request, i.e. several requests, even when coming in across the same connection, will appear to be sent from different
-senders. *spray-can* uses these sender ``ActorRefs`` to coalesce the response with the request, so you cannot sent
+senders. *spray-can* uses these sender ``ActorRefs`` to coalesce the response with the request, so you cannot send
 several responses to the same sender. However, the different request parts of chunked requests arrive from the same
 sender, and the different response parts of a chunked response need to be sent to the same sender as well.
 
@@ -187,7 +187,7 @@ The ``HttpServer`` sends ``Closed`` events coming in from the underlying :ref:`I
 
 .. note:: The application can always choose to actively close a connection by sending a ``Close`` command to the sender
    of a request. However, during normal operation it is encouraged to make use of the ``Connection`` header to signal
-   to the server whether the connection is to be closed after the response has been sent or not.
+   to the server whether or not the connection is to be closed after the response has been sent.
 
 
 Connection Configuration
@@ -223,7 +223,7 @@ following request headers are interpreted by the server itself:
 
 All other headers are of no interest to the server layer.
 
-When sending out responses the server watches for a ``Connection`` header that your application might set and acts
+When sending out responses the server watches for a ``Connection`` header set by the application and acts
 accordingly, i.e. you can force the server to close the connection after having sent the response by including a
 ``Connection("close")`` header. To unconditionally force a connection keep-alive you can explicitly set a
 ``Connection("Keep-Alive")`` header. If you don't set an explicit ``Connection`` header the server will keep the
