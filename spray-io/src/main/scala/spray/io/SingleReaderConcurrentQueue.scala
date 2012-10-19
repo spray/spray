@@ -17,7 +17,7 @@
 package spray.io
 
 import java.util.concurrent.atomic.AtomicReference
-import annotation.tailrec
+import scala.annotation.tailrec
 
 /**
  * A fast, lock-free, unbounded FIFO queue implementation that supports multiple concurrent writers (i.e. "enqueuers")

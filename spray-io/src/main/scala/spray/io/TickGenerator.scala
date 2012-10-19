@@ -16,28 +16,30 @@
 
 package spray.io
 
-import akka.util.Duration
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeUnit._
+import scala.concurrent.duration.{FiniteDuration, Duration}
 
 
 //# source-quote
 object TickGenerator {
 
-  def apply(millis: Long): PipelineStage = apply(Duration(millis, TimeUnit.MILLISECONDS))
+  def apply(millis: Long): PipelineStage = apply(Duration(millis, MILLISECONDS))
 
-  def apply(period: Duration): PipelineStage = {
-    require(period.finite_?, "period must not be infinite")
+  def apply(period: FiniteDuration): PipelineStage = {
     require(period > Duration.Zero, "period must be positive")
 
     new PipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
-          val generator = context.connectionActorContext.system.scheduler.schedule(
-            initialDelay = period,
-            frequency = period,
-            receiver = context.self,
-            message = Tick
-          )
+          val generator = {
+            val system = context.connectionActorContext.system
+            system.scheduler.schedule(
+              initialDelay = period,
+              interval = period,
+              receiver = context.self,
+              message = Tick
+            )(system.dispatcher)
+          }
 
           val commandPipeline = commandPL
 

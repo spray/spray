@@ -74,7 +74,7 @@ trait ConnectionActors extends IOPeer {
     }
 
     //# receive
-    def receive = {
+    def receive: Receive = {
       case x: Command => pipelines.commandPipeline(x)
       case x: Event => pipelines.eventPipeline(x)
       case Status.Failure(x: CommandException) => pipelines.eventPipeline(x)

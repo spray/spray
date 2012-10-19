@@ -30,7 +30,7 @@ abstract class IOClient(val ioBridge: IOBridge) extends IOPeer {
     log.info("Stopped {}", self.path)
   }
 
-  protected def receive = {
+  def receive: Receive = {
     case cmd: Connect =>
       ioBridge.tell(cmd, Reply.withContext(sender))
 

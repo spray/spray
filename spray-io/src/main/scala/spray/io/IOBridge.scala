@@ -21,10 +21,10 @@ import java.nio.channels.spi.SelectorProvider
 import java.nio.ByteBuffer
 import java.nio.channels.{CancelledKeyException, SelectionKey, SocketChannel, ServerSocketChannel}
 import java.net.InetSocketAddress
-import annotation.tailrec
+import scala.annotation.tailrec
 import akka.event.{LoggingBus, BusLogging, LoggingAdapter}
 import akka.actor.{Status, ActorSystem, ActorRef}
-import akka.util.NonFatal
+import scala.util.control.NonFatal
 import spray.util._
 
 
@@ -78,7 +78,7 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
   /**
    * Posts a Command to the IOBridges command queue.
    */
-  def ! (cmd: Command)(implicit sender: ActorRef = null) {
+  def ! (cmd: Command)(implicit sender: ActorRef = akka.actor.Actor.noSender) {
     if (ioThread == null) throw new IllegalStateException("Cannot post message to unstarted IOBridge")
     ioThread.post(cmd, sender)
   }
@@ -280,7 +280,7 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
           log.warning("Could not execute command '{}': connection reset by peer", command)
           val handle = command.asInstanceOf[ConnectionCommand].handle
           handle.handler ! Closed(handle, PeerClosed)
-        case e =>
+        case NonFatal(e) =>
           log.error(e, "Error during execution of command '{}'", command)
           if (sender != null) sender ! Status.Failure(CommandException(command, e))
       }
@@ -366,7 +366,7 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
     }
 
     def closeSelector() {
-      import collection.JavaConverters._
+      import scala.collection.JavaConverters._
       try {
         selector.keys.asScala.foreach(_.channel.close())
         selector.close()

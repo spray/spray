@@ -16,17 +16,20 @@
 
 package spray.io
 
-import akka.pattern.ask
 import java.nio.ByteBuffer
-import akka.util.{Timeout, Duration}
+import java.util.concurrent.TimeUnit._
+import scala.concurrent.Future
+import scala.concurrent.duration.Duration
+import akka.pattern.ask
+import akka.util.Timeout
 import akka.actor._
-import akka.dispatch.Future
+import org.specs2.mutable.Specification
 import org.specs2.matcher.Matcher
 import spray.util._
-import org.specs2.mutable.Specification
+
 
 class IOBridgeSpec extends Specification {
-  implicit val timeout: Timeout = Duration("500 ms")
+  implicit val timeout: Timeout = Duration(500, MILLISECONDS)
   implicit val system = ActorSystem("IOBridgeSpec")
   val port = 23456
 
@@ -63,7 +66,7 @@ class IOBridgeSpec extends Specification {
 
   class TestClient(ioBridge: IOBridge) extends IOClient(ioBridge) {
     var requests = Map.empty[Handle, ActorRef]
-    override def receive = super.receive orElse {
+    override def receive: Receive = super.receive orElse {
       case (x: String, handle: Handle) =>
         requests += handle -> sender
         ioBridge ! IOBridge.Send(handle, ByteBuffer.wrap(x.getBytes))

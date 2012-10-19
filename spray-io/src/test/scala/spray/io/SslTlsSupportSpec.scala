@@ -15,25 +15,25 @@
  */
 package spray.io
 
-import org.specs2.mutable.Specification
-import annotation.tailrec
-import javax.net.ssl._
-import java.io.{BufferedWriter, OutputStreamWriter, InputStreamReader, BufferedReader}
-import scala.Boolean
-import akka.pattern.ask
-import spray.util._
 import java.nio.ByteBuffer
-import akka.util.{Duration, Timeout}
-import spray.io._
-import akka.actor.{ActorRef, Props, ActorSystem}
-import com.typesafe.config.ConfigFactory
+import java.io.{BufferedWriter, OutputStreamWriter, InputStreamReader, BufferedReader}
+import javax.net.ssl._
 import java.security.{KeyStore, SecureRandom}
+import java.util.concurrent.TimeUnit._
+import scala.annotation.tailrec
+import scala.concurrent.duration.Duration
+import com.typesafe.config.ConfigFactory
+import org.specs2.mutable.Specification
+import akka.pattern.ask
+import akka.actor.{ActorRef, Props, ActorSystem}
+import akka.util.Timeout
+import spray.util._
 
 
 class SslTlsSupportSpec extends Specification {
-  implicit val system = ActorSystem()
+  val system = ActorSystem()
+  import system.log
   implicit val sslContext = createSslContext("/ssl-test-keystore.jks", "")
-  def log = system.log
   val port = 23454
   val serverThread = new ServerThread
   serverThread.start()
@@ -49,7 +49,7 @@ class SslTlsSupportSpec extends Specification {
   }
 
   "The SslTlsSupport" should {
-    implicit val timeOut: Timeout = Duration("1 s")
+    implicit val timeOut: Timeout = Duration(1, SECONDS)
     "be able to complete a simple request/response dialog from the client-side" in {
       import IOClient._
       val Connected(handle) = system.actorOf(Props(new SslClientActor), "ssl-client")

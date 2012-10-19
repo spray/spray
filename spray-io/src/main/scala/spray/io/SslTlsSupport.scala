@@ -22,8 +22,8 @@ import java.nio.ByteBuffer
 import javax.net.ssl.{SSLContext, SSLException, SSLEngineResult, SSLEngine}
 import javax.net.ssl.SSLEngineResult.HandshakeStatus._
 import SSLEngineResult.Status._
-import collection.mutable
-import annotation.tailrec
+import scala.collection.mutable
+import scala.annotation.tailrec
 import scala.Array
 
 
@@ -101,7 +101,6 @@ object SslTlsSupport {
             }
             case CLOSED =>
               if (postContentLeft) commandPL(IOPeer.Close(ProtocolError("SSLEngine closed prematurely while sending")))
-              false
             case BUFFER_OVERFLOW =>
               throw new IllegalStateException // the SslBufferPool should make sure that buffers are never too small
             case BUFFER_UNDERFLOW =>
