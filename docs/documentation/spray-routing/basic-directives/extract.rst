@@ -1,6 +1,0 @@
-.. _-extract-:
-
-extract
-=======
-
-(todo)

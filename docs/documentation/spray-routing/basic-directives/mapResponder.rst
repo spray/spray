@@ -1,6 +1,0 @@
-.. _-mapResponder-:
-
-mapResponder
-============
-
-(todo)

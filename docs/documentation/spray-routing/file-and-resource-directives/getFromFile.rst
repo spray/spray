@@ -1,6 +1,0 @@
-.. _-getFromFile-:
-
-getFromFile
-===========
-
-(todo)

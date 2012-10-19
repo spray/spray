@@ -1,6 +1,0 @@
-.. _-deleteCookie-:
-
-deleteCookie
-============
-
-(todo)

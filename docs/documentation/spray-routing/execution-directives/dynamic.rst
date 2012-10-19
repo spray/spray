@@ -1,6 +1,0 @@
-.. _-dynamic-:
-
-dynamic
-=======
-
-(todo)

@@ -2,7 +2,7 @@ import sbt._
 import Keys._
 
 
-object Build extends Build with DocSupport {
+object Build extends Build {
   import BuildSettings._
   import Dependencies._
 
@@ -16,11 +16,10 @@ object Build extends Build with DocSupport {
   // -------------------------------------------------------------------------------------------------------------------
 
   lazy val root = Project("root",file("."))
-    .aggregate(docs, examples, site, sprayCaching, sprayCan, sprayClient, sprayHttp, sprayHttpx,
+    .aggregate(examples, sprayCaching, sprayCan, sprayClient, sprayHttp, sprayHttpx,
       sprayIO, sprayRouting, sprayRoutingTests, sprayServlet, sprayTestKit, sprayUtil)
     .settings(basicSettings: _*)
     .settings(noPublishing: _*)
-    .settings(moveApiDocsSettings: _*)
 
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -124,27 +123,6 @@ object Build extends Build with DocSupport {
       provided(akkaActor) ++
       test(akkaTestKit, specs2)
     )
-
-
-  // -------------------------------------------------------------------------------------------------------------------
-  // Site Project
-  // -------------------------------------------------------------------------------------------------------------------
-
-  lazy val site = Project("site", file("site"))
-    .dependsOn(sprayCan, sprayRouting)
-    .settings(siteSettings: _*)
-    .settings(SphinxSupport.settings: _*)
-    .settings(libraryDependencies ++=
-      compile(akkaActor, sprayJson) ++
-      runtime(akkaSlf4j, logback) ++
-      test(specs2)
-    )
-
-  lazy val docs = Project("docs", file("docs"))
-    .dependsOn(sprayCaching, sprayCan, sprayClient, sprayHttp, sprayHttpx, sprayIO, sprayRouting,
-               sprayServlet, sprayTestKit, sprayUtil)
-    .settings(docsSettings: _*)
-    .settings(libraryDependencies ++= test(akkaActor, akkaTestKit, sprayJson, specs2))
 
 
   // -------------------------------------------------------------------------------------------------------------------

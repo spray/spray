@@ -1,6 +1,0 @@
-.. _-respondWithStatus-:
-
-respondWithStatus
-=================
-
-(todo)

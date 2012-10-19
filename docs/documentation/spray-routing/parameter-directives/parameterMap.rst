@@ -1,6 +1,0 @@
-.. _-parameterMap-:
-
-parameterMap
-============
-
-(todo)

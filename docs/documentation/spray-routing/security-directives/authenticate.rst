@@ -1,6 +1,0 @@
-.. _-authenticate-:
-
-authenticate
-============
-
-(todo)

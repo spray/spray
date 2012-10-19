@@ -1,6 +1,0 @@
-.. _-respondWithMediaType-:
-
-respondWithMediaType
-====================
-
-(todo)

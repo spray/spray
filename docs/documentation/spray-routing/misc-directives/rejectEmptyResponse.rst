@@ -1,6 +1,0 @@
-.. _-rejectEmptyResponse-:
-
-rejectEmptyResponse
-===================
-
-(todo)

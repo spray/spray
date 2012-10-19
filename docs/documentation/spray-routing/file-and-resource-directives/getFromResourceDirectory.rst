@@ -1,6 +1,0 @@
-.. _-getFromResourceDirectory-:
-
-getFromResourceDirectory
-========================
-
-(todo)

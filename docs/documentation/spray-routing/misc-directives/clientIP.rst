@@ -1,6 +1,0 @@
-.. _-clientIP-:
-
-clientIP
-========
-
-(todo)

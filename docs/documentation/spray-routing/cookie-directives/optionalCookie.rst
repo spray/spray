@@ -1,6 +1,0 @@
-.. _-optionalCookie-:
-
-optionalCookie
-==============
-
-(todo)

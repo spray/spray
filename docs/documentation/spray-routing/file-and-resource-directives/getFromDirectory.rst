@@ -1,6 +1,0 @@
-.. _-getFromDirectory-:
-
-getFromDirectory
-================
-
-(todo)

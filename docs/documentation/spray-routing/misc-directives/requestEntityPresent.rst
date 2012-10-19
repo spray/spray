@@ -1,6 +1,0 @@
-.. _-requestEntityPresent-:
-
-requestEntityPresent
-====================
-
-(todo)

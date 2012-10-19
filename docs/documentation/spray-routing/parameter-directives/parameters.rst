@@ -1,6 +1,0 @@
-.. _-parameters-:
-
-parameters
-==========
-
-(todo)

@@ -1,6 +1,0 @@
-.. _-redirect-:
-
-redirect
-========
-
-(todo)

@@ -1,6 +1,0 @@
-.. _-mapHttpResponse-:
-
-mapHttpResponse
-===============
-
-(todo)

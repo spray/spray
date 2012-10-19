@@ -1,6 +1,0 @@
-.. _-headerValue-:
-
-headerValue
-===========
-
-(todo)

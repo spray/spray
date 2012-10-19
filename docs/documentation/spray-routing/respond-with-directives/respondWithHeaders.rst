@@ -1,6 +1,0 @@
-.. _-respondWithHeaders-:
-
-respondWithHeaders
-==================
-
-(todo)

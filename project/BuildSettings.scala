@@ -1,6 +1,5 @@
 import sbt._
 import Keys._
-import ls.Plugin._
 
 
 object BuildSettings {
@@ -35,12 +34,7 @@ object BuildSettings {
           }
         }
       }
-    },
-
-    // LS
-    (LsKeys.tags in LsKeys.lsync) := Seq("http", "server", "client", "async"),
-    (LsKeys.docsUrl in LsKeys.lsync) := Some(new URL("http://spray.github.com/spray/api/spray-can/")),
-    (externalResolvers in LsKeys.lsync) := Seq("spray repo" at "http://repo.spray.io")
+    }
   )
 
   lazy val noPublishing = seq(
@@ -58,20 +52,6 @@ object BuildSettings {
       IO.write(file, """spray.version = "%s"""" format v)
       Seq(file)
     }
-  )
-
-  import sbtassembly.Plugin._
-  import AssemblyKeys._
-  lazy val siteSettings = basicSettings ++ noPublishing ++
-    twirl.sbt.TwirlPlugin.Twirl.settings ++ spray.revolver.RevolverPlugin.Revolver.settings ++
-    assemblySettings ++ seq(
-      mainClass in assembly := Some("spray.site.Boot"),
-      jarName in assembly := "site.jar",
-      test in assembly := {}
-    )
-
-  lazy val docsSettings = basicSettings ++ noPublishing ++ seq(
-    unmanagedSourceDirectories in Test <<= baseDirectory { _ ** "code" get }
   )
 
   lazy val exampleSettings = basicSettings ++ noPublishing
