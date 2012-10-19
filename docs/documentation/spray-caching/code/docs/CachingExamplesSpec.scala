@@ -3,7 +3,7 @@ package docs
 import org.specs2.mutable.Specification
 
 //# example-1
-import akka.dispatch.Future
+import scala.concurrent.Future
 import akka.actor.ActorSystem
 import spray.caching.{LruCache, Cache}
 import spray.util._

@@ -1,11 +1,13 @@
 package docs
 
+import java.util.concurrent.TimeUnit._
+import scala.xml.NodeSeq
+import scala.concurrent.duration.Duration
 import org.specs2.mutable.Specification
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
 import spray.testkit.Specs2RouteTest
-import xml.NodeSeq
 
 
 class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
@@ -38,15 +40,14 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
     def myDbActor: ActorRef = null
     implicit val umOrder: Unmarshaller[Order] = null
     implicit val mOrder: Marshaller[Order] = null
-    implicit val timeout: Timeout = akka.util.Duration("1 sec")
+    implicit val timeout: Timeout = Duration(1, SECONDS)
   }
 
   //# longer-example
-  import akka.util.Duration
   import spray.httpx.encoding._
   import spray.routing.authentication.BasicAuth
   import spray.routing.directives.CachingDirectives._
-  import spray.routing.directives.PathMatchers._
+  import scala.concurrent.duration.Duration
 
   trait LongerService extends HttpService with MyApp {
 

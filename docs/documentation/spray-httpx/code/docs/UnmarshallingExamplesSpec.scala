@@ -1,18 +1,17 @@
 package docs
 
+import scala.xml.NodeSeq
 import org.specs2.mutable.Specification
 import spray.httpx.unmarshalling.ContentExpected
-import spray.http.EmptyEntity
-import xml.NodeSeq
 
 
 class UnmarshallingExamplesSpec extends Specification {
 
   //# example-1
-  import spray.http.HttpBody
-  import spray.util.pimpByteArray
   import spray.httpx.unmarshalling.{Unmarshaller, pimpHttpEntity}
-  import spray.http.MediaTypes._
+  import spray.util._
+  import spray.http._
+  import MediaTypes._
 
   val `application/vnd.acme.person` =
     register(CustomMediaType("application/vnd.acme.person"))

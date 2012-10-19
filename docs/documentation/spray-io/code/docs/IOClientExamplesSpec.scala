@@ -6,7 +6,9 @@ import org.specs2.mutable.Specification
 class IOClientExamplesSpec extends Specification {
 
   //# example-1
-  import akka.util.{Duration, Timeout}
+  import java.util.concurrent.TimeUnit._
+  import scala.concurrent.duration.Duration
+  import akka.util.Timeout
   import akka.pattern.ask
   import akka.actor._
   import spray.util._
@@ -53,7 +55,7 @@ class IOClientExamplesSpec extends Specification {
     val server = system.actorOf(Props(new EchoServer(ioBridge)), "server")
     val client = system.actorOf(Props(new EchoClient(ioBridge)), "client")
 
-    implicit val timeout: Timeout = Duration("1 sec") // timeout for the asks below
+    implicit val timeout: Timeout = Duration(1, SECONDS) // timeout for the asks below
 
     // bind the server to a local port and wait for it to come up
     server.ask(IOServer.Bind("localhost", 46468)).await

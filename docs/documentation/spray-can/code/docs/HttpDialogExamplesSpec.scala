@@ -1,16 +1,19 @@
 package docs
 
 import org.specs2.mutable.Specification
-import akka.actor.{Props, ActorSystem}                // example-1
-import akka.dispatch.Future                           // example-1
-import akka.util.Duration
+import akka.actor.{Actor, Props, ActorSystem}
+
+// example-1
+import java.util.concurrent.TimeUnit._             // example-1
+import scala.concurrent.Future                     // example-1
+import scala.concurrent.duration.Duration          // example-1
 import akka.pattern.ask
 import spray.can.client.{HttpDialog, HttpClient}   // example-1
 import spray.can.server.HttpServer
 import spray.io._                                  // example-1
 import spray.util._
 import spray.http._                                // example-1
-import HttpMethods._                                  // example-1
+import HttpMethods._                               // example-1
 
 
 class HttpDialogExamplesSpec extends Specification {
@@ -26,11 +29,11 @@ class HttpDialogExamplesSpec extends Specification {
   val port = 8899
 
   step {
-    val handler = system.actorOf(Props(behavior = ctx => {
-      case x: HttpRequest => ctx.sender ! HttpResponse(entity = x.uri)
-    }))
+    val handler = system.actorOf(Props(new Actor { def receive = {
+      case x: HttpRequest => sender ! HttpResponse(entity = x.uri)
+    }}))
     val server = system.actorOf(Props(new HttpServer(ioBridge, SingletonHandler(handler))))
-    server.ask(HttpServer.Bind("localhost", port))(Duration("1 s")).await
+    server.ask(HttpServer.Bind("localhost", port))(Duration(1, SECONDS)).await
   }
 
   "example-1" in {

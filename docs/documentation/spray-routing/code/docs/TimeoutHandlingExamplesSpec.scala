@@ -1,10 +1,10 @@
 package docs
 
+import scala.concurrent.duration.Duration
 import org.specs2.mutable.Specification
 import spray.testkit.Specs2RouteTest
 import akka.testkit.{TestProbe, TestActorRef}
 import akka.actor.Actor
-import akka.util.Duration
 
 
 class TimeoutHandlingExamplesSpec extends Specification with Specs2RouteTest {

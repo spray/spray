@@ -3,24 +3,25 @@ package docs
 import org.specs2.mutable.Specification
 
 // setup
-import akka.util.Duration
+import java.util.concurrent.TimeUnit._
+import scala.concurrent.duration.Duration
+import scala.concurrent.Future                // setup
 import akka.pattern.ask
-import akka.actor.{Props, ActorSystem}           // setup
-import akka.dispatch.Future                      // setup
+import akka.actor._                           // setup
 import spray.json.DefaultJsonProtocol
 import spray.can.client.HttpClient            // setup
 import spray.can.server.HttpServer
 import spray.client.HttpConduit               // setup
 import spray.io._                             // setup
-import spray.util._
+import spray.util._                           // setup
 import spray.http._                           // setup
-import HttpMethods._                             // setup
+import HttpMethods._                          // setup
 
 
 class HttpConduitExamplesSpec extends Specification {
   //# setup
 
-  val system = ActorSystem()
+  implicit val system = ActorSystem()
   val ioBridge = new IOBridge(system).start()
   val httpClient = system.actorOf(Props(new HttpClient(ioBridge)))
   val targetHostName = "localhost" // hide
@@ -33,14 +34,14 @@ class HttpConduitExamplesSpec extends Specification {
   //#
 
   step {
-    val handler = system.actorOf(Props(behavior = ctx => {
+    val handler = system.actorOf(Props(new Actor { def receive = {
       case x@HttpRequest(POST, "/orders", _, _, _) =>
         import spray.httpx.encoding.{Gzip, Deflate}
-        ctx.sender ! Deflate.encode(HttpResponse(entity = Gzip.decode(x).entity))
-      case x: HttpRequest => ctx.sender ! HttpResponse(entity = x.uri)
-    }))
+        sender ! Deflate.encode(HttpResponse(entity = Gzip.decode(x).entity))
+      case x: HttpRequest => sender ! HttpResponse(entity = x.uri)
+    }}))
     val server = system.actorOf(Props(new HttpServer(ioBridge, SingletonHandler(handler))))
-    server.ask(HttpServer.Bind("localhost", port))(Duration("1 s")).await
+    server.ask(HttpServer.Bind("localhost", port))(Duration(1, SECONDS)).await
   }
 
   "example-1" in {

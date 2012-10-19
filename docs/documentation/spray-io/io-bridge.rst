@@ -48,7 +48,7 @@ The public interface of an ``IOBridge`` is very simple. It looks like this::
     def thread: Option[Thread]
     def start(): this.type
     def stop()
-    def ! (cmd: Command)(implicit sender: ActorRef = null)
+    def ! (cmd: Command)(implicit sender: ActorRef = Actor.noSender)
     def tell(cmd: Command, sender: ActorRef)
 
 Apart from starting, stopping and querying for its ``Thread`` all commmunication with an ``IOBridge`` happens

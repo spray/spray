@@ -48,7 +48,7 @@ class RejectionHandlerExamplesSpec extends Specification with Specs2RouteTest wi
           }
         }
       }
-    success //
+    success // hide
   }
 
 }

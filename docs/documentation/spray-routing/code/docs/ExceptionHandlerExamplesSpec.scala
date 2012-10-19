@@ -2,7 +2,7 @@ package docs
 
 import org.specs2.mutable.Specification
 import spray.testkit.Specs2RouteTest
-import spray.routing.{Route, HttpService}
+import spray.routing.HttpService
 import akka.actor.Actor
 
 
