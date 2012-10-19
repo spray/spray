@@ -152,7 +152,7 @@ object Build extends Build with DocSupport {
   // -------------------------------------------------------------------------------------------------------------------
 
   lazy val examples = Project("examples", file("examples"))
-    .aggregate(sprayCanExamples, sprayClientExamples, sprayIOExamples, sprayRoutingExamples)
+    .aggregate(sprayCanExamples, sprayClientExamples, sprayIOExamples, sprayRoutingExamples, sprayServletExamples)
     .settings(exampleSettings: _*)
 
   lazy val sprayCanExamples = Project("spray-can-examples", file("examples/spray-can"))
