@@ -17,7 +17,7 @@
 package spray
 package client
 
-import collection.mutable.Queue
+import scala.collection.mutable
 import http._
 
 
@@ -67,7 +67,7 @@ object DispatchStrategies {
    *    connection becomes either idle or unconnected.
    */
   class NonPipelined extends DispatchStrategy {
-    val queue = Queue.empty[HttpRequestContext]
+    val queue = mutable.Queue.empty[HttpRequestContext]
 
     def dispatch(context: HttpRequestContext, conns: Seq[HttpConn]) {
       findAvailableConnection(conns) match {

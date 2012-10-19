@@ -16,13 +16,12 @@
 
 package spray.client
 
-import collection.mutable.Queue
-import akka.dispatch.Promise
+import scala.collection.mutable
+import akka.actor.{Status, ActorRef}
 import spray.can.client.HttpClient
 import spray.util._
 import spray.io._
 import spray.http._
-import akka.actor.{Status, ActorRef}
 
 
 trait ConnComponent {
@@ -32,7 +31,7 @@ trait ConnComponent {
     import Conn._
 
     private var connection: ConnectionState = Unconnected
-    private val pendingRequests = Queue.empty[RequestContext]
+    private val pendingRequests = mutable.Queue.empty[RequestContext]
     var pendingResponses: Int = -1
 
     def dispatch(ctx: HttpRequestContext) {
