@@ -16,12 +16,11 @@
 
 package spray.can.server
 
-import akka.testkit.TestActorRef
-import akka.util.{Duration, Timeout}
-import com.typesafe.config.ConfigFactory
-import org.specs2.mutable.Specification
 import java.util.concurrent.atomic.AtomicInteger
+import com.typesafe.config.ConfigFactory
+import akka.testkit.TestActorRef
 import akka.actor.{ActorSystem, Actor, Props}
+import org.specs2.mutable.Specification
 import spray.can.{HttpCommand, HttpPipelineStageSpec}
 import spray.io._
 import spray.http._
@@ -347,8 +346,6 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
   step(system.shutdown())
 
   ///////////////////////// SUPPORT ////////////////////////
-
-  implicit val timeout: Timeout = Duration("500 ms")
 
   val simpleRequest = prep {
   """|GET / HTTP/1.1

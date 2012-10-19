@@ -16,10 +16,10 @@
 
 package spray.can.client
 
+import scala.collection.mutable
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import akka.event.LoggingAdapter
-import akka.util.Duration
 import akka.actor.ActorRef
-import collection.mutable.Queue
 import spray.can.{HttpEvent, HttpCommand}
 import spray.can.rendering.HttpRequestPartRenderingContext
 import spray.http._
@@ -35,7 +35,7 @@ object ClientFrontend {
         new Pipelines {
           val host = context.handle.remoteAddress.getHostName
           val port = context.handle.remoteAddress.getPort
-          val openRequests = Queue.empty[RequestRecord]
+          val openRequests = mutable.Queue.empty[RequestRecord]
           var requestTimeout = initialRequestTimeout
 
           val commandPipeline: CPL = {
@@ -153,8 +153,7 @@ object ClientFrontend {
 
   ////////////// COMMANDS //////////////
 
-  case class SetRequestTimeout(timeout: Duration) extends Command {
-    require(timeout.isFinite, "timeout must not be infinite, set to zero to disable")
+  case class SetRequestTimeout(timeout: FiniteDuration) extends Command {
     require(timeout >= Duration.Zero, "timeout must not be negative")
   }
 }

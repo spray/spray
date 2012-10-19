@@ -16,9 +16,10 @@
 
 package spray.can.client
 
-import akka.actor.{Props, ActorSystem}
+import java.util.concurrent.TimeUnit._
+import scala.concurrent.duration.Duration
+import akka.actor.{Actor, Props, ActorSystem}
 import akka.pattern.ask
-import akka.util.Duration
 import org.specs2.mutable.Specification
 import spray.can.server.HttpServer
 import spray.io._
@@ -32,11 +33,11 @@ class HttpDialogSpec extends Specification {
   val port = 8899
 
   step {
-    val handler = system.actorOf(Props(behavior = ctx => {
-      case x: HttpRequest => ctx.sender ! HttpResponse(entity = x.uri)
-    }))
+    val handler = system.actorOf(Props(new Actor { def receive = {
+      case x: HttpRequest => sender ! HttpResponse(entity = x.uri)
+    }}))
     val server = system.actorOf(Props(new HttpServer(ioBridge, SingletonHandler(handler))))
-    server.ask(HttpServer.Bind("localhost", port))(Duration("1 s")).await
+    server.ask(HttpServer.Bind("localhost", port))(Duration(1, SECONDS)).await
   }
 
   val client = system.actorOf(Props(new HttpClient(ioBridge)))

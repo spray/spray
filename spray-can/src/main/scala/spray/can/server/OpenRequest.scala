@@ -16,7 +16,7 @@
 
 package spray.can.server
 
-import collection.mutable
+import scala.collection.mutable
 import akka.actor.{ActorContext, ActorRef}
 import akka.event.LoggingAdapter
 import spray.can.rendering.HttpResponsePartRenderingContext
@@ -127,7 +127,6 @@ trait OpenRequestComponent { component =>
       handler = connectionActorContext.sender // remember who to send Closed events to
       sendPart(part)
       dispatchNextQueuedResponse()
-      this
     }
 
     def enqueueCommand(command: Command) {

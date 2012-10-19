@@ -16,10 +16,10 @@
 
 package spray.can.client
 
-import akka.event.LoggingAdapter
-import collection.mutable
 import java.nio.ByteBuffer
-import annotation.tailrec
+import scala.collection.mutable
+import scala.annotation.tailrec
+import akka.event.LoggingAdapter
 import spray.can.rendering.HttpRequestPartRenderingContext
 import spray.can.HttpEvent
 import spray.util.EmptyByteArray

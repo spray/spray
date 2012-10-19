@@ -16,10 +16,9 @@
 
 package spray.can.server
 
+import scala.concurrent.duration.FiniteDuration
 import akka.event.LoggingAdapter
-import akka.util.Duration
 import spray.can.server.StatsSupport.StatsHolder
-import spray.can.HttpCommand
 import spray.io._
 import spray.http._
 
@@ -33,7 +32,7 @@ class HttpServer(ioBridge: IOBridge, messageHandler: MessageHandler, settings: S
   protected val pipeline =
     HttpServer.pipeline(settings, messageHandler, timeoutResponse, statsHolder, log)
 
-  override def receive = super.receive orElse {
+  override def receive: Receive = super.receive orElse {
     case HttpServer.GetStats    => statsHolder.foreach(holder => sender ! holder.toStats)
     case HttpServer.ClearStats  => statsHolder.foreach(_.clear())
   }
@@ -178,7 +177,7 @@ object HttpServer {
   }
 
   case class Stats(
-    uptime: Duration,
+    uptime: FiniteDuration,
     totalRequests: Long,
     openRequests: Long,
     maxOpenRequests: Long,

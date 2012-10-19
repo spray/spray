@@ -16,7 +16,7 @@
 
 package spray.can.rendering
 
-import annotation.tailrec
+import scala.annotation.tailrec
 import spray.can.parsing.isTokenChar
 import spray.io.BufferBuilder
 import spray.util._

@@ -16,8 +16,8 @@
 
 package spray.can.server
 
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import akka.event.LoggingAdapter
-import akka.util.Duration
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.can.{HttpEvent, HttpCommand}
 import spray.util.IOError
@@ -127,13 +127,11 @@ object ServerFrontend {
 
   ////////////// COMMANDS //////////////
 
-  case class SetRequestTimeout(timeout: Duration) extends Command {
-    require(timeout.isFinite, "timeout must not be infinite, set to zero to disable")
+  case class SetRequestTimeout(timeout: FiniteDuration) extends Command {
     require(timeout >= Duration.Zero, "timeout must not be negative")
   }
 
-  case class SetTimeoutTimeout(timeout: Duration) extends Command {
-    require(timeout.isFinite, "timeout must not be infinite, set to zero to disable")
+  case class SetTimeoutTimeout(timeout: FiniteDuration) extends Command {
     require(timeout >= Duration.Zero, "timeout must not be negative")
   }
 

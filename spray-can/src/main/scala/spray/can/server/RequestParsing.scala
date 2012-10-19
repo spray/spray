@@ -16,9 +16,9 @@
 
 package spray.can.server
 
-import akka.event.LoggingAdapter
 import java.nio.ByteBuffer
-import annotation.tailrec
+import scala.annotation.tailrec
+import akka.event.LoggingAdapter
 import spray.can.rendering.HttpResponsePartRenderingContext
 import spray.can.HttpEvent
 import spray.util.ProtocolError

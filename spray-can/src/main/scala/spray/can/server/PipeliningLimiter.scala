@@ -16,8 +16,8 @@
 
 package spray.can.server
 
-import collection.mutable
-import annotation.tailrec
+import scala.collection.mutable
+import scala.annotation.tailrec
 import spray.can.rendering.HttpResponsePartRenderingContext
 import spray.can.HttpEvent
 import spray.http._
