@@ -30,7 +30,7 @@ object ModelConverter {
 
   def toHttpRequest(hsRequest: HttpServletRequest)
                    (implicit settings: ConnectorSettings, log: LoggingAdapter): HttpRequest = {
-    import collection.JavaConverters._
+    import scala.collection.JavaConverters._
     var contentType: ContentType = null
     var contentLength: Int = 0
     val rawHeaders = hsRequest.getHeaderNames.asScala.toList.map { name =>

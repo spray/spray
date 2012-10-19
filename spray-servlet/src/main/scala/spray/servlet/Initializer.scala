@@ -16,10 +16,12 @@
 
 package spray.servlet
 
-import akka.util.{NonFatal, Switch}
-import akka.actor.{ActorRef, ActorSystem}
 import javax.servlet.{ServletContextListener, ServletContextEvent}
 import com.typesafe.config.ConfigFactory
+import scala.language.reflectiveCalls
+import scala.util.control.NonFatal
+import akka.util.Switch
+import akka.actor.ActorSystem
 
 
 class Initializer extends ServletContextListener {
