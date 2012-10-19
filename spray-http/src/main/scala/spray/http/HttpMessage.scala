@@ -253,7 +253,7 @@ final class HttpRequest private(
     // Accept-Encoding header is sent with the request (http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.3)
     // this is what we do here
     val ranges = acceptedEncodingRanges
-    ranges.isEmpty || encoding == HttpEncodings.identity || ranges.exists(_.matches(encoding))
+    ranges.isEmpty || ranges.exists(_.matches(encoding))
   }
 
   /**
