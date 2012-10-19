@@ -85,7 +85,7 @@ class ResponseRenderer(serverHeader: String,
                                   bb: BufferBuilder): Option[String] = {
     import response._
 
-    if (status == 200 && protocol == `HTTP/1.1`) {
+    if (status == StatusCodes.OK && protocol == `HTTP/1.1`) {
       bb.append(MessageRendering.DefaultStatusLine)
     } else {
       bb.append(protocol.value).append(' ').append(Integer.toString(status.value)).append(' ')
