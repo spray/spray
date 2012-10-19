@@ -19,8 +19,8 @@ package spray.caching
 import java.util.Random
 import java.util.concurrent.CountDownLatch
 import akka.actor.ActorSystem
-import akka.util.Duration
-import akka.dispatch.Future
+import scala.concurrent.Future
+import scala.concurrent.duration.Duration
 import org.specs2.mutable.Specification
 import org.specs2.matcher.Matcher
 import spray.util._
