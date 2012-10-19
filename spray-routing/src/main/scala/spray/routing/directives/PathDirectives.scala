@@ -19,7 +19,7 @@ package directives
 
 import java.util.UUID
 import scala.util.matching.Regex
-import annotation.tailrec
+import scala.annotation.tailrec
 import shapeless._
 import spray.util._
 

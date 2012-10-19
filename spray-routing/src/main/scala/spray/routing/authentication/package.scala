@@ -16,7 +16,10 @@
 
 package spray.routing
 
-import akka.dispatch.Future
+import scala.concurrent.{Promise, ExecutionContext, Future}
+import com.typesafe.config.{Config, ConfigException}
+import spray.caching.{Cache, LruCache}
+import spray.util.pimpString
 
 
 package object authentication {
@@ -25,6 +28,47 @@ package object authentication {
   type Authentication[T] = Either[Rejection, T]
   type UserPassAuthenticator[T] = Option[UserPass] => Future[Option[T]]
 
+  // should actually live in file "UserPassAuthenticator.scala"
+  // but can't due to https://issues.scala-lang.org/browse/SI-5031
+  // will move back once the issue is fixed
+  object UserPassAuthenticator {
+
+    def apply[T](f: UserPassAuthenticator[T]) = f
+
+    /**
+     * Creats a UserPassAuthenticator that uses plain-text username/password definitions from a given
+     * spray/akka config file section for authentication. The config section should look like this:
+     * {{{
+     *   spray.routing.users {
+     *     username = "password"
+     *     ...
+     *   }
+     * }}}
+     */
+    def fromConfig[T](config: Config)(createUser: UserPass => T): UserPassAuthenticator[T] = { userPassOption =>
+      Promise.successful(
+        userPassOption.flatMap { userPass =>
+          try {
+            val pw = config.getString(userPass.user)
+            if (pw secure_== userPass.pass) Some(createUser(userPass)) else None
+          } catch {
+            case _: ConfigException => None
+          }
+        }
+      ).future
+    }
+
+    /**
+     * Creates a wrapper around an UserPassAuthenticator providing authentication lookup caching using the given cache.
+     * Note that you need to manually add a dependency to the spray-caching module in order to be able to use this method.
+     */
+    def cached[T](inner: UserPassAuthenticator[T], cache: Cache[Option[T]] = LruCache[Option[T]]())
+                 (implicit ec: ExecutionContext): UserPassAuthenticator[T] = { userPassOption =>
+      cache.fromFuture(userPassOption) {
+        inner(userPassOption)
+      }
+    }
+  }
 }
 
 package authentication {

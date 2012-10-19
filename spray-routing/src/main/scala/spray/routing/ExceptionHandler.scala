@@ -17,7 +17,7 @@
 package spray.routing
 
 import akka.event.LoggingAdapter
-import akka.util.NonFatal
+import scala.util.control.NonFatal
 import spray.http._
 import StatusCodes._
 

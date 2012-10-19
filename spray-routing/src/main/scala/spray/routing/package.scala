@@ -25,4 +25,10 @@ package object routing {
   type RouteFilter[+T <: HList] = RequestContext => FilterResult[T]
   type Directive0 = Directive[HNil]
 
+  // should actually live in file "Route.scala"
+  // but can't due to https://issues.scala-lang.org/browse/SI-5031
+  // will move back once the issue is fixed
+  object Route {
+    def apply(f: Route): Route = f
+  }
 }

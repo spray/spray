@@ -19,7 +19,7 @@ package directives
 
 import spray.util.LoggingContext
 import akka.actor._
-import akka.util.NonFatal
+import scala.util.control.NonFatal
 
 
 trait ExecutionDirectives {

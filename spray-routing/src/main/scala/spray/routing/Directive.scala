@@ -16,8 +16,9 @@
 
 package spray.routing
 
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Success, Failure}
 import shapeless._
-import akka.dispatch.Future
 import spray.httpx.unmarshalling.MalformedContent
 
 
@@ -64,12 +65,12 @@ abstract class Directive[L <: HList] { self =>
       def happly(g: R => Route) = self.happly { values => f(values).happly(g) }
     }
 
-  def unwrapFuture[R](implicit ev: L <:< (Future[R] :: HNil), hl: HListable[R]) =
+  def unwrapFuture[R](implicit ev: L <:< (Future[R] :: HNil), hl: HListable[R], ec: ExecutionContext) =
     new Directive[hl.Out] {
       def happly(f: hl.Out => Route) = self.happly { list => ctx =>
         list.head.onComplete {
-          case Right(values) => f(hl(values))(ctx)
-          case Left(error) => ctx.failWith(error)
+          case Success(values) => f(hl(values))(ctx)
+          case Failure(error) => ctx.failWith(error)
         }
       }
     }

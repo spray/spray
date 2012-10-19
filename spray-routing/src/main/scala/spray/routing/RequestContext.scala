@@ -16,8 +16,8 @@
 
 package spray.routing
 
-import collection.GenTraversableOnce
-import akka.dispatch.Future
+import scala.collection.GenTraversableOnce
+import scala.concurrent.Future
 import akka.actor.{Status, ActorRef}
 import akka.spray.UnregisteredActorRef
 import spray.httpx.marshalling.{MarshallingContext, Marshaller}
