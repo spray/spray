@@ -127,7 +127,6 @@ trait OpenRequestComponent { component =>
       handler = connectionActorContext.sender // remember who to send Closed events to
       sendPart(part)
       dispatchNextQueuedResponse()
-      this
     }
 
     def enqueueCommand(command: Command) {

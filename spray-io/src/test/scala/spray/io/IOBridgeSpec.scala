@@ -63,7 +63,7 @@ class IOBridgeSpec extends Specification {
 
   class TestClient(ioBridge: IOBridge) extends IOClient(ioBridge) {
     var requests = Map.empty[Handle, ActorRef]
-    override def receive = super.receive orElse {
+    override def receive: Receive = super.receive orElse {
       case (x: String, handle: Handle) =>
         requests += handle -> sender
         ioBridge ! IOBridge.Send(handle, ByteBuffer.wrap(x.getBytes))

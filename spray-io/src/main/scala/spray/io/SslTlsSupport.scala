@@ -101,7 +101,6 @@ object SslTlsSupport {
             }
             case CLOSED =>
               if (postContentLeft) commandPL(IOPeer.Close(ProtocolError("SSLEngine closed prematurely while sending")))
-              false
             case BUFFER_OVERFLOW =>
               throw new IllegalStateException // the SslBufferPool should make sure that buffers are never too small
             case BUFFER_UNDERFLOW =>

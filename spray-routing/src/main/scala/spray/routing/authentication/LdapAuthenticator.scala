@@ -137,5 +137,6 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T])
 }
 
 object LdapAuthenticator {
-  def apply[T](config: LdapAuthConfig[T])(implicit system: ActorSystem) = new LdapAuthenticator(config)
+  def apply[T](config: LdapAuthConfig[T])
+              (implicit executor: ExecutionContext, log: LoggingContext) = new LdapAuthenticator(config)
 }

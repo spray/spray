@@ -280,7 +280,7 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
           log.warning("Could not execute command '{}': connection reset by peer", command)
           val handle = command.asInstanceOf[ConnectionCommand].handle
           handle.handler ! Closed(handle, PeerClosed)
-        case e =>
+        case NonFatal(e) =>
           log.error(e, "Error during execution of command '{}'", command)
           if (sender != null) sender ! Status.Failure(CommandException(command, e))
       }

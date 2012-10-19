@@ -17,7 +17,6 @@
 package spray.routing
 package directives
 
-import shapeless.HList
 import akka.dispatch.Future
 import spray.httpx.marshalling.Marshaller
 import spray.http._
@@ -41,6 +40,9 @@ trait RouteDirectives {
     def apply(ctx: RequestContext) { ctx.redirect(uri, redirectionType) }
   }
 
+  /**
+   * Completes the request using the given arguments.
+   */
   def complete: CompletionMagnet => StandardRoute = _.route
 
   /**

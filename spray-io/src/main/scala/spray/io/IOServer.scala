@@ -26,7 +26,7 @@ abstract class IOServer(val ioBridge: IOBridge) extends IOPeer {
   private var endpoint: Option[InetSocketAddress] = None
   private var state = unbound
 
-  def receive = {
+  def receive: Receive = {
     new Receive {
       def isDefinedAt(x: Any) = state.isDefinedAt(x)
       def apply(x: Any) { state(x) }

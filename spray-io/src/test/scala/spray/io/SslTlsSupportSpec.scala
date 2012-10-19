@@ -15,25 +15,23 @@
  */
 package spray.io
 
-import org.specs2.mutable.Specification
-import annotation.tailrec
-import javax.net.ssl._
 import java.io.{BufferedWriter, OutputStreamWriter, InputStreamReader, BufferedReader}
-import scala.Boolean
-import akka.pattern.ask
-import spray.util._
 import java.nio.ByteBuffer
-import akka.util.{Duration, Timeout}
-import spray.io._
-import akka.actor.{ActorRef, Props, ActorSystem}
-import com.typesafe.config.ConfigFactory
 import java.security.{KeyStore, SecureRandom}
+import javax.net.ssl._
+import com.typesafe.config.ConfigFactory
+import scala.annotation.tailrec
+import org.specs2.mutable.Specification
+import akka.pattern.ask
+import akka.util.{Duration, Timeout}
+import akka.actor.{ActorRef, Props, ActorSystem}
+import spray.util._
 
 
 class SslTlsSupportSpec extends Specification {
   implicit val system = ActorSystem()
   implicit val sslContext = createSslContext("/ssl-test-keystore.jks", "")
-  def log = system.log
+  import system.log
   val port = 23454
   val serverThread = new ServerThread
   serverThread.start()
