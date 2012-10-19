@@ -2,14 +2,16 @@ package spray.examples
 
 import java.io.File
 import org.parboiled.common.FileUtils
-import akka.util.Duration
-import akka.util.duration._
+import java.util.concurrent.TimeUnit._
+import scala.concurrent.duration.{FiniteDuration, Duration}
+import scala.util.{Success, Failure}
 import akka.actor.{ActorLogging, Props, Actor}
 import akka.pattern.ask
 import spray.routing.{HttpService, RequestContext}
 import spray.routing.directives.CachingDirectives
 import spray.can.server.HttpServer
 import spray.httpx.encoding.Gzip
+import spray.util._
 import spray.http._
 import MediaTypes._
 import CachingDirectives._
@@ -67,7 +69,7 @@ trait DemoService extends HttpService {
       } ~
       path("cached") {
         cache(simpleRouteCache) { ctx =>
-          in(1500.millis) {
+          in(Duration(1500, MILLISECONDS)) {
             ctx.complete("This resource is only slow the first time!\n" +
               "It was produced on " + DateTime.now.toIsoDateTimeString + "\n\n" +
               "(Note that your browser will likely enforce a cache invalidation with a\n" +
@@ -86,7 +88,7 @@ trait DemoService extends HttpService {
     (post | parameter('method ! "post")) {
       path("stop") { ctx =>
         ctx.complete("Shutting down in 1 second...")
-        in(1000.millis) {
+        in(Duration(1000, MILLISECONDS)) {
           actorSystem.shutdown()
         }
       }
@@ -147,7 +149,7 @@ trait DemoService extends HttpService {
               context.stop(self)
 
             case Ok(remaining) =>
-              in(500.millis) {
+              in(Duration(500, MILLISECONDS)) {
                 val nextChunk = MessageChunk("<li>" + DateTime.now.toIsoDateTimeString + "</li>")
                 ctx.responder ! nextChunk.withSentAck(Ok(remaining - 1))
               }
@@ -162,11 +164,11 @@ trait DemoService extends HttpService {
 
   def showServerStats(ctx: RequestContext) {
     actorRefFactory.actorFor("../http-server")
-      .ask(HttpServer.GetStats)(1.second)
+      .ask(HttpServer.GetStats)(Duration(1, SECONDS))
       .mapTo[HttpServer.Stats]
       .onComplete {
-      case Right(stats) => ctx.complete {
-        "Uptime                : " + stats.uptime.printHMS + '\n' +
+      case Success(stats) => ctx.complete {
+        "Uptime                : " + stats.uptime.formatHMS + '\n' +
         "Total requests        : " + stats.totalRequests + '\n' +
         "Open requests         : " + stats.openRequests + '\n' +
         "Max open requests     : " + stats.maxOpenRequests + '\n' +
@@ -176,11 +178,11 @@ trait DemoService extends HttpService {
         "Requests timed out    : " + stats.requestTimeouts + '\n' +
         "Connections timed out : " + stats.idleTimeouts + '\n'
       }
-      case Left(ex) => ctx.complete(500, "Couldn't get server stats due to " + ex.getMessage)
+      case Failure(ex) => ctx.complete(500, "Couldn't get server stats due to " + ex.getMessage)
     }
   }
 
-  def in[U](duration: Duration)(body: => U) {
+  def in[U](duration: FiniteDuration)(body: => U) {
     actorSystem.scheduler.scheduleOnce(duration, new Runnable { def run() { body } })
   }
 

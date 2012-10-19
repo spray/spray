@@ -1,17 +1,19 @@
 package spray.examples
 
+import scala.util.{Success, Failure}
 import akka.actor.{Props, ActorSystem}
 import spray.io.IOBridge
 import spray.can.client.HttpClient
 import spray.client.HttpConduit
 import spray.httpx.SprayJsonSupport
 import spray.http._
+import spray.util._
 
 
 object Main extends App {
   // we need an ActorSystem to host our application in
-  val system = ActorSystem("simple-spray-client")
-  def log = system.log
+  implicit val system = ActorSystem("simple-spray-client")
+  import system.log
 
   // every spray-can HttpClient (and HttpServer) needs an IOBridge for low-level network IO
   // (but several servers and/or clients can share one)
@@ -37,14 +39,14 @@ object Main extends App {
     // it manages a pool of connections to _one_ host/port combination
     val conduit = system.actorOf(
       props = Props(new HttpConduit(httpClient, "github.com")),
-      name = "http-conduit"
+      name = "http-conduit-1"
     )
 
     // send a simple request
     val pipeline = HttpConduit.sendReceive(conduit)
     val responseFuture = pipeline(HttpRequest(method = HttpMethods.GET, uri = "/"))
     responseFuture onComplete {
-      case Right(response) =>
+      case Success(response) =>
         log.info(
           """|Response for GET request to github.com:
              |status : {}
@@ -55,7 +57,7 @@ object Main extends App {
         system.stop(conduit) // the conduit can be stopped when all operations on it have been completed
         startExample2()
 
-      case Left(error) =>
+      case Failure(error) =>
         log.error(error, "Couldn't get http://github.com")
         system.shutdown() // also stops all conduits (since they are actors)
     }
@@ -65,7 +67,7 @@ object Main extends App {
     log.info("Requesting the elevation of Mt. Everest from Googles Elevation API...")
     val conduit = system.actorOf(
       props = Props(new HttpConduit(httpClient, "maps.googleapis.com")),
-      name = "http-conduit"
+      name = "http-conduit-2"
     )
 
     import HttpConduit._
@@ -75,11 +77,11 @@ object Main extends App {
 
     val responseF = pipeline(Get("/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))
     responseF onComplete {
-      case Right(response) =>
+      case Success(response) =>
         log.info("The elevation of Mt. Everest is: {} m", response.results.head.elevation)
         system.shutdown() // also stops all conduits (since they are actors)
 
-      case Left(error) =>
+      case Failure(error) =>
         log.error(error, "Couldn't get elevation")
         system.shutdown() // also stops all conduits (since they are actors)
     }

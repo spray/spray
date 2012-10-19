@@ -1,15 +1,17 @@
 package spray.examples
 
+import scala.util.{Success, Failure}
 import akka.actor.{Props, ActorSystem}
 import spray.io.IOBridge
 import spray.can.client.{HttpDialog, HttpClient}
 import spray.http.HttpRequest
+import spray.util._
 
 
 object SimpleExample extends App {
   // we need an ActorSystem to host our application in
   implicit val system = ActorSystem("simple-example")
-  def log = system.log
+  import system.log
 
   // every spray-can HttpClient (and HttpServer) needs an IOBridge for low-level network IO
   // (but several servers and/or clients can share one)
@@ -23,14 +25,14 @@ object SimpleExample extends App {
 
   // create a very basic HttpDialog that results in a Future[HttpResponse]
   log.info("Dispatching GET request to github.com")
-  val responseF =
+  val responseFuture =
     HttpDialog(httpClient, "github.com")
       .send(HttpRequest(uri = "/"))
       .end
 
   // "hook in" our continuation
-  responseF onComplete {
-    case Right(response) =>
+  responseFuture onComplete {
+    case Success(response) =>
       log.info(
         """|Result from host:
            |status : {}
@@ -40,7 +42,7 @@ object SimpleExample extends App {
       )
       system.shutdown()
 
-    case Left(error) =>
+    case Failure(error) =>
       log.error("Could not get response due to {}", error)
       system.shutdown()
   }

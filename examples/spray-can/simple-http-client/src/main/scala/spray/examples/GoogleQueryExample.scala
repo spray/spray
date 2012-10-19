@@ -1,17 +1,17 @@
 package spray.examples
 
-import akka.dispatch.Future
+import scala.concurrent.Future
 import akka.actor.{ActorSystem, Props}
 import spray.io.IOBridge
 import spray.can.client.{HttpDialog, HttpClient}
 import spray.http.{HttpResponse, HttpRequest}
+import spray.util._
 
 
 object GoogleQueryExample extends App {
   // we need an ActorSystem to host our application in
   implicit val system = ActorSystem("google-query-example")
-
-  def log = system.log
+  import system.log
 
   // every spray-can HttpClient (and HttpServer) needs an IOBridge for low-level network IO
   // (but several servers and/or clients can share one)
@@ -33,9 +33,9 @@ object GoogleQueryExample extends App {
   val requests = queries.map(q => HttpRequest(uri = "/search?q=" + q.replace(" ", "+")))
 
   log.info("Running {} google queries over a single connection using pipelined requests...", requests.length)
-  timed(HttpDialog(httpClient, "www.google.com").send(requests).end)
-    .onSuccess(printResult andThen secondRun)
-    .onFailure(printError andThen shutdown)
+  val responseFuture = timed(HttpDialog(httpClient, "www.google.com").send(requests).end)
+  responseFuture.onSuccess(printResult andThen secondRun)
+  responseFuture.onFailure(printError andThen shutdown)
 
   // finally we drop the main thread but hook the shutdown of
   // our IOBridge into the shutdown of the applications ActorSystem
@@ -47,9 +47,9 @@ object GoogleQueryExample extends App {
     case _ =>
       log.info("Running google queries as separate requests (in parallel) ...")
       def httpDialog(r: HttpRequest) = HttpDialog(httpClient, "www.google.com").send(r).end
-      timed(Future.sequence(requests.map(httpDialog)))
-        .onSuccess(printResult andThen shutdown)
-        .onFailure(printError andThen shutdown)
+      val responseFuture = timed(Future.sequence(requests.map(httpDialog)))
+      responseFuture.onSuccess(printResult andThen shutdown)
+      responseFuture.onFailure(printError andThen shutdown)
   }
 
   def printResult: PartialFunction[(Seq[HttpResponse], Long), Unit] = {

@@ -1,9 +1,9 @@
 package spray.examples
 
 import java.io.File
+import java.util.concurrent.TimeUnit._
+import scala.concurrent.duration.{FiniteDuration, Duration}
 import org.parboiled.common.FileUtils
-import akka.util.Duration
-import akka.util.duration._
 import akka.actor.{ActorLogging, Props, Actor}
 import spray.routing.{HttpService, RequestContext}
 import spray.routing.directives.CachingDirectives
@@ -63,7 +63,7 @@ trait DemoService extends HttpService {
       } ~
       path("cached") {
         cache(simpleRouteCache) { ctx =>
-          in(1500.millis) {
+          in(Duration(1500, MILLISECONDS)) {
             ctx.complete("This resource is only slow the first time!\n" +
               "It was produced on " + DateTime.now.toIsoDateTimeString + "\n\n" +
               "(Note that your browser will likely enforce a cache invalidation with a\n" +
@@ -125,7 +125,7 @@ trait DemoService extends HttpService {
               context.stop(self)
 
             case Ok(remaining) =>
-              in(250.millis) {
+              in(Duration(250, MILLISECONDS)) {
                 val nextChunk = MessageChunk("<li>" + DateTime.now.toIsoDateTimeString + "</li>")
                 ctx.responder ! nextChunk.withSentAck(Ok(remaining - 1))
               }
@@ -138,7 +138,7 @@ trait DemoService extends HttpService {
     )
   }
 
-  def in[U](duration: Duration)(body: => U) {
+  def in[U](duration: FiniteDuration)(body: => U) {
     actorSystem.scheduler.scheduleOnce(duration, new Runnable { def run() { body } })
   }
 

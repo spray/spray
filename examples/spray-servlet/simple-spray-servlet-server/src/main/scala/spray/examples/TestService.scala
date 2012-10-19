@@ -1,8 +1,9 @@
 package spray.examples
 
-import akka.util.duration._
+import java.util.concurrent.TimeUnit._
+import scala.concurrent.duration.Duration
 import akka.actor._
-import spray.servlet.ServletError
+import spray.util._
 import spray.http._
 import MediaTypes._
 import HttpMethods._
@@ -11,7 +12,6 @@ import HttpMethods._
 class TestService extends Actor with ActorLogging {
 
   def receive = {
-
     case HttpRequest(GET, "/", _, _, _) =>
       sender ! index
 
@@ -40,9 +40,6 @@ class TestService extends Actor with ActorLogging {
 
     case Timeout(request: HttpRequest) =>
       sender ! HttpResponse(500, "The " + request.method + " request to '" + request.uri + "' has timed out...")
-
-    case ServletError(error) =>
-      context.children.foreach(_ ! CancelStream(sender, error))
   }
 
   ////////////// helpers //////////////
@@ -65,29 +62,31 @@ class TestService extends Actor with ActorLogging {
     )
   )
 
-  case class CancelStream(peer: ActorRef, error: Throwable)
+  // simple case class whose instances we use as send confirmation message for streaming chunks
+  case class Ok(remaining: Int)
 
-  class Streamer(peer: ActorRef, var count: Int) extends Actor with ActorLogging {
+  class Streamer(peer: ActorRef, count: Int) extends Actor with ActorLogging {
     log.debug("Starting streaming response ...")
-    peer ! ChunkedResponseStart(HttpResponse(entity = " " * 2048))
-    val chunkGenerator = context.system.scheduler.schedule(100.millis, 100.millis, self, 'Tick)
 
-    protected def receive = {
-      case 'Tick if count > 0 =>
-        log.info("Sending response chunk ...")
-        peer ! MessageChunk(DateTime.now.toIsoDateTimeString + ", ")
-        count -= 1
-      case 'Tick =>
+    // we use the successful sending of a chunk as trigger for scheduling the next chunk
+    peer ! ChunkedResponseStart(HttpResponse(entity = " " * 2048)).withSentAck(Ok(count))
+
+    def receive = {
+      case Ok(0) =>
         log.info("Finalizing response stream ...")
-        chunkGenerator.cancel()
         peer ! MessageChunk("\nStopped...")
         peer ! ChunkedMessageEnd()
         context.stop(self)
-      case CancelStream(ref, error) => if (ref == peer) {
-        log.info("Canceling response stream due to {} ...", error)
-        chunkGenerator.cancel()
+
+      case Ok(remaining) =>
+        log.info("Sending response chunk ...")
+        context.system.scheduler.scheduleOnce(Duration(100, MILLISECONDS)) {
+          peer ! MessageChunk(DateTime.now.toIsoDateTimeString + ", ").withSentAck(Ok(remaining - 1))
+        }
+
+      case x: IOClosed =>
+        log.info("Canceling response stream due to {} ...", x.reason)
         context.stop(self)
-      }
     }
   }
 
