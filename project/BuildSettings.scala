@@ -5,7 +5,7 @@ import Keys._
 object BuildSettings {
 
   lazy val basicSettings = seq(
-    version               := "1.0-M3",
+    version               := "1.0-M4",
     homepage              := Some(new URL("http://spray.io")),
     organization          := "io.spray",
     organizationHomepage  := Some(new URL("http://spray.io")),
