@@ -16,8 +16,9 @@
 
 package spray.util.pimps
 
-import util.matching.Regex
 import java.util.regex.Pattern
+import scala.util.matching.Regex
+
 
 class PimpedRegex(regex: Regex) {
 

@@ -16,16 +16,17 @@
 
 package spray.util
 
-import org.specs2.mutable.Specification
-import akka.actor.{Props, ActorSystem}
+import scala.concurrent.duration.Duration
+import akka.actor.{Actor, Props, ActorSystem}
 import akka.testkit.{ImplicitSender, TestKit}
-import akka.util.Duration
+import org.specs2.mutable.Specification
+
 
 class ReplySpec extends TestKit(ActorSystem()) with Specification with ImplicitSender {
 
   args(sequential = true)
 
-  val echoRef = system.actorOf(Props(behavior = ctx => { case x => ctx.sender ! x }))
+  val echoRef = system.actorOf(Props(new Actor { def receive = { case x => sender ! x } }))
 
   "The Reply" should {
     "be able to inject itself into a reply message" in {

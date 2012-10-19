@@ -18,7 +18,7 @@ package spray.util
 package pimps
 
 import java.nio.charset.Charset
-import annotation.tailrec
+import scala.annotation.tailrec
 
 
 class PimpedByteArray(underlying: Array[Byte]) {

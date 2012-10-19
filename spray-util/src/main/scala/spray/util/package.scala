@@ -19,11 +19,13 @@ package spray
 import java.nio.ByteBuffer
 import java.io.{InputStream, File}
 import java.nio.charset.Charset
+import scala.concurrent.duration.Duration
 import scala.collection.LinearSeq
 import scala.util.matching.Regex
-import annotation.tailrec
-import akka.util.NonFatal
-import akka.dispatch.Future
+import scala.reflect.{classTag, ClassTag}
+import scala.annotation.tailrec
+import scala.util.control.NonFatal
+import scala.concurrent.Future
 import akka.actor._
 import util.pimps._
 
@@ -63,17 +65,19 @@ package object util {
     }
     system.eventStream.subscribe(eventStreamLogger, channel)
   }
-  def installEventStreamLoggerFor[T](implicit classManifest: ClassManifest[T], system: ActorSystem) {
-    installEventStreamLoggerFor(classManifest.erasure)
+  def installEventStreamLoggerFor[T](implicit ct: ClassTag[T], system: ActorSystem) {
+    installEventStreamLoggerFor(classTag[T].runtimeClass)
   }
 
   // implicits
+  implicit def executionContextFromActorRefFactory(implicit factory: ActorRefFactory) = factory.dispatcher
+
   implicit def pimpActorSystem(system: ActorSystem)     :PimpedActorSystem     = new PimpedActorSystem(system)
-  implicit def pimpActorRefFactory(f: ActorRefFactory)  :PimpedActorRefFactory = new PimpedActorRefFactory(f)
   implicit def pimpAny[T](any: T)                       :PimpedAny[T]          = new PimpedAny(any)
   implicit def pimpByteArray(array: Array[Byte])        :PimpedByteArray       = new PimpedByteArray(array)
   implicit def pimpByteBuffer(buf: ByteBuffer)          :PimpedByteBuffer      = new PimpedByteBuffer(buf)
   implicit def pimpClass[T](clazz: Class[T])            :PimpedClass[T]        = new PimpedClass[T](clazz)
+  implicit def pimpDuration(duration: Duration)         :PimpedDuration        = new PimpedDuration(duration)
   implicit def pimpFile(file: File)                     :PimpedFile            = new PimpedFile(file)
   implicit def pimpFuture[T](fut: Future[T])            :PimpedFuture[T]       = new PimpedFuture[T](fut)
   implicit def pimpInputStream(inputStream: InputStream):PimpedInputStream     = new PimpedInputStream(inputStream)

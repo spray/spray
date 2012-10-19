@@ -16,18 +16,14 @@
 
 package spray.util.pimps
 
-import akka.actor.{ActorSystem, ActorContext, ActorRefFactory}
-import akka.dispatch.MessageDispatcher
+import scala.concurrent.duration.Duration
 
 
-class PimpedActorRefFactory(underlying: ActorRefFactory) {
+class PimpedDuration(underlying: Duration) {
 
-  def messageDispatcher: MessageDispatcher = {
-    underlying match {
-      case x: ActorContext => x.dispatcher
-      case x: ActorSystem => x.dispatcher
-      case x => throw new IllegalArgumentException("Unsupported ActorRefFactory '" + x + "'")
-    }
+  def formatHMS = {
+    import underlying._
+    "%02d:%02d:%06.3f".format(toHours, toMinutes % 60, toMillis / 1000d % 60)
   }
 
 }

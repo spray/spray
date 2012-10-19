@@ -16,21 +16,24 @@
 
 package spray.util.pimps
 
-import akka.util.{Duration, Timeout}
+import scala.concurrent.duration.{FiniteDuration, Duration}
+import scala.concurrent.{Promise, Await, Future}
 import akka.actor.ActorSystem
-import akka.dispatch._
+import akka.util.Timeout
+import java.util.concurrent.TimeUnit._
 
 
 class PimpedFuture[+A](underlying: Future[A]) {
 
-  def await(implicit timeout: Timeout = Duration.Inf): A =
+  def await(implicit timeout: Timeout = Duration(1, MINUTES)): A =
     Await.result(underlying, timeout.duration)
 
-  def ready(implicit timeout: Timeout = Duration.Inf): Future[A] =
+  def ready(implicit timeout: Timeout = Duration(1, MINUTES)): Future[A] =
     Await.ready(underlying, timeout.duration)
 
-  def delay(duration: Duration)(implicit system: ActorSystem): Future[A] = {
-    val promise = Promise[A]()(system.dispatcher)
+  def delay(duration: FiniteDuration)(implicit system: ActorSystem): Future[A] = {
+    implicit val executor = system.dispatcher
+    val promise = Promise[A]()
     underlying.onComplete { value =>
       system.scheduler.scheduleOnce(duration, new Runnable {
         def run() {

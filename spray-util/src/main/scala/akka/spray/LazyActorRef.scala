@@ -16,10 +16,11 @@
 
 package akka.spray
 
-import annotation.tailrec
-import akka.dispatch.{Terminate, SystemMessage}
-import akka.actor._
+import scala.annotation.tailrec
 import akka.util.Unsafe
+import akka.dispatch._
+import akka.actor._
+
 
 /**
  * An ActorRef which
@@ -29,118 +30,77 @@ import akka.util.Unsafe
  * CAUTION: In order to prevent memory leaks you need to make sure that the
  * ref is explicitly stopped via `stop` in _all_ cases, even if `tell`/bang is never called!
  */
-abstract class LazyActorRef(val provider: ActorRefProvider) extends akka.actor.MinimalActorRef {
+abstract class LazyActorRef(prov: ActorRefProvider) extends UnregisteredActorRefBase(prov) {
   def this(related: ActorRef) = this(RefUtils.provider(related))
-  def this(system: ActorSystem) = this {
-    system match {
-      case x: ExtendedActorSystem => x.provider
-      case _ => throw new IllegalArgumentException("Unsupported ActorSystem implementation")
-    }
-  }
-  def this(context: ActorContext) = this(context.system)
+  def this(actorRefFactory: ActorRefFactory) = this(RefUtils.provider(actorRefFactory))
   import LazyActorRef._
 
-  @volatile private[this] var _pathStateDoNotCallMeDirectly: AnyRef = _
+  @volatile
+  private[this] var _watchedByDoNotCallMeDirectly: Set[ActorRef] = ActorCell.emptyActorRefSet
 
   @inline
-  private def pathState: AnyRef = Unsafe.instance.getObjectVolatile(this, pathStateOffset)
+  private[this] def watchedBy: Set[ActorRef] = Unsafe.instance.getObjectVolatile(this, watchedByOffset).asInstanceOf[Set[ActorRef]]
 
   @inline
-  private def updateState(oldState: AnyRef, newState: AnyRef): Boolean =
-    Unsafe.instance.compareAndSwapObject(this, pathStateOffset, oldState, newState)
+  private[this] def updateWatchedBy(oldWatchedBy: Set[ActorRef], newWatchedBy: Set[ActorRef]): Boolean =
+    Unsafe.instance.compareAndSwapObject(this, watchedByOffset, oldWatchedBy, newWatchedBy)
 
-  @inline
-  private def setState(newState: AnyRef) {
-    Unsafe.instance.putObjectVolatile(this, pathStateOffset, newState)
-  }
-
-  override def getParent = provider.tempContainer
-
-  /**
-   * Contract of this method:
-   * Must always return the same ActorPath, which must have
-   * been registered if we haven't been stopped yet.
-   */
   @tailrec
-  final def path: ActorPath = pathState match {
-    case null ⇒
-      if (updateState(null, Registering)) {
-        var p: ActorPath = null
-        try {
-          p = provider.tempPath()
-          register(p)
-          p
-        } finally { setState(p) }
-      } else path
-    case p: ActorPath       ⇒ p
-    case StoppedWithPath(p) ⇒ p
-    case Stopped ⇒
-      // even if we are already stopped we still need to produce a proper path
-      updateState(Stopped, StoppedWithPath(provider.tempPath()))
-      path
-    case Registering ⇒ path // spin until registration is completed
+  private[this] final def addWatcher(watcher: ActorRef): Boolean = watchedBy match {
+    case null  ⇒ false
+    case other ⇒ updateWatchedBy(other, other + watcher) || addWatcher(watcher)
   }
 
-  override def !(message: Any)(implicit sender: ActorRef = null) {
-    pathState match {
-      case Stopped | _: StoppedWithPath ⇒ provider.deadLetters ! message
-      case _ ⇒ handle(message)
+  @tailrec
+  private[this] final def remWatcher(watcher: ActorRef) {
+    watchedBy match {
+      case null  ⇒
+      case other ⇒ if (!updateWatchedBy(other, other - watcher)) remWatcher(watcher)
     }
   }
+
+  @tailrec
+  private[this] final def clearWatchers(): Set[ActorRef] = watchedBy match {
+    case null  ⇒ ActorCell.emptyActorRefSet
+    case other ⇒ if (!updateWatchedBy(other, null)) clearWatchers() else other
+  }
+
+  override def getParent: InternalActorRef = provider.tempContainer
 
   override def sendSystemMessage(message: SystemMessage) {
     message match {
       case _: Terminate ⇒ stop()
-      case _            ⇒
-    }
-  }
-
-  override def isTerminated = pathState match {
-    case Stopped | _: StoppedWithPath ⇒ true
-    case _                            ⇒ false
-  }
-
-  @tailrec
-  final override def stop() {
-    pathState match {
-      case null ⇒
-        // if path was never queried nobody can possibly be watching us, so we don't have to publish termination either
-        if (updateState(null, Stopped)) onStop()
-        else stop()
-      case p: ActorPath ⇒
-        if (updateState(p, StoppedWithPath(p))) {
-          try {
-            onStop()
-            provider.deathWatch.publish(Terminated(this))
-          } finally {
-            unregister(p)
-          }
-        } else stop()
-      case Stopped | _: StoppedWithPath ⇒
-      case Registering                  ⇒ stop() // spin until registration is completed before stopping
+      case Watch(watchee, watcher) ⇒
+        if (watchee == this && watcher != this) {
+          if (!addWatcher(watcher)) watcher ! Terminated(watchee)(existenceConfirmed = true, addressTerminated = false)
+        } else System.err.println("BUG: illegal Watch(%s,%s) for %s".format(watchee, watcher, this))
+      case Unwatch(watchee, watcher) ⇒
+        if (watchee == this && watcher != this) remWatcher(watcher)
+        else System.err.println("BUG: illegal Unwatch(%s,%s) for %s".format(watchee, watcher, this))
+      case _ ⇒
     }
   }
 
   // callbacks
 
-  protected def handle(message: Any)(implicit sender: ActorRef)
+  protected override def onStop() {
+    val watchers = clearWatchers()
+    if (!watchers.isEmpty) {
+      val termination = Terminated(this)(existenceConfirmed = true, addressTerminated = false)
+      watchers foreach { _.tell(termination, this) }
+    }
+  }
 
-  protected def onStop() {}
-
-  protected def register(path: ActorPath) {
+  protected override def register(path: ActorPath) {
     provider.registerTempActor(this, path)
   }
 
-  protected def unregister(path: ActorPath) {
+  protected override def unregister(path: ActorPath) {
     provider.unregisterTempActor(path)
   }
 }
 
 object LazyActorRef {
-  private val pathStateOffset = Unsafe.instance.objectFieldOffset(
-    classOf[LazyActorRef].getDeclaredField("_pathStateDoNotCallMeDirectly"))
-
-  private case object Registering
-  private case object Stopped
-  private case class StoppedWithPath(path: ActorPath)
+  private val watchedByOffset = Unsafe.instance.objectFieldOffset(
+    classOf[LazyActorRef].getDeclaredField("_watchedByDoNotCallMeDirectly"))
 }

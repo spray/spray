@@ -16,11 +16,11 @@
 
 package spray.util.pimps
 
-import akka.dispatch.Future
-import akka.actor._
+import java.util.concurrent.TimeUnit._
+import scala.concurrent.duration.Duration
+import scala.concurrent.Future
 import akka.pattern.ask
-import akka.util.Duration
-import java.util.concurrent.TimeUnit
+import akka.actor._
 
 
 class PimpedActorSystem(underlying: ActorSystem) {
@@ -41,7 +41,7 @@ class PimpedActorSystem(underlying: ActorSystem) {
           }
         }
       }
-    } // TODO: replace with Duration.Inf once Akka #1883 is fixed
-  }.ask(subject)(Duration(Long.MaxValue, TimeUnit.NANOSECONDS)).mapTo[Terminated]
+    }
+  }.ask(subject)(Duration(Long.MaxValue, NANOSECONDS)).mapTo[Terminated]
 
 }
