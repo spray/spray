@@ -46,7 +46,7 @@ object HttpCharsets extends ObjectRegistry[String, HttpCharset] {
     charset
   }
   
-  val `*`: HttpCharsetRange = new HttpCharsetRange {
+  object `*` extends HttpCharsetRange {
     def value = "*"
     def matches(charset: HttpCharset) = true
   }

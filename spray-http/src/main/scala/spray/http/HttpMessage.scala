@@ -18,11 +18,13 @@ package spray.http
 
 import java.nio.charset.Charset
 import java.net.{URISyntaxException, URI}
-import annotation.tailrec
+import scala.annotation.tailrec
+import scala.reflect.{classTag, ClassTag}
 import spray.http.parser.{QueryParser, HttpParser}
 import HttpHeaders._
 import HttpCharsets._
 import StatusCodes._
+
 
 sealed trait HttpMessagePartWrapper {
   def messagePart: HttpMessagePart
@@ -102,8 +104,8 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
     case Nil => HttpEncodings.identity
   }
 
-  def header[T <: HttpHeader :ClassManifest]: Option[T] = {
-    val erasure = classManifest[T].erasure
+  def header[T <: HttpHeader :ClassTag]: Option[T] = {
+    val erasure = classTag[T].runtimeClass
     @tailrec def next(headers: List[HttpHeader]): Option[T] =
       if (headers.isEmpty) None
       else if (erasure.isInstance(headers.head)) Some(headers.head.asInstanceOf[T]) else next(headers.tail)

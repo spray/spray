@@ -16,10 +16,11 @@
 
 package spray.http
 
-import org.specs2.mutable._
 import java.util.TimeZone
-import util.Random
+import scala.util.Random
 import org.specs2.matcher.Matcher
+import org.specs2.mutable._
+
 
 class DateTimeSpec extends Specification {
 
