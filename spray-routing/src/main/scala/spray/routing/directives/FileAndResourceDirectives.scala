@@ -129,20 +129,20 @@ trait FileAndResourceDirectives {
   }
 
   /**
-   * Same as `getFromListedDirectories` with only one directory.
+   * Same as `getFromBrowseableDirectories` with only one directory.
    */
-  def getFromListedDirectory(directory: String)
-                            (implicit renderer: Marshaller[DirectoryListing], settings: RoutingSettings,
-                             resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route =
-    getFromListedDirectories(directory)
+  def getFromBrowseableDirectory(directory: String)
+                                (implicit renderer: Marshaller[DirectoryListing], settings: RoutingSettings,
+                                 resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route =
+    getFromBrowseableDirectories(directory)
 
   /**
    * Serves the content of the given directories as a file system browser, i.e. files are sent and directories
    * served as browsable listings.
    */
-  def getFromListedDirectories(directories: String*)
-                              (implicit renderer: Marshaller[DirectoryListing], settings: RoutingSettings,
-                               resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route = {
+  def getFromBrowseableDirectories(directories: String*)
+                                  (implicit renderer: Marshaller[DirectoryListing], settings: RoutingSettings,
+                                   resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route = {
     import RouteConcatenation._
     directories.map(getFromDirectory(_)).reduceLeft(_ ~ _) ~ listDirectoryContents(directories: _*)
   }
