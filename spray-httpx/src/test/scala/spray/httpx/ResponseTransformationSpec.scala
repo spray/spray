@@ -17,8 +17,8 @@
 package spray.httpx
 
 import org.specs2.mutable.Specification
+import scala.concurrent.{Promise, Future}
 import akka.actor.ActorSystem
-import akka.dispatch.{Future, Promise}
 import encoding.Gzip
 import spray.http._
 import spray.util._
@@ -80,26 +80,25 @@ class ResponseTransformationSpec extends Specification with RequestBuilding with
 
   val report: SendReceive = { request =>
     import request._
-    Promise.successful(HttpResponse(200, method + "|" + uri + "|" + entity.asString))
+    Promise.successful(HttpResponse(200, method + "|" + uri + "|" + entity.asString)).future
   }
 
-  val reportDecoding: SendReceive = request => Promise.successful {
+  val reportDecoding: SendReceive = request => {
     val decoded = Gzip.decode(request)
     import decoded._
-    HttpResponse(200, method + "|" + uri + "|" + entity.asString)
+    Promise.successful(HttpResponse(200, method + "|" + uri + "|" + entity.asString)).future
   }
 
-  val echo: SendReceive = request => Promise.successful {
+  val echo: SendReceive = request => Promise.successful(
     HttpResponse(200, request.entity, request.headers.filter(_.isInstanceOf[`Content-Encoding`]))
-  }
+  ).future
 
-  val authenticatedEcho: SendReceive = request => Promise.successful {
+  val authenticatedEcho: SendReceive = request => Promise.successful(
     HttpResponse(
       status = request.headers
         .collect { case Authorization(BasicHttpCredentials("bob", "1234")) => StatusCodes.OK }
         .headOption.getOrElse(StatusCodes.Forbidden)
     )
-  }
-
+  ).future
 
 }

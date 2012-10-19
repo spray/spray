@@ -18,7 +18,7 @@ package spray.httpx.unmarshalling
 
 import java.nio.ByteBuffer
 import java.io.{InputStreamReader, ByteArrayInputStream}
-import xml.{XML, NodeSeq}
+import scala.xml.{XML, NodeSeq}
 import spray.util._
 import spray.http._
 import MediaTypes._

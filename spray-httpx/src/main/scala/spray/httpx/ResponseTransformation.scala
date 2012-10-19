@@ -16,7 +16,7 @@
 
 package spray.httpx
 
-import akka.dispatch.Future
+import scala.concurrent.{ExecutionContext, Future}
 import spray.httpx.unmarshalling._
 import spray.httpx.encoding.Decoder
 import spray.http._
@@ -58,12 +58,14 @@ object TransformerAux {
   implicit def aux1[A, B, C] = new TransformerAux[A, B, B, C, C] {
     def apply(f: A => B, g: B => C) = f andThen g
   }
-  implicit def aux2[A, B, C] = new TransformerAux[A, Future[B], B, C, Future[C]] {
-    def apply(f: A => Future[B], g: B => C) = f(_).map(g)
-  }
-  implicit def aux3[A, B, C] = new TransformerAux[A, Future[B], B, Future[C], Future[C]] {
-    def apply(f: A => Future[B], g: B => Future[C]) = f(_).flatMap(g)
-  }
+  implicit def aux2[A, B, C](implicit ec: ExecutionContext) =
+    new TransformerAux[A, Future[B], B, C, Future[C]] {
+      def apply(f: A => Future[B], g: B => C) = f(_).map(g)
+    }
+  implicit def aux3[A, B, C](implicit ec: ExecutionContext) =
+    new TransformerAux[A, Future[B], B, Future[C], Future[C]] {
+      def apply(f: A => Future[B], g: B => Future[C]) = f(_).flatMap(g)
+    }
 } 
 
 class PipelineException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)

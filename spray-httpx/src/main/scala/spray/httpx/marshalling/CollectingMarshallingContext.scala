@@ -17,8 +17,9 @@
 package spray.httpx.marshalling
 
 import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.{TimeUnit, CountDownLatch}
-import annotation.tailrec
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit._
+import scala.annotation.tailrec
 import akka.spray.UnregisteredActorRef
 import akka.actor.{ActorRefFactory, ActorRef}
 import spray.http._
@@ -89,6 +90,6 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
   }
 
   def awaitResults(implicit timeout: akka.util.Timeout) {
-    latch.await(timeout.duration.toMillis, TimeUnit.MILLISECONDS)
+    latch.await(timeout.duration.toMillis, MILLISECONDS)
   }
 }
