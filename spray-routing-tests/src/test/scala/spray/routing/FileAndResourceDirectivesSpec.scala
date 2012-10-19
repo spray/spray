@@ -114,18 +114,20 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
 
   "listDirectoryContents" should {
     val base = getClass.getClassLoader.getResource("").getFile
+    new File(base, "subDirectory/emptySub").mkdir()
+    def eraseDateTime(s: String) = s.replaceAll("""\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d""", "xxxx-xx-xx xx:xx:xx")
     "properly render a simple directory" in {
       Get() ~> listDirectoryContents(base + "someDir") ~> check {
-        entityAs[String] ===
+        eraseDateTime(entityAs[String]) ===
           """<html>
             |<head><title>Index of /</title></head>
             |<body>
             |<h1>Index of /</h1>
             |<hr>
             |<pre>
-            |<a href="/sub/">sub/     </a>        2012-10-17 13:30:09
-            |<a href="/fileA.txt">fileA.txt</a>        2012-10-17 14:58:19             3 B
-            |<a href="/fileB.xml">fileB.xml</a>        2012-10-16 15:11:33             0 B
+            |<a href="/sub/">sub/     </a>        xxxx-xx-xx xx:xx:xx
+            |<a href="/fileA.txt">fileA.txt</a>        xxxx-xx-xx xx:xx:xx             3 B
+            |<a href="/fileB.xml">fileB.xml</a>        xxxx-xx-xx xx:xx:xx             0 B
             |</pre>
             |<hr>
             |</body>
@@ -135,7 +137,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     }
     "properly render a sub directory" in {
       Get("/sub/") ~> listDirectoryContents(base + "someDir") ~> check {
-        entityAs[String] ===
+        eraseDateTime(entityAs[String]) ===
           """<html>
             |<head><title>Index of /sub/</title></head>
             |<body>
@@ -143,7 +145,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<hr>
             |<pre>
             |<a href="/sub/">../</a>
-            |<a href="/sub/file.html">file.html</a>        2012-10-16 15:12:08             0 B
+            |<a href="/sub/file.html">file.html</a>        xxxx-xx-xx xx:xx:xx             0 B
             |</pre>
             |<hr>
             |</body>
@@ -153,18 +155,18 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     }
     "properly render the union of several directories" in {
       Get() ~> listDirectoryContents(base + "someDir", base + "subDirectory") ~> check {
-        entityAs[String] ===
+        eraseDateTime(entityAs[String]) ===
           """<html>
             |<head><title>Index of /</title></head>
             |<body>
             |<h1>Index of /</h1>
             |<hr>
             |<pre>
-            |<a href="/emptySub/">emptySub/</a>        2012-10-17 15:11:15
-            |<a href="/sub/">sub/     </a>        2012-10-17 13:30:09
-            |<a href="/empty.pdf">empty.pdf</a>        2012-10-15 13:40:34             0 B
-            |<a href="/fileA.txt">fileA.txt</a>        2012-10-17 14:58:19             3 B
-            |<a href="/fileB.xml">fileB.xml</a>        2012-10-16 15:11:33             0 B
+            |<a href="/emptySub/">emptySub/</a>        xxxx-xx-xx xx:xx:xx
+            |<a href="/sub/">sub/     </a>        xxxx-xx-xx xx:xx:xx
+            |<a href="/empty.pdf">empty.pdf</a>        xxxx-xx-xx xx:xx:xx             0 B
+            |<a href="/fileA.txt">fileA.txt</a>        xxxx-xx-xx xx:xx:xx             3 B
+            |<a href="/fileB.xml">fileB.xml</a>        xxxx-xx-xx xx:xx:xx             0 B
             |</pre>
             |<hr>
             |</body>
@@ -174,7 +176,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     }
     "properly render an empty sub directory" in {
       Get("/emptySub/") ~> listDirectoryContents(base + "subDirectory") ~> check {
-        entityAs[String] ===
+        eraseDateTime(entityAs[String]) ===
           """<html>
             |<head><title>Index of /emptySub/</title></head>
             |<body>
@@ -191,7 +193,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     }
     "properly render an empty top-level directory" in {
       Get() ~> listDirectoryContents(base + "subDirectory/emptySub") ~> check {
-        entityAs[String] ===
+        eraseDateTime(entityAs[String]) ===
           """<html>
             |<head><title>Index of /</title></head>
             |<body>
