@@ -1,10 +1,10 @@
-package cc.spray.json
+package spray.json
 package lenses
 
 import DefaultJsonProtocol._
 
 import org.specs2.mutable.Specification
-import cc.spray.json.DeserializationException
+import spray.json.DeserializationException
 
 class JsonLensesSpec extends Specification with SpecHelpers {
 

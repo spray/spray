@@ -44,7 +44,7 @@ val json = """
 
 All authors in this document are addressed by
 ```scala
-import cc.spray.json.lenses.JsonLenses._
+import spray.json.lenses.JsonLenses._
 
 val allAuthors = 'store / 'book / * / 'author
 ```
@@ -71,7 +71,7 @@ val newJson2 = json.update(allAuthors ! modify[String]("Ms or Mr " + _))
 
 ### The concept
 
-The concept of lenses is a powerful concept not only applicable to json objects. A lens is 
+The concept of lenses is a powerful concept not only applicable to json objects. A lens is
 an updatable, composable view into a data structure. There are simple lenses which provide
 just the functionality to "go one level deeper" in the data structure (for json: accessing fields of a
 json object or elements of a json array) and there are lenses which compose other lenses
@@ -95,7 +95,7 @@ trait Lens {
 ```
 
 It has a method `retr` which when called with a json value will return the value this lens points to.
-The other method `updated` takes a parent json value and returns an updated copy of it with function `f` 
+The other method `updated` takes a parent json value and returns an updated copy of it with function `f`
 applied to the child value this lens points to.
 
 In contrast to a more general lens input and output types of the json lens are fixed: both have to be an
@@ -165,7 +165,7 @@ from the following list.
    predicate. Use `Lens.is[T](pred: T => Boolean)` to lift a predicate from the value level to the `JsValue` level.
    E.g. use `'fullName.is[String](_ startsWith "Joe")` to create a predicate which checks if a value is a json object
    and its field `fullName` is a string starting with `"Joe"`.
- * `allMatching(next: Lens)`: A combination of `combine` and `elements`. Selects elements matching the `next` lens 
+ * `allMatching(next: Lens)`: A combination of `combine` and `elements`. Selects elements matching the `next` lens
    and then applies the `next` lens.
 
 ##### Combination
@@ -190,7 +190,7 @@ To extract a value from json data using a lens you can use either `lens.get[T](j
 which returns an `Either` value you can match on (or use `Either`'s functions) to check for errors.
 
 To update a value use either `(lens ! operation).apply(json)` or `json.update(lens ! operation)`. You can
-also use the fancy `val newJson = json(lens) = "abc"` to set a value if you like that syntax. These operations 
+also use the fancy `val newJson = json(lens) = "abc"` to set a value if you like that syntax. These operations
 throw an exception in the error case. Use `lens.updated(operation)(json)` to get an `Either` result to process errors.
 
 #### [json-path] support

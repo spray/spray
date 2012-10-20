@@ -1,4 +1,4 @@
-package cc.spray.json.lenses
+package spray.json.lenses
 
 /**
  * A trait to define common operations for different container types.

@@ -1,4 +1,4 @@
-package cc.spray.json
+package spray.json
 
 package object lenses {
   type JsPred = JsValue => Boolean

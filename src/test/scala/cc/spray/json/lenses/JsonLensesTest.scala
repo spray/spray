@@ -1,9 +1,9 @@
-package cc.spray.json
+package spray.json
 package lenses
 
 import Predef.{augmentString => _, wrapString => _, _}
 import DefaultJsonProtocol._
-import cc.spray.json.{JsValue, JsonParser}
+import spray.json.{JsValue, JsonParser}
 
 object JsonLensesTest extends App {
 

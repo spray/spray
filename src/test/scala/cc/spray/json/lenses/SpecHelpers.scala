@@ -1,8 +1,8 @@
-package cc.spray.json
+package spray.json
 package lenses
 
 import org.specs2.mutable.Specification
-import cc.spray.json.JsonParser
+import spray.json.JsonParser
 
 trait SpecHelpers {
   self: Specification =>

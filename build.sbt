@@ -1,13 +1,15 @@
-resolvers += "spray" at "http://repo.spray.cc"
+scalaVersion := "2.9.2"
+
+resolvers += "spray" at "http://repo.spray.io"
 
 libraryDependencies ++= Seq(
-    "cc.spray" %% "spray-json" % "1.1.1",
-    "org.parboiled" % "parboiled-scala" % "1.0.2" % "compile",
-    "org.specs2" %% "specs2" % "1.7.1" % "test"
+    "io.spray" %% "spray-json" % "1.2.2",
+    "org.parboiled" %% "parboiled-scala" % "1.1.3" % "compile",
+    "org.specs2" %% "specs2" % "1.12.1" % "test"
 )
 
 initialCommands in console += """
-    import cc.spray.json._
+    import spray.json._
     import DefaultJsonProtocol._
     import lenses._
     import JsonLenses._

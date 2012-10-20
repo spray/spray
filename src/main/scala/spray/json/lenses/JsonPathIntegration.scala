@@ -1,4 +1,4 @@
-package cc.spray.json
+package spray.json
 package lenses
 
 trait JsonPathIntegration { self: ScalarLenses with SeqLenses =>

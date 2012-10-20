@@ -3,11 +3,11 @@
  * test some 'real-world' examples. json-path is licensed under
  * the Apache 2 license. http://www.apache.org/licenses/LICENSE-2.0
  */
-package cc.spray.json
+package spray.json
 package lenses
 
 import org.specs2.mutable.Specification
-import cc.spray.json.{JsValue, JsonParser, DefaultJsonProtocol}
+import spray.json.{JsValue, JsonParser, DefaultJsonProtocol}
 
 class JsonPathExamplesSpec extends Specification with SpecHelpers {
 

@@ -1,4 +1,4 @@
-package cc.spray.json
+package spray.json
 package lenses
 
 import org.specs2.mutable.Specification
