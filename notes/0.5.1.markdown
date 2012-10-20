@@ -1,0 +1,5 @@
+This release is an update to support spray-json 1.2.2. As with all modules of the spray toolkit
+the package names have been moved from "cc.spray.json.lenses" to just "spray.json.lenses".
+
+This is planned to be the last release of the standalone json-lenses module. Starting with the next major
+release of spray-json, json-lenses will be included in spray-json.
