@@ -58,14 +58,26 @@ trait ExecutionDirectives {
 
   /**
    * A directive that evaluates its inner Route for every request anew. Note that this directive has no additional
-   * effect, when used inside (or some level underneath) a directive extracting one or more values, since everything
+   * effect when used inside (or some level underneath) a directive extracting one or more values, since everything
    * inside a directive extracting values is _always_ reevaluated for every request.
    *
    * Also Note that this directive differs from most other directives in that it cannot be combined with other routes
    * via the usual `&` and `|` operators.
    */
-  object dynamic {
-    def apply(inner: => Route): Route = ctx => inner(ctx)
+  def dynamic = dynamicIf(enabled = true)
+
+  /**
+   * A directive that evaluates its inner Route for every request anew, if the given enabled flag is true.
+   * Note that this directive has no additional effect when used inside (or some level underneath) a directive
+   * extracting one or more values, since everything inside a directive extracting values is _always_ reevaluated for
+   * every request.
+   *
+   * Also Note that this directive differs from most other directives in that it cannot be combined with other routes
+   * via the usual `&` and `|` operators.
+   */
+  case class dynamicIf(enabled: Boolean) {
+    def apply(inner: => Route): Route =
+      if (enabled) Route(ctx => inner(ctx)) else inner
   }
 
   /**

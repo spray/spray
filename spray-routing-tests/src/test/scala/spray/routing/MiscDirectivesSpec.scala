@@ -17,7 +17,6 @@
 package spray.routing
 
 import spray.http._
-import StatusCodes._
 import HttpHeaders._
 import MediaTypes._
 import HttpMethods._
@@ -25,33 +24,6 @@ import HttpMethods._
 
 class MiscDirectivesSpec extends RoutingSpec {
 
-  "respondWithStatus" should {
-    "set the given status on successful responses" in {
-      Get() ~> {
-        respondWithStatus(Created) { completeOk }
-      } ~> check { response === HttpResponse(Created) }
-    }
-    "leave rejections unaffected" in {
-      Get() ~> {
-        respondWithStatus(Created) { reject() }
-      } ~> check { rejections === Nil }
-    }
-  }
-  
-  "respondWithHeader" should {
-    val customHeader = RawHeader("custom", "custom")
-    "add the given headers to successful responses" in {
-      Get() ~> {
-        respondWithHeader(customHeader) { completeOk }
-      } ~> check { response === HttpResponse(headers = customHeader :: Nil) }
-    }
-    "leave rejections unaffected" in {
-      Get() ~> {
-        respondWithHeader(customHeader) { reject() }
-      } ~> check { rejections === Nil }
-    }
-  }
-  
   "routes created by the concatenation operator '~'" should {
     "yield the first sub route if it succeeded" in {
       Get() ~> {
@@ -101,25 +73,6 @@ class MiscDirectivesSpec extends RoutingSpec {
     }
   }
 
-  "the redirect directive" should {
-    "produce proper 'Found' redirections" in {
-      Get() ~> {
-        redirect("/foo", Found)
-      } ~> check {
-        response === HttpResponse(
-          status = 302,
-          entity = HttpBody(`text/html`, "The requested resource temporarily resides under <a href=\"/foo\">this URI</a>."),
-          headers = Location("/foo") :: Nil
-        )
-      }
-    }
-    "produce proper 'NotModified' redirections" in {
-      Get() ~> {
-        redirect("/foo", NotModified)
-      } ~> check { response === HttpResponse(304, headers = Location("/foo") :: Nil) }
-    }
-  }
-
   "the clientIP directive" should {
     "extract from a X-Forwarded-For header" in {
       Get() ~> addHeaders(`X-Forwarded-For`("2.3.4.5"), RawHeader("x-real-ip", "1.2.3.4")) ~> {
@@ -135,21 +88,6 @@ class MiscDirectivesSpec extends RoutingSpec {
       Get() ~> addHeader(RawHeader("x-real-ip", "1.2.3.4")) ~> {
         clientIP { echoComplete }
       } ~> check { entityAs[String] === "1.2.3.4" }
-    }
-  }
-
-  "the 'dynamic' directive" should {
-    "cause its inner route to be revaluated for every request anew" in {
-      var a = ""
-      val staticRoute = get { a += "x"; complete(a) }
-      val dynamicRoute = get { dynamic { a += "x"; complete(a) } }
-      def expect(route: Route, s: String) = Get() ~> route ~> check { entityAs[String] === s }
-      expect(staticRoute, "x")
-      expect(staticRoute, "x")
-      expect(staticRoute, "x")
-      expect(dynamicRoute, "xx")
-      expect(dynamicRoute, "xxx")
-      expect(dynamicRoute, "xxxx")
     }
   }
 
