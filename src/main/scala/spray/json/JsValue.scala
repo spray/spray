@@ -24,7 +24,7 @@ import collection.immutable.ListMap
 /**
   * The general type of a JSON AST node.
  */
-sealed abstract class JsValue extends Dynamic {
+sealed abstract class JsValue {
   override def toString = formatCompact
   def toString(printer: (JsValue => String)) = printer(this)
   def formatCompact = CompactFormatter(this)
@@ -35,12 +35,12 @@ sealed abstract class JsValue extends Dynamic {
   def toEither[T :JsonReader]: Either[Throwable, T] = toValidated[T].toEither
   def as[T :JsonReader]: T = toValidated[T].get
 
-  def applyDynamic(key: String)(index: Int = -1): Validated[JsValue] =
-    if (index == -1) apply(key) else apply(key).flatMap(_.apply(index))
   def apply(index: Int): Validated[JsValue] =
     deserializationError("Expected JsArray but got " + getClass.getSimpleName)
   def apply(key: String): Validated[JsValue] =
     deserializationError("Expected JsObject but got " + getClass.getSimpleName)
+
+  def dyn: DynamicJsValue = DynamicJsValue(this)
 
   @deprecated("Superceded by 'as'", "1.1.0")
   def fromJson[T :JsonReader]: T = as

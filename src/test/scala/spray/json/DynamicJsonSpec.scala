@@ -7,11 +7,11 @@ import org.specs2.Specification
  * https://github.com/mighdoll/liquidJson
  */
 class DynamicJsonSpec extends Specification {
-  val arrayJson   = """ { "array": [3,1,4,5] } """.asJson
-  val numberJson  = """ { "number": 9, "float": 1.5 } """.asJson
-  val stringJson  = """ { "name": "lee", "surname": "mighty" } """.asJson
-  val parentJson  = """ { "parent": { "childNumber":2 } } """.asJson
-  val charJson    = """ { "initial": "j" } """.asJson
+  val arrayJson   = """ { "array": [3,1,4,5] } """.asJson.dyn
+  val numberJson  = """ { "number": 9, "float": 1.5 } """.asJson.dyn
+  val stringJson  = """ { "name": "lee", "surname": "mighty" } """.asJson.dyn
+  val parentJson  = """ { "parent": { "childNumber":2 } } """.asJson.dyn
+  val charJson    = """ { "initial": "j" } """.asJson.dyn
 
   def is =
   "spray-json should" ^
