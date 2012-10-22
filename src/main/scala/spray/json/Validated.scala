@@ -26,6 +26,8 @@ sealed abstract class Validated[+T] extends Dynamic {
   def foreach(f: T => Unit)
   def filter(p: T => Boolean): Validated[T]
 
+  def exists(p: T => Boolean): Boolean
+
   // special features that are only available to instances of Validated[JsValue]
   def as[A](implicit jfa: JsonFormat[A], ev: T <:< JsValue): A = get.as[A]
   def applyDynamic(key: String)(index: Int = -1)(implicit ev: T <:< JsValue): Validated[JsValue] = flatMap(_.applyDynamic(key)(index))
@@ -48,6 +50,8 @@ case class Failure[+T](throwable: Throwable) extends Validated[T] {
   def flatMap[R](f: T => Validated[R]) = this.asInstanceOf[Validated[R]]
   def foreach(f: T => Unit) {}
   def filter(p: T => Boolean) = this
+
+  def exists(p: T => Boolean): Boolean = false
 }
 
 case class Success[+T](value: T) extends Validated[T] {
@@ -78,6 +82,8 @@ case class Success[+T](value: T) extends Validated[T] {
       case ex => Failure(ex)
     }
   }
+
+  def exists(p: T => Boolean): Boolean = p(value)
 }
 
 class UnsatisfiedFilterException(msg: String = "") extends RuntimeException(msg)
