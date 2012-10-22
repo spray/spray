@@ -57,6 +57,9 @@ object JsValue {
   * A JSON object.
  */
 case class JsObject(fields: Map[String, JsValue]) extends JsValue {
+  def +(field: (String, JsValue)): JsObject =
+    JsObject(fields + field)
+
   override def apply(key: String) = fields.get(key) match {
     case Some(value) => Success(value)
     case None => deserializationError("Member '" + key + "' not found")

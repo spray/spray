@@ -82,3 +82,18 @@ trait RootJsonWriter[T] extends JsonWriter[T]
  * or a JSON object.
  */
 trait RootJsonFormat[T] extends JsonFormat[T] with RootJsonReader[T] with RootJsonWriter[T]
+
+trait JsonObjectFormat[T] extends JsonFormat[T] with RootJsonFormat[T] { outer =>
+  def writeObject(obj: T): JsObject
+  def readObject(json: JsObject): Validated[T]
+
+  def write(obj: T): JsValue = writeObject(obj)
+  def read(json: JsValue): Validated[T] = ProductFormats.asJsObject(json).flatMap(readObject)
+
+  def extraField[U: JsonWriter](fieldName: String, f: T => U): JsonObjectFormat[T] =
+    new JsonObjectFormat[T] {
+      def writeObject(obj: T): JsObject =
+        outer.writeObject(obj) + (fieldName -> f(obj).toJson)
+      def readObject(json: JsObject): Validated[T] = outer.readObject(json)
+    }
+}

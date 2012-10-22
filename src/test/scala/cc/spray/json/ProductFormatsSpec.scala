@@ -113,6 +113,13 @@ class ProductFormatsSpec extends Specification {
         JsObject().as[Test] must be_==(Test(12))
         Test(12).toJson must be_==(JsObject("a" -> JsNumber(12)))
       }
+      "by producing additional json ouput" in {
+        implicit val format =
+          jsonFormat(Test)("a".as[String].using(_.toInt, _.toString))
+            .extraField("b", _.a + 5)
+
+        Test(5).toJson must be_==(JsObject("a" -> JsString("5"), "b" -> JsNumber(10)))
+      }
     }
   }
 }
