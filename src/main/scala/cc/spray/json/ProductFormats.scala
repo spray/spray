@@ -23,12 +23,6 @@ package cc.spray.json
 trait ProductFormats extends ObjectFieldFormatBuilderImplicits with /* generated */ ProductFormatsInstances {
   protected[this] type JF[T] = JsonFormat[T] // simple alias for reduced verbosity
 
-  // helpers
-  def asJsObject(value: JsValue): Validated[JsObject] = value match {
-    case obj: JsObject => Success(obj)
-    case _ => deserializationError("Expected JsObject but got " + value.getClass.getSimpleName)
-  }
-
   protected def extractFieldNames(classManifest: ClassManifest[_]): Array[String] = {
     val clazz = classManifest.erasure
     try {

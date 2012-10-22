@@ -88,7 +88,11 @@ trait JsonObjectFormat[T] extends JsonFormat[T] with RootJsonFormat[T] { outer =
   def readObject(json: JsObject): Validated[T]
 
   def write(obj: T): JsValue = writeObject(obj)
-  def read(json: JsValue): Validated[T] = ProductFormats.asJsObject(json).flatMap(readObject)
+  def read(json: JsValue): Validated[T] =
+    json match {
+      case obj: JsObject => readObject(obj)
+      case _ => deserializationError("Expected JsObject but got " + json.getClass.getSimpleName)
+    }
 
   def extraField[U: JsonWriter](fieldName: String, f: T => U): JsonObjectFormat[T] =
     new JsonObjectFormat[T] {
