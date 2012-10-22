@@ -19,9 +19,37 @@ package spray.routing
 import spray.http._
 import MediaTypes._
 import HttpHeaders._
+import StatusCodes._
 
 
 class RespondWithDirectivesSpec extends RoutingSpec {
+
+  "respondWithStatus" should {
+    "set the given status on successful responses" in {
+      Get() ~> {
+        respondWithStatus(Created) { completeOk }
+      } ~> check { response === HttpResponse(Created) }
+    }
+    "leave rejections unaffected" in {
+      Get() ~> {
+        respondWithStatus(Created) { reject() }
+      } ~> check { rejections === Nil }
+    }
+  }
+
+  "respondWithHeader" should {
+    val customHeader = RawHeader("custom", "custom")
+    "add the given headers to successful responses" in {
+      Get() ~> {
+        respondWithHeader(customHeader) { completeOk }
+      } ~> check { response === HttpResponse(headers = customHeader :: Nil) }
+    }
+    "leave rejections unaffected" in {
+      Get() ~> {
+        respondWithHeader(customHeader) { reject() }
+      } ~> check { rejections === Nil }
+    }
+  }
 
   "The 'respondWithMediaType' directive" should {
 

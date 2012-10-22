@@ -16,6 +16,11 @@
 
 package spray.routing
 
+import spray.http._
+import HttpHeaders._
+import StatusCodes._
+import MediaTypes._
+
 
 class RouteDirectivesSpec extends RoutingSpec {
 
@@ -25,6 +30,25 @@ class RouteDirectivesSpec extends RoutingSpec {
     }
     "allow for factoring out a StandardRoute" in {
       Get() ~> (get & complete)("yeah") ~> check { entityAs[String] === "yeah" }
+    }
+  }
+
+  "the redirect directive" should {
+    "produce proper 'Found' redirections" in {
+      Get() ~> {
+        redirect("/foo", Found)
+      } ~> check {
+        response === HttpResponse(
+          status = 302,
+          entity = HttpBody(`text/html`, "The requested resource temporarily resides under <a href=\"/foo\">this URI</a>."),
+          headers = Location("/foo") :: Nil
+        )
+      }
+    }
+    "produce proper 'NotModified' redirections" in {
+      Get() ~> {
+        redirect("/foo", NotModified)
+      } ~> check { response === HttpResponse(304, headers = Location("/foo") :: Nil) }
     }
   }
   
