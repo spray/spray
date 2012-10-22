@@ -17,28 +17,27 @@
 package cc.spray.json
 
 trait ProductFormatsInstances { self: ProductFormats =>
-  *{
-  // Case classes with [{1}] parameters
+[#  // Case classes with 1 parameters
 
-  def jsonFormat[{1}][{{P1 :JF}}, T <: Product :ClassManifest](construct: ({{P1}}) => T): RootJsonFormat[T] = {
-    val Array({{p1}}) = extractFieldNames(classManifest[T])
-    jsonFormat(construct)({{p1}})
+  def jsonFormat1[[#P1 :JF#], T <: Product :ClassManifest](construct: ([#P1#]) => T): RootJsonFormat[T] = {
+    val Array([#p1#]) = extractFieldNames(classManifest[T])
+    jsonFormat(construct)([#p1#])
   }
-  def jsonFormat[{{P1}}, T <: Product](construct: ({{P1}}) => T)({{p1f: ObjectFieldFormat[P1]}}): RootJsonFormat[T] = new RootJsonFormat[T]{
+  def jsonFormat[[#P1#], T <: Product](construct: ([#P1#]) => T)([#p1f: ObjectFieldFormat[P1]#]): RootJsonFormat[T] = new RootJsonFormat[T]{
     def write(p: T) = {
       val fields = new collection.mutable.ListBuffer[(String, JsValue)]
-      fields.sizeHint([{1}] * 2)
-{{      fields ++= p1f.fromValue(p.productElement(0).asInstanceOf[P1])}
-}
+      fields.sizeHint(1 * 2)
+      [#fields ++= p1f.fromValue(p.productElement(0).asInstanceOf[P1])#
+      ]
       JsObject(fields: _*)
     }
     def read(value: JsValue) = Validated {
       val fields = asJsObject(value).get.fields
-{{      val p1V = p1f.fromFields(fields).get}
-}
-      construct({{p1V}})
+      [#val p1V = p1f.fromFields(fields).get#
+      ]
+      construct([#p1V#])
     }
-  }
+  }#
 
-  }*
+]
 }
