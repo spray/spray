@@ -16,11 +16,10 @@
 
 package spray.can.server
 
-import akka.testkit.TestActorRef
 import com.typesafe.config.ConfigFactory
+import akka.testkit.TestActorRef
+import akka.actor.{ActorSystem, Actor}
 import org.specs2.mutable.Specification
-import java.util.concurrent.atomic.AtomicInteger
-import akka.actor.{ActorSystem, Actor, Props}
 import spray.can.{HttpCommand, HttpPipelineStageSpec}
 import spray.io._
 import spray.http._
@@ -40,81 +39,22 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       }
     }
 
-    "dispatch a fragmented HttpRequest" in {
-      singleHandlerPipeline.test {
+    "dispatch an aggregated chunked requests" in {
+      testPipeline(SingletonHandler(singletonHandler), requestChunkAggregation = true).test {
         val Commands(Tell(`singletonHandler`, message, _)) = process(
-          Received {
-            prep {
-            """|GET / HTTP/1.1
-               |Host: te"""
-            }
-          },
-          Received {
-            prep {
-            """|st.com
-               |
-               |"""
-            }
-          }
-        )
-        message === HttpRequest(headers = List(RawHeader("host", "test.com")))
-      }
-    }
-
-    "produce an error upon stray responses" in {
-      singleHandlerPipeline.test {
-        process(HttpCommand(HttpResponse())) must throwAn[IllegalStateException]
-      }
-    }
-
-    "render a matched HttpResponse" in {
-      singleHandlerPipeline.test {
-        val Commands(Tell(`singletonHandler`, message, peer)) = processAndClear(Received(simpleRequest))
-        message === HttpRequest(headers = List(RawHeader("host", "test.com")))
-        peer.tell(HttpCommand(HttpResponse()), sender1)
-        result.commands(0) === SendString(simpleResponse)
-      }
-    }
-
-    "dispatch requests to the right service actor when using per-connection handlers" in {
-      val counter = new AtomicInteger
-      def createHandler(ctx: PipelineContext) =
-        ctx.connectionActorContext.actorOf(Props(new DummyActor), "actor" + counter.incrementAndGet())
-      testPipeline(PerConnectionHandler(createHandler)).test {
-        val Commands(
-          Tell(ActorPathName("actor1"), _, _),
-          Tell(ActorPathName("actor1"), _, _)
-        ) = process(
-          Received(simpleRequest),
-          Received(simpleRequest)
-        )
-        success
-      }
-    }
-
-    "dispatch requests to the right service actor when using per-message handlers" in {
-      val counter = new AtomicInteger
-      def createHandler(ctx: PipelineContext) =
-        ctx.connectionActorContext.actorOf(Props(new DummyActor), "actr" + counter.incrementAndGet())
-      testPipeline(PerMessageHandler(createHandler)).test {
-        val Commands(
-          Tell(ActorPathName("actr1"), _, _),
-          Tell(ActorPathName("actr2"), _, _),
-          Tell(ActorPathName("actr3"), _, _),
-          Tell(ActorPathName("actr3"), _, _),
-          Tell(ActorPathName("actr3"), _, _),
-          Tell(ActorPathName("actr3"), _, _),
-          Tell(ActorPathName("actr4"), _, _)
-        ) = process(
-          Received(simpleRequest),
-          Received(simpleRequest),
           Received(chunkedRequestStart),
           Received(messageChunk),
           Received(messageChunk),
-          Received(chunkedMessageEnd),
-          Received(chunkedRequestStart)
+          Received(chunkedMessageEnd)
         )
-        success
+        message === HttpRequest(
+          headers = List(
+            RawHeader("transfer-encoding", "chunked"),
+            RawHeader("content-type", "text/plain"),
+            RawHeader("host", "test.com")
+          ),
+          entity = HttpBody("body123body123")
+        )
       }
     }
 
@@ -130,7 +70,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       "to the senders of a ChunkedResponseStart, MessageChunk and ChunkedMessageEnd" in {
         singleHandlerPipeline.test {
           val Commands(Tell(_, _, peer)) = processAndClear(Received(simpleRequest))
-          peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse()).withSentAck(1)), sender1)
+          peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse(entity = HttpBody(""))).withSentAck(1)), sender1)
           process(AckEventWithReceiver(1, sender1))
           peer.tell(HttpCommand(MessageChunk("part 1").withSentAck(2)), sender2)
           process(AckEventWithReceiver(2, sender2))
@@ -363,37 +303,6 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
      |"""
   }
 
-  val chunkedRequestStart = prep {
-  """|GET / HTTP/1.1
-     |Host: test.com
-     |Transfer-Encoding: chunked
-     |
-     |"""
-  }
-
-  val chunkedResponseStart = prep {
-  """|HTTP/1.1 200 OK
-     |Transfer-Encoding: chunked
-     |Server: spray/1.0
-     |Date: XXXX
-     |
-     |"""
-  }
-
-  val messageChunk = prep {
-  """|7
-     |body123
-     |"""
-  }
-
-  val chunkedMessageEnd = prep {
-  """|0
-     |Age: 30
-     |Cache-Control: public
-     |
-     |"""
-  }
-
   val connectionActor = TestActorRef(new DummyActor, "connectionActor")
   val singletonHandler = TestActorRef(new DummyActor, "singletonHandler")
 
@@ -409,7 +318,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
 
   val singleHandlerPipeline = testPipeline(SingletonHandler(singletonHandler))
 
-  def testPipeline(messageHandler: MessageHandler) = HttpServer.pipeline(
+  def testPipeline(messageHandler: MessageHandler, requestChunkAggregation: Boolean = false) = HttpServer.pipeline(
     new ServerSettings(
       ConfigFactory.parseString("""
         spray.can.server.server-header = spray/1.0
@@ -418,8 +327,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         spray.can.server.timeout-timeout = 30 ms
         spray.can.server.reaping-cycle = 0  # don't enable the TickGenerator
         spray.can.server.pipelining-limit = 10
-        spray.can.server.request-chunk-aggregation-limit = 0 # disable chunk aggregation
-      """)
+      """ + (if (!requestChunkAggregation) "spray.can.server.request-chunk-aggregation-limit = 0" else ""))
     ),
     messageHandler,
     req => HttpResponse(500, "Timeout for " + req.uri),

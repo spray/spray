@@ -24,6 +24,7 @@ import spray.can.{HttpCommand, HttpPipelineStageSpec}
 import spray.io.IOPeer
 import spray.util._
 import spray.http._
+import HttpHeaders.RawHeader
 
 
 class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
@@ -38,14 +39,28 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
       }
     }
 
-    "dispatch an incoming HttpResponse back to the sender" in {
+    "dispatch a simple incoming HttpResponse back to the sender" in {
       pipeline.test {
-        val Commands(commands@ _*) = process(
+        val Commands(send, tell) = process(
           HttpCommand(request()) from sender1,
           Received(rawResponse)
         )
-        commands(0) === SendString(emptyRawRequest())
-        commands(1) === Tell(sender1, response, connectionActor)
+        send === SendString(emptyRawRequest())
+        tell === Tell(sender1, response, connectionActor)
+      }
+    }
+
+    "dispatch an aggregated chunked response back to the sender" in {
+      pipeline.test {
+        val Commands(send, Tell(`sender1`, HttpResponse(_, entity, _, _), `connectionActor`)) = process(
+          HttpCommand(request()) from sender1,
+          Received(chunkedResponseStart),
+          Received(messageChunk),
+          Received(messageChunk),
+          Received(chunkedMessageEnd)
+        )
+        send === SendString(emptyRawRequest())
+        entity === HttpBody("body123body123")
       }
     }
 
