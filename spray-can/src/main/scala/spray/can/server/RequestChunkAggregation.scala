@@ -60,9 +60,7 @@ object RequestChunkAggregation {
               bb = null
             }
 
-            case ev =>
-              println("MARK4: " + ev)
-              eventPL(ev)
+            case ev => eventPL(ev)
           }
 
           def closeWithError() {
