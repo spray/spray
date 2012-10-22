@@ -63,6 +63,11 @@ object JsonFormat
   with    CollectionFormats
   with    StandardFormats {
   def get[T](implicit format: JsonFormat[T]): JsonFormat[T] = format
+
+  def wrapAs[T, U: JsonFormat](f1: T => U, f2: U => T): JsonFormat[T] = new JsonFormat[T] {
+    def write(obj: T): JsValue = f1(obj).toJson
+    def read(json: JsValue): Validated[T] = json.toValidated[U].map(f2)
+  }
 }
 
 /**
