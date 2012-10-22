@@ -28,11 +28,6 @@ sealed abstract class Validated[+T] {
 
   def exists(p: T => Boolean): Boolean
 
-  // special features that are only available to instances of Validated[JsValue]
-  def as[A](implicit jfa: JsonFormat[A], ev: T <:< JsValue): A = get.as[A]
-  def apply(index: Int)(implicit ev: T <:< JsValue): Validated[JsValue] = flatMap(_.apply(index))
-  def apply(key: String)(implicit ev: T <:< JsValue): Validated[JsValue] = flatMap(_.apply(key))
-
   def dyn(implicit ev: T <:< JsValue): DynamicValidatedJsValue =
     DynamicValidatedJsValue(this.map(ev))
 }

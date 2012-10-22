@@ -23,7 +23,7 @@ trait ExtraImplicits {
   }
 
   implicit def richValue(v: JsValue): RichJsValue = new RichJsValue { def value = v }
-  implicit def richString(str: String): RichJsValue = new RichJsValue { def value = JsonParser(str) }
+  implicit def richStringV(str: String): RichJsValue = new RichJsValue { def value = JsonParser(str) }
 }
 
 object ExtraImplicits extends ExtraImplicits

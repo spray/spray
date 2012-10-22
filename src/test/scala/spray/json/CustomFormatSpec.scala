@@ -19,7 +19,6 @@ package spray.json
 import org.specs2.mutable.Specification
 
 class CustomFormatSpec extends Specification {
-
   case class MyType(name: String, value: Int)
 
   implicit val MyTypeProtocol = new RootJsonFormat[MyType] {
@@ -27,7 +26,7 @@ class CustomFormatSpec extends Specification {
       for {
         name: String <- json("name")
         value: Int <- json("value")
-      } yield MyType(name, value.toInt)
+      } yield MyType(name, value)
     }
     def write(obj: MyType) = JsObject("name" -> JsString(obj.name), "value" -> JsNumber(obj.value))
   }

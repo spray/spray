@@ -16,7 +16,7 @@
 
 package spray
 
-package object json {
+package object json extends PackageImplicits {
 
   type JsField = (String, JsValue)
 

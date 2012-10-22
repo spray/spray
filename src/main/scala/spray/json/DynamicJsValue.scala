@@ -1,10 +1,10 @@
 package spray.json
 
-case class DynamicJsValue(value: JsValue) extends Dynamic {
+case class DynamicJsValue(_value: JsValue) extends Dynamic {
   def applyDynamic(key: String)(index: Int = -1): DynamicValidatedJsValue =
-    (if (index == -1) value(key) else value(key).flatMap(_(index))).dyn
+    (if (index == -1) _value(key) else _value(key).flatMap(_(index))).dyn
 }
 
 object DynamicJsValue {
-  implicit def autoUnpack(dyn: DynamicJsValue): JsValue = dyn.value
+  implicit def autoUnpack(dyn: DynamicJsValue): JsValue = dyn._value
 }

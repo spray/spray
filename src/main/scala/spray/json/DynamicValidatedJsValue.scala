@@ -7,7 +7,7 @@ case class DynamicValidatedJsValue(value: Validated[JsValue]) extends Dynamic  {
 
 object DynamicValidatedJsValue {
   implicit def liftDynamic(value: Validated[DynamicJsValue]): DynamicValidatedJsValue =
-    DynamicValidatedJsValue(value.map(_.value))
+    DynamicValidatedJsValue(value.map(_._value))
 
   implicit def autoUnpack(value: DynamicValidatedJsValue): Validated[JsValue] = value.value
 }

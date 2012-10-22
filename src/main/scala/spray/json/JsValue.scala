@@ -25,25 +25,9 @@ import collection.immutable.ListMap
   * The general type of a JSON AST node.
  */
 sealed abstract class JsValue {
-  override def toString = formatCompact
-  def toString(printer: (JsValue => String)) = printer(this)
-  def formatCompact = CompactFormatter(this)
-  def formatPretty = PrettyFormatter(this)
-
-  def toValidated[T :JsonReader]: Validated[T] = jsonReader[T].read(this)
-  def toOption[T :JsonReader]: Option[T] = toValidated[T].toOption
-  def toEither[T :JsonReader]: Either[Throwable, T] = toValidated[T].toEither
-  def as[T :JsonReader]: T = toValidated[T].get
-
-  def apply(index: Int): Validated[JsValue] =
-    deserializationError("Expected JsArray but got " + getClass.getSimpleName)
-  def apply(key: String): Validated[JsValue] =
-    deserializationError("Expected JsObject but got " + getClass.getSimpleName)
+  override def toString = CompactFormatter(this)
 
   def dyn: DynamicJsValue = DynamicJsValue(this)
-
-  @deprecated("Superceded by 'as'", "1.1.0")
-  def fromJson[T :JsonReader]: T = as
 }
 
 object JsValue {
@@ -56,12 +40,8 @@ object JsValue {
 /**
   * A JSON object.
  */
-case class JsObject(fields: Map[String, JsValue]) extends JsValue {
-  override def apply(key: String) = fields.get(key) match {
-    case Some(value) => Success(value)
-    case None => deserializationError("Member '" + key + "' not found")
-  }
-}
+case class JsObject(fields: Map[String, JsValue]) extends JsValue
+
 object JsObject {
   // we use a ListMap in order to preserve the field order
   def apply(members: JsField*) = new JsObject(ListMap(members: _*))
@@ -71,9 +51,7 @@ object JsObject {
 /**
   * A JSON array.
  */
-case class JsArray(elements: Seq[JsValue]) extends JsValue {
-  override def apply(index: Int) = Validated(elements(index))
-}
+case class JsArray(elements: Seq[JsValue]) extends JsValue
 object JsArray {
   def apply(element: JsValue): JsArray = JsArray(Seq(element))
   def apply(first: JsValue, elements: JsValue*) = new JsArray(first +: elements)
