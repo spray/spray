@@ -42,11 +42,13 @@ object ResponseChunkAggregation {
             }
 
             case HttpEvent(MessageChunk(body, _)) => if (!closed) {
+              assert(bb != null)
               if (bb.size + body.length <= limit) bb.append(body)
               else closeWithError()
             }
 
             case HttpEvent(_: ChunkedMessageEnd) => if (!closed) {
+              assert(response != null && bb != null)
               eventPL(HttpEvent(response.copy(entity = response.entity.map((ct, _) => ct -> bb.toArray))))
               response = null
               bb = null

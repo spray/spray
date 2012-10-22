@@ -17,6 +17,7 @@
 package spray.can.server
 
 import spray.can.rendering.HttpResponsePartRenderingContext
+import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.can.HttpEvent
 import spray.util.ProtocolError
 import spray.io._
@@ -29,6 +30,7 @@ object RequestChunkAggregation {
     new PipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
+          var startEvent: HttpMessageStartEvent = _
           var request: HttpRequest = _
           var bb: BufferBuilder = _
           var closed = false
@@ -36,29 +38,36 @@ object RequestChunkAggregation {
           val commandPipeline = commandPL
 
           val eventPipeline: EPL = {
-            case HttpEvent(ChunkedRequestStart(req)) => if (!closed) {
+            case ev@ HttpMessageStartEvent(ChunkedRequestStart(req), _) => if (!closed) {
+              startEvent = ev
               request = req
               if (req.entity.buffer.length <= limit) bb = BufferBuilder(req.entity.buffer)
               else closeWithError()
             }
 
             case HttpEvent(MessageChunk(body, _)) => if (!closed) {
+              assert(bb != null)
               if (bb.size + body.length <= limit) bb.append(body)
               else closeWithError()
             }
 
             case HttpEvent(_: ChunkedMessageEnd) => if (!closed) {
-              eventPL(HttpEvent(request.copy(entity = request.entity.map((ct, _) => ct -> bb.toArray))))
+              assert(startEvent != null && request != null && bb != null)
+              val entity = request.entity.map((ct, _) => ct -> bb.toArray)
+              eventPL(startEvent.copy(messagePart = request.copy(entity = entity)))
+              startEvent = null
               request = null
               bb = null
             }
 
-            case ev => eventPL(ev)
+            case ev =>
+              println("MARK4: " + ev)
+              eventPL(ev)
           }
 
           def closeWithError() {
             val msg = "Aggregated request entity greater than configured limit of " + limit + " bytes"
-            commandPL(HttpResponsePartRenderingContext(HttpResponse(413, msg)))
+            commandPL(HttpResponsePartRenderingContext(HttpResponse(StatusCodes.RequestEntityTooLarge, msg)))
             commandPL(HttpServer.Close(ProtocolError(msg)))
             closed = true
           }

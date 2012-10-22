@@ -97,5 +97,38 @@ trait HttpPipelineStageSpec extends PipelineStageTest {
        |%s"""
   }.format(content.length, content)
 
+  val chunkedRequestStart = prep {
+    """GET / HTTP/1.1
+      |Host: test.com
+      |Content-Type: text/plain
+      |Transfer-Encoding: chunked
+      |
+      |"""
+  }
+
+  val chunkedResponseStart = prep {
+    """HTTP/1.1 200 OK
+      |Transfer-Encoding: chunked
+      |Server: spray/1.0
+      |Date: XXXX
+      |Content-Type: text/plain
+      |
+      |"""
+  }
+
+  val messageChunk = prep {
+    """7
+      |body123
+      |"""
+  }
+
+  val chunkedMessageEnd = prep {
+    """0
+      |Age: 30
+      |Cache-Control: public
+      |
+      |"""
+  }
+
   def prep(s: String) = s.stripMargin.replace(EOL, "\r\n")
 }
