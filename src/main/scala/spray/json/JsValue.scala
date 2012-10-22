@@ -71,11 +71,12 @@ object JsObject {
 /**
   * A JSON array.
  */
-case class JsArray(elements: collection.immutable.Seq[JsValue]) extends JsValue {
+case class JsArray(elements: Seq[JsValue]) extends JsValue {
   override def apply(index: Int) = Validated(elements(index))
 }
 object JsArray {
-  def apply(elements: JsValue*) = new JsArray(elements.toList)
+  def apply(element: JsValue): JsArray = JsArray(Seq(element))
+  def apply(first: JsValue, elements: JsValue*) = new JsArray(first +: elements)
 }
 
 /**
