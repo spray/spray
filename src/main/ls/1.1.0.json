@@ -11,7 +11,7 @@
    "name": "Apache 2",
    "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
   }],
- "resolvers": ["http://repo.spray.cc"],
+ "resolvers": ["http://repo.spray.io"],
  "dependencies": [{
    "organization":"org.parboiled",
    "name": "parboiled-scala",

@@ -1,0 +1,4 @@
+- Upgraded to Scala 2.9.2 and parboiled 1.1.1
+- Renamed group id from "cc.spray" to "io.spray"
+- Renamed package from "cc.spray.json" to "spray.json"
+- _spray-json_ artifacts now live on <http://repo.spray.io/>

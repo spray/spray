@@ -1,10 +1,10 @@
 name := "spray-json"
 
-version := "1.1.1"
+version := "1.2.2"
 
-organization := "cc.spray"
+organization := "io.spray"
 
-organizationHomepage := Some(new URL("http://spray.cc"))
+organizationHomepage := Some(new URL("http://spray.io"))
 
 description := "A Scala library for easy and idiomatic JSON (de)serialization"
 
@@ -16,11 +16,18 @@ licenses := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.
 
 scalaVersion := "2.9.2"
 
-scalacOptions := Seq("-deprecation", "-encoding", "utf8", "-Xexperimental")
+scalacOptions <<= scalaVersion map {
+  case x if x startsWith "2.9" =>
+    Seq("-unchecked", "-deprecation", "-encoding", "utf8", "-Xexperimental")
+  case x if x startsWith "2.10" =>
+    Seq("-feature", "-language:implicitConversions", "-unchecked", "-deprecation", "-encoding", "utf8")
+}
+
+resolvers += "sonatype releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
 libraryDependencies ++= Seq(
-  "org.parboiled" % "parboiled-scala" % "1.0.2" % "compile",
-  "org.specs2" %% "specs2" % "1.9" % "test"
+  "org.parboiled" %% "parboiled-scala" % "1.1.3" % "compile",
+  "org.specs2" %% "specs2" % "1.12.2" % "test"
 )
 
 scaladocOptions <<= (name, version).map { (n, v) => Seq("-doc-title", n + " " + v) }
@@ -30,14 +37,16 @@ scaladocOptions <<= (name, version).map { (n, v) => Seq("-doc-title", n + " " + 
 // publishing
 ///////////////
 
-credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
+crossScalaVersions := Seq("2.9.2", "2.10.0-RC1")
+
+scalaBinaryVersion <<= scalaVersion(sV => if (CrossVersion.isStable(sV)) CrossVersion.binaryScalaVersion(sV) else sV)
 
 publishMavenStyle := true
 
 publishTo <<= version { version =>
   Some {
     "spray repo" at {
-      // public uri is repo.spray.cc, we use an SSH tunnel to the nexus here
+      // public uri is repo.spray.io, we use an SSH tunnel to the nexus here
       "http://localhost:42424/content/repositories/" + {
         if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else"releases/"
       }
@@ -57,4 +66,4 @@ seq(lsSettings:_*)
 
 (LsKeys.docsUrl in LsKeys.lsync) := Some(new URL("http://spray.github.com/spray/api/spray-json/"))
 
-(externalResolvers in LsKeys.lsync) := Seq("spray repo" at "http://repo.spray.cc")
+(externalResolvers in LsKeys.lsync) := Seq("spray repo" at "http://repo.spray.io")
