@@ -20,9 +20,6 @@ trait ExtraImplicits {
 
     def extract[T: Reader](p: Lens[Seq]): Seq[T] =
       p.get[T](value)
-
-    def as[T: Reader]: Validated[T] =
-      implicitly[Reader[T]].read(value)
   }
 
   implicit def richValue(v: JsValue): RichJsValue = new RichJsValue { def value = v }

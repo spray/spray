@@ -28,11 +28,11 @@ package object json {
   def jsonReader[T](implicit reader: JsonReader[T]) = reader
   def jsonWriter[T](implicit writer: JsonWriter[T]) = writer
 
-  implicit def pimpAny[T](any: T) = new PimpedAny(any)
-  implicit def pimpString(string: String) = new PimpedString(string)
+  implicit def richAny[T](any: T) = new RichAny(any)
+  implicit def richString(string: String) = new RichString(string)
 
   // really?
-  implicit def pimpFuncWithFromJsonConversion[A :JsonFormat, B](f: A => B): JsValue => B =
+  implicit def enrichFuncWithFromJsonConversion[A :JsonFormat, B](f: A => B): JsValue => B =
     json => f(json.as[A])
 }
 
@@ -41,11 +41,11 @@ package json {
   class DeserializationException(msg: String, cause: Throwable = null) extends RuntimeException(msg, cause)
   class SerializationException(msg: String) extends RuntimeException(msg)
 
-  private[json] class PimpedAny[T](any: T) {
+  private[json] class RichAny[T](any: T) {
     def toJson(implicit writer: JsonWriter[T]): JsValue = writer.write(any)
   }
 
-  private[json] class PimpedString(string: String) {
+  private[json] class RichString(string: String) {
     def asJson: JsValue = JsonParser(string)
   }
 }
