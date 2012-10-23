@@ -17,6 +17,7 @@
 package spray.routing
 
 import java.io.File
+import com.typesafe.config.ConfigFactory
 import org.parboiled.common.FileUtils
 import scala.util.Properties
 import spray.http._
@@ -116,6 +117,8 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     val base = getClass.getClassLoader.getResource("").getFile
     new File(base, "subDirectory/emptySub").mkdir()
     def eraseDateTime(s: String) = s.replaceAll("""\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d""", "xxxx-xx-xx xx:xx:xx")
+    implicit val settings = new RoutingSettings(ConfigFactory.parseString("spray.routing.render-vanity-footer = no"))
+
     "properly render a simple directory" in {
       Get() ~> listDirectoryContents(base + "someDir") ~> check {
         eraseDateTime(entityAs[String]) ===
@@ -125,9 +128,9 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<h1>Index of /</h1>
             |<hr>
             |<pre>
-            |<a href="/sub/">sub/     </a>        xxxx-xx-xx xx:xx:xx
-            |<a href="/fileA.txt">fileA.txt</a>        xxxx-xx-xx xx:xx:xx             3 B
-            |<a href="/fileB.xml">fileB.xml</a>        xxxx-xx-xx xx:xx:xx             0 B
+            |<a href="/sub/">sub/</a>             xxxx-xx-xx xx:xx:xx
+            |<a href="/fileA.txt">fileA.txt</a>        xxxx-xx-xx xx:xx:xx            3  B
+            |<a href="/fileB.xml">fileB.xml</a>        xxxx-xx-xx xx:xx:xx            0  B
             |</pre>
             |<hr>
             |</body>
@@ -145,7 +148,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<hr>
             |<pre>
             |<a href="/sub/">../</a>
-            |<a href="/sub/file.html">file.html</a>        xxxx-xx-xx xx:xx:xx             0 B
+            |<a href="/sub/file.html">file.html</a>        xxxx-xx-xx xx:xx:xx            0  B
             |</pre>
             |<hr>
             |</body>
@@ -163,10 +166,10 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<hr>
             |<pre>
             |<a href="/emptySub/">emptySub/</a>        xxxx-xx-xx xx:xx:xx
-            |<a href="/sub/">sub/     </a>        xxxx-xx-xx xx:xx:xx
-            |<a href="/empty.pdf">empty.pdf</a>        xxxx-xx-xx xx:xx:xx             0 B
-            |<a href="/fileA.txt">fileA.txt</a>        xxxx-xx-xx xx:xx:xx             3 B
-            |<a href="/fileB.xml">fileB.xml</a>        xxxx-xx-xx xx:xx:xx             0 B
+            |<a href="/sub/">sub/</a>             xxxx-xx-xx xx:xx:xx
+            |<a href="/empty.pdf">empty.pdf</a>        xxxx-xx-xx xx:xx:xx            0  B
+            |<a href="/fileA.txt">fileA.txt</a>        xxxx-xx-xx xx:xx:xx            3  B
+            |<a href="/fileB.xml">fileB.xml</a>        xxxx-xx-xx xx:xx:xx            0  B
             |</pre>
             |<hr>
             |</body>
@@ -174,7 +177,8 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |""".stripMargin
       }
     }
-    "properly render an empty sub directory" in {
+    "properly render an empty sub directory with vanity footer" in {
+      val settings = 0 // shadow implicit
       Get("/emptySub/") ~> listDirectoryContents(base + "subDirectory") ~> check {
         eraseDateTime(entityAs[String]) ===
           """<html>
@@ -186,6 +190,9 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<a href="/emptySub/">../</a>
             |</pre>
             |<hr>
+            |<div style="width:100%;text-align:right;color:gray">
+            |<small>rendered by <a href="http://spray.io">spray</a> on xxxx-xx-xx xx:xx:xx</small>
+            |</div>
             |</body>
             |</html>
             |""".stripMargin

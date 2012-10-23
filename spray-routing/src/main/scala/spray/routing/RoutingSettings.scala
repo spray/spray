@@ -28,6 +28,7 @@ class RoutingSettings(config: Config) {
   val FileChunkingThresholdSize = c getBytes   "file-chunking-threshold-size"
   val FileChunkingChunkSize     = c getBytes   "file-chunking-chunk-size"
   val Users                     = c getConfig  "users"
+  val RenderVanityFooter        = c getBoolean "render-vanity-footer"
 
   require(FileChunkingThresholdSize >= 0, "file-chunking-threshold-size must be >= 0")
   require(FileChunkingChunkSize     > 0, "file-chunking-chunk-size must be > 0")

@@ -189,18 +189,21 @@ object DirectoryListing {
 
   private val html =
     """<html>
-      |<head><title>Index of %</title></head>
+      |<head><title>Index of $</title></head>
       |<body>
-      |<h1>Index of %</h1>
+      |<h1>Index of $</h1>
       |<hr>
       |<pre>
-      |%</pre>
-      |<hr>
+      |$</pre>
+      |<hr>$
+      |<div style="width:100%;text-align:right;color:gray">
+      |<small>rendered by <a href="http://spray.io">spray</a> on $</small>
+      |</div>$
       |</body>
       |</html>
-      |""".stripMargin.split('%')
+      |""".stripMargin.split('$')
 
-  implicit val DefaultMarshaller: Marshaller[DirectoryListing] =
+  implicit def DefaultMarshaller(implicit settings: RoutingSettings): Marshaller[DirectoryListing] =
     Marshaller.delegate[DirectoryListing, String](MediaTypes.`text/html`) { listing =>
       val DirectoryListing(path, files) = listing
       val filesAndNames = files.map(file => file -> file.getName).sortBy(_._2)
@@ -211,30 +214,37 @@ object DirectoryListing {
       sb.append(html(0)).append(path).append(html(1)).append(path).append(html(2))
       if (path != "/")
         sb.append("<a href=\"%s/\">../</a>\n" format path.substring(0, path.lastIndexOf('/', path.length-1)))
-      def lastModified(file: File) = DateTime(file.lastModified).toIsoDateTimeString.replace('T', ' ')
-      def start(name: String) = String.format("""<a href="%s">%-""" + maxNameLen + "s</a>", path + name, name)
+      def lastModified(file: File) = DateTime(file.lastModified).toIsoLikeDateTimeString
+      def start(name: String) {
+        sb.append("<a href=\"").append(path + name).append("\">").append(name).append("</a>")
+        tfor(0)(_ < maxNameLen - name.length, _ + 1)(_ => sb.append(' '))
+      }
       def renderDirectory(file: File, name: String) {
-        sb.append(start(name + '/'))
-          .append("        ").append(lastModified(file)).append('\n')
+        start(name + '/')
+        sb.append("        ").append(lastModified(file)).append('\n')
       }
       def renderFile(file: File, name: String) {
         val size = humanReadableByteCount(file.length, si = true)
-        sb.append(start(name))
-          .append("        ").append(lastModified(file))
-          .append("                ".substring(size.length)).append(size).append('\n')
+        start(name)
+        sb.append("        ").append(lastModified(file))
+        sb.append("                ".substring(size.length)).append(size).append('\n')
       }
       for ((file, name) <- directoryFilesAndNames) renderDirectory(file, name)
       for ((file, name) <- fileFilesAndNames) renderFile(file, name)
       if (path == "/" && files.isEmpty) sb.append("(no files)\n")
-      sb.append(html(3)).toString
+      sb.append(html(3))
+      if (settings.RenderVanityFooter) {
+        sb.append(html(4)).append(DateTime.now.toIsoLikeDateTimeString).append(html(5))
+      }
+      sb.append(html(6)).toString
     }
 
   def humanReadableByteCount(bytes: Long, si: Boolean): String = {
     val unit = if (si) 1000 else 1024
     if (bytes >= unit) {
       val exp = (math.log(bytes) / math.log(unit)).toInt
-      val pre = if (si) "kMGTPE".charAt(exp - 1) else "KMGTPE".charAt(exp - 1) + 'i'
+      val pre = if (si) "kMGTPE".charAt(exp - 1).toString else "KMGTPE".charAt(exp - 1).toString + 'i'
       "%.1f %sB" format (bytes / math.pow(unit, exp), pre)
-    } else bytes.toString + " B"
+    } else bytes.toString + "  B"
   }
 }
