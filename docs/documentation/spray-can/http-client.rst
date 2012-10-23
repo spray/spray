@@ -159,7 +159,7 @@ to ``HttpClient.SslEnabled``.
    effect.
 
 The constructor of the ``HttpClient`` actor takes an implicit argument of type ``ClientSSLEngineProvider``, which is
-essentially a function ``InetSocketAddress => SSLEngine``. Whenever a new connection has been accepted the client uses
+essentially a function ``PipelineContext => SSLEngine``. Whenever a new connection has been accepted the client uses
 the given function to create an ``javax.net.ssl.SSLEngine`` for the connection.
 
 If you'd like to apply some custom configuration to your ``SSLEngine`` instances an easy way would be to bring a custom
@@ -171,11 +171,10 @@ engine provider into scope, e.g. like this::
       engine
     }
 
-EngineProvider creation also relies on an implicitly available ``SSLContextProvider``, which is defined like this::
+EngineProvider creation also relies on an implicitly available ``SSLContextProvider``, which is defined like this:
 
-    trait SSLContextProvider {
-      def createSSLContext: SSLContext
-    }
+.. includecode:: /../spray-io/src/main/scala/spray/io/SslTlsSupport.scala
+   :snippet: source-quote-SSLContextProvider
 
 The default ``SSLContextProvider`` simply provides an implicitly available "constant" ``SSLContext``, by default the
 ``SSLContext.getDefault`` is used. This means that the easiest way to have the server use a custom ``SSLContext``
@@ -186,3 +185,4 @@ is to simply bring one into scope implicitly::
       context.init(...)
       context
     }
+

@@ -39,6 +39,9 @@ Modular
   Being structured into a set of integrated but loosely coupled components your application only needs to depend onto
   the parts that are actually used.
 
+Testable
+  All *spray* components are structured in a way that allows for easy and convenient testing.
+
 
 Modules
 -------
@@ -198,7 +201,7 @@ use for *spray.io*:
 - a custom SBT extension for compiling Sphinx_ sources to JSON
 - spray-json_ (for reading Sphinx_ output)
 - sbt-assembly_
-- Mentor_ (a simple **non-free** HTML5 template)
+- Mentor_ (a non-free, responsive HTML5 template based on Bootstrap_)
 
 
 .. _sbt-revolver: https://github.com/spray/sbt-revolver
@@ -215,3 +218,4 @@ use for *spray.io*:
 .. _A client-side frontend framework: http://blog.stevensanderson.com/2012/08/01/rich-javascript-applications-the-seven-frameworks-throne-of-js-2012/
 .. _Sphinx: http://sphinx.pocoo.org/
 .. _Mentor: http://demo.pixelentity.com/?mentor_html
+.. _Bootstrap: http://twitter.github.com/bootstrap/

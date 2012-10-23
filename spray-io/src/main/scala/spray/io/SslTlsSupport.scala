@@ -243,7 +243,7 @@ object ClientSSLEngineProvider extends SSLEngineProviderCompanion {
   }
 }
 
-trait SSLContextProvider extends (PipelineContext => SSLContext)
+trait SSLContextProvider extends (PipelineContext => SSLContext) // source-quote-SSLContextProvider
 object SSLContextProvider {
   implicit def forContext(implicit context: SSLContext = SSLContext.getDefault): SSLContextProvider =
     fromFunc(_ => context)

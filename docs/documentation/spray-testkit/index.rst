@@ -128,6 +128,24 @@ The following inspectors are defined:
   Returns the list of trailer headers the route produced with a ``ChunkedMessageEnd`` response part.
 
 
+Sealing Routes
+--------------
+
+The section above describes how to test a "regular" branch of your route structure, which reacts to incoming requests
+with HTTP response parts or rejections. Sometimes, however, you will want to verify that your service also translates
+:ref:`rejections` to HTTP responses in the way you expect.
+
+You do this by wrapping your route with the ``sealRoute`` method defined by the ``HttpService`` trait.
+The ``sealRoute`` wrapper applies the logic of the in-scope :ref:`ExceptionHandler <Exception Handling>` and
+:ref:`RejectionHandler <Rejections>` to all exceptions and rejections coming back from the route, and translates them
+to the respective ``HttpResponse``.
+
+The :ref:`simple-on-spray-can` examples defines a simple test using ``sealRoute`` like this:
+
+.. includecode:: /../examples/spray-routing/simple-on-spray-can/src/test/scala/spray/examples/DemoServiceSpec.scala
+   :snippet: source-quote
+
+
 Examples
 --------
 

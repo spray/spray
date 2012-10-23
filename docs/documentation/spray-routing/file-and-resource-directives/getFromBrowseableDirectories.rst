@@ -1,0 +1,6 @@
+.. _-getFromBrowseableDirectories-:
+
+getFromBrowseableDirectories
+============================
+
+(todo)

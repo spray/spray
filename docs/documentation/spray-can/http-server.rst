@@ -263,7 +263,7 @@ SSL Support
 
 If enabled via the ``ssl-encryption`` config setting the *spray-can* ``HttpServer`` requires all incoming connections to
 be SSL/TLS encrypted. The constructor of the ``HttpServer`` actor takes an implicit argument of type
-``ServerSSLEngineProvider``, which is essentially a function ``InetSocketAddress => SSLEngine``.
+``ServerSSLEngineProvider``, which is essentially a function ``PipelineContext => SSLEngine``.
 Whenever a new connection has been accepted the server uses the given function to create an ``javax.net.ssl.SSLEngine``
 for the connection.
 
@@ -276,11 +276,10 @@ engine provider into scope, e.g. like this::
       engine
     }
 
-EngineProvider creation also relies on an implicitly available ``SSLContextProvider``, which is defined like this::
+EngineProvider creation also relies on an implicitly available ``SSLContextProvider``, which is defined like this:
 
-    trait SSLContextProvider {
-      def createSSLContext: SSLContext
-    }
+.. includecode:: /../spray-io/src/main/scala/spray/io/SslTlsSupport.scala
+   :snippet: source-quote-SSLContextProvider
 
 The default ``SSLContextProvider`` simply provides an implicitly available "constant" ``SSLContext``, by default the
 ``SSLContext.getDefault`` is used. This means that the easiest way to have the server use a custom ``SSLContext``

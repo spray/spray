@@ -1,6 +1,0 @@
-.. _-logRouteResponse-:
-
-logRouteResponse
-================
-
-(todo)

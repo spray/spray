@@ -6,7 +6,6 @@ DebuggingDirectives
 .. toctree::
    :maxdepth: 1
 
-   logHttpResponse
    logRequest
    logRequestResponse
-   logRouteResponse
+   logResponse

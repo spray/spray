@@ -8,5 +8,6 @@ ExecutionDirectives
 
    detachTo
    dynamic
+   dynamicIf
    handleExceptions
    handleRejections

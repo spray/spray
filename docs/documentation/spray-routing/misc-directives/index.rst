@@ -16,4 +16,5 @@ MiscDirectives
    requestEntityEmpty
    requestEntityPresent
    rewriteUnmatchedPath
+   unmatchedPath
    validate

@@ -31,6 +31,7 @@ Directive                              Description
                                        replies of its inner Route
 :ref:`-detachTo-`                      Executes its inner Route in the context of the actor returned by a given function
 :ref:`-dynamic-`                       Rebuilds its inner Route for every request anew
+:ref:`-dynamicIf-`                     Conditionally rebuilds its inner Route for every request anew
 :ref:`-encodeResponse-`                Compresses responses coming back from its inner Route using a given Decoder
 :ref:`-entity-`                        Unmarshalls the requests entity according to a given definition, rejects in
                                        case of problems
@@ -47,6 +48,10 @@ Directive                              Description
                                        with a field matching the definition
 :ref:`-formFields-`                    Same as :ref:`-formField-`, except for several fields at once
 :ref:`-get-`                           Rejects all non-GET requests
+:ref:`-getFromBrowseableDirectories-`  Same as :ref:`-getFromBrowseableDirectory-`, but allows for serving the "union"
+                                       of several directories as one single "virtual" one
+:ref:`-getFromBrowseableDirectory-`    Completes GET requests with the content of a file underneath a given directory,
+                                       renders directory contents as browsable listings
 :ref:`-getFromDirectory-`              Completes GET requests with the content of a file underneath a given directory
 :ref:`-getFromFile-`                   Completes GET requests with the content of a given file
 :ref:`-getFromFileName-`               Completes GET requests with the content of the file with a given name
@@ -69,11 +74,12 @@ Directive                              Description
 :ref:`-hprovide-`                      Injects an ``HList`` of values into a directive, which provides them as
                                        extractions
 :ref:`-jsonpWithParameter-`            Wraps its inner Route with JSONP support
-:ref:`-logHttpResponse-`               Produces a log entry for every ``HttpResponse`` coming back from its inner Route
+:ref:`-listDirectoryContents-`         Completes GET requests with a unified listing of the contents of one or more
+                                       given directories
 :ref:`-logRequest-`                    Produces a log entry for every incoming request
-:ref:`-logRequestResponse-`            Produces a log entry for every request and corresponding response or rejection
-                                       coming back from its inner Route
-:ref:`-logRouteResponse-`              Produces a log entry for every response or rejection coming back from its inner
+:ref:`-logRequestResponse-`            Produces a log entry for every response or rejection coming back from its inner
+                                       route, allowing for coalescing with the corresponding request
+:ref:`-logResponse-`                   Produces a log entry for every response or rejection coming back from its inner
                                        route
 :ref:`-mapHttpResponse-`               Transforms the ``HttpResponse`` coming back from its inner Route
 :ref:`-mapHttpResponseEntity-`         Transforms the entity of the ``HttpResponse`` coming back from its inner Route
@@ -127,6 +133,7 @@ Directive                              Description
                                        response
 :ref:`-rewriteUnmatchedPath-`          Transforms the ``unmatchedPath`` of the ``RequestContext`` using a given function
 :ref:`-setCookie-`                     Adds a ``Set-Cookie`` header to all ``HttpResponse`` replies of its inner Route
+:ref:`-unmatchedPath-`                 Extracts the unmatched path from the RequestContext
 :ref:`-validate-`                      Passes or rejects the request depending on evaluation of a given conditional
                                        expression
 ====================================== =================================================================================
