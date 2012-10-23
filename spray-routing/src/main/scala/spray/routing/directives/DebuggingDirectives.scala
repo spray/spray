@@ -18,56 +18,75 @@ package spray.routing
 package directives
 
 import akka.event.Logging._
-import spray.util.{LoggingContext, identityFunc}
+import spray.util.LoggingContext
 import spray.http._
+import akka.event.LoggingAdapter
 
 
 trait DebuggingDirectives {
   import BasicDirectives._
 
-  def logRequest(mm: MarkerMagnet, level: LogLevel = DebugLevel): Directive0 =
-    mapRequest(logMessage("Request", mm, level))
+  def logRequest(magnet: LoggingMagnet[HttpRequest => Unit]): Directive0 =
+    mapRequest { request => magnet.f(request); request }
+  
+  def logResponse(magnet: LoggingMagnet[Any => Unit]): Directive0 =
+    mapRouteResponse { response => magnet.f(response); response }
 
-  def logHttpResponse(mm: MarkerMagnet, level: LogLevel = DebugLevel): Directive0 =
-    mapHttpResponse(logMessage("Response", mm, level))
-
-  def logRouteResponse(mm: MarkerMagnet, level: LogLevel = DebugLevel): Directive0 =
-    mapRouteResponse(logMessage("Response", mm, level))
-
-  def logRequestResponse(mm: MarkerMagnet, level: LogLevel = DebugLevel,
-                         showRequest: HttpRequest => Any = identityFunc,
-                         showResponse: HttpResponse => Any = identityFunc): Directive0 = {
-    import mm._
+  def logRequestResponse(magnet: LoggingMagnet[HttpRequest => Any => Unit]): Directive0 =
     mapRequestContext { ctx =>
-      val mark = if (marker.isEmpty) marker else " " + marker
-      val request2Show = showRequest(ctx.request)
-      log.log(level, "Request{}: {}", mark, request2Show)
-      ctx.mapRouteResponse { msg =>
-        msg match {
-          case HttpMessagePartWrapper(response: HttpResponse, _) =>
-            log.log(level, "Completed{}:\n  Request: {}\n  Response: {}", mark, request2Show, showResponse(response))
-          case Rejected(rejections) =>
-            log.log(level, "Rejected{}:\n Request: {}\n  Rejections: {}", mark, request2Show, rejections)
-          case other =>
-            log.log(level, "Route response{}:\n  Request: {}\n  Response: {}", mark, request2Show, other)
-        }
-        msg
-      }
+      val logResponse = magnet.f(ctx.request)
+      ctx.mapRouteResponse { response => logResponse(response); response }
     }
-  }
-
-  private def logMessage[T](prefix: String, mm: MarkerMagnet, level: LogLevel)(msg: T): T = {
-    import mm._
-    log.log(level, "{}: {}", if (marker.isEmpty) prefix else prefix + ' ' + marker, msg)
-    msg
-  }
 }
 
 object DebuggingDirectives extends DebuggingDirectives
 
 
-class MarkerMagnet(val marker: String, val log: LoggingContext)
+case class LoggingMagnet[T](f: T)
 
-object MarkerMagnet {
-  implicit def apply(marker: String)(implicit log: LoggingContext) = new MarkerMagnet(marker, log)
+object LoggingMagnet {
+  implicit def forMessageFromMarker[T](marker: String)(implicit log: LoggingContext) =
+    forMessageFromMarkerAndLevel[T](marker -> DebugLevel)
+
+  implicit def forMessageFromMarkerAndLevel[T](tuple: (String, LogLevel))(implicit log: LoggingContext) =
+    forMessageFromFullShow[T] {
+      val (marker, level) = tuple
+      Message => LogEntry(Message, marker, level)
+    }
+
+  implicit def forMessageFromShow[T](show: T => String)(implicit log: LoggingContext) =
+    forMessageFromFullShow[T](msg => LogEntry(show(msg), DebugLevel))
+
+  implicit def forMessageFromFullShow[T](show: T => LogEntry)(implicit log: LoggingContext): LoggingMagnet[T => Unit] =
+    LoggingMagnet(show(_).logTo(log))
+
+  implicit def forRequestResponseFromMarker(marker: String)(implicit log: LoggingContext) =
+    forRequestResponseFromMarkerAndLevel(marker -> DebugLevel)
+
+  implicit def forRequestResponseFromMarkerAndLevel(tuple: (String, LogLevel))(implicit log: LoggingContext) =
+    forRequestResponseFromFullShow {
+      val (marker, level) = tuple
+      request => response => Some(
+        LogEntry("Response for\n  Request : " + request + "\n  Response: " + response, marker, level)
+      )
+    }
+
+  implicit def forRequestResponseFromFullShow(show: HttpRequest => Any => Option[LogEntry])
+                                             (implicit log: LoggingContext): LoggingMagnet[HttpRequest => Any => Unit] =
+    LoggingMagnet { request =>
+      val showResponse = show(request)
+      response => showResponse(response).foreach(_.logTo(log))
+    }
+}
+
+
+case class LogEntry(obj: Any, level: LogLevel = DebugLevel) {
+  def logTo(log: LoggingAdapter) {
+    log.log(level, obj.toString)
+  }
+}
+
+object LogEntry {
+  def apply(obj: Any, marker: String, level: LogLevel): LogEntry =
+    LogEntry(if (marker.isEmpty) obj else marker + ": " + obj, level)
 }

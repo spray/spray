@@ -46,7 +46,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
         logRequest("1") { completeOk }
       } ~> check {
         response === Ok
-        debugMsg === "Request 1: HttpRequest(GET, /hello, List(), EmptyEntity, HTTP/1.1)\n"
+        debugMsg === "1: HttpRequest(GET, /hello, List(), EmptyEntity, HTTP/1.1)\n"
       }
     }
   }
@@ -55,24 +55,23 @@ class DebuggingDirectivesSpec extends RoutingSpec {
     "produce a proper log message for outgoing responses" in {
       resetDebugMsg()
       Get("/hello") ~> {
-        logHttpResponse("2") { completeOk }
+        logResponse("2") { completeOk }
       } ~> check {
         response === Ok
-        debugMsg === "Response 2: HttpResponse(StatusCode(200, OK),EmptyEntity,List(),HTTP/1.1)\n"
+        debugMsg === "2: HttpResponse(StatusCode(200, OK),EmptyEntity,List(),HTTP/1.1)\n"
       }
     }
   }
 
   "The 'logRequestResponse' directive" should {
-    "produce proper log messages for incoming requests and all outgoing responses" in {
+    "produce proper log messages for outgoing responses, thereby showing the corresponding request" in {
       resetDebugMsg()
       Get("/hello") ~> {
         logRequestResponse("3") { completeOk }
       } ~> check {
         response === Ok
-        debugMsg === """|Request 3: HttpRequest(GET, /hello, List(), EmptyEntity, HTTP/1.1)
-                        |Completed 3:
-                        |  Request: HttpRequest(GET, /hello, List(), EmptyEntity, HTTP/1.1)
+        debugMsg === """|3: Response for
+                        |  Request : HttpRequest(GET, /hello, List(), EmptyEntity, HTTP/1.1)
                         |  Response: HttpResponse(StatusCode(200, OK),EmptyEntity,List(),HTTP/1.1)
                         |""".stripMargin.replace(EOL, "\n")
       }

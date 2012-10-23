@@ -43,7 +43,7 @@ trait HttpService extends Directives {
    * Normally you configure via the application.conf on the classpath,
    * but you can also override this member.
    */
-  implicit val settings = RoutingSettings.Default
+  implicit val routingSettings = RoutingSettings.Default
 
   val log = LoggingContext.fromActorRefFactory
 
@@ -63,7 +63,7 @@ trait HttpService extends Directives {
           request.parseQuery.parseHeaders match {
             case ("", parsedRequest) =>
               sealedRoute(contextFor(parsedRequest))
-            case (errorMsg, parsedRequest) if settings.RelaxedHeaderParsing =>
+            case (errorMsg, parsedRequest) if routingSettings.RelaxedHeaderParsing =>
               log.warning("Request {}: {}", request, errorMsg)
               sealedRoute(contextFor(parsedRequest))
             case (errorMsg, _) =>
