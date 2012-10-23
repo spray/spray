@@ -42,7 +42,7 @@ package object util {
   def make[T, U](a: T)(f: T => U): T = { f(a); a }
 
   @tailrec
-  def tfor[@specialized T](i: T)(test: T => Boolean, inc: T => T)(f: T => Unit) {
+  def tfor[@specialized T, U](i: T)(test: T => Boolean, inc: T => T)(f: T => U) {
     if(test(i)) {
       f(i)
       tfor(inc(i))(test, inc)(f)

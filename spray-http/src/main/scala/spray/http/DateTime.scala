@@ -99,6 +99,11 @@ sealed abstract class DateTime extends Ordered[DateTime] {
   def toIsoDateTimeString = toIsoDateString + 'T' + ##(hour) + ':' + ##(minute) + ':' + ##(second)
 
   /**
+   * `yyyy-mm-dd hh:mm:ss`
+   */
+  def toIsoLikeDateTimeString = toIsoDateString + ' ' + ##(hour) + ':' + ##(minute) + ':' + ##(second)
+
+  /**
    * RFC 1123 date string, e.g. `Sun, 06 Nov 1994 08:49:37 GMT`
    */
   def toRfc1123DateTimeString = {
