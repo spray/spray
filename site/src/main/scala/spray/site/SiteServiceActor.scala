@@ -18,30 +18,35 @@ package spray.site
 
 import akka.actor.Actor
 import akka.event.Logging
+import spray.routing.directives.LogEntry
 import spray.httpx.encoding.Gzip
 import spray.httpx.TwirlSupport._
-import spray.http.StatusCodes
+import spray.http._
 import spray.routing._
 import html._
+import StatusCodes._
 
 
 class SiteServiceActor extends Actor with HttpServiceActor {
 
   def receive = runRoute {
-    dynamic { // for proper support of twirl + sbt-revolver during development, can be removed in production
-      (get & encodeResponse(Gzip)) {
+    dynamicIf(SiteSettings.DevMode) { // for proper support of twirl + sbt-revolver during development
+      (encodeResponse(Gzip) & logRequestResponse(showErrorResponses _) & get) {
+        (host("repo.spray.io") | host("repo.spray.cc")) {
+          getFromBrowseableDirectories(SiteSettings.RepoDirs: _*)
+        } ~
         getFromResourceDirectory {
           "theme"
         } ~
         pathPrefix("_images") {
           getFromResourceDirectory("sphinx/json/_images")
         } ~
-        logRequest("IN", Logging.InfoLevel) {
+        logRequest(showRequest _) {
           path("") {
-            redirect("/home")
+            complete(page(home()))
           } ~
           path("home") {
-            complete(page(home()))
+            redirect("/", MovedPermanently)
           } ~
           path("index") {
             complete(page(index()))
@@ -51,7 +56,7 @@ class SiteServiceActor extends Actor with HttpServiceActor {
               complete(render(docPath))
             }
           } ~
-          complete(StatusCodes.NotFound, page(error404())) // fallback response is 404
+          complete(NotFound, page(error404())) // fallback response is 404
         }
       }
     }
@@ -64,5 +69,16 @@ class SiteServiceActor extends Actor with HttpServiceActor {
         case None => throw new RuntimeException("SphinxDoc for uri '%s' not found" format node.uri)
       }
     }
+
+  def showRequest(request: HttpRequest) = LogEntry(request.uri, Logging.InfoLevel)
+
+  def showErrorResponses(request: HttpRequest): Any => Option[LogEntry] = {
+    case HttpResponse(OK, _, _, _) => None
+    case HttpResponse(NotFound, _, _, _) =>
+      Some(LogEntry("404 response for GET " + request.uri, Logging.WarningLevel))
+    case response => Some(
+      LogEntry("Non-200 response for\n  Request : " + request + "\n  Response: " + response, Logging.WarningLevel)
+    )
+  }
 
 }

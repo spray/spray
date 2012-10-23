@@ -16,21 +16,19 @@
 
 package spray.site
 
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.ConfigFactory
+import scala.collection.JavaConverters._
 import spray.util.ConfigUtils
 
 
-class SiteSettings(config: Config) {
-  protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.site")
+object SiteSettings {
+  private val c = ConfigUtils.prepareSubConfig(ConfigFactory.load(), "spray.site")
 
-  val Interface = c getString "interface"
-  val Port      = c getInt    "port"
+  val Interface = c getString  "interface"
+  val Port      = c getInt     "port"
+  val DevMode   = c getBoolean "dev-mode"
+  val RepoDirs  = c.getStringList("repo-dirs").asScala.toList
 
   require(Interface.nonEmpty, "interface must be non-empty")
   require(0 < Port && Port < 65536, "illegal port")
-}
-
-object SiteSettings {
-  implicit val Default: SiteSettings = apply(ConfigFactory.load())
-  implicit def apply(config: Config): SiteSettings = new SiteSettings(config)
 }
