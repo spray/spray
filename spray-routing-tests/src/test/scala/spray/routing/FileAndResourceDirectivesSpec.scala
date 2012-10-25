@@ -147,7 +147,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<h1>Index of /sub/</h1>
             |<hr>
             |<pre>
-            |<a href="/sub/">../</a>
+            |<a href="/">../</a>
             |<a href="/sub/file.html">file.html</a>        xxxx-xx-xx xx:xx:xx            0  B
             |</pre>
             |<hr>
@@ -187,7 +187,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<h1>Index of /emptySub/</h1>
             |<hr>
             |<pre>
-            |<a href="/emptySub/">../</a>
+            |<a href="/">../</a>
             |</pre>
             |<hr>
             |<div style="width:100%;text-align:right;color:gray">

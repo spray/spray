@@ -212,8 +212,10 @@ object DirectoryListing {
       val maxNameLen = math.max(maxNameLength(directoryFilesAndNames) + 1, maxNameLength(fileFilesAndNames))
       val sb = new java.lang.StringBuilder
       sb.append(html(0)).append(path).append(html(1)).append(path).append(html(2))
-      if (path != "/")
-        sb.append("<a href=\"%s/\">../</a>\n" format path.substring(0, path.lastIndexOf('/', path.length-1)))
+      if (path != "/") {
+        val secondToLastSlash = path.lastIndexOf('/', path.lastIndexOf('/', path.length-1)-1)
+        sb.append("<a href=\"%s/\">../</a>\n" format path.substring(0, secondToLastSlash))
+      }
       def lastModified(file: File) = DateTime(file.lastModified).toIsoLikeDateTimeString
       def start(name: String) {
         sb.append("<a href=\"").append(path + name).append("\">").append(name).append("</a>")
