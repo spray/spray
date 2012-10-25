@@ -103,14 +103,7 @@ object PathMatcher extends PathMatcherImplicits {
     def orElse[R <: HList](other: => Matching[R]) = other
   }
 
-  /**
-   * Creates a [[spray.routing.directives.PathMatcher]] that extracts the given value if the given path prefix
-   * can be matched.
-   */
-  def apply[T](prefix: String, value: T) = new PathMatcher[T :: HNil] {
-    def apply(path: String) =
-      if (path.startsWith(prefix)) Matched(path.substring(prefix.length), value :: HNil) else Unmatched
-  }
+  def apply[L <: HList](magnet: PathMatcher[L]): PathMatcher[L] = magnet
 }
 
 
@@ -146,12 +139,22 @@ trait PathMatcherImplicits {
             "' must not contain more than one capturing group")
   }
   /**
-   * Creates a [[spray.directives.PathMatcher1]] from the given Map of path prefixes to extracted values.
+   * Creates a PathMatcher from the given Map of path prefixes to extracted values.
    * If the unmatched path starts with one of the maps keys the matcher consumes this path prefix and extracts the
    * corresponding map value.
    */
   implicit def fromMap[T](valueMap: Map[String, T]): PathMatcher[T :: HNil] =
     valueMap.map { case (prefix, value) => PathMatcher(prefix, value) }.reduceLeft(_ | _)
+
+  /**
+   * Creates a PathMatcher that extracts the given value if the given path prefix can be matched.
+   */
+  implicit def fromStringValue[T](tuple: (String, T)): PathMatcher[T :: HNil] =
+    new PathMatcher[T :: HNil] {
+      val (prefix, value) = tuple
+      def apply(path: String) =
+        if (path.startsWith(prefix)) Matched(path.substring(prefix.length), value :: HNil) else Unmatched
+    }
 }
 
 
