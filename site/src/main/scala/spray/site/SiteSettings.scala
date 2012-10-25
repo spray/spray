@@ -17,7 +17,6 @@
 package spray.site
 
 import com.typesafe.config.ConfigFactory
-import scala.collection.JavaConverters._
 import spray.util.ConfigUtils
 
 
@@ -27,7 +26,7 @@ object SiteSettings {
   val Interface = c getString  "interface"
   val Port      = c getInt     "port"
   val DevMode   = c getBoolean "dev-mode"
-  val RepoDirs  = c.getStringList("repo-dirs").asScala.toList
+  val RepoDirs  = (c getString "repo-dirs").split(':').toList
 
   require(Interface.nonEmpty, "interface must be non-empty")
   require(0 < Port && Port < 65536, "illegal port")

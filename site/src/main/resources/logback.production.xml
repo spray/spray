@@ -1,22 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
-    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <target>System.out</target>
-        <encoder>
-            <pattern>%date{MM/dd HH:mm:ss} %-5level[%.15thread] %logger{1} - %msg%n</pattern>
-        </encoder>
-    </appender>
-
-    <!--
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_DIR}/site.log</file>
+        <file>${LOG_FILE}</file>
 
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <- daily rollover ->
-            <fileNamePattern>${LOG_DIR}/telfish.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <!-- daily rollover -->
+            <fileNamePattern>${LOG_FILE}.%d{yyyy-MM-dd}.gz</fileNamePattern>
 
-            <- keep one year worth of history ->
+            <!-- keep one year worth of history -->
             <maxHistory>365</maxHistory>
         </rollingPolicy>
 
@@ -25,13 +17,12 @@
             <pattern>%date{MM/dd HH:mm:ss} %-5level[%.15thread] %logger{1} - %msg%n</pattern>
         </encoder>
     </appender>
-    -->
 
     <logger name="spray.io.IOBridge" level="INFO" />
     <logger name="spray.can.server" level="INFO" />
 
     <root level="DEBUG">
-        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
     </root>
 
 </configuration>

@@ -17,9 +17,10 @@
 package spray.site
 
 import akka.actor.Actor
-import akka.event.Logging
-import spray.routing.directives.LogEntry
+import akka.event.Logging._
+import spray.routing.directives.{DirectoryListing, LogEntry}
 import spray.httpx.encoding.Gzip
+import spray.httpx.marshalling.Marshaller
 import spray.httpx.TwirlSupport._
 import spray.http._
 import spray.routing._
@@ -31,32 +32,40 @@ class SiteServiceActor extends Actor with HttpServiceActor {
 
   def receive = runRoute {
     dynamicIf(SiteSettings.DevMode) { // for proper support of twirl + sbt-revolver during development
-      (encodeResponse(Gzip) & logRequestResponse(showErrorResponses _) & get) {
+      (get & encodeResponse(Gzip)) {
         (host("repo.spray.io") | host("repo.spray.cc")) {
-          getFromBrowseableDirectories(SiteSettings.RepoDirs: _*)
+          logRequestResponse(showRepoResponses _) {
+            getFromBrowseableDirectories(SiteSettings.RepoDirs: _*) ~
+            complete(NotFound)
+          }
         } ~
-        getFromResourceDirectory {
-          "theme"
+        path("favicon.ico") {
+          complete(NotFound) // fail early in order to prevent error response logging
         } ~
-        pathPrefix("_images") {
-          getFromResourceDirectory("sphinx/json/_images")
-        } ~
-        logRequest(showRequest _) {
-          path("") {
-            complete(page(home()))
+        logRequestResponse(showErrorResponses _) {
+          getFromResourceDirectory {
+            "theme"
           } ~
-          path("home") {
-            redirect("/", MovedPermanently)
+          pathPrefix("_images") {
+            getFromResourceDirectory("sphinx/json/_images")
           } ~
-          path("index") {
-            complete(page(index()))
-          } ~
-          path(Rest) { docPath =>
-            rejectEmptyResponse {
-              complete(render(docPath))
-            }
-          } ~
-          complete(NotFound, page(error404())) // fallback response is 404
+          logRequest(showRequest _) {
+            path("") {
+              complete(page(home()))
+            } ~
+            path("home") {
+              redirect("/", MovedPermanently)
+            } ~
+            path("index") {
+              complete(page(index()))
+            } ~
+            path(Rest) { docPath =>
+              rejectEmptyResponse {
+                complete(render(docPath))
+              }
+            } ~
+            complete(NotFound, page(error404())) // fallback response is 404
+          }
         }
       }
     }
@@ -70,15 +79,30 @@ class SiteServiceActor extends Actor with HttpServiceActor {
       }
     }
 
-  def showRequest(request: HttpRequest) = LogEntry(request.uri, Logging.InfoLevel)
+  def showRequest(request: HttpRequest) = LogEntry(request.uri, InfoLevel)
 
   def showErrorResponses(request: HttpRequest): Any => Option[LogEntry] = {
     case HttpResponse(OK, _, _, _) => None
-    case HttpResponse(NotFound, _, _, _) =>
-      Some(LogEntry("404 response for GET " + request.uri, Logging.WarningLevel))
+    case HttpResponse(NotFound, _, _, _) => Some(LogEntry("404: " + request.uri, WarningLevel))
     case response => Some(
-      LogEntry("Non-200 response for\n  Request : " + request + "\n  Response: " + response, Logging.WarningLevel)
+      LogEntry("Non-200 response for\n  Request : " + request + "\n  Response: " + response, WarningLevel)
     )
   }
+
+  def showRepoResponses(request: HttpRequest): HttpResponsePart => Option[LogEntry] = {
+    case HttpResponse(OK, _, _, _) => Some(LogEntry("repo 200: " + request.uri, InfoLevel))
+    case ChunkedResponseStart(HttpResponse(OK, _, _, _)) => Some(LogEntry("repo 200 (chunked): " + request.uri, InfoLevel))
+    case HttpResponse(NotFound, _, _, _) => Some(LogEntry("repo 404: " + request.uri))
+    case _ => None
+  }
+
+  implicit val ListingMarshaller: Marshaller[DirectoryListing] =
+    Marshaller.delegate(MediaTypes.`text/html`) { (listing: DirectoryListing) =>
+      listing.copy(
+        files = listing.files.filterNot( file =>
+          file.getName.startsWith(".") || file.getName.startsWith("archetype-catalog")
+        )
+      )
+    } (DirectoryListing.DefaultMarshaller)
 
 }

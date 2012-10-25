@@ -67,15 +67,9 @@ object BuildSettings {
     }
   )
 
-  import sbtassembly.Plugin._
-  import AssemblyKeys._
-  lazy val siteSettings = basicSettings ++ noPublishing ++
-    twirl.sbt.TwirlPlugin.Twirl.settings ++ spray.revolver.RevolverPlugin.Revolver.settings ++
-    assemblySettings ++ seq(
-      mainClass in assembly := Some("spray.site.Boot"),
-      jarName in assembly := "site.jar",
-      test in assembly := {}
-    )
+  lazy val siteSettings = basicSettings ++ noPublishing ++ twirl.sbt.TwirlPlugin.Twirl.settings ++
+    spray.revolver.RevolverPlugin.Revolver.settings ++ SiteSupport.settings
+
 
   lazy val docsSettings = basicSettings ++ noPublishing ++ seq(
     unmanagedSourceDirectories in Test <<= baseDirectory { _ ** "code" get }
