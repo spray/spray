@@ -114,11 +114,10 @@ trait PipelineStageTest { test =>
   }
 
   def extractCommands(commands: List[Command]): List[Command] = commands.map {
-    case IOPeer.Send(bufs, _) => SendString {
+    case IOPeer.Send(bufs, ack) =>
       val sb = new java.lang.StringBuilder
       for (b <- bufs) sb.append(b.duplicate.drainToString)
-      sb.toString
-    }
+      SendString(sb.toString, ack)
     case x => x
   }
 
@@ -147,7 +146,10 @@ trait PipelineStageTest { test =>
   def Send(rawMessage: String) = IOPeer.Send(string2ByteBuffer(rawMessage))
   def Received(rawMessage: String) = IOBridge.Received(testHandle, string2ByteBuffer(rawMessage))
 
-  case class SendString(string: String) extends Command
+  case class SendString(string: String, ack: Option[Any] = None) extends Command
+  object SendString {
+    def apply(string: String, ack: Any): SendString = SendString(string, Some(ack))
+  }
   case class ReceivedString(string: String) extends Event
 
   protected def string2ByteBuffer(s: String) = ByteBuffer.wrap(s.getBytes("US-ASCII"))

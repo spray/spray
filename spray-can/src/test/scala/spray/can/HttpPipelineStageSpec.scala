@@ -29,12 +29,12 @@ trait HttpPipelineStageSpec extends PipelineStageTest {
 
   override def extractCommands(commands: List[Command]) =
     super.extractCommands(commands).map {
-      case SendString(string) => SendString {
+      case SendString(string, ack) => SendString(
         string.fastSplit('\n').map {
           case s if s.startsWith("Date:") => "Date: XXXX\r"
           case s => s
-        }.mkString("\n")
-      }
+        }.mkString("\n"), ack
+      )
       case x => x
     }
 
