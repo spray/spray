@@ -66,16 +66,6 @@ trait BasicMarshallers {
 
   implicit val ThrowableMarshaller = Marshaller[Throwable] { (value, ctx) => ctx.handleError(value) }
 
-  implicit val StatusCodeMarshaller = Marshaller[StatusCode] { (value, ctx) =>
-    value match {
-      case StatusCodes.NoContent => ctx.marshalTo(EmptyEntity)
-      case status => ctx.tryAccept(ContentType.`text/plain`) match {
-        case Some(contentType) => ctx.marshalTo(HttpBody(contentType, status.defaultMessage))
-        case None => ctx.rejectMarshalling(Seq(ContentType.`text/plain`))
-      }
-    }
-  }
-
   implicit val HttpEntityMarshaller = Marshaller[HttpEntity] { (value, ctx) =>
     value match {
       case EmptyEntity => ctx.marshalTo(EmptyEntity)

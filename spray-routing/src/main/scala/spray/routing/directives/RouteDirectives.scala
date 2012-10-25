@@ -81,6 +81,12 @@ object CompletionMagnet {
         def apply(ctx: RequestContext) { ctx.complete(response) }
       }
     }
+  implicit def fromStatus(status: StatusCode) =
+    new CompletionMagnet {
+      def route = new StandardRoute {
+        def apply(ctx: RequestContext) { ctx.complete(status) }
+      }
+    }
   implicit def fromHttpResponseFuture(future: Future[HttpResponse])(implicit ec: ExecutionContext) =
     new CompletionMagnet {
       def route = new StandardRoute {
