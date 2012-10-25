@@ -38,12 +38,13 @@ class ResponseRenderer(serverHeader: String,
     ctx.responsePart match {
       case x: HttpResponse => renderResponse(x, ctx)
       case x: ChunkedResponseStart => renderChunkedResponseStart(x.response, ctx, chunkless)
-      case x: MessageChunk =>
+      case x: MessageChunk if ctx.requestMethod != HttpMethods.HEAD =>
         if (chunkless) RenderedMessagePart(ByteBuffer.wrap(x.body) :: Nil)
         else renderChunk(x, responseSizeHint)
-      case x: ChunkedMessageEnd =>
+      case x: ChunkedMessageEnd if ctx.requestMethod != HttpMethods.HEAD =>
         if (chunkless) RenderedMessagePart(Nil, closeConnection = true)
         else renderFinalChunk(x, responseSizeHint, ctx.requestConnectionHeader)
+      case _ => RenderedMessagePart(Nil)
     }
   }
 

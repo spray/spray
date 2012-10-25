@@ -20,7 +20,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 import akka.event.LoggingAdapter
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.can.{HttpEvent, HttpCommand}
-import spray.util.IOError
+import spray.util.{CleanClose, IOError}
 import spray.http._
 import spray.io._
 
@@ -57,14 +57,21 @@ object ServerFrontend {
             case Response(openRequest, command) if openRequest == firstOpenRequest =>
               commandPipeline(command) // "unpack" the command and recurse
 
-            case HttpCommand(x: HttpMessagePartWrapper) if x.messagePart.isInstanceOf[HttpResponsePart] =>
+            case HttpCommand(wrapper: HttpMessagePartWrapper) if wrapper.messagePart.isInstanceOf[HttpResponsePart] =>
               // we can only see this command either after having "unpacked" a Response
               // or after an openRequest has begun dispatching its queued commands,
               // in both cases the firstOpenRequest member is valid and current
-              if (x.messagePart.isInstanceOf[HttpMessageEnd]) {
-                firstOpenRequest = firstOpenRequest.handleResponseEndAndReturnNextOpenRequest(x)
+              val part = wrapper.messagePart match {
+                case ChunkedResponseStart(response) if firstOpenRequest.request.method == HttpMethods.HEAD =>
+                  // if HEAD requests are responded to with a chunked response we only sent the initial part
+                  // and "cancel" the stream by "acking" with a fake Closed event
+                  response.withSentAck(IOBridge.Closed(context.handle, CleanClose))
+                case _ => wrapper
+              }
+              if (part.messagePart.isInstanceOf[HttpMessageEnd]) {
+                firstOpenRequest = firstOpenRequest.handleResponseEndAndReturnNextOpenRequest(part)
                 firstUnconfirmed = firstUnconfirmed.nextIfNoAcksPending
-              } else firstOpenRequest.handleResponsePart(x)
+              } else firstOpenRequest.handleResponsePart(part)
 
             case Response(openRequest, command) =>
               // a response for a non-current openRequest has to be queued

@@ -79,13 +79,13 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
           peer.tell(HttpCommand(ChunkedMessageEnd().withSentAck(4)), sender4)
           val Commands(commands@ _*) = process(AckEventWithReceiver(3, sender3), AckEventWithReceiver(4, sender4))
 
-          commands(0) === SendString(`chunkedResponseStart`)
+          commands(0) === SendString(`chunkedResponseStart`, AckEventWithReceiver(1, sender1))
           val Tell(`sender1`, 1, _) = commands(1)
-          commands(2) === SendString(prep("6\npart 1\n"))
+          commands(2) === SendString(prep("6\npart 1\n"), AckEventWithReceiver(2, sender2))
           val Tell(`sender2`, 2, _) = commands(3)
           commands(4) === SendString(prep("6\npart 2\n"))
-          commands(5) === SendString(prep("6\npart 3\n"))
-          commands(6) === SendString(prep("0\n\n"))
+          commands(5) === SendString(prep("6\npart 3\n"), AckEventWithReceiver(3, sender3))
+          commands(6) === SendString(prep("0\n\n"), AckEventWithReceiver(4, sender4))
           val Tell(`sender3`, 3, _) = commands(7)
           val Tell(`sender4`, 4, _) = commands(8)
           success
@@ -221,7 +221,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       "with a header value containing illegal casing" in example("100-Continue")
     }
 
-    "dispatch HEAD requests as GET requests (and suppress sending of their bodies)" in {
+    "dispatch HEAD requests as GET requests and suppress sending of HttpResponse bodies" in {
       singleHandlerPipeline.test {
         val Commands(Tell(`singletonHandler`, request, peer)) = processAndClear {
           Received {
@@ -233,19 +233,49 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
             }
           }
         }
-        peer.tell(HttpCommand(HttpResponse(entity = "1234567")), sender1)
-
         request === HttpRequest(headers = List(RawHeader("host", "test.com")))
-        result.commands(0) === SendString {
-          prep {
-          """|HTTP/1.1 200 OK
-             |Server: spray/1.0
-             |Date: XXXX
-             |Content-Type: text/plain
-             |Content-Length: 7
-             |
-             |"""
+
+        peer.tell(HttpCommand(HttpResponse(entity = "1234567")), sender1)
+        result.commands === Seq(
+          SendString {
+            prep {
+            """|HTTP/1.1 200 OK
+               |Server: spray/1.0
+               |Date: XXXX
+               |Content-Type: text/plain
+               |Content-Length: 7
+               |
+               |"""
+            }
           }
+        )
+      }
+    }
+
+    "dispatch HEAD requests as GET requests and suppress sending of chunked responses" in {
+      singleHandlerPipeline.test {
+        val Commands(Tell(`singletonHandler`, request, peer)) = processAndClear {
+          Received {
+            prep {
+              """|HEAD / HTTP/1.1
+                |Host: test.com
+                |
+                |"""
+            }
+          }
+        }
+        request === HttpRequest(headers = List(RawHeader("host", "test.com")))
+
+        peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse(entity = "1234567"))), sender1)
+        val Seq(SendString(raw, Some(AckEventWithReceiver(IOBridge.Closed(_, CleanClose), `sender1`)))) = result.commands
+        raw === prep {
+        """|HTTP/1.1 200 OK
+           |Server: spray/1.0
+           |Date: XXXX
+           |Content-Type: text/plain
+           |Content-Length: 7
+           |
+           |"""
         }
       }
     }
