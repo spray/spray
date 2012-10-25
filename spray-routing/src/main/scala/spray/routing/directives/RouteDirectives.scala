@@ -17,7 +17,7 @@
 package spray.routing
 package directives
 
-import akka.dispatch.Future
+import akka.dispatch.{ExecutionContext, Future}
 import spray.httpx.marshalling.Marshaller
 import spray.http._
 import StatusCodes._
@@ -76,10 +76,17 @@ object CompletionMagnet {
     def route = new StandardRoute {
       def apply(ctx: RequestContext) { ctx.complete(response) }
     }
-  }
-  implicit def fromHttpResponseFuture(future: Future[HttpResponse]) = new CompletionMagnet {
-    def route = new StandardRoute {
-      def apply(ctx: RequestContext) { ctx.complete(future) }
+  implicit def fromStatus(status: StatusCode) =
+    new CompletionMagnet {
+      def route = new StandardRoute {
+        def apply(ctx: RequestContext) { ctx.complete(status) }
+      }
+    }
+  implicit def fromHttpResponseFuture(future: Future[HttpResponse])(implicit ec: ExecutionContext) =
+    new CompletionMagnet {
+      def route = new StandardRoute {
+        def apply(ctx: RequestContext) { ctx.complete(future) }
+      }
     }
   }
 

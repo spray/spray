@@ -208,6 +208,13 @@ case class RequestContext(
   }
 
   /**
+   * Completes the request with the given status code and its default message as the response entity.
+   */
+  def complete(status: StatusCode) {
+    complete(HttpResponse(status, entity = status.defaultMessage))
+  }
+
+  /**
    * Completes the request with status "200 Ok" and the response entity created by marshalling the given object using
    * the in-scope marshaller for the type.
    */

@@ -58,7 +58,7 @@ object StatusCodes extends ObjectRegistry[Int, StatusCode] {
   val Created                     = new Success(201, "Created", "The request has been fulfilled and resulted in a new resource being created.")
   val Accepted                    = new Success(202, "Accepted", "The request has been accepted for processing, but the processing has not been completed.")
   val NonAuthoritativeInformation = new Success(203, "Non-Authoritative Information", "The server successfully processed the request, but is returning information that may be from another source.")
-  val NoContent                   = new Success(204, "No Content", "The server successfully processed the request, but is not returning any content.")
+  val NoContent                   = new Success(204, "No Content", "")
   val ResetContent                = new Success(205, "Reset Content", "The server successfully processed the request, but is not returning any content.")
   val PartialContent              = new Success(206, "Partial Content", "The server is delivering only part of the resource due to a range header sent by the client.")
   val MultiStatus                 = new Success(207, "Multi-Status", "The message body that follows is an XML message and can contain a number of separate response codes, depending on how many sub-requests were made.")
