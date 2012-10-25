@@ -71,8 +71,18 @@ object LoggingMagnet {
       )
     }
 
+  implicit def forRequestResponseFromHttpResponsePartShow(show: HttpRequest => HttpResponsePart => Option[LogEntry])
+               (implicit log: LoggingContext): LoggingMagnet[HttpRequest => Any => Unit] =
+    LoggingMagnet { request =>
+      val showResponse = show(request);
+      {
+        case HttpMessagePartWrapper(part :HttpResponsePart, _) => showResponse(part).foreach(_.logTo(log))
+        case _ => None
+      }
+    }
+
   implicit def forRequestResponseFromFullShow(show: HttpRequest => Any => Option[LogEntry])
-                                             (implicit log: LoggingContext): LoggingMagnet[HttpRequest => Any => Unit] =
+               (implicit log: LoggingContext): LoggingMagnet[HttpRequest => Any => Unit] =
     LoggingMagnet { request =>
       val showResponse = show(request)
       response => showResponse(response).foreach(_.logTo(log))
