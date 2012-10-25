@@ -80,7 +80,7 @@ class PathDirectivesSpec extends RoutingSpec {
       }
     }
   }
-//
+
   "routes created with the pathPrefix(regex) combinator" should {
     "block unmatching requests" in {
       Get("/noway/this/works") ~> {
@@ -219,7 +219,7 @@ class PathDirectivesSpec extends RoutingSpec {
     }
   }
 
-  "the predefined PathElement PathMatcher" should {
+  "The predefined PathElement PathMatcher" should {
     "properly extract chars at the path end into a String" in {
       Get("/id/abc") ~> {
         path("id" / PathElement) { echoComplete }
@@ -234,6 +234,15 @@ class PathDirectivesSpec extends RoutingSpec {
       Get("/id/") ~> {
         path("id" / PathElement) { echoComplete }
       } ~> check { handled must beFalse }
+    }
+  }
+
+  "A PathMatcher" should {
+    "support the mapValues modifier" in {
+      import shapeless._
+      Get("/yes-no") ~> {
+        path(Rest.mapValues { case s :: HNil => s.split('-').toList :: HNil }) { echoComplete }
+      } ~> check { entityAs[String] === "List(yes, no)" }
     }
   }
 }
