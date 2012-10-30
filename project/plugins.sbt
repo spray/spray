@@ -1,3 +1,10 @@
+resolvers ++= Seq(
+  // for scala-ssh
+  "spray repo" at "http://repo.spray.io",
+  // sbt-twirl transitively depends on akka-actor right now...
+  "typesafe releases" at "http://repo.typesafe.com/typesafe/releases/"
+)
+
 libraryDependencies ++= Seq(
   "com.github.siasia" %% "xsbt-web-plugin" % "0.12.0-0.2.11.1",
   "com.decodified" % "scala-ssh" % "0.6.2",
