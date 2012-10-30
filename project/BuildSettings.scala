@@ -49,7 +49,7 @@ object BuildSettings {
     resourceGenerators in Compile <+= generateSprayVersionConf,
     generateSprayVersionConf <<= (resourceManaged in Compile, version) map { (dir, v) =>
       val file = dir / "reference.conf"
-      IO.write(file, """spray.version = "%s"""" format v)
+      IO.write(file, """spray.version = "%s""""+"\n" format v)
       Seq(file)
     }
   )
