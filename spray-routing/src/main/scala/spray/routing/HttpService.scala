@@ -43,7 +43,7 @@ trait HttpService extends Directives {
    * Normally you configure via the application.conf on the classpath,
    * but you can also override this member.
    */
-  implicit val routingSettings = RoutingSettings.Default
+  implicit def routingSettings = RoutingSettings.Default
 
   // must be lazy due to initialization order issue when mixing into an actor
   lazy val log = LoggingContext.fromActorRefFactory
