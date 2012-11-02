@@ -83,7 +83,6 @@ pre { margin-bottom: 1em; white-space: pre; word-wrap: normal; overflow: auto; }
 .section img { margin: 1em 0; }
 .section table.field-list { text-align: left; }
 .section th.field-name { padding-right: 5px; }
-#changelog li { margin: 0; }
 .section div.container { text-align: center; }
 .section div.toctree-wrapper li { text-align: left; margin: 0; }
 
@@ -120,3 +119,7 @@ tt.literal {
 .admonition.admonition-side-note { background-color: #DFF0D8; border-color: #D6E9C6; }
 .admonition.admonition-side-note .admonition-title { color: #468847; }
 
+a.footnote-reference { vertical-align: super; font-size: 66%; }
+p.rubric { border-top: 1px solid #DDD; margin-top: 30px; padding-top: 5px; font-weight: bold; }
+table.footnote .label { background-color: white; }
+table.footnote td { vertical-align: top; }
