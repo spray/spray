@@ -30,8 +30,8 @@ trait SecurityDirectives {
    */
   def authenticate[T](am: AuthMagnet[T]): Directive[T :: HNil] =
     am.value.unwrapFuture.flatMap {
-      case Right(user) :: HNil => provide(user)
-      case Left(rejection) :: HNil => RouteDirectives.reject(rejection)
+      case Right(user) => provide(user)
+      case Left(rejection) => RouteDirectives.reject(rejection)
     }
 
   /**
