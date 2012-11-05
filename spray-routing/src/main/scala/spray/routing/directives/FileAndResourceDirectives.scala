@@ -87,7 +87,7 @@ trait FileAndResourceDirectives {
     if (!resourceName.endsWith("/")) {
       def resource = getClass.getClassLoader.getResource(resourceName)
       (get & detachTo(singleRequestServiceActor) & provide(Option(resource)))
-        .flatMap(openConnection) { urlConn =>
+        .hflatMap(openConnection) { urlConn =>
           implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(resolver(resourceName))
           respondWithLastModifiedHeader(urlConn.getLastModified) {
             complete(FileUtils.readAllBytes(urlConn.getInputStream))

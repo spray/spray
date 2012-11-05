@@ -40,7 +40,7 @@ abstract class Directive[L <: HList] { self =>
 
   def & (magnet: ConjunctionMagnet[L]): magnet.Out = magnet(this)
 
-  def as[T](deserializer: HListDeserializer[L, T]) =
+  def as[T](deserializer: HListDeserializer[L, T]): Directive[T :: HNil] =
     new Directive[T :: HNil] {
       def happly(f: T :: HNil => Route) =
         self.happly { values => ctx =>
@@ -52,14 +52,20 @@ abstract class Directive[L <: HList] { self =>
         }
     }
 
-  def map[R](f: L => R)(implicit hl: HListable[R]) =
+  def hmap[R](f: L => R)(implicit hl: HListable[R]): Directive[hl.Out] =
     new Directive[hl.Out] {
       def happly(g: hl.Out => Route) = self.happly { values => g(hl(f(values))) }
     }
 
-  def flatMap[R <: HList](f: L => Directive[R]) =
+  def hflatMap[R <: HList](f: L => Directive[R]): Directive[R] =
     new Directive[R] {
       def happly(g: R => Route) = self.happly { values => f(values).happly(g) }
+    }
+
+  def hrequire(predicate: L => Boolean): Directive0 =
+    new Directive0 {
+      def happly(f: HNil => Route) =
+        self.happly { values => ctx => if (predicate(values)) f(HNil)(ctx) else ctx.reject() }
     }
 
   def unwrapFuture[R](implicit ev: L <:< (Future[R] :: HNil), hl: HListable[R], ec: ExecutionContext) =
@@ -71,21 +77,24 @@ abstract class Directive[L <: HList] { self =>
         }
       }
     }
-
-  def require[T](predicate: T => Boolean)(implicit ev: L <:< (T :: HNil)) =
-    hrequire { list => predicate(list.head) }
-
-  def hrequire(predicate: L => Boolean) =
-    new Directive0 {
-      def happly(f: HNil => Route) =
-        self.happly { values => ctx => if (predicate(values)) f(HNil)(ctx) else ctx.reject() }
-    }
 }
 
 object Directive {
   implicit def pimpApply[L <: HList](directive: Directive[L])
                                     (implicit hac: ApplyConverter[L]): hac.In => Route = f => directive.happly(hac(f))
+
+  implicit class SingleValueModifiers[T](underlying: Directive[T :: HNil]) {
+    def map[R](f: T => R)(implicit hl: HListable[R]): Directive[hl.Out] =
+      underlying.hmap { case value :: HNil => f(value) }
+
+    def flatMap[R <: HList](f: T => Directive[R]): Directive[R] =
+      underlying.hflatMap { case value :: HNil => f(value) }
+
+    def require(predicate: T => Boolean) =
+      underlying.hrequire { case value :: HNil => predicate(value) }
+  }
 }
+
 
 trait ConjunctionMagnet[L <: HList] {
   type Out

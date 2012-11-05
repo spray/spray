@@ -70,7 +70,7 @@ trait MiscDirectives {
   def jsonpWithParameter(parameterName: String): Directive0 = {
     import ParameterDirectives._
     parameter(parameterName?).flatMap {
-      case Some(wrapper) :: HNil => mapHttpResponseEntity {
+      case Some(wrapper) => mapHttpResponseEntity {
         case HttpBody(ct@ ContentType(`application/json`, _), buffer) => HttpBody(
           contentType = ct.withMediaType(`application/javascript`),
           string = wrapper + '(' + buffer.asString(ct.charset.nioCharset) + ')'
