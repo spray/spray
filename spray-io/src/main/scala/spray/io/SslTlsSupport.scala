@@ -147,7 +147,7 @@ object SslTlsSupport {
           try f(tempBuf)
           catch {
             case e: SSLException =>
-              log.error(e, "Closing encrypted connection due to {}", e)
+              log.error(e, "Closing encrypted connection to {} due to {}", context.handle.remoteAddress, e)
               commandPL(IOPeer.Close(ProtocolError(e.toString)))
           }
           finally SslBufferPool.release(tempBuf)
