@@ -17,28 +17,30 @@ which is itself the same as::
 
     val route: Route = { ctx => ctx.complete("yeah") }
 
-which is a function literal. The function defined by the literal is created at the time the "val" statement is reached
+which is a function literal. The function defined by the literal is created at the time the ``val`` statement is reached
 but the code inside of the function is not executed until an actual request is injected into the route structure.
 This is all probably quite clear.
 
 Not let's look at this slightly more complex structure::
 
-    val route: Route = {
+    val route: Route =
       get {
         complete("yeah")
       }
-    }
 
 This is equivalent to::
 
     val route: Route = {
-      val inner = { ctx => ctx.complete("yeah") }
+      val inner = {
+        val expr = "yeah"
+        { ctx => ctx.complete(expr) }
+      }
       get.apply(inner)
     }
 
-First a function object is created from the literal. This function is passed to the apply function of the object
-named "``get`` directive", which wraps its argument route (the inner route of the ``get`` directive) with some filter
-logic and produces the final route.
+First the completion expression is evaluated. Its result is used for constructing a function object. This function is
+passed to the apply function of the object named "``get`` directive", which wraps its argument route (the inner route
+of the ``get`` directive) with some filter logic and produces the final route.
 
 Now let's look at this code::
 
@@ -52,7 +54,8 @@ This is equivalent to::
     val route: Route = {
       val inner = {
         println("MARK")
-        { ctx => ctx.complete("yeah") }
+        val expr = "yeah"
+        { ctx => ctx.complete(expr) }
       }
       get.apply(inner)
     }
@@ -131,7 +134,7 @@ So essentially the sequence of events in the example above is as follows:
    underneath an extraction is being "executed" right after its creation.
 
 Since the route structure inside of an extraction is fully dynamic it might look completely different depending on the
-value that has been extracted. In order to keep you route structure readable (and thus maintainable) you probably
+value that has been extracted. In order to keep your route structure readable (and thus maintainable) you probably
 shouldn't go too crazy with regard to dynamically creating complex route structures depending on specific extraction
 values though. However, understanding why it'd be possible is helpful in getting the most out of the *spray-routing*
 DSL.
@@ -173,7 +176,7 @@ non-perceivable bump in performance.
 
 .. rubric:: Footnotes
 
-.. [#f1] The directive `complete(<expression>)` is exactly equivalent to ``val x = <expression>; _.complete(x)``, so
+.. [#f1] The directive ``complete(<expression>)`` is exactly equivalent to ``val x = <expression>; _.complete(x)``, so
    the expression is *not* automatically re-evaluated for every request as it would be with the route
    ``ctx => ctx.complete(<expression>)``, unless it is located "inside" of an extraction or at some level wrapped
    with the :ref:`-dynamic-` directive.
