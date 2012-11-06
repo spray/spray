@@ -59,6 +59,7 @@ trait HttpService extends Directives {
     // we don't use a lazy val for the 'sealedRoute' member here, since we can be sure to be running in an Actor
     // (we require an implicit ActorContext) and can therefore avoid the "lazy val"-synchronization
     var sr: Route = null
+    val sealedExceptionHandler = eh orElse ExceptionHandler.default
     def sealedRoute: Route = { if (sr == null) sr = sealRoute(route); sr }
     def contextFor(req: HttpRequest) = RequestContext(req, ac.sender, req.path).withDefaultSender(ac.self)
 
@@ -76,10 +77,11 @@ trait HttpService extends Directives {
           }
         } catch {
           case NonFatal(e) =>
-            val handler = if (eh.isDefinedAt(e)) eh else ExceptionHandler.default
-            val errorRoute = handler(e)(log)
+            val errorRoute = sealedExceptionHandler(e)(log)
             errorRoute(contextFor(request))
         }
+
+      case ctx: RequestContext => sealedRoute(ctx)
 
       case Timeout(request: HttpRequest) => runRoute(timeoutRoute)(eh, rh, ac)(request)
     }

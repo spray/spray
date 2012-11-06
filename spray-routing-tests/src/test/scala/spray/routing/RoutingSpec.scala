@@ -18,12 +18,12 @@ package spray.routing
 
 import org.specs2.mutable.Specification
 import spray.testkit.Specs2RouteTest
-import spray.http.{HttpResponse, StatusCodes}
+import spray.http.HttpResponse
 
 
 trait RoutingSpec extends Specification with Directives with Specs2RouteTest {
 
-  val Ok = HttpResponse(StatusCodes.OK)
+  val Ok = HttpResponse()
   val completeOk = complete(Ok)
 
   def echoComplete[T]: T => Route = { x => complete(x.toString) }

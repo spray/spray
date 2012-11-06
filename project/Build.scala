@@ -96,7 +96,7 @@ object Build extends Build {
     .settings(libraryDependencies ++=
       compile(shapeless) ++
       provided(akkaActor) ++
-      test(specs2, scalate)
+      test(akkaTestKit, specs2, scalate)
     )
 
 
