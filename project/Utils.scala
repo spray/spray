@@ -55,6 +55,8 @@ object Utils {
   def sudoRestartService(service: String) =
     SshCommand("sudo invoke-rc.d " + service + " restart")
 
+  def git(args: Any*) = Process("git" +: args.map(_.toString)).!!.trim
+
   def colorLog(state: State, level: Level.Value = Level.Info): Log = {
     val logger = state.log
     if (logger.ansiCodesSupported) { msg =>

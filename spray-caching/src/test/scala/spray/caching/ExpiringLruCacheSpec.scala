@@ -36,6 +36,7 @@ class ExpiringLruCacheSpec extends Specification {
     "store uncached values" in {
       val cache = lruCache[String]()
       cache(1)("A").await === "A"
+      Thread.sleep(50)
       cache.store.toString === "{1=A}"
     }
     "return stored values upon cache hit on existing values" in {

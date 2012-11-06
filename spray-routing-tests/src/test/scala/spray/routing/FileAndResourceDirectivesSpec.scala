@@ -114,13 +114,13 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
   }
 
   "listDirectoryContents" should {
-    val base = getClass.getClassLoader.getResource("").getFile
+    val base = new File(getClass.getClassLoader.getResource("").toURI).getPath
     new File(base, "subDirectory/emptySub").mkdir()
     def eraseDateTime(s: String) = s.replaceAll("""\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d""", "xxxx-xx-xx xx:xx:xx")
     implicit val settings = new RoutingSettings(ConfigFactory.parseString("spray.routing.render-vanity-footer = no"))
 
     "properly render a simple directory" in {
-      Get() ~> listDirectoryContents(base + "someDir") ~> check {
+      Get() ~> listDirectoryContents(base + "/someDir") ~> check {
         eraseDateTime(entityAs[String]) ===
           """<html>
             |<head><title>Index of /</title></head>
@@ -139,7 +139,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
       }
     }
     "properly render a sub directory" in {
-      Get("/sub/") ~> listDirectoryContents(base + "someDir") ~> check {
+      Get("/sub/") ~> listDirectoryContents(base + "/someDir") ~> check {
         eraseDateTime(entityAs[String]) ===
           """<html>
             |<head><title>Index of /sub/</title></head>
@@ -157,7 +157,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
       }
     }
     "properly render the union of several directories" in {
-      Get() ~> listDirectoryContents(base + "someDir", base + "subDirectory") ~> check {
+      Get() ~> listDirectoryContents(base + "/someDir", base + "/subDirectory") ~> check {
         eraseDateTime(entityAs[String]) ===
           """<html>
             |<head><title>Index of /</title></head>
@@ -179,7 +179,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     }
     "properly render an empty sub directory with vanity footer" in {
       val settings = 0 // shadow implicit
-      Get("/emptySub/") ~> listDirectoryContents(base + "subDirectory") ~> check {
+      Get("/emptySub/") ~> listDirectoryContents(base + "/subDirectory") ~> check {
         eraseDateTime(entityAs[String]) ===
           """<html>
             |<head><title>Index of /emptySub/</title></head>
@@ -199,7 +199,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
       }
     }
     "properly render an empty top-level directory" in {
-      Get() ~> listDirectoryContents(base + "subDirectory/emptySub") ~> check {
+      Get() ~> listDirectoryContents(base + "/subDirectory/emptySub") ~> check {
         eraseDateTime(entityAs[String]) ===
           """<html>
             |<head><title>Index of /</title></head>

@@ -4,9 +4,10 @@ import ls.Plugin._
 
 
 object BuildSettings {
+  val VERSION = "1.1-SNAPSHOT"
 
   lazy val basicSettings = seq(
-    version               := "1.1-M5-SNAPSHOT",
+    version               := NightlyBuildSupport.buildVersion(VERSION),
     homepage              := Some(new URL("http://spray.io")),
     organization          := "io.spray",
     organizationHomepage  := Some(new URL("http://spray.io")),
@@ -26,7 +27,7 @@ object BuildSettings {
     )
   )
 
-  lazy val sprayModuleSettings = basicSettings ++ seq(
+  lazy val sprayModuleSettings = basicSettings ++ NightlyBuildSupport.settings ++ seq(
     // scaladoc settings
     (scalacOptions in doc) <++= (name, version).map { (n, v) => Seq("-doc-title", n, "-doc-version", v) },
 

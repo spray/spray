@@ -27,12 +27,17 @@ object SphinxSupport {
   def compileSphinxSources(script: File, sourceDir: File, targetDir: File, v: String, state: State) = {
     val log = colorLog(state)
     log("[YELLOW]Recompiling Sphinx sources...")
-    val cmd = "%1$s -b json -d %3$s/doctrees -D version=%4$s -D release=%4$s %2$s %3$s/json".format(script, sourceDir, targetDir, v)
-    log(cmd)
-    val exitCode = Process(cmd) ! state.log
-    if (exitCode != 0) sys.error("Error compiling sphinx sources")
+    if (script.exists) {
+      val cmd = "%1$s -b json -d %3$s/doctrees -D version=%4$s -D release=%4$s %2$s %3$s/json".format(script, sourceDir, targetDir, v)
+      log(cmd)
+      val exitCode = Process(cmd) ! state.log
+      if (exitCode != 0) sys.error("Error compiling sphinx sources")
 
-    (targetDir / "json" ** ("*.fjson" | "*.svg" | "*.png")).get.map(_.getAbsoluteFile)
+      (targetDir / "json" ** ("*.fjson" | "*.svg" | "*.png")).get.map(_.getAbsoluteFile)
+    } else {
+      log("[YELLOW]Sphinx script '%s' not found, skipping Sphinx run..." format script)
+      Nil
+    }
   }
 
 }
