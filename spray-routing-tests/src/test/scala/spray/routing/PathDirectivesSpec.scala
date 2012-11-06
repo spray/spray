@@ -245,4 +245,24 @@ class PathDirectivesSpec extends RoutingSpec {
       } ~> check { entityAs[String] === "List(yes, no)" }
     }
   }
+
+  "The `pathTest` directive" should {
+    "match uris without consuming them" in {
+      Get("/a") ~> {
+        pathTest("a") { ctx => ctx.complete(ctx.unmatchedPath) }
+      } ~> check { entityAs[String] === "/a" }
+    }
+    "be usable for testing for trailing slashs in URIs" in {
+      "example 1" in {
+        Get("/a/") ~> {
+          pathTest(".*/".r) { _ => completeOk }
+        } ~> check { response === Ok }
+      }
+      "example 2" in {
+        Get("/a") ~> {
+          pathTest(".*/".r) { _ => completeOk }
+        } ~> check { handled === false }
+      }
+    }
+  }
 }
