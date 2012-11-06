@@ -17,11 +17,13 @@
 package spray.routing
 package directives
 
+import shapeless.HNil
 import spray.http._
 
 
 trait RespondWithDirectives {
   import BasicDirectives._
+  import RouteDirectives._
 
   /**
    * Overrides the given response status on all HTTP responses of its inner Route.
@@ -74,9 +76,8 @@ trait RespondWithDirectives {
    * it merely overrides the media-type component of the entities Content-Type.
    */
   def respondWithMediaType(mediaType: MediaType): Directive0 =
-    filter { ctx =>
-      if (ctx.request.isMediaTypeAccepted(mediaType)) Pass.Empty
-      else Reject(UnacceptedResponseContentTypeRejection(ContentType(mediaType) :: Nil))
+    extract(_.request.isMediaTypeAccepted(mediaType)).flatMap[HNil] {
+      if (_) pass else reject(UnacceptedResponseContentTypeRejection(ContentType(mediaType) :: Nil))
     } &
     mapRequest(_.mapHeaders(h => if (h.exists(_.is("accept"))) h.filter(_.isNot("accept")) else h)) &
     mapHttpResponseEntity(_.map((ct, buf) => (ct.withMediaType(mediaType), buf)))

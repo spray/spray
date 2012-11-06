@@ -19,11 +19,13 @@ package directives
 
 import spray.http.HttpMethod
 import spray.http.HttpMethods._
+import shapeless.HNil
 
 
 trait MethodDirectives {
   import BasicDirectives._
   import MiscDirectives._
+  import RouteDirectives._
 
   /**
    * A route filter that rejects all non-DELETE requests.
@@ -53,9 +55,9 @@ trait MethodDirectives {
   /**
    * Rejects all requests whose HTTP method does not match the given one.
    */
-  def method(m: HttpMethod): Directive0 = filter { ctx =>
-    if (ctx.request.method == m) Pass.Empty else Reject(MethodRejection(m))
-  } & cancelAllRejections(ofType[MethodRejection])
+  def method(mth: HttpMethod): Directive0 =
+    extract(_.request.method).flatMap[HNil](m => if (m == mth) pass else reject(MethodRejection(mth))) &
+      cancelAllRejections(ofType[MethodRejection])
 }
 
 object MethodDirectives extends MethodDirectives

@@ -28,24 +28,26 @@ import MediaTypes._
 
 trait MiscDirectives {
   import BasicDirectives._
+  import RouteDirectives._
 
   /**
    * Returns a Directive which checks the given condition before passing on the [[spray.routing.RequestContext]] to
    * its inner Route. If the condition fails the route is rejected with a [[spray.routing.ValidationRejection]].
    */
   def validate(check: => Boolean, errorMsg: String): Directive0 =
-    filter { _ => if (check) Pass.Empty else Reject(ValidationRejection(errorMsg)) }
+    new Directive0 {
+      def happly(f: HNil => Route) = if (check) f(HNil) else reject(ValidationRejection(errorMsg))
+    }
 
   /**
    * Extracts an HTTP header value using the given function. If the function is undefined for all headers the request
    * is rejection with the [[spray.routing.MissingHeaderRejection]]
    */
-  def headerValue[T](f: HttpHeader => Option[T]): Directive[T :: HNil] = filter {
-    _.request.headers.mapFind(f) match {
-      case Some(a) => Pass(a :: HNil)
-      case None => Reject.Empty
+  def headerValue[T](f: HttpHeader => Option[T]): Directive[T :: HNil] =
+    extract(_.request.headers.mapFind(f)).flatMap {
+      case Some(a) => provide(a)
+      case None => reject
     }
-  }
 
   /**
    * Extracts an HTTP header value using the given partial function. If the function is undefined for all headers
@@ -100,30 +102,27 @@ trait MiscDirectives {
   /**
    * Rejects the request if its entity is not empty.
    */
-  def requestEntityEmpty: Directive0 = filter { ctx => if (ctx.request.entity.isEmpty) Pass.Empty else Reject.Empty }
-
-  /**
-   * Rejects the request if its entity is empty.
-   */
-  def requestEntityPresent: Directive0 = filter { ctx => if (ctx.request.entity.isEmpty) Reject.Empty else Pass.Empty }
-
-  /**
-   * Transforms the unmatchedPath of the RequestContext using the given function.
-   */
-  def rewriteUnmatchedPath(f: String => String): Directive0 = mapRequestContext(_.mapUnmatchedPath(f))
-
-  /**
-   * Extracts the unmatched path from the RequestContext.
-   */
-  def unmatchedPath: Directive[String :: HNil] = extract(_.unmatchedPath)
+  def requestEntityEmpty: Directive0 =
+    extract(_.request.entity.isEmpty).flatMap(if (_) pass else reject)
 
   /**
    * Rejects empty requests with a RequestEntityExpectedRejection.
    * Non-empty requests are passed on unchanged to the inner route.
    */
-  def rejectEmptyRequests: Directive0 = filter { ctx =>
-    if (ctx.request.entity.isEmpty) Reject(RequestEntityExpectedRejection) else Pass.Empty
-  }
+  def requestEntityPresent: Directive0 =
+    extract(_.request.entity.isEmpty).flatMap(if (_) reject else pass)
+
+  /**
+   * Transforms the unmatchedPath of the RequestContext using the given function.
+   */
+  def rewriteUnmatchedPath(f: String => String): Directive0 =
+    mapRequestContext(_.mapUnmatchedPath(f))
+
+  /**
+   * Extracts the unmatched path from the RequestContext.
+   */
+  def unmatchedPath: Directive[String :: HNil] =
+    extract(_.unmatchedPath)
 
   /**
    * Converts responses with an empty entity into (empty) rejections.

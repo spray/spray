@@ -25,6 +25,7 @@ import spray.httpx.encoding._
 trait EncodingDirectives {
   import BasicDirectives._
   import MiscDirectives._
+  import RouteDirectives._
 
   /**
    * Wraps its inner Route with decoding support using the given Decoder.
@@ -46,10 +47,11 @@ trait EncodingDirectives {
   /**
    * Rejects the request with an UnsupportedRequestEncodingRejection if its encoding doesn't match the given one.
    */
-  def requestEncodedWith(encoding: HttpEncoding): Directive0 = filter { ctx =>
-    if (ctx.request.encoding == encoding) Pass.Empty
-    else Reject(UnsupportedRequestEncodingRejection(encoding))
-  }
+  def requestEncodedWith(encoding: HttpEncoding): Directive0 =
+    extract(_.request.encoding).flatMap {
+      case `encoding` => pass
+      case _ => reject(UnsupportedRequestEncodingRejection(encoding))
+    }
 
   /**
    * Wraps its inner Route with encoding support using the given Encoder.
@@ -82,10 +84,9 @@ trait EncodingDirectives {
    * Rejects the request with an UnacceptedResponseEncodingRejection
    * if the given encoding is not accepted for the response.
    */
-  def responseEncodingAccepted(encoding: HttpEncoding): Directive0 = filter { ctx =>
-    if (ctx.request.isEncodingAccepted(encoding)) Pass.Empty
-    else Reject(UnacceptedResponseEncodingRejection(encoding))
-  }
+  def responseEncodingAccepted(encoding: HttpEncoding): Directive0 =
+    extract(_.request.isEncodingAccepted(encoding))
+      .flatMap(if (_) pass else reject(UnacceptedResponseEncodingRejection(encoding)))
 
 }
 

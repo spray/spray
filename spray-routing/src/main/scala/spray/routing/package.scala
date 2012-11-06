@@ -23,7 +23,6 @@ package object routing {
 
   type Route = RequestContext => Unit
   type RouteGenerator[T] = T => Route
-  type RouteFilter[+T <: HList] = RequestContext => FilterResult[T]
   type Directive0 = Directive[HNil]
 
   // should actually live in file "Route.scala"

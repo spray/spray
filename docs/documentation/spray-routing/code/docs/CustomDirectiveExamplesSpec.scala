@@ -15,7 +15,7 @@ class CustomDirectiveExamplesSpec extends Specification with Specs2RouteTest {
       parameters('a.as[Int], 'b.as[Int])
 
     val myDirective: Directive[String :: HNil] =
-      twoIntParameters.map {
+      twoIntParameters.hmap {
         case a :: b :: HNil => (a + b).toString
       }
 
@@ -34,8 +34,8 @@ class CustomDirectiveExamplesSpec extends Specification with Specs2RouteTest {
 
     val myDirective: Directive[Int :: HNil] =
       intParameter.flatMap {
-        case a :: HNil if a > 0 => provide(2 * a)
-        case _ => reject()
+        case a if a > 0 => provide(2 * a)
+        case _ => reject
       }
 
     // test `myDirective` using the testkit DSL

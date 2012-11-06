@@ -62,21 +62,18 @@ trait BasicDirectives {
   def mapRejections(f: List[Rejection] => List[Rejection]): Directive0 =
     mapRequestContext(_.mapRejections(f))
 
-  def filter[L <: HList](f: RequestContext => FilterResult[L]): Directive[L] =
-    new Directive[L] {
-      def happly(inner: L => Route) = { ctx =>
-        f(ctx) match {
-          case Pass(values, transform) => inner(values)(transform(ctx))
-          case Reject(rejections) => ctx.reject(rejections: _*)
-        }
-      }
-    }
-
   /**
    * A Directive0 that always passes the request on to its inner route
    * (i.e. does nothing with the request or the response).
    */
-  def noop: Directive0 = mapInnerRoute(identityFunc)
+  val noop = new Directive0 {
+    def happly(inner: HNil => Route) = inner(HNil)
+  }
+
+  /**
+   * A simple alias for the `noop` directive.
+   */
+  def pass = noop
 
   /**
    * Injects the given value into a directive.

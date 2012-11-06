@@ -61,7 +61,7 @@ trait FileAndResourceDirectives {
             if (0 < settings.FileChunkingThresholdSize && settings.FileChunkingThresholdSize <= file.length)
               complete(file.toByteArrayStream(settings.FileChunkingChunkSize.toInt))
             else complete(FileUtils.readAllBytes(file))
-          } else reject()
+          } else reject
         }
       }
     }
@@ -82,7 +82,7 @@ trait FileAndResourceDirectives {
                      (implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route = {
     def openConnection: Option[URL] :: HNil => Directive[URLConnection :: HNil] = {
       case Some(url) :: HNil => provide(url.openConnection())
-      case _ => reject()
+      case _ => reject
     }
     if (!resourceName.endsWith("/")) {
       def resource = getClass.getClassLoader.getResource(resourceName)
@@ -93,7 +93,7 @@ trait FileAndResourceDirectives {
             complete(FileUtils.readAllBytes(urlConn.getInputStream))
           }
         }
-    } else reject() // don't serve the content of resource "directories"
+    } else reject // don't serve the content of resource "directories"
   }
 
   /**
@@ -121,7 +121,7 @@ trait FileAndResourceDirectives {
       detachTo(singleRequestServiceActor) {
         unmatchedPath { path =>
           val dirs = directories.map(new File(_, path)).filter(dir => dir.isDirectory && dir.canRead)
-          if (dirs.isEmpty) reject()
+          if (dirs.isEmpty) reject
           else complete(DirectoryListing(withTrailingSlash(path), dirs.flatMap(_.listFiles)))
         }
       }

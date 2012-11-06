@@ -68,6 +68,8 @@ trait FieldDefMagnetAux[A, B] extends (A => B)
 
 object FieldDefMagnetAux extends ToNameReceptaclePimps {
   import spray.httpx.unmarshalling.{Unmarshaller => UM, FormFieldConverter => FFC, FromEntityOptionUnmarshaller => FEOU, _}
+  import BasicDirectives._
+  import RouteDirectives._
 
   def apply[A, B](f: A => B) = new FieldDefMagnetAux[A, B] { def apply(value: A) = f(value) }
 
@@ -75,14 +77,12 @@ object FieldDefMagnetAux extends ToNameReceptaclePimps {
 
   def extractField[A, B](f: A => Directive[B :: HNil]) = FieldDefMagnetAux[A, Directive[B :: HNil]](f)
   
-  private def filter[A, B](nr: NameReceptacle[A])(implicit ev1: UM[HttpForm], ev2: FFC[B]) =
-    BasicDirectives.filter { ctx =>
-      ctx.request.entity.as[HttpForm].right.flatMap(_.field(nr.name).as[B]) match {
-        case Right(value) => Pass(value :: HNil)
-        case Left(ContentExpected) => Reject(MissingFormFieldRejection(nr.name))
-        case Left(MalformedContent(msg, _)) => Reject(MalformedFormFieldRejection(msg, nr.name))
-        case Left(UnsupportedContentType(msg)) => Reject(UnsupportedRequestContentTypeRejection(msg))
-      }
+  private def filter[A, B](nr: NameReceptacle[A])(implicit ev1: UM[HttpForm], ev2: FFC[B]): Directive[B :: HNil] =
+    extract(_.request.entity.as[HttpForm].right.flatMap(_.field(nr.name).as[B])).flatMap {
+      case Right(value) => provide(value)
+      case Left(ContentExpected) => reject(MissingFormFieldRejection(nr.name))
+      case Left(MalformedContent(msg, _)) => reject(MalformedFormFieldRejection(msg, nr.name))
+      case Left(UnsupportedContentType(msg)) => reject(UnsupportedRequestContentTypeRejection(msg))
     }
   implicit def forString(implicit ev1: UM[HttpForm], ev2: FFC[String]) =
     extractField[String, String](string => filter(string))

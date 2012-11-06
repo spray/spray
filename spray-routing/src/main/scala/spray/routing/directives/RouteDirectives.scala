@@ -26,6 +26,13 @@ import StatusCodes._
 trait RouteDirectives {
 
   /**
+   * Rejects the request with an empty set of rejections.
+   */
+  val reject: StandardRoute = new StandardRoute {
+    def apply(ctx: RequestContext) { ctx.reject() }
+  }
+
+  /**
    * Rejects the request with the given rejections.
    */
   def reject(rejections: Rejection*): StandardRoute = new StandardRoute {

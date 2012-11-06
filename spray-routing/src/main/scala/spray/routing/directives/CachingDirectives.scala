@@ -32,6 +32,7 @@ import HttpMethods._
 // not mixed into spray.routing.Directives due to its dependency on com.googlecode.concurrentlinkedhashmap
 trait CachingDirectives {
   import BasicDirectives._
+  import RouteDirectives._
 
   type RouteResponse = Either[Seq[Rejection], HttpResponse]
 
@@ -44,17 +45,15 @@ trait CachingDirectives {
   /**
    * Rejects the request if it doesn't contain a `Cache-Control` header with either a `no-cache` or `max-age=0` setting.
    */
-  def cachingProhibited: Directive0 = filter { ctx =>
-    val noCachePresent = ctx.request.headers.exists {
+  def cachingProhibited: Directive0 =
+    extract(_.request.headers.exists {
       case x: `Cache-Control` => x.directives.exists {
         case `no-cache` => true
         case `max-age`(0) => true
         case _ => false
       }
       case _ => false
-    }
-    if (noCachePresent) Pass.Empty else Reject.Empty
-  }
+    }).flatMap(if (_) pass else reject)
 
   /**
    * Wraps its inner Route with caching support using the given [[spray.caching.Cache]] implementation and
