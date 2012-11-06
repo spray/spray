@@ -54,7 +54,8 @@ trait HttpService extends Directives {
    * mixing into an Actor.
    */
   def runRoute(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext): Actor.Receive = {
-    val sealedRoute = sealRoute(route)
+    val sealedExceptionHandler = eh orElse ExceptionHandler.default
+    val sealedRoute = sealRoute(route)(sealedExceptionHandler, rh)
     def contextFor(req: HttpRequest) = RequestContext(req, ac.sender, req.path).withDefaultSender(ac.self)
 
     {
@@ -71,10 +72,11 @@ trait HttpService extends Directives {
           }
         } catch {
           case NonFatal(e) =>
-            val handler = if (eh.isDefinedAt(e)) eh else ExceptionHandler.default
-            val errorRoute = handler(e)(log)
+            val errorRoute = sealedExceptionHandler(e)(log)
             errorRoute(contextFor(request))
         }
+
+      case ctx: RequestContext => sealedRoute(ctx)
 
       case Timeout(request: HttpRequest) => runRoute(timeoutRoute)(eh, rh, ac)(request)
     }

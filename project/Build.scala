@@ -98,7 +98,7 @@ object Build extends Build with DocSupport {
     .settings(libraryDependencies ++=
       compile(shapeless) ++
       provided(akkaActor) ++
-      test(specs2)
+      test(akkaTestKit, specs2)
     )
 
 
