@@ -3,9 +3,10 @@ import Keys._
 
 
 object BuildSettings {
+  val VERSION = "1.0-SNAPSHOT"
 
   lazy val basicSettings = seq(
-    version               := "1.0-M5-SNAPSHOT",
+    version               := NightlyBuildSupport.buildVersion(VERSION),
     homepage              := Some(new URL("http://spray.io")),
     organization          := "io.spray",
     organizationHomepage  := Some(new URL("http://spray.io")),
@@ -18,7 +19,7 @@ object BuildSettings {
     scalacOptions         := Seq("-Ydependent-method-types", "-unchecked", "-deprecation", "-encoding", "utf8")
   )
 
-  lazy val sprayModuleSettings = basicSettings ++ seq(
+  lazy val sprayModuleSettings = basicSettings ++ NightlyBuildSupport.settings ++ seq(
     // scaladoc settings
     (scalacOptions in doc) <++= (name, version).map { (n, v) => Seq("-doc-title", n, "-doc-version", v) },
 

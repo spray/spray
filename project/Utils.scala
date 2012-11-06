@@ -5,6 +5,8 @@ import scala.Console.{RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE}
 object Utils {
   type Log = String => Unit
 
+  def git(args: Any*) = Process("git" +: args.map(_.toString)).!!.trim
+
   def colorLog(state: State, level: Level.Value = Level.Info): Log = {
     val logger = state.log
     if (logger.ansiCodesSupported) { msg =>
