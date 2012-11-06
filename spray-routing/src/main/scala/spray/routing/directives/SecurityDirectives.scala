@@ -21,6 +21,7 @@ import akka.dispatch.Future
 import shapeless._
 import spray.routing.authentication._
 import BasicDirectives._
+import RouteDirectives._
 
 
 trait SecurityDirectives {
@@ -31,7 +32,7 @@ trait SecurityDirectives {
   def authenticate[T](am: AuthMagnet[T]): Directive[T :: HNil] =
     am.value.unwrapFuture.flatMap {
       case Right(user) => provide(user)
-      case Left(rejection) => RouteDirectives.reject(rejection)
+      case Left(rejection) => reject(rejection)
     }
 
   /**
@@ -44,9 +45,8 @@ trait SecurityDirectives {
    * Applies the given authorization check to the request.
    * If the check fails the route is rejected with an [[spray.AuthorizationFailedRejection]].
    */
-  def authorize(check: RequestContext => Boolean): Directive0 = filter { ctx =>
-    if (check(ctx)) Pass.Empty else Reject(AuthorizationFailedRejection)
-  }
+  def authorize(check: RequestContext => Boolean): Directive0 =
+    extract(check).flatMap(if (_) pass else reject(AuthorizationFailedRejection))
 
 }
 

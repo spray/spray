@@ -32,7 +32,7 @@ class RespondWithDirectivesSpec extends RoutingSpec {
     }
     "leave rejections unaffected" in {
       Get() ~> {
-        respondWithStatus(Created) { reject() }
+        respondWithStatus(Created) { reject }
       } ~> check { rejections === Nil }
     }
   }
@@ -46,7 +46,7 @@ class RespondWithDirectivesSpec extends RoutingSpec {
     }
     "leave rejections unaffected" in {
       Get() ~> {
-        respondWithHeader(customHeader) { reject() }
+        respondWithHeader(customHeader) { reject }
       } ~> check { rejections === Nil }
     }
   }

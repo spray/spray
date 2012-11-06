@@ -25,7 +25,8 @@ import spray.util._
 
 
 trait PathDirectives extends PathMatcherImplicits with PathMatchers {
-  import BasicDirectives.filter
+  import BasicDirectives._
+  import RouteDirectives._
   import PathMatcher._
 
   /**
@@ -40,11 +41,9 @@ trait PathDirectives extends PathMatcherImplicits with PathMatchers {
    */
   def pathPrefix[L <: HList](pm: PathMatcher[L]): Directive[L] = {
     val matcher = Slash ~ pm
-    filter { ctx =>
-      matcher(ctx.unmatchedPath) match {
-        case Matched(rest, values) => Pass(values, transform = _.copy(unmatchedPath = rest))
-        case Unmatched => Reject.Empty
-      }
+    extract(ctx => matcher(ctx.unmatchedPath)).flatMap {
+      case Matched(rest, values) => hprovide(values) & mapRequestContext(_.copy(unmatchedPath = rest))
+      case Unmatched => reject
     }
   }
 }

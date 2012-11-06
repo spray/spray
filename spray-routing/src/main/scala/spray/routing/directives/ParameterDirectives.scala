@@ -28,7 +28,7 @@ trait ParameterDirectives extends ToNameReceptaclePimps {
    * Extracts the requests query parameters as a Map[String, String].
    */
   def parameterMap: Directive[QueryParams :: HNil] =
-    BasicDirectives.filter { ctx => Pass(ctx.request.queryParams :: HNil) }
+    BasicDirectives.extract(_.request.queryParams)
 
   /**
    * Rejects the request if the query parameter matcher(s) defined by the definition(s) don't match.
@@ -75,6 +75,8 @@ trait ParamDefMagnetAux[A, B] extends (A => B)
 
 object ParamDefMagnetAux {
   import spray.httpx.unmarshalling.{FromStringOptionDeserializer => FSOD, _}
+  import BasicDirectives._
+  import RouteDirectives._
 
   def apply[A, B](f: A => B) = new ParamDefMagnetAux[A, B] { def apply(value: A) = f(value) }
 
@@ -82,14 +84,13 @@ object ParamDefMagnetAux {
   /************ "regular" parameter extraction ******************/
 
   private def extractParameter[A, B](f: A => Directive[B :: HNil]) = ParamDefMagnetAux[A, Directive[B :: HNil]](f)
-  private def filter[T](paramName: String, fsod: FSOD[T]) = BasicDirectives.filter { ctx =>
-    fsod(ctx.request.queryParams.get(paramName)) match {
-      case Right(x) => Pass(x :: HNil)
-      case Left(ContentExpected) => Reject(MissingQueryParamRejection(paramName))
-      case Left(MalformedContent(error, _)) => Reject(MalformedQueryParamRejection(error, paramName))
+  private def filter[T](paramName: String, fsod: FSOD[T]): Directive[T :: HNil] =
+    extract(ctx => fsod(ctx.request.queryParams.get(paramName))).flatMap {
+      case Right(x) => provide(x)
+      case Left(ContentExpected) => reject(MissingQueryParamRejection(paramName))
+      case Left(MalformedContent(error, _)) => reject(MalformedQueryParamRejection(error, paramName))
       case Left(x: UnsupportedContentType) => throw new IllegalStateException(x.toString)
     }
-  } 
   implicit def forString(implicit fsod: FSOD[String]) = extractParameter[String, String] { string =>
     filter(string, fsod)
   }
@@ -112,12 +113,10 @@ object ParamDefMagnetAux {
 
   /************ required parameter support ******************/
 
-  private def requiredFilter(paramName: String, fsod: FSOD[_], requiredValue: Any) =
-    BasicDirectives.filter { ctx =>
-      fsod(ctx.request.queryParams.get(paramName)) match {
-        case Right(value) if value == requiredValue => Pass.Empty
-        case _ => Reject.Empty
-      }
+  private def requiredFilter(paramName: String, fsod: FSOD[_], requiredValue: Any): Directive0 =
+    extract(ctx => fsod(ctx.request.queryParams.get(paramName))).flatMap {
+      case Right(value) if value == requiredValue => pass
+      case _ => reject
     }
   implicit def forRVR[T](implicit fsod: FSOD[T]) = ParamDefMagnetAux[RequiredValueReceptacle[T], Directive0] { rvr =>
     requiredFilter(rvr.name, fsod, rvr.requiredValue)

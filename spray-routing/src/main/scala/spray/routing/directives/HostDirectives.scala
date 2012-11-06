@@ -24,6 +24,7 @@ import shapeless._
 
 trait HostDirectives {
   import BasicDirectives._
+  import RouteDirectives._
 
   /**
    * Extracts the hostname part of the Host header value in the request.
@@ -46,16 +47,16 @@ trait HostDirectives {
    * If the regex contains a capturing group only the string matched by this group is extracted.
    * If the regex contains more than one capturing group an IllegalArgumentException is thrown.
    */
-  def host(regex: Regex): Directive[String :: HNil] = filter { ctx =>
-    def run(regexMatch: String => Option[String]) = {
-      regexMatch(ctx.request.host) match {
-        case Some(matched) => Pass(matched :: HNil)
-        case None => Reject.Empty
+  def host(regex: Regex): Directive[String :: HNil] = {
+    def forFunc(regexMatch: String => Option[String]): Directive[String :: HNil] = {
+      extract(ctx => regexMatch(ctx.request.host)).flatMap {
+        case Some(matched) => provide(matched)
+        case None => reject
       }
     }
     regex.groupCount match {
-      case 0 => run(regex.findPrefixOf(_))
-      case 1 => run(regex.findPrefixMatchOf(_).map(_.group(1)))
+      case 0 => forFunc(regex.findPrefixOf(_))
+      case 1 => forFunc(regex.findPrefixMatchOf(_).map(_.group(1)))
       case _ => throw new IllegalArgumentException("Path regex '" + regex.pattern.pattern +
               "' must not contain more than one capturing group")
     }

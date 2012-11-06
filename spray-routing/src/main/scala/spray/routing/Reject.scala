@@ -14,15 +14,12 @@
  * limitations under the License.
  */
 
-package spray
-
-import shapeless.{HNil, HList}
+package spray.routing
 
 
-package object routing {
+case class Reject(rejections: Seq[Rejection])
 
-  type Route = RequestContext => Unit
-  type RouteGenerator[T] = T => Route
-  type Directive0 = Directive[HNil]
-
+object Reject {
+  val Empty = Reject(Nil)
+  def apply(rejection: Rejection): Reject = apply(rejection :: Nil)
 }

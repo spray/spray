@@ -26,20 +26,20 @@ import spray.http._
 trait MarshallingDirectives {
   import BasicDirectives._
   import MiscDirectives._
+  import RouteDirectives._
 
   /**
    * Unmarshalls the requests entity to the given type passes it to its inner Route.
    * If there is a problem with unmarshalling the request is rejected with the [[spray.routing.Rejection]]
    * produced by the unmarshaller.
    */
-  def entity[T](um: Unmarshaller[T]): Directive[T :: HNil] = filter { ctx =>
-    ctx.request.entity.as(um) match {
-      case Right(value) => Pass(value :: HNil)
-      case Left(ContentExpected) => Reject(RequestEntityExpectedRejection)
-      case Left(UnsupportedContentType(supported)) => Reject(UnsupportedRequestContentTypeRejection(supported))
-      case Left(MalformedContent(error, _)) => Reject(MalformedRequestContentRejection(error))
-    }
-  } & cancelAllRejections(ofTypes(RequestEntityExpectedRejection.getClass, classOf[UnsupportedRequestContentTypeRejection]))
+  def entity[T](um: Unmarshaller[T]): Directive[T :: HNil] =
+    extract(_.request.entity.as(um)).flatMap[T :: HNil] {
+      case Right(value) => provide(value)
+      case Left(ContentExpected) => reject(RequestEntityExpectedRejection)
+      case Left(UnsupportedContentType(supported)) => reject(UnsupportedRequestContentTypeRejection(supported))
+      case Left(MalformedContent(error, _)) => reject(MalformedRequestContentRejection(error))
+    } & cancelAllRejections(ofTypes(RequestEntityExpectedRejection.getClass, classOf[UnsupportedRequestContentTypeRejection]))
 
   /**
    * Returns the in-scope Unmarshaller for the given type.
