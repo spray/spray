@@ -55,7 +55,7 @@ class SslTlsSupportSpec extends Specification {
       val Connected(handle) = system.actorOf(Props(new SslClientActor), "ssl-client")
         .ask(Connect("localhost", port)).await
       val Received(_, buf) = handle.handler.ask(Send(ByteBuffer.wrap("3+4\n".getBytes))).await
-      handle.handler ! IOClient.Close(CleanClose)
+      handle.handler ! IOClient.Close(ConnectionCloseReasons.CleanClose)
       buf.drainToString === "7\n"
     }
     "be able to complete a simple request/response dialog from the server-side" in {

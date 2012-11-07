@@ -19,7 +19,7 @@ package spray.io
 import akka.actor._
 import java.nio.ByteBuffer
 import java.net.InetSocketAddress
-import spray.util.ConnectionClosedReason
+import spray.util.CloseCommandReason
 
 
 abstract class IOPeer extends Actor with ActorLogging {
@@ -34,7 +34,7 @@ abstract class IOPeer extends Actor with ActorLogging {
 object IOPeer {
 
   ////////////// COMMANDS //////////////
-  case class Close(reason: ConnectionClosedReason) extends Command
+  case class Close(reason: CloseCommandReason) extends Command
   case class Send(buffers: Seq[ByteBuffer], ack: Option[Any]) extends Command
   object Send {
     def apply(buffer: ByteBuffer): Send = apply(buffer, None)

@@ -17,14 +17,16 @@
 package spray.io
 
 import java.nio.channels.{SocketChannel, SelectionKey}
+import akka.actor.ActorRef
 import scala.collection.mutable
+
 
 sealed abstract class Key {
   def channel: SocketChannel
 
   private[io] def selectionKey: SelectionKey
 
-  // the writeQueue contains instances of either ByteBuffer, PerformCleanClose or AckTo
+  // the writeQueue contains instances of either ByteBuffer, CloseCommandReason or Ack
   // we don't introduce a dedicated algebraic datatype for this since we want to save the extra
   // allocation that would be required for wrapping the ByteBuffers
   private[io] val writeQueue = mutable.Queue.empty[AnyRef]
@@ -52,3 +54,5 @@ private[io] object Key {
     private[io] def selectionKey = key
   }
 }
+
+private[io] case class Ack(receiver: ActorRef, msg: Any)

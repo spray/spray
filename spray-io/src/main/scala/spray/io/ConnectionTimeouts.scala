@@ -18,7 +18,7 @@ package spray.io
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import akka.event.LoggingAdapter
-import spray.util.IdleTimeout
+import spray.util.ConnectionCloseReasons.IdleTimeout
 
 
 object ConnectionTimeouts {
