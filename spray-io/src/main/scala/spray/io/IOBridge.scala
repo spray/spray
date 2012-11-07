@@ -176,7 +176,8 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
             case Ack(receiver, msg) =>
               receiver ! msg
               writeToChannel()
-            case PerformCleanClose => close(handle, CleanClose)
+            case ConnectionCloseReasons.ConfirmedClose => sendFIN(channel)
+            case reason: CloseCommandReason => close(handle, reason)
           }
         } else {
           handle.key.disable(OP_WRITE)
@@ -188,7 +189,7 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
       catch {
         case NonFatal(e) =>
           log.warning("Write error: closing connection due to {}", e.toString)
-          close(handle, IOError(e))
+          close(handle, ConnectionCloseReasons.IOError(e))
       }
     }
 
@@ -206,12 +207,15 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
           handle.handler ! Received(handle, buffer)
         } else {
           // if the peer shut down the socket cleanly, we do the same
-          close(handle, PeerClosed)
+          val reason =
+            if (channel.socket.isOutputShutdown) ConnectionCloseReasons.ConfirmedClose
+            else ConnectionCloseReasons.PeerClosed
+          close(handle, reason)
         }
       } catch {
         case NonFatal(e) =>
           log.warning("Read error: closing connection due to {}", e.toString)
-          close(handle, IOError(e))
+          close(handle, ConnectionCloseReasons.IOError(e))
       }
     }
 
@@ -279,7 +283,7 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
         case e: CancelledKeyException if command.isInstanceOf[ConnectionCommand] =>
           log.warning("Could not execute command '{}': connection reset by peer", command)
           val handle = command.asInstanceOf[ConnectionCommand].handle
-          handle.handler ! Closed(handle, PeerClosed)
+          handle.handler ! Closed(handle, ConnectionCloseReasons.PeerClosed)
         case NonFatal(e) =>
           log.error(e, "Error during execution of command '{}'", command)
           if (sender != null) sender ! Status.Failure(CommandException(command, e))
@@ -300,17 +304,27 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
       connectionsOpened += 1
     }
 
-    def scheduleClose(handle: Handle, reason: ConnectionClosedReason) {
+    def scheduleClose(handle: Handle, reason: CloseCommandReason) {
       val key = handle.key.selectionKey
       if (key.isValid) {
-        if (reason == CleanClose && !handle.key.writeQueue.isEmpty) {
+        if (handle.key.writeQueue.isEmpty)
+          if (reason == ConnectionCloseReasons.ConfirmedClose)
+            sendFIN(handle.key.channel)
+          else
+            close(handle, reason)
+        else {
           log.debug("Scheduling connection close after writeQueue flush")
-          handle.key.writeQueue += PerformCleanClose
-        } else close(handle, reason)
+          handle.key.writeQueue += reason
+        }
       }
     }
 
-    def close(handle: Handle, reason: ConnectionClosedReason) {
+    def sendFIN(channel: SocketChannel) {
+      log.debug("Sending FIN")
+      channel.socket.shutdownOutput()
+    }
+
+    def close(handle: Handle, reason: ClosedEventReason) {
       val key = handle.key.selectionKey
       if (key.isValid) {
         log.debug("Closing connection due to {}", reason)
@@ -399,10 +413,6 @@ object IOBridge {
     commandsExecuted: Long
   )
 
-  // these two things can be elements of a Keys writeQueue (in addition to a raw ByteBuffer)
-  private[io] case class Ack(receiver: ActorRef, msg: Any)
-  private[io] case object PerformCleanClose
-
   ////////////// COMMANDS //////////////
 
   private[IOBridge] case class Stop(latch: CountDownLatch) extends Command
@@ -430,7 +440,7 @@ object IOBridge {
   }
   case class Register(handle: Handle) extends ConnectionCommand
   case class Close(handle: Handle,
-                   reason: ConnectionClosedReason) extends ConnectionCommand
+                   reason: CloseCommandReason) extends ConnectionCommand
   case class Send(handle: Handle,
                   buffers: Seq[ByteBuffer],
                   ack: Option[Any] = None) extends ConnectionCommand
@@ -457,7 +467,7 @@ object IOBridge {
 
   // connection-level events
   case class Closed(handle: Handle,
-                    reason: ConnectionClosedReason) extends Event with IOClosed
+                    reason: ClosedEventReason) extends Event with IOClosed
   case class Received(handle: Handle, buffer: ByteBuffer) extends Event
   //#
 }

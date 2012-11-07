@@ -16,15 +16,14 @@
 
 package spray.io
 
-import spray.util._
-import akka.event.LoggingAdapter
 import java.nio.ByteBuffer
 import javax.net.ssl.{SSLContext, SSLException, SSLEngineResult, SSLEngine}
 import javax.net.ssl.SSLEngineResult.HandshakeStatus._
+import scala.collection.mutable
+import scala.annotation.tailrec
+import akka.event.LoggingAdapter
+import spray.util._
 import SSLEngineResult.Status._
-import collection.mutable
-import annotation.tailrec
-import scala.Array
 
 
 object SslTlsSupport {
@@ -94,13 +93,15 @@ object SslTlsSupport {
               case NEED_WRAP => encrypt(send, tempBuf, fromQueue)
               case NEED_UNWRAP =>
                 if (fromQueue) send +=: pendingSends // output coming from the queue needs to go to the front,
-                else pendingSends.enqueue(send)      // "new" output to the back of the queue
+                else pendingSends += send            // "new" output to the back of the queue
               case NEED_TASK =>
                 runDelegatedTasks()
                 encrypt(send, tempBuf, fromQueue)
             }
             case CLOSED =>
-              if (postContentLeft) commandPL(IOPeer.Close(ProtocolError("SSLEngine closed prematurely while sending")))
+              if (postContentLeft) commandPL {
+                IOPeer.Close(ConnectionCloseReasons.ProtocolError("SSLEngine closed prematurely while sending"))
+              }
             case BUFFER_OVERFLOW =>
               throw new IllegalStateException // the SslBufferPool should make sure that buffers are never too small
             case BUFFER_UNDERFLOW =>
@@ -133,8 +134,9 @@ object SslTlsSupport {
                 decrypt(buffer, tempBuf)
             }
             case CLOSED =>
-              if (!engine.isOutboundDone)
-                commandPL(IOPeer.Close(ProtocolError("SSLEngine closed prematurely while receiving")))
+              if (!engine.isOutboundDone) commandPL {
+                IOPeer.Close(ConnectionCloseReasons.ProtocolError("SSLEngine closed prematurely while receiving"))
+              }
             case BUFFER_UNDERFLOW =>
               inboundReceptacle = buffer // save buffer so we can append the next one to it
             case BUFFER_OVERFLOW =>
@@ -148,7 +150,7 @@ object SslTlsSupport {
           catch {
             case e: SSLException =>
               log.error(e, "Closing encrypted connection to {} due to {}", context.handle.remoteAddress, e)
-              commandPL(IOPeer.Close(ProtocolError(e.toString)))
+              commandPL(IOPeer.Close(ConnectionCloseReasons.ProtocolError(e.toString)))
           }
           finally SslBufferPool.release(tempBuf)
         }

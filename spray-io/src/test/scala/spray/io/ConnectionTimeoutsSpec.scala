@@ -18,7 +18,7 @@ package spray.io
 
 import org.specs2.mutable.Specification
 import akka.actor.ActorSystem
-import spray.util.IdleTimeout
+import spray.util.ConnectionCloseReasons
 
 
 class ConnectionTimeoutsSpec extends Specification with PipelineStageTest {
@@ -45,7 +45,7 @@ class ConnectionTimeoutsSpec extends Specification with PipelineStageTest {
         processAndClear(Received("Some Message"))
         Thread.sleep(60)
         val Commands(command) = process(TickGenerator.Tick)
-        command === IOPeer.Close(IdleTimeout)
+        command === IOPeer.Close(ConnectionCloseReasons.IdleTimeout)
       }
     }
     "reset the idle timer on Received events" in {

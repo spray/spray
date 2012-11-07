@@ -22,8 +22,10 @@ import akka.util.{Timeout, Duration}
 import akka.actor._
 import akka.dispatch.Future
 import org.specs2.matcher.Matcher
-import spray.util._
 import org.specs2.mutable.Specification
+import spray.util._
+import ConnectionCloseReasons._
+
 
 class IOBridgeSpec extends Specification {
   implicit val timeout: Timeout = Duration("500 ms")
@@ -41,12 +43,15 @@ class IOBridgeSpec extends Specification {
       (server ? IOServer.Bind("localhost", port)).await must beAnInstanceOf[IOServer.Bound]
     }
     "properly complete a one-request dialog" in {
-      request("Echoooo").await === "Echoooo"
+      request("Echoooo").await === ("Echoooo" -> CleanClose)
     }
     "properly complete 100 requests in parallel" in {
-      val requests = Future.traverse((1 to 100).toList) { i => request("Ping" + i).map(i -> _) }
+      val requests = Future.traverse((1 to 100).toList) { i => request("Ping" + i).map(r => i -> r._1) }
       val beOk: Matcher[(Int, String)] = ({ t:(Int, String) => t._2 == "Ping" + t._1 }, "not ok")
       requests.await must beOk.forall
+    }
+    "support confirmed connection closing" in {
+      request("Yeah", ConfirmedClose).await === ("Yeah" -> ConfirmedClose)
     }
   }
 
@@ -63,23 +68,27 @@ class IOBridgeSpec extends Specification {
 
   class TestClient(ioBridge: IOBridge) extends IOClient(ioBridge) {
     var requests = Map.empty[Handle, ActorRef]
-    override def receive: Receive = super.receive orElse {
+    override def receive: Receive = myReceive orElse super.receive
+    def myReceive: Receive = {
       case (x: String, handle: Handle) =>
         requests += handle -> sender
         ioBridge ! IOBridge.Send(handle, ByteBuffer.wrap(x.getBytes))
       case IOBridge.Received(handle, buffer) =>
-        requests(handle) ! new String(buffer.array, 0, buffer.limit)
+        requests(handle) ! buffer.drainToString
+      case (closeReason: CloseCommandReason, handle: Handle) =>
+        requests += handle -> sender
+        ioBridge ! IOBridge.Close(handle, closeReason)
+      case IOBridge.Closed(handle, reason) =>
+        requests(handle) ! reason
     }
   }
 
-  def request(payload: String) = {
+  def request(payload: String, closeReason: CloseCommandReason = CleanClose) = {
     for {
       IOClient.Connected(handle) <- (client ? IOClient.Connect("localhost", port)).mapTo[IOClient.Connected]
-      response <- (client ? (payload -> handle)).mapTo[String]
-    } yield {
-      bridge ! IOBridge.Close(handle, CleanClose)
-      response
-    }
+      response                   <- (client ? (payload -> handle)).mapTo[String]
+      reason                     <- (client ? (closeReason -> handle)).mapTo[ClosedEventReason]
+    } yield response -> reason
   }
 
 }
