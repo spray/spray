@@ -53,18 +53,23 @@ class SiteServiceActor extends Actor with HttpServiceActor {
             path("") {
               complete(page(home()))
             } ~
-            path("home") {
-              redirect("/", MovedPermanently)
+            pathTest(".*/$".r) { _ => // require trailing slash
+              path("home") {
+                redirect("/", MovedPermanently)
+              } ~
+              path("index") {
+                complete(page(index()))
+              } ~
+              path(Rest) { docPath =>
+                rejectEmptyResponse {
+                  complete(render(docPath))
+                }
+              } ~
+              complete(NotFound, page(error404())) // fallback response is 404
             } ~
-            path("index") {
-              complete(page(index()))
-            } ~
-            path(Rest) { docPath =>
-              rejectEmptyResponse {
-                complete(render(docPath))
-              }
-            } ~
-            complete(NotFound, page(error404())) // fallback response is 404
+            unmatchedPath { ump =>
+              redirect(ump + "/", MovedPermanently)
+            }
           }
         }
       }
