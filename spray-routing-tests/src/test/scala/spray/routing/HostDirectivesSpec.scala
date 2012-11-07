@@ -33,7 +33,7 @@ class HostDirectivesSpec extends RoutingSpec {
       }
 
       "let requests to matching hosts pass" in {
-        Get() ~> Host("spray.io") ~> {
+        Get() ~> Host("spray.com", "spray.io") ~> {
           host("spray.io") { completeOk }
         } ~> check { response === Ok }
       }
