@@ -34,43 +34,54 @@ class SiteServiceActor extends Actor with HttpServiceActor {
     dynamicIf(SiteSettings.DevMode) { // for proper support of twirl + sbt-revolver during development
       (get & encodeResponse(Gzip)) {
         (host("repo.spray.io") | host("repo.spray.cc")) {
-          logRequestResponse(showRepoResponses _) {
+          logRequestResponse(showRepoResponses("repo") _) {
             getFromBrowseableDirectories(SiteSettings.RepoDirs: _*) ~
             complete(NotFound)
           }
         } ~
-        path("favicon.ico") {
-          complete(NotFound) // fail early in order to prevent error response logging
+        host("nightlies.spray.io") {
+          logRequestResponse(showRepoResponses("nightlies") _) {
+            getFromBrowseableDirectories(SiteSettings.NightliesDir) ~
+            complete(NotFound)
+          }
         } ~
-        logRequestResponse(showErrorResponses _) {
-          getFromResourceDirectory {
-            "theme"
+        host("spray.io") {
+          path("favicon.ico") {
+            complete(NotFound) // fail early in order to prevent error response logging
           } ~
-          pathPrefix("_images") {
-            getFromResourceDirectory("sphinx/json/_images")
-          } ~
-          logRequest(showRequest _) {
-            path("") {
-              complete(page(home()))
+          logRequestResponse(showErrorResponses _) {
+            getFromResourceDirectory {
+              "theme"
             } ~
-            pathTest(".*/$".r) { _ => // require trailing slash
-              path("home") {
-                redirect("/", MovedPermanently)
-              } ~
-              path("index") {
-                complete(page(index()))
-              } ~
-              path(Rest) { docPath =>
-                rejectEmptyResponse {
-                  complete(render(docPath))
-                }
-              } ~
-              complete(NotFound, page(error404())) // fallback response is 404
+            pathPrefix("_images") {
+              getFromResourceDirectory("sphinx/json/_images")
             } ~
-            unmatchedPath { ump =>
-              redirect(ump + "/", MovedPermanently)
+            logRequest(showRequest _) {
+              path("") {
+                complete(page(home()))
+              } ~
+              pathTest(".*/$".r) { _ => // require trailing slash
+                path("home") {
+                  redirect("/")
+                } ~
+                path("index") {
+                  complete(page(index()))
+                } ~
+                path(Rest) { docPath =>
+                  rejectEmptyResponse {
+                    complete(render(docPath))
+                  }
+                } ~
+                complete(NotFound, page(error404())) // fallback response is 404
+              } ~
+              unmatchedPath { ump =>
+                redirect(ump + "/")
+              }
             }
           }
+        } ~
+        unmatchedPath { ump =>
+          redirect("http://spray.io" + ump)
         }
       }
     }
@@ -94,10 +105,10 @@ class SiteServiceActor extends Actor with HttpServiceActor {
     )
   }
 
-  def showRepoResponses(request: HttpRequest): HttpResponsePart => Option[LogEntry] = {
-    case HttpResponse(OK, _, _, _) => Some(LogEntry("repo 200: " + request.uri, InfoLevel))
-    case ChunkedResponseStart(HttpResponse(OK, _, _, _)) => Some(LogEntry("repo 200 (chunked): " + request.uri, InfoLevel))
-    case HttpResponse(NotFound, _, _, _) => Some(LogEntry("repo 404: " + request.uri))
+  def showRepoResponses(repo: String)(request: HttpRequest): HttpResponsePart => Option[LogEntry] = {
+    case HttpResponse(OK, _, _, _) => Some(LogEntry(repo + " 200: " + request.uri, InfoLevel))
+    case ChunkedResponseStart(HttpResponse(OK, _, _, _)) => Some(LogEntry(repo + " 200 (chunked): " + request.uri, InfoLevel))
+    case HttpResponse(NotFound, _, _, _) => Some(LogEntry(repo + " 404: " + request.uri))
     case _ => None
   }
 

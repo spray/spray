@@ -23,10 +23,11 @@ import spray.util.ConfigUtils
 object SiteSettings {
   private val c = ConfigUtils.prepareSubConfig(ConfigFactory.load(), "spray.site")
 
-  val Interface = c getString  "interface"
-  val Port      = c getInt     "port"
-  val DevMode   = c getBoolean "dev-mode"
-  val RepoDirs  = (c getString "repo-dirs").split(':').toList
+  val Interface    = c getString  "interface"
+  val Port         = c getInt     "port"
+  val DevMode      = c getBoolean "dev-mode"
+  val RepoDirs     = (c getString "repo-dirs").split(':').toList
+  val NightliesDir = c getString "nightlies-dir"
 
   require(Interface.nonEmpty, "interface must be non-empty")
   require(0 < Port && Port < 65536, "illegal port")
