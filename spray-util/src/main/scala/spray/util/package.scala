@@ -66,6 +66,10 @@ package object util {
   def installEventStreamLoggerFor[T](implicit classManifest: ClassManifest[T], system: ActorSystem) {
     installEventStreamLoggerFor(classManifest.erasure)
   }
+  def installDebuggingEventStreamLoggers()(implicit system: ActorSystem)  {
+    installEventStreamLoggerFor[DeadLetter]
+    installEventStreamLoggerFor[UnhandledMessage]
+  }
 
   // implicits
   implicit def pimpActorSystem(system: ActorSystem)     :PimpedActorSystem     = new PimpedActorSystem(system)
