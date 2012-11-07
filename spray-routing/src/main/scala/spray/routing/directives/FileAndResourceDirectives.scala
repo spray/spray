@@ -207,7 +207,10 @@ object DirectoryListing {
     Marshaller.delegate[DirectoryListing, String](MediaTypes.`text/html`) { listing =>
       val DirectoryListing(path, files) = listing
       val filesAndNames = files.map(file => file -> file.getName).sortBy(_._2)
-      val (directoryFilesAndNames, fileFilesAndNames) = filesAndNames.partition(_._1.isDirectory)
+      val deduped = filesAndNames.zipWithIndex.flatMap { case (fan@(file, name), ix) =>
+        if (ix == 0 || filesAndNames(ix - 1)._2 != name) Some(fan) else None
+      }
+      val (directoryFilesAndNames, fileFilesAndNames) = deduped.partition(_._1.isDirectory)
       def maxNameLength(seq: Seq[(File, String)]) = if (seq.isEmpty) 0 else seq.map(_._2.length).max
       val maxNameLen = math.max(maxNameLength(directoryFilesAndNames) + 1, maxNameLength(fileFilesAndNames))
       val sb = new java.lang.StringBuilder
