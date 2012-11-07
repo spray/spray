@@ -41,9 +41,9 @@ trait RouteDirectives {
 
   /**
    * Completes the request with redirection response of the given type to the given URI.
-   * The default redirectionType is a temporary `302 Found`.
+   * The default redirectionType is a temporary `301 Moved Permanently`.
    */
-  def redirect(uri: String, redirectionType: Redirection = Found): StandardRoute = new StandardRoute {
+  def redirect(uri: String, redirectionType: Redirection = MovedPermanently): StandardRoute = new StandardRoute {
     def apply(ctx: RequestContext) { ctx.redirect(uri, redirectionType) }
   }
 
