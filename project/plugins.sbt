@@ -17,8 +17,8 @@ addSbtPlugin("me.lessis" % "ls-sbt" % "0.1.2")
 
 addSbtPlugin("io.spray" % "sbt-revolver" % "0.6.2")
 
-addSbtPlugin("io.spray" % "sbt-twirl" % "0.6.0")
+addSbtPlugin("io.spray" % "sbt-twirl" % "0.6.1")
 
 addSbtPlugin("io.spray" % "sbt-boilerplate" % "0.5.0")
 
-addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.8.4")
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.8.5")
