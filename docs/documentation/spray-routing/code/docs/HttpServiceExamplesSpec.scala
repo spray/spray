@@ -137,14 +137,18 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
     val service = new SimpleService {
       def actorRefFactory = system
     }
-    Get("/hello") ~> service.route ~> check { entityAs[NodeSeq] === <h1>Say hello to spray</h1> }
+    Get("/hello") ~> service.route ~> check {
+      entityAs[NodeSeq] === <h1>Say hello to spray</h1>
+    }
   }
 
   "example-2" in {
     val service = new LongerService {
       def actorRefFactory = system
     }
-    Get("/oldApi/1") ~> service.route ~> check { status === spray.http.StatusCodes.Found }
+    Get("/oldApi/1") ~> service.route ~> check {
+      status === spray.http.StatusCodes.MovedPermanently
+    }
   }
 
   "example-3" in {
