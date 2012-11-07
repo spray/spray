@@ -33,7 +33,7 @@ class SiteServiceActor extends Actor with HttpServiceActor {
   def receive = runRoute {
     dynamicIf(SiteSettings.DevMode) { // for proper support of twirl + sbt-revolver during development
       (get & encodeResponse(Gzip)) {
-        (host("repo.spray.io") | host("repo.spray.cc")) {
+        (host("repo.spray.io", "repo.spray.cc")) {
           logRequestResponse(showRepoResponses("repo") _) {
             getFromBrowseableDirectories(SiteSettings.RepoDirs: _*) ~
             complete(NotFound)
@@ -45,7 +45,7 @@ class SiteServiceActor extends Actor with HttpServiceActor {
             complete(NotFound)
           }
         } ~
-        host("spray.io") {
+        host("spray.io", "localhost", "127.0.0.1") {
           path("favicon.ico") {
             complete(NotFound) // fail early in order to prevent error response logging
           } ~

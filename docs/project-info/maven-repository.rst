@@ -3,15 +3,15 @@
 Maven Repository
 ================
 
-Currently all *spray* artifacts are hosted in this repository:
+Currently the artifacts for all *spray* releases (including milestones and RCs) are hosted in this repository:
 
   http://repo.spray.io
-
-However, we'll probably move to the Sonatype repository (and therefore Maven Central) at some point in the future.
 
 If you use SBT_ you'll want to add the following resolver::
 
   resolvers += "spray repo" at "http://repo.spray.io"
+
+Nightly builds are available from http://nightlies.spray.io.
 
 
 Artifact Naming
