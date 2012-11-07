@@ -93,6 +93,7 @@ object Build extends Build {
   lazy val sprayRoutingTests = Project("spray-routing-tests", file("spray-routing-tests"))
     .dependsOn(sprayCaching, sprayHttp, sprayHttpx, sprayRouting, sprayTestKit, sprayUtil)
     .settings(sprayModuleSettings: _*)
+    .settings(noPublishing: _*)
     .settings(libraryDependencies ++=
       compile(shapeless) ++
       provided(akkaActor) ++
