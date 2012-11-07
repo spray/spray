@@ -21,7 +21,7 @@ import akka.actor.ActorSystem
 import spray.can.parsing.ParserSettings
 import spray.can.{HttpEvent, HttpPipelineStageSpec}
 import spray.can.rendering.HttpRequestPartRenderingContext
-import spray.util.ProtocolError
+import spray.util.ConnectionCloseReasons.ProtocolError
 import spray.io.Event
 
 

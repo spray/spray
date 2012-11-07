@@ -46,7 +46,7 @@ object HttpDialog {
 
     def complete(value: Either[Throwable, AnyRef]) {
       result.complete(value)
-      connection.foreach(_ ! HttpClient.Close(CleanClose))
+      connection.foreach(_ ! HttpClient.Close(ConnectionCloseReasons.CleanClose))
       context.stop(self)
     }
 
@@ -87,7 +87,7 @@ object HttpDialog {
 
       case _: HttpResponsePart =>
         val msg = "The HttpDialog doesn't support chunked responses"
-        sender ! HttpClient.Close(ProtocolError(msg))
+        sender ! HttpClient.Close(ConnectionCloseReasons.ProtocolError(msg))
         complete(Left(IOClientException(msg)))
 
       case Reply(HttpClient.Connected(handle), actions) =>

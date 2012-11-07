@@ -110,7 +110,7 @@ trait ConnComponent {
       ctx.sender ! Status.Failure(error)
     }
 
-    def closed(handle: Handle, reason: ConnectionClosedReason) {
+    def closed(handle: Handle, reason: ClosedEventReason) {
       if (connection == Connected(handle)) {
         log.debug("Connection {} lost due to {}", index, reason)
         clear()
@@ -121,7 +121,7 @@ trait ConnComponent {
       connection match {
         case Connected(handle) =>
           log.debug("Closing connection {} to due HttpConduit being closed", index)
-          handle.handler ! HttpClient.Close(CleanClose)
+          handle.handler ! HttpClient.Close(ConnectionCloseReasons.CleanClose)
         case _ =>
       }
     }

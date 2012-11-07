@@ -24,7 +24,6 @@ import spray.can.{HttpCommand, HttpPipelineStageSpec}
 import spray.io.IOPeer
 import spray.util._
 import spray.http._
-import HttpHeaders.RawHeader
 
 
 class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
@@ -124,7 +123,7 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
                 |Yeah"""
             }
           },
-          IOPeer.Closed(testHandle, PeerClosed)
+          IOPeer.Closed(testHandle, ConnectionCloseReasons.PeerClosed)
         )
         body.asString === "Yeah"
       }

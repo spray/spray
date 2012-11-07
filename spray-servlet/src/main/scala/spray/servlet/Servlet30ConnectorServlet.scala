@@ -101,9 +101,9 @@ class Servlet30ConnectorServlet extends HttpServlet {
       error match {
         case None =>
           sentAck.foreach(sender.tell(_, this))
-          if (close) sender.tell(Closed(CleanClose), this)
+          if (close) sender.tell(Closed(ConnectionCloseReasons.CleanClose), this)
         case Some(e) =>
-          sender.tell(Closed(IOError(e)), this)
+          sender.tell(Closed(ConnectionCloseReasons.IOError(e)), this)
           asyncContext.complete()
       }
     }
@@ -247,6 +247,6 @@ class Servlet30ConnectorServlet extends HttpServlet {
       "Please try again in a short while!"
   )
 
-  case class Closed(reason: ConnectionClosedReason) extends IOClosed
+  case class Closed(reason: ClosedEventReason) extends IOClosed
 }
 

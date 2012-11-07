@@ -23,10 +23,10 @@ import annotation.tailrec
 import spray.can.rendering.HttpRequestPartRenderingContext
 import spray.can.HttpEvent
 import spray.util.EmptyByteArray
+import spray.util.ConnectionCloseReasons._
 import spray.can.parsing._
 import spray.http._
 import spray.io._
-import spray.util._
 
 
 object ResponseParsing {

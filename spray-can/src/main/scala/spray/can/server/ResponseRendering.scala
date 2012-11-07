@@ -17,7 +17,7 @@
 package spray.can.server
 
 import spray.can.rendering.{HttpResponsePartRenderingContext, ResponseRenderer}
-import spray.util.CleanClose
+import spray.util.ConnectionCloseReasons.CleanClose
 import spray.io._
 
 

@@ -17,7 +17,7 @@
 package spray.can.client
 
 import spray.can.HttpEvent
-import spray.util.ProtocolError
+import spray.util.ConnectionCloseReasons.ProtocolError
 import spray.http._
 import spray.io._
 

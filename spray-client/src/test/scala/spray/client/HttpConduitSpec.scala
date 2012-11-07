@@ -36,13 +36,15 @@ import HttpHeaders._
 class HttpConduitSpec extends Specification {
   sequential
   implicit val system = ActorSystem()
+  val ioBridge = new IOBridge(system).start()
+  system.registerOnTermination(ioBridge.stop())
 
   //logEventStreamOf[UnhandledMessage]
 
   val port = 17242
-  val client = {
-    val ioBridge = new IOBridge(system).start()
-    system.registerOnTermination(ioBridge.stop())
+  val client = system.actorOf(Props(new HttpClient(ioBridge)), "http-client")
+
+  step {
     def response(s: String) = HttpResponse(entity = HttpBody(s), headers = List(`Content-Type`(ContentType.`text/plain`)))
     val handler = system.actorOf(Props(
       new Actor with ActorLogging {
@@ -65,7 +67,6 @@ class HttpConduitSpec extends Specification {
     system.actorOf(Props(new HttpServer(ioBridge, SingletonHandler(handler))), "http-server")
       .ask(HttpServer.Bind("localhost", port))(Duration("1 s"))
       .await // block until the server is actually bound
-    system.actorOf(Props(new HttpClient(ioBridge)), "http-client")
   }
 
   "An HttpConduit with max. 4 connections and NonPipelined strategy" should {
