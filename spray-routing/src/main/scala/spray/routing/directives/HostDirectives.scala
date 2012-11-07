@@ -32,9 +32,9 @@ trait HostDirectives {
   def hostName: Directive[String :: HNil] = extract(_.request.host)
 
   /**
-   * Rejects all requests with a host name different from the given one.
+   * Rejects all requests with a host name different from the given ones.
    */
-  def host(hostName: String): Directive0 = host(_ == hostName)
+  def host(hostNames: String*): Directive0 = host(hostNames.contains(_))
 
   /**
    * Rejects all requests for whose host name the given predicate function returns false.
