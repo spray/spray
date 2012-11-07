@@ -41,7 +41,7 @@ class IOClientExamplesSpec extends Specification {
     override def receive = super.receive orElse {
       case IOServer.Received(handle, buffer) if buffer.duplicate.drainToString == "PING" =>
         ioBridge ! IOBridge.Send(handle, BufferBuilder("PONG").toByteBuffer)
-        ioBridge ! IOBridge.Close(handle, CleanClose)
+        ioBridge ! IOBridge.Close(handle, ConnectionCloseReasons.CleanClose)
     }
   }
 

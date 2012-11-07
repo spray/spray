@@ -19,7 +19,7 @@ package spray.can.server
 import spray.can.rendering.HttpResponsePartRenderingContext
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.can.HttpEvent
-import spray.util.ProtocolError
+import spray.util.ConnectionCloseReasons.ProtocolError
 import spray.io._
 import spray.http._
 

@@ -21,10 +21,10 @@ import scala.annotation.tailrec
 import akka.event.LoggingAdapter
 import spray.can.rendering.HttpResponsePartRenderingContext
 import spray.can.HttpEvent
-import spray.util.ProtocolError
+import spray.util.ConnectionCloseReasons.ProtocolError
 import spray.can.parsing._
-import spray.io._
 import spray.http._
+import spray.io._
 
 
 object RequestParsing {

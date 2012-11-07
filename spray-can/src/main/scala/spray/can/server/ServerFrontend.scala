@@ -20,7 +20,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 import akka.event.LoggingAdapter
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.can.{HttpEvent, HttpCommand}
-import spray.util.{CleanClose, IOError}
+import spray.util.ConnectionCloseReasons._
 import spray.http._
 import spray.io._
 
@@ -116,7 +116,7 @@ object ServerFrontend {
 
             case x: CommandException =>
               log.warning("Received {}, closing connection ...", x)
-              downstreamCommandPL(HttpServer.Close(IOError(x)))
+              downstreamCommandPL(HttpServer.Close(ProtocolError(x.toString)))
 
             case ev => eventPL(ev)
           }

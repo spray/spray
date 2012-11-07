@@ -22,9 +22,9 @@ import akka.event.LoggingAdapter
 import akka.actor.ActorRef
 import spray.can.{HttpEvent, HttpCommand}
 import spray.can.rendering.HttpRequestPartRenderingContext
+import spray.util.ConnectionCloseReasons._
 import spray.http._
 import spray.io._
-import spray.util._
 
 
 object ClientFrontend {
@@ -116,7 +116,7 @@ object ClientFrontend {
 
             case x: CommandException =>
               log.warning("Received {}, closing connection ...", x)
-              commandPL(HttpClient.Close(IOError(x)))
+              commandPL(HttpClient.Close(ProtocolError(x.toString)))
 
             case ev => eventPL(ev)
           }

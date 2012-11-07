@@ -22,7 +22,7 @@ import akka.actor.ActorSystem
 import spray.can.rendering.HttpResponsePartRenderingContext
 import spray.io.{IOPeer, Command}
 import spray.can.HttpPipelineStageSpec
-import spray.util.CleanClose
+import spray.util.ConnectionCloseReasons.CleanClose
 import spray.http._
 
 

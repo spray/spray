@@ -21,9 +21,9 @@ import akka.testkit.TestActorRef
 import akka.actor.{ActorSystem, Actor}
 import org.specs2.mutable.Specification
 import spray.can.{HttpCommand, HttpPipelineStageSpec}
+import spray.util.ConnectionCloseReasons._
 import spray.io._
 import spray.http._
-import spray.util._
 import HttpHeaders.RawHeader
 
 
