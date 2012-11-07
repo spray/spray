@@ -68,6 +68,10 @@ package object util {
   def installEventStreamLoggerFor[T](implicit ct: ClassTag[T], system: ActorSystem) {
     installEventStreamLoggerFor(classTag[T].runtimeClass)
   }
+  def installDebuggingEventStreamLoggers()(implicit system: ActorSystem)  {
+    installEventStreamLoggerFor[DeadLetter]
+    installEventStreamLoggerFor[UnhandledMessage]
+  }
 
   // implicits
   implicit def executionContextFromActorRefFactory(implicit factory: ActorRefFactory) = factory.dispatcher
