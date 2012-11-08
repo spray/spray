@@ -134,7 +134,7 @@ final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
         // in case of exceptions we remove the cache entry (i.e. try again later)
         if (value.isFailure) store.remove(key, newEntry)
       }
-      valueFuture
+      newEntry.promise.future
     }
     store.get(key) match {
       case null => insert()
