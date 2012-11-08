@@ -17,7 +17,6 @@
 package spray.routing
 
 import spray.http.HttpHeaders.Host
-import shapeless._
 
 
 class HostDirectivesSpec extends RoutingSpec {
@@ -33,8 +32,8 @@ class HostDirectivesSpec extends RoutingSpec {
       }
 
       "let requests to matching hosts pass" in {
-        Get() ~> Host("spray.com", "spray.io") ~> {
-          host("spray.io") { completeOk }
+        Get() ~> Host("spray.io") ~> {
+          host("spray.com", "spray.io") { completeOk }
         } ~> check { response === Ok }
       }
     }
