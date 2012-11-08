@@ -17,7 +17,6 @@
 package spray.testkit
 
 import akka.actor.ActorSystem
-import akka.util.duration._
 import org.scalatest.Suite
 import util.DynamicVariable
 import spray.routing._
@@ -31,7 +30,6 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   this: TestFrameworkInterface =>
 
   implicit val system = ActorSystem()
-  implicit val routeTestTimeout = RouteTestTimeout(1.second)
 
   def cleanUp() { system.shutdown() }
 
