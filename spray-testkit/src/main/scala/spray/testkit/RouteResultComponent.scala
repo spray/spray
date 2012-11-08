@@ -18,7 +18,7 @@ package spray.testkit
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit._
-import scala.concurrent.duration.FiniteDuration
+import concurrent.duration.{Duration, FiniteDuration}
 import scala.collection.mutable.ListBuffer
 import akka.actor.{ActorRefFactory, ActorRef}
 import akka.spray.UnregisteredActorRef
@@ -111,4 +111,8 @@ trait RouteResultComponent {
   }
 
   case class RouteTestTimeout(duration: FiniteDuration)
+
+  object RouteTestTimeout {
+    implicit val default = RouteTestTimeout(Duration(1, SECONDS))
+  }
 }

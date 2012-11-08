@@ -16,8 +16,6 @@
 
 package spray.testkit
 
-import java.util.concurrent.TimeUnit._
-import scala.concurrent.duration.Duration
 import scala.util.DynamicVariable
 import scala.reflect.ClassTag
 import akka.actor.ActorSystem
@@ -34,7 +32,6 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
 
   implicit val system = ActorSystem()
   implicit def executor = system.dispatcher
-  implicit val routeTestTimeout = RouteTestTimeout(Duration(1, SECONDS))
 
   def cleanUp() { system.shutdown() }
 
