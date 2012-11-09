@@ -1,3 +1,35 @@
+Version 1.1-M5 (2012-11-09)
+---------------------------
+- Upgraded to Scala 2.10.0-RC2 and Akka 2.1.0-RC2
+- spray-can:
+  - fixed NPE in RequestChunkAggregation
+  - removed stray logging statement from RequestChunkAggregation
+  - fixed incorrect rendering of chunked responses to HEAD requests
+- spray-http: fixed incorrect test for response encoding acceptance
+- spray-httpx: removed dangerous StatusCodeMarshaller
+- spray-io:
+  - improved logging of errors in the SslTlsSupport pipeline stage
+  - reworked connection closing, added ConfirmedClose reason, fixed #147
+- spray-routing:
+  - added option for disabling automatic file-chunking
+  - removed HttpService.routingSettings method, provision of RoutingSettings now fully implicit
+  - renamed Directive.map and .flatMap to .hmap/.hflatMap,
+    re-added .map and .flatMap pimps for single-value directives
+  - improved HttpService `runRoute` wrapper to also work in "sub-route" actors
+  - removed 'filter' directive, converted all applications to 'extract(...).flatMap'
+  - added `pathTest` directive
+  - improve rendering of directory listings
+  - changed default redirection type to '302 Moved Permanently'
+  - improved host directive
+  - added `dynamicIf` directives
+  - improved and flexibilized DebuggingDirectives
+  - add `complete` overload taking a single StatusCode parameter
+- spray-can & spray-servlet: increased default idle and request timeouts to 120s and 30s respectively
+- spray-testkit: improved provision of custom RouteTestTimeout
+- spray-util: added `installDebuggingEventStreamLoggers` convenience helper
+- smaller fixes and improvements
+
+
 Version 1.1-M4 (2012-10-19)
 ---------------------------
 - Upgraded to Scala 2.10.0-RC1 and Akka 2.1.0-RC1

@@ -111,8 +111,8 @@ it can be GCed. No need to supply shutdown logic.
    It should therefore be used only in purely local environments and in full consideration of its limitations.
 
    However, it is possible to make an ``UnregisteredActorRef`` reachable remotely by explicitly wrapping it with a
-   registered ``ActorRef``. The ``UnregisteredActorRef`` provides three different ``register...`` methods for this
-   purpose (check `the sources`_ for more details on this).
+   registered ``ActorRef``. The ``UnregisteredActorRef`` provides a number of ``register...`` methods for this purpose
+   (check `the sources`_ for more details on this).
 
 __ `the sources`_
 .. _the sources: https://github.com/spray/spray/blob/master/spray-util/src/main/scala/akka/spray/UnregisteredActorRef.scala
