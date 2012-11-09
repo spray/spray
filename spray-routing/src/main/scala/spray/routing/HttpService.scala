@@ -39,11 +39,6 @@ trait HttpService extends Directives {
    */
   implicit def executionContext: ExecutionContext = actorRefFactory.dispatcher
 
-  /**
-   * Normally you configure via the application.conf on the classpath,
-   * but you can also override this member.
-   */
-  implicit def routingSettings = RoutingSettings.Default
 
   val log = LoggingContext.fromActorRefFactory
 
@@ -53,7 +48,8 @@ trait HttpService extends Directives {
    * Note that the route parameter is call-by-name to alleviate initialization order issues when
    * mixing into an Actor.
    */
-  def runRoute(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext): Actor.Receive = {
+  def runRoute(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext,
+                             rs: RoutingSettings): Actor.Receive = {
     val sealedExceptionHandler = eh orElse ExceptionHandler.default
     val sealedRoute = sealRoute(route)(sealedExceptionHandler, rh)
     def contextFor(req: HttpRequest) = RequestContext(req, ac.sender, req.path).withDefaultSender(ac.self)
@@ -64,7 +60,7 @@ trait HttpService extends Directives {
           request.parseQuery.parseHeaders match {
             case ("", parsedRequest) =>
               sealedRoute(contextFor(parsedRequest))
-            case (errorMsg, parsedRequest) if routingSettings.RelaxedHeaderParsing =>
+            case (errorMsg, parsedRequest) if rs.RelaxedHeaderParsing =>
               log.warning("Request {}: {}", request, errorMsg)
               sealedRoute(contextFor(parsedRequest))
             case (errorMsg, _) =>
@@ -78,7 +74,7 @@ trait HttpService extends Directives {
 
       case ctx: RequestContext => sealedRoute(ctx)
 
-      case Timeout(request: HttpRequest) => runRoute(timeoutRoute)(eh, rh, ac)(request)
+      case Timeout(request: HttpRequest) => runRoute(timeoutRoute)(eh, rh, ac, rs)(request)
     }
   }
 
