@@ -29,6 +29,10 @@ abstract class HttpHeader {
   override def toString = name + ": " + value
 }
 
+object HttpHeader {
+  def unapply(header: HttpHeader): Option[(String, String)] = Some(header.lowercaseName, header.value)
+}
+
 object HttpHeaders {
 
   object Accept { def apply(first: MediaRange, more: MediaRange*): Accept = apply(first +: more) }

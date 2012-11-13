@@ -100,7 +100,7 @@ object ExecutionDirectives extends ExecutionDirectives
 class ExceptionHandlerMagnet(val handler: ExceptionHandler, val log: LoggingContext)
 
 object ExceptionHandlerMagnet {
-  implicit def apply(handler: ExceptionHandler)(implicit log: LoggingContext) =
+  implicit def apply(handler: ExceptionHandler)(implicit log: LoggingContext = akka.spray.NoLogging) =
     new ExceptionHandlerMagnet(handler, log)
 }
 

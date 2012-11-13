@@ -25,8 +25,8 @@ import HttpHeaders._
 
 trait CookieDirectives {
   import BasicDirectives._
-  import MiscDirectives._
   import RouteDirectives._
+  import HeaderDirectives._
   import RespondWithDirectives._
 
   /**
