@@ -83,9 +83,12 @@ Register
   read events on its connection.
 
 Close
-  Close the connection of the given ``Handle``. If the ``reason`` is ``CleanClose``, then the closing of the connection
-  doesn't happen immediately but is scheduled for the point in time, when all preceding ``Send`` commands have been
-  completed. The handler of the connection receives a ``Closed`` event after the connection has been closed.
+  Close the connection of the given ``Handle``. If there are pending ``Send`` commands that haven't yet been completed
+  the closing is queued. Special case: If the ``reason`` is ``ConfirmedClose`` the socket is not closed right away, but
+  rather via a full TCP FIN message exchange. I.e. at first a TCP FIN message is sent and the peers "ack'ing" FIN is
+  awaited before the socket is closed.
+  Independently of when the socket is actually closed the handler of the connection receives a ``Closed`` event after
+  it has happened.
 
 Send
   Write the contents of the given ByteBuffers to the handles connection. If ``ack`` is defined the sender receives its

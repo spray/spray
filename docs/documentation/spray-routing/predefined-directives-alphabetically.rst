@@ -39,8 +39,6 @@ Directive                              Description
                                        ``RequestContext => T``
 :ref:`-failWith-`                      Bubbles the given error up the response chain, where it is dealt with by the
                                        closest :ref:`-handleExceptions-` directive and its ExceptionHandler
-:ref:`-filter-`                        Extracts zero or more values or rejects depending on the outcome of a filter
-                                       function
 :ref:`-flatMapRouteResponse-`          Transforms all responses coming back from its inner Route with a
                                        ``Any => Seq[Any]`` function
 :ref:`-flatMapRouteResponsePF-`        Same as :ref:`-flatMapRouteResponse-`, but with a ``PartialFunction``
@@ -105,6 +103,7 @@ Directive                              Description
                                        according to a given ``PathMatcher``, rejects if no match
 :ref:`-pathPrefix-`                    Same as :ref:`-path-`, but also matches (and consumes) prefixes of the unmatched
                                        path
+:ref:`-pathTest-`                      Like :ref:`-pathPrefix-` but without "consumption" of the matched path (prefix).
 :ref:`-post-`                          Rejects all non-POST requests
 :ref:`-produce-`                       Uses the in-scope marshaller to extract a function that can be used for
                                        completing the request with an instance of a custom type
