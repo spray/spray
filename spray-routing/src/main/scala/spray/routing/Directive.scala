@@ -22,21 +22,46 @@ import shapeless._
 import spray.httpx.unmarshalling.MalformedContent
 
 
+trait ConjunctionMagnet[L <: HList] {
+  type Out
+  def apply(underlying: Directive[L]): Out
+}
+
+object ConjunctionMagnet {
+  implicit def fromDirective[L <: HList, R <: HList](other: Directive[R])(implicit p: Prepender[L, R]) =
+    new ConjunctionMagnet[L] {
+      type Out = Directive[p.Out]
+      def apply(underlying: Directive[L]): Out =
+        new Directive[p.Out] {
+          def happly(f: p.Out => Route) =
+            underlying.happly { prefix =>
+              other.happly { suffix =>
+                f(p(prefix, suffix))
+              }
+            }
+        }
+    }
+
+  implicit def fromStandardRoute[L <: HList](route: StandardRoute) =
+    new ConjunctionMagnet[L] {
+      type Out = StandardRoute
+      def apply(underlying: Directive[L]): Out = StandardRoute(underlying.happly(_ => route))
+    }
+
+  implicit def fromRouteGenerator[T, R <: Route](generator: T => R) = new ConjunctionMagnet[HNil] {
+    type Out = RouteGenerator[T]
+    def apply(underlying: Directive0): Out = { value =>
+      underlying.happly(_ => generator(value))
+    }
+  }
+}
+
+
 abstract class Directive[L <: HList] { self =>
   def happly(f: L => Route): Route
 
   def | (that: Directive[L]): Directive[L] =
-    new Directive[L] {
-      def happly(f: L => Route) = { ctx =>
-        @volatile var rejectedFromInnerRoute = false
-        self.happly({ list => c => rejectedFromInnerRoute = true; f(list)(c) }) {
-          ctx.withRejectionHandling { rejections =>
-            if (rejectedFromInnerRoute) ctx.reject(rejections: _*)
-            else that.happly(f)(ctx.mapRejections(rejections ++ _))
-          }
-        }
-      }
-    }
+    recover(rejections => directives.BasicDirectives.mapRejections(rejections ::: _) & that)
 
   def & (magnet: ConjunctionMagnet[L]): magnet.Out = magnet(this)
 
@@ -77,6 +102,25 @@ abstract class Directive[L <: HList] { self =>
         }
       }
     }
+
+  def recover(recovery: List[Rejection] => Directive[L]): Directive[L] =
+    new Directive[L] {
+      def happly(f: L => Route) = { ctx =>
+        @volatile var rejectedFromInnerRoute = false
+        self.happly({ list => c => rejectedFromInnerRoute = true; f(list)(c) }) {
+          ctx.withRejectionHandling { rejections =>
+            if (rejectedFromInnerRoute) ctx.reject(rejections: _*)
+            else recovery(rejections).happly(f)(ctx)
+          }
+        }
+      }
+    }
+
+  def recoverPF(recovery: PartialFunction[List[Rejection], Directive[L]]): Directive[L] =
+    recover { rejections =>
+      if (recovery.isDefinedAt(rejections)) recovery(rejections)
+      else Route.toDirective(_.reject(rejections: _*))
+    }
 }
 
 object Directive {
@@ -92,40 +136,5 @@ object Directive {
 
     def require(predicate: T => Boolean) =
       underlying.hrequire { case value :: HNil => predicate(value) }
-  }
-}
-
-
-trait ConjunctionMagnet[L <: HList] {
-  type Out
-  def apply(underlying: Directive[L]): Out
-}
-
-object ConjunctionMagnet {
-  implicit def fromDirective[L <: HList, R <: HList](other: Directive[R])(implicit p: Prepender[L, R]) =
-    new ConjunctionMagnet[L] {
-      type Out = Directive[p.Out]
-      def apply(underlying: Directive[L]): Out =
-        new Directive[p.Out] {
-          def happly(f: p.Out => Route) =
-            underlying.happly { prefix =>
-              other.happly { suffix =>
-                f(p(prefix, suffix))
-              }
-            }
-        }
-    }
-
-  implicit def fromStandardRoute[L <: HList](route: StandardRoute) =
-    new ConjunctionMagnet[L] {
-      type Out = StandardRoute
-      def apply(underlying: Directive[L]): Out = StandardRoute(underlying.happly(_ => route))
-    }
-
-  implicit def fromRouteGenerator[T, R <: Route](generator: T => R) = new ConjunctionMagnet[HNil] {
-    type Out = RouteGenerator[T]
-    def apply(underlying: Directive0): Out = { value =>
-      underlying.happly(_ => generator(value))
-    }
   }
 }
