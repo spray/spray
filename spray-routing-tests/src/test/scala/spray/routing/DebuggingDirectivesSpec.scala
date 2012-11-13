@@ -17,7 +17,7 @@
 package spray.routing
 
 import akka.event.LoggingAdapter
-import spray.util.EOL
+import spray.util.{LoggingContext, EOL}
 
 
 class DebuggingDirectivesSpec extends RoutingSpec {
@@ -27,7 +27,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
 
   def resetDebugMsg() { debugMsg = "" }
 
-  implicit val log = new LoggingAdapter {
+  implicit val log: LoggingContext = new LoggingAdapter {
     def isErrorEnabled = true
     def isWarningEnabled = true
     def isInfoEnabled = true
@@ -42,9 +42,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
 
   "The 'logRequest' directive" should {
     "produce a proper log message for incoming requests" in {
-      Get("/hello") ~> {
-        logRequest("1") { completeOk }
-      } ~> check {
+      Get("/hello") ~> logRequest("1") { completeOk } ~> check {
         response === Ok
         debugMsg === "1: HttpRequest(GET, /hello, List(), EmptyEntity, HTTP/1.1)\n"
       }
@@ -54,9 +52,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
   "The 'logResponse' directive" should {
     "produce a proper log message for outgoing responses" in {
       resetDebugMsg()
-      Get("/hello") ~> {
-        logResponse("2") { completeOk }
-      } ~> check {
+      Get("/hello") ~> logResponse("2") { completeOk } ~> check {
         response === Ok
         debugMsg === "2: HttpResponse(StatusCode(200, OK),EmptyEntity,List(),HTTP/1.1)\n"
       }
@@ -66,9 +62,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
   "The 'logRequestResponse' directive" should {
     "produce proper log messages for outgoing responses, thereby showing the corresponding request" in {
       resetDebugMsg()
-      Get("/hello") ~> {
-        logRequestResponse("3") { completeOk }
-      } ~> check {
+      Get("/hello") ~> logRequestResponse("3") { completeOk } ~> check {
         response === Ok
         debugMsg === """|3: Response for
                         |  Request : HttpRequest(GET, /hello, List(), EmptyEntity, HTTP/1.1)
