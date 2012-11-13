@@ -24,7 +24,7 @@ trait LoggingContext extends LoggingAdapter
 
 object LoggingContext extends LoggingContextLowerOrderImplicits {
 
-  implicit def fromAdapter(implicit la: LoggingAdapter) = new LoggingContext {
+  implicit def fromAdapter(la: LoggingAdapter) = new LoggingContext {
     def isErrorEnabled = la.isErrorEnabled
     def isWarningEnabled = la.isWarningEnabled
     def isInfoEnabled = la.isInfoEnabled
