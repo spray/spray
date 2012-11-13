@@ -57,6 +57,18 @@ case class MissingFormFieldRejection(fieldName: String) extends Rejection
 case class MalformedFormFieldRejection(errorMsg: String, fieldName: String) extends Rejection
 
 /**
+ * Rejection created by header directives.
+ * Signals that the request was rejected because a required header could not be found.
+ */
+case class MissingHeaderRejection(headerName: String) extends Rejection
+
+/**
+ * Rejection created by header directives.
+ * Signals that the request was rejected because a header value is malformed.
+ */
+case class MalformedHeaderRejection(headerName: String, error: Throwable) extends Rejection
+
+/**
  * Rejection created by unmarshallers.
  * Signals that the request was rejected because the requests content-type is unsupported.
  */

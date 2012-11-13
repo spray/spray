@@ -29,6 +29,7 @@ import MediaTypes._
 trait MiscDirectives {
   import BasicDirectives._
   import RouteDirectives._
+  import HeaderDirectives._
 
   /**
    * Returns a Directive which checks the given condition before passing on the [[spray.routing.RequestContext]] to
@@ -38,22 +39,6 @@ trait MiscDirectives {
     new Directive0 {
       def happly(f: HNil => Route) = if (check) f(HNil) else reject(ValidationRejection(errorMsg))
     }
-
-  /**
-   * Extracts an HTTP header value using the given function. If the function is undefined for all headers the request
-   * is rejection with the [[spray.routing.MissingHeaderRejection]]
-   */
-  def headerValue[T](f: HttpHeader => Option[T]): Directive[T :: HNil] =
-    extract(_.request.headers.mapFind(f)).flatMap {
-      case Some(a) => provide(a)
-      case None => reject
-    }
-
-  /**
-   * Extracts an HTTP header value using the given partial function. If the function is undefined for all headers
-   * the request is rejection with the [[spray.routing.MissingHeaderRejection]]
-   */
-  def headerValuePF[T](pf: PartialFunction[HttpHeader, T]): Directive[T :: HNil] = headerValue(pf.lift)
 
   /**
    * Directive extracting the IP of the client from either the X-Forwarded-For, Remote-Address or X-Real-IP header.
