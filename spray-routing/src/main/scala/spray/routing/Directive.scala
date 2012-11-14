@@ -96,10 +96,9 @@ abstract class Directive[L <: HList] { self =>
   def unwrapFuture[R](implicit ev: L <:< (Future[R] :: HNil), hl: HListable[R], ec: ExecutionContext) =
     new Directive[hl.Out] {
       def happly(f: hl.Out => Route) = self.happly { list => ctx =>
-        list.head.onComplete {
-          case Success(values) => f(hl(values))(ctx)
-          case Failure(error) => ctx.failWith(error)
-        }
+        list.head
+          .map { value => f(hl(value))(ctx) }
+          .onFailure { case error => ctx.failWith(error) }
       }
     }
 
