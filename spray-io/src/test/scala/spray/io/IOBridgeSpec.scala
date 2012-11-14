@@ -32,9 +32,9 @@ class IOBridgeSpec extends Specification {
   implicit val system = ActorSystem("IOBridgeSpec")
   val port = 23456
 
-  lazy val bridge = new IOBridge(system).start()
-  lazy val server = system.actorOf(Props(new TestServer(bridge)), name = "test-server")
-  lazy val client = system.actorOf(Props(new TestClient(bridge)), name = "test-client")
+  val bridge = new IOBridge(system).start()
+  val server = system.actorOf(Props(new TestServer(bridge)), name = "test-server")
+  val client = system.actorOf(Props(new TestClient(bridge)), name = "test-client")
 
   sequential
 
