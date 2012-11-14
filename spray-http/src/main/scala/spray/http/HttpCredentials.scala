@@ -46,7 +46,13 @@ object BasicHttpCredentials {
   }
 }
 
-case class OtherHttpCredentials(scheme: String, params: Map[String, String]) extends HttpCredentials {
+
+case class OAuth2BearerToken(token: String) extends HttpCredentials {
+  def value = "Bearer " + token
+}
+
+
+case class GenericHttpCredentials(scheme: String, params: Map[String, String]) extends HttpCredentials {
   lazy val value = if (params.isEmpty) scheme else formatParams
 
   private def formatParams = {
