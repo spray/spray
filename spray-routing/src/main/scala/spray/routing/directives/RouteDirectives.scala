@@ -50,7 +50,11 @@ trait RouteDirectives {
   /**
    * Completes the request using the given arguments.
    */
-  def complete: CompletionMagnet => StandardRoute = _.route
+  def complete: (=> CompletionMagnet) => StandardRoute = magnet => new StandardRoute {
+    def apply(ctx: RequestContext) {
+      magnet.route(ctx)
+    }
+  }
 
   /**
    * Bubbles the given error up the response chain, where it is dealt with by the closest `handleExceptions`
