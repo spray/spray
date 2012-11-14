@@ -17,7 +17,8 @@
 package spray.routing
 
 import akka.dispatch.Promise
-import authentication._
+import spray.util.LoggingContext
+import spray.routing.authentication._
 import spray.http._
 import HttpHeaders._
 
@@ -45,6 +46,14 @@ class SecurityDirectivesSpec extends RoutingSpec {
       Get() ~> addHeader(Authorization(BasicHttpCredentials("Alice", ""))) ~> {
         authenticate(BasicAuth(doAuth, "Realm")) { echoComplete }
       } ~> check { entityAs[String] === "BasicUserContext(Alice)" }
+    }
+    "properly handle exceptions thrown in its inner route" in {
+      implicit val log: LoggingContext = akka.spray.NoLogging // suppress logging of the error
+      Get() ~> addHeader(Authorization(BasicHttpCredentials("Alice", ""))) ~> {
+        handleExceptions(ExceptionHandler.default) {
+          authenticate(BasicAuth(doAuth, "Realm")) { _ => sys.error("Nope") }
+        }
+      } ~> check { status === StatusCodes.InternalServerError }
     }
   }
 }
