@@ -67,8 +67,7 @@ trait HeaderDirectives {
     }
 
   /**
-   * Extracts the value of the HTTP request header with the given name.
-   * If no header with a matching name is found the request is rejected with a [[spray.routing.MissingHeaderRejection]].
+   * Extracts the value of the optional HTTP request header with the given name.
    */
   def optionalHeaderValueByName(headerName: String): Directive[Option[String] :: HNil] = {
     val f = optionalValue(headerName.toLowerCase)
