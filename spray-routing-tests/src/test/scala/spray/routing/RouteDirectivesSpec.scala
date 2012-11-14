@@ -31,6 +31,18 @@ class RouteDirectivesSpec extends RoutingSpec {
     "allow for factoring out a StandardRoute" in {
       Get() ~> (get & complete)("yeah") ~> check { entityAs[String] === "yeah" }
     }
+    "be lazy in its argument evaluation, independently of application style" in {
+      var i = 0
+      Put() ~> {
+        get { complete { i += 1; "get" } } ~
+        put { complete { i += 1; "put" } } ~
+        (post & complete { i += 1; "post" }) ~
+        (delete & complete) { i += 1; "delete" }
+      } ~> check {
+        entityAs[String] === "put"
+        i === 1
+      }
+    }
   }
 
   "the redirect directive" should {
