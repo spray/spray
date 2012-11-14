@@ -68,17 +68,17 @@ class HttpHeaderSpec extends Specification {
     "Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" !
       example(Authorization(BasicHttpCredentials("Aladdin", "open sesame")))_ ^
     """Authorization: Fancy yes="no", nonce="42"""" !
-      example(Authorization(OtherHttpCredentials("Fancy", Map("yes"->"no", "nonce"->"42"))), fix(_).replace(", ", ","))_ ^
+      example(Authorization(GenericHttpCredentials("Fancy", Map("yes"->"no", "nonce"->"42"))), fix(_).replace(", ", ","))_ ^
     """Authorization: Fancy yes="no",nonce="4\\2"""" !
-      example(Authorization(OtherHttpCredentials("Fancy", Map("yes"->"no", "nonce"->"""4\2"""))))_ ^
+      example(Authorization(GenericHttpCredentials("Fancy", Map("yes"->"no", "nonce"->"""4\2"""))))_ ^
     "Authorization: Basic Qm9iOg==" !
       example(Authorization(BasicHttpCredentials("Bob", "")))_ ^
     """Authorization: Digest name="Bob"""" !
-      example(Authorization(OtherHttpCredentials("Digest", Map("name"->"Bob"))))_ ^
-    """Authorization: Bearer "mF_9.B5f-4.1JqM"""" !
-      example(Authorization(OtherHttpCredentials("Bearer", Map(""->"mF_9.B5f-4.1JqM"))))_ ^
+      example(Authorization(GenericHttpCredentials("Digest", Map("name"->"Bob"))))_ ^
+    """Authorization: Bearer mF_9.B5f-4.1JqM""" !
+      example(Authorization(OAuth2BearerToken("mF_9.B5f-4.1JqM")))_ ^
     "Authorization: NoParamScheme" !
-      example(Authorization(OtherHttpCredentials("NoParamScheme", Map.empty)))_ ^
+      example(Authorization(GenericHttpCredentials("NoParamScheme", Map.empty)))_ ^
     p^
     "Cache-Control: no-cache, max-age=0" !
       example(`Cache-Control`(`no-cache`, `max-age`(0)))_ ^

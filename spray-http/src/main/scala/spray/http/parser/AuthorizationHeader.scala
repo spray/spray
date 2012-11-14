@@ -27,24 +27,32 @@ private[parser] trait AuthorizationHeader {
   def AUTHORIZATION = rule {
     CredentialDef ~ EOI ~~> HttpHeaders.`Authorization`
   }
-  
+
   def CredentialDef = rule {
-    BasicCredentialDef | OtherCredentialDef
+    BasicCredentialDef | OAuth2BearerTokenDef | GenericHttpCredentialsDef
   }
-  
+
   def BasicCredentialDef = rule {
     "Basic" ~ BasicCookie ~> (BasicHttpCredentials(_))
   }
-  
+
   def BasicCookie = rule {
-    oneOrMore(anyOf(Base64.rfc2045.getAlphabet) | ch('='))
-  }
-  
-  def OtherCredentialDef = rule {
-    AuthScheme ~ OtherCredentialParams ~~> OtherHttpCredentials
+    oneOrMore(anyOf(Base64.rfc2045.getAlphabet)) ~ optional("==" | ch('='))
   }
 
-  def OtherCredentialParams = rule (
+  def OAuth2BearerTokenDef = rule {
+    "Bearer" ~ BearerToken ~> (OAuth2BearerToken(_))
+  }
+
+  def BearerToken = rule {
+    oneOrMore(Alpha | Digit | anyOf("-._~+/")) ~ optional("==" | ch('='))
+  }
+
+  def GenericHttpCredentialsDef = rule {
+    AuthScheme ~ CredentialParams ~~> GenericHttpCredentials
+  }
+
+  def CredentialParams = rule (
       oneOrMore(AuthParam, separator = ListSep) ~~> (_.toMap)
     | (Token | QuotedString) ~~> (param => Map("" -> param))
     | push(Map.empty[String, String])
