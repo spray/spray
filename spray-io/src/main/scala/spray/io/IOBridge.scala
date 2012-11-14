@@ -36,7 +36,7 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
 
   import IOBridge._
 
-  private[this] var ioThread: IOThread = _
+  @volatile private[this] var ioThread: IOThread = _
 
   /**
    * @return the IO thread if started and not yet stopped, otherwise None
@@ -93,17 +93,18 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
   private class IOThread(settings: IOBridgeSettings, log: LoggingAdapter) extends Thread {
     import SelectionKey._
 
-    private val commandQueue = new SingleReaderConcurrentQueue[(Command, ActorRef)]
-    private val selector = SelectorProvider.provider.openSelector
-    private var stopped: CountDownLatch = _
+    private[this] val commandQueue = new SingleReaderConcurrentQueue[(Command, ActorRef)]
+    private[this] val selector = SelectorProvider.provider.openSelector
+    private[this] var stopped: CountDownLatch = _
+    private[this] var cachedBuffer: ByteBuffer = _
 
     // stats fields
-    private var startTime = 0L
-    private var bytesRead = 0L
-    private var bytesWritten = 0L
-    private var connectionsOpened = 0L
-    private var connectionsClosed = 0L
-    private var commandsExecuted = 0L
+    private[this] var startTime = 0L
+    private[this] var bytesRead = 0L
+    private[this] var bytesWritten = 0L
+    private[this] var connectionsOpened = 0L
+    private[this] var connectionsClosed = 0L
+    private[this] var commandsExecuted = 0L
 
     setName(settings.ThreadName + '-' + _runningBridges.size)
     setDaemon(true)
@@ -197,7 +198,9 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
       log.debug("Reading from connection")
       val handle = key.attachment.asInstanceOf[Handle]
       val channel = key.channel.asInstanceOf[SocketChannel]
-      val buffer = ByteBuffer.allocate(settings.ReadBufferSize.toInt)
+      val buffer = if (cachedBuffer != null) {
+        val x = cachedBuffer; cachedBuffer = null; x
+      } else ByteBuffer.allocate(settings.ReadBufferSize.toInt)
 
       try {
         if (channel.read(buffer) > -1) {
@@ -206,6 +209,8 @@ class IOBridge(log: LoggingAdapter, settings: IOBridgeSettings) {
           bytesRead += buffer.limit
           handle.handler ! Received(handle, buffer)
         } else {
+          cachedBuffer = buffer // the buffer was not used, so save it for the next read
+
           // if the peer shut down the socket cleanly, we do the same
           val reason =
             if (channel.socket.isOutputShutdown) ConnectionCloseReasons.ConfirmedClose
