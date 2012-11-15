@@ -16,6 +16,7 @@
 
 package spray.http
 
+
 /**
  * Immutable, fast and efficient Date + Time implementation without any dependencies.
  * Does not support TimeZones, all DateTime values are always GMT based.
@@ -235,4 +236,29 @@ object DateTime {
    * Creates a new `DateTime` instance for the current point in time.
    */
   def now: DateTime = apply(System.currentTimeMillis)
+
+  /**
+   * Creates a new DateTime instance from the given String,
+   * if it adheres to the format `yyyy-mm-ddThh:mm:ss`.
+   */
+  def fromIsoDateTimeString(string: String): Option[DateTime] = {
+    def c(ix: Int) = string.charAt(ix)
+    def i(ix: Int) = {
+      val x = c(ix)
+      require('0' <= x && x <= '9')
+      x - '0'
+    }
+    if (string.length == 19 && c(4) == '-' && c(7) == '-' && c(10) == 'T' && c(13) == ':' && c(16) == ':') {
+      try {
+        val year = i(0) * 1000 + i(1) * 100 + i(2) * 10 + i(3)
+        val month = i(5) * 10 + i(6)
+        val day = i(8) * 10 + i(9)
+        val hour = i(11) * 10 + i(12)
+        val min = i(14) * 10 + i(15)
+        val sec = i(17) * 10 + i(18)
+        Some(DateTime(year, month, day, hour, min, sec))
+      }
+      catch { case _: IllegalArgumentException => None }
+    } else None
+  }
 }
