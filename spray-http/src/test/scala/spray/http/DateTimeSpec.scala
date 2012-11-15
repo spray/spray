@@ -59,6 +59,18 @@ class DateTimeSpec extends Specification {
     }
   }
 
+  "DateTime.fromIsoDateTimeString" should {
+    "properly parse a legal string" in {
+      DateTime.fromIsoDateTimeString("2011-07-12T14:08:12") must beSome(DateTime(specificClicks))
+    }
+    "fail on an illegal string" in {
+      "example 1" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08:12x") must beNone }
+      "example 2" in { DateTime.fromIsoDateTimeString("2011-07-12T14:08_12") must beNone }
+      "example 3" in { DateTime.fromIsoDateTimeString("201A-07-12T14:08:12") must beNone }
+      "example 4" in { DateTime.fromIsoDateTimeString("2011-13-12T14:08:12") must beNone }
+    }
+  }
+
   "The two DateTime implementations" should {
     "allow for transparent round-trip conversions" in {
       def roundTrip(dt: DateTime) = DateTime(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
