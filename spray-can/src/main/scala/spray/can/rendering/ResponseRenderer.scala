@@ -54,7 +54,7 @@ class ResponseRenderer(serverHeader: String,
     val bb = BufferBuilder(responseSizeHint)
     val connectionHeaderValue = renderResponseStart(response, ctx, bb)
     val close = appendConnectionHeaderIfRequired(response, ctx, connectionHeaderValue, bb)
-    appendServerAndDateHeader(bb)
+    bb.append(serverAndDateHeader)
     appendContentTypeHeaderIfRequired(entity, bb)
 
     // don't set a Content-Length header for non-keepalive HTTP/1.0 responses (rely on body end by connection close)
@@ -71,7 +71,7 @@ class ResponseRenderer(serverHeader: String,
     val bb = BufferBuilder(responseSizeHint)
     renderResponseStart(response, ctx, bb)
     if (!chunkless) appendHeader("Transfer-Encoding", "chunked", bb)
-    appendServerAndDateHeader(bb)
+    bb.append(serverAndDateHeader)
     appendContentTypeHeaderIfRequired(entity, bb)
 
     bb.append(MessageRendering.CrLf)
@@ -126,10 +126,26 @@ class ResponseRenderer(serverHeader: String,
     }
   }
 
-  def appendServerAndDateHeader(bb: BufferBuilder) {
-    if (!serverHeaderPlusDateColonSP.isEmpty)
-      bb.append(serverHeaderPlusDateColonSP).append(dateTimeNow.toRfc1123DateTimeString).append(MessageRendering.CrLf)
+  // for max perf we cache the ServerAndDateHeader of the last second here
+  // we don't use @volatile or any type of synchronization on it though since
+  // and we don't care if we are redoing work in another thread
+  private[this] var cachedServerAndDateHeader: (Long, Array[Byte]) = _
+
+  protected def serverAndDateHeader: Array[Byte] = {
+    var (cachedSeconds, cachedBytes) = if (cachedServerAndDateHeader != null) cachedServerAndDateHeader else (0L, null)
+    val now = System.currentTimeMillis
+    if (now % 1000 != cachedSeconds) {
+      cachedSeconds = now % 1000
+      cachedBytes =
+        BufferBuilder(serverHeaderPlusDateColonSP.length + 32)
+        .append(serverHeaderPlusDateColonSP)
+        .append(dateTime(now).toRfc1123DateTimeString)
+        .append(MessageRendering.CrLf)
+        .toArray
+      cachedServerAndDateHeader = cachedSeconds -> cachedBytes
+    }
+    cachedBytes
   }
 
-  protected def dateTimeNow = DateTime.now  // split out so we can stabilize by overriding in tests
+  protected def dateTime(now: Long) = DateTime.now  // split out so we can stabilize by overriding in tests
 }
