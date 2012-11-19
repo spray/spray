@@ -25,7 +25,6 @@ class ClientSettings(config: Config) {
   protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.can.client")
 
   val UserAgentHeader               = c getString       "user-agent-header"
-  val SSLEncryption                 = c getBoolean      "ssl-encryption"
   val IdleTimeout                   = c getMilliseconds "idle-timeout"
   val RequestTimeout                = c getMilliseconds "request-timeout"
   val ReapingCycle                  = c getMilliseconds "reaping-cycle"
