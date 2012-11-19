@@ -18,6 +18,7 @@ package spray.can
 package client
 
 import akka.event.LoggingAdapter
+import akka.actor.Status
 import spray.http.{HttpMessagePart, HttpRequestPart}
 import spray.io._
 
@@ -40,6 +41,17 @@ class HttpClient(ioBridge: IOBridge, settings: ClientSettings = ClientSettings()
     override def receive: Receive = super.receive orElse {
       case x: HttpMessagePart with HttpRequestPart => pipelines.commandPipeline(HttpCommand(x))
     }
+  }
+
+  override def receive: Receive =
+    if (settings.SSLEncryption) super.receive else warnOnSslEnabledConnects orElse super.receive
+
+  private[this] def warnOnSslEnabledConnects: Receive = {
+    case HttpClient.Connect(_, _, HttpClient.SslEnabled) =>
+      val msg = "Request to establish an encrypted connection cannot be fulfilled because the " +
+        "'spray.can.client.ssl-encryption' config setting is disabled"
+      log.error(msg)
+      sender ! Status.Failure(new IllegalArgumentException(msg))
   }
 }
 

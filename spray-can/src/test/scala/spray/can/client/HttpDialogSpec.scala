@@ -87,6 +87,12 @@ class HttpDialogSpec extends Specification {
         .await.withHeaders(Nil) ===
         HttpResponse(StatusCodes.RequestUriTooLong, "URI length exceeds the configured limit of 2048 characters")
     }
+    "throw an IAE if ssl-encryption is request but not enabked" in {
+      HttpDialog(client, "localhost", port, ssl = true)
+        .send(HttpRequest(uri = "/foo"))
+        .end
+        .await must throwAn[IllegalArgumentException]
+    }
   }
 
   step {
