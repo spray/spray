@@ -18,12 +18,15 @@ object BuildSettings {
     scalaVersion          := "2.10.0-RC2",
     resolvers             ++= Dependencies.resolutionRepos,
     scalacOptions         := Seq(
+      "-encoding", "utf8",
       "-feature",
-      "-language:implicitConversions",
-      "-language:postfixOps",
       "-unchecked",
       "-deprecation",
-      "-encoding", "utf8"
+      "-target:jvm-1.6",
+      "-language:postfixOps",
+      "-language:implicitConversions",
+      "-Xlog-reflective-calls",
+      "-Ywarn-adapted-args"
     )
   )
 

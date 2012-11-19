@@ -127,7 +127,7 @@ sealed abstract class MediaType extends MediaRange {
 }
 
 object MediaType {
-  def unapply(mimeType: MediaType): Option[(String, String)] = Some(mimeType.mainType, mimeType.subType)
+  def unapply(mimeType: MediaType): Option[(String, String)] = Some((mimeType.mainType, mimeType.subType))
 }
 
 object MediaTypes extends ObjectRegistry[(String, String), MediaType] {

@@ -34,7 +34,7 @@ sealed trait HttpMessagePartWrapper {
 case class Confirmed(messagePart: HttpMessagePart, sentAck: Option[Any]) extends HttpMessagePartWrapper
 
 object HttpMessagePartWrapper {
-  def unapply(x: HttpMessagePartWrapper): Option[(HttpMessagePart, Option[Any])] = Some(x.messagePart, x.sentAck)
+  def unapply(x: HttpMessagePartWrapper): Option[(HttpMessagePart, Option[Any])] = Some((x.messagePart, x.sentAck))
 }
 
 
@@ -309,7 +309,7 @@ object HttpRequest {
 
   def unapply(request: HttpRequest): Option[(HttpMethod, String, List[HttpHeader], HttpEntity, HttpProtocol)] = {
     import request._
-    Some(method, uri, headers, entity, protocol)
+    Some((method, uri, headers, entity, protocol))
   }
 }
 
