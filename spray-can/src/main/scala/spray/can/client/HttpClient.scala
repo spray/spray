@@ -54,7 +54,7 @@ object HttpClient {
     ResponseParsing(ParserSettings, log) >>
     RequestRendering(settings) >>
     (settings.IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
-    SSLEncryption ? SslTlsSupport(sslEngineProvider, log, _.handle.tag == SslEnabled) >>
+    SslTlsSupport(sslEngineProvider, log, _.handle.tag == SslEnabled) >>
     (ReapingCycle > 0 && IdleTimeout > 0) ? TickGenerator(ReapingCycle)
   }
 
