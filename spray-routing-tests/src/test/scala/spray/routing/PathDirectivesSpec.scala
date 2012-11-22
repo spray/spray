@@ -241,7 +241,7 @@ class PathDirectivesSpec extends RoutingSpec {
     "support the mapValues modifier" in {
       import shapeless._
       Get("/yes-no") ~> {
-        path(Rest.mapValues { case s :: HNil => s.split('-').toList :: HNil }) { echoComplete }
+        path(Rest.map { case s :: HNil => s.split('-').toList :: HNil }) { echoComplete }
       } ~> check { entityAs[String] === "List(yes, no)" }
     }
   }
