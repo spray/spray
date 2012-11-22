@@ -32,7 +32,7 @@ class IOBridgeSpec extends Specification {
   implicit val system = ActorSystem("IOBridgeSpec")
   val port = 23456
 
-  val bridge = new IOBridge(system).start()
+  val bridge = IOExtension(system).ioBridge
   val server = system.actorOf(Props(new TestServer(bridge)), name = "test-server")
   val client = system.actorOf(Props(new TestClient(bridge)), name = "test-client")
 
@@ -55,18 +55,15 @@ class IOBridgeSpec extends Specification {
     }
   }
 
-  step {
-    system.shutdown()
-    bridge.stop()
-  }
+  step { system.shutdown() }
 
-  class TestServer(ioBridge: IOBridge) extends IOServer(ioBridge) {
+  class TestServer(ioBridge: ActorRef) extends IOServer(ioBridge) {
     override def receive = super.receive orElse {
       case IOBridge.Received(handle, buffer) => ioBridge ! IOBridge.Send(handle, buffer)
     }
   }
 
-  class TestClient(ioBridge: IOBridge) extends IOClient(ioBridge) {
+  class TestClient(ioBridge: ActorRef) extends IOClient(ioBridge) {
     var requests = Map.empty[Handle, ActorRef]
     override def receive: Receive = myReceive orElse super.receive
     def myReceive: Receive = {

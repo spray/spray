@@ -35,7 +35,7 @@ class SslTlsSupportSpec extends Specification {
   val port = 23454
   val serverThread = new ServerThread
   serverThread.start()
-  val ioBridge = new IOBridge(system, ConfigFactory.parseString("spray.io.confirm-sends = off")).start()
+  val ioBridge = IOExtension(system).ioBridge
 
   sequential
 
@@ -69,10 +69,7 @@ class SslTlsSupportSpec extends Specification {
     }
   }
 
-  step {
-    system.shutdown()
-    ioBridge.stop()
-  }
+  step { system.shutdown() }
 
   def createSslContext(keyStoreResource: String, password: String): SSLContext = {
     val keyStore = KeyStore.getInstance("jks")

@@ -20,7 +20,7 @@ import java.net.InetSocketAddress
 import akka.actor.{Status, ActorRef}
 import spray.util.Reply
 
-abstract class IOServer(val ioBridge: IOBridge) extends IOPeer {
+abstract class IOServer(val ioBridge: ActorRef) extends IOPeer {
   import IOServer._
   private var bindingKey: Option[Key] = None
   private var endpoint: Option[InetSocketAddress] = None

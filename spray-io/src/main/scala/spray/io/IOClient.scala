@@ -19,7 +19,7 @@ package spray.io
 import spray.util.Reply
 import akka.actor.{Status, ActorRef}
 
-abstract class IOClient(val ioBridge: IOBridge) extends IOPeer {
+abstract class IOClient(val ioBridge: ActorRef) extends IOPeer {
   import IOClient._
 
   override def preStart() {
