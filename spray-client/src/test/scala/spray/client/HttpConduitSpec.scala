@@ -37,8 +37,7 @@ import HttpHeaders._
 class HttpConduitSpec extends Specification {
   sequential
   implicit val system = ActorSystem()
-  val ioBridge = new IOBridge(system).start()
-  system.registerOnTermination(ioBridge.stop())
+  val ioBridge = IOExtension(system).ioBridge
 
   val port = 17242
   val client = system.actorOf(Props(new HttpClient(ioBridge)), "http-client")

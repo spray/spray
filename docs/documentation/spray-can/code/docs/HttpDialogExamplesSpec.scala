@@ -20,7 +20,7 @@ class HttpDialogExamplesSpec extends Specification {
   //# example-1
 
   implicit val system = ActorSystem()
-  val ioBridge = new IOBridge(system).start()
+  val ioBridge = IOExtension(system).ioBridge
   val client = system.actorOf(Props(new HttpClient(ioBridge)))
 
   //#
@@ -79,9 +79,6 @@ class HttpDialogExamplesSpec extends Specification {
     response.map(_.entity.asString).await === "/ping2" // hide
   }
 
-  step {
-    system.shutdown()
-    ioBridge.stop()
-  }
+  step { system.shutdown() }
 
 }

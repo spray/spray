@@ -7,19 +7,14 @@ class IOBridgeExamplesSpec extends Specification {
 
   "example-1" in {
     import akka.actor.ActorSystem
-    import spray.io.IOBridge
+    import spray.io.IOExtension
 
     val system = ActorSystem()
 
-    val ioBridge = new IOBridge(system).start()
+    val ioBridge = IOExtension(system).ioBridge
 
     // start applications actors, use ioBridge instance
     // ...
-
-    system.registerOnTermination {
-      // stop the IOBridge when the ActorSystem is shut down
-      ioBridge.stop()
-    }
   }
 
 }

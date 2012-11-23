@@ -27,7 +27,7 @@ object Boot extends App {
 
   // every spray-can HttpServer (and HttpClient) needs an IOBridge for low-level network IO
   // (but several servers and/or clients can share one)
-  val ioBridge = new IOBridge(system).start()
+  val ioBridge = IOExtension(system).ioBridge
 
   // create and start our service actor
   val service = system.actorOf(Props[SiteServiceActor], "site-service")
@@ -42,10 +42,4 @@ object Boot extends App {
   // a running HttpServer can be bound, unbound and rebound
   // initially to need to tell it where to bind to
   httpServer ! HttpServer.Bind(SiteSettings.Interface, SiteSettings.Port)
-
-  // finally we drop the main thread but hook the shutdown of
-  // our IOBridge into the shutdown of the applications ActorSystem
-  system.registerOnTermination {
-    ioBridge.stop()
-  }
 }

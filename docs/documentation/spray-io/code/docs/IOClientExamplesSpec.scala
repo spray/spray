@@ -14,7 +14,7 @@ class IOClientExamplesSpec extends Specification {
   import spray.util._
   import spray.io._
 
-  class EchoClient(ioBridge: IOBridge) extends IOClient(ioBridge) {
+  class EchoClient(ioBridge: ActorRef) extends IOClient(ioBridge) {
     var pingSender: Option[ActorRef] = None
 
     override def receive = myReceive orElse super.receive
@@ -37,7 +37,7 @@ class IOClientExamplesSpec extends Specification {
     case class PingResponse(response: String) extends Event
   }
 
-  class EchoServer(ioBridge: IOBridge) extends IOServer(ioBridge) {
+  class EchoServer(ioBridge: ActorRef) extends IOServer(ioBridge) {
     override def receive = super.receive orElse {
       case IOServer.Received(handle, buffer) if buffer.duplicate.drainToString == "PING" =>
         ioBridge ! IOBridge.Send(handle, BufferBuilder("PONG").toByteBuffer)
@@ -47,7 +47,7 @@ class IOClientExamplesSpec extends Specification {
 
   val system = ActorSystem()
 
-  val ioBridge = new IOBridge(system).start()
+  val ioBridge = IOExtension(system).ioBridge
   //#
 
   "example-1" in {
@@ -72,7 +72,6 @@ class IOClientExamplesSpec extends Specification {
 
   step {
     system.shutdown()  // example-1
-    ioBridge.stop()    // example-1
   }
 
 }
