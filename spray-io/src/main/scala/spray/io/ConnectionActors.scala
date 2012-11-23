@@ -22,9 +22,10 @@ import akka.actor._
 
 trait ConnectionActors extends IOPeer {
 
-  override protected def createConnectionHandle(_key: Key, _remoteAddress: InetSocketAddress,
+  override protected def createConnectionHandle(_ioBridge: ActorRef, _key: Key, _remoteAddress: InetSocketAddress,
                                                 _localAddress: InetSocketAddress, _commander: ActorRef, _tag: Any) = {
     new Handle {
+      val ioBridge = _ioBridge
       val key = _key
       val remoteAddress = _remoteAddress
       val localAddress = _localAddress
@@ -49,10 +50,10 @@ trait ConnectionActors extends IOPeer {
 
     //# final-stages
     def baseCommandPipeline: Pipeline[Command] = {
-      case IOPeer.Send(buffers, ack)          => ioBridge ! IOBridge.Send(handle, buffers, eventize(ack))
-      case IOPeer.Close(reason)               => ioBridge ! IOBridge.Close(handle, reason)
-      case IOPeer.StopReading                 => ioBridge ! IOBridge.StopReading(handle)
-      case IOPeer.ResumeReading               => ioBridge ! IOBridge.ResumeReading(handle)
+      case IOPeer.Send(buffers, ack)          => handle.ioBridge ! IOBridge.Send(handle, buffers, eventize(ack))
+      case IOPeer.Close(reason)               => handle.ioBridge ! IOBridge.Close(handle, reason)
+      case IOPeer.StopReading                 => handle.ioBridge ! IOBridge.StopReading(handle)
+      case IOPeer.ResumeReading               => handle.ioBridge ! IOBridge.ResumeReading(handle)
       case IOPeer.Tell(receiver, msg, sender) => receiver.tell(msg, sender)
       case _: Droppable => // don't warn
       case cmd => log.warning("commandPipeline: dropped {}", cmd)

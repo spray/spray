@@ -24,11 +24,11 @@ import spray.util.CloseCommandReason
 
 abstract class IOPeer extends Actor with ActorLogging {
 
-  def ioBridge: ActorRef
+  def rootIoBridge: ActorRef
 
-  protected def createConnectionHandle(key: Key, remoteAddress: InetSocketAddress, localAddress: InetSocketAddress,
-                                       commander: ActorRef, tag: Any): Handle =
-    SimpleHandle(key, self, remoteAddress, localAddress, commander, tag) // default implementation
+  protected def createConnectionHandle(ioBridge: ActorRef, key: Key, remoteAddress: InetSocketAddress,
+                                       localAddress: InetSocketAddress, commander: ActorRef, tag: Any): Handle =
+    SimpleHandle(ioBridge, key, self, remoteAddress, localAddress, commander, tag) // default implementation
 }
 
 object IOPeer {

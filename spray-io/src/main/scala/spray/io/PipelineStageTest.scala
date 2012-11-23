@@ -20,17 +20,17 @@ import collection.mutable.ListBuffer
 import util.DynamicVariable
 import java.nio.ByteBuffer
 import java.net.InetSocketAddress
+import scala.annotation.tailrec
 import akka.actor.{ActorRef, ActorContext, ActorSystem}
 import akka.spray.UnregisteredActorRef
-import spray.io._
 import spray.util._
-import annotation.tailrec
 
 
 trait PipelineStageTest { test =>
   implicit def system: ActorSystem
 
   lazy val testHandle = new Handle {
+    def ioBridge = throw new UnsupportedOperationException
     def key = throw new UnsupportedOperationException
     def handler = throw new UnsupportedOperationException
     val remoteAddress = new InetSocketAddress("example.com", 8080)

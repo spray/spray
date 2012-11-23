@@ -19,7 +19,7 @@ package spray.io
 import spray.util.Reply
 import akka.actor.{Status, ActorRef}
 
-abstract class IOClient(val ioBridge: ActorRef) extends IOPeer {
+abstract class IOClient(val rootIoBridge: ActorRef) extends IOPeer {
   import IOClient._
 
   override def preStart() {
@@ -32,11 +32,11 @@ abstract class IOClient(val ioBridge: ActorRef) extends IOPeer {
 
   def receive: Receive = {
     case cmd: Connect =>
-      ioBridge.tell(cmd, Reply.withContext(sender))
+      rootIoBridge.tell(cmd, Reply.withContext(sender))
 
     case Reply(IOBridge.Connected(key, remoteAddress, localAddress, tag), commander: ActorRef) =>
-      val handle = createConnectionHandle(key, remoteAddress, localAddress, commander, tag)
-      ioBridge ! IOBridge.Register(handle)
+      val handle = createConnectionHandle(sender, key, remoteAddress, localAddress, commander, tag)
+      sender ! IOBridge.Register(handle)
       commander ! Connected(handle)
 
     case x: Closed =>

@@ -20,7 +20,7 @@ import java.net.InetSocketAddress
 import akka.actor.{Status, ActorRef}
 import spray.util.Reply
 
-abstract class IOServer(val ioBridge: ActorRef) extends IOPeer {
+abstract class IOServer(val rootIoBridge: ActorRef) extends IOPeer {
   import IOServer._
   private var bindingKey: Option[Key] = None
   private var endpoint: Option[InetSocketAddress] = None
@@ -45,7 +45,7 @@ abstract class IOServer(val ioBridge: ActorRef) extends IOPeer {
       this.endpoint = Some(endpoint)
       state = binding
       val replyWithCommander = Reply.withContext(sender)
-      ioBridge.tell(IOBridge.Bind(replyWithCommander, endpoint, bindingBacklog), replyWithCommander)
+      rootIoBridge.tell(IOBridge.Bind(replyWithCommander, endpoint, bindingBacklog), replyWithCommander)
 
     case x: ServerCommand =>
       sender ! Status.Failure(CommandException(x, "Not yet bound"))
@@ -64,13 +64,13 @@ abstract class IOServer(val ioBridge: ActorRef) extends IOPeer {
 
   lazy val bound: Receive = {
     case Reply(IOBridge.Connected(key, remoteAddress, localAddress, tag), commander: ActorRef) =>
-      val handle = createConnectionHandle(key, remoteAddress, localAddress, commander, tag)
-      ioBridge ! IOBridge.Register(handle)
+      val handle = createConnectionHandle(sender, key, remoteAddress, localAddress, commander, tag)
+      sender ! IOBridge.Register(handle)
 
     case Unbind =>
       log.debug("Stopping {} on {}", self.path, endpoint.get)
       state = unbinding
-      ioBridge.tell(IOBridge.Unbind(bindingKey.get), Reply.withContext(sender))
+      rootIoBridge.tell(IOBridge.Unbind(bindingKey.get), Reply.withContext(sender))
 
     case x: ServerCommand =>
       sender ! Status.Failure(CommandException(x, "Already bound"))

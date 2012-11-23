@@ -3,6 +3,7 @@ package spray.examples
 import akka.pattern.ask
 import akka.util.duration._
 import akka.actor._
+import spray.io.{IOBridge, IOExtension}
 import spray.can.server.HttpServer
 import spray.http._
 import HttpMethods._
@@ -10,6 +11,7 @@ import MediaTypes._
 
 
 class TestService extends Actor with ActorLogging {
+  implicit val timeout: akka.util.Timeout = 1.second // for the actor 'asks' we use below
 
   def receive = {
     case HttpRequest(GET, "/", _, _, _) =>
@@ -22,10 +24,16 @@ class TestService extends Actor with ActorLogging {
       val peer = sender // since the Props creator is executed asyncly we need to save the sender ref
       context.actorOf(Props(new Streamer(peer, 25)))
 
-    case HttpRequest(GET, "/stats", _, _, _) =>
+    case HttpRequest(GET, "/server-stats", _, _, _) =>
       val client = sender
-      context.actorFor("../http-server").ask(HttpServer.GetStats)(1.second).onSuccess {
+      (context.actorFor("../http-server") ? HttpServer.GetStats).onSuccess {
         case x: HttpServer.Stats => client ! statsPresentation(x)
+      }
+
+    case HttpRequest(GET, "/io-stats", _, _, _) =>
+      val client = sender
+      (IOExtension(context.system).ioBridge ? IOBridge.GetStats).onSuccess {
+        case IOBridge.StatsMap(map) => client ! statsPresentation(map)
       }
 
     case HttpRequest(GET, "/crash", _, _, _) =>
@@ -63,7 +71,8 @@ class TestService extends Actor with ActorLogging {
           <ul>
             <li><a href="/ping">/ping</a></li>
             <li><a href="/stream">/stream</a></li>
-            <li><a href="/stats">/stats</a></li>
+            <li><a href="/server-stats">/server-stats</a></li>
+            <li><a href="/io-stats">/io-stats</a></li>
             <li><a href="/crash">/crash</a></li>
             <li><a href="/timeout">/timeout</a></li>
             <li><a href="/timeout/timeout">/timeout/timeout</a></li>
@@ -89,6 +98,25 @@ class TestService extends Actor with ActorLogging {
             <tr><td>maxOpenConnections:</td><td>{s.maxOpenConnections}</td></tr>
             <tr><td>requestTimeouts:</td><td>{s.requestTimeouts}</td></tr>
             <tr><td>idleTimeouts:</td><td>{s.idleTimeouts}</td></tr>
+          </table>
+        </body>
+      </html>.toString
+    )
+  )
+
+  def statsPresentation(map: Map[ActorRef, IOBridge.Stats]) = HttpResponse(
+    entity = HttpBody(`text/html`,
+      <html>
+        <body>
+          <h1>IOBridge Stats</h1>
+          <table>
+            {
+              val data = map.toSeq.map(t => t._1.path.elements.last :: t._2.productIterator.toList).transpose
+              val headers = Seq("IOBridge", "uptime", "bytesRead", "bytesWritten", "connectionsOpened", "commandsExecuted")
+              headers.zip(data).map { case (header, items) =>
+                <tr><td>{header}:</td>{items.map(x => <td>{x}</td>)}</tr>
+              }
+            }
           </table>
         </body>
       </html>.toString

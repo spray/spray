@@ -24,11 +24,12 @@ import scala.annotation.tailrec
 import akka.actor._
 import akka.util.NonFatal
 import akka.spray.io.{IOBridgeDispatcherConfigurator, SelectorWakingMailbox}
+import akka.spray.UnregisteredActorRef
 import spray.util._
 import SelectionKey._
 
 
-class IOBridge(settings: IOBridge.Settings) extends Actor with ActorLogging {
+class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = true) extends Actor with ActorLogging {
   import IOBridge._
 
   private[this] val mailbox: SelectorWakingMailbox = IOExtension.myMailbox.getOrElse(
@@ -36,6 +37,16 @@ class IOBridge(settings: IOBridge.Settings) extends Actor with ActorLogging {
   )
   import mailbox.selector
   private[this] var cachedBuffer: ByteBuffer = _
+  private[this] val subBridgesEnabled = isRoot && settings.Parallelism > 1
+  private[this] val subBridges: Array[ActorRef] =
+    if (subBridgesEnabled) {
+      Array.tabulate(settings.Parallelism) { ix =>
+        context.actorOf(
+          props = Props(new IOBridge(settings, isRoot = false)).withDispatcher(DispatcherName),
+          name = "sub-" + ix
+        )
+      }
+    } else Array.empty
 
   // stats fields
   private[this] val startTime = System.currentTimeMillis
@@ -73,34 +84,40 @@ class IOBridge(settings: IOBridge.Settings) extends Actor with ActorLogging {
 
   def runCommand(cmd: Command) {
     cmd match {
-      // ConnectionCommands
-      case x: Send => send(x, sender)
-      case x: StopReading => x.handle.key.disable(OP_READ)
-      case x: ResumeReading => x.handle.key.enable(OP_READ)
-      case x: Register => register(x)
-      case x: Close => scheduleClose(x.handle, x.reason)
+      case cc: ConnectionCommand =>
+        if (cc.handle.key.selectionKey.selector != selector)
+          sys.error("Target socket of this command is not handled by this IOBridge")
+        cc match {
+          case Send(handle, buffers, ack) => send(handle, buffers, ack)
+          case StopReading(handle)        => handle.key.disable(OP_READ)
+          case ResumeReading(handle)      => handle.key.enable(OP_READ)
+          case Register(handle)           => register(handle)
+          case Close(handle, reason)      => scheduleClose(handle, reason)
+        }
 
-      // SuperCommands
-      case x: Connect => connect(x, sender)
-      case x: Bind => bind(x, sender)
-      case x: Unbind => unbind(x, sender)
-      case GetStats => deliverStats(sender)
+      case cmd: Connect       if isRoot => connect(cmd)
+      case cmd: Bind          if isRoot => bind(cmd)
+      case Unbind(bindingKey) if isRoot => unbind(bindingKey)
+      case GetStats                     => collectAndDispatchStats(sender)
 
+      case AssignConnection(channel, connectedEventReceiver, tag) =>
+        connectedEventReceiver ! registerConnectionAndCreateConnectedEvent(channel, tag)
       case Select => // ignore, this message just restarts the selection loop
+
       case x => unhandled(x)
     }
   }
 
-  def send(cmd: Send, sender: ActorRef) {
-    val key = cmd.handle.key
-    key.writeQueue ++= cmd.buffers
-    if (cmd.ack.isDefined && sender != null) key.writeQueue += Ack(sender, cmd.ack.get)
+  def send(handle: Handle, buffers: Seq[ByteBuffer], ack: Option[Any]) {
+    val key = handle.key
+    key.writeQueue ++= buffers
+    if (ack.isDefined) key.writeQueue += Ack(sender, ack.get)
     key.enable(OP_WRITE)
   }
 
-  def register(cmd: Register) {
-    val key = cmd.handle.key
-    key.selectionKey.attach(cmd.handle)
+  def register(handle: Handle) {
+    val key = handle.key
+    key.selectionKey.attach(handle)
     key.enable(OP_READ) // always start out in reading mode
     connectionsOpened += 1
   }
@@ -136,48 +153,54 @@ class IOBridge(settings: IOBridge.Settings) extends Actor with ActorLogging {
     }
   }
 
-  def connect(cmd: Connect, sender: ActorRef) {
-    if (sender != null) {
-      val channel = SocketChannel.open()
-      configure(channel)
-      cmd.localAddress.foreach(channel.socket().bind(_))
-      if (settings.TcpReceiveBufferSize != 0)
-        channel.socket.setReceiveBufferSize(settings.TcpReceiveBufferSize.toInt)
-      if (channel.connect(cmd.remoteAddress)) {
-        log.debug("Connection immediately established to {}", cmd.remoteAddress)
-        val key = channel.register(selector, 0) // we don't enable any ops until we have a handle
-        val localAddress = channel.socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]
-        sender ! Connected(Key(key), cmd.remoteAddress, localAddress, cmd.tag)
-      } else {
-        val key = channel.register(selector, OP_CONNECT)
-        key.attach((cmd, sender))
-        log.debug("Connection request registered")
-      }
-    } else log.error("Cannot execute Connect command from unknown sender")
+  def connect(cmd: Connect) {
+    val channel = SocketChannel.open()
+    configure(channel)
+    cmd.localAddress.foreach(channel.socket().bind(_))
+    if (settings.TcpReceiveBufferSize != 0) channel.socket.setReceiveBufferSize(settings.TcpReceiveBufferSize.toInt)
+    if (channel.connect(cmd.remoteAddress)) {
+      log.debug("Connection immediately established to {}", cmd.remoteAddress)
+      val key = channel.register(selector, 0) // we don't enable any ops until we have a handle
+      completeConnect(key, cmd, sender)
+    } else {
+      val key = channel.register(selector, OP_CONNECT)
+      key.attach((cmd, sender))
+      log.debug("Connection request registered")
+    }
   }
 
-  def bind(cmd: Bind, sender: ActorRef) {
+  def bind(cmd: Bind) {
     val channel = ServerSocketChannel.open
     channel.configureBlocking(false)
-    if (settings.TcpReceiveBufferSize != 0)
-      channel.socket.setReceiveBufferSize(settings.TcpReceiveBufferSize.toInt)
+    if (settings.TcpReceiveBufferSize != 0) channel.socket.setReceiveBufferSize(settings.TcpReceiveBufferSize.toInt)
     channel.socket.bind(cmd.address, cmd.backlog)
     val key = channel.register(selector, OP_ACCEPT)
     key.attach(cmd)
-    if (sender != null) sender ! Bound(Key(key), cmd.tag)
+    sender ! Bound(Key(key), cmd.tag)
   }
 
-  def unbind(cmd: Unbind, sender: ActorRef) {
-    val key = cmd.bindingKey.selectionKey
+  def unbind(bindingKey: Key) {
+    val key = bindingKey.selectionKey
     key.cancel()
     key.channel.close()
-    if (sender != null) sender ! Unbound(cmd.bindingKey)
+    sender ! Unbound(bindingKey)
   }
 
-  def deliverStats(sender: ActorRef) {
-    val stats = Stats(System.currentTimeMillis - startTime, bytesRead, bytesWritten, connectionsOpened,
-      connectionsClosed, commandsExecuted)
-    if (sender != null) sender ! stats
+  def collectAndDispatchStats(resultReceiver: ActorRef) {
+    def dispatch(result: Map[ActorRef, Stats]): List[ActorRef] => Unit = {
+      case Nil => resultReceiver ! StatsMap(result)
+      case head :: tail =>
+        val receiver = new UnregisteredActorRef(context) {
+          def handle(message: Any)(implicit sender: ActorRef) {
+            val StatsMap(map) = message
+            dispatch(result ++ map)(tail)
+          }
+        }
+        head.tell(GetStats, receiver)
+    }
+    val uptime = System.currentTimeMillis - startTime
+    val stats = Stats(uptime, bytesRead, bytesWritten, connectionsOpened, connectionsClosed, commandsExecuted)
+    dispatch(Map(self -> stats))(subBridges.toList)
   }
 
   def select() {
@@ -271,17 +294,55 @@ class IOBridge(settings: IOBridge.Settings) extends Actor with ActorLogging {
 
   def accept(key: SelectionKey) {
     try {
-      val channel = key.channel.asInstanceOf[ServerSocketChannel].accept()
-      configure(channel)
-      val connectionKey = channel.register(selector, 0) // we don't enable any ops until we have a handle
       val cmd = key.attachment.asInstanceOf[Bind]
+      val channel = key.channel.asInstanceOf[ServerSocketChannel].accept()
       log.debug("New connection accepted on {}", cmd.address)
-      val remoteAddress = channel.socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress]
-      val localAddress = channel.socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]
-      cmd.handleCreator ! Connected(Key(connectionKey), remoteAddress, localAddress, cmd.tag)
+      configure(channel)
+      if (subBridgesEnabled)
+        childFor(channel) ! AssignConnection(channel, cmd.handleCreator, cmd.tag)
+      else
+        cmd.handleCreator ! registerConnectionAndCreateConnectedEvent(channel, cmd.tag)
     } catch {
       case NonFatal(e) => log.error(e, "Accept error: could not accept new connection")
     }
+  }
+
+  def connect(key: SelectionKey) {
+    val (cmd, cmdSender) = key.attachment.asInstanceOf[(Connect, ActorRef)]
+    try {
+      key.channel.asInstanceOf[SocketChannel].finishConnect()
+      log.debug("Connection established to {}", cmd.remoteAddress)
+      completeConnect(key, cmd, cmdSender)
+    } catch {
+      case NonFatal(e) =>
+        log.error(e, "Connect error: could not establish new connection to {}", cmd.remoteAddress)
+        cmdSender ! Status.Failure(CommandException(cmd, e))
+    }
+  }
+
+  def completeConnect(key: SelectionKey, cmd: Connect, cmdSender: ActorRef) {
+    val channel = key.channel.asInstanceOf[SocketChannel]
+    if (subBridgesEnabled) {
+      key.cancel() // unregister from our selector
+      childFor(channel) ! AssignConnection(channel, cmdSender, cmd.tag)
+    } else {
+      key.interestOps(0) // we don't enable any ops until we have a handle
+      cmdSender ! connectedEvent(key, channel, cmd.tag)
+    }
+  }
+
+  def childFor(channel: SocketChannel) =
+    subBridges(System.identityHashCode(channel) % subBridges.length)
+
+  def registerConnectionAndCreateConnectedEvent(channel: SocketChannel, tag: Any) = {
+    val key = channel.register(selector, 0) // we don't enable any ops until we have a handle
+    connectedEvent(key, channel, tag)
+  }
+
+  def connectedEvent(key: SelectionKey, channel: SocketChannel, tag: Any) = {
+    val remoteAddress = channel.socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress]
+    val localAddress = channel.socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]
+    Connected(Key(key), remoteAddress, localAddress, tag)
   }
 
   def configure(channel: SocketChannel) {
@@ -291,22 +352,6 @@ class IOBridge(settings: IOBridge.Settings) extends Actor with ActorLogging {
     if (settings.TcpKeepAlive != 0)      socket.setKeepAlive(settings.TcpKeepAlive > 0)
     if (settings.TcpNoDelay != 0)        socket.setTcpNoDelay(settings.TcpNoDelay > 0)
     channel.configureBlocking(false)
-  }
-
-  def connect(key: SelectionKey) {
-    val (cmd@Connect(address, _, tag), sender) = key.attachment.asInstanceOf[(Connect, ActorRef)]
-    try {
-      val channel = key.channel.asInstanceOf[SocketChannel]
-      channel.finishConnect()
-      key.interestOps(0) // we don't enable any ops until we have a handle
-      log.debug("Connection established to {}", address)
-      val localAddress = channel.socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]
-      sender ! Connected(Key(key), address, localAddress, tag)
-    } catch {
-      case NonFatal(e) =>
-        log.error(e, "Connect error: could not establish new connection to {}", address)
-        sender ! Status.Failure(CommandException(cmd, e))
-    }
   }
 
   def closeSelector() {
@@ -321,10 +366,12 @@ class IOBridge(settings: IOBridge.Settings) extends Actor with ActorLogging {
 }
 
 object IOBridge {
+  private[io] val DispatcherName = "spray.io.io-bridge-dispatcher"
 
   class Settings(config: Config) {
     protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.io")
 
+    val Parallelism          = c getInt     "parallelism"
     val ReadBufferSize       = c getBytes   "read-buffer-size"
 
     val TcpReceiveBufferSize = c getBytes   "tcp.receive-buffer-size"
@@ -332,10 +379,13 @@ object IOBridge {
     val TcpKeepAlive         = c getInt     "tcp.keep-alive"
     val TcpNoDelay           = c getInt     "tcp.no-delay"
 
+    require(Parallelism          > 0,  "parallelism must be > 0")
     require(ReadBufferSize       > 0,  "read-buffer-size must be > 0")
     require(TcpReceiveBufferSize >= 0, "receive-buffer-size must be >= 0")
     require(TcpSendBufferSize    >= 0, "send-buffer-size must be >= 0")
   }
+
+  case class StatsMap(map: Map[ActorRef, Stats])
 
   case class Stats(
     uptime: Long,
@@ -364,9 +414,6 @@ object IOBridge {
       Connect(new InetSocketAddress(host, port), None, tag)
   }
   case object GetStats extends Command
-
-  // TODO: mark private[akka] after migration
-  case object Select extends Command
 
   // connection-level commands
   trait ConnectionCommand extends Command {
@@ -404,4 +451,11 @@ object IOBridge {
                     reason: ClosedEventReason) extends Event with IOClosed
   case class Received(handle: Handle, buffer: ByteBuffer) extends Event
   //#
+
+  ///////////// INTERNAL COMMANDS ///////////////
+
+  // TODO: mark private[akka] after migration
+  case object Select extends Command
+
+  private case class AssignConnection(channel: SocketChannel, connectedEventReceiver: ActorRef, tag: Any) extends Command
 }
