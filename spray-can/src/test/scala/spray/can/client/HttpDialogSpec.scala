@@ -28,7 +28,7 @@ import spray.http._
 
 class HttpDialogSpec extends Specification {
   implicit val system = ActorSystem()
-  val ioBridge = new IOBridge(system).start()
+  val ioBridge = IOExtension(system).ioBridge
   val port = 8899
 
   step {
@@ -88,9 +88,6 @@ class HttpDialogSpec extends Specification {
     }
   }
 
-  step {
-    system.shutdown()
-    ioBridge.stop()
-  }
+  step { system.shutdown() }
 
 }

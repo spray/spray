@@ -36,8 +36,7 @@ import HttpHeaders._
 class HttpConduitSpec extends Specification {
   sequential
   implicit val system = ActorSystem()
-  val ioBridge = new IOBridge(system).start()
-  system.registerOnTermination(ioBridge.stop())
+  val ioBridge = IOExtension(system).ioBridge
 
   //logEventStreamOf[UnhandledMessage]
 

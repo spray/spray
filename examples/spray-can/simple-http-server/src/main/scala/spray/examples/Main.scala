@@ -13,7 +13,7 @@ object Main extends App {
 
   // every spray-can HttpServer (and HttpClient) needs an IOBridge for low-level network IO
   // (but several servers and/or clients can share one)
-  val ioBridge = new IOBridge(system).start()
+  val ioBridge = IOExtension(system).ioBridge
 
   // the handler actor replies to incoming HttpRequests
   val handler = system.actorOf(Props[TestService])
@@ -29,11 +29,6 @@ object Main extends App {
   // initially to need to tell it where to bind to
   server ! HttpServer.Bind("localhost", 8080)
 
-  // finally we drop the main thread but hook the shutdown of
-  // our IOBridge into the shutdown of the applications ActorSystem
-  system.registerOnTermination {
-    ioBridge.stop()
-  }
 
   /////////////// for SSL support (if enabled in application.conf) ////////////////
 

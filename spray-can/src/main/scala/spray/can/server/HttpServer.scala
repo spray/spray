@@ -18,13 +18,13 @@ package spray.can.server
 
 import akka.event.LoggingAdapter
 import akka.util.Duration
+import akka.actor.ActorRef
 import spray.can.server.StatsSupport.StatsHolder
-import spray.can.HttpCommand
 import spray.io._
 import spray.http._
 
 
-class HttpServer(ioBridge: IOBridge, messageHandler: MessageHandler, settings: ServerSettings = ServerSettings())
+class HttpServer(ioBridge: ActorRef, messageHandler: MessageHandler, settings: ServerSettings = ServerSettings())
                 (implicit sslEngineProvider: ServerSSLEngineProvider) extends IOServer(ioBridge) with ConnectionActors {
 
   protected val statsHolder: Option[StatsHolder] =

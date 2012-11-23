@@ -1,9 +1,9 @@
 package spray.examples
 
 import akka.actor.{Props, ActorSystem}
-import spray.io.IOBridge
 import spray.can.client.HttpClient
 import spray.client.HttpConduit
+import spray.io.IOExtension
 import spray.httpx.SprayJsonSupport
 import spray.http._
 
@@ -15,11 +15,7 @@ object Main extends App {
 
   // every spray-can HttpClient (and HttpServer) needs an IOBridge for low-level network IO
   // (but several servers and/or clients can share one)
-  val ioBridge = new IOBridge(system).start()
-
-  // since the ioBridge is not an actor it needs to be stopped separately,
-  // here we hook the shutdown of our IOBridge into the shutdown of the applications ActorSystem
-  system.registerOnTermination(ioBridge.stop())
+  val ioBridge = IOExtension(system).ioBridge
 
   // create and start a spray-can HttpClient
   val httpClient = system.actorOf(

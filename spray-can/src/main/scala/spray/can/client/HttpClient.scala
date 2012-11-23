@@ -18,6 +18,7 @@ package spray.can
 package client
 
 import akka.event.LoggingAdapter
+import akka.actor.ActorRef
 import spray.http.{HttpMessagePart, HttpRequestPart}
 import spray.io._
 
@@ -31,7 +32,7 @@ import spray.io._
  * replied to with [[spray.can.model.HttpResponsePart]] messages (or [[akka.actor.Status.Failure]] instances
  * in case of errors).
  */
-class HttpClient(ioBridge: IOBridge, settings: ClientSettings = ClientSettings())
+class HttpClient(ioBridge: ActorRef, settings: ClientSettings = ClientSettings())
                 (implicit sslEngineProvider: ClientSSLEngineProvider) extends IOClient(ioBridge) with ConnectionActors {
 
   protected val pipeline: PipelineStage = HttpClient.pipeline(settings, log)

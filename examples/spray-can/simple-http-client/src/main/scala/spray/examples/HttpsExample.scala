@@ -2,8 +2,8 @@ package spray.examples
 
 import com.typesafe.config.ConfigFactory
 import akka.actor.{Props, ActorSystem}
-import spray.io.IOBridge
 import spray.can.client.{HttpDialog, HttpClient}
+import spray.io.IOExtension
 import spray.http.HttpRequest
 
 
@@ -14,7 +14,7 @@ object HttpsExample extends App {
 
   // every spray-can HttpClient (and HttpServer) needs an IOBridge for low-level network IO
   // (but several servers and/or clients can share one)
-  val ioBridge = new IOBridge(system).start()
+  val ioBridge = IOExtension(system).ioBridge
 
   // create and start a spray-can HttpClient with SSL/TLS support enabled
   val httpClient = system.actorOf(
@@ -46,12 +46,6 @@ object HttpsExample extends App {
     case Left(error) =>
       log.error("Could not get response due to {}", error)
       system.shutdown()
-  }
-
-  // finally we drop the main thread but hook the shutdown of
-  // our IOBridge into the shutdown of the applications ActorSystem
-  system.registerOnTermination {
-    ioBridge.stop()
   }
 
 }
