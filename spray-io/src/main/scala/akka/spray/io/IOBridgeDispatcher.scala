@@ -38,6 +38,10 @@ class IOBridgeDispatcherConfigurator(config: Config, prerequisites: DispatcherPr
     )
 }
 
+// a PinnedDispatcher with a SelectorWakingMailbox
+// Limitation: currently doesn't unblock the IOBridge (by waking up the selector) for incoming TaskInvocations
+// (executeTask method). Since the IOBridge doesn't schedule Futures to its dispatcher this appears not to be
+// a problem. TODO: verify that a broken 'executeTask' is ok or override with selector waking
 class IOBridgeDispatcher(
   _prerequisites: DispatcherPrerequisites,
   _id: String,

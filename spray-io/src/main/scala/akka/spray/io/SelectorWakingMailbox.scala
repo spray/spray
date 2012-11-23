@@ -52,9 +52,12 @@ class SelectorWakingMailbox(system: ActorSystem, _messageQueue: MessageQueue) ex
   def isEmpty = !hasMessages && !hasSystemMessages
 
   //---------- copied almost verbatim from DefaultSystemMessageQueue trait ------------
-  // we need to inject a selector wakeup into the systemEnqueue method, which is
-  // final in DefaultSystemMessageQueue (for the @tailrec)
-  // TODO proper solution: "unfinalize" in DefaultSystemMessageQueue, mix in and override here
+  // we need to inject a selector wakeup into the systemEnqueue method,
+  // which is final in DefaultSystemMessageQueue (for the @tailrec)
+  // TODO: DRY up with these steps:
+  // a) "unfinalize" systemEnqueue in DefaultSystemMessageQueue
+  // b) mix in DefaultSystemMessageQueue
+  // c) override
 
   @tailrec
   private def doSystemEnqueue(receiver: ActorRef, message: SystemMessage): Unit = {

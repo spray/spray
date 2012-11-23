@@ -59,35 +59,35 @@ class IOBridgeSpec extends Specification {
 
   step { system.shutdown() }
 
-  class TestServer(ioBridge: ActorRef) extends IOServer(ioBridge) {
+  class TestServer(_rootIoBridge: ActorRef) extends IOServer(_rootIoBridge) {
     override def receive = super.receive orElse {
-      case IOBridge.Received(handle, buffer) => ioBridge ! IOBridge.Send(handle, buffer)
+      case IOBridge.Received(handle, buffer) => sender ! IOBridge.Send(handle, buffer)
     }
   }
 
-  class TestClient(ioBridge: ActorRef) extends IOClient(ioBridge) {
+  class TestClient(_rootIoBridge: ActorRef) extends IOClient(_rootIoBridge) {
     var requests = Map.empty[Handle, ActorRef]
     override def receive: Receive = myReceive orElse super.receive
     def myReceive: Receive = {
-      case (x: String, handle: Handle) =>
+      case (handle: Handle, string: String) =>
         requests += handle -> sender
-        ioBridge ! IOBridge.Send(handle, ByteBuffer.wrap(x.getBytes))
+        handle.ioBridge ! IOBridge.Send(handle, ByteBuffer.wrap(string.getBytes))
       case IOBridge.Received(handle, buffer) =>
         requests(handle) ! buffer.drainToString
-      case (closeReason: CloseCommandReason, handle: Handle) =>
+      case cmd@IOBridge.Close(handle, _) =>
         requests += handle -> sender
-        ioBridge ! IOBridge.Close(handle, closeReason)
+        handle.ioBridge ! cmd
       case IOBridge.Closed(handle, reason) =>
         requests(handle) ! reason
+        requests -= handle
     }
   }
 
   def request(payload: String, closeReason: CloseCommandReason = CleanClose) = {
     for {
       IOClient.Connected(handle) <- (client ? IOClient.Connect("localhost", port)).mapTo[IOClient.Connected]
-      response                   <- (client ? (payload -> handle)).mapTo[String]
-      reason                     <- (client ? (closeReason -> handle)).mapTo[ClosedEventReason]
+      response: String           <- (client ? (handle -> payload)).mapTo[String]
+      reason: ClosedEventReason  <- (client ? IOBridge.Close(handle, closeReason)).mapTo[ClosedEventReason]
     } yield response -> reason
   }
-
 }

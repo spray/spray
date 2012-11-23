@@ -25,12 +25,18 @@ import java.net.InetSocketAddress
  */
 trait Handle {
   /**
-   * The key identifying the network connection.
+   * The IOBridge actor managing the connection.
+   */
+  def ioBridge: ActorRef
+
+  /**
+   * The key identifying the connection.
    */
   def key: Key
 
   /**
    * The actor handling events coming in from the network.
+   * If ConnectionActors are used this is the connection actor.
    */
   def handler: ActorRef
 
@@ -61,6 +67,7 @@ trait Handle {
 //#
 
 case class SimpleHandle(
+  ioBridge: ActorRef,
   key: Key,
   handler: ActorRef,
   remoteAddress: InetSocketAddress,

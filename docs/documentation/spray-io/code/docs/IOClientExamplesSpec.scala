@@ -14,7 +14,7 @@ class IOClientExamplesSpec extends Specification {
   import spray.util._
   import spray.io._
 
-  class EchoClient(ioBridge: ActorRef) extends IOClient(ioBridge) {
+  class EchoClient(_ioBridge: ActorRef) extends IOClient(_ioBridge) {
     var pingSender: Option[ActorRef] = None
 
     override def receive = myReceive orElse super.receive
@@ -22,7 +22,7 @@ class IOClientExamplesSpec extends Specification {
     def myReceive: Receive = {
       case EchoClient.Ping(handle) =>
         pingSender = Some(sender)
-        ioBridge ! IOBridge.Send(handle, BufferBuilder("PING").toByteBuffer)
+        handle.ioBridge ! IOBridge.Send(handle, BufferBuilder("PING").toByteBuffer)
 
       case IOClient.Received(handle, buffer) =>
         pingSender.foreach(_ ! EchoClient.PingResponse(buffer.drainToString))
@@ -37,11 +37,11 @@ class IOClientExamplesSpec extends Specification {
     case class PingResponse(response: String) extends Event
   }
 
-  class EchoServer(ioBridge: ActorRef) extends IOServer(ioBridge) {
+  class EchoServer(_ioBridge: ActorRef) extends IOServer(_ioBridge) {
     override def receive = super.receive orElse {
       case IOServer.Received(handle, buffer) if buffer.duplicate.drainToString == "PING" =>
-        ioBridge ! IOBridge.Send(handle, BufferBuilder("PONG").toByteBuffer)
-        ioBridge ! IOBridge.Close(handle, ConnectionCloseReasons.CleanClose)
+        sender ! IOBridge.Send(handle, BufferBuilder("PONG").toByteBuffer)
+        sender ! IOBridge.Close(handle, ConnectionCloseReasons.CleanClose)
     }
   }
 

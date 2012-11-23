@@ -45,7 +45,7 @@ class IOExtension(system: ExtendedActorSystem) extends Extension {
       case null if rootBridge.compareAndSet(null, Locked) =>
         var bridge: ActorRef = null
         try bridge = system.actorOf(
-          props = Props(new IOBridge(settings)).withDispatcher("spray.io.io-bridge-dispatcher"),
+          props = Props(new IOBridge(settings)).withDispatcher(IOBridge.DispatcherName),
           name = "io-bridge"
         )
         finally rootBridge.set(bridge)
