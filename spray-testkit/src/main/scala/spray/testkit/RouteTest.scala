@@ -30,7 +30,7 @@ import spray.util._
 trait RouteTest extends RequestBuilding with RouteResultComponent {
   this: TestFrameworkInterface =>
 
-  implicit val system = ActorSystem()
+  implicit def system: ActorSystem
   implicit def executor = system.dispatcher
 
   def cleanUp() { system.shutdown() }
@@ -105,8 +105,10 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
 }
 
 
-trait ScalatestRouteTest extends RouteTest with ScalatestInterface {
-  this: Suite =>
+trait ScalatestRouteTest extends RouteTest with ScalatestInterface { this: Suite =>
+  implicit def system = ActorSystem()
 }
 
-trait Specs2RouteTest extends RouteTest with Specs2Interface
+trait Specs2RouteTest extends RouteTest with Specs2Interface {
+  implicit def system = ActorSystem()
+}
