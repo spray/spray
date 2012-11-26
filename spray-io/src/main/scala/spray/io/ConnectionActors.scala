@@ -31,11 +31,12 @@ trait ConnectionActors extends IOPeer {
       val localAddress = _localAddress
       val commander = _commander
       val tag = _tag
-      val handler = context.actorOf(Props(createConnectionActor(this))) // must be initialized last
+      val handler = createConnectionActor(this) // must be last member to be initialized
     }
   }
 
-  protected def createConnectionActor(handle: Handle): IOConnectionActor = new IOConnectionActor(handle)
+  protected def createConnectionActor(handle: Handle): ActorRef =
+    context.actorOf(Props(new IOConnectionActor(handle)))
 
   protected def pipeline: PipelineStage
 

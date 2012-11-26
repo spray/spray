@@ -18,7 +18,7 @@ package spray.can
 package client
 
 import akka.event.LoggingAdapter
-import akka.actor.ActorRef
+import akka.actor.{Props, ActorRef}
 import spray.http.{HttpMessagePart, HttpRequestPart}
 import spray.io._
 
@@ -37,11 +37,16 @@ class HttpClient(ioBridge: ActorRef, settings: ClientSettings = ClientSettings()
 
   protected val pipeline: PipelineStage = HttpClient.pipeline(settings, log)
 
-  override protected def createConnectionActor(handle: Handle): IOConnectionActor = new IOConnectionActor(handle) {
-    override def receive: Receive = super.receive orElse {
-      case x: HttpMessagePart with HttpRequestPart => pipelines.commandPipeline(HttpCommand(x))
+  override protected def createConnectionActor(handle: Handle): ActorRef =
+    context.actorOf {
+      Props {
+        new IOConnectionActor(handle) {
+          override def receive: Receive = super.receive orElse {
+            case x: HttpMessagePart with HttpRequestPart => pipelines.commandPipeline(HttpCommand(x))
+          }
+        }
+      }
     }
-  }
 }
 
 object HttpClient {
