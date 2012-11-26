@@ -66,8 +66,16 @@ object ModelConverter {
     HttpMethods.getForKey(name)
       .getOrElse(throw new IllegalRequestException(MethodNotAllowed, RequestErrorInfo("Illegal HTTP method", name)))
 
-  def rebuildUri(hsRequest: HttpServletRequest) = {
-    val uri = hsRequest.getRequestURI
+  def rebuildUri(hsRequest: HttpServletRequest)(implicit settings: ConnectorSettings, log: LoggingAdapter) = {
+    val requestUri = hsRequest.getRequestURI
+    val uri = settings.RootPath match {
+      case "" => requestUri
+      case rootPath if requestUri.startsWith(rootPath) => requestUri.substring(rootPath.length)
+      case rootPath =>
+        log.warning("Received request outside of configured root-path, request uri '{}', configured root path '{}'",
+          requestUri, rootPath)
+        requestUri
+    }
     val queryString = hsRequest.getQueryString
     if (queryString != null && queryString.length > 0) uri + '?' + queryString else uri
   }
