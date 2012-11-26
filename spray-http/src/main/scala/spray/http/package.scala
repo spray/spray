@@ -31,21 +31,23 @@ package object http {
     HttpRequest(
       headers = List(
         RawHeader("Accept", "*/*,text/plain,custom/custom"),
-        RawHeader("Accept-Charset", "*,UTF-8,custom"),
+        RawHeader("Accept-Charset", "*,UTF-8"),
         RawHeader("Accept-Encoding", "gzip,custom"),
         RawHeader("Accept-Language", "*,de-de,custom"),
+        RawHeader("Authorization", "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ=="),
         RawHeader("Cache-Control", "no-cache"),
         RawHeader("Connection", "close"),
-        RawHeader("Cookie", "spray=cool"),
+        RawHeader("Content-Disposition", "form-data"),
         RawHeader("Content-Encoding", "deflate"),
         RawHeader("Content-Length", "42"),
         RawHeader("Content-Type", "application/json"),
+        RawHeader("Cookie", "spray=cool"),
+        RawHeader("Host", "spray.io"),
+        RawHeader("X-Forwarded-For", "1.2.3.4"),
         RawHeader("Fancy-Custom-Header", "yeah")
       ),
       entity = "spray rocks!"
-    )
+    ).parseAll
     HttpResponse(status = 200)
-    HttpIp.fromString("127.0.0.1")
   }
-
 }
