@@ -37,7 +37,7 @@ sealed abstract class HttpEncoding extends HttpEncodingRange {
 object HttpEncodings extends ObjectRegistry[String, HttpEncoding] {
   
   def register(encoding: HttpEncoding): HttpEncoding = {
-    register(encoding, encoding.value.toLowerCase)
+    register(encoding.value.toLowerCase, encoding)
     encoding
   }
   

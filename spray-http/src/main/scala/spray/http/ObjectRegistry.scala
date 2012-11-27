@@ -17,19 +17,21 @@
 
 package spray.http
 
+import java.util.concurrent.atomic.AtomicReference
+import scala.annotation.tailrec
+
+
 private[http] trait ObjectRegistry[K, V] {
-  val registry = collection.mutable.Map.empty[K, V]
+  private[this] val registry = new AtomicReference(Map.empty[K, V])
   
-  def register(obj: V, keys: Seq[K]) {
-    keys.foreach(register(obj, _))
+  @tailrec
+  final def register(key: K, obj: V) {
+    val current = registry.get
+    val updated = current.updated(key, obj)
+    if (!registry.compareAndSet(current, updated))
+      register(key, obj)
   }
   
-  def register(obj: V, key: K) {
-    registry.update(key, obj)
-  }
-  
-  def getForKey(key: K): Option[V] = {
-    registry.get(key)
-  }
+  def getForKey(key: K): Option[V] = registry.get.get(key)
 }
 

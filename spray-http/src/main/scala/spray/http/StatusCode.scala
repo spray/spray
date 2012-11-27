@@ -26,7 +26,7 @@ sealed abstract class StatusCode {
   override def toString = "StatusCode(" + value + ", " + reason + ')'
   def formatPretty = value.toString + ' ' + reason
 
-  StatusCodes.register(this, value)
+  StatusCodes.register(value, this)
 }
 
 object StatusCode {

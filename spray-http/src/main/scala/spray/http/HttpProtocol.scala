@@ -19,7 +19,7 @@ package spray.http
 
 class HttpProtocol private[http] (val value: String) {
   override def toString = value
-  HttpProtocols.register(this, value)
+  HttpProtocols.register(value, this)
 }
 
 object HttpProtocols extends ObjectRegistry[String, HttpProtocol] {

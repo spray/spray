@@ -19,7 +19,7 @@ package spray.http
 class HttpMethod private[http] (val value: String, val isSafe: Boolean, val isIdempotent: Boolean) {
   override def toString = value
 
-  HttpMethods.register(this, value)
+  HttpMethods.register(value, this)
 }
 
 object HttpMethods extends ObjectRegistry[String, HttpMethod] {
