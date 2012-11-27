@@ -37,8 +37,8 @@ class HttpHeaderSpec extends Specification {
 
   "The HTTP header model must correctly parse and render the following examples" ^
     p^
-    "Accept: audio/mp4; q=0.2, audio/basic" !
-      example(Accept(`audio/mp4`, `audio/basic`))_ ^
+    "Accept: audio/midi; q=0.2, audio/basic" !
+      example(Accept(`audio/midi`, `audio/basic`))_ ^
     "Accept: text/plain; q=0.5, text/html,\r\n text/css; q=0.8" !
       example(Accept(`text/plain`, `text/html`, `text/css`))_ ^
     "Accept: text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2" !

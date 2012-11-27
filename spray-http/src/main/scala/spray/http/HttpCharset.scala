@@ -41,8 +41,8 @@ sealed abstract class HttpCharset extends HttpCharsetRange {
 object HttpCharsets extends ObjectRegistry[String, HttpCharset] {
   
   def register(charset: HttpCharset): HttpCharset = {
-    register(charset, charset.value.toLowerCase)
-    register(charset, charset.aliases.map(_.toLowerCase))
+    register(charset.value.toLowerCase, charset)
+    charset.aliases.foreach(alias => register(alias.toLowerCase, charset))
     charset
   }
   
