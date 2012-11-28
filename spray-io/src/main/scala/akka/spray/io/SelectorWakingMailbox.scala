@@ -42,7 +42,7 @@ class SelectorWakingMailbox(system: ActorSystem, _messageQueue: MessageQueue) ex
   def systemEnqueue(receiver: ActorRef, message: SystemMessage) {
     doSystemEnqueue(receiver, message)
     selector.wakeup()
-    enqueueSelect(receiver)
+    if (!message.isInstanceOf[Terminate]) enqueueSelect(receiver)
   }
 
   private def enqueueSelect(receiver: ActorRef) {
