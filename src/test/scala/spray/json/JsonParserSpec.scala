@@ -47,7 +47,9 @@ class JsonParserSpec extends Specification {
       JsonParser("\"xyz\"") mustEqual JsString("xyz")
     }
     "parse escapes in a  JsString" in {
-      JsonParser(""""\"\\/\b\f\n\r\t\u12Ab"""") mustEqual JsString("\"\\/\b\f\n\r\t\u12ab")
+      // we can't use simple literal unicode escapes here because they would be
+      // replaced by the scala compiler and nothing would be tested
+      JsonParser(""""\"\\/\b\f\n\r\t\"""+"""uAb12"""") mustEqual JsString("\"\\/\b\f\n\r\t\uab12")
     }
     "properly parse a simple JsObject" in (
       JsonParser(""" { "key" :42, "key2": "value" }""") mustEqual
