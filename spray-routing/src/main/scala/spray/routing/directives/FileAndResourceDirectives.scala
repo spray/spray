@@ -42,7 +42,7 @@ trait FileAndResourceDirectives {
    * running detached in the context of a newly spawned actor, so it doesn't block the current thread (but potentially
    * some other thread !). If the file cannot be found or read the request is rejected.
    */
-  def getFromFileName(fileName: String)(implicit settings: RoutingSettings, resolver: ContentTypeResolver,
+  def getFromFile(fileName: String)(implicit settings: RoutingSettings, resolver: ContentTypeResolver,
                       refFactory: ActorRefFactory): Route =
     getFromFile(new File(fileName))
 
@@ -107,7 +107,7 @@ trait FileAndResourceDirectives {
                        refFactory: ActorRefFactory): Route = {
     val base = withTrailingSlash(directoryName)
     unmatchedPath { path =>
-      getFromFileName(base + stripLeadingSlash(path))
+      getFromFile(base + stripLeadingSlash(path))
     }
   }
 

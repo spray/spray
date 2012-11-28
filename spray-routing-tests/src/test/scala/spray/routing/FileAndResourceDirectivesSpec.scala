@@ -30,18 +30,18 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
 
   "getFromFile" should {
     "reject non-GET requests" in {
-      Put() ~> getFromFileName("some") ~> check { handled must beFalse }
+      Put() ~> getFromFile("some") ~> check { handled must beFalse }
     }
     "reject requests to non-existing files" in {
-      Get() ~> getFromFileName("nonExistentFile") ~> check { handled must beFalse }
+      Get() ~> getFromFile("nonExistentFile") ~> check { handled must beFalse }
     }
     "reject requests to directories" in {
-      Get() ~> getFromFileName(Properties.javaHome) ~> check { handled must beFalse }
+      Get() ~> getFromFile(Properties.javaHome) ~> check { handled must beFalse }
     }
     "return the file content with the MediaType matching the file extension" in {
       val file = File.createTempFile("sprayTest", ".PDF")
       FileUtils.writeAllText("This is PDF", file)
-      Get() ~> getFromFileName(file.getPath) ~> check {
+      Get() ~> getFromFile(file.getPath) ~> check {
         mediaType === `application/pdf`
         definedCharset === Some(`ISO-8859-1`)
         body.asString === "This is PDF"
