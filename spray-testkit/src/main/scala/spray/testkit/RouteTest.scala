@@ -31,6 +31,8 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
 
   implicit def system: ActorSystem
 
+  def actorSystemName = getClass.getName.replace('.', '-')
+
   def cleanUp() { system.shutdown() }
 
   private val dynRR = new DynamicVariable[RouteResult](null)
@@ -104,9 +106,9 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
 
 
 trait ScalatestRouteTest extends RouteTest with ScalatestInterface { this: Suite =>
-  implicit def system = ActorSystem()
+  implicit val system = ActorSystem(actorSystemName)
 }
 
 trait Specs2RouteTest extends RouteTest with Specs2Interface {
-  implicit def system = ActorSystem()
+  implicit val system = ActorSystem(actorSystemName)
 }
