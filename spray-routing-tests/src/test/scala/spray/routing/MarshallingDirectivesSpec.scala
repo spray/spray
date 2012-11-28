@@ -52,7 +52,7 @@ class MarshallingDirectivesSpec extends RoutingSpec {
         entity(as[NodeSeq]) { echoComplete }
       } ~> check {
         rejection === UnsupportedRequestContentTypeRejection(
-          "Expected 'text/xml' or 'text/html' or 'application/xhtml+xml'")
+          "Expected 'text/xml' or 'application/xml' or 'text/html' or 'application/xhtml+xml'")
       }
     }
     "cancel UnsupportedRequestContentTypeRejections if a subsequent `contentAs` succeeds" in {
@@ -76,7 +76,7 @@ class MarshallingDirectivesSpec extends RoutingSpec {
         entity(as[Option[NodeSeq]]) { echoComplete }
       } ~> check {
         rejection === UnsupportedRequestContentTypeRejection(
-          "Expected 'text/xml' or 'text/html' or 'application/xhtml+xml'")
+          "Expected 'text/xml' or 'application/xml' or 'text/html' or 'application/xhtml+xml'")
       }
     }
   }

@@ -54,9 +54,8 @@ trait BasicMarshallers {
 
   //# nodeseq-marshaller
   implicit val NodeSeqMarshaller =
-    Marshaller.delegate[NodeSeq, String](
-      `text/xml`, `text/html`, `application/xhtml+xml`
-    )(_.toString)
+    Marshaller.delegate[NodeSeq, String](`text/xml`, `application/xml`,
+      `text/html`, `application/xhtml+xml`)(_.toString)
   //#
 
   implicit val FormDataMarshaller =

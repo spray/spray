@@ -46,7 +46,7 @@ trait BasicUnmarshallers {
 
   //# nodeseq-unmarshaller
   implicit val NodeSeqUnmarshaller =
-    Unmarshaller[NodeSeq](`text/xml`, `text/html`, `application/xhtml+xml`) {
+    Unmarshaller[NodeSeq](`text/xml`, `application/xml`, `text/html`, `application/xhtml+xml`) {
       case HttpBody(contentType, buffer) =>
         XML.load(new InputStreamReader(new ByteArrayInputStream(buffer), contentType.charset.nioCharset))
       case EmptyEntity => NodeSeq.Empty
