@@ -10,16 +10,18 @@ It sports the following features:
 
 ### Installation
 
-_spray-json_ is available from the [repo.spray.cc] repository.
-The latest release is `1.1.1` and is built against Scala 2.9.1.
+_spray-json_ is available from the [repo.spray.io] repository.
+The latest release is `1.2.2` and is built against Scala 2.9.2 as well as Scala 2.10.0-RC1.
 
 If you use SBT you can include _spray-json_ in your project with
 
-    "cc.spray" %%  "spray-json" % "1.1.1"
+    "io.spray" %%  "spray-json" % "1.2.2" cross CrossVersion.full
+
+(the trailing "cross CrossVersion.full" modifier is only required for SBT 0.12.x)
 
 _spray-json_ has only one dependency: the parsing library [parboiled][]
-(which is also a dependency of _spray-server_ and _spray-client_, so if you use _spray-json_ with either of them you
-are not incurring any additional dependency).
+(which is also a dependency of _spray-http_, so if you use _spray-json_ together with other modules of the *spray*
+suite you are not incurring any additional dependency).
 
 
 ### Usage
@@ -27,7 +29,7 @@ are not incurring any additional dependency).
 _spray-json_ is really easy to use.  
 Just bring all relevant elements in scope with 
 
-    import cc.spray.json._
+    import spray.json._
 
 and do one or more of the following:
 
@@ -254,7 +256,7 @@ _spray-json_ project under the project’s open source license.
 
   [JSON]: http://json.org
   [parboiled]: http://parboiled.org
-  [repo.spray.cc]: http://repo.spray.cc
+  [repo.spray.io]: http://repo.spray.io
   [SJSON]: https://github.com/debasishg/sjson
   [Databinder-Dispatch]: https://github.com/n8han/Databinder-Dispatch
   [APL 2.0]: http://www.apache.org/licenses/LICENSE-2.0
