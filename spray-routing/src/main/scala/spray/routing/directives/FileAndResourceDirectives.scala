@@ -171,16 +171,29 @@ trait ContentTypeResolver {
 }
 
 object ContentTypeResolver {
-  implicit val Default = new ContentTypeResolver {
-    def apply(fileName: String) = ContentType {
-      MediaTypes.forExtension(
-        fileName.lastIndexOf('.') match {
-          case -1 => ""
-          case x => fileName.substring(x + 1)
+
+  /**
+   * The default way of resolving a filename to a ContentType is by looking up the file extension in the
+   * registry of all defined media-types. By default all non-binary file content is assumed to be UTF-8 encoded.
+   */
+  implicit val Default = withDefaultCharset(HttpCharsets.`UTF-8`)
+
+  def withDefaultCharset(charset: HttpCharset): ContentTypeResolver =
+    new ContentTypeResolver {
+      def apply(fileName: String) = {
+        val mediaType =
+          MediaTypes.forExtension(
+            fileName.lastIndexOf('.') match {
+              case -1 => ""
+              case x => fileName.substring(x + 1)
+            }
+          ).getOrElse(MediaTypes.`application/octet-stream`)
+        mediaType match {
+          case x if !x.binary => ContentType(x, charset)
+          case x => ContentType(x)
         }
-      ).getOrElse(MediaTypes.`application/octet-stream`)
+      }
     }
-  }
 }
 
 case class DirectoryListing(path: String, files: Seq[File])

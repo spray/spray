@@ -36,13 +36,16 @@ object ContentTypeRange {
 
 case class ContentType(mediaType: MediaType, definedCharset: Option[HttpCharset]) {
   def value: String = definedCharset match {
-    // don't print the charset parameter if it's the default charset
-    case Some(cs) if (!mediaType.isText || cs != `ISO-8859-1`) => mediaType.value + "; charset=" + cs.value
+    case Some(cs) => mediaType.value + "; charset=" + cs.value
     case _ => mediaType.value
   }
 
-  def withMediaType(mediaType: MediaType) = copy(mediaType = mediaType)
-  def withCharset(charset: HttpCharset) = copy(definedCharset = Some(charset))
+  def withMediaType(mediaType: MediaType) =
+    if (mediaType != this.mediaType) copy(mediaType = mediaType) else this
+  def withCharset(charset: HttpCharset) =
+    if (noCharsetDefined || charset != definedCharset.get) copy(definedCharset = Some(charset)) else this
+  def withoutDefinedCharset =
+    if (isCharsetDefined) copy(definedCharset = None) else this
 
   def isCharsetDefined = definedCharset.isDefined
   def noCharsetDefined = definedCharset.isEmpty

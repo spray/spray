@@ -25,8 +25,10 @@ import MediaTypes._
 trait BasicMarshallers {
 
   def byteArrayMarshaller(contentType: ContentType) =
-    Marshaller.of[Array[Byte]](contentType) { (value, ct, ctx) =>
-      ctx.marshalTo(HttpBody(ct, value))
+    Marshaller.of[Array[Byte]](contentType) { (value, _, ctx) =>
+      // we marshal to the ContentType given as argument to the method, not the one established by content-negotiation,
+      // since the former is the one belonging to the byte array
+      ctx.marshalTo(HttpBody(contentType, value))
     }
 
   implicit val ByteArrayMarshaller = byteArrayMarshaller(ContentType.`application/octet-stream`)
