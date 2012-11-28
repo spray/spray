@@ -43,7 +43,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
       FileUtils.writeAllText("This is PDF", file)
       Get() ~> getFromFile(file.getPath) ~> check {
         mediaType === `application/pdf`
-        definedCharset === Some(`ISO-8859-1`)
+        definedCharset === None
         body.asString === "This is PDF"
         headers === List(`Last-Modified`(DateTime(file.lastModified)))
       }
@@ -63,6 +63,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
       FileUtils.writeAllText("<this could be XML if it were formatted correctly>", file)
       Get() ~> getFromFile(file) ~> check {
         mediaType === `text/xml`
+        definedCharset === Some(`UTF-8`)
         body.asString === "<this co"
         headers === List(`Last-Modified`(DateTime(file.lastModified)))
         chunks.map(_.bodyAsString).mkString("|") === "uld be X|ML if it| were fo|rmatted |correctl|y>"
