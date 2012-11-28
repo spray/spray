@@ -28,13 +28,6 @@ sealed abstract class JsValue {
   override def toString = CompactFormatter(this)
 }
 
-object JsValue {
-  implicit lazy val JsValueFormat: JsonFormat[JsValue] = new JsonFormat[JsValue] {
-    def write(value: JsValue) = value
-    def read(value: JsValue) = Success(value)
-  }
-}
-
 /**
   * A JSON object.
  */

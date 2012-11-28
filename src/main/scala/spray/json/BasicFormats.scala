@@ -20,7 +20,7 @@ package spray.json
 /**
   * Provides the JsonFormats for the most important Scala types.
  */
-trait BasicFormats {
+trait BasicFormats extends LowLevelBasicFormats {
   implicit lazy val ByteJsonFormat: JsonFormat[Byte] =
     new NumberFormat[Byte](_.byteValue(), JsNumber(_))
 
@@ -108,4 +108,25 @@ trait BasicFormats {
     }
   }
 
+  implicit lazy val JsObjectFormat: RootJsonFormat[JsObject] = new RootJsonFormat[JsObject] {
+    def write(value: JsObject) = value
+    def read(value: JsValue) = value match {
+      case o: JsObject => Success(o)
+      case x => deserializationError("Expected JsObject, but got "+ x)
+    }
+  }
+  implicit lazy val JsArrayFormat: RootJsonFormat[JsArray] = new RootJsonFormat[JsArray] {
+    def write(value: JsArray) = value
+    def read(value: JsValue) = value match {
+      case a: JsArray => Success(a)
+      case x => deserializationError("Expected JsArray, but got "+ x)
+    }
+  }
+}
+
+trait LowLevelBasicFormats {
+  implicit lazy val JsValueFormat: JsonFormat[JsValue] = new JsonFormat[JsValue] {
+    def write(value: JsValue) = value
+    def read(value: JsValue) = Success(value)
+  }
 }
