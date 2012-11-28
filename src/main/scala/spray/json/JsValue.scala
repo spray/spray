@@ -26,8 +26,6 @@ import collection.immutable.ListMap
  */
 sealed abstract class JsValue {
   override def toString = CompactFormatter(this)
-
-  def dyn: DynamicJsValue = DynamicJsValue(this)
 }
 
 object JsValue {
