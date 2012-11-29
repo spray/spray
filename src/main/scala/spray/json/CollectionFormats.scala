@@ -34,12 +34,29 @@ trait CollectionFormats {
       case x => deserializationError("Expected Array as JsArray, but got " + x)
     }
   }
-  
+
+  /**
+   * Supplies the JsonFormat for Maps. The key type has to be statically known to be convertible to a field name.
+   */
+  implicit def mapFormatStrict[K :FieldName, V :JsonFormat]: RootJsonFormat[Map[K, V]] = new RootJsonFormat[Map[K, V]] {
+    def write(m: Map[K, V]) = JsObject {
+      m.map(field => (FieldName.get(field._1), field._2.toJson))
+    }
+    def read(value: JsValue) = value match {
+      case x: JsObject => Validated {
+        x.fields.map { field =>
+          (FieldName.convert(field._1), field._2.as[V])
+        } (collection.breakOut) :Map[K, V]
+      }
+      case x => deserializationError("Expected Map as JsObject, but got " + x)
+    }
+  }
+
   /**
     * Supplies the JsonFormat for Maps. The implicitly available JsonFormat for the key type K must
     * always write JsStrings, otherwise a [[spray.json.SerializationException]] will be thrown.
    */
-  implicit def mapFormat[K :JsonFormat, V :JsonFormat]: RootJsonFormat[Map[K, V]] = new RootJsonFormat[Map[K, V]] {
+  def mapFormatNonStrict[K :JsonFormat, V :JsonFormat]: RootJsonFormat[Map[K, V]] = new RootJsonFormat[Map[K, V]] {
     def write(m: Map[K, V]) = JsObject {
       m.map { field =>
         field._1.toJson match {

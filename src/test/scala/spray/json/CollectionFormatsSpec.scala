@@ -53,7 +53,8 @@ class CollectionFormatsSpec extends Specification {
       json.as[Map[String, Long]] mustEqual map
     }
     "throw an Exception when trying to serialize a map whose key are not serialized to JsStrings" in {
-      Map(1 -> "a").toJson must throwA(new SerializationException("Map key must be formatted as JsString, not '1'"))
+      // you now have to use JsonFormat.mapFormatNonStrict explicitly to allow those conversions
+      Map(1 -> "a").toJson(JsonFormat.mapFormatNonStrict) must throwA(new SerializationException("Map key must be formatted as JsString, not '1'"))
     }
   }
 

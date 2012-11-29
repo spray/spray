@@ -22,9 +22,9 @@ import scala.{Left, Right}
 /**
   * Provides the JsonFormats for the non-collection standard types.
  */
-trait StandardFormats {
+trait StandardFormats extends LowLevelStandardFormats {
 
-  private[this] type JF[T] = JsonFormat[T] // simple alias for reduced verbosity
+  protected type JF[T] = JsonFormat[T] // simple alias for reduced verbosity
 
   implicit def optionFormat[T :JsonFormat]: JsonFormat[Option[T]] = new OptionFormat[T]
 
@@ -40,20 +40,24 @@ trait StandardFormats {
       case (Failure(ea), Failure(eb)) => deserializationError("Could not read Either value:\n" + ea + "\n---------- and ----------\n" + eb)
     }
   }
-  
+
+  implicit def tuple2AsJsObject[F: FieldName, A :JF]: RootJsonFormat[(F, A)] = new RootJsonFormat[(F, A)] {
+    def write(obj: (F, A)): JsValue =
+      JsObject(FieldName.get(obj._1) -> obj._2.toJson)
+
+    def read(json: JsValue): Validated[(F, A)] = json match {
+      case JsObject(fields) if fields.size == 1 =>
+        val (key, value) = fields.head
+        Validated((FieldName.convert(key), value.as[A]))
+      case x => deserializationError("Expected Tuple2(String, X) as JsObject, but got " + x)
+    }
+  }
+
   implicit def tuple1Format[A :JF]: JF[Tuple1[A]] = new JF[Tuple1[A]] {
     def write(t: Tuple1[A]) = t._1.toJson
     def read(value: JsValue) = value.toValidated[A].map(Tuple1(_))
   }
-  
-  implicit def tuple2Format[A :JF, B :JF]: RootJsonFormat[(A, B)] = new RootJsonFormat[(A, B)] {
-    def write(t: (A, B)) = JsArray(t._1.toJson, t._2.toJson)
-    def read(value: JsValue) = value match {
-      case JsArray(Seq(a, b)) => Validated((a.as[A], b.as[B]))
-      case x => deserializationError("Expected Tuple2 as JsArray, but got " + x)
-    }
-  }
-  
+
   implicit def tuple3Format[A :JF, B :JF, C :JF]: RootJsonFormat[(A, B, C)] = new RootJsonFormat[(A, B, C)] {
     def write(t: (A, B, C)) = JsArray(t._1.toJson, t._2.toJson, t._3.toJson)
     def read(value: JsValue) = value match {
@@ -102,7 +106,17 @@ trait StandardFormats {
       }
     }
   }
-  
+
+}
+
+trait LowLevelStandardFormats { self: StandardFormats =>
+  implicit def tuple2Format[A :JF, B :JF]: RootJsonFormat[(A, B)] = new RootJsonFormat[(A, B)] {
+    def write(t: (A, B)) = JsArray(t._1.toJson, t._2.toJson)
+    def read(value: JsValue) = value match {
+      case JsArray(Seq(a, b)) => Validated((a.as[A], b.as[B]))
+      case x => deserializationError("Expected Tuple2 as JsArray, but got " + x)
+    }
+  }
 }
 
 /**
