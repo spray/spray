@@ -59,7 +59,7 @@ package object util {
     synchronized {
       if (eventStreamLogger == null) {
         eventStreamLogger = system.actorOf(Props(new Actor with ActorLogging {
-          def receive = { case x => log.debug(x.toString) }
+          def receive = { case x => log.warning(x.toString) }
         }), name = "event-stream-logger")
       }
     }
