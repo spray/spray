@@ -1,0 +1,22 @@
+
+{
+ "organization":"cc.spray",
+ "name":"spray-json",
+ "version":"1.1.0",
+ "description":"A Scala library for easy and idiomatic JSON (de)serialization",
+ "site":"https://github.com/spray/spray-json",
+ "tags":["json"],
+ "docs":"http://spray.github.com/spray/api/spray-json/",
+ "licenses": [{
+   "name": "Apache 2",
+   "url": "http://www.apache.org/licenses/LICENSE-2.0.txt"
+  }],
+ "resolvers": ["http://repo.spray.io"],
+ "dependencies": [{
+   "organization":"org.parboiled",
+   "name": "parboiled-scala",
+   "version": "1.0.2"
+  }],
+ "scalas": ["2.9.1"],
+ "sbt": false
+}
