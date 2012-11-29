@@ -26,8 +26,6 @@ trait StandardFormats extends LowLevelStandardFormats {
 
   protected type JF[T] = JsonFormat[T] // simple alias for reduced verbosity
 
-  implicit def optionFormat[T :JsonFormat]: JsonFormat[Option[T]] = new OptionFormat[T]
-
   implicit def eitherFormat[A :JF, B :JF]: JF[Either[A, B]] = new JF[Either[A, B]] {
     def write(either: Either[A, B]) = either match {
       case Right(a) => a.toJson
@@ -116,19 +114,5 @@ trait LowLevelStandardFormats { self: StandardFormats =>
       case JsArray(Seq(a, b)) => Validated((a.as[A], b.as[B]))
       case x => deserializationError("Expected Tuple2 as JsArray, but got " + x)
     }
-  }
-}
-
-/**
- * Explicitly defined JsonFormat for Options.
- */
-class OptionFormat[T :JsonFormat] extends JsonFormat[Option[T]] {
-  def write(option: Option[T]) = option match {
-    case Some(x) => x.toJson
-    case None => JsNull
-  }
-  def read(value: JsValue) = value match {
-    case JsNull => Success(None)
-    case x => x.toValidated[T].map(Some(_))
   }
 }

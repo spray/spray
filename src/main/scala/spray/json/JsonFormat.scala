@@ -57,6 +57,7 @@ object JsonFormat
   extends BasicFormats
   with    CollectionFormats
   with    StandardFormats
+  with    OptionFormats
 
 /**
  * A special JsonReader capable of reading a legal JSON root object, i.e. either a JSON array or a JSON object.

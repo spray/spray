@@ -500,7 +500,7 @@ trait ProductFormats {
                                        (implicit writer: JsonWriter[T]): List[JsField] = {
     val value = p.productElement(ix).asInstanceOf[T]
     writer match {
-      case _: OptionFormat[_] if (value == None) => rest
+      case _: OptionFormatAsSelf[_] if (value == None) => rest
       case _ => (fieldName, writer.write(value)) :: rest
     }
   }
@@ -516,7 +516,7 @@ trait ProductFormats {
         }
         catch {
           case e: NoSuchElementException if !fieldFound =>
-            if (reader.isInstanceOf[OptionFormat[_]]) None.asInstanceOf[T]
+            if (reader.isInstanceOf[OptionFormatAsSelf[_]]) None.asInstanceOf[T]
             else throw new DeserializationException("JsObject is missing required member '" + fieldName + "'")
         }
       case x => throw new DeserializationException("Expected JsObject but got " + x.getClass.getSimpleName)

@@ -25,6 +25,7 @@ package object json extends PackageImplicits {
   def serializationError(msg: String) =
     throw new SerializationException(msg)
 
+  def jsonFormat[T](implicit format: JsonFormat[T]) = format
   def jsonReader[T](implicit reader: JsonReader[T]) = reader
   def jsonWriter[T](implicit writer: JsonWriter[T]) = writer
 

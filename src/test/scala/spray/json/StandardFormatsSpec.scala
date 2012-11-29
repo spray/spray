@@ -19,22 +19,6 @@ package spray.json
 import org.specs2.mutable._
 
 class StandardFormatsSpec extends Specification {
-
-  "The optionFormat" should {
-    "convert None to JsNull" in {
-      None.asInstanceOf[Option[Int]].toJson mustEqual JsNull
-    }
-    "convert JsNull to None" in {
-      JsNull.as[Option[Int]] mustEqual None
-    }
-    "convert Some(Hello) to JsString(Hello)" in {
-      Some("Hello").asInstanceOf[Option[String]].toJson mustEqual JsString("Hello")
-    }
-    "convert JsString(Hello) to Some(Hello)" in {
-      JsString("Hello").as[Option[String]] mustEqual Some("Hello")
-    }
-  }
-
   "The eitherFormat" should {
     val a: Either[Int, String] = Left(42)
     val b: Either[Int, String] = Right("Hello")
