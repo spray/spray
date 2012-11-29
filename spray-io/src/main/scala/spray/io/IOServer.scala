@@ -44,8 +44,10 @@ abstract class IOServer(val rootIoBridge: ActorRef) extends IOPeer {
       log.debug("Starting {} on {}", self.path, endpoint)
       this.endpoint = Some(endpoint)
       state = binding
-      val replyWithCommander = Reply.withContext(sender)
-      rootIoBridge.tell(IOBridge.Bind(replyWithCommander, endpoint, bindingBacklog), replyWithCommander)
+      rootIoBridge.tell(
+        msg = IOBridge.Bind(endpoint, bindingBacklog),
+        sender = Reply.withContext(sender)
+      )
 
     case x: ServerCommand =>
       sender ! Status.Failure(CommandException(x, "Not yet bound"))

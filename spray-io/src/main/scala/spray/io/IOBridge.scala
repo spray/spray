@@ -175,7 +175,7 @@ class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = true) 
     if (settings.TcpReceiveBufferSize != 0) channel.socket.setReceiveBufferSize(settings.TcpReceiveBufferSize.toInt)
     channel.socket.bind(cmd.address, cmd.backlog)
     val key = channel.register(selector, OP_ACCEPT)
-    key.attach(cmd)
+    key.attach((cmd, sender))
     sender ! Bound(Key(key), cmd.tag)
   }
 
@@ -294,14 +294,14 @@ class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = true) 
 
   def accept(key: SelectionKey) {
     try {
-      val cmd = key.attachment.asInstanceOf[Bind]
+      val (cmd, cmdSender) = key.attachment.asInstanceOf[(Bind, ActorRef)]
       val channel = key.channel.asInstanceOf[ServerSocketChannel].accept()
       log.debug("New connection accepted on {}", cmd.address)
       configure(channel)
       if (subBridgesEnabled)
-        childFor(channel) ! AssignConnection(channel, cmd.handleCreator, cmd.tag)
+        childFor(channel) ! AssignConnection(channel, cmdSender, cmd.tag)
       else
-        cmd.handleCreator ! registerConnectionAndCreateConnectedEvent(channel, cmd.tag)
+        cmdSender ! registerConnectionAndCreateConnectedEvent(channel, cmd.tag)
     } catch {
       case NonFatal(e) => log.error(e, "Accept error: could not accept new connection")
     }
@@ -400,10 +400,7 @@ object IOBridge {
 
   //# public-commands
   // general commands not on the connection-level
-  case class Bind(handleCreator: ActorRef,
-                  address: InetSocketAddress,
-                  backlog: Int,
-                  tag: Any = ()) extends Command
+  case class Bind(address: InetSocketAddress, backlog: Int, tag: Any = ()) extends Command
   case class Unbind(bindingKey: Key) extends Command
   case class Connect(remoteAddress: InetSocketAddress,
                      localAddress: Option[InetSocketAddress] = None,
