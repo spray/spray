@@ -17,7 +17,7 @@ object Build extends Build with DocSupport {
 
   lazy val root = Project("root",file("."))
     .aggregate(docs, examples, site, sprayCaching, sprayCan, sprayClient, sprayHttp, sprayHttpx,
-      sprayIO, sprayRouting, sprayRoutingTests, sprayServlet, sprayTestKit, sprayUtil)
+      sprayIO, sprayJson2, sprayRouting, sprayRoutingTests, sprayServlet, sprayTestKit, sprayUtil)
     .settings(basicSettings: _*)
     .settings(noPublishing: _*)
     .settings(moveApiDocsSettings: _*)
@@ -79,6 +79,16 @@ object Build extends Build with DocSupport {
     .settings(libraryDependencies ++=
       provided(akkaActor) ++
       test(akkaTestKit, specs2)
+    )
+
+  lazy val sprayJson2 = Project("spray-json2", file("spray-json2"))
+    .settings(spray.boilerplate.BoilerplatePlugin.Boilerplate.settings: _*)
+    .settings(sprayModuleSettings: _*)
+    .settings(
+      libraryDependencies ++=
+        compile(parboiled) ++
+        test(specs2),
+      scalacOptions ++= Seq("-language:dynamics", "-language:higherKinds")
     )
 
 
