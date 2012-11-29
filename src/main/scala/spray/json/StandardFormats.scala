@@ -61,7 +61,7 @@ trait StandardFormats {
       case x => deserializationError("Expected Tuple3 as JsArray, but got " + x)
     }
   }
-  
+
   implicit def tuple4Format[A :JF, B :JF, C :JF, D :JF]: RootJsonFormat[(A, B, C, D)] = new RootJsonFormat[(A, B, C, D)] {
     def write(t: (A, B, C, D)) = JsArray(t._1.toJson, t._2.toJson, t._3.toJson, t._4.toJson)
     def read(value: JsValue) = value match {
@@ -69,7 +69,7 @@ trait StandardFormats {
       case x => deserializationError("Expected Tuple4 as JsArray, but got " + x)
     }
   }
-  
+
   implicit def tuple5Format[A :JF, B :JF, C :JF, D :JF, E :JF]: RootJsonFormat[(A, B, C, D, E)] = {
     new RootJsonFormat[(A, B, C, D, E)] {
       def write(t: (A, B, C, D, E)) = JsArray(t._1.toJson, t._2.toJson, t._3.toJson, t._4.toJson, t._5.toJson)
@@ -80,7 +80,7 @@ trait StandardFormats {
       }
     }
   }
-  
+
   implicit def tuple6Format[A :JF, B :JF, C :JF, D :JF, E :JF, F: JF]: RootJsonFormat[(A, B, C, D, E, F)] = {
     new RootJsonFormat[(A, B, C, D, E, F)] {
       def write(t: (A, B, C, D, E, F)) = JsArray(t._1.toJson, t._2.toJson, t._3.toJson, t._4.toJson, t._5.toJson, t._6.toJson)
@@ -91,7 +91,7 @@ trait StandardFormats {
       }
     }
   }
-  
+
   implicit def tuple7Format[A :JF, B :JF, C :JF, D :JF, E :JF, F: JF, G: JF]: RootJsonFormat[(A, B, C, D, E, F, G)] = {
     new RootJsonFormat[(A, B, C, D, E, F, G)] {
       def write(t: (A, B, C, D, E, F, G)) = JsArray(t._1.toJson, t._2.toJson, t._3.toJson, t._4.toJson, t._5.toJson, t._6.toJson, t._6.toJson)
