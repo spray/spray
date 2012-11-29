@@ -161,6 +161,7 @@ class HttpHeaderSpec extends Specification {
     p^
     "X-Forwarded-For: 1.2.3.4" ! example(`X-Forwarded-For`("1.2.3.4"))_ ^
     "X-Forwarded-For: 234.123.5.6, 8.8.8.8" ! example(`X-Forwarded-For`("234.123.5.6", "8.8.8.8"))_ ^
+    "X-Forwarded-For: 1.2.3.4, unknown" ! example(`X-Forwarded-For`(Seq(Some(HttpIp("1.2.3.4")), None)))_ ^
     p^
     "X-Space-Ranger: no, this rock!" ! example(RawHeader("X-Space-Ranger", "no, this rock!"))_
 

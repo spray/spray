@@ -59,7 +59,7 @@ private[parser] trait SimpleHeaders {
   }
 
   def X_FORWARDED_FOR = rule {
-    oneOrMore(Ip, separator = ListSep) ~ EOI ~~> (`X-Forwarded-For`(_))
+    oneOrMore(Ip ~~> (Some(_)) | "unknown" ~ push(None), separator = ListSep) ~ EOI ~~> (`X-Forwarded-For`(_))
   }
   
 }
