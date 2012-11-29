@@ -37,16 +37,16 @@ object Pipeline {
 }
 
 trait PipelineContext {
-  def handle: Handle
+  def connection: Connection
   def connectionActorContext: ActorContext
   def self: ActorRef = connectionActorContext.self
   def sender: ActorRef = connectionActorContext.sender
 }
 
 object PipelineContext {
-  def apply(_handle: Handle, _connectionActorContext: ActorContext) = new PipelineContext {
-    def handle = _handle
-    def connectionActorContext = _connectionActorContext
+  def apply(handle: Connection, connActorContext: ActorContext) = new PipelineContext {
+    def connection = handle
+    def connectionActorContext = connActorContext
   }
 }
 

@@ -38,6 +38,8 @@ class IOBridgeSpec extends Specification {
   val server = system.actorOf(Props(new TestServer(bridge)), name = "test-server")
   val client = system.actorOf(Props(new TestClient(bridge)), name = "test-client")
 
+  installDebuggingEventStreamLoggers()
+
   sequential
 
   "An IOBridge" should {
@@ -66,28 +68,28 @@ class IOBridgeSpec extends Specification {
   }
 
   class TestClient(_rootIoBridge: ActorRef) extends IOClient(_rootIoBridge) {
-    var requests = Map.empty[Handle, ActorRef]
+    var requests = Map.empty[Connection, ActorRef]
     override def receive: Receive = myReceive orElse super.receive
     def myReceive: Receive = {
-      case (handle: Handle, string: String) =>
-        requests += handle -> sender
-        handle.ioBridge ! IOBridge.Send(handle, ByteBuffer.wrap(string.getBytes))
-      case IOBridge.Received(handle, buffer) =>
-        requests(handle) ! buffer.drainToString
-      case cmd@IOBridge.Close(handle, _) =>
-        requests += handle -> sender
-        handle.ioBridge ! cmd
-      case IOBridge.Closed(handle, reason) =>
-        requests(handle) ! reason
-        requests -= handle
+      case (connection: Connection, string: String) =>
+        requests += connection -> sender
+        connection.ioBridge ! IOBridge.Send(connection, ByteBuffer.wrap(string.getBytes))
+      case IOPeer.Received(connection, buffer) =>
+        requests(connection) ! buffer.drainToString
+      case cmd@IOBridge.Close(connection :Connection, _) =>
+        requests += connection -> sender
+        connection.ioBridge ! cmd
+      case IOPeer.Closed(connection, reason) =>
+        requests(connection) ! reason
+        requests -= connection
     }
   }
 
   def request(payload: String, closeReason: CloseCommandReason = CleanClose) = {
     for {
-      IOClient.Connected(handle) <- (client ? IOClient.Connect("localhost", port)).mapTo[IOClient.Connected]
-      response: String           <- (client ? (handle -> payload)).mapTo[String]
-      reason: ClosedEventReason  <- (client ? IOBridge.Close(handle, closeReason)).mapTo[ClosedEventReason]
+      IOClient.Connected(connection) <- (client ? IOClient.Connect("localhost", port)).mapTo[IOClient.Connected]
+      response: String               <- (client ? (connection -> payload)).mapTo[String]
+      reason: ClosedEventReason      <- (client ? IOBridge.Close(connection, closeReason)).mapTo[ClosedEventReason]
     } yield response -> reason
   }
 }

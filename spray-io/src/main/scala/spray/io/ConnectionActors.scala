@@ -16,45 +16,42 @@
 
 package spray.io
 
-import java.net.InetSocketAddress
 import akka.actor._
 
 
 trait ConnectionActors extends IOPeer {
 
-  override protected def createConnectionHandle(_ioBridge: ActorRef, _key: Key, _remoteAddress: InetSocketAddress,
-                                                _localAddress: InetSocketAddress, _commander: ActorRef, _tag: Any) = {
-    new Handle {
-      val ioBridge = _ioBridge
+  override protected def createConnectionHandle(_key: IOBridge.Key, _ioBridge: ActorRef,
+                                                _commander: ActorRef, _tag: Any): Connection = {
+    new Connection {
       val key = _key
-      val remoteAddress = _remoteAddress
-      val localAddress = _localAddress
+      val ioBridge = _ioBridge
       val commander = _commander
       val tag = _tag
       val handler = createConnectionActor(this) // must be last member to be initialized
     }
   }
 
-  protected def createConnectionActor(handle: Handle): ActorRef =
-    context.actorOf(Props(new IOConnectionActor(handle)))
+  protected def createConnectionActor(connection: Connection): ActorRef =
+    context.actorOf(Props(new IOConnectionActor(connection)))
 
   protected def pipeline: PipelineStage
 
-  class IOConnectionActor(val handle: Handle) extends Actor {
+  class IOConnectionActor(val connection: Connection) extends Actor {
     val pipelines = pipeline.build(
       context = createPipelineContext,
       commandPL = baseCommandPipeline,
       eventPL = baseEventPipeline
     )
 
-    def createPipelineContext: PipelineContext = PipelineContext(handle, context)
+    def createPipelineContext: PipelineContext = PipelineContext(connection, context)
 
     //# final-stages
     def baseCommandPipeline: Pipeline[Command] = {
-      case IOPeer.Send(buffers, ack)          => handle.ioBridge ! IOBridge.Send(handle, buffers, eventize(ack))
-      case IOPeer.Close(reason)               => handle.ioBridge ! IOBridge.Close(handle, reason)
-      case IOPeer.StopReading                 => handle.ioBridge ! IOBridge.StopReading(handle)
-      case IOPeer.ResumeReading               => handle.ioBridge ! IOBridge.ResumeReading(handle)
+      case IOPeer.Send(buffers, ack)          => connection.ioBridge ! IOBridge.Send(connection, buffers, eventize(ack))
+      case IOPeer.Close(reason)               => connection.ioBridge ! IOBridge.Close(connection, reason)
+      case IOPeer.StopReading                 => connection.ioBridge ! IOBridge.StopReading(connection)
+      case IOPeer.ResumeReading               => connection.ioBridge ! IOBridge.ResumeReading(connection)
       case IOPeer.Tell(receiver, msg, sender) => receiver.tell(msg, sender)
       case _: Droppable => // don't warn
       case cmd => log.warning("commandPipeline: dropped {}", cmd)

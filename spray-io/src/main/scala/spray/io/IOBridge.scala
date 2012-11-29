@@ -17,7 +17,7 @@
 package spray.io
 
 import java.nio.ByteBuffer
-import java.net.InetSocketAddress
+import java.net.{Socket, InetSocketAddress}
 import java.nio.channels._
 import com.typesafe.config.Config
 import scala.annotation.tailrec
@@ -85,12 +85,12 @@ class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = true) 
   def runCommand(cmd: Command) {
     cmd match {
       case cc: ConnectionCommand =>
-        if (cc.handle.key.selectionKey.selector != selector)
+        if (cc.handle.selectionKey.selector != selector)
           sys.error("Target socket of this command is not handled by this IOBridge")
         cc match {
           case Send(handle, buffers, ack) => send(handle, buffers, ack)
-          case StopReading(handle)        => handle.key.disable(OP_READ)
-          case ResumeReading(handle)      => handle.key.enable(OP_READ)
+          case StopReading(handle)        => handle.keyImpl.disable(OP_READ)
+          case ResumeReading(handle)      => handle.keyImpl.enable(OP_READ)
           case Register(handle)           => register(handle)
           case Close(handle, reason)      => scheduleClose(handle, reason)
         }
@@ -109,45 +109,42 @@ class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = true) 
   }
 
   def send(handle: Handle, buffers: Seq[ByteBuffer], ack: Option[Any]) {
-    val key = handle.key
-    key.writeQueue ++= buffers
-    if (ack.isDefined) key.writeQueue += Ack(sender, ack.get)
-    key.enable(OP_WRITE)
+    handle.writeQueue ++= buffers
+    if (ack.isDefined) handle.writeQueue += Ack(sender, ack.get)
+    handle.keyImpl.enable(OP_WRITE)
   }
 
   def register(handle: Handle) {
-    val key = handle.key
-    key.selectionKey.attach(handle)
-    key.enable(OP_READ) // always start out in reading mode
+    handle.selectionKey.attach(handle)
+    handle.keyImpl.enable(OP_READ) // always start out in reading mode
     connectionsOpened += 1
   }
 
   def scheduleClose(handle: Handle, reason: CloseCommandReason) {
-    val key = handle.key.selectionKey
-    if (key.isValid) {
-      if (handle.key.writeQueue.isEmpty)
+    if (handle.selectionKey.isValid) {
+      if (handle.writeQueue.isEmpty)
         if (reason == ConnectionCloseReasons.ConfirmedClose)
-          sendFIN(handle.key.channel)
+          sendFIN(handle.socket)
         else
           close(handle, reason)
       else {
         log.debug("Scheduling connection close after writeQueue flush")
-        handle.key.writeQueue += reason
+        handle.writeQueue += reason
       }
     }
   }
 
-  def sendFIN(channel: SocketChannel) {
+  def sendFIN(socket: Socket) {
     log.debug("Sending FIN")
-    channel.socket.shutdownOutput()
+    socket.shutdownOutput()
   }
 
   def close(handle: Handle, reason: ClosedEventReason) {
-    val key = handle.key.selectionKey
-    if (key.isValid) {
+    val selectionKey = handle.selectionKey
+    if (selectionKey.isValid) {
       log.debug("Closing connection due to {}", reason)
-      key.cancel()
-      key.channel.close()
+      selectionKey.cancel()
+      selectionKey.channel.close()
       handle.handler ! Closed(handle, reason)
       connectionsClosed += 1
     }
@@ -176,13 +173,13 @@ class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = true) 
     channel.socket.bind(cmd.address, cmd.backlog)
     val key = channel.register(selector, OP_ACCEPT)
     key.attach((cmd, sender))
-    sender ! Bound(Key(key), cmd.tag)
+    sender ! Bound(new KeyImpl(key), cmd.tag)
   }
 
   def unbind(bindingKey: Key) {
-    val key = bindingKey.selectionKey
-    key.cancel()
-    key.channel.close()
+    val keyImpl = bindingKey.asInstanceOf[KeyImpl].selectionKey
+    keyImpl.cancel()
+    keyImpl.channel.close()
     sender ! Unbound(bindingKey)
   }
 
@@ -224,12 +221,12 @@ class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = true) 
     }
   }
 
-  def write(key: SelectionKey) {
+  def write(selectionKey: SelectionKey) {
     log.debug("Writing to connection")
-    val handle = key.attachment.asInstanceOf[Handle]
-    val channel = key.channel.asInstanceOf[SocketChannel]
+    val handle = selectionKey.attachment.asInstanceOf[Handle]
+    val channel = selectionKey.channel.asInstanceOf[SocketChannel]
     val oldBytesWritten = bytesWritten
-    val writeQueue = handle.key.writeQueue
+    val writeQueue = handle.writeQueue
 
     @tailrec
     def writeToChannel() {
@@ -245,11 +242,11 @@ class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = true) 
           case Ack(receiver, msg) =>
             receiver ! msg
             writeToChannel()
-          case ConnectionCloseReasons.ConfirmedClose => sendFIN(channel)
+          case ConnectionCloseReasons.ConfirmedClose => sendFIN(channel.socket)
           case reason: CloseCommandReason => close(handle, reason)
         }
       } else {
-        handle.key.disable(OP_WRITE)
+        handle.keyImpl.disable(OP_WRITE)
         log.debug("Wrote {} bytes", bytesWritten - oldBytesWritten)
       }
     }
@@ -327,7 +324,7 @@ class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = true) 
       childFor(channel) ! AssignConnection(channel, cmdSender, cmd.tag)
     } else {
       key.interestOps(0) // we don't enable any ops until we have a handle
-      cmdSender ! connectedEvent(key, channel, cmd.tag)
+      cmdSender ! Connected(new KeyImpl(key), cmd.tag)
     }
   }
 
@@ -336,13 +333,7 @@ class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = true) 
 
   def registerConnectionAndCreateConnectedEvent(channel: SocketChannel, tag: Any) = {
     val key = channel.register(selector, 0) // we don't enable any ops until we have a handle
-    connectedEvent(key, channel, tag)
-  }
-
-  def connectedEvent(key: SelectionKey, channel: SocketChannel, tag: Any) = {
-    val remoteAddress = channel.socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress]
-    val localAddress = channel.socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]
-    Connected(Key(key), remoteAddress, localAddress, tag)
+    Connected(new KeyImpl(key), tag)
   }
 
   def configure(channel: SocketChannel) {
@@ -384,6 +375,61 @@ object IOBridge {
     require(TcpReceiveBufferSize >= 0, "receive-buffer-size must be >= 0")
     require(TcpSendBufferSize    >= 0, "send-buffer-size must be >= 0")
   }
+
+  trait Handle {
+    /**
+     * The key identifying the connection.
+     */
+    def key: Key
+
+    /**
+     * The actor handling events coming in from the network.
+     * If ConnectionActors are used this is the connection actor.
+     */
+    def handler: ActorRef
+
+    /**
+     * The remote address this connection is attached to.
+     */
+    def remoteAddress: InetSocketAddress = socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress]
+
+    /**
+     * The local address this connection is attached to.
+     */
+    def localAddress: InetSocketAddress = socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]
+
+    ////////////////////// INTERNAL //////////////////////////
+
+    private[IOBridge] def socket = channel.socket
+    private[IOBridge] def channel = selectionKey.channel.asInstanceOf[SocketChannel]
+    private[IOBridge] def selectionKey = keyImpl.selectionKey
+    private[IOBridge] def keyImpl = key.asInstanceOf[KeyImpl]
+
+    // the writeQueue contains instances of either ByteBuffer, CloseCommandReason or Ack
+    // we don't introduce a dedicated sum type for this since we want to save the extra
+    // allocation that would be required for wrapping the ByteBuffers
+    private[IOBridge] val writeQueue = collection.mutable.Queue.empty[AnyRef]
+  }
+
+  sealed trait Key
+
+  private class KeyImpl(val selectionKey: SelectionKey) extends Key {
+    private[this] var _ops = 0
+    def enable(ops: Int) {
+      if ((_ops & ops) == 0) {
+        _ops |= ops
+        selectionKey.interestOps(_ops)
+      }
+    }
+    def disable(ops: Int) {
+      if ((_ops & ops) != 0) {
+        _ops &= ~ops
+        selectionKey.interestOps(_ops)
+      }
+    }
+  }
+
+  private case class Ack(receiver: ActorRef, msg: Any)
 
   case class StatsMap(map: Map[ActorRef, Stats])
 
@@ -438,14 +484,10 @@ object IOBridge {
   // "general" events not on the connection-level
   case class Bound(bindingKey: Key, tag: Any) extends Event
   case class Unbound(bindingKey: Key) extends Event
-  case class Connected(key: Key,
-                       remoteAddress: InetSocketAddress,
-                       localAddress: InetSocketAddress,
-                       tag: Any) extends Event
+  case class Connected(key: Key, tag: Any) extends Event
 
   // connection-level events
-  case class Closed(handle: Handle,
-                    reason: ClosedEventReason) extends Event with IOClosed
+  case class Closed(handle: Handle, reason: ClosedEventReason) extends Event with IOClosed
   case class Received(handle: Handle, buffer: ByteBuffer) extends Event
   //#
 

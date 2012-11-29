@@ -22,7 +22,7 @@ import spray.util.Reply
 
 abstract class IOServer(val rootIoBridge: ActorRef) extends IOPeer {
   import IOServer._
-  private var bindingKey: Option[Key] = None
+  private var bindingKey: Option[IOBridge.Key] = None
   private var endpoint: Option[InetSocketAddress] = None
   private var state = unbound
 
@@ -65,8 +65,8 @@ abstract class IOServer(val rootIoBridge: ActorRef) extends IOPeer {
   }
 
   lazy val bound: Receive = {
-    case Reply(IOBridge.Connected(key, remoteAddress, localAddress, tag), commander: ActorRef) =>
-      val handle = createConnectionHandle(sender, key, remoteAddress, localAddress, commander, tag)
+    case Reply(IOBridge.Connected(key, tag), commander: ActorRef) =>
+      val handle = createConnectionHandle(key, sender, commander, tag)
       sender ! IOBridge.Register(handle)
 
     case Unbind =>

@@ -118,7 +118,7 @@ object SslTlsSupport {
           tempBuf.clear()
           val result = engine.unwrap(buffer, tempBuf)
           tempBuf.flip()
-          if (tempBuf.remaining > 0) eventPL(IOPeer.Received(context.handle, tempBuf.copy))
+          if (tempBuf.remaining > 0) eventPL(IOBridge.Received(context.connection, tempBuf.copy))
           result.getStatus match {
             case OK => result.getHandshakeStatus match {
               case NOT_HANDSHAKING | FINISHED =>
@@ -149,7 +149,7 @@ object SslTlsSupport {
           try f(tempBuf)
           catch {
             case e: SSLException =>
-              log.error(e, "Closing encrypted connection to {} due to {}", context.handle.remoteAddress, e)
+              log.error(e, "Closing encrypted connection to {} due to {}", context.connection.remoteAddress, e)
               commandPL(IOPeer.Close(ConnectionCloseReasons.ProtocolError(e.toString)))
           }
           finally SslBufferPool.release(tempBuf)
@@ -214,7 +214,7 @@ private[io] sealed abstract class SSLEngineProviderCompanion {
   implicit def default(implicit cp: SSLContextProvider): Self =
     fromFunc { plc =>
       val sslContext = cp(plc)
-      val remoteAddress = plc.handle.remoteAddress
+      val remoteAddress = plc.connection.remoteAddress
       val engine = sslContext.createSSLEngine(remoteAddress.getHostName, remoteAddress.getPort)
       engine.setUseClientMode(clientMode)
       engine
