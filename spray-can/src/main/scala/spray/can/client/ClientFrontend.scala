@@ -19,7 +19,6 @@ package spray.can.client
 import akka.event.LoggingAdapter
 import akka.util.Duration
 import akka.actor.ActorRef
-import collection.mutable.Queue
 import spray.can.{HttpEvent, HttpCommand}
 import spray.can.rendering.HttpRequestPartRenderingContext
 import spray.util.ConnectionCloseReasons._
@@ -31,11 +30,11 @@ object ClientFrontend {
 
   def apply(initialRequestTimeout: Long, log: LoggingAdapter): PipelineStage =
     new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) = {
+      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = {
         new Pipelines {
-          val host = context.handle.remoteAddress.getHostName
-          val port = context.handle.remoteAddress.getPort
-          val openRequests = Queue.empty[RequestRecord]
+          val host = context.connection.remoteAddress.getHostName
+          val port = context.connection.remoteAddress.getPort
+          val openRequests = collection.mutable.Queue.empty[RequestRecord]
           var requestTimeout = initialRequestTimeout
 
           val commandPipeline: CPL = {

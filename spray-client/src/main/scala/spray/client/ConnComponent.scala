@@ -56,12 +56,12 @@ trait ConnComponent {
       }
     }
 
-    def dispatch(ctx: HttpRequestContext, handle: Handle) {
+    def dispatch(ctx: HttpRequestContext, handle: Connection) {
       log.debug("Dispatching {} across connection {}", requestString(ctx.request), index)
       handle.handler.tell(ctx.request, Reply.withContext((this, ctx, handle)))
     }
 
-    def connected(handle: Handle) {
+    def connected(handle: Connection) {
       connection = Connected(handle)
       log.debug("Connected connection {}, dispatching {} pending requests", index, pendingRequests.length)
       while (!pendingRequests.isEmpty) dispatch(pendingRequests.dequeue(), handle)
@@ -88,7 +88,7 @@ trait ConnComponent {
       else pendingResponses -= 1
     }
 
-    def retry(ctx: RequestContext, errorHandle: Handle, error: Throwable): Option[RequestContext] = {
+    def retry(ctx: RequestContext, errorHandle: Connection, error: Throwable): Option[RequestContext] = {
       def retryWith(ctx: RequestContext) = {
         log.debug("Received '{}' in response to {} with {} retries left, retrying...",
           error, requestString(ctx.request), ctx.retriesLeft)
@@ -110,7 +110,7 @@ trait ConnComponent {
       ctx.sender ! Status.Failure(error)
     }
 
-    def closed(handle: Handle, reason: ClosedEventReason) {
+    def closed(handle: Connection, reason: ClosedEventReason) {
       if (connection == Connected(handle)) {
         log.debug("Connection {} lost due to {}", index, reason)
         clear()
@@ -139,7 +139,7 @@ trait ConnComponent {
     private sealed trait ConnectionState
     private case object Unconnected extends ConnectionState
     private case object Connecting extends ConnectionState
-    private case class Connected(handle: Handle) extends ConnectionState
+    private case class Connected(handle: Connection) extends ConnectionState
   }
 }
 

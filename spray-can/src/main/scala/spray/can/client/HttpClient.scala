@@ -37,7 +37,7 @@ class HttpClient(ioBridge: ActorRef, settings: ClientSettings = ClientSettings()
 
   protected val pipeline: PipelineStage = HttpClient.pipeline(settings, log)
 
-  override protected def createConnectionActor(handle: Handle): ActorRef =
+  override protected def createConnectionActor(handle: Connection): ActorRef =
     context.actorOf {
       Props {
         new IOConnectionActor(handle) {
@@ -60,7 +60,7 @@ object HttpClient {
     ResponseParsing(ParserSettings, log) >>
     RequestRendering(settings) >>
     (settings.IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
-    SslTlsSupport(sslEngineProvider, log, _.handle.tag == SslEnabled) >>
+    SslTlsSupport(sslEngineProvider, log, _.connection.tag == SslEnabled) >>
     (ReapingCycle > 0 && IdleTimeout > 0) ? TickGenerator(ReapingCycle)
   }
 
