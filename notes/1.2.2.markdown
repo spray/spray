@@ -1,2 +1,0 @@
-- Upgraded to parboiled 1.1.3
-- Cross-published for Scala 2.9.2 and Scala 2.10.0-RC1

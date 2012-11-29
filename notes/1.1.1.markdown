@@ -1,4 +1,0 @@
-This is a maintenance release introducing the following changes:
-
-- Fixed significant performance problem in JsonParser
-- Improved automatic field name extraction for case classes

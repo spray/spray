@@ -1,6 +1,0 @@
-- Upgraded to Scala 2.9.1 and parboiled 1.0.2
-- Improved (de)serialization of optional case class members (may now be missing)
-- Added `NullOptions` trait for enforcing the serialization of `None` members as `null`
-- Improved compile time error messages with `@implicitNotFound` annotations
-- Improved documentation
-- Smaller fixes and additions
