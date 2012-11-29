@@ -23,7 +23,7 @@ class AdditionalFormatsSpec extends Specification {
   case class Foo(id: Long, name: String, foos: Option[List[Foo]] = None)
 
   object Foo extends AdditionalFormats with ProductFormats {
-    implicit val fooFormat: JsonFormat[Foo] = lazyFormat(jsonFormat(Foo.apply, "id", "name", "foos"))
+    implicit val fooFormat: JsonFormat[Foo] = lazyFormat(jsonFormat(Foo.apply _)("id", "name", "foos"))
   }
 
   "The lazyFormat wrapper" should {

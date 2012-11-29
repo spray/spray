@@ -32,6 +32,8 @@ libraryDependencies ++= Seq(
 
 scaladocOptions <<= (name, version).map { (n, v) => Seq("-doc-title", n + " " + v) }
 
+// generate boilerplate
+Boilerplate.settings
 
 ///////////////
 // publishing

@@ -52,12 +52,23 @@ object JsonWriter {
 /**
   * Provides the JSON deserialization and serialization for type T.
  */
-trait JsonFormat[T] extends JsonReader[T] with JsonWriter[T]
+trait JsonFormat[T] extends JsonReader[T] with JsonWriter[T] { outer =>
+  def map[U](f1: T => U, f2: U => T): JsonFormat[U] = new JsonFormat[U] {
+    def write(obj: U): JsValue = outer.write(f2(obj))
+    def read(json: JsValue): Validated[U] = outer.read(json).map(f1)
+  }
+}
 object JsonFormat
   extends BasicFormats
   with    CollectionFormats
   with    StandardFormats
-  with    OptionFormats
+  with    OptionFormats {
+
+  def wrapAs[T, U: JsonFormat](f1: T => U, f2: U => T): JsonFormat[T] = new JsonFormat[T] {
+    def write(obj: T): JsValue = f1(obj).toJson
+    def read(json: JsValue): Validated[T] = json.toValidated[U].map(f2)
+  }
+}
 
 /**
  * A special JsonReader capable of reading a legal JSON root object, i.e. either a JSON array or a JSON object.
@@ -76,3 +87,22 @@ trait RootJsonWriter[T] extends JsonWriter[T]
  * or a JSON object.
  */
 trait RootJsonFormat[T] extends JsonFormat[T] with RootJsonReader[T] with RootJsonWriter[T]
+
+trait JsonObjectFormat[T] extends JsonFormat[T] with RootJsonFormat[T] { outer =>
+  def writeObject(obj: T): JsObject
+  def readObject(json: JsObject): Validated[T]
+
+  def write(obj: T): JsValue = writeObject(obj)
+  def read(json: JsValue): Validated[T] =
+    json match {
+      case obj: JsObject => readObject(obj)
+      case _ => deserializationError("Expected JsObject but got " + json.getClass.getSimpleName)
+    }
+
+  def extraField[U: JsonWriter](fieldName: String, f: T => U): JsonObjectFormat[T] =
+    new JsonObjectFormat[T] {
+      def writeObject(obj: T): JsObject =
+        outer.writeObject(obj) ~ (fieldName -> f(obj).toJson)
+      def readObject(json: JsObject): Validated[T] = outer.readObject(json)
+    }
+}
