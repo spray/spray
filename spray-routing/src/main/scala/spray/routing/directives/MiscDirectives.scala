@@ -43,7 +43,7 @@ trait MiscDirectives {
    * Directive extracting the IP of the client from either the X-Forwarded-For, Remote-Address or X-Real-IP header.
    */
   lazy val clientIP: Directive[HttpIp :: HNil] =
-    (headerValuePF { case `X-Forwarded-For`(ips) => ips.head }) |
+    (headerValuePF { case `X-Forwarded-For`(ips) if ips.flatten.nonEmpty => ips.flatten.head }) |
     (headerValuePF { case `Remote-Address`(ip) => ip }) |
     (headerValuePF { case RawHeader("x-real-ip", ip) => ip })
 

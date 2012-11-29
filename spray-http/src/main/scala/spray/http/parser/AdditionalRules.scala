@@ -25,8 +25,7 @@ private[parser] trait AdditionalRules {
   this: Parser =>
 
   def Ip: Rule1[HttpIp] = rule (
-    group(IpNumber ~ ch('.') ~ IpNumber ~ ch('.') ~ IpNumber ~ ch('.') ~ IpNumber)
-      ~> HttpIp.fromString ~ OptWS
+    group(IpNumber ~ ch('.') ~ IpNumber ~ ch('.') ~ IpNumber ~ ch('.') ~ IpNumber) ~> (HttpIp(_)) ~ OptWS
   )
   
   def IpNumber = rule {

@@ -167,11 +167,11 @@ object HttpHeaders {
     def value = challenges.mkString(", ")
   }
   
-  object `X-Forwarded-For` { def apply(first: HttpIp, more: HttpIp*): `X-Forwarded-For` = apply(first +: more) }
-  case class `X-Forwarded-For`(ips: Seq[HttpIp]) extends HttpHeader {
+  object `X-Forwarded-For` { def apply(first: HttpIp, more: HttpIp*): `X-Forwarded-For` = apply((first +: more).map(Some(_))) }
+  case class `X-Forwarded-For`(ips: Seq[Option[HttpIp]]) extends HttpHeader {
     def name = "X-Forwarded-For"
     def lowercaseName = "x-forwarded-for"
-    def value = ips.mkString(", ")
+    def value = ips.map(_.getOrElse("unknown")).mkString(", ")
   }
 
   case class RawHeader(name: String, value: String) extends HttpHeader {
