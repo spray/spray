@@ -34,6 +34,8 @@ sealed abstract class JsValue {
 case class JsObject(fields: Map[String, JsValue]) extends JsValue
 
 object JsObject {
+  val empty = JsObject(Map.empty[String, JsValue])
+
   // we use a ListMap in order to preserve the field order
   def apply(members: JsField*) = new JsObject(ListMap(members: _*))
   def apply(members: List[JsField]) = new JsObject(ListMap(members: _*))
@@ -44,6 +46,8 @@ object JsObject {
  */
 case class JsArray(elements: Seq[JsValue]) extends JsValue
 object JsArray {
+  val empty = JsArray(Seq.empty)
+
   def apply(element: JsValue): JsArray = JsArray(Seq(element))
   def apply(first: JsValue, elements: JsValue*) = new JsArray(first +: elements)
 }
