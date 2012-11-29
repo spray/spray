@@ -33,7 +33,7 @@ class IOClientExamplesSpec extends Specification {
   }
 
   object EchoClient {
-    case class Ping(handle: Handle) extends Command
+    case class Ping(handle: Connection) extends Command
     case class PingResponse(response: String) extends Event
   }
 

@@ -35,10 +35,10 @@ object ServerFrontend {
     new PipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = {
         new Pipelines with OpenRequestComponent {
-          private var firstOpenRequest: OpenRequest = EmptyOpenRequest
-          private var firstUnconfirmed: OpenRequest = EmptyOpenRequest
-          private var _requestTimeout: Long = serverSettings.RequestTimeout
-          private var _timeoutTimeout: Long = serverSettings.TimeoutTimeout
+          var firstOpenRequest: OpenRequest = EmptyOpenRequest
+          var firstUnconfirmed: OpenRequest = EmptyOpenRequest
+          var _requestTimeout: Long = serverSettings.RequestTimeout
+          var _timeoutTimeout: Long = serverSettings.TimeoutTimeout
           def requestTimeout = _requestTimeout // required due to https://issues.scala-lang.org/browse/SI-6387
           def timeoutTimeout = _timeoutTimeout // required due to https://issues.scala-lang.org/browse/SI-6387
           val handlerCreator = messageHandler(context)
@@ -65,7 +65,7 @@ object ServerFrontend {
                 case ChunkedResponseStart(response) if firstOpenRequest.request.method == HttpMethods.HEAD =>
                   // if HEAD requests are responded to with a chunked response we only sent the initial part
                   // and "cancel" the stream by "acking" with a fake Closed event
-                  response.withSentAck(IOBridge.Closed(context.handle, CleanClose))
+                  response.withSentAck(IOBridge.Closed(context.connection, CleanClose))
                 case _ => wrapper
               }
               if (part.messagePart.isInstanceOf[HttpMessageEnd]) {

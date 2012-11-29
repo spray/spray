@@ -31,10 +31,10 @@ object ClientFrontend {
 
   def apply(initialRequestTimeout: Long, log: LoggingAdapter): PipelineStage =
     new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) = {
+      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = {
         new Pipelines {
-          val host = context.handle.remoteAddress.getHostName
-          val port = context.handle.remoteAddress.getPort
+          val host = context.connection.remoteAddress.getHostName
+          val port = context.connection.remoteAddress.getPort
           val openRequests = mutable.Queue.empty[RequestRecord]
           var requestTimeout = initialRequestTimeout
 

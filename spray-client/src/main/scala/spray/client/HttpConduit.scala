@@ -50,7 +50,7 @@ class HttpConduit(val httpClient: ActorRef,
       conn.deliverResponse(ctx.request, response, ctx.sender)
       dispatchStrategy.onStateChange(conns)
 
-    case Reply(problem, (conn: Conn, ctx: RequestContext, handle: Handle)) =>
+    case Reply(problem, (conn: Conn, ctx: RequestContext, handle: Connection)) =>
       val error = problem match {
         case Status.Failure(e) => e
         case HttpClient.Closed(_, reason) => new RuntimeException("Connection closed, reason: " + reason)
