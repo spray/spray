@@ -18,17 +18,16 @@ package spray.io
 
 import akka.actor._
 import java.nio.ByteBuffer
-import java.net.InetSocketAddress
-import spray.util.CloseCommandReason
+import spray.util.{ClosedEventReason, CloseCommandReason}
 
 
 abstract class IOPeer extends Actor with ActorLogging {
 
   def rootIoBridge: ActorRef
 
-  protected def createConnectionHandle(ioBridge: ActorRef, key: Key, remoteAddress: InetSocketAddress,
-                                       localAddress: InetSocketAddress, commander: ActorRef, tag: Any): Handle =
-    SimpleHandle(ioBridge, key, self, remoteAddress, localAddress, commander, tag) // default implementation
+  protected def createConnectionHandle(key: IOBridge.Key, ioBridge: ActorRef,
+                                       commander: ActorRef, tag: Any): Connection =
+    DefaultConnection(key, self, ioBridge, commander, tag)
 }
 
 object IOPeer {
@@ -48,8 +47,18 @@ object IOPeer {
   case class Tell(receiver: ActorRef, message: Any, sender: ActorRef) extends Command
 
   ////////////// EVENTS //////////////
-  type Closed = IOBridge.Closed;     val Closed = IOBridge.Closed
-  type Received = IOBridge.Received; val Received = IOBridge.Received
+  type Closed = IOBridge.Closed
+  object Closed {
+    def apply(connection: Connection, reason: ClosedEventReason) = IOBridge.Closed(connection, reason)
+    def unapply(ev: Closed): Option[(Connection, ClosedEventReason)] =
+      Some((ev.handle.asInstanceOf[Connection], ev.reason))
+  }
+  type Received = IOBridge.Received
+  object Received {
+    def apply(connection: Connection, buffer: ByteBuffer) = IOBridge.Received(connection, buffer)
+    def unapply(ev: Received): Option[(Connection, ByteBuffer)] =
+      Some((ev.handle.asInstanceOf[Connection], ev.buffer))
+  }
 
   // only available with ConnectionActors mixin
   case class ActorDeath(actor: ActorRef) extends Event

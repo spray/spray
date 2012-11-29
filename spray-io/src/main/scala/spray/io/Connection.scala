@@ -17,38 +17,18 @@
 package spray.io
 
 import akka.actor.ActorRef
-import java.net.InetSocketAddress
+
 
 //# source-quote
 /**
  * A handle for a network connection.
  */
-trait Handle {
+trait Connection extends IOBridge.Handle {
+
   /**
    * The IOBridge actor managing the connection.
    */
   def ioBridge: ActorRef
-
-  /**
-   * The key identifying the connection.
-   */
-  def key: Key
-
-  /**
-   * The actor handling events coming in from the network.
-   * If ConnectionActors are used this is the connection actor.
-   */
-  def handler: ActorRef
-
-  /**
-   * The remote address this connection is attached to.
-   */
-  def remoteAddress: InetSocketAddress
-
-  /**
-   * The local address this connection is attached to.
-   */
-  def localAddress: InetSocketAddress
 
   /**
    * The ActorRef that originally commanded the establishment of this connection.
@@ -66,12 +46,10 @@ trait Handle {
 }
 //#
 
-case class SimpleHandle(
-  ioBridge: ActorRef,
-  key: Key,
+case class DefaultConnection(
+  key: IOBridge.Key,
   handler: ActorRef,
-  remoteAddress: InetSocketAddress,
-  localAddress: InetSocketAddress,
+  ioBridge: ActorRef,
   commander: ActorRef,
   tag: Any
-) extends Handle
+) extends Connection

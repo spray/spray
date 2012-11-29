@@ -29,14 +29,14 @@ import spray.util._
 trait PipelineStageTest { test =>
   implicit def system: ActorSystem
 
-  lazy val testHandle = new Handle {
-    def ioBridge = throw new UnsupportedOperationException
+  lazy val testHandle = new Connection {
     def key = throw new UnsupportedOperationException
     def handler = throw new UnsupportedOperationException
-    val remoteAddress = new InetSocketAddress("example.com", 8080)
-    def localAddress = throw new UnsupportedOperationException
+    def ioBridge = throw new UnsupportedOperationException
     def commander = throw new UnsupportedOperationException
     def tag = ()
+    override val remoteAddress = new InetSocketAddress("example.com", 8080)
+    override val localAddress = new InetSocketAddress("127.0.0.1", 32598)
   }
 
   lazy val sender1 = unregisteredActorRef
@@ -61,7 +61,7 @@ trait PipelineStageTest { test =>
     val events = ListBuffer.empty[Event]
     val pipelines = {
       val context = new PipelineContext {
-        def handle = testHandle
+        def connection = testHandle
         def connectionActorContext = test.connectionActorContext
         override def sender = if (msgSender != null) msgSender else sys.error("No message sender set")
       }
