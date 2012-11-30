@@ -108,3 +108,10 @@ trait HttpServiceActor extends HttpService {
 
   def actorRefFactory = context
 }
+
+object HttpServiceActor {
+  def apply(route: Route) =
+    new Actor with HttpServiceActor {
+      def receive = runRoute(route)
+    }
+}
