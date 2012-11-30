@@ -82,10 +82,10 @@ class ReadmeSpec extends Specification {
             )
             def read(json: JsValue) = {
               for {
-                name: String <- json("name")
-                red: Int <- json("red")
-                green: Int <- json("green")
-                blue: Int <- json("blue")
+                name <- json("name").toValidated[String]
+                red <- json("red").toValidated[Int]
+                green <- json("green").toValidated[Int]
+                blue <- json("blue").toValidated[Int]
               } yield Color(name, red, green, blue)
             }
           }

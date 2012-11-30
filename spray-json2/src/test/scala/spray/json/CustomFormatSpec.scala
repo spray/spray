@@ -24,8 +24,8 @@ class CustomFormatSpec extends Specification {
   implicit val MyTypeProtocol = new RootJsonFormat[MyType] {
     def read(json: JsValue) = {
       for {
-        name: String <- json("name")
-        value: Int <- json("value")
+        name: String <- json("name").toValidated[String]
+        value: Int <- json("value").toValidated[Int]
       } yield MyType(name, value)
     }
     def write(obj: MyType) = JsObject("name" -> JsString(obj.name), "value" -> JsNumber(obj.value))

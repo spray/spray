@@ -25,6 +25,7 @@ sealed abstract class Validated[+T] {
   def flatMap[R](f: T => Validated[R]): Validated[R]
   def foreach(f: T => Unit)
   def filter(p: T => Boolean): Validated[T]
+  def withFilter(p: T => Boolean): Validated[T] = filter(p)
 
   def exists(p: T => Boolean): Boolean
 
