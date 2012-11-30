@@ -12,7 +12,7 @@ import HttpMethods._
 import MediaTypes._
 
 
-class TestService extends Actor with ActorLogging {
+class DemoService extends Actor with ActorLogging {
   implicit val timeout: akka.util.Timeout = Duration(1, "sec") // for the actor 'asks' we use below
 
   def receive = {
@@ -113,7 +113,8 @@ class TestService extends Actor with ActorLogging {
           <h1>IOBridge Stats</h1>
           <table>
             {
-              val data = map.toSeq.map(t => t._1.path.elements.last :: t._2.productIterator.toList).transpose
+              def extractData(t: (ActorRef, IOBridge.Stats)) = t._1.path.elements.last :: t._2.productIterator.toList
+              val data = map.toSeq.map(extractData).sortBy(_.head.toString).transpose
               val headers = Seq("IOBridge", "uptime", "bytesRead", "bytesWritten", "connectionsOpened", "commandsExecuted")
               headers.zip(data).map { case (header, items) =>
                 <tr><td>{header}:</td>{items.map(x => <td>{x}</td>)}</tr>
