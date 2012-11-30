@@ -24,16 +24,16 @@ depending on what Scala/Akka version you are targeting.
 
 .. rst-class:: wide
 
-- | *spray* |1.0| is built against Scala 2.9.2 and Akka 2.0.3.
+- | *spray* |1.0| is built against Scala 2.9.2 and Akka 2.0.4.
   | It's sources live in the `release-1.0.x branch`_ of the *spray* repository.
 
-- | *spray* |1.1| is built against Scala 2.10.0-RC2 and Akka 2.1.0-RC2.
+- | *spray* |1.1| is built against Scala 2.10.0-RC3 and Akka 2.1.0-RC3.
   | It's sources live in the `master branch`_ of the *spray* repository.
 
 For information about where to find the *spray* artifacts please check out the :ref:`maven-repo` chapter.
 
-.. |1.0| replace:: **1.0-M5**
-.. |1.1| replace:: **1.1-M5**
+.. |1.0| replace:: **1.0-M6**
+.. |1.1| replace:: **1.1-M6**
 
 
 Nightly Builds

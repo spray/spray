@@ -1,3 +1,45 @@
+Version 1.1-M6 (2012-11-30)
+---------------------------
+- Upgraded to Scala 2.10.0-RC3, Akka 2.1.0-RC3, parboiled 1.1.4, shapeless 1.2.3 and spray-json 1.2.3
+- Added 'is-local-ActorRef' assertions across modules (where applicable)
+- spray-can:
+
+  + removed superfluous ssl-encryption config setting from HttpClient
+  + increase default HttpServer pipelining-limit from 1 to 8
+  + introduced SprayCanHttpServerApp convenience trait, updated examples
+  + smaller performance improvements
+
+- spray-http:
+
+  + improved MediaType model, added more default MediaTypes, closed #157
+  + improved warmup
+  + improved parser for 'X-Forwarded-For' header to also accept "unknown" elements
+  + added DateTime.fromIsoDateTimeString
+
+- spray-httpx: made the (Un)marshaller[NodeSeq] also accept 'application/xml'
+- spray-io:
+
+  + turned IOBridge into Actor, added optional parallelism
+  + general refactoring for cleanliness and clarity
+  + improved flexibility of connection actor creation
+  + smaller performance improvements
+
+- spray-routing:
+
+  + added Directive.recover and .recoverPF modifiers
+  + introduced HeaderDirectives trait, reworked and improved header extraction directives
+  + changed evaluation of 'complete' directive arguments to call-by-name
+  + fixed incomplete exception handling in Directive.unwrapFuture
+  + renamed getFromFileName directive to getFromFile
+  + introduced default, simple HttpServiceActor implementation
+  + smaller refactoring in PathMatcher API
+
+- spray-servlet: fixed missing application of root-path setting
+- spray-testkit: flexibilized ActorSystem provision for RouteTest, closed #162
+- spray-util: changed log level of loggers installed via 'installEventStreamLoggerFor' from DEBUG to WARNING
+- smaller fixes and improvements
+
+
 Version 1.1-M5 (2012-11-09)
 ---------------------------
 - Upgraded to Scala 2.10.0-RC2 and Akka 2.1.0-RC2
