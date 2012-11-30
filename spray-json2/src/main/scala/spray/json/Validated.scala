@@ -5,7 +5,7 @@ object Validated {
     try {
       Success(body)
     } catch {
-      case ex => Failure(ex)
+      case ex: Exception => Failure(ex)
     }
   }
 }
@@ -68,7 +68,7 @@ case class Success[+T](value: T) extends Validated[T] {
     try {
       f(value)
     } catch {
-      case ex => Failure(ex)
+      case ex: Exception => Failure(ex)
     }
   }
   def foreach(f: T => Unit) { f(value) }
@@ -77,7 +77,7 @@ case class Success[+T](value: T) extends Validated[T] {
       if (p(value)) this
       else Failure(new UnsatisfiedFilterException())
     } catch {
-      case ex => Failure(ex)
+      case ex: Exception => Failure(ex)
     }
   }
 

@@ -37,7 +37,7 @@ trait ProductFormats extends ObjectFieldFormatBuilderImplicits with /* generated
         sys.error("Cannot determine field order of case class " + clazz.getName)
       fields.map(_.getName)
     } catch {
-      case ex => throw new RuntimeException("Cannot automatically determine case class field names and order " +
+      case ex: Exception => throw new RuntimeException("Cannot automatically determine case class field names and order " +
         "for '" + clazz.getName + "', please use the 'jsonFormat' overload with explicit field name specification", ex)
     }
   }
