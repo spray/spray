@@ -17,9 +17,10 @@
 package spray.routing
 package directives
 
-import spray.util.LoggingContext
-import akka.actor._
 import scala.util.control.NonFatal
+import akka.event.NoLogging
+import akka.actor._
+import spray.util.LoggingContext
 
 
 trait ExecutionDirectives {
@@ -100,7 +101,7 @@ object ExecutionDirectives extends ExecutionDirectives
 class ExceptionHandlerMagnet(val handler: ExceptionHandler, val log: LoggingContext)
 
 object ExceptionHandlerMagnet {
-  implicit def apply(handler: ExceptionHandler)(implicit log: LoggingContext = akka.spray.NoLogging) =
+  implicit def apply(handler: ExceptionHandler)(implicit log: LoggingContext = NoLogging) =
     new ExceptionHandlerMagnet(handler, log)
 }
 
