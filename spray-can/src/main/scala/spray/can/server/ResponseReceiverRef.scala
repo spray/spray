@@ -17,7 +17,7 @@
 package spray.can.server
 
 import akka.util.Unsafe
-import akka.spray.UnregisteredActorRef
+import akka.spray.{RefUtils, UnregisteredActorRef}
 import akka.actor._
 import spray.io.Command
 import spray.http._
@@ -41,6 +41,7 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
   @volatile private[this] var _responseStateDoNotCallMeDirectly: ResponseState = Uncompleted
 
   def handle(message: Any)(implicit sender: ActorRef) {
+    require(RefUtils.isLocal(sender), "A request cannot be completed from a remote actor")
     message match {
       case x: HttpMessagePartWrapper if x.messagePart.isInstanceOf[HttpResponsePart] =>
         x.messagePart.asInstanceOf[HttpResponsePart] match {

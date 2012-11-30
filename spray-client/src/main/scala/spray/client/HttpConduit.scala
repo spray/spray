@@ -33,6 +33,7 @@ class HttpConduit(val httpClient: ActorRef,
                   val dispatchStrategy: DispatchStrategy = DispatchStrategies.NonPipelined(),
                   val settings: ConduitSettings = ConduitSettings())
   extends Actor with ActorLogging with ConnComponent {
+  require(RefUtils.isLocal(httpClient), "An HttpConduit must live in the same JVM as the httpClient it is to use")
 
   val conns = Vector.tabulate(settings.MaxConnections)(i => new Conn(i + 1))
   context.watch(httpClient)
@@ -78,10 +79,10 @@ class HttpConduit(val httpClient: ActorRef,
 object HttpConduit extends RequestBuilding with ResponseTransformation {
 
   def sendReceive(httpConduitRef: ActorRef): HttpRequest => Future[HttpResponse] = {
-    val provider = RefUtils.provider(httpConduitRef)
+    require(RefUtils.isLocal(httpConduitRef), "sendReceive cannot be constructed for remote HttpConduits")
     request => {
       val promise = Promise[HttpResponse]()
-      val receiver = new UnregisteredActorRef(provider) {
+      val receiver = new UnregisteredActorRef(httpConduitRef) {
         def handle(message: Any)(implicit sender: ActorRef) {
           message match {
             case x: HttpResponse => promise.success(x)

@@ -39,6 +39,7 @@ trait PipelineStageTest { test =>
     override val localAddress = new InetSocketAddress("127.0.0.1", 32598)
   }
 
+  // only needed as sender identifiers, not actually used as message targets
   lazy val sender1 = unregisteredActorRef
   lazy val sender2 = unregisteredActorRef
   lazy val sender3 = unregisteredActorRef

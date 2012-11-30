@@ -24,7 +24,7 @@ import javax.servlet.http.{HttpServlet, HttpServletResponse, HttpServletRequest}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.util.control.NonFatal
 import akka.actor.{UnhandledMessage, ActorRef, ActorSystem}
-import akka.spray.UnregisteredActorRef
+import akka.spray.{RefUtils, UnregisteredActorRef}
 import spray.http._
 import spray.util._
 
@@ -48,6 +48,8 @@ class Servlet30ConnectorServlet extends HttpServlet {
     require(system != null, "No ActorSystem configured")
     require(serviceActor != null, "No ServiceActor configured")
     require(settings != null, "No ConnectorSettings configured")
+    require(RefUtils.isLocal(serviceActor), "The serviceActor must live in the same JVM as the Servlet30ConnectorServlet")
+    require(RefUtils.isLocal(timeoutHandler), "The timeoutHandler must live in the same JVM as the Servlet30ConnectorServlet")
     log.info("Initialized Servlet API 3.0 <=> Spray Connector")
   }
 
