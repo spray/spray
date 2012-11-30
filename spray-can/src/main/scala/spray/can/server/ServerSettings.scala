@@ -42,7 +42,7 @@ class ServerSettings(config: Config = ConfigFactory.load) {
 
   val ParserSettings = new ParserSettings(c.getConfig("parsing"))
 
-  require(0 < PipeliningLimit && PipeliningLimit <= 16, "pipelining-limit must be > 0 and <= 16")
+  require(0 < PipeliningLimit && PipeliningLimit <= 128, "pipelining-limit must be > 0 and <= 128")
   require(IdleTimeout     >= 0, "idle-timeout must be >= 0")
   require(RequestTimeout  >= 0, "request-timeout must be >= 0")
   require(TimeoutTimeout  >= 0, "timeout-timeout must be >= 0")
