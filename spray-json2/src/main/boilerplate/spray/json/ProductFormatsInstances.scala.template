@@ -16,11 +16,13 @@
 
 package spray.json
 
+import scala.reflect.ClassTag
+
 trait ProductFormatsInstances { self: ProductFormats =>
 [#  // Case classes with 1 parameters
 
-  def jsonFormat1[[#P1 :JF#], T <: Product :ClassManifest](construct: ([#P1#]) => T): JsonObjectFormat[T] = {
-    val Array([#p1#]) = extractFieldNames(classManifest[T])
+  def jsonFormat1[[#P1 :JF#], T <: Product](construct: ([#P1#]) => T)(implicit classTag: ClassTag[T]): JsonObjectFormat[T] = {
+    val Array([#p1#]) = extractFieldNames(classTag)
     jsonFormat(construct)([#p1#])
   }
   def jsonFormat[[#P1#], T <: Product](construct: ([#P1#]) => T)([#p1f: ObjectFieldFormat[P1]#]): JsonObjectFormat[T] = new JsonObjectFormat[T] {

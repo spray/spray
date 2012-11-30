@@ -17,6 +17,7 @@
 
 package spray.json
 
+import scala.reflect.ClassTag
 import collection.generic.CanBuildFrom
 
 /**
@@ -27,7 +28,7 @@ trait CollectionFormats {
   /**
     * Supplies the JsonFormat for Arrays.
    */
-  implicit def arrayFormat[T :JsonFormat :ClassManifest]: RootJsonFormat[Array[T]] = new RootJsonFormat[Array[T]] {
+  implicit def arrayFormat[T :JsonFormat :ClassTag]: RootJsonFormat[Array[T]] = new RootJsonFormat[Array[T]] {
     def write(array: Array[T]) = JsArray(array.map(_.toJson)(collection.breakOut) :Vector[JsValue])
     def read(value: JsValue) = value match {
       case x: JsArray => Validated(x.elements.map(_.as[T])(collection.breakOut) :Array[T])

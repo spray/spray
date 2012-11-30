@@ -17,6 +17,8 @@
 
 package spray.json
 
+import scala.reflect.{ClassTag, classTag}
+
 /**
   * Provides the JsonFormats for the most important Scala types.
  */
@@ -39,8 +41,8 @@ trait BasicFormats extends LowLevelBasicFormats {
   implicit lazy val BigIntJsonFormat: JsonFormat[BigInt] =
     new NumberFormat[BigInt](_.toBigInt(), JsNumber.apply)
 
-  class NumberFormat[T: ClassManifest](reader: BigDecimal => T, writer: T => JsNumber) extends JsonFormat[T] {
-    val typeName = classManifest[T].erasure.getSimpleName
+  class NumberFormat[T: ClassTag](reader: BigDecimal => T, writer: T => JsNumber) extends JsonFormat[T] {
+    val typeName = classTag[T].runtimeClass.getSimpleName
 
     def write(obj: T): JsValue = writer(obj)
     def read(json: JsValue): Validated[T] = json match {
