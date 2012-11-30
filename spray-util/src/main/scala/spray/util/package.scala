@@ -39,6 +39,9 @@ package object util {
 
   def make[T, U](a: T)(f: T => U): T = { f(a); a }
 
+  def actorSystemNameFrom(clazz: Class[_]) =
+    clazz.getName.replace('.', '-').filter(_ != '$')
+
   @tailrec
   def tfor[@specialized T, U](i: T)(test: T => Boolean, inc: T => T)(f: T => U) {
     if(test(i)) {
