@@ -46,7 +46,7 @@ class SelectorWakingMailbox(system: ActorSystem, _messageQueue: MessageQueue) ex
   }
 
   private def enqueueSelect(receiver: ActorRef) {
-    super.enqueue(receiver, Envelope(IOBridge.Select, null, system))
+    super.enqueue(receiver, Envelope(IOBridge.Select, receiver, system))
   }
 
   def isEmpty = !hasMessages && !hasSystemMessages
