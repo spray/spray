@@ -176,7 +176,7 @@ To understand what this means check out this simplified version of the definitio
     ResponseParsing(...) >>
     RequestRendering(...) >>
     (settings.IdleTimeout > 0) ? ConnectionTimeouts(...) >>
-    SSLEncryption ? SslTlsSupport(...) >>
+    SslTlsSupport(...) >>
     (ReapingCycle > 0 && IdleTimeout > 0) ? TickGenerator(ReapingCycle)
 
 This expression constructs a single ``PipelineStage`` instance from 3 to 7 sub-stages, depending on the configuration

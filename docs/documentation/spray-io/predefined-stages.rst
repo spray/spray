@@ -1,7 +1,7 @@
 Predefined Stages
 =================
 
-*spray-io* comes with a number of predefined pipeline stages, which you can "bake into" you own pipeline stack, where
+*spray-io* comes with a number of predefined pipeline stages, which you can "bake into" your own pipeline stack, where
 you seem fit.
 
 .. _TickGenerator:

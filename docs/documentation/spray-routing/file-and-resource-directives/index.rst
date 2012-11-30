@@ -10,7 +10,6 @@ FileAndResourceDirectives
    getFromBrowseableDirectories
    getFromDirectory
    getFromFile
-   getFromFileName
    getFromResource
    getFromResourceDirectory
    listDirectoryContents

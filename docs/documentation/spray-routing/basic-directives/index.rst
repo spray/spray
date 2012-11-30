@@ -7,7 +7,6 @@ BasicDirectives
    :maxdepth: 1
 
    extract
-   filter
    flatMapRouteResponse
    flatMapRouteResponsePF
    hextract

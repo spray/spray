@@ -51,7 +51,7 @@ close the connection by sending ``Close`` command to the connection actor.
 Chunked Requests
 ~~~~~~~~~~~~~~~~
 
-Alternatively to a single ``HttpRequest`` the application can choose to send the sequence of individual messages:
+Alternatively to a single ``HttpRequest`` the application can choose to send this sequence of individual messages:
 
 - One ``ChunkedRequestStart``
 - Zero or more ``MessageChunks``
@@ -150,13 +150,8 @@ the request going out to the client (as the client sets these request headers it
 SSL Support
 -----------
 
-If enabled via the ``ssl-encryption`` config setting the *spray-can* ``HttpClient`` allows outgoing connections to be
-SSL/TLS encrypted. This is signalled on a per-connection basis by setting the ``tag`` member of the ``Connect`` command
-to ``HttpClient.SslEnabled``.
-
-.. note:: SSL encryption is only generally available for the ``HttpClient`` if the ``ssl-encryption`` config setting is
-   enabled. Using the ``SslEnabled`` tag on ``Connect`` command when ``ssl-encryption`` is off in the settings has no
-   effect.
+The *spray-can* ``HttpClient`` allows outgoing connections to be SSL/TLS encrypted. This is signalled on a
+per-connection basis by setting the ``tag`` member of the ``Connect`` command to ``HttpClient.SslEnabled``.
 
 The constructor of the ``HttpClient`` actor takes an implicit argument of type ``ClientSSLEngineProvider``, which is
 essentially a function ``PipelineContext => SSLEngine``. Whenever a new connection has been accepted the client uses

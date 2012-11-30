@@ -33,7 +33,7 @@ __ https://github.com/spray/spray/blob/master/spray-routing/src/main/scala/spray
 
 
 The low-level directives that most often form the basis of higher-level "named configuration" directives are grouped
-together in the :ref:`BasicDirectives` trait, with the :ref:`-filter-` directive probably being the most prominent one.
+together in the :ref:`BasicDirectives` trait.
 
 
 Transforming Directives
@@ -51,13 +51,14 @@ transformations defined on all ``Directive[L <: HList]`` instances:
 - `flatMap / hflatMap`_
 - `require / hrequire`_
 - unwrapFuture_
+- `recover / recoverPF`_
 
 map / hmap
 ~~~~~~~~~~
 
 The ``hmap`` modifier has this signature (somewhat simplified)::
 
-    def map[R](f: L => R): Directive[R :: HNil]
+    def hmap[R](f: L => R): Directive[R :: HNil]
 
 It can be used to transform the ``HList`` of extractions into another ``HList``. The number and/or types of the
 extractions can be changed arbitrarily. If ``R <: HList`` then the result is ``Directive[R]``.
@@ -75,25 +76,34 @@ If the Directive is a single-value Directive, i.e. one that extracts exactly one
 flatMap / hflatMap
 ~~~~~~~~~~~~~~~~~~
 
-With ``hmap`` you can transform the values a directive extracts, but you cannot change the "extracting" nature of
-the directive. For example, if you have a directive extracting an ``Int`` you can use ``map`` to turn it into a
-directive that extracts that ``Int`` and doubles it, but you cannot transform it into a directive, that doubles all
+With ``hmap`` or ``map`` you can transform the values a directive extracts, but you cannot change the "extracting"
+nature of the directive. For example, if you have a directive extracting an ``Int`` you can use ``map`` to turn it into
+a directive that extracts that ``Int`` and doubles it, but you cannot transform it into a directive, that doubles all
 positive ``Int`` values and rejects all others.
 
 In order to do the latter you need ``hflatMap`` or ``flatMap``. The ``hflatMap`` modifier has this signature::
 
-    def flatMap[R <: HList](f: L => Directive[R]): Directive[R]
+    def hflatMap[R <: HList](f: L => Directive[R]): Directive[R]
 
 The given function produces a new directive depending on the ``HList`` of extractions of the underlying one.
-As in the case of ``map / hmap`` there is also a single-value variant called ``flatMap``, which simplifies the operation
+As in the case of ``hmap / map`` there is also a single-value variant called ``flatMap``, which simplifies the operation
 for Directives only extracting one single value.
 
-Here is the (contrived) example from above, which doubles all positive ``Int`` values and rejects all others:
+Here is the (contrived) example from above, which doubles positive ``Int`` values and rejects all others:
 
 .. includecode:: ../code/docs/CustomDirectiveExamplesSpec.scala
    :snippet: example-2
 
-One example of a predefined directive relying ``flatMap`` is the :ref:`-authenticate-` directive.
+A common pattern that relies on ``flatMap`` is to first extract a value from the ``RequestContext`` with the
+:ref:`-extract-` directive and then ``flatMap`` with some kind of filtering logic. For example, this is the
+implementation of the :ref:`-method-` directive:
+
+.. includecode:: /../spray-routing/src/main/scala/spray/routing/directives/MethodDirectives.scala
+   :snippet: method-directive
+
+The explicit type parameter ``[HNil]`` on the ``flatMap`` is needed in this case because the result of the ``flatMap``
+is directly concatenated with the :ref:`-cancelAllRejections-` directive, thereby preventing "outside-in" inference of
+the type parameter value.
 
 
 require / hrequire
@@ -107,9 +117,10 @@ The signature of ``require`` is this (slightly simplified)::
 
     def require[T](predicate: T => Boolean): Directive[HNil]
 
-You can only call ``require`` on single-extraction directives.
+One example of a predefined directive relying on ``require`` is the first overload of the :ref:`-host-` directive.
 
-The ``hrequire`` modifier is the more general variant, which takes a predicate of type ``HList => Boolean``.
+You can only call ``require`` on single-extraction directives. The ``hrequire`` modifier is the more general variant,
+which takes a predicate of type ``HList => Boolean``.
 It can therefore also be used on directives with several extractions.
 
 
@@ -126,6 +137,24 @@ The ``unwrapFuture`` modifier performs exactly this "hooking into a future" by t
 the result is a ``Directive[T]``. This allows you to unwrap a Future of several extractions.
 
 One example of a predefined directive relying ``unwrapFuture`` is the :ref:`-authenticate-` directive.
+
+
+recover / recoverPF
+~~~~~~~~~~~~~~~~~~~
+
+The ``recover`` modifier allows you "catch" rejections produced by the underlying directive and, instead of rejecting,
+produce an alternative directive with the same type(s) of extractions.
+
+The signature of ``recover`` is this::
+
+    def recover(recovery: List[Rejection] => Directive[L]): Directive[L]
+
+In many cases the very similar ``recoverPF`` modifier might be little bit easier to use since it doesn't require the
+handling of *all* rejections::
+
+    def recoverPF(recovery: PartialFunction[List[Rejection], Directive[L]]): Directive[L]
+
+One example of a predefined directive relying ``recoverPF`` is the :ref:`-optionalHeaderValue-` directive.
 
 
 Directives from Scratch

@@ -21,6 +21,7 @@ You can browse the predefined directives by trait:
    execution-directives/index
    file-and-resource-directives/index
    form-field-directives/index
+   header-directives/index
    host-directives/index
    marshalling-directives/index
    method-directives/index
