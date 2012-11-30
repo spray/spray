@@ -6,7 +6,7 @@ trait JsValueReading {
   def apply(fieldName: String): Validated[JsValue]
   def apply(idx: Int): Validated[JsValue]
 
-  def as[A: JsonFormat]: A = toValidated[A].get
+  def as[A: JsonReader]: A = toValidated[A].get
   def toOption[A :JsonReader]: Option[A] = toValidated[A].toOption
   def toEither[A :JsonReader]: Either[Throwable, A] = toValidated[A].toEither
 }
