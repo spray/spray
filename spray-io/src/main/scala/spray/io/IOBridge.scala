@@ -376,6 +376,7 @@ object IOBridge {
     require(TcpSendBufferSize    >= 0, "send-buffer-size must be >= 0")
   }
 
+  //# handle-interface
   trait Handle {
     /**
      * The key identifying the connection.
@@ -387,29 +388,32 @@ object IOBridge {
      * If ConnectionActors are used this is the connection actor.
      */
     def handler: ActorRef
-
-    /**
-     * The remote address this connection is attached to.
-     */
-    def remoteAddress: InetSocketAddress = socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress]
-
-    /**
-     * The local address this connection is attached to.
-     */
-    def localAddress: InetSocketAddress = socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]
-
-    ////////////////////// INTERNAL //////////////////////////
-
-    private[IOBridge] def socket = channel.socket
-    private[IOBridge] def channel = selectionKey.channel.asInstanceOf[SocketChannel]
-    private[IOBridge] def selectionKey = keyImpl.selectionKey
-    private[IOBridge] def keyImpl = key.asInstanceOf[KeyImpl]
-
-    // the writeQueue contains instances of either ByteBuffer, CloseCommandReason or Ack
-    // we don't introduce a dedicated sum type for this since we want to save the extra
-    // allocation that would be required for wrapping the ByteBuffers
-    private[IOBridge] val writeQueue = collection.mutable.Queue.empty[AnyRef]
+                                                                                                  // hide
+    /**                                                                                           // hide
+     * The remote address this connection is attached to.                                         // hide
+     */                                                                                           // hide
+    def remoteAddress: InetSocketAddress =                                                        // hide
+       socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress]                              // hide
+                                                                                                  // hide
+    /**                                                                                           // hide
+     * The local address this connection is attached to.                                          // hide
+     */                                                                                           // hide
+    def localAddress: InetSocketAddress =                                                         // hide
+      socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]                                // hide
+                                                                                                  // hide
+    ////////////////////// INTERNAL //////////////////////////                                    // hide
+                                                                                                  // hide
+    private[IOBridge] def socket = channel.socket                                                 // hide
+    private[IOBridge] def channel = selectionKey.channel.asInstanceOf[SocketChannel]              // hide
+    private[IOBridge] def selectionKey = keyImpl.selectionKey                                     // hide
+    private[IOBridge] def keyImpl = key.asInstanceOf[KeyImpl]                                     // hide
+                                                                                                  // hide
+    // the writeQueue contains instances of either ByteBuffer, CloseCommandReason or Ack          // hide
+    // we don't introduce a dedicated sum type for this since we want to save the extra           // hide
+    // allocation that would be required for wrapping the ByteBuffers                             // hide
+    private[IOBridge] val writeQueue = collection.mutable.Queue.empty[AnyRef]                     // hide
   }
+  //#
 
   sealed trait Key
 

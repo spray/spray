@@ -38,6 +38,8 @@ trait ConnectionActors extends IOPeer {
   protected def pipeline: PipelineStage
 
   class IOConnectionActor(val connection: Connection) extends Actor {
+    import connection.ioBridge
+
     val pipelines = pipeline.build(
       context = createPipelineContext,
       commandPL = baseCommandPipeline,
@@ -48,10 +50,10 @@ trait ConnectionActors extends IOPeer {
 
     //# final-stages
     def baseCommandPipeline: Pipeline[Command] = {
-      case IOPeer.Send(buffers, ack)          => connection.ioBridge ! IOBridge.Send(connection, buffers, eventize(ack))
-      case IOPeer.Close(reason)               => connection.ioBridge ! IOBridge.Close(connection, reason)
-      case IOPeer.StopReading                 => connection.ioBridge ! IOBridge.StopReading(connection)
-      case IOPeer.ResumeReading               => connection.ioBridge ! IOBridge.ResumeReading(connection)
+      case IOPeer.Send(buffers, ack)          => ioBridge ! IOBridge.Send(connection, buffers, eventize(ack))
+      case IOPeer.Close(reason)               => ioBridge ! IOBridge.Close(connection, reason)
+      case IOPeer.StopReading                 => ioBridge ! IOBridge.StopReading(connection)
+      case IOPeer.ResumeReading               => ioBridge ! IOBridge.ResumeReading(connection)
       case IOPeer.Tell(receiver, msg, sender) => receiver.tell(msg, sender)
       case _: Droppable => // don't warn
       case cmd => log.warning("commandPipeline: dropped {}", cmd)

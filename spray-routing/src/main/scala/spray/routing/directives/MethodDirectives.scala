@@ -52,12 +52,16 @@ trait MethodDirectives {
    */
   val put = method(PUT) // source-quote
 
+  //# method-directive
   /**
    * Rejects all requests whose HTTP method does not match the given one.
    */
   def method(mth: HttpMethod): Directive0 =
-    extract(_.request.method).flatMap[HNil](m => if (m == mth) pass else reject(MethodRejection(mth))) &
-      cancelAllRejections(ofType[MethodRejection])
+    extract(_.request.method).flatMap[HNil] {
+      case `mth` => pass
+      case _     => reject(MethodRejection(mth))
+    } & cancelAllRejections(ofType[MethodRejection])
+  //#
 }
 
 object MethodDirectives extends MethodDirectives
