@@ -16,12 +16,14 @@
 
 package spray.routing
 
+import spray.http.HttpMethods
+
 
 class MethodDirectivesSpec extends RoutingSpec {
 
-  val getOrPut = (get | put) { completeOk }
-
   "get | put" should {
+    val getOrPut = (get | put) { completeOk }
+
     "block POST requests" in {
       Post() ~> getOrPut ~> check { handled === false }
     }
@@ -30,6 +32,17 @@ class MethodDirectivesSpec extends RoutingSpec {
     }
     "let PUT requests pass" in {
       Put() ~> getOrPut ~> check { response === Ok }
+    }
+  }
+
+  "two failed `get` directives" should {
+    "only result in a single Rejection" in {
+      Put() ~> {
+        get { completeOk } ~
+        get { completeOk }
+      } ~> check {
+        rejections === List(MethodRejection(HttpMethods.GET))
+      }
     }
   }
   

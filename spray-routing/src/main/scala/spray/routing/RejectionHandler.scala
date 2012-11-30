@@ -84,7 +84,7 @@ object RejectionHandler {
    */
   def applyTransformations(rejections: List[Rejection]): List[Rejection] = {
     val (transformations, rest) = rejections.partition(_.isInstanceOf[TransformationRejection])
-    (rest /: transformations.asInstanceOf[Seq[TransformationRejection]]) {
+    (rest.distinct /: transformations.asInstanceOf[Seq[TransformationRejection]]) {
       case (remaining, transformation) => transformation.transform(remaining)
     }
   }
