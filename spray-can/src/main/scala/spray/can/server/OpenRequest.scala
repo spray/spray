@@ -19,6 +19,7 @@ package spray.can.server
 import collection.mutable
 import akka.actor.{ActorContext, ActorRef}
 import akka.event.LoggingAdapter
+import akka.spray.RefUtils
 import spray.can.rendering.HttpResponsePartRenderingContext
 import spray.io._
 import spray.http._
@@ -99,7 +100,10 @@ trait OpenRequestComponent { component =>
           val timeoutHandler =
             if (settings.TimeoutHandler.isEmpty) handler
             else connectionActorContext.actorFor(settings.TimeoutHandler)
-          downstreamCommandPL(IOServer.Tell(timeoutHandler, Timeout(request), receiverRef))
+          if (RefUtils.isLocal(timeoutHandler))
+            downstreamCommandPL(IOServer.Tell(timeoutHandler, Timeout(request), receiverRef))
+          else
+            log.error("The TimeoutHandler '{}' is not a local actor and thus cannot be used as a timeout handler")
           timestamp = -now // we record the time of the Timeout dispatch as negative timestamp value
         }
       } else if (timestamp < -1 && timeoutTimeout > 0 && (-timestamp + timeoutTimeout < now)) {

@@ -18,9 +18,13 @@ package spray.io
 
 import java.net.InetSocketAddress
 import akka.actor.{Status, ActorRef}
+import akka.spray.RefUtils
 import spray.util.Reply
 
+
 abstract class IOServer(val rootIoBridge: ActorRef) extends IOPeer {
+  require(RefUtils.isLocal(rootIoBridge), "An IOServer must live in the same JVM as the IOBridge it is to use")
+
   import IOServer._
   private var bindingKey: Option[IOBridge.Key] = None
   private var endpoint: Option[InetSocketAddress] = None

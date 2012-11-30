@@ -18,8 +18,12 @@ package spray.io
 
 import spray.util.Reply
 import akka.actor.{Status, ActorRef}
+import akka.spray.RefUtils
+
 
 abstract class IOClient(val rootIoBridge: ActorRef) extends IOPeer {
+  require(RefUtils.isLocal(rootIoBridge), "An IOClient must live in the same JVM as the IOBridge it is to use")
+
   import IOClient._
 
   override def preStart() {
