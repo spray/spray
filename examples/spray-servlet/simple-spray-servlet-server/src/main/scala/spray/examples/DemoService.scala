@@ -9,7 +9,7 @@ import MediaTypes._
 import HttpMethods._
 
 
-class TestService extends Actor with ActorLogging {
+class DemoService extends Actor with ActorLogging {
 
   def receive = {
     case HttpRequest(GET, "/", _, _, _) =>
