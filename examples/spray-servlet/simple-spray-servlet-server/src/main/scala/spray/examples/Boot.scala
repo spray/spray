@@ -13,7 +13,7 @@ class Boot extends WebBoot {
   val system = ActorSystem("example")
 
   // the service actor replies to incoming HttpRequests
-  val serviceActor = system.actorOf(Props[TestService])
+  val serviceActor = system.actorOf(Props[DemoService])
 
   system.registerOnTermination {
     // put additional cleanup code here
