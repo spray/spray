@@ -16,8 +16,8 @@
 
 package spray.routing
 
-import akka.event.LoggingAdapter
 import akka.util.NonFatal
+import spray.util.LoggingContext
 import spray.http._
 import StatusCodes._
 
@@ -25,7 +25,7 @@ import StatusCodes._
 trait ExceptionHandler extends ExceptionHandler.PF
 
 object ExceptionHandler {
-  type PF = PartialFunction[Throwable, LoggingAdapter => Route]
+  type PF = PartialFunction[Throwable, Route]
 
   implicit def fromPF(pf: PF): ExceptionHandler =
     new ExceptionHandler {
@@ -33,21 +33,22 @@ object ExceptionHandler {
       def apply(error: Throwable) = pf(error)
     }
 
-  implicit def default(implicit settings: RoutingSettings) = fromPF {
-    case x@ IllegalRequestException(status, summary, detail) => log => ctx =>
-      log.warning("Illegal request {}\n\t{}: {}\n\tCompleting with '{}' response",
-        ctx.request, summary, detail, status)
-      val msg = if (settings.VerboseErrorMessages) x.getMessage else summary
-      ctx.complete(status, msg)
+  implicit def default(implicit settings: RoutingSettings, log: LoggingContext): ExceptionHandler =
+    fromPF {
+      case x@ IllegalRequestException(status, summary, detail) => ctx =>
+        log.warning("Illegal request {}\n\t{}: {}\n\tCompleting with '{}' response",
+          ctx.request, summary, detail, status)
+        val msg = if (settings.VerboseErrorMessages) x.getMessage else summary
+        ctx.complete(status, msg)
 
-    case RequestProcessingException(status, message) => log => ctx =>
-      log.warning("Request {} could not be handled normally\n\t{}\n\tCompleting with '{}' response",
-        ctx.request, message, status)
-      ctx.complete(status, message)
+      case RequestProcessingException(status, message) => ctx =>
+        log.warning("Request {} could not be handled normally\n\t{}\n\tCompleting with '{}' response",
+          ctx.request, message, status)
+        ctx.complete(status, message)
 
-    case NonFatal(e) => log => ctx =>
-      log.error(e, "Error during processing of request {}", ctx.request)
-      ctx.complete(InternalServerError)
-  }
+      case NonFatal(e) => ctx =>
+        log.error(e, "Error during processing of request {}", ctx.request)
+        ctx.complete(InternalServerError)
+    }
 
 }

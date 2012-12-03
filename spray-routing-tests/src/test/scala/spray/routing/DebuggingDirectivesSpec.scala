@@ -17,7 +17,7 @@
 package spray.routing
 
 import akka.event.LoggingAdapter
-import spray.util.{LoggingContext, EOL}
+import spray.util.EOL
 
 
 class DebuggingDirectivesSpec extends RoutingSpec {
@@ -27,7 +27,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
 
   def resetDebugMsg() { debugMsg = "" }
 
-  implicit val log: LoggingContext = new LoggingAdapter {
+  implicit val log = new LoggingAdapter {
     def isErrorEnabled = true
     def isWarningEnabled = true
     def isInfoEnabled = true

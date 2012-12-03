@@ -39,10 +39,6 @@ trait HttpService extends Directives {
    */
   implicit def executionContext: ExecutionContext = actorRefFactory.messageDispatcher
 
-
-  // must be lazy due to initialization order issue when mixing into an actor
-  lazy val log = LoggingContext.fromActorRefFactory
-
   /**
    * Supplies the actor behavior for executing the given route.
    *
@@ -50,7 +46,7 @@ trait HttpService extends Directives {
    * mixing into an Actor.
    */
   def runRoute(route: => Route)(implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext,
-                                rs: RoutingSettings): Actor.Receive = {
+                                rs: RoutingSettings, log: LoggingContext): Actor.Receive = {
     // we don't use a lazy val for the 'sealedRoute' member here, since we can be sure to be running in an Actor
     // (we require an implicit ActorContext) and can therefore avoid the "lazy val"-synchronization
     var sr: Route = null
@@ -72,13 +68,13 @@ trait HttpService extends Directives {
           }
         } catch {
           case NonFatal(e) =>
-            val errorRoute = sealedExceptionHandler(e)(log)
+            val errorRoute = sealedExceptionHandler(e)
             errorRoute(contextFor(request))
         }
 
       case ctx: RequestContext => sealedRoute(ctx)
 
-      case Timeout(request: HttpRequest) => runRoute(timeoutRoute)(eh, rh, ac, rs)(request)
+      case Timeout(request: HttpRequest) => runRoute(timeoutRoute)(eh, rh, ac, rs, log)(request)
     }
   }
 
