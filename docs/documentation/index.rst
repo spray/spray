@@ -11,6 +11,7 @@ This is the index of all documentation chapters for the different modules of the
    spray-http/index
    spray-httpx/index
    spray-io/index
+   spray-json2/index
    spray-routing/index
    spray-servlet/index
    spray-testkit/index
