@@ -30,7 +30,7 @@ private[rendering] trait MessageRendering {
     bb.append(name).append(':').append(' ').append(value).append(CrLf)
 
   @tailrec
-  protected final def appendHeaders(httpHeaders: List[HttpHeader], bb: BufferBuilder,
+  protected final def appendHeaders(httpHeaders: List[HttpHeader], bb: BufferBuilder, blockDateHeader: Boolean = false,
                     connectionHeaderValue: Option[String] = None): Option[String] = {
     if (httpHeaders.isEmpty) {
       connectionHeaderValue
@@ -43,16 +43,16 @@ private[rendering] trait MessageRendering {
         else connectionHeaderValue
       }
       header.lowercaseName match {
-        case "content-type"      => // we never render these headers here,
-        case "content-length"    => // because their production is the
-        case "transfer-encoding" => // responsibility of the spray-can layer,
-        case "host"              => // not the user
-        case "date"              =>
-        case "server"            =>
-        case "user-agent"        =>
+        case "content-type"            => // we never render these headers here,
+        case "content-length"          => // because their production is the
+        case "transfer-encoding"       => // responsibility of the spray-can layer,
+        case "host"                    => // not the user
+        case "date" if blockDateHeader =>
+        case "server"                  =>
+        case "user-agent"              =>
         case _ => appendHeader(header.name, header.value, bb)
       }
-      appendHeaders(httpHeaders.tail, bb, newConnectionHeaderValue)
+      appendHeaders(httpHeaders.tail, bb, blockDateHeader, newConnectionHeaderValue)
     }
   }
 

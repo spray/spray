@@ -92,7 +92,7 @@ class ResponseRenderer(serverHeader: String,
       bb.append(protocol.value).append(' ').append(Integer.toString(status.value)).append(' ')
         .append(status.reason).append(MessageRendering.CrLf)
     }
-    appendHeaders(headers, bb)
+    appendHeaders(headers, bb, blockDateHeader = true)
   }
 
   private def renderedMessagePart(bb: BufferBuilder, requestMethod: HttpMethod, entity: HttpEntity, close: Boolean) = {
