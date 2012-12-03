@@ -39,9 +39,6 @@ trait HttpService extends Directives {
    */
   implicit def executionContext: ExecutionContext = actorRefFactory.dispatcher
 
-
-  val log = LoggingContext.fromActorRefFactory
-
   /**
    * Supplies the actor behavior for executing the given route.
    *
@@ -49,7 +46,7 @@ trait HttpService extends Directives {
    * mixing into an Actor.
    */
   def runRoute(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext,
-                             rs: RoutingSettings): Actor.Receive = {
+                             rs: RoutingSettings, log: LoggingContext): Actor.Receive = {
     val sealedExceptionHandler = eh orElse ExceptionHandler.default
     val sealedRoute = sealRoute(route)(sealedExceptionHandler, rh)
     def contextFor(req: HttpRequest) = RequestContext(req, ac.sender, req.path).withDefaultSender(ac.self)
@@ -68,13 +65,13 @@ trait HttpService extends Directives {
           }
         } catch {
           case NonFatal(e) =>
-            val errorRoute = sealedExceptionHandler(e)(log)
+            val errorRoute = sealedExceptionHandler(e)
             errorRoute(contextFor(request))
         }
 
       case ctx: RequestContext => sealedRoute(ctx)
 
-      case Timeout(request: HttpRequest) => runRoute(timeoutRoute)(eh, rh, ac, rs)(request)
+      case Timeout(request: HttpRequest) => runRoute(timeoutRoute)(eh, rh, ac, rs, log)(request)
     }
   }
 

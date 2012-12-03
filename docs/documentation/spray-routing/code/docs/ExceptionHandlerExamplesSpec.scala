@@ -10,14 +10,16 @@ class ExceptionHandlerExamplesSpec extends Specification with Specs2RouteTest wi
   implicit def actorRefFactory = system
 
   //# example-1
+  import spray.util.LoggingContext
   import spray.http.StatusCodes._
   import spray.routing._
 
-  implicit val myExceptionHandler = ExceptionHandler.fromPF {
-    case e: ArithmeticException => log => ctx =>
-      log.warning("Request {} could not be handled normally", ctx.request)
-      ctx.complete(InternalServerError, "Bad numbers, bad result!!!")
-  }
+  implicit def myExceptionHandler(implicit log: LoggingContext) =
+    ExceptionHandler.fromPF {
+      case e: ArithmeticException => ctx =>
+        log.warning("Request {} could not be handled normally", ctx.request)
+        ctx.complete(InternalServerError, "Bad numbers, bad result!!!")
+    }
 
   class MyService extends Actor with HttpServiceActor {
     def receive = runRoute {

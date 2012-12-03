@@ -13,10 +13,11 @@ class RejectionHandlerExamplesSpec extends Specification with Specs2RouteTest wi
   import spray.routing._
   import spray.http._
   import StatusCodes._
+  import Directives._
 
   implicit val myRejectionHandler = RejectionHandler.fromPF {
     case MissingCookieRejection(cookieName) :: _ =>
-      HttpResponse(BadRequest, "No cookies, no service!!!")
+      complete(BadRequest, "No cookies, no service!!!")
   }
 
   class MyService extends Actor with HttpServiceActor {

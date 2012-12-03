@@ -22,9 +22,8 @@ import akka.actor.{ActorRefFactory, ActorContext, ActorSystem}
 
 trait LoggingContext extends LoggingAdapter
 
-object LoggingContext extends LoggingContextLowerOrderImplicits {
-
-  implicit def fromAdapter(la: LoggingAdapter) = new LoggingContext {
+object LoggingContext extends LoggingContextLowerOrderImplicit1 {
+  implicit def fromAdapter(implicit la: LoggingAdapter) = new LoggingContext {
     def isErrorEnabled = la.isErrorEnabled
     def isWarningEnabled = la.isWarningEnabled
     def isInfoEnabled = la.isInfoEnabled
@@ -38,7 +37,7 @@ object LoggingContext extends LoggingContextLowerOrderImplicits {
   }
 }
 
-private[util] sealed abstract class LoggingContextLowerOrderImplicits {
+private[util] sealed abstract class LoggingContextLowerOrderImplicit1 extends LoggingContextLowerOrderImplicit2 {
   this: LoggingContext.type =>
 
   implicit def fromActorRefFactory(implicit refFactory: ActorRefFactory) =
@@ -46,4 +45,10 @@ private[util] sealed abstract class LoggingContextLowerOrderImplicits {
       case x: ActorSystem => fromAdapter(x.log)
       case x: ActorContext => fromAdapter(Logging(x.system, x.self))
     }
+}
+
+private[util] sealed abstract class LoggingContextLowerOrderImplicit2 {
+  this: LoggingContext.type =>
+
+  implicit val NoLogging = fromAdapter(akka.event.NoLogging)
 }

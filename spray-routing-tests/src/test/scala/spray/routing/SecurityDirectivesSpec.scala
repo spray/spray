@@ -18,7 +18,6 @@ package spray.routing
 
 import scala.concurrent.Promise
 import akka.event.NoLogging
-import spray.util.LoggingContext
 import spray.routing.authentication._
 import spray.http._
 import HttpHeaders._
@@ -49,7 +48,7 @@ class SecurityDirectivesSpec extends RoutingSpec {
       } ~> check { entityAs[String] === "BasicUserContext(Alice)" }
     }
     "properly handle exceptions thrown in its inner route" in {
-      implicit val log: LoggingContext = NoLogging // suppress logging of the error
+      implicit val log = NoLogging // suppress logging of the error
       Get() ~> addHeader(Authorization(BasicHttpCredentials("Alice", ""))) ~> {
         handleExceptions(ExceptionHandler.default) {
           authenticate(BasicAuth(doAuth, "Realm")) { _ => sys.error("Nope") }

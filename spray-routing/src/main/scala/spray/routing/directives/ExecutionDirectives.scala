@@ -30,10 +30,9 @@ trait ExecutionDirectives {
    * Transforms exceptions thrown during evaluation of its inner route using the given
    * [[spray.routing.ExceptionHandler]].
    */
-  def handleExceptions(ehm: ExceptionHandlerMagnet): Directive0 =
+  def handleExceptions(handler: ExceptionHandler): Directive0 =
     mapInnerRoute { inner => ctx =>
-      import ehm._
-      def handleError = handler andThen (_(log)(ctx))
+      def handleError = handler andThen (_(ctx))
       try inner {
         ctx.withRouteResponseHandling {
           case Status.Failure(error) if handler.isDefinedAt(error) => handleError(error)
@@ -51,8 +50,7 @@ trait ExecutionDirectives {
       ctx.withRejectionHandling { rejections =>
         if (handler.isDefinedAt(rejections)) {
           val filteredRejections = RejectionHandler.applyTransformations(rejections)
-          val responseForRejections = handler(filteredRejections)
-          ctx.complete(responseForRejections)
+          handler(filteredRejections)(ctx)
         } else ctx.reject(rejections: _*)
       }
     }
@@ -96,14 +94,6 @@ trait ExecutionDirectives {
 }
 
 object ExecutionDirectives extends ExecutionDirectives
-
-
-class ExceptionHandlerMagnet(val handler: ExceptionHandler, val log: LoggingContext)
-
-object ExceptionHandlerMagnet {
-  implicit def apply(handler: ExceptionHandler)(implicit log: LoggingContext = NoLogging) =
-    new ExceptionHandlerMagnet(handler, log)
-}
 
 
 /**
