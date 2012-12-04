@@ -30,7 +30,7 @@ import ConnectionCloseReasons._
 
 
 class IOBridgeSpec extends Specification {
-  implicit val timeout: Timeout = Duration(500, MILLISECONDS)
+  implicit val timeout: Timeout = Duration(1000, MILLISECONDS)
   implicit val system = ActorSystem("IOBridgeSpec")
   val port = 23456
 
