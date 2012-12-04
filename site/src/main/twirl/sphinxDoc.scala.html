@@ -1,4 +1,4 @@
-@(node: spray.site.ContentNode, body: String)
+@(node: spray.site.ContentNode)
 
 <section class="mainContentWrap">
   <div class="container mainContent">
@@ -16,7 +16,7 @@
 
             <div class="row-fluid">
               <div class="span12">
-                @HtmlFormat.raw(body)
+                @HtmlFormat.raw(node.body)
               </div>
             </div>
 

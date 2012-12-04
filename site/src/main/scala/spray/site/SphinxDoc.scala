@@ -21,17 +21,22 @@ import spray.json._
 
 
 object JsonProtocol extends DefaultJsonProtocol {
-  implicit val sphinxJsonFormat = jsonFormat1(SphinxDoc.apply)
+  implicit val postMetaDataFormat = jsonFormat(PostMetaData, "author", "tags", "index-paragraphs")
+  implicit val sphinxJsonFormat = jsonFormat3(SphinxDoc.apply)
 }
 
-case class SphinxDoc(body: String)
+case class PostMetaData(author: Option[String], tags: Option[String], indexParagraphs: Option[String]) {
+  val tagList: List[String] = tags.map(_.split(',').map(_.trim)).toList.flatten
+}
+
+case class SphinxDoc(body: String, current_page_name: String, meta: PostMetaData)
 
 object SphinxDoc {
   import JsonProtocol._
 
-  def load(docPath: String): Option[SphinxDoc] = {
-    val path = if (docPath.endsWith("/")) docPath.dropRight(1) else docPath
-    loadFrom("sphinx/json/%s.fjson".format(path))
+  def load(docPath: String) = {
+    require(docPath.endsWith("/"))
+    loadFrom("sphinx/json/%s.fjson" format docPath.dropRight(1))
   }
 
   def loadFrom(resourceName: String): Option[SphinxDoc] = {

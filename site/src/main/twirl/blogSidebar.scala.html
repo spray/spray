@@ -1,0 +1,36 @@
+<aside class="span3 sidebar">
+
+  <!--text widget-->
+  <div class="widget widget_text">
+    <h3>Blog Blog Blog</h3>
+    <div class="textwidget">
+      <p>
+        This blog is open for content from the <em>spray</em> community.
+        If you have material that you'd like to contribute shoot us an email or, even better, send us a pull
+        request!
+      </p>
+    <!--</div> <a href="#"><span class="label">Read More</span></a>-->
+  </div>
+
+  <!--categories widget-->
+  <div class="widget widget_categories">
+    <h3>Categories</h3>
+    <ul>
+      @spray.site.RootNode.categoryMap.map { case (tag, postNumber) =>
+        <li class="cat-item">
+          <a title="View all posts tagged with @tag" href="/blog/category/@tag/">@tag</a>(@postNumber)
+        </li>
+      }
+    </ul>
+  </div>
+
+  <!--twitter widget-->
+  <div class="widget widget_twitter">
+    <h3>
+      <em>spray</em> on Twitter
+      <a class="followBtn" href="https://twitter.com/#!/sprayio"><span class="label">follow</span></a>
+    </h3>
+    <div class="twitter" data-topdate="true" data-count="3" data-username="sprayio"></div>
+  </div>
+
+</aside>

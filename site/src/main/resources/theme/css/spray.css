@@ -123,3 +123,11 @@ a.footnote-reference { vertical-align: super; font-size: 66%; }
 p.rubric { border-top: 1px solid #DDD; margin-top: 30px; padding-top: 5px; font-weight: bold; }
 table.footnote .label { background-color: white; }
 table.footnote td { vertical-align: top; }
+
+.btn img { margin: 0; }
+.post { margin-bottom: 10px; }
+.post .post-content { margin-top: 30px; }
+.post .post-title h2 { margin-top: 0; }
+.post .post-title a { color: #08C; }
+.post .post-title a:hover { color: #005580; }
+.post .post-meta { margin: -0.5em 0 2em; font-size: 12px; }

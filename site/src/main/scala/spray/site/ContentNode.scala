@@ -17,8 +17,9 @@
 package spray.site
 
 import java.lang.{ StringBuilder => JStringBuilder }
-import scala.xml.{Node, XML}
+import xml.{Node, XML}
 import spray.util._
+import spray.http.DateTime
 
 
 sealed trait ContentNode {
@@ -33,10 +34,27 @@ sealed trait ContentNode {
   def absoluteUri = if (uri.startsWith("http") || uri.startsWith("/")) uri else "/" + uri
   def isDescendantOf(node: ContentNode): Boolean = node == this || !isRoot && parent.isDescendantOf(node)
 
-  def find(uri: String): Option[ContentNode] = {
+  lazy val (body, date, postMetaData): (String, Option[DateTime], PostMetaData) =
+    SphinxDoc.load(uri).orElse(SphinxDoc.load(uri + "index/")) match {
+      case Some(SphinxDoc(b, d, pmd)) =>
+        val dateTime = DateTime.fromIsoDateTimeString(d.substring(d.lastIndexOf("/") + 1).take(10) + "T00:00:00")
+        (b, dateTime, pmd)
+      case None => throw new RuntimeException("SphinxDoc for uri '%s' not found" format uri)
+    }
+
+  def postDate = date.fold(sys.error(uri + " has no date in name"))(_.toIsoDateString)
+  def postAuthor = postMetaData.author.getOrElse(sys.error(uri + " has no author meta data field"))
+  def postTags = postMetaData.tagList
+  def postIndexParagraphs = (XML.loadString(body) \\ "p").take(postMetaData.indexParagraphs.fold(1)(_.toInt))
+  def postTagLinks = postTags.map(tag => s"""<a href="/blog/category/$tag/">$tag</a>""").mkString(", ")
+  def postBody = {
+    val meta = s"""</h1><div class="post-meta">Posted on $postDate by <em>$postAuthor</em>, tags: $postTagLinks</div>"""
+    body.replaceFirst("</h1>", meta)
+  }
+
+  def find(uri: String): Option[ContentNode] =
     if (uri == this.uri) Some(this)
     else children.mapFind(_.find(uri))
-  }
 
   override def toString: String = {
     val sb = new JStringBuilder
@@ -52,7 +70,7 @@ sealed trait ContentNode {
 
 object RootNode extends ContentNode {
   private val xml = {
-    val model = SphinxDoc.load("index").get
+    val model = SphinxDoc.load("index/").get
     XML.loadString(model.body)
   }
 
@@ -61,6 +79,11 @@ object RootNode extends ContentNode {
   val children = (xml \ "ul" \ "li") map li2Node(this)
   def isRoot = true
   def parent = this
+
+  lazy val blogRoot = find("blog/").get
+  lazy val categoryMap: Map[String, Int] =
+    blogRoot.children.flatMap(n => n.postTags.map(_ -> n)).groupBy(_._1).map(t => t._1 -> t._2.size)(collection.breakOut)
+  def childrenWithTag(category: String) = blogRoot.children.filter(_.postTags.contains(category))
 
   private def li2Node(_parent: ContentNode)(li: Node): ContentNode = new ContentNode {
     val a = (li \ "a").head

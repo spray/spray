@@ -203,6 +203,9 @@ use for *spray.io*:
 - sbt-assembly_
 - Mentor_ (a non-free, responsive HTML5 template based on Bootstrap_)
 
+For more details check out the route definition of this site:
+https://github.com/spray/spray/blob/master/site/src/main/scala/spray/site/SiteServiceActor.scala.
+
 
 .. _sbt-revolver: https://github.com/spray/sbt-revolver
 .. _twirl: https://github.com/spray/twirl

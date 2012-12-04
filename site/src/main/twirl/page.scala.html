@@ -1,4 +1,4 @@
-@(content: Any, node: spray.site.ContentNode = spray.site.RootNode)
+@(content: Html, node: spray.site.ContentNode = spray.site.RootNode)
 
 <!DOCTYPE HTML>
 <!--[if IE 7 ]>    <html class="ie7 no-js" lang="en"> <![endif]-->
@@ -37,7 +37,7 @@
     </script>
 </head>
 
-<body class="@if(node == spray.site.RootNode) {page-home} else {page-doc}">
+<body class="@{if(node.isRoot) "page-home" else if (node.uri.startsWith("blog")) "page-blog" else "page-doc"}">
 
 @html.header(node)
 

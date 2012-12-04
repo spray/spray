@@ -18,6 +18,7 @@ package spray.site
 
 import akka.actor.Actor
 import akka.event.Logging._
+import shapeless._
 import spray.routing.directives.{DirectoryListing, LogEntry}
 import spray.httpx.encoding.Gzip
 import spray.httpx.marshalling.Marshaller
@@ -50,9 +51,7 @@ class SiteServiceActor extends Actor with HttpServiceActor {
             complete(NotFound) // fail early in order to prevent error response logging
           } ~
           logRequestResponse(showErrorResponses _) {
-            getFromResourceDirectory {
-              "theme"
-            } ~
+            getFromResourceDirectory("theme") ~
             pathPrefix("_images") {
               getFromResourceDirectory("sphinx/json/_images")
             } ~
@@ -60,22 +59,33 @@ class SiteServiceActor extends Actor with HttpServiceActor {
               path("") {
                 complete(page(home()))
               } ~
-              pathTest(".*/$".r) { _ => // require trailing slash
-                path("home") {
-                  redirect("/")
+              pathTest(".*[^/]$".r) { _ => // if the path doesn't end with a slash
+                unmatchedPath { ump =>
+                  redirect(ump + "/")      // we redirect
+                }
+              } ~
+              path("home") {
+                redirect("/")
+              } ~
+              path("index") {
+                complete(page(index()))
+              } ~
+              pathTest("blog") {
+                path("blog") {
+                  complete(page(sphinxBlogIndex(RootNode.blogRoot.children), RootNode.blogRoot))
                 } ~
-                path("index") {
-                  complete(page(index()))
-                } ~
-                path(Rest) { docPath =>
-                  rejectEmptyResponse {
-                    complete(render(docPath))
+                path("blog/category" / PathElement) { tag =>
+                  RootNode.childrenWithTag(tag) match {
+                    case Nil => complete(NotFound, page(error404()))
+                    case posts => complete(page(sphinxBlogIndex(posts), RootNode.blogRoot))
                   }
                 } ~
-                complete(NotFound, page(error404())) // fallback response is 404
+                sphinxNode { node =>
+                  complete(page(sphinxBlogPost(node), node))
+                }
               } ~
-              unmatchedPath { ump =>
-                redirect(ump + "/")
+              sphinxNode { node =>
+                complete(page(sphinxDoc(node), node))
               }
             }
           }
@@ -87,13 +97,10 @@ class SiteServiceActor extends Actor with HttpServiceActor {
     }
   }
 
-  def render(docPath: String) =
-    RootNode.find(docPath) map { node =>
-      SphinxDoc.load(node.uri).orElse(SphinxDoc.load(node.uri + "index")) match {
-        case Some(SphinxDoc(body)) => page(sphinxDoc(node, body), node)
-        case None => throw new RuntimeException("SphinxDoc for uri '%s' not found" format node.uri)
-      }
-    }
+  val sphinxNode = path(Rest).map(RootNode.find).flatMap[ContentNode :: HNil] {
+    case None => complete(NotFound, page(error404()))
+    case Some(node) => provide(node)
+  }
 
   def showRequest(request: HttpRequest) = LogEntry(request.uri, InfoLevel)
 

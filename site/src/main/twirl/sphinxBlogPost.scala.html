@@ -1,0 +1,53 @@
+@(node: spray.site.ContentNode)
+
+<section class="mainContentWrap">
+  <div class="container mainContent">
+    <div class="row-fluid">
+
+      <div class="span9">
+        <div class="row-fluid">
+          <div class="innerSpacer">
+
+            <!--post-->
+            <div class="row-fluid">
+              <div class="span12 post full">
+
+                <!--post content-->
+                <div class="contentWrap">
+                  <div class="row-fluid">
+                    <div class="span12">
+                      @HtmlFormat.raw(node.postBody)
+                    </div>
+                  </div>
+                </div>
+                <!--end post content-->
+
+                <!--share buttons-->
+                <div class="row-fluid">
+                  <div class="span12 shareBox">
+
+                    <!--tweet this button-->
+                    <button class="share twitter"></button>
+
+                    <!--google plus 1 button-->
+                    <button class="share google"></button>
+
+                    <!--facebook like btn-->
+                    <button class="share facebook"></button>
+
+                  </div>
+                </div>
+                <!--end share buttons-->
+
+              </div>
+            </div>
+            <!--end post-->
+          </div>
+        </div>
+      </div>
+
+      @html.blogSidebar()
+
+    </div>
+  </div>
+</section>
