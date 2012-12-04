@@ -32,10 +32,12 @@ import spray.io._
  * replied to with [[spray.can.model.HttpResponsePart]] messages (or [[akka.actor.Status.Failure]] instances
  * in case of errors).
  */
-class HttpClient(ioBridge: ActorRef, settings: ClientSettings = ClientSettings())
+class HttpClient(ioBridge: ActorRef,
+                 settings: ClientSettings = ClientSettings(),
+                 sslEnabled: PipelineContext => Boolean = HttpClient.DefaultSslEnabled)
                 (implicit sslEngineProvider: ClientSSLEngineProvider) extends IOClient(ioBridge) with ConnectionActors {
 
-  protected val pipeline: PipelineStage = HttpClient.pipeline(settings, log)
+  protected val pipeline: PipelineStage = HttpClient.pipeline(settings, sslEnabled, log)
 
   override protected def createConnectionActor(handle: Connection): ActorRef =
     context.actorOf {
@@ -51,8 +53,9 @@ class HttpClient(ioBridge: ActorRef, settings: ClientSettings = ClientSettings()
 
 object HttpClient {
 
-  private[can] def pipeline(settings: ClientSettings,
-                            log: LoggingAdapter)
+  val DefaultSslEnabled: PipelineContext => Boolean = _.connection.tag == HttpClient.SslEnabled
+
+  private[can] def pipeline(settings: ClientSettings, sslEnabled: PipelineContext => Boolean, log: LoggingAdapter)
                            (implicit sslEngineProvider: ClientSSLEngineProvider): PipelineStage = {
     import settings._
     ClientFrontend(RequestTimeout, log) >>
@@ -60,7 +63,7 @@ object HttpClient {
     ResponseParsing(ParserSettings, log) >>
     RequestRendering(settings) >>
     (settings.IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
-    SslTlsSupport(sslEngineProvider, log, _.connection.tag == SslEnabled) >>
+    SslTlsSupport(sslEngineProvider, log, sslEnabled) >>
     (ReapingCycle > 0 && IdleTimeout > 0) ? TickGenerator(ReapingCycle)
   }
 
