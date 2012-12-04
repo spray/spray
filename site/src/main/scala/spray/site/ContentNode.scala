@@ -34,14 +34,15 @@ sealed trait ContentNode {
   def absoluteUri = if (uri.startsWith("http") || uri.startsWith("/")) uri else "/" + uri
   def isDescendantOf(node: ContentNode): Boolean = node == this || !isRoot && parent.isDescendantOf(node)
 
-  lazy val (body, date, postMetaData): (String, Option[DateTime], PostMetaData) =
-    SphinxDoc.load(uri).orElse(SphinxDoc.load(uri + "index/")) match {
-      case Some(SphinxDoc(b, d, pmd)) =>
-        val dateTime = DateTime.fromIsoDateTimeString(d.substring(d.lastIndexOf("/") + 1).take(10) + "T00:00:00")
-        (b, dateTime, pmd)
-      case None => throw new RuntimeException("SphinxDoc for uri '%s' not found" format uri)
-    }
-
+  def sphinxDoc = SphinxDoc.load(uri).orElse(SphinxDoc.load(uri + "index/")).getOrElse {
+    sys.error("SphinxDoc for uri '%s' not found" format uri)
+  }
+  def body = sphinxDoc.body
+  def date = {
+    val name = sphinxDoc.current_page_name
+    DateTime.fromIsoDateTimeString(name.substring(name.lastIndexOf("/") + 1).take(10) + "T00:00:00")
+  }
+  def postMetaData = sphinxDoc.meta
   def postDate = date.fold(sys.error(uri + " has no date in name"))(_.toIsoDateString)
   def postAuthor = postMetaData.author.getOrElse(sys.error(uri + " has no author meta data field"))
   def postTags = postMetaData.tagList

@@ -77,7 +77,7 @@ class SiteServiceActor extends Actor with HttpServiceActor {
                 path("blog/category" / PathElement) { tag =>
                   RootNode.childrenWithTag(tag) match {
                     case Nil => complete(NotFound, page(error404()))
-                    case posts => complete(page(sphinxBlogIndex(posts), RootNode.blogRoot))
+                    case posts => complete(page(sphinxBlogIndex(posts, tag), RootNode.blogRoot))
                   }
                 } ~
                 sphinxNode { node =>

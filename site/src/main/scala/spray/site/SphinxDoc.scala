@@ -17,7 +17,11 @@
 package spray.site
 
 import org.parboiled.common.FileUtils
+import scala.concurrent.duration.Duration
+import scala.concurrent.ExecutionContext
+import spray.caching.LruCache
 import spray.json._
+import spray.util.pimpFuture
 
 
 object JsonProtocol extends DefaultJsonProtocol {
@@ -34,12 +38,17 @@ case class SphinxDoc(body: String, current_page_name: String, meta: PostMetaData
 object SphinxDoc {
   import JsonProtocol._
 
+  private val cache = LruCache[Option[SphinxDoc]](timeToLive = Duration(1, "s"))
+
   def load(docPath: String) = {
+    import ExecutionContext.Implicits.global
     require(docPath.endsWith("/"))
-    loadFrom("sphinx/json/%s.fjson" format docPath.dropRight(1))
+    cache(docPath) {
+      loadFrom("sphinx/json/%s.fjson" format docPath.dropRight(1))
+    }.await
   }
 
-  def loadFrom(resourceName: String): Option[SphinxDoc] = {
+  private def loadFrom(resourceName: String): Option[SphinxDoc] = {
     val nullableJsonSource = FileUtils.readAllTextFromResource(resourceName)
     Option(nullableJsonSource).map { jsonSource =>
       val patchedJsonSource = jsonSource.replace("\\u00b6", "&#182;").replace(""" border=\"1\"""", "")

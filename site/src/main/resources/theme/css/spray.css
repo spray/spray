@@ -1,4 +1,9 @@
-body, p { font-size: 14px; }
+body, p {
+    font-size: 14px;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    color: #515161;
+    text-rendering: optimizelegibility;
+}
 
 .navbar .nav { margin-top: 60px; }
 @media (min-width: 768px) and (max-width: 979px) {
@@ -131,3 +136,4 @@ table.footnote td { vertical-align: top; }
 .post .post-title a { color: #08C; }
 .post .post-title a:hover { color: #005580; }
 .post .post-meta { margin: -0.5em 0 2em; font-size: 12px; }
+.post .comment-count { font-size: 11px; }

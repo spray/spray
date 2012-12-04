@@ -1,4 +1,4 @@
-@(posts: Seq[spray.site.ContentNode])
+@(posts: Seq[spray.site.ContentNode], tag: String = "")
 
 <section class="mainContentWrap">
   <div class="container mainContent">
@@ -9,7 +9,7 @@
           <div class="innerSpacer section">
 
             <div class="row-fluid pageTitle">
-              <div class="span12"><h1>The <em>spray</em> Blog</h1></div>
+              <div class="span12"><h1>@{if (tag.isEmpty) "Blog" else s"""Posts with tag "$tag""""}</h1></div>
             </div>
 
             @posts.map { node =>
@@ -38,6 +38,10 @@
                       </div>
                       <div class="span10">
                         @node.postIndexParagraphs
+                        <p>
+                          <a href="/@node.uri"><span class="label">Read More</span></a>&nbsp;&nbsp;&nbsp;
+                          <a href="/@node.uri#disqus_thread" class="comment-count"></a>
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -54,3 +58,13 @@
     </div>
   </div>
 </section>
+
+<script type="text/javascript">
+var disqus_shortname = 'sprayio';
+(function () {
+  var s = document.createElement('script'); s.async = true;
+  s.type = 'text/javascript';
+  s.src = 'http://' + disqus_shortname + '.disqus.com/count.js';
+  (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+}());
+</script>

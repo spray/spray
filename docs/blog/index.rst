@@ -4,5 +4,5 @@ Blog
 .. toctree::
    :maxdepth: 1
 
-   2012-11-16-the-magnet-pattern
-   2012-11-15-welcome-to-the-spray-blog
+   2012-12-06-the-magnet-pattern
+   2012-12-01-welcome-to-the-spray-blog

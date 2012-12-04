@@ -133,7 +133,7 @@ object Build extends Build with DocSupport {
   // -------------------------------------------------------------------------------------------------------------------
 
   lazy val site = Project("site", file("site"))
-    .dependsOn(sprayCan, sprayRouting)
+    .dependsOn(sprayCaching, sprayCan, sprayRouting)
     .settings(siteSettings: _*)
     .settings(SphinxSupport.settings: _*)
     .settings(libraryDependencies ++=
