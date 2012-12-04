@@ -32,7 +32,7 @@ import spray.http._
  */
 object HttpDialog {
   private sealed abstract class Action
-  private case class ConnectAction(host: String, port: Int, ssl: Boolean) extends Action
+  private case class ConnectAction(host: String, port: Int, tag: Any) extends Action
   private case class SendAction(request: HttpRequest) extends Action
   private case class WaitIdleAction(duration: Duration) extends Action
   private case class ReplyAction(f: HttpResponse => HttpRequest) extends Action
@@ -50,9 +50,9 @@ object HttpDialog {
       context.stop(self)
     }
 
-    def receive = {
-      case ConnectAction(host, port, ssl) :: remainingActions =>
-        val command = HttpClient.Connect(host, port, if (ssl) HttpClient.SslEnabled else ())
+    def receive: Receive = {
+      case ConnectAction(host, port, tag) :: remainingActions =>
+        val command = HttpClient.Connect(host, port, tag)
         client.tell(command, Reply.withContext(remainingActions))
 
       case SendAction(request) :: remainingActions =>
@@ -226,9 +226,9 @@ object HttpDialog {
   /**
    * Constructs a new `HttpDialog` for a connection to the given host and port.
    */
-  def apply(httpClient: ActorRef, host: String, port: Int = 80, ssl: Boolean = false)
+  def apply(httpClient: ActorRef, host: String, port: Int = 80, tag: Any = ())
            (implicit refFactory: ActorRefFactory) =
-    new SendFirst(new Context(refFactory, httpClient, ConnectAction(host, port, ssl)))
+    new SendFirst(new Context(refFactory, httpClient, ConnectAction(host, port, tag)))
       with SendMany
       with WaitIdle
 
