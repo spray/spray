@@ -8,6 +8,8 @@ Version 1.0-M6 (2012-11-30)
   - introduced SprayCanHttpServerApp convenience trait, updated examples
   - smaller performance improvements
 - spray-http:
+  - added support for 'Bearer' scheme in Authorization header (OAuth 2.0), closes #155
+  - renamed 'OtherHttpCredentials' to 'GenericHttpCredentials'
   - improved MediaType model, added more default MediaTypes, closed #157
   - improved warmup
   - improved parser for 'X-Forwarded-For' header to also accept "unknown" elements
