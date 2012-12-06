@@ -35,7 +35,14 @@ object RefUtils {
 
   private def asInternalActorRef(ref: ActorRef): InternalActorRef = ref match {
     case x: InternalActorRef => x
-    case _ => throw new IllegalArgumentException("Incompatible ActorRef " + ref)
+    case _ => throw new IllegalArgumentException("Unsupported ActorRef " + ref)
   }
+
+  def actorSystem(refFactory: ActorRefFactory): ActorSystem =
+    refFactory match {
+      case x: ActorContext => x.system
+      case x: ActorSystem => x
+      case x => throw new IllegalArgumentException("Unsupported ActorRefFactory implementation:" + refFactory)
+    }
 
 }
