@@ -83,7 +83,10 @@ object Build extends Build with DocSupport {
 
 
   lazy val sprayRouting = Project("spray-routing", file("spray-routing"))
-    .dependsOn(sprayCaching % "provided", sprayHttp, sprayHttpx, sprayUtil)
+    .dependsOn(
+      sprayCaching % "provided", // for the CachingDirectives trait
+      sprayCan % "provided",  // for the SimpleRoutingApp trait
+      sprayHttp, sprayHttpx, sprayUtil)
     .settings(sprayModuleSettings: _*)
     .settings(spray.boilerplate.BoilerplatePlugin.Boilerplate.settings: _*)
     .settings(libraryDependencies ++=
@@ -202,7 +205,7 @@ object Build extends Build with DocSupport {
     )
 
   lazy val sprayRoutingExamples = Project("spray-routing-examples", file("examples/spray-routing"))
-    .aggregate(onJetty, onSprayCan)
+    .aggregate(onJetty, onSprayCan, simpleRoutingApp)
     .settings(exampleSettings: _*)
 
   lazy val onJetty = Project("on-jetty", file("examples/spray-routing/on-jetty"))
@@ -223,6 +226,11 @@ object Build extends Build with DocSupport {
       test(specs2) ++
       runtime(akkaSlf4j, logback)
     )
+
+  lazy val simpleRoutingApp = Project("simple-routing-app", file("examples/spray-routing/simple-routing-app"))
+    .dependsOn(sprayCan, sprayRouting)
+    .settings(exampleSettings: _*)
+    .settings(libraryDependencies ++= compile(akkaActor))
 
   lazy val sprayServletExamples = Project("spray-servlet-examples", file("examples/spray-servlet"))
     .aggregate(simpleSprayServletServer)
