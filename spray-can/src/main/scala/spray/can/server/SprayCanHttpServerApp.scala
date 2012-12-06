@@ -26,17 +26,16 @@ trait SprayCanHttpServerApp {
   // override if you require a special ActorSystem configuration
   lazy val system = ActorSystem(actorSystemNameFrom(getClass))
 
-  // every spray-can HttpServer (and HttpClient) needs an IOBridge for low-level network IO
-  // (but several servers and/or clients can share one)
-  val ioBridge = IOExtension(system).ioBridge
-
   // bring HttpServer.Bind into scope without import
   def Bind = HttpServer.Bind
 
   /**
    * Creates a new spray-can HttpServer actor using the given singleton handler, settings and name.
    */
-  def newHttpServer(handler: ActorRef, settings: ServerSettings = ServerSettings(), name: String = "http-server")
+  def newHttpServer(handler: ActorRef,
+                    ioBridge: ActorRef = IOExtension(system).ioBridge,
+                    settings: ServerSettings = ServerSettings(),
+                    name: String = "http-server")
                    (implicit sslEngineProvider: ServerSSLEngineProvider) =
     system.actorOf(Props(new HttpServer(ioBridge, SingletonHandler(handler), settings)), name)
 
