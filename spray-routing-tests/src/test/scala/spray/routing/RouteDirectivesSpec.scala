@@ -16,6 +16,7 @@
 
 package spray.routing
 
+import scala.concurrent.Promise
 import spray.http._
 import HttpHeaders._
 import StatusCodes._
@@ -42,6 +43,11 @@ class RouteDirectivesSpec extends RoutingSpec {
         entityAs[String] === "put"
         i === 1
       }
+    }
+    "support completion from response futures" in {
+      Get() ~> {
+        get & complete(Promise.successful(HttpResponse(entity = "yup")).future)
+      } ~> check { entityAs[String] === "yup" }
     }
   }
 
