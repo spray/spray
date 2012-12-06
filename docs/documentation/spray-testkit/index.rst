@@ -140,9 +140,9 @@ The ``sealRoute`` wrapper applies the logic of the in-scope :ref:`ExceptionHandl
 :ref:`RejectionHandler <Rejections>` to all exceptions and rejections coming back from the route, and translates them
 to the respective ``HttpResponse``.
 
-The :ref:`simple-on-spray-can` examples defines a simple test using ``sealRoute`` like this:
+The :ref:`on-spray-can` examples defines a simple test using ``sealRoute`` like this:
 
-.. includecode:: /../examples/spray-routing/simple-on-spray-can/src/test/scala/spray/examples/DemoServiceSpec.scala
+.. includecode:: /../examples/spray-routing/on-spray-can/src/test/scala/spray/examples/DemoServiceSpec.scala
    :snippet: source-quote
 
 
@@ -150,9 +150,9 @@ Examples
 --------
 
 A full example of how an API service definition can be structured in order to be testable with *spray-testkit* and
-without actor involvement is shown with the :ref:`simple-on-spray-can` example. This__ is its test definition.
+without actor involvement is shown with the :ref:`on-spray-can` example. This__ is its test definition.
 
-__ https://github.com/spray/spray/blob/master/examples/spray-routing/simple-on-spray-can/src/test/scala/spray/examples/DemoServiceSpec.scala
+__ https://github.com/spray/spray/blob/master/examples/spray-routing/on-spray-can/src/test/scala/spray/examples/DemoServiceSpec.scala
 
 Another great pool of examples are the tests for all the predefined directives in :ref:`spray-routing`.
 They can be found here__.

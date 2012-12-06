@@ -6,10 +6,10 @@ Complete Examples
 The ``/examples/spray-routing/`` directory of the *spray* repository
 contains a number of example projects for *spray-routing*, which are described here.
 
-.. _simple-on-spray-can:
+.. _on-spray-can:
 
-simple-on-spray-can
--------------------
+on-spray-can
+------------
 
 This examples demonstrates how to run *spray-routing* on top of the :ref:`spray-can` :ref:`HttpServer`.
 It implements a very simple web-site and shows off various features like streaming, stats support and timeout handling.
@@ -26,7 +26,7 @@ Follow these steps to run it on your machine:
 
 3. Run SBT::
 
-    sbt "project simple-on-spray-can" run
+    sbt "project on-spray-can" run
 
 4. Browse to http://127.0.0.1:8080/
 
@@ -39,8 +39,8 @@ Follow these steps to run it on your machine:
     curl -v 127.0.0.1:8080/stop
 
 
-simple-on-jetty
----------------
+on-jetty
+--------
 
 This examples demonstrates how to run *spray-routing* on top of :ref:`spray-servlet`.
 It implements a very simple web-site and shows off various features like streaming, stats support and timeout handling.
@@ -57,7 +57,7 @@ Follow these steps to run it on your machine:
 
 3. Run SBT::
 
-    sbt "project simple-on-jetty" container:start shell
+    sbt "project on-jetty" container:start shell
 
 4. Browse to http://127.0.0.1:8080/
 
