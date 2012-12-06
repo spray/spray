@@ -179,10 +179,10 @@ object Build extends Build {
     )
 
   lazy val sprayRoutingExamples = Project("spray-routing-examples", file("examples/spray-routing"))
-    .aggregate(simpleOnJetty, simpleOnSprayCan)
+    .aggregate(onJetty, onSprayCan)
     .settings(exampleSettings: _*)
 
-  lazy val simpleOnJetty = Project("simple-on-jetty", file("examples/spray-routing/simple-on-jetty"))
+  lazy val onJetty = Project("on-jetty", file("examples/spray-routing/on-jetty"))
     .dependsOn(sprayCaching, sprayServlet, sprayRouting, sprayTestKit % "test")
     .settings(jettyExampleSettings: _*)
     .settings(libraryDependencies ++=
@@ -192,7 +192,7 @@ object Build extends Build {
       container(jettyWebApp, servlet30)
     )
 
-  lazy val simpleOnSprayCan = Project("simple-on-spray-can", file("examples/spray-routing/simple-on-spray-can"))
+  lazy val onSprayCan = Project("on-spray-can", file("examples/spray-routing/on-spray-can"))
     .dependsOn(sprayCaching, sprayCan, sprayRouting, sprayTestKit % "test")
     .settings(exampleSettings: _*)
     .settings(libraryDependencies ++=
