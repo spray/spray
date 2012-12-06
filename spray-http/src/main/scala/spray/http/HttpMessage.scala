@@ -127,8 +127,9 @@ final class HttpRequest private(
   val headers: List[HttpHeader],
   val entity: HttpEntity,
   val protocol: HttpProtocol,
-  val URI: URI,
-  val queryParams: QueryParams) extends HttpMessage with HttpRequestPart {
+  val URI: URI,                // non-public, only used internally for caching
+  val queryParams: QueryParams // non-public, only used internally for caching
+  ) extends HttpMessage with HttpRequestPart {
 
   type Self = HttpRequest
 
@@ -160,7 +161,7 @@ final class HttpRequest private(
    */
   def parseUri: HttpRequest = {
     try {
-      if (URI eq HttpRequest.DefaultURI) copy(URI = new URI(uri)) else this
+      if (URI eq HttpRequest.DefaultURI) internalCopy(URI = new URI(uri)) else this
     } catch {
       case e: URISyntaxException => throw new IllegalRequestException(BadRequest, "Illegal URI", e.getMessage)
     }
@@ -177,7 +178,7 @@ final class HttpRequest private(
     def doParseQuery(req: HttpRequest) = {
       if (!req.rawQuery.isEmpty) {
         QueryParser.parseQueryString(req.rawQuery) match {
-          case Right(params) => req.copy(queryParams = params)
+          case Right(params) => req.internalCopy(queryParams = params)
           case Left(errorInfo) => throw new IllegalRequestException(BadRequest, errorInfo)
         }
       } else req
@@ -198,6 +199,11 @@ final class HttpRequest private(
   }
 
   def copy(method: HttpMethod = method, uri: String = uri, headers: List[HttpHeader] = headers,
+           entity: HttpEntity = entity, protocol: HttpProtocol = protocol): HttpRequest =
+    if (uri != this.uri) HttpRequest(method, uri, headers, entity, protocol)
+    else new HttpRequest(method, uri, headers, entity, protocol, URI, queryParams)
+
+  private def internalCopy(method: HttpMethod = method, uri: String = uri, headers: List[HttpHeader] = headers,
            entity: HttpEntity = entity, protocol: HttpProtocol = protocol, URI: URI = URI,
            queryParams: Map[String, String] = queryParams): HttpRequest =
     new HttpRequest(method, uri, headers, entity, protocol, URI, queryParams)
@@ -290,10 +296,10 @@ final class HttpRequest private(
 
   def canBeRetried = method.isIdempotent
 
-  def withHeaders(headers: List[HttpHeader]) = if (headers eq this.headers) this else copy(headers = headers)
-  def withEntity(entity: HttpEntity) = if (entity eq this.entity) this else copy(entity = entity)
+  def withHeaders(headers: List[HttpHeader]) = if (headers eq this.headers) this else internalCopy(headers = headers)
+  def withEntity(entity: HttpEntity) = if (entity eq this.entity) this else internalCopy(entity = entity)
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) =
-    if ((headers eq this.headers) && (entity eq this.entity)) this else copy(headers = headers, entity = entity)
+    if ((headers eq this.headers) && (entity eq this.entity)) this else internalCopy(headers = headers, entity = entity)
 }
 
 object HttpRequest {
