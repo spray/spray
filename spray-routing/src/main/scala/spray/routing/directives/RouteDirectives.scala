@@ -80,20 +80,27 @@ object CompletionMagnet {
         def apply(ctx: RequestContext) { ctx.complete(future) }
       }
     }
-  implicit def fromObject[T :Marshaller](obj: T) = new CompletionMagnet {
-    def route: StandardRoute = new CompletionRoute(OK, Nil, obj)
-  }
-  implicit def fromStatusObject[T :Marshaller](tuple: (StatusCode, T)) = new CompletionMagnet {
-    def route: StandardRoute = new CompletionRoute(tuple._1, Nil, tuple._2)
-  }
-  implicit def fromStatusHeadersObject[T :Marshaller](tuple: (StatusCode, List[HttpHeader], T)) = new CompletionMagnet {
-    def route: StandardRoute = new CompletionRoute(tuple._1, tuple._2, tuple._3)
-  }
-  implicit def fromHttpResponse(response: HttpResponse) = new CompletionMagnet {
-    def route = new StandardRoute {
-      def apply(ctx: RequestContext) { ctx.complete(response) }
+  implicit def fromStatusCodeFuture(future: Future[StatusCode])(implicit ec: ExecutionContext) =
+    future.map(status => HttpResponse(status, entity = status.defaultMessage))
+
+  implicit def fromObject[T :Marshaller](obj: T) =
+    new CompletionMagnet {
+      def route: StandardRoute = new CompletionRoute(OK, Nil, obj)
     }
-  }
+  implicit def fromStatusObject[T :Marshaller](tuple: (StatusCode, T)) =
+    new CompletionMagnet {
+      def route: StandardRoute = new CompletionRoute(tuple._1, Nil, tuple._2)
+    }
+  implicit def fromStatusHeadersObject[T :Marshaller](tuple: (StatusCode, List[HttpHeader], T)) =
+    new CompletionMagnet {
+      def route: StandardRoute = new CompletionRoute(tuple._1, tuple._2, tuple._3)
+    }
+  implicit def fromHttpResponse(response: HttpResponse) =
+    new CompletionMagnet {
+      def route = new StandardRoute {
+        def apply(ctx: RequestContext) { ctx.complete(response) }
+      }
+    }
   implicit def fromStatus(status: StatusCode) =
     new CompletionMagnet {
       def route = new StandardRoute {
