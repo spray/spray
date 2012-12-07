@@ -85,8 +85,8 @@ object HttpClient {
 
   ////////////// EVENTS //////////////
   // HttpResponseParts +
-  val Connected = IOClient.Connected
-  type Closed = IOClient.Closed;     val Closed = IOClient.Closed
-  type Received = IOClient.Received; val Received = IOClient.Received
+  type Connected = IOClient.Connected; val Connected = IOClient.Connected
+  type Closed = IOClient.Closed;       val Closed = IOClient.Closed
+  type Received = IOClient.Received;   val Received = IOClient.Received
 }
 
