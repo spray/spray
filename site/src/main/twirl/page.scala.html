@@ -25,6 +25,10 @@
 
     <link rel="shortcut icon" href="/favicon.png" />
 
+    @if(node.uri.startsWith("blog")) {
+      <link href="/blog/feed/" type="application/atom+xml" rel="alternate" title="Blog Atom Feed" />
+    }
+
     <script type="text/javascript">
       var _gaq = _gaq || [];
       _gaq.push(['_setAccount', 'UA-35539715-1']);

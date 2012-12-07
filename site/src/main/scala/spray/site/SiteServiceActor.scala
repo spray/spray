@@ -72,20 +72,23 @@ class SiteServiceActor extends Actor with HttpServiceActor {
               } ~
               pathTest("blog") {
                 path("blog") {
-                  complete(page(sphinxBlogIndex(RootNode.blogRoot.children), RootNode.blogRoot))
+                  complete(page(blogIndex(RootNode.blogRoot.children), RootNode.blogRoot))
+                } ~
+                path("blog/feed") {
+                  complete(xml.blogAtomFeed())
                 } ~
                 path("blog/category" / PathElement) { tag =>
                   RootNode.childrenWithTag(tag) match {
                     case Nil => complete(NotFound, page(error404()))
-                    case posts => complete(page(sphinxBlogIndex(posts, tag), RootNode.blogRoot))
+                    case posts => complete(page(blogIndex(posts, tag), RootNode.blogRoot))
                   }
                 } ~
                 sphinxNode { node =>
-                  complete(page(sphinxBlogPost(node), node))
+                  complete(page(blogPost(node), node))
                 }
               } ~
               sphinxNode { node =>
-                complete(page(sphinxDoc(node), node))
+                complete(page(document(node), node))
               }
             }
           }

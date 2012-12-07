@@ -16,8 +16,8 @@
 
 package spray.site
 
+import scala.xml.{Node, XML}
 import java.lang.{ StringBuilder => JStringBuilder }
-import xml.{Node, XML}
 import spray.util._
 import spray.http.DateTime
 
@@ -43,7 +43,8 @@ sealed trait ContentNode {
     DateTime.fromIsoDateTimeString(name.substring(name.lastIndexOf("/") + 1).take(10) + "T00:00:00")
   }
   def postMetaData = sphinxDoc.meta
-  def postDate = date.fold(sys.error(uri + " has no date in name"))(_.toIsoDateString)
+  def postDateTime = date.getOrElse(sys.error(uri + " has no date in name"))
+  def postDate = postDateTime.toIsoDateString
   def postAuthor = postMetaData.author.getOrElse(sys.error(uri + " has no author meta data field"))
   def postTags = postMetaData.tagList
   def postIndexParagraphs = (XML.loadString(body) \\ "p").take(postMetaData.indexParagraphs.fold(1)(_.toInt))

@@ -137,3 +137,13 @@ table.footnote td { vertical-align: top; }
 .post .post-title a:hover { color: #005580; }
 .post .post-meta { margin: -0.5em 0 2em; font-size: 12px; }
 .post .comment-count { font-size: 11px; }
+
+.sidebar .widget h3 {
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    color: #515161;
+    text-rendering: optimizelegibility;
+    font-size: 16px;
+    line-height: 40px;
+    margin: 0;
+    font-weight: bold;
+}
