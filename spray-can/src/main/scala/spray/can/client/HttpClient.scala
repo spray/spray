@@ -39,10 +39,10 @@ class HttpClient(ioBridge: ActorRef,
 
   protected val pipeline: PipelineStage = HttpClient.pipeline(settings, sslEnabled, log)
 
-  override protected def createConnectionActor(handle: Connection): ActorRef =
+  override protected def createConnectionActor(connection: Connection): ActorRef =
     context.actorOf {
       Props {
-        new IOConnectionActor(handle) {
+        new IOConnectionActor(connection) {
           override def receive: Receive = super.receive orElse {
             case x: HttpMessagePart with HttpRequestPart => pipelines.commandPipeline(HttpCommand(x))
           }

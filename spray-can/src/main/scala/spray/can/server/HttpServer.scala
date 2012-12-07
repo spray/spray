@@ -18,7 +18,7 @@ package spray.can.server
 
 import akka.event.LoggingAdapter
 import akka.util.Duration
-import akka.actor.ActorRef
+import akka.actor.{Props, ActorRef}
 import spray.can.server.StatsSupport.StatsHolder
 import spray.io._
 import spray.http._
@@ -33,7 +33,12 @@ class HttpServer(ioBridge: ActorRef, messageHandler: MessageHandler, settings: S
   protected val pipeline =
     HttpServer.pipeline(settings, messageHandler, timeoutResponse, statsHolder, log)
 
-  override def receive = super.receive orElse {
+  protected var connectionCounter = 0L
+
+  override protected def createConnectionActor(connection: Connection) =
+    context.actorOf(Props(new IOConnectionActor(connection)), "c" + { connectionCounter += 1; connectionCounter })
+
+  override def receive: Receive = super.receive orElse {
     case HttpServer.GetStats    => statsHolder.foreach(holder => sender ! holder.toStats)
     case HttpServer.ClearStats  => statsHolder.foreach(_.clear())
   }
