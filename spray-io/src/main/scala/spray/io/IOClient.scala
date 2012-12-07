@@ -41,7 +41,7 @@ abstract class IOClient(val rootIoBridge: ActorRef) extends IOPeer {
     case Reply(IOBridge.Connected(key, tag), commander: ActorRef) =>
       val handle = createConnectionHandle(key, sender, commander, tag)
       sender ! IOBridge.Register(handle)
-      commander ! Connected(handle)
+      commander.tell(Connected(handle), handle.handler)
 
     case ev@ Closed(connection: Connection, _) =>
       // inform the original connection commander of the closing
