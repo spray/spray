@@ -259,7 +259,7 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   val `application/gnutar`                                                        = app("gnutar", uncompressible, binary, "tgz")
   val `application/java-archive`                                                  = app("java-archive", uncompressible, binary, "jar", "war", "ear")
   val `application/javascript`                                                    = app("javascript", compressible, notBinary, "js")
-  val `application/json`                                                          = app("json", compressible, notBinary, "json")
+  val `application/json`                                                          = app("json", compressible, binary, "json") // we treat JSON as binary, since it's encoding is not variable but defined by RFC4627
   val `application/lha`                                                           = app("lha", uncompressible, binary, "lha")
   val `application/lzx`                                                           = app("lzx", uncompressible, binary, "lzx")
   val `application/mspowerpoint`                                                  = app("mspowerpoint", uncompressible, binary, "pot", "pps", "ppt", "ppz")

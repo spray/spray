@@ -21,6 +21,7 @@ import spray.json._
 import spray.http._
 import spray.httpx.unmarshalling._
 import spray.httpx.marshalling._
+import HttpCharsets._
 import MediaTypes._
 
 
@@ -42,7 +43,7 @@ class SprayJsonSupportSpec extends Specification with SprayJsonSupport {
       HttpBody(`application/json`, employeeJson).as[Employee] === Right(employee)
     }
     "provide marshalling capability for case classes with an in-scope JsonFormat" in {
-      marshal(employee) === Right(HttpBody(`application/json`, employeeJson))
+      marshal(employee) === Right(HttpBody(ContentType(`application/json`, `UTF-8`), employeeJson))
     }
   }
 
