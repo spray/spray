@@ -123,4 +123,24 @@ class MarshallingDirectivesSpec extends RoutingSpec {
     )
   }
 
+  "The marshalling infrastructure for JSON" should {
+    import spray.json._
+    import spray.httpx.SprayJsonSupport._
+    case class Foo(name: String)
+    object MyJsonProtocol extends DefaultJsonProtocol { implicit val fooFormat = jsonFormat1(Foo) }
+    import MyJsonProtocol._
+    val foo = Foo("Hällö")
+
+    "render JSON with UTF-8 encoding if no `Accept-Charset` request header is present" in {
+      Get() ~> complete(foo) ~> check {
+        body === HttpBody(ContentType(`application/json`, `UTF-8`), PrettyPrinter(foo.toJson))
+      }
+    }
+    "reject JSON rendering if an `Accept-Charset` request header requests a non-UTF-8 encoding" in {
+      Get() ~> addHeader(`Accept-Charset`(`ISO-8859-1`)) ~> complete(foo) ~> check {
+        rejection === UnacceptedResponseContentTypeRejection(ContentType(`application/json`, `UTF-8`) :: Nil)
+      }
+    }
+  }
+
 }
