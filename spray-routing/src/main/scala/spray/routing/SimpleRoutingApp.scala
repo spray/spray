@@ -42,7 +42,7 @@ trait SimpleRoutingApp extends SprayCanHttpServerApp with HttpService {
    */
   def startServer(interface: String,
                   port: Int,
-                  ioBridge: ActorRef = IOExtension(system).ioBridge,
+                  ioBridge: ActorRef = IOExtension(system).ioBridge(),
                   settings: ServerSettings = ServerSettings(),
                   serverActorName: String = "http-server",
                   serviceActorName: String = "simple-service-actor")

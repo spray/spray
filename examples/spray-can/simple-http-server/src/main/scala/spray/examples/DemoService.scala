@@ -32,7 +32,7 @@ class DemoService extends Actor with ActorLogging {
 
     case HttpRequest(GET, "/io-stats", _, _, _) =>
       val client = sender
-      (IOExtension(context.system).ioBridge ? IOBridge.GetStats).onSuccess {
+      (IOExtension(context.system).ioBridge() ? IOBridge.GetStats).onSuccess {
         case IOBridge.StatsMap(map) => client ! statsPresentation(map)
       }
 

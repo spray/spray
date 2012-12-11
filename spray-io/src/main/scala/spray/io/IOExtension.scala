@@ -30,10 +30,10 @@ class IOExtension(system: ExtendedActorSystem) extends Extension {
   val settings = new IOBridge.Settings(system.settings.config)
 
   /**
-   * Creates and gets the root IOBridge for the ActorSystem using the systems config settings.
+   * Creates, gets and starts the root IOBridge for the ActorSystem using the systems config settings.
    * If the IOBridge is already constructed simply gets the existing instance.
    */
-  def ioBridge: ActorRef = ioBridge(settings)
+  def ioBridge(): ActorRef = ioBridge(settings)
 
   /**
    * Creates and gets the root IOBridge for the ActorSystem using the given settings.

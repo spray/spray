@@ -35,7 +35,7 @@ class SslTlsSupportSpec extends Specification {
   val port = 23454
   val serverThread = new ServerThread
   serverThread.start()
-  val ioBridge = IOExtension(system).ioBridge
+  val ioBridge = IOExtension(system).ioBridge()
 
   sequential
 

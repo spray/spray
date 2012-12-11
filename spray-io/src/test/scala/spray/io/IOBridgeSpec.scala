@@ -32,7 +32,7 @@ class IOBridgeSpec extends Specification {
   implicit val system = ActorSystem("IOBridgeSpec")
   val port = 23456
 
-  val bridge = IOExtension(system).ioBridge
+  val bridge = IOExtension(system).ioBridge()
   val server = system.actorOf(Props(new TestServer(bridge)), name = "test-server")
   val client = system.actorOf(Props(new TestClient(bridge)), name = "test-client")
 
