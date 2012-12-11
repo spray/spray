@@ -13,7 +13,7 @@ object Main extends App {
   implicit val system = ActorSystem("echo-server")
 
   // create and start an IOBridge
-  val ioBridge = IOExtension(system).ioBridge
+  val ioBridge = IOExtension(system).ioBridge()
 
   // and our actual server "service" actor
   val server = system.actorOf(

@@ -22,7 +22,7 @@ class HttpConduitExamplesSpec extends Specification {
   //# setup
 
   implicit val system = ActorSystem()
-  val ioBridge = IOExtension(system).ioBridge
+  val ioBridge = IOExtension(system).ioBridge()
   val httpClient = system.actorOf(Props(new HttpClient(ioBridge)))
   val targetHostName = "localhost" // hide
   val port = 8898                  // hide

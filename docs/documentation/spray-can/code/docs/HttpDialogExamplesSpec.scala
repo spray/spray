@@ -20,7 +20,7 @@ class HttpDialogExamplesSpec extends Specification {
   //# example-1
 
   implicit val system = ActorSystem()
-  val ioBridge = IOExtension(system).ioBridge
+  val ioBridge = IOExtension(system).ioBridge()
   val client = system.actorOf(Props(new HttpClient(ioBridge)))
 
   //#

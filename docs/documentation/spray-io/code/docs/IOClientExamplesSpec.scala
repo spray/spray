@@ -47,7 +47,7 @@ class IOClientExamplesSpec extends Specification {
 
   val system = ActorSystem()
 
-  val ioBridge = IOExtension(system).ioBridge
+  val ioBridge = IOExtension(system).ioBridge()
   //#
 
   "example-1" in {

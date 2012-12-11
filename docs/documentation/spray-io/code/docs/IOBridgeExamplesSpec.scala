@@ -11,7 +11,7 @@ class IOBridgeExamplesSpec extends Specification {
 
     val system = ActorSystem()
 
-    val ioBridge = IOExtension(system).ioBridge
+    val ioBridge = IOExtension(system).ioBridge()
 
     // start applications actors using the ioBridge instance
     // ...

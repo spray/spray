@@ -17,7 +17,7 @@ object Main extends App {
 
   // every spray-can HttpClient (and HttpServer) needs an IOBridge for low-level network IO
   // (but several servers and/or clients can share one)
-  val ioBridge = IOExtension(system).ioBridge
+  val ioBridge = IOExtension(system).ioBridge()
 
   // create and start a spray-can HttpClient
   val httpClient = system.actorOf(
