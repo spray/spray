@@ -42,6 +42,14 @@ sealed trait HttpMessagePart extends HttpMessagePartWrapper {
   def withSentAck(ack: Any) = Confirmed(this, Some(ack))
 }
 
+object HttpMessagePart {
+  def unapply(wrapper: HttpMessagePartWrapper): Option[(HttpMessagePart, Option[Any])] =
+    wrapper match {
+      case part: HttpMessagePart => Some((part, None))
+      case Confirmed(part, sentAck) => Some((part, sentAck))
+    }
+}
+
 sealed trait HttpRequestPart extends HttpMessagePart
 
 sealed trait HttpResponsePart extends HttpMessagePart
