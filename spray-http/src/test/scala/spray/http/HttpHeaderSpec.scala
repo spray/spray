@@ -120,7 +120,7 @@ class HttpHeaderSpec extends Specification {
     """Cookie: a="1"; b="2"""" ! example(`Cookie`(HttpCookie("a", "1"), HttpCookie("b", "2")))_ ^
     p^
     "Date: Wed, 13 Jul 2011 08:12:31 GMT" ! example(Date(DateTime(2011, 7, 13, 8, 12, 31)))_ ^
-    "Date: Fri, 23 Mar 1804 12:11:10 GMT" ! example(Date(DateTime(1804, 3, 23, 12, 11, 10)))_ ^
+    "Date: Fri, 23 Mar 1804 12:11:10 UTC" ! example(Date(DateTime(1804, 3, 23, 12, 11, 10)), _.replace("UTC", "GMT"))_ ^
     p^
     "Host: www.spray.io:8080" ! example(Host("www.spray.io", Some(8080)))_ ^
     "Host: spray.io" ! example(Host("spray.io"))_ ^
