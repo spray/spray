@@ -513,7 +513,7 @@ it generates this::
 which is enough to make the types line up, but isn't quite what we want.
 So, while "magnetizing" single by-name parameters works as expected if the argument is a single expression the behavior
 of the magnetized version differs from the unmagnetized one if the argument consists of a block with several statements.
-Definitely something to be aware off!
+Definitely something to be aware of!
 
 
 __ https://issues.scala-lang.org/browse/SI-3237
