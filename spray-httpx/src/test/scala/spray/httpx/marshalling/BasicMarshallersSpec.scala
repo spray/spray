@@ -24,20 +24,20 @@ import MediaTypes._
 class BasicMarshallersSpec extends Specification {
   
   "The StringMarshaller" should {
-    "encode strings to `text/plain` content in ISO-8859-1 if the client accepts it" in {
-      marshal("Hällö") === Right(HttpBody("Hällö"))
+    "encode strings to `text/plain` content in UTF-8 if the client accepts it" in {
+      marshal("Ha“llo") === Right(HttpBody("Ha“llo"))
     }
   }
 
   "The CharArrayMarshaller" should {
-    "encode char arrays to `text/plain` content in ISO-8859-1 if the client accepts it" in {
-      marshal("Hällö".toCharArray) === Right(HttpBody("Hällö"))
+    "encode char arrays to `text/plain` content in UTF-8 if the client accepts it" in {
+      marshal("Ha“llo".toCharArray) === Right(HttpBody("Ha“llo"))
     }
   }
 
   "The NodeSeqMarshaller" should {
-    "encode xml snippets to `text/xml` content in ISO-8859-1 if the client accepts it" in {
-      marshal(<employee><nr>1</nr></employee>) === Right(HttpBody(`text/xml`, "<employee><nr>1</nr></employee>"))
+    "encode xml snippets to `text/xml` content in UTF-8 if the client accepts it" in {
+      marshal(<employee><nr>Ha“llo</nr></employee>) === Right(HttpBody(`text/xml`, "<employee><nr>Ha“llo</nr></employee>"))
     }
   }
 

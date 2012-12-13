@@ -293,9 +293,10 @@ final class HttpRequest private(
 
   /**
    * Returns a charset that is accepted by the client.
+   * Default is UTF-8 in that, if UTF-8 is accepted, it is used.
    */
   def acceptedCharset: HttpCharset = {
-    if (isCharsetAccepted(`ISO-8859-1`)) `ISO-8859-1`
+    if (isCharsetAccepted(`UTF-8`)) `UTF-8`
     else acceptedCharsetRanges match {
       case (cs: HttpCharset) :: _ => cs
       case _ => throw new IllegalStateException // a HttpCharsetRange that is not `*` ?

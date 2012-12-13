@@ -53,12 +53,12 @@ class HttpServiceSpec extends TestKit(ActorSystem("HttpServiceSpec")) with Speci
 
     "properly produce HttpResponses from the root actor" in {
       rootActor ! Get("/")
-      receiveOne(remaining) === HttpResponse(entity = HttpBody(ContentType(`text/plain`, `ISO-8859-1`), "yeah"))
+      receiveOne(remaining) === HttpResponse(entity = HttpBody(ContentType(`text/plain`, `UTF-8`), "yeah"))
     }
 
     "properly produce HttpResponses from a sub actor" in {
       rootActor ! Get("/sub/abc")
-      receiveOne(remaining) === HttpResponse(entity = HttpBody(ContentType(`text/plain`, `ISO-8859-1`), "abc"))
+      receiveOne(remaining) === HttpResponse(entity = HttpBody(ContentType(`text/plain`, `UTF-8`), "abc"))
     }
   }
 
