@@ -85,7 +85,7 @@ class MarshallingDirectivesSpec extends RoutingSpec {
     "provide a completion function converting custom objects to an HttpEntity using the in-scope marshaller" in {
       Get() ~> {
         produce(instanceOf[Int]) { prod => _ => prod(42) }
-      } ~> check { body === HttpBody(ContentType(`application/xhtml+xml`, `ISO-8859-1`), "<int>42</int>") }
+      } ~> check { body === HttpBody(ContentType(`application/xhtml+xml`, `UTF-8`), "<int>42</int>") }
     }
     "return a UnacceptedResponseContentTypeRejection rejection if no acceptable marshaller is in scope" in {
       Get() ~> addHeader(Accept(`text/css`)) ~> {

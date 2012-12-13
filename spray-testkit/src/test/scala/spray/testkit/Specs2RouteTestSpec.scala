@@ -34,7 +34,7 @@ class Specs2RouteTestSpec extends Specification with Directives with Specs2Route
 
     "a basic directive" in {
       Get() ~> complete("abc") ~> check {
-        body === HttpBody(ContentType(`text/plain`, `ISO-8859-1`), "abc")
+        body === HttpBody(ContentType(`text/plain`, `UTF-8`), "abc")
       }
     }
 
