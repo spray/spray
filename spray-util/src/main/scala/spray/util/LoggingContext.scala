@@ -43,7 +43,7 @@ private[util] sealed abstract class LoggingContextLowerOrderImplicit1 extends Lo
   implicit def fromActorRefFactory(implicit refFactory: ActorRefFactory) =
     refFactory match {
       case x: ActorSystem => fromAdapter(x.log)
-      case x: ActorContext => fromAdapter(Logging(x.system, x.self))
+      case x: ActorContext => fromAdapter(Logging(x.system.eventStream, x.self.path.toString))
     }
 }
 
