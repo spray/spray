@@ -20,8 +20,12 @@ if *spray* somehow did not make it to the top of your performance or overall sat
 
 In any case, we are happy to hear from you, just pick any channel from the :ref:`contact` page or type away in the
 posts comments section below. And if you really want to go for it fork the |codebase|__, add a post to
-the ``/docs/blog/`` folder and send us a pull request!
+the `/docs/blog/`__ folder and send us a pull request!
+
+| Cheers,
+| Mathias
 
 
 .. |codebase| replace:: *spray* codebase on github
 __ https://github.com/spray/spray
+__ https://github.com/spray/spray/tree/master/docs/blog
