@@ -48,6 +48,8 @@ footer .footNav { text-align: center; }
 
 pre { margin-bottom: 1em; white-space: pre; word-wrap: normal; overflow: auto; }
 
+blockquote p { font-size: 18px; }
+
 .section h1, .section h2, .section h3, .section p, .section li, .section dt, .section dd, .section table {
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
     color: #515161;
@@ -137,6 +139,9 @@ table.footnote td { vertical-align: top; }
 .post .post-title a:hover { color: #005580; }
 .post .post-meta { margin: -0.5em 0 2em; font-size: 12px; }
 .post .comment-count { font-size: 11px; }
+.post ul { list-style-type: square; margin: 0 0 9px 25px; }
+.post ul li span { margin: 0; opacity: 1; }
+.post blockquote { padding: 30px 30px 20px; }
 
 .sidebar .widget h3 {
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;

@@ -16,20 +16,20 @@
   <category term="software development"/>
   <category term="scala"/>
 
-  @spray.site.RootNode.blogRoot.children.map { node =>
+  @spray.site.Main.blog.root.children.map { node =>
     <entry>
       <id>/@node.uri</id>
       <title>@node.name</title>
-      <updated>@{node.postDateTime}Z</updated>
+      <updated>@{node.post.dateTime}Z</updated>
 
       <link href="/@node.uri" rel="alternate" type="text/html" />
 
-      <published>@{node.postDateTime}Z</published>
+      <published>@{node.post.dateTime}Z</published>
       <author>
-        <name>@node.postAuthor</name>
+        <name>@node.post.author</name>
       </author>
       <summary type="html">
-        @HtmlFormat.raw(node.postIndexParagraphs.toString)
+        @HtmlFormat.raw(node.post.indexParagraphs.toString)
       </summary>
     </entry>
   }

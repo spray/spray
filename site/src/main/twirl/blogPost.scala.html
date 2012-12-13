@@ -16,7 +16,7 @@
                 <div class="contentWrap">
                   <div class="row-fluid">
                     <div class="span12">
-                      @HtmlFormat.raw(node.postBody)
+                      @HtmlFormat.raw(node.post.body)
                     </div>
                   </div>
                 </div>
@@ -61,7 +61,7 @@
         </div>
       </div>
 
-      @html.blogSidebar()
+      @html.blogSidebar(Some(node))
 
     </div>
   </div>

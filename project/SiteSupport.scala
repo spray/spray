@@ -19,7 +19,7 @@ object SiteSupport {
     siteHost := "spray.io",
     deployDir := "/opt/spray.io",
     logFile := "/opt/spray.io/site.log",
-    mainClass in assembly := Some("spray.site.Boot"),
+    mainClass in assembly := Some("spray.site.Main"),
     jarName in assembly := "site.jar",
     test in assembly := {},
     javaOptions in Revolver.reStart += "-Dfile.encoding=UTF8",

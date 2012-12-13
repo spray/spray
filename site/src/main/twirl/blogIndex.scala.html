@@ -32,12 +32,12 @@
 
                     <div class="row-fluid">
                       <div class="span2 post-meta">
-                        <p class="post-date">@node.postDate</p>
-                        <p class="tags">@HtmlFormat.raw(node.postTagLinks)</p>
+                        <p class="post-date">@node.post.date</p>
+                        <p class="tags">@HtmlFormat.raw(node.post.tagLinks)</p>
                         <!-- <p class="comments-num"><a href="#">5<span class="icon-comment"></span></a></p> -->
                       </div>
                       <div class="span10">
-                        @node.postIndexParagraphs
+                        @node.post.indexParagraphs
                         <p>
                           <a href="/@node.uri"><span class="label">Read More</span></a>&nbsp;&nbsp;&nbsp;
                           <a href="/@node.uri#disqus_thread" class="comment-count"></a>

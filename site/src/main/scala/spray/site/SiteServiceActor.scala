@@ -72,15 +72,15 @@ class SiteServiceActor extends Actor with HttpServiceActor {
               } ~
               pathTest("blog") {
                 path("blog") {
-                  complete(page(blogIndex(RootNode.blogRoot.children), RootNode.blogRoot))
+                  complete(page(blogIndex(Main.blog.root.children), Main.blog.root))
                 } ~
                 path("blog/feed") {
                   complete(xml.blogAtomFeed())
                 } ~
                 path("blog/category" / PathElement) { tag =>
-                  RootNode.childrenWithTag(tag) match {
+                  Main.blog.posts(tag) match {
                     case Nil => complete(NotFound, page(error404()))
-                    case posts => complete(page(blogIndex(posts, tag), RootNode.blogRoot))
+                    case posts => complete(page(blogIndex(posts, tag), Main.blog.root))
                   }
                 } ~
                 sphinxNode { node =>
@@ -100,7 +100,7 @@ class SiteServiceActor extends Actor with HttpServiceActor {
     }
   }
 
-  val sphinxNode = path(Rest).map(RootNode.find).flatMap[ContentNode :: HNil] {
+  val sphinxNode = path(Rest).map(Main.root.find).flatMap[ContentNode :: HNil] {
     case None => complete(NotFound, page(error404()))
     case Some(node) => provide(node)
   }

@@ -1,4 +1,29 @@
+@(node: Option[spray.site.ContentNode] = None)
+
 <aside class="span3 sidebar">
+
+  <!--post content-->
+  @item(node: spray.site.ContentNode) = {
+    <li>
+      <a href="@node.absoluteUri"><i class="icon-chevron-right"></i> @node.name</a>
+      @if(!node.isLeaf) {
+        <ul class="nav nav-list">
+          @node.children.map(item)
+        </ul>
+      }
+    </li>
+  }
+
+  @node.map { node =>
+    @if(node.post.showStructure) {
+      <div class="well" style="padding: 8px 0;">
+        <ul class="nav nav-list">
+          <li class="nav-header">Post Content</li>
+          @node.children.map(item)
+        </ul>
+      </div>
+    }
+  }
 
   <!--social media widget-->
   <div class="widget widget_social">
@@ -28,11 +53,11 @@
     <h3>Categories</h3>
     <ul>
       <li class="cat-item">
-        <a title="View all posts" href="/blog/">all</a>(@spray.site.RootNode.blogRoot.children.size)
+        <a title="View all posts" href="/blog/">all</a>(@spray.site.Main.blog.root.children.size)
       </li>
-      @spray.site.RootNode.categoryMap.map { case (tag, postNumber) =>
+      @spray.site.Main.blog.posts.map { case (tag, posts) =>
         <li class="cat-item">
-          <a title="View all posts tagged with @tag" href="/blog/category/@tag/">@tag</a>(@postNumber)
+          <a title="View all posts tagged with @tag" href="/blog/category/@tag/">@tag</a>(@posts.size)
         </li>
       }
     </ul>
