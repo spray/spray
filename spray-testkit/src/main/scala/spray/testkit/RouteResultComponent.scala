@@ -20,7 +20,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit._
 import concurrent.duration.{Duration, FiniteDuration}
 import scala.collection.mutable.ListBuffer
-import akka.actor.{ActorRefFactory, ActorRef}
+import akka.actor.{Status, ActorRefFactory, ActorRef}
 import akka.spray.UnregisteredActorRef
 import spray.routing.{RejectionHandler, Rejected, Rejection}
 import spray.http._
@@ -62,6 +62,10 @@ trait RouteResultComponent {
           case HttpMessagePartWrapper(ChunkedMessageEnd(extensions, trailer), _) =>
             synchronized { _closingExtensions = extensions; _trailer = trailer }
             latch.countDown()
+          case Status.Failure(error) =>
+            sys.error("Route produced exception: " + error)
+          case x =>
+            sys.error("Received invalid route response: " + x)
         }
       }
     }
