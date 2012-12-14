@@ -19,11 +19,11 @@ package parser
 
 import org.parboiled.scala._
 import org.parboiled.errors.ParsingException
-import BasicRules._
 
 // direct implementation of http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html
 private[parser] trait ProtocolParameterRules {
   this: Parser =>
+  import BasicRules._
 
   /* 3.1 HTTP Version */
   
@@ -141,19 +141,19 @@ private[parser] trait ProtocolParameterRules {
       ch('0') ~ optional(ch('.') ~ zeroOrMore(Digit)) ~ OptWS
     | ch('1') ~ optional(ch('.') ~ zeroOrMore(ch('0'))) ~ OptWS
   )
-  
-  
+
+
   /* 3.10 Language Tags */
-  
+
+  // RFC2616 definition, extended in order to also accept
+  // language-tags defined by https://tools.ietf.org/html/bcp47
   def LanguageTag = rule { PrimaryTag ~ zeroOrMore("-" ~ SubTag) }
-  
-  // more loose than the spec which only allows 1 to max. 8 alphas
+
   def PrimaryTag = rule { oneOrMore(Alpha) ~> identityFunc ~ OptWS }
-  
-  // more loose than the spec which only allows 1 to max. 8 alphas
-  def SubTag = rule { oneOrMore(Alpha) ~> identityFunc ~ OptWS }
-  
-  
+
+  def SubTag = rule { oneOrMore(AlphaNum) ~> identityFunc ~ OptWS }
+
+
   /* 3.11 Entity Tags */
   
   def EntityTag = rule { optional("W/") ~ OpaqueTag }
