@@ -145,7 +145,7 @@ use their power to define your web service behavior at the level of abstraction 
 Type Safety
 -----------
 
-Wen you combine directives with the ``|`` and ``&`` operators *spray-routing* makes sure that all extractions work as
+When you combine directives with the ``|`` and ``&`` operators *spray-routing* makes sure that all extractions work as
 expected and logical constraints are enforced at compile-time.
 
 For example you cannot ``|`` a directive producing an extraction with one that doesn't::
