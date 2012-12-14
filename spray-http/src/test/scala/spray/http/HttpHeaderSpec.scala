@@ -58,8 +58,8 @@ class HttpHeaderSpec extends Specification {
     p^
     "Accept-Language: da, en-gb ;q=0.8, en;q=0.7" !
       example(`Accept-Language`(Language("da"), Language("en", "gb"), Language("en")))_ ^
-    "Accept-Language: de-at-zz, *;q=0" !
-      example(`Accept-Language`(Language("de", "at", "zz"), LanguageRanges.`*`))_ ^
+    "Accept-Language: de-CH-1901, *;q=0" !
+      example(`Accept-Language`(Language("de", "CH", "1901"), LanguageRanges.`*`))_ ^
     p^
     "Accept-Ranges: bytes"        ! example(`Accept-Ranges`(bytes))_ ^
     "Accept-Ranges: none"         ! example(`Accept-Ranges`(Nil))_ ^
