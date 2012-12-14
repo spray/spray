@@ -1,10 +1,9 @@
 package spray.examples
 
 import scala.concurrent.Future
-import akka.actor.{ActorSystem, Props}
-import spray.can.client.{HttpDialog, HttpClient}
+import akka.actor.ActorSystem
+import spray.can.client.{DefaultHttpClient, HttpDialog}
 import spray.http.{HttpResponse, HttpRequest}
-import spray.io.IOExtension
 import spray.util._
 
 
@@ -13,15 +12,8 @@ object GoogleQueryExample extends App {
   implicit val system = ActorSystem("google-query-example")
   import system.log
 
-  // every spray-can HttpClient (and HttpServer) needs an IOBridge for low-level network IO
-  // (but several servers and/or clients can share one)
-  val ioBridge = IOExtension(system).ioBridge()
-
-  // create and start the spray-can HttpClient
-  val httpClient = system.actorOf(
-    props = Props(new HttpClient(ioBridge)),
-    name = "http-client"
-  )
+  // create and start the default spray-can HttpClient
+  val httpClient = DefaultHttpClient(system)
 
   val queries = Seq("iphone 4 case", "hdmi cable", "iphone 4 screen protector", "iphone charger", "nail art",
     "iphone 3gs case", "coupons", "hello kitty", "wii remote", "iphone 4", "htc evo case", "headphones",

@@ -1,9 +1,8 @@
 package spray.examples
 
 import scala.util.{Success, Failure}
-import akka.actor.{Props, ActorSystem}
-import spray.can.client.{HttpDialog, HttpClient}
-import spray.io.IOExtension
+import akka.actor.ActorSystem
+import spray.can.client.{DefaultHttpClient, HttpDialog}
 import spray.http.HttpRequest
 import spray.util._
 
@@ -13,15 +12,8 @@ object SimpleExample extends App {
   implicit val system = ActorSystem("simple-example")
   import system.log
 
-  // every spray-can HttpClient (and HttpServer) needs an IOBridge for low-level network IO
-  // (but several servers and/or clients can share one)
-  val ioBridge = IOExtension(system).ioBridge()
-
-  // create and start the spray-can HttpClient
-  val httpClient = system.actorOf(
-    props = Props(new HttpClient(ioBridge)),
-    name = "http-client"
-  )
+  // create and start the default spray-can HttpClient
+  val httpClient = DefaultHttpClient(system)
 
   // create a very basic HttpDialog that results in a Future[HttpResponse]
   log.info("Dispatching GET request to github.com")
