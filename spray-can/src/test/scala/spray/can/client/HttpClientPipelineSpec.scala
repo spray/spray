@@ -151,7 +151,6 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
         spray.can.client.reaping-cycle = 0  # don't enable the TickGenerator
       """)
     ),
-    HttpClient.DefaultSslEnabled,
     system.log
   )
 

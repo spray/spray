@@ -23,27 +23,26 @@ import spray.io._
 
 
 object DefaultHttpClient extends ExtensionId[ExtensionActorRef] with ExtensionIdProvider {
-  private type ClientConfig = (ClientSettings, PipelineContext => Boolean, ClientSSLEngineProvider)
+  private type ClientConfig = (ClientSettings, ClientSSLEngineProvider)
   private[this] val config = new AtomicReference[ClientConfig]
 
   def lookup() = DefaultHttpClient
 
   def apply(system: ActorSystem,
-            settings: ClientSettings = null,
-            sslEnabled: PipelineContext => Boolean = HttpClient.DefaultSslEnabled)
+            settings: ClientSettings = null)
            (implicit sslEngineProvider: ClientSSLEngineProvider): ActorRef with Extension = {
     val clientSettings = Option(settings).getOrElse(ClientSettings(system.settings.config))
-    if (!config.compareAndSet(null, (clientSettings, sslEnabled, sslEngineProvider)))
+    if (!config.compareAndSet(null, (clientSettings, sslEngineProvider)))
       throw new IllegalStateException("Settings can only be supplied on the first call to DefaultHttpClient.apply")
     apply(system)
   }
 
   def createExtension(system: ExtendedActorSystem) = {
-    val (settings, sslEnabled, sslEngineProvider) = Option(config.get).getOrElse {
-      (ClientSettings(system.settings.config), HttpClient.DefaultSslEnabled, implicitly[ClientSSLEngineProvider])
+    val (settings, sslEngineProvider) = Option(config.get).getOrElse {
+      (ClientSettings(system.settings.config), implicitly[ClientSSLEngineProvider])
     }
     val client = system.actorOf(
-      props = Props(new HttpClient(IOExtension(system).ioBridge(), settings, sslEnabled)(sslEngineProvider)),
+      props = Props(new HttpClient(IOExtension(system).ioBridge(), settings)(sslEngineProvider)),
       name = "default-http-client"
     )
     new ExtensionActorRef(client)
