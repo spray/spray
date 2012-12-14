@@ -42,7 +42,7 @@ trait ConnComponent {
           pendingResponses = 0
           connection = Connecting
           import HttpClient._
-          val connect = if (sslEnabled) Connect(host, port, SslEnabled) else Connect(host, port)
+          val connect = if (sslEnabled) Connect(host, port, Encrypted) else Connect(host, port)
           httpClient.tell(connect, Reply.withContext(this))
           dispatch(ctx)
 

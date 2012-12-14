@@ -27,12 +27,43 @@ import SSLEngineResult.Status._
 
 
 object SslTlsSupport {
+
+  /**
+   * Object to be used as `tag` member of `Connect` or `Bind` commands in order to activate SSL encryption on the
+   * connection. (Useful mainly if the PipelineStage is created with `encryptIfUntagged = false`.)
+   */
+  case object Encrypted extends Enabling {
+    def encrypt(ctx: PipelineContext) = true
+  }
+
+  /**
+   * Object to be used as `tag` member of `Connect` or `Bind` commands in order to suppress SSL encryption on the
+   * connection. (Useful mainly if the PipelineStage is created with `encryptIfUntagged = true`.)
+   */
+  case object NotEncrypted extends Enabling {
+    def encrypt(ctx: PipelineContext) = false
+  }
+
+  /**
+   * Interface that can be implemented by a `tag` object on the connection
+   * in order to determine whether encryption on the connection is to be
+   * enabled or not.
+   */
+  trait Enabling {
+    def encrypt(ctx: PipelineContext): Boolean
+  }
+
   def apply(engineProvider: PipelineContext => SSLEngine, log: LoggingAdapter,
-            sslEnabled: PipelineContext => Boolean = _ => true): PipelineStage = {
+            encryptIfUntagged: Boolean = true): PipelineStage = {
     new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
-        if (sslEnabled(context)) new SslPipelines(context, commandPL, eventPL)
+      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = {
+        val encrypt = context.connection.tag match {
+          case x: Enabling => x.encrypt(context)
+          case _ => encryptIfUntagged
+        }
+        if (encrypt) new SslPipelines(context, commandPL, eventPL)
         else Pipelines(commandPL, eventPL)
+      }
 
       final class SslPipelines(context: PipelineContext, commandPL: CPL, eventPL: EPL) extends Pipelines {
         val engine = engineProvider(context)

@@ -33,11 +33,10 @@ import spray.io._
  * in case of errors).
  */
 class HttpClient(ioBridge: ActorRef,
-                 settings: ClientSettings = ClientSettings(),
-                 sslEnabled: PipelineContext => Boolean = HttpClient.DefaultSslEnabled)
+                 settings: ClientSettings = ClientSettings())
                 (implicit sslEngineProvider: ClientSSLEngineProvider) extends IOClient(ioBridge) with ConnectionActors {
 
-  protected val pipeline: PipelineStage = HttpClient.pipeline(settings, sslEnabled, log)
+  protected val pipeline: PipelineStage = HttpClient.pipeline(settings, log)
 
   override protected def createConnectionActor(connection: Connection): ActorRef =
     context.actorOf {
@@ -53,9 +52,7 @@ class HttpClient(ioBridge: ActorRef,
 
 object HttpClient {
 
-  val DefaultSslEnabled: PipelineContext => Boolean = _.connection.tag == HttpClient.SslEnabled
-
-  private[can] def pipeline(settings: ClientSettings, sslEnabled: PipelineContext => Boolean, log: LoggingAdapter)
+  private[can] def pipeline(settings: ClientSettings, log: LoggingAdapter)
                            (implicit sslEngineProvider: ClientSSLEngineProvider): PipelineStage = {
     import settings._
     ClientFrontend(RequestTimeout, log) >>
@@ -63,16 +60,14 @@ object HttpClient {
     ResponseParsing(ParserSettings, log) >>
     RequestRendering(settings) >>
     (settings.IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
-    SslTlsSupport(sslEngineProvider, log, sslEnabled) >>
+    SslTlsSupport(sslEngineProvider, log, encryptIfUntagged = false) >>
     (ReapingCycle > 0 && IdleTimeout > 0) ? TickGenerator(ReapingCycle)
   }
 
   /**
    * Object to be used as `tag` member of `Connect` commands in order to activate SSL encryption on the connection.
-   * Note that SSL encryption is only generally available for the HttpClient if the respective config setting is
-   * enabled. Using the `SslEnabled` tag while `ssl-encryption` is off in the settings has no effect.
    */
-  case object SslEnabled
+  val Encrypted = SslTlsSupport.Encrypted
 
   ////////////// COMMANDS //////////////
   // HttpRequestParts +
