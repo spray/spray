@@ -28,6 +28,9 @@ Follow these steps to run it on your machine:
 
     sbt "project on-spray-can" run
 
+   (If this doesn't work for you your SBT runner cannot deal with grouped arguments. In this case you'll have to
+   run the commands ``project on-spray-can`` and ``run`` sequentially "inside" of SBT.)
+
 4. Browse to http://127.0.0.1:8080/
 
 5. Alternatively you can access the service with ``curl``::

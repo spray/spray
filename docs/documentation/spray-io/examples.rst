@@ -24,6 +24,9 @@ Follow these steps to run it on your machine:
 
     sbt "project echo-server" run
 
+   (If this doesn't work for you your SBT runner cannot deal with grouped arguments. In this case you'll have to
+   run the commands ``project echo-server`` and ``run`` sequentially "inside" of SBT.)
+
 4. Run ``telnet localhost 23456``, type something and press RETURN
 
 5. Type ``STOP`` to exit
