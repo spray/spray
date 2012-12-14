@@ -27,20 +27,13 @@ class IOExtension(system: ExtendedActorSystem) extends Extension {
   private[this] val Locked = new AnyRef
   private[this] val mailboxes = new ConcurrentHashMap[ActorRef, SelectorWakingMailbox]
   private[this] val rootBridge = new AtomicReference[AnyRef] // holds either null, Locked or ActorRef
-  val settings = new IOBridge.Settings(system.settings.config)
-
-  /**
-   * Creates, gets and starts the root IOBridge for the ActorSystem using the systems config settings.
-   * If the IOBridge is already constructed simply gets the existing instance.
-   */
-  def ioBridge(): ActorRef = ioBridge(settings)
 
   /**
    * Creates and gets the root IOBridge for the ActorSystem using the given settings.
    * If the IOBridge is already constructed simply gets the existing instance.
    */
   @tailrec
-  final def ioBridge(settings: IOBridge.Settings): ActorRef =
+  final def ioBridge(settings: IOBridge.Settings = new IOBridge.Settings(system.settings.config)): ActorRef =
     rootBridge.get match {
       case null if rootBridge.compareAndSet(null, Locked) =>
         var bridge: ActorRef = null
