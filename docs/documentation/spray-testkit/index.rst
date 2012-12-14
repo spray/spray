@@ -27,11 +27,11 @@ Apart from the Scala library (see :ref:`current-versions` chapter) *spray-testki
 Installation
 ------------
 
-The :ref:`maven-repo` chapter contains all the info about how to pull *spray-caching* into your classpath.
-However, since you normally don't need to have access to *spray-caching* from your production code, you should limit
+The :ref:`maven-repo` chapter contains all the info about how to pull *spray-testkit* into your classpath.
+However, since you normally don't need to have access to *spray-testkit* from your production code, you should limit
 the dependency to the ``test`` scope::
 
-    libraryDependencies += "io.spray" % "spray-can" % version % "test"
+    libraryDependencies += "io.spray" % "spray-testkit" % version % "test"
 
 Currently *spray-testkit* supports the two most popular scala testing frameworks, scalatest_ and specs2_. Depending on
 which one you are using you need to mix either the ``ScalatestRouteTest`` or the ``Specs2RouteTest`` trait into your
