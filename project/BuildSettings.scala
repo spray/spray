@@ -64,11 +64,16 @@ object BuildSettings {
     "Create a reference.conf file in the managed resources folder that contains a spray.version = ... setting")
 
   lazy val sprayVersionConfGeneration = seq(
+    (unmanagedResources in Compile) <<= (unmanagedResources in Compile).map(_.filter(_.getName != "reference.conf")),
     resourceGenerators in Compile <+= generateSprayVersionConf,
-    generateSprayVersionConf <<= (resourceManaged in Compile, version) map { (dir, v) =>
-      val file = dir / "reference.conf"
-      IO.write(file, """spray.version = "%s""""+"\n" format v)
-      Seq(file)
+    generateSprayVersionConf <<= (unmanagedResourceDirectories in Compile, resourceManaged in Compile, version) map {
+      (sourceDir, targetDir, version) => {
+        val source = sourceDir / "reference.conf"
+        val target = targetDir / "reference.conf"
+        val conf = IO.read(source.get.head)
+        IO.write(target, conf.replace("<VERSION>", version))
+        Seq(target)
+      }
     }
   )
 

@@ -32,7 +32,7 @@ class HttpConduit(val httpClient: ActorRef,
                   val sslEnabled: Boolean = false,
                   val dispatchStrategy: DispatchStrategy = DispatchStrategies.NonPipelined(),
                   val settings: ConduitSettings = ConduitSettings())
-  extends Actor with ActorLogging with ConnComponent {
+  extends Actor with SprayActorLogging with ConnComponent {
   require(RefUtils.isLocal(httpClient), "An HttpConduit must live in the same JVM as the httpClient it is to use")
 
   val conns = Vector.tabulate(settings.MaxConnections)(i => new Conn(i + 1))

@@ -16,12 +16,12 @@
 
 package spray.io
 
-import akka.actor._
 import java.nio.ByteBuffer
-import spray.util.{ClosedEventReason, CloseCommandReason}
+import akka.actor._
+import spray.util._
 
 
-abstract class IOPeer extends Actor with ActorLogging {
+abstract class IOPeer extends Actor with SprayActorLogging {
 
   def rootIoBridge: ActorRef
 
