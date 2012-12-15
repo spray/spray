@@ -46,7 +46,7 @@ class HttpConduitSpec extends Specification {
   step {
     def response(s: String) = HttpResponse(entity = HttpBody(s), headers = List(`Content-Type`(ContentType.`text/plain`)))
     val handler = system.actorOf(Props(
-      new Actor with ActorLogging {
+      new Actor with SprayActorLogging {
         var dropNext = true
         val random = new Random(39)
         def receive = {

@@ -5,12 +5,13 @@ import akka.util.duration._
 import akka.actor._
 import spray.io.{IOBridge, IOExtension}
 import spray.can.server.HttpServer
+import spray.util.SprayActorLogging
 import spray.http._
 import HttpMethods._
 import MediaTypes._
 
 
-class DemoService extends Actor with ActorLogging {
+class DemoService extends Actor with SprayActorLogging {
   implicit val timeout: akka.util.Timeout = 1.second // for the actor 'asks' we use below
 
   def receive = {
@@ -127,7 +128,7 @@ class DemoService extends Actor with ActorLogging {
   // simple case class whose instances we use as send confirmation message for streaming chunks
   case class Ok(remaining: Int)
 
-  class Streamer(peer: ActorRef, count: Int) extends Actor with ActorLogging {
+  class Streamer(peer: ActorRef, count: Int) extends Actor with SprayActorLogging {
     log.debug("Starting streaming response ...")
 
     // we use the successful sending of a chunk as trigger for scheduling the next chunk

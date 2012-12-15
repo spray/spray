@@ -17,9 +17,16 @@
 package spray.util
 
 import akka.event.{Logging, LoggingAdapter}
-import akka.actor.{ActorRefFactory, ActorContext, ActorSystem}
+import akka.actor._
 
 
+/**
+ * A LoggingAdapter that can be implicitly supplied from an implicitly available
+ * ActorRefFactory (i.e. ActorSystem or ActorContext).
+ * Also, it supports optional reformating of ActorPath strings from slash-separated
+ * to dot-separated, which opens them up to the hierarchy-based logger configuration
+ * of frameworks like logback or log4j.
+ */
 trait LoggingContext extends LoggingAdapter
 
 object LoggingContext extends LoggingContextLowerOrderImplicit1 {
@@ -43,12 +50,31 @@ private[util] sealed abstract class LoggingContextLowerOrderImplicit1 extends Lo
   implicit def fromActorRefFactory(implicit refFactory: ActorRefFactory) =
     refFactory match {
       case x: ActorSystem => fromAdapter(x.log)
-      case x: ActorContext => fromAdapter(Logging(x.system.eventStream, x.self.path.toString))
+      case x: ActorContext => fromAdapter(actorRefLogging(x.system, x.self.path.toString))
     }
+
+  private val actorRefLogging: (ActorSystem, String) => LoggingAdapter =
+    (UtilSettings.LogActorPathsWithDots, UtilSettings.LogActorSystemName) match {
+      case (false, false) => (system, path) => Logging(system.eventStream, path)
+      case (false, true)  => (system, path) => Logging(system, path)
+      case (true , false) => (system, path) => Logging(system.eventStream, dotify(path))
+      case (true , true)  => (system, path) => Logging(system.eventStream, system.toString + '.' + dotify(path))
+    }
+
+  // drop the `akka://` prefix and replace slashes with dots
+  private def dotify(path: String) = path.substring(7).replace('/', '.')
 }
 
 private[util] sealed abstract class LoggingContextLowerOrderImplicit2 {
   this: LoggingContext.type =>
 
   implicit val NoLogging = fromAdapter(akka.spray.NoLogging)
+}
+
+/**
+ * Trait that can be mixed into an Actor to easily obtain a reference to a spray-level logger,
+ * which is available under the name "log".
+ */
+trait SprayActorLogging { this: Actor ⇒
+  val log: LoggingAdapter = implicitly[LoggingContext]
 }

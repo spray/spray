@@ -4,10 +4,11 @@ import java.io.File
 import org.parboiled.common.FileUtils
 import akka.util.Duration
 import akka.util.duration._
-import akka.actor.{ActorLogging, Props, Actor}
+import akka.actor.{Props, Actor}
 import akka.pattern.ask
 import spray.routing.{HttpService, RequestContext}
 import spray.routing.directives.CachingDirectives
+import spray.util.SprayActorLogging
 import spray.can.server.HttpServer
 import spray.httpx.encoding.Gzip
 import spray.http._
@@ -135,7 +136,7 @@ trait DemoService extends HttpService {
   def sendStreamingResponse(ctx: RequestContext) {
     actorRefFactory.actorOf(
       Props {
-        new Actor with ActorLogging {
+        new Actor with SprayActorLogging {
           // we use the successful sending of a chunk as trigger for scheduling the next chunk
           val responseStart = HttpResponse(entity = HttpBody(`text/html`, streamStart))
           ctx.responder ! ChunkedResponseStart(responseStart).withSentAck(Ok(16))

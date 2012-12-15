@@ -59,7 +59,7 @@ package object util {
   def installEventStreamLoggerFor(channel: Class[_])(implicit system: ActorSystem) {
     synchronized {
       if (eventStreamLogger == null) {
-        eventStreamLogger = system.actorOf(Props(new Actor with ActorLogging {
+        eventStreamLogger = system.actorOf(Props(new Actor with SprayActorLogging {
           def receive = { case x => log.warning(x.toString) }
         }), name = "event-stream-logger")
       }
