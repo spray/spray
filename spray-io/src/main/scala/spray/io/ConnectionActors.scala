@@ -21,16 +21,28 @@ import akka.actor._
 
 trait ConnectionActors extends IOPeer {
 
-  override protected def createConnectionHandle(_key: IOBridge.Key, _ioBridge: ActorRef,
-                                                _commander: ActorRef, _tag: Any): Connection = {
+  override protected def createConnectionHandle(theKey: IOBridge.Key, theIoBridge: ActorRef,
+                                                theCommander: ActorRef, theTag: Any): Connection = {
     new Connection {
-      val key = _key
-      val ioBridge = _ioBridge
-      val commander = _commander
-      val tag = _tag
-      val handler = createConnectionActor(this) // must be last member to be initialized
+      val key = theKey
+      val ioBridge = theIoBridge
+      val commander = theCommander
+      private[this] val _tag = connectionTag(this, theTag)     // must be 2nd-to-last member to be initialized
+      private[this] val _handler = createConnectionActor(this) // must be last member to be initialized
+      def tag = if (_tag != null) _tag else sys.error("tag not yet available from `connectionTag` method")
+      def handler = if (_handler != null) _handler else sys.error("handler not yet available during connection actor creation")
     }
   }
+
+  /**
+   * Override to customize the tag for the given connection. By default the given tag
+   * is returned (which is the one from the respective `Bind` or `Connect` command having
+   * triggered the establishment of the connection.
+   * CAUTION: this method is called from the constructor of the given Connection.
+   * For optimization reasons the `tag` and `handler` members of the given Connection
+   * instance will not yet be initialized (i.e. null). All other members are fully accessible.
+   */
+  protected def connectionTag(connection: Connection, tag: Any): Any = tag
 
   protected def createConnectionActor(connection: Connection): ActorRef =
     context.actorOf(Props(new IOConnectionActor(connection)))
