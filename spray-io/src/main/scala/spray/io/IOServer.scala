@@ -26,8 +26,6 @@ abstract class IOServer(val rootIoBridge: ActorRef) extends IOPeer {
   require(RefUtils.isLocal(rootIoBridge), "An IOServer must live in the same JVM as the IOBridge it is to use")
 
   import IOServer._
-  private var bindingKey: Option[IOBridge.Key] = None
-  private var endpoint: Option[InetSocketAddress] = None
   private var state = unbound
 
   def receive: Receive = {
@@ -43,11 +41,10 @@ abstract class IOServer(val rootIoBridge: ActorRef) extends IOPeer {
     }
   }
 
-  lazy val unbound: Receive = {
+  def unbound: Receive = {
     case Bind(endpoint, bindingBacklog) =>
       log.debug("Starting {} on {}", self.path, endpoint)
-      this.endpoint = Some(endpoint)
-      state = binding
+      state = binding(endpoint)
       rootIoBridge.tell(
         msg = IOBridge.Bind(endpoint, bindingBacklog),
         sender = Reply.withContext(sender)
@@ -57,38 +54,35 @@ abstract class IOServer(val rootIoBridge: ActorRef) extends IOPeer {
       sender ! Status.Failure(CommandException(x, "Not yet bound"))
   }
 
-  lazy val binding: Receive = {
+  def binding(endpoint: InetSocketAddress): Receive = {
     case Reply(IOBridge.Bound(key, tag), commander: ActorRef) =>
-      bindingKey = Some(key)
-      state = bound
-      log.info("{} started on {}", self.path, endpoint.get)
-      commander ! Bound(endpoint.get, tag)
+      state = bound(endpoint, key)
+      log.info("{} started on {}", self.path, endpoint)
+      commander ! Bound(endpoint, tag)
 
     case x: ServerCommand =>
       sender ! Status.Failure(CommandException(x, "Still binding"))
   }
 
-  lazy val bound: Receive = {
+  def bound(endpoint: InetSocketAddress, bindingKey: IOBridge.Key): Receive = {
     case Reply(IOBridge.Connected(key, tag), commander: ActorRef) =>
       val handle = createConnectionHandle(key, sender, commander, tag)
       sender ! IOBridge.Register(handle)
 
     case Unbind =>
-      log.debug("Stopping {} on {}", self.path, endpoint.get)
-      state = unbinding
-      rootIoBridge.tell(IOBridge.Unbind(bindingKey.get), Reply.withContext(sender))
+      log.debug("Stopping {} on {}", self.path, endpoint)
+      state = unbinding(endpoint)
+      rootIoBridge.tell(IOBridge.Unbind(bindingKey), Reply.withContext(sender))
 
     case x: ServerCommand =>
       sender ! Status.Failure(CommandException(x, "Already bound"))
   }
 
-  lazy val unbinding: Receive = {
+  def unbinding(endpoint: InetSocketAddress): Receive = {
     case Reply(_: IOBridge.Unbound, originalSender: ActorRef) =>
-      log.info("{} stopped on {}", self.path, endpoint.get)
+      log.info("{} stopped on {}", self.path, endpoint)
       state = unbound
-      originalSender ! Unbound(endpoint.get)
-      bindingKey = None
-      endpoint = None
+      originalSender ! Unbound(endpoint)
 
     case x: ServerCommand =>
       sender ! Status.Failure(CommandException(x, "Still unbinding"))
