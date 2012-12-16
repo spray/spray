@@ -61,6 +61,11 @@ object ConnectionCloseReasons {
   case object RequestTimeout extends CloseCommandReason
 
   /**
+   * The connection is to be closed due to a failure on our side of the protocol implementation.
+   */
+  case object InternalError extends CloseCommandReason
+
+  /**
    * The connection is to be closed because the peer did not adhere to the higher-level protocol.
    */
   case class ProtocolError(msg: String) extends CloseCommandReason

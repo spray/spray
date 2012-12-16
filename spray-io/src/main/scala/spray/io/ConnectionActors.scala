@@ -17,9 +17,16 @@
 package spray.io
 
 import akka.actor._
+import spray.util.{ConnectionCloseReasons, ClosedEventReason}
 
 
 trait ConnectionActors extends IOPeer {
+
+  /**
+   * The (usually compound) PipelineStage to be run by the connection actors.
+   * @return
+   */
+  protected def pipeline: PipelineStage
 
   override protected def createConnectionHandle(theKey: IOBridge.Key, theIoBridge: ActorRef,
                                                 theCommander: ActorRef, theTag: Any): Connection = {
@@ -47,7 +54,9 @@ trait ConnectionActors extends IOPeer {
   protected def createConnectionActor(connection: Connection): ActorRef =
     context.actorOf(Props(new IOConnectionActor(connection)))
 
-  protected def pipeline: PipelineStage
+  // we assume that we can never recover from failures of a connection actor,
+  // we simply kill it, which causes it to close its connection in postStop()
+  override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy() { case _ => SupervisorStrategy.Stop }
 
   class IOConnectionActor(val connection: Connection) extends Actor {
     import connection.ioBridge
@@ -57,6 +66,9 @@ trait ConnectionActors extends IOPeer {
       commandPL = baseCommandPipeline,
       eventPL = baseEventPipeline
     )
+
+    // if our connection has been closed this field contains the reason
+    var closedReason: ClosedEventReason = _
 
     def createPipelineContext: PipelineContext = PipelineContext(connection, context)
 
@@ -72,14 +84,18 @@ trait ConnectionActors extends IOPeer {
     }
 
     def baseEventPipeline: Pipeline[Event] = {
-      case x: IOPeer.Closed =>
-        log.debug("Stopping connection actor, connection was closed due to {}", x.reason)
-        context.stop(self)
-        context.parent ! x // also inform our parent of our closing
+      case x: IOPeer.Closed => stop(x)
       case _: Droppable => // don't warn
       case ev => log.warning("eventPipeline: dropped {}", ev)
     }
     //#
+
+    def stop(ev: IOPeer.Closed) {
+      closedReason = ev.reason
+      log.debug("Stopping connection actor, connection was closed due to {}", ev.reason)
+      context.stop(self)
+      context.parent ! ev // also inform our parent of our closing
+    }
 
     def eventize(ack: Option[Any]) = ack match {
       case None | Some(_: Event) => ack
@@ -94,5 +110,11 @@ trait ConnectionActors extends IOPeer {
       case Terminated(actor) => pipelines.eventPipeline(IOPeer.ActorDeath(actor))
     }
     //#
+
+    override def postStop() {
+      // if there is no closedReason set we have been irregularly stopped by our supervisor
+      // therefore we need to clean up our connection here
+      if (closedReason == null) ioBridge ! IOBridge.Close(connection, ConnectionCloseReasons.InternalError)
+    }
   }
 }
