@@ -51,7 +51,7 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
         }
       case x: Command              => dispatch(x)
       case x =>
-        openRequest.log.warning("Illegal response " + x + " to " + requestInfo)
+        openRequest.warn("Illegal response " + x + " to " + requestInfo)
         unhandledMessage(x)
     }
   }
@@ -61,7 +61,7 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
     if (Unsafe.instance.compareAndSwapObject(this, responseStateOffset, expectedState, newState)) {
       dispatch(new Response(openRequest, HttpCommand(msg)))
     } else {
-      openRequest.log.warning("Cannot dispatch " + msg.messagePart.getClass.getSimpleName +
+      openRequest.warn("Cannot dispatch " + msg.messagePart.getClass.getSimpleName +
         " as response (part) for " + requestInfo + " since current response state is '" +
         Unsafe.instance.getObjectVolatile(this, responseStateOffset) + "' but should be '" + expectedState + '\'')
       unhandledMessage(msg)

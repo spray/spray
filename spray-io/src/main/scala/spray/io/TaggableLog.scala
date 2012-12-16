@@ -60,7 +60,9 @@ object TaggableLog {
         def log(tag: Any, template: String, a1: Any, a2: Any, a3: Any) { la.log(level, msg(tag, template), a1, a2, a3) }
         private def msg(tag: Any, template: String) =
           tag match {
-            case x: LogMarking => x.logMarker + ": " + template
+            case x: LogMarking =>
+              val marker = x.logMarker
+              if (marker.isEmpty) template else marker + ": " + template
             case _ => template
           }
       }

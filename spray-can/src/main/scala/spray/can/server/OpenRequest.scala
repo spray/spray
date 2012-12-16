@@ -27,7 +27,7 @@ import spray.http._
 
 sealed trait OpenRequest {
   def connectionActorContext: ActorContext
-  def log: LoggingAdapter
+  def warn(msg: String)
   def isEmpty: Boolean
   def request: HttpRequest
   def appendToEndOfChain(openRequest: OpenRequest): OpenRequest
@@ -51,7 +51,7 @@ sealed trait OpenRequest {
 trait OpenRequestComponent { component =>
   def handlerCreator: () => ActorRef
   def connectionActorContext: ActorContext
-  def log: LoggingAdapter
+  def warn(msg: String)
   def settings: ServerSettings
   def downstreamCommandPL: Pipeline[Command]
   def createTimeoutResponse: HttpRequest => HttpResponse
@@ -69,7 +69,7 @@ trait OpenRequestComponent { component =>
     private[this] var pendingSentAcks: Int = 1000 // we use an offset of 1000 for as long as the response is not finished
 
     def connectionActorContext = component.connectionActorContext
-    def log = component.log
+    def warn(msg: String) { component.warn(msg) }
     def isEmpty = false
 
     def appendToEndOfChain(openRequest: OpenRequest): OpenRequest = {
@@ -102,8 +102,7 @@ trait OpenRequestComponent { component =>
             else connectionActorContext.actorFor(settings.TimeoutHandler)
           if (RefUtils.isLocal(timeoutHandler))
             downstreamCommandPL(IOServer.Tell(timeoutHandler, Timeout(request), receiverRef))
-          else
-            log.error("The TimeoutHandler '{}' is not a local actor and thus cannot be used as a timeout handler")
+          else warn("The TimeoutHandler '{}' is not a local actor and thus cannot be used as a timeout handler")
           timestamp = -now // we record the time of the Timeout dispatch as negative timestamp value
         }
       } else if (timestamp < -1 && timeoutTimeout > 0 && (-timestamp + timeoutTimeout < now)) {
@@ -186,7 +185,7 @@ trait OpenRequestComponent { component =>
     def appendToEndOfChain(openRequest: OpenRequest) = openRequest
 
     def connectionActorContext = component.connectionActorContext
-    def log = component.log
+    def warn(msg: String) { component.warn(msg) }
     def isEmpty = true
     def request = throw new IllegalStateException
     def dispatchInitialRequestPartToHandler() { throw new IllegalStateException }

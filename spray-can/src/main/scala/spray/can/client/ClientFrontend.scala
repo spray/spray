@@ -16,7 +16,8 @@
 
 package spray.can.client
 
-import akka.event.LoggingAdapter
+import scala.collection.mutable
+import akka.event.{Logging, LoggingAdapter}
 import akka.util.Duration
 import akka.actor.ActorRef
 import spray.can.{HttpEvent, HttpCommand}
@@ -28,13 +29,15 @@ import spray.io._
 
 object ClientFrontend {
 
-  def apply(initialRequestTimeout: Long, log: LoggingAdapter): PipelineStage =
+  def apply(initialRequestTimeout: Long, log: LoggingAdapter): PipelineStage = {
+    val warning = TaggableLog(log, Logging.WarningLevel)
     new PipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = {
         new Pipelines {
-          val host = context.connection.remoteAddress.getHostName
-          val port = context.connection.remoteAddress.getPort
-          val openRequests = collection.mutable.Queue.empty[RequestRecord]
+          import context.connection
+          val host = connection.remoteAddress.getHostName
+          val port = connection.remoteAddress.getPort
+          val openRequests = mutable.Queue.empty[RequestRecord]
           var requestTimeout = initialRequestTimeout
 
           val commandPipeline: CPL = {
@@ -44,41 +47,31 @@ object ClientFrontend {
                   if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
                     render(wrapper)
                     openRequests.enqueue(new RequestRecord(x, context.sender, timestamp = System.currentTimeMillis))
-                  } else {
-                    log.warning("Received new HttpRequest before previous chunking request was finished, " +
-                      "forwarding to deadletters ...")
-                    forwardToDeadLetters(x)
-                  }
+                  } else warning.log(connection.tag, "Received new HttpRequest before previous chunking request was " +
+                    "finished, ignoring...")
 
                 case x: ChunkedRequestStart =>
                   if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
                     render(wrapper)
                     openRequests.enqueue(new RequestRecord(x, context.sender, timestamp = 0))
-                  } else {
-                    log.warning("Received new ChunkedRequestStart before previous chunking request was finished, " +
-                      "forwarding to deadletters ...")
-                    forwardToDeadLetters(x)
-                  }
+                  } else warning.log(connection.tag, "Received new ChunkedRequestStart before previous chunking " +
+                    "request was finished, ignoring...")
 
                 case x: MessageChunk =>
                   if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
                     render(wrapper)
-                  } else {
-                    log.warning("Received MessageChunk outside of chunking request context, ignoring...")
-                    forwardToDeadLetters(x)
-                  }
+                  } else warning.log(connection.tag, "Received MessageChunk outside of chunking request context, " +
+                    "ignoring...")
 
                 case x: ChunkedMessageEnd =>
                   if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
                     render(wrapper)
                     openRequests.last.timestamp = System.currentTimeMillis // only start timer once the request is completed
-                  } else {
-                    log.warning("Received ChunkedMessageEnd outside of chunking request context, ignoring...")
-                    forwardToDeadLetters(x)
-                  }
+                  } else warning.log(connection.tag, "Received ChunkedMessageEnd outside of chunking request " +
+                    "context, ignoring...")
               }
 
-            case x: SetRequestTimeout => requestTimeout = x.timeout.toMillis
+            case SetRequestTimeout(timeout) => requestTimeout = timeout.toMillis
 
             case cmd => commandPL(cmd)
           }
@@ -88,7 +81,7 @@ object ClientFrontend {
               if (!openRequests.isEmpty) {
                 dispatch(openRequests.dequeue().sender, x)
               } else {
-                log.warning("Received unmatched {}, closing connection due to protocol error", x)
+                warning.log(connection.tag, "Received unmatched {}, closing connection due to protocol error", x)
                 commandPL(HttpClient.Close(ProtocolError("Received unmatched response part " + x)))
               }
 
@@ -96,14 +89,13 @@ object ClientFrontend {
               if (!openRequests.isEmpty) {
                 dispatch(openRequests.head.sender, x)
               } else {
-                log.warning("Received unmatched {}, closing connection due to protocol error", x)
+                warning.log(connection.tag, "Received unmatched {}, closing connection due to protocol error", x)
                 commandPL(HttpClient.Close(ProtocolError("Received unmatched response part " + x)))
               }
 
             case IOClient.AckEvent(ack) =>
-              if (!openRequests.isEmpty) {
-                dispatch(openRequests.head.sender, ack)
-              } else throw new IllegalStateException
+              if (!openRequests.isEmpty) dispatch(openRequests.head.sender, ack)
+              else throw new IllegalStateException
 
             case x: HttpClient.Closed =>
               openRequests.foreach(rec => dispatch(rec.sender, x))
@@ -114,14 +106,10 @@ object ClientFrontend {
               eventPL(TickGenerator.Tick)
 
             case x: CommandException =>
-              log.warning("Received {}, closing connection ...", x)
+              warning.log(connection.tag, "Received {}, closing connection ...", x)
               commandPL(HttpClient.Close(ProtocolError(x.toString)))
 
             case ev => eventPL(ev)
-          }
-
-          def forwardToDeadLetters(x: AnyRef) {
-            context.connectionActorContext.system.deadLetters ! x
           }
 
           def render(part: HttpMessagePartWrapper) {
@@ -143,6 +131,7 @@ object ClientFrontend {
         }
       }
     }
+  }
 
   private class RequestRecord(
     val request: HttpRequestPart with HttpMessageStart,

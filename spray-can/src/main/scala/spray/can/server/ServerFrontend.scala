@@ -16,7 +16,7 @@
 
 package spray.can.server
 
-import akka.event.LoggingAdapter
+import akka.event.{Logging, LoggingAdapter}
 import akka.util.Duration
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.can.{HttpEvent, HttpCommand}
@@ -30,10 +30,10 @@ object ServerFrontend {
   def apply(serverSettings: ServerSettings,
             messageHandler: MessageHandler,
             timeoutResponse: HttpRequest => HttpResponse,
-            loggingAdapter: LoggingAdapter): PipelineStage = {
-
+            log: LoggingAdapter): PipelineStage = {
+    val warning = TaggableLog(log, Logging.WarningLevel)
     new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = {
+      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines with OpenRequestComponent {
           var firstOpenRequest: OpenRequest = EmptyOpenRequest
           var firstUnconfirmed: OpenRequest = EmptyOpenRequest
@@ -43,7 +43,6 @@ object ServerFrontend {
           def timeoutTimeout = _timeoutTimeout // required due to https://issues.scala-lang.org/browse/SI-6387
           val handlerCreator = messageHandler(context)
           val connectionActorContext = context.connectionActorContext
-          val log = loggingAdapter
           val settings = serverSettings
           val downstreamCommandPL = commandPL
           val createTimeoutResponse = timeoutResponse
@@ -52,6 +51,8 @@ object ServerFrontend {
           // not related to a specific request, they need to cleanup themselves
           // upon response sending or reception of the send confirmation
           val handlerReceivesClosedEvents = !messageHandler.isInstanceOf[PerMessageHandler]
+
+          def warn(msg: String) { warning.log(context.connection.tag, msg) }
 
           val commandPipeline: CPL = {
             case Response(openRequest, command) if openRequest == firstOpenRequest =>
@@ -129,7 +130,6 @@ object ServerFrontend {
           }
         }
       }
-    }
   }
 
   ////////////// COMMANDS //////////////
