@@ -36,13 +36,6 @@ trait Connection extends IOBridge.Handle {
    * in the case of a server connection the sender of the `Bind` command.
    */
   def commander: ActorRef
-
-  /**
-   * A custom, application-defined tag object that can be attached to a Bind or
-   * Connect command and is made available to the application through the handle.
-   * It is not used for any purpose inside of spray-io itself.
-   */
-  def tag: Any
 }
 //#
 

@@ -37,7 +37,7 @@ trait ConnectionActors extends IOPeer {
   /**
    * Override to customize the tag for the given connection. By default the given tag
    * is returned (which is the one from the respective `Bind` or `Connect` command having
-   * triggered the establishment of the connection.
+   * triggered the establishment of the connection).
    * CAUTION: this method is called from the constructor of the given Connection.
    * For optimization reasons the `tag` and `handler` members of the given Connection
    * instance will not yet be initialized (i.e. null). All other members are fully accessible.
