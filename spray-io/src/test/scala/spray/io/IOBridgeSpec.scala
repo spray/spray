@@ -44,7 +44,8 @@ class IOBridgeSpec extends Specification {
 
   "An IOBridge" should {
     "properly bind a test server" in {
-      (server ? IOServer.Bind("localhost", port)).await must beAnInstanceOf[IOServer.Bound]
+      val bindTag = LogMark("SERVER")
+      server.ask(IOServer.Bind("localhost", port, tag = bindTag)).mapTo[IOServer.Bound].map(_.tag).await === bindTag
     }
     "properly complete a one-request dialog" in {
       request("Echoooo").await === ("Echoooo" -> CleanClose)

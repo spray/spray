@@ -103,7 +103,7 @@ Closed Notifications
 When a connection is closed, for whatever reason, the ``HttpClient`` dispatches a ``Closed`` event message to the
 application. This message carries a ``reason`` member whose possible values are define here__.
 
-__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/spray/io/ConnectionClosedReason.scala
+__ https://github.com/spray/spray/blob/master/spray-io/src/main/scala/spray/io/ConnectionCloseReasons.scala
 
 
 Connection Configuration
