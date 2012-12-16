@@ -67,7 +67,11 @@ object HttpClient {
   /**
    * Object to be used as `tag` member of `Connect` commands in order to activate SSL encryption on the connection.
    */
-  val Encrypted = SslTlsSupport.Encrypted
+  val Encrypted = ConnectionTag(encrypted = true)
+
+  case class ConnectionTag(encrypted: Boolean, logMarker: String = "") extends SslTlsSupport.Enabling with LogMarking {
+    def encrypt(ctx: PipelineContext): Boolean = encrypted
+  }
 
   ////////////// COMMANDS //////////////
   // HttpRequestParts +

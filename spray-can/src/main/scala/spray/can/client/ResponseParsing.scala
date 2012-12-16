@@ -19,7 +19,7 @@ package spray.can.client
 import java.nio.ByteBuffer
 import scala.collection.mutable
 import scala.annotation.tailrec
-import akka.event.LoggingAdapter
+import akka.event.{Logging, LoggingAdapter}
 import spray.can.rendering.HttpRequestPartRenderingContext
 import spray.can.HttpEvent
 import spray.util.EmptyByteArray
@@ -33,7 +33,8 @@ object ResponseParsing {
 
   private val UnmatchedResponseErrorState = ErrorState("Response to non-existent request")
 
-  def apply(settings: ParserSettings, log: LoggingAdapter): PipelineStage =
+  def apply(settings: ParserSettings, log: LoggingAdapter): PipelineStage = {
+    val warning = TaggableLog(log, Logging.WarningLevel)
     new PipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
@@ -75,7 +76,7 @@ object ResponseParsing {
               case ErrorState.Dead => // if we already handled the error state we ignore all further input
 
               case x: ErrorState =>
-                log.warning("Received illegal response: {}", x.message)
+                warning.log(context.connection.tag, "Received illegal response: {}", x.message)
                 commandPL(IOPeer.Close(ProtocolError(x.message)))
                 currentParsingState = ErrorState.Dead // set to "special" ErrorState that ignores all further input
             }
@@ -113,4 +114,5 @@ object ResponseParsing {
           }
         }
     }
+  }
 }

@@ -5,6 +5,7 @@ import akka.actor.ActorSystem
 import spray.can.client.{DefaultHttpClient, HttpDialog}
 import spray.http.{HttpResponse, HttpRequest}
 import spray.util._
+import spray.io.LogMark
 
 
 object GoogleQueryExample extends App {
@@ -33,8 +34,9 @@ object GoogleQueryExample extends App {
   def secondRun: PartialFunction[Any, Unit] = {
     case _ =>
       log.info("Running google queries as separate requests (in parallel) ...")
-      def httpDialog(r: HttpRequest) = HttpDialog(httpClient, "www.google.com").send(r).end
-      val responseFuture = timed(Future.sequence(requests.map(httpDialog)))
+      def httpDialog(req: HttpRequest, ix: Int) =
+        HttpDialog(httpClient, "www.google.com", tag = LogMark(ix.toString)).send(req).end
+      val responseFuture = timed(Future.sequence(requests.zipWithIndex.map(t => httpDialog(t._1, t._2))))
       responseFuture.onSuccess(printResult andThen shutdown)
       responseFuture.onFailure(printError andThen shutdown)
   }
