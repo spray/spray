@@ -19,6 +19,27 @@ name and dedicate a somewhat lengthy blog post to its description. (In the proce
 interesting edge cases of the current Scala language implementation, so I hope you'll learn something even if you
 consider yourself a somewhat seasoned Scala developer.)
 
+*(Update 2012-12-17: The following two paragraphs were added.)*
+
+There have been some questions as to how the technique presented here differs from type classes, which are an
+increasingly common and widely used mechanism in Scala (see `this paper`_ for some good background material).
+The short answer is: There is no real difference. Rather, we see magnets as a specific application of type classes,
+which are a broader, more general concept. Among other things type classes can be used for type-level computation or
+advanced generic programming as in shapeless_. Most first people probably first come to know them as a solution
+for associating logic with types in a way that allows for very loose coupling and *retroactive extension*.
+For example, `spray-json`_ uses type classes to attach JSON (de)serialization logic to types "from the outside".
+
+As shown in this post type classes can be used to solve certain issues with regard to method overloading in Scala.
+Our intent is not to "rebrand" type classes, but rather to describe a way of using them for a specific purpose.
+In the case of method overloading we see value in labelling the combination of purpose and implementation technique
+with a dedicated name. With some kind of naming convention it is easier for someone reading a piece of code to derive
+intent and more quickly understand the purpose of a particular construct. This, describing a particular use case for
+type classes along with a proposal for naming the things involved, is what this post is all about.
+
+.. _this paper: http://ropas.snu.ac.kr/~bruno/papers/TypeClasses.pdf
+.. _shapeless: https://github.com/milessabin/shapeless
+.. _spray-json: https://github.com/spray/spray-json
+
 
 The Problem
 -----------
@@ -511,7 +532,7 @@ it generates this::
   }
 
 which is enough to make the types line up, but isn't quite what we want.
-So, while "magnetizing" single by-name parameters works as expected if the argument is a single expression the behavior
+So, while "magnetizing" single by-name parameters works as expected if the argument is a single expression, the behavior
 of the magnetized version differs from the unmagnetized one if the argument consists of a block with several statements.
 Definitely something to be aware of!
 
@@ -519,19 +540,29 @@ Definitely something to be aware of!
 __ https://issues.scala-lang.org/browse/SI-3237
 
 
-No empty Param List
+Param List required
 ~~~~~~~~~~~~~~~~~~~
+
+*(2012-12-17: Updated after feedback with corrections, see post comments below)*
 
 The magnet pattern relies on the ability of the compiler to select one of potentially several magnet branches in order
 to make an otherwise illegal call work (type-wise). In order for this logic to actually kick in we need to "provoke"
 an initial type-mismatch that the compiler can overcome with an implicit conversion. This requires that we actually
-have a parameter to work with. Overloads without any parameter, like::
+have a parameter list to work with. Overloads without a parameter list, like::
 
-  def foo(): String
+  def foo: String
 
 cannot be "magnetized". Unfortunately this also renders the magnet pattern ineffective for removing implicit parameter
 lists that are not preceded by a non-implicit parameter list, something that we have to work around in several places
 in :ref:`spray-routing`.
+
+Note that this does not mean that the parameter list cannot be empty. An overload like::
+
+  def foo(): String
+
+can be turned into the following magnet branch without any problem::
+
+  implicit def fromUnit(u: Unit): FooMagnet = ...
 
 
 No default Parameters
