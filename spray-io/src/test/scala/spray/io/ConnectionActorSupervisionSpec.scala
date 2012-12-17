@@ -36,7 +36,7 @@ class ConnectionActorSupervisionSpec extends Specification  {
 
   sequential
 
-  step(server.ask(IOServer.Bind("localhost", port, tag = LogMark("SERVER"))))
+  step(server.ask(IOServer.Bind("localhost", port, tag = LogMark("SERVER"))).await)
 
   "Connection Actors" should {
     var connection: Connection = null
