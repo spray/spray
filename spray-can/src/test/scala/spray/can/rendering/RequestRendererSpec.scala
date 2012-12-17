@@ -53,6 +53,7 @@ class RequestRendererSpec extends Specification {
              |Age: 0
              |Host: test.com:8080
              |User-Agent: spray-can/1.0.0
+             |Content-Length: 0
              |
              |"""
         }

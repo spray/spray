@@ -35,12 +35,13 @@ class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) extends Mes
   private def renderRequest(request: HttpRequest, host: String, port: Int) = {
     val bb = renderRequestStart(request, host, port)
     val rbl = request.entity.buffer.length
+    if (rbl > 0 || request.method.entityAccepted) appendHeader("Content-Length", rbl.toString, bb)
+    bb.append(MessageRendering.CrLf)
     RenderedMessagePart {
-      if (rbl > 0) {
-        appendHeader("Content-Length", rbl.toString, bb).append(MessageRendering.CrLf)
+      if (rbl > 0)
         if (bb.remainingCapacity >= rbl) bb.append(request.entity.buffer).toByteBuffer :: Nil
         else bb.toByteBuffer :: ByteBuffer.wrap(request.entity.buffer) :: Nil
-      } else bb.append(MessageRendering.CrLf).toByteBuffer :: Nil
+      else bb.toByteBuffer :: Nil
     }
   }
 
