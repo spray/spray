@@ -135,8 +135,8 @@ final class HttpRequest private(
   val headers: List[HttpHeader],
   val entity: HttpEntity,
   val protocol: HttpProtocol,
-  val URI: URI,                // non-public, only used internally for caching
-  val queryParams: QueryParams // non-public, only used internally for caching
+  val queryParams: QueryParams, // non-public, only used internally for caching
+  URI: URI                      // non-public, only used internally for caching
   ) extends HttpMessage with HttpRequestPart {
 
   type Self = HttpRequest
@@ -206,15 +206,22 @@ final class HttpRequest private(
     case Left(errorMsg) => throw new IllegalRequestException(BadRequest, RequestErrorInfo(errorMsg))
   }
 
-  def copy(method: HttpMethod = method, uri: String = uri, headers: List[HttpHeader] = headers,
-           entity: HttpEntity = entity, protocol: HttpProtocol = protocol): HttpRequest =
+  def copy(method: HttpMethod = method,
+           uri: String = uri,
+           headers: List[HttpHeader] = headers,
+           entity: HttpEntity = entity,
+           protocol: HttpProtocol = protocol): HttpRequest =
     if (uri != this.uri) HttpRequest(method, uri, headers, entity, protocol)
-    else new HttpRequest(method, uri, headers, entity, protocol, URI, queryParams)
+    else new HttpRequest(method, uri, headers, entity, protocol, queryParams, URI)
 
-  private def internalCopy(method: HttpMethod = method, uri: String = uri, headers: List[HttpHeader] = headers,
-           entity: HttpEntity = entity, protocol: HttpProtocol = protocol, URI: URI = URI,
-           queryParams: Map[String, String] = queryParams): HttpRequest =
-    new HttpRequest(method, uri, headers, entity, protocol, URI, queryParams)
+  private def internalCopy(method: HttpMethod = method,
+                           uri: String = uri,
+                           headers: List[HttpHeader] = headers,
+                           entity: HttpEntity = entity,
+                           protocol: HttpProtocol = protocol,
+                           queryParams: QueryParams = queryParams,
+                           URI: URI = URI): HttpRequest =
+    new HttpRequest(method, uri, headers, entity, protocol, queryParams, URI)
 
   override def hashCode(): Int = (((((method.## * 31) + uri.##) * 31) + headers.##) * 31 + entity.##) + protocol.##
   override def equals(that: Any) = that match {
@@ -319,7 +326,7 @@ object HttpRequest {
             headers: List[HttpHeader] = Nil,
             entity: HttpEntity = EmptyEntity,
             protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`): HttpRequest = {
-    new HttpRequest(method, uri, headers, entity, protocol, DefaultURI, Map.empty)
+    new HttpRequest(method, uri, headers, entity, protocol, Map.empty, DefaultURI)
   }
 
   def unapply(request: HttpRequest): Option[(HttpMethod, String, List[HttpHeader], HttpEntity, HttpProtocol)] = {
