@@ -25,14 +25,14 @@ There have been some questions as to how the technique presented here differs fr
 increasingly common and widely used mechanism in Scala (see `this paper`_ for some good background material).
 The short answer is: There is no real difference. Rather, we see magnets as a specific application of type classes,
 which are a broader, more general concept. Among other things type classes can be used for type-level computation or
-advanced generic programming as in shapeless_. Most first people probably first come to know them as a solution
+advanced generic programming as in shapeless_. Most people probably first come to know them as a solution
 for associating logic with types in a way that allows for very loose coupling and *retroactive extension*.
 For example, `spray-json`_ uses type classes to attach JSON (de)serialization logic to types "from the outside".
 
-As shown in this post type classes can be used to solve certain issues with regard to method overloading in Scala.
+As shown in this post type classes can also be used to solve certain issues with regard to method overloading in Scala.
 Our intent is not to "rebrand" type classes, but rather to describe a way of using them for a specific purpose.
 In the case of method overloading we see value in labelling the combination of purpose and implementation technique
-with a dedicated name. With some kind of naming convention it is easier for someone reading a piece of code to derive
+with a dedicated name. With some kind of naming convention it's easier for someone reading a piece of code to derive
 intent and more quickly understand the purpose of a particular construct. This, describing a particular use case for
 type classes along with a proposal for naming the things involved, is what this post is all about.
 
