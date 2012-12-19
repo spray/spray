@@ -1,3 +1,56 @@
+Version 1.1-M7 (2012-12-19)
+---------------------------
+- Upgraded to Scala 2.10.0-RC5, Akka 2.1.0-RC6
+- spray-can:
+
+  + fixed broken overridability of SprayCanHttpServerApp.system member
+  + fixed request rendering to not suppress custom Date headers
+  + fixed rendering of 'Content-Length: 0' request headers
+  + added option for tagging log messages with custom prefixes, closed #153
+  + added DefaultHttpClient extension, closed #166
+  + added explicit naming for connection actors
+
+- spray-http:
+
+  + fixed non-public access to the HttpRequest URI and queryParams members through the 'copy' method
+  + added HttpMessagePart extractor
+  + improved Date header parser to allow UTC as well as GMT time zone label
+  + improved language-tag parser to also accept tags according to BCP 47, closed #168
+
+- spray-httpx: changed JSON rendering to always be UTF-8 encoded
+- spray-io:
+
+  + changed IOExtension.ioBridge to IOExtension.ioBridge()
+  + added option for tagging log messages with custom prefixes, closed #153
+  + added proper supervisor strategy for connection actors: stop (and close connection) on all exceptions
+  + improved enabling/disabling of encryption on the connection (SslTlsSupport)
+  + flexibilized connection tag provision
+  + changed IOClient.Connected events to be sent with connection actor as sender
+
+- spray-routing:
+
+  + fixed rejection duplication in certain cases
+  + changed default marshalling encoding to UTF-8
+  + added SimpleRoutingApp trait
+  + added `complete(Future[StatusCode])` overload
+  + added `optionalHeaderValuePF` directive
+  + simplified and homogenized ExceptionHandler and RejectionHandler to both return Routes
+
+- testkit: turned response MatchError into proper error message, closed #165
+- util:
+
+  + introduced SprayActorLogging trait
+  + improved LoggingContext with configurability regarding logger name generation
+  + improved PimpedFuture.delay to accept implicit ActorRefFactory instead of ActorSystem
+
+- examples:
+
+  + added simple-routing-app example
+  + renamed simple-on-jetty and simple-on-spray-can examples to on-jetty / on-spray-can resp.
+
+- smaller fixes and improvements
+
+
 Version 1.1-M6 (2012-11-30)
 ---------------------------
 - Upgraded to Scala 2.10.0-RC3, Akka 2.1.0-RC3, parboiled 1.1.4, shapeless 1.2.3 and spray-json 1.2.3
