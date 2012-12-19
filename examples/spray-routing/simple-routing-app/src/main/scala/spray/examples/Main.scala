@@ -1,10 +1,8 @@
 package spray.examples
 
-import scala.concurrent.Promise
 import scala.concurrent.duration.Duration
 import spray.routing.SimpleRoutingApp
 import spray.http.MediaTypes._
-import spray.util._
 
 
 object Main extends App with SimpleRoutingApp {
@@ -28,9 +26,10 @@ object Main extends App with SimpleRoutingApp {
     (post | parameter('method ! "post")) {
       path("stop") {
         complete {
-          val responseFuture = Promise.successful("Shutting down in 1 second...").future
-          responseFuture.delay(Duration(1, "sec")).onComplete(_ => system.shutdown())
-          responseFuture
+          system.scheduler.scheduleOnce(Duration(1, "sec")) {
+            system.shutdown()
+          }
+          "Shutting down in 1 second..."
         }
       }
     }
