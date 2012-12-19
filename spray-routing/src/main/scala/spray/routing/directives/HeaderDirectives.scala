@@ -67,6 +67,14 @@ trait HeaderDirectives {
     }
 
   /**
+   * Extracts an optional HTTP header value using the given partial function.
+   * If the given function throws an exception the request is rejected
+   * with a [[spray.routing.MalformedHeaderRejection]].
+   */
+  def optionalHeaderValuePF[T](pf: PartialFunction[HttpHeader, T]): Directive[Option[T] :: HNil] =
+    optionalHeaderValue(pf.lift)
+
+  /**
    * Extracts the value of the optional HTTP request header with the given name.
    */
   def optionalHeaderValueByName(headerName: String): Directive[Option[String] :: HNil] = {
