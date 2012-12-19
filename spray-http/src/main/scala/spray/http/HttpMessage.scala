@@ -133,8 +133,8 @@ final class HttpRequest private(
   val headers: List[HttpHeader],
   val entity: HttpEntity,
   val protocol: HttpProtocol,
-  val queryParams: QueryParams, // non-public, only used internally for caching
-  URI: URI                      // non-public, only used internally for caching
+  val queryParams: QueryParams, // empty for instances not created by `parseQuery`
+  URI: URI // non-public, only used internally for caching after a call to `parseUri`
   ) extends HttpMessage with HttpRequestPart {
 
   type Self = HttpRequest
