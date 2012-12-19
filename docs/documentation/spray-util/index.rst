@@ -23,6 +23,26 @@ The :ref:`maven-repo` chapter contains all the info about how to pull *spray-uti
 Afterwards just ``import spray.util._`` to bring all relevant identifiers into scope.
 
 
+Configuration
+-------------
+
+Just like Akka *spray-util* relies on the `typesafe config`_ library for configuration. As such its JAR contains a
+``reference.conf`` file holding the default values of all configuration settings. In your application you typically
+provide an ``application.conf``, in which you override Akka and/or *spray* settings according to your needs.
+
+.. note:: Since *spray* uses the same configuration technique as Akka you might want to check out the
+   `Akka Documentation on Configuration`_.
+
+.. _typesafe config: https://github.com/typesafehub/config
+.. _Akka Documentation on Configuration: http://doc.akka.io/docs/akka/2.0.4/general/configuration.html
+
+This is the ``reference.conf`` of the *spray-util* module:
+
+.. literalinclude:: /../spray-util/src/main/resources/reference.conf
+   :language: bash
+
+
+
 Pimps
 -----
 
@@ -143,6 +163,16 @@ small, which makes it a viable solution for *local-only* messaging protocols.
 LoggingContext
 ~~~~~~~~~~~~~~
 
-The LoggingContext is a simple ``akka.event.LoggingAdapter`` that can be implicitly created from ActorRefFactory
-instances (i.e. ActorSystems or ActorContexts). It is mainly used by :ref:`spray-routing` directives, which require
-a logging facility for either type of ActorRefFactory.
+The ``LoggingContext`` is a simple ``akka.event.LoggingAdapter`` that can be implicitly created from ``ActorRefFactory``
+instances (i.e. ``ActorSystems`` or ``ActorContexts``). It is mainly used by :ref:`spray-routing` directives, which
+require a logging facility for either type of ``ActorRefFactory``.
+
+The ``LoggingContext`` allows for some deeper configuration via the ``log-actor-paths-with-dots`` and
+``log-actor-system-name`` config settings shown in the "Configuration" section above.
+
+
+SprayActorLogging
+~~~~~~~~~~~~~~~~~
+
+The ``SprayActorLogging`` trait is a drop-in replacement for the ``akka.actor.ActorLogging`` trait, which provides
+logging via a ``LoggingContext`` and therefore supports the same configuration options.

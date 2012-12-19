@@ -96,6 +96,7 @@ Directive                              Description
                                        request extracts ``None``
 :ref:`-optionalHeaderValue-`           Extracts an optional HTTP header value using a given function
 :ref:`-optionalHeaderValueByName-`     Extracts an optional HTTP header value by selecting a header by name
+:ref:`-optionalHeaderValuePF-`         Extracts an optional HTTP header value using a given partial function
 :ref:`-parameter-`                     Extracts the value of a request query parameter, rejects if the request doesn't
                                        come with a parameter matching the definition
 :ref:`-parameterMap-`                  Extracts the requests query parameters as a Map[String, String]

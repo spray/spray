@@ -71,3 +71,36 @@ Follow these steps to run it on your machine:
 6. Stop the service with::
 
     container:stop
+
+
+simple-routing-app
+------------------
+
+This examples demonstrates how to use the :ref:`SimpleRoutingApp` trait.
+
+Follow these steps to run it on your machine:
+
+1. Clone the *spray* repository::
+
+    git clone git://github.com/spray/spray.git
+
+2. Change into the base directory::
+
+    cd spray
+
+3. Run SBT::
+
+    sbt "project simple-routing-app" run
+
+   (If this doesn't work for you your SBT runner cannot deal with grouped arguments. In this case you'll have to
+   run the commands ``project simple-routing-app`` and ``run`` sequentially "inside" of SBT.)
+
+4. Browse to http://127.0.0.1:8080/
+
+5. Alternatively you can access the service with ``curl``::
+
+    curl -v 127.0.0.1:8080/ping
+
+6. Stop the service with::
+
+    curl -v 127.0.0.1:8080/stop

@@ -9,7 +9,7 @@ provide an ``application.conf``, in which you override Akka and/or *spray* setti
    `Akka Documentation on Configuration`_.
 
 .. _typesafe config: https://github.com/typesafehub/config
-.. _Akka Documentation on Configuration: http://doc.akka.io/docs/akka/2.0.3/general/configuration.html
+.. _Akka Documentation on Configuration: http://doc.akka.io/docs/akka/2.0.4/general/configuration.html
 
 This is the ``reference.conf`` of the *spray-routing* module:
 

@@ -11,3 +11,4 @@ HeaderDirectives
    headerValuePF
    optionalHeaderValue
    optionalHeaderValueByName
+   optionalHeaderValuePF

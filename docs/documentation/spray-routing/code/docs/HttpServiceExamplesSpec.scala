@@ -13,10 +13,10 @@ import spray.testkit.Specs2RouteTest
 class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
 
   //# minimal-example
-  import spray.routing.HttpService
+  import spray.routing.SimpleRoutingApp
 
-  trait SimpleService extends HttpService {
-    val route =
+  object Main extends App with SimpleRoutingApp {
+    startServer(interface = "localhost", port = 8080) {
       path("hello") {
         get {
           complete {
@@ -24,6 +24,7 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
           }
         }
       }
+    }
   }
   //#
 
@@ -44,10 +45,11 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
   }
 
   //# longer-example
-  import spray.httpx.encoding._
+  import scala.concurrent.duration.Duration
+  import spray.routing.HttpService
   import spray.routing.authentication.BasicAuth
   import spray.routing.directives.CachingDirectives._
-  import scala.concurrent.duration.Duration
+  import spray.httpx.encoding._
 
   trait LongerService extends HttpService with MyApp {
 
@@ -133,16 +135,7 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
   }
   //#
 
-  "example-1" in {
-    val service = new SimpleService {
-      def actorRefFactory = system
-    }
-    Get("/hello") ~> service.route ~> check {
-      entityAs[NodeSeq] === <h1>Say hello to spray</h1>
-    }
-  }
-
-  "example-2" in {
+  "longer example" in {
     val service = new LongerService {
       def actorRefFactory = system
     }
