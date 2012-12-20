@@ -22,6 +22,7 @@ import spray.util._
 
 
 sealed trait ContentNode {
+  def title: String
   def name: String
   def uri: String
   def children: Seq[ContentNode]
@@ -53,6 +54,7 @@ sealed trait ContentNode {
 
 class RootNode(val doc: SphinxDoc) extends ContentNode {
   val children: Seq[ContentNode] = (XML.loadString(doc.body) \ "ul" \ "li").par.map(li2Node(this)).seq
+  def title = "HTTP and more for your Akka/Scala Actors"
   def name = "root"
   def uri = ""
   def isRoot = true
@@ -62,6 +64,7 @@ class RootNode(val doc: SphinxDoc) extends ContentNode {
     new ContentNode {
       import SphinxDoc.load
       val a = (li \ "a").head
+      def title = if (parent.isRoot) name else parent.title + " » " + name
       val name = a.text
       val uri = (a \ "@href").text
       val children: Seq[ContentNode] = (li \ "ul" \ "li").map(li2Node(this))(collection.breakOut)
