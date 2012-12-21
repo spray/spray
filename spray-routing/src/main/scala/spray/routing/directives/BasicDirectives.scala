@@ -61,14 +61,12 @@ trait BasicDirectives {
    * A Directive0 that always passes the request on to its inner route
    * (i.e. does nothing with the request or the response).
    */
-  val noop = new Directive0 {
-    def happly(inner: HNil => Route) = inner(HNil)
-  }
+  def noop: Directive0 = Directive.Empty
 
   /**
    * A simple alias for the `noop` directive.
    */
-  def pass = noop
+  def pass: Directive0 = noop
 
   /**
    * Injects the given value into a directive.
