@@ -47,17 +47,23 @@ object LoggingContext extends LoggingContextLowerOrderImplicit1 {
 private[util] sealed abstract class LoggingContextLowerOrderImplicit1 extends LoggingContextLowerOrderImplicit2 {
   this: LoggingContext.type =>
 
-  implicit def fromActorRefFactory(implicit refFactory: ActorRefFactory, settings: UtilSettings) =
+  implicit def fromActorRefFactory(implicit refFactory: ActorRefFactory) =
     refFactory match {
-      case x: ActorSystem => fromAdapter(x.log)
-      case x: ActorContext => fromAdapter(actorRefLogging(settings, x.system, x.self.path.toString))
+      case x: ActorSystem => fromActorSystem(x)
+      case x: ActorContext => fromActorContext(x)
     }
 
-  private def actorRefLogging(settings: UtilSettings, system: ActorSystem, path: String) =
+  def fromActorSystem(system: ActorSystem) = fromAdapter(system.log)
+
+  def fromActorContext(context: ActorContext) = fromAdapter {
+    val system = context.system
+    val path = context.self.path.toString
+    val settings = UtilSettings.global.getOrElse(UtilSettings(system).get)
     if (settings.LogActorPathsWithDots) {
       def fix(path: String) = path.substring(7).replace('/', '.') // drop the `akka://` prefix and replace slashes
       Logging(system.eventStream, if (settings.LogActorSystemName) system.toString + '.' + fix(path) else fix(path))
     } else if (settings.LogActorSystemName) Logging(system, path) else Logging(system.eventStream, path)
+  }
 }
 
 private[util] sealed abstract class LoggingContextLowerOrderImplicit2 {
@@ -71,5 +77,5 @@ private[util] sealed abstract class LoggingContextLowerOrderImplicit2 {
  * which is available under the name "log".
  */
 trait SprayActorLogging { this: Actor ⇒
-  val log: LoggingAdapter = implicitly[LoggingContext]
+  val log: LoggingAdapter = LoggingContext.fromActorContext(context)
 }
