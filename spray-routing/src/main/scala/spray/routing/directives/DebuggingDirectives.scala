@@ -35,7 +35,7 @@ trait DebuggingDirectives {
   def logRequestResponse(magnet: LoggingMagnet[HttpRequest => Any => Unit]): Directive0 =
     mapRequestContext { ctx =>
       val logResponse = magnet.f(ctx.request)
-      ctx.mapRouteResponse { response => logResponse(response); response }
+      ctx.withRouteResponseMapped { response => logResponse(response); response }
     }
 }
 
