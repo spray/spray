@@ -122,6 +122,14 @@ abstract class Directive[L <: HList] { self =>
 }
 
 object Directive {
+
+  /**
+   * A Directive that always passes the request on to its inner route (i.e. does nothing).
+   */
+  object Empty extends Directive0 {
+    def happly(inner: HNil => Route) = inner(HNil)
+  }
+
   implicit def pimpApply[L <: HList](directive: Directive[L])
                                     (implicit hac: ApplyConverter[L]): hac.In => Route = f => directive.happly(hac(f))
 
