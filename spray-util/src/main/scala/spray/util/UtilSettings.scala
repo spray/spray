@@ -17,6 +17,7 @@
 package spray.util
 
 import com.typesafe.config.{ConfigFactory, Config}
+import akka.actor._
 
 
 class UtilSettings(config: Config) {
@@ -26,7 +27,33 @@ class UtilSettings(config: Config) {
   val LogActorSystemName    = c getBoolean "log-actor-system-name"
 }
 
-object UtilSettings {
-  implicit val Default = UtilSettings(ConfigFactory.load())
-  def apply(config: Config) = new UtilSettings(config)
+class UtilSettingsExtension(system: ExtendedActorSystem) extends Extension {
+  @volatile private[this] var _settings: UtilSettings = _
+
+  def get: UtilSettings = {
+    if (_settings == null) _settings = new UtilSettings(system.settings.config)
+    _settings
+  }
+
+  def set(settings: UtilSettings) {
+    _settings = settings
+  }
+}
+
+object UtilSettings extends ExtensionId[UtilSettingsExtension] with ExtensionIdProvider {
+  def lookup() = UtilSettings
+  def createExtension(system: ExtendedActorSystem) = new UtilSettingsExtension(system)
+
+  def update(system: ActorSystem, settings: UtilSettings) {
+    apply(system).set(settings)
+  }
+
+  /**
+   * Global settings initialized from the default application configuration by default.
+   * You can either set custom settings or enable per-ActorSystem configuration by setting
+   * `UtilSettings.global = None`. The latter will load the `spray.util` settings from
+   * the configuration of the ActorSystem or allow for directly specifying
+   * per-ActorSystem settings with `UtilSettings(system) = new UtilSettings(...)`.
+   */
+  @volatile var global: Option[UtilSettings] = Some(new UtilSettings(ConfigFactory.load()))
 }
