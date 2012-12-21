@@ -16,12 +16,17 @@
 
 package spray.util
 
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{ConfigFactory, Config}
 
 
-object UtilSettings {
-  private val c = ConfigUtils.prepareSubConfig(ConfigFactory.load(), "spray.util")
+class UtilSettings(config: Config) {
+  private val c = ConfigUtils.prepareSubConfig(config, "spray.util")
 
   val LogActorPathsWithDots = c getBoolean "log-actor-paths-with-dots"
   val LogActorSystemName    = c getBoolean "log-actor-system-name"
+}
+
+object UtilSettings {
+  implicit val Default = UtilSettings(ConfigFactory.load())
+  def apply(config: Config) = new UtilSettings(config)
 }

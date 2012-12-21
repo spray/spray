@@ -54,6 +54,5 @@ class ServerSettings(config: Config = ConfigFactory.load) {
 }
 
 object ServerSettings {
-  def apply(): ServerSettings = apply(ConfigFactory.load())
-  implicit def apply(config: Config): ServerSettings = new ServerSettings(config)
+  implicit def apply(config: Config = ConfigFactory.load()) = new ServerSettings(config)
 }

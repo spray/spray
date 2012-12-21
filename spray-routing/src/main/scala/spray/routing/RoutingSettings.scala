@@ -35,6 +35,6 @@ class RoutingSettings(config: Config) {
 }
 
 object RoutingSettings {
-  implicit val Default: RoutingSettings = apply(ConfigFactory.load())
-  def apply(config: Config): RoutingSettings = new RoutingSettings(config)
+  implicit val Default = apply(ConfigFactory.load())
+  def apply(config: Config) = new RoutingSettings(config)
 }
