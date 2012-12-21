@@ -47,22 +47,17 @@ object LoggingContext extends LoggingContextLowerOrderImplicit1 {
 private[util] sealed abstract class LoggingContextLowerOrderImplicit1 extends LoggingContextLowerOrderImplicit2 {
   this: LoggingContext.type =>
 
-  implicit def fromActorRefFactory(implicit refFactory: ActorRefFactory) =
+  implicit def fromActorRefFactory(implicit refFactory: ActorRefFactory, settings: UtilSettings) =
     refFactory match {
       case x: ActorSystem => fromAdapter(x.log)
-      case x: ActorContext => fromAdapter(actorRefLogging(x.system, x.self.path.toString))
+      case x: ActorContext => fromAdapter(actorRefLogging(settings, x.system, x.self.path.toString))
     }
 
-  private val actorRefLogging: (ActorSystem, String) => LoggingAdapter =
-    (UtilSettings.LogActorPathsWithDots, UtilSettings.LogActorSystemName) match {
-      case (false, false) => (system, path) => Logging(system.eventStream, path)
-      case (false, true)  => (system, path) => Logging(system, path)
-      case (true , false) => (system, path) => Logging(system.eventStream, dotify(path))
-      case (true , true)  => (system, path) => Logging(system.eventStream, system.toString + '.' + dotify(path))
-    }
-
-  // drop the `akka://` prefix and replace slashes with dots
-  private def dotify(path: String) = path.substring(7).replace('/', '.')
+  private def actorRefLogging(settings: UtilSettings, system: ActorSystem, path: String) =
+    if (settings.LogActorPathsWithDots) {
+      def fix(path: String) = path.substring(7).replace('/', '.') // drop the `akka://` prefix and replace slashes
+      Logging(system.eventStream, if (settings.LogActorSystemName) system.toString + '.' + fix(path) else fix(path))
+    } else if (settings.LogActorSystemName) Logging(system, path) else Logging(system.eventStream, path)
 }
 
 private[util] sealed abstract class LoggingContextLowerOrderImplicit2 {
