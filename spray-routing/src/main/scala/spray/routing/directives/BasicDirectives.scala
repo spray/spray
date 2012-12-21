@@ -17,9 +17,7 @@
 package spray.routing
 package directives
 
-import akka.actor.ActorRef
 import shapeless._
-import spray.util._
 import spray.http._
 
 
@@ -33,34 +31,31 @@ trait BasicDirectives {
     mapInnerRoute { inner => ctx => inner(f(ctx)) }
 
   def mapRequest(f: HttpRequest => HttpRequest): Directive0 =
-    mapRequestContext(_.mapRequest(f))
+    mapRequestContext(_.withRequestMapped(f))
 
-  def mapResponder(f: ActorRef => ActorRef): Directive0 =
-    mapRequestContext(_.mapResponder(f))
+  def routeRouteResponse(f: PartialFunction[Any, Route]): Directive0 =
+    mapRequestContext(_.withRouteResponseRouting(f))
 
   def mapRouteResponse(f: Any => Any): Directive0 =
-    mapRequestContext(_.mapRouteResponse(f))
+    mapRequestContext(_.withRouteResponseMapped(f))
 
   def mapRouteResponsePF(f: PartialFunction[Any, Any]): Directive0 =
-    mapRequestContext(_.mapRouteResponsePF(f))
-
-  def flatMapRouteResponse(f: Any => Seq[Any]): Directive0 =
-    mapRequestContext(_.flatMapRouteResponse(f))
-
-  def flatMapRouteResponsePF(f: PartialFunction[Any, Seq[Any]]): Directive0 =
-    mapRequestContext(_.flatMapRouteResponsePF(f))
-
-  def mapHttpResponse(f: HttpResponse => HttpResponse): Directive0 =
-    mapRequestContext(_.mapHttpResponse(f))
-
-  def mapHttpResponseEntity(f: HttpEntity => HttpEntity): Directive0 =
-    mapRequestContext(_.mapHttpResponseEntity(f))
-
-  def mapHttpResponseHeaders(f: List[HttpHeader] => List[HttpHeader]): Directive0 =
-    mapRequestContext(_.mapHttpResponseHeaders(f))
+    mapRequestContext(_.withRouteResponseMappedPF(f))
 
   def mapRejections(f: List[Rejection] => List[Rejection]): Directive0 =
-    mapRequestContext(_.mapRejections(f))
+    mapRequestContext(_.withRejectionsMapped(f))
+
+  def mapHttpResponsePart(f: HttpResponsePart => HttpResponsePart): Directive0 =
+    mapRequestContext(_.withHttpResponsePartMapped(f))
+
+  def mapHttpResponse(f: HttpResponse => HttpResponse): Directive0 =
+    mapRequestContext(_.withHttpResponseMapped(f))
+
+  def mapHttpResponseEntity(f: HttpEntity => HttpEntity): Directive0 =
+    mapRequestContext(_.withHttpResponseEntityMapped(f))
+
+  def mapHttpResponseHeaders(f: List[HttpHeader] => List[HttpHeader]): Directive0 =
+    mapRequestContext(_.withHttpResponseHeadersMapped(f))
 
   /**
    * A Directive0 that always passes the request on to its inner route

@@ -101,7 +101,7 @@ trait MiscDirectives {
    * Transforms the unmatchedPath of the RequestContext using the given function.
    */
   def rewriteUnmatchedPath(f: String => String): Directive0 =
-    mapRequestContext(_.mapUnmatchedPath(f))
+    mapRequestContext(_.withUnmatchedPathMapped(f))
 
   /**
    * Extracts the unmatched path from the RequestContext.

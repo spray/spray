@@ -16,26 +16,18 @@
 
 package spray.routing
 
+import spray.http.HttpResponse
 
-trait RouteConcatenation {
 
-  implicit def pimpRouteWithConcatenation(route: Route) = new RouteConcatenation(route: Route)
+class BasicDirectivesSpec extends RoutingSpec {
 
-  class RouteConcatenation(route: Route) {
-
-    /**
-     * Returns a Route that chains two Routes. If the first Route rejects the request the second route is given a
-     * chance to act upon the request.
-     */
-    def ~(other: Route): Route = { ctx =>
-      route {
-        ctx.withRejectionHandling { rejections =>
-          other(ctx.withRejectionsMapped(rejections ++ _))
-        }
+  "The 'routeRouteResponse' directive" should {
+    "in its simple String form" in {
+      val addYeah = routeRouteResponse {
+        case HttpResponse(_, entity, _, _) => complete(entity.asString + "Yeah")
       }
+      Get() ~> addYeah(complete("abc")) ~> check { entityAs[String] === "abcYeah" }
     }
   }
 
 }
-
-object RouteConcatenation extends RouteConcatenation

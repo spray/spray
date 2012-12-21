@@ -59,7 +59,7 @@ trait EncodingDirectives {
   def encodeResponse(encoder: Encoder) = {
     def applyEncoder = mapRequestContext { ctx =>
       @volatile var compressor: Compressor = null
-      ctx.flatMapHttpResponsePartResponse {
+      ctx.withHttpResponsePartMultiplied {
         case response: HttpResponse => encoder.encode(response) :: Nil
         case x@ ChunkedResponseStart(response) => encoder.startEncoding(response) match {
           case Some((compressedResponse, c)) =>
