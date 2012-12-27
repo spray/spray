@@ -15,7 +15,7 @@ object BuildSettings {
                              "web services on top of Akka",
     startYear             := Some(2011),
     licenses              := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
-    scalaVersion          := "2.10.0-RC5",
+    scalaVersion          := "2.10.0",
     resolvers             ++= Dependencies.resolutionRepos,
     scalacOptions         := Seq(
       "-encoding", "utf8",
