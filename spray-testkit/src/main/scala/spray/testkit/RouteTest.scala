@@ -20,6 +20,7 @@ import scala.util.DynamicVariable
 import scala.reflect.ClassTag
 import akka.actor.ActorSystem
 import org.scalatest.Suite
+import spray.routing.directives.ExecutionDirectives
 import spray.routing._
 import spray.httpx.unmarshalling._
 import spray.httpx._
@@ -85,22 +86,23 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
       type Out = HttpRequest
       def apply(request: HttpRequest, f: HttpRequest => HttpRequest) = f(request)
     }
-    implicit def injectIntoRoute(implicit timeout: RouteTestTimeout) = new TildeArrow[RequestContext, Unit] {
-      type Out = RouteResult
-      def apply(request: HttpRequest, route: Route) = {
-        val routeResult = new RouteResult(timeout.duration)
-        val parsedRequest = request.parseAll
-        route {
-          RequestContext(
-            request = parsedRequest,
-            responder = routeResult.handler,
-            unmatchedPath = parsedRequest.path
-          )
+    implicit def injectIntoRoute(implicit timeout: RouteTestTimeout, settings: RoutingSettings, log: LoggingContext) =
+      new TildeArrow[RequestContext, Unit] {
+        type Out = RouteResult
+        def apply(request: HttpRequest, route: Route) = {
+          val routeResult = new RouteResult(timeout.duration)
+          val parsedRequest = request.parseAll
+          ExecutionDirectives.handleExceptions(ExceptionHandler.default)(route) {
+            RequestContext(
+              request = parsedRequest,
+              responder = routeResult.handler,
+              unmatchedPath = parsedRequest.path
+            )
+          }
+          // since the route might detach we block until the route actually completes or times out
+          routeResult.awaitResult
         }
-        // since the route might detach we block until the route actually completes or times out
-        routeResult.awaitResult
       }
-    }
   }
 }
 
