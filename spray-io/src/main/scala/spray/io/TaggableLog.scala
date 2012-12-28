@@ -50,7 +50,7 @@ object TaggableLog {
     def log(tag: Any, template: String, arg1: Any, arg2: Any, arg3: Any) {}
   }
 
-  def apply(la: LoggingAdapter, level: Logging.LogLevel) =
+  def apply(la: LoggingAdapter, level: Logging.LogLevel): TaggableLog =
     if (la.isEnabled(level))
       new TaggableLog {
         def enabled: Boolean = true

@@ -26,6 +26,8 @@ trait Pipelines {
 //#
 
 object Pipelines {
+  val Uninitialized = apply(Pipeline.Uninitialized, Pipeline.Uninitialized)
+
   def apply(commandPL: Pipeline[Command], eventPL: Pipeline[Event]) = new Pipelines {
     val commandPipeline = commandPL
     val eventPipeline = eventPL
@@ -33,7 +35,7 @@ object Pipelines {
 }
 
 object Pipeline {
-  val uninitialized: Pipeline[Any] = _ => throw new RuntimeException("Pipeline not yet initialized")
+  val Uninitialized: Pipeline[Any] = _ => throw new RuntimeException("Pipeline not yet initialized")
 }
 
 trait PipelineContext {
@@ -43,12 +45,8 @@ trait PipelineContext {
   def sender: ActorRef = connectionActorContext.sender
 }
 
-object PipelineContext {
-  def apply(handle: Connection, connActorContext: ActorContext) = new PipelineContext {
-    def connection = handle
-    def connectionActorContext = connActorContext
-  }
-}
+class DefaultPipelineContext(val connection: Connection,
+                             val connectionActorContext: ActorContext) extends PipelineContext
 
 trait PipelineStage { left =>
   type CPL = Pipeline[Command]  // alias for brevity
@@ -60,8 +58,8 @@ trait PipelineStage { left =>
     if (right == EmptyPipelineStage) this
     else new PipelineStage {
       def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = {
-        var cplProxy: CPL = Pipeline.uninitialized
-        var eplProxy: EPL = Pipeline.uninitialized
+        var cplProxy: CPL = Pipeline.Uninitialized
+        var eplProxy: EPL = Pipeline.Uninitialized
         val cplProxyPoint: CPL = cplProxy(_)
         val eplProxyPoint: EPL = eplProxy(_)
         val leftPL = left.build(ctx, cplProxyPoint, epl)

@@ -24,6 +24,7 @@ import scala.annotation.tailrec
 import akka.event.{Logging, LoggingAdapter}
 import spray.util._
 import SSLEngineResult.Status._
+import ConnectionCloseReasons._
 
 
 object SslTlsSupport {
@@ -59,7 +60,7 @@ object SslTlsSupport {
             encryptIfUntagged: Boolean = true): PipelineStage = {
     val debug = TaggableLog(log, Logging.DebugLevel)
     val error = TaggableLog(log, Logging.ErrorLevel)
-    new PipelineStage {
+    new PipelineStage { // TODO: introduce OptionalPipelineStage factoring out the enabling/disabling logic
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = {
         val encrypt = context.connection.tag match {
           case x: Enabling => x.encrypt(context)
@@ -75,11 +76,11 @@ object SslTlsSupport {
         var inboundReceptacle: ByteBuffer = _ // holds incoming data that are too small to be decrypted yet
 
         val commandPipeline: CPL = {
-          case x: IOPeer.Send =>
+          case x: IOConnectionActor.Send =>
             if (pendingSends.isEmpty) withTempBuf(encrypt(Send(x), _))
             else pendingSends += Send(x)
 
-          case x: IOPeer.Close =>
+          case x: IOConnectionActor.Close =>
             debug.log(context.connection.tag ,"Closing SSLEngine due to reception of {}", x)
             engine.closeOutbound()
             withTempBuf(closeEngine)
@@ -89,13 +90,13 @@ object SslTlsSupport {
         }
 
         val eventPipeline: EPL = {
-          case IOPeer.Received(_, buffer) =>
+          case IOConnectionActor.Received(_, buffer) =>
             val buf = if (inboundReceptacle != null) {
               val r = inboundReceptacle; inboundReceptacle = null; r.concat(buffer)
             } else buffer
             withTempBuf(decrypt(buf, _))
 
-          case x: IOPeer.Closed =>
+          case x: IOConnectionActor.Closed =>
             if (!engine.isOutboundDone) {
               try engine.closeInbound()
               catch { case e: SSLException => } // ignore warning about possible possible truncation attacks
@@ -120,7 +121,7 @@ object SslTlsSupport {
           tempBuf.flip()
           if (tempBuf.remaining > 0) commandPL {
             val sendAck = if (ackDefinedAndPreContentLeft && !postContentLeft) ack else None
-            IOPeer.Send(tempBuf.copy :: Nil, sendAck)
+            IOConnectionActor.Send(tempBuf.copy :: Nil, sendAck)
           }
           result.getStatus match {
             case OK => result.getHandshakeStatus match {
@@ -136,7 +137,7 @@ object SslTlsSupport {
             }
             case CLOSED =>
               if (postContentLeft) commandPL {
-                IOPeer.Close(ConnectionCloseReasons.ProtocolError("SSLEngine closed prematurely while sending"))
+                IOConnectionActor.Close(ProtocolError("SSLEngine closed prematurely while sending"))
               }
             case BUFFER_OVERFLOW =>
               throw new IllegalStateException // the SslBufferPool should make sure that buffers are never too small
@@ -171,7 +172,7 @@ object SslTlsSupport {
             }
             case CLOSED =>
               if (!engine.isOutboundDone) commandPL {
-                IOPeer.Close(ConnectionCloseReasons.ProtocolError("SSLEngine closed prematurely while receiving"))
+                IOConnectionActor.Close(ProtocolError("SSLEngine closed prematurely while receiving"))
               }
             case BUFFER_UNDERFLOW =>
               inboundReceptacle = buffer // save buffer so we can append the next one to it
@@ -187,7 +188,7 @@ object SslTlsSupport {
             case e: SSLException =>
               error.log(context.connection.tag, "Closing encrypted connection to {} due to {}",
                 context.connection.remoteAddress, e)
-              commandPL(IOPeer.Close(ConnectionCloseReasons.ProtocolError(e.toString)))
+              commandPL(IOConnectionActor.Close(ProtocolError(e.toString)))
           }
           finally SslBufferPool.release(tempBuf)
         }
@@ -208,7 +209,7 @@ object SslTlsSupport {
             encrypt(next, tempBuf, fromQueue = true)
             // it may be that the send we just passed to `encrypt` was put back into the queue because
             // the SSLEngine demands a `NEED_UNWRAP`, in this case we want to stop looping
-            if (!pendingSends.isEmpty && (pendingSends.head ne next))
+            if (!pendingSends.isEmpty && pendingSends.head != next)
               processPendingSends(tempBuf)
           }
         }
@@ -224,7 +225,7 @@ object SslTlsSupport {
     }
   }
 
-  private final case class Send(buffers: Array[ByteBuffer], ack: Option[Any]) {
+  private final class Send(val buffers: Array[ByteBuffer], val ack: Option[Any]) {
     @tailrec
     def contentLeft(ix: Int = 0): Boolean = {
       if (ix < buffers.length) {
@@ -235,7 +236,7 @@ object SslTlsSupport {
   }
   private object Send {
     val Empty = new Send(new Array(0), None)
-    def apply(x: IOPeer.Send) = new Send(x.buffers.toArray, x.ack)
+    def apply(x: IOConnectionActor.Send) = new Send(x.buffers.toArray, x.ack)
   }
 }
 

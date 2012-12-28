@@ -15,30 +15,29 @@
  */
 package spray.io
 
-import java.nio.ByteBuffer
 import java.io.{BufferedWriter, OutputStreamWriter, InputStreamReader, BufferedReader}
 import javax.net.ssl._
 import java.security.{KeyStore, SecureRandom}
-import java.util.concurrent.TimeUnit._
 import scala.annotation.tailrec
 import scala.concurrent.duration.Duration
-import com.typesafe.config.ConfigFactory
 import org.specs2.mutable.Specification
 import akka.pattern.ask
 import akka.actor.{ActorRef, Props, ActorSystem}
 import akka.util.Timeout
 import spray.util._
+import IOClientConnectionActor._
 
 
 class SslTlsSupportSpec extends Specification {
-  val system = ActorSystem()
-  import system.log
+  implicit val timeOut: Timeout = Duration(1, "sec")
   implicit val sslContext = createSslContext("/ssl-test-keystore.jks", "")
+  implicit val system = ActorSystem()
+  import system.log
   val port = 23454
   val serverThread = new ServerThread
   serverThread.start()
-  val ioBridge = IOExtension(system).ioBridge()
 
+  installDebuggingEventStreamLoggers()
   sequential
 
   "The SslTlsSupportSpec" should {
@@ -49,15 +48,16 @@ class SslTlsSupportSpec extends Specification {
   }
 
   "The SslTlsSupport" should {
-    implicit val timeOut: Timeout = Duration(1, SECONDS)
     "be able to complete a simple request/response dialog from the client-side" in {
-      import IOClient._
-      val Connected(handle) = system.actorOf(Props(new SslClientActor), "ssl-client")
-        .ask(Connect("localhost", port)).await
-      val Received(_, buf) = handle.handler.ask(Send(ByteBuffer.wrap("3+4\n".getBytes))).await
-      handle.handler ! IOClient.Close(ConnectionCloseReasons.CleanClose)
-      buf.drainToString === "7\n"
+      val client = system.actorOf(Props(new IOClientConnectionActor(sslClientActorPipelineStage)), "ssl-client")
+      val response = for {
+        Connected(_, _)     <- client ? Connect("localhost", port)
+        Received(_, buffer) <- client ? Send(BufferBuilder("3+4\n").toByteBuffer)
+        Closed(_, _)   <- client ? Close(ConnectionCloseReasons.CleanClose)
+      } yield buffer.drainToString
+      response.await === "7\n"
     }
+
     "be able to complete a simple request/response dialog from the server-side" in {
       import IOServer._
       system.actorOf(Props(new SslServerActor), "ssl-server").ask(Bind("localhost", port + 1)).await
@@ -91,9 +91,9 @@ class SslTlsSupportSpec extends Specification {
     val (reader, writer) = readerAndWriter(socket)
     writer.write(send + "\n")
     writer.flush()
-    log.debug("Client sent: {}", send)
+    log.debug("SSLSocket Client sent: {}", send)
     val string = reader.readLine()
-    log.debug("Client received: {}", string)
+    log.debug("SSLSocket Client received: {}", string)
     socket.close()
     string
   }
@@ -104,40 +104,27 @@ class SslTlsSupportSpec extends Specification {
     reader -> writer
   }
 
-  class SslClientActor extends IOClient(ioBridge) with ConnectionActors {
-    protected def pipeline = frontEnd >> SslTlsSupport(ClientSSLEngineProvider.default, log)
-    def frontEnd = new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) = new Pipelines {
-        var receiver: ActorRef = _
-        val commandPipeline: CPL = {
-          case x: IOClient.Send => receiver = context.sender; commandPL(x)
-          case cmd => commandPL(cmd)
-        }
-        val eventPipeline: EPL = {
-          case x: IOClient.Received => receiver ! x
-          case ev => eventPL(ev)
-        }
-      }
-    }
-  }
+  val sslClientActorPipelineStage = DefaultPipelineStage >> SslTlsSupport(ClientSSLEngineProvider.default, log)
 
-  class SslServerActor extends IOServer(ioBridge) with ConnectionActors {
-    protected def pipeline = frontEnd >> SslTlsSupport(ServerSSLEngineProvider.default, log)
+  class SslServerActor extends IOServer with ConnectionActors {
+    val pipelineStage = frontEnd >> SslTlsSupport(ServerSSLEngineProvider.default, log)
     def frontEnd: PipelineStage = new PipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           val commandPipeline = commandPL
           val eventPipeline: EPL = {
-            case IOServer.Received(_, buf) =>
+            case Received(_, buf) =>
               val input = buf.drainToString.dropRight(1)
-              log.debug("Server received: {}", input)
+              log.debug("spray-io Server received: {}", input)
               val response = serverResponse(input)
-              commandPL(IOServer.Send(ByteBuffer.wrap(response.getBytes)))
-              log.debug("Server sent: {}", response.dropRight(1))
+              commandPL(Send(BufferBuilder(response).toByteBuffer))
+              log.debug("spray-io Server sent: {}", response.dropRight(1))
             case ev => eventPL(ev)
           }
         }
     }
+    def createConnectionActor(connection: Connection): ActorRef =
+      context.actorOf(Props(new DefaultIOConnectionActor(connection, pipelineStage)), nextConnectionActorName)
   }
 
   class ServerThread extends Thread {
@@ -149,19 +136,19 @@ class SslTlsSupportSpec extends Specification {
         val (reader, writer) = readerAndWriter(socket)
         @tailrec def connectionLoop(): Boolean = {
           val s = reader.readLine()
-          log.debug("Server received: {}", s)
+          log.debug("SSLServerSocket Server received: {}", s)
           s match {
             case null => true
             case "EXIT" =>
               writer.write("OK\n")
               writer.flush()
-              log.debug("Server sent: OK")
+              log.debug("SSLServerSocket Server sent: OK")
               false
             case string =>
               val result = serverResponse(string)
               writer.write(result)
               writer.flush()
-              log.debug("Server sent: {}", result.dropRight(1))
+              log.debug("SSLServerSocket Server sent: {}", result.dropRight(1))
               connectionLoop()
           }
         }

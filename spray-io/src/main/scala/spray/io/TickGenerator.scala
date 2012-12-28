@@ -44,7 +44,7 @@ object TickGenerator {
           val commandPipeline = commandPL
 
           val eventPipeline: EPL = {
-            case x: IOPeer.Closed =>
+            case x: IOConnectionActor.Closed =>
               generator.cancel()
               eventPL(x)
             case x => eventPL(x)

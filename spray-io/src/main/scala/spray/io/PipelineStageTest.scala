@@ -26,14 +26,12 @@ import akka.spray.UnregisteredActorRef
 import spray.util._
 
 
-trait PipelineStageTest { test =>
+trait PipelineStageTest {
   implicit def system: ActorSystem
 
-  lazy val testHandle = new Connection {
+  lazy val testConnection = new Connection {
     def key = throw new UnsupportedOperationException
     def handler = throw new UnsupportedOperationException
-    def ioBridge = throw new UnsupportedOperationException
-    def commander = throw new UnsupportedOperationException
     def tag = ()
     override val remoteAddress = new InetSocketAddress("example.com", 8080)
     override val localAddress = new InetSocketAddress("127.0.0.1", 32598)
@@ -63,8 +61,8 @@ trait PipelineStageTest { test =>
     val events = ListBuffer.empty[Event]
     val pipelines = {
       val context = new PipelineContext {
-        def connection = testHandle
-        def connectionActorContext = test.connectionActorContext
+        def connection = testConnection
+        def connectionActorContext = PipelineStageTest.this.connectionActorContext
         override def sender = if (msgSender != null) msgSender else sys.error("No message sender set")
       }
       stage.build(context, x => commands += x, x => events += x)
@@ -117,7 +115,7 @@ trait PipelineStageTest { test =>
   }
 
   def extractCommands(commands: List[Command]): List[Command] = commands.map {
-    case IOPeer.Send(bufs, ack) =>
+    case IOConnectionActor.Send(bufs, ack) =>
       val sb = new java.lang.StringBuilder
       for (b <- bufs) sb.append(b.duplicate.drainToString)
       SendString(sb.toString, ack)
@@ -125,7 +123,7 @@ trait PipelineStageTest { test =>
   }
 
   def extractEvents(events: List[Event]): List[Event] = events.map {
-    case IOPeer.Received(_, buffer) => ReceivedString(buffer.duplicate.drainToString)
+    case IOConnectionActor.Received(_, buffer) => ReceivedString(buffer.duplicate.drainToString)
     case x => x
   }
 
@@ -146,8 +144,8 @@ trait PipelineStageTest { test =>
     def from(sender: ActorRef) = Message(msg, sender)
   }
 
-  def Send(rawMessage: String) = IOPeer.Send(string2ByteBuffer(rawMessage))
-  def Received(rawMessage: String) = IOBridge.Received(testHandle, string2ByteBuffer(rawMessage))
+  def Send(rawMessage: String) = IOConnectionActor.Send(string2ByteBuffer(rawMessage))
+  def Received(rawMessage: String) = IOBridge.Received(testConnection, string2ByteBuffer(rawMessage))
 
   case class SendString(string: String, ack: Option[Any] = None) extends Command
   object SendString {

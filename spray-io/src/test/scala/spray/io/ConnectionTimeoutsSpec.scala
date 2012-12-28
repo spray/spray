@@ -45,7 +45,7 @@ class ConnectionTimeoutsSpec extends Specification with PipelineStageTest {
         processAndClear(Received("Some Message"))
         Thread.sleep(60)
         val Commands(command) = process(TickGenerator.Tick)
-        command === IOPeer.Close(ConnectionCloseReasons.IdleTimeout)
+        command === IOConnectionActor.Close(ConnectionCloseReasons.IdleTimeout)
       }
     }
     "reset the idle timer on Received events" in {

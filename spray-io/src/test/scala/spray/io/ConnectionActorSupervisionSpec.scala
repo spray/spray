@@ -16,7 +16,6 @@
 
 package spray.io
 
-import java.nio.ByteBuffer
 import scala.concurrent.duration.Duration
 import org.specs2.mutable.Specification
 import akka.actor.{ActorRef, Props, ActorSystem}
@@ -26,56 +25,55 @@ import spray.util._
 
 
 class ConnectionActorSupervisionSpec extends Specification  {
+  import IOClientConnectionActor._
   implicit val timeout: Timeout = Duration(1, "sec") // for asks below
   implicit val system = ActorSystem()
   val port = 23556
-  val bridge = IOExtension(system).ioBridge()
-  val server = system.actorOf(Props(new TestServer(bridge)), name = "test-server")
-  val client = system.actorOf(Props(new TestClient(bridge)), name = "test-client")
 
   installDebuggingEventStreamLoggers()
-
   sequential
 
-  step(server.ask(IOServer.Bind("localhost", port, tag = LogMark("SERVER"))).await)
+  step {
+    system.actorOf(Props(new TestServer), name = "test-server").ask(
+      IOServer.Bind("localhost", port, tag = LogMark("SERVER"))
+    ).await
+  }
 
-  "Connection Actors" should {
-    var connection: Connection = null
+  "Server-side Connection Actors" should {
+    val client = system.actorOf(Props(new IOClientConnectionActor()), name = "test-client-1")
+
     "be able to run their pipeline normally" in {
-      connection = client.ask(IOClient.Connect("localhost", port, tag = LogMark("CLIENT")))
-        .mapTo[IOClient.Connected].await.connection
-      client.ask(connection -> "ECHO").await === "ECHO"
+      val responseF = for {
+        Connected(_, _) <- client ? Connect("localhost", port, tag = LogMark("CLIENT"))
+        Received(_, buffer) <- client ? send("ECHO")
+      } yield buffer.drainToString
+      responseF.await === "ECHO"
     }
+
     "be stopped and their connection closed in case of pipeline exceptions" in {
-      client.ask(connection -> "CRASH").await === ConnectionCloseReasons.PeerClosed
+      val closeReason = for {
+        Closed(_, reason) <- client ? send("CRASH")
+      } yield reason
+      closeReason.await === ConnectionCloseReasons.PeerClosed
     }
   }
 
   step(system.shutdown())
 
-  class TestServer(_rootIoBridge: ActorRef) extends IOServer(_rootIoBridge) with ConnectionActors {
-    def pipeline = new PipelineStage {
+  def send(string: String) = Send(BufferBuilder(string).toByteBuffer)
+
+  class TestServer extends IOServer with ConnectionActors {
+    val pipelineStage = new PipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) = new Pipelines {
         val commandPipeline = commandPL
         val eventPipeline: EPL = {
-          case IOServer.Received(connection, buffer) if buffer.duplicate.drainToString == "CRASH" =>
-            sys.error("Crash Boom Bang!")
-          case IOServer.Received(connection, buffer) =>
-            commandPipeline(IOServer.Send(buffer))
+          case Received(connection, buffer) if buffer.duplicate.drainToString == "CRASH" => sys.error("Crash Boom Bang")
+          case Received(connection, buffer) => commandPipeline(Send(buffer))
         }
       }
     }
+    def createConnectionActor(connection: Connection): ActorRef =
+      context.actorOf(Props(new DefaultIOConnectionActor(connection, pipelineStage)), nextConnectionActorName)
   }
 
-  class TestClient(_rootIoBridge: ActorRef) extends IOClient(_rootIoBridge) {
-    var savedSender: ActorRef = _
-    override def receive: Receive = myReceive orElse super.receive
-    def myReceive: Receive = {
-      case (connection: Connection, string: String) =>
-        savedSender = sender
-        connection.ioBridge ! IOBridge.Send(connection, ByteBuffer.wrap(string.getBytes))
-      case IOPeer.Received(_, buffer) => savedSender ! buffer.drainToString
-      case IOPeer.Closed(connection, reason) => savedSender ! reason
-    }
-  }
 }

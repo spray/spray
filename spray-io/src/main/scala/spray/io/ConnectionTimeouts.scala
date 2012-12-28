@@ -36,7 +36,7 @@ object ConnectionTimeouts {
           case x: SetIdleTimeout =>
             timeout = x.timeout.toMillis
 
-          case x: IOPeer.Send =>
+          case x: IOConnectionActor.Send =>
             commandPL(x)
             lastActivity = System.currentTimeMillis
 
@@ -44,14 +44,14 @@ object ConnectionTimeouts {
         }
 
         val eventPipeline: EPL = {
-          case x: IOPeer.Received =>
+          case x: IOConnectionActor.Received =>
             lastActivity = System.currentTimeMillis
             eventPL(x)
 
           case TickGenerator.Tick =>
             if (timeout > 0 && (lastActivity + timeout < System.currentTimeMillis)) {
               debug.log(context.connection.tag ,"Closing connection due to idle timeout...")
-              commandPL(IOPeer.Close(IdleTimeout))
+              commandPL(IOConnectionActor.Close(IdleTimeout))
             }
             eventPL(TickGenerator.Tick)
 

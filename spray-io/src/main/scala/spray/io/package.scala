@@ -19,6 +19,7 @@ package spray
 
 package object io {
   type Pipeline[-T] = T => Unit
+  type Connection = IOBridge.Connection
 
   implicit def pimpBooleanWithOptionalPipelineStageOperator(condition: Boolean) = new PimpedBoolean(condition)
   class PimpedBoolean(condition: Boolean) {

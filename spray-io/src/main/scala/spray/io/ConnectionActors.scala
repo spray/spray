@@ -17,104 +17,49 @@
 package spray.io
 
 import akka.actor._
-import spray.util.{ConnectionCloseReasons, ClosedEventReason}
 
 
-trait ConnectionActors extends IOPeer {
+trait ConnectionActors extends IOServer {
 
-  /**
-   * The (usually compound) PipelineStage to be run by the connection actors.
-   * @return
-   */
-  protected def pipeline: PipelineStage
+  var connectionCounter = 0L
 
-  override protected def createConnectionHandle(theKey: IOBridge.Key, theIoBridge: ActorRef,
-                                                theCommander: ActorRef, theTag: Any): Connection = {
+  override def createConnection(_key: IOBridge.Key, _tag: Any): Connection =
     new Connection {
-      val key = theKey
-      val ioBridge = theIoBridge
-      val commander = theCommander
-      private[this] val _tag = connectionTag(this, theTag)     // must be 2nd-to-last member to be initialized
+      val key = _key
+      var tag = _tag
+      tag = overrideTag(this)
       private[this] val _handler = createConnectionActor(this) // must be last member to be initialized
-      def tag = if (_tag != null) _tag else sys.error("tag not yet available from `connectionTag` method")
       def handler = if (_handler != null) _handler else sys.error("handler not yet available during connection actor creation")
     }
+
+  /**
+   * Creates the connection actor ActorRef.
+   * CAUTION: this method is called from the constructor of the given Connection.
+   * For optimization reasons the `handler` member of the given Connection
+   * instance will not yet be initialized (i.e. null). All other members are fully accessible.
+   */
+  def createConnectionActor(connection: Connection): ActorRef
+
+  /**
+   * Creates the actor name for the connection actor for the given connection.
+   */
+  def nextConnectionActorName: String = {
+    connectionCounter += 1
+    "c" + connectionCounter
   }
 
   /**
-   * Override to customize the tag for the given connection. By default the given tag
-   * is returned (which is the one from the respective `Bind` or `Connect` command having
-   * triggered the establishment of the connection).
+   * Override to customize the tag for the given connection.
+   * By default the connections tag is returned unchanged.
    * CAUTION: this method is called from the constructor of the given Connection.
-   * For optimization reasons the `tag` and `handler` members of the given Connection
+   * For optimization reasons the `handler` member of the given Connection
    * instance will not yet be initialized (i.e. null). All other members are fully accessible.
    */
-  protected def connectionTag(connection: Connection, tag: Any): Any = tag
-
-  protected def createConnectionActor(connection: Connection): ActorRef =
-    context.actorOf(Props(new IOConnectionActor(connection)))
+  def overrideTag(connection: Connection): Any = connection.tag
 
   // we assume that we can never recover from failures of a connection actor,
   // we simply kill it, which causes it to close its connection in postStop()
-  override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy() { case _ => SupervisorStrategy.Stop }
+  override def supervisorStrategy: SupervisorStrategy =
+    OneForOneStrategy() { case _ => SupervisorStrategy.Stop }
 
-  class IOConnectionActor(val connection: Connection) extends Actor {
-    import connection.ioBridge
-
-    val pipelines = pipeline.build(
-      context = createPipelineContext,
-      commandPL = baseCommandPipeline,
-      eventPL = baseEventPipeline
-    )
-
-    // if our connection has been closed this field contains the reason
-    var closedReason: ClosedEventReason = _
-
-    def createPipelineContext: PipelineContext = PipelineContext(connection, context)
-
-    //# final-stages
-    def baseCommandPipeline: Pipeline[Command] = {
-      case IOPeer.Send(buffers, ack)          => ioBridge ! IOBridge.Send(connection, buffers, eventize(ack))
-      case IOPeer.Close(reason)               => ioBridge ! IOBridge.Close(connection, reason)
-      case IOPeer.StopReading                 => ioBridge ! IOBridge.StopReading(connection)
-      case IOPeer.ResumeReading               => ioBridge ! IOBridge.ResumeReading(connection)
-      case IOPeer.Tell(receiver, msg, sender) => receiver.tell(msg, sender)
-      case _: Droppable => // don't warn
-      case cmd => log.warning("commandPipeline: dropped {}", cmd)
-    }
-
-    def baseEventPipeline: Pipeline[Event] = {
-      case x: IOPeer.Closed => stop(x)
-      case _: Droppable => // don't warn
-      case ev => log.warning("eventPipeline: dropped {}", ev)
-    }
-    //#
-
-    def stop(ev: IOPeer.Closed) {
-      closedReason = ev.reason
-      log.debug("Stopping connection actor, connection was closed due to {}", ev.reason)
-      context.stop(self)
-      context.parent ! ev // also inform our parent of our closing
-    }
-
-    def eventize(ack: Option[Any]) = ack match {
-      case None | Some(_: Event) => ack
-      case Some(x) => Some(IOPeer.AckEvent(x))
-    }
-
-    //# receive
-    def receive: Receive = {
-      case x: Command => pipelines.commandPipeline(x)
-      case x: Event => pipelines.eventPipeline(x)
-      case Status.Failure(x: CommandException) => pipelines.eventPipeline(x)
-      case Terminated(actor) => pipelines.eventPipeline(IOPeer.ActorDeath(actor))
-    }
-    //#
-
-    override def postStop() {
-      // if there is no closedReason set we have been irregularly stopped by our supervisor
-      // therefore we need to clean up our connection here
-      if (closedReason == null) ioBridge ! IOBridge.Close(connection, ConnectionCloseReasons.InternalError)
-    }
-  }
 }
