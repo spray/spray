@@ -19,7 +19,7 @@ package client
 
 import akka.event.LoggingAdapter
 import akka.actor.{Props, ActorRef}
-import spray.http.{HttpMessagePart, HttpRequestPart}
+import spray.http.HttpMessagePartWrapper
 import spray.io._
 
 
@@ -43,7 +43,7 @@ class HttpClient(ioBridge: ActorRef,
       Props {
         new IOConnectionActor(connection) {
           override def receive: Receive = super.receive orElse {
-            case x: HttpMessagePart with HttpRequestPart => pipelines.commandPipeline(HttpCommand(x))
+            case x: HttpMessagePartWrapper => pipelines.commandPipeline(HttpCommand(x))
           }
         }
       }
