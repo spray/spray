@@ -113,7 +113,7 @@ object ClientFrontend {
           }
 
           def render(part: HttpMessagePartWrapper) {
-            commandPL(HttpRequestPartRenderingContext(part.asInstanceOf[HttpRequestPart], host, port, part.sentAck))
+            commandPL(HttpRequestPartRenderingContext(part.messagePart.asInstanceOf[HttpRequestPart], host, port, part.sentAck))
           }
 
           def dispatch(receiver: ActorRef, msg: Any) {
