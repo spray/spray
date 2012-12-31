@@ -47,7 +47,7 @@ trait SimpleRoutingApp extends SprayCanHttpServerApp with HttpService {
                   settings: ServerSettings = ServerSettings(),
                   serverActorName: String = "http-server",
                   serviceActorName: String = "simple-service-actor")
-                 (route: Route)
+                 (route: => Route)
                  (implicit sslEngineProvider: ServerSSLEngineProvider,
                   bindingTimeout: Timeout = Duration(1, "sec")): Future[HttpServer.Bound] = {
     val service = system.actorOf(
