@@ -37,24 +37,31 @@ object HttpMessagePartWrapper {
   def unapply(x: HttpMessagePartWrapper): Option[(HttpMessagePart, Option[Any])] = Some((x.messagePart, x.sentAck))
 }
 
-
 sealed trait HttpMessagePart extends HttpMessagePartWrapper {
   def messagePart = this
   def sentAck: Option[Any] = None
   def withSentAck(ack: Any) = Confirmed(this, Some(ack))
 }
 
-object HttpMessagePart {
-  def unapply(wrapper: HttpMessagePartWrapper): Option[(HttpMessagePart, Option[Any])] =
-    wrapper match {
-      case part: HttpMessagePart => Some((part, None))
-      case Confirmed(part, sentAck) => Some((part, sentAck))
+sealed trait HttpRequestPart extends HttpMessagePart
+
+object HttpRequestPart {
+  def unapply(wrapper: HttpMessagePartWrapper): Option[(HttpRequestPart, Option[Any])] =
+    wrapper.messagePart match {
+      case x: HttpRequestPart => Some((x, wrapper.sentAck))
+      case _ => None
     }
 }
 
-sealed trait HttpRequestPart extends HttpMessagePart
-
 sealed trait HttpResponsePart extends HttpMessagePart
+
+object HttpResponsePart {
+  def unapply(wrapper: HttpMessagePartWrapper): Option[(HttpResponsePart, Option[Any])] =
+    wrapper.messagePart match {
+      case x: HttpResponsePart => Some((x, wrapper.sentAck))
+      case _ => None
+    }
+}
 
 sealed trait HttpMessageStart extends HttpMessagePart {
   def message: HttpMessage
