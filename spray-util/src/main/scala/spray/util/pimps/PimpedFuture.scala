@@ -33,15 +33,12 @@ class PimpedFuture[+A](underlying: Future[A]) {
     Await.ready(underlying, timeout.duration)
 
   def delay(duration: FiniteDuration)(implicit refFactory: ActorRefFactory): Future[A] = {
-    val system = RefUtils.actorSystem(refFactory)
-    implicit val executionContext = system.dispatcher
+    import refFactory.dispatcher
     val promise = Promise[A]()
     underlying.onComplete { value =>
-      system.scheduler.scheduleOnce(duration, new Runnable {
-        def run() {
-          promise.complete(value)
-        }
-      })
+      RefUtils.actorSystem(refFactory).scheduler.scheduleOnce(duration) {
+        promise.complete(value)
+      }
     }
     promise.future
   }
