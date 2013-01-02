@@ -33,7 +33,7 @@ object ServerFrontend {
             log: LoggingAdapter): PipelineStage = {
     val warning = TaggableLog(log, Logging.WarningLevel)
     new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines with OpenRequestComponent {
           var firstOpenRequest: OpenRequest = EmptyOpenRequest
           var firstUnconfirmed: OpenRequest = EmptyOpenRequest

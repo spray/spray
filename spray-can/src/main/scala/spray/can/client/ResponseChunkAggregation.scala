@@ -26,7 +26,7 @@ object ResponseChunkAggregation {
 
   def apply(limit: Int): PipelineStage =
     new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           var response: HttpResponse = _
           var bb: BufferBuilder = _
@@ -59,7 +59,7 @@ object ResponseChunkAggregation {
 
           def closeWithError() {
             val msg = "Aggregated response entity greater than configured limit of " + limit + " bytes"
-            commandPL(HttpClient.Close(ProtocolError(msg)))
+            commandPL(HttpClientConnection.Close(ProtocolError(msg)))
             closed = true
           }
         }

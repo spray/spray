@@ -21,7 +21,7 @@ import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActorRef
 import akka.actor.{ActorSystem, Actor}
 import spray.can.{HttpCommand, HttpPipelineStageSpec}
-import spray.io.IOPeer
+import spray.io.IOConnection._
 import spray.util._
 import spray.http._
 
@@ -123,7 +123,7 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
                 |Yeah"""
             }
           },
-          IOPeer.Closed(testHandle, ConnectionCloseReasons.PeerClosed)
+          Closed(testConnection, ConnectionCloseReasons.PeerClosed)
         )
         body.asString === "Yeah"
       }
@@ -143,7 +143,7 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
     def getContext = context
   }
 
-  val pipeline = HttpClient.pipeline(
+  val pipeline = HttpClientConnection.pipelineStage(
     new ClientSettings(
       ConfigFactory.parseString("""
         spray.can.client.user-agent-header = spray/1.0

@@ -16,38 +16,38 @@
 
 package spray.can.server
 
+import java.net.InetSocketAddress
 import scala.concurrent.duration.FiniteDuration
 import akka.event.LoggingAdapter
 import akka.actor.{Props, ActorRef}
 import spray.can.server.StatsSupport.StatsHolder
 import spray.io._
 import spray.http._
+import spray.io.IOBridge.Connection
 
 
-class HttpServer(ioBridge: ActorRef, messageHandler: MessageHandler, settings: ServerSettings = ServerSettings())
-                (implicit sslEngineProvider: ServerSSLEngineProvider) extends IOServer(ioBridge) with ConnectionActors {
+class HttpServer(messageHandler: MessageHandler, settings: ServerSettings = ServerSettings())
+                (implicit sslEngineProvider: ServerSSLEngineProvider) extends IOServer with ConnectionActors {
 
-  protected val statsHolder: Option[StatsHolder] =
+  val statsHolder: Option[StatsHolder] =
     if (settings.StatsSupport) Some(new StatsHolder) else None
 
-  protected val pipeline =
-    HttpServer.pipeline(settings, messageHandler, timeoutResponse, statsHolder, log)
+  val pipelineStage = HttpServer.pipelineStage(settings, messageHandler, timeoutResponse, statsHolder, log)
 
-  protected var connectionCounter = 0L
+  def createConnectionActor(connection: Connection): ActorRef =
+    context.actorOf(Props(new DefaultIOConnectionActor(connection, pipelineStage)), nextConnectionActorName)
 
-  override protected def createConnectionActor(connection: Connection) =
-    context.actorOf(Props(new IOConnectionActor(connection)), "c" + { connectionCounter += 1; connectionCounter })
-
-  override def receive: Receive = super.receive orElse {
-    case HttpServer.GetStats    => statsHolder.foreach(holder => sender ! holder.toStats)
-    case HttpServer.ClearStats  => statsHolder.foreach(_.clear())
-  }
+  override def bound(endpoint: InetSocketAddress, bindingKey: IOBridge.Key, bindingTag: Any): Receive =
+    super.bound(endpoint, bindingKey, bindingTag) orElse {
+      case HttpServer.GetStats   => statsHolder.foreach(holder => sender ! holder.toStats)
+      case HttpServer.ClearStats => statsHolder.foreach(_.clear())
+    }
 
   /**
    * This methods determines the HttpResponse to sent back to the client if both the request handling actor
    * as well as the timeout actor do not produce timely responses with regard to the configured timeout periods.
    */
-  protected def timeoutResponse(request: HttpRequest): HttpResponse = HttpResponse(
+  def timeoutResponse(request: HttpRequest): HttpResponse = HttpResponse(
     status = 500,
     entity = "Ooops! The server was not able to produce a timely response to your request.\n" +
       "Please try again in a short while!"
@@ -57,7 +57,7 @@ class HttpServer(ioBridge: ActorRef, messageHandler: MessageHandler, settings: S
 object HttpServer {
 
   /**
-   * The HttpServer pipelines setup:
+   * The HttpServer pipeline setup:
    *
    * |------------------------------------------------------------------------------------------
    * | ServerFrontend: converts HttpMessagePart, Closed and SendCompleted events to
@@ -163,12 +163,12 @@ object HttpServer {
    *    |                                 | IOServer.ResumeReading
    *    |                                \/
    */
-  private[can] def pipeline(settings: ServerSettings,
-                            messageHandler: MessageHandler,
-                            timeoutResponse: HttpRequest => HttpResponse,
-                            statsHolder: Option[StatsHolder],
-                            log: LoggingAdapter)
-                           (implicit sslEngineProvider: ServerSSLEngineProvider): PipelineStage = {
+  private[can] def pipelineStage(settings: ServerSettings,
+                                 messageHandler: MessageHandler,
+                                 timeoutResponse: HttpRequest => HttpResponse,
+                                 statsHolder: Option[StatsHolder],
+                                 log: LoggingAdapter)
+                                (implicit sslEngineProvider: ServerSSLEngineProvider): PipelineStage = {
     import settings.{StatsSupport => _, _}
     ServerFrontend(settings, messageHandler, timeoutResponse, log) >>
     (RequestChunkAggregationLimit > 0) ? RequestChunkAggregation(RequestChunkAggregationLimit.toInt) >>
@@ -196,19 +196,18 @@ object HttpServer {
 
   ////////////// COMMANDS //////////////
   // HttpResponseParts +
-  type ServerCommand = IOServer.ServerCommand
-  type Bind = IOServer.Bind;                                  val Bind = IOServer.Bind
-  val Unbind = IOServer.Unbind
-  type Close = IOServer.Close;                                val Close = IOServer.Close
-  type SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout;    val SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout
+  type Bind              = IOServer.Bind;                     val Bind              = IOServer.Bind
+  type Close             = IOConnection.Close;                val Close             = IOConnection.Close
+  type SetIdleTimeout    = ConnectionTimeouts.SetIdleTimeout; val SetIdleTimeout    = ConnectionTimeouts.SetIdleTimeout
   type SetRequestTimeout = ServerFrontend.SetRequestTimeout;  val SetRequestTimeout = ServerFrontend.SetRequestTimeout
   type SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout;  val SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout
+  val Unbind             = IOServer.Unbind
   case object ClearStats extends Command
   case object GetStats extends Command
 
   ////////////// EVENTS //////////////
   // HttpRequestParts +
-  type Bound = IOServer.Bound;     val Bound = IOServer.Bound
-  type Unbound = IOServer.Unbound; val Unbound = IOServer.Unbound
-  type Closed = IOServer.Closed;   val Closed = IOServer.Closed
+  type Bound   = IOServer.Bound;      val Bound   = IOServer.Bound
+  type Unbound = IOServer.Unbound;    val Unbound = IOServer.Unbound
+  type Closed  = IOConnection.Closed; val Closed  = IOConnection.Closed
 }

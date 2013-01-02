@@ -25,6 +25,7 @@ import spray.util.ConnectionCloseReasons._
 import spray.io._
 import spray.http._
 import HttpHeaders.RawHeader
+import IOConnection._
 
 
 class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
@@ -94,7 +95,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
     }
 
     "dispatch Closed messages" in {
-      val CLOSED = Closed(`testHandle`, PeerClosed)
+      val CLOSED = Closed(`testConnection`, PeerClosed)
       "to the handler if no request is open" in {
         singleHandlerPipeline.test {
           val Commands(Tell(receiver, CLOSED, _)) = process(CLOSED)
@@ -267,7 +268,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         request === HttpRequest(headers = List(RawHeader("host", "test.com")))
 
         peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse(entity = "1234567"))), sender1)
-        val Seq(SendString(raw, Some(AckEventWithReceiver(IOBridge.Closed(_, CleanClose), `sender1`)))) = result.commands
+        val Seq(SendString(raw, Some(AckEventWithReceiver(Closed(_, CleanClose), `sender1`)))) = result.commands
         raw === prep {
         """|HTTP/1.1 200 OK
            |Server: spray/1.0
@@ -348,21 +349,22 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
 
   val singleHandlerPipeline = testPipeline(SingletonHandler(singletonHandler))
 
-  def testPipeline(messageHandler: MessageHandler, requestChunkAggregation: Boolean = false) = HttpServer.pipeline(
-    new ServerSettings(
-      ConfigFactory.parseString("""
-        spray.can.server.server-header = spray/1.0
-        spray.can.server.idle-timeout = 250 ms
-        spray.can.server.request-timeout = 50 ms
-        spray.can.server.timeout-timeout = 30 ms
-        spray.can.server.reaping-cycle = 0  # don't enable the TickGenerator
-        spray.can.server.pipelining-limit = 10
-      """ + (if (!requestChunkAggregation) "spray.can.server.request-chunk-aggregation-limit = 0" else ""))
-    ),
-    messageHandler,
-    req => HttpResponse(500, "Timeout for " + req.uri),
-    Some(new StatsSupport.StatsHolder),
-    system.log
-  )
+  def testPipeline(messageHandler: MessageHandler, requestChunkAggregation: Boolean = false) =
+    HttpServer.pipelineStage(
+      new ServerSettings(
+        ConfigFactory.parseString("""
+          spray.can.server.server-header = spray/1.0
+          spray.can.server.idle-timeout = 250 ms
+          spray.can.server.request-timeout = 50 ms
+          spray.can.server.timeout-timeout = 30 ms
+          spray.can.server.reaping-cycle = 0  # don't enable the TickGenerator
+          spray.can.server.pipelining-limit = 10
+        """ + (if (!requestChunkAggregation) "spray.can.server.request-chunk-aggregation-limit = 0" else ""))
+      ),
+      messageHandler,
+      req => HttpResponse(500, "Timeout for " + req.uri),
+      Some(new StatsSupport.StatsHolder),
+      system.log
+    )
 }
 

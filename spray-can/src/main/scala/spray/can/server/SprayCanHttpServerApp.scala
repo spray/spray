@@ -33,10 +33,9 @@ trait SprayCanHttpServerApp {
    * Creates a new spray-can HttpServer actor using the given singleton handler, settings and name.
    */
   def newHttpServer(handler: ActorRef,
-                    ioBridge: ActorRef = IOExtension(system).ioBridge(),
                     settings: ServerSettings = ServerSettings(),
                     name: String = "http-server")
                    (implicit sslEngineProvider: ServerSSLEngineProvider) =
-    system.actorOf(Props(new HttpServer(ioBridge, SingletonHandler(handler), settings)), name)
+    system.actorOf(Props(new HttpServer(SingletonHandler(handler), settings)), name)
 
 }

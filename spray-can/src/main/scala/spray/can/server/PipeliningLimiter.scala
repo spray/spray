@@ -30,7 +30,7 @@ object PipeliningLimiter {
     new PipelineStage {
       require(pipeliningLimit > 0)
 
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           var parkedRequestParts: mutable.Queue[HttpRequestPart] = _
           var openRequests = 0
@@ -65,14 +65,14 @@ object PipeliningLimiter {
           def stopReading() {
             if (!readingStopped) {
               readingStopped = true
-              commandPL(IOServer.StopReading)
+              commandPL(IOConnection.StopReading)
             }
           }
 
           def resumeReading() {
             if (readingStopped) {
               readingStopped = false
-              commandPL(IOServer.ResumeReading)
+              commandPL(IOConnection.ResumeReading)
             }
           }
 

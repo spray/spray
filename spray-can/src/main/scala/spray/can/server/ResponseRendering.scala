@@ -31,16 +31,16 @@ object ResponseRendering {
         settings.ResponseSizeHint.toInt
       )
 
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           val commandPipeline: CPL = {
             case ctx: HttpResponsePartRenderingContext =>
               val rendered = renderer.render(ctx)
               val buffers = rendered.buffers
               if (!buffers.isEmpty)
-                commandPL(IOPeer.Send(buffers, ctx.sentAck))
+                commandPL(IOConnection.Send(buffers, ctx.sentAck))
               if (rendered.closeConnection)
-                commandPL(IOPeer.Close(CleanClose))
+                commandPL(HttpServer.Close(CleanClose))
 
             case cmd => commandPL(cmd)
           }

@@ -36,7 +36,7 @@ object ResponseParsing {
   def apply(settings: ParserSettings, log: LoggingAdapter): PipelineStage = {
     val warning = TaggableLog(log, Logging.WarningLevel)
     new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           var currentParsingState: ParsingState = UnmatchedResponseErrorState
           val openRequestMethods = mutable.Queue.empty[HttpMethod]
@@ -77,7 +77,7 @@ object ResponseParsing {
 
               case x: ErrorState =>
                 warning.log(context.connection.tag, "Received illegal response: {}", x.message)
-                commandPL(IOPeer.Close(ProtocolError(x.message)))
+                commandPL(HttpClientConnection.Close(ProtocolError(x.message)))
                 currentParsingState = ErrorState.Dead // set to "special" ErrorState that ignores all further input
             }
           }
@@ -99,9 +99,9 @@ object ResponseParsing {
           }
 
           val eventPipeline: EPL = {
-            case x: IOPeer.Received => parse(x.buffer)
+            case x: IOClientConnection.Received => parse(x.buffer)
 
-            case ev@IOPeer.Closed(_, PeerClosed) =>
+            case ev@ HttpClientConnection.Closed(_, PeerClosed) =>
               currentParsingState match {
                 case x: ToCloseBodyParser =>
                   currentParsingState = x.complete

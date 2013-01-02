@@ -85,7 +85,7 @@ object StatsSupport {
 
   def apply(holder: StatsHolder): PipelineStage =
     new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           import holder._
           connectionsOpened.incrementAndGet()
@@ -96,7 +96,7 @@ object StatsSupport {
               responseStarts.incrementAndGet()
               commandPL(x)
 
-            case x: IOServer.Tell if x.message.isInstanceOf[Timeout] =>
+            case x@ IOConnection.Tell(_, _: Timeout, _) =>
               requestTimeouts.incrementAndGet()
               commandPL(x)
 

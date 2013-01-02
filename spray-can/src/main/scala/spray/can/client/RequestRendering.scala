@@ -26,12 +26,12 @@ object RequestRendering {
     new PipelineStage {
       val renderer = new RequestRenderer(settings.UserAgentHeader, settings.RequestSizeHint.toInt)
 
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           val commandPipeline: CPL = {
             case ctx: HttpRequestPartRenderingContext =>
               val rendered = renderer.render(ctx)
-              commandPL(IOPeer.Send(rendered.buffers, ctx.sentAck))
+              commandPL(IOClientConnection.Send(rendered.buffers, ctx.sentAck))
 
             case cmd => commandPL(cmd)
           }

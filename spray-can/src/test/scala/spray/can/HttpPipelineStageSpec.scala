@@ -23,9 +23,6 @@ import HttpHeaders.RawHeader
 
 
 trait HttpPipelineStageSpec extends PipelineStageTest {
-  val Tell = IOPeer.Tell
-  val AckEvent = IOPeer.AckEvent
-  val Closed = IOPeer.Closed
 
   override def extractCommands(commands: List[Command]) =
     super.extractCommands(commands).map {

@@ -20,9 +20,9 @@ import com.typesafe.config.ConfigFactory
 import org.specs2.mutable.Specification
 import akka.actor.ActorSystem
 import spray.can.rendering.HttpResponsePartRenderingContext
-import spray.io.{IOPeer, Command}
 import spray.can.HttpPipelineStageSpec
 import spray.util.ConnectionCloseReasons.CleanClose
+import spray.io._
 import spray.http._
 
 
@@ -70,7 +70,7 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
              |
              |"""
         }
-        commands(1) === IOPeer.Close(CleanClose)
+        commands(1) === HttpServer.Close(CleanClose)
       }
     }
   }

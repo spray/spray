@@ -28,7 +28,7 @@ object RequestChunkAggregation {
 
   def apply(limit: Int): PipelineStage =
     new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           var startEvent: HttpMessageStartEvent = _
           var request: HttpRequest = _

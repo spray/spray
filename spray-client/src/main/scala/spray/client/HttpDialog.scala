@@ -21,7 +21,6 @@ import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
 import scala.util.{Try, Failure, Success}
 import akka.actor._
-import spray.io.IOClient.IOClientException
 import spray.util._
 import spray.http._
 
@@ -39,7 +38,7 @@ object HttpDialog {
   private case class ReplyAction(f: HttpResponse => HttpRequest) extends Action
   private case object AwaitResponseAction extends Action
 
-  private class DialogActor(result: Promise[AnyRef], client: ActorRef, multiResponse: Boolean) extends Actor {
+  private class DialogActor(result: Promise[AnyRef], multiResponse: Boolean) extends Actor {
     val responses = ListBuffer.empty[HttpResponse]
     var connection: Option[ActorRef] = None
     var responsesPending = 0
@@ -227,9 +226,9 @@ object HttpDialog {
   /**
    * Constructs a new `HttpDialog` for a connection to the given host and port.
    */
-  def apply(httpClient: ActorRef, host: String, port: Int = 80, tag: Any = ())
+  def apply(host: String, port: Int = 80, tag: Any = ())
            (implicit refFactory: ActorRefFactory) =
-    new SendFirst(new Context(refFactory, httpClient, ConnectAction(host, port, tag)))
+    new SendFirst(new Context(refFactory, ConnectAction(host, port, tag)))
       with SendMany
       with WaitIdle
 

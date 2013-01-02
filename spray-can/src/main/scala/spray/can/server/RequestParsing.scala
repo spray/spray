@@ -36,7 +36,7 @@ object RequestParsing {
     new PipelineStage {
       val startParser = new EmptyRequestParser(settings)
 
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           var currentParsingState: ParsingState = startParser
 
@@ -64,7 +64,7 @@ object RequestParsing {
                 parse(buffer)
 
               case Expect100ContinueState(nextState) =>
-                commandPL(IOPeer.Send(ByteBuffer.wrap(continue)))
+                commandPL(IOConnection.Send(ByteBuffer.wrap(continue)))
                 currentParsingState = nextState
                 parse(buffer)
 
@@ -92,7 +92,7 @@ object RequestParsing {
           val commandPipeline = commandPL
 
           val eventPipeline: EPL = {
-            case x: IOPeer.Received => parse(x.buffer)
+            case x: IOConnection.Received => parse(x.buffer)
             case ev => eventPL(ev)
           }
         }

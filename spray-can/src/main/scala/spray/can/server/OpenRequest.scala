@@ -85,7 +85,7 @@ trait OpenRequestComponent { component =>
       val partToDispatch: HttpRequestPart =
         if (timestamp == 0L) ChunkedRequestStart(requestToDispatch)
         else requestToDispatch
-      downstreamCommandPL(IOServer.Tell(handler, partToDispatch, receiverRef))
+      downstreamCommandPL(IOConnection.Tell(handler, partToDispatch, receiverRef))
     }
 
     def dispatchNextQueuedResponse() {
@@ -101,7 +101,7 @@ trait OpenRequestComponent { component =>
             if (settings.TimeoutHandler.isEmpty) handler
             else connectionActorContext.actorFor(settings.TimeoutHandler)
           if (RefUtils.isLocal(timeoutHandler))
-            downstreamCommandPL(IOServer.Tell(timeoutHandler, Timeout(request), receiverRef))
+            downstreamCommandPL(IOConnection.Tell(timeoutHandler, Timeout(request), receiverRef))
           else warn("The TimeoutHandler '{}' is not a local actor and thus cannot be used as a timeout handler")
           timestamp = -now // we record the time of the Timeout dispatch as negative timestamp value
         }
@@ -141,7 +141,7 @@ trait OpenRequestComponent { component =>
 
     def handleMessageChunk(chunk: MessageChunk) {
       if (nextInChain.isEmpty)
-        downstreamCommandPL(IOServer.Tell(handler, chunk, receiverRef))
+        downstreamCommandPL(IOConnection.Tell(handler, chunk, receiverRef))
       else
         // we accept non-tail recursion since HTTP pipeline depth is limited (and small)
         nextInChain.handleMessageChunk(chunk)
@@ -151,21 +151,21 @@ trait OpenRequestComponent { component =>
       if (nextInChain.isEmpty) {
         // only start request timeout checking after request has been completed
         timestamp = System.currentTimeMillis
-        downstreamCommandPL(IOServer.Tell(handler, part, receiverRef))
+        downstreamCommandPL(IOConnection.Tell(handler, part, receiverRef))
       } else
         // we accept non-tail recursion since HTTP pipeline depth is limited (and small)
         nextInChain.handleChunkedMessageEnd(part)
     }
 
     def handleSentAckAndReturnNextUnconfirmed(ev: AckEventWithReceiver) = {
-      downstreamCommandPL(IOServer.Tell(ev.receiver, ev.ack, receiverRef))
+      downstreamCommandPL(IOConnection.Tell(ev.receiver, ev.ack, receiverRef))
       pendingSentAcks -= 1
       // drop this openRequest from the unconfirmed list if we have seen the SentAck for the final response part
       if (pendingSentAcks == 0) nextInChain else this
     }
 
     def handleClosed(ev: HttpServer.Closed) {
-      downstreamCommandPL(IOServer.Tell(handler, ev, receiverRef))
+      downstreamCommandPL(IOConnection.Tell(handler, ev, receiverRef))
     }
 
     /***** PRIVATE *****/
@@ -211,7 +211,7 @@ trait OpenRequestComponent { component =>
 
     def handleClosed(ev: HttpServer.Closed) {
       if (handlerReceivesClosedEvents)
-        downstreamCommandPL(IOServer.Tell(handlerCreator(), ev, connectionActorContext.self))
+        downstreamCommandPL(IOConnection.Tell(handlerCreator(), ev, connectionActorContext.self))
     }
   }
 

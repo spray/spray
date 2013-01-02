@@ -59,7 +59,7 @@ class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
       "example 1" in {
         pipelineStage.test {
           val Commands(command) = process(Received(rawResponse("foo")))
-          command === HttpClient.Close(ProtocolError("Response to non-existent request"))
+          command === HttpClientConnection.Close(ProtocolError("Response to non-existent request"))
         }
       }
       "example 2" in {
@@ -73,7 +73,7 @@ class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
             Received(rawResponse("bar")),
             Received(rawResponse("baz"))
           )
-          commands(0) === HttpClient.Close(ProtocolError("Response to non-existent request"))
+          commands(0) === HttpClientConnection.Close(ProtocolError("Response to non-existent request"))
           events(0) === HttpEvent(response("foo"))
           events(1) === HttpEvent(response("bar"))
         }
