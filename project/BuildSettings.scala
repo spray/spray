@@ -30,30 +30,34 @@ object BuildSettings {
     )
   )
 
-  lazy val sprayModuleSettings = basicSettings ++ NightlyBuildSupport.settings ++ seq(
-    // scaladoc settings
-    (scalacOptions in doc) <++= (name, version).map { (n, v) => Seq("-doc-title", n, "-doc-version", v) },
+  lazy val sprayModuleSettings =
+    basicSettings ++
+    NightlyBuildSupport.settings ++
+    net.virtualvoid.sbt.graph.Plugin.graphSettings ++
+    seq(
+      // scaladoc settings
+      (scalacOptions in doc) <++= (name, version).map { (n, v) => Seq("-doc-title", n, "-doc-version", v) },
 
-    // publishing
-    crossPaths := false,
-    publishMavenStyle := true,
-    publishTo <<= version { version =>
-      Some {
-        "spray nexus" at {
-          // public uri is repo.spray.io, we use an SSH tunnel to the nexus here
-          "http://localhost:42424/content/repositories/" + {
-            if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else
-              if (NightlyBuildSupport.isNightly) "nightlies/" else "releases/"
+      // publishing
+      crossPaths := false,
+      publishMavenStyle := true,
+      publishTo <<= version { version =>
+        Some {
+          "spray nexus" at {
+            // public uri is repo.spray.io, we use an SSH tunnel to the nexus here
+            "http://localhost:42424/content/repositories/" + {
+              if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else
+                if (NightlyBuildSupport.isNightly) "nightlies/" else "releases/"
+            }
           }
         }
-      }
-    },
+      },
 
-    // LS
-    (LsKeys.tags in LsKeys.lsync) := Seq("http", "server", "client", "async"),
-    (LsKeys.docsUrl in LsKeys.lsync) := Some(new URL("http://spray.github.com/spray/api/spray-can/")),
-    (externalResolvers in LsKeys.lsync) := Seq("spray repo" at "http://repo.spray.io")
-  )
+      // LS
+      (LsKeys.tags in LsKeys.lsync) := Seq("http", "server", "client", "async"),
+      (LsKeys.docsUrl in LsKeys.lsync) := Some(new URL("http://spray.github.com/spray/api/spray-can/")),
+      (externalResolvers in LsKeys.lsync) := Seq("spray repo" at "http://repo.spray.io")
+    )
 
   lazy val noPublishing = seq(
     publish := (),
