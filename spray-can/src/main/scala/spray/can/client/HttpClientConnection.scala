@@ -39,12 +39,12 @@ object HttpClientConnection {
                                 (implicit sslEngineProvider: ClientSSLEngineProvider): PipelineStage = {
     import settings._
     ClientFrontend(RequestTimeout, log) >>
-    (ResponseChunkAggregationLimit > 0) ? ResponseChunkAggregation(ResponseChunkAggregationLimit.toInt) >>
+    ResponseChunkAggregation(ResponseChunkAggregationLimit.toInt) ? (ResponseChunkAggregationLimit > 0) >>
     ResponseParsing(ParserSettings, log) >>
     RequestRendering(settings) >>
-    (settings.IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
+    ConnectionTimeouts(IdleTimeout, log) ? (settings.IdleTimeout > 0) >>
     SslTlsSupport(sslEngineProvider, log, encryptIfUntagged = false) >>
-    (ReapingCycle > 0 && IdleTimeout > 0) ? TickGenerator(ReapingCycle)
+    TickGenerator(ReapingCycle) ? (ReapingCycle > 0 && IdleTimeout > 0)
   }
 
   /**

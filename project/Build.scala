@@ -77,7 +77,7 @@ object Build extends Build with DocSupport {
     .dependsOn(sprayUtil)
     .settings(sprayModuleSettings: _*)
     .settings(libraryDependencies ++=
-      provided(akkaActor) ++
+      provided(akkaActor, scalaReflect) ++
       test(akkaTestKit, specs2)
     )
 

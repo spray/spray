@@ -171,15 +171,15 @@ object HttpServer {
                                 (implicit sslEngineProvider: ServerSSLEngineProvider): PipelineStage = {
     import settings.{StatsSupport => _, _}
     ServerFrontend(settings, messageHandler, timeoutResponse, log) >>
-    (RequestChunkAggregationLimit > 0) ? RequestChunkAggregation(RequestChunkAggregationLimit.toInt) >>
-    (PipeliningLimit > 0) ? PipeliningLimiter(settings.PipeliningLimit) >>
-    settings.StatsSupport ? StatsSupport(statsHolder.get) >>
-    RemoteAddressHeader ? RemoteAddressHeaderSupport() >>
+    RequestChunkAggregation(RequestChunkAggregationLimit.toInt) ? (RequestChunkAggregationLimit > 0) >>
+    PipeliningLimiter(settings.PipeliningLimit) ? (PipeliningLimit > 0) >>
+    StatsSupport(statsHolder.get) ? settings.StatsSupport >>
+    RemoteAddressHeaderSupport() ? RemoteAddressHeader >>
     RequestParsing(ParserSettings, VerboseErrorMessages, log) >>
     ResponseRendering(settings) >>
-    (IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
-    SSLEncryption ? SslTlsSupport(sslEngineProvider, log) >>
-    (ReapingCycle > 0 && (IdleTimeout > 0 || RequestTimeout > 0)) ? TickGenerator(ReapingCycle)
+    ConnectionTimeouts(IdleTimeout, log) ? (IdleTimeout > 0) >>
+    SslTlsSupport(sslEngineProvider, log) ? SSLEncryption >>
+    TickGenerator(ReapingCycle) ? (ReapingCycle > 0 && (IdleTimeout > 0 || RequestTimeout > 0))
   }
 
   case class Stats(

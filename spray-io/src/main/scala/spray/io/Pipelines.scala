@@ -16,7 +16,10 @@
 
 package spray.io
 
+import language.experimental.macros
+import scala.reflect.macros.{Context => MacroContext}
 import akka.actor.{ActorRef, ActorContext}
+
 
 //# pipelines
 trait Pipelines {
@@ -71,6 +74,16 @@ trait PipelineStage { left =>
           eventPL = (if (rightPL.eventPipeline == eplProxyPoint) leftPL else rightPL).eventPipeline
         )
       }
+    }
+
+  def ? (condition: Boolean): PipelineStage = macro PipelineStage.enabled
+}
+
+object PipelineStage {
+  type PipelineStageContext = MacroContext { type PrefixType = PipelineStage }
+  def enabled(c: PipelineStageContext)(condition: c.Expr[Boolean]) =
+    c.universe.reify {
+      if (condition.splice) c.prefix.splice else EmptyPipelineStage
     }
 }
 
