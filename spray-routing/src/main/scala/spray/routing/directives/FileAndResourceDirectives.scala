@@ -26,6 +26,7 @@ import shapeless._
 import spray.util._
 import spray.http._
 import HttpHeaders._
+import akka.spray.RefUtils
 
 
 trait FileAndResourceDirectives {
@@ -85,7 +86,7 @@ trait FileAndResourceDirectives {
       case _ => reject
     }
     if (!resourceName.endsWith("/")) {
-      def resource = getClass.getClassLoader.getResource(resourceName)
+      def resource = RefUtils.actorSystem(refFactory).dynamicAccess.classLoader.getResource(resourceName)
       (get & detachTo(singleRequestServiceActor) & provide(Option(resource)))
         .hflatMap(openConnection) { urlConn =>
           implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(resolver(resourceName))

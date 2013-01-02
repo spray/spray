@@ -40,10 +40,10 @@ object RefUtils {
       case x => throw new IllegalArgumentException("Unsupported ActorRef " + x)
     }
 
-  def actorSystem(refFactory: ActorRefFactory): ActorSystem =
+  def actorSystem(refFactory: ActorRefFactory): ExtendedActorSystem =
     refFactory match {
-      case x: ActorContext => x.system
-      case x: ActorSystem => x
+      case x: ActorContext => actorSystem(x.system)
+      case x: ExtendedActorSystem => x
       case x => throw new IllegalArgumentException("Unsupported ActorRefFactory implementation:" + refFactory)
     }
 
