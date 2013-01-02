@@ -20,6 +20,7 @@ import java.net.InetSocketAddress
 import akka.actor.{Actor, ActorRef}
 import akka.event.Logging
 import spray.util.SprayActorLogging
+import spray.io.IOBridge.Closed
 
 
 trait IOServer extends Actor with SprayActorLogging {
@@ -51,6 +52,8 @@ trait IOServer extends Actor with SprayActorLogging {
       debug.log(bindingTag, "Stopping {} on {}", self.path, endpoint)
       context.become(unbinding(endpoint, sender))
       IOExtension(context.system).ioBridge() ! IOBridge.Unbind(bindingKey)
+
+    case _: Closed => // by default we ignore Closed events
   }
 
   def unbinding(endpoint: InetSocketAddress, commander: ActorRef): Receive = {

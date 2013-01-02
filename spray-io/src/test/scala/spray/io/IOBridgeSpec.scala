@@ -16,7 +16,7 @@
 
 package spray.io
 
-import java.nio.ByteBuffer
+import java.net.InetSocketAddress
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import akka.pattern.ask
@@ -26,8 +26,6 @@ import org.specs2.mutable.Specification
 import org.specs2.matcher.Matcher
 import spray.util._
 import ConnectionCloseReasons._
-import java.net.InetSocketAddress
-import spray.io.IOBridge.Key
 
 
 class IOBridgeSpec extends Specification {
@@ -64,7 +62,7 @@ class IOBridgeSpec extends Specification {
   step { system.shutdown() }
 
   class TestServer extends IOServer {
-    override def bound(endpoint: InetSocketAddress, bindingKey: Key, bindingTag: Any): Receive =
+    override def bound(endpoint: InetSocketAddress, bindingKey: IOBridge.Key, bindingTag: Any): Receive =
       super.bound(endpoint, bindingKey, bindingTag) orElse {
         case IOBridge.Received(handle, buffer) => sender ! IOBridge.Send(handle, buffer)
       }

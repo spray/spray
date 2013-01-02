@@ -109,7 +109,7 @@ class SslTlsSupportSpec extends Specification {
   class SslServerActor extends IOServer with ConnectionActors {
     val pipelineStage = frontEnd >> SslTlsSupport(ServerSSLEngineProvider.default, log)
     def frontEnd: PipelineStage = new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           val commandPipeline = commandPL
           val eventPipeline: EPL = {

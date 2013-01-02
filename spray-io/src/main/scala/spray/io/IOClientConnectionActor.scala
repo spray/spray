@@ -69,7 +69,7 @@ object IOClientConnectionActor {
   // The default PipelineStage implements a very simple command/event frontend
   // that dispatches incoming events to the sender of the last command
   object DefaultPipelineStage extends PipelineStage {
-    def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+    def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
       new Pipelines {
         var commander: ActorRef = _
 

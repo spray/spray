@@ -64,7 +64,7 @@ class ConnectionActorSupervisionSpec extends Specification  {
 
   class TestServer extends IOServer with ConnectionActors {
     val pipelineStage = new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) = new Pipelines {
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL) = new Pipelines {
         val commandPipeline = commandPL
         val eventPipeline: EPL = {
           case Received(connection, buffer) if buffer.duplicate.drainToString == "CRASH" => sys.error("Crash Boom Bang")

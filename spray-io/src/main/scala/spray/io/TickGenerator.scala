@@ -29,17 +29,15 @@ object TickGenerator {
     require(period > Duration.Zero, "period must be positive")
 
     new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
-          val generator = {
-            val system = context.connectionActorContext.system
-            system.scheduler.schedule(
+          val generator =
+            context.connectionActorContext.system.scheduler.schedule(
               initialDelay = period,
               interval = period,
               receiver = context.self,
               message = Tick
-            )(system.dispatcher)
-          }
+            )(context.connectionActorContext.dispatcher)
 
           val commandPipeline = commandPL
 

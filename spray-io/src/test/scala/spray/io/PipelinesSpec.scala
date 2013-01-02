@@ -37,7 +37,7 @@ class PipelinesSpec extends Specification {
   def test(stage: PipelineStage, cmdOrEv: AnyRef) = {
     var commandResult: String = ""
     var eventResult: String = ""
-    val pl = stage.build(
+    val pl = stage(
       context = null,
       commandPL = { case TestCommand(s) => commandResult = s },
       eventPL = { case TestEvent(s) => eventResult = s }
@@ -50,7 +50,7 @@ class PipelinesSpec extends Specification {
   }
 
   class TestStage(c: Char) extends PipelineStage {
-    def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) =
+    def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL) =
       new Pipelines {
         val commandPipeline: CPL = {
           case TestCommand(s) => commandPL(TestCommand(s + c))

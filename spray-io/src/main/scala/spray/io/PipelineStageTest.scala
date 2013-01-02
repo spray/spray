@@ -65,7 +65,7 @@ trait PipelineStageTest {
         def connectionActorContext = PipelineStageTest.this.connectionActorContext
         override def sender = if (msgSender != null) msgSender else sys.error("No message sender set")
       }
-      stage.build(context, x => commands += x, x => events += x)
+      stage(context, x => commands += x, x => events += x)
     }
     def clear() { commands.clear(); events.clear() }
     def run[T](body: => T): T = dynFixture.withValue(this)(body)

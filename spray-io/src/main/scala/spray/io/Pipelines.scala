@@ -52,18 +52,18 @@ trait PipelineStage { left =>
   type CPL = Pipeline[Command]  // alias for brevity
   type EPL = Pipeline[Event]    // alias for brevity
 
-  def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines
+  def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines
 
   def >> (right: PipelineStage): PipelineStage =
     if (right == EmptyPipelineStage) this
     else new PipelineStage {
-      def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = {
+      def apply(ctx: PipelineContext, cpl: CPL, epl: EPL) = {
         var cplProxy: CPL = Pipeline.Uninitialized
         var eplProxy: EPL = Pipeline.Uninitialized
         val cplProxyPoint: CPL = cplProxy(_)
         val eplProxyPoint: EPL = eplProxy(_)
-        val leftPL = left.build(ctx, cplProxyPoint, epl)
-        val rightPL = right.build(ctx, cpl, eplProxyPoint)
+        val leftPL = left(ctx, cplProxyPoint, epl)
+        val rightPL = right(ctx, cpl, eplProxyPoint)
         cplProxy = rightPL.commandPipeline
         eplProxy = leftPL.eventPipeline
         Pipelines(
@@ -74,9 +74,19 @@ trait PipelineStage { left =>
     }
 }
 
+trait OptionalPipelineStage extends PipelineStage {
+  def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+    if (enabled(context)) applyIfEnabled(context, commandPL, eventPL)
+    else Pipelines(commandPL, eventPL)
+
+  def enabled(context: PipelineContext): Boolean
+
+  def applyIfEnabled(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines
+}
+
 object EmptyPipelineStage extends PipelineStage {
 
-  def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = Pipelines(cpl, epl)
+  def apply(ctx: PipelineContext, cpl: CPL, epl: EPL) = Pipelines(cpl, epl)
 
   override def >> (right: PipelineStage) = right
 }

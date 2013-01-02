@@ -28,7 +28,7 @@ object ConnectionTimeouts {
     val debug = TaggableLog(log, Logging.DebugLevel)
 
     new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
         var timeout = idleTimeout
         var lastActivity = System.currentTimeMillis
 

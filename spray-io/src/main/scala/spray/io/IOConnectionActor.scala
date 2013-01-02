@@ -30,7 +30,7 @@ trait IOConnectionActor extends Actor with SprayActorLogging {
   def pipelines: Pipelines
 
   def createPipelines(connection: Connection, pipelineStage: PipelineStage): Pipelines =
-    pipelineStage.build(createPipelineContext(connection), baseCommandPipeline, baseEventPipeline)
+    pipelineStage(createPipelineContext(connection), baseCommandPipeline, baseEventPipeline)
 
   def createPipelineContext(connection: Connection): PipelineContext =
     new DefaultPipelineContext(connection, context)
