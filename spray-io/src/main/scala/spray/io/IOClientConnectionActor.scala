@@ -47,7 +47,9 @@ class IOClientConnectionActor(pipelineStage: PipelineStage = DefaultPipelineStag
       _pipelines = createPipelines(_connection, pipelineStage)
       sender ! IOBridge.Register(_connection)
       context.become(super.receive)
-      commander ! ev
+      // finally we send the Connected event on to the commander, however, we don't do it directly
+      // but go through the pipeline (and thus give the stages a chance to inject custom logic)
+      self ! Tell(commander, ev, self)
 
     case Status.Failure(CommandException(Connect(remoteAddress, _, _), msg, cause)) =>
       // if we cannot connect we die and let our supervisor handle the problem
@@ -98,7 +100,7 @@ object IOClientConnectionActor {
   val ResumeReading = IOConnectionActor.ResumeReading
 
   ////////////// EVENTS //////////////
-  type Connected  = IOBridge.Closed;              val Connected  = IOBridge.Connected
+  type Connected  = IOBridge.Connected;           val Connected  = IOBridge.Connected
   type Closed     = IOConnectionActor.Closed;     val Closed     = IOConnectionActor.Closed
   type Received   = IOConnectionActor.Received;   val Received   = IOConnectionActor.Received
   type AckEvent   = IOConnectionActor.AckEvent;   val AckEvent   = IOConnectionActor.AckEvent
