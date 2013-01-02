@@ -25,7 +25,7 @@ import spray.util._
 
 
 class ConnectionActorSupervisionSpec extends Specification  {
-  import IOClientConnectionActor._
+  import IOClientConnection._
   implicit val timeout: Timeout = Duration(1, "sec") // for asks below
   implicit val system = ActorSystem()
   val port = 23556
@@ -40,11 +40,11 @@ class ConnectionActorSupervisionSpec extends Specification  {
   }
 
   "Server-side Connection Actors" should {
-    val client = system.actorOf(Props(new IOClientConnectionActor()), name = "test-client-1")
+    val client = system.actorOf(Props(new IOClientConnection {}), name = "test-client-1")
 
     "be able to run their pipeline normally" in {
       val responseF = for {
-        Connected(_, _) <- client ? Connect("localhost", port, tag = LogMark("CLIENT"))
+        Connected(_)        <- client ? Connect("localhost", port, tag = LogMark("CLIENT"))
         Received(_, buffer) <- client ? send("ECHO")
       } yield buffer.drainToString
       responseF.await === "ECHO"

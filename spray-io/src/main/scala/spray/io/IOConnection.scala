@@ -22,14 +22,16 @@ import akka.event.Logging
 import spray.util.{CloseCommandReason, SprayActorLogging, ConnectionCloseReasons}
 
 
-trait IOConnectionActor extends Actor with SprayActorLogging {
-  import IOConnectionActor._
+trait IOConnection extends Actor with SprayActorLogging {
+  import IOConnection._
 
   def connection: Connection
 
+  def pipelineStage: PipelineStage
+
   def pipelines: Pipelines
 
-  def createPipelines(connection: Connection, pipelineStage: PipelineStage): Pipelines =
+  def createPipelines(connection: Connection): Pipelines =
     pipelineStage(createPipelineContext(connection), baseCommandPipeline, baseEventPipeline)
 
   def createPipelineContext(connection: Connection): PipelineContext =
@@ -37,7 +39,7 @@ trait IOConnectionActor extends Actor with SprayActorLogging {
 
   def ioBridge = connection.key.ioBridge
 
-  def connected = connection.connected
+  def isConnected = connection.connected
 
   // we don't keep the TaggableLogs as fields since they are either
   // needed only once (after connection close) or rarely
@@ -86,11 +88,11 @@ trait IOConnectionActor extends Actor with SprayActorLogging {
   override def postStop() {
     // if the connection hasn't been closed yet we have been irregularly stopped by our supervisor
     // therefore we need to clean up our connection here
-    if (connected) ioBridge ! IOBridge.Close(connection, ConnectionCloseReasons.InternalError)
+    if (isConnected) ioBridge ! IOBridge.Close(connection, ConnectionCloseReasons.InternalError)
   }
 }
 
-object IOConnectionActor {
+object IOConnection {
 
   ////////////// COMMANDS //////////////
   case class Close(reason: CloseCommandReason) extends Command
@@ -112,6 +114,7 @@ object IOConnectionActor {
   case class AckEvent(ack: Any) extends Event
 }
 
-class DefaultIOConnectionActor(val connection: Connection, pipelineStage: PipelineStage) extends IOConnectionActor {
-  val pipelines = createPipelines(connection, pipelineStage)
+class DefaultIOConnectionActor(val connection: Connection,
+                               val pipelineStage: PipelineStage) extends IOConnection {
+  val pipelines = createPipelines(connection)
 }

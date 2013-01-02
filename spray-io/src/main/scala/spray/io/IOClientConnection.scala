@@ -18,14 +18,16 @@ package spray.io
 
 import java.net.InetSocketAddress
 import akka.actor.{Status, ActorRef}
-import IOClientConnectionActor.DefaultPipelineStage
 
 
-class IOClientConnectionActor(pipelineStage: PipelineStage = DefaultPipelineStage) extends IOConnectionActor {
-  import IOClientConnectionActor._
+trait IOClientConnection extends IOConnection {
+  import IOClientConnection._
 
   private[this] var _pipelines: Pipelines = Pipelines.Uninitialized
   private[this] var _connection: Connection = _
+
+  // override with custom pipeline stage construction
+  def pipelineStage: PipelineStage = DefaultPipelineStage
 
   def pipelines: Pipelines = _pipelines
 
@@ -33,7 +35,7 @@ class IOClientConnectionActor(pipelineStage: PipelineStage = DefaultPipelineStag
     if (_connection != null) _connection
     else throw new IllegalStateException("Not yet connected")
 
-  override def connected: Boolean = _connection != null && super.connected
+  override def isConnected: Boolean = _connection != null && super.isConnected
 
   override def receive: Receive = {
     case cmd: Connect =>
@@ -42,19 +44,21 @@ class IOClientConnectionActor(pipelineStage: PipelineStage = DefaultPipelineStag
   }
 
   def connecting(commander: ActorRef): Receive = {
-    case ev@ IOBridge.Connected(key, tag) =>
+    case IOBridge.Connected(key, tag) =>
       _connection = createConnection(key, tag)
-      _pipelines = createPipelines(_connection, pipelineStage)
+      _pipelines = createPipelines(_connection)
       sender ! IOBridge.Register(_connection)
-      context.become(super.receive)
+      context.become(connected)
       // finally we send the Connected event on to the commander, however, we don't do it directly
       // but go through the pipeline (and thus give the stages a chance to inject custom logic)
-      self ! Tell(commander, ev, self)
+      self ! Tell(commander, Connected(_connection), self)
 
     case Status.Failure(CommandException(Connect(remoteAddress, _, _), msg, cause)) =>
       // if we cannot connect we die and let our supervisor handle the problem
       throw new ConnectException(remoteAddress, cause)
   }
+
+  def connected: Receive = super.receive
 
   def createConnection(_key: IOBridge.Key, _tag: Any): Connection =
     new Connection {
@@ -64,7 +68,7 @@ class IOClientConnectionActor(pipelineStage: PipelineStage = DefaultPipelineStag
     }
 }
 
-object IOClientConnectionActor {
+object IOClientConnection {
 
   // The default PipelineStage implements a very simple command/event frontend
   // that dispatches incoming events to the sender of the last command
@@ -93,16 +97,16 @@ object IOClientConnectionActor {
 
   ////////////// COMMANDS //////////////
   type Connect      = IOBridge.Connect;        val Connect = IOBridge.Connect
-  type Close        = IOConnectionActor.Close; val Close   = IOConnectionActor.Close
-  type Send         = IOConnectionActor.Send;  val Send    = IOConnectionActor.Send
-  type Tell         = IOConnectionActor.Tell;  val Tell    = IOConnectionActor.Tell
-  val StopReading   = IOConnectionActor.StopReading
-  val ResumeReading = IOConnectionActor.ResumeReading
+  type Close        = IOConnection.Close; val Close   = IOConnection.Close
+  type Send         = IOConnection.Send;  val Send    = IOConnection.Send
+  type Tell         = IOConnection.Tell;  val Tell    = IOConnection.Tell
+  val StopReading   = IOConnection.StopReading
+  val ResumeReading = IOConnection.ResumeReading
 
   ////////////// EVENTS //////////////
-  type Connected  = IOBridge.Connected;           val Connected  = IOBridge.Connected
-  type Closed     = IOConnectionActor.Closed;     val Closed     = IOConnectionActor.Closed
-  type Received   = IOConnectionActor.Received;   val Received   = IOConnectionActor.Received
-  type AckEvent   = IOConnectionActor.AckEvent;   val AckEvent   = IOConnectionActor.AckEvent
-  type ActorDeath = IOConnectionActor.ActorDeath; val ActorDeath = IOConnectionActor.ActorDeath
+  case class Connected(connection: Connection) extends Event
+  type Closed     = IOConnection.Closed;     val Closed     = IOConnection.Closed
+  type Received   = IOConnection.Received;   val Received   = IOConnection.Received
+  type AckEvent   = IOConnection.AckEvent;   val AckEvent   = IOConnection.AckEvent
+  type ActorDeath = IOConnection.ActorDeath; val ActorDeath = IOConnection.ActorDeath
 }

@@ -73,11 +73,11 @@ object SslTlsSupport {
           var inboundReceptacle: ByteBuffer = _ // holds incoming data that are too small to be decrypted yet
 
           val commandPipeline: CPL = {
-            case x: IOConnectionActor.Send =>
+            case x: IOConnection.Send =>
               if (pendingSends.isEmpty) withTempBuf(encrypt(Send(x), _))
               else pendingSends += Send(x)
 
-            case x: IOConnectionActor.Close =>
+            case x: IOConnection.Close =>
               debug.log(context.connection.tag ,"Closing SSLEngine due to reception of {}", x)
               engine.closeOutbound()
               withTempBuf(closeEngine)
@@ -87,13 +87,13 @@ object SslTlsSupport {
           }
 
           val eventPipeline: EPL = {
-            case IOConnectionActor.Received(_, buffer) =>
+            case IOConnection.Received(_, buffer) =>
               val buf = if (inboundReceptacle != null) {
                 val r = inboundReceptacle; inboundReceptacle = null; r.concat(buffer)
               } else buffer
               withTempBuf(decrypt(buf, _))
 
-            case x: IOConnectionActor.Closed =>
+            case x: IOConnection.Closed =>
               if (!engine.isOutboundDone) {
                 try engine.closeInbound()
                 catch { case e: SSLException => } // ignore warning about possible possible truncation attacks
@@ -118,7 +118,7 @@ object SslTlsSupport {
             tempBuf.flip()
             if (tempBuf.remaining > 0) commandPL {
               val sendAck = if (ackDefinedAndPreContentLeft && !postContentLeft) ack else None
-              IOConnectionActor.Send(tempBuf.copy :: Nil, sendAck)
+              IOConnection.Send(tempBuf.copy :: Nil, sendAck)
             }
             result.getStatus match {
               case OK => result.getHandshakeStatus match {
@@ -134,7 +134,7 @@ object SslTlsSupport {
               }
               case CLOSED =>
                 if (postContentLeft) commandPL {
-                  IOConnectionActor.Close(ProtocolError("SSLEngine closed prematurely while sending"))
+                  IOConnection.Close(ProtocolError("SSLEngine closed prematurely while sending"))
                 }
               case BUFFER_OVERFLOW =>
                 throw new IllegalStateException // the SslBufferPool should make sure that buffers are never too small
@@ -169,7 +169,7 @@ object SslTlsSupport {
               }
               case CLOSED =>
                 if (!engine.isOutboundDone) commandPL {
-                  IOConnectionActor.Close(ProtocolError("SSLEngine closed prematurely while receiving"))
+                  IOConnection.Close(ProtocolError("SSLEngine closed prematurely while receiving"))
                 }
               case BUFFER_UNDERFLOW =>
                 inboundReceptacle = buffer // save buffer so we can append the next one to it
@@ -185,7 +185,7 @@ object SslTlsSupport {
               case e: SSLException =>
                 error.log(context.connection.tag, "Closing encrypted connection to {} due to {}",
                   context.connection.remoteAddress, e)
-                commandPL(IOConnectionActor.Close(ProtocolError(e.toString)))
+                commandPL(IOConnection.Close(ProtocolError(e.toString)))
             }
             finally SslBufferPool.release(tempBuf)
           }
@@ -233,7 +233,7 @@ object SslTlsSupport {
   }
   private object Send {
     val Empty = new Send(new Array(0), None)
-    def apply(x: IOConnectionActor.Send) = new Send(x.buffers.toArray, x.ack)
+    def apply(x: IOConnection.Send) = new Send(x.buffers.toArray, x.ack)
   }
 }
 

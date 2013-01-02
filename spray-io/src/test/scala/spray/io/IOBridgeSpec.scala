@@ -69,10 +69,10 @@ class IOBridgeSpec extends Specification {
   }
 
   def request(payload: String, closeReason: CloseCommandReason = CleanClose) = {
-    import IOClientConnectionActor._
-    val client = system.actorOf(Props(new IOClientConnectionActor()))
+    import IOClientConnection._
+    val client = system.actorOf(Props(new IOClientConnection {}))
     for {
-      Connected(_, _)     <- client ? Connect("localhost", port)
+      Connected(_)        <- client ? Connect("localhost", port)
       Received(_, buffer) <- client ? Send(BufferBuilder(payload).toByteBuffer)
       Closed(_, reason)   <- client ? Close(closeReason)
     } yield buffer.drainToString -> reason

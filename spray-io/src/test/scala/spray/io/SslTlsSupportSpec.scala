@@ -25,7 +25,7 @@ import akka.pattern.ask
 import akka.actor.{ActorRef, Props, ActorSystem}
 import akka.util.Timeout
 import spray.util._
-import IOClientConnectionActor._
+import IOClientConnection._
 
 
 class SslTlsSupportSpec extends Specification {
@@ -49,11 +49,11 @@ class SslTlsSupportSpec extends Specification {
 
   "The SslTlsSupport" should {
     "be able to complete a simple request/response dialog from the client-side" in {
-      val client = system.actorOf(Props(new IOClientConnectionActor(sslClientActorPipelineStage)), "ssl-client")
+      val client = system.actorOf(Props(new SslClientActor), "ssl-client")
       val response = for {
-        Connected(_, _)     <- client ? Connect("localhost", port)
+        Connected(_)        <- client ? Connect("localhost", port)
         Received(_, buffer) <- client ? Send(BufferBuilder("3+4\n").toByteBuffer)
-        Closed(_, _)   <- client ? Close(ConnectionCloseReasons.CleanClose)
+        Closed(_, _)        <- client ? Close(ConnectionCloseReasons.CleanClose)
       } yield buffer.drainToString
       response.await === "7\n"
     }
@@ -104,7 +104,10 @@ class SslTlsSupportSpec extends Specification {
     reader -> writer
   }
 
-  val sslClientActorPipelineStage = DefaultPipelineStage >> SslTlsSupport(ClientSSLEngineProvider.default, log)
+  class SslClientActor extends IOClientConnection {
+    override def pipelineStage: PipelineStage =
+      DefaultPipelineStage >> SslTlsSupport(ClientSSLEngineProvider.default, log)
+  }
 
   class SslServerActor extends IOServer with ConnectionActors {
     val pipelineStage = frontEnd >> SslTlsSupport(ServerSSLEngineProvider.default, log)

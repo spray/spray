@@ -115,7 +115,7 @@ trait PipelineStageTest {
   }
 
   def extractCommands(commands: List[Command]): List[Command] = commands.map {
-    case IOConnectionActor.Send(bufs, ack) =>
+    case IOConnection.Send(bufs, ack) =>
       val sb = new java.lang.StringBuilder
       for (b <- bufs) sb.append(b.duplicate.drainToString)
       SendString(sb.toString, ack)
@@ -123,7 +123,7 @@ trait PipelineStageTest {
   }
 
   def extractEvents(events: List[Event]): List[Event] = events.map {
-    case IOConnectionActor.Received(_, buffer) => ReceivedString(buffer.duplicate.drainToString)
+    case IOConnection.Received(_, buffer) => ReceivedString(buffer.duplicate.drainToString)
     case x => x
   }
 
@@ -144,7 +144,7 @@ trait PipelineStageTest {
     def from(sender: ActorRef) = Message(msg, sender)
   }
 
-  def Send(rawMessage: String) = IOConnectionActor.Send(string2ByteBuffer(rawMessage))
+  def Send(rawMessage: String) = IOConnection.Send(string2ByteBuffer(rawMessage))
   def Received(rawMessage: String) = IOBridge.Received(testConnection, string2ByteBuffer(rawMessage))
 
   case class SendString(string: String, ack: Option[Any] = None) extends Command
