@@ -18,9 +18,8 @@ package spray.routing
 package directives
 
 import scala.util.control.NonFatal
-import akka.event.NoLogging
 import akka.actor._
-import spray.util.LoggingContext
+import spray.http.HttpHeader
 
 
 trait ExecutionDirectives {
@@ -50,7 +49,14 @@ trait ExecutionDirectives {
       ctx.withRejectionHandling { rejections =>
         if (handler.isDefinedAt(rejections)) {
           val filteredRejections = RejectionHandler.applyTransformations(rejections)
-          handler(filteredRejections)(ctx)
+          def isAcceptHeader(h: HttpHeader) = h.lowercaseName.startsWith("accept")
+          // we "disable" content negotiation for the rejection handling route
+          // so as to avoid UnacceptedResponseContentTypeRejections from it
+          val handlingContext = ctx
+            .withRequestMapped(request => request.withHeaders(request.headers.filterNot(isAcceptHeader)))
+            .withRejectionHandling(rej => sys.error("The RejectionHandler for " + rejections +
+            " must not itself produce rejections (received " + rej + ")!"))
+          handler(filteredRejections)(handlingContext)
         } else ctx.reject(rejections: _*)
       }
     }
