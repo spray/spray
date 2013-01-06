@@ -134,8 +134,8 @@ class ResponseRenderer(serverHeader: String,
   protected def serverAndDateHeader: Array[Byte] = {
     var (cachedSeconds, cachedBytes) = if (cachedServerAndDateHeader != null) cachedServerAndDateHeader else (0L, null)
     val now = System.currentTimeMillis
-    if (now % 1000 != cachedSeconds) {
-      cachedSeconds = now % 1000
+    if (now / 1000 != cachedSeconds) {
+      cachedSeconds = now / 1000
       cachedBytes =
         BufferBuilder(serverHeaderPlusDateColonSP.length + 32)
         .append(serverHeaderPlusDateColonSP)
