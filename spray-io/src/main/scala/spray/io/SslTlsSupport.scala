@@ -249,8 +249,10 @@ private[io] sealed abstract class SSLEngineProviderCompanion {
   implicit def default(implicit cp: SSLContextProvider): Self =
     fromFunc { plc =>
       val sslContext = cp(plc)
-      val remoteAddress = plc.connection.remoteAddress
-      val engine = sslContext.createSSLEngine(remoteAddress.getHostName, remoteAddress.getPort)
+      val engine = plc.connection.remoteAddress match {
+        case Some(address) => sslContext.createSSLEngine(address.getHostName, address.getPort)
+        case None => sslContext.createSSLEngine()
+      }
       engine.setUseClientMode(clientMode)
       engine
     }

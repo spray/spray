@@ -436,14 +436,14 @@ object IOBridge {
     /**
      * The remote address this connection is attached to.
      */
-    def remoteAddress: InetSocketAddress = // ...
-      socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress]                               // hide
+    def remoteAddress: Option[InetSocketAddress] = // ...
+      Option(socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress])                       // hide
 
     /**
      * The local address this connection is attached to.
      */
-    def localAddress: InetSocketAddress = // ...
-      socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]                                // hide
+    def localAddress: Option[InetSocketAddress] = // ...
+      Option(socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress])                        // hide
                                                                                                   // hide
     ////////////////////// INTERNAL //////////////////////////                                    // hide
                                                                                                   // hide
@@ -509,6 +509,7 @@ object IOBridge {
                      localAddress: Option[InetSocketAddress] = None,
                      tag: Any = ()) extends Command
   object Connect {
+    def apply(host: String): Connect = apply(host, 80)
     def apply(host: String, port: Int): Connect = apply(host, port, ())
     def apply(host: String, port: Int, tag: Any): Connect =
       Connect(new InetSocketAddress(host, port), None, tag)

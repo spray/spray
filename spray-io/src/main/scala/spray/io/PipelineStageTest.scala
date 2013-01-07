@@ -33,8 +33,8 @@ trait PipelineStageTest {
     def key = throw new UnsupportedOperationException
     def handler = throw new UnsupportedOperationException
     def tag = ()
-    override val remoteAddress = new InetSocketAddress("example.com", 8080)
-    override val localAddress = new InetSocketAddress("127.0.0.1", 32598)
+    override val remoteAddress = Some(new InetSocketAddress("example.com", 8080))
+    override val localAddress = Some(new InetSocketAddress("127.0.0.1", 32598))
   }
 
   // only needed as sender identifiers, not actually used as message targets

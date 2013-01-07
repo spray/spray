@@ -29,4 +29,7 @@ package io {
   trait Event
 
   trait Droppable // marker for Commands and Events
+
+  case class CommandException(command: Command, cause: Throwable)
+    extends RuntimeException(cause.toString, cause) with Event
 }

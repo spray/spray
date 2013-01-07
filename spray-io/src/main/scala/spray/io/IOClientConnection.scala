@@ -25,6 +25,7 @@ trait IOClientConnection extends IOConnection {
 
   private[this] var _pipelines: Pipelines = Pipelines.Uninitialized
   private[this] var _connection: Connection = _
+  private[this] var _preConnect = true
 
   // override with custom pipeline stage construction
   def pipelineStage: PipelineStage = DefaultPipelineStage
@@ -37,9 +38,12 @@ trait IOClientConnection extends IOConnection {
 
   override def isConnected: Boolean = _connection != null && super.isConnected
 
+  def isPreConnect = _preConnect
+
   override def receive: Receive = {
     case cmd: Connect =>
       IOExtension(context.system).ioBridge() ! cmd
+      _preConnect = false
       context.become(connecting(sender))
   }
 
@@ -53,9 +57,7 @@ trait IOClientConnection extends IOConnection {
       // but go through the pipeline (and thus give the stages a chance to inject custom logic)
       self ! Tell(commander, Connected(_connection), self)
 
-    case Status.Failure(CommandException(Connect(remoteAddress, _, _), msg, cause)) =>
-      // if we cannot connect we die and let our supervisor handle the problem
-      throw new ConnectException(remoteAddress, cause)
+    case Status.Failure(CommandException(cmd: Connect, cause)) => cantConnect(commander, cmd, cause)
   }
 
   def connected: Receive = super.receive
@@ -66,6 +68,11 @@ trait IOClientConnection extends IOConnection {
       val tag = _tag
       val handler = self
     }
+
+  def cantConnect(commander: ActorRef, cmd: Connect, cause: Throwable) {
+    commander ! Status.Failure(new ConnectException(cmd.remoteAddress, cause))
+    context.stop(self)
+  }
 }
 
 object IOClientConnection {
@@ -96,7 +103,7 @@ object IOClientConnection {
     extends RuntimeException("Couldn't connect to " + remoteAddress, cause)
 
   ////////////// COMMANDS //////////////
-  type Connect      = IOBridge.Connect;        val Connect = IOBridge.Connect
+  type Connect      = IOBridge.Connect;   val Connect = IOBridge.Connect
   type Close        = IOConnection.Close; val Close   = IOConnection.Close
   type Send         = IOConnection.Send;  val Send    = IOConnection.Send
   type Tell         = IOConnection.Tell;  val Tell    = IOConnection.Tell

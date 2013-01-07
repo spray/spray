@@ -59,7 +59,6 @@ trait ConnectionActors extends IOServer {
 
   // we assume that we can never recover from failures of a connection actor,
   // we simply kill it, which causes it to close its connection in postStop()
-  override def supervisorStrategy: SupervisorStrategy =
-    OneForOneStrategy() { case _ => SupervisorStrategy.Stop }
+  override def supervisorStrategy = SupervisorStrategy.stoppingStrategy
 
 }
