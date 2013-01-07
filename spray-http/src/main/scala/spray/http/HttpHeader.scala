@@ -130,6 +130,7 @@ object HttpHeaders {
     def value = date.toRfc1123DateTimeString
   }
 
+  object Host { def apply(host: String, port: Int): Host = apply(host, Some(port)) }
   case class Host(host: String, port: Option[Int] = None) extends HttpHeader {
     def name = "Host"
     def lowercaseName = "host"
