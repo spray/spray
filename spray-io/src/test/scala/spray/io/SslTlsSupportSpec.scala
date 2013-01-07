@@ -19,7 +19,7 @@ import java.io.{BufferedWriter, OutputStreamWriter, InputStreamReader, BufferedR
 import javax.net.ssl._
 import java.security.{KeyStore, SecureRandom}
 import scala.annotation.tailrec
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import org.specs2.mutable.Specification
 import akka.pattern.ask
 import akka.actor.{ActorRef, Props, ActorSystem}
@@ -29,7 +29,7 @@ import IOClientConnection._
 
 
 class SslTlsSupportSpec extends Specification {
-  implicit val timeOut: Timeout = Duration(1, "sec")
+  implicit val timeOut: Timeout = 1 second span
   implicit val sslContext = createSslContext("/ssl-test-keystore.jks", "")
   implicit val system = ActorSystem()
   import system.log

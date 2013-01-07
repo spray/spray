@@ -2,8 +2,7 @@ package spray.examples
 
 import java.io.File
 import org.parboiled.common.FileUtils
-import java.util.concurrent.TimeUnit._
-import scala.concurrent.duration.{FiniteDuration, Duration}
+import scala.concurrent.duration._
 import scala.util.{Success, Failure}
 import akka.actor.{Props, Actor}
 import akka.pattern.ask
@@ -69,7 +68,7 @@ trait DemoService extends HttpService {
       } ~
       path("cached") {
         cache(simpleRouteCache) { ctx =>
-          in(Duration(1500, MILLISECONDS)) {
+          in(1500 millis span) {
             ctx.complete("This resource is only slow the first time!\n" +
               "It was produced on " + DateTime.now.toIsoDateTimeString + "\n\n" +
               "(Note that your browser will likely enforce a cache invalidation with a\n" +
@@ -164,7 +163,7 @@ trait DemoService extends HttpService {
 
   def showServerStats(ctx: RequestContext) {
     actorRefFactory.actorFor("../http-server")
-      .ask(HttpServer.GetStats)(Duration(1, SECONDS))
+      .ask(HttpServer.GetStats)(1 second span)
       .mapTo[HttpServer.Stats]
       .onComplete {
       case Success(stats) => ctx.complete {

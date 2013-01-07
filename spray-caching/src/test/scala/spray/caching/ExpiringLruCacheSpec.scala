@@ -20,7 +20,7 @@ import java.util.Random
 import java.util.concurrent.CountDownLatch
 import akka.actor.ActorSystem
 import scala.concurrent.Future
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import org.specs2.mutable.Specification
 import org.specs2.matcher.Matcher
 import spray.util._
@@ -71,7 +71,7 @@ class ExpiringLruCacheSpec extends Specification {
       cache.store.toString === "{2=B, 3=C, 4=D}"
     }
     "expire old entries" in {
-      val cache = lruCache[String](timeToLive = Duration("75 ms"))
+      val cache = lruCache[String](timeToLive = 75 millis span)
       cache(1)("A").await === "A"
       cache(2)("B").await === "B"
       Thread.sleep(50)

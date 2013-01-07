@@ -16,8 +16,7 @@
 
 package spray.io
 
-import java.util.concurrent.TimeUnit._
-import scala.concurrent.duration.{FiniteDuration, Duration}
+import scala.concurrent.duration._
 
 
 //# source-quote

@@ -16,7 +16,7 @@
 
 package spray.util
 
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import akka.actor.{Actor, Props, ActorSystem}
 import akka.testkit.{ImplicitSender, TestKit}
 import org.specs2.mutable.Specification
@@ -31,7 +31,7 @@ class ReplySpec extends TestKit(ActorSystem()) with Specification with ImplicitS
   "The Reply" should {
     "be able to inject itself into a reply message" in {
       echoRef.tell('Yeah, Reply.withContext(42))
-      receiveOne(Duration("1 second")).asInstanceOf[Reply] === Reply('Yeah, 42)
+      receiveOne(1 second span).asInstanceOf[Reply] === Reply('Yeah, 42)
     }
   }
 

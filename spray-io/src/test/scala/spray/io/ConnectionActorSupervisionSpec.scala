@@ -16,7 +16,7 @@
 
 package spray.io
 
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import org.specs2.mutable.Specification
 import akka.actor.{ActorRef, Props, ActorSystem}
 import akka.util.Timeout
@@ -26,7 +26,7 @@ import spray.util._
 
 class ConnectionActorSupervisionSpec extends Specification  {
   import IOClientConnection._
-  implicit val timeout: Timeout = Duration(1, "sec") // for asks below
+  implicit val timeout: Timeout = 1 second span // for asks below
   implicit val system = ActorSystem()
   val port = 23556
 

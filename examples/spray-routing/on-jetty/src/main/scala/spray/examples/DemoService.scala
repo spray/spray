@@ -1,8 +1,7 @@
 package spray.examples
 
 import java.io.File
-import java.util.concurrent.TimeUnit._
-import scala.concurrent.duration.{FiniteDuration, Duration}
+import scala.concurrent.duration._
 import org.parboiled.common.FileUtils
 import akka.actor.{Props, Actor}
 import spray.routing.{HttpService, RequestContext}
@@ -63,7 +62,7 @@ trait DemoService extends HttpService {
       } ~
       path("cached") {
         cache(simpleRouteCache) { ctx =>
-          in(Duration(1500, MILLISECONDS)) {
+          in(1500 millis span) {
             ctx.complete("This resource is only slow the first time!\n" +
               "It was produced on " + DateTime.now.toIsoDateTimeString + "\n\n" +
               "(Note that your browser will likely enforce a cache invalidation with a\n" +

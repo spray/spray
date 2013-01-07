@@ -18,7 +18,7 @@ package spray.io
 
 import java.net.InetSocketAddress
 import scala.concurrent.Future
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import akka.pattern.ask
 import akka.util.Timeout
 import akka.actor._
@@ -29,7 +29,7 @@ import ConnectionCloseReasons._
 
 
 class IOBridgeSpec extends Specification {
-  implicit val timeout: Timeout = Duration(1, "sec")
+  implicit val timeout: Timeout = 1 second span
   implicit val system = ActorSystem("IOBridgeSpec")
   val port = 23456
 

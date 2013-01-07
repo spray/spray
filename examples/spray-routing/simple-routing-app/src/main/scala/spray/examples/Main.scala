@@ -1,6 +1,6 @@
 package spray.examples
 
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import spray.routing.SimpleRoutingApp
 import spray.http.MediaTypes._
 
@@ -26,7 +26,7 @@ object Main extends App with SimpleRoutingApp {
     (post | parameter('method ! "post")) {
       path("stop") {
         complete {
-          system.scheduler.scheduleOnce(Duration(1, "sec")) {
+          system.scheduler.scheduleOnce(1 second span) {
             system.shutdown()
           }
           "Shutting down in 1 second..."

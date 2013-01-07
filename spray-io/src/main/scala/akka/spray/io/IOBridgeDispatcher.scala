@@ -16,12 +16,10 @@
 
 package akka.spray.io
 
-import java.util.concurrent.TimeUnit
 import com.typesafe.config.Config
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration._
 import akka.dispatch._
 import akka.actor.{ActorCell, Cell}
-import akka.event.Logging.Warning
 import spray.io.IOExtension
 
 
@@ -33,7 +31,7 @@ class IOBridgeDispatcherConfigurator(config: Config, prerequisites: DispatcherPr
       _prerequisites = prerequisites,
       _id = config.getString("id"),
       _mailboxType = mailboxType(),
-      _shutdownTimeout = Duration(config.getMilliseconds("shutdown-timeout"), TimeUnit.MILLISECONDS),
+      _shutdownTimeout = Duration(config.getMilliseconds("shutdown-timeout"), MILLISECONDS),
       _threadPoolConfig = ThreadPoolConfig() // we use the default config
     )
 }

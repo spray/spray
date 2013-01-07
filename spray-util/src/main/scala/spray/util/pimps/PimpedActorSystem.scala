@@ -16,8 +16,7 @@
 
 package spray.util.pimps
 
-import java.util.concurrent.TimeUnit._
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import scala.concurrent.Future
 import akka.pattern.ask
 import akka.actor._

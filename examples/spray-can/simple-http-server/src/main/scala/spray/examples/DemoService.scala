@@ -1,7 +1,6 @@
 package spray.examples
 
-import java.util.concurrent.TimeUnit._
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import akka.pattern.ask
 import akka.actor._
 import spray.io.{IOBridge, IOExtension}
@@ -48,7 +47,7 @@ class DemoService extends Actor with SprayActorLogging {
 
     case HttpRequest(GET, "/stop", _, _, _) =>
       sender ! HttpResponse(entity = "Shutting down in 1 second ...")
-      context.system.scheduler.scheduleOnce(Duration(1, SECONDS), new Runnable { def run() { context.system.shutdown() } })
+      context.system.scheduler.scheduleOnce(1 second span, new Runnable { def run() { context.system.shutdown() } })
 
     case _: HttpRequest => sender ! HttpResponse(status = 404, entity = "Unknown resource!")
 
@@ -144,7 +143,7 @@ class DemoService extends Actor with SprayActorLogging {
 
       case Ok(remaining) =>
         log.info("Sending response chunk ...")
-        context.system.scheduler.scheduleOnce(Duration(100, MILLISECONDS)) {
+        context.system.scheduler.scheduleOnce(100 millis span) {
           peer ! MessageChunk(DateTime.now.toIsoDateTimeString + ", ").withSentAck(Ok(remaining - 1))
         }
 
