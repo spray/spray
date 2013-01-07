@@ -143,7 +143,7 @@ final class HttpRequest private(
   val entity: HttpEntity,
   val protocol: HttpProtocol,
   val queryParams: QueryParams, // empty for instances not created by `parseQuery`
-  URI: URI // non-public, only used internally for caching after a call to `parseUri`
+  URI: URI // non-public, only used internally for caching `parseUri` result, TODO: replace with custom URI parsing
   ) extends HttpMessage with HttpRequestPart {
 
   type Self = HttpRequest
@@ -152,14 +152,29 @@ final class HttpRequest private(
   def isRequest = true
   def isResponse = false
 
-  def path     = if (URI.getPath     == null) "" else URI.getPath
-  def query    = if (URI.getQuery    == null) "" else URI.getQuery
-  def rawQuery = if (URI.getRawQuery == null) "" else URI.getRawQuery
-  def fragment = if (URI.getFragment == null) "" else URI.getFragment
+  def scheme      = if (URI.getScheme      == null) "" else URI.getScheme
+  def uriHost     = if (URI.getHost        == null) "" else URI.getHost
+  def uriPort     = if (URI.getPort        == -1) None else Some(URI.getPort)
+  def path        = if (URI.getPath        == null) "" else URI.getPath
+  def rawPath     = if (URI.getRawPath     == null) "" else URI.getRawPath
+  def query       = if (URI.getQuery       == null) "" else URI.getQuery
+  def rawQuery    = if (URI.getRawQuery    == null) "" else URI.getRawQuery
+  def fragment    = if (URI.getFragment    == null) "" else URI.getFragment
+  def rawFragment = if (URI.getRawFragment == null) "" else URI.getRawFragment
 
-  def host: String = hostHeader(headers).map(_.host).getOrElse("")
-  def port: Option[Int] = hostHeader(headers).map(_.port).getOrElse(None)
-  def hostAndPort: String = hostHeader(headers).map(_.value).getOrElse("")
+  def rawPathQueryFragment: String = {
+    val sb = new java.lang.StringBuilder(rawPath)
+    val rq = rawQuery
+    val rf = rawFragment
+    if (!rq.isEmpty) sb.append('?').append(rq)
+    if (!rf.isEmpty) sb.append('#').append(rf)
+    if (sb.length == 0) "/" else sb.toString
+  }
+
+  def host: String = hostHeader.map(_.host).getOrElse("")
+  def port: Option[Int] = hostHeader.map(_.port).getOrElse(None)
+  def hostAndPort: String = hostHeader.map(_.value).getOrElse("")
+  def hostHeader: Option[Host] = hostHeader(headers)
 
   @tailrec
   private def hostHeader(headers: List[HttpHeader]): Option[Host] = headers match {
