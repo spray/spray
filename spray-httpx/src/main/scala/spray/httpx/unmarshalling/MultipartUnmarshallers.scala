@@ -40,23 +40,16 @@ trait MultipartUnmarshallers {
 
   private def convertMimeMessage(mimeMsg: MIMEMessage): Seq[BodyPart] = {
     mimeMsg.getAttachments.asScala.map { part =>
-      val rawHeaders: List[HttpHeader] = part.getAllHeaders.asScala.map(h => RawHeader(h.getName, h.getValue))(collection.breakOut)
+      val rawHeaders: List[HttpHeader] =
+        part.getAllHeaders.asScala.map(h => RawHeader(h.getName, h.getValue))(collection.breakOut)
       HttpParser.parseHeaders(rawHeaders) match {
-        case (Nil, headers) => BodyPart(
-          headers = headers,
-          entity = HttpBody(
-            contentType = headers.mapFind {
-              case `Content-Type`(t) => Some(t)
-              case _ => None
-            }.getOrElse(ContentType(`text/plain`, `US-ASCII`)), // RFC 2046 section 5.1
-            buffer = {
-              val outputStream = new ByteArrayOutputStream
-              FileUtils.copyAll(part.readOnce(), outputStream)
-              outputStream.toByteArray
-            }
-          )
-        )
-        case (errors, _) => sys.error("Multipart part contains illegal %s illegal header(s):\n%s"
+        case (Nil, headers) =>
+          val contentType = headers.mapFind { case `Content-Type`(t) => Some(t); case _ => None }
+            .getOrElse(ContentType(`text/plain`, `US-ASCII`)) // RFC 2046 section 5.1
+          val outputStream = new ByteArrayOutputStream
+          FileUtils.copyAll(part.readOnce(), outputStream)
+          BodyPart(HttpBody(contentType, outputStream.toByteArray), headers)
+        case (errors, _) => sys.error("Multipart part contains %s illegal header(s):\n%s"
           .format(errors.size, errors.mkString("\n")))
       }
     } (collection.breakOut)
