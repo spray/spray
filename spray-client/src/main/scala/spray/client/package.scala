@@ -21,9 +21,7 @@ import spray.http._
 
 
 package object client {
-
   type SendReceive = HttpRequest => Future[HttpResponse]
-
 }
 
 package client {

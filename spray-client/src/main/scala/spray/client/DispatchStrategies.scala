@@ -14,103 +14,63 @@
  * limitations under the License.
  */
 
-package spray
-package client
+package spray.client
 
 import scala.collection.mutable
-import http._
 
 
-/**
- * Abstraction over the logic of how to dispatch outgoing requests to one of several connections.
- */
-trait DispatchStrategy {
-  /**
-   * Requests that the given context be dispatched to one of the given HttpConns, if possible.
-   * The strategy might also be to not dispatch the request at all and save it for a dispatch at a later time.
-   */
-  def dispatch(context: HttpRequestContext, conns: Seq[HttpConn])
+private[client] trait DispatchStrategies {
+  this: HttpHostConnector =>
+
+  trait DispatchStrategy {
+    def dispatch(reqCtx: RequestContext)
+    def onStateChange()
+  }
 
   /**
-   * Informs the strategy logic of a change in state of the given connections.
-   */
-  def onStateChange(conns: Seq[HttpConn])
-}
-
-/**
- * Abstraction over HTTP connections in the context of a [[spray.client.DispatchStrategy]]
- */
-trait HttpConn {
-  /**
-   * Returns the number of open requests on this connection.
-   * If the connection is unconnected the method returns -1.
-   */
-  def pendingResponses: Int
-
-  /**
-   * Dispatches the given request context to this connection.
-   */
-  def dispatch(context: HttpRequestContext)
-}
-
-trait HttpRequestContext {
-  def request: HttpRequest
-}
-
-object DispatchStrategies {
-
-  /**
-   * Defines a [[spray.client.DispatchStrategy]] with the following logic:
+   * Defines a DispatchStrategy with the following logic:
    *  - Dispatch to the first idle connection in the pool, if there is one.
    *  - If none is idle, dispatch to the first unconnected connection, if there is one.
    *  - If all are already connected, store the request and send it as soon as one
    *    connection becomes either idle or unconnected.
    */
-  class NonPipelined extends DispatchStrategy {
-    val queue = mutable.Queue.empty[HttpRequestContext]
+  class NonPipelinedStrategy extends DispatchStrategy {
+    val queue = mutable.Queue.empty[RequestContext]
 
-    def dispatch(context: HttpRequestContext, conns: Seq[HttpConn]) {
-      findAvailableConnection(conns) match {
-        case Some(conn) => conn.dispatch(context)
-        case None => queue.enqueue(context)
+    def dispatch(reqCtx: RequestContext) {
+      findAvailableConnection match {
+        case Some(conn) => conn.dispatch(reqCtx)
+        case None => queue.enqueue(reqCtx)
       }
     }
 
-    def onStateChange(conns: Seq[HttpConn]) {
-      if (queue.nonEmpty) {
-        findAvailableConnection(conns).foreach(_.dispatch(queue.dequeue()))
-      }
+    def onStateChange() {
+      if (queue.nonEmpty)
+        findAvailableConnection.foreach(_.dispatch(queue.dequeue()))
     }
 
-    def findAvailableConnection(conns: Seq[HttpConn]): Option[HttpConn] = {
-      conns.find(_.pendingResponses == 0) orElse { // if possible dispatch to idle connections
-        conns.find(_.pendingResponses == -1) // otherwise look for unconnected connections
+    def findAvailableConnection: Option[HostConnection] =
+      hostConnections.find(_.pendingResponses == 0) orElse { // if possible dispatch to idle connections
+        hostConnections.find(_.pendingResponses == -1) // otherwise look for unconnected connections
       }
-    }
-  }
-
-  object NonPipelined {
-    def apply() = new NonPipelined
   }
 
   /**
-   * Defines a [[spray.client.DispatchStrategy]] with the following logic:
+   * Defines a DispatchStrategy with the following logic:
    *  - Dispatch to the first idle connection in the pool, if there is one.
    *  - If none is idle, dispatch to the first unconnected connection, if there is one.
    *  - If all are already connected, dispatch to the connection with the least open requests.
    */
-  class Pipelined extends DispatchStrategy {
-    def dispatch(context: HttpRequestContext, conns: Seq[HttpConn]) {
+  class PipelinedStrategy extends DispatchStrategy {
+    def dispatch(reqCtx: RequestContext) {
       // if possible dispatch to idle connections, if no idle ones are available prefer
       // unconnected connections over busy ones and less busy ones over more busy ones
-      val conn = conns.find(_.pendingResponses == 0).getOrElse(conns.minBy(_.pendingResponses))
-      conn.dispatch(context)
+      val conn = hostConnections.find(_.pendingResponses == 0).getOrElse(hostConnections.minBy(_.pendingResponses))
+      conn.dispatch(reqCtx)
     }
 
-    def onStateChange(conns: Seq[HttpConn]) {
+    def onStateChange() {
       // nothing to do here
     }
   }
-
-  object Pipelined extends Pipelined
 }

@@ -14,14 +14,10 @@
  * limitations under the License.
  */
 
-package spray.io
+package spray.client
 
-case class CommandException(command: Command, message: String, cause: Throwable)
-  extends RuntimeException(message, cause) with Event
+import akka.actor.ActorRef
+import spray.http.HttpRequest
 
-object CommandException {
-  def apply(command: Command, message: String): CommandException =
-    apply(command, message, null)
-  def apply(command: Command, throwable: Throwable): CommandException =
-    apply(command, throwable.toString, throwable)
-}
+
+private[client] case class RequestContext(request: HttpRequest, retriesLeft: Int, commander: ActorRef)

@@ -20,17 +20,18 @@ import com.typesafe.config.{Config, ConfigFactory}
 import spray.util.ConfigUtils
 
 
-class ConduitSettings(config: Config) {
-  protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.client")
+class HttpClientSettings(config: Config) {
+  protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.client.http-client")
 
-  val MaxConnections       = c getInt "max-connections"
-  val MaxRetries           = c getInt "max-retries"
-  val WarnOnIllegalHeaders = c getBoolean "warn-on-illegal-headers"
+  val PruningCycle          = c getMilliseconds "pruning-cycle"
+  val PruningShare          = c getDouble       "pruning-share"
+  val PruningSelectionLimit = c getDouble       "pruning-selection-limit"
 
-  require(MaxConnections >  0, "max-connections must be > 0")
-  require(MaxRetries     >= 0, "max-retries must be >= 0")
+  require(PruningCycle >= 0, "pruning-cycle must be >= 0")
+  require(0.0 <= PruningShare && PruningShare <= 1.0, "pruning-cycle must be >= 0.0 and <= 1.0")
+  require(PruningSelectionLimit > 0, "pruning-selection-limit must be > 0")
 }
 
-object ConduitSettings {
-  implicit def apply(config: Config = ConfigFactory.load()) = new ConduitSettings(config)
+object HttpClientSettings {
+  implicit def apply(config: Config = ConfigFactory.load()) = new HttpClientSettings(config)
 }

@@ -14,222 +14,90 @@
  * limitations under the License.
  */
 
-package spray.can.client
+package spray.client
 
-import scala.collection.mutable.ListBuffer
-import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.{Future, Promise}
-import scala.util.{Try, Failure, Success}
+import scala.concurrent.duration._
+import scala.concurrent.{Promise, Future}
+import akka.pattern.ask
+import akka.util.Timeout
 import akka.actor._
+import spray.can.client.{HttpClientConnectionSettings, HttpClientConnection}
+import spray.io.ClientSSLEngineProvider
 import spray.util._
 import spray.http._
 
 
 /**
- * An `HttpDialog` encapsulates an exchange of HTTP messages over the course of one connection.
- * It provides a fluent API for constructing a "chain" of scheduled tasks that define what to do over the course of
- * the dialog.
+ * An `HttpDialog` allows you to define an exchange of HTTP messages over a given transport
+ * (i.e. at the `HttpClientConnection`, `HttpHostConnector` or `HttpClient` level).
+ * It provides a fluent API for constructing a "chain" of scheduled tasks that define what
+ * to do over the course of the dialog.
  */
 object HttpDialog {
-  private sealed abstract class Action
-  private case class ConnectAction(host: String, port: Int, tag: Any) extends Action
-  private case class SendAction(request: HttpRequest) extends Action
-  private case class WaitIdleAction(duration: FiniteDuration) extends Action
-  private case class ReplyAction(f: HttpResponse => HttpRequest) extends Action
-  private case object AwaitResponseAction extends Action
 
-  private class DialogActor(result: Promise[AnyRef], multiResponse: Boolean) extends Actor {
-    val responses = ListBuffer.empty[HttpResponse]
-    var connection: Option[ActorRef] = None
-    var responsesPending = 0
-    var onResponse: Option[() => Unit] = None
+  def apply(host: String,
+            port: Int = 80,
+            tag: Any = (),
+            settings: HttpClientConnectionSettings = HttpClientConnectionSettings(),
+            connectionTimeout: Timeout = 5 seconds span)
+           (implicit refFactory: ActorRefFactory, sslEngineProvider: ClientSSLEngineProvider): Dialog#State0 = {
+    import HttpClientConnection._
+    implicit val connTimeout = connectionTimeout
+    val dialogActor = refFactory.actorOf(Props(new HttpClientConnection(settings)))
+    val dialog = new Dialog(dialogActor, (settings.RequestTimeout + 1000) millis span)
+    val trigger = for {
+      Connected(_) <- dialogActor ? Connect(host, port, tag)
+    } yield ()
+    new dialog.State0(trigger)
+  }
 
-    def complete(value: Try[AnyRef]) {
-      result.complete(value)
-      connection.foreach(_ ! HttpClient.Close(ConnectionCloseReasons.CleanClose))
-      context.stop(self)
+  def apply(transport: ActorRef)(implicit refFactory: ActorRefFactory): Dialog#State0 =
+    apply(transport, 60 seconds span)
+
+  def apply(transport: ActorRef, requestTimeout: Timeout)
+           (implicit refFactory: ActorRefFactory): Dialog#State0 = {
+    val dialog = new Dialog(transport, requestTimeout)
+    new dialog.State0(Promise.successful(()).future)
+  }
+
+  class Dialog(transport: ActorRef, requestTimeout: Timeout)(implicit refFactory: ActorRefFactory) {
+
+    class State0(trigger: Future[Unit]) {
+      def send(request: HttpRequest) = new State1(trigger, responseFor(request, trigger))
+      def send(requests: Seq[HttpRequest]) = new StateN(trigger, responsesFor(requests, trigger))
+      def waitIdle(duration: FiniteDuration) = new State0(trigger.delay(duration))
     }
 
-    def receive: Receive = {
-      case ConnectAction(host, port, tag) :: remainingActions =>
-        val command = HttpClient.Connect(host, port, tag)
-        client.tell(command, Reply.withContext(remainingActions))
-
-      case SendAction(request) :: remainingActions =>
-        connection.foreach(_ ! request)
-        responsesPending += 1
-        self ! remainingActions
-
-      case WaitIdleAction(duration) :: remainingActions =>
-        context.system.scheduler.scheduleOnce(duration, self, remainingActions)
-
-      case ReplyAction(f) :: remainingActions =>
-        onResponse = Some { () =>
-          val request = f(responses.remove(0))
-          self ! SendAction(request) :: remainingActions
-        }
-
-      case AwaitResponseAction :: remainingActions =>
-        onResponse = Some(() => self ! remainingActions)
-
-      case x: HttpResponse =>
-        responses += x
-        responsesPending -= 1
-        onResponse match {
-          case Some(task) =>
-            onResponse = None
-            task()
-          case None => if (responsesPending == 0) {
-            if (multiResponse) complete(Success(responses.toList))
-            else complete(Success(responses.head))
-          }
-        }
-
-      case _: HttpResponsePart =>
-        val msg = "The HttpDialog doesn't support chunked responses"
-        sender ! HttpClient.Close(ConnectionCloseReasons.ProtocolError(msg))
-        complete(Failure(IOClientException(msg)))
-
-      case Reply(HttpClient.Connected(handle), actions) =>
-        connection = Some(handle.handler)
-        self ! actions
-
-      case Reply(msg, _) => self ! msg // unpack all other with-context replies
-
-      case HttpClient.Closed(_, reason) =>
-        complete(Failure(IOClientException("Connection closed prematurely, reason: " + reason)))
-
-      case Status.Failure(cause) => complete(Failure(cause))
+    class State1(trigger: Future[Unit], target: Future[HttpResponse]) {
+      def send(request: HttpRequest) = stateN(firstResp => responseFor(request, trigger).map(firstResp :: _ :: Nil))
+      def send(requests: Seq[HttpRequest]) = stateN(firstResp => responsesFor(requests, trigger).map(firstResp +: _))
+      def reply(f: HttpResponse => HttpRequest) = {
+        val newTarget = target.flatMap(response => responseFor(f(response)))
+        new State1(newTarget.map(_ => ()), newTarget)
+      }
+      def awaitResponse = new State1(target.map(_ => ()), target)
+      def waitIdle(duration: FiniteDuration) = new State1(trigger.delay(duration), target)
+      def end = target
+      private def stateN(f: HttpResponse => Future[Seq[HttpResponse]]) = new StateN(trigger, target.flatMap(f))
     }
-  }
 
-  private class Context(refFactory: ActorRefFactory, client: ActorRef, connect: ConnectAction) {
-    private var actions = ListBuffer[Action](connect)
-    def appendAction(action: Action): this.type = {
-      actions += action
-      this
+    class StateN(trigger: Future[Unit], target: Future[Seq[HttpResponse]]) {
+      def send(request: HttpRequest) = stateN(responses => responseFor(request, trigger).map(responses :+ _))
+      def send(requests: Seq[HttpRequest]) = stateN(responses => responsesFor(requests, trigger).map(responses ++ _))
+      def awaitAllResponses = new StateN(target.map(_ => ()), target)
+      def waitIdle(duration: FiniteDuration) = new StateN(trigger.delay(duration), target)
+      def end = target
+      private def stateN(f: Seq[HttpResponse] => Future[Seq[HttpResponse]]) = new StateN(trigger, target.flatMap(f))
     }
-    def runActions(multiResponse: Boolean): Future[AnyRef] = {
-      val result = Promise[AnyRef]()
-      refFactory.actorOf(Props(new DialogActor(result, client, multiResponse))) ! actions.toList
-      result.future
-    }
+
+    private def responsesFor(requests: Seq[HttpRequest], trigger: Future[Unit]): Future[Seq[HttpResponse]] =
+      trigger.flatMap(_ => Future.sequence(requests.map(responseFor)))
+
+    private def responseFor(request: HttpRequest, trigger: Future[Unit]): Future[HttpResponse] =
+      trigger.flatMap(_ => responseFor(request))
+
+    private def responseFor(request: HttpRequest): Future[HttpResponse] =
+      transport.ask(request)(requestTimeout).mapTo[HttpResponse]
   }
-
-  sealed abstract class EndSingleResponse(private[HttpDialog] val context: Context) {
-    /**
-     * Triggers the execution of the scheduled HttpDialog actions and produces a future for the result.
-     */
-    def end: Future[HttpResponse] =
-      context.runActions(multiResponse = false).mapTo[HttpResponse]
-  }
-
-  sealed abstract class EndMultiResponse(private[HttpDialog] val context: Context) {
-    /**
-     * Triggers the execution of the scheduled HttpDialog actions and produces a future for the result.
-     */
-    def end: Future[List[HttpResponse]] =
-      context.runActions(multiResponse = true).mapTo[List[HttpResponse]]
-  }
-
-  sealed abstract class SendFirst(private[HttpDialog] val context: Context) {
-    /**
-     * Chains the sending of the given [[spray.can.model.HttpRequest]] into the dialog.
-     * The request will be sent as soon as the connection has been established and any `awaitResponse` and
-     * `waitIdle` tasks potentially chained in before this `send` have been completed.
-     * Several `send` tasks not separated by `awaitResponse`/`waitIdle` will cause the corresponding requests
-     * to be send in a pipelined fashion, one right after the other.
-     */
-    def send(request: HttpRequest) =
-      new EndSingleResponse(context.appendAction(SendAction(request)))
-        with SendSubsequent
-        with SendMany
-        with WaitIdle
-        with AwaitResponse
-        with Reply
-  }
-
-  sealed trait SendSubsequent {
-    private[HttpDialog] def context: Context
-
-    /**
-     * Chains the sending of the given [[spray.can.model.HttpRequest]] into the dialog.
-     * The request will be sent as soon as the connection has been established and any `awaitResponse` and
-     * `waitIdle` tasks potentially chained in before this `send` have been completed.
-     * Several `send` tasks not separated by `awaitResponse`/`waitIdle` will cause the corresponding requests
-     * to be send in a pipelined fashion, one right after the other.
-     */
-    def send(request: HttpRequest) =
-      new EndMultiResponse(context.appendAction(SendAction(request)))
-        with SendSubsequent
-        with SendMany
-        with WaitIdle
-        with AwaitResponse
-  }
-
-  sealed trait SendMany {
-    private[HttpDialog] def context: Context
-
-    /**
-     * Chains the sending of the given [[spray.can.HttpRequest]] instances into the dialog.
-     * The requests will be sent as soon as the connection has been established and any `awaitResponse` and
-     * `waitIdle` tasks potentially chained in before this `send` have been completed.
-     * All of the given HttpRequests are send in a pipelined fashion, one right after the other.
-     */
-    def send(requests: Seq[HttpRequest]) = {
-      requests.foreach(req => context.appendAction(SendAction(req)))
-      new EndMultiResponse(context)
-        with SendSubsequent
-        with SendMany
-        with WaitIdle
-    }
-  }
-
-  sealed trait WaitIdle {
-    private[HttpDialog] def context: Context
-
-    /**
-     * Delays all subsequent tasks by the given time duration.
-     */
-    def waitIdle(duration: FiniteDuration): this.type = {
-      context.appendAction(WaitIdleAction(duration))
-      this
-    }
-  }
-
-  sealed trait Reply {
-    private[HttpDialog] def context: Context
-
-    /**
-     * Chains a simple responder function into the task chain.
-     * Only legal after exactly one preceding `send` task. `reply` can be repeated, so the task chain
-     * `send(...).reply(...).reply(...).reply(...)` is legal.
-     */
-    def reply(f: HttpResponse => HttpRequest): this.type = {
-      context.appendAction(ReplyAction(f))
-      this
-    }
-  }
-
-  sealed trait AwaitResponse { this: SendSubsequent with SendMany with WaitIdle with AwaitResponse =>
-    private[HttpDialog] def context: Context
-
-    /**
-     * Delays all subsequent tasks until exactly one pending responses has come in.
-     */
-    def awaitResponse: SendSubsequent with SendMany with WaitIdle with AwaitResponse = {
-      context.appendAction(AwaitResponseAction)
-      this
-    }
-  }
-
-  /**
-   * Constructs a new `HttpDialog` for a connection to the given host and port.
-   */
-  def apply(host: String, port: Int = 80, tag: Any = ())
-           (implicit refFactory: ActorRefFactory) =
-    new SendFirst(new Context(refFactory, ConnectAction(host, port, tag)))
-      with SendMany
-      with WaitIdle
 
 }

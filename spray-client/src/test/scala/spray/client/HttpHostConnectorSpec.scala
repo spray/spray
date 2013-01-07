@@ -16,34 +16,33 @@
 
 package spray.client
 
-import java.util.concurrent.TimeUnit._
-import scala.util.Random
-import scala.concurrent.duration.Duration
-import scala.concurrent.Future
-import org.specs2.mutable.Specification
 import com.typesafe.config.ConfigFactory
+import scala.util.Random
+import scala.concurrent.Future
+import scala.concurrent.duration._
+import org.specs2.mutable.Specification
 import akka.pattern.ask
+import akka.util.Timeout
 import akka.actor._
-import spray.can.client.HttpClient
 import spray.can.server.HttpServer
 import spray.httpx.encoding.Gzip
 import spray.io._
 import spray.http._
 import spray.util._
-import DispatchStrategies._
 import HttpHeaders._
+import pipelining._
 
 
-class HttpConduitSpec extends Specification {
-  sequential
+class HttpHostConnectorSpec extends Specification {
+  implicit val timeout: Timeout = 5 seconds span
   implicit val system = ActorSystem()
-  val ioBridge = IOExtension(system).ioBridge()
-
   val port = 17242
-  val client = system.actorOf(Props(new HttpClient(ioBridge)), "http-client")
+
+  installDebuggingEventStreamLoggers()
+  sequential
+  //only("deliver the incoming responses fully parsed")
 
   step {
-    def response(s: String) = HttpResponse(entity = HttpBody(s), headers = List(`Content-Type`(ContentType.`text/plain`)))
     val handler = system.actorOf(Props(
       new Actor with SprayActorLogging {
         var dropNext = true
@@ -58,42 +57,43 @@ class HttpConduitSpec extends Specification {
             log.debug("Responding with " + x)
             dropNext = random.nextBoolean()
             sender ! response(method + "|" + uri + (if (entity.isEmpty) "" else "|" + entity.asString))
-          case Timeout(request) => sender ! response("TIMEOUT")
+          case Timedout(request) => sender ! response("TIMEOUT")
+          case HttpServer.Closed(_, reason) => log.debug("Received Closed event with reason " + reason)
         }
+        def response(s: String) = HttpResponse(entity = s, headers = List(`Content-Type`(ContentType.`text/plain`)))
       }
     ), "handler")
-    system.actorOf(Props(new HttpServer(ioBridge, SingletonHandler(handler))), "http-server")
-      .ask(HttpServer.Bind("localhost", port))(Duration(1, SECONDS))
-      .await // block until the server is actually bound
+    system.actorOf(Props(new HttpServer(SingletonHandler(handler))), "test-server")
+      .ask(HttpServer.Bind("localhost", port, tag = LogMark("SERVER"))).await
   }
 
-  "An HttpConduit with max. 4 connections and NonPipelined strategy" should {
+  "An HttpConduit with max. 4 connections and pipelining enabled" should {
     "properly deliver the result of a simple request" in {
-      oneRequest(NonPipelined())
+      oneRequest(pipelined = false)
     }
     "properly deliver the results of 100 requests" in {
-      hundredRequests(NonPipelined())
+      hundredRequests(pipelined = false)
     }
   }
-  "An HttpConduit with max. 4 connections and Pipelined strategy" should {
+  "An HttpHostConnector with max. 4 connections and pipelining disabled" should {
     "properly deliver the result of a simple request" in {
-      oneRequest(Pipelined)
+      oneRequest(pipelined = true)
     }
     "properly deliver the results of 100 requests" in {
-      hundredRequests(Pipelined)
+      hundredRequests(pipelined = true)
     }
   }
 
-  "An HttpConduit" should {
+  "An HttpHostConnector" should {
     "retry GET requests whose sending has failed" in {
-      val pipeline = newConduitPipeline(NonPipelined())
+      val pipeline = newHostConnector(pipelined = false)
       def send = pipeline(HttpRequest(uri = "/drop1of2"))
       val fut = send.flatMap(r1 => send.map(r2 => r1 -> r2))
       val (r1, r2) = fut.await
       r1.entity === r2.entity
     }
     "honor the pipelined strategy when retrying" in {
-      val pipeline = newConduitPipeline(Pipelined, maxConnections = 1)
+      val pipeline = newHostConnector(pipelined = true, maxConnections = 1)
       val requests = List(
         HttpRequest(uri = "/drop1of2/a"),
         HttpRequest(uri = "/drop1of2/b"),
@@ -105,8 +105,7 @@ class HttpConduitSpec extends Specification {
       future.await.map { case (a, b) => a.entity === b.entity }.reduceLeft(_ and _)
     }
     "deliver the incoming responses fully parsed" in {
-      import HttpConduit._
-      val pipeline = newConduitPipeline(NonPipelined())
+      val pipeline = newHostConnector(pipelined = false)
       val response = pipeline(Get("/compressedResponse")).await
       response.encoding === HttpEncodings.gzip
     }
@@ -114,23 +113,23 @@ class HttpConduitSpec extends Specification {
 
   step(system.shutdown())
 
-  def newConduitPipeline(strategy: DispatchStrategy, maxConnections: Int = 4) = {
-    val conduit = system.actorOf(Props {
-      new HttpConduit(client, "127.0.0.1", port,
-        settings = ConfigFactory.parseString("spray.client.max-connections = " + maxConnections),
-        dispatchStrategy = strategy
-      )
+  def newHostConnector(pipelined: Boolean, maxConnections: Int = 4) = {
+    val connector = system.actorOf(Props {
+      new HttpHostConnector("localhost", port, ConfigFactory.parseString {
+        "spray.client.max-connections = " + maxConnections + "\n" +
+        "spray.client.pipeline-requests = " + pipelined
+      }, defaultConnectionTag = LogMark("CONNECTOR"))
     })
-    HttpConduit.sendReceive(conduit)
+    sendReceive(connector)
   }
 
-  def oneRequest(strategy: DispatchStrategy) = {
-    val pipeline = newConduitPipeline(strategy)
+  def oneRequest(pipelined: Boolean) = {
+    val pipeline = newHostConnector(pipelined)
     pipeline(HttpRequest()).await.copy(headers = Nil) === HttpResponse(200, "GET|/")
   }
 
-  def hundredRequests(strategy: DispatchStrategy) = {
-    val pipeline = newConduitPipeline(strategy)
+  def hundredRequests(pipelined: Boolean) = {
+    val pipeline = newHostConnector(pipelined)
     val requests = Seq.tabulate(10)(index => HttpRequest(uri = "/" + index))
     val responseFutures = requests.map(pipeline)
     responseFutures.zipWithIndex.map { case (future, index) =>

@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package spray.can.client
+package spray.client
 
-import java.util.concurrent.TimeUnit._
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import akka.actor.{Actor, Props, ActorSystem}
 import akka.pattern.ask
 import org.specs2.mutable.Specification
@@ -29,29 +28,26 @@ import spray.http._
 
 class HttpDialogSpec extends Specification {
   implicit val system = ActorSystem()
-  val ioBridge = IOExtension(system).ioBridge()
   val port = 8899
 
   step {
-    val handler = system.actorOf(Props(new Actor { def receive = {
+    val testService = system.actorOf(Props(new Actor { def receive = {
       case x: HttpRequest => sender ! HttpResponse(entity = x.uri)
     }}))
-    val server = system.actorOf(Props(new HttpServer(ioBridge, SingletonHandler(handler))))
-    server.ask(HttpServer.Bind("localhost", port))(Duration(1, SECONDS)).await
+    val server = system.actorOf(Props(new HttpServer(SingletonHandler(testService))))
+    server.ask(HttpServer.Bind("localhost", port))(1 second span).await
   }
-
-  val client = system.actorOf(Props(new HttpClient(ioBridge)))
 
   "An HttpDialog" should {
     "be able to complete a simple request/response dialog" in {
-      HttpDialog(client, "localhost", port)
+      HttpDialog("localhost", port)
         .send(HttpRequest(uri = "/foo"))
         .end
         .map(_.entity.asString)
         .await === "/foo"
     }
     "be able to complete a pipelined 3 requests dialog" in {
-      HttpDialog(client, "localhost", port)
+      HttpDialog("localhost", port)
         .send(HttpRequest(uri = "/foo"))
         .send(HttpRequest(uri = "/bar"))
         .send(HttpRequest(uri = "/baz"))
@@ -60,18 +56,18 @@ class HttpDialogSpec extends Specification {
         .await === "/foo" :: "/bar" :: "/baz" :: Nil
     }
     "be able to complete an unpipelined 3 requests dialog" in {
-      HttpDialog(client, "localhost", port)
+      HttpDialog("localhost", port)
         .send(HttpRequest(uri = "/foo"))
         .awaitResponse
         .send(HttpRequest(uri = "/bar"))
-        .awaitResponse
+        .awaitAllResponses
         .send(HttpRequest(uri = "/baz"))
         .end
         .map(_.map(_.entity.asString))
         .await === "/foo" :: "/bar" :: "/baz" :: Nil
     }
     "be able to complete a dialog with 3 replies" in {
-      HttpDialog(client, "localhost", port)
+      HttpDialog("localhost", port)
         .send(HttpRequest(uri = "/foo"))
         .reply(response => HttpRequest(uri = response.entity.asString + "/a"))
         .reply(response => HttpRequest(uri = response.entity.asString + "/b"))
@@ -81,7 +77,7 @@ class HttpDialogSpec extends Specification {
         .await === "/foo/a/b/c"
     }
     "properly deliver error messages from the server" in {
-      HttpDialog(client, "localhost", port)
+      HttpDialog("localhost", port)
         .send(HttpRequest(uri = "/abc/" + ("x" * 2048)))
         .end
         .await.withHeaders(Nil) ===
