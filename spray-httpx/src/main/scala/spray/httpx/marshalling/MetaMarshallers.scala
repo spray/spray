@@ -17,7 +17,7 @@
 package spray.httpx.marshalling
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 import akka.actor.{ActorRef, Actor, Props, ActorRefFactory}
 import spray.util.IOClosed
 import spray.http._
@@ -46,6 +46,14 @@ trait MetaMarshallers {
       value.onComplete {
         case Success(v) => m(v, ctx)
         case Failure(error) => ctx.handleError(error)
+      }
+    }
+  
+  implicit def tryMarshaller[T](implicit m: Marshaller[T]) =
+    Marshaller[Try[T]] { (value, ctx) =>
+      value match {
+        case Success(v) => m(v, ctx)
+        case Failure(t) => ctx.handleError(t)
       }
     }
 
