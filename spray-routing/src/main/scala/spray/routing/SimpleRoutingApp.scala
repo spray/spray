@@ -17,12 +17,12 @@
 package spray.routing
 
 import scala.concurrent.Future
-import scala.concurrent.duration.Duration
-import akka.actor.{ActorRefFactory, Actor, Props, ActorRef}
+import scala.concurrent.duration._
+import akka.actor.{ActorRefFactory, Actor, Props}
 import akka.pattern.ask
-import spray.can.server.{HttpServer, ServerSettings, SprayCanHttpServerApp}
-import spray.io.{ServerSSLEngineProvider, IOExtension}
 import akka.util.Timeout
+import spray.can.server.{HttpServer, ServerSettings, SprayCanHttpServerApp}
+import spray.io.ServerSSLEngineProvider
 
 
 trait SimpleRoutingApp extends SprayCanHttpServerApp with HttpService {
@@ -43,13 +43,12 @@ trait SimpleRoutingApp extends SprayCanHttpServerApp with HttpService {
    */
   def startServer(interface: String,
                   port: Int,
-                  ioBridge: ActorRef = IOExtension(system).ioBridge(),
                   settings: ServerSettings = ServerSettings(),
                   serverActorName: String = "http-server",
                   serviceActorName: String = "simple-service-actor")
                  (route: => Route)
                  (implicit sslEngineProvider: ServerSSLEngineProvider,
-                  bindingTimeout: Timeout = Duration(1, "sec")): Future[HttpServer.Bound] = {
+                  bindingTimeout: Timeout = 1 second span): Future[HttpServer.Bound] = {
     val service = system.actorOf(
       props = Props {
         new Actor {
@@ -59,6 +58,6 @@ trait SimpleRoutingApp extends SprayCanHttpServerApp with HttpService {
       },
       name = serviceActorName
     )
-    (newHttpServer(service, ioBridge, settings, serverActorName) ? Bind(interface, port)).mapTo[HttpServer.Bound]
+    (newHttpServer(service, settings, serverActorName) ? Bind(interface, port)).mapTo[HttpServer.Bound]
   }
 }
