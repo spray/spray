@@ -1,9 +1,12 @@
 package spray.examples
 
-import scala.util.{Failure, Success}
-import akka.actor.ActorSystem
-import spray.can.client.{DefaultHttpClient, HttpDialog, HttpClient}
-import spray.http.HttpRequest
+import scala.util.{Success, Failure}
+import scala.concurrent.duration._
+import akka.actor.{Props, ActorSystem}
+import akka.pattern.ask
+import akka.util.Timeout
+import spray.can.client.HttpClientConnection
+import spray.http.{HttpResponse, HttpRequest}
 import spray.util._
 
 
@@ -12,15 +15,21 @@ object HttpsExample extends App {
   implicit val system = ActorSystem("https-example")
   import system.log
 
-  // create and start the default spray-can HttpClient
-  val httpClient = DefaultHttpClient(system)
+  // the lowest-level client-side HTTP construct in spray is the
+  // HttpClientConnection actor, which manages one single HTTP connection
+  // over its lifetime.
+  val connection = system.actorOf(Props(new HttpClientConnection), "connection-actor")
 
-  // create a very basic HttpDialog that results in a Future[HttpResponse]
-  log.info("Dispatching GET request to github.com")
-  val responseFuture =
-    HttpDialog(httpClient, "github.com", port = 443, HttpClient.SslEnabled)
-      .send(HttpRequest(uri = "/spray/spray"))
-      .end
+  // we open the connection by telling it to `Connect`, after having
+  // received the `Connected` reply we can send requests and expect
+  // responses as a reply, finally we close with a `Close` command
+  import HttpClientConnection._   // import the protocol messages
+  implicit val timeout: Timeout = 5 seconds span
+  val responseFuture = for {
+      Connected(_)                        <- connection ? Connect("github.com", port = 443, tag = SslEnabled)
+      response@ HttpResponse(_, _, _, _)  <- connection ? HttpRequest(uri = "/spray/spray")
+      // Closed(_, _) <- connection ? Close(ConnectionCloseReasons.CleanClose) // not required if the server closes
+    } yield response
 
   // "hook in" our continuation
   responseFuture onComplete {
@@ -40,5 +49,4 @@ object HttpsExample extends App {
       log.error("Could not get response due to {}", error)
       system.shutdown()
   }
-
 }
