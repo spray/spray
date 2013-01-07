@@ -285,7 +285,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       singleHandlerPipeline.test {
         val Commands(Tell(`singletonHandler`, _, peer)) = processAndClear(Received(simpleRequest))
         Thread.sleep(100)
-        val Commands(Tell(`singletonHandler`, spray.http.Timeout(_), `peer`)) = processAndClear(TickGenerator.Tick)
+        val Commands(Tell(`singletonHandler`, Timedout(_), `peer`)) = processAndClear(TickGenerator.Tick)
         peer.tell(HttpCommand(HttpResponse()), sender1)
         result.commands(0) === SendString(simpleResponse)
       }
@@ -295,7 +295,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       singleHandlerPipeline.test {
         val Commands(Tell(`singletonHandler`, _, peer)) = processAndClear(Received(simpleRequest))
         Thread.sleep(55)
-        val Commands(Tell(`singletonHandler`, spray.http.Timeout(_), `peer`)) = processAndClear(TickGenerator.Tick)
+        val Commands(Tell(`singletonHandler`, Timedout(_), `peer`)) = processAndClear(TickGenerator.Tick)
         Thread.sleep(35)
         val Commands(message, HttpServer.Close(CleanClose)) = process(TickGenerator.Tick)
         message === SendString {

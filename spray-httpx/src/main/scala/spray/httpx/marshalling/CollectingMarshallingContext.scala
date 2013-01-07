@@ -21,6 +21,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit._
 import scala.annotation.tailrec
 import akka.spray.UnregisteredActorRef
+import akka.util.Timeout
 import akka.actor.{ActorRefFactory, ActorRef}
 import spray.http._
 
@@ -89,7 +90,7 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
     ref
   }
 
-  def awaitResults(implicit timeout: akka.util.Timeout) {
+  def awaitResults(implicit timeout: Timeout) {
     latch.await(timeout.duration.toMillis, MILLISECONDS)
   }
 }

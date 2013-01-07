@@ -34,10 +34,10 @@ class DemoService extends Actor with SprayActorLogging {
 
     case _: HttpRequest => sender ! HttpResponse(404, "Unknown resource!")
 
-    case Timeout(HttpRequest(_, "/timeout/timeout", _, _, _)) =>
+    case Timedout(HttpRequest(_, "/timeout/timeout", _, _, _)) =>
       log.info("Dropping Timeout message")
 
-    case Timeout(request: HttpRequest) =>
+    case Timedout(request: HttpRequest) =>
       sender ! HttpResponse(500, "The " + request.method + " request to '" + request.uri + "' has timed out...")
   }
 

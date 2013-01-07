@@ -19,7 +19,7 @@ class TimeoutHandlingExamplesSpec extends Specification with Specs2RouteTest {
     def myRoute: Route = `<my-route-definition>`
 
     def handleTimeouts: Receive = {
-      case Timeout(x: HttpRequest) =>
+      case Timedout(x: HttpRequest) =>
         sender ! HttpResponse(StatusCodes.InternalServerError, "Too late")
     }
   }
@@ -31,7 +31,7 @@ class TimeoutHandlingExamplesSpec extends Specification with Specs2RouteTest {
     import spray.httpx.unmarshalling._
     val probe = TestProbe()
     val service = TestActorRef(new MyService)
-    probe.send(service, Timeout(HttpRequest()))
+    probe.send(service, Timedout(HttpRequest()))
     val HttpResponse(status, entity, _, _) = probe.receiveOne(Duration.Zero)
     status === StatusCodes.InternalServerError
     entity.as[String] === Right("Too late")

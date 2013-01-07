@@ -71,7 +71,7 @@ trait HttpService extends Directives {
 
       case ctx: RequestContext => sealedRoute(ctx)
 
-      case Timeout(request: HttpRequest) => runRoute(timeoutRoute)(eh, rh, ac, rs, log)(request)
+      case Timedout(request: HttpRequest) => runRoute(timeoutRoute)(eh, rh, ac, rs, log)(request)
     }
   }
 

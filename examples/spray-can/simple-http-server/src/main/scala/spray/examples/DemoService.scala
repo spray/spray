@@ -2,6 +2,7 @@ package spray.examples
 
 import scala.concurrent.duration._
 import akka.pattern.ask
+import akka.util.Timeout
 import akka.actor._
 import spray.io.{IOBridge, IOExtension}
 import spray.can.server.HttpServer
@@ -12,7 +13,7 @@ import MediaTypes._
 
 
 class DemoService extends Actor with SprayActorLogging {
-  implicit val timeout: akka.util.Timeout = Duration(1, "sec") // for the actor 'asks' we use below
+  implicit val timeout: Timeout = Duration(1, "sec") // for the actor 'asks' we use below
 
   def receive = {
     case HttpRequest(GET, "/", _, _, _) =>
@@ -51,10 +52,10 @@ class DemoService extends Actor with SprayActorLogging {
 
     case _: HttpRequest => sender ! HttpResponse(status = 404, entity = "Unknown resource!")
 
-    case Timeout(HttpRequest(_, "/timeout/timeout", _, _, _)) =>
+    case Timedout(HttpRequest(_, "/timeout/timeout", _, _, _)) =>
       log.info("Dropping Timeout message")
 
-    case Timeout(HttpRequest(method, uri, _, _, _)) =>
+    case Timedout(HttpRequest(method, uri, _, _, _)) =>
       sender ! HttpResponse(
         status = 500,
         entity = "The " + method + " request to '" + uri + "' has timed out..."

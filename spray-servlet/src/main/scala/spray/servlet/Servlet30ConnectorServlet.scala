@@ -175,7 +175,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
         }
       }
     }
-    timeoutHandler.tell(Timeout(req), responder)
+    timeoutHandler.tell(Timedout(req), responder)
     // we need to react synchronously to Timeout events (thx to the great Servlet API design), so we block here
     latch.await(settings.TimeoutTimeout, MILLISECONDS)
     if (latch.getCount != 0) writeResponse(timeoutResponse(req), hsResponse, req) {}
