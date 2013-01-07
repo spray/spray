@@ -18,6 +18,7 @@ package spray.can
 package rendering
 
 import java.nio.ByteBuffer
+import scala.annotation.tailrec
 import spray.io.BufferBuilder
 import spray.util._
 import spray.http._
@@ -92,7 +93,7 @@ class ResponseRenderer(serverHeader: String,
       bb.append(protocol.value).append(' ').append(Integer.toString(status.value)).append(' ')
         .append(status.reason).append(MessageRendering.CrLf)
     }
-    appendHeaders(headers, bb, blockDateHeader = true)
+    appendHeaders(headers, bb)
   }
 
   private def renderedMessagePart(bb: BufferBuilder, requestMethod: HttpMethod, entity: HttpEntity, close: Boolean) = {
@@ -102,6 +103,25 @@ class ResponseRenderer(serverHeader: String,
       RenderedMessagePart(bb.append(entity.buffer).toByteBuffer :: Nil, close)
     else
       RenderedMessagePart(bb.toByteBuffer :: ByteBuffer.wrap(entity.buffer) :: Nil, close)
+  }
+
+  @tailrec
+  private def appendHeaders(httpHeaders: List[HttpHeader], bb: BufferBuilder,
+                            connectionHeaderValue: Option[String] = None): Option[String] = {
+    if (httpHeaders.nonEmpty) {
+      val header = httpHeaders.head
+      var newConnectionHeaderValue = connectionHeaderValue
+      header.lowercaseName match {
+        case "content-type"      => // we never render these headers here,
+        case "content-length"    => // because their production is the
+        case "transfer-encoding" => // responsibility of the spray-can layer,
+        case "date"              => // not the user
+        case "server"            =>
+        case "connection"        => newConnectionHeaderValue = Some(header.value); appendHeader(header, bb)
+        case _ => appendHeader(header, bb)
+      }
+      appendHeaders(httpHeaders.tail, bb, newConnectionHeaderValue)
+    } else connectionHeaderValue
   }
 
   private def appendConnectionHeaderIfRequired(response: HttpResponse, ctx: HttpResponsePartRenderingContext,

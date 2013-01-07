@@ -23,8 +23,6 @@ import spray.http._
 
 case class HttpRequestPartRenderingContext(
   requestPart: HttpRequestPart,
-  host: String,
-  port: Int,
   sentAck: Option[Any] = None
 ) extends Command
 

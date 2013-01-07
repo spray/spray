@@ -22,16 +22,16 @@ import spray.io._
 
 object RequestRendering {
 
-  def apply(settings: ClientSettings): PipelineStage =
+  def apply(settings: HttpClientConnectionSettings): PipelineStage =
     new PipelineStage {
       val renderer = new RequestRenderer(settings.UserAgentHeader, settings.RequestSizeHint.toInt)
 
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           val commandPipeline: CPL = {
-            case ctx: HttpRequestPartRenderingContext =>
-              val rendered = renderer.render(ctx)
-              commandPL(IOClientConnection.Send(rendered.buffers, ctx.sentAck))
+            case HttpRequestPartRenderingContext(requestPart, sentAck) =>
+              val rendered = renderer.render(requestPart, context.connection.remoteAddress)
+              commandPL(IOClientConnection.Send(rendered.buffers, sentAck))
 
             case cmd => commandPL(cmd)
           }

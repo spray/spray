@@ -18,7 +18,7 @@ package spray.can.server
 import java.util.concurrent.atomic.AtomicLong
 import scala.annotation.tailrec
 import scala.concurrent.duration._
-import spray.http.{Timeout, HttpMessageStart}
+import spray.http.{Timedout, HttpMessageStart}
 import spray.can.rendering.HttpResponsePartRenderingContext
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.util.ConnectionCloseReasons.IdleTimeout
@@ -95,7 +95,7 @@ object StatsSupport {
               responseStarts.incrementAndGet()
               commandPL(x)
 
-            case x@ IOConnection.Tell(_, _: Timeout, _) =>
+            case x@ IOConnection.Tell(_, _: Timedout, _) =>
               requestTimeouts.incrementAndGet()
               commandPL(x)
 

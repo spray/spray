@@ -26,35 +26,11 @@ import spray.http._
 private[rendering] trait MessageRendering {
   import MessageRendering._
 
-  protected def appendHeader(name: String, value: String, bb: BufferBuilder) =
-    bb.append(name).append(':').append(' ').append(value).append(CrLf)
+  protected def appendHeader(header: HttpHeader, bb: BufferBuilder): BufferBuilder =
+    appendHeader(header.name, header.value, bb)
 
-  @tailrec
-  protected final def appendHeaders(httpHeaders: List[HttpHeader], bb: BufferBuilder, blockDateHeader: Boolean = false,
-                    connectionHeaderValue: Option[String] = None): Option[String] = {
-    if (httpHeaders.isEmpty) {
-      connectionHeaderValue
-    } else {
-      val header = httpHeaders.head
-      val newConnectionHeaderValue = {
-        if (connectionHeaderValue.isEmpty)
-          if (header.name.equalsIgnoreCase("Connection")) Some(header.value)
-          else None
-        else connectionHeaderValue
-      }
-      header.lowercaseName match {
-        case "content-type"            => // we never render these headers here,
-        case "content-length"          => // because their production is the
-        case "transfer-encoding"       => // responsibility of the spray-can layer,
-        case "host"                    => // not the user
-        case "date" if blockDateHeader =>
-        case "server"                  =>
-        case "user-agent"              =>
-        case _ => appendHeader(header.name, header.value, bb)
-      }
-      appendHeaders(httpHeaders.tail, bb, blockDateHeader, newConnectionHeaderValue)
-    }
-  }
+  protected def appendHeader(name: String, value: String, bb: BufferBuilder): BufferBuilder =
+    bb.append(name).append(':').append(' ').append(value).append(CrLf)
 
   protected def appendContentTypeHeaderIfRequired(entity: HttpEntity, bb: BufferBuilder) = {
     if (!entity.isEmpty) appendHeader("Content-Type", entity.asInstanceOf[HttpBody].contentType.value, bb)
@@ -76,7 +52,11 @@ private[rendering] trait MessageRendering {
                                  requestConnectionHeader: Option[String] = None): RenderedMessagePart = {
     val bb = BufferBuilder(messageSizeHint).append('0')
     appendChunkExtensions(chunk.extensions, bb).append(CrLf)
-    appendHeaders(chunk.trailer, bb)
+    @tailrec def appendHeaders(h: List[HttpHeader]): Unit = h match {
+      case Nil =>
+      case head :: tail => appendHeader(head, bb); appendHeaders(tail)
+    }
+    appendHeaders(chunk.trailer)
     bb.append(CrLf)
     RenderedMessagePart(bb.toByteBuffer :: Nil, closeConnection = requestConnectionHeader == SomeClose)
   }

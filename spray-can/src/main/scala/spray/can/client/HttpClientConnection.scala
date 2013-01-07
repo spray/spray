@@ -22,7 +22,11 @@ import spray.http.{Confirmed, HttpRequestPart}
 import spray.io._
 
 
-class HttpClientConnection(settings: ClientSettings = ClientSettings())
+/**
+ * The lowest-level client-side HTTP transport.
+ * Represents a single (but potentially long-living) HTTP connection to a specific host and port.
+ */
+class HttpClientConnection(settings: HttpClientConnectionSettings = HttpClientConnectionSettings())
                           (implicit sslEngineProvider: ClientSSLEngineProvider) extends IOClientConnection {
 
   override def pipelineStage: PipelineStage = HttpClientConnection.pipelineStage(settings, log)
@@ -35,16 +39,16 @@ class HttpClientConnection(settings: ClientSettings = ClientSettings())
 
 object HttpClientConnection {
 
-  private[can] def pipelineStage(settings: ClientSettings, log: LoggingAdapter)
+  private[can] def pipelineStage(settings: HttpClientConnectionSettings, log: LoggingAdapter)
                                 (implicit sslEngineProvider: ClientSSLEngineProvider): PipelineStage = {
     import settings._
     ClientFrontend(RequestTimeout, log) >>
     ResponseChunkAggregation(ResponseChunkAggregationLimit.toInt) ? (ResponseChunkAggregationLimit > 0) >>
     ResponseParsing(ParserSettings, log) >>
     RequestRendering(settings) >>
-    ConnectionTimeouts(IdleTimeout, log) ? (settings.IdleTimeout > 0) >>
+    ConnectionTimeouts(IdleTimeout, log) ? (ReapingCycle > 0 && IdleTimeout > 0) >>
     SslTlsSupport(sslEngineProvider, log, encryptIfUntagged = false) >>
-    TickGenerator(ReapingCycle) ? (ReapingCycle > 0 && IdleTimeout > 0)
+    TickGenerator(ReapingCycle) ? (ReapingCycle > 0 && (IdleTimeout > 0 || RequestTimeout > 0))
   }
 
   /**
@@ -58,8 +62,8 @@ object HttpClientConnection {
 
   ////////////// COMMANDS //////////////
   // HttpRequestParts +
-  type Connect           = IOClientConnection.Connect;   val Connect           = IOClientConnection.Connect
-  type Close             = IOClientConnection.Close;     val Close             = IOClientConnection.Close
+  type Connect           = IOClientConnection.Connect;        val Connect           = IOClientConnection.Connect
+  type Close             = IOClientConnection.Close;          val Close             = IOClientConnection.Close
   type SetIdleTimeout    = ConnectionTimeouts.SetIdleTimeout; val SetIdleTimeout    = ConnectionTimeouts.SetIdleTimeout
   type SetRequestTimeout = ClientFrontend.SetRequestTimeout;  val SetRequestTimeout = ClientFrontend.SetRequestTimeout
 

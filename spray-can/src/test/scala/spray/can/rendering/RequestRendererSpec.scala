@@ -22,6 +22,7 @@ import spray.util.EOL
 import spray.http._
 import HttpMethods._
 import HttpHeaders.RawHeader
+import java.net.InetSocketAddress
 
 
 class RequestRendererSpec extends Specification {
@@ -39,19 +40,20 @@ class RequestRendererSpec extends Specification {
         }
       }
 
-      "POST request, a few headers and no body" in {
+      "POST request, a few headers (incl. a custom Host header) and no body" in {
         HttpRequest(
           method = POST,
           uri = "/abc/xyz",
           headers = List(
             RawHeader("X-Fancy", "naa"),
-            RawHeader("Age", "0")
+            RawHeader("Age", "0"),
+            RawHeader("Host", "spray.io:9999")
           )
         ) must beRenderedTo {
           """|POST /abc/xyz HTTP/1.1
              |X-Fancy: naa
              |Age: 0
-             |Host: test.com:8080
+             |Host: spray.io:9999
              |User-Agent: spray-can/1.0.0
              |Content-Length: 0
              |
@@ -65,13 +67,14 @@ class RequestRendererSpec extends Specification {
           uri = "/abc/xyz",
           headers = List(
             RawHeader("X-Fancy", "naa"),
-            RawHeader("Cache-Control", "public")
+            RawHeader("Cache-Control", "public"),
+            RawHeader("Host", "spray.io")
           )
         ).withEntity("The content please!") must beRenderedTo {
           """|PUT /abc/xyz HTTP/1.1
              |X-Fancy: naa
              |Cache-Control: public
-             |Host: test.com:8080
+             |Host: spray.io
              |User-Agent: spray-can/1.0.0
              |Content-Type: text/plain
              |Content-Length: 19
@@ -112,9 +115,7 @@ class RequestRendererSpec extends Specification {
 
   def beRenderedTo(content: String) = {
     beEqualTo(content.stripMargin.replace(EOL, "\r\n")) ^^ { part: HttpRequestPart =>
-      val RenderedMessagePart(buffers, false) = renderer.render {
-        HttpRequestPartRenderingContext(part, "test.com", 8080)
-      }
+      val RenderedMessagePart(buffers, false) = renderer.render(part, Some(new InetSocketAddress("test.com", 8080)))
       val sb = new java.lang.StringBuilder()
       buffers.foreach { buf => while (buf.remaining > 0) sb.append(buf.get.toChar) }
       sb.toString

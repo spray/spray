@@ -144,7 +144,7 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
   }
 
   val pipeline = HttpClientConnection.pipelineStage(
-    new ClientSettings(
+    new HttpClientConnectionSettings(
       ConfigFactory.parseString("""
         spray.can.client.user-agent-header = spray/1.0
         spray.can.client.idle-timeout = 50 ms

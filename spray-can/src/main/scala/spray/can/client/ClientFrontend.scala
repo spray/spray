@@ -36,8 +36,6 @@ object ClientFrontend {
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = {
         new Pipelines {
           import context.connection
-          val host = connection.remoteAddress.getHostName
-          val port = connection.remoteAddress.getPort
           val openRequests = mutable.Queue.empty[RequestRecord]
           var requestTimeout = initialRequestTimeout
 
@@ -97,7 +95,7 @@ object ClientFrontend {
 
             case x: Closed =>
               openRequests.foreach(rec => dispatch(rec.sender, x))
-              eventPL(x) // terminates the connection actor and informs the original commander
+              eventPL(x) // terminates the connection actor
 
             case TickGenerator.Tick =>
               checkForTimeout()
@@ -111,7 +109,7 @@ object ClientFrontend {
           }
 
           def render(part: HttpRequestPart, ack: Option[Any]) {
-            commandPL(HttpRequestPartRenderingContext(part, host, port, ack))
+            commandPL(HttpRequestPartRenderingContext(part, ack))
           }
 
           def dispatch(receiver: ActorRef, msg: Any) {

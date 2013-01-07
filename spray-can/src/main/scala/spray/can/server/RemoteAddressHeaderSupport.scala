@@ -27,7 +27,7 @@ object RemoteAddressHeaderSupport {
     new PipelineStage {
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
-          val raHeader = `Remote-Address`(context.connection.remoteAddress.getAddress)
+          val raHeader = `Remote-Address`(context.connection.remoteAddress.get.getAddress)
           def appendHeader(request: HttpRequest) : HttpRequest = request.mapHeaders(raHeader :: _)
 
           val commandPipeline = commandPL

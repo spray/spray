@@ -21,7 +21,7 @@ import spray.can.parsing.ParserSettings
 import spray.util.ConfigUtils
 
 
-class ClientSettings(config: Config) {
+class HttpClientConnectionSettings(config: Config) {
   protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.can.client")
 
   val UserAgentHeader               = c getString       "user-agent-header"
@@ -42,6 +42,6 @@ class ClientSettings(config: Config) {
     "request-size-hint must be >= 0 and <= Int.MaxValue")
 }
 
-object ClientSettings {
-  implicit def apply(config: Config = ConfigFactory.load()): ClientSettings = new ClientSettings(config)
+object HttpClientConnectionSettings {
+  implicit def apply(config: Config = ConfigFactory.load()) = new HttpClientConnectionSettings(config)
 }

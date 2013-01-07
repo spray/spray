@@ -177,7 +177,7 @@ object HttpServer {
     RemoteAddressHeaderSupport() ? RemoteAddressHeader >>
     RequestParsing(ParserSettings, VerboseErrorMessages, log) >>
     ResponseRendering(settings) >>
-    ConnectionTimeouts(IdleTimeout, log) ? (IdleTimeout > 0) >>
+    ConnectionTimeouts(IdleTimeout, log) ? (ReapingCycle > 0 && IdleTimeout > 0) >>
     SslTlsSupport(sslEngineProvider, log) ? SSLEncryption >>
     TickGenerator(ReapingCycle) ? (ReapingCycle > 0 && (IdleTimeout > 0 || RequestTimeout > 0))
   }

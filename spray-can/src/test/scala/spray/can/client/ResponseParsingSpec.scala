@@ -39,7 +39,7 @@ class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
     }
     "parse a simple response and produce the corresponding event" in {
       pipelineStage.test {
-        process(HttpRequestPartRenderingContext(request(), "localhost", 80))
+        process(HttpRequestPartRenderingContext(request()))
         val Events(event) = process(Received(rawResponse("foo")))
         event === HttpEvent(response("foo"))
       }
@@ -47,8 +47,8 @@ class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
     "parse a double response and produce the corresponding events" in {
       pipelineStage.test {
         val Events(events@ _*) = process(
-          HttpRequestPartRenderingContext(request(), "localhost", 80),
-          HttpRequestPartRenderingContext(request(), "localhost", 80),
+          HttpRequestPartRenderingContext(request()),
+          HttpRequestPartRenderingContext(request()),
           Received(rawResponse("foo") + rawResponse("bar"))
         )
         events(0) === HttpEvent(response("foo"))
@@ -65,8 +65,8 @@ class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
       "example 2" in {
         pipelineStage.test {
           process(
-            HttpRequestPartRenderingContext(request(), "localhost", 80),
-            HttpRequestPartRenderingContext(request(), "localhost", 80)
+            HttpRequestPartRenderingContext(request()),
+            HttpRequestPartRenderingContext(request())
           )
           val ProcessResult(commands, events) = clearAndProcess(
             Received(rawResponse("foo")),
