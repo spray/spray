@@ -63,6 +63,7 @@ trait PipelineStageTest {
       val context = new PipelineContext {
         def connection = testConnection
         def connectionActorContext = PipelineStageTest.this.connectionActorContext
+        def log = system.log
         override def sender = if (msgSender != null) msgSender else sys.error("No message sender set")
       }
       stage(context, x => commands += x, x => events += x)

@@ -363,8 +363,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
       ),
       messageHandler,
       req => HttpResponse(500, "Timeout for " + req.uri),
-      Some(new StatsSupport.StatsHolder),
-      system.log
+      Some(new StatsSupport.StatsHolder)
     )
 }
 

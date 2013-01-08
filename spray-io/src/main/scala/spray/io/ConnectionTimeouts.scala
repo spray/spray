@@ -17,18 +17,18 @@
 package spray.io
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
-import akka.event.{Logging, LoggingAdapter}
+import akka.event.Logging
 import spray.util.ConnectionCloseReasons.IdleTimeout
 
 
 object ConnectionTimeouts {
 
-  def apply(idleTimeout: Long, log: LoggingAdapter): PipelineStage = {
+  def apply(idleTimeout: Long): PipelineStage = {
     require(idleTimeout >= 0)
-    val debug = TaggableLog(log, Logging.DebugLevel)
 
     new PipelineStage {
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
+        val debug = TaggedLog(context, Logging.DebugLevel)
         var timeout = idleTimeout
         var lastActivity = System.currentTimeMillis
 
@@ -50,7 +50,7 @@ object ConnectionTimeouts {
 
           case TickGenerator.Tick =>
             if (timeout > 0 && (lastActivity + timeout < System.currentTimeMillis)) {
-              debug.log(context.connection.tag ,"Closing connection due to idle timeout...")
+              debug.log("Closing connection due to idle timeout...")
               commandPL(IOConnection.Close(IdleTimeout))
             }
             eventPL(TickGenerator.Tick)

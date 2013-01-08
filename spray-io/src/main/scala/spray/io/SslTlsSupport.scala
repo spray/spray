@@ -21,7 +21,7 @@ import javax.net.ssl.{SSLContext, SSLException, SSLEngineResult, SSLEngine}
 import javax.net.ssl.SSLEngineResult.HandshakeStatus._
 import scala.collection.mutable
 import scala.annotation.tailrec
-import akka.event.{Logging, LoggingAdapter}
+import akka.event.Logging
 import spray.util._
 import SSLEngineResult.Status._
 import ConnectionCloseReasons._
@@ -56,10 +56,7 @@ object SslTlsSupport {
   }
   //#
 
-  def apply(engineProvider: PipelineContext => SSLEngine, log: LoggingAdapter,
-            encryptIfUntagged: Boolean = true): PipelineStage = {
-    val debug = TaggableLog(log, Logging.DebugLevel)
-    val error = TaggableLog(log, Logging.ErrorLevel)
+  def apply(engineProvider: PipelineContext => SSLEngine, encryptIfUntagged: Boolean = true): PipelineStage = {
     new OptionalPipelineStage {
       def enabled(context: PipelineContext): Boolean =
         context.connection.tag match {
@@ -68,6 +65,8 @@ object SslTlsSupport {
         }
       def applyIfEnabled(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
+          val debug = TaggedLog(context, Logging.DebugLevel)
+          val error = TaggedLog(context, Logging.ErrorLevel)
           val engine = engineProvider(context)
           val pendingSends = mutable.Queue.empty[Send]
           var inboundReceptacle: ByteBuffer = _ // holds incoming data that are too small to be decrypted yet
@@ -78,7 +77,7 @@ object SslTlsSupport {
               else pendingSends += Send(x)
 
             case x: IOConnection.Close =>
-              debug.log(context.connection.tag ,"Closing SSLEngine due to reception of {}", x)
+              debug.log("Closing SSLEngine due to reception of {}", x)
               engine.closeOutbound()
               withTempBuf(closeEngine)
               commandPL(x)
@@ -109,7 +108,7 @@ object SslTlsSupport {
           @tailrec
           def encrypt(send: Send, tempBuf: ByteBuffer, fromQueue: Boolean = false) {
             import send._
-            if (debug.enabled) debug.log(context.connection.tag, "Encrypting {} bytes in {} buffers",
+            if (debug.enabled) debug.log("Encrypting {} bytes in {} buffers",
               buffers.map(_.remaining).sum, buffers.length)
             tempBuf.clear()
             val ackDefinedAndPreContentLeft = ack.isDefined && contentLeft()
@@ -148,7 +147,7 @@ object SslTlsSupport {
            */
           @tailrec
           def decrypt(buffer: ByteBuffer, tempBuf: ByteBuffer) {
-            debug.log(context.connection.tag, "Decrypting buffer with {} bytes", buffer.remaining)
+            debug.log("Decrypting buffer with {} bytes", buffer.remaining)
             tempBuf.clear()
             val result = engine.unwrap(buffer, tempBuf)
             tempBuf.flip()
@@ -183,7 +182,7 @@ object SslTlsSupport {
             try f(tempBuf)
             catch {
               case e: SSLException =>
-                error.log(context.connection.tag, "Closing encrypted connection to {} due to {}",
+                error.log("Closing encrypted connection to {} due to {}",
                   context.connection.remoteAddress, e)
                 commandPL(IOConnection.Close(ProtocolError(e.toString)))
             }

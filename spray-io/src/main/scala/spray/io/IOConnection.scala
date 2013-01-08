@@ -35,7 +35,7 @@ trait IOConnection extends Actor with SprayActorLogging {
     pipelineStage(createPipelineContext(connection), baseCommandPipeline, baseEventPipeline)
 
   def createPipelineContext(connection: Connection): PipelineContext =
-    new DefaultPipelineContext(connection, context)
+    new DefaultPipelineContext(connection, context, log)
 
   def ioBridge = connection.key.ioBridge
 

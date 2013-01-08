@@ -27,7 +27,7 @@ import spray.io.Event
 
 class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
   val system = ActorSystem()
-  val pipelineStage = ResponseParsing(new ParserSettings(), system.log)
+  val pipelineStage = ResponseParsing(new ParserSettings())
 
   "The ResponseParsing PipelineStage" should {
     "be transparent to unrelated events" in {

@@ -17,7 +17,7 @@
 package spray.can.server
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
-import akka.event.{Logging, LoggingAdapter}
+import akka.event.Logging
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.can.{HttpEvent, HttpCommand}
 import spray.util.ConnectionCloseReasons._
@@ -29,30 +29,28 @@ object ServerFrontend {
 
   def apply(serverSettings: ServerSettings,
             messageHandler: MessageHandler,
-            timeoutResponse: HttpRequest => HttpResponse,
-            log: LoggingAdapter): PipelineStage = {
-    val warning = TaggableLog(log, Logging.WarningLevel)
+            timeoutResponse: HttpRequest => HttpResponse): PipelineStage = {
     new PipelineStage {
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines with OpenRequestComponent {
+          val debug = TaggedLog(context, Logging.DebugLevel)
+          def warning = TaggedLog(context, Logging.WarningLevel)
           var firstOpenRequest: OpenRequest = EmptyOpenRequest
           var firstUnconfirmed: OpenRequest = EmptyOpenRequest
           var _requestTimeout: Long = serverSettings.RequestTimeout
           var _timeoutTimeout: Long = serverSettings.TimeoutTimeout
-          def requestTimeout = _requestTimeout // required due to https://issues.scala-lang.org/browse/SI-6387
-          def timeoutTimeout = _timeoutTimeout // required due to https://issues.scala-lang.org/browse/SI-6387
-          val handlerCreator = messageHandler(context)
-          val connectionActorContext = context.connectionActorContext
           val settings = serverSettings
           val downstreamCommandPL = commandPL
           val createTimeoutResponse = timeoutResponse
+          def requestTimeout = _requestTimeout // required due to https://issues.scala-lang.org/browse/SI-6387
+          def connectionActorContext = context.connectionActorContext
+          def timeoutTimeout = _timeoutTimeout // required due to https://issues.scala-lang.org/browse/SI-6387
+          def handlerCreator = messageHandler(context)
 
           // per-message handlers do not receive Closed messages that are
           // not related to a specific request, they need to cleanup themselves
           // upon response sending or reception of the send confirmation
-          val handlerReceivesClosedEvents = !messageHandler.isInstanceOf[PerMessageHandler]
-
-          def warn(msg: String) { warning.log(context.connection.tag, msg) }
+          def handlerReceivesClosedEvents = !messageHandler.isInstanceOf[PerMessageHandler]
 
           val commandPipeline: CPL = {
             case Response(openRequest, command) if openRequest == firstOpenRequest =>
@@ -116,7 +114,7 @@ object ServerFrontend {
               eventPL(TickGenerator.Tick)
 
             case x: CommandException =>
-              log.warning("Received {}, closing connection ...", x)
+              warning.log("Received {}, closing connection ...", x)
               downstreamCommandPL(HttpServer.Close(ProtocolError(x.toString)))
 
             case ev => eventPL(ev)

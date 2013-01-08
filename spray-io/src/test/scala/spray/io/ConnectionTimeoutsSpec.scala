@@ -23,7 +23,7 @@ import spray.util.ConnectionCloseReasons
 
 class ConnectionTimeoutsSpec extends Specification with PipelineStageTest {
   val system = ActorSystem()
-  val stage = ConnectionTimeouts(50, system.log)
+  val stage = ConnectionTimeouts(50)
 
   "The ConnectionTimeouts PipelineStage" should {
     "be transparent to unrelated commands" in {

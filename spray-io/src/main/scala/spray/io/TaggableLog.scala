@@ -30,7 +30,7 @@ trait LogMarking {
 case class LogMark(logMarker: String) extends LogMarking
 
 /**
- * Log allowing for message prefixing by tags implementing the LogMarking trait.
+ * Log allowing for message prefixing by tags possibly implementing the LogMarking trait.
  * Needs to be created for a specific underlying LoggingAdapter and LogLevel by the companion.
  */
 trait TaggableLog {
@@ -65,6 +65,49 @@ object TaggableLog {
               if (marker.isEmpty) template else marker + ": " + template
             case _ => template
           }
+      }
+    else NopLog
+}
+
+/**
+ * Log with messages prefixing by a tag possibly implementing the LogMarking trait.
+ * Needs to be created for a specific underlying LoggingAdapter and LogLevel by the companion.
+ */
+trait TaggedLog {
+  def enabled: Boolean
+  def log(template: String)
+  def log(template: String, arg: Any)
+  def log(template: String, arg1: Any, arg2: Any)
+  def log(template: String, arg1: Any, arg2: Any, arg3: Any)
+}
+
+object TaggedLog {
+  val NopLog = new TaggedLog {
+    def enabled: Boolean = false
+    def log(template: String) {}
+    def log(template: String, arg: Any) {}
+    def log(template: String, arg1: Any, arg2: Any) {}
+    def log(template: String, arg1: Any, arg2: Any, arg3: Any) {}
+  }
+
+  def apply(pipelineContext: PipelineContext, level: Logging.LogLevel): TaggedLog =
+    apply(pipelineContext.log, pipelineContext.connection.tag, level)
+
+  def apply(la: LoggingAdapter, tag: Any, level: Logging.LogLevel): TaggedLog =
+    if (la.isEnabled(level))
+      new TaggedLog {
+        private[this] val prefix =
+          tag match {
+            case x: LogMarking =>
+              val marker = x.logMarker
+              if (marker.isEmpty) "" else marker + ": "
+            case _ => ""
+          }
+        def enabled: Boolean = true
+        def log(template: String) { la.log(level, prefix + template) }
+        def log(template: String, arg: Any) { la.log(level, prefix + template, arg) }
+        def log(template: String, a1: Any, a2: Any) { la.log(level, prefix + template, a1, a2) }
+        def log(template: String, a1: Any, a2: Any, a3: Any) { la.log(level, prefix + template, a1, a2, a3) }
       }
     else NopLog
 }

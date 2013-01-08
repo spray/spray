@@ -106,11 +106,11 @@ class SslTlsSupportSpec extends Specification {
 
   class SslClientActor extends IOClientConnection {
     override def pipelineStage: PipelineStage =
-      DefaultPipelineStage >> SslTlsSupport(ClientSSLEngineProvider.default, log)
+      DefaultPipelineStage >> SslTlsSupport(ClientSSLEngineProvider.default)
   }
 
   class SslServerActor extends IOServer with ConnectionActors {
-    val pipelineStage = frontEnd >> SslTlsSupport(ServerSSLEngineProvider.default, log)
+    val pipelineStage = frontEnd >> SslTlsSupport(ServerSSLEngineProvider.default)
     def frontEnd: PipelineStage = new PipelineStage {
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {

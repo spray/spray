@@ -19,6 +19,7 @@ package spray.io
 import language.experimental.macros
 import scala.reflect.macros.{Context => MacroContext}
 import akka.actor.{ActorRef, ActorContext}
+import akka.event.LoggingAdapter
 
 
 //# pipelines
@@ -44,12 +45,14 @@ object Pipeline {
 trait PipelineContext {
   def connection: Connection
   def connectionActorContext: ActorContext
+  def log: LoggingAdapter
   def self: ActorRef = connectionActorContext.self
   def sender: ActorRef = connectionActorContext.sender
 }
 
 class DefaultPipelineContext(val connection: Connection,
-                             val connectionActorContext: ActorContext) extends PipelineContext
+                             val connectionActorContext: ActorContext,
+                             val log: LoggingAdapter) extends PipelineContext
 
 trait PipelineStage { left =>
   type CPL = Pipeline[Command]  // alias for brevity

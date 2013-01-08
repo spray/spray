@@ -50,7 +50,8 @@ sealed trait OpenRequest {
 trait OpenRequestComponent { component =>
   def handlerCreator: () => ActorRef
   def connectionActorContext: ActorContext
-  def warn(msg: String)
+  def debug: TaggedLog
+  def warning: TaggedLog
   def settings: ServerSettings
   def downstreamCommandPL: Pipeline[Command]
   def createTimeoutResponse: HttpRequest => HttpResponse
@@ -68,7 +69,7 @@ trait OpenRequestComponent { component =>
     private[this] var pendingSentAcks: Int = 1000 // we use an offset of 1000 for as long as the response is not finished
 
     def connectionActorContext = component.connectionActorContext
-    def warn(msg: String) { component.warn(msg) }
+    def warn(msg: String) { warning.log(msg) }
     def isEmpty = false
 
     def appendToEndOfChain(openRequest: OpenRequest): OpenRequest = {
@@ -84,6 +85,8 @@ trait OpenRequestComponent { component =>
       val partToDispatch: HttpRequestPart =
         if (timestamp == 0L) ChunkedRequestStart(requestToDispatch)
         else requestToDispatch
+      if (debug.enabled)
+        debug.log("Dispatching {} to handler {}", partToDispatch, handler)
       downstreamCommandPL(IOConnection.Tell(handler, partToDispatch, receiverRef))
     }
 
@@ -101,7 +104,8 @@ trait OpenRequestComponent { component =>
             else connectionActorContext.actorFor(settings.TimeoutHandler)
           if (RefUtils.isLocal(timeoutHandler))
             downstreamCommandPL(IOConnection.Tell(timeoutHandler, Timedout(request), receiverRef))
-          else warn("The TimeoutHandler '{}' is not a local actor and thus cannot be used as a timeout handler")
+          else warn("The TimeoutHandler '" + timeoutHandler + "' is not a local actor and thus cannot be used as a " +
+            "timeout handler")
           timestamp = -now // we record the time of the Timeout dispatch as negative timestamp value
         }
       } else if (timestamp < -1 && timeoutTimeout > 0 && (-timestamp + timeoutTimeout < now)) {
@@ -184,7 +188,7 @@ trait OpenRequestComponent { component =>
     def appendToEndOfChain(openRequest: OpenRequest) = openRequest
 
     def connectionActorContext = component.connectionActorContext
-    def warn(msg: String) { component.warn(msg) }
+    def warn(msg: String) { warning.log(msg) }
     def isEmpty = true
     def request = throw new IllegalStateException
     def dispatchInitialRequestPartToHandler() { throw new IllegalStateException }

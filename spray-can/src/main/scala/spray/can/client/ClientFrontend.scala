@@ -18,7 +18,7 @@ package spray.can.client
 
 import scala.collection.mutable
 import scala.concurrent.duration.{Duration, FiniteDuration}
-import akka.event.{Logging, LoggingAdapter}
+import akka.event.Logging
 import akka.actor.ActorRef
 import spray.can.{HttpEvent, HttpCommand}
 import spray.can.rendering.HttpRequestPartRenderingContext
@@ -30,12 +30,11 @@ import HttpClientConnection._
 
 object ClientFrontend {
 
-  def apply(initialRequestTimeout: Long, log: LoggingAdapter): PipelineStage = {
-    val warning = TaggableLog(log, Logging.WarningLevel)
+  def apply(initialRequestTimeout: Long): PipelineStage = {
     new PipelineStage {
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = {
         new Pipelines {
-          import context.connection
+          def warning = TaggedLog(context, Logging.WarningLevel)
           val openRequests = mutable.Queue.empty[RequestRecord]
           var requestTimeout = initialRequestTimeout
 
@@ -44,27 +43,27 @@ object ClientFrontend {
               if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
                 render(x, ack)
                 openRequests.enqueue(new RequestRecord(x, context.sender, timestamp = System.currentTimeMillis))
-              } else warning.log(connection.tag, "Received new HttpRequest before previous chunking request was " +
+              } else warning.log("Received new HttpRequest before previous chunking request was " +
                 "finished, ignoring...")
 
             case HttpCommand(HttpMessagePartWrapper(x: ChunkedRequestStart, ack)) =>
               if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
                 render(x, ack)
                 openRequests.enqueue(new RequestRecord(x, context.sender, timestamp = 0))
-              } else warning.log(connection.tag, "Received new ChunkedRequestStart before previous chunking " +
+              } else warning.log("Received new ChunkedRequestStart before previous chunking " +
                 "request was finished, ignoring...")
 
             case HttpCommand(HttpMessagePartWrapper(x: MessageChunk, ack)) =>
               if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
                 render(x, ack)
-              } else warning.log(connection.tag, "Received MessageChunk outside of chunking request context, " +
+              } else warning.log("Received MessageChunk outside of chunking request context, " +
                 "ignoring...")
 
             case HttpCommand(HttpMessagePartWrapper(x: ChunkedMessageEnd, ack)) =>
               if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
                 render(x, ack)
                 openRequests.last.timestamp = System.currentTimeMillis // only start timer once the request is completed
-              } else warning.log(connection.tag, "Received ChunkedMessageEnd outside of chunking request " +
+              } else warning.log("Received ChunkedMessageEnd outside of chunking request " +
                 "context, ignoring...")
 
             case SetRequestTimeout(timeout) => requestTimeout = timeout.toMillis
@@ -77,7 +76,7 @@ object ClientFrontend {
               if (!openRequests.isEmpty) {
                 dispatch(openRequests.dequeue().sender, x)
               } else {
-                warning.log(connection.tag, "Received unmatched {}, closing connection due to protocol error", x)
+                warning.log("Received unmatched {}, closing connection due to protocol error", x)
                 commandPL(Close(ProtocolError("Received unmatched response part " + x)))
               }
 
@@ -85,7 +84,7 @@ object ClientFrontend {
               if (!openRequests.isEmpty) {
                 dispatch(openRequests.head.sender, x)
               } else {
-                warning.log(connection.tag, "Received unmatched {}, closing connection due to protocol error", x)
+                warning.log("Received unmatched {}, closing connection due to protocol error", x)
                 commandPL(Close(ProtocolError("Received unmatched response part " + x)))
               }
 
@@ -102,7 +101,7 @@ object ClientFrontend {
               eventPL(TickGenerator.Tick)
 
             case x: CommandException =>
-              warning.log(connection.tag, "Received {}, closing connection ...", x)
+              warning.log("Received {}, closing connection ...", x)
               commandPL(Close(ProtocolError(x.toString)))
 
             case ev => eventPL(ev)

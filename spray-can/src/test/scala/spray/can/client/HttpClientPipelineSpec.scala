@@ -150,8 +150,7 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
         spray.can.client.idle-timeout = 50 ms
         spray.can.client.reaping-cycle = 0  # don't enable the TickGenerator
       """)
-    ),
-    system.log
+    )
   )
 
 }

@@ -17,7 +17,6 @@
 package spray.can
 package client
 
-import akka.event.LoggingAdapter
 import spray.http.{Confirmed, HttpRequestPart}
 import spray.io._
 
@@ -29,7 +28,7 @@ import spray.io._
 class HttpClientConnection(settings: HttpClientConnectionSettings = HttpClientConnectionSettings())
                           (implicit sslEngineProvider: ClientSSLEngineProvider) extends IOClientConnection {
 
-  override def pipelineStage: PipelineStage = HttpClientConnection.pipelineStage(settings, log)
+  override def pipelineStage: PipelineStage = HttpClientConnection.pipelineStage(settings)
 
   override def connected: Receive = super.connected orElse {
     case x: HttpRequestPart                  => pipelines.commandPipeline(HttpCommand(x))
@@ -39,15 +38,15 @@ class HttpClientConnection(settings: HttpClientConnectionSettings = HttpClientCo
 
 object HttpClientConnection {
 
-  private[can] def pipelineStage(settings: HttpClientConnectionSettings, log: LoggingAdapter)
+  private[can] def pipelineStage(settings: HttpClientConnectionSettings)
                                 (implicit sslEngineProvider: ClientSSLEngineProvider): PipelineStage = {
     import settings._
-    ClientFrontend(RequestTimeout, log) >>
+    ClientFrontend(RequestTimeout) >>
     ResponseChunkAggregation(ResponseChunkAggregationLimit.toInt) ? (ResponseChunkAggregationLimit > 0) >>
-    ResponseParsing(ParserSettings, log) >>
+    ResponseParsing(ParserSettings) >>
     RequestRendering(settings) >>
-    ConnectionTimeouts(IdleTimeout, log) ? (ReapingCycle > 0 && IdleTimeout > 0) >>
-    SslTlsSupport(sslEngineProvider, log, encryptIfUntagged = false) >>
+    ConnectionTimeouts(IdleTimeout) ? (ReapingCycle > 0 && IdleTimeout > 0) >>
+    SslTlsSupport(sslEngineProvider, encryptIfUntagged = false) >>
     TickGenerator(ReapingCycle) ? (ReapingCycle > 0 && (IdleTimeout > 0 || RequestTimeout > 0))
   }
 

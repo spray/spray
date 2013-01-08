@@ -18,7 +18,7 @@ package spray.can.server
 
 import java.nio.ByteBuffer
 import scala.annotation.tailrec
-import akka.event.{Logging, LoggingAdapter}
+import akka.event.Logging
 import spray.can.rendering.HttpResponsePartRenderingContext
 import spray.can.HttpEvent
 import spray.util.ConnectionCloseReasons.ProtocolError
@@ -31,13 +31,13 @@ object RequestParsing {
 
   lazy val continue = "HTTP/1.1 100 Continue\r\n\r\n".getBytes("ASCII")
 
-  def apply(settings: ParserSettings, verboseErrorMessages: Boolean, log: LoggingAdapter): PipelineStage = {
-    val warning = TaggableLog(log, Logging.WarningLevel)
+  def apply(settings: ParserSettings, verboseErrorMessages: Boolean): PipelineStage = {
     new PipelineStage {
       val startParser = new EmptyRequestParser(settings)
 
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
+          def warning = TaggedLog(context, Logging.WarningLevel)
           var currentParsingState: ParsingState = startParser
 
           @tailrec
@@ -77,7 +77,7 @@ object RequestParsing {
           }
 
           def handleParseError(state: ErrorState) {
-            warning.log(context.connection.tag, "Illegal request, responding with status {} and '{}'", state.status,
+            warning.log("Illegal request, responding with status {} and '{}'", state.status,
               state.message)
             val msg = if (verboseErrorMessages) state.message else state.summary
             val response = HttpResponse(state.status, msg)

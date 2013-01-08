@@ -33,11 +33,11 @@ object ResponseParsing {
 
   private val UnmatchedResponseErrorState = ErrorState("Response to non-existent request")
 
-  def apply(settings: ParserSettings, log: LoggingAdapter): PipelineStage = {
-    val warning = TaggableLog(log, Logging.WarningLevel)
+  def apply(settings: ParserSettings): PipelineStage = {
     new PipelineStage {
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
+          def warning = TaggedLog(context, Logging.WarningLevel)
           var currentParsingState: ParsingState = UnmatchedResponseErrorState
           val openRequestMethods = mutable.Queue.empty[HttpMethod]
 
@@ -76,7 +76,7 @@ object ResponseParsing {
               case ErrorState.Dead => // if we already handled the error state we ignore all further input
 
               case x: ErrorState =>
-                warning.log(context.connection.tag, "Received illegal response: {}", x.message)
+                warning.log("Received illegal response: {}", x.message)
                 commandPL(HttpClientConnection.Close(ProtocolError(x.message)))
                 currentParsingState = ErrorState.Dead // set to "special" ErrorState that ignores all further input
             }

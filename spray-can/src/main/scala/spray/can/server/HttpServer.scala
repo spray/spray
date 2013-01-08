@@ -18,7 +18,6 @@ package spray.can.server
 
 import java.net.InetSocketAddress
 import scala.concurrent.duration.FiniteDuration
-import akka.event.LoggingAdapter
 import akka.actor.{Props, ActorRef}
 import spray.can.server.StatsSupport.StatsHolder
 import spray.io._
@@ -32,7 +31,7 @@ class HttpServer(messageHandler: MessageHandler, settings: ServerSettings = Serv
   val statsHolder: Option[StatsHolder] =
     if (settings.StatsSupport) Some(new StatsHolder) else None
 
-  val pipelineStage = HttpServer.pipelineStage(settings, messageHandler, timeoutResponse, statsHolder, log)
+  val pipelineStage = HttpServer.pipelineStage(settings, messageHandler, timeoutResponse, statsHolder)
 
   def createConnectionActor(connection: Connection): ActorRef =
     context.actorOf(Props(new DefaultIOConnectionActor(connection, pipelineStage)), nextConnectionActorName)
@@ -166,19 +165,18 @@ object HttpServer {
   private[can] def pipelineStage(settings: ServerSettings,
                                  messageHandler: MessageHandler,
                                  timeoutResponse: HttpRequest => HttpResponse,
-                                 statsHolder: Option[StatsHolder],
-                                 log: LoggingAdapter)
+                                 statsHolder: Option[StatsHolder])
                                 (implicit sslEngineProvider: ServerSSLEngineProvider): PipelineStage = {
     import settings.{StatsSupport => _, _}
-    ServerFrontend(settings, messageHandler, timeoutResponse, log) >>
+    ServerFrontend(settings, messageHandler, timeoutResponse) >>
     RequestChunkAggregation(RequestChunkAggregationLimit.toInt) ? (RequestChunkAggregationLimit > 0) >>
     PipeliningLimiter(settings.PipeliningLimit) ? (PipeliningLimit > 0) >>
     StatsSupport(statsHolder.get) ? settings.StatsSupport >>
     RemoteAddressHeaderSupport() ? RemoteAddressHeader >>
-    RequestParsing(ParserSettings, VerboseErrorMessages, log) >>
+    RequestParsing(ParserSettings, VerboseErrorMessages) >>
     ResponseRendering(settings) >>
-    ConnectionTimeouts(IdleTimeout, log) ? (ReapingCycle > 0 && IdleTimeout > 0) >>
-    SslTlsSupport(sslEngineProvider, log) ? SSLEncryption >>
+    ConnectionTimeouts(IdleTimeout) ? (ReapingCycle > 0 && IdleTimeout > 0) >>
+    SslTlsSupport(sslEngineProvider) ? SSLEncryption >>
     TickGenerator(ReapingCycle) ? (ReapingCycle > 0 && (IdleTimeout > 0 || RequestTimeout > 0))
   }
 
