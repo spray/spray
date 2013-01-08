@@ -115,10 +115,16 @@ class HttpHostConnectorSpec extends Specification {
 
   def newHostConnector(pipelined: Boolean, maxConnections: Int = 4) = {
     val connector = system.actorOf(Props {
-      new HttpHostConnector("localhost", port, ConfigFactory.parseString {
-        "spray.client.max-connections = " + maxConnections + "\n" +
-        "spray.client.pipeline-requests = " + pipelined
-      }, defaultConnectionTag = LogMark("CONNECTOR"))
+      new HttpHostConnector("localhost", port,
+        hostConnectorSettings = ConfigFactory.parseString {
+          "spray.client.max-connections = " + maxConnections + "\n" +
+          "spray.client.pipeline-requests = " + pipelined
+        },
+        clientConnectionSettings = ConfigFactory.parseString {
+          "spray.can.client.request-timeout = 100ms\n" +
+          "spray.can.client.idle-timeout = 500ms"
+        },
+        defaultConnectionTag = LogMark("CONNECTOR"))
     })
     sendReceive(connector)
   }

@@ -37,6 +37,7 @@ class HttpClientSpec extends Specification with RequestBuilding {
 
   val httpClient = system.actorOf(Props(new HttpClient()), "http-client")
 
+  spray.http.warmUp()
   installDebuggingEventStreamLoggers()
 
   step {
