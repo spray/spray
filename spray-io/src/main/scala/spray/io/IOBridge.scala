@@ -235,9 +235,8 @@ final class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = 
     // The following select() call blocks if there are no mailbox messages ("regular" or system) pending.
     // Otherwise the Mailbox will already have called `selector.wakeup()` (or will do so shortly),
     // which causes select() to not block at all (or for long).
-    selector.select()
-    val keys = selector.selectedKeys
-    if (!keys.isEmpty) {
+    if (selector.select() > 0) {
+      val keys = selector.selectedKeys
       val iterator = keys.iterator()
       while (iterator.hasNext) {
         val key = iterator.next
@@ -248,6 +247,7 @@ final class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = 
           else if (key.isConnectable) connect(key)
         } else log.warning("Invalid selection key: {}", key)
       }
+      // we need to remove selected keys from the set, otherwise they remain selected
       keys.clear()
     }
   }
