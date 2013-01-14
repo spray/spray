@@ -80,5 +80,13 @@ class DateTimeSpec extends Specification {
       )
       httpDateTimes.take(10000) must roundTripOk.forall
     }
+    "properly represent DateTime.MinValue" in {
+      DateTime.MinValue.toString === "1800-01-01T00:00:00"
+      DateTime(DateTime.MinValue.clicks).toString === "1800-01-01T00:00:00"
+    }
+    "properly represent DateTime.MaxValue" in {
+      DateTime.MaxValue.toString === "2199-12-31T23:59:59"
+      DateTime(DateTime.MaxValue.clicks).toString === "2199-12-31T23:59:59"
+    }
   }
 }

@@ -21,42 +21,15 @@ package spray.http
  * Immutable, fast and efficient Date + Time implementation without any dependencies.
  * Does not support TimeZones, all DateTime values are always GMT based.
  */
-sealed abstract class DateTime extends Ordered[DateTime] {
-  /**
-   * The year.
-   */
-  def year: Int
-
-  /**
-   * The month of the year. January is 1.
-   */
-  def month: Int
-
-  /**
-   * The day of the month. The first day is 1.
-   */
-  def day: Int
-
-  /**
-   * The hour of the day. The first hour is 0.
-   */
-  def hour: Int
-
-  /**
-   * The minute of the hour. The first minute is 0.
-   */
-  def minute: Int
-
-  /**
-   * The second of the minute. The first second is 0.
-   */
-  def second: Int
-
-  /**
-   * The day of the week. Sunday is 0.
-   */
-  def weekday: Int
-
+final class DateTime private(val year: Int,       // the year
+                             val month: Int,      // the month of the year. January is 1.
+                             val day: Int,        // the day of the month. The first day is 1.
+                             val hour: Int,       // the hour of the day. The first hour is 0.
+                             val minute: Int,     // the minute of the hour. The first minute is 0.
+                             val second: Int,     // the second of the minute. The first second is 0.
+                             val weekday: Int,    // the day of the week. Sunday is 0.
+                             val clicks: Long,    // milliseconds since January 1, 1970, 00:00:00 GMT
+                             val isLeapYear: Boolean) extends Ordered[DateTime] {
   /**
    * The day of the week as a 3 letter abbreviation:
    * `Sun`, `Mon`, `Tue`, `Wed`, `Thu`, `Fri` or `Sat`
@@ -68,16 +41,6 @@ sealed abstract class DateTime extends Ordered[DateTime] {
    * `Jan`, `Feb`, `Mar`, `Apr`, `May`, `Jun`, `Jul`, `Aug`, `Sep`, `Oct`, `Nov` or `Dec`
    */
   def monthStr: String = DateTime.MONTHS(month - 1)
-
-  /**
-   * True if leap year.
-   */
-  def isLeapYear: Boolean
-
-  /**
-   * The number of milliseconds since the start of "the epoch", namely January 1, 1970, 00:00:00 GMT.
-   */
-  def clicks: Long
 
   /**
    * Creates a new `DateTime` that represents the point in time the given number of ms later.
@@ -144,92 +107,86 @@ object DateTime {
   /**
    * Creates a new `DateTime` with the given properties.
    */
-  def apply(year_ :Int, month_ :Int, day_ :Int, hour_ :Int = 0, minute_ :Int = 0, second_ :Int = 0): DateTime = new DateTime {
-    val year = check(year_, 1800 <= year_ && year_ <= 2199, "year must be >= 1800 and <= 2199")
-    val month = check(month_, 1 <= month_ && month_ <= 12, "month must be >= 1 and <= 12")
-    val day = check(day_, 1 <= day_ && day_ <= 31, "day must be >= 1 and <= 31")
-    val hour = check(hour_, 0 <= hour_ && hour_ <= 23, "hour must be >= 0 and <= 23")
-    val minute = check(minute_, 0 <= minute_ && minute_ <= 59, "minute_ must be >= 0 and <= 59")
-    val second = check(second_, 0 <= second_ && second_ <= 59, "second must be >= 0 and <= 59")
+  def apply(year :Int, month :Int, day :Int, hour :Int = 0, minute :Int = 0, second :Int = 0): DateTime = {
+    require(1800 <= year && year <= 2199, "year must be >= 1800 and <= 2199")
+    require(1 <= month && month <= 12, "month must be >= 1 and <= 12")
+    require(1 <= day && day <= 31, "day must be >= 1 and <= 31")
+    require(0 <= hour && hour <= 23, "hour must be >= 0 and <= 23")
+    require(0 <= minute && minute <= 59, "minute_ must be >= 0 and <= 59")
+    require(0 <= second && second <= 59, "second must be >= 0 and <= 59")
 
-    val (clicks, weekday) = {
-      // compute yearday from month/monthday
-      val m = month - 1
-      var d = (m % 7) * 30 + (m % 7 + 1) / 2 + day
-      if (m >= 7) d += 214
-      if (d >= 61) d -= 1 // skip non-existent Feb 30
-      if (!isLeapYear && (d >= 60)) d -=1 // skip non-existent Feb 29
+    // compute yearday from month/monthday
+    val m = month - 1
+    var d = (m % 7) * 30 + (m % 7 + 1) / 2 + day
+    val isLeap = ((year % 4 == 0) && !(year % 100 == 0)) || (year % 400 == 0)
+    if (m >= 7) d += 214
+    if (d >= 61) d -= 1 // skip non-existent Feb 30
+    if (!isLeap && (d >= 60)) d -=1 // skip non-existent Feb 29
 
-      // convert year/yearday to days since Jan 1, 1970, 00:00:00
-      val y = year - 1
-      d += y * 365 + y / 4 - y / 100 + y / 400
-      val dn = d - (1969 * 365 + 492 - 19 + 4)
+    // convert year/yearday to days since Jan 1, 1970, 00:00:00
+    val y = year - 1
+    d += y * 365 + y / 4 - y / 100 + y / 400
+    val dn = d - (1969 * 365 + 492 - 19 + 4)
+    val c = (dn - 1) * 86400L + hour * 3600L + minute * 60L + second // seconds since Jan 1, 1970, 00:00:00
 
-      val c = (dn - 1) * 86400L + hour * 3600L + minute * 60L + second // seconds since Jan 1, 1970, 00:00:00
-      (c * 1000, d % 7)
-    }
-
-    def isLeapYear = ((year % 4 == 0) && !(year % 100 == 0)) || (year % 400 == 0)
-
-    private def check(x: Int, test: Boolean, msg: String) = { require(test, msg); x }
+    new DateTime(year, month, day, hour, minute, second, weekday = d % 7, clicks = c * 1000, isLeapYear = isLeap)
   }
 
   /**
    * Creates a new `DateTime` from the number of milli seconds
    * since the start of "the epoch", namely January 1, 1970, 00:00:00 GMT.
    */
-  def apply(clicks_ :Long): DateTime = new DateTime {
-    val clicks = clicks_ - clicks_ % 1000
-
-    require(DateTime.MinValue <= this && this <= DateTime.MaxValue,
+  def apply(clicks :Long): DateTime = {
+    require(DateTime.MinValue.clicks <= clicks && clicks <= DateTime.MaxValue.clicks,
       "DateTime value must be >= " + DateTime.MinValue + " and <= " + DateTime.MaxValue)
 
     // based on a fast RFC1123 implementation (C) 2000 by Tim Kientzle <kientzle@acm.org>
-    val (year, month, day, hour, minute, second, weekday, isLeapYear) = {
-      // compute day number, seconds since beginning of day
-      var s = clicks
-      if (s >= 0) s /= 1000 // seconds since 1 Jan 1970
-      else s = (s - 999 ) / 1000 // floor(sec/1000)
+    val c = clicks - clicks % 1000
 
-      var dn = (s / 86400).toInt
-      s %= 86400 // positive seconds since beginning of day
-      if (s < 0) { s += 86400; dn -= 1 }
-      dn += 1969 * 365 + 492 - 19 + 4 // days since "1 Jan, year 1"
+    // compute day number, seconds since beginning of day
+    var s = c
+    if (s >= 0) s /= 1000 // seconds since 1 Jan 1970
+    else s = (s - 999 ) / 1000 // floor(sec/1000)
 
-      // convert days since 1 Jan, year 1 to year/yearday
-      var y = 400 * (dn / 146097).toInt + 1
-      var d = dn % 146097
-      if (d == 146096) { y += 399; d = 365 } // last year of 400 is long
+    var dn = (s / 86400).toInt
+    s %= 86400 // positive seconds since beginning of day
+    if (s < 0) { s += 86400; dn -= 1 }
+    dn += 1969 * 365 + 492 - 19 + 4 // days since "1 Jan, year 1"
+
+    // convert days since 1 Jan, year 1 to year/yearday
+    var y = 400 * (dn / 146097).toInt + 1
+    var d = dn % 146097
+    if (d == 146096) { y += 399; d = 365 } // last year of 400 is long
+    else {
+      y += 100 * (d / 36524)
+      d %= 36524
+      y += 4 * (d / 1461)
+      d %= 1461
+      if (d == 1460) { y += 3; d=365 } // last year out of 4 is long
       else {
-        y += 100 * (d / 36524)
-        d %= 36524
-        y += 4 * (d / 1461)
-        d %= 1461
-        if (d == 1460) { y += 3; d=365 } // last year out of 4 is long
-        else {
-          y += d / 365
-          d %= 365
-        }
+        y += d / 365
+        d %= 365
       }
-
-      val isLeap = ((y % 4 == 0) && !(y % 100 == 0)) || (y % 400 == 0)
-
-      // compute month/monthday from year/yearday
-      if (!isLeap && (d >= 59)) d +=1 // skip non-existent Feb 29
-      if (d >= 60) d += 1 // skip non-existent Feb 30
-      var mon = ((d % 214) / 61) * 2 + ((d % 214) % 61) / 31
-      if (d > 213) mon += 7
-      d = ((d % 214) % 61) % 31 + 1
-
-      // convert second to hour/min/sec
-      var m = (s / 60).toInt
-      val h = m / 60
-      m %= 60
-      s %= 60
-      val w = (dn + 1) % 7 // day of week, 0==Sun
-
-      (y, mon + 1, d, h, m, s.toInt, w, isLeap)
     }
+
+    val isLeap = ((y % 4 == 0) && !(y % 100 == 0)) || (y % 400 == 0)
+
+    // compute month/monthday from year/yearday
+    if (!isLeap && (d >= 59)) d +=1 // skip non-existent Feb 29
+    if (d >= 60) d += 1 // skip non-existent Feb 30
+    var mon = ((d % 214) / 61) * 2 + ((d % 214) % 61) / 31
+    if (d > 213) mon += 7
+    d = ((d % 214) % 61) % 31 + 1
+
+    // convert second to hour/min/sec
+    var m = (s / 60).toInt
+    val h = m / 60
+    m %= 60
+    s %= 60
+    val w = (dn + 1) % 7 // day of week, 0==Sun
+
+    new DateTime(year = y, month = mon + 1, day = d, hour = h, minute = m, second = s.toInt, weekday = w, clicks = c,
+      isLeapYear = isLeap)
   }
 
   /**
