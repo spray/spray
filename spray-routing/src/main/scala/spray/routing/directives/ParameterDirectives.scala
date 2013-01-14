@@ -88,7 +88,7 @@ object ParamDefMagnetAux {
     extract(ctx => fsod(ctx.request.queryParams.get(paramName))).flatMap {
       case Right(x) => provide(x)
       case Left(ContentExpected) => reject(MissingQueryParamRejection(paramName))
-      case Left(MalformedContent(error, _)) => reject(MalformedQueryParamRejection(error, paramName))
+      case Left(MalformedContent(error, cause)) => reject(MalformedQueryParamRejection(paramName, error, cause))
       case Left(x: UnsupportedContentType) => throw new IllegalStateException(x.toString)
     }
   implicit def forString(implicit fsod: FSOD[String]) = extractParameter[String, String] { string =>

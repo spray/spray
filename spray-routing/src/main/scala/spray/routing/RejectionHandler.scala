@@ -44,11 +44,11 @@ object RejectionHandler {
       complete(Forbidden, "The supplied authentication is not authorized to access this resource")
     case CorruptRequestEncodingRejection(msg) :: _ =>
       complete(BadRequest, "The requests encoding is corrupt:\n" + msg)
-    case MalformedFormFieldRejection(msg, name) :: _ =>
+    case MalformedFormFieldRejection(name, msg, _) :: _ =>
       complete(BadRequest, "The form field '" + name + "' was malformed:\n" + msg)
-    case MalformedQueryParamRejection(msg, name) :: _ =>
+    case MalformedQueryParamRejection(name, msg, _) :: _ =>
       complete(BadRequest, "The query parameter '" + name + "' was malformed:\n" + msg)
-    case MalformedRequestContentRejection(msg) :: _ =>
+    case MalformedRequestContentRejection(msg, _) :: _ =>
       complete(BadRequest, "The request content was malformed:\n" + msg)
     case rejections@ (MethodRejection(_) :: _) =>
       // TODO: add Allow header (required by the spec)
@@ -74,7 +74,7 @@ object RejectionHandler {
     case rejections@ (UnsupportedRequestEncodingRejection(_) :: _) =>
       val supported = rejections.collect { case UnsupportedRequestEncodingRejection(supported) => supported }
       complete(BadRequest, "The requests Content-Encoding must be one the following:\n" + supported.map(_.value).mkString("\n"))
-    case ValidationRejection(msg) :: _ =>
+    case ValidationRejection(msg, _) :: _ =>
       complete(BadRequest, msg)
   }
 

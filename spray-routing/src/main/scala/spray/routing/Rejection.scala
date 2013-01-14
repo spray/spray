@@ -42,7 +42,8 @@ case class MissingQueryParamRejection(parameterName: String) extends Rejection
  * Rejection created by parameter filters.
  * Signals that the request was rejected because a query parameter could not be interpreted.
  */
-case class MalformedQueryParamRejection(errorMsg: String, parameterName: String) extends Rejection
+case class MalformedQueryParamRejection(parameterName: String, errorMsg: String,
+                                        cause: Option[Throwable] = None) extends Rejection
 
 /**
  * Rejection created by form field filters.
@@ -54,7 +55,8 @@ case class MissingFormFieldRejection(fieldName: String) extends Rejection
  * Rejection created by form field filters.
  * Signals that the request was rejected because a form field could not be interpreted.
  */
-case class MalformedFormFieldRejection(errorMsg: String, fieldName: String) extends Rejection
+case class MalformedFormFieldRejection(fieldName: String, errorMsg: String,
+                                       cause: Option[Throwable] = None) extends Rejection
 
 /**
  * Rejection created by header directives.
@@ -66,7 +68,8 @@ case class MissingHeaderRejection(headerName: String) extends Rejection
  * Rejection created by header directives.
  * Signals that the request was rejected because a header value is malformed.
  */
-case class MalformedHeaderRejection(headerName: String, error: Throwable) extends Rejection
+case class MalformedHeaderRejection(headerName: String, errorMsg: String,
+                                    cause: Option[Throwable] = None) extends Rejection
 
 /**
  * Rejection created by unmarshallers.
@@ -90,7 +93,7 @@ case class CorruptRequestEncodingRejection(msg: String) extends Rejection
  * Rejection created by unmarshallers.
  * Signals that the request was rejected because there was an error while unmarshalling the request content
  */
-case class MalformedRequestContentRejection(message: String) extends Rejection
+case class MalformedRequestContentRejection(message: String, cause: Option[Throwable] = None) extends Rejection
 
 /**
  * Rejection created by unmarshallers.
@@ -140,7 +143,7 @@ case class MissingCookieRejection(cookieName: String) extends Rejection
 /**
  * Rejection created by the `validation` directive.
  */
-case class ValidationRejection(message: String) extends Rejection
+case class ValidationRejection(message: String, cause: Option[Throwable] = None) extends Rejection
 
 /**
  * A special Rejection that serves as a container for a transformation function on rejections.

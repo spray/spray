@@ -38,7 +38,9 @@ class HeaderDirectivesSpec extends RoutingSpec {
     "reject with a MalformedHeaderRejection if the extract function throws an exception" in {
       Get("/abc") ~> addHeader(Connection("close")) ~> {
         (headerValuePF { case _ => sys.error("Naah!") }) { echoComplete }
-      } ~> check { rejection.toString === "MalformedHeaderRejection(Connection,java.lang.RuntimeException: Naah!)" }
+      } ~> check {
+        rejection must beLike { case MalformedHeaderRejection("Connection", "Naah!", _) => ok }
+      }
     }
   }
 
@@ -62,7 +64,9 @@ class HeaderDirectivesSpec extends RoutingSpec {
       Get("/abc") ~> addHeader(Connection("close")) ~> {
         val myHeaderValue = optionalHeaderValue { case _ => sys.error("Naaah!") }
         myHeaderValue { echoComplete }
-      } ~> check { rejection.toString === "MalformedHeaderRejection(Connection,java.lang.RuntimeException: Naaah!)" }
+      } ~> check {
+        rejection must beLike { case MalformedHeaderRejection("Connection", "Naaah!", _) => ok }
+      }
     }
   }
 

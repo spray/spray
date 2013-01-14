@@ -81,7 +81,7 @@ object FieldDefMagnetAux extends ToNameReceptaclePimps {
     extract(_.request.entity.as[HttpForm].right.flatMap(_.field(nr.name).as[B])).flatMap {
       case Right(value) => provide(value)
       case Left(ContentExpected) => reject(MissingFormFieldRejection(nr.name))
-      case Left(MalformedContent(msg, _)) => reject(MalformedFormFieldRejection(msg, nr.name))
+      case Left(MalformedContent(msg, cause)) => reject(MalformedFormFieldRejection(nr.name, msg, cause))
       case Left(UnsupportedContentType(msg)) => reject(UnsupportedRequestContentTypeRejection(msg))
     }
   implicit def forString(implicit ev1: UM[HttpForm], ev2: FFC[String]) =

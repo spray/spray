@@ -65,7 +65,9 @@ class CaseClassExtractionExamplesSpec extends Specification with Specs2RouteTest
       entityAs[String] === "Color(abc,1,2,3)"
     }
     Get("/color/abc?r=1&g=2&b=345") ~> route ~> check {
-      rejection === ValidationRejection("requirement failed: blue color component must be between 0 and 255")
+      rejection must beLike {
+        case ValidationRejection("requirement failed: blue color component must be between 0 and 255", _) => ok
+      }
     }
   }
 

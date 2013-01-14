@@ -35,7 +35,9 @@ trait HeaderDirectives {
   def headerValue[T](f: HttpHeader => Option[T]): Directive[T :: HNil] = {
     def protectedF(header: HttpHeader): Option[Either[Rejection, T]] =
       try f(header).map(Right.apply)
-      catch { case NonFatal(e) => Some(Left(MalformedHeaderRejection(header.name, e))) }
+      catch {
+        case NonFatal(e) => Some(Left(MalformedHeaderRejection(header.name, e.getMessage, Some(e))))
+      }
     extract(_.request.headers.mapFind(protectedF)).flatMap {
       case Some(Right(a)) => provide(a)
       case Some(Left(rejection)) => reject(rejection)

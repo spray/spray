@@ -35,7 +35,11 @@ class ParameterDirectivesSpec extends RoutingSpec {
     "cause a MalformedQueryParamRejection on illegal Int values" in {
       Get("/?amount=1x3") ~> {
         parameter('amount.as[Int]) { echoComplete }
-      } ~> check { rejection ===  MalformedQueryParamRejection("'1x3' is not a valid 32-bit integer value", "amount") }
+      } ~> check {
+        rejection must beLike {
+          case MalformedQueryParamRejection("amount", "'1x3' is not a valid 32-bit integer value", Some(_)) => ok
+        }
+      }
     }
     "supply typed default values" in {
       Get() ~> {
@@ -56,7 +60,11 @@ class ParameterDirectivesSpec extends RoutingSpec {
       "cause a MalformedQueryParamRejection on illegal Int values" in {
         Get("/?amount=x") ~> {
           parameter("amount".as[Int]?) { echoComplete }
-        } ~> check { rejection === MalformedQueryParamRejection("'x' is not a valid 32-bit integer value", "amount") }
+        } ~> check {
+          rejection must beLike {
+            case MalformedQueryParamRejection("amount", "'x' is not a valid 32-bit integer value", Some(_)) => ok
+          }
+        }
       }
     }
   }
@@ -71,7 +79,12 @@ class ParameterDirectivesSpec extends RoutingSpec {
     "cause a MalformedQueryParamRejection on illegal Int values" in {
       Get("/?amount=1x3") ~> {
         parameter('amount.as(HexInt)) { echoComplete }
-      } ~> check { rejection === MalformedQueryParamRejection("'1x3' is not a valid 32-bit hexadecimal integer value", "amount") }
+      } ~> check {
+        rejection must beLike {
+          case MalformedQueryParamRejection("amount",
+          "'1x3' is not a valid 32-bit hexadecimal integer value", Some(_)) => ok
+        }
+      }
     }
     "supply typed default values" in {
       Get() ~> {
@@ -92,7 +105,12 @@ class ParameterDirectivesSpec extends RoutingSpec {
       "cause a MalformedQueryParamRejection on illegal Int values" in {
         Get("/?amount=x") ~> {
           parameter("amount".as(HexInt)?) { echoComplete }
-        } ~> check { rejection === MalformedQueryParamRejection("'x' is not a valid 32-bit hexadecimal integer value", "amount") }
+        } ~> check {
+          rejection must beLike {
+            case MalformedQueryParamRejection("amount",
+              "'x' is not a valid 32-bit hexadecimal integer value", Some(_)) => ok
+          }
+        }
       }
     }
   }

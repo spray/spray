@@ -38,7 +38,7 @@ trait MarshallingDirectives {
       case Right(value) => provide(value)
       case Left(ContentExpected) => reject(RequestEntityExpectedRejection)
       case Left(UnsupportedContentType(supported)) => reject(UnsupportedRequestContentTypeRejection(supported))
-      case Left(MalformedContent(error, _)) => reject(MalformedRequestContentRejection(error))
+      case Left(MalformedContent(errorMsg, cause)) => reject(MalformedRequestContentRejection(errorMsg, cause))
     } & cancelAllRejections(ofTypes(RequestEntityExpectedRejection.getClass, classOf[UnsupportedRequestContentTypeRejection]))
 
   /**
