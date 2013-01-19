@@ -80,7 +80,8 @@ class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) extends Mes
         case "content-type"      => // we never render these headers here,
         case "content-length"    => // because their production is the
         case "transfer-encoding" => // responsibility of the spray-can layer,
-        case "user-agent"        => // not the user
+        case "user-agent" if !userAgentHeader.isEmpty
+                                 => // not the user
         case "host"              => newHostHeaderPresent = true; appendHeader(header, bb)
         case _                   => appendHeader(header, bb)
       }
