@@ -109,11 +109,57 @@ class RequestRendererSpec extends Specification {
         }
       }
     }
+
+    "properly handle the User-Agent header" in {
+
+      "GET request without headers and without body" in {
+        HttpRequest(method = GET, uri = "/abc") must beRenderedTo {
+          """|GET /abc HTTP/1.1
+            |Host: test.com:8080
+            |User-Agent: spray-can/1.0.0
+            |
+            |"""
+        }
+      }
+
+      "GET request with overridden User-Agent and without body" in {
+        HttpRequest(method = GET,
+                    uri = "/abc",
+                    headers = List(
+                      RawHeader("User-Agent", "blah-blah/1.0")
+                    )
+        ) must beRenderedTo {
+          """|GET /abc HTTP/1.1
+            |Host: test.com:8080
+            |User-Agent: spray-can/1.0.0
+            |
+            |"""
+        }
+      }
+
+      "GET request with overridden User-Agent and without body" in {
+        HttpRequest(method = GET,
+          uri = "/abc",
+          headers = List(
+            RawHeader("User-Agent", "user-ua/1.0")
+          )
+        ) must beRenderedToWithRenderer(
+          """|GET /abc HTTP/1.1
+            |Host: test.com:8080
+            |User-Agent: settings-ua/1.0
+            |
+            |""",
+          new RequestRenderer("settings-ua/1.0", 256)
+        )
+      }
+    }
   }
 
-  val renderer = new RequestRenderer("spray-can/1.0.0", 256)
+  val defaultRenderer = new RequestRenderer("spray-can/1.0.0", 256)
 
-  def beRenderedTo(content: String) = {
+  def beRenderedTo(content: String) = beRenderedToWithRenderer(content, defaultRenderer)
+
+  def beRenderedToWithRenderer(content: String, renderer: RequestRenderer) = {
     beEqualTo(content.stripMargin.replace(EOL, "\r\n")) ^^ { part: HttpRequestPart =>
       val RenderedMessagePart(buffers, false) = renderer.render(part, Some(new InetSocketAddress("test.com", 8080)))
       val sb = new java.lang.StringBuilder()
