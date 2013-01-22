@@ -52,6 +52,11 @@ trait MethodDirectives {
    */
   val put = method(PUT) // source-quote
 
+  /**
+   * A route filter that rejects all non-OPTIONS requests.
+   */
+  val options = method(OPTIONS) // source-quote
+
   //# method-directive
   /**
    * Rejects all requests whose HTTP method does not match the given one.
