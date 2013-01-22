@@ -41,11 +41,7 @@ private[parser] trait AuthorizationHeader {
   }
 
   def OAuth2BearerTokenDef = rule {
-    "Bearer" ~ BearerToken ~> (OAuth2BearerToken(_))
-  }
-
-  def BearerToken = rule {
-    oneOrMore(Alpha | Digit | anyOf("-._~+/")) ~ optional("==" | ch('='))
+    "Bearer" ~ Token ~~> (OAuth2BearerToken(_))
   }
 
   def GenericHttpCredentialsDef = rule {
