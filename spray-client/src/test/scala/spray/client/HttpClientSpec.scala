@@ -61,9 +61,21 @@ class HttpClientSpec extends Specification with RequestBuilding {
       val pipeline = addHeader(Host("localhost", port)) ~> sendReceive(httpClient)
       pipeline(Get("/abc", "Great Content")).await.withHeaders(Nil) === HttpResponse(entity = "GET|/abc|Great Content")
     }
+
     "properly process a request with the host specified in the URI" in {
       val pipeline = sendReceive(httpClient)
       pipeline(Get(s"http://localhost:$port/abc", "x")).await.withHeaders(Nil) === HttpResponse(entity = "GET|/abc|x")
+    }
+
+    "not fail with a timeout when there is more then 10 seconds between" in {
+      val pipeline = addHeader(Host("localhost", port)) ~> sendReceive(httpClient)
+
+      pipeline(Get("/abc", "Great Content")).await.withHeaders(Nil) === HttpResponse(entity = "GET|/abc|Great Content")
+
+      // the problem occurs somewhere around the 10 seconds
+      Thread.sleep(11 * 1000)
+
+      pipeline(Get("/abc", "Great Content")).await.withHeaders(Nil) === HttpResponse(entity = "GET|/abc|Great Content")
     }
   }
 

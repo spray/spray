@@ -66,6 +66,8 @@ class HttpHostConnector(val host: String,
       conn.resetConnection()
       dispatchStrategy.onStateChange()
 
+    case Terminated(connectionActor) => hostConnections.foreach(_.handleConnectionActorDeath(connectionActor))
+
     case RequestIdleStatus =>
       sender ! IdleStatus(hostConnections.forall(_.isInstanceOf[UnconnectedHostConnection]), host, port)
   }

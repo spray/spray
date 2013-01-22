@@ -17,7 +17,7 @@
 package spray.client
 
 import scala.collection.mutable
-import akka.actor.{Props, Status}
+import akka.actor.{ActorRef, Props, Status}
 import spray.can.client.HttpClientConnection
 import spray.util._
 import spray.io._
@@ -27,7 +27,7 @@ import spray.http._
 private[client] trait HostConnections {
   this: HttpHostConnector =>
 
-  sealed abstract class HostConnection {
+  sealed abstract class  HostConnection {
     def index: Int
 
     // the number of open requests on this connection
@@ -40,6 +40,8 @@ private[client] trait HostConnections {
     def resetConnection() {
       updateHostConnection(UnconnectedHostConnection(index))
     }
+
+    def handleConnectionActorDeath(connectionActor: ActorRef)
   }
 
   case class UnconnectedHostConnection(index: Int) extends HostConnection {
@@ -48,13 +50,17 @@ private[client] trait HostConnections {
       debug.log(defaultConnectionTag, "Opening connection {} to {}:{}", index + 1, host, port)
       // TODO: prefix actor name with "c" + (index+1) + "-" once akka allows custom name prefixes (with random endings)
       val connectionActor = context.actorOf(Props(new HttpClientConnection(clientConnectionSettings)))
-      val next = new ConnectingHostConnection(index)(reqCtx)
+      context.watch(connectionActor)
+      val next = new ConnectingHostConnection(index, connectionActor)(reqCtx)
       connectionActor.tell(HttpClientConnection.Connect(host, port, tagForConnection(index)), Reply.withContext(next))
       updateHostConnection(next)
     }
+    def handleConnectionActorDeath(connectionActor: ActorRef) {}
   }
 
-  case class ConnectingHostConnection(index: Int)(firstReqCtx: RequestContext) extends HostConnection {
+  case class ConnectingHostConnection(index: Int, connectionActor: ActorRef)(firstReqCtx: RequestContext)
+    extends HostConnection {
+
     private val pendingRequests = mutable.ListBuffer(firstReqCtx)
 
     def pendingResponses: Int = pendingRequests.size
@@ -63,15 +69,19 @@ private[client] trait HostConnections {
     }
     def connected(connection: Connection) {
       debug.log(connection.tag, "Connection {} established, dispatching {} pending requests", index, pendingResponses)
-      updateHostConnection(new ConnectedHostConnection(index, connection)(pendingRequests.toList))
+      updateHostConnection(new ConnectedHostConnection(index, connectionActor, connection)(pendingRequests.toList))
     }
     def connectFailed(error: Status.Failure) {
       pendingRequests.foreach(ctx => ctx.commander ! error)
       resetConnection()
     }
+
+    def handleConnectionActorDeath(connectionActor: ActorRef) {
+      if (connectionActor == this.connectionActor) updateHostConnection(new UnconnectedHostConnection(index))
+    }
   }
 
-  case class ConnectedHostConnection(index: Int, connection: Connection)
+  case class ConnectedHostConnection(index: Int, connectionActor: ActorRef, connection: Connection)
                                     (pendingRequests: List[RequestContext]) extends HostConnection {
     private[this] val openRequests = mutable.Queue.empty[RequestContext]
     private[this] var closeAfterChunkedMessageEnd = false
@@ -99,6 +109,10 @@ private[client] trait HostConnections {
           requestContextForRetry(new RuntimeException("Connection closed before response reception, reason: " + reason))
         case x => warning.log(connection.tag, "Unexpected response {} for {}", x, format(reqCtx.request)); None
       }
+    }
+
+    def handleConnectionActorDeath(connectionActor: ActorRef) {
+      if (connectionActor == this.connectionActor) updateHostConnection(new UnconnectedHostConnection(index))
     }
 
     private def handleHttpResponse(response: HttpResponse) {
