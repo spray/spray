@@ -69,7 +69,7 @@ trait CachingDirectives {
             route {
               ctx.withRouteResponseHandling {
                 case response: HttpResponse => promise.success(Right(response))
-                case Reject(rejections) => promise.success(Left(rejections))
+                case Rejected(rejections) => promise.success(Left(rejections))
                 case x =>
                   log.error("Route responses other than HttpResponse or Rejections cannot be cached (received: {})", x)
                   promise.failure(RequestProcessingException(StatusCodes.InternalServerError))
