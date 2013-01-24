@@ -47,8 +47,8 @@ trait ExecutionDirectives {
   def handleRejections(handler: RejectionHandler): Directive0 =
     mapRequestContext { ctx =>
       ctx.withRejectionHandling { rejections =>
-        if (handler.isDefinedAt(rejections)) {
-          val filteredRejections = RejectionHandler.applyTransformations(rejections)
+        val filteredRejections = RejectionHandler.applyTransformations(rejections)
+        if (handler.isDefinedAt(filteredRejections)) {
           def isAcceptHeader(h: HttpHeader) = h.lowercaseName.startsWith("accept")
           // we "disable" content negotiation for the rejection handling route
           // so as to avoid UnacceptedResponseContentTypeRejections from it
@@ -57,7 +57,7 @@ trait ExecutionDirectives {
             .withRejectionHandling(rej => sys.error("The RejectionHandler for " + rejections +
             " must not itself produce rejections (received " + rej + ")!"))
           handler(filteredRejections)(handlingContext)
-        } else ctx.reject(rejections: _*)
+        } else ctx.reject(filteredRejections: _*)
       }
     }
 
