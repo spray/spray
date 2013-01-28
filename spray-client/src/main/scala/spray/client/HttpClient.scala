@@ -92,7 +92,8 @@ class HttpClient(val httpClientSettings: HttpClientSettings = HttpClientSettings
       case "https" => uriPort.getOrElse(443) -> true
       case x => sys.error("Invalid request scheme: " + x)
     }
-    val patchedRequest = request.copy(uri = rawPathQueryFragment, headers = HttpHeaders.Host(uriHost, port) :: headers)
+    val hostHeader = if (port == 80) HttpHeaders.Host(uriHost) else HttpHeaders.Host(uriHost, port)
+    val patchedRequest = request.copy(uri = rawPathQueryFragment, headers = hostHeader :: headers)
     dispatch(patchedRequest, uriHost, port, ssl)
   }
 
