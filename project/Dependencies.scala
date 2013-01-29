@@ -30,5 +30,6 @@ object Dependencies {
   val specs2        = "org.specs2"                              %%  "specs2"                      % "1.12.3"
   val sprayJson     = "io.spray"                                %%  "spray-json"                  % "1.2.3"
   val twirlApi      = "io.spray"                                %%  "twirl-api"                   % "0.6.1"
+  val bridj         = "com.nativelibs4java"                     %   "bridj"                       % "0.6.2"
 
 }

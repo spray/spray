@@ -17,7 +17,7 @@ object Build extends Build {
 
   lazy val root = Project("root",file("."))
     .aggregate(examples, sprayCaching, sprayCan, sprayClient, sprayHttp, sprayHttpx,
-      sprayIO, sprayRouting, sprayRoutingTests, sprayServlet, sprayTestKit, sprayUtil)
+      sprayIO, sprayOpenssl, sprayRouting, sprayRoutingTests, sprayServlet, sprayTestKit, sprayUtil)
     .settings(basicSettings: _*)
     .settings(noPublishing: _*)
 
@@ -80,6 +80,14 @@ object Build extends Build {
       test(akkaTestKit, specs2)
     )
 
+  lazy val sprayOpenssl = Project("spray-openssl", file("spray-openssl"))
+    .dependsOn(sprayIO)
+    .settings(sprayModuleSettings: _*)
+    .settings(libraryDependencies ++=
+      compile(bridj) ++
+      provided(akkaActor) ++
+      test(akkaTestKit, specs2)
+    )
 
   lazy val sprayRouting = Project("spray-routing", file("spray-routing"))
     .dependsOn(
