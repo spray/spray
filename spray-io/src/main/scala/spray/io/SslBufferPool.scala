@@ -32,17 +32,17 @@ import annotation.tailrec
  *
  * This implementation is very loosely based on the one from Netty.
  */
-object SslBufferPool {
+trait SslBufferPool[T] {
 
   // we are using Nettys default values:
   // 16665 + 1024 (room for compressed data) + 1024 (for OpenJDK compatibility)
-  private val MaxPacketSize = 16665 + 2048
+  protected val MaxPacketSize = 16665 + 2048
 
   private val Unlocked = 0
   private val Locked = 1
 
   private[this] val state = new AtomicInteger(Unlocked)
-  @volatile private[this] var pool: List[ByteBuffer] = Nil
+  @volatile private[this] var pool: List[T] = Nil
 
   /**
    * Returns the size of the current buffer pool.
@@ -50,11 +50,14 @@ object SslBufferPool {
    */
   def size: Int = pool.size
 
+  def allocate(capacity: Int): T
+  def refurbish(buffer: T): Unit
+
   @tailrec
-  def acquire(): ByteBuffer = {
+  final def acquire(): T = {
     if (state.compareAndSet(Unlocked, Locked)) {
       try pool match {
-        case Nil => ByteBuffer.allocate(MaxPacketSize) // we have no more buffer available, so create a new one
+        case Nil => allocate(MaxPacketSize) // we have no more buffer available, so create a new one
         case buf :: tail =>
           pool = tail
           buf
@@ -63,11 +66,20 @@ object SslBufferPool {
   }
 
   @tailrec
-  def release(buf: ByteBuffer) {
+  final def release(buf: T) {
     if (state.compareAndSet(Unlocked, Locked)) {
-      buf.clear() // ensure that we never have dirty buffers in the pool
+      refurbish(buf) // ensure that we never have dirty buffers in the pool
       pool = buf :: pool
       state.set(Unlocked)
     } else release(buf) // spin while locked
+  }
+}
+
+object SslBufferPool extends SslBufferPool[ByteBuffer] {
+  def allocate(capacity: Int): ByteBuffer =
+    ByteBuffer.allocate(capacity)
+
+  def refurbish(buffer: ByteBuffer) {
+    buffer.clear()
   }
 }
