@@ -60,7 +60,7 @@ object HttpClient {
     ResponseParsing(ParserSettings, log) >>
     RequestRendering(settings) >>
     (settings.IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
-    SslTlsSupport(sslEngineProvider, log, encryptIfUntagged = false) >>
+    sslEngineProvider.createStage(log) >>
     (ReapingCycle > 0 && IdleTimeout > 0) ? TickGenerator(ReapingCycle)
   }
 

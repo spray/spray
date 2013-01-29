@@ -1,7 +1,7 @@
 package spray.examples
 
 import java.security.{SecureRandom, KeyStore}
-import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
+import javax.net.ssl.{SSLEngine, KeyManagerFactory, SSLContext, TrustManagerFactory}
 import spray.io._
 import akka.actor._
 
@@ -30,7 +30,7 @@ trait MySslConfiguration {
   // since we want to explicitly enable cipher suites and protocols we make a custom ServerSSLEngineProvider
   // available here
   implicit def sslEngineProvider: ServerSSLEngineProvider = {
-    ServerSSLEngineProvider { engine =>
+    ServerSSLEngineProvider { (engine: SSLEngine) =>
       engine.setEnabledCipherSuites(Array("TLS_RSA_WITH_AES_256_CBC_SHA"))
       engine.setEnabledProtocols(Array("SSLv3", "TLSv1"))
       engine
