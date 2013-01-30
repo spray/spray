@@ -31,6 +31,12 @@ class DirectBuffer(_size: Int) {
     assert(_size >= buffer.remaining())
     pointer.setBytesAtOffset(0, buffer, buffer.position(), buffer.remaining())
   }
+  def setFromByteBuffer(buffer: ByteBuffer): Int = {
+    val numBytes = math.min(_size, buffer.remaining())
+    pointer.setBytesAtOffset(0, buffer, buffer.position(), numBytes)
+    buffer.position(buffer.position + numBytes)
+    numBytes
+  }
 
   def copyToByteBuffer(size: Int): ByteBuffer = {
     val bytes = new Array[Byte](size)

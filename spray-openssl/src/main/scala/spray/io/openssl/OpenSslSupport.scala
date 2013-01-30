@@ -118,25 +118,26 @@ object OpenSslSupport {
         }
 
         def encrypt(buffers: Seq[ByteBuffer])(direct: DirectBuffer) {
-          def trySend(buffer: ByteBuffer) {
-            val toWrite = buffer.limit()
+          @tailrec def trySend(buffer: ByteBuffer): Unit =
             if (pendingSends.nonEmpty) {
-              debug("Enqueing buffer "+toWrite)
+              debug("Enqueing buffer "+buffer.remaining())
               pendingSends = pendingSends enqueue buffer
             } else {
-              debug("Trying to encrypt %d bytes" format toWrite)
-              direct.set(buffer)
+              val toWrite = buffer.remaining()
 
-              val written = ssl.write(direct, toWrite)
+              debug("Trying to encrypt %d bytes" format toWrite)
+              val copied = direct.setFromByteBuffer(buffer)
+
+              val written = ssl.write(direct, copied)
+              assert(written == copied, "Wrote %d but expected %d" format (written, copied))
+
               debug("Result "+written)
-              if (written < 0) {
+              if (copied < 0) {
                 debug("Enqueing buffer "+buffer.limit()+" because of error "+ssl.getError(written))
                 pendingSends = pendingSends enqueue buffer
-              } else if (written != toWrite) {
-                assert(false, "Wrote %d but expected %d" format (written, toWrite))
-              }
+              } else if (copied < toWrite)
+                trySend(buffer)
             }
-          }
 
           buffers.foreach(trySend)
         }
@@ -193,6 +194,9 @@ object OpenSslSupport {
   case object StartHandshake extends Event
 
   object DirectBufferPool extends SslBufferPool[DirectBuffer] {
+    // we feed ssl with chunks of 16384 because that seems to be the
+    // size it breaks packets into anyway
+    override val BufferSize: Int = 16384
     val num = new AtomicInteger(0)
 
     def allocate(capacity: Int): DirectBuffer = {

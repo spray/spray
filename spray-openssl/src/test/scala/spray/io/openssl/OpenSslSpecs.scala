@@ -3,6 +3,7 @@ package spray.io.openssl
 import org.specs2.mutable.Specification
 import spray.io._
 import akka.actor._
+import openssl.OpenSslSupport.DirectBufferPool
 import spray.io.IOBridge.Key
 import javax.net.ssl._
 import java.security.{SecureRandom, KeyStore}
@@ -19,47 +20,8 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
     "gracefully close connection" in pending
 
     "support client mode" in {
-      "run a full cycle" in {
-        val engine = context.createSSLEngine()
-        engine.setUseClientMode(false)
-
-        val javaSslServer = StageTestSetup(SslTlsSupport(_ => engine, system.log))
-        val openSslClient = StageTestSetup(OpenSslSupport(client = true)(system.log))
-
-        def transferToServer(): Seq[SSLMessage] =
-          openSslClient transferSSLMessageTo javaSslServer
-
-        def transferToClient(): Seq[SSLMessage] =
-          javaSslServer transferSSLMessageTo openSslClient
-
-        // make sure handshaking has not started yet
-        engine.getHandshakeStatus must be_==(SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING)
-
-        // client hello
-        transferToServer() must be_==(Seq(HandshakeMessage(ClientHello)))
-
-        // server hello
-        transferToClient() must be_==(Seq(HandshakeMessage(ServerHello)))
-
-        // make sure handshaking is not finished on the java (server) side yet
-        engine.getHandshakeStatus must be_==(SSLEngineResult.HandshakeStatus.NEED_UNWRAP)
-
-        // client key exchange
-        transferToServer() must be_==(
-          Seq(
-            HandshakeMessage(ClientKeyExchange),
-            ChangeCipherSpec,
-            HandshakeMessage(EncryptedHandshakeMessage)))
-
-        // change cipher spec
-        transferToClient() must be_==(Seq(ChangeCipherSpec))
-
-        // for some reason the java ssl implementation transports these in two packets
-        // encrypted handshake
-        transferToClient() must be_==(Seq(HandshakeMessage(EncryptedHandshakeMessage)))
-
-        // make sure handshaking is now finished on server
-        engine.getHandshakeStatus must be_==(SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING)
+      "run a full cycle" in withEstablishedConnection { setup =>
+        import setup._
 
         // send something through the pipe from client to server
         openSslClient.sendData("testdata".getBytes)
@@ -76,8 +38,20 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
         transferToClient() must be_==(Seq(EncryptedData))
         openSslClient.commander.expectMsgType[IOPeer.Received].buffer.remaining() must be_==(4)
       }
-      "make sure big buffers are written properly" in {
+      "make sure big buffers are written properly" in withEstablishedConnection { setup =>
+        import setup._
 
+        val totalSize = 500000
+        openSslClient.sendData(new Array[Byte](totalSize))
+
+        @tailrec def receiveAll(remaining: Int): Unit =
+          if (remaining > 0) {
+            transferToServer() must be_==(Seq(EncryptedData))
+            val received = javaSslServer.commander.expectMsgType[IOPeer.Received]
+            println("Got data "+received.buffer.remaining())
+            receiveAll(remaining - received.buffer.remaining())
+          }
+        receiveAll(totalSize)
       }
       "configure ciphers" in pending
       "allow extraction of sessions" in pending
@@ -92,6 +66,56 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
   }
 
   step { system.shutdown() }
+
+  def withEstablishedConnection[T](body: EstablishedConnectionSetup => T): T = {
+    val engine = context.createSSLEngine()
+    engine.setUseClientMode(false)
+
+    val javaSslServer = StageTestSetup(SslTlsSupport(_ => engine, system.log))
+    val openSslClient = StageTestSetup(OpenSslSupport(client = true)(system.log))
+
+    val setup = EstablishedConnectionSetup(javaSslServer, openSslClient)
+    import setup._
+
+    // make sure handshaking has not started yet
+    engine.getHandshakeStatus must be_==(SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING)
+
+    // client hello
+    transferToServer() must be_==(Seq(HandshakeMessage(ClientHello)))
+
+    // server hello
+    transferToClient() must be_==(Seq(HandshakeMessage(ServerHello)))
+
+    // make sure handshaking is not finished on the java (server) side yet
+    engine.getHandshakeStatus must be_==(SSLEngineResult.HandshakeStatus.NEED_UNWRAP)
+
+    // client key exchange
+    transferToServer() must be_==(
+      Seq(
+        HandshakeMessage(ClientKeyExchange),
+        ChangeCipherSpec,
+        HandshakeMessage(EncryptedHandshakeMessage)))
+
+    // change cipher spec
+    transferToClient() must be_==(Seq(ChangeCipherSpec))
+
+    // for some reason the java ssl implementation transports these in two packets
+    // encrypted handshake
+    transferToClient() must be_==(Seq(HandshakeMessage(EncryptedHandshakeMessage)))
+
+    // make sure handshaking is now finished on server
+    engine.getHandshakeStatus must be_==(SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING)
+
+    body(setup)
+  }
+
+  case class EstablishedConnectionSetup(javaSslServer: StageTestSetup, openSslClient: StageTestSetup) {
+    def transferToServer(): Seq[SSLMessage] =
+      openSslClient transferSSLMessageTo javaSslServer
+
+    def transferToClient(): Seq[SSLMessage] =
+      javaSslServer transferSSLMessageTo openSslClient
+  }
 
   case class StageTestSetup(commander: TestProbe, stageActor: ActorRef, stateMachine: SimpleTlsStateMachine) {
     def transferSSLMessageTo(other: StageTestSetup): Seq[SSLMessage] = {
