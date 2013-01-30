@@ -36,7 +36,7 @@ trait SslBufferPool[T] {
 
   // we are using Nettys default values:
   // 16665 + 1024 (room for compressed data) + 1024 (for OpenJDK compatibility)
-  protected val MaxPacketSize = 16665 + 2048
+  val BufferSize = 16665 + 2048
 
   private val Unlocked = 0
   private val Locked = 1
@@ -57,7 +57,7 @@ trait SslBufferPool[T] {
   final def acquire(): T = {
     if (state.compareAndSet(Unlocked, Locked)) {
       try pool match {
-        case Nil => allocate(MaxPacketSize) // we have no more buffer available, so create a new one
+        case Nil => allocate(BufferSize) // we have no more buffer available, so create a new one
         case buf :: tail =>
           pool = tail
           buf
