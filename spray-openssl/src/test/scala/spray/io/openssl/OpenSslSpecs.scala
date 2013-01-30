@@ -23,27 +23,14 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
         val engine = context.createSSLEngine()
         engine.setUseClientMode(false)
 
-        val javaSslCommander = TestProbe()
-        val javaSslServer = createStageActor(SslTlsSupport(_ => engine, system.log), javaSslCommander.ref)
+        val javaSslServer = StageTestSetup(SslTlsSupport(_ => engine, system.log))
+        val openSslClient = StageTestSetup(OpenSslSupport(client = true)(system.log))
 
-        val openSslCommander = TestProbe()
-        val openSslClient = createStageActor(OpenSslSupport(client = true)(system.log), openSslCommander.ref)
+        def transferToServer(): Seq[SSLMessage] =
+          openSslClient transferSSLMessageTo javaSslServer
 
-        val serverStateMachine = new SimpleTlsStateMachine
-        val clientStateMachine = new SimpleTlsStateMachine
-
-        def transferToServer(): Seq[SSLMessage] = {
-          val data = openSslCommander.expectMsgType[IOPeer.Send]
-          val msgs = clientStateMachine.analyzePackage(data.buffers.head)
-          javaSslCommander.send(javaSslServer, reverse(data))
-          msgs
-        }
-        def transferToClient(): Seq[SSLMessage] = {
-          val data = javaSslCommander.expectMsgType[IOPeer.Send]
-          val msgs = serverStateMachine.analyzePackage(data.buffers.head)
-          openSslCommander.send(openSslClient, reverse(data))
-          msgs
-        }
+        def transferToClient(): Seq[SSLMessage] =
+          javaSslServer transferSSLMessageTo openSslClient
 
         // make sure handshaking has not started yet
         engine.getHandshakeStatus must be_==(SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING)
@@ -75,21 +62,23 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
         engine.getHandshakeStatus must be_==(SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING)
 
         // send something through the pipe from client to server
-        openSslCommander.send(openSslClient, IOPeer.Send(ByteBuffer.wrap("testdata".getBytes)))
+        openSslClient.sendData("testdata".getBytes)
 
         // transfer encrypted data to server
         transferToServer() must be_==(Seq(EncryptedData))
 
-        javaSslCommander.expectMsgType[IOPeer.Received].buffer.remaining() must be_==(8)
+        javaSslServer.commander.expectMsgType[IOPeer.Received].buffer.remaining() must be_==(8)
 
         // send something through the pipe from server to client
-        javaSslCommander.send(javaSslServer, IOPeer.Send(ByteBuffer.wrap("test".getBytes)))
+        javaSslServer.sendData("test".getBytes)
 
         // transfer encrypted data to client
         transferToClient() must be_==(Seq(EncryptedData))
-        openSslCommander.expectMsgType[IOPeer.Received].buffer.remaining() must be_==(4)
+        openSslClient.commander.expectMsgType[IOPeer.Received].buffer.remaining() must be_==(4)
       }
-      "make sure big buffers are written properly" in pending
+      "make sure big buffers are written properly" in {
+
+      }
       "configure ciphers" in pending
       "allow extraction of sessions" in pending
       "reuse old session if requested" in pending
@@ -103,6 +92,25 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
   }
 
   step { system.shutdown() }
+
+  case class StageTestSetup(commander: TestProbe, stageActor: ActorRef, stateMachine: SimpleTlsStateMachine) {
+    def transferSSLMessageTo(other: StageTestSetup): Seq[SSLMessage] = {
+      val data = commander.expectMsgType[IOPeer.Send]
+      val msgs = stateMachine.analyzePackage(data.buffers.head)
+      other.commander.send(other.stageActor, reverse(data))
+      msgs
+    }
+
+    def sendData(bytes: Array[Byte]): Unit =
+      commander.send(stageActor, IOPeer.Send(ByteBuffer.wrap(bytes)))
+  }
+  object StageTestSetup {
+    def apply(stage: PipelineStage): StageTestSetup = {
+      val commander = TestProbe()
+      val actor = createStageActor(stage, commander.ref)
+      StageTestSetup(commander, actor, new SimpleTlsStateMachine)
+    }
+  }
 
   class SimpleTlsStateMachine {
     var isEncrypted = false
@@ -165,7 +173,9 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
 
   def createSslContext(keyStoreResource: String, password: String): SSLContext = {
     val keyStore = KeyStore.getInstance("jks")
-    keyStore.load(getClass.getResourceAsStream(keyStoreResource), password.toCharArray)
+    val res = getClass.getResourceAsStream(keyStoreResource)
+    require(res != null)
+    keyStore.load(res, password.toCharArray)
     val keyManagerFactory = KeyManagerFactory.getInstance("SunX509")
     keyManagerFactory.init(keyStore, password.toCharArray)
     val trustManagerFactory = TrustManagerFactory.getInstance("SunX509")
