@@ -102,6 +102,8 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
     }
   }
 
+  step { system.shutdown() }
+
   class SimpleTlsStateMachine {
     var isEncrypted = false
 
