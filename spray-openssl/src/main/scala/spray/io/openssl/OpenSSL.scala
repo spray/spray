@@ -195,28 +195,8 @@ object SSLCtx {
   def create(method: Long): SSLCtx =
     new SSLCtx(SSL_CTX_new(method))
 
-  SSL_library_init()
-  val locks = {
-    val num = CRYPTO_num_locks()
-    println("Creating %d locks for openssl" format num)
-    Array.fill(num)(new ReentrantLock)
-  }
-  val lockingCB = new LockingCB {
-    def apply(mode: Int, `type`: Int, file: Pointer[lang.Byte], line: Int) {
-      val lock = locks(`type`)
-      if ((mode & 1) != 0)
-        lock.lock()
-      else
-        lock.unlock()
-    }
-  }
-  val threadIdCB = new ThreadIdCB {
-    def apply(CRYPTO_THREADIDPtr1: Long) {
-      CRYPTO_THREADID_set_numeric(CRYPTO_THREADIDPtr1, Thread.currentThread().getId)
-    }
-  }
-  CRYPTO_set_locking_callback(lockingCB.toPointer)
-  CRYPTO_THREADID_set_callback(threadIdCB.toPointer)
+  // make sure openssl is initialized
+  OpenSSL()
 }
 class SSL(pointer: Long) extends TypedPointer(pointer) {
   def setBio(readBio: BIO, writeBio: BIO) {
@@ -268,4 +248,32 @@ object SSL {
 
   val SSL_MODE_RELEASE_BUFFERS = 0x00000010L
   val SSL_OP_NO_COMPRESSION = 0x00020000L
+}
+
+object OpenSSL {
+  def apply(){}
+
+  SSL_library_init()
+  SSL_load_error_strings()
+  val locks = {
+    val num = CRYPTO_num_locks()
+    println("Creating %d locks for openssl" format num)
+    Array.fill(num)(new ReentrantLock)
+  }
+  val lockingCB = new LockingCB {
+    def apply(mode: Int, `type`: Int, file: Pointer[lang.Byte], line: Int) {
+      val lock = locks(`type`)
+      if ((mode & 1) != 0)
+        lock.lock()
+      else
+        lock.unlock()
+    }
+  }
+  val threadIdCB = new ThreadIdCB {
+    def apply(CRYPTO_THREADIDPtr1: Long) {
+      CRYPTO_THREADID_set_numeric(CRYPTO_THREADIDPtr1, Thread.currentThread().getId)
+    }
+  }
+  CRYPTO_set_locking_callback(lockingCB.toPointer)
+  CRYPTO_THREADID_set_callback(threadIdCB.toPointer)
 }
