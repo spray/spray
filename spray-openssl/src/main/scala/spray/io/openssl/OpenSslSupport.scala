@@ -27,13 +27,14 @@ object OpenSslSupport {
         val buf = new DirectBuffer(10)
         buf.pointer.setCString("RSA")
         val res = ctx.setCipherList(buf)
-        if (res != 1) {
-            ERR_error_string(ERR_get_error(), buf.pointer)
-            println("Error: "+buf.pointer.getCString)
-        }
+        if (res != 1) showError()
         println("Set result: "+res)
       }
       //ctx.setVerify(1)
+
+      def showError() {
+        println(OpenSSL.lastErrorString)
+      }
 
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         if (sslEnabled(context)) new SslPipelines(context, commandPL, eventPL)
@@ -147,8 +148,12 @@ object OpenSslSupport {
           // be work to do.
           val read = ssl.read(direct, 0)
           debug("Priming read returned %d" format read)
-          if (read < 0)
-            debug("Error was "+ssl.getError(read))
+          if (read < 0) {
+            val err = ssl.getError(read)
+            debug("Error was "+err)
+            if (err != 2 && err != 3)
+              showError()
+          }
 
           checkPendingSSLOutput(direct)
         }

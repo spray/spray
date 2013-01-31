@@ -276,4 +276,10 @@ object OpenSSL {
   }
   CRYPTO_set_locking_callback(lockingCB.toPointer)
   CRYPTO_THREADID_set_callback(threadIdCB.toPointer)
+
+  def lastErrorString: String = {
+    val resPtr = Pointer.allocateBytes(200)
+    ERR_error_string_n(ERR_get_error(), resPtr, 200)
+    resPtr.getCString
+  }
 }

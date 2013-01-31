@@ -62,8 +62,9 @@ public class BridjedOpenssl {
         abstract public void apply(/*Pointer<SSL>*/ long ssl, int where, int ret);
     }
 
+    public static native void SSL_load_error_strings();
     public static native long ERR_get_error();
-    public static native Pointer<Byte> ERR_error_string(long err, Pointer<Byte> buffer);
+    public static native void ERR_error_string_n(long err, Pointer<Byte> buffer, int len);
 
     public static final int BIO_CTRL_FLUSH = 11;
 
