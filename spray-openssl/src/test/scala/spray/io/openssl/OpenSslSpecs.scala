@@ -53,6 +53,28 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
           }
         receiveAll(totalSize)
       }
+      "don't crash when data is sent before handshake is finished" in {
+        val engine = context.createSSLEngine()
+        engine.setUseClientMode(false)
+
+        val javaSslServer = StageTestSetup(SslTlsSupport(_ => engine))
+        val openSslClient = StageTestSetup(OpenSslSupport(client = true))
+
+        val setup = EstablishedConnectionSetup(javaSslServer, openSslClient)
+        import setup._
+
+        val data = (0 until 100).map(_.toByte)
+        openSslClient.sendData(data.toArray)
+        runHandshake(setup)
+
+        // transfer encrypted data to server
+        transferToServer() must be_==(Seq(EncryptedData))
+        val buf = new Array[Byte](100)
+        val recvd = javaSslServer.commander.expectMsgType[IOConnection.Received]
+        recvd.buffer.remaining() must be_==(100)
+        recvd.buffer.get(buf)
+        buf.toSeq must be_==(data)
+      }
       "configure ciphers" in pending
       "allow extraction of sessions" in pending
       "reuse old session if requested" in pending
@@ -75,10 +97,19 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
     val openSslClient = StageTestSetup(OpenSslSupport(client = true)(system.log))
 
     val setup = EstablishedConnectionSetup(javaSslServer, openSslClient)
+    runHandshake(setup)
+
+    // make sure handshaking is now finished on server
+    engine.getHandshakeStatus must be_==(SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING)
+
+    body(setup)
+  }
+
+  def runHandshake(setup: EstablishedConnectionSetup): Unit = {
     import setup._
 
     // make sure handshaking has not started yet
-    engine.getHandshakeStatus must be_==(SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING)
+    //engine.getHandshakeStatus must be_==(SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING)
 
     // client hello
     transferToServer() must be_==(Seq(HandshakeMessage(ClientHello)))
@@ -87,7 +118,7 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
     transferToClient() must be_==(Seq(HandshakeMessage(ServerHello)))
 
     // make sure handshaking is not finished on the java (server) side yet
-    engine.getHandshakeStatus must be_==(SSLEngineResult.HandshakeStatus.NEED_UNWRAP)
+    //engine.getHandshakeStatus must be_==(SSLEngineResult.HandshakeStatus.NEED_UNWRAP)
 
     // client key exchange
     transferToServer() must be_==(
@@ -102,11 +133,6 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
     // for some reason the java ssl implementation transports these in two packets
     // encrypted handshake
     transferToClient() must be_==(Seq(HandshakeMessage(EncryptedHandshakeMessage)))
-
-    // make sure handshaking is now finished on server
-    engine.getHandshakeStatus must be_==(SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING)
-
-    body(setup)
   }
 
   case class EstablishedConnectionSetup(javaSslServer: StageTestSetup, openSslClient: StageTestSetup) {

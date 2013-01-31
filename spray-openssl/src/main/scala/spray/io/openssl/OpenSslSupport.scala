@@ -125,19 +125,30 @@ object OpenSslSupport {
               pendingSends = pendingSends enqueue buffer
             } else {
               val toWrite = buffer.remaining()
+              assert(toWrite > 0)
 
               debug("Trying to encrypt %d bytes" format toWrite)
               val copied = direct.setFromByteBuffer(buffer)
-
               val written = ssl.write(direct, copied)
-              assert(written == copied, "Wrote %d but expected %d" format (written, copied))
 
               debug("Result "+written)
-              if (copied < 0) {
-                debug("Enqueing buffer "+buffer.limit()+" because of error "+ssl.getError(written))
-                pendingSends = pendingSends enqueue buffer
-              } else if (copied < toWrite)
-                trySend(buffer)
+
+              written match {
+                case `toWrite` => // everything written, fall through
+                case -1 => // couldn't write for some reason
+                  // FIXME: add check that error is SSL_ERROR_WANT_READ or _WANT_WRITE
+                  // and error out otherwise
+                  debug("Enqueing buffer "+buffer.remaining()+" because of error "+ssl.getError(written))
+
+                  assert(buffer.remaining() > 0)
+                  pendingSends = pendingSends enqueue buffer
+
+                case x if x < toWrite => // try instantly again, this is probably because the buffer was too small
+                  buffer.position(buffer.position() + written)
+
+                  assert(buffer.remaining() > 0)
+                  trySend(buffer)
+              }
             }
 
           buffers.foreach(trySend)

@@ -24,17 +24,15 @@ class DirectBuffer(_size: Int) {
   def set(buffer: Array[Byte]) {
     pointer.setBytes(buffer)
   }
-  def set(buffer: Array[Byte], size: Int) {
-    pointer.setBytesAtOffset(0, buffer, 0, size)
-  }
-  def set(buffer: ByteBuffer) {
-    assert(_size >= buffer.remaining())
-    pointer.setBytesAtOffset(0, buffer, buffer.position(), buffer.remaining())
-  }
+
+  /**
+   *  Copies as much remaining bytes from the ByteBuffer into this direct buffer.
+   *  Note: This does not change the position of the byte buffer. You have to adjust
+   *  this manually.
+   */
   def setFromByteBuffer(buffer: ByteBuffer): Int = {
     val numBytes = math.min(_size, buffer.remaining())
     pointer.setBytesAtOffset(0, buffer, buffer.position(), numBytes)
-    buffer.position(buffer.position + numBytes)
     numBytes
   }
 
