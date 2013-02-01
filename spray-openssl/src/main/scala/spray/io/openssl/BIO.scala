@@ -52,7 +52,7 @@ object BIO {
   }*/
 
   def fromImpl(impl: BIOImpl): BIO = {
-    val bio = fromMethod(theMethod)
+    val bio = fromMethod(javaMethod)
     registerImpl(bio, impl)
     bio
   }
@@ -95,8 +95,7 @@ object BIO {
     new bread_callback {
       def apply(BIOPtr1: Long, charPtr1: Pointer[java.lang.Byte], int1: Int): Int = {
         val res = implForBIO(BIOPtr1).read(charPtr1, int1)
-        if (res == -1)
-          BIO_set_flags(BIOPtr1, 9/*BIO_FLAGS_READ|BIO_FLAGS_SHOULD_RETRY*/)
+        if (res == -1) BIO_set_flags(BIOPtr1, BIO_FLAGS_READ | BIO_FLAGS_SHOULD_RETRY)
         res
       }
     }
@@ -115,12 +114,13 @@ object BIO {
       }
     }
 
-  val theMethod = createMethod()
-
-  private[this] def createMethod() =
+  val javaMethod =
     (new BIO_METHOD)
       .create(createCB.toPointer)
       .bread(readCB.toPointer)
       .bwrite(writeCB.toPointer)
       .ctrl(ctrlCB.toPointer)
+
+  val BIO_FLAGS_READ = 1
+  val BIO_FLAGS_SHOULD_RETRY = 8
 }
