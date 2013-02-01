@@ -16,22 +16,10 @@ import akka.event.LoggingAdapter
 
 
 object OpenSslSupport {
-  def apply(sslEnabled: PipelineContext => Boolean = _ => true, client: Boolean = true)(log: LoggingAdapter): PipelineStage =
+  def apply(sslFactory: PipelineContext => SSL,
+            sslEnabled: PipelineContext => Boolean = _ => true,
+            client: Boolean = true)(log: LoggingAdapter): PipelineStage =
     new PipelineStage {
-      val ctx = SSLCtx.create(SSLv23_method())
-      ctx.setDefaultVerifyPaths()
-      ctx.setMode(SSL.SSL_MODE_RELEASE_BUFFERS)
-      ctx.setOptions(SSL.SSL_OP_NO_COMPRESSION)
-
-      {
-        val buf = new DirectBuffer(10)
-        buf.pointer.setCString("RSA")
-        val res = ctx.setCipherList(buf)
-        if (res != 1) showError()
-        println("Set result: "+res)
-      }
-      //ctx.setVerify(1)
-
       def showError() {
         println(OpenSSL.lastErrorString)
       }
@@ -45,7 +33,7 @@ object OpenSslSupport {
         var pendingSends = Queue.empty[ByteBuffer]
         var inputBuffer = Queue.empty[ByteBuffer]
 
-        val ssl = ctx.newSSL()
+        val ssl = sslFactory(context)
 
         if (client)
           context.self ! StartHandshake

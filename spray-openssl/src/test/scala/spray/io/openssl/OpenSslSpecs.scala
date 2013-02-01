@@ -13,8 +13,8 @@ import java.nio.ByteBuffer
 import annotation.tailrec
 
 class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
-  val context = createSslContext("/ssl-test-keystore.jks", "")
-  System.setProperty("javax.net.debug", "ssl,handshake")
+  val keyStore = loadKeyStore("/ssl-test-keystore.jks", "")
+  val context = createSslContext("")
 
   "OpenSslSupport" should {
     "gracefully close connection" in pending
@@ -48,7 +48,7 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
           if (remaining > 0) {
             transferToServer() must be_==(Seq(EncryptedData))
             val received = javaSslServer.commander.expectMsgType[IOPeer.Received]
-            println("Got data "+received.buffer.remaining())
+            //println("Got data "+received.buffer.remaining())
             receiveAll(remaining - received.buffer.remaining())
           }
         receiveAll(totalSize)
@@ -57,8 +57,8 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
         val engine = context.createSSLEngine()
         engine.setUseClientMode(false)
 
-        val javaSslServer = StageTestSetup(SslTlsSupport(_ => engine))
-        val openSslClient = StageTestSetup(OpenSslSupport(client = true))
+        val javaSslServer = StageTestSetup(SslTlsSupport(_ => engine, system.log))
+        val openSslClient = StageTestSetup(createDefaultOpenSslStage)
 
         val setup = EstablishedConnectionSetup(javaSslServer, openSslClient)
         import setup._
@@ -70,7 +70,7 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
         // transfer encrypted data to server
         transferToServer() must be_==(Seq(EncryptedData))
         val buf = new Array[Byte](100)
-        val recvd = javaSslServer.commander.expectMsgType[IOConnection.Received]
+        val recvd = javaSslServer.commander.expectMsgType[IOPeer.Received]
         recvd.buffer.remaining() must be_==(100)
         recvd.buffer.get(buf)
         buf.toSeq must be_==(data)
@@ -94,7 +94,7 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
     engine.setUseClientMode(false)
 
     val javaSslServer = StageTestSetup(SslTlsSupport(_ => engine, system.log))
-    val openSslClient = StageTestSetup(OpenSslSupport(client = true)(system.log))
+    val openSslClient = StageTestSetup(createDefaultOpenSslStage)
 
     val setup = EstablishedConnectionSetup(javaSslServer, openSslClient)
     runHandshake(setup)
@@ -104,6 +104,13 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
 
     body(setup)
   }
+
+  def createDefaultOpenSslStage =
+    OpenSSLClientConfigurator()
+      .acceptServerCertificate(keyStore.getCertificate("spray team"))
+      .acceptCiphers("RSA")
+      .disableVerification()
+      .build()
 
   def runHandshake(setup: EstablishedConnectionSetup): Unit = {
     import setup._
@@ -160,6 +167,8 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
       val actor = createStageActor(stage, commander.ref)
       StageTestSetup(commander, actor, new SimpleTlsStateMachine)
     }
+    def apply(provider: StageProvider): StageTestSetup =
+      apply(provider.createStage(system.log))
   }
 
   class SimpleTlsStateMachine {
@@ -167,7 +176,7 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
 
     /** A mini package analyzer for TLS v1.0/1.1 records */
     def analyzePackage(buffer: ByteBuffer): Seq[SSLMessage]  = {
-      println("Total size: %d" format buffer.remaining())
+      //println("Total size: %d" format buffer.remaining())
       @tailrec def analyzeNext(isEncrypted: Boolean, result: Seq[SSLMessage]): (Boolean, Seq[SSLMessage]) = {
         val tpe = buffer.get()
         val protocol = buffer.getShort()
@@ -220,12 +229,15 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
   case object ChangeCipherSpec extends SSLMessage
   case object EncryptedData extends SSLMessage
 
-
-  def createSslContext(keyStoreResource: String, password: String): SSLContext = {
+  def loadKeyStore(keyStoreResource: String, password: String): KeyStore = {
     val keyStore = KeyStore.getInstance("jks")
     val res = getClass.getResourceAsStream(keyStoreResource)
     require(res != null)
     keyStore.load(res, password.toCharArray)
+    keyStore
+  }
+
+  def createSslContext(password: String): SSLContext = {
     val keyManagerFactory = KeyManagerFactory.getInstance("SunX509")
     keyManagerFactory.init(keyStore, password.toCharArray)
     val trustManagerFactory = TrustManagerFactory.getInstance("SunX509")

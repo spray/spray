@@ -45,6 +45,13 @@ class DirectBuffer(_size: Int) {
 
   def size: Int = _size
 }
+object DirectBuffer {
+  def forCString(string: String): DirectBuffer = {
+    val buf = new DirectBuffer(string.length + 1)
+    buf.pointer.setCString(string)
+    buf
+  }
+}
 
 class BIO(pointer: Long) extends TypedPointer(pointer) {
   def write(buffer: DirectBuffer, len: Int): Int = {
@@ -248,6 +255,8 @@ object SSL {
   val SSL_OP_NO_COMPRESSION = 0x00020000L
 }
 
+class OpenSSLException(msg: String) extends Exception(msg)
+
 object OpenSSL {
   def apply(){}
 
@@ -279,5 +288,10 @@ object OpenSSL {
     val resPtr = Pointer.allocateBytes(200)
     ERR_error_string_n(ERR_get_error(), resPtr, 200)
     resPtr.getCString
+  }
+
+  def checkResult(res: Int): Int = {
+    if (res <= 0) throw new OpenSSLException(lastErrorString)
+    else res
   }
 }
