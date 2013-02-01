@@ -38,6 +38,8 @@ class SSLCtx private[openssl](pointer: Long) extends TypedPointer(pointer) {
   def setMode(mode: Long): Long =
     SSL_CTX_ctrl(getPeer, SSL_CTRL_MODE, mode, 0)
 
+  def getCertificateStore: X509_STORE =
+    SSL_CTX_get_cert_store(getPeer)
 }
 object SSLCtx {
   def create(method: Long): SSLCtx =

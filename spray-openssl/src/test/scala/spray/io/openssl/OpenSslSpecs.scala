@@ -109,7 +109,6 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
     OpenSSLClientConfigurator()
       .acceptServerCertificate(keyStore.getCertificate("spray team"))
       .acceptCiphers("RSA")
-      .disableVerification()
       .build()
 
   def runHandshake(setup: EstablishedConnectionSetup): Unit = {

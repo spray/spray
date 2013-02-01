@@ -1,14 +1,9 @@
 package spray.io.openssl
 
-import org.bridj.{JNI, BridJ, TypedPointer, Pointer}
-import java.nio.ByteBuffer
+import org.bridj.{TypedPointer, Pointer}
 
 import BridjedOpenssl._
-import BIO_METHOD._
 import java.util.concurrent.locks.ReentrantLock
-import spray.io.openssl
-import java.lang
-import org.bridj.util.JNIUtils
 
 class OpenSSLException(msg: String) extends Exception(msg)
 
@@ -23,7 +18,7 @@ object OpenSSL {
     Array.fill(num)(new ReentrantLock)
   }
   val lockingCB = new LockingCB {
-    def apply(mode: Int, `type`: Int, file: Pointer[lang.Byte], line: Int) {
+    def apply(mode: Int, `type`: Int, file: Pointer[java.lang.Byte], line: Int) {
       val lock = locks(`type`)
       if ((mode & 1) != 0)
         lock.lock()
@@ -45,8 +40,15 @@ object OpenSSL {
     resPtr.getCString
   }
 
-  def checkResult(res: Int): Int = {
+  def checkResult(res: Int): Int =
     if (res <= 0) throw new OpenSSLException(lastErrorString)
     else res
+  def checkResult(res: Long): Long =
+    if (res <= 0) throw new OpenSSLException(lastErrorString)
+    else res
+
+  def checkResult[T <: TypedPointer](res: T): T = {
+    checkResult(res.getPeer)
+    res
   }
 }

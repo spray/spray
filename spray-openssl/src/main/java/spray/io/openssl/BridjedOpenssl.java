@@ -34,6 +34,7 @@ public class BridjedOpenssl {
     public static native int SSL_CTX_set_cipher_list(@Ptr long ctx, long pStr);
     public static native int SSL_CTX_use_PrivateKey_file(@Ptr long ctx, Pointer<Byte> fileName, int type);
     public static native int SSL_CTX_use_certificate_chain_file(@Ptr long ctx, Pointer<Byte> fileName);
+    public static native X509_STORE SSL_CTX_get_cert_store(@Ptr long ctx);
 
     public static native long SSL_CTX_ctrl(@Ptr long ctx, int cmd, long larg, long parg);
 
@@ -72,4 +73,11 @@ public class BridjedOpenssl {
 	public native static void CRYPTO_set_locking_callback(Pointer<LockingCB> arg);
 	public native static int CRYPTO_THREADID_set_callback(Pointer<ThreadIdCB> arg);
 	public native static void CRYPTO_THREADID_set_numeric(long ptr, long val);
+
+    public static native X509Certificate d2i_X509_bio(BIO bio, @Ptr long resPtr);
+
+    public static native long d2i_PKCS8_PRIV_KEY_INFO_bio(BIO bio, long retPtr);
+    public static native EVP_PKEY EVP_PKCS82PKEY(@Ptr long pkcs8Key);
+
+    public static native int X509_STORE_add_cert(X509_STORE store, X509Certificate x509);
 }

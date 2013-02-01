@@ -56,20 +56,23 @@ object OpenSSLClientConfigurator {
     new OpenSSLClientConfigurator {
       var ciphers: Option[String] = None
       var useDefaultVerifyPaths = true
-      var verify = false
+      var verify = true
+      var certificates: List[X509Certificate] = Nil
 
       def build(): ClientSSLEngineProvider = {
         val ctx = SSLCtx.create(SSLv23_method())
-
-        if (useDefaultVerifyPaths) ctx.setDefaultVerifyPaths()
-        if (verify) ctx.setVerify(1)
-
         ctx.setMode(SSL.SSL_MODE_RELEASE_BUFFERS)
         ctx.setOptions(SSL.SSL_OP_NO_COMPRESSION)
+
+        if (useDefaultVerifyPaths) ctx.setDefaultVerifyPaths()
+        ctx.setVerify(if (verify) 1 else 0)
 
         ciphers.foreach { cipherDesc =>
           OpenSSL.checkResult(ctx.setCipherList(DirectBuffer.forCString(cipherDesc)))
         }
+
+        val certStore = ctx.getCertificateStore
+        certificates.foreach(certStore.addCertificate)
 
         def sslFactory(pipeCtx: PipelineContext): SSL = ctx.newSSL()
 
@@ -79,7 +82,8 @@ object OpenSSLClientConfigurator {
       def acceptCiphers(cipherDesc: String): this.type =
         andReturnSelf { ciphers = Some(cipherDesc) }
 
-      def acceptServerCertificate(certificate: Certificate): this.type = this
+      def acceptServerCertificate(certificate: Certificate): this.type =
+        andReturnSelf { certificates ::= X509Certificate(certificate) }
 
       def dontAcceptDefaultVerifyPaths(): this.type = throw new UnsupportedOperationException("nyi")
 
