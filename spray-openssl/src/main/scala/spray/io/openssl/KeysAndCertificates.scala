@@ -7,9 +7,7 @@ import java.security.cert.Certificate
 import BridjedOpenssl._
 import OpenSSL._
 
-class X509Certificate private[openssl](pointer: Long) extends TypedPointer(pointer) {
-
-}
+class X509Certificate private[openssl](pointer: Long) extends TypedPointer(pointer)
 object X509Certificate {
   def apply(cert: Certificate): X509Certificate = {
     require(cert.getType == "X.509", "Certificate must be of type X.509 but was '%s'" format cert.getType)
@@ -18,9 +16,7 @@ object X509Certificate {
   }
 }
 
-class EVP_PKEY private[openssl](pointer: Long) extends TypedPointer(pointer) {
-
-}
+class EVP_PKEY private[openssl](pointer: Long) extends TypedPointer(pointer)
 object EVP_PKEY {
   def apply(key: Key): EVP_PKEY = {
     require(key.getFormat == "PKCS#8", "Key must be of type PKCS8 but was '%s'" format key.getFormat)
