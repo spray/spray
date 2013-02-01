@@ -3,6 +3,7 @@ package spray.io.openssl
 import org.bridj.{JNI, Pointer, TypedPointer}
 import spray.io.openssl.BridjedOpenssl._
 import spray.io.openssl.BIO_METHOD.{ctrl_callback, bwrite_callback, bread_callback, create_callback}
+import java.io.{ByteArrayInputStream, InputStream}
 
 class BIO private[openssl](pointer: Long) extends TypedPointer(pointer) {
   def write(buffer: DirectBuffer, len: Int): Int = {
@@ -55,6 +56,18 @@ object BIO {
     registerImpl(bio, impl)
     bio
   }
+
+  def fromInputStream(is: InputStream): BIO =
+    fromImpl(new CopyingBIOImpl {
+      def flush() {}
+      def write(buffer: Array[Byte]): Int =
+        throw new UnsupportedOperationException("writing not supported")
+      def read(buffer: Array[Byte], length: Int): Int =
+        is.read(buffer, 0, length)
+    })
+  def fromBytes(bytes: Array[Byte]): BIO =
+    fromInputStream(new ByteArrayInputStream(bytes))
+
   def fromMethod(m: BIO_METHOD): BIO =
     new BIO(BIO_new(Pointer.pointerTo(m).getPeer))
 
