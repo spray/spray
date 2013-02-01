@@ -47,8 +47,7 @@ object OpenSSL {
     if (res <= 0) throw new OpenSSLException(lastErrorString)
     else res
 
-  def checkResult[T <: TypedPointer](res: T): T = {
-    checkResult(res.getPeer)
-    res
-  }
+  def checkResult[T <: TypedPointer](res: T): T =
+    if (res == null) throw new OpenSSLException(lastErrorString)
+    else res
 }
