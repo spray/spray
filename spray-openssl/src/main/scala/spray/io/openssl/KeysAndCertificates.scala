@@ -12,7 +12,9 @@ object X509Certificate {
   def apply(cert: Certificate): X509Certificate = {
     require(cert.getType == "X.509", "Certificate must be of type X.509 but was '%s'" format cert.getType)
 
-    checkResult(d2i_X509_bio(BIO.fromBytes(cert.getEncoded), 0))
+    BIO.withBytesBIO(cert.getEncoded) { bio =>
+      checkResult(d2i_X509_bio(bio, 0))
+    }
   }
 }
 
@@ -21,8 +23,10 @@ object EVP_PKEY {
   def apply(key: Key): EVP_PKEY = {
     require(key.getFormat == "PKCS#8", "Key must be of type PKCS8 but was '%s'" format key.getFormat)
 
-    val pkcs8 = checkResult(d2i_PKCS8_PRIV_KEY_INFO_bio(BIO.fromBytes(key.getEncoded), 0))
-    checkResult(EVP_PKCS82PKEY(pkcs8))
+    BIO.withBytesBIO(key.getEncoded) { bio =>
+      val pkcs8 = checkResult(d2i_PKCS8_PRIV_KEY_INFO_bio(bio, 0))
+      checkResult(EVP_PKCS82PKEY(pkcs8))
+    }
   }
 }
 

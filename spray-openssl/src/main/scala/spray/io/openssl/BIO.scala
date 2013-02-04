@@ -2,7 +2,7 @@ package spray.io.openssl
 
 import org.bridj.{JNI, Pointer, TypedPointer}
 import spray.io.openssl.BridjedOpenssl._
-import spray.io.openssl.BIO_METHOD.{ctrl_callback, bwrite_callback, bread_callback, create_callback}
+import spray.io.openssl.BIO_METHOD._
 import java.io.{ByteArrayInputStream, InputStream}
 
 class BIO private[openssl](pointer: Long) extends TypedPointer(pointer) {
@@ -17,6 +17,7 @@ class BIO private[openssl](pointer: Long) extends TypedPointer(pointer) {
   def ctrlPending: Int =
     BIO_ctrl_pending(getPeer)
 
+  def free(): Int = BIO_free(getPeer)
 }
 
 /**
@@ -57,16 +58,21 @@ object BIO {
     bio
   }
 
-  def fromInputStream(is: InputStream): BIO =
-    fromImpl(new CopyingBIOImpl {
-      def flush() {}
-      def write(buffer: Array[Byte]): Int =
-        throw new UnsupportedOperationException("writing not supported")
-      def read(buffer: Array[Byte], length: Int): Int =
-        is.read(buffer, 0, length)
-    })
-  def fromBytes(bytes: Array[Byte]): BIO =
-    fromInputStream(new ByteArrayInputStream(bytes))
+  def withInputStreamBIO[T](is: InputStream)(body: BIO => T): T = {
+    val bio =
+      fromImpl(new CopyingBIOImpl {
+        def flush() {}
+        def write(buffer: Array[Byte]): Int =
+          throw new UnsupportedOperationException("writing not supported")
+        def read(buffer: Array[Byte], length: Int): Int =
+          is.read(buffer, 0, length)
+      })
+    try body(bio)
+    finally bio.free()
+  }
+
+  def withBytesBIO[T](bytes: Array[Byte])(body: BIO => T): T =
+    withInputStreamBIO(new ByteArrayInputStream(bytes))(body)
 
   def fromMethod(m: BIO_METHOD): BIO =
     new BIO(BIO_new(Pointer.pointerTo(m).getPeer))
@@ -76,45 +82,9 @@ object BIO {
    * the `bio->ptr` member.
    */
   def registerImpl(bio: BIO, impl: BIOImpl): Unit = {
-    val globalRef = BIOReferenceManager.globalReference(bio, impl)
+    val globalRef = JNI.newGlobalRef(impl)
     new bio_st(Pointer.pointerToAddress(bio.getPeer, classOf[bio_st]))
       .ptr(Pointer.pointerToAddress(globalRef))
-  }
-
-  /**
-   * Manages global native references. It binds the lifetime of the
-   * global reference to the lifetime of the generated BIO: When the
-   * generated BIO gets garbage collected,
-   *   - the bio instance itself will be freed
-   *   - the associated global ref to the implementation callback will be released
-   */
-  object BIOReferenceManager extends ReferenceQueue[BIO] {
-    //val queue = new ReferenceQueue[BIO]
-    var bios: List[BIOEntry] = Nil
-
-    case class BIOEntry(ref: PhantomReference[BIO], globalRef: Long, bioPtr: Long, impl: BIOImpl)
-
-    def globalReference(bio: BIO, impl: BIOImpl): Long = {
-      val globalRef = JNI.newGlobalRef(impl)
-      synchronized {
-        bios ::= BIOEntry(new PhantomReference[BIO](bio, this), globalRef, bio.getPeer, impl)
-      }
-      globalRef
-    }
-
-    /**
-     * Try to free bios if they aren't referenced any more.
-     */
-    def cleanup(): Unit = synchronized {
-      val (deadBios, aliveBios) = bios.partition(_.ref.isEnqueued())
-
-      deadBios.foreach {
-        case BIOEntry(_, globalRef, bioPtr, impl) =>
-          OpenSSL.checkResult(BIO_free(bioPtr))
-          JNI.deleteGlobalRef(globalRef)
-      }
-      bios = aliveBios
-    }
   }
 
   def implForBIO(bioPtr: Long): BIOImpl =
@@ -152,11 +122,22 @@ object BIO {
       }
     }
 
+  val destroyCB =
+    new destroy_callback {
+      def apply(BIOPtr1: Long): Int = {
+        val bioData = new bio_st(Pointer.pointerToAddress(BIOPtr1, classOf[bio_st]))
+        val ref = bioData.ptr().getPeer
+        if (ref != 0) JNI.deleteGlobalRef(ref)
+        1
+      }
+    }
+
   val javaMethod =
     (new BIO_METHOD)
       .create(createCB.toPointer)
       .bread(readCB.toPointer)
       .bwrite(writeCB.toPointer)
+      .destroy(destroyCB.toPointer)
       .ctrl(ctrlCB.toPointer)
 
   val BIO_FLAGS_READ = 1
