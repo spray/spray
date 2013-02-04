@@ -1,6 +1,6 @@
 package spray.io.openssl
 
-import org.bridj.{TypedPointer, Pointer}
+import org.bridj.{BridJ, TypedPointer, Pointer}
 
 import BridjedOpenssl._
 import java.util.concurrent.locks.ReentrantLock
@@ -50,4 +50,8 @@ object OpenSSL {
   def checkResult[T <: TypedPointer](res: T): T =
     if (res == null) throw new OpenSSLException(lastErrorString)
     else res
+
+  def shutdown() {
+    BridJ.releaseAll()
+  }
 }

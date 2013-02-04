@@ -87,7 +87,12 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
     }
   }
 
-  step { system.shutdown() }
+  step {
+    system.shutdown()
+    system.awaitTermination()
+
+    OpenSSL.shutdown()
+  }
 
   def withEstablishedConnection[T](body: EstablishedConnectionSetup => T): T = {
     val engine = context.createSSLEngine()
