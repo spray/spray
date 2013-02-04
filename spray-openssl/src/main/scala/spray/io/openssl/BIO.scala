@@ -74,14 +74,52 @@ object BIO {
   /**
    * Save an implementation for one of our bios. This puts a reference to the implementation into
    * the `bio->ptr` member.
-   *
-   * FIXME: unregister global ref, when?
    */
-  def registerImpl(bio: BIO, impl: BIOImpl): Unit =
-    new bio_st(Pointer.pointerToAddress(bio.getPeer, classOf[bio_st])).ptr(Pointer.pointerToAddress(JNI.newGlobalRef(impl)))
+  def registerImpl(bio: BIO, impl: BIOImpl): Unit = {
+    val globalRef = BIOReferenceManager.globalReference(bio, impl)
+    new bio_st(Pointer.pointerToAddress(bio.getPeer, classOf[bio_st]))
+      .ptr(Pointer.pointerToAddress(globalRef))
+  }
+
+  /**
+   * Manages global native references. It binds the lifetime of the
+   * global reference to the lifetime of the generated BIO: When the
+   * generated BIO gets garbage collected,
+   *   - the bio instance itself will be freed
+   *   - the associated global ref to the implementation callback will be released
+   */
+  object BIOReferenceManager extends ReferenceQueue[BIO] {
+    //val queue = new ReferenceQueue[BIO]
+    var bios: List[BIOEntry] = Nil
+
+    case class BIOEntry(ref: PhantomReference[BIO], globalRef: Long, bioPtr: Long, impl: BIOImpl)
+
+    def globalReference(bio: BIO, impl: BIOImpl): Long = {
+      val globalRef = JNI.newGlobalRef(impl)
+      synchronized {
+        bios ::= BIOEntry(new PhantomReference[BIO](bio, this), globalRef, bio.getPeer, impl)
+      }
+      globalRef
+    }
+
+    /**
+     * Try to free bios if they aren't referenced any more.
+     */
+    def cleanup(): Unit = synchronized {
+      val (deadBios, aliveBios) = bios.partition(_.ref.isEnqueued())
+
+      deadBios.foreach {
+        case BIOEntry(_, globalRef, bioPtr, impl) =>
+          OpenSSL.checkResult(BIO_free(bioPtr))
+          JNI.deleteGlobalRef(globalRef)
+      }
+      bios = aliveBios
+    }
+  }
 
   def implForBIO(bioPtr: Long): BIOImpl =
-    JNI.refToObject(new bio_st(Pointer.pointerToAddress(bioPtr, classOf[bio_st])).ptr().getPeer).asInstanceOf[BIOImpl]
+    JNI.refToObject(new bio_st(Pointer.pointerToAddress(bioPtr, classOf[bio_st])).ptr().getPeer)
+       .asInstanceOf[BIOImpl]
 
   val createCB =
     new create_callback {

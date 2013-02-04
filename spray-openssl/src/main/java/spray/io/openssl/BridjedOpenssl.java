@@ -11,6 +11,7 @@ public class BridjedOpenssl {
     }
 
     public static native long BIO_new(long method);
+    public static native int BIO_free(@Ptr long bio);
     public static native int BIO_new_bio_pair(
         Pointer<Long> bio1,
         @Ptr long writebuf1,

@@ -52,6 +52,10 @@ object OpenSSL {
     else res
 
   def shutdown() {
+    // run gc to try to free BIO references
+    System.gc()
+
+    BIO.BIOReferenceManager.cleanup()
     BridJ.releaseAll()
   }
 }
