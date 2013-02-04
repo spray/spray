@@ -6,30 +6,30 @@ import LibSSL._
 
 class SSLCtx private[openssl](pointer: Long) extends TypedPointer(pointer) {
   def newSSL(): SSL = {
-    val ssl = SSL_new(getPeer)
+    val ssl = SSL_new(getPeer).returnChecked
     require(ssl != 0L)
     new SSL(ssl)
   }
 
-  def setDefaultVerifyPaths(): Int =
-    SSL_CTX_set_default_verify_paths(getPeer)
+  def setDefaultVerifyPaths(): Unit =
+    SSL_CTX_set_default_verify_paths(getPeer).returnChecked
 
   def setVerify(mode: Int) {
     SSL_CTX_set_verify(getPeer, mode, 0)
   }
 
-  def setCipherList(ciphers: DirectBuffer): Int =
-    SSL_CTX_set_cipher_list(getPeer, ciphers.pointer.getPeer)
+  def setCipherList(ciphers: DirectBuffer): Unit =
+    SSL_CTX_set_cipher_list(getPeer, ciphers.pointer.getPeer).returnChecked
 
-  def usePrivateKeyFile(fileName: String, `type`: Int): Int = {
+  def usePrivateKeyFile(fileName: String, `type`: Int): Unit = {
     val buffer = Pointer.allocateBytes(fileName.length + 1)
     buffer.setCString(fileName)
-    SSL_CTX_use_PrivateKey_file(getPeer, buffer, `type`)
+    SSL_CTX_use_PrivateKey_file(getPeer, buffer, `type`).returnChecked
   }
-  def useCertificateChainFile(fileName: String): Int = {
+  def useCertificateChainFile(fileName: String): Unit = {
     val buffer = Pointer.allocateBytes(fileName.length + 1)
     buffer.setCString(fileName)
-    SSL_CTX_use_certificate_chain_file(getPeer, buffer)
+    SSL_CTX_use_certificate_chain_file(getPeer, buffer).returnChecked
   }
 
   import SSL._
@@ -46,5 +46,5 @@ object SSLCtx {
   // make sure openssl is initialized
   OpenSSL()
 
-  def create(method: Long): SSLCtx = new SSLCtx(SSL_CTX_new(method))
+  def create(method: Long): SSLCtx = new SSLCtx(SSL_CTX_new(method).returnChecked)
 }

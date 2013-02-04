@@ -68,7 +68,7 @@ object OpenSSLClientConfigurator {
         ctx.setVerify(if (verify) 1 else 0)
 
         ciphers.foreach { cipherDesc =>
-          OpenSSL.checkResult(ctx.setCipherList(DirectBuffer.forCString(cipherDesc)))
+          ctx.setCipherList(DirectBuffer.forCString(cipherDesc))
         }
 
         val certStore = ctx.getCertificateStore
