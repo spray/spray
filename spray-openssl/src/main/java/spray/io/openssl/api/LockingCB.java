@@ -1,4 +1,4 @@
-package spray.io.openssl;
+package spray.io.openssl.api;
 
 import org.bridj.Callback;
 import org.bridj.Pointer;

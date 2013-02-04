@@ -1,10 +1,11 @@
 package spray.io.openssl
+package api
 
 import org.bridj.TypedPointer
 import java.security.Key
 import java.security.cert.Certificate
 
-import BridjedOpenssl._
+import LibSSL._
 import OpenSSL._
 
 class X509Certificate private[openssl](pointer: Long) extends TypedPointer(pointer)

@@ -1,11 +1,11 @@
-package spray.io.openssl;
+package spray.io.openssl.api;
 
 import org.bridj.*;
 import org.bridj.ann.Library;
 import org.bridj.ann.Ptr;
 
 @Library("ssl")
-public class BridjedOpenssl {
+public class LibSSL {
     static {
         BridJ.register();
     }

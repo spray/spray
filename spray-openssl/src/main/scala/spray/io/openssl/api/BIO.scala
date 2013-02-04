@@ -1,9 +1,12 @@
 package spray.io.openssl
+package api
+
+import java.io.{ByteArrayInputStream, InputStream}
 
 import org.bridj.{JNI, Pointer, TypedPointer}
-import spray.io.openssl.BridjedOpenssl._
-import spray.io.openssl.BIO_METHOD._
-import java.io.{ByteArrayInputStream, InputStream}
+
+import LibSSL._
+import BIO_METHOD._
 
 class BIO private[openssl](pointer: Long) extends TypedPointer(pointer) {
   def write(buffer: DirectBuffer, len: Int): Int = {

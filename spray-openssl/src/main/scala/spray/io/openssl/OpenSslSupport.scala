@@ -1,6 +1,7 @@
 package spray.io.openssl
 
 import collection.immutable.Queue
+import akka.event.LoggingAdapter
 import java.nio.ByteBuffer
 import javax.net.ssl.SSLException
 import annotation.tailrec
@@ -11,9 +12,7 @@ import java.{util, lang}
 import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.atomic.AtomicInteger
 import spray.io._
-import spray.io.openssl.BridjedOpenssl._
-import akka.event.LoggingAdapter
-
+import api._
 
 object OpenSslSupport {
   def apply(sslFactory: PipelineContext => SSL,

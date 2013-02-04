@@ -1,7 +1,9 @@
 package spray.io.openssl
+package api
+
+import java.nio.ByteBuffer
 
 import org.bridj.Pointer
-import java.nio.ByteBuffer
 
 /**
  * A wrapper around BridJ's native Pointers.

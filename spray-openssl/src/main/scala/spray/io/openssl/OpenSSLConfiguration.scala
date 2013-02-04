@@ -2,7 +2,7 @@ package spray.io.openssl
 
 import spray.io.{PipelineContext, ClientSSLEngineProvider}
 import java.security.cert.Certificate
-import spray.io.openssl.BridjedOpenssl._
+import api._
 
 trait OpenSSLConfigurator {
   /**
@@ -60,7 +60,7 @@ object OpenSSLClientConfigurator {
       var certificates: List[X509Certificate] = Nil
 
       def build(): ClientSSLEngineProvider = {
-        val ctx = SSLCtx.create(SSLv23_method())
+        val ctx = SSLCtx.create(OpenSSL.SSLv23_method)
         ctx.setMode(SSL.SSL_MODE_RELEASE_BUFFERS)
         ctx.setOptions(SSL.SSL_OP_NO_COMPRESSION)
 

@@ -1,7 +1,8 @@
 package spray.io.openssl
+package api
 
 import org.bridj.{JNI, TypedPointer}
-import spray.io.openssl.BridjedOpenssl._
+import LibSSL._
 
 class SSL private[openssl](pointer: Long) extends TypedPointer(pointer) {
   def setBio(readBio: BIO, writeBio: BIO) {

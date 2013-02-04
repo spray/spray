@@ -1,9 +1,11 @@
 package spray.io.openssl
+package api
+
+import java.util.concurrent.locks.ReentrantLock
 
 import org.bridj.{BridJ, TypedPointer, Pointer}
 
-import BridjedOpenssl._
-import java.util.concurrent.locks.ReentrantLock
+import LibSSL._
 
 class OpenSSLException(msg: String) extends Exception(msg)
 
@@ -39,6 +41,8 @@ object OpenSSL {
     ERR_error_string_n(ERR_get_error(), resPtr, 200)
     resPtr.getCString
   }
+
+  def SSLv23_method = LibSSL.SSLv23_method()
 
   def checkResult(res: Int): Int =
     if (res <= 0) throw new OpenSSLException(lastErrorString)

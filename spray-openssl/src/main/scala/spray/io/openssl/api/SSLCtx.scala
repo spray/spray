@@ -1,7 +1,8 @@
 package spray.io.openssl
+package api
 
 import org.bridj.{Pointer, TypedPointer}
-import spray.io.openssl.BridjedOpenssl._
+import LibSSL._
 
 class SSLCtx private[openssl](pointer: Long) extends TypedPointer(pointer) {
   def newSSL(): SSL = {
@@ -42,9 +43,8 @@ class SSLCtx private[openssl](pointer: Long) extends TypedPointer(pointer) {
     SSL_CTX_get_cert_store(getPeer)
 }
 object SSLCtx {
-  def create(method: Long): SSLCtx =
-    new SSLCtx(SSL_CTX_new(method))
-
   // make sure openssl is initialized
   OpenSSL()
+
+  def create(method: Long): SSLCtx = new SSLCtx(SSL_CTX_new(method))
 }
