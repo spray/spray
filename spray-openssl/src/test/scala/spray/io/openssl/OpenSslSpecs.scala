@@ -11,6 +11,7 @@ import akka.testkit.{TestProbe, TestKit}
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import annotation.tailrec
+import spray.util.ConnectionCloseReasons.PeerClosed
 
 class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
   val keyStore = loadKeyStore("/ssl-test-keystore.jks", "")
@@ -283,6 +284,10 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
             }
           }, handler !, handler !)
         (pipes.commandPipeline, pipes.eventPipeline)
+      }
+
+      override def postStop() {
+        stageEventPL(IOPeer.Closed(null, PeerClosed))
       }
     }
 

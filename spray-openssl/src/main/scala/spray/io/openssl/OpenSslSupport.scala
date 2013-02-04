@@ -33,7 +33,8 @@ object OpenSslSupport {
         var pendingSends = Queue.empty[ByteBuffer]
         var inputBuffer = Queue.empty[ByteBuffer]
 
-        val ssl = sslFactory(context)
+        // that's a var because we want to `null` it out once `free()` has been called
+        var ssl = sslFactory(context)
 
         if (client)
           context.self ! StartHandshake
@@ -96,8 +97,9 @@ object OpenSslSupport {
             withTempBuf(tryRead)
             debug("Finished receiving %d bytes" format buffer.remaining)
 
-          //case x: IOPeer.Closed =>
-
+          case IOPeer.Closed(_, _) =>
+            ssl.free()
+            ssl = null // don't keep freed pointers around
           case ev => eventPL(ev)
         }
 

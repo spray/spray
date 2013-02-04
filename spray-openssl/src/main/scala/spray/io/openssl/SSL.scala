@@ -36,6 +36,7 @@ class SSL private[openssl](pointer: Long) extends TypedPointer(pointer) {
   def getError(ret: Int): Int =
     SSL_get_error(getPeer, ret)
 
+  def free(): Unit = SSL_free(getPeer)
 
   def setCallback(f: (Int, Int) => Unit) {
     // FIXME: make sure the callback is not GC'd

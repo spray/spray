@@ -42,6 +42,7 @@ public class BridjedOpenssl {
 
     public static native long SSL_new(@Ptr long ctx);
 
+    public static native void SSL_free(@Ptr long ssl);
     public static native void SSL_set_bio(
         @Ptr long ssl,
         long rbio,

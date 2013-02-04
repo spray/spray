@@ -17,7 +17,7 @@ class BIO private[openssl](pointer: Long) extends TypedPointer(pointer) {
   def ctrlPending: Int =
     BIO_ctrl_pending(getPeer)
 
-  def free(): Int = BIO_free(getPeer)
+  def free(): Int = OpenSSL.checkResult(BIO_free(getPeer))
 }
 
 /**
