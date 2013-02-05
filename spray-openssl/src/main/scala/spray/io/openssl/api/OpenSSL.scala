@@ -55,6 +55,8 @@ object OpenSSL {
     if (res == null) throw new OpenSSLException(lastErrorString)
     else res
 
+  def NULL[T]: Pointer[T] = Pointer.NULL.asInstanceOf[Pointer[T]]
+
   def shutdown() {
     BridJ.releaseAll()
   }

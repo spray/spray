@@ -37,8 +37,13 @@ public class LibSSL {
     public static native int SSL_CTX_use_certificate_chain_file(@Ptr long ctx, Pointer<Byte> fileName);
     public static native X509_STORE SSL_CTX_get_cert_store(@Ptr long ctx);
 
-    public static native long SSL_CTX_ctrl(@Ptr long ctx, int cmd, long larg, long parg);
+    public static native void SSL_CTX_sess_set_new_cb(@Ptr long ctx, Pointer<NewSessionCB> callback);
 
+    public static abstract class NewSessionCB extends Callback<NewSessionCB> {
+        abstract public void apply(SSL ssl, SSL_SESSION session);
+    }
+
+    public static native long SSL_CTX_ctrl(@Ptr long ctx, int cmd, long larg, long parg);
 
     public static native long SSL_new(@Ptr long ctx);
 
@@ -58,12 +63,26 @@ public class LibSSL {
     public static native int SSL_want(@Ptr long ssl);
     public static native int SSL_pending(@Ptr long ssl);
 
+    public static native int SSL_set_session(SSL ssl, SSL_SESSION session);
+
     public static native int SSL_get_error(@Ptr long ssl, int ret);
     public static native int SSL_set_info_callback(@Ptr long ssl, Pointer<InfoCallback> callback);
 
     public static abstract class InfoCallback extends Callback<InfoCallback> {
         abstract public void apply(/*Pointer<SSL>*/ long ssl, int where, int ret);
     }
+
+    public static native int SSL_get_ex_new_index(long argl,
+                                                  long argp,
+                                                  long new_func,
+                                                  long dup_func,
+                                                  long free_func);
+    public static native int SSL_set_ex_data(@Ptr long ssl, int idx, long arg);
+    public static native long SSL_get_ex_data(@Ptr long ssl, int idx);
+    public static native SSL_SESSION SSL_get1_session(@Ptr long ssl);
+    public static native long SSL_SESSION_get_time(SSL_SESSION session);
+    public static native SSL_SESSION d2i_SSL_SESSION(@Ptr long a, Pointer<Pointer<Byte>> in, long length);
+    public static native int i2d_SSL_SESSION(SSL_SESSION in, Pointer<Pointer<Byte>> out);
 
     public static native void SSL_load_error_strings();
     public static native long ERR_get_error();

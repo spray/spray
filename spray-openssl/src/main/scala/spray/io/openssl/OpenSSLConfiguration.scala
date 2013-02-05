@@ -1,5 +1,6 @@
 package spray.io.openssl
 
+import api.LibSSL.NewSessionCB
 import spray.io.{PipelineContext, ClientSSLEngineProvider}
 import java.security.cert.Certificate
 import api._
@@ -52,29 +53,81 @@ trait OpenSSLClientConfigurator extends OpenSSLConfigurator {
   def disableVerification(): this.type
 }
 object OpenSSLClientConfigurator {
+  // we save a reference of the associated pipelineCtx into the native data structure
+  // and reserve a slot here for this purpose
+  val pipelineContextSlot = SSL.createExDataSlot[PipelineContext]()
+
+  trait BaseOpenSSLConfigurator {
+    var ciphers: Option[String] = None
+
+    def createCtx: SSLCtx = {
+      val ctx = SSLCtx.create(OpenSSL.SSLv23_method)
+      ctx.setMode(SSL.SSL_MODE_RELEASE_BUFFERS)
+      ctx.setOptions(SSL.SSL_OP_NO_COMPRESSION)
+
+      ciphers.foreach { cipherDesc =>
+        ctx.setCipherList(DirectBuffer.forCString(cipherDesc))
+      }
+
+      ctx
+    }
+  }
+
   def apply(): OpenSSLClientConfigurator =
-    new OpenSSLClientConfigurator {
-      var ciphers: Option[String] = None
+    new OpenSSLClientConfigurator with BaseOpenSSLConfigurator {
       var useDefaultVerifyPaths = true
       var verify = true
       var certificates: List[X509Certificate] = Nil
+      var sessionHandler: Option[SessionHandler] = None
 
       def build(): ClientSSLEngineProvider = {
-        val ctx = SSLCtx.create(OpenSSL.SSLv23_method)
-        ctx.setMode(SSL.SSL_MODE_RELEASE_BUFFERS)
-        ctx.setOptions(SSL.SSL_OP_NO_COMPRESSION)
+        val ctx = createCtx
 
         if (useDefaultVerifyPaths) ctx.setDefaultVerifyPaths()
         ctx.setVerify(if (verify) 1 else 0)
 
-        ciphers.foreach { cipherDesc =>
-          ctx.setCipherList(DirectBuffer.forCString(cipherDesc))
-        }
-
         val certStore = ctx.getCertificateStore
         certificates.foreach(certStore.addCertificate)
 
-        def sslFactory(pipeCtx: PipelineContext): SSL = ctx.newSSL()
+        sessionHandler.foreach { handler =>
+          // enable session caching but disable internal caching and, instead, ...
+          ctx.setSessionCacheMode(SSLCtx.SSL_SESS_CACHE_CLIENT | SSLCtx.SSL_SESS_CACHE_NO_INTERNAL)
+
+          // ... register a callback to do it on our side
+          ctx.setNewSessionCallback(new NewSessionCB {
+            def apply(ssl: SSL, session: SSL_SESSION) {
+              // FIXME: when do we release native sessions?
+              val sessCopy = ssl.get1Session()
+              val bytes = session.toBytes
+              val creationCtx = ctx
+              val sess = new Session with InMemorySession {
+                def get: SSL_SESSION = sessCopy
+                def belongsTo(ctx: SSLCtx): Boolean = ctx == creationCtx
+
+                def asBytes: Array[Byte] = bytes
+              }
+              handler.incomingSession(ssl(pipelineContextSlot), sess)
+            }
+          })
+        }
+
+        def convertSession(session: Session): SSL_SESSION = session match {
+          case s: InMemorySession if s belongsTo ctx => s.get
+          case s: Session => SSL_SESSION.fromBytes(s.asBytes)
+        }
+
+        def sslFactory(pipeCtx: PipelineContext): SSL = {
+          val ssl = ctx.newSSL()
+
+          ssl(pipelineContextSlot) = pipeCtx
+
+          for {
+            handler <- sessionHandler
+            session <- handler.provideSession(pipeCtx)
+          } ssl.setSession(convertSession(session))
+
+          ssl
+        }
 
         ClientSSLEngineProvider(OpenSslSupport(sslFactory, sslEnabled = _ => true, client = true) _)
       }
@@ -88,7 +141,8 @@ object OpenSSLClientConfigurator {
       def dontAcceptDefaultVerifyPaths(): this.type =
         andReturnSelf { useDefaultVerifyPaths = false }
 
-      def setSessionHandler(handler: SessionHandler): this.type = throw new UnsupportedOperationException("nyi")
+      def setSessionHandler(handler: SessionHandler): this.type =
+        andReturnSelf { sessionHandler = Some(handler) }
 
       // why would you do THAT? I don't know. Still it's possible...
       def disableVerification(): this.type = andReturnSelf(verify = false)
@@ -98,4 +152,9 @@ object OpenSSLClientConfigurator {
         this
       }
     }
+
+  trait InMemorySession {
+    def belongsTo(ctx: SSLCtx): Boolean
+    def get: SSL_SESSION
+  }
 }

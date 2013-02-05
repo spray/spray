@@ -12,6 +12,7 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import annotation.tailrec
 import spray.util.ConnectionCloseReasons.PeerClosed
+import scala.concurrent.duration._
 
 class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
   val keyStore = loadKeyStore("/ssl-test-keystore.jks", "")
@@ -21,7 +22,7 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
     "gracefully close connection" in pending
 
     "support client mode" in {
-      "run a full cycle" in withEstablishedConnection { setup =>
+      "run a full cycle" in withEstablishedConnection() { setup =>
         import setup._
 
         // send something through the pipe from client to server
@@ -39,7 +40,7 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
         transferToClient() must be_==(Seq(EncryptedData))
         openSslClient.commander.expectMsgType[IOPeer.Received].buffer.remaining() must be_==(4)
       }
-      "make sure big buffers are written properly" in withEstablishedConnection { setup =>
+      "make sure big buffers are written properly" in withEstablishedConnection() { setup =>
         import setup._
 
         val totalSize = 500000
@@ -59,7 +60,7 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
         engine.setUseClientMode(false)
 
         val javaSslServer = StageTestSetup(SslTlsSupport(_ => engine, system.log))
-        val openSslClient = StageTestSetup(createDefaultOpenSslStage)
+        val openSslClient = StageTestSetup(defaultConfig(OpenSSLClientConfigurator()).build())
 
         val setup = EstablishedConnectionSetup(javaSslServer, openSslClient)
         import setup._
@@ -77,8 +78,41 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
         buf.toSeq must be_==(data)
       }
       "configure ciphers" in pending
-      "allow extraction of sessions" in pending
-      "reuse old session if requested" in pending
+      "allow caching of sessions" in {
+        // a stupid session cache which doesn't save the session per remote address / hostname
+        var session: Option[Session] = None
+        val handler = new SessionHandler {
+          def provideSession(ctx: PipelineContext): Option[Session] = session
+          def incomingSession(ctx: PipelineContext, s: Session): Unit = session = Some(s)
+        }
+
+        def run(handshake: EstablishedConnectionSetup => Unit): Unit = {
+          val stage =
+            defaultConfig(OpenSSLClientConfigurator())
+              .setSessionHandler(handler)
+              .build()
+
+          val engine = context.createSSLEngine()
+          engine.setUseClientMode(false)
+
+          val javaSslServer = StageTestSetup(SslTlsSupport(_ => engine, system.log))
+          val openSslClient = StageTestSetup(stage)
+
+          val setup = EstablishedConnectionSetup(javaSslServer, openSslClient)
+          import setup._
+
+          val data = (0 until 100).map(_.toByte)
+          openSslClient.sendData(data.toArray)
+          handshake(setup)
+        }
+
+        run(runHandshake)
+
+        session must beSome
+
+        run(runAbbreviatedHandshake)
+        ok
+      }
       "disable verification" in pending
     }
     "support server mode" in {
@@ -95,12 +129,12 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
     api.OpenSSL.shutdown()
   }
 
-  def withEstablishedConnection[T](body: EstablishedConnectionSetup => T): T = {
+  def withEstablishedConnection[T](extraConfig: OpenSSLClientConfigurator => OpenSSLClientConfigurator = defaultConfig)(body: EstablishedConnectionSetup => T): T = {
     val engine = context.createSSLEngine()
     engine.setUseClientMode(false)
 
     val javaSslServer = StageTestSetup(SslTlsSupport(_ => engine, system.log))
-    val openSslClient = StageTestSetup(createDefaultOpenSslStage)
+    val openSslClient = StageTestSetup(extraConfig(OpenSSLClientConfigurator()).build())
 
     val setup = EstablishedConnectionSetup(javaSslServer, openSslClient)
     runHandshake(setup)
@@ -111,11 +145,9 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
     body(setup)
   }
 
-  def createDefaultOpenSslStage =
-    OpenSSLClientConfigurator()
-      .acceptServerCertificate(keyStore.getCertificate("spray team"))
-      .acceptCiphers("RSA")
-      .build()
+  def defaultConfig: OpenSSLClientConfigurator => OpenSSLClientConfigurator =
+    _.acceptServerCertificate(keyStore.getCertificate("spray team"))
+     .acceptCiphers("RSA")
 
   def runHandshake(setup: EstablishedConnectionSetup): Unit = {
     import setup._
@@ -145,6 +177,26 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
     // for some reason the java ssl implementation transports these in two packets
     // encrypted handshake
     transferToClient() must be_==(Seq(HandshakeMessage(EncryptedHandshakeMessage)))
+  }
+  def runAbbreviatedHandshake(setup: EstablishedConnectionSetup): Unit = {
+    import setup._
+
+    // make sure handshaking has not started yet
+    //engine.getHandshakeStatus must be_==(SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING)
+
+    // client hello
+    transferToServer() must be_==(Seq(HandshakeMessage(ClientHello)))
+
+    // server hello
+    transferToClient() must be_==(Seq(HandshakeMessage(ServerHello)))
+    transferToClient() must be_==(Seq(ChangeCipherSpec))
+    transferToClient() must be_==(Seq(HandshakeMessage(EncryptedHandshakeMessage)))
+
+    // client key exchange
+    transferToServer() must be_==(
+      Seq(
+        ChangeCipherSpec,
+        HandshakeMessage(EncryptedHandshakeMessage)))
   }
 
   case class EstablishedConnectionSetup(javaSslServer: StageTestSetup, openSslClient: StageTestSetup) {

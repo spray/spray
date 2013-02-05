@@ -41,10 +41,24 @@ class SSLCtx private[openssl](pointer: Long) extends TypedPointer(pointer) {
 
   def getCertificateStore: X509_STORE =
     SSL_CTX_get_cert_store(getPeer)
+
+  def setSessionCacheMode(mode: Long): Long = SSL_CTX_ctrl(getPeer, SSL_CTRL_SET_SESS_CACHE_MODE, mode, 0)
+
+  def setNewSessionCallback(callback: NewSessionCB): Unit =
+    SSL_CTX_sess_set_new_cb(getPeer, callback.toPointer)
 }
 object SSLCtx {
   // make sure openssl is initialized
   OpenSSL()
+
+  val SSL_SESS_CACHE_OFF = 0x0000
+  val SSL_SESS_CACHE_CLIENT = 0x0001
+  val SSL_SESS_CACHE_SERVER	= 0x0002
+  val SSL_SESS_CACHE_BOTH	 = SSL_SESS_CACHE_CLIENT | SSL_SESS_CACHE_SERVER
+  val SSL_SESS_CACHE_NO_AUTO_CLEAR = 0x0080
+  val SSL_SESS_CACHE_NO_INTERNAL_LOOKUP = 0x0100
+  val SSL_SESS_CACHE_NO_INTERNAL_STORE = 0x0200
+  val SSL_SESS_CACHE_NO_INTERNAL = SSL_SESS_CACHE_NO_INTERNAL_LOOKUP | SSL_SESS_CACHE_NO_INTERNAL_STORE
 
   def create(method: Long): SSLCtx = new SSLCtx(SSL_CTX_new(method).returnChecked)
 }

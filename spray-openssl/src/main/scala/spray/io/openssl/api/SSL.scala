@@ -34,8 +34,17 @@ class SSL private[openssl](pointer: Long) extends TypedPointer(pointer) {
   def pending: Int =
     SSL_pending(getPeer)
 
+  def get1Session(): SSL_SESSION = SSL_get1_session(getPeer).returnChecked
+  def setSession(session: SSL_SESSION): Unit = SSL_set_session(this, session).returnChecked
+
   def getError(ret: Int): Int =
     SSL_get_error(getPeer, ret)
+
+  def setExData(idx: Int, arg: Long): Unit = SSL_set_ex_data(getPeer, idx, arg).returnChecked
+  def getExData(idx: Int): Long = SSL_get_ex_data(getPeer, idx)
+
+  def update[E](slot: SSL.ExDataSlot[E], data: E): Unit = setExData(slot.idx, JNI.newWeakGlobalRef(data))
+  def apply[E](slot: SSL.ExDataSlot[E]): E = JNI.refToObject(getExData(slot.idx)).asInstanceOf[E]
 
   def free(): Unit = SSL_free(getPeer)
 
@@ -52,7 +61,22 @@ class SSL private[openssl](pointer: Long) extends TypedPointer(pointer) {
 object SSL {
   val SSL_CTRL_OPTIONS = 32
   val SSL_CTRL_MODE = 33
+  val SSL_CTRL_SET_SESS_CACHE_MODE = 44
 
   val SSL_MODE_RELEASE_BUFFERS = 0x00000010L
   val SSL_OP_NO_COMPRESSION = 0x00020000L
+
+  /**
+   * A native external data slot where managed data can be associated
+   * with native data structures. The association uses a weakGlobalRef,
+   * so `get` may always return `null`.
+   */
+  trait ExDataSlot[E] {
+    def idx: Int
+  }
+
+  def createExDataSlot[T](): ExDataSlot[T] =
+    new ExDataSlot[T] {
+      val idx = LibSSL.SSL_get_ex_new_index(0, 0, 0, 0, 0)
+    }
 }

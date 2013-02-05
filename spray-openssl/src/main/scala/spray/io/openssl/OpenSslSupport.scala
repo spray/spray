@@ -96,9 +96,10 @@ object OpenSslSupport {
             withTempBuf(tryRead)
             debug("Finished receiving %d bytes" format buffer.remaining)
 
-          case IOPeer.Closed(_, _) =>
-            ssl.free()
+          case c@IOPeer.Closed(_, _) =>
+            if (ssl != null) ssl.free()
             ssl = null // don't keep freed pointers around
+            eventPL(c)
           case ev => eventPL(ev)
         }
 
