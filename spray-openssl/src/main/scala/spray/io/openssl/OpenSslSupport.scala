@@ -35,13 +35,11 @@ object OpenSslSupport {
         // that's a var because we want to `null` it out once `free()` has been called
         var ssl = sslFactory(context)
 
-        if (client)
-          context.self ! StartHandshake
-        else
-          ssl.setAcceptState()
+        if (client) context.self ! StartHandshake
+        else ssl.setAcceptState()
 
-        val internal = BIO.fromImpl(this)
-        ssl.setBio(internal, internal)
+        val networkInterface = BIO.fromImpl(this)
+        ssl.setBio(networkInterface, networkInterface)
 
         // BIOImpl implementations, will be called when calling
         // ssl.read or ssl.write
