@@ -73,12 +73,13 @@ object OpenSSLClientConfigurator {
     }
   }
 
-  def apply(): OpenSSLClientConfigurator =
+  def apply(ext: OpenSSLExtension): OpenSSLClientConfigurator =
     new OpenSSLClientConfigurator with BaseOpenSSLConfigurator {
       var useDefaultVerifyPaths = true
       var verify = true
       var certificates: List[X509Certificate] = Nil
       var sessionHandler: Option[SessionHandler] = None
+      val keepNativeSessions = ext.Settings.keepNativeSessions
 
       def build(): ClientSSLEngineProvider = {
         val ctx = createCtx
@@ -96,17 +97,22 @@ object OpenSSLClientConfigurator {
           // ... register a callback to do it on our side
           ctx.setNewSessionCallback(new NewSessionCB {
             def apply(ssl: SSL, session: SSL_SESSION) {
-              // FIXME: when do we release native sessions?
-              val sessCopy = ssl.get1Session()
               val bytes = session.toBytes
-              val creationCtx = ctx
-              val sess = new Session with InMemorySession {
-                def get: SSL_SESSION = sessCopy
-                def belongsTo(ctx: SSLCtx): Boolean = ctx == creationCtx
 
-                def asBytes: Array[Byte] = bytes
-              }
-              handler.incomingSession(ssl(pipelineContextSlot), sess)
+              def createSession() =
+                if (keepNativeSessions)
+                  new SimpleSession(bytes) with InMemorySession {
+                    // FIXME: when do we release native sessions?
+                    val sessCopy = ssl.get1Session()
+
+                    val creationCtx = ctx
+
+                    def get: SSL_SESSION = sessCopy
+                    def belongsTo(ctx: SSLCtx): Boolean = ctx == creationCtx
+                  }
+                else new SimpleSession(bytes)
+
+              handler.incomingSession(ssl(pipelineContextSlot), createSession())
             }
           })
         }
@@ -152,6 +158,8 @@ object OpenSSLClientConfigurator {
         this
       }
     }
+
+  class SimpleSession(val asBytes: Array[Byte]) extends Session
 
   trait InMemorySession {
     def belongsTo(ctx: SSLCtx): Boolean

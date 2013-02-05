@@ -60,7 +60,7 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
         engine.setUseClientMode(false)
 
         val javaSslServer = StageTestSetup(SslTlsSupport(_ => engine, system.log))
-        val openSslClient = StageTestSetup(defaultConfig(OpenSSLClientConfigurator()).build())
+        val openSslClient = StageTestSetup(defaultConfig(newConfigurator()).build())
 
         val setup = EstablishedConnectionSetup(javaSslServer, openSslClient)
         import setup._
@@ -88,7 +88,7 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
 
         def run(handshake: EstablishedConnectionSetup => Unit): Unit = {
           val stage =
-            defaultConfig(OpenSSLClientConfigurator())
+            defaultConfig(newConfigurator())
               .setSessionHandler(handler)
               .build()
 
@@ -134,7 +134,7 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
     engine.setUseClientMode(false)
 
     val javaSslServer = StageTestSetup(SslTlsSupport(_ => engine, system.log))
-    val openSslClient = StageTestSetup(extraConfig(OpenSSLClientConfigurator()).build())
+    val openSslClient = StageTestSetup(extraConfig(newConfigurator()).build())
 
     val setup = EstablishedConnectionSetup(javaSslServer, openSslClient)
     runHandshake(setup)
@@ -303,6 +303,8 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
     context.init(keyManagerFactory.getKeyManagers, trustManagerFactory.getTrustManagers, new SecureRandom)
     context
   }
+
+  def newConfigurator() = OpenSSLExtension(system).newClientConfigurator()
 
   def reverse(command: IOPeer.Send): IOPeer.Received = command match {
     case IOPeer.Send(Seq(one), _) => IOPeer.Received(null, one)
