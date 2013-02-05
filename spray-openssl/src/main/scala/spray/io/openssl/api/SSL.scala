@@ -5,18 +5,10 @@ import org.bridj.{JNI, TypedPointer}
 import LibSSL._
 
 class SSL private[openssl](pointer: Long) extends TypedPointer(pointer) {
-  def setBio(readBio: BIO, writeBio: BIO) {
-    SSL_set_bio(getPeer, readBio.getPeer, writeBio.getPeer)
-  }
-
-  def connect(): Int =
-    SSL_connect(getPeer)
-
-  def accept(): Int =
-    SSL_accept(getPeer)
-
-  def setAcceptState(): Unit =
-    SSL_set_accept_state(getPeer)
+  def setBio(readBio: BIO, writeBio: BIO): Unit = SSL_set_bio(getPeer, readBio.getPeer, writeBio.getPeer)
+  def connect(): Int = SSL_connect(getPeer)
+  def accept(): Int = SSL_accept(getPeer)
+  def setAcceptState(): Unit = SSL_set_accept_state(getPeer)
 
 
   def write(buffer: DirectBuffer, len: Int): Int = {
@@ -28,11 +20,8 @@ class SSL private[openssl](pointer: Long) extends TypedPointer(pointer) {
     SSL_read(getPeer, buffer.address, len)
   }
 
-  def want: Int =
-    SSL_want(getPeer)
-
-  def pending: Int =
-    SSL_pending(getPeer)
+  def want: Int = SSL_want(getPeer)
+  def pending: Int = SSL_pending(getPeer)
 
   def get1Session(): SSL_SESSION = SSL_get1_session(getPeer).returnChecked
   def setSession(session: SSL_SESSION): Unit = SSL_set_session(this, session).returnChecked
