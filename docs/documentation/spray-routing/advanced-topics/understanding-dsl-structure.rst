@@ -21,7 +21,7 @@ which is a function literal. The function defined by the literal is created at t
 but the code inside of the function is not executed until an actual request is injected into the route structure.
 This is all probably quite clear.
 
-Not let's look at this slightly more complex structure::
+Now let's look at this slightly more complex structure::
 
     val route: Route =
       get {
@@ -98,7 +98,7 @@ Let's take a look at this example::
       }
     }
 
-Here we have put logging statements at four different places in our route structure. Let's see, when exactly they
+Here we have put logging statements at four different places in our route structure. Let's see when exactly they
 will be executed.
 
 MARK 1 and MARK 2
