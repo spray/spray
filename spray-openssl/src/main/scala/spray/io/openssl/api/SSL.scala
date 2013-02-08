@@ -1,15 +1,16 @@
 package spray.io.openssl
 package api
 
-import org.bridj.{JNI, TypedPointer}
+import org.bridj.{Pointer, JNI, TypedPointer}
 import LibSSL._
 
-class SSL private[openssl](pointer: Long) extends TypedPointer(pointer) {
+class SSL private[openssl](pointer: Long) extends TypedPointer(pointer) with WithExDataMethods[SSL] {
   def setBio(readBio: BIO, writeBio: BIO): Unit = SSL_set_bio(getPeer, readBio.getPeer, writeBio.getPeer)
   def connect(): Int = SSL_connect(getPeer)
   def accept(): Int = SSL_accept(getPeer)
   def setAcceptState(): Unit = SSL_set_accept_state(getPeer)
 
+  def getCtx: SSLCtx = SSL_get_SSL_CTX(this)
 
   def write(buffer: DirectBuffer, len: Int): Int = {
     require(buffer.size >= len)
@@ -32,9 +33,6 @@ class SSL private[openssl](pointer: Long) extends TypedPointer(pointer) {
   def setExData(idx: Int, arg: Long): Unit = SSL_set_ex_data(getPeer, idx, arg).returnChecked
   def getExData(idx: Int): Long = SSL_get_ex_data(getPeer, idx)
 
-  def update[E](slot: SSL.ExDataSlot[E], data: E): Unit = setExData(slot.idx, JNI.newWeakGlobalRef(data))
-  def apply[E](slot: SSL.ExDataSlot[E]): E = JNI.refToObject(getExData(slot.idx)).asInstanceOf[E]
-
   def free(): Unit = SSL_free(getPeer)
 
   def setCallback(f: (Int, Int) => Unit) {
@@ -47,7 +45,7 @@ class SSL private[openssl](pointer: Long) extends TypedPointer(pointer) {
   }
 }
 
-object SSL {
+object SSL extends WithExDataCompanion[SSL] {
   val SSL_CTRL_OPTIONS = 32
   val SSL_CTRL_MODE = 33
   val SSL_CTRL_SET_SESS_CACHE_MODE = 44
@@ -55,17 +53,5 @@ object SSL {
   val SSL_MODE_RELEASE_BUFFERS = 0x00000010L
   val SSL_OP_NO_COMPRESSION = 0x00020000L
 
-  /**
-   * A native external data slot where managed data can be associated
-   * with native data structures. The association uses a weakGlobalRef,
-   * so `get` may always return `null`.
-   */
-  trait ExDataSlot[E] {
-    def idx: Int
-  }
-
-  def createExDataSlot[T](): ExDataSlot[T] =
-    new ExDataSlot[T] {
-      val idx = LibSSL.SSL_get_ex_new_index(0, 0, 0, 0, 0)
-    }
+  def newExDataIndex: (Long, Long, Long, Long, Pointer[CRYPTO_EX_free]) => Int = LibSSL.SSL_get_ex_new_index
 }

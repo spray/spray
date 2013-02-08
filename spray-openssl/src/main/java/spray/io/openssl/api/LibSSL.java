@@ -45,9 +45,20 @@ public class LibSSL {
 
     public static native long SSL_CTX_ctrl(@Ptr long ctx, int cmd, long larg, long parg);
 
+    public static native int SSL_CTX_get_ex_new_index(long argl,
+                                                  long argp,
+                                                  long new_func,
+                                                  long dup_func,
+                                                  Pointer<CRYPTO_EX_free> free_func);
+    public static native int SSL_CTX_set_ex_data(@Ptr long ctx, int idx, long arg);
+    public static native long SSL_CTX_get_ex_data(@Ptr long ctx, int idx);
+
     public static native long SSL_new(@Ptr long ctx);
 
     public static native void SSL_free(@Ptr long ssl);
+
+    public static native SSLCtx SSL_get_SSL_CTX(SSL ssl);
+
     public static native void SSL_set_bio(
         @Ptr long ssl,
         long rbio,
@@ -76,9 +87,16 @@ public class LibSSL {
                                                   long argp,
                                                   long new_func,
                                                   long dup_func,
-                                                  long free_func);
+                                                  Pointer<CRYPTO_EX_free> free_func);
     public static native int SSL_set_ex_data(@Ptr long ssl, int idx, long arg);
     public static native long SSL_get_ex_data(@Ptr long ssl, int idx);
+
+    public static abstract class CRYPTO_EX_free extends Callback<CRYPTO_EX_free> {
+        abstract public void apply(@Ptr long parent, long data, long cryptoExData,
+                                    int idx, long argl, long argp);
+    }
+
+
     public static native SSL_SESSION SSL_get1_session(@Ptr long ssl);
     public static native long SSL_SESSION_get_time(SSL_SESSION session);
     public static native SSL_SESSION d2i_SSL_SESSION(@Ptr long a, Pointer<Pointer<Byte>> in, long length);

@@ -4,7 +4,7 @@ package api
 import org.bridj.{Pointer, TypedPointer}
 import LibSSL._
 
-class SSLCtx private[openssl](pointer: Long) extends TypedPointer(pointer) {
+class SSLCtx private[openssl](pointer: Long) extends TypedPointer(pointer) with WithExDataMethods[SSLCtx] {
   def newSSL(): SSL = {
     val ssl = SSL_new(getPeer).returnChecked
     require(ssl != 0L)
@@ -33,14 +33,12 @@ class SSLCtx private[openssl](pointer: Long) extends TypedPointer(pointer) {
   }
 
   import SSL._
-  def setOptions(options: Long): Long =
-    SSL_CTX_ctrl(getPeer, SSL_CTRL_OPTIONS, options, 0)
+  def setOptions(options: Long): Long = SSL_CTX_ctrl(getPeer, SSL_CTRL_OPTIONS, options, 0)
+  def setMode(mode: Long): Long = SSL_CTX_ctrl(getPeer, SSL_CTRL_MODE, mode, 0)
+  def getCertificateStore: X509_STORE = SSL_CTX_get_cert_store(getPeer)
 
-  def setMode(mode: Long): Long =
-    SSL_CTX_ctrl(getPeer, SSL_CTRL_MODE, mode, 0)
-
-  def getCertificateStore: X509_STORE =
-    SSL_CTX_get_cert_store(getPeer)
+  def setExData(idx: Int, arg: Long): Unit = SSL_CTX_set_ex_data(getPeer, idx, arg)
+  def getExData(idx: Int): Long = SSL_CTX_get_ex_data(getPeer, idx)
 
   def setSessionCacheMode(mode: Long): Long = SSL_CTX_ctrl(getPeer, SSL_CTRL_SET_SESS_CACHE_MODE, mode, 0)
 
@@ -59,7 +57,7 @@ class SSLCtx private[openssl](pointer: Long) extends TypedPointer(pointer) {
     sessionCallbackRef = Some(newRef)
   }
 }
-object SSLCtx {
+object SSLCtx extends WithExDataCompanion[SSLCtx] {
   // make sure openssl is initialized
   OpenSSL()
 
@@ -73,4 +71,6 @@ object SSLCtx {
   val SSL_SESS_CACHE_NO_INTERNAL = SSL_SESS_CACHE_NO_INTERNAL_LOOKUP | SSL_SESS_CACHE_NO_INTERNAL_STORE
 
   def create(method: Long): SSLCtx = new SSLCtx(SSL_CTX_new(method).returnChecked)
+
+  def newExDataIndex: (Long, Long, Long, Long, Pointer[CRYPTO_EX_free]) => Int = SSL_CTX_get_ex_new_index
 }

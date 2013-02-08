@@ -38,6 +38,12 @@ object OpenSSL {
 
   def SSLv23_method = LibSSL.SSLv23_method()
 
+  val exDataFree = new CRYPTO_EX_free {
+    def apply(parent: Long, data: Long, cryptoExData: Long, idx: Int, argl: Long, argp: Long) {
+      removeGlobalRef(data)
+    }
+  }
+
   def checkResult(res: Int): Int =
     if (res <= 0) throw new OpenSSLException(lastErrorString)
     else res
