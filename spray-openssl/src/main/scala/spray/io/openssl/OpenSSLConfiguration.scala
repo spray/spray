@@ -56,6 +56,14 @@ object OpenSSLClientConfigurator {
   // we save a reference of the associated pipelineCtx into the native data structure
   // and reserve a slot here for this purpose
   val pipelineContextSlot = SSL.createExDataSlot[PipelineContext]()
+  val sessionHandlerSlot = SSLCtx.createExDataSlot[(SSL, SSL_SESSION) => Unit]()
+
+  val sessionCB = new NewSessionCB {
+    def apply(ssl: SSL, session: SSL_SESSION) {
+      val handler = ssl.getCtx(sessionHandlerSlot)
+      if (handler != null) handler(ssl, session)
+    }
+  }
 
   trait BaseOpenSSLConfigurator {
     var ciphers: Option[String] = None
@@ -94,27 +102,27 @@ object OpenSSLClientConfigurator {
           // enable session caching but disable internal caching and, instead, ...
           ctx.setSessionCacheMode(SSLCtx.SSL_SESS_CACHE_CLIENT | SSLCtx.SSL_SESS_CACHE_NO_INTERNAL)
 
+          ctx(sessionHandlerSlot) = (ssl: SSL, session: SSL_SESSION) => {
+            val bytes = session.toBytes
+
+            def createSession() =
+              if (keepNativeSessions)
+                new SimpleSession(bytes) with InMemorySession {
+                  // FIXME: when do we release native sessions?
+                  val sessCopy = ssl.get1Session()
+
+                  val creationCtx = ctx
+
+                  def get: SSL_SESSION = sessCopy
+                  def belongsTo(ctx: SSLCtx): Boolean = ctx == creationCtx
+                }
+              else new SimpleSession(bytes)
+
+            handler.incomingSession(ssl(pipelineContextSlot), createSession())
+          }
+
           // ... register a callback to do it on our side
-          ctx.setNewSessionCallback(new NewSessionCB {
-            def apply(ssl: SSL, session: SSL_SESSION) {
-              val bytes = session.toBytes
-
-              def createSession() =
-                if (keepNativeSessions)
-                  new SimpleSession(bytes) with InMemorySession {
-                    // FIXME: when do we release native sessions?
-                    val sessCopy = ssl.get1Session()
-
-                    val creationCtx = ctx
-
-                    def get: SSL_SESSION = sessCopy
-                    def belongsTo(ctx: SSLCtx): Boolean = ctx == creationCtx
-                  }
-                else new SimpleSession(bytes)
-
-              handler.incomingSession(ssl(pipelineContextSlot), createSession())
-            }
-          })
+          ctx.setNewSessionCallback(sessionCB)
         }
 
         def convertSession(session: Session): SSL_SESSION = session match {
