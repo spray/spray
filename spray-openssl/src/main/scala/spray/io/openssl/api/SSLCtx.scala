@@ -44,8 +44,20 @@ class SSLCtx private[openssl](pointer: Long) extends TypedPointer(pointer) {
 
   def setSessionCacheMode(mode: Long): Long = SSL_CTX_ctrl(getPeer, SSL_CTRL_SET_SESS_CACHE_MODE, mode, 0)
 
-  def setNewSessionCallback(callback: NewSessionCB): Unit =
+  var sessionCallbackRef: Option[Long] = None
+  OpenSSL.registerShutdownAction {
+    synchronized {
+      sessionCallbackRef.foreach(OpenSSL.removeGlobalRef)
+      sessionCallbackRef = None
+    }
+  }
+  def setNewSessionCallback(callback: NewSessionCB): Unit = synchronized {
+    val newRef = OpenSSL.createGlobalRef(callback)
     SSL_CTX_sess_set_new_cb(getPeer, callback.toPointer)
+
+    sessionCallbackRef.foreach(OpenSSL.removeGlobalRef)
+    sessionCallbackRef = Some(newRef)
+  }
 }
 object SSLCtx {
   // make sure openssl is initialized

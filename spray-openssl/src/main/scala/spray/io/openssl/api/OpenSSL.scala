@@ -3,7 +3,7 @@ package api
 
 import java.util.concurrent.locks.ReentrantLock
 
-import org.bridj.{BridJ, TypedPointer, Pointer}
+import org.bridj.{JNI, BridJ, TypedPointer, Pointer}
 
 import LibSSL._
 
@@ -57,7 +57,42 @@ object OpenSSL {
 
   def NULL[T]: Pointer[T] = Pointer.NULL.asInstanceOf[Pointer[T]]
 
-  def shutdown() {
+  private[this] var shutdownActions: List[() => Unit] = Nil
+  /** Register a block of code to be run when OpenSSL processing is shutdown */
+  def registerShutdownAction(body: => Unit): Unit = synchronized {
+    shutdownActions ::= (body _)
+  }
+
+  private[this] var globalRefs: List[Long] = Nil
+  /**
+   * Allow creation of managed global references that will be collected when `shutdown()` is called.
+   */
+  def createGlobalRef(obj: AnyRef): Long = synchronized {
+    val ref = JNI.newGlobalRef(obj)
+    globalRefs ::= ref
+    ref
+  }
+  def removeGlobalRef(ref: Long): Unit = synchronized {
+    JNI.deleteGlobalRef(ref)
+    globalRefs = globalRefs.filterNot(_ == ref)
+  }
+
+  registerShutdownAction {
+    if (globalRefs.nonEmpty) {
+      println("%d global refs still alive" format globalRefs.size)
+
+      globalRefs.foreach(JNI.deleteGlobalRef)
+      globalRefs = Nil
+    }
+  }
+
+  /** Shutdown and cleanup the native bindings for OpenSSL. Don't use any
+   *  classes in this package any more afterwards.
+   */
+  def shutdown(): Unit = synchronized {
     BridJ.releaseAll()
+
+    shutdownActions.foreach(_())
+    shutdownActions = Nil
   }
 }
