@@ -102,7 +102,7 @@ object OpenSslSupport {
         }
 
         def debug(str: String) {
-          println("%d %4d %s" format (ssl.want, ssl.pending, str))
+          //println("%d %4d %s" format (ssl.want, ssl.pending, str))
           //context.log.error("%d %4d %s" format (ssl.want, ssl.pending, str))
         }
 
@@ -205,7 +205,6 @@ object OpenSslSupport {
 
     def allocate(capacity: Int): DirectBuffer = {
       val newNum = num.incrementAndGet()
-      println("%2d buffers" format newNum)
       new DirectBuffer(capacity)
     }
 

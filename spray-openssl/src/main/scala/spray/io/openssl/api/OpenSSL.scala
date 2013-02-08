@@ -14,18 +14,12 @@ object OpenSSL {
 
   SSL_library_init()
   SSL_load_error_strings()
-  val locks = {
-    val num = CRYPTO_num_locks()
-    println("Creating %d locks for openssl" format num)
-    Array.fill(num)(new ReentrantLock)
-  }
+  val locks = Seq.fill(CRYPTO_num_locks())(new ReentrantLock)
   val lockingCB = new LockingCB {
     def apply(mode: Int, `type`: Int, file: Pointer[java.lang.Byte], line: Int) {
       val lock = locks(`type`)
-      if ((mode & 1) != 0)
-        lock.lock()
-      else
-        lock.unlock()
+      if ((mode & 1) != 0) lock.lock()
+      else lock.unlock()
     }
   }
   val threadIdCB = new ThreadIdCB {
