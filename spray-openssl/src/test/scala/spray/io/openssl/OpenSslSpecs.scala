@@ -12,7 +12,6 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import annotation.tailrec
 import spray.util.ConnectionCloseReasons.PeerClosed
-import scala.concurrent.duration._
 
 class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
   val keyStore = loadKeyStore("/ssl-test-keystore.jks", "")
