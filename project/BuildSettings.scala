@@ -3,7 +3,7 @@ import Keys._
 
 
 object BuildSettings {
-  val VERSION = "1.0-M7"
+  val VERSION = "1.0-M7.1-openssl-M1"
 
   lazy val basicSettings = seq(
     version               := NightlyBuildSupport.buildVersion(VERSION),
