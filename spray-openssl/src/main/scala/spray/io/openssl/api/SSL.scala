@@ -52,6 +52,9 @@ object SSL extends WithExDataCompanion[SSL] {
 
   val SSL_MODE_RELEASE_BUFFERS = 0x00000010L
   val SSL_OP_NO_COMPRESSION = 0x00020000L
+  val SSL_OP_NO_SSLv2 = 0x01000000L
+  val SSL_OP_NO_TLSv1_2 = 0x08000000L
+  val SSL_OP_NO_TLSv1_1 = 0x10000000L
 
   def newExDataIndex: (Long, Long, Long, Long, Pointer[CRYPTO_EX_free]) => Int = LibSSL.SSL_get_ex_new_index
 }

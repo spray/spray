@@ -11,6 +11,12 @@ trait OpenSSLConfigurator {
    * of the string to pass in here.
    */
   def acceptCiphers(cipherDesc: String): this.type
+
+  /**
+   * Disable TLS 1.1 and 1.2. This is because of
+   * http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=7031830
+   */
+  def disableTls1_1And1_2(): this.type
 }
 
 trait SessionHandler {
@@ -51,6 +57,7 @@ trait OpenSSLClientConfigurator extends OpenSSLConfigurator {
 
   // why would you do THAT? I don't know. Still it's possible...
   def disableVerification(): this.type
+
 }
 object OpenSSLClientConfigurator {
   // we save a reference of the associated pipelineCtx into the native data structure
@@ -67,11 +74,15 @@ object OpenSSLClientConfigurator {
 
   trait BaseOpenSSLConfigurator {
     var ciphers: Option[String] = None
+    var `disable Tls v1.1 and v1.2`: Boolean = false
 
     def createCtx: SSLCtx = {
       val ctx = SSLCtx.create(OpenSSL.SSLv23_method)
       ctx.setMode(SSL.SSL_MODE_RELEASE_BUFFERS)
-      ctx.setOptions(SSL.SSL_OP_NO_COMPRESSION)
+      ctx.setOptions(SSL.SSL_OP_NO_COMPRESSION | // because it needs huge buffers
+                     SSL.SSL_OP_NO_SSLv2)         // because it's unsafe
+
+      if (`disable Tls v1.1 and v1.2`) ctx.setOptions(SSL.SSL_OP_NO_TLSv1_1 | SSL.SSL_OP_NO_TLSv1_2)
 
       ciphers.foreach { cipherDesc =>
         ctx.setCipherList(DirectBuffer.forCString(cipherDesc))
@@ -148,6 +159,9 @@ object OpenSSLClientConfigurator {
 
       def acceptCiphers(cipherDesc: String): this.type =
         andReturnSelf { ciphers = Some(cipherDesc) }
+
+      def disableTls1_1And1_2(): this.type =
+        andReturnSelf { `disable Tls v1.1 and v1.2` = true }
 
       def acceptServerCertificate(certificate: Certificate): this.type =
         andReturnSelf { certificates ::= X509Certificate(certificate) }
