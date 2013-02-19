@@ -12,6 +12,7 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import annotation.tailrec
 import spray.util.ConnectionCloseReasons.PeerClosed
+import spray.io.SslTlsSupport.Enabling
 
 class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
   val keyStore = loadKeyStore("/ssl-test-keystore.jks", "")
@@ -347,7 +348,9 @@ class OpenSslSpecs extends TestKit(ActorSystem()) with Specification {
               def key: Key = unsupported
               def handler: ActorRef = unsupported
               def ioBridge: ActorRef = unsupported
-              def tag: Any = null
+              def tag: Any = new Enabling {
+                def encrypt(ctx: PipelineContext): Boolean = true
+              }
 
               override def remoteAddress: InetSocketAddress = unsupported
             }

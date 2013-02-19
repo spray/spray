@@ -13,10 +13,17 @@ import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.atomic.AtomicInteger
 import spray.io._
 import api._
+import spray.io.SslTlsSupport.Enabling
 
 object OpenSslSupport {
+  def shouldEncypt(ctx: PipelineContext): Boolean =
+    ctx.connection.tag match {
+      case x: Enabling => x.encrypt(ctx)
+      case _ => false
+    }
+
   def apply(sslFactory: PipelineContext => SSL,
-            sslEnabled: PipelineContext => Boolean = _ => true,
+            sslEnabled: PipelineContext => Boolean = shouldEncypt,
             client: Boolean = true)(log: LoggingAdapter): PipelineStage =
     new PipelineStage {
       def showError() {
