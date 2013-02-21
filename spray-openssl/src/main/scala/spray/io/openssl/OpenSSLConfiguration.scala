@@ -82,7 +82,9 @@ object OpenSSLClientConfigurator {
       ctx.setOptions(SSL.SSL_OP_NO_COMPRESSION | // because it needs huge buffers
                      SSL.SSL_OP_NO_SSLv2)         // because it's unsafe
 
-      if (`disable Tls v1.1 and v1.2`) ctx.setOptions(SSL.SSL_OP_NO_TLSv1_1 | SSL.SSL_OP_NO_TLSv1_2)
+      if (`disable Tls v1.1 and v1.2`) ctx.setOptions(
+        SSL.SSL_OP_NO_TLSv1_1 |
+        SSL.SSL_OP_NO_TLSv1_2)
 
       ciphers.foreach { cipherDesc =>
         ctx.setCipherList(DirectBuffer.forCString(cipherDesc))
