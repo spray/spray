@@ -154,7 +154,7 @@ object OpenSSLClientConfigurator {
           ssl
         }
 
-        ClientSSLEngineProvider(OpenSslSupport(sslFactory, sslEnabled = _ => true, client = true) _)
+        ClientSSLEngineProvider(OpenSslSupport(sslFactory, client = true) _)
       }
 
       def acceptCiphers(cipherDesc: String): this.type =
