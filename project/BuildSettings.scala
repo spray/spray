@@ -16,7 +16,8 @@ object BuildSettings {
     licenses              := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
     scalaVersion          := "2.9.2",
     resolvers             ++= Dependencies.resolutionRepos,
-    scalacOptions         := Seq("-Ydependent-method-types", "-unchecked", "-deprecation", "-encoding", "utf8")
+    scalacOptions         := Seq("-Ydependent-method-types", "-unchecked", "-deprecation", "-encoding", "utf8"),
+    javacOptions          ++= Seq("-target", "1.6", "-source", "1.6")
   )
 
   lazy val sprayModuleSettings = basicSettings ++ NightlyBuildSupport.settings ++ seq(
