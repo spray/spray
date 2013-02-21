@@ -63,18 +63,22 @@ object OpenSSL {
     shutdownActions ::= (body _)
   }
 
-  private[this] var globalRefs: List[Long] = Nil
+  private[this] var globalRefs: Set[Long] = Set.empty
   /**
    * Allow creation of managed global references that will be collected when `shutdown()` is called.
    */
-  def createGlobalRef(obj: AnyRef): Long = synchronized {
+  def createGlobalRef(obj: AnyRef): Long = {
     val ref = JNI.newGlobalRef(obj)
-    globalRefs ::= ref
+    synchronized {
+      globalRefs += ref
+    }
     ref
   }
-  def removeGlobalRef(ref: Long): Unit = synchronized {
+  def removeGlobalRef(ref: Long): Unit = {
     JNI.deleteGlobalRef(ref)
-    globalRefs = globalRefs.filterNot(_ == ref)
+    synchronized {
+      globalRefs -= ref
+    }
   }
 
   registerShutdownAction {
@@ -82,7 +86,7 @@ object OpenSSL {
       println("%d global refs still alive" format globalRefs.size)
 
       globalRefs.foreach(JNI.deleteGlobalRef)
-      globalRefs = Nil
+      globalRefs = Set.empty
     }
   }
 
