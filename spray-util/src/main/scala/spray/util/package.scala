@@ -16,13 +16,17 @@
 
 package spray
 
+import scala.language.experimental.macros
+
 import java.nio.ByteBuffer
 import java.io.{InputStream, File}
 import java.nio.charset.Charset
+import com.typesafe.config.Config
 import scala.concurrent.duration.Duration
 import scala.collection.LinearSeq
 import scala.util.matching.Regex
 import scala.reflect.{classTag, ClassTag}
+import scala.reflect.macros.Context
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import scala.concurrent.Future
@@ -76,6 +80,8 @@ package object util {
     installEventStreamLoggerFor[UnhandledMessage]
   }
 
+  def requirePositiveOrUndefined(duration: Duration): Duration = macro Macros.requirePositiveOrUndefined
+
   // implicits
   implicit def executionContextFromActorRefFactory(implicit factory: ActorRefFactory) = factory.dispatcher
 
@@ -84,6 +90,7 @@ package object util {
   implicit def pimpByteArray(array: Array[Byte])        :PimpedByteArray       = new PimpedByteArray(array)
   implicit def pimpByteBuffer(buf: ByteBuffer)          :PimpedByteBuffer      = new PimpedByteBuffer(buf)
   implicit def pimpClass[T](clazz: Class[T])            :PimpedClass[T]        = new PimpedClass[T](clazz)
+  implicit def pimpConfig(config: Config)               :PimpedConfig          = new PimpedConfig(config)
   implicit def pimpDuration(duration: Duration)         :PimpedDuration        = new PimpedDuration(duration)
   implicit def pimpFile(file: File)                     :PimpedFile            = new PimpedFile(file)
   implicit def pimpFuture[T](fut: Future[T])            :PimpedFuture[T]       = new PimpedFuture[T](fut)
@@ -95,4 +102,21 @@ package object util {
   implicit def pimpRegex(regex: Regex)                  :PimpedRegex           = new PimpedRegex(regex)
   implicit def pimpString(s: String)                    :PimpedString          = new PimpedString(s)
   implicit def pimpEither[A, B](either: Either[A, B])   :Either.RightProjection[A, B] = either.right
+}
+
+private[spray] object Macros {
+  def requirePositiveOrUndefined(c: Context)(duration: c.Expr[Duration]) = {
+    import c.universe._
+    val name = duration match {
+      case c.Expr(Ident(n)) => n
+      case c.Expr(Select(_, n)) => n
+      case c.Expr(x) => sys.error(s"requirePositiveOrUndefined cannot be used with argument $x: ${x.getClass}")
+    }
+    val msg: c.Expr[String] = c.Expr(Literal(Constant(s"requirement failed: $name must be > 0 or 'infinite'")))
+    reify {
+      if (duration.splice <= Duration.Zero)
+        throw new IllegalArgumentException(msg.splice)
+      duration.splice
+    }
+  }
 }

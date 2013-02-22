@@ -20,9 +20,9 @@ import java.net.InetAddress
 import scala.collection.JavaConverters._
 import com.typesafe.config.{Config, ConfigFactory}
 
-
 object ConfigUtils {
 
+  // TODO: remove and replace with "new" config loading
   def prepareSubConfig(config: Config, path: String): Config = {
     val c = config.withFallback(referenceConfig)
     c.checkValid(referenceConfig, path)
@@ -31,7 +31,12 @@ object ConfigUtils {
 
   lazy val referenceConfig = ConfigFactory.defaultReference withFallback sprayConfigAdditions
 
-  def sprayConfigAdditions: Config = ConfigFactory.parseMap {
+  lazy val sprayConfigAdditions: Config = ConfigFactory.parseMap {
     Map("spray.hostname" -> tryOrElse(InetAddress.getLocalHost.getHostName, _ => "")).asJava
+  }
+
+  def mapToConfig(map: Map[String, Any]): Config = {
+    import scala.collection.JavaConverters._
+    ConfigFactory.parseMap(map.asJava)
   }
 }
