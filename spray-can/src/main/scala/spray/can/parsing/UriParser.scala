@@ -24,14 +24,14 @@ class UriParser(settings: ParserSettings, method: HttpMethod) extends CharacterP
   val uri = new JStringBuilder
 
   def handleChar(cursor: Char) = {
-    if (uri.length <= settings.MaxUriLength) {
+    if (uri.length <= settings.maxUriLength) {
       cursor match {
         case ' ' => new RequestVersionParser(settings, method, uri.toString)
         case _ => uri.append(cursor); this
       }
     } else {
       ErrorState(StatusCodes.RequestUriTooLong,
-        "URI length exceeds the configured limit of " + settings.MaxUriLength + " characters")
+        "URI length exceeds the configured limit of " + settings.maxUriLength + " characters")
     }
   }
 

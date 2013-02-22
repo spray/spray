@@ -49,10 +49,10 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           ))
         ) must beRenderedTo(
           content = """|HTTP/1.1 304 Not Modified
-                       |X-Fancy: of course
-                       |Age: 0
                        |Server: spray-can/1.0.0
                        |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                       |X-Fancy: of course
+                       |Age: 0
                        |Content-Length: 0
                        |
                        |""",
@@ -70,11 +70,11 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           )
         ) must beRenderedTo(
           content = """|HTTP/1.0 400 Bad Request
-                       |Age: 30
-                       |Connection: Keep-Alive
                        |Server: spray-can/1.0.0
                        |Date: Thu, 25 Aug 2011 09:10:29 GMT
                        |Content-Type: text/plain
+                       |Age: 30
+                       |Connection: Keep-Alive
                        |Content-Length: 23
                        |
                        |Small f*ck up overhere!""",
@@ -91,11 +91,11 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           requestMethod = HttpMethods.HEAD
         ) must beRenderedTo(
           content = """|HTTP/1.1 200 OK
-                       |Age: 30
-                       |Connection: Keep-Alive
                        |Server: spray-can/1.0.0
                        |Date: Thu, 25 Aug 2011 09:10:29 GMT
                        |Content-Type: text/plain
+                       |Age: 30
+                       |Connection: Keep-Alive
                        |Content-Length: 23
                        |
                        |""",
@@ -113,11 +113,11 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           )
         ) must beRenderedTo(
           content = """|HTTP/1.0 200 OK
-                       |Age: 30
-                       |Cache-Control: public
                        |Server: spray-can/1.0.0
                        |Date: Thu, 25 Aug 2011 09:10:29 GMT
                        |Content-Type: text/plain
+                       |Age: 30
+                       |Cache-Control: public
                        |
                        |Small f*ck up overhere!""",
           close = true
@@ -130,10 +130,10 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           requestConnectionHeader = Some("close")
         ) must beRenderedTo(
           content = """|HTTP/1.1 200 OK
-                       |Age: 30
-                       |Transfer-Encoding: chunked
                        |Server: spray-can/1.0.0
                        |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                       |Age: 30
+                       |Transfer-Encoding: chunked
                        |
                        |""",
           close = false
@@ -143,10 +143,10 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
       "a chunked response with body" in {
         Context(ChunkedResponseStart(HttpResponse(entity = "Yahoooo"))) must beRenderedTo(
           content = """|HTTP/1.1 200 OK
-                       |Transfer-Encoding: chunked
                        |Server: spray-can/1.0.0
                        |Date: Thu, 25 Aug 2011 09:10:29 GMT
                        |Content-Type: text/plain
+                       |Transfer-Encoding: chunked
                        |
                        |7
                        |Yahoooo
@@ -188,9 +188,9 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
           chunkless = true
         ) must beRenderedTo(
           content = """|HTTP/1.1 200 OK
-                       |Age: 30
                        |Server: spray-can/1.0.0
                        |Date: Thu, 25 Aug 2011 09:10:29 GMT
+                       |Age: 30
                        |
                        |""",
           close = false
@@ -254,9 +254,9 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
             requestConnectionHeader = reqCH
           ) must beRenderedTo(
             content = "HTTP/1.1 200 OK\n" +
-                      renCH.map("Connection: " + _ + "\n").getOrElse("") +
                       "Server: spray-can/1.0.0\n" +
                       "Date: Thu, 25 Aug 2011 09:10:29 GMT\n" +
+                      renCH.map("Connection: " + _ + "\n").getOrElse("") +
                       "Content-Length: 0\n\n",
             close = close
           )
@@ -280,11 +280,10 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
         override def dateTime(now: Long) = DateTime(2011, 8, 25, 9,10,29) // provide a stable date for testing
       }
       val sb = new java.lang.StringBuilder
-      val RenderedMessagePart(buffers, closeAfterWrite) = renderer.render {
+      val RenderedMessagePart(data, closeAfterWrite) = renderer.render {
         HttpResponsePartRenderingContext(response, requestMethod, requestProtocol, requestConnectionHeader)
       }
-      buffers.foreach { buf => while (buf.remaining > 0) sb.append(buf.get.toChar) }
-      sb.toString -> closeAfterWrite
+      data.utf8String -> closeAfterWrite
     }
   }
 

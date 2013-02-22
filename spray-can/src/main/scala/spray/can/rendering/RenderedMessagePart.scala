@@ -16,14 +16,15 @@
 
 package spray.can.rendering
 
-import java.nio.ByteBuffer
+import akka.util.ByteString
+import akka.io.Tcp
 import spray.io.Command
 import spray.http._
 
 
 case class HttpRequestPartRenderingContext(
   requestPart: HttpRequestPart,
-  sentAck: Option[Any] = None
+  ack: Any = Tcp.NoAck
 ) extends Command
 
 case class HttpResponsePartRenderingContext(
@@ -31,7 +32,7 @@ case class HttpResponsePartRenderingContext(
   requestMethod: HttpMethod = HttpMethods.GET,
   requestProtocol: HttpProtocol = HttpProtocols.`HTTP/1.1`,
   requestConnectionHeader: Option[String] = None,
-  sentAck: Option[Any] = None
+  ack: Any = Tcp.NoAck
 ) extends Command
 
-case class RenderedMessagePart(buffers: List[ByteBuffer], closeConnection: Boolean = false)
+case class RenderedMessagePart(data: ByteString, closeConnection: Boolean = false)

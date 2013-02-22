@@ -17,46 +17,39 @@
 package spray.can.server
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
-import akka.event.Logging
+import akka.actor.ActorRef
 import spray.can.server.RequestParsing.HttpMessageStartEvent
-import spray.can.{HttpEvent, HttpCommand}
-import spray.util.ConnectionCloseReasons._
 import spray.http._
 import spray.io._
+import spray.can.Http
 
 
 object ServerFrontend {
 
-  def apply(serverSettings: ServerSettings,
-            messageHandler: MessageHandler,
-            timeoutResponse: HttpRequest => HttpResponse): PipelineStage = {
-    new PipelineStage {
-      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+  trait Context extends PipelineContext {
+    // the application-level request handler
+    def handler: ActorRef
+  }
+
+  def apply(serverSettings: ServerSettings): RawPipelineStage[Context] = {
+    new RawPipelineStage[Context] {
+      def apply(_context: Context, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines with OpenRequestComponent {
-          val debug = TaggedLog(context, Logging.DebugLevel)
-          def warning = TaggedLog(context, Logging.WarningLevel)
           var firstOpenRequest: OpenRequest = EmptyOpenRequest
           var firstUnconfirmed: OpenRequest = EmptyOpenRequest
-          var _requestTimeout: Long = serverSettings.RequestTimeout
-          var _timeoutTimeout: Long = serverSettings.TimeoutTimeout
+          var _requestTimeout: Long = serverSettings.requestTimeout.toMillis
+          var _timeoutTimeout: Long = serverSettings.timeoutTimeout.toMillis
+          def context = _context
           val settings = serverSettings
           val downstreamCommandPL = commandPL
-          val createTimeoutResponse = timeoutResponse
           def requestTimeout = _requestTimeout // required due to https://issues.scala-lang.org/browse/SI-6387
-          def connectionActorContext = context.connectionActorContext
           def timeoutTimeout = _timeoutTimeout // required due to https://issues.scala-lang.org/browse/SI-6387
-          def handlerCreator = messageHandler(context)
-
-          // per-message handlers do not receive Closed messages that are
-          // not related to a specific request, they need to cleanup themselves
-          // upon response sending or reception of the send confirmation
-          def handlerReceivesClosedEvents = !messageHandler.isInstanceOf[PerMessageHandler]
 
           val commandPipeline: CPL = {
             case Response(openRequest, command) if openRequest == firstOpenRequest =>
               commandPipeline(command) // "unpack" the command and recurse
 
-            case HttpCommand(wrapper: HttpMessagePartWrapper) if wrapper.messagePart.isInstanceOf[HttpResponsePart] =>
+            case Http.MessageCommand(wrapper: HttpMessagePartWrapper) if wrapper.messagePart.isInstanceOf[HttpResponsePart] =>
               // we can only see this command either after having "unpacked" a Response
               // or after an openRequest has begun dispatching its queued commands,
               // in both cases the firstOpenRequest member is valid and current
@@ -64,17 +57,17 @@ object ServerFrontend {
                 case ChunkedResponseStart(response) if firstOpenRequest.request.method == HttpMethods.HEAD =>
                   // if HEAD requests are responded to with a chunked response we only sent the initial part
                   // and "cancel" the stream by "acking" with a fake Closed event
-                  response.withSentAck(IOBridge.Closed(context.connection, CleanClose))
+                  response.withAck(Http.Closed)
                 case _ => wrapper
               }
               if (part.messagePart.isInstanceOf[HttpMessageEnd]) {
-                firstOpenRequest = firstOpenRequest.handleResponseEndAndReturnNextOpenRequest(part)
+                firstOpenRequest = firstOpenRequest handleResponseEndAndReturnNextOpenRequest part
                 firstUnconfirmed = firstUnconfirmed.nextIfNoAcksPending
-              } else firstOpenRequest.handleResponsePart(part)
+              } else firstOpenRequest handleResponsePart part
 
             case Response(openRequest, command) =>
               // a response for a non-current openRequest has to be queued
-              openRequest.enqueueCommand(command)
+              openRequest enqueueCommand command
 
             case SetRequestTimeout(timeout) =>
               _requestTimeout = timeout.toMillis
@@ -92,37 +85,33 @@ object ServerFrontend {
             case HttpMessageStartEvent(ChunkedRequestStart(request), connectionHeader) =>
               openNewRequest(request, connectionHeader, 0L)
 
-            case HttpEvent(x: MessageChunk) =>
-              firstOpenRequest.handleMessageChunk(x)
+            case Http.MessageEvent(x: MessageChunk) =>
+              firstOpenRequest handleMessageChunk x
 
-            case HttpEvent(x: ChunkedMessageEnd) =>
-              firstOpenRequest.handleChunkedMessageEnd(x)
+            case Http.MessageEvent(x: ChunkedMessageEnd) =>
+              firstOpenRequest handleChunkedMessageEnd x
 
             case x: AckEventWithReceiver =>
-              firstUnconfirmed = firstUnconfirmed.handleSentAckAndReturnNextUnconfirmed(x)
+              firstUnconfirmed = firstUnconfirmed handleSentAckAndReturnNextUnconfirmed x
 
-            case x: HttpServer.Closed =>
+            case x: Http.ConnectionClosed =>
               if (firstUnconfirmed.isEmpty)
-                firstOpenRequest.handleClosed(x) // dispatches to the handler if no request is open
+                firstOpenRequest handleClosed x // dispatches to the handler if no request is open
               else
-                firstUnconfirmed.handleClosed(x) // also includes the firstOpenRequest and beyond
+                firstUnconfirmed handleClosed x // also includes the firstOpenRequest and beyond
               eventPL(x) // terminates the connection actor
 
             case TickGenerator.Tick =>
               if (requestTimeout > 0L)
-                firstOpenRequest.checkForTimeout(System.currentTimeMillis())
+                firstOpenRequest checkForTimeout System.currentTimeMillis
               eventPL(TickGenerator.Tick)
-
-            case x: CommandException =>
-              warning.log("Received {}, closing connection ...", x)
-              downstreamCommandPL(HttpServer.Close(ProtocolError(x.toString)))
 
             case ev => eventPL(ev)
           }
 
           def openNewRequest(request: HttpRequest, connectionHeader: Option[String], timestamp: Long) {
             val nextOpenRequest = new DefaultOpenRequest(request, connectionHeader, timestamp)
-            firstOpenRequest = firstOpenRequest.appendToEndOfChain(nextOpenRequest)
+            firstOpenRequest = firstOpenRequest appendToEndOfChain nextOpenRequest
             nextOpenRequest.dispatchInitialRequestPartToHandler()
             if (firstUnconfirmed.isEmpty) firstUnconfirmed = firstOpenRequest
           }

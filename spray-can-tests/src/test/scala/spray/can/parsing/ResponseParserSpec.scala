@@ -18,6 +18,7 @@ package spray.can.parsing
 
 import org.specs2.mutable.Specification
 import spray.can.StatusLine
+import spray.can.TestSupport._
 import spray.util._
 import spray.http._
 import HttpHeaders._
@@ -81,7 +82,7 @@ class ResponseParserSpec extends Specification {
       }
 
       "to a HEAD request" in {
-        RequestParserSpec.parse(new EmptyResponseParser(new ParserSettings(), true), identityFunc) {
+        RequestParserSpec.parse(new EmptyResponseParser(defaultParserSettings, true), identityFunc) {
           """|HTTP/1.1 500 Internal Server Error
              |Content-Length: 17
              |
@@ -166,7 +167,7 @@ class ResponseParserSpec extends Specification {
   }
 
   def parse =
-    RequestParserSpec.parse(new EmptyResponseParser(new ParserSettings(), false), extractFromCompleteMessage _) _
+    RequestParserSpec.parse(new EmptyResponseParser(defaultParserSettings, false), extractFromCompleteMessage _) _
 
   def extractFromCompleteMessage(completeMessage: CompleteMessageState) = {
     import completeMessage._

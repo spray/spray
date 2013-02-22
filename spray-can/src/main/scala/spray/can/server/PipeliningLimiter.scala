@@ -16,12 +16,13 @@
 
 package spray.can.server
 
-import scala.collection.mutable
 import scala.annotation.tailrec
 import spray.can.rendering.HttpResponsePartRenderingContext
-import spray.can.HttpEvent
 import spray.http._
 import spray.io._
+import scala.collection.immutable.Queue
+import spray.can.Http
+import akka.io.Tcp
 
 
 object PipeliningLimiter {
@@ -32,7 +33,7 @@ object PipeliningLimiter {
 
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
-          var parkedRequestParts: mutable.Queue[HttpRequestPart] = _
+          var parkedRequestParts = Queue.empty[HttpRequestPart]
           var openRequests = 0
           var limit = pipeliningLimit
           var readingStopped = false
@@ -41,7 +42,7 @@ object PipeliningLimiter {
             case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEnd] =>
               openRequests -= 1
               commandPL(x)
-              if (parkedRequestParts != null && !parkedRequestParts.isEmpty) {
+              if (!parkedRequestParts.isEmpty) {
                 unparkOneRequest()
                 if (parkedRequestParts.isEmpty) resumeReading()
               }
@@ -50,7 +51,7 @@ object PipeliningLimiter {
           }
 
           val eventPipeline: EPL = {
-            case ev@ HttpEvent(x: HttpRequestPart) =>
+            case ev@ Http.MessageEvent(x: HttpRequestPart) =>
               if (openRequests == limit) {
                 stopReading()
                 park(x)
@@ -65,31 +66,32 @@ object PipeliningLimiter {
           def stopReading() {
             if (!readingStopped) {
               readingStopped = true
-              commandPL(IOConnection.StopReading)
+              commandPL(Tcp.StopReading)
             }
           }
 
           def resumeReading() {
             if (readingStopped) {
               readingStopped = false
-              commandPL(IOConnection.ResumeReading)
+              commandPL(Tcp.ResumeReading)
             }
           }
 
           def park(part: HttpRequestPart) {
-            if (parkedRequestParts == null) parkedRequestParts = mutable.Queue(part)
-            else parkedRequestParts.enqueue(part)
+            parkedRequestParts = parkedRequestParts enqueue part
           }
 
           @tailrec
           def unparkOneRequest() {
             if (!parkedRequestParts.isEmpty) {
-              parkedRequestParts.dequeue() match {
+              val next = parkedRequestParts.head
+              parkedRequestParts = parkedRequestParts.tail
+              next match {
                 case part: HttpMessageEnd =>
                   openRequests += 1
-                  eventPL(HttpEvent(part))
+                  eventPL(Http.MessageEvent(part))
                 case part =>
-                  eventPL(HttpEvent(part))
+                  eventPL(Http.MessageEvent(part))
                   unparkOneRequest()
               }
             }

@@ -17,12 +17,12 @@
 package spray.can
 package rendering
 
+import java.net.InetSocketAddress
 import org.specs2.mutable.Specification
 import spray.util.EOL
 import spray.http._
-import HttpMethods._
 import HttpHeaders.RawHeader
-import java.net.InetSocketAddress
+import HttpMethods._
 
 
 class RequestRendererSpec extends Specification {
@@ -161,10 +161,8 @@ class RequestRendererSpec extends Specification {
 
   def beRenderedToWithRenderer(content: String, renderer: RequestRenderer) = {
     beEqualTo(content.stripMargin.replace(EOL, "\r\n")) ^^ { part: HttpRequestPart =>
-      val RenderedMessagePart(buffers, false) = renderer.render(part, Some(new InetSocketAddress("test.com", 8080)))
-      val sb = new java.lang.StringBuilder()
-      buffers.foreach { buf => while (buf.remaining > 0) sb.append(buf.get.toChar) }
-      sb.toString
+      val RenderedMessagePart(data, false) = renderer.render(part, new InetSocketAddress("test.com", 8080))
+      data.utf8String
     }
   }
 }

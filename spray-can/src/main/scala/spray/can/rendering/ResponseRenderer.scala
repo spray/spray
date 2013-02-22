@@ -17,17 +17,16 @@
 package spray.can
 package rendering
 
-import java.nio.ByteBuffer
 import scala.annotation.tailrec
-import spray.io.BufferBuilder
+import akka.util.{ByteStringBuilder, ByteString}
 import spray.util._
 import spray.http._
 import HttpProtocols._
-
+import MessageRendering._
 
 class ResponseRenderer(serverHeader: String,
                        chunklessStreaming: Boolean,
-                       responseSizeHint: Int) extends MessageRendering {
+                       responseSizeHint: Int) {
 
   private[this] val serverHeaderPlusDateColonSP = (serverHeader match {
     case "" => "Date: "
@@ -38,134 +37,119 @@ class ResponseRenderer(serverHeader: String,
     def chunkless = chunklessStreaming || ctx.requestProtocol == `HTTP/1.0`
     ctx.responsePart match {
       case x: HttpResponse => renderResponse(x, ctx)
+
       case x: ChunkedResponseStart => renderChunkedResponseStart(x.response, ctx, chunkless)
+
       case x: MessageChunk if ctx.requestMethod != HttpMethods.HEAD =>
-        if (chunkless) RenderedMessagePart(ByteBuffer.wrap(x.body) :: Nil)
+        if (chunkless) RenderedMessagePart(ByteString(x.body))
         else renderChunk(x, responseSizeHint)
+
       case x: ChunkedMessageEnd if ctx.requestMethod != HttpMethods.HEAD =>
-        if (chunkless) RenderedMessagePart(Nil, closeConnection = true)
+        if (chunkless) RenderedMessagePart(ByteString.empty, closeConnection = true)
         else renderFinalChunk(x, responseSizeHint, ctx.requestConnectionHeader)
-      case _ => RenderedMessagePart(Nil)
+
+      case _ => RenderedMessagePart(ByteString.empty)
     }
   }
 
   private def renderResponse(response: HttpResponse, ctx: HttpResponsePartRenderingContext) = {
     import response._
 
-    val bb = BufferBuilder(responseSizeHint)
-    val connectionHeaderValue = renderResponseStart(response, ctx, bb)
-    val close = appendConnectionHeaderIfRequired(response, ctx, connectionHeaderValue, bb)
-    bb.append(serverAndDateHeader)
-    appendContentTypeHeaderIfRequired(entity, bb)
+    implicit val bb = newByteStringBuilder(responseSizeHint)
+    val connectionHeaderValue = renderResponseStart(response, ctx)
+    val close = putConnectionHeaderIfRequiredAndReturnClose(response, ctx, connectionHeaderValue)
 
-    // don't set a Content-Length header for non-keepalive HTTP/1.0 responses (rely on body end by connection close)
-    if (response.protocol == `HTTP/1.1` || !close) appendHeader("Content-Length", entity.buffer.length.toString, bb)
+    // don't set a Content-Length header for non-keep-alive HTTP/1.0 responses (rely on body end by connection close)
+    if (response.protocol == `HTTP/1.1` || !close) putHeader("Content-Length", Integer.toString(entity.buffer.length))
+    put(CrLf)
 
-    bb.append(MessageRendering.CrLf)
-    renderedMessagePart(bb, ctx.requestMethod, entity, close)
+    if (entity.buffer.length > 0 && ctx.requestMethod != HttpMethods.HEAD) put(entity.buffer)
+    RenderedMessagePart(bb.result(), close)
   }
 
   private def renderChunkedResponseStart(response: HttpResponse, ctx: HttpResponsePartRenderingContext,
                                          chunkless: Boolean) = {
     import response._
 
-    val bb = BufferBuilder(responseSizeHint)
-    renderResponseStart(response, ctx, bb)
-    if (!chunkless) appendHeader("Transfer-Encoding", "chunked", bb)
-    bb.append(serverAndDateHeader)
-    appendContentTypeHeaderIfRequired(entity, bb)
+    implicit val bb = newByteStringBuilder(responseSizeHint)
+    renderResponseStart(response, ctx)
+    if (!chunkless) putHeader("Transfer-Encoding", "chunked")
+    put(CrLf)
 
-    bb.append(MessageRendering.CrLf)
-    if (chunkless || entity.buffer.length == 0 || ctx.requestMethod == HttpMethods.HEAD) {
-      renderedMessagePart(bb, ctx.requestMethod, entity, close = false)
-    } else {
-      RenderedMessagePart(renderChunk(Nil, entity.buffer, bb).toByteBuffer :: Nil)
+    if (ctx.requestMethod != HttpMethods.HEAD && entity.buffer.length > 0) {
+      if (chunkless) put(entity.buffer)
+      else putChunk(Nil, entity.buffer)
     }
+    RenderedMessagePart(bb.result())
   }
 
-  private def renderResponseStart(response: HttpResponse, ctx: HttpResponsePartRenderingContext,
-                                  bb: BufferBuilder): Option[String] = {
+  private def renderResponseStart(response: HttpResponse, ctx: HttpResponsePartRenderingContext)
+                                 (implicit bb: ByteStringBuilder): Option[String] = {
     import response._
 
-    if (status == StatusCodes.OK && protocol == `HTTP/1.1`) {
-      bb.append(MessageRendering.DefaultStatusLine)
-    } else {
-      bb.append(protocol.value).append(' ').append(Integer.toString(status.value)).append(' ')
-        .append(status.reason).append(MessageRendering.CrLf)
-    }
-    appendHeaders(headers, bb)
-  }
-
-  private def renderedMessagePart(bb: BufferBuilder, requestMethod: HttpMethod, entity: HttpEntity, close: Boolean) = {
-    if (entity.buffer.length == 0 || requestMethod == HttpMethods.HEAD)
-      RenderedMessagePart(bb.toByteBuffer :: Nil, close)
-    else if (bb.remainingCapacity >= entity.buffer.length)
-      RenderedMessagePart(bb.append(entity.buffer).toByteBuffer :: Nil, close)
-    else
-      RenderedMessagePart(bb.toByteBuffer :: ByteBuffer.wrap(entity.buffer) :: Nil, close)
+    if (status == StatusCodes.OK && protocol == `HTTP/1.1`) put(DefaultStatusLine)
+    else put(protocol.value).put(' ').put(Integer.toString(status.value)).put(' ').put(status.reason).put(CrLf)
+    put(serverAndDateHeader)
+    putContentTypeHeaderIfRequired(entity)
+    putHeadersAndReturnConnectionHeaderValue(headers)()
   }
 
   @tailrec
-  private def appendHeaders(httpHeaders: List[HttpHeader], bb: BufferBuilder,
-                            connectionHeaderValue: Option[String] = None): Option[String] = {
-    if (httpHeaders.nonEmpty) {
-      val header = httpHeaders.head
-      var newConnectionHeaderValue = connectionHeaderValue
-      header.lowercaseName match {
-        case "content-type"      => // we never render these headers here,
-        case "content-length"    => // because their production is the
-        case "transfer-encoding" => // responsibility of the spray-can layer,
-        case "date"              => // not the user
-        case "server"            =>
-        case "connection"        => newConnectionHeaderValue = Some(header.value); appendHeader(header, bb)
-        case _ => appendHeader(header, bb)
+  private def putHeadersAndReturnConnectionHeaderValue(headers: List[HttpHeader])
+                                                      (connectionHeaderValue: Option[String] = None)
+                                                      (implicit bb: ByteStringBuilder): Option[String] =
+    headers match {
+      case Nil => connectionHeaderValue
+      case head :: tail => putHeadersAndReturnConnectionHeaderValue(tail) {
+        head.lowercaseName match {
+          case "content-type"      => None // we never render these headers here,
+          case "content-length"    => None // because their production is the
+          case "transfer-encoding" => None // responsibility of the spray-can layer,
+          case "date"              => None // not the user
+          case "server"            => None
+          case "connection"        => put(head); Some(head.value)
+          case _ => put(head); None
+        }
       }
-      appendHeaders(httpHeaders.tail, bb, newConnectionHeaderValue)
-    } else connectionHeaderValue
-  }
+    }
 
-  private def appendConnectionHeaderIfRequired(response: HttpResponse, ctx: HttpResponsePartRenderingContext,
-                                       connectionHeaderValue: Option[String], bb: BufferBuilder): Boolean = {
+  private def putConnectionHeaderIfRequiredAndReturnClose(response: HttpResponse, ctx: HttpResponsePartRenderingContext,
+                                                          connectionHeaderValue: Option[String])
+                                                         (implicit bb: ByteStringBuilder): Boolean =
     ctx.requestProtocol match {
       case `HTTP/1.0` => {
         if (connectionHeaderValue.isEmpty) {
-          if (ctx.requestConnectionHeader.isDefined && ctx.requestConnectionHeader.get == "Keep-Alive") {
-            appendHeader("Connection", "Keep-Alive", bb)
+          if (ctx.requestConnectionHeader.isDefined && (ctx.requestConnectionHeader.get equalsIgnoreCase "Keep-Alive")) {
+            putHeader("Connection", "Keep-Alive")
             false
           } else true
-        } else !connectionHeaderValue.get.contains("Keep-Alive")
+        } else !(connectionHeaderValue.get equalsIgnoreCase "Keep-Alive")
       }
       case `HTTP/1.1` => {
         if (connectionHeaderValue.isEmpty) {
-          if (ctx.requestConnectionHeader.isDefined && ctx.requestConnectionHeader.get == "close") {
-            if (response.protocol == `HTTP/1.1`) appendHeader("Connection", "close", bb)
+          if (ctx.requestConnectionHeader.isDefined && (ctx.requestConnectionHeader.get equalsIgnoreCase "close")) {
+            if (response.protocol == `HTTP/1.1`) putHeader("Connection", "close")
             true
           } else response.protocol == `HTTP/1.0`
-        } else connectionHeaderValue.get.contains("close")
+        } else connectionHeaderValue.get equalsIgnoreCase "close"
       }
     }
-  }
 
   // for max perf we cache the ServerAndDateHeader of the last second here
-  // we don't use @volatile or any type of synchronization on it though since
-  // and we don't care if we are redoing work in another thread
-  private[this] var cachedServerAndDateHeader: (Long, Array[Byte]) = _
+  @volatile private[this] var cachedServerAndDateHeader: (Long, Array[Byte]) = _
 
-  protected def serverAndDateHeader: Array[Byte] = {
+  private def serverAndDateHeader: Array[Byte] = {
     var (cachedSeconds, cachedBytes) = if (cachedServerAndDateHeader != null) cachedServerAndDateHeader else (0L, null)
     val now = System.currentTimeMillis
     if (now / 1000 != cachedSeconds) {
       cachedSeconds = now / 1000
-      cachedBytes =
-        BufferBuilder(serverHeaderPlusDateColonSP.length + 32)
-        .append(serverHeaderPlusDateColonSP)
-        .append(dateTime(now).toRfc1123DateTimeString)
-        .append(MessageRendering.CrLf)
-        .toArray
+      implicit val bb = newByteStringBuilder(serverHeaderPlusDateColonSP.length + 32)
+      put(serverHeaderPlusDateColonSP).put(dateTime(now).toRfc1123DateTimeString).put(CrLf)
+      cachedBytes = bb.result().toArray
       cachedServerAndDateHeader = cachedSeconds -> cachedBytes
     }
     cachedBytes
   }
 
-  protected def dateTime(now: Long) = DateTime.now  // split out so we can stabilize by overriding in tests
+  protected def dateTime(now: Long) = DateTime(now)  // split out so we can stabilize by overriding in tests
 }

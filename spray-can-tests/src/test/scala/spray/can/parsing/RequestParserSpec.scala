@@ -16,9 +16,10 @@
 
 package spray.can.parsing
 
-import java.nio.ByteBuffer
 import org.specs2.mutable.Specification
+import akka.util.ByteString
 import spray.can.RequestLine
+import spray.can.TestSupport._
 import spray.util._
 import spray.http._
 import HttpHeaders._
@@ -108,7 +109,7 @@ class RequestParserSpec extends Specification {
         )
       }
       "message chunk" in {
-        def chunkParser = new ChunkParser(new ParserSettings())
+        def chunkParser = new ChunkParser(defaultParserSettings)
         parse(chunkParser)("3\nabc\n") === (Nil, "abc")
         parse(chunkParser)("10 ;key= value ; another=one;and =more \n0123456789ABCDEF\n") === (
           List(
@@ -123,7 +124,7 @@ class RequestParserSpec extends Specification {
         parse(chunkParser)("bla") === ErrorState("Illegal chunk size")
       }
       "message end" in {
-        def chunkParser = new ChunkParser(new ParserSettings())
+        def chunkParser = new ChunkParser(defaultParserSettings)
         parse(chunkParser)("0\n\n") === (Nil, Nil)
         parse(chunkParser) {
           """|000;nice=true
@@ -202,7 +203,7 @@ class RequestParserSpec extends Specification {
     }
   }
 
-  def parse: String => AnyRef = parse(new EmptyRequestParser(new ParserSettings()))
+  def parse: String => AnyRef = parse(new EmptyRequestParser(defaultParserSettings))
   
   def parse(startParser: IntermediateState): String => AnyRef = {
     RequestParserSpec.parse(startParser, extractFromCompleteMessage _) _
@@ -220,8 +221,8 @@ object RequestParserSpec {
             extractFromCompleteMessage: CompleteMessageState => AnyRef)(response: String): AnyRef = {
     // Some tests use multiline strings and some use one line with "\n" separators
     val req = response.stripMargin.replace(EOL, "\n").replace("\n", "\r\n")
-    val buf = ByteBuffer.wrap(req.getBytes("US-ASCII"))
-    startParser.read(buf) match {
+    val data = ByteString(req.getBytes("US-ASCII"))
+    startParser.read(data.iterator) match {
       case x: CompleteMessageState => extractFromCompleteMessage(x)
       case x: ToCloseBodyParser => extractFromCompleteMessage(x.complete)
       case ChunkedChunkState(extensions, body) => (extensions, body.asString("ISO-8859-1"))

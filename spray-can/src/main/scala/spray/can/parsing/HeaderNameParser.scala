@@ -34,7 +34,7 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
   def valueParser = new HeaderValueParser(settings, messageLine, headerCount, headers, headerName.toString)
 
   def handleChar(cursor: Char) = {
-    if (headerName.length <= settings.MaxHeaderNameLength) {
+    if (headerName.length <= settings.maxHeaderNameLength) {
       cursor match {
         case x if isTokenChar(x) => headerName.append(toLowerCase(x)); this
         case ':' => new LwsParser(valueParser)
@@ -44,7 +44,7 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
         case _ => ErrorState("Invalid character '" + escape(cursor) + "', expected TOKEN CHAR, LWS or COLON")
       }
     } else {
-      ErrorState("HTTP header name exceeds the configured limit of " + settings.MaxHeaderNameLength +
+      ErrorState("HTTP header name exceeds the configured limit of " + settings.maxHeaderNameLength +
                   " characters", "header '" + headerName.toString.take(50) + "...'")
     }
   }
@@ -115,10 +115,10 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
         case value =>
           try {
             val contentLength = value.toInt
-            if (contentLength <= settings.MaxContentLength)
+            if (contentLength <= settings.maxContentLength)
               new FixedLengthBodyParser(messageLine, headers, cHeader, ctHeader, contentLength)
             else ErrorState(RequestEntityTooLarge, "HTTP message Content-Length " + value +
-              " exceeds the configured limit of " + settings.MaxContentLength)
+              " exceeds the configured limit of " + settings.maxContentLength)
           }
           catch {
             case e@ (_:IllegalArgumentException | _:NumberFormatException) =>

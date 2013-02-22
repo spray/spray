@@ -16,16 +16,15 @@
 
 package spray.can.rendering
 
-import java.nio.ByteBuffer
 import java.net.InetSocketAddress
 import scala.annotation.tailrec
-import spray.io.BufferBuilder
+import akka.util.ByteStringBuilder
 import spray.http._
+import MessageRendering._
 
+class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) {
 
-class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) extends MessageRendering {
-
-  def render(requestPart: HttpRequestPart, remoteAddress: Option[InetSocketAddress]): RenderedMessagePart = {
+  def render(requestPart: HttpRequestPart, remoteAddress: InetSocketAddress): RenderedMessagePart = {
     requestPart match {
       case x: HttpRequest => renderRequest(x, remoteAddress)
       case x: ChunkedRequestStart => renderChunkedRequestStart(x.request, remoteAddress)
@@ -34,58 +33,51 @@ class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) extends Mes
     }
   }
 
-  private def renderRequest(request: HttpRequest, remoteAddress: Option[InetSocketAddress]) = {
-    val bb = renderRequestStart(request, remoteAddress)
-    val rbl = request.entity.buffer.length
-    if (rbl > 0 || request.method.entityAccepted) appendHeader("Content-Length", rbl.toString, bb)
-    bb.append(MessageRendering.CrLf)
-    RenderedMessagePart {
-      if (rbl > 0)
-        if (bb.remainingCapacity >= rbl) bb.append(request.entity.buffer).toByteBuffer :: Nil
-        else bb.toByteBuffer :: ByteBuffer.wrap(request.entity.buffer) :: Nil
-      else bb.toByteBuffer :: Nil
-    }
+  private def renderRequest(request: HttpRequest, remoteAddress: InetSocketAddress) = {
+    implicit val bb = renderRequestStart(request, remoteAddress)
+    val bodyLength = request.entity.buffer.length
+    if (bodyLength > 0 || request.method.entityAccepted) putHeader("Content-Length", bodyLength.toString)
+    put(CrLf).put(request.entity.buffer)
+    RenderedMessagePart(bb.result())
   }
 
-  private def renderChunkedRequestStart(request: HttpRequest, remoteAddress: Option[InetSocketAddress]) = {
-    val bb = renderRequestStart(request, remoteAddress)
-    appendHeader("Transfer-Encoding", "chunked", bb).append(MessageRendering.CrLf)
-    val body = request.entity.buffer
-    if (body.length > 0) renderChunk(Nil, body, bb)
-    RenderedMessagePart(bb.toByteBuffer :: Nil)
+  private def renderChunkedRequestStart(request: HttpRequest, remoteAddress: InetSocketAddress): RenderedMessagePart = {
+    implicit val bb = renderRequestStart(request, remoteAddress)
+    putHeader("Transfer-Encoding", "chunked").put(CrLf)
+    if (request.entity.buffer.length > 0) putChunk(Nil, request.entity.buffer)
+    RenderedMessagePart(bb.result())
   }
 
-  private def renderRequestStart(request: HttpRequest, remoteAddress: Option[InetSocketAddress]) = {
+  private def renderRequestStart(request: HttpRequest, remoteAddress: InetSocketAddress): ByteStringBuilder = {
     import request._
-    val bb = BufferBuilder(requestSizeHint)
-    bb.append(method.value).append(' ').append(uri).append(' ').append(protocol.value).append(MessageRendering.CrLf)
-    val hostHeaderPresent = appendHeaders(headers, bb)
-    if (!hostHeaderPresent && remoteAddress.isDefined) {
-      bb.append("Host: ").append(remoteAddress.get.getHostName)
-      val port = remoteAddress.get.getPort
-      if (port != 80) bb.append(':').append(Integer.toString(port))
-      bb.append(MessageRendering.CrLf)
+    implicit val bb = newByteStringBuilder(requestSizeHint)
+    put(method.value).put(' ').put(uri).put(' ').put(protocol.value).put(CrLf)
+    val hostHeaderPresent = putHeadersAndReturnHostHeaderPresent(headers)
+    if (!hostHeaderPresent) {
+      put("Host: ").put(remoteAddress.getHostName)
+      val port = remoteAddress.getPort
+      if (port != 80) put(':').put(Integer.toString(port))
+      put(CrLf)
     }
-    if (!userAgentHeader.isEmpty) appendHeader("User-Agent", userAgentHeader, bb)
-    appendContentTypeHeaderIfRequired(request.entity, bb)
+    if (!userAgentHeader.isEmpty) putHeader("User-Agent", userAgentHeader)
+    putContentTypeHeaderIfRequired(request.entity)
+    bb
   }
 
   @tailrec
-  private def appendHeaders(httpHeaders: List[HttpHeader], bb: BufferBuilder,
-                            hostHeaderPresent: Boolean = false): Boolean = {
-    if (httpHeaders.nonEmpty) {
-      val header = httpHeaders.head
-      var newHostHeaderPresent = hostHeaderPresent
-      header.lowercaseName match {
-        case "content-type"      => // we never render these headers here,
-        case "content-length"    => // because their production is the
-        case "transfer-encoding" => // responsibility of the spray-can layer,
-        case "user-agent" if !userAgentHeader.isEmpty
-                                 => // not the user
-        case "host"              => newHostHeaderPresent = true; appendHeader(header, bb)
-        case _                   => appendHeader(header, bb)
-      }
-      appendHeaders(httpHeaders.tail, bb, newHostHeaderPresent)
-    } else hostHeaderPresent
-  }
+  private def putHeadersAndReturnHostHeaderPresent(headers: List[HttpHeader], hostHeaderPresent: Boolean = false)
+                                                  (implicit bb: ByteStringBuilder): Boolean =
+    headers match {
+      case Nil => hostHeaderPresent
+      case head :: tail =>
+        val found = head.lowercaseName match {
+          case "content-type"      => false // we never render these headers here,
+          case "content-length"    => false // because their production is the
+          case "transfer-encoding" => false // responsibility of the spray-can layer,
+          case "user-agent" if !userAgentHeader.isEmpty => false // not the user
+          case "host"              => put(head); true
+          case _                   => put(head); false
+        }
+        putHeadersAndReturnHostHeaderPresent(tail, found || hostHeaderPresent)
+    }
 }

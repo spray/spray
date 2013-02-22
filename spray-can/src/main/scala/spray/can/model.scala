@@ -44,6 +44,3 @@ object Trailer {
     trailer
   }
 }
-
-case class HttpCommand(cmd: HttpMessagePartWrapper) extends spray.io.Command
-case class HttpEvent(ev: HttpMessagePart) extends spray.io.Event

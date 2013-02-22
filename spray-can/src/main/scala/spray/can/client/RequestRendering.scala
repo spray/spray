@@ -16,22 +16,23 @@
 
 package spray.can.client
 
+import akka.io.Tcp
 import spray.can.rendering.{HttpRequestPartRenderingContext, RequestRenderer}
 import spray.io._
 
 
 object RequestRendering {
 
-  def apply(settings: HttpClientConnectionSettings): PipelineStage =
+  def apply(settings: ClientSettings): PipelineStage =
     new PipelineStage {
-      val renderer = new RequestRenderer(settings.UserAgentHeader, settings.RequestSizeHint.toInt)
+      val renderer = new RequestRenderer(settings.userAgentHeader, settings.requestSizeHint)
 
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           val commandPipeline: CPL = {
-            case HttpRequestPartRenderingContext(requestPart, sentAck) =>
-              val rendered = renderer.render(requestPart, context.connection.remoteAddress)
-              commandPL(IOClientConnection.Send(rendered.buffers, sentAck))
+            case HttpRequestPartRenderingContext(requestPart, ack) =>
+              val rendered = renderer.render(requestPart, context.remoteAddress)
+              commandPL(Tcp.Write(rendered.data, ack))
 
             case cmd => commandPL(cmd)
           }

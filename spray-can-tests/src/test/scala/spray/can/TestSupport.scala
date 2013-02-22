@@ -16,26 +16,15 @@
 
 package spray.can
 
-import spray.io._
+import spray.can.parsing.ParserSettings
 import spray.util._
 import spray.http._
 import HttpHeaders.RawHeader
+import com.typesafe.config.ConfigFactory
 
+object TestSupport {
 
-trait HttpPipelineStageSpec extends PipelineStageTest {
-
-  override def extractCommands(commands: List[Command]) =
-    super.extractCommands(commands).map {
-      case SendString(string, ack) => SendString(
-        string.fastSplit('\n').map {
-          case s if s.startsWith("Date:") => "Date: XXXX\r"
-          case s => s
-        }.mkString("\n"), ack
-      )
-      case x => x
-    }
-
-  def request(content: String = "") = HttpRequest().withEntity(content)
+  def defaultParserSettings = ParserSettings(ConfigFactory.load() getConfig "spray.can.parsing")
 
   def emptyRawRequest(method: String = "GET") = prep {
     """|%s / HTTP/1.1
@@ -128,4 +117,10 @@ trait HttpPipelineStageSpec extends PipelineStageTest {
   }
 
   def prep(s: String) = s.stripMargin.replace(EOL, "\r\n")
+
+  def wipeDate(string: String) =
+    string.fastSplit('\n').map {
+      case s if s.startsWith("Date:") => "Date: XXXX\r"
+      case s => s
+    }.mkString("\n")
 }

@@ -16,8 +16,8 @@
 
 package spray.can.parsing
 
-import java.nio.ByteBuffer
 import scala.annotation.tailrec
+import akka.util.ByteIterator
 import spray.http.StatusCodes.NotImplemented
 
 
@@ -31,7 +31,7 @@ trait ParsingState
  * A ParsingState holding an intermediate parsing state, i.e. which does not represent a complete parsing result
  */
 trait IntermediateState extends ParsingState {
-  def read(buf: ByteBuffer): ParsingState
+  def read(data: ByteIterator): ParsingState
 }
 
 /**
@@ -39,15 +39,15 @@ trait IntermediateState extends ParsingState {
  */
 abstract class CharacterParser extends IntermediateState {
 
-  def read(buf: ByteBuffer): ParsingState = {
+  def read(data: ByteIterator): ParsingState = {
     @tailrec
     def read(parser: ParsingState): ParsingState = parser match {
       case x: CharacterParser =>
-        if (buf.remaining > 0) {
-          val cursor = buf.get.asInstanceOf[Char] // simple US-ASCII encoding conversion
+        if (data.hasNext) {
+          val cursor = data.next().asInstanceOf[Char] // simple US-ASCII encoding conversion
           read(x.handleChar(cursor))
         } else x
-      case x: IntermediateState => x.read(buf) // a body parser
+      case x: IntermediateState => x.read(data) // a body parser
       case x: FinalParsingState => x
     }
     read(this)
