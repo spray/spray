@@ -28,27 +28,27 @@ import StatusCodes._
 
 sealed trait HttpMessagePartWrapper {
   def messagePart: HttpMessagePart
-  def sentAck: Option[Any]
+  def ack: Any
 }
 
-case class Confirmed(messagePart: HttpMessagePart, sentAck: Option[Any]) extends HttpMessagePartWrapper
+case class Confirmed(messagePart: HttpMessagePart, ack: Any) extends HttpMessagePartWrapper
 
 object HttpMessagePartWrapper {
-  def unapply(x: HttpMessagePartWrapper): Option[(HttpMessagePart, Option[Any])] = Some((x.messagePart, x.sentAck))
+  def unapply(x: HttpMessagePartWrapper): Option[(HttpMessagePart, Any)] = Some((x.messagePart, x.ack))
 }
 
 sealed trait HttpMessagePart extends HttpMessagePartWrapper {
   def messagePart = this
-  def sentAck: Option[Any] = None
-  def withSentAck(ack: Any) = Confirmed(this, Some(ack))
+  def ack: Any = None // we use `None` as the special value signalling "No Ack requested"
+  def withAck(ack: Any) = Confirmed(this, ack)
 }
 
 sealed trait HttpRequestPart extends HttpMessagePart
 
 object HttpRequestPart {
-  def unapply(wrapper: HttpMessagePartWrapper): Option[(HttpRequestPart, Option[Any])] =
+  def unapply(wrapper: HttpMessagePartWrapper): Option[(HttpRequestPart, Any)] =
     wrapper.messagePart match {
-      case x: HttpRequestPart => Some((x, wrapper.sentAck))
+      case x: HttpRequestPart => Some((x, wrapper.ack))
       case _ => None
     }
 }
@@ -56,9 +56,9 @@ object HttpRequestPart {
 sealed trait HttpResponsePart extends HttpMessagePart
 
 object HttpResponsePart {
-  def unapply(wrapper: HttpMessagePartWrapper): Option[(HttpResponsePart, Option[Any])] =
+  def unapply(wrapper: HttpMessagePartWrapper): Option[(HttpResponsePart, Any)] =
     wrapper.messagePart match {
-      case x: HttpResponsePart => Some((x, wrapper.sentAck))
+      case x: HttpResponsePart => Some((x, wrapper.ack))
       case _ => None
     }
 }

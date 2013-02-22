@@ -82,7 +82,7 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
 
               case x => throw new IllegalStateException("Received unexpected message part: " + x)
             }
-            wrapper.sentAck.foreach(sender.tell(_, this))
+            if (wrapper.ack != None) sender.tell(wrapper.ack, this)
         }
       }
     }
