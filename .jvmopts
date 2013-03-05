@@ -1,0 +1,6 @@
+-Dfile.encoding=UTF8
+-XX:MaxPermSize=512m
+-Xms512m
+-Xss2m
+-XX:+CMSClassUnloadingEnabled
+-XX:+UseConcMarkSweepGC
