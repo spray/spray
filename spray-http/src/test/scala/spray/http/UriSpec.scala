@@ -195,7 +195,7 @@ class UriSpec extends Specification {
         Uri.from(scheme = "http", host = "www.ietf.org", path = "/rfc/rfc2396.txt")
 
       Uri("ldap://[2001:db8::7]/c=GB?objectClass?one") ===
-        Uri.from(scheme = "ldap", host = "[2001:db8::7]", path = "/c=GB", query = Some("objectClass?one"))
+        Uri.from(scheme = "ldap", host = "[2001:db8::7]", path = "/c=GB", query = Map("objectClass?one" -> ""))
 
       Uri("mailto:John.Doe@example.com") ===
         Uri.from(scheme = "mailto", path = "John.Doe@example.com")
@@ -211,6 +211,11 @@ class UriSpec extends Specification {
 
       Uri("urn:oasis:names:specification:docbook:dtd:xml:4.1.2") ===
         Uri.from(scheme = "urn", path = "oasis:names:specification:docbook:dtd:xml:4.1.2")
+
+      // more examples
+      Uri("http://") === Uri(scheme = "http", authority = Authority(host = NamedHost("")))
+      Uri("http:?") === Uri.from(scheme = "http", query = Map("" -> ""))
+      Uri("?a+b=c%2Bd") === Uri.from(query = Map("a b" -> "c+d"))
     }
 
     "properly complete a normalization cycle" in {
@@ -251,6 +256,22 @@ class UriSpec extends Specification {
       normalize("http://example.com/a/b/%2E%2E/") === "http://example.com/a/"
       normalize("http://user:pass@SOMEHOST.COM:123") === "http://user:pass@somehost.com:123"
       normalize("HTTP://a:b@HOST:123/./1/2/../%41?abc#def") === "http://a:b@host:123/1/A?abc#def"
+
+      // queries
+      normalize("?") === "?"
+      normalize("?key") === "?key"
+      normalize("?=value") === "?=value"
+      normalize("?key=value") === "?key=value"
+      normalize("?a+b") === "?a+b"
+      normalize("?=a+b") === "?=a+b"
+      normalize("?a+b=c+d") === "?a+b=c+d"
+      normalize("??") === "??"
+      normalize("?a=1&b=2") === "?a=1&b=2"
+      normalize("?a+b=c%2Bd") === "?a+b=c%2Bd"
+      normalize("?a&a") === "?a" // artifact of us using a query *map*, which prevents key duplication
+      normalize("?&#") === "?#" // artifact of us using a query *map*, which prevents key duplication
+      normalize("?#") === "?#"
+      normalize("#") === "#"
     }
 
     "produce proper error messages for illegal URIs" in {

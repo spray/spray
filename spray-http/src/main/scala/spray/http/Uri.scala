@@ -31,7 +31,7 @@ import Uri._
 abstract case class Uri(scheme: String,
                         authority: Authority,
                         path: Path,
-                        query: Option[String],
+                        query: QueryParams,
                         fragment: Option[String]) {
 
   def isAbsolute: Boolean = !isRelative
@@ -45,7 +45,7 @@ abstract case class Uri(scheme: String,
    * Returns a copy of this Uri with the given components.
    */
   def copy(scheme: String = scheme, authority: Authority = authority, path: Path = path,
-           query: Option[String] = None, fragment: Option[String] = None): Uri =
+           query: QueryParams = Map.empty, fragment: Option[String] = None): Uri =
     Uri(scheme, authority, path, query, fragment)
 
   /**
@@ -62,18 +62,27 @@ abstract case class Uri(scheme: String,
    * produce percent-encoded representations of potentially existing non-ASCII characters in the
    * different components.
    */
-  def render(sb: JStringBuilder = new JStringBuilder(renderCharCountHint), charset: Charset = UTF8): JStringBuilder = {
+  def render(sb: JStringBuilder = new JStringBuilder, charset: Charset = UTF8): JStringBuilder = {
+    class QueryRenderer extends (((String, String)) => Unit) {
+      private[this] var first = true
+      def apply(kvp: (String, String)): Unit = {
+        if (!first) sb.append('&')
+        sb.append(enc(kvp._1))
+        if (!kvp._2.isEmpty) sb.append('=').append(enc(kvp._2))
+        first = false
+      }
+      def enc(s: String) = encode(s, charset, QUERY_FRAGMENT_CHARS & ~(AMP | EQUAL | PLUS) | SPACE).replace(' ', '+')
+    }
     if (isAbsolute) sb.append(scheme).append(':')
     authority.render(sb, scheme, charset)
     path.render(sb, charset, encodeFirstSegmentColons = isRelative)
-    if (query.isDefined) sb.append('?').append(encode(query.get, charset, QUERY_FRAGMENT_CHARS))
+    if (!query.isEmpty) {
+      sb.append('?')
+      query.foreach(new QueryRenderer)
+    }
     if (fragment.isDefined) sb.append('#').append(encode(fragment.get, charset, QUERY_FRAGMENT_CHARS))
     sb
   }
-
-  private def renderCharCountHint: Int =
-    scheme.length + authority.userinfo.length + authority.host.address.length + path.charCount +
-      (if (query.isEmpty) 0 else query.get.length) + (if (fragment.isEmpty) 0 else fragment.get.length) + 11
 }
 
 object Uri {
@@ -101,7 +110,7 @@ object Uri {
    * http://tools.ietf.org/html/rfc3986 the method throws an `IllegalUriException`.
    */
   def apply(scheme: String = "", authority: Authority = Authority.Empty, path: Path = Path.Empty,
-            query: Option[String] = None, fragment: Option[String] = None): Uri = {
+            query: QueryParams = Map.empty, fragment: Option[String] = None): Uri = {
     val p = verifyPath(path, scheme, authority.host)
     new Impl(
       scheme = normalizeScheme(scheme),
@@ -118,7 +127,7 @@ object Uri {
    * http://tools.ietf.org/html/rfc3986 the method throws an `IllegalUriException`.
    */
   def from(scheme: String = "", userinfo: String = "", host: String = "", port: Int = 0, path: String = "",
-           query: Option[String] = None, fragment: Option[String] = None): Uri =
+           query: QueryParams = Map.empty, fragment: Option[String] = None): Uri =
     apply(scheme, Authority(Host(host), userinfo, normalizePort(port, scheme)), Path(path), query, fragment)
 
   /**
@@ -304,7 +313,7 @@ object Uri {
   /////////////////////////////////// PRIVATE //////////////////////////////////////////
 
   // http://tools.ietf.org/html/rfc3986#section-5.2.2
-  private[http] def resolve(scheme: String, userinfo: String, host: Host, port: Int, path: Path, query: Option[String],
+  private[http] def resolve(scheme: String, userinfo: String, host: Host, port: Int, path: Path, query: QueryParams,
                             fragment: Option[String], base: Uri): Uri = {
     require(base.isAbsolute, "Resolution base Uri must be absolute")
     if (scheme.isEmpty)
@@ -456,9 +465,9 @@ object Uri {
 
   private[http] def fail(msg: String) = throw new IllegalUriException(msg)
 
-  private[http] class Impl(scheme: String, authority: Authority, path: Path, query: Option[String],
+  private[http] class Impl(scheme: String, authority: Authority, path: Path, query: QueryParams,
                            fragment: Option[String]) extends Uri(scheme, authority, path, query, fragment) {
-    def this(scheme: String, userinfo: String, host: Host, port: Int, path: Path, query: Option[String],
+    def this(scheme: String, userinfo: String, host: Host, port: Int, path: Path, query: QueryParams,
              fragment: Option[String]) =
       this(scheme, Authority(host, userinfo, normalizePort(port, scheme)), path, query, fragment)
   }

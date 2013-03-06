@@ -19,23 +19,22 @@ package spray.http.parser
 import java.nio.charset.Charset
 import java.lang.{StringBuilder => JStringBuilder}
 import scala.annotation.tailrec
-import scala.collection.immutable.NumericRange
+import scala.collection.immutable.{ListMap, NumericRange}
 import spray.http._
 import Uri._
 import UriParser._
 
 private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
-  val EOI = '\uffff' // compile time constant
   private[this] var cursor: Int = 0
   private[this] var maxCursor: Int = 0
   private[this] var firstUpper = -1
   private[this] var firstPercent = -1
-  var _scheme: String = ""
-  var _userinfo: String = ""
+  var _scheme = ""
+  var _userinfo = ""
   var _host: Host = Host.Empty
   var _port: Int = 0
   var _path: Path = Path.Empty
-  var _query: Option[String] = None
+  var _query: QueryParams = ListMap.empty
   var _fragment: Option[String] = None
 
   def parseAbsolute(): Uri = {
@@ -167,16 +166,6 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
       //(IPv6address || reset(mark) && IPvFuture)
     } && ch(']')
 
-  def IPvFuture = {
-    (ch('v') || ch('V')) && Hexdig && {
-      while (Hexdig) {}
-      true
-    } && ch('.') && matches(UNRESERVED | SUB_DELIM | COLON) && {
-      while (matches(UNRESERVED | SUB_DELIM | COLON)) {}
-      true
-    }
-  }
-
   def IPv6address = {
     def h16c = h16 && ch(':') && current != ':'
     def cc = ch(':') && ch(':')
@@ -285,19 +274,35 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
   def pchar = matches(PATH_SEGMENT_CHARS) || `pct-encoded`
 
   def query = {
-    val start = cursor
-    resetFirstPercent() && queryOrFragment && {
-      _query = Some(decodeIfNeeded(splice(start, cursor), firstPercent - start, charset))
-      true
+    def part = {
+      val start = cursor
+      var mark = cursor
+      resetFirstPercent()
+      while (matches(QUERY_FRAGMENT_CHARS & ~(AMP | EQUAL)) || `pct-encoded`) mark = cursor
+      reset(mark)
+      if (cursor > start)
+        decodeIfNeeded(splice(start, cursor).replace('+', ' '), firstPercent - start, charset)
+      else ""
     }
+    @tailrec def readKVP(): Unit = {
+      _query = _query.updated(part, if (ch('=')) part else "")
+      if (ch('&')) readKVP()
+    }
+    readKVP()
+    true
   }
 
   def fragment = {
     val start = cursor
-    resetFirstPercent() && queryOrFragment && {
-      _fragment = Some(decodeIfNeeded(splice(start, cursor), firstPercent - start, charset))
-      true
+    var mark = cursor
+    resetFirstPercent()
+    while (matches(QUERY_FRAGMENT_CHARS) || `pct-encoded`) mark = cursor
+    reset(mark)
+    _fragment = Some {
+      if (cursor > start) decodeIfNeeded(splice(start, cursor), firstPercent - start, charset)
+      else ""
     }
+    true
   }
 
   def `pct-encoded` = ch('%') && Hexdig && Hexdig && markPercent(-3)
@@ -319,12 +324,6 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
     reset(mark)
   }
 
-  def queryOrFragment = {
-    var mark = cursor
-    while (matches(QUERY_FRAGMENT_CHARS) || `pct-encoded`) mark = cursor
-    reset(cursor)
-  }
-
   ////////////// HELPERS ////////////////
 
   def previous: Char = input.charAt(cursor - 1)
@@ -341,7 +340,7 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
     _path = Path(decodeIfNeeded(splice(start, cursor), firstPercent - start, charset))
     true
   }
-  
+
   def splice(start: Int, end: Int): String = input.subSequence(start, end).toString
 
   def resetFirstUpper() = { firstUpper = -1; true }
@@ -376,6 +375,8 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
 }
 
 private[http] object UriParser {
+  val EOI = '\uffff' // compile time constant
+
   // compile time constants
   val LOWER_ALPHA = 0x0001
   val UPPER_ALPHA = 0x0002
@@ -391,8 +392,7 @@ private[http] object UriParser {
   val UNRESERVED_SPECIALS = 0x0080
   val UNRESERVED = ALPHA | DIGIT | UNRESERVED_SPECIALS
   val GEN_DELIM = 0x0100
-  val SUB_DELIM = 0x0200
-  val RESERVED = GEN_DELIM | SUB_DELIM
+  val SUB_DELIM_BASE = 0x0200
   val AT = 0x0400
   val COLON = 0x0800
   val SLASH = 0x1000
@@ -400,6 +400,11 @@ private[http] object UriParser {
   val PLUS = 0x4000
   val DASH = 0x8000
   val DOT = 0x10000
+  val AMP = 0x20000
+  val EQUAL = 0x40000
+  val SPACE = 0x80000
+  val SUB_DELIM = SUB_DELIM_BASE | AMP | EQUAL | PLUS
+  val RESERVED = GEN_DELIM | SUB_DELIM
 
   val QUERY_FRAGMENT_CHARS = UNRESERVED | SUB_DELIM | COLON | AT | SLASH | QUESTIONMARK
   val PATH_SEGMENT_CHARS = UNRESERVED | SUB_DELIM | COLON | AT
@@ -420,7 +425,7 @@ private[http] object UriParser {
   mark(UPPER_HEX_LETTER, 'A' to 'F')
   mark(UNRESERVED_SPECIALS, '-', '.', '_', '~')
   mark(GEN_DELIM, ':', '/', '?', '#' ,'[' , ']', '@')
-  mark(SUB_DELIM, '!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=')
+  mark(SUB_DELIM_BASE, '!', '$', '\'', '(', ')', '*', ',', ';')
   mark(AT, '@')
   mark(COLON, ':')
   mark(SLASH, '/')
@@ -428,6 +433,9 @@ private[http] object UriParser {
   mark(PLUS, '+')
   mark(DASH, '-')
   mark(DOT, '.')
+  mark(AMP, '&')
+  mark(EQUAL, '=')
+  mark(SPACE, ' ')
 
   def toLowerCase(c: Char): Char = if (is(c, UPPER_ALPHA)) (c + 0x20).toChar else c
   def toUpperCase(c: Char): Char = if (is(c, LOWER_ALPHA)) (c - 0x20).toChar else c
