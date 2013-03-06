@@ -16,10 +16,11 @@
 
 package spray
 
-import http.HttpHeaders.RawHeader
+import java.nio.charset.Charset
 
 
 package object http {
+  val UTF8: Charset = HttpCharsets.`UTF-8`.nioCharset
 
   type QueryParams = Map[String, String]
 
@@ -30,21 +31,21 @@ package object http {
   def warmUp() {
     HttpRequest(
       headers = List(
-        RawHeader("Accept", "*/*,text/plain,custom/custom"),
-        RawHeader("Accept-Charset", "*,UTF-8"),
-        RawHeader("Accept-Encoding", "gzip,custom"),
-        RawHeader("Accept-Language", "*,de-de,custom"),
-        RawHeader("Authorization", "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ=="),
-        RawHeader("Cache-Control", "no-cache"),
-        RawHeader("Connection", "close"),
-        RawHeader("Content-Disposition", "form-data"),
-        RawHeader("Content-Encoding", "deflate"),
-        RawHeader("Content-Length", "42"),
-        RawHeader("Content-Type", "application/json"),
-        RawHeader("Cookie", "spray=cool"),
-        RawHeader("Host", "spray.io"),
-        RawHeader("X-Forwarded-For", "1.2.3.4"),
-        RawHeader("Fancy-Custom-Header", "yeah")
+        HttpHeaders.RawHeader("Accept", "*/*,text/plain,custom/custom"),
+        HttpHeaders.RawHeader("Accept-Charset", "*,UTF-8"),
+        HttpHeaders.RawHeader("Accept-Encoding", "gzip,custom"),
+        HttpHeaders.RawHeader("Accept-Language", "*,de-de,custom"),
+        HttpHeaders.RawHeader("Authorization", "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ=="),
+        HttpHeaders.RawHeader("Cache-Control", "no-cache"),
+        HttpHeaders.RawHeader("Connection", "close"),
+        HttpHeaders.RawHeader("Content-Disposition", "form-data"),
+        HttpHeaders.RawHeader("Content-Encoding", "deflate"),
+        HttpHeaders.RawHeader("Content-Length", "42"),
+        HttpHeaders.RawHeader("Content-Type", "application/json"),
+        HttpHeaders.RawHeader("Cookie", "spray=cool"),
+        HttpHeaders.RawHeader("Host", "spray.io"),
+        HttpHeaders.RawHeader("X-Forwarded-For", "1.2.3.4"),
+        HttpHeaders.RawHeader("Fancy-Custom-Header", "yeah")
       ),
       entity = "spray rocks!"
     ).parseAll
