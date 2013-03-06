@@ -36,10 +36,10 @@ object SslBufferPool {
 
   // we are using Nettys default values:
   // 16665 + 1024 (room for compressed data) + 1024 (for OpenJDK compatibility)
-  private val MaxPacketSize = 16665 + 2048
+  private final val MaxPacketSize = 16665 + 2048
 
-  private val Unlocked = 0
-  private val Locked = 1
+  private final val Unlocked = 0
+  private final val Locked = 1
 
   private[this] val state = new AtomicInteger(Unlocked)
   @volatile private[this] var pool: List[ByteBuffer] = Nil

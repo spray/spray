@@ -375,39 +375,39 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
 }
 
 private[http] object UriParser {
-  val EOI = '\uffff' // compile time constant
-
   // compile time constants
-  val LOWER_ALPHA = 0x0001
-  val UPPER_ALPHA = 0x0002
-  val ALPHA = LOWER_ALPHA | UPPER_ALPHA
-  val DIGIT19 = 0x0004
-  val DIGIT04 = 0x0008
-  val DIGIT05 = 0x0010
-  val DIGIT = DIGIT19 | DIGIT04 | DIGIT05
-  val LOWER_HEX_LETTER = 0x0020
-  val UPPER_HEX_LETTER = 0x0040
-  val HEX_LETTER = LOWER_HEX_LETTER | UPPER_HEX_LETTER
-  val HEX_DIGIT = DIGIT | HEX_LETTER
-  val UNRESERVED_SPECIALS = 0x0080
-  val UNRESERVED = ALPHA | DIGIT | UNRESERVED_SPECIALS
-  val GEN_DELIM = 0x0100
-  val SUB_DELIM_BASE = 0x0200
-  val AT = 0x0400
-  val COLON = 0x0800
-  val SLASH = 0x1000
-  val QUESTIONMARK = 0x2000
-  val PLUS = 0x4000
-  val DASH = 0x8000
-  val DOT = 0x10000
-  val AMP = 0x20000
-  val EQUAL = 0x40000
-  val SPACE = 0x80000
-  val SUB_DELIM = SUB_DELIM_BASE | AMP | EQUAL | PLUS
-  val RESERVED = GEN_DELIM | SUB_DELIM
+  final val EOI = '\uffff'
 
-  val QUERY_FRAGMENT_CHARS = UNRESERVED | SUB_DELIM | COLON | AT | SLASH | QUESTIONMARK
-  val PATH_SEGMENT_CHARS = UNRESERVED | SUB_DELIM | COLON | AT
+  final val LOWER_ALPHA = 0x0001
+  final val UPPER_ALPHA = 0x0002
+  final val ALPHA = LOWER_ALPHA | UPPER_ALPHA
+  final val DIGIT19 = 0x0004
+  final val DIGIT04 = 0x0008
+  final val DIGIT05 = 0x0010
+  final val DIGIT = DIGIT19 | DIGIT04 | DIGIT05
+  final val LOWER_HEX_LETTER = 0x0020
+  final val UPPER_HEX_LETTER = 0x0040
+  final val HEX_LETTER = LOWER_HEX_LETTER | UPPER_HEX_LETTER
+  final val HEX_DIGIT = DIGIT | HEX_LETTER
+  final val UNRESERVED_SPECIALS = 0x0080
+  final val UNRESERVED = ALPHA | DIGIT | UNRESERVED_SPECIALS
+  final val GEN_DELIM = 0x0100
+  final val SUB_DELIM_BASE = 0x0200
+  final val AT = 0x0400
+  final val COLON = 0x0800
+  final val SLASH = 0x1000
+  final val QUESTIONMARK = 0x2000
+  final val PLUS = 0x4000
+  final val DASH = 0x8000
+  final val DOT = 0x10000
+  final val AMP = 0x20000
+  final val EQUAL = 0x40000
+  final val SPACE = 0x80000
+  final val SUB_DELIM = SUB_DELIM_BASE | AMP | EQUAL | PLUS
+  final val RESERVED = GEN_DELIM | SUB_DELIM
+
+  final val QUERY_FRAGMENT_CHARS = UNRESERVED | SUB_DELIM | COLON | AT | SLASH | QUESTIONMARK
+  final val PATH_SEGMENT_CHARS = UNRESERVED | SUB_DELIM | COLON | AT
 
   private[this] val props = new Array[Int](128)
 

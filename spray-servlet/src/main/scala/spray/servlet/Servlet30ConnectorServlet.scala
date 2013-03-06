@@ -76,9 +76,9 @@ class Servlet30ConnectorServlet extends HttpServlet {
   class Responder(hsRequest: HttpServletRequest, hsResponse: HttpServletResponse, req: HttpRequest)
     extends UnregisteredActorRef(system) {
 
-    val OPEN = 0
-    val STARTED = 1
-    val COMPLETED = 2
+    final val OPEN = 0
+    final val STARTED = 1
+    final val COMPLETED = 2
 
     val state = new AtomicInteger(OPEN)
     val asyncContext = hsRequest.startAsync()
