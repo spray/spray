@@ -130,11 +130,10 @@ object HttpHeaders {
     def value = date.toRfc1123DateTimeString
   }
 
-  object Host { def apply(host: String, port: Int): Host = apply(host, Some(port)) }
-  case class Host(host: String, port: Option[Int] = None) extends HttpHeader {
+  case class Host(host: String, port: Int = 0) extends HttpHeader {
     def name = "Host"
     def lowercaseName = "host"
-    def value = port.map(host + ':' + _).getOrElse(host)
+    def value = if (port > 0) host + ':' + port else host
   }
 
   case class `Last-Modified`(date: DateTime) extends HttpHeader {

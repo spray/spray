@@ -123,7 +123,7 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
     val start = cursor
     var mark = start
     resetFirstPercent()
-    while (matches(UNRESERVED | SUB_DELIM | COLON)|| reset(mark) && `pct-encoded`) mark = cursor
+    while (matches(UNRESERVED | SUB_DELIM | COLON)|| `pct-encoded`) mark = cursor
     reset(mark)
     ch('@') && {
       _userinfo = decodeIfNeeded(splice(start, cursor - 1), firstPercent - start, charset)
@@ -306,6 +306,41 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
   }
 
   def `pct-encoded` = ch('%') && Hexdig && Hexdig && markPercent(-3)
+
+  //////////////////////////// ADDITIONAL HTTP-SPECIFIC RULES //////////////////////////
+
+  // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-2.7
+  def `absolute-path` = {
+    val start = cursor
+    resetFirstPercent() && ch('/') && segment && slashSegments && savePath(start)
+  }
+
+  // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.3
+  def `request-target` = {
+    val start = cursor
+    (`absolute-path` && { val mark = cursor; ch('?') && query || reset(mark) }  // origin-form
+      || reset(start) && `absolute-URI`                                         // absolute-form
+      || reset(start) && authority)                                             // authority-form or asterisk-form
+  }
+
+  // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.5
+  def parseRequestTargetAndConstructEffectiveUri(securedConnection: Boolean, hostHeaderHost: Host,
+                                                 hostHeaderPort: Int, defaultAuthority: Authority): Uri = {
+    complete("request-target", `request-target`)
+    if (_scheme.isEmpty) {
+      _scheme = if (securedConnection) "https" else "http"
+      if (_host.isEmpty) {
+        if (hostHeaderHost.isEmpty) {
+          _host = defaultAuthority.host
+          _port = defaultAuthority.port
+        } else {
+          _host = hostHeaderHost
+          _port = hostHeaderPort
+        }
+      }
+    }
+    new Impl(_scheme, "", _host, _port, collapseDotSegments(_path), _query, _fragment)
+  }
 
   /////////////// REQUIRED RFC 2234 (ABNF) CORE RULES ////////////////
 

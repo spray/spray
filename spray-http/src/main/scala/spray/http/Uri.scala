@@ -87,6 +87,7 @@ abstract case class Uri(scheme: String,
 
 object Uri {
   val Empty = Uri()
+  val / = Uri("/")
 
   /**
    * Parses a string into a normalized URI reference as defined by http://tools.ietf.org/html/rfc3986#section-4.1.
@@ -187,13 +188,15 @@ object Uri {
   sealed abstract class Host {
     def address: String
     def isEmpty: Boolean
+    def toOption: Option[NonEmptyHost]
     def render(sb: JStringBuilder): JStringBuilder
     override def toString: String = render(new JStringBuilder).toString
   }
   object Host {
     case object Empty extends Host {
       def address: String = ""
-      override def isEmpty = true
+      def isEmpty = true
+      def toOption = None
       def render(sb: JStringBuilder) = sb
     }
     def apply(string: String): Host =
@@ -206,6 +209,7 @@ object Uri {
   }
   sealed abstract class NonEmptyHost extends Host {
     def isEmpty = false
+    def toOption = Some(this)
   }
   case class IPv4Host(address: String) extends NonEmptyHost {
     require(!address.isEmpty, "address must not be empty")
@@ -238,6 +242,7 @@ object Uri {
     def toString(charset: Charset) = render(new JStringBuilder, charset).toString
     override def toString = toString(UTF8)
   }
+  // TODO: provide macro-based Path construction helpers to support sth. like `Path / "a" / "b" // "c" /`
   object Path {
     val / = Slash(Empty)
     def apply(string: String, charset: Charset = UTF8): Path = {
@@ -448,9 +453,9 @@ object Uri {
       input match {
         case Path.Empty => output.reverse
         case Segment("." | "..", Slash(tail)) => process(tail, output)
-        case Slash(Segment(".", tail)) => process(if (tail.isEmpty) / else tail, output)
+        case Slash(Segment(".", tail)) => process(if (tail.isEmpty) Path./ else tail, output)
         case Slash(Segment("..", tail)) => process(
-          input = if (tail.isEmpty) / else tail,
+          input = if (tail.isEmpty) Path./ else tail,
           output =
             if (output.startsWithSegment)
               if (output.tail.startsWithSlash) output.tail.tail else tail

@@ -17,6 +17,7 @@
 package spray
 
 import java.nio.charset.Charset
+import spray.http.parser.HttpParser
 
 
 package object http {
@@ -29,8 +30,8 @@ package object http {
    * so as to increase the speed of the first usage.
    */
   def warmUp() {
-    HttpRequest(
-      headers = List(
+    HttpParser.parseHeaders {
+      List(
         HttpHeaders.RawHeader("Accept", "*/*,text/plain,custom/custom"),
         HttpHeaders.RawHeader("Accept-Charset", "*,UTF-8"),
         HttpHeaders.RawHeader("Accept-Encoding", "gzip,custom"),
@@ -46,9 +47,8 @@ package object http {
         HttpHeaders.RawHeader("Host", "spray.io"),
         HttpHeaders.RawHeader("X-Forwarded-For", "1.2.3.4"),
         HttpHeaders.RawHeader("Fancy-Custom-Header", "yeah")
-      ),
-      entity = "spray rocks!"
-    ).parseAll
+      )
+    }
     HttpResponse(status = 200)
   }
 }

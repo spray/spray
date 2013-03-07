@@ -329,6 +329,17 @@ class UriSpec extends Specification {
             |""".stripMargin
         )
       }
+
+      // illegal query
+      Uri("?a=b=c") must throwA {
+        new IllegalUriException(
+          """Illegal URI reference, unexpected character '=' at position 4:
+            |
+            |?a=b=c
+            |    ^
+            |""".stripMargin
+        )
+      }
     }
 
     // http://tools.ietf.org/html/rfc3986#section-5.4
