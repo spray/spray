@@ -28,11 +28,7 @@ import Uri._
  * An immutable model of an internet URI as defined by http://tools.ietf.org/html/rfc3986.
  * All members of this class represent the *decoded* URI elements (i.e. without percent-encoding).
  */
-abstract case class Uri(scheme: String,
-                        authority: Authority,
-                        path: Path,
-                        query: QueryParams,
-                        fragment: Option[String]) {
+abstract case class Uri(scheme: String, authority: Authority, path: Path, query: Query, fragment: Option[String]) {
 
   def isAbsolute: Boolean = !isRelative
   def isRelative: Boolean = scheme.isEmpty
@@ -45,7 +41,7 @@ abstract case class Uri(scheme: String,
    * Returns a copy of this Uri with the given components.
    */
   def copy(scheme: String = scheme, authority: Authority = authority, path: Path = path,
-           query: QueryParams = Map.empty, fragment: Option[String] = None): Uri =
+           query: Query = Query.Empty, fragment: Option[String] = None): Uri =
     Uri(scheme, authority, path, query, fragment)
 
   /**
@@ -63,23 +59,10 @@ abstract case class Uri(scheme: String,
    * different components.
    */
   def render(sb: JStringBuilder = new JStringBuilder, charset: Charset = UTF8): JStringBuilder = {
-    class QueryRenderer extends (((String, String)) => Unit) {
-      private[this] var first = true
-      def apply(kvp: (String, String)): Unit = {
-        if (!first) sb.append('&')
-        sb.append(enc(kvp._1))
-        if (!kvp._2.isEmpty) sb.append('=').append(enc(kvp._2))
-        first = false
-      }
-      def enc(s: String) = encode(s, charset, QUERY_FRAGMENT_CHARS & ~(AMP | EQUAL | PLUS) | SPACE).replace(' ', '+')
-    }
     if (isAbsolute) sb.append(scheme).append(':')
     authority.render(sb, scheme, charset)
     path.render(sb, charset, encodeFirstSegmentColons = isRelative)
-    if (!query.isEmpty) {
-      sb.append('?')
-      query.foreach(new QueryRenderer)
-    }
+    if (!query.isEmpty) query.render(sb.append('?'), charset)
     if (fragment.isDefined) sb.append('#').append(encode(fragment.get, charset, QUERY_FRAGMENT_CHARS))
     sb
   }
@@ -111,7 +94,7 @@ object Uri {
    * http://tools.ietf.org/html/rfc3986 the method throws an `IllegalUriException`.
    */
   def apply(scheme: String = "", authority: Authority = Authority.Empty, path: Path = Path.Empty,
-            query: QueryParams = Map.empty, fragment: Option[String] = None): Uri = {
+            query: Query = Query.Empty, fragment: Option[String] = None): Uri = {
     val p = verifyPath(path, scheme, authority.host)
     new Impl(
       scheme = normalizeScheme(scheme),
@@ -128,7 +111,7 @@ object Uri {
    * http://tools.ietf.org/html/rfc3986 the method throws an `IllegalUriException`.
    */
   def from(scheme: String = "", userinfo: String = "", host: String = "", port: Int = 0, path: String = "",
-           query: QueryParams = Map.empty, fragment: Option[String] = None): Uri =
+           query: Query = Query.Empty, fragment: Option[String] = None): Uri =
     apply(scheme, Authority(Host(host), userinfo, normalizePort(port, scheme)), Path(path), query, fragment)
 
   /**
@@ -309,6 +292,80 @@ object Uri {
     }
   }
 
+  sealed abstract class Query {
+    def isEmpty: Boolean
+    def key: String
+    def value: String
+    def tail: Query
+    def length: Int
+    def +: (kvp: (String, String)) = Query.Cons(kvp._1, kvp._2, this)
+    def get(key: String): Option[String]
+    def getOrElse(key: String, default: => String): String
+    def getAll(key: String): List[String]
+    def toMap: Map[String, String]
+    def toList: List[(String, String)] = {
+      val builder = List.newBuilder[(String, String)]
+      @tailrec def toList(q: Query): List[(String, String)] =
+      if (q.isEmpty) builder.result() else { builder += ((q.key, q.value)); toList(q.tail) }
+      toList(this)
+    }
+    def render(sb: JStringBuilder, charset: Charset = UTF8): JStringBuilder = {
+      def enc(s: String) = encode(s, charset, QUERY_FRAGMENT_CHARS & ~(AMP | EQUAL | PLUS) | SPACE).replace(' ', '+')
+      @tailrec def append(q: Query): JStringBuilder = if (q.isEmpty) sb else {
+        if (q ne this) sb.append('&')
+        sb.append(enc(q.key))
+        if (!q.value.isEmpty) sb.append('=').append(enc(q.value))
+        append(q.tail)
+      }
+      append(this)
+    }
+    def toString(charset: Charset) = render(new JStringBuilder, charset).toString
+    override def toString = toString(UTF8)
+  }
+  object Query {
+    /**
+     * Parses the given String into a Query instance.
+     * Note that this method will never return Query.Empty, even for the empty String.
+     * Empty strings will be parsed to `("", "") +: Query.Empty`
+     */
+    def apply(string: String): Query = {
+      val parser = new UriParser(string)
+      import parser._
+      complete("Query", query)
+      _query
+    }
+    def apply(input: Option[String]): Query = input match {
+      case None => Query.Empty
+      case Some(string) => apply(string)
+    }
+    def apply(list: List[(String, String)]): Query = {
+      @tailrec def queryFrom(l: List[(String, String)], query: Query = Query.Empty): Query =
+        if (l.isEmpty) query else queryFrom(l.tail, Cons(query.key, query.value, query))
+      queryFrom(list)
+    }
+    def apply(map: Map[String, String]): Query = apply(map.toList)
+
+    object Empty extends Query {
+      def isEmpty = true
+      def key = throw new NoSuchElementException("key of empty path")
+      def value = throw new NoSuchElementException("value of empty path")
+      def tail = throw new UnsupportedOperationException("tail of empty query")
+      def length: Int = 0
+      def get(key: String): Option[String] = None
+      def getOrElse(key: String, default: => String): String = default
+      def getAll(key: String): List[String] = Nil
+      def toMap: Map[String, String] = Map.empty
+    }
+    case class Cons(key: String, value: String, tail: Query) extends Query {
+      def isEmpty = false
+      def length = tail.length + 1
+      def get(key: String) = if (this.key == key) Some(value) else tail.get(key)
+      def getOrElse(key: String, default: => String) = if (this.key == key) value else tail.getOrElse(key, default)
+      def getAll(key: String) = if (this.key == key) value :: tail.getAll(key) else tail.getAll(key)
+      def toMap: Map[String, String] = tail.toMap.updated(key, value)
+    }
+  }
+
   val defaultPorts: Map[String, Int] =
     Map("ftp" -> 21, "ssh" -> 22, "telnet" -> 23, "smtp" -> 25, "domain" -> 53, "tftp" -> 69, "http" -> 80,
       "pop3" -> 110, "nntp" -> 119, "imap" -> 143, "snmp" -> 161, "ldap" -> 389, "https" -> 443, "imaps" -> 993,
@@ -318,7 +375,7 @@ object Uri {
   /////////////////////////////////// PRIVATE //////////////////////////////////////////
 
   // http://tools.ietf.org/html/rfc3986#section-5.2.2
-  private[http] def resolve(scheme: String, userinfo: String, host: Host, port: Int, path: Path, query: QueryParams,
+  private[http] def resolve(scheme: String, userinfo: String, host: Host, port: Int, path: Path, query: Query,
                             fragment: Option[String], base: Uri): Uri = {
     require(base.isAbsolute, "Resolution base Uri must be absolute")
     if (scheme.isEmpty)
@@ -468,14 +525,13 @@ object Uri {
     if (hasDotOrDotDotSegment(path)) process(path) else path
   }
 
-  private[http] def fail(msg: String) = throw new IllegalUriException(msg)
+  private[http] def fail(summary: String, detail: String = "") =
+    throw new IllegalUriException(ErrorInfo(summary, detail))
 
-  private[http] class Impl(scheme: String, authority: Authority, path: Path, query: QueryParams,
+  private[http] class Impl(scheme: String, authority: Authority, path: Path, query: Query,
                            fragment: Option[String]) extends Uri(scheme, authority, path, query, fragment) {
-    def this(scheme: String, userinfo: String, host: Host, port: Int, path: Path, query: QueryParams,
+    def this(scheme: String, userinfo: String, host: Host, port: Int, path: Path, query: Query,
              fragment: Option[String]) =
       this(scheme, Authority(host, userinfo, normalizePort(port, scheme)), path, query, fragment)
   }
 }
-
-class IllegalUriException(msg: String) extends RuntimeException(msg)

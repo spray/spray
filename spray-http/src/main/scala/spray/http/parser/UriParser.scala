@@ -19,7 +19,7 @@ package spray.http.parser
 import java.nio.charset.Charset
 import java.lang.{StringBuilder => JStringBuilder}
 import scala.annotation.tailrec
-import scala.collection.immutable.{ListMap, NumericRange}
+import scala.collection.immutable.NumericRange
 import spray.http._
 import Uri._
 import UriParser._
@@ -34,7 +34,7 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
   var _host: Host = Host.Empty
   var _port: Int = 0
   var _path: Path = Path.Empty
-  var _query: QueryParams = ListMap.empty
+  var _query: Query = Query.Empty
   var _fragment: Option[String] = None
 
   def parseAbsolute(): Uri = {
@@ -284,11 +284,17 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
         decodeIfNeeded(splice(start, cursor).replace('+', ' '), firstPercent - start, charset)
       else ""
     }
-    @tailrec def readKVP(): Unit = {
-      _query = _query.updated(part, if (ch('=')) part else "")
-      if (ch('&')) readKVP()
+    // non-tail recursion, which we accept because it allows us to directly build the query
+    // without having to reverse it at the end.
+    // Also: request query usually do not have hundreds of elements, so we should get away with
+    // putting some pressure onto the JVM stack
+    def readKVP(): Query = {
+      val key = part
+      val value = if (ch('=')) part else ""
+      val tail = if (ch('&')) readKVP() else Query.Empty
+      Query.Cons(key, value, tail)
     }
-    readKVP()
+    _query = readKVP()
     true
   }
 
@@ -393,20 +399,21 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
     if (firstPercent >= 0) decode(s, charset, firstPercent)() else s
 
   def complete(target: String, matched: Boolean): Unit =
-    if (!matched || cursor < input.length) fail(errorMsg(target))
+    if (!matched || cursor < input.length) {
+      val sb = new JStringBuilder().append("Illegal ").append(target).append(", unexpected ")
+      if (maxCursor < input.length) {
+        sb.append("character '")
+        val c = input.charAt(maxCursor)
+        if (Character.isISOControl(c)) sb.append("\\u%04x" format c.toInt) else sb.append(c)
+        sb.append('\'')
+      } else sb.append("end-of-input")
+      val summary = sb.append(" at position ").append(maxCursor).toString
 
-  def errorMsg(target: String) = {
-    val sb = new JStringBuilder().append("Illegal ").append(target).append(", unexpected ")
-    if (maxCursor < input.length) {
-      sb.append("character '")
-      val c = input.charAt(maxCursor)
-      if (Character.isISOControl(c)) sb.append("\\u%04x" format c.toInt) else sb.append(c)
-      sb.append('\'')
-    } else sb.append("end-of-input")
-    sb.append(" at position ").append(maxCursor).append(":\n\n")
-      .append(input.toString.map(c => if (Character.isISOControl(c)) '?' else c).mkString("")).append('\n')
-      .append(" " * maxCursor).append("^\n").toString
-  }
+      sb.setLength(0)
+      val detail = sb.append(input.toString.map(c => if (Character.isISOControl(c)) '?' else c).mkString(""))
+        .append('\n').append(" " * maxCursor).append("^\n").toString
+      fail(summary, detail)
+    }
 }
 
 private[http] object UriParser {

@@ -21,24 +21,6 @@ import Uri._
 
 class UriSpec extends Specification {
 
-  "Uri.Path instances" should {
-    "be parsed and rendered correctly" in {
-      Path("") === Path.Empty
-      Path("/") === Path./
-      Path("a") === "a" :: Path.Empty
-      Path("//") === '/' :: Path./
-      Path("a/") === "a" :: Path./
-      Path("/a") === '/' :: "a" :: Path.Empty
-      Path("/abc/de/f") === '/' :: "abc" :: '/' :: "de" :: '/' :: "f" :: Path.Empty
-      Path("abc/de/f/") === "abc" :: '/' :: "de" :: '/' :: "f" :: Path./
-      Path("abc///de") === "abc" :: '/' ::  '/' ::  '/' :: "de" :: Path.Empty
-      Path("/abc%2F") === '/' :: "abc/" :: Path.Empty
-      Path("H%C3%A4ll%C3%B6") === """Hällö""" :: Path.Empty
-      Path("/%2F%5C") === '/' :: """/\""" :: Path.Empty
-      Path("/:foo:/") === '/' :: ":foo:" :: '/' :: Path.Empty
-    }
-  }
-
   "Uri.Host instances" should {
 
     "parse correctly from IPv4 literals" in {
@@ -135,13 +117,9 @@ class UriSpec extends Specification {
     "not accept illegal IPv6 literals" in {
       // 5 char quad
       Host("[::12345]") must throwA {
-        new IllegalUriException(
-          """Illegal URI host, unexpected character '5' at position 7:
-            |
-            |[::12345]
-            |       ^
-            |""".stripMargin
-        )
+        new IllegalUriException("Illegal URI host, unexpected character '5' at position 7",
+          "[::12345]\n" +
+          "       ^\n")
       }
 
       // Two zippers
@@ -184,6 +162,45 @@ class UriSpec extends Specification {
     }
   }
 
+  "Uri.Path instances" should {
+    "be parsed and rendered correctly" in {
+      import Path._
+      Path("") === Empty
+      Path("/") === Path./
+      Path("a") === "a" :: Empty
+      Path("//") === '/' :: Path./
+      Path("a/") === "a" :: Path./
+      Path("/a") === '/' :: "a" :: Empty
+      Path("/abc/de/f") === '/' :: "abc" :: '/' :: "de" :: '/' :: "f" :: Empty
+      Path("abc/de/f/") === "abc" :: '/' :: "de" :: '/' :: "f" :: Path./
+      Path("abc///de") === "abc" :: '/' ::  '/' ::  '/' :: "de" :: Empty
+      Path("/abc%2F") === '/' :: "abc/" :: Empty
+      Path("H%C3%A4ll%C3%B6") === """Hällö""" :: Empty
+      Path("/%2F%5C") === '/' :: """/\""" :: Empty
+      Path("/:foo:/") === '/' :: ":foo:" :: '/' :: Empty
+    }
+  }
+
+  "Uri.Query instances" should {
+    "be parsed and rendered correctly" in {
+      import Query._
+      Query("") === ("", "") +: Empty
+      Query("a") === ("a", "") +: Empty
+      Query("a=") === ("a", "") +: Empty
+      Query("=a") === ("", "a") +: Empty
+      Query("a&") === ("a", "") +: ("", "") +: Empty
+    }
+    "properly support the retrieval interface" in {
+      val query = Query("a=1&b=2&c=3&b=4&b")
+      query.get("a") === Some("1")
+      query.get("d") === None
+      query.getOrElse("a", "x") === "1"
+      query.getOrElse("d", "x") === "x"
+      query.getAll("b") === List("2", "4", "")
+      query.getAll("d") === Nil
+    }
+  }
+  
   "URIs" should {
 
     // http://tools.ietf.org/html/rfc3986#section-1.1.2
@@ -195,7 +212,7 @@ class UriSpec extends Specification {
         Uri.from(scheme = "http", host = "www.ietf.org", path = "/rfc/rfc2396.txt")
 
       Uri("ldap://[2001:db8::7]/c=GB?objectClass?one") ===
-        Uri.from(scheme = "ldap", host = "[2001:db8::7]", path = "/c=GB", query = Map("objectClass?one" -> ""))
+        Uri.from(scheme = "ldap", host = "[2001:db8::7]", path = "/c=GB", query = Query("objectClass?one"))
 
       Uri("mailto:John.Doe@example.com") ===
         Uri.from(scheme = "mailto", path = "John.Doe@example.com")
@@ -214,8 +231,8 @@ class UriSpec extends Specification {
 
       // more examples
       Uri("http://") === Uri(scheme = "http", authority = Authority(host = NamedHost("")))
-      Uri("http:?") === Uri.from(scheme = "http", query = Map("" -> ""))
-      Uri("?a+b=c%2Bd") === Uri.from(query = Map("a b" -> "c+d"))
+      Uri("http:?") === Uri.from(scheme = "http", query = Query(""))
+      Uri("?a+b=c%2Bd") === Uri.from(query = ("a b", "c+d") +: Query.Empty)
     }
 
     "properly complete a normalization cycle" in {
@@ -260,6 +277,8 @@ class UriSpec extends Specification {
       // queries
       normalize("?") === "?"
       normalize("?key") === "?key"
+      normalize("?key=") === "?key" // our query model cannot discriminate between these two inputs
+      normalize("?key=&a=b") === "?key&a=b" // our query model cannot discriminate between these two inputs
       normalize("?=value") === "?=value"
       normalize("?key=value") === "?key=value"
       normalize("?a+b") === "?a+b"
@@ -268,8 +287,8 @@ class UriSpec extends Specification {
       normalize("??") === "??"
       normalize("?a=1&b=2") === "?a=1&b=2"
       normalize("?a+b=c%2Bd") === "?a+b=c%2Bd"
-      normalize("?a&a") === "?a" // artifact of us using a query *map*, which prevents key duplication
-      normalize("?&#") === "?#" // artifact of us using a query *map*, which prevents key duplication
+      normalize("?a&a") === "?a&a"
+      normalize("?&#") === "?&#"
       normalize("?#") === "?#"
       normalize("#") === "#"
     }
@@ -277,68 +296,44 @@ class UriSpec extends Specification {
     "produce proper error messages for illegal URIs" in {
       // illegal scheme
       Uri("foö:/a") must throwA {
-        new IllegalUriException(
-          """Illegal URI reference, unexpected character 'ö' at position 2:
-            |
-            |foö:/a
-            |  ^
-            |""".stripMargin
-        )
+        new IllegalUriException("Illegal URI reference, unexpected character 'ö' at position 2",
+          "foö:/a\n" +
+          "  ^\n")
       }
 
       // illegal userinfo
       Uri("http://user:ö@host") must throwA {
-        new IllegalUriException(
-          """Illegal URI reference, unexpected character 'ö' at position 12:
-            |
-            |http://user:ö@host
-            |            ^
-            |""".stripMargin
-        )
+        new IllegalUriException("Illegal URI reference, unexpected character 'ö' at position 12",
+          "http://user:ö@host\n" +
+          "            ^\n")
       }
 
       // illegal percent-encoding
       Uri("http://use%2G@host") must throwA {
-        new IllegalUriException(
-          """Illegal URI reference, unexpected character 'G' at position 12:
-            |
-            |http://use%2G@host
-            |            ^
-            |""".stripMargin
-        )
+        new IllegalUriException("Illegal URI reference, unexpected character 'G' at position 12",
+          "http://use%2G@host\n" +
+          "            ^\n")
       }
 
       // illegal path
       Uri("http://www.example.com/name with spaces/") must throwA {
-        new IllegalUriException(
-          """Illegal URI reference, unexpected character ' ' at position 27:
-            |
-            |http://www.example.com/name with spaces/
-            |                           ^
-            |""".stripMargin
-        )
+        new IllegalUriException("Illegal URI reference, unexpected character ' ' at position 27",
+          "http://www.example.com/name with spaces/\n" +
+          "                           ^\n")
       }
 
       // illegal path with control character
       Uri("http:///with\newline") must throwA {
-        new IllegalUriException(
-          """Illegal URI reference, unexpected character '""" + "\\u000a" + """' at position 12:
-            |
-            |http:///with?ewline
-            |            ^
-            |""".stripMargin
-        )
+        new IllegalUriException("Illegal URI reference, unexpected character '\\u000a' at position 12",
+          "http:///with?ewline\n" +
+          "            ^\n")
       }
 
       // illegal query
       Uri("?a=b=c") must throwA {
-        new IllegalUriException(
-          """Illegal URI reference, unexpected character '=' at position 4:
-            |
-            |?a=b=c
-            |    ^
-            |""".stripMargin
-        )
+        new IllegalUriException("Illegal URI reference, unexpected character '=' at position 4",
+          "?a=b=c\n" +
+          "    ^\n")
       }
     }
 

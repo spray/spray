@@ -23,8 +23,6 @@ import spray.http.parser.HttpParser
 package object http {
   val UTF8: Charset = HttpCharsets.`UTF-8`.nioCharset
 
-  type QueryParams = Map[String, String]
-
   /**
    * Warms up the spray.http module by triggering the loading of most classes in this package,
    * so as to increase the speed of the first usage.
