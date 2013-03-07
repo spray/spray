@@ -73,6 +73,6 @@ object HttpParser extends SprayParser with ProtocolParameterRules with Additiona
     (errors.result(), parsedHeaders)
   }
 
-  def parseContentType(contentType: String): Either[RequestErrorInfo, ContentType] =
+  def parseContentType(contentType: String): Either[ErrorInfo, ContentType] =
     parse(HttpParser.ContentTypeHeaderValue, contentType).left.map(_.withFallbackSummary("Illegal Content-Type"))
 }

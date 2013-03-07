@@ -18,21 +18,21 @@ package spray.http.parser
 
 import org.parboiled.scala._
 import org.parboiled.errors.{ParserRuntimeException, ParsingException, ErrorUtils}
-import spray.http.RequestErrorInfo
+import spray.http.ErrorInfo
 
 
 private[parser] trait SprayParser extends Parser {
   
-  def parse[A](rule: Rule1[A], input: String): Either[RequestErrorInfo, A] = {
+  def parse[A](rule: Rule1[A], input: String): Either[ErrorInfo, A] = {
     try {
       val result = ReportingParseRunner(rule).run(input)
       result.result match {
         case Some(value) => Right(value)
-        case None => Left(RequestErrorInfo(detail = ErrorUtils.printParseErrors(result)))
+        case None => Left(ErrorInfo(detail = ErrorUtils.printParseErrors(result)))
       }
     } catch {
       case e: ParserRuntimeException if e.getCause.isInstanceOf[ParsingException] =>
-        Left(RequestErrorInfo(e.getCause.getMessage))
+        Left(ErrorInfo(e.getCause.getMessage))
     }
   }
   
