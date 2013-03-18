@@ -23,7 +23,7 @@ import spray.can.parsing.ParserSettings
 import spray.util._
 
 
-case class ClientSettings(
+case class ClientConnectionSettings(
   userAgentHeader: String,
   sslEncryption: Boolean,
   idleTimeout: Duration,
@@ -45,13 +45,13 @@ case class ClientSettings(
   requirePositiveOrUndefined(connectingTimeout)
 }
 
-object ClientSettings {
-  def apply(system: ActorSystem): ClientSettings =
+object ClientConnectionSettings {
+  def apply(system: ActorSystem): ClientConnectionSettings =
     apply(system.settings.config getConfig "spray.can.client")
 
-  def apply(c: Config): ClientSettings = {
+  def apply(c: Config): ClientConnectionSettings = {
     val config = c withFallback ConfigUtils.sprayConfigAdditions
-    ClientSettings(
+    ClientConnectionSettings(
       config getString   "user-agent-header",
       config getBoolean  "ssl-encryption",
       config getDuration "idle-timeout",

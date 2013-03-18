@@ -31,7 +31,7 @@ class RequestRendererSpec extends Specification {
     "properly render a" in {
 
       "GET request without headers and without body" in {
-        HttpRequest(method = GET, uri = "/abc") must beRenderedTo {
+        HttpRequest(method = GET, uri = Uri("/abc")) must beRenderedTo {
           """|GET /abc HTTP/1.1
              |Host: test.com:8080
              |User-Agent: spray-can/1.0.0
@@ -43,7 +43,7 @@ class RequestRendererSpec extends Specification {
       "POST request, a few headers (incl. a custom Host header) and no body" in {
         HttpRequest(
           method = POST,
-          uri = "/abc/xyz",
+          uri = Uri("/abc/xyz"),
           headers = List(
             RawHeader("X-Fancy", "naa"),
             RawHeader("Age", "0"),
@@ -64,7 +64,7 @@ class RequestRendererSpec extends Specification {
       "PUT request, a few headers and a body" in {
         HttpRequest(
           method = PUT,
-          uri = "/abc/xyz",
+          uri = Uri("/abc/xyz"),
           headers = List(
             RawHeader("X-Fancy", "naa"),
             RawHeader("Cache-Control", "public"),
@@ -84,7 +84,7 @@ class RequestRendererSpec extends Specification {
       }
 
       "PUT request start (chunked) without body" in {
-        ChunkedRequestStart(HttpRequest(PUT, "/abc/xyz")) must beRenderedTo {
+        ChunkedRequestStart(HttpRequest(PUT, Uri("/abc/xyz"))) must beRenderedTo {
           """|PUT /abc/xyz HTTP/1.1
              |Host: test.com:8080
              |User-Agent: spray-can/1.0.0
@@ -95,7 +95,7 @@ class RequestRendererSpec extends Specification {
       }
 
       "POST request start (chunked) with body" in {
-        ChunkedRequestStart(HttpRequest(POST, "/abc/xyz")
+        ChunkedRequestStart(HttpRequest(POST, Uri("/abc/xyz"))
           .withEntity("ABCDEFGHIJKLMNOPQRSTUVWXYZ")) must beRenderedTo {
           """|POST /abc/xyz HTTP/1.1
              |Host: test.com:8080
@@ -113,7 +113,7 @@ class RequestRendererSpec extends Specification {
     "properly handle the User-Agent header" in {
 
       "GET request without headers and without body" in {
-        HttpRequest(method = GET, uri = "/abc") must beRenderedTo {
+        HttpRequest(method = GET, uri = Uri("/abc")) must beRenderedTo {
           """|GET /abc HTTP/1.1
             |Host: test.com:8080
             |User-Agent: spray-can/1.0.0
@@ -124,7 +124,7 @@ class RequestRendererSpec extends Specification {
 
       "GET request with overridden User-Agent and without body" in {
         HttpRequest(method = GET,
-                    uri = "/abc",
+                    uri = Uri("/abc"),
                     headers = List(
                       RawHeader("User-Agent", "blah-blah/1.0")
                     )
@@ -139,10 +139,10 @@ class RequestRendererSpec extends Specification {
 
       "GET request with overridden User-Agent and without body" in {
         HttpRequest(method = GET,
-          uri = "/abc",
-          headers = List(
-            RawHeader("User-Agent", "user-ua/1.0")
-          )
+                    uri = Uri("/abc"),
+                    headers = List(
+                      RawHeader("User-Agent", "user-ua/1.0")
+                    )
         ) must beRenderedToWithRenderer(
           """|GET /abc HTTP/1.1
             |Host: test.com:8080

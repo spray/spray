@@ -25,19 +25,18 @@ import spray.io._
 import spray.can.Http
 
 
-private[can] class HttpIncomingConnection(tcpConnection: ActorRef,
-                                          bindHandler: ActorRef,
-                                          pipelineStage: RawPipelineStage[ServerFrontend.Context with SslTlsContext],
-                                          remoteAddress: InetSocketAddress,
-                                          localAddress: InetSocketAddress,
-                                          settings: ServerSettings)
-                                          (implicit val sslEngineProvider: ServerSSLEngineProvider)
-                                          extends ConnectionHandler { actor =>
+private[can] class HttpServerConnection(tcpConnection: ActorRef,
+                                        bindHandler: ActorRef,
+                                        pipelineStage: RawPipelineStage[ServerFrontend.Context with SslTlsContext],
+                                        remoteAddress: InetSocketAddress,
+                                        localAddress: InetSocketAddress,
+                                        settings: ServerSettings)
+                                        (implicit val sslEngineProvider: ServerSSLEngineProvider)
+                                        extends ConnectionHandler { actor =>
 
   bindHandler ! Http.Connected(remoteAddress, localAddress)
 
-  if (settings.registrationTimeout ne Duration.Undefined)
-    context setReceiveTimeout settings.registrationTimeout
+  context setReceiveTimeout settings.registrationTimeout
 
   def receive: Receive = {
     case Http.Register(handler) =>
@@ -61,10 +60,10 @@ private[can] class HttpIncomingConnection(tcpConnection: ActorRef,
   }
 }
 
-private[can] object HttpIncomingConnection {
+private[can] object HttpServerConnection {
 
   /**
-   * The HttpIncomingConnection pipeline setup:
+   * The HttpServerConnection pipeline setup:
    *
    * |------------------------------------------------------------------------------------------
    * | ServerFrontend: converts HttpMessagePart, Closed and SendCompleted events to

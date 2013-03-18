@@ -19,16 +19,18 @@ package spray.can.parsing
 import spray.can.{StatusLine, RequestLine, MessageLine}
 import spray.util.EmptyByteArray
 import spray.http._
+import akka.event.LoggingAdapter
+import spray.http.parser.HttpParser
 
 
 sealed trait FinalParsingState extends ParsingState
 
 sealed trait HttpMessagePartCompletedState extends FinalParsingState {
-  def toHttpMessagePart: HttpMessagePart
+  def toHttpMessagePart(log: LoggingAdapter): HttpMessagePart
 }
 
 sealed trait HttpMessageStartCompletedState extends HttpMessagePartCompletedState {
-  def toHttpMessagePart: HttpMessageStart
+  def toHttpMessagePart(log: LoggingAdapter): HttpMessageStart
   def messageLine: MessageLine
   def headers: List[HttpHeader]
   def connectionHeader: Option[String]
@@ -45,9 +47,9 @@ case class CompleteMessageState(
   body: Array[Byte] = EmptyByteArray
 ) extends HttpMessageStartCompletedState with HttpMessageEndCompletedState {
 
-  def toHttpMessagePart = messageLine match {
-    case x: RequestLine => HttpRequest(x.method, x.uri, headers, entity, x.protocol)
-    case x: StatusLine => HttpResponse(x.status, entity, headers, x.protocol)
+  def toHttpMessagePart(log: LoggingAdapter) = messageLine match {
+    case x: RequestLine => HttpRequest(x.method, Uri(x.uri), parseHeaders(headers, log), entity, x.protocol)
+    case x: StatusLine => HttpResponse(x.status, entity, parseHeaders(headers, log), x.protocol)
   }
 
   def entity = if (contentType.isEmpty) HttpEntity(body) else HttpBody(contentType.get, body)
@@ -61,9 +63,9 @@ case class ChunkedStartState(
   contentType: Option[ContentType] = None
 ) extends HttpMessageStartCompletedState {
 
-  def toHttpMessagePart = messageLine match {
-    case x: RequestLine => ChunkedRequestStart(HttpRequest(x.method, x.uri, headers, entity))
-    case x: StatusLine => ChunkedResponseStart(HttpResponse(x.status, entity, headers))
+  def toHttpMessagePart(log: LoggingAdapter) = messageLine match {
+    case x: RequestLine => ChunkedRequestStart(HttpRequest(x.method, Uri(x.uri), parseHeaders(headers, log), entity))
+    case x: StatusLine => ChunkedResponseStart(HttpResponse(x.status, entity, parseHeaders(headers, log)))
   }
 
   def entity = if (contentType.isEmpty) EmptyEntity else HttpBody(contentType.get, EmptyByteArray)
@@ -75,7 +77,7 @@ case class ChunkedChunkState(
   body: Array[Byte]
 ) extends HttpMessagePartCompletedState {
 
-  def toHttpMessagePart = MessageChunk(body, extensions)
+  def toHttpMessagePart(log: LoggingAdapter) = MessageChunk(body, extensions)
 }
 
 
@@ -84,7 +86,7 @@ case class ChunkedEndState(
   trailer: List[HttpHeader]
 ) extends HttpMessageEndCompletedState {
 
-  def toHttpMessagePart = ChunkedMessageEnd(extensions, trailer)
+  def toHttpMessagePart(log: LoggingAdapter) = ChunkedMessageEnd(extensions, trailer)
 }
 
 

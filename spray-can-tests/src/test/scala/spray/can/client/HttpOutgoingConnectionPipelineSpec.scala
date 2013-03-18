@@ -37,7 +37,7 @@ import spray.http._
 class HttpOutgoingConnectionPipelineSpec extends Specification with RawSpecs2PipelineStageTest with NoTimeConversions {
   type Context = SslTlsContext
 
-  val stage = HttpOutgoingConnection.pipelineStage(ClientSettings(system))
+  val stage = HttpClientConnection.pipelineStage(ClientConnectionSettings(system))
 
   "The HttpClient pipeline" should {
 
@@ -136,6 +136,14 @@ class HttpOutgoingConnectionPipelineSpec extends Specification with RawSpecs2Pip
       commands.expectMsgPF() {
         case Pipeline.Tell(`probeRef`, HttpResponse(StatusCodes.OK, entity, _, _), `connectionActor`) => entity
       } === HttpBody(ContentType.`application/octet-stream`, "Yeah")
+    }
+
+    "dispatch Closed events to the Close commander" in new Fixture(stage) {
+      val probe = TestProbe()
+      probe.send(connectionActor, Http.Close)
+      commands expectMsg Tcp.Close
+      connectionActor ! Tcp.Closed
+      commands.expectMsg(Pipeline.Tell(probe.ref, Http.Closed, connectionActor))
     }
   }
 

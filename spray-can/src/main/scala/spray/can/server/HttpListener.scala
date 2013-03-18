@@ -33,7 +33,7 @@ private[can] class HttpListener(bindCommander: ActorRef,
   val connectionCounter = Iterator from 0
   val settings = bind.settings getOrElse ServerSettings(system)
   val statsHolder = if (settings.statsSupport) Some(new StatsHolder) else None
-  val pipelineStage = HttpIncomingConnection.pipelineStage(settings, statsHolder)
+  val pipelineStage = HttpServerConnection.pipelineStage(settings, statsHolder)
 
   context watch handler // sign death pact
 
@@ -41,8 +41,7 @@ private[can] class HttpListener(bindCommander: ActorRef,
 
   IO(Tcp) ! Tcp.Bind(self, endpoint,backlog, options)
 
-  if (settings.bindTimeout ne Duration.Undefined)
-    context setReceiveTimeout settings.bindTimeout
+  context setReceiveTimeout settings.bindTimeout
 
   def receive = {
     case Tcp.Bound =>
@@ -64,7 +63,7 @@ private[can] class HttpListener(bindCommander: ActorRef,
     case Tcp.Connected(remoteAddress, localAddress) =>
       val conn = sender
       context.actorOf(
-        props = Props(new HttpIncomingConnection(conn, handler, pipelineStage, remoteAddress, localAddress, settings))
+        props = Props(new HttpServerConnection(conn, handler, pipelineStage, remoteAddress, localAddress, settings))
           .withDispatcher(httpSettings.ConnectionDispatcher),
         name = connectionCounter.next().toString
       )

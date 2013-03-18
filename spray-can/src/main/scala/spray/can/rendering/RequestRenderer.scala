@@ -51,7 +51,8 @@ class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) {
   private def renderRequestStart(request: HttpRequest, remoteAddress: InetSocketAddress): ByteStringBuilder = {
     import request._
     implicit val bb = newByteStringBuilder(requestSizeHint)
-    put(method.value).put(' ').put(uri).put(' ').put(protocol.value).put(CrLf)
+    // TODO: extend Uri to directly render into byte array
+    put(method.value).put(' ').put(uri.toString).put(' ').put(protocol.value).put(CrLf)
     val hostHeaderPresent = putHeadersAndReturnHostHeaderPresent(headers)
     if (!hostHeaderPresent) {
       put("Host: ").put(remoteAddress.getHostName)

@@ -25,10 +25,10 @@ import scala.concurrent.duration.Duration
 import spray.http.Confirmed
 
 
-private[can] class HttpOutgoingConnection(connectCommander: ActorRef,
-                                          connect: Http.Connect,
-                                          pipelineStage: RawPipelineStage[SslTlsContext],
-                                          settings: ClientSettings) extends ConnectionHandler { actor =>
+private[can] class HttpClientConnection(connectCommander: ActorRef,
+                                        connect: Http.Connect,
+                                        pipelineStage: RawPipelineStage[SslTlsContext],
+                                        settings: ClientConnectionSettings) extends ConnectionHandler { actor =>
   import context.system
   import connect._
 
@@ -36,8 +36,7 @@ private[can] class HttpOutgoingConnection(connectCommander: ActorRef,
 
   IO(Tcp) ! Tcp.Connect(remoteAddress, localAddress, options)
 
-  if (settings.connectingTimeout ne Duration.Undefined)
-    context setReceiveTimeout settings.connectingTimeout
+  context setReceiveTimeout settings.connectingTimeout
 
   def receive: Receive = {
     case connected: Tcp.Connected =>
@@ -54,6 +53,7 @@ private[can] class HttpOutgoingConnection(connectCommander: ActorRef,
 
     case ReceiveTimeout ⇒
       log.warning("Configured connecting timeout of {} expired, stopping", settings.connectingTimeout)
+      connectCommander ! Http.CommandFailed(connect)
       context stop self
   }
 
@@ -72,9 +72,9 @@ private[can] class HttpOutgoingConnection(connectCommander: ActorRef,
   }
 }
 
-private[can] object HttpOutgoingConnection {
+private[can] object HttpClientConnection {
 
-  def pipelineStage(settings: ClientSettings) = {
+  def pipelineStage(settings: ClientConnectionSettings) = {
     import settings._
     ClientFrontend(requestTimeout) >>
     ResponseChunkAggregation(responseChunkAggregationLimit) ? (responseChunkAggregationLimit > 0) >>

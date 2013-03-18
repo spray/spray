@@ -74,7 +74,7 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
       case RawHeader("content-type", value) :: tail =>
         if (ctHeader.isEmpty) HttpParser.parseContentType(value) match {
           case Right(ct) => traverse(tail, cHeader, clHeader, Some(ct), teHeader, hostPresent, e100Present)
-          case Left(RequestErrorInfo(summary, detail)) => ErrorState(summary, detail)
+          case Left(ErrorInfo(summary, detail)) => ErrorState(summary, detail)
         } else ErrorState("HTTP message must not contain more than one Content-Type header")
 
       case RawHeader("host", _) :: tail =>

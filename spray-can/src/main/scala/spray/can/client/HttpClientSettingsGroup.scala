@@ -20,15 +20,15 @@ import akka.actor.{Props, Actor}
 import spray.can.{Http, HttpExt}
 
 
-private[can] class HttpClientSettingsGroup(settings: ClientSettings, httpSettings: HttpExt#Settings) extends Actor {
+private[can] class HttpClientSettingsGroup(settings: ClientConnectionSettings, httpSettings: HttpExt#Settings) extends Actor {
   val connectionCounter = Iterator from 0
-  val pipelineStage = HttpOutgoingConnection pipelineStage settings
+  val pipelineStage = HttpClientConnection pipelineStage settings
 
   def receive = {
     case connect: Http.Connect =>
       val commander = sender
       context.actorOf(
-        props = Props(new HttpOutgoingConnection(commander, connect, pipelineStage, settings))
+        props = Props(new HttpClientConnection(commander, connect, pipelineStage, settings))
           .withDispatcher(httpSettings.ConnectionDispatcher),
         name = connectionCounter.next().toString
       )

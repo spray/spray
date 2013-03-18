@@ -22,7 +22,7 @@ import scala.collection.immutable
 import akka.io.{Inet, Tcp}
 import akka.actor._
 import spray.can.server.{ServerFrontend, ServerSettings}
-import spray.can.client.ClientSettings
+import spray.can.client.{HostConnectorSettings, ClientConnectionSettings}
 import spray.io.{ConnectionTimeouts, ClientSSLEngineProvider, ServerSSLEngineProvider}
 import spray.http.{HttpMessagePart, HttpMessagePartWrapper}
 
@@ -34,26 +34,30 @@ object Http extends ExtensionKey[HttpExt] {
   case class Connect(remoteAddress: InetSocketAddress,
                      localAddress: Option[InetSocketAddress],
                      options: immutable.Traversable[Inet.SocketOption],
-                     settings: Option[ClientSettings])
-                    (implicit val sslEngineProvider: ClientSSLEngineProvider) extends Command
+                     settings: Option[ClientConnectionSettings],
+                     sslEngineProvider: ClientSSLEngineProvider) extends Command {
+    implicit def clientSslEngineProvider = sslEngineProvider
+  }
   object Connect {
     def apply(host: String, port: Int = 80, localAddress: Option[InetSocketAddress] = None,
-              options: immutable.Traversable[Inet.SocketOption] = Nil, settings: Option[ClientSettings] = None)
+              options: immutable.Traversable[Inet.SocketOption] = Nil, settings: Option[ClientConnectionSettings] = None)
              (implicit sslEngineProvider: ClientSSLEngineProvider): Connect =
-      apply(new InetSocketAddress(host, port), localAddress, options, settings)
+      apply(new InetSocketAddress(host, port), localAddress, options, settings, sslEngineProvider)
   }
 
   case class Bind(handler: ActorRef,
                   endpoint: InetSocketAddress,
                   backlog: Int,
                   options: immutable.Traversable[Inet.SocketOption],
-                  settings: Option[ServerSettings])
-                 (implicit val sslEngineProvider: ServerSSLEngineProvider) extends Command
+                  settings: Option[ServerSettings],
+                  sslEngineProvider: ServerSSLEngineProvider) extends Command {
+    implicit def serverSslEngineProvider = sslEngineProvider
+  }
   object Bind {
     def apply(handler: ActorRef, interface: String, port: Int = 80, backlog: Int = 100,
               options: immutable.Traversable[Inet.SocketOption] = Nil, settings: Option[ServerSettings] = None)
              (implicit sslEngineProvider: ServerSSLEngineProvider): Bind =
-      apply(handler, new InetSocketAddress(interface, port), backlog, options, settings)
+      apply(handler, new InetSocketAddress(interface, port), backlog, options, settings, sslEngineProvider)
   }
 
   type Register = Tcp.Register; val Register = Tcp.Register
@@ -74,6 +78,7 @@ object Http extends ExtensionKey[HttpExt] {
   type SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout;  val SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout
 
   case class MessageCommand(cmd: HttpMessagePartWrapper) extends Command
+
 
   /// EVENTS
   type Event = Tcp.Event
@@ -99,7 +104,8 @@ class HttpExt(system: ExtendedActorSystem) extends akka.io.IO.Extension {
   val Settings = new Settings(system.settings.config getConfig "spray.can")
   class Settings private[HttpExt] (config: Config) {
     val ManagerDispatcher = config getString "manager-dispatcher"
-    val ClientDispatcher = config getString "client-dispatcher"
+    val SettingsGroupDispatcher = config getString "settings-group-dispatcher"
+    val HostConnectorDispatcher = config getString "host-connector-dispatcher"
     val ListenerDispatcher = config getString "listener-dispatcher"
     val ConnectionDispatcher = config getString "connection-dispatcher"
   }

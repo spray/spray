@@ -49,14 +49,14 @@ object RequestParsing {
                 } // else wait for more input
 
               case x: HttpMessageStartCompletedState =>
-                eventPL(HttpMessageStartEvent(x.toHttpMessagePart, x.connectionHeader))
+                eventPL(HttpMessageStartEvent(x.toHttpMessagePart(log), x.connectionHeader))
                 currentParsingState =
                   if (x.isInstanceOf[HttpMessageEndCompletedState]) startParser
                   else new ChunkParser(settings)
                 parse(data)
 
               case x: HttpMessagePartCompletedState =>
-                eventPL(Http.MessageEvent(x.toHttpMessagePart))
+                eventPL(Http.MessageEvent(x.toHttpMessagePart(log)))
                 currentParsingState =
                   if (x.isInstanceOf[HttpMessageEndCompletedState]) startParser
                   else new ChunkParser(settings)

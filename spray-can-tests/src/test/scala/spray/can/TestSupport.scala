@@ -16,11 +16,12 @@
 
 package spray.can
 
+import com.typesafe.config.ConfigFactory
 import spray.can.parsing.ParserSettings
 import spray.util._
 import spray.http._
-import HttpHeaders.RawHeader
-import com.typesafe.config.ConfigFactory
+import HttpHeaders._
+import MediaTypes._
 
 object TestSupport {
 
@@ -47,19 +48,19 @@ object TestSupport {
   def response = HttpResponse(
     status = 200,
     headers = List(
-      RawHeader("content-length", "0"),
-      RawHeader("date", "Thu, 25 Aug 2011 09:10:29 GMT"),
-      RawHeader("server", "spray/1.0")
+      `Content-Length`(0),
+      `Date`(DateTime(2011, 8, 25, 9, 10, 29)),
+      `Server`("spray/1.0")
     )
   )
 
   def response(content: String) = HttpResponse(
     status = 200,
     headers = List(
-      RawHeader("content-type", "text/plain"),
-      RawHeader("content-length", content.length.toString),
-      RawHeader("date", "Thu, 25 Aug 2011 09:10:29 GMT"),
-      RawHeader("server", "spray/1.0")
+      `Content-Type`(`text/plain`),
+      `Content-Length`(content.length),
+      `Date`(DateTime(2011, 8, 25, 9, 10, 29)),
+      `Server`("spray/1.0")
     ),
     entity = content
   )

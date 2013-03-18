@@ -23,7 +23,7 @@ import spray.io._
 
 object RequestRendering {
 
-  def apply(settings: ClientSettings): PipelineStage =
+  def apply(settings: ClientConnectionSettings): PipelineStage =
     new PipelineStage {
       val renderer = new RequestRenderer(settings.userAgentHeader, settings.requestSizeHint)
 

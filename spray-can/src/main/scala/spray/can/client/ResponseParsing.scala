@@ -53,7 +53,7 @@ object ResponseParsing {
                   parse(data)
                 } // else wait for more input
 
-              case x: HttpMessagePartCompletedState => x.toHttpMessagePart match {
+              case x: HttpMessagePartCompletedState => x.toHttpMessagePart(log) match {
                 case part: HttpMessageEnd =>
                   eventPL(Http.MessageEvent(part))
                   openRequestMethods = openRequestMethods.tail

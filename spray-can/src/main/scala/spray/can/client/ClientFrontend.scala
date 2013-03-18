@@ -36,33 +36,41 @@ object ClientFrontend {
           import context.log
           var openRequests = Queue.empty[RequestRecord]
           var requestTimeout = initialRequestTimeout
+          var closeCommander: Option[ActorRef] = None
 
           val commandPipeline: CPL = {
-            case Http.MessageCommand(HttpMessagePartWrapper(x: HttpRequest, ack)) =>
+            case Http.MessageCommand(HttpMessagePartWrapper(x: HttpRequest, ack)) if closeCommander.isEmpty =>
               if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
                 render(x, ack)
                 openRequests = openRequests enqueue new RequestRecord(x, context.sender, timestamp = now)
               } else log.warning("Received new HttpRequest before previous chunking request was " +
                 "finished, ignoring...")
 
-            case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedRequestStart, ack)) =>
+            case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedRequestStart, ack)) if closeCommander.isEmpty =>
               if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
                 render(x, ack)
                 openRequests = openRequests enqueue new RequestRecord(x, context.sender, timestamp = 0)
               } else log.warning("Received new ChunkedRequestStart before previous chunking " +
                 "request was finished, ignoring...")
 
-            case Http.MessageCommand(HttpMessagePartWrapper(x: MessageChunk, ack)) =>
+            case Http.MessageCommand(HttpMessagePartWrapper(x: MessageChunk, ack)) if closeCommander.isEmpty =>
               if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
                 render(x, ack)
               } else log.warning("Received MessageChunk outside of chunking request context, ignoring...")
 
-            case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedMessageEnd, ack)) =>
+            case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedMessageEnd, ack)) if closeCommander.isEmpty =>
               if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
                 render(x, ack)
                 openRequests.last.timestamp = now // only start timer once the request is completed
               } else log.warning("Received ChunkedMessageEnd outside of chunking request " +
                 "context, ignoring...")
+
+            case Http.MessageCommand(HttpMessagePartWrapper(x: HttpRequestPart, _)) if closeCommander.isDefined =>
+              log.error("Received {} after CloseCommand, ignoring", x)
+
+            case x: Http.CloseCommand =>
+              closeCommander = Some(context.sender)
+              commandPL(x)
 
             case SetRequestTimeout(timeout) => requestTimeout = timeout
 
@@ -93,7 +101,9 @@ object ClientFrontend {
               else throw new IllegalStateException
 
             case x: Tcp.ConnectionClosed =>
-              openRequests.foreach(rec => dispatch(rec.sender, x))
+              val senders: Set[ActorRef] = openRequests.map(_.sender)(collection.breakOut)
+              val receivers = if (closeCommander.isDefined) senders + closeCommander.get else senders
+              receivers.foreach(dispatch(_, x))
               eventPL(x) // terminates the connection actor
 
             case TickGenerator.Tick =>
@@ -117,17 +127,18 @@ object ClientFrontend {
             commandPL(HttpRequestPartRenderingContext(part, sentAck))
           }
 
-          def dispatch(receiver: ActorRef, msg: Any): Unit =
-            commandPL(Pipeline.Tell(receiver, msg, context.self))
-
           def checkForTimeout(): Unit =
             if (!openRequests.isEmpty && requestTimeout.isFinite) {
               val rec = openRequests.head
               if (rec.timestamp > 0 && rec.timestamp + requestTimeout.toMillis < now) {
                 log.warning("Request timed out after {}, closing connection", requestTimeout)
+                dispatch(rec.sender, Timedout(rec.request))
                 commandPL(Http.Close)
               }
             }
+
+          def dispatch(receiver: ActorRef, msg: Any): Unit =
+            commandPL(Pipeline.Tell(receiver, msg, context.self))
         }
     }
   }
