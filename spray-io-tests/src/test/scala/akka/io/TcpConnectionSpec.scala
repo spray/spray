@@ -5,7 +5,7 @@
 package akka.io
 
 import java.io.IOException
-import java.net.{ Socket, ConnectException, InetSocketAddress, SocketException }
+import java.net.{ ConnectException, InetSocketAddress, SocketException }
 import java.nio.ByteBuffer
 import java.nio.channels.{ SelectionKey, Selector, ServerSocketChannel, SocketChannel }
 import java.nio.channels.spi.SelectorProvider
@@ -143,6 +143,7 @@ class TcpConnectionSpec extends AkkaSpec("akka.io.tcp.register-timeout = 500ms")
       buffer.flip()
       ByteString(buffer).take(10).decodeString("ASCII") must be("morestuff!")
     }
+
     "write data after not acknowledged data" in withEstablishedConnection() { setup ⇒
       import setup._
 
@@ -370,6 +371,7 @@ class TcpConnectionSpec extends AkkaSpec("akka.io.tcp.register-timeout = 500ms")
 //      assertThisConnectionActorTerminated()
       pending
     }
+
     "report when peer aborted the connection (simplified)" in withEstablishedConnection() { setup ⇒
       import setup._
 
@@ -399,6 +401,7 @@ class TcpConnectionSpec extends AkkaSpec("akka.io.tcp.register-timeout = 500ms")
 
       assertThisConnectionActorTerminated()
     }
+
     "report when peer closed the connection when trying to write" in withEstablishedConnection() { setup ⇒
       import setup._
 
@@ -425,36 +428,16 @@ class TcpConnectionSpec extends AkkaSpec("akka.io.tcp.register-timeout = 500ms")
 
       EventFilter[SocketException](occurrences = 1) intercept {
         selector.send(connectionActor, ChannelConnectable)
-        val err = userHandler.expectMsgType[ErrorClosed]
-        err.cause must be("Connection reset by peer")
+        userHandler expectMsg CommandFailed(Connect(serverAddress))
       }
 
       verifyActorTermination(connectionActor)
     }
 
-    val UnboundAddress = temporaryServerAddress()
-    "report failed connection attempt when target is unreachable (simplified)" in
-      withUnacceptedConnection(connectionActorCons = createConnectionActor(serverAddress = UnboundAddress)) { setup ⇒
-        import setup._
-
-        val sel = SelectorProvider.provider().openSelector()
-        val key = clientSideChannel.register(sel, SelectionKey.OP_CONNECT | SelectionKey.OP_READ)
-        // This timeout should be large enough to work on Windows
-        sel.select(3000)
-
-        key.isConnectable must be(true)
-        EventFilter[ConnectException](occurrences = 1) intercept {
-          selector.send(connectionActor, ChannelConnectable)
-          val err = userHandler.expectMsgType[ErrorClosed]
-        }
-
-        verifyActorTermination(connectionActor)
-      }
-
+    val unboundAddress = temporaryServerAddress()
     "report failed connection attempt when target is unreachable" in
-      withUnacceptedConnection(connectionActorCons = createConnectionActor(serverAddress = UnboundAddress)) { setup ⇒
+      withUnacceptedConnection(connectionActorCons = createConnectionActor(serverAddress = unboundAddress)) { setup ⇒
         import setup._
-        ignoreIfWindows()
 
         val sel = SelectorProvider.provider().openSelector()
         val key = clientSideChannel.register(sel, SelectionKey.OP_CONNECT | SelectionKey.OP_READ)
@@ -464,8 +447,7 @@ class TcpConnectionSpec extends AkkaSpec("akka.io.tcp.register-timeout = 500ms")
         key.isConnectable must be(true)
         EventFilter[ConnectException](occurrences = 1) intercept {
           selector.send(connectionActor, ChannelConnectable)
-          val err = userHandler.expectMsgType[ErrorClosed]
-          err.cause must be("Connection refused")
+          userHandler expectMsg CommandFailed(Connect(unboundAddress))
         }
 
         verifyActorTermination(connectionActor)

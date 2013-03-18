@@ -68,7 +68,7 @@ private[io] abstract class TcpConnection(val channel: SocketChannel,
 
     case write: Write if writePending ⇒
       if (TraceLogging) log.debug("Dropping write because queue is full")
-      sender ! CommandFailed(write)
+      sender ! write.failureMessage
 
     case write: Write if write.data.isEmpty ⇒
       if (write.wantsAck)
@@ -314,7 +314,5 @@ private[io] object TcpConnection {
    * Used to transport information to the postStop method to notify
    * interested party about a connection close.
    */
-  case class CloseInformation(
-    notificationsTo: Set[ActorRef],
-    closedEvent: ConnectionClosed)
+  case class CloseInformation(notificationsTo: Set[ActorRef], closedEvent: Event)
 }
