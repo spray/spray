@@ -134,6 +134,10 @@ class HttpHeaderSpec extends Specification {
     p^
     "Remote-Address: 111.22.3.4" ! example(`Remote-Address`("111.22.3.4"))_ ^
     p^
+    "Server: as fghf.fdf/xx" ! example(`Server`(Seq(ProductVersion("as"), ProductVersion("fghf.fdf", "xx"))))_ ^
+    p^
+    "Transfer-Encoding: chunked" ! example(`Transfer-Encoding`("chunked"))_ ^
+    p^
     "Set-Cookie: SID=31d4d96e407aad42" !
       example(`Set-Cookie`(HttpCookie("SID", "31d4d96e407aad42")), fix(_).replace("=", "=\"") + '"')_ ^
     "Set-Cookie: SID=\"31d4d96e407aad42\"; Domain=example.com; Path=/" !
@@ -144,6 +148,8 @@ class HttpHeaderSpec extends Specification {
       example(`Set-Cookie`(HttpCookie("name", "123", maxAge = Some(12345), secure = true)))_ ^
     "Set-Cookie: name=\"123\"; HttpOnly; fancyPants" !
       example(`Set-Cookie`(HttpCookie("name", "123", httpOnly = true, extension = Some("fancyPants"))))_ ^
+    p^
+    "User-Agent: abc/1" ! example(`User-Agent`(ProductVersion.parseMultiple("abc/1  /")))_ ^
     p^
     "WWW-Authenticate: Basic realm=\"WallyWorld\"" !
       example(`WWW-Authenticate`(HttpChallenge("Basic", "WallyWorld")))_ ^

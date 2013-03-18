@@ -59,6 +59,18 @@ private[parser] trait SimpleHeaders {
     Ip ~ EOI ~~> `Remote-Address`
   }
 
+  def SERVER = rule {
+    oneOrMore(Product, separator = " ") ~~> (Server(_))
+  }
+
+  def TRANSFER_ENCODING = rule {
+    oneOrMore(TransferCoding ~> identityFunc, separator = ListSep) ~~> (`Transfer-Encoding`(_))
+  }
+
+  def USER_AGENT = rule {
+    oneOrMore(Product, separator = " ") ~~> (`User-Agent`(_))
+  }
+
   def X_FORWARDED_FOR = rule {
     oneOrMore(Ip ~~> (Some(_)) | "unknown" ~ push(None), separator = ListSep) ~ EOI ~~> (`X-Forwarded-For`(_))
   }
