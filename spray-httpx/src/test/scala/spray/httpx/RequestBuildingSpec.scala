@@ -27,9 +27,9 @@ class RequestBuildingSpec extends Specification with RequestBuilding {
   "The RequestBuilding trait" should {
     "construct simple requests" >> {
       Get() === HttpRequest()
-      Post("/abc") === HttpRequest(POST, "/abc")
-      Patch("/abc", "content") === HttpRequest(PATCH, "/abc", entity = "content")
-      Put("/abc", Some("content")) === HttpRequest(PUT, "/abc", entity = "content")
+      Post("/abc") === HttpRequest(POST, Uri("/abc"))
+      Patch("/abc", "content") === HttpRequest(PATCH, Uri("/abc"), entity = "content")
+      Put("/abc", Some("content")) === HttpRequest(PUT, Uri("/abc"), entity = "content")
     }
 
     "provide a working `addHeader` transformer" >> {
