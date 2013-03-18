@@ -19,37 +19,37 @@ class DemoService extends Actor with SprayActorLogging {
     // when a new connection comes in we register ourselves as the connection handler
     case _: Http.Connected => sender ! Http.Register(self)
 
-    case HttpRequest(GET, "/", _, _, _) =>
+    case HttpRequest(GET, Uri.Path("/"), _, _, _) =>
       sender ! index
 
-    case HttpRequest(GET, "/ping", _, _, _) =>
+    case HttpRequest(GET, Uri.Path("/ping"), _, _, _) =>
       sender ! HttpResponse(entity = "PONG!")
 
-    case HttpRequest(GET, "/stream", _, _, _) =>
+    case HttpRequest(GET, Uri.Path("/stream"), _, _, _) =>
       val peer = sender // since the Props creator is executed asyncly we need to save the sender ref
       context actorOf Props(new Streamer(peer, 25))
 
-    case HttpRequest(GET, "/server-stats", _, _, _) =>
+    case HttpRequest(GET, Uri.Path("/server-stats"), _, _, _) =>
       val client = sender
       context actorFor "/user/IO-HTTP/listener-0" ask Http.GetStats onSuccess {
         case x: Stats => client ! statsPresentation(x)
       }
 
-    case HttpRequest(GET, "/crash", _, _, _) =>
+    case HttpRequest(GET, Uri.Path("/crash"), _, _, _) =>
       sender ! HttpResponse(entity = "About to throw an exception in the request handling actor, " +
         "which triggers an actor restart")
       throw new RuntimeException("BOOM!")
 
-    case HttpRequest(GET, uri, _, _, _) if uri startsWith "/timeout" =>
+    case HttpRequest(GET, Uri.Path(path), _, _, _) if path startsWith "/timeout" =>
       log.info("Dropping request, triggering a timeout")
 
-    case HttpRequest(GET, "/stop", _, _, _) =>
+    case HttpRequest(GET, Uri.Path("/stop"), _, _, _) =>
       sender ! HttpResponse(entity = "Shutting down in 1 second ...")
       context.system.scheduler.scheduleOnce(1 second span, new Runnable { def run() { context.system.shutdown() } })
 
     case _: HttpRequest => sender ! HttpResponse(status = 404, entity = "Unknown resource!")
 
-    case Timedout(HttpRequest(_, "/timeout/timeout", _, _, _)) =>
+    case Timedout(HttpRequest(_, Uri.Path("/timeout/timeout"), _, _, _)) =>
       log.info("Dropping Timeout message")
 
     case Timedout(HttpRequest(method, uri, _, _, _)) =>

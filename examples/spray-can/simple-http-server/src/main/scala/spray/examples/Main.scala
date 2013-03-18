@@ -9,8 +9,6 @@ object Main extends App with MySslConfiguration {
 
   implicit val system = ActorSystem()
 
-  spray.util.installDebuggingEventStreamLoggers()
-
   // the handler actor replies to incoming HttpRequests
   val handler = system.actorOf(Props[DemoService], name = "handler")
 

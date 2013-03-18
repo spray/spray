@@ -277,6 +277,8 @@ object Uri {
       }
       build()
     }
+    def unapply(path: Path): Option[String] = Some(path.toString)
+    def unapply(uri: Uri): Option[String] = unapply(uri.path)
     sealed abstract class SlashOrEmpty extends Path {
       def startsWithSegment = false
     }
