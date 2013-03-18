@@ -333,19 +333,8 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
   def parseRequestTargetAndConstructEffectiveUri(securedConnection: Boolean, hostHeaderHost: Host,
                                                  hostHeaderPort: Int, defaultAuthority: Authority): Uri = {
     complete("request-target", `request-target`)
-    if (_scheme.isEmpty) {
-      _scheme = if (securedConnection) "https" else "http"
-      if (_host.isEmpty) {
-        if (hostHeaderHost.isEmpty) {
-          _host = defaultAuthority.host
-          _port = defaultAuthority.port
-        } else {
-          _host = hostHeaderHost
-          _port = hostHeaderPort
-        }
-      }
-    }
-    new Impl(_scheme, "", _host, _port, collapseDotSegments(_path), _query, _fragment)
+    effectiveHttpRequestUri(_scheme, _host, _port, _path, _query, _fragment, securedConnection, hostHeaderHost,
+      hostHeaderPort, defaultAuthority)
   }
 
   /////////////// REQUIRED RFC 2234 (ABNF) CORE RULES ////////////////

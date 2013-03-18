@@ -111,8 +111,6 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
 
 /**
  * Immutable HTTP request model.
- * The `uri` member contains the "effective request URI" as defined by
- * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.5.
  */
 case class HttpRequest(method: HttpMethod = HttpMethods.GET,
                        uri: Uri = Uri./,
@@ -124,6 +122,16 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   def message = this
   def isRequest = true
   def isResponse = false
+
+  def withEffectiveUri(securedConnection: Boolean): HttpRequest =
+    if (uri.isAbsolute) this
+    else header[Host] match {
+      case None => sys.error("Cannot establish effective request URI, request %s has a relative URI and is missing " +
+        "a `Host` header" format this)
+      case Some(Host("", _)) => sys.error("Cannot establish effective request URI, request %s has a relative URI and " +
+        "an empty `Host` header" format this)
+      case Some(Host(host, port)) => copy(uri = uri.toEffectiveHttpRequestUri(securedConnection, Uri.Host(host), port))
+    }
 
   def acceptedMediaRanges: List[MediaRange] = {
     // TODO: sort by preference
@@ -228,6 +236,11 @@ case class HttpResponse(status: StatusCode = StatusCodes.OK,
   def withHeaders(headers: List[HttpHeader]) = copy(headers = headers)
   def withEntity(entity: HttpEntity) = copy(entity = entity)
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) = copy(headers = headers, entity = entity)
+
+  def connectionCloseExpected: Boolean = protocol match {
+    case HttpProtocols.`HTTP/1.0` => headers.forall { case x: Connection if x.hasKeepAlive => false; case _ => true }
+    case HttpProtocols.`HTTP/1.1` => headers.exists { case x: Connection if x.hasClose => true; case _ => false }
+  }
 }
 
 /**

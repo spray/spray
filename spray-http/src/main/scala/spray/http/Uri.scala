@@ -66,6 +66,15 @@ abstract case class Uri(scheme: String, authority: Authority, path: Path, query:
     if (fragment.isDefined) sb.append('#').append(encode(fragment.get, charset, QUERY_FRAGMENT_CHARS))
     sb
   }
+
+  /**
+   * Converts this URI to an "effective HTTP request URI" as defined by
+   * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.5.
+   */
+  def toEffectiveHttpRequestUri(securedConnection: Boolean, hostHeaderHost: Host, hostHeaderPort: Int,
+                                defaultAuthority: Authority = Authority.Empty): Uri =
+    effectiveHttpRequestUri(scheme, authority.host, authority.port, path, query, fragment, securedConnection,
+      hostHeaderHost, hostHeaderPort, defaultAuthority)
 }
 
 object Uri {
@@ -112,7 +121,7 @@ object Uri {
    */
   def from(scheme: String = "", userinfo: String = "", host: String = "", port: Int = 0, path: String = "",
            query: Query = Query.Empty, fragment: Option[String] = None): Uri =
-    apply(scheme, Authority(Host(host), userinfo, normalizePort(port, scheme)), Path(path), query, fragment)
+    apply(scheme, Authority(Host(host), normalizePort(port, scheme), userinfo), Path(path), query, fragment)
 
   /**
    * Parses a string into a normalized absolute URI as defined by http://tools.ietf.org/html/rfc3986#section-4.3.
@@ -144,8 +153,32 @@ object Uri {
   def normalize(uri: String, charset: Charset = UTF8): String =
     Uri(uri, charset).toString(charset)
 
+  /**
+   * Converts a set of URI components to an "effective HTTP request URI" as defined by
+   * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.5.
+   */
+  def effectiveHttpRequestUri(scheme: String, host: Host, port: Int, path: Path, query: Query, fragment: Option[String],
+                              securedConnection: Boolean, hostHeaderHost: Host, hostHeaderPort: Int,
+                              defaultAuthority: Authority = Authority.Empty): Uri = {
+    var _scheme = scheme
+    var _host = host
+    var _port = port
+    if (_scheme.isEmpty) {
+      _scheme = if (securedConnection) "https" else "http"
+      if (_host.isEmpty) {
+        if (hostHeaderHost.isEmpty) {
+          _host = defaultAuthority.host
+          _port = defaultAuthority.port
+        } else {
+          _host = hostHeaderHost
+          _port = hostHeaderPort
+        }
+      }
+    }
+    new Impl(_scheme, "", _host, _port, collapseDotSegments(path), query, fragment)
+  }
 
-  case class Authority(host: Host, userinfo: String = "", port: Int = 0) {
+  case class Authority(host: Host, port: Int = 0, userinfo: String = "") {
     def isEmpty = host.isEmpty
     def render(sb: JStringBuilder, scheme: String = "", charset: Charset = UTF8): JStringBuilder =
       if (isEmpty) sb else {
@@ -225,9 +258,11 @@ object Uri {
     def toString(charset: Charset) = render(new JStringBuilder, charset).toString
     override def toString = toString(UTF8)
   }
-  // TODO: provide macro-based Path construction helpers to support sth. like `Path / "a" / "b" // "c" /`
+  // TODO: provide macro-based Path construction helpers to support sth. like `Path / "a" / "b" // "c" / /`
   object Path {
-    val / = Slash(Empty)
+    val SingleSlash = Slash(Empty)
+    def / :Path = SingleSlash
+    def / (path: Path): Path = Slash(path)
     def apply(string: String, charset: Charset = UTF8): Path = {
       @tailrec def build(path: Path = Empty, ix: Int = string.length - 1, segmentEnd: Int = 0): Path = {
         if (ix >= 0)
@@ -272,6 +307,7 @@ object Uri {
       def reverseAndPrependTo(prefix: Path) = tail.reverseAndPrependTo(Slash(prefix))
     }
     case class Segment(head: String, tail: SlashOrEmpty) extends Path {
+      if (head.isEmpty) throw new IllegalArgumentException("Path segment must not be empty")
       type Head = String
       def isEmpty = false
       def startsWithSlash = false
@@ -532,6 +568,6 @@ object Uri {
                            fragment: Option[String]) extends Uri(scheme, authority, path, query, fragment) {
     def this(scheme: String, userinfo: String, host: Host, port: Int, path: Path, query: Query,
              fragment: Option[String]) =
-      this(scheme, Authority(host, userinfo, normalizePort(port, scheme)), path, query, fragment)
+      this(scheme, Authority(host, normalizePort(port, scheme), userinfo), path, query, fragment)
   }
 }

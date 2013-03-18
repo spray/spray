@@ -29,6 +29,7 @@ case class ErrorInfo(summary: String = "", detail: String = "") {
   def withSummary(newSummary: String) = copy(summary = newSummary)
   def withFallbackSummary(fallbackSummary: String) = if (summary.isEmpty) withSummary(fallbackSummary) else this
   def formatPretty = summary + ": " + detail
+  def format(withDetail: Boolean): String = if (withDetail) formatPretty else summary
 }
 
 object ErrorInfo {
@@ -38,7 +39,7 @@ object ErrorInfo {
   }
 }
 
-case class IllegalUriException(info: ErrorInfo) extends RuntimeException(info.formatPretty) {
+class IllegalUriException(info: ErrorInfo) extends RuntimeException(info.formatPretty) {
   def this(summary: String, detail: String = "") = this(ErrorInfo(summary, detail))
 }
 
@@ -48,12 +49,16 @@ case class IllegalUriException(info: ErrorInfo) extends RuntimeException(info.fo
 // since the Client- and ServerError types are defined in spray-http the only
 // commonly accessible place for this definition is here in spray-http
 
-case class IllegalRequestException(status: ClientError, info: ErrorInfo)
-  extends RuntimeException(if (info.summary.isEmpty) status.defaultMessage else info.formatPretty) {
-  def this(status: ClientError, summary: String = "", detail: String = "") = this(status, ErrorInfo(summary, detail))
+class IllegalRequestException private(val info: ErrorInfo, val status: ClientError)
+  extends RuntimeException(info.formatPretty) {
+  def this(status: ClientError) = this(ErrorInfo(status.defaultMessage), status)
+  def this(status: ClientError, info: ErrorInfo) = this(info.withFallbackSummary(status.defaultMessage), status)
+  def this(status: ClientError, detail: String) = this(ErrorInfo(status.defaultMessage, detail), status)
 }
 
-case class RequestProcessingException(status: ServerError, info: ErrorInfo)
-  extends RuntimeException(if (info.summary.isEmpty) status.defaultMessage else info.formatPretty) {
-  def this(status: ServerError, summary: String = "", detail: String = "") = this(status, ErrorInfo(summary, detail))
+class RequestProcessingException private(val info: ErrorInfo, val status: ServerError)
+  extends RuntimeException(info.formatPretty) {
+  def this(status: ServerError) = this(ErrorInfo(status.defaultMessage), status)
+  def this(status: ServerError, info: ErrorInfo) = this(info.withFallbackSummary(status.defaultMessage), status)
+  def this(status: ServerError, detail: String) = this(ErrorInfo(status.defaultMessage, detail), status)
 }
