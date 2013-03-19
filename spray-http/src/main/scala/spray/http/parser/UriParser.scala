@@ -39,13 +39,13 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
 
   def parseAbsolute(): Uri = {
     complete("absolute URI", `absolute-URI`)
-    new Impl(_scheme, _userinfo, _host, _port, collapseDotSegments(_path), _query, _fragment)
+    Impl(_scheme, _userinfo, _host, _port, collapseDotSegments(_path), _query, _fragment)
   }
 
   def parseReference(): Uri = {
     complete("URI reference", `URI-reference`)
     val path = if (_scheme.isEmpty) _path else collapseDotSegments(_path)
-    new Impl(_scheme, _userinfo, _host, _port, path, _query, _fragment)
+    Impl(_scheme, _userinfo, _host, _port, path, _query, _fragment)
   }
 
   def parseAndResolveReference(base: Uri): Uri = {

@@ -168,16 +168,16 @@ class UriSpec extends Specification {
       Path("") === Empty
       Path("/") === Path./
       Path("a") === "a" :: Empty
-      Path("//") === '/' :: Path./
+      Path("//") === Path./ / ""
       Path("a/") === "a" :: Path./
-      Path("/a") === '/' :: "a" :: Empty
-      Path("/abc/de/f") === '/' :: "abc" :: '/' :: "de" :: '/' :: "f" :: Empty
+      Path("/a") === Path / "a"
+      Path("/abc/de/f") === Path / "abc" / "de" / "f"
       Path("abc/de/f/") === "abc" :: '/' :: "de" :: '/' :: "f" :: Path./
       Path("abc///de") === "abc" :: '/' ::  '/' ::  '/' :: "de" :: Empty
-      Path("/abc%2F") === '/' :: "abc/" :: Empty
+      Path("/abc%2F") === Path / "abc/"
       Path("H%C3%A4ll%C3%B6") === """Hällö""" :: Empty
-      Path("/%2F%5C") === '/' :: """/\""" :: Empty
-      Path("/:foo:/") === '/' :: ":foo:" :: '/' :: Empty
+      Path("/%2F%5C") === Path / """/\"""
+      Path("/:foo:/") === Path / ":foo:" / ""
     }
   }
 

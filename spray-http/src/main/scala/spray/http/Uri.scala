@@ -28,10 +28,12 @@ import Uri._
  * An immutable model of an internet URI as defined by http://tools.ietf.org/html/rfc3986.
  * All members of this class represent the *decoded* URI elements (i.e. without percent-encoding).
  */
-abstract case class Uri(scheme: String, authority: Authority, path: Path, query: Query, fragment: Option[String]) {
+sealed abstract case class Uri(scheme: String, authority: Authority, path: Path, query: Query,
+                               fragment: Option[String]) {
 
   def isAbsolute: Boolean = !isRelative
   def isRelative: Boolean = scheme.isEmpty
+  def isEmpty: Boolean
 
   def toString(charset: Charset): String = render(charset = charset).toString
   override def toString: String = toString(UTF8)
@@ -78,7 +80,10 @@ abstract case class Uri(scheme: String, authority: Authority, path: Path, query:
 }
 
 object Uri {
-  val Empty = Uri()
+  object Empty extends Uri("", Authority.Empty, Path.Empty, Query.Empty, None) {
+    def isEmpty = true
+  }
+
   val / = Uri("/")
 
   /**
@@ -105,7 +110,7 @@ object Uri {
   def apply(scheme: String = "", authority: Authority = Authority.Empty, path: Path = Path.Empty,
             query: Query = Query.Empty, fragment: Option[String] = None): Uri = {
     val p = verifyPath(path, scheme, authority.host)
-    new Impl(
+    Impl(
       scheme = normalizeScheme(scheme),
       authority = authority.normalizedFor(scheme),
       path = if (scheme.isEmpty) p else collapseDotSegments(p),
@@ -175,7 +180,7 @@ object Uri {
         }
       }
     }
-    new Impl(_scheme, "", _host, _port, collapseDotSegments(path), query, fragment)
+    Impl(_scheme, "", _host, _port, collapseDotSegments(path), query, fragment)
   }
 
   case class Authority(host: Host, port: Int = 0, userinfo: String = "") {
@@ -249,20 +254,21 @@ object Uri {
     def length: Int
     def charCount: Int
     def render(sb: JStringBuilder, charset: Charset = UTF8, encodeFirstSegmentColons: Boolean = false): JStringBuilder
-    def ::(c: Char) = Path.Slash(this)
-    def ::(segment: String): Path.Segment
-    def :::(prefix: Path): Path = prefix ++ this
+    def ::(c: Char): Path = { require(c == '/'); Path.Slash(this) }
+    def ::(segment: String): Path
+    def +(pathString: String): Path = this ++ Path(pathString)
     def ++(suffix: Path): Path
     def reverse: Path = reverseAndPrependTo(Path.Empty)
     def reverseAndPrependTo(prefix: Path): Path
     def toString(charset: Charset) = render(new JStringBuilder, charset).toString
     override def toString = toString(UTF8)
+    def / (segment: String): Path = this ++ Path.Slash(segment :: Path.Empty)
   }
-  // TODO: provide macro-based Path construction helpers to support sth. like `Path / "a" / "b" // "c" / /`
   object Path {
     val SingleSlash = Slash(Empty)
     def / :Path = SingleSlash
     def / (path: Path): Path = Slash(path)
+    def / (segment: String): Path = Slash(segment :: Empty)
     def apply(string: String, charset: Charset = UTF8): Path = {
       @tailrec def build(path: Path = Empty, ix: Int = string.length - 1, segmentEnd: Int = 0): Path = {
         if (ix >= 0)
@@ -291,7 +297,7 @@ object Uri {
       def length = 0
       def charCount = 0
       def render(sb: JStringBuilder, charset: Charset = UTF8, encodeFirstSegmentColons: Boolean = false) = sb
-      def ::(segment: String) = Segment(segment, this)
+      def ::(segment: String) = if (segment.isEmpty) this else Segment(segment, this)
       def ++(suffix: Path) = suffix
       def reverseAndPrependTo(prefix: Path) = prefix
     }
@@ -304,7 +310,7 @@ object Uri {
       def charCount: Int = tail.charCount + 1
       def render(sb: JStringBuilder, charset: Charset = UTF8, encodeFirstSegmentColons: Boolean = false) =
         tail.render(sb.append('/'), charset)
-      def ::(segment: String) = Segment(segment, this)
+      def ::(segment: String) = if (segment.isEmpty) this else Segment(segment, this)
       def ++(suffix: Path) = Slash(tail ++ suffix)
       def reverseAndPrependTo(prefix: Path) = tail.reverseAndPrependTo(Slash(prefix))
     }
@@ -320,7 +326,7 @@ object Uri {
         val keep = if (encodeFirstSegmentColons) PATH_SEGMENT_CHARS & ~COLON else PATH_SEGMENT_CHARS
         tail.render(sb.append(encode(head, charset, keep)), charset)
       }
-      def ::(segment: String) = Segment(segment + head, tail)
+      def ::(segment: String) = if (segment.isEmpty) this else Segment(segment + head, tail)
       def ++(suffix: Path) = head :: (tail ++ suffix)
       def reverseAndPrependTo(prefix: Path): Path = tail.reverseAndPrependTo(head :: prefix)
     }
@@ -420,7 +426,7 @@ object Uri {
       if (host.isEmpty)
         if (path.isEmpty) {
           val q = if (query.isEmpty) base.query else query
-          new Impl(base.scheme, base.authority, base.path, q, fragment)
+          Impl(base.scheme, base.authority, base.path, q, fragment)
         } else {
           // http://tools.ietf.org/html/rfc3986#section-5.2.3
           def mergePaths(base: Uri, path: Path): Path =
@@ -435,10 +441,10 @@ object Uri {
               replaceLastSegment(base.path, path)
             }
           val p = if (path.startsWithSlash) path else mergePaths(base, path)
-          new Impl(base.scheme, base.authority, collapseDotSegments(p), query, fragment)
+          Impl(base.scheme, base.authority, collapseDotSegments(p), query, fragment)
         }
-      else new Impl(base.scheme, userinfo, host, port, collapseDotSegments(path), query, fragment)
-    else new Impl(scheme, userinfo, host, port, collapseDotSegments(path), query, fragment)
+      else Impl(base.scheme, userinfo, host, port, collapseDotSegments(path), query, fragment)
+    else Impl(scheme, userinfo, host, port, collapseDotSegments(path), query, fragment)
   }
 
   private[http] def encode(string: String, charset: Charset, keep: Int): String = {
@@ -566,10 +572,17 @@ object Uri {
   private[http] def fail(summary: String, detail: String = "") =
     throw new IllegalUriException(ErrorInfo(summary, detail))
 
-  private[http] class Impl(scheme: String, authority: Authority, path: Path, query: Query,
-                           fragment: Option[String]) extends Uri(scheme, authority, path, query, fragment) {
-    def this(scheme: String, userinfo: String, host: Host, port: Int, path: Path, query: Query,
-             fragment: Option[String]) =
-      this(scheme, Authority(host, normalizePort(port, scheme), userinfo), path, query, fragment)
+  private[http] class Impl private (scheme: String, authority: Authority, path: Path, query: Query,
+                                    fragment: Option[String]) extends Uri(scheme, authority, path, query, fragment) {
+    def isEmpty = false
+  }
+
+  private[http] object Impl {
+    def apply(scheme: String, authority: Authority, path: Path, query: Query, fragment: Option[String]): Uri =
+      if (path.isEmpty && scheme.isEmpty && authority.isEmpty && query.isEmpty && fragment.isEmpty) Empty
+      else new Impl(scheme, authority, path, query, fragment)
+    def apply(scheme: String, userinfo: String, host: Host, port: Int, path: Path, query: Query,
+              fragment: Option[String]): Uri =
+      apply(scheme, Authority(host, normalizePort(port, scheme), userinfo), path, query, fragment)
   }
 }
