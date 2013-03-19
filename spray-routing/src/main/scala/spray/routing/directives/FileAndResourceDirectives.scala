@@ -121,9 +121,10 @@ trait FileAndResourceDirectives {
     get {
       detachTo(singleRequestServiceActor) {
         unmatchedPath { path =>
-          val dirs = directories.map(new File(_, path)).filter(dir => dir.isDirectory && dir.canRead)
+          val pathString = path.toString
+          val dirs = directories.map(new File(_, pathString)).filter(dir => dir.isDirectory && dir.canRead)
           if (dirs.isEmpty) reject
-          else complete(DirectoryListing(withTrailingSlash(path), dirs.flatMap(_.listFiles)))
+          else complete(DirectoryListing(withTrailingSlash(pathString), dirs.flatMap(_.listFiles)))
         }
       }
     }
@@ -156,13 +157,13 @@ trait FileAndResourceDirectives {
                               (implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route = {
     val base = if (directoryName.isEmpty) "" else withTrailingSlash(directoryName)
     unmatchedPath { path =>
-      getFromResource(base + stripLeadingSlash(path))
+      getFromResource(base + stripLeadingSlash(path).toString)
     }
   }
 }
 
 object FileAndResourceDirectives extends FileAndResourceDirectives {
-  def stripLeadingSlash(path: String) = if (path.startsWith("/")) path.substring(1) else path
+  def stripLeadingSlash(path: Uri.Path) = if (path.startsWithSlash) path.tail else path
   def withTrailingSlash(path: String) = if (path.endsWith("/")) path else path + '/'
 }
 

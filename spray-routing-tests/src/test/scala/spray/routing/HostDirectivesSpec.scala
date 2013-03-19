@@ -21,6 +21,8 @@ import spray.http.HttpHeaders.Host
 
 class HostDirectivesSpec extends RoutingSpec {
 
+  only("let requests to matching hosts pass$")
+
   "The 'host' directive" should {
 
     "in its simple String form" in {

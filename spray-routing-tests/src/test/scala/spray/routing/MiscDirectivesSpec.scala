@@ -94,8 +94,8 @@ class MiscDirectivesSpec extends RoutingSpec {
   "The `rewriteUnmatchedPath` directive" should {
     "rewrite the unmatched path" in {
       Get("/abc") ~> {
-        rewriteUnmatchedPath(_ + "/def") {
-          path("abc/def") { completeOk }
+        rewriteUnmatchedPath(_ / "def") {
+          path("abc" / "def") { completeOk }
         }
       } ~> check { response === Ok }
     }

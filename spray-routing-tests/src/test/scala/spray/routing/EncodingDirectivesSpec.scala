@@ -32,12 +32,12 @@ class EncodingDirectivesSpec extends RoutingSpec {
 
   "the NoEncoding decoder" should {
     "decode the request content if it has encoding 'identity'" in {
-      Get("/", "yes") ~> addHeader(`Content-Encoding`(identity)) ~> {
+      Get("/", "yes") ~> `Content-Encoding`(identity) ~> {
         decodeRequest(NoEncoding) { echoRequestContent }
       } ~> check { entityAs[String] === "yes" }
     }
     "reject requests with content encoded with 'deflate'" in {
-      Get("/", "yes") ~> addHeader(`Content-Encoding`(deflate)) ~> {
+      Get("/", "yes") ~> `Content-Encoding`(deflate) ~> {
         decodeRequest(NoEncoding) { echoRequestContent }
       } ~> check { rejection === UnsupportedRequestEncodingRejection(identity) }
     }
@@ -52,17 +52,17 @@ class EncodingDirectivesSpec extends RoutingSpec {
   "the Gzip decoder" should {
     "decode the request content if it has encoding 'gzip'" in {
       val helloGzipped = fromHexDump("1f8b08005edca24d0003f348cdc9c907008289d1f705000000")
-      Get("/", helloGzipped) ~> addHeader(`Content-Encoding`(gzip)) ~> {
+      Get("/", helloGzipped) ~> `Content-Encoding`(gzip) ~> {
         decodeRequest(Gzip) { echoRequestContent }
       } ~> check { entityAs[String] === "Hello" }
     }
     "reject the request content if it has encoding 'gzip' but is corrupt" in {
-      Get("/", fromHexDump("000102")) ~> addHeader(`Content-Encoding`(gzip)) ~> {
+      Get("/", fromHexDump("000102")) ~> `Content-Encoding`(gzip) ~> {
         decodeRequest(Gzip) { completeOk }
       } ~> check { rejection === CorruptRequestEncodingRejection("Not in GZIP format") }
     }
     "reject requests with content encoded with 'deflate'" in {
-      Get("/", "Hello") ~> addHeader(`Content-Encoding`(deflate)) ~> {
+      Get("/", "Hello") ~> `Content-Encoding`(deflate) ~> {
         decodeRequest(Gzip) { completeOk }
       } ~> check { rejection === UnsupportedRequestEncodingRejection(gzip) }
     }
@@ -82,7 +82,7 @@ class EncodingDirectivesSpec extends RoutingSpec {
     val yeahGzipped = fromHexDump("1f8b08000000000000008b4c4dcc500400700d815705000000")
 
     "encode the response content with GZIP if the client accepts it with a dedicated Accept-Encoding header" in {
-      Get() ~> addHeader(`Accept-Encoding`(gzip)) ~> {
+      Get() ~> `Accept-Encoding`(gzip) ~> {
         encodeResponse(Gzip) { yeah }
       } ~> check {
         response must haveContentEncoding(gzip)
@@ -95,17 +95,17 @@ class EncodingDirectivesSpec extends RoutingSpec {
       } ~> check { body === HttpBody(ContentType(`text/plain`, `UTF-8`), yeahGzipped) }
     }
     "reject the request if the client does not accept GZIP encoding" in {
-      Get() ~> addHeader(`Accept-Encoding`(identity)) ~> {
+      Get() ~> `Accept-Encoding`(identity) ~> {
         encodeResponse(Gzip) { completeOk }
       } ~> check { rejection === UnacceptedResponseEncodingRejection(gzip) }
     }
     "leave responses without content unchanged" in {
-      Get() ~> addHeader(`Accept-Encoding`(gzip)) ~> {
+      Get() ~> `Accept-Encoding`(gzip) ~> {
         encodeResponse(Gzip) { completeOk }
       } ~> check { response === Ok }
     }
     "leave responses with an already set Content-Encoding header unchanged" in {
-      Get() ~> addHeader(`Accept-Encoding`(gzip)) ~> {
+      Get() ~> `Accept-Encoding`(gzip) ~> {
         encodeResponse(Gzip) {
           respondWithHeader(`Content-Encoding`(identity)) { yeah }
         }
@@ -113,7 +113,7 @@ class EncodingDirectivesSpec extends RoutingSpec {
     }
     "correctly encode the chunk stream produced by a chunked response" in {
       val text = "This is a somewhat lengthy text that is being chunked by the autochunk directive!"
-      Get() ~> addHeader(`Accept-Encoding`(gzip)) ~> {
+      Get() ~> `Accept-Encoding`(gzip) ~> {
         encodeResponse(Gzip) {
           autoChunk(8) {
             complete(text)
@@ -121,6 +121,7 @@ class EncodingDirectivesSpec extends RoutingSpec {
         }
       } ~> check {
         response must haveContentEncoding(gzip)
+        chunks must haveSize(11)
         val bytes = body.buffer ++ chunks.toArray.flatMap(_.body)
         Gzip.newDecompressor.decompress(bytes) must readAs(text)
       }
@@ -132,12 +133,12 @@ class EncodingDirectivesSpec extends RoutingSpec {
       Get() ~> encodeResponse(NoEncoding) { completeOk } ~> check { response === Ok }
     }
     "produce a response if the client explicitly accepts non-encoded responses" in {
-      Get() ~> addHeader(`Accept-Encoding`(gzip, identity)) ~> {
+      Get() ~> `Accept-Encoding`(gzip, identity) ~> {
         encodeResponse(NoEncoding) { completeOk }
       } ~> check { response === Ok }
     }
     "reject the request if the client does not accept `identity` encoding" in {
-      Get() ~> addHeader(`Accept-Encoding`(gzip)) ~> {
+      Get() ~> `Accept-Encoding`(gzip) ~> {
         encodeResponse(NoEncoding) { completeOk }
       } ~> check { rejection === UnacceptedResponseEncodingRejection(identity) }
     }
@@ -154,17 +155,17 @@ class EncodingDirectivesSpec extends RoutingSpec {
       } ~> check { response must haveContentEncoding(gzip) }
     }
     "produce a GZIP encoded response if the request has an `Accept-Encoding: deflate, gzip` header" in {
-      Get() ~> addHeader(`Accept-Encoding`(deflate, gzip)) ~> {
+      Get() ~> `Accept-Encoding`(deflate, gzip) ~> {
         encodeGzipOrIdentity { yeah }
       } ~> check { response must haveContentEncoding(gzip) }
     }
     "produce a non-encoded response if the request has an `Accept-Encoding: identity` header" in {
-      Get() ~> addHeader(`Accept-Encoding`(identity)) ~> {
+      Get() ~> `Accept-Encoding`(identity) ~> {
         encodeGzipOrIdentity { completeOk }
       } ~> check { response === Ok }
     }
     "reject the request if it has an `Accept-Encoding: deflate` header" in {
-      Get() ~> addHeader(`Accept-Encoding`(deflate)) ~> {
+      Get() ~> `Accept-Encoding`(deflate) ~> {
         encodeGzipOrIdentity { completeOk }
       } ~> check {
         rejections === Seq(
@@ -183,17 +184,17 @@ class EncodingDirectivesSpec extends RoutingSpec {
       } ~> check { response === Ok }
     }
     "produce a GZIP encoded response if the request has an `Accept-Encoding: deflate, gzip` header" in {
-      Get() ~> addHeader(`Accept-Encoding`(deflate, gzip)) ~> {
+      Get() ~> `Accept-Encoding`(deflate, gzip) ~> {
         encodeIdentityOrGzip { yeah }
       } ~> check { response must haveContentEncoding(gzip) }
     }
     "produce a non-encoded response if the request has an `Accept-Encoding: identity` header" in {
-      Get() ~> addHeader(`Accept-Encoding`(identity)) ~> {
+      Get() ~> `Accept-Encoding`(identity) ~> {
         encodeIdentityOrGzip { completeOk }
       } ~> check { response === Ok }
     }
     "reject the request if it has an `Accept-Encoding: deflate` header" in {
-      Get() ~> addHeader(`Accept-Encoding`(deflate)) ~> {
+      Get() ~> `Accept-Encoding`(deflate) ~> {
         encodeIdentityOrGzip { completeOk }
       } ~> check {
         rejections === Seq(

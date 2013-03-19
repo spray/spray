@@ -33,11 +33,7 @@ import MediaTypes._
  * Immutable object encapsulating the context of an [[spray.http.HttpRequest]]
  * as it flows through a ''spray'' Route structure.
  */
-case class RequestContext(
-  request: HttpRequest,
-  responder: ActorRef,
-  unmatchedPath: String = ""
-) {
+case class RequestContext(request: HttpRequest, responder: ActorRef, unmatchedPath: Uri.Path) {
 
   /**
    * Returns a copy of this context with the HttpRequest transformed by the given function.
@@ -62,7 +58,7 @@ case class RequestContext(
   /**
    * Returns a copy of this context with the unmatchedPath transformed by the given function.
    */
-  def withUnmatchedPathMapped(f: String => String) = {
+  def withUnmatchedPathMapped(f: Uri.Path => Uri.Path) = {
     val transformed = f(unmatchedPath)
     if (transformed == unmatchedPath) this else copy(unmatchedPath = transformed)
   }
@@ -277,7 +273,7 @@ case class RequestContext(
       def handleError(error: Throwable) { failWith(error) }
       def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any])(implicit sender: ActorRef) = {
         val chunkStart = ChunkedResponseStart(response(entity))
-        val wrapper = if (sentAck.isEmpty) chunkStart else Confirmed(chunkStart, sentAck)
+        val wrapper = if (sentAck.isEmpty) chunkStart else Confirmed(chunkStart, sentAck.get)
         responder.tell(wrapper, sender)
         responder
       }

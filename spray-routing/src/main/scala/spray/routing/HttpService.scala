@@ -49,27 +49,20 @@ trait HttpService extends Directives {
                              rs: RoutingSettings, log: LoggingContext): Actor.Receive = {
     val sealedExceptionHandler = eh orElse ExceptionHandler.default
     val sealedRoute = sealRoute(route)(sealedExceptionHandler, rh)
-    def contextFor(req: HttpRequest) = RequestContext(req, ac.sender, req.path).withDefaultSender(ac.self)
+    def runSealedRoute(ctx: RequestContext): Unit =
+      try sealedRoute(ctx)
+      catch {
+        case NonFatal(e) =>
+          val errorRoute = sealedExceptionHandler(e)
+          errorRoute(ctx)
+      }
 
     {
       case request: HttpRequest =>
-        try {
-          request.parseQuery.parseHeaders match {
-            case ("", parsedRequest) =>
-              sealedRoute(contextFor(parsedRequest))
-            case (errorMsg, parsedRequest) if rs.RelaxedHeaderParsing =>
-              log.warning("Request {}: {}", request, errorMsg)
-              sealedRoute(contextFor(parsedRequest))
-            case (errorMsg, _) =>
-              throw new IllegalRequestException(BadRequest, RequestErrorInfo(errorMsg))
-          }
-        } catch {
-          case NonFatal(e) =>
-            val errorRoute = sealedExceptionHandler(e)
-            errorRoute(contextFor(request))
-        }
+        val ctx = RequestContext(request, ac.sender, request.uri.path).withDefaultSender(ac.self)
+        runSealedRoute(ctx)
 
-      case ctx: RequestContext => sealedRoute(ctx)
+      case ctx: RequestContext => runSealedRoute(ctx)
 
       case Timedout(request: HttpRequest) => runRoute(timeoutRoute)(eh, rh, ac, rs, log)(request)
     }
