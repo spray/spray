@@ -1,12 +1,12 @@
 package spray.examples
 
-import scala.concurrent.duration._
-import akka.actor.{Props, ActorSystem}
-import akka.pattern.ask
-import spray.util._
-import spray.io._
 import java.net.InetSocketAddress
-import spray.io.IOBridge.Key
+import scala.concurrent.duration._
+import akka.actor.{Actor, Props, ActorSystem}
+import akka.pattern.ask
+import akka.io.{Tcp, IO}
+import akka.util.{ByteString, Timeout}
+import spray.util._
 
 
 object Main extends App {
@@ -18,36 +18,39 @@ object Main extends App {
 
   // we bind the server to a port on localhost and hook
   // in a continuation that informs us when bound
-  server
-    .ask(IOServer.Bind("localhost", 23456))(1 second span)
-    .onSuccess { case IOServer.Bound(endpoint, _) =>
+  val endpoint = new InetSocketAddress("localhost", 23456)
+  implicit val bindingTimeout = Timeout(1.second)
+  val boundFuture = IO(Tcp) ? Tcp.Bind(server, endpoint)
+   boundFuture.onSuccess { case Tcp.Bound =>
       println("\nBound echo-server to " + endpoint)
       println("Run `telnet localhost 23456`, type something and press RETURN. Type `STOP` to exit...\n")
     }
 }
 
-class EchoServer extends IOServer {
-  val ioBridge = IOExtension(context.system).ioBridge()
+class EchoServer extends Actor with SprayActorLogging {
 
-  override def bound(endpoint: InetSocketAddress, bindingKey: Key, bindingTag: Any): Receive =
-    super.bound(endpoint, bindingKey, bindingTag) orElse {
+  def receive = {
+    case Tcp.Connected(_, _) =>
+      sender ! Tcp.Register(self)
+      log.debug("Registered for new connection")
 
-      case IOBridge.Received(handle, buffer) =>
-        buffer.array.asString.trim match {
-          case "STOP" =>
-            ioBridge ! IOBridge.Send(handle, BufferBuilder("Shutting down...").toByteBuffer)
-            log.info("Shutting down")
-            context.system.shutdown()
-          case x =>
-            log.debug("Received '{}', echoing ...", x)
-            ioBridge ! IOBridge.Send(handle, buffer, Some('SentOk))
-        }
+    case Tcp.Received(data) =>
+      data.utf8String.trim match {
+        case "STOP" =>
+          sender ! Tcp.Write(ByteString("Shutting down..."))
+          sender ! Tcp.Close
+          log.info("Shutting down")
 
-      case 'SentOk =>
-        log.debug("Send completed")
+        case x =>
+          log.debug("Received '{}', echoing ...", x)
+          sender ! Tcp.Write(data, ack = 'SentOk)
+      }
 
-      case IOBridge.Closed(_, reason) =>
-        log.debug("Connection closed: {}", reason)
-    }
+    case 'SentOk =>
+      log.debug("Send completed")
 
+    case x: Tcp.ConnectionClosed =>
+      log.debug("Connection closed: {}", x)
+      context.system.shutdown()
+  }
 }
