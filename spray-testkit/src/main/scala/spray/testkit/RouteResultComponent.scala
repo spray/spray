@@ -53,10 +53,10 @@ trait RouteResultComponent {
             latch.countDown()
           case HttpMessagePartWrapper(ChunkedResponseStart(x), ack) ⇒
             saveResult(Right(x))
-            if (ack != None) verifiedSender.tell(ack, this)
+            ack.foreach(verifiedSender.tell(_, this))
           case HttpMessagePartWrapper(x: MessageChunk, ack) ⇒
             synchronized { _chunks += x }
-            if (ack != None) verifiedSender.tell(ack, this)
+            ack.foreach(verifiedSender.tell(_, this))
           case HttpMessagePartWrapper(ChunkedMessageEnd(extensions, trailer), _) ⇒
             synchronized { _closingExtensions = extensions; _trailer = trailer }
             latch.countDown()

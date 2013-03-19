@@ -20,6 +20,11 @@ object TestUtils {
     } finally serverSocket.close()
   }
 
+  def temporyServerHostnameAndPort(address: String = "127.0.0.1"): (String, Int) = {
+    val socketAddress = temporaryServerAddress(address)
+    socketAddress.getHostName -> socketAddress.getPort
+  }
+
   def verifyActorTermination(actor: ActorRef)(implicit system: ActorSystem): Unit = {
     val watcher = TestProbe()
     watcher.watch(actor)
