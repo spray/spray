@@ -119,10 +119,10 @@ object ClientFrontend {
             case ev => eventPL(ev)
           }
 
-          def render(part: HttpRequestPart, ack: Any): Unit = {
+          def render(part: HttpRequestPart, ack: Option[Any]): Unit = {
             val sentAck = ack match {
-              case None | Tcp.NoAck => Tcp.NoAck(PartAndSender(part, context.sender))
-              case x => x
+              case Some(x) => x
+              case None => Tcp.NoAck(PartAndSender(part, context.sender))
             }
             commandPL(HttpRequestPartRenderingContext(part, sentAck))
           }

@@ -176,12 +176,12 @@ trait OpenRequestComponent { component =>
     /***** PRIVATE *****/
 
     private def sendPart(part: HttpMessagePartWrapper) {
-      val ack =
-        if (None == part.ack) Tcp.NoAck(context.sender -> part)
-        else {
+      val ack = part.ack match {
+        case None => Tcp.NoAck(context.sender -> part)
+        case Some(x) =>
           pendingSentAcks += 1
-          AckEventWithReceiver(part.ack, handler)
-        }
+          AckEventWithReceiver(x, handler)
+      }
       val cmd = HttpResponsePartRenderingContext(part.messagePart.asInstanceOf[HttpResponsePart], request.method,
                                                  request.protocol, connectionHeader, ack)
       downstreamCommandPL(cmd)
