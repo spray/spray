@@ -16,7 +16,7 @@
 
 package spray.routing
 
-import org.specs2.mutable.Specification
+import org.specs2.mutable.SpecificationLike
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.actor._
 import spray.httpx.RequestBuilding
@@ -25,7 +25,9 @@ import MediaTypes._
 import HttpCharsets._
 
 
-class HttpServiceSpec extends TestKit(ActorSystem("HttpServiceSpec")) with Specification with RequestBuilding with ImplicitSender {
+class HttpServiceSpec extends TestKit(ActorSystem("HttpServiceSpec")) with SpecificationLike with RequestBuilding
+  with ImplicitSender {
+
   sequential
 
   class RootService(subRouteActor: ActorRef) extends Actor with HttpServiceActor {

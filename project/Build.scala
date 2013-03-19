@@ -47,7 +47,7 @@ object Build extends Build with DocSupport {
 
 
   lazy val sprayCanTests = Project("spray-can-tests", file("spray-can-tests"))
-    .dependsOn(sprayCan, sprayHttp, sprayIO, sprayTestKit, sprayUtil)
+    .dependsOn(sprayCan, sprayHttp, sprayHttpx, sprayIO, sprayTestKit, sprayUtil)
     .settings(sprayModuleSettings: _*)
     .settings(noPublishing: _*)
     .settings(libraryDependencies ++= test(akkaActor, akkaTestKit, specs2))

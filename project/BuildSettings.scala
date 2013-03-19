@@ -4,7 +4,7 @@ import ls.Plugin._
 
 
 object BuildSettings {
-  val VERSION = "1.1-M7"
+  val VERSION = "1.1-M8-SNAPSHOT"
 
   lazy val basicSettings = seq(
     version               := NightlyBuildSupport.buildVersion(VERSION),
@@ -15,7 +15,7 @@ object BuildSettings {
                              "web services on top of Akka",
     startYear             := Some(2011),
     licenses              := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
-    scalaVersion          := "2.10.0",
+    scalaVersion          := "2.10.1",
     resolvers             ++= Dependencies.resolutionRepos,
     scalacOptions         := Seq(
       "-encoding", "utf8",
@@ -25,8 +25,7 @@ object BuildSettings {
       "-target:jvm-1.6",
       "-language:postfixOps",
       "-language:implicitConversions",
-      "-Xlog-reflective-calls",
-      "-Ywarn-adapted-args"
+      "-Xlog-reflective-calls"
     )
   )
 
