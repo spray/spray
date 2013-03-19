@@ -25,25 +25,27 @@ import HttpCharsets._
 
 sealed trait HttpMessagePartWrapper {
   def messagePart: HttpMessagePart
-  def ack: Any
+  def ack: Option[Any]
 }
 
-case class Confirmed(messagePart: HttpMessagePart, ack: Any) extends HttpMessagePartWrapper
+case class Confirmed(messagePart: HttpMessagePart, sentAck: Any) extends HttpMessagePartWrapper {
+  val ack = Some(sentAck)
+}
 
 object HttpMessagePartWrapper {
-  def unapply(x: HttpMessagePartWrapper): Option[(HttpMessagePart, Any)] = Some((x.messagePart, x.ack))
+  def unapply(x: HttpMessagePartWrapper): Option[(HttpMessagePart, Option[Any])] = Some((x.messagePart, x.ack))
 }
 
 sealed trait HttpMessagePart extends HttpMessagePartWrapper {
   def messagePart = this
-  def ack: Any = None // we use `None` as the special value signalling "No Ack requested"
+  def ack = None
   def withAck(ack: Any) = Confirmed(this, ack)
 }
 
 sealed trait HttpRequestPart extends HttpMessagePart
 
 object HttpRequestPart {
-  def unapply(wrapper: HttpMessagePartWrapper): Option[(HttpRequestPart, Any)] =
+  def unapply(wrapper: HttpMessagePartWrapper): Option[(HttpRequestPart, Option[Any])] =
     wrapper.messagePart match {
       case x: HttpRequestPart => Some((x, wrapper.ack))
       case _ => None
@@ -53,7 +55,7 @@ object HttpRequestPart {
 sealed trait HttpResponsePart extends HttpMessagePart
 
 object HttpResponsePart {
-  def unapply(wrapper: HttpMessagePartWrapper): Option[(HttpResponsePart, Any)] =
+  def unapply(wrapper: HttpMessagePartWrapper): Option[(HttpResponsePart, Option[Any])] =
     wrapper.messagePart match {
       case x: HttpResponsePart => Some((x, wrapper.ack))
       case _ => None
@@ -117,6 +119,7 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
                        headers: List[HttpHeader] = Nil,
                        entity: HttpEntity = EmptyEntity,
                        protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`) extends HttpMessage with HttpRequestPart {
+  require(!uri.isEmpty, "An HttpRequest must not have an empty Uri")
 
   type Self = HttpRequest
   def message = this
