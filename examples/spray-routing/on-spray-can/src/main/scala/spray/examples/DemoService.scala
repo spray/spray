@@ -3,12 +3,13 @@ package spray.examples
 import java.io.File
 import org.parboiled.common.FileUtils
 import scala.concurrent.duration._
-import scala.util.{Success, Failure}
 import akka.actor.{Props, Actor}
 import akka.pattern.ask
 import spray.routing.{HttpService, RequestContext}
 import spray.routing.directives.CachingDirectives
-import spray.can.server.HttpServer
+import spray.can.server.Stats
+import spray.can.Http
+import spray.httpx.marshalling.Marshaller
 import spray.httpx.encoding.Gzip
 import spray.util._
 import spray.http._
@@ -25,8 +26,8 @@ class DemoServiceActor extends Actor with DemoService {
   def actorRefFactory = context
 
   // this actor only runs our route, but you could add
-  // other things here, like request stream processing
-  // or timeout handling
+  // other things here, like request stream processing,
+  // timeout handling or alternative handler registration
   def receive = runRoute(demoRoute)
 }
 
@@ -61,14 +62,18 @@ trait DemoService extends HttpService {
         }
       } ~
       path("stats") {
-        showServerStats
+        complete {
+          actorRefFactory.actorFor("/user/IO-HTTP/listener-0")
+            .ask(Http.GetStats)(1.second)
+            .mapTo[Stats]
+        }
       } ~
       path("timeout") { ctx =>
         // we simply let the request drop to provoke a timeout
       } ~
       path("cached") {
         cache(simpleRouteCache) { ctx =>
-          in(1500 millis span) {
+          in(1500.millis) {
             ctx.complete("This resource is only slow the first time!\n" +
               "It was produced on " + DateTime.now.toIsoDateTimeString + "\n\n" +
               "(Note that your browser will likely enforce a cache invalidation with a\n" +
@@ -78,7 +83,7 @@ trait DemoService extends HttpService {
         }
       } ~
       path("crash") { ctx =>
-        throw new RuntimeException("crash boom bang")
+        sys error "crash boom bang"
       } ~
       path("fail") {
         failWith(new RuntimeException("aaaahhh"))
@@ -86,10 +91,8 @@ trait DemoService extends HttpService {
     } ~
     (post | parameter('method ! "post")) {
       path("stop") { ctx =>
-        ctx.complete("Shutting down in 1 second...")
-        in(Duration(1000, MILLISECONDS)) {
-          actorSystem.shutdown()
-        }
+        ctx complete "Shutting down in 1 second..."
+        in(1.second) { actorSystem.shutdown() }
       }
     }
   }
@@ -124,7 +127,7 @@ trait DemoService extends HttpService {
     val secondStream = Stream.continually {
       // CAUTION: we block here to delay the stream generation for you to be able to follow it in your browser,
       // this is only done for the purpose of this demo, blocking in actor code should otherwise be avoided
-      Thread.sleep(500)
+      Thread sleep 500
       "<li>" + DateTime.now.toIsoDateTimeString + "</li>"
     }
     streamStart #:: secondStream.take(15) #::: streamEnd #:: Stream.empty
@@ -133,53 +136,44 @@ trait DemoService extends HttpService {
   // simple case class whose instances we use as send confirmation message for streaming chunks
   case class Ok(remaining: Int)
 
-  def sendStreamingResponse(ctx: RequestContext) {
-    actorRefFactory.actorOf(
+  def sendStreamingResponse(ctx: RequestContext): Unit =
+    actorRefFactory.actorOf {
       Props {
         new Actor with SprayActorLogging {
           // we use the successful sending of a chunk as trigger for scheduling the next chunk
           val responseStart = HttpResponse(entity = HttpBody(`text/html`, streamStart))
-          ctx.responder ! ChunkedResponseStart(responseStart).withSentAck(Ok(16))
+          ctx.responder ! ChunkedResponseStart(responseStart).withAck(Ok(16))
 
           def receive = {
             case Ok(0) =>
               ctx.responder ! MessageChunk(streamEnd)
               ctx.responder ! ChunkedMessageEnd()
-              context.stop(self)
+              context stop self
 
             case Ok(remaining) =>
-              in(Duration(500, MILLISECONDS)) {
+              in(500.millis) {
                 val nextChunk = MessageChunk("<li>" + DateTime.now.toIsoDateTimeString + "</li>")
-                ctx.responder ! nextChunk.withSentAck(Ok(remaining - 1))
+                ctx.responder ! nextChunk.withAck(Ok(remaining - 1))
               }
 
-            case HttpServer.Closed(_, reason) =>
-              log.warning("Stopping response streaming due to {}", reason)
+            case ev: Http.ConnectionClosed =>
+              log.warning("Stopping response streaming due to {}", ev)
           }
         }
       }
-    )
-  }
-
-  def showServerStats(ctx: RequestContext) {
-    actorRefFactory.actorFor("../http-server")
-      .ask(HttpServer.GetStats)(1 second span)
-      .mapTo[HttpServer.Stats]
-      .onComplete {
-      case Success(stats) => ctx.complete {
-        "Uptime                : " + stats.uptime.formatHMS + '\n' +
-        "Total requests        : " + stats.totalRequests + '\n' +
-        "Open requests         : " + stats.openRequests + '\n' +
-        "Max open requests     : " + stats.maxOpenRequests + '\n' +
-        "Total connections     : " + stats.totalConnections + '\n' +
-        "Open connections      : " + stats.openConnections + '\n' +
-        "Max open connections  : " + stats.maxOpenConnections + '\n' +
-        "Requests timed out    : " + stats.requestTimeouts + '\n' +
-        "Connections timed out : " + stats.idleTimeouts + '\n'
-      }
-      case Failure(ex) => ctx.complete(500, "Couldn't get server stats due to " + ex.getMessage)
     }
-  }
+
+  implicit val statsMarshaller: Marshaller[Stats] =
+    Marshaller.delegate[Stats, String](ContentType.`text/plain`) { stats =>
+      "Uptime                : " + stats.uptime.formatHMS + '\n' +
+      "Total requests        : " + stats.totalRequests + '\n' +
+      "Open requests         : " + stats.openRequests + '\n' +
+      "Max open requests     : " + stats.maxOpenRequests + '\n' +
+      "Total connections     : " + stats.totalConnections + '\n' +
+      "Open connections      : " + stats.openConnections + '\n' +
+      "Max open connections  : " + stats.maxOpenConnections + '\n' +
+      "Requests timed out    : " + stats.requestTimeouts + '\n'
+    }
 
   def in[U](duration: FiniteDuration)(body: => U) {
     actorSystem.scheduler.scheduleOnce(duration, new Runnable { def run() { body } })
@@ -187,9 +181,8 @@ trait DemoService extends HttpService {
 
   lazy val largeTempFile = {
     val file = File.createTempFile("streamingTest", ".txt")
-    FileUtils.writeAllText((1 to 1000).map("This is line " + _).mkString("\n"), file)
+    FileUtils.writeAllText((1 to 1000) map ("This is line " + _) mkString "\n", file)
     file.deleteOnExit()
     file
   }
-
 }
