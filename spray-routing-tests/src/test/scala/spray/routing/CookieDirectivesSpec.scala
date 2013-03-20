@@ -48,6 +48,17 @@ class CookieDirectivesSpec extends RoutingSpec {
           "Expires=Wed, 01 Jan 1800 00:00:00 GMT; Domain=test.com),HTTP/1.1)"
       }
     }
+
+    "support deleting multiple cookies at a time" in {
+      Get() ~> {
+        deleteCookie(HttpCookie("myCookie", "test.com"), HttpCookie("myCookie2", "foobar.com")) { completeOk }
+      } ~> check {
+        response.toString === "HttpResponse(StatusCode(200, OK),EmptyEntity,List(" +
+          "Set-Cookie: myCookie=\"deleted\"; Expires=Wed, 01 Jan 1800 00:00:00 GMT, " +
+          "Set-Cookie: myCookie2=\"deleted\"; Expires=Wed, 01 Jan 1800 00:00:00 GMT" +
+          "),HTTP/1.1)"
+      }
+    }
   }
 
   "The 'optionalCookie' directive" should {
@@ -68,4 +79,24 @@ class CookieDirectivesSpec extends RoutingSpec {
     }
   }
 
+  "The 'setCookie' directive" should {
+    "add a respective Set-Cookie headers to successful responses" in {
+      Get() ~> {
+        setCookie(HttpCookie("myCookie", "test.com")) { completeOk }
+      } ~> check {
+        response.toString === "HttpResponse(StatusCode(200, OK),EmptyEntity,List(Set-Cookie: myCookie=\"test.com\"),HTTP/1.1)"
+      }
+    }
+
+    "support setting multiple cookies at a time" in {
+      Get() ~> {
+        setCookie(HttpCookie("myCookie", "test.com"), HttpCookie("myCookie2", "foobar.com")) { completeOk }
+      } ~> check {
+        response.toString === "HttpResponse(StatusCode(200, OK),EmptyEntity,List(" +
+          "Set-Cookie: myCookie=\"test.com\", " +
+          "Set-Cookie: myCookie2=\"foobar.com\"" +
+          "),HTTP/1.1)"
+      }
+    }
+  }
 }
