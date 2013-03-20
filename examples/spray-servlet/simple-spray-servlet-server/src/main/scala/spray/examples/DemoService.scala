@@ -1,6 +1,7 @@
 package spray.examples
 
 import scala.concurrent.duration._
+import akka.io.Tcp
 import akka.actor._
 import spray.util._
 import spray.http._
@@ -11,30 +12,30 @@ import HttpMethods._
 class DemoService extends Actor with SprayActorLogging {
 
   def receive = {
-    case HttpRequest(GET, "/", _, _, _) =>
+    case HttpRequest(GET, Uri.Path("/"), _, _, _) =>
       sender ! index
 
-    case HttpRequest(GET, "/ping", _, _, _) =>
+    case HttpRequest(GET, Uri.Path("/ping"), _, _, _) =>
       sender ! HttpResponse(entity = "PONG!")
 
-    case HttpRequest(GET, "/stream", _, _, _) =>
-      val peer = sender // since the Props creator is executed asyncly we need to save the sender ref
-      context.actorOf(Props(new Streamer(peer, 20)))
+    case HttpRequest(GET, Uri.Path("/stream"), _, _, _) =>
+      val client = sender // since the Props creator is executed asyncly we need to save the sender ref
+      context.actorOf(Props(new Streamer(client, 20)))
 
-    case HttpRequest(GET, "/crash", _, _, _) =>
+    case HttpRequest(GET, Uri.Path("/crash"), _, _, _) =>
       sender ! HttpResponse(entity = "About to throw an exception in the request handling actor, " +
         "which triggers an actor restart")
-      throw new RuntimeException("BOOM!")
+      sys.error("BOOM!")
 
-    case HttpRequest(GET, "/timeout", _, _, _) =>
+    case HttpRequest(GET, Uri.Path("/timeout"), _, _, _) =>
       log.info("Dropping request, triggering a timeout")
 
-    case HttpRequest(GET, "/timeout/timeout", _, _, _) =>
+    case HttpRequest(GET, Uri.Path("/timeout/timeout"), _, _, _) =>
       log.info("Dropping request, triggering a timeout")
 
     case _: HttpRequest => sender ! HttpResponse(404, "Unknown resource!")
 
-    case Timedout(HttpRequest(_, "/timeout/timeout", _, _, _)) =>
+    case Timedout(HttpRequest(_, Uri.Path("/timeout/timeout"), _, _, _)) =>
       log.info("Dropping Timeout message")
 
     case Timedout(request: HttpRequest) =>
@@ -64,27 +65,28 @@ class DemoService extends Actor with SprayActorLogging {
   // simple case class whose instances we use as send confirmation message for streaming chunks
   case class Ok(remaining: Int)
 
-  class Streamer(peer: ActorRef, count: Int) extends Actor with SprayActorLogging {
+  class Streamer(client: ActorRef, count: Int) extends Actor with SprayActorLogging {
     log.debug("Starting streaming response ...")
 
     // we use the successful sending of a chunk as trigger for scheduling the next chunk
-    peer ! ChunkedResponseStart(HttpResponse(entity = " " * 2048)).withSentAck(Ok(count))
+    client ! ChunkedResponseStart(HttpResponse(entity = " " * 2048)).withAck(Ok(count))
 
     def receive = {
       case Ok(0) =>
         log.info("Finalizing response stream ...")
-        peer ! MessageChunk("\nStopped...")
-        peer ! ChunkedMessageEnd()
+        client ! MessageChunk("\nStopped...")
+        client ! ChunkedMessageEnd()
         context.stop(self)
 
       case Ok(remaining) =>
         log.info("Sending response chunk ...")
-        context.system.scheduler.scheduleOnce(100 millis span) {
-          peer ! MessageChunk(DateTime.now.toIsoDateTimeString + ", ").withSentAck(Ok(remaining - 1))
+        import context.dispatcher
+        context.system.scheduler.scheduleOnce(100.millis) {
+          client ! MessageChunk(DateTime.now.toIsoDateTimeString + ", ").withAck(Ok(remaining - 1))
         }
 
-      case x: IOClosed =>
-        log.info("Canceling response stream due to {} ...", x.reason)
+      case ev: Tcp.ConnectionClosed =>
+        log.info("Canceling response stream due to {} ...", ev)
         context.stop(self)
     }
   }
