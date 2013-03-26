@@ -35,8 +35,8 @@ object ModelConverter {
     val rawHeaders = hsRequest.getHeaderNames.asScala.map { name =>
       RawHeader(name, hsRequest.getHeaders(name).asScala mkString ", ")
     }.toList
-    val (errors, parsedHeaders) = HttpParser parseHeaders rawHeaders
-    if (!errors.isEmpty) errors.foreach(log.warning(_))
+    val (errors, parsedHeaders) = HttpParser.parseHeaders(rawHeaders)
+    if (!errors.isEmpty) errors.foreach(e => log.warning(e.formatPretty))
     val (contentType, contentLength) = parsedHeaders.foldLeft[(Option[ContentType], Option[Int])](None -> None) {
       case ((None, cl), `Content-Type`(ct)) => Some(ct) -> cl
       case ((ct, None), `Content-Length`(cl)) => ct -> Some(cl)

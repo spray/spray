@@ -26,6 +26,7 @@ import scala.util.control.NonFatal
 import akka.actor.{UnhandledMessage, ActorRef, ActorSystem}
 import akka.spray.{RefUtils, UnregisteredActorRef}
 import akka.event.{LoggingAdapter, Logging}
+import akka.io.Tcp
 import spray.http._
 import spray.util._
 
@@ -105,9 +106,9 @@ class Servlet30ConnectorServlet extends HttpServlet {
       error match {
         case None =>
           ack.foreach(sender.tell(_, this))
-          if (close) sender.tell(Closed(ConnectionCloseReasons.CleanClose), this)
+          if (close) sender.tell(Tcp.Closed, this)
         case Some(e) =>
-          sender.tell(Closed(ConnectionCloseReasons.IOError(e)), this)
+          sender.tell(Tcp.ErrorClosed(e.getMessage), this)
           asyncContext.complete()
       }
     }
@@ -250,7 +251,5 @@ class Servlet30ConnectorServlet extends HttpServlet {
     entity = "Ooops! The server was not able to produce a timely response to your request.\n" +
       "Please try again in a short while!"
   )
-
-  case class Closed(reason: ClosedEventReason) extends IOClosed
 }
 

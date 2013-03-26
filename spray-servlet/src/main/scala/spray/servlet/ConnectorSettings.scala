@@ -43,9 +43,7 @@ object ConnectorSettings {
     apply(system.settings.config getConfig "spray.servlet")
 
   def apply(config: Config): ConnectorSettings = {
-    val c = config
-      .withFallback(ConfigUtils.sprayConfigAdditions)
-      .withFallback(ConfigFactory.defaultReference(getClass.getClassLoader))
+    val c = config withFallback ConfigFactory.defaultReference(getClass.getClassLoader)
     ConnectorSettings(
       c getString   "boot-class",
       c getDuration "request-timeout",
@@ -54,7 +52,6 @@ object ConnectorSettings {
       c getString   "root-path",
       c getBoolean  "remote-address-header",
       c getBoolean  "verbose-error-messages",
-      c getBytes    "max-content-length"
-    )
+      c getBytes    "max-content-length")
   }
 }
