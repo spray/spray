@@ -2,13 +2,10 @@ package docs
 
 import org.specs2.mutable.Specification
 import spray.testkit.Specs2RouteTest
-import spray.routing.HttpService
-import akka.actor.Actor
+import spray.routing.HttpService._
+import spray.routing.Route
 
-
-class ExceptionHandlerExamplesSpec extends Specification with Specs2RouteTest with HttpService {
-  implicit def actorRefFactory = system
-
+object MyHandler {
   //# example-1
   import spray.util.LoggingContext
   import spray.http.StatusCodes._
@@ -21,7 +18,7 @@ class ExceptionHandlerExamplesSpec extends Specification with Specs2RouteTest wi
         ctx.complete(InternalServerError, "Bad numbers, bad result!!!")
     }
 
-  class MyService extends Actor with HttpServiceActor {
+  class MyService extends HttpServiceActor {
     def receive = runRoute {
       `<my-route-definition>`
     }
@@ -29,6 +26,10 @@ class ExceptionHandlerExamplesSpec extends Specification with Specs2RouteTest wi
   //#
 
   def `<my-route-definition>`: Route = null
+}
+
+class ExceptionHandlerExamplesSpec extends Specification with Specs2RouteTest {
+  import MyHandler._
 
   "example" in {
     Get() ~> sealRoute(Route(ctx => 1 / 0)) ~> check {

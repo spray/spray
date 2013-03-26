@@ -9,7 +9,6 @@ import scala.concurrent.Future                     // example-1
 import scala.concurrent.duration.Duration          // example-1
 import akka.pattern.ask
 // example-1
-import spray.can.server.HttpServer
 import spray.io._                                  // example-1
 import spray.util._
 import spray.http._                                // example-1

@@ -1,13 +1,17 @@
 package docs
 
-import akka.actor.{Actor, Props}
+import akka.actor.{ActorSystem, Actor, Props}
+import spray.can.Http
+import akka.io.IO
 
 //# source-quote
-import spray.can.server.SprayCanHttpServerApp
 
-object Main extends App with SprayCanHttpServerApp {
+object Main extends App {
+  implicit val system = ActorSystem("my-system")
+
   val handler = system.actorOf(Props[MyService])
-  newHttpServer(handler) ! Bind(interface = "localhost", port = 8080)
+
+  IO(Http) ! Http.Bind(handler, interface = "localhost", port = 8080)
 }
 //#
 

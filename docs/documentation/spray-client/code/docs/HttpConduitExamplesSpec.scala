@@ -1,20 +1,21 @@
 package docs
 
 import org.specs2.mutable.Specification
+import akka.actor.ActorSystem
 
 // setup
-import java.util.concurrent.TimeUnit._
-import scala.concurrent.duration.Duration
-import scala.concurrent.Future                // setup
-import akka.pattern.ask
-import akka.actor._                           // setup
-import spray.json.DefaultJsonProtocol
-import spray.client.HttpClient                // setup
-import spray.can.server.HttpServer
-import spray.io._                             // setup
-import spray.util._                           // setup
-import spray.http._                           // setup
-import HttpMethods._                          // setup
+//import java.util.concurrent.TimeUnit._
+//import scala.concurrent.duration.Duration
+//import scala.concurrent.Future                // setup
+//import akka.pattern.ask
+//import akka.actor._                           // setup
+//import spray.json.DefaultJsonProtocol
+//import spray.client.HttpClient                // setup
+//import spray.can.server.HttpServer
+//import spray.io._                             // setup
+//import spray.util._                           // setup
+//import spray.http._                           // setup
+//import HttpMethods._                          // setup
 
 
 class HttpConduitExamplesSpec extends Specification {

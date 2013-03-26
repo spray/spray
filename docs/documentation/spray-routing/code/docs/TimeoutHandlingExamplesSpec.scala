@@ -13,7 +13,8 @@ class TimeoutHandlingExamplesSpec extends Specification with Specs2RouteTest {
   import spray.http._
   import spray.routing._
 
-  class MyService extends Actor with HttpServiceActor {
+  class MyService extends HttpServiceActor {
+    val system = 0 // shadow implicit from test, hide
     def receive = handleTimeouts orElse runRoute(myRoute)
 
     def myRoute: Route = `<my-route-definition>`
