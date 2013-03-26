@@ -28,6 +28,7 @@ import spray.util._
 
 class ExpiringLruCacheSpec extends Specification {
   implicit val system = ActorSystem()
+  import system.dispatcher
 
   "An LruCache" should {
     "be initially empty" in {
