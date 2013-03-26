@@ -19,7 +19,7 @@ package spray.httpx.marshalling
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import akka.actor.{ActorRef, Actor, Props, ActorRefFactory}
-import spray.util.IOClosed
+import akka.io.Tcp
 import spray.http._
 
 
@@ -92,7 +92,7 @@ object MetaMarshallers extends MetaMarshallers {
           context.stop(self)
         } else self ! remaining
 
-      case _: IOClosed =>
+      case _: Tcp.ConnectionClosed =>
         context.stop(self)
     }
   }

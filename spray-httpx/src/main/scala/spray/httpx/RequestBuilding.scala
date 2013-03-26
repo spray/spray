@@ -16,6 +16,7 @@
 
 package spray.httpx
 
+import akka.event.LoggingAdapter
 import spray.httpx.encoding.Encoder
 import spray.httpx.marshalling._
 import spray.http.parser.HttpParser
@@ -67,6 +68,14 @@ trait RequestBuilding {
   def addHeaders(headers: List[HttpHeader]): RequestTransformer = _.mapHeaders(headers ::: _)
 
   def addCredentials(credentials: BasicHttpCredentials) = addHeader(HttpHeaders.Authorization(credentials))
+
+  def logRequest(log: LoggingAdapter): HttpRequest => HttpRequest =
+    logRequest { request => log.debug(request.toString) }
+
+  def logRequest(logFun: HttpRequest => Unit): HttpRequest => HttpRequest = { request =>
+    logFun(request)
+    request
+  }
 
   implicit def request2TransformableHttpRequest(request: HttpRequest) = new TransformableHttpRequest(request)
   class TransformableHttpRequest(request: HttpRequest) {

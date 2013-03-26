@@ -27,6 +27,7 @@ import HttpHeaders._
 
 class ResponseTransformationSpec extends Specification with RequestBuilding with ResponseTransformation {
   implicit val system = ActorSystem()
+  import system.dispatcher
   type SendReceive = HttpRequest => Future[HttpResponse]
 
   "MessagePipelining" should {
@@ -67,12 +68,14 @@ class ResponseTransformationSpec extends Specification with RequestBuilding with
 
     "throw an Exception when unmarshalling client error responses" in {
       val pipeline = echo ~> ((_:HttpResponse).copy(status = 400)) ~> unmarshal[String]
-      pipeline(Get("/", "XXX")).await must throwAn(new UnsuccessfulResponseException(StatusCodes.BadRequest))
+      pipeline(Get("/", "XXX")).await must throwAn(
+        new UnsuccessfulResponseException(HttpResponse(StatusCodes.BadRequest, entity = "XXX")))
     }
 
     "throw an Exception when unmarshalling server error responses" in {
       val pipeline = echo ~> ((_:HttpResponse).copy(status = 500)) ~> unmarshal[String]
-      pipeline(Get("/", "XXX")).await must throwAn(new UnsuccessfulResponseException(StatusCodes.InternalServerError))
+      pipeline(Get("/", "XXX")).await must throwAn(
+        new UnsuccessfulResponseException(HttpResponse(StatusCodes.InternalServerError, entity = "XXX")))
     }
   }
 
