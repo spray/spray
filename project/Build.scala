@@ -58,7 +58,7 @@ object Build extends Build with DocSupport {
     .settings(sprayModuleSettings: _*)
     .settings(libraryDependencies ++=
       provided(akkaActor) ++
-      test(specs2)
+      test(akkaTestKit, specs2)
     )
 
 
@@ -71,7 +71,8 @@ object Build extends Build with DocSupport {
 
 
   lazy val sprayHttpx = Project("spray-httpx", file("spray-httpx"))
-    .dependsOn(sprayHttp, sprayUtil)
+    .dependsOn(sprayHttp, sprayUtil,
+      sprayIO) // for access to akka.io.Tcp, can go away after upgrade to Akka 2.2
     .settings(sprayModuleSettings: _*)
     .settings(libraryDependencies ++=
       compile(mimepull) ++
@@ -97,7 +98,8 @@ object Build extends Build with DocSupport {
     .dependsOn(
       sprayCaching % "provided", // for the CachingDirectives trait
       sprayCan % "provided",  // for the SimpleRoutingApp trait
-      sprayHttp, sprayHttpx, sprayUtil)
+      sprayHttp, sprayHttpx, sprayUtil,
+      sprayIO) // for access to akka.io.Tcp, can go away after upgrade to Akka 2.2
     .settings(sprayModuleSettings: _*)
     .settings(spray.boilerplate.BoilerplatePlugin.Boilerplate.settings: _*)
     .settings(libraryDependencies ++=
@@ -114,7 +116,8 @@ object Build extends Build with DocSupport {
 
 
   lazy val sprayServlet = Project("spray-servlet", file("spray-servlet"))
-    .dependsOn(sprayHttp, sprayUtil)
+    .dependsOn(sprayHttp, sprayUtil,
+      sprayIO) // for access to akka.io.Tcp, can go away after upgrade to Akka 2.2
     .settings(sprayModuleSettings: _*)
     .settings(libraryDependencies ++= provided(akkaActor, servlet30))
 
@@ -247,7 +250,8 @@ object Build extends Build with DocSupport {
 
   lazy val simpleSprayServletServer = Project("simple-spray-servlet-server",
                                               file("examples/spray-servlet/simple-spray-servlet-server"))
-    .dependsOn(sprayHttp, sprayServlet)
+    .dependsOn(sprayHttp, sprayServlet,
+      sprayIO) // for access to akka.io.Tcp, can go away after upgrade to Akka 2.2
     .settings(jettyExampleSettings: _*)
     .settings(exampleSettings: _*)
     .settings(libraryDependencies ++=
