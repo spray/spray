@@ -16,20 +16,20 @@
 
 package spray.servlet
 
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.{ ConfigFactory, Config }
 import scala.concurrent.duration.Duration
 import akka.actor.ActorSystem
 import spray.util._
 
 case class ConnectorSettings(
-  bootClass: String,
-  requestTimeout: Duration,
-  timeoutTimeout: Duration,
-  timeoutHandler: String,
-  rootPath: String,
-  remoteAddressHeader: Boolean,
-  verboseErrorMessages: Boolean,
-  maxContentLength: Long) {
+    bootClass: String,
+    requestTimeout: Duration,
+    timeoutTimeout: Duration,
+    timeoutHandler: String,
+    rootPath: String,
+    remoteAddressHeader: Boolean,
+    verboseErrorMessages: Boolean,
+    maxContentLength: Long) {
 
   require(!bootClass.isEmpty,
     "No boot class configured. Please specify a boot class FQN in the spray.servlet.boot-class config setting.")
@@ -45,13 +45,13 @@ object ConnectorSettings {
   def apply(config: Config): ConnectorSettings = {
     val c = config withFallback ConfigFactory.defaultReference(getClass.getClassLoader)
     ConnectorSettings(
-      c getString   "boot-class",
+      c getString "boot-class",
       c getDuration "request-timeout",
       c getDuration "timeout-timeout",
-      c getString   "timeout-handler",
-      c getString   "root-path",
-      c getBoolean  "remote-address-header",
-      c getBoolean  "verbose-error-messages",
-      c getBytes    "max-content-length")
+      c getString "timeout-handler",
+      c getString "root-path",
+      c getBoolean "remote-address-header",
+      c getBoolean "verbose-error-messages",
+      c getBytes "max-content-length")
   }
 }

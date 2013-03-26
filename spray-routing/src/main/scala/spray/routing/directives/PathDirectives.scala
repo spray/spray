@@ -24,7 +24,6 @@ import shapeless._
 import spray.http.Uri.Path
 import spray.util._
 
-
 trait PathDirectives extends PathMatchers with ImplicitPathMatcherConstruction {
   import BasicDirectives._
   import RouteDirectives._
@@ -43,9 +42,9 @@ trait PathDirectives extends PathMatchers with ImplicitPathMatcherConstruction {
    */
   def pathPrefix[L <: HList](pm: PathMatcher[L]): Directive[L] = {
     val matcher = Slash ~ pm
-    extract(ctx => matcher(ctx.unmatchedPath)).flatMap {
-      case Matched(rest, values) => hprovide(values) & mapRequestContext(_.copy(unmatchedPath = rest))
-      case Unmatched => reject
+    extract(ctx ⇒ matcher(ctx.unmatchedPath)).flatMap {
+      case Matched(rest, values) ⇒ hprovide(values) & mapRequestContext(_.copy(unmatchedPath = rest))
+      case Unmatched             ⇒ reject
     }
   }
 
@@ -56,9 +55,9 @@ trait PathDirectives extends PathMatchers with ImplicitPathMatcherConstruction {
    */
   def pathPrefixTest[L <: HList](pm: PathMatcher[L]): Directive[L] = {
     val matcher = Slash ~ pm
-    extract(ctx => matcher(ctx.unmatchedPath)).flatMap {
-      case Matched(_, values) => hprovide(values)
-      case Unmatched => reject
+    extract(ctx ⇒ matcher(ctx.unmatchedPath)).flatMap {
+      case Matched(_, values) ⇒ hprovide(values)
+      case Unmatched          ⇒ reject
     }
   }
 
@@ -70,9 +69,9 @@ trait PathDirectives extends PathMatchers with ImplicitPathMatcherConstruction {
    * the order of the sub-matchers in the concatenation has to be reversed!
    */
   def pathSuffix[L <: HList](pm: PathMatcher[L]): Directive[L] =
-    extract(ctx => pm(ctx.unmatchedPath.reverse)).flatMap {
-      case Matched(rest, values) => hprovide(values) & mapRequestContext(_.copy(unmatchedPath = rest.reverse))
-      case Unmatched => reject
+    extract(ctx ⇒ pm(ctx.unmatchedPath.reverse)).flatMap {
+      case Matched(rest, values) ⇒ hprovide(values) & mapRequestContext(_.copy(unmatchedPath = rest.reverse))
+      case Unmatched             ⇒ reject
     }
 
   /**
@@ -81,63 +80,62 @@ trait PathDirectives extends PathMatchers with ImplicitPathMatcherConstruction {
    * actually "consumed".
    */
   def pathSuffixTest[L <: HList](pm: PathMatcher[L]): Directive[L] =
-    extract(ctx => pm(ctx.unmatchedPath.reverse)).flatMap {
-      case Matched(_, values) => hprovide(values)
-      case Unmatched => reject
+    extract(ctx ⇒ pm(ctx.unmatchedPath.reverse)).flatMap {
+      case Matched(_, values) ⇒ hprovide(values)
+      case Unmatched          ⇒ reject
     }
 }
 
 object PathDirectives extends PathDirectives
 
-
 /**
  * A PathMatcher tries to match a prefix of a given string and returns either a PathMatcher.Matched instance
  * if matched, otherwise PathMatcher.Unmatched.
  */
-trait PathMatcher[L <: HList] extends (Path => PathMatcher.Matching[L]) { self =>
+trait PathMatcher[L <: HList] extends (Path ⇒ PathMatcher.Matching[L]) { self ⇒
   import PathMatcher._
 
-  def / [R <: HList](other: PathMatcher[R])(implicit prepender: Prepender[L, R]): PathMatcher[prepender.Out] =
+  def /[R <: HList](other: PathMatcher[R])(implicit prepender: Prepender[L, R]): PathMatcher[prepender.Out] =
     this ~ PathMatchers.Slash ~ other
 
-  def | (other: PathMatcher[L]): PathMatcher[L] =
+  def |(other: PathMatcher[L]): PathMatcher[L] =
     new PathMatcher[L] {
       def apply(path: Path) = self(path) orElse other(path)
     }
 
-  def ~ [R <: HList](other: PathMatcher[R])(implicit prepender: Prepender[L, R]): PathMatcher[prepender.Out] =
-    transform(_.andThen((restL, valuesL) => other(restL).map(prepender(valuesL, _))))
+  def ~[R <: HList](other: PathMatcher[R])(implicit prepender: Prepender[L, R]): PathMatcher[prepender.Out] =
+    transform(_.andThen((restL, valuesL) ⇒ other(restL).map(prepender(valuesL, _))))
 
-  def transform[R <: HList](f: Matching[L] => Matching[R]): PathMatcher[R] =
+  def transform[R <: HList](f: Matching[L] ⇒ Matching[R]): PathMatcher[R] =
     new PathMatcher[R] { def apply(path: Path) = f(self(path)) }
 
-  def map[R <: HList](f: L => R): PathMatcher[R] = transform(_.map(f))
+  def map[R <: HList](f: L ⇒ R): PathMatcher[R] = transform(_.map(f))
 
-  def flatMap[R <: HList](f: L => Option[R]): PathMatcher[R] = transform(_.flatMap(f))
+  def flatMap[R <: HList](f: L ⇒ Option[R]): PathMatcher[R] = transform(_.flatMap(f))
 }
 
 object PathMatcher extends ImplicitPathMatcherConstruction {
   sealed trait Matching[+L <: HList] {
-    def map[R <: HList](f: L => R): Matching[R]
-    def flatMap[R <: HList](f: L => Option[R]): Matching[R]
-    def andThen[R <: HList](f: (Path, L) => Matching[R]): Matching[R]
-    def orElse[R >: L <: HList](other: => Matching[R]): Matching[R]
+    def map[R <: HList](f: L ⇒ R): Matching[R]
+    def flatMap[R <: HList](f: L ⇒ Option[R]): Matching[R]
+    def andThen[R <: HList](f: (Path, L) ⇒ Matching[R]): Matching[R]
+    def orElse[R >: L <: HList](other: ⇒ Matching[R]): Matching[R]
   }
   case class Matched[L <: HList](pathRest: Path, extractions: L) extends Matching[L] {
-    def map[R <: HList](f: L => R) = Matched(pathRest, f(extractions))
-    def flatMap[R <: HList](f: L => Option[R]) = f(extractions) match {
-      case Some(valuesR) => Matched(pathRest, valuesR)
-      case None => Unmatched
+    def map[R <: HList](f: L ⇒ R) = Matched(pathRest, f(extractions))
+    def flatMap[R <: HList](f: L ⇒ Option[R]) = f(extractions) match {
+      case Some(valuesR) ⇒ Matched(pathRest, valuesR)
+      case None          ⇒ Unmatched
     }
-    def andThen[R <: HList](f: (Path, L) => Matching[R]) = f(pathRest, extractions)
-    def orElse[R >: L <: HList](other: => Matching[R]) = this
+    def andThen[R <: HList](f: (Path, L) ⇒ Matching[R]) = f(pathRest, extractions)
+    def orElse[R >: L <: HList](other: ⇒ Matching[R]) = this
   }
   object Matched { val Empty = Matched(Path.Empty, HNil) }
   case object Unmatched extends Matching[Nothing] {
-    def map[R <: HList](f: Nothing => R) = this
-    def flatMap[R <: HList](f: Nothing => Option[R]) = this
-    def andThen[R <: HList](f: (Path, Nothing) => Matching[R]) = this
-    def orElse[R <: HList](other: => Matching[R]) = other
+    def map[R <: HList](f: Nothing ⇒ R) = this
+    def flatMap[R <: HList](f: Nothing ⇒ Option[R]) = this
+    def andThen[R <: HList](f: (Path, Nothing) ⇒ Matching[R]) = this
+    def orElse[R <: HList](other: ⇒ Matching[R]) = other
   }
 
   /**
@@ -145,16 +143,16 @@ object PathMatcher extends ImplicitPathMatcherConstruction {
    * (if the path begins with a segment) and extracts the given list of extractions.
    * If the given prefix is empty the returned PathMatcher matches always and consumes nothing.
    */
-  def apply[L <: HList](prefix: String, extractions: L):PathMatcher[L] = prefix match {
-    case "" => new PathMatcher[L] {
+  def apply[L <: HList](prefix: String, extractions: L): PathMatcher[L] = prefix match {
+    case "" ⇒ new PathMatcher[L] {
       def apply(path: Path) = Matched(path, extractions)
     }
-    case nonEmptyPrefix => new PathMatcher[L] {
+    case nonEmptyPrefix ⇒ new PathMatcher[L] {
       def apply(path: Path) = path match {
-        case Path.Segment(`nonEmptyPrefix`, tail) => Matched(tail, extractions)
-        case Path.Segment(segment, tail) if segment startsWith nonEmptyPrefix =>
+        case Path.Segment(`nonEmptyPrefix`, tail) ⇒ Matched(tail, extractions)
+        case Path.Segment(segment, tail) if segment startsWith nonEmptyPrefix ⇒
           Matched(segment.substring(nonEmptyPrefix.length) :: tail, extractions)
-        case _ => Unmatched
+        case _ ⇒ Unmatched
       }
     }
   }
@@ -186,25 +184,25 @@ trait ImplicitPathMatcherConstruction {
    * If the regex contains more than one capture group the method throws an IllegalArgumentException.
    */
   implicit def regex2PathMatcher(regex: Regex): PathMatcher[String :: HNil] = regex.groupCount match {
-    case 0 => new PathMatcher[String :: HNil] {
+    case 0 ⇒ new PathMatcher[String :: HNil] {
       def apply(path: Path) = path match {
-        case Path.Segment(segment, tail) => regex findPrefixOf segment match {
-          case Some(m) => Matched(segment.substring(m.length) :: tail, m :: HNil)
-          case None => Unmatched
+        case Path.Segment(segment, tail) ⇒ regex findPrefixOf segment match {
+          case Some(m) ⇒ Matched(segment.substring(m.length) :: tail, m :: HNil)
+          case None    ⇒ Unmatched
         }
-        case _ => Unmatched
+        case _ ⇒ Unmatched
       }
     }
-    case 1 => new PathMatcher[String :: HNil] {
+    case 1 ⇒ new PathMatcher[String :: HNil] {
       def apply(path: Path) = path match {
-        case Path.Segment(segment, tail) => regex findPrefixMatchOf segment match {
-          case Some(m) => Matched(segment.substring(m.end) :: tail, m.group(1) :: HNil)
-          case None => Unmatched
+        case Path.Segment(segment, tail) ⇒ regex findPrefixMatchOf segment match {
+          case Some(m) ⇒ Matched(segment.substring(m.end) :: tail, m.group(1) :: HNil)
+          case None    ⇒ Unmatched
         }
-        case _ => Unmatched
+        case _ ⇒ Unmatched
       }
     }
-    case _ => throw new IllegalArgumentException("Path regex '" + regex.pattern.pattern +
+    case _ ⇒ throw new IllegalArgumentException("Path regex '" + regex.pattern.pattern +
       "' must not contain more than one capturing group")
   }
   /**
@@ -213,9 +211,8 @@ trait ImplicitPathMatcherConstruction {
    * the matcher consumes this path segment (prefix) and extracts the corresponding map value.
    */
   implicit def valueMap2PathMatcher[T](valueMap: Map[String, T]): PathMatcher[T :: HNil] =
-    valueMap.map { case (prefix, value) => PathMatcher(prefix, value :: HNil) }.reduceLeft(_ | _)
+    valueMap.map { case (prefix, value) ⇒ PathMatcher(prefix, value :: HNil) }.reduceLeft(_ | _)
 }
-
 
 trait PathMatchers {
   import PathMatcher._
@@ -226,9 +223,9 @@ trait PathMatchers {
    */
   object Slash extends PathMatcher[HNil] {
     def apply(path: Path) = path match {
-      case Path.Empty => Matched.Empty
-      case Path.Slash(tail) => Matched(tail, HNil)
-      case _ => Unmatched
+      case Path.Empty       ⇒ Matched.Empty
+      case Path.Slash(tail) ⇒ Matched(tail, HNil)
+      case _                ⇒ Unmatched
     }
   }
 
@@ -238,8 +235,8 @@ trait PathMatchers {
    */
   object Slash_! extends PathMatcher[HNil] {
     def apply(path: Path) = path match {
-      case Path.Slash(tail) => Matched(tail, HNil)
-      case _ => Unmatched
+      case Path.Slash(tail) ⇒ Matched(tail, HNil)
+      case _                ⇒ Unmatched
     }
   }
 
@@ -249,8 +246,8 @@ trait PathMatchers {
    */
   object PathEnd extends PathMatcher[HNil] {
     def apply(path: Path) = path match {
-      case Path.Empty | Path.SingleSlash => Matched.Empty
-      case _ => Unmatched
+      case Path.Empty | Path.SingleSlash ⇒ Matched.Empty
+      case _                             ⇒ Unmatched
     }
   }
 
@@ -308,20 +305,21 @@ trait PathMatchers {
 
   // common implementation of Number matchers
   abstract class NumberMatcher[@specialized(Int, Long) T](max: T, base: T)(implicit x: Integral[T])
-    extends PathMatcher[T :: HNil] {
+      extends PathMatcher[T :: HNil] {
 
     import x._ // import implicit conversions for numeric operators
     val minusOne = x.zero - x.one
     val maxDivBase = max / base
 
     def apply(path: Path) = path match {
-      case Path.Segment(segment, tail) =>
+      case Path.Segment(segment, tail) ⇒
         @tailrec def digits(ix: Int = 0, value: T = minusOne): Matching[T :: HNil] = {
           val a = if (ix < segment.length) fromChar(segment charAt ix) else minusOne
           if (a == minusOne) {
             if (value == minusOne) Unmatched
             else Matched(if (ix < segment.length) segment.substring(ix) :: tail else tail, value :: HNil)
-          } else {
+          }
+          else {
             if (value == minusOne) digits(ix + 1, a)
             else if (value <= maxDivBase && value * base <= max - a) // protect from overflow
               digits(ix + 1, value * base + a)
@@ -330,7 +328,7 @@ trait PathMatchers {
         }
         digits()
 
-      case _ => Unmatched
+      case _ ⇒ Unmatched
     }
 
     def fromChar(c: Char): T
@@ -350,18 +348,20 @@ trait PathMatchers {
    * optionally signed form of a double value, i.e. without exponent.
    */
   val DoubleNumber = PathMatcher("""[+-]?\d*\.?\d*""".r)
-    .flatMap { case string :: HNil =>
-      try Some(java.lang.Double.parseDouble(string) :: HNil)
-      catch { case _: NumberFormatException => None }
+    .flatMap {
+      case string :: HNil ⇒
+        try Some(java.lang.Double.parseDouble(string) :: HNil)
+        catch { case _: NumberFormatException ⇒ None }
     }
 
   /**
    * A PathMatcher that matches and extracts a java.util.UUID instance.
    */
   val JavaUUID = PathMatcher("""[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}""".r)
-    .flatMap { case string :: HNil =>
-      try Some(UUID.fromString(string) :: HNil)
-      catch { case _: IllegalArgumentException => None }
+    .flatMap {
+      case string :: HNil ⇒
+        try Some(UUID.fromString(string) :: HNil)
+        catch { case _: IllegalArgumentException ⇒ None }
     }
 
   /**
@@ -375,8 +375,8 @@ trait PathMatchers {
    */
   object Segment extends PathMatcher[String :: HNil] {
     def apply(path: Path) = path match {
-      case Path.Segment(segment, tail) => Matched(tail, segment :: HNil)
-      case _ => Unmatched
+      case Path.Segment(segment, tail) ⇒ Matched(tail, segment :: HNil)
+      case _                           ⇒ Unmatched
     }
   }
 

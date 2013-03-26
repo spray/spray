@@ -16,14 +16,13 @@
 
 package spray.can.server
 
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.{ Duration, FiniteDuration }
 import akka.actor.ActorRef
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.http._
 import spray.io._
 import spray.can.Http
 import spray.io.Pipeline.ActorDeath
-
 
 object ServerFrontend {
 
@@ -47,71 +46,72 @@ object ServerFrontend {
           def timeoutTimeout = _timeoutTimeout // required due to https://issues.scala-lang.org/browse/SI-6387
 
           val commandPipeline: CPL = {
-            case Response(openRequest, command) if openRequest == firstOpenRequest =>
+            case Response(openRequest, command) if openRequest == firstOpenRequest ⇒
               commandPipeline(command) // "unpack" the command and recurse
 
-            case Http.MessageCommand(wrapper: HttpMessagePartWrapper) if wrapper.messagePart.isInstanceOf[HttpResponsePart] =>
+            case Http.MessageCommand(wrapper: HttpMessagePartWrapper) if wrapper.messagePart.isInstanceOf[HttpResponsePart] ⇒
               // we can only see this command either after having "unpacked" a Response
               // or after an openRequest has begun dispatching its queued commands,
               // in both cases the firstOpenRequest member is valid and current
               val part = wrapper.messagePart match {
-                case ChunkedResponseStart(response) if firstOpenRequest.request.method == HttpMethods.HEAD =>
+                case ChunkedResponseStart(response) if firstOpenRequest.request.method == HttpMethods.HEAD ⇒
                   // if HEAD requests are responded to with a chunked response we only sent the initial part
                   // and "cancel" the stream by "acking" with a fake Closed event
                   response.withAck(Http.Closed)
-                case _ => wrapper
+                case _ ⇒ wrapper
               }
               if (part.messagePart.isInstanceOf[HttpMessageEnd]) {
                 firstOpenRequest = firstOpenRequest handleResponseEndAndReturnNextOpenRequest part
                 firstUnconfirmed = firstUnconfirmed.nextIfNoAcksPending
-              } else firstOpenRequest handleResponsePart part
+              }
+              else firstOpenRequest handleResponsePart part
 
-            case Response(openRequest, command) =>
+            case Response(openRequest, command) ⇒
               // a response for a non-current openRequest has to be queued
               openRequest.enqueueCommand(command)
 
-            case SetRequestTimeout(timeout) =>
+            case SetRequestTimeout(timeout) ⇒
               _requestTimeout = timeout.toMillis
 
-            case SetTimeoutTimeout(timeout) =>
+            case SetTimeoutTimeout(timeout) ⇒
               _timeoutTimeout = timeout.toMillis
 
-            case cmd => downstreamCommandPL(cmd)
+            case cmd ⇒ downstreamCommandPL(cmd)
           }
 
           val eventPipeline: EPL = {
-            case HttpMessageStartEvent(request: HttpRequest, connectionHeader) =>
+            case HttpMessageStartEvent(request: HttpRequest, connectionHeader) ⇒
               openNewRequest(request, connectionHeader, System.currentTimeMillis)
 
-            case HttpMessageStartEvent(ChunkedRequestStart(request), connectionHeader) =>
+            case HttpMessageStartEvent(ChunkedRequestStart(request), connectionHeader) ⇒
               openNewRequest(request, connectionHeader, 0L)
 
-            case Http.MessageEvent(x: MessageChunk) =>
+            case Http.MessageEvent(x: MessageChunk) ⇒
               firstOpenRequest handleMessageChunk x
 
-            case Http.MessageEvent(x: ChunkedMessageEnd) =>
+            case Http.MessageEvent(x: ChunkedMessageEnd) ⇒
               firstOpenRequest handleChunkedMessageEnd x
 
-            case x: AckEventWithReceiver =>
+            case x: AckEventWithReceiver ⇒
               firstUnconfirmed = firstUnconfirmed handleSentAckAndReturnNextUnconfirmed x
 
-            case x: Http.ConnectionClosed =>
+            case x: Http.ConnectionClosed ⇒
               if (firstUnconfirmed.isEmpty)
                 firstOpenRequest handleClosed x // dispatches to the handler if no request is open
               else
                 firstUnconfirmed handleClosed x // also includes the firstOpenRequest and beyond
               eventPL(x) // terminates the connection actor
 
-            case TickGenerator.Tick =>
+            case TickGenerator.Tick ⇒
               if (requestTimeout > 0L)
                 firstOpenRequest checkForTimeout System.currentTimeMillis
               eventPL(TickGenerator.Tick)
 
-            case ActorDeath(actor) if actor == context.handler =>
+            case ActorDeath(actor) if actor == context.handler ⇒
               context.log.debug("User-level connection handler died, closing connection")
               commandPL(Http.Close)
 
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
 
           def openNewRequest(request: HttpRequest, connectionHeader: Option[String], timestamp: Long) {
@@ -121,7 +121,7 @@ object ServerFrontend {
             if (firstUnconfirmed.isEmpty) firstUnconfirmed = firstOpenRequest
           }
         }
-      }
+    }
   }
 
   ////////////// COMMANDS //////////////

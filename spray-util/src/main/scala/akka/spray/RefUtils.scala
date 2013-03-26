@@ -18,7 +18,6 @@ package akka.spray
 
 import akka.actor._
 
-
 object RefUtils {
 
   def provider(ref: ActorRef): ActorRefProvider =
@@ -26,9 +25,9 @@ object RefUtils {
 
   def provider(actorRefFactory: ActorRefFactory): ActorRefProvider =
     actorRefFactory match {
-      case x: ActorContext => provider(x.system)
-      case x: ExtendedActorSystem => x.provider
-      case x: ActorSystem => throw new IllegalArgumentException("Unsupported ActorSystem implementation: " + x)
+      case x: ActorContext        ⇒ provider(x.system)
+      case x: ExtendedActorSystem ⇒ x.provider
+      case x: ActorSystem         ⇒ throw new IllegalArgumentException("Unsupported ActorSystem implementation: " + x)
     }
 
   def isLocal(ref: ActorRef): Boolean =
@@ -36,7 +35,7 @@ object RefUtils {
 
   private[akka] def asInternalActorRef(ref: ActorRef): InternalActorRef =
     ref match {
-      case x: InternalActorRef => x
-      case x => throw new IllegalArgumentException("Unsupported ActorRef " + x)
+      case x: InternalActorRef ⇒ x
+      case x                   ⇒ throw new IllegalArgumentException("Unsupported ActorRef " + x)
     }
 }

@@ -23,15 +23,14 @@ import akka.actor.ActorRefFactory
 import spray.util.identityFunc
 import spray.http.HttpEntity
 
-
 package object marshalling {
 
   def marshal[T](value: T)(implicit marshaller: Marshaller[T], actorRefFactory: ActorRefFactory = null,
                            timeout: Timeout = 1 second span): Either[Throwable, HttpEntity] = {
     val ctx = marshalCollecting(value)
     ctx.entity match {
-      case Some(entity) => Right(entity)
-      case None =>
+      case Some(entity) ⇒ Right(entity)
+      case None ⇒
         Left(ctx.error.getOrElse(new RuntimeException("Marshaller for %s did not produce result" format value)))
     }
   }
@@ -42,12 +41,13 @@ package object marshalling {
     try {
       marshaller(value, ctx)
       ctx.awaitResults
-    } catch {
-      case NonFatal(e) => ctx.handleError(e)
+    }
+    catch {
+      case NonFatal(e) ⇒ ctx.handleError(e)
     }
     ctx
   }
 
-  def marshalUnsafe[T :Marshaller](value: T): HttpEntity = marshal(value).fold(throw _, identityFunc)
+  def marshalUnsafe[T: Marshaller](value: T): HttpEntity = marshal(value).fold(throw _, identityFunc)
 }
 

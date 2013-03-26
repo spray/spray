@@ -20,8 +20,8 @@ import shapeless.HNil
 
 package object routing {
 
-  type Route = RequestContext => Unit
-  type RouteGenerator[T] = T => Route
+  type Route = RequestContext ⇒ Unit
+  type RouteGenerator[T] = T ⇒ Route
   type Directive0 = Directive[HNil]
 
 }

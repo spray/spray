@@ -19,9 +19,9 @@ package spray.testkit
 import java.util.concurrent.CountDownLatch
 import concurrent.duration._
 import scala.collection.mutable.ListBuffer
-import akka.actor.{Status, ActorRefFactory, ActorRef}
+import akka.actor.{ Status, ActorRefFactory, ActorRef }
 import akka.spray.UnregisteredActorRef
-import spray.routing.{RejectionHandler, Rejected, Rejection}
+import spray.routing.{ RejectionHandler, Rejected, Rejection }
 import spray.http._
 
 trait RouteResultComponent {
@@ -45,10 +45,10 @@ trait RouteResultComponent {
         def verifiedSender =
           if (sender != null) sender else sys.error("Received message " + message + " from unknown sender (null)")
         message match {
-          case HttpMessagePartWrapper(x: HttpResponse, _) =>
+          case HttpMessagePartWrapper(x: HttpResponse, _) ⇒
             saveResult(Right(x))
             latch.countDown()
-          case Rejected(rejections) =>
+          case Rejected(rejections) ⇒
             saveResult(Left(rejections))
             latch.countDown()
           case HttpMessagePartWrapper(ChunkedResponseStart(x), ack) ⇒
@@ -60,9 +60,9 @@ trait RouteResultComponent {
           case HttpMessagePartWrapper(ChunkedMessageEnd(extensions, trailer), _) ⇒
             synchronized { _closingExtensions = extensions; _trailer = trailer }
             latch.countDown()
-          case Status.Failure(error) =>
+          case Status.Failure(error) ⇒
             sys.error("Route produced exception: " + error)
-          case x =>
+          case x ⇒
             sys.error("Received invalid route response: " + x)
         }
       }
@@ -77,8 +77,8 @@ trait RouteResultComponent {
       synchronized {
         if (!virginal) failTest("Route completed/rejected more than once")
         result match {
-          case Right(resp) => _response = Some(resp)
-          case Left(rejs) => _rejections = Some(rejs)
+          case Right(resp) ⇒ _response = Some(resp)
+          case Left(rejs)  ⇒ _rejections = Some(rejs)
         }
         virginal = false
       }
@@ -92,8 +92,8 @@ trait RouteResultComponent {
       _response.getOrElse {
         _rejections.foreach {
           RejectionHandler.applyTransformations(_) match {
-            case Nil => failTest("Request was not handled")
-            case r => failTest("Request was rejected with " + r)
+            case Nil ⇒ failTest("Request was not handled")
+            case r   ⇒ failTest("Request was rejected with " + r)
           }
         }
         failNotCompletedNotRejected()
@@ -101,7 +101,7 @@ trait RouteResultComponent {
     }
     def rejections: List[Rejection] = synchronized {
       _rejections.getOrElse {
-        _response.foreach(resp => failTest("Request was not rejected, response was " + resp))
+        _response.foreach(resp ⇒ failTest("Request was not rejected, response was " + resp))
         failNotCompletedNotRejected()
       }
     }
@@ -109,7 +109,7 @@ trait RouteResultComponent {
     def closingExtensions = synchronized { _closingExtensions }
     def trailer = synchronized { _trailer }
 
-    def ~> [T](f: RouteResult => T): T = f(this)
+    def ~>[T](f: RouteResult ⇒ T): T = f(this)
   }
 
   case class RouteTestTimeout(duration: FiniteDuration)

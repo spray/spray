@@ -17,12 +17,12 @@
 package spray.can.server
 
 import org.specs2.mutable.Specification
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.{ ConfigFactory, Config }
 import akka.io.Tcp
 import spray.testkit.Specs2PipelineStageTest
 import spray.can.Http
 import spray.can.rendering.HttpResponsePartRenderingContext
-import spray.http.{HttpMethods, HttpResponse}
+import spray.http.{ HttpMethods, HttpResponse }
 import spray.can.TestSupport._
 
 class ResponseRenderingSpec extends Specification with Specs2PipelineStageTest {
@@ -59,8 +59,7 @@ class ResponseRenderingSpec extends Specification with Specs2PipelineStageTest {
       connectionActor ! HttpResponsePartRenderingContext(
         responsePart = HttpResponse(entity = "Some Message"),
         requestMethod = HttpMethods.HEAD,
-        requestConnectionHeader = Some("close")
-      )
+        requestConnectionHeader = Some("close"))
       wipeDate(commands.expectMsgType[Tcp.Write].data.utf8String) === prep {
         """HTTP/1.1 200 OK
           |Server: spray/1.0

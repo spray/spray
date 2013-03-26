@@ -25,7 +25,6 @@ import spray.http._
 import MediaTypes._
 import HttpCharsets._
 
-
 class HttpServiceSpec extends Specification {
 
   class RootService(subRouteActor: ActorRef) extends HttpServiceActor {
@@ -33,15 +32,15 @@ class HttpServiceSpec extends Specification {
       path("") {
         complete("yeah")
       } ~
-      pathPrefix("sub") {
-        subRouteActor ! _
-      }
+        pathPrefix("sub") {
+          subRouteActor ! _
+        }
     }
   }
 
   class SubService extends HttpServiceActor {
     def receive = runRoute {
-      path(Rest) { pathRest =>
+      path(Rest) { pathRest ⇒
         complete(pathRest)
       }
     }

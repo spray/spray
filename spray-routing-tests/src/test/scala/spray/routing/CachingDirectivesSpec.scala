@@ -21,7 +21,6 @@ import spray.http._
 import HttpHeaders.`Cache-Control`
 import CacheDirectives._
 
-
 class CachingDirectivesSpec extends RoutingSpec with CachingDirectives {
   sequential
 

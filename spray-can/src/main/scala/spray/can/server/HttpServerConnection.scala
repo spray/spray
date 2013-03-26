@@ -18,28 +18,26 @@ package spray.can.server
 
 import java.net.InetSocketAddress
 import scala.concurrent.duration.Duration
-import akka.actor.{Terminated, ReceiveTimeout, ActorRef}
+import akka.actor.{ Terminated, ReceiveTimeout, ActorRef }
 import akka.io.Tcp
 import spray.can.server.StatsSupport.StatsHolder
 import spray.io._
 import spray.can.Http
-
 
 private[can] class HttpServerConnection(tcpConnection: ActorRef,
                                         bindHandler: ActorRef,
                                         pipelineStage: RawPipelineStage[ServerFrontend.Context with SslTlsContext],
                                         remoteAddress: InetSocketAddress,
                                         localAddress: InetSocketAddress,
-                                        settings: ServerSettings)
-                                        (implicit val sslEngineProvider: ServerSSLEngineProvider)
-                                        extends ConnectionHandler { actor =>
+                                        settings: ServerSettings)(implicit val sslEngineProvider: ServerSSLEngineProvider)
+    extends ConnectionHandler { actor ⇒
 
   bindHandler ! Http.Connected(remoteAddress, localAddress)
 
   context.setReceiveTimeout(settings.registrationTimeout)
 
   def receive: Receive = {
-    case Http.Register(handler) =>
+    case Http.Register(handler) ⇒
       context.setReceiveTimeout(Duration.Undefined)
       tcpConnection ! Tcp.Register(self)
       context.watch(tcpConnection)
@@ -51,9 +49,9 @@ private[can] class HttpServerConnection(tcpConnection: ActorRef,
       tcpConnection ! Http.Close
       context.watch(tcpConnection)
       context.become {
-        case _: Http.ConnectionClosed => // ignore
-        case Terminated(`tcpConnection`) => context.stop(self)
-        case ReceiveTimeout ⇒ context.stop(self)
+        case _: Http.ConnectionClosed    ⇒ // ignore
+        case Terminated(`tcpConnection`) ⇒ context.stop(self)
+        case ReceiveTimeout              ⇒ context.stop(self)
       }
   }
 
@@ -179,14 +177,14 @@ private[can] object HttpServerConnection {
   def pipelineStage(settings: ServerSettings, statsHolder: Option[StatsHolder]) = {
     import settings._
     ServerFrontend(settings) >>
-    RequestChunkAggregation(requestChunkAggregationLimit) ? (requestChunkAggregationLimit > 0) >>
-    PipeliningLimiter(pipeliningLimit) ? (pipeliningLimit > 0) >>
-    StatsSupport(statsHolder.get) ? statsSupport >>
-    RemoteAddressHeaderSupport ? remoteAddressHeader >>
-    RequestParsing(settings) >>
-    ResponseRendering(settings) >>
-    ConnectionTimeouts(idleTimeout) ? (reapingCycle.isFinite && idleTimeout.isFinite) >>
-    SslTlsSupport ? sslEncryption >>
-    TickGenerator(reapingCycle) ? (reapingCycle.isFinite && (idleTimeout.isFinite || requestTimeout.isFinite))
+      RequestChunkAggregation(requestChunkAggregationLimit) ? (requestChunkAggregationLimit > 0) >>
+      PipeliningLimiter(pipeliningLimit) ? (pipeliningLimit > 0) >>
+      StatsSupport(statsHolder.get) ? statsSupport >>
+      RemoteAddressHeaderSupport ? remoteAddressHeader >>
+      RequestParsing(settings) >>
+      ResponseRendering(settings) >>
+      ConnectionTimeouts(idleTimeout) ? (reapingCycle.isFinite && idleTimeout.isFinite) >>
+      SslTlsSupport ? sslEncryption >>
+      TickGenerator(reapingCycle) ? (reapingCycle.isFinite && (idleTimeout.isFinite || requestTimeout.isFinite))
   }
 }

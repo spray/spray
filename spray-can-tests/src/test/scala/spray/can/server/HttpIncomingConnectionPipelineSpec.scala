@@ -18,15 +18,15 @@ package spray.can.server
 
 import java.net.InetSocketAddress
 import javax.net.ssl.SSLEngine
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.{ ConfigFactory, Config }
 import org.specs2.mutable.Specification
 import akka.io.Tcp
 import akka.util.ByteString
-import akka.actor.{ActorRef, ActorContext}
+import akka.actor.{ ActorRef, ActorContext }
 import akka.event.LoggingAdapter
 import akka.testkit.TestProbe
 import spray.testkit.RawSpecs2PipelineStageTest
-import spray.io.{TickGenerator, Pipeline, SslTlsContext}
+import spray.io.{ TickGenerator, Pipeline, SslTlsContext }
 import spray.io.Pipeline.Tell
 import spray.can.Http
 import spray.http._
@@ -42,25 +42,23 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
     "dispatch a simple HttpRequest to a singleton service actor" in new MyFixture() {
       connectionActor ! Tcp.Received(ByteString(simpleRequest))
       commands.expectMsgPF() {
-        case Pipeline.Tell(`handlerRef`, msg, _) => msg
+        case Pipeline.Tell(`handlerRef`, msg, _) ⇒ msg
       } === HttpRequest(uri = "http://test.com/", headers = List(`Host`("test.com")))
     }
 
     "dispatch an aggregated chunked requests" in new MyFixture(requestChunkAggregation = true) {
-      Seq(chunkedRequestStart, messageChunk, messageChunk, chunkedMessageEnd) foreach { msg =>
+      Seq(chunkedRequestStart, messageChunk, messageChunk, chunkedMessageEnd) foreach { msg ⇒
         connectionActor ! Tcp.Received(ByteString(msg))
       }
       commands.expectMsgPF() {
-        case Pipeline.Tell(`handlerRef`, msg, _) => msg
+        case Pipeline.Tell(`handlerRef`, msg, _) ⇒ msg
       } === HttpRequest(
         uri = "http://test.com/",
         headers = List(
           `Host`("test.com"),
           `Content-Type`(`text/plain`),
-          `Transfer-Encoding`("chunked")
-        ),
-        entity = HttpBody("body123body123")
-      )
+          `Transfer-Encoding`("chunked")),
+        entity = HttpBody("body123body123"))
     }
 
     "dispatch Ack messages" in {
@@ -83,7 +81,7 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
         connectionActor ! ack
         commands.expectMsg(Pipeline.Tell(probe.ref, 1, requestSender))
       }
-      
+
       "to the senders of a ChunkedResponseStart, MessageChunk and ChunkedMessageEnd" in new MyFixture() {
         connectionActor ! Tcp.Received(ByteString(simpleRequest))
         val requestSender = commands.expectMsgType[Tell].sender
@@ -101,13 +99,13 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
         }
         connectionActor ! ack1
         commands.expectMsg(Pipeline.Tell(probe1.ref, 1, requestSender))
-        
+
         requestSender.tell(Http.MessageCommand(MessageChunk("part 1").withAck(2)), probe2.ref)
         val Tcp.Write(StringBytes(data2), ack2) = commands.expectMsgType[Tcp.Write]
         data2 === prep("6\npart 1\n")
         connectionActor ! ack2
         commands.expectMsg(Pipeline.Tell(probe2.ref, 2, requestSender))
-        
+
         requestSender.tell(Http.MessageCommand(MessageChunk("part 2")), probe2.ref)
         val Tcp.Write(StringBytes(data), _: Tcp.NoAck) = commands.expectMsgType[Tcp.Write]
         data === prep("6\npart 2\n")
@@ -117,7 +115,7 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
         data3 === prep("6\npart 3\n")
         connectionActor ! ack3
         commands.expectMsg(Pipeline.Tell(probe3.ref, 3, requestSender))
-        
+
         requestSender.tell(Http.MessageCommand(ChunkedMessageEnd().withAck(4)), probe4.ref)
         val Tcp.Write(StringBytes(data4), ack4) = commands.expectMsgType[Tcp.Write]
         data4 === prep("0\n\n")
@@ -253,8 +251,7 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
             |Content-Length: 12
             |Expect: %s
             |
-            |bodybodybody""" format expectValue
-        )))
+            |bodybodybody""" format expectValue)))
         commands.expectMsgType[Tcp.Write].data.utf8String === prep("HTTP/1.1 100 Continue\n\n")
         commands.expectMsgType[Pipeline.Tell].message === HttpRequest(
           uri = "http://test.com/",
@@ -262,9 +259,7 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
             `Host`("test.com"),
             `Content-Type`(`text/plain`),
             `Content-Length`(12),
-            RawHeader("expect", expectValue)
-          )
-        ).withEntity("bodybodybody")
+            RawHeader("expect", expectValue))).withEntity("bodybodybody")
       }
       "with a header value fully matching the spec" in example("100-continue")
       "with a header value containing illegal casing" in example("100-Continue")
@@ -275,8 +270,7 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
         """HEAD / HTTP/1.1
           |Host: test.com
           |
-          |"""
-      )))
+          |""")))
       val Pipeline.Tell(`handlerRef`, message, requestSender) = commands.expectMsgType[Pipeline.Tell]
       message === HttpRequest(uri = "http://test.com/", headers = List(`Host`("test.com")))
 
@@ -297,8 +291,7 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
         """HEAD / HTTP/1.1
           |Host: test.com
           |
-          |"""
-      )))
+          |""")))
       val Pipeline.Tell(`handlerRef`, message, requestSender) = commands.expectMsgType[Pipeline.Tell]
       message === HttpRequest(uri = "http://test.com/", headers = List(`Host`("test.com")))
 
@@ -354,14 +347,14 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
   ///////////////////////// SUPPORT ////////////////////////
 
   val simpleRequest = prep {
-  """|GET / HTTP/1.1
+    """|GET / HTTP/1.1
      |Host: test.com
      |
      |"""
   }
 
   val simpleResponse = prep {
-  """|HTTP/1.1 200 OK
+    """|HTTP/1.1 200 OK
      |Server: spray/test
      |Date: XXXX
      |Content-Length: 0
@@ -386,7 +379,7 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
     }""")
 
   class MyFixture(requestChunkAggregation: Boolean = false)
-    extends Fixture(if (requestChunkAggregation) stageWithRCA else stage) { fixture =>
+      extends Fixture(if (requestChunkAggregation) stageWithRCA else stage) { fixture ⇒
 
     val handler = TestProbe()
     val handlerRef = handler.ref

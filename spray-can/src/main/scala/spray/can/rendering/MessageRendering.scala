@@ -17,11 +17,10 @@
 package spray.can.rendering
 
 import scala.annotation.tailrec
-import akka.util.{ByteString, ByteStringBuilder}
+import akka.util.{ ByteString, ByteStringBuilder }
 import spray.can.parsing.isTokenChar
 import spray.util._
 import spray.http._
-
 
 private[rendering] object MessageRendering {
   val DefaultStatusLine = "HTTP/1.1 200 OK\r\n".getAsciiBytes
@@ -36,8 +35,8 @@ private[rendering] object MessageRendering {
 
   @tailrec
   final def putHeaders(h: List[HttpHeader])(implicit bb: ByteStringBuilder): this.type = h match {
-    case Nil => this
-    case head :: tail => put(head); putHeaders(tail)
+    case Nil          ⇒ this
+    case head :: tail ⇒ put(head); putHeaders(tail)
   }
 
   def putContentTypeHeaderIfRequired(entity: HttpEntity)(implicit bb: ByteStringBuilder): this.type =
@@ -63,8 +62,8 @@ private[rendering] object MessageRendering {
   @tailrec
   private def put(extensions: List[ChunkExtension])(implicit bb: ByteStringBuilder): this.type =
     extensions match {
-      case Nil => this
-      case ChunkExtension(name, value) :: rest =>
+      case Nil ⇒ this
+      case ChunkExtension(name, value) :: rest ⇒
         put(';').put(name).put('=')
         if (value.forall(isTokenChar)) put(value) else put('"').put(value).put('"')
         put(rest)
@@ -75,7 +74,8 @@ private[rendering] object MessageRendering {
     if (startIndex < string.length) {
       put(string.charAt(startIndex))
       put(string, startIndex + 1)
-    } else this
+    }
+    else this
 
   def put(c: Char)(implicit bb: ByteStringBuilder): this.type = {
     bb.putByte(c.asInstanceOf[Byte])

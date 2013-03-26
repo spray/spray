@@ -22,7 +22,6 @@ import shapeless._
 import spray.http._
 import spray.util._
 
-
 trait HeaderDirectives {
   import BasicDirectives._
   import RouteDirectives._
@@ -32,16 +31,16 @@ trait HeaderDirectives {
    * request is rejected with an empty rejection set. If the given function throws an exception the request is rejected
    * with a [[spray.routing.MalformedHeaderRejection]].
    */
-  def headerValue[T](f: HttpHeader => Option[T]): Directive[T :: HNil] = {
+  def headerValue[T](f: HttpHeader ⇒ Option[T]): Directive[T :: HNil] = {
     def protectedF(header: HttpHeader): Option[Either[Rejection, T]] =
       try f(header).map(Right.apply)
       catch {
-        case NonFatal(e) => Some(Left(MalformedHeaderRejection(header.name, e.getMessage, Some(e))))
+        case NonFatal(e) ⇒ Some(Left(MalformedHeaderRejection(header.name, e.getMessage, Some(e))))
       }
     extract(_.request.headers.mapFind(protectedF)).flatMap {
-      case Some(Right(a)) => provide(a)
-      case Some(Left(rejection)) => reject(rejection)
-      case None => reject
+      case Some(Right(a))        ⇒ provide(a)
+      case Some(Left(rejection)) ⇒ reject(rejection)
+      case None                  ⇒ reject
     }
   }
 
@@ -63,9 +62,9 @@ trait HeaderDirectives {
    * If the given function throws an exception the request is rejected
    * with a [[spray.routing.MalformedHeaderRejection]].
    */
-  def optionalHeaderValue[T](f: HttpHeader => Option[T]): Directive[Option[T] :: HNil] =
-    headerValue(f).map(Some(_) :Option[T]).recoverPF {
-      case Nil => provide(None)
+  def optionalHeaderValue[T](f: HttpHeader ⇒ Option[T]): Directive[Option[T] :: HNil] =
+    headerValue(f).map(Some(_): Option[T]).recoverPF {
+      case Nil ⇒ provide(None)
     }
 
   /**
@@ -84,9 +83,9 @@ trait HeaderDirectives {
     extract(_.request.headers.mapFind(f))
   }
 
-  private def optionalValue(lowerCaseName: String): HttpHeader => Option[String] = {
-    case HttpHeader(`lowerCaseName`, value) => Some(value)
-    case _ => None
+  private def optionalValue(lowerCaseName: String): HttpHeader ⇒ Option[String] = {
+    case HttpHeader(`lowerCaseName`, value) ⇒ Some(value)
+    case _                                  ⇒ None
   }
 }
 

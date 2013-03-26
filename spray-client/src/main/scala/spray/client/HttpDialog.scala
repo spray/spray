@@ -17,7 +17,7 @@
 package spray.client
 
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Promise, Future}
+import scala.concurrent.{ ExecutionContext, Promise, Future }
 import akka.pattern.ask
 import akka.util.Timeout
 import akka.io.IO
@@ -26,7 +26,6 @@ import spray.can.client.ClientConnectionSettings
 import spray.can.Http
 import spray.util._
 import spray.http._
-
 
 /**
  * An `HttpDialog` allows you to define an exchange of HTTP messages over a given transport
@@ -44,16 +43,16 @@ object HttpDialog {
           import context.system
           IO(Http) ! connect
           def receive = {
-            case _: Http.Connected =>
+            case _: Http.Connected ⇒
               trigger.success(())
               context.become(connected(context.watch(sender)))
-            case _: Http.CommandFailed =>
+            case _: Http.CommandFailed ⇒
               trigger.failure(new RuntimeException("Could not connect to " + connect.remoteAddress))
               context.stop(self)
           }
           def connected(connection: ActorRef): Receive = {
-            case Terminated(`connection`) => context.stop(self)
-            case x => connection.forward(x)
+            case Terminated(`connection`) ⇒ context.stop(self)
+            case x                        ⇒ connection.forward(x)
           }
         }
       }
@@ -61,8 +60,8 @@ object HttpDialog {
     val settings = ClientConnectionSettings(connect.settings)
     implicit val timeout = Timeout {
       settings.requestTimeout match {
-        case x: FiniteDuration => x + 1.second
-        case _ => 60.seconds
+        case x: FiniteDuration ⇒ x + 1.second
+        case _                 ⇒ 60.seconds
       }
     }
     val dialog = new Dialog(transport)
@@ -85,32 +84,32 @@ object HttpDialog {
     }
 
     class State1(trigger: Future[Unit], target: Future[HttpResponse]) {
-      def send(request: HttpRequest) = stateN(firstResp => responseFor(request, trigger).map(firstResp :: _ :: Nil))
-      def send(requests: Seq[HttpRequest]) = stateN(firstResp => responsesFor(requests, trigger).map(firstResp +: _))
-      def reply(f: HttpResponse => HttpRequest) = {
-        val newTarget = target.flatMap(response => responseFor(f(response)))
-        new State1(newTarget.map(_ => ()), newTarget)
+      def send(request: HttpRequest) = stateN(firstResp ⇒ responseFor(request, trigger).map(firstResp :: _ :: Nil))
+      def send(requests: Seq[HttpRequest]) = stateN(firstResp ⇒ responsesFor(requests, trigger).map(firstResp +: _))
+      def reply(f: HttpResponse ⇒ HttpRequest) = {
+        val newTarget = target.flatMap(response ⇒ responseFor(f(response)))
+        new State1(newTarget.map(_ ⇒ ()), newTarget)
       }
-      def awaitResponse = new State1(target.map(_ => ()), target)
+      def awaitResponse = new State1(target.map(_ ⇒ ()), target)
       def waitIdle(duration: FiniteDuration) = new State1(trigger.delay(duration), target)
       def end = target
-      private def stateN(f: HttpResponse => Future[Seq[HttpResponse]]) = new StateN(trigger, target.flatMap(f))
+      private def stateN(f: HttpResponse ⇒ Future[Seq[HttpResponse]]) = new StateN(trigger, target.flatMap(f))
     }
 
     class StateN(trigger: Future[Unit], target: Future[Seq[HttpResponse]]) {
-      def send(request: HttpRequest) = stateN(responses => responseFor(request, trigger).map(responses :+ _))
-      def send(requests: Seq[HttpRequest]) = stateN(responses => responsesFor(requests, trigger).map(responses ++ _))
-      def awaitAllResponses = new StateN(target.map(_ => ()), target)
+      def send(request: HttpRequest) = stateN(responses ⇒ responseFor(request, trigger).map(responses :+ _))
+      def send(requests: Seq[HttpRequest]) = stateN(responses ⇒ responsesFor(requests, trigger).map(responses ++ _))
+      def awaitAllResponses = new StateN(target.map(_ ⇒ ()), target)
       def waitIdle(duration: FiniteDuration) = new StateN(trigger.delay(duration), target)
       def end = target
-      private def stateN(f: Seq[HttpResponse] => Future[Seq[HttpResponse]]) = new StateN(trigger, target.flatMap(f))
+      private def stateN(f: Seq[HttpResponse] ⇒ Future[Seq[HttpResponse]]) = new StateN(trigger, target.flatMap(f))
     }
 
     private def responsesFor(requests: Seq[HttpRequest], trigger: Future[Unit]): Future[Seq[HttpResponse]] =
-      trigger.flatMap(_ => Future.sequence(requests.map(responseFor)))
+      trigger.flatMap(_ ⇒ Future.sequence(requests.map(responseFor)))
 
     private def responseFor(request: HttpRequest, trigger: Future[Unit]): Future[HttpResponse] =
-      trigger.flatMap(_ => responseFor(request))
+      trigger.flatMap(_ ⇒ responseFor(request))
 
     private def responseFor(request: HttpRequest): Future[HttpResponse] =
       transport.ask(request).mapTo[HttpResponse]

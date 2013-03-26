@@ -20,7 +20,7 @@ private[io] class TcpIncomingConnection(_channel: SocketChannel,
                                         _tcp: TcpExt,
                                         handler: ActorRef,
                                         options: immutable.Traversable[SocketOption])
-  extends TcpConnection(_channel, _tcp) {
+    extends TcpConnection(_channel, _tcp) {
 
   context.watch(handler) // sign death pact
 

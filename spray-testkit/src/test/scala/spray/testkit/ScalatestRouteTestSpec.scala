@@ -18,14 +18,13 @@ package spray.testkit
 
 import org.scalatest.FreeSpec
 import org.scalatest.matchers.MustMatchers
-import spray.routing.{MethodRejection, RequestContext, Directives}
+import spray.routing.{ MethodRejection, RequestContext, Directives }
 import spray.http._
 import HttpMethods._
 import MediaTypes._
 import HttpCharsets._
 import StatusCodes._
 import HttpHeaders._
-
 
 class ScalatestRouteTestSpec extends FreeSpec with MustMatchers with Directives with ScalatestRouteTest {
 

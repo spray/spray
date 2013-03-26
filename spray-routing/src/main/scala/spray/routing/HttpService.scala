@@ -38,23 +38,23 @@ trait HttpServiceBase extends Directives {
     def runSealedRoute(ctx: RequestContext): Unit =
       try sealedRoute(ctx)
       catch {
-        case NonFatal(e) =>
+        case NonFatal(e) ⇒
           val errorRoute = sealedExceptionHandler(e)
           errorRoute(ctx)
       }
 
     {
-      case request: HttpRequest =>
+      case request: HttpRequest ⇒
         val ctx = RequestContext(request, ac.sender, request.uri.path).withDefaultSender(ac.self)
         runSealedRoute(ctx)
 
-      case ctx: RequestContext => runSealedRoute(ctx)
+      case ctx: RequestContext ⇒ runSealedRoute(ctx)
 
-      case Tcp.Connected(_, _) =>
+      case Tcp.Connected(_, _) ⇒
         // by default we register ourselves as the handler for a new connection
         ac.sender ! Tcp.Register(ac.self)
 
-      case Timedout(request: HttpRequest) => runRoute(timeoutRoute)(eh, rh, ac, rs, log)(request)
+      case Timedout(request: HttpRequest) ⇒ runRoute(timeoutRoute)(eh, rh, ac, rs, log)(request)
     }
   }
 
@@ -68,14 +68,13 @@ trait HttpServiceBase extends Directives {
     rh orElse RejectionHandler.Default orElse handleUnhandledRejections
 
   def handleUnhandledRejections: RejectionHandler.PF = {
-    case x :: _ => sys.error("Unhandled rejection: " + x)
+    case x :: _ ⇒ sys.error("Unhandled rejection: " + x)
   }
 
   //# timeout-route
   def timeoutRoute: Route = complete(
     InternalServerError,
-    "The server was not able to produce a timely response to your request."
-  )
+    "The server was not able to produce a timely response to your request.")
   //#
 }
 

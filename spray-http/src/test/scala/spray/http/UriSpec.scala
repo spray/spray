@@ -24,23 +24,23 @@ class UriSpec extends Specification {
 
     "parse correctly from IPv4 literals" in {
       Host("192.0.2.16") === IPv4Host("192.0.2.16")
-      Host("255.0.0.0")  === IPv4Host("255.0.0.0")
-      Host("0.0.0.0")    === IPv4Host("0.0.0.0")
-      Host("1.0.0.0")    === IPv4Host("1.0.0.0")
-      Host("2.0.0.0")    === IPv4Host("2.0.0.0")
-      Host("3.0.0.0")    === IPv4Host("3.0.0.0")
-      Host("30.0.0.0")   === IPv4Host("30.0.0.0")
+      Host("255.0.0.0") === IPv4Host("255.0.0.0")
+      Host("0.0.0.0") === IPv4Host("0.0.0.0")
+      Host("1.0.0.0") === IPv4Host("1.0.0.0")
+      Host("2.0.0.0") === IPv4Host("2.0.0.0")
+      Host("3.0.0.0") === IPv4Host("3.0.0.0")
+      Host("30.0.0.0") === IPv4Host("30.0.0.0")
     }
 
     "parse correctly from IPv6 literals (RFC2732)" in {
       // various
       Host("[FEDC:BA98:7654:3210:FEDC:BA98:7654:3210]") === IPv6Host("FEDC:BA98:7654:3210:FEDC:BA98:7654:3210")
-      Host("[1080:0:0:0:8:800:200C:417A]")              === IPv6Host("1080:0:0:0:8:800:200C:417A")
-      Host("[3ffe:2a00:100:7031::1]")                   === IPv6Host("3ffe:2a00:100:7031::1")
-      Host("[1080::8:800:200C:417A]")                   === IPv6Host("1080::8:800:200C:417A")
-      Host("[::192.9.5.5]")                             === IPv6Host("::192.9.5.5")
-      Host("[::FFFF:129.144.52.38]")                    === IPv6Host("::FFFF:129.144.52.38")
-      Host("[2010:836B:4179::836B:4179]")               === IPv6Host("2010:836B:4179::836B:4179")
+      Host("[1080:0:0:0:8:800:200C:417A]") === IPv6Host("1080:0:0:0:8:800:200C:417A")
+      Host("[3ffe:2a00:100:7031::1]") === IPv6Host("3ffe:2a00:100:7031::1")
+      Host("[1080::8:800:200C:417A]") === IPv6Host("1080::8:800:200C:417A")
+      Host("[::192.9.5.5]") === IPv6Host("::192.9.5.5")
+      Host("[::FFFF:129.144.52.38]") === IPv6Host("::FFFF:129.144.52.38")
+      Host("[2010:836B:4179::836B:4179]") === IPv6Host("2010:836B:4179::836B:4179")
 
       // Quad length
       Host("[abcd::]") === IPv6Host("abcd::")
@@ -92,8 +92,8 @@ class UriSpec extends Specification {
 
     "parse correctly from NamedHost literals" in {
       Host("www.spray.io") === NamedHost("www.spray.io")
-      Host("localhost")  === NamedHost("localhost")
-      Host("%2FH%C3%A4ll%C3%B6%5C")  === NamedHost("""/hällö\""")
+      Host("localhost") === NamedHost("localhost")
+      Host("%2FH%C3%A4ll%C3%B6%5C") === NamedHost("""/hällö\""")
     }
 
     "not accept illegal IPv4 literals" in {
@@ -172,7 +172,7 @@ class UriSpec extends Specification {
       Path("/a") === Path / "a"
       Path("/abc/de/f") === Path / "abc" / "de" / "f"
       Path("abc/de/f/") === "abc" :: '/' :: "de" :: '/' :: "f" :: Path./
-      Path("abc///de") === "abc" :: '/' ::  '/' ::  '/' :: "de" :: Empty
+      Path("abc///de") === "abc" :: '/' :: '/' :: '/' :: "de" :: Empty
       Path("/abc%2F") === Path / "abc/"
       Path("H%C3%A4ll%C3%B6") === """Hällö""" :: Empty
       Path("/%2F%5C") === Path / """/\"""
@@ -199,7 +199,7 @@ class UriSpec extends Specification {
       query.getAll("d") === Nil
     }
   }
-  
+
   "URIs" should {
 
     // http://tools.ietf.org/html/rfc3986#section-1.1.2
@@ -342,55 +342,55 @@ class UriSpec extends Specification {
       def resolve(uri: String) = parseAndResolve(uri, base).toString
 
       "normal examples" in {
-        resolve("g:h"    ) === "g:h"
-        resolve("g"      ) === "http://a/b/c/g"
-        resolve("./g"    ) === "http://a/b/c/g"
-        resolve("g/"     ) === "http://a/b/c/g/"
-        resolve("/g"     ) === "http://a/g"
-        resolve("//g"    ) === "http://g"
-        resolve("?y"     ) === "http://a/b/c/d;p?y"
-        resolve("g?y"    ) === "http://a/b/c/g?y"
-        resolve("#s"     ) === "http://a/b/c/d;p?q#s"
-        resolve("g#s"    ) === "http://a/b/c/g#s"
-        resolve("g?y#s"  ) === "http://a/b/c/g?y#s"
-        resolve(";x"     ) === "http://a/b/c/;x"
-        resolve("g;x"    ) === "http://a/b/c/g;x"
+        resolve("g:h") === "g:h"
+        resolve("g") === "http://a/b/c/g"
+        resolve("./g") === "http://a/b/c/g"
+        resolve("g/") === "http://a/b/c/g/"
+        resolve("/g") === "http://a/g"
+        resolve("//g") === "http://g"
+        resolve("?y") === "http://a/b/c/d;p?y"
+        resolve("g?y") === "http://a/b/c/g?y"
+        resolve("#s") === "http://a/b/c/d;p?q#s"
+        resolve("g#s") === "http://a/b/c/g#s"
+        resolve("g?y#s") === "http://a/b/c/g?y#s"
+        resolve(";x") === "http://a/b/c/;x"
+        resolve("g;x") === "http://a/b/c/g;x"
         resolve("g;x?y#s") === "http://a/b/c/g;x?y#s"
-        resolve(""       ) === "http://a/b/c/d;p?q"
-        resolve("."      ) === "http://a/b/c/"
-        resolve("./"     ) === "http://a/b/c/"
-        resolve(".."     ) === "http://a/b/"
-        resolve("../"    ) === "http://a/b/"
-        resolve("../g"   ) === "http://a/b/g"
-        resolve("../.."  ) === "http://a/"
-        resolve("../../" ) === "http://a/"
+        resolve("") === "http://a/b/c/d;p?q"
+        resolve(".") === "http://a/b/c/"
+        resolve("./") === "http://a/b/c/"
+        resolve("..") === "http://a/b/"
+        resolve("../") === "http://a/b/"
+        resolve("../g") === "http://a/b/g"
+        resolve("../..") === "http://a/"
+        resolve("../../") === "http://a/"
         resolve("../../g") === "http://a/g"
       }
 
       "abnormal examples" in {
-        resolve("../../../g"   ) === "http://a/g"
+        resolve("../../../g") === "http://a/g"
         resolve("../../../../g") === "http://a/g"
 
-        resolve("/./g"         ) === "http://a/g"
-        resolve("/../g"        ) === "http://a/g"
-        resolve("g."           ) === "http://a/b/c/g."
-        resolve(".g"           ) === "http://a/b/c/.g"
-        resolve("g.."          ) === "http://a/b/c/g.."
-        resolve("..g"          ) === "http://a/b/c/..g"
+        resolve("/./g") === "http://a/g"
+        resolve("/../g") === "http://a/g"
+        resolve("g.") === "http://a/b/c/g."
+        resolve(".g") === "http://a/b/c/.g"
+        resolve("g..") === "http://a/b/c/g.."
+        resolve("..g") === "http://a/b/c/..g"
 
-        resolve("./../g"       ) === "http://a/b/g"
-        resolve("./g/."        ) === "http://a/b/c/g/"
-        resolve("g/./h"        ) === "http://a/b/c/g/h"
-        resolve("g/../h"       ) === "http://a/b/c/h"
-        resolve("g;x=1/./y"    ) === "http://a/b/c/g;x=1/y"
-        resolve("g;x=1/../y"   ) === "http://a/b/c/y"
+        resolve("./../g") === "http://a/b/g"
+        resolve("./g/.") === "http://a/b/c/g/"
+        resolve("g/./h") === "http://a/b/c/g/h"
+        resolve("g/../h") === "http://a/b/c/h"
+        resolve("g;x=1/./y") === "http://a/b/c/g;x=1/y"
+        resolve("g;x=1/../y") === "http://a/b/c/y"
 
-        resolve("g?y/./x"      ) === "http://a/b/c/g?y/./x"
-        resolve("g?y/../x"     ) === "http://a/b/c/g?y/../x"
-        resolve("g#s/./x"      ) === "http://a/b/c/g#s/./x"
-        resolve("g#s/../x"     ) === "http://a/b/c/g#s/../x"
+        resolve("g?y/./x") === "http://a/b/c/g?y/./x"
+        resolve("g?y/../x") === "http://a/b/c/g?y/../x"
+        resolve("g#s/./x") === "http://a/b/c/g#s/./x"
+        resolve("g#s/../x") === "http://a/b/c/g#s/../x"
 
-        resolve("http:g"       ) === "http:g"
+        resolve("http:g") === "http:g"
       }
     }
 

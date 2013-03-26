@@ -16,49 +16,48 @@
 
 package spray.httpx.marshalling
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
-import akka.actor.{ActorRef, Actor, Props, ActorRefFactory}
+import scala.concurrent.{ ExecutionContext, Future }
+import scala.util.{ Failure, Success, Try }
+import akka.actor.{ ActorRef, Actor, Props, ActorRefFactory }
 import akka.io.Tcp
 import spray.http._
-
 
 trait MetaMarshallers {
 
   implicit def optionMarshaller[T](implicit m: Marshaller[T]) =
-    Marshaller[Option[T]] { (value, ctx) =>
+    Marshaller[Option[T]] { (value, ctx) ⇒
       value match {
-        case Some(v) => m(v, ctx)
-        case None => ctx.marshalTo(EmptyEntity)
+        case Some(v) ⇒ m(v, ctx)
+        case None    ⇒ ctx.marshalTo(EmptyEntity)
       }
     }
 
   implicit def eitherMarshaller[A, B](implicit ma: Marshaller[A], mb: Marshaller[B]) =
-    Marshaller[Either[A, B]] { (value, ctx) =>
+    Marshaller[Either[A, B]] { (value, ctx) ⇒
       value match {
-        case Left(a) => ma(a, ctx)
-        case Right(b) => mb(b, ctx)
+        case Left(a)  ⇒ ma(a, ctx)
+        case Right(b) ⇒ mb(b, ctx)
       }
     }
 
   implicit def futureMarshaller[T](implicit m: Marshaller[T], ec: ExecutionContext) =
-    Marshaller[Future[T]] { (value, ctx) =>
+    Marshaller[Future[T]] { (value, ctx) ⇒
       value.onComplete {
-        case Success(v) => m(v, ctx)
-        case Failure(error) => ctx.handleError(error)
+        case Success(v)     ⇒ m(v, ctx)
+        case Failure(error) ⇒ ctx.handleError(error)
       }
     }
-  
+
   implicit def tryMarshaller[T](implicit m: Marshaller[T]) =
-    Marshaller[Try[T]] { (value, ctx) =>
+    Marshaller[Try[T]] { (value, ctx) ⇒
       value match {
-        case Success(v) => m(v, ctx)
-        case Failure(t) => ctx.handleError(t)
+        case Success(v) ⇒ m(v, ctx)
+        case Failure(t) ⇒ ctx.handleError(t)
       }
     }
 
   implicit def streamMarshaller[T](implicit marshaller: Marshaller[T], refFactory: ActorRefFactory) =
-    Marshaller[Stream[T]] { (value, ctx) =>
+    Marshaller[Stream[T]] { (value, ctx) ⇒
       refFactory.actorOf(Props(new MetaMarshallers.ChunkingActor(marshaller, ctx))) ! value
     }
 }
@@ -71,7 +70,7 @@ object MetaMarshallers extends MetaMarshallers {
 
     def receive = {
 
-      case current #:: rest =>
+      case current #:: rest ⇒
         val chunkingCtx = new DelegatingMarshallingContext(ctx) {
           override def marshalTo(entity: HttpEntity) {
             if (connectionActor == null) connectionActor = ctx.startChunkedMessage(entity, Some(SentOk(rest)))
@@ -86,13 +85,14 @@ object MetaMarshallers extends MetaMarshallers {
         }
         marshaller(current.asInstanceOf[T], chunkingCtx)
 
-      case SentOk(remaining) =>
+      case SentOk(remaining) ⇒
         if (remaining.isEmpty) {
           connectionActor ! ChunkedMessageEnd()
           context.stop(self)
-        } else self ! remaining
+        }
+        else self ! remaining
 
-      case _: Tcp.ConnectionClosed =>
+      case _: Tcp.ConnectionClosed ⇒
         context.stop(self)
     }
   }

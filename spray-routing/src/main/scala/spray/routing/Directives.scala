@@ -18,7 +18,6 @@ package spray.routing
 
 import directives._
 
-
 //# source-quote
 trait Directives extends RouteConcatenation
   with BasicDirectives

@@ -23,15 +23,14 @@ import MediaTypes._
 import HttpCharsets._
 import HttpHeaders._
 
+class MultipartUnmarshallersSpec extends Specification {
 
-class MultipartUnmarshallersSpec extends Specification  {
-  
   "The MultipartContentUnmarshaller" should {
     "correctly unmarshal 'multipart/mixed' content with one empty part" in {
       HttpBody(new `multipart/mixed`(Some("XYZABC")),
         """|--XYZABC
            |--XYZABC--""".stripMargin).as[MultipartContent] ===
-      Right(MultipartContent(Seq(BodyPart(HttpBody(ContentType(`text/plain`, Some(`US-ASCII`)), "")))))
+        Right(MultipartContent(Seq(BodyPart(HttpBody(ContentType(`text/plain`, Some(`US-ASCII`)), "")))))
     }
     "correctly unmarshal 'multipart/form-data' content with one part" in {
       HttpBody(new `multipart/form-data`(Some("-")),
@@ -41,18 +40,14 @@ class MultipartUnmarshallersSpec extends Specification  {
            |
            |test@there.com
            |-----""".stripMargin).as[MultipartContent] === Right {
-        MultipartContent(
-          Seq(
-            BodyPart(
-              HttpBody(ContentType(`text/plain`, Some(`UTF-8`)), "test@there.com"),
-              List(
-                `Content-Disposition`("form-data", Map("name" -> "email")),
-                `Content-Type`(ContentType(`text/plain`, Some(`UTF-8`)))
-              )
-            )
-          )
-        )
-      }
+          MultipartContent(
+            Seq(
+              BodyPart(
+                HttpBody(ContentType(`text/plain`, Some(`UTF-8`)), "test@there.com"),
+                List(
+                  `Content-Disposition`("form-data", Map("name" -> "email")),
+                  `Content-Type`(ContentType(`text/plain`, Some(`UTF-8`)))))))
+        }
     }
     "correctly unmarshal multipart content with two different parts" in {
       HttpBody(new `multipart/mixed`(Some("12345")),
@@ -66,19 +61,15 @@ class MultipartUnmarshallersSpec extends Specification  {
            |
            |filecontent
            |--12345--""".stripMargin).as[MultipartContent] === Right {
-        MultipartContent(
-          Seq(
-            BodyPart(HttpBody(ContentType(`text/plain`, Some(`US-ASCII`)), "first part, with a trailing EOL" + EOL)),
-            BodyPart(
-              HttpBody(`application/octet-stream`, "filecontent"),
-              List(
-                RawHeader("Content-Transfer-Encoding", "binary"),
-                `Content-Type`(ContentType(`application/octet-stream`))
-              )
-            )
-          )
-        )
-      }
+          MultipartContent(
+            Seq(
+              BodyPart(HttpBody(ContentType(`text/plain`, Some(`US-ASCII`)), "first part, with a trailing EOL" + EOL)),
+              BodyPart(
+                HttpBody(`application/octet-stream`, "filecontent"),
+                List(
+                  RawHeader("Content-Transfer-Encoding", "binary"),
+                  `Content-Type`(ContentType(`application/octet-stream`))))))
+        }
     }
     "reject illegal multipart content" in {
       val Left(MalformedContent(msg, _)) = HttpBody(new `multipart/mixed`(Some("12345")), "--noob").as[MultipartContent]
@@ -94,13 +85,11 @@ class MultipartUnmarshallersSpec extends Specification  {
            |
            |test@there.com
            |--XYZABC--""".stripMargin).as[MultipartFormData] === Right {
-        MultipartFormData(
-          Map("email" -> BodyPart(
-            HttpBody(ContentType(`text/plain`, `US-ASCII`), "test@there.com"),
-            List(`Content-Disposition`("form-data", Map("name" -> "email")))
-          )))
-      }
-    )
+          MultipartFormData(
+            Map("email" -> BodyPart(
+              HttpBody(ContentType(`text/plain`, `US-ASCII`), "test@there.com"),
+              List(`Content-Disposition`("form-data", Map("name" -> "email"))))))
+        })
     "correctly unmarshal 'multipart/form-data' content mixed with a file" in {
       HttpBody(new `multipart/form-data`(Some("XYZABC")),
         """|--XYZABC
@@ -114,8 +103,8 @@ class MultipartUnmarshallersSpec extends Specification  {
            |
            |filecontent
            |--XYZABC--""".stripMargin).as[MultipartFormData].get.fields.map {
-        case (name, BodyPart(entity, _)) => name + ": " + entity.as[String].get
-      }.mkString("|") === "email: test@there.com|userfile: filecontent"
+          case (name, BodyPart(entity, _)) ⇒ name + ": " + entity.as[String].get
+        }.mkString("|") === "email: test@there.com|userfile: filecontent"
     }
     "reject illegal multipart content" in {
       val Left(MalformedContent(msg, _)) = HttpBody(new `multipart/form-data`(Some("XYZABC")), "--noboundary--").as[MultipartFormData]

@@ -25,33 +25,29 @@ sealed trait FinalParsingState extends ParsingState
 sealed trait HttpMessagePartCompletedState extends FinalParsingState
 
 case class CompleteMessageState(
-  messageLine: MessageLine,
-  headers: List[HttpHeader] = Nil,
-  connectionHeader: Option[String] = None,
-  contentType: Option[ContentType] = None,
-  body: Array[Byte] = EmptyByteArray
-) extends HttpMessagePartCompletedState {
+    messageLine: MessageLine,
+    headers: List[HttpHeader] = Nil,
+    connectionHeader: Option[String] = None,
+    contentType: Option[ContentType] = None,
+    body: Array[Byte] = EmptyByteArray) extends HttpMessagePartCompletedState {
   def entity = if (contentType.isEmpty) HttpEntity(body) else HttpBody(contentType.get, body)
 }
 
 case class ChunkedStartState(
-  messageLine: MessageLine,
-  headers: List[HttpHeader] = Nil,
-  connectionHeader: Option[String] = None,
-  contentType: Option[ContentType] = None
-) extends HttpMessagePartCompletedState {
+    messageLine: MessageLine,
+    headers: List[HttpHeader] = Nil,
+    connectionHeader: Option[String] = None,
+    contentType: Option[ContentType] = None) extends HttpMessagePartCompletedState {
   def entity = if (contentType.isEmpty) EmptyEntity else HttpBody(contentType.get, EmptyByteArray)
 }
 
 case class ChunkedChunkState(
   extensions: List[ChunkExtension],
-  body: Array[Byte]
-) extends HttpMessagePartCompletedState
+  body: Array[Byte]) extends HttpMessagePartCompletedState
 
 case class ChunkedEndState(
   extensions: List[ChunkExtension],
-  trailer: List[HttpHeader]
-) extends HttpMessagePartCompletedState
+  trailer: List[HttpHeader]) extends HttpMessagePartCompletedState
 
 case class Expect100ContinueState(next: ParsingState) extends FinalParsingState
 

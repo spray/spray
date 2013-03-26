@@ -18,7 +18,6 @@ package spray.httpx.unmarshalling
 
 import spray.http._
 
-
 sealed trait FormFieldExtractor {
   type Field <: FormField
   def field(name: String): Field
@@ -26,11 +25,11 @@ sealed trait FormFieldExtractor {
 
 object FormFieldExtractor {
   def apply(form: HttpForm): FormFieldExtractor = form match {
-    case FormData(fields) => new FormFieldExtractor {
+    case FormData(fields) ⇒ new FormFieldExtractor {
       type Field = UrlEncodedFormField
       def field(name: String) = new UrlEncodedFormField(name, fields.get(name))
     }
-    case MultipartFormData(fields) => new FormFieldExtractor {
+    case MultipartFormData(fields) ⇒ new FormFieldExtractor {
       type Field = MultipartFormField
       def field(name: String) = new MultipartFormField(name, fields.get(name))
     }
@@ -42,7 +41,7 @@ sealed abstract class FormField {
   def name: String
   def rawValue: Option[Raw]
   def exists = rawValue.isDefined
-  def as[T :FormFieldConverter]: Deserialized[T]
+  def as[T: FormFieldConverter]: Deserialized[T]
 
   protected def fail(fieldName: String, expected: String) =
     Left(UnsupportedContentType("Field '%s' can only be read from '%s' form content".format(fieldName, expected)))
@@ -51,23 +50,22 @@ sealed abstract class FormField {
 class UrlEncodedFormField(val name: String, val rawValue: Option[String]) extends FormField {
   type Raw = String
   def as[T](implicit ffc: FormFieldConverter[T]) = ffc.urlEncodedFieldConverter match {
-    case Some(conv) => conv(rawValue)
-    case None => fail(name, "multipart/form-data")
+    case Some(conv) ⇒ conv(rawValue)
+    case None       ⇒ fail(name, "multipart/form-data")
   }
 }
 
 class MultipartFormField(val name: String, val rawValue: Option[BodyPart]) extends FormField {
   type Raw = BodyPart
   def as[T](implicit ffc: FormFieldConverter[T]) = ffc.multipartFieldConverter match {
-    case Some(conv) => conv(rawValue.map(_.entity))
-    case None => fail(name, "application/x-www-form-urlencoded")
+    case Some(conv) ⇒ conv(rawValue.map(_.entity))
+    case None       ⇒ fail(name, "application/x-www-form-urlencoded")
   }
 }
 
+import spray.httpx.unmarshalling.{ FromStringOptionDeserializer ⇒ FSOD, FromEntityOptionUnmarshaller ⇒ FEOU }
 
-import spray.httpx.unmarshalling.{FromStringOptionDeserializer => FSOD, FromEntityOptionUnmarshaller => FEOU}
-
-sealed abstract class FormFieldConverter[T] { self =>
+sealed abstract class FormFieldConverter[T] { self ⇒
   def urlEncodedFieldConverter: Option[FSOD[T]]
   def multipartFieldConverter: Option[FEOU[T]]
   def withDefault(default: T): FormFieldConverter[T] =
@@ -78,7 +76,7 @@ sealed abstract class FormFieldConverter[T] { self =>
 }
 
 object FormFieldConverter extends FfcLowerPrioImplicits {
-  implicit def dualModeFormFieldConverter[T :FSOD :FEOU] = new FormFieldConverter[T] {
+  implicit def dualModeFormFieldConverter[T: FSOD: FEOU] = new FormFieldConverter[T] {
     lazy val urlEncodedFieldConverter = Some(implicitly[FSOD[T]])
     lazy val multipartFieldConverter = Some(implicitly[FEOU[T]])
   }
@@ -87,12 +85,12 @@ object FormFieldConverter extends FfcLowerPrioImplicits {
 }
 
 private[unmarshalling] abstract class FfcLowerPrioImplicits extends FfcLowerPrioImplicits2 {
-  implicit def urlEncodedFormFieldConverter[T :FSOD] = new FormFieldConverter[T] {
+  implicit def urlEncodedFormFieldConverter[T: FSOD] = new FormFieldConverter[T] {
     lazy val urlEncodedFieldConverter = Some(implicitly[FSOD[T]])
     def multipartFieldConverter = None
   }
 
-  implicit def multiPartFormFieldConverter[T :FEOU] = new FormFieldConverter[T] {
+  implicit def multiPartFormFieldConverter[T: FEOU] = new FormFieldConverter[T] {
     def urlEncodedFieldConverter = None
     lazy val multipartFieldConverter = Some(implicitly[FEOU[T]])
   }

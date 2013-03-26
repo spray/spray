@@ -20,7 +20,6 @@ package pimps
 import java.nio.charset.Charset
 import scala.annotation.tailrec
 
-
 class PimpedByteArray(underlying: Array[Byte]) {
 
   /**
@@ -38,7 +37,6 @@ class PimpedByteArray(underlying: Array[Byte]) {
   def asString(charset: Charset): String = new String(underlying, charset)
 
   def asString(charset: String): String = new String(underlying, charset)
-
 
   /**
    * Tests two byte arrays for value equality avoiding timing attacks.

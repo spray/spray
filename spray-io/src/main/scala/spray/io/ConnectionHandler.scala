@@ -31,11 +31,11 @@ trait ConnectionHandler extends Actor with SprayActorLogging {
         else x.copy(ack = Pipeline.AckEvent(x.ack))
       tcpConnection ! write
 
-    case Pipeline.Tell(receiver, msg, sender)     ⇒ receiver.tell(msg, sender)
-    case x: Tcp.CloseCommand                      ⇒ tcpConnection ! x
-    case x@ (Tcp.StopReading | Tcp.ResumeReading) ⇒ tcpConnection ! x
-    case _: Droppable                             ⇒ // don't warn
-    case cmd                                      ⇒ log.warning("command pipeline: dropped {}", cmd)
+    case Pipeline.Tell(receiver, msg, sender)      ⇒ receiver.tell(msg, sender)
+    case x: Tcp.CloseCommand                       ⇒ tcpConnection ! x
+    case x @ (Tcp.StopReading | Tcp.ResumeReading) ⇒ tcpConnection ! x
+    case _: Droppable                              ⇒ // don't warn
+    case cmd                                       ⇒ log.warning("command pipeline: dropped {}", cmd)
   }
 
   def baseEventPipeline: Pipeline[Event] = {

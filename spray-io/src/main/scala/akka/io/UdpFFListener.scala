@@ -20,7 +20,7 @@ import scala.util.control.NonFatal
 private[io] class UdpFFListener(val udpFF: UdpFFExt,
                                 val bindCommander: ActorRef,
                                 val bind: Bind)
-  extends Actor with ActorLogging with WithUdpFFSend {
+    extends Actor with ActorLogging with WithUdpFFSend {
 
   import bind._
   import udpFF.bufferPool
@@ -63,7 +63,8 @@ private[io] class UdpFFListener(val udpFF: UdpFFExt,
         channel.close()
         sender ! Unbound
         log.debug("Unbound endpoint [{}], stopping listener", endpoint)
-      } finally context.stop(self)
+      }
+      finally context.stop(self)
   }
 
   def doReceive(handler: ActorRef): Unit = {

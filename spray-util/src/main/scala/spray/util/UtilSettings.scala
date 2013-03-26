@@ -16,12 +16,12 @@
 
 package spray.util
 
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.{ ConfigFactory, Config }
 import akka.actor.ActorSystem
 
 case class UtilSettings(
-  logActorPathsWithDots: Boolean,
-  logActorSystemName: Boolean) {
+    logActorPathsWithDots: Boolean,
+    logActorSystemName: Boolean) {
 }
 
 object UtilSettings {

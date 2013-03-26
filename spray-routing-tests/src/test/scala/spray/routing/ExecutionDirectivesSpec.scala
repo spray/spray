@@ -16,7 +16,6 @@
 
 package spray.routing
 
-
 class ExecutionDirectivesSpec extends RoutingSpec {
 
   "the 'dynamicIf' directive" should {

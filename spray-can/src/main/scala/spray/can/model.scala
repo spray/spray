@@ -19,27 +19,24 @@ package spray.can
 import java.net.InetSocketAddress
 import scala.collection.immutable
 import akka.io.Inet
-import akka.actor.{ActorRefFactory, ActorRef}
+import akka.actor.{ ActorRefFactory, ActorRef }
 import spray.can.client.HostConnectorSettings
 import spray.io.ClientSSLEngineProvider
 import spray.util.actorSystem
 import spray.http._
-
 
 sealed trait MessageLine
 
 case class RequestLine(
   method: HttpMethod = HttpMethods.GET,
   uri: String = "/",
-  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
-) extends MessageLine
+  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`) extends MessageLine
 
 case class StatusLine(
   protocol: HttpProtocol,
   status: Int,
   reason: String,
-  isResponseToHeadRequest: Boolean = false
-) extends MessageLine
+  isResponseToHeadRequest: Boolean = false) extends MessageLine
 
 object Trailer {
   def verify(trailer: List[HttpHeader]) = {
@@ -64,8 +61,7 @@ case class HostConnectorSetup(remoteAddress: InetSocketAddress,
 }
 object HostConnectorSetup {
   def apply(host: String, port: Int = 80, options: immutable.Traversable[Inet.SocketOption] = Nil,
-            settings: Option[HostConnectorSettings] = None)
-           (implicit sslEngineProvider: ClientSSLEngineProvider): HostConnectorSetup =
+            settings: Option[HostConnectorSettings] = None)(implicit sslEngineProvider: ClientSSLEngineProvider): HostConnectorSetup =
     apply(new InetSocketAddress(host, port), options, settings, sslEngineProvider)
 }
 

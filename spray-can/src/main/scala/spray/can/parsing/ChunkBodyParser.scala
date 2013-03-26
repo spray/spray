@@ -20,13 +20,12 @@ import scala.annotation.tailrec
 import akka.util.ByteIterator
 import spray.http.ChunkExtension
 
-
 class ChunkBodyParser(settings: ParserSettings, chunkSize: Int,
                       extensions: List[ChunkExtension] = Nil) extends IntermediateState {
 
   require(chunkSize > 0, "Chunk size must not be negative")
   require(chunkSize <= settings.maxChunkSize,
-          "HTTP message chunk size " + chunkSize + " exceeds configured limit of " + settings.maxChunkSize)
+    "HTTP message chunk size " + chunkSize + " exceeds configured limit of " + settings.maxChunkSize)
 
   val body = new Array[Byte](chunkSize)
   var bytesRead = 0
@@ -38,12 +37,15 @@ class ChunkBodyParser(settings: ParserSettings, chunkSize: Int,
       data.getBytes(body, bytesRead, remaining)
       bytesRead += remaining
       if (!data.hasNext) this else read(data)
-    } else if (bytesRead == chunkSize) {
+    }
+    else if (bytesRead == chunkSize) {
       if (data.next() == '\r'.asInstanceOf[Byte]) {
         bytesRead += 1
         if (!data.hasNext) this else read(data)
-      } else ErrorState("Expected CR after message chunk")
-    } else {
+      }
+      else ErrorState("Expected CR after message chunk")
+    }
+    else {
       if (data.next() == '\n'.asInstanceOf[Byte]) ChunkedChunkState(extensions, body)
       else ErrorState("Expected LF after CR after message chunk")
     }

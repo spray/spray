@@ -18,16 +18,15 @@ package spray.can
 package client
 
 import scala.concurrent.duration.Duration
-import akka.actor.{ReceiveTimeout, ActorRef}
-import akka.io.{Tcp, IO}
-import spray.http.{Confirmed, HttpRequestPart}
+import akka.actor.{ ReceiveTimeout, ActorRef }
+import akka.io.{ Tcp, IO }
+import spray.http.{ Confirmed, HttpRequestPart }
 import spray.io._
-
 
 private[can] class HttpClientConnection(connectCommander: ActorRef,
                                         connect: Http.Connect,
                                         pipelineStage: RawPipelineStage[SslTlsContext],
-                                        settings: ClientConnectionSettings) extends ConnectionHandler { actor =>
+                                        settings: ClientConnectionSettings) extends ConnectionHandler { actor ⇒
   import context.system
   import connect._
 
@@ -38,7 +37,7 @@ private[can] class HttpClientConnection(connectCommander: ActorRef,
   context.setReceiveTimeout(settings.connectingTimeout)
 
   def receive: Receive = {
-    case connected: Tcp.Connected =>
+    case connected: Tcp.Connected ⇒
       context.setReceiveTimeout(Duration.Undefined)
       log.debug("Connected to {}", connected.remoteAddress)
       val tcpConnection = sender
@@ -47,7 +46,7 @@ private[can] class HttpClientConnection(connectCommander: ActorRef,
       connectCommander ! connected
       context.become(running(tcpConnection, pipelineStage, pipelineContext(connected)))
 
-    case Tcp.CommandFailed(_: Tcp.Connect) =>
+    case Tcp.CommandFailed(_: Tcp.Connect) ⇒
       connectCommander ! Http.CommandFailed(connect)
       context.stop(self)
 
@@ -59,8 +58,8 @@ private[can] class HttpClientConnection(connectCommander: ActorRef,
 
   override def running(tcpConnection: ActorRef, pipelines: Pipelines): Receive =
     super.running(tcpConnection, pipelines) orElse {
-      case x: HttpRequestPart                  => pipelines.commandPipeline(Http.MessageCommand(x))
-      case x@ Confirmed(_: HttpRequestPart, _) => pipelines.commandPipeline(Http.MessageCommand(x))
+      case x: HttpRequestPart                   ⇒ pipelines.commandPipeline(Http.MessageCommand(x))
+      case x @ Confirmed(_: HttpRequestPart, _) ⇒ pipelines.commandPipeline(Http.MessageCommand(x))
     }
 
   def pipelineContext(connected: Tcp.Connected) = new SslTlsContext {
@@ -77,12 +76,12 @@ private[can] object HttpClientConnection {
   def pipelineStage(settings: ClientConnectionSettings) = {
     import settings._
     ClientFrontend(requestTimeout) >>
-    ResponseChunkAggregation(responseChunkAggregationLimit) ? (responseChunkAggregationLimit > 0) >>
-    ResponseParsing(parserSettings) >>
-    RequestRendering(settings) >>
-    ConnectionTimeouts(idleTimeout) ? (reapingCycle.isFinite && idleTimeout.isFinite) >>
-    SslTlsSupport ? sslEncryption >>
-    TickGenerator(reapingCycle) ? (idleTimeout.isFinite || requestTimeout.isFinite)
+      ResponseChunkAggregation(responseChunkAggregationLimit) ? (responseChunkAggregationLimit > 0) >>
+      ResponseParsing(parserSettings) >>
+      RequestRendering(settings) >>
+      ConnectionTimeouts(idleTimeout) ? (reapingCycle.isFinite && idleTimeout.isFinite) >>
+      SslTlsSupport ? sslEncryption >>
+      TickGenerator(reapingCycle) ? (idleTimeout.isFinite || requestTimeout.isFinite)
   }
 
 }

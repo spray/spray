@@ -88,13 +88,15 @@ private[io] class TcpListener(val selectorRouter: ActorRef,
         catch {
           case NonFatal(e) ⇒ log.error(e, "Accept error: could not accept new connection due to {}", e); null
         }
-      } else null
+      }
+      else null
     if (socketChannel != null) {
       log.debug("New connection accepted")
       socketChannel.configureBlocking(false)
       selectorRouter ! WorkerForCommand(RegisterIncoming(socketChannel), self, Props(new TcpIncomingConnection(socketChannel, tcp, handler, options)))
       acceptAllPending(limit - 1)
-    } else context.parent ! AcceptInterest
+    }
+    else context.parent ! AcceptInterest
   }
 
   override def postStop() {
@@ -103,7 +105,8 @@ private[io] class TcpListener(val selectorRouter: ActorRef,
         log.debug("Closing serverSocketChannel after being stopped")
         channel.close()
       }
-    } catch {
+    }
+    catch {
       case NonFatal(e) ⇒ log.error(e, "Error closing ServerSocketChannel")
     }
   }

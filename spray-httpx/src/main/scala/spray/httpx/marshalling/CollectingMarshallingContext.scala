@@ -22,9 +22,8 @@ import java.util.concurrent.TimeUnit._
 import scala.annotation.tailrec
 import akka.spray.UnregisteredActorRef
 import akka.util.Timeout
-import akka.actor.{ActorRefFactory, ActorRef}
+import akka.actor.{ ActorRefFactory, ActorRef }
 import spray.http._
-
 
 /**
  * A MarshallingContext serving as a marshalling receptacle, collecting the output of a Marshaller
@@ -67,20 +66,20 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
     val ref = new UnregisteredActorRef(actorRefFactory) {
       def handle(message: Any)(implicit sender: ActorRef) {
         message match {
-          case HttpMessagePartWrapper(part, ack) =>
+          case HttpMessagePartWrapper(part, ack) ⇒
             part match {
-              case x: MessageChunk =>
+              case x: MessageChunk ⇒
                 @tailrec def updateChunks(current: Seq[MessageChunk]) {
                   if (!_chunks.compareAndSet(current, _chunks.get :+ x)) updateChunks(_chunks.get)
                 }
                 updateChunks(_chunks.get)
 
-              case x: ChunkedMessageEnd =>
+              case x: ChunkedMessageEnd ⇒
                 if (!_chunkedMessageEnd.compareAndSet(None, Some(x)))
                   sys.error("ChunkedMessageEnd received more than once")
                 latch.countDown()
 
-              case x => throw new IllegalStateException("Received unexpected message part: " + x)
+              case x ⇒ throw new IllegalStateException("Received unexpected message part: " + x)
             }
             ack.foreach(sender.tell(_, this))
         }

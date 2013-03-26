@@ -28,7 +28,7 @@ import akka.io.IO
 import akka.actor._
 import spray.httpx.encoding.Gzip
 import spray.can.client.HostConnectorSettings
-import spray.can.{HostConnectorInfo, HostConnectorSetup, Http}
+import spray.can.{ HostConnectorInfo, HostConnectorSetup, Http }
 import spray.client.pipelining._
 import spray.http._
 import spray.util._
@@ -54,21 +54,20 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
         var dropNext = true
         val random = new Random(38)
         def receive = {
-          case _: Http.Connected => sender ! Http.Register(self)
-          case HttpRequest(_, Uri.Path("/compressedResponse"), _, _, _) =>
+          case _: Http.Connected ⇒ sender ! Http.Register(self)
+          case HttpRequest(_, Uri.Path("/compressedResponse"), _, _, _) ⇒
             sender ! Gzip.encode(HttpResponse(entity = "content"))
-          case x: HttpRequest if x.uri.toString.startsWith("/drop1of2") && dropNext =>
+          case x: HttpRequest if x.uri.toString.startsWith("/drop1of2") && dropNext ⇒
             log.debug("Dropping " + x)
             dropNext = random.nextBoolean()
-          case x@ HttpRequest(method, uri, _, entity, _) =>
+          case x @ HttpRequest(method, uri, _, entity, _) ⇒
             log.debug("Responding to " + x)
             dropNext = random.nextBoolean()
             sender ! HttpResponse(entity = method + "|" + uri.path + (if (entity.isEmpty) "" else "|" + entity.asString))
-          case Timedout(request) => sender ! HttpResponse(entity = "TIMEOUT")
-          case ev: Http.ConnectionClosed => log.debug("Received " + ev)
+          case Timedout(request)         ⇒ sender ! HttpResponse(entity = "TIMEOUT")
+          case ev: Http.ConnectionClosed ⇒ log.debug("Received " + ev)
         }
-      }
-    ), "handler")
+      }), "handler")
     IO(Http).ask(Http.Bind(testService, interface, port))(1.second).await
   }
 
@@ -93,7 +92,7 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
     "retry GET requests whose sending has failed" in {
       val pipeline = newPipeline(pipelined = false)
       def send = pipeline(HttpRequest(uri = "/drop1of2"))
-      val fut = send.flatMap(r1 => send.map(r2 => r1 -> r2))
+      val fut = send.flatMap(r1 ⇒ send.map(r2 ⇒ r1 -> r2))
       val (r1, r2) = fut.await
       r1.entity === r2.entity
     }
@@ -102,12 +101,11 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
       val requests = List(
         HttpRequest(uri = "/drop1of2/a"),
         HttpRequest(uri = "/drop1of2/b"),
-        HttpRequest(uri = "/drop1of2/c")
-      )
-      val future = Future.traverse(requests)(pipeline).flatMap { responses1 =>
-        Future.traverse(requests)(pipeline).map(responses2 => responses1.zip(responses2))
+        HttpRequest(uri = "/drop1of2/c"))
+      val future = Future.traverse(requests)(pipeline).flatMap { responses1 ⇒
+        Future.traverse(requests)(pipeline).map(responses2 ⇒ responses1.zip(responses2))
       }
-      future.await.map { case (a, b) => a.entity === b.entity }.reduceLeft(_ and _)
+      future.await.map { case (a, b) ⇒ a.entity === b.entity }.reduceLeft(_ and _)
     }
   }
 
@@ -135,10 +133,11 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
 
   def hundredRequests(pipelined: Boolean) = {
     val pipeline = newPipeline(pipelined)
-    val requests = Seq.tabulate(10)(index => HttpRequest(uri = "/" + index))
+    val requests = Seq.tabulate(10)(index ⇒ HttpRequest(uri = "/" + index))
     val responseFutures = requests.map(pipeline)
-    responseFutures.zipWithIndex.map { case (future, index) =>
-      future.await.copy(headers = Nil) === HttpResponse(200, "GET|/" + index)
+    responseFutures.zipWithIndex.map {
+      case (future, index) ⇒
+        future.await.copy(headers = Nil) === HttpResponse(200, "GET|/" + index)
     }.reduceLeft(_ and _)
   }
 

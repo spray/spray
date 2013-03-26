@@ -17,10 +17,10 @@
 package spray.util
 
 import java.nio.channels.ServerSocketChannel
-import java.net.{InetAddress, InetSocketAddress}
-import com.typesafe.config.{ConfigFactory, Config}
+import java.net.{ InetAddress, InetSocketAddress }
+import com.typesafe.config.{ ConfigFactory, Config }
 import scala.collection.JavaConverters._
-import scala.reflect.{classTag, ClassTag}
+import scala.reflect.{ classTag, ClassTag }
 import akka.actor._
 
 object Utils {
@@ -34,7 +34,8 @@ object Utils {
       serverSocket.socket.bind(new InetSocketAddress(interface, 0))
       val port = serverSocket.socket.getLocalPort
       new InetSocketAddress(interface, port)
-    } finally serverSocket.close()
+    }
+    finally serverSocket.close()
   }
 
   def temporaryServerHostnameAndPort(interface: String = "127.0.0.1"): (String, Int) = {
@@ -47,7 +48,7 @@ object Utils {
     synchronized {
       if (eventStreamLogger == null)
         eventStreamLogger = system.actorOf(Props(new Actor with SprayActorLogging {
-          def receive = { case x => log.warning(x.toString) }
+          def receive = { case x ⇒ log.warning(x.toString) }
         }), name = "event-stream-logger")
     }
     system.eventStream.subscribe(eventStreamLogger, channel)
@@ -62,7 +63,7 @@ object Utils {
   }
 
   lazy val sprayConfigAdditions: Config = ConfigFactory.parseMap {
-    Map("spray.hostname" -> tryOrElse(InetAddress.getLocalHost.getHostName, _ => "")).asJava
+    Map("spray.hostname" -> tryOrElse(InetAddress.getLocalHost.getHostName, _ ⇒ "")).asJava
   }
 
   def mapToConfig(map: Map[String, Any]): Config = ConfigFactory.parseMap(map.asJava)
@@ -73,6 +74,7 @@ object Utils {
       val exp = (math.log(bytes) / math.log(unit)).toInt
       val pre = if (si) "kMGTPE".charAt(exp - 1).toString else "KMGTPE".charAt(exp - 1).toString + 'i'
       "%.1f %sB" format (bytes / math.pow(unit, exp), pre)
-    } else bytes.toString + "  B"
+    }
+    else bytes.toString + "  B"
   }
 }

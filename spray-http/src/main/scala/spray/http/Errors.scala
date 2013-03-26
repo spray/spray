@@ -17,7 +17,7 @@
 
 package spray.http
 
-import spray.http.StatusCodes.{ServerError, ClientError}
+import spray.http.StatusCodes.{ ServerError, ClientError }
 
 /**
  * Two-level model of error information.
@@ -33,9 +33,9 @@ case class ErrorInfo(summary: String = "", detail: String = "") {
 }
 
 object ErrorInfo {
-  def apply(message: String): ErrorInfo  = message.split(": ", 2) match {
-    case Array(summary, detail) => apply(summary, detail)
-    case _ => ErrorInfo("", message)
+  def apply(message: String): ErrorInfo = message.split(": ", 2) match {
+    case Array(summary, detail) ⇒ apply(summary, detail)
+    case _                      ⇒ ErrorInfo("", message)
   }
 }
 
@@ -43,21 +43,20 @@ class IllegalUriException(info: ErrorInfo) extends RuntimeException(info.formatP
   def this(summary: String, detail: String = "") = this(ErrorInfo(summary, detail))
 }
 
-
 // the following exceptions are not used directly in spray-http
 // but by the spray-routing and spray-servlet modules
 // since the Client- and ServerError types are defined in spray-http the only
 // commonly accessible place for this definition is here in spray-http
 
-class IllegalRequestException private(val info: ErrorInfo, val status: ClientError)
-  extends RuntimeException(info.formatPretty) {
+class IllegalRequestException private (val info: ErrorInfo, val status: ClientError)
+    extends RuntimeException(info.formatPretty) {
   def this(status: ClientError) = this(ErrorInfo(status.defaultMessage), status)
   def this(status: ClientError, info: ErrorInfo) = this(info.withFallbackSummary(status.defaultMessage), status)
   def this(status: ClientError, detail: String) = this(ErrorInfo(status.defaultMessage, detail), status)
 }
 
-class RequestProcessingException private(val info: ErrorInfo, val status: ServerError)
-  extends RuntimeException(info.formatPretty) {
+class RequestProcessingException private (val info: ErrorInfo, val status: ServerError)
+    extends RuntimeException(info.formatPretty) {
   def this(status: ServerError) = this(ErrorInfo(status.defaultMessage), status)
   def this(status: ServerError, info: ErrorInfo) = this(info.withFallbackSummary(status.defaultMessage), status)
   def this(status: ServerError, detail: String) = this(ErrorInfo(status.defaultMessage, detail), status)

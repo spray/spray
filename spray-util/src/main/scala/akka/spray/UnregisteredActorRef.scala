@@ -20,7 +20,6 @@ import scala.concurrent.ExecutionContext
 import akka.util.Timeout
 import akka.actor._
 
-
 /**
  * An ActorRef which
  * - offers the ability to hook caller-side logic into the reply message path
@@ -31,7 +30,7 @@ import akka.actor._
  * It should therefore be used only in purely local environments and in consideration of the limitations.
  * You can, however, manually wrap it with a registered ActorRef using one of the register... calls.
  */
-abstract class UnregisteredActorRef(prov: ActorRefProvider) extends UnregisteredActorRefBase(prov) { unregistered =>
+abstract class UnregisteredActorRef(prov: ActorRefProvider) extends UnregisteredActorRefBase(prov) { unregistered ⇒
   def this(related: ActorRef) = this(RefUtils.provider(related))
   def this(actorRefFactory: ActorRefFactory) = this(RefUtils.provider(actorRefFactory))
 
@@ -48,8 +47,7 @@ abstract class UnregisteredActorRef(prov: ActorRefProvider) extends Unregistered
    * The resulting ActorRef is reachable from remote JVMs and can receive several replies.
    * However, the last one must be identifiable and has to arrive within the given timeout period.
    */
-  def registerForMultiResponse(isLastResponse: Any => Boolean, timeout: Timeout)
-                              (implicit executor: ExecutionContext): ActorRef =
+  def registerForMultiResponse(isLastResponse: Any ⇒ Boolean, timeout: Timeout)(implicit executor: ExecutionContext): ActorRef =
     new LazyActorRef(provider) {
       val timer = provider.scheduler.scheduleOnce(timeout.duration) {
         stop()
@@ -65,5 +63,5 @@ abstract class UnregisteredActorRef(prov: ActorRefProvider) extends Unregistered
 }
 
 object UnregisteredActorRef {
-  val EveryMessageIsLastResponse = (_:Any) => true
+  val EveryMessageIsLastResponse = (_: Any) ⇒ true
 }

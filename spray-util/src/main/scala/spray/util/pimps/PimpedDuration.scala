@@ -18,7 +18,6 @@ package spray.util.pimps
 
 import scala.concurrent.duration.Duration
 
-
 class PimpedDuration(underlying: Duration) {
 
   def formatHMS = {

@@ -17,39 +17,38 @@
 package spray.util
 package pimps
 
-import java.util.{List => JList}
+import java.util.{ List ⇒ JList }
 import scala.collection.LinearSeqOptimized
 import org.specs2.mutable._
 
-
 class PimpedClassSpec extends Specification {
-  
+
   "getTypeArgumentsOf" should {
     "be able to resolve the argument to a (class) type constructor with one type parameters" in {
-      (new TestClass1[String]{}).getClass
-              .getTypeArgumentsOf(classOf[TestClass1[_]]) ===
-      List(Some(classOf[String]))
+      (new TestClass1[String] {}).getClass
+        .getTypeArgumentsOf(classOf[TestClass1[_]]) ===
+        List(Some(classOf[String]))
     }
     "be able to resolve the arguments to a (class) type constructor with two type parameters" in {
-      (new TestClass2[Option[Int], String]{}).getClass
-              .getTypeArgumentsOf(classOf[TestClass2[_, _]]) ===
-      List(Some(classOf[Option[_]]), Some(classOf[String]))
+      (new TestClass2[Option[Int], String] {}).getClass
+        .getTypeArgumentsOf(classOf[TestClass2[_, _]]) ===
+        List(Some(classOf[Option[_]]), Some(classOf[String]))
     }
     "be able to resolve the arguments to a (class) type constructor with three type parameters" in {
-      (new TestClass3[String, Function1[Int, Int], Object]{}).getClass
-              .getTypeArgumentsOf(classOf[TestClass3[_, _, _]]) ===
-      List(Some(classOf[String]), Some(classOf[Function1[_, _]]), Some(classOf[Object]))
+      (new TestClass3[String, Function1[Int, Int], Object] {}).getClass
+        .getTypeArgumentsOf(classOf[TestClass3[_, _, _]]) ===
+        List(Some(classOf[String]), Some(classOf[Function1[_, _]]), Some(classOf[Object]))
     }
     "be able to resolve the arguments to an (interface) type constructor with two type parameters" in {
       classOf[List[String]].getTypeArgumentsOf(classOf[LinearSeqOptimized[_, _]]) ===
-      List(None, Some(classOf[List[_]]))
+        List(None, Some(classOf[List[_]]))
     }
     "be able to resolve the arguments to an (interface) type constructor two levels up" in {
       classOf[Bar].getTypeArgumentsOf(classOf[JList[_]]) ===
-      List(Some(classOf[String]))
+        List(Some(classOf[String]))
     }
   }
-  
+
 }
 
 class TestClass1[A]

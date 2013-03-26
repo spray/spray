@@ -16,9 +16,8 @@
 
 package spray.can.parsing
 
-import java.lang.{StringBuilder => JStringBuilder}
-import spray.http.{HttpMethod, StatusCodes}
-
+import java.lang.{ StringBuilder ⇒ JStringBuilder }
+import spray.http.{ HttpMethod, StatusCodes }
 
 class UriParser(settings: ParserSettings, method: HttpMethod) extends CharacterParser {
   val uri = new JStringBuilder
@@ -26,10 +25,11 @@ class UriParser(settings: ParserSettings, method: HttpMethod) extends CharacterP
   def handleChar(cursor: Char) = {
     if (uri.length <= settings.maxUriLength) {
       cursor match {
-        case ' ' => new RequestVersionParser(settings, method, uri.toString)
-        case _ => uri.append(cursor); this
+        case ' ' ⇒ new RequestVersionParser(settings, method, uri.toString)
+        case _   ⇒ uri.append(cursor); this
       }
-    } else {
+    }
+    else {
       ErrorState(StatusCodes.RequestUriTooLong,
         "URI length exceeds the configured limit of " + settings.maxUriLength + " characters")
     }

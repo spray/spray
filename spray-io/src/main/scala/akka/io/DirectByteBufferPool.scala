@@ -41,7 +41,8 @@ private[akka] class DirectByteBufferPool(defaultBufferSize: Int, maxPoolEntries:
         try if (buffersInPool > 0) {
           buffersInPool -= 1
           pool(buffersInPool)
-        } else null
+        }
+        else null
         finally locked.set(false)
 
       // allocate new and clear outside the lock
@@ -51,7 +52,8 @@ private[akka] class DirectByteBufferPool(defaultBufferSize: Int, maxPoolEntries:
         buffer.clear()
         buffer
       }
-    } else takeBufferFromPool() // spin while locked
+    }
+    else takeBufferFromPool() // spin while locked
 
   @tailrec
   private final def offerBufferToPool(buf: ByteBuffer): Unit =

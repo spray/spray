@@ -23,7 +23,7 @@ class PimpedConfig(underlying: Config) {
 
   def getDuration(path: String) = underlying.getString(path) match {
     case "infinite" ⇒ Duration.Undefined
-    case x => Duration(x)
+    case x          ⇒ Duration(x)
   }
 
 }

@@ -21,7 +21,6 @@ import StatusCodes._
 import HttpHeaders._
 import spray.routing.directives.RouteDirectives._
 
-
 trait RejectionHandler extends RejectionHandler.PF
 
 object RejectionHandler {
@@ -34,47 +33,47 @@ object RejectionHandler {
     }
 
   implicit val Default = fromPF {
-    case Nil => complete(NotFound, "The requested resource could not be found.")
-    case AuthenticationRequiredRejection(scheme, realm, params) :: _ =>
+    case Nil ⇒ complete(NotFound, "The requested resource could not be found.")
+    case AuthenticationRequiredRejection(scheme, realm, params) :: _ ⇒
       complete(Unauthorized, `WWW-Authenticate`(HttpChallenge(scheme, realm, params)) :: Nil,
         "The resource requires authentication, which was not supplied with the request")
-    case AuthenticationFailedRejection(realm) :: _ =>
+    case AuthenticationFailedRejection(realm) :: _ ⇒
       complete(Unauthorized, "The supplied authentication is invalid")
-    case AuthorizationFailedRejection :: _ =>
+    case AuthorizationFailedRejection :: _ ⇒
       complete(Forbidden, "The supplied authentication is not authorized to access this resource")
-    case CorruptRequestEncodingRejection(msg) :: _ =>
+    case CorruptRequestEncodingRejection(msg) :: _ ⇒
       complete(BadRequest, "The requests encoding is corrupt:\n" + msg)
-    case MalformedFormFieldRejection(name, msg, _) :: _ =>
+    case MalformedFormFieldRejection(name, msg, _) :: _ ⇒
       complete(BadRequest, "The form field '" + name + "' was malformed:\n" + msg)
-    case MalformedQueryParamRejection(name, msg, _) :: _ =>
+    case MalformedQueryParamRejection(name, msg, _) :: _ ⇒
       complete(BadRequest, "The query parameter '" + name + "' was malformed:\n" + msg)
-    case MalformedRequestContentRejection(msg, _) :: _ =>
+    case MalformedRequestContentRejection(msg, _) :: _ ⇒
       complete(BadRequest, "The request content was malformed:\n" + msg)
-    case rejections@ (MethodRejection(_) :: _) =>
+    case rejections @ (MethodRejection(_) :: _) ⇒
       // TODO: add Allow header (required by the spec)
-      val methods = rejections.collect { case MethodRejection(method) => method }
+      val methods = rejections.collect { case MethodRejection(method) ⇒ method }
       complete(MethodNotAllowed, "HTTP method not allowed, supported methods: " + methods.mkString(", "))
-    case MissingCookieRejection(cookieName) :: _ =>
+    case MissingCookieRejection(cookieName) :: _ ⇒
       complete(BadRequest, "Request is missing required cookie '" + cookieName + '\'')
-    case MissingFormFieldRejection(fieldName) :: _ =>
+    case MissingFormFieldRejection(fieldName) :: _ ⇒
       complete(BadRequest, "Request is missing required form field '" + fieldName + '\'')
-    case MissingQueryParamRejection(paramName) :: _ =>
+    case MissingQueryParamRejection(paramName) :: _ ⇒
       complete(NotFound, "Request is missing required query parameter '" + paramName + '\'')
-    case RequestEntityExpectedRejection :: _ =>
+    case RequestEntityExpectedRejection :: _ ⇒
       complete(BadRequest, "Request entity expected but not supplied")
-    case rejections@ (UnacceptedResponseContentTypeRejection(_) :: _) =>
-      val supported = rejections.flatMap { case UnacceptedResponseContentTypeRejection(supported) => supported }
+    case rejections @ (UnacceptedResponseContentTypeRejection(_) :: _) ⇒
+      val supported = rejections.flatMap { case UnacceptedResponseContentTypeRejection(supported) ⇒ supported }
       complete(NotAcceptable, "Resource representation is only available with these Content-Types:\n" + supported.map(_.value).mkString("\n"))
-    case rejections@ (UnacceptedResponseEncodingRejection(_) :: _) =>
-      val supported = rejections.collect { case UnacceptedResponseEncodingRejection(supported) => supported }
+    case rejections @ (UnacceptedResponseEncodingRejection(_) :: _) ⇒
+      val supported = rejections.collect { case UnacceptedResponseEncodingRejection(supported) ⇒ supported }
       complete(NotAcceptable, "Resource representation is only available with these Content-Encodings:\n" + supported.map(_.value).mkString("\n"))
-    case rejections@ (UnsupportedRequestContentTypeRejection(_) :: _) =>
-      val supported = rejections.collect { case UnsupportedRequestContentTypeRejection(supported) => supported }
+    case rejections @ (UnsupportedRequestContentTypeRejection(_) :: _) ⇒
+      val supported = rejections.collect { case UnsupportedRequestContentTypeRejection(supported) ⇒ supported }
       complete(UnsupportedMediaType, "There was a problem with the requests Content-Type:\n" + supported.mkString(" or "))
-    case rejections@ (UnsupportedRequestEncodingRejection(_) :: _) =>
-      val supported = rejections.collect { case UnsupportedRequestEncodingRejection(supported) => supported }
+    case rejections @ (UnsupportedRequestEncodingRejection(_) :: _) ⇒
+      val supported = rejections.collect { case UnsupportedRequestEncodingRejection(supported) ⇒ supported }
       complete(BadRequest, "The requests Content-Encoding must be one the following:\n" + supported.map(_.value).mkString("\n"))
-    case ValidationRejection(msg, _) :: _ =>
+    case ValidationRejection(msg, _) :: _ ⇒
       complete(BadRequest, msg)
   }
 
@@ -85,7 +84,7 @@ object RejectionHandler {
   def applyTransformations(rejections: List[Rejection]): List[Rejection] = {
     val (transformations, rest) = rejections.partition(_.isInstanceOf[TransformationRejection])
     (rest.distinct /: transformations.asInstanceOf[Seq[TransformationRejection]]) {
-      case (remaining, transformation) => transformation.transform(remaining)
+      case (remaining, transformation) ⇒ transformation.transform(remaining)
     }
   }
 }

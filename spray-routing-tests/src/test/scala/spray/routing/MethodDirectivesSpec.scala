@@ -18,7 +18,6 @@ package spray.routing
 
 import spray.http.HttpMethods
 
-
 class MethodDirectivesSpec extends RoutingSpec {
 
   "get | put" should {
@@ -39,7 +38,7 @@ class MethodDirectivesSpec extends RoutingSpec {
     "only result in a single Rejection" in {
       Put() ~> {
         get { completeOk } ~
-        get { completeOk }
+          get { completeOk }
       } ~> check {
         rejections === List(MethodRejection(HttpMethods.GET))
       }
@@ -51,7 +50,7 @@ class MethodDirectivesSpec extends RoutingSpec {
       "if the match happens after the rejection" in {
         Put() ~> {
           get { completeOk } ~
-          put { reject(RequestEntityExpectedRejection) }
+            put { reject(RequestEntityExpectedRejection) }
         } ~> check {
           rejections === List(RequestEntityExpectedRejection)
         }
@@ -59,7 +58,7 @@ class MethodDirectivesSpec extends RoutingSpec {
       "if the match happens after the rejection (example 2)" in {
         Put() ~> {
           (get & complete)(Ok) ~
-          (put & reject(RequestEntityExpectedRejection))
+            (put & reject(RequestEntityExpectedRejection))
         } ~> check {
           rejections === List(RequestEntityExpectedRejection)
         }
@@ -67,7 +66,7 @@ class MethodDirectivesSpec extends RoutingSpec {
       "if the match happens before the rejection" in {
         Put() ~> {
           put { reject(RequestEntityExpectedRejection) } ~
-          get { completeOk }
+            get { completeOk }
         } ~> check {
           rejections === List(RequestEntityExpectedRejection)
         }
@@ -75,12 +74,12 @@ class MethodDirectivesSpec extends RoutingSpec {
       "if the match happens before the rejection (example 2)" in {
         Put() ~> {
           (put & reject(RequestEntityExpectedRejection)) ~
-          (get & complete)(Ok)
+            (get & complete)(Ok)
         } ~> check {
           rejections === List(RequestEntityExpectedRejection)
         }
       }
     }
   }
-  
+
 }

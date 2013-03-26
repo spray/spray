@@ -24,8 +24,7 @@ import spray.can.rendering.HttpRequestPartRenderingContext
 import spray.can.Http
 import spray.http._
 import spray.io._
-import System.{currentTimeMillis => now}
-
+import System.{ currentTimeMillis ⇒ now }
 
 object ClientFrontend {
 
@@ -39,88 +38,94 @@ object ClientFrontend {
           var closeCommanders = Set.empty[ActorRef]
 
           val commandPipeline: CPL = {
-            case Http.MessageCommand(HttpMessagePartWrapper(x: HttpRequest, ack)) if closeCommanders.isEmpty =>
+            case Http.MessageCommand(HttpMessagePartWrapper(x: HttpRequest, ack)) if closeCommanders.isEmpty ⇒
               if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
                 render(x, ack)
                 openRequests = openRequests enqueue new RequestRecord(x, context.sender, timestamp = now)
-              } else log.warning("Received new HttpRequest before previous chunking request was " +
+              }
+              else log.warning("Received new HttpRequest before previous chunking request was " +
                 "finished, ignoring...")
 
-            case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedRequestStart, ack)) if closeCommanders.isEmpty =>
+            case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedRequestStart, ack)) if closeCommanders.isEmpty ⇒
               if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
                 render(x, ack)
                 openRequests = openRequests enqueue new RequestRecord(x, context.sender, timestamp = 0)
-              } else log.warning("Received new ChunkedRequestStart before previous chunking " +
+              }
+              else log.warning("Received new ChunkedRequestStart before previous chunking " +
                 "request was finished, ignoring...")
 
-            case Http.MessageCommand(HttpMessagePartWrapper(x: MessageChunk, ack)) if closeCommanders.isEmpty =>
+            case Http.MessageCommand(HttpMessagePartWrapper(x: MessageChunk, ack)) if closeCommanders.isEmpty ⇒
               if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
                 render(x, ack)
-              } else log.warning("Received MessageChunk outside of chunking request context, ignoring...")
+              }
+              else log.warning("Received MessageChunk outside of chunking request context, ignoring...")
 
-            case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedMessageEnd, ack)) if closeCommanders.isEmpty =>
+            case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedMessageEnd, ack)) if closeCommanders.isEmpty ⇒
               if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
                 render(x, ack)
                 openRequests.last.timestamp = now // only start timer once the request is completed
-              } else log.warning("Received ChunkedMessageEnd outside of chunking request " +
+              }
+              else log.warning("Received ChunkedMessageEnd outside of chunking request " +
                 "context, ignoring...")
 
-            case Http.MessageCommand(HttpMessagePartWrapper(x: HttpRequestPart, _)) if !closeCommanders.isEmpty =>
+            case Http.MessageCommand(HttpMessagePartWrapper(x: HttpRequestPart, _)) if !closeCommanders.isEmpty ⇒
               log.error("Received {} after CloseCommand, ignoring", x)
 
-            case x: Http.CloseCommand =>
+            case x: Http.CloseCommand ⇒
               closeCommanders += context.sender
               commandPL(x)
 
-            case SetRequestTimeout(timeout) => requestTimeout = timeout
+            case SetRequestTimeout(timeout) ⇒ requestTimeout = timeout
 
-            case cmd => commandPL(cmd)
+            case cmd                        ⇒ commandPL(cmd)
           }
 
           val eventPipeline: EPL = {
-            case Http.MessageEvent(x: HttpMessageEnd) =>
+            case Http.MessageEvent(x: HttpMessageEnd) ⇒
               if (!openRequests.isEmpty) {
                 val currentRecord = openRequests.head
                 openRequests = openRequests.tail
                 dispatch(currentRecord.sender, x)
-              } else {
+              }
+              else {
                 log.warning("Received unmatched {}, closing connection due to protocol error", x)
                 commandPL(Http.Close)
               }
 
-            case Http.MessageEvent(x: HttpMessagePart) =>
+            case Http.MessageEvent(x: HttpMessagePart) ⇒
               if (!openRequests.isEmpty) {
                 dispatch(openRequests.head.sender, x)
-              } else {
+              }
+              else {
                 log.warning("Received unmatched {}, closing connection due to protocol error", x)
                 commandPL(Http.Close)
               }
 
-            case Pipeline.AckEvent(ack) =>
+            case Pipeline.AckEvent(ack) ⇒
               if (!openRequests.isEmpty) dispatch(openRequests.head.sender, ack)
               else throw new IllegalStateException
 
-            case x: Tcp.ConnectionClosed =>
+            case x: Tcp.ConnectionClosed ⇒
               openRequests.foldLeft(closeCommanders)(_ + _.sender) foreach (dispatch(_, x))
               eventPL(x) // terminates the connection actor
 
-            case TickGenerator.Tick =>
+            case TickGenerator.Tick ⇒
               checkForTimeout()
               eventPL(TickGenerator.Tick)
 
-            case Tcp.CommandFailed(Tcp.Write(_, Tcp.NoAck(PartAndSender(part, requestSender)))) =>
+            case Tcp.CommandFailed(Tcp.Write(_, Tcp.NoAck(PartAndSender(part, requestSender)))) ⇒
               dispatch(requestSender, Http.SendFailed(part))
 
-            case Tcp.CommandFailed(Tcp.Write(_, ack)) =>
+            case Tcp.CommandFailed(Tcp.Write(_, ack)) ⇒
               log.warning("Sending of HttpRequestPart with ack {} failed, write command dropped", ack)
 
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
 
           def render(part: HttpRequestPart, ack: Option[Any]): Unit = {
             val sentAck = ack match {
-              case Some(x) => x
-              case None => Tcp.NoAck(PartAndSender(part, context.sender))
+              case Some(x) ⇒ x
+              case None    ⇒ Tcp.NoAck(PartAndSender(part, context.sender))
             }
             commandPL(HttpRequestPartRenderingContext(part, sentAck))
           }

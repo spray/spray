@@ -24,9 +24,9 @@ private[spray] object Macros {
   def requirePositiveOrUndefined(c: Context)(duration: c.Expr[Duration]) = {
     import c.universe._
     val name = duration match {
-      case c.Expr(Ident(n)) => n
-      case c.Expr(Select(_, n)) => n
-      case c.Expr(x) => sys.error(s"requirePositiveOrUndefined cannot be used with argument $x: ${x.getClass}")
+      case c.Expr(Ident(n))     ⇒ n
+      case c.Expr(Select(_, n)) ⇒ n
+      case c.Expr(x)            ⇒ sys.error(s"requirePositiveOrUndefined cannot be used with argument $x: ${x.getClass}")
     }
     val msg: c.Expr[String] = c.Expr(Literal(Constant(s"requirement failed: $name must be > 0 or 'infinite'")))
     reify {

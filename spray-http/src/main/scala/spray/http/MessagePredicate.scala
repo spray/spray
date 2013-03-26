@@ -17,12 +17,11 @@
 
 package spray.http
 
-
-trait MessagePredicate extends (HttpMessage => Boolean) { thiz =>
-  def && (that: MessagePredicate): MessagePredicate = new MessagePredicate {
+trait MessagePredicate extends (HttpMessage ⇒ Boolean) { thiz ⇒
+  def &&(that: MessagePredicate): MessagePredicate = new MessagePredicate {
     def apply(msg: HttpMessage) = thiz(msg) && that(msg)
   }
-  def || (that: MessagePredicate) = new MessagePredicate {
+  def ||(that: MessagePredicate) = new MessagePredicate {
     def apply(msg: HttpMessage) = thiz(msg) || that(msg)
   }
   def unary_! = new MessagePredicate {
@@ -31,7 +30,7 @@ trait MessagePredicate extends (HttpMessage => Boolean) { thiz =>
 }
 
 object MessagePredicate {
-  implicit def apply(f: HttpMessage => Boolean): MessagePredicate =
+  implicit def apply(f: HttpMessage ⇒ Boolean): MessagePredicate =
     new MessagePredicate {
       def apply(msg: HttpMessage) = f(msg)
     }
@@ -39,14 +38,14 @@ object MessagePredicate {
   def isRequest = apply(_.isRequest)
   def isResponse = apply(_.isResponse)
   def minEntitySize(minSize: Int) = apply(_.entity.buffer.length >= minSize)
-  def responseStatus(f: StatusCode => Boolean) = apply {
-    case x: HttpResponse => f(x.status)
-    case _: HttpRequest => false
+  def responseStatus(f: StatusCode ⇒ Boolean) = apply {
+    case x: HttpResponse ⇒ f(x.status)
+    case _: HttpRequest  ⇒ false
   }
   def isCompressible: MessagePredicate = apply {
     _.entity match {
-      case HttpBody(contentType, _) => contentType.mediaType.compressible
-      case EmptyEntity => false
+      case HttpBody(contentType, _) ⇒ contentType.mediaType.compressible
+      case EmptyEntity              ⇒ false
     }
   }
 }

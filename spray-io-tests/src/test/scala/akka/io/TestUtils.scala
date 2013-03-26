@@ -17,7 +17,8 @@ object TestUtils {
       serverSocket.socket.bind(new InetSocketAddress(address, 0))
       val port = serverSocket.socket.getLocalPort
       new InetSocketAddress(address, port)
-    } finally serverSocket.close()
+    }
+    finally serverSocket.close()
   }
 
   def verifyActorTermination(actor: ActorRef)(implicit system: ActorSystem): Unit = {

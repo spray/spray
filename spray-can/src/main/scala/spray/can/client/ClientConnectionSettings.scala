@@ -16,23 +16,22 @@
 
 package spray.can.client
 
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.{ ConfigFactory, Config }
 import scala.concurrent.duration.Duration
-import akka.actor.{ActorRefFactory, ActorSystem}
+import akka.actor.{ ActorRefFactory, ActorSystem }
 import spray.can.parsing.ParserSettings
 import spray.util._
 
-
 case class ClientConnectionSettings(
-  userAgentHeader: String,
-  sslEncryption: Boolean,
-  idleTimeout: Duration,
-  requestTimeout: Duration,
-  reapingCycle: Duration,
-  responseChunkAggregationLimit: Int,
-  requestSizeHint: Int,
-  connectingTimeout: Duration,
-  parserSettings: ParserSettings) {
+    userAgentHeader: String,
+    sslEncryption: Boolean,
+    idleTimeout: Duration,
+    requestTimeout: Duration,
+    reapingCycle: Duration,
+    responseChunkAggregationLimit: Int,
+    requestSizeHint: Int,
+    connectingTimeout: Duration,
+    parserSettings: ParserSettings) {
 
   requirePositiveOrUndefined(idleTimeout)
   requirePositiveOrUndefined(requestTimeout)
@@ -53,18 +52,17 @@ object ClientConnectionSettings {
       .withFallback(Utils.sprayConfigAdditions)
       .withFallback(ConfigFactory.defaultReference(getClass.getClassLoader))
     ClientConnectionSettings(
-      c getString   "user-agent-header",
-      c getBoolean  "ssl-encryption",
+      c getString "user-agent-header",
+      c getBoolean "ssl-encryption",
       c getDuration "idle-timeout",
       c getDuration "request-timeout",
       c getDuration "reaping-cycle",
-      c getBytes    "response-chunk-aggregation-limit" toInt,
-      c getBytes    "request-size-hint" toInt,
+      c getBytes "response-chunk-aggregation-limit" toInt,
+      c getBytes "request-size-hint" toInt,
       c getDuration "connecting-timeout",
       ParserSettings(c getConfig "parsing"))
   }
 
-  def apply(optionalSettings: Option[ClientConnectionSettings])
-           (implicit actorRefFactory: ActorRefFactory): ClientConnectionSettings =
+  def apply(optionalSettings: Option[ClientConnectionSettings])(implicit actorRefFactory: ActorRefFactory): ClientConnectionSettings =
     optionalSettings getOrElse apply(actorSystem)
 }

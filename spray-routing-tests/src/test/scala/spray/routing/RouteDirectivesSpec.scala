@@ -22,7 +22,6 @@ import HttpHeaders._
 import StatusCodes._
 import MediaTypes._
 
-
 class RouteDirectivesSpec extends RoutingSpec {
 
   "The `complete` directive" should {
@@ -36,9 +35,9 @@ class RouteDirectivesSpec extends RoutingSpec {
       var i = 0
       Put() ~> {
         get { complete { i += 1; "get" } } ~
-        put { complete { i += 1; "put" } } ~
-        (post & complete { i += 1; "post" }) ~
-        (delete & complete) { i += 1; "delete" }
+          put { complete { i += 1; "put" } } ~
+          (post & complete { i += 1; "post" }) ~
+          (delete & complete) { i += 1; "delete" }
       } ~> check {
         entityAs[String] === "put"
         i === 1
@@ -59,8 +58,7 @@ class RouteDirectivesSpec extends RoutingSpec {
         response === HttpResponse(
           status = 302,
           entity = HttpBody(`text/html`, "The requested resource temporarily resides under <a href=\"/foo\">this URI</a>."),
-          headers = Location("/foo") :: Nil
-        )
+          headers = Location("/foo") :: Nil)
       }
     }
     "produce proper 'NotModified' redirections" in {
@@ -69,5 +67,5 @@ class RouteDirectivesSpec extends RoutingSpec {
       } ~> check { response === HttpResponse(304, headers = Location("/foo") :: Nil) }
     }
   }
-  
+
 }

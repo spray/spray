@@ -17,11 +17,11 @@
 package spray.can.client
 
 import org.specs2.mutable.Specification
-import com.typesafe.config.{ConfigFactory, Config}
-import akka.actor.{ActorRef, Status, ActorSystem}
+import com.typesafe.config.{ ConfigFactory, Config }
+import akka.actor.{ ActorRef, Status, ActorSystem }
 import akka.io.IO
 import akka.testkit.TestProbe
-import spray.can.{HostConnectorInfo, HostConnectorSetup, Http}
+import spray.can.{ HostConnectorInfo, HostConnectorSetup, Http }
 import spray.util.Utils._
 import spray.httpx.RequestBuilding._
 import spray.http._
@@ -64,7 +64,6 @@ class SprayCanClientSpec extends Specification {
       unbind()
     }
   }
-
 
   "The host-level client infrastructure" should {
     "return the same HostConnector for identical setup requests" in new TestSetup {

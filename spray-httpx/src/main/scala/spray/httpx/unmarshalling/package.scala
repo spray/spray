@@ -18,7 +18,6 @@ package spray.httpx
 
 import spray.http._
 
-
 package object unmarshalling {
 
   type Deserialized[T] = Either[DeserializationError, T]
@@ -28,9 +27,9 @@ package object unmarshalling {
   type FromEntityOptionUnmarshaller[T] = Deserializer[Option[HttpEntity], T]
 
   def unmarshal[T](implicit um: Unmarshaller[T]) = um
-  def unmarshalUnsafe[T :Unmarshaller](entity: HttpEntity): T = unmarshal.apply(entity) match {
-    case Right(value) => value
-    case Left(error) => sys.error(error.toString)
+  def unmarshalUnsafe[T: Unmarshaller](entity: HttpEntity): T = unmarshal.apply(entity) match {
+    case Right(value) ⇒ value
+    case Left(error)  ⇒ sys.error(error.toString)
   }
 
   implicit def formFieldExtractor(form: HttpForm) = FormFieldExtractor(form)

@@ -21,7 +21,6 @@ import HttpHeaders._
 import MediaTypes._
 import HttpMethods._
 
-
 class MiscDirectivesSpec extends RoutingSpec {
 
   "routes created by the concatenation operator '~'" should {
@@ -43,7 +42,7 @@ class MiscDirectivesSpec extends RoutingSpec {
     "clear rejections that have already been 'overcome' by previous directives" in {
       Put() ~> {
         put { parameter('yeah) { echoComplete } } ~
-        get { completeOk }
+          get { completeOk }
       } ~> check { rejection === MissingQueryParamRejection("yeah") }
     }
   }

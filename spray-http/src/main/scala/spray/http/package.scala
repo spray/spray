@@ -19,7 +19,6 @@ package spray
 import java.nio.charset.Charset
 import spray.http.parser.HttpParser
 
-
 package object http {
   val UTF8: Charset = HttpCharsets.`UTF-8`.nioCharset
 
@@ -44,8 +43,7 @@ package object http {
         HttpHeaders.RawHeader("Cookie", "spray=cool"),
         HttpHeaders.RawHeader("Host", "spray.io"),
         HttpHeaders.RawHeader("X-Forwarded-For", "1.2.3.4"),
-        HttpHeaders.RawHeader("Fancy-Custom-Header", "yeah")
-      )
+        HttpHeaders.RawHeader("Fancy-Custom-Header", "yeah"))
     }
     HttpResponse(status = 200)
   }
@@ -61,11 +59,11 @@ package http {
     def parseMultiple(string: String): Seq[ProductVersion] =
       string.split("\\s").flatMap {
         _.split("/", 2) match {
-          case Array() | Array("") | Array("", _) => None
-          case Array(product) => Some(ProductVersion(product))
-          case Array(product, version) => Some(ProductVersion(product, version))
+          case Array() | Array("") | Array("", _) ⇒ None
+          case Array(product)                     ⇒ Some(ProductVersion(product))
+          case Array(product, version)            ⇒ Some(ProductVersion(product, version))
         }
-      } (collection.breakOut)
+      }(collection.breakOut)
   }
 
 }

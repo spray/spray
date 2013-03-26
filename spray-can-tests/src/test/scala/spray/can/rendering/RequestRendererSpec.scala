@@ -24,7 +24,6 @@ import spray.http._
 import HttpHeaders.RawHeader
 import HttpMethods._
 
-
 class RequestRendererSpec extends Specification {
 
   "The request preparation logic" should {
@@ -44,8 +43,7 @@ class RequestRendererSpec extends Specification {
         HttpRequest(POST, "/abc/xyz", List(
           RawHeader("X-Fancy", "naa"),
           RawHeader("Age", "0"),
-          RawHeader("Host", "spray.io:9999"))
-        ) must beRenderedTo {
+          RawHeader("Host", "spray.io:9999"))) must beRenderedTo {
           """|POST /abc/xyz HTTP/1.1
              |X-Fancy: naa
              |Age: 0
@@ -61,8 +59,7 @@ class RequestRendererSpec extends Specification {
         HttpRequest(PUT, "/abc/xyz", List(
           RawHeader("X-Fancy", "naa"),
           RawHeader("Cache-Control", "public"),
-          RawHeader("Host", "spray.io"))
-        ).withEntity("The content please!") must beRenderedTo {
+          RawHeader("Host", "spray.io"))).withEntity("The content please!") must beRenderedTo {
           """|PUT /abc/xyz HTTP/1.1
              |X-Fancy: naa
              |Cache-Control: public
@@ -131,8 +128,7 @@ class RequestRendererSpec extends Specification {
             |User-Agent: settings-ua/1.0
             |
             |""",
-          new RequestRenderer("settings-ua/1.0", 256)
-        )
+          new RequestRenderer("settings-ua/1.0", 256))
       }
     }
   }
@@ -142,7 +138,7 @@ class RequestRendererSpec extends Specification {
   def beRenderedTo(content: String) = beRenderedToWithRenderer(content, defaultRenderer)
 
   def beRenderedToWithRenderer(content: String, renderer: RequestRenderer) = {
-    beEqualTo(content.stripMargin.replace(EOL, "\r\n")) ^^ { part: HttpRequestPart =>
+    beEqualTo(content.stripMargin.replace(EOL, "\r\n")) ^^ { part: HttpRequestPart ⇒
       val RenderedMessagePart(data, false) = renderer.render(part, new InetSocketAddress("test.com", 8080))
       data.utf8String
     }

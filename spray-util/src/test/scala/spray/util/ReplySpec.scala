@@ -16,14 +16,14 @@
 
 package spray.util
 
-import akka.actor.{Actor, Props, ActorSystem}
+import akka.actor.{ Actor, Props, ActorSystem }
 import org.specs2.mutable.Specification
 import akka.testkit.TestProbe
 
 class ReplySpec extends Specification {
   implicit val system = ActorSystem(Utils.actorSystemNameFrom(getClass))
 
-  val echoRef = system.actorOf(Props(new Actor { def receive = { case x => sender ! x } }))
+  val echoRef = system.actorOf(Props(new Actor { def receive = { case x ⇒ sender ! x } }))
 
   "The Reply" should {
     "be able to inject itself into a reply message" in {

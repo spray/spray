@@ -103,8 +103,10 @@ private[io] class SelectionHandler(manager: ActorRef, settings: SelectionHandler
             case NonFatal(e) ⇒ log.error(e, "Error closing channel")
           }
         }
-      } finally selector.close()
-    } catch {
+      }
+      finally selector.close()
+    }
+    catch {
       case NonFatal(e) ⇒ log.error(e, "Error closing selector")
     }
   }
@@ -116,7 +118,8 @@ private[io] class SelectionHandler(manager: ActorRef, settings: SelectionHandler
     if (TraceLogging) log.debug("Executing [{}]", cmd)
     if (MaxChannelsPerSelector == -1 || childrenKeys.size < MaxChannelsPerSelector) {
       body
-    } else {
+    }
+    else {
       log.warning("Rejecting [{}] with [{}] retries left, retrying...", cmd, retriesLeft)
       context.parent forward Retry(cmd, retriesLeft - 1)
     }
@@ -201,7 +204,8 @@ private[io] class SelectionHandler(manager: ActorRef, settings: SelectionHandler
               case x if (x & OP_CONNECT) > 0 ⇒ connection ! ChannelConnectable
               case x                         ⇒ log.warning("Invalid readyOps: [{}]", x)
             }
-          } else log.warning("Invalid selection key: [{}]", key)
+          }
+          else log.warning("Invalid selection key: [{}]", key)
         }
         keys.clear() // we need to remove the selected keys from the set, otherwise they remain selected
       }

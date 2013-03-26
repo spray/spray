@@ -17,9 +17,8 @@
 package spray.httpx.encoding
 
 import java.io.ByteArrayOutputStream
-import java.util.zip.{InflaterOutputStream, DeflaterOutputStream}
+import java.util.zip.{ InflaterOutputStream, DeflaterOutputStream }
 import org.specs2.mutable.Specification
-
 
 class DeflateSpec extends Specification with CodecSpecSupport {
 
@@ -43,14 +42,14 @@ class DeflateSpec extends Specification with CodecSpecSupport {
       ourInflate(ourDeflate(largeTextBytes)) must readAs(largeText)
     }
     "provide a better compression ratio than the standard Deflater/Inflater streams" in {
-      ourDeflate(largeTextBytes).length must be_< (streamDeflate(largeTextBytes).length)
+      ourDeflate(largeTextBytes).length must be_<(streamDeflate(largeTextBytes).length)
     }
     "support chunked round-trip encoding/decoding" in {
       val chunks = largeTextBytes.grouped(512).toArray
       val comp = Deflate.newCompressor
       val decomp = Deflate.newDecompressor
       val chunks2 =
-        chunks.map { chunk => decomp.decompress(comp.compress(chunk).flush()) } :+ decomp.decompress(comp.finish())
+        chunks.map { chunk ⇒ decomp.decompress(comp.compress(chunk).flush()) } :+ decomp.decompress(comp.finish())
       chunks2.flatten must readAs(largeText)
     }
   }

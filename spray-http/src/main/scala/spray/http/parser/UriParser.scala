@@ -17,7 +17,7 @@
 package spray.http.parser
 
 import java.nio.charset.Charset
-import java.lang.{StringBuilder => JStringBuilder}
+import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import scala.annotation.tailrec
 import scala.collection.immutable.NumericRange
 import spray.http._
@@ -103,12 +103,11 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
     def endOfScheme = is(current, COLON)
     val start = cursor
     ch('h') && ch('t') && ch('t') && ch('p') && (
-      endOfScheme && setScheme("http") || ch('s') && endOfScheme && setScheme("https")
-    ) || reset(start) && resetFirstUpper() && Alpha && {
-      def matches(c: Char) = is(c, LOWER_ALPHA | DIGIT | PLUS | DASH | DOT) || is(c, UPPER_ALPHA) && markUpper()
-      while (matches(current)) advance()
-      endOfScheme && setScheme(toLowerIfNeeded(splice(start, cursor), firstUpper - start))
-    }
+      endOfScheme && setScheme("http") || ch('s') && endOfScheme && setScheme("https")) || reset(start) && resetFirstUpper() && Alpha && {
+        def matches(c: Char) = is(c, LOWER_ALPHA | DIGIT | PLUS | DASH | DOT) || is(c, UPPER_ALPHA) && markUpper()
+        while (matches(current)) advance()
+        endOfScheme && setScheme(toLowerIfNeeded(splice(start, cursor), firstUpper - start))
+      }
   }
 
   def authority = {
@@ -123,7 +122,7 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
     val start = cursor
     var mark = start
     resetFirstPercent()
-    while (matches(UNRESERVED | SUB_DELIM | COLON)|| `pct-encoded`) mark = cursor
+    while (matches(UNRESERVED | SUB_DELIM | COLON) || `pct-encoded`) mark = cursor
     reset(mark)
     ch('@') && {
       _userinfo = decodeIfNeeded(splice(start, cursor - 1), firstPercent - start, charset)
@@ -179,11 +178,10 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
       || reset(mark) && (optH16c && optH16c && optH16c && h16 || reset(mark)) && cc && h16c && ls32
       || reset(mark) && (optH16c && optH16c && optH16c && optH16c && h16 || reset(mark)) && cc && ls32
       || reset(mark) && (optH16c && optH16c && optH16c && optH16c && optH16c && h16 || reset(mark)) && cc && h16
-      || reset(mark) && (optH16c && optH16c && optH16c && optH16c && optH16c && optH16c && h16 || reset(mark)) && cc
-      ) && {
-      _host = IPv6Host(splice(mark, cursor))
-      true
-    }
+      || reset(mark) && (optH16c && optH16c && optH16c && optH16c && optH16c && optH16c && h16 || reset(mark)) && cc) && {
+        _host = IPv6Host(splice(mark, cursor))
+        true
+      }
   }
 
   def h16 = Hexdig && (Hexdig && (Hexdig && (Hexdig || true) || true) || true)
@@ -226,7 +224,8 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
           if (firstPercent >= 0) toLowerIfNeeded(decodeIfNeeded(s, firstPercent, charset), min(firstPercent, firstUpper))
           else toLowerIfNeeded(s, firstUpper)
         else if (firstPercent >= 0) toLowerIfNeeded(decodeIfNeeded(s, firstPercent, charset), firstPercent) else s
-      } else ""
+      }
+      else ""
     }
     true
   }
@@ -324,9 +323,9 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
   // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.3
   def `request-target` = {
     val start = cursor
-    (`absolute-path` && { val mark = cursor; ch('?') && query || reset(mark) }  // origin-form
-      || reset(start) && `absolute-URI`                                         // absolute-form
-      || reset(start) && authority)                                             // authority-form or asterisk-form
+    (`absolute-path` && { val mark = cursor; ch('?') && query || reset(mark) } // origin-form
+      || reset(start) && `absolute-URI` // absolute-form
+      || reset(start) && authority) // authority-form or asterisk-form
   }
 
   def parseHttpRequestTarget(): Uri = {
@@ -393,11 +392,12 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
         val c = input.charAt(maxCursor)
         if (Character.isISOControl(c)) sb.append("\\u%04x" format c.toInt) else sb.append(c)
         sb.append('\'')
-      } else sb.append("end-of-input")
+      }
+      else sb.append("end-of-input")
       val summary = sb.append(" at position ").append(maxCursor).toString
 
       sb.setLength(0)
-      val detail = sb.append('\n').append(input.toString.map(c => if (Character.isISOControl(c)) '?' else c).mkString(""))
+      val detail = sb.append('\n').append(input.toString.map(c ⇒ if (Character.isISOControl(c)) '?' else c).mkString(""))
         .append('\n').append(" " * maxCursor).append("^\n").toString
       fail(summary, detail)
     }
@@ -442,7 +442,7 @@ private[http] object UriParser {
 
   private[http] def is(c: Int, mask: Int): Boolean = (props(indexFor(c)) & mask) != 0
   private def indexFor(c: Int): Int = c & sex(c - 127) // branchless for `if (c <= 127) c else 0`
-  private def mark(mask: Int, chars: Char*): Unit = chars.foreach(c => props(indexFor(c)) = props(indexFor(c)) | mask)
+  private def mark(mask: Int, chars: Char*): Unit = chars.foreach(c ⇒ props(indexFor(c)) = props(indexFor(c)) | mask)
   private def mark(mask: Int, range: NumericRange[Char]): Unit = mark(mask, range.toSeq: _*)
 
   mark(LOWER_ALPHA, 'a' to 'z')
@@ -453,7 +453,7 @@ private[http] object UriParser {
   mark(LOWER_HEX_LETTER, 'a' to 'f')
   mark(UPPER_HEX_LETTER, 'A' to 'F')
   mark(UNRESERVED_SPECIALS, '-', '.', '_', '~')
-  mark(GEN_DELIM, ':', '/', '?', '#' ,'[' , ']', '@')
+  mark(GEN_DELIM, ':', '/', '?', '#', '[', ']', '@')
   mark(SUB_DELIM_BASE, '!', '$', '\'', '(', ')', '*', ',', ';')
   mark(AT, '@')
   mark(COLON, ':')

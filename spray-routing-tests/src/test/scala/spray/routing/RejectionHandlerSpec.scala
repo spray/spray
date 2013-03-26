@@ -25,7 +25,6 @@ import StatusCodes._
 import MediaTypes._
 import spray.httpx.unmarshalling.Unmarshaller
 
-
 class RejectionHandlerSpec extends RoutingSpec {
 
   val wrap = handleRejections(RejectionHandler.Default)
@@ -33,7 +32,7 @@ class RejectionHandlerSpec extends RoutingSpec {
   "The default RejectionHandler" should {
     "respond with Forbidden for requests resulting in an AuthenticationFailedRejection" in {
       Get() ~> Authorization(BasicHttpCredentials("bob", "")) ~> wrap {
-        authenticate(BasicAuth()) { _ => completeOk }
+        authenticate(BasicAuth()) { _ ⇒ completeOk }
       } ~> check {
         status === Unauthorized
         entityAs[String] === "The supplied authentication is invalid"
@@ -41,7 +40,7 @@ class RejectionHandlerSpec extends RoutingSpec {
     }
     "respond with Unauthorized plus WWW-Authenticate header for AuthenticationRequiredRejections" in {
       Get() ~> wrap {
-        authenticate(BasicAuth()) { _ => completeOk }
+        authenticate(BasicAuth()) { _ ⇒ completeOk }
       } ~> check {
         status === Unauthorized
         headers === `WWW-Authenticate`(HttpChallenge("Basic", "Secured Resource")) :: Nil
@@ -66,7 +65,7 @@ class RejectionHandlerSpec extends RoutingSpec {
     }
     "respond with BadRequest for requests resulting in a MalformedFormFieldRejection" in {
       Post("/", FormData(Map("amount" -> "12.2"))) ~> wrap {
-        formField('amount.as[Int]) { _ => completeOk }
+        formField('amount.as[Int]) { _ ⇒ completeOk }
       } ~> check {
         status === BadRequest
         entityAs[String] === "The form field 'amount' was malformed:\n'12.2' is not a valid 32-bit integer value"
@@ -74,7 +73,7 @@ class RejectionHandlerSpec extends RoutingSpec {
     }
     "respond with BadRequest for requests resulting in a MalformedQueryParamRejection" in {
       Post("/?amount=xyz") ~> wrap {
-        parameters('amount.as[Int]) { _ => completeOk }
+        parameters('amount.as[Int]) { _ ⇒ completeOk }
       } ~> check {
         status === BadRequest
         entityAs[String] === "The query parameter 'amount' was malformed:\n" +
@@ -83,7 +82,7 @@ class RejectionHandlerSpec extends RoutingSpec {
     }
     "respond with BadRequest for requests resulting in MalformedRequestContentRejections" in {
       Post("/", HttpBody(`text/xml`, "<broken>xmlbroken>")) ~> wrap {
-        entity(as[NodeSeq]) { _ => completeOk }
+        entity(as[NodeSeq]) { _ ⇒ completeOk }
       } ~> check {
         status === BadRequest
         entityAs[String] === "The request content was malformed:\n" +
@@ -93,7 +92,7 @@ class RejectionHandlerSpec extends RoutingSpec {
     "respond with MethodNotAllowed for requests resulting in MethodRejections" in {
       Post("/", "/test") ~> wrap {
         get { complete("yes") } ~
-        put { complete("yes") }
+          put { complete("yes") }
       } ~> check {
         status === MethodNotAllowed
         entityAs[String] === "HTTP method not allowed, supported methods: GET, PUT"
@@ -101,7 +100,7 @@ class RejectionHandlerSpec extends RoutingSpec {
     }
     "respond with BadRequest for requests resulting in a MissingFormFieldRejection" in {
       Get() ~> wrap {
-        formFields('amount, 'orderId) { (_, _) => completeOk }
+        formFields('amount, 'orderId) { (_, _) ⇒ completeOk }
       } ~> check {
         status === BadRequest
         entityAs[String] === "Request is missing required form field 'amount'"
@@ -109,7 +108,7 @@ class RejectionHandlerSpec extends RoutingSpec {
     }
     "respond with NotFound for requests resulting in a MissingQueryParamRejection" in {
       Get() ~> wrap {
-        parameters('amount, 'orderId) { (_, _) => completeOk }
+        parameters('amount, 'orderId) { (_, _) ⇒ completeOk }
       } ~> check {
         status === NotFound
         entityAs[String] === "Request is missing required query parameter 'amount'"
@@ -118,7 +117,7 @@ class RejectionHandlerSpec extends RoutingSpec {
     "respond with BadRequest for requests resulting in RequestEntityExpectedRejection" in {
       implicit val x = Unmarshaller.forNonEmpty[String]
       Post() ~> wrap {
-        entity(as[String]) { _ => completeOk }
+        entity(as[String]) { _ ⇒ completeOk }
       } ~> check {
         status === BadRequest
         entityAs[String] === "Request entity expected but not supplied"
@@ -143,7 +142,7 @@ class RejectionHandlerSpec extends RoutingSpec {
     }
     "respond with UnsupportedMediaType for requests resulting in UnsupportedRequestContentTypeRejection" in {
       Post("/", HttpBody(`application/pdf`, "...PDF...")) ~> wrap {
-        entity(as[NodeSeq]) { _ => completeOk }
+        entity(as[NodeSeq]) { _ ⇒ completeOk }
       } ~> check {
         status === UnsupportedMediaType
         entityAs[String] === "There was a problem with the requests Content-Type:\n" +

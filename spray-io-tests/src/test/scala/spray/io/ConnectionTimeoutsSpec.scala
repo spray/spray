@@ -23,7 +23,6 @@ import akka.io.Tcp
 import akka.util.ByteString
 import spray.testkit.Specs2PipelineStageTest
 
-
 class ConnectionTimeoutsSpec extends Specification with Specs2PipelineStageTest with NoTimeConversions {
   val stage = ConnectionTimeouts(200.millis)
 

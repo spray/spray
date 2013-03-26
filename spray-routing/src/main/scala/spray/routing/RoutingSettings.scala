@@ -16,19 +16,19 @@
 
 package spray.routing
 
-import com.typesafe.config.{ConfigFactory, Config}
-import akka.actor.{ActorRefFactory, ActorSystem}
+import com.typesafe.config.{ ConfigFactory, Config }
+import akka.actor.{ ActorRefFactory, ActorSystem }
 import spray.util._
 
 case class RoutingSettings(
-  verboseErrorMessages: Boolean,
-  fileChunkingThresholdSize: Long,
-  fileChunkingChunkSize: Long,
-  users: Config,
-  renderVanityFooter: Boolean) {
+    verboseErrorMessages: Boolean,
+    fileChunkingThresholdSize: Long,
+    fileChunkingChunkSize: Long,
+    users: Config,
+    renderVanityFooter: Boolean) {
 
   require(fileChunkingThresholdSize >= 0, "file-chunking-threshold-size must be >= 0")
-  require(fileChunkingChunkSize     > 0, "file-chunking-chunk-size must be > 0")
+  require(fileChunkingChunkSize > 0, "file-chunking-chunk-size must be > 0")
 }
 
 object RoutingSettings {

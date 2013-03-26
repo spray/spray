@@ -19,11 +19,11 @@ package spray.testkit
 import java.net.InetSocketAddress
 import com.typesafe.config.{ ConfigFactory, Config }
 import org.scalatest.Suite
-import akka.testkit.{TestActorRef, TestProbe}
+import akka.testkit.{ TestActorRef, TestProbe }
 import akka.actor._
 import spray.util._
 import spray.io._
-import akka.event.{Logging, LoggingAdapter}
+import akka.event.{ Logging, LoggingAdapter }
 import akka.util.ByteString
 
 trait RawPipelineStageTest { test ⇒
@@ -110,7 +110,7 @@ trait RawSpecs2PipelineStageTest extends RawPipelineStageTest with Specs2Interfa
   class Fixture(stage: RawPipelineStage[Context],
                 remoteAddress: InetSocketAddress = new InetSocketAddress(remoteHostName, remoteHostPost),
                 localAddress: InetSocketAddress = new InetSocketAddress(localHostName, localHostPost))
-                extends BaseFixture(stage, remoteAddress, localAddress) with org.specs2.specification.Scope
+      extends BaseFixture(stage, remoteAddress, localAddress) with org.specs2.specification.Scope
 }
 
 trait Specs2PipelineStageTest extends RawSpecs2PipelineStageTest with DefaultPipelineStageTest

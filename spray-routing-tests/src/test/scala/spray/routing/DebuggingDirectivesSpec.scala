@@ -19,7 +19,6 @@ package spray.routing
 import akka.event.LoggingAdapter
 import spray.util.EOL
 
-
 class DebuggingDirectivesSpec extends RoutingSpec {
   sequential
 

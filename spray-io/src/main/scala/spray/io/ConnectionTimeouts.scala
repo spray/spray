@@ -37,7 +37,7 @@ object ConnectionTimeouts {
 
           case SetIdleTimeout(x) ⇒ timeout = x
 
-          case cmd ⇒ commandPL(cmd)
+          case cmd               ⇒ commandPL(cmd)
         }
 
         val eventPipeline: EPL = {
@@ -45,7 +45,7 @@ object ConnectionTimeouts {
             lastActivity = now
             eventPL(x)
 
-          case tick@ TickGenerator.Tick ⇒
+          case tick @ TickGenerator.Tick ⇒
             if (timeout.isFinite && (lastActivity + timeout.toMillis < System.currentTimeMillis)) {
               context.log.debug("Closing connection due to idle timeout...")
               commandPL(Tcp.Close)

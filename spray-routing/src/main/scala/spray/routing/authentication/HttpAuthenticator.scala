@@ -18,11 +18,10 @@ package spray.routing
 package authentication
 
 import com.typesafe.config.Config
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 import spray.http._
 import spray.util._
 import HttpHeaders._
-
 
 /**
  * An HttpAuthenticator is a ContextAuthenticator that uses credentials passed to the server via the
@@ -32,10 +31,10 @@ trait HttpAuthenticator[U] extends ContextAuthenticator[U] {
 
   def apply(ctx: RequestContext) = {
     val authHeader = ctx.request.headers.findByType[`Authorization`]
-    val credentials = authHeader.map { case Authorization(creds) => creds }
+    val credentials = authHeader.map { case Authorization(creds) ⇒ creds }
     authenticate(credentials, ctx) map {
-      case Some(userContext) => Right(userContext)
-      case None => Left {
+      case Some(userContext) ⇒ Right(userContext)
+      case None ⇒ Left {
         if (authHeader.isEmpty) AuthenticationRequiredRejection(scheme, realm, params(ctx))
         else AuthenticationFailedRejection(realm)
       }
@@ -46,17 +45,15 @@ trait HttpAuthenticator[U] extends ContextAuthenticator[U] {
   def scheme: String
   def realm: String
   def params(ctx: RequestContext): Map[String, String]
-  
+
   def authenticate(credentials: Option[HttpCredentials], ctx: RequestContext): Future[Option[U]]
 }
-
 
 /**
  * The BasicHttpAuthenticator implements HTTP Basic Auth.
  */
-class BasicHttpAuthenticator[U](val realm: String, val userPassAuthenticator: UserPassAuthenticator[U])
-                               (implicit val executionContext: ExecutionContext)
-  extends HttpAuthenticator[U] {
+class BasicHttpAuthenticator[U](val realm: String, val userPassAuthenticator: UserPassAuthenticator[U])(implicit val executionContext: ExecutionContext)
+    extends HttpAuthenticator[U] {
 
   def scheme = "Basic"
   def params(ctx: RequestContext) = Map.empty
@@ -64,8 +61,8 @@ class BasicHttpAuthenticator[U](val realm: String, val userPassAuthenticator: Us
   def authenticate(credentials: Option[HttpCredentials], ctx: RequestContext) = {
     userPassAuthenticator {
       credentials.flatMap {
-        case BasicHttpCredentials(user, pass) => Some(UserPass(user, pass))
-        case _ => None
+        case BasicHttpCredentials(user, pass) ⇒ Some(UserPass(user, pass))
+        case _                                ⇒ None
       }
     }
   }
@@ -77,17 +74,14 @@ object BasicAuth {
 
   def apply(realm: String)(implicit settings: RoutingSettings,
                            ec: ExecutionContext): BasicHttpAuthenticator[BasicUserContext] =
-    apply(realm, userPass => BasicUserContext(userPass.user))
+    apply(realm, userPass ⇒ BasicUserContext(userPass.user))
 
-  def apply[T](realm: String, createUser: UserPass => T)
-                  (implicit settings: RoutingSettings, ec: ExecutionContext): BasicHttpAuthenticator[T] =
+  def apply[T](realm: String, createUser: UserPass ⇒ T)(implicit settings: RoutingSettings, ec: ExecutionContext): BasicHttpAuthenticator[T] =
     apply(realm, settings.users, createUser)
 
-  def apply[T](realm: String, config: Config, createUser: UserPass => T)
-                  (implicit ec: ExecutionContext): BasicHttpAuthenticator[T] =
+  def apply[T](realm: String, config: Config, createUser: UserPass ⇒ T)(implicit ec: ExecutionContext): BasicHttpAuthenticator[T] =
     apply(UserPassAuthenticator.fromConfig(config)(createUser), realm)
 
-  def apply[T](authenticator: UserPassAuthenticator[T], realm: String)
-              (implicit ec: ExecutionContext): BasicHttpAuthenticator[T] =
+  def apply[T](authenticator: UserPassAuthenticator[T], realm: String)(implicit ec: ExecutionContext): BasicHttpAuthenticator[T] =
     new BasicHttpAuthenticator[T](realm, authenticator)
 }

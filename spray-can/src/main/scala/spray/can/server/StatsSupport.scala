@@ -18,24 +18,23 @@ package spray.can.server
 import java.util.concurrent.atomic.AtomicLong
 import scala.annotation.tailrec
 import scala.concurrent.duration._
-import spray.http.{Timedout, HttpMessageStart}
+import spray.http.{ Timedout, HttpMessageStart }
 import spray.can.rendering.HttpResponsePartRenderingContext
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.io._
 import spray.can.Http
 
-
 object StatsSupport {
 
   class StatsHolder {
-    val startTimestamp     = System.currentTimeMillis
-    val requestStarts      = new AtomicLong
-    val responseStarts     = new AtomicLong
-    val maxOpenRequests    = new AtomicLong
-    val connectionsOpened  = new AtomicLong
-    val connectionsClosed  = new AtomicLong
+    val startTimestamp = System.currentTimeMillis
+    val requestStarts = new AtomicLong
+    val responseStarts = new AtomicLong
+    val maxOpenRequests = new AtomicLong
+    val connectionsOpened = new AtomicLong
+    val connectionsClosed = new AtomicLong
     val maxOpenConnections = new AtomicLong
-    val requestTimeouts    = new AtomicLong
+    val requestTimeouts = new AtomicLong
 
     @tailrec
     final def adjustMaxOpenConnections() {
@@ -65,8 +64,7 @@ object StatsSupport {
       totalConnections = connectionsOpened.get,
       openConnections = connectionsOpened.get - connectionsClosed.get,
       maxOpenConnections = maxOpenConnections.get,
-      requestTimeouts = requestTimeouts.get
-    )
+      requestTimeouts = requestTimeouts.get)
 
     def clear() {
       requestStarts.set(0L)
@@ -88,28 +86,28 @@ object StatsSupport {
           adjustMaxOpenConnections()
 
           val commandPipeline: CPL = {
-            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageStart] =>
+            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageStart] ⇒
               responseStarts.incrementAndGet()
               commandPL(x)
 
-            case x@ Pipeline.Tell(_, _: Timedout, _) =>
+            case x @ Pipeline.Tell(_, _: Timedout, _) ⇒
               requestTimeouts.incrementAndGet()
               commandPL(x)
 
-            case cmd => commandPL(cmd)
+            case cmd ⇒ commandPL(cmd)
           }
 
           val eventPipeline: EPL = {
-            case ev: HttpMessageStartEvent =>
+            case ev: HttpMessageStartEvent ⇒
               requestStarts.incrementAndGet()
               adjustMaxOpenRequests()
               eventPL(ev)
 
-            case x: Http.ConnectionClosed =>
+            case x: Http.ConnectionClosed ⇒
               connectionsClosed.incrementAndGet()
               eventPL(x)
 
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
         }
     }
@@ -123,5 +121,4 @@ case class Stats(
   totalConnections: Long,
   openConnections: Long,
   maxOpenConnections: Long,
-  requestTimeouts: Long
-)
+  requestTimeouts: Long)

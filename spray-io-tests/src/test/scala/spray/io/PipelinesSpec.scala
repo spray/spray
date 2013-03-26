@@ -18,7 +18,6 @@ package spray.io
 
 import org.specs2.mutable.Specification
 
-
 class PipelinesSpec extends Specification {
 
   "The >> must correctly combine two PipelineStages" >> {
@@ -39,12 +38,11 @@ class PipelinesSpec extends Specification {
     var eventResult: String = ""
     val pl = stage(
       context = null,
-      commandPL = { case TestCommand(s) => commandResult = s },
-      eventPL = { case TestEvent(s) => eventResult = s }
-    )
+      commandPL = { case TestCommand(s) ⇒ commandResult = s },
+      eventPL = { case TestEvent(s) ⇒ eventResult = s })
     cmdOrEv match {
-      case cmd: Command => pl.commandPipeline(cmd)
-      case ev: Event => pl.eventPipeline(ev)
+      case cmd: Command ⇒ pl.commandPipeline(cmd)
+      case ev: Event    ⇒ pl.eventPipeline(ev)
     }
     (commandResult, eventResult)
   }
@@ -53,10 +51,10 @@ class PipelinesSpec extends Specification {
     def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL) =
       new Pipelines {
         val commandPipeline: CPL = {
-          case TestCommand(s) => commandPL(TestCommand(s + c))
+          case TestCommand(s) ⇒ commandPL(TestCommand(s + c))
         }
         val eventPipeline: EPL = {
-          case TestEvent(s) => eventPL(TestEvent(s + c))
+          case TestEvent(s) ⇒ eventPL(TestEvent(s + c))
         }
       }
   }

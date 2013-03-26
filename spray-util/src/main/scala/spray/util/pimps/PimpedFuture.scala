@@ -17,7 +17,7 @@
 package spray.util
 package pimps
 
-import scala.concurrent.{ExecutionContext, Promise, Await, Future}
+import scala.concurrent.{ ExecutionContext, Promise, Await, Future }
 import scala.concurrent.duration._
 import akka.actor.ActorRefFactory
 import akka.util.Timeout
@@ -32,7 +32,7 @@ class PimpedFuture[+A](underlying: Future[A]) {
 
   def delay(duration: FiniteDuration)(implicit refFactory: ActorRefFactory, ec: ExecutionContext): Future[A] = {
     val promise = Promise[A]()
-    underlying.onComplete { value =>
+    underlying.onComplete { value ⇒
       actorSystem.scheduler.scheduleOnce(duration) { promise.complete(value) }
     }
     promise.future

@@ -18,7 +18,6 @@ package spray.routing
 
 import spray.http._
 
-
 /**
  * A rejection encapsulates a specific reason why a Route was not able to handle a request. Rejections are gathered
  * up over the course of a Route evaluation and finally converted to [[spray.http.HttpResponse]]s by the
@@ -163,7 +162,7 @@ case class ValidationRejection(message: String, cause: Option[Throwable] = None)
  * MethodRejection added by the ``get`` directive is cancelled by the ``put`` directive (since the HTTP method
  * did indeed match.
  */
-case class TransformationRejection(transform: List[Rejection] => List[Rejection]) extends Rejection
+case class TransformationRejection(transform: List[Rejection] ⇒ List[Rejection]) extends Rejection
 
 /**
  * An exception wrapping a Rejection.

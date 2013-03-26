@@ -21,7 +21,7 @@ import scala.collection.immutable
 private[io] class TcpOutgoingConnection(_tcp: TcpExt,
                                         commander: ActorRef,
                                         connect: Connect)
-  extends TcpConnection(TcpOutgoingConnection.newSocketChannel(), _tcp) {
+    extends TcpConnection(TcpOutgoingConnection.newSocketChannel(), _tcp) {
 
   import connect._
 
@@ -48,7 +48,8 @@ private[io] class TcpOutgoingConnection(_tcp: TcpExt,
         assert(connected, "Connectable channel failed to connect")
         log.debug("Connection established")
         completeConnect(commander, options)
-      } catch {
+      }
+      catch {
         case e: IOException ⇒
           if (tcp.Settings.TraceLogging) log.debug("Could not establish connection due to {}", e)
           closedMessage = TcpConnection.CloseInformation(Set(commander), CommandFailed(connect))

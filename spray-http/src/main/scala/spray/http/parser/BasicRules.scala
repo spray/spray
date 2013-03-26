@@ -23,49 +23,49 @@ import org.parboiled.scala._
 private[parser] object BasicRules extends Parser {
 
   def Octet = rule { "\u0000" - "\u00FF" }
-  
+
   def Char = rule { "\u0000" - "\u007F" }
 
   def Alpha = rule { LoAlpha | UpAlpha }
 
   def UpAlpha = rule { "A" - "Z" }
-  
+
   def LoAlpha = rule { "a" - "z" }
-  
+
   def Digit = rule { "0" - "9" }
 
   def AlphaNum = rule { Alpha | Digit }
-  
+
   def CTL = rule { "\u0000" - "\u001F" | "\u001F" }
-  
+
   def CRLF = rule { str("\r\n") }
-  
+
   def LWS = rule { optional(CRLF) ~ oneOrMore(anyOf(" \t")) }
-  
+
   def Text = rule { !CTL ~ ANY | LWS }
-  
+
   def Hex = rule { "A" - "F" | "a" - "f" | Digit }
-  
-  def Separator = rule { anyOf("()<>@,;:\\\"/[]?={} \t") } 
-  
+
+  def Separator = rule { anyOf("()<>@,;:\\\"/[]?={} \t") }
+
   def Token: Rule1[String] = rule { oneOrMore(!CTL ~ !Separator ~ ANY) ~> identityFunc }
-  
+
   def Comment: Rule0 = rule { "(" ~ zeroOrMore(CText | QuotedPair ~ DROP | Comment) ~ ")" }
-  
+
   def CText = rule { !anyOf("()") ~ Text }
-  
+
   def QuotedString: Rule1[String] = rule {
-    "\"" ~ zeroOrMore(QuotedPair | QDText) ~~> (chars => new String(chars.toArray)) ~ "\""
+    "\"" ~ zeroOrMore(QuotedPair | QDText) ~~> (chars ⇒ new String(chars.toArray)) ~ "\""
   }
-  
+
   def QDText: Rule1[Char] = rule { !ch('"') ~ Text ~:> identityFunc }
-  
+
   def QuotedPair: Rule1[Char] = rule { "\\" ~ Char ~:> identityFunc }
-  
+
   // helpers
-  
+
   def OptWS = rule { zeroOrMore(LWS) }
-  
+
   def ListSep = rule { oneOrMore("," ~ OptWS) }
 
   // we don't match scoped IPv6 addresses

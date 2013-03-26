@@ -21,7 +21,6 @@ import scala.util.matching.Regex
 import spray.util._
 import shapeless._
 
-
 trait HostDirectives {
   import BasicDirectives._
   import RouteDirectives._
@@ -39,7 +38,7 @@ trait HostDirectives {
   /**
    * Rejects all requests for whose host name the given predicate function returns false.
    */
-  def host(predicate: String => Boolean): Directive0 = hostName.require(predicate)
+  def host(predicate: String ⇒ Boolean): Directive0 = hostName.require(predicate)
 
   /**
    * Rejects all requests with a host name that doesn't have a prefix matching the given regular expression.
@@ -48,17 +47,17 @@ trait HostDirectives {
    * If the regex contains more than one capturing group an IllegalArgumentException is thrown.
    */
   def host(regex: Regex): Directive[String :: HNil] = {
-    def forFunc(regexMatch: String => Option[String]): Directive[String :: HNil] = {
-      extract(ctx => regexMatch(ctx.request.uri.authority.host.address)).flatMap {
-        case Some(matched) => provide(matched)
-        case None => reject
+    def forFunc(regexMatch: String ⇒ Option[String]): Directive[String :: HNil] = {
+      extract(ctx ⇒ regexMatch(ctx.request.uri.authority.host.address)).flatMap {
+        case Some(matched) ⇒ provide(matched)
+        case None          ⇒ reject
       }
     }
     regex.groupCount match {
-      case 0 => forFunc(regex.findPrefixOf(_))
-      case 1 => forFunc(regex.findPrefixMatchOf(_).map(_.group(1)))
-      case _ => throw new IllegalArgumentException("Path regex '" + regex.pattern.pattern +
-              "' must not contain more than one capturing group")
+      case 0 ⇒ forFunc(regex.findPrefixOf(_))
+      case 1 ⇒ forFunc(regex.findPrefixMatchOf(_).map(_.group(1)))
+      case _ ⇒ throw new IllegalArgumentException("Path regex '" + regex.pattern.pattern +
+        "' must not contain more than one capturing group")
     }
   }
 

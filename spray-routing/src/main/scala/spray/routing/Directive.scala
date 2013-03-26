@@ -16,10 +16,9 @@
 
 package spray.routing
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 import shapeless._
 import spray.httpx.unmarshalling.MalformedContent
-
 
 trait ConjunctionMagnet[L <: HList] {
   type Out
@@ -32,9 +31,9 @@ object ConjunctionMagnet {
       type Out = Directive[p.Out]
       def apply(underlying: Directive[L]): Out =
         new Directive[p.Out] {
-          def happly(f: p.Out => Route) =
-            underlying.happly { prefix =>
-              other.happly { suffix =>
+          def happly(f: p.Out ⇒ Route) =
+            underlying.happly { prefix ⇒
+              other.happly { suffix ⇒
                 f(p(prefix, suffix))
               }
             }
@@ -44,70 +43,71 @@ object ConjunctionMagnet {
   implicit def fromStandardRoute[L <: HList](route: StandardRoute) =
     new ConjunctionMagnet[L] {
       type Out = StandardRoute
-      def apply(underlying: Directive[L]): Out = StandardRoute(underlying.happly(_ => route))
+      def apply(underlying: Directive[L]): Out = StandardRoute(underlying.happly(_ ⇒ route))
     }
 
-  implicit def fromRouteGenerator[T, R <: Route](generator: T => R) = new ConjunctionMagnet[HNil] {
+  implicit def fromRouteGenerator[T, R <: Route](generator: T ⇒ R) = new ConjunctionMagnet[HNil] {
     type Out = RouteGenerator[T]
-    def apply(underlying: Directive0): Out = { value =>
-      underlying.happly(_ => generator(value))
+    def apply(underlying: Directive0): Out = { value ⇒
+      underlying.happly(_ ⇒ generator(value))
     }
   }
 }
 
+abstract class Directive[L <: HList] { self ⇒
+  def happly(f: L ⇒ Route): Route
 
-abstract class Directive[L <: HList] { self =>
-  def happly(f: L => Route): Route
+  def |(that: Directive[L]): Directive[L] =
+    recover(rejections ⇒ directives.BasicDirectives.mapRejections(rejections ::: _) & that)
 
-  def | (that: Directive[L]): Directive[L] =
-    recover(rejections => directives.BasicDirectives.mapRejections(rejections ::: _) & that)
-
-  def & (magnet: ConjunctionMagnet[L]): magnet.Out = magnet(this)
+  def &(magnet: ConjunctionMagnet[L]): magnet.Out = magnet(this)
 
   def as[T](deserializer: HListDeserializer[L, T]): Directive[T :: HNil] =
     new Directive[T :: HNil] {
-      def happly(f: T :: HNil => Route) =
-        self.happly { values => ctx =>
-          deserializer(values) match {
-            case Right(t) => f(t :: HNil)(ctx)
-            case Left(MalformedContent(msg, cause)) => ctx.reject(ValidationRejection(msg, cause))
-            case Left(error) => ctx.reject(ValidationRejection(error.toString))
-          }
+      def happly(f: T :: HNil ⇒ Route) =
+        self.happly { values ⇒
+          ctx ⇒
+            deserializer(values) match {
+              case Right(t)                           ⇒ f(t :: HNil)(ctx)
+              case Left(MalformedContent(msg, cause)) ⇒ ctx.reject(ValidationRejection(msg, cause))
+              case Left(error)                        ⇒ ctx.reject(ValidationRejection(error.toString))
+            }
         }
     }
 
-  def hmap[R](f: L => R)(implicit hl: HListable[R]): Directive[hl.Out] =
+  def hmap[R](f: L ⇒ R)(implicit hl: HListable[R]): Directive[hl.Out] =
     new Directive[hl.Out] {
-      def happly(g: hl.Out => Route) = self.happly { values => g(hl(f(values))) }
+      def happly(g: hl.Out ⇒ Route) = self.happly { values ⇒ g(hl(f(values))) }
     }
 
-  def hflatMap[R <: HList](f: L => Directive[R]): Directive[R] =
+  def hflatMap[R <: HList](f: L ⇒ Directive[R]): Directive[R] =
     new Directive[R] {
-      def happly(g: R => Route) = self.happly { values => f(values).happly(g) }
+      def happly(g: R ⇒ Route) = self.happly { values ⇒ f(values).happly(g) }
     }
 
   // TODO: add Seq[Rejection] parameter
-  def hrequire(predicate: L => Boolean): Directive0 =
+  def hrequire(predicate: L ⇒ Boolean): Directive0 =
     new Directive0 {
-      def happly(f: HNil => Route) =
-        self.happly { values => ctx => if (predicate(values)) f(HNil)(ctx) else ctx.reject() }
+      def happly(f: HNil ⇒ Route) =
+        self.happly { values ⇒ ctx ⇒ if (predicate(values)) f(HNil)(ctx) else ctx.reject() }
     }
 
   def unwrapFuture[R](implicit ev: L <:< (Future[R] :: HNil), hl: HListable[R], ec: ExecutionContext) =
     new Directive[hl.Out] {
-      def happly(f: hl.Out => Route) = self.happly { list => ctx =>
-        list.head
-          .map { value => f(hl(value))(ctx) }
-          .onFailure { case error => ctx.failWith(error) }
+      def happly(f: hl.Out ⇒ Route) = self.happly { list ⇒
+        ctx ⇒
+          list.head
+            .map { value ⇒ f(hl(value))(ctx) }
+            .onFailure { case error ⇒ ctx.failWith(error) }
       }
     }
 
-  def recover(recovery: List[Rejection] => Directive[L]): Directive[L] =
+  def recover(recovery: List[Rejection] ⇒ Directive[L]): Directive[L] =
     new Directive[L] {
-      def happly(f: L => Route) = { ctx =>
+      def happly(f: L ⇒ Route) = { ctx ⇒
         @volatile var rejectedFromInnerRoute = false
-        self.happly({ list => c => rejectedFromInnerRoute = true; f(list)(c) }) {
-          ctx.withRejectionHandling { rejections =>
+        self.happly({ list ⇒ c ⇒ rejectedFromInnerRoute = true; f(list)(c) }) {
+          ctx.withRejectionHandling { rejections ⇒
             if (rejectedFromInnerRoute) ctx.reject(rejections: _*)
             else recovery(rejections).happly(f)(ctx)
           }
@@ -116,7 +116,7 @@ abstract class Directive[L <: HList] { self =>
     }
 
   def recoverPF(recovery: PartialFunction[List[Rejection], Directive[L]]): Directive[L] =
-    recover { rejections =>
+    recover { rejections ⇒
       if (recovery.isDefinedAt(rejections)) recovery(rejections)
       else Route.toDirective(_.reject(rejections: _*))
     }
@@ -128,20 +128,19 @@ object Directive {
    * A Directive that always passes the request on to its inner route (i.e. does nothing).
    */
   object Empty extends Directive0 {
-    def happly(inner: HNil => Route) = inner(HNil)
+    def happly(inner: HNil ⇒ Route) = inner(HNil)
   }
 
-  implicit def pimpApply[L <: HList](directive: Directive[L])
-                                    (implicit hac: ApplyConverter[L]): hac.In => Route = f => directive.happly(hac(f))
+  implicit def pimpApply[L <: HList](directive: Directive[L])(implicit hac: ApplyConverter[L]): hac.In ⇒ Route = f ⇒ directive.happly(hac(f))
 
   implicit class SingleValueModifiers[T](underlying: Directive[T :: HNil]) {
-    def map[R](f: T => R)(implicit hl: HListable[R]): Directive[hl.Out] =
-      underlying.hmap { case value :: HNil => f(value) }
+    def map[R](f: T ⇒ R)(implicit hl: HListable[R]): Directive[hl.Out] =
+      underlying.hmap { case value :: HNil ⇒ f(value) }
 
-    def flatMap[R <: HList](f: T => Directive[R]): Directive[R] =
-      underlying.hflatMap { case value :: HNil => f(value) }
+    def flatMap[R <: HList](f: T ⇒ Directive[R]): Directive[R] =
+      underlying.hflatMap { case value :: HNil ⇒ f(value) }
 
-    def require(predicate: T => Boolean) =
-      underlying.hrequire { case value :: HNil => predicate(value) }
+    def require(predicate: T ⇒ Boolean) =
+      underlying.hrequire { case value :: HNil ⇒ predicate(value) }
   }
 }

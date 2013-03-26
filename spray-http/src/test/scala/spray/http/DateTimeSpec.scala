@@ -21,7 +21,6 @@ import scala.util.Random
 import org.specs2.matcher.Matcher
 import org.specs2.mutable._
 
-
 class DateTimeSpec extends Specification {
 
   val GMT = TimeZone.getTimeZone("GMT")
@@ -46,9 +45,8 @@ class DateTimeSpec extends Specification {
       }
       def rfc1123Format(dt: DateTime) = Rfc1123Format.format(new java.util.Date(dt.clicks))
       val matchSimpleDateFormat: Matcher[DateTime] = (
-        { (dt: DateTime) => dt.toRfc1123DateTimeString == rfc1123Format(dt) },
-        { (dt: DateTime) => dt.toRfc1123DateTimeString + " != " + rfc1123Format(dt) }
-      )
+        { (dt: DateTime) ⇒ dt.toRfc1123DateTimeString == rfc1123Format(dt) },
+        { (dt: DateTime) ⇒ dt.toRfc1123DateTimeString + " != " + rfc1123Format(dt) })
       httpDateTimes.take(10000) must matchSimpleDateFormat.forall
     }
   }
@@ -75,9 +73,8 @@ class DateTimeSpec extends Specification {
     "allow for transparent round-trip conversions" in {
       def roundTrip(dt: DateTime) = DateTime(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
       val roundTripOk: Matcher[DateTime] = (
-        { (dt: DateTime) => val rt = roundTrip(dt); dt == rt && dt.weekday == rt.weekday },
-        { (dt: DateTime) => dt.toRfc1123DateTimeString + " != " + roundTrip(dt).toRfc1123DateTimeString }
-      )
+        { (dt: DateTime) ⇒ val rt = roundTrip(dt); dt == rt && dt.weekday == rt.weekday },
+        { (dt: DateTime) ⇒ dt.toRfc1123DateTimeString + " != " + roundTrip(dt).toRfc1123DateTimeString })
       httpDateTimes.take(10000) must roundTripOk.forall
     }
     "properly represent DateTime.MinValue" in {

@@ -22,14 +22,13 @@ import scala.concurrent.Future
 import akka.actor.ActorSystem
 import spray.util._
 
-
 class SslBufferPoolSpec extends Specification {
   val system = ActorSystem("SslBufferPoolSpec")
   import system.dispatcher
 
   "The SslBufferPool" should {
     "provide a proper, thread-safe buffer pool" in {
-      Future.traverse((1 to 100).toList) { i =>
+      Future.traverse((1 to 100).toList) { i ⇒
         Future {
           val buf = SslBufferPool.acquire()
           val nonce = Random.alphanumeric.take(16).mkString
@@ -43,7 +42,7 @@ class SslBufferPoolSpec extends Specification {
           SslBufferPool.release(buf2)
           result -> nonce
         }
-      }.await.map(t => t._1 === t._2).reduceLeft(_ and _)
+      }.await.map(t ⇒ t._1 === t._2).reduceLeft(_ and _)
     }
   }
 

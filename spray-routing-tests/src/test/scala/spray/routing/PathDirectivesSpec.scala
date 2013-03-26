@@ -16,7 +16,6 @@
 
 package spray.routing
 
-
 class PathDirectivesSpec extends RoutingSpec {
 
   val echoUnmatchedPath = unmatchedPath { echoComplete }
@@ -94,43 +93,49 @@ class PathDirectivesSpec extends RoutingSpec {
     "let matching requests pass, extract the match value and adapt RequestContext.unmatchedPath" in {
       "when the regex is a simple regex (example 1)" in {
         Get("/abcdef/ghijk/lmno") ~> {
-          pathPrefix("abcdef" / "ghijk".r) { capture => ctx =>
-            ctx.complete(capture + ":" + ctx.unmatchedPath)
+          pathPrefix("abcdef" / "ghijk".r) { capture ⇒
+            ctx ⇒
+              ctx.complete(capture + ":" + ctx.unmatchedPath)
           }
         } ~> check { entityAs[String] === "ghijk:/lmno" }
       }
       "when the regex is a simple regex (example 2)" in {
         Get("/abcdef/ghijk/lmno") ~> {
-          pathPrefix("abcdef" / "gh[ij]+".r) { capture => ctx =>
-            ctx.complete(capture + ":" + ctx.unmatchedPath)
+          pathPrefix("abcdef" / "gh[ij]+".r) { capture ⇒
+            ctx ⇒
+              ctx.complete(capture + ":" + ctx.unmatchedPath)
           }
         } ~> check { entityAs[String] === "ghij:k/lmno" }
       }
       "when the regex is a group regex (example 1)" in {
         Get("/abcdef/ghijk/lmno") ~> {
-          pathPrefix("abcdef" / "(ghijk)".r) { capture => ctx =>
-            ctx.complete(capture + ":" + ctx.unmatchedPath)
+          pathPrefix("abcdef" / "(ghijk)".r) { capture ⇒
+            ctx ⇒
+              ctx.complete(capture + ":" + ctx.unmatchedPath)
           }
         } ~> check { entityAs[String] === "ghijk:/lmno" }
       }
       "when the regex is a group regex (example 2)" in {
         Get("/abcdef/ghijk/lmno") ~> {
-          pathPrefix("abcdef" / "gh(ij)".r) { capture => ctx =>
-            ctx.complete(capture + ":" + ctx.unmatchedPath)
+          pathPrefix("abcdef" / "gh(ij)".r) { capture ⇒
+            ctx ⇒
+              ctx.complete(capture + ":" + ctx.unmatchedPath)
           }
         } ~> check { entityAs[String] === "ij:k/lmno" }
       }
       "when the regex is a group regex (example 3)" in {
         Get("/abcdef/ghijk/lmno") ~> {
-          pathPrefix("abcdef" / "(gh)i".r) { capture => ctx =>
-            ctx.complete(capture + ":" + ctx.unmatchedPath)
+          pathPrefix("abcdef" / "(gh)i".r) { capture ⇒
+            ctx ⇒
+              ctx.complete(capture + ":" + ctx.unmatchedPath)
           }
         } ~> check { entityAs[String] === "gh:jk/lmno" }
       }
       "for segment prefixes" in {
         Get("/noway/this/works") ~> {
-          pathPrefix("n([ow]+)".r) { capture => ctx =>
-            ctx.complete(capture + ":" + ctx.unmatchedPath)
+          pathPrefix("n([ow]+)".r) { capture ⇒
+            ctx ⇒
+              ctx.complete(capture + ":" + ctx.unmatchedPath)
           }
         } ~> check { entityAs[String] === "ow:ay/this/works" }
       }
@@ -138,15 +143,15 @@ class PathDirectivesSpec extends RoutingSpec {
     "be stackable" in {
       "within one single path(...) combinator" in {
         Get("/compute/23/19") ~> {
-          pathPrefix("compute" / "\\d+".r / "\\d+".r) { (a, b) =>
+          pathPrefix("compute" / "\\d+".r / "\\d+".r) { (a, b) ⇒
             complete((a.toInt + b.toInt).toString)
           }
         } ~> check { entityAs[String] === "42" }
       }
       "within one single path(...) combinator" in {
         Get("/compute/23/19") ~> {
-          pathPrefix("compute" / "\\d+".r) { a =>
-            pathPrefix("\\d+".r) { b =>
+          pathPrefix("compute" / "\\d+".r) { a ⇒
+            pathPrefix("\\d+".r) { b ⇒
               complete((a.toInt + b.toInt).toString)
             }
           }
@@ -154,7 +159,7 @@ class PathDirectivesSpec extends RoutingSpec {
       }
     }
     "fail when the regex contains more than one group" in {
-      path("compute" / "yea(\\d+)(\\d+)".r / "\\d+".r) { (a, b) =>
+      path("compute" / "yea(\\d+)(\\d+)".r / "\\d+".r) { (a, b) ⇒
         completeOk
       } must throwA[IllegalArgumentException]
     }
@@ -273,7 +278,7 @@ class PathDirectivesSpec extends RoutingSpec {
     "support the mapValues modifier" in {
       import shapeless._
       Get("/yes-no") ~> {
-        path(Rest.map { case s :: HNil => s.split('-').toList :: HNil }) { echoComplete }
+        path(Rest.map { case s :: HNil ⇒ s.split('-').toList :: HNil }) { echoComplete }
       } ~> check { entityAs[String] === "List(yes, no)" }
     }
   }
@@ -281,18 +286,18 @@ class PathDirectivesSpec extends RoutingSpec {
   "The `pathPrefixTest` directive" should {
     "match uris without consuming them" in {
       Get("/a") ~> {
-        pathPrefixTest("a") { ctx => ctx.complete(ctx.unmatchedPath.toString) }
+        pathPrefixTest("a") { ctx ⇒ ctx.complete(ctx.unmatchedPath.toString) }
       } ~> check { entityAs[String] === "/a" }
     }
     "be usable for testing for trailing slashs in URIs" in {
       "example 1" in {
         Get("/a/") ~> {
-          pathPrefixTest(Segment ~ Slash_!) { _ => completeOk }
+          pathPrefixTest(Segment ~ Slash_!) { _ ⇒ completeOk }
         } ~> check { response === Ok }
       }
       "example 2" in {
         Get("/a") ~> {
-          pathPrefixTest(Segment ~ Slash_!) { _ => completeOk }
+          pathPrefixTest(Segment ~ Slash_!) { _ ⇒ completeOk }
         } ~> check { handled === false }
       }
     }
@@ -302,15 +307,17 @@ class PathDirectivesSpec extends RoutingSpec {
     "allow matching and consuming of path suffixes" in {
       "example 1" in {
         Get("/orders/123/edit") ~> {
-          pathSuffix("edit" / IntNumber) { capture => ctx =>
-            ctx.complete(capture + ":" + ctx.unmatchedPath)
+          pathSuffix("edit" / IntNumber) { capture ⇒
+            ctx ⇒
+              ctx.complete(capture + ":" + ctx.unmatchedPath)
           }
         } ~> check { entityAs[String] === "123:/orders/" }
       }
       "example 2" in {
         Get("/orders/123/edit/") ~> {
-          pathSuffix(Slash ~ "edit" / IntNumber) { capture => ctx =>
-            ctx.complete(capture + ":" + ctx.unmatchedPath)
+          pathSuffix(Slash ~ "edit" / IntNumber) { capture ⇒
+            ctx ⇒
+              ctx.complete(capture + ":" + ctx.unmatchedPath)
           }
         } ~> check { entityAs[String] === "123:/orders/" }
       }

@@ -16,8 +16,8 @@
 
 package spray.can.client
 
-import akka.actor.{ActorRef, Props, Actor}
-import spray.can.{Http, HttpExt}
+import akka.actor.{ ActorRef, Props, Actor }
+import spray.can.{ Http, HttpExt }
 
 private[can] class HttpClientSettingsGroup(settings: ClientConnectionSettings,
                                            httpSettings: HttpExt#Settings) extends Actor {
@@ -25,34 +25,35 @@ private[can] class HttpClientSettingsGroup(settings: ClientConnectionSettings,
   val pipelineStage = HttpClientConnection.pipelineStage(settings)
 
   def receive = {
-    case connect: Http.Connect =>
+    case connect: Http.Connect ⇒
       val commander = sender
       context.actorOf(
         props = Props(new HttpClientConnection(commander, connect, pipelineStage, settings))
           .withDispatcher(httpSettings.ConnectionDispatcher),
-        name = connectionCounter.next().toString
-      )
+        name = connectionCounter.next().toString)
 
-    case Http.CloseAll(cmd) =>
+    case Http.CloseAll(cmd) ⇒
       val children = context.children.toSet
       if (children.isEmpty) {
         sender ! Http.ClosedAll
         context.stop(self)
-      } else {
+      }
+      else {
         children foreach { _ ! cmd }
         context.become(closing(children, Set(sender)))
       }
   }
 
   def closing(children: Set[ActorRef], commanders: Set[ActorRef]): Receive = {
-    case _: Http.CloseAll =>
+    case _: Http.CloseAll ⇒
       context.become(closing(children, commanders + sender))
 
-    case _: Http.ConnectionClosed =>
+    case _: Http.ConnectionClosed ⇒
       val stillRunning = children - sender
       if (stillRunning.isEmpty) {
-        commanders foreach  (_ ! Http.ClosedAll)
+        commanders foreach (_ ! Http.ClosedAll)
         context.stop(self)
-      } else context.become(closing(stillRunning, commanders))
+      }
+      else context.become(closing(stillRunning, commanders))
   }
 }

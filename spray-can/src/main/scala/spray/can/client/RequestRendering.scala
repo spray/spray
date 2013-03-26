@@ -17,9 +17,8 @@
 package spray.can.client
 
 import akka.io.Tcp
-import spray.can.rendering.{HttpRequestPartRenderingContext, RequestRenderer}
+import spray.can.rendering.{ HttpRequestPartRenderingContext, RequestRenderer }
 import spray.io._
-
 
 object RequestRendering {
 
@@ -30,11 +29,11 @@ object RequestRendering {
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           val commandPipeline: CPL = {
-            case HttpRequestPartRenderingContext(requestPart, ack) =>
+            case HttpRequestPartRenderingContext(requestPart, ack) ⇒
               val rendered = renderer.render(requestPart, context.remoteAddress)
               commandPL(Tcp.Write(rendered.data, ack))
 
-            case cmd => commandPL(cmd)
+            case cmd ⇒ commandPL(cmd)
           }
 
           val eventPipeline = eventPL

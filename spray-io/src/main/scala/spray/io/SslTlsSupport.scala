@@ -50,7 +50,7 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
           if (pendingSends.isEmpty) withTempBuf(encrypt(Send(x), _))
           else pendingSends = pendingSends enqueue Send(x)
 
-        case x@ (Tcp.Close | Tcp.ConfirmedClose) ⇒
+        case x @ (Tcp.Close | Tcp.ConfirmedClose) ⇒
           log.debug("Closing SSLEngine due to reception of {}", x)
           engine.closeOutbound()
           withTempBuf(closeEngine)
@@ -64,7 +64,8 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
           val buf = if (inboundReceptacle != null) {
             try ByteBuffer.allocate(inboundReceptacle.remaining + data.length).put(inboundReceptacle)
             finally inboundReceptacle = null
-          } else ByteBuffer allocate data.length
+          }
+          else ByteBuffer allocate data.length
           data copyToBuffer buf
           buf.flip()
           withTempBuf(decrypt(buf, _))
@@ -163,7 +164,8 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
           case e: SSLException ⇒
             log.error("Closing encrypted connection to {} due to {}", context.remoteAddress, e)
             commandPL(Tcp.Close)
-        } finally SslBufferPool release tempBuf
+        }
+        finally SslBufferPool release tempBuf
       }
 
       @tailrec
@@ -221,7 +223,7 @@ private[io] sealed abstract class SSLEngineProviderCompanion {
 
   implicit def default(implicit cp: SSLContextProvider): Self =
     fromFunc { plc ⇒
-      cp(plc) map { sslContext =>
+      cp(plc) map { sslContext ⇒
         val address = plc.remoteAddress
         val engine = sslContext.createSSLEngine(address.getHostName, address.getPort)
         engine setUseClientMode clientMode

@@ -18,7 +18,6 @@ package spray.can.parsing
 
 import spray.http.HttpMethod
 
-
 class MethodParser(settings: ParserSettings, method: HttpMethod, var pos: Int = 0) extends CharacterParser {
 
   def handleChar(cursor: Char) = {
@@ -27,7 +26,8 @@ class MethodParser(settings: ParserSettings, method: HttpMethod, var pos: Int = 
       val current = method.value.charAt(pos)
       if (cursor == current) this
       else badMethod
-    } else {
+    }
+    else {
       if (cursor == ' ') new UriParser(settings, method)
       else badMethod
     }

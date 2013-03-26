@@ -18,17 +18,16 @@ package spray.httpx.unmarshalling
 
 import spray.http._
 
-
 trait MetaUnmarshallers {
 
   implicit def formUnmarshaller(implicit fdum: Unmarshaller[FormData], mpfdum: Unmarshaller[MultipartFormData]) =
     new Unmarshaller[HttpForm] {
       def apply(entity: HttpEntity) = fdum(entity).left.flatMap {
-        case UnsupportedContentType(error1) => mpfdum(entity).left.map {
-          case UnsupportedContentType(error2) => UnsupportedContentType(error1 + " or " + error2)
-          case error => error
+        case UnsupportedContentType(error1) ⇒ mpfdum(entity).left.map {
+          case UnsupportedContentType(error2) ⇒ UnsupportedContentType(error1 + " or " + error2)
+          case error                          ⇒ error
         }
-        case error => Left(error)
+        case error ⇒ Left(error)
       }
     }
 

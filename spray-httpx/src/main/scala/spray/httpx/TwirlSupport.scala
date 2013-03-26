@@ -17,10 +17,9 @@
 package spray.httpx
 
 import marshalling.Marshaller
-import twirl.api.{Xml, Txt, Html}
+import twirl.api.{ Xml, Txt, Html }
 import spray.http._
 import MediaTypes._
-
 
 /**
  * A trait providing Marshallers for the Twirl template result types.

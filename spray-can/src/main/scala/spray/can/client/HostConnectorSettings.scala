@@ -16,20 +16,20 @@
 
 package spray.can.client
 
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.{ ConfigFactory, Config }
 import scala.concurrent.duration.Duration
 import akka.actor.ActorSystem
 import spray.util._
 
 case class HostConnectorSettings(
-  maxConnections: Int,
-  maxRetries: Int,
-  pipelining: Boolean,
-  idleTimeout: Duration,
-  connectionSettings: ClientConnectionSettings) {
+    maxConnections: Int,
+    maxRetries: Int,
+    pipelining: Boolean,
+    idleTimeout: Duration,
+    connectionSettings: ClientConnectionSettings) {
 
-  require(maxConnections >  0, "max-connections must be > 0")
-  require(maxRetries     >= 0, "max-retries must be >= 0")
+  require(maxConnections > 0, "max-connections must be > 0")
+  require(maxRetries >= 0, "max-retries must be >= 0")
   requirePositiveOrUndefined(idleTimeout)
 }
 

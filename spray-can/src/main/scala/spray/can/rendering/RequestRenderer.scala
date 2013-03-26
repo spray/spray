@@ -26,10 +26,10 @@ class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) {
 
   def render(requestPart: HttpRequestPart, remoteAddress: InetSocketAddress): RenderedMessagePart = {
     requestPart match {
-      case x: HttpRequest => renderRequest(x, remoteAddress)
-      case x: ChunkedRequestStart => renderChunkedRequestStart(x.request, remoteAddress)
-      case x: MessageChunk => renderChunk(x, requestSizeHint)
-      case x: ChunkedMessageEnd => renderFinalChunk(x, requestSizeHint)
+      case x: HttpRequest         ⇒ renderRequest(x, remoteAddress)
+      case x: ChunkedRequestStart ⇒ renderChunkedRequestStart(x.request, remoteAddress)
+      case x: MessageChunk        ⇒ renderChunk(x, requestSizeHint)
+      case x: ChunkedMessageEnd   ⇒ renderFinalChunk(x, requestSizeHint)
     }
   }
 
@@ -67,18 +67,17 @@ class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) {
   }
 
   @tailrec
-  private def putHeadersAndReturnHostHeaderPresent(headers: List[HttpHeader], hostHeaderPresent: Boolean = false)
-                                                  (implicit bb: ByteStringBuilder): Boolean =
+  private def putHeadersAndReturnHostHeaderPresent(headers: List[HttpHeader], hostHeaderPresent: Boolean = false)(implicit bb: ByteStringBuilder): Boolean =
     headers match {
-      case Nil => hostHeaderPresent
-      case head :: tail =>
+      case Nil ⇒ hostHeaderPresent
+      case head :: tail ⇒
         val found = head.lowercaseName match {
-          case "content-type"      => false // we never render these headers here,
-          case "content-length"    => false // because their production is the
-          case "transfer-encoding" => false // responsibility of the spray-can layer,
-          case "user-agent" if !userAgentHeader.isEmpty => false // not the user
-          case "host"              => put(head); true
-          case _                   => put(head); false
+          case "content-type"                           ⇒ false // we never render these headers here,
+          case "content-length"                         ⇒ false // because their production is the
+          case "transfer-encoding"                      ⇒ false // responsibility of the spray-can layer,
+          case "user-agent" if !userAgentHeader.isEmpty ⇒ false // not the user
+          case "host"                                   ⇒ put(head); true
+          case _                                        ⇒ put(head); false
         }
         putHeadersAndReturnHostHeaderPresent(tail, found || hostHeaderPresent)
     }

@@ -16,7 +16,7 @@
 
 package spray.site
 
-import akka.actor.{ActorSystem, Props}
+import akka.actor.{ ActorSystem, Props }
 import akka.event.Logging
 import akka.io.IO
 import spray.can.Http
@@ -37,8 +37,8 @@ object Main extends App {
 
 class Blog(rootNode: RootNode) {
   val root = rootNode.find("blog/").getOrElse(sys.error("blog root not found"))
-  val posts: Map[String, Seq[ContentNode]] = root.children.flatMap { node =>
+  val posts: Map[String, Seq[ContentNode]] = root.children.flatMap { node ⇒
     if (node.doc.post.isEmpty) sys.error(s"blog root contains non-post child $node")
     node.post.tags.map(_ -> node)
-  } groupBy(_._1) mapValues(_.map(_._2))
+  } groupBy (_._1) mapValues (_.map(_._2))
 }

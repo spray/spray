@@ -17,7 +17,7 @@
 
 package spray.http
 
-import java.lang.{StringBuilder => JStringBuilder}
+import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import java.nio.charset.Charset
 import scala.annotation.tailrec
 import spray.http.parser.UriParser
@@ -182,7 +182,8 @@ object Uri {
         if (hostHeaderHost.isEmpty) {
           _host = defaultAuthority.host
           _port = defaultAuthority.port
-        } else {
+        }
+        else {
           _host = hostHeaderHost
           _port = hostHeaderPort
         }
@@ -199,9 +200,10 @@ object Uri {
         if (!userinfo.isEmpty) sb.append(encode(userinfo, charset, UNRESERVED | SUB_DELIM | COLON)).append('@')
         host.render(sb)
         if (port != 0) normalizePort(port, scheme) match {
-          case 0 => sb
-          case x => sb.append(':').append(port)
-        } else sb
+          case 0 ⇒ sb
+          case x ⇒ sb.append(':').append(port)
+        }
+        else sb
       }
     def toString(charset: Charset): String = render(new JStringBuilder).toString
     override def toString: String = toString(UTF8)
@@ -229,12 +231,13 @@ object Uri {
       def render(sb: JStringBuilder) = sb
     }
     def apply(string: String): Host =
-      if (!string.isEmpty){
+      if (!string.isEmpty) {
         val parser = new UriParser(string)
         import parser._
         complete("URI host", host)
         _host
-      } else Empty
+      }
+      else Empty
   }
   sealed abstract class NonEmptyHost extends Host {
     def isEmpty = false
@@ -270,24 +273,22 @@ object Uri {
     def reverseAndPrependTo(prefix: Path): Path
     def toString(charset: Charset) = render(new JStringBuilder, charset).toString
     override def toString = toString(UTF8)
-    def / (segment: String): Path = this ++ Path.Slash(segment :: Path.Empty)
+    def /(segment: String): Path = this ++ Path.Slash(segment :: Path.Empty)
   }
   object Path {
     val SingleSlash = Slash(Empty)
-    def / :Path = SingleSlash
-    def / (path: Path): Path = Slash(path)
-    def / (segment: String): Path = Slash(segment :: Empty)
+    def / : Path = SingleSlash
+    def /(path: Path): Path = Slash(path)
+    def /(segment: String): Path = Slash(segment :: Empty)
     def apply(string: String, charset: Charset = UTF8): Path = {
       @tailrec def build(path: Path = Empty, ix: Int = string.length - 1, segmentEnd: Int = 0): Path = {
         if (ix >= 0)
           if (string.charAt(ix) == '/')
             if (segmentEnd == 0) build(Slash(path), ix - 1)
             else build(Slash(decode(string.substring(ix + 1, segmentEnd), charset) :: path), ix - 1)
-          else
-            if (segmentEnd == 0) build(path, ix - 1, ix + 1)
-            else build(path, ix - 1, segmentEnd)
-        else
-          if (segmentEnd == 0) path else decode(string.substring(0, segmentEnd), charset) :: path
+          else if (segmentEnd == 0) build(path, ix - 1, ix + 1)
+          else build(path, ix - 1, segmentEnd)
+        else if (segmentEnd == 0) path else decode(string.substring(0, segmentEnd), charset) :: path
       }
       build()
     }
@@ -350,15 +351,15 @@ object Uri {
     def value: String
     def tail: Query
     def length: Int
-    def +: (kvp: (String, String)) = Query.Cons(kvp._1, kvp._2, this)
+    def +:(kvp: (String, String)) = Query.Cons(kvp._1, kvp._2, this)
     def get(key: String): Option[String]
-    def getOrElse(key: String, default: => String): String
+    def getOrElse(key: String, default: ⇒ String): String
     def getAll(key: String): List[String]
     def toMap: Map[String, String]
     def toList: List[(String, String)] = {
       val builder = List.newBuilder[(String, String)]
       @tailrec def toList(q: Query): List[(String, String)] =
-      if (q.isEmpty) builder.result() else { builder += ((q.key, q.value)); toList(q.tail) }
+        if (q.isEmpty) builder.result() else { builder += ((q.key, q.value)); toList(q.tail) }
       toList(this)
     }
     def render(sb: JStringBuilder, charset: Charset = UTF8): JStringBuilder = {
@@ -387,8 +388,8 @@ object Uri {
       _query
     }
     def apply(input: Option[String]): Query = input match {
-      case None => Query.Empty
-      case Some(string) => apply(string)
+      case None         ⇒ Query.Empty
+      case Some(string) ⇒ apply(string)
     }
     def apply(list: List[(String, String)]): Query = {
       @tailrec def queryFrom(l: List[(String, String)], query: Query = Query.Empty): Query =
@@ -404,7 +405,7 @@ object Uri {
       def tail = throw new UnsupportedOperationException("tail of empty query")
       def length: Int = 0
       def get(key: String): Option[String] = None
-      def getOrElse(key: String, default: => String): String = default
+      def getOrElse(key: String, default: ⇒ String): String = default
       def getAll(key: String): List[String] = Nil
       def toMap: Map[String, String] = Map.empty
     }
@@ -412,7 +413,7 @@ object Uri {
       def isEmpty = false
       def length = tail.length + 1
       def get(key: String) = if (this.key == key) Some(value) else tail.get(key)
-      def getOrElse(key: String, default: => String) = if (this.key == key) value else tail.getOrElse(key, default)
+      def getOrElse(key: String, default: ⇒ String) = if (this.key == key) value else tail.getOrElse(key, default)
       def getAll(key: String) = if (this.key == key) value :: tail.getAll(key) else tail.getAll(key)
       def toMap: Map[String, String] = tail.toMap.updated(key, value)
     }
@@ -422,7 +423,6 @@ object Uri {
     Map("ftp" -> 21, "ssh" -> 22, "telnet" -> 23, "smtp" -> 25, "domain" -> 53, "tftp" -> 69, "http" -> 80,
       "pop3" -> 110, "nntp" -> 119, "imap" -> 143, "snmp" -> 161, "ldap" -> 389, "https" -> 443, "imaps" -> 993,
       "nfs" -> 2049).withDefaultValue(-1)
-
 
   /////////////////////////////////// PRIVATE //////////////////////////////////////////
 
@@ -435,16 +435,17 @@ object Uri {
         if (path.isEmpty) {
           val q = if (query.isEmpty) base.query else query
           Impl(base.scheme, base.authority, base.path, q, fragment)
-        } else {
+        }
+        else {
           // http://tools.ietf.org/html/rfc3986#section-5.2.3
           def mergePaths(base: Uri, path: Path): Path =
             if (!base.authority.isEmpty && path.isEmpty) Path.Slash(path)
             else {
               import Path._
               def replaceLastSegment(p: Path, replacement: Path): Path = p match {
-                case Path.Empty | Segment(_, Path.Empty) => replacement
-                case Segment(string, tail) => string :: replaceLastSegment(tail, replacement)
-                case Slash(tail) => Slash(replaceLastSegment(tail, replacement))
+                case Path.Empty | Segment(_, Path.Empty) ⇒ replacement
+                case Segment(string, tail)               ⇒ string :: replaceLastSegment(tail, replacement)
+                case Slash(tail)                         ⇒ Slash(replaceLastSegment(tail, replacement))
               }
               replaceLastSegment(base.path, path)
             }
@@ -460,18 +461,19 @@ object Uri {
       if (ix == string.length) -1 else if (is(string.charAt(ix), keep)) firstToBeEncoded(ix + 1) else ix
 
     firstToBeEncoded() match {
-      case -1 => string
-      case first =>
+      case -1 ⇒ string
+      case first ⇒
         @tailrec def process(sb: JStringBuilder, ix: Int = first): String = {
           def appendEncoded(byte: Byte): Unit = sb.append('%').append(hexDigit(byte >>> 4)).append(hexDigit(byte))
           if (ix < string.length) {
             string.charAt(ix) match {
-              case c if is(c, keep) => sb.append(c)
-              case c if c <= 127 => appendEncoded(c.toByte)
-              case c => c.toString.getBytes(charset).foreach(appendEncoded)
+              case c if is(c, keep) ⇒ sb.append(c)
+              case c if c <= 127    ⇒ appendEncoded(c.toByte)
+              case c                ⇒ c.toString.getBytes(charset).foreach(appendEncoded)
             }
             process(sb, ix + 1)
-          } else sb.toString
+          }
+          else sb.toString
         }
         process(new JStringBuilder(string.length * 2).append(string, 0, first))
     }
@@ -483,10 +485,9 @@ object Uri {
   }
 
   @tailrec
-  private[http] def decode(string: String, charset: Charset, ix: Int)
-                          (sb: JStringBuilder = new JStringBuilder(string.length).append(string, 0, ix)): String =
+  private[http] def decode(string: String, charset: Charset, ix: Int)(sb: JStringBuilder = new JStringBuilder(string.length).append(string, 0, ix)): String =
     if (ix < string.length) string.charAt(ix) match {
-      case '%' =>
+      case '%' ⇒
         def intValueOfHexWord(i: Int) = {
           def intValueOfHexChar(j: Int) = {
             val c = string.charAt(j)
@@ -508,31 +509,35 @@ object Uri {
             val byte = intValueOfHexWord(ix + 3 * i + 1)
             bytes(i) = byte.toByte
             decodeBytes(i + 1, oredBytes | byte)
-          } else oredBytes
+          }
+          else oredBytes
         }
 
         if ((decodeBytes() >> 7) != 0) { // if non-ASCII chars are present we need to involve the charset for decoding
           sb.append(new String(bytes, charset))
-        } else {
+        }
+        else {
           @tailrec def appendBytes(i: Int = 0): Unit =
             if (i < bytesCount) { sb.append(bytes(i).toChar); appendBytes(i + 1) }
           appendBytes()
         }
         decode(string, charset, lastPercentSignIndexPlus3)(sb)
 
-      case x => decode(string, charset, ix + 1)(sb.append(x))
-    } else sb.toString
+      case x ⇒ decode(string, charset, ix + 1)(sb.append(x))
+    }
+    else sb.toString
 
   private[http] def normalizeScheme(scheme: String): String = {
     @tailrec def verify(ix: Int = scheme.length - 1, allowed: Int = ALPHA, allLower: Boolean = true): Int =
       if (ix >= 0) {
         val c = scheme.charAt(ix)
         if (is(c, allowed)) verify(ix - 1, ALPHA | DIGIT | PLUS | DASH | DOT, allLower && !is(c, UPPER_ALPHA)) else ix
-      } else if (allLower) -1 else -2
+      }
+      else if (allLower) -1 else -2
     verify() match {
-      case -2 => scheme.toLowerCase
-      case -1 => scheme
-      case ix => fail(s"Invalid URI scheme, unexpected character at pos $ix ('${scheme.charAt(ix)}')")
+      case -2 ⇒ scheme.toLowerCase
+      case -1 ⇒ scheme
+      case ix ⇒ fail(s"Invalid URI scheme, unexpected character at pos $ix ('${scheme.charAt(ix)}')")
     }
   }
 
@@ -545,33 +550,34 @@ object Uri {
     if (host.isEmpty) {
       if (path.startsWithSlash && path.tail.startsWithSlash)
         fail("""The path of an URI without authority must not begin with "//"""")
-    } else if (path.startsWithSegment)
+    }
+    else if (path.startsWithSegment)
       fail("The path of an URI containing an authority must either be empty or start with a '/' (slash) character")
     path
   }
 
   private[http] def collapseDotSegments(path: Path): Path = {
     @tailrec def hasDotOrDotDotSegment(p: Path): Boolean = p match {
-      case Path.Empty => false
-      case Path.Segment(".", _) | Path.Segment("..", _) => true
-      case _ => hasDotOrDotDotSegment(p.tail)
+      case Path.Empty ⇒ false
+      case Path.Segment(".", _) | Path.Segment("..", _) ⇒ true
+      case _ ⇒ hasDotOrDotDotSegment(p.tail)
     }
     // http://tools.ietf.org/html/rfc3986#section-5.2.4
     @tailrec def process(input: Path, output: Path = Path.Empty): Path = {
       import Path._
       input match {
-        case Path.Empty => output.reverse
-        case Segment("." | "..", Slash(tail)) => process(tail, output)
-        case Slash(Segment(".", tail)) => process(if (tail.isEmpty) Path./ else tail, output)
-        case Slash(Segment("..", tail)) => process(
+        case Path.Empty                       ⇒ output.reverse
+        case Segment("." | "..", Slash(tail)) ⇒ process(tail, output)
+        case Slash(Segment(".", tail))        ⇒ process(if (tail.isEmpty) Path./ else tail, output)
+        case Slash(Segment("..", tail)) ⇒ process(
           input = if (tail.isEmpty) Path./ else tail,
           output =
             if (output.startsWithSegment)
               if (output.tail.startsWithSlash) output.tail.tail else tail
             else output)
-        case Segment("." | "..", tail) => process(tail, output)
-        case Slash(tail) => process(tail, Slash(output))
-        case Segment(string, tail) => process(tail, string :: output)
+        case Segment("." | "..", tail) ⇒ process(tail, output)
+        case Slash(tail)               ⇒ process(tail, Slash(output))
+        case Segment(string, tail)     ⇒ process(tail, string :: output)
       }
     }
     if (hasDotOrDotDotSegment(path)) process(path) else path

@@ -16,13 +16,13 @@
 
 package spray.client
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.concurrent.duration._
-import akka.actor.{ActorRefFactory, ActorRef}
+import akka.actor.{ ActorRefFactory, ActorRef }
 import akka.util.Timeout
 import akka.pattern.ask
 import akka.io.IO
-import spray.httpx.{ResponseTransformation, RequestBuilding}
+import spray.httpx.{ ResponseTransformation, RequestBuilding }
 import spray.can.Http
 import spray.util.actorSystem
 import spray.http._
@@ -30,22 +30,22 @@ import spray.http._
 object pipelining extends RequestBuilding with ResponseTransformation {
 
   def sendReceive(implicit refFactory: ActorRefFactory, executionContext: ExecutionContext,
-                  futureTimeout: Timeout = 60.seconds): HttpRequest => Future[HttpResponse] =
+                  futureTimeout: Timeout = 60.seconds): HttpRequest ⇒ Future[HttpResponse] =
     sendReceive(IO(Http)(actorSystem))
 
   def sendReceive(transport: ActorRef)(implicit ec: ExecutionContext,
-                                       futureTimeout: Timeout): HttpRequest => Future[HttpResponse] =
-    request => transport ? request map {
-      case x: HttpResponse => x
-      case x: HttpResponsePart => sys.error("sendReceive doesn't support chunked responses, try sendTo instead")
-      case x: Http.ConnectionClosed => sys.error("Connection closed before reception of response: " + x)
-      case x => sys.error("Unexpected response from HTTP transport: " + x)
+                                       futureTimeout: Timeout): HttpRequest ⇒ Future[HttpResponse] =
+    request ⇒ transport ? request map {
+      case x: HttpResponse          ⇒ x
+      case x: HttpResponsePart      ⇒ sys.error("sendReceive doesn't support chunked responses, try sendTo instead")
+      case x: Http.ConnectionClosed ⇒ sys.error("Connection closed before reception of response: " + x)
+      case x                        ⇒ sys.error("Unexpected response from HTTP transport: " + x)
     }
 
   def sendTo(transport: ActorRef) = new SendTo(transport)
 
   class SendTo(transport: ActorRef) {
-    def withResponsesReceivedBy(receiver: ActorRef): HttpRequest => Unit =
-      request => transport.tell(request, receiver)
+    def withResponsesReceivedBy(receiver: ActorRef): HttpRequest ⇒ Unit =
+      request ⇒ transport.tell(request, receiver)
   }
 }

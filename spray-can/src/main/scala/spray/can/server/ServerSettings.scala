@@ -16,33 +16,32 @@
 
 package spray.can.server
 
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.{ ConfigFactory, Config }
 import scala.concurrent.duration.Duration
 import akka.actor.ActorSystem
 import spray.can.parsing.ParserSettings
 import spray.util._
 
-
 case class ServerSettings(
-  serverHeader: String,
-  sslEncryption: Boolean,
-  pipeliningLimit: Int,
-  idleTimeout: Duration,
-  requestTimeout: Duration,
-  timeoutTimeout: Duration,
-  reapingCycle: Duration,
-  statsSupport: Boolean,
-  remoteAddressHeader: Boolean,
-  transparentHeadRequests: Boolean,
-  timeoutHandler: String,
-  chunklessStreaming: Boolean,
-  verboseErrorMessages: Boolean,
-  requestChunkAggregationLimit: Int,
-  responseSizeHint: Int,
-  bindTimeout: Duration,
-  unbindTimeout: Duration,
-  registrationTimeout: Duration,
-  parserSettings: ParserSettings) {
+    serverHeader: String,
+    sslEncryption: Boolean,
+    pipeliningLimit: Int,
+    idleTimeout: Duration,
+    requestTimeout: Duration,
+    timeoutTimeout: Duration,
+    reapingCycle: Duration,
+    statsSupport: Boolean,
+    remoteAddressHeader: Boolean,
+    transparentHeadRequests: Boolean,
+    timeoutHandler: String,
+    chunklessStreaming: Boolean,
+    verboseErrorMessages: Boolean,
+    requestChunkAggregationLimit: Int,
+    responseSizeHint: Int,
+    bindTimeout: Duration,
+    unbindTimeout: Duration,
+    registrationTimeout: Duration,
+    parserSettings: ParserSettings) {
 
   requirePositiveOrUndefined(idleTimeout)
   requirePositiveOrUndefined(requestTimeout)
@@ -67,21 +66,21 @@ object ServerSettings {
       .withFallback(Utils.sprayConfigAdditions)
       .withFallback(ConfigFactory.defaultReference(getClass.getClassLoader))
     ServerSettings(
-      c getString   "server-header",
-      c getBoolean  "ssl-encryption",
-      c getInt      "pipelining-limit",
+      c getString "server-header",
+      c getBoolean "ssl-encryption",
+      c getInt "pipelining-limit",
       c getDuration "idle-timeout",
       c getDuration "request-timeout",
       c getDuration "timeout-timeout",
       c getDuration "reaping-cycle",
-      c getBoolean  "stats-support",
-      c getBoolean  "remote-address-header",
-      c getBoolean  "transparent-head-requests",
-      c getString   "timeout-handler",
-      c getBoolean  "chunkless-streaming",
-      c getBoolean  "verbose-error-messages",
-      c getBytes    "request-chunk-aggregation-limit" toInt,
-      c getBytes    "response-size-hint" toInt,
+      c getBoolean "stats-support",
+      c getBoolean "remote-address-header",
+      c getBoolean "transparent-head-requests",
+      c getString "timeout-handler",
+      c getBoolean "chunkless-streaming",
+      c getBoolean "verbose-error-messages",
+      c getBytes "request-chunk-aggregation-limit" toInt,
+      c getBytes "response-size-hint" toInt,
       c getDuration "bind-timeout",
       c getDuration "unbind-timeout",
       c getDuration "registration-timeout",

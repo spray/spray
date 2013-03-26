@@ -25,7 +25,6 @@ import MediaTypes._
 import HttpHeaders._
 import HttpCharsets._
 
-
 class FileAndResourceDirectivesSpec extends RoutingSpec {
 
   "getFromFile" should {
@@ -84,7 +83,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
         mediaType === `text/html`
         body.asString === "<p>Lorem ipsum!</p>"
         headers must have {
-          case `Last-Modified`(dt) => DateTime(2011, 7, 1) < dt && dt.clicks < System.currentTimeMillis()
+          case `Last-Modified`(dt) ⇒ DateTime(2011, 7, 1) < dt && dt.clicks < System.currentTimeMillis()
         }
       }
     }

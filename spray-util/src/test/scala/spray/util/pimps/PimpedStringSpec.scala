@@ -59,7 +59,7 @@ class PimpedStringSpec extends Specification {
 
   "getAsciiBytes" should {
     "perform a simple ASCII encoding of the string" in {
-       "Hello there".getAsciiBytes === Array(72, 101, 108, 108, 111, 32, 116, 104, 101, 114, 101)
+      "Hello there".getAsciiBytes === Array(72, 101, 108, 108, 111, 32, 116, 104, 101, 114, 101)
     }
   }
 

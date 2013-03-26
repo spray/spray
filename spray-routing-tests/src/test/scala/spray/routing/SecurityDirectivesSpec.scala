@@ -16,18 +16,17 @@
 
 package spray.routing
 
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{ Future, Promise }
 import akka.event.NoLogging
 import spray.routing.authentication._
 import spray.http._
 import HttpHeaders._
 
-
 class SecurityDirectivesSpec extends RoutingSpec {
 
-  val dontAuth = UserPassAuthenticator[BasicUserContext](_ => Promise.successful(None).future)
+  val dontAuth = UserPassAuthenticator[BasicUserContext](_ ⇒ Promise.successful(None).future)
 
-  val doAuth = UserPassAuthenticator[BasicUserContext] { userPassOption =>
+  val doAuth = UserPassAuthenticator[BasicUserContext] { userPassOption ⇒
     Promise.successful(Some(BasicUserContext(userPassOption.get.user))).future
   }
 
@@ -51,24 +50,24 @@ class SecurityDirectivesSpec extends RoutingSpec {
       implicit val log = NoLogging // suppress logging of the error
       Get() ~> Authorization(BasicHttpCredentials("Alice", "")) ~> {
         handleExceptions(ExceptionHandler.default) {
-          authenticate(BasicAuth(doAuth, "Realm")) { _ => sys.error("Nope") }
+          authenticate(BasicAuth(doAuth, "Realm")) { _ ⇒ sys.error("Nope") }
         }
       } ~> check { status === StatusCodes.InternalServerError }
     }
   }
 
   "the 'authenticate(<ContextAuthenticator>)' directive" should {
-    val myAuthenticator: ContextAuthenticator[Int] = ctx => Future {
+    val myAuthenticator: ContextAuthenticator[Int] = ctx ⇒ Future {
       Either.cond(ctx.request.uri.authority.host == Uri.NamedHost("spray.io"), 42,
         AuthenticationRequiredRejection("my-scheme", "MyRealm", Map()))
     }
     "reject requests not satisfying the filter condition" in {
       Get() ~> authenticate(myAuthenticator) { echoComplete } ~>
-      check { rejection === AuthenticationRequiredRejection("my-scheme", "MyRealm", Map.empty) }
+        check { rejection === AuthenticationRequiredRejection("my-scheme", "MyRealm", Map.empty) }
     }
     "pass on the authenticator extraction if the filter conditions is met" in {
       Get() ~> Host("spray.io") ~> authenticate(myAuthenticator) { echoComplete } ~>
-      check { entityAs[String] === "42" }
+        check { entityAs[String] === "42" }
     }
   }
 }

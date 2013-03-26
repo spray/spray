@@ -19,7 +19,7 @@ package spray
 import scala.language.experimental.macros
 
 import java.nio.ByteBuffer
-import java.io.{InputStream, File}
+import java.io.{ InputStream, File }
 import java.nio.charset.Charset
 import com.typesafe.config.Config
 import scala.concurrent.duration.Duration
@@ -30,46 +30,45 @@ import scala.concurrent.Future
 import akka.actor._
 import util.pimps._
 
-
 package object util {
 
   val EOL = System.getProperty("line.separator")
   val UTF8 = Charset.forName("UTF8")
   val EmptyByteArray = new Array[Byte](0)
 
-  private[this] val _identityFunc: Any => Any = x => x
-  def identityFunc[T]: T => T = _identityFunc.asInstanceOf[T => T]
+  private[this] val _identityFunc: Any ⇒ Any = x ⇒ x
+  def identityFunc[T]: T ⇒ T = _identityFunc.asInstanceOf[T ⇒ T]
 
-  def tryToEither[T](body: => T): Either[Throwable, T] = tryOrElse(Right(body), Left(_))
+  def tryToEither[T](body: ⇒ T): Either[Throwable, T] = tryOrElse(Right(body), Left(_))
 
-  def tryOrElse[A, B >: A](body: => A, onError: Throwable => B): B =
-    try body catch { case NonFatal(e) => onError(e) }
+  def tryOrElse[A, B >: A](body: ⇒ A, onError: Throwable ⇒ B): B =
+    try body catch { case NonFatal(e) ⇒ onError(e) }
 
   def requirePositiveOrUndefined(duration: Duration): Duration = macro Macros.requirePositiveOrUndefined
 
   def actorSystem(implicit refFactory: ActorRefFactory): ExtendedActorSystem =
     refFactory match {
-      case x: ActorContext => actorSystem(x.system)
-      case x: ExtendedActorSystem => x
-      case x => throw new IllegalArgumentException("Unsupported ActorRefFactory implementation: " + refFactory)
+      case x: ActorContext        ⇒ actorSystem(x.system)
+      case x: ExtendedActorSystem ⇒ x
+      case x                      ⇒ throw new IllegalArgumentException("Unsupported ActorRefFactory implementation: " + refFactory)
     }
 
   // implicits
-  implicit def pimpActorSystem(system: ActorSystem)     :PimpedActorSystem     = new PimpedActorSystem(system)
-  implicit def pimpAny[T](any: T)                       :PimpedAny[T]          = new PimpedAny(any)
-  implicit def pimpByteArray(array: Array[Byte])        :PimpedByteArray       = new PimpedByteArray(array)
-  implicit def pimpByteBuffer(buf: ByteBuffer)          :PimpedByteBuffer      = new PimpedByteBuffer(buf)
-  implicit def pimpClass[T](clazz: Class[T])            :PimpedClass[T]        = new PimpedClass[T](clazz)
-  implicit def pimpConfig(config: Config)               :PimpedConfig          = new PimpedConfig(config)
-  implicit def pimpDuration(duration: Duration)         :PimpedDuration        = new PimpedDuration(duration)
-  implicit def pimpFile(file: File)                     :PimpedFile            = new PimpedFile(file)
-  implicit def pimpFuture[T](fut: Future[T])            :PimpedFuture[T]       = new PimpedFuture[T](fut)
-  implicit def pimpInputStream(inputStream: InputStream):PimpedInputStream     = new PimpedInputStream(inputStream)
-  implicit def pimpSeq[T](seq: Seq[T])                  :PimpedSeq[T]          = seq match {
-    case x: LinearSeq[_] => new PimpedLinearSeq[T](x)
-    case x: IndexedSeq[_] => new PimpedIndexedSeq[T](x)
+  implicit def pimpActorSystem(system: ActorSystem): PimpedActorSystem = new PimpedActorSystem(system)
+  implicit def pimpAny[T](any: T): PimpedAny[T] = new PimpedAny(any)
+  implicit def pimpByteArray(array: Array[Byte]): PimpedByteArray = new PimpedByteArray(array)
+  implicit def pimpByteBuffer(buf: ByteBuffer): PimpedByteBuffer = new PimpedByteBuffer(buf)
+  implicit def pimpClass[T](clazz: Class[T]): PimpedClass[T] = new PimpedClass[T](clazz)
+  implicit def pimpConfig(config: Config): PimpedConfig = new PimpedConfig(config)
+  implicit def pimpDuration(duration: Duration): PimpedDuration = new PimpedDuration(duration)
+  implicit def pimpFile(file: File): PimpedFile = new PimpedFile(file)
+  implicit def pimpFuture[T](fut: Future[T]): PimpedFuture[T] = new PimpedFuture[T](fut)
+  implicit def pimpInputStream(inputStream: InputStream): PimpedInputStream = new PimpedInputStream(inputStream)
+  implicit def pimpSeq[T](seq: Seq[T]): PimpedSeq[T] = seq match {
+    case x: LinearSeq[_]  ⇒ new PimpedLinearSeq[T](x)
+    case x: IndexedSeq[_] ⇒ new PimpedIndexedSeq[T](x)
   }
-  implicit def pimpRegex(regex: Regex)                  :PimpedRegex           = new PimpedRegex(regex)
-  implicit def pimpString(s: String)                    :PimpedString          = new PimpedString(s)
-  implicit def pimpEither[A, B](either: Either[A, B])   :Either.RightProjection[A, B] = either.right
+  implicit def pimpRegex(regex: Regex): PimpedRegex = new PimpedRegex(regex)
+  implicit def pimpString(s: String): PimpedString = new PimpedString(s)
+  implicit def pimpEither[A, B](either: Either[A, B]): Either.RightProjection[A, B] = either.right
 }

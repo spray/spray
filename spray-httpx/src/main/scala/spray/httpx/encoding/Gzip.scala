@@ -16,12 +16,11 @@
 
 package spray.httpx.encoding
 
-import java.util.zip.{Inflater, CRC32, ZipException, Deflater}
+import java.util.zip.{ Inflater, CRC32, ZipException, Deflater }
 import scala.annotation.tailrec
 import spray.http._
 
-
-class Gzip(val messageFilter: HttpMessage => Boolean) extends Decoder with Encoder {
+class Gzip(val messageFilter: HttpMessage ⇒ Boolean) extends Decoder with Encoder {
   val encoding = HttpEncodings.gzip
   def newCompressor = new GzipCompressor
   def newDecompressor = new GzipDecompressor
@@ -37,17 +36,17 @@ object Gzip extends Gzip(Encoder.DefaultFilter) {
 object GzipCompressor {
   // RFC 1952: http://tools.ietf.org/html/rfc1952 section 2.2
   val Header = Array[Byte](
-    31,   // ID1
+    31, // ID1
     -117, // ID2
-    8,    // CM = Deflate
-    0,    // FLG
-    0,    // MTIME 1
-    0,    // MTIME 2
-    0,    // MTIME 3
-    0,    // MTIME 4
-    0,    // XFL
-    0     // OS
-  )
+    8, // CM = Deflate
+    0, // FLG
+    0, // MTIME 1
+    0, // MTIME 2
+    0, // MTIME 3
+    0, // MTIME 4
+    0, // XFL
+    0 // OS
+    )
 }
 
 class GzipCompressor extends DeflateCompressor {
@@ -87,7 +86,7 @@ class GzipDecompressor extends DeflateDecompressor {
   }
 
   @tailrec
-  private def decomp(buffer: Array[Byte], offset: Int, produceResult: Exception => Int): Int = {
+  private def decomp(buffer: Array[Byte], offset: Int, produceResult: Exception ⇒ Int): Int = {
     var off = offset
     def fail(msg: String) = throw new ZipException(msg)
     def readByte(): Int = {
@@ -95,7 +94,8 @@ class GzipDecompressor extends DeflateDecompressor {
         val x = buffer(off)
         off += 1
         x.toInt & 0xFF
-      } else fail("Unexpected end of data")
+      }
+      else fail("Unexpected end of data")
     }
     def readShort(): Int = readByte() | (readByte() << 8)
     def readInt(): Int = readShort() | (readShort() << 16)
@@ -105,12 +105,12 @@ class GzipDecompressor extends DeflateDecompressor {
         crc.update(buffer, offset, len)
         crc.getValue.asInstanceOf[Int] & 0xFFFF
       }
-      if (readByte() != 0x1F || readByte() != 0x8B) fail("Not in GZIP format")  // check magic header
-      if (readByte() != 8) fail("Unsupported GZIP compression method")        // check compression method
+      if (readByte() != 0x1F || readByte() != 0x8B) fail("Not in GZIP format") // check magic header
+      if (readByte() != 8) fail("Unsupported GZIP compression method") // check compression method
       val flags = readByte()
-      off += 6                                         // skip MTIME, XFL and OS fields
-      if ((flags & 4) > 0) off += readShort()          // skip optional extra fields
-      if ((flags & 8) > 0) while (readByte() != 0) {}  // skip optional file name
+      off += 6 // skip MTIME, XFL and OS fields
+      if ((flags & 4) > 0) off += readShort() // skip optional extra fields
+      if ((flags & 8) > 0) while (readByte() != 0) {} // skip optional file name
       if ((flags & 16) > 0) while (readByte() != 0) {} // skip optional file comment
       if ((flags & 2) > 0 && crc16(buffer, offset, off - offset) != readShort()) fail("Corrupt GZIP header")
     }
@@ -137,13 +137,14 @@ class GzipDecompressor extends DeflateDecompressor {
       }
     }
     catch {
-      case e: Exception => produceResult(e)
+      case e: Exception ⇒ produceResult(e)
     }
 
     if (recurse && off < buffer.length) {
       val mark = output.pos
-      decomp(buffer, off, _ => { output.resetTo(mark); off })
-    } else off
+      decomp(buffer, off, _ ⇒ { output.resetTo(mark); off })
+    }
+    else off
   }
 
 }

@@ -23,7 +23,6 @@ import spray.http._
 import HttpHeaders.RawHeader
 import StatusCodes.RequestEntityTooLarge
 
-
 class ToCloseBodyParser(settings: ParserSettings,
                         messageLine: MessageLine,
                         headers: List[RawHeader],
@@ -36,12 +35,13 @@ class ToCloseBodyParser(settings: ParserSettings,
     val array = new Array[Byte](data.len)
     data.getBytes(array)
     body match {
-      case EmptyByteArray => body = array; this
-      case _ => {
+      case EmptyByteArray ⇒ body = array; this
+      case _ ⇒ {
         if (body.length + array.length <= settings.maxContentLength) {
           body = body concat array
           this
-        } else ErrorState(RequestEntityTooLarge, "HTTP message body size exceeds the configured limit of " +
+        }
+        else ErrorState(RequestEntityTooLarge, "HTTP message body size exceeds the configured limit of " +
           settings.maxContentLength)
       }
     }

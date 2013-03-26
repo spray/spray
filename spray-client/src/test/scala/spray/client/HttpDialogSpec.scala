@@ -20,14 +20,13 @@ import com.typesafe.config.ConfigFactory
 import scala.concurrent.duration._
 import org.specs2.mutable.Specification
 import org.specs2.time.NoTimeConversions
-import akka.actor.{Actor, Props, ActorSystem}
+import akka.actor.{ Actor, Props, ActorSystem }
 import akka.pattern.ask
 import akka.testkit.TestProbe
 import akka.io.IO
 import spray.can.Http
 import spray.util._
 import spray.http._
-
 
 class HttpDialogSpec extends Specification with NoTimeConversions {
   val testConf = ConfigFactory.parseString("""
@@ -45,9 +44,9 @@ class HttpDialogSpec extends Specification with NoTimeConversions {
       Props {
         new Actor {
           def receive = {
-            case x: Http.Connected => sender ! Http.Register(self)
-            case x: HttpRequest => sender ! HttpResponse(entity = x.uri.path.toString)
-            case _: Http.ConnectionClosed => // ignore
+            case x: Http.Connected        ⇒ sender ! Http.Register(self)
+            case x: HttpRequest           ⇒ sender ! HttpResponse(entity = x.uri.path.toString)
+            case _: Http.ConnectionClosed ⇒ // ignore
           }
         }
       }
@@ -86,9 +85,9 @@ class HttpDialogSpec extends Specification with NoTimeConversions {
     "be able to complete a dialog with 3 replies" in {
       HttpDialog(connect)
         .send(HttpRequest(uri = "/foo"))
-        .reply(response => HttpRequest(uri = response.entity.asString + "/a"))
-        .reply(response => HttpRequest(uri = response.entity.asString + "/b"))
-        .reply(response => HttpRequest(uri = response.entity.asString + "/c"))
+        .reply(response ⇒ HttpRequest(uri = response.entity.asString + "/a"))
+        .reply(response ⇒ HttpRequest(uri = response.entity.asString + "/b"))
+        .reply(response ⇒ HttpRequest(uri = response.entity.asString + "/c"))
         .end
         .map(_.entity.asString)
         .await === "/foo/a/b/c"

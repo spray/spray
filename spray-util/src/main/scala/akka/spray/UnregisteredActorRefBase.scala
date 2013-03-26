@@ -21,7 +21,6 @@ import akka.util.Unsafe
 import akka.dispatch._
 import akka.actor._
 
-
 abstract class UnregisteredActorRefBase(val provider: ActorRefProvider) extends MinimalActorRef {
   import UnregisteredActorRefBase._
 
@@ -56,8 +55,10 @@ abstract class UnregisteredActorRefBase(val provider: ActorRefProvider) extends 
           p = provider.tempPath()
           register(p)
           p
-        } finally { setState(p) }
-      } else path
+        }
+        finally { setState(p) }
+      }
+      else path
     case p: ActorPath       ⇒ p
     case StoppedWithPath(p) ⇒ p
     case Stopped ⇒
@@ -70,14 +71,14 @@ abstract class UnregisteredActorRefBase(val provider: ActorRefProvider) extends 
   override def !(message: Any)(implicit sender: ActorRef = Actor.noSender) {
     state match {
       case Stopped | _: StoppedWithPath ⇒ provider.deadLetters ! message
-      case _ ⇒ handle(message)
+      case _                            ⇒ handle(message)
     }
   }
 
   override def sendSystemMessage(message: SystemMessage) {
     message match {
       case _: Terminate ⇒ stop()
-      case _ ⇒
+      case _            ⇒
     }
   }
 

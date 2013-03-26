@@ -21,7 +21,6 @@ import spray.util.LoggingContext
 import spray.http._
 import StatusCodes._
 
-
 trait ExceptionHandler extends ExceptionHandler.PF
 
 object ExceptionHandler {
@@ -35,17 +34,17 @@ object ExceptionHandler {
 
   implicit def default(implicit settings: RoutingSettings, log: LoggingContext): ExceptionHandler =
     fromPF {
-      case e: IllegalRequestException => ctx =>
+      case e: IllegalRequestException ⇒ ctx ⇒
         log.warning("Illegal request {}\n\t{}\n\tCompleting with '{}' response",
           ctx.request, e.getMessage, e.status)
         ctx.complete(e.status, e.info.format(settings.verboseErrorMessages))
 
-      case e: RequestProcessingException => ctx =>
+      case e: RequestProcessingException ⇒ ctx ⇒
         log.warning("Request {} could not be handled normally\n\t{}\n\tCompleting with '{}' response",
           ctx.request, e.getMessage, e.status)
         ctx.complete(e.status, e.info.format(settings.verboseErrorMessages))
 
-      case NonFatal(e) => ctx =>
+      case NonFatal(e) ⇒ ctx ⇒
         log.error(e, "Error during processing of request {}", ctx.request)
         ctx.complete(InternalServerError)
     }

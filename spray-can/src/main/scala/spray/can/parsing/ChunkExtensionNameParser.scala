@@ -16,9 +16,8 @@
 
 package spray.can.parsing
 
-import java.lang.{StringBuilder => JStringBuilder}
+import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import spray.http.ChunkExtension
-
 
 class ChunkExtensionNameParser(settings: ParserSettings, chunkSize: Int, extCount: Int = 0,
                                extensions: List[ChunkExtension] = Nil) extends CharacterParser {
@@ -28,14 +27,15 @@ class ChunkExtensionNameParser(settings: ParserSettings, chunkSize: Int, extCoun
   def handleChar(cursor: Char) = {
     if (extName.length <= settings.maxChunkExtNameLength) {
       cursor match {
-        case x if isTokenChar(x) => extName.append(x); this
-        case '=' => new ChunkExtensionValueParser(settings, chunkSize, extCount, extensions, extName.toString)
-        case ' ' | '\t' => this
-        case _ => ErrorState("Invalid character '" + escape(cursor) + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
+        case x if isTokenChar(x) ⇒ extName.append(x); this
+        case '='                 ⇒ new ChunkExtensionValueParser(settings, chunkSize, extCount, extensions, extName.toString)
+        case ' ' | '\t'          ⇒ this
+        case _                   ⇒ ErrorState("Invalid character '" + escape(cursor) + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
       }
-    } else {
+    }
+    else {
       ErrorState("Chunk extension name exceeds the configured limit of " + settings.maxChunkExtNameLength +
-                  " characters", "extension '" + extName.toString.take(50) + "...'")
+        " characters", "extension '" + extName.toString.take(50) + "...'")
     }
   }
 

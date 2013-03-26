@@ -16,13 +16,12 @@
 
 package spray.servlet
 
-import javax.servlet.{ServletContext, ServletContextListener, ServletContextEvent}
+import javax.servlet.{ ServletContext, ServletContextListener, ServletContextEvent }
 import com.typesafe.config.ConfigFactory
 import scala.language.reflectiveCalls
 import scala.util.control.NonFatal
 import akka.util.Switch
 import akka.actor.ActorSystem
-
 
 class Initializer extends ServletContextListener {
   private val booted = new Switch(false)
@@ -45,8 +44,9 @@ class Initializer extends ServletContextListener {
             try {
               val constructor = bootClass.getConstructor(classOf[ServletContext])
               constructor.newInstance(servletContext)
-            } catch {
-              case e: NoSuchMethodException =>
+            }
+            catch {
+              case e: NoSuchMethodException ⇒
                 val constructor = bootClass.getConstructor()
                 constructor.newInstance()
             }
@@ -55,16 +55,19 @@ class Initializer extends ServletContextListener {
             actorSystem = Some(webBoot.system)
             servletContext.setAttribute(Initializer.SystemAttrName, actorSystem.get)
             servletContext.setAttribute(Initializer.ServiceActorAttrName, webBoot.serviceActor)
-          } catch {
-            case e: ClassCastException => servletContext.log(errorMsg("does not implement spray.servlet.WebBoot"), e)
           }
-        } catch {
-          case e: ClassNotFoundException => servletContext.log(errorMsg("cannot be found"), e)
-          case e: NoSuchMethodException => servletContext.log(errorMsg("neither defines a constructor with a single " +
+          catch {
+            case e: ClassCastException ⇒ servletContext.log(errorMsg("does not implement spray.servlet.WebBoot"), e)
+          }
+        }
+        catch {
+          case e: ClassNotFoundException ⇒ servletContext.log(errorMsg("cannot be found"), e)
+          case e: NoSuchMethodException ⇒ servletContext.log(errorMsg("neither defines a constructor with a single " +
             "`javax.servlet.ServletContext` parameter nor a default constructor"), e)
         }
-      } catch {
-        case NonFatal(e) => servletContext.log(e.getMessage, e)
+      }
+      catch {
+        case NonFatal(e) ⇒ servletContext.log(e.getMessage, e)
       }
     }
   }

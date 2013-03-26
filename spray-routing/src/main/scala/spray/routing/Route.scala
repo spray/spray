@@ -18,7 +18,6 @@ package spray.routing
 
 import shapeless.HList
 
-
 object Route {
   def apply(f: Route): Route = f
 
@@ -27,6 +26,6 @@ object Route {
    * (and always returns its underlying route).
    */
   def toDirective[L <: HList](route: Route): Directive[L] = new Directive[L] {
-    def happly(f: L => Route) = route
+    def happly(f: L ⇒ Route) = route
   }
 }

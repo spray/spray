@@ -18,7 +18,7 @@ package spray.site
 
 import akka.event.Logging._
 import shapeless._
-import spray.routing.directives.{DirectoryListing, LogEntry}
+import spray.routing.directives.{ DirectoryListing, LogEntry }
 import spray.httpx.encoding.Gzip
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.TwirlSupport._
@@ -27,9 +27,9 @@ import spray.routing._
 import html._
 import StatusCodes._
 
-
 class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
 
+  // format: OFF
   def receive = runRoute {
     dynamicIf(settings.devMode) { // for proper support of twirl + sbt-revolver during development
       (get & encodeResponse(Gzip)) {
@@ -62,29 +62,29 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
                 path("home") {
                   redirect("/")
                 } ~
-                  path("index") {
-                    complete(page(index()))
+                path("index") {
+                  complete(page(index()))
+                } ~
+                pathPrefixTest("blog") {
+                  path("blog") {
+                    complete(page(blogIndex(Main.blog.root.children), Main.blog.root))
                   } ~
-                  pathPrefixTest("blog") {
-                    path("blog") {
-                      complete(page(blogIndex(Main.blog.root.children), Main.blog.root))
-                    } ~
-                      path("blog/feed") {
-                        complete(xml.blogAtomFeed())
-                      } ~
-                      path("blog/category" / Segment) { tag =>
-                        Main.blog.posts(tag) match {
-                          case Nil => complete(NotFound, page(error404()))
-                          case posts => complete(page(blogIndex(posts, tag), Main.blog.root))
-                        }
-                      } ~
-                      sphinxNode { node =>
-                        complete(page(blogPost(node), node))
-                      }
+                  path("blog/feed") {
+                    complete(xml.blogAtomFeed())
+                  } ~
+                  path("blog/category" / Segment) { tag =>
+                    Main.blog.posts(tag) match {
+                      case Nil => complete(NotFound, page(error404()))
+                      case posts => complete(page(blogIndex(posts, tag), Main.blog.root))
+                    }
                   } ~
                   sphinxNode { node =>
-                    complete(page(document(node), node))
+                    complete(page(blogPost(node), node))
                   }
+                } ~
+                sphinxNode { node =>
+                  complete(page(document(node), node))
+                }
               } ~
               unmatchedPath { ump =>
                 redirect(ump.toString + "/")
@@ -98,36 +98,34 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
       }
     }
   }
+  // format: ON
 
   val sphinxNode = path(Rest).map(Main.root.find).flatMap[ContentNode :: HNil] {
-    case None => complete(NotFound, page(error404()))
-    case Some(node) => provide(node)
+    case None       ⇒ complete(NotFound, page(error404()))
+    case Some(node) ⇒ provide(node)
   }
 
   def showRequest(request: HttpRequest) = LogEntry(request.uri, InfoLevel)
 
-  def showErrorResponses(request: HttpRequest): Any => Option[LogEntry] = {
-    case HttpResponse(OK, _, _, _) => None
-    case HttpResponse(NotFound, _, _, _) => Some(LogEntry("404: " + request.uri, WarningLevel))
-    case response => Some(
-      LogEntry("Non-200 response for\n  Request : " + request + "\n  Response: " + response, WarningLevel)
-    )
+  def showErrorResponses(request: HttpRequest): Any ⇒ Option[LogEntry] = {
+    case HttpResponse(OK, _, _, _)       ⇒ None
+    case HttpResponse(NotFound, _, _, _) ⇒ Some(LogEntry("404: " + request.uri, WarningLevel))
+    case response ⇒ Some(
+      LogEntry("Non-200 response for\n  Request : " + request + "\n  Response: " + response, WarningLevel))
   }
 
-  def showRepoResponses(repo: String)(request: HttpRequest): HttpResponsePart => Option[LogEntry] = {
-    case HttpResponse(OK, _, _, _) => Some(LogEntry(repo + " 200: " + request.uri, InfoLevel))
-    case ChunkedResponseStart(HttpResponse(OK, _, _, _)) => Some(LogEntry(repo + " 200 (chunked): " + request.uri, InfoLevel))
-    case HttpResponse(NotFound, _, _, _) => Some(LogEntry(repo + " 404: " + request.uri))
-    case _ => None
+  def showRepoResponses(repo: String)(request: HttpRequest): HttpResponsePart ⇒ Option[LogEntry] = {
+    case HttpResponse(OK, _, _, _) ⇒ Some(LogEntry(repo + " 200: " + request.uri, InfoLevel))
+    case ChunkedResponseStart(HttpResponse(OK, _, _, _)) ⇒ Some(LogEntry(repo + " 200 (chunked): " + request.uri, InfoLevel))
+    case HttpResponse(NotFound, _, _, _) ⇒ Some(LogEntry(repo + " 404: " + request.uri))
+    case _ ⇒ None
   }
 
   implicit val ListingMarshaller: Marshaller[DirectoryListing] =
-    Marshaller.delegate(MediaTypes.`text/html`) { (listing: DirectoryListing) =>
+    Marshaller.delegate(MediaTypes.`text/html`) { (listing: DirectoryListing) ⇒
       listing.copy(
-        files = listing.files.filterNot( file =>
-          file.getName.startsWith(".") || file.getName.startsWith("archetype-catalog")
-        )
-      )
-    } (DirectoryListing.DefaultMarshaller)
+        files = listing.files.filterNot(file ⇒
+          file.getName.startsWith(".") || file.getName.startsWith("archetype-catalog")))
+    }(DirectoryListing.DefaultMarshaller)
 
 }

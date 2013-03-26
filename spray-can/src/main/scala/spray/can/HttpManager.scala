@@ -18,7 +18,7 @@ package spray.can
 
 import scala.util.control.NonFatal
 import akka.actor._
-import spray.can.client.{HttpHostConnector, HttpClientSettingsGroup, ClientConnectionSettings}
+import spray.can.client.{ HttpHostConnector, HttpClientSettingsGroup, ClientConnectionSettings }
 import spray.can.server.HttpListener
 import spray.util.SprayActorLogging
 import spray.http._
@@ -34,7 +34,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
   private[this] var listeners = Seq.empty[ActorRef]
 
   def receive = terminationManagement orElse {
-    case request: HttpRequest =>
+    case request: HttpRequest ⇒
       try {
         val req = request.withEffectiveUri(securedConnection = false)
         val Uri.Authority(host, port, _) = req.uri.authority
@@ -42,23 +42,24 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
         val connector = hostConnectorFor(HostConnectorSetup(host.toString, effectivePort))
         // never render absolute URI here
         connector.forward(req.copy(uri = req.uri.copy(scheme = "", authority = Uri.Authority.Empty)))
-      } catch {
-        case NonFatal(e) =>
+      }
+      catch {
+        case NonFatal(e) ⇒
           log.error("Illegal request: {}", e.getMessage)
           sender ! Status.Failure(e)
       }
 
-    case (request: HttpRequest, setup: HostConnectorSetup) =>
+    case (request: HttpRequest, setup: HostConnectorSetup) ⇒
       hostConnectorFor(setup).forward(request)
 
-    case setup: HostConnectorSetup =>
+    case setup: HostConnectorSetup ⇒
       val connector = hostConnectorFor(setup)
       sender.tell(HostConnectorInfo(connector, setup), connector)
 
-    case connect: Http.Connect =>
+    case connect: Http.Connect ⇒
       settingsGroupFor(ClientConnectionSettings(connect.settings)).forward(connect)
 
-    case bind: Http.Bind =>
+    case bind: Http.Bind ⇒
       val commander = sender
       listeners :+= context.watch {
         context.actorOf(
@@ -66,35 +67,36 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
           name = "listener-" + listenerCounter.next())
       }
 
-    case cmd: Http.CloseAll => shutdownSettingsGroups(cmd, Set(sender))
+    case cmd: Http.CloseAll ⇒ shutdownSettingsGroups(cmd, Set(sender))
   }
 
   def terminationManagement: Receive = {
-    case Terminated(child) if listeners contains child =>
+    case Terminated(child) if listeners contains child ⇒
       listeners = listeners filter (_ != child)
 
-    case Terminated(child) if hostConnectors exists (_._2 == child) =>
+    case Terminated(child) if hostConnectors exists (_._2 == child) ⇒
       hostConnectors = hostConnectors filter { _._2 != child }
 
-    case Terminated(child) =>
+    case Terminated(child) ⇒
       settingsGroups = settingsGroups filter { _._2 != child }
 
-    case HttpHostConnector.DemandIdleShutdown =>
+    case HttpHostConnector.DemandIdleShutdown ⇒
       hostConnectors = hostConnectors filter { _._2 != sender }
       sender ! PoisonPill
   }
 
   def shutdownSettingsGroups(cmd: Http.CloseAll, commanders: Set[ActorRef]): Unit = {
     if (!settingsGroups.isEmpty) {
-      val running: Set[ActorRef] = settingsGroups.map { x => x._2 ! cmd; x._2 } (collection.breakOut)
+      val running: Set[ActorRef] = settingsGroups.map { x ⇒ x._2 ! cmd; x._2 }(collection.breakOut)
       context.become(closingSettingsGroups(cmd, running, commanders))
-    } else shutdownHostConnectors(cmd, commanders)
+    }
+    else shutdownHostConnectors(cmd, commanders)
   }
 
   def closingSettingsGroups(cmd: Http.CloseAll, running: Set[ActorRef], commanders: Set[ActorRef]): Receive =
     terminationManagement orElse {
-      case _: Http.CloseAll => context.become(closingSettingsGroups(cmd, running, commanders + sender))
-      case Http.ClosedAll =>
+      case _: Http.CloseAll ⇒ context.become(closingSettingsGroups(cmd, running, commanders + sender))
+      case Http.ClosedAll ⇒
         val stillRunning = running - sender
         if (stillRunning.isEmpty) shutdownHostConnectors(cmd, commanders)
         else context.become(closingSettingsGroups(cmd, stillRunning, commanders))
@@ -102,35 +104,37 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
 
   def shutdownHostConnectors(cmd: Http.CloseAll, commanders: Set[ActorRef]): Unit = {
     if (!hostConnectors.isEmpty) {
-      val running: Set[ActorRef] = hostConnectors.map { x => x._2 ! cmd; x._2 } (collection.breakOut)
+      val running: Set[ActorRef] = hostConnectors.map { x ⇒ x._2 ! cmd; x._2 }(collection.breakOut)
       context.become(closingHostConnectors(running, commanders))
-    } else shutdownListeners(commanders)
+    }
+    else shutdownListeners(commanders)
   }
 
   def closingHostConnectors(running: Set[ActorRef], commanders: Set[ActorRef]): Receive =
     terminationManagement orElse {
-      case cmd: Http.CloseCommand => context.become(closingHostConnectors(running, commanders + sender))
-      case Http.ClosedAll =>
+      case cmd: Http.CloseCommand ⇒ context.become(closingHostConnectors(running, commanders + sender))
+      case Http.ClosedAll ⇒
         val stillRunning = running - sender
         if (stillRunning.isEmpty) shutdownListeners(commanders)
         else context.become(closingHostConnectors(stillRunning, commanders))
     }
 
   def shutdownListeners(commanders: Set[ActorRef]): Unit = {
-    listeners foreach { x => x ! Http.Unbind }
+    listeners foreach { x ⇒ x ! Http.Unbind }
     context.become(unbinding(listeners.toSet, commanders))
     if (listeners.isEmpty) self ! Http.Unbound
   }
 
   def unbinding(running: Set[ActorRef], commanders: Set[ActorRef]): Receive =
     terminationManagement orElse {
-      case cmd: Http.CloseCommand => context.become(unbinding(running, commanders + sender))
-      case Http.Unbound =>
+      case cmd: Http.CloseCommand ⇒ context.become(unbinding(running, commanders + sender))
+      case Http.Unbound ⇒
         val stillRunning = running - sender
         if (stillRunning.isEmpty) {
           commanders foreach (_ ! Http.ClosedAll)
           context.become(receive)
-        } else context.become(unbinding(stillRunning, commanders))
+        }
+        else context.become(unbinding(stillRunning, commanders))
     }
 
   def hostConnectorFor(setup: HostConnectorSetup): ActorRef = {

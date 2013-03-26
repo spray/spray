@@ -20,15 +20,14 @@ import scala.collection.immutable.Queue
 import akka.actor._
 import spray.util.SprayActorLogging
 import spray.io.ClientSSLEngineProvider
-import spray.http.{HttpHeaders, HttpRequest}
-import spray.can.{Http, HostConnectorSetup}
+import spray.http.{ HttpHeaders, HttpRequest }
+import spray.can.{ Http, HostConnectorSetup }
 
-private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, clientConnectionSettingsGroup: ActorRef)
-                                    (implicit sslEngineProvider: ClientSSLEngineProvider)
-  extends Actor with SprayActorLogging {
+private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, clientConnectionSettingsGroup: ActorRef)(implicit sslEngineProvider: ClientSSLEngineProvider)
+    extends Actor with SprayActorLogging {
 
   import HttpHostConnector._
-  import normalizedSetup.{settings => _, _}
+  import normalizedSetup.{ settings ⇒ _, _ }
   def settings = normalizedSetup.settings.get
 
   private[this] val counter = Iterator from 0
@@ -37,9 +36,9 @@ private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, client
   private[this] val hostHeader = {
     val encrypted = settings.connectionSettings.sslEncryption
     val port = normalizedSetup.remoteAddress.getPort match {
-      case 443 if encrypted => 0
-      case 80 if !encrypted => 0
-      case x => x
+      case 443 if encrypted ⇒ 0
+      case 80 if !encrypted ⇒ 0
+      case x                ⇒ x
     }
     HttpHeaders.Host(normalizedSetup.remoteAddress.getHostName, port)
   }
@@ -47,29 +46,30 @@ private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, client
   context.setReceiveTimeout(settings.idleTimeout)
 
   def receive: Receive = {
-    case request: HttpRequest =>
+    case request: HttpRequest ⇒
       val requestWithHostHeader =
-        if (request.headers.exists { case _: HttpHeaders.Host => true }) request
+        if (request.headers.exists { case _: HttpHeaders.Host ⇒ true }) request
         else request.withHeaders(hostHeader :: request.headers)
       dispatchStrategy(RequestContext(requestWithHostHeader, settings.maxRetries, sender))
 
-    case ctx: RequestContext => dispatchStrategy(ctx) // retry
+    case ctx: RequestContext ⇒ dispatchStrategy(ctx) // retry
 
-    case RequestCompleted =>
+    case RequestCompleted ⇒
       openRequestCounts = openRequestCounts.updated(sender, openRequestCounts(sender) - 1)
       dispatchStrategy.onConnectionStateChange()
 
-    case Http.CloseAll(cmd) =>
+    case Http.CloseAll(cmd) ⇒
       val allDisconnected = openRequestCounts.foldLeft(true) {
-        case (flag, (_, -1)) => flag
-        case (_, (ref, _)) => ref ! cmd; false
+        case (flag, (_, -1)) ⇒ flag
+        case (_, (ref, _))   ⇒ ref ! cmd; false
       }
       if (allDisconnected) {
         sender ! Http.ClosedAll
         context.stop(self)
-      } else context.become(closing(Set(sender)))
+      }
+      else context.become(closing(Set(sender)))
 
-    case Disconnected(openRequestCount) =>
+    case Disconnected(openRequestCount) ⇒
       val oldCount = openRequestCounts(sender)
       val newCount =
         if (oldCount == openRequestCount) -1 // "normal" case when a connection was closed
@@ -77,38 +77,38 @@ private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, client
       openRequestCounts = openRequestCounts.updated(sender, newCount)
       dispatchStrategy.onConnectionStateChange()
 
-    case Terminated(child) =>
+    case Terminated(child) ⇒
       openRequestCounts -= child
       dispatchStrategy.onConnectionStateChange()
 
-    case DemandIdleShutdown =>
+    case DemandIdleShutdown ⇒
       openRequestCounts -= sender
       sender ! PoisonPill
 
-    case ReceiveTimeout =>
+    case ReceiveTimeout ⇒
       if (context.children.isEmpty) {
         log.debug("Initiating idle shutdown")
         context.parent ! DemandIdleShutdown
         context.become { // after having initiated our shutdown we must be bounce all requests
-          case request: HttpRequest => context.parent.forward(request -> normalizedSetup)
-          case _: Http.CloseAll => sender ! Http.ClosedAll; context.stop(self)
+          case request: HttpRequest ⇒ context.parent.forward(request -> normalizedSetup)
+          case _: Http.CloseAll     ⇒ sender ! Http.ClosedAll; context.stop(self)
         }
       }
   }
 
   def closing(commanders: Set[ActorRef]): Receive = {
-    case Http.CloseAll(cmd) =>
+    case Http.CloseAll(cmd) ⇒
       context.become(closing(commanders + sender))
 
-    case _: Terminated =>
+    case _: Terminated ⇒
       if (context.children.isEmpty) {
         commanders foreach (_ ! Http.ClosedAll)
         context.stop(self)
       }
 
-    case ReceiveTimeout => context.stop(self)
+    case ReceiveTimeout ⇒ context.stop(self)
 
-    case _:Disconnected | RequestCompleted | DemandIdleShutdown => // ignore
+    case _: Disconnected | RequestCompleted | DemandIdleShutdown ⇒ // ignore
   }
 
   def firstIdleConnection: Option[ActorRef] = openRequestCounts.find(_._2 == 0).map(_._1)
@@ -151,13 +151,13 @@ private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, client
 
     def apply(ctx: RequestContext): Unit =
       findAvailableConnection match {
-        case Some(connection) => dispatch(ctx, connection)
-        case None => queue = queue.enqueue(ctx)
+        case Some(connection) ⇒ dispatch(ctx, connection)
+        case None             ⇒ queue = queue.enqueue(ctx)
       }
 
     def onConnectionStateChange(): Unit =
       if (queue.nonEmpty)
-        findAvailableConnection foreach { connection =>
+        findAvailableConnection foreach { connection ⇒
           dispatch(queue.head, connection)
           queue = queue.tail
         }

@@ -50,9 +50,7 @@ object TestSupport {
     headers = List(
       `Server`("spray/1.0"),
       `Date`(DateTime(2011, 8, 25, 9, 10, 29)),
-      `Content-Length`(0)
-    )
-  )
+      `Content-Length`(0)))
 
   def response(content: String) = HttpResponse(
     status = 200,
@@ -60,10 +58,8 @@ object TestSupport {
       `Server`("spray/1.0"),
       `Date`(DateTime(2011, 8, 25, 9, 10, 29)),
       `Content-Length`(content.length),
-      `Content-Type`(`text/plain`)
-    ),
-    entity = content
-  )
+      `Content-Type`(`text/plain`)),
+    entity = content)
 
   def rawResponse = prep {
     """|HTTP/1.1 200 OK
@@ -121,7 +117,7 @@ object TestSupport {
 
   def wipeDate(string: String) =
     string.fastSplit('\n').map {
-      case s if s.startsWith("Date:") => "Date: XXXX\r"
-      case s => s
+      case s if s.startsWith("Date:") ⇒ "Date: XXXX\r"
+      case s                          ⇒ s
     }.mkString("\n")
 }

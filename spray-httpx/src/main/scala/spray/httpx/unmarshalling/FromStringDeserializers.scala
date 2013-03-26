@@ -16,7 +16,6 @@
 
 package spray.httpx.unmarshalling
 
-
 trait FromStringDeserializers {
 
   implicit val String2SymbolConverter = new FromStringDeserializer[Symbol] {
@@ -81,15 +80,15 @@ trait FromStringDeserializers {
 
   private def numberFormatError(value: String,
                                 target: String): PartialFunction[Throwable, Either[DeserializationError, Nothing]] = {
-    case e: NumberFormatException =>
+    case e: NumberFormatException ⇒
       Left(MalformedContent("'%s' is not a valid %s value" format (value, target), e))
   }
 
   implicit val String2BooleanConverter = new FromStringDeserializer[Boolean] {
     def apply(value: String) = value.toLowerCase match {
-      case "true" | "yes" | "on" => Right(true)
-      case "false" | "no" | "off" => Right(false)
-      case x => Left(MalformedContent("'" + x + "' is not a valid Boolean value"))
+      case "true" | "yes" | "on"  ⇒ Right(true)
+      case "false" | "no" | "off" ⇒ Right(false)
+      case x                      ⇒ Left(MalformedContent("'" + x + "' is not a valid Boolean value"))
     }
   }
 }

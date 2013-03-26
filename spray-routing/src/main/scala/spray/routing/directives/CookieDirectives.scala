@@ -22,7 +22,6 @@ import spray.util._
 import spray.http._
 import HttpHeaders._
 
-
 trait CookieDirectives {
   import BasicDirectives._
   import RouteDirectives._
@@ -35,8 +34,8 @@ trait CookieDirectives {
    */
   def cookie(name: String): Directive[HttpCookie :: HNil] =
     headerValue {
-      case Cookie(cookies) => cookies.find(_.name == name)
-      case _ => None
+      case Cookie(cookies) ⇒ cookies.find(_.name == name)
+      case _               ⇒ None
     } | reject(MissingCookieRejection(name))
 
   /**

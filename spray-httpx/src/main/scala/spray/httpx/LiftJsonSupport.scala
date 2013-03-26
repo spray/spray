@@ -23,7 +23,6 @@ import spray.httpx.unmarshalling.Unmarshaller
 import spray.http._
 import MediaTypes._
 
-
 /**
  * A trait providing automatic to and from JSON marshalling/unmarshalling for case classes via lift-json.
  * Note that *spray-routing* does not have an automatic dependency on *lift-json*. You'll need to provide the
@@ -36,9 +35,9 @@ trait LiftJsonSupport {
    */
   implicit def liftJsonFormats: Formats
 
-  implicit def liftJsonUnmarshaller[T :Manifest] =
+  implicit def liftJsonUnmarshaller[T: Manifest] =
     Unmarshaller[T](`application/json`) {
-      case x: HttpBody =>
+      case x: HttpBody ⇒
         val jsonSource = x.asString
         parse(jsonSource).extract[T]
     }

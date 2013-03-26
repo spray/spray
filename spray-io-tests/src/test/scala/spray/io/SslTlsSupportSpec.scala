@@ -15,23 +15,22 @@
  */
 package spray.io
 
-import java.io.{BufferedWriter, OutputStreamWriter, InputStreamReader, BufferedReader}
+import java.io.{ BufferedWriter, OutputStreamWriter, InputStreamReader, BufferedReader }
 import javax.net.ssl._
-import java.net.{InetSocketAddress, SocketException}
-import java.security.{KeyStore, SecureRandom}
+import java.net.{ InetSocketAddress, SocketException }
+import java.security.{ KeyStore, SecureRandom }
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.{ ConfigFactory, Config }
 import org.specs2.mutable.Specification
 import org.specs2.time.NoTimeConversions
 import akka.actor._
-import akka.event.{Logging, LoggingAdapter}
+import akka.event.{ Logging, LoggingAdapter }
 import akka.testkit.TestProbe
-import akka.util.{ByteString, Timeout}
-import akka.io.{IO, Tcp}
+import akka.util.{ ByteString, Timeout }
+import akka.io.{ IO, Tcp }
 import spray.testkit.TestUtils
-import spray.util.{Utils, LoggingContext}
-
+import spray.util.{ Utils, LoggingContext }
 
 class SslTlsSupportSpec extends Specification with NoTimeConversions {
   implicit val timeOut: Timeout = 1.second
@@ -114,8 +113,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
           def receive = running(connection, frontend >> SslTlsSupport, sslTlsContext[ClientSSLEngineProvider](connected))
         }
       },
-      name = "client" + counter.incrementAndGet()
-    )
+      name = "client" + counter.incrementAndGet())
     probe.send(connection, Tcp.Register(handler))
 
     def run() {
@@ -138,14 +136,14 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
           var commander: ActorRef = _
 
           val commandPipeline: CPL = {
-            case cmd =>
+            case cmd ⇒
               commander = context.sender
               commandPL(cmd)
           }
 
           val eventPipeline: EPL = {
-            case ev: Tcp.Received if commander != null => commander ! ev
-            case ev =>
+            case ev: Tcp.Received if commander != null ⇒ commander ! ev
+            case ev ⇒
               if (commander != null) commander ! ev
               eventPL(ev)
           }
@@ -159,18 +157,18 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
         new Pipelines {
           val commandPipeline = commandPL
           val eventPipeline: EPL = {
-            case Tcp.Received(data) =>
+            case Tcp.Received(data) ⇒
               val input = data.utf8String.dropRight(1)
               context.log.debug("spray-io Server received {} from {}", input, sender)
               val response = serverResponse(input)
               commandPL(Tcp.Write(ByteString(response)))
               context.log.debug("spray-io Server sent: {}", response.dropRight(1))
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
         }
     }
     def receive: Receive = {
-      case x: Tcp.Connected =>
+      case x: Tcp.Connected ⇒
         val connection = sender
         val handler = system.actorOf(
           props = Props {
@@ -178,8 +176,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
               def receive = running(connection, frontend >> SslTlsSupport, sslTlsContext[ServerSSLEngineProvider](x))
             }
           },
-          name = "server" + counter.incrementAndGet()
-        )
+          name = "server" + counter.incrementAndGet())
         connection ! Tcp.Register(handler)
     }
   }
@@ -201,7 +198,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
       try {
         socket = serverSocket.accept().asInstanceOf[SSLSocket]
         val (reader, writer) = readerAndWriter(socket)
-        while(true) {
+        while (true) {
           val line = reader.readLine()
           log.debug("SSLServerSocket Server received: {}", line)
           if (line == null) throw new SocketException("closed")
@@ -212,7 +209,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
         }
       }
       catch {
-        case _: SocketException => // expected during shutdown
+        case _: SocketException ⇒ // expected during shutdown
       }
       finally close()
     }
@@ -253,8 +250,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
 
   def serverResponse(input: String): String = input.split('+').map(_.toInt).reduceLeft(_ + _).toString + '\n'
 
-  def sslTlsContext[T <: (PipelineContext => Option[SSLEngine])](connected: Tcp.Connected)
-                                                                (implicit engineProvider: T, context: ActorContext): SslTlsContext =
+  def sslTlsContext[T <: (PipelineContext ⇒ Option[SSLEngine])](connected: Tcp.Connected)(implicit engineProvider: T, context: ActorContext): SslTlsContext =
     new SslTlsContext {
       def actorContext = context
       def remoteAddress = connected.remoteAddress

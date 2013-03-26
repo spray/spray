@@ -18,7 +18,7 @@ package spray.can
 package rendering
 
 import scala.annotation.tailrec
-import akka.util.{ByteStringBuilder, ByteString}
+import akka.util.{ ByteStringBuilder, ByteString }
 import spray.util._
 import spray.http._
 import HttpProtocols._
@@ -29,26 +29,26 @@ class ResponseRenderer(serverHeader: String,
                        responseSizeHint: Int) {
 
   private[this] val serverHeaderPlusDateColonSP = (serverHeader match {
-    case "" => "Date: "
-    case x => "Server: " + x + "\r\nDate: "
+    case "" ⇒ "Date: "
+    case x  ⇒ "Server: " + x + "\r\nDate: "
   }).getAsciiBytes
 
   def render(ctx: HttpResponsePartRenderingContext): RenderedMessagePart = {
     def chunkless = chunklessStreaming || ctx.requestProtocol == `HTTP/1.0`
     ctx.responsePart match {
-      case x: HttpResponse => renderResponse(x, ctx)
+      case x: HttpResponse         ⇒ renderResponse(x, ctx)
 
-      case x: ChunkedResponseStart => renderChunkedResponseStart(x.response, ctx, chunkless)
+      case x: ChunkedResponseStart ⇒ renderChunkedResponseStart(x.response, ctx, chunkless)
 
-      case x: MessageChunk if ctx.requestMethod != HttpMethods.HEAD =>
+      case x: MessageChunk if ctx.requestMethod != HttpMethods.HEAD ⇒
         if (chunkless) RenderedMessagePart(ByteString(x.body))
         else renderChunk(x, responseSizeHint)
 
-      case x: ChunkedMessageEnd if ctx.requestMethod != HttpMethods.HEAD =>
+      case x: ChunkedMessageEnd if ctx.requestMethod != HttpMethods.HEAD ⇒
         if (chunkless) RenderedMessagePart(ByteString.empty, closeConnection = true)
         else renderFinalChunk(x, responseSizeHint, ctx.requestConnectionHeader)
 
-      case _ => RenderedMessagePart(ByteString.empty)
+      case _ ⇒ RenderedMessagePart(ByteString.empty)
     }
   }
 
@@ -83,8 +83,7 @@ class ResponseRenderer(serverHeader: String,
     RenderedMessagePart(bb.result())
   }
 
-  private def renderResponseStart(response: HttpResponse, ctx: HttpResponsePartRenderingContext)
-                                 (implicit bb: ByteStringBuilder): Option[String] = {
+  private def renderResponseStart(response: HttpResponse, ctx: HttpResponsePartRenderingContext)(implicit bb: ByteStringBuilder): Option[String] = {
     import response._
 
     if (status == StatusCodes.OK && protocol == `HTTP/1.1`) put(DefaultStatusLine)
@@ -95,43 +94,44 @@ class ResponseRenderer(serverHeader: String,
   }
 
   @tailrec
-  private def putHeadersAndReturnConnectionHeaderValue(headers: List[HttpHeader])
-                                                      (connectionHeaderValue: Option[String] = None)
-                                                      (implicit bb: ByteStringBuilder): Option[String] =
+  private def putHeadersAndReturnConnectionHeaderValue(headers: List[HttpHeader])(connectionHeaderValue: Option[String] = None)(implicit bb: ByteStringBuilder): Option[String] =
     headers match {
-      case Nil => connectionHeaderValue
-      case head :: tail => putHeadersAndReturnConnectionHeaderValue(tail) {
+      case Nil ⇒ connectionHeaderValue
+      case head :: tail ⇒ putHeadersAndReturnConnectionHeaderValue(tail) {
         head.lowercaseName match {
-          case "content-type"      => None // we never render these headers here,
-          case "content-length"    => None // because their production is the
-          case "transfer-encoding" => None // responsibility of the spray-can layer,
-          case "date"              => None // not the user
-          case "server"            => None
-          case "connection"        => put(head); Some(head.value)
-          case _ => put(head); None
+          case "content-type"      ⇒ None // we never render these headers here,
+          case "content-length"    ⇒ None // because their production is the
+          case "transfer-encoding" ⇒ None // responsibility of the spray-can layer,
+          case "date"              ⇒ None // not the user
+          case "server"            ⇒ None
+          case "connection"        ⇒ put(head); Some(head.value)
+          case _                   ⇒ put(head); None
         }
       }
     }
 
   private def putConnectionHeaderIfRequiredAndReturnClose(response: HttpResponse, ctx: HttpResponsePartRenderingContext,
-                                                          connectionHeaderValue: Option[String])
-                                                         (implicit bb: ByteStringBuilder): Boolean =
+                                                          connectionHeaderValue: Option[String])(implicit bb: ByteStringBuilder): Boolean =
     ctx.requestProtocol match {
-      case `HTTP/1.0` => {
+      case `HTTP/1.0` ⇒ {
         if (connectionHeaderValue.isEmpty) {
           if (ctx.requestConnectionHeader.isDefined && (ctx.requestConnectionHeader.get equalsIgnoreCase "Keep-Alive")) {
             putHeader("Connection", "Keep-Alive")
             false
-          } else true
-        } else !(connectionHeaderValue.get equalsIgnoreCase "Keep-Alive")
+          }
+          else true
+        }
+        else !(connectionHeaderValue.get equalsIgnoreCase "Keep-Alive")
       }
-      case `HTTP/1.1` => {
+      case `HTTP/1.1` ⇒ {
         if (connectionHeaderValue.isEmpty) {
           if (ctx.requestConnectionHeader.isDefined && (ctx.requestConnectionHeader.get equalsIgnoreCase "close")) {
             if (response.protocol == `HTTP/1.1`) putHeader("Connection", "close")
             true
-          } else response.protocol == `HTTP/1.0`
-        } else connectionHeaderValue.get equalsIgnoreCase "close"
+          }
+          else response.protocol == `HTTP/1.0`
+        }
+        else connectionHeaderValue.get equalsIgnoreCase "close"
       }
     }
 
@@ -151,5 +151,5 @@ class ResponseRenderer(serverHeader: String,
     cachedBytes
   }
 
-  protected def dateTime(now: Long) = DateTime(now)  // split out so we can stabilize by overriding in tests
+  protected def dateTime(now: Long) = DateTime(now) // split out so we can stabilize by overriding in tests
 }

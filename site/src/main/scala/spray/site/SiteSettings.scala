@@ -16,15 +16,15 @@
 
 package spray.site
 
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.{ Config, ConfigFactory }
 import akka.actor.ActorSystem
 
 case class SiteSettings(
-  interface: String,
-  port: Int,
-  devMode: Boolean,
-  repoDirs: List[String],
-  nightliesDir: String) {
+    interface: String,
+    port: Int,
+    devMode: Boolean,
+    repoDirs: List[String],
+    nightliesDir: String) {
 
   require(interface.nonEmpty, "interface must be non-empty")
   require(0 < port && port < 65536, "illegal port")

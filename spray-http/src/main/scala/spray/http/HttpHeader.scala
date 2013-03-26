@@ -41,35 +41,35 @@ object HttpHeaders {
     def lowercaseName = "accept"
     def value = mediaRanges.map(_.value).mkString(", ")
   }
-  
+
   object `Accept-Charset` { def apply(first: HttpCharsetRange, more: HttpCharsetRange*): `Accept-Charset` = apply(first +: more) }
   case class `Accept-Charset`(charsetRanges: Seq[HttpCharsetRange]) extends HttpHeader {
     def name = "Accept-Charset"
     def lowercaseName = "accept-charset"
     def value = charsetRanges.map(_.value).mkString(", ")
   }
-  
+
   object `Accept-Encoding` { def apply(first: HttpEncodingRange, more: HttpEncodingRange*): `Accept-Encoding` = apply(first +: more) }
   case class `Accept-Encoding`(encodings: Seq[HttpEncodingRange]) extends HttpHeader {
     def name = "Accept-Encoding"
     def lowercaseName = "accept-encoding"
     def value = encodings.map(_.value).mkString(", ")
   }
-  
+
   object `Accept-Language` { def apply(first: LanguageRange, more: LanguageRange*): `Accept-Language` = apply(first +: more) }
   case class `Accept-Language`(languageRanges: Seq[LanguageRange]) extends HttpHeader {
     def name = "Accept-Language"
     def lowercaseName = "accept-language"
     def value = languageRanges.map(_.value).mkString(", ")
   }
-  
+
   object `Accept-Ranges` { def apply(first: RangeUnit, more: RangeUnit*): `Accept-Ranges` = apply(first +: more) }
   case class `Accept-Ranges`(rangeUnits: Seq[RangeUnit]) extends HttpHeader {
     def name = "Accept-Ranges"
     def lowercaseName = "accept-ranges"
     def value = if (rangeUnits.isEmpty) "none" else rangeUnits.mkString(", ")
   }
-  
+
   case class Authorization(credentials: HttpCredentials) extends HttpHeader {
     def name = "Authorization"
     def lowercaseName = "authorization"
@@ -96,7 +96,7 @@ object HttpHeaders {
   case class `Content-Disposition`(dispositionType: String, parameters: Map[String, String]) extends HttpHeader {
     def name = "Content-Disposition"
     def lowercaseName = "content-disposition"
-    def value = parameters.map(p => "; " + p._1 + "=\"" + p._2 + '"').mkString(dispositionType, "", "")
+    def value = parameters.map(p ⇒ "; " + p._1 + "=\"" + p._2 + '"').mkString(dispositionType, "", "")
   }
 
   case class `Content-Encoding`(encoding: HttpEncoding) extends HttpHeader {
@@ -104,13 +104,13 @@ object HttpHeaders {
     def lowercaseName = "content-encoding"
     def value = encoding.value
   }
-  
+
   case class `Content-Length`(length: Int) extends HttpHeader {
     def name = "Content-Length"
     def lowercaseName = "content-length"
     def value = length.toString
   }
-  
+
   case class `Content-Type`(contentType: ContentType) extends HttpHeader {
     def name = "Content-Type"
     def lowercaseName = "content-type"
@@ -123,7 +123,7 @@ object HttpHeaders {
     def lowercaseName = "cookie"
     def value = cookies.mkString("; ")
   }
-  
+
   case class Date(date: DateTime) extends HttpHeader {
     def name = "Date"
     def lowercaseName = "date"
@@ -142,7 +142,7 @@ object HttpHeaders {
     def lowercaseName = "last-modified"
     def value = date.toRfc1123DateTimeString
   }
-  
+
   case class Location(absoluteUri: String) extends HttpHeader {
     def name = "Location"
     def lowercaseName = "location"
@@ -188,7 +188,7 @@ object HttpHeaders {
     def lowercaseName = "www-authenticate"
     def value = challenges.mkString(", ")
   }
-  
+
   object `X-Forwarded-For` { def apply(first: HttpIp, more: HttpIp*): `X-Forwarded-For` = apply((first +: more).map(Some(_))) }
   case class `X-Forwarded-For`(ips: Seq[Option[HttpIp]]) extends HttpHeader {
     def name = "X-Forwarded-For"

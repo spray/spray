@@ -17,5 +17,4 @@
 
 package spray.http
 
-
 case class Timedout(request: HttpRequestPart with HttpMessageStart) // source-quote

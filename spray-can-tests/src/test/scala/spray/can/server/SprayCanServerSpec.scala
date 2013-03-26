@@ -17,8 +17,8 @@
 package spray.can.server
 
 import org.specs2.mutable.Specification
-import com.typesafe.config.{ConfigFactory, Config}
-import akka.actor.{ActorRef, ActorSystem}
+import com.typesafe.config.{ ConfigFactory, Config }
+import akka.actor.{ ActorRef, ActorSystem }
 import akka.io.IO
 import akka.testkit.TestProbe
 import spray.can.Http
@@ -26,7 +26,7 @@ import spray.util.Utils.temporaryServerHostnameAndPort
 import spray.httpx.RequestBuilding._
 import spray.http._
 import java.net.Socket
-import java.io.{InputStreamReader, BufferedReader, OutputStreamWriter, BufferedWriter}
+import java.io.{ InputStreamReader, BufferedReader, OutputStreamWriter, BufferedWriter }
 import org.parboiled.common.FileUtils
 import scala.annotation.tailrec
 
@@ -38,7 +38,6 @@ class SprayCanServerSpec extends Specification {
       io.tcp.trace-logging = off
     }""")
   implicit val system = ActorSystem(getClass.getSimpleName, testConf)
-
 
   "The server-side spray-can HTTP infrastructure" should {
 
@@ -157,14 +156,12 @@ class SprayCanServerSpec extends Specification {
       writer
     }
 
-    def readAll(socket: Socket)
-               (reader: BufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream)))
-               : (String, BufferedReader) = {
+    def readAll(socket: Socket)(reader: BufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream))): (String, BufferedReader) = {
       val sb = new java.lang.StringBuilder
       val cbuf = new Array[Char](256)
       @tailrec def drain(): (String, BufferedReader) = reader.read(cbuf) match {
-        case -1 => sb.toString -> reader
-        case n => sb.append(cbuf, 0, n); drain()
+        case -1 ⇒ sb.toString -> reader
+        case n  ⇒ sb.append(cbuf, 0, n); drain()
       }
       drain()
     }

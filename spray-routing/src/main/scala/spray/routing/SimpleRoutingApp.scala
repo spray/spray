@@ -19,14 +19,13 @@ package spray.routing
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.collection.immutable
-import akka.actor.{ActorSystem, ActorRefFactory, Actor, Props}
+import akka.actor.{ ActorSystem, ActorRefFactory, Actor, Props }
 import akka.pattern.ask
 import akka.util.Timeout
-import akka.io.{Inet, IO}
+import akka.io.{ Inet, IO }
 import spray.io.ServerSSLEngineProvider
 import spray.can.Http
 import spray.can.server.ServerSettings
-
 
 trait SimpleRoutingApp extends HttpService {
 
@@ -48,10 +47,8 @@ trait SimpleRoutingApp extends HttpService {
                   serviceActorName: String = "simple-service-actor",
                   backlog: Int = 100,
                   options: immutable.Traversable[Inet.SocketOption] = Nil,
-                  settings: Option[ServerSettings] = None)
-                 (route: => Route)
-                 (implicit system: ActorSystem, sslEngineProvider: ServerSSLEngineProvider,
-                  bindingTimeout: Timeout = 1.second): Future[Any] = {
+                  settings: Option[ServerSettings] = None)(route: ⇒ Route)(implicit system: ActorSystem, sslEngineProvider: ServerSSLEngineProvider,
+                                                                           bindingTimeout: Timeout = 1.second): Future[Any] = {
     val serviceActor = system.actorOf(
       props = Props {
         new Actor {
@@ -62,8 +59,7 @@ trait SimpleRoutingApp extends HttpService {
           }
         }
       },
-      name = serviceActorName
-    )
+      name = serviceActorName)
     IO(Http) ? Http.Bind(serviceActor, interface, port, backlog, options, settings)
   }
 }

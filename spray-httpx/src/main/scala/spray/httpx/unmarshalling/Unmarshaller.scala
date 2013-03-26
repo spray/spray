@@ -16,8 +16,7 @@
 
 package spray.httpx.unmarshalling
 
-import spray.http.{HttpEntity, ContentTypeRange}
-
+import spray.http.{ HttpEntity, ContentTypeRange }
 
 object Unmarshaller {
   def apply[T](unmarshalFrom: ContentTypeRange*)(f: PartialFunction[HttpEntity, T]): Unmarshaller[T] =
@@ -27,10 +26,10 @@ object Unmarshaller {
         if (f.isDefinedAt(entity)) protect(f(entity)) else Left(ContentExpected)
     }
 
-  def delegate[A, B](unmarshalFrom: ContentTypeRange*)(f: A => B)(implicit mb: Unmarshaller[A]): Unmarshaller[B] =
+  def delegate[A, B](unmarshalFrom: ContentTypeRange*)(f: A ⇒ B)(implicit mb: Unmarshaller[A]): Unmarshaller[B] =
     new SimpleUnmarshaller[B] {
       val canUnmarshalFrom = unmarshalFrom
-      def unmarshal(entity: HttpEntity) = mb(entity).right.flatMap(a => protect(f(a)))
+      def unmarshal(entity: HttpEntity) = mb(entity).right.flatMap(a ⇒ protect(f(a)))
     }
 
   def forNonEmpty[T](implicit um: Unmarshaller[T]): Unmarshaller[T] =

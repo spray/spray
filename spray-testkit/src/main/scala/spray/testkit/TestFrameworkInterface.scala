@@ -16,7 +16,6 @@
 
 package spray.testkit
 
-
 trait TestFrameworkInterface {
 
   def cleanUp()

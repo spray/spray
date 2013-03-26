@@ -20,7 +20,6 @@ import scala.annotation.tailrec
 import akka.util.ByteIterator
 import spray.http.StatusCodes.NotImplemented
 
-
 /**
  * A ParsingState instance holds the complete parsing state at any particular point in the request or response
  * parsing process.
@@ -42,13 +41,14 @@ abstract class CharacterParser extends IntermediateState {
   def read(data: ByteIterator): ParsingState = {
     @tailrec
     def read(parser: ParsingState): ParsingState = parser match {
-      case x: CharacterParser =>
+      case x: CharacterParser ⇒
         if (data.hasNext) {
           val cursor = data.next().asInstanceOf[Char] // simple US-ASCII encoding conversion
           read(x.handleChar(cursor))
-        } else x
-      case x: IntermediateState => x.read(data) // a body parser
-      case x: FinalParsingState => x
+        }
+        else x
+      case x: IntermediateState ⇒ x.read(data) // a body parser
+      case x: FinalParsingState ⇒ x
     }
     read(this)
   }

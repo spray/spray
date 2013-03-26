@@ -24,34 +24,32 @@ import spray.http._
 import HttpMethods._
 import HttpHeaders._
 
-
 trait RequestBuilding {
   import RequestBuilding.RequestTransformer
 
   class RequestBuilder(val method: HttpMethod) {
     def apply(): HttpRequest = apply("/")
     def apply(uri: String): HttpRequest = apply[String](uri, None)
-    def apply[T :Marshaller](uri: String, content: T): HttpRequest = apply(uri, Some(content))
-    def apply[T :Marshaller](uri: String, content: Option[T]): HttpRequest = apply(Uri(uri), content)
+    def apply[T: Marshaller](uri: String, content: T): HttpRequest = apply(uri, Some(content))
+    def apply[T: Marshaller](uri: String, content: Option[T]): HttpRequest = apply(Uri(uri), content)
     def apply(uri: Uri): HttpRequest = apply[String](uri, None)
-    def apply[T :Marshaller](uri: Uri, content: T): HttpRequest = apply(uri, Some(content))
-    def apply[T :Marshaller](uri: Uri, content: Option[T]): HttpRequest = {
+    def apply[T: Marshaller](uri: Uri, content: T): HttpRequest = apply(uri, Some(content))
+    def apply[T: Marshaller](uri: Uri, content: Option[T]): HttpRequest = {
       HttpRequest(method, uri,
         entity = content match {
-          case None => EmptyEntity
-          case Some(value) => marshal(value) match {
-            case Right(entity) => entity
-            case Left(error) => throw error
+          case None ⇒ EmptyEntity
+          case Some(value) ⇒ marshal(value) match {
+            case Right(entity) ⇒ entity
+            case Left(error)   ⇒ throw error
           }
-        }
-      )
+        })
     }
   }
 
-  val Get    = new RequestBuilder(GET)
-  val Post   = new RequestBuilder(POST)
-  val Put    = new RequestBuilder(PUT)
-  val Patch  = new RequestBuilder(PATCH)
+  val Get = new RequestBuilder(GET)
+  val Post = new RequestBuilder(POST)
+  val Put = new RequestBuilder(PUT)
+  val Patch = new RequestBuilder(PATCH)
   val Delete = new RequestBuilder(DELETE)
 
   def encode(encoder: Encoder): RequestTransformer = encoder.encode(_)
@@ -60,7 +58,7 @@ trait RequestBuilding {
 
   def addHeader(headerName: String, headerValue: String): RequestTransformer = {
     val rawHeader = RawHeader(headerName, headerValue)
-    addHeader(HttpParser.parseHeader(rawHeader).left.flatMap(_ => Right(rawHeader)).right.get)
+    addHeader(HttpParser.parseHeader(rawHeader).left.flatMap(_ ⇒ Right(rawHeader)).right.get)
   }
 
   def addHeaders(first: HttpHeader, more: HttpHeader*): RequestTransformer = addHeaders(first :: more.toList)
@@ -69,21 +67,21 @@ trait RequestBuilding {
 
   def addCredentials(credentials: BasicHttpCredentials) = addHeader(HttpHeaders.Authorization(credentials))
 
-  def logRequest(log: LoggingAdapter): HttpRequest => HttpRequest =
-    logRequest { request => log.debug(request.toString) }
+  def logRequest(log: LoggingAdapter): HttpRequest ⇒ HttpRequest =
+    logRequest { request ⇒ log.debug(request.toString) }
 
-  def logRequest(logFun: HttpRequest => Unit): HttpRequest => HttpRequest = { request =>
+  def logRequest(logFun: HttpRequest ⇒ Unit): HttpRequest ⇒ HttpRequest = { request ⇒
     logFun(request)
     request
   }
 
   implicit def request2TransformableHttpRequest(request: HttpRequest) = new TransformableHttpRequest(request)
   class TransformableHttpRequest(request: HttpRequest) {
-    def ~> [T](f: HttpRequest => T) = f(request)
-    def ~> (header: HttpHeader) = addHeader(header)(request)
+    def ~>[T](f: HttpRequest ⇒ T) = f(request)
+    def ~>(header: HttpHeader) = addHeader(header)(request)
   }
 }
 
 object RequestBuilding extends RequestBuilding {
-  type RequestTransformer = HttpRequest => HttpRequest
+  type RequestTransformer = HttpRequest ⇒ HttpRequest
 }

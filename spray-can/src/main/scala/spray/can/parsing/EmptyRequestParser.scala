@@ -16,24 +16,23 @@
 
 package spray.can.parsing
 
-
 class EmptyRequestParser(settings: ParserSettings) extends CharacterParser {
   import spray.http.HttpMethods._
 
   def handleChar(cursor: Char) = cursor match {
-    case 'G' => new MethodParser(settings, GET)
-    case 'P' => new CharacterParser {
+    case 'G' ⇒ new MethodParser(settings, GET)
+    case 'P' ⇒ new CharacterParser {
       override def handleChar(cursor: Char) = cursor match {
-        case 'O' => new MethodParser(settings, POST, 1)
-        case 'U' => new MethodParser(settings, PUT, 1)
-        case 'A' => new MethodParser(settings, PATCH, 1)
-        case _ => badMethod
+        case 'O' ⇒ new MethodParser(settings, POST, 1)
+        case 'U' ⇒ new MethodParser(settings, PUT, 1)
+        case 'A' ⇒ new MethodParser(settings, PATCH, 1)
+        case _   ⇒ badMethod
       }
     }
-    case 'D' => new MethodParser(settings, DELETE)
-    case 'H' => new MethodParser(settings, HEAD)
-    case 'O' => new MethodParser(settings, OPTIONS)
-    case 'T' => new MethodParser(settings, TRACE)
-    case _ => badMethod
+    case 'D' ⇒ new MethodParser(settings, DELETE)
+    case 'H' ⇒ new MethodParser(settings, HEAD)
+    case 'O' ⇒ new MethodParser(settings, OPTIONS)
+    case 'T' ⇒ new MethodParser(settings, TRACE)
+    case _   ⇒ badMethod
   }
 }

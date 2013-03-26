@@ -20,13 +20,12 @@ package directives
 import akka.actor.ActorRefFactory
 import scala.concurrent.duration.Duration
 import scala.concurrent.ExecutionContext
-import scala.util.{Success, Failure}
+import scala.util.{ Success, Failure }
 import spray.caching._
 import spray.http._
 import CacheDirectives._
 import HttpHeaders._
 import HttpMethods._
-
 
 // not mixed into spray.routing.Directives due to its dependency on com.googlecode.concurrentlinkedhashmap
 trait CachingDirectives {
@@ -46,12 +45,12 @@ trait CachingDirectives {
    */
   def cachingProhibited: Directive0 =
     extract(_.request.headers.exists {
-      case x: `Cache-Control` => x.directives.exists {
-        case `no-cache` => true
-        case `max-age`(0) => true
-        case _ => false
+      case x: `Cache-Control` ⇒ x.directives.exists {
+        case `no-cache`   ⇒ true
+        case `max-age`(0) ⇒ true
+        case _            ⇒ false
       }
-      case _ => false
+      case _ ⇒ false
     }).flatMap(if (_) pass else reject)
 
   /**
@@ -61,26 +60,27 @@ trait CachingDirectives {
    */
   def alwaysCache(csm: CacheSpecMagnet): Directive0 = {
     import csm._
-    mapInnerRoute { route => ctx =>
-      liftedKeyer(ctx) match {
-        case Some(key) =>
-          responseCache(key) { promise =>
-            route {
-              ctx.withRouteResponseHandling {
-                case response: HttpResponse => promise.success(Right(response))
-                case Rejected(rejections) => promise.success(Left(rejections))
-                case x => promise.failure(new RequestProcessingException(StatusCodes.InternalServerError,
-                  s"Route responses other than HttpResponse or Rejections cannot be cached (received: $x)"))
+    mapInnerRoute { route ⇒
+      ctx ⇒
+        liftedKeyer(ctx) match {
+          case Some(key) ⇒
+            responseCache(key) { promise ⇒
+              route {
+                ctx.withRouteResponseHandling {
+                  case response: HttpResponse ⇒ promise.success(Right(response))
+                  case Rejected(rejections)   ⇒ promise.success(Left(rejections))
+                  case x ⇒ promise.failure(new RequestProcessingException(StatusCodes.InternalServerError,
+                    s"Route responses other than HttpResponse or Rejections cannot be cached (received: $x)"))
+                }
               }
+            } onComplete {
+              case Success(Right(response))  ⇒ ctx.complete(response)
+              case Success(Left(rejections)) ⇒ ctx.reject(rejections: _*)
+              case Failure(error)            ⇒ ctx.failWith(error)
             }
-          } onComplete {
-            case Success(Right(response)) => ctx.complete(response)
-            case Success(Left(rejections)) => ctx.reject(rejections: _*)
-            case Failure(error) => ctx.failWith(error)
-          }
 
-        case None => route(ctx)
-      }
+          case None ⇒ route(ctx)
+        }
     }
   }
 
@@ -91,16 +91,14 @@ trait CachingDirectives {
 
 object CachingDirectives extends CachingDirectives
 
-
 trait CacheSpecMagnet {
   def responseCache: Cache[CachingDirectives.RouteResponse]
-  def liftedKeyer: RequestContext => Option[Any]
+  def liftedKeyer: RequestContext ⇒ Option[Any]
   implicit def executionContext: ExecutionContext
 }
 
 object CacheSpecMagnet {
-  implicit def apply(cache: Cache[CachingDirectives.RouteResponse])
-                    (implicit keyer: CacheKeyer, factory: ActorRefFactory) =
+  implicit def apply(cache: Cache[CachingDirectives.RouteResponse])(implicit keyer: CacheKeyer, factory: ActorRefFactory) =
     new CacheSpecMagnet {
       def responseCache = cache
       def liftedKeyer = keyer.lift
@@ -108,12 +106,11 @@ object CacheSpecMagnet {
     }
 }
 
-
 trait CacheKeyer extends (PartialFunction[RequestContext, Any])
 
 object CacheKeyer {
   implicit val Default: CacheKeyer = CacheKeyer {
-    case RequestContext(HttpRequest(GET, uri, _, _, _), _, _) => uri
+    case RequestContext(HttpRequest(GET, uri, _, _, _), _, _) ⇒ uri
   }
 
   def apply(f: PartialFunction[RequestContext, Any]) = new CacheKeyer {

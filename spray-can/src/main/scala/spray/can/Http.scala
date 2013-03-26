@@ -19,12 +19,12 @@ package spray.can
 import java.net.InetSocketAddress
 import com.typesafe.config.Config
 import scala.collection.immutable
-import akka.io.{Inet, Tcp}
+import akka.io.{ Inet, Tcp }
 import akka.actor._
-import spray.can.server.{ServerFrontend, ServerSettings}
-import spray.can.client.{HostConnectorSettings, ClientConnectionSettings}
-import spray.io.{ConnectionTimeouts, ClientSSLEngineProvider, ServerSSLEngineProvider}
-import spray.http.{HttpMessagePart, HttpMessagePartWrapper}
+import spray.can.server.{ ServerFrontend, ServerSettings }
+import spray.can.client.{ HostConnectorSettings, ClientConnectionSettings }
+import spray.io.{ ConnectionTimeouts, ClientSSLEngineProvider, ServerSSLEngineProvider }
+import spray.http.{ HttpMessagePart, HttpMessagePartWrapper }
 
 object Http extends ExtensionKey[HttpExt] {
 
@@ -40,8 +40,7 @@ object Http extends ExtensionKey[HttpExt] {
   }
   object Connect {
     def apply(host: String, port: Int = 80, localAddress: Option[InetSocketAddress] = None,
-              options: immutable.Traversable[Inet.SocketOption] = Nil, settings: Option[ClientConnectionSettings] = None)
-             (implicit sslEngineProvider: ClientSSLEngineProvider): Connect =
+              options: immutable.Traversable[Inet.SocketOption] = Nil, settings: Option[ClientConnectionSettings] = None)(implicit sslEngineProvider: ClientSSLEngineProvider): Connect =
       apply(new InetSocketAddress(host, port), localAddress, options, settings, sslEngineProvider)
   }
 
@@ -55,8 +54,7 @@ object Http extends ExtensionKey[HttpExt] {
   }
   object Bind {
     def apply(handler: ActorRef, interface: String, port: Int = 80, backlog: Int = 100,
-              options: immutable.Traversable[Inet.SocketOption] = Nil, settings: Option[ServerSettings] = None)
-             (implicit sslEngineProvider: ServerSSLEngineProvider): Bind =
+              options: immutable.Traversable[Inet.SocketOption] = Nil, settings: Option[ServerSettings] = None)(implicit sslEngineProvider: ServerSSLEngineProvider): Bind =
       apply(handler, new InetSocketAddress(interface, port), backlog, options, settings, sslEngineProvider)
   }
 
@@ -77,11 +75,10 @@ object Http extends ExtensionKey[HttpExt] {
   type SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout; val SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout
 
   // only for server connections
-  type SetRequestTimeout = ServerFrontend.SetRequestTimeout;  val SetRequestTimeout = ServerFrontend.SetRequestTimeout
-  type SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout;  val SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout
+  type SetRequestTimeout = ServerFrontend.SetRequestTimeout; val SetRequestTimeout = ServerFrontend.SetRequestTimeout
+  type SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout; val SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout
 
   case class MessageCommand(cmd: HttpMessagePartWrapper) extends Command
-
 
   /// EVENTS
   type Event = Tcp.Event

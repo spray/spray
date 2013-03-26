@@ -21,7 +21,6 @@ import HttpHeaders._
 import MediaTypes._
 import HttpCharsets._
 
-
 class CharsetNegotiationSpec extends RoutingSpec {
 
   val Hällo = complete("Hällö")

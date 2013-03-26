@@ -16,13 +16,12 @@
 
 package spray.can.server
 
-import akka.util.{ByteString, ByteStringBuilder}
+import akka.util.{ ByteString, ByteStringBuilder }
 import spray.can.rendering.HttpResponsePartRenderingContext
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.io._
 import spray.http._
 import spray.can.Http
-
 
 object RequestChunkAggregation {
 
@@ -33,28 +32,29 @@ object RequestChunkAggregation {
           val commandPipeline = commandPL
 
           val initialEventPipeline: EPL = {
-            case ev@ HttpMessageStartEvent(ChunkedRequestStart(request), _) =>
+            case ev @ HttpMessageStartEvent(ChunkedRequestStart(request), _) ⇒
               if (request.entity.buffer.length <= limit) {
                 val bb = ByteString.newBuilder
                 bb putBytes request.entity.buffer
                 eventPipeline become aggregating(ev, request, bb)
-              } else closeWithError()
+              }
+              else closeWithError()
 
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
 
           def aggregating(mse: HttpMessageStartEvent, request: HttpRequest, bb: ByteStringBuilder): EPL = {
-            case Http.MessageEvent(MessageChunk(body, _)) =>
+            case Http.MessageEvent(MessageChunk(body, _)) ⇒
               if (bb.length + body.length <= limit) bb putBytes body
               else closeWithError()
 
-            case Http.MessageEvent(_: ChunkedMessageEnd) =>
-              val aggregatedEntity = request.entity.map((ct, _) => ct -> bb.result().toArray)
+            case Http.MessageEvent(_: ChunkedMessageEnd) ⇒
+              val aggregatedEntity = request.entity.map((ct, _) ⇒ ct -> bb.result().toArray)
               val httpRequest = request.copy(entity = aggregatedEntity)
               eventPL(mse.copy(messagePart = httpRequest))
               eventPipeline become initialEventPipeline
 
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
 
           def closeWithError(): Unit = {

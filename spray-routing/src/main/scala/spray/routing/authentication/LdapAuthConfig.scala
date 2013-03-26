@@ -19,7 +19,6 @@ package authentication
 
 import javax.naming.directory.SearchControls
 
-
 /**
  * The LdapAuthenticator faciliates user/password authentication against an LDAP server.
  * It delegates the application specific parts of the LDAP configuration to the given LdapAuthConfig instance,
@@ -96,13 +95,11 @@ case class LdapQueryResult(
   className: String,
   relative: Boolean,
   obj: AnyRef,
-  attrs: Map[String, LdapAttribute]
-)
+  attrs: Map[String, LdapAttribute])
 
 case class LdapAttribute(
-  id: String,
-  ordered: Boolean,
-  values: Seq[String]
-) {
+    id: String,
+    ordered: Boolean,
+    values: Seq[String]) {
   def value = if (values.isEmpty) "" else values.head
 }

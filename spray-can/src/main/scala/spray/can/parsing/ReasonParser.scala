@@ -16,10 +16,9 @@
 
 package spray.can.parsing
 
-import java.lang.{StringBuilder => JStringBuilder}
+import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import spray.http.HttpProtocol
 import spray.can.StatusLine
-
 
 class ReasonParser(settings: ParserSettings, protocol: HttpProtocol, status: Int, isResponseToHeadRequest: Boolean)
     extends CharacterParser {
@@ -28,12 +27,13 @@ class ReasonParser(settings: ParserSettings, protocol: HttpProtocol, status: Int
   def handleChar(cursor: Char) = {
     if (reason.length <= settings.maxResponseReasonLength) {
       cursor match {
-        case '\r' => this
-        case '\n' => new HeaderNameParser(settings,
+        case '\r' ⇒ this
+        case '\n' ⇒ new HeaderNameParser(settings,
           StatusLine(protocol, status, reason.toString, isResponseToHeadRequest))
-        case _ => reason.append(cursor); this
+        case _ ⇒ reason.append(cursor); this
       }
-    } else {
+    }
+    else {
       ErrorState("Reason phrase exceeds the configured limit of " + settings.maxResponseReasonLength + " characters")
     }
   }

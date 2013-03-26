@@ -16,7 +16,6 @@
 
 package spray.routing
 
-
 class CaseClassExtractionSpec extends RoutingSpec {
 
   case class Age(years: Int)
@@ -66,7 +65,7 @@ class CaseClassExtractionSpec extends RoutingSpec {
             echoComplete
           }
         } ~> check {
-          rejection must beLike { case ValidationRejection("'12XY567' is not a valid 64-bit integer value", _) => ok }
+          rejection must beLike { case ValidationRejection("'12XY567' is not a valid 64-bit integer value", _) ⇒ ok }
         }
       }
 
@@ -75,7 +74,7 @@ class CaseClassExtractionSpec extends RoutingSpec {
           parameters('firstname, 'name, 'age.as[Int], 'id, 'board).as(Employee) { echoComplete }
         } ~> check {
           rejection must beLike {
-            case ValidationRejection("requirement failed: Board members must be older than 40", _) => ok
+            case ValidationRejection("requirement failed: Board members must be older than 40", _) ⇒ ok
           }
         }
       }

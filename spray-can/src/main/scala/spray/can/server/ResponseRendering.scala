@@ -16,11 +16,10 @@
 
 package spray.can.server
 
-import spray.can.rendering.{RenderedMessagePart, HttpResponsePartRenderingContext, ResponseRenderer}
+import spray.can.rendering.{ RenderedMessagePart, HttpResponsePartRenderingContext, ResponseRenderer }
 import spray.io._
 import akka.io.Tcp
 import spray.can.Http
-
 
 object ResponseRendering {
 
@@ -29,18 +28,17 @@ object ResponseRendering {
       val renderer = new ResponseRenderer(
         settings.serverHeader,
         settings.chunklessStreaming,
-        settings.responseSizeHint
-      )
+        settings.responseSizeHint)
 
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           val commandPipeline: CPL = {
-            case ctx: HttpResponsePartRenderingContext =>
+            case ctx: HttpResponsePartRenderingContext ⇒
               val RenderedMessagePart(data, close) = renderer.render(ctx)
               if (!data.isEmpty) commandPL(Tcp.Write(data, ctx.ack))
               if (close) commandPL(Http.Close)
 
-            case cmd => commandPL(cmd)
+            case cmd ⇒ commandPL(cmd)
           }
 
           val eventPipeline = eventPL

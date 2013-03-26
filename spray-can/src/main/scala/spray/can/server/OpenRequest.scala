@@ -26,7 +26,6 @@ import spray.can.Http
 import spray.can.server.ServerFrontend.Context
 import akka.io.Tcp
 
-
 sealed trait OpenRequest {
   def context: ServerFrontend.Context
   def isEmpty: Boolean
@@ -49,7 +48,7 @@ sealed trait OpenRequest {
   def handleClosed(ev: Http.ConnectionClosed)
 }
 
-trait OpenRequestComponent { component =>
+trait OpenRequestComponent { component ⇒
   def context: ServerFrontend.Context
   def settings: ServerSettings
   def downstreamCommandPL: Pipeline[Command]
@@ -105,7 +104,8 @@ trait OpenRequestComponent { component =>
             "timeout handler", timeoutHandler)
           timestamp = -now // we record the time of the Timeout dispatch as negative timestamp value
         }
-      } else if (timestamp < -1 && timeoutTimeout > 0 && (-timestamp + timeoutTimeout < now)) {
+      }
+      else if (timestamp < -1 && timeoutTimeout > 0 && (-timestamp + timeoutTimeout < now)) {
         val response = timeoutResponse(request)
         // we always close the connection after a timeout-timeout
         sendPart(response.withHeaders(HttpHeaders.Connection("close") :: response.headers))
@@ -118,8 +118,7 @@ trait OpenRequestComponent { component =>
     def timeoutResponse(request: HttpRequest): HttpResponse = HttpResponse(
       status = 500,
       entity = "Ooops! The server was not able to produce a timely response to your request.\n" +
-        "Please try again in a short while!"
-    )
+        "Please try again in a short while!")
 
     /***** COMMANDS *****/
 
@@ -157,7 +156,8 @@ trait OpenRequestComponent { component =>
         // only start request timeout checking after request has been completed
         timestamp = System.currentTimeMillis
         downstreamCommandPL(Pipeline.Tell(handler, part, receiverRef))
-      } else
+      }
+      else
         // we accept non-tail recursion since HTTP pipeline depth is limited (and small)
         nextInChain handleChunkedMessageEnd part
     }
@@ -177,24 +177,24 @@ trait OpenRequestComponent { component =>
 
     private def sendPart(part: HttpMessagePartWrapper) {
       val ack = part.ack match {
-        case None => Tcp.NoAck(context.sender -> part)
-        case Some(x) =>
+        case None ⇒ Tcp.NoAck(context.sender -> part)
+        case Some(x) ⇒
           pendingSentAcks += 1
           AckEventWithReceiver(x, handler)
       }
       val cmd = HttpResponsePartRenderingContext(part.messagePart.asInstanceOf[HttpResponsePart], request.method,
-                                                 request.protocol, connectionHeader, ack)
+        request.protocol, connectionHeader, ack)
       downstreamCommandPL(cmd)
     }
 
     private def responsesQueued = responseQueue != null && !responseQueue.isEmpty
 
     private def format(part: HttpMessagePart) = part match {
-      case x: HttpRequestPart with HttpMessageStart =>
+      case x: HttpRequestPart with HttpMessageStart ⇒
         val request = x.message.asInstanceOf[HttpRequest]
         s"${request.method} request to ${request.uri}"
-      case MessageChunk(body, _) => body.length.toString + " byte request chunk"
-      case x => x.toString
+      case MessageChunk(body, _) ⇒ body.length.toString + " byte request chunk"
+      case x                     ⇒ x.toString
     }
   }
 

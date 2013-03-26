@@ -20,41 +20,40 @@ package directives
 import shapeless._
 import spray.http._
 
-
 trait BasicDirectives {
 
-  def mapInnerRoute(f: Route => Route): Directive0 = new Directive0 {
-    def happly(inner: HNil => Route) = f(inner(HNil))
+  def mapInnerRoute(f: Route ⇒ Route): Directive0 = new Directive0 {
+    def happly(inner: HNil ⇒ Route) = f(inner(HNil))
   }
 
-  def mapRequestContext(f: RequestContext => RequestContext): Directive0 =
-    mapInnerRoute { inner => ctx => inner(f(ctx)) }
+  def mapRequestContext(f: RequestContext ⇒ RequestContext): Directive0 =
+    mapInnerRoute { inner ⇒ ctx ⇒ inner(f(ctx)) }
 
-  def mapRequest(f: HttpRequest => HttpRequest): Directive0 =
+  def mapRequest(f: HttpRequest ⇒ HttpRequest): Directive0 =
     mapRequestContext(_.withRequestMapped(f))
 
   def routeRouteResponse(f: PartialFunction[Any, Route]): Directive0 =
     mapRequestContext(_.withRouteResponseRouting(f))
 
-  def mapRouteResponse(f: Any => Any): Directive0 =
+  def mapRouteResponse(f: Any ⇒ Any): Directive0 =
     mapRequestContext(_.withRouteResponseMapped(f))
 
   def mapRouteResponsePF(f: PartialFunction[Any, Any]): Directive0 =
     mapRequestContext(_.withRouteResponseMappedPF(f))
 
-  def mapRejections(f: List[Rejection] => List[Rejection]): Directive0 =
+  def mapRejections(f: List[Rejection] ⇒ List[Rejection]): Directive0 =
     mapRequestContext(_.withRejectionsMapped(f))
 
-  def mapHttpResponsePart(f: HttpResponsePart => HttpResponsePart): Directive0 =
+  def mapHttpResponsePart(f: HttpResponsePart ⇒ HttpResponsePart): Directive0 =
     mapRequestContext(_.withHttpResponsePartMapped(f))
 
-  def mapHttpResponse(f: HttpResponse => HttpResponse): Directive0 =
+  def mapHttpResponse(f: HttpResponse ⇒ HttpResponse): Directive0 =
     mapRequestContext(_.withHttpResponseMapped(f))
 
-  def mapHttpResponseEntity(f: HttpEntity => HttpEntity): Directive0 =
+  def mapHttpResponseEntity(f: HttpEntity ⇒ HttpEntity): Directive0 =
     mapRequestContext(_.withHttpResponseEntityMapped(f))
 
-  def mapHttpResponseHeaders(f: List[HttpHeader] => List[HttpHeader]): Directive0 =
+  def mapHttpResponseHeaders(f: List[HttpHeader] ⇒ List[HttpHeader]): Directive0 =
     mapRequestContext(_.withHttpResponseHeadersMapped(f))
 
   /**
@@ -77,20 +76,20 @@ trait BasicDirectives {
    * Injects the given values into a directive.
    */
   def hprovide[L <: HList](values: L): Directive[L] = new Directive[L] {
-    def happly(f: L => Route) = f(values)
+    def happly(f: L ⇒ Route) = f(values)
   }
 
   /**
    * Extracts a single value using the given function.
    */
-  def extract[T](f: RequestContext => T): Directive[T :: HNil] =
-    hextract(ctx => f(ctx) :: HNil)
+  def extract[T](f: RequestContext ⇒ T): Directive[T :: HNil] =
+    hextract(ctx ⇒ f(ctx) :: HNil)
 
   /**
    * Extracts a number of values using the given function.
    */
-  def hextract[L <: HList](f: RequestContext => L): Directive[L] = new Directive[L] {
-    def happly(inner: L => Route) = ctx => inner(f(ctx))(ctx)
+  def hextract[L <: HList](f: RequestContext ⇒ L): Directive[L] = new Directive[L] {
+    def happly(inner: L ⇒ Route) = ctx ⇒ inner(f(ctx))(ctx)
   }
 }
 

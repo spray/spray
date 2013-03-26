@@ -17,7 +17,7 @@ import scala.util.control.NonFatal
  * INTERNAL API
  */
 private[io] class UdpFFSender(val udpFF: UdpFFExt, options: immutable.Traversable[SocketOption], val commander: ActorRef)
-  extends Actor with ActorLogging with WithUdpFFSend {
+    extends Actor with ActorLogging with WithUdpFFSend {
 
   def selector: ActorRef = context.parent
 

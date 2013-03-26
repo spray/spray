@@ -36,9 +36,9 @@ object TickGenerator {
           val commandPipeline = commandPL
 
           val eventPipeline: EPL = {
-            case Tick => next = scheduleNext(); eventPL(Tick)
+            case Tick                    ⇒ next = scheduleNext(); eventPL(Tick)
             case x: Tcp.ConnectionClosed ⇒ next.cancel(); eventPL(x)
-            case x ⇒ eventPL(x)
+            case x                       ⇒ eventPL(x)
           }
 
           def scheduleNext() = {

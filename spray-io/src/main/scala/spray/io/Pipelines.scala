@@ -39,7 +39,7 @@ object Pipelines {
   }
 }
 
-trait DynamicCommandPipeline { this: Pipelines =>
+trait DynamicCommandPipeline { this: Pipelines ⇒
   def initialCommandPipeline: Pipeline[Command]
   private[this] var _cpl: SwitchableCommandPipeline = _
   def commandPipeline: SwitchableCommandPipeline = {
@@ -52,7 +52,7 @@ trait DynamicCommandPipeline { this: Pipelines =>
   }
 }
 
-trait DynamicEventPipeline { this: Pipelines =>
+trait DynamicEventPipeline { this: Pipelines ⇒
   def initialEventPipeline: Pipeline[Event]
   private[this] var _epl: SwitchableEventPipeline = _
   def eventPipeline: SwitchableEventPipeline = {
@@ -83,13 +83,13 @@ object PipelineContext {
   implicit def pipelineContext2ActorContext(plc: PipelineContext): ActorContext = plc.actorContext
 }
 
-trait RawPipelineStage[-C <: PipelineContext] { left =>
+trait RawPipelineStage[-C <: PipelineContext] { left ⇒
   type CPL = Pipeline[Command] // alias for brevity
   type EPL = Pipeline[Event] // alias for brevity
 
   def apply(context: C, commandPL: CPL, eventPL: EPL): Pipelines
 
-  def >> [R <: C](right: RawPipelineStage[R]): RawPipelineStage[R] =
+  def >>[R <: C](right: RawPipelineStage[R]): RawPipelineStage[R] =
     if (right eq EmptyPipelineStage) this
     else new RawPipelineStage[R] {
       def apply(ctx: R, cpl: CPL, epl: EPL) = {
@@ -103,8 +103,7 @@ trait RawPipelineStage[-C <: PipelineContext] { left =>
         eplProxy = leftPL.eventPipeline
         Pipelines(
           commandPL = (if (leftPL.commandPipeline eq cplProxyPoint) rightPL else leftPL).commandPipeline,
-          eventPL = (if (rightPL.eventPipeline eq eplProxyPoint) leftPL else rightPL).eventPipeline
-        )
+          eventPL = (if (rightPL.eventPipeline eq eplProxyPoint) leftPL else rightPL).eventPipeline)
       }
     }
 
@@ -133,5 +132,5 @@ object EmptyPipelineStage extends PipelineStage {
 
   def apply(ctx: PipelineContext, cpl: CPL, epl: EPL) = Pipelines(cpl, epl)
 
-  override def >> [R <: PipelineContext](right: RawPipelineStage[R]): RawPipelineStage[R] = right
+  override def >>[R <: PipelineContext](right: RawPipelineStage[R]): RawPipelineStage[R] = right
 }

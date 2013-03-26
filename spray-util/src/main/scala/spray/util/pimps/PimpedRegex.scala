@@ -19,7 +19,6 @@ package spray.util.pimps
 import java.util.regex.Pattern
 import scala.util.matching.Regex
 
-
 class PimpedRegex(regex: Regex) {
 
   def groupCount = {
@@ -27,8 +26,9 @@ class PimpedRegex(regex: Regex) {
       val field = classOf[Pattern].getDeclaredField("capturingGroupCount")
       field.setAccessible(true)
       field.getInt(regex.pattern) - 1
-    } catch {
-      case t: Throwable =>
+    }
+    catch {
+      case t: Throwable ⇒
         throw new RuntimeException("Could not determine regex group count: " + regex.pattern.pattern, t)
     }
   }

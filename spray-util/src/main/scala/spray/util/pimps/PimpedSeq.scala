@@ -18,15 +18,14 @@ package spray.util.pimps
 
 import scala.collection.LinearSeq
 import scala.annotation.tailrec
-import scala.reflect.{classTag, ClassTag}
-
+import scala.reflect.{ classTag, ClassTag }
 
 abstract class PimpedSeq[+A] {
   /**
    * Returns the first defined result of the given function when applied to the underlying sequence (in order) or
    * `None`, if the given function returns `None` for all elements of the underlying sequence.
    */
-  def mapFind[B](f: A => Option[B]): Option[B]
+  def mapFind[B](f: A ⇒ Option[B]): Option[B]
 
   /**
    * Returns the first result of the given partial function when applied to the underlying sequence (in order) or
@@ -39,21 +38,22 @@ abstract class PimpedSeq[+A] {
    */
   def findByType[B: ClassTag]: Option[B] = {
     val erasure = classTag.runtimeClass
-    mapFind(x => if (erasure.isInstance(x)) Some(x.asInstanceOf[B]) else None)
+    mapFind(x ⇒ if (erasure.isInstance(x)) Some(x.asInstanceOf[B]) else None)
   }
 }
 
 class PimpedLinearSeq[+A](underlying: LinearSeq[A]) extends PimpedSeq[A] {
 
-  def mapFind[B](f: A => Option[B]): Option[B] = {
+  def mapFind[B](f: A ⇒ Option[B]): Option[B] = {
     @tailrec
     def mapFind(seq: LinearSeq[A]): Option[B] = {
       if (!seq.isEmpty) {
         f(seq.head) match {
-          case x: Some[_] => x
-          case None => mapFind(seq.tail)
+          case x: Some[_] ⇒ x
+          case None       ⇒ mapFind(seq.tail)
         }
-      } else None
+      }
+      else None
     }
     mapFind(underlying)
   }
@@ -64,7 +64,8 @@ class PimpedLinearSeq[+A](underlying: LinearSeq[A]) extends PimpedSeq[A] {
       if (!seq.isEmpty) {
         if (f.isDefinedAt(seq.head)) Some(f(seq.head))
         else mapFind(seq.tail)
-      } else None
+      }
+      else None
     }
     mapFind(underlying)
   }
@@ -72,15 +73,16 @@ class PimpedLinearSeq[+A](underlying: LinearSeq[A]) extends PimpedSeq[A] {
 
 class PimpedIndexedSeq[+A](underlying: IndexedSeq[A]) extends PimpedSeq[A] {
 
-  def mapFind[B](f: A => Option[B]): Option[B] = {
+  def mapFind[B](f: A ⇒ Option[B]): Option[B] = {
     @tailrec
     def mapFind(ix: Int): Option[B] = {
       if (ix < underlying.length) {
         f(underlying(ix)) match {
-          case x: Some[_] => x
-          case None => mapFind(ix + 1)
+          case x: Some[_] ⇒ x
+          case None       ⇒ mapFind(ix + 1)
         }
-      } else None
+      }
+      else None
     }
     mapFind(0)
   }
@@ -92,7 +94,8 @@ class PimpedIndexedSeq[+A](underlying: IndexedSeq[A]) extends PimpedSeq[A] {
         val x = underlying(ix)
         if (f.isDefinedAt(x)) Some(f(x))
         else mapFind(ix + 1)
-      } else None
+      }
+      else None
     }
     mapFind(0)
   }

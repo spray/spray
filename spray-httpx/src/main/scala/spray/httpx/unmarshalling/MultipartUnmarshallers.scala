@@ -16,8 +16,8 @@
 
 package spray.httpx.unmarshalling
 
-import java.io.{ByteArrayOutputStream, ByteArrayInputStream}
-import org.jvnet.mimepull.{MIMEMessage, MIMEConfig}
+import java.io.{ ByteArrayOutputStream, ByteArrayInputStream }
+import org.jvnet.mimepull.{ MIMEMessage, MIMEConfig }
 import org.parboiled.common.FileUtils
 import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
@@ -29,7 +29,6 @@ import MediaRanges._
 import HttpHeaders._
 import HttpCharsets._
 
-
 trait MultipartUnmarshallers {
 
   private[this] val mimeParsingConfig = {
@@ -39,49 +38,49 @@ trait MultipartUnmarshallers {
   }
 
   private def convertMimeMessage(mimeMsg: MIMEMessage): Seq[BodyPart] = {
-    mimeMsg.getAttachments.asScala.map { part =>
+    mimeMsg.getAttachments.asScala.map { part ⇒
       val rawHeaders: List[HttpHeader] =
-        part.getAllHeaders.asScala.map(h => RawHeader(h.getName, h.getValue))(collection.breakOut)
+        part.getAllHeaders.asScala.map(h ⇒ RawHeader(h.getName, h.getValue))(collection.breakOut)
       HttpParser.parseHeaders(rawHeaders) match {
-        case (Nil, headers) =>
-          val contentType = headers.mapFind { case `Content-Type`(t) => Some(t); case _ => None }
+        case (Nil, headers) ⇒
+          val contentType = headers.mapFind { case `Content-Type`(t) ⇒ Some(t); case _ ⇒ None }
             .getOrElse(ContentType(`text/plain`, `US-ASCII`)) // RFC 2046 section 5.1
           val outputStream = new ByteArrayOutputStream
           FileUtils.copyAll(part.readOnce(), outputStream)
           BodyPart(HttpBody(contentType, outputStream.toByteArray), headers)
-        case (errors, _) => sys.error("Multipart part contains %s illegal header(s):\n%s"
+        case (errors, _) ⇒ sys.error("Multipart part contains %s illegal header(s):\n%s"
           .format(errors.size, errors.mkString("\n")))
       }
-    } (collection.breakOut)
+    }(collection.breakOut)
   }
 
   implicit val MultipartContentUnmarshaller = Unmarshaller[MultipartContent](`multipart/*`) {
-    case HttpBody(contentType, buffer) =>
+    case HttpBody(contentType, buffer) ⇒
       contentType.mediaType.asInstanceOf[MultipartMediaType].boundary match {
-        case Some(boundary) =>
+        case Some(boundary) ⇒
           val mimeMsg = new MIMEMessage(new ByteArrayInputStream(buffer), boundary, mimeParsingConfig)
           MultipartContent(convertMimeMessage(mimeMsg))
-        case None => sys.error("Content-Type with a multipart media type must have a 'boundary' parameter")
+        case None ⇒ sys.error("Content-Type with a multipart media type must have a 'boundary' parameter")
       }
-    case EmptyEntity => MultipartContent.Empty
+    case EmptyEntity ⇒ MultipartContent.Empty
   }
 
   implicit val MultipartFormDataUnmarshaller = new SimpleUnmarshaller[MultipartFormData] {
     val canUnmarshalFrom = ContentTypeRange(`multipart/form-data`) :: Nil
 
     def unmarshal(entity: HttpEntity) = {
-      MultipartContentUnmarshaller(entity).right.flatMap { mpContent =>
-        try Right(MultipartFormData(mpContent.parts.map(part => nameOf(part) -> part)(collection.breakOut)))
+      MultipartContentUnmarshaller(entity).right.flatMap { mpContent ⇒
+        try Right(MultipartFormData(mpContent.parts.map(part ⇒ nameOf(part) -> part)(collection.breakOut)))
         catch {
-          case NonFatal(ex) => Left(MalformedContent("Illegal multipart/form-data content: " + ex.getMessage, ex))
+          case NonFatal(ex) ⇒ Left(MalformedContent("Illegal multipart/form-data content: " + ex.getMessage, ex))
         }
       }
     }
 
     def nameOf(part: BodyPart): String = {
       part.headers.mapFind {
-        case `Content-Disposition`("form-data", parms) => parms.get("name")
-        case _ => None
+        case `Content-Disposition`("form-data", parms) ⇒ parms.get("name")
+        case _                                         ⇒ None
       }.getOrElse(sys.error("unnamed body part (no Content-Disposition header or no 'name' parameter)"))
     }
   }

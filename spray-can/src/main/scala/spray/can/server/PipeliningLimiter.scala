@@ -24,7 +24,6 @@ import scala.collection.immutable.Queue
 import spray.can.Http
 import akka.io.Tcp
 
-
 object PipeliningLimiter {
 
   def apply(pipeliningLimit: Int): PipelineStage =
@@ -39,7 +38,7 @@ object PipeliningLimiter {
           var readingStopped = false
 
           val commandPipeline: CPL = {
-            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEnd] =>
+            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEnd] ⇒
               openRequests -= 1
               commandPL(x)
               if (!parkedRequestParts.isEmpty) {
@@ -47,20 +46,21 @@ object PipeliningLimiter {
                 if (parkedRequestParts.isEmpty) resumeReading()
               }
 
-            case cmd => commandPL(cmd)
+            case cmd ⇒ commandPL(cmd)
           }
 
           val eventPipeline: EPL = {
-            case ev@ Http.MessageEvent(x: HttpRequestPart) =>
+            case ev @ Http.MessageEvent(x: HttpRequestPart) ⇒
               if (openRequests == limit) {
                 stopReading()
                 park(x)
-              } else {
+              }
+              else {
                 if (x.isInstanceOf[HttpMessageEnd]) openRequests += 1
                 eventPL(ev)
               }
 
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
 
           def stopReading() {
@@ -87,10 +87,10 @@ object PipeliningLimiter {
               val next = parkedRequestParts.head
               parkedRequestParts = parkedRequestParts.tail
               next match {
-                case part: HttpMessageEnd =>
+                case part: HttpMessageEnd ⇒
                   openRequests += 1
                   eventPL(Http.MessageEvent(part))
-                case part =>
+                case part ⇒
                   eventPL(Http.MessageEvent(part))
                   unparkOneRequest()
               }

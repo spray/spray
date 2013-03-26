@@ -1,3 +1,5 @@
+import com.typesafe.sbt.SbtScalariform
+import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import sbt._
 import Keys._
 import ls.Plugin._
@@ -30,7 +32,7 @@ object BuildSettings {
   )
 
   lazy val sprayModuleSettings =
-    basicSettings ++
+    basicSettings ++ formatSettings ++
     NightlyBuildSupport.settings ++
     net.virtualvoid.sbt.graph.Plugin.graphSettings ++
     seq(
@@ -80,7 +82,7 @@ object BuildSettings {
     }
   )
 
-  lazy val siteSettings = basicSettings ++ noPublishing ++ twirl.sbt.TwirlPlugin.Twirl.settings ++
+  lazy val siteSettings = basicSettings ++ formatSettings ++ noPublishing ++ twirl.sbt.TwirlPlugin.Twirl.settings ++
     spray.revolver.RevolverPlugin.Revolver.settings ++ SiteSupport.settings
 
 
@@ -102,5 +104,19 @@ object BuildSettings {
       }
     )
   }
+
+  lazy val formatSettings = SbtScalariform.scalariformSettings ++ Seq(
+    ScalariformKeys.preferences in Compile := formattingPreferences,
+    ScalariformKeys.preferences in Test    := formattingPreferences
+  )
+
+  import scalariform.formatter.preferences._
+  def formattingPreferences =
+    FormattingPreferences()
+      .setPreference(RewriteArrowSymbols, true)
+      .setPreference(AlignParameters, true)
+      .setPreference(AlignSingleLineCaseStatements, true)
+      .setPreference(CompactControlReadability, true)
+      .setPreference(DoubleIndentClassDeclaration, true)
 
 }

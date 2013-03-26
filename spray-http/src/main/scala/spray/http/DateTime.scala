@@ -16,20 +16,19 @@
 
 package spray.http
 
-
 /**
  * Immutable, fast and efficient Date + Time implementation without any dependencies.
  * Does not support TimeZones, all DateTime values are always GMT based.
  */
-final class DateTime private(val year: Int,       // the year
-                             val month: Int,      // the month of the year. January is 1.
-                             val day: Int,        // the day of the month. The first day is 1.
-                             val hour: Int,       // the hour of the day. The first hour is 0.
-                             val minute: Int,     // the minute of the hour. The first minute is 0.
-                             val second: Int,     // the second of the minute. The first second is 0.
-                             val weekday: Int,    // the day of the week. Sunday is 0.
-                             val clicks: Long,    // milliseconds since January 1, 1970, 00:00:00 GMT
-                             val isLeapYear: Boolean) extends Ordered[DateTime] {
+final class DateTime private (val year: Int, // the year
+                              val month: Int, // the month of the year. January is 1.
+                              val day: Int, // the day of the month. The first day is 1.
+                              val hour: Int, // the hour of the day. The first hour is 0.
+                              val minute: Int, // the minute of the hour. The first minute is 0.
+                              val second: Int, // the second of the minute. The first second is 0.
+                              val weekday: Int, // the day of the week. Sunday is 0.
+                              val clicks: Long, // milliseconds since January 1, 1970, 00:00:00 GMT
+                              val isLeapYear: Boolean) extends Ordered[DateTime] {
   /**
    * The day of the week as a 3 letter abbreviation:
    * `Sun`, `Mon`, `Tue`, `Wed`, `Thu`, `Fri` or `Sat`
@@ -45,12 +44,12 @@ final class DateTime private(val year: Int,       // the year
   /**
    * Creates a new `DateTime` that represents the point in time the given number of ms later.
    */
-  def + (millis: Long): DateTime = DateTime(clicks + millis)
+  def +(millis: Long): DateTime = DateTime(clicks + millis)
 
   /**
    * Creates a new `DateTime` that represents the point in time the given number of ms earlier.
    */
-  def - (millis: Long): DateTime = DateTime(clicks - millis)
+  def -(millis: Long): DateTime = DateTime(clicks - millis)
 
   /**
    * `yyyy-mm-dd`
@@ -91,8 +90,8 @@ final class DateTime private(val year: Int,       // the year
   override def hashCode() = clicks.##
 
   override def equals(obj: Any) = obj match {
-    case x: DateTime => x.clicks == clicks
-    case _ => false
+    case x: DateTime ⇒ x.clicks == clicks
+    case _           ⇒ false
   }
 
   override def toString = toIsoDateTimeString
@@ -107,7 +106,7 @@ object DateTime {
   /**
    * Creates a new `DateTime` with the given properties.
    */
-  def apply(year :Int, month :Int, day :Int, hour :Int = 0, minute :Int = 0, second :Int = 0): DateTime = {
+  def apply(year: Int, month: Int, day: Int, hour: Int = 0, minute: Int = 0, second: Int = 0): DateTime = {
     require(1800 <= year && year <= 2199, "year must be >= 1800 and <= 2199")
     require(1 <= month && month <= 12, "month must be >= 1 and <= 12")
     require(1 <= day && day <= 31, "day must be >= 1 and <= 31")
@@ -121,7 +120,7 @@ object DateTime {
     val isLeap = ((year % 4 == 0) && !(year % 100 == 0)) || (year % 400 == 0)
     if (m >= 7) d += 214
     if (d >= 61) d -= 1 // skip non-existent Feb 30
-    if (!isLeap && (d >= 60)) d -=1 // skip non-existent Feb 29
+    if (!isLeap && (d >= 60)) d -= 1 // skip non-existent Feb 29
 
     // convert year/yearday to days since Jan 1, 1970, 00:00:00
     val y = year - 1
@@ -136,7 +135,7 @@ object DateTime {
    * Creates a new `DateTime` from the number of milli seconds
    * since the start of "the epoch", namely January 1, 1970, 00:00:00 GMT.
    */
-  def apply(clicks :Long): DateTime = {
+  def apply(clicks: Long): DateTime = {
     require(DateTime.MinValue.clicks <= clicks && clicks <= DateTime.MaxValue.clicks,
       "DateTime value must be >= " + DateTime.MinValue + " and <= " + DateTime.MaxValue)
 
@@ -146,7 +145,7 @@ object DateTime {
     // compute day number, seconds since beginning of day
     var s = c
     if (s >= 0) s /= 1000 // seconds since 1 Jan 1970
-    else s = (s - 999 ) / 1000 // floor(sec/1000)
+    else s = (s - 999) / 1000 // floor(sec/1000)
 
     var dn = (s / 86400).toInt
     s %= 86400 // positive seconds since beginning of day
@@ -162,7 +161,7 @@ object DateTime {
       d %= 36524
       y += 4 * (d / 1461)
       d %= 1461
-      if (d == 1460) { y += 3; d=365 } // last year out of 4 is long
+      if (d == 1460) { y += 3; d = 365 } // last year out of 4 is long
       else {
         y += d / 365
         d %= 365
@@ -172,7 +171,7 @@ object DateTime {
     val isLeap = ((y % 4 == 0) && !(y % 100 == 0)) || (y % 400 == 0)
 
     // compute month/monthday from year/yearday
-    if (!isLeap && (d >= 59)) d +=1 // skip non-existent Feb 29
+    if (!isLeap && (d >= 59)) d += 1 // skip non-existent Feb 29
     if (d >= 60) d += 1 // skip non-existent Feb 30
     var mon = ((d % 214) / 61) * 2 + ((d % 214) % 61) / 31
     if (d > 213) mon += 7
@@ -215,7 +214,8 @@ object DateTime {
         val sec = i(17) * 10 + i(18)
         Some(DateTime(year, month, day, hour, min, sec))
       }
-      catch { case _: IllegalArgumentException => None }
-    } else None
+      catch { case _: IllegalArgumentException ⇒ None }
+    }
+    else None
   }
 }

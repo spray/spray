@@ -16,11 +16,10 @@
 
 package spray.can.client
 
-import akka.util.{ByteString, ByteStringBuilder}
+import akka.util.{ ByteString, ByteStringBuilder }
 import spray.http._
 import spray.io._
 import spray.can.Http
-
 
 object ResponseChunkAggregation {
 
@@ -31,27 +30,28 @@ object ResponseChunkAggregation {
           val commandPipeline = commandPL
 
           val initialEventPipeline: EPL = {
-            case Http.MessageEvent(ChunkedResponseStart(response)) =>
+            case Http.MessageEvent(ChunkedResponseStart(response)) ⇒
               if (response.entity.buffer.length <= limit) {
                 val bb = ByteString.newBuilder
                 bb putBytes response.entity.buffer
                 eventPipeline become aggregating(response, bb)
-              } else closeWithError()
+              }
+              else closeWithError()
 
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
 
           def aggregating(response: HttpResponse, bb: ByteStringBuilder): EPL = {
-            case Http.MessageEvent(MessageChunk(body, _)) =>
+            case Http.MessageEvent(MessageChunk(body, _)) ⇒
               if (bb.length + body.length <= limit) bb putBytes body
               else closeWithError()
 
-            case Http.MessageEvent(_: ChunkedMessageEnd) =>
-              val aggregatedEntity = response.entity.map((ct, _) => ct -> bb.result().toArray)
+            case Http.MessageEvent(_: ChunkedMessageEnd) ⇒
+              val aggregatedEntity = response.entity.map((ct, _) ⇒ ct -> bb.result().toArray)
               eventPL(Http.MessageEvent(response.copy(entity = aggregatedEntity)))
               eventPipeline become initialEventPipeline
 
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
 
           def closeWithError() {

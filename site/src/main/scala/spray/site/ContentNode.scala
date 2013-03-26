@@ -16,10 +16,9 @@
 
 package spray.site
 
-import java.lang.{ StringBuilder => JStringBuilder }
-import scala.xml.{Node, XML}
+import java.lang.{ StringBuilder ⇒ JStringBuilder }
+import scala.xml.{ Node, XML }
 import spray.util._
-
 
 sealed trait ContentNode {
   def title: String

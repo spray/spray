@@ -26,12 +26,12 @@ sealed abstract class LanguageRange {
 }
 
 object LanguageRanges {
-  
+
   case object `*` extends LanguageRange {
     def primaryTag = "*"
     def subTags = Seq.empty[String]
   }
-  
+
   case class Language(primaryTag: String, subTags: String*) extends LanguageRange
-  
+
 }

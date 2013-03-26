@@ -18,10 +18,9 @@ package spray.http
 
 import java.nio.charset.Charset
 import scala.annotation.tailrec
-import scala.reflect.{classTag, ClassTag}
+import scala.reflect.{ classTag, ClassTag }
 import HttpHeaders._
 import HttpCharsets._
-
 
 sealed trait HttpMessagePartWrapper {
   def messagePart: HttpMessagePart
@@ -47,8 +46,8 @@ sealed trait HttpRequestPart extends HttpMessagePart
 object HttpRequestPart {
   def unapply(wrapper: HttpMessagePartWrapper): Option[(HttpRequestPart, Option[Any])] =
     wrapper.messagePart match {
-      case x: HttpRequestPart => Some((x, wrapper.ack))
-      case _ => None
+      case x: HttpRequestPart ⇒ Some((x, wrapper.ack))
+      case _                  ⇒ None
     }
 }
 
@@ -57,8 +56,8 @@ sealed trait HttpResponsePart extends HttpMessagePart
 object HttpResponsePart {
   def unapply(wrapper: HttpMessagePartWrapper): Option[(HttpResponsePart, Option[Any])] =
     wrapper.messagePart match {
-      case x: HttpResponsePart => Some((x, wrapper.ack))
-      case _ => None
+      case x: HttpResponsePart ⇒ Some((x, wrapper.ack))
+      case _                   ⇒ None
     }
 }
 
@@ -87,11 +86,11 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
   def withEntity(entity: HttpEntity): Self
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity): Self
 
-  def mapHeaders(f: List[HttpHeader] => List[HttpHeader]): Self = withHeaders(f(headers))
-  def mapEntity(f: HttpEntity => HttpEntity): Self = withEntity(f(entity))
+  def mapHeaders(f: List[HttpHeader] ⇒ List[HttpHeader]): Self = withHeaders(f(headers))
+  def mapEntity(f: HttpEntity ⇒ HttpEntity): Self = withEntity(f(entity))
 
   /**
-   * Returns true if a Content-Encoding header is present. 
+   * Returns true if a Content-Encoding header is present.
    */
   def isEncodingSpecified: Boolean = headers.exists(_.isInstanceOf[`Content-Encoding`])
 
@@ -99,12 +98,12 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
    * The content encoding as specified by the Content-Encoding header. If no Content-Encoding header is present the
    * default value 'identity' is returned.
    */
-  def encoding = headers.collect { case `Content-Encoding`(enc) => enc } match {
-    case enc :: _ => enc
-    case Nil => HttpEncodings.identity
+  def encoding = headers.collect { case `Content-Encoding`(enc) ⇒ enc } match {
+    case enc :: _ ⇒ enc
+    case Nil      ⇒ HttpEncodings.identity
   }
 
-  def header[T <: HttpHeader :ClassTag]: Option[T] = {
+  def header[T <: HttpHeader: ClassTag]: Option[T] = {
     val erasure = classTag[T].runtimeClass
     @tailrec def next(headers: List[HttpHeader]): Option[T] =
       if (headers.isEmpty) None
@@ -112,7 +111,7 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
     next(headers)
   }
 
-  def as[T](implicit f: Self => T): T = f(message)
+  def as[T](implicit f: Self ⇒ T): T = f(message)
 }
 
 /**
@@ -133,27 +132,27 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   def withEffectiveUri(securedConnection: Boolean): HttpRequest =
     if (uri.isAbsolute) this
     else header[Host] match {
-      case None => sys.error("Cannot establish effective request URI, request has a relative URI and is missing a `Host` header")
-      case Some(Host("", _)) => sys.error("Cannot establish effective request URI, request has a relative URI and an empty `Host` header")
-      case Some(Host(host, port)) => copy(uri = uri.toEffectiveHttpRequestUri(securedConnection, Uri.Host(host), port))
+      case None                   ⇒ sys.error("Cannot establish effective request URI, request has a relative URI and is missing a `Host` header")
+      case Some(Host("", _))      ⇒ sys.error("Cannot establish effective request URI, request has a relative URI and an empty `Host` header")
+      case Some(Host(host, port)) ⇒ copy(uri = uri.toEffectiveHttpRequestUri(securedConnection, Uri.Host(host), port))
     }
 
   def acceptedMediaRanges: List[MediaRange] = {
     // TODO: sort by preference
-    for (Accept(mediaRanges) <- headers; range <- mediaRanges) yield range
+    for (Accept(mediaRanges) ← headers; range ← mediaRanges) yield range
   }
 
   def acceptedCharsetRanges: List[HttpCharsetRange] = {
     // TODO: sort by preference
-    for (`Accept-Charset`(charsetRanges) <- headers; range <- charsetRanges) yield range
+    for (`Accept-Charset`(charsetRanges) ← headers; range ← charsetRanges) yield range
   }
 
   def acceptedEncodingRanges: List[HttpEncodingRange] = {
     // TODO: sort by preference
-    for (`Accept-Encoding`(encodingRanges) <- headers; range <- encodingRanges) yield range
+    for (`Accept-Encoding`(encodingRanges) ← headers; range ← encodingRanges) yield range
   }
 
-  def cookies: List[HttpCookie] = for (`Cookie`(cookies) <- headers; cookie <- cookies) yield cookie
+  def cookies: List[HttpCookie] = for (`Cookie`(cookies) ← headers; cookie ← cookies) yield cookie
 
   /**
    * Determines whether the given media-type is accepted by the client.
@@ -202,7 +201,8 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
     if (isContentTypeAccepted(contentType)) Some {
       if (contentType.isCharsetDefined) contentType
       else ContentType(contentType.mediaType, acceptedCharset)
-    } else None
+    }
+    else None
   }
 
   /**
@@ -212,8 +212,8 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   def acceptedCharset: HttpCharset = {
     if (isCharsetAccepted(`UTF-8`)) `UTF-8`
     else acceptedCharsetRanges match {
-      case (cs: HttpCharset) :: _ => cs
-      case _ => throw new IllegalStateException // a HttpCharsetRange that is not `*` ?
+      case (cs: HttpCharset) :: _ ⇒ cs
+      case _                      ⇒ throw new IllegalStateException // a HttpCharsetRange that is not `*` ?
     }
   }
 
@@ -231,7 +231,7 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
 case class HttpResponse(status: StatusCode = StatusCodes.OK,
                         entity: HttpEntity = EmptyEntity,
                         headers: List[HttpHeader] = Nil,
-                        protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`) extends HttpMessage with HttpResponsePart{
+                        protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`) extends HttpMessage with HttpResponsePart {
   type Self = HttpResponse
 
   def message = this
@@ -243,8 +243,8 @@ case class HttpResponse(status: StatusCode = StatusCodes.OK,
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) = copy(headers = headers, entity = entity)
 
   def connectionCloseExpected: Boolean = protocol match {
-    case HttpProtocols.`HTTP/1.0` => headers.forall { case x: Connection if x.hasKeepAlive => false; case _ => true }
-    case HttpProtocols.`HTTP/1.1` => headers.exists { case x: Connection if x.hasClose => true; case _ => false }
+    case HttpProtocols.`HTTP/1.0` ⇒ headers.forall { case x: Connection if x.hasKeepAlive ⇒ false; case _ ⇒ true }
+    case HttpProtocols.`HTTP/1.1` ⇒ headers.exists { case x: Connection if x.hasClose ⇒ true; case _ ⇒ false }
   }
 }
 
@@ -282,9 +282,8 @@ case class ChunkedResponseStart(response: HttpResponse) extends HttpMessageStart
 }
 
 case class ChunkedMessageEnd(
-  extensions: List[ChunkExtension] = Nil,
-  trailer: List[HttpHeader] = Nil
-) extends HttpRequestPart with HttpResponsePart with HttpMessageEnd {
+    extensions: List[ChunkExtension] = Nil,
+    trailer: List[HttpHeader] = Nil) extends HttpRequestPart with HttpResponsePart with HttpMessageEnd {
   if (!trailer.isEmpty) {
     require(trailer.forall(_.isNot("content-length")), "Content-Length header is not allowed in trailer")
     require(trailer.forall(_.isNot("transfer-encoding")), "Transfer-Encoding header is not allowed in trailer")
