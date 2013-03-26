@@ -73,7 +73,7 @@ class RootNode(val doc: SphinxDoc) extends ContentNode {
         val loaded =
           if (uri.contains("#")) SphinxDoc.Empty
           else load(uri).orElse(load(uri + "index/")).getOrElse(sys.error(s"SphinxDoc for uri '$uri' not found"))
-        if (!SiteSettings.DevMode) lastDoc = Some(loaded)
+        if (!Main.settings.devMode) lastDoc = Some(loaded)
         loaded
       }
       def isRoot = false

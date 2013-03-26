@@ -17,64 +17,79 @@
 package spray.can.rendering
 
 import scala.annotation.tailrec
+import akka.util.{ByteString, ByteStringBuilder}
 import spray.can.parsing.isTokenChar
-import spray.io.BufferBuilder
 import spray.util._
 import spray.http._
 
-
-private[rendering] trait MessageRendering {
-  import MessageRendering._
-
-  protected def appendHeader(header: HttpHeader, bb: BufferBuilder): BufferBuilder =
-    appendHeader(header.name, header.value, bb)
-
-  protected def appendHeader(name: String, value: String, bb: BufferBuilder): BufferBuilder =
-    bb.append(name).append(':').append(' ').append(value).append(CrLf)
-
-  protected def appendContentTypeHeaderIfRequired(entity: HttpEntity, bb: BufferBuilder) = {
-    if (!entity.isEmpty) appendHeader("Content-Type", entity.asInstanceOf[HttpBody].contentType.value, bb)
-    else bb
-  }
-
-  protected def renderChunk(chunk: MessageChunk, messageSizeHint: Int): RenderedMessagePart = {
-    val bb = BufferBuilder(messageSizeHint)
-    renderChunk(chunk.extensions, chunk.body, bb)
-    RenderedMessagePart(bb.toByteBuffer :: Nil)
-  }
-
-  protected def renderChunk(extensions: List[ChunkExtension], body: Array[Byte], bb: BufferBuilder) = {
-    bb.append(Integer.toHexString(body.length))
-    appendChunkExtensions(extensions, bb).append(CrLf).append(body).append(CrLf)
-  }
-
-  protected def renderFinalChunk(chunk: ChunkedMessageEnd, messageSizeHint: Int,
-                                 requestConnectionHeader: Option[String] = None): RenderedMessagePart = {
-    val bb = BufferBuilder(messageSizeHint).append('0')
-    appendChunkExtensions(chunk.extensions, bb).append(CrLf)
-    @tailrec def appendHeaders(h: List[HttpHeader]): Unit = h match {
-      case Nil =>
-      case head :: tail => appendHeader(head, bb); appendHeaders(tail)
-    }
-    appendHeaders(chunk.trailer)
-    bb.append(CrLf)
-    RenderedMessagePart(bb.toByteBuffer :: Nil, closeConnection = requestConnectionHeader == SomeClose)
-  }
-
-  @tailrec
-  private def appendChunkExtensions(extensions: List[ChunkExtension], bb: BufferBuilder): BufferBuilder = {
-    extensions match {
-      case Nil => bb
-      case ChunkExtension(name, value) :: rest => appendChunkExtensions(rest, {
-        bb.append(';').append(name).append('=')
-        if (value.forall(isTokenChar)) bb.append(value) else bb.append('"').append(value).append('"')
-      })
-    }
-  }
-}
 
 private[rendering] object MessageRendering {
   val DefaultStatusLine = "HTTP/1.1 200 OK\r\n".getAsciiBytes
   val CrLf = "\r\n".getAsciiBytes
   val SomeClose = Some("close")
+
+  def put(header: HttpHeader)(implicit bb: ByteStringBuilder): this.type =
+    putHeader(header.name, header.value)
+
+  def putHeader(name: String, value: String)(implicit bb: ByteStringBuilder): this.type =
+    put(name).put(':').put(' ').put(value).put(CrLf)
+
+  @tailrec
+  final def putHeaders(h: List[HttpHeader])(implicit bb: ByteStringBuilder): this.type = h match {
+    case Nil => this
+    case head :: tail => put(head); putHeaders(tail)
+  }
+
+  def putContentTypeHeaderIfRequired(entity: HttpEntity)(implicit bb: ByteStringBuilder): this.type =
+    if (!entity.isEmpty) putHeader("Content-Type", entity.asInstanceOf[HttpBody].contentType.value)
+    else this
+
+  def renderChunk(chunk: MessageChunk, messageSizeHint: Int): RenderedMessagePart = {
+    implicit val bb = newByteStringBuilder(messageSizeHint)
+    putChunk(chunk.extensions, chunk.body)
+    RenderedMessagePart(bb.result())
+  }
+
+  def putChunk(extensions: List[ChunkExtension], body: Array[Byte])(implicit bb: ByteStringBuilder): this.type =
+    put(Integer.toHexString(body.length)).put(extensions).put(CrLf).put(body).put(CrLf)
+
+  def renderFinalChunk(chunk: ChunkedMessageEnd, messageSizeHint: Int,
+                       requestConnectionHeader: Option[String] = None): RenderedMessagePart = {
+    implicit val bb = newByteStringBuilder(messageSizeHint)
+    put('0').put(chunk.extensions).put(CrLf).putHeaders(chunk.trailer).put(CrLf)
+    RenderedMessagePart(bb.result(), closeConnection = requestConnectionHeader == SomeClose)
+  }
+
+  @tailrec
+  private def put(extensions: List[ChunkExtension])(implicit bb: ByteStringBuilder): this.type =
+    extensions match {
+      case Nil => this
+      case ChunkExtension(name, value) :: rest =>
+        put(';').put(name).put('=')
+        if (value.forall(isTokenChar)) put(value) else put('"').put(value).put('"')
+        put(rest)
+    }
+
+  @tailrec
+  final def put(string: String, startIndex: Int = 0)(implicit bb: ByteStringBuilder): this.type =
+    if (startIndex < string.length) {
+      put(string.charAt(startIndex))
+      put(string, startIndex + 1)
+    } else this
+
+  def put(c: Char)(implicit bb: ByteStringBuilder): this.type = {
+    bb.putByte(c.asInstanceOf[Byte])
+    this
+  }
+
+  def put(bytes: Array[Byte])(implicit bb: ByteStringBuilder): this.type = {
+    bb.putBytes(bytes)
+    this
+  }
+
+  def newByteStringBuilder(sizeHint: Int): ByteStringBuilder = {
+    val bb = ByteString.newBuilder
+    bb.sizeHint(sizeHint)
+    bb
+  }
 }

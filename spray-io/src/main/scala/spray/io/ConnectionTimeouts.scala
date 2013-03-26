@@ -16,46 +16,43 @@
 
 package spray.io
 
-import scala.concurrent.duration.{Duration, FiniteDuration}
-import akka.event.Logging
-import spray.util.ConnectionCloseReasons.IdleTimeout
-
+import scala.concurrent.duration.{ Duration, FiniteDuration }
+import akka.io.Tcp
+import System.{ currentTimeMillis ⇒ now }
 
 object ConnectionTimeouts {
 
-  def apply(idleTimeout: Long): PipelineStage = {
-    require(idleTimeout >= 0)
+  def apply(idleTimeout: Duration): PipelineStage = {
+    require(idleTimeout > Duration.Zero, "idleTimeout must be > 0")
 
     new PipelineStage {
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
-        val debug = TaggedLog(context, Logging.DebugLevel)
         var timeout = idleTimeout
-        var lastActivity = System.currentTimeMillis
+        var lastActivity = now
 
         val commandPipeline: CPL = {
-          case x: SetIdleTimeout =>
-            timeout = x.timeout.toMillis
-
-          case x: IOConnection.Send =>
+          case x: Tcp.Write ⇒
             commandPL(x)
-            lastActivity = System.currentTimeMillis
+            lastActivity = now
 
-          case cmd => commandPL(cmd)
+          case SetIdleTimeout(x) ⇒ timeout = x
+
+          case cmd ⇒ commandPL(cmd)
         }
 
         val eventPipeline: EPL = {
-          case x: IOConnection.Received =>
-            lastActivity = System.currentTimeMillis
+          case x: Tcp.Received ⇒
+            lastActivity = now
             eventPL(x)
 
-          case TickGenerator.Tick =>
-            if (timeout > 0 && (lastActivity + timeout < System.currentTimeMillis)) {
-              debug.log("Closing connection due to idle timeout...")
-              commandPL(IOConnection.Close(IdleTimeout))
+          case tick@ TickGenerator.Tick ⇒
+            if (timeout.isFinite && (lastActivity + timeout.toMillis < System.currentTimeMillis)) {
+              context.log.debug("Closing connection due to idle timeout...")
+              commandPL(Tcp.Close)
             }
-            eventPL(TickGenerator.Tick)
+            eventPL(tick)
 
-          case ev => eventPL(ev)
+          case ev ⇒ eventPL(ev)
         }
       }
     }
@@ -63,7 +60,7 @@ object ConnectionTimeouts {
 
   ////////////// COMMANDS //////////////
 
-  case class SetIdleTimeout(timeout: FiniteDuration) extends Command {
-    require(timeout >= Duration.Zero, "timeout must not be negative")
+  case class SetIdleTimeout(timeout: Duration) extends Command {
+    require(timeout > Duration.Zero, "timeout must be > 0")
   }
 }

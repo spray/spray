@@ -2,13 +2,10 @@ package docs
 
 import org.specs2.mutable.Specification
 import spray.testkit.Specs2RouteTest
-import spray.routing.HttpService
-import akka.actor.Actor
+import spray.routing.HttpService._
+import spray.routing.MissingCookieRejection
 
-
-class RejectionHandlerExamplesSpec extends Specification with Specs2RouteTest with HttpService {
-  implicit def actorRefFactory = system
-
+object MyRejectionHandler {
   //# example-1
   import spray.routing._
   import spray.http._
@@ -20,7 +17,7 @@ class RejectionHandlerExamplesSpec extends Specification with Specs2RouteTest wi
       complete(BadRequest, "No cookies, no service!!!")
   }
 
-  class MyService extends Actor with HttpServiceActor {
+  class MyService extends HttpServiceActor {
     def receive = runRoute {
       `<my-route-definition>`
     }
@@ -28,6 +25,10 @@ class RejectionHandlerExamplesSpec extends Specification with Specs2RouteTest wi
   //#
 
   def `<my-route-definition>`: spray.routing.Route = null
+}
+
+class RejectionHandlerExamplesSpec extends Specification with Specs2RouteTest {
+  import MyRejectionHandler._
 
   "example" in {
     Get() ~> sealRoute(reject(MissingCookieRejection("abc"))) ~> check {

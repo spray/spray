@@ -100,13 +100,13 @@ trait MiscDirectives {
   /**
    * Transforms the unmatchedPath of the RequestContext using the given function.
    */
-  def rewriteUnmatchedPath(f: String => String): Directive0 =
+  def rewriteUnmatchedPath(f: Uri.Path => Uri.Path): Directive0 =
     mapRequestContext(_.withUnmatchedPathMapped(f))
 
   /**
    * Extracts the unmatched path from the RequestContext.
    */
-  def unmatchedPath: Directive[String :: HNil] =
+  def unmatchedPath: Directive[Uri.Path :: HNil] =
     extract(_.unmatchedPath)
 
   /**
@@ -117,16 +117,6 @@ trait MiscDirectives {
   def rejectEmptyResponse: Directive0 = mapRouteResponse {
     case HttpMessagePartWrapper(HttpResponse(_, EmptyEntity, _, _), _) => Rejected(Nil)
     case x => x
-  }
-
-  /**
-   * Not a directive, but a helper function that provides access to the ActorSystem we are running in.
-   */
-  def actorSystem(implicit refFactory: ActorRefFactory): ActorSystem = {
-    refFactory match {
-      case x: ActorContext => x.system
-      case x: ActorSystem => x
-    }
   }
 }
 

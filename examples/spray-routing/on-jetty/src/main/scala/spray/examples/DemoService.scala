@@ -1,13 +1,14 @@
 package spray.examples
 
 import java.io.File
-import scala.concurrent.duration._
 import org.parboiled.common.FileUtils
+import scala.concurrent.duration._
 import akka.actor.{Props, Actor}
+import akka.io.Tcp
 import spray.routing.{HttpService, RequestContext}
 import spray.routing.directives.CachingDirectives
-import spray.util.{SprayActorLogging, IOClosed}
 import spray.httpx.encoding.Gzip
+import spray.util._
 import spray.http._
 import MediaTypes._
 import CachingDirectives._
@@ -30,6 +31,9 @@ class DemoServiceActor extends Actor with DemoService {
 
 // this trait defines our service behavior independently from the service actor
 trait DemoService extends HttpService {
+
+  // we use the enclosing ActorContext's or ActorSystem's dispatcher for our Futures and Scheduler
+  implicit def executionContext = actorRefFactory.dispatcher
 
   val demoRoute = {
     get {
@@ -109,13 +113,13 @@ trait DemoService extends HttpService {
   // simple case class whose instances we use as send confirmation message for streaming chunks
   case class Ok(remaining: Int)
 
-  def sendStreamingResponse(ctx: RequestContext) {
-    actorRefFactory.actorOf(
+  def sendStreamingResponse(ctx: RequestContext): Unit =
+    actorRefFactory.actorOf {
       Props {
         new Actor with SprayActorLogging {
           // we use the successful sending of a chunk as trigger for scheduling the next chunk
           val responseStart = HttpResponse(entity = HttpBody(`text/html`, streamStart))
-          ctx.responder ! ChunkedResponseStart(responseStart).withSentAck(Ok(16))
+          ctx.responder ! ChunkedResponseStart(responseStart).withAck(Ok(16))
 
           def receive = {
             case Ok(0) =>
@@ -126,24 +130,22 @@ trait DemoService extends HttpService {
             case Ok(remaining) =>
               in(Duration(250, MILLISECONDS)) {
                 val nextChunk = MessageChunk("<li>" + DateTime.now.toIsoDateTimeString + "</li>")
-                ctx.responder ! nextChunk.withSentAck(Ok(remaining - 1))
+                ctx.responder ! nextChunk.withAck(Ok(remaining - 1))
               }
 
-            case x :IOClosed =>
-              log.warning("Stopping response streaming due to {}", x.reason)
+            case ev: Tcp.ConnectionClosed =>
+              log.warning("Stopping response streaming due to {}", ev)
           }
         }
       }
-    )
-  }
+    }
 
-  def in[U](duration: FiniteDuration)(body: => U) {
-    actorSystem.scheduler.scheduleOnce(duration, new Runnable { def run() { body } })
-  }
+  def in[U](duration: FiniteDuration)(body: => U): Unit =
+    actorSystem.scheduler.scheduleOnce(duration)(body)
 
-  lazy val largeTempFile = {
+  lazy val largeTempFile: File = {
     val file = File.createTempFile("streamingTest", ".txt")
-    FileUtils.writeAllText((1 to 1000).map("This is line " + _).mkString("\n"), file)
+    FileUtils.writeAllText((1 to 1000).map("This is line " + _) mkString "\n", file)
     file.deleteOnExit()
     file
   }

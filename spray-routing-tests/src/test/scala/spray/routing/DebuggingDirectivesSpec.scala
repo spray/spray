@@ -44,7 +44,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
     "produce a proper log message for incoming requests" in {
       Get("/hello") ~> logRequest("1") { completeOk } ~> check {
         response === Ok
-        debugMsg === "1: HttpRequest(GET, /hello, List(), EmptyEntity, HTTP/1.1)\n"
+        debugMsg === "1: HttpRequest(GET,/hello,List(),EmptyEntity,HTTP/1.1)\n"
       }
     }
   }
@@ -65,7 +65,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
       Get("/hello") ~> logRequestResponse("3") { completeOk } ~> check {
         response === Ok
         debugMsg === """|3: Response for
-                        |  Request : HttpRequest(GET, /hello, List(), EmptyEntity, HTTP/1.1)
+                        |  Request : HttpRequest(GET,/hello,List(),EmptyEntity,HTTP/1.1)
                         |  Response: HttpResponse(StatusCode(200, OK),EmptyEntity,List(),HTTP/1.1)
                         |""".stripMargin.replace(EOL, "\n")
       }

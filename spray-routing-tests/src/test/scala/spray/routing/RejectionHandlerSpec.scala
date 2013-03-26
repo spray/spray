@@ -50,7 +50,7 @@ class RejectionHandlerSpec extends RoutingSpec {
     }
     "respond with Forbidden for requests resulting in an AuthorizationFailedRejection" in {
       Get() ~> wrap {
-        authorize(false) { _ => completeOk }
+        authorize(false) { completeOk }
       } ~> check {
         status === Forbidden
         entityAs[String] === "The supplied authentication is not authorized to access this resource"

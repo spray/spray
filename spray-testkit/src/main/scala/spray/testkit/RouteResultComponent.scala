@@ -24,7 +24,6 @@ import akka.spray.UnregisteredActorRef
 import spray.routing.{RejectionHandler, Rejected, Rejection}
 import spray.http._
 
-
 trait RouteResultComponent {
 
   def failTest(msg: String): Nothing
@@ -52,13 +51,13 @@ trait RouteResultComponent {
           case Rejected(rejections) =>
             saveResult(Left(rejections))
             latch.countDown()
-          case HttpMessagePartWrapper(ChunkedResponseStart(x), sentAck) =>
+          case HttpMessagePartWrapper(ChunkedResponseStart(x), ack) ⇒
             saveResult(Right(x))
-            sentAck.foreach(verifiedSender.tell(_, this))
-          case HttpMessagePartWrapper(x: MessageChunk, sentAck) =>
+            ack.foreach(verifiedSender.tell(_, this))
+          case HttpMessagePartWrapper(x: MessageChunk, ack) ⇒
             synchronized { _chunks += x }
-            sentAck.foreach(verifiedSender.tell(_, this))
-          case HttpMessagePartWrapper(ChunkedMessageEnd(extensions, trailer), _) =>
+            ack.foreach(verifiedSender.tell(_, this))
+          case HttpMessagePartWrapper(ChunkedMessageEnd(extensions, trailer), _) ⇒
             synchronized { _closingExtensions = extensions; _trailer = trailer }
             latch.countDown()
           case Status.Failure(error) =>

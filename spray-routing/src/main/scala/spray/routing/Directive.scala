@@ -17,7 +17,6 @@
 package spray.routing
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Success, Failure}
 import shapeless._
 import spray.httpx.unmarshalling.MalformedContent
 
@@ -87,6 +86,7 @@ abstract class Directive[L <: HList] { self =>
       def happly(g: R => Route) = self.happly { values => f(values).happly(g) }
     }
 
+  // TODO: add Seq[Rejection] parameter
   def hrequire(predicate: L => Boolean): Directive0 =
     new Directive0 {
       def happly(f: HNil => Route) =

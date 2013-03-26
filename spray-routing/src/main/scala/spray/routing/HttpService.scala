@@ -17,27 +17,13 @@
 package spray.routing
 
 import scala.util.control.NonFatal
-import scala.concurrent.ExecutionContext
 import akka.actor._
+import akka.io.Tcp
 import spray.util.LoggingContext
 import spray.http._
 import StatusCodes._
 
-
-trait HttpService extends Directives {
-
-  warmUp() // trigger the loading of most classes in spray-http
-
-  /**
-   * An ActorRefFactory needs to be supplied by the class mixing us in
-   * (mostly either the service actor or the service test)
-   */
-  implicit def actorRefFactory: ActorRefFactory
-
-  /**
-   * Supplies an ExecutionContext (mainly for Future scheduling) from the actorRefFactory.
-   */
-  implicit def executionContext: ExecutionContext = actorRefFactory.dispatcher
+trait HttpServiceBase extends Directives {
 
   /**
    * Supplies the actor behavior for executing the given route.
@@ -49,27 +35,24 @@ trait HttpService extends Directives {
                              rs: RoutingSettings, log: LoggingContext): Actor.Receive = {
     val sealedExceptionHandler = eh orElse ExceptionHandler.default
     val sealedRoute = sealRoute(route)(sealedExceptionHandler, rh)
-    def contextFor(req: HttpRequest) = RequestContext(req, ac.sender, req.path).withDefaultSender(ac.self)
+    def runSealedRoute(ctx: RequestContext): Unit =
+      try sealedRoute(ctx)
+      catch {
+        case NonFatal(e) =>
+          val errorRoute = sealedExceptionHandler(e)
+          errorRoute(ctx)
+      }
 
     {
       case request: HttpRequest =>
-        try {
-          request.parseQuery.parseHeaders match {
-            case ("", parsedRequest) =>
-              sealedRoute(contextFor(parsedRequest))
-            case (errorMsg, parsedRequest) if rs.RelaxedHeaderParsing =>
-              log.warning("Request {}: {}", request, errorMsg)
-              sealedRoute(contextFor(parsedRequest))
-            case (errorMsg, _) =>
-              throw new IllegalRequestException(BadRequest, RequestErrorInfo(errorMsg))
-          }
-        } catch {
-          case NonFatal(e) =>
-            val errorRoute = sealedExceptionHandler(e)
-            errorRoute(contextFor(request))
-        }
+        val ctx = RequestContext(request, ac.sender, request.uri.path).withDefaultSender(ac.self)
+        runSealedRoute(ctx)
 
-      case ctx: RequestContext => sealedRoute(ctx)
+      case ctx: RequestContext => runSealedRoute(ctx)
+
+      case Tcp.Connected(_, _) =>
+        // by default we register ourselves as the handler for a new connection
+        ac.sender ! Tcp.Register(ac.self)
 
       case Timedout(request: HttpRequest) => runRoute(timeoutRoute)(eh, rh, ac, rs, log)(request)
     }
@@ -96,15 +79,16 @@ trait HttpService extends Directives {
   //#
 }
 
-trait HttpServiceActor extends HttpService {
-  this: Actor =>
+object HttpService extends HttpServiceBase
 
-  def actorRefFactory = context
+trait HttpService extends HttpServiceBase {
+  /**
+   * An ActorRefFactory needs to be supplied by the class mixing us in
+   * (mostly either the service actor or the service test)
+   */
+  implicit def actorRefFactory: ActorRefFactory
 }
 
-object HttpServiceActor {
-  def apply(route: Route) =
-    new Actor with HttpServiceActor {
-      def receive = runRoute(route)
-    }
+abstract class HttpServiceActor extends Actor with HttpService {
+  def actorRefFactory = context
 }

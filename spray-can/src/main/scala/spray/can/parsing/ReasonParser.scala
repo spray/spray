@@ -26,7 +26,7 @@ class ReasonParser(settings: ParserSettings, protocol: HttpProtocol, status: Int
   val reason = new JStringBuilder
 
   def handleChar(cursor: Char) = {
-    if (reason.length <= settings.MaxResponseReasonLength) {
+    if (reason.length <= settings.maxResponseReasonLength) {
       cursor match {
         case '\r' => this
         case '\n' => new HeaderNameParser(settings,
@@ -34,7 +34,7 @@ class ReasonParser(settings: ParserSettings, protocol: HttpProtocol, status: Int
         case _ => reason.append(cursor); this
       }
     } else {
-      ErrorState("Reason phrase exceeds the configured limit of " + settings.MaxResponseReasonLength + " characters")
+      ErrorState("Reason phrase exceeds the configured limit of " + settings.maxResponseReasonLength + " characters")
     }
   }
 

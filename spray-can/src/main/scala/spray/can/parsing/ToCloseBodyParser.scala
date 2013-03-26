@@ -16,7 +16,7 @@
 
 package spray.can.parsing
 
-import java.nio.ByteBuffer
+import akka.util.ByteIterator
 import spray.can.MessageLine
 import spray.util._
 import spray.http._
@@ -32,17 +32,17 @@ class ToCloseBodyParser(settings: ParserSettings,
 
   private var body: Array[Byte] = EmptyByteArray
 
-  def read(buf: ByteBuffer) = {
-    val array = new Array[Byte](buf.remaining)
-    buf.get(array)
+  def read(data: ByteIterator) = {
+    val array = new Array[Byte](data.len)
+    data.getBytes(array)
     body match {
       case EmptyByteArray => body = array; this
       case _ => {
-        if (body.length + array.length <= settings.MaxContentLength) {
+        if (body.length + array.length <= settings.maxContentLength) {
           body = body concat array
           this
         } else ErrorState(RequestEntityTooLarge, "HTTP message body size exceeds the configured limit of " +
-          settings.MaxContentLength)
+          settings.maxContentLength)
       }
     }
   }

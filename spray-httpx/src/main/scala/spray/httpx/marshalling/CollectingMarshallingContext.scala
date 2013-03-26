@@ -59,7 +59,7 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
     latch.countDown()
   }
 
-  def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any] = None)(implicit sender: ActorRef) = {
+  def startChunkedMessage(entity: HttpEntity, ack: Option[Any] = None)(implicit sender: ActorRef) = {
     require(actorRefFactory != null, "Chunked responses can only be collected if an ActorRefFactory is provided")
     if (!_entity.compareAndSet(None, Some(entity)))
       sys.error("`marshalTo` or `startChunkedMessage` was already called")
@@ -67,8 +67,8 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
     val ref = new UnregisteredActorRef(actorRefFactory) {
       def handle(message: Any)(implicit sender: ActorRef) {
         message match {
-          case wrapper: HttpMessagePartWrapper =>
-            wrapper.messagePart match {
+          case HttpMessagePartWrapper(part, ack) =>
+            part match {
               case x: MessageChunk =>
                 @tailrec def updateChunks(current: Seq[MessageChunk]) {
                   if (!_chunks.compareAndSet(current, _chunks.get :+ x)) updateChunks(_chunks.get)
@@ -82,11 +82,11 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
 
               case x => throw new IllegalStateException("Received unexpected message part: " + x)
             }
-            wrapper.sentAck.foreach(sender.tell(_, this))
+            ack.foreach(sender.tell(_, this))
         }
       }
     }
-    sentAck.foreach(sender.tell(_, ref))
+    ack.foreach(sender.tell(_, ref))
     ref
   }
 

@@ -130,11 +130,11 @@ object HttpHeaders {
     def value = date.toRfc1123DateTimeString
   }
 
-  object Host { def apply(host: String, port: Int): Host = apply(host, Some(port)) }
-  case class Host(host: String, port: Option[Int] = None) extends HttpHeader {
+  case class Host(host: String, port: Int = 0) extends HttpHeader {
+    require(port >> 16 == 0, "Illegal port: " + port)
     def name = "Host"
     def lowercaseName = "host"
-    def value = port.map(host + ':' + _).getOrElse(host)
+    def value = if (port > 0) host + ':' + port else host
   }
 
   case class `Last-Modified`(date: DateTime) extends HttpHeader {
@@ -155,10 +155,31 @@ object HttpHeaders {
     def value = ip.value
   }
 
+  object Server { def apply(products: String): Server = apply(ProductVersion.parseMultiple(products)) }
+  case class Server(products: Seq[ProductVersion]) extends HttpHeader {
+    def name = "Server"
+    def lowercaseName = "server"
+    def value = products mkString " "
+  }
+
   case class `Set-Cookie`(cookie: HttpCookie) extends HttpHeader {
     def name = "Set-Cookie"
     def lowercaseName = "set-cookie"
     def value = cookie.value
+  }
+
+  object `Transfer-Encoding` { def apply(first: String, more: String*): `Transfer-Encoding` = apply(first +: more) }
+  case class `Transfer-Encoding`(encodings: Seq[String]) extends HttpHeader {
+    def name = "Transfer-Encoding"
+    def lowercaseName = "Transfer-Encoding"
+    def value = encodings mkString ", "
+  }
+
+  object `User-Agent` { def apply(products: String): `User-Agent` = apply(ProductVersion.parseMultiple(products)) }
+  case class `User-Agent`(products: Seq[ProductVersion]) extends HttpHeader {
+    def name = "User-Agent"
+    def lowercaseName = "user-agent"
+    def value = products mkString " "
   }
 
   object `WWW-Authenticate` { def apply(first: HttpChallenge, more: HttpChallenge*): `WWW-Authenticate` = apply(first +: more) }

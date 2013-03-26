@@ -25,6 +25,8 @@ package object client {
 }
 
 package client {
+
   class PipelineException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
   class UnsuccessfulResponseException(val responseStatus: StatusCode) extends RuntimeException
+
 }

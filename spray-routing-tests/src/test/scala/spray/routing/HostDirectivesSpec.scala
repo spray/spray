@@ -18,7 +18,6 @@ package spray.routing
 
 import spray.http.HttpHeaders.Host
 
-
 class HostDirectivesSpec extends RoutingSpec {
 
   "The 'host' directive" should {

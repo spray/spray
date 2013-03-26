@@ -2,7 +2,6 @@ package docs
 
 import org.specs2.mutable.Specification
 import java.net.InetSocketAddress
-import spray.io.IOBridge.Key
 
 
 class IOClientExamplesSpec extends Specification {

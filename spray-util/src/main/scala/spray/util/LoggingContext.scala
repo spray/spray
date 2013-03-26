@@ -58,11 +58,12 @@ private[util] sealed abstract class LoggingContextLowerOrderImplicit1 extends Lo
   def fromActorContext(context: ActorContext) = fromAdapter {
     val system = context.system
     val path = context.self.path.toString
-    val settings = UtilSettings.global.getOrElse(UtilSettings(system).get)
-    if (settings.LogActorPathsWithDots) {
-      def fix(path: String) = path.substring(7).replace('/', '.') // drop the `akka://` prefix and replace slashes
-      Logging(system.eventStream, if (settings.LogActorSystemName) system.toString + '.' + fix(path) else fix(path))
-    } else if (settings.LogActorSystemName) Logging(system, path) else Logging(system.eventStream, path)
+    val settings = UtilSettings(system)
+    if (settings.logActorPathsWithDots) {
+      val fixedPath = path.substring(7).replace('/', '.') // drop the `akka://` prefix and replace slashes
+      val logSource = if (settings.logActorSystemName) system.toString + '.' + fixedPath else fixedPath
+      Logging(system.eventStream, logSource)
+    } else if (settings.logActorSystemName) Logging(system, path) else Logging(system.eventStream, path)
   }
 }
 

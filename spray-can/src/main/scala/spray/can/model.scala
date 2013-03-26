@@ -16,6 +16,13 @@
 
 package spray.can
 
+import java.net.InetSocketAddress
+import scala.collection.immutable
+import akka.io.Inet
+import akka.actor.{ActorRefFactory, ActorRef}
+import spray.can.client.HostConnectorSettings
+import spray.io.ClientSSLEngineProvider
+import spray.util.actorSystem
 import spray.http._
 
 
@@ -37,13 +44,29 @@ case class StatusLine(
 object Trailer {
   def verify(trailer: List[HttpHeader]) = {
     if (!trailer.isEmpty) {
-      require(trailer.forall(_.name != "Content-Length"), "Content-Length header is not allowed in trailer")
-      require(trailer.forall(_.name != "Transfer-Encoding"), "Transfer-Encoding header is not allowed in trailer")
-      require(trailer.forall(_.name != "Trailer"), "Trailer header is not allowed in trailer")
+      require(trailer forall { _.name != "Content-Length" }, "Content-Length header is not allowed in trailer")
+      require(trailer forall { _.name != "Transfer-Encoding" }, "Transfer-Encoding header is not allowed in trailer")
+      require(trailer forall { _.name != "Trailer" }, "Trailer header is not allowed in trailer")
     }
     trailer
   }
 }
 
-case class HttpCommand(cmd: HttpMessagePartWrapper) extends spray.io.Command
-case class HttpEvent(ev: HttpMessagePart) extends spray.io.Event
+case class HostConnectorSetup(remoteAddress: InetSocketAddress,
+                              options: immutable.Traversable[Inet.SocketOption],
+                              settings: Option[HostConnectorSettings],
+                              sslEngineProvider: ClientSSLEngineProvider) {
+  implicit def clientSslEngineProvider = sslEngineProvider
+
+  private[can] def normalized(implicit refFactory: ActorRefFactory) =
+    if (settings.isDefined) this
+    else copy(settings = Some(HostConnectorSettings(actorSystem)))
+}
+object HostConnectorSetup {
+  def apply(host: String, port: Int = 80, options: immutable.Traversable[Inet.SocketOption] = Nil,
+            settings: Option[HostConnectorSettings] = None)
+           (implicit sslEngineProvider: ClientSSLEngineProvider): HostConnectorSetup =
+    apply(new InetSocketAddress(host, port), options, settings, sslEngineProvider)
+}
+
+case class HostConnectorInfo(hostConnector: ActorRef, setup: HostConnectorSetup)

@@ -35,20 +35,18 @@ object ExceptionHandler {
 
   implicit def default(implicit settings: RoutingSettings, log: LoggingContext): ExceptionHandler =
     fromPF {
-      case x@ IllegalRequestException(status, summary, detail) => ctx =>
-        log.warning("Illegal request {}\n\t{}: {}\n\tCompleting with '{}' response",
-          ctx.request, summary, detail, status)
-        val msg = if (settings.VerboseErrorMessages) x.getMessage else summary
-        ctx.complete(status, msg)
+      case e: IllegalRequestException => ctx =>
+        log.warning("Illegal request {}\n\t{}\n\tCompleting with '{}' response",
+          ctx.request, e.getMessage, e.status)
+        ctx.complete(e.status, e.info.format(settings.verboseErrorMessages))
 
-      case RequestProcessingException(status, message) => ctx =>
+      case e: RequestProcessingException => ctx =>
         log.warning("Request {} could not be handled normally\n\t{}\n\tCompleting with '{}' response",
-          ctx.request, message, status)
-        ctx.complete(status, message)
+          ctx.request, e.getMessage, e.status)
+        ctx.complete(e.status, e.info.format(settings.verboseErrorMessages))
 
       case NonFatal(e) => ctx =>
         log.error(e, "Error during processing of request {}", ctx.request)
         ctx.complete(InternalServerError)
     }
-
 }

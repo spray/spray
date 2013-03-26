@@ -21,8 +21,7 @@ import akka.spray.{RefUtils, UnregisteredActorRef}
 import akka.actor._
 import spray.io.Command
 import spray.http._
-import spray.can.HttpCommand
-
+import spray.can.Http
 
 object ResponseReceiverRef {
   private val responseStateOffset = Unsafe.instance.objectFieldOffset(
@@ -35,7 +34,7 @@ object ResponseReceiverRef {
 }
 
 private class ResponseReceiverRef(openRequest: OpenRequest)
-  extends UnregisteredActorRef(openRequest.connectionActorContext) {
+  extends UnregisteredActorRef(openRequest.context.actorContext) {
   import ResponseReceiverRef._
 
   @volatile private[this] var _responseStateDoNotCallMeDirectly: ResponseState = Uncompleted
@@ -50,9 +49,9 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
           case _: MessageChunk         => dispatch(x, Chunking, Chunking)
           case _: ChunkedMessageEnd    => dispatch(x, Chunking, Completed)
         }
-      case x: Command              => dispatch(x)
+      case x: Command => dispatch(x)
       case x =>
-        openRequest.warn("Illegal response " + x + " to " + requestInfo)
+        openRequest.context.log.warning("Illegal response {} to {}", x, requestInfo)
         unhandledMessage(x)
     }
   }
@@ -60,21 +59,22 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
   private def dispatch(msg: HttpMessagePartWrapper, expectedState: ResponseState, newState: ResponseState)
                       (implicit sender: ActorRef) {
     if (Unsafe.instance.compareAndSwapObject(this, responseStateOffset, expectedState, newState)) {
-      dispatch(new Response(openRequest, HttpCommand(msg)))
+      dispatch(new Response(openRequest, Http.MessageCommand(msg)))
     } else {
-      openRequest.warn("Cannot dispatch " + msg.messagePart.getClass.getSimpleName +
-        " as response (part) for " + requestInfo + " since current response state is '" +
-        Unsafe.instance.getObjectVolatile(this, responseStateOffset) + "' but should be '" + expectedState + '\'')
+      openRequest.context.log.warning("Cannot dispatch {} as response (part) for {} since current response state is " +
+        "'{}' but should be '{}'", msg.messagePart.getClass.getSimpleName, requestInfo,
+        Unsafe.instance.getObjectVolatile(this, responseStateOffset), expectedState)
       unhandledMessage(msg)
     }
   }
 
   private def dispatch(cmd: Command)(implicit sender: ActorRef) {
-    openRequest.connectionActorContext.self ! new Response(openRequest, cmd)
+    val ac = openRequest.context.actorContext
+    if (ac != null) ac.self ! cmd
   }
 
   private def unhandledMessage(message: Any)(implicit sender: ActorRef) {
-    openRequest.connectionActorContext.system.eventStream.publish(UnhandledMessage(message, sender, this))
+    openRequest.context.system.eventStream.publish(UnhandledMessage(message, sender, this))
   }
 
   private def requestInfo = openRequest.request.method.toString + " request to '" + openRequest.request.uri + '\''

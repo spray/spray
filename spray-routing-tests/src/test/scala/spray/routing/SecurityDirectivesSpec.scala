@@ -59,7 +59,8 @@ class SecurityDirectivesSpec extends RoutingSpec {
 
   "the 'authenticate(<ContextAuthenticator>)' directive" should {
     val myAuthenticator: ContextAuthenticator[Int] = ctx => Future {
-      Either.cond(ctx.request.host == "spray.io", 42, AuthenticationRequiredRejection("my-scheme", "MyRealm", Map()))
+      Either.cond(ctx.request.uri.authority.host == Uri.NamedHost("spray.io"), 42,
+        AuthenticationRequiredRejection("my-scheme", "MyRealm", Map()))
     }
     "reject requests not satisfying the filter condition" in {
       Get() ~> authenticate(myAuthenticator) { echoComplete } ~>

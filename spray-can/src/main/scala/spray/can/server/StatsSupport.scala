@@ -21,8 +21,8 @@ import scala.concurrent.duration._
 import spray.http.{Timedout, HttpMessageStart}
 import spray.can.rendering.HttpResponsePartRenderingContext
 import spray.can.server.RequestParsing.HttpMessageStartEvent
-import spray.util.ConnectionCloseReasons.IdleTimeout
 import spray.io._
+import spray.can.Http
 
 
 object StatsSupport {
@@ -36,7 +36,6 @@ object StatsSupport {
     val connectionsClosed  = new AtomicLong
     val maxOpenConnections = new AtomicLong
     val requestTimeouts    = new AtomicLong
-    val idleTimeouts       = new AtomicLong
 
     @tailrec
     final def adjustMaxOpenConnections() {
@@ -58,7 +57,7 @@ object StatsSupport {
         if (!maxOpenRequests.compareAndSet(mor, currentMor)) adjustMaxOpenRequests()
     }
 
-    def toStats = HttpServer.Stats(
+    def toStats = Stats(
       uptime = (System.currentTimeMillis - startTimestamp) millis span,
       totalRequests = requestStarts.get,
       openRequests = requestStarts.get - responseStarts.get,
@@ -66,8 +65,7 @@ object StatsSupport {
       totalConnections = connectionsOpened.get,
       openConnections = connectionsOpened.get - connectionsClosed.get,
       maxOpenConnections = maxOpenConnections.get,
-      requestTimeouts = requestTimeouts.get,
-      idleTimeouts = idleTimeouts.get
+      requestTimeouts = requestTimeouts.get
     )
 
     def clear() {
@@ -78,7 +76,6 @@ object StatsSupport {
       connectionsClosed.set(0L)
       maxOpenConnections.set(0L)
       requestTimeouts.set(0L)
-      idleTimeouts.set(0L)
     }
   }
 
@@ -95,7 +92,7 @@ object StatsSupport {
               responseStarts.incrementAndGet()
               commandPL(x)
 
-            case x@ IOConnection.Tell(_, _: Timedout, _) =>
+            case x@ Pipeline.Tell(_, _: Timedout, _) =>
               requestTimeouts.incrementAndGet()
               commandPL(x)
 
@@ -108,9 +105,8 @@ object StatsSupport {
               adjustMaxOpenRequests()
               eventPL(ev)
 
-            case x: HttpServer.Closed =>
+            case x: Http.ConnectionClosed =>
               connectionsClosed.incrementAndGet()
-              if (x.reason == IdleTimeout) idleTimeouts.incrementAndGet()
               eventPL(x)
 
             case ev => eventPL(ev)
@@ -118,3 +114,14 @@ object StatsSupport {
         }
     }
 }
+
+case class Stats(
+  uptime: FiniteDuration,
+  totalRequests: Long,
+  openRequests: Long,
+  maxOpenRequests: Long,
+  totalConnections: Long,
+  openConnections: Long,
+  maxOpenConnections: Long,
+  requestTimeouts: Long
+)

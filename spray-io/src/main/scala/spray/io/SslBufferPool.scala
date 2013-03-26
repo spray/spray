@@ -20,7 +20,7 @@ import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicInteger
 import scala.annotation.tailrec
 
-
+// TODO: refactor for symmetry with akka-io DirectByteBufferPool implementation
 /**
  * A ByteBuffer pool reduces the number of ByteBuffer allocations in the SslTlsSupport.
  * The reason why SslTlsSupport requires a buffer pool is because the
@@ -36,10 +36,10 @@ object SslBufferPool {
 
   // we are using Nettys default values:
   // 16665 + 1024 (room for compressed data) + 1024 (for OpenJDK compatibility)
-  private val MaxPacketSize = 16665 + 2048
+  private final val MaxPacketSize = 16665 + 2048
 
-  private val Unlocked = 0
-  private val Locked = 1
+  private final val Unlocked = 0
+  private final val Locked = 1
 
   private[this] val state = new AtomicInteger(Unlocked)
   @volatile private[this] var pool: List[ByteBuffer] = Nil
@@ -54,11 +54,11 @@ object SslBufferPool {
   def acquire(): ByteBuffer = {
     if (state.compareAndSet(Unlocked, Locked)) {
       try pool match {
-        case Nil => ByteBuffer.allocate(MaxPacketSize) // we have no more buffer available, so create a new one
-        case buf :: tail =>
+        case Nil ⇒ ByteBuffer allocate MaxPacketSize // we have no more buffer available, so create a new one
+        case buf :: tail ⇒
           pool = tail
           buf
-      } finally state.set(Unlocked)
+      } finally state set Unlocked
     } else acquire() // spin while locked
   }
 
@@ -67,7 +67,7 @@ object SslBufferPool {
     if (state.compareAndSet(Unlocked, Locked)) {
       buf.clear() // ensure that we never have dirty buffers in the pool
       pool = buf :: pool
-      state.set(Unlocked)
+      state set Unlocked
     } else release(buf) // spin while locked
   }
 }

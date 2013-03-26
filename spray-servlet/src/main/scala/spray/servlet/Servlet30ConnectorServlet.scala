@@ -25,6 +25,8 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.util.control.NonFatal
 import akka.actor.{UnhandledMessage, ActorRef, ActorSystem}
 import akka.spray.{RefUtils, UnregisteredActorRef}
+import akka.event.{LoggingAdapter, Logging}
+import akka.io.Tcp
 import spray.http._
 import spray.util._
 
@@ -37,19 +39,20 @@ class Servlet30ConnectorServlet extends HttpServlet {
   var serviceActor: ActorRef = _
   var timeoutHandler: ActorRef = _
   implicit var settings: ConnectorSettings = _
-  implicit def log = system.log
+  implicit var log: LoggingAdapter = _
 
   override def init() {
     import Initializer._
     system = getServletContext.getAttribute(SystemAttrName).asInstanceOf[ActorSystem]
     serviceActor = getServletContext.getAttribute(ServiceActorAttrName).asInstanceOf[ActorRef]
     settings = getServletContext.getAttribute(SettingsAttrName).asInstanceOf[ConnectorSettings]
-    timeoutHandler = if (settings.TimeoutHandler.isEmpty) serviceActor else system.actorFor(settings.TimeoutHandler)
+    timeoutHandler = if (settings.timeoutHandler.isEmpty) serviceActor else system.actorFor(settings.timeoutHandler)
     require(system != null, "No ActorSystem configured")
     require(serviceActor != null, "No ServiceActor configured")
     require(settings != null, "No ConnectorSettings configured")
     require(RefUtils.isLocal(serviceActor), "The serviceActor must live in the same JVM as the Servlet30ConnectorServlet")
     require(RefUtils.isLocal(timeoutHandler), "The timeoutHandler must live in the same JVM as the Servlet30ConnectorServlet")
+    log = Logging(system, this.getClass)
     log.info("Initialized Servlet API 3.0 <=> Spray Connector")
   }
 
@@ -60,13 +63,12 @@ class Servlet30ConnectorServlet extends HttpServlet {
       val responder = new Responder(hsRequest, hsResponse, request)
       serviceActor.tell(request, responder)
     } catch {
-      case IllegalRequestException(status, summary, detail) =>
-        log.warning("Illegal request {}\n\t{}: {}\n\tCompleting with '{}' response", request, summary, detail, status)
-        val msg = if (settings.VerboseErrorMessages) summary + ": " + detail else summary
-        writeResponse(HttpResponse(status, msg), hsResponse, request) {}
-      case RequestProcessingException(status, msg) =>
-        log.warning("Request {} could not be handled normally\n\t{}\n\tCompleting with '{}' response", request, msg, status)
-        writeResponse(HttpResponse(status, msg), hsResponse, request) {}
+      case e: IllegalRequestException =>
+        log.warning("Illegal request {}\n\t{}\n\tCompleting with '{}' response", request, e.info.formatPretty, e.status)
+        writeResponse(HttpResponse(e.status, e.info.format(settings.verboseErrorMessages)), hsResponse, request) {}
+      case e: RequestProcessingException =>
+        log.warning("Request {} could not be handled normally\n\t{}\n\tCompleting with '{}' response", request, e.info.formatPretty, e.status)
+        writeResponse(HttpResponse(e.status, e.info.format(settings.verboseErrorMessages)), hsResponse, request) {}
       case NonFatal(e) =>
         log.error(e, "Error during processing of request {}", request)
         writeResponse(HttpResponse(500, entity = "The request could not be handled"), hsResponse, request) {}
@@ -76,13 +78,13 @@ class Servlet30ConnectorServlet extends HttpServlet {
   class Responder(hsRequest: HttpServletRequest, hsResponse: HttpServletResponse, req: HttpRequest)
     extends UnregisteredActorRef(system) {
 
-    val OPEN = 0
-    val STARTED = 1
-    val COMPLETED = 2
+    final val OPEN = 0
+    final val STARTED = 1
+    final val COMPLETED = 2
 
     val state = new AtomicInteger(OPEN)
     val asyncContext = hsRequest.startAsync()
-    asyncContext.setTimeout(settings.RequestTimeout)
+    asyncContext.setTimeout(settings.requestTimeout.toMillis)
     asyncContext.addListener {
       new AsyncListener {
         def onTimeout(event: AsyncEvent) {
@@ -100,13 +102,13 @@ class Servlet30ConnectorServlet extends HttpServlet {
       }
     }
 
-    def postProcess(error: Option[Throwable], sentAck: Option[Any], close: Boolean)(implicit sender: ActorRef) {
+    def postProcess(error: Option[Throwable], ack: Option[Any], close: Boolean)(implicit sender: ActorRef) {
       error match {
         case None =>
-          sentAck.foreach(sender.tell(_, this))
-          if (close) sender.tell(Closed(ConnectionCloseReasons.CleanClose), this)
+          ack.foreach(sender.tell(_, this))
+          if (close) sender.tell(Tcp.Closed, this)
         case Some(e) =>
-          sender.tell(Closed(ConnectionCloseReasons.IOError(e)), this)
+          sender.tell(Tcp.ErrorClosed(e.getMessage), this)
           asyncContext.complete()
       }
     }
@@ -118,7 +120,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
             case response: HttpResponse =>
               if (state.compareAndSet(OPEN, COMPLETED)) {
                 val error = writeResponse(response, hsResponse, req) { asyncContext.complete() }
-                postProcess(error, wrapper.sentAck, close = true)
+                postProcess(error, wrapper.ack, close = true)
               } else state.get match {
                 case STARTED =>
                   log.warning("Received an HttpResponse after a ChunkedResponseStart, dropping ...\nRequest: {}\nResponse: {}", req, response)
@@ -129,7 +131,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
             case response: ChunkedResponseStart =>
               if (state.compareAndSet(OPEN, STARTED)) {
                 val error = writeResponse(response, hsResponse, req) {}
-                postProcess(error, wrapper.sentAck, close = false)
+                postProcess(error, wrapper.ack, close = false)
               } else state.get match {
                 case STARTED =>
                   log.warning("Received a second ChunkedResponseStart, dropping ...\nRequest: {}\nResponse: {}", req, response)
@@ -142,7 +144,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
                 log.warning("Received a MessageChunk before a ChunkedResponseStart, dropping ...\nRequest: {}\nChunk: {} bytes\n", req, body.length)
               case STARTED =>
                 val error = writeChunk(body, hsResponse, req)
-                postProcess(error, wrapper.sentAck, close = false)
+                postProcess(error, wrapper.ack, close = false)
               case COMPLETED =>
                 log.warning("Received a MessageChunk for a request that was already completed, dropping ...\nRequest: {}\nChunk: {} bytes", req, body.length)
             }
@@ -150,7 +152,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
             case _: ChunkedMessageEnd =>
               if (state.compareAndSet(STARTED, COMPLETED)) {
                 val error = closeResponseStream(hsResponse, req) { asyncContext.complete() }
-                postProcess(error, wrapper.sentAck, close = true)
+                postProcess(error, wrapper.ack, close = true)
               } else state.get match {
                 case OPEN =>
                   log.warning("Received a ChunkedMessageEnd before a ChunkedResponseStart, dropping ...\nRequest: {}", req)
@@ -177,7 +179,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
     }
     timeoutHandler.tell(Timedout(req), responder)
     // we need to react synchronously to Timeout events (thx to the great Servlet API design), so we block here
-    latch.await(settings.TimeoutTimeout, MILLISECONDS)
+    latch.await(settings.timeoutTimeout.toMillis, MILLISECONDS)
     if (latch.getCount != 0) writeResponse(timeoutResponse(req), hsResponse, req) {}
   }
 
@@ -249,7 +251,5 @@ class Servlet30ConnectorServlet extends HttpServlet {
     entity = "Ooops! The server was not able to produce a timely response to your request.\n" +
       "Please try again in a short while!"
   )
-
-  case class Closed(reason: ClosedEventReason) extends IOClosed
 }
 

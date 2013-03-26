@@ -16,20 +16,26 @@
 
 package spray
 
+import akka.actor.ActorRef
+import akka.io.Tcp
 
 package object io {
-  type Pipeline[-T] = T => Unit
-  type Connection = IOBridge.Connection
+  type Pipeline[-T] = T ⇒ Unit
+  type Command = Tcp.Command
+  type Event = Tcp.Event
+  type PipelineStage = RawPipelineStage[PipelineContext]
 }
 
 package io {
 
-  trait Command
+  object Pipeline {
+    val Uninitialized: Pipeline[Any] = _ ⇒ throw new RuntimeException("Pipeline not yet initialized")
 
-  trait Event
+    case class Tell(receiver: ActorRef, message: Any, sender: ActorRef) extends Command
+
+    case class ActorDeath(actor: ActorRef) extends Event
+    case class AckEvent(ack: Any) extends Event
+  }
 
   trait Droppable // marker for Commands and Events
-
-  case class CommandException(command: Command, cause: Throwable)
-    extends RuntimeException(cause.toString, cause) with Event
 }

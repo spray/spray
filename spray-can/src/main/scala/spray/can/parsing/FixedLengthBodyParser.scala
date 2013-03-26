@@ -16,7 +16,7 @@
 
 package spray.can.parsing
 
-import java.nio.ByteBuffer
+import akka.util.ByteIterator
 import spray.can.MessageLine
 import spray.http.HttpHeaders.RawHeader
 import spray.http.ContentType
@@ -33,9 +33,9 @@ class FixedLengthBodyParser(messageLine: MessageLine,
   val body = new Array[Byte](totalBytes)
   var bytesRead = 0
 
-  def read(buf: ByteBuffer) = {
-    val remaining = scala.math.min(buf.remaining, totalBytes - bytesRead)
-    buf.get(body, bytesRead, remaining)
+  def read(data: ByteIterator) = {
+    val remaining = scala.math.min(data.len, totalBytes - bytesRead)
+    data.getBytes(body, bytesRead, remaining)
     bytesRead += remaining
     if (bytesRead == totalBytes) CompleteMessageState(messageLine, headers, connectionHeader, contentType, body)
     else this

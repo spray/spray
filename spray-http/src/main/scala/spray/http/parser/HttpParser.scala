@@ -18,12 +18,14 @@ package spray.http
 package parser
 
 import org.parboiled.scala._
+import org.parboiled.errors.{ParsingException, ParserRuntimeException, ErrorUtils}
+import scala.annotation.tailrec
 
 /**
  * Parser for all HTTP headers as defined by
  *  [[http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html]]
  */
-object HttpParser extends SprayParser with ProtocolParameterRules with AdditionalRules with CommonActions
+object HttpParser extends Parser with ProtocolParameterRules with AdditionalRules with CommonActions
   with AcceptCharsetHeader
   with AcceptEncodingHeader
   with AcceptHeader
@@ -51,28 +53,47 @@ object HttpParser extends SprayParser with ProtocolParameterRules with Additiona
         method.getName.toLowerCase.replace('_', '-') -> method.invoke(HttpParser).asInstanceOf[Rule1[HttpHeader]]
       } (collection.breakOut)
 
-  def parseHeader(header: HttpHeader): Either[String, HttpHeader] = {
+  def parseHeader(header: HttpHeader): Either[ErrorInfo, HttpHeader] = {
     header match {
       case x@ HttpHeaders.RawHeader(name, value) =>
         rules.get(x.lowercaseName) match {
-          case Some(rule) => parse(rule, value).left.map("Illegal HTTP header '" + name + "': " + _.formatPretty)
+          case Some(rule) => parse(rule, value) match {
+            case x: Right[_, _] => x.asInstanceOf[Either[ErrorInfo, HttpHeader]]
+            case Left(info@ ErrorInfo("", _)) => Left(info.withSummary("Illegal HTTP header '" + name + '\''))
+            case Left(ErrorInfo(sum, detail)) => Left(ErrorInfo("Illegal HTTP header '" + name + "': " + sum, detail))
+          }
           case None => Right(x) // if we don't have a rule for the header we leave it unparsed
         }
       case x => Right(x) // already parsed
     }
   }
 
-  def parseHeaders(headers: List[HttpHeader]): (List[String], List[HttpHeader]) = {
-    val errors = List.newBuilder[String]
-    val parsedHeaders = headers.map { header =>
-      parseHeader(header) match {
-        case Right(parsed) => parsed
-        case Left(error) => errors += error; header
-      }
-    }
-    (errors.result(), parsedHeaders)
+  def parseHeaders(headers: List[HttpHeader]): (List[ErrorInfo], List[HttpHeader]) = {
+    @tailrec def parse(headers: List[HttpHeader], errors: List[ErrorInfo] = Nil,
+                       parsed: List[HttpHeader] = Nil): (List[ErrorInfo], List[HttpHeader]) =
+      if (!headers.isEmpty) parseHeader(headers.head) match {
+        case Right(h) => parse(headers.tail, errors, h :: parsed)
+        case Left(error) => parse(headers.tail, error :: errors, parsed)
+      } else errors -> parsed
+    parse(headers)
   }
 
-  def parseContentType(contentType: String): Either[RequestErrorInfo, ContentType] =
-    parse(HttpParser.ContentTypeHeaderValue, contentType).left.map(_.withFallbackSummary("Illegal Content-Type"))
+  def parseContentType(contentType: String): Either[ErrorInfo, ContentType] =
+    parse(HttpParser.ContentTypeHeaderValue, contentType) match {
+      case x: Right[_, _] => x.asInstanceOf[Either[ErrorInfo, ContentType]]
+      case Left(info) => Left(info.withFallbackSummary("Illegal Content-Type"))
+    }
+
+  private def parse[A](rule: Rule1[A], input: String): Either[ErrorInfo, A] = {
+    try {
+      val result = ReportingParseRunner(rule).run(input)
+      result.result match {
+        case Some(value) => Right(value)
+        case None => Left(ErrorInfo(detail = ErrorUtils.printParseErrors(result)))
+      }
+    } catch {
+      case e: ParserRuntimeException if e.getCause.isInstanceOf[ParsingException] =>
+        Left(ErrorInfo(e.getCause.getMessage))
+    }
+  }
 }

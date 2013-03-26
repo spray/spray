@@ -19,8 +19,6 @@ package spray.httpx.marshalling
 import org.specs2.mutable.Specification
 import akka.actor.ActorSystem
 import spray.http._
-import StatusCodes._
-
 
 class MetaMarshallersSpec extends Specification {
   implicit val system = ActorSystem()
@@ -29,7 +27,7 @@ class MetaMarshallersSpec extends Specification {
     "properly marshal an Either instance" in {
       type MyEither = Either[Throwable, String]
       marshal[MyEither](Right("Yes")) === Right(HttpBody("Yes"))
-      val exception = IllegalRequestException(Locked, "Naa!")
+      val exception = new RuntimeException("Naa!")
       marshal[MyEither](Left(exception)) === Left(exception)
     }
   }

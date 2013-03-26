@@ -129,10 +129,8 @@ private[parser] trait ProtocolParameterRules {
   
   /* 3.8 Product Tokens */
   
-  def Product = rule { Token ~ optional("/" ~ ProductVersion) }
-  
-  def ProductVersion = rule { Token }
-  
+  def Product = rule { Token ~ (ch('/') ~ Token | push("")) ~~> (ProductVersion(_, _)) }
+
   
   /* 3.9 Quality Values */
   

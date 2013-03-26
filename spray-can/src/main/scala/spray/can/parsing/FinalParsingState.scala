@@ -16,26 +16,13 @@
 
 package spray.can.parsing
 
-import spray.can.{StatusLine, RequestLine, MessageLine}
+import spray.can.MessageLine
 import spray.util.EmptyByteArray
 import spray.http._
 
-
 sealed trait FinalParsingState extends ParsingState
 
-sealed trait HttpMessagePartCompletedState extends FinalParsingState {
-  def toHttpMessagePart: HttpMessagePart
-}
-
-sealed trait HttpMessageStartCompletedState extends HttpMessagePartCompletedState {
-  def toHttpMessagePart: HttpMessageStart
-  def messageLine: MessageLine
-  def headers: List[HttpHeader]
-  def connectionHeader: Option[String]
-  def contentType: Option[ContentType]
-}
-
-sealed trait HttpMessageEndCompletedState extends HttpMessagePartCompletedState
+sealed trait HttpMessagePartCompletedState extends FinalParsingState
 
 case class CompleteMessageState(
   messageLine: MessageLine,
@@ -43,50 +30,28 @@ case class CompleteMessageState(
   connectionHeader: Option[String] = None,
   contentType: Option[ContentType] = None,
   body: Array[Byte] = EmptyByteArray
-) extends HttpMessageStartCompletedState with HttpMessageEndCompletedState {
-
-  def toHttpMessagePart = messageLine match {
-    case x: RequestLine => HttpRequest(x.method, x.uri, headers, entity, x.protocol)
-    case x: StatusLine => HttpResponse(x.status, entity, headers, x.protocol)
-  }
-
+) extends HttpMessagePartCompletedState {
   def entity = if (contentType.isEmpty) HttpEntity(body) else HttpBody(contentType.get, body)
 }
-
 
 case class ChunkedStartState(
   messageLine: MessageLine,
   headers: List[HttpHeader] = Nil,
   connectionHeader: Option[String] = None,
   contentType: Option[ContentType] = None
-) extends HttpMessageStartCompletedState {
-
-  def toHttpMessagePart = messageLine match {
-    case x: RequestLine => ChunkedRequestStart(HttpRequest(x.method, x.uri, headers, entity))
-    case x: StatusLine => ChunkedResponseStart(HttpResponse(x.status, entity, headers))
-  }
-
+) extends HttpMessagePartCompletedState {
   def entity = if (contentType.isEmpty) EmptyEntity else HttpBody(contentType.get, EmptyByteArray)
 }
-
 
 case class ChunkedChunkState(
   extensions: List[ChunkExtension],
   body: Array[Byte]
-) extends HttpMessagePartCompletedState {
-
-  def toHttpMessagePart = MessageChunk(body, extensions)
-}
-
+) extends HttpMessagePartCompletedState
 
 case class ChunkedEndState(
   extensions: List[ChunkExtension],
   trailer: List[HttpHeader]
-) extends HttpMessageEndCompletedState {
-
-  def toHttpMessagePart = ChunkedMessageEnd(extensions, trailer)
-}
-
+) extends HttpMessagePartCompletedState
 
 case class Expect100ContinueState(next: ParsingState) extends FinalParsingState
 

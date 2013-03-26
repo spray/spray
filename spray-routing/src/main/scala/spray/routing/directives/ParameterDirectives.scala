@@ -18,7 +18,6 @@ package spray.routing
 package directives
 
 import java.lang.IllegalStateException
-import spray.http.QueryParams
 import shapeless._
 
 
@@ -27,8 +26,8 @@ trait ParameterDirectives extends ToNameReceptaclePimps {
   /**
    * Extracts the requests query parameters as a Map[String, String].
    */
-  def parameterMap: Directive[QueryParams :: HNil] =
-    BasicDirectives.extract(_.request.queryParams)
+  def parameterMap: Directive[Map[String, String] :: HNil] =
+    BasicDirectives.extract(_.request.uri.query.toMap)
 
   /**
    * Rejects the request if the query parameter matcher(s) defined by the definition(s) don't match.
@@ -85,7 +84,7 @@ object ParamDefMagnetAux {
 
   private def extractParameter[A, B](f: A => Directive[B :: HNil]) = ParamDefMagnetAux[A, Directive[B :: HNil]](f)
   private def filter[T](paramName: String, fsod: FSOD[T]): Directive[T :: HNil] =
-    extract(ctx => fsod(ctx.request.queryParams.get(paramName))).flatMap {
+    extract(ctx => fsod(ctx.request.uri.query.get(paramName))).flatMap {
       case Right(x) => provide(x)
       case Left(ContentExpected) => reject(MissingQueryParamRejection(paramName))
       case Left(MalformedContent(error, cause)) => reject(MalformedQueryParamRejection(paramName, error, cause))
@@ -114,7 +113,7 @@ object ParamDefMagnetAux {
   /************ required parameter support ******************/
 
   private def requiredFilter(paramName: String, fsod: FSOD[_], requiredValue: Any): Directive0 =
-    extract(ctx => fsod(ctx.request.queryParams.get(paramName))).flatMap {
+    extract(ctx => fsod(ctx.request.uri.query.get(paramName))).flatMap {
       case Right(value) if value == requiredValue => pass
       case _ => reject
     }

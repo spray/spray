@@ -17,58 +17,73 @@
 package spray.can
 package client
 
+import scala.concurrent.duration.Duration
+import akka.actor.{ReceiveTimeout, ActorRef}
+import akka.io.{Tcp, IO}
 import spray.http.{Confirmed, HttpRequestPart}
 import spray.io._
 
 
-/**
- * The lowest-level client-side HTTP transport.
- * Represents a single (but potentially long-living) HTTP connection to a specific host and port.
- */
-class HttpClientConnection(settings: HttpClientConnectionSettings = HttpClientConnectionSettings())
-                          (implicit sslEngineProvider: ClientSSLEngineProvider) extends IOClientConnection {
+private[can] class HttpClientConnection(connectCommander: ActorRef,
+                                        connect: Http.Connect,
+                                        pipelineStage: RawPipelineStage[SslTlsContext],
+                                        settings: ClientConnectionSettings) extends ConnectionHandler { actor =>
+  import context.system
+  import connect._
 
-  override def pipelineStage: PipelineStage = HttpClientConnection.pipelineStage(settings)
+  log.debug("Attempting connection to {}", remoteAddress)
 
-  override def connected: Receive = super.connected orElse {
-    case x: HttpRequestPart                  => pipelines.commandPipeline(HttpCommand(x))
-    case x@ Confirmed(_: HttpRequestPart, _) => pipelines.commandPipeline(HttpCommand(x))
+  IO(Tcp) ! Tcp.Connect(remoteAddress, localAddress, options)
+
+  context.setReceiveTimeout(settings.connectingTimeout)
+
+  def receive: Receive = {
+    case connected: Tcp.Connected =>
+      context.setReceiveTimeout(Duration.Undefined)
+      log.debug("Connected to {}", connected.remoteAddress)
+      val tcpConnection = sender
+      tcpConnection ! Tcp.Register(self)
+      context.watch(tcpConnection)
+      connectCommander ! connected
+      context.become(running(tcpConnection, pipelineStage, pipelineContext(connected)))
+
+    case Tcp.CommandFailed(_: Tcp.Connect) =>
+      connectCommander ! Http.CommandFailed(connect)
+      context.stop(self)
+
+    case ReceiveTimeout ⇒
+      log.warning("Configured connecting timeout of {} expired, stopping", settings.connectingTimeout)
+      connectCommander ! Http.CommandFailed(connect)
+      context.stop(self)
+  }
+
+  override def running(tcpConnection: ActorRef, pipelines: Pipelines): Receive =
+    super.running(tcpConnection, pipelines) orElse {
+      case x: HttpRequestPart                  => pipelines.commandPipeline(Http.MessageCommand(x))
+      case x@ Confirmed(_: HttpRequestPart, _) => pipelines.commandPipeline(Http.MessageCommand(x))
+    }
+
+  def pipelineContext(connected: Tcp.Connected) = new SslTlsContext {
+    def actorContext = context
+    def remoteAddress = connected.remoteAddress
+    def localAddress = connected.localAddress
+    def log = actor.log
+    def sslEngine = sslEngineProvider(this)
   }
 }
 
-object HttpClientConnection {
+private[can] object HttpClientConnection {
 
-  private[can] def pipelineStage(settings: HttpClientConnectionSettings)
-                                (implicit sslEngineProvider: ClientSSLEngineProvider): PipelineStage = {
+  def pipelineStage(settings: ClientConnectionSettings) = {
     import settings._
-    ClientFrontend(RequestTimeout) >>
-    ResponseChunkAggregation(ResponseChunkAggregationLimit.toInt) ? (ResponseChunkAggregationLimit > 0) >>
-    ResponseParsing(ParserSettings) >>
+    ClientFrontend(requestTimeout) >>
+    ResponseChunkAggregation(responseChunkAggregationLimit) ? (responseChunkAggregationLimit > 0) >>
+    ResponseParsing(parserSettings) >>
     RequestRendering(settings) >>
-    ConnectionTimeouts(IdleTimeout) ? (ReapingCycle > 0 && IdleTimeout > 0) >>
-    SslTlsSupport(sslEngineProvider, encryptIfUntagged = false) >>
-    TickGenerator(ReapingCycle) ? (ReapingCycle > 0 && (IdleTimeout > 0 || RequestTimeout > 0))
+    ConnectionTimeouts(idleTimeout) ? (reapingCycle.isFinite && idleTimeout.isFinite) >>
+    SslTlsSupport ? sslEncryption >>
+    TickGenerator(reapingCycle) ? (idleTimeout.isFinite || requestTimeout.isFinite)
   }
 
-  /**
-   * Object to be used as `tag` member of `Connect` commands in order to activate SSL encryption on the connection.
-   */
-  val SslEnabled = ConnectionTag(encrypted = true)
-
-  case class ConnectionTag(encrypted: Boolean, logMarker: String = "") extends SslTlsSupport.Enabling with LogMarking {
-    def encrypt(ctx: PipelineContext): Boolean = encrypted
-  }
-
-  ////////////// COMMANDS //////////////
-  // HttpRequestParts +
-  type Connect           = IOClientConnection.Connect;        val Connect           = IOClientConnection.Connect
-  type Close             = IOClientConnection.Close;          val Close             = IOClientConnection.Close
-  type SetIdleTimeout    = ConnectionTimeouts.SetIdleTimeout; val SetIdleTimeout    = ConnectionTimeouts.SetIdleTimeout
-  type SetRequestTimeout = ClientFrontend.SetRequestTimeout;  val SetRequestTimeout = ClientFrontend.SetRequestTimeout
-
-  ////////////// EVENTS //////////////
-  // HttpResponseParts +
-  type Connected  = IOClientConnection.Connected;  val Connected  = IOClientConnection.Connected
-  type Closed     = IOClientConnection.Closed;     val Closed     = IOClientConnection.Closed
 }
 

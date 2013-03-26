@@ -19,7 +19,7 @@ package spray.httpx.marshalling
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import akka.actor.{ActorRef, Actor, Props, ActorRefFactory}
-import spray.util.IOClosed
+import akka.io.Tcp
 import spray.http._
 
 
@@ -75,7 +75,7 @@ object MetaMarshallers extends MetaMarshallers {
         val chunkingCtx = new DelegatingMarshallingContext(ctx) {
           override def marshalTo(entity: HttpEntity) {
             if (connectionActor == null) connectionActor = ctx.startChunkedMessage(entity, Some(SentOk(rest)))
-            else connectionActor ! MessageChunk(entity.buffer).withSentAck(SentOk(rest))
+            else connectionActor ! MessageChunk(entity.buffer).withAck(SentOk(rest))
           }
           override def handleError(error: Throwable) {
             context.stop(self)
@@ -92,7 +92,7 @@ object MetaMarshallers extends MetaMarshallers {
           context.stop(self)
         } else self ! remaining
 
-      case _: IOClosed =>
+      case _: Tcp.ConnectionClosed =>
         context.stop(self)
     }
   }

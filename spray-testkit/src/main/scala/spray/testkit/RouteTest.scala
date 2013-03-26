@@ -26,12 +26,13 @@ import spray.httpx.unmarshalling._
 import spray.httpx._
 import spray.http._
 import spray.util._
+import scala.util.control.NonFatal
 
 
 trait RouteTest extends RequestBuilding with RouteResultComponent {
   this: TestFrameworkInterface =>
 
-  implicit val system = ActorSystem(actorSystemNameFrom(getClass))
+  implicit val system = ActorSystem("RouteTest")
   implicit def executor = system.dispatcher
 
   def cleanUp() { system.shutdown() }
@@ -91,12 +92,14 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
         type Out = RouteResult
         def apply(request: HttpRequest, route: Route) = {
           val routeResult = new RouteResult(timeout.duration)
-          val parsedRequest = request.parseAll
+          val effectiveRequest =
+            try request.withEffectiveUri(securedConnection = false)
+            catch { case NonFatal(_) => request }
           ExecutionDirectives.handleExceptions(ExceptionHandler.default)(route) {
             RequestContext(
-              request = parsedRequest,
+              request = effectiveRequest,
               responder = routeResult.handler,
-              unmatchedPath = parsedRequest.path
+              unmatchedPath = effectiveRequest.uri.path
             )
           }
           // since the route might detach we block until the route actually completes or times out

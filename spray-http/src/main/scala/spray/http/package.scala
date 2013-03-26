@@ -16,38 +16,56 @@
 
 package spray
 
-import http.HttpHeaders.RawHeader
+import java.nio.charset.Charset
+import spray.http.parser.HttpParser
 
 
 package object http {
-
-  type QueryParams = Map[String, String]
+  val UTF8: Charset = HttpCharsets.`UTF-8`.nioCharset
 
   /**
    * Warms up the spray.http module by triggering the loading of most classes in this package,
    * so as to increase the speed of the first usage.
    */
   def warmUp() {
-    HttpRequest(
-      headers = List(
-        RawHeader("Accept", "*/*,text/plain,custom/custom"),
-        RawHeader("Accept-Charset", "*,UTF-8"),
-        RawHeader("Accept-Encoding", "gzip,custom"),
-        RawHeader("Accept-Language", "*,de-de,custom"),
-        RawHeader("Authorization", "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ=="),
-        RawHeader("Cache-Control", "no-cache"),
-        RawHeader("Connection", "close"),
-        RawHeader("Content-Disposition", "form-data"),
-        RawHeader("Content-Encoding", "deflate"),
-        RawHeader("Content-Length", "42"),
-        RawHeader("Content-Type", "application/json"),
-        RawHeader("Cookie", "spray=cool"),
-        RawHeader("Host", "spray.io"),
-        RawHeader("X-Forwarded-For", "1.2.3.4"),
-        RawHeader("Fancy-Custom-Header", "yeah")
-      ),
-      entity = "spray rocks!"
-    ).parseAll
+    HttpParser.parseHeaders {
+      List(
+        HttpHeaders.RawHeader("Accept", "*/*,text/plain,custom/custom"),
+        HttpHeaders.RawHeader("Accept-Charset", "*,UTF-8"),
+        HttpHeaders.RawHeader("Accept-Encoding", "gzip,custom"),
+        HttpHeaders.RawHeader("Accept-Language", "*,de-de,custom"),
+        HttpHeaders.RawHeader("Authorization", "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ=="),
+        HttpHeaders.RawHeader("Cache-Control", "no-cache"),
+        HttpHeaders.RawHeader("Connection", "close"),
+        HttpHeaders.RawHeader("Content-Disposition", "form-data"),
+        HttpHeaders.RawHeader("Content-Encoding", "deflate"),
+        HttpHeaders.RawHeader("Content-Length", "42"),
+        HttpHeaders.RawHeader("Content-Type", "application/json"),
+        HttpHeaders.RawHeader("Cookie", "spray=cool"),
+        HttpHeaders.RawHeader("Host", "spray.io"),
+        HttpHeaders.RawHeader("X-Forwarded-For", "1.2.3.4"),
+        HttpHeaders.RawHeader("Fancy-Custom-Header", "yeah")
+      )
+    }
     HttpResponse(status = 200)
   }
+}
+
+package http {
+
+  case class ProductVersion(product: String, version: String = "") {
+    override def toString = if (version.isEmpty) product else product + '/' + version
+  }
+
+  object ProductVersion {
+    def parseMultiple(string: String): Seq[ProductVersion] =
+      string.split("\\s").flatMap {
+        _.split("/", 2) match {
+          case Array() | Array("") | Array("", _) => None
+          case Array(product) => Some(ProductVersion(product))
+          case Array(product, version) => Some(ProductVersion(product, version))
+        }
+      } (collection.breakOut)
+  }
+
 }

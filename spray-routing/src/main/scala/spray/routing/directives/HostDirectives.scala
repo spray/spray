@@ -29,7 +29,7 @@ trait HostDirectives {
   /**
    * Extracts the hostname part of the Host header value in the request.
    */
-  def hostName: Directive[String :: HNil] = extract(_.request.host)
+  def hostName: Directive[String :: HNil] = extract(_.request.uri.authority.host.address)
 
   /**
    * Rejects all requests with a host name different from the given ones.
@@ -49,7 +49,7 @@ trait HostDirectives {
    */
   def host(regex: Regex): Directive[String :: HNil] = {
     def forFunc(regexMatch: String => Option[String]): Directive[String :: HNil] = {
-      extract(ctx => regexMatch(ctx.request.host)).flatMap {
+      extract(ctx => regexMatch(ctx.request.uri.authority.host.address)).flatMap {
         case Some(matched) => provide(matched)
         case None => reject
       }

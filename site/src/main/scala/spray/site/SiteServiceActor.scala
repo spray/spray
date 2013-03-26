@@ -16,7 +16,6 @@
 
 package spray.site
 
-import akka.actor.Actor
 import akka.event.Logging._
 import shapeless._
 import spray.routing.directives.{DirectoryListing, LogEntry}
@@ -29,20 +28,20 @@ import html._
 import StatusCodes._
 
 
-class SiteServiceActor extends Actor with HttpServiceActor {
+class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
 
   def receive = runRoute {
-    dynamicIf(SiteSettings.DevMode) { // for proper support of twirl + sbt-revolver during development
+    dynamicIf(settings.devMode) { // for proper support of twirl + sbt-revolver during development
       (get & encodeResponse(Gzip)) {
         (host("repo.spray.io", "repo.spray.cc")) {
           logRequestResponse(showRepoResponses("repo") _) {
-            getFromBrowseableDirectories(SiteSettings.RepoDirs: _*) ~
+            getFromBrowseableDirectories(settings.repoDirs: _*) ~
             complete(NotFound)
           }
         } ~
         host("nightlies.spray.io") {
           logRequestResponse(showRepoResponses("nightlies") _) {
-            getFromBrowseableDirectories(SiteSettings.NightliesDir) ~
+            getFromBrowseableDirectories(settings.nightliesDir) ~
             complete(NotFound)
           }
         } ~
@@ -59,36 +58,36 @@ class SiteServiceActor extends Actor with HttpServiceActor {
               path("") {
                 complete(page(home()))
               } ~
-              pathTest(".*[^/]$".r) { _ => // if the path doesn't end with a slash
-                unmatchedPath { ump =>
-                  redirect(ump + "/")      // we redirect
-                }
-              } ~
-              path("home") {
-                redirect("/")
-              } ~
-              path("index") {
-                complete(page(index()))
-              } ~
-              pathTest("blog") {
-                path("blog") {
-                  complete(page(blogIndex(Main.blog.root.children), Main.blog.root))
+              pathSuffixTest(Slash) {
+                path("home") {
+                  redirect("/")
                 } ~
-                path("blog/feed") {
-                  complete(xml.blogAtomFeed())
-                } ~
-                path("blog/category" / PathElement) { tag =>
-                  Main.blog.posts(tag) match {
-                    case Nil => complete(NotFound, page(error404()))
-                    case posts => complete(page(blogIndex(posts, tag), Main.blog.root))
+                  path("index") {
+                    complete(page(index()))
+                  } ~
+                  pathPrefixTest("blog") {
+                    path("blog") {
+                      complete(page(blogIndex(Main.blog.root.children), Main.blog.root))
+                    } ~
+                      path("blog/feed") {
+                        complete(xml.blogAtomFeed())
+                      } ~
+                      path("blog/category" / Segment) { tag =>
+                        Main.blog.posts(tag) match {
+                          case Nil => complete(NotFound, page(error404()))
+                          case posts => complete(page(blogIndex(posts, tag), Main.blog.root))
+                        }
+                      } ~
+                      sphinxNode { node =>
+                        complete(page(blogPost(node), node))
+                      }
+                  } ~
+                  sphinxNode { node =>
+                    complete(page(document(node), node))
                   }
-                } ~
-                sphinxNode { node =>
-                  complete(page(blogPost(node), node))
-                }
               } ~
-              sphinxNode { node =>
-                complete(page(document(node), node))
+              unmatchedPath { ump =>
+                redirect(ump.toString + "/")
               }
             }
           }

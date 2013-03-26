@@ -21,10 +21,11 @@ import java.util.UUID
 import scala.util.matching.Regex
 import scala.annotation.tailrec
 import shapeless._
+import spray.http.Uri.Path
 import spray.util._
 
 
-trait PathDirectives extends PathMatcherImplicits with PathMatchers {
+trait PathDirectives extends PathMatchers with ImplicitPathMatcherConstruction {
   import BasicDirectives._
   import RouteDirectives._
   import PathMatcher._
@@ -37,7 +38,8 @@ trait PathDirectives extends PathMatcherImplicits with PathMatchers {
 
   /**
    * Rejects the request if the unmatchedPath of the [[spray.RequestContext]] does not have a prefix
-   * matched the given PathMatcher. If matched the value extracted by the PathMatcher is extracted.
+   * matched the given PathMatcher. If matched the value extracted by the PathMatcher is extracted
+   * and the matched parts of the path are consumed.
    */
   def pathPrefix[L <: HList](pm: PathMatcher[L]): Directive[L] = {
     val matcher = Slash ~ pm
@@ -48,16 +50,41 @@ trait PathDirectives extends PathMatcherImplicits with PathMatchers {
   }
 
   /**
-   * Checks whether the unmatchedPath of the [[spray.RequestContext]] matches the given PathMatcher. However,
-   * as opposed to the path/pathPrefix directives the matched path is not actually "consumed".
+   * Checks whether the unmatchedPath of the [[spray.RequestContext]] has a prefix matched by the
+   * given PathMatcher. However, as opposed to the pathPrefix directive the matched path is not
+   * actually "consumed".
    */
-  def pathTest[L <: HList](pm: PathMatcher[L]): Directive[L] = {
+  def pathPrefixTest[L <: HList](pm: PathMatcher[L]): Directive[L] = {
     val matcher = Slash ~ pm
     extract(ctx => matcher(ctx.unmatchedPath)).flatMap {
       case Matched(_, values) => hprovide(values)
       case Unmatched => reject
     }
   }
+
+  /**
+   * Rejects the request if the unmatchedPath of the [[spray.RequestContext]] does not have a suffix
+   * matched the given PathMatcher. If matched the value extracted by the PathMatcher is extracted
+   * and the matched parts of the path are consumed.
+   * Note that, if the given PathMatcher is a compound one consisting of several concatenated sub-matchers,
+   * the order of the sub-matchers in the concatenation has to be reversed!
+   */
+  def pathSuffix[L <: HList](pm: PathMatcher[L]): Directive[L] =
+    extract(ctx => pm(ctx.unmatchedPath.reverse)).flatMap {
+      case Matched(rest, values) => hprovide(values) & mapRequestContext(_.copy(unmatchedPath = rest.reverse))
+      case Unmatched => reject
+    }
+
+  /**
+   * Checks whether the unmatchedPath of the [[spray.RequestContext]] has a suffix matched by the
+   * given PathMatcher. However, as opposed to the pathSuffix directive the matched path is not
+   * actually "consumed".
+   */
+  def pathSuffixTest[L <: HList](pm: PathMatcher[L]): Directive[L] =
+    extract(ctx => pm(ctx.unmatchedPath.reverse)).flatMap {
+      case Matched(_, values) => hprovide(values)
+      case Unmatched => reject
+    }
 }
 
 object PathDirectives extends PathDirectives
@@ -67,103 +94,126 @@ object PathDirectives extends PathDirectives
  * A PathMatcher tries to match a prefix of a given string and returns either a PathMatcher.Matched instance
  * if matched, otherwise PathMatcher.Unmatched.
  */
-trait PathMatcher[L <: HList] extends (String => PathMatcher.Matching[L]) { self =>
+trait PathMatcher[L <: HList] extends (Path => PathMatcher.Matching[L]) { self =>
   import PathMatcher._
 
-  def / [R <: HList](other: PathMatcher[R])(implicit prepender: Prepender[L, R]) =
+  def / [R <: HList](other: PathMatcher[R])(implicit prepender: Prepender[L, R]): PathMatcher[prepender.Out] =
     this ~ PathMatchers.Slash ~ other
 
-  def | (other: PathMatcher[L]) = new PathMatcher[L] {
-    def apply(path: String) = self(path).orElse(other(path))
-  }
+  def | (other: PathMatcher[L]): PathMatcher[L] =
+    new PathMatcher[L] {
+      def apply(path: Path) = self(path) orElse other(path)
+    }
 
   def ~ [R <: HList](other: PathMatcher[R])(implicit prepender: Prepender[L, R]): PathMatcher[prepender.Out] =
     transform(_.andThen((restL, valuesL) => other(restL).map(prepender(valuesL, _))))
 
-  def transform[R <: HList](f: Matching[L] => Matching[R]) =
-    new PathMatcher[R] { def apply(path: String) = f(self(path)) }
+  def transform[R <: HList](f: Matching[L] => Matching[R]): PathMatcher[R] =
+    new PathMatcher[R] { def apply(path: Path) = f(self(path)) }
 
-  def map[R <: HList](f: L => R) = transform(_.map(f))
+  def map[R <: HList](f: L => R): PathMatcher[R] = transform(_.map(f))
 
-  def flatMap[R <: HList](f: L => Option[R]) = transform(_.flatMap(f))
+  def flatMap[R <: HList](f: L => Option[R]): PathMatcher[R] = transform(_.flatMap(f))
 }
 
-object PathMatcher extends PathMatcherImplicits {
+object PathMatcher extends ImplicitPathMatcherConstruction {
   sealed trait Matching[+L <: HList] {
     def map[R <: HList](f: L => R): Matching[R]
     def flatMap[R <: HList](f: L => Option[R]): Matching[R]
-    def andThen[R <: HList](f: (String, L) => Matching[R]): Matching[R]
+    def andThen[R <: HList](f: (Path, L) => Matching[R]): Matching[R]
     def orElse[R >: L <: HList](other: => Matching[R]): Matching[R]
   }
-  case class Matched[L <: HList](pathRest: String, extractions: L) extends Matching[L] {
+  case class Matched[L <: HList](pathRest: Path, extractions: L) extends Matching[L] {
     def map[R <: HList](f: L => R) = Matched(pathRest, f(extractions))
     def flatMap[R <: HList](f: L => Option[R]) = f(extractions) match {
       case Some(valuesR) => Matched(pathRest, valuesR)
       case None => Unmatched
     }
-    def andThen[R <: HList](f: (String, L) => Matching[R]) = f(pathRest, extractions)
+    def andThen[R <: HList](f: (Path, L) => Matching[R]) = f(pathRest, extractions)
     def orElse[R >: L <: HList](other: => Matching[R]) = this
   }
-  object Matched { val Empty = Matched("", HNil) }
+  object Matched { val Empty = Matched(Path.Empty, HNil) }
   case object Unmatched extends Matching[Nothing] {
     def map[R <: HList](f: Nothing => R) = this
     def flatMap[R <: HList](f: Nothing => Option[R]) = this
-    def andThen[R <: HList](f: (String, Nothing) => Matching[R]) = this
+    def andThen[R <: HList](f: (Path, Nothing) => Matching[R]) = this
     def orElse[R <: HList](other: => Matching[R]) = other
+  }
+
+  /**
+   * Creates a PathMatcher that consumes (a prefix of) the first path segment
+   * (if the path begins with a segment) and extracts the given list of extractions.
+   * If the given prefix is empty the returned PathMatcher matches always and consumes nothing.
+   */
+  def apply[L <: HList](prefix: String, extractions: L):PathMatcher[L] = prefix match {
+    case "" => new PathMatcher[L] {
+      def apply(path: Path) = Matched(path, extractions)
+    }
+    case nonEmptyPrefix => new PathMatcher[L] {
+      def apply(path: Path) = path match {
+        case Path.Segment(`nonEmptyPrefix`, tail) => Matched(tail, extractions)
+        case Path.Segment(segment, tail) if segment startsWith nonEmptyPrefix =>
+          Matched(segment.substring(nonEmptyPrefix.length) :: tail, extractions)
+        case _ => Unmatched
+      }
+    }
   }
 
   def apply[L <: HList](magnet: PathMatcher[L]): PathMatcher[L] = magnet
 }
 
-
-trait PathMatcherImplicits {
+trait ImplicitPathMatcherConstruction {
   import PathMatcher._
 
   /**
-   * A PathMatcher that matches the given string.
+   * Creates a PathMatcher that consumes (a prefix of) the first path segment
+   * (if the path begins with a segment) and extracts a given value.
    */
-  implicit def fromString(prefix: String) = new PathMatcher[HNil] {
-    def apply(path: String) = if (path.startsWith(prefix)) Matched(path.substring(prefix.length), HNil) else Unmatched
-  }
+  implicit def stringExtractionPair2PathMatcher[T](tuple: (String, T)): PathMatcher[T :: HNil] =
+    PathMatcher(tuple._1, tuple._2 :: HNil)
 
   /**
-   * A PathMatcher that matches the given regular expression and either extracts the complete match (if the regex
-   * doesn't contain a capture group) or the capture group (if the regex contains exactly one).
+   * Creates a PathMatcher that consumes (a prefix of) the first path segment
+   * (if the path begins with a segment).
+   */
+  implicit def segmentStringToPathMatcher(segment: String): PathMatcher[HNil] = PathMatcher(segment, HNil)
+
+  /**
+   * Creates a PathMatcher that consumes (a prefix of) the first path segment
+   * if the path begins with a segment (a prefix of) which matches the given regex.
+   * Extracts either the complete match (if the regex doesn't contain a capture group) or
+   * the capture group (if the regex contains exactly one).
    * If the regex contains more than one capture group the method throws an IllegalArgumentException.
    */
-  implicit def fromRegex(regex: Regex): PathMatcher[String :: HNil] = regex.groupCount match {
+  implicit def regex2PathMatcher(regex: Regex): PathMatcher[String :: HNil] = regex.groupCount match {
     case 0 => new PathMatcher[String :: HNil] {
-      def apply(path: String) = regex.findPrefixOf(path) match {
-        case Some(m) => Matched(path.substring(m.length), m :: HNil)
-        case None => Unmatched
+      def apply(path: Path) = path match {
+        case Path.Segment(segment, tail) => regex findPrefixOf segment match {
+          case Some(m) => Matched(segment.substring(m.length) :: tail, m :: HNil)
+          case None => Unmatched
+        }
+        case _ => Unmatched
       }
     }
     case 1 => new PathMatcher[String :: HNil] {
-      def apply(path: String) = regex.findPrefixMatchOf(path) match {
-        case Some(m) => Matched(path.substring(m.end - m.start), m.group(1) :: HNil)
-        case None => Unmatched
+      def apply(path: Path) = path match {
+        case Path.Segment(segment, tail) => regex findPrefixMatchOf segment match {
+          case Some(m) => Matched(segment.substring(m.end) :: tail, m.group(1) :: HNil)
+          case None => Unmatched
+        }
+        case _ => Unmatched
       }
     }
     case _ => throw new IllegalArgumentException("Path regex '" + regex.pattern.pattern +
-            "' must not contain more than one capturing group")
+      "' must not contain more than one capturing group")
   }
   /**
-   * Creates a PathMatcher from the given Map of path prefixes to extracted values.
-   * If the unmatched path starts with one of the maps keys the matcher consumes this path prefix and extracts the
-   * corresponding map value.
+   * Creates a PathMatcher from the given Map of path segments (prefixes) to extracted values.
+   * If the unmatched path starts with a segment having one of the maps keys as a prefix
+   * the matcher consumes this path segment (prefix) and extracts the corresponding map value.
    */
-  implicit def fromMap[T](valueMap: Map[String, T]): PathMatcher[T :: HNil] =
-    valueMap.map { case (prefix, value) => PathMatcher(prefix, value) }.reduceLeft(_ | _)
-
-  /**
-   * Creates a PathMatcher that extracts the given value if the given path prefix can be matched.
-   */
-  implicit def fromStringValue[T](tuple: (String, T)): PathMatcher[T :: HNil] =
-    new PathMatcher[T :: HNil] {
-      val (prefix, value) = tuple
-      def apply(path: String) =
-        if (path.startsWith(prefix)) Matched(path.substring(prefix.length), value :: HNil) else Unmatched
-    }
+  implicit def valueMap2PathMatcher[T](valueMap: Map[String, T]): PathMatcher[T :: HNil] =
+    valueMap.map { case (prefix, value) => PathMatcher(prefix, value :: HNil) }.reduceLeft(_ | _)
 }
 
 
@@ -174,11 +224,22 @@ trait PathMatchers {
    * A PathMatcher that matches a single slash character ('/').
    * Also matches at the very end of the requests URI path if no slash is present.
    */
-  val Slash = new PathMatcher[HNil] {
-    def apply(path: String) = {
-      if (path.length == 0) Matched.Empty
-      else if (path.length > 0 && path.charAt(0) == '/') Matched(path.substring(1), HNil)
-      else Unmatched
+  object Slash extends PathMatcher[HNil] {
+    def apply(path: Path) = path match {
+      case Path.Empty => Matched.Empty
+      case Path.Slash(tail) => Matched(tail, HNil)
+      case _ => Unmatched
+    }
+  }
+
+  /**
+   * A PathMatcher that matches a single slash character ('/').
+   * Contrary to the `Slash` matcher it does *not* match the very end of the path if no slash is present.
+   */
+  object Slash_! extends PathMatcher[HNil] {
+    def apply(path: Path) = path match {
+      case Path.Slash(tail) => Matched(tail, HNil)
+      case _ => Unmatched
     }
   }
 
@@ -186,16 +247,27 @@ trait PathMatchers {
    * A PathMatcher that matches the very end of the requests URI path.
    * Also matches if the only unmatched character left is a single slash.
    */
-  val PathEnd = new PathMatcher[HNil] {
-    def apply(path: String) =
-      if (path.length == 0 || path.length == 1 && path.charAt(0) == '/') Matched.Empty else Unmatched
+  object PathEnd extends PathMatcher[HNil] {
+    def apply(path: Path) = path match {
+      case Path.Empty | Path.SingleSlash => Matched.Empty
+      case _ => Unmatched
+    }
   }
 
   /**
-   * A PathMatcher that matches and extracts the complete remaining, unmatched part of the requests URI path.
+   * A PathMatcher that matches and extracts the complete remaining,
+   * unmatched part of the requests URI path as a String.
    */
-  val Rest = new PathMatcher[String :: HNil] {
-    def apply(path: String) = Matched("", path :: HNil)
+  object Rest extends PathMatcher[String :: HNil] {
+    def apply(path: Path) = Matched(Path.Empty, path.toString :: HNil)
+  }
+
+  /**
+   * A PathMatcher that matches and extracts the complete remaining,
+   * unmatched part of the requests URI path.
+   */
+  object RestPath extends PathMatcher[Path :: HNil] {
+    def apply(path: Path) = Matched(Path.Empty, path :: HNil)
   }
 
   /**
@@ -235,45 +307,49 @@ trait PathMatchers {
   }
 
   // common implementation of Number matchers
-  private[PathMatchers] abstract class NumberMatcher[@specialized(Int, Long) T](max: T, base: T)(implicit x: Integral[T])
-          extends PathMatcher[T :: HNil] {
+  abstract class NumberMatcher[@specialized(Int, Long) T](max: T, base: T)(implicit x: Integral[T])
+    extends PathMatcher[T :: HNil] {
+
     import x._ // import implicit conversions for numeric operators
     val minusOne = x.zero - x.one
     val maxDivBase = max / base
 
-    def apply(path: String) = digits(path, minusOne)
+    def apply(path: Path) = path match {
+      case Path.Segment(segment, tail) =>
+        @tailrec def digits(ix: Int = 0, value: T = minusOne): Matching[T :: HNil] = {
+          val a = if (ix < segment.length) fromChar(segment charAt ix) else minusOne
+          if (a == minusOne) {
+            if (value == minusOne) Unmatched
+            else Matched(if (ix < segment.length) segment.substring(ix) :: tail else tail, value :: HNil)
+          } else {
+            if (value == minusOne) digits(ix + 1, a)
+            else if (value <= maxDivBase && value * base <= max - a) // protect from overflow
+              digits(ix + 1, value * base + a)
+            else Unmatched
+          }
+        }
+        digits()
 
-    @tailrec
-    private def digits(remainingPath: String, value: T): Matching[T :: HNil] = {
-      val a = if (remainingPath.isEmpty) minusOne else fromChar(remainingPath.charAt(0))
-      if (a == minusOne) {
-        if (value == minusOne) Unmatched
-        else Matched(remainingPath, value :: HNil)
-      } else {
-        if (value == minusOne) digits(remainingPath.substring(1), a)
-        else if (value <= maxDivBase && value * base <= max - a) { // protect from overflow
-          digits(remainingPath.substring(1), value * base + a)
-        } else Unmatched
-      }
+      case _ => Unmatched
     }
 
     def fromChar(c: Char): T
 
     def fromDecimalChar(c: Char): T = if ('0' <= c && c <= '9') (c - '0').asInstanceOf[T] else minusOne
 
-    def fromHexChar(c: Char): T = {
-      if ('0' <= c && c <= '9') (c - '0').asInstanceOf[T] else
-      if ('A' <= c && c <= 'F') (c - 'A' + 10).asInstanceOf[T] else
-      if ('a' <= c && c <= 'f') (c - 'a' + 10).asInstanceOf[T] else
-      minusOne
-    }
+    def fromHexChar(c: Char): T =
+      if ('0' <= c && c <= '9') (c - '0').asInstanceOf[T] else {
+        val cn = c | 0x20 // normalize to lowercase
+        if ('a' <= cn && cn <= 'f') (cn - 'a' + 10).asInstanceOf[T] else
+          minusOne
+      }
   }
 
   /**
    * A PathMatcher that matches and extracts a Double value. The matched string representation is the pure decimal,
    * optionally signed form of a double value, i.e. without exponent.
    */
-  val DoubleNumber = fromRegex("""[+-]?\d*\.?\d*""".r)
+  val DoubleNumber = PathMatcher("""[+-]?\d*\.?\d*""".r)
     .flatMap { case string :: HNil =>
       try Some(java.lang.Double.parseDouble(string) :: HNil)
       catch { case _: NumberFormatException => None }
@@ -282,28 +358,30 @@ trait PathMatchers {
   /**
    * A PathMatcher that matches and extracts a java.util.UUID instance.
    */
-  val JavaUUID = fromRegex("""[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}""".r)
+  val JavaUUID = PathMatcher("""[\da-fA-F]{8}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{4}-[\da-fA-F]{12}""".r)
     .flatMap { case string :: HNil =>
       try Some(UUID.fromString(string) :: HNil)
       catch { case _: IllegalArgumentException => None }
     }
 
   /**
-   * A PathMatcher that matches all characters except a slash '/'.
-   * Equivalent to a regex matcher `"[^/]+".r` but more efficient.
+   * A PathMatcher that always matches, doesn't consume anything and extracts nothing.
    */
-  val PathElement = new PathMatcher[String :: HNil] {
-    def apply(path: String) = {
-      @tailrec
-      def chars(index: Int): Matching[String :: HNil] = {
-        if (index == path.length || path.charAt(index) == '/')
-          if (index > 0) Matched(path.substring(index), path.substring(0, index) :: HNil)
-          else Unmatched
-        else chars(index + 1)
-      }
-      chars(0)
+  val Empty = PathMatcher("", HNil)
+
+  /**
+   * A PathMatcher that matches if the unmatched path starts with a path segment.
+   * If so the path segment is extracted as a String.
+   */
+  object Segment extends PathMatcher[String :: HNil] {
+    def apply(path: Path) = path match {
+      case Path.Segment(segment, tail) => Matched(tail, segment :: HNil)
+      case _ => Unmatched
     }
   }
+
+  @deprecated("Use `Segment` instead", "1.0-M8/1.1-M8")
+  def PathElement = Segment
 }
 
 object PathMatchers extends PathMatchers

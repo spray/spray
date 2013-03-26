@@ -1,8 +1,6 @@
 package docs
 
-import java.util.concurrent.TimeUnit._
-import scala.xml.NodeSeq
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import org.specs2.mutable.Specification
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
@@ -150,7 +148,8 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
 
     class MyHttpService extends Actor {
       def receive = {
-        case HttpRequest(GET, "/ping", _, _, _) => sender ! HttpResponse(entity = "PONG")
+        case HttpRequest(GET, Uri.Path("/ping"), _, _, _) =>
+          sender ! HttpResponse(entity = "PONG")
       }
     }
     success // hide
@@ -159,8 +158,8 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
   "example-4" in {
     import spray.routing._
 
-    class MyHttpService extends Actor with HttpServiceActor {
-
+    class MyHttpService extends HttpServiceActor {
+      val system = 0 // shadow implicit from test, hide
       def receive = runRoute {
         path("ping") {
           get {

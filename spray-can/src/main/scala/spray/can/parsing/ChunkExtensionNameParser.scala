@@ -26,7 +26,7 @@ class ChunkExtensionNameParser(settings: ParserSettings, chunkSize: Int, extCoun
   val extName = new JStringBuilder
 
   def handleChar(cursor: Char) = {
-    if (extName.length <= settings.MaxChunkExtNameLength) {
+    if (extName.length <= settings.maxChunkExtNameLength) {
       cursor match {
         case x if isTokenChar(x) => extName.append(x); this
         case '=' => new ChunkExtensionValueParser(settings, chunkSize, extCount, extensions, extName.toString)
@@ -34,7 +34,7 @@ class ChunkExtensionNameParser(settings: ParserSettings, chunkSize: Int, extCoun
         case _ => ErrorState("Invalid character '" + escape(cursor) + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
       }
     } else {
-      ErrorState("Chunk extension name exceeds the configured limit of " + settings.MaxChunkExtNameLength +
+      ErrorState("Chunk extension name exceeds the configured limit of " + settings.maxChunkExtNameLength +
                   " characters", "extension '" + extName.toString.take(50) + "...'")
     }
   }

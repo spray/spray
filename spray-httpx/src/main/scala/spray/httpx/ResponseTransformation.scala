@@ -17,6 +17,7 @@
 package spray.httpx
 
 import scala.concurrent.{ExecutionContext, Future}
+import akka.event.LoggingAdapter
 import spray.httpx.unmarshalling._
 import spray.httpx.encoding.Decoder
 import spray.http._
@@ -35,7 +36,15 @@ trait ResponseTransformation {
         case Right(value) => value
         case Left(error) => throw new PipelineException(error.toString)
       }
-    else throw new UnsuccessfulResponseException(response.status)
+    else throw new UnsuccessfulResponseException(response)
+  }
+
+  def logResponse(log: LoggingAdapter): HttpResponse => HttpResponse =
+    logResponse { response => log.debug(response.toString) }
+
+  def logResponse(logFun: HttpResponse => Unit): HttpResponse => HttpResponse = { response =>
+    logFun(response)
+    response
   }
 
   implicit def pimpWithResponseTransformation[A, B](f: A => B) = new PimpedResponseTransformer(f)
@@ -69,4 +78,5 @@ object TransformerAux {
 } 
 
 class PipelineException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
-class UnsuccessfulResponseException(val responseStatus: StatusCode) extends RuntimeException
+class UnsuccessfulResponseException(response: HttpResponse) extends RuntimeException(s"Status: ${response.status}\n" +
+  s"Body: ${if (response.entity.buffer.length < 1024) response.entity.asString else response.entity.buffer.length + " bytes"}")

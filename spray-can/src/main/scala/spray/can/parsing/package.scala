@@ -16,6 +16,10 @@
 
 package spray.can
 
+import spray.http.HttpHeader
+import akka.event.LoggingAdapter
+import spray.http.parser.HttpParser
+
 
 package object parsing {
 

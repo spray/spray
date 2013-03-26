@@ -16,9 +16,6 @@
         </encoder>
     </appender> -->
 
-    <logger name="akka" level="INFO" />
-    <logger name="spray.io.IOBridge" level="INFO" />
-
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
     </root>

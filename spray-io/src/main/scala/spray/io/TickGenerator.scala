@@ -17,34 +17,33 @@
 package spray.io
 
 import scala.concurrent.duration._
-
+import akka.io.Tcp
 
 //# source-quote
 object TickGenerator {
 
-  def apply(millis: Long): PipelineStage = apply(Duration(millis, MILLISECONDS))
+  def apply(period: Duration): PipelineStage = {
+    require(period > Duration.Zero, "period must be > 0")
 
-  def apply(period: FiniteDuration): PipelineStage = {
-    require(period > Duration.Zero, "period must be positive")
+    new OptionalPipelineStage[PipelineContext] {
 
-    new PipelineStage {
-      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def enabled(context: PipelineContext): Boolean = period.isFinite()
+
+      def applyIfEnabled(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
-          val generator =
-            context.connectionActorContext.system.scheduler.schedule(
-              initialDelay = period,
-              interval = period,
-              receiver = context.self,
-              message = Tick
-            )(context.connectionActorContext.dispatcher)
+          var next = scheduleNext()
 
           val commandPipeline = commandPL
 
           val eventPipeline: EPL = {
-            case x: IOConnection.Closed =>
-              generator.cancel()
-              eventPL(x)
-            case x => eventPL(x)
+            case Tick => next = scheduleNext(); eventPL(Tick)
+            case x: Tcp.ConnectionClosed ⇒ next.cancel(); eventPL(x)
+            case x ⇒ eventPL(x)
+          }
+
+          def scheduleNext() = {
+            implicit val executionContext = context.dispatcher
+            context.system.scheduler.scheduleOnce(period.asInstanceOf[FiniteDuration], context.self, Tick)
           }
         }
     }

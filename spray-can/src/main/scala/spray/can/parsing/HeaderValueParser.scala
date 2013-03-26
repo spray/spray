@@ -31,19 +31,19 @@ class HeaderValueParser(settings: ParserSettings, messageLine: MessageLine, head
     new HeaderNameParser(settings, messageLine, headerCount + 1, RawHeader(headerName, headerValue.toString) :: headers)
 
   def handleChar(cursor: Char) = {
-    if (headerValue.length <= settings.MaxHeaderValueLength) {
+    if (headerValue.length <= settings.maxHeaderValueLength) {
       cursor match {
         case ' ' | '\t' | '\r' => space = true; new LwsParser(this).handleChar(cursor)
         case '\n' =>
-          if (headerCount < settings.MaxHeaderCount) nameParser
-          else ErrorState("HTTP message header count exceeds the configured limit of " + settings.MaxHeaderCount)
+          if (headerCount < settings.maxHeaderCount) nameParser
+          else ErrorState("HTTP message header count exceeds the configured limit of " + settings.maxHeaderCount)
         case _ =>
           if (space) {headerValue.append(' '); space = false}
           headerValue.append(cursor)
           this
       }
     } else {
-      ErrorState("HTTP header value exceeds the configured limit of " + settings.MaxHeaderValueLength +
+      ErrorState("HTTP header value exceeds the configured limit of " + settings.maxHeaderValueLength +
                   " characters", "header '" + headerName + "'")
     }
   }

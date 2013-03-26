@@ -109,7 +109,7 @@ class HttpHeaderSpec extends Specification {
     "Content-Type: text/xml; charset=windows-1252" !
       example(`Content-Type`(ContentType(`text/xml`, `windows-1252`)))_ ^
     "Content-Type: text/plain; charset=fancy-pants" !
-      errorExample("Illegal HTTP header 'Content-Type': Unsupported charset: fancy-pants")_ ^
+      errorExample(ErrorInfo("Illegal HTTP header 'Content-Type': Unsupported charset", "fancy-pants"))_ ^
     "Content-Type: multipart/mixed; boundary=ABC123" !
       example(`Content-Type`(ContentType(new `multipart/mixed`(Some("ABC123")))), fix(_).replace("=", "=\"") + '"')_ ^
     p^
@@ -124,15 +124,19 @@ class HttpHeaderSpec extends Specification {
     "Date: Wed, 13 Jul 2011 08:12:31 GMT" ! example(Date(DateTime(2011, 7, 13, 8, 12, 31)))_ ^
     "Date: Fri, 23 Mar 1804 12:11:10 UTC" ! example(Date(DateTime(1804, 3, 23, 12, 11, 10)), _.replace("UTC", "GMT"))_ ^
     p^
-    "Host: www.spray.io:8080" ! example(Host("www.spray.io", Some(8080)))_ ^
+    "Host: www.spray.io:8080" ! example(Host("www.spray.io", 8080))_ ^
     "Host: spray.io" ! example(Host("spray.io"))_ ^
-    "Host: [2001:db8::1]:8080" ! example(Host("[2001:db8::1]", Some(8080)))_ ^
+    "Host: [2001:db8::1]:8080" ! example(Host("[2001:db8::1]", 8080))_ ^
     "Host: [2001:db8::1]" ! example(Host("[2001:db8::1]"))_ ^
     "Host: [::FFFF:129.144.52.38]" ! example(Host("[::FFFF:129.144.52.38]"))_ ^
     p^
     "Last-Modified: Wed, 13 Jul 2011 08:12:31 GMT" ! example(`Last-Modified`(DateTime(2011, 7, 13, 8, 12, 31)))_ ^
     p^
     "Remote-Address: 111.22.3.4" ! example(`Remote-Address`("111.22.3.4"))_ ^
+    p^
+    "Server: as fghf.fdf/xx" ! example(`Server`(Seq(ProductVersion("as"), ProductVersion("fghf.fdf", "xx"))))_ ^
+    p^
+    "Transfer-Encoding: chunked" ! example(`Transfer-Encoding`("chunked"))_ ^
     p^
     "Set-Cookie: SID=31d4d96e407aad42" !
       example(`Set-Cookie`(HttpCookie("SID", "31d4d96e407aad42")), fix(_).replace("=", "=\"") + '"')_ ^
@@ -144,6 +148,8 @@ class HttpHeaderSpec extends Specification {
       example(`Set-Cookie`(HttpCookie("name", "123", maxAge = Some(12345), secure = true)))_ ^
     "Set-Cookie: name=\"123\"; HttpOnly; fancyPants" !
       example(`Set-Cookie`(HttpCookie("name", "123", httpOnly = true, extension = Some("fancyPants"))))_ ^
+    p^
+    "User-Agent: abc/1" ! example(`User-Agent`(ProductVersion.parseMultiple("abc/1  /")))_ ^
     p^
     "WWW-Authenticate: Basic realm=\"WallyWorld\"" !
       example(`WWW-Authenticate`(HttpChallenge("Basic", "WallyWorld")))_ ^
@@ -175,7 +181,7 @@ class HttpHeaderSpec extends Specification {
 
   def fix(line: String) = line.replaceAll("""\s*;\s*q=\d?(\.\d)?""", "").replaceAll("""\s\s+""", " ")
 
-  def errorExample(expectedError: String)(line: String) = {
+  def errorExample(expectedError: ErrorInfo)(line: String) = {
     val Array(name, value) = line.split(": ", 2)
     HttpParser.parseHeader(RawHeader(name, value)) === Left(expectedError)
   }

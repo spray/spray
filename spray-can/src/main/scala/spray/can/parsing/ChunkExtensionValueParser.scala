@@ -26,16 +26,16 @@ class ChunkExtensionValueParser(settings: ParserSettings, chunkSize: Int, extCou
   val extValue = new JStringBuilder
   var quoted = false
 
-  def next(parser: ParsingState) = if (extCount < settings.MaxChunkExtCount) {
+  def next(parser: ParsingState) = if (extCount < settings.maxChunkExtCount) {
     parser
   } else {
-    ErrorState("Chunk extension count exceeds the configured limit of " + settings.MaxChunkExtCount)
+    ErrorState("Chunk extension count exceeds the configured limit of " + settings.maxChunkExtCount)
   }
 
   def newExtensions = ChunkExtension(extName, extValue.toString) :: extensions
 
   def handleChar(cursor: Char) = {
-    if (extValue.length <= settings.MaxChunkExtValueLength) {
+    if (extValue.length <= settings.maxChunkExtValueLength) {
       if (quoted) {
         cursor match {
           case '"' => quoted = false; this
@@ -56,7 +56,7 @@ class ChunkExtensionValueParser(settings: ParserSettings, chunkSize: Int, extCou
         }
       }
     } else {
-      ErrorState("Chunk extension value exceeds the configured limit of " + settings.MaxChunkExtValueLength +
+      ErrorState("Chunk extension value exceeds the configured limit of " + settings.maxChunkExtValueLength +
                   " characters", "extension '" + extName + "'")
     }
   }

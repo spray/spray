@@ -18,7 +18,6 @@ package spray
 
 import shapeless.HNil
 
-
 package object routing {
 
   type Route = RequestContext => Unit

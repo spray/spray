@@ -46,8 +46,8 @@ class MultipartUnmarshallersSpec extends Specification  {
             BodyPart(
               HttpBody(ContentType(`text/plain`, Some(`UTF-8`)), "test@there.com"),
               List(
-                `Content-Type`(ContentType(`text/plain`, Some(`UTF-8`))),
-                `Content-Disposition`("form-data", Map("name" -> "email"))
+                `Content-Disposition`("form-data", Map("name" -> "email")),
+                `Content-Type`(ContentType(`text/plain`, Some(`UTF-8`)))
               )
             )
           )
@@ -72,8 +72,8 @@ class MultipartUnmarshallersSpec extends Specification  {
             BodyPart(
               HttpBody(`application/octet-stream`, "filecontent"),
               List(
-                `Content-Type`(ContentType(`application/octet-stream`)),
-                RawHeader("Content-Transfer-Encoding", "binary")
+                RawHeader("Content-Transfer-Encoding", "binary"),
+                `Content-Type`(ContentType(`application/octet-stream`))
               )
             )
           )
