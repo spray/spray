@@ -17,10 +17,10 @@
 package spray.can.server
 
 import scala.concurrent.duration.Duration
-import akka.actor.{ReceiveTimeout, Props, ActorRef, Actor}
 import akka.io.{IO, Tcp}
-import spray.can.server.StatsSupport.StatsHolder
+import akka.actor._
 import spray.util.SprayActorLogging
+import spray.can.server.StatsSupport.StatsHolder
 import spray.can.{HttpExt, Http}
 
 
@@ -35,28 +35,44 @@ private[can] class HttpListener(bindCommander: ActorRef,
   val statsHolder = if (settings.statsSupport) Some(new StatsHolder) else None
   val pipelineStage = HttpServerConnection.pipelineStage(settings, statsHolder)
 
-  context watch handler // sign death pact
+  context.watch(handler)
 
   log.debug("Binding to {}", endpoint)
 
   IO(Tcp) ! Tcp.Bind(self, endpoint,backlog, options)
 
-  context setReceiveTimeout settings.bindTimeout
+  context.setReceiveTimeout(settings.bindTimeout)
 
-  def receive = {
+  def receive = binding()
+
+  def binding(unbindCommanders: Set[ActorRef] = Set.empty): Receive = {
+    case Tcp.Bound if !unbindCommanders.isEmpty =>
+      log.info("Bind to {} aborted", endpoint)
+      bindCommander ! Http.CommandFailed(bind)
+      context.setReceiveTimeout(settings.unbindTimeout)
+      context.become(unbinding(unbindCommanders))
+
     case Tcp.Bound =>
-      context setReceiveTimeout Duration.Undefined
       log.info("Bound to {}", endpoint)
       bindCommander ! Http.Bound
-      context become connected(sender)
+      context.setReceiveTimeout(Duration.Undefined)
+      context.become(connected(sender))
 
     case Tcp.CommandFailed(_: Tcp.Bind) =>
+      log.warning("Bind to {} failed", endpoint)
       bindCommander ! Http.CommandFailed(bind)
-      context stop self
+      unbindCommanders foreach (_ ! Http.Unbound)
+      context.stop(self)
 
     case ReceiveTimeout ⇒
-      log.warning("Configured binding timeout of {} expired, stopping", settings.bindTimeout)
-      context stop self
+      log.warning("Bind to {} failed, timeout {} expired", endpoint, settings.bindTimeout)
+      bindCommander ! Http.CommandFailed(bind)
+      unbindCommanders foreach (_ ! Http.Unbound)
+      context.stop(self)
+
+    case Http.Unbind =>
+      log.debug("Aborting bind to {}", endpoint)
+      context.become(binding(unbindCommanders + sender))
   }
 
   def connected(tcpListener: ActorRef): Receive = {
@@ -65,20 +81,32 @@ private[can] class HttpListener(bindCommander: ActorRef,
       context.actorOf(
         props = Props(new HttpServerConnection(conn, handler, pipelineStage, remoteAddress, localAddress, settings))
           .withDispatcher(httpSettings.ConnectionDispatcher),
-        name = connectionCounter.next().toString
-      )
+        name = connectionCounter.next().toString)
 
-    case Http.GetStats   => statsHolder.foreach(holder => sender ! holder.toStats)
-    case Http.ClearStats => statsHolder.foreach(_.clear())
+    case Http.GetStats   => statsHolder foreach { holder => sender ! holder.toStats }
+    case Http.ClearStats => statsHolder foreach { _.clear() }
 
     case Http.Unbind =>
       tcpListener ! Tcp.Unbind
-      context become unbinding(sender)
+      context.setReceiveTimeout(settings.unbindTimeout)
+      context.become(unbinding(Set(sender)))
+
+    case _: Http.ConnectionClosed =>
+      // ignore, we receive this event when the user didn't register the handler within the registration timeout period
   }
 
-  def unbinding(unbindCommander: ActorRef): Receive = {
+  def unbinding(commanders: Set[ActorRef]): Receive = {
+    case Http.Unbind =>
+      context.become(unbinding(commanders + sender))
+
     case Tcp.Unbound =>
-      unbindCommander ! Http.Unbound
-      context stop self
+      log.info("Unbound from {}", endpoint)
+      commanders foreach (_ ! Http.Unbound)
+      context.stop(self)
+
+    case ReceiveTimeout ⇒
+      log.warning("Unbinding from {} failed, timeout {} expired, stopping", endpoint, settings.unbindTimeout)
+      commanders foreach (_ ! Http.CommandFailed(Http.Unbind))
+      context.stop(self)
   }
 }

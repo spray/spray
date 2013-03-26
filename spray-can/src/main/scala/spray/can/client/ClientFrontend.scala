@@ -36,40 +36,40 @@ object ClientFrontend {
           import context.log
           var openRequests = Queue.empty[RequestRecord]
           var requestTimeout = initialRequestTimeout
-          var closeCommander: Option[ActorRef] = None
+          var closeCommanders = Set.empty[ActorRef]
 
           val commandPipeline: CPL = {
-            case Http.MessageCommand(HttpMessagePartWrapper(x: HttpRequest, ack)) if closeCommander.isEmpty =>
+            case Http.MessageCommand(HttpMessagePartWrapper(x: HttpRequest, ack)) if closeCommanders.isEmpty =>
               if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
                 render(x, ack)
                 openRequests = openRequests enqueue new RequestRecord(x, context.sender, timestamp = now)
               } else log.warning("Received new HttpRequest before previous chunking request was " +
                 "finished, ignoring...")
 
-            case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedRequestStart, ack)) if closeCommander.isEmpty =>
+            case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedRequestStart, ack)) if closeCommanders.isEmpty =>
               if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
                 render(x, ack)
                 openRequests = openRequests enqueue new RequestRecord(x, context.sender, timestamp = 0)
               } else log.warning("Received new ChunkedRequestStart before previous chunking " +
                 "request was finished, ignoring...")
 
-            case Http.MessageCommand(HttpMessagePartWrapper(x: MessageChunk, ack)) if closeCommander.isEmpty =>
+            case Http.MessageCommand(HttpMessagePartWrapper(x: MessageChunk, ack)) if closeCommanders.isEmpty =>
               if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
                 render(x, ack)
               } else log.warning("Received MessageChunk outside of chunking request context, ignoring...")
 
-            case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedMessageEnd, ack)) if closeCommander.isEmpty =>
+            case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedMessageEnd, ack)) if closeCommanders.isEmpty =>
               if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
                 render(x, ack)
                 openRequests.last.timestamp = now // only start timer once the request is completed
               } else log.warning("Received ChunkedMessageEnd outside of chunking request " +
                 "context, ignoring...")
 
-            case Http.MessageCommand(HttpMessagePartWrapper(x: HttpRequestPart, _)) if closeCommander.isDefined =>
+            case Http.MessageCommand(HttpMessagePartWrapper(x: HttpRequestPart, _)) if !closeCommanders.isEmpty =>
               log.error("Received {} after CloseCommand, ignoring", x)
 
             case x: Http.CloseCommand =>
-              closeCommander = Some(context.sender)
+              closeCommanders += context.sender
               commandPL(x)
 
             case SetRequestTimeout(timeout) => requestTimeout = timeout
@@ -101,9 +101,7 @@ object ClientFrontend {
               else throw new IllegalStateException
 
             case x: Tcp.ConnectionClosed =>
-              val senders: Set[ActorRef] = openRequests.map(_.sender)(collection.breakOut)
-              val receivers = if (closeCommander.isDefined) senders + closeCommander.get else senders
-              receivers.foreach(dispatch(_, x))
+              openRequests.foldLeft(closeCommanders)(_ + _.sender) foreach (dispatch(_, x))
               eventPL(x) // terminates the connection actor
 
             case TickGenerator.Tick =>

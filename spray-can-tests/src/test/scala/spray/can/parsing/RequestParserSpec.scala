@@ -192,14 +192,6 @@ class RequestParserSpec extends Specification {
         } === ErrorState("Invalid Content-Length header value: " +
                 "requirement failed: Content-Length must not be negative")
       }
-
-      "a required Host header missing" in {
-        parse {
-          """|GET / HTTP/1.1
-             |
-             |"""
-        } === ErrorState("Host header required")
-      }
     }
   }
 

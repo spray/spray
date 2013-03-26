@@ -68,6 +68,9 @@ object Http extends ExtensionKey[HttpExt] {
   val ConfirmedClose = Tcp.ConfirmedClose
   val Abort = Tcp.Abort
 
+  case class CloseAll(kind: CloseCommand) extends Command
+  object CloseAll extends CloseAll(Close)
+
   case object ClearStats extends Command
   case object GetStats extends Command
 
@@ -93,6 +96,8 @@ object Http extends ExtensionKey[HttpExt] {
   val ConfirmedClosed = Tcp.ConfirmedClosed
   val PeerClosed = Tcp.PeerClosed
   type ErrorClosed = Tcp.ErrorClosed; val ErrorClosed = Tcp.ErrorClosed
+
+  case object ClosedAll extends Event
 
   type CommandFailed = Tcp.CommandFailed; val CommandFailed = Tcp.CommandFailed
   case class SendFailed(part: HttpMessagePart) extends Event

@@ -16,7 +16,7 @@
 
 package spray.can.server
 
-import com.typesafe.config.Config
+import com.typesafe.config.{ConfigFactory, Config}
 import scala.concurrent.duration.Duration
 import akka.actor.ActorSystem
 import spray.can.parsing.ParserSettings
@@ -40,6 +40,7 @@ case class ServerSettings(
   requestChunkAggregationLimit: Int,
   responseSizeHint: Int,
   bindTimeout: Duration,
+  unbindTimeout: Duration,
   registrationTimeout: Duration,
   parserSettings: ParserSettings) {
 
@@ -53,6 +54,7 @@ case class ServerSettings(
   require(0 <= responseSizeHint && responseSizeHint <= Int.MaxValue,
     "response-size-hint must be >= 0 and <= Int.MaxValue")
   requirePositiveOrUndefined(bindTimeout)
+  requirePositiveOrUndefined(unbindTimeout)
   requirePositiveOrUndefined(registrationTimeout)
 }
 
@@ -60,27 +62,29 @@ object ServerSettings {
   def apply(system: ActorSystem): ServerSettings =
     apply(system.settings.config getConfig "spray.can.server")
 
-  def apply(c: Config): ServerSettings = {
-    val config = c withFallback ConfigUtils.sprayConfigAdditions
+  def apply(config: Config): ServerSettings = {
+    val c = config
+      .withFallback(Utils.sprayConfigAdditions)
+      .withFallback(ConfigFactory.defaultReference(getClass.getClassLoader))
     ServerSettings(
-      config getString   "server-header",
-      config getBoolean  "ssl-encryption",
-      config getInt      "pipelining-limit",
-      config getDuration "idle-timeout",
-      config getDuration "request-timeout",
-      config getDuration "timeout-timeout",
-      config getDuration "reaping-cycle",
-      config getBoolean  "stats-support",
-      config getBoolean  "remote-address-header",
-      config getBoolean  "transparent-head-requests",
-      config getString   "timeout-handler",
-      config getBoolean  "chunkless-streaming",
-      config getBoolean  "verbose-error-messages",
-      config getBytes    "request-chunk-aggregation-limit" toInt,
-      config getBytes    "response-size-hint" toInt,
-      config getDuration "bind-timeout",
-      config getDuration "registration-timeout",
-      ParserSettings(config getConfig "parsing")
-    )
+      c getString   "server-header",
+      c getBoolean  "ssl-encryption",
+      c getInt      "pipelining-limit",
+      c getDuration "idle-timeout",
+      c getDuration "request-timeout",
+      c getDuration "timeout-timeout",
+      c getDuration "reaping-cycle",
+      c getBoolean  "stats-support",
+      c getBoolean  "remote-address-header",
+      c getBoolean  "transparent-head-requests",
+      c getString   "timeout-handler",
+      c getBoolean  "chunkless-streaming",
+      c getBoolean  "verbose-error-messages",
+      c getBytes    "request-chunk-aggregation-limit" toInt,
+      c getBytes    "response-size-hint" toInt,
+      c getDuration "bind-timeout",
+      c getDuration "unbind-timeout",
+      c getDuration "registration-timeout",
+      ParserSettings(c getConfig "parsing"))
   }
 }

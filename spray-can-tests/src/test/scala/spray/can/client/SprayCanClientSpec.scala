@@ -22,7 +22,7 @@ import akka.actor.{ActorRef, Status, ActorSystem}
 import akka.io.IO
 import akka.testkit.TestProbe
 import spray.can.{HostConnectorInfo, HostConnectorSetup, Http}
-import spray.testkit.TestUtils._
+import spray.util.Utils._
 import spray.httpx.RequestBuilding._
 import spray.http._
 import HttpHeaders._
@@ -30,37 +30,43 @@ import HttpHeaders._
 class SprayCanClientSpec extends Specification {
 
   val testConf: Config = ConfigFactory.parseString("""
-    akka {
-      event-handlers = ["akka.testkit.TestEventListener"]
-      loglevel = WARNING
-      io.tcp.trace-logging = off
-    }""")
-  implicit val system = ActorSystem(getClass.getSimpleName, testConf)
+    akka.event-handlers = ["akka.testkit.TestEventListener"]
+    akka.loglevel = WARNING
+    akka.io.tcp.trace-logging = off
+    spray.can.client.request-timeout = 500ms
+    spray.can.host-connector.max-retries = 1
+    spray.can.host-connector.client.request-timeout = 500ms""")
+  implicit val system = ActorSystem(actorSystemNameFrom(getClass), testConf)
 
-
-  "The request-level client infrastructure" should {
-
-    "properly complete a simple request/response cycle with a request containing a host header" in new TestSetup {
-      val probe = TestProbe()
-      probe.send(IO(Http), Get("/abc") ~> Host(hostname, port))
-      verifyServerSideRequestAndReply("/abc", probe)
+  "The connection-level client infrastructure" should {
+    "properly complete a simple request/response cycle" in new TestSetup {
+      val clientConnection = newClientConnect()
+      val client = send(clientConnection, Get("/abc") ~> Host(hostname, port))
+      val server = acceptConnection()
+      server.expectMsgType[HttpRequest].uri.path.toString === "/abc"
+      server.reply(HttpResponse(entity = "ok"))
+      client.expectMsgType[HttpResponse].entity === HttpEntity("ok")
+      client.send(clientConnection, Http.Close)
+      server.expectMsg(Http.PeerClosed)
+      client.expectMsg(Http.Closed)
+      unbind()
     }
 
-    "transform absolute request URIs into relative URIs plus host header" in new TestSetup {
-      val probe = TestProbe()
-      probe.send(IO(Http), Get(s"http://$hostname:$port/abc"))
-      verifyServerSideRequestAndReply("/abc", probe)
-    }
-
-    "produce an error if the request does not contain a Host-header or an absolute URI" in {
-      val probe = TestProbe()
-      probe.send(IO(Http), Get("/abc"))
-      probe.expectMsgType[Status.Failure].cause.getMessage must startWith("Cannot establish effective request URI")
+    "produce an error if the request times out" in new TestSetup {
+      val clientConnection = newClientConnect()
+      val request = Get("/def") ~> Host(hostname, port)
+      val client = send(clientConnection, request)
+      val server = acceptConnection()
+      server.expectMsgType[HttpRequest].uri.path.toString === "/def"
+      client.expectMsg(Timedout(request))
+      client.expectMsg(Http.Closed)
+      server.expectMsg(Http.PeerClosed)
+      unbind()
     }
   }
 
-  "The host-level client infrastructure" should {
 
+  "The host-level client infrastructure" should {
     "return the same HostConnector for identical setup requests" in new TestSetup {
       val probe = TestProbe()
       probe.send(IO(Http), HostConnectorSetup(hostname, port))
@@ -70,21 +76,24 @@ class SprayCanClientSpec extends Specification {
     }
 
     "properly complete a simple request/response cycle with a Host-header request" in new TestSetup {
-      val probe = sendViaHostConnector(Get("/abc") ~> Host(hostname, port))
-      verifyServerSideRequestAndReply("/abc", probe)
+      val (probe, hostConnector) = sendViaHostConnector(Get("/hij") ~> Host(hostname, port))
+      verifyServerSideRequestAndReply(s"http://$hostname:$port/hij", probe)
+      closeHostConnector(hostConnector)
     }
 
     "add a host header to the request if it doesn't contain one" in new TestSetup {
-      val probe = sendViaHostConnector(Get("/abc"))
-      verifyServerSideRequestAndReply("/abc", probe)
+      val (probe, hostConnector) = sendViaHostConnector(Get("/lmn"))
+      verifyServerSideRequestAndReply(s"http://$hostname:$port/lmn", probe)
+      closeHostConnector(hostConnector)
     }
 
     "accept absolute URIs and render them unchanged" in new TestSetup {
-      val probe = sendViaHostConnector(Get("http://www.example.com/"))
+      val (probe, hostConnector) = sendViaHostConnector(Get("http://www.example.com/"))
       verifyServerSideRequestAndReply("http://www.example.com/", probe)
+      closeHostConnector(hostConnector)
     }
 
-    "properly react to Http.Close commands" in new TestSetup {
+    "support a clean CloseAll shutdown" in new TestSetup {
       val probe = TestProbe()
       probe.send(IO(Http), HostConnectorSetup(hostname, port))
       val HostConnectorInfo(hostConnector, _) = probe.expectMsgType[HostConnectorInfo]
@@ -95,59 +104,109 @@ class SprayCanClientSpec extends Specification {
       val serverA = acceptConnection()
       val serverB = acceptConnection()
 
-      probe.send(hostConnector, Http.Close)
+      probe.send(hostConnector, Http.CloseAll)
       clientA.expectMsgType[Status.Failure].cause.getMessage == "Connection actively closed"
       clientB.expectMsgType[Status.Failure].cause.getMessage == "Connection actively closed"
       serverA.expectMsgType[HttpRequest]
-      serverA expectMsg Http.PeerClosed
+      serverA.expectMsg(Http.PeerClosed)
       serverB.expectMsgType[HttpRequest]
-      serverB expectMsg Http.PeerClosed
-      probe expectMsg Http.Closed
+      serverB.expectMsg(Http.PeerClosed)
+      probe.expectMsg(Http.ClosedAll)
     }
   }
 
-  step(system.shutdown())
+  "The request-level client infrastructure" should {
+    "properly complete a simple request/response cycle with a request containing a host header" in new TestSetup {
+      val probe = TestProbe()
+      probe.send(IO(Http), Get("/abc") ~> Host(hostname, port))
+      verifyServerSideRequestAndReply(s"http://$hostname:$port/abc", probe)
+    }
+
+    "transform absolute request URIs into relative URIs plus host header" in new TestSetup {
+      val probe = TestProbe()
+      probe.send(IO(Http), Get(s"http://$hostname:$port/abc?query#fragment"))
+      verifyServerSideRequestAndReply(s"http://$hostname:$port/abc?query", probe)
+    }
+
+    "produce an error if the request does not contain a Host-header or an absolute URI" in {
+      val probe = TestProbe()
+      probe.send(IO(Http), Get("/abc"))
+      probe.expectMsgType[Status.Failure].cause.getMessage must startWith("Cannot establish effective request URI")
+    }
+
+    "produce an error if the request was not completed within the configured timeout" in new TestSetup {
+      val probe = TestProbe()
+      probe.send(IO(Http), Get("/abc") ~> Host(hostname, port))
+      acceptConnection()
+      probe.expectMsgType[Status.Failure].cause.getMessage must startWith("Request timeout")
+    }
+  }
+
+  step {
+    val probe = TestProbe()
+    probe.send(IO(Http), Http.CloseAll)
+    probe.expectMsg(Http.ClosedAll)
+    system.shutdown()
+  }
 
   class TestSetup extends org.specs2.specification.Scope {
-    val (hostname, port) = temporyServerHostnameAndPort()
+    val (hostname, port) = temporaryServerHostnameAndPort()
     val bindHandler = TestProbe()
 
     // automatically bind a server
     val listener = {
       val commander = TestProbe()
       commander.send(IO(Http), Http.Bind(bindHandler.ref, hostname, port))
-      commander expectMsg Http.Bound
+      commander.expectMsg(Http.Bound)
       commander.sender
+    }
+
+    def newClientConnect(): ActorRef = {
+      val probe = TestProbe()
+      probe.send(IO(Http), Http.Connect(hostname, port))
+      probe.expectMsgType[Http.Connected]
+      probe.sender
     }
 
     def acceptConnection(): TestProbe = {
       bindHandler.expectMsgType[Http.Connected]
       val probe = TestProbe()
-      bindHandler reply Http.Register(probe.ref)
+      bindHandler.reply(Http.Register(probe.ref))
       probe
     }
 
-    def sendViaHostConnector(request: HttpRequest): TestProbe = {
+    def send(transport: ActorRef, request: HttpRequest): TestProbe = {
+      val probe = TestProbe()
+      probe.send(transport, request)
+      probe
+    }
+
+    def unbind(): Unit = {
+      val probe = TestProbe()
+      probe.send(listener, Http.Unbind)
+      probe.expectMsg(Http.Unbound)
+    }
+
+    def sendViaHostConnector(request: HttpRequest): (TestProbe, ActorRef) = {
       val probe = TestProbe()
       probe.send(IO(Http), HostConnectorSetup(hostname, port))
       val HostConnectorInfo(hostConnector, _) = probe.expectMsgType[HostConnectorInfo]
       probe.sender === hostConnector
-      probe reply request
-      probe
-    }
-
-    def send(connector: ActorRef, request: HttpRequest): TestProbe = {
-      val probe = TestProbe()
-      probe.send(connector, request)
-      probe
+      probe.reply(request)
+      probe -> hostConnector
     }
 
     def verifyServerSideRequestAndReply(serverSideUri: String, clientProbe: TestProbe): Unit = {
       val serverHandler = acceptConnection()
       serverHandler.expectMsgType[HttpRequest].uri === Uri(serverSideUri)
-      serverHandler reply HttpResponse(entity = "ok")
-
+      serverHandler.reply(HttpResponse(entity = "ok"))
       clientProbe.expectMsgType[HttpResponse].entity === HttpEntity("ok")
+    }
+
+    def closeHostConnector(hostConnector: ActorRef): Unit = {
+      val probe = TestProbe()
+      probe.send(hostConnector, Http.CloseAll)
+      probe.expectMsg(Http.ClosedAll)
     }
   }
 }

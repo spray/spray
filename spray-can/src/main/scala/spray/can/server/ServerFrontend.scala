@@ -22,6 +22,7 @@ import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.http._
 import spray.io._
 import spray.can.Http
+import spray.io.Pipeline.ActorDeath
 
 
 object ServerFrontend {
@@ -67,7 +68,7 @@ object ServerFrontend {
 
             case Response(openRequest, command) =>
               // a response for a non-current openRequest has to be queued
-              openRequest enqueueCommand command
+              openRequest.enqueueCommand(command)
 
             case SetRequestTimeout(timeout) =>
               _requestTimeout = timeout.toMillis
@@ -105,6 +106,10 @@ object ServerFrontend {
               if (requestTimeout > 0L)
                 firstOpenRequest checkForTimeout System.currentTimeMillis
               eventPL(TickGenerator.Tick)
+
+            case ActorDeath(actor) if actor == context.handler =>
+              context.log.debug("User-level connection handler died, closing connection")
+              commandPL(Http.Close)
 
             case ev => eventPL(ev)
           }

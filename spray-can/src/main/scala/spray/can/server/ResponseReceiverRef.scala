@@ -49,7 +49,7 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
           case _: MessageChunk         => dispatch(x, Chunking, Chunking)
           case _: ChunkedMessageEnd    => dispatch(x, Chunking, Completed)
         }
-      case x: Command              => dispatch(x)
+      case x: Command => dispatch(x)
       case x =>
         openRequest.context.log.warning("Illegal response {} to {}", x, requestInfo)
         unhandledMessage(x)
@@ -70,7 +70,7 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
 
   private def dispatch(cmd: Command)(implicit sender: ActorRef) {
     val ac = openRequest.context.actorContext
-    if (ac != null) ac.self ! new Response(openRequest, cmd)
+    if (ac != null) ac.self ! cmd
   }
 
   private def unhandledMessage(message: Any)(implicit sender: ActorRef) {

@@ -52,12 +52,13 @@ class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) {
     import request._
     implicit val bb = newByteStringBuilder(requestSizeHint)
     // TODO: extend Uri to directly render into byte array
-    put(method.value).put(' ').put(uri.toString).put(' ').put(protocol.value).put(CrLf)
+    val uriWithoutFragment = if (uri.fragment.isEmpty) uri else uri.copy(fragment = None)
+    put(method.value).put(' ').put(uriWithoutFragment.toString).put(' ').put(protocol.value).put(CrLf)
     val hostHeaderPresent = putHeadersAndReturnHostHeaderPresent(headers)
     if (!hostHeaderPresent) {
       put("Host: ").put(remoteAddress.getHostName)
       val port = remoteAddress.getPort
-      if (port != 80) put(':').put(Integer.toString(port))
+      if (port != 0) put(':').put(Integer.toString(port))
       put(CrLf)
     }
     if (!userAgentHeader.isEmpty) putHeader("User-Agent", userAgentHeader)

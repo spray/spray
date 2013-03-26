@@ -18,8 +18,9 @@ package spray.can.client
 
 import java.net.InetSocketAddress
 import scala.collection.immutable
+import scala.collection.immutable.Queue
 import scala.concurrent.duration.Duration
-import akka.actor.{ReceiveTimeout, Status, ActorRef, Actor}
+import akka.actor._
 import akka.io.Inet
 import spray.util.SprayActorLogging
 import spray.can.client.HttpHostConnector._
@@ -34,10 +35,6 @@ private[client] class HttpHostConnection(remoteAddress: InetSocketAddress,
                                         (implicit sslEngineProvider: ClientSSLEngineProvider)
   extends Actor with SprayActorLogging {
 
-  private[this] var openRequests = immutable.Queue.empty[RequestContext]
-  private[this] var closeAfterCurrentResponseEnd = false
-  private[this] var closingTrigger: Option[AnyRef] = None
-
   def receive: Receive = unconnected
 
   def unconnected: Receive = {
@@ -47,128 +44,134 @@ private[client] class HttpHostConnection(remoteAddress: InetSocketAddress,
       case ctx: RequestContext =>
         log.debug("Attempting new connection to {}", remoteAddress)
         clientConnectionSettingsGroup ! Http.Connect(remoteAddress, None, options, None, sslEngineProvider)
-        openRequests = openRequests.enqueue(ctx)
         context.setReceiveTimeout(Duration.Undefined)
-        context become connecting
+        context.become(connecting(Queue(ctx)))
 
-      case _: Http.CloseCommand | _: Http.ConnectionClosed => // ignore
+      case _: Http.CloseCommand => context.stop(self)
 
       case ReceiveTimeout =>
-        if (openRequests.isEmpty) {
-          log.debug("Initiating idle shutdown")
-          context.parent ! DemandIdleShutdown
-          context become { // after having initiated our shutdown we must be bounce all requests
-            case ctx: RequestContext => context.parent ! ctx
-          }
+        log.debug("Initiating idle shutdown")
+        context.parent ! DemandIdleShutdown
+        context.become { // after having initiated our shutdown we must bounce all requests
+          case ctx: RequestContext => context.parent ! ctx
+          case _: Http.CloseCommand => context.stop(self)
         }
     }
   }
 
-  def connecting: Receive = {
+  def connecting(openRequests: Queue[RequestContext], aborted: Option[Http.CloseCommand] = None): Receive = {
+    case _: Http.Connected if aborted.isDefined =>
+      sender ! aborted.get
+      openRequests foreach clear("Connection actively closed", retry = false)
+      context.become(terminating(context.watch(sender)))
+
     case _: Http.Connected =>
       log.debug("Connection to {} established, dispatching {} pending requests", remoteAddress, openRequests.size)
       openRequests foreach dispatchToServer(sender)
-      closingTrigger = None
-      context become connected(sender)
+      context.become(connected(context.watch(sender), openRequests))
 
-    case ctx: RequestContext => openRequests = openRequests.enqueue(ctx)
+    case ctx: RequestContext => context.become(connecting(openRequests.enqueue(ctx)))
 
-    case cmd: Http.CloseCommand => context become {
-      case _: Http.Connected =>
-        sender ! cmd
-        context.parent ! Disconnected(openRequests.size)
-        clearOpenRequests("Connection actively closed", retry = false)
-        context become unconnected
-
-      case _: RequestContext | _: Http.CommandFailed => // ignore
-    }
+    case cmd: Http.CloseCommand => context.become(connecting(openRequests, aborted = Some(cmd)))
 
     case _: Http.CommandFailed =>
       log.debug("Connection attempt failed")
-      context.parent ! Disconnected(openRequests.size)
-      clearOpenRequests("Connection attempt failed", retry = false)
-      context become unconnected
+      openRequests foreach clear("Connection attempt failed", retry = false)
+      if (aborted.isEmpty) {
+        context.parent ! Disconnected(openRequests.size)
+        context.become(unconnected)
+      } else context.stop(self)
   }
 
-  def connected(httpConnection: ActorRef): Receive = {
+  def connected(httpConnection: ActorRef, openRequests: Queue[RequestContext],
+                closeAfterResponseEnd: Boolean = false): Receive = {
     case part: HttpResponsePart if openRequests.nonEmpty =>
       val RequestContext(request, _, commander) = openRequests.head
       if (log.isDebugEnabled) log.debug("Delivering {} for {}", formatResponse(part), format(request))
       commander ! part
-      context.parent ! RequestCompleted
-      if (part.isInstanceOf[HttpMessageStart])
-        closeAfterCurrentResponseEnd =
-          part.asInstanceOf[HttpMessageStart].message.asInstanceOf[HttpResponse].connectionCloseExpected
-      if (part.isInstanceOf[HttpMessageEnd]) {
-        openRequests = openRequests.tail
-        if (closeAfterCurrentResponseEnd) {
+      def handleResponseCompletion(closeConnection: Boolean): Unit = {
+        context.parent ! RequestCompleted
+        if (closeConnection) {
           log.debug("Closing connection as indicated by last response")
           httpConnection ! Http.Close
-          context.parent ! Disconnected(openRequests.size)
-          clearOpenRequests("Premature connection close (the server doesn't appear to support request pipelining)",
-            retry = true)
-          context become unconnected
-        }
+          context.become(closing(httpConnection, openRequests.tail, "Premature connection close (the server doesn't " +
+            "appear to support request pipelining)", retry = true))
+        } else context.become(connected(httpConnection, openRequests.tail))
+      }
+      part match {
+        case x: HttpResponse => handleResponseCompletion(x.connectionCloseExpected)
+        case ChunkedResponseStart(x: HttpResponse) =>
+          context.become(connected(httpConnection, openRequests, x.connectionCloseExpected))
+        case _: MessageChunk => // nothing to do
+        case _: ChunkedMessageEnd => handleResponseCompletion(closeAfterResponseEnd)
       }
 
     case x: HttpResponsePart =>
       log.warning("Received unexpected response for non-existing request: {}, dropping", x)
 
+    case ctx: RequestContext =>
+      dispatchToServer(httpConnection)(ctx)
+      context.become(connected(httpConnection, openRequests.enqueue(ctx), closeAfterResponseEnd))
+
     case ev@ Http.SendFailed(part) =>
-      log.error("Sending {} failed, closing connection", format(part))
+      log.debug("Sending {} failed, closing connection", format(part))
       httpConnection ! Http.Close
-      closingTrigger = Some(ev)
+      context.become(closing(httpConnection, openRequests, "Error sending request (part)", retry = true))
+
+    case ev: Http.CommandFailed =>
+      log.debug("Received {}, closing connection", ev)
+      httpConnection ! Http.Close
+      context.become(closing(httpConnection, openRequests, "Command error", retry = true))
 
     case ev@ Timedout(part) =>
-      log.warning("{} timed out, closing connection", format(part))
-      httpConnection ! Http.Close
-      closingTrigger = Some(ev)
-
-    case ev@ Http.CommandFailed(cmd) =>
-      log.warning("Received {}, closing connection", ev)
-      httpConnection ! Http.Close
-      closingTrigger = Some(ev)
+      log.debug("{} timed out, closing connection", format(part))
+      context.become(closing(httpConnection, openRequests, "Request timeout", retry = true))
 
     case cmd: Http.CloseCommand =>
       httpConnection ! cmd
-      closingTrigger = Some(cmd)
+      openRequests foreach clear(s"Connection actively closed ($cmd)", retry = false)
+      context.become(terminating(httpConnection))
 
     case ev: Http.ConnectionClosed =>
       context.parent ! Disconnected(openRequests.size)
-      if (openRequests.nonEmpty) {
-        val (errorMsg, retry) = closingTrigger match {
-          case None => ev.toString -> true
-          case Some(_: Http.SendFailed) => "Error sending request (part)" -> true
-          case Some(_: Timedout) => "Request timeout" -> true
-          case Some(_: Http.CommandFailed) => "Command error" -> true
-          case Some(_: Http.CloseCommand) => "Connection actively closed" -> false
-          case _ => throw new IllegalStateException
-        }
-        clearOpenRequests(errorMsg, retry)
-      } else log.debug(s"Received $ev event")
-      context become unconnected
+      openRequests foreach clear(ev.toString, retry = true)
+      context.unwatch(httpConnection)
+      context.become(unconnected)
 
-    case ctx: RequestContext =>
-      dispatchToServer(httpConnection)(ctx)
-      openRequests = openRequests.enqueue(ctx)
+    case Terminated(`httpConnection`) =>
+      context.parent ! Disconnected(openRequests.size)
+      openRequests foreach clear("Unexpected connection termination", retry = true)
+      context.become(unconnected)
+  }
+
+  def closing(httpConnection: ActorRef, openRequests: Queue[RequestContext], errorMsg: String,
+              retry: Boolean): Receive = {
+
+    case ev@ (_: Http.ConnectionClosed | Terminated(`httpConnection`)) =>
+      context.parent ! Disconnected(openRequests.size)
+      openRequests foreach clear(errorMsg, retry)
+      context.unwatch(httpConnection)
+      context.become(unconnected)
+  }
+
+  def terminating(httpConnection: ActorRef): Receive = {
+    case _: Http.ConnectionClosed => // ignore
+    case Terminated(`httpConnection`) => context.stop(self)
+  }
+
+  def clear(errorMsg: String, retry: Boolean): RequestContext => Unit = {
+    case ctx@ RequestContext(request, retriesLeft, _) if retry && request.canBeRetried && retriesLeft > 0 =>
+      log.warning("{} in response to {} with {} retries left, retrying...", errorMsg, format(request), retriesLeft)
+      context.parent ! ctx.copy(retriesLeft = retriesLeft - 1)
+
+    case RequestContext(request, _, commander) =>
+      log.warning("{} in response to {} with no retries left, dispatching error...", errorMsg, format(request))
+      commander ! Status.Failure(new RuntimeException(errorMsg))
   }
 
   def dispatchToServer(httpConnection: ActorRef)(ctx: RequestContext): Unit = {
     if (log.isDebugEnabled) log.debug("Dispatching {} across connection {}", format(ctx.request), httpConnection)
     httpConnection ! ctx.request
-  }
-
-  def clearOpenRequests(errorMsg: String, retry: Boolean): Unit = {
-    openRequests.foreach {
-      case ctx@ RequestContext(request, retriesLeft, _) if retry && request.canBeRetried && retriesLeft > 0 =>
-        log.warning("{} in response to {} with {} retries left, retrying...", errorMsg, format(request), retriesLeft)
-        context.parent ! ctx
-
-      case RequestContext(request, _, commander) =>
-        log.debug("{} in response to {} with no retries left, dispatching error...", errorMsg, format(request))
-        commander ! Status.Failure(new RuntimeException(errorMsg))
-    }
-    openRequests = immutable.Queue.empty[RequestContext]
   }
 
   def format(part: HttpMessagePart) = part match {

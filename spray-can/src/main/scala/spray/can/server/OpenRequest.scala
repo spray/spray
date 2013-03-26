@@ -82,7 +82,7 @@ trait OpenRequestComponent { component =>
         if (timestamp == 0L) ChunkedRequestStart(requestToDispatch)
         else requestToDispatch
       if (context.log.isDebugEnabled)
-        context.log.debug("Dispatching {} to handler {}", partToDispatch, handler)
+        context.log.debug("Dispatching {} to handler {}", format(partToDispatch), handler)
       downstreamCommandPL(Pipeline.Tell(handler, partToDispatch, receiverRef))
     }
 
@@ -188,6 +188,14 @@ trait OpenRequestComponent { component =>
     }
 
     private def responsesQueued = responseQueue != null && !responseQueue.isEmpty
+
+    private def format(part: HttpMessagePart) = part match {
+      case x: HttpRequestPart with HttpMessageStart =>
+        val request = x.message.asInstanceOf[HttpRequest]
+        s"${request.method} request to ${request.uri}"
+      case MessageChunk(body, _) => body.length.toString + " byte request chunk"
+      case x => x.toString
+    }
   }
 
   object EmptyOpenRequest extends OpenRequest {

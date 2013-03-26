@@ -17,26 +17,29 @@
 package spray.can.server
 
 import scala.annotation.tailrec
+import scala.util.control.NonFatal
 import akka.io.Tcp
 import akka.util.{ByteString, ByteIterator}
 import spray.can.rendering.HttpResponsePartRenderingContext
-import spray.can.Http
+import spray.can.{RequestLine, Http}
 import spray.can.parsing._
 import spray.http._
 import spray.io._
+import spray.http.parser.HttpParser
 
 
 object RequestParsing {
 
   lazy val continue = "HTTP/1.1 100 Continue\r\n\r\n".getBytes("ASCII")
 
-  def apply(settings: ParserSettings, verboseErrorMessages: Boolean): PipelineStage = {
-    new PipelineStage {
-      val startParser = new EmptyRequestParser(settings)
+  def apply(settings: ServerSettings): RawPipelineStage[SslTlsContext] = {
+    new RawPipelineStage[SslTlsContext] {
+      val startParser = new EmptyRequestParser(settings.parserSettings)
 
-      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def apply(context: SslTlsContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           import context.log
+          val https = settings.sslEncryption && context.sslEngine.isDefined
           var currentParsingState: ParsingState = startParser
 
           @tailrec
@@ -48,18 +51,26 @@ object RequestParsing {
                   parse(data)
                 } // else wait for more input
 
-              case x: HttpMessageStartCompletedState =>
-                eventPL(HttpMessageStartEvent(x.toHttpMessagePart(log), x.connectionHeader))
-                currentParsingState =
-                  if (x.isInstanceOf[HttpMessageEndCompletedState]) startParser
-                  else new ChunkParser(settings)
+              case x@ CompleteMessageState(RequestLine(method, uri, proto), headers, connectionHeader, _, _) =>
+                val req = HttpRequest(method, Uri.parseHttpRequestTarget(uri), parseHeaders(headers), x.entity, proto)
+                eventPL(HttpMessageStartEvent(req.withEffectiveUri(https), connectionHeader))
+                currentParsingState = startParser
                 parse(data)
 
-              case x: HttpMessagePartCompletedState =>
-                eventPL(Http.MessageEvent(x.toHttpMessagePart(log)))
-                currentParsingState =
-                  if (x.isInstanceOf[HttpMessageEndCompletedState]) startParser
-                  else new ChunkParser(settings)
+              case x@ ChunkedStartState(RequestLine(method, uri, proto), headers, connectionHeader, _) =>
+                val req = HttpRequest(method, Uri.parseHttpRequestTarget(uri), parseHeaders(headers), x.entity, proto)
+                eventPL(HttpMessageStartEvent(ChunkedRequestStart(req.withEffectiveUri(https)), connectionHeader))
+                currentParsingState = new ChunkParser(settings.parserSettings)
+                parse(data)
+
+              case ChunkedChunkState(extensions, body) =>
+                eventPL(Http.MessageEvent(MessageChunk(body, extensions)))
+                currentParsingState = new ChunkParser(settings.parserSettings)
+                parse(data)
+
+              case ChunkedEndState(extensions, trailer) =>
+                eventPL(Http.MessageEvent(ChunkedMessageEnd(extensions, trailer)))
+                currentParsingState = startParser
                 parse(data)
 
               case Expect100ContinueState(nextState) =>
@@ -77,7 +88,7 @@ object RequestParsing {
 
           def handleParseError(state: ErrorState) {
             log.warning("Illegal request, responding with status {} and '{}'", state.status, state.message)
-            val msg = if (verboseErrorMessages) state.message else state.summary
+            val msg = if (settings.verboseErrorMessages) state.message else state.summary
             val response = HttpResponse(state.status, msg)
 
             // In case of a request parsing error we probably stopped reading the request somewhere in between,
@@ -87,10 +98,21 @@ object RequestParsing {
             commandPL(Http.Close)
           }
 
+          def parseHeaders(headers: List[HttpHeader]) = {
+            val (errors, parsed) = HttpParser.parseHeaders(headers)
+            if (!errors.isEmpty) errors.foreach(e => log.warning(e.formatPretty))
+            parsed
+          }
+
           val commandPipeline = commandPL
 
           val eventPipeline: EPL = {
-            case Tcp.Received(data) => parse(data.iterator)
+            case Tcp.Received(data) =>
+              try parse(data.iterator)
+              catch {
+                case NonFatal(e) => handleParseError(ErrorState(e.getMessage))
+              }
+
             case ev => eventPL(ev)
           }
         }

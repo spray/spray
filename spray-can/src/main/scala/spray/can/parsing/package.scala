@@ -34,10 +34,4 @@ package object parsing {
   private[can] def escape(c: Char): String =
     if (Character.isISOControl(c)) String.format("\\u%04x", c: java.lang.Integer)
     else String.valueOf(c)
-
-  private[parsing] def parseHeaders(headers: List[HttpHeader], log: LoggingAdapter) = {
-    val (errors, parsed) = HttpParser.parseHeaders(headers)
-    if (!errors.isEmpty) errors.foreach(log.warning(_))
-    parsed
-  }
 }

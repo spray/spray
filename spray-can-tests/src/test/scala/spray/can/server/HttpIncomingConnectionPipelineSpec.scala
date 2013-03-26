@@ -43,7 +43,7 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
       connectionActor ! Tcp.Received(ByteString(simpleRequest))
       commands.expectMsgPF() {
         case Pipeline.Tell(`handlerRef`, msg, _) => msg
-      } === HttpRequest(headers = List(`Host`("test.com")))
+      } === HttpRequest(uri = "http://test.com/", headers = List(`Host`("test.com")))
     }
 
     "dispatch an aggregated chunked requests" in new MyFixture(requestChunkAggregation = true) {
@@ -53,10 +53,11 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
       commands.expectMsgPF() {
         case Pipeline.Tell(`handlerRef`, msg, _) => msg
       } === HttpRequest(
+        uri = "http://test.com/",
         headers = List(
-          `Transfer-Encoding`("chunked"),
+          `Host`("test.com"),
           `Content-Type`(`text/plain`),
-          `Host`("test.com")
+          `Transfer-Encoding`("chunked")
         ),
         entity = HttpBody("body123body123")
       )
@@ -256,11 +257,12 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
         )))
         commands.expectMsgType[Tcp.Write].data.utf8String === prep("HTTP/1.1 100 Continue\n\n")
         commands.expectMsgType[Pipeline.Tell].message === HttpRequest(
+          uri = "http://test.com/",
           headers = List(
-            RawHeader("expect", expectValue),
-            `Content-Length`(12),
+            `Host`("test.com"),
             `Content-Type`(`text/plain`),
-            `Host`("test.com")
+            `Content-Length`(12),
+            RawHeader("expect", expectValue)
           )
         ).withEntity("bodybodybody")
       }
@@ -276,7 +278,7 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
           |"""
       )))
       val Pipeline.Tell(`handlerRef`, message, requestSender) = commands.expectMsgType[Pipeline.Tell]
-      message === HttpRequest(headers = List(`Host`("test.com")))
+      message === HttpRequest(uri = "http://test.com/", headers = List(`Host`("test.com")))
 
       requestSender.tell(Http.MessageCommand(HttpResponse(entity = "1234567")), system.deadLetters)
       wipeDate(commands.expectMsgType[Tcp.Write].data.utf8String) === prep {
@@ -298,7 +300,7 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
           |"""
       )))
       val Pipeline.Tell(`handlerRef`, message, requestSender) = commands.expectMsgType[Pipeline.Tell]
-      message === HttpRequest(headers = List(`Host`("test.com")))
+      message === HttpRequest(uri = "http://test.com/", headers = List(`Host`("test.com")))
 
       val probe = TestProbe()
       requestSender.tell(Http.MessageCommand(ChunkedResponseStart(HttpResponse(entity = "1234567"))), probe.ref)
@@ -320,8 +322,8 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
       val requestSender = commands.expectMsgType[Tell].sender
       Thread.sleep(100)
       connectionActor ! TickGenerator.Tick
-      commands.expectMsg(Pipeline.Tell(handlerRef, Timedout(HttpRequest(headers = List(`Host`("test.com")))),
-        `requestSender`))
+      commands.expectMsg(Pipeline.Tell(handlerRef,
+        Timedout(HttpRequest(uri = "http://test.com/", headers = List(`Host`("test.com")))), `requestSender`))
       requestSender.tell(HttpResponse(), system.deadLetters)
       wipeDate(commands.expectMsgType[Tcp.Write].data.utf8String) === simpleResponse
     }

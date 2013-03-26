@@ -18,7 +18,7 @@ package spray.can.server
 
 import java.net.InetSocketAddress
 import scala.concurrent.duration.Duration
-import akka.actor.{ReceiveTimeout, ActorRef}
+import akka.actor.{Terminated, ReceiveTimeout, ActorRef}
 import akka.io.Tcp
 import spray.can.server.StatsSupport.StatsHolder
 import spray.io._
@@ -36,18 +36,25 @@ private[can] class HttpServerConnection(tcpConnection: ActorRef,
 
   bindHandler ! Http.Connected(remoteAddress, localAddress)
 
-  context setReceiveTimeout settings.registrationTimeout
+  context.setReceiveTimeout(settings.registrationTimeout)
 
   def receive: Receive = {
     case Http.Register(handler) =>
-      context setReceiveTimeout Duration.Undefined
+      context.setReceiveTimeout(Duration.Undefined)
       tcpConnection ! Tcp.Register(self)
-      context watch handler
-      context become running(tcpConnection, pipelineStage, pipelineContext(handler))
+      context.watch(tcpConnection)
+      context.watch(handler)
+      context.become(running(tcpConnection, pipelineStage, pipelineContext(handler)))
 
     case ReceiveTimeout ⇒
       log.warning("Configured registration timeout of {} expired, stopping", settings.registrationTimeout)
-      context stop self
+      tcpConnection ! Http.Close
+      context.watch(tcpConnection)
+      context.become {
+        case _: Http.ConnectionClosed => // ignore
+        case Terminated(`tcpConnection`) => context.stop(self)
+        case ReceiveTimeout ⇒ context.stop(self)
+      }
   }
 
   def pipelineContext(_handler: ActorRef) = new SslTlsContext with ServerFrontend.Context {
@@ -176,7 +183,7 @@ private[can] object HttpServerConnection {
     PipeliningLimiter(pipeliningLimit) ? (pipeliningLimit > 0) >>
     StatsSupport(statsHolder.get) ? statsSupport >>
     RemoteAddressHeaderSupport ? remoteAddressHeader >>
-    RequestParsing(parserSettings, verboseErrorMessages) >>
+    RequestParsing(settings) >>
     ResponseRendering(settings) >>
     ConnectionTimeouts(idleTimeout) ? (reapingCycle.isFinite && idleTimeout.isFinite) >>
     SslTlsSupport ? sslEncryption >>

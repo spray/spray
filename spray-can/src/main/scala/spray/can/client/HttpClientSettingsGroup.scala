@@ -16,13 +16,13 @@
 
 package spray.can.client
 
-import akka.actor.{Props, Actor}
+import akka.actor.{ActorRef, Props, Actor}
 import spray.can.{Http, HttpExt}
 
-
-private[can] class HttpClientSettingsGroup(settings: ClientConnectionSettings, httpSettings: HttpExt#Settings) extends Actor {
+private[can] class HttpClientSettingsGroup(settings: ClientConnectionSettings,
+                                           httpSettings: HttpExt#Settings) extends Actor {
   val connectionCounter = Iterator from 0
-  val pipelineStage = HttpClientConnection pipelineStage settings
+  val pipelineStage = HttpClientConnection.pipelineStage(settings)
 
   def receive = {
     case connect: Http.Connect =>
@@ -32,5 +32,27 @@ private[can] class HttpClientSettingsGroup(settings: ClientConnectionSettings, h
           .withDispatcher(httpSettings.ConnectionDispatcher),
         name = connectionCounter.next().toString
       )
+
+    case Http.CloseAll(cmd) =>
+      val children = context.children.toSet
+      if (children.isEmpty) {
+        sender ! Http.ClosedAll
+        context.stop(self)
+      } else {
+        children foreach { _ ! cmd }
+        context.become(closing(children, Set(sender)))
+      }
+  }
+
+  def closing(children: Set[ActorRef], commanders: Set[ActorRef]): Receive = {
+    case _: Http.CloseAll =>
+      context.become(closing(children, commanders + sender))
+
+    case _: Http.ConnectionClosed =>
+      val stillRunning = children - sender
+      if (stillRunning.isEmpty) {
+        commanders foreach  (_ ! Http.ClosedAll)
+        context.stop(self)
+      } else context.become(closing(stillRunning, commanders))
   }
 }

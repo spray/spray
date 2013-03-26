@@ -22,13 +22,15 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.io.IO
 import akka.testkit.TestProbe
 import spray.can.Http
-import spray.testkit.TestUtils._
+import spray.util.Utils.temporaryServerHostnameAndPort
 import spray.httpx.RequestBuilding._
 import spray.http._
-import HttpHeaders._
+import java.net.Socket
+import java.io.{InputStreamReader, BufferedReader, OutputStreamWriter, BufferedWriter}
+import org.parboiled.common.FileUtils
+import scala.annotation.tailrec
 
 class SprayCanServerSpec extends Specification {
-
   val testConf: Config = ConfigFactory.parseString("""
     akka {
       event-handlers = ["akka.testkit.TestEventListener"]
@@ -51,9 +53,9 @@ class SprayCanServerSpec extends Specification {
       val serverHandler = acceptConnection()
 
       val probe = sendRequest(connection, Get("/abc"))
-      serverHandler.expectMsgType[HttpRequest].uri === Uri("/abc")
+      serverHandler.expectMsgType[HttpRequest].uri === Uri(s"http://$hostname:$port/abc")
 
-      serverHandler reply HttpResponse(entity = "yeah")
+      serverHandler.reply(HttpResponse(entity = "yeah"))
       probe.expectMsgType[HttpResponse].entity === HttpEntity("yeah")
     }
 
@@ -63,22 +65,59 @@ class SprayCanServerSpec extends Specification {
 
       val probeA = sendRequest(connection, Get("/a"))
       val probeB = sendRequest(connection, Get("/b"))
-      serverHandler.expectMsgType[HttpRequest].uri === Uri("/a")
+      serverHandler.expectMsgType[HttpRequest].uri.path.toString === "/a"
       val responderA = serverHandler.sender
-      serverHandler.expectMsgType[HttpRequest].uri === Uri("/b")
-      serverHandler reply HttpResponse(entity = "B")
+      serverHandler.expectMsgType[HttpRequest].uri.path.toString === "/b"
+      serverHandler.reply(HttpResponse(entity = "B"))
       serverHandler.send(responderA, HttpResponse(entity = "A"))
 
       probeA.expectMsgType[HttpResponse].entity === HttpEntity("A")
       probeB.expectMsgType[HttpResponse].entity === HttpEntity("B")
     }
 
+    "automatically produce an error response" in {
+      "when the request has no absolute URI and no Host header" in new TestSetup {
+        val socket = openClientSocket()
+        val serverHandler = acceptConnection()
+        val writer = write(socket, "GET / HTTP/1.1\r\n\r\n")
+        serverHandler.expectMsg(Http.Closed)
+        val (text, reader) = readAll(socket)()
+        text must startWith("HTTP/1.1 400 Bad Request")
+        text must endWith("Cannot establish effective request URI, request has a relative URI and is missing a `Host` header")
+        socket.close()
+      }
+      "when the request has an ill-formed URI" in new TestSetup {
+        val socket = openClientSocket()
+        val serverHandler = acceptConnection()
+        val writer = write(socket, "GET http://host:naaa HTTP/1.1\r\n\r\n")
+        serverHandler.expectMsg(Http.Closed)
+        val (text, reader) = readAll(socket)()
+        text must startWith("HTTP/1.1 400 Bad Request")
+        text must contain("Illegal request-target")
+        socket.close()
+      }
+      "when the request has a URI with a fragment" in new TestSetup {
+        val socket = openClientSocket()
+        val serverHandler = acceptConnection()
+        val writer = write(socket, "GET /path?query#fragment HTTP/1.1\r\n\r\n")
+        serverHandler.expectMsg(Http.Closed)
+        val (text, reader) = readAll(socket)()
+        text must startWith("HTTP/1.1 400 Bad Request")
+        text must contain("Illegal request-target, unexpected character")
+        socket.close()
+      }
+    }
   }
 
-  step(system.shutdown())
+  step {
+    val probe = TestProbe()
+    probe.send(IO(Http), Http.CloseAll)
+    probe.expectMsg(Http.ClosedAll)
+    system.shutdown()
+  }
 
   class TestSetup extends org.specs2.specification.Scope {
-    val (hostname, port) = temporyServerHostnameAndPort()
+    val (hostname, port) = temporaryServerHostnameAndPort()
     val bindHandler = TestProbe()
 
     // automatically bind a server
@@ -107,6 +146,27 @@ class SprayCanServerSpec extends Specification {
       val probe = TestProbe()
       probe.send(connection, part)
       probe
+    }
+
+    def openClientSocket() = new Socket(hostname, port)
+
+    def write(socket: Socket, data: String) = {
+      val writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream))
+      writer.write(data)
+      writer.flush()
+      writer
+    }
+
+    def readAll(socket: Socket)
+               (reader: BufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream)))
+               : (String, BufferedReader) = {
+      val sb = new java.lang.StringBuilder
+      val cbuf = new Array[Char](256)
+      @tailrec def drain(): (String, BufferedReader) = reader.read(cbuf) match {
+        case -1 => sb.toString -> reader
+        case n => sb.append(cbuf, 0, n); drain()
+      }
+      drain()
     }
   }
 }

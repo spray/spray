@@ -17,12 +17,11 @@
 package spray.can
 package client
 
-import spray.http.{Confirmed, HttpRequestPart}
-import spray.io._
+import scala.concurrent.duration.Duration
 import akka.actor.{ReceiveTimeout, ActorRef}
 import akka.io.{Tcp, IO}
-import scala.concurrent.duration.Duration
-import spray.http.Confirmed
+import spray.http.{Confirmed, HttpRequestPart}
+import spray.io._
 
 
 private[can] class HttpClientConnection(connectCommander: ActorRef,
@@ -36,31 +35,32 @@ private[can] class HttpClientConnection(connectCommander: ActorRef,
 
   IO(Tcp) ! Tcp.Connect(remoteAddress, localAddress, options)
 
-  context setReceiveTimeout settings.connectingTimeout
+  context.setReceiveTimeout(settings.connectingTimeout)
 
   def receive: Receive = {
     case connected: Tcp.Connected =>
-      context setReceiveTimeout Duration.Undefined
-      log.debug("Connected to {}", remoteAddress)
+      context.setReceiveTimeout(Duration.Undefined)
+      log.debug("Connected to {}", connected.remoteAddress)
       val tcpConnection = sender
       tcpConnection ! Tcp.Register(self)
+      context.watch(tcpConnection)
       connectCommander ! connected
-      context become running(tcpConnection, pipelineStage, pipelineContext(connected))
+      context.become(running(tcpConnection, pipelineStage, pipelineContext(connected)))
 
     case Tcp.CommandFailed(_: Tcp.Connect) =>
       connectCommander ! Http.CommandFailed(connect)
-      context stop self
+      context.stop(self)
 
     case ReceiveTimeout ⇒
       log.warning("Configured connecting timeout of {} expired, stopping", settings.connectingTimeout)
       connectCommander ! Http.CommandFailed(connect)
-      context stop self
+      context.stop(self)
   }
 
   override def running(tcpConnection: ActorRef, pipelines: Pipelines): Receive =
     super.running(tcpConnection, pipelines) orElse {
-      case x: HttpRequestPart                  => pipelines commandPipeline Http.MessageCommand(x)
-      case x@ Confirmed(_: HttpRequestPart, _) => pipelines commandPipeline Http.MessageCommand(x)
+      case x: HttpRequestPart                  => pipelines.commandPipeline(Http.MessageCommand(x))
+      case x@ Confirmed(_: HttpRequestPart, _) => pipelines.commandPipeline(Http.MessageCommand(x))
     }
 
   def pipelineContext(connected: Tcp.Connected) = new SslTlsContext {

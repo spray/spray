@@ -16,18 +16,16 @@
 
 package spray.can.client
 
-import java.nio.ByteBuffer
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
+import akka.io.Tcp
+import akka.util.{ByteString, ByteIterator}
 import spray.can.rendering.HttpRequestPartRenderingContext
-import spray.util.EmptyByteArray
-import spray.util.ConnectionCloseReasons._
+import spray.can.{StatusLine, Http}
 import spray.can.parsing._
 import spray.http._
 import spray.io._
-import akka.io.Tcp
-import akka.util.{ByteString, ByteIterator}
-import spray.can.Http
+import spray.http.parser.HttpParser
 
 
 object ResponseParsing {
@@ -53,22 +51,38 @@ object ResponseParsing {
                   parse(data)
                 } // else wait for more input
 
-              case x: HttpMessagePartCompletedState => x.toHttpMessagePart(log) match {
-                case part: HttpMessageEnd =>
-                  eventPL(Http.MessageEvent(part))
-                  openRequestMethods = openRequestMethods.tail
-                  if (openRequestMethods.isEmpty) {
-                    currentParsingState = UnmatchedResponseErrorState
-                    if (data.hasNext) parse(data) // trigger error if buffer is not empty
-                  } else {
-                    currentParsingState = startParser
-                    parse(data)
-                  }
-                case part =>
-                  eventPL(Http.MessageEvent(part))
-                  currentParsingState = new ChunkParser(settings)
+              case x@ CompleteMessageState(StatusLine(proto, status, _, _), headers, _, _, _) =>
+                eventPL(Http.MessageEvent(HttpResponse(status, x.entity, parseHeaders(headers), proto)))
+                openRequestMethods = openRequestMethods.tail
+                if (openRequestMethods.isEmpty) {
+                  currentParsingState = UnmatchedResponseErrorState
+                  if (data.hasNext) parse(data) // trigger error if buffer is not empty
+                } else {
+                  currentParsingState = startParser
                   parse(data)
-              }
+                }
+
+              case x@ ChunkedStartState(StatusLine(proto, status, _, _), headers, _, _) =>
+                eventPL(Http.MessageEvent(ChunkedResponseStart(HttpResponse(status, x.entity, parseHeaders(headers), proto))))
+                currentParsingState = new ChunkParser(settings)
+                parse(data)
+
+              case ChunkedChunkState(extensions, body) =>
+                eventPL(Http.MessageEvent(MessageChunk(body, extensions)))
+                currentParsingState = new ChunkParser(settings)
+                parse(data)
+
+              case ChunkedEndState(extensions, trailer) =>
+                eventPL(Http.MessageEvent(ChunkedMessageEnd(extensions, trailer)))
+                currentParsingState = startParser
+                openRequestMethods = openRequestMethods.tail
+                if (openRequestMethods.isEmpty) {
+                  currentParsingState = UnmatchedResponseErrorState
+                  if (data.hasNext) parse(data) // trigger error if buffer is not empty
+                } else {
+                  currentParsingState = startParser
+                  parse(data)
+                }
 
               case _: Expect100ContinueState =>
                 currentParsingState = ErrorState("'Expect: 100-continue' is not allowed in HTTP responses")
@@ -81,6 +95,12 @@ object ResponseParsing {
                 commandPL(Http.Close)
                 currentParsingState = ErrorState.Dead // set to "special" ErrorState that ignores all further input
             }
+          }
+
+          def parseHeaders(headers: List[HttpHeader]) = {
+            val (errors, parsed) = HttpParser.parseHeaders(headers)
+            if (!errors.isEmpty) errors.foreach(e => log.warning(e.formatPretty))
+            parsed
           }
 
           val commandPipeline: CPL = {
