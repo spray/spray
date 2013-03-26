@@ -25,9 +25,6 @@ import com.typesafe.config.Config
 import scala.concurrent.duration.Duration
 import scala.collection.LinearSeq
 import scala.util.matching.Regex
-import scala.reflect.{classTag, ClassTag}
-import scala.reflect.macros.Context
-import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import scala.concurrent.Future
 import akka.actor._
@@ -40,51 +37,24 @@ package object util {
   val UTF8 = Charset.forName("UTF8")
   val EmptyByteArray = new Array[Byte](0)
 
+  private[this] val _identityFunc: Any => Any = x => x
   def identityFunc[T]: T => T = _identityFunc.asInstanceOf[T => T]
-  private val _identityFunc: Any => Any = x => x
-
-  def make[T, U](a: T)(f: T => U): T = { f(a); a }
-
-  def actorSystemNameFrom(clazz: Class[_]) =
-    clazz.getName.replace('.', '-').filter(_ != '$')
-
-  @tailrec
-  def tfor[@specialized T, U](i: T)(test: T => Boolean, inc: T => T)(f: T => U) {
-    if(test(i)) {
-      f(i)
-      tfor(inc(i))(test, inc)(f)
-    }
-  }
 
   def tryToEither[T](body: => T): Either[Throwable, T] = tryOrElse(Right(body), Left(_))
 
   def tryOrElse[A, B >: A](body: => A, onError: Throwable => B): B =
     try body catch { case NonFatal(e) => onError(e) }
 
-  private[this] var eventStreamLogger: ActorRef = _
-  def installEventStreamLoggerFor(channel: Class[_])(implicit system: ActorSystem) {
-    synchronized {
-      if (eventStreamLogger == null) {
-        eventStreamLogger = system.actorOf(Props(new Actor with SprayActorLogging {
-          def receive = { case x => log.warning(x.toString) }
-        }), name = "event-stream-logger")
-      }
-    }
-    system.eventStream.subscribe(eventStreamLogger, channel)
-  }
-  def installEventStreamLoggerFor[T](implicit ct: ClassTag[T], system: ActorSystem) {
-    installEventStreamLoggerFor(classTag[T].runtimeClass)
-  }
-  def installDebuggingEventStreamLoggers()(implicit system: ActorSystem)  {
-    installEventStreamLoggerFor[DeadLetter]
-    installEventStreamLoggerFor[UnhandledMessage]
-  }
-
   def requirePositiveOrUndefined(duration: Duration): Duration = macro Macros.requirePositiveOrUndefined
 
-  // implicits
-  implicit def executionContextFromActorRefFactory(implicit factory: ActorRefFactory) = factory.dispatcher
+  def actorSystem(implicit refFactory: ActorRefFactory): ExtendedActorSystem =
+    refFactory match {
+      case x: ActorContext => actorSystem(x.system)
+      case x: ExtendedActorSystem => x
+      case x => throw new IllegalArgumentException("Unsupported ActorRefFactory implementation: " + refFactory)
+    }
 
+  // implicits
   implicit def pimpActorSystem(system: ActorSystem)     :PimpedActorSystem     = new PimpedActorSystem(system)
   implicit def pimpAny[T](any: T)                       :PimpedAny[T]          = new PimpedAny(any)
   implicit def pimpByteArray(array: Array[Byte])        :PimpedByteArray       = new PimpedByteArray(array)
@@ -102,21 +72,4 @@ package object util {
   implicit def pimpRegex(regex: Regex)                  :PimpedRegex           = new PimpedRegex(regex)
   implicit def pimpString(s: String)                    :PimpedString          = new PimpedString(s)
   implicit def pimpEither[A, B](either: Either[A, B])   :Either.RightProjection[A, B] = either.right
-}
-
-private[spray] object Macros {
-  def requirePositiveOrUndefined(c: Context)(duration: c.Expr[Duration]) = {
-    import c.universe._
-    val name = duration match {
-      case c.Expr(Ident(n)) => n
-      case c.Expr(Select(_, n)) => n
-      case c.Expr(x) => sys.error(s"requirePositiveOrUndefined cannot be used with argument $x: ${x.getClass}")
-    }
-    val msg: c.Expr[String] = c.Expr(Literal(Constant(s"requirement failed: $name must be > 0 or 'infinite'")))
-    reify {
-      if (duration.splice <= Duration.Zero)
-        throw new IllegalArgumentException(msg.splice)
-      duration.splice
-    }
-  }
 }
