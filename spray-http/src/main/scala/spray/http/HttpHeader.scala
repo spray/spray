@@ -131,6 +131,7 @@ object HttpHeaders {
   }
 
   case class Host(host: String, port: Int = 0) extends HttpHeader {
+    require(port >> 16 == 0, "Illegal port: " + port)
     def name = "Host"
     def lowercaseName = "host"
     def value = if (port > 0) host + ':' + port else host

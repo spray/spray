@@ -43,7 +43,7 @@ sealed abstract case class Uri(scheme: String, authority: Authority, path: Path,
    * Returns a copy of this Uri with the given components.
    */
   def copy(scheme: String = scheme, authority: Authority = authority, path: Path = path,
-           query: Query = Query.Empty, fragment: Option[String] = None): Uri =
+           query: Query = query, fragment: Option[String] = fragment): Uri =
     Uri(scheme, authority, path, query, fragment)
 
   /**
@@ -84,14 +84,14 @@ object Uri {
     def isEmpty = true
   }
 
-  val / = Uri("/")
+  val / = "/"
 
   /**
    * Parses a string into a normalized URI reference as defined by http://tools.ietf.org/html/rfc3986#section-4.1.
    * Percent-encoded octets are UTF-8 decoded.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def apply(string: String): Uri = apply(string, UTF8)
+  implicit def apply(string: String): Uri = apply(string, UTF8)
 
   /**
    * Parses a string into a normalized URI reference as defined by http://tools.ietf.org/html/rfc3986#section-4.1.
@@ -145,6 +145,14 @@ object Uri {
    */
   def parseAndResolve(string: String, base: Uri, charset: Charset = UTF8): Uri =
     new UriParser(string, charset).parseAndResolveReference(base)
+
+  /**
+   * Parses the given string into an HTTP request target URI as defined by
+   * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.3.
+   * If the given string is not a valid URI the method throws an `IllegalUriException`.
+   */
+  def parseHttpRequestTarget(requestTarget: String, charset: Charset = UTF8): Uri =
+    new UriParser(requestTarget, charset).parseHttpRequestTarget()
 
   /**
    * Normalizes the given URI string by performing the following normalizations:

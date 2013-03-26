@@ -109,7 +109,7 @@ class HttpHeaderSpec extends Specification {
     "Content-Type: text/xml; charset=windows-1252" !
       example(`Content-Type`(ContentType(`text/xml`, `windows-1252`)))_ ^
     "Content-Type: text/plain; charset=fancy-pants" !
-      errorExample("Illegal HTTP header 'Content-Type': Unsupported charset: fancy-pants")_ ^
+      errorExample(ErrorInfo("Illegal HTTP header 'Content-Type': Unsupported charset", "fancy-pants"))_ ^
     "Content-Type: multipart/mixed; boundary=ABC123" !
       example(`Content-Type`(ContentType(new `multipart/mixed`(Some("ABC123")))), fix(_).replace("=", "=\"") + '"')_ ^
     p^
@@ -181,7 +181,7 @@ class HttpHeaderSpec extends Specification {
 
   def fix(line: String) = line.replaceAll("""\s*;\s*q=\d?(\.\d)?""", "").replaceAll("""\s\s+""", " ")
 
-  def errorExample(expectedError: String)(line: String) = {
+  def errorExample(expectedError: ErrorInfo)(line: String) = {
     val Array(name, value) = line.split(": ", 2)
     HttpParser.parseHeader(RawHeader(name, value)) === Left(expectedError)
   }

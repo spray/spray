@@ -66,6 +66,10 @@ sealed trait HttpMessageStart extends HttpMessagePart {
   def message: HttpMessage
 }
 
+object HttpMessageStart {
+  def unapply(x: HttpMessageStart): Option[HttpMessage] = Some(x.message)
+}
+
 sealed trait HttpMessageEnd extends HttpMessagePart
 
 sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
@@ -129,10 +133,8 @@ case class HttpRequest(method: HttpMethod = HttpMethods.GET,
   def withEffectiveUri(securedConnection: Boolean): HttpRequest =
     if (uri.isAbsolute) this
     else header[Host] match {
-      case None => sys.error("Cannot establish effective request URI, request %s has a relative URI and is missing " +
-        "a `Host` header" format this)
-      case Some(Host("", _)) => sys.error("Cannot establish effective request URI, request %s has a relative URI and " +
-        "an empty `Host` header" format this)
+      case None => sys.error("Cannot establish effective request URI, request has a relative URI and is missing a `Host` header")
+      case Some(Host("", _)) => sys.error("Cannot establish effective request URI, request has a relative URI and an empty `Host` header")
       case Some(Host(host, port)) => copy(uri = uri.toEffectiveHttpRequestUri(securedConnection, Uri.Host(host), port))
     }
 

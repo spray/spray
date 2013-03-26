@@ -19,6 +19,7 @@ package parser
 
 import org.parboiled.scala._
 import org.parboiled.errors.{ParsingException, ParserRuntimeException, ErrorUtils}
+import scala.annotation.tailrec
 
 /**
  * Parser for all HTTP headers as defined by
@@ -52,13 +53,14 @@ object HttpParser extends Parser with ProtocolParameterRules with AdditionalRule
         method.getName.toLowerCase.replace('_', '-') -> method.invoke(HttpParser).asInstanceOf[Rule1[HttpHeader]]
       } (collection.breakOut)
 
-  def parseHeader(header: HttpHeader): Either[String, HttpHeader] = {
+  def parseHeader(header: HttpHeader): Either[ErrorInfo, HttpHeader] = {
     header match {
       case x@ HttpHeaders.RawHeader(name, value) =>
         rules.get(x.lowercaseName) match {
           case Some(rule) => parse(rule, value) match {
-            case x: Right[_, _] => x.asInstanceOf[Either[String, HttpHeader]]
-            case Left(info) => Left("Illegal HTTP header '" + name + "': " + info.formatPretty)
+            case x: Right[_, _] => x.asInstanceOf[Either[ErrorInfo, HttpHeader]]
+            case Left(info@ ErrorInfo("", _)) => Left(info.withSummary("Illegal HTTP header '" + name + '\''))
+            case Left(ErrorInfo(sum, detail)) => Left(ErrorInfo("Illegal HTTP header '" + name + "': " + sum, detail))
           }
           case None => Right(x) // if we don't have a rule for the header we leave it unparsed
         }
@@ -66,15 +68,14 @@ object HttpParser extends Parser with ProtocolParameterRules with AdditionalRule
     }
   }
 
-  def parseHeaders(headers: List[HttpHeader]): (List[String], List[HttpHeader]) = {
-    var errors: List[String] = Nil
-    val parsedHeaders = headers.map { header =>
-      parseHeader(header) match {
-        case Right(parsed) => parsed
-        case Left(error) => errors = error :: errors; header
-      }
-    }
-    (errors, parsedHeaders)
+  def parseHeaders(headers: List[HttpHeader]): (List[ErrorInfo], List[HttpHeader]) = {
+    @tailrec def parse(headers: List[HttpHeader], errors: List[ErrorInfo] = Nil,
+                       parsed: List[HttpHeader] = Nil): (List[ErrorInfo], List[HttpHeader]) =
+      if (!headers.isEmpty) parseHeader(headers.head) match {
+        case Right(h) => parse(headers.tail, errors, h :: parsed)
+        case Left(error) => parse(headers.tail, error :: errors, parsed)
+      } else errors -> parsed
+    parse(headers)
   }
 
   def parseContentType(contentType: String): Either[ErrorInfo, ContentType] =

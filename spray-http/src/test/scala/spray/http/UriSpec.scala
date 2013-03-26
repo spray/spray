@@ -20,7 +20,6 @@ import org.specs2.mutable.Specification
 import Uri._
 
 class UriSpec extends Specification {
-
   "Uri.Host instances" should {
 
     "parse correctly from IPv4 literals" in {
@@ -118,8 +117,8 @@ class UriSpec extends Specification {
       // 5 char quad
       Host("[::12345]") must throwA {
         new IllegalUriException("Illegal URI host, unexpected character '5' at position 7",
-          "[::12345]\n" +
-          "       ^\n")
+          "\n[::12345]\n" +
+            "       ^\n")
       }
 
       // Two zippers
@@ -297,43 +296,43 @@ class UriSpec extends Specification {
       // illegal scheme
       Uri("foö:/a") must throwA {
         new IllegalUriException("Illegal URI reference, unexpected character 'ö' at position 2",
-          "foö:/a\n" +
-          "  ^\n")
+          "\nfoö:/a\n" +
+            "  ^\n")
       }
 
       // illegal userinfo
       Uri("http://user:ö@host") must throwA {
         new IllegalUriException("Illegal URI reference, unexpected character 'ö' at position 12",
-          "http://user:ö@host\n" +
-          "            ^\n")
+          "\nhttp://user:ö@host\n" +
+            "            ^\n")
       }
 
       // illegal percent-encoding
       Uri("http://use%2G@host") must throwA {
         new IllegalUriException("Illegal URI reference, unexpected character 'G' at position 12",
-          "http://use%2G@host\n" +
-          "            ^\n")
+          "\nhttp://use%2G@host\n" +
+            "            ^\n")
       }
 
       // illegal path
       Uri("http://www.example.com/name with spaces/") must throwA {
         new IllegalUriException("Illegal URI reference, unexpected character ' ' at position 27",
-          "http://www.example.com/name with spaces/\n" +
-          "                           ^\n")
+          "\nhttp://www.example.com/name with spaces/\n" +
+            "                           ^\n")
       }
 
       // illegal path with control character
       Uri("http:///with\newline") must throwA {
         new IllegalUriException("Illegal URI reference, unexpected character '\\u000a' at position 12",
-          "http:///with?ewline\n" +
-          "            ^\n")
+          "\nhttp:///with?ewline\n" +
+            "            ^\n")
       }
 
       // illegal query
       Uri("?a=b=c") must throwA {
         new IllegalUriException("Illegal URI reference, unexpected character '=' at position 4",
-          "?a=b=c\n" +
-          "    ^\n")
+          "\n?a=b=c\n" +
+            "    ^\n")
       }
     }
 
@@ -393,6 +392,11 @@ class UriSpec extends Specification {
 
         resolve("http:g"       ) === "http:g"
       }
+    }
+
+    "be properly copyable" in {
+      val uri = Uri("http://host:80/path?query#fragment")
+      uri.copy() === uri
     }
   }
 }

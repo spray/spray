@@ -329,12 +329,10 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
       || reset(start) && authority)                                             // authority-form or asterisk-form
   }
 
-  // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.5
-  def parseRequestTargetAndConstructEffectiveUri(securedConnection: Boolean, hostHeaderHost: Host,
-                                                 hostHeaderPort: Int, defaultAuthority: Authority): Uri = {
+  def parseHttpRequestTarget(): Uri = {
     complete("request-target", `request-target`)
-    effectiveHttpRequestUri(_scheme, _host, _port, _path, _query, _fragment, securedConnection, hostHeaderHost,
-      hostHeaderPort, defaultAuthority)
+    val path = if (_scheme.isEmpty) _path else collapseDotSegments(_path)
+    Impl(_scheme, _userinfo, _host, _port, path, _query, _fragment)
   }
 
   /////////////// REQUIRED RFC 2234 (ABNF) CORE RULES ////////////////
@@ -399,7 +397,7 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
       val summary = sb.append(" at position ").append(maxCursor).toString
 
       sb.setLength(0)
-      val detail = sb.append(input.toString.map(c => if (Character.isISOControl(c)) '?' else c).mkString(""))
+      val detail = sb.append('\n').append(input.toString.map(c => if (Character.isISOControl(c)) '?' else c).mkString(""))
         .append('\n').append(" " * maxCursor).append("^\n").toString
       fail(summary, detail)
     }
