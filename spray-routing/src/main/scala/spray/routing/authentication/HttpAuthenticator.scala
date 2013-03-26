@@ -81,7 +81,7 @@ object BasicAuth {
 
   def apply[T](realm: String, createUser: UserPass => T)
                   (implicit settings: RoutingSettings, ec: ExecutionContext): BasicHttpAuthenticator[T] =
-    apply(realm, settings.Users, createUser)
+    apply(realm, settings.users, createUser)
 
   def apply[T](realm: String, config: Config, createUser: UserPass => T)
                   (implicit ec: ExecutionContext): BasicHttpAuthenticator[T] =

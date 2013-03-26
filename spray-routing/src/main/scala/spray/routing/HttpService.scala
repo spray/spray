@@ -17,27 +17,13 @@
 package spray.routing
 
 import scala.util.control.NonFatal
-import scala.concurrent.ExecutionContext
 import akka.actor._
+import akka.io.Tcp
 import spray.util.LoggingContext
 import spray.http._
 import StatusCodes._
 
-
-trait HttpService extends Directives {
-
-  warmUp() // trigger the loading of most classes in spray-http
-
-  /**
-   * An ActorRefFactory needs to be supplied by the class mixing us in
-   * (mostly either the service actor or the service test)
-   */
-  implicit def actorRefFactory: ActorRefFactory
-
-  /**
-   * Supplies an ExecutionContext (mainly for Future scheduling) from the actorRefFactory.
-   */
-  implicit def executionContext: ExecutionContext = actorRefFactory.dispatcher
+trait HttpServiceBase extends Directives {
 
   /**
    * Supplies the actor behavior for executing the given route.
@@ -64,6 +50,10 @@ trait HttpService extends Directives {
 
       case ctx: RequestContext => runSealedRoute(ctx)
 
+      case Tcp.Connected(_, _) =>
+        // by default we register ourselves as the handler for a new connection
+        ac.sender ! Tcp.Register(ac.self)
+
       case Timedout(request: HttpRequest) => runRoute(timeoutRoute)(eh, rh, ac, rs, log)(request)
     }
   }
@@ -89,15 +79,16 @@ trait HttpService extends Directives {
   //#
 }
 
-trait HttpServiceActor extends HttpService {
-  this: Actor =>
+object HttpService extends HttpServiceBase
 
-  def actorRefFactory = context
+trait HttpService extends HttpServiceBase {
+  /**
+   * An ActorRefFactory needs to be supplied by the class mixing us in
+   * (mostly either the service actor or the service test)
+   */
+  implicit def actorRefFactory: ActorRefFactory
 }
 
-object HttpServiceActor {
-  def apply(route: Route) =
-    new Actor with HttpServiceActor {
-      def receive = runRoute(route)
-    }
+abstract class HttpServiceActor extends Actor with HttpService {
+  def actorRefFactory = context
 }

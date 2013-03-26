@@ -21,7 +21,7 @@ import spray.testkit.Specs2RouteTest
 import spray.http.HttpResponse
 
 
-trait RoutingSpec extends Specification with Directives with Specs2RouteTest {
+class RoutingSpec extends Specification with Directives with Specs2RouteTest {
 
   val Ok = HttpResponse()
   val completeOk = complete(Ok)

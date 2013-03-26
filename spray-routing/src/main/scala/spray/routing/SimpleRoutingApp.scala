@@ -16,51 +16,57 @@
 
 package spray.routing
 
-//import scala.concurrent.Future
-//import scala.concurrent.duration._
-//import akka.actor.{ActorRefFactory, Actor, Props}
-//import akka.pattern.ask
-//import akka.util.Timeout
-//import spray.can.server.{HttpServer, ServerSettings, SprayCanHttpServerApp}
-//import spray.io.ServerSSLEngineProvider
-//
-//
-//trait SimpleRoutingApp extends SprayCanHttpServerApp with HttpService {
-//
-//  @volatile private[this] var _refFactory: Option[ActorRefFactory] = None
-//
-//  implicit def actorRefFactory = _refFactory.getOrElse(
-//    sys.error("Route creation is not fully supported before `startServer` has been called, " +
-//      "maybe you can turn your route definition into a `def` ?")
-//  )
-//
-//  /**
-//   * Starts a new spray-can HttpServer with the handler being a new HttpServiceActor for the given route and
-//   * binds the server to the given interface and port.
-//   * The method returns a Future on the Bound event returned by the HttpServer as a reply to the Bind command.
-//   * You can use the Future to determine when the server is actually up (or you can simply drop it, if you are not
-//   * interested in it).
-//   */
-//  def startServer(interface: String,
-//                  port: Int,
-//                  settings: ServerSettings = ServerSettings(),
-//                  serverActorName: String = "http-server",
-//                  serviceActorName: String = "simple-service-actor")
-//                 (route: => Route)
-//                 (implicit sslEngineProvider: ServerSSLEngineProvider,
-//                  bindingTimeout: Timeout = 1 second span): Future[HttpServer.Bound] = {
-//    val service = system.actorOf(
-//      props = Props {
-//        new Actor {
-//          _refFactory = Some(context)
-//          def receive = runRoute(route)
-//        }
-//      },
-//      name = serviceActorName
-//    )
-//    (newHttpServer(service, settings, serverActorName) ? Bind(interface, port)).mapTo[HttpServer.Bound]
-//  }
-//}
+import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.collection.immutable
+import akka.actor.{ActorSystem, ActorRefFactory, Actor, Props}
+import akka.pattern.ask
+import akka.util.Timeout
+import akka.io.{Inet, IO}
+import spray.io.ServerSSLEngineProvider
+import spray.can.Http
+import spray.can.server.ServerSettings
+
+
+trait SimpleRoutingApp extends HttpService {
+
+  @volatile private[this] var _refFactory: Option[ActorRefFactory] = None
+
+  implicit def actorRefFactory = _refFactory getOrElse sys.error(
+    "Route creation is not fully supported before `startServer` has been called, " +
+      "maybe you can turn your route definition into a `def` ?")
+
+  /**
+   * Starts a new spray-can HTTP server with a default singleton handler for the given route and
+   * binds the server to the given interface and port.
+   * The method returns a Future on the Bound event returned by the HttpListener as a reply to the Bind command.
+   * You can use the Future to determine when the server is actually up (or you can simply drop it, if you are not
+   * interested in it).
+   */
+  def startServer(interface: String,
+                  port: Int,
+                  serviceActorName: String = "simple-service-actor",
+                  backlog: Int = 100,
+                  options: immutable.Traversable[Inet.SocketOption] = Nil,
+                  settings: Option[ServerSettings] = None)
+                 (route: => Route)
+                 (implicit system: ActorSystem, sslEngineProvider: ServerSSLEngineProvider,
+                  bindingTimeout: Timeout = 1.second): Future[Any] = {
+    val serviceActor = system.actorOf(
+      props = Props {
+        new Actor {
+          _refFactory = Some(context)
+          def receive = {
+            val system = 0 // shadow implicit system
+            runRoute(route)
+          }
+        }
+      },
+      name = serviceActorName
+    )
+    IO(Http) ? Http.Bind(serviceActor, interface, port, backlog, options, settings)
+  }
+}
 
 // TODO: verify working
 //object Chatter2App extends App with SimpleRoutingApp {

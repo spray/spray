@@ -20,13 +20,13 @@ package directives
 import java.io.File
 import java.net.{URL, URLConnection}
 import org.parboiled.common.FileUtils
+import scala.annotation.tailrec
 import akka.actor.ActorRefFactory
-import spray.httpx.marshalling.{Marshaller, BasicMarshallers}
 import shapeless._
+import spray.httpx.marshalling.{Marshaller, BasicMarshallers}
 import spray.util._
 import spray.http._
 import HttpHeaders._
-import akka.spray.RefUtils
 
 
 trait FileAndResourceDirectives {
@@ -36,7 +36,7 @@ trait FileAndResourceDirectives {
   import RespondWithDirectives._
   import RouteDirectives._
   import MiscDirectives._
-  import FileAndResourceDirectives.{stripLeadingSlash, withTrailingSlash}
+  import FileAndResourceDirectives._
 
   /**
    * Completes GET requests with the content of the given file. The actual I/O operation is
@@ -44,7 +44,7 @@ trait FileAndResourceDirectives {
    * some other thread !). If the file cannot be found or read the request is rejected.
    */
   def getFromFile(fileName: String)(implicit settings: RoutingSettings, resolver: ContentTypeResolver,
-                      refFactory: ActorRefFactory): Route =
+                                    refFactory: ActorRefFactory): Route =
     getFromFile(new File(fileName))
 
   /**
@@ -53,14 +53,14 @@ trait FileAndResourceDirectives {
    * some other thread !). If the file cannot be found or read the request is rejected.
    */
   def getFromFile(file: File)(implicit settings: RoutingSettings, resolver: ContentTypeResolver,
-                  refFactory: ActorRefFactory): Route =
+                              refFactory: ActorRefFactory): Route =
     get {
       detachTo(singleRequestServiceActor) {
         respondWithLastModifiedHeader(file.lastModified) {
           if (file.isFile && file.canRead) {
             implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(resolver(file.getName))
-            if (0 < settings.FileChunkingThresholdSize && settings.FileChunkingThresholdSize <= file.length)
-              complete(file.toByteArrayStream(settings.FileChunkingChunkSize.toInt))
+            if (0 < settings.fileChunkingThresholdSize && settings.fileChunkingThresholdSize <= file.length)
+              complete(file.toByteArrayStream(settings.fileChunkingChunkSize.toInt))
             else complete(FileUtils.readAllBytes(file))
           } else reject
         }
@@ -86,7 +86,7 @@ trait FileAndResourceDirectives {
       case _ => reject
     }
     if (!resourceName.endsWith("/")) {
-      def resource = RefUtils.actorSystem(refFactory).dynamicAccess.classLoader.getResource(resourceName)
+      def resource = actorSystem(refFactory).dynamicAccess.classLoader.getResource(resourceName)
       (get & detachTo(singleRequestServiceActor) & provide(Option(resource)))
         .hflatMap(openConnection) { urlConn =>
           implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(resolver(resourceName))
@@ -105,7 +105,7 @@ trait FileAndResourceDirectives {
    * current thread. If the file cannot be read the Route rejects the request.
    */
   def getFromDirectory(directoryName: String)(implicit settings: RoutingSettings, resolver: ContentTypeResolver,
-                       refFactory: ActorRefFactory): Route = {
+                                              refFactory: ActorRefFactory): Route = {
     val base = withTrailingSlash(directoryName)
     unmatchedPath { path =>
       getFromFile(base + stripLeadingSlash(path))
@@ -164,7 +164,7 @@ trait FileAndResourceDirectives {
 
 object FileAndResourceDirectives extends FileAndResourceDirectives {
   def stripLeadingSlash(path: Uri.Path) = if (path.startsWithSlash) path.tail else path
-  def withTrailingSlash(path: String) = if (path.endsWith("/")) path else path + '/'
+  def withTrailingSlash(path: String) = if (path endsWith "/") path else path + '/'
 }
 
 
@@ -216,7 +216,7 @@ object DirectoryListing {
       |</div>$
       |</body>
       |</html>
-      |""".stripMargin.split('$')
+      |""".stripMargin split '$'
 
   implicit def DefaultMarshaller(implicit settings: RoutingSettings): Marshaller[DirectoryListing] =
     Marshaller.delegate[DirectoryListing, String](MediaTypes.`text/html`) { listing =>
@@ -235,36 +235,21 @@ object DirectoryListing {
         sb.append("<a href=\"%s/\">../</a>\n" format path.substring(0, secondToLastSlash))
       }
       def lastModified(file: File) = DateTime(file.lastModified).toIsoLikeDateTimeString
-      def start(name: String) {
+      def start(name: String) =
         sb.append("<a href=\"").append(path + name).append("\">").append(name).append("</a>")
-        tfor(0)(_ < maxNameLen - name.length, _ + 1)(_ => sb.append(' '))
-      }
-      def renderDirectory(file: File, name: String) {
-        start(name + '/')
-        sb.append("        ").append(lastModified(file)).append('\n')
-      }
-      def renderFile(file: File, name: String) {
-        val size = humanReadableByteCount(file.length, si = true)
-        start(name)
-        sb.append("        ").append(lastModified(file))
+          .append(" " * (maxNameLen - name.length))
+      def renderDirectory(file: File, name: String) =
+        start(name + '/').append("        ").append(lastModified(file)).append('\n')
+      def renderFile(file: File, name: String) = {
+        val size = Utils.humanReadableByteCount(file.length, si = true)
+        start(name).append("        ").append(lastModified(file))
         sb.append("                ".substring(size.length)).append(size).append('\n')
       }
       for ((file, name) <- directoryFilesAndNames) renderDirectory(file, name)
       for ((file, name) <- fileFilesAndNames) renderFile(file, name)
       if (path == "/" && files.isEmpty) sb.append("(no files)\n")
       sb.append(html(3))
-      if (settings.RenderVanityFooter) {
-        sb.append(html(4)).append(DateTime.now.toIsoLikeDateTimeString).append(html(5))
-      }
+      if (settings.renderVanityFooter) sb.append(html(4)).append(DateTime.now.toIsoLikeDateTimeString).append(html(5))
       sb.append(html(6)).toString
     }
-
-  def humanReadableByteCount(bytes: Long, si: Boolean): String = {
-    val unit = if (si) 1000 else 1024
-    if (bytes >= unit) {
-      val exp = (math.log(bytes) / math.log(unit)).toInt
-      val pre = if (si) "kMGTPE".charAt(exp - 1).toString else "KMGTPE".charAt(exp - 1).toString + 'i'
-      "%.1f %sB" format (bytes / math.pow(unit, exp), pre)
-    } else bytes.toString + "  B"
-  }
 }

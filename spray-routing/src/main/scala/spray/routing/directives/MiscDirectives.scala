@@ -118,16 +118,6 @@ trait MiscDirectives {
     case HttpMessagePartWrapper(HttpResponse(_, EmptyEntity, _, _), _) => Rejected(Nil)
     case x => x
   }
-
-  /**
-   * Not a directive, but a helper function that provides access to the ActorSystem we are running in.
-   */
-  def actorSystem(implicit refFactory: ActorRefFactory): ActorSystem = {
-    refFactory match {
-      case x: ActorContext => x.system
-      case x: ActorSystem => x
-    }
-  }
 }
 
 object MiscDirectives extends MiscDirectives

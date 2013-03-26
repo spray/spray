@@ -38,7 +38,8 @@ trait PathDirectives extends PathMatchers with ImplicitPathMatcherConstruction {
 
   /**
    * Rejects the request if the unmatchedPath of the [[spray.RequestContext]] does not have a prefix
-   * matched the given PathMatcher. If matched the value extracted by the PathMatcher is extracted.
+   * matched the given PathMatcher. If matched the value extracted by the PathMatcher is extracted
+   * and the matched parts of the path are consumed.
    */
   def pathPrefix[L <: HList](pm: PathMatcher[L]): Directive[L] = {
     val matcher = Slash ~ pm
@@ -49,16 +50,41 @@ trait PathDirectives extends PathMatchers with ImplicitPathMatcherConstruction {
   }
 
   /**
-   * Checks whether the unmatchedPath of the [[spray.RequestContext]] matches the given PathMatcher. However,
-   * as opposed to the path/pathPrefix directives the matched path is not actually "consumed".
+   * Checks whether the unmatchedPath of the [[spray.RequestContext]] has a prefix matched by the
+   * given PathMatcher. However, as opposed to the pathPrefix directive the matched path is not
+   * actually "consumed".
    */
-  def pathTest[L <: HList](pm: PathMatcher[L]): Directive[L] = {
+  def pathPrefixTest[L <: HList](pm: PathMatcher[L]): Directive[L] = {
     val matcher = Slash ~ pm
     extract(ctx => matcher(ctx.unmatchedPath)).flatMap {
       case Matched(_, values) => hprovide(values)
       case Unmatched => reject
     }
   }
+
+  /**
+   * Rejects the request if the unmatchedPath of the [[spray.RequestContext]] does not have a suffix
+   * matched the given PathMatcher. If matched the value extracted by the PathMatcher is extracted
+   * and the matched parts of the path are consumed.
+   * Note that, if the given PathMatcher is a compound one consisting of several concatenated sub-matchers,
+   * the order of the sub-matchers in the concatenation has to be reversed!
+   */
+  def pathSuffix[L <: HList](pm: PathMatcher[L]): Directive[L] =
+    extract(ctx => pm(ctx.unmatchedPath.reverse)).flatMap {
+      case Matched(rest, values) => hprovide(values) & mapRequestContext(_.copy(unmatchedPath = rest.reverse))
+      case Unmatched => reject
+    }
+
+  /**
+   * Checks whether the unmatchedPath of the [[spray.RequestContext]] has a suffix matched by the
+   * given PathMatcher. However, as opposed to the pathSuffix directive the matched path is not
+   * actually "consumed".
+   */
+  def pathSuffixTest[L <: HList](pm: PathMatcher[L]): Directive[L] =
+    extract(ctx => pm(ctx.unmatchedPath.reverse)).flatMap {
+      case Matched(_, values) => hprovide(values)
+      case Unmatched => reject
+    }
 }
 
 object PathDirectives extends PathDirectives
@@ -71,22 +97,23 @@ object PathDirectives extends PathDirectives
 trait PathMatcher[L <: HList] extends (Path => PathMatcher.Matching[L]) { self =>
   import PathMatcher._
 
-  def / [R <: HList](other: PathMatcher[R])(implicit prepender: Prepender[L, R]) =
+  def / [R <: HList](other: PathMatcher[R])(implicit prepender: Prepender[L, R]): PathMatcher[prepender.Out] =
     this ~ PathMatchers.Slash ~ other
 
-  def | (other: PathMatcher[L]) = new PathMatcher[L] {
-    def apply(path: Path) = self(path) orElse other(path)
-  }
+  def | (other: PathMatcher[L]): PathMatcher[L] =
+    new PathMatcher[L] {
+      def apply(path: Path) = self(path) orElse other(path)
+    }
 
   def ~ [R <: HList](other: PathMatcher[R])(implicit prepender: Prepender[L, R]): PathMatcher[prepender.Out] =
     transform(_.andThen((restL, valuesL) => other(restL).map(prepender(valuesL, _))))
 
-  def transform[R <: HList](f: Matching[L] => Matching[R]) =
+  def transform[R <: HList](f: Matching[L] => Matching[R]): PathMatcher[R] =
     new PathMatcher[R] { def apply(path: Path) = f(self(path)) }
 
-  def map[R <: HList](f: L => R) = transform(_.map(f))
+  def map[R <: HList](f: L => R): PathMatcher[R] = transform(_.map(f))
 
-  def flatMap[R <: HList](f: L => Option[R]) = transform(_.flatMap(f))
+  def flatMap[R <: HList](f: L => Option[R]): PathMatcher[R] = transform(_.flatMap(f))
 }
 
 object PathMatcher extends ImplicitPathMatcherConstruction {

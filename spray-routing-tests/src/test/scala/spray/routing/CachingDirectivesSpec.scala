@@ -17,9 +17,7 @@
 package spray.routing
 
 import spray.routing.directives.CachingDirectives
-import spray.caching.LruCache
 import spray.http._
-import spray.util._
 import HttpHeaders.`Cache-Control`
 import CacheDirectives._
 
@@ -40,8 +38,9 @@ class CachingDirectivesSpec extends RoutingSpec with CachingDirectives {
     var i = 0
     cache(routeCache()) { _.complete { i += 1; HttpResponse(500 + i) } }
   }
-  def prime(route: Route) = make(route) {
-    _(RequestContext(HttpRequest(), system.deadLetters, Uri.Path.Empty).withDefaultSender(system.deadLetters))
+  def prime(route: Route) = {
+    route(RequestContext(HttpRequest(), system.deadLetters, Uri.Path.Empty).withDefaultSender(system.deadLetters))
+    route
   }
 
   "the cacheResults directive" should {

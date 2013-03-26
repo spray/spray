@@ -50,7 +50,7 @@ class PathDirectivesSpec extends RoutingSpec {
       }
     }
   }
-  
+
   "routes created with the pathPrefix(string) combinator" should {
     "block unmatching requests" in {
       Get("/noway/this/works") ~> {
@@ -278,22 +278,57 @@ class PathDirectivesSpec extends RoutingSpec {
     }
   }
 
-  "The `pathTest` directive" should {
+  "The `pathPrefixTest` directive" should {
     "match uris without consuming them" in {
       Get("/a") ~> {
-        pathTest("a") { ctx => ctx.complete(ctx.unmatchedPath.toString) }
+        pathPrefixTest("a") { ctx => ctx.complete(ctx.unmatchedPath.toString) }
       } ~> check { entityAs[String] === "/a" }
     }
     "be usable for testing for trailing slashs in URIs" in {
       "example 1" in {
         Get("/a/") ~> {
-          pathTest(Segment ~ Slash_!) { _ => completeOk }
+          pathPrefixTest(Segment ~ Slash_!) { _ => completeOk }
         } ~> check { response === Ok }
       }
       "example 2" in {
         Get("/a") ~> {
-          pathTest(Segment ~ Slash_!) { _ => completeOk }
+          pathPrefixTest(Segment ~ Slash_!) { _ => completeOk }
         } ~> check { handled === false }
+      }
+    }
+  }
+
+  "The `pathSuffix` directive" should {
+    "allow matching and consuming of path suffixes" in {
+      "example 1" in {
+        Get("/orders/123/edit") ~> {
+          pathSuffix("edit" / IntNumber) { capture => ctx =>
+            ctx.complete(capture + ":" + ctx.unmatchedPath)
+          }
+        } ~> check { entityAs[String] === "123:/orders/" }
+      }
+      "example 2" in {
+        Get("/orders/123/edit/") ~> {
+          pathSuffix(Slash ~ "edit" / IntNumber) { capture => ctx =>
+            ctx.complete(capture + ":" + ctx.unmatchedPath)
+          }
+        } ~> check { entityAs[String] === "123:/orders/" }
+      }
+      "example 3" in {
+        Get("/orders/123/edit") ~> {
+          pathSuffix("edit" / IntNumber / "orders" ~ Slash ~ PathEnd) { echoComplete }
+        } ~> check { entityAs[String] === "123" }
+      }
+    }
+  }
+
+  "The `pathSuffixTest` matcher modifier" should {
+    "enable testing for trailing slashes" in {
+      "example 1" in {
+        Get("/a/b/") ~> pathSuffixTest(Slash) { completeOk } ~> check { response === Ok }
+      }
+      "example 2" in {
+        Get("/a/b") ~> pathSuffixTest(Slash) { completeOk } ~> check { handled === false }
       }
     }
   }

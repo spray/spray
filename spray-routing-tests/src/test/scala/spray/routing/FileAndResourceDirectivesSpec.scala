@@ -118,7 +118,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     val base = new File(getClass.getClassLoader.getResource("").toURI).getPath
     new File(base, "subDirectory/emptySub").mkdir()
     def eraseDateTime(s: String) = s.replaceAll("""\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d""", "xxxx-xx-xx xx:xx:xx")
-    implicit val settings = new RoutingSettings(ConfigFactory.parseString("spray.routing.render-vanity-footer = no"))
+    implicit val settings = RoutingSettings.default.copy(renderVanityFooter = false)
 
     "properly render a simple directory" in {
       Get() ~> listDirectoryContents(base + "/someDir") ~> check {

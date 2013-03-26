@@ -36,8 +36,10 @@ trait ChunkingDirectives {
     ctx.withRouteResponseHandling {
       case HttpResponse(_, HttpBody(contentType, buffer), _, _) if buffer.length > chunkSize =>
         def split(ix: Int): Stream[Array[Byte]] = {
-          def chunkBuf(size: Int) = make(new Array[Byte](size)) {
-            System.arraycopy(buffer, ix, _, 0, size)
+          def chunkBuf(size: Int) = {
+            val array = new Array[Byte](size)
+            System.arraycopy(buffer, ix, array, 0, size)
+            array
           }
           if (ix < buffer.length - chunkSize) Stream.cons(chunkBuf(chunkSize), split(ix + chunkSize))
           else Stream.cons(chunkBuf(buffer.length - ix), Stream.Empty)
@@ -51,15 +53,9 @@ trait ChunkingDirectives {
 
 object ChunkingDirectives extends ChunkingDirectives
 
-
-trait ChunkSizeMagnet{
-  def chunkSize: Int
-  implicit def refFactory: ActorRefFactory
-}
+class ChunkSizeMagnet(val chunkSize: Int)(implicit val refFactory: ActorRefFactory)
 
 object ChunkSizeMagnet {
-  implicit def fromInt(size: Int)(implicit factory: ActorRefFactory) = new ChunkSizeMagnet {
-    def chunkSize = size
-    def refFactory = factory
-  }
+  implicit def fromInt(chunkSize: Int)(implicit factory: ActorRefFactory) =
+    new ChunkSizeMagnet(chunkSize)
 }
