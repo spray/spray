@@ -23,17 +23,18 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
 import com.typesafe.config.{ConfigFactory, Config}
 import org.specs2.mutable.Specification
+import org.specs2.time.NoTimeConversions
 import akka.actor._
 import akka.event.{Logging, LoggingAdapter}
 import akka.testkit.TestProbe
 import akka.util.{ByteString, Timeout}
 import akka.io.{IO, Tcp}
 import spray.testkit.TestUtils
-import spray.util.LoggingContext
+import spray.util.{Utils, LoggingContext}
 
 
-class SslTlsSupportSpec extends Specification {
-  implicit val timeOut: Timeout = 1 second span
+class SslTlsSupportSpec extends Specification with NoTimeConversions {
+  implicit val timeOut: Timeout = 1.second
   implicit val sslContext = createSslContext("/ssl-test-keystore.jks", "")
   val testConf: Config = ConfigFactory.parseString("""
     akka {
@@ -41,7 +42,7 @@ class SslTlsSupportSpec extends Specification {
       loglevel = WARNING
       io.tcp.trace-logging = off
     }""")
-  implicit val system = ActorSystem(getClass.getSimpleName, testConf)
+  implicit val system = ActorSystem(Utils.actorSystemNameFrom(getClass), testConf)
 
   "The SslTlsSupport" should {
 
@@ -62,7 +63,7 @@ class SslTlsSupportSpec extends Specification {
     }
 
     "work between a Java client and a spray server" in {
-      val serverAddress = TestUtils.temporaryServerAddress()
+      val serverAddress = Utils.temporaryServerAddress()
       val bindHandler = system.actorOf(Props(new SpraySslServer))
       val probe = TestProbe()
       probe.send(IO(Tcp), Tcp.Bind(bindHandler, serverAddress))
@@ -74,7 +75,7 @@ class SslTlsSupportSpec extends Specification {
     }
 
     "work between a spray client and a spray server" in {
-      val serverAddress = TestUtils.temporaryServerAddress()
+      val serverAddress = Utils.temporaryServerAddress()
       val bindHandler = system.actorOf(Props(new SpraySslServer))
       val probe = TestProbe()
       probe.send(IO(Tcp), Tcp.Bind(bindHandler, serverAddress))
@@ -185,7 +186,7 @@ class SslTlsSupportSpec extends Specification {
 
   class JavaSslServer extends Thread {
     val log: LoggingAdapter = Logging(system, getClass)
-    val address = TestUtils.temporaryServerAddress()
+    val address = Utils.temporaryServerAddress()
     private val serverSocket =
       sslContext.getServerSocketFactory.createServerSocket(address.getPort).asInstanceOf[SSLServerSocket]
     @volatile private var socket: SSLSocket = _

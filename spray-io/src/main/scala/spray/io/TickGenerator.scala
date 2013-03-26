@@ -20,7 +20,6 @@ import scala.concurrent.duration._
 import akka.io.Tcp
 
 //# source-quote
-// TODO: change to only schedule the Tick once and reschedule on Tick reception
 object TickGenerator {
 
   def apply(period: Duration): PipelineStage = {
@@ -32,20 +31,19 @@ object TickGenerator {
 
       def applyIfEnabled(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
-          val generator =
-            context.system.scheduler.schedule(
-              initialDelay = period.asInstanceOf[FiniteDuration],
-              interval = period.asInstanceOf[FiniteDuration],
-              receiver = context.self,
-              message = Tick)(context.dispatcher)
+          var next = scheduleNext()
 
           val commandPipeline = commandPL
 
           val eventPipeline: EPL = {
-            case x: Tcp.ConnectionClosed ⇒
-              generator.cancel()
-              eventPL(x)
+            case Tick => next = scheduleNext(); eventPL(Tick)
+            case x: Tcp.ConnectionClosed ⇒ next.cancel(); eventPL(x)
             case x ⇒ eventPL(x)
+          }
+
+          def scheduleNext() = {
+            implicit val executionContext = context.dispatcher
+            context.system.scheduler.scheduleOnce(period.asInstanceOf[FiniteDuration], context.self, Tick)
           }
         }
     }

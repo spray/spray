@@ -25,7 +25,7 @@ import spray.testkit.Specs2PipelineStageTest
 
 
 class ConnectionTimeoutsSpec extends Specification with Specs2PipelineStageTest with NoTimeConversions {
-  val stage = ConnectionTimeouts(100 millis span)
+  val stage = ConnectionTimeouts(200.millis)
 
   val testData = ByteString("Some Message")
 
@@ -45,24 +45,24 @@ class ConnectionTimeoutsSpec extends Specification with Specs2PipelineStageTest 
 
     "upon a Tick, create a Close command if the idle timeout expired" in new Fixture(stage) {
       connectionActor ! Tcp.Received(testData)
-      Thread.sleep(110)
+      Thread.sleep(210)
       connectionActor ! TickGenerator.Tick
       commands.expectMsg(Tcp.Close)
     }
 
     "reset the idle timer on Received events" in new Fixture(stage) {
-      Thread.sleep(110)
+      Thread.sleep(210)
       connectionActor ! Tcp.Received(testData)
       connectionActor ! TickGenerator.Tick
-      commands.expectNoMsg(50.millis)
+      commands.expectNoMsg(100.millis)
     }
 
     "reset the idle timer on Send commands" in new Fixture(stage) {
-      Thread.sleep(110)
+      Thread.sleep(210)
       connectionActor ! Tcp.Write(testData)
       connectionActor ! TickGenerator.Tick
       commands.expectMsg(Tcp.Write(testData))
-      commands.expectNoMsg(50.millis)
+      commands.expectNoMsg(100.millis)
     }
   }
 }

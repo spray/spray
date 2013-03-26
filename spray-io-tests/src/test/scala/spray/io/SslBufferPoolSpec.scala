@@ -24,7 +24,8 @@ import spray.util._
 
 
 class SslBufferPoolSpec extends Specification {
-  implicit val system = ActorSystem()
+  val system = ActorSystem("SslBufferPoolSpec")
+  import system.dispatcher
 
   "The SslBufferPool" should {
     "provide a proper, thread-safe buffer pool" in {
@@ -46,4 +47,5 @@ class SslBufferPoolSpec extends Specification {
     }
   }
 
+  step(system.shutdown())
 }

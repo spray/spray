@@ -112,11 +112,11 @@ object Tcp extends ExtensionKey[TcpExt] {
   trait Event
 
   case class Received(data: ByteString) extends Event
-  case class Connected(remoteAddress: InetSocketAddress, localAddress: InetSocketAddress) extends Event
+  case class Connected(remoteAddress: InetSocketAddress, localAddress: InetSocketAddress) extends Event // extend with connection: ActorRef ?
   case class CommandFailed(cmd: Command) extends Event
 
   sealed trait Bound extends Event
-  case object Bound extends Bound
+  case object Bound extends Bound // better: `case class Bound(listener: ActorRef) extends Event` ?
   sealed trait Unbound extends Event
   case object Unbound extends Unbound
 

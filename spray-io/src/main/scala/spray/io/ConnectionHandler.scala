@@ -41,7 +41,7 @@ trait ConnectionHandler extends Actor with SprayActorLogging {
   def baseEventPipeline: Pipeline[Event] = {
     case x: Tcp.ConnectionClosed ⇒
       log.debug("Stopping connection actor, connection was {}", x)
-      context stop self
+      context.stop(self)
 
     case _: Droppable ⇒ // don't warn
     case ev           ⇒ log.warning("event pipeline: dropped {}", ev)
@@ -61,9 +61,10 @@ trait ConnectionHandler extends Actor with SprayActorLogging {
   }
 
   def running(tcpConnection: ActorRef, pipelines: Pipelines): Receive = {
-    case x: Command                                  ⇒ pipelines commandPipeline x
-    case x: Event                                    ⇒ pipelines eventPipeline x
-    case Terminated(actor) if actor != tcpConnection ⇒ pipelines eventPipeline Pipeline.ActorDeath(actor)
+    case x: Command                  ⇒ pipelines.commandPipeline(x)
+    case x: Event                    ⇒ pipelines.eventPipeline(x)
+    case Terminated(`tcpConnection`) ⇒ pipelines.eventPipeline(Tcp.ErrorClosed("TcpConnection actor died"))
+    case Terminated(actor)           ⇒ pipelines.eventPipeline(Pipeline.ActorDeath(actor))
   }
 }
 

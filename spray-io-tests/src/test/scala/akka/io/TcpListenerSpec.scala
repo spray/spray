@@ -87,7 +87,7 @@ class TcpListenerSpec extends AkkaSpec("akka.io.tcp.batch-accept-limit = 2") {
     }
   }
 
-  val counter = Iterator.from(0)
+  val counter = Iterator from 0
 
   class TestSetup { setup ⇒
     val handler = TestProbe()
