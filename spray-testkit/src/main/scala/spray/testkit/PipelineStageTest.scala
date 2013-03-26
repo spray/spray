@@ -41,8 +41,8 @@ trait RawPipelineStageTest { test ⇒
   val log: LoggingAdapter = Logging(system, getClass)
 
   def actorSystem(config: String): ActorSystem = actorSystem(ConfigFactory parseString config)
-  def actorSystem(config: Map[String, _]): ActorSystem = actorSystem(ConfigUtils mapToConfig config)
-  def actorSystem(config: Config): ActorSystem = ActorSystem(actorSystemNameFrom(getClass), config withFallback testConf)
+  def actorSystem(config: Map[String, _]): ActorSystem = actorSystem(Utils.mapToConfig(config))
+  def actorSystem(config: Config): ActorSystem = ActorSystem("PipelineStageTest", config withFallback testConf)
 
   def cleanUp() { system.shutdown() }
 
@@ -76,9 +76,9 @@ trait RawPipelineStageTest { test ⇒
     class ConnectionHandlerTestActor extends Actor {
       def theContext = context // make publicly visible
       def receive: Receive = {
-        case x: Command        ⇒ pipelines commandPipeline x
-        case x: Event          ⇒ pipelines eventPipeline x
-        case Terminated(actor) ⇒ pipelines eventPipeline Pipeline.ActorDeath(actor)
+        case x: Command        ⇒ pipelines.commandPipeline(x)
+        case x: Event          ⇒ pipelines.eventPipeline(x)
+        case Terminated(actor) ⇒ pipelines.eventPipeline(Pipeline.ActorDeath(actor))
       }
     }
   }

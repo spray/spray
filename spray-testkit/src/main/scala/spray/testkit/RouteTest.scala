@@ -32,7 +32,7 @@ import scala.util.control.NonFatal
 trait RouteTest extends RequestBuilding with RouteResultComponent {
   this: TestFrameworkInterface =>
 
-  implicit val system = ActorSystem(actorSystemNameFrom(getClass))
+  implicit val system = ActorSystem("RouteTest")
   implicit def executor = system.dispatcher
 
   def cleanUp() { system.shutdown() }
