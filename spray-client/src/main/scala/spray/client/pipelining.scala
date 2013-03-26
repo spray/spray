@@ -18,25 +18,28 @@ package spray.client
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
-import akka.actor.ActorRef
+import akka.actor.{ActorRefFactory, ActorRef}
 import akka.util.Timeout
 import akka.pattern.ask
+import akka.io.IO
 import spray.httpx.{ResponseTransformation, RequestBuilding}
-import spray.can.client.HttpClientConnection
+import spray.can.Http
+import spray.util.actorSystem
 import spray.http._
-
 
 object pipelining extends RequestBuilding with ResponseTransformation {
 
-  def sendReceive(transport: ActorRef, futureTimeout: Timeout = 30 seconds span)
-                 (implicit ec: ExecutionContext): HttpRequest => Future[HttpResponse] =
-    request => transport.ask(request)(futureTimeout).map {
+  def sendReceive(implicit refFactory: ActorRefFactory, executionContext: ExecutionContext,
+                  futureTimeout: Timeout = 60.seconds): HttpRequest => Future[HttpResponse] =
+    sendReceive(IO(Http)(actorSystem))
+
+  def sendReceive(transport: ActorRef)(implicit ec: ExecutionContext,
+                                       futureTimeout: Timeout): HttpRequest => Future[HttpResponse] =
+    request => transport ? request map {
       case x: HttpResponse => x
-      case x: HttpResponsePart => sys.error("spray.client.pipelining.sendReceive doesn't support chunked responses, " +
-        "try sendTo instead")
-      case HttpClientConnection.Closed(connection, reason) => sys.error("Connection closed before reception of " +
-        "response, reason: " + reason)
-      case x => sys.error("Unexpected response from connection: " + x)
+      case x: HttpResponsePart => sys.error("sendReceive doesn't support chunked responses, try sendTo instead")
+      case x: Http.ConnectionClosed => sys.error("Connection closed before reception of response: " + x)
+      case x => sys.error("Unexpected response from HTTP transport: " + x)
     }
 
   def sendTo(transport: ActorRef) = new SendTo(transport)

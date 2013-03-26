@@ -17,12 +17,13 @@
 package spray.client
 
 import scala.concurrent.duration._
-import scala.concurrent.{Promise, Future}
+import scala.concurrent.{ExecutionContext, Promise, Future}
 import akka.pattern.ask
 import akka.util.Timeout
+import akka.io.IO
 import akka.actor._
-import spray.can.client.{HttpClientConnectionSettings, HttpClientConnection}
-import spray.io.ClientSSLEngineProvider
+import spray.can.client.ClientConnectionSettings
+import spray.can.Http
 import spray.util._
 import spray.http._
 
@@ -35,32 +36,47 @@ import spray.http._
  */
 object HttpDialog {
 
-  def apply(host: String,
-            port: Int = 80,
-            tag: Any = (),
-            settings: HttpClientConnectionSettings = HttpClientConnectionSettings(),
-            connectionTimeout: Timeout = 5 seconds span)
-           (implicit refFactory: ActorRefFactory, sslEngineProvider: ClientSSLEngineProvider): Dialog#State0 = {
-    import HttpClientConnection._
-    implicit val connTimeout = connectionTimeout
-    val dialogActor = refFactory.actorOf(Props(new HttpClientConnection(settings)))
-    val dialog = new Dialog(dialogActor, (settings.RequestTimeout + 1000) millis span)
-    val trigger = for {
-      Connected(_) <- dialogActor ? Connect(host, port, tag)
-    } yield ()
-    new dialog.State0(trigger)
+  def apply(connect: Http.Connect)(implicit refFactory: ActorRefFactory, ec: ExecutionContext): Dialog#State0 = {
+    val trigger = Promise[Unit]()
+    val transport = refFactory.actorOf {
+      Props {
+        new Actor {
+          import context.system
+          IO(Http) ! connect
+          def receive = {
+            case _: Http.Connected =>
+              trigger.success(())
+              context.become(connected(context.watch(sender)))
+            case _: Http.CommandFailed =>
+              trigger.failure(new RuntimeException("Could not connect to " + connect.remoteAddress))
+              context.stop(self)
+          }
+          def connected(connection: ActorRef): Receive = {
+            case Terminated(`connection`) => context.stop(self)
+            case x => connection.forward(x)
+          }
+        }
+      }
+    }
+    val settings = ClientConnectionSettings(connect.settings)
+    implicit val timeout = Timeout {
+      settings.requestTimeout match {
+        case x: FiniteDuration => x + 1.second
+        case _ => 60.seconds
+      }
+    }
+    val dialog = new Dialog(transport)
+    new dialog.State0(trigger.future)
   }
 
-  def apply(transport: ActorRef)(implicit refFactory: ActorRefFactory): Dialog#State0 =
-    apply(transport, 60 seconds span)
-
-  def apply(transport: ActorRef, requestTimeout: Timeout)
-           (implicit refFactory: ActorRefFactory): Dialog#State0 = {
-    val dialog = new Dialog(transport, requestTimeout)
+  def apply(transport: ActorRef)(implicit refFactory: ActorRefFactory, ec: ExecutionContext,
+                                 requestTimeout: Timeout = 30.seconds): Dialog#State0 = {
+    val dialog = new Dialog(transport)
     new dialog.State0(Promise.successful(()).future)
   }
 
-  class Dialog(transport: ActorRef, requestTimeout: Timeout)(implicit refFactory: ActorRefFactory) {
+  class Dialog private[HttpDialog] (transport: ActorRef)(implicit refFactory: ActorRefFactory,
+                                                         ec: ExecutionContext, requestTimeout: Timeout) {
 
     class State0(trigger: Future[Unit]) {
       def send(request: HttpRequest) = new State1(trigger, responseFor(request, trigger))
@@ -97,7 +113,7 @@ object HttpDialog {
       trigger.flatMap(_ => responseFor(request))
 
     private def responseFor(request: HttpRequest): Future[HttpResponse] =
-      transport.ask(request)(requestTimeout).mapTo[HttpResponse]
+      transport.ask(request).mapTo[HttpResponse]
   }
 
 }

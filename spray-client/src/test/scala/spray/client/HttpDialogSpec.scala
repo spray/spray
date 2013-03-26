@@ -16,38 +16,55 @@
 
 package spray.client
 
+import com.typesafe.config.ConfigFactory
 import scala.concurrent.duration._
+import org.specs2.mutable.Specification
+import org.specs2.time.NoTimeConversions
 import akka.actor.{Actor, Props, ActorSystem}
 import akka.pattern.ask
-import org.specs2.mutable.Specification
-import spray.can.server.HttpServer
-import spray.io._
+import akka.testkit.TestProbe
+import akka.io.IO
+import spray.can.Http
 import spray.util._
 import spray.http._
 
 
-class HttpDialogSpec extends Specification {
-  implicit val system = ActorSystem()
-  val port = 8899
+class HttpDialogSpec extends Specification with NoTimeConversions {
+  val testConf = ConfigFactory.parseString("""
+    akka {
+      event-handlers = ["akka.testkit.TestEventListener"]
+      loglevel = WARNING
+    }""")
+  implicit val system = ActorSystem(Utils.actorSystemNameFrom(getClass), testConf)
+  import system.dispatcher
+  val (interface, port) = Utils.temporaryServerHostnameAndPort()
+  val connect = Http.Connect(interface, port)
 
   step {
-    val testService = system.actorOf(Props(new Actor { def receive = {
-      case x: HttpRequest => sender ! HttpResponse(entity = x.uri)
-    }}))
-    val server = system.actorOf(Props(new HttpServer(SingletonHandler(testService))))
-    server.ask(HttpServer.Bind("localhost", port))(1 second span).await
+    val testService = system.actorOf {
+      Props {
+        new Actor {
+          def receive = {
+            case x: Http.Connected => sender ! Http.Register(self)
+            case x: HttpRequest => sender ! HttpResponse(entity = x.uri.path.toString)
+            case _: Http.ConnectionClosed => // ignore
+          }
+        }
+      }
+    }
+    IO(Http).ask(Http.Bind(testService, interface, port))(1.second).await
   }
 
   "An HttpDialog" should {
     "be able to complete a simple request/response dialog" in {
-      HttpDialog("localhost", port)
+      HttpDialog(connect)
         .send(HttpRequest(uri = "/foo"))
         .end
         .map(_.entity.asString)
         .await === "/foo"
     }
     "be able to complete a pipelined 3 requests dialog" in {
-      HttpDialog("localhost", port)
+      HttpDialog(connect)
         .send(HttpRequest(uri = "/foo"))
         .send(HttpRequest(uri = "/bar"))
         .send(HttpRequest(uri = "/baz"))
@@ -56,7 +73,7 @@ class HttpDialogSpec extends Specification {
         .await === "/foo" :: "/bar" :: "/baz" :: Nil
     }
     "be able to complete an unpipelined 3 requests dialog" in {
-      HttpDialog("localhost", port)
+      HttpDialog(connect)
         .send(HttpRequest(uri = "/foo"))
         .awaitResponse
         .send(HttpRequest(uri = "/bar"))
@@ -67,7 +84,7 @@ class HttpDialogSpec extends Specification {
         .await === "/foo" :: "/bar" :: "/baz" :: Nil
     }
     "be able to complete a dialog with 3 replies" in {
-      HttpDialog("localhost", port)
+      HttpDialog(connect)
         .send(HttpRequest(uri = "/foo"))
         .reply(response => HttpRequest(uri = response.entity.asString + "/a"))
         .reply(response => HttpRequest(uri = response.entity.asString + "/b"))
@@ -77,7 +94,7 @@ class HttpDialogSpec extends Specification {
         .await === "/foo/a/b/c"
     }
     "properly deliver error messages from the server" in {
-      HttpDialog("localhost", port)
+      HttpDialog(connect)
         .send(HttpRequest(uri = "/abc/" + ("x" * 2048)))
         .end
         .await.withHeaders(Nil) ===
@@ -85,6 +102,10 @@ class HttpDialogSpec extends Specification {
     }
   }
 
-  step { system.shutdown() }
-
+  step {
+    val probe = TestProbe()
+    probe.send(IO(Http), Http.CloseAll)
+    probe.expectMsg(Http.ClosedAll)
+    system.shutdown()
+  }
 }
