@@ -16,20 +16,23 @@
 
 package spray.site
 
-import akka.actor.Props
-import spray.can.server.SprayCanHttpServerApp
+import akka.actor.{ActorSystem, Props}
+import akka.event.Logging
+import akka.io.IO
+import spray.can.Http
 
-
-object Main extends App with SprayCanHttpServerApp {
-  import system.log
+object Main extends App {
+  implicit val system = ActorSystem()
+  val log = Logging(system, getClass)
+  val settings = SiteSettings(system)
 
   log.info("Loading sphinx content root...")
   val root = new RootNode(SphinxDoc.load("index/").getOrElse(sys.error("index doc not found")))
   val blog = new Blog(root)
 
   log.info("Starting service actor and HTTP server...")
-  val service = system.actorOf(Props[SiteServiceActor], "site-service")
-  newHttpServer(service) ! Bind(SiteSettings.Interface, SiteSettings.Port)
+  val service = system.actorOf(Props(new SiteServiceActor(settings)), "site-service")
+  IO(Http) ! Http.Bind(service, settings.interface, settings.port)
 }
 
 class Blog(rootNode: RootNode) {

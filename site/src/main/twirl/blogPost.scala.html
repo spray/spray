@@ -44,7 +44,7 @@
               <div id="disqus_thread"></div>
               <script type="text/javascript">
                 var disqus_shortname = 'sprayio';
-                var disqus_developer = @{if (spray.site.SiteSettings.DevMode) 1 else 0};
+                var disqus_developer = @{if (spray.site.Main.settings.devMode) 1 else 0};
                 var disqus_identifier = '@node.uri';
                 var disqus_url = 'http://spray.io/@node.uri';
                 (function() {
