@@ -17,7 +17,7 @@ trait ConnectionLevelApiDemo {
 
   def demoConnectionLevelApi(host: String)(implicit system: ActorSystem): Future[ProductVersion] = {
     val actor = system.actorOf(Props(new MyRequestActor(host)), name = "my-request-actor")
-    val future = actor ? HttpRequest(GET, Uri("/"))
+    val future = actor ? HttpRequest(GET, "/")
     future.mapTo[ProductVersion]
   }
 
@@ -34,43 +34,43 @@ trait ConnectionLevelApiDemo {
       case request: HttpRequest =>
         // start by establishing a new HTTP connection
         IO(Http) ! Http.Connect(host, port = 80)
-        context become connecting(sender, request)
+        context.become(connecting(sender, request))
     }
 
     def connecting(commander: ActorRef, request: HttpRequest): Receive = {
       case _: Http.Connected =>
         // once connected, we can send the request across the connection
         sender ! request
-        context become waitingForResponse(commander)
+        context.become(waitingForResponse(commander))
 
       case Http.CommandFailed(Http.Connect(address, _, _, _, _)) =>
         log.warning("Could not connect to {}", address)
         commander ! Status.Failure(new RuntimeException("Connection error"))
-        context stop self
+        context.stop(self)
     }
 
     def waitingForResponse(commander: ActorRef): Receive = {
       case response@ HttpResponse(status, entity, _, _) =>
         log.info("Connection-Level API: received {} response with {} bytes", status, entity.buffer.length)
         sender ! Http.Close
-        context become waitingForClose(commander, response)
+        context.become(waitingForClose(commander, response))
 
       case ev@(Http.SendFailed(_) | Timedout(_))=>
         log.warning("Received {}", ev)
         commander ! Status.Failure(new RuntimeException("Request error"))
-        context stop self
+        context.stop(self)
     }
 
     def waitingForClose(commander: ActorRef, response: HttpResponse): Receive = {
       case ev: Http.ConnectionClosed =>
         log.debug("Connection closed ({})", ev)
         commander ! Status.Success(response.header[HttpHeaders.Server].get.products.head)
-        context stop self
+        context.stop(self)
 
       case Http.CommandFailed(Http.Close) =>
         log.warning("Could not close connection")
         commander ! Status.Failure(new RuntimeException("Connection close error"))
-        context stop self
+        context.stop(self)
     }
   }
 }

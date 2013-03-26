@@ -13,7 +13,8 @@ import MediaTypes._
 
 
 class DemoService extends Actor with SprayActorLogging {
-  implicit val timeout: Timeout = 1.second // for the actor 'asks' we use below
+  implicit val timeout: Timeout = 1.second // for the actor 'asks'
+  import context.dispatcher // ExecutionContext for the futures and scheduler
 
   def receive = {
     // when a new connection comes in we register ourselves as the connection handler
@@ -31,21 +32,21 @@ class DemoService extends Actor with SprayActorLogging {
 
     case HttpRequest(GET, Uri.Path("/server-stats"), _, _, _) =>
       val client = sender
-      context actorFor "/user/IO-HTTP/listener-0" ask Http.GetStats onSuccess {
+      context.actorFor("/user/IO-HTTP/listener-0") ? Http.GetStats onSuccess {
         case x: Stats => client ! statsPresentation(x)
       }
 
     case HttpRequest(GET, Uri.Path("/crash"), _, _, _) =>
       sender ! HttpResponse(entity = "About to throw an exception in the request handling actor, " +
         "which triggers an actor restart")
-      throw new RuntimeException("BOOM!")
+      sys.error("BOOM!")
 
     case HttpRequest(GET, Uri.Path(path), _, _, _) if path startsWith "/timeout" =>
       log.info("Dropping request, triggering a timeout")
 
     case HttpRequest(GET, Uri.Path("/stop"), _, _, _) =>
       sender ! HttpResponse(entity = "Shutting down in 1 second ...")
-      context.system.scheduler.scheduleOnce(1 second span, new Runnable { def run() { context.system.shutdown() } })
+      context.system.scheduler.scheduleOnce(1.second) { context.system.shutdown() }
 
     case _: HttpRequest => sender ! HttpResponse(status = 404, entity = "Unknown resource!")
 
@@ -101,28 +102,28 @@ class DemoService extends Actor with SprayActorLogging {
     )
   )
 
-  class Streamer(peer: ActorRef, count: Int) extends Actor with SprayActorLogging {
+  class Streamer(client: ActorRef, count: Int) extends Actor with SprayActorLogging {
     log.debug("Starting streaming response ...")
 
     // we use the successful sending of a chunk as trigger for scheduling the next chunk
-    peer ! ChunkedResponseStart(HttpResponse(entity = " " * 2048)).withAck(Ok(count))
+    client ! ChunkedResponseStart(HttpResponse(entity = " " * 2048)).withAck(Ok(count))
 
     def receive = {
       case Ok(0) =>
         log.info("Finalizing response stream ...")
-        peer ! MessageChunk("\nStopped...")
-        peer ! ChunkedMessageEnd()
-        context stop self
+        client ! MessageChunk("\nStopped...")
+        client ! ChunkedMessageEnd()
+        context.stop(self)
 
       case Ok(remaining) =>
         log.info("Sending response chunk ...")
         context.system.scheduler.scheduleOnce(100 millis span) {
-          peer ! MessageChunk(DateTime.now.toIsoDateTimeString + ", ").withAck(Ok(remaining - 1))
+          client ! MessageChunk(DateTime.now.toIsoDateTimeString + ", ").withAck(Ok(remaining - 1))
         }
 
       case x: Http.ConnectionClosed =>
         log.info("Canceling response stream due to {} ...", x)
-        context stop self
+        context.stop(self)
     }
 
     // simple case class whose instances we use as send confirmation message for streaming chunks

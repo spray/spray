@@ -35,6 +35,9 @@ class DemoServiceActor extends Actor with DemoService {
 // this trait defines our service behavior independently from the service actor
 trait DemoService extends HttpService {
 
+  // we use the enclosing ActorContext's or ActorSystem's dispatcher for our Futures and Scheduler
+  implicit def executionContext = actorRefFactory.dispatcher
+
   val demoRoute = {
     get {
       path("") {
@@ -83,7 +86,7 @@ trait DemoService extends HttpService {
         }
       } ~
       path("crash") { ctx =>
-        sys error "crash boom bang"
+        sys.error("crash boom bang")
       } ~
       path("fail") {
         failWith(new RuntimeException("aaaahhh"))
@@ -91,7 +94,7 @@ trait DemoService extends HttpService {
     } ~
     (post | parameter('method ! "post")) {
       path("stop") { ctx =>
-        ctx complete "Shutting down in 1 second..."
+        ctx.complete("Shutting down in 1 second...")
         in(1.second) { actorSystem.shutdown() }
       }
     }
@@ -127,7 +130,7 @@ trait DemoService extends HttpService {
     val secondStream = Stream.continually {
       // CAUTION: we block here to delay the stream generation for you to be able to follow it in your browser,
       // this is only done for the purpose of this demo, blocking in actor code should otherwise be avoided
-      Thread sleep 500
+      Thread.sleep(500)
       "<li>" + DateTime.now.toIsoDateTimeString + "</li>"
     }
     streamStart #:: secondStream.take(15) #::: streamEnd #:: Stream.empty
@@ -148,7 +151,7 @@ trait DemoService extends HttpService {
             case Ok(0) =>
               ctx.responder ! MessageChunk(streamEnd)
               ctx.responder ! ChunkedMessageEnd()
-              context stop self
+              context.stop(self)
 
             case Ok(remaining) =>
               in(500.millis) {
@@ -175,11 +178,10 @@ trait DemoService extends HttpService {
       "Requests timed out    : " + stats.requestTimeouts + '\n'
     }
 
-  def in[U](duration: FiniteDuration)(body: => U) {
-    actorSystem.scheduler.scheduleOnce(duration, new Runnable { def run() { body } })
-  }
+  def in[U](duration: FiniteDuration)(body: => U): Unit =
+    actorSystem.scheduler.scheduleOnce(duration)(body)
 
-  lazy val largeTempFile = {
+  lazy val largeTempFile: File = {
     val file = File.createTempFile("streamingTest", ".txt")
     FileUtils.writeAllText((1 to 1000) map ("This is line " + _) mkString "\n", file)
     file.deleteOnExit()

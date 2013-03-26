@@ -5,69 +5,53 @@ import scala.concurrent.duration._
 import akka.actor.{Props, ActorSystem}
 import akka.pattern.ask
 import akka.util.Timeout
-import spray.client.HttpClient
+import akka.event.Logging
+import akka.io.IO
+import spray.json.{JsonFormat, DefaultJsonProtocol}
+import spray.can.Http
 import spray.httpx.SprayJsonSupport
 import spray.client.pipelining._
 import spray.http._
 import spray.util._
 
+case class Elevation(location: Location, elevation: Double)
+case class Location(lat: Double, lng: Double)
+case class GoogleApiResult[T](status: String, results: List[T])
+
+object ElevationJsonProtocol extends DefaultJsonProtocol {
+  implicit val locationFormat = jsonFormat2(Location)
+  implicit val elevationFormat = jsonFormat2(Elevation)
+  implicit def googleApiResultFormat[T :JsonFormat] = jsonFormat2(GoogleApiResult.apply[T])
+}
+
 
 object Main extends App {
   // we need an ActorSystem to host our application in
-  implicit val timeout: Timeout = 5 seconds span
   implicit val system = ActorSystem("simple-spray-client")
-  import system.log
+  import system.dispatcher // execution context for futures below
+  val log = Logging(system, getClass)
 
-  // an HttpClient is the highest-level client-side HTTP construct in spray,
-  // simply send it an HTTP request with a Host header or an absolute URI
-  // and wait for the response
-  // an HttpClient can handle many thousand requests and is designed as a
-  // long-lived actor, however, you can created several ones if you need to
-  val httpClient = system.actorOf(Props(new HttpClient), "http-client")
+  log.info("Requesting the elevation of Mt. Everest from Googles Elevation API...")
 
-  startExample1()
+  import ElevationJsonProtocol._
+  import SprayJsonSupport._
+  val pipeline = sendReceive ~> unmarshal[GoogleApiResult[Elevation]]
 
-  ///////////////////////////////////////////////////
+  val responseFuture = pipeline {
+    Get("http://maps.googleapis.com/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  }
+  responseFuture onComplete {
+    case Success(GoogleApiResult(_, Elevation(_, elevation) :: _)) =>
+      log.info("The elevation of Mt. Everest is: {} m", elevation)
+      shutdown()
 
-  def startExample1() {
-    log.info("Getting http://github.com ...")
-
-    // send a simple request
-    val responseFuture = httpClient.ask(Get("http://github.com")).mapTo[HttpResponse]
-    responseFuture onComplete {
-      case Success(response) =>
-        log.info(
-          """|Response for GET request to github.com:
-             |status : {}
-             |headers: {}
-             |body   : {}""".stripMargin,
-          response.status.value, response.headers.mkString("\n  ", "\n  ", ""), response.entity.asString
-        )
-        startExample2()
-
-      case Failure(error) =>
-        log.error(error, "Couldn't get http://github.com")
-        system.shutdown()
-    }
+    case Failure(error) =>
+      log.error(error, "Couldn't get elevation")
+      shutdown()
   }
 
-  def startExample2() {
-    log.info("Requesting the elevation of Mt. Everest from Googles Elevation API...")
-    import ElevationJsonProtocol._
-    import SprayJsonSupport._
-    val pipeline = sendReceive(httpClient) ~> unmarshal[GoogleApiResult[Elevation]]
-
-    val responseF = pipeline {
-      Get("http://maps.googleapis.com/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false")
-    }
-    responseF onComplete {
-      case Success(response) =>
-        log.info("The elevation of Mt. Everest is: {} m", response.results.head.elevation)
-        system.shutdown() // also stops all conduits (since they are actors)
-
-      case Failure(error) =>
-        log.error(error, "Couldn't get elevation")
-        system.shutdown() // also stops all conduits (since they are actors)
-    }
+  def shutdown(): Unit = {
+    IO(Http).ask(Http.CloseAll)(1.second).await
+    system.shutdown()
   }
 }

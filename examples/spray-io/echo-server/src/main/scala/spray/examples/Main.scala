@@ -20,11 +20,14 @@ object Main extends App {
   // in a continuation that informs us when bound
   val endpoint = new InetSocketAddress("localhost", 23456)
   implicit val bindingTimeout = Timeout(1.second)
+  import system.dispatcher // execution context for the future
+
   val boundFuture = IO(Tcp) ? Tcp.Bind(server, endpoint)
-   boundFuture.onSuccess { case Tcp.Bound =>
-      println("\nBound echo-server to " + endpoint)
-      println("Run `telnet localhost 23456`, type something and press RETURN. Type `STOP` to exit...\n")
-    }
+
+  boundFuture.onSuccess { case Tcp.Bound =>
+    println("\nBound echo-server to " + endpoint)
+    println("Run `telnet localhost 23456`, type something and press RETURN. Type `STOP` to exit...\n")
+  }
 }
 
 class EchoServer extends Actor with SprayActorLogging {

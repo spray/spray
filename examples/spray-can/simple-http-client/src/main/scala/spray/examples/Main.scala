@@ -3,7 +3,6 @@ package spray.examples
 import scala.util.{Failure, Success}
 import akka.actor.ActorSystem
 import akka.event.Logging
-import spray.util.installDebuggingEventStreamLoggers
 
 object Main extends App
   with ConnectionLevelApiDemo
@@ -14,8 +13,6 @@ object Main extends App
   implicit val system = ActorSystem("simple-example")
   import system.dispatcher // execution context for future transformations below
   val log = Logging(system, getClass)
-
-  installDebuggingEventStreamLoggers()
 
   // spray-can client-side API has three levels (from lowest to highest):
   // 1. the connection-level API
@@ -33,9 +30,9 @@ object Main extends App
     result3 <- demoRequestLevelApi(host)
   } yield Set(result1, result2, result3)
 
-  result.onComplete {
+  result onComplete {
     case Success(res) => log.info("{} is running {}", host, res mkString ", ")
     case Failure(error) => log.warning("Error: {}", error)
   }
-  result.onComplete(_ => system.shutdown())
+  result onComplete { _ => system.shutdown() }
 }

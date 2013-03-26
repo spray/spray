@@ -1,13 +1,14 @@
 package spray.examples
 
 import scala.concurrent.duration._
+import akka.actor.ActorSystem
 import spray.routing.SimpleRoutingApp
 import spray.http.MediaTypes._
 
-
 object Main extends App with SimpleRoutingApp {
+  implicit val system = ActorSystem("simple-routing-app")
 
-  startServer(interface = "localhost", port = 8080) {
+  startServer("localhost", port = 8080) {
     get {
       path("") {
         redirect("/hello")
@@ -26,9 +27,7 @@ object Main extends App with SimpleRoutingApp {
     (post | parameter('method ! "post")) {
       path("stop") {
         complete {
-          system.scheduler.scheduleOnce(1 second span) {
-            system.shutdown()
-          }
+          system.scheduler.scheduleOnce(1.second)(system.shutdown())(system.dispatcher)
           "Shutting down in 1 second..."
         }
       }

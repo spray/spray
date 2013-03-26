@@ -4,7 +4,6 @@ import akka.actor.{ActorSystem, Props}
 import akka.io.IO
 import spray.can.Http
 
-
 object Main extends App with MySslConfiguration {
 
   implicit val system = ActorSystem()

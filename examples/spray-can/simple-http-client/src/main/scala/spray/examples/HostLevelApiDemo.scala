@@ -23,8 +23,8 @@ trait HostLevelApiDemo {
     import system.dispatcher // execution context for future transformations below
     for {
       HostConnectorInfo(hostConnector, _) <- IO(Http) ? HostConnectorSetup(host, port = 80)
-      response <- hostConnector.ask(HttpRequest(GET, Uri("/"))).mapTo[HttpResponse]
-      _ <- hostConnector ? Http.Close
+      response <- hostConnector.ask(HttpRequest(GET, "/")).mapTo[HttpResponse]
+      _ <- hostConnector ? Http.CloseAll
     } yield {
       system.log.info("Host-Level API: received {} response with {} bytes",
         response.status, response.entity.buffer.length)
