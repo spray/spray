@@ -109,6 +109,8 @@ private[io] abstract class TcpConnection(val channel: SocketChannel,
 
   /** used in subclasses to start the common machinery above once a channel is connected */
   def completeConnect(commander: ActorRef, options: immutable.Traversable[SocketOption]): Unit = {
+    // Turn off Nagle's algorithm by default
+    channel.socket.setTcpNoDelay(true)
     options.foreach(_.afterConnect(channel.socket))
 
     commander ! Connected(
@@ -314,5 +316,7 @@ private[io] object TcpConnection {
    * Used to transport information to the postStop method to notify
    * interested party about a connection close.
    */
-  case class CloseInformation(notificationsTo: Set[ActorRef], closedEvent: Event)
+  case class CloseInformation(
+    notificationsTo: Set[ActorRef],
+    closedEvent: Event)
 }

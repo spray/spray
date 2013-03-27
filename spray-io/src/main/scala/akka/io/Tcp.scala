@@ -50,6 +50,8 @@ object Tcp extends ExtensionKey[TcpExt] {
      * [[akka.io.Inet.SocketOption]] to enable or disable TCP_NODELAY
      * (disable or enable Nagle's algorithm)
      *
+     * Please note, that TCP_NODELAY is enabled by default.
+     *
      * For more information see [[java.net.Socket.setTcpNoDelay]]
      */
     case class TcpNoDelay(on: Boolean) extends SocketOption {
@@ -112,11 +114,11 @@ object Tcp extends ExtensionKey[TcpExt] {
   trait Event
 
   case class Received(data: ByteString) extends Event
-  case class Connected(remoteAddress: InetSocketAddress, localAddress: InetSocketAddress) extends Event // extend with connection: ActorRef ?
+  case class Connected(remoteAddress: InetSocketAddress, localAddress: InetSocketAddress) extends Event
   case class CommandFailed(cmd: Command) extends Event
 
   sealed trait Bound extends Event
-  case object Bound extends Bound // better: `case class Bound(listener: ActorRef) extends Event` ?
+  case object Bound extends Bound
   sealed trait Unbound extends Event
   case object Unbound extends Unbound
 

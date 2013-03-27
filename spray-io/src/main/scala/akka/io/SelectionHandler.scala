@@ -64,7 +64,7 @@ private[io] class SelectionHandler(manager: ActorRef, settings: SelectionHandler
   import settings._
 
   @volatile var childrenKeys = immutable.HashMap.empty[String, SelectionKey]
-  val sequenceNumber = Iterator from 0
+  val sequenceNumber = Iterator.from(0)
   val selectorManagementDispatcher = context.system.dispatchers.lookup(SelectorDispatcher)
   val selector = SelectorProvider.provider.openSelector
   final val OP_READ_AND_WRITE = OP_READ | OP_WRITE // compile-time constant
