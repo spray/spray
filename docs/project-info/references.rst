@@ -20,8 +20,12 @@ to be listed here (along with a backlink) please provide us with the following d
 
 `Ebay <http://www.ebay.com>`_
   We are using spray for an internal project here at ebay. It is quite small, and it was mostly as an excuse to learn
-  about actor-based programming, but so far we have been very impressed by *sprays* performance and simplicity and the
+  about actor-based programming, but so far we have been very impressed by *spray's* performance and simplicity and the
   fantastic support on the user group.
+
+`Pongr <http://pongr.com>`_
+  At Pongr, spray powers the restful API used by our iPhone & Android apps and has been in production for a few months
+  now. We use *spray-routing* on top of *spray-can*, wrapped into one fat jar. We are very happy with *spray*.
 
 `zeebox <http://www.zeebox.com>`_
   (comment pending :)
@@ -40,7 +44,7 @@ to be listed here (along with a backlink) please provide us with the following d
   We developed a new product completely on top of Scala/Akka/spray and are just finishing up beta.
 
 `system insights <http://systeminsights.com>`_
-  We converted from Jersey, which took about 2 weeks. The testability of spray is great -- and runs fast.
+  We converted from Jersey, which took about 2 weeks. The testability of *spray* is great -- and runs fast.
 
 `bifflabs <http://www.bifflabs.com>`_
   (comment pending :)
