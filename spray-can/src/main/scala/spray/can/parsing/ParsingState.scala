@@ -45,8 +45,7 @@ abstract class CharacterParser extends IntermediateState {
         if (data.hasNext) {
           val cursor = data.next().asInstanceOf[Char] // simple US-ASCII encoding conversion
           read(x.handleChar(cursor))
-        }
-        else x
+        } else x
       case x: IntermediateState ⇒ x.read(data) // a body parser
       case x: FinalParsingState ⇒ x
     }

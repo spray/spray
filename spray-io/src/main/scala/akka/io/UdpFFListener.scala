@@ -63,8 +63,7 @@ private[io] class UdpFFListener(val udpFF: UdpFFExt,
         channel.close()
         sender ! Unbound
         log.debug("Unbound endpoint [{}], stopping listener", endpoint)
-      }
-      finally context.stop(self)
+      } finally context.stop(self)
   }
 
   def doReceive(handler: ActorRef): Unit = {

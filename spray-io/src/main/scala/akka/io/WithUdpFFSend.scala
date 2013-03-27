@@ -64,16 +64,13 @@ private[io] trait WithUdpFFSend {
           retriedSend = false
           pendingSend = null
           pendingCommander = null
-        }
-        else {
+        } else {
           selector ! WriteInterest
           retriedSend = true
         }
-      }
-      else if (pendingSend.wantsAck) pendingCommander ! pendingSend.ack
+      } else if (pendingSend.wantsAck) pendingCommander ! pendingSend.ack
 
-    }
-    finally {
+    } finally {
       udpFF.bufferPool.release(buffer)
     }
 

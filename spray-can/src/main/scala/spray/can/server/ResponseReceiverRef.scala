@@ -59,8 +59,7 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
   private def dispatch(msg: HttpMessagePartWrapper, expectedState: ResponseState, newState: ResponseState)(implicit sender: ActorRef) {
     if (Unsafe.instance.compareAndSwapObject(this, responseStateOffset, expectedState, newState)) {
       dispatch(new Response(openRequest, Http.MessageCommand(msg)))
-    }
-    else {
+    } else {
       openRequest.context.log.warning("Cannot dispatch {} as response (part) for {} since current response state is " +
         "'{}' but should be '{}'", msg.messagePart.getClass.getSimpleName, requestInfo,
         Unsafe.instance.getObjectVolatile(this, responseStateOffset), expectedState)

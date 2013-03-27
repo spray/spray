@@ -83,8 +83,7 @@ object HttpCharsets extends ObjectRegistry[String, HttpCharset] {
     def apply(value: String, aliases: Seq[String] = Nil): Option[CustomHttpCharset] = {
       try {
         Some(new CustomHttpCharset(value.toLowerCase, aliases))
-      }
-      catch {
+      } catch {
         case e: java.nio.charset.UnsupportedCharsetException ⇒ None
       }
     }

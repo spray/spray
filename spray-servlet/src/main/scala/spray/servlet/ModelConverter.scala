@@ -88,8 +88,7 @@ object ModelConverter {
         if (count >= 0) drainRequestInputStream(buf, inputStream, bytesRead + count)
         else throw new RequestProcessingException(InternalServerError, "Illegal Servlet request entity, " +
           "expected length " + contentLength + " but only has length " + bytesRead)
-      }
-      else buf
+      } else buf
 
     val body =
       if (contentLength.isDefined && contentLength.get > 0) {
@@ -100,11 +99,9 @@ object ModelConverter {
               log.error(e, "Could not read request entity")
               throw new RequestProcessingException(InternalServerError, "Could not read request entity")
           }
-        }
-        else throw new IllegalRequestException(RequestEntityTooLarge, ErrorInfo("HTTP message Content-Length " +
+        } else throw new IllegalRequestException(RequestEntityTooLarge, ErrorInfo("HTTP message Content-Length " +
           contentLength.get + " exceeds the configured limit of " + settings.maxContentLength))
-      }
-      else EmptyByteArray
+      } else EmptyByteArray
     if (contentType.isEmpty) HttpEntity(body) else HttpBody(contentType.get, body)
   }
 

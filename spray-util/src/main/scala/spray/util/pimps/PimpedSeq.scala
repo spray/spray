@@ -52,8 +52,7 @@ class PimpedLinearSeq[+A](underlying: LinearSeq[A]) extends PimpedSeq[A] {
           case x: Some[_] ⇒ x
           case None       ⇒ mapFind(seq.tail)
         }
-      }
-      else None
+      } else None
     }
     mapFind(underlying)
   }
@@ -64,8 +63,7 @@ class PimpedLinearSeq[+A](underlying: LinearSeq[A]) extends PimpedSeq[A] {
       if (!seq.isEmpty) {
         if (f.isDefinedAt(seq.head)) Some(f(seq.head))
         else mapFind(seq.tail)
-      }
-      else None
+      } else None
     }
     mapFind(underlying)
   }
@@ -81,8 +79,7 @@ class PimpedIndexedSeq[+A](underlying: IndexedSeq[A]) extends PimpedSeq[A] {
           case x: Some[_] ⇒ x
           case None       ⇒ mapFind(ix + 1)
         }
-      }
-      else None
+      } else None
     }
     mapFind(0)
   }
@@ -94,8 +91,7 @@ class PimpedIndexedSeq[+A](underlying: IndexedSeq[A]) extends PimpedSeq[A] {
         val x = underlying(ix)
         if (f.isDefinedAt(x)) Some(f(x))
         else mapFind(ix + 1)
-      }
-      else None
+      } else None
     }
     mapFind(0)
   }

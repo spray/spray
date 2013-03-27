@@ -207,11 +207,9 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
           writer.flush()
           log.debug("SSLServerSocket Server sent: {}", result.dropRight(1))
         }
-      }
-      catch {
+      } catch {
         case _: SocketException ⇒ // expected during shutdown
-      }
-      finally close()
+      } finally close()
     }
   }
 

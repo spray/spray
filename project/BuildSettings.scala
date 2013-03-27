@@ -116,7 +116,6 @@ object BuildSettings {
       .setPreference(RewriteArrowSymbols, true)
       .setPreference(AlignParameters, true)
       .setPreference(AlignSingleLineCaseStatements, true)
-      .setPreference(CompactControlReadability, true)
       .setPreference(DoubleIndentClassDeclaration, true)
 
 }

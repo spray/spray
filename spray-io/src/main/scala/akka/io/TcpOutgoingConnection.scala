@@ -48,8 +48,7 @@ private[io] class TcpOutgoingConnection(_tcp: TcpExt,
         assert(connected, "Connectable channel failed to connect")
         log.debug("Connection established")
         completeConnect(commander, options)
-      }
-      catch {
+      } catch {
         case e: IOException ⇒
           if (tcp.Settings.TraceLogging) log.debug("Could not establish connection due to {}", e)
           closedMessage = TcpConnection.CloseInformation(Set(commander), CommandFailed(connect))

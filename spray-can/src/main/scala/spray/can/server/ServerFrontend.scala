@@ -63,8 +63,7 @@ object ServerFrontend {
               if (part.messagePart.isInstanceOf[HttpMessageEnd]) {
                 firstOpenRequest = firstOpenRequest handleResponseEndAndReturnNextOpenRequest part
                 firstUnconfirmed = firstUnconfirmed.nextIfNoAcksPending
-              }
-              else firstOpenRequest handleResponsePart part
+              } else firstOpenRequest handleResponsePart part
 
             case Response(openRequest, command) ⇒
               // a response for a non-current openRequest has to be queued

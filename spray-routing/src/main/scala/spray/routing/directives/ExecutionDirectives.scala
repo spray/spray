@@ -57,8 +57,7 @@ trait ExecutionDirectives {
             .withRejectionHandling(rej ⇒ sys.error("The RejectionHandler for " + rejections +
               " must not itself produce rejections (received " + rej + ")!"))
           handler(filteredRejections)(handlingContext)
-        }
-        else ctx.reject(filteredRejections: _*)
+        } else ctx.reject(filteredRejections: _*)
       }
     }
 

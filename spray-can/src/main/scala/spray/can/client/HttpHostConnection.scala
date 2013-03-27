@@ -79,8 +79,7 @@ private[client] class HttpHostConnection(remoteAddress: InetSocketAddress,
       if (aborted.isEmpty) {
         context.parent ! Disconnected(openRequests.size)
         context.become(unconnected)
-      }
-      else context.stop(self)
+      } else context.stop(self)
   }
 
   def connected(httpConnection: ActorRef, openRequests: Queue[RequestContext],
@@ -96,8 +95,7 @@ private[client] class HttpHostConnection(remoteAddress: InetSocketAddress,
           httpConnection ! Http.Close
           context.become(closing(httpConnection, openRequests.tail, "Premature connection close (the server doesn't " +
             "appear to support request pipelining)", retry = true))
-        }
-        else context.become(connected(httpConnection, openRequests.tail))
+        } else context.become(connected(httpConnection, openRequests.tail))
       }
       part match {
         case x: HttpResponse ⇒ handleResponseCompletion(x.connectionCloseExpected)

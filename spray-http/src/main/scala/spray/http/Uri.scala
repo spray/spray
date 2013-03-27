@@ -182,8 +182,7 @@ object Uri {
         if (hostHeaderHost.isEmpty) {
           _host = defaultAuthority.host
           _port = defaultAuthority.port
-        }
-        else {
+        } else {
           _host = hostHeaderHost
           _port = hostHeaderPort
         }
@@ -236,8 +235,7 @@ object Uri {
         import parser._
         complete("URI host", host)
         _host
-      }
-      else Empty
+      } else Empty
   }
   sealed abstract class NonEmptyHost extends Host {
     def isEmpty = false
@@ -435,8 +433,7 @@ object Uri {
         if (path.isEmpty) {
           val q = if (query.isEmpty) base.query else query
           Impl(base.scheme, base.authority, base.path, q, fragment)
-        }
-        else {
+        } else {
           // http://tools.ietf.org/html/rfc3986#section-5.2.3
           def mergePaths(base: Uri, path: Path): Path =
             if (!base.authority.isEmpty && path.isEmpty) Path.Slash(path)
@@ -472,8 +469,7 @@ object Uri {
               case c                ⇒ c.toString.getBytes(charset).foreach(appendEncoded)
             }
             process(sb, ix + 1)
-          }
-          else sb.toString
+          } else sb.toString
         }
         process(new JStringBuilder(string.length * 2).append(string, 0, first))
     }
@@ -509,14 +505,12 @@ object Uri {
             val byte = intValueOfHexWord(ix + 3 * i + 1)
             bytes(i) = byte.toByte
             decodeBytes(i + 1, oredBytes | byte)
-          }
-          else oredBytes
+          } else oredBytes
         }
 
         if ((decodeBytes() >> 7) != 0) { // if non-ASCII chars are present we need to involve the charset for decoding
           sb.append(new String(bytes, charset))
-        }
-        else {
+        } else {
           @tailrec def appendBytes(i: Int = 0): Unit =
             if (i < bytesCount) { sb.append(bytes(i).toChar); appendBytes(i + 1) }
           appendBytes()
@@ -532,8 +526,7 @@ object Uri {
       if (ix >= 0) {
         val c = scheme.charAt(ix)
         if (is(c, allowed)) verify(ix - 1, ALPHA | DIGIT | PLUS | DASH | DOT, allLower && !is(c, UPPER_ALPHA)) else ix
-      }
-      else if (allLower) -1 else -2
+      } else if (allLower) -1 else -2
     verify() match {
       case -2 ⇒ scheme.toLowerCase
       case -1 ⇒ scheme
@@ -550,8 +543,7 @@ object Uri {
     if (host.isEmpty) {
       if (path.startsWithSlash && path.tail.startsWithSlash)
         fail("""The path of an URI without authority must not begin with "//"""")
-    }
-    else if (path.startsWithSegment)
+    } else if (path.startsWithSegment)
       fail("The path of an URI containing an authority must either be empty or start with a '/' (slash) character")
     path
   }

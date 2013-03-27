@@ -104,8 +104,7 @@ trait OpenRequestComponent { component ⇒
             "timeout handler", timeoutHandler)
           timestamp = -now // we record the time of the Timeout dispatch as negative timestamp value
         }
-      }
-      else if (timestamp < -1 && timeoutTimeout > 0 && (-timestamp + timeoutTimeout < now)) {
+      } else if (timestamp < -1 && timeoutTimeout > 0 && (-timestamp + timeoutTimeout < now)) {
         val response = timeoutResponse(request)
         // we always close the connection after a timeout-timeout
         sendPart(response.withHeaders(HttpHeaders.Connection("close") :: response.headers))
@@ -156,8 +155,7 @@ trait OpenRequestComponent { component ⇒
         // only start request timeout checking after request has been completed
         timestamp = System.currentTimeMillis
         downstreamCommandPL(Pipeline.Tell(handler, part, receiverRef))
-      }
-      else
+      } else
         // we accept non-tail recursion since HTTP pipeline depth is limited (and small)
         nextInChain handleChunkedMessageEnd part
     }

@@ -66,8 +66,7 @@ private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, client
       if (allDisconnected) {
         sender ! Http.ClosedAll
         context.stop(self)
-      }
-      else context.become(closing(Set(sender)))
+      } else context.become(closing(Set(sender)))
 
     case Disconnected(openRequestCount) ⇒
       val oldCount = openRequestCounts(sender)

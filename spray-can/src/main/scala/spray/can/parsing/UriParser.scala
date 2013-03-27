@@ -28,8 +28,7 @@ class UriParser(settings: ParserSettings, method: HttpMethod) extends CharacterP
         case ' ' ⇒ new RequestVersionParser(settings, method, uri.toString)
         case _   ⇒ uri.append(cursor); this
       }
-    }
-    else {
+    } else {
       ErrorState(StatusCodes.RequestUriTooLong,
         "URI length exceeds the configured limit of " + settings.maxUriLength + " characters")
     }

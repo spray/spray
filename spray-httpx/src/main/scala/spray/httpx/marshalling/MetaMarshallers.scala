@@ -89,8 +89,7 @@ object MetaMarshallers extends MetaMarshallers {
         if (remaining.isEmpty) {
           connectionActor ! ChunkedMessageEnd()
           context.stop(self)
-        }
-        else self ! remaining
+        } else self ! remaining
 
       case _: Tcp.ConnectionClosed ⇒
         context.stop(self)

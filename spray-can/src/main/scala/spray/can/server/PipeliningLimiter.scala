@@ -54,8 +54,7 @@ object PipeliningLimiter {
               if (openRequests == limit) {
                 stopReading()
                 park(x)
-              }
-              else {
+              } else {
                 if (x.isInstanceOf[HttpMessageEnd]) openRequests += 1
                 eventPL(ev)
               }

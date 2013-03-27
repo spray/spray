@@ -118,20 +118,16 @@ class ResponseRenderer(serverHeader: String,
           if (ctx.requestConnectionHeader.isDefined && (ctx.requestConnectionHeader.get equalsIgnoreCase "Keep-Alive")) {
             putHeader("Connection", "Keep-Alive")
             false
-          }
-          else true
-        }
-        else !(connectionHeaderValue.get equalsIgnoreCase "Keep-Alive")
+          } else true
+        } else !(connectionHeaderValue.get equalsIgnoreCase "Keep-Alive")
       }
       case `HTTP/1.1` ⇒ {
         if (connectionHeaderValue.isEmpty) {
           if (ctx.requestConnectionHeader.isDefined && (ctx.requestConnectionHeader.get equalsIgnoreCase "close")) {
             if (response.protocol == `HTTP/1.1`) putHeader("Connection", "close")
             true
-          }
-          else response.protocol == `HTTP/1.0`
-        }
-        else connectionHeaderValue.get equalsIgnoreCase "close"
+          } else response.protocol == `HTTP/1.0`
+        } else connectionHeaderValue.get equalsIgnoreCase "close"
       }
     }
 

@@ -40,8 +40,7 @@ trait BasicMarshallers {
           val charBuffer = CharBuffer.wrap(value)
           val byteBuffer = nioCharset.encode(charBuffer)
           HttpBody(contentType, byteBuffer.array)
-        }
-        else EmptyEntity
+        } else EmptyEntity
       }
     }
 

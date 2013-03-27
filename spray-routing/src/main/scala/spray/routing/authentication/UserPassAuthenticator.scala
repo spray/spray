@@ -41,8 +41,7 @@ object UserPassAuthenticator {
         try {
           val pw = config.getString(userPass.user)
           if (pw secure_== userPass.pass) Some(createUser(userPass)) else None
-        }
-        catch {
+        } catch {
           case _: ConfigException ⇒ None
         }
       }).future

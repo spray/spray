@@ -42,8 +42,7 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
         case ' ' | '\t' | '\r'              ⇒ new LwsParser(this).handleChar(cursor)
         case _                              ⇒ ErrorState("Invalid character '" + escape(cursor) + "', expected TOKEN CHAR, LWS or COLON")
       }
-    }
-    else {
+    } else {
       ErrorState("HTTP header name exceeds the configured limit of " + settings.maxHeaderNameLength +
         " characters", "header '" + headerName.toString.take(50) + "...'")
     }
@@ -68,8 +67,7 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
       case RawHeader("content-length", value) :: tail ⇒
         if (clHeader.isEmpty) {
           traverse(tail, cHeader, Some(value), ctHeader, teHeader, e100Present)
-        }
-        else ErrorState("HTTP message must not contain more than one Content-Length header")
+        } else ErrorState("HTTP message must not contain more than one Content-Length header")
 
       case RawHeader("content-type", value) :: tail ⇒
         if (ctHeader.isEmpty) HttpParser.parseContentType(value) match {
@@ -113,8 +111,7 @@ class HeaderNameParser(settings: ParserSettings, messageLine: MessageLine, heade
               new FixedLengthBodyParser(messageLine, headers, cHeader, ctHeader, contentLength)
             else ErrorState(RequestEntityTooLarge, "HTTP message Content-Length " + value +
               " exceeds the configured limit of " + settings.maxContentLength)
-          }
-          catch {
+          } catch {
             case e @ (_: IllegalArgumentException | _: NumberFormatException) ⇒
               ErrorState("Invalid Content-Length header value: " + e.getMessage)
           }

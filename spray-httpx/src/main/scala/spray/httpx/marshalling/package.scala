@@ -41,8 +41,7 @@ package object marshalling {
     try {
       marshaller(value, ctx)
       ctx.awaitResults
-    }
-    catch {
+    } catch {
       case NonFatal(e) ⇒ ctx.handleError(e)
     }
     ctx

@@ -62,8 +62,7 @@ private[util] sealed abstract class LoggingContextLowerOrderImplicit1 extends Lo
       val fixedPath = path.substring(7).replace('/', '.') // drop the `akka://` prefix and replace slashes
       val logSource = if (settings.logActorSystemName) system.toString + '.' + fixedPath else fixedPath
       Logging(system.eventStream, logSource)
-    }
-    else if (settings.logActorSystemName) Logging(system, path) else Logging(system.eventStream, path)
+    } else if (settings.logActorSystemName) Logging(system, path) else Logging(system.eventStream, path)
   }
 }
 

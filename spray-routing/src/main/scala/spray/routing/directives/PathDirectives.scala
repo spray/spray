@@ -318,8 +318,7 @@ trait PathMatchers {
           if (a == minusOne) {
             if (value == minusOne) Unmatched
             else Matched(if (ix < segment.length) segment.substring(ix) :: tail else tail, value :: HNil)
-          }
-          else {
+          } else {
             if (value == minusOne) digits(ix + 1, a)
             else if (value <= maxDivBase && value * base <= max - a) // protect from overflow
               digits(ix + 1, value * base + a)

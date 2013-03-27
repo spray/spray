@@ -42,30 +42,26 @@ object ClientFrontend {
               if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
                 render(x, ack)
                 openRequests = openRequests enqueue new RequestRecord(x, context.sender, timestamp = now)
-              }
-              else log.warning("Received new HttpRequest before previous chunking request was " +
+              } else log.warning("Received new HttpRequest before previous chunking request was " +
                 "finished, ignoring...")
 
             case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedRequestStart, ack)) if closeCommanders.isEmpty ⇒
               if (openRequests.isEmpty || openRequests.last.timestamp > 0) {
                 render(x, ack)
                 openRequests = openRequests enqueue new RequestRecord(x, context.sender, timestamp = 0)
-              }
-              else log.warning("Received new ChunkedRequestStart before previous chunking " +
+              } else log.warning("Received new ChunkedRequestStart before previous chunking " +
                 "request was finished, ignoring...")
 
             case Http.MessageCommand(HttpMessagePartWrapper(x: MessageChunk, ack)) if closeCommanders.isEmpty ⇒
               if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
                 render(x, ack)
-              }
-              else log.warning("Received MessageChunk outside of chunking request context, ignoring...")
+              } else log.warning("Received MessageChunk outside of chunking request context, ignoring...")
 
             case Http.MessageCommand(HttpMessagePartWrapper(x: ChunkedMessageEnd, ack)) if closeCommanders.isEmpty ⇒
               if (!openRequests.isEmpty && openRequests.last.timestamp == 0) {
                 render(x, ack)
                 openRequests.last.timestamp = now // only start timer once the request is completed
-              }
-              else log.warning("Received ChunkedMessageEnd outside of chunking request " +
+              } else log.warning("Received ChunkedMessageEnd outside of chunking request " +
                 "context, ignoring...")
 
             case Http.MessageCommand(HttpMessagePartWrapper(x: HttpRequestPart, _)) if !closeCommanders.isEmpty ⇒
@@ -86,8 +82,7 @@ object ClientFrontend {
                 val currentRecord = openRequests.head
                 openRequests = openRequests.tail
                 dispatch(currentRecord.sender, x)
-              }
-              else {
+              } else {
                 log.warning("Received unmatched {}, closing connection due to protocol error", x)
                 commandPL(Http.Close)
               }
@@ -95,8 +90,7 @@ object ClientFrontend {
             case Http.MessageEvent(x: HttpMessagePart) ⇒
               if (!openRequests.isEmpty) {
                 dispatch(openRequests.head.sender, x)
-              }
-              else {
+              } else {
                 log.warning("Received unmatched {}, closing connection due to protocol error", x)
                 commandPL(Http.Close)
               }

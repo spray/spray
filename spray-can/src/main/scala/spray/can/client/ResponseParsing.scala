@@ -56,8 +56,7 @@ object ResponseParsing {
                 if (openRequestMethods.isEmpty) {
                   currentParsingState = UnmatchedResponseErrorState
                   if (data.hasNext) parse(data) // trigger error if buffer is not empty
-                }
-                else {
+                } else {
                   currentParsingState = startParser
                   parse(data)
                 }
@@ -79,8 +78,7 @@ object ResponseParsing {
                 if (openRequestMethods.isEmpty) {
                   currentParsingState = UnmatchedResponseErrorState
                   if (data.hasNext) parse(data) // trigger error if buffer is not empty
-                }
-                else {
+                } else {
                   currentParsingState = startParser
                   parse(data)
                 }

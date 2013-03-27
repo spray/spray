@@ -40,8 +40,7 @@ class ToCloseBodyParser(settings: ParserSettings,
         if (body.length + array.length <= settings.maxContentLength) {
           body = body concat array
           this
-        }
-        else ErrorState(RequestEntityTooLarge, "HTTP message body size exceeds the configured limit of " +
+        } else ErrorState(RequestEntityTooLarge, "HTTP message body size exceeds the configured limit of " +
           settings.maxContentLength)
       }
     }

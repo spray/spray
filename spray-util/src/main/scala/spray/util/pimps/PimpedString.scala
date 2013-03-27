@@ -81,8 +81,7 @@ class PimpedString(underlying: String) {
       if (ix < array.length) {
         array(ix) = underlying.charAt(ix).asInstanceOf[Byte]
         bytes(array, ix + 1)
-      }
-      else array
+      } else array
     bytes()
   }
 

@@ -72,8 +72,7 @@ abstract class LazyActorRef(prov: ActorRefProvider) extends UnregisteredActorRef
       case Watch(watchee, watcher) ⇒
         if (watchee == this && watcher != this) {
           if (!addWatcher(watcher)) watcher ! Terminated(watchee)(existenceConfirmed = true, addressTerminated = false)
-        }
-        else System.err.println("BUG: illegal Watch(%s,%s) for %s".format(watchee, watcher, this))
+        } else System.err.println("BUG: illegal Watch(%s,%s) for %s".format(watchee, watcher, this))
       case Unwatch(watchee, watcher) ⇒
         if (watchee == this && watcher != this) remWatcher(watcher)
         else System.err.println("BUG: illegal Unwatch(%s,%s) for %s".format(watchee, watcher, this))

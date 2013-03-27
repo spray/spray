@@ -224,8 +224,7 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
           if (firstPercent >= 0) toLowerIfNeeded(decodeIfNeeded(s, firstPercent, charset), min(firstPercent, firstUpper))
           else toLowerIfNeeded(s, firstUpper)
         else if (firstPercent >= 0) toLowerIfNeeded(decodeIfNeeded(s, firstPercent, charset), firstPercent) else s
-      }
-      else ""
+      } else ""
     }
     true
   }
@@ -392,8 +391,7 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
         val c = input.charAt(maxCursor)
         if (Character.isISOControl(c)) sb.append("\\u%04x" format c.toInt) else sb.append(c)
         sb.append('\'')
-      }
-      else sb.append("end-of-input")
+      } else sb.append("end-of-input")
       val summary = sb.append(" at position ").append(maxCursor).toString
 
       sb.setLength(0)

@@ -43,8 +43,7 @@ trait Encoder {
             headers = `Content-Encoding`(encoding) :: message.headers,
             entity = HttpBody(contentType, compressor.compress(buffer).flush())) -> compressor
       }
-    }
-    else None
+    } else None
   }
 
   def newCompressor: Compressor

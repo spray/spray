@@ -32,8 +32,7 @@ class ChunkExtensionNameParser(settings: ParserSettings, chunkSize: Int, extCoun
         case ' ' | '\t'          ⇒ this
         case _                   ⇒ ErrorState("Invalid character '" + escape(cursor) + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
       }
-    }
-    else {
+    } else {
       ErrorState("Chunk extension name exceeds the configured limit of " + settings.maxChunkExtNameLength +
         " characters", "extension '" + extName.toString.take(50) + "...'")
     }

@@ -42,8 +42,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
         val connector = hostConnectorFor(HostConnectorSetup(host.toString, effectivePort))
         // never render absolute URI here
         connector.forward(req.copy(uri = req.uri.copy(scheme = "", authority = Uri.Authority.Empty)))
-      }
-      catch {
+      } catch {
         case NonFatal(e) ⇒
           log.error("Illegal request: {}", e.getMessage)
           sender ! Status.Failure(e)
@@ -89,8 +88,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
     if (!settingsGroups.isEmpty) {
       val running: Set[ActorRef] = settingsGroups.map { x ⇒ x._2 ! cmd; x._2 }(collection.breakOut)
       context.become(closingSettingsGroups(cmd, running, commanders))
-    }
-    else shutdownHostConnectors(cmd, commanders)
+    } else shutdownHostConnectors(cmd, commanders)
   }
 
   def closingSettingsGroups(cmd: Http.CloseAll, running: Set[ActorRef], commanders: Set[ActorRef]): Receive =
@@ -106,8 +104,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
     if (!hostConnectors.isEmpty) {
       val running: Set[ActorRef] = hostConnectors.map { x ⇒ x._2 ! cmd; x._2 }(collection.breakOut)
       context.become(closingHostConnectors(running, commanders))
-    }
-    else shutdownListeners(commanders)
+    } else shutdownListeners(commanders)
   }
 
   def closingHostConnectors(running: Set[ActorRef], commanders: Set[ActorRef]): Receive =
@@ -133,8 +130,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
         if (stillRunning.isEmpty) {
           commanders foreach (_ ! Http.ClosedAll)
           context.become(receive)
-        }
-        else context.become(unbinding(stillRunning, commanders))
+        } else context.become(unbinding(stillRunning, commanders))
     }
 
   def hostConnectorFor(setup: HostConnectorSetup): ActorRef = {

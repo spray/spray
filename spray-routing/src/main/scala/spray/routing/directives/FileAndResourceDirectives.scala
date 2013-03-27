@@ -61,8 +61,7 @@ trait FileAndResourceDirectives {
             if (0 < settings.fileChunkingThresholdSize && settings.fileChunkingThresholdSize <= file.length)
               complete(file.toByteArrayStream(settings.fileChunkingChunkSize.toInt))
             else complete(FileUtils.readAllBytes(file))
-          }
-          else reject
+          } else reject
         }
       }
     }
@@ -93,8 +92,7 @@ trait FileAndResourceDirectives {
             complete(FileUtils.readAllBytes(urlConn.getInputStream))
           }
         }
-    }
-    else reject // don't serve the content of resource "directories"
+    } else reject // don't serve the content of resource "directories"
   }
 
   /**

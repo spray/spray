@@ -55,10 +55,8 @@ abstract class UnregisteredActorRefBase(val provider: ActorRefProvider) extends 
           p = provider.tempPath()
           register(p)
           p
-        }
-        finally { setState(p) }
-      }
-      else path
+        } finally { setState(p) }
+      } else path
     case p: ActorPath       ⇒ p
     case StoppedWithPath(p) ⇒ p
     case Stopped ⇒

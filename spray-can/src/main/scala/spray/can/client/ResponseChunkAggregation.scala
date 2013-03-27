@@ -35,8 +35,7 @@ object ResponseChunkAggregation {
                 val bb = ByteString.newBuilder
                 bb putBytes response.entity.buffer
                 eventPipeline become aggregating(response, bb)
-              }
-              else closeWithError()
+              } else closeWithError()
 
             case ev ⇒ eventPL(ev)
           }

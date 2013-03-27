@@ -27,8 +27,7 @@ class ChunkExtensionValueParser(settings: ParserSettings, chunkSize: Int, extCou
 
   def next(parser: ParsingState) = if (extCount < settings.maxChunkExtCount) {
     parser
-  }
-  else {
+  } else {
     ErrorState("Chunk extension count exceeds the configured limit of " + settings.maxChunkExtCount)
   }
 
@@ -42,8 +41,7 @@ class ChunkExtensionValueParser(settings: ParserSettings, chunkSize: Int, extCou
           case '\r' | '\n' ⇒ ErrorState("Invalid chunk extension value: unclosed quoted string")
           case x           ⇒ extValue.append(x); this
         }
-      }
-      else {
+      } else {
         cursor match {
           case x if isTokenChar(x)         ⇒ extValue.append(x); this
           case '"' if extValue.length == 0 ⇒ quoted = true; this
@@ -56,8 +54,7 @@ class ChunkExtensionValueParser(settings: ParserSettings, chunkSize: Int, extCou
           case _ ⇒ ErrorState("Invalid character '" + escape(cursor) + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
         }
       }
-    }
-    else {
+    } else {
       ErrorState("Chunk extension value exceeds the configured limit of " + settings.maxChunkExtValueLength +
         " characters", "extension '" + extName + "'")
     }

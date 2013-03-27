@@ -38,8 +38,7 @@ private[io] class UdpConnection(val udpConn: UdpConnExt,
     try {
       localAddress foreach socket.bind
       datagramChannel.connect(remoteAddress)
-    }
-    catch {
+    } catch {
       case NonFatal(e) ⇒
         log.error(e, "Failure while connecting UDP channel to remote address [{}] local address [{}]",
           remoteAddress, localAddress.map { _.toString }.getOrElse("undefined"))
@@ -116,8 +115,7 @@ private[io] class UdpConnection(val udpConn: UdpConnExt,
       // Datagram channel either sends the whole message, or nothing
       if (writtenBytes == 0) commander ! CommandFailed(send)
       else if (send.wantsAck) commander ! send.ack
-    }
-    finally {
+    } finally {
       udpConn.bufferPool.release(buffer)
       pendingSend = null
     }

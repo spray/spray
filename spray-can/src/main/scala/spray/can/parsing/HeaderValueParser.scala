@@ -41,8 +41,7 @@ class HeaderValueParser(settings: ParserSettings, messageLine: MessageLine, head
           headerValue.append(cursor)
           this
       }
-    }
-    else {
+    } else {
       ErrorState("HTTP header value exceeds the configured limit of " + settings.maxHeaderValueLength +
         " characters", "header '" + headerName + "'")
     }

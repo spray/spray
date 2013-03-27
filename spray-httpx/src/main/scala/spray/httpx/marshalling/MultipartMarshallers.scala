@@ -71,8 +71,7 @@ trait MultipartMarshallers {
         }
         putDashDash(); putString(boundary); putDashDash()
         ctx.marshalTo(HttpBody(contentType, out.toByteArray))
-      }
-      else ctx.marshalTo(EmptyEntity)
+      } else ctx.marshalTo(EmptyEntity)
     }
 
   implicit def multipartFormDataMarshaller(implicit mcm: Marshaller[MultipartContent]) =

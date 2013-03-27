@@ -91,8 +91,7 @@ object HttpParser extends Parser with ProtocolParameterRules with AdditionalRule
         case Some(value) ⇒ Right(value)
         case None        ⇒ Left(ErrorInfo(detail = ErrorUtils.printParseErrors(result)))
       }
-    }
-    catch {
+    } catch {
       case e: ParserRuntimeException if e.getCause.isInstanceOf[ParsingException] ⇒
         Left(ErrorInfo(e.getCause.getMessage))
     }

@@ -139,8 +139,7 @@ private[io] abstract class TcpConnection(val channel: SocketChannel,
           case _ ⇒
             throw new IllegalStateException("Unexpected value returned from read: " + readBytes)
         }
-      }
-      else MoreDataWaiting(receivedData)
+      } else MoreDataWaiting(receivedData)
 
     val buffer = bufferPool.acquire()
     try innerRead(buffer, ByteString.empty, ReceivedMessageSizeLimit) match {
@@ -162,8 +161,7 @@ private[io] abstract class TcpConnection(val channel: SocketChannel,
         doCloseConnection(handler, closeCommander, closeReason)
     } catch {
       case e: IOException ⇒ handleError(handler, e)
-    }
-    finally bufferPool.release(buffer)
+    } finally bufferPool.release(buffer)
   }
 
   final def doWrite(handler: ActorRef): Unit = {
@@ -202,19 +200,16 @@ private[io] abstract class TcpConnection(val channel: SocketChannel,
       if (TraceLogging) log.debug("Got Abort command. RESETing connection.")
       doCloseConnection(handler, closeCommander, closedEvent)
 
-    }
-    else if (writePending) { // finish writing first
+    } else if (writePending) { // finish writing first
       if (TraceLogging) log.debug("Got Close command but write is still pending.")
       context.become(closingWithPendingWrite(handler, closeCommander, closedEvent))
 
-    }
-    else if (closedEvent == ConfirmedClosed) { // shutdown output and wait for confirmation
+    } else if (closedEvent == ConfirmedClosed) { // shutdown output and wait for confirmation
       if (TraceLogging) log.debug("Got ConfirmedClose command, sending FIN.")
       channel.socket.shutdownOutput()
       context.become(closing(handler, closeCommander))
 
-    }
-    else { // close now
+    } else { // close now
       if (TraceLogging) log.debug("Got Close command, closing connection.")
       doCloseConnection(handler, closeCommander, closedEvent)
     }
@@ -291,8 +286,7 @@ private[io] abstract class TcpConnection(val channel: SocketChannel,
         val copied = remainingData.copyToBuffer(buffer)
         buffer.flip()
         copy(remainingData = remainingData.drop(copied))
-      }
-      else this
+      } else this
 
     def hasData = buffer.remaining() > 0 || remainingData.size > 0
     def wantsAck = !ack.isInstanceOf[NoAck]

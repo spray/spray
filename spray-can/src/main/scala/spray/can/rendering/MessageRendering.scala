@@ -74,8 +74,7 @@ private[rendering] object MessageRendering {
     if (startIndex < string.length) {
       put(string.charAt(startIndex))
       put(string, startIndex + 1)
-    }
-    else this
+    } else this
 
   def put(c: Char)(implicit bb: ByteStringBuilder): this.type = {
     bb.putByte(c.asInstanceOf[Byte])

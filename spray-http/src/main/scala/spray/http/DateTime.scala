@@ -213,9 +213,7 @@ object DateTime {
         val min = i(14) * 10 + i(15)
         val sec = i(17) * 10 + i(18)
         Some(DateTime(year, month, day, hour, min, sec))
-      }
-      catch { case _: IllegalArgumentException ⇒ None }
-    }
-    else None
+      } catch { case _: IllegalArgumentException ⇒ None }
+    } else None
   }
 }
