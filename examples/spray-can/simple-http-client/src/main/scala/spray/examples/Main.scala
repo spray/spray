@@ -14,7 +14,7 @@ object Main extends App
   import system.dispatcher // execution context for future transformations below
   val log = Logging(system, getClass)
 
-  // spray-can client-side API has three levels (from lowest to highest):
+  // the spray-can client-side API has three levels (from lowest to highest):
   // 1. the connection-level API
   // 2. the host-level API
   // 3. the request-level API
