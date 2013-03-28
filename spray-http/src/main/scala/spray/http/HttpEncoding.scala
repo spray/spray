@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright (C) 2011-2012 spray.io
  * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,13 +48,15 @@ object HttpEncodings extends ObjectRegistry[String, HttpEncoding] {
 
   private class PredefEncoding(val value: String) extends HttpEncoding
 
-  val compress = register(new PredefEncoding("compress"))
-  val chunked = register(new PredefEncoding("chunked"))
-  val deflate = register(new PredefEncoding("deflate"))
-  val gzip = register(new PredefEncoding("gzip"))
-  val identity = register(new PredefEncoding("identity"))
-  val `x-compress` = register(new PredefEncoding("x-compress"))
-  val `x-zip` = register(new PredefEncoding("x-zip"))
+  // format: OFF
+  val compress      = register(new PredefEncoding("compress"))
+  val chunked       = register(new PredefEncoding("chunked"))
+  val deflate       = register(new PredefEncoding("deflate"))
+  val gzip          = register(new PredefEncoding("gzip"))
+  val identity      = register(new PredefEncoding("identity"))
+  val `x-compress`  = register(new PredefEncoding("x-compress"))
+  val `x-zip`       = register(new PredefEncoding("x-zip"))
+  // format: ON
 
   case class CustomHttpEncoding(value: String) extends HttpEncoding
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013 spray.io
+ * Copyright (C) 2011-2012 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,12 +27,14 @@ class HttpMethod private[http] (val value: String,
 }
 
 object HttpMethods extends ObjectRegistry[String, HttpMethod] {
-  val DELETE = new HttpMethod("DELETE", isSafe = false, isIdempotent = true, entityAccepted = false)
-  val GET = new HttpMethod("GET", isSafe = true, isIdempotent = true, entityAccepted = false)
-  val HEAD = new HttpMethod("HEAD", isSafe = true, isIdempotent = true, entityAccepted = false)
-  val OPTIONS = new HttpMethod("OPTIONS", isSafe = false, isIdempotent = true, entityAccepted = true)
-  val PATCH = new HttpMethod("PATCH", isSafe = false, isIdempotent = false, entityAccepted = true)
-  val POST = new HttpMethod("POST", isSafe = false, isIdempotent = false, entityAccepted = true)
-  val PUT = new HttpMethod("PUT", isSafe = false, isIdempotent = true, entityAccepted = true)
-  val TRACE = new HttpMethod("TRACE", isSafe = false, isIdempotent = true, entityAccepted = false)
+  // format: OFF
+  val DELETE  = new HttpMethod("DELETE" , isSafe = false, isIdempotent = true , entityAccepted = false)
+  val GET     = new HttpMethod("GET"    , isSafe = true , isIdempotent = true , entityAccepted = false)
+  val HEAD    = new HttpMethod("HEAD"   , isSafe = true , isIdempotent = true , entityAccepted = false)
+  val OPTIONS = new HttpMethod("OPTIONS", isSafe = false, isIdempotent = true , entityAccepted = true)
+  val PATCH   = new HttpMethod("PATCH"  , isSafe = false, isIdempotent = false, entityAccepted = true)
+  val POST    = new HttpMethod("POST"   , isSafe = false, isIdempotent = false, entityAccepted = true)
+  val PUT     = new HttpMethod("PUT"    , isSafe = false, isIdempotent = true , entityAccepted = true)
+  val TRACE   = new HttpMethod("TRACE"  , isSafe = false, isIdempotent = true , entityAccepted = false)
+  // format: ON
 }
