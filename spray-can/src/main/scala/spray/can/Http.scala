@@ -44,7 +44,7 @@ object Http extends ExtensionKey[HttpExt] {
       apply(new InetSocketAddress(host, port), localAddress, options, settings, sslEngineProvider)
   }
 
-  case class Bind(handler: ActorRef,
+  case class Bind(listener: ActorRef,
                   endpoint: InetSocketAddress,
                   backlog: Int,
                   options: immutable.Traversable[Inet.SocketOption],
@@ -53,9 +53,9 @@ object Http extends ExtensionKey[HttpExt] {
     implicit def serverSslEngineProvider = sslEngineProvider
   }
   object Bind {
-    def apply(handler: ActorRef, interface: String, port: Int = 80, backlog: Int = 100,
+    def apply(listener: ActorRef, interface: String, port: Int = 80, backlog: Int = 100,
               options: immutable.Traversable[Inet.SocketOption] = Nil, settings: Option[ServerSettings] = None)(implicit sslEngineProvider: ServerSSLEngineProvider): Bind =
-      apply(handler, new InetSocketAddress(interface, port), backlog, options, settings, sslEngineProvider)
+      apply(listener, new InetSocketAddress(interface, port), backlog, options, settings, sslEngineProvider)
   }
 
   type Register = Tcp.Register; val Register = Tcp.Register

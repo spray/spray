@@ -34,7 +34,7 @@ private[can] class HttpListener(bindCommander: ActorRef,
   val statsHolder = if (settings.statsSupport) Some(new StatsHolder) else None
   val pipelineStage = HttpServerConnection.pipelineStage(settings, statsHolder)
 
-  context.watch(handler)
+  context.watch(listener)
 
   log.debug("Binding to {}", endpoint)
 
@@ -78,7 +78,7 @@ private[can] class HttpListener(bindCommander: ActorRef,
     case Tcp.Connected(remoteAddress, localAddress) ⇒
       val conn = sender
       context.actorOf(
-        props = Props(new HttpServerConnection(conn, handler, pipelineStage, remoteAddress, localAddress, settings))
+        props = Props(new HttpServerConnection(conn, listener, pipelineStage, remoteAddress, localAddress, settings))
           .withDispatcher(httpSettings.ConnectionDispatcher),
         name = connectionCounter.next().toString)
 
