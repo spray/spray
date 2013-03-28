@@ -91,14 +91,14 @@ object Uri {
    * Percent-encoded octets are UTF-8 decoded.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  implicit def apply(string: String): Uri = apply(string, UTF8)
+  implicit def apply(string: CharSequence): Uri = apply(string, UTF8)
 
   /**
    * Parses a string into a normalized URI reference as defined by http://tools.ietf.org/html/rfc3986#section-4.1.
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def apply(string: String, charset: Charset): Uri =
+  def apply(string: CharSequence, charset: Charset): Uri =
     new UriParser(string, charset).parseReference()
 
   /**
@@ -133,7 +133,7 @@ object Uri {
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseAbsolute(string: String, charset: Charset = UTF8): Uri =
+  def parseAbsolute(string: CharSequence, charset: Charset = UTF8): Uri =
     new UriParser(string, charset).parseAbsolute()
 
   /**
@@ -143,7 +143,7 @@ object Uri {
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseAndResolve(string: String, base: Uri, charset: Charset = UTF8): Uri =
+  def parseAndResolve(string: CharSequence, base: Uri, charset: Charset = UTF8): Uri =
     new UriParser(string, charset).parseAndResolveReference(base)
 
   /**
@@ -151,7 +151,7 @@ object Uri {
    * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.3.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseHttpRequestTarget(requestTarget: String, charset: Charset = UTF8): Uri =
+  def parseHttpRequestTarget(requestTarget: CharSequence, charset: Charset = UTF8): Uri =
     new UriParser(requestTarget, charset).parseHttpRequestTarget()
 
   /**
@@ -163,7 +163,7 @@ object Uri {
    *
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def normalize(uri: String, charset: Charset = UTF8): String =
+  def normalize(uri: CharSequence, charset: Charset = UTF8): String =
     Uri(uri, charset).toString(charset)
 
   /**

@@ -57,9 +57,8 @@ object HttpParser extends Parser with ProtocolParameterRules with AdditionalRule
       case x @ HttpHeaders.RawHeader(name, value) ⇒
         rules.get(x.lowercaseName) match {
           case Some(rule) ⇒ parse(rule, value) match {
-            case x: Right[_, _]                ⇒ x.asInstanceOf[Either[ErrorInfo, HttpHeader]]
-            case Left(info @ ErrorInfo("", _)) ⇒ Left(info.withSummary("Illegal HTTP header '" + name + '\''))
-            case Left(ErrorInfo(sum, detail))  ⇒ Left(ErrorInfo("Illegal HTTP header '" + name + "': " + sum, detail))
+            case x: Right[_, _] ⇒ x.asInstanceOf[Either[ErrorInfo, HttpHeader]]
+            case Left(info)     ⇒ Left(info.withSummaryPrepended("Illegal HTTP header '" + name + '\''))
           }
           case None ⇒ Right(x) // if we don't have a rule for the header we leave it unparsed
         }
@@ -93,7 +92,7 @@ object HttpParser extends Parser with ProtocolParameterRules with AdditionalRule
       }
     } catch {
       case e: ParserRuntimeException if e.getCause.isInstanceOf[ParsingException] ⇒
-        Left(ErrorInfo(e.getCause.getMessage))
+        Left(ErrorInfo.fromCompoundString(e.getCause.getMessage))
     }
   }
 }
