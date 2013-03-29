@@ -51,10 +51,7 @@ object Trailer {
 
 case class HostConnectorSetup(remoteAddress: InetSocketAddress,
                               options: immutable.Traversable[Inet.SocketOption],
-                              settings: Option[HostConnectorSettings],
-                              sslEngineProvider: ClientSSLEngineProvider) {
-  implicit def clientSslEngineProvider = sslEngineProvider
-
+                              settings: Option[HostConnectorSettings])(implicit sslEngineProvider: ClientSSLEngineProvider) {
   private[can] def normalized(implicit refFactory: ActorRefFactory) =
     if (settings.isDefined) this
     else copy(settings = Some(HostConnectorSettings(actorSystem)))
@@ -62,7 +59,7 @@ case class HostConnectorSetup(remoteAddress: InetSocketAddress,
 object HostConnectorSetup {
   def apply(host: String, port: Int = 80, options: immutable.Traversable[Inet.SocketOption] = Nil,
             settings: Option[HostConnectorSettings] = None)(implicit sslEngineProvider: ClientSSLEngineProvider): HostConnectorSetup =
-    apply(new InetSocketAddress(host, port), options, settings, sslEngineProvider)
+    apply(new InetSocketAddress(host, port), options, settings)
 }
 
 case class HostConnectorInfo(hostConnector: ActorRef, setup: HostConnectorSetup)

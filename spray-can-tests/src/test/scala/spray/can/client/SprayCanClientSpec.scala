@@ -69,9 +69,10 @@ class SprayCanClientSpec extends Specification {
     "return the same HostConnector for identical setup requests" in new TestSetup {
       val probe = TestProbe()
       probe.send(IO(Http), HostConnectorSetup(hostname, port))
-      val HostConnectorInfo(hostConnector, _) = probe.expectMsgType[HostConnectorInfo]
+      val HostConnectorInfo(hostConnector1, _) = probe.expectMsgType[HostConnectorInfo]
       probe.send(IO(Http), HostConnectorSetup(hostname, port))
-      probe.sender === hostConnector
+      val HostConnectorInfo(hostConnector2, _) = probe.expectMsgType[HostConnectorInfo]
+      hostConnector1 === hostConnector2
     }
 
     "properly complete a simple request/response cycle with a Host-header request" in new TestSetup {
