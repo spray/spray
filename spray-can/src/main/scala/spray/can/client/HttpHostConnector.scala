@@ -48,7 +48,7 @@ private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, client
   def receive: Receive = {
     case request: HttpRequest ⇒
       val requestWithHostHeader =
-        if (request.headers.exists { case _: HttpHeaders.Host ⇒ true }) request
+        if (request.headers.exists(_.isInstanceOf[HttpHeaders.Host])) request
         else request.withHeaders(hostHeader :: request.headers)
       dispatchStrategy(RequestContext(requestWithHostHeader, settings.maxRetries, sender))
 

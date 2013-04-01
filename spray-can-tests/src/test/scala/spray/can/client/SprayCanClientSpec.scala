@@ -76,7 +76,7 @@ class SprayCanClientSpec extends Specification {
     }
 
     "properly complete a simple request/response cycle with a Host-header request" in new TestSetup {
-      val (probe, hostConnector) = sendViaHostConnector(Get("/hij") ~> Host(hostname, port))
+      val (probe, hostConnector) = sendViaHostConnector(Get("/hij") ~> Host(hostname, port) ~> Date(DateTime.now))
       verifyServerSideRequestAndReply(s"http://$hostname:$port/hij", probe)
       closeHostConnector(hostConnector)
     }
