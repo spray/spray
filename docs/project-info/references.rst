@@ -36,6 +36,11 @@ to be listed here (along with a backlink) please provide us with the following d
   system), and many others. We're getting excellent use out of *spray*, and want to pass on our thanks again for all
   the work!
 
+`Metafor Software <http://metaforsoftware.com/>`_
+  We just went live with *spray* in production for the REST backend of our "single-page" web app a couple weeks ago.
+  Very low volume, since we're still in semi-private beta, but I'm very happy with it so far.
+  The immutable request/response model is a huge win for clarity and composability.
+
 `telfish.com <http://www.telfish.com>`_
   We are using *spray-can*, *spray-server* and *spray-json* for our customer-facing query API for more than a year now
   and are very happy with it. Our API code is robust, fast and easy to maintain.
