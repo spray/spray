@@ -39,7 +39,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
         val req = request.withEffectiveUri(securedConnection = false)
         val Uri.Authority(host, port, _) = req.uri.authority
         val effectivePort = if (port == 0) Uri.defaultPorts(req.uri.scheme) else port
-        val connector = hostConnectorFor(HostConnectorSetup(host.toString, effectivePort))
+        val connector = hostConnectorFor(HostConnectorSetup(host.toString, effectivePort, req.uri.scheme == "https"))
         // never render absolute URI here
         connector.forward(req.copy(uri = req.uri.copy(scheme = "", authority = Uri.Authority.Empty)))
       } catch {

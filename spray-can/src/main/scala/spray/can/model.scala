@@ -20,7 +20,7 @@ import java.net.InetSocketAddress
 import scala.collection.immutable
 import akka.io.Inet
 import akka.actor.{ ActorRefFactory, ActorRef }
-import spray.can.client.HostConnectorSettings
+import spray.can.client.{ ClientConnectionSettings, HostConnectorSettings }
 import spray.io.ClientSSLEngineProvider
 import spray.util.actorSystem
 import spray.http._
@@ -60,6 +60,11 @@ object HostConnectorSetup {
   def apply(host: String, port: Int = 80, options: immutable.Traversable[Inet.SocketOption] = Nil,
             settings: Option[HostConnectorSettings] = None)(implicit sslEngineProvider: ClientSSLEngineProvider): HostConnectorSetup =
     apply(new InetSocketAddress(host, port), options, settings)
+
+  def apply(host: String, port: Int, sslEncryption: Boolean)(implicit refFactory: ActorRefFactory): HostConnectorSetup = {
+    val connectionSettings = ClientConnectionSettings(actorSystem).copy(sslEncryption = sslEncryption)
+    apply(host, port, settings = Some(HostConnectorSettings(actorSystem).copy(connectionSettings = connectionSettings)))
+  }
 }
 
 case class HostConnectorInfo(hostConnector: ActorRef, setup: HostConnectorSetup)
