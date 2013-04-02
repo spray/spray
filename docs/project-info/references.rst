@@ -41,6 +41,11 @@ to be listed here (along with a backlink) please provide us with the following d
   Very low volume, since we're still in semi-private beta, but I'm very happy with it so far.
   The immutable request/response model is a huge win for clarity and composability.
 
+`Timetrade <http://timetrade.com>`_
+  We are using *spray* in 3 REST service components so far as well as some stress testing code.
+  We've found it to be of excellent quality and embodies a very nice immutable model of HTTP.
+  The team behind it is very responsive and helpful.
+
 `telfish.com <http://www.telfish.com>`_
   We are using *spray-can*, *spray-server* and *spray-json* for our customer-facing query API for more than a year now
   and are very happy with it. Our API code is robust, fast and easy to maintain.
