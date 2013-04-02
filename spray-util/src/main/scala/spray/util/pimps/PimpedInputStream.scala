@@ -28,7 +28,10 @@ class PimpedInputStream(underlying: InputStream) {
     if (bytesRead > 0) {
       val bytes = if (bytesRead == buffer.length) buffer else Arrays.copyOfRange(buffer, 0, bytesRead)
       Stream.cons(bytes, toByteArrayStream(chunkSize))
-    } else Stream.Empty
+    } else {
+      underlying.close()
+      Stream.Empty
+    }
   }
 
 }
