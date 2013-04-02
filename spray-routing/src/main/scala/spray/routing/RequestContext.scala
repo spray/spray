@@ -253,12 +253,17 @@ case class RequestContext(request: HttpRequest, responder: ActorRef, unmatchedPa
   }
 
   /**
-   * Bubbles the given error up the response chain, where it is dealt with by the closest `handleExceptions`
-   * directive and its ExceptionHandler.
+   * Bubbles the given error up the response chain where it is dealt with by the closest `handleExceptions`
+   * directive and its ``ExceptionHandler``, unless the error is a ``RejectionError``. In this case the
+   * wrapped rejection is unpacked and "executed".
    */
-  def failWith(error: Throwable) {
-    responder ! Status.Failure(error)
-  }
+  def failWith(error: Throwable): Unit =
+    responder ! {
+      error match {
+        case RejectionError(rejection) ⇒ Rejected(rejection :: Nil)
+        case x                         ⇒ Status.Failure(x)
+      }
+    }
 
   /**
    * Creates a MarshallingContext using the given status code and response headers.

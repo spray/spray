@@ -165,8 +165,9 @@ case class ValidationRejection(message: String, cause: Option[Throwable] = None)
 case class TransformationRejection(transform: List[Rejection] ⇒ List[Rejection]) extends Rejection
 
 /**
- * An exception wrapping a Rejection.
- * Used mainly with Futures, where instead of a `Future[Either[Rejection, T]]` we just use a Future[T] and wrap
- * potential rejections into the Future result.
+ * A Throwable wrapping a Rejection.
+ * Can be used for marshalling `Future[T]` or `Try[T]` instances, whose failure side is supposed to trigger a route
+ * rejection rather than an Exception that is handled by the nearest ExceptionHandler.
+ * (Custom marshallers can of course use it as well.)
  */
-case class RejectionException(rejection: Rejection) extends Exception
+case class RejectionError(rejection: Rejection) extends Throwable

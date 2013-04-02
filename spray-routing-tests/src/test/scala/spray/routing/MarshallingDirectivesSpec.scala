@@ -18,6 +18,7 @@ package spray.routing
 
 import java.io.ByteArrayInputStream
 import scala.xml.{ XML, NodeSeq }
+import scala.concurrent.Promise
 import spray.httpx.unmarshalling._
 import spray.httpx.marshalling._
 import spray.http._
@@ -137,4 +138,22 @@ class MarshallingDirectivesSpec extends RoutingSpec {
     }
   }
 
+  "Completion with a Future" should {
+    "work for successful futures" in {
+      Get() ~> complete(Promise.successful("yes").future) ~> check { entityAs[String] === "yes" }
+    }
+    "work for failed futures" in {
+      Get() ~> complete(Promise.failed[String](new RuntimeException("Naa")).future) ~>
+        check {
+          status === StatusCodes.InternalServerError
+          entityAs[String] === "There was an internal server error."
+        }
+    }
+    "work for futures failed with a RejectionError" in {
+      Get() ~> complete(Promise.failed[String](RejectionError(AuthorizationFailedRejection)).future) ~>
+        check {
+          rejection === AuthorizationFailedRejection
+        }
+    }
+  }
 }
