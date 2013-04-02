@@ -87,14 +87,16 @@ object Uri {
   val / = "/"
 
   /**
-   * Parses a string into a normalized URI reference as defined by http://tools.ietf.org/html/rfc3986#section-4.1.
+   * Parses a valid URI string into a normalized URI reference as defined
+   * by http://tools.ietf.org/html/rfc3986#section-4.1.
    * Percent-encoded octets are UTF-8 decoded.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
   implicit def apply(string: CharSequence): Uri = apply(string, UTF8)
 
   /**
-   * Parses a string into a normalized URI reference as defined by http://tools.ietf.org/html/rfc3986#section-4.1.
+   * Parses a valid URI string into a normalized URI reference as defined
+   * by http://tools.ietf.org/html/rfc3986#section-4.1.
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
