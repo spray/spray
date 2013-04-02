@@ -187,70 +187,68 @@ case class RequestContext(request: HttpRequest, responder: ActorRef, unmatchedPa
   /**
    * Rejects the request with the given rejections.
    */
-  def reject(rejections: Rejection*) {
+  def reject(rejection: Rejection): Unit =
+    responder ! Rejected(rejection :: Nil)
+
+  /**
+   * Rejects the request with the given rejections.
+   */
+  def reject(rejections: Rejection*): Unit =
     responder ! Rejected(rejections.toList)
-  }
 
   /**
    * Completes the request with redirection response of the given type to the given URI.
    * The default redirectionType is a temporary `302 Found`.
    */
-  def redirect(uri: String, redirectionType: Redirection = Found) {
+  def redirect(uri: String, redirectionType: Redirection = Found): Unit =
     complete {
       HttpResponse(
         status = redirectionType,
         headers = Location(uri) :: Nil,
         entity = redirectionType.htmlTemplate.toOption.map(s ⇒ HttpBody(`text/html`, s format uri)))
     }
-  }
 
   /**
    * Completes the request with the given status code and its default message as the response entity.
    */
-  def complete(status: StatusCode) {
+  def complete(status: StatusCode): Unit =
     complete(HttpResponse(status, entity = status.defaultMessage))
-  }
 
   /**
    * Completes the request with status "200 Ok" and the response entity created by marshalling the given object using
    * the in-scope marshaller for the type.
    */
-  def complete[T: Marshaller](obj: T) {
+  def complete[T: Marshaller](obj: T): Unit =
     complete(OK, obj)
-  }
 
   /**
    * Completes the request with the given status and the response entity created by marshalling the given object using
    * the in-scope marshaller for the type.
    */
-  def complete[T: Marshaller](status: StatusCode, obj: T) {
+  def complete[T: Marshaller](status: StatusCode, obj: T): Unit =
     complete(status, Nil, obj)
-  }
 
   /**
    * Completes the request with the given status, headers and the response entity created by marshalling the
    * given object using the in-scope marshaller for the type.
    */
-  def complete[T](status: StatusCode, headers: List[HttpHeader], obj: T)(implicit marshaller: Marshaller[T]) {
+  def complete[T](status: StatusCode, headers: List[HttpHeader], obj: T)(implicit marshaller: Marshaller[T]): Unit =
     marshaller(obj, marshallingContext(status, headers))
-  }
 
   /**
    * Completes the request with the given [[spray.http.HttpResponse]].
    */
-  def complete(response: HttpResponse) {
+  def complete(response: HttpResponse): Unit =
     responder ! response
-  }
 
   /**
    * Schedules the completion of the request with result of the given future.
    */
-  def complete(future: Future[HttpResponse])(implicit ec: ExecutionContext) {
+  def complete(future: Future[HttpResponse])(implicit ec: ExecutionContext): Unit =
     future.onComplete {
       case Success(response) ⇒ complete(response)
       case Failure(error)    ⇒ failWith(error)
     }
-  }
 
   /**
    * Bubbles the given error up the response chain where it is dealt with by the closest `handleExceptions`
