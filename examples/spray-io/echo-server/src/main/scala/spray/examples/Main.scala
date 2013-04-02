@@ -1,6 +1,7 @@
 package spray.examples
 
 import java.net.InetSocketAddress
+import scala.collection.immutable.Queue
 import scala.concurrent.duration._
 import akka.actor.{Actor, Props, ActorSystem}
 import akka.pattern.ask
@@ -32,17 +33,18 @@ object Main extends App {
 
 class EchoServer extends Actor with SprayActorLogging {
 
-  def receive = {
-    case Tcp.Connected(_, _) =>
-      sender ! Tcp.Register(self)
-      log.debug("Registered for new connection")
+  def receive = simpleEchoing
 
+  def simpleEchoing: Receive = connectingAndClosing orElse {
     case Tcp.Received(data) =>
       data.utf8String.trim match {
         case "STOP" =>
-          sender ! Tcp.Write(ByteString("Shutting down..."))
+          info("Shutting down")
           sender ! Tcp.Close
-          log.info("Shutting down")
+
+        case "ACKED" =>
+          info("Switching to ACKed echoing mode")
+          context.become(ackedEchoing)
 
         case x =>
           log.debug("Received '{}', echoing ...", x)
@@ -51,9 +53,60 @@ class EchoServer extends Actor with SprayActorLogging {
 
     case 'SentOk =>
       log.debug("Send completed")
+  }
+
+  def ackedEchoing: Receive = connectingAndClosing orElse {
+    case Tcp.Received(data) =>
+      data.utf8String.trim match {
+        case "STOP" =>
+          info("Shutting down")
+          sender ! Tcp.Close
+
+        case "SIMPLE" =>
+          info("Switching to simple echoing mode")
+          context.become(simpleEchoing)
+
+        case x =>
+          sender ! Tcp.Write(data, ack = 'SentOk)
+          context.become(waitingForAck)
+      }
+  }
+
+  def waitingForAck: Receive = connectingAndClosing orElse {
+    case Tcp.Received(data) =>
+      sender ! Tcp.StopReading
+      context.become(waitingForAckWithQueuedData(Queue(data)))
+
+    case 'SentOk =>
+      context.become(ackedEchoing)
+  }
+
+  def waitingForAckWithQueuedData(queuedData: Queue[ByteString]): Receive = connectingAndClosing orElse {
+    case Tcp.Received(data) =>
+      context.become(waitingForAckWithQueuedData(queuedData.enqueue(data)))
+
+    case 'SentOk if queuedData.isEmpty =>
+      sender ! Tcp.ResumeReading
+      context.become(ackedEchoing)
+
+    case 'SentOk =>
+      // for brevity we don't interpret STOP and SIMPLE commands here
+      sender ! Tcp.Write(queuedData.head, ack = 'SentOk)
+      context.become(waitingForAckWithQueuedData(queuedData.tail))
+  }
+
+  def connectingAndClosing: Receive = {
+    case Tcp.Connected(_, _) =>
+      sender ! Tcp.Register(self)
+      log.debug("Registered for new connection")
 
     case x: Tcp.ConnectionClosed =>
       log.debug("Connection closed: {}", x)
       context.system.shutdown()
+  }
+
+  def info(msg: String): Unit = {
+    log.info(msg)
+    sender ! Tcp.Write(ByteString(msg + '\n'))
   }
 }
