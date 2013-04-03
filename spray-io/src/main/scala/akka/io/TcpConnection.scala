@@ -78,9 +78,11 @@ private[io] abstract class TcpConnection(val channel: SocketChannel,
       pendingWrite = createWrite(write)
       doWrite(handler)
 
-    case ChannelWritable   ⇒ if (writePending) doWrite(handler)
+    case ChannelWritable       ⇒ if (writePending) doWrite(handler)
 
-    case cmd: CloseCommand ⇒ handleClose(handler, Some(sender), closeResponse(cmd))
+    case cmd: CloseCommand     ⇒ handleClose(handler, Some(sender), closeResponse(cmd))
+
+    case Terminated(`handler`) ⇒ handlerTerminated()
   }
 
   /** connection is closing but a write has to be finished first */
@@ -94,18 +96,27 @@ private[io] abstract class TcpConnection(val channel: SocketChannel,
       if (!writePending) // writing is now finished
         handleClose(handler, closeCommander, closedEvent)
 
-    case Abort ⇒ handleClose(handler, Some(sender), Aborted)
+    case Abort                 ⇒ handleClose(handler, Some(sender), Aborted)
+
+    case Terminated(`handler`) ⇒ handlerTerminated()
   }
 
   /** connection is closed on our side and we're waiting from confirmation from the other side */
   def closing(handler: ActorRef, closeCommander: Option[ActorRef]): Receive = {
-    case StopReading     ⇒ selector ! DisableReadInterest
-    case ResumeReading   ⇒ selector ! ReadInterest
-    case ChannelReadable ⇒ doRead(handler, closeCommander)
-    case Abort           ⇒ handleClose(handler, Some(sender), Aborted)
+    case StopReading           ⇒ selector ! DisableReadInterest
+    case ResumeReading         ⇒ selector ! ReadInterest
+    case ChannelReadable       ⇒ doRead(handler, closeCommander)
+    case Abort                 ⇒ handleClose(handler, Some(sender), Aborted)
+    case Terminated(`handler`) ⇒ handlerTerminated()
   }
 
   // AUXILIARIES and IMPLEMENTATION
+
+  def handlerTerminated(): Unit = {
+    log.debug("Closing connection (stopping self) because handler terminated")
+    closedMessage = null
+    context.stop(self)
+  }
 
   /** used in subclasses to start the common machinery above once a channel is connected */
   def completeConnect(commander: ActorRef, options: immutable.Traversable[SocketOption]): Unit = {
