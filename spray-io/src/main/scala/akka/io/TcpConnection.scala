@@ -44,14 +44,17 @@ private[io] abstract class TcpConnection(val channel: SocketChannel,
   /** connection established, waiting for registration from user handler */
   def waitingForRegistration(commander: ActorRef): Receive = {
     case Register(handler, keepOpenOnPeerClosed) ⇒
+      // up to this point we've been watching the commander (in death-pact mode), but since registration is now
+      // complete we only need to watch the handler from here on (thereby explicitly handling Terminated events)
+      if (handler != commander) {
+        context.unwatch(commander)
+        context.watch(handler)
+      }
       if (TraceLogging) log.debug("[{}] registered as connection handler", handler)
       this.keepOpenOnPeerClosed = keepOpenOnPeerClosed
 
       doRead(handler, None) // immediately try reading
-
       context.setReceiveTimeout(Duration.Undefined)
-      context.watch(handler) // sign death pact
-
       context.become(connected(handler))
 
     case cmd: CloseCommand ⇒
@@ -66,18 +69,20 @@ private[io] abstract class TcpConnection(val channel: SocketChannel,
 
   /** normal connected state */
   def connected(handler: ActorRef): Receive = handleWriteMessages(handler) orElse {
-    case StopReading       ⇒ selector ! DisableReadInterest
-    case ResumeReading     ⇒ selector ! ReadInterest
-    case ChannelReadable   ⇒ doRead(handler, None)
+    case StopReading           ⇒ selector ! DisableReadInterest
+    case ResumeReading         ⇒ selector ! ReadInterest
+    case ChannelReadable       ⇒ doRead(handler, None)
 
-    case cmd: CloseCommand ⇒ handleClose(handler, Some(sender), cmd.event)
+    case cmd: CloseCommand     ⇒ handleClose(handler, Some(sender), cmd.event)
 
     case Terminated(`handler`) ⇒ handlerTerminated()
   }
 
   /** the peer sent EOF first, but we may still want to send */
   def peerSentEOF(handler: ActorRef): Receive = handleWriteMessages(handler) orElse {
-    case cmd: CloseCommand ⇒ handleClose(handler, Some(sender), cmd.event)
+    case cmd: CloseCommand     ⇒ handleClose(handler, Some(sender), cmd.event)
+
+    case Terminated(`handler`) ⇒ handlerTerminated()
   }
 
   /** connection is closing but a write has to be finished first */
