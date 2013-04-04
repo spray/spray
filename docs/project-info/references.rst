@@ -41,9 +41,10 @@ to be listed here (along with a backlink) please provide us with the following d
   Very low volume, since we're still in semi-private beta, but I'm very happy with it so far.
   The immutable request/response model is a huge win for clarity and composability.
 
-`Timetrade <http://timetrade.com>`_
-  We are using *spray* in 3 REST service components so far as well as some stress testing code.
-  We've found it to be of excellent quality and embodies a very nice immutable model of HTTP.
+`TimeTrade <http://www.timetrade.com>`_
+  TimeTrade has used *spray* to build a number of core services within our online appointment scheduling system,
+  and we plan to use it for even more. It also forms the basis of our stress testing framework.
+  We've found it to be of excellent quality, and it represents the immutable model of HTTP in a very elegant way.
   The team behind it is very responsive and helpful.
 
 `telfish.com <http://www.telfish.com>`_
