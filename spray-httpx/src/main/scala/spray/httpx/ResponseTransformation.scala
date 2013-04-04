@@ -77,5 +77,5 @@ object TransformerAux {
 }
 
 class PipelineException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
-class UnsuccessfulResponseException(response: HttpResponse) extends RuntimeException(s"Status: ${response.status}\n" +
+class UnsuccessfulResponseException(val response: HttpResponse) extends RuntimeException(s"Status: ${response.status}\n" +
   s"Body: ${if (response.entity.buffer.length < 1024) response.entity.asString else response.entity.buffer.length + " bytes"}")
