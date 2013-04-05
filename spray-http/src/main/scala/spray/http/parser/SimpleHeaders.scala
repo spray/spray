@@ -53,6 +53,10 @@ private[parser] trait SimpleHeaders {
     HttpDate ~ EOI ~~> `Last-Modified`
   }
 
+  def LOCATION = rule {
+    oneOrMore(Text) ~> { uri ⇒ Location(Uri.parseAbsolute(uri)) } ~ EOI
+  }
+
   def REMOTE_ADDRESS = rule {
     Ip ~ EOI ~~> `Remote-Address`
   }

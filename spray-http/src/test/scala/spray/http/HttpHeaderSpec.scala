@@ -131,6 +131,10 @@ class HttpHeaderSpec extends Specification {
       p ^
       "Last-Modified: Wed, 13 Jul 2011 08:12:31 GMT" ! example(`Last-Modified`(DateTime(2011, 7, 13, 8, 12, 31)))_ ^
       p ^
+      "Location: https://spray.io/secure" ! example(Location(Uri("https://spray.io/secure")))_ ^
+      "Location: https://spray.io/{sec}" ! errorExample(ErrorInfo("Illegal HTTP header 'Location': Illegal absolute " +
+        "URI, unexpected character '{' at position 17", "\nhttps://spray.io/{sec}\n                 ^\n"))_ ^
+      p ^
       "Remote-Address: 111.22.3.4" ! example(`Remote-Address`("111.22.3.4"))_ ^
       p ^
       "Server: as fghf.fdf/xx" ! example(`Server`(Seq(ProductVersion("as"), ProductVersion("fghf.fdf", "xx"))))_ ^

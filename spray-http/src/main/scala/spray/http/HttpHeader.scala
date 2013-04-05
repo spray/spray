@@ -143,10 +143,10 @@ object HttpHeaders {
     def value = date.toRfc1123DateTimeString
   }
 
-  case class Location(absoluteUri: String) extends HttpHeader {
+  case class Location(absoluteUri: Uri) extends HttpHeader {
     def name = "Location"
     def lowercaseName = "location"
-    def value = absoluteUri
+    def value = absoluteUri.toString
   }
 
   case class `Remote-Address`(ip: HttpIp) extends HttpHeader {

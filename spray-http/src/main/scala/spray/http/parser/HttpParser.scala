@@ -83,7 +83,7 @@ object HttpParser extends Parser with ProtocolParameterRules with AdditionalRule
       case Left(info)     ⇒ Left(info.withFallbackSummary("Illegal Content-Type"))
     }
 
-  private def parse[A](rule: Rule1[A], input: String): Either[ErrorInfo, A] = {
+  def parse[A](rule: Rule1[A], input: String): Either[ErrorInfo, A] = {
     try {
       val result = ReportingParseRunner(rule).run(input)
       result.result match {
@@ -91,8 +91,11 @@ object HttpParser extends Parser with ProtocolParameterRules with AdditionalRule
         case None        ⇒ Left(ErrorInfo(detail = ErrorUtils.printParseErrors(result)))
       }
     } catch {
-      case e: ParserRuntimeException if e.getCause.isInstanceOf[ParsingException] ⇒
-        Left(ErrorInfo.fromCompoundString(e.getCause.getMessage))
+      case e: ParserRuntimeException ⇒ e.getCause match {
+        case e: IllegalUriException ⇒ Left(e.info)
+        case _: ParsingException    ⇒ Left(ErrorInfo.fromCompoundString(e.getCause.getMessage))
+        case x                      ⇒ throw x
+      }
     }
   }
 }
