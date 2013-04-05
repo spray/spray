@@ -14,19 +14,18 @@
  * limitations under the License.
  */
 
-package spray.can
+package spray.can.parsing
 
-package object parsing {
+import spray.http.{ HttpHeader, ErrorInfo }
 
-  private[can] def isTokenChar(c: Char) = c match {
-    case x if 'a' <= x && x <= 'z' ⇒ true
-    case x if 'A' <= x && x <= 'Z' ⇒ true
-    case '-' ⇒ true
-    case '(' | ')' | '<' | '>' | '@' | ',' | ';' | ':' | '\\' | '"' | '/' | '[' | ']' | '?' | '=' | '{' | '}' ⇒ false
-    case x ⇒ 32 < x && x < 127
+trait SpecializedHeaderValueParsers { _: HttpHeaderParser.type ⇒
+
+  def specializedHeaderValueParsers = Seq(
+    SpecialContentLengthParser)
+
+  object SpecialContentLengthParser extends HeaderValueParser {
+    def lowercaseName: String = ???
+    def apply(input: CharSequence, startIx: Int, warnOnIllegalHeader: (ErrorInfo) ⇒ Unit): (HttpHeader, Int) = ???
   }
 
-  private[can] def escape(c: Char): String =
-    if (Character.isISOControl(c)) String.format("\\u%04x", c: java.lang.Integer)
-    else String.valueOf(c)
 }

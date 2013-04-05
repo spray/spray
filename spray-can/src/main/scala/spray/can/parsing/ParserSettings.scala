@@ -17,6 +17,7 @@
 package spray.can.parsing
 
 import com.typesafe.config.Config
+import akka.actor.ActorSystem
 
 case class ParserSettings(
     maxUriLength: Long,
@@ -43,6 +44,9 @@ case class ParserSettings(
 }
 
 object ParserSettings {
+  def apply(system: ActorSystem): ParserSettings =
+    apply(system.settings.config getConfig "spray.can.parsing")
+
   def apply(config: Config): ParserSettings =
     ParserSettings(
       config getBytes "max-uri-length",
