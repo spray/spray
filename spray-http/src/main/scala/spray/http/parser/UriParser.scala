@@ -24,7 +24,7 @@ import spray.http._
 import Uri._
 import UriParser._
 
-private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
+private[http] class UriParser(input: ParserInput, charset: Charset) {
   private[this] var cursor: Int = 0
   private[this] var maxCursor: Int = 0
   private[this] var firstUpper = -1
@@ -106,7 +106,7 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
       endOfScheme && setScheme("http") || ch('s') && endOfScheme && setScheme("https")) || reset(start) && resetFirstUpper() && Alpha && {
         def matches(c: Char) = is(c, LOWER_ALPHA | DIGIT | PLUS | DASH | DOT) || is(c, UPPER_ALPHA) && markUpper()
         while (matches(current)) advance()
-        endOfScheme && setScheme(toLowerIfNeeded(splice(start, cursor), firstUpper - start))
+        endOfScheme && setScheme(toLowerIfNeeded(slice(start, cursor), firstUpper - start))
       }
   }
 
@@ -125,7 +125,7 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
     while (matches(UNRESERVED | SUB_DELIM | COLON) || `pct-encoded`) mark = cursor
     reset(mark)
     ch('@') && {
-      _userinfo = decodeIfNeeded(splice(start, cursor - 1), firstPercent - start, charset)
+      _userinfo = decodeIfNeeded(slice(start, cursor - 1), firstPercent - start, charset)
       true
     }
   }
@@ -179,7 +179,7 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
       || reset(mark) && (optH16c && optH16c && optH16c && optH16c && h16 || reset(mark)) && cc && ls32
       || reset(mark) && (optH16c && optH16c && optH16c && optH16c && optH16c && h16 || reset(mark)) && cc && h16
       || reset(mark) && (optH16c && optH16c && optH16c && optH16c && optH16c && optH16c && h16 || reset(mark)) && cc) && {
-        _host = IPv6Host(splice(mark, cursor))
+        _host = IPv6Host(slice(mark, cursor))
         true
       }
   }
@@ -194,7 +194,7 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
   def IPv4address = {
     val start = cursor
     `dec-octet` && ch('.') && `dec-octet` && ch('.') && `dec-octet` && ch('.') && `dec-octet` && {
-      _host = IPv4Host(splice(start, cursor))
+      _host = IPv4Host(slice(start, cursor))
       true
     }
   }
@@ -219,7 +219,7 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
       if (cursor > start) {
         firstUpper -= start
         firstPercent -= start
-        val s = splice(start, cursor)
+        val s = slice(start, cursor)
         if (firstUpper >= 0)
           if (firstPercent >= 0) toLowerIfNeeded(decodeIfNeeded(s, firstPercent, charset), min(firstPercent, firstUpper))
           else toLowerIfNeeded(s, firstUpper)
@@ -279,7 +279,7 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
       while (matches(QUERY_FRAGMENT_CHARS & ~(AMP | EQUAL)) || `pct-encoded`) mark = cursor
       reset(mark)
       if (cursor > start)
-        decodeIfNeeded(splice(start, cursor).replace('+', ' '), firstPercent - start, charset)
+        decodeIfNeeded(slice(start, cursor).replace('+', ' '), firstPercent - start, charset)
       else ""
     }
     // non-tail recursion, which we accept because it allows us to directly build the query
@@ -303,7 +303,7 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
     while (matches(QUERY_FRAGMENT_CHARS) || `pct-encoded`) mark = cursor
     reset(mark)
     _fragment = Some {
-      if (cursor > start) decodeIfNeeded(splice(start, cursor), firstPercent - start, charset)
+      if (cursor > start) decodeIfNeeded(slice(start, cursor), firstPercent - start, charset)
       else ""
     }
     true
@@ -363,11 +363,11 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
   def advance() = { cursor += 1; maxCursor = max(maxCursor, cursor); true }
 
   def savePath(start: Int) = {
-    _path = Path(decodeIfNeeded(splice(start, cursor), firstPercent - start, charset))
+    _path = Path(decodeIfNeeded(slice(start, cursor), firstPercent - start, charset))
     true
   }
 
-  def splice(start: Int, end: Int): String = input.subSequence(start, end).toString
+  def slice(start: Int, end: Int): String = input.sliceString(start, end)
 
   def resetFirstUpper() = { firstUpper = -1; true }
   def resetFirstPercent() = { firstUpper = -1; true }

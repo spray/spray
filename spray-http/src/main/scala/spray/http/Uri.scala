@@ -20,7 +20,7 @@ package spray.http
 import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import java.nio.charset.Charset
 import scala.annotation.tailrec
-import spray.http.parser.UriParser
+import spray.http.parser.{ ParserInput, UriParser }
 import UriParser._
 import Uri._
 
@@ -84,7 +84,7 @@ object Uri {
     def isEmpty = true
   }
 
-  val / = "/"
+  val / : Uri = "/"
 
   /**
    * Parses a valid URI string into a normalized URI reference as defined
@@ -92,7 +92,7 @@ object Uri {
    * Percent-encoded octets are UTF-8 decoded.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  implicit def apply(string: CharSequence): Uri = apply(string, UTF8)
+  implicit def apply(input: String): Uri = apply(input: ParserInput)
 
   /**
    * Parses a valid URI string into a normalized URI reference as defined
@@ -100,8 +100,17 @@ object Uri {
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def apply(string: CharSequence, charset: Charset): Uri =
-    new UriParser(string, charset).parseReference()
+  def apply(input: ParserInput): Uri =
+    apply(input, UTF8)
+
+  /**
+   * Parses a valid URI string into a normalized URI reference as defined
+   * by http://tools.ietf.org/html/rfc3986#section-4.1.
+   * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
+   * If the given string is not a valid URI the method throws an `IllegalUriException`.
+   */
+  def apply(input: ParserInput, charset: Charset): Uri =
+    new UriParser(input, charset).parseReference()
 
   /**
    * Creates a new Uri instance from the given components.
@@ -135,8 +144,8 @@ object Uri {
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseAbsolute(string: CharSequence, charset: Charset = UTF8): Uri =
-    new UriParser(string, charset).parseAbsolute()
+  def parseAbsolute(input: ParserInput, charset: Charset = UTF8): Uri =
+    new UriParser(input, charset).parseAbsolute()
 
   /**
    * Parses a string into a normalized URI reference that is immediately resolved against the given base URI as
@@ -145,16 +154,16 @@ object Uri {
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseAndResolve(string: CharSequence, base: Uri, charset: Charset = UTF8): Uri =
-    new UriParser(string, charset).parseAndResolveReference(base)
+  def parseAndResolve(input: ParserInput, base: Uri, charset: Charset = UTF8): Uri =
+    new UriParser(input, charset).parseAndResolveReference(base)
 
   /**
    * Parses the given string into an HTTP request target URI as defined by
    * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.3.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseHttpRequestTarget(requestTarget: CharSequence, charset: Charset = UTF8): Uri =
-    new UriParser(requestTarget, charset).parseHttpRequestTarget()
+  def parseHttpRequestTarget(input: ParserInput, charset: Charset = UTF8): Uri =
+    new UriParser(input, charset).parseHttpRequestTarget()
 
   /**
    * Normalizes the given URI string by performing the following normalizations:
@@ -165,8 +174,8 @@ object Uri {
    *
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def normalize(uri: CharSequence, charset: Charset = UTF8): String =
-    Uri(uri, charset).toString(charset)
+  def normalize(input: ParserInput, charset: Charset = UTF8): String =
+    Uri(input, charset).toString(charset)
 
   /**
    * Converts a set of URI components to an "effective HTTP request URI" as defined by
@@ -233,7 +242,7 @@ object Uri {
     }
     def apply(string: String): Host =
       if (!string.isEmpty) {
-        val parser = new UriParser(string)
+        val parser = new UriParser(string, UTF8)
         import parser._
         complete("URI host", host)
         _host
@@ -382,7 +391,7 @@ object Uri {
      * Empty strings will be parsed to `("", "") +: Query.Empty`
      */
     def apply(string: String): Query = {
-      val parser = new UriParser(string)
+      val parser = new UriParser(string, UTF8)
       import parser._
       complete("Query", query)
       _query
