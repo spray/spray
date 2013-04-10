@@ -25,7 +25,7 @@ import CacheDirectives._
 private[parser] trait CacheControlHeader {
   this: Parser with ProtocolParameterRules ⇒
 
-  def CACHE_CONTROL = rule(
+  def `*Cache-Control` = rule(
     zeroOrMore(CacheDirective, separator = ListSep) ~ EOI ~~> (HttpHeaders.`Cache-Control`(_)))
 
   def CacheDirective = rule(

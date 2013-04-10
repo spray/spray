@@ -24,7 +24,7 @@ import BasicRules._
 private[parser] trait AuthorizationHeader {
   this: Parser with ProtocolParameterRules with AdditionalRules ⇒
 
-  def AUTHORIZATION = rule {
+  def `*Authorization` = rule {
     CredentialDef ~ EOI ~~> HttpHeaders.`Authorization`
   }
 

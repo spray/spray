@@ -23,7 +23,7 @@ import HttpEncodings._
 private[parser] trait ContentEncodingHeader {
   this: Parser with ProtocolParameterRules ⇒
 
-  def CONTENT_ENCODING = rule(
+  def `*Content-Encoding` = rule(
     ContentEncoding ~ EOI ~~> HttpHeaders.`Content-Encoding`)
 
   def ContentEncoding = rule {

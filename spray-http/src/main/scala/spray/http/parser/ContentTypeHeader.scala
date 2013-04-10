@@ -24,7 +24,7 @@ import HttpHeaders._
 private[parser] trait ContentTypeHeader {
   this: Parser with ProtocolParameterRules with CommonActions ⇒
 
-  def CONTENT_TYPE = rule {
+  def `*Content-Type` = rule {
     ContentTypeHeaderValue ~~> `Content-Type`
   }
 
