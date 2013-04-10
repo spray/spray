@@ -24,9 +24,8 @@ trait SpecializedHeaderValueParsers { _: HttpHeaderParser.type ⇒
   def specializedHeaderValueParsers = Seq(
     SpecialContentLengthParser)
 
-  object SpecialContentLengthParser extends HeaderValueParser {
-    def lowercaseName: String = ???
-    def apply(input: CompactByteString, lineStart: Int, colonIx: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int) = ???
+  object SpecialContentLengthParser extends HeaderValueParser("Content-Length") {
+    def apply(input: CompactByteString, valueStart: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int) = ???
   }
 
 }

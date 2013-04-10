@@ -21,6 +21,7 @@ import org.specs2.mutable.Specification
 import akka.actor.ActorSystem
 import akka.util.CompactByteString
 import spray.util.Utils._
+import spray.http.HttpHeaders._
 
 class HttpHeaderParserSpec extends Specification {
   val testConf: Config = ConfigFactory.parseString("""
@@ -100,33 +101,33 @@ class HttpHeaderParserSpec extends Specification {
     "prime an empty parser with all defined HeaderValueParsers" in new TestSetup() {
       parser.inspect ===
         """   ┌─\r-\n EmptyHeader
-          |   |             ┌─c-h-a-r-s-e-t-: accept-charset
-          |   |             | └─e-n-c-o-d-i-n-g-: accept-encoding
-          | ┌─a-c-c-e-p-t---l-a-n-g-u-a-g-e-: accept-language
-          | |   |         | └─r-a-n-g-e-s-: accept-ranges
+          |   |             ┌─c-h-a-r-s-e-t-: (Accept-Charset)
+          |   |             | └─e-n-c-o-d-i-n-g-: (Accept-Encoding)
+          | ┌─a-c-c-e-p-t---l-a-n-g-u-a-g-e-: (Accept-Language)
+          | |   |         | └─r-a-n-g-e-s-: (Accept-Ranges)
           | |   |         |               ┌─\r-\n Accept: */*
-          | |   |         └─:(accept)- -*-/-*-\r-\n Accept: */*
-          | |   └─u-t-h-o-r-i-z-a-t-i-o-n-: authorization
-          | | ┌─a-c-h-e---c-o-n-t-r-o-l-:(cache-control)- -m-a-x---a-g-e-=-0-\r-\n Cache-Control: max-age=0
-          | | |     ┌─n-e-c-t-i-o-n-:(connection)- -K-e-e-p---A-l-i-v-e-\r-\n Connection: Keep-Alive
+          | |   |         └─:(Accept)- -*-/-*-\r-\n Accept: */*
+          | |   └─u-t-h-o-r-i-z-a-t-i-o-n-: (Authorization)
+          | | ┌─a-c-h-e---c-o-n-t-r-o-l-:(Cache-Control)- -m-a-x---a-g-e-=-0-\r-\n Cache-Control: max-age=0
+          | | |     ┌─n-e-c-t-i-o-n-:(Connection)- -K-e-e-p---A-l-i-v-e-\r-\n Connection: Keep-Alive
           | | |     |                               | ┌─c-l-o-s-e-\r-\n Connection: close
           | | |     |                               └─k-e-e-p---a-l-i-v-e-\r-\n Connection: keep-alive
-          | | |     |         ┌─d-i-s-p-o-s-i-t-i-o-n-: content-disposition
-          | | | ┌─n-t-e-n-t---e-n-c-o-d-i-n-g-: content-encoding
-          | | | |             | ┌─l-e-n-g-t-h-: content-length
-          | | | |             └─t-y-p-e-: content-type
-          |-c-o-o-k-i-e-: cookie
-          | |     ┌─d-a-t-e-: date
-          | |   ┌─h-o-s-t-: host
-          | | ┌─l-a-s-t---m-o-d-i-f-i-e-d-: last-modified
-          | | | | └─o-c-a-t-i-o-n-: location
-          | | | └─r-e-m-o-t-e---a-d-d-r-e-s-s-: remote-address
-          | └─s-e-r-v-e-r-: server
-          |   |   └─t---c-o-o-k-i-e-: set-cookie
-          |   | ┌─t-r-a-n-s-f-e-r---e-n-c-o-d-i-n-g-: transfer-encoding
-          |   └─u-s-e-r---a-g-e-n-t-: user-agent
-          |     | ┌─w-w-w---a-u-t-h-e-n-t-i-c-a-t-e-: www-authenticate
-          |     └─x---f-o-r-w-a-r-d-e-d---f-o-r-: x-forwarded-for
+          | | |     |         ┌─d-i-s-p-o-s-i-t-i-o-n-: (Content-Disposition)
+          | | | ┌─n-t-e-n-t---e-n-c-o-d-i-n-g-: (Content-Encoding)
+          | | | |             | ┌─l-e-n-g-t-h-: (Content-Length)
+          | | | |             └─t-y-p-e-: (Content-Type)
+          |-c-o-o-k-i-e-: (Cookie)
+          | |     ┌─d-a-t-e-: (Date)
+          | |   ┌─h-o-s-t-: (Host)
+          | | ┌─l-a-s-t---m-o-d-i-f-i-e-d-: (Last-Modified)
+          | | | | └─o-c-a-t-i-o-n-: (Location)
+          | | | └─r-e-m-o-t-e---a-d-d-r-e-s-s-: (Remote-Address)
+          | └─s-e-r-v-e-r-: (Server)
+          |   |   └─t---c-o-o-k-i-e-: (Set-Cookie)
+          |   | ┌─t-r-a-n-s-f-e-r---e-n-c-o-d-i-n-g-: (Transfer-Encoding)
+          |   └─u-s-e-r---a-g-e-n-t-: (User-Agent)
+          |     | ┌─w-w-w---a-u-t-h-e-n-t-i-c-a-t-e-: (WWW-Authenticate)
+          |     └─x---f-o-r-w-a-r-d-e-d---f-o-r-: (X-Forwarded-For)
           |""".stripMargin
       parser.inspectSizes === "300 nodes, 52 nodeData rows, 31 values"
     }
@@ -142,6 +143,27 @@ class HttpHeaderParserSpec extends Specification {
       val (ixA, headerA) = parseLine("Connection: close\r\n")
       val (ixB, headerB) = parseLine("coNNection: close\r\n")
       ixA === ixB
+      headerA must beTheSameAs(headerB)
+    }
+
+    "parse and cache a modelled header" in new TestSetup() {
+      val (ixA, headerA) = parseLine("Host: spray.io:123\r\nx")
+      val (ixB, headerB) = parseLine("HOST: spray.io:123\r\nx")
+      ixA === ixB
+      headerA === Host("spray.io", 123)
+      headerA must beTheSameAs(headerB)
+    }
+
+    "parse and cache a raw header" in new TestSetup(primed = false) {
+      insert("hello: bob", 'Hello)
+      val (ixA, headerA) = parseLine("Fancy-Pants: foo\r\nx")
+      val (ixB, headerB) = parseLine("Fancy-pants: foo\r\nx")
+      parser.inspect ===
+        """ ┌─f-a-n-c-y---p-a-n-t-s-:(Fancy-Pants)- -f-o-o-\r-\n *Fancy-Pants: foo
+          |-h-e-l-l-o-:- -b-o-b 'Hello
+          |""".stripMargin
+      ixA === ixB
+      headerA === RawHeader("Fancy-Pants", "foo")
       headerA must beTheSameAs(headerB)
     }
   }
