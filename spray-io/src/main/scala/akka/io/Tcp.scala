@@ -73,20 +73,20 @@ object Tcp extends ExtensionKey[TcpExt] {
                   backlog: Int = 100,
                   options: immutable.Traversable[SocketOption] = Nil) extends Command
 
-  case class Register(handler: ActorRef) extends Command
+  case class Register(handler: ActorRef, keepOpenOnPeerClosed: Boolean = false) extends Command
   case object Unbind extends Command
 
   sealed trait CloseCommand extends Command {
     def event: ConnectionClosed
   }
   case object Close extends CloseCommand {
-    def event = Closed
+    override def event = Closed
   }
   case object ConfirmedClose extends CloseCommand {
-    def event = ConfirmedClosed
+    override def event = ConfirmedClosed
   }
   case object Abort extends CloseCommand {
-    def event = Aborted
+    override def event = Aborted
   }
 
   case class NoAck(token: Any)
@@ -217,6 +217,7 @@ object TcpMessage {
            backlog: Int): Command = Bind(handler, endpoint, backlog, Nil)
 
   def register(handler: ActorRef): Command = Register(handler)
+  def register(handler: ActorRef, keepOpenOnPeerClosed: Boolean): Command = Register(handler, keepOpenOnPeerClosed)
   def unbind: Command = Unbind
 
   def close: Command = Close

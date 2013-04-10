@@ -38,7 +38,8 @@ trait ConnectionHandler extends Actor with SprayActorLogging {
     case cmd                                       ⇒ log.warning("command pipeline: dropped {}", cmd)
   }
 
-  def baseEventPipeline: Pipeline[Event] = {
+  def baseEventPipeline(keepOpenOnPeerClosed: Boolean): Pipeline[Event] = {
+    case Tcp.PeerClosed if keepOpenOnPeerClosed ⇒ // don't automatically stop
     case x: Tcp.ConnectionClosed ⇒
       log.debug("Stopping connection actor, connection was {}", x)
       context.stop(self)
@@ -49,14 +50,16 @@ trait ConnectionHandler extends Actor with SprayActorLogging {
   //#
 
   def running(tcpConnection: ActorRef, stage: PipelineStage, remoteAddress: InetSocketAddress,
-              localAddress: InetSocketAddress): Receive = {
+              localAddress: InetSocketAddress, keepOpenOnPeerClosed: Boolean = false): Receive = {
     val pipelineContext = PipelineContext(context, remoteAddress, localAddress, log)
-    running(tcpConnection, stage, pipelineContext)
+    running(tcpConnection, stage, pipelineContext, keepOpenOnPeerClosed)
   }
 
   def running[C <: PipelineContext](tcpConnection: ActorRef, pipelineStage: RawPipelineStage[C],
-                                    pipelineContext: C): Receive = {
-    val stage = pipelineStage(pipelineContext, baseCommandPipeline(tcpConnection), baseEventPipeline)
+                                    pipelineContext: C, keepOpenOnPeerClosed: Boolean = false): Receive = {
+    val stage = pipelineStage(pipelineContext,
+      baseCommandPipeline(tcpConnection),
+      baseEventPipeline(keepOpenOnPeerClosed))
     running(tcpConnection, stage)
   }
 

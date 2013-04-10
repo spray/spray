@@ -204,8 +204,8 @@ private[io] class SelectionHandler(manager: ActorRef, settings: SelectionHandler
               }
             } catch {
               case _: CancelledKeyException ⇒
-              // ok, this exception is triggered when the key becomes invalid
-              // because `channel.close()` in `TcpConnection.postStop` is called on another thread
+              // can be ignored because this exception is triggered when the key becomes invalid
+              // because `channel.close()` in `TcpConnection.postStop` is called from another thread
             }
           }
         }
