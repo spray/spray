@@ -19,6 +19,7 @@ package spray.can.parsing
 import com.typesafe.config.{ ConfigFactory, Config }
 import org.specs2.mutable.Specification
 import akka.actor.ActorSystem
+import akka.util.CompactByteString
 import spray.util.Utils._
 
 class HttpHeaderParserSpec extends Specification {
@@ -28,9 +29,8 @@ class HttpHeaderParserSpec extends Specification {
   val system = ActorSystem(actorSystemNameFrom(getClass), testConf)
 
   "The HttpHeaderParser" should {
-    "insert the 1st value" in {
-      val parser = emptyParser()
-      parser.insertRemainingCharsAsNewNodes("Hello", 'Hello)
+    "insert the 1st value" in new TestSetup(primed = false) {
+      insert("Hello", 'Hello)
       parser.inspectRaw ===
         """nodes: 0/'H, 0/'e, 0/'l, 0/'l, 1/'o
           |nodeData: 0/-1/0
@@ -38,10 +38,9 @@ class HttpHeaderParserSpec extends Specification {
       parser.inspect === "-H-e-l-l-o 'Hello\n"
     }
 
-    "insert a new branch underneath a simple node" in {
-      val parser = emptyParser()
-      parser.insertRemainingCharsAsNewNodes("Hello", 'Hello)
-      parser.insert("Hallo", 'Hallo)
+    "insert a new branch underneath a simple node" in new TestSetup(primed = false) {
+      insert("Hello", 'Hello)
+      insert("Hallo", 'Hallo)
       parser.inspectRaw ===
         """nodes: 0/'H, 2/'e, 0/'l, 0/'l, 1/'o, 0/'a, 0/'l, 0/'l, 3/'o
           |nodeData: 0/-1/0, 5/2/0, 0/-2/0
@@ -52,11 +51,10 @@ class HttpHeaderParserSpec extends Specification {
           |""".stripMargin
     }
 
-    "insert a new branch underneath the root" in {
-      val parser = emptyParser()
-      parser.insertRemainingCharsAsNewNodes("Hello", 'Hello)
-      parser.insert("Hallo", 'Hallo)
-      parser.insert("Yeah", 'Yeah)
+    "insert a new branch underneath the root" in new TestSetup(primed = false) {
+      insert("Hello", 'Hello)
+      insert("Hallo", 'Hallo)
+      insert("Yeah", 'Yeah)
       parser.inspectRaw ===
         """nodes: 4/'H, 2/'e, 0/'l, 0/'l, 1/'o, 0/'a, 0/'l, 0/'l, 3/'o, 0/'Y, 0/'e, 0/'a, 5/'h
           |nodeData: 0/-1/0, 5/2/0, 0/-2/0, 0/1/9, 0/-3/0
@@ -68,12 +66,11 @@ class HttpHeaderParserSpec extends Specification {
           |""".stripMargin
     }
 
-    "insert a new branch underneath an existing branch node" in {
-      val parser = emptyParser()
-      parser.insertRemainingCharsAsNewNodes("Hello", 'Hello)
-      parser.insert("Hallo", 'Hallo)
-      parser.insert("Yeah", 'Yeah)
-      parser.insert("Hoo", 'Hoo)
+    "insert a new branch underneath an existing branch node" in new TestSetup(primed = false) {
+      insert("Hello", 'Hello)
+      insert("Hallo", 'Hallo)
+      insert("Yeah", 'Yeah)
+      insert("Hoo", 'Hoo)
       parser.inspectRaw ===
         """nodes: 4/'H, 2/'e, 0/'l, 0/'l, 1/'o, 0/'a, 0/'l, 0/'l, 3/'o, 0/'Y, 0/'e, 0/'a, 5/'h, 0/'o, 6/'o
           |nodeData: 0/-1/0, 5/2/13, 0/-2/0, 0/1/9, 0/-3/0, 0/-4/0
@@ -86,13 +83,12 @@ class HttpHeaderParserSpec extends Specification {
           |""".stripMargin
     }
 
-    "support overriding of previously inserted values" in {
-      val parser = emptyParser()
-      parser.insertRemainingCharsAsNewNodes("Hello", 'Hello)
-      parser.insert("Hallo", 'Hallo)
-      parser.insert("Yeah", 'Yeah)
-      parser.insert("Hoo", 'Hoo)
-      parser.insert("Hoo", 'Foo)
+    "support overriding of previously inserted values" in new TestSetup(primed = false) {
+      insert("Hello", 'Hello)
+      insert("Hallo", 'Hallo)
+      insert("Yeah", 'Yeah)
+      insert("Hoo", 'Hoo)
+      insert("Hoo", 'Foo)
       parser.inspect ===
         """   ┌─a-l-l-o 'Hallo
           |-H-e-l-l-o 'Hello
@@ -101,8 +97,7 @@ class HttpHeaderParserSpec extends Specification {
           |""".stripMargin
     }
 
-    "prime an empty parser with all defined HeaderValueParsers" in {
-      val parser = primedParser()
+    "prime an empty parser with all defined HeaderValueParsers" in new TestSetup() {
       parser.inspect ===
         """   ┌─\r-\n EmptyHeader
           |   |             ┌─c-h-a-r-s-e-t-: accept-charset
@@ -136,25 +131,32 @@ class HttpHeaderParserSpec extends Specification {
       parser.inspectSizes === "300 nodes, 52 nodeData rows, 31 values"
     }
 
-    "retrieve a cached header with an exact header name match" in {
-      val parser = primedParser()
-      val (headerA, ixA) = parser.parseHeaderLine("Connection: close\r\n")
-      val (headerB, ixB) = parser.parseHeaderLine("Connection: close\r\n")
+    "retrieve a cached header with an exact header name match" in new TestSetup() {
+      val (ixA, headerA) = parseLine("Connection: close\r\n")
+      val (ixB, headerB) = parseLine("Connection: close\r\n")
       ixA === ixB
       headerA must beTheSameAs(headerB)
     }
 
-    "retrieve a cached header with a case-insensitive header-name match" in {
-      val parser = primedParser()
-      val (headerA, ixA) = parser.parseHeaderLine("Connection: close\r\n")
-      val (headerB, ixB) = parser.parseHeaderLine("coNNection: close\r\n")
+    "retrieve a cached header with a case-insensitive header-name match" in new TestSetup() {
+      val (ixA, headerA) = parseLine("Connection: close\r\n")
+      val (ixB, headerB) = parseLine("coNNection: close\r\n")
       ixA === ixB
       headerA must beTheSameAs(headerB)
     }
   }
 
-  def emptyParser() = HttpHeaderParser(ParserSettings(system), info ⇒ system.log.warning(info.formatPretty))
-  def primedParser() = HttpHeaderParser.prime(emptyParser())
-
   step(system.shutdown())
+
+  abstract class TestSetup(primed: Boolean = true) extends org.specs2.specification.Scope {
+    val parser = {
+      val p = HttpHeaderParser(ParserSettings(system), info ⇒ system.log.warning(info.formatPretty))
+      if (primed) HttpHeaderParser.prime(p) else p
+    }
+    def insert(line: String, value: AnyRef): Unit =
+      if (parser.isEmpty) parser.insertRemainingCharsAsNewNodes(CompactByteString(line), value)()
+      else parser.insert(CompactByteString(line), value)()
+
+    def parseLine(line: String) = parser.parseHeaderLine(CompactByteString(line))() -> parser.resultHeader
+  }
 }

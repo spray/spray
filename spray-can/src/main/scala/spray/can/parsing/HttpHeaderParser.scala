@@ -21,6 +21,7 @@ import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import org.parboiled.scala.rules.Rule1
 import scala.annotation.tailrec
 import scala.collection.immutable.NumericRange
+import akka.util.CompactByteString
 import spray.http.parser.HttpParser
 import spray.http._
 import HttpHeaders._
@@ -74,53 +75,58 @@ private[parsing] final class HttpHeaderParser private (settings: ParserSettings,
   private[this] var nodeDataCount = 0
   private[this] var valueCount = 0
 
+  var resultHeader: HttpHeader = EmptyHeader
+
   def isEmpty = nodeCount == 0
 
   def copyWith(warnOnIllegalHeader: ErrorInfo ⇒ Unit) =
     new HttpHeaderParser(settings, warnOnIllegalHeader, nodes, nodeData, values)
 
-  @tailrec def parseHeaderLine(input: CharSequence, cursor: Int = 0, nodeIx: Int = 0): (HttpHeader, Int) = {
-    val char = toLowerCase(input.charAt(cursor))
+  @tailrec def parseHeaderLine(input: CompactByteString, lineStart: Int = 0)(cursor: Int = lineStart, nodeIx: Int = 0): Int = {
+    val char = toLowerCase(byteChar(input, cursor))
     val node = nodes(nodeIx)
-    if (char == node) parseHeaderLine(input, cursor + 1, nodeIx + 1) // fast match, advance and descend
+    if (char == node) parseHeaderLine(input, lineStart)(cursor + 1, nodeIx + 1) // fast match, advance and descend
     else node >>> 8 match {
-      case 0 ⇒ parseAndInsertRawHeader(input, cursor, nodeIx) // header doesn't exist yet and has no model
+      case 0 ⇒ parseAndInsertRawHeader(input, lineStart, cursor, nodeIx) // header doesn't exist yet and has no model
       case msb ⇒ // we have either a value or branching data for this node
         val colIx = (msb - 1) * 3
         math.signum(char - (node & 0xFF)) match {
           case 0 ⇒ // character match
-            val x = nodeData(colIx + 1)
+            val nData = nodeData(colIx + 1)
             if (char == ':') { // the first colon always has a value attached (and no node above it)
-              values(x ^ 0xFFFFFFFF) match {
+              values(nData ^ 0xFFFFFFFF) match {
                 case (valueParser: HeaderValueParser, nextNodeIx: Int) ⇒
-                  parseHeaderValue(input, cursor + 1, nextNodeIx, valueParser)()
+                  parseHeaderValue(input, lineStart, cursor, nextNodeIx, valueParser)()
                 case valueParser: HeaderValueParser ⇒ // no header yet of this type
-                  val (header, endIx) = valueParser(input, cursor + 1, warnOnIllegalHeader)
-                  values(x ^ 0xFFFFFFFF) = valueParser -> nodeCount
-                  insertRemainingCharsAsNewNodes(input.subSequence(cursor + 1, endIx), header)
-                  header -> endIx
+                  val (header, endIx) = valueParser(input, lineStart, cursor, warnOnIllegalHeader)
+                  values(nData ^ 0xFFFFFFFF) = valueParser -> nodeCount
+                  insertRemainingCharsAsNewNodes(input, header)(cursor + 1, endIx)
+                  resultHeader = header
+                  endIx
               }
-            } else parseHeaderLine(input, cursor + 1, x) // advance and descend
+            } else parseHeaderLine(input, lineStart)(cursor + 1, nData) // advance and descend
 
           case signum ⇒ // character mismatch, check whether we can branch
             nodeData(colIx + 1 + signum) match {
-              case 0         ⇒ parseAndInsertRawHeader(input, cursor, nodeIx) // header doesn't exist yet
-              case subNodeIx ⇒ parseHeaderLine(input, cursor, subNodeIx) // descend into branch (but don't advance)
+              case 0         ⇒ parseAndInsertRawHeader(input, lineStart, cursor, nodeIx) // header doesn't exist yet
+              case subNodeIx ⇒ parseHeaderLine(input, lineStart)(cursor, subNodeIx) // descend into branch (but don't advance)
             }
         }
     }
   }
 
-  @tailrec private def parseHeaderValue(input: CharSequence, cursor: Int, nodeIx: Int,
-                                        valueParser: HeaderValueParser)(valueStart: Int = cursor): (HttpHeader, Int) = {
+  @tailrec private def parseHeaderValue(input: CompactByteString, lineStart: Int, colonIx: Int, nodeIx: Int,
+                                        valueParser: HeaderValueParser)(cursor: Int = colonIx + 1): Int = {
     def parseAndInsertHeader() = {
-      val (header, endIx) = valueParser(input, valueStart, warnOnIllegalHeader)
-      insert(input.subSequence(0, endIx), header, cursor, nodeIx)
-      header -> endIx
+      val (header, endIx) = valueParser(input, lineStart, colonIx, warnOnIllegalHeader)
+      insert(input, header)(cursor, endIx, colonIx, nodeIx)
+      resultHeader = header
+      endIx
     }
-    val char = input.charAt(cursor)
+    val char = byteChar(input, cursor)
     val node = nodes(nodeIx)
-    if (char == node) parseHeaderValue(input, cursor + 1, nodeIx + 1, valueParser)(valueStart) // fast match, descend
+    if (char == node) // fast match, descend
+      parseHeaderValue(input, lineStart, colonIx, nodeIx + 1, valueParser)(cursor + 1)
     else node >>> 8 match {
       case 0 ⇒ parseAndInsertHeader()
       case msb ⇒
@@ -128,41 +134,40 @@ private[parsing] final class HttpHeaderParser private (settings: ParserSettings,
         math.signum(char - (node & 0xFF)) match {
           case 0 ⇒ // character match
             nodeData(colIx + 1) match {
-              case x if x < 0 ⇒ (values(x ^ 0xFFFFFFFF).asInstanceOf[HttpHeader], cursor + 1)
+              case x if x < 0 ⇒
+                resultHeader = values(x ^ 0xFFFFFFFF).asInstanceOf[HttpHeader]
+                cursor + 1
               case subNodeIx ⇒ // advance and descend
-                parseHeaderValue(input, cursor + 1, subNodeIx, valueParser)(valueStart)
+                parseHeaderValue(input, lineStart, colonIx, subNodeIx, valueParser)(cursor + 1)
             }
           case signum ⇒ // character mismatch, check whether we can branch
             nodeData(colIx + 1 + signum) match {
               case 0 ⇒ parseAndInsertHeader()
               case subNodeIx ⇒ // descend into branch (but don't advance)
-                parseHeaderValue(input, cursor, subNodeIx, valueParser)(valueStart)
+                parseHeaderValue(input, lineStart, colonIx, subNodeIx, valueParser)(cursor)
             }
         }
     }
   }
 
-  private def parseAndInsertRawHeader(input: CharSequence, startIx: Int, nodeIx: Int): (HttpHeader, Int) = {
-    val colonIx = scanHeaderNameAndReturnIndexOfColon(input, startIx)
+  private def parseAndInsertRawHeader(input: CompactByteString, lineStart: Int, cursor: Int, nodeIx: Int): Int = {
+    val colonIx = scanHeaderNameAndReturnIndexOfColon(input, cursor)
     val (headerValue, endIx) = scanHeaderValue(input, colonIx + 1)()
-    val headerName = input.subSequence(0, colonIx).toString
-    val header = HttpHeaders.RawHeader(headerName, headerValue.trim)
-    val adapter = new CharSequence {
-      def charAt(index: Int): Char = { val c = input.charAt(index); if (index < colonIx) toLowerCase(c) else c }
-      val length = endIx
-      def subSequence(start: Int, end: Int) = input.subSequence(start, end)
-    }
-    insert(adapter, header, startIx, nodeIx)
-    header -> endIx
+    val headerName = asciiString(input, lineStart, colonIx)
+    resultHeader = HttpHeaders.RawHeader(headerName, headerValue.trim)
+    insert(input, resultHeader)(cursor, endIx, colonIx, nodeIx)
+    endIx
   }
 
-  // NOTE: only valid input must be inserted into the trie,
-  // i.e. it must not contain illegal characters and be properly terminated by a CRLF
-  def insert(input: CharSequence, value: AnyRef, cursor: Int = 0, nodeIx: Int = 0): Unit = {
+  // NOTE: only valid input must be inserted into the trie (i.e. it must not contain illegal characters and be properly
+  // terminated by a CRLF) and the trie must not be empty!
+  // Use `insertRemainingCharsAsNewNodes` for inserting the very first entry.
+  def insert(input: CompactByteString, value: AnyRef)(startIx: Int = 0, endIx: Int = input.length, colonIx: Int = 0, nodeIx: Int = 0): Unit = {
     @tailrec def recurse(cursor: Int, nodeIx: Int): Unit = {
-      if (cursor >= input.length)
+      if (cursor >= endIx)
         throw new IllegalArgumentException("Cannot insert value for prefix of existing trie entry")
-      val char = input.charAt(cursor)
+      val c = input(cursor).toChar
+      val char = if (cursor < colonIx) toLowerCase(c) else c
       val node = nodes(nodeIx)
       if (char == node) recurse(cursor + 1, nodeIx + 1) // fast match, descend into only subnode
       else {
@@ -173,16 +178,16 @@ private[parsing] final class HttpHeaderParser private (settings: ParserSettings,
             nodes(nodeIx) = nodeChar(colIx, node & 0xFF)
             nodeData(colIx + 1) = (nodeIx + 1).toShort
             nodeData(colIx + 1 + signum) = nodeCount.toShort
-            insertRemainingCharsAsNewNodes(input, value, cursor)
+            insertRemainingCharsAsNewNodes(input, value)(cursor, endIx)
 
           case msb ⇒
             val colIx = (msb - 1) * 3
             nodeData(colIx + 1 + signum) match {
               case 0 ⇒ // branch doesn't exist yet, create
                 nodeData(colIx + 1 + signum) = nodeCount.toShort
-                insertRemainingCharsAsNewNodes(input, value, cursor)
+                insertRemainingCharsAsNewNodes(input, value)(cursor, endIx)
               case x if x < 0 ⇒
-                require(cursor == input.length - 1, "Cannot insert key of which a prefix already has a value")
+                require(cursor == endIx - 1, "Cannot insert key of which a prefix already has a value")
                 values(x ^ 0xFFFFFFFF) = value // override existing entry
               case nextNodeIx ⇒ recurse(cursor + 1 - abs(signum), nextNodeIx) // descend, but advance only on match
             }
@@ -195,20 +200,20 @@ private[parsing] final class HttpHeaderParser private (settings: ParserSettings,
       values = copyOf(values, values.length)
       trieIsShared = false
     }
-    recurse(cursor, nodeIx)
+    recurse(startIx, nodeIx)
   }
 
-  @tailrec def insertRemainingCharsAsNewNodes(input: CharSequence, value: AnyRef, cursor: Int = 0): Unit = {
+  @tailrec def insertRemainingCharsAsNewNodes(input: CompactByteString, value: AnyRef)(cursor: Int = 0, endIx: Int = input.length): Unit = {
     val newNodeIx = newNodeIndex
-    if (cursor == input.length - 1) {
+    if (cursor == endIx - 1) {
       val valueIx = newValueIndex
       values(valueIx) = value
       val colIx = newNodeDataColumnIndex
       nodeData(colIx + 1) = (valueIx ^ 0xFFFFFFFF).toShort
-      nodes(newNodeIx) = nodeChar(colIx, input.charAt(cursor))
+      nodes(newNodeIx) = nodeChar(colIx, byteChar(input, cursor))
     } else {
-      nodes(newNodeIx) = input.charAt(cursor)
-      insertRemainingCharsAsNewNodes(input, value, cursor + 1)
+      nodes(newNodeIx) = byteChar(input, cursor)
+      insertRemainingCharsAsNewNodes(input, value)(cursor + 1, endIx)
     }
   }
 
@@ -317,10 +322,10 @@ private[parsing] object HttpHeaderParser extends SpecializedHeaderValueParsers {
         items(pivot) match {
           case valueParser: HeaderValueParser ⇒
             val insertName = valueParser.lowercaseName + ':'
-            if (parser.isEmpty) parser.insertRemainingCharsAsNewNodes(insertName, valueParser)
-            else parser.insert(insertName, valueParser)
+            if (parser.isEmpty) parser.insertRemainingCharsAsNewNodes(CompactByteString(insertName), valueParser)()
+            else parser.insert(CompactByteString(insertName), valueParser)()
           case header: String ⇒
-            parser.parseHeaderLine(header + "\r\nx")
+            parser.parseHeaderLine(CompactByteString(header + "\r\nx"))()
         }
         insertInGoodOrder(items)(startIx, pivot)
         insertInGoodOrder(items)(pivot + 1, endIx)
@@ -328,25 +333,25 @@ private[parsing] object HttpHeaderParser extends SpecializedHeaderValueParsers {
     insertInGoodOrder(valueParsers.sortBy(_.lowercaseName))()
     // insertInGoodOrder(specializedHeaderValueParsers)
     insertInGoodOrder(predefinedHeaders.sorted)()
-    parser.insert("\r\n", EmptyHeader)
+    parser.insert(CompactByteString("\r\n"), EmptyHeader)()
     parser
   }
 
   trait HeaderValueParser {
     def lowercaseName: String
-    def apply(input: CharSequence, startIx: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int)
+    def apply(input: CompactByteString, lineStart: Int, colonIx: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int)
   }
 
   private class DefaultHeaderValueParser(val lowercaseName: String,
                                          parserRule: Rule1[HttpHeader]) extends HeaderValueParser {
-    def apply(input: CharSequence, startIx: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int) = {
-      val (headerValue, endIx) = scanHeaderValue(input, startIx)()
+    def apply(input: CompactByteString, lineStart: Int, colonIx: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int) = {
+      val (headerValue, endIx) = scanHeaderValue(input, colonIx + 1)()
       val trimmedHeaderValue = headerValue.trim
       val header = HttpParser.parse(parserRule, trimmedHeaderValue) match {
         case Right(h) ⇒ h
         case Left(error) ⇒
           warnOnIllegalHeader(error)
-          RawHeader(input.subSequence(0, startIx - 1).toString, trimmedHeaderValue)
+          RawHeader(asciiString(input, lineStart, colonIx), trimmedHeaderValue)
       }
       header -> endIx
     }
@@ -354,21 +359,21 @@ private[parsing] object HttpHeaderParser extends SpecializedHeaderValueParsers {
     override def toString: String = s"HeaderValueParser[$lowercaseName]"
   }
 
-  @tailrec private def scanHeaderNameAndReturnIndexOfColon(input: CharSequence, ix: Int): Int =
-    input.charAt(ix) match {
+  @tailrec private def scanHeaderNameAndReturnIndexOfColon(input: CompactByteString, ix: Int): Int =
+    byteChar(input, ix) match {
       case ':'               ⇒ ix
       case c if is(c, TOKEN) ⇒ scanHeaderNameAndReturnIndexOfColon(input, ix + 1)
       case c                 ⇒ fail(s"Illegal character '${escape(c)}' in header name")
     }
 
-  @tailrec private def scanHeaderValue(input: CharSequence, startIx: Int)(sb: JStringBuilder = null, ix: Int = startIx): (String, Int) = {
-    def spaceAppended = (if (sb != null) sb else new JStringBuilder(input.subSequence(startIx, ix))).append(' ')
-    input.charAt(ix) match {
-      case '\t' ⇒ scanHeaderValue(input, startIx)(spaceAppended, ix + 1)
-      case '\r' if input.charAt(ix + 1) == '\n' ⇒
-        if (is(input.charAt(ix + 2), WSP)) scanHeaderValue(input, startIx)(spaceAppended, ix + 3)
-        else (if (sb != null) sb.toString else input.subSequence(startIx, ix).toString, ix + 2)
-      case c if c >= ' ' ⇒ scanHeaderValue(input, startIx)(if (sb != null) sb.append(c) else sb, ix + 1)
+  @tailrec private def scanHeaderValue(input: CompactByteString, start: Int)(sb: JStringBuilder = null, ix: Int = start): (String, Int) = {
+    def spaceAppended = (if (sb != null) sb else new JStringBuilder(asciiString(input, start, ix))).append(' ')
+    byteChar(input, ix) match {
+      case '\t' ⇒ scanHeaderValue(input, start)(spaceAppended, ix + 1)
+      case '\r' if byteChar(input, ix + 1) == '\n' ⇒
+        if (is(byteChar(input, ix + 2), WSP)) scanHeaderValue(input, start)(spaceAppended, ix + 3)
+        else (if (sb != null) sb.toString else asciiString(input, start, ix), ix + 2)
+      case c if c >= ' ' ⇒ scanHeaderValue(input, start)(if (sb != null) sb.append(c) else sb, ix + 1)
       case c             ⇒ fail(s"Illegal character '${escape(c)}' in header name")
     }
   }

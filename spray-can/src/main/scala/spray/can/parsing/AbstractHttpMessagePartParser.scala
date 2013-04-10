@@ -17,113 +17,59 @@
 package spray.can.parsing
 
 import scala.annotation.tailrec
-import akka.util.ByteString
+import akka.util.CompactByteString
 import spray.http._
 import HttpMethods._
 import StatusCodes._
+import HttpMessagePartParser._
 
-sealed trait ParsingResult
-object ParsingResult {
-  case object NeedMoreData extends ParsingResult
-  case class Ok(part: HttpMessagePart) extends ParsingResult
-  case class OkAndContinue(part: HttpMessagePart, remainingData: ByteString) extends ParsingResult
-}
-
-trait HttpMessagePartParser[T <: HttpMessagePart] {
-  def run: ByteString ⇒ ParsingResult
-}
-
-class ParsingException(status: StatusCode, info: ErrorInfo) extends RuntimeException(info.formatPretty)
-
-private[parsing] object HttpMessagePartParser {
-  sealed trait MessageLine
-  case class RequestLine(method: HttpMethod, uri: Uri, protocol: HttpProtocol) extends MessageLine
-  case class StatusLine(protocol: HttpProtocol,
-                        status: Int,
-                        reason: String,
-                        isResponseToHeadRequest: Boolean = false) extends MessageLine
-
-  object NotEnoughDataException extends RuntimeException {
-    override def fillInStackTrace(): Throwable = this // suppress stack trace creation
-  }
-}
-
-private[parsing] abstract class AbstractHttpMessagePartParser[T <: HttpMessagePart](val settings: ParserSettings,
-                                                                                    headerParser: HttpHeaderParser)
-    extends HttpMessagePartParser[T]
-    with (ByteString ⇒ ParsingResult)
-    with (() ⇒ Char) {
-
-  import HttpMessagePartParser._
-
+private[parsing] abstract class HttpMessagePartParser(val settings: ParserSettings,
+                                                      headerParser: HttpHeaderParser) extends Parser {
   type ML <: MessageLine
-  var run: ByteString ⇒ ParsingResult = this
-  var input = ByteString.empty
-  var cursor = 0
-  var chunkExpected = false
 
-  def apply(data: ByteString): ParsingResult =
-    if (data.nonEmpty) {
-      input = data
-      cursor = 0
-      if (chunkExpected) messageChunk() else messageLine()
-    } else ParsingResult.NeedMoreData
+  var parse: Parse = _
+  var protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
 
-  def apply(): Char = nextChar()
+  def parseProtocol(input: CompactByteString, cursor: Int): Int = {
+    def c(ix: Int) = byteChar(input, cursor + ix)
+    if (c(0) == 'H' && c(1) == 'T' && c(2) == 'T' && c(3) == 'P' && c(4) == '/' && c(5) == '1' && c(6) == '.') {
+      protocol = c(6) match {
+        case '0' ⇒ HttpProtocols.`HTTP/1.0`
+        case '1' ⇒ HttpProtocols.`HTTP/1.1`
+        case _   ⇒ fail(HTTPVersionNotSupported)
+      }
+      cursor + 7
+    } else fail(HTTPVersionNotSupported)
+  }
 
-  def messageLine(): ParsingResult
-
-  def headerLines(messageLine: ML, headers: List[HttpHeader] = Nil, headerCount: Int = 0): ParsingResult = {
-    val lineStart = cursor
-    try {
-      val (header, endIx) = headerParser.parseHeaderLine(charSequenceAdapter(lineStart))
-      cursor = lineStart + endIx
-      if (HttpHeaderParser.EmptyHeader == header) body(messageLine, headers)
-      else if (headerCount < settings.maxHeaderCount) headerLines(messageLine, header :: headers, headerCount + 1)
+  @tailrec final def headerLines(messageLine: ML, input: CompactByteString, lineStart: Int,
+                                 headers: List[HttpHeader] = Nil, headerCount: Int = 0): Result[Part] = {
+    val lineEnd =
+      try headerParser.parseHeaderLine(input, lineStart)()
+      catch { case NotEnoughDataException ⇒ 0 }
+    if (lineEnd > 0)
+      if (headerParser.resultHeader eq HttpHeaderParser.EmptyHeader)
+        body(messageLine, headers, input, lineEnd)
+      else if (headerCount < settings.maxHeaderCount)
+        headerLines(messageLine, input, lineEnd, headerParser.resultHeader :: headers, headerCount + 1)
       else fail(s"HTTP message contains more than the configured limit of ${settings.maxHeaderCount} headers")
-    } catch {
-      case NotEnoughDataException ⇒ continueWith(() ⇒ headerLinesAux(messageLine, headers, headerCount), lineStart)
-    }
+    else continueWith(headerLines2(messageLine, _, lineStart, headers, headerCount), input)
   }
 
-  def headerLinesAux(messageLine: ML, headers: List[HttpHeader], headerCount: Int) =
-    headerLines(messageLine, headers, headerCount)
+  private def headerLines2(messageLine: ML, input: CompactByteString, lineStart: Int, headers: List[HttpHeader],
+                           headerCount: Int) = headerLines(messageLine, input, lineStart, headers, headerCount)
 
-  def body(messageLine: ML, headers: List[HttpHeader]): ParsingResult = ParsingResult.NeedMoreData
-
-  def messageChunk(): ParsingResult = ParsingResult.NeedMoreData
-
-  def messagePart(messageLine: ML, headers: List[HttpHeader], contentType: Option[ContentType], body: Array[Byte]): T
-
-  def prepareResult(part: T): ParsingResult = {
-    val result =
-      if (cursor == input.length) ParsingResult.Ok(part)
-      else ParsingResult.OkAndContinue(part, input.drop(cursor))
-    input = ByteString.empty
-    run = this
-    chunkExpected = !part.isInstanceOf[HttpMessageEnd]
-    result
+  private def body(messageLine: ML, headers: List[HttpHeader], input: CompactByteString, bodyStart: Int): Result[Part] = {
+    messagePart(messageLine, headers, None, Array())
   }
 
-  def continueWith(rule: () ⇒ ParsingResult, resetCursorTo: Int = 0): ParsingResult = {
-    cursor = resetCursorTo
-    run = { data ⇒
-      if (data.nonEmpty) {
-        input ++= data
-        rule()
-      } else ParsingResult.NeedMoreData
-    }
-    ParsingResult.NeedMoreData
+  def messagePart(messageLine: ML, headers: List[HttpHeader], contentType: Option[ContentType],
+                  body: Array[Byte]): Result[Part]
+
+  def continueWith(rule: Parse, prependNewDataWith: CompactByteString): Result[Part] = {
+    parse = { input ⇒ rule((prependNewDataWith ++ input).compact) }
+    Result.NeedMoreData
   }
-
-  def nextChar(): Char =
-    if (cursor < input.length) {
-      val char = input(cursor).toChar
-      cursor += 1
-      char
-    } else throw NotEnoughDataException
-
-  def crlf(errorStatus: StatusCode): Unit = if (nextChar() != '\r' || nextChar() != '\n') fail(errorStatus)
 
   def fail(summary: String): Nothing = fail(summary, "")
   def fail(summary: String, detail: String): Nothing = fail(StatusCodes.BadRequest, summary, detail)
@@ -131,71 +77,60 @@ private[parsing] abstract class AbstractHttpMessagePartParser[T <: HttpMessagePa
   def fail(status: StatusCode, summary: String, detail: String = ""): Nothing = fail(status, ErrorInfo(summary, detail))
   def fail(status: StatusCode, info: ErrorInfo): Nothing = {
     val e = new ParsingException(status, info)
-    run = { _ ⇒ throw e }
+    parse = { _ ⇒ throw e }
     throw e
   }
-
-  def charSequenceAdapter(start: Int, end: Int): CharSequence =
-    new CharSequence {
-      def charAt(index: Int) = input(index - start).toChar
-      val length = end - start
-      def subSequence(start: Int, end: Int) = charSequenceAdapter(start, end)
-      override def toString = new String(input.iterator.slice(start, end).toArray, spray.util.UTF8)
-    }
-
-  def charSequenceAdapter(start: Int): CharSequence =
-    new CharSequence {
-      def charAt(index: Int) = {
-        val ix = index - start
-        if (ix < input.length) input(ix).toChar
-        else throw NotEnoughDataException
-      }
-      def length = throw new UnsupportedOperationException
-      def subSequence(start: Int, end: Int) = charSequenceAdapter(start, end)
-    }
 }
 
-private[parsing] class HttpRequestPartParser(_settings: ParserSettings, _headerParser: HttpHeaderParser)
-    extends AbstractHttpMessagePartParser[HttpRequestPart](_settings, _headerParser) {
-  import HttpMessagePartParser._
+class HttpRequestPartParser(_settings: ParserSettings, _headerParser: HttpHeaderParser)
+    extends HttpMessagePartParser(_settings, _headerParser) {
   type ML = RequestLine
+  type Part = HttpRequestPart
 
-  override def messageLine(): ParsingResult =
+  private[this] var method: HttpMethod = GET
+  private[this] var uri: Uri = Uri.Empty
+
+  parse = parseRequest
+
+  def parseRequest(input: CompactByteString): Result[Part] =
     try {
-      val meth = method()
-      val uri = requestTarget()
-      val proto = protocol()
-      crlf(HTTPVersionNotSupported)
-      headerLines(RequestLine(meth, uri, proto))
+      var cursor = parseMethod(input)
+      cursor = requestTarget(input, cursor)
+      cursor = parseProtocol(input, cursor)
+      if (byteChar(input, cursor) != '\r' || byteChar(input, cursor + 1) != '\n') fail(HTTPVersionNotSupported)
+      headerLines(RequestLine(method, uri, protocol), input, cursor + 2)
     } catch {
-      case NotEnoughDataException ⇒ continueWith(messageLine)
+      case NotEnoughDataException ⇒ continueWith(parseRequest, input)
     }
 
-  def method(): HttpMethod = {
+  def parseMethod(input: CompactByteString): Int = {
     def badMethod = fail(NotImplemented)
-    @tailrec def method(meth: HttpMethod, ix: Int = 1): HttpMethod =
+    @tailrec def parseMethod(meth: HttpMethod, ix: Int = 1): Int =
       if (ix == meth.value.length)
-        if (nextChar() == ' ') meth else badMethod
-      else if (nextChar() == meth.value.charAt(ix)) method(meth, ix + 1)
+        if (byteChar(input, ix) == ' ') {
+          method = meth
+          ix
+        } else badMethod
+      else if (byteChar(input, ix) == meth.value.charAt(ix)) parseMethod(meth, ix + 1)
       else badMethod
 
-    nextChar() match {
-      case 'G' ⇒ method(GET)
-      case 'P' ⇒ nextChar() match {
-        case 'O' ⇒ method(POST, 2)
-        case 'U' ⇒ method(PUT, 2)
-        case 'A' ⇒ method(PATCH, 2)
+    byteChar(input, 0) match {
+      case 'G' ⇒ parseMethod(GET)
+      case 'P' ⇒ byteChar(input, 1) match {
+        case 'O' ⇒ parseMethod(POST, 2)
+        case 'U' ⇒ parseMethod(PUT, 2)
+        case 'A' ⇒ parseMethod(PATCH, 2)
         case _   ⇒ badMethod
       }
-      case 'D' ⇒ method(DELETE)
-      case 'H' ⇒ method(HEAD)
-      case 'O' ⇒ method(OPTIONS)
-      case 'T' ⇒ method(TRACE)
+      case 'D' ⇒ parseMethod(DELETE)
+      case 'H' ⇒ parseMethod(HEAD)
+      case 'O' ⇒ parseMethod(OPTIONS)
+      case 'T' ⇒ parseMethod(TRACE)
       case _   ⇒ badMethod
     }
   }
 
-  def requestTarget(): Uri = {
+  def requestTarget(input: CompactByteString, cursor: Int): Int = {
     val uriStart = cursor
     val uriEndLimit = cursor + settings.maxUriLength
 
@@ -206,28 +141,43 @@ private[parsing] class HttpRequestPartParser(_settings: ParserSettings, _headerP
       else fail(s"URI length exceeds the configured limit of ${settings.maxUriLength} characters")
 
     val uriEnd = findUriEnd()
-    cursor = uriEnd + 1
-    try Uri.parseHttpRequestTarget(charSequenceAdapter(uriStart, uriEnd))
+    try uri = Uri.parseHttpRequestTarget(input.iterator.drop(uriStart).take(uriEnd - uriStart).toArray[Byte])
     catch {
       case e: IllegalUriException ⇒ fail(BadRequest, e.info.withSummaryPrepended("Illegal request URI"))
     }
+    uriEnd
   }
 
-  def protocol(): HttpProtocol =
-    if (nextChar() == 'H' && nextChar() == 'T' && nextChar() == 'T' && nextChar() == 'P' && nextChar() == '/' &&
-      nextChar() == '1' && nextChar() == '.') nextChar() match {
-      case '0' ⇒ HttpProtocols.`HTTP/1.0`
-      case '1' ⇒ HttpProtocols.`HTTP/1.1`
-      case _   ⇒ fail(HTTPVersionNotSupported)
-    }
-    else fail(HTTPVersionNotSupported)
-
   def messagePart(requestLine: RequestLine, headers: List[HttpHeader], contentType: Option[ContentType],
-                  body: Array[Byte]) =
-    HttpRequest(
-      method = requestLine.method,
-      uri = requestLine.uri,
-      headers = headers,
-      entity = if (contentType.isEmpty) HttpEntity(body) else HttpBody(contentType.get, body),
-      protocol = requestLine.protocol)
+                  body: Array[Byte]): Result[Part] =
+    Result.Ok {
+      HttpRequest(
+        method = requestLine.method,
+        uri = requestLine.uri,
+        headers = headers,
+        entity = if (contentType.isEmpty) HttpEntity(body) else HttpBody(contentType.get, body),
+        protocol = requestLine.protocol)
+    }
+}
+
+object HttpMessagePartParser {
+  sealed trait Parser {
+    type Part <: HttpMessagePart
+    type Parse = CompactByteString ⇒ Result[Part]
+    def parse: Parse
+  }
+
+  sealed trait Result[+T <: HttpMessagePart]
+  object Result {
+    case object NeedMoreData extends Result[Nothing]
+    case class Ok[T <: HttpMessagePart](part: T) extends Result[T]
+    case class OkAndContinue[T <: HttpMessagePart](part: T, remainingData: CompactByteString) extends Result[T]
+  }
+
+  sealed trait MessageLine
+  case class RequestLine(method: HttpMethod, uri: Uri, protocol: HttpProtocol) extends MessageLine
+  case class StatusLine(protocol: HttpProtocol,
+                        status: Int,
+                        reason: String,
+                        isResponseToHeadRequest: Boolean = false) extends MessageLine
 }

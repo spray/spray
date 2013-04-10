@@ -16,6 +16,11 @@
 
 package spray.can
 
+import java.lang.{ StringBuilder ⇒ JStringBuilder }
+import spray.http.{ ErrorInfo, StatusCode }
+import akka.util.ByteString
+import scala.annotation.tailrec
+
 package object parsing {
 
   private[can] def isTokenChar(c: Char) = c match {
@@ -29,4 +34,23 @@ package object parsing {
   private[can] def escape(c: Char): String =
     if (Character.isISOControl(c)) String.format("\\u%04x", c: java.lang.Integer)
     else String.valueOf(c)
+
+  def byteChar(input: ByteString, ix: Int): Char =
+    if (ix < input.length) input(ix).toChar else throw NotEnoughDataException
+
+  def asciiString(input: ByteString, start: Int, end: Int): String = {
+    @tailrec def build(ix: Int = start, sb: JStringBuilder = new JStringBuilder(end - start)): String =
+      if (ix == end) sb.toString else build(ix + 1, sb.append(input(ix).toChar))
+    if (start == end) "" else build()
+  }
+}
+
+package parsing {
+
+  class ParsingException(status: StatusCode, info: ErrorInfo) extends RuntimeException(info.formatPretty)
+
+  object NotEnoughDataException extends RuntimeException {
+    override def fillInStackTrace() = this // suppress stack trace creation
+  }
+
 }

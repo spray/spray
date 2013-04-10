@@ -17,6 +17,7 @@
 package spray.can.parsing
 
 import spray.http.{ HttpHeader, ErrorInfo }
+import akka.util.CompactByteString
 
 trait SpecializedHeaderValueParsers { _: HttpHeaderParser.type ⇒
 
@@ -25,7 +26,7 @@ trait SpecializedHeaderValueParsers { _: HttpHeaderParser.type ⇒
 
   object SpecialContentLengthParser extends HeaderValueParser {
     def lowercaseName: String = ???
-    def apply(input: CharSequence, startIx: Int, warnOnIllegalHeader: (ErrorInfo) ⇒ Unit): (HttpHeader, Int) = ???
+    def apply(input: CompactByteString, lineStart: Int, colonIx: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int) = ???
   }
 
 }
