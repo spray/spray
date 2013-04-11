@@ -20,16 +20,16 @@ import com.typesafe.config.Config
 import akka.actor.ActorSystem
 
 case class ParserSettings(
-    maxUriLength: Long,
-    maxResponseReasonLength: Long,
-    maxHeaderNameLength: Long,
-    maxHeaderValueLength: Long,
-    maxHeaderCount: Long,
-    maxContentLength: Long,
-    maxChunkExtNameLength: Long,
-    maxChunkExtValueLength: Long,
-    maxChunkExtCount: Long,
-    maxChunkSize: Long) {
+    maxUriLength: Int,
+    maxResponseReasonLength: Int,
+    maxHeaderNameLength: Int,
+    maxHeaderValueLength: Int,
+    maxHeaderCount: Int,
+    maxContentLength: Int,
+    maxChunkExtNameLength: Int,
+    maxChunkExtValueLength: Int,
+    maxChunkExtCount: Int,
+    maxChunkSize: Int) {
 
   require(maxUriLength > 0, "max-uri-length must be > 0")
   require(maxResponseReasonLength > 0, "max-response-reason-length must be > 0")
@@ -47,16 +47,22 @@ object ParserSettings {
   def apply(system: ActorSystem): ParserSettings =
     apply(system.settings.config getConfig "spray.can.parsing")
 
-  def apply(config: Config): ParserSettings =
+  def apply(config: Config): ParserSettings = {
+    def bytes(key: String): Int = {
+      val value: Long = config getBytes key
+      if (value <= Int.MaxValue) value.toInt
+      else sys.error(s"ParserSettings config setting $key must not be larger than ${Int.MaxValue}")
+    }
     ParserSettings(
-      config getBytes "max-uri-length",
-      config getBytes "max-response-reason-length",
-      config getBytes "max-header-name-length",
-      config getBytes "max-header-value-length",
-      config getBytes "max-header-count",
-      config getBytes "max-content-length",
-      config getBytes "max-chunk-ext-name-length",
-      config getBytes "max-chunk-ext-value-length",
-      config getBytes "max-chunk-ext-count",
-      config getBytes "max-chunk-size")
+      bytes("max-uri-length"),
+      bytes("max-response-reason-length"),
+      bytes("max-header-name-length"),
+      bytes("max-header-value-length"),
+      bytes("max-header-count"),
+      bytes("max-content-length"),
+      bytes("max-chunk-ext-name-length"),
+      bytes("max-chunk-ext-value-length"),
+      bytes("max-chunk-ext-count"),
+      bytes("max-chunk-size"))
+  }
 }

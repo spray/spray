@@ -22,11 +22,14 @@ import akka.actor.ActorSystem
 import akka.util.CompactByteString
 import spray.util.Utils._
 import spray.http.HttpHeaders._
+import spray.http.HttpHeader
 
 class HttpHeaderParserSpec extends Specification {
   val testConf: Config = ConfigFactory.parseString("""
     akka.event-handlers = ["akka.testkit.TestEventListener"]
-    akka.loglevel = WARNING""")
+    akka.loglevel = WARNING
+    spray.can.parsing.max-header-name-length = 20
+    spray.can.parsing.max-header-value-length = 21""")
   val system = ActorSystem(actorSystemNameFrom(getClass), testConf)
 
   "The HttpHeaderParser" should {
@@ -133,25 +136,15 @@ class HttpHeaderParserSpec extends Specification {
     }
 
     "retrieve a cached header with an exact header name match" in new TestSetup() {
-      val (ixA, headerA) = parseLine("Connection: close\r\n")
-      val (ixB, headerB) = parseLine("Connection: close\r\n")
-      ixA === ixB
-      headerA must beTheSameAs(headerB)
+      parseAndCache("Connection: close\r\n")() === Connection("close")
     }
 
     "retrieve a cached header with a case-insensitive header-name match" in new TestSetup() {
-      val (ixA, headerA) = parseLine("Connection: close\r\n")
-      val (ixB, headerB) = parseLine("coNNection: close\r\n")
-      ixA === ixB
-      headerA must beTheSameAs(headerB)
+      parseAndCache("Connection: close\r\n")("coNNection: close\r\n") === Connection("close")
     }
 
     "parse and cache a modelled header" in new TestSetup() {
-      val (ixA, headerA) = parseLine("Host: spray.io:123\r\nx")
-      val (ixB, headerB) = parseLine("HOST: spray.io:123\r\nx")
-      ixA === ixB
-      headerA === Host("spray.io", 123)
-      headerA must beTheSameAs(headerB)
+      parseAndCache("Host: spray.io:123\r\nx")("HOST: spray.io:123\r\nx") === Host("spray.io", 123)
     }
 
     "parse and cache a raw header" in new TestSetup(primed = false) {
@@ -165,6 +158,25 @@ class HttpHeaderParserSpec extends Specification {
       ixA === ixB
       headerA === RawHeader("Fancy-Pants", "foo")
       headerA must beTheSameAs(headerB)
+    }
+
+    "parse and cache a modelled header with line-folding" in new TestSetup() {
+      parseAndCache("Connection: foo,\r\n bar\r\nx")("Connection: foo,\r\n bar\r\nx") === Connection("foo", "bar")
+    }
+
+    "parse and cache a header with a tab char in the value" in new TestSetup() {
+      parseAndCache("Fancy: foo\tbar\r\nx")() === RawHeader("Fancy", "foo bar")
+    }
+
+    "produce an error message for lines with an illegal header name" in new TestSetup() {
+      parseLine(" Connection: close\r\nx") must throwA[ParsingException]("Illegal character ' ' in header name")
+      parseLine("Connection : close\r\nx") must throwA[ParsingException]("Illegal character ' ' in header name")
+      parseLine("Connec/tion: close\r\nx") must throwA[ParsingException]("Illegal character '/' in header name")
+    }
+
+    "produce an error message for lines with a too-long header value" in new TestSetup() {
+      parseLine("foo: 1234567890123456789012\r\nx") must
+        throwA[ParsingException]("HTTP header value exceeds the configured limit of 21 characters")
     }
   }
 
@@ -180,5 +192,13 @@ class HttpHeaderParserSpec extends Specification {
       else parser.insert(CompactByteString(line), value)()
 
     def parseLine(line: String) = parser.parseHeaderLine(CompactByteString(line))() -> parser.resultHeader
+
+    def parseAndCache(lineA: String)(lineB: String = lineA): HttpHeader = {
+      val (ixA, headerA) = parseLine(lineA)
+      val (ixB, headerB) = parseLine(lineB)
+      ixA === ixB
+      headerA must beTheSameAs(headerB)
+      headerA
+    }
   }
 }

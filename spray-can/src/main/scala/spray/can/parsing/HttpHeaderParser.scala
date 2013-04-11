@@ -33,7 +33,8 @@ import HttpHeaders._
  * For the life-time of one HTTP connection an instance of this class is owned by the connection, i.e. not shared
  * with other connections. After the connection is closed it may be used by subsequent connections.
  */
-private[parsing] final class HttpHeaderParser private (settings: ParserSettings, warnOnIllegalHeader: ErrorInfo ⇒ Unit,
+private[parsing] final class HttpHeaderParser private (val settings: ParserSettings,
+                                                       warnOnIllegalHeader: ErrorInfo ⇒ Unit,
     // format: OFF
 
     // The core of this parser/cache is a mutable space-efficient ternary trie (prefix tree) structure, whose data are
@@ -84,9 +85,9 @@ private[parsing] final class HttpHeaderParser private (settings: ParserSettings,
 
   @tailrec def parseHeaderLine(input: CompactByteString, lineStart: Int = 0)(cursor: Int = lineStart, nodeIx: Int = 0): Int = {
     def insertRawHeaderParser(): Unit = {
-      val colonIx = scanHeaderNameAndReturnIndexOfColon(input, cursor)
+      val colonIx = scanHeaderNameAndReturnIndexOfColon(input, lineStart, lineStart + settings.maxHeaderNameLength)(cursor)
       val headerName = asciiString(input, lineStart, colonIx)
-      val valueParser = rawHeaderValueParser(headerName)
+      val valueParser = rawHeaderValueParser(headerName, settings.maxHeaderValueLength)
       insert(input, valueParser)(cursor, colonIx + 1, nodeIx, colonIx)
     }
     val char = toLowerCase(byteChar(input, cursor))
@@ -320,7 +321,9 @@ private[parsing] object HttpHeaderParser extends SpecializedHeaderValueParsers {
   def prime(parser: HttpHeaderParser): HttpHeaderParser = {
     require(parser.isEmpty)
     val valueParsers: Seq[HeaderValueParser] =
-      HttpParser.headerNames.map(n ⇒ modelledHeaderValueParser(n, HttpParser.parserRules(n.toLowerCase)))(collection.breakOut)
+      HttpParser.headerNames.map { name ⇒
+        modelledHeaderValueParser(name, HttpParser.parserRules(name.toLowerCase), parser.settings.maxHeaderValueLength)
+      }(collection.breakOut)
     def insertInGoodOrder(items: Seq[Any])(startIx: Int = 0, endIx: Int = items.size): Unit =
       if (endIx - startIx > 0) {
         val pivot = (startIx + endIx) / 2
@@ -347,10 +350,10 @@ private[parsing] object HttpHeaderParser extends SpecializedHeaderValueParsers {
     override def toString: String = s"HeaderValueParser[$headerName]"
   }
 
-  def modelledHeaderValueParser(headerName: String, parserRule: Rule1[HttpHeader]) =
+  def modelledHeaderValueParser(headerName: String, parserRule: Rule1[HttpHeader], maxHeaderValueLength: Int) =
     new HeaderValueParser(headerName) {
       def apply(input: CompactByteString, valueStart: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int) = {
-        val (headerValue, endIx) = scanHeaderValue(input, valueStart)()
+        val (headerValue, endIx) = scanHeaderValue(input, valueStart, valueStart + maxHeaderValueLength)()
         val trimmedHeaderValue = headerValue.trim
         val header = HttpParser.parse(parserRule, trimmedHeaderValue) match {
           case Right(h) ⇒ h
@@ -362,31 +365,36 @@ private[parsing] object HttpHeaderParser extends SpecializedHeaderValueParsers {
       }
     }
 
-  def rawHeaderValueParser(headerName: String) =
+  def rawHeaderValueParser(headerName: String, maxHeaderValueLength: Int) =
     new HeaderValueParser(headerName) {
       def apply(input: CompactByteString, valueStart: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int) = {
-        val (headerValue, endIx) = scanHeaderValue(input, valueStart)()
+        val (headerValue, endIx) = scanHeaderValue(input, valueStart, valueStart + maxHeaderValueLength)()
         RawHeader(headerName, headerValue.trim) -> endIx
       }
     }
 
-  @tailrec private def scanHeaderNameAndReturnIndexOfColon(input: CompactByteString, ix: Int): Int =
-    byteChar(input, ix) match {
-      case ':'               ⇒ ix
-      case c if is(c, TOKEN) ⇒ scanHeaderNameAndReturnIndexOfColon(input, ix + 1)
-      case c                 ⇒ fail(s"Illegal character '${escape(c)}' in header name")
-    }
+  @tailrec private def scanHeaderNameAndReturnIndexOfColon(input: CompactByteString, start: Int,
+                                                           maxHeaderNameEndIx: Int)(ix: Int = start): Int =
+    if (ix < maxHeaderNameEndIx)
+      byteChar(input, ix) match {
+        case ':'               ⇒ ix
+        case c if is(c, TOKEN) ⇒ scanHeaderNameAndReturnIndexOfColon(input, start, maxHeaderNameEndIx)(ix + 1)
+        case c                 ⇒ fail(s"Illegal character '${escape(c)}' in header name")
+      }
+    else fail(s"HTTP header name exceeds the configured limit of ${maxHeaderNameEndIx - start} characters")
 
-  @tailrec private def scanHeaderValue(input: CompactByteString, start: Int)(sb: JStringBuilder = null, ix: Int = start): (String, Int) = {
+  @tailrec private def scanHeaderValue(input: CompactByteString, start: Int, maxHeaderValueEndIx: Int)(sb: JStringBuilder = null, ix: Int = start): (String, Int) = {
     def spaceAppended = (if (sb != null) sb else new JStringBuilder(asciiString(input, start, ix))).append(' ')
-    byteChar(input, ix) match {
-      case '\t' ⇒ scanHeaderValue(input, start)(spaceAppended, ix + 1)
-      case '\r' if byteChar(input, ix + 1) == '\n' ⇒
-        if (is(byteChar(input, ix + 2), WSP)) scanHeaderValue(input, start)(spaceAppended, ix + 3)
-        else (if (sb != null) sb.toString else asciiString(input, start, ix), ix + 2)
-      case c if c >= ' ' ⇒ scanHeaderValue(input, start)(if (sb != null) sb.append(c) else sb, ix + 1)
-      case c             ⇒ fail(s"Illegal character '${escape(c)}' in header name")
-    }
+    if (ix < maxHeaderValueEndIx)
+      byteChar(input, ix) match {
+        case '\t' ⇒ scanHeaderValue(input, start, maxHeaderValueEndIx)(spaceAppended, ix + 1)
+        case '\r' if byteChar(input, ix + 1) == '\n' ⇒
+          if (is(byteChar(input, ix + 2), WSP)) scanHeaderValue(input, start, maxHeaderValueEndIx)(spaceAppended, ix + 3)
+          else (if (sb != null) sb.toString else asciiString(input, start, ix), ix + 2)
+        case c if c >= ' ' ⇒ scanHeaderValue(input, start, maxHeaderValueEndIx)(if (sb != null) sb.append(c) else sb, ix + 1)
+        case c             ⇒ fail(s"Illegal character '${escape(c)}' in header name")
+      }
+    else fail(s"HTTP header value exceeds the configured limit of ${maxHeaderValueEndIx - start} characters")
   }
 
   private def fail(summary: String) = throw new ParsingException(StatusCodes.BadRequest, ErrorInfo(summary))
@@ -397,7 +405,7 @@ private[parsing] object HttpHeaderParser extends SpecializedHeaderValueParsers {
   private final val ALPHA = LOWER_ALPHA | UPPER_ALPHA
   private final val DIGIT = 0x04
   private final val TOKEN_SPECIALS = 0x08
-  private final val TOKEN = ALPHA | TOKEN_SPECIALS
+  private final val TOKEN = ALPHA | DIGIT | TOKEN_SPECIALS
   private final val WSP = 0x10
 
   private[this] val props = new Array[Byte](128)
