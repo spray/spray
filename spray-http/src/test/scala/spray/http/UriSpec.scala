@@ -232,6 +232,9 @@ class UriSpec extends Specification {
       Uri("http://") === Uri(scheme = "http", authority = Authority(host = NamedHost("")))
       Uri("http:?") === Uri.from(scheme = "http", query = Query(""))
       Uri("?a+b=c%2Bd") === Uri.from(query = ("a b", "c+d") +: Query.Empty)
+
+      // legal paths
+      Uri("foo/another@url/[]and{}") === Uri.from(path = "foo/another@url/%5B%5Dand%7B%7D")
     }
 
     "properly complete a normalization cycle" in {
@@ -273,11 +276,15 @@ class UriSpec extends Specification {
       normalize("http://user:pass@SOMEHOST.COM:123") === "http://user:pass@somehost.com:123"
       normalize("HTTP://a:b@HOST:123/./1/2/../%41?abc#def") === "http://a:b@host:123/1/A?abc#def"
 
+      // acceptance and normalization of unescaped ascii characters such as {} and []:
+      normalize("eXAMPLE://a/./b/../b/%63/{foo}/[bar]") === "example://a/b/c/%7Bfoo%7D/%5Bbar%5D"
+
       // queries
       normalize("?") === "?"
       normalize("?key") === "?key"
       normalize("?key=") === "?key" // our query model cannot discriminate between these two inputs
       normalize("?key=&a=b") === "?key&a=b" // our query model cannot discriminate between these two inputs
+      normalize("?key={}&a=[]") === "?key=%7B%7D&a=%5B%5D"
       normalize("?=value") === "?=value"
       normalize("?key=value") === "?key=value"
       normalize("?a+b") === "?a+b"
@@ -290,6 +297,7 @@ class UriSpec extends Specification {
       normalize("?&#") === "?&#"
       normalize("?#") === "?#"
       normalize("#") === "#"
+      normalize("#{}[]") === "#%7B%7D%5B%5D"
     }
 
     "produce proper error messages for illegal URIs" in {
@@ -307,18 +315,18 @@ class UriSpec extends Specification {
             "            ^\n")
       }
 
-      // illegal percent-encoding
-      Uri("http://use%2G@host") must throwA {
-        new IllegalUriException("Illegal URI reference, unexpected character 'G' at position 12",
-          "\nhttp://use%2G@host\n" +
-            "            ^\n")
-      }
-
       // illegal path
       Uri("http://www.example.com/name with spaces/") must throwA {
         new IllegalUriException("Illegal URI reference, unexpected character ' ' at position 27",
           "\nhttp://www.example.com/name with spaces/\n" +
             "                           ^\n")
+      }
+
+      // illegal percent-encoding
+      Uri("http://use%2G@host") must throwA {
+        new IllegalUriException("Illegal URI reference, unexpected character 'G' at position 12",
+          "\nhttp://use%2G@host\n" +
+            "            ^\n")
       }
 
       // illegal path with control character
