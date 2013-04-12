@@ -79,7 +79,9 @@ class HttpHeaderSpec extends Specification {
       """Authorization: Bearer mF_9.B5f-4.1JqM""" !
       example(Authorization(OAuth2BearerToken("mF_9.B5f-4.1JqM")))_ ^
       "Authorization: NoParamScheme" !
-      example(Authorization(GenericHttpCredentials("NoParamScheme", Map.empty)))_ ^
+      example(Authorization(GenericHttpCredentials("NoParamScheme", Map.empty[String, String])))_ ^
+      "Authorization: OAuth sf_v1a-stg;V5DrRS1KfA=" !
+      example(Authorization(GenericHttpCredentials("OAuth", "sf_v1a-stg;V5DrRS1KfA=")))_ ^
       p ^
       "Cache-Control: no-cache, max-age=0" !
       example(`Cache-Control`(`no-cache`, `max-age`(0)))_ ^

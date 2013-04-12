@@ -44,13 +44,15 @@ private[parser] trait AuthorizationHeader {
     "Bearer" ~ Token ~~> (OAuth2BearerToken(_))
   }
 
-  def GenericHttpCredentialsDef = rule {
-    AuthScheme ~ CredentialParams ~~> GenericHttpCredentials
-  }
+  def GenericHttpCredentialsDef = rule(
+    AuthScheme ~ (
+      CredentialParams ~~> ((scheme: String, params) ⇒ GenericHttpCredentials(scheme, params))
+      | RelaxedToken ~ (
+        CredentialParams ~~> ((scheme: String, token: String, params) ⇒ GenericHttpCredentials(scheme, token, params))
+        | EMPTY ~~> ((scheme: String, token: String) ⇒ GenericHttpCredentials(scheme, token)))
+        | EMPTY ~~> ((scheme: String) ⇒ GenericHttpCredentials(scheme, ""))))
 
-  def CredentialParams = rule(
-    oneOrMore(AuthParam, separator = ListSep) ~~> (_.toMap)
-      | (Token | QuotedString) ~~> (param ⇒ Map("" -> param))
-      | push(Map.empty[String, String]))
+  def CredentialParams = rule { oneOrMore(AuthParam, separator = ListSep) ~~> (_.toMap) }
 
+  def RelaxedToken = rule { oneOrMore(!CTL ~ !ch(' ') ~ !ch('"') ~ ANY) ~> identityFunc }
 }

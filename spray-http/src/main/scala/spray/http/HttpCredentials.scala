@@ -20,6 +20,7 @@ package http
 
 import HttpCharsets._
 import org.parboiled.common.Base64
+import scala.annotation.tailrec
 
 sealed abstract class HttpCredentials {
   def value: String
@@ -50,24 +51,34 @@ case class OAuth2BearerToken(token: String) extends HttpCredentials {
   def value = "Bearer " + token
 }
 
-case class GenericHttpCredentials(scheme: String, params: Map[String, String]) extends HttpCredentials {
-  lazy val value = if (params.isEmpty) scheme else formatParams
-
-  private def formatParams = {
-    val sb = new java.lang.StringBuilder(scheme).append(' ')
-    var first = true
-    params.foreach {
-      case (k, v) ⇒
-        if (first) first = false else sb.append(',')
-        if (k.isEmpty) sb.append('"') else sb.append(k).append('=').append('"')
-        v.foreach {
-          case '"'  ⇒ sb.append('\\').append('"')
-          case '\\' ⇒ sb.append('\\').append('\\')
-          case c    ⇒ sb.append(c)
-        }
-        sb.append('"')
+case class GenericHttpCredentials(scheme: String, token: String,
+                                  params: Map[String, String] = Map.empty) extends HttpCredentials {
+  def value = {
+    val sb = new java.lang.StringBuilder(scheme)
+    if (!token.isEmpty) sb.append(' ').append(token)
+    if (params.nonEmpty) {
+      val startLen = sb.length
+      params.foreach {
+        case (k, v) ⇒
+          sb.append(if (sb.length == startLen) ' ' else ',')
+          if (k.isEmpty) sb.append('"') else sb.append(k).append('=').append('"')
+          @tailrec def addValueChars(ix: Int = 0): Unit =
+            if (ix < v.length) {
+              v.charAt(ix) match {
+                case '"'  ⇒ sb.append('\\').append('"')
+                case '\\' ⇒ sb.append('\\').append('\\')
+                case c    ⇒ sb.append(c)
+              }
+              addValueChars(ix + 1)
+            }
+          addValueChars()
+          sb.append('"')
+      }
     }
     sb.toString
   }
 }
 
+object GenericHttpCredentials {
+  def apply(scheme: String, params: Map[String, String]): GenericHttpCredentials = apply(scheme, "", params)
+}
