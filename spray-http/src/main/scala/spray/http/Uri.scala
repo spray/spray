@@ -65,7 +65,7 @@ sealed abstract case class Uri(scheme: String, authority: Authority, path: Path,
     authority.render(sb, scheme, charset)
     path.render(sb, charset, encodeFirstSegmentColons = isRelative)
     if (!query.isEmpty) query.render(sb.append('?'), charset)
-    if (fragment.isDefined) sb.append('#').append(encode(fragment.get, charset, QUERY_FRAGMENT_CHARS))
+    if (fragment.isDefined) sb.append('#').append(encode(fragment.get, charset, QUERY_FRAGMENT_CHAR))
     sb
   }
 
@@ -332,7 +332,7 @@ object Uri {
       def length: Int = tail.length + 1
       def charCount: Int = head.length + tail.charCount
       def render(sb: JStringBuilder, charset: Charset = UTF8, encodeFirstSegmentColons: Boolean = false) = {
-        val keep = if (encodeFirstSegmentColons) PATH_SEGMENT_CHARS & ~COLON else PATH_SEGMENT_CHARS
+        val keep = if (encodeFirstSegmentColons) PATH_SEGMENT_CHAR & ~COLON else PATH_SEGMENT_CHAR
         tail.render(sb.append(encode(head, charset, keep)), charset)
       }
       def ::(segment: String) = if (segment.isEmpty) this else Segment(segment + head, tail)
@@ -363,7 +363,7 @@ object Uri {
       toList(this)
     }
     def render(sb: JStringBuilder, charset: Charset = UTF8): JStringBuilder = {
-      def enc(s: String) = encode(s, charset, QUERY_FRAGMENT_CHARS & ~(AMP | EQUAL | PLUS) | SPACE).replace(' ', '+')
+      def enc(s: String) = encode(s, charset, QUERY_FRAGMENT_CHAR & ~(AMP | EQUAL | PLUS) | SPACE).replace(' ', '+')
       @tailrec def append(q: Query): JStringBuilder = if (q.isEmpty) sb else {
         if (q ne this) sb.append('&')
         sb.append(enc(q.key))
