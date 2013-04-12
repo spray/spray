@@ -47,6 +47,12 @@ to be listed here (along with a backlink) please provide us with the following d
   We've found it to be of excellent quality, and it represents the immutable model of HTTP in a very elegant way.
   The team behind it is very responsive and helpful.
 
+`nokta <http://nokta.com>`_
+  We are running *spray* in front of our ad-server at nokta.com, hosting ads for several high-volume websites
+  (millions of visitors everyday). 3 servers are deployed with custom tarball with dependencies copied in it, and are
+  running with custom init-scripts. We've started with play2 but switched to *spray* in the first week of production
+  and never looked back. Besides technical merits the active community is what makes this project awesome.
+
 `telfish.com <http://www.telfish.com>`_
   We are using *spray-can*, *spray-server* and *spray-json* for our customer-facing query API for more than a year now
   and are very happy with it. Our API code is robust, fast and easy to maintain.
