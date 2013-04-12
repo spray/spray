@@ -98,8 +98,8 @@ trait PathMatcher[L <: HList] extends (Path ⇒ PathMatcher.Matching[L]) { self 
   def /[R <: HList](other: PathMatcher[R])(implicit prepender: Prepender[L, R]): PathMatcher[prepender.Out] =
     this ~ PathMatchers.Slash ~ other
 
-  def |(other: PathMatcher[L]): PathMatcher[L] =
-    new PathMatcher[L] {
+  def |[R >: L <: HList](other: PathMatcher[R]): PathMatcher[R] =
+    new PathMatcher[R] {
       def apply(path: Path) = self(path) orElse other(path)
     }
 
