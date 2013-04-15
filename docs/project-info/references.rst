@@ -53,6 +53,11 @@ to be listed here (along with a backlink) please provide us with the following d
   running with custom init-scripts. We've started with play2 but switched to *spray* in the first week of production
   and never looked back. Besides technical merits the active community is what makes this project awesome.
 
+`Tinga <http://www.tingatech.com>`_
+  We decided to use *spray* + Akka instead of using Play + Akka, as we'd like to have a clear separation between the
+  API- and presentation layers. We are still in the earlier stage of building our infrastructure but are impressed
+  by the community and the *spray* team's responsiveness.
+
 `telfish.com <http://www.telfish.com>`_
   We are using *spray-can*, *spray-server* and *spray-json* for our customer-facing query API for more than a year now
   and are very happy with it. Our API code is robust, fast and easy to maintain.
