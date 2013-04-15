@@ -90,18 +90,29 @@ object Uri {
    * Parses a valid URI string into a normalized URI reference as defined
    * by http://tools.ietf.org/html/rfc3986#section-4.1.
    * Percent-encoded octets are UTF-8 decoded.
+   * Accepts unencoded visible 7-bit ASCII characters in addition to the rfc.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  implicit def apply(string: CharSequence): Uri = apply(string, UTF8)
+  implicit def apply(string: CharSequence): Uri = apply(string, UTF8, strict = false)
+
+  /**
+   * Parses a valid URI string into a normalized URI reference as defined
+   * by http://tools.ietf.org/html/rfc3986#section-4.1.
+   * Percent-encoded octets are UTF-8 decoded.
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the rfc.
+   * If the given string is not a valid URI the method throws an `IllegalUriException`.
+   */
+  def apply(string: CharSequence, strict: Boolean): Uri = apply(string, UTF8, strict)
 
   /**
    * Parses a valid URI string into a normalized URI reference as defined
    * by http://tools.ietf.org/html/rfc3986#section-4.1.
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the rfc.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def apply(string: CharSequence, charset: Charset): Uri =
-    new UriParser(string, charset).parseReference()
+  def apply(string: CharSequence, charset: Charset, strict: Boolean): Uri =
+    new UriParser(string, charset, strict).parseReference()
 
   /**
    * Creates a new Uri instance from the given components.
@@ -127,34 +138,37 @@ object Uri {
    * http://tools.ietf.org/html/rfc3986 the method throws an `IllegalUriException`.
    */
   def from(scheme: String = "", userinfo: String = "", host: String = "", port: Int = 0, path: String = "",
-           query: Query = Query.Empty, fragment: Option[String] = None): Uri =
-    apply(scheme, Authority(Host(host), normalizePort(port, scheme), userinfo), Path(path), query, fragment)
+           query: Query = Query.Empty, fragment: Option[String] = None, strict: Boolean = false): Uri =
+    apply(scheme, Authority(Host(host, strict), normalizePort(port, scheme), userinfo), Path(path), query, fragment)
 
   /**
    * Parses a string into a normalized absolute URI as defined by http://tools.ietf.org/html/rfc3986#section-4.3.
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the rfc.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseAbsolute(string: CharSequence, charset: Charset = UTF8): Uri =
-    new UriParser(string, charset).parseAbsolute()
+  def parseAbsolute(string: CharSequence, charset: Charset = UTF8, strict: Boolean = false): Uri =
+    new UriParser(string, charset, strict).parseAbsolute()
 
   /**
    * Parses a string into a normalized URI reference that is immediately resolved against the given base URI as
    * defined by http://tools.ietf.org/html/rfc3986#section-5.2.
    * Note that the given base Uri must be absolute (i.e. define a scheme).
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the rfc.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseAndResolve(string: CharSequence, base: Uri, charset: Charset = UTF8): Uri =
-    new UriParser(string, charset).parseAndResolveReference(base)
+  def parseAndResolve(string: CharSequence, base: Uri, charset: Charset = UTF8, strict: Boolean = false): Uri =
+    new UriParser(string, charset, strict).parseAndResolveReference(base)
 
   /**
    * Parses the given string into an HTTP request target URI as defined by
    * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.3.
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the rfc.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseHttpRequestTarget(requestTarget: CharSequence, charset: Charset = UTF8): Uri =
-    new UriParser(requestTarget, charset).parseHttpRequestTarget()
+  def parseHttpRequestTarget(requestTarget: CharSequence, charset: Charset = UTF8, strict: Boolean = false): Uri =
+    new UriParser(requestTarget, charset, strict).parseHttpRequestTarget()
 
   /**
    * Normalizes the given URI string by performing the following normalizations:
@@ -163,10 +177,11 @@ object Uri {
    * - percent-encoded octets are decoded if allowed, otherwise they are converted to uppercase hex notation
    * - `.` and `..` path segments are resolved as far as possible
    *
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the rfc.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def normalize(uri: CharSequence, charset: Charset = UTF8): String =
-    Uri(uri, charset).toString(charset)
+  def normalize(uri: CharSequence, charset: Charset = UTF8, strict: Boolean = false): String =
+    Uri(uri, charset, strict).toString(charset)
 
   /**
    * Converts a set of URI components to an "effective HTTP request URI" as defined by
@@ -231,9 +246,9 @@ object Uri {
       def toOption = None
       def render(sb: JStringBuilder) = sb
     }
-    def apply(string: String): Host =
+    def apply(string: String, strict: Boolean = false): Host =
       if (!string.isEmpty) {
-        val parser = new UriParser(string)
+        val parser = new UriParser(string, strict = strict)
         import parser._
         complete("URI host", host)
         _host
@@ -381,8 +396,8 @@ object Uri {
      * Note that this method will never return Query.Empty, even for the empty String.
      * Empty strings will be parsed to `("", "") +: Query.Empty`
      */
-    def apply(string: String): Query = {
-      val parser = new UriParser(string)
+    def apply(string: String, strict: Boolean = false): Query = {
+      val parser = new UriParser(string, strict = strict)
       import parser._
       complete("Query", query)
       _query
