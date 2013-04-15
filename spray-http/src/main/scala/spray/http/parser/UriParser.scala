@@ -24,7 +24,7 @@ import spray.http._
 import Uri._
 import UriParser._
 
-private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
+private[http] class UriParser(input: CharSequence, charset: Charset = UTF8, strict: Boolean) {
   private[this] var cursor: Int = 0
   private[this] var maxCursor: Int = 0
   private[this] var firstUpper = -1
@@ -36,6 +36,10 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
   var _path: Path = Path.Empty
   var _query: Query = Query.Empty
   var _fragment: Option[String] = None
+
+  private[this] val PARSE_PATH_SEGMENT_CHAR = if (strict) PATH_SEGMENT_CHAR else RELAXED_PATH_SEGMENT_CHAR
+  private[this] val PARSE_QUERY_CHAR = if (strict) QUERY_FRAGMENT_CHAR else RELAXED_QUERY_CHAR
+  private[this] val PARSE_FRAGMENT_CHAR = if (strict) QUERY_FRAGMENT_CHAR else RELAXED_FRAGMENT_CHAR
 
   def parseAbsolute(): Uri = {
     complete("absolute URI", `absolute-URI`)
@@ -269,14 +273,14 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
     cursor > start && reset(mark)
   }
 
-  def pchar = matches(RELAXED_PATH_SEGMENT_CHAR) || `pct-encoded`
+  def pchar = matches(PARSE_PATH_SEGMENT_CHAR) || `pct-encoded`
 
   def query = {
     def part = {
       val start = cursor
       var mark = cursor
       resetFirstPercent()
-      while (matches(RELAXED_QUERY_CHAR) || `pct-encoded`) mark = cursor
+      while (matches(PARSE_QUERY_CHAR) || `pct-encoded`) mark = cursor
       reset(mark)
       if (cursor > start)
         decodeIfNeeded(splice(start, cursor).replace('+', ' '), firstPercent - start, charset)
@@ -300,7 +304,7 @@ private[http] class UriParser(input: CharSequence, charset: Charset = UTF8) {
     val start = cursor
     var mark = cursor
     resetFirstPercent()
-    while (matches(RELAXED_FRAGMENT_CHAR) || `pct-encoded`) mark = cursor
+    while (matches(PARSE_FRAGMENT_CHAR) || `pct-encoded`) mark = cursor
     reset(mark)
     _fragment = Some {
       if (cursor > start) decodeIfNeeded(splice(start, cursor), firstPercent - start, charset)
@@ -437,8 +441,9 @@ private[http] object UriParser {
   final val OTHER_VCHAR = 0x200000
   final val VCHAR = OTHER_VCHAR | UNRESERVED | HEX_DIGIT | RESERVED | AT | COLON | SLASH | QUESTIONMARK | DASH | DOT | HASH
 
-  // FRAGMENT/QUERY and PATH characters are split into two, one group that we should be able to parse,
-  // and another we use for rendering in order to follow rfc3986
+  // FRAGMENT/QUERY and PATH characters have two classes of acceptable characters: one that strictly
+  // follows rfc3986, which should be used for rendering urls, and one relaxed, which accepts all visible
+  // 7-bit ASCII characters, even if they're not percent-encoded.
 
   final val QUERY_FRAGMENT_CHAR = UNRESERVED | SUB_DELIM | COLON | AT | SLASH | QUESTIONMARK
   final val PATH_SEGMENT_CHAR = UNRESERVED | SUB_DELIM | COLON | AT
