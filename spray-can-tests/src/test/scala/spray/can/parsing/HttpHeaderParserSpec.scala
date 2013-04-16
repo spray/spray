@@ -32,24 +32,25 @@ class HttpHeaderParserSpec extends Specification {
     akka.event-handlers = ["akka.testkit.TestEventListener"]
     akka.loglevel = WARNING
     spray.can.parsing.max-header-name-length = 20
-    spray.can.parsing.max-header-value-length = 21""")
+    spray.can.parsing.max-header-value-length = 21
+    spray.can.parsing.header-cache.Host = 300""")
   val system = ActorSystem(actorSystemNameFrom(getClass), testConf)
 
   "The HttpHeaderParser" should {
     "insert the 1st value" in new TestSetup(primed = false) {
       insert("Hello", 'Hello)
-      parser.inspectRaw === "nodes: 0/H, 0/e, 0/l, 0/l, 0/o, 1/Ω\nnodeData: \nvalues: 'Hello"
-      parser.inspect === "-H-e-l-l-o- 'Hello\n"
+      parser.formatRawTrie === "nodes: 0/H, 0/e, 0/l, 0/l, 0/o, 1/Ω\nnodeData: \nvalues: 'Hello"
+      parser.formatTrie === "-H-e-l-l-o- 'Hello\n"
     }
 
     "insert a new branch underneath a simple node" in new TestSetup(primed = false) {
       insert("Hello", 'Hello)
       insert("Hallo", 'Hallo)
-      parser.inspectRaw ===
+      parser.formatRawTrie ===
         """nodes: 0/H, 1/e, 0/l, 0/l, 0/o, 1/Ω, 0/a, 0/l, 0/l, 0/o, 2/Ω
           |nodeData: 6/2/0
           |values: 'Hello, 'Hallo""".stripMargin
-      parser.inspect ===
+      parser.formatTrie ===
         """   ┌─a-l-l-o- 'Hallo
           |-H-e-l-l-o- 'Hello
           |""".stripMargin
@@ -59,11 +60,11 @@ class HttpHeaderParserSpec extends Specification {
       insert("Hello", 'Hello)
       insert("Hallo", 'Hallo)
       insert("Yeah", 'Yeah)
-      parser.inspectRaw ===
+      parser.formatRawTrie ===
         """nodes: 2/H, 1/e, 0/l, 0/l, 0/o, 1/Ω, 0/a, 0/l, 0/l, 0/o, 2/Ω, 0/Y, 0/e, 0/a, 0/h, 3/Ω
           |nodeData: 6/2/0, 0/1/11
           |values: 'Hello, 'Hallo, 'Yeah""".stripMargin
-      parser.inspect ===
+      parser.formatTrie ===
         """   ┌─a-l-l-o- 'Hallo
           |-H-e-l-l-o- 'Hello
           | └─Y-e-a-h- 'Yeah
@@ -75,11 +76,11 @@ class HttpHeaderParserSpec extends Specification {
       insert("Hallo", 'Hallo)
       insert("Yeah", 'Yeah)
       insert("Hoo", 'Hoo)
-      parser.inspectRaw ===
+      parser.formatRawTrie ===
         """nodes: 2/H, 1/e, 0/l, 0/l, 0/o, 1/Ω, 0/a, 0/l, 0/l, 0/o, 2/Ω, 0/Y, 0/e, 0/a, 0/h, 3/Ω, 0/o, 0/o, 4/Ω
           |nodeData: 6/2/16, 0/1/11
           |values: 'Hello, 'Hallo, 'Yeah, 'Hoo""".stripMargin
-      parser.inspect ===
+      parser.formatTrie ===
         """   ┌─a-l-l-o- 'Hallo
           |-H-e-l-l-o- 'Hello
           | | └─o-o- 'Hoo
@@ -93,7 +94,7 @@ class HttpHeaderParserSpec extends Specification {
       insert("Yeah", 'Yeah)
       insert("Hoo", 'Hoo)
       insert("Hoo", 'Foo)
-      parser.inspect ===
+      parser.formatTrie ===
         """   ┌─a-l-l-o- 'Hallo
           |-H-e-l-l-o- 'Hello
           | | └─o-o- 'Foo
@@ -102,7 +103,7 @@ class HttpHeaderParserSpec extends Specification {
     }
 
     "prime an empty parser with all defined HeaderValueParsers" in new TestSetup() {
-      parser.inspect ===
+      parser.formatTrie ===
         """   ┌─\r-\n- EmptyHeader
           |   |             ┌─c-h-a-r-s-e-t-:- (Accept-Charset)
           |   |             | └─e-n-c-o-d-i-n-g-:- (Accept-Encoding)
@@ -112,6 +113,7 @@ class HttpHeaderParserSpec extends Specification {
           | |   |         └─:-(Accept)- -*-/-*-\r-\n- Accept: */*
           | |   └─u-t-h-o-r-i-z-a-t-i-o-n-:- (Authorization)
           | | ┌─a-c-h-e---c-o-n-t-r-o-l-:-(Cache-Control)- -m-a-x---a-g-e-=-0-\r-\n- Cache-Control: max-age=0
+          | | |                                             └─n-o---c-a-c-h-e-\r-\n- Cache-Control: no-cache
           | | |     ┌─n-e-c-t-i-o-n-:-(Connection)- -K-e-e-p---A-l-i-v-e-\r-\n- Connection: Keep-Alive
           | | |     |                                | ┌─c-l-o-s-e-\r-\n- Connection: close
           | | |     |                                └─k-e-e-p---a-l-i-v-e-\r-\n- Connection: keep-alive
@@ -121,6 +123,7 @@ class HttpHeaderParserSpec extends Specification {
           | | | |             └─t-y-p-e-:- (Content-Type)
           |-c-o-o-k-i-e-:- (Cookie)
           | |     ┌─d-a-t-e-:- (Date)
+          | |     | └─e-x-p-e-c-t-:-(Expect)- -1-0-0---c-o-n-t-i-n-u-e-\r-\n- *Expect: 100-continue
           | |   ┌─h-o-s-t-:- (Host)
           | | ┌─l-a-s-t---m-o-d-i-f-i-e-d-:- (Last-Modified)
           | | | | └─o-c-a-t-i-o-n-:- (Location)
@@ -132,7 +135,9 @@ class HttpHeaderParserSpec extends Specification {
           |     | ┌─w-w-w---a-u-t-h-e-n-t-i-c-a-t-e-:- (WWW-Authenticate)
           |     └─x---f-o-r-w-a-r-d-e-d---f-o-r-:- (X-Forwarded-For)
           |""".stripMargin
-      parser.inspectSizes === "336 nodes, 21 nodeData rows, 32 values"
+      parser.formatSizes === "371 nodes, 23 nodeData rows, 35 values"
+      parser.contentHistogram ===
+        Map("Connection" -> 3, "Content-Length" -> 1, "Accept" -> 2, "Cache-Control" -> 2, "Expect" -> 1)
     }
 
     "retrieve a cached header with an exact header name match" in new TestSetup() {
@@ -151,7 +156,7 @@ class HttpHeaderParserSpec extends Specification {
       insert("hello: bob", 'Hello)
       val (ixA, headerA) = parseLine("Fancy-Pants: foo\r\nx")
       val (ixB, headerB) = parseLine("Fancy-pants: foo\r\nx")
-      parser.inspect ===
+      parser.formatTrie ===
         """ ┌─f-a-n-c-y---p-a-n-t-s-:-(Fancy-Pants)- -f-o-o-\r-\n- *Fancy-Pants: foo
           |-h-e-l-l-o-:- -b-o-b- 'Hello
           |""".stripMargin
@@ -174,47 +179,57 @@ class HttpHeaderParserSpec extends Specification {
       parseLine("Connec/tion: close\r\nx") must throwA[ParsingException]("Illegal character '/' in header name")
     }
 
+    "produce an error message for lines with a too-long header name" in new TestSetup() {
+      parseLine("123456789012345678901: foo\r\nx") must
+        throwA[ParsingException]("HTTP header name exceeds the configured limit of 20 characters")
+    }
+
     "produce an error message for lines with a too-long header value" in new TestSetup() {
       parseLine("foo: 1234567890123456789012\r\nx") must
         throwA[ParsingException]("HTTP header value exceeds the configured limit of 21 characters")
     }
 
-    "continue parsing raw headers even if the cache capacity is reached" in new TestSetup() {
+    "continue parsing raw headers even if the overall cache capacity is reached" in new TestSetup() {
       val randomHeaders = Stream.continually {
         val name = nextRandomString(nextRandomTokenChar, nextRandomInt(4, 16))
         val value = nextRandomString(nextRandomPrintableChar, nextRandomInt(4, 16))
         RawHeader(name, value)
       }
       randomHeaders.take(300).foldLeft(0) {
-        case (acc, rawHeader) ⇒
-          val line = rawHeader.toString + "\r\nx"
-          val (ixA, headerA) = parseLine(line)
-          val (ixB, headerB) = parseLine(line)
-          headerA === rawHeader
-          headerB === rawHeader
-          ixA === ixB
-          if (headerA eq headerB) acc + 1 else acc
-      } === 111
-      parser.inspectSizes === "3067 nodes, 103 nodeData rows, 255 values"
+        case (acc, rawHeader) ⇒ acc + parseAndCache(rawHeader.toString + "\r\nx", rawHeader)
+      } === 110
+      parser.formatSizes === "3073 nodes, 105 nodeData rows, 255 values"
     }
 
-    "continue parsing modelled headers even if the cache capacity is reached" in new TestSetup() {
+    "continue parsing modelled headers even if the overall cache capacity is reached" in new TestSetup() {
       val randomHostHeaders = Stream.continually {
         Host(
           host = nextRandomString(nextRandomTokenChar, nextRandomInt(4, 8)),
           port = nextRandomInt(1000, 10000))
       }
       randomHostHeaders.take(300).foldLeft(0) {
-        case (acc, rawHeader) ⇒
-          val line = rawHeader.toString + "\r\nx"
-          val (ixA, headerA) = parseLine(line)
-          val (ixB, headerB) = parseLine(line)
-          headerA === rawHeader
-          headerB === rawHeader
-          ixA === ixB
-          if (headerA eq headerB) acc + 1 else acc
-      } === 223
-      parser.inspectSizes === "3199 nodes, 185 nodeData rows, 255 values"
+        case (acc, header) ⇒ acc + parseAndCache(header.toString + "\r\nx", header)
+      } === 220
+      parser.formatSizes === "3199 nodes, 186 nodeData rows, 255 values"
+    }
+
+    "continue parsing raw headers even if the header-specific cache capacity is reached" in new TestSetup() {
+      val randomHeaders = Stream.continually {
+        val value = nextRandomString(nextRandomPrintableChar, nextRandomInt(4, 16))
+        RawHeader("Fancy", value)
+      }
+      randomHeaders.take(20).foldLeft(0) {
+        case (acc, rawHeader) ⇒ acc + parseAndCache(rawHeader.toString + "\r\nx", rawHeader)
+      } === 12
+    }
+
+    "continue parsing modelled headers even if the header-specific cache capacity is reached" in new TestSetup() {
+      val randomHeaders = Stream.continually {
+        `User-Agent`(nextRandomString(nextRandomTokenChar, nextRandomInt(4, 16)))
+      }
+      randomHeaders.take(40).foldLeft(0) {
+        case (acc, header) ⇒ acc + parseAndCache(header.toString + "\r\nx", header)
+      } === 32
     }
   }
 
@@ -237,6 +252,15 @@ class HttpHeaderParserSpec extends Specification {
       ixA === ixB
       headerA must beTheSameAs(headerB)
       headerA
+    }
+
+    def parseAndCache(line: String, header: HttpHeader): Int = {
+      val (ixA, headerA) = parseLine(line)
+      val (ixB, headerB) = parseLine(line)
+      headerA === header
+      headerB === header
+      ixA === ixB
+      if (headerA eq headerB) 1 else 0
     }
 
     private[this] val random = new Random(42)

@@ -27,7 +27,7 @@ private[parsing] object SpecializedHeaderValueParsers {
   def specializedHeaderValueParsers = Seq(
     ContentLengthParser)
 
-  object ContentLengthParser extends HeaderValueParser("Content-Length") {
+  object ContentLengthParser extends HeaderValueParser("Content-Length", maxValueCount = 1) {
     def apply(input: CompactByteString, valueStart: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int) = {
       @tailrec def recurse(ix: Int = valueStart, result: Long = 0): (HttpHeader, Int) = {
         val c = byteChar(input, ix)

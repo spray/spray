@@ -17,6 +17,7 @@
 package spray.can.parsing
 
 import com.typesafe.config.Config
+import scala.collection.JavaConverters._
 import akka.actor.ActorSystem
 
 case class ParserSettings(
@@ -29,7 +30,8 @@ case class ParserSettings(
     maxChunkExtNameLength: Int,
     maxChunkExtValueLength: Int,
     maxChunkExtCount: Int,
-    maxChunkSize: Int) {
+    maxChunkSize: Int,
+    headerValueCacheLimits: Map[String, Int]) {
 
   require(maxUriLength > 0, "max-uri-length must be > 0")
   require(maxResponseReasonLength > 0, "max-response-reason-length must be > 0")
@@ -41,6 +43,11 @@ case class ParserSettings(
   require(maxChunkExtValueLength > 0, "max-chunk-ext-value-length must be > 0")
   require(maxChunkExtCount > 0, "max-chunk-ext-count must be > 0")
   require(maxChunkSize > 0, "max-chunk-size must be > 0")
+
+  val defaultHeaderValueCacheLimit: Int = headerValueCacheLimits("default")
+
+  def headerValueCacheLimit(headerName: String) =
+    headerValueCacheLimits.getOrElse(headerName, defaultHeaderValueCacheLimit)
 }
 
 object ParserSettings {
@@ -53,6 +60,7 @@ object ParserSettings {
       if (value <= Int.MaxValue) value.toInt
       else sys.error(s"ParserSettings config setting $key must not be larger than ${Int.MaxValue}")
     }
+    val cacheConfig = config.getConfig("header-cache")
     ParserSettings(
       bytes("max-uri-length"),
       bytes("max-response-reason-length"),
@@ -63,6 +71,7 @@ object ParserSettings {
       bytes("max-chunk-ext-name-length"),
       bytes("max-chunk-ext-value-length"),
       bytes("max-chunk-ext-count"),
-      bytes("max-chunk-size"))
+      bytes("max-chunk-size"),
+      cacheConfig.entrySet.asScala.map(kvp ⇒ kvp.getKey -> cacheConfig.getInt(kvp.getKey))(collection.breakOut))
   }
 }
