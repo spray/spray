@@ -17,3 +17,7 @@
 package spray.util
 
 class NotImplementedException(msg: String = "") extends RuntimeException(msg)
+
+abstract class SingletonException extends RuntimeException {
+  override def fillInStackTrace() = this // suppress stack trace creation
+}

@@ -17,9 +17,10 @@
 package spray.can
 
 import java.lang.{ StringBuilder ⇒ JStringBuilder }
-import spray.http.{ ErrorInfo, StatusCode }
-import akka.util.ByteString
 import scala.annotation.tailrec
+import akka.util.ByteString
+import spray.http.{ ErrorInfo, StatusCode }
+import spray.util.SingletonException
 
 package object parsing {
 
@@ -49,8 +50,6 @@ package parsing {
 
   class ParsingException(status: StatusCode, info: ErrorInfo) extends RuntimeException(info.formatPretty)
 
-  object NotEnoughDataException extends RuntimeException {
-    override def fillInStackTrace() = this // suppress stack trace creation
-  }
+  object NotEnoughDataException extends SingletonException
 
 }
