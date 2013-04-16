@@ -311,7 +311,9 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
   def inspectSizes: String = s"$nodeCount nodes, ${nodeDataCount / 3} nodeData rows, $valueCount values"
 }
 
-private[parsing] object HttpHeaderParser extends SpecializedHeaderValueParsers {
+private[parsing] object HttpHeaderParser {
+  import SpecializedHeaderValueParsers._
+
   object EmptyHeader extends HttpHeader {
     def name = ""
     def lowercaseName = ""
@@ -325,6 +327,7 @@ private[parsing] object HttpHeaderParser extends SpecializedHeaderValueParsers {
     "Connection: Keep-Alive",
     "Connection: close",
     "Connection: keep-alive",
+    "Content-Length: 0",
     "Cache-Control: max-age=0")
 
   def apply(settings: ParserSettings, warnOnIllegalHeader: ErrorInfo ⇒ Unit) =
@@ -351,7 +354,7 @@ private[parsing] object HttpHeaderParser extends SpecializedHeaderValueParsers {
         insertInGoodOrder(items)(pivot + 1, endIx)
       }
     insertInGoodOrder(valueParsers.sortBy(_.headerName))()
-    // insertInGoodOrder(specializedHeaderValueParsers)
+    insertInGoodOrder(specializedHeaderValueParsers)()
     insertInGoodOrder(predefinedHeaders.sorted)()
     parser.insert(CompactByteString("\r\n"), EmptyHeader)()
     parser
@@ -401,7 +404,7 @@ private[parsing] object HttpHeaderParser extends SpecializedHeaderValueParsers {
       byteChar(input, ix) match {
         case '\t' ⇒ scanHeaderValue(input, start, maxHeaderValueEndIx)(spaceAppended, ix + 1)
         case '\r' if byteChar(input, ix + 1) == '\n' ⇒
-          if (is(byteChar(input, ix + 2), WSP)) scanHeaderValue(input, start, maxHeaderValueEndIx)(spaceAppended, ix + 3)
+          if (isWhitespace(byteChar(input, ix + 2))) scanHeaderValue(input, start, maxHeaderValueEndIx)(spaceAppended, ix + 3)
           else (if (sb != null) sb.toString else asciiString(input, start, ix), ix + 2)
         case c if c >= ' ' ⇒ scanHeaderValue(input, start, maxHeaderValueEndIx)(if (sb != null) sb.append(c) else sb, ix + 1)
         case c             ⇒ fail(s"Illegal character '${escape(c)}' in header name")
@@ -410,8 +413,10 @@ private[parsing] object HttpHeaderParser extends SpecializedHeaderValueParsers {
   }
 
   def isTokenChar(c: Char) = is(c, TOKEN)
+  def isDigit(c: Char) = is(c, DIGIT)
+  def isWhitespace(c: Char) = is(c, WSP)
 
-  private def fail(summary: String) = throw new ParsingException(StatusCodes.BadRequest, ErrorInfo(summary))
+  def fail(summary: String) = throw new ParsingException(StatusCodes.BadRequest, ErrorInfo(summary))
 
   private object OutOfTrieSpaceException extends SingletonException
 

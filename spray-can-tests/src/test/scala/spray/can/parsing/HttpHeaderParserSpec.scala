@@ -117,7 +117,7 @@ class HttpHeaderParserSpec extends Specification {
           | | |     |                                └─k-e-e-p---a-l-i-v-e-\r-\n- Connection: keep-alive
           | | |     |         ┌─d-i-s-p-o-s-i-t-i-o-n-:- (Content-Disposition)
           | | | ┌─n-t-e-n-t---e-n-c-o-d-i-n-g-:- (Content-Encoding)
-          | | | |             | ┌─l-e-n-g-t-h-:- (Content-Length)
+          | | | |             | ┌─l-e-n-g-t-h-:-(Content-Length)- -0-\r-\n- Content-Length: 0
           | | | |             └─t-y-p-e-:- (Content-Type)
           |-c-o-o-k-i-e-:- (Cookie)
           | |     ┌─d-a-t-e-:- (Date)
@@ -132,7 +132,7 @@ class HttpHeaderParserSpec extends Specification {
           |     | ┌─w-w-w---a-u-t-h-e-n-t-i-c-a-t-e-:- (WWW-Authenticate)
           |     └─x---f-o-r-w-a-r-d-e-d---f-o-r-:- (X-Forwarded-For)
           |""".stripMargin
-      parser.inspectSizes === "331 nodes, 21 nodeData rows, 31 values"
+      parser.inspectSizes === "336 nodes, 21 nodeData rows, 32 values"
     }
 
     "retrieve a cached header with an exact header name match" in new TestSetup() {
@@ -194,8 +194,8 @@ class HttpHeaderParserSpec extends Specification {
           headerB === rawHeader
           ixA === ixB
           if (headerA eq headerB) acc + 1 else acc
-      } === 112
-      parser.inspectSizes === "3075 nodes, 103 nodeData rows, 255 values"
+      } === 111
+      parser.inspectSizes === "3067 nodes, 103 nodeData rows, 255 values"
     }
 
     "continue parsing modelled headers even if the cache capacity is reached" in new TestSetup() {
@@ -213,8 +213,8 @@ class HttpHeaderParserSpec extends Specification {
           headerB === rawHeader
           ixA === ixB
           if (headerA eq headerB) acc + 1 else acc
-      } === 224
-      parser.inspectSizes === "3206 nodes, 186 nodeData rows, 255 values"
+      } === 223
+      parser.inspectSizes === "3199 nodes, 185 nodeData rows, 255 values"
     }
   }
 

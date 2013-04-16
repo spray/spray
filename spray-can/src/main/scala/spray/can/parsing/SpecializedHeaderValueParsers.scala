@@ -16,16 +16,28 @@
 
 package spray.can.parsing
 
-import spray.http.{ HttpHeader, ErrorInfo }
+import scala.annotation.tailrec
 import akka.util.CompactByteString
+import spray.http._
+import HttpHeaders._
 
-trait SpecializedHeaderValueParsers { _: HttpHeaderParser.type ⇒
+private[parsing] object SpecializedHeaderValueParsers {
+  import HttpHeaderParser._
 
   def specializedHeaderValueParsers = Seq(
-    SpecialContentLengthParser)
+    ContentLengthParser)
 
-  object SpecialContentLengthParser extends HeaderValueParser("Content-Length") {
-    def apply(input: CompactByteString, valueStart: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int) = ???
+  object ContentLengthParser extends HeaderValueParser("Content-Length") {
+    def apply(input: CompactByteString, valueStart: Int, warnOnIllegalHeader: ErrorInfo ⇒ Unit): (HttpHeader, Int) = {
+      @tailrec def recurse(ix: Int = valueStart, result: Long = 0): (HttpHeader, Int) = {
+        val c = byteChar(input, ix)
+        if (isDigit(c)) recurse(ix + 1, result * 10 + c - '0')
+        else if (isWhitespace(c)) recurse(ix + 1, result)
+        else if (c == '\r' && byteChar(input, ix + 1) == '\n' && result < Int.MaxValue) (`Content-Length`(result.toInt), ix + 2)
+        else fail("Illegal `Content-Length` header value")
+      }
+      recurse()
+    }
   }
 
 }
