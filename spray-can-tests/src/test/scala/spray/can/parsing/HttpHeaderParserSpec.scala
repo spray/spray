@@ -16,6 +16,7 @@
 
 package spray.can.parsing
 
+import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import com.typesafe.config.{ ConfigFactory, Config }
 import org.specs2.mutable.Specification
 import akka.actor.ActorSystem
@@ -178,30 +179,43 @@ class HttpHeaderParserSpec extends Specification {
         throwA[ParsingException]("HTTP header value exceeds the configured limit of 21 characters")
     }
 
-    //    "support header parsing even if the cache capacity is reached" in new TestSetup() {
-    //      val random = new Random
-    //      @tailrec def nextTokenChar(): Char = {
-    //        val c = random.nextPrintableChar()
-    //        if (HttpHeaderParser.isTokenChar(c)) c else nextTokenChar()
-    //      }
-    //      val randomNameChars = Stream.continually { nextTokenChar() }
-    //      val randomValueChars = Stream.continually { random.nextPrintableChar() }
-    //      val randomHeaders = Stream.continually {
-    //        val name = randomNameChars take (random.nextInt(12) + 4) mkString ""
-    //        val value = randomValueChars take (random.nextInt(12) + 4) mkString ""
-    //        RawHeader(name, value)
-    //      }
-    //      randomHeaders.take(300).foldLeft(0) {
-    //        case (acc, rawHeader) ⇒
-    //          val line = rawHeader.toString + "\r\nx"
-    //          val (ixA, headerA) = parseLine(line)
-    //          val (ixB, headerB) = parseLine(line)
-    //          headerA === rawHeader
-    //          headerB === rawHeader
-    //          ixA === ixB
-    //          if (headerA eq headerB) acc + 1 else acc
-    //      } === 256
-    //    }
+    "continue parsing raw headers even if the cache capacity is reached" in new TestSetup() {
+      val randomHeaders = Stream.continually {
+        val name = nextRandomString(nextRandomTokenChar, nextRandomInt(4, 16))
+        val value = nextRandomString(nextRandomPrintableChar, nextRandomInt(4, 16))
+        RawHeader(name, value)
+      }
+      randomHeaders.take(300).foldLeft(0) {
+        case (acc, rawHeader) ⇒
+          val line = rawHeader.toString + "\r\nx"
+          val (ixA, headerA) = parseLine(line)
+          val (ixB, headerB) = parseLine(line)
+          headerA === rawHeader
+          headerB === rawHeader
+          ixA === ixB
+          if (headerA eq headerB) acc + 1 else acc
+      } === 112
+      parser.inspectSizes === "3075 nodes, 103 nodeData rows, 255 values"
+    }
+
+    "continue parsing modelled headers even if the cache capacity is reached" in new TestSetup() {
+      val randomHostHeaders = Stream.continually {
+        Host(
+          host = nextRandomString(nextRandomTokenChar, nextRandomInt(4, 8)),
+          port = nextRandomInt(1000, 10000))
+      }
+      randomHostHeaders.take(300).foldLeft(0) {
+        case (acc, rawHeader) ⇒
+          val line = rawHeader.toString + "\r\nx"
+          val (ixA, headerA) = parseLine(line)
+          val (ixB, headerB) = parseLine(line)
+          headerA === rawHeader
+          headerB === rawHeader
+          ixA === ixB
+          if (headerA eq headerB) acc + 1 else acc
+      } === 224
+      parser.inspectSizes === "3206 nodes, 186 nodeData rows, 255 values"
+    }
   }
 
   step(system.shutdown())
@@ -224,5 +238,15 @@ class HttpHeaderParserSpec extends Specification {
       headerA must beTheSameAs(headerB)
       headerA
     }
+
+    private[this] val random = new Random(42)
+    def nextRandomPrintableChar(): Char = random.nextPrintableChar()
+    def nextRandomInt(min: Int, max: Int) = random.nextInt(max - min) + min
+    @tailrec final def nextRandomTokenChar(): Char = {
+      val c = nextRandomPrintableChar()
+      if (HttpHeaderParser.isTokenChar(c)) c else nextRandomTokenChar()
+    }
+    @tailrec final def nextRandomString(charGen: () ⇒ Char, len: Int, sb: JStringBuilder = new JStringBuilder): String =
+      if (sb.length < len) nextRandomString(charGen, len, sb.append(charGen())) else sb.toString
   }
 }

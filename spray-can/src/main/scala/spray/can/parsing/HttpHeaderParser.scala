@@ -69,7 +69,7 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
     // row-index + 2: if non-zero: index into the `nodes` array for the "greater" child of the node
     // The array has a fixed size of 254 rows (since we can address at most 256 - 1 values with the node MSB and
     // we always have fewer branching nodes than values).
-    private[this] var nodeData: Array[Short] = new Array(254 * 3),
+    private[this] var branchData: Array[Short] = new Array(254 * 3),
 
     // The values addressed by trie leaf nodes. Since we address them via the nodes MSB and zero is reserved the trie
     // cannot hold more then 255 items, so this array has a fixed size of 255.
@@ -90,7 +90,7 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
   def isEmpty = nodeCount == 0
 
   def copyWith(warnOnIllegalHeader: ErrorInfo ⇒ Unit) =
-    new HttpHeaderParser(settings, warnOnIllegalHeader, nodes, nodeData, values)
+    new HttpHeaderParser(settings, warnOnIllegalHeader, nodes, branchData, values)
 
   @tailrec def parseHeaderLine(input: CompactByteString, lineStart: Int = 0)(cursor: Int = lineStart, nodeIx: Int = 0): Int = {
     val char = toLowerCase(byteChar(input, cursor))
@@ -114,7 +114,7 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
           }
         case nodeChar ⇒ // branching node
           val signum = math.signum(char - nodeChar)
-          nodeData((msb - 1) * 3 + 1 + signum) match {
+          branchData((msb - 1) * 3 + 1 + signum) match {
             case 0 ⇒ // header doesn't exist yet and has no model (otherwise we'd arrive at a value)
               parseRawHeader(input, lineStart, cursor, nodeIx)
             case subNodeIx ⇒ // descend into branch and advance on char matches (otherwise descend but don't advance)
@@ -134,7 +134,7 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
     } catch {
       case OutOfTrieSpaceException ⇒ // if we cannot insert we drop back to simply creating new header instances
         val (headerValue, endIx) = scanHeaderValue(input, colonIx + 1, colonIx + 1 + maxHeaderValueLength)()
-        resultHeader = RawHeader(headerName, headerValue)
+        resultHeader = RawHeader(headerName, headerValue.trim)
         endIx
     }
   }
@@ -160,7 +160,7 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
           cursor
         case nodeChar ⇒ // branching node
           val signum = math.signum(char - nodeChar)
-          nodeData((msb - 1) * 3 + 1 + signum) match {
+          branchData((msb - 1) * 3 + 1 + signum) match {
             case 0 ⇒ parseAndInsertHeader() // header doesn't exist yet
             case subNodeIx ⇒ // descend into branch and advance on char matches (otherwise descend but don't advance)
               parseHeaderValue(input, valueStart, subNodeIx, valueParser)(cursor + 1 - abs(signum))
@@ -185,21 +185,23 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
         val signum = math.signum(char - nodeChar)
         node >>> 8 match {
           case 0 ⇒ // input doesn't exist yet in the trie, insert
-            val rowIx = newNodeDataRowIndex
+            val valueIx = newValueIndex // compute early in order to trigger OutOfTrieSpaceExceptions before any change
+            val rowIx = newBranchDataRowIndex
             nodes(nodeIx) = nodeBits(rowIx, nodeChar)
-            nodeData(rowIx + 1) = (nodeIx + 1).toShort
-            nodeData(rowIx + 1 + signum) = nodeCount.toShort
-            insertRemainingCharsAsNewNodes(input, value)(cursor, endIx, colonIx)
+            branchData(rowIx + 1) = (nodeIx + 1).toShort
+            branchData(rowIx + 1 + signum) = nodeCount.toShort
+            insertRemainingCharsAsNewNodes(input, value)(cursor, endIx, colonIx, valueIx)
           case msb ⇒
             if (nodeChar == 0) { // leaf node
               require(cursor == endIx, "Cannot insert key of which a prefix already has a value")
               values(msb - 1) = value // override existing entry
             } else {
               val branchIndex = (msb - 1) * 3 + 1 + signum
-              nodeData(branchIndex) match { // branching node
+              branchData(branchIndex) match { // branching node
                 case 0 ⇒ // branch doesn't exist yet, create
-                  nodeData(branchIndex) = nodeCount.toShort
-                  insertRemainingCharsAsNewNodes(input, value)(cursor, endIx, colonIx)
+                  val valueIx = newValueIndex // compute early in order to trigger OutOfTrieSpaceExceptions before any change
+                  branchData(branchIndex) = nodeCount.toShort
+                  insertRemainingCharsAsNewNodes(input, value)(cursor, endIx, colonIx, valueIx)
                 case subNodeIx ⇒ recurse(cursor + 1 - abs(signum), subNodeIx) // descend, but advance only on match
               }
             }
@@ -208,22 +210,21 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
     }
     if (trieIsShared) {
       nodes = copyOf(nodes, nodes.length)
-      nodeData = copyOf(nodeData, nodeData.length)
+      branchData = copyOf(branchData, branchData.length)
       values = copyOf(values, values.length)
       trieIsShared = false
     }
     recurse(startIx, nodeIx)
   }
 
-  @tailrec def insertRemainingCharsAsNewNodes(input: CompactByteString, value: AnyRef)(cursor: Int = 0, endIx: Int = input.length, colonIx: Int = 0): Unit = {
+  @tailrec def insertRemainingCharsAsNewNodes(input: CompactByteString, value: AnyRef)(cursor: Int = 0, endIx: Int = input.length, colonIx: Int = 0, valueIx: Int = newValueIndex): Unit = {
     val newNodeIx = newNodeIndex
     if (cursor < endIx) {
       val c = input(cursor).toChar
       val char = if (cursor < colonIx) toLowerCase(c) else c
       nodes(newNodeIx) = char
-      insertRemainingCharsAsNewNodes(input, value)(cursor + 1, endIx, colonIx)
+      insertRemainingCharsAsNewNodes(input, value)(cursor + 1, endIx, colonIx, valueIx)
     } else {
-      val valueIx = newValueIndex
       values(valueIx) = value
       nodes(newNodeIx) = ((valueIx + 1) << 8).toChar
     }
@@ -236,7 +237,7 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
     index
   }
 
-  private def newNodeDataRowIndex: Int = {
+  private def newBranchDataRowIndex: Int = {
     val index = nodeDataCount
     nodeDataCount = index + 3
     index
@@ -244,8 +245,10 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
 
   private def newValueIndex: Int = {
     val index = valueCount
-    valueCount = index + 1
-    index
+    if (index < values.length) {
+      valueCount = index + 1
+      index
+    } else throw OutOfTrieSpaceException
   }
 
   private def nodeBits(rowIx: Int, char: Int) = (((rowIx / 3 + 1) << 8) | char).toChar
@@ -259,7 +262,7 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
         }
         prefixedLines -> mainIx
       }
-      def branchLines(dataIx: Int, p1: String, p2: String, p3: String) = nodeData(dataIx) match {
+      def branchLines(dataIx: Int, p1: String, p2: String, p3: String) = branchData(dataIx) match {
         case 0         ⇒ Seq.empty
         case subNodeIx ⇒ recurseAndPrefixLines(subNodeIx, p1, p2, p3)._1
       }
@@ -282,7 +285,7 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
             val postLines = branchLines(rowIx + 2, "| ", "└─", "  ")
             val p1 = if (preLines.nonEmpty) "| " else "  "
             val p3 = if (postLines.nonEmpty) "| " else "  "
-            val (matchLines, mainLineIx) = recurseAndPrefixLines(nodeData(rowIx + 1), p1, char + "-", p3)
+            val (matchLines, mainLineIx) = recurseAndPrefixLines(branchData(rowIx + 1), p1, char + '-', p3)
             (preLines ++ matchLines ++ postLines, mainLineIx + preLines.size)
         }
       }
@@ -301,7 +304,7 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
   def inspectRaw: String = {
     def char(c: Char) = (c >> 8).toString + (if ((c & 0xFF) > 0) "/" + (c & 0xFF).toChar else "/Ω")
     s"nodes: ${nodes take nodeCount map char mkString ", "}\n" +
-      s"nodeData: ${nodeData take nodeDataCount grouped 3 map { case Array(a, b, c) ⇒ s"$a/$b/$c" } mkString ", "}\n" +
+      s"nodeData: ${branchData take nodeDataCount grouped 3 map { case Array(a, b, c) ⇒ s"$a/$b/$c" } mkString ", "}\n" +
       s"values: ${values take valueCount mkString ", "}"
   }
 
