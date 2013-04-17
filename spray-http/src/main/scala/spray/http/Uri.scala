@@ -498,8 +498,7 @@ object Uri {
         def intValueOfHexWord(i: Int) = {
           def intValueOfHexChar(j: Int) = {
             val c = string.charAt(j)
-            if (is(c, DIGIT)) c - '0'
-            else if (is(c, HEX_LETTER)) toLowerCase(c) - 'a' + 10
+            if (is(c, HEX_DIGIT)) hexValue(c)
             else throw new IllegalArgumentException("Illegal percent-encoding at pos " + j)
           }
           intValueOfHexChar(i) * 16 + intValueOfHexChar(i + 1)

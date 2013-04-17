@@ -478,4 +478,6 @@ private[http] object UriParser {
   def max(a: Int, b: Int): Int = { val d = b - a; a + (d & ~sex(d)) }
 
   def hexDigit(i: Int): Char = { val j = i & 0x0F; ('0' + j + -7 * sex(0x7ffffff6 + j)).toChar }
+
+  def hexValue(c: Char): Int = (c & 0x1f) + ((c >> 6) * 0x19) - 0x10
 }
