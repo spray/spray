@@ -19,6 +19,7 @@ package spray
 package http
 
 import java.lang.String
+import scala.annotation.tailrec
 
 abstract class HttpHeader {
   def name: String
@@ -83,13 +84,13 @@ object HttpHeaders {
     def value = directives.mkString(", ")
   }
 
-  object Connection { def apply(first: String, more: String*): `Connection` = apply(first +: more) }
+  object Connection { def apply(first: String, more: String*): Connection = apply(first +: more) }
   case class Connection(connectionTokens: Seq[String]) extends HttpHeader {
     def name = "Connection"
     def lowercaseName = "connection"
     def value = connectionTokens.mkString(", ")
-    def hasClose = connectionTokens.exists(_.toLowerCase == "close")
-    def hasKeepAlive = connectionTokens.exists(_.toLowerCase == "keep-alive")
+    def hasClose = connectionTokens.exists(_ equalsIgnoreCase "close")
+    def hasKeepAlive = connectionTokens.exists(_ equalsIgnoreCase "keep-alive")
   }
 
   // see http://tools.ietf.org/html/rfc2183
@@ -128,6 +129,14 @@ object HttpHeaders {
     def name = "Date"
     def lowercaseName = "date"
     def value = date.toRfc1123DateTimeString
+  }
+
+  object Expect { def apply(first: String, more: String*): Expect = apply(first +: more) }
+  case class Expect(expectations: Seq[String]) extends HttpHeader {
+    def name = "Expect"
+    def lowercaseName = "expect"
+    def value = expectations mkString ", "
+    def has100continue = expectations.exists(_ equalsIgnoreCase "100-continue")
   }
 
   case class Host(host: String, port: Int = 0) extends HttpHeader {
@@ -173,6 +182,14 @@ object HttpHeaders {
     def name = "Transfer-Encoding"
     def lowercaseName = "Transfer-Encoding"
     def value = encodings mkString ", "
+    def hasChunked: Boolean = {
+      @tailrec def recurse(ix: Int = 0): Boolean =
+        if (ix < encodings.size)
+          if (encodings(ix) equalsIgnoreCase "chunked") true
+          else recurse(ix + 1)
+        else false
+      recurse()
+    }
   }
 
   object `User-Agent` { def apply(products: String): `User-Agent` = apply(ProductVersion.parseMultiple(products)) }
