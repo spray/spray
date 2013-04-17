@@ -251,7 +251,7 @@ case class HttpResponse(status: StatusCode = StatusCodes.OK,
 /**
  * Instance of this class represent the individual chunks of a chunked HTTP message (request or response).
  */
-case class MessageChunk(body: Array[Byte], extensions: List[ChunkExtension]) extends HttpRequestPart with HttpResponsePart {
+case class MessageChunk(body: Array[Byte], extension: String) extends HttpRequestPart with HttpResponsePart {
   require(body.length > 0, "MessageChunk must not have empty body")
   def bodyAsString: String = bodyAsString(HttpCharsets.`ISO-8859-1`.nioCharset)
   def bodyAsString(charset: HttpCharset): String = bodyAsString(charset.nioCharset)
@@ -262,15 +262,15 @@ case class MessageChunk(body: Array[Byte], extensions: List[ChunkExtension]) ext
 object MessageChunk {
   import HttpCharsets._
   def apply(body: String): MessageChunk =
-    apply(body, Nil)
+    apply(body, "")
   def apply(body: String, charset: HttpCharset): MessageChunk =
-    apply(body, charset, Nil)
-  def apply(body: String, extensions: List[ChunkExtension]): MessageChunk =
-    apply(body, `ISO-8859-1`, extensions)
-  def apply(body: String, charset: HttpCharset, extensions: List[ChunkExtension]): MessageChunk =
-    apply(body.getBytes(charset.nioCharset), extensions)
+    apply(body, charset, "")
+  def apply(body: String, extension: String): MessageChunk =
+    apply(body, `ISO-8859-1`, extension)
+  def apply(body: String, charset: HttpCharset, extension: String): MessageChunk =
+    apply(body.getBytes(charset.nioCharset), extension)
   def apply(body: Array[Byte]): MessageChunk =
-    apply(body, Nil)
+    apply(body, "")
 }
 
 case class ChunkedRequestStart(request: HttpRequest) extends HttpMessageStart with HttpRequestPart {
@@ -281,14 +281,11 @@ case class ChunkedResponseStart(response: HttpResponse) extends HttpMessageStart
   def message = response
 }
 
-case class ChunkedMessageEnd(
-    extensions: List[ChunkExtension] = Nil,
-    trailer: List[HttpHeader] = Nil) extends HttpRequestPart with HttpResponsePart with HttpMessageEnd {
+case class ChunkedMessageEnd(extension: String = "",
+                             trailer: List[HttpHeader] = Nil) extends HttpRequestPart with HttpResponsePart with HttpMessageEnd {
   if (!trailer.isEmpty) {
     require(trailer.forall(_.isNot("content-length")), "Content-Length header is not allowed in trailer")
     require(trailer.forall(_.isNot("transfer-encoding")), "Transfer-Encoding header is not allowed in trailer")
     require(trailer.forall(_.isNot("trailer")), "Trailer header is not allowed in trailer")
   }
 }
-
-case class ChunkExtension(name: String, value: String)
