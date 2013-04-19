@@ -77,7 +77,7 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
       "a response to a HEAD request" in {
         render(requestMethod = HEAD,
           response = HttpResponse(
-            headers = List(RawHeader("Age", "30"), RawHeader("Connection", "Keep-Alive")),
+            headers = List(RawHeader("Age", "30"), Connection("Keep-Alive")),
             entity = "Small f*ck up overhere!")) === result {
             """HTTP/1.1 200 OK
             |Server: spray-can/1.0.0

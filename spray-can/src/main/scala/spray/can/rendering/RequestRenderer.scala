@@ -21,6 +21,7 @@ import scala.annotation.tailrec
 import akka.util.ByteStringBuilder
 import spray.http._
 import MessageRendering._
+import HttpHeaders._
 
 class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) {
 
@@ -54,7 +55,7 @@ class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) {
     // TODO: extend Uri to directly render into byte array
     val uriWithoutFragment = if (uri.fragment.isEmpty) uri else uri.copy(fragment = None)
     put(method.value).put(' ').put(uriWithoutFragment.toString).put(' ').put(protocol.value).put(CrLf)
-    val hostHeaderPresent = putHeadersAndReturnHostHeaderPresent(headers)
+    val hostHeaderPresent = putHeadersAndReturnHostHeaderPresent(headers, !request.entity.isEmpty)
     if (!hostHeaderPresent) {
       put("Host: ").put(remoteAddress.getHostName)
       val port = remoteAddress.getPort
@@ -67,18 +68,18 @@ class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) {
   }
 
   @tailrec
-  private def putHeadersAndReturnHostHeaderPresent(headers: List[HttpHeader], hostHeaderPresent: Boolean = false)(implicit bb: ByteStringBuilder): Boolean =
+  private def putHeadersAndReturnHostHeaderPresent(headers: List[HttpHeader], entityPresent: Boolean, hostHeaderPresent: Boolean = false)(implicit bb: ByteStringBuilder): Boolean =
     headers match {
       case Nil ⇒ hostHeaderPresent
       case head :: tail ⇒
         val found = head.lowercaseName match {
-          case "content-type"                           ⇒ false // we never render these headers here,
+          case "content-type" if entityPresent          ⇒ false // we never render these headers here,
           case "content-length"                         ⇒ false // because their production is the
           case "transfer-encoding"                      ⇒ false // responsibility of the spray-can layer,
           case "user-agent" if !userAgentHeader.isEmpty ⇒ false // not the user
           case "host"                                   ⇒ put(head); true
           case _                                        ⇒ put(head); false
         }
-        putHeadersAndReturnHostHeaderPresent(tail, found || hostHeaderPresent)
+        putHeadersAndReturnHostHeaderPresent(tail, entityPresent, found || hostHeaderPresent)
     }
 }

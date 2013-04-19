@@ -90,26 +90,32 @@ class ResponseRenderer(serverHeader: String,
     else put(StatusLineStart).put(Integer.toString(status.value)).put(' ').put(status.reason).put(CrLf)
     put(serverAndDateHeader)
     putContentTypeHeaderIfRequired(entity)
-    putHeadersAndReturnConnectionHeader(headers)()
+    putHeadersAndReturnConnectionHeader(headers, !response.entity.isEmpty)()
   }
 
   @tailrec
-  private def putHeadersAndReturnConnectionHeader(headers: List[HttpHeader])(connectionHeader: Option[Connection] = None)(implicit bb: ByteStringBuilder): Option[Connection] =
+  private def putHeadersAndReturnConnectionHeader(headers: List[HttpHeader], entityPresent: Boolean)(connectionHeader: Option[Connection] = None)(implicit bb: ByteStringBuilder): Option[Connection] =
     headers match {
       case Nil ⇒ connectionHeader
-      case head :: tail ⇒ putHeadersAndReturnConnectionHeader(tail) {
+      case head :: tail ⇒ putHeadersAndReturnConnectionHeader(tail, entityPresent) {
         head match {
-          case _: `Content-Type`      ⇒ None // we never render these headers here,
-          case _: `Content-Length`    ⇒ None // because their production is the
-          case _: `Transfer-Encoding` ⇒ None // responsibility of the spray-can layer,
-          case _: `Date`              ⇒ None // not the user
-          case _: `Server`            ⇒ None
+          case _: `Content-Type` if entityPresent ⇒ None // we never render these headers here,
+          case _: `Content-Length`                ⇒ None // because their production is the
+          case _: `Transfer-Encoding`             ⇒ None // responsibility of the spray-can layer,
+          case _: `Date`                          ⇒ None // not the user
+          case _: `Server`                        ⇒ None
           case x: `Connection` ⇒
             put(x)
             connectionHeader match {
               case None        ⇒ Some(x)
               case Some(other) ⇒ Some(Connection(x.tokens ++ other.tokens))
             }
+          case x: RawHeader if x.lowercaseName == "content-type" ||
+            x.lowercaseName == "content-length" ||
+            x.lowercaseName == "transfer-encoding" ||
+            x.lowercaseName == "date" ||
+            x.lowercaseName == "server" ||
+            x.lowercaseName == "connection" ⇒ None
           case _ ⇒ put(head); None
         }
       }
