@@ -19,11 +19,10 @@ package spray.httpx.marshalling
 import java.util.Random
 import java.io.ByteArrayOutputStream
 import org.parboiled.common.Base64
+import akka.actor.ActorRef
 import spray.http._
 import MediaTypes._
 import HttpHeaders._
-import sun.font.DelegatingShape
-import akka.actor.ActorRef
 
 trait MultipartMarshallers {
   protected val multipartBoundaryRandom = new Random
@@ -60,17 +59,19 @@ trait MultipartMarshallers {
             require(header.name != "Content-Type", "")
             putHeader(header.name, header.value)
           }
-          part.entity.foreach { (ct, buf) ⇒
-            if (buf.length > 0) {
-              putHeader("Content-Type", ct.value)
-              putCrLf()
-              out.write(buf)
-              putCrLf()
-            }
+          part.entity match {
+            case EmptyEntity ⇒
+            case HttpBody(ct, buf) ⇒
+              if (buf.length > 0) {
+                putHeader("Content-Type", ct.value)
+                putCrLf()
+                out.write(buf)
+                putCrLf()
+              }
           }
         }
         putDashDash(); putString(boundary); putDashDash()
-        ctx.marshalTo(HttpBody(contentType, out.toByteArray))
+        ctx.marshalTo(HttpEntity(contentType, out.toByteArray))
       } else ctx.marshalTo(EmptyEntity)
     }
 
@@ -95,7 +96,7 @@ trait MultipartMarshallers {
             override def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any])(implicit sender: ActorRef) =
               ctx.startChunkedMessage(overrideContentType(entity), sentAck)
             def overrideContentType(entity: HttpEntity) =
-              entity.map((ct, buf) ⇒ (new `multipart/form-data`(boundary), buf))
+              entity.flatMap(body ⇒ HttpEntity(new `multipart/form-data`(boundary), body.buffer))
           })
       }
     }

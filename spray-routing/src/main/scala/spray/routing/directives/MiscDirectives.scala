@@ -57,7 +57,7 @@ trait MiscDirectives {
     import ParameterDirectives._
     parameter(parameterName?).flatMap {
       case Some(wrapper) ⇒ mapHttpResponseEntity {
-        case HttpBody(ct @ ContentType(`application/json`, _), buffer) ⇒ HttpBody(
+        case HttpBody(ct @ ContentType(`application/json`, _), buffer) ⇒ HttpEntity(
           contentType = ct.withMediaType(`application/javascript`),
           string = wrapper + '(' + buffer.asString(ct.charset.nioCharset) + ')')
         case entity ⇒ entity

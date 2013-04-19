@@ -194,11 +194,13 @@ class Servlet30ConnectorServlet extends HttpServlet {
           case _                ⇒ hsResponse.addHeader(header.name, header.value)
         }
       }
-      resp.entity.foreach { (contentType, buffer) ⇒
-        hsResponse.addHeader("Content-Type", contentType.value)
-        if (response.isInstanceOf[HttpResponse]) hsResponse.addHeader("Content-Length", buffer.length.toString)
-        hsResponse.getOutputStream.write(buffer)
-        hsResponse.getOutputStream.flush()
+      resp.entity match {
+        case EmptyEntity ⇒
+        case HttpBody(contentType, buffer) ⇒
+          hsResponse.addHeader("Content-Type", contentType.value)
+          if (response.isInstanceOf[HttpResponse]) hsResponse.addHeader("Content-Length", buffer.length.toString)
+          hsResponse.getOutputStream.write(buffer)
+          hsResponse.getOutputStream.flush()
       }
       complete
       None

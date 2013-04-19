@@ -47,7 +47,7 @@ trait MultipartUnmarshallers {
             .getOrElse(ContentType(`text/plain`, `US-ASCII`)) // RFC 2046 section 5.1
           val outputStream = new ByteArrayOutputStream
           FileUtils.copyAll(part.readOnce(), outputStream)
-          BodyPart(HttpBody(contentType, outputStream.toByteArray), headers)
+          BodyPart(HttpEntity(contentType, outputStream.toByteArray), headers)
         case (errors, _) ⇒ sys.error("Multipart part contains %s illegal header(s):\n%s"
           .format(errors.size, errors.mkString("\n")))
       }

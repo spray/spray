@@ -35,7 +35,7 @@ trait RouteResultComponent {
     private[this] var _response: Option[HttpResponse] = None
     private[this] var _rejections: Option[List[Rejection]] = None
     private[this] val _chunks = ListBuffer.empty[MessageChunk]
-    private[this] var _closingExtensions: List[ChunkExtension] = Nil
+    private[this] var _closingExtension = ""
     private[this] var _trailer: List[HttpHeader] = Nil
     private[this] val latch = new CountDownLatch(1)
     private[this] var virginal = true
@@ -57,8 +57,8 @@ trait RouteResultComponent {
           case HttpMessagePartWrapper(x: MessageChunk, ack) ⇒
             synchronized { _chunks += x }
             ack.foreach(verifiedSender.tell(_, this))
-          case HttpMessagePartWrapper(ChunkedMessageEnd(extensions, trailer), _) ⇒
-            synchronized { _closingExtensions = extensions; _trailer = trailer }
+          case HttpMessagePartWrapper(ChunkedMessageEnd(extension, trailer), _) ⇒
+            synchronized { _closingExtension = extension; _trailer = trailer }
             latch.countDown()
           case Status.Failure(error) ⇒
             sys.error("Route produced exception: " + error)
@@ -106,7 +106,7 @@ trait RouteResultComponent {
       }
     }
     def chunks: List[MessageChunk] = synchronized { _chunks.toList }
-    def closingExtensions = synchronized { _closingExtensions }
+    def closingExtension = synchronized { _closingExtension }
     def trailer = synchronized { _trailer }
 
     def ~>[T](f: RouteResult ⇒ T): T = f(this)

@@ -118,7 +118,7 @@ trait DemoService extends HttpService {
       Props {
         new Actor with SprayActorLogging {
           // we use the successful sending of a chunk as trigger for scheduling the next chunk
-          val responseStart = HttpResponse(entity = HttpBody(`text/html`, streamStart))
+          val responseStart = HttpResponse(entity = HttpEntity(`text/html`, streamStart))
           ctx.responder ! ChunkedResponseStart(responseStart).withAck(Ok(16))
 
           def receive = {

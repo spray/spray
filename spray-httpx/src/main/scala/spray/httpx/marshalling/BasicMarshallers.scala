@@ -27,7 +27,7 @@ trait BasicMarshallers {
     Marshaller.of[Array[Byte]](contentType) { (value, _, ctx) ⇒
       // we marshal to the ContentType given as argument to the method, not the one established by content-negotiation,
       // since the former is the one belonging to the byte array
-      ctx.marshalTo(HttpBody(contentType, value))
+      ctx.marshalTo(HttpEntity(contentType, value))
     }
 
   implicit val ByteArrayMarshaller = byteArrayMarshaller(ContentType.`application/octet-stream`)
@@ -39,7 +39,7 @@ trait BasicMarshallers {
           val nioCharset = contentType.charset.nioCharset
           val charBuffer = CharBuffer.wrap(value)
           val byteBuffer = nioCharset.encode(charBuffer)
-          HttpBody(contentType, byteBuffer.array)
+          HttpEntity(contentType, byteBuffer.array)
         } else EmptyEntity
       }
     }
@@ -47,7 +47,7 @@ trait BasicMarshallers {
   //# string-marshaller
   implicit val StringMarshaller =
     Marshaller.of[String](ContentType.`text/plain`) { (value, contentType, ctx) ⇒
-      ctx.marshalTo(if (value.isEmpty) EmptyEntity else HttpBody(contentType, value))
+      ctx.marshalTo(HttpEntity(contentType, value))
     }
   //#
 

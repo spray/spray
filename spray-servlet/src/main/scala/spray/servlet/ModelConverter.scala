@@ -102,7 +102,7 @@ object ModelConverter {
         } else throw new IllegalRequestException(RequestEntityTooLarge, ErrorInfo("HTTP message Content-Length " +
           contentLength.get + " exceeds the configured limit of " + settings.maxContentLength))
       } else EmptyByteArray
-    if (contentType.isEmpty) HttpEntity(body) else HttpBody(contentType.get, body)
+    if (contentType.isEmpty) HttpEntity(body) else HttpEntity(contentType.get, body)
   }
 
 }

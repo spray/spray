@@ -81,7 +81,7 @@ class RejectionHandlerSpec extends RoutingSpec {
       }
     }
     "respond with BadRequest for requests resulting in MalformedRequestContentRejections" in {
-      Post("/", HttpBody(`text/xml`, "<broken>xmlbroken>")) ~> wrap {
+      Post("/", HttpEntity(`text/xml`, "<broken>xmlbroken>")) ~> wrap {
         entity(as[NodeSeq]) { _ ⇒ completeOk }
       } ~> check {
         status === BadRequest
@@ -141,7 +141,7 @@ class RejectionHandlerSpec extends RoutingSpec {
       }
     }
     "respond with UnsupportedMediaType for requests resulting in UnsupportedRequestContentTypeRejection" in {
-      Post("/", HttpBody(`application/pdf`, "...PDF...")) ~> wrap {
+      Post("/", HttpEntity(`application/pdf`, "...PDF...")) ~> wrap {
         entity(as[NodeSeq]) { _ ⇒ completeOk }
       } ~> check {
         status === UnsupportedMediaType

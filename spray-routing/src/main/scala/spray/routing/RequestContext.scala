@@ -205,7 +205,7 @@ case class RequestContext(request: HttpRequest, responder: ActorRef, unmatchedPa
       HttpResponse(
         status = redirectionType,
         headers = Location(uri) :: Nil,
-        entity = redirectionType.htmlTemplate.toOption.map(s ⇒ HttpBody(`text/html`, s format uri)))
+        entity = redirectionType.htmlTemplate.toOption.map(s ⇒ HttpEntity(`text/html`, s format uri)))
     }
 
   /**

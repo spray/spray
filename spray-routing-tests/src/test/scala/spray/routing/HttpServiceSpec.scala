@@ -55,14 +55,14 @@ class HttpServiceSpec extends Specification {
     "properly produce HttpResponses from the root actor" in {
       val probe = TestProbe()(system)
       probe.send(rootActor, Get("/"))
-      probe.expectMsg(HttpResponse(entity = HttpBody(ContentType(`text/plain`, `UTF-8`), "yeah")))
+      probe.expectMsg(HttpResponse(entity = HttpEntity(ContentType(`text/plain`, `UTF-8`), "yeah")))
       success
     }
 
     "properly produce HttpResponses from a sub actor" in {
       val probe = TestProbe()(system)
       probe.send(rootActor, Get("/sub/abc"))
-      probe.expectMsg(HttpResponse(entity = HttpBody(ContentType(`text/plain`, `UTF-8`), "abc")))
+      probe.expectMsg(HttpResponse(entity = HttpEntity(ContentType(`text/plain`, `UTF-8`), "abc")))
       success
     }
   }
