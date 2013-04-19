@@ -46,10 +46,10 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
         part.messagePart.asInstanceOf[HttpResponsePart] match {
           case x: HttpResponse ⇒
             require(x.protocol == HttpProtocols.`HTTP/1.1`, "Response must have protocol HTTP/1.1")
-            dispatch(x, Uncompleted, Completed)
+            dispatch(part, Uncompleted, Completed)
           case x: ChunkedResponseStart ⇒
             require(x.response.protocol == HttpProtocols.`HTTP/1.1`, "Response must have protocol HTTP/1.1")
-            dispatch(x, Uncompleted, Chunking)
+            dispatch(part, Uncompleted, Chunking)
           case _: MessageChunk      ⇒ dispatch(part, Chunking, Chunking)
           case _: ChunkedMessageEnd ⇒ dispatch(part, Chunking, Completed)
         }
