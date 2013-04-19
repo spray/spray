@@ -20,12 +20,12 @@ import java.util.Arrays.copyOf
 import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import org.parboiled.scala.rules.Rule1
 import scala.annotation.tailrec
-import scala.collection.immutable.NumericRange
 import akka.util.CompactByteString
 import spray.http.parser.HttpParser
 import spray.util.SingletonException
 import spray.http._
 import HttpHeaders._
+import CharUtils._
 
 /**
  * Provides for time- and space-efficient parsing of an HTTP header line in an HTTP message.
@@ -121,28 +121,31 @@ private[parsing] final class HttpHeaderParser private (val settings: ParserSetti
       resultHeader = header
       endIx
     }
-    val char = toLowerCase(byteChar(input, cursor))
     val node = nodes(nodeIx)
-    if (char == node)
-      parseHeaderLine(input, lineStart)(cursor + 1, nodeIx + 1) // fast match, advance and descend
-    else node >>> 8 match {
-      case 0 ⇒ // header doesn't exist yet and has no model (since we have not yet seen a colon)
-        parseRawHeader(input, lineStart, cursor, nodeIx)
-      case msb ⇒ node & 0xFF match {
-        case 0 ⇒ // leaf node
-          values(msb - 1) match {
-            case branch: ValueBranch            ⇒ parseHeaderValue(input, cursor, branch)()
-            case valueParser: HeaderValueParser ⇒ startValueBranch(msb - 1, valueParser) // no header yet of this type
-          }
-        case nodeChar ⇒ // branching node
-          val signum = math.signum(char - nodeChar)
-          branchData(rowIx(msb) + 1 + signum) match {
-            case 0 ⇒ // header doesn't exist yet and has no model (otherwise we'd arrive at a value)
-              parseRawHeader(input, lineStart, cursor, nodeIx)
-            case subNodeIx ⇒ // descend into branch and advance on char matches (otherwise descend but don't advance)
-              parseHeaderLine(input, lineStart)(cursor + 1 - abs(signum), subNodeIx)
-          }
-      }
+    node & 0xFF match {
+      case 0 ⇒ // leaf node
+        val valueIx = (node >>> 8) - 1
+        values(valueIx) match {
+          case branch: ValueBranch            ⇒ parseHeaderValue(input, cursor, branch)()
+          case valueParser: HeaderValueParser ⇒ startValueBranch(valueIx, valueParser) // no header yet of this type
+          case EmptyHeader                    ⇒ resultHeader = EmptyHeader; cursor
+        }
+      case nodeChar ⇒
+        val char = toLowerCase(byteChar(input, cursor))
+        if (char == node) // fast match, advance and descend
+          parseHeaderLine(input, lineStart)(cursor + 1, nodeIx + 1)
+        else node >>> 8 match {
+          case 0 ⇒ // header doesn't exist yet and has no model (since we have not yet seen a colon)
+            parseRawHeader(input, lineStart, cursor, nodeIx)
+          case msb ⇒ // branching node
+            val signum = math.signum(char - nodeChar)
+            branchData(rowIx(msb) + 1 + signum) match {
+              case 0 ⇒ // header doesn't exist yet and has no model (otherwise we'd arrive at a value)
+                parseRawHeader(input, lineStart, cursor, nodeIx)
+              case subNodeIx ⇒ // descend into branch and advance on char matches (otherwise descend but don't advance)
+                parseHeaderLine(input, lineStart)(cursor + 1 - abs(signum), subNodeIx)
+            }
+        }
     }
   }
 
@@ -397,34 +400,36 @@ private[parsing] object HttpHeaderParser {
     "Cache-Control: no-cache",
     "Expect: 100-continue")
 
-  def apply(settings: ParserSettings, warnOnIllegalHeader: ErrorInfo ⇒ Unit) =
-    new HttpHeaderParser(settings, warnOnIllegalHeader)
+  private val defaultIllegalHeaderWarning: ErrorInfo ⇒ Unit = info ⇒ sys.error(info.formatPretty)
 
-  def prime(parser: HttpHeaderParser): HttpHeaderParser = {
-    require(parser.isEmpty)
-    val valueParsers: Seq[HeaderValueParser] =
-      HttpParser.headerNames.map { name ⇒
-        modelledHeaderValueParser(name, HttpParser.parserRules(name.toLowerCase), parser.settings.maxHeaderValueLength,
-          parser.settings.headerValueCacheLimit(name))
-      }(collection.breakOut)
-    def insertInGoodOrder(items: Seq[Any])(startIx: Int = 0, endIx: Int = items.size): Unit =
-      if (endIx - startIx > 0) {
-        val pivot = (startIx + endIx) / 2
-        items(pivot) match {
-          case valueParser: HeaderValueParser ⇒
-            val insertName = valueParser.headerName.toLowerCase + ':'
-            if (parser.isEmpty) parser.insertRemainingCharsAsNewNodes(CompactByteString(insertName), valueParser)()
-            else parser.insert(CompactByteString(insertName), valueParser)()
-          case header: String ⇒
-            parser.parseHeaderLine(CompactByteString(header + "\r\nx"))()
+  def apply(settings: ParserSettings, warnOnIllegalHeader: ErrorInfo ⇒ Unit = defaultIllegalHeaderWarning,
+            unprimed: Boolean = false): HttpHeaderParser = {
+    val parser = new HttpHeaderParser(settings, warnOnIllegalHeader)
+    if (!unprimed) {
+      val valueParsers: Seq[HeaderValueParser] =
+        HttpParser.headerNames.map { name ⇒
+          modelledHeaderValueParser(name, HttpParser.parserRules(name.toLowerCase), parser.settings.maxHeaderValueLength,
+            parser.settings.headerValueCacheLimit(name))
+        }(collection.breakOut)
+      def insertInGoodOrder(items: Seq[Any])(startIx: Int = 0, endIx: Int = items.size): Unit =
+        if (endIx - startIx > 0) {
+          val pivot = (startIx + endIx) / 2
+          items(pivot) match {
+            case valueParser: HeaderValueParser ⇒
+              val insertName = valueParser.headerName.toLowerCase + ':'
+              if (parser.isEmpty) parser.insertRemainingCharsAsNewNodes(CompactByteString(insertName), valueParser)()
+              else parser.insert(CompactByteString(insertName), valueParser)()
+            case header: String ⇒
+              parser.parseHeaderLine(CompactByteString(header + "\r\nx"))()
+          }
+          insertInGoodOrder(items)(startIx, pivot)
+          insertInGoodOrder(items)(pivot + 1, endIx)
         }
-        insertInGoodOrder(items)(startIx, pivot)
-        insertInGoodOrder(items)(pivot + 1, endIx)
-      }
-    insertInGoodOrder(valueParsers.sortBy(_.headerName))()
-    insertInGoodOrder(specializedHeaderValueParsers)()
-    insertInGoodOrder(predefinedHeaders.sorted)()
-    parser.insert(CompactByteString("\r\n"), EmptyHeader)()
+      insertInGoodOrder(valueParsers.sortBy(_.headerName))()
+      insertInGoodOrder(specializedHeaderValueParsers)()
+      insertInGoodOrder(predefinedHeaders.sorted)()
+      parser.insert(CompactByteString("\r\n"), EmptyHeader)()
+    }
     parser
   }
 
@@ -442,7 +447,7 @@ private[parsing] object HttpHeaderParser {
         val header = HttpParser.parse(parserRule, trimmedHeaderValue) match {
           case Right(h) ⇒ h
           case Left(error) ⇒
-            warnOnIllegalHeader(error)
+            warnOnIllegalHeader(error.withSummaryPrepended(s"Illegal '$headerName' header"))
             RawHeader(headerName, trimmedHeaderValue)
         }
         header -> endIx
@@ -481,10 +486,6 @@ private[parsing] object HttpHeaderParser {
     else fail(s"HTTP header value exceeds the configured limit of ${maxHeaderValueEndIx - start} characters")
   }
 
-  def isTokenChar(c: Char) = is(c, TOKEN)
-  def isDigit(c: Char) = is(c, DIGIT)
-  def isWhitespace(c: Char) = is(c, WSP)
-
   def fail(summary: String) = throw new ParsingException(StatusCodes.BadRequest, ErrorInfo(summary))
 
   private object OutOfTrieSpaceException extends SingletonException
@@ -492,37 +493,5 @@ private[parsing] object HttpHeaderParser {
   private case class ValueBranch(valueIx: Int, parser: HeaderValueParser, branchRootNodeIx: Int, valueCount: Int) {
     def withValueCountIncreased = copy(valueCount = valueCount + 1)
     def spaceLeft = valueCount < parser.maxValueCount
-  }
-
-  // compile time constants
-  private final val LOWER_ALPHA = 0x01
-  private final val UPPER_ALPHA = 0x02
-  private final val ALPHA = LOWER_ALPHA | UPPER_ALPHA
-  private final val DIGIT = 0x04
-  private final val TOKEN_SPECIALS = 0x08
-  private final val TOKEN = ALPHA | DIGIT | TOKEN_SPECIALS
-  private final val WSP = 0x10
-
-  private[this] val props = new Array[Byte](128)
-
-  private def is(c: Int, mask: Int): Boolean = (props(index(c)) & mask) != 0
-  private def index(c: Int): Int = c & ((c - 127) >> 31) // branchless for `if (c <= 127) c else 0`
-  private def mark(mask: Int, chars: Char*): Unit = chars.foreach(c ⇒ props(index(c)) = (props(index(c)) | mask).toByte)
-  private def mark(mask: Int, range: NumericRange[Char]): Unit = mark(mask, range.toSeq: _*)
-
-  mark(LOWER_ALPHA, 'a' to 'z')
-  mark(UPPER_ALPHA, 'A' to 'Z')
-  mark(DIGIT, '0' to '9')
-  mark(TOKEN_SPECIALS, '!', '#', '$', '%', '&', '\'', '*', '+', '-', '.', '^', '_', '`', '|', '~')
-  mark(WSP, ' ', '\t')
-
-  private def toLowerCase(c: Char): Char = if (is(c, UPPER_ALPHA)) (c + 0x20).toChar else c
-  private def abs(i: Int): Int = { val j = i >> 31; (i ^ j) - j }
-  private def escape(c: Char): String = c match {
-    case '\t'                           ⇒ "\\t"
-    case '\r'                           ⇒ "\\r"
-    case '\n'                           ⇒ "\\n"
-    case x if Character.isISOControl(x) ⇒ "\\u%04x" format c.toInt
-    case x                              ⇒ x.toString
   }
 }

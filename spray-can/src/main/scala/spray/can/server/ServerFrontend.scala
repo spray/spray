@@ -79,11 +79,11 @@ object ServerFrontend {
           }
 
           val eventPipeline: EPL = {
-            case HttpMessageStartEvent(request: HttpRequest, connectionHeader) ⇒
-              openNewRequest(request, connectionHeader, System.currentTimeMillis)
+            case HttpMessageStartEvent(request: HttpRequest, closeAfterResponseCompletion) ⇒
+              openNewRequest(request, closeAfterResponseCompletion, System.currentTimeMillis)
 
-            case HttpMessageStartEvent(ChunkedRequestStart(request), connectionHeader) ⇒
-              openNewRequest(request, connectionHeader, 0L)
+            case HttpMessageStartEvent(ChunkedRequestStart(request), closeAfterResponseCompletion) ⇒
+              openNewRequest(request, closeAfterResponseCompletion, 0L)
 
             case Http.MessageEvent(x: MessageChunk) ⇒
               firstOpenRequest handleMessageChunk x
@@ -113,8 +113,8 @@ object ServerFrontend {
             case ev ⇒ eventPL(ev)
           }
 
-          def openNewRequest(request: HttpRequest, connectionHeader: Option[String], timestamp: Long) {
-            val nextOpenRequest = new DefaultOpenRequest(request, connectionHeader, timestamp)
+          def openNewRequest(request: HttpRequest, closeAfterResponseCompletion: Boolean, timestamp: Long) {
+            val nextOpenRequest = new DefaultOpenRequest(request, closeAfterResponseCompletion, timestamp)
             firstOpenRequest = firstOpenRequest appendToEndOfChain nextOpenRequest
             nextOpenRequest.dispatchInitialRequestPartToHandler()
             if (firstUnconfirmed.isEmpty) firstUnconfirmed = firstOpenRequest

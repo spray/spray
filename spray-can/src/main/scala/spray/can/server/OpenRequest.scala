@@ -56,7 +56,7 @@ trait OpenRequestComponent { component ⇒
   def timeoutTimeout: Long
 
   class DefaultOpenRequest(val request: HttpRequest,
-                           private[this] val connectionHeader: Option[String],
+                           private[this] val closeAfterResponseCompletion: Boolean,
                            private[this] var timestamp: Long) extends OpenRequest {
     private[this] val receiverRef = new ResponseReceiverRef(this)
     private[this] var handler = context.handler
@@ -181,7 +181,7 @@ trait OpenRequestComponent { component ⇒
           AckEventWithReceiver(x, handler)
       }
       val cmd = HttpResponsePartRenderingContext(part.messagePart.asInstanceOf[HttpResponsePart], request.method,
-        request.protocol, connectionHeader, ack)
+        request.protocol, closeAfterResponseCompletion, ack)
       downstreamCommandPL(cmd)
     }
 

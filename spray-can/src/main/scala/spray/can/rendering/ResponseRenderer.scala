@@ -22,6 +22,7 @@ import akka.util.{ ByteStringBuilder, ByteString }
 import spray.util._
 import spray.http._
 import HttpProtocols._
+import HttpHeaders._
 import MessageRendering._
 
 class ResponseRenderer(serverHeader: String,
@@ -46,7 +47,7 @@ class ResponseRenderer(serverHeader: String,
 
       case x: ChunkedMessageEnd if ctx.requestMethod != HttpMethods.HEAD ⇒
         if (chunkless) RenderedMessagePart(ByteString.empty, closeConnection = true)
-        else renderFinalChunk(x, responseSizeHint, ctx.requestConnectionHeader)
+        else renderFinalChunk(x, responseSizeHint, ctx.closeAfterResponseCompletion)
 
       case _ ⇒ RenderedMessagePart(ByteString.empty)
     }
@@ -56,8 +57,8 @@ class ResponseRenderer(serverHeader: String,
     import response._
 
     implicit val bb = newByteStringBuilder(responseSizeHint)
-    val connectionHeaderValue = renderResponseStart(response, ctx)
-    val close = putConnectionHeaderIfRequiredAndReturnClose(response, ctx, connectionHeaderValue)
+    val connectionHeader = renderResponseStart(response, ctx)
+    val close = putConnectionHeaderIfRequiredAndReturnClose(response, ctx, connectionHeader)
 
     // don't set a Content-Length header for non-keep-alive HTTP/1.0 responses (rely on body end by connection close)
     if (response.protocol == `HTTP/1.1` || !close) putHeader("Content-Length", Integer.toString(entity.buffer.length))
@@ -78,57 +79,56 @@ class ResponseRenderer(serverHeader: String,
 
     if (ctx.requestMethod != HttpMethods.HEAD && entity.buffer.length > 0) {
       if (chunkless) put(entity.buffer)
-      else putChunk(Nil, entity.buffer)
+      else putChunk(entity.buffer)
     }
     RenderedMessagePart(bb.result())
   }
 
-  private def renderResponseStart(response: HttpResponse, ctx: HttpResponsePartRenderingContext)(implicit bb: ByteStringBuilder): Option[String] = {
+  private def renderResponseStart(response: HttpResponse, ctx: HttpResponsePartRenderingContext)(implicit bb: ByteStringBuilder): Option[Connection] = {
     import response._
-
     if (status == StatusCodes.OK && protocol == `HTTP/1.1`) put(DefaultStatusLine)
-    else put(protocol.value).put(' ').put(Integer.toString(status.value)).put(' ').put(status.reason).put(CrLf)
+    else put(StatusLineStart).put(Integer.toString(status.value)).put(' ').put(status.reason).put(CrLf)
     put(serverAndDateHeader)
     putContentTypeHeaderIfRequired(entity)
-    putHeadersAndReturnConnectionHeaderValue(headers)()
+    putHeadersAndReturnConnectionHeader(headers)()
   }
 
   @tailrec
-  private def putHeadersAndReturnConnectionHeaderValue(headers: List[HttpHeader])(connectionHeaderValue: Option[String] = None)(implicit bb: ByteStringBuilder): Option[String] =
+  private def putHeadersAndReturnConnectionHeader(headers: List[HttpHeader])(connectionHeader: Option[Connection] = None)(implicit bb: ByteStringBuilder): Option[Connection] =
     headers match {
-      case Nil ⇒ connectionHeaderValue
-      case head :: tail ⇒ putHeadersAndReturnConnectionHeaderValue(tail) {
-        head.lowercaseName match {
-          case "content-type"      ⇒ None // we never render these headers here,
-          case "content-length"    ⇒ None // because their production is the
-          case "transfer-encoding" ⇒ None // responsibility of the spray-can layer,
-          case "date"              ⇒ None // not the user
-          case "server"            ⇒ None
-          case "connection"        ⇒ put(head); Some(head.value)
-          case _                   ⇒ put(head); None
+      case Nil ⇒ connectionHeader
+      case head :: tail ⇒ putHeadersAndReturnConnectionHeader(tail) {
+        head match {
+          case _: `Content-Type`      ⇒ None // we never render these headers here,
+          case _: `Content-Length`    ⇒ None // because their production is the
+          case _: `Transfer-Encoding` ⇒ None // responsibility of the spray-can layer,
+          case _: `Date`              ⇒ None // not the user
+          case _: `Server`            ⇒ None
+          case x: `Connection` ⇒
+            put(x)
+            connectionHeader match {
+              case None        ⇒ Some(x)
+              case Some(other) ⇒ Some(Connection(x.tokens ++ other.tokens))
+            }
+          case _ ⇒ put(head); None
         }
       }
     }
 
   private def putConnectionHeaderIfRequiredAndReturnClose(response: HttpResponse, ctx: HttpResponsePartRenderingContext,
-                                                          connectionHeaderValue: Option[String])(implicit bb: ByteStringBuilder): Boolean =
+                                                          connectionHeader: Option[Connection])(implicit bb: ByteStringBuilder): Boolean =
     ctx.requestProtocol match {
-      case `HTTP/1.0` ⇒ {
-        if (connectionHeaderValue.isEmpty) {
-          if (ctx.requestConnectionHeader.isDefined && (ctx.requestConnectionHeader.get equalsIgnoreCase "Keep-Alive")) {
-            putHeader("Connection", "Keep-Alive")
-            false
-          } else true
-        } else !(connectionHeaderValue.get equalsIgnoreCase "Keep-Alive")
-      }
-      case `HTTP/1.1` ⇒ {
-        if (connectionHeaderValue.isEmpty) {
-          if (ctx.requestConnectionHeader.isDefined && (ctx.requestConnectionHeader.get equalsIgnoreCase "close")) {
-            if (response.protocol == `HTTP/1.1`) putHeader("Connection", "close")
-            true
-          } else response.protocol == `HTTP/1.0`
-        } else connectionHeaderValue.get equalsIgnoreCase "close"
-      }
+      case `HTTP/1.0` ⇒
+        if (connectionHeader.isEmpty) {
+          if (!ctx.closeAfterResponseCompletion) putHeader("Connection", "Keep-Alive")
+          ctx.closeAfterResponseCompletion
+        } else !connectionHeader.get.hasKeepAlive
+
+      case `HTTP/1.1` ⇒
+        if (connectionHeader.isEmpty) {
+          if (ctx.closeAfterResponseCompletion) putHeader("Connection", "close")
+          ctx.closeAfterResponseCompletion
+        } else connectionHeader.get.hasClose
     }
 
   // for max perf we cache the ServerAndDateHeader of the last second here

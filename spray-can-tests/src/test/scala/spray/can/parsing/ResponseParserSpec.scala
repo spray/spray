@@ -16,158 +16,146 @@
 
 package spray.can.parsing
 
+import com.typesafe.config.{ ConfigFactory, Config }
 import org.specs2.mutable.Specification
-import spray.can.StatusLine
-import spray.can.TestSupport._
+import akka.actor.ActorSystem
+import akka.util.CompactByteString
 import spray.util._
 import spray.http._
 import HttpHeaders._
+import HttpMethods._
+import StatusCodes._
 import HttpProtocols._
 
 class ResponseParserSpec extends Specification {
+  val testConf: Config = ConfigFactory.parseString("""
+    akka.event-handlers = ["akka.testkit.TestEventListener"]
+    akka.loglevel = WARNING
+    spray.can.parsing.max-response-reason-length = 21""")
+  val system = ActorSystem(Utils.actorSystemNameFrom(getClass), testConf)
 
-  "The reponse parsing logic" should {
-    "properly parse a response" in {
-      "without headers and body" in {
-        parse {
-          """|HTTP/1.1 200 OK
-             |
-             |"""
-        } === ErrorState(StatusCodes.LengthRequired, "Content-Length header or chunked transfer encoding required")
+  "The response parsing logic" should {
+    "properly parse" in {
+
+      // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-3.3.3 (1)
+      "a 200 response to a HEAD request" in {
+        parse(
+          """HTTP/1.1 200 OK
+            |
+            |rest""",
+          requestMethod = HEAD) === (OK, "", Nil, `HTTP/1.1`, "rest", false)
       }
 
-      "with one header, a body, but no Content-Length header" in {
+      // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-3.3.3 (1)
+      "a 204 response" in {
         parse {
-          """|HTTP/1.0 404 Not Found
-             |Host: api.example.com
-             |
-             |Foobs"""
-        } === (`HTTP/1.0`, 404, "Not Found", List(RawHeader("host", "api.example.com")), None, None, "Foobs")
+          """HTTP/1.1 204 OK
+            |
+            |rest"""
+        } === (NoContent, "", Nil, `HTTP/1.1`, "rest", false)
       }
 
-      "with 4 headers and a body" in {
-        parse {
-          """|HTTP/1.1 500 Internal Server Error
-             |User-Agent: curl/7.19.7 xyz
-             |Transfer-Encoding:identity
-             |Connection:close
-             |Content-Length    : 17
-             |
-             |Shake your BOODY!"""
-        } === (`HTTP/1.1`, 500, "Internal Server Error", List(
-          RawHeader("content-length", "17"),
-          RawHeader("connection", "close"),
-          RawHeader("transfer-encoding", "identity"),
-          RawHeader("user-agent", "curl/7.19.7 xyz")), Some("close"), None, "Shake your BOODY!")
+      "a response with one header, a body, but no Content-Length header" in {
+        val parser = newParser()
+        parse(parser) {
+          """HTTP/1.0 404 Not Found
+            |Host: api.example.com
+            |
+            |Foobs"""
+        } === Result.NeedMoreData
+        parse(parser)("") === (NotFound, "Foobs", List(Host("api.example.com")), `HTTP/1.0`, "", true)
       }
 
-      "with multi-line headers" in {
+      "a response with 3 headers, a body and remaining content" in {
         parse {
-          """|HTTP/1.0 200 OK
-             |User-Agent: curl/7.19.7
-             | abc
-             |    xyz
-             |Accept
-             | : */*  """ + """
-             |Content-type: application/json
-             |
-             |"""
-        } === (`HTTP/1.0`, 200, "OK", List(
-          RawHeader("content-type", "application/json"),
-          RawHeader("accept", "*/*"),
-          RawHeader("user-agent", "curl/7.19.7 abc xyz")), None, Some(ContentType(MediaTypes.`application/json`)), "")
-      }
-
-      "to a HEAD request" in {
-        RequestParserSpec.parse(new EmptyResponseParser(defaultParserSettings, true), identityFunc) {
-          """|HTTP/1.1 500 Internal Server Error
-             |Content-Length: 17
-             |
-             |"""
-        } === CompleteMessageState(
-          messageLine = StatusLine(`HTTP/1.1`, 500, "Internal Server Error", true),
-          headers = List(RawHeader("content-length", "17")))
+          """HTTP/1.1 500 Internal Server Error
+            |User-Agent: curl/7.19.7 xyz
+            |Connection:close
+            |Content-Length: 17
+            |
+            |Shake your BOODY!XXX"""
+        } === (InternalServerError, "Shake your BOODY!", List(`Content-Length`(17), Connection("close"),
+          `User-Agent`("curl/7.19.7 xyz")), `HTTP/1.1`, "XXX", true)
       }
     }
 
-    "properly parse a" in {
-      "chunked response start" in {
-        parse {
-          """|HTTP/1.1 200 OK
-             |User-Agent: curl/7.19.7
-             |Transfer-Encoding: chunked
-             |
-             |3
-             |abc"""
-        } === ChunkedStartState(
-          StatusLine(`HTTP/1.1`, 200, "OK"),
-          List(RawHeader("transfer-encoding", "chunked"), RawHeader("user-agent", "curl/7.19.7")),
-          None)
+    "properly parse a chunked" in {
+      val start =
+        """HTTP/1.1 200 OK
+          |Transfer-Encoding: chunked
+          |Server: spray-can
+          |
+          |"""
+
+      "response start" in {
+        parse(start + "rest") ===
+          (OK, List(Server("spray-can"), `Transfer-Encoding`("chunked")), `HTTP/1.1`, "rest", false)
+      }
+
+      "message chunk with and without extension" in {
+        val parser = newParser()
+        parse(parser)(start)
+        parse(parser)("3\nabc\n") === ("abc", "", "", false)
+        parse(parser)("10;some=stuff;bla\n0123456789ABCDEF\n") === ("0123456789ABCDEF", "some=stuff;bla", "", false)
+      }
+
+      "message end" in {
+        val parser = newParser()
+        parse(parser)(start)
+        parse(parser)("0\n\n") === ("", Nil, "", false)
+      }
+
+      "message end with extension, trailer and remaining content" in {
+        val parser = newParser()
+        parse(parser)(start)
+        parse(parser) {
+          """000;nice=true
+            |Foo: pip
+            | apo
+            |Bar: xyz
+            |
+            |rest"""
+        } === ("nice=true", List(RawHeader("Bar", "xyz"), RawHeader("Foo", "pip apo")), "rest", false)
       }
     }
 
     "reject a response with" in {
       "HTTP version 1.2" in {
-        parse("HTTP/1.2 200 OK\r\n") === ErrorState(StatusCodes.HTTPVersionNotSupported)
+        parse("HTTP/1.2 200 OK\r\n") === "The server-side HTTP version is not supported"
       }
 
       "an illegal status code" in {
-        parse("HTTP/1.1 700 Something") === ErrorState("Illegal response status code")
-        parse("HTTP/1.1 2000 Something") === ErrorState("Illegal response status code")
+        parse("HTTP/1.1 700 Something") === "Illegal response status code"
+        parse("HTTP/1.1 2000 Something") === "Illegal response status code"
       }
 
-      "a response status reason longer than 64 chars" in {
-        parse("HTTP/1.1 250 x" + "xxxx" * 16 + "\r\n") ===
-          ErrorState("Reason phrase exceeds the configured limit of 64 characters")
-      }
-
-      "with an illegal char in a header name" in {
-        parse {
-          """|HTTP/1.1 200 OK
-             |User@Agent: curl/7.19.7"""
-        } === ErrorState("Invalid character '@', expected TOKEN CHAR, LWS or COLON")
-      }
-
-      "with a header name longer than 64 chars" in {
-        parse {
-          """|HTTP/1.1 200 OK
-             |UserxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxAgent: curl/7.19.7"""
-        } === ErrorState("HTTP header name exceeds the configured limit of 64 characters",
-          "header 'userxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...'")
-      }
-
-      "with a header-value longer than 8192 chars" in {
-        parse {
-          """|HTTP/1.1 200 OK
-             |Fancy: 0""" + ("12345678" * 1024) + "\r\n"
-        } === ErrorState("HTTP header value exceeds the configured limit of 8192 characters", "header 'fancy'")
-      }
-
-      "with an invalid Content-Length header value" in {
-        parse {
-          """|HTTP/1.1 200 OK
-             |Content-Length: 1.5
-             |
-             |abc"""
-        } === ErrorState("Invalid Content-Length header value: For input string: \"1.5\"")
-        parse {
-          """|HTTP/1.1 200 OK
-             |Content-Length: -3
-             |
-             |abc"""
-        } === ErrorState("Invalid Content-Length header value: " +
-          "requirement failed: Content-Length must not be negative")
+      "a too-long response status reason" in {
+        parse("HTTP/1.1 204 1234567890123456789012\r\n") ===
+          "Response reason phrase exceeds the configured limit of 21 characters"
       }
     }
   }
 
-  def parse =
-    RequestParserSpec.parse(new EmptyResponseParser(defaultParserSettings, false), extractFromCompleteMessage _) _
+  step(system.shutdown())
 
-  def extractFromCompleteMessage(completeMessage: CompleteMessageState) = {
-    import completeMessage._
-    val StatusLine(protocol, status, reason, _) = messageLine
-    (protocol, status, reason, headers, connectionHeader, contentType, body.asString("ISO-8859-1"))
+  def newParser(requestMethod: HttpMethod = GET) = {
+    val parser = new HttpResponsePartParser(ParserSettings(system))()
+    parser.startResponse(requestMethod)
+    parser
   }
 
+  def parse(rawResponse: String, requestMethod: HttpMethod = GET): AnyRef =
+    parse(newParser(requestMethod))(rawResponse)
+
+  def parse(parser: HttpResponsePartParser)(rawResponse: String): AnyRef = {
+    val data = CompactByteString(rawResponse.stripMargin.replace(EOL, "\n").replace("\n", "\r\n"))
+    parser.parse(data) match {
+      case Result.Ok(HttpResponse(s, e, h, p), rd, close) ⇒ (s, e.asString, h, p, rd.utf8String, close)
+      case Result.Ok(ChunkedResponseStart(HttpResponse(s, EmptyEntity, h, p)), rd, close) ⇒ (s, h, p, rd.utf8String, close)
+      case Result.Ok(MessageChunk(body, ext), rd, close) ⇒ (new String(body), ext, rd.utf8String, close)
+      case Result.Ok(ChunkedMessageEnd(ext, trailer), rd, close) ⇒ (ext, trailer, rd.utf8String, close)
+      case Result.ParsingError(BadRequest, info) ⇒ info.formatPretty
+      case x ⇒ x
+    }
+  }
 }

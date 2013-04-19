@@ -20,6 +20,7 @@ import scala.annotation.tailrec
 import akka.util.CompactByteString
 import spray.http._
 import HttpHeaders._
+import CharUtils._
 
 private[parsing] object SpecializedHeaderValueParsers {
   import HttpHeaderParser._
@@ -39,5 +40,4 @@ private[parsing] object SpecializedHeaderValueParsers {
       recurse()
     }
   }
-
 }

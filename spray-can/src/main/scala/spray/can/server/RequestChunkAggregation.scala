@@ -33,25 +33,25 @@ object RequestChunkAggregation {
 
           val initialEventPipeline: EPL = {
             case ev @ HttpMessageStartEvent(ChunkedRequestStart(request), _) ⇒
-              if (request.entity.buffer.length <= limit) {
-                val bb = ByteString.newBuilder
-                bb putBytes request.entity.buffer
-                eventPipeline become aggregating(ev, request, bb)
-              } else closeWithError()
+              eventPipeline.become(aggregating(ev, request))
 
             case ev ⇒ eventPL(ev)
           }
 
-          def aggregating(mse: HttpMessageStartEvent, request: HttpRequest, bb: ByteStringBuilder): EPL = {
+          def aggregating(mse: HttpMessageStartEvent, request: HttpRequest,
+                          bb: ByteStringBuilder = ByteString.newBuilder): EPL = {
             case Http.MessageEvent(MessageChunk(body, _)) ⇒
-              if (bb.length + body.length <= limit) bb putBytes body
+              if (bb.length + body.length <= limit) bb.putBytes(body)
               else closeWithError()
 
             case Http.MessageEvent(_: ChunkedMessageEnd) ⇒
-              val aggregatedEntity = request.entity.map((ct, _) ⇒ ct -> bb.result().toArray)
-              val httpRequest = request.copy(entity = aggregatedEntity)
-              eventPL(mse.copy(messagePart = httpRequest))
-              eventPipeline become initialEventPipeline
+              val contentType = request.header[HttpHeaders.`Content-Type`] match {
+                case Some(x) ⇒ x.contentType
+                case None    ⇒ ContentType.`application/octet-stream`
+              }
+              val aggregatedRequest = request.copy(entity = HttpEntity(contentType, bb.result().toArray[Byte]))
+              eventPL(mse.copy(messagePart = aggregatedRequest))
+              eventPipeline.become(initialEventPipeline)
 
             case ev ⇒ eventPL(ev)
           }
@@ -61,7 +61,7 @@ object RequestChunkAggregation {
             context.log.error(msg + ", closing connection")
             commandPL(HttpResponsePartRenderingContext(HttpResponse(StatusCodes.RequestEntityTooLarge, msg)))
             commandPL(Http.Close)
-            eventPipeline become eventPL // disable this stage
+            eventPipeline.become(eventPL) // disable this stage
           }
         }
     }

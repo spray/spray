@@ -44,7 +44,7 @@ class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) {
   private def renderChunkedRequestStart(request: HttpRequest, remoteAddress: InetSocketAddress): RenderedMessagePart = {
     implicit val bb = renderRequestStart(request, remoteAddress)
     putHeader("Transfer-Encoding", "chunked").put(CrLf)
-    if (request.entity.buffer.length > 0) putChunk(Nil, request.entity.buffer)
+    if (request.entity.buffer.length > 0) putChunk(request.entity.buffer)
     RenderedMessagePart(bb.result())
   }
 

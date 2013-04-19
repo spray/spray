@@ -76,74 +76,74 @@ class HttpOutgoingConnectionPipelineSpec extends Specification with RawSpecs2Pip
       }
       commands.expectMsgPF() {
         case Pipeline.Tell(`probeRef`, response: HttpResponse, `connectionActor`) ⇒ response.entity
-      } === HttpBody("body123body123")
+      } === HttpEntity("body123body123")
     }
 
-    //    "properly complete a 3 requests pipelined dialog" in new Fixture(stage) {
-    //      val (probe1, probeRef1) = probeAndRef()
-    //      val (probe2, probeRef2) = probeAndRef()
-    //      probe1.send(connectionActor, Http.MessageCommand(HttpRequest(entity = "Request 1")))
-    //      probe2.send(connectionActor, Http.MessageCommand(HttpRequest(entity = "Request 2")))
-    //      probe1.send(connectionActor, Http.MessageCommand(HttpRequest(entity = "Request 3")))
-    //      commands.expectMsgPF() { case Tcp.Write(StringBytes(data), _: Tcp.NoAck) => data } === rawRequest("Request 1")
-    //      commands.expectMsgPF() { case Tcp.Write(StringBytes(data), _: Tcp.NoAck) => data } === rawRequest("Request 2")
-    //      commands.expectMsgPF() { case Tcp.Write(StringBytes(data), _: Tcp.NoAck) => data } === rawRequest("Request 3")
-    //
-    //      connectionActor ! Tcp.Received(ByteString(rawResponse("Response 1")))
-    //      connectionActor ! Tcp.Received(ByteString(rawResponse("Response 2")))
-    //      connectionActor ! Tcp.Received(ByteString(rawResponse("Response 3")))
-    //      commands.expectMsg(Pipeline.Tell(`probeRef1`, response("Response 1"), connectionActor))
-    //      commands.expectMsg(Pipeline.Tell(`probeRef2`, response("Response 2"), connectionActor))
-    //      commands.expectMsg(Pipeline.Tell(`probeRef1`, response("Response 3"), connectionActor))
-    //    }
-    //
-    //    "properly handle responses to HEAD requests" in new Fixture(stage) {
-    //      val (probe, probeRef) = probeAndRef()
-    //      probe.send(connectionActor, Http.MessageCommand(HttpRequest(method = HttpMethods.HEAD)))
-    //      commands.expectMsgPF() {
-    //        case Tcp.Write(StringBytes(data), _: Tcp.NoAck) => data
-    //      } === emptyRawRequest(method = "HEAD")
-    //
-    //      connectionActor ! Tcp.Received(ByteString(prep {
-    //        """|HTTP/1.1 200 OK
-    //           |Server: spray/1.0
-    //           |Date: Thu, 25 Aug 2011 09:10:29 GMT
-    //           |Content-Length: 8
-    //           |Content-Type: text/plain
-    //           |
-    //           |"""
-    //      }))
-    //      commands.expectMsg(Pipeline.Tell(`probeRef`, response("12345678").withEntity(""), connectionActor))
-    //    }
-    //
-    //    "properly parse and dispatch 'to-close' responses" in new Fixture(stage) {
-    //      val (probe, probeRef) = probeAndRef()
-    //      probe.send(connectionActor, Http.MessageCommand(HttpRequest()))
-    //      commands.expectMsgType[Tcp.Write]
-    //
-    //      connectionActor ! Tcp.Received(ByteString(prep {
-    //        """|HTTP/1.1 200 OK
-    //           |Server: spray/1.0
-    //           |Date: Thu, 25 Aug 2011 09:10:29 GMT
-    //           |Connection: close
-    //           |
-    //           |Yeah"""
-    //      }))
-    //      commands.expectNoMsg(100.millis)
-    //
-    //      connectionActor ! Tcp.PeerClosed
-    //      commands.expectMsgPF() {
-    //        case Pipeline.Tell(`probeRef`, HttpResponse(StatusCodes.OK, entity, _, _), `connectionActor`) => entity
-    //      } === HttpBody(ContentType.`application/octet-stream`, "Yeah")
-    //    }
-    //
-    //    "dispatch Closed events to the Close commander" in new Fixture(stage) {
-    //      val probe = TestProbe()
-    //      probe.send(connectionActor, Http.Close)
-    //      commands expectMsg Tcp.Close
-    //      connectionActor ! Tcp.Closed
-    //      commands.expectMsg(Pipeline.Tell(probe.ref, Http.Closed, connectionActor))
-    //    }
+    "properly complete a 3 requests pipelined dialog" in new Fixture(stage) {
+      val (probe1, probeRef1) = probeAndRef()
+      val (probe2, probeRef2) = probeAndRef()
+      probe1.send(connectionActor, Http.MessageCommand(HttpRequest(entity = "Request 1")))
+      probe2.send(connectionActor, Http.MessageCommand(HttpRequest(entity = "Request 2")))
+      probe1.send(connectionActor, Http.MessageCommand(HttpRequest(entity = "Request 3")))
+      commands.expectMsgPF() { case Tcp.Write(StringBytes(data), _: Tcp.NoAck) ⇒ data } === rawRequest("Request 1")
+      commands.expectMsgPF() { case Tcp.Write(StringBytes(data), _: Tcp.NoAck) ⇒ data } === rawRequest("Request 2")
+      commands.expectMsgPF() { case Tcp.Write(StringBytes(data), _: Tcp.NoAck) ⇒ data } === rawRequest("Request 3")
+
+      connectionActor ! Tcp.Received(ByteString(rawResponse("Response 1")))
+      connectionActor ! Tcp.Received(ByteString(rawResponse("Response 2")))
+      connectionActor ! Tcp.Received(ByteString(rawResponse("Response 3")))
+      commands.expectMsg(Pipeline.Tell(`probeRef1`, response("Response 1"), connectionActor))
+      commands.expectMsg(Pipeline.Tell(`probeRef2`, response("Response 2"), connectionActor))
+      commands.expectMsg(Pipeline.Tell(`probeRef1`, response("Response 3"), connectionActor))
+    }
+
+    "properly handle responses to HEAD requests" in new Fixture(stage) {
+      val (probe, probeRef) = probeAndRef()
+      probe.send(connectionActor, Http.MessageCommand(HttpRequest(method = HttpMethods.HEAD)))
+      commands.expectMsgPF() {
+        case Tcp.Write(StringBytes(data), _: Tcp.NoAck) ⇒ data
+      } === emptyRawRequest(method = "HEAD")
+
+      connectionActor ! Tcp.Received(ByteString(prep {
+        """|HTTP/1.1 200 OK
+           |Server: spray/1.0
+           |Date: Thu, 25 Aug 2011 09:10:29 GMT
+           |Content-Length: 8
+           |Content-Type: text/plain
+           |
+           |"""
+      }))
+      commands.expectMsg(Pipeline.Tell(`probeRef`, response("12345678").withEntity(""), connectionActor))
+    }
+
+    "properly parse and dispatch 'to-close' responses" in new Fixture(stage) {
+      val (probe, probeRef) = probeAndRef()
+      probe.send(connectionActor, Http.MessageCommand(HttpRequest()))
+      commands.expectMsgType[Tcp.Write]
+
+      connectionActor ! Tcp.Received(ByteString(prep {
+        """|HTTP/1.1 200 OK
+           |Server: spray/1.0
+           |Date: Thu, 25 Aug 2011 09:10:29 GMT
+           |Connection: close
+           |
+           |Yeah"""
+      }))
+      commands.expectNoMsg(100.millis)
+
+      connectionActor ! Tcp.PeerClosed
+      commands.expectMsgPF() {
+        case Pipeline.Tell(`probeRef`, HttpResponse(StatusCodes.OK, entity, _, _), `connectionActor`) ⇒ entity
+      } === HttpEntity(ContentType.`application/octet-stream`, "Yeah")
+    }
+
+    "dispatch Closed events to the Close commander" in new Fixture(stage) {
+      val probe = TestProbe()
+      probe.send(connectionActor, Http.Close)
+      commands expectMsg Tcp.Close
+      connectionActor ! Tcp.Closed
+      commands.expectMsg(Pipeline.Tell(probe.ref, Http.Closed, connectionActor))
+    }
   }
 
   override lazy val config: Config = ConfigFactory.parseString("""

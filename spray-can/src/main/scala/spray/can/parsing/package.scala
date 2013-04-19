@@ -14,42 +14,30 @@
  * limitations under the License.
  */
 
-package spray.can
+package spray.can.parsing
 
-import java.lang.{ StringBuilder ⇒ JStringBuilder }
-import scala.annotation.tailrec
-import akka.util.ByteString
-import spray.http.{ ErrorInfo, StatusCode }
+import akka.util.CompactByteString
 import spray.util.SingletonException
+import spray.http._
 
-package object parsing {
-
-  private[can] def isTokenChar(c: Char) = c match {
-    case x if 'a' <= x && x <= 'z' ⇒ true
-    case x if 'A' <= x && x <= 'Z' ⇒ true
-    case '-' ⇒ true
-    case '(' | ')' | '<' | '>' | '@' | ',' | ';' | ':' | '\\' | '"' | '/' | '[' | ']' | '?' | '=' | '{' | '}' ⇒ false
-    case x ⇒ 32 < x && x < 127
-  }
-
-  private[can] def escape(c: Char): String =
-    if (Character.isISOControl(c)) String.format("\\u%04x", c: java.lang.Integer)
-    else String.valueOf(c)
-
-  def byteChar(input: ByteString, ix: Int): Char =
-    if (ix < input.length) input(ix).toChar else throw NotEnoughDataException
-
-  def asciiString(input: ByteString, start: Int, end: Int): String = {
-    @tailrec def build(ix: Int = start, sb: JStringBuilder = new JStringBuilder(end - start)): String =
-      if (ix == end) sb.toString else build(ix + 1, sb.append(input(ix).toChar))
-    if (start == end) "" else build()
-  }
+trait Parser[Part <: HttpMessagePart] extends (CompactByteString ⇒ Result[Part]) {
+  def parse: CompactByteString ⇒ Result[Part]
 }
 
-package parsing {
-
-  class ParsingException(status: StatusCode, info: ErrorInfo) extends RuntimeException(info.formatPretty)
-
-  object NotEnoughDataException extends SingletonException
-
+sealed trait Result[+T <: HttpMessagePart]
+object Result {
+  case object NeedMoreData extends Result[Nothing]
+  case class Ok[T <: HttpMessagePart](part: T, remainingData: CompactByteString,
+                                      closeAfterResponseCompletion: Boolean) extends Result[T]
+  case class Expect100Continue(remainingData: CompactByteString) extends Result[Nothing]
+  case class ParsingError(status: StatusCode, info: ErrorInfo) extends Result[Nothing]
 }
+
+class ParsingException(val status: StatusCode, val info: ErrorInfo) extends RuntimeException(info.formatPretty) {
+  def this(status: StatusCode, summary: String = "") =
+    this(status, ErrorInfo(if (summary.isEmpty) status.defaultMessage else summary))
+  def this(summary: String) =
+    this(StatusCodes.BadRequest, ErrorInfo(summary))
+}
+
+object NotEnoughDataException extends SingletonException

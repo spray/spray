@@ -55,10 +55,10 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
       } === HttpRequest(
         uri = "http://test.com/",
         headers = List(
-          `Host`("test.com"),
+          `Transfer-Encoding`("chunked"),
           `Content-Type`(`text/plain`),
-          `Transfer-Encoding`("chunked")),
-        entity = HttpBody("body123body123"))
+          `Host`("test.com")),
+        entity = HttpEntity("body123body123"))
     }
 
     "dispatch Ack messages" in {
@@ -256,10 +256,10 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
         commands.expectMsgType[Pipeline.Tell].message === HttpRequest(
           uri = "http://test.com/",
           headers = List(
-            `Host`("test.com"),
-            `Content-Type`(`text/plain`),
+            Expect(expectValue),
             `Content-Length`(12),
-            RawHeader("expect", expectValue))).withEntity("bodybodybody")
+            `Content-Type`(`text/plain`),
+            Host("test.com"))).withEntity("bodybodybody")
       }
       "with a header value fully matching the spec" in example("100-continue")
       "with a header value containing illegal casing" in example("100-Continue")

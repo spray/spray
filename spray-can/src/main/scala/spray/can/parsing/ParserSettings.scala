@@ -27,9 +27,7 @@ case class ParserSettings(
     maxHeaderValueLength: Int,
     maxHeaderCount: Int,
     maxContentLength: Int,
-    maxChunkExtNameLength: Int,
-    maxChunkExtValueLength: Int,
-    maxChunkExtCount: Int,
+    maxChunkExtLength: Int,
     maxChunkSize: Int,
     headerValueCacheLimits: Map[String, Int]) {
 
@@ -39,9 +37,7 @@ case class ParserSettings(
   require(maxHeaderValueLength > 0, "max-header-value-length must be > 0")
   require(maxHeaderCount > 0, "max-header-count must be > 0")
   require(maxContentLength > 0, "max-content-length must be > 0")
-  require(maxChunkExtNameLength > 0, "max-chunk-ext-name-length must be > 0")
-  require(maxChunkExtValueLength > 0, "max-chunk-ext-value-length must be > 0")
-  require(maxChunkExtCount > 0, "max-chunk-ext-count must be > 0")
+  require(maxChunkExtLength > 0, "max-chunk-ext-length must be > 0")
   require(maxChunkSize > 0, "max-chunk-size must be > 0")
 
   val defaultHeaderValueCacheLimit: Int = headerValueCacheLimits("default")
@@ -68,9 +64,7 @@ object ParserSettings {
       bytes("max-header-value-length"),
       bytes("max-header-count"),
       bytes("max-content-length"),
-      bytes("max-chunk-ext-name-length"),
-      bytes("max-chunk-ext-value-length"),
-      bytes("max-chunk-ext-count"),
+      bytes("max-chunk-ext-length"),
       bytes("max-chunk-size"),
       cacheConfig.entrySet.asScala.map(kvp ⇒ kvp.getKey -> cacheConfig.getInt(kvp.getKey))(collection.breakOut))
   }

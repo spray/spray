@@ -123,8 +123,8 @@ class HttpHeaderParserSpec extends Specification {
           | | | |             └─t-y-p-e-:- (Content-Type)
           |-c-o-o-k-i-e-:- (Cookie)
           | |     ┌─d-a-t-e-:- (Date)
-          | |     | └─e-x-p-e-c-t-:-(Expect)- -1-0-0---c-o-n-t-i-n-u-e-\r-\n- *Expect: 100-continue
-          | |   ┌─h-o-s-t-:- (Host)
+          | |   ┌─e-x-p-e-c-t-:-(Expect)- -1-0-0---c-o-n-t-i-n-u-e-\r-\n- Expect: 100-continue
+          | |   | └─h-o-s-t-:- (Host)
           | | ┌─l-a-s-t---m-o-d-i-f-i-e-d-:- (Last-Modified)
           | | | | └─o-c-a-t-i-o-n-:- (Location)
           | | | └─r-e-m-o-t-e---a-d-d-r-e-s-s-:- (Remote-Address)
@@ -135,9 +135,13 @@ class HttpHeaderParserSpec extends Specification {
           |     | ┌─w-w-w---a-u-t-h-e-n-t-i-c-a-t-e-:- (WWW-Authenticate)
           |     └─x---f-o-r-w-a-r-d-e-d---f-o-r-:- (X-Forwarded-For)
           |""".stripMargin
-      parser.formatSizes === "371 nodes, 23 nodeData rows, 35 values"
+      parser.formatSizes === "371 nodes, 22 nodeData rows, 35 values"
       parser.contentHistogram ===
         Map("Connection" -> 3, "Content-Length" -> 1, "Accept" -> 2, "Cache-Control" -> 2, "Expect" -> 1)
+    }
+
+    "retrieve the EmptyHeader" in new TestSetup() {
+      parseAndCache("\r\n")() === HttpHeaderParser.EmptyHeader
     }
 
     "retrieve a cached header with an exact header name match" in new TestSetup() {
@@ -198,7 +202,7 @@ class HttpHeaderParserSpec extends Specification {
       randomHeaders.take(300).foldLeft(0) {
         case (acc, rawHeader) ⇒ acc + parseAndCache(rawHeader.toString + "\r\nx", rawHeader)
       } === 110
-      parser.formatSizes === "3073 nodes, 105 nodeData rows, 255 values"
+      parser.formatSizes === "3073 nodes, 104 nodeData rows, 255 values"
     }
 
     "continue parsing modelled headers even if the overall cache capacity is reached" in new TestSetup() {
@@ -210,7 +214,7 @@ class HttpHeaderParserSpec extends Specification {
       randomHostHeaders.take(300).foldLeft(0) {
         case (acc, header) ⇒ acc + parseAndCache(header.toString + "\r\nx", header)
       } === 220
-      parser.formatSizes === "3199 nodes, 186 nodeData rows, 255 values"
+      parser.formatSizes === "3199 nodes, 185 nodeData rows, 255 values"
     }
 
     "continue parsing raw headers even if the header-specific cache capacity is reached" in new TestSetup() {
@@ -236,10 +240,10 @@ class HttpHeaderParserSpec extends Specification {
   step(system.shutdown())
 
   abstract class TestSetup(primed: Boolean = true) extends org.specs2.specification.Scope {
-    val parser = {
-      val p = HttpHeaderParser(ParserSettings(system), info ⇒ system.log.warning(info.formatPretty))
-      if (primed) HttpHeaderParser.prime(p) else p
-    }
+    val parser = HttpHeaderParser(
+      settings = ParserSettings(system),
+      warnOnIllegalHeader = info ⇒ system.log.warning(info.formatPretty),
+      unprimed = !primed)
     def insert(line: String, value: AnyRef): Unit =
       if (parser.isEmpty) parser.insertRemainingCharsAsNewNodes(CompactByteString(line), value)()
       else parser.insert(CompactByteString(line), value)()
@@ -268,7 +272,7 @@ class HttpHeaderParserSpec extends Specification {
     def nextRandomInt(min: Int, max: Int) = random.nextInt(max - min) + min
     @tailrec final def nextRandomTokenChar(): Char = {
       val c = nextRandomPrintableChar()
-      if (HttpHeaderParser.isTokenChar(c)) c else nextRandomTokenChar()
+      if (CharUtils.isTokenChar(c)) c else nextRandomTokenChar()
     }
     @tailrec final def nextRandomString(charGen: () ⇒ Char, len: Int, sb: JStringBuilder = new JStringBuilder): String =
       if (sb.length < len) nextRandomString(charGen, len, sb.append(charGen())) else sb.toString

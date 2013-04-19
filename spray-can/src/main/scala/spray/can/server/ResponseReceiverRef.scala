@@ -42,12 +42,16 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
   def handle(message: Any)(implicit sender: ActorRef) {
     require(RefUtils.isLocal(sender), "A request cannot be completed from a remote actor")
     message match {
-      case x: HttpMessagePartWrapper if x.messagePart.isInstanceOf[HttpResponsePart] ⇒
-        x.messagePart.asInstanceOf[HttpResponsePart] match {
-          case _: HttpResponse         ⇒ dispatch(x, Uncompleted, Completed)
-          case _: ChunkedResponseStart ⇒ dispatch(x, Uncompleted, Chunking)
-          case _: MessageChunk         ⇒ dispatch(x, Chunking, Chunking)
-          case _: ChunkedMessageEnd    ⇒ dispatch(x, Chunking, Completed)
+      case part: HttpMessagePartWrapper if part.messagePart.isInstanceOf[HttpResponsePart] ⇒
+        part.messagePart.asInstanceOf[HttpResponsePart] match {
+          case x: HttpResponse ⇒
+            require(x.protocol == HttpProtocols.`HTTP/1.1`, "Response must have protocol HTTP/1.1")
+            dispatch(x, Uncompleted, Completed)
+          case x: ChunkedResponseStart ⇒
+            require(x.response.protocol == HttpProtocols.`HTTP/1.1`, "Response must have protocol HTTP/1.1")
+            dispatch(x, Uncompleted, Chunking)
+          case _: MessageChunk      ⇒ dispatch(part, Chunking, Chunking)
+          case _: ChunkedMessageEnd ⇒ dispatch(part, Chunking, Completed)
         }
       case x: Command ⇒ dispatch(x)
       case x ⇒

@@ -29,7 +29,7 @@ case class HttpResponsePartRenderingContext(
   responsePart: HttpResponsePart,
   requestMethod: HttpMethod = HttpMethods.GET,
   requestProtocol: HttpProtocol = HttpProtocols.`HTTP/1.1`,
-  requestConnectionHeader: Option[String] = None,
+  closeAfterResponseCompletion: Boolean = false,
   ack: Any = Tcp.NoAck) extends Command
 
 case class RenderedMessagePart(data: ByteString, closeConnection: Boolean = false)
