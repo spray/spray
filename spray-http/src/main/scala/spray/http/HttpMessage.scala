@@ -90,17 +90,12 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
   def mapEntity(f: HttpEntity ⇒ HttpEntity): Self = withEntity(f(entity))
 
   /**
-   * Returns true if a Content-Encoding header is present.
-   */
-  def isEncodingSpecified: Boolean = headers.exists(_.isInstanceOf[`Content-Encoding`])
-
-  /**
    * The content encoding as specified by the Content-Encoding header. If no Content-Encoding header is present the
    * default value 'identity' is returned.
    */
-  def encoding = headers.collect { case `Content-Encoding`(enc) ⇒ enc } match {
-    case enc :: _ ⇒ enc
-    case Nil      ⇒ HttpEncodings.identity
+  def encoding = header[`Content-Encoding`] match {
+    case Some(x) ⇒ x.encoding
+    case None    ⇒ HttpEncodings.identity
   }
 
   def header[T <: HttpHeader: ClassTag]: Option[T] = {
@@ -110,8 +105,6 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
       else if (erasure.isInstance(headers.head)) Some(headers.head.asInstanceOf[T]) else next(headers.tail)
     next(headers)
   }
-
-  def as[T](implicit f: Self ⇒ T): T = f(message)
 }
 
 /**

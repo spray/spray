@@ -85,12 +85,17 @@ object HttpHeaders {
   }
 
   object Connection { def apply(first: String, more: String*): Connection = apply(first +: more) }
-  case class Connection(connectionTokens: Seq[String]) extends HttpHeader {
+  case class Connection(tokens: Seq[String]) extends HttpHeader {
     def name = "Connection"
     def lowercaseName = "connection"
-    def value = connectionTokens.mkString(", ")
-    def hasClose = connectionTokens.exists(_ equalsIgnoreCase "close")
-    def hasKeepAlive = connectionTokens.exists(_ equalsIgnoreCase "keep-alive")
+    def value = if (tokens.size == 1) tokens.head else tokens mkString ", "
+    def hasClose = has("close")
+    def hasKeepAlive = has("keep-alive")
+    @tailrec private def has(item: String, ix: Int = 0): Boolean =
+      if (ix < tokens.length)
+        if (tokens(ix) equalsIgnoreCase item) true
+        else has(item, ix + 1)
+      else false
   }
 
   // see http://tools.ietf.org/html/rfc2183
