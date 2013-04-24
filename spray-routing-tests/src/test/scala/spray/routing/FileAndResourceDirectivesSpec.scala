@@ -27,6 +27,12 @@ import HttpCharsets._
 
 class FileAndResourceDirectivesSpec extends RoutingSpec {
 
+  override def testConfigSource =
+    """spray.routing {
+      |  file-chunking-threshold-size = 16
+      |  file-chunking-chunk-size = 8
+      |}""".stripMargin
+
   "getFromFile" should {
     "reject non-GET requests" in {
       Put() ~> getFromFile("some") ~> check { handled must beFalse }

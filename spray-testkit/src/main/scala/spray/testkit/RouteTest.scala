@@ -16,6 +16,7 @@
 
 package spray.testkit
 
+import com.typesafe.config.{ ConfigFactory, Config }
 import scala.util.DynamicVariable
 import scala.reflect.ClassTag
 import akka.actor.ActorSystem
@@ -31,7 +32,12 @@ import scala.util.control.NonFatal
 trait RouteTest extends RequestBuilding with RouteResultComponent {
   this: TestFrameworkInterface ⇒
 
-  implicit val system = ActorSystem("RouteTest")
+  def testConfigSource: String = ""
+  def testConfig: Config = {
+    val source = testConfigSource
+    if (source.isEmpty) ConfigFactory.empty() else ConfigFactory.parseString(source)
+  }
+  implicit val system = ActorSystem(Utils.actorSystemNameFrom(getClass), testConfig)
   implicit def executor = system.dispatcher
 
   def cleanUp() { system.shutdown() }
