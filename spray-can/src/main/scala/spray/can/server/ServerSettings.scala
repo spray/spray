@@ -55,6 +55,9 @@ case class ServerSettings(
   requirePositiveOrUndefined(bindTimeout)
   requirePositiveOrUndefined(unbindTimeout)
   requirePositiveOrUndefined(registrationTimeout)
+
+  require(!requestTimeout.isFinite || idleTimeout > requestTimeout,
+    "idle-timeout must be > request-timeout (if the latter is not 'infinite')")
 }
 
 object ServerSettings {

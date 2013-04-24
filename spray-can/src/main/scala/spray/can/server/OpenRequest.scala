@@ -17,6 +17,7 @@
 package spray.can.server
 
 import scala.collection.immutable.Queue
+import scala.concurrent.duration.Duration
 import akka.actor.ActorRef
 import akka.spray.RefUtils
 import spray.can.rendering.HttpResponsePartRenderingContext
@@ -52,8 +53,8 @@ trait OpenRequestComponent { component ⇒
   def context: ServerFrontend.Context
   def settings: ServerSettings
   def downstreamCommandPL: Pipeline[Command]
-  def requestTimeout: Long
-  def timeoutTimeout: Long
+  def requestTimeout: Duration
+  def timeoutTimeout: Duration
 
   class DefaultOpenRequest(val request: HttpRequest,
                            private[this] val closeAfterResponseCompletion: Boolean,
@@ -94,7 +95,7 @@ trait OpenRequestComponent { component ⇒
 
     def checkForTimeout(now: Long) {
       if (timestamp > 0) {
-        if (timestamp + requestTimeout < now) {
+        if (timestamp + requestTimeout.toMillis < now) {
           val timeoutHandler =
             if (settings.timeoutHandler.isEmpty) handler
             else context.actorContext.actorFor(settings.timeoutHandler)
@@ -104,7 +105,7 @@ trait OpenRequestComponent { component ⇒
             "timeout handler", timeoutHandler)
           timestamp = -now // we record the time of the Timeout dispatch as negative timestamp value
         }
-      } else if (timestamp < -1 && timeoutTimeout > 0 && (-timestamp + timeoutTimeout < now)) {
+      } else if (timestamp < -1 && timeoutTimeout.isFinite() && (-timestamp + timeoutTimeout.toMillis < now)) {
         val response = timeoutResponse(request)
         // we always close the connection after a timeout-timeout
         sendPart(response.withHeaders(HttpHeaders.Connection("close") :: response.headers))
