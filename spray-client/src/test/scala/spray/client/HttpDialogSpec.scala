@@ -51,7 +51,7 @@ class HttpDialogSpec extends Specification with NoTimeConversions {
         }
       }
     }
-    IO(Http).ask(Http.Bind(testService, interface, port))(1.second).await
+    IO(Http).ask(Http.Bind(testService, interface, port))(3.seconds).await
   }
 
   "An HttpDialog" should {

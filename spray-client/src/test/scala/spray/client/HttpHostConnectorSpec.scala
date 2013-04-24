@@ -68,7 +68,7 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
           case ev: Http.ConnectionClosed ⇒ log.debug("Received " + ev)
         }
       }), "handler")
-    IO(Http).ask(Http.Bind(testService, interface, port))(1.second).await
+    IO(Http).ask(Http.Bind(testService, interface, port))(3.seconds).await
   }
 
   "An HttpConduit with max. 4 connections and pipelining enabled" should {
