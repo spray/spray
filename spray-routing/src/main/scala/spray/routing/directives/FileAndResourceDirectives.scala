@@ -79,7 +79,7 @@ trait FileAndResourceDirectives {
    * If the file cannot be found or read the Route rejects the request.
    */
   def getFromResource(resourceName: String)(implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route = {
-    def openConnection: Option[URL] :: HNil ⇒ Directive[URLConnection :: HNil] = {
+    def openConnection: Option[URL] :: HNil ⇒ Directive1[URLConnection] = {
       case Some(url) :: HNil ⇒ provide(url.openConnection())
       case _                 ⇒ reject
     }

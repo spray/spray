@@ -62,8 +62,8 @@ abstract class Directive[L <: HList] { self ⇒
 
   def &(magnet: ConjunctionMagnet[L]): magnet.Out = magnet(this)
 
-  def as[T](deserializer: HListDeserializer[L, T]): Directive[T :: HNil] =
-    new Directive[T :: HNil] {
+  def as[T](deserializer: HListDeserializer[L, T]): Directive1[T] =
+    new Directive1[T] {
       def happly(f: T :: HNil ⇒ Route) =
         self.happly { values ⇒
           ctx ⇒
@@ -133,7 +133,7 @@ object Directive {
 
   implicit def pimpApply[L <: HList](directive: Directive[L])(implicit hac: ApplyConverter[L]): hac.In ⇒ Route = f ⇒ directive.happly(hac(f))
 
-  implicit class SingleValueModifiers[T](underlying: Directive[T :: HNil]) {
+  implicit class SingleValueModifiers[T](underlying: Directive1[T]) {
     def map[R](f: T ⇒ R)(implicit hl: HListable[R]): Directive[hl.Out] =
       underlying.hmap { case value :: HNil ⇒ f(value) }
 

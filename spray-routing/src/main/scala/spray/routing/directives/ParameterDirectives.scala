@@ -77,8 +77,8 @@ object ParamDefMagnetAux {
 
   /************ "regular" parameter extraction ******************/
 
-  private def extractParameter[A, B](f: A ⇒ Directive[B :: HNil]) = ParamDefMagnetAux[A, Directive[B :: HNil]](f)
-  private def filter[T](paramName: String, fsod: FSOD[T]): Directive[T :: HNil] =
+  private def extractParameter[A, B](f: A ⇒ Directive1[B]) = ParamDefMagnetAux[A, Directive1[B]](f)
+  private def filter[T](paramName: String, fsod: FSOD[T]): Directive1[T] =
     extract(ctx ⇒ fsod(ctx.request.uri.query.get(paramName))).flatMap {
       case Right(x)                             ⇒ provide(x)
       case Left(ContentExpected)                ⇒ reject(MissingQueryParamRejection(paramName))

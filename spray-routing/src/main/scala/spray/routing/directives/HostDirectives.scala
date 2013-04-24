@@ -28,7 +28,7 @@ trait HostDirectives {
   /**
    * Extracts the hostname part of the Host header value in the request.
    */
-  def hostName: Directive[String :: HNil] = extract(_.request.uri.authority.host.address)
+  def hostName: Directive1[String] = extract(_.request.uri.authority.host.address)
 
   /**
    * Rejects all requests with a host name different from the given ones.
@@ -46,8 +46,8 @@ trait HostDirectives {
    * If the regex contains a capturing group only the string matched by this group is extracted.
    * If the regex contains more than one capturing group an IllegalArgumentException is thrown.
    */
-  def host(regex: Regex): Directive[String :: HNil] = {
-    def forFunc(regexMatch: String ⇒ Option[String]): Directive[String :: HNil] = {
+  def host(regex: Regex): Directive1[String] = {
+    def forFunc(regexMatch: String ⇒ Option[String]): Directive1[String] = {
       extract(ctx ⇒ regexMatch(ctx.request.uri.authority.host.address)).flatMap {
         case Some(matched) ⇒ provide(matched)
         case None          ⇒ reject

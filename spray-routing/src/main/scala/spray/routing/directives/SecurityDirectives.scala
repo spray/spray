@@ -28,7 +28,7 @@ trait SecurityDirectives {
   /**
    * Wraps its inner Route with authentication support.
    */
-  def authenticate[T](am: AuthMagnet[T]): Directive[T :: HNil] = {
+  def authenticate[T](am: AuthMagnet[T]): Directive1[T] = {
     implicit def executor = am.executor
     am.value.unwrapFuture.flatMap {
       case Right(user)     ⇒ provide(user)
@@ -51,7 +51,7 @@ trait SecurityDirectives {
 
 }
 
-class AuthMagnet[T](val value: Directive[Future[Authentication[T]] :: HNil], val executor: ExecutionContext)
+class AuthMagnet[T](val value: Directive1[Future[Authentication[T]]], val executor: ExecutionContext)
 
 object AuthMagnet {
   implicit def fromFutureAuth[T](auth: Future[Authentication[T]])(implicit executor: ExecutionContext) =

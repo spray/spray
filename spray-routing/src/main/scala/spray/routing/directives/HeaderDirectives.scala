@@ -31,7 +31,7 @@ trait HeaderDirectives {
    * request is rejected with an empty rejection set. If the given function throws an exception the request is rejected
    * with a [[spray.routing.MalformedHeaderRejection]].
    */
-  def headerValue[T](f: HttpHeader ⇒ Option[T]): Directive[T :: HNil] = {
+  def headerValue[T](f: HttpHeader ⇒ Option[T]): Directive1[T] = {
     def protectedF(header: HttpHeader): Option[Either[Rejection, T]] =
       try f(header).map(Right.apply)
       catch {
@@ -48,13 +48,13 @@ trait HeaderDirectives {
    * Extracts an HTTP header value using the given partial function. If the function is undefined for all headers the
    * request is rejected with an empty rejection set.
    */
-  def headerValuePF[T](pf: PartialFunction[HttpHeader, T]): Directive[T :: HNil] = headerValue(pf.lift)
+  def headerValuePF[T](pf: PartialFunction[HttpHeader, T]): Directive1[T] = headerValue(pf.lift)
 
   /**
    * Extracts the value of the HTTP request header with the given name.
    * If no header with a matching name is found the request is rejected with a [[spray.routing.MissingHeaderRejection]].
    */
-  def headerValueByName(headerName: String): Directive[String :: HNil] =
+  def headerValueByName(headerName: String): Directive1[String] =
     headerValue(optionalValue(headerName.toLowerCase)) | reject(MissingHeaderRejection(headerName))
 
   /**
@@ -62,7 +62,7 @@ trait HeaderDirectives {
    * If the given function throws an exception the request is rejected
    * with a [[spray.routing.MalformedHeaderRejection]].
    */
-  def optionalHeaderValue[T](f: HttpHeader ⇒ Option[T]): Directive[Option[T] :: HNil] =
+  def optionalHeaderValue[T](f: HttpHeader ⇒ Option[T]): Directive1[Option[T]] =
     headerValue(f).map(Some(_): Option[T]).recoverPF {
       case Nil ⇒ provide(None)
     }
@@ -72,13 +72,13 @@ trait HeaderDirectives {
    * If the given function throws an exception the request is rejected
    * with a [[spray.routing.MalformedHeaderRejection]].
    */
-  def optionalHeaderValuePF[T](pf: PartialFunction[HttpHeader, T]): Directive[Option[T] :: HNil] =
+  def optionalHeaderValuePF[T](pf: PartialFunction[HttpHeader, T]): Directive1[Option[T]] =
     optionalHeaderValue(pf.lift)
 
   /**
    * Extracts the value of the optional HTTP request header with the given name.
    */
-  def optionalHeaderValueByName(headerName: String): Directive[Option[String] :: HNil] = {
+  def optionalHeaderValueByName(headerName: String): Directive1[Option[String]] = {
     val f = optionalValue(headerName.toLowerCase)
     extract(_.request.headers.mapFind(f))
   }
