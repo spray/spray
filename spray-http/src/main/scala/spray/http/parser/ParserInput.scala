@@ -36,19 +36,11 @@ object ParserInput {
       def length = bytes.length
       def sliceString(start: Int, end: Int) = new String(bytes, start, end - start, charset)
     }
-  implicit def apply(chars: Array[Char]): ParserInput =
+  implicit def apply(string: String): ParserInput =
     new ParserInput {
-      def charAt(ix: Int) = chars(ix)
-      def length = chars.length
-      def sliceString(start: Int, end: Int) = new String(chars, start, end - start)
+      def charAt(ix: Int) = string.charAt(ix)
+      def length = string.length
+      def sliceString(start: Int, end: Int) = string.substring(start, end)
     }
-
-  private val field = classOf[String].getDeclaredField("value")
-  field.setAccessible(true)
-
-  implicit def apply(string: String): ParserInput = apply {
-    // http://stackoverflow.com/questions/8894258/fastest-way-to-iterate-over-all-the-chars-in-a-string
-    if (string.length > 64) field.get(string).asInstanceOf[Array[Char]]
-    else string.toCharArray
-  }
+  implicit def apply(chars: Array[Char]): ParserInput = apply(new String(chars))
 }
