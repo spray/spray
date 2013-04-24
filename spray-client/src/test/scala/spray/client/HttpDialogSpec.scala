@@ -102,9 +102,9 @@ class HttpDialogSpec extends Specification with NoTimeConversions {
   }
 
   step {
-    val probe = TestProbe()
-    probe.send(IO(Http), Http.CloseAll)
-    probe.expectMsg(Http.ClosedAll)
+    //    val probe = TestProbe()
+    //    probe.send(IO(Http), Http.CloseAll)
+    //    probe.expectMsg(5.seconds, Http.ClosedAll)
     system.shutdown()
   }
 }
