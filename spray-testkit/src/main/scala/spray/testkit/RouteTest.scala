@@ -35,7 +35,8 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   def testConfigSource: String = ""
   def testConfig: Config = {
     val source = testConfigSource
-    if (source.isEmpty) ConfigFactory.empty() else ConfigFactory.parseString(source)
+    val config = if (source.isEmpty) ConfigFactory.empty() else ConfigFactory.parseString(source)
+    config.withFallback(ConfigFactory.load())
   }
   implicit val system = ActorSystem(Utils.actorSystemNameFrom(getClass), testConfig)
   implicit def executor = system.dispatcher
