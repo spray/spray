@@ -16,12 +16,14 @@ package object lenses {
   def unexpected[T](message: String): Validated[T] = Failure(new RuntimeException(message))
   def outOfBounds[T](message: String): Validated[T] = Failure(new IndexOutOfBoundsException(message))
 
+  implicit def validateOption[T](o: Option[T]): ValidateOption[T] = ValidateOption(o)
+}
+
+package lenses {
   case class ValidateOption[T](option: Option[T]) {
     def getOrError(message: ⇒ String): Validated[T] = option match {
       case Some(t) ⇒ Success(t)
       case None    ⇒ unexpected(message)
     }
   }
-
-  implicit def validateOption[T](o: Option[T]): ValidateOption[T] = ValidateOption(o)
 }
