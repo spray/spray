@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,55 +17,56 @@
 package spray.http
 package parser
 
+import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import org.parboiled.scala._
 
 // direct implementation of http://www.w3.org/Protocols/rfc2616/rfc2616-sec2.html#sec2
-private[spray] object BasicRules extends Parser {
+private[parser] object BasicRules extends Parser {
 
   def Octet = rule { "\u0000" - "\u00FF" }
-  
+
   def Char = rule { "\u0000" - "\u007F" }
 
-  def Alpha = rule { UpAlpha | LoAlpha }
+  def Alpha = rule { LoAlpha | UpAlpha }
 
   def UpAlpha = rule { "A" - "Z" }
-  
+
   def LoAlpha = rule { "a" - "z" }
-  
+
   def Digit = rule { "0" - "9" }
 
   def AlphaNum = rule { Alpha | Digit }
-  
-  def CTL = rule { "\u0000" - "\u001F" | "\u001F" }
-  
+
+  def CTL = rule { "\u0000" - "\u001F" | "\u007F" }
+
   def CRLF = rule { str("\r\n") }
-  
+
   def LWS = rule { optional(CRLF) ~ oneOrMore(anyOf(" \t")) }
-  
+
   def Text = rule { !CTL ~ ANY | LWS }
-  
+
   def Hex = rule { "A" - "F" | "a" - "f" | Digit }
-  
-  def Separator = rule { anyOf("()<>@,;:\\\"/[]?={} \t") } 
-  
+
+  def Separator = rule { anyOf("()<>@,;:\\\"/[]?={} \t") }
+
   def Token: Rule1[String] = rule { oneOrMore(!CTL ~ !Separator ~ ANY) ~> identityFunc }
-  
-  def Comment: Rule0 = rule { "(" ~ zeroOrMore(CText | QuotedPair ~ DROP | Comment) ~ ")" }
-  
+
   def CText = rule { !anyOf("()") ~ Text }
-  
-  def QuotedString: Rule1[String] = rule {
-    "\"" ~ zeroOrMore(QuotedPair | QDText) ~~> (chars => new String(chars.toArray)) ~ "\""
+
+  def QuotedString = rule { "\"" ~ push(new JStringBuilder) ~ zeroOrMore(QuotedPair | QDText) ~~> (_.toString) ~ "\"" }
+
+  def QDText = rule {
+    !ch('"') ~ Text ~ toRunAction(c ⇒ c.getValueStack.peek.asInstanceOf[JStringBuilder].append(c.getFirstMatchChar))
   }
-  
-  def QDText: Rule1[Char] = rule { !ch('"') ~ Text ~:> identityFunc }
-  
-  def QuotedPair: Rule1[Char] = rule { "\\" ~ Char ~:> identityFunc }
-  
+
+  def QuotedPair = rule {
+    "\\" ~ Char ~ toRunAction(c ⇒ c.getValueStack.peek.asInstanceOf[JStringBuilder].append(c.getFirstMatchChar))
+  }
+
   // helpers
-  
+
   def OptWS = rule { zeroOrMore(LWS) }
-  
+
   def ListSep = rule { oneOrMore("," ~ OptWS) }
 
   // we don't match scoped IPv6 addresses

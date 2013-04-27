@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,22 +26,22 @@ trait Marshaller[-T] {
 //#
 
 object Marshaller extends BasicMarshallers
-  with MetaMarshallers
-  with MultipartMarshallers {
+    with MetaMarshallers
+    with MultipartMarshallers {
 
-  def apply[T](f: (T, MarshallingContext) => Unit): Marshaller[T] =
+  def apply[T](f: (T, MarshallingContext) ⇒ Unit): Marshaller[T] =
     new Marshaller[T] {
       def apply(value: T, ctx: MarshallingContext) {
         f(value, ctx)
       }
     }
 
-  def of[T](marshalTo: ContentType*)(f: (T, ContentType, MarshallingContext) => Unit): Marshaller[T] =
+  def of[T](marshalTo: ContentType*)(f: (T, ContentType, MarshallingContext) ⇒ Unit): Marshaller[T] =
     new Marshaller[T] {
       def apply(value: T, ctx: MarshallingContext) {
         marshalTo.mapFind(ctx.tryAccept) match {
-          case Some(contentType) => f(value, contentType, ctx)
-          case None => ctx.rejectMarshalling(marshalTo)
+          case Some(contentType) ⇒ f(value, contentType, ctx)
+          case None              ⇒ ctx.rejectMarshalling(marshalTo)
         }
       }
     }
@@ -49,9 +49,9 @@ object Marshaller extends BasicMarshallers
   def delegate[A, B](marshalTo: ContentType*) = new MarshallerDelegation[A, B](marshalTo)
 
   class MarshallerDelegation[A, B](marshalTo: Seq[ContentType]) {
-    def apply(f: A => B)(implicit mb: Marshaller[B]): Marshaller[A] = apply((a, ct) => f(a))
-    def apply(f: (A, ContentType) => B)(implicit mb: Marshaller[B]): Marshaller[A] =
-      Marshaller.of[A](marshalTo: _*) { (value, contentType, ctx) =>
+    def apply(f: A ⇒ B)(implicit mb: Marshaller[B]): Marshaller[A] = apply((a, ct) ⇒ f(a))
+    def apply(f: (A, ContentType) ⇒ B)(implicit mb: Marshaller[B]): Marshaller[A] =
+      Marshaller.of[A](marshalTo: _*) { (value, contentType, ctx) ⇒
         mb(f(value, contentType), ctx.withContentTypeOverriding(contentType))
       }
   }

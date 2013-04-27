@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import spray.util._
 import spray.http._
 import HttpHeaders._
 
-
 trait CookieDirectives {
   import BasicDirectives._
   import RouteDirectives._
@@ -33,17 +32,17 @@ trait CookieDirectives {
    * Extracts an HttpCookie with the given name. If the cookie is not present the
    * request is rejected with a respective [[spray.routing.MissingCookieRejection]].
    */
-  def cookie(name: String): Directive[HttpCookie :: HNil] =
+  def cookie(name: String): Directive1[HttpCookie] =
     headerValue {
-      case Cookie(cookies) => cookies.find(_.name == name)
-      case _ => None
+      case Cookie(cookies) ⇒ cookies.find(_.name == name)
+      case _               ⇒ None
     } | reject(MissingCookieRejection(name))
 
   /**
    * Extracts an HttpCookie with the given name.
    * If the cookie is not present a value of `None` is extracted.
    */
-  def optionalCookie(name: String): Directive[Option[HttpCookie] :: HNil] =
+  def optionalCookie(name: String): Directive1[Option[HttpCookie]] =
     cookie(name).hmap(_.map(shapeless.option)) | provide(None)
 
   /**

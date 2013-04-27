@@ -1,8 +1,6 @@
 package docs
 
-import java.util.concurrent.TimeUnit._
-import scala.xml.NodeSeq
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import org.specs2.mutable.Specification
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
@@ -13,10 +11,10 @@ import spray.testkit.Specs2RouteTest
 class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
 
   //# minimal-example
-  import spray.routing.HttpService
+  import spray.routing.SimpleRoutingApp
 
-  trait SimpleService extends HttpService {
-    val route =
+  object Main extends App with SimpleRoutingApp {
+    startServer(interface = "localhost", port = 8080) {
       path("hello") {
         get {
           complete {
@@ -24,6 +22,7 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
           }
         }
       }
+    }
   }
   //#
 
@@ -44,10 +43,11 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
   }
 
   //# longer-example
-  import spray.httpx.encoding._
+  import scala.concurrent.duration.Duration
+  import spray.routing.HttpService
   import spray.routing.authentication.BasicAuth
   import spray.routing.directives.CachingDirectives._
-  import scala.concurrent.duration.Duration
+  import spray.httpx.encoding._
 
   trait LongerService extends HttpService with MyApp {
 
@@ -133,16 +133,7 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
   }
   //#
 
-  "example-1" in {
-    val service = new SimpleService {
-      def actorRefFactory = system
-    }
-    Get("/hello") ~> service.route ~> check {
-      entityAs[NodeSeq] === <h1>Say hello to spray</h1>
-    }
-  }
-
-  "example-2" in {
+  "longer example" in {
     val service = new LongerService {
       def actorRefFactory = system
     }
@@ -157,7 +148,8 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
 
     class MyHttpService extends Actor {
       def receive = {
-        case HttpRequest(GET, "/ping", _, _, _) => sender ! HttpResponse(entity = "PONG")
+        case HttpRequest(GET, Uri.Path("/ping"), _, _, _) =>
+          sender ! HttpResponse(entity = "PONG")
       }
     }
     success // hide
@@ -166,8 +158,8 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
   "example-4" in {
     import spray.routing._
 
-    class MyHttpService extends Actor with HttpServiceActor {
-
+    class MyHttpService extends HttpServiceActor {
+      val system = 0 // shadow implicit from test, hide
       def receive = runRoute {
         path("ping") {
           get {

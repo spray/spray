@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,101 +16,75 @@
 
 package spray.can.client
 
-import java.nio.ByteBuffer
-import scala.collection.mutable
 import scala.annotation.tailrec
-import akka.event.LoggingAdapter
+import scala.collection.immutable.Queue
+import akka.io.Tcp
+import akka.util.CompactByteString
 import spray.can.rendering.HttpRequestPartRenderingContext
-import spray.can.HttpEvent
-import spray.util.EmptyByteArray
-import spray.util.ConnectionCloseReasons._
+import spray.can.Http
 import spray.can.parsing._
 import spray.http._
 import spray.io._
 
-
 object ResponseParsing {
 
-  private val UnmatchedResponseErrorState = ErrorState("Response to non-existent request")
-
-  def apply(settings: ParserSettings, log: LoggingAdapter): PipelineStage =
+  def apply(settings: ParserSettings): PipelineStage = {
+    val rootParser = new HttpResponsePartParser(settings)()
     new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
-          var currentParsingState: ParsingState = UnmatchedResponseErrorState
-          val openRequestMethods = mutable.Queue.empty[HttpMethod]
-
-          def startParser = new EmptyResponseParser(settings, openRequestMethods.head == HttpMethods.HEAD)
-
-          @tailrec
-          final def parse(buffer: ByteBuffer) {
-            currentParsingState match {
-              case x: IntermediateState =>
-                if (buffer.remaining > 0) {
-                  currentParsingState = x.read(buffer)
-                  parse(buffer)
-                } // else wait for more input
-
-              case x: HttpMessagePartCompletedState => x.toHttpMessagePart match {
-                case part: HttpMessageEnd =>
-                  eventPL(HttpEvent(part))
-                  openRequestMethods.dequeue()
-                  if (openRequestMethods.isEmpty) {
-                    currentParsingState = UnmatchedResponseErrorState
-                    if (buffer.remaining > 0) parse(buffer) // trigger error if buffer is not empty
-                  } else {
-                    currentParsingState = startParser
-                    parse(buffer)
-                  }
-                case part =>
-                  eventPL(HttpEvent(part))
-                  currentParsingState = new ChunkParser(settings)
-                  parse(buffer)
-              }
-
-              case _: Expect100ContinueState =>
-                currentParsingState = ErrorState("'Expect: 100-continue' is not allowed in HTTP responses")
-                parse(buffer) // trigger error
-
-              case ErrorState.Dead => // if we already handled the error state we ignore all further input
-
-              case x: ErrorState =>
-                log.warning("Received illegal response: {}", x.message)
-                commandPL(IOPeer.Close(ProtocolError(x.message)))
-                currentParsingState = ErrorState.Dead // set to "special" ErrorState that ignores all further input
-            }
+          import context.log
+          val parser = rootParser.copyWith { errorInfo ⇒
+            log.warning(errorInfo.withSummaryPrepended("Illegal response header").formatPretty)
           }
+          var openRequestMethods = Queue.empty[HttpMethod]
+
+          @tailrec def parse(data: CompactByteString): Unit =
+            parser.parse(data) match {
+              case Result.Ok(part, remainingData, _) ⇒
+                eventPL(Http.MessageEvent(part))
+                if (part.isInstanceOf[HttpMessageEnd]) {
+                  openRequestMethods = openRequestMethods.tail
+                  if (openRequestMethods.nonEmpty) parser.startResponse(openRequestMethods.head)
+                }
+                if (!remainingData.isEmpty) parse(remainingData)
+
+              case Result.NeedMoreData ⇒ // just wait for the next packet
+
+              case Result.ParsingError(_, info) ⇒
+                log.warning("Received illegal response: {}", info.formatPretty)
+                commandPL(Http.Close)
+
+              case _: Result.Expect100Continue ⇒ throw new IllegalStateException
+            }
 
           val commandPipeline: CPL = {
-            case x: HttpRequestPartRenderingContext =>
-              def register(req: HttpRequest) {
-                openRequestMethods.enqueue(req.method)
-                if (currentParsingState eq UnmatchedResponseErrorState) currentParsingState = startParser
+            case x: HttpRequestPartRenderingContext ⇒
+              def register(req: HttpRequest): Unit = {
+                if (openRequestMethods.isEmpty) parser.startResponse(req.method)
+                openRequestMethods = openRequestMethods enqueue req.method
               }
+
               x.requestPart match {
-                case x: HttpRequest => register(x)
-                case x: ChunkedRequestStart => register(x.request)
-                case _ =>
+                case x: HttpRequest         ⇒ register(x)
+                case x: ChunkedRequestStart ⇒ register(x.request)
+                case _                      ⇒
               }
               commandPL(x)
 
-            case cmd => commandPL(cmd)
+            case cmd ⇒ commandPL(cmd)
           }
 
           val eventPipeline: EPL = {
-            case x: IOPeer.Received => parse(x.buffer)
+            case Tcp.Received(data: CompactByteString) ⇒ parse(data)
 
-            case ev@IOPeer.Closed(_, PeerClosed) =>
-              currentParsingState match {
-                case x: ToCloseBodyParser =>
-                  currentParsingState = x.complete
-                  parse(ByteBuffer.wrap(EmptyByteArray))
-                case _ =>
-              }
+            case ev @ Http.PeerClosed ⇒
+              parse(CompactByteString.empty)
               eventPL(ev)
 
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
         }
     }
+  }
 }

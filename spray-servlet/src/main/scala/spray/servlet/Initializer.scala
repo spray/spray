@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,12 @@
 
 package spray.servlet
 
-import javax.servlet.{ServletContextListener, ServletContextEvent}
+import javax.servlet.{ ServletContext, ServletContextListener, ServletContextEvent }
 import com.typesafe.config.ConfigFactory
 import scala.language.reflectiveCalls
 import scala.util.control.NonFatal
 import akka.util.Switch
 import akka.actor.ActorSystem
-
 
 class Initializer extends ServletContextListener {
   private val booted = new Switch(false)
@@ -36,30 +35,35 @@ class Initializer extends ServletContextListener {
       try {
         val classLoader = ActorSystem.asInstanceOf[{ def findClassLoader(): ClassLoader }].findClassLoader()
         val config = ConfigFactory.load(classLoader)
-        val settings = new ConnectorSettings(config)
+        val settings = ConnectorSettings(config getConfig "spray.servlet")
         servletContext.setAttribute(Initializer.SettingsAttrName, settings)
-        def configuredBootClass = "Configured boot class " + settings.BootClass
+        def errorMsg(msg: String) = "Configured boot class " + settings.bootClass + ' ' + msg
         try {
-          val bootClass = classLoader.loadClass(settings.BootClass)
-          val constructor = bootClass.getConstructor()
+          val bootClass = classLoader.loadClass(settings.bootClass)
+          val boot =
+            try {
+              val constructor = bootClass.getConstructor(classOf[ServletContext])
+              constructor.newInstance(servletContext)
+            } catch {
+              case e: NoSuchMethodException ⇒
+                val constructor = bootClass.getConstructor()
+                constructor.newInstance()
+            }
           try {
-            val boot = constructor.newInstance()
             val webBoot = boot.asInstanceOf[WebBoot]
             actorSystem = Some(webBoot.system)
             servletContext.setAttribute(Initializer.SystemAttrName, actorSystem.get)
             servletContext.setAttribute(Initializer.ServiceActorAttrName, webBoot.serviceActor)
           } catch {
-            case e: ClassCastException =>
-              servletContext.log(configuredBootClass + " does not implement spray.servlet.WebBoot", e)
+            case e: ClassCastException ⇒ servletContext.log(errorMsg("does not implement spray.servlet.WebBoot"), e)
           }
         } catch {
-          case e: ClassNotFoundException =>
-            servletContext.log(configuredBootClass + " cannot be found", e)
-          case e: NoSuchMethodException=>
-            servletContext.log(configuredBootClass + " does not define a default constructor", e)
+          case e: ClassNotFoundException ⇒ servletContext.log(errorMsg("cannot be found"), e)
+          case e: NoSuchMethodException ⇒ servletContext.log(errorMsg("neither defines a constructor with a single " +
+            "`javax.servlet.ServletContext` parameter nor a default constructor"), e)
         }
       } catch {
-        case NonFatal(e) => servletContext.log(e.getMessage, e)
+        case NonFatal(e) ⇒ servletContext.log(e.getMessage, e)
       }
     }
   }

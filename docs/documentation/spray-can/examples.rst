@@ -27,6 +27,9 @@ Follow these steps to run it on your machine:
 
     sbt "project simple-http-client" run
 
+   (If this doesn't work for you your SBT runner cannot deal with grouped arguments. In this case you'll have to
+   run the commands ``project simple-http-client`` and ``run`` sequentially "inside" of SBT.)
+
 4. Type either **1**, **2** or **3** and press **RETURN**
 
 
@@ -51,6 +54,9 @@ Follow these steps to run it on your machine:
 3. Run SBT::
 
     sbt "project simple-http-server" run
+
+   (If this doesn't work for you your SBT runner cannot deal with grouped arguments. In this case you'll have to
+   run the commands ``project simple-http-server`` and ``run`` sequentially "inside" of SBT.)
 
 4. Browse to http://127.0.0.1:8080/
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,25 +16,42 @@
 
 package spray.servlet
 
-import com.typesafe.config.Config
-import spray.util.ConfigUtils
+import com.typesafe.config.{ ConfigFactory, Config }
+import scala.concurrent.duration.Duration
+import akka.actor.ActorSystem
+import spray.util._
 
+case class ConnectorSettings(
+    bootClass: String,
+    requestTimeout: Duration,
+    timeoutTimeout: Duration,
+    timeoutHandler: String,
+    rootPath: String,
+    remoteAddressHeader: Boolean,
+    verboseErrorMessages: Boolean,
+    maxContentLength: Long) {
 
-class ConnectorSettings(config: Config) {
-  protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.servlet")
-
-  val BootClass            = c getString       "boot-class"
-  val RequestTimeout       = c getMilliseconds "request-timeout"
-  val TimeoutTimeout       = c getMilliseconds "timeout-timeout"
-  val RootPath             = c getString       "root-path"
-  val TimeoutHandler       = c getString       "timeout-handler"
-  val RemoteAddressHeader  = c getBoolean      "remote-address-header"
-  val VerboseErrorMessages = c getBoolean      "verbose-error-messages"
-  val MaxContentLength     = c getBytes        "max-content-length"
-
-  require(!BootClass.isEmpty,
+  require(!bootClass.isEmpty,
     "No boot class configured. Please specify a boot class FQN in the spray.servlet.boot-class config setting.")
-  require(RequestTimeout >= 0, "request-timeout must be >= 0")
-  require(TimeoutTimeout >= 0, "timeout-timeout must be >= 0")
-  require(MaxContentLength > 0, "max-content-length must be > 0")
+  requirePositiveOrUndefined(requestTimeout)
+  requirePositiveOrUndefined(timeoutTimeout)
+  require(maxContentLength > 0, "max-content-length must be > 0")
+}
+
+object ConnectorSettings {
+  def apply(system: ActorSystem): ConnectorSettings =
+    apply(system.settings.config getConfig "spray.servlet")
+
+  def apply(config: Config): ConnectorSettings = {
+    val c = config withFallback ConfigFactory.defaultReference(getClass.getClassLoader)
+    ConnectorSettings(
+      c getString "boot-class",
+      c getDuration "request-timeout",
+      c getDuration "timeout-timeout",
+      c getString "timeout-handler",
+      c getString "root-path",
+      c getBoolean "remote-address-header",
+      c getBoolean "verbose-error-messages",
+      c getBytes "max-content-length")
+  }
 }

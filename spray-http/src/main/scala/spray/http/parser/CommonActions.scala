@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,24 +21,24 @@ import spray.http.MediaTypes._
 import org.parboiled.errors.ParsingException
 
 private[parser] trait CommonActions {
-  
+
   def getMediaType(mainType: String, subType: String, boundary: Option[String] = None): MediaType = {
     mainType.toLowerCase match {
-      case "multipart" => subType.toLowerCase match {
-        case "mixed"       => new `multipart/mixed`      (boundary)
-        case "alternative" => new `multipart/alternative`(boundary)
-        case "related"     => new `multipart/related`    (boundary)
-        case "form-data"   => new `multipart/form-data`  (boundary)
-        case "signed"      => new `multipart/signed`     (boundary)
-        case "encrypted"   => new `multipart/encrypted`  (boundary)
-        case custom        => new MultipartMediaType(custom, boundary)
+      case "multipart" ⇒ subType.toLowerCase match {
+        case "mixed"       ⇒ new `multipart/mixed`(boundary)
+        case "alternative" ⇒ new `multipart/alternative`(boundary)
+        case "related"     ⇒ new `multipart/related`(boundary)
+        case "form-data"   ⇒ new `multipart/form-data`(boundary)
+        case "signed"      ⇒ new `multipart/signed`(boundary)
+        case "encrypted"   ⇒ new `multipart/encrypted`(boundary)
+        case custom        ⇒ new MultipartMediaType(custom, boundary)
       }
-      case mainLower =>
+      case mainLower ⇒
         MediaTypes.getForKey((mainLower, subType.toLowerCase)).getOrElse(new CustomMediaType(mainType, subType))
     }
   }
 
-  val getCharset: String => HttpCharset = { charsetName =>
+  val getCharset: String ⇒ HttpCharset = { charsetName ⇒
     HttpCharsets
       .getForKey(charsetName.toLowerCase)
       .orElse(HttpCharsets.CustomHttpCharset(charsetName))

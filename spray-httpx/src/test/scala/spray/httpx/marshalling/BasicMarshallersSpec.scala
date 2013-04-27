@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,31 +20,30 @@ import org.specs2.mutable.Specification
 import spray.http._
 import MediaTypes._
 
-
 class BasicMarshallersSpec extends Specification {
-  
+
   "The StringMarshaller" should {
-    "encode strings to `text/plain` content in ISO-8859-1 if the client accepts it" in {
-      marshal("Hällö") === Right(HttpBody("Hällö"))
+    "encode strings to `text/plain` content in UTF-8 if the client accepts it" in {
+      marshal("Ha“llo") === Right(HttpEntity("Ha“llo"))
     }
   }
 
   "The CharArrayMarshaller" should {
-    "encode char arrays to `text/plain` content in ISO-8859-1 if the client accepts it" in {
-      marshal("Hällö".toCharArray) === Right(HttpBody("Hällö"))
+    "encode char arrays to `text/plain` content in UTF-8 if the client accepts it" in {
+      marshal("Ha“llo".toCharArray) === Right(HttpEntity("Ha“llo"))
     }
   }
 
   "The NodeSeqMarshaller" should {
-    "encode xml snippets to `text/xml` content in ISO-8859-1 if the client accepts it" in {
-      marshal(<employee><nr>1</nr></employee>) === Right(HttpBody(`text/xml`, "<employee><nr>1</nr></employee>"))
+    "encode xml snippets to `text/xml` content in UTF-8 if the client accepts it" in {
+      marshal(<employee><nr>Ha“llo</nr></employee>) === Right(HttpEntity(`text/xml`, "<employee><nr>Ha“llo</nr></employee>"))
     }
   }
 
   "The FormDataMarshaller" should {
     "properly marshal FormData instances to application/x-www-form-urlencoded entity bodies" in {
       marshal(FormData(Map("name" -> "Bob", "pass" -> "x?!54", "admin" -> ""))) ===
-        Right(HttpBody(`application/x-www-form-urlencoded`, "name=Bob&pass=x%3F%2154&admin="))
+        Right(HttpEntity(`application/x-www-form-urlencoded`, "name=Bob&pass=x%3F%2154&admin="))
     }
   }
 

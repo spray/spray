@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,7 @@
 package spray.routing
 
 import akka.event.LoggingAdapter
-import spray.util.{LoggingContext, EOL}
-
+import spray.util.EOL
 
 class DebuggingDirectivesSpec extends RoutingSpec {
   sequential
@@ -27,7 +26,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
 
   def resetDebugMsg() { debugMsg = "" }
 
-  implicit val log: LoggingContext = new LoggingAdapter {
+  implicit val log = new LoggingAdapter {
     def isErrorEnabled = true
     def isWarningEnabled = true
     def isInfoEnabled = true
@@ -44,7 +43,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
     "produce a proper log message for incoming requests" in {
       Get("/hello") ~> logRequest("1") { completeOk } ~> check {
         response === Ok
-        debugMsg === "1: HttpRequest(GET, /hello, List(), EmptyEntity, HTTP/1.1)\n"
+        debugMsg === "1: HttpRequest(GET,/hello,List(),EmptyEntity,HTTP/1.1)\n"
       }
     }
   }
@@ -65,7 +64,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
       Get("/hello") ~> logRequestResponse("3") { completeOk } ~> check {
         response === Ok
         debugMsg === """|3: Response for
-                        |  Request : HttpRequest(GET, /hello, List(), EmptyEntity, HTTP/1.1)
+                        |  Request : HttpRequest(GET,/hello,List(),EmptyEntity,HTTP/1.1)
                         |  Response: HttpResponse(StatusCode(200, OK),EmptyEntity,List(),HTTP/1.1)
                         |""".stripMargin.replace(EOL, "\n")
       }

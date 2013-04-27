@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,20 @@
 
 package spray.util
 
-import akka.event.{Logging, LoggingAdapter}
-import akka.actor.{ActorRefFactory, ActorContext, ActorSystem}
+import akka.event.{ Logging, LoggingAdapter }
+import akka.actor._
 
-
+/**
+ * A LoggingAdapter that can be implicitly supplied from an implicitly available
+ * ActorRefFactory (i.e. ActorSystem or ActorContext).
+ * Also, it supports optional reformating of ActorPath strings from slash-separated
+ * to dot-separated, which opens them up to the hierarchy-based logger configuration
+ * of frameworks like logback or log4j.
+ */
 trait LoggingContext extends LoggingAdapter
 
-object LoggingContext extends LoggingContextLowerOrderImplicits {
-
-  implicit def fromAdapter(la: LoggingAdapter) = new LoggingContext {
+object LoggingContext extends LoggingContextLowerOrderImplicit1 {
+  implicit def fromAdapter(implicit la: LoggingAdapter) = new LoggingContext {
     def isErrorEnabled = la.isErrorEnabled
     def isWarningEnabled = la.isWarningEnabled
     def isInfoEnabled = la.isInfoEnabled
@@ -38,12 +43,39 @@ object LoggingContext extends LoggingContextLowerOrderImplicits {
   }
 }
 
-private[util] sealed abstract class LoggingContextLowerOrderImplicits {
-  this: LoggingContext.type =>
+private[util] sealed abstract class LoggingContextLowerOrderImplicit1 extends LoggingContextLowerOrderImplicit2 {
+  this: LoggingContext.type ⇒
 
   implicit def fromActorRefFactory(implicit refFactory: ActorRefFactory) =
     refFactory match {
-      case x: ActorSystem => fromAdapter(x.log)
-      case x: ActorContext => fromAdapter(Logging(x.system, x.self))
+      case x: ActorSystem  ⇒ fromActorSystem(x)
+      case x: ActorContext ⇒ fromActorContext(x)
     }
+
+  def fromActorSystem(system: ActorSystem) = fromAdapter(system.log)
+
+  def fromActorContext(context: ActorContext) = fromAdapter {
+    val system = context.system
+    val path = context.self.path.toString
+    val settings = UtilSettings(system)
+    if (settings.logActorPathsWithDots) {
+      val fixedPath = path.substring(7).replace('/', '.') // drop the `akka://` prefix and replace slashes
+      val logSource = if (settings.logActorSystemName) system.toString + '.' + fixedPath else fixedPath
+      Logging(system.eventStream, logSource)
+    } else if (settings.logActorSystemName) Logging(system, path) else Logging(system.eventStream, path)
+  }
+}
+
+private[util] sealed abstract class LoggingContextLowerOrderImplicit2 {
+  this: LoggingContext.type ⇒
+
+  implicit val NoLogging = fromAdapter(akka.event.NoLogging)
+}
+
+/**
+ * Trait that can be mixed into an Actor to easily obtain a reference to a spray-level logger,
+ * which is available under the name "log".
+ */
+trait SprayActorLogging { this: Actor ⇒
+  val log: LoggingAdapter = LoggingContext.fromActorContext(context)
 }

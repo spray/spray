@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,15 +29,15 @@ import MediaTypes._
  */
 trait SprayJsonSupport {
 
-  implicit def sprayJsonUnmarshaller[T :RootJsonReader] =
+  implicit def sprayJsonUnmarshaller[T: RootJsonReader] =
     Unmarshaller[T](`application/json`) {
-      case x: HttpBody =>
+      case x: HttpBody ⇒
         val json = JsonParser(x.asString)
         jsonReader[T].read(json)
     }
 
   implicit def sprayJsonMarshaller[T](implicit writer: RootJsonWriter[T], printer: JsonPrinter = PrettyPrinter) =
-    Marshaller.delegate[T, String](`application/json`) { value =>
+    Marshaller.delegate[T, String](ContentType.`application/json`) { value ⇒
       val json = writer.write(value)
       printer(json)
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,14 +19,13 @@ package spray
 import scala.concurrent.Future
 import spray.http._
 
-
 package object client {
-
-  type SendReceive = HttpRequest => Future[HttpResponse]
-
+  type SendReceive = HttpRequest ⇒ Future[HttpResponse]
 }
 
 package client {
+
   class PipelineException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
   class UnsuccessfulResponseException(val responseStatus: StatusCode) extends RuntimeException
+
 }

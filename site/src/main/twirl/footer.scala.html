@@ -9,7 +9,7 @@
         <div class="span8 footNav">
           <a href="/">Home</a><span>&#124;</span>
 
-          @spray.site.RootNode.children.map { node =>
+          @spray.site.Main.root.children.map { node =>
             <a href="@node.absoluteUri">@node.name</a><span>&#124;</span>
           }
 

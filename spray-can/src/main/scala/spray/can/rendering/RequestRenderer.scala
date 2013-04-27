@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,51 +16,70 @@
 
 package spray.can.rendering
 
-import java.nio.ByteBuffer
-import spray.io.BufferBuilder
+import java.net.InetSocketAddress
+import scala.annotation.tailrec
+import akka.util.ByteStringBuilder
 import spray.http._
+import MessageRendering._
+import HttpHeaders._
 
+class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) {
 
-class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) extends MessageRendering {
-
-  def render(ctx: HttpRequestPartRenderingContext): RenderedMessagePart = {
-    ctx.requestPart match {
-      case x: HttpRequest => renderRequest(x, ctx.host, ctx.port)
-      case x: ChunkedRequestStart => renderChunkedRequestStart(x.request, ctx.host, ctx.port)
-      case x: MessageChunk => renderChunk(x, requestSizeHint)
-      case x: ChunkedMessageEnd => renderFinalChunk(x, requestSizeHint)
+  def render(requestPart: HttpRequestPart, remoteAddress: InetSocketAddress): RenderedMessagePart = {
+    requestPart match {
+      case x: HttpRequest         ⇒ renderRequest(x, remoteAddress)
+      case x: ChunkedRequestStart ⇒ renderChunkedRequestStart(x.request, remoteAddress)
+      case x: MessageChunk        ⇒ renderChunk(x, requestSizeHint)
+      case x: ChunkedMessageEnd   ⇒ renderFinalChunk(x, requestSizeHint)
     }
   }
 
-  private def renderRequest(request: HttpRequest, host: String, port: Int) = {
-    val bb = renderRequestStart(request, host, port)
-    val rbl = request.entity.buffer.length
-    RenderedMessagePart {
-      if (rbl > 0) {
-        appendHeader("Content-Length", rbl.toString, bb).append(MessageRendering.CrLf)
-        if (bb.remainingCapacity >= rbl) bb.append(request.entity.buffer).toByteBuffer :: Nil
-        else bb.toByteBuffer :: ByteBuffer.wrap(request.entity.buffer) :: Nil
-      } else bb.append(MessageRendering.CrLf).toByteBuffer :: Nil
+  private def renderRequest(request: HttpRequest, remoteAddress: InetSocketAddress) = {
+    implicit val bb = renderRequestStart(request, remoteAddress)
+    val bodyLength = request.entity.buffer.length
+    if (bodyLength > 0 || request.method.entityAccepted) putHeader("Content-Length", bodyLength.toString)
+    put(CrLf).put(request.entity.buffer)
+    RenderedMessagePart(bb.result())
+  }
+
+  private def renderChunkedRequestStart(request: HttpRequest, remoteAddress: InetSocketAddress): RenderedMessagePart = {
+    implicit val bb = renderRequestStart(request, remoteAddress)
+    putHeader("Transfer-Encoding", "chunked").put(CrLf)
+    if (request.entity.buffer.length > 0) putChunk(request.entity.buffer)
+    RenderedMessagePart(bb.result())
+  }
+
+  private def renderRequestStart(request: HttpRequest, remoteAddress: InetSocketAddress): ByteStringBuilder = {
+    import request._
+    implicit val bb = newByteStringBuilder(requestSizeHint)
+    // TODO: extend Uri to directly render into byte array
+    val uriWithoutFragment = if (uri.fragment.isEmpty) uri else uri.copy(fragment = None)
+    put(method.value).put(' ').put(uriWithoutFragment.toString).put(' ').put(protocol.value).put(CrLf)
+    val hostHeaderPresent = putHeadersAndReturnHostHeaderPresent(headers, !request.entity.isEmpty)
+    if (!hostHeaderPresent) {
+      put("Host: ").put(remoteAddress.getHostName)
+      val port = remoteAddress.getPort
+      if (port != 0) put(':').put(Integer.toString(port))
+      put(CrLf)
     }
+    if (!userAgentHeader.isEmpty) putHeader("User-Agent", userAgentHeader)
+    putContentTypeHeaderIfRequired(request.entity)
+    bb
   }
 
-  private def renderChunkedRequestStart(request: HttpRequest, host: String, port: Int) = {
-    val bb = renderRequestStart(request, host, port)
-    appendHeader("Transfer-Encoding", "chunked", bb).append(MessageRendering.CrLf)
-    val body = request.entity.buffer
-    if (body.length > 0) renderChunk(Nil, body, bb)
-    RenderedMessagePart(bb.toByteBuffer :: Nil)
-  }
-
-  private def renderRequestStart(request: HttpRequest, host: String, port: Int) = {
-    import request.{host => _, port => _, _}
-    val bb = BufferBuilder(requestSizeHint)
-    bb.append(method.value).append(' ').append(uri).append(' ').append(protocol.value).append(MessageRendering.CrLf)
-    appendHeaders(headers, bb)
-    bb.append("Host: ").append(host)
-    if (port != 80) bb.append(':').append(Integer.toString(port))
-    bb.append(MessageRendering.CrLf)
-    if (!userAgentHeader.isEmpty) appendHeader("User-Agent", userAgentHeader, bb)
-    appendContentTypeHeaderIfRequired(request.entity, bb)
-  }
+  @tailrec
+  private def putHeadersAndReturnHostHeaderPresent(headers: List[HttpHeader], entityPresent: Boolean, hostHeaderPresent: Boolean = false)(implicit bb: ByteStringBuilder): Boolean =
+    headers match {
+      case Nil ⇒ hostHeaderPresent
+      case head :: tail ⇒
+        val found = head.lowercaseName match {
+          case "content-type" if entityPresent          ⇒ false // we never render these headers here,
+          case "content-length"                         ⇒ false // because their production is the
+          case "transfer-encoding"                      ⇒ false // responsibility of the spray-can layer,
+          case "user-agent" if !userAgentHeader.isEmpty ⇒ false // not the user
+          case "host"                                   ⇒ put(head); true
+          case _                                        ⇒ put(head); false
+        }
+        putHeadersAndReturnHostHeaderPresent(tail, entityPresent, found || hostHeaderPresent)
+    }
 }

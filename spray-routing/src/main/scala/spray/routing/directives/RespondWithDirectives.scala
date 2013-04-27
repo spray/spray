@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package directives
 
 import shapeless.HNil
 import spray.http._
-
 
 trait RespondWithDirectives {
   import BasicDirectives._
@@ -42,7 +41,7 @@ trait RespondWithDirectives {
    * if the response from the inner Route doesn't already contain a header with the same name.
    */
   def respondWithSingletonHeader(responseHeader: HttpHeader): Directive0 =
-    mapHttpResponseHeaders { headers =>
+    mapHttpResponseHeaders { headers ⇒
       if (headers.exists(_.name == responseHeader.name)) headers
       else responseHeader :: headers
     }
@@ -61,8 +60,8 @@ trait RespondWithDirectives {
    */
   def respondWithSingletonHeaders(responseHeaders: HttpHeader*): Directive0 = {
     val headersToAdd = responseHeaders.toList
-    mapHttpResponseHeaders { headers =>
-      headersToAdd.filterNot(h => headers.exists(_.is(h.lowercaseName))) ::: headers
+    mapHttpResponseHeaders { headers ⇒
+      headersToAdd.filterNot(h ⇒ headers.exists(_.is(h.lowercaseName))) ::: headers
     }
   }
 
@@ -79,8 +78,8 @@ trait RespondWithDirectives {
     extract(_.request.isMediaTypeAccepted(mediaType)).flatMap[HNil] {
       if (_) pass else reject(UnacceptedResponseContentTypeRejection(ContentType(mediaType) :: Nil))
     } &
-    mapRequest(_.mapHeaders(h => if (h.exists(_.is("accept"))) h.filter(_.isNot("accept")) else h)) &
-    mapHttpResponseEntity(_.map((ct, buf) => (ct.withMediaType(mediaType), buf)))
+      mapRequest(_.mapHeaders(h ⇒ if (h.exists(_.is("accept"))) h.filter(_.isNot("accept")) else h)) &
+      mapHttpResponseEntity(_.flatMap { case HttpBody(ct, buf) ⇒ HttpEntity(ct.withMediaType(mediaType), buf) })
 
 }
 

@@ -12,6 +12,7 @@ import spray.util._
 
 class CachingExamplesSpec extends Specification {
   implicit val system = ActorSystem() // example-1
+  import system.dispatcher
 
   "example-1" in {
 

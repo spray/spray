@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,10 @@
 package spray.testkit
 
 import org.scalatest.exceptions.TestFailedException
-import org.scalatest.{Suite, BeforeAndAfterAll}
-
+import org.scalatest.{ Suite, BeforeAndAfterAll }
 
 trait ScalatestInterface extends TestFrameworkInterface with BeforeAndAfterAll {
-  this: Suite =>
+  this: Suite ⇒
 
   def failTest(msg: String) = throw new TestFailedException(msg, 11)
 

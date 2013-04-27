@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package spray.util
 package pimps
 
-import java.lang.reflect.{GenericArrayType, ParameterizedType, Type, Array => RArray}
+import java.lang.reflect.{ GenericArrayType, ParameterizedType, Type, Array ⇒ RArray }
 
 class PimpedClass[A](underlying: Class[A]) {
 
@@ -32,47 +32,46 @@ class PimpedClass[A](underlying: Class[A]) {
 
     // Get the underlying class for t, or None if t is a variable type.
     def getClass(t: Type): Option[Class[_]] = t match {
-      case x: Class[_] => Some(x)
-      case x: ParameterizedType => getClass(x.getRawType)
-      case x: GenericArrayType => getClass(x.getGenericComponentType).map(c => RArray.newInstance(c, 0).getClass())
-      case _ => None
+      case x: Class[_]          ⇒ Some(x)
+      case x: ParameterizedType ⇒ getClass(x.getRawType)
+      case x: GenericArrayType  ⇒ getClass(x.getGenericComponentType).map(c ⇒ RArray.newInstance(c, 0).getClass())
+      case _                    ⇒ None
     }
 
     // the Type parameters for t along with a map of type parameters to type arguments
     def typeArguments(t: Type): Option[(List[Type], Map[Type, Type])] = t match {
-      case x if getClass(x) == Some(base) => {
+      case x if getClass(x) == Some(base) ⇒ {
         // terminate recursion
         x match {
-          case x: Class[_] => Some((x.getTypeParameters.toList, Map.empty[Type, Type]))
-          case p: ParameterizedType => Some(
+          case x: Class[_] ⇒ Some((x.getTypeParameters.toList, Map.empty[Type, Type]))
+          case p: ParameterizedType ⇒ Some(
             (p.getActualTypeArguments.toList,
-              p.getRawType.asInstanceOf[Class[_]].getTypeParameters.zip(p.getActualTypeArguments).toMap)
-          )
+              p.getRawType.asInstanceOf[Class[_]].getTypeParameters.zip(p.getActualTypeArguments).toMap))
         }
       }
-      case x: Class[_] => {
+      case x: Class[_] ⇒ {
         val supers = Option(x.getGenericSuperclass).toList ::: x.getGenericInterfaces.toList
         supers.mapFind(typeArguments(_))
       }
-      case p: ParameterizedType => {
+      case p: ParameterizedType ⇒ {
         val clazz = p.getRawType.asInstanceOf[Class[_]]
         typeArguments(clazz).map {
-          case (actualTypeArguments, params2args) =>
+          case (actualTypeArguments, params2args) ⇒
             (actualTypeArguments, params2args ++ clazz.getTypeParameters.zip(p.getActualTypeArguments))
         }
       }
-      case _ => None
+      case _ ⇒ None
     }
 
     def resolve(t: Type, params2args: Map[Type, Type]): Type = params2args.get(t) match {
-      case Some(x) => resolve(x, params2args)
-      case None => t
+      case Some(x) ⇒ resolve(x, params2args)
+      case None    ⇒ t
     }
 
     typeArguments(underlying).map {
-      case (typeArgs, params2args) =>
+      case (typeArgs, params2args) ⇒
         typeArgs.map {
-          baseType => getClass(resolve(baseType, params2args))
+          baseType ⇒ getClass(resolve(baseType, params2args))
         }
     }.getOrElse(Nil)
   }

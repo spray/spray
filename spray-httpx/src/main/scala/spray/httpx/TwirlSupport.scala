@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,9 @@
 package spray.httpx
 
 import marshalling.Marshaller
-import twirl.api.{Xml, Txt, Html}
+import twirl.api.{ Xml, Txt, Html }
 import spray.http._
 import MediaTypes._
-
 
 /**
  * A trait providing Marshallers for the Twirl template result types.

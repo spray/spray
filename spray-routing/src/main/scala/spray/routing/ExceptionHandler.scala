@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,15 @@
 
 package spray.routing
 
-import akka.event.LoggingAdapter
 import scala.util.control.NonFatal
+import spray.util.LoggingContext
 import spray.http._
 import StatusCodes._
-
 
 trait ExceptionHandler extends ExceptionHandler.PF
 
 object ExceptionHandler {
-  type PF = PartialFunction[Throwable, LoggingAdapter => Route]
+  type PF = PartialFunction[Throwable, Route]
 
   implicit def fromPF(pf: PF): ExceptionHandler =
     new ExceptionHandler {
@@ -33,21 +32,20 @@ object ExceptionHandler {
       def apply(error: Throwable) = pf(error)
     }
 
-  implicit def default(implicit settings: RoutingSettings) = fromPF {
-    case x@ IllegalRequestException(status, summary, detail) => log => ctx =>
-      log.warning("Illegal request {}\n\t{}: {}\n\tCompleting with '{}' response",
-        ctx.request, summary, detail, status)
-      val msg = if (settings.VerboseErrorMessages) x.getMessage else summary
-      ctx.complete(status, msg)
+  implicit def default(implicit settings: RoutingSettings, log: LoggingContext): ExceptionHandler =
+    fromPF {
+      case e: IllegalRequestException ⇒ ctx ⇒
+        log.warning("Illegal request {}\n\t{}\n\tCompleting with '{}' response",
+          ctx.request, e.getMessage, e.status)
+        ctx.complete(e.status, e.info.format(settings.verboseErrorMessages))
 
-    case RequestProcessingException(status, message) => log => ctx =>
-      log.warning("Request {} could not be handled normally\n\t{}\n\tCompleting with '{}' response",
-        ctx.request, message, status)
-      ctx.complete(status, message)
+      case e: RequestProcessingException ⇒ ctx ⇒
+        log.warning("Request {} could not be handled normally\n\t{}\n\tCompleting with '{}' response",
+          ctx.request, e.getMessage, e.status)
+        ctx.complete(e.status, e.info.format(settings.verboseErrorMessages))
 
-    case NonFatal(e) => log => ctx =>
-      log.error(e, "Error during processing of request {}", ctx.request)
-      ctx.complete(InternalServerError)
-  }
-
+      case NonFatal(e) ⇒ ctx ⇒
+        log.error(e, "Error during processing of request {}", ctx.request)
+        ctx.complete(InternalServerError)
+    }
 }

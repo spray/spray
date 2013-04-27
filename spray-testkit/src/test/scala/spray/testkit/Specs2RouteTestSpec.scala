@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,11 @@
 package spray.testkit
 
 import org.specs2.mutable.Specification
-import spray.routing.{MethodRejection, RequestContext, Directives}
+import spray.routing.{ MethodRejection, RequestContext, Directives }
 import spray.http._
 import HttpMethods._
 import MediaTypes._
 import HttpCharsets._
-
 
 class Specs2RouteTestSpec extends Specification with Directives with Specs2RouteTest {
 
@@ -34,7 +33,7 @@ class Specs2RouteTestSpec extends Specification with Directives with Specs2Route
 
     "a basic directive" in {
       Get() ~> complete("abc") ~> check {
-        body === HttpBody(ContentType(`text/plain`, `ISO-8859-1`), "abc")
+        body === HttpEntity(ContentType(`text/plain`, `UTF-8`), "abc")
       }
     }
 
@@ -46,5 +45,5 @@ class Specs2RouteTestSpec extends Specification with Directives with Specs2Route
       }
     }
   }
-  
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,26 +21,25 @@ import HttpHeaders._
 import MediaTypes._
 import HttpCharsets._
 
-
 class CharsetNegotiationSpec extends RoutingSpec {
 
   val Hällo = complete("Hällö")
 
   "The framework" should {
-    "encode text content using ISO-8859-1 if no Accept-Charset header is present in the request" in {
+    "encode text content using UTF-8 if no Accept-Charset header is present in the request" in {
       Get() ~> Hällo ~> check {
-        body === HttpBody(ContentType(`text/plain`, `ISO-8859-1`), "Hällö")
+        body === HttpEntity(ContentType(`text/plain`, `UTF-8`), "Hällö")
       }
     }
-    "encode text content using ISO-8859-1 if the Accept-Charset header contains '*'" in {
-      Get() ~> `Accept-Charset`(`UTF-8`, `*`) ~> Hällo ~> check {
-        contentType === ContentType(`text/plain`, `ISO-8859-1`)
+    "encode text content using UTF-8 if the Accept-Charset header contains '*'" in {
+      Get() ~> `Accept-Charset`(`ISO-8859-1`, `*`) ~> Hällo ~> check {
+        contentType === ContentType(`text/plain`, `UTF-8`)
         entityAs[String] === "Hällö"
       }
     }
     "encode text content using the first charset in the Accept-Charset header if '*' is not present" in {
-      Get() ~> `Accept-Charset`(`UTF-8`) ~> Hällo ~> check {
-        contentType === ContentType(`text/plain`, `UTF-8`)
+      Get() ~> `Accept-Charset`(`ISO-8859-1`) ~> Hällo ~> check {
+        contentType === ContentType(`text/plain`, `ISO-8859-1`)
         entityAs[String] === "Hällö"
       }
     }

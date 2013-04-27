@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,17 +22,17 @@ import org.parboiled.scala._
 import BasicRules._
 
 private[parser] trait WwwAuthenticateHeader {
-  this: Parser with AdditionalRules =>
+  this: Parser with AdditionalRules ⇒
 
-  def WWW_AUTHENTICATE = rule {
+  def `*WWW-Authenticate` = rule {
     oneOrMore(Challenge, separator = ListSep) ~ EOI ~~> (HttpHeaders.`WWW-Authenticate`(_))
   }
-  
+
   def Challenge = rule {
-    AuthScheme ~ zeroOrMore(AuthParam, separator = ListSep) ~~> { (scheme, params) =>
+    AuthScheme ~ zeroOrMore(AuthParam, separator = ListSep) ~~> { (scheme, params) ⇒
       val (realms, otherParams) = params.partition(_._1 == "realm")
       HttpChallenge(scheme, realms.headOption.map(_._2).getOrElse(""), otherParams.toMap)
     }
   }
-  
+
 }

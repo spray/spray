@@ -8,8 +8,6 @@ MiscDirectives
 
    cancelAllRejections
    clientIP
-   headerValue
-   headerValuePF
    jsonpWithParameter
    rejectEmptyRequests
    rejectEmptyResponse

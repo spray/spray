@@ -36,6 +36,8 @@ the :ref:`-handleRejections-` directive, if there was no way for the request to 
 __ https://github.com/spray/spray/blob/master/spray-routing/src/main/scala/spray/routing/Rejection.scala
 
 
+.. _RejectionHandler:
+
 RejectionHandler
 ----------------
 

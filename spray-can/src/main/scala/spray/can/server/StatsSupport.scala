@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,28 +16,25 @@
 package spray.can.server
 
 import java.util.concurrent.atomic.AtomicLong
-import java.util.concurrent.TimeUnit._
 import scala.annotation.tailrec
-import scala.concurrent.duration.Duration
-import spray.http.{Timeout, HttpMessageStart}
+import scala.concurrent.duration._
+import spray.http.{ Timedout, HttpMessageStart }
 import spray.can.rendering.HttpResponsePartRenderingContext
 import spray.can.server.RequestParsing.HttpMessageStartEvent
-import spray.util.ConnectionCloseReasons.IdleTimeout
 import spray.io._
-
+import spray.can.Http
 
 object StatsSupport {
 
   class StatsHolder {
-    val startTimestamp     = System.currentTimeMillis
-    val requestStarts      = new AtomicLong
-    val responseStarts     = new AtomicLong
-    val maxOpenRequests    = new AtomicLong
-    val connectionsOpened  = new AtomicLong
-    val connectionsClosed  = new AtomicLong
+    val startTimestamp = System.currentTimeMillis
+    val requestStarts = new AtomicLong
+    val responseStarts = new AtomicLong
+    val maxOpenRequests = new AtomicLong
+    val connectionsOpened = new AtomicLong
+    val connectionsClosed = new AtomicLong
     val maxOpenConnections = new AtomicLong
-    val requestTimeouts    = new AtomicLong
-    val idleTimeouts       = new AtomicLong
+    val requestTimeouts = new AtomicLong
 
     @tailrec
     final def adjustMaxOpenConnections() {
@@ -59,17 +56,15 @@ object StatsSupport {
         if (!maxOpenRequests.compareAndSet(mor, currentMor)) adjustMaxOpenRequests()
     }
 
-    def toStats = HttpServer.Stats(
-      uptime = Duration(System.currentTimeMillis - startTimestamp, MILLISECONDS),
+    def toStats = Stats(
+      uptime = (System.currentTimeMillis - startTimestamp) millis span,
       totalRequests = requestStarts.get,
       openRequests = requestStarts.get - responseStarts.get,
       maxOpenRequests = maxOpenRequests.get,
       totalConnections = connectionsOpened.get,
       openConnections = connectionsOpened.get - connectionsClosed.get,
       maxOpenConnections = maxOpenConnections.get,
-      requestTimeouts = requestTimeouts.get,
-      idleTimeouts = idleTimeouts.get
-    )
+      requestTimeouts = requestTimeouts.get)
 
     def clear() {
       requestStarts.set(0L)
@@ -79,43 +74,51 @@ object StatsSupport {
       connectionsClosed.set(0L)
       maxOpenConnections.set(0L)
       requestTimeouts.set(0L)
-      idleTimeouts.set(0L)
     }
   }
 
   def apply(holder: StatsHolder): PipelineStage =
     new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           import holder._
           connectionsOpened.incrementAndGet()
           adjustMaxOpenConnections()
 
           val commandPipeline: CPL = {
-            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageStart] =>
+            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageStart] ⇒
               responseStarts.incrementAndGet()
               commandPL(x)
 
-            case x: IOServer.Tell if x.message.isInstanceOf[Timeout] =>
+            case x @ Pipeline.Tell(_, _: Timedout, _) ⇒
               requestTimeouts.incrementAndGet()
               commandPL(x)
 
-            case cmd => commandPL(cmd)
+            case cmd ⇒ commandPL(cmd)
           }
 
           val eventPipeline: EPL = {
-            case ev: HttpMessageStartEvent =>
+            case ev: HttpMessageStartEvent ⇒
               requestStarts.incrementAndGet()
               adjustMaxOpenRequests()
               eventPL(ev)
 
-            case x: HttpServer.Closed =>
+            case x: Http.ConnectionClosed ⇒
               connectionsClosed.incrementAndGet()
-              if (x.reason == IdleTimeout) idleTimeouts.incrementAndGet()
               eventPL(x)
 
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
         }
     }
 }
+
+case class Stats(
+  uptime: FiniteDuration,
+  totalRequests: Long,
+  openRequests: Long,
+  maxOpenRequests: Long,
+  totalConnections: Long,
+  openConnections: Long,
+  maxOpenConnections: Long,
+  requestTimeouts: Long)

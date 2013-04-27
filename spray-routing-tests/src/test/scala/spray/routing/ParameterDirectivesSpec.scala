@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package spray.routing
 
 import shapeless.HNil
 
-
 class ParameterDirectivesSpec extends RoutingSpec {
 
   "when used with 'as[Int]' the parameter directive" should {
@@ -35,7 +34,11 @@ class ParameterDirectivesSpec extends RoutingSpec {
     "cause a MalformedQueryParamRejection on illegal Int values" in {
       Get("/?amount=1x3") ~> {
         parameter('amount.as[Int]) { echoComplete }
-      } ~> check { rejection ===  MalformedQueryParamRejection("'1x3' is not a valid 32-bit integer value", "amount") }
+      } ~> check {
+        rejection must beLike {
+          case MalformedQueryParamRejection("amount", "'1x3' is not a valid 32-bit integer value", Some(_)) ⇒ ok
+        }
+      }
     }
     "supply typed default values" in {
       Get() ~> {
@@ -56,7 +59,11 @@ class ParameterDirectivesSpec extends RoutingSpec {
       "cause a MalformedQueryParamRejection on illegal Int values" in {
         Get("/?amount=x") ~> {
           parameter("amount".as[Int]?) { echoComplete }
-        } ~> check { rejection === MalformedQueryParamRejection("'x' is not a valid 32-bit integer value", "amount") }
+        } ~> check {
+          rejection must beLike {
+            case MalformedQueryParamRejection("amount", "'x' is not a valid 32-bit integer value", Some(_)) ⇒ ok
+          }
+        }
       }
     }
   }
@@ -71,7 +78,12 @@ class ParameterDirectivesSpec extends RoutingSpec {
     "cause a MalformedQueryParamRejection on illegal Int values" in {
       Get("/?amount=1x3") ~> {
         parameter('amount.as(HexInt)) { echoComplete }
-      } ~> check { rejection === MalformedQueryParamRejection("'1x3' is not a valid 32-bit hexadecimal integer value", "amount") }
+      } ~> check {
+        rejection must beLike {
+          case MalformedQueryParamRejection("amount",
+            "'1x3' is not a valid 32-bit hexadecimal integer value", Some(_)) ⇒ ok
+        }
+      }
     }
     "supply typed default values" in {
       Get() ~> {
@@ -92,7 +104,12 @@ class ParameterDirectivesSpec extends RoutingSpec {
       "cause a MalformedQueryParamRejection on illegal Int values" in {
         Get("/?amount=x") ~> {
           parameter("amount".as(HexInt)?) { echoComplete }
-        } ~> check { rejection === MalformedQueryParamRejection("'x' is not a valid 32-bit hexadecimal integer value", "amount") }
+        } ~> check {
+          rejection must beLike {
+            case MalformedQueryParamRejection("amount",
+              "'x' is not a valid 32-bit hexadecimal integer value", Some(_)) ⇒ ok
+          }
+        }
       }
     }
   }
@@ -100,35 +117,35 @@ class ParameterDirectivesSpec extends RoutingSpec {
   "The 'parameters' extraction directive" should {
     "extract the value of given parameters" in {
       Get("/?name=Parsons&FirstName=Ellen") ~> {
-        parameters("name", 'FirstName) { (name, firstName) =>
+        parameters("name", 'FirstName) { (name, firstName) ⇒
           complete(firstName + name)
         }
       } ~> check { entityAs[String] === "EllenParsons" }
     }
     "ignore additional parameters" in {
       Get("/?name=Parsons&FirstName=Ellen&age=29") ~> {
-        parameters("name", 'FirstName) { (name, firstName) =>
+        parameters("name", 'FirstName) { (name, firstName) ⇒
           complete(firstName + name)
         }
       } ~> check { entityAs[String] === "EllenParsons" }
     }
     "reject the request with a MissingQueryParamRejection if a required parameters is missing" in {
       Get("/?name=Parsons&sex=female") ~> {
-        parameters('name, 'FirstName, 'age) { (name, firstName, age) =>
+        parameters('name, 'FirstName, 'age) { (name, firstName, age) ⇒
           completeOk
         }
       } ~> check { rejection === MissingQueryParamRejection("FirstName") }
     }
     "supply the default value if an optional parameter is missing" in {
       Get("/?name=Parsons&FirstName=Ellen") ~> {
-        parameters("name"?, 'FirstName, 'age ? "29", 'eyes?) { (name, firstName, age, eyes) =>
+        parameters("name"?, 'FirstName, 'age ? "29", 'eyes?) { (name, firstName, age, eyes) ⇒
           complete(firstName + name + age + eyes)
         }
       } ~> check { entityAs[String] === "EllenSome(Parsons)29None" }
     }
     "supply the default value if an optional parameter is missing (with the general `parameters` directive)" in {
       Get("/?name=Parsons&FirstName=Ellen") ~> {
-        parameters(("name"?) :: 'FirstName :: ('age ? "29") :: ('eyes?) :: HNil) { (name, firstName, age, eyes) =>
+        parameters(("name"?) :: 'FirstName :: ('age ? "29") :: ('eyes?) :: HNil) { (name, firstName, age, eyes) ⇒
           complete(firstName + name + age + eyes)
         }
       } ~> check { entityAs[String] === "EllenSome(Parsons)29None" }
@@ -154,7 +171,7 @@ class ParameterDirectivesSpec extends RoutingSpec {
     "be useable for method tunneling" in {
       val route = {
         (post | parameter('method ! "post")) { complete("POST") } ~
-        get { complete("GET") }
+          get { complete("GET") }
       }
       Get("/?method=post") ~> route ~> check { entityAs[String] === "POST" }
       Post() ~> route ~> check { entityAs[String] === "POST" }

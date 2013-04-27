@@ -56,8 +56,8 @@ should be:
 
 If you write your validations like this *spray-routings* case class extraction logic will properly pick up all error
 messages and generate a ``ValidationRejection`` if something goes wrong. By default, ``ValidationRejections`` are
-converted into ``400 Bad Request`` error response by the default :ref:`ExceptionHandler <Exception Handling>`,
-if no subsequent route successfully handles the request.
+converted into ``400 Bad Request`` error response by the default :ref:`RejectionHandler`, if no subsequent route
+successfully handles the request.
 
 
 Quirk

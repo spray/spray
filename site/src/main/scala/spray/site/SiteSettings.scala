@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,31 @@
 
 package spray.site
 
-import com.typesafe.config.ConfigFactory
-import spray.util.ConfigUtils
+import com.typesafe.config.{ Config, ConfigFactory }
+import akka.actor.ActorSystem
 
+case class SiteSettings(
+    interface: String,
+    port: Int,
+    devMode: Boolean,
+    repoDirs: List[String],
+    nightliesDir: String) {
+
+  require(interface.nonEmpty, "interface must be non-empty")
+  require(0 < port && port < 65536, "illegal port")
+}
 
 object SiteSettings {
-  private val c = ConfigUtils.prepareSubConfig(ConfigFactory.load(), "spray.site")
+  def apply(system: ActorSystem): SiteSettings =
+    apply(system.settings.config getConfig "spray.site")
 
-  val Interface    = c getString  "interface"
-  val Port         = c getInt     "port"
-  val DevMode      = c getBoolean "dev-mode"
-  val RepoDirs     = (c getString "repo-dirs").split(':').toList
-  val NightliesDir = c getString "nightlies-dir"
-
-  require(Interface.nonEmpty, "interface must be non-empty")
-  require(0 < Port && Port < 65536, "illegal port")
+  def apply(config: Config): SiteSettings = {
+    val c = config withFallback ConfigFactory.defaultReference(getClass.getClassLoader)
+    SiteSettings(
+      c getString "interface",
+      c getInt "port",
+      c getBoolean "dev-mode",
+      c getString "repo-dirs" split ':' toList,
+      c getString "nightlies-dir")
+  }
 }

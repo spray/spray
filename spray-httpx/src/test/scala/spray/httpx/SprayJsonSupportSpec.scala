@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ import spray.json._
 import spray.http._
 import spray.httpx.unmarshalling._
 import spray.httpx.marshalling._
+import HttpCharsets._
 import MediaTypes._
-
 
 class SprayJsonSupportSpec extends Specification with SprayJsonSupport {
 
@@ -39,10 +39,10 @@ class SprayJsonSupportSpec extends Specification with SprayJsonSupport {
 
   "The SprayJsonSupport" should {
     "provide unmarshalling capability for case classes with an in-scope JsonFormat" in {
-      HttpBody(`application/json`, employeeJson).as[Employee] === Right(employee)
+      HttpEntity(`application/json`, employeeJson).as[Employee] === Right(employee)
     }
     "provide marshalling capability for case classes with an in-scope JsonFormat" in {
-      marshal(employee) === Right(HttpBody(`application/json`, employeeJson))
+      marshal(employee) === Right(HttpEntity(ContentType(`application/json`, `UTF-8`), employeeJson))
     }
   }
 

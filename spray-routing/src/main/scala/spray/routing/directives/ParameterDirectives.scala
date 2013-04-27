@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,15 @@ package spray.routing
 package directives
 
 import java.lang.IllegalStateException
-import spray.http.QueryParams
 import shapeless._
-
 
 trait ParameterDirectives extends ToNameReceptaclePimps {
 
   /**
    * Extracts the requests query parameters as a Map[String, String].
    */
-  def parameterMap: Directive[QueryParams :: HNil] =
-    BasicDirectives.extract(_.request.queryParams)
+  def parameterMap: Directive[Map[String, String] :: HNil] =
+    BasicDirectives.extract(_.request.uri.query.toMap)
 
   /**
    * Rejects the request if the query parameter matcher(s) defined by the definition(s) don't match.
@@ -46,7 +44,6 @@ trait ParameterDirectives extends ToNameReceptaclePimps {
 
 object ParameterDirectives extends ParameterDirectives
 
-
 trait ParamDefMagnet {
   type Out
   def apply(): Out
@@ -57,7 +54,6 @@ object ParamDefMagnet {
     def apply() = pdm2(value)
   }
 }
-
 
 trait ParamDefMagnet2[T] {
   type Out
@@ -70,68 +66,62 @@ object ParamDefMagnet2 {
   }
 }
 
-
-trait ParamDefMagnetAux[A, B] extends (A => B)
+trait ParamDefMagnetAux[A, B] extends (A ⇒ B)
 
 object ParamDefMagnetAux {
-  import spray.httpx.unmarshalling.{FromStringOptionDeserializer => FSOD, _}
+  import spray.httpx.unmarshalling.{ FromStringOptionDeserializer ⇒ FSOD, _ }
   import BasicDirectives._
   import RouteDirectives._
 
-  def apply[A, B](f: A => B) = new ParamDefMagnetAux[A, B] { def apply(value: A) = f(value) }
-
+  def apply[A, B](f: A ⇒ B) = new ParamDefMagnetAux[A, B] { def apply(value: A) = f(value) }
 
   /************ "regular" parameter extraction ******************/
 
-  private def extractParameter[A, B](f: A => Directive[B :: HNil]) = ParamDefMagnetAux[A, Directive[B :: HNil]](f)
-  private def filter[T](paramName: String, fsod: FSOD[T]): Directive[T :: HNil] =
-    extract(ctx => fsod(ctx.request.queryParams.get(paramName))).flatMap {
-      case Right(x) => provide(x)
-      case Left(ContentExpected) => reject(MissingQueryParamRejection(paramName))
-      case Left(MalformedContent(error, _)) => reject(MalformedQueryParamRejection(error, paramName))
-      case Left(x: UnsupportedContentType) => throw new IllegalStateException(x.toString)
+  private def extractParameter[A, B](f: A ⇒ Directive1[B]) = ParamDefMagnetAux[A, Directive1[B]](f)
+  private def filter[T](paramName: String, fsod: FSOD[T]): Directive1[T] =
+    extract(ctx ⇒ fsod(ctx.request.uri.query.get(paramName))).flatMap {
+      case Right(x)                             ⇒ provide(x)
+      case Left(ContentExpected)                ⇒ reject(MissingQueryParamRejection(paramName))
+      case Left(MalformedContent(error, cause)) ⇒ reject(MalformedQueryParamRejection(paramName, error, cause))
+      case Left(x: UnsupportedContentType)      ⇒ throw new IllegalStateException(x.toString)
     }
-  implicit def forString(implicit fsod: FSOD[String]) = extractParameter[String, String] { string =>
+  implicit def forString(implicit fsod: FSOD[String]) = extractParameter[String, String] { string ⇒
     filter(string, fsod)
   }
-  implicit def forSymbol(implicit fsod: FSOD[String]) = extractParameter[Symbol, String] { symbol =>
+  implicit def forSymbol(implicit fsod: FSOD[String]) = extractParameter[Symbol, String] { symbol ⇒
     filter(symbol.name, fsod)
   }
-  implicit def forNDesR[T] = extractParameter[NameDeserializerReceptacle[T], T] { nr =>
+  implicit def forNDesR[T] = extractParameter[NameDeserializerReceptacle[T], T] { nr ⇒
     filter(nr.name, nr.deserializer)
   }
-  implicit def forNDefR[T](implicit fsod: FSOD[T]) = extractParameter[NameDefaultReceptacle[T], T] { nr =>
+  implicit def forNDefR[T](implicit fsod: FSOD[T]) = extractParameter[NameDefaultReceptacle[T], T] { nr ⇒
     filter(nr.name, fsod.withDefaultValue(nr.default))
   }
-  implicit def forNDesDefR[T] = extractParameter[NameDeserializerDefaultReceptacle[T], T] { nr =>
+  implicit def forNDesDefR[T] = extractParameter[NameDeserializerDefaultReceptacle[T], T] { nr ⇒
     filter(nr.name, nr.deserializer.withDefaultValue(nr.default))
   }
-  implicit def forNR[T](implicit fsod: FSOD[T]) = extractParameter[NameReceptacle[T], T] { nr =>
+  implicit def forNR[T](implicit fsod: FSOD[T]) = extractParameter[NameReceptacle[T], T] { nr ⇒
     filter(nr.name, fsod)
   }
-
 
   /************ required parameter support ******************/
 
   private def requiredFilter(paramName: String, fsod: FSOD[_], requiredValue: Any): Directive0 =
-    extract(ctx => fsod(ctx.request.queryParams.get(paramName))).flatMap {
-      case Right(value) if value == requiredValue => pass
-      case _ => reject
+    extract(ctx ⇒ fsod(ctx.request.uri.query.get(paramName))).flatMap {
+      case Right(value) if value == requiredValue ⇒ pass
+      case _                                      ⇒ reject
     }
-  implicit def forRVR[T](implicit fsod: FSOD[T]) = ParamDefMagnetAux[RequiredValueReceptacle[T], Directive0] { rvr =>
+  implicit def forRVR[T](implicit fsod: FSOD[T]) = ParamDefMagnetAux[RequiredValueReceptacle[T], Directive0] { rvr ⇒
     requiredFilter(rvr.name, fsod, rvr.requiredValue)
   }
-  implicit def forRVDR[T] = ParamDefMagnetAux[RequiredValueDeserializerReceptacle[T], Directive0] { rvr =>
+  implicit def forRVDR[T] = ParamDefMagnetAux[RequiredValueDeserializerReceptacle[T], Directive0] { rvr ⇒
     requiredFilter(rvr.name, rvr.deserializer, rvr.requiredValue)
   }
 
-
   /************ tuple support ******************/
 
-  implicit def forTuple[T <: Product, L <: HList, Out]
-    (implicit hla: HListerAux[T, L], pdma: ParamDefMagnetAux[L, Out]) =
-    ParamDefMagnetAux[T, Out](tuple => pdma(hla(tuple)))
-
+  implicit def forTuple[T <: Product, L <: HList, Out](implicit hla: HListerAux[T, L], pdma: ParamDefMagnetAux[L, Out]) =
+    ParamDefMagnetAux[T, Out](tuple ⇒ pdma(hla(tuple)))
 
   /************ HList support ******************/
 
@@ -139,8 +129,7 @@ object ParamDefMagnetAux {
     ParamDefMagnetAux[L, f.Out](_.foldLeft(BasicDirectives.noop)(MapReduce))
 
   object MapReduce extends Poly2 {
-    implicit def from[T, LA <: HList, LB <: HList, Out <: HList]
-      (implicit pdma: ParamDefMagnetAux[T, Directive[LB]], ev: PrependAux[LA, LB, Out]) =
-      at[Directive[LA], T] { (a, t) => a & pdma(t) }
+    implicit def from[T, LA <: HList, LB <: HList, Out <: HList](implicit pdma: ParamDefMagnetAux[T, Directive[LB]], ev: PrependAux[LA, LB, Out]) =
+      at[Directive[LA], T] { (a, t) ⇒ a & pdma(t) }
   }
 }

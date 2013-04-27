@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,14 +20,14 @@ import java.util.Random
 import java.util.concurrent.CountDownLatch
 import akka.actor.ActorSystem
 import scala.concurrent.Future
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import org.specs2.mutable.Specification
 import org.specs2.matcher.Matcher
 import spray.util._
 
-
 class ExpiringLruCacheSpec extends Specification {
   implicit val system = ActorSystem()
+  import system.dispatcher
 
   "An LruCache" should {
     "be initially empty" in {
@@ -47,7 +47,7 @@ class ExpiringLruCacheSpec extends Specification {
     "return Futures on uncached values during evaluation and replace these with the value afterwards" in {
       val cache = lruCache[String]()
       val latch = new CountDownLatch(1)
-      val future1 = cache(1) { promise =>
+      val future1 = cache(1) { promise ⇒
         Future {
           latch.await()
           promise.success("A")
@@ -71,7 +71,7 @@ class ExpiringLruCacheSpec extends Specification {
       cache.store.toString === "{2=B, 3=C, 4=D}"
     }
     "expire old entries" in {
-      val cache = lruCache[String](timeToLive = Duration("75 ms"))
+      val cache = lruCache[String](timeToLive = 75 millis span)
       cache(1)("A").await === "A"
       cache(2)("B").await === "B"
       Thread.sleep(50)
@@ -98,17 +98,17 @@ class ExpiringLruCacheSpec extends Specification {
     "be thread-safe" in {
       val cache = lruCache[Int](maxCapacity = 1000)
       // exercise the cache from 10 parallel "tracks" (threads)
-      val views = Future.traverse(Seq.tabulate(10)(identityFunc)) { track =>
+      val views = Future.traverse(Seq.tabulate(10)(identityFunc)) { track ⇒
         Future {
           val array = Array.fill(1000)(0) // our view of the cache
           val rand = new Random(track)
-          (1 to 10000) foreach { i =>
-            val ix = rand.nextInt(1000)            // for a random index into the cache
-            val value = cache(ix) {                // get (and maybe set) the cache value
+          (1 to 10000) foreach { i ⇒
+            val ix = rand.nextInt(1000) // for a random index into the cache
+            val value = cache(ix) { // get (and maybe set) the cache value
               Thread.sleep(0)
               rand.nextInt(1000000) + 1
             }.await
-            if (array(ix) == 0) array(ix) = value  // update our view of the cache
+            if (array(ix) == 0) array(ix) = value // update our view of the cache
             else if (array(ix) != value) failure("Cache view is inconsistent (track " + track + ", iteration " + i +
               ", index " + ix + ": expected " + array(ix) + " but is " + value)
           }
@@ -116,9 +116,8 @@ class ExpiringLruCacheSpec extends Specification {
         }
       }.await
       val beConsistent: Matcher[Seq[Int]] = (
-        (ints: Seq[Int]) => ints.filter(_ != 0).reduceLeft((a, b) => if (a == b) a else 0) != 0,
-        (_: Seq[Int]) => "consistency check"
-      )
+        (ints: Seq[Int]) ⇒ ints.filter(_ != 0).reduceLeft((a, b) ⇒ if (a == b) a else 0) != 0,
+        (_: Seq[Int]) ⇒ "consistency check")
       views.transpose must beConsistent.forall
     }
   }
@@ -127,6 +126,6 @@ class ExpiringLruCacheSpec extends Specification {
 
   def lruCache[T](maxCapacity: Int = 500, initialCapacity: Int = 16,
                   timeToLive: Duration = Duration.Zero, timeToIdle: Duration = Duration.Zero) =
-    new ExpiringLruCache[T](maxCapacity,  initialCapacity, timeToLive.toMillis, timeToIdle.toMillis)
+    new ExpiringLruCache[T](maxCapacity, initialCapacity, timeToLive.toMillis, timeToIdle.toMillis)
 
 }

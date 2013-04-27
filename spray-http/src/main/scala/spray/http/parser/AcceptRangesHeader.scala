@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,18 +21,17 @@ import org.parboiled.scala._
 import BasicRules._
 
 private[parser] trait AcceptRangesHeader {
-  this: Parser with ProtocolParameterRules =>
+  this: Parser with ProtocolParameterRules ⇒
 
-  def ACCEPT_RANGES = rule (
-    RangeUnitsDef ~ EOI ~~> (HttpHeaders.`Accept-Ranges`(_))
-  )
-  
+  def `*Accept-Ranges` = rule(
+    RangeUnitsDef ~ EOI ~~> (HttpHeaders.`Accept-Ranges`(_)))
+
   def RangeUnitsDef = rule {
     NoRangeUnitsDef | zeroOrMore(RangeUnit, separator = ListSep)
   }
-  
+
   def NoRangeUnitsDef = rule {
     "none" ~ push(List.empty[RangeUnit])
   }
-  
+
 }

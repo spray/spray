@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,38 +22,36 @@ import BasicRules._
 // http://tools.ietf.org/html/draft-ietf-httpstate-cookie-23#section-4
 // with one exception: we are more lenient on additional or missing whitespace
 private[parser] trait CookieHeaders {
-  this: Parser with ProtocolParameterRules =>
+  this: Parser with ProtocolParameterRules ⇒
 
-  def SET_COOKIE = rule {
+  def `*Set-Cookie` = rule {
     CookiePair ~ zeroOrMore(";" ~ CookieAttrs) ~ EOI ~~> (HttpHeaders.`Set-Cookie`(_))
   }
 
-  def COOKIE = rule {
+  def `*Cookie` = rule {
     oneOrMore(CookiePair, separator = ";") ~ EOI ~~> (HttpHeaders.`Cookie`(_))
   }
-  
+
   def CookiePair = rule {
     Token ~ ch('=') ~ CookieValue ~~> (HttpCookie(_, _))
   }
 
-  def CookieValue = rule (
-      ch('"') ~ zeroOrMore(CookieOctet) ~> identityFunc ~ "\""
-    | zeroOrMore(CookieOctet) ~> identityFunc ~ OptWS
-  )
+  def CookieValue = rule(
+    ch('"') ~ zeroOrMore(CookieOctet) ~> identityFunc ~ "\""
+      | zeroOrMore(CookieOctet) ~> identityFunc ~ OptWS)
 
   def CookieOctet = rule {
     ch('\u0021') | ch('\u0023') - "\u002b" | ch('\u002d') - "\u003a" | ch('\u003c') - "\u005b" | ch('\u005d') - "\u007e"
   }
 
-  def CookieAttrs = rule (
-      str("Expires=") ~ HttpDate ~~> { (cookie: HttpCookie, dateTime: DateTime) => cookie.copy(expires = Some(dateTime)) }
-    | str("Max-Age=") ~ NonNegativeLong ~~> { (cookie: HttpCookie, seconds: Long) => cookie.copy(maxAge = Some(seconds)) }
-    | str("Domain=") ~ DomainName ~~> { (cookie: HttpCookie, domainName: String) => cookie.copy(domain = Some(domainName)) }
-    | str("Path=") ~ StringValue ~~> { (cookie: HttpCookie, pathValue: String) => cookie.copy(path = Some(pathValue)) }
-    | str("Secure") ~~> { (cookie: HttpCookie) => cookie.copy(secure = true) }
-    | str("HttpOnly") ~~> { (cookie: HttpCookie) => cookie.copy(httpOnly = true) }
-    | StringValue ~~> { (cookie: HttpCookie, stringValue: String) => cookie.copy(extension = Some(stringValue)) }
-  )
+  def CookieAttrs = rule(
+    str("Expires=") ~ HttpDate ~~> { (cookie: HttpCookie, dateTime: DateTime) ⇒ cookie.copy(expires = Some(dateTime)) }
+      | str("Max-Age=") ~ NonNegativeLong ~~> { (cookie: HttpCookie, seconds: Long) ⇒ cookie.copy(maxAge = Some(seconds)) }
+      | str("Domain=") ~ DomainName ~~> { (cookie: HttpCookie, domainName: String) ⇒ cookie.copy(domain = Some(domainName)) }
+      | str("Path=") ~ StringValue ~~> { (cookie: HttpCookie, pathValue: String) ⇒ cookie.copy(path = Some(pathValue)) }
+      | str("Secure") ~~> { (cookie: HttpCookie) ⇒ cookie.copy(secure = true) }
+      | str("HttpOnly") ~~> { (cookie: HttpCookie) ⇒ cookie.copy(httpOnly = true) }
+      | StringValue ~~> { (cookie: HttpCookie, stringValue: String) ⇒ cookie.copy(extension = Some(stringValue)) })
 
   def NonNegativeLong = rule { oneOrMore(Digit) ~> (_.toLong) }
 

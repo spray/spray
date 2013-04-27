@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,11 @@
 
 package spray.httpx.encoding
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
-import java.util.zip.{ZipException, GZIPInputStream, GZIPOutputStream}
+import java.io.{ ByteArrayInputStream, ByteArrayOutputStream }
+import java.util.zip.{ ZipException, GZIPInputStream, GZIPOutputStream }
 import org.parboiled.common.FileUtils
 import org.specs2.mutable.Specification
 import spray.util._
-
 
 class GzipSpec extends Specification with CodecSpecSupport {
 
@@ -45,7 +44,7 @@ class GzipSpec extends Specification with CodecSpecSupport {
       ourGunzip(ourGzip(largeTextBytes)) must readAs(largeText)
     }
     "provide a better compression ratio than the standard Gzipr/Gunzip streams" in {
-      ourGzip(largeTextBytes).length must be_< (streamGzip(largeTextBytes).length)
+      ourGzip(largeTextBytes).length must be_<(streamGzip(largeTextBytes).length)
     }
     "properly decode concatenated compressions" in {
       ourGunzip(Array(gzip("Hello,"), gzip(" dear "), gzip("User!")).flatten) must readAs("Hello, dear User!")
@@ -61,7 +60,7 @@ class GzipSpec extends Specification with CodecSpecSupport {
       val comp = Gzip.newCompressor
       val decomp = Gzip.newDecompressor
       val chunks2 =
-        chunks.map { chunk => decomp.decompress(comp.compress(chunk).flush()) } :+ decomp.decompress(comp.finish())
+        chunks.map { chunk ⇒ decomp.decompress(comp.compress(chunk).flush()) } :+ decomp.decompress(comp.finish())
       chunks2.flatten must readAs(largeText)
     }
   }
@@ -70,7 +69,11 @@ class GzipSpec extends Specification with CodecSpecSupport {
   def ourGzip(bytes: Array[Byte]) = Gzip.newCompressor.compress(bytes).finish()
   def ourGunzip(bytes: Array[Byte]) = Gzip.newDecompressor.decompress(bytes)
 
-  lazy val corruptGzipContent = make(gzip("Hello")) { _.update(14, 26.toByte) }
+  lazy val corruptGzipContent = {
+    val content = gzip("Hello")
+    content.update(14, 26.toByte)
+    content
+  }
 
   def streamGzip(bytes: Array[Byte]) = {
     val output = new ByteArrayOutputStream()

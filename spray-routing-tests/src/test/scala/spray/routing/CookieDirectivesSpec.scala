@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package spray.routing
 import spray.http._
 import HttpHeaders.Cookie
 
-
 class CookieDirectivesSpec extends RoutingSpec {
 
   "The 'cookie' directive" should {
@@ -35,7 +34,7 @@ class CookieDirectivesSpec extends RoutingSpec {
     }
     "properly pass through inner rejections" in {
       Get() ~> addHeader(Cookie(HttpCookie("fancy", "pants"))) ~> {
-        cookie("fancy") { c => reject(ValidationRejection("Dont like " + c.content)) }
+        cookie("fancy") { c ⇒ reject(ValidationRejection("Dont like " + c.content)) }
       } ~> check { rejection === ValidationRejection("Dont like pants") }
     }
   }

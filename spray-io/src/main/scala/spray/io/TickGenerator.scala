@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,38 +16,34 @@
 
 package spray.io
 
-import java.util.concurrent.TimeUnit._
-import scala.concurrent.duration.{FiniteDuration, Duration}
-
+import scala.concurrent.duration._
+import akka.io.Tcp
 
 //# source-quote
 object TickGenerator {
 
-  def apply(millis: Long): PipelineStage = apply(Duration(millis, MILLISECONDS))
+  def apply(period: Duration): PipelineStage = {
+    require(period > Duration.Zero, "period must be > 0")
 
-  def apply(period: FiniteDuration): PipelineStage = {
-    require(period > Duration.Zero, "period must be positive")
+    new OptionalPipelineStage[PipelineContext] {
 
-    new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def enabled(context: PipelineContext): Boolean = period.isFinite()
+
+      def applyIfEnabled(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
-          val generator = {
-            val system = context.connectionActorContext.system
-            system.scheduler.schedule(
-              initialDelay = period,
-              interval = period,
-              receiver = context.self,
-              message = Tick
-            )(system.dispatcher)
-          }
+          var next = scheduleNext()
 
           val commandPipeline = commandPL
 
           val eventPipeline: EPL = {
-            case x: IOPeer.Closed =>
-              generator.cancel()
-              eventPL(x)
-            case x => eventPL(x)
+            case Tick                    ⇒ next = scheduleNext(); eventPL(Tick)
+            case x: Tcp.ConnectionClosed ⇒ next.cancel(); eventPL(x)
+            case x                       ⇒ eventPL(x)
+          }
+
+          def scheduleNext() = {
+            implicit val executionContext = context.dispatcher
+            context.system.scheduler.scheduleOnce(period.asInstanceOf[FiniteDuration], context.self, Tick)
           }
         }
     }

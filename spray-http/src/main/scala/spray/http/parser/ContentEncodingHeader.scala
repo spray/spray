@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,14 +21,13 @@ import org.parboiled.scala._
 import HttpEncodings._
 
 private[parser] trait ContentEncodingHeader {
-  this: Parser with ProtocolParameterRules =>
+  this: Parser with ProtocolParameterRules ⇒
 
-  def CONTENT_ENCODING = rule (
-    ContentEncoding ~ EOI ~~> HttpHeaders.`Content-Encoding`
-  )
-  
+  def `*Content-Encoding` = rule(
+    ContentEncoding ~ EOI ~~> HttpHeaders.`Content-Encoding`)
+
   def ContentEncoding = rule {
-    ContentCoding ~~> (x => HttpEncodings.getForKey(x.toLowerCase).getOrElse(new CustomHttpEncoding(x)))
+    ContentCoding ~~> (x ⇒ HttpEncodings.getForKey(x.toLowerCase).getOrElse(new CustomHttpEncoding(x)))
   }
-  
+
 }

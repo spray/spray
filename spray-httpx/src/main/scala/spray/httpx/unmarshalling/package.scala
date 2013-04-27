@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package spray.httpx
 
 import spray.http._
 
-
 package object unmarshalling {
 
   type Deserialized[T] = Either[DeserializationError, T]
@@ -28,9 +27,9 @@ package object unmarshalling {
   type FromEntityOptionUnmarshaller[T] = Deserializer[Option[HttpEntity], T]
 
   def unmarshal[T](implicit um: Unmarshaller[T]) = um
-  def unmarshalUnsafe[T :Unmarshaller](entity: HttpEntity): T = unmarshal.apply(entity) match {
-    case Right(value) => value
-    case Left(error) => sys.error(error.toString)
+  def unmarshalUnsafe[T: Unmarshaller](entity: HttpEntity): T = unmarshal.apply(entity) match {
+    case Right(value) ⇒ value
+    case Left(error)  ⇒ sys.error(error.toString)
   }
 
   implicit def formFieldExtractor(form: HttpForm) = FormFieldExtractor(form)
@@ -39,28 +38,5 @@ package object unmarshalling {
 
   class PimpedHttpEntity(entity: HttpEntity) {
     def as[T](implicit unmarshaller: Unmarshaller[T]): Deserialized[T] = unmarshaller(entity)
-  }
-
-  // should actually live in file "Unmarshaller.scala"
-  // but can't due to https://issues.scala-lang.org/browse/SI-5031
-  // will move back once the issue is fixed
-  object Unmarshaller {
-    def apply[T](unmarshalFrom: ContentTypeRange*)(f: PartialFunction[HttpEntity, T]): Unmarshaller[T] =
-      new SimpleUnmarshaller[T] {
-        val canUnmarshalFrom = unmarshalFrom
-        def unmarshal(entity: HttpEntity) =
-          if (f.isDefinedAt(entity)) protect(f(entity)) else Left(ContentExpected)
-      }
-
-    def delegate[A, B](unmarshalFrom: ContentTypeRange*)(f: A => B)(implicit mb: Unmarshaller[A]): Unmarshaller[B] =
-      new SimpleUnmarshaller[B] {
-        val canUnmarshalFrom = unmarshalFrom
-        def unmarshal(entity: HttpEntity) = mb(entity).right.flatMap(a => protect(f(a)))
-      }
-
-    def forNonEmpty[T](implicit um: Unmarshaller[T]): Unmarshaller[T] =
-      new Unmarshaller[T] {
-        def apply(entity: HttpEntity) = if (entity.isEmpty) Left(ContentExpected) else um(entity)
-      }
   }
 }

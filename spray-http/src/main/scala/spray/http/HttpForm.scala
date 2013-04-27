@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package spray.http
 
-
 sealed trait HttpForm {
   type FieldType
   def fields: Map[String, FieldType]
@@ -32,7 +31,6 @@ case class FormData(fields: Map[String, String]) extends HttpForm {
 object FormData {
   val Empty = FormData(Map.empty)
 }
-
 
 /**
  * Model for `multipart/form-data` content as defined in RFC 2388.

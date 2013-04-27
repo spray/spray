@@ -17,42 +17,35 @@ Incoming network "events"
   of a series of bytes or the closing of the connection, is packaged in a respective event message and sent to
   a "handler" actor responsible for the connection.
 
-One ``IOBridge`` instance occupies exactly one private thread, from which it manages one Java NIO selector. Even though
-you can create as many IOBridges as you like, every single one can easily handle many thousand connections. Therefore
-most applications will only need to create a single ``IOBridge`` for all their incoming and outgoing (i.e. server-
-and client-side) connections.
+An ``IOBridge`` is implemented as an Akka actor using a special dispatcher, which allows it to "own" one private
+thread, from which it manages one Java NIO selector. An ``IOBridge`` can easily handle many thousand connections, which
+can be any mix of incoming and outgoing (i.e. server- and client-side) connections.
 
-Even though it provides a similar API an ``IOBridge`` is *not* an actor itself. (Akka Actors cannot occupy their
-own thread. Rather the scheduling of their execution slots is managed by an independently configurable dispatcher.)
+
+Parallelism
+-----------
+
+Depending on the ``parallelism`` config setting there will either only be one single ``IOBridge`` actor per
+``ActorSystem`` (``parallellism = 1``, the default) or several ones. For many applications a single ``IOBridge`` is
+perfectly capable of handling all network IO load. However, if you have a very IO-intensive application it might make
+sense to distribute IO-handling across several threads. In these cases you can increase the ``parallelism`` setting
+to values like 4 or 8, which causes the root ``IOBridge`` actor to only handle connection establishment itself and
+distribute management of the individual connections equally across 4 or 8 "sub-bridge" actors, which are automatically
+spawned.
 
 
 Lifecycle
 ---------
 
-In most cases you'll want to create and shutdown an ``IOBridge`` like this:
+Every ``ActorSystem`` can only contain a single (root) ``IOBridge`` that you create via the ``ioBridge`` method of
+*sprays* ``IOExtension``. Subsequent calls to this method will not create new instances but return the existing (root)
+one.
 
 .. includecode:: code/docs/IOBridgeExamplesSpec.scala
    :snippet: example-1
 
-Even though the construction of an ``IOBridge`` is easiest as shown in this example (with a single ``ActorSystem``
-argument) the system passed to the constructor is only used for logging purposes. The ``IOBridge`` instance itself
-exists independently of any ``ActorSystem`` and could therefore be used by actors from several systems at the same
-time.
-
-
-Interface
----------
-
-The public interface of an ``IOBridge`` is very simple. It looks like this::
-
-    def thread: Option[Thread]
-    def start(): this.type
-    def stop()
-    def ! (cmd: Command)(implicit sender: ActorRef = Actor.noSender)
-    def tell(cmd: Command, sender: ActorRef)
-
-Apart from starting, stopping and querying for its ``Thread`` all commmunication with an ``IOBridge`` happens
-asynchronously through ``Command`` and ``Event`` messages.
+Since an ``IOBridge`` is a regular Akka actor all commmunication with it happens asynchronously through messages,
+which can be either of type ``Command`` or ``Event``.
 
 
 Commands
@@ -67,38 +60,41 @@ These are all the defined commands:
 And here is what action they instruct the bridge to perform:
 
 Bind
-  Start listening for incoming connections on a particular port. The sender receives a ``Bound`` event upon completion.
+  Start listening for incoming connections on a particular port. The sender receives a ``Bound`` event upon completion
+  as well as ``Connected`` events for each new incoming connection that has been accepted.
 
 Unbind
   Revert a previous ``Bind``. The sender receives an ``Unbound`` event upon completion.
 
 Connect
-  Connect to remote address. The sender received a ``Connected`` event upon completion.
+  Connect to remote address. The sender receives a ``Connected`` event upon completion.
 
 GetStats
-  Send the sender an ``IOBridge.Stats`` message containing simple bridge statistics.
+  Send the sender an ``IOBridge.StatsMap`` message containing simple statistics for the root bridge and all potentially
+  existing sub-bridges.
 
 Register
-  Register the given ``Handle``, that was newly created as a result of a ``Connected`` event, and start accepting
-  read events on its connection.
+  Register the given ``Handle`` that was newly created as a result of a ``Connected`` event and start accepting
+  incoming data on its connection.
 
 Close
   Close the connection of the given ``Handle``. If there are pending ``Send`` commands that haven't yet been completed
   the closing is queued. Special case: If the ``reason`` is ``ConfirmedClose`` the socket is not closed right away, but
-  rather via a full TCP FIN message exchange. I.e. at first a TCP FIN message is sent and the peers "ack'ing" FIN is
-  awaited before the socket is closed.
+  rather via a full TCP FIN message exchange is performed. I.e. at first a TCP FIN message is sent and the peers
+  "ack'ing" FIN is awaited before the socket is closed.
   Independently of when the socket is actually closed the handler of the connection receives a ``Closed`` event after
   it has happened.
 
 Send
-  Write the contents of the given ByteBuffers to the handles connection. If ``ack`` is defined the sender receives its
-  content as a "send confirmation" message when all bytes have been successfully written to the socket.
+  Write the contents of the given ByteBuffers to the socket associated with the given handle. If ``ack`` is defined the
+  sender receives its content as a "send confirmation" message when all bytes have been successfully written to the
+  socket.
 
 StopReading
-  Stop reading from the handles connection.
+  Stop accepting incoming data from the socket associated with the given handle.
 
 ResumeReading
-  Resume reading from the handles connection.
+  Resume accepting incoming data from the socket associated with the given handle.
 
 
 Events
@@ -112,33 +108,34 @@ These are all the events that are generated by an ``IOBridge`` instance:
 And these are their semantics:
 
 Bound
-  Sent as a confirmation of a preceding ``Bind`` command.
+  Sent as confirmation to the sender of a preceding ``Bind`` command.
 
 Unbound
-  Sent as a confirmation of a preceding ``Unbind`` command.
+  Sent as confirmation to the sender of a preceding ``Unbind`` command.
 
 Connected
-  Sent after a new connection has been established, either as a result of a preceding ``Bind`` or ``Connect`` command.
+  Sent after a new connection has been established to the sender of a preceding ``Bind`` or ``Connect`` command.
 
 Closed
-  Sent after a connection has been closed.
+  Sent to the handler actor after a connection has been closed.
 
 Received
-  Sent after a chunk of data has been read from the connections socket. Will never contain more than the number of
-  bytes configured as ``read-buffer-size`` in the ``IOBridgeSettings``.
+  Sent to the handler actor after a chunk of data has been read from the connections socket. Will never contain more
+  than the number of bytes configured as ``read-buffer-size`` in the ``IOBridgeSettings``.
 
 
 Handle
 ------
 
-An ``IOBridge`` identifies connections using a "handle", with can be any object implementing the ``Handle`` interface:
+An ``IOBridge`` identifies connections using a "handle", which can be any object implementing in the ``Handle``
+interface:
 
-.. includecode:: /../spray-io/src/main/scala/spray/io/Handle.scala
-   :snippet: source-quote
+.. includecode:: /../spray-io/src/main/scala/spray/io/IOBridge.scala
+   :snippet: handle-interface
 
-The creation of actual handle instances is delegated to the application. This gives the user the freedom to structure
-the application logic in a lookup-free way, since all connection-specific event messages always carry the handle
-instance that was created by the application.
+The creation of actual handle instances is delegated to the user. This enables the lookup-free implementation of the
+application logic, since all connection-specific event messages always carry the handle instance that was created by
+the application and, as such, provide direct access to application data.
 
 The typical pattern is that the application creates a new ``Handle`` instance after the reception of a ``Connected``
 event, which is the only way to get a hold of the required ``Key`` for the handle. After handle creation the application

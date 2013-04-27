@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,15 +19,14 @@ package spray.httpx.unmarshalling
 import scala.util.control.NonFatal
 import spray.http._
 
-
 abstract class SimpleUnmarshaller[T] extends Unmarshaller[T] {
   val canUnmarshalFrom: Seq[ContentTypeRange]
 
   def apply(entity: HttpEntity) = {
     entity match {
-      case EmptyEntity => unmarshal(entity)
-      case x: HttpBody if canUnmarshalFrom.exists(_.matches(x.contentType)) => unmarshal(entity)
-      case _ => Left(UnsupportedContentType(canUnmarshalFrom.map(_.value).mkString("Expected '", "' or '", "'")))
+      case EmptyEntity ⇒ unmarshal(entity)
+      case x: HttpBody if canUnmarshalFrom.exists(_.matches(x.contentType)) ⇒ unmarshal(entity)
+      case _ ⇒ Left(UnsupportedContentType(canUnmarshalFrom.map(_.value).mkString("Expected '", "' or '", "'")))
     }
   }
 
@@ -37,10 +36,10 @@ abstract class SimpleUnmarshaller[T] extends Unmarshaller[T] {
    * Helper method for turning exceptions occuring during evaluation of the named parameter into
    * [[spray.httpx.unmarshalling.MalformedContent]] instances.
    */
-  protected def protect(f: => T): Either[DeserializationError, T] = {
+  protected def protect(f: ⇒ T): Either[DeserializationError, T] = {
     try Right(f)
     catch {
-      case NonFatal(ex) => Left(MalformedContent(ex.getMessage, ex))
+      case NonFatal(ex) ⇒ Left(MalformedContent(ex.getMessage, ex))
     }
   }
 }

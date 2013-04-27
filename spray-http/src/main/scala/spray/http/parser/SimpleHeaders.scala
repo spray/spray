@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,41 +25,60 @@ import HttpHeaders._
  * parser rules for all headers that can be parsed with one simple rule
  */
 private[parser] trait SimpleHeaders {
-  this: Parser with ProtocolParameterRules with AdditionalRules =>
+  this: Parser with ProtocolParameterRules with AdditionalRules ⇒
 
-  def CONNECTION = rule (
-    oneOrMore(Token, separator = ListSep) ~ EOI ~~> (HttpHeaders.Connection(_))
-  )
+  def `*Connection` = rule(
+    oneOrMore(Token, separator = ListSep) ~ EOI ~~> (HttpHeaders.Connection(_)))
 
-  def CONTENT_LENGTH = rule {
-    oneOrMore(Digit) ~> (s => `Content-Length`(s.toInt)) ~ EOI
+  def `*Content-Length` = rule {
+    oneOrMore(Digit) ~> (s ⇒ `Content-Length`(s.toInt)) ~ EOI
   }
 
-  def CONTENT_DISPOSITION = rule {
+  def `*Content-Disposition` = rule {
     Token ~ zeroOrMore(";" ~ Parameter) ~ EOI ~~> (_.toMap) ~~> `Content-Disposition`
   }
-  
-  def DATE = rule {
+
+  def `*Date` = rule {
     HttpDate ~ EOI ~~> Date
   }
+
+  def `*Expect` = rule(
+    oneOrMore(Token ~ &(EOI) | Token ~ "=" ~ (Token | QuotedString) ~~> (_ + '=' + _), separator = ListSep) ~ EOI
+      ~~> (Expect(_)))
 
   // Do not accept scoped IPv6 addresses as they should not appear in the Host header,
   // see also https://issues.apache.org/bugzilla/show_bug.cgi?id=35122 (WONTFIX in Apache 2 issue) and
   // https://bugzilla.mozilla.org/show_bug.cgi?id=464162 (FIXED in mozilla)
-  def HOST = rule {
-    (Token | IPv6Reference) ~ OptWS ~ optional(":" ~ oneOrMore(Digit) ~> (_.toInt)) ~ EOI ~~> Host
-  }
+  def `*Host` = rule(
+    (Token | IPv6Reference) ~ OptWS ~ optional(":" ~ oneOrMore(Digit) ~> (_.toInt)) ~ EOI
+      ~~> ((h, p) ⇒ Host(h, p.getOrElse(0))))
 
-  def LAST_MODIFIED = rule {
+  def `*Last-Modified` = rule {
     HttpDate ~ EOI ~~> `Last-Modified`
   }
 
-  def REMOTE_ADDRESS = rule {
+  def `*Location` = rule {
+    oneOrMore(Text) ~> { uri ⇒ Location(Uri.parseAbsolute(uri)) } ~ EOI
+  }
+
+  def `*Remote-Address` = rule {
     Ip ~ EOI ~~> `Remote-Address`
   }
 
-  def X_FORWARDED_FOR = rule {
-    oneOrMore(Ip, separator = ListSep) ~ EOI ~~> (`X-Forwarded-For`(_))
+  def `*Server` = rule {
+    oneOrMore(Product, separator = " ") ~~> (Server(_))
   }
-  
+
+  def `*Transfer-Encoding` = rule {
+    oneOrMore(TransferCoding ~> identityFunc, separator = ListSep) ~~> (`Transfer-Encoding`(_))
+  }
+
+  def `*User-Agent` = rule {
+    oneOrMore(Product, separator = " ") ~~> (`User-Agent`(_))
+  }
+
+  def `*X-Forwarded-For` = rule {
+    oneOrMore(Ip ~~> (Some(_)) | "unknown" ~ push(None), separator = ListSep) ~ EOI ~~> (`X-Forwarded-For`(_))
+  }
+
 }

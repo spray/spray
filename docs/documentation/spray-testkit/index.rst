@@ -27,11 +27,11 @@ Apart from the Scala library (see :ref:`current-versions` chapter) *spray-testki
 Installation
 ------------
 
-The :ref:`maven-repo` chapter contains all the info about how to pull *spray-caching* into your classpath.
-However, since you normally don't need to have access to *spray-caching* from your production code, you should limit
+The :ref:`maven-repo` chapter contains all the info about how to pull *spray-testkit* into your classpath.
+However, since you normally don't need to have access to *spray-testkit* from your production code, you should limit
 the dependency to the ``test`` scope::
 
-    libraryDependencies += "io.spray" % "spray-can" % version % "test"
+    libraryDependencies += "io.spray" % "spray-testkit" % version % "test"
 
 Currently *spray-testkit* supports the two most popular scala testing frameworks, scalatest_ and specs2_. Depending on
 which one you are using you need to mix either the ``ScalatestRouteTest`` or the ``Specs2RouteTest`` trait into your
@@ -140,9 +140,9 @@ The ``sealRoute`` wrapper applies the logic of the in-scope :ref:`ExceptionHandl
 :ref:`RejectionHandler <Rejections>` to all exceptions and rejections coming back from the route, and translates them
 to the respective ``HttpResponse``.
 
-The :ref:`simple-on-spray-can` examples defines a simple test using ``sealRoute`` like this:
+The :ref:`on-spray-can` examples defines a simple test using ``sealRoute`` like this:
 
-.. includecode:: /../examples/spray-routing/simple-on-spray-can/src/test/scala/spray/examples/DemoServiceSpec.scala
+.. includecode:: /../examples/spray-routing/on-spray-can/src/test/scala/spray/examples/DemoServiceSpec.scala
    :snippet: source-quote
 
 
@@ -150,9 +150,9 @@ Examples
 --------
 
 A full example of how an API service definition can be structured in order to be testable with *spray-testkit* and
-without actor involvement is shown with the :ref:`simple-on-spray-can` example. This__ is its test definition.
+without actor involvement is shown with the :ref:`on-spray-can` example. This__ is its test definition.
 
-__ https://github.com/spray/spray/blob/master/examples/spray-routing/simple-on-spray-can/src/test/scala/spray/examples/DemoServiceSpec.scala
+__ https://github.com/spray/spray/blob/master/examples/spray-routing/on-spray-can/src/test/scala/spray/examples/DemoServiceSpec.scala
 
 Another great pool of examples are the tests for all the predefined directives in :ref:`spray-routing`.
 They can be found here__.

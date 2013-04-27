@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,17 +17,17 @@
 package spray.httpx
 
 import org.specs2.mutable.Specification
-import scala.concurrent.{Promise, Future}
+import scala.concurrent.{ Promise, Future }
 import akka.actor.ActorSystem
 import encoding.Gzip
 import spray.http._
 import spray.util._
 import HttpHeaders._
 
-
 class ResponseTransformationSpec extends Specification with RequestBuilding with ResponseTransformation {
   implicit val system = ActorSystem()
-  type SendReceive = HttpRequest => Future[HttpResponse]
+  import system.dispatcher
+  type SendReceive = HttpRequest ⇒ Future[HttpResponse]
 
   "MessagePipelining" should {
     "work correctly for simple requests" in {
@@ -61,44 +61,43 @@ class ResponseTransformationSpec extends Specification with RequestBuilding with
     }
 
     "allow success for any status codes representing success" in {
-      val pipeline = report ~> ((_:HttpResponse).copy(status = 201)) ~> unmarshal[String]
+      val pipeline = report ~> ((_: HttpResponse).copy(status = 201)) ~> unmarshal[String]
       pipeline(Get("/abc")).await === "GET|/abc|"
     }
 
     "throw an Exception when unmarshalling client error responses" in {
-      val pipeline = echo ~> ((_:HttpResponse).copy(status = 400)) ~> unmarshal[String]
-      pipeline(Get("/", "XXX")).await must throwAn(new UnsuccessfulResponseException(StatusCodes.BadRequest))
+      val pipeline = echo ~> ((_: HttpResponse).copy(status = 400)) ~> unmarshal[String]
+      pipeline(Get("/", "XXX")).await must throwAn(
+        new UnsuccessfulResponseException(HttpResponse(StatusCodes.BadRequest, entity = "XXX")))
     }
 
     "throw an Exception when unmarshalling server error responses" in {
-      val pipeline = echo ~> ((_:HttpResponse).copy(status = 500)) ~> unmarshal[String]
-      pipeline(Get("/", "XXX")).await must throwAn(new UnsuccessfulResponseException(StatusCodes.InternalServerError))
+      val pipeline = echo ~> ((_: HttpResponse).copy(status = 500)) ~> unmarshal[String]
+      pipeline(Get("/", "XXX")).await must throwAn(
+        new UnsuccessfulResponseException(HttpResponse(StatusCodes.InternalServerError, entity = "XXX")))
     }
   }
 
   step(system.shutdown())
 
-  val report: SendReceive = { request =>
+  val report: SendReceive = { request ⇒
     import request._
     Promise.successful(HttpResponse(200, method + "|" + uri + "|" + entity.asString)).future
   }
 
-  val reportDecoding: SendReceive = request => {
+  val reportDecoding: SendReceive = request ⇒ {
     val decoded = Gzip.decode(request)
     import decoded._
     Promise.successful(HttpResponse(200, method + "|" + uri + "|" + entity.asString)).future
   }
 
-  val echo: SendReceive = request => Promise.successful(
-    HttpResponse(200, request.entity, request.headers.filter(_.isInstanceOf[`Content-Encoding`]))
-  ).future
+  val echo: SendReceive = request ⇒ Promise.successful(
+    HttpResponse(200, request.entity, request.headers.filter(_.isInstanceOf[`Content-Encoding`]))).future
 
-  val authenticatedEcho: SendReceive = request => Promise.successful(
+  val authenticatedEcho: SendReceive = request ⇒ Promise.successful(
     HttpResponse(
       status = request.headers
-        .collect { case Authorization(BasicHttpCredentials("bob", "1234")) => StatusCodes.OK }
-        .headOption.getOrElse(StatusCodes.Forbidden)
-    )
-  ).future
+        .collect { case Authorization(BasicHttpCredentials("bob", "1234")) ⇒ StatusCodes.OK }
+        .headOption.getOrElse(StatusCodes.Forbidden))).future
 
 }

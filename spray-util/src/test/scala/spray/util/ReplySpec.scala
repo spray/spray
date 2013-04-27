@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,22 +16,21 @@
 
 package spray.util
 
-import scala.concurrent.duration.Duration
-import akka.actor.{Actor, Props, ActorSystem}
-import akka.testkit.{ImplicitSender, TestKit}
+import akka.actor.{ Actor, Props, ActorSystem }
 import org.specs2.mutable.Specification
+import akka.testkit.TestProbe
 
+class ReplySpec extends Specification {
+  implicit val system = ActorSystem(Utils.actorSystemNameFrom(getClass))
 
-class ReplySpec extends TestKit(ActorSystem()) with Specification with ImplicitSender {
-
-  args(sequential = true)
-
-  val echoRef = system.actorOf(Props(new Actor { def receive = { case x => sender ! x } }))
+  val echoRef = system.actorOf(Props(new Actor { def receive = { case x ⇒ sender ! x } }))
 
   "The Reply" should {
     "be able to inject itself into a reply message" in {
-      echoRef.tell('Yeah, Reply.withContext(42))
-      receiveOne(Duration("1 second")).asInstanceOf[Reply] === Reply('Yeah, 42)
+      val probe = TestProbe()
+      echoRef.tell('Yeah, Reply.withContext(42)(probe.ref))
+      probe.expectMsg(Reply('Yeah, 42))
+      success
     }
   }
 

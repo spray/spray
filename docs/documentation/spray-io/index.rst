@@ -19,5 +19,6 @@ We like to think of it a basic version of Netty_ for Scala.
    connection-actors
    pipelining
    predefined-stages
+   connection-tags
    testing-pipelines
    examples

@@ -45,11 +45,12 @@ sealed abstract class HttpFailure extends StatusCode {
 
 object StatusCodes extends ObjectRegistry[Int, StatusCode] {
   class Informational private[StatusCodes] (val value: Int, val reason: String, val defaultMessage: String) extends HttpSuccess
-  class Success       private[StatusCodes] (val value: Int, val reason: String, val defaultMessage: String) extends HttpSuccess
-  class Redirection   private[StatusCodes] (val value: Int, val reason: String, val defaultMessage: String, val htmlTemplate: String) extends HttpSuccess
-  class ClientError   private[StatusCodes] (val value: Int, val reason: String, val defaultMessage: String) extends HttpFailure
-  class ServerError   private[StatusCodes] (val value: Int, val reason: String, val defaultMessage: String) extends HttpFailure
-  
+  class Success private[StatusCodes] (val value: Int, val reason: String, val defaultMessage: String) extends HttpSuccess
+  class Redirection private[StatusCodes] (val value: Int, val reason: String, val defaultMessage: String, val htmlTemplate: String) extends HttpSuccess
+  class ClientError private[StatusCodes] (val value: Int, val reason: String, val defaultMessage: String) extends HttpFailure
+  class ServerError private[StatusCodes] (val value: Int, val reason: String, val defaultMessage: String) extends HttpFailure
+
+  // format: OFF
   val Continue           = new Informational(100, "Continue", "The server has received the request headers, and the client should proceed to send the request body.")
   val SwitchingProtocols = new Informational(101, "Switching Protocols", "The server is switching protocols, because the client requested the switch.")
   val Processing         = new Informational(102, "Processing", "The server is processing the request, but no response is available yet.")
@@ -119,4 +120,5 @@ object StatusCodes extends ObjectRegistry[Int, StatusCode] {
   val NetworkAuthenticationRequired = new ServerError(511, "Network Authentication Required", "The client needs to authenticate to gain network access.")
   val NetworkReadTimeout            = new ServerError(598, "Network read timeout error", "")
   val NetworkConnectTimeout         = new ServerError(599, "Network connect timeout error", "")
+  // format: ON
 }

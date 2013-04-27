@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,16 +23,16 @@ sealed abstract class ContentDisposition {
 
 // see http://tools.ietf.org/html/rfc2183
 object ContentDispositions extends ObjectRegistry[String, ContentDisposition] {
-  
+
   def register(disposition: ContentDisposition): ContentDisposition = {
     register(disposition.value.toLowerCase, disposition)
     disposition
   }
-  
+
   private class PredefDisposition(val value: String) extends ContentDisposition
 
-  val attachment  = register(new PredefDisposition("attachment"))
-  val inline      = register(new PredefDisposition("inline"))
+  val attachment = register(new PredefDisposition("attachment"))
+  val inline = register(new PredefDisposition("inline"))
   val `form-data` = register(new PredefDisposition("form-data"))
 
   case class CustomContentDisposition(value: String) extends ContentDisposition

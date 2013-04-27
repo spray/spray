@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package spray.routing
 
 import shapeless.HList
 
-
 /**
  * A Route that can be implicitly converted into a Directive (fitting any signature).
  */
@@ -28,8 +27,8 @@ trait StandardRoute extends Route {
 
 object StandardRoute {
   def apply(route: Route): StandardRoute = route match {
-    case x: StandardRoute => x
-    case x => new StandardRoute { def apply(ctx: RequestContext) { x(ctx) } }
+    case x: StandardRoute ⇒ x
+    case x                ⇒ new StandardRoute { def apply(ctx: RequestContext) { x(ctx) } }
   }
 
   /**

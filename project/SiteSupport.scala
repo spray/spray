@@ -3,6 +3,7 @@ import Keys._
 import Utils._
 import sbtassembly.Plugin._
 import sbtassembly.Plugin.AssemblyKeys._
+import spray.revolver.RevolverPlugin.Revolver
 import com.decodified.scalassh._
 
 
@@ -18,9 +19,10 @@ object SiteSupport {
     siteHost := "spray.io",
     deployDir := "/opt/spray.io",
     logFile := "/opt/spray.io/site.log",
-    mainClass in assembly := Some("spray.site.Boot"),
+    mainClass in assembly := Some("spray.site.Main"),
     jarName in assembly := "site.jar",
     test in assembly := {},
+    javaOptions in Revolver.reStart += "-Dfile.encoding=UTF8",
 
     setupSite <<= (siteHost, deployDir, logFile, jarName in assembly, state) map setupSite,
     deploy <<= (siteHost, deployDir, assembly, state) map deploySite

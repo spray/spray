@@ -11,6 +11,7 @@ start_java() {
     -Dspray.site.dev-mode=off \
     -DLOG_FILE=$LOG_FILE \
     -Dlogback.configurationFile=logback.production.xml \
+    -Dfile.encoding=UTF8 \
     -jar $DEPLOY_HOME/#{jarName} \
     &> /dev/null < /dev/null &
     disown -h

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,12 +19,10 @@ package spray.httpx.marshalling
 import java.util.Random
 import java.io.ByteArrayOutputStream
 import org.parboiled.common.Base64
+import akka.actor.ActorRef
 import spray.http._
 import MediaTypes._
 import HttpHeaders._
-import sun.font.DelegatingShape
-import akka.actor.ActorRef
-
 
 trait MultipartMarshallers {
   protected val multipartBoundaryRandom = new Random
@@ -39,7 +37,7 @@ trait MultipartMarshallers {
   }
 
   implicit def multipartContentMarshaller =
-    Marshaller.of[MultipartContent](new `multipart/mixed`(Some(randomBoundary))) { (value, contentType, ctx) =>
+    Marshaller.of[MultipartContent](new `multipart/mixed`(Some(randomBoundary))) { (value, contentType, ctx) ⇒
       val out = new ByteArrayOutputStream(1024)
       val boundary = contentType.mediaType.asInstanceOf[MultipartMediaType].boundary.get
 
@@ -55,37 +53,38 @@ trait MultipartMarshallers {
       }
 
       if (!value.parts.isEmpty) {
-        value.parts.foreach { part =>
+        value.parts.foreach { part ⇒
           putDashDash(); putString(boundary); putCrLf()
-          part.headers.foreach { header =>
+          part.headers.foreach { header ⇒
             require(header.name != "Content-Type", "")
             putHeader(header.name, header.value)
           }
-          part.entity.foreach { (ct, buf) =>
-            if (buf.length > 0) {
-              putHeader("Content-Type", ct.value)
-              putCrLf()
-              out.write(buf)
-              putCrLf()
-            }
+          part.entity match {
+            case EmptyEntity ⇒
+            case HttpBody(ct, buf) ⇒
+              if (buf.length > 0) {
+                putHeader("Content-Type", ct.value)
+                putCrLf()
+                out.write(buf)
+                putCrLf()
+              }
           }
         }
         putDashDash(); putString(boundary); putDashDash()
-        ctx.marshalTo(HttpBody(contentType, out.toByteArray))
+        ctx.marshalTo(HttpEntity(contentType, out.toByteArray))
       } else ctx.marshalTo(EmptyEntity)
     }
 
   implicit def multipartFormDataMarshaller(implicit mcm: Marshaller[MultipartContent]) =
-    Marshaller[MultipartFormData] { (value, ctx) =>
+    Marshaller[MultipartFormData] { (value, ctx) ⇒
       ctx.tryAccept(`multipart/form-data`) match {
-        case None => ctx.rejectMarshalling(Seq(`multipart/form-data`))
-        case _ => mcm(
+        case None ⇒ ctx.rejectMarshalling(Seq(`multipart/form-data`))
+        case _ ⇒ mcm(
           value = MultipartContent {
             value.fields.map {
-              case (name, part) => part.copy(
-                headers = `Content-Disposition`("form-data", Map("name" -> name)) :: part.headers
-              )
-            } (collection.breakOut)
+              case (name, part) ⇒ part.copy(
+                headers = `Content-Disposition`("form-data", Map("name" -> name)) :: part.headers)
+            }(collection.breakOut)
           },
           ctx = new DelegatingMarshallingContext(ctx) {
             var boundary: Option[String] = None
@@ -97,9 +96,8 @@ trait MultipartMarshallers {
             override def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any])(implicit sender: ActorRef) =
               ctx.startChunkedMessage(overrideContentType(entity), sentAck)
             def overrideContentType(entity: HttpEntity) =
-              entity.map((ct, buf) => (new `multipart/form-data`(boundary), buf))
-          }
-        )
+              entity.flatMap(body ⇒ HttpEntity(new `multipart/form-data`(boundary), body.buffer))
+          })
       }
     }
 }

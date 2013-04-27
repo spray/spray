@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,16 @@ package spray.routing
 
 import shapeless._
 
-
 abstract class ApplyConverter[L <: HList] {
   type In
-  def apply(f: In): L => Route
+  def apply(f: In): L ⇒ Route
 }
 
 object ApplyConverter extends ApplyConverterInstances {
   implicit val hac0 = new ApplyConverter[HNil] {
     type In = Route
     def apply(fn: In) = {
-      case HNil => fn
+      case HNil ⇒ fn
     }
   }
 }

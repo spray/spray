@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import spray.httpx.marshalling._
 import spray.httpx.unmarshalling._
 import spray.http._
 
-
 trait MarshallingDirectives {
   import BasicDirectives._
   import MiscDirectives._
@@ -33,12 +32,12 @@ trait MarshallingDirectives {
    * If there is a problem with unmarshalling the request is rejected with the [[spray.routing.Rejection]]
    * produced by the unmarshaller.
    */
-  def entity[T](um: Unmarshaller[T]): Directive[T :: HNil] =
+  def entity[T](um: Unmarshaller[T]): Directive1[T] =
     extract(_.request.entity.as(um)).flatMap[T :: HNil] {
-      case Right(value) => provide(value)
-      case Left(ContentExpected) => reject(RequestEntityExpectedRejection)
-      case Left(UnsupportedContentType(supported)) => reject(UnsupportedRequestContentTypeRejection(supported))
-      case Left(MalformedContent(error, _)) => reject(MalformedRequestContentRejection(error))
+      case Right(value)                            ⇒ provide(value)
+      case Left(ContentExpected)                   ⇒ reject(RequestEntityExpectedRejection)
+      case Left(UnsupportedContentType(supported)) ⇒ reject(UnsupportedRequestContentTypeRejection(supported))
+      case Left(MalformedContent(errorMsg, cause)) ⇒ reject(MalformedRequestContentRejection(errorMsg, cause))
     } & cancelAllRejections(ofTypes(RequestEntityExpectedRejection.getClass, classOf[UnsupportedRequestContentTypeRejection]))
 
   /**
@@ -51,9 +50,10 @@ trait MarshallingDirectives {
    * You can use it do decouple marshaller resolution from request completion.
    */
   def produce[T](marshaller: Marshaller[T], status: StatusCode = StatusCodes.OK,
-                 headers: List[HttpHeader] = Nil): Directive[(T => Unit) :: HNil] =
-    extract { ctx => (value: T) =>
-      marshaller(value, ctx.marshallingContext(status, headers))
+                 headers: List[HttpHeader] = Nil): Directive[(T ⇒ Unit) :: HNil] =
+    extract { ctx ⇒
+      (value: T) ⇒
+        marshaller(value, ctx.marshallingContext(status, headers))
     } & cancelAllRejections(ofType[UnacceptedResponseContentTypeRejection])
 
   /**
@@ -65,8 +65,8 @@ trait MarshallingDirectives {
    * Completes the request using the given function. The input to the function is produced with the in-scope
    * entity unmarshaller and the result value of the function is marshalled with the in-scope marshaller.
    */
-  def handleWith[A, B](f: A => B)(implicit um: Unmarshaller[A], m: Marshaller[B]): Route =
-    entity(um) { a => RouteDirectives.complete(f(a)) }
+  def handleWith[A, B](f: A ⇒ B)(implicit um: Unmarshaller[A], m: Marshaller[B]): Route =
+    entity(um) { a ⇒ RouteDirectives.complete(f(a)) }
 
 }
 

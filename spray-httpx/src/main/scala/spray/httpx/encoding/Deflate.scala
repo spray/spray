@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,12 @@
 
 package spray.httpx.encoding
 
-import java.util.zip.{DataFormatException, ZipException, Inflater, Deflater}
+import java.util.zip.{ DataFormatException, ZipException, Inflater, Deflater }
 import scala.annotation.tailrec
 import spray.util.EmptyByteArray
 import spray.http._
 
-
-class Deflate(val messageFilter: HttpMessage => Boolean) extends Decoder with Encoder {
+class Deflate(val messageFilter: HttpMessage ⇒ Boolean) extends Decoder with Encoder {
   val encoding = HttpEncodings.deflate
   def newCompressor = new DeflateCompressor
   def newDecompressor = new DeflateDecompressor
@@ -61,7 +60,6 @@ class DeflateCompressor extends Compressor {
     getBytes
   }
 
-
   override def finish() = {
     deflater.finish()
     drain()
@@ -98,7 +96,7 @@ class DeflateDecompressor extends Decompressor {
         buffer.length - inflater.getRemaining
       } else 0
     } catch {
-      case e: DataFormatException =>
+      case e: DataFormatException ⇒
         throw new ZipException(if (e.getMessage != null) e.getMessage else "Invalid ZLIB data format")
     }
   }

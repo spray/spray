@@ -291,3 +291,29 @@ is to simply bring one into scope implicitly::
       context
     }
 
+
+.. _SprayCanHttpServerApp:
+
+SprayCanHttpServerApp trait
+---------------------------
+
+In many cases the bootstrapping logic for starting an ``HttpServer`` application is almost identical:
+
+1. Create an ``ActorSystem``
+2. Create and start application level actors
+3. Create and start an :ref:`IOBridge`
+4. Create and start an ``HttpServer`` instance
+5. Send the server a ``Bind`` message.
+
+In order to reduce boilerplate and increase DRYness *spray-can* comes with the SprayCanHttpServerApp__ trait,
+which allows you to simplify your boot class to something like this:
+
+.. includecode:: code/docs/SprayCanHttpServerAppTest.scala
+   :snippet: source-quote
+
+If you have special needs with regard to your ``ActorSystem`` you can create it yourself and still rely on the
+``SprayCanHttpServerApp`` trait by overriding the ``system`` member as such::
+
+  override lazy val system = ActorSystem(...)
+
+__ https://github.com/spray/spray/blob/master/spray-can/src/main/scala/spray/can/server/SprayCanHttpServerApp.scala

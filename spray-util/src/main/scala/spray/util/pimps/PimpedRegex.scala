@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package spray.util.pimps
 import java.util.regex.Pattern
 import scala.util.matching.Regex
 
-
 class PimpedRegex(regex: Regex) {
 
   def groupCount = {
@@ -28,7 +27,7 @@ class PimpedRegex(regex: Regex) {
       field.setAccessible(true)
       field.getInt(regex.pattern) - 1
     } catch {
-      case t: Throwable =>
+      case t: Throwable ⇒
         throw new RuntimeException("Could not determine regex group count: " + regex.pattern.pattern, t)
     }
   }

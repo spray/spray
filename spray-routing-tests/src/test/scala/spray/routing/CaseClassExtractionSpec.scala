@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  */
 
 package spray.routing
-
 
 class CaseClassExtractionSpec extends RoutingSpec {
 
@@ -65,13 +64,19 @@ class CaseClassExtractionSpec extends RoutingSpec {
           (parameters('firstname, 'name) & parameters('age, 'id, 'board.as[Boolean])).as(Employee) {
             echoComplete
           }
-        } ~> check { rejection === ValidationRejection("'12XY567' is not a valid 64-bit integer value") }
+        } ~> check {
+          rejection must beLike { case ValidationRejection("'12XY567' is not a valid 64-bit integer value", _) ⇒ ok }
+        }
       }
 
       "create a proper Rejection for failed custom validations" in {
         Get("/?name=McCormick&firstname=Pete&board=yes&id=1234567&age=37") ~> {
           parameters('firstname, 'name, 'age.as[Int], 'id, 'board).as(Employee) { echoComplete }
-        } ~> check { rejection === ValidationRejection("requirement failed: Board members must be older than 40") }
+        } ~> check {
+          rejection must beLike {
+            case ValidationRejection("requirement failed: Board members must be older than 40", _) ⇒ ok
+          }
+        }
       }
     }
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,9 @@ package spray.routing
 package directives
 
 import akka.actor.ActorRefFactory
-import spray.http.{HttpBody, HttpResponse}
+import spray.http.{ HttpBody, HttpResponse }
 import spray.httpx.marshalling.BasicMarshallers
 import spray.util._
-
 
 trait ChunkingDirectives {
   import BasicDirectives._
@@ -31,13 +30,15 @@ trait ChunkingDirectives {
    * (save the very last) has the given size.
    * If the response content from the inner route is smaller than chunkSize a "regular", unchunked response is produced.
    */
-  def autoChunk(csm: ChunkSizeMagnet) = mapRequestContext { ctx =>
+  def autoChunk(csm: ChunkSizeMagnet) = mapRequestContext { ctx ⇒
     import csm._
     ctx.withRouteResponseHandling {
-      case HttpResponse(_, HttpBody(contentType, buffer), _, _) if buffer.length > chunkSize =>
+      case HttpResponse(_, HttpBody(contentType, buffer), _, _) if buffer.length > chunkSize ⇒
         def split(ix: Int): Stream[Array[Byte]] = {
-          def chunkBuf(size: Int) = make(new Array[Byte](size)) {
-            System.arraycopy(buffer, ix, _, 0, size)
+          def chunkBuf(size: Int) = {
+            val array = new Array[Byte](size)
+            System.arraycopy(buffer, ix, array, 0, size)
+            array
           }
           if (ix < buffer.length - chunkSize) Stream.cons(chunkBuf(chunkSize), split(ix + chunkSize))
           else Stream.cons(chunkBuf(buffer.length - ix), Stream.Empty)
@@ -51,15 +52,9 @@ trait ChunkingDirectives {
 
 object ChunkingDirectives extends ChunkingDirectives
 
-
-trait ChunkSizeMagnet{
-  def chunkSize: Int
-  implicit def refFactory: ActorRefFactory
-}
+class ChunkSizeMagnet(val chunkSize: Int)(implicit val refFactory: ActorRefFactory)
 
 object ChunkSizeMagnet {
-  implicit def fromInt(size: Int)(implicit factory: ActorRefFactory) = new ChunkSizeMagnet {
-    def chunkSize = size
-    def refFactory = factory
-  }
+  implicit def fromInt(chunkSize: Int)(implicit factory: ActorRefFactory) =
+    new ChunkSizeMagnet(chunkSize)
 }

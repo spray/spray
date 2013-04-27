@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,13 @@
 
 package spray.testkit
 
-import org.specs2.execute.{Failure, FailureException}
-import org.specs2.specification.{SpecificationStructure, Fragments, Step}
-
+import org.specs2.execute.{ Failure, FailureException }
+import org.specs2.specification.{ SpecificationStructure, Fragments, Step }
 
 trait Specs2Interface extends TestFrameworkInterface with SpecificationStructure {
 
   def failTest(msg: String) = throw new FailureException(Failure(msg))
 
-  override def map(fs: => Fragments) = super.map(fs).add(Step(cleanUp()))
+  override def map(fs: ⇒ Fragments) = super.map(fs).add(Step(cleanUp()))
 
 }

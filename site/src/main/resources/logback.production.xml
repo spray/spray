@@ -18,8 +18,8 @@
         </encoder>
     </appender>
 
-    <logger name="spray.io.IOBridge" level="INFO" />
-    <logger name="spray.can.server" level="INFO" />
+    <logger name="spray-site-Main.user.io-bridge" level="INFO" />
+    <logger name="spray-site-Main.user.http-server" level="INFO" />
 
     <root level="DEBUG">
         <appender-ref ref="FILE"/>

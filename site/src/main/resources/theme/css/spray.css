@@ -1,4 +1,9 @@
-body, p { font-size: 14px; }
+body, p {
+    font-size: 14px;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    color: #515161;
+    text-rendering: optimizelegibility;
+}
 
 .navbar .nav { margin-top: 60px; }
 @media (min-width: 768px) and (max-width: 979px) {
@@ -42,6 +47,8 @@ footer .footNav { text-align: center; }
 .tooltip { z-index: 1035; }
 
 pre { margin-bottom: 1em; white-space: pre; word-wrap: normal; overflow: auto; }
+
+blockquote p { font-size: 18px; }
 
 .section h1, .section h2, .section h3, .section p, .section li, .section dt, .section dd, .section table {
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
@@ -123,3 +130,25 @@ a.footnote-reference { vertical-align: super; font-size: 66%; }
 p.rubric { border-top: 1px solid #DDD; margin-top: 30px; padding-top: 5px; font-weight: bold; }
 table.footnote .label { background-color: white; }
 table.footnote td { vertical-align: top; }
+
+.btn img { margin: 0; }
+.post { margin-bottom: 10px; }
+.post .post-content { margin-top: 30px; }
+.post .post-title h2 { margin-top: 0; }
+.post .post-title a { color: #08C; }
+.post .post-title a:hover { color: #005580; }
+.post .post-meta { margin: -0.5em 0 2em; font-size: 12px; }
+.post .comment-count { font-size: 11px; }
+.post ul { list-style-type: square; margin: 0 0 9px 25px; }
+.post ul li span { margin: 0; opacity: 1; }
+.post blockquote { padding: 30px 30px 20px; }
+
+.sidebar .widget h3 {
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    color: #515161;
+    text-rendering: optimizelegibility;
+    font-size: 16px;
+    line-height: 40px;
+    margin: 0;
+    font-weight: bold;
+}

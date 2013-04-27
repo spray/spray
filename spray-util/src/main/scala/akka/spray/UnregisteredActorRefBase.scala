@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import scala.annotation.tailrec
 import akka.util.Unsafe
 import akka.dispatch._
 import akka.actor._
-
 
 abstract class UnregisteredActorRefBase(val provider: ActorRefProvider) extends MinimalActorRef {
   import UnregisteredActorRefBase._
@@ -70,14 +69,14 @@ abstract class UnregisteredActorRefBase(val provider: ActorRefProvider) extends 
   override def !(message: Any)(implicit sender: ActorRef = Actor.noSender) {
     state match {
       case Stopped | _: StoppedWithPath ⇒ provider.deadLetters ! message
-      case _ ⇒ handle(message)
+      case _                            ⇒ handle(message)
     }
   }
 
   override def sendSystemMessage(message: SystemMessage) {
     message match {
       case _: Terminate ⇒ stop()
-      case _ ⇒
+      case _            ⇒
     }
   }
 

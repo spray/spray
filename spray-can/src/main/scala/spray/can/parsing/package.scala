@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,30 @@
  * limitations under the License.
  */
 
-package spray.can
+package spray.can.parsing
 
+import akka.util.CompactByteString
+import spray.util.SingletonException
+import spray.http._
 
-package object parsing {
-
-  private[can] def isTokenChar(c: Char) = c match {
-    case x if 'a' <= x && x <= 'z' => true
-    case x if 'A' <= x && x <= 'Z' => true
-    case '-' => true
-    case '(' | ')' | '<' | '>' | '@' | ',' | ';' | ':' | '\\' | '"' | '/' | '[' | ']' | '?' | '=' | '{' | '}' => false
-    case x => 32 < x && x < 127
-  }
-
-  private[can] def escape(c: Char): String =
-    if (Character.isISOControl(c)) String.format("\\u%04x", c: java.lang.Integer)
-    else String.valueOf(c)
+trait Parser[Part <: HttpMessagePart] extends (CompactByteString ⇒ Result[Part]) {
+  def parse: CompactByteString ⇒ Result[Part]
 }
+
+sealed trait Result[+T <: HttpMessagePart]
+object Result {
+  case object NeedMoreData extends Result[Nothing]
+  case class Ok[T <: HttpMessagePart](part: T, remainingData: CompactByteString,
+                                      closeAfterResponseCompletion: Boolean) extends Result[T]
+  case class Expect100Continue(remainingData: CompactByteString) extends Result[Nothing]
+  case class ParsingError(status: StatusCode, info: ErrorInfo) extends Result[Nothing]
+}
+
+class ParsingException(val status: StatusCode, val info: ErrorInfo) extends RuntimeException(info.formatPretty) {
+  def this(status: StatusCode, summary: String = "") =
+    this(status, ErrorInfo(if (summary.isEmpty) status.defaultMessage else summary))
+  def this(summary: String) =
+    this(StatusCodes.BadRequest, ErrorInfo(summary))
+}
+
+object NotEnoughDataException extends SingletonException

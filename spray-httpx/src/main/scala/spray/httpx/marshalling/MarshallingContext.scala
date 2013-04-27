@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,10 @@
 
 package spray.httpx.marshalling
 
-import spray.http.{ContentType, HttpEntity}
+import spray.http.{ HttpBody, ContentType, HttpEntity }
 import akka.actor.ActorRef
 
-
-trait MarshallingContext { self =>
+trait MarshallingContext { self ⇒
 
   /**
    * Determines whether the given ContentType is acceptable.
@@ -51,24 +50,25 @@ trait MarshallingContext { self =>
    * Uses the given entity to start a chunked response stream.
    * The method returns an ActorRef that should be used as the channel for subsequent [[spray.http.MessageChunk]]
    * instances and the finalizing [[spray.http.ChunkedMessageEnd]].
-   * If a sentAck is defined it will be sent back to the sender after the initial message part has been successfully
+   * If a ack is defined it will be sent back to the sender after the initial message part has been successfully
    * passed to the network.
    */
-  def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any] = None)(implicit sender: ActorRef): ActorRef
+  def startChunkedMessage(entity: HttpEntity, ack: Option[Any] = None)(implicit sender: ActorRef): ActorRef
 
   /**
    * Creates a new MarshallingContext based on this one, that overrides the ContentType of the produced entity
    * with the given one.
    */
   def withContentTypeOverriding(contentType: ContentType): MarshallingContext =
-   new DelegatingMarshallingContext(self) {
-     override def tryAccept(ct: ContentType) =
-       Some(if (contentType.isCharsetDefined) ct.withCharset(contentType.charset) else ct)
-     override def marshalTo(entity: HttpEntity) { self.marshalTo(overrideContentType(entity)) }
-     override def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any])(implicit sender: ActorRef) =
-       self.startChunkedMessage(overrideContentType(entity), sentAck)
-     def overrideContentType(entity: HttpEntity) = entity.map((ct, buf) => (contentType, buf))
-   }
+    new DelegatingMarshallingContext(self) {
+      override def tryAccept(ct: ContentType) =
+        Some(if (contentType.isCharsetDefined) ct.withCharset(contentType.charset) else ct)
+      override def marshalTo(entity: HttpEntity) { self.marshalTo(overrideContentType(entity)) }
+      override def startChunkedMessage(entity: HttpEntity, ack: Option[Any])(implicit sender: ActorRef) =
+        self.startChunkedMessage(overrideContentType(entity), ack)
+      def overrideContentType(entity: HttpEntity) =
+        entity.flatMap { case HttpBody(ct, buf) ⇒ HttpEntity(contentType, buf) }
+    }
 }
 
 /**
@@ -80,6 +80,6 @@ class DelegatingMarshallingContext(underlying: MarshallingContext) extends Marsh
   def rejectMarshalling(supported: Seq[ContentType]) { underlying.rejectMarshalling(supported) }
   def marshalTo(entity: HttpEntity) { underlying.marshalTo(entity) }
   def handleError(error: Throwable) { underlying.handleError(error) }
-  def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any] = None)(implicit sender: ActorRef) =
-    underlying.startChunkedMessage(entity, sentAck)
+  def startChunkedMessage(entity: HttpEntity, ack: Option[Any] = None)(implicit sender: ActorRef) =
+    underlying.startChunkedMessage(entity, ack)
 }

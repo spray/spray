@@ -8,3 +8,4 @@ PathDirectives
 
    path
    pathPrefix
+   pathTest

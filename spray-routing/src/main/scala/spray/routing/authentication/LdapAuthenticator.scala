@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,14 +18,13 @@ package spray.routing
 package authentication
 
 import java.util.Hashtable
-import javax.naming.{Context, NamingException, NamingEnumeration}
+import javax.naming.{ Context, NamingException, NamingEnumeration }
 import javax.naming.ldap.InitialLdapContext
-import javax.naming.directory.{SearchControls, SearchResult, Attribute}
+import javax.naming.directory.{ SearchControls, SearchResult, Attribute }
 import scala.collection.JavaConverters._
-import scala.concurrent.{Promise, Future, ExecutionContext}
+import scala.concurrent.{ Promise, Future, ExecutionContext }
 import akka.actor.ActorSystem
 import spray.util.LoggingContext
-
 
 /**
  * The LdapAuthenticator faciliates user/password authentication against an LDAP server.
@@ -37,16 +36,15 @@ import spray.util.LoggingContext
  * matching a given user name. If exactly one user entry is found another LDAP bind operation is performed using the
  * principal DN of the found user entry to validate the password.
  */
-class LdapAuthenticator[T](config: LdapAuthConfig[T])
-                          (implicit ec: ExecutionContext, log: LoggingContext) extends UserPassAuthenticator[T] {
+class LdapAuthenticator[T](config: LdapAuthConfig[T])(implicit ec: ExecutionContext, log: LoggingContext) extends UserPassAuthenticator[T] {
 
   def apply(userPassOption: Option[UserPass]) = {
     def auth3(entry: LdapQueryResult, pass: String) = {
       ldapContext(entry.fullName, pass) match {
-        case Right(authContext) =>
+        case Right(authContext) ⇒
           authContext.close()
           config.createUserObject(entry)
-        case Left(ex) =>
+        case Left(ex) ⇒
           log.info("Could not authenticate credentials '{}'/'{}': {}", entry.fullName, pass, ex)
           None
       }
@@ -55,12 +53,12 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T])
     def auth2(searchContext: InitialLdapContext, userPass: UserPass) = {
       val UserPass(user, pass) = userPass
       query(searchContext, user) match {
-        case entry :: Nil => auth3(entry, pass)
-        case Nil =>
+        case entry :: Nil ⇒ auth3(entry, pass)
+        case Nil ⇒
           log.warning("User '{}' not found (search filter '{}' and search base '{}'", user, config.searchFilter(user),
             config.searchBase(user))
           None
-        case entries =>
+        case entries ⇒
           log.warning("Expected exactly one search result for search filter '{}' and search base '{}', but got {}",
             config.searchFilter(user), config.searchBase(user), entries.size)
           None
@@ -70,19 +68,19 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T])
     def auth1(userPass: UserPass) = {
       val (searchUser, searchPass) = config.searchCredentials
       ldapContext(searchUser, searchPass) match {
-        case Right(searchContext) =>
+        case Right(searchContext) ⇒
           val result = auth2(searchContext, userPass)
           searchContext.close()
           result
-        case Left(ex) =>
+        case Left(ex) ⇒
           log.warning("Could not authenticate with search credentials '{}'/'{}': {}", searchUser, searchPass, ex)
           None
       }
     }
 
     userPassOption match {
-      case Some(userPass) => Future(auth1(userPass))
-      case None =>
+      case Some(userPass) ⇒ Future(auth1(userPass))
+      case None ⇒
         log.warning("LdapAuthenticator.apply called with empty userPass, authentication not possible")
         Promise.successful(None).future
     }
@@ -95,7 +93,7 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T])
       env.put(Context.SECURITY_PRINCIPAL, user)
       env.put(Context.SECURITY_CREDENTIALS, pass)
       env.put(Context.SECURITY_AUTHENTICATION, "simple")
-      for ((key, value) <- config.contextEnv(user, pass)) env.put(key, value)
+      for ((key, value) ← config.contextEnv(user, pass)) env.put(key, value)
       new InitialLdapContext(env, null)
     }
   }
@@ -104,8 +102,7 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T])
     val results: NamingEnumeration[SearchResult] = ldapContext.search(
       config.searchBase(user),
       config.searchFilter(user),
-      searchControls(user)
-    )
+      searchControls(user))
     results.asScala.toList.map(searchResult2LdapQueryResult)
   }
 
@@ -123,20 +120,17 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T])
       className = getClassName,
       relative = isRelative,
       obj = getObject,
-      attrs = getAttributes.getAll.asScala.toSeq.map(a => a.getID -> attribute2LdapAttribute(a)) (collection.breakOut)
-    )
+      attrs = getAttributes.getAll.asScala.toSeq.map(a ⇒ a.getID -> attribute2LdapAttribute(a))(collection.breakOut))
   }
 
   def attribute2LdapAttribute(attr: Attribute): LdapAttribute = {
     LdapAttribute(
       id = attr.getID,
       ordered = attr.isOrdered,
-      values = attr.getAll.asScala.toSeq.map(v => if (v != null) v.toString else "")
-    )
+      values = attr.getAll.asScala.toSeq.map(v ⇒ if (v != null) v.toString else ""))
   }
 }
 
 object LdapAuthenticator {
-  def apply[T](config: LdapAuthConfig[T])
-              (implicit ec: ExecutionContext, log: LoggingContext) = new LdapAuthenticator(config)
+  def apply[T](config: LdapAuthConfig[T])(implicit ec: ExecutionContext, log: LoggingContext) = new LdapAuthenticator(config)
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@ class PimpedStringSpec extends Specification {
 
   "getAsciiBytes" should {
     "perform a simple ASCII encoding of the string" in {
-       "Hello there".getAsciiBytes === Array(72, 101, 108, 108, 111, 32, 116, 104, 101, 114, 101)
+      "Hello there".getAsciiBytes === Array(72, 101, 108, 108, 111, 32, 116, 104, 101, 114, 101)
     }
   }
 

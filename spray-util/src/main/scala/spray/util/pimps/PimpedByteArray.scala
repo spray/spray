@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ package pimps
 import java.nio.charset.Charset
 import scala.annotation.tailrec
 
-
 class PimpedByteArray(underlying: Array[Byte]) {
 
   /**
@@ -38,7 +37,6 @@ class PimpedByteArray(underlying: Array[Byte]) {
   def asString(charset: Charset): String = new String(underlying, charset)
 
   def asString(charset: String): String = new String(underlying, charset)
-
 
   /**
    * Tests two byte arrays for value equality avoiding timing attacks.

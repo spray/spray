@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,18 +22,17 @@ import BasicRules._
 import LanguageRanges._
 
 private[parser] trait AcceptLanguageHeader {
-  this: Parser with ProtocolParameterRules =>
+  this: Parser with ProtocolParameterRules ⇒
 
-  def ACCEPT_LANGUAGE = rule (
-    oneOrMore(LanguageRangeDef, separator = ListSep) ~ EOI ~~> (HttpHeaders.`Accept-Language`(_))
-  )
-  
+  def `*Accept-Language` = rule(
+    oneOrMore(LanguageRangeDef, separator = ListSep) ~ EOI ~~> (HttpHeaders.`Accept-Language`(_)))
+
   def LanguageRangeDef = rule {
-    (LanguageTag ~~> (Language(_, _: _*)) | "*" ~ push(`*`)) ~ optional(LanguageQuality) 
+    (LanguageTag ~~> (Language(_, _: _*)) | "*" ~ push(`*`)) ~ optional(LanguageQuality)
   }
-  
+
   def LanguageQuality = rule {
-    ";" ~ "q" ~ "=" ~ QValue  // TODO: support language quality
+    ";" ~ "q" ~ "=" ~ QValue // TODO: support language quality
   }
-  
+
 }

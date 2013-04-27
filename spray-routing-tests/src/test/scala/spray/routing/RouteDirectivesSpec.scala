@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,11 @@
 
 package spray.routing
 
+import scala.concurrent.Promise
 import spray.http._
 import HttpHeaders._
 import StatusCodes._
 import MediaTypes._
-
 
 class RouteDirectivesSpec extends RoutingSpec {
 
@@ -35,13 +35,18 @@ class RouteDirectivesSpec extends RoutingSpec {
       var i = 0
       Put() ~> {
         get { complete { i += 1; "get" } } ~
-        put { complete { i += 1; "put" } } ~
-        (post & complete { i += 1; "post" }) ~
-        (delete & complete) { i += 1; "delete" }
+          put { complete { i += 1; "put" } } ~
+          (post & complete { i += 1; "post" }) ~
+          (delete & complete) { i += 1; "delete" }
       } ~> check {
         entityAs[String] === "put"
         i === 1
       }
+    }
+    "support completion from response futures" in {
+      Get() ~> {
+        get & complete(Promise.successful(HttpResponse(entity = "yup")).future)
+      } ~> check { entityAs[String] === "yup" }
     }
   }
 
@@ -52,9 +57,8 @@ class RouteDirectivesSpec extends RoutingSpec {
       } ~> check {
         response === HttpResponse(
           status = 302,
-          entity = HttpBody(`text/html`, "The requested resource temporarily resides under <a href=\"/foo\">this URI</a>."),
-          headers = Location("/foo") :: Nil
-        )
+          entity = HttpEntity(`text/html`, "The requested resource temporarily resides under <a href=\"/foo\">this URI</a>."),
+          headers = Location("/foo") :: Nil)
       }
     }
     "produce proper 'NotModified' redirections" in {
@@ -63,5 +67,5 @@ class RouteDirectivesSpec extends RoutingSpec {
       } ~> check { response === HttpResponse(304, headers = Location("/foo") :: Nil) }
     }
   }
-  
+
 }

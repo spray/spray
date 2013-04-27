@@ -24,10 +24,12 @@ together with :ref:`spray-servlet`.
 Minimal Example
 ---------------
 
-This is what a very basic *spray-routing* service definition:
+This is a complete, very basic *spray-routing* application:
 
 .. includecode:: code/docs/HttpServiceExamplesSpec.scala
- :snippet: minimal-example
+   :snippet: minimal-example
+
+It starts a *spray-can* :ref:`HttpServer` on localhost and replies to GET requests to ``/hello`` with a simple response.
 
 
 .. _Longer Example:
@@ -40,7 +42,7 @@ not really do anything useful but its definition should give you a feel for what
 *spray-routing* will look like:
 
 .. includecode:: code/docs/HttpServiceExamplesSpec.scala
- :snippet: longer-example
+   :snippet: longer-example
 
 
 

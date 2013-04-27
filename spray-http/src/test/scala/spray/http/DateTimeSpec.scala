@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import java.util.TimeZone
 import scala.util.Random
 import org.specs2.matcher.Matcher
 import org.specs2.mutable._
-
 
 class DateTimeSpec extends Specification {
 
@@ -46,9 +45,8 @@ class DateTimeSpec extends Specification {
       }
       def rfc1123Format(dt: DateTime) = Rfc1123Format.format(new java.util.Date(dt.clicks))
       val matchSimpleDateFormat: Matcher[DateTime] = (
-        { (dt: DateTime) => dt.toRfc1123DateTimeString == rfc1123Format(dt) },
-        { (dt: DateTime) => dt.toRfc1123DateTimeString + " != " + rfc1123Format(dt) }
-      )
+        { (dt: DateTime) ⇒ dt.toRfc1123DateTimeString == rfc1123Format(dt) },
+        { (dt: DateTime) ⇒ dt.toRfc1123DateTimeString + " != " + rfc1123Format(dt) })
       httpDateTimes.take(10000) must matchSimpleDateFormat.forall
     }
   }
@@ -75,10 +73,17 @@ class DateTimeSpec extends Specification {
     "allow for transparent round-trip conversions" in {
       def roundTrip(dt: DateTime) = DateTime(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
       val roundTripOk: Matcher[DateTime] = (
-        { (dt: DateTime) => val rt = roundTrip(dt); dt == rt && dt.weekday == rt.weekday },
-        { (dt: DateTime) => dt.toRfc1123DateTimeString + " != " + roundTrip(dt).toRfc1123DateTimeString }
-      )
+        { (dt: DateTime) ⇒ val rt = roundTrip(dt); dt == rt && dt.weekday == rt.weekday },
+        { (dt: DateTime) ⇒ dt.toRfc1123DateTimeString + " != " + roundTrip(dt).toRfc1123DateTimeString })
       httpDateTimes.take(10000) must roundTripOk.forall
+    }
+    "properly represent DateTime.MinValue" in {
+      DateTime.MinValue.toString === "1800-01-01T00:00:00"
+      DateTime(DateTime.MinValue.clicks).toString === "1800-01-01T00:00:00"
+    }
+    "properly represent DateTime.MaxValue" in {
+      DateTime.MaxValue.toString === "2199-12-31T23:59:59"
+      DateTime(DateTime.MaxValue.clicks).toString === "2199-12-31T23:59:59"
     }
   }
 }

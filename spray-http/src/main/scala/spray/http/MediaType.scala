@@ -20,31 +20,30 @@ package spray.http
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
 
-
 sealed abstract class MediaRange {
   val value = mainType + "/*"
   def mainType: String
-  
+
   def matches(mediaType: MediaType): Boolean
-  
+
   def isApplication = false
-  def isAudio       = false
-  def isImage       = false
-  def isMessage     = false
-  def isMultipart   = false
-  def isText        = false
-  def isVideo       = false
-  
+  def isAudio = false
+  def isImage = false
+  def isMessage = false
+  def isMultipart = false
+  def isText = false
+  def isVideo = false
+
   override def toString = "MediaRange(" + value + ')'
 }
 
 object MediaRanges extends ObjectRegistry[String, MediaRange] {
-  
+
   def register(mediaRange: MediaRange): MediaRange = {
     register(mediaRange.mainType.toLowerCase, mediaRange)
     mediaRange
   }
-  
+
   val `*/*` = register {
     new MediaRange {
       def mainType = "*"
@@ -100,16 +99,16 @@ object MediaRanges extends ObjectRegistry[String, MediaRange] {
       override def isVideo = true
     }
   }
-  
+
   case class CustomMediaRange(mainType: String) extends MediaRange {
     def matches(mediaType: MediaType) = mediaType.mainType == mainType
     override def isApplication = mainType == "application"
-    override def isAudio       = mainType == "audio"
-    override def isImage       = mainType == "image"
-    override def isMessage     = mainType == "message"
-    override def isMultipart   = mainType == "multipart"
-    override def isText        = mainType == "text"
-    override def isVideo       = mainType == "video"
+    override def isAudio = mainType == "audio"
+    override def isImage = mainType == "image"
+    override def isMessage = mainType == "message"
+    override def isMultipart = mainType == "multipart"
+    override def isText = mainType == "text"
+    override def isVideo = mainType == "video"
   }
 }
 
@@ -124,8 +123,8 @@ sealed abstract class MediaType extends MediaRange {
   override def matches(mediaType: MediaType) = this == mediaType
 
   override def equals(obj: Any) = obj match {
-    case x: MediaType => (this eq x) || mainType == x.mainType && subType == x.subType
-    case _ => false
+    case x: MediaType ⇒ (this eq x) || mainType == x.mainType && subType == x.subType
+    case _            ⇒ false
   }
 
   override def hashCode() = value.##
@@ -156,7 +155,7 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   }
 
   def forExtension(ext: String): Option[MediaType] = extensionMap.get.get(ext.toLowerCase)
-  
+
   private abstract class PredefinedMediaType(val subType: String, val compressible: Boolean, val binary: Boolean,
                                              val fileExtensions: Seq[String]) extends MediaType
 
@@ -210,8 +209,8 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
 
   class MultipartMediaType(val subType: String, val boundary: Option[String]) extends MediaType {
     override val value = boundary match {
-      case None       => mainType + '/' + subType
-      case _: Some[_] => mainType + '/' + subType + "; boundary=\"" + boundary.get + '"'
+      case None       ⇒ mainType + '/' + subType
+      case _: Some[_] ⇒ mainType + '/' + subType + "; boundary=\"" + boundary.get + '"'
     }
     def mainType = "multipart"
     def compressible = true
@@ -228,12 +227,12 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   case class CustomMediaType(mainType: String, subType: String, compressible: Boolean = false, binary: Boolean = false,
                              fileExtensions: Seq[String] = Nil) extends MediaType {
     override def isApplication = mainType == "application"
-    override def isAudio       = mainType == "audio"
-    override def isImage       = mainType == "image"
-    override def isMessage     = mainType == "message"
-    override def isMultipart   = mainType == "multipart"
-    override def isText        = mainType == "text"
-    override def isVideo       = mainType == "video"
+    override def isAudio = mainType == "audio"
+    override def isImage = mainType == "image"
+    override def isMessage = mainType == "message"
+    override def isMultipart = mainType == "multipart"
+    override def isText = mainType == "text"
+    override def isVideo = mainType == "video"
     def withCompressible = copy(compressible = true)
     def withBinary = copy(binary = true)
   }
@@ -245,13 +244,14 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
       new CustomMediaType(parts(0), parts(1), compressible = false, binary = false, fileExtensions)
     }
   }
-  
+
   /////////////////////////// PREDEFINED MEDIA-TYPE DEFINITION ////////////////////////////
   private def compressible = true
   private def uncompressible = false
   private def binary = true
   private def notBinary = false
 
+  // format: OFF
   val `application/atom+xml`                                                      = app("atom+xml", compressible, notBinary, "atom")
   val `application/base64`                                                        = app("base64", compressible, binary, "mm", "mme")
   val `application/excel`                                                         = app("excel", uncompressible, binary, "xl", "xla", "xlb", "xlc", "xld", "xlk", "xll", "xlm", "xls", "xlt", "xlv", "xlw")
@@ -259,7 +259,7 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   val `application/gnutar`                                                        = app("gnutar", uncompressible, binary, "tgz")
   val `application/java-archive`                                                  = app("java-archive", uncompressible, binary, "jar", "war", "ear")
   val `application/javascript`                                                    = app("javascript", compressible, notBinary, "js")
-  val `application/json`                                                          = app("json", compressible, notBinary, "json")
+  val `application/json`                                                          = app("json", compressible, binary, "json") // we treat JSON as binary, since it's encoding is not variable but defined by RFC4627
   val `application/lha`                                                           = app("lha", uncompressible, binary, "lha")
   val `application/lzx`                                                           = app("lzx", uncompressible, binary, "lzx")
   val `application/mspowerpoint`                                                  = app("mspowerpoint", uncompressible, binary, "pot", "pps", "ppt", "ppz")
@@ -423,4 +423,5 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   val `video/x-ms-asf`      = vid("x-ms-asf", "asf")
   val `video/x-msvideo`     = vid("x-msvideo", "avi")
   val `video/x-sgi-movie`   = vid("x-sgi-movie", "movie", "mv")
+  // format: ON
 }

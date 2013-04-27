@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import spray.util._
 import spray.http._
 import spray.httpx.encoding._
 
-
 trait EncodingDirectives {
   import BasicDirectives._
   import MiscDirectives._
@@ -31,17 +30,17 @@ trait EncodingDirectives {
    * Wraps its inner Route with decoding support using the given Decoder.
    */
   def decodeRequest(decoder: Decoder): Directive0 = {
-    def applyDecoder = mapInnerRoute { inner => ctx =>
-      tryToEither(decoder.decode(ctx.request)) match {
-        case Right(decodedRequest) => inner(ctx.copy(request = decodedRequest))
-        case Left(error) => ctx.reject(CorruptRequestEncodingRejection(error.getMessage))
-      }
+    def applyDecoder = mapInnerRoute { inner ⇒
+      ctx ⇒
+        tryToEither(decoder.decode(ctx.request)) match {
+          case Right(decodedRequest) ⇒ inner(ctx.copy(request = decodedRequest))
+          case Left(error)           ⇒ ctx.reject(CorruptRequestEncodingRejection(error.getMessage))
+        }
     }
     requestEntityEmpty | (
       requestEncodedWith(decoder.encoding) &
       applyDecoder &
-      cancelAllRejections(ofType[UnsupportedRequestEncodingRejection])
-    )
+      cancelAllRejections(ofType[UnsupportedRequestEncodingRejection]))
   }
 
   /**
@@ -49,35 +48,35 @@ trait EncodingDirectives {
    */
   def requestEncodedWith(encoding: HttpEncoding): Directive0 =
     extract(_.request.encoding).flatMap {
-      case `encoding` => pass
-      case _ => reject(UnsupportedRequestEncodingRejection(encoding))
+      case `encoding` ⇒ pass
+      case _          ⇒ reject(UnsupportedRequestEncodingRejection(encoding))
     }
 
   /**
    * Wraps its inner Route with encoding support using the given Encoder.
    */
   def encodeResponse(encoder: Encoder) = {
-    def applyEncoder = mapRequestContext { ctx =>
+    def applyEncoder = mapRequestContext { ctx ⇒
       @volatile var compressor: Compressor = null
-      ctx.flatMapHttpResponsePartResponse {
-        case response: HttpResponse => encoder.encode(response) :: Nil
-        case x@ ChunkedResponseStart(response) => encoder.startEncoding(response) match {
-          case Some((compressedResponse, c)) =>
+      ctx.withHttpResponsePartMultiplied {
+        case response: HttpResponse ⇒ encoder.encode(response) :: Nil
+        case x @ ChunkedResponseStart(response) ⇒ encoder.startEncoding(response) match {
+          case Some((compressedResponse, c)) ⇒
             compressor = c
             ChunkedResponseStart(compressedResponse) :: Nil
-          case None => x :: Nil
+          case None ⇒ x :: Nil
         }
-        case MessageChunk(body, exts) if compressor != null =>
+        case MessageChunk(body, exts) if compressor != null ⇒
           MessageChunk(compressor.compress(body).flush(), exts) :: Nil
-        case x: ChunkedMessageEnd if compressor != null =>
+        case x: ChunkedMessageEnd if compressor != null ⇒
           val body = compressor.finish()
           if (body.length > 0) MessageChunk(body) :: x :: Nil else x :: Nil
-        case x => x :: Nil
+        case x ⇒ x :: Nil
       }
     }
     responseEncodingAccepted(encoder.encoding) &
-    applyEncoder &
-    cancelAllRejections(ofType[UnacceptedResponseEncodingRejection])
+      applyEncoder &
+      cancelAllRejections(ofType[UnacceptedResponseEncodingRejection])
   }
 
   /**

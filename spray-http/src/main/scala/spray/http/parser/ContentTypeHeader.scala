@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,16 +22,16 @@ import org.parboiled.scala._
 import HttpHeaders._
 
 private[parser] trait ContentTypeHeader {
-  this: Parser with ProtocolParameterRules with CommonActions =>
+  this: Parser with ProtocolParameterRules with CommonActions ⇒
 
-  def CONTENT_TYPE = rule {
+  def `*Content-Type` = rule {
     ContentTypeHeaderValue ~~> `Content-Type`
   }
 
   lazy val ContentTypeHeaderValue = rule {
     MediaTypeDef ~ EOI ~~> (createContentType(_, _, _))
   }
-  
+
   private def createContentType(mainType: String, subType: String, params: Map[String, String]) = {
     val mimeType = getMediaType(mainType, subType, params.get("boundary"))
     val charset = params.get("charset").map(getCharset)

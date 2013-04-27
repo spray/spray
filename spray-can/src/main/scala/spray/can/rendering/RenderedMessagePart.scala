@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,24 +16,20 @@
 
 package spray.can.rendering
 
-import java.nio.ByteBuffer
+import akka.util.ByteString
+import akka.io.Tcp
 import spray.io.Command
 import spray.http._
 
-
 case class HttpRequestPartRenderingContext(
   requestPart: HttpRequestPart,
-  host: String,
-  port: Int,
-  sentAck: Option[Any] = None
-) extends Command
+  ack: Any = Tcp.NoAck) extends Command
 
 case class HttpResponsePartRenderingContext(
   responsePart: HttpResponsePart,
   requestMethod: HttpMethod = HttpMethods.GET,
   requestProtocol: HttpProtocol = HttpProtocols.`HTTP/1.1`,
-  requestConnectionHeader: Option[String] = None,
-  sentAck: Option[Any] = None
-) extends Command
+  closeAfterResponseCompletion: Boolean = false,
+  ack: Any = Tcp.NoAck) extends Command
 
-case class RenderedMessagePart(buffers: List[ByteBuffer], closeConnection: Boolean = false)
+case class RenderedMessagePart(data: ByteString, closeConnection: Boolean = false)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,9 @@
 package spray.routing
 package directives
 
-import spray.util.LoggingContext
-import akka.actor._
 import scala.util.control.NonFatal
-
+import akka.actor._
+import spray.http.HttpHeader
 
 trait ExecutionDirectives {
   import BasicDirectives._
@@ -29,16 +28,16 @@ trait ExecutionDirectives {
    * Transforms exceptions thrown during evaluation of its inner route using the given
    * [[spray.routing.ExceptionHandler]].
    */
-  def handleExceptions(ehm: ExceptionHandlerMagnet): Directive0 =
-    mapInnerRoute { inner => ctx =>
-      import ehm._
-      def handleError = handler andThen (_(log)(ctx))
-      try inner {
-        ctx.withRouteResponseHandling {
-          case Status.Failure(error) if handler.isDefinedAt(error) => handleError(error)
+  def handleExceptions(handler: ExceptionHandler): Directive0 =
+    mapInnerRoute { inner ⇒
+      ctx ⇒
+        def handleError = handler andThen (_(ctx))
+        try inner {
+          ctx.withRouteResponseHandling {
+            case Status.Failure(error) if handler.isDefinedAt(error) ⇒ handleError(error)
+          }
         }
-      }
-      catch handleError
+        catch handleError
     }
 
   /**
@@ -46,13 +45,19 @@ trait ExecutionDirectives {
    * [[spray.routing.RejectionHandler]].
    */
   def handleRejections(handler: RejectionHandler): Directive0 =
-    mapRequestContext { ctx =>
-      ctx.withRejectionHandling { rejections =>
-        if (handler.isDefinedAt(rejections)) {
-          val filteredRejections = RejectionHandler.applyTransformations(rejections)
-          val responseForRejections = handler(filteredRejections)
-          ctx.complete(responseForRejections)
-        } else ctx.reject(rejections: _*)
+    mapRequestContext { ctx ⇒
+      ctx.withRejectionHandling { rejections ⇒
+        val filteredRejections = RejectionHandler.applyTransformations(rejections)
+        if (handler.isDefinedAt(filteredRejections)) {
+          def isAcceptHeader(h: HttpHeader) = h.lowercaseName.startsWith("accept")
+          // we "disable" content negotiation for the rejection handling route
+          // so as to avoid UnacceptedResponseContentTypeRejections from it
+          val handlingContext = ctx
+            .withRequestMapped(request ⇒ request.withHeaders(request.headers.filterNot(isAcceptHeader)))
+            .withRejectionHandling(rej ⇒ sys.error("The RejectionHandler for " + rejections +
+              " must not itself produce rejections (received " + rej + ")!"))
+          handler(filteredRejections)(handlingContext)
+        } else ctx.reject(filteredRejections: _*)
       }
     }
 
@@ -76,34 +81,25 @@ trait ExecutionDirectives {
    * via the usual `&` and `|` operators.
    */
   case class dynamicIf(enabled: Boolean) {
-    def apply(inner: => Route): Route =
-      if (enabled) Route(ctx => inner(ctx)) else inner
+    def apply(inner: ⇒ Route): Route =
+      if (enabled) Route(ctx ⇒ inner(ctx)) else inner
   }
 
   /**
    * Executes its inner Route in the context of the actor returned by the given function.
    * Note that the parameter function is re-evaluated for every request anew.
    */
-  def detachTo(serviceActor: Route => ActorRef): Directive0 =
-    mapInnerRoute { route => ctx => serviceActor(route) ! ctx }
+  def detachTo(serviceActor: Route ⇒ ActorRef): Directive0 =
+    mapInnerRoute { route ⇒ ctx ⇒ serviceActor(route) ! ctx }
 
   /**
    * Returns a function creating a new SingleRequestServiceActor for a given Route.
    */
-  def singleRequestServiceActor(implicit refFactory: ActorRefFactory): Route => ActorRef =
-    route => refFactory.actorOf(Props(new SingleRequestServiceActor(route)))
+  def singleRequestServiceActor(implicit refFactory: ActorRefFactory): Route ⇒ ActorRef =
+    route ⇒ refFactory.actorOf(Props(new SingleRequestServiceActor(route)))
 }
 
 object ExecutionDirectives extends ExecutionDirectives
-
-
-class ExceptionHandlerMagnet(val handler: ExceptionHandler, val log: LoggingContext)
-
-object ExceptionHandlerMagnet {
-  implicit def apply(handler: ExceptionHandler)(implicit log: LoggingContext = akka.spray.NoLogging) =
-    new ExceptionHandlerMagnet(handler, log)
-}
-
 
 /**
  * An HttpService actor that reacts to an incoming RequestContext message by running it in the given Route
@@ -111,9 +107,9 @@ object ExceptionHandlerMagnet {
  */
 class SingleRequestServiceActor(route: Route) extends Actor {
   def receive = {
-    case ctx: RequestContext =>
+    case ctx: RequestContext ⇒
       try route(ctx)
-      catch { case NonFatal(e) => ctx.failWith(e) }
+      catch { case NonFatal(e) ⇒ ctx.failWith(e) }
       finally context.stop(self)
   }
 }

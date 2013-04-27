@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,10 @@
 
 package spray.util.pimps
 
-import java.util.concurrent.TimeUnit._
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import scala.concurrent.Future
 import akka.pattern.ask
 import akka.actor._
-
 
 class PimpedActorSystem(underlying: ActorSystem) {
 
@@ -32,10 +30,10 @@ class PimpedActorSystem(underlying: ActorSystem) {
           var receiver: Option[ActorRef] = None
 
           def receive = {
-            case subject: ActorRef =>
+            case subject: ActorRef ⇒
               context.watch(subject)
               receiver = Some(sender)
-            case x: Terminated =>
+            case x: Terminated ⇒
               receiver.foreach(_ ! x)
               context.stop(self)
           }

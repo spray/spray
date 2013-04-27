@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,31 +16,56 @@
 
 package spray.can.parsing
 
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.Config
+import scala.collection.JavaConverters._
+import akka.actor.ActorSystem
 
+case class ParserSettings(
+    maxUriLength: Int,
+    maxResponseReasonLength: Int,
+    maxHeaderNameLength: Int,
+    maxHeaderValueLength: Int,
+    maxHeaderCount: Int,
+    maxContentLength: Int,
+    maxChunkExtLength: Int,
+    maxChunkSize: Int,
+    headerValueCacheLimits: Map[String, Int]) {
 
-private[can] class ParserSettings(config: Config = ConfigFactory.load.getConfig("spray.can.parsing")) {
-  config.checkValid(ConfigFactory.defaultReference.getConfig("spray.can.parsing"))
+  require(maxUriLength > 0, "max-uri-length must be > 0")
+  require(maxResponseReasonLength > 0, "max-response-reason-length must be > 0")
+  require(maxHeaderNameLength > 0, "max-header-name-length must be > 0")
+  require(maxHeaderValueLength > 0, "max-header-value-length must be > 0")
+  require(maxHeaderCount > 0, "max-header-count must be > 0")
+  require(maxContentLength > 0, "max-content-length must be > 0")
+  require(maxChunkExtLength > 0, "max-chunk-ext-length must be > 0")
+  require(maxChunkSize > 0, "max-chunk-size must be > 0")
 
-  val MaxUriLength            = config getBytes "max-uri-length"
-  val MaxResponseReasonLength = config getBytes "max-response-reason-length"
-  val MaxHeaderNameLength     = config getBytes "max-header-name-length"
-  val MaxHeaderValueLength    = config getBytes "max-header-value-length"
-  val MaxHeaderCount          = config getBytes "max-header-count"
-  val MaxContentLength        = config getBytes "max-content-length"
-  val MaxChunkExtNameLength   = config getBytes "max-chunk-ext-name-length"
-  val MaxChunkExtValueLength  = config getBytes "max-chunk-ext-value-length"
-  val MaxChunkExtCount        = config getBytes "max-chunk-ext-count"
-  val MaxChunkSize            = config getBytes "max-chunk-size"
+  val defaultHeaderValueCacheLimit: Int = headerValueCacheLimits("default")
 
-  require(MaxUriLength            > 0, "max-uri-length must be > 0")
-  require(MaxResponseReasonLength > 0, "max-response-reason-length must be > 0")
-  require(MaxHeaderNameLength     > 0, "max-header-name-length must be > 0")
-  require(MaxHeaderValueLength    > 0, "max-header-value-length must be > 0")
-  require(MaxHeaderCount          > 0, "max-header-count must be > 0")
-  require(MaxContentLength        > 0, "max-content-length must be > 0")
-  require(MaxChunkExtNameLength   > 0, "max-chunk-ext-name-length must be > 0")
-  require(MaxChunkExtValueLength  > 0, "max-chunk-ext-value-length must be > 0")
-  require(MaxChunkExtCount        > 0, "max-chunk-ext-count must be > 0")
-  require(MaxChunkSize            > 0, "max-chunk-size must be > 0")
+  def headerValueCacheLimit(headerName: String) =
+    headerValueCacheLimits.getOrElse(headerName, defaultHeaderValueCacheLimit)
+}
+
+object ParserSettings {
+  def apply(system: ActorSystem): ParserSettings =
+    apply(system.settings.config getConfig "spray.can.parsing")
+
+  def apply(config: Config): ParserSettings = {
+    def bytes(key: String): Int = {
+      val value: Long = config getBytes key
+      if (value <= Int.MaxValue) value.toInt
+      else sys.error(s"ParserSettings config setting $key must not be larger than ${Int.MaxValue}")
+    }
+    val cacheConfig = config.getConfig("header-cache")
+    ParserSettings(
+      bytes("max-uri-length"),
+      bytes("max-response-reason-length"),
+      bytes("max-header-name-length"),
+      bytes("max-header-value-length"),
+      bytes("max-header-count"),
+      bytes("max-content-length"),
+      bytes("max-chunk-ext-length"),
+      bytes("max-chunk-size"),
+      cacheConfig.entrySet.asScala.map(kvp ⇒ kvp.getKey -> cacheConfig.getInt(kvp.getKey))(collection.breakOut))
+  }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package spray.routing
 package authentication
 
 import javax.naming.directory.SearchControls
-
 
 /**
  * The LdapAuthenticator faciliates user/password authentication against an LDAP server.
@@ -96,13 +95,11 @@ case class LdapQueryResult(
   className: String,
   relative: Boolean,
   obj: AnyRef,
-  attrs: Map[String, LdapAttribute]
-)
+  attrs: Map[String, LdapAttribute])
 
 case class LdapAttribute(
-  id: String,
-  ordered: Boolean,
-  values: Seq[String]
-) {
+    id: String,
+    ordered: Boolean,
+    values: Seq[String]) {
   def value = if (values.isEmpty) "" else values.head
 }

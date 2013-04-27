@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  */
 
 package spray.httpx.unmarshalling
-
 
 trait FromStringDeserializers {
 
@@ -81,15 +80,15 @@ trait FromStringDeserializers {
 
   private def numberFormatError(value: String,
                                 target: String): PartialFunction[Throwable, Either[DeserializationError, Nothing]] = {
-    case e: NumberFormatException =>
+    case e: NumberFormatException ⇒
       Left(MalformedContent("'%s' is not a valid %s value" format (value, target), e))
   }
 
   implicit val String2BooleanConverter = new FromStringDeserializer[Boolean] {
     def apply(value: String) = value.toLowerCase match {
-      case "true" | "yes" | "on" => Right(true)
-      case "false" | "no" | "off" => Right(false)
-      case x => Left(MalformedContent("'" + x + "' is not a valid Boolean value"))
+      case "true" | "yes" | "on"  ⇒ Right(true)
+      case "false" | "no" | "off" ⇒ Right(false)
+      case x                      ⇒ Left(MalformedContent("'" + x + "' is not a valid Boolean value"))
     }
   }
 }

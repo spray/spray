@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@
 package spray.util.pimps
 
 import java.nio.ByteBuffer
-import spray.util.tfor
 
 class PimpedByteBuffer(underlying: ByteBuffer) {
 
@@ -54,28 +53,5 @@ class PimpedByteBuffer(underlying: ByteBuffer) {
       System.arraycopy(buf.array, buf.position, array, underlying.remaining, buf.remaining)
       ByteBuffer.wrap(array)
     }
-  }
-
-  /**
-   * Appends the contents of the given buffers to the contents of the underlying buffer and returns
-   * the result as a new ByteBuffer.
-   */
-  def concat(buffers: Array[ByteBuffer]): ByteBuffer = {
-    if (!underlying.hasArray) throw new IllegalArgumentException
-    var x = underlying.remaining
-    tfor(0)(_ < buffers.length, _ + 1) { i =>
-      val buf = buffers(i)
-      if (!buf.hasArray) throw new IllegalArgumentException
-      x += buf.remaining
-    }
-    val array = new Array[Byte](x)
-    x = underlying.remaining
-    System.arraycopy(underlying.array, underlying.position, array, 0, x)
-    tfor(0)(_ < buffers.length, _ + 1) { i =>
-      val buf = buffers(i)
-      System.arraycopy(buf.array, buf.position, array, x, buf.remaining)
-      x += buf.remaining
-    }
-    ByteBuffer.wrap(array)
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ package pimps
 import java.io.InputStream
 import java.util.Arrays
 
-
 class PimpedInputStream(underlying: InputStream) {
 
   def toByteArrayStream(chunkSize: Int): Stream[Array[Byte]] = {
@@ -29,7 +28,10 @@ class PimpedInputStream(underlying: InputStream) {
     if (bytesRead > 0) {
       val bytes = if (bytesRead == buffer.length) buffer else Arrays.copyOfRange(buffer, 0, bytesRead)
       Stream.cons(bytes, toByteArrayStream(chunkSize))
-    } else Stream.Empty
+    } else {
+      underlying.close()
+      Stream.Empty
+    }
   }
 
 }

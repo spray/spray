@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,13 @@
 
 package spray.can.server
 
-import scala.collection.mutable
 import scala.annotation.tailrec
 import spray.can.rendering.HttpResponsePartRenderingContext
-import spray.can.HttpEvent
 import spray.http._
 import spray.io._
-
+import scala.collection.immutable.Queue
+import spray.can.Http
+import akka.io.Tcp
 
 object PipeliningLimiter {
 
@@ -30,27 +30,27 @@ object PipeliningLimiter {
     new PipelineStage {
       require(pipeliningLimit > 0)
 
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
-          var parkedRequestParts: mutable.Queue[HttpRequestPart] = _
+          var parkedRequestParts = Queue.empty[HttpRequestPart]
           var openRequests = 0
           var limit = pipeliningLimit
           var readingStopped = false
 
           val commandPipeline: CPL = {
-            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEnd] =>
+            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEnd] ⇒
               openRequests -= 1
               commandPL(x)
-              if (parkedRequestParts != null && !parkedRequestParts.isEmpty) {
+              if (!parkedRequestParts.isEmpty) {
                 unparkOneRequest()
                 if (parkedRequestParts.isEmpty) resumeReading()
               }
 
-            case cmd => commandPL(cmd)
+            case cmd ⇒ commandPL(cmd)
           }
 
           val eventPipeline: EPL = {
-            case ev@ HttpEvent(x: HttpRequestPart) =>
+            case ev @ Http.MessageEvent(x: HttpRequestPart) ⇒
               if (openRequests == limit) {
                 stopReading()
                 park(x)
@@ -59,37 +59,38 @@ object PipeliningLimiter {
                 eventPL(ev)
               }
 
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
 
           def stopReading() {
             if (!readingStopped) {
               readingStopped = true
-              commandPL(IOServer.StopReading)
+              commandPL(Tcp.StopReading)
             }
           }
 
           def resumeReading() {
             if (readingStopped) {
               readingStopped = false
-              commandPL(IOServer.ResumeReading)
+              commandPL(Tcp.ResumeReading)
             }
           }
 
           def park(part: HttpRequestPart) {
-            if (parkedRequestParts == null) parkedRequestParts = mutable.Queue(part)
-            else parkedRequestParts.enqueue(part)
+            parkedRequestParts = parkedRequestParts enqueue part
           }
 
           @tailrec
           def unparkOneRequest() {
             if (!parkedRequestParts.isEmpty) {
-              parkedRequestParts.dequeue() match {
-                case part: HttpMessageEnd =>
+              val next = parkedRequestParts.head
+              parkedRequestParts = parkedRequestParts.tail
+              next match {
+                case part: HttpMessageEnd ⇒
                   openRequests += 1
-                  eventPL(HttpEvent(part))
-                case part =>
-                  eventPL(HttpEvent(part))
+                  eventPL(Http.MessageEvent(part))
+                case part ⇒
+                  eventPL(Http.MessageEvent(part))
                   unparkOneRequest()
               }
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import shapeless._
 
 trait Prepender[P <: HList, S <: HList] {
   type Out <: HList
-  def apply(prefix : P, suffix : S) : Out
+  def apply(prefix: P, suffix: S): Out
 }
 
 object Prepender {
@@ -29,9 +29,9 @@ object Prepender {
     def apply(prefix: P, suffix: S) = prefix
   }
 
-  implicit def apply[P <: HList, S <: HList, Out0 <: HList](implicit prepend : PrependAux[P, S, Out0]) =
+  implicit def apply[P <: HList, S <: HList, Out0 <: HList](implicit prepend: PrependAux[P, S, Out0]) =
     new Prepender[P, S] {
       type Out = Out0
-      def apply(prefix : P, suffix : S) : Out = prepend(prefix, suffix)
+      def apply(prefix: P, suffix: S): Out = prepend(prefix, suffix)
     }
 }

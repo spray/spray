@@ -10,7 +10,8 @@ class SprayJsonSupportExamplesSpec extends Specification {
   import spray.json.DefaultJsonProtocol
   import spray.httpx.marshalling._
   import spray.http._
-  import MediaTypes.`application/json`
+  import HttpCharsets._
+  import MediaTypes._
 
   case class Person(name: String, firstName: String, age: Int)
 
@@ -25,12 +26,14 @@ class SprayJsonSupportExamplesSpec extends Specification {
     import spray.httpx.SprayJsonSupport._
 
     val bob = Person("Bob", "Parr", 32)
-    val body = HttpBody(`application/json`,
-      """|{
-         |  "name": "Bob",
-         |  "firstName": "Parr",
-         |  "age": 32
-         |}""".stripMargin
+    val body = HttpEntity(
+      contentType = ContentType(`application/json`, `UTF-8`),
+      string =
+        """|{
+           |  "name": "Bob",
+           |  "firstName": "Parr",
+           |  "age": 32
+           |}""".stripMargin
     )
 
     marshal(bob) === Right(body)

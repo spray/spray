@@ -9,7 +9,7 @@ Assume you have the following route::
 
     val route: Route = complete("yeah")
 
-This is (almost [#f1]_) equivalent to::
+This is equivalent to::
 
     val route: Route = _.complete("yeah")
 
@@ -21,7 +21,7 @@ which is a function literal. The function defined by the literal is created at t
 but the code inside of the function is not executed until an actual request is injected into the route structure.
 This is all probably quite clear.
 
-Not let's look at this slightly more complex structure::
+Now let's look at this slightly more complex structure::
 
     val route: Route =
       get {
@@ -98,7 +98,7 @@ Let's take a look at this example::
       }
     }
 
-Here we have put logging statements at four different places in our route structure. Let's see, when exactly they
+Here we have put logging statements at four different places in our route structure. Let's see when exactly they
 will be executed.
 
 MARK 1 and MARK 2
@@ -147,7 +147,7 @@ With the understanding of the above sections it should now be possible to discov
 structures for the (rare!) cases, where route execution performance really turns out to be a significant factor in your
 application.
 
-Let's compare two route structures that are fully equivalent with regard to how they respond to requests::
+Let's compare two route structures that are almost equivalent with regard to how they respond to requests::
 
     val routeA =
       path("abc" / PathElement) { x =>
@@ -172,11 +172,3 @@ start extracting values at the lower levels of your routing tree. However, in th
 expect the benefits of a cleanly and logically laid out structure to far outweigh potential performance improvements
 through a more complex solution that goes out of its way to push down or even avoid extractions for a tiny,
 non-perceivable bump in performance.
-
-
-.. rubric:: Footnotes
-
-.. [#f1] The directive ``complete(<expression>)`` is exactly equivalent to ``val x = <expression>; _.complete(x)``, so
-   the expression is *not* automatically re-evaluated for every request as it would be with the route
-   ``ctx => ctx.complete(<expression>)``, unless it is located "inside" of an extraction or at some level wrapped
-   with the :ref:`-dynamic-` directive.

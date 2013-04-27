@@ -11,7 +11,7 @@ class HttpServerExamplesSpec extends Specification {
   class Actor1 extends Actor {
     //# example-1
     def receive = {
-      case HttpRequest(GET, "/ping", _, _, _) =>
+      case HttpRequest(GET, Uri.Path("/ping"), _, _, _) =>
         sender ! HttpResponse(entity = "PONG")
     }
     //#
@@ -20,8 +20,8 @@ class HttpServerExamplesSpec extends Specification {
   class Actor2 extends Actor {
     //# example-2
     def receive = {
-      case HttpRequest(GET, "/ping", _, _, _) =>
-        sender ! HttpResponse(entity = "PONG").withSentAck("ok")
+      case HttpRequest(GET, Uri.Path("/ping"), _, _, _) =>
+        sender ! HttpResponse(entity = "PONG").withAck("ok")
 
       case "ok" => println("Response was sent successfully")
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ package directives
 import spray.http.HttpMethod
 import spray.http.HttpMethods._
 import shapeless.HNil
-
 
 trait MethodDirectives {
   import BasicDirectives._
@@ -53,11 +52,20 @@ trait MethodDirectives {
   val put = method(PUT) // source-quote
 
   /**
+   * A route filter that rejects all non-OPTIONS requests.
+   */
+  val options = method(OPTIONS) // source-quote
+
+  //# method-directive
+  /**
    * Rejects all requests whose HTTP method does not match the given one.
    */
   def method(mth: HttpMethod): Directive0 =
-    extract(_.request.method).flatMap[HNil](m => if (m == mth) pass else reject(MethodRejection(mth))) &
-      cancelAllRejections(ofType[MethodRejection])
+    extract(_.request.method).flatMap[HNil] {
+      case `mth` ⇒ pass
+      case _     ⇒ reject(MethodRejection(mth))
+    } & cancelAllRejections(ofType[MethodRejection])
+  //#
 }
 
 object MethodDirectives extends MethodDirectives

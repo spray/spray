@@ -30,8 +30,8 @@ sealed abstract class HttpCharset extends HttpCharsetRange {
   def aliases: Seq[String]
   def matches(charset: HttpCharset) = this == charset
   override def equals(obj: Any) = obj match {
-    case x: HttpCharset => (this eq x) || value == x.value
-    case _ => false
+    case x: HttpCharset ⇒ (this eq x) || value == x.value
+    case _              ⇒ false
   }
   override def hashCode() = value.##
   override def toString = "HttpCharset(" + value + ')'
@@ -39,20 +39,21 @@ sealed abstract class HttpCharset extends HttpCharsetRange {
 
 // see http://www.iana.org/assignments/character-sets
 object HttpCharsets extends ObjectRegistry[String, HttpCharset] {
-  
+
   def register(charset: HttpCharset): HttpCharset = {
     register(charset.value.toLowerCase, charset)
-    charset.aliases.foreach(alias => register(alias.toLowerCase, charset))
+    charset.aliases.foreach(alias ⇒ register(alias.toLowerCase, charset))
     charset
   }
-  
+
   object `*` extends HttpCharsetRange {
     def value = "*"
     def matches(charset: HttpCharset) = true
   }
-  
+
   private class PredefCharset(val value: String, val aliases: String*) extends HttpCharset
 
+  // format: OFF
   val `US-ASCII`     = register(new PredefCharset("US-ASCII", "iso-ir-6", "ANSI_X3.4-1986", "ISO_646.irv:1991", "ASCII", "ISO646-US", "us", "IBM367", "cp367", "csASCII"))
   val `ISO-8859-1`   = register(new PredefCharset("ISO-8859-1", "iso-ir-100", "ISO_8859-1", "latin1", "l1", "IBM819", "CP819", "csISOLatin1"))
   val `ISO-8859-2`   = register(new PredefCharset("ISO-8859-2", "iso-ir-101", "ISO_8859-2", "latin2", "l2", "csISOLatin2"))
@@ -77,6 +78,7 @@ object HttpCharsets extends ObjectRegistry[String, HttpCharset] {
   val `windows-1253` = register(new PredefCharset("windows-1253", "cp1253", "cp5349"))
   val `windows-1254` = register(new PredefCharset("windows-1254", "cp1254", "cp5350"))
   val `windows-1257` = register(new PredefCharset("windows-1257", "cp1257", "cp5353"))
+  // format: ON
 
   class CustomHttpCharset private (val value: String, val aliases: Seq[String]) extends HttpCharset
   object CustomHttpCharset {
@@ -84,7 +86,7 @@ object HttpCharsets extends ObjectRegistry[String, HttpCharset] {
       try {
         Some(new CustomHttpCharset(value.toLowerCase, aliases))
       } catch {
-        case e: java.nio.charset.UnsupportedCharsetException => None
+        case e: java.nio.charset.UnsupportedCharsetException ⇒ None
       }
     }
   }

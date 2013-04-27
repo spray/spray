@@ -39,7 +39,7 @@ class CaseClassExtractionExamplesSpec extends Specification with Specs2RouteTest
     case class Color(name: String, red: Int, green: Int, blue: Int)
 
     val route =
-      (path("color" / PathElement) &
+      (path("color" / Segment) &
         parameters('r.as[Int], 'g.as[Int], 'b.as[Int])).as(Color) { color =>
           doSomethingWith(color) // route working with the Color instance
         }
@@ -57,7 +57,7 @@ class CaseClassExtractionExamplesSpec extends Specification with Specs2RouteTest
 
   "example 4 test" in {
     val route =
-      (path("color" / PathElement) &
+      (path("color" / Segment) &
         parameters('r.as[Int], 'g.as[Int], 'b.as[Int])).as(Color) { color =>
           doSomethingWith(color) // route working with the Color instance
         }
@@ -65,7 +65,9 @@ class CaseClassExtractionExamplesSpec extends Specification with Specs2RouteTest
       entityAs[String] === "Color(abc,1,2,3)"
     }
     Get("/color/abc?r=1&g=2&b=345") ~> route ~> check {
-      rejection === ValidationRejection("requirement failed: blue color component must be between 0 and 255")
+      rejection must beLike {
+        case ValidationRejection("requirement failed: blue color component must be between 0 and 255", _) => ok
+      }
     }
   }
 

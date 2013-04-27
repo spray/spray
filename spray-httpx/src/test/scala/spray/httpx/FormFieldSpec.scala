@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import scala.xml.NodeSeq
 import org.specs2.mutable.Specification
 import spray.util._
 import spray.http._
-
 
 class FormFieldSpec extends Specification {
   import spray.httpx.marshalling._

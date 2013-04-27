@@ -8,7 +8,7 @@ behavior to create a fresh ``IOConnectionActor`` for every newly established con
 encapsulate connection-specific state and serve as handlers for all events coming in from the underlying
 :ref:`IOBridge`.
 
-Theoretically, in order to implement you own client- or server logic, it would suffice if *spray-io* gave you the
+Theoretically, in order to implement your own client- or server logic, it would suffice if *spray-io* gave you the
 ability to somehow place your own ``Actor.Receive`` partial function directly in these connection actors.
 However, implementing non-trivial client- or server logic in a single, monolithic actor usually doesn't yield very
 readable and maintainable code. Rather an architecturally clean implementation would split up the logic into different,

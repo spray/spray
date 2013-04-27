@@ -1,4 +1,4 @@
-@(content: Any, node: spray.site.ContentNode = spray.site.RootNode)
+@(content: Html, node: spray.site.ContentNode = spray.site.Main.root)
 
 <!DOCTYPE HTML>
 <!--[if IE 7 ]>    <html class="ie7 no-js" lang="en"> <![endif]-->
@@ -6,8 +6,7 @@
 <!--[if IE 9 ]>    <html class="ie9 no-js" lang="en"> <![endif]-->
 <!--[if (gte IE 9)|!(IE)]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
 <head>
-    <meta charset="utf-8" />
-    <title>spray | HTTP and more for your Akka/Scala Actors</title>
+    <title>spray | @node.title</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
     <meta name="description" content="An open-source toolkit for REST/HTTP and low-level network IO on top of Scala and Akka" />
     <meta name="keywords" content="scala, akka, actors, io, network, HTTP, REST, open-source, server, client" />
@@ -25,6 +24,10 @@
 
     <link rel="shortcut icon" href="/favicon.png" />
 
+    @if(node.uri.startsWith("blog")) {
+      <link href="/blog/feed/" type="application/atom+xml" rel="alternate" title="Blog Atom Feed" />
+    }
+
     <script type="text/javascript">
       var _gaq = _gaq || [];
       _gaq.push(['_setAccount', 'UA-35539715-1']);
@@ -37,7 +40,7 @@
     </script>
 </head>
 
-<body class="@if(node == spray.site.RootNode) {page-home} else {page-doc}">
+<body class="@{if(node.isRoot) "page-home" else if (node.uri.startsWith("blog")) "page-blog" else "page-doc"}">
 
 @html.header(node)
 

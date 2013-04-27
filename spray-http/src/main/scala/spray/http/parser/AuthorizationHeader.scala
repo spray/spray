@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@ import org.parboiled.common.Base64
 import BasicRules._
 
 private[parser] trait AuthorizationHeader {
-  this: Parser with ProtocolParameterRules with AdditionalRules =>
+  this: Parser with ProtocolParameterRules with AdditionalRules ⇒
 
-  def AUTHORIZATION = rule {
+  def `*Authorization` = rule {
     CredentialDef ~ EOI ~~> HttpHeaders.`Authorization`
   }
 
@@ -41,21 +41,18 @@ private[parser] trait AuthorizationHeader {
   }
 
   def OAuth2BearerTokenDef = rule {
-    "Bearer" ~ BearerToken ~> (OAuth2BearerToken(_))
+    "Bearer" ~ Token ~~> (OAuth2BearerToken(_))
   }
 
-  def BearerToken = rule {
-    oneOrMore(Alpha | Digit | anyOf("-._~+/")) ~ optional("==" | ch('='))
-  }
+  def GenericHttpCredentialsDef = rule(
+    AuthScheme ~ (
+      CredentialParams ~~> ((scheme: String, params) ⇒ GenericHttpCredentials(scheme, params))
+      | RelaxedToken ~ (
+        CredentialParams ~~> ((scheme: String, token: String, params) ⇒ GenericHttpCredentials(scheme, token, params))
+        | EMPTY ~~> ((scheme: String, token: String) ⇒ GenericHttpCredentials(scheme, token)))
+        | EMPTY ~~> ((scheme: String) ⇒ GenericHttpCredentials(scheme, ""))))
 
-  def GenericHttpCredentialsDef = rule {
-    AuthScheme ~ CredentialParams ~~> GenericHttpCredentials
-  }
+  def CredentialParams = rule { oneOrMore(AuthParam, separator = ListSep) ~~> (_.toMap) }
 
-  def CredentialParams = rule (
-      oneOrMore(AuthParam, separator = ListSep) ~~> (_.toMap)
-    | (Token | QuotedString) ~~> (param => Map("" -> param))
-    | push(Map.empty[String, String])
-  )
-
+  def RelaxedToken = rule { oneOrMore(!CTL ~ !ch(' ') ~ !ch('"') ~ ANY) ~> identityFunc }
 }

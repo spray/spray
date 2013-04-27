@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,9 @@
 
 package spray.http
 
-
 package object parser {
 
-  private val _identityFunc: Any => Any = x => x
-  def identityFunc[T]: T => T = _identityFunc.asInstanceOf[T => T]
+  private val _identityFunc: Any ⇒ Any = x ⇒ x
+  def identityFunc[T]: T ⇒ T = _identityFunc.asInstanceOf[T ⇒ T]
 
 }

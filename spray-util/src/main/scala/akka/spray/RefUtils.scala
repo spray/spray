@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,24 +18,24 @@ package akka.spray
 
 import akka.actor._
 
-
 object RefUtils {
 
   def provider(ref: ActorRef): ActorRefProvider =
     asInternalActorRef(ref).provider
 
-  def provider(actorRefFactory: ActorRefFactory): ActorRefProvider = actorRefFactory match {
-    case x: ActorContext => provider(x.system)
-    case x: ExtendedActorSystem => x.provider
-    case x: ActorSystem => throw new IllegalArgumentException("Unsupported ActorSystem implementation: " + x)
-  }
+  def provider(actorRefFactory: ActorRefFactory): ActorRefProvider =
+    actorRefFactory match {
+      case x: ActorContext        ⇒ provider(x.system)
+      case x: ExtendedActorSystem ⇒ x.provider
+      case x: ActorSystem         ⇒ throw new IllegalArgumentException("Unsupported ActorSystem implementation: " + x)
+    }
 
   def isLocal(ref: ActorRef): Boolean =
     asInternalActorRef(ref).isLocal
 
-  private def asInternalActorRef(ref: ActorRef): InternalActorRef = ref match {
-    case x: InternalActorRef => x
-    case _ => throw new IllegalArgumentException("Incompatible ActorRef " + ref)
-  }
-
+  private[akka] def asInternalActorRef(ref: ActorRef): InternalActorRef =
+    ref match {
+      case x: InternalActorRef ⇒ x
+      case x                   ⇒ throw new IllegalArgumentException("Unsupported ActorRef " + x)
+    }
 }

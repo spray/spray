@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,10 +20,9 @@ package spray.http
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
 
-
 private[http] trait ObjectRegistry[K, V] {
   private[this] val registry = new AtomicReference(Map.empty[K, V])
-  
+
   @tailrec
   final def register(key: K, obj: V) {
     val current = registry.get
@@ -31,7 +30,7 @@ private[http] trait ObjectRegistry[K, V] {
     if (!registry.compareAndSet(current, updated))
       register(key, obj)
   }
-  
+
   def getForKey(key: K): Option[V] = registry.get.get(key)
 }
 

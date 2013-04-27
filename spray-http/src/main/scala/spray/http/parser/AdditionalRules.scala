@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,13 +22,11 @@ import BasicRules._
 
 // implementation of additional parsing rules required for extensions that are not in the core HTTP standard
 private[parser] trait AdditionalRules {
-  this: Parser =>
+  this: Parser ⇒
 
-  def Ip: Rule1[HttpIp] = rule (
-    group(IpNumber ~ ch('.') ~ IpNumber ~ ch('.') ~ IpNumber ~ ch('.') ~ IpNumber)
-      ~> HttpIp.fromString ~ OptWS
-  )
-  
+  def Ip: Rule1[HttpIp] = rule(
+    group(IpNumber ~ ch('.') ~ IpNumber ~ ch('.') ~ IpNumber ~ ch('.') ~ IpNumber) ~> (HttpIp(_)) ~ OptWS)
+
   def IpNumber = rule {
     Digit ~ optional(Digit ~ optional(Digit))
   }

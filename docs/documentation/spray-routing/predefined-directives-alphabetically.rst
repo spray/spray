@@ -52,7 +52,6 @@ Directive                              Description
                                        renders directory contents as browsable listings
 :ref:`-getFromDirectory-`              Completes GET requests with the content of a file underneath a given directory
 :ref:`-getFromFile-`                   Completes GET requests with the content of a given file
-:ref:`-getFromFileName-`               Completes GET requests with the content of the file with a given name
 :ref:`-getFromResource-`               Completes GET requests with the content of a given resource
 :ref:`-getFromResourceDirectory-`      Same as :ref:`-getFromDirectory-` except that the file is not fetched from the
                                        file system but rather from a "resource directory"
@@ -64,6 +63,7 @@ Directive                              Description
                                        and ``Marshaller`` for converting to and from the function
 :ref:`-headerValue-`                   Extracts an HTTP header value using a given function, rejects if no value can
                                        be extracted
+:ref:`-headerValueByName-`             Extracts an HTTP header value by selecting a header by name
 :ref:`-headerValuePF-`                 Same as :ref:`-headerValue-`, but with a ``PartialFunction``
 :ref:`-hextract-`                      Extracts an ``HList`` of values from the ``RequestContext`` using a function
 :ref:`-host-`                          Rejects all requests with a hostname different from a given definition,
@@ -94,6 +94,9 @@ Directive                              Description
 :ref:`-noop-`                          Does nothing, i.e. passes the ``RequestContext`` unchanged to its inner Route
 :ref:`-optionalCookie-`                Extracts an ``HttpCookie`` with a given name, if the cookie is not present in the
                                        request extracts ``None``
+:ref:`-optionalHeaderValue-`           Extracts an optional HTTP header value using a given function
+:ref:`-optionalHeaderValueByName-`     Extracts an optional HTTP header value by selecting a header by name
+:ref:`-optionalHeaderValuePF-`         Extracts an optional HTTP header value using a given partial function
 :ref:`-parameter-`                     Extracts the value of a request query parameter, rejects if the request doesn't
                                        come with a parameter matching the definition
 :ref:`-parameterMap-`                  Extracts the requests query parameters as a Map[String, String]
