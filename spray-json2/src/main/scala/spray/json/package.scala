@@ -33,8 +33,8 @@ package object json extends PackageImplicits {
   implicit def richString(string: String) = new RichString(string)
 
   // really?
-  implicit def enrichFuncWithFromJsonConversion[A :JsonFormat, B](f: A => B): JsValue => B =
-    json => f(json.as[A])
+  implicit def enrichFuncWithFromJsonConversion[A: JsonFormat, B](f: A ⇒ B): JsValue ⇒ B =
+    json ⇒ f(json.as[A])
 }
 
 package json {

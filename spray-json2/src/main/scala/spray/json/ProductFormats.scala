@@ -21,7 +21,7 @@ package spray.json
  * (especially case classes)
  */
 trait ProductFormats extends ObjectFieldFormatBuilderImplicits with /* generated */ ProductFormatsInstances {
-  protected[this] type JF[T] = JsonFormat[T] // simple alias for reduced verbosity
+  protected[this]type JF[T] = JsonFormat[T] // simple alias for reduced verbosity
 
   protected def extractFieldNames(classTag: scala.reflect.ClassTag[_]): Array[String] = {
     val clazz = classTag.runtimeClass
@@ -33,11 +33,11 @@ trait ProductFormats extends ObjectFieldFormatBuilderImplicits with /* generated
       val fields = clazz.getDeclaredFields.filterNot(_.getName.startsWith("$"))
       if (copyDefaultMethods.length != fields.length)
         sys.error("Case class " + clazz.getName + " declares additional fields")
-      if (fields.zip(copyDefaultMethods).exists { case (f, m) => f.getType != m.getReturnType })
+      if (fields.zip(copyDefaultMethods).exists { case (f, m) ⇒ f.getType != m.getReturnType })
         sys.error("Cannot determine field order of case class " + clazz.getName)
       fields.map(_.getName)
     } catch {
-      case ex: Exception => throw new RuntimeException("Cannot automatically determine case class field names and order " +
+      case ex: Exception ⇒ throw new RuntimeException("Cannot automatically determine case class field names and order " +
         "for '" + clazz.getName + "', please use the 'jsonFormat' overload with explicit field name specification", ex)
     }
   }

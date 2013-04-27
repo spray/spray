@@ -49,20 +49,18 @@ class JsonParserSpec extends Specification {
     "parse escapes in a  JsString" in {
       // we can't use simple literal unicode escapes here because they would be
       // replaced by the scala compiler and nothing would be tested
-      JsonParser(""""\"\\/\b\f\n\r\t\"""+"""uAb12"""") mustEqual JsString("\"\\/\b\f\n\r\t\uab12")
+      JsonParser(""""\"\\/\b\f\n\r\t\""" + """uAb12"""") mustEqual JsString("\"\\/\b\f\n\r\t\uab12")
     }
     "properly parse a simple JsObject" in (
       JsonParser(""" { "key" :42, "key2": "value" }""") mustEqual
-              JsObject("key" -> JsNumber(42), "key2" -> JsString("value"))
-    )
+      JsObject("key" -> JsNumber(42), "key2" -> JsString("value")))
     "properly parse a simple JsArray" in (
       JsonParser("""[null, 1.23 ,{"key":true } ] """) mustEqual
-              JsArray(JsNull, JsNumber(1.23), JsObject("key" -> JsBoolean(true)))
-    )
+      JsArray(JsNull, JsNumber(1.23), JsObject("key" -> JsBoolean(true))))
     "be reentrant" in {
       val largeJsonSource = FileUtils.readAllCharsFromResource("test.json")
       List.fill(20)(largeJsonSource).par.map(JsonParser(_)).toList.map {
-          _.asInstanceOf[JsObject].fields("questions").asInstanceOf[JsArray].elements.size
+        _.asInstanceOf[JsObject].fields("questions").asInstanceOf[JsArray].elements.size
       } mustEqual List.fill(20)(100)
     }
   }

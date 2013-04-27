@@ -12,7 +12,7 @@ trait ReadLens[M[_]] {
    * Given a parent JsValue, tries to extract the child value.
    * @return `Success(value)` if the lens read succeeds. `Left(error)` if the lens read fails.
    */
-  def retr: JsValue => Validated[M[JsValue]]
+  def retr: JsValue ⇒ Validated[M[JsValue]]
 
   /**
    * Given a parent JsValue extracts and tries to convert the JsValue into
@@ -31,5 +31,5 @@ trait ReadLens[M[_]] {
    * parent level. The returned predicate will return false for values
    * which fail to read.
    */
-  def is[U: Reader](f: U => Boolean): JsPred
+  def is[U: Reader](f: U ⇒ Boolean): JsPred
 }

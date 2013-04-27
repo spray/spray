@@ -18,5 +18,5 @@
 package spray.json
 
 @deprecated("DefaultJsonProtocol isn't needed any more. To get access to `jsonFormat` etc. " +
-            "extend or import `ProductFormats`", "2.0.0")
+  "extend or import `ProductFormats`", "2.0.0")
 trait DefaultJsonProtocol

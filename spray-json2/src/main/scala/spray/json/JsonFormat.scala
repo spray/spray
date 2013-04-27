@@ -20,7 +20,7 @@ package spray.json
 import annotation.implicitNotFound
 
 /**
-  * Provides the JSON deserialization for type T.
+ * Provides the JSON deserialization for type T.
  */
 @implicitNotFound(msg = "Cannot find JsonReader or JsonFormat type class for ${T}")
 trait JsonReader[T] {
@@ -28,14 +28,14 @@ trait JsonReader[T] {
 }
 
 object JsonReader {
-  implicit def func2Reader[T](f: JsValue => T): JsonReader[T] = new JsonReader[T] {
+  implicit def func2Reader[T](f: JsValue ⇒ T): JsonReader[T] = new JsonReader[T] {
     def read(json: JsValue) = Validated(f(json))
   }
   implicit def jsonReaderFromFormat[T](implicit format: JsonFormat[T]): JsonReader[T] = format
 }
 
 /**
-  * Provides the JSON serialization for type T.
+ * Provides the JSON serialization for type T.
  */
 @implicitNotFound(msg = "Cannot find JsonWriter or JsonFormat type class for ${T}")
 trait JsonWriter[T] {
@@ -43,28 +43,28 @@ trait JsonWriter[T] {
 }
 
 object JsonWriter {
-  implicit def func2Writer[T](f: T => JsValue): JsonWriter[T] = new JsonWriter[T] {
+  implicit def func2Writer[T](f: T ⇒ JsValue): JsonWriter[T] = new JsonWriter[T] {
     def write(obj: T) = f(obj)
   }
   implicit def jsonWriterFromFormat[T](implicit format: JsonFormat[T]): JsonWriter[T] = format
 }
 
 /**
-  * Provides the JSON deserialization and serialization for type T.
+ * Provides the JSON deserialization and serialization for type T.
  */
-trait JsonFormat[T] extends JsonReader[T] with JsonWriter[T] { outer =>
-  def map[U](f1: T => U, f2: U => T): JsonFormat[U] = new JsonFormat[U] {
+trait JsonFormat[T] extends JsonReader[T] with JsonWriter[T] { outer ⇒
+  def map[U](f1: T ⇒ U, f2: U ⇒ T): JsonFormat[U] = new JsonFormat[U] {
     def write(obj: U): JsValue = outer.write(f2(obj))
     def read(json: JsValue): Validated[U] = outer.read(json).map(f1)
   }
 }
 object JsonFormat
-  extends BasicFormats
-  with    CollectionFormats
-  with    StandardFormats
-  with    OptionFormats {
+    extends BasicFormats
+    with CollectionFormats
+    with StandardFormats
+    with OptionFormats {
 
-  def wrapAs[T, U: JsonFormat](f1: T => U, f2: U => T): JsonFormat[T] = new JsonFormat[T] {
+  def wrapAs[T, U: JsonFormat](f1: T ⇒ U, f2: U ⇒ T): JsonFormat[T] = new JsonFormat[T] {
     def write(obj: T): JsValue = f1(obj).toJson
     def read(json: JsValue): Validated[T] = json.toValidated[U].map(f2)
   }
@@ -88,18 +88,18 @@ trait RootJsonWriter[T] extends JsonWriter[T]
  */
 trait RootJsonFormat[T] extends JsonFormat[T] with RootJsonReader[T] with RootJsonWriter[T]
 
-trait JsonObjectFormat[T] extends JsonFormat[T] with RootJsonFormat[T] { outer =>
+trait JsonObjectFormat[T] extends JsonFormat[T] with RootJsonFormat[T] { outer ⇒
   def writeObject(obj: T): JsObject
   def readObject(json: JsObject): Validated[T]
 
   def write(obj: T): JsValue = writeObject(obj)
   def read(json: JsValue): Validated[T] =
     json match {
-      case obj: JsObject => readObject(obj)
-      case _ => deserializationError("Expected JsObject but got " + json.getClass.getSimpleName)
+      case obj: JsObject ⇒ readObject(obj)
+      case _             ⇒ deserializationError("Expected JsObject but got " + json.getClass.getSimpleName)
     }
 
-  def extraField[U: JsonWriter](fieldName: String, f: T => U): JsonObjectFormat[T] =
+  def extraField[U: JsonWriter](fieldName: String, f: T ⇒ U): JsonObjectFormat[T] =
     new JsonObjectFormat[T] {
       def writeObject(obj: T): JsObject =
         outer.writeObject(obj) ~ (fieldName -> f(obj).toJson)

@@ -20,9 +20,9 @@ import annotation.tailrec
 import java.lang.StringBuilder
 
 /**
-  * A JsonFormatter serializes a JSON AST to a String.
+ * A JsonFormatter serializes a JSON AST to a String.
  */
-trait JsonFormatter extends (JsValue => String) {
+trait JsonFormatter extends (JsValue ⇒ String) {
 
   def apply(x: JsValue): String = apply(x, None)
 
@@ -31,12 +31,12 @@ trait JsonFormatter extends (JsValue => String) {
   def apply(x: JsValue, jsonpCallback: Option[String]): String = {
     val sb = new StringBuilder
     jsonpCallback match {
-      case Some(callback) => {
+      case Some(callback) ⇒ {
         sb.append(callback).append('(')
         format(x, sb)
         sb.append(')');
       }
-      case None => format(x, sb)
+      case None ⇒ format(x, sb)
     }
     sb.toString
   }
@@ -45,12 +45,12 @@ trait JsonFormatter extends (JsValue => String) {
 
   protected def printLeaf(x: JsValue, sb: StringBuilder) {
     x match {
-      case JsNull      => sb.append("null")
-      case JsTrue      => sb.append("true")
-      case JsFalse     => sb.append("false")
-      case x: JsNumber => sb.append(x.value)
-      case x: JsString => printString(x.value, sb)
-      case _           => throw new IllegalStateException
+      case JsNull      ⇒ sb.append("null")
+      case JsTrue      ⇒ sb.append("true")
+      case JsFalse     ⇒ sb.append("false")
+      case x: JsNumber ⇒ sb.append(x.value)
+      case x: JsString ⇒ printString(x.value, sb)
+      case _           ⇒ throw new IllegalStateException
     }
   }
 
@@ -59,17 +59,17 @@ trait JsonFormatter extends (JsValue => String) {
     def printEscaped(s: String, ix: Int) {
       if (ix < s.length) {
         s.charAt(ix) match {
-          case '"' => sb.append("\\\"")
-          case '\\' => sb.append("\\\\")
-          case x if 0x20 <= x && x < 0x7F => sb.append(x)
-          case '\b' => sb.append("\\b")
-          case '\f' => sb.append("\\f")
-          case '\n' => sb.append("\\n")
-          case '\r' => sb.append("\\r")
-          case '\t' => sb.append("\\t")
-          case x if x <= 0xFF => sb.append("\\u00").append(Integer.toHexString(x))
-          case x if x <= 0xFFF => sb.append("\\u0").append(Integer.toHexString(x))
-          case x => sb.append("\\u").append(Integer.toHexString(x))
+          case '"'                        ⇒ sb.append("\\\"")
+          case '\\'                       ⇒ sb.append("\\\\")
+          case x if 0x20 <= x && x < 0x7F ⇒ sb.append(x)
+          case '\b'                       ⇒ sb.append("\\b")
+          case '\f'                       ⇒ sb.append("\\f")
+          case '\n'                       ⇒ sb.append("\\n")
+          case '\r'                       ⇒ sb.append("\\r")
+          case '\t'                       ⇒ sb.append("\\t")
+          case x if x <= 0xFF             ⇒ sb.append("\\u00").append(Integer.toHexString(x))
+          case x if x <= 0xFFF            ⇒ sb.append("\\u0").append(Integer.toHexString(x))
+          case x                          ⇒ sb.append("\\u").append(Integer.toHexString(x))
         }
         printEscaped(s, ix + 1)
       }
@@ -79,9 +79,9 @@ trait JsonFormatter extends (JsValue => String) {
     sb.append('"')
   }
 
-  protected def printSeq[A](iterable: Iterable[A], printSeparator: => Unit)(f: A => Unit) {
+  protected def printSeq[A](iterable: Iterable[A], printSeparator: ⇒ Unit)(f: A ⇒ Unit) {
     var first = true
-    iterable.foreach { a =>
+    iterable.foreach { a ⇒
       if (first) first = false else printSeparator
       f(a)
     }

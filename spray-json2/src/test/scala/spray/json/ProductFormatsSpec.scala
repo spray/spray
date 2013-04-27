@@ -42,8 +42,7 @@ class ProductFormatsSpec extends Specification {
     }
     "throw a DeserializationException if the JsObject does not all required members" in (
       JsObject("b" -> JsNumber(4.2)).as[Test2] must
-              throwA(new DeserializationException("JsObject is missing required member 'a'"))
-    )
+      throwA(new DeserializationException("JsObject is missing required member 'a'")))
     "not require the presence of optional fields for deserialization" in {
       JsObject("a" -> JsNumber(42)).as[Test2] mustEqual Test2(42, None)
     }
@@ -57,16 +56,14 @@ class ProductFormatsSpec extends Specification {
       JsObject("b" -> JsNumber(4.2), "a" -> JsNumber(42)).as[Test2] mustEqual obj
     }
     "throw a DeserializationException if the JsValue is not a JsObject" in (
-      JsNull.as[Test2] must throwA(new DeserializationException("Expected JsObject but got JsNull$"))
-    )
+      JsNull.as[Test2] must throwA(new DeserializationException("Expected JsObject but got JsNull$")))
   }
 
   "A JsonFormat for a generic case class and created with `jsonFormat`" should {
     val obj = Test3(42 :: 43 :: Nil, "x" :: "y" :: "z" :: Nil)
     val json = JsObject(
       "as" -> JsArray(JsNumber(42), JsNumber(43)),
-      "bs" -> JsArray(JsString("x"), JsString("y"), JsString("z"))
-    )
+      "bs" -> JsArray(JsString("x"), JsString("y"), JsString("z")))
     "convert to a respective JsObject" in {
       obj.toJson mustEqual json
     }

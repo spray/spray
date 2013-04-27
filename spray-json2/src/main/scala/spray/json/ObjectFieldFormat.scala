@@ -20,7 +20,7 @@ package spray.json
  * similar to a JsonFormat but works on a different level: it is not possible to
  * un/marshal arbitrary JsValues but only fields of a JsObject.
  */
-trait ObjectFieldFormat[T] { outer =>
+trait ObjectFieldFormat[T] { outer ⇒
   def fromFields(fields: Map[String, JsValue]): Validated[T]
   def fromValue(t: T): Seq[(String, JsValue)]
 
@@ -71,7 +71,7 @@ trait ObjectFieldFormatBuilderImplicits {
       ObjectFieldFormat[T](fieldName)
   }
   case class FieldProducer[T: JsonFormat](fieldName: String) {
-    def using[U](f1: T => U, f2: U => T): ObjectFieldFormat[U] =
+    def using[U](f1: T ⇒ U, f2: U ⇒ T): ObjectFieldFormat[U] =
       ObjectFieldFormat(fieldName)(jsonFormat[T].map(f1, f2))
   }
   implicit def toRichFieldName(fieldName: String): RichFieldName = RichFieldName(fieldName)
@@ -95,7 +95,7 @@ trait ObjectFieldFormatBuilderImplicits {
  * Is currently only used to define the default behavior of options which are usually
  * represented as missing fields (and not with their default option format).
  */
-trait ExtraFormat[T] extends (ObjectFieldFormat[T] => ObjectFieldFormat[T])
+trait ExtraFormat[T] extends (ObjectFieldFormat[T] ⇒ ObjectFieldFormat[T])
 trait LowLevelExtra {
   implicit def simple[T]: ExtraFormat[T] =
     new ExtraFormat[T] {

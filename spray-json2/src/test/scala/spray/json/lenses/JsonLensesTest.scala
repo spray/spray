@@ -1,8 +1,8 @@
 package spray.json
 package lenses
 
-import Predef.{augmentString => _, wrapString => _, _}
-import spray.json.{JsValue, JsonParser}
+import Predef.{ augmentString ⇒ _, wrapString ⇒ _, _ }
+import spray.json.{ JsValue, JsonParser }
 
 object JsonLensesTest extends App {
 
@@ -23,12 +23,12 @@ object JsonLensesTest extends App {
 
   val i = json.extract[Int]("els" / "money")
 
-  ("els" / element(1) / "money").get[Int] _: (JsValue => Int)
+  ("els" / element(1) / "money").get[Int] _: (JsValue ⇒ Int)
 
-  ("els" / find("money".is[Int](_ < 30)) / "name").get[String]: (JsValue => Option[String])
+  ("els" / find("money".is[Int](_ < 30)) / "name").get[String]: (JsValue ⇒ Option[String])
 
-  ("els" / * / "money").get[Int] _: (JsValue => Seq[Int])
-  ("els" / filter("money".is[Int](_ < 30)) / "name").get[String] _: (JsValue => Seq[String])
+  ("els" / * / "money").get[Int] _: (JsValue ⇒ Seq[Int])
+  ("els" / filter("money".is[Int](_ < 30)) / "name").get[String] _: (JsValue ⇒ Seq[String])
   "els" / filter("money".is[Int](_ < 30)) / "name" ! modify[String]("Richman " + _)
 
   //: JsValue => JsValue
@@ -38,7 +38,7 @@ object JsonLensesTest extends App {
 
   "els" / * ! update(updateMoney(12))
   "els" / * ! extract("name") {
-    name: String =>
+    name: String ⇒
       updateMoney(name.length)
   }
 }

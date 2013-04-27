@@ -28,7 +28,7 @@ class ReadmeSpec extends Specification {
 
       val json2 = jsonAst.formatPretty
       json2 mustEqual
-              """{
+        """{
                 |  "some": "JSON source"
                 |}""".stripMargin
 
@@ -58,9 +58,9 @@ class ReadmeSpec extends Specification {
             JsArray(JsString(c.name), JsNumber(c.red), JsNumber(c.green), JsNumber(c.blue))
 
           def read(value: JsValue) = value match {
-            case JsArray(Seq(JsString(name), JsNumber(red), JsNumber(green), JsNumber(blue))) =>
+            case JsArray(Seq(JsString(name), JsNumber(red), JsNumber(green), JsNumber(blue))) ⇒
               Validated(new Color(name, red.toInt, green.toInt, blue.toInt))
-            case _ => deserializationError("Color expected")
+            case _ ⇒ deserializationError("Color expected")
           }
         }
       }
@@ -71,28 +71,27 @@ class ReadmeSpec extends Specification {
   }
 
   "The non case class (object) example" should {
-      "behave as expected" in {
-        object MyJsonProtocol {
-          implicit object ColorJsonFormat extends JsonFormat[Color] {
-            def write(c: Color) = JsObject(
-              "name" -> JsString(c.name),
-              "red" -> JsNumber(c.red),
-              "green" -> JsNumber(c.green),
-              "blue" -> JsNumber(c.blue)
-            )
-            def read(json: JsValue) = {
-              for {
-                name <- json("name").toValidated[String]
-                red <- json("red").toValidated[Int]
-                green <- json("green").toValidated[Int]
-                blue <- json("blue").toValidated[Int]
-              } yield Color(name, red, green, blue)
-            }
+    "behave as expected" in {
+      object MyJsonProtocol {
+        implicit object ColorJsonFormat extends JsonFormat[Color] {
+          def write(c: Color) = JsObject(
+            "name" -> JsString(c.name),
+            "red" -> JsNumber(c.red),
+            "green" -> JsNumber(c.green),
+            "blue" -> JsNumber(c.blue))
+          def read(json: JsValue) = {
+            for {
+              name ← json("name").toValidated[String]
+              red ← json("red").toValidated[Int]
+              green ← json("green").toValidated[Int]
+              blue ← json("blue").toValidated[Int]
+            } yield Color(name, red, green, blue)
           }
         }
-        import MyJsonProtocol._
-        color.toJson.as[Color] mustEqual color
       }
+      import MyJsonProtocol._
+      color.toJson.as[Color] mustEqual color
     }
+  }
 
 }

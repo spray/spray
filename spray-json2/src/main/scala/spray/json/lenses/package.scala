@@ -1,12 +1,12 @@
 package spray.json
 
 package object lenses {
-  type JsPred = JsValue => Boolean
+  type JsPred = JsValue ⇒ Boolean
   type Id[T] = T
   type Reader[T] = JsonReader[T]
   type SafeJsValue = Validated[JsValue]
 
-  type Operation = SafeJsValue => SafeJsValue
+  type Operation = SafeJsValue ⇒ SafeJsValue
 
   type ScalarLens = Lens[Id]
   type OptLens = Lens[Option]
@@ -17,9 +17,9 @@ package object lenses {
   def outOfBounds[T](message: String): Validated[T] = Failure(new IndexOutOfBoundsException(message))
 
   case class ValidateOption[T](option: Option[T]) {
-    def getOrError(message: => String): Validated[T] = option match {
-      case Some(t) => Success(t)
-      case None => unexpected(message)
+    def getOrError(message: ⇒ String): Validated[T] = option match {
+      case Some(t) ⇒ Success(t)
+      case None    ⇒ unexpected(message)
     }
   }
 

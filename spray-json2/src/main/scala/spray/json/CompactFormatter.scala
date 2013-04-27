@@ -19,21 +19,21 @@ package spray.json
 import java.lang.StringBuilder
 
 /**
-  * A JsonFormatter that produces compact JSON source without any superfluous whitespace.
+ * A JsonFormatter that produces compact JSON source without any superfluous whitespace.
  */
 trait CompactFormatter extends JsonFormatter {
 
   def format(x: JsValue, sb: StringBuilder) {
     x match {
-      case x: JsObject => formatObject(x.fields, sb)
-      case x: JsArray => formatArray(x.elements, sb)
-      case _ => printLeaf(x, sb)
+      case x: JsObject ⇒ formatObject(x.fields, sb)
+      case x: JsArray  ⇒ formatArray(x.elements, sb)
+      case _           ⇒ printLeaf(x, sb)
     }
   }
 
   private def formatObject(members: Map[String, JsValue], sb: StringBuilder) {
     sb.append('{')
-    printSeq(members, sb.append(',')) { m =>
+    printSeq(members, sb.append(',')) { m ⇒
       printString(m._1, sb)
       sb.append(':')
       format(m._2, sb)

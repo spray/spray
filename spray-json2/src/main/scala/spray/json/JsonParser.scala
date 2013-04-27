@@ -17,7 +17,7 @@
 package spray.json
 
 import org.parboiled.scala._
-import org.parboiled.errors.{ErrorUtils, ParsingException}
+import org.parboiled.errors.{ ErrorUtils, ParsingException }
 import org.parboiled.Context
 import java.lang.StringBuilder
 
@@ -31,7 +31,7 @@ object JsonParser extends Parser {
   lazy val Json = rule { WhiteSpace ~ Value ~ EOI }
 
   def JsonObject: Rule1[JsObject] = rule {
-    "{ " ~ zeroOrMore(Pair, separator = ", ") ~ "} " ~~> (JsObject(_ :_*))
+    "{ " ~ zeroOrMore(Pair, separator = ", ") ~ "} " ~~> (JsObject(_: _*))
   }
 
   def Pair = rule { JsonStringUnwrapped ~ ": " ~ Value ~~> ((_, _)) }
@@ -41,7 +41,7 @@ object JsonParser extends Parser {
   }
 
   def JsonString = rule { JsonStringUnwrapped ~~> (JsString(_)) }
-  
+
   def JsonStringUnwrapped = rule { "\"" ~ Characters ~ "\" " ~~> (_.toString) }
 
   def JsonNumber = rule { group(Integer ~ optional(Frac) ~ optional(Exp)) ~> (JsNumber(_)) ~ WhiteSpace }
@@ -49,16 +49,15 @@ object JsonParser extends Parser {
   def JsonArray = rule { "[ " ~ zeroOrMore(Value, separator = ", ") ~ "] " ~~> (JsArray(_)) }
 
   def Characters = rule { push(new StringBuilder) ~ zeroOrMore("\\" ~ EscapedChar | NormalChar) }
-  
-  def EscapedChar = rule (
-       anyOf("\"\\/") ~:% withContext(appendToSb(_)(_)) 
-    | "b" ~ appendToSb('\b')
-    | "f" ~ appendToSb('\f')
-    | "n" ~ appendToSb('\n')
-    | "r" ~ appendToSb('\r')
-    | "t" ~ appendToSb('\t')
-    | Unicode ~~% withContext((code, ctx) => appendToSb(code.asInstanceOf[Char])(ctx)) 
-  )
+
+  def EscapedChar = rule(
+    anyOf("\"\\/") ~:% withContext(appendToSb(_)(_))
+      | "b" ~ appendToSb('\b')
+      | "f" ~ appendToSb('\f')
+      | "n" ~ appendToSb('\n')
+      | "r" ~ appendToSb('\r')
+      | "t" ~ appendToSb('\t')
+      | Unicode ~~% withContext((code, ctx) ⇒ appendToSb(code.asInstanceOf[Char])(ctx)))
 
   def NormalChar = rule { !anyOf("\"\\") ~ ANY ~:% (withContext(appendToSb(_)(_))) }
 
@@ -83,13 +82,13 @@ object JsonParser extends Parser {
   def JsonNull = rule { "null " ~ push(JsNull) }
 
   def WhiteSpace: Rule0 = rule { zeroOrMore(anyOf(" \n\r\t\f")) }
-    
+
   // helper method for fast string building
   // for maximum performance we use a somewhat unorthodox parsing technique that is a bit more verbose (and somewhat
   // less readable) but reduces object allocations during the parsing run to a minimum:
   // the Characters rules pushes a StringBuilder object onto the stack which is then directly fed with matched
   // and unescaped characters in the sub rules (i.e. no string allocations and value stack operation required)
-  def appendToSb(c: Char): Context[Any] => Unit = { ctx =>
+  def appendToSb(c: Char): Context[Any] ⇒ Unit = { ctx ⇒
     ctx.getValueStack.peek.asInstanceOf[StringBuilder].append(c)
     ()
   }
@@ -107,14 +106,14 @@ object JsonParser extends Parser {
    * The main parsing method. Uses a ReportingParseRunner (which only reports the first error) for simplicity.
    */
   def apply(json: String): JsValue = apply(json.toCharArray)
-  
+
   /**
    * The main parsing method. Uses a ReportingParseRunner (which only reports the first error) for simplicity.
    */
   def apply(json: Array[Char]): JsValue = {
     val parsingResult = ReportingParseRunner(Json).run(json)
     parsingResult.result.getOrElse {
-      throw new ParsingException("Invalid JSON source:\n" + ErrorUtils.printParseErrors(parsingResult)) 
+      throw new ParsingException("Invalid JSON source:\n" + ErrorUtils.printParseErrors(parsingResult))
     }
   }
 

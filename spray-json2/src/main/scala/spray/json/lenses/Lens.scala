@@ -23,7 +23,7 @@ trait Lens[M[_]] extends UpdateLens with ReadLens[M] {
  * This implements most of the methods of `Lens`. Implementors of a new type of lens
  * must implement `retr` for the read side of the lens and `updated` for the update side of the lens.
  */
-abstract class LensImpl[M[_]](implicit val ops: Ops[M]) extends Lens[M] { outer =>
+abstract class LensImpl[M[_]](implicit val ops: Ops[M]) extends Lens[M] { outer ⇒
   import ExtraImplicits.richValue
 
   def tryGet[T: Reader](p: JsValue): Validated[M[T]] =
@@ -37,14 +37,14 @@ abstract class LensImpl[M[_]](implicit val ops: Ops[M]) extends Lens[M] { outer 
       updated(op)(parent).get
   }
 
-  def is[U: Reader](f: U => Boolean): JsPred = value =>
-    tryGet[U](value) exists (x => ops.map(x)(f).forall(identity))
+  def is[U: Reader](f: U ⇒ Boolean): JsPred = value ⇒
+    tryGet[U](value) exists (x ⇒ ops.map(x)(f).forall(identity))
 
   def /[M2[_], R[_]](next: Lens[M2])(implicit ev: Join[M2, M, R]): Lens[R] =
     JsonLenses.combine(this, next)
 
   def toSeq: Lens[Seq] = this / SeqLenses.asSeq
 
-  private[this] def mapValue[T](value: M[JsValue])(f: JsValue => Validated[T]): Validated[M[T]] =
+  private[this] def mapValue[T](value: M[JsValue])(f: JsValue ⇒ Validated[T]): Validated[M[T]] =
     ops.allRight(ops.map(value)(f))
 }

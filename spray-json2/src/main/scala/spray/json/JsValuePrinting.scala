@@ -1,7 +1,7 @@
 package spray.json
 
 case class JsValuePrinting(value: JsValue) {
-  def toString(printer: (JsValue => String)) = printer(value)
+  def toString(printer: (JsValue ⇒ String)) = printer(value)
   def formatCompact = CompactFormatter(value)
   def formatPretty = PrettyFormatter(value)
 }

@@ -26,7 +26,7 @@ trait Join[M1[_], M2[_], R[_]] {
 }
 
 object Join {
-  def apply[M1[_], M2[_], R[_]](f: ((Ops[M1], Ops[M2])) => Ops[R]): Join[M1, M2, R] = new Join[M1, M2, R] {
+  def apply[M1[_], M2[_], R[_]](f: ((Ops[M1], Ops[M2])) ⇒ Ops[R]): Join[M1, M2, R] = new Join[M1, M2, R] {
     def get(outer: Ops[M1], inner: Ops[M2]): Ops[R] = f(outer, inner)
   }
 

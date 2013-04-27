@@ -7,7 +7,7 @@ package spray.json
 package lenses
 
 import org.specs2.mutable.Specification
-import spray.json.{JsValue, JsonParser, DefaultJsonProtocol}
+import spray.json.{ JsValue, JsonParser, DefaultJsonProtocol }
 
 class JsonPathExamplesSpec extends Specification with SpecHelpers {
 
@@ -52,7 +52,7 @@ class JsonPathExamplesSpec extends Specification with SpecHelpers {
         json.extract[String](("store" / "book" / filter("price".is[Double](_ >= 10)) / "title")) must be_==(Seq("Sword of Honour"))
       }
       "All books that have isbn" in {
-        json.extract[String](("store" / "book" / filter("isbn".is[JsValue](_ => true)) / "title")) must be_==(Seq("Sword of Honour"))
+        json.extract[String](("store" / "book" / filter("isbn".is[JsValue](_ ⇒ true)) / "title")) must be_==(Seq("Sword of Honour"))
       }
       "All prices" in todo
     }

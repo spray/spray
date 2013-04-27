@@ -2,7 +2,7 @@ package spray.json
 package lenses
 
 import org.parboiled.scala._
-import org.parboiled.errors.{ErrorUtils, ParsingException}
+import org.parboiled.errors.{ ErrorUtils, ParsingException }
 
 /**
  * A parser for json-path expression as specified here:
@@ -18,14 +18,14 @@ object JsonPathParser extends Parser {
     anyOf("$@") ~ push(JsonPath.Root)
   }
 
-  def OptionalSelection : ReductionRule1[JsonPath.Path, JsonPath.Path] = rule {
+  def OptionalSelection: ReductionRule1[JsonPath.Path, JsonPath.Path] = rule {
     Projection ~~> JsonPath.Selection ~ OptionalSelection |
-    EMPTY ~~> identity
+      EMPTY ~~> identity
   }
 
   def Projection: Rule1[JsonPath.Projection] = rule {
-    "." ~ DotProjection          |
-    "[" ~ BracketProjection ~"]"
+    "." ~ DotProjection |
+      "[" ~ BracketProjection ~ "]"
   }
 
   def DotProjection: Rule1[JsonPath.Projection] = rule {
@@ -36,10 +36,10 @@ object JsonPathParser extends Parser {
 
   import JsonParser.WhiteSpace
   def BracketProjection: Rule1[JsonPath.Projection] = rule {
-    JsonParser.Digits ~> (d => JsonPath.ByIndex(d.toInt)) |
-    SingleQuotedString ~~> JsonPath.ByField |
-    AllElements |
-    "?(" ~ WhiteSpace ~ Predicate ~ WhiteSpace ~ ")" ~~> JsonPath.ByPredicate
+    JsonParser.Digits ~> (d ⇒ JsonPath.ByIndex(d.toInt)) |
+      SingleQuotedString ~~> JsonPath.ByField |
+      AllElements |
+      "?(" ~ WhiteSpace ~ Predicate ~ WhiteSpace ~ ")" ~~> JsonPath.ByPredicate
   }
 
   def Predicate: Rule1[JsonPath.Predicate] = rule {
@@ -52,24 +52,24 @@ object JsonPathParser extends Parser {
     Path ~~> JsonPath.Exists
   }
 
-  def op[T](op: String)(cons: (JsonPath.Expr, JsonPath.SimpleExpr) => T) =
+  def op[T](op: String)(cons: (JsonPath.Expr, JsonPath.SimpleExpr) ⇒ T) =
     Expr ~ WhiteSpace ~ op ~ WhiteSpace ~ SimpleExpr ~~> cons
 
   def Expr: Rule1[JsonPath.Expr] = rule {
     Path ~~> JsonPath.PathExpr |
-    SimpleExpr
+      SimpleExpr
   }
   def SimpleExpr: Rule1[JsonPath.SimpleExpr] = rule {
     JsConstant ~~> JsonPath.Constant
   }
   def JsConstant: Rule1[JsValue] = rule {
     JsonParser.JsonNumber |
-    SingleQuotedString ~~> (JsString(_))
+      SingleQuotedString ~~> (JsString(_))
   }
 
   val WhiteSpaceChars = " \n\r\t\f"
   def FieldName: Rule1[String] = rule {
-    oneOrMore(!anyOf(".[)]"+WhiteSpaceChars) ~ ANY) ~> identity
+    oneOrMore(!anyOf(".[)]" + WhiteSpaceChars) ~ ANY) ~> identity
   }
 
   def SingleQuotedString: Rule1[String] =

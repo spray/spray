@@ -17,7 +17,7 @@ class JsonLensesSpec extends Specification with SpecHelpers {
           """{"n": 2}""".extract[Int]('n) must be_==(2)
         }
         "missing" in {
-          """{"n": 2}""".extract[Int]('z) must throwAn[Exception]( """Expected field 'z' in '{"n":2}'""")
+          """{"n": 2}""".extract[Int]('z) must throwAn[Exception]("""Expected field 'z' in '{"n":2}'""")
         }
         "wrong type" in {
           """{"n": 2}""".extract[String]('n) must throwA[DeserializationException]("Expected String as JsString, but got 2")
@@ -75,12 +75,12 @@ class JsonLensesSpec extends Specification with SpecHelpers {
           """[[1, 2], [3, 4]]""".extract[Int]((* / *)) must be_==(Seq(1, 2, 3, 4))
         }
         "if outer is no array" in {
-          """{"a": 5}""".extract[Int]((* / "a")) must throwAn[Exception]( """Not a json array: {"a":5}""")
-          """{"a": 5}""".extract[Int]((* / *)) must throwAn[Exception]( """Not a json array: {"a":5}""")
+          """{"a": 5}""".extract[Int]((* / "a")) must throwAn[Exception]("""Not a json array: {"a":5}""")
+          """{"a": 5}""".extract[Int]((* / *)) must throwAn[Exception]("""Not a json array: {"a":5}""")
         }
         "if inner is no array" in {
-          """[{}, {}]""".extract[Int]((* / *)) must throwAn[Exception]( """Not a json array: {}""")
-          """{"a": 5}""".extract[Int](("a" / *)) must throwAn[Exception]( """Not a json array: 5""")
+          """[{}, {}]""".extract[Int]((* / *)) must throwAn[Exception]("""Not a json array: {}""")
+          """{"a": 5}""".extract[Int](("a" / *)) must throwAn[Exception]("""Not a json array: 5""")
         }
       }
       /*"filtered elements of an array" in {
@@ -91,40 +91,40 @@ class JsonLensesSpec extends Specification with SpecHelpers {
     "modify" in {
       "set field" in {
         "existing" in {
-          """{"n": 12}""" update (n ! set(23)) must be_json( """{"n": 23}""")
+          """{"n": 12}""" update (n ! set(23)) must be_json("""{"n": 23}""")
         }
         "missing" in {
-          """{"n": {"b": 4}}""" update ("n" / "c" ! set(23)) must be_json( """{"n": {"b": 4, "c": 23}}""")
+          """{"n": {"b": 4}}""" update ("n" / "c" ! set(23)) must be_json("""{"n": {"b": 4, "c": 23}}""")
         }
         "twice" in {
           val a = field("a")
-          """{"a": 5}""" update (a ! set(23) && a ! set(15)) must be_json( """{"a": 15}""")
+          """{"a": 5}""" update (a ! set(23) && a ! set(15)) must be_json("""{"a": 15}""")
         }
       }
       "update field" in {
         "existing" in {
-          """{"n": 12}""" update (n ! modify[Int](_ + 1)) must be_json( """{"n": 13}""")
+          """{"n": 12}""" update (n ! modify[Int](_ + 1)) must be_json("""{"n": 13}""")
         }
         "wrong type" in {
           """{"n": 12}""" update (n ! modify[String](_ + "test")) must throwA[DeserializationException]("Expected String as JsString, but got 12")
         }
         "missing" in {
-          """{"n": 12}""" update (field("z") ! modify[Int](_ + 1)) must throwAn[Exception]( """Expected field 'z' in '{"n":12}'""")
+          """{"n": 12}""" update (field("z") ! modify[Int](_ + 1)) must throwAn[Exception]("""Expected field 'z' in '{"n":12}'""")
         }
       }
       "set field of member" in {
-        """{"n": {"b": 4}}""" update ("n" / "b" ! set(23)) must be_json( """{"n": {"b": 23}}""")
+        """{"n": {"b": 4}}""" update ("n" / "b" ! set(23)) must be_json("""{"n": {"b": 23}}""")
       }
       "update field of member" in {
         "existing" in {
-          """{"n": {"b": 4}}""" update ("n" / "b" ! modify[Int](1 +)) must be_json( """{"n": {"b": 5}}""")
+          """{"n": {"b": 4}}""" update ("n" / "b" ! modify[Int](1 +)) must be_json("""{"n": {"b": 5}}""")
         }
         "parent missing" in {
-          """{"x": {"b": 4}}""" update ("n" / "b" ! modify[Int](1 +)) must throwAn[Exception]( """Expected field 'n' in '{"x":{"b":4}}'""")
+          """{"x": {"b": 4}}""" update ("n" / "b" ! modify[Int](1 +)) must throwAn[Exception]("""Expected field 'n' in '{"x":{"b":4}}'""")
         }
       }
       "set element of array" in {
-        """["a", "b", 2, 5, 8, 3]""" update (element(3) ! set(35)) must be_json( """["a", "b", 2, 35, 8, 3]""")
+        """["a", "b", 2, 5, 8, 3]""" update (element(3) ! set(35)) must be_json("""["a", "b", 2, 35, 8, 3]""")
       }
       "change a found element" in {
         "in a homogenuous array" in {
@@ -139,25 +139,23 @@ class JsonLensesSpec extends Specification with SpecHelpers {
         }
         "in an inhomogenuous array" in {
           """["a", "b", 2, 5, 8, 3]""" update (JsonLenses.find(JsonLenses.value.is[Int](_ < 4)) ! set("test")) must be_json(
-            """["a", "b", "test", 5, 8, 3]"""
-          )
+            """["a", "b", "test", 5, 8, 3]""")
         }
         "nested" in {
           val lens = JsonLenses.find("a".is[Int](_ == 12)) / "b" / "c" / JsonLenses.find(JsonLenses.value.is[Int](_ == 5))
 
           "existing" in {
-            """[{"a": 12, "b": {"c": [2, 5]}}, 13]""" update (lens ! set(42)) must be_json( """[{"a": 12, "b": {"c": [2, 42]}}, 13]""")
+            """[{"a": 12, "b": {"c": [2, 5]}}, 13]""" update (lens ! set(42)) must be_json("""[{"a": 12, "b": {"c": [2, 42]}}, 13]""")
           }
           "missing in first find" in {
-            """[{"a": 2, "b": {"c": [5]}}, 13]""" update (lens ! set(42)) must be_json( """[{"a": 2, "b": {"c": [5]}}, 13]""")
+            """[{"a": 2, "b": {"c": [5]}}, 13]""" update (lens ! set(42)) must be_json("""[{"a": 2, "b": {"c": [5]}}, 13]""")
           }
           "missing in second find" in {
-            """[{"a": 2, "b": {"c": [7]}}, 13]""" update (lens ! set(42)) must be_json( """[{"a": 2, "b": {"c": [7]}}, 13]""")
+            """[{"a": 2, "b": {"c": [7]}}, 13]""" update (lens ! set(42)) must be_json("""[{"a": 2, "b": {"c": [7]}}, 13]""")
           }
         }
       }
     }
   }
 }
-
 

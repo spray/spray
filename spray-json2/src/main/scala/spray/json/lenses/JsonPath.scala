@@ -28,14 +28,14 @@ object JsonPath {
   }
   case class Lt(expr1: Expr, expr2: SimpleExpr) extends BinOpPredicate {
     def predicate(v1: JsValue, v2: JsValue): Boolean = (v1, v2) match {
-      case (JsNumber(n1), JsNumber(n2)) => n1 < n2
-      case _ => false
+      case (JsNumber(n1), JsNumber(n2)) ⇒ n1 < n2
+      case _                            ⇒ false
     }
   }
   case class Gt(expr1: Expr, expr2: SimpleExpr) extends BinOpPredicate {
     def predicate(v1: JsValue, v2: JsValue): Boolean = (v1, v2) match {
-      case (JsNumber(n1), JsNumber(n2)) => n1 > n2
-      case _ => false
+      case (JsNumber(n1), JsNumber(n2)) ⇒ n1 > n2
+      case _                            ⇒ false
     }
   }
   case class Exists(path: Path) extends Predicate

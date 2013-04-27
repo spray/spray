@@ -20,7 +20,7 @@ import java.lang.StringBuilder
 import annotation.tailrec
 
 /**
-  * A JsonFormatter that produces a nicely readable JSON source.
+ * A JsonFormatter that produces a nicely readable JSON source.
  */
 trait PrettyFormatter extends JsonFormatter {
   val Indent = 2
@@ -31,15 +31,15 @@ trait PrettyFormatter extends JsonFormatter {
 
   private def print(x: JsValue, sb: StringBuilder, indent: Int) {
     x match {
-      case x: JsObject => formatObject(x.fields, sb, indent)
-      case x: JsArray => formatArray(x.elements, sb, indent)
-      case _ => printLeaf(x, sb)
+      case x: JsObject ⇒ formatObject(x.fields, sb, indent)
+      case x: JsArray  ⇒ formatArray(x.elements, sb, indent)
+      case _           ⇒ printLeaf(x, sb)
     }
   }
 
   private def formatObject(members: Map[String, JsValue], sb: StringBuilder, indent: Int) {
     sb.append("{\n")
-    printSeq(members, sb.append(",\n")) { m =>
+    printSeq(members, sb.append(",\n")) { m ⇒
       printIndent(sb, indent + Indent)
       printString(m._1, sb)
       sb.append(": ")

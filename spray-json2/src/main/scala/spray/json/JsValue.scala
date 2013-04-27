@@ -20,16 +20,15 @@ package spray.json
 
 import collection.immutable.ListMap
 
-
 /**
-  * The general type of a JSON AST node.
+ * The general type of a JSON AST node.
  */
 sealed abstract class JsValue {
   override def toString = CompactFormatter(this)
 }
 
 /**
-  * A JSON object.
+ * A JSON object.
  */
 case class JsObject(fields: Map[String, JsValue]) extends JsValue
 
@@ -42,7 +41,7 @@ object JsObject {
 }
 
 /**
-  * A JSON array.
+ * A JSON array.
  */
 case class JsArray(elements: Seq[JsValue]) extends JsValue
 object JsArray {
@@ -53,7 +52,7 @@ object JsArray {
 }
 
 /**
-  * A JSON string.
+ * A JSON string.
  */
 case class JsString(value: String) extends JsValue
 object JsString {
@@ -61,23 +60,23 @@ object JsString {
 }
 
 /**
-  * A JSON number.
+ * A JSON number.
  */
 case class JsNumber(value: BigDecimal) extends JsValue
 object JsNumber {
   def apply(n: Int) = new JsNumber(BigDecimal(n))
   def apply(n: Long) = new JsNumber(BigDecimal(n))
   def apply(n: Double) = n match {
-    case n if n.isNaN      => JsNull
-    case n if n.isInfinity => JsNull
-    case _                 => new JsNumber(BigDecimal(n))
+    case n if n.isNaN      ⇒ JsNull
+    case n if n.isInfinity ⇒ JsNull
+    case _                 ⇒ new JsNumber(BigDecimal(n))
   }
   def apply(n: BigInt) = new JsNumber(BigDecimal(n))
   def apply(n: String) = new JsNumber(BigDecimal(n))
 }
 
 /**
-  * JSON Booleans.
+ * JSON Booleans.
  */
 sealed abstract class JsBoolean extends JsValue {
   def value: Boolean
@@ -94,6 +93,6 @@ case object JsFalse extends JsBoolean {
 }
 
 /**
-  * The representation for JSON null.
+ * The representation for JSON null.
  */
 case object JsNull extends JsValue
