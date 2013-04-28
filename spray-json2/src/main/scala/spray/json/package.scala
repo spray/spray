@@ -35,6 +35,7 @@ package object json extends PackageImplicits {
   // really?
   implicit def enrichFuncWithFromJsonConversion[A: JsonFormat, B](f: A ⇒ B): JsValue ⇒ B =
     json ⇒ f(json.as[A])
+
 }
 
 package json {
@@ -48,5 +49,12 @@ package json {
 
   private[json] class RichString(string: String) {
     def asJson: JsValue = JsonParser(string)
+  }
+
+  object JsonInterpolator {
+    implicit class JsonInterpolator(val ctx: StringContext) extends AnyVal {
+      import language.experimental.macros
+      def json(args: Any*): JsValue = macro InterpolatorMacro.jsonMacro //JsonParser(ctx.parts.head)
+    }
   }
 }

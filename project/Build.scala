@@ -99,6 +99,7 @@ object Build extends Build with DocSupport {
     .settings(
       libraryDependencies ++=
         compile(parboiled) ++
+        provided(scalaReflect) ++
         test(specs2),
       scalacOptions ++= Seq("-language:dynamics", "-language:higherKinds")
     )

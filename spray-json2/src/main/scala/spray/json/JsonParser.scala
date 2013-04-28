@@ -25,7 +25,7 @@ import java.lang.StringBuilder
  * This JSON parser is the almost direct implementation of the JSON grammar
  * presented at http://www.json.org as a parboiled PEG parser.
  */
-object JsonParser extends Parser {
+trait JsonParser extends Parser {
 
   // the root rule
   lazy val Json = rule { WhiteSpace ~ Value ~ EOI }
@@ -118,3 +118,4 @@ object JsonParser extends Parser {
   }
 
 }
+object JsonParser extends JsonParser
