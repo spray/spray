@@ -3,15 +3,23 @@ package spray.json
 import reflect.macros.Context
 import org.parboiled.errors.{ ErrorUtils, ParsingException }
 
+object JsonInterpolator {
+  implicit class JsonInterpolator(val ctx: StringContext) {
+    import language.experimental.macros
+    object json {
+      def apply(args: Any*): JsValue = macro InterpolatorMacro.jsonMacro
+    }
+  }
+}
+
 object InterpolatorMacro {
   def jsonMacro(c: Context)(args: c.Expr[Any]*): c.Expr[JsValue] = {
     val outerContext = c
     val outerArgs = args
-    object Impl extends InterpolatorMacroHelper {
+
+    object Impl extends JsonInterpolatorMacro {
       val c = outerContext
       val args = outerArgs.asInstanceOf[Seq[c.Expr[Any]]]
-      import c._
-      import c.universe._
 
       def run = {
         def componentString(comp: Component): String = comp match {
@@ -23,50 +31,55 @@ object InterpolatorMacro {
         val expr = JsValueExprParser.parseExpr(exprString.toCharArray)
         //println(expr, args.headOption.map(_.tree))
 
-        import JsValueAST._
-        def build(valueExpr: JsValueExpr): c.Expr[JsValue] = valueExpr match {
-          case LiteralJsValueExpr(JsString(str)) ⇒ reify(JsString(literal(str).splice))
-          case LiteralJsValueExpr(JsNumber(num)) ⇒ reify(JsNumber(literal(num.toString).splice))
-          case LiteralJsValueExpr(JsTrue)        ⇒ reify(JsTrue)
-          case LiteralJsValueExpr(JsFalse)       ⇒ reify(JsFalse)
-          case LiteralJsValueExpr(JsNull)        ⇒ reify(JsNull)
-          case JsObjectExpr(keyValues) ⇒
-            def buildKv(kvExpr: KeyValuesExpr): c.Expr[Seq[(String, JsValue)]] = kvExpr match {
-              case SingleKeyValueExpr(keyExpr, valueExpr) ⇒
-                reify(Seq((buildLabel(keyExpr).splice, build(valueExpr).splice)))
-
-              // ObjectFieldFormat(label).fromValue(valueExpr)
-              /*c.Expr[Seq[(String, JsValue)]] {
-                  Apply(
-                    Select(Apply(Ident(newTermName("ObjectFieldFormat")), List(buildLabel(keyExpr).tree)), newTermName("fromValue")),
-                    List(build(valueExpr).tree))
-                }*/
-            }
-            def buildLabel(labelExpr: LabelExpr): c.Expr[String] = labelExpr match {
-              case ConstantLabelExpr(label) ⇒ literal(label)
-              case ExternalStringExpr(IdExprRef(id)) ⇒
-                c.Expr[String](args(id).tree)
-            }
-
-            val comps = liftSeq(keyValues.map(buildKv))
-            reify(JsObject(comps.splice.flatten: _*))
-
-          case JsArrayExpr(elementExprs) ⇒
-            val comps = liftSeq(elementExprs.map(build))
-            reify(JsArray(comps.splice))
-
-          case ExternalJsValueExpr(IdExprRef(id)) ⇒
-            val expr = args(id)
-
-            c.Expr[JsValue](atPos(expr.tree.pos)(Select(expr.tree, newTermName("toJson"))))
-          case _ ⇒ reify(JsNumber(23))
-        }
-
-        build(expr)
+        compile(expr)
       }
     }
 
     Impl.run.asInstanceOf[c.Expr[JsValue]]
+  }
+
+  trait JsonInterpolatorMacro extends InterpolatorMacroHelper {
+    import JsValueAST._
+    import c._
+    import c.universe._
+
+    def compile(valueExpr: JsValueExpr): c.Expr[JsValue] = valueExpr match {
+      case LiteralJsValueExpr(JsString(str)) ⇒ reify(JsString(literal(str).splice))
+      case LiteralJsValueExpr(JsNumber(num)) ⇒ reify(JsNumber(literal(num.toString).splice))
+      case LiteralJsValueExpr(JsTrue)        ⇒ reify(JsTrue)
+      case LiteralJsValueExpr(JsFalse)       ⇒ reify(JsFalse)
+      case LiteralJsValueExpr(JsNull)        ⇒ reify(JsNull)
+      case JsObjectExpr(keyValues) ⇒
+        def buildKv(kvExpr: KeyValuesExpr): c.Expr[Seq[(String, JsValue)]] = kvExpr match {
+          case SingleKeyValueExpr(keyExpr, valueExpr) ⇒
+            reify(Seq((buildLabel(keyExpr).splice, compile(valueExpr).splice)))
+
+          // ObjectFieldFormat(label).fromValue(valueExpr)
+          /*c.Expr[Seq[(String, JsValue)]] {
+                    Apply(
+                      Select(Apply(Ident(newTermName("ObjectFieldFormat")), List(buildLabel(keyExpr).tree)), newTermName("fromValue")),
+                      List(build(valueExpr).tree))
+                  }*/
+        }
+        def buildLabel(labelExpr: LabelExpr): c.Expr[String] = labelExpr match {
+          case ConstantLabelExpr(label) ⇒ literal(label)
+          case ExternalStringExpr(IdExprRef(id)) ⇒
+            c.Expr[String](args(id).tree)
+        }
+
+        val comps = liftSeq(keyValues.map(buildKv))
+        reify(JsObject(comps.splice.flatten: _*))
+
+      case JsArrayExpr(elementExprs) ⇒
+        val comps = liftSeq(elementExprs.map(compile))
+        reify(JsArray(comps.splice))
+
+      case ExternalJsValueExpr(IdExprRef(id)) ⇒
+        val expr = args(id)
+
+        c.Expr[JsValue](atPos(expr.tree.pos)(Select(expr.tree, newTermName("toJson"))))
+      case _ ⇒ reify(JsNumber(23))
+    }
   }
 
   trait InterpolatorMacroHelper {
@@ -78,7 +91,12 @@ object InterpolatorMacro {
     case class LiteralStringComponent(text: String) extends Component
     case class ExpressionComponent(expr: c.Expr[Any], index: Int) extends Component
 
-    lazy val Apply(_, List(Apply(_, stringExprs))) = c.prefix.tree
+    lazy val stringExprs = c.prefix.tree match {
+      // for `implicit class { object x { def apply(args: Any*) }}` style
+      case Select(Apply(_, List(Apply(_, s))), _) ⇒ s
+      // for `implicit class { def x(args: Any*) }` style
+      case Apply(_, List(Apply(_, s)))            ⇒ s
+    }
     lazy val stringParts = (stringExprs: List[Tree]) map {
       case Literal(Constant(s: String)) ⇒ s
       case x @ _                        ⇒ println(x.getClass.getSimpleName + ": " + x); "n/a"
