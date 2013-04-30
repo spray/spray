@@ -18,7 +18,6 @@ package spray.routing
 package directives
 
 import scala.concurrent.{ ExecutionContext, Future }
-import shapeless._
 import spray.routing.authentication._
 import BasicDirectives._
 import RouteDirectives._
@@ -29,7 +28,7 @@ trait SecurityDirectives {
    * Wraps its inner Route with authentication support.
    */
   def authenticate[T](am: AuthMagnet[T]): Directive1[T] = {
-    implicit def executor = am.executor
+    import am.executor
     am.value.unwrapFuture.flatMap {
       case Right(user)     ⇒ provide(user)
       case Left(rejection) ⇒ reject(rejection)
@@ -48,15 +47,14 @@ trait SecurityDirectives {
    */
   def authorize(check: RequestContext ⇒ Boolean): Directive0 =
     extract(check).flatMap(if (_) pass else reject(AuthorizationFailedRejection))
-
 }
 
-class AuthMagnet[T](val value: Directive1[Future[Authentication[T]]], val executor: ExecutionContext)
+class AuthMagnet[T](val value: Directive1[Future[Authentication[T]]])(implicit val executor: ExecutionContext)
 
 object AuthMagnet {
   implicit def fromFutureAuth[T](auth: Future[Authentication[T]])(implicit executor: ExecutionContext) =
-    new AuthMagnet(provide(auth), executor)
+    new AuthMagnet(provide(auth))
 
   implicit def fromContextAuthenticator[T](auth: ContextAuthenticator[T])(implicit executor: ExecutionContext) =
-    new AuthMagnet(extract(auth), executor)
+    new AuthMagnet(extract(auth))
 }
