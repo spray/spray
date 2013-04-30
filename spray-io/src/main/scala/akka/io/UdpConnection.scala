@@ -3,25 +3,23 @@
  */
 package akka.io
 
-import akka.actor.{ Actor, ActorLogging, ActorRef }
-import akka.io.SelectionHandler._
-import akka.io.UdpConnected._
-import akka.util.ByteString
 import java.nio.ByteBuffer
 import java.nio.channels.DatagramChannel
 import java.nio.channels.SelectionKey._
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
+import akka.actor.{ Actor, ActorLogging, ActorRef }
+import akka.util.ByteString
+import akka.io.SelectionHandler._
+import akka.io.UdpConnected._
 
 /**
  * INTERNAL API
  */
-private[io] class UdpConnection(val udpConn: UdpConnectedExt,
-                                val commander: ActorRef,
-                                val connect: Connect) extends Actor with ActorLogging {
-
-  def selector: ActorRef = context.parent
-
+private[io] class UdpConnection(udpConn: UdpConnectedExt,
+                                channelRegistry: ChannelRegistry,
+                                commander: ActorRef,
+                                connect: Connect) extends Actor with ActorLogging {
   import connect._
   import udpConn._
   import udpConn.settings._
@@ -47,19 +45,19 @@ private[io] class UdpConnection(val udpConn: UdpConnectedExt,
     }
     datagramChannel
   }
-  selector ! RegisterChannel(channel, OP_READ)
+  channelRegistry.register(channel, OP_READ)
   log.debug("Successfully connected to [{}]", remoteAddress)
 
   def receive = {
-    case ChannelRegistered ⇒
+    case registration: ChannelRegistration ⇒
       commander ! Connected
-      context.become(connected, discardOld = true)
+      context.become(connected(registration), discardOld = true)
   }
 
-  def connected: Receive = {
-    case StopReading     ⇒ selector ! DisableReadInterest
-    case ResumeReading   ⇒ selector ! ReadInterest
-    case ChannelReadable ⇒ doRead(handler)
+  def connected(registration: ChannelRegistration): Receive = {
+    case StopReading     ⇒ registration.disableInterest(OP_READ)
+    case ResumeReading   ⇒ registration.enableInterest(OP_READ)
+    case ChannelReadable ⇒ doRead(registration, handler)
 
     case Close ⇒
       log.debug("Closing UDP connection to [{}]", remoteAddress)
@@ -78,12 +76,12 @@ private[io] class UdpConnection(val udpConn: UdpConnectedExt,
 
     case send: Send ⇒
       pendingSend = (send, sender)
-      selector ! WriteInterest
+      registration.enableInterest(OP_WRITE)
 
     case ChannelWritable ⇒ doWrite()
   }
 
-  def doRead(handler: ActorRef): Unit = {
+  def doRead(registration: ChannelRegistration, handler: ActorRef): Unit = {
     @tailrec def innerRead(readsLeft: Int, buffer: ByteBuffer): Unit = {
       buffer.clear()
       buffer.limit(DirectBufferSize)
@@ -96,13 +94,12 @@ private[io] class UdpConnection(val udpConn: UdpConnectedExt,
     }
     val buffer = bufferPool.acquire()
     try innerRead(BatchReceiveLimit, buffer) finally {
-      selector ! ReadInterest
+      registration.enableInterest(OP_READ)
       bufferPool.release(buffer)
     }
   }
 
   final def doWrite(): Unit = {
-
     val buffer = udpConn.bufferPool.acquire()
     try {
       val (send, commander) = pendingSend
@@ -119,10 +116,9 @@ private[io] class UdpConnection(val udpConn: UdpConnectedExt,
       udpConn.bufferPool.release(buffer)
       pendingSend = null
     }
-
   }
 
-  override def postStop() {
+  override def postStop(): Unit =
     if (channel.isOpen) {
       log.debug("Closing DatagramChannel after being stopped")
       try channel.close()
@@ -130,6 +126,4 @@ private[io] class UdpConnection(val udpConn: UdpConnectedExt,
         case NonFatal(e) ⇒ log.error(e, "Error closing DatagramChannel")
       }
     }
-  }
-
 }

@@ -4,16 +4,12 @@
 package akka.io
 
 import java.net.DatagramSocket
-import akka.io.Inet.{ SoJavaFactories, SocketOption }
-import com.typesafe.config.Config
-import akka.actor.{ Props, ActorSystemImpl }
-import akka.actor.ExtendedActorSystem
-import akka.actor.ActorRef
-import akka.actor.ExtensionKey
-import akka.actor.ActorSystem
-import akka.util.ByteString
 import java.net.InetSocketAddress
+import com.typesafe.config.Config
 import scala.collection.immutable
+import akka.io.Inet.{ SoJavaFactories, SocketOption }
+import akka.util.ByteString
+import akka.actor._
 
 object Udp extends ExtensionKey[UdpExt] {
 

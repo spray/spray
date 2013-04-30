@@ -3,30 +3,29 @@
  */
 package akka.io
 
-import akka.actor.{ ActorLogging, Actor, ActorRef }
-import akka.io.SelectionHandler._
-import akka.io.Udp._
-import akka.util.ByteString
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.DatagramChannel
 import java.nio.channels.SelectionKey._
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
+import akka.actor.{ ActorLogging, Actor, ActorRef }
+import akka.util.ByteString
+import akka.io.SelectionHandler._
+import akka.io.Udp._
 
 /**
  * INTERNAL API
  */
 private[io] class UdpListener(val udp: UdpExt,
-                              val bindCommander: ActorRef,
-                              val bind: Bind)
+                              channelRegistry: ChannelRegistry,
+                              bindCommander: ActorRef,
+                              bind: Bind)
     extends Actor with ActorLogging with WithUdpSend {
 
   import bind._
   import udp.bufferPool
   import udp.settings._
-
-  def selector: ActorRef = context.parent
 
   context.watch(handler) // sign death pact
   val channel = {
@@ -43,19 +42,19 @@ private[io] class UdpListener(val udp: UdpExt,
     }
     datagramChannel
   }
-  context.parent ! RegisterChannel(channel, OP_READ)
+  channelRegistry.register(channel, OP_READ)
   log.debug("Successfully bound to [{}]", endpoint)
 
   def receive: Receive = {
-    case ChannelRegistered ⇒
+    case registration: ChannelRegistration ⇒
       bindCommander ! Bound
-      context.become(readHandlers orElse sendHandlers, discardOld = true)
+      context.become(readHandlers(registration) orElse sendHandlers(registration), discardOld = true)
   }
 
-  def readHandlers: Receive = {
-    case StopReading     ⇒ selector ! DisableReadInterest
-    case ResumeReading   ⇒ selector ! ReadInterest
-    case ChannelReadable ⇒ doReceive(handler)
+  def readHandlers(registration: ChannelRegistration): Receive = {
+    case StopReading     ⇒ registration.disableInterest(OP_READ)
+    case ResumeReading   ⇒ registration.enableInterest(OP_READ)
+    case ChannelReadable ⇒ doReceive(handler, registration)
 
     case Unbind ⇒
       log.debug("Unbinding endpoint [{}]", endpoint)
@@ -66,7 +65,7 @@ private[io] class UdpListener(val udp: UdpExt,
       } finally context.stop(self)
   }
 
-  def doReceive(handler: ActorRef): Unit = {
+  def doReceive(handler: ActorRef, registration: ChannelRegistration): Unit = {
     @tailrec def innerReceive(readsLeft: Int, buffer: ByteBuffer) {
       buffer.clear()
       buffer.limit(DirectBufferSize)
@@ -83,7 +82,7 @@ private[io] class UdpListener(val udp: UdpExt,
     val buffer = bufferPool.acquire()
     try innerReceive(BatchReceiveLimit, buffer) finally {
       bufferPool.release(buffer)
-      selector ! ReadInterest
+      registration.enableInterest(OP_READ)
     }
   }
 

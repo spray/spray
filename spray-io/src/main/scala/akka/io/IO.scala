@@ -27,7 +27,7 @@ object IO {
       props = Props(new SelectionHandler(selectorSettings)).withRouter(RandomRouter(nrOfSelectors)),
       name = "selectors")
 
-    def workerForCommandHandler(pf: PartialFunction[HasFailureMessage, Props]): Receive = {
+    def workerForCommandHandler(pf: PartialFunction[HasFailureMessage, ChannelRegistry ⇒ Props]): Receive = {
       case cmd: HasFailureMessage if pf.isDefinedAt(cmd) ⇒ selectorPool ! WorkerForCommand(cmd, sender, pf(cmd))
     }
   }

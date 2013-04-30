@@ -28,10 +28,11 @@ private[io] object TcpListener {
 /**
  * INTERNAL API
  */
-private[io] class TcpListener(val selectorRouter: ActorRef,
-                              val tcp: TcpExt,
-                              val bindCommander: ActorRef,
-                              val bind: Bind) extends Actor with ActorLogging {
+private[io] class TcpListener(selectorRouter: ActorRef,
+                              tcp: TcpExt,
+                              channelRegistry: ChannelRegistry,
+                              bindCommander: ActorRef,
+                              bind: Bind) extends Actor with ActorLogging {
   import TcpListener._
   import tcp.Settings._
   import bind._
@@ -51,18 +52,18 @@ private[io] class TcpListener(val selectorRouter: ActorRef,
     }
     serverSocketChannel
   }
-  context.parent ! RegisterChannel(channel, SelectionKey.OP_ACCEPT)
+  channelRegistry.register(channel, SelectionKey.OP_ACCEPT)
   log.debug("Successfully bound to {}", endpoint)
 
   def receive: Receive = {
-    case ChannelRegistered ⇒
+    case registration: ChannelRegistration ⇒
       bindCommander ! Bound
-      context.become(bound)
+      context.become(bound(registration))
   }
 
-  def bound: Receive = {
+  def bound(registration: ChannelRegistration): Receive = {
     case ChannelAcceptable ⇒
-      acceptAllPending(BatchAcceptLimit)
+      acceptAllPending(registration, BatchAcceptLimit)
 
     case FailedRegisterIncoming(socketChannel) ⇒
       log.warning("Could not register incoming connection since selector capacity limit is reached, closing connection")
@@ -79,7 +80,7 @@ private[io] class TcpListener(val selectorRouter: ActorRef,
       context.stop(self)
   }
 
-  @tailrec final def acceptAllPending(limit: Int): Unit = {
+  @tailrec final def acceptAllPending(registration: ChannelRegistration, limit: Int): Unit = {
     val socketChannel =
       if (limit > 0) {
         try channel.accept()
@@ -90,9 +91,10 @@ private[io] class TcpListener(val selectorRouter: ActorRef,
     if (socketChannel != null) {
       log.debug("New connection accepted")
       socketChannel.configureBlocking(false)
-      selectorRouter ! WorkerForCommand(RegisterIncoming(socketChannel), self, Props(new TcpIncomingConnection(socketChannel, tcp, handler, options)))
-      acceptAllPending(limit - 1)
-    } else context.parent ! AcceptInterest
+      def props(registry: ChannelRegistry) = Props(new TcpIncomingConnection(tcp, socketChannel, registry, handler, options))
+      selectorRouter ! WorkerForCommand(RegisterIncoming(socketChannel), self, props)
+      acceptAllPending(registration, limit - 1)
+    } else registration.enableInterest(SelectionKey.OP_ACCEPT)
   }
 
   override def postStop() {
