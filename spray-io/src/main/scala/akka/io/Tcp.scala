@@ -168,7 +168,6 @@ class TcpExt(system: ExtendedActorSystem) extends IO.Extension {
 
     require(NrOfSelectors > 0, "nr-of-selectors must be > 0")
     require(MaxChannels == -1 || MaxChannels > 0, "max-channels must be > 0 or 'unlimited'")
-    require(SelectTimeout >= Duration.Zero, "select-timeout must not be negative")
     require(SelectorAssociationRetries >= 0, "selector-association-retries must be >= 0")
     require(BatchAcceptLimit > 0, "batch-accept-limit must be > 0")
 

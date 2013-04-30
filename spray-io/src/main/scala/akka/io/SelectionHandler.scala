@@ -4,41 +4,35 @@
 
 package akka.io
 
+import java.util.{ Iterator ⇒ JIterator }
 import java.lang.Runnable
 import java.nio.channels.spi.SelectorProvider
 import java.nio.channels.{ SelectableChannel, SelectionKey, CancelledKeyException, ClosedSelectorException }
 import java.nio.channels.SelectionKey._
+import java.util.concurrent.atomic.AtomicBoolean
+import com.typesafe.config.Config
+import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import scala.collection.immutable
-import scala.concurrent.duration._
-import akka.actor._
-import com.typesafe.config.Config
-import akka.actor.Terminated
 import akka.io.IO.HasFailureMessage
+import akka.actor._
 
 abstract class SelectionHandlerSettings(config: Config) {
   import config._
 
-  val MaxChannels = getString("max-channels") match {
+  val MaxChannels: Int = getString("max-channels") match {
     case "unlimited" ⇒ -1
     case _           ⇒ getInt("max-channels")
   }
-  val SelectTimeout = getString("select-timeout") match {
-    case "infinite" ⇒ Duration.Inf
-    case x          ⇒ Duration(x)
-  }
-  val SelectorAssociationRetries = getInt("selector-association-retries")
-
-  val SelectorDispatcher = getString("selector-dispatcher")
-  val WorkerDispatcher = getString("worker-dispatcher")
-  val TraceLogging = getBoolean("trace-logging")
+  val SelectorAssociationRetries: Int = getInt("selector-association-retries")
+  val SelectorDispatcher: String = getString("selector-dispatcher")
+  val WorkerDispatcher: String = getString("worker-dispatcher")
+  val TraceLogging: Boolean = getBoolean("trace-logging")
 
   require(MaxChannels == -1 || MaxChannels > 0, "max-channels must be > 0 or 'unlimited'")
-  require(SelectTimeout >= Duration.Zero, "select-timeout must not be negative")
   require(SelectorAssociationRetries >= 0, "selector-association-retries must be >= 0")
 
   def MaxChannelsPerSelector: Int
-
 }
 
 private[io] object SelectionHandler {
@@ -59,135 +53,115 @@ private[io] object SelectionHandler {
   case object WriteInterest
 }
 
-private[io] class SelectionHandler(manager: ActorRef, settings: SelectionHandlerSettings) extends Actor with ActorLogging {
+private[io] class SelectionHandler(settings: SelectionHandlerSettings) extends Actor with ActorLogging {
   import SelectionHandler._
   import settings._
 
-  @volatile var childrenKeys = immutable.HashMap.empty[String, SelectionKey]
-  val sequenceNumber = Iterator.from(0)
-  val selectorManagementDispatcher = context.system.dispatchers.lookup(SelectorDispatcher)
-  val selector = SelectorProvider.provider.openSelector
   final val OP_READ_AND_WRITE = OP_READ | OP_WRITE // compile-time constant
 
+  private val wakeUp = new AtomicBoolean(false)
+  @volatile var childrenKeys = immutable.HashMap.empty[String, SelectionKey]
+  var sequenceNumber = 0
+  val selectorManagementDispatcher = context.system.dispatchers.lookup(SelectorDispatcher)
+
+  val selector = SelectorProvider.provider.openSelector
+
   def receive: Receive = {
-    case WriteInterest       ⇒ execute(enableInterest(OP_WRITE, sender))
-    case ReadInterest        ⇒ execute(enableInterest(OP_READ, sender))
-    case AcceptInterest      ⇒ execute(enableInterest(OP_ACCEPT, sender))
+    case WriteInterest                        ⇒ execute(enableInterest(OP_WRITE, sender))
+    case ReadInterest                         ⇒ execute(enableInterest(OP_READ, sender))
+    case AcceptInterest                       ⇒ execute(enableInterest(OP_ACCEPT, sender))
 
-    case DisableReadInterest ⇒ execute(disableInterest(OP_READ, sender))
+    case DisableReadInterest                  ⇒ execute(disableInterest(OP_READ, sender))
 
-    case cmd: WorkerForCommand ⇒
-      withCapacityProtection(cmd, SelectorAssociationRetries) { spawnChild(cmd.childProps) }
+    case cmd: WorkerForCommand                ⇒ spawnChildWithCapacityProtection(cmd, SelectorAssociationRetries)
 
-    case RegisterChannel(channel, initialOps) ⇒
-      execute(registerChannel(channel, sender, initialOps))
+    case RegisterChannel(channel, initialOps) ⇒ execute(registerChannel(channel, sender, initialOps))
 
-    case Retry(WorkerForCommand(cmd, commander, _), 0) ⇒
-      commander ! cmd.failureMessage
+    case Retry(cmd, retriesLeft)              ⇒ spawnChildWithCapacityProtection(cmd, retriesLeft)
 
-    case Retry(cmd, retriesLeft) ⇒
-      withCapacityProtection(cmd, retriesLeft) { spawnChild(cmd.childProps) }
-
-    case Terminated(child) ⇒
-      execute(unregister(child))
+    case Terminated(child)                    ⇒ execute(unregister(child))
   }
 
-  override def postStop() {
-    try {
-      try {
-        val iterator = selector.keys.iterator
-        while (iterator.hasNext) {
-          val key = iterator.next()
-          try key.channel.close()
-          catch {
-            case NonFatal(e) ⇒ log.error(e, "Error closing channel")
-          }
-        }
-      } finally selector.close()
-    } catch {
-      case NonFatal(e) ⇒ log.error(e, "Error closing selector")
-    }
-  }
+  override def postStop(): Unit = execute(terminate())
 
   // we can never recover from failures of a connection or listener child
   override def supervisorStrategy = SupervisorStrategy.stoppingStrategy
 
-  def withCapacityProtection(cmd: WorkerForCommand, retriesLeft: Int)(body: ⇒ Unit): Unit = {
+  def spawnChildWithCapacityProtection(cmd: WorkerForCommand, retriesLeft: Int): Unit = {
     if (TraceLogging) log.debug("Executing [{}]", cmd)
     if (MaxChannelsPerSelector == -1 || childrenKeys.size < MaxChannelsPerSelector) {
-      body
+      val newName = sequenceNumber.toString
+      sequenceNumber += 1
+      context watch context.actorOf(props = cmd.childProps.withDispatcher(WorkerDispatcher), name = newName)
     } else {
-      log.warning("Rejecting [{}] with [{}] retries left, retrying...", cmd, retriesLeft)
-      context.parent forward Retry(cmd, retriesLeft - 1)
+      if (retriesLeft >= 1) {
+        log.warning("Rejecting [{}] with [{}] retries left, retrying...", cmd, retriesLeft)
+        context.parent forward Retry(cmd, retriesLeft - 1)
+      } else {
+        log.warning("Rejecting [{}] with no retries left, aborting...", cmd)
+        cmd.commander ! cmd.apiCommand.failureMessage // I can't do it, Captain!
+      }
     }
   }
-
-  def spawnChild(props: Props): ActorRef =
-    context.watch {
-      context.actorOf(
-        props = props.withDispatcher(WorkerDispatcher),
-        name = sequenceNumber.next().toString)
-    }
 
   //////////////// Management Tasks scheduled via the selectorManagementDispatcher /////////////
 
   def execute(task: Task): Unit = {
     selectorManagementDispatcher.execute(task)
-    selector.wakeup()
+    if (wakeUp.compareAndSet(false, true)) selector.wakeup() // Avoiding syscall and trade off with LOCK CMPXCHG
   }
-
-  def updateKeyMap(child: ActorRef, key: SelectionKey): Unit =
-    childrenKeys = childrenKeys.updated(child.path.name, key)
 
   def registerChannel(channel: SelectableChannel, channelActor: ActorRef, initialOps: Int): Task =
     new Task {
       def tryRun() {
-        updateKeyMap(channelActor, channel.register(selector, initialOps, channelActor))
+        childrenKeys = childrenKeys.updated(channelActor.path.name, channel.register(selector, initialOps, channelActor))
         channelActor ! ChannelRegistered
       }
     }
 
-  // TODO: evaluate whether we could run the following two tasks directly on the TcpSelector actor itself rather than
-  // on the selector-management-dispatcher. The trade-off would be using a ConcurrentHashMap
-  // rather than an unsynchronized one, but since switching interest ops is so frequent
-  // the change might be beneficial, provided the underlying implementation really is thread-safe
-  // and behaves consistently on all platforms.
-  def enableInterest(op: Int, connection: ActorRef) =
+  // Always set the interest keys on the selector thread according to benchmark
+  def enableInterest(ops: Int, connection: ActorRef) =
     new Task {
       def tryRun() {
         val key = childrenKeys(connection.path.name)
-        key.interestOps(key.interestOps | op)
+        val currentOps = key.interestOps
+        val newOps = currentOps | ops
+        if (newOps != currentOps) key.interestOps(newOps)
       }
     }
 
-  def disableInterest(op: Int, connection: ActorRef) =
+  def disableInterest(ops: Int, connection: ActorRef) =
     new Task {
       def tryRun() {
         val key = childrenKeys(connection.path.name)
-        key.interestOps(key.interestOps & ~op)
+        val currentOps = key.interestOps
+        val newOps = currentOps & ~ops
+        if (newOps != currentOps) key.interestOps(newOps)
       }
     }
 
   def unregister(child: ActorRef) =
-    new Task {
-      def tryRun() {
-        childrenKeys = childrenKeys - child.path.name
+    new Task { def tryRun() { childrenKeys = childrenKeys - child.path.name } }
+
+  def terminate() = new Task {
+    def tryRun() {
+      // Thorough 'close' of the Selector
+      @tailrec def closeNextChannel(it: JIterator[SelectionKey]): Unit = if (it.hasNext) {
+        try it.next().channel.close() catch { case NonFatal(e) ⇒ log.error(e, "Error closing channel") }
+        closeNextChannel(it)
       }
+      try closeNextChannel(selector.keys.iterator) finally selector.close()
     }
+  }
 
   val select = new Task {
-    val doSelect: () ⇒ Int =
-      SelectTimeout match {
-        case Duration.Zero ⇒ () ⇒ selector.selectNow()
-        case Duration.Inf  ⇒ () ⇒ selector.select()
-        case x             ⇒ val millis = x.toMillis; () ⇒ selector.select(millis)
-      }
-    def tryRun() {
-      if (doSelect() > 0) {
+    def tryRun(): Unit = {
+      wakeUp.set(false) // Reset early, worst-case we do a double-wakeup, but it's supposed to be idempotent so it's just an extra syscall
+      if (selector.select() > 0) { // This assumes select return value == selectedKeys.size
         val keys = selector.selectedKeys
         val iterator = keys.iterator()
         while (iterator.hasNext) {
-          val key = iterator.next
+          val key = iterator.next()
           if (key.isValid) {
             try {
               // Cache because the performance implications of calling this on different platforms are not clear
@@ -197,7 +171,7 @@ private[io] class SelectionHandler(manager: ActorRef, settings: SelectionHandler
               readyOps match {
                 case OP_READ                   ⇒ connection ! ChannelReadable
                 case OP_WRITE                  ⇒ connection ! ChannelWritable
-                case OP_READ_AND_WRITE         ⇒ connection ! ChannelWritable; connection ! ChannelReadable
+                case OP_READ_AND_WRITE         ⇒ { connection ! ChannelWritable; connection ! ChannelReadable }
                 case x if (x & OP_ACCEPT) > 0  ⇒ connection ! ChannelAcceptable
                 case x if (x & OP_CONNECT) > 0 ⇒ connection ! ChannelConnectable
                 case x                         ⇒ log.warning("Invalid readyOps: [{}]", x)
@@ -211,6 +185,8 @@ private[io] class SelectionHandler(manager: ActorRef, settings: SelectionHandler
         }
         keys.clear() // we need to remove the selected keys from the set, otherwise they remain selected
       }
+
+      // FIXME what is the appropriate error-handling here, shouldn't this task be resubmitted in case of exception?
       selectorManagementDispatcher.execute(this) // re-schedules select behind all currently queued tasks
     }
   }
