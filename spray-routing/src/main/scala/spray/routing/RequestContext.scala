@@ -185,6 +185,12 @@ case class RequestContext(request: HttpRequest, responder: ActorRef, unmatchedPa
     withHttpResponseMapped(_.mapHeaders(f))
 
   /**
+   * Removes a potentially existing Accept header from the request headers.
+   */
+  def withContentNegotiationDisabled =
+    copy(request = request.withHeaders(request.headers filterNot (_.isInstanceOf[Accept])))
+
+  /**
    * Rejects the request with the given rejections.
    */
   def reject(rejection: Rejection): Unit =

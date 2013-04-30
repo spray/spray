@@ -19,7 +19,6 @@ package directives
 
 import scala.util.control.NonFatal
 import akka.actor._
-import spray.http.HttpHeader
 
 trait ExecutionDirectives {
   import BasicDirectives._
@@ -31,10 +30,10 @@ trait ExecutionDirectives {
   def handleExceptions(handler: ExceptionHandler): Directive0 =
     mapInnerRoute { inner ⇒
       ctx ⇒
-        def handleError = handler andThen (_(ctx))
+        def handleError = handler andThen (_(ctx.withContentNegotiationDisabled))
         try inner {
-          ctx.withRouteResponseHandling {
-            case Status.Failure(error) if handler.isDefinedAt(error) ⇒ handleError(error)
+          ctx withRouteResponseHandling {
+            case Status.Failure(error) if handler isDefinedAt error ⇒ handleError(error)
           }
         }
         catch handleError
@@ -46,18 +45,15 @@ trait ExecutionDirectives {
    */
   def handleRejections(handler: RejectionHandler): Directive0 =
     mapRequestContext { ctx ⇒
-      ctx.withRejectionHandling { rejections ⇒
+      ctx withRejectionHandling { rejections ⇒
         val filteredRejections = RejectionHandler.applyTransformations(rejections)
-        if (handler.isDefinedAt(filteredRejections)) {
-          def isAcceptHeader(h: HttpHeader) = h.lowercaseName.startsWith("accept")
-          // we "disable" content negotiation for the rejection handling route
-          // so as to avoid UnacceptedResponseContentTypeRejections from it
-          val handlingContext = ctx
-            .withRequestMapped(request ⇒ request.withHeaders(request.headers.filterNot(isAcceptHeader)))
-            .withRejectionHandling(rej ⇒ sys.error("The RejectionHandler for " + rejections +
-              " must not itself produce rejections (received " + rej + ")!"))
-          handler(filteredRejections)(handlingContext)
-        } else ctx.reject(filteredRejections: _*)
+        if (handler isDefinedAt filteredRejections)
+          handler(filteredRejections) {
+            ctx.withContentNegotiationDisabled withRejectionHandling { r ⇒
+              sys.error(s"The RejectionHandler for $rejections must not itself produce rejections (received $r)!")
+            }
+          }
+        else ctx.reject(filteredRejections: _*)
       }
     }
 
