@@ -32,7 +32,7 @@ trait MarshallingDirectives {
    * If there is a problem with unmarshalling the request is rejected with the [[spray.routing.Rejection]]
    * produced by the unmarshaller.
    */
-  def entity[T](um: Unmarshaller[T]): Directive[T :: HNil] =
+  def entity[T](um: Unmarshaller[T]): Directive1[T] =
     extract(_.request.entity.as(um)).flatMap[T :: HNil] {
       case Right(value)                            ⇒ provide(value)
       case Left(ContentExpected)                   ⇒ reject(RequestEntityExpectedRejection)

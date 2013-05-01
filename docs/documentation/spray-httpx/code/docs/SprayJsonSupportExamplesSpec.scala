@@ -26,7 +26,7 @@ class SprayJsonSupportExamplesSpec extends Specification {
     import spray.httpx.SprayJsonSupport._
 
     val bob = Person("Bob", "Parr", 32)
-    val body = HttpBody(
+    val body = HttpEntity(
       contentType = ContentType(`application/json`, `UTF-8`),
       string =
         """|{

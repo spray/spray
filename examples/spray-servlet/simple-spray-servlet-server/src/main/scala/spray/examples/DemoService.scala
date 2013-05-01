@@ -45,7 +45,7 @@ class DemoService extends Actor with SprayActorLogging {
   ////////////// helpers //////////////
 
   lazy val index = HttpResponse(
-    entity = HttpBody(`text/html`,
+    entity = HttpEntity(`text/html`,
       <html>
         <body>
           <h1>Say hello to <i>spray-servlet</i>!</h1>

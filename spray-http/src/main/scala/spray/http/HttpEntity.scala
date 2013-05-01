@@ -16,69 +16,76 @@
 
 package spray.http
 
-import java.util.Arrays
+import java.util
 
+/**
+ * Models the entity (aka "body" or "content) of an HTTP message.
+ */
 sealed trait HttpEntity {
   def isEmpty: Boolean
   def buffer: Array[Byte]
-  def map(f: (ContentType, Array[Byte]) ⇒ (ContentType, Array[Byte])): HttpEntity
-  def flatMap(f: (ContentType, Array[Byte]) ⇒ HttpEntity): HttpEntity
-  def foreach(f: (ContentType, Array[Byte]) ⇒ Unit)
+  def flatMap(f: HttpBody ⇒ HttpEntity): HttpEntity
   def orElse(other: HttpEntity): HttpEntity
   def asString: String
   def toOption: Option[HttpBody]
 }
 
+/**
+ * Models an empty entity.
+ */
 case object EmptyEntity extends HttpEntity {
   def isEmpty: Boolean = true
   val buffer = new Array[Byte](0)
-  def map(f: (ContentType, Array[Byte]) ⇒ (ContentType, Array[Byte])): HttpEntity = this
-  def flatMap(f: (ContentType, Array[Byte]) ⇒ HttpEntity): HttpEntity = this
-  def foreach(f: (ContentType, Array[Byte]) ⇒ Unit) {}
+  def flatMap(f: HttpBody ⇒ HttpEntity): HttpEntity = this
   def orElse(other: HttpEntity): HttpEntity = other
   def asString = ""
   def toOption = None
 }
 
-case class HttpBody(contentType: ContentType, buffer: Array[Byte]) extends HttpEntity {
+/**
+ * Models a non-empty entity. The buffer array is guaranteed to have a size greater than zero.
+ * CAUTION: Even though the byte array is directly exposed for performance reasons all instances of this class are
+ * assumed to be immutable! spray never modifies the buffer contents after an HttpBody instance has been created.
+ * If you modify the buffer contents by writing to the array things WILL BREAK!
+ */
+case class HttpBody private (contentType: ContentType, buffer: Array[Byte]) extends HttpEntity {
   def isEmpty: Boolean = false
-  def map(f: (ContentType, Array[Byte]) ⇒ (ContentType, Array[Byte])): HttpEntity = {
-    val (ct, buf) = f(contentType, buffer)
-    if (ct != contentType || (buf ne buffer)) new HttpBody(ct, buf) else this
-  }
-  def flatMap(f: (ContentType, Array[Byte]) ⇒ HttpEntity): HttpEntity = f(contentType, buffer)
-  def foreach(f: (ContentType, Array[Byte]) ⇒ Unit) { f(contentType, buffer) }
+  def flatMap(f: HttpBody ⇒ HttpEntity): HttpEntity = f(this)
   def orElse(other: HttpEntity): HttpEntity = this
   def asString = new String(buffer, contentType.charset.nioCharset)
   def toOption = Some(this)
 
   override def toString =
-    "HttpBody(" + contentType + ',' + (if (buffer.length < 50) asString.take(50) + "..." else asString) + ')'
+    "HttpEntity(" + contentType + ',' + (if (buffer.length < 50) asString.take(50) + "..." else asString) + ')'
 
-  override def hashCode = contentType.## * 31 + Arrays.hashCode(buffer)
+  override def hashCode = contentType.## * 31 + util.Arrays.hashCode(buffer)
   override def equals(obj: Any) = obj match {
-    case x: HttpBody ⇒ (this eq x) || contentType == x.contentType && Arrays.equals(buffer, x.buffer)
+    case x: HttpBody ⇒ (this eq x) || contentType == x.contentType && util.Arrays.equals(buffer, x.buffer)
     case _           ⇒ false
   }
 }
 
 object HttpBody {
-  def apply(contentType: ContentType, string: String): HttpBody =
-    new HttpBody(contentType, string.getBytes(contentType.charset.nioCharset))
-  def apply(body: String): HttpBody =
-    HttpBody(ContentType.`text/plain`, body)
+  private[http] def from(contentType: ContentType, buffer: Array[Byte]): HttpEntity =
+    if (buffer.length == 0) EmptyEntity else new HttpBody(contentType, buffer)
 }
 
 object HttpEntity {
   implicit def apply(string: String): HttpEntity =
-    if (string.isEmpty) EmptyEntity else HttpBody(string)
+    apply(ContentType.`text/plain`, string)
 
   implicit def apply(buffer: Array[Byte]): HttpEntity =
-    if (buffer.length == 0) EmptyEntity else HttpBody(ContentType.`application/octet-stream`, buffer)
+    apply(ContentType.`application/octet-stream`, buffer)
 
-  implicit def apply(optionalBody: Option[HttpBody]): HttpEntity = optionalBody match {
-    case Some(body) ⇒ body
-    case None       ⇒ EmptyEntity
-  }
+  implicit def flatten(optionalEntity: Option[HttpEntity]): HttpEntity =
+    optionalEntity match {
+      case Some(body) ⇒ body
+      case None       ⇒ EmptyEntity
+    }
+
+  def apply(contentType: ContentType, string: String): HttpEntity =
+    if (string.isEmpty) EmptyEntity
+    else apply(contentType, string.getBytes(contentType.charset.nioCharset))
+
+  def apply(contentType: ContentType, buffer: Array[Byte]): HttpEntity = HttpBody.from(contentType, buffer)
 }
-

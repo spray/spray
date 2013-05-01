@@ -37,8 +37,7 @@ private[can] class HttpClientSettingsGroup(settings: ClientConnectionSettings,
       if (children.isEmpty) {
         sender ! Http.ClosedAll
         context.stop(self)
-      }
-      else {
+      } else {
         children foreach { _ ! cmd }
         context.become(closing(children, Set(sender)))
       }
@@ -53,7 +52,6 @@ private[can] class HttpClientSettingsGroup(settings: ClientConnectionSettings,
       if (stillRunning.isEmpty) {
         commanders foreach (_ ! Http.ClosedAll)
         context.stop(self)
-      }
-      else context.become(closing(stillRunning, commanders))
+      } else context.become(closing(stillRunning, commanders))
   }
 }

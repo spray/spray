@@ -26,26 +26,24 @@ trait Encoder {
   def messageFilter: HttpMessage ⇒ Boolean
 
   def encode[T <: HttpMessage](message: T): T#Self = message.entity match {
-    case HttpBody(contentType, buffer) if messageFilter(message) && !message.isEncodingSpecified ⇒
+    case HttpBody(contentType, buffer) if messageFilter(message) && message.header[`Content-Encoding`].isEmpty ⇒
       message.withHeadersAndEntity(
         headers = `Content-Encoding`(encoding) :: message.headers,
-        entity = HttpBody(contentType, newCompressor.compress(buffer).finish()))
+        entity = HttpEntity(contentType, newCompressor.compress(buffer).finish()))
 
     case _ ⇒ message.message
   }
 
-  def startEncoding[T <: HttpMessage](message: T): Option[(T#Self, Compressor)] = {
-    if (messageFilter(message) && !message.isEncodingSpecified) {
+  def startEncoding[T <: HttpMessage](message: T): Option[(T#Self, Compressor)] =
+    if (messageFilter(message) && message.header[`Content-Encoding`].isEmpty)
       message.entity.toOption.map {
         case HttpBody(contentType, buffer) ⇒
           val compressor = newCompressor
           message.withHeadersAndEntity(
             headers = `Content-Encoding`(encoding) :: message.headers,
-            entity = HttpBody(contentType, compressor.compress(buffer).flush())) -> compressor
+            entity = HttpEntity(contentType, compressor.compress(buffer).flush())) -> compressor
       }
-    }
     else None
-  }
 
   def newCompressor: Compressor
 }

@@ -23,7 +23,7 @@ import BasicRules._
 private[parser] trait AcceptRangesHeader {
   this: Parser with ProtocolParameterRules ⇒
 
-  def ACCEPT_RANGES = rule(
+  def `*Accept-Ranges` = rule(
     RangeUnitsDef ~ EOI ~~> (HttpHeaders.`Accept-Ranges`(_)))
 
   def RangeUnitsDef = rule {

@@ -166,10 +166,9 @@ class PathDirectivesSpec extends RoutingSpec {
   }
 
   "the predefined IntNumber PathMatcher" should {
+    val route = path("id" / IntNumber) { echoComplete }
     "properly extract digit sequences at the path end into an integer" in {
-      Get("/id/23") ~> {
-        path("id" / IntNumber) { echoComplete }
-      } ~> check { entityAs[String] === "23" }
+      Get("/id/23") ~> route ~> check { entityAs[String] === "23" }
     }
     "properly extract digit sequences in the middle of the path into an integer" in {
       Get("/id/12345yes") ~> {
@@ -177,19 +176,13 @@ class PathDirectivesSpec extends RoutingSpec {
       } ~> check { entityAs[String] === "12345" }
     }
     "reject empty matches" in {
-      Get("/id/") ~> {
-        path("id" / IntNumber) { echoComplete }
-      } ~> check { handled must beFalse }
+      Get("/id/") ~> route ~> check { handled must beFalse }
     }
     "reject non-digit matches" in {
-      Get("/id/xyz") ~> {
-        path("id" / IntNumber) { echoComplete }
-      } ~> check { handled must beFalse }
+      Get("/id/xyz") ~> route ~> check { handled must beFalse }
     }
     "reject digit sequences representing numbers greater than Int.MaxValue" in {
-      Get("/id/2147483648") ~> {
-        path("id" / IntNumber) { echoComplete }
-      } ~> check { handled must beFalse }
+      Get("/id/2147483648") ~> route ~> check { handled must beFalse }
     }
   }
 
@@ -244,23 +237,19 @@ class PathDirectivesSpec extends RoutingSpec {
 
   "A PathMatcher constructed implicitly from a Map[String, T]" should {
     val colors = Map("red" -> 1, "green" -> 2, "blue" -> 3)
+    val route = path("color" / colors) { echoComplete }
     "properly match its map keys" in {
-      Get("/color/green") ~> {
-        path("color" / colors) { echoComplete }
-      } ~> check { entityAs[String] === "2" }
+      Get("/color/green") ~> route ~> check { entityAs[String] === "2" }
     }
     "not match something else" in {
-      Get("/color/black") ~> {
-        path("color" / colors) { echoComplete }
-      } ~> check { handled must beFalse }
+      Get("/color/black") ~> route ~> check { handled must beFalse }
     }
   }
 
   "The predefined Segment PathMatcher" should {
+    val route = path("id" / Segment) { echoComplete }
     "properly extract chars at the path end into a String" in {
-      Get("/id/abc") ~> {
-        path("id" / Segment) { echoComplete }
-      } ~> check { entityAs[String] === "abc" }
+      Get("/id/abc") ~> route ~> check { entityAs[String] === "abc" }
     }
     "properly extract chars in the middle of the path into a String" in {
       Get("/id/yes/no") ~> {
@@ -268,9 +257,7 @@ class PathDirectivesSpec extends RoutingSpec {
       } ~> check { entityAs[String] === "yes" }
     }
     "reject empty matches" in {
-      Get("/id/") ~> {
-        path("id" / Segment) { echoComplete }
-      } ~> check { handled must beFalse }
+      Get("/id/") ~> route ~> check { handled must beFalse }
     }
   }
 
@@ -290,15 +277,12 @@ class PathDirectivesSpec extends RoutingSpec {
       } ~> check { entityAs[String] === "/a" }
     }
     "be usable for testing for trailing slashs in URIs" in {
+      val route = pathPrefixTest(Segment ~ Slash_!) { _ ⇒ completeOk }
       "example 1" in {
-        Get("/a/") ~> {
-          pathPrefixTest(Segment ~ Slash_!) { _ ⇒ completeOk }
-        } ~> check { response === Ok }
+        Get("/a/") ~> route ~> check { response === Ok }
       }
       "example 2" in {
-        Get("/a") ~> {
-          pathPrefixTest(Segment ~ Slash_!) { _ ⇒ completeOk }
-        } ~> check { handled === false }
+        Get("/a") ~> route ~> check { handled === false }
       }
     }
   }
@@ -331,11 +315,27 @@ class PathDirectivesSpec extends RoutingSpec {
 
   "The `pathSuffixTest` matcher modifier" should {
     "enable testing for trailing slashes" in {
+      val route = pathSuffixTest(Slash) { completeOk }
       "example 1" in {
-        Get("/a/b/") ~> pathSuffixTest(Slash) { completeOk } ~> check { response === Ok }
+        Get("/a/b/") ~> route ~> check { response === Ok }
       }
       "example 2" in {
-        Get("/a/b") ~> pathSuffixTest(Slash) { completeOk } ~> check { handled === false }
+        Get("/a/b") ~> route ~> check { handled === false }
+      }
+    }
+  }
+
+  "PathMatchers" should {
+    "support the `|` operator" in {
+      val route = path("ab" / ("cd" | "ef") / "gh") { completeOk }
+      "example 1" in {
+        Get("/ab/cd/gh") ~> route ~> check { response === Ok }
+      }
+      "example 2" in {
+        Get("/ab/ef/gh") ~> route ~> check { response === Ok }
+      }
+      "example 3" in {
+        Get("/ab/xy/gh") ~> route ~> check { handled === false }
       }
     }
   }

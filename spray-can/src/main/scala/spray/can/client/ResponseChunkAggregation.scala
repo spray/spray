@@ -31,25 +31,23 @@ object ResponseChunkAggregation {
 
           val initialEventPipeline: EPL = {
             case Http.MessageEvent(ChunkedResponseStart(response)) ⇒
-              if (response.entity.buffer.length <= limit) {
-                val bb = ByteString.newBuilder
-                bb putBytes response.entity.buffer
-                eventPipeline become aggregating(response, bb)
-              }
-              else closeWithError()
+              eventPipeline.become(aggregating(response))
 
             case ev ⇒ eventPL(ev)
           }
 
-          def aggregating(response: HttpResponse, bb: ByteStringBuilder): EPL = {
+          def aggregating(response: HttpResponse, bb: ByteStringBuilder = ByteString.newBuilder): EPL = {
             case Http.MessageEvent(MessageChunk(body, _)) ⇒
-              if (bb.length + body.length <= limit) bb putBytes body
+              if (bb.length + body.length <= limit) bb.putBytes(body)
               else closeWithError()
 
             case Http.MessageEvent(_: ChunkedMessageEnd) ⇒
-              val aggregatedEntity = response.entity.map((ct, _) ⇒ ct -> bb.result().toArray)
-              eventPL(Http.MessageEvent(response.copy(entity = aggregatedEntity)))
-              eventPipeline become initialEventPipeline
+              val contentType = response.header[HttpHeaders.`Content-Type`] match {
+                case Some(x) ⇒ x.contentType
+                case None    ⇒ ContentType.`application/octet-stream`
+              }
+              eventPL(Http.MessageEvent(response.copy(entity = HttpEntity(contentType, bb.result().toArray[Byte]))))
+              eventPipeline.become(initialEventPipeline)
 
             case ev ⇒ eventPL(ev)
           }
@@ -58,7 +56,7 @@ object ResponseChunkAggregation {
             context.log.error("Aggregated response entity greater than configured limit of {} bytes," +
               "closing connection", limit)
             commandPL(Http.Close)
-            eventPipeline become eventPL // disable this stage
+            eventPipeline.become(eventPL) // disable this stage
           }
         }
     }

@@ -63,7 +63,7 @@ class DemoService extends Actor with SprayActorLogging {
   ////////////// helpers //////////////
 
   lazy val index = HttpResponse(
-    entity = HttpBody(`text/html`,
+    entity = HttpEntity(`text/html`,
       <html>
         <body>
           <h1>Say hello to <i>spray-can</i>!</h1>
@@ -83,7 +83,7 @@ class DemoService extends Actor with SprayActorLogging {
   )
 
   def statsPresentation(s: Stats) = HttpResponse(
-    entity = HttpBody(`text/html`,
+    entity = HttpEntity(`text/html`,
       <html>
         <body>
           <h1>HttpServer Stats</h1>

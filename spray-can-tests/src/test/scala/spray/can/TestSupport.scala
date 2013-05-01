@@ -48,17 +48,17 @@ object TestSupport {
   def response = HttpResponse(
     status = 200,
     headers = List(
-      `Server`("spray/1.0"),
+      `Content-Length`(0),
       `Date`(DateTime(2011, 8, 25, 9, 10, 29)),
-      `Content-Length`(0)))
+      `Server`("spray/1.0")))
 
   def response(content: String) = HttpResponse(
     status = 200,
     headers = List(
-      `Server`("spray/1.0"),
-      `Date`(DateTime(2011, 8, 25, 9, 10, 29)),
+      `Content-Type`(`text/plain`),
       `Content-Length`(content.length),
-      `Content-Type`(`text/plain`)),
+      `Date`(DateTime(2011, 8, 25, 9, 10, 29)),
+      `Server`("spray/1.0")),
     entity = content)
 
   def rawResponse = prep {

@@ -19,97 +19,52 @@ package spray.can.client
 import scala.annotation.tailrec
 import scala.collection.immutable.Queue
 import akka.io.Tcp
-import akka.util.{ ByteString, ByteIterator }
+import akka.util.CompactByteString
 import spray.can.rendering.HttpRequestPartRenderingContext
-import spray.can.{ StatusLine, Http }
+import spray.can.Http
 import spray.can.parsing._
 import spray.http._
 import spray.io._
-import spray.http.parser.HttpParser
 
 object ResponseParsing {
 
-  private val UnmatchedResponseErrorState = ErrorState("Response to non-existent request")
-
   def apply(settings: ParserSettings): PipelineStage = {
+    val rootParser = new HttpResponsePartParser(settings)()
     new PipelineStage {
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           import context.log
-          var currentParsingState: ParsingState = UnmatchedResponseErrorState
+          val parser = rootParser.copyWith { errorInfo ⇒
+            log.warning(errorInfo.withSummaryPrepended("Illegal response header").formatPretty)
+          }
           var openRequestMethods = Queue.empty[HttpMethod]
 
-          def startParser = new EmptyResponseParser(settings, openRequestMethods.head == HttpMethods.HEAD)
-
-          @tailrec
-          final def parse(data: ByteIterator) {
-            currentParsingState match {
-              case x: IntermediateState ⇒
-                if (data.hasNext) {
-                  currentParsingState = x.read(data)
-                  parse(data)
-                } // else wait for more input
-
-              case x @ CompleteMessageState(StatusLine(proto, status, _, _), headers, _, _, _) ⇒
-                eventPL(Http.MessageEvent(HttpResponse(status, x.entity, parseHeaders(headers), proto)))
-                openRequestMethods = openRequestMethods.tail
-                if (openRequestMethods.isEmpty) {
-                  currentParsingState = UnmatchedResponseErrorState
-                  if (data.hasNext) parse(data) // trigger error if buffer is not empty
+          @tailrec def parse(data: CompactByteString): Unit =
+            parser.parse(data) match {
+              case Result.Ok(part, remainingData, _) ⇒
+                eventPL(Http.MessageEvent(part))
+                if (part.isInstanceOf[HttpMessageEnd]) {
+                  openRequestMethods = openRequestMethods.tail
+                  if (openRequestMethods.nonEmpty) parser.startResponse(openRequestMethods.head)
                 }
-                else {
-                  currentParsingState = startParser
-                  parse(data)
-                }
+                if (!remainingData.isEmpty) parse(remainingData)
 
-              case x @ ChunkedStartState(StatusLine(proto, status, _, _), headers, _, _) ⇒
-                eventPL(Http.MessageEvent(ChunkedResponseStart(HttpResponse(status, x.entity, parseHeaders(headers), proto))))
-                currentParsingState = new ChunkParser(settings)
-                parse(data)
+              case Result.NeedMoreData ⇒ // just wait for the next packet
 
-              case ChunkedChunkState(extensions, body) ⇒
-                eventPL(Http.MessageEvent(MessageChunk(body, extensions)))
-                currentParsingState = new ChunkParser(settings)
-                parse(data)
-
-              case ChunkedEndState(extensions, trailer) ⇒
-                eventPL(Http.MessageEvent(ChunkedMessageEnd(extensions, trailer)))
-                currentParsingState = startParser
-                openRequestMethods = openRequestMethods.tail
-                if (openRequestMethods.isEmpty) {
-                  currentParsingState = UnmatchedResponseErrorState
-                  if (data.hasNext) parse(data) // trigger error if buffer is not empty
-                }
-                else {
-                  currentParsingState = startParser
-                  parse(data)
-                }
-
-              case _: Expect100ContinueState ⇒
-                currentParsingState = ErrorState("'Expect: 100-continue' is not allowed in HTTP responses")
-                parse(data) // trigger error
-
-              case ErrorState.Dead ⇒ // if we already handled the error state we ignore all further input
-
-              case x: ErrorState ⇒
-                log.warning("Received illegal response: {}", x.message)
+              case Result.ParsingError(_, info) ⇒
+                log.warning("Received illegal response: {}", info.formatPretty)
                 commandPL(Http.Close)
-                currentParsingState = ErrorState.Dead // set to "special" ErrorState that ignores all further input
-            }
-          }
 
-          def parseHeaders(headers: List[HttpHeader]) = {
-            val (errors, parsed) = HttpParser.parseHeaders(headers)
-            if (!errors.isEmpty) errors.foreach(e ⇒ log.warning(e.formatPretty))
-            parsed
-          }
+              case _: Result.Expect100Continue ⇒ throw new IllegalStateException
+            }
 
           val commandPipeline: CPL = {
             case x: HttpRequestPartRenderingContext ⇒
-              def register(req: HttpRequest) {
+              def register(req: HttpRequest): Unit = {
+                if (openRequestMethods.isEmpty) parser.startResponse(req.method)
                 openRequestMethods = openRequestMethods enqueue req.method
-                if (currentParsingState eq UnmatchedResponseErrorState) currentParsingState = startParser
               }
+
               x.requestPart match {
                 case x: HttpRequest         ⇒ register(x)
                 case x: ChunkedRequestStart ⇒ register(x.request)
@@ -121,15 +76,10 @@ object ResponseParsing {
           }
 
           val eventPipeline: EPL = {
-            case Tcp.Received(data) ⇒ parse(data.iterator)
+            case Tcp.Received(data: CompactByteString) ⇒ parse(data)
 
             case ev @ Http.PeerClosed ⇒
-              currentParsingState match {
-                case x: ToCloseBodyParser ⇒
-                  currentParsingState = x.complete
-                  parse(ByteString.empty.iterator)
-                case _ ⇒
-              }
+              parse(CompactByteString.empty)
               eventPL(ev)
 
             case ev ⇒ eventPL(ev)

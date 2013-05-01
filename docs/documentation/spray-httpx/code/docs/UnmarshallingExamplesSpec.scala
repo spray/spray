@@ -36,7 +36,7 @@ class UnmarshallingExamplesSpec extends Specification {
 
   "example-1" in {
 
-    val body = HttpBody(`application/vnd.acme.person`, "Person: Bob, Parr, 32")
+    val body = HttpEntity(`application/vnd.acme.person`, "Person: Bob, Parr, 32")
     body.as[Person] === Right(Person("Bob", "Parr", 32))
   }
 
@@ -49,7 +49,7 @@ class UnmarshallingExamplesSpec extends Specification {
       }
     //#
 
-    val body = HttpBody(`application/vnd.acme.person`, "Person: Bob, Parr, 32")
+    val body = HttpEntity(`application/vnd.acme.person`, "Person: Bob, Parr, 32")
     body.as[Person] === Right(Person("Bob", "Parr", 32))
   }
 
@@ -58,7 +58,7 @@ class UnmarshallingExamplesSpec extends Specification {
 
     implicit val myNodeSeqUnmarshaller = Unmarshaller.forNonEmpty[NodeSeq]
 
-    HttpBody(`text/xml`, "<xml>yeah</xml>").as[NodeSeq] === Right(<xml>yeah</xml>)
+    HttpEntity(`text/xml`, "<xml>yeah</xml>").as[NodeSeq] === Right(<xml>yeah</xml>)
     EmptyEntity.as[NodeSeq] === Left(ContentExpected)
   }
 }

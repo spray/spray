@@ -57,7 +57,7 @@ class RouteDirectivesSpec extends RoutingSpec {
       } ~> check {
         response === HttpResponse(
           status = 302,
-          entity = HttpBody(`text/html`, "The requested resource temporarily resides under <a href=\"/foo\">this URI</a>."),
+          entity = HttpEntity(`text/html`, "The requested resource temporarily resides under <a href=\"/foo\">this URI</a>."),
           headers = Location("/foo") :: Nil)
       }
     }

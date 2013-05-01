@@ -93,9 +93,11 @@ trait DemoService extends HttpService {
       }
     } ~
     (post | parameter('method ! "post")) {
-      path("stop") { ctx =>
-        ctx.complete("Shutting down in 1 second...")
-        in(1.second) { actorSystem.shutdown() }
+      path("stop") {
+        complete {
+          in(1.second){ actorSystem.shutdown() }
+          "Shutting down in 1 second..."
+        }
       }
     }
   }
@@ -144,7 +146,7 @@ trait DemoService extends HttpService {
       Props {
         new Actor with SprayActorLogging {
           // we use the successful sending of a chunk as trigger for scheduling the next chunk
-          val responseStart = HttpResponse(entity = HttpBody(`text/html`, streamStart))
+          val responseStart = HttpResponse(entity = HttpEntity(`text/html`, streamStart))
           ctx.responder ! ChunkedResponseStart(responseStart).withAck(Ok(16))
 
           def receive = {
@@ -178,13 +180,13 @@ trait DemoService extends HttpService {
       "Requests timed out    : " + stats.requestTimeouts + '\n'
     }
 
-  def in[U](duration: FiniteDuration)(body: => U): Unit =
-    actorSystem.scheduler.scheduleOnce(duration)(body)
-
   lazy val largeTempFile: File = {
     val file = File.createTempFile("streamingTest", ".txt")
     FileUtils.writeAllText((1 to 1000) map ("This is line " + _) mkString "\n", file)
     file.deleteOnExit()
     file
   }
+
+  def in[U](duration: FiniteDuration)(body: => U): Unit =
+    actorSystem.scheduler.scheduleOnce(duration)(body)
 }

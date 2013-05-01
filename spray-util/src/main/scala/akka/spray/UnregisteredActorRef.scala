@@ -49,7 +49,7 @@ abstract class UnregisteredActorRef(prov: ActorRefProvider) extends Unregistered
    */
   def registerForMultiResponse(isLastResponse: Any ⇒ Boolean, timeout: Timeout)(implicit executor: ExecutionContext): ActorRef =
     new LazyActorRef(provider) {
-      val timer = provider.scheduler.scheduleOnce(timeout.duration) {
+      val timer = provider.guardian.underlying.system.scheduler.scheduleOnce(timeout.duration) {
         stop()
       }
       def handle(message: Any)(implicit sender: ActorRef) {

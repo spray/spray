@@ -18,7 +18,6 @@ package spray.routing
 package directives
 
 import scala.reflect.{ classTag, ClassTag }
-import akka.actor.{ ActorContext, ActorSystem, ActorRefFactory }
 import shapeless._
 import spray.http._
 import spray.util._
@@ -42,7 +41,7 @@ trait MiscDirectives {
   /**
    * Directive extracting the IP of the client from either the X-Forwarded-For, Remote-Address or X-Real-IP header.
    */
-  lazy val clientIP: Directive[HttpIp :: HNil] =
+  lazy val clientIP: Directive1[HttpIp] =
     (headerValuePF { case `X-Forwarded-For`(ips) if ips.flatten.nonEmpty ⇒ ips.flatten.head }) |
       (headerValuePF { case `Remote-Address`(ip) ⇒ ip }) |
       (headerValuePF { case RawHeader("x-real-ip", ip) ⇒ ip })
@@ -57,7 +56,7 @@ trait MiscDirectives {
     import ParameterDirectives._
     parameter(parameterName?).flatMap {
       case Some(wrapper) ⇒ mapHttpResponseEntity {
-        case HttpBody(ct @ ContentType(`application/json`, _), buffer) ⇒ HttpBody(
+        case HttpBody(ct @ ContentType(`application/json`, _), buffer) ⇒ HttpEntity(
           contentType = ct.withMediaType(`application/javascript`),
           string = wrapper + '(' + buffer.asString(ct.charset.nioCharset) + ')')
         case entity ⇒ entity
@@ -104,7 +103,7 @@ trait MiscDirectives {
   /**
    * Extracts the unmatched path from the RequestContext.
    */
-  def unmatchedPath: Directive[Uri.Path :: HNil] =
+  def unmatchedPath: Directive1[Uri.Path] =
     extract(_.unmatchedPath)
 
   /**

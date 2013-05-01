@@ -24,7 +24,7 @@ import LanguageRanges._
 private[parser] trait AcceptLanguageHeader {
   this: Parser with ProtocolParameterRules ⇒
 
-  def ACCEPT_LANGUAGE = rule(
+  def `*Accept-Language` = rule(
     oneOrMore(LanguageRangeDef, separator = ListSep) ~ EOI ~~> (HttpHeaders.`Accept-Language`(_)))
 
   def LanguageRangeDef = rule {

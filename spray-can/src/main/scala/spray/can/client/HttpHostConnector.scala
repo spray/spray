@@ -48,7 +48,7 @@ private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, client
   def receive: Receive = {
     case request: HttpRequest ⇒
       val requestWithHostHeader =
-        if (request.headers.exists { case _: HttpHeaders.Host ⇒ true }) request
+        if (request.headers.exists(_.isInstanceOf[HttpHeaders.Host])) request
         else request.withHeaders(hostHeader :: request.headers)
       dispatchStrategy(RequestContext(requestWithHostHeader, settings.maxRetries, sender))
 
@@ -59,15 +59,14 @@ private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, client
       dispatchStrategy.onConnectionStateChange()
 
     case Http.CloseAll(cmd) ⇒
-      val allDisconnected = openRequestCounts.foldLeft(true) {
-        case (flag, (_, -1)) ⇒ flag
-        case (_, (ref, _))   ⇒ ref ! cmd; false
+      val stillConnected = openRequestCounts.foldLeft(Set.empty[ActorRef]) {
+        case (acc, (_, -1))  ⇒ acc
+        case (acc, (ref, _)) ⇒ ref ! cmd; acc + ref
       }
-      if (allDisconnected) {
+      if (stillConnected.isEmpty) {
         sender ! Http.ClosedAll
         context.stop(self)
-      }
-      else context.become(closing(Set(sender)))
+      } else context.become(closing(stillConnected, Set(sender)))
 
     case Disconnected(openRequestCount) ⇒
       val oldCount = openRequestCounts(sender)
@@ -96,15 +95,16 @@ private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, client
       }
   }
 
-  def closing(commanders: Set[ActorRef]): Receive = {
+  def closing(connected: Set[ActorRef], commanders: Set[ActorRef]): Receive = {
     case Http.CloseAll(cmd) ⇒
-      context.become(closing(commanders + sender))
+      context.become(closing(connected, commanders + sender))
 
-    case _: Terminated ⇒
-      if (context.children.isEmpty) {
+    case Terminated(child) ⇒
+      val stillConnected = connected - child
+      if (stillConnected.isEmpty) {
         commanders foreach (_ ! Http.ClosedAll)
         context.stop(self)
-      }
+      } else context.become(closing(stillConnected, commanders))
 
     case ReceiveTimeout ⇒ context.stop(self)
 

@@ -20,7 +20,7 @@ package spray.http
 import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import java.nio.charset.Charset
 import scala.annotation.tailrec
-import spray.http.parser.UriParser
+import spray.http.parser.{ ParserInput, UriParser }
 import UriParser._
 import Uri._
 
@@ -84,22 +84,33 @@ object Uri {
     def isEmpty = true
   }
 
-  val / = "/"
+  val / : Uri = "/"
 
   /**
-   * Parses a string into a normalized URI reference as defined by http://tools.ietf.org/html/rfc3986#section-4.1.
+   * Parses a valid URI string into a normalized URI reference as defined
+   * by http://tools.ietf.org/html/rfc3986#section-4.1.
    * Percent-encoded octets are UTF-8 decoded.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  implicit def apply(string: String): Uri = apply(string, UTF8)
+  implicit def apply(input: String): Uri = apply(input: ParserInput)
 
   /**
-   * Parses a string into a normalized URI reference as defined by http://tools.ietf.org/html/rfc3986#section-4.1.
+   * Parses a valid URI string into a normalized URI reference as defined
+   * by http://tools.ietf.org/html/rfc3986#section-4.1.
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def apply(string: String, charset: Charset): Uri =
-    new UriParser(string, charset).parseReference()
+  def apply(input: ParserInput): Uri =
+    apply(input, UTF8)
+
+  /**
+   * Parses a valid URI string into a normalized URI reference as defined
+   * by http://tools.ietf.org/html/rfc3986#section-4.1.
+   * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
+   * If the given string is not a valid URI the method throws an `IllegalUriException`.
+   */
+  def apply(input: ParserInput, charset: Charset): Uri =
+    new UriParser(input, charset).parseReference()
 
   /**
    * Creates a new Uri instance from the given components.
@@ -133,8 +144,8 @@ object Uri {
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseAbsolute(string: String, charset: Charset = UTF8): Uri =
-    new UriParser(string, charset).parseAbsolute()
+  def parseAbsolute(input: ParserInput, charset: Charset = UTF8): Uri =
+    new UriParser(input, charset).parseAbsolute()
 
   /**
    * Parses a string into a normalized URI reference that is immediately resolved against the given base URI as
@@ -143,16 +154,16 @@ object Uri {
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseAndResolve(string: String, base: Uri, charset: Charset = UTF8): Uri =
-    new UriParser(string, charset).parseAndResolveReference(base)
+  def parseAndResolve(input: ParserInput, base: Uri, charset: Charset = UTF8): Uri =
+    new UriParser(input, charset).parseAndResolveReference(base)
 
   /**
    * Parses the given string into an HTTP request target URI as defined by
    * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.3.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseHttpRequestTarget(requestTarget: String, charset: Charset = UTF8): Uri =
-    new UriParser(requestTarget, charset).parseHttpRequestTarget()
+  def parseHttpRequestTarget(input: ParserInput, charset: Charset = UTF8): Uri =
+    new UriParser(input, charset).parseHttpRequestTarget()
 
   /**
    * Normalizes the given URI string by performing the following normalizations:
@@ -163,8 +174,8 @@ object Uri {
    *
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def normalize(uri: String, charset: Charset = UTF8): String =
-    Uri(uri, charset).toString(charset)
+  def normalize(input: ParserInput, charset: Charset = UTF8): String =
+    Uri(input, charset).toString(charset)
 
   /**
    * Converts a set of URI components to an "effective HTTP request URI" as defined by
@@ -182,8 +193,7 @@ object Uri {
         if (hostHeaderHost.isEmpty) {
           _host = defaultAuthority.host
           _port = defaultAuthority.port
-        }
-        else {
+        } else {
           _host = hostHeaderHost
           _port = hostHeaderPort
         }
@@ -232,12 +242,11 @@ object Uri {
     }
     def apply(string: String): Host =
       if (!string.isEmpty) {
-        val parser = new UriParser(string)
+        val parser = new UriParser(string, UTF8)
         import parser._
         complete("URI host", host)
         _host
-      }
-      else Empty
+      } else Empty
   }
   sealed abstract class NonEmptyHost extends Host {
     def isEmpty = false
@@ -382,7 +391,7 @@ object Uri {
      * Empty strings will be parsed to `("", "") +: Query.Empty`
      */
     def apply(string: String): Query = {
-      val parser = new UriParser(string)
+      val parser = new UriParser(string, UTF8)
       import parser._
       complete("Query", query)
       _query
@@ -435,8 +444,7 @@ object Uri {
         if (path.isEmpty) {
           val q = if (query.isEmpty) base.query else query
           Impl(base.scheme, base.authority, base.path, q, fragment)
-        }
-        else {
+        } else {
           // http://tools.ietf.org/html/rfc3986#section-5.2.3
           def mergePaths(base: Uri, path: Path): Path =
             if (!base.authority.isEmpty && path.isEmpty) Path.Slash(path)
@@ -472,8 +480,7 @@ object Uri {
               case c                ⇒ c.toString.getBytes(charset).foreach(appendEncoded)
             }
             process(sb, ix + 1)
-          }
-          else sb.toString
+          } else sb.toString
         }
         process(new JStringBuilder(string.length * 2).append(string, 0, first))
     }
@@ -491,8 +498,7 @@ object Uri {
         def intValueOfHexWord(i: Int) = {
           def intValueOfHexChar(j: Int) = {
             val c = string.charAt(j)
-            if (is(c, DIGIT)) c - '0'
-            else if (is(c, HEX_LETTER)) toLowerCase(c) - 'a' + 10
+            if (is(c, HEX_DIGIT)) hexValue(c)
             else throw new IllegalArgumentException("Illegal percent-encoding at pos " + j)
           }
           intValueOfHexChar(i) * 16 + intValueOfHexChar(i + 1)
@@ -509,14 +515,12 @@ object Uri {
             val byte = intValueOfHexWord(ix + 3 * i + 1)
             bytes(i) = byte.toByte
             decodeBytes(i + 1, oredBytes | byte)
-          }
-          else oredBytes
+          } else oredBytes
         }
 
         if ((decodeBytes() >> 7) != 0) { // if non-ASCII chars are present we need to involve the charset for decoding
           sb.append(new String(bytes, charset))
-        }
-        else {
+        } else {
           @tailrec def appendBytes(i: Int = 0): Unit =
             if (i < bytesCount) { sb.append(bytes(i).toChar); appendBytes(i + 1) }
           appendBytes()
@@ -532,8 +536,7 @@ object Uri {
       if (ix >= 0) {
         val c = scheme.charAt(ix)
         if (is(c, allowed)) verify(ix - 1, ALPHA | DIGIT | PLUS | DASH | DOT, allLower && !is(c, UPPER_ALPHA)) else ix
-      }
-      else if (allLower) -1 else -2
+      } else if (allLower) -1 else -2
     verify() match {
       case -2 ⇒ scheme.toLowerCase
       case -1 ⇒ scheme
@@ -550,8 +553,7 @@ object Uri {
     if (host.isEmpty) {
       if (path.startsWithSlash && path.tail.startsWithSlash)
         fail("""The path of an URI without authority must not begin with "//"""")
-    }
-    else if (path.startsWithSegment)
+    } else if (path.startsWithSegment)
       fail("The path of an URI containing an authority must either be empty or start with a '/' (slash) character")
     path
   }

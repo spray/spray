@@ -42,12 +42,16 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
   def handle(message: Any)(implicit sender: ActorRef) {
     require(RefUtils.isLocal(sender), "A request cannot be completed from a remote actor")
     message match {
-      case x: HttpMessagePartWrapper if x.messagePart.isInstanceOf[HttpResponsePart] ⇒
-        x.messagePart.asInstanceOf[HttpResponsePart] match {
-          case _: HttpResponse         ⇒ dispatch(x, Uncompleted, Completed)
-          case _: ChunkedResponseStart ⇒ dispatch(x, Uncompleted, Chunking)
-          case _: MessageChunk         ⇒ dispatch(x, Chunking, Chunking)
-          case _: ChunkedMessageEnd    ⇒ dispatch(x, Chunking, Completed)
+      case part: HttpMessagePartWrapper if part.messagePart.isInstanceOf[HttpResponsePart] ⇒
+        part.messagePart.asInstanceOf[HttpResponsePart] match {
+          case x: HttpResponse ⇒
+            require(x.protocol == HttpProtocols.`HTTP/1.1`, "Response must have protocol HTTP/1.1")
+            dispatch(part, Uncompleted, Completed)
+          case x: ChunkedResponseStart ⇒
+            require(x.response.protocol == HttpProtocols.`HTTP/1.1`, "Response must have protocol HTTP/1.1")
+            dispatch(part, Uncompleted, Chunking)
+          case _: MessageChunk      ⇒ dispatch(part, Chunking, Chunking)
+          case _: ChunkedMessageEnd ⇒ dispatch(part, Chunking, Completed)
         }
       case x: Command ⇒ dispatch(x)
       case x ⇒
@@ -59,8 +63,7 @@ private class ResponseReceiverRef(openRequest: OpenRequest)
   private def dispatch(msg: HttpMessagePartWrapper, expectedState: ResponseState, newState: ResponseState)(implicit sender: ActorRef) {
     if (Unsafe.instance.compareAndSwapObject(this, responseStateOffset, expectedState, newState)) {
       dispatch(new Response(openRequest, Http.MessageCommand(msg)))
-    }
-    else {
+    } else {
       openRequest.context.log.warning("Cannot dispatch {} as response (part) for {} since current response state is " +
         "'{}' but should be '{}'", msg.messagePart.getClass.getSimpleName, requestInfo,
         Unsafe.instance.getObjectVolatile(this, responseStateOffset), expectedState)

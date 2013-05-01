@@ -79,7 +79,7 @@ trait RespondWithDirectives {
       if (_) pass else reject(UnacceptedResponseContentTypeRejection(ContentType(mediaType) :: Nil))
     } &
       mapRequest(_.mapHeaders(h ⇒ if (h.exists(_.is("accept"))) h.filter(_.isNot("accept")) else h)) &
-      mapHttpResponseEntity(_.map((ct, buf) ⇒ (ct.withMediaType(mediaType), buf)))
+      mapHttpResponseEntity(_.flatMap { case HttpBody(ct, buf) ⇒ HttpEntity(ct.withMediaType(mediaType), buf) })
 
 }
 

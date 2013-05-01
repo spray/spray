@@ -48,13 +48,13 @@ class MiscDirectivesSpec extends RoutingSpec {
   }
 
   "the jsonpWithParameter directive" should {
-    val jsonResponse = HttpResponse(entity = HttpBody(`application/json`, "[1,2,3]"))
+    val jsonResponse = HttpResponse(entity = HttpEntity(`application/json`, "[1,2,3]"))
     "convert JSON responses to corresponding javascript responses according to the given JSONP parameter" in {
       Get("/?jsonp=someFunc") ~> {
         jsonpWithParameter("jsonp") {
           complete(jsonResponse)
         }
-      } ~> check { body === HttpBody(`application/javascript`, "someFunc([1,2,3])") }
+      } ~> check { body === HttpEntity(`application/javascript`, "someFunc([1,2,3])") }
     }
     "not act on JSON responses if no jsonp parameter is present" in {
       Get() ~> {
@@ -66,9 +66,9 @@ class MiscDirectivesSpec extends RoutingSpec {
     "not act on non-JSON responses even if a jsonp parameter is present" in {
       Get("/?jsonp=someFunc") ~> {
         jsonpWithParameter("jsonp") {
-          complete(HttpResponse(entity = HttpBody(`text/plain`, "[1,2,3]")))
+          complete(HttpResponse(entity = HttpEntity(`text/plain`, "[1,2,3]")))
         }
-      } ~> check { body === HttpBody(`text/plain`, "[1,2,3]") }
+      } ~> check { body === HttpEntity(`text/plain`, "[1,2,3]") }
     }
   }
 

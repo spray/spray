@@ -59,7 +59,7 @@ class ResponseRenderingSpec extends Specification with Specs2PipelineStageTest {
       connectionActor ! HttpResponsePartRenderingContext(
         responsePart = HttpResponse(entity = "Some Message"),
         requestMethod = HttpMethods.HEAD,
-        requestConnectionHeader = Some("close"))
+        closeAfterResponseCompletion = true)
       wipeDate(commands.expectMsgType[Tcp.Write].data.utf8String) === prep {
         """HTTP/1.1 200 OK
           |Server: spray/1.0

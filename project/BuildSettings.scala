@@ -6,7 +6,7 @@ import ls.Plugin._
 
 
 object BuildSettings {
-  val VERSION = "1.1-M8-SNAPSHOT"
+  val VERSION = "1.2-M8-SNAPSHOT"
 
   lazy val basicSettings = seq(
     version               := NightlyBuildSupport.buildVersion(VERSION),
@@ -116,7 +116,6 @@ object BuildSettings {
       .setPreference(RewriteArrowSymbols, true)
       .setPreference(AlignParameters, true)
       .setPreference(AlignSingleLineCaseStatements, true)
-      .setPreference(CompactControlReadability, true)
       .setPreference(DoubleIndentClassDeclaration, true)
 
 }

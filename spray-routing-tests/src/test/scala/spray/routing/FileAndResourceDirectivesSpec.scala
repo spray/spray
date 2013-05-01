@@ -27,6 +27,12 @@ import HttpCharsets._
 
 class FileAndResourceDirectivesSpec extends RoutingSpec {
 
+  override def testConfigSource =
+    """spray.routing {
+      |  file-chunking-threshold-size = 16
+      |  file-chunking-chunk-size = 8
+      |}""".stripMargin
+
   "getFromFile" should {
     "reject non-GET requests" in {
       Put() ~> getFromFile("some") ~> check { handled must beFalse }
@@ -102,7 +108,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     "return the resource content with the MediaType matching the file extension" in {
       val verify = check {
         mediaType === `application/pdf`
-        body.asString === ""
+        body.asString === "123\n"
       }
       "example 1" in { Get("empty.pdf") ~> getFromResourceDirectory("subDirectory") ~> verify }
       "example 2" in { Get("empty.pdf") ~> getFromResourceDirectory("subDirectory/") ~> verify }
@@ -167,7 +173,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<pre>
             |<a href="/emptySub/">emptySub/</a>        xxxx-xx-xx xx:xx:xx
             |<a href="/sub/">sub/</a>             xxxx-xx-xx xx:xx:xx
-            |<a href="/empty.pdf">empty.pdf</a>        xxxx-xx-xx xx:xx:xx            0  B
+            |<a href="/empty.pdf">empty.pdf</a>        xxxx-xx-xx xx:xx:xx            4  B
             |<a href="/fileA.txt">fileA.txt</a>        xxxx-xx-xx xx:xx:xx            3  B
             |<a href="/fileB.xml">fileB.xml</a>        xxxx-xx-xx xx:xx:xx            0  B
             |</pre>

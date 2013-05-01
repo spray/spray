@@ -32,7 +32,7 @@ trait CookieDirectives {
    * Extracts an HttpCookie with the given name. If the cookie is not present the
    * request is rejected with a respective [[spray.routing.MissingCookieRejection]].
    */
-  def cookie(name: String): Directive[HttpCookie :: HNil] =
+  def cookie(name: String): Directive1[HttpCookie] =
     headerValue {
       case Cookie(cookies) ⇒ cookies.find(_.name == name)
       case _               ⇒ None
@@ -42,7 +42,7 @@ trait CookieDirectives {
    * Extracts an HttpCookie with the given name.
    * If the cookie is not present a value of `None` is extracted.
    */
-  def optionalCookie(name: String): Directive[Option[HttpCookie] :: HNil] =
+  def optionalCookie(name: String): Directive1[Option[HttpCookie]] =
     cookie(name).hmap(_.map(shapeless.option)) | provide(None)
 
   /**

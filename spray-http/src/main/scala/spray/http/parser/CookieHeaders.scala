@@ -24,11 +24,11 @@ import BasicRules._
 private[parser] trait CookieHeaders {
   this: Parser with ProtocolParameterRules ⇒
 
-  def SET_COOKIE = rule {
+  def `*Set-Cookie` = rule {
     CookiePair ~ zeroOrMore(";" ~ CookieAttrs) ~ EOI ~~> (HttpHeaders.`Set-Cookie`(_))
   }
 
-  def COOKIE = rule {
+  def `*Cookie` = rule {
     oneOrMore(CookiePair, separator = ";") ~ EOI ~~> (HttpHeaders.`Cookie`(_))
   }
 

@@ -26,7 +26,7 @@ class MetaMarshallersSpec extends Specification {
   "The eitherMarshaller" should {
     "properly marshal an Either instance" in {
       type MyEither = Either[Throwable, String]
-      marshal[MyEither](Right("Yes")) === Right(HttpBody("Yes"))
+      marshal[MyEither](Right("Yes")) === Right(HttpEntity("Yes"))
       val exception = new RuntimeException("Naa!")
       marshal[MyEither](Left(exception)) === Left(exception)
     }
@@ -36,7 +36,7 @@ class MetaMarshallersSpec extends Specification {
     "properly marshal a Stream instance" in {
       val stream = "abc" #:: "def" #:: "ghi" #:: "jkl" #:: Stream.empty
       val ctx = marshalCollecting(stream)
-      ctx.entity === Some(HttpBody("abc"))
+      ctx.entity === Some(HttpEntity("abc"))
       ctx.chunks.map(_.bodyAsString) === Seq("def", "ghi", "jkl")
       ctx.chunkedMessageEnd === Some(ChunkedMessageEnd())
     }

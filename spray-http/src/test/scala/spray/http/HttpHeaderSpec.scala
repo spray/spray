@@ -79,7 +79,9 @@ class HttpHeaderSpec extends Specification {
       """Authorization: Bearer mF_9.B5f-4.1JqM""" !
       example(Authorization(OAuth2BearerToken("mF_9.B5f-4.1JqM")))_ ^
       "Authorization: NoParamScheme" !
-      example(Authorization(GenericHttpCredentials("NoParamScheme", Map.empty)))_ ^
+      example(Authorization(GenericHttpCredentials("NoParamScheme", Map.empty[String, String])))_ ^
+      "Authorization: OAuth sf_v1a-stg;V5DrRS1KfA=" !
+      example(Authorization(GenericHttpCredentials("OAuth", "sf_v1a-stg;V5DrRS1KfA=")))_ ^
       p ^
       "Cache-Control: no-cache, max-age=0" !
       example(`Cache-Control`(`no-cache`, `max-age`(0)))_ ^
@@ -123,6 +125,8 @@ class HttpHeaderSpec extends Specification {
       "Date: Wed, 13 Jul 2011 08:12:31 GMT" ! example(Date(DateTime(2011, 7, 13, 8, 12, 31)))_ ^
       "Date: Fri, 23 Mar 1804 12:11:10 UTC" ! example(Date(DateTime(1804, 3, 23, 12, 11, 10)), _.replace("UTC", "GMT"))_ ^
       p ^
+      "Expect: 100-continue" ! example(Expect("100-continue"))_ ^
+      p ^
       "Host: www.spray.io:8080" ! example(Host("www.spray.io", 8080))_ ^
       "Host: spray.io" ! example(Host("spray.io"))_ ^
       "Host: [2001:db8::1]:8080" ! example(Host("[2001:db8::1]", 8080))_ ^
@@ -130,6 +134,10 @@ class HttpHeaderSpec extends Specification {
       "Host: [::FFFF:129.144.52.38]" ! example(Host("[::FFFF:129.144.52.38]"))_ ^
       p ^
       "Last-Modified: Wed, 13 Jul 2011 08:12:31 GMT" ! example(`Last-Modified`(DateTime(2011, 7, 13, 8, 12, 31)))_ ^
+      p ^
+      "Location: https://spray.io/secure" ! example(Location(Uri("https://spray.io/secure")))_ ^
+      "Location: https://spray.io/{sec}" ! errorExample(ErrorInfo("Illegal HTTP header 'Location': Illegal absolute " +
+        "URI, unexpected character '{' at position 17", "\nhttps://spray.io/{sec}\n                 ^\n"))_ ^
       p ^
       "Remote-Address: 111.22.3.4" ! example(`Remote-Address`("111.22.3.4"))_ ^
       p ^

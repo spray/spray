@@ -59,8 +59,7 @@ object SslBufferPool {
           pool = tail
           buf
       } finally state set Unlocked
-    }
-    else acquire() // spin while locked
+    } else acquire() // spin while locked
   }
 
   @tailrec
@@ -69,7 +68,6 @@ object SslBufferPool {
       buf.clear() // ensure that we never have dirty buffers in the pool
       pool = buf :: pool
       state set Unlocked
-    }
-    else release(buf) // spin while locked
+    } else release(buf) // spin while locked
   }
 }

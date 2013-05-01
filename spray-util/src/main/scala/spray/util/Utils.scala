@@ -34,8 +34,7 @@ object Utils {
       serverSocket.socket.bind(new InetSocketAddress(interface, 0))
       val port = serverSocket.socket.getLocalPort
       new InetSocketAddress(interface, port)
-    }
-    finally serverSocket.close()
+    } finally serverSocket.close()
   }
 
   def temporaryServerHostnameAndPort(interface: String = "127.0.0.1"): (String, Int) = {
@@ -74,7 +73,6 @@ object Utils {
       val exp = (math.log(bytes) / math.log(unit)).toInt
       val pre = if (si) "kMGTPE".charAt(exp - 1).toString else "KMGTPE".charAt(exp - 1).toString + 'i'
       "%.1f %sB" format (bytes / math.pow(unit, exp), pre)
-    }
-    else bytes.toString + "  B"
+    } else bytes.toString + "  B"
   }
 }

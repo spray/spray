@@ -17,6 +17,7 @@
 package spray.can.server
 
 import scala.collection.immutable.Queue
+import scala.concurrent.duration.Duration
 import akka.actor.ActorRef
 import akka.spray.RefUtils
 import spray.can.rendering.HttpResponsePartRenderingContext
@@ -52,11 +53,11 @@ trait OpenRequestComponent { component ⇒
   def context: ServerFrontend.Context
   def settings: ServerSettings
   def downstreamCommandPL: Pipeline[Command]
-  def requestTimeout: Long
-  def timeoutTimeout: Long
+  def requestTimeout: Duration
+  def timeoutTimeout: Duration
 
   class DefaultOpenRequest(val request: HttpRequest,
-                           private[this] val connectionHeader: Option[String],
+                           private[this] val closeAfterResponseCompletion: Boolean,
                            private[this] var timestamp: Long) extends OpenRequest {
     private[this] val receiverRef = new ResponseReceiverRef(this)
     private[this] var handler = context.handler
@@ -94,7 +95,7 @@ trait OpenRequestComponent { component ⇒
 
     def checkForTimeout(now: Long) {
       if (timestamp > 0) {
-        if (timestamp + requestTimeout < now) {
+        if (timestamp + requestTimeout.toMillis < now) {
           val timeoutHandler =
             if (settings.timeoutHandler.isEmpty) handler
             else context.actorContext.actorFor(settings.timeoutHandler)
@@ -104,8 +105,7 @@ trait OpenRequestComponent { component ⇒
             "timeout handler", timeoutHandler)
           timestamp = -now // we record the time of the Timeout dispatch as negative timestamp value
         }
-      }
-      else if (timestamp < -1 && timeoutTimeout > 0 && (-timestamp + timeoutTimeout < now)) {
+      } else if (timestamp < -1 && timeoutTimeout.isFinite() && (-timestamp + timeoutTimeout.toMillis < now)) {
         val response = timeoutResponse(request)
         // we always close the connection after a timeout-timeout
         sendPart(response.withHeaders(HttpHeaders.Connection("close") :: response.headers))
@@ -156,8 +156,7 @@ trait OpenRequestComponent { component ⇒
         // only start request timeout checking after request has been completed
         timestamp = System.currentTimeMillis
         downstreamCommandPL(Pipeline.Tell(handler, part, receiverRef))
-      }
-      else
+      } else
         // we accept non-tail recursion since HTTP pipeline depth is limited (and small)
         nextInChain handleChunkedMessageEnd part
     }
@@ -183,7 +182,7 @@ trait OpenRequestComponent { component ⇒
           AckEventWithReceiver(x, handler)
       }
       val cmd = HttpResponsePartRenderingContext(part.messagePart.asInstanceOf[HttpResponsePart], request.method,
-        request.protocol, connectionHeader, ack)
+        request.protocol, closeAfterResponseCompletion, ack)
       downstreamCommandPL(cmd)
     }
 

@@ -16,14 +16,15 @@
 
 package spray.io
 
-import scala.concurrent.duration.{ Duration, FiniteDuration }
+import scala.concurrent.duration.Duration
 import akka.io.Tcp
+import spray.util.requirePositiveOrUndefined
 import System.{ currentTimeMillis ⇒ now }
 
 object ConnectionTimeouts {
 
   def apply(idleTimeout: Duration): PipelineStage = {
-    require(idleTimeout > Duration.Zero, "idleTimeout must be > 0")
+    requirePositiveOrUndefined(idleTimeout)
 
     new PipelineStage {
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
@@ -61,6 +62,6 @@ object ConnectionTimeouts {
   ////////////// COMMANDS //////////////
 
   case class SetIdleTimeout(timeout: Duration) extends Command {
-    require(timeout > Duration.Zero, "timeout must be > 0")
+    requirePositiveOrUndefined(timeout)
   }
 }

@@ -42,7 +42,7 @@ class ScalatestRouteTestSpec extends FreeSpec with MustMatchers with Directives 
         respondWithHeader(pinkHeader) { complete("abc") }
       } ~> check {
         status must be === OK
-        body must be === HttpBody(ContentType(`text/plain`, `UTF-8`), "abc")
+        body must be === HttpEntity(ContentType(`text/plain`, `UTF-8`), "abc")
         header("Fancy") must be === Some(pinkHeader)
       }
     }

@@ -25,19 +25,19 @@ import spray.io._
 import spray.can.Http
 
 private[can] class HttpServerConnection(tcpConnection: ActorRef,
-                                        bindHandler: ActorRef,
+                                        userLevelListener: ActorRef,
                                         pipelineStage: RawPipelineStage[ServerFrontend.Context with SslTlsContext],
                                         remoteAddress: InetSocketAddress,
                                         localAddress: InetSocketAddress,
                                         settings: ServerSettings)(implicit val sslEngineProvider: ServerSSLEngineProvider)
     extends ConnectionHandler { actor ⇒
 
-  bindHandler ! Http.Connected(remoteAddress, localAddress)
+  userLevelListener ! Http.Connected(remoteAddress, localAddress)
 
   context.setReceiveTimeout(settings.registrationTimeout)
 
   def receive: Receive = {
-    case Http.Register(handler) ⇒
+    case Http.Register(handler, _, _) ⇒
       context.setReceiveTimeout(Duration.Undefined)
       tcpConnection ! Tcp.Register(self)
       context.watch(tcpConnection)

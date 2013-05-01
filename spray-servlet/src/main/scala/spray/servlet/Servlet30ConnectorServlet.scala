@@ -61,8 +61,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
       val request = ModelConverter.toHttpRequest(hsRequest)
       val responder = new Responder(hsRequest, hsResponse, request)
       serviceActor.tell(request, responder)
-    }
-    catch {
+    } catch {
       case e: IllegalRequestException ⇒
         log.warning("Illegal request {}\n\t{}\n\tCompleting with '{}' response", request, e.info.formatPretty, e.status)
         writeResponse(HttpResponse(e.status, e.info.format(settings.verboseErrorMessages)), hsResponse, request) {}
@@ -121,8 +120,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
               if (state.compareAndSet(OPEN, COMPLETED)) {
                 val error = writeResponse(response, hsResponse, req) { asyncContext.complete() }
                 postProcess(error, wrapper.ack, close = true)
-              }
-              else state.get match {
+              } else state.get match {
                 case STARTED ⇒
                   log.warning("Received an HttpResponse after a ChunkedResponseStart, dropping ...\nRequest: {}\nResponse: {}", req, response)
                 case COMPLETED ⇒
@@ -133,8 +131,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
               if (state.compareAndSet(OPEN, STARTED)) {
                 val error = writeResponse(response, hsResponse, req) {}
                 postProcess(error, wrapper.ack, close = false)
-              }
-              else state.get match {
+              } else state.get match {
                 case STARTED ⇒
                   log.warning("Received a second ChunkedResponseStart, dropping ...\nRequest: {}\nResponse: {}", req, response)
                 case COMPLETED ⇒
@@ -155,8 +152,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
               if (state.compareAndSet(STARTED, COMPLETED)) {
                 val error = closeResponseStream(hsResponse, req) { asyncContext.complete() }
                 postProcess(error, wrapper.ack, close = true)
-              }
-              else state.get match {
+              } else state.get match {
                 case OPEN ⇒
                   log.warning("Received a ChunkedMessageEnd before a ChunkedResponseStart, dropping ...\nRequest: {}", req)
                 case COMPLETED ⇒
@@ -198,16 +194,17 @@ class Servlet30ConnectorServlet extends HttpServlet {
           case _                ⇒ hsResponse.addHeader(header.name, header.value)
         }
       }
-      resp.entity.foreach { (contentType, buffer) ⇒
-        hsResponse.addHeader("Content-Type", contentType.value)
-        if (response.isInstanceOf[HttpResponse]) hsResponse.addHeader("Content-Length", buffer.length.toString)
-        hsResponse.getOutputStream.write(buffer)
-        hsResponse.getOutputStream.flush()
+      resp.entity match {
+        case EmptyEntity ⇒
+        case HttpBody(contentType, buffer) ⇒
+          hsResponse.addHeader("Content-Type", contentType.value)
+          if (response.isInstanceOf[HttpResponse]) hsResponse.addHeader("Content-Length", buffer.length.toString)
+          hsResponse.getOutputStream.write(buffer)
+          hsResponse.getOutputStream.flush()
       }
       complete
       None
-    }
-    catch {
+    } catch {
       case e: IOException ⇒
         log.error("Could not write response body, probably the request has either timed out or the client has " +
           "disconnected\nRequest: {}\nResponse: {}\nError: {}", req, response, e)
@@ -223,8 +220,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
       hsResponse.getOutputStream.write(buffer)
       hsResponse.getOutputStream.flush()
       None
-    }
-    catch {
+    } catch {
       case e: IOException ⇒
         log.error("Could not write response chunk, probably the request has either timed out or the client has " +
           "disconnected\nRequest: {}\nChunk: {} bytes\nError: {}", req, buffer.length, e)
@@ -239,8 +235,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
     try {
       complete
       None
-    }
-    catch {
+    } catch {
       case e: IOException ⇒
         log.error("Could not close response stream, probably the request has either timed out or the client has " +
           "disconnected\nRequest: {}\nError: {}", req, e)

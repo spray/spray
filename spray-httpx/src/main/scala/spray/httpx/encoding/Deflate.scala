@@ -94,10 +94,8 @@ class DeflateDecompressor extends Decompressor {
       if (buffer.length > 0) {
         doDecompress(offset)
         buffer.length - inflater.getRemaining
-      }
-      else 0
-    }
-    catch {
+      } else 0
+    } catch {
       case e: DataFormatException ⇒
         throw new ZipException(if (e.getMessage != null) e.getMessage else "Invalid ZLIB data format")
     }

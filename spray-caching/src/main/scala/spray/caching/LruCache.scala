@@ -126,8 +126,7 @@ final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
           // but since the original entry is also still alive this doesn't matter
           newEntry.created = entry.created
           entry.future
-        }
-        else future
+        } else future
       }
       valueFuture.onComplete { value ⇒
         newEntry.promise.tryComplete(value)

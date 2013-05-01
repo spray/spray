@@ -19,6 +19,7 @@ package spray
 package http
 
 import java.lang.String
+import scala.annotation.tailrec
 
 abstract class HttpHeader {
   def name: String
@@ -83,13 +84,18 @@ object HttpHeaders {
     def value = directives.mkString(", ")
   }
 
-  object Connection { def apply(first: String, more: String*): `Connection` = apply(first +: more) }
-  case class Connection(connectionTokens: Seq[String]) extends HttpHeader {
+  object Connection { def apply(first: String, more: String*): Connection = apply(first +: more) }
+  case class Connection(tokens: Seq[String]) extends HttpHeader {
     def name = "Connection"
     def lowercaseName = "connection"
-    def value = connectionTokens.mkString(", ")
-    def hasClose = connectionTokens.exists(_.toLowerCase == "close")
-    def hasKeepAlive = connectionTokens.exists(_.toLowerCase == "keep-alive")
+    def value = if (tokens.size == 1) tokens.head else tokens mkString ", "
+    def hasClose = has("close")
+    def hasKeepAlive = has("keep-alive")
+    @tailrec private def has(item: String, ix: Int = 0): Boolean =
+      if (ix < tokens.length)
+        if (tokens(ix) equalsIgnoreCase item) true
+        else has(item, ix + 1)
+      else false
   }
 
   // see http://tools.ietf.org/html/rfc2183
@@ -130,6 +136,14 @@ object HttpHeaders {
     def value = date.toRfc1123DateTimeString
   }
 
+  object Expect { def apply(first: String, more: String*): Expect = apply(first +: more) }
+  case class Expect(expectations: Seq[String]) extends HttpHeader {
+    def name = "Expect"
+    def lowercaseName = "expect"
+    def value = expectations mkString ", "
+    def has100continue = expectations.exists(_ equalsIgnoreCase "100-continue")
+  }
+
   case class Host(host: String, port: Int = 0) extends HttpHeader {
     require(port >> 16 == 0, "Illegal port: " + port)
     def name = "Host"
@@ -143,10 +157,10 @@ object HttpHeaders {
     def value = date.toRfc1123DateTimeString
   }
 
-  case class Location(absoluteUri: String) extends HttpHeader {
+  case class Location(absoluteUri: Uri) extends HttpHeader {
     def name = "Location"
     def lowercaseName = "location"
-    def value = absoluteUri
+    def value = absoluteUri.toString
   }
 
   case class `Remote-Address`(ip: HttpIp) extends HttpHeader {
@@ -173,6 +187,14 @@ object HttpHeaders {
     def name = "Transfer-Encoding"
     def lowercaseName = "Transfer-Encoding"
     def value = encodings mkString ", "
+    def hasChunked: Boolean = {
+      @tailrec def recurse(ix: Int = 0): Boolean =
+        if (ix < encodings.size)
+          if (encodings(ix) equalsIgnoreCase "chunked") true
+          else recurse(ix + 1)
+        else false
+      recurse()
+    }
   }
 
   object `User-Agent` { def apply(products: String): `User-Agent` = apply(ProductVersion.parseMultiple(products)) }

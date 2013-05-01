@@ -16,13 +16,13 @@
 
 package spray.can.server
 
-import scala.concurrent.duration.{ Duration, FiniteDuration }
+import scala.concurrent.duration.Duration
 import akka.actor.ActorRef
 import spray.can.server.RequestParsing.HttpMessageStartEvent
+import spray.can.Http
+import spray.util.requirePositiveOrUndefined
 import spray.http._
 import spray.io._
-import spray.can.Http
-import spray.io.Pipeline.ActorDeath
 
 object ServerFrontend {
 
@@ -37,8 +37,9 @@ object ServerFrontend {
         new Pipelines with OpenRequestComponent {
           var firstOpenRequest: OpenRequest = EmptyOpenRequest
           var firstUnconfirmed: OpenRequest = EmptyOpenRequest
-          var _requestTimeout: Long = serverSettings.requestTimeout.toMillis
-          var _timeoutTimeout: Long = serverSettings.timeoutTimeout.toMillis
+          var _requestTimeout: Duration = serverSettings.requestTimeout
+          var _idleTimeout: Duration = serverSettings.idleTimeout
+          var _timeoutTimeout: Duration = serverSettings.timeoutTimeout
           def context = _context
           val settings = serverSettings
           val downstreamCommandPL = commandPL
@@ -63,28 +64,38 @@ object ServerFrontend {
               if (part.messagePart.isInstanceOf[HttpMessageEnd]) {
                 firstOpenRequest = firstOpenRequest handleResponseEndAndReturnNextOpenRequest part
                 firstUnconfirmed = firstUnconfirmed.nextIfNoAcksPending
-              }
-              else firstOpenRequest handleResponsePart part
+              } else firstOpenRequest handleResponsePart part
 
             case Response(openRequest, command) ⇒
               // a response for a non-current openRequest has to be queued
               openRequest.enqueueCommand(command)
 
             case SetRequestTimeout(timeout) ⇒
-              _requestTimeout = timeout.toMillis
+              _requestTimeout = timeout
+              if (_requestTimeout.isFinite() && _idleTimeout.isFinite() && _idleTimeout <= _requestTimeout) {
+                val newIdleTimeout = timeout * 2
+                context.log.debug("Auto-adjusting idle-timeout to {} after setting request-timeout to {}",
+                  newIdleTimeout, timeout)
+                commandPipeline(ConnectionTimeouts.SetIdleTimeout(newIdleTimeout))
+              }
 
-            case SetTimeoutTimeout(timeout) ⇒
-              _timeoutTimeout = timeout.toMillis
+            case SetTimeoutTimeout(timeout) ⇒ _timeoutTimeout = timeout
+
+            case x @ ConnectionTimeouts.SetIdleTimeout(timeout) ⇒
+              _idleTimeout = timeout
+              if (_requestTimeout.isFinite() && _idleTimeout.isFinite() && _idleTimeout <= _requestTimeout)
+                context.log.warning("Setting an idle-timeout < request-timeout effectively disables the request-timeout!")
+              downstreamCommandPL(x)
 
             case cmd ⇒ downstreamCommandPL(cmd)
           }
 
           val eventPipeline: EPL = {
-            case HttpMessageStartEvent(request: HttpRequest, connectionHeader) ⇒
-              openNewRequest(request, connectionHeader, System.currentTimeMillis)
+            case HttpMessageStartEvent(request: HttpRequest, closeAfterResponseCompletion) ⇒
+              openNewRequest(request, closeAfterResponseCompletion, System.currentTimeMillis)
 
-            case HttpMessageStartEvent(ChunkedRequestStart(request), connectionHeader) ⇒
-              openNewRequest(request, connectionHeader, 0L)
+            case HttpMessageStartEvent(ChunkedRequestStart(request), closeAfterResponseCompletion) ⇒
+              openNewRequest(request, closeAfterResponseCompletion, 0L)
 
             case Http.MessageEvent(x: MessageChunk) ⇒
               firstOpenRequest handleMessageChunk x
@@ -103,19 +114,19 @@ object ServerFrontend {
               eventPL(x) // terminates the connection actor
 
             case TickGenerator.Tick ⇒
-              if (requestTimeout > 0L)
+              if (requestTimeout.isFinite())
                 firstOpenRequest checkForTimeout System.currentTimeMillis
               eventPL(TickGenerator.Tick)
 
-            case ActorDeath(actor) if actor == context.handler ⇒
+            case Pipeline.ActorDeath(actor) if actor == context.handler ⇒
               context.log.debug("User-level connection handler died, closing connection")
               commandPL(Http.Close)
 
             case ev ⇒ eventPL(ev)
           }
 
-          def openNewRequest(request: HttpRequest, connectionHeader: Option[String], timestamp: Long) {
-            val nextOpenRequest = new DefaultOpenRequest(request, connectionHeader, timestamp)
+          def openNewRequest(request: HttpRequest, closeAfterResponseCompletion: Boolean, timestamp: Long) {
+            val nextOpenRequest = new DefaultOpenRequest(request, closeAfterResponseCompletion, timestamp)
             firstOpenRequest = firstOpenRequest appendToEndOfChain nextOpenRequest
             nextOpenRequest.dispatchInitialRequestPartToHandler()
             if (firstUnconfirmed.isEmpty) firstUnconfirmed = firstOpenRequest
@@ -126,12 +137,12 @@ object ServerFrontend {
 
   ////////////// COMMANDS //////////////
 
-  case class SetRequestTimeout(timeout: FiniteDuration) extends Command {
-    require(timeout >= Duration.Zero, "timeout must not be negative")
+  case class SetRequestTimeout(timeout: Duration) extends Command {
+    requirePositiveOrUndefined(timeout)
   }
 
-  case class SetTimeoutTimeout(timeout: FiniteDuration) extends Command {
-    require(timeout >= Duration.Zero, "timeout must not be negative")
+  case class SetTimeoutTimeout(timeout: Duration) extends Command {
+    requirePositiveOrUndefined(timeout)
   }
 
 }

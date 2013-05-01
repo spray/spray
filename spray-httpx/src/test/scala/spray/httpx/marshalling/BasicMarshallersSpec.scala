@@ -24,26 +24,26 @@ class BasicMarshallersSpec extends Specification {
 
   "The StringMarshaller" should {
     "encode strings to `text/plain` content in UTF-8 if the client accepts it" in {
-      marshal("Ha“llo") === Right(HttpBody("Ha“llo"))
+      marshal("Ha“llo") === Right(HttpEntity("Ha“llo"))
     }
   }
 
   "The CharArrayMarshaller" should {
     "encode char arrays to `text/plain` content in UTF-8 if the client accepts it" in {
-      marshal("Ha“llo".toCharArray) === Right(HttpBody("Ha“llo"))
+      marshal("Ha“llo".toCharArray) === Right(HttpEntity("Ha“llo"))
     }
   }
 
   "The NodeSeqMarshaller" should {
     "encode xml snippets to `text/xml` content in UTF-8 if the client accepts it" in {
-      marshal(<employee><nr>Ha“llo</nr></employee>) === Right(HttpBody(`text/xml`, "<employee><nr>Ha“llo</nr></employee>"))
+      marshal(<employee><nr>Ha“llo</nr></employee>) === Right(HttpEntity(`text/xml`, "<employee><nr>Ha“llo</nr></employee>"))
     }
   }
 
   "The FormDataMarshaller" should {
     "properly marshal FormData instances to application/x-www-form-urlencoded entity bodies" in {
       marshal(FormData(Map("name" -> "Bob", "pass" -> "x?!54", "admin" -> ""))) ===
-        Right(HttpBody(`application/x-www-form-urlencoded`, "name=Bob&pass=x%3F%2154&admin="))
+        Right(HttpEntity(`application/x-www-form-urlencoded`, "name=Bob&pass=x%3F%2154&admin="))
     }
   }
 

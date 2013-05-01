@@ -24,7 +24,7 @@ import HttpEncodings._
 private[parser] trait AcceptEncodingHeader {
   this: Parser with ProtocolParameterRules ⇒
 
-  def ACCEPT_ENCODING = rule(
+  def `*Accept-Encoding` = rule(
     oneOrMore(EncodingRangeDecl, separator = ListSep) ~ EOI ~~> (HttpHeaders.`Accept-Encoding`(_)))
 
   def EncodingRangeDecl = rule(

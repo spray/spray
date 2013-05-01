@@ -18,7 +18,7 @@ package akka.spray
 
 import scala.annotation.tailrec
 import akka.util.Unsafe
-import akka.dispatch._
+import akka.dispatch.sysmsg.{ Unwatch, Watch, Terminate, SystemMessage }
 import akka.actor._
 
 /**
@@ -72,8 +72,7 @@ abstract class LazyActorRef(prov: ActorRefProvider) extends UnregisteredActorRef
       case Watch(watchee, watcher) ⇒
         if (watchee == this && watcher != this) {
           if (!addWatcher(watcher)) watcher ! Terminated(watchee)(existenceConfirmed = true, addressTerminated = false)
-        }
-        else System.err.println("BUG: illegal Watch(%s,%s) for %s".format(watchee, watcher, this))
+        } else System.err.println("BUG: illegal Watch(%s,%s) for %s".format(watchee, watcher, this))
       case Unwatch(watchee, watcher) ⇒
         if (watchee == this && watcher != this) remWatcher(watcher)
         else System.err.println("BUG: illegal Unwatch(%s,%s) for %s".format(watchee, watcher, this))

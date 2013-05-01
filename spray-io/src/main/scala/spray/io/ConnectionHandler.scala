@@ -31,14 +31,15 @@ trait ConnectionHandler extends Actor with SprayActorLogging {
         else x.copy(ack = Pipeline.AckEvent(x.ack))
       tcpConnection ! write
 
-    case Pipeline.Tell(receiver, msg, sender)      ⇒ receiver.tell(msg, sender)
-    case x: Tcp.CloseCommand                       ⇒ tcpConnection ! x
-    case x @ (Tcp.StopReading | Tcp.ResumeReading) ⇒ tcpConnection ! x
-    case _: Droppable                              ⇒ // don't warn
-    case cmd                                       ⇒ log.warning("command pipeline: dropped {}", cmd)
+    case Pipeline.Tell(receiver, msg, sender) ⇒ receiver.tell(msg, sender)
+    case x: Tcp.CloseCommand ⇒ tcpConnection ! x
+    case x @ (Tcp.SuspendReading | Tcp.ResumeReading) ⇒ tcpConnection ! x
+    case _: Droppable ⇒ // don't warn
+    case cmd ⇒ log.warning("command pipeline: dropped {}", cmd)
   }
 
-  def baseEventPipeline: Pipeline[Event] = {
+  def baseEventPipeline(keepOpenOnPeerClosed: Boolean): Pipeline[Event] = {
+    case Tcp.PeerClosed if keepOpenOnPeerClosed ⇒ // don't automatically stop
     case x: Tcp.ConnectionClosed ⇒
       log.debug("Stopping connection actor, connection was {}", x)
       context.stop(self)
@@ -49,14 +50,16 @@ trait ConnectionHandler extends Actor with SprayActorLogging {
   //#
 
   def running(tcpConnection: ActorRef, stage: PipelineStage, remoteAddress: InetSocketAddress,
-              localAddress: InetSocketAddress): Receive = {
+              localAddress: InetSocketAddress, keepOpenOnPeerClosed: Boolean = false): Receive = {
     val pipelineContext = PipelineContext(context, remoteAddress, localAddress, log)
-    running(tcpConnection, stage, pipelineContext)
+    running(tcpConnection, stage, pipelineContext, keepOpenOnPeerClosed)
   }
 
   def running[C <: PipelineContext](tcpConnection: ActorRef, pipelineStage: RawPipelineStage[C],
-                                    pipelineContext: C): Receive = {
-    val stage = pipelineStage(pipelineContext, baseCommandPipeline(tcpConnection), baseEventPipeline)
+                                    pipelineContext: C, keepOpenOnPeerClosed: Boolean = false): Receive = {
+    val stage = pipelineStage(pipelineContext,
+      baseCommandPipeline(tcpConnection),
+      baseEventPipeline(keepOpenOnPeerClosed))
     running(tcpConnection, stage)
   }
 

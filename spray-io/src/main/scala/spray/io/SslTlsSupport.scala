@@ -64,8 +64,7 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
           val buf = if (inboundReceptacle != null) {
             try ByteBuffer.allocate(inboundReceptacle.remaining + data.length).put(inboundReceptacle)
             finally inboundReceptacle = null
-          }
-          else ByteBuffer allocate data.length
+          } else ByteBuffer allocate data.length
           data copyToBuffer buf
           buf.flip()
           withTempBuf(decrypt(buf, _))
@@ -164,8 +163,7 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
           case e: SSLException ⇒
             log.error("Closing encrypted connection to {} due to {}", context.remoteAddress, e)
             commandPL(Tcp.Close)
-        }
-        finally SslBufferPool release tempBuf
+        } finally SslBufferPool release tempBuf
       }
 
       @tailrec

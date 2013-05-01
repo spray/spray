@@ -18,7 +18,7 @@ package akka.spray
 
 import scala.annotation.tailrec
 import akka.util.Unsafe
-import akka.dispatch._
+import akka.dispatch.sysmsg.{ Terminate, SystemMessage }
 import akka.actor._
 
 abstract class UnregisteredActorRefBase(val provider: ActorRefProvider) extends MinimalActorRef {
@@ -55,10 +55,8 @@ abstract class UnregisteredActorRefBase(val provider: ActorRefProvider) extends 
           p = provider.tempPath()
           register(p)
           p
-        }
-        finally { setState(p) }
-      }
-      else path
+        } finally { setState(p) }
+      } else path
     case p: ActorPath       ⇒ p
     case StoppedWithPath(p) ⇒ p
     case Stopped ⇒

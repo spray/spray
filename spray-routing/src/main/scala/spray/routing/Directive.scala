@@ -57,13 +57,13 @@ object ConjunctionMagnet {
 abstract class Directive[L <: HList] { self ⇒
   def happly(f: L ⇒ Route): Route
 
-  def |(that: Directive[L]): Directive[L] =
+  def |[R >: L <: HList](that: Directive[R]): Directive[R] =
     recover(rejections ⇒ directives.BasicDirectives.mapRejections(rejections ::: _) & that)
 
   def &(magnet: ConjunctionMagnet[L]): magnet.Out = magnet(this)
 
-  def as[T](deserializer: HListDeserializer[L, T]): Directive[T :: HNil] =
-    new Directive[T :: HNil] {
+  def as[T](deserializer: HListDeserializer[L, T]): Directive1[T] =
+    new Directive1[T] {
       def happly(f: T :: HNil ⇒ Route) =
         self.happly { values ⇒
           ctx ⇒
@@ -102,9 +102,9 @@ abstract class Directive[L <: HList] { self ⇒
       }
     }
 
-  def recover(recovery: List[Rejection] ⇒ Directive[L]): Directive[L] =
-    new Directive[L] {
-      def happly(f: L ⇒ Route) = { ctx ⇒
+  def recover[R >: L <: HList](recovery: List[Rejection] ⇒ Directive[R]): Directive[R] =
+    new Directive[R] {
+      def happly(f: R ⇒ Route) = { ctx ⇒
         @volatile var rejectedFromInnerRoute = false
         self.happly({ list ⇒ c ⇒ rejectedFromInnerRoute = true; f(list)(c) }) {
           ctx.withRejectionHandling { rejections ⇒
@@ -115,7 +115,7 @@ abstract class Directive[L <: HList] { self ⇒
       }
     }
 
-  def recoverPF(recovery: PartialFunction[List[Rejection], Directive[L]]): Directive[L] =
+  def recoverPF[R >: L <: HList](recovery: PartialFunction[List[Rejection], Directive[R]]): Directive[R] =
     recover { rejections ⇒
       if (recovery.isDefinedAt(rejections)) recovery(rejections)
       else Route.toDirective(_.reject(rejections: _*))
@@ -133,7 +133,7 @@ object Directive {
 
   implicit def pimpApply[L <: HList](directive: Directive[L])(implicit hac: ApplyConverter[L]): hac.In ⇒ Route = f ⇒ directive.happly(hac(f))
 
-  implicit class SingleValueModifiers[T](underlying: Directive[T :: HNil]) {
+  implicit class SingleValueModifiers[T](underlying: Directive1[T]) {
     def map[R](f: T ⇒ R)(implicit hl: HListable[R]): Directive[hl.Out] =
       underlying.hmap { case value :: HNil ⇒ f(value) }
 

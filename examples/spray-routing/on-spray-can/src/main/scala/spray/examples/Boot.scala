@@ -7,7 +7,7 @@ import spray.can.Http
 object Boot extends App {
 
   // we need an ActorSystem to host our application in
-  implicit val system = ActorSystem("echo-server")
+  implicit val system = ActorSystem("on-spray-can")
 
   // create and start our service actor
   val service = system.actorOf(Props[DemoServiceActor], "demo-service")

@@ -39,10 +39,10 @@ class SprayJsonSupportSpec extends Specification with SprayJsonSupport {
 
   "The SprayJsonSupport" should {
     "provide unmarshalling capability for case classes with an in-scope JsonFormat" in {
-      HttpBody(`application/json`, employeeJson).as[Employee] === Right(employee)
+      HttpEntity(`application/json`, employeeJson).as[Employee] === Right(employee)
     }
     "provide marshalling capability for case classes with an in-scope JsonFormat" in {
-      marshal(employee) === Right(HttpBody(ContentType(`application/json`, `UTF-8`), employeeJson))
+      marshal(employee) === Right(HttpEntity(ContentType(`application/json`, `UTF-8`), employeeJson))
     }
   }
 

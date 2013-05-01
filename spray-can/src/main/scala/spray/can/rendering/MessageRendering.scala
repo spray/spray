@@ -18,14 +18,13 @@ package spray.can.rendering
 
 import scala.annotation.tailrec
 import akka.util.{ ByteString, ByteStringBuilder }
-import spray.can.parsing.isTokenChar
 import spray.util._
 import spray.http._
 
 private[rendering] object MessageRendering {
   val DefaultStatusLine = "HTTP/1.1 200 OK\r\n".getAsciiBytes
+  val StatusLineStart = "HTTP/1.1 ".getAsciiBytes
   val CrLf = "\r\n".getAsciiBytes
-  val SomeClose = Some("close")
 
   def put(header: HttpHeader)(implicit bb: ByteStringBuilder): this.type =
     putHeader(header.name, header.value)
@@ -45,37 +44,29 @@ private[rendering] object MessageRendering {
 
   def renderChunk(chunk: MessageChunk, messageSizeHint: Int): RenderedMessagePart = {
     implicit val bb = newByteStringBuilder(messageSizeHint)
-    putChunk(chunk.extensions, chunk.body)
+    putChunk(chunk.body, chunk.extension)
     RenderedMessagePart(bb.result())
   }
 
-  def putChunk(extensions: List[ChunkExtension], body: Array[Byte])(implicit bb: ByteStringBuilder): this.type =
-    put(Integer.toHexString(body.length)).put(extensions).put(CrLf).put(body).put(CrLf)
+  def putChunk(body: Array[Byte], extension: String = "")(implicit bb: ByteStringBuilder): this.type =
+    put(Integer.toHexString(body.length)).putExtension(extension).put(CrLf).put(body).put(CrLf)
 
   def renderFinalChunk(chunk: ChunkedMessageEnd, messageSizeHint: Int,
-                       requestConnectionHeader: Option[String] = None): RenderedMessagePart = {
+                       closeConnection: Boolean = false): RenderedMessagePart = {
     implicit val bb = newByteStringBuilder(messageSizeHint)
-    put('0').put(chunk.extensions).put(CrLf).putHeaders(chunk.trailer).put(CrLf)
-    RenderedMessagePart(bb.result(), closeConnection = requestConnectionHeader == SomeClose)
+    put('0').putExtension(chunk.extension).put(CrLf).putHeaders(chunk.trailer).put(CrLf)
+    RenderedMessagePart(bb.result(), closeConnection)
   }
 
-  @tailrec
-  private def put(extensions: List[ChunkExtension])(implicit bb: ByteStringBuilder): this.type =
-    extensions match {
-      case Nil ⇒ this
-      case ChunkExtension(name, value) :: rest ⇒
-        put(';').put(name).put('=')
-        if (value.forall(isTokenChar)) put(value) else put('"').put(value).put('"')
-        put(rest)
-    }
+  private def putExtension(extension: String)(implicit bb: ByteStringBuilder): this.type =
+    if (extension.isEmpty) this else put(';').put(extension)
 
   @tailrec
   final def put(string: String, startIndex: Int = 0)(implicit bb: ByteStringBuilder): this.type =
     if (startIndex < string.length) {
       put(string.charAt(startIndex))
       put(string, startIndex + 1)
-    }
-    else this
+    } else this
 
   def put(c: Char)(implicit bb: ByteStringBuilder): this.type = {
     bb.putByte(c.asInstanceOf[Byte])

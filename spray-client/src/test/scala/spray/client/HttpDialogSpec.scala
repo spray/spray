@@ -51,7 +51,7 @@ class HttpDialogSpec extends Specification with NoTimeConversions {
         }
       }
     }
-    IO(Http).ask(Http.Bind(testService, interface, port))(1.second).await
+    IO(Http).ask(Http.Bind(testService, interface, port))(3.seconds).await
   }
 
   "An HttpDialog" should {
@@ -102,9 +102,9 @@ class HttpDialogSpec extends Specification with NoTimeConversions {
   }
 
   step {
-    val probe = TestProbe()
-    probe.send(IO(Http), Http.CloseAll)
-    probe.expectMsg(Http.ClosedAll)
+    //    val probe = TestProbe()
+    //    probe.send(IO(Http), Http.CloseAll)
+    //    probe.expectMsg(5.seconds, Http.ClosedAll)
     system.shutdown()
   }
 }

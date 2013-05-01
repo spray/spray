@@ -27,19 +27,20 @@ import spray.http.StatusCodes.{ ServerError, ClientError }
  */
 case class ErrorInfo(summary: String = "", detail: String = "") {
   def withSummary(newSummary: String) = copy(summary = newSummary)
+  def withSummaryPrepended(prefix: String) = withSummary(if (summary.isEmpty) prefix else prefix + ": " + summary)
   def withFallbackSummary(fallbackSummary: String) = if (summary.isEmpty) withSummary(fallbackSummary) else this
-  def formatPretty = summary + ": " + detail
+  def formatPretty = if (summary.isEmpty) detail else if (detail.isEmpty) summary else summary + ": " + detail
   def format(withDetail: Boolean): String = if (withDetail) formatPretty else summary
 }
 
 object ErrorInfo {
-  def apply(message: String): ErrorInfo = message.split(": ", 2) match {
+  def fromCompoundString(message: String): ErrorInfo = message.split(": ", 2) match {
     case Array(summary, detail) ⇒ apply(summary, detail)
     case _                      ⇒ ErrorInfo("", message)
   }
 }
 
-class IllegalUriException(info: ErrorInfo) extends RuntimeException(info.formatPretty) {
+class IllegalUriException(val info: ErrorInfo) extends RuntimeException(info.formatPretty) {
   def this(summary: String, detail: String = "") = this(ErrorInfo(summary, detail))
 }
 

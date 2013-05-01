@@ -35,10 +35,10 @@ class LiftJsonSupportSpec extends Specification with LiftJsonSupport {
 
   "The LiftJsonSupport" should {
     "provide unmarshalling support for a case class" in {
-      HttpBody(`application/json`, employeeJson).as[Employee] === Right(employee)
+      HttpEntity(`application/json`, employeeJson).as[Employee] === Right(employee)
     }
     "provide marshalling support for a case class" in {
-      marshal(employee) == Right(HttpBody(`application/json`, employeeJson))
+      marshal(employee) == Right(HttpEntity(`application/json`, employeeJson))
     }
   }
 
