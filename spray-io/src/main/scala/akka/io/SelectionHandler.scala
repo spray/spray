@@ -7,7 +7,7 @@ package akka.io
 import java.util.{ Iterator ⇒ JIterator }
 import java.lang.Runnable
 import java.nio.channels.spi.SelectorProvider
-import java.nio.channels.{ SelectableChannel, SelectionKey, CancelledKeyException, ClosedSelectorException }
+import java.nio.channels.{ SelectableChannel, SelectionKey, CancelledKeyException }
 import java.nio.channels.SelectionKey._
 import java.util.concurrent.atomic.AtomicBoolean
 import com.typesafe.config.Config
@@ -94,6 +94,9 @@ private[io] object SelectionHandler {
           keys.clear() // we need to remove the selected keys from the set, otherwise they remain selected
         }
       }
+
+      override def run(): Unit = if (selector.isOpen) super.run()
+
       override def postRun(): Unit = dispatcher.execute(this) // re-schedule select behind all currently queued tasks
     }
 
@@ -158,16 +161,11 @@ private[io] object SelectionHandler {
     private abstract class Task extends Runnable {
       def tryRun()
       def run() {
-        val doPostRun =
-          try {
-            tryRun()
-            true
-          } catch {
-            case _: CancelledKeyException   ⇒ true // ok, can be triggered in `enableInterest` or `disableInterest`
-            case _: ClosedSelectorException ⇒ false // ok, expected during shutdown
-            case NonFatal(e)                ⇒ log.error(e, "Error during selector management task: [{}]", e); true
-          }
-        if (doPostRun) postRun()
+        try tryRun()
+        catch {
+          case _: CancelledKeyException ⇒ // ok, can be triggered while setting interest ops
+          case NonFatal(e)              ⇒ log.error(e, "Error during selector management task: [{}]", e)
+        } finally postRun()
       }
       def postRun(): Unit = ()
     }
