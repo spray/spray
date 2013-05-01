@@ -66,7 +66,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
       val bindHandler = system.actorOf(Props(new SpraySslServer))
       val probe = TestProbe()
       probe.send(IO(Tcp), Tcp.Bind(bindHandler, serverAddress))
-      probe.expectMsgType[Tcp.Bound.type]
+      probe.expectMsgType[Tcp.Bound]
 
       val client = new JavaSslClient(serverAddress)
       client.run()
@@ -78,7 +78,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
       val bindHandler = system.actorOf(Props(new SpraySslServer))
       val probe = TestProbe()
       probe.send(IO(Tcp), Tcp.Bind(bindHandler, serverAddress))
-      probe.expectMsgType[Tcp.Bound.type]
+      probe.expectMsgType[Tcp.Bound]
 
       val client = new SpraySslClient(serverAddress)
       client.run()

@@ -19,26 +19,28 @@ import akka.io.IO.HasFailureMessage
 abstract class SelectionHandlerSettings(config: Config) {
   import config._
 
-  val MaxChannels = getString("max-channels") match {
+  val MaxChannels: Int = getString("max-channels") match {
     case "unlimited" ⇒ -1
-    case _           ⇒ getInt("max-channels")
+    case _ ⇒
+      val x = getInt("max-channels")
+      require(x > 0, "max-channels must be > 0 or 'unlimited'")
+      x
   }
-  val SelectTimeout = getString("select-timeout") match {
+  val SelectTimeout: Duration = getString("select-timeout") match {
     case "infinite" ⇒ Duration.Inf
-    case x          ⇒ Duration(x)
+    case _ ⇒
+      val x = Duration(getMilliseconds("select-timeout"), MILLISECONDS)
+      require(x >= Duration.Zero, "select-timeout must not be negative")
+      x
   }
-  val SelectorAssociationRetries = getInt("selector-association-retries")
-
-  val SelectorDispatcher = getString("selector-dispatcher")
-  val WorkerDispatcher = getString("worker-dispatcher")
-  val TraceLogging = getBoolean("trace-logging")
-
-  require(MaxChannels == -1 || MaxChannels > 0, "max-channels must be > 0 or 'unlimited'")
-  require(SelectTimeout >= Duration.Zero, "select-timeout must not be negative")
+  val SelectorAssociationRetries: Int = getInt("selector-association-retries")
   require(SelectorAssociationRetries >= 0, "selector-association-retries must be >= 0")
 
-  def MaxChannelsPerSelector: Int
+  val SelectorDispatcher: String = getString("selector-dispatcher")
+  val WorkerDispatcher: String = getString("worker-dispatcher")
+  val TraceLogging: Boolean = getBoolean("trace-logging")
 
+  def MaxChannelsPerSelector: Int
 }
 
 private[io] object SelectionHandler {
@@ -180,7 +182,7 @@ private[io] class SelectionHandler(manager: ActorRef, settings: SelectionHandler
       SelectTimeout match {
         case Duration.Zero ⇒ () ⇒ selector.selectNow()
         case Duration.Inf  ⇒ () ⇒ selector.select()
-        case x             ⇒ val millis = x.toMillis; () ⇒ selector.select(millis)
+        case x             ⇒ { val millis = x.toMillis; () ⇒ selector.select(millis) }
       }
     def tryRun() {
       if (doSelect() > 0) {
@@ -197,7 +199,7 @@ private[io] class SelectionHandler(manager: ActorRef, settings: SelectionHandler
               readyOps match {
                 case OP_READ                   ⇒ connection ! ChannelReadable
                 case OP_WRITE                  ⇒ connection ! ChannelWritable
-                case OP_READ_AND_WRITE         ⇒ connection ! ChannelWritable; connection ! ChannelReadable
+                case OP_READ_AND_WRITE         ⇒ { connection ! ChannelWritable; connection ! ChannelReadable }
                 case x if (x & OP_ACCEPT) > 0  ⇒ connection ! ChannelAcceptable
                 case x if (x & OP_CONNECT) > 0 ⇒ connection ! ChannelConnectable
                 case x                         ⇒ log.warning("Invalid readyOps: [{}]", x)

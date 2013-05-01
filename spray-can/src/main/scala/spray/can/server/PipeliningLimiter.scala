@@ -65,7 +65,7 @@ object PipeliningLimiter {
           def stopReading() {
             if (!readingStopped) {
               readingStopped = true
-              commandPL(Tcp.StopReading)
+              commandPL(Tcp.SuspendReading)
             }
           }
 

@@ -37,7 +37,7 @@ private[can] class HttpServerConnection(tcpConnection: ActorRef,
   context.setReceiveTimeout(settings.registrationTimeout)
 
   def receive: Receive = {
-    case Http.Register(handler, _) ⇒
+    case Http.Register(handler, _, _) ⇒
       context.setReceiveTimeout(Duration.Undefined)
       tcpConnection ! Tcp.Register(self)
       context.watch(tcpConnection)

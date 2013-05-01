@@ -16,7 +16,9 @@ import java.lang.{ Iterable ⇒ JIterable }
 
 object Tcp extends ExtensionKey[TcpExt] {
 
-  // Java API
+  /**
+   * Java API: retrieve Tcp extension for the given system.
+   */
   override def get(system: ActorSystem): TcpExt = super.get(system)
 
   // shared socket options
@@ -61,19 +63,29 @@ object Tcp extends ExtensionKey[TcpExt] {
   }
 
   /// COMMANDS
+
+  /**
+   * This is the common trait for all commands understood by TCP actors.
+   */
   trait Command extends IO.HasFailureMessage {
     def failureMessage = CommandFailed(this)
   }
 
+  /**
+   * The Connect message is sent to the [[TcpManager]], which is obtained via
+   * [[TcpExt#getManager]]. Either the manager replies with a [[CommandFailed]]
+   * or the actor handling the new connection replies with a [[Connected]]
+   * message.
+   */
   case class Connect(remoteAddress: InetSocketAddress,
                      localAddress: Option[InetSocketAddress] = None,
                      options: immutable.Traversable[SocketOption] = Nil) extends Command
   case class Bind(handler: ActorRef,
-                  endpoint: InetSocketAddress,
+                  localAddress: InetSocketAddress,
                   backlog: Int = 100,
                   options: immutable.Traversable[SocketOption] = Nil) extends Command
 
-  case class Register(handler: ActorRef, keepOpenOnPeerClosed: Boolean = false) extends Command
+  case class Register(handler: ActorRef, keepOpenOnPeerClosed: Boolean = false, useResumeWriting: Boolean = true) extends Command
   case object Unbind extends Command
 
   sealed trait CloseCommand extends Command {
@@ -92,22 +104,47 @@ object Tcp extends ExtensionKey[TcpExt] {
   case class NoAck(token: Any)
   object NoAck extends NoAck(null)
 
+  sealed trait WriteCommand extends Command {
+    require(ack != null, "ack must be non-null. Use NoAck if you don't want acks.")
+
+    def ack: Any
+    def wantsAck: Boolean = !ack.isInstanceOf[NoAck]
+  }
+
   /**
    * Write data to the TCP connection. If no ack is needed use the special
    * `NoAck` object.
    */
-  case class Write(data: ByteString, ack: Any) extends Command {
-    require(ack != null, "ack must be non-null. Use NoAck if you don't want acks.")
-
-    def wantsAck: Boolean = !ack.isInstanceOf[NoAck]
-  }
+  case class Write(data: ByteString, ack: Any) extends WriteCommand
   object Write {
-    val Empty: Write = Write(ByteString.empty, NoAck)
+    /**
+     * The empty Write doesn't write anything and isn't acknowledged.
+     * It will, however, be denied and sent back with `CommandFailed` if the
+     * connection isn't currently ready to send any data (because another WriteCommand
+     * is still pending).
+     */
+    val empty: Write = Write(ByteString.empty, NoAck)
+
+    /**
+     * Create a new unacknowledged Write command with the given data.
+     */
     def apply(data: ByteString): Write =
-      if (data.isEmpty) Empty else Write(data, NoAck)
+      if (data.isEmpty) empty else Write(data, NoAck)
   }
 
-  case object StopReading extends Command
+  /**
+   * Write `count` bytes starting at `position` from file at `filePath` to the connection.
+   * When write is finished acknowledge with `ack`. If no ack is needed use `NoAck`. The
+   * count must be > 0.
+   */
+  case class WriteFile(filePath: String, position: Long, count: Long, ack: Any) extends WriteCommand {
+    require(position >= 0, "WriteFile.position must be >= 0")
+    require(count > 0, "WriteFile.count must be > 0")
+  }
+
+  case object ResumeWriting extends Command
+
+  case object SuspendReading extends Command
   case object ResumeReading extends Command
 
   /// EVENTS
@@ -117,8 +154,10 @@ object Tcp extends ExtensionKey[TcpExt] {
   case class Connected(remoteAddress: InetSocketAddress, localAddress: InetSocketAddress) extends Event
   case class CommandFailed(cmd: Command) extends Event
 
-  sealed trait Bound extends Event
-  case object Bound extends Bound
+  sealed trait WritingResumed extends Event
+  case object WritingResumed extends WritingResumed
+
+  case class Bound(localAddress: InetSocketAddress) extends Event
   sealed trait Unbound extends Event
   case object Unbound extends Unbound
 
@@ -151,28 +190,30 @@ class TcpExt(system: ExtendedActorSystem) extends IO.Extension {
   class Settings private[TcpExt] (_config: Config) extends SelectionHandlerSettings(_config) {
     import _config._
 
-    val NrOfSelectors = getInt("nr-of-selectors")
+    val NrOfSelectors: Int = getInt("nr-of-selectors")
+    require(NrOfSelectors > 0, "nr-of-selectors must be > 0")
 
-    val BatchAcceptLimit = getInt("batch-accept-limit")
-    val DirectBufferSize = getIntBytes("direct-buffer-size")
-    val MaxDirectBufferPoolSize = getInt("direct-buffer-pool-limit")
-    val RegisterTimeout = getString("register-timeout") match {
+    val BatchAcceptLimit: Int = getInt("batch-accept-limit")
+    require(BatchAcceptLimit > 0, "batch-accept-limit must be > 0")
+
+    val DirectBufferSize: Int = getIntBytes("direct-buffer-size")
+    val MaxDirectBufferPoolSize: Int = getInt("direct-buffer-pool-limit")
+    val RegisterTimeout: Duration = getString("register-timeout") match {
       case "infinite" ⇒ Duration.Undefined
-      case x          ⇒ Duration(x)
+      case x          ⇒ Duration(getMilliseconds("register-timeout"), MILLISECONDS)
     }
-    val ReceivedMessageSizeLimit = getString("max-received-message-size") match {
+    val ReceivedMessageSizeLimit: Int = getString("max-received-message-size") match {
       case "unlimited" ⇒ Int.MaxValue
       case x           ⇒ getIntBytes("received-message-size-limit")
     }
-    val ManagementDispatcher = getString("management-dispatcher")
+    val ManagementDispatcher: String = getString("management-dispatcher")
+    val FileIODispatcher = getString("file-io-dispatcher")
+    val TransferToLimit = getString("file-io-transferTo-limit") match {
+      case "unlimited" ⇒ Int.MaxValue
+      case _           ⇒ getIntBytes("file-io-transferTo-limit")
+    }
 
-    require(NrOfSelectors > 0, "nr-of-selectors must be > 0")
-    require(MaxChannels == -1 || MaxChannels > 0, "max-channels must be > 0 or 'unlimited'")
-    require(SelectTimeout >= Duration.Zero, "select-timeout must not be negative")
-    require(SelectorAssociationRetries >= 0, "selector-association-retries must be >= 0")
-    require(BatchAcceptLimit > 0, "batch-accept-limit must be > 0")
-
-    val MaxChannelsPerSelector = if (MaxChannels == -1) -1 else math.max(MaxChannels / NrOfSelectors, 1)
+    val MaxChannelsPerSelector: Int = if (MaxChannels == -1) -1 else math.max(MaxChannels / NrOfSelectors, 1)
 
     private[this] def getIntBytes(path: String): Int = {
       val size = getBytes(path)
@@ -187,7 +228,13 @@ class TcpExt(system: ExtendedActorSystem) extends IO.Extension {
       name = "IO-TCP")
   }
 
+  /**
+   * Java API: retrieve a reference to the manager actor.
+   */
+  def getManager: ActorRef = manager
+
   val bufferPool: BufferPool = new DirectByteBufferPool(Settings.DirectBufferSize, Settings.MaxDirectBufferPoolSize)
+  val fileIoDispatcher = system.dispatchers.lookup(Settings.FileIODispatcher)
 }
 
 object TcpSO extends SoJavaFactories {
@@ -217,7 +264,8 @@ object TcpMessage {
            backlog: Int): Command = Bind(handler, endpoint, backlog, Nil)
 
   def register(handler: ActorRef): Command = Register(handler)
-  def register(handler: ActorRef, keepOpenOnPeerClosed: Boolean): Command = Register(handler, keepOpenOnPeerClosed)
+  def register(handler: ActorRef, keepOpenOnPeerClosed: Boolean, useResumeWriting: Boolean): Command =
+    Register(handler, keepOpenOnPeerClosed, useResumeWriting)
   def unbind: Command = Unbind
 
   def close: Command = Close
@@ -230,8 +278,10 @@ object TcpMessage {
   def write(data: ByteString): Command = Write(data)
   def write(data: ByteString, ack: AnyRef): Command = Write(data, ack)
 
-  def stopReading: Command = StopReading
+  def suspendReading: Command = SuspendReading
   def resumeReading: Command = ResumeReading
+
+  def resumeWriting: Command = ResumeWriting
 
   implicit private def fromJava[T](coll: JIterable[T]): immutable.Traversable[T] = {
     import scala.collection.JavaConverters._
