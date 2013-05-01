@@ -24,8 +24,8 @@ object Main extends App {
 
   val boundFuture = IO(Tcp) ? Tcp.Bind(server, endpoint)
 
-  boundFuture.onSuccess { case Tcp.Bound =>
-    println("\nBound echo-server to " + endpoint)
+  boundFuture.onSuccess { case Tcp.Bound(address) =>
+    println("\nBound echo-server to " + address)
     println("Run `telnet localhost 23456`, type something and press RETURN. Type `STOP` to exit...\n")
   }
 }
@@ -73,7 +73,7 @@ class EchoServerConnection(tcpConnection: ActorRef) extends Actor with SprayActo
 
   def waitingForAck: Receive = stopOnConnectionTermination orElse {
     case Tcp.Received(data) =>
-      tcpConnection ! Tcp.StopReading
+      tcpConnection ! Tcp.SuspendReading
       context.become(waitingForAckWithQueuedData(Queue(data)))
 
     case 'SentOk =>

@@ -84,7 +84,7 @@ object Http extends ExtensionKey[HttpExt] {
   type Event = Tcp.Event
 
   type Connected = Tcp.Connected; val Connected = Tcp.Connected
-  val Bound = Tcp.Bound
+  type Bound = Tcp.Bound; val Bound = Tcp.Bound
   val Unbound = Tcp.Unbound
   type ConnectionClosed = Tcp.ConnectionClosed
 

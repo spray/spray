@@ -11,6 +11,7 @@ import akka.actor.{ Props, ActorLogging, ActorRef, Actor }
 import akka.io.SelectionHandler._
 import akka.io.Tcp._
 import akka.io.IO.HasFailureMessage
+import java.net.InetSocketAddress
 
 /**
  * INTERNAL API
@@ -43,21 +44,24 @@ private[io] class TcpListener(selectorRouter: ActorRef,
     serverSocketChannel.configureBlocking(false)
     val socket = serverSocketChannel.socket
     options.foreach(_.beforeServerSocketBind(socket))
-    try socket.bind(endpoint, backlog)
-    catch {
+    try {
+      socket.bind(localAddress, backlog)
+      require(socket.getLocalSocketAddress.isInstanceOf[InetSocketAddress],
+        s"bound to unknown SocketAddress [${socket.getLocalSocketAddress}]")
+    } catch {
       case NonFatal(e) ⇒
         bindCommander ! bind.failureMessage
-        log.error(e, "Bind failed for TCP channel on endpoint [{}]", endpoint)
+        log.error(e, "Bind failed for TCP channel on endpoint [{}]", localAddress)
         context.stop(self)
     }
     serverSocketChannel
   }
   channelRegistry.register(channel, SelectionKey.OP_ACCEPT)
-  log.debug("Successfully bound to {}", endpoint)
+  log.debug("Successfully bound to {}", localAddress)
 
   def receive: Receive = {
     case registration: ChannelRegistration ⇒
-      bindCommander ! Bound
+      bindCommander ! Bound(channel.socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress])
       context.become(bound(registration))
   }
 
@@ -73,10 +77,10 @@ private[io] class TcpListener(selectorRouter: ActorRef,
       }
 
     case Unbind ⇒
-      log.debug("Unbinding endpoint {}", endpoint)
+      log.debug("Unbinding endpoint {}", localAddress)
       channel.close()
       sender ! Unbound
-      log.debug("Unbound endpoint {}, stopping listener", endpoint)
+      log.debug("Unbound endpoint {}, stopping listener", localAddress)
       context.stop(self)
   }
 
@@ -85,7 +89,7 @@ private[io] class TcpListener(selectorRouter: ActorRef,
       if (limit > 0) {
         try channel.accept()
         catch {
-          case NonFatal(e) ⇒ log.error(e, "Accept error: could not accept new connection due to {}", e); null
+          case NonFatal(e) ⇒ { log.error(e, "Accept error: could not accept new connection due to {}", e); null }
         }
       } else null
     if (socketChannel != null) {

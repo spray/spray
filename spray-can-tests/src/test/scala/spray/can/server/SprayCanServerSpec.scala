@@ -123,7 +123,7 @@ class SprayCanServerSpec extends Specification {
     val listener = {
       val commander = TestProbe()
       commander.send(IO(Http), Http.Bind(bindHandler.ref, hostname, port))
-      commander expectMsg Http.Bound
+      commander.expectMsgType[Http.Bound]
       commander.sender
     }
 
