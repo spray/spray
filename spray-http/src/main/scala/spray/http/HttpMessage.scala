@@ -21,6 +21,7 @@ import scala.annotation.tailrec
 import scala.reflect.{ classTag, ClassTag }
 import HttpHeaders._
 import HttpCharsets._
+import java.util
 
 sealed trait HttpMessagePartWrapper {
   def messagePart: HttpMessagePart
@@ -250,6 +251,11 @@ case class MessageChunk(body: Array[Byte], extension: String) extends HttpReques
   def bodyAsString(charset: HttpCharset): String = bodyAsString(charset.nioCharset)
   def bodyAsString(charset: Charset): String = if (body.isEmpty) "" else new String(body, charset)
   def bodyAsString(charset: String): String = if (body.isEmpty) "" else new String(body, charset)
+  override def hashCode = extension.## * 31 + util.Arrays.hashCode(body)
+  override def equals(obj: Any) = obj match {
+    case x: MessageChunk ⇒ (this eq x) || extension == x.extension && util.Arrays.equals(body, x.body)
+    case _               ⇒ false
+  }
 }
 
 object MessageChunk {
