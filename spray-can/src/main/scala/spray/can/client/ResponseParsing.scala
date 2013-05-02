@@ -35,7 +35,8 @@ object ResponseParsing {
         new Pipelines {
           import context.log
           val parser = rootParser.copyWith { errorInfo ⇒
-            log.warning(errorInfo.withSummaryPrepended("Illegal response header").formatPretty)
+            if (settings.illegalHeaderWarnings)
+              log.warning(errorInfo.withSummaryPrepended("Illegal response header").formatPretty)
           }
           var openRequestMethods = Queue.empty[HttpMethod]
 

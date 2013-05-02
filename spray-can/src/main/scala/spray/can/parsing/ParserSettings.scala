@@ -29,6 +29,7 @@ case class ParserSettings(
     maxContentLength: Int,
     maxChunkExtLength: Int,
     maxChunkSize: Int,
+    illegalHeaderWarnings: Boolean,
     headerValueCacheLimits: Map[String, Int]) {
 
   require(maxUriLength > 0, "max-uri-length must be > 0")
@@ -66,6 +67,7 @@ object ParserSettings {
       bytes("max-content-length"),
       bytes("max-chunk-ext-length"),
       bytes("max-chunk-size"),
+      config getBoolean "illegal-header-warnings",
       cacheConfig.entrySet.asScala.map(kvp ⇒ kvp.getKey -> cacheConfig.getInt(kvp.getKey))(collection.breakOut))
   }
 }
