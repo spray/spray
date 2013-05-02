@@ -16,8 +16,11 @@
 
 package spray.can.server
 
-import org.specs2.mutable.Specification
+import java.net.Socket
+import java.io.{ InputStreamReader, BufferedReader, OutputStreamWriter, BufferedWriter }
 import com.typesafe.config.{ ConfigFactory, Config }
+import scala.annotation.tailrec
+import org.specs2.mutable.Specification
 import akka.actor.{ ActorRef, ActorSystem }
 import akka.io.IO
 import akka.testkit.TestProbe
@@ -25,10 +28,6 @@ import spray.can.Http
 import spray.util.Utils.temporaryServerHostnameAndPort
 import spray.httpx.RequestBuilding._
 import spray.http._
-import java.net.Socket
-import java.io.{ InputStreamReader, BufferedReader, OutputStreamWriter, BufferedWriter }
-import org.parboiled.common.FileUtils
-import scala.annotation.tailrec
 
 class SprayCanServerSpec extends Specification {
   val testConf: Config = ConfigFactory.parseString("""
@@ -36,7 +35,9 @@ class SprayCanServerSpec extends Specification {
       event-handlers = ["akka.testkit.TestEventListener"]
       loglevel = WARNING
       io.tcp.trace-logging = off
-    }""")
+    }
+    spray.can.server.request-chunk-aggregation-limit = 0
+    spray.can.client.response-chunk-aggregation-limit = 0""")
   implicit val system = ActorSystem(getClass.getSimpleName, testConf)
 
   "The server-side spray-can HTTP infrastructure" should {
@@ -56,6 +57,30 @@ class SprayCanServerSpec extends Specification {
 
       serverHandler.reply(HttpResponse(entity = "yeah"))
       probe.expectMsgType[HttpResponse].entity === HttpEntity("yeah")
+    }
+
+    "properly complete a chunked request/response cycle" in new TestSetup {
+      val connection = openNewClientConnection()
+      val serverHandler = acceptConnection()
+
+      val probe = sendRequest(connection, ChunkedRequestStart(Get("/abc")))
+      serverHandler.expectMsgType[ChunkedRequestStart].request.uri === Uri(s"http://$hostname:$port/abc")
+      probe.send(connection, MessageChunk("123"))
+      probe.send(connection, MessageChunk("456"))
+      serverHandler.expectMsg(MessageChunk("123"))
+      serverHandler.expectMsg(MessageChunk("456"))
+      probe.send(connection, ChunkedMessageEnd())
+      serverHandler.expectMsg(ChunkedMessageEnd())
+
+      serverHandler.reply(ChunkedResponseStart(HttpResponse(entity = "yeah")))
+      serverHandler.reply(MessageChunk("234"))
+      serverHandler.reply(MessageChunk("345"))
+      serverHandler.reply(ChunkedMessageEnd())
+      probe.expectMsgType[ChunkedResponseStart].response.entity === EmptyEntity
+      probe.expectMsg(MessageChunk("yeah"))
+      probe.expectMsg(MessageChunk("234"))
+      probe.expectMsg(MessageChunk("345"))
+      probe.expectMsg(ChunkedMessageEnd())
     }
 
     "maintain response order for pipelined requests" in new TestSetup {
