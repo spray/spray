@@ -18,7 +18,7 @@ package spray.can.server
 
 import java.net.InetSocketAddress
 import scala.concurrent.duration.Duration
-import akka.actor.{ Terminated, ReceiveTimeout, ActorRef }
+import akka.actor.{ SupervisorStrategy, Terminated, ReceiveTimeout, ActorRef }
 import akka.io.Tcp
 import spray.can.server.StatsSupport.StatsHolder
 import spray.io._
@@ -35,6 +35,9 @@ private[can] class HttpServerConnection(tcpConnection: ActorRef,
   userLevelListener ! Http.Connected(remoteAddress, localAddress)
 
   context.setReceiveTimeout(settings.registrationTimeout)
+
+  // we cannot sensibly recover from crashes
+  override def supervisorStrategy = SupervisorStrategy.stoppingStrategy
 
   def receive: Receive = {
     case Http.Register(handler, _, _) ⇒
