@@ -156,7 +156,8 @@ class HttpHeaderSpec extends Specification {
       "Set-Cookie: name=\"123\"; HttpOnly; fancyPants" !
       example(`Set-Cookie`(HttpCookie("name", "123", httpOnly = true, extension = Some("fancyPants"))))_ ^
       p ^
-      "User-Agent: abc/1" ! example(`User-Agent`(ProductVersion.parseMultiple("abc/1  /")))_ ^
+      "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_3) AppleWebKit/537.31" !
+      example(`User-Agent`(ProductVersion("Mozilla", "5.0", "Macintosh; Intel Mac OS X 10_8_3"), ProductVersion("AppleWebKit", "537.31")))_ ^
       p ^
       "WWW-Authenticate: Basic realm=\"WallyWorld\"" !
       example(`WWW-Authenticate`(HttpChallenge("Basic", "WallyWorld")))_ ^

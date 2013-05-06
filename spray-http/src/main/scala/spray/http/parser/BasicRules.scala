@@ -51,17 +51,17 @@ private[parser] object BasicRules extends Parser {
 
   def Token: Rule1[String] = rule { oneOrMore(!CTL ~ !Separator ~ ANY) ~> identityFunc }
 
-  def CText = rule { !anyOf("()") ~ Text }
-
-  def QuotedString = rule { "\"" ~ push(new JStringBuilder) ~ zeroOrMore(QuotedPair | QDText) ~~> (_.toString) ~ "\"" }
-
-  def QDText = rule {
-    !ch('"') ~ Text ~ toRunAction(c ⇒ c.getValueStack.peek.asInstanceOf[JStringBuilder].append(c.getFirstMatchChar))
+  // contrary to the spec we do not allow nested comments
+  def Comment = rule {
+    "(" ~ push(new JStringBuilder) ~ zeroOrMore(QDText(anyOf("()"))) ~ ")" ~~> (_.toString)
   }
 
-  def QuotedPair = rule {
-    "\\" ~ Char ~ toRunAction(c ⇒ c.getValueStack.peek.asInstanceOf[JStringBuilder].append(c.getFirstMatchChar))
+  def QuotedString = rule {
+    "\"" ~ push(new JStringBuilder) ~ zeroOrMore(QDText(ch('"'))) ~ "\"" ~~> (_.toString)
   }
+
+  def QDText(excluded: Rule0) =
+    ("\\" ~ Char | !excluded ~ Text) ~ toRunAction(c ⇒ c.getValueStack.peek.asInstanceOf[JStringBuilder].append(c.getFirstMatchChar))
 
   // helpers
 
