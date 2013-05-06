@@ -401,8 +401,10 @@ object Uri {
       case Some(string) ⇒ apply(string)
     }
     def apply(list: List[(String, String)]): Query = {
-      @tailrec def queryFrom(l: List[(String, String)], query: Query = Query.Empty): Query =
-        if (l.isEmpty) query else queryFrom(l.tail, Cons(query.key, query.value, query))
+      @tailrec def queryFrom(l: List[(String, String)], query: Query = Query.Empty): Query = l match {
+        case Nil => query
+        case (key, value) :: xs => queryFrom(xs, Cons(key, value, query))
+      }
       queryFrom(list)
     }
     def apply(map: Map[String, String]): Query = apply(map.toList)

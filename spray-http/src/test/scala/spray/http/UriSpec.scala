@@ -198,6 +198,17 @@ class UriSpec extends Specification {
       query.getAll("b") === List("2", "4", "")
       query.getAll("d") === Nil
     }
+    "support conversion from list of name/value pairs" in {
+      import Query._
+      val fromlist = List("key1" -> "value1", "key2" -> "value2", "key3" -> "value3")
+      val query = Query(fromlist)
+      query.toList.diff(fromlist) === Nil
+      // check empty list
+      Query(Nil) === Empty
+      // check single pair
+      val singlePair = List("k" -> "v")
+      Query(singlePair) === singlePair.head +: Empty
+    }
   }
 
   "URIs" should {
