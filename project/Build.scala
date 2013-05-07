@@ -180,7 +180,7 @@ object Build extends Build with DocSupport {
     .dependsOn(sprayCan, sprayHttp)
     .settings(benchmarkSettings: _*)
     .settings(libraryDependencies ++=
-      compile(akkaActor) ++
+      compile(akkaActor, sprayJson) ++
       runtime(akkaSlf4j, logback)
     )
 
