@@ -22,9 +22,9 @@ import scala.collection.immutable
 import akka.io.{ Inet, Tcp }
 import akka.actor._
 import spray.can.server.{ ServerFrontend, ServerSettings }
-import spray.can.client.{ HostConnectorSettings, ClientConnectionSettings }
+import spray.can.client.ClientConnectionSettings
 import spray.io.{ ConnectionTimeouts, ClientSSLEngineProvider, ServerSSLEngineProvider }
-import spray.http.{ HttpMessagePart, HttpMessagePartWrapper }
+import spray.http.{ HttpResponse, HttpRequest, HttpMessagePart, HttpMessagePartWrapper }
 
 object Http extends ExtensionKey[HttpExt] {
 
@@ -58,7 +58,9 @@ object Http extends ExtensionKey[HttpExt] {
       apply(listener, new InetSocketAddress(interface, port), backlog, options, settings, sslEngineProvider)
   }
 
-  type Register = Tcp.Register; val Register = Tcp.Register
+  case class Register(handler: ActorRef,
+                      keepOpenOnPeerClosed: Boolean = false) extends Command
+
   val Unbind = Tcp.Unbind
 
   type CloseCommand = Tcp.CloseCommand

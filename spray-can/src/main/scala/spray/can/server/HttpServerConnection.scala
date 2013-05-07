@@ -40,9 +40,9 @@ private[can] class HttpServerConnection(tcpConnection: ActorRef,
   override def supervisorStrategy = SupervisorStrategy.stoppingStrategy
 
   def receive: Receive = {
-    case Http.Register(handler, _, _) ⇒
+    case Http.Register(handler, keepOpenOnPeerClosed) ⇒
       context.setReceiveTimeout(Duration.Undefined)
-      tcpConnection ! Tcp.Register(self)
+      tcpConnection ! Tcp.Register(self, keepOpenOnPeerClosed)
       context.watch(tcpConnection)
       context.watch(handler)
       context.become(running(tcpConnection, pipelineStage, pipelineContext(handler)))

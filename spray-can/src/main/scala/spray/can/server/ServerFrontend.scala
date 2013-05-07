@@ -18,6 +18,7 @@ package spray.can.server
 
 import scala.concurrent.duration.Duration
 import akka.actor.ActorRef
+import akka.io.Tcp
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.can.Http
 import spray.util.requirePositiveOrUndefined
@@ -105,6 +106,11 @@ object ServerFrontend {
 
             case x: AckEventWithReceiver ⇒
               firstUnconfirmed = firstUnconfirmed handleSentAckAndReturnNextUnconfirmed x
+
+            case Tcp.CommandFailed(Tcp.Write(_, Tcp.NoAck(PartAndSender(part, responseSender)))) ⇒
+              // TODO: implement automatic checkpoint buffering and write resuming
+              context.log.error("Could not write response part {}, closing connection", part)
+              commandPL(Pipeline.Tell(responseSender, Http.SendFailed(part), context.self))
 
             case x: Http.ConnectionClosed ⇒
               if (firstUnconfirmed.isEmpty)

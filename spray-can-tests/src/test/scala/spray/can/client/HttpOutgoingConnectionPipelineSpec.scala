@@ -144,6 +144,15 @@ class HttpOutgoingConnectionPipelineSpec extends Specification with RawSpecs2Pip
       connectionActor ! Tcp.Closed
       commands.expectMsg(Pipeline.Tell(probe.ref, Http.Closed, connectionActor))
     }
+
+    "dispatch SendFailed messages to the sender of the request if the request could not be written" in new Fixture(stage) {
+      val probe = TestProbe()
+      val request = HttpRequest(entity = "abc")
+      probe.send(connectionActor, Http.MessageCommand(request))
+      val write = commands.expectMsgType[Tcp.Write]
+      connectionActor ! Tcp.CommandFailed(write)
+      commands.expectMsg(Pipeline.Tell(probe.ref, Http.SendFailed(request), connectionActor))
+    }
   }
 
   override lazy val config: Config = ConfigFactory.parseString("""

@@ -124,6 +124,20 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
       }
     }
 
+    "if the response could not be written dispatch SendFailed messages" in {
+      "to the sender of an HttpResponse" in new MyFixture() {
+        connectionActor ! Tcp.Received(ByteString(simpleRequest))
+        val requestSender = commands.expectMsgType[Tell].sender
+
+        val probe = TestProbe()
+        val response = HttpResponse(entity = "abc")
+        requestSender.tell(Http.MessageCommand(response), probe.ref)
+        val write = commands.expectMsgType[Tcp.Write]
+        connectionActor ! Tcp.CommandFailed(write)
+        commands.expectMsg(Pipeline.Tell(probe.ref, Http.SendFailed(response), connectionActor))
+      }
+    }
+
     "dispatch Closed messages" in {
       "to the handler if no request is open" in new MyFixture() {
         connectionActor ! Tcp.Closed
