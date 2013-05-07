@@ -58,8 +58,17 @@ object Http extends ExtensionKey[HttpExt] {
       apply(listener, new InetSocketAddress(interface, port), backlog, options, settings, sslEngineProvider)
   }
 
+  type FastPath = PartialFunction[HttpRequest, HttpResponse]
+
+  // we don't use PartialFunction.empty for the default fastPath because we need serializability
+  case object EmptyFastPath extends FastPath {
+    def isDefinedAt(x: HttpRequest) = false
+    def apply(x: HttpRequest) = throw new MatchError(x)
+  }
+
   case class Register(handler: ActorRef,
-                      keepOpenOnPeerClosed: Boolean = false) extends Command
+                      keepOpenOnPeerClosed: Boolean = false,
+                      fastPath: FastPath = EmptyFastPath) extends Command
 
   val Unbind = Tcp.Unbind
 

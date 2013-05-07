@@ -131,6 +131,16 @@ class SprayCanServerSpec extends Specification {
         socket.close()
       }
     }
+
+    "properly support fastPath responses" in new TestSetup {
+      val connection = openNewClientConnection()
+      val serverHandler = acceptConnection {
+        case HttpRequest(_, Uri.Path("/abc"), _, _, _) ⇒ HttpResponse(entity = "fast")
+      }
+      val probe = sendRequest(connection, Get("/abc"))
+      serverHandler.expectNoMsg()
+      probe.expectMsgType[HttpResponse].entity === HttpEntity("fast")
+    }
   }
 
   step {
@@ -159,10 +169,10 @@ class SprayCanServerSpec extends Specification {
       probe.sender
     }
 
-    def acceptConnection(): TestProbe = {
+    def acceptConnection(fastPath: Http.FastPath = Http.EmptyFastPath): TestProbe = {
       bindHandler.expectMsgType[Http.Connected]
       val probe = TestProbe()
-      bindHandler reply Http.Register(probe.ref)
+      bindHandler.reply(Http.Register(probe.ref, fastPath = fastPath))
       probe
     }
 

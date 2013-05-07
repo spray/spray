@@ -402,6 +402,7 @@ class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2Pip
                                        _localAddress: InetSocketAddress, _log: LoggingAdapter) =
       new ServerFrontend.Context with SslTlsContext {
         def handler: ActorRef = fixture.handler.ref
+        def fastPath: Http.FastPath = Http.EmptyFastPath
         def actorContext: ActorContext = _actorContext
         def remoteAddress: InetSocketAddress = _remoteAddress
         def localAddress: InetSocketAddress = _localAddress

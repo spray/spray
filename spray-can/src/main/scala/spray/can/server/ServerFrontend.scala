@@ -16,10 +16,12 @@
 
 package spray.can.server
 
+import scala.util.control.NonFatal
 import scala.concurrent.duration.Duration
 import akka.actor.ActorRef
 import akka.io.Tcp
 import spray.can.server.RequestParsing.HttpMessageStartEvent
+import spray.can.rendering.HttpResponsePartRenderingContext
 import spray.can.Http
 import spray.util.requirePositiveOrUndefined
 import spray.http._
@@ -30,6 +32,7 @@ object ServerFrontend {
   trait Context extends PipelineContext {
     // the application-level request handler
     def handler: ActorRef
+    def fastPath: Http.FastPath
   }
 
   def apply(serverSettings: ServerSettings): RawPipelineStage[Context] = {
@@ -93,7 +96,21 @@ object ServerFrontend {
 
           val eventPipeline: EPL = {
             case HttpMessageStartEvent(request: HttpRequest, closeAfterResponseCompletion) ⇒
-              openNewRequest(request, closeAfterResponseCompletion, System.currentTimeMillis)
+              if (context.fastPath.isDefinedAt(request)) {
+                val response =
+                  try context.fastPath(request)
+                  catch {
+                    case NonFatal(e) ⇒
+                      context.log.error(e, "Error during fastPath evaluation for request {}", request)
+                      HttpResponse(StatusCodes.InternalServerError, StatusCodes.InternalServerError.defaultMessage)
+                  }
+                if (firstOpenRequest.isEmpty) commandPL {
+                  HttpResponsePartRenderingContext(response, request.method, request.protocol,
+                    closeAfterResponseCompletion, Tcp.NoAck(PartAndSender(response, context.self)))
+                }
+                else throw new NotImplementedError("fastPath is not yet supported with pipelining enabled")
+
+              } else openNewRequest(request, closeAfterResponseCompletion, System.currentTimeMillis)
 
             case HttpMessageStartEvent(ChunkedRequestStart(request), closeAfterResponseCompletion) ⇒
               openNewRequest(request, closeAfterResponseCompletion, 0L)
