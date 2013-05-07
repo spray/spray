@@ -11,5 +11,5 @@ object Main extends App with MySslConfiguration {
   // the handler actor replies to incoming HttpRequests
   val handler = system.actorOf(Props[DemoService], name = "handler")
 
-  IO(Http) ! Http.Bind(handler, interface = "localhost", port = system.settings.config.getInt("app.port"))
+  IO(Http) ! Http.Bind(handler, interface = "localhost", port = 8080)
 }

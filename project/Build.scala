@@ -173,8 +173,16 @@ object Build extends Build with DocSupport {
     .settings(exampleSettings: _*)
 
   lazy val sprayCanExamples = Project("spray-can-examples", file("examples/spray-can"))
-    .aggregate(simpleHttpClient, simpleHttpServer)
+    .aggregate(serverBenchmark, simpleHttpClient, simpleHttpServer)
     .settings(exampleSettings: _*)
+
+  lazy val serverBenchmark = Project("server-benchmark", file("examples/spray-can/server-benchmark"))
+    .dependsOn(sprayCan, sprayHttp)
+    .settings(benchmarkSettings: _*)
+    .settings(libraryDependencies ++=
+      compile(akkaActor) ++
+      runtime(akkaSlf4j, logback)
+    )
 
   lazy val simpleHttpClient = Project("simple-http-client", file("examples/spray-can/simple-http-client"))
     .dependsOn(sprayCan, sprayHttp)
