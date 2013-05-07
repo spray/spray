@@ -16,15 +16,14 @@ class DemoService extends Actor with SprayActorLogging {
   implicit val timeout: Timeout = 1.second // for the actor 'asks'
   import context.dispatcher // ExecutionContext for the futures and scheduler
 
+  def fastPath: Http.FastPath = {
+    case HttpRequest(GET, Uri.Path("/"), _, _, _) => index
+    case HttpRequest(GET, Uri.Path("/ping"), _, _, _) => HttpResponse(entity = "PONG!")
+  }
+
   def receive = {
     // when a new connection comes in we register ourselves as the connection handler
-    case _: Http.Connected => sender ! Http.Register(self)
-
-    case HttpRequest(GET, Uri.Path("/"), _, _, _) =>
-      sender ! index
-
-    case HttpRequest(GET, Uri.Path("/ping"), _, _, _) =>
-      sender ! HttpResponse(entity = "PONG!")
+    case _: Http.Connected => sender ! Http.Register(self, fastPath = fastPath)
 
     case HttpRequest(GET, Uri.Path("/stream"), _, _, _) =>
       val peer = sender // since the Props creator is executed asyncly we need to save the sender ref
