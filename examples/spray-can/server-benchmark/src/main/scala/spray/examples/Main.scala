@@ -7,6 +7,10 @@ import spray.can.Http
 import spray.http._
 import HttpMethods._
 import StatusCodes._
+import spray.http.MediaTypes._
+import spray.http.HttpRequest
+import spray.http.HttpResponse
+import spray.json._
 
 object Main extends App {
 
@@ -25,6 +29,9 @@ class BenchmarkService extends Actor {
 
   def fastPath: Http.FastPath = {
     case HttpRequest(GET, Uri.Path("/fast-ping"), _, _, _) => HttpResponse(entity = "FAST-PONG!")
+    case HttpRequest(GET, Uri.Path("/fast-json"), _, _, _) =>
+      HttpResponse(entity = HttpEntity(`application/json`,
+        JsObject("fast-sprayed-message" -> JsString("Hello, World!")).compactPrint.getBytes("ASCII")))
   }
 
   def receive = {
@@ -48,6 +55,10 @@ class BenchmarkService extends Actor {
     )
 
     case HttpRequest(GET, Uri.Path("/ping"), _, _, _) => sender ! HttpResponse(entity = "PONG!")
+
+    case HttpRequest(GET, Uri.Path("/json"), _, _, _) =>
+      sender ! HttpResponse(entity = HttpEntity(`application/json`,
+        JsObject("sprayed-message" -> JsString("Hello, World!")).compactPrint.getBytes("ASCII")))
 
     case HttpRequest(GET, Uri.Path("/stop"), _, _, _) =>
       sender ! HttpResponse(entity = "Shutting down in 1 second ...")
