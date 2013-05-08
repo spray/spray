@@ -24,7 +24,7 @@ import spray.http._
 import Uri._
 import UriParser._
 
-private[http] class UriParser(input: ParserInput, charset: Charset, strict: Boolean) {
+private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.ParsingMode) {
   private[this] var cursor: Int = 0
   private[this] var maxCursor: Int = 0
   private[this] var firstUpper = -1
@@ -37,9 +37,19 @@ private[http] class UriParser(input: ParserInput, charset: Charset, strict: Bool
   var _query: Query = Query.Empty
   var _fragment: Option[String] = None
 
-  private[this] val PARSE_PATH_SEGMENT_CHAR = if (strict) PATH_SEGMENT_CHAR else RELAXED_PATH_SEGMENT_CHAR
-  private[this] val PARSE_QUERY_CHAR = if (strict) QUERY_FRAGMENT_CHAR else RELAXED_QUERY_CHAR
-  private[this] val PARSE_FRAGMENT_CHAR = if (strict) QUERY_FRAGMENT_CHAR else RELAXED_FRAGMENT_CHAR
+  private[this] val PARSE_PATH_SEGMENT_CHAR = mode match {
+    case Uri.ParsingMode.Strict ⇒ PATH_SEGMENT_CHAR
+    case _                      ⇒ RELAXED_PATH_SEGMENT_CHAR
+  }
+  private[this] val PARSE_QUERY_CHAR = mode match {
+    case Uri.ParsingMode.Strict              ⇒ QUERY_FRAGMENT_CHAR & ~(AMP | EQUAL)
+    case Uri.ParsingMode.Relaxed             ⇒ RELAXED_QUERY_CHAR
+    case Uri.ParsingMode.RelaxedWithRawQuery ⇒ RAW_QUERY_CHAR
+  }
+  private[this] val PARSE_FRAGMENT_CHAR = mode match {
+    case Uri.ParsingMode.Strict ⇒ QUERY_FRAGMENT_CHAR
+    case _                      ⇒ RELAXED_FRAGMENT_CHAR
+  }
 
   def parseAbsolute(): Uri = {
     complete("absolute URI", `absolute-URI`)
@@ -451,6 +461,7 @@ private[http] object UriParser {
   final val RELAXED_FRAGMENT_CHAR = VCHAR
   final val RELAXED_PATH_SEGMENT_CHAR = VCHAR & ~(SLASH | QUESTIONMARK | HASH)
   final val RELAXED_QUERY_CHAR = VCHAR & ~(AMP | EQUAL | HASH)
+  final val RAW_QUERY_CHAR = VCHAR & ~HASH
 
   private[this] val props = new Array[Int](128)
 

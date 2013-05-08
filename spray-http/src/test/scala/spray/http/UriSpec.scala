@@ -181,13 +181,28 @@ class UriSpec extends Specification {
   }
 
   "Uri.Query instances" should {
-    "be parsed and rendered correctly" in {
-      import Query._
-      Query("") === ("", "") +: Empty
-      Query("a") === ("a", "") +: Empty
-      Query("a=") === ("a", "") +: Empty
-      Query("=a") === ("", "a") +: Empty
-      Query("a&") === ("a", "") +: ("", "") +: Empty
+    def parser(mode: Uri.ParsingMode): String ⇒ Query = Query(_, mode)
+    "be parsed and rendered correctly in strict mode" in {
+      val test = parser(Uri.ParsingMode.Strict)
+      test("") === ("", "") +: Query.Empty
+      test("a") === ("a", "") +: Query.Empty
+      test("a=") === ("a", "") +: Query.Empty
+      test("=a") === ("", "a") +: Query.Empty
+      test("a&") === ("a", "") +: ("", "") +: Query.Empty
+      test("a^=b") must throwAn[IllegalUriException]
+    }
+    "be parsed and rendered correctly in relaxed mode" in {
+      val test = parser(Uri.ParsingMode.Relaxed)
+      test("") === ("", "") +: Query.Empty
+      test("a") === ("a", "") +: Query.Empty
+      test("a=") === ("a", "") +: Query.Empty
+      test("=a") === ("", "a") +: Query.Empty
+      test("a&") === ("a", "") +: ("", "") +: Query.Empty
+      test("a^=b") === ("a^", "b") +: Query.Empty
+    }
+    "be parsed and rendered correctly in relaxed-with-raw-query mode" in {
+      val test = parser(Uri.ParsingMode.RelaxedWithRawQuery)
+      test("a^=b&c").toString === "a%5E%3Db%26c"
     }
     "properly support the retrieval interface" in {
       val query = Query("a=1&b=2&c=3&b=4&b")
@@ -200,14 +215,10 @@ class UriSpec extends Specification {
     }
     "support conversion from list of name/value pairs" in {
       import Query._
-      val fromlist = List("key1" -> "value1", "key2" -> "value2", "key3" -> "value3")
-      val query = Query(fromlist)
-      query.toList.diff(fromlist) === Nil
-      // check empty list
+      val pairs = List("key1" -> "value1", "key2" -> "value2", "key3" -> "value3")
+      Query(pairs).toList.diff(pairs) === Nil
       Query(Nil) === Empty
-      // check single pair
-      val singlePair = List("k" -> "v")
-      Query(singlePair) === singlePair.head +: Empty
+      Query(List("k" -> "v")) === ("k" -> "v") +: Empty
     }
   }
 
@@ -244,8 +255,9 @@ class UriSpec extends Specification {
       Uri("http:?") === Uri.from(scheme = "http", query = Query(""))
       Uri("?a+b=c%2Bd") === Uri.from(query = ("a b", "c+d") +: Query.Empty)
 
-      // legal paths
+      // illegal paths
       Uri("foo/another@url/[]and{}") === Uri.from(path = "foo/another@url/%5B%5Dand%7B%7D")
+      Uri("foo/another@url/[]and{}", mode = Uri.ParsingMode.Strict) must throwAn[IllegalUriException]
     }
 
     "properly complete a normalization cycle" in {
@@ -289,6 +301,7 @@ class UriSpec extends Specification {
 
       // acceptance and normalization of unescaped ascii characters such as {} and []:
       normalize("eXAMPLE://a/./b/../b/%63/{foo}/[bar]") === "example://a/b/c/%7Bfoo%7D/%5Bbar%5D"
+      normalize("eXAMPLE://a/./b/../b/%63/{foo}/[bar]", mode = Uri.ParsingMode.Strict) must throwAn[IllegalUriException]
 
       // queries
       normalize("?") === "?"
@@ -296,6 +309,7 @@ class UriSpec extends Specification {
       normalize("?key=") === "?key" // our query model cannot discriminate between these two inputs
       normalize("?key=&a=b") === "?key&a=b" // our query model cannot discriminate between these two inputs
       normalize("?key={}&a=[]") === "?key=%7B%7D&a=%5B%5D"
+      normalize("?key={}&a=[]", mode = Uri.ParsingMode.Strict) must throwAn[IllegalUriException]
       normalize("?=value") === "?=value"
       normalize("?key=value") === "?key=value"
       normalize("?a+b") === "?a+b"
@@ -309,6 +323,7 @@ class UriSpec extends Specification {
       normalize("?#") === "?#"
       normalize("#") === "#"
       normalize("#{}[]") === "#%7B%7D%5B%5D"
+      normalize("#{}[]", mode = Uri.ParsingMode.Strict) must throwAn[IllegalUriException]
     }
 
     "produce proper error messages for illegal URIs" in {

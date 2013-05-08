@@ -93,7 +93,7 @@ object Uri {
    * Accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  implicit def apply(input: String): Uri = apply(input: ParserInput, UTF8, strict = false)
+  implicit def apply(input: String): Uri = apply(input: ParserInput, UTF8, Uri.ParsingMode.Relaxed)
 
   /**
    * Parses a valid URI string into a normalized URI reference as defined
@@ -102,7 +102,7 @@ object Uri {
    * Accepts unencoded visible 7-bit ASCII characters in addition to the rfc.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def apply(input: ParserInput): Uri = apply(input, UTF8, strict = false)
+  def apply(input: ParserInput): Uri = apply(input, UTF8, Uri.ParsingMode.Relaxed)
 
   /**
    * Parses a valid URI string into a normalized URI reference as defined
@@ -111,7 +111,7 @@ object Uri {
    * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def apply(input: ParserInput, strict: Boolean): Uri = apply(input, UTF8, strict)
+  def apply(input: ParserInput, mode: Uri.ParsingMode): Uri = apply(input, UTF8, mode)
 
   /**
    * Parses a valid URI string into a normalized URI reference as defined
@@ -120,8 +120,8 @@ object Uri {
    * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def apply(input: ParserInput, charset: Charset, strict: Boolean): Uri =
-    new UriParser(input, charset, strict).parseReference()
+  def apply(input: ParserInput, charset: Charset, mode: Uri.ParsingMode): Uri =
+    new UriParser(input, charset, mode).parseReference()
 
   /**
    * Creates a new Uri instance from the given components.
@@ -147,8 +147,9 @@ object Uri {
    * http://tools.ietf.org/html/rfc3986 the method throws an `IllegalUriException`.
    */
   def from(scheme: String = "", userinfo: String = "", host: String = "", port: Int = 0, path: String = "",
-           query: Query = Query.Empty, fragment: Option[String] = None, strict: Boolean = false): Uri =
-    apply(scheme, Authority(Host(host, strict), normalizePort(port, scheme), userinfo), Path(path), query, fragment)
+           query: Query = Query.Empty, fragment: Option[String] = None,
+           mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Uri =
+    apply(scheme, Authority(Host(host, mode), normalizePort(port, scheme), userinfo), Path(path), query, fragment)
 
   /**
    * Parses a string into a normalized absolute URI as defined by http://tools.ietf.org/html/rfc3986#section-4.3.
@@ -156,8 +157,8 @@ object Uri {
    * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseAbsolute(input: ParserInput, charset: Charset = UTF8, strict: Boolean = false): Uri =
-    new UriParser(input, charset, strict).parseAbsolute()
+  def parseAbsolute(input: ParserInput, charset: Charset = UTF8, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Uri =
+    new UriParser(input, charset, mode).parseAbsolute()
 
   /**
    * Parses a string into a normalized URI reference that is immediately resolved against the given base URI as
@@ -167,8 +168,9 @@ object Uri {
    * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseAndResolve(string: ParserInput, base: Uri, charset: Charset = UTF8, strict: Boolean = false): Uri =
-    new UriParser(string, charset, strict).parseAndResolveReference(base)
+  def parseAndResolve(string: ParserInput, base: Uri, charset: Charset = UTF8,
+                      mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Uri =
+    new UriParser(string, charset, mode).parseAndResolveReference(base)
 
   /**
    * Parses the given string into an HTTP request target URI as defined by
@@ -176,8 +178,9 @@ object Uri {
    * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseHttpRequestTarget(requestTarget: ParserInput, charset: Charset = UTF8, strict: Boolean = false): Uri =
-    new UriParser(requestTarget, charset, strict).parseHttpRequestTarget()
+  def parseHttpRequestTarget(requestTarget: ParserInput, charset: Charset = UTF8,
+                             mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Uri =
+    new UriParser(requestTarget, charset, mode).parseHttpRequestTarget()
 
   /**
    * Normalizes the given URI string by performing the following normalizations:
@@ -189,8 +192,8 @@ object Uri {
    * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def normalize(uri: ParserInput, charset: Charset = UTF8, strict: Boolean = false): String =
-    apply(uri, charset, strict).toString(charset)
+  def normalize(uri: ParserInput, charset: Charset = UTF8, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): String =
+    apply(uri, charset, mode).toString(charset)
 
   /**
    * Converts a set of URI components to an "effective HTTP request URI" as defined by
@@ -255,9 +258,9 @@ object Uri {
       def toOption = None
       def render(sb: JStringBuilder) = sb
     }
-    def apply(string: String, strict: Boolean = false): Host =
+    def apply(string: String, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Host =
       if (!string.isEmpty) {
-        val parser = new UriParser(string, UTF8, strict)
+        val parser = new UriParser(string, UTF8, mode)
         import parser._
         complete("URI host", host)
         _host
@@ -404,16 +407,18 @@ object Uri {
      * Parses the given String into a Query instance.
      * Note that this method will never return Query.Empty, even for the empty String.
      * Empty strings will be parsed to `("", "") +: Query.Empty`
+     * If you want to allow for Query.Empty creation use the apply overload taking an `Option[String`.
      */
-    def apply(string: String, strict: Boolean = false): Query = {
-      val parser = new UriParser(string, UTF8, strict)
+    def apply(string: String, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Query = {
+      val parser = new UriParser(string, UTF8, mode)
       import parser._
       complete("Query", query)
       _query
     }
-    def apply(input: Option[String]): Query = input match {
+    def apply(input: Option[String]): Query = apply(input, Uri.ParsingMode.Relaxed)
+    def apply(input: Option[String], mode: Uri.ParsingMode): Query = input match {
       case None         ⇒ Query.Empty
-      case Some(string) ⇒ apply(string)
+      case Some(string) ⇒ apply(string, mode)
     }
     def apply(list: List[(String, String)]): Query = {
       @tailrec def queryFrom(l: List[(String, String)], query: Query = Query.Empty): Query = l match {
@@ -449,6 +454,22 @@ object Uri {
     Map("ftp" -> 21, "ssh" -> 22, "telnet" -> 23, "smtp" -> 25, "domain" -> 53, "tftp" -> 69, "http" -> 80,
       "pop3" -> 110, "nntp" -> 119, "imap" -> 143, "snmp" -> 161, "ldap" -> 389, "https" -> 443, "imaps" -> 993,
       "nfs" -> 2049).withDefaultValue(-1)
+
+  sealed trait ParsingMode
+
+  object ParsingMode {
+    case object Strict extends ParsingMode
+    case object Relaxed extends ParsingMode
+    case object RelaxedWithRawQuery extends ParsingMode
+
+    def apply(string: String): ParsingMode =
+      string match {
+        case "strict"                 ⇒ Strict
+        case "relaxed"                ⇒ Relaxed
+        case "relaxed-with-raw-query" ⇒ RelaxedWithRawQuery
+        case x                        ⇒ throw new IllegalArgumentException(x + " is not a legal UriParsingMode")
+      }
+  }
 
   /////////////////////////////////// PRIVATE //////////////////////////////////////////
 
