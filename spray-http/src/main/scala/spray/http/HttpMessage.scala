@@ -83,6 +83,7 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
   def entity: HttpEntity
   def protocol: HttpProtocol
 
+  def withHeaders(headers: HttpHeader*): Self = withHeaders(headers.toList)
   def withHeaders(headers: List[HttpHeader]): Self
   def withEntity(entity: HttpEntity): Self
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity): Self
