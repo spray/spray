@@ -40,12 +40,9 @@ private[can] class HttpServerConnection(tcpConnection: ActorRef,
   override def supervisorStrategy = SupervisorStrategy.stoppingStrategy
 
   def receive: Receive = {
-    case Http.Register(handler, keepOpenOnPeerClosed, fastPath) ⇒
-      context.setReceiveTimeout(Duration.Undefined)
-      tcpConnection ! Tcp.Register(self, keepOpenOnPeerClosed)
-      context.watch(tcpConnection)
-      context.watch(handler)
-      context.become(running(tcpConnection, pipelineStage, pipelineContext(handler, fastPath)))
+    case Tcp.Register(handler, keepOpenOnPeerClosed, _)         ⇒ register(handler, keepOpenOnPeerClosed)
+
+    case Http.Register(handler, keepOpenOnPeerClosed, fastPath) ⇒ register(handler, keepOpenOnPeerClosed, fastPath)
 
     case ReceiveTimeout ⇒
       log.warning("Configured registration timeout of {} expired, stopping", settings.registrationTimeout)
@@ -56,6 +53,14 @@ private[can] class HttpServerConnection(tcpConnection: ActorRef,
         case Terminated(`tcpConnection`) ⇒ context.stop(self)
         case ReceiveTimeout              ⇒ context.stop(self)
       }
+  }
+
+  def register(handler: ActorRef, keepOpenOnPeerClosed: Boolean, fastPath: Http.FastPath = Http.EmptyFastPath): Unit = {
+    context.setReceiveTimeout(Duration.Undefined)
+    tcpConnection ! Tcp.Register(self, keepOpenOnPeerClosed)
+    context.watch(tcpConnection)
+    context.watch(handler)
+    context.become(running(tcpConnection, pipelineStage, pipelineContext(handler, fastPath)))
   }
 
   def pipelineContext(_handler: ActorRef, _fastPath: Http.FastPath) = new SslTlsContext with ServerFrontend.Context {
