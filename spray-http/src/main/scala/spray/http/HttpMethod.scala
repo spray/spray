@@ -31,10 +31,10 @@ object HttpMethods extends ObjectRegistry[String, HttpMethod] {
   val DELETE  = new HttpMethod("DELETE" , isSafe = false, isIdempotent = true , entityAccepted = false)
   val GET     = new HttpMethod("GET"    , isSafe = true , isIdempotent = true , entityAccepted = false)
   val HEAD    = new HttpMethod("HEAD"   , isSafe = true , isIdempotent = true , entityAccepted = false)
-  val OPTIONS = new HttpMethod("OPTIONS", isSafe = false, isIdempotent = true , entityAccepted = true)
+  val OPTIONS = new HttpMethod("OPTIONS", isSafe = true , isIdempotent = true , entityAccepted = true)
   val PATCH   = new HttpMethod("PATCH"  , isSafe = false, isIdempotent = false, entityAccepted = true)
   val POST    = new HttpMethod("POST"   , isSafe = false, isIdempotent = false, entityAccepted = true)
   val PUT     = new HttpMethod("PUT"    , isSafe = false, isIdempotent = true , entityAccepted = true)
-  val TRACE   = new HttpMethod("TRACE"  , isSafe = false, isIdempotent = true , entityAccepted = false)
+  val TRACE   = new HttpMethod("TRACE"  , isSafe = true , isIdempotent = true , entityAccepted = false)
   // format: ON
 }
