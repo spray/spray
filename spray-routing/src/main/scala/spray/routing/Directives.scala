@@ -38,6 +38,7 @@ trait Directives extends RouteConcatenation
   with RespondWithDirectives
   with RouteDirectives
   with SecurityDirectives
+  with AnyParamDirectives
 
 object Directives extends Directives
 //#
