@@ -48,28 +48,3 @@ package object http {
     HttpResponse(status = 200)
   }
 }
-
-package http {
-
-  case class ProductVersion(product: String = "", version: String = "", comment: String = "") {
-    override def toString =
-      if (version.isEmpty && comment.isEmpty) product
-      else {
-        val sb = new java.lang.StringBuilder(product)
-        if (!version.isEmpty) sb.append('/').append(version)
-        if (!comment.isEmpty) {
-          if (sb.length > 0) sb.append(' ')
-          sb.append('(').append(comment).append(')')
-        }
-        sb.toString
-      }
-  }
-
-  object ProductVersion {
-    def parseMultiple(string: String): Seq[ProductVersion] =
-      parser.HttpParser.parse(HttpParser.ProductVersionComments, string) match {
-        case Right(x)   ⇒ x
-        case Left(info) ⇒ throw new IllegalArgumentException(s"'$string' is not a legal sequence of ProductVersions: ${info.formatPretty}")
-      }
-  }
-}
