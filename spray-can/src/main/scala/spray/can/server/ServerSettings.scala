@@ -47,7 +47,7 @@ case class ServerSettings(
   requirePositiveOrUndefined(requestTimeout)
   requirePositiveOrUndefined(timeoutTimeout)
   requirePositiveOrUndefined(idleTimeout)
-  require(0 < pipeliningLimit && pipeliningLimit <= 128, "pipelining-limit must be > 0 and <= 128")
+  require(0 <= pipeliningLimit && pipeliningLimit <= 128, "pipelining-limit must be >= 0 and <= 128")
   require(0 <= requestChunkAggregationLimit && requestChunkAggregationLimit <= Int.MaxValue,
     "request-chunk-aggregation-limit must be >= 0 and <= Int.MaxValue")
   require(0 <= responseSizeHint && responseSizeHint <= Int.MaxValue,
@@ -71,7 +71,7 @@ object ServerSettings {
     ServerSettings(
       c getString "server-header",
       c getBoolean "ssl-encryption",
-      c getInt "pipelining-limit",
+      c.getString("pipelining-limit") match { case "disabled" ⇒ 0; case _ ⇒ c getInt "pipelining-limit" },
       c getDuration "idle-timeout",
       c getDuration "request-timeout",
       c getDuration "timeout-timeout",
