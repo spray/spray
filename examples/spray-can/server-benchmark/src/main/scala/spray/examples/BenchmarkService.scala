@@ -5,19 +5,24 @@ import akka.actor.Actor
 import spray.can.Http
 import spray.json._
 import spray.http._
-import MediaTypes._
 import HttpMethods._
 import StatusCodes._
 
 class BenchmarkService extends Actor {
   import context.dispatcher // ExecutionContext for scheduler
   import Uri._
+  import Uri.Path._
 
-  def jsonResponseEntity = HttpEntity(ContentType.`application/json`, JsObject("message" -> JsString("Hello, World!")).compactPrint)
+  def jsonResponseEntity = HttpEntity(
+    contentType = ContentType.`application/json`,
+    string = JsObject("message" -> JsString("Hello, World!")).compactPrint)
 
   def fastPath: Http.FastPath = {
-    case HttpRequest(GET, Uri.Path("/fast-ping"), _, _, _) => HttpResponse(entity = "FAST-PONG!")
-    case HttpRequest(GET, Uri(_, _, Path.Slash(Path.Segment("fast-json", Path.Empty)), _, _), _, _, _) => HttpResponse(entity = jsonResponseEntity)
+    case HttpRequest(GET, Uri(_, _, Slash(Segment("fast-ping", Path.Empty)), _, _), _, _, _) =>
+      HttpResponse(entity = "FAST-PONG!")
+
+    case HttpRequest(GET, Uri(_, _, Slash(Segment("fast-json", Path.Empty)), _, _), _, _, _) =>
+      HttpResponse(entity = jsonResponseEntity)
   }
 
   def receive = {
@@ -44,7 +49,7 @@ class BenchmarkService extends Actor {
 
     case HttpRequest(GET, Uri.Path("/ping"), _, _, _) => sender ! HttpResponse(entity = "PONG!")
 
-    case HttpRequest(GET, Uri(_, _, Path.Slash(Path.Segment("json", Path.Empty)), _, _), _, _, _) => sender ! HttpResponse(entity = jsonResponseEntity)
+    case HttpRequest(GET, Uri.Path("/json"), _, _, _) => sender ! HttpResponse(entity = jsonResponseEntity)
 
     case HttpRequest(GET, Uri.Path("/stop"), _, _, _) =>
       sender ! HttpResponse(entity = "Shutting down in 1 second ...")
