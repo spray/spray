@@ -159,6 +159,8 @@ class HttpHeaderSpec extends Specification {
       p ^
       "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_3) AppleWebKit/537.31" !
       example(`User-Agent`(ProductVersion("Mozilla", "5.0", "Macintosh; Intel Mac OS X 10_8_3"), ProductVersion("AppleWebKit", "537.31")))_ ^
+      "User-Agent: foo(bar)(baz)" !
+      example(`User-Agent`(ProductVersion("foo", "", "bar"), ProductVersion(comment = "baz")), _.replace("o(", "o (").replace(")(", ") ("))_ ^
       p ^
       "WWW-Authenticate: Basic realm=\"WallyWorld\"" !
       example(`WWW-Authenticate`(HttpChallenge("Basic", "WallyWorld")))_ ^

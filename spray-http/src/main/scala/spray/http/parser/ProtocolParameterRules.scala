@@ -126,11 +126,11 @@ private[parser] trait ProtocolParameterRules {
   def Product: Rule2[String, String] = rule { Token ~ (ch('/') ~ Token | push("")) }
 
   def ProductVersionComment = rule(
-    Product ~ " " ~ Comment ~~> (ProductVersion(_, _, _))
+    Product ~ OptWS ~ Comment ~~> (ProductVersion(_, _, _))
       | Product ~~> (ProductVersion(_, _))
       | Comment ~~> (ProductVersion("", "", _)))
 
-  def ProductVersionComments = rule { oneOrMore(ProductVersionComment, separator = " ") ~ EOI }
+  def ProductVersionComments = rule { oneOrMore(ProductVersionComment, separator = OptWS) ~ EOI }
 
   /* 3.9 Quality Values */
 
