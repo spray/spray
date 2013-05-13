@@ -11,12 +11,13 @@ import StatusCodes._
 
 class BenchmarkService extends Actor {
   import context.dispatcher // ExecutionContext for scheduler
+  import Uri._
 
   def jsonResponseEntity = HttpEntity(`application/json`, JsObject("message" -> JsString("Hello, World!")).compactPrint)
 
   def fastPath: Http.FastPath = {
     case HttpRequest(GET, Uri.Path("/fast-ping"), _, _, _) => HttpResponse(entity = "FAST-PONG!")
-    case HttpRequest(GET, Uri.Path("/fast-json"), _, _, _) => HttpResponse(entity = jsonResponseEntity)
+    case HttpRequest(GET, Uri(_, _, Path.Slash(Path.Segment("fast-json", Path.Empty)), _, _), _, _, _) => HttpResponse(entity = jsonResponseEntity)
   }
 
   def receive = {
@@ -43,7 +44,7 @@ class BenchmarkService extends Actor {
 
     case HttpRequest(GET, Uri.Path("/ping"), _, _, _) => sender ! HttpResponse(entity = "PONG!")
 
-    case HttpRequest(GET, Uri.Path("/json"), _, _, _) => sender ! HttpResponse(entity = jsonResponseEntity)
+    case HttpRequest(GET, Uri(_, _, Path.Slash(Path.Segment("json", Path.Empty)), _, _), _, _, _) => sender ! HttpResponse(entity = jsonResponseEntity)
 
     case HttpRequest(GET, Uri.Path("/stop"), _, _, _) =>
       sender ! HttpResponse(entity = "Shutting down in 1 second ...")

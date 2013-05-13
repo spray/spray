@@ -15,5 +15,3 @@ object Main extends App {
   val port = system.settings.config.getInt("app.port")
   IO(Http) ! Http.Bind(handler, interface, port)
 }
-
-
