@@ -235,7 +235,7 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
         firstPercent -= start
         val s = slice(start, cursor)
         if (firstUpper >= 0)
-          if (firstPercent >= 0) toLowerIfNeeded(decodeIfNeeded(s, firstPercent, charset), min(firstPercent, firstUpper))
+          if (firstPercent >= 0) toLowerIfNeeded(decodeIfNeeded(s, firstPercent, charset), math.min(firstPercent, firstUpper))
           else toLowerIfNeeded(s, firstUpper)
         else if (firstPercent >= 0) toLowerIfNeeded(decodeIfNeeded(s, firstPercent, charset), firstPercent) else s
       } else ""
@@ -374,7 +374,7 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
 
   def reset(mark: Int) = { cursor = mark; true }
 
-  def advance() = { cursor += 1; maxCursor = max(maxCursor, cursor); true }
+  def advance() = { cursor += 1; maxCursor = math.max(maxCursor, cursor); true }
 
   def savePath(start: Int) = {
     _path = Path(decodeIfNeeded(slice(start, cursor), firstPercent - start, charset))
@@ -502,10 +502,6 @@ private[http] object UriParser {
   def sex(i: Int): Int = i >> 31 // sign-extend, branchless version of `if (i < 0) 0xFFFFFFFF else 0x00000000`
 
   def abs(i: Int): Int = { val j = sex(i); (i ^ j) - j }
-
-  def min(a: Int, b: Int): Int = { val d = a - b; b + (d & sex(d)) }
-
-  def max(a: Int, b: Int): Int = { val d = b - a; a + (d & ~sex(d)) }
 
   def hexDigit(i: Int): Char = { val j = i & 0x0F; ('0' + j + -7 * sex(0x7ffffff6 + j)).toChar }
 
