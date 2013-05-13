@@ -13,7 +13,7 @@ class BenchmarkService extends Actor {
   import context.dispatcher // ExecutionContext for scheduler
   import Uri._
 
-  def jsonResponseEntity = HttpEntity(`application/json`, JsObject("message" -> JsString("Hello, World!")).compactPrint)
+  def jsonResponseEntity = HttpEntity(ContentType.`application/json`, JsObject("message" -> JsString("Hello, World!")).compactPrint)
 
   def fastPath: Http.FastPath = {
     case HttpRequest(GET, Uri.Path("/fast-ping"), _, _, _) => HttpResponse(entity = "FAST-PONG!")

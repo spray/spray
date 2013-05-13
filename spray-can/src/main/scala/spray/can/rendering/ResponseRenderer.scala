@@ -33,6 +33,9 @@ class ResponseRenderer(serverHeader: String,
     case "" ⇒ "Date: "
     case x  ⇒ "Server: " + x + "\r\nDate: "
   }).getAsciiBytes
+  val ConnectionBytes = "Connection".getAsciiBytes
+  val KeepAlive = "Keep-Alive".getAsciiBytes
+  val Close = "close".getAsciiBytes
 
   def render(ctx: HttpResponsePartRenderingContext): RenderedMessagePart = {
     def chunkless = chunklessStreaming || ctx.requestProtocol == `HTTP/1.0`
@@ -61,7 +64,7 @@ class ResponseRenderer(serverHeader: String,
     val close = putConnectionHeaderIfRequiredAndReturnClose(response, ctx, connectionHeader)
 
     // don't set a Content-Length header for non-keep-alive HTTP/1.0 responses (rely on body end by connection close)
-    if (response.protocol == `HTTP/1.1` || !close) putHeader("Content-Length", Integer.toString(entity.buffer.length))
+    if (response.protocol == `HTTP/1.1` || !close) putHeader(ContentLength, Integer.toString(entity.buffer.length))
     put(CrLf)
 
     if (entity.buffer.length > 0 && ctx.requestMethod != HttpMethods.HEAD) put(entity.buffer)
@@ -74,7 +77,7 @@ class ResponseRenderer(serverHeader: String,
 
     implicit val bb = newByteStringBuilder(responseSizeHint)
     renderResponseStart(response, ctx)
-    if (!chunkless) putHeader("Transfer-Encoding", "chunked")
+    if (!chunkless) putHeaderBytes(TransferEncoding, Chunked)
     put(CrLf)
 
     if (ctx.requestMethod != HttpMethods.HEAD && entity.buffer.length > 0) {
@@ -126,13 +129,13 @@ class ResponseRenderer(serverHeader: String,
     ctx.requestProtocol match {
       case `HTTP/1.0` ⇒
         if (connectionHeader.isEmpty) {
-          if (!ctx.closeAfterResponseCompletion) putHeader("Connection", "Keep-Alive")
+          if (!ctx.closeAfterResponseCompletion) putHeaderBytes(ConnectionBytes, KeepAlive)
           ctx.closeAfterResponseCompletion
         } else !connectionHeader.get.hasKeepAlive
 
       case `HTTP/1.1` ⇒
         if (connectionHeader.isEmpty) {
-          if (ctx.closeAfterResponseCompletion) putHeader("Connection", "close")
+          if (ctx.closeAfterResponseCompletion) putHeaderBytes(ConnectionBytes, Close)
           ctx.closeAfterResponseCompletion
         } else connectionHeader.get.hasClose
     }

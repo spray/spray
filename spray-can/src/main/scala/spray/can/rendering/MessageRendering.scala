@@ -25,12 +25,20 @@ private[rendering] object MessageRendering {
   val DefaultStatusLine = "HTTP/1.1 200 OK\r\n".getAsciiBytes
   val StatusLineStart = "HTTP/1.1 ".getAsciiBytes
   val CrLf = "\r\n".getAsciiBytes
+  val ContentType = "Content-Type".getAsciiBytes
+  val ContentLength = "Content-Length".getAsciiBytes
+  val TransferEncoding = "Transfer-Encoding".getAsciiBytes
+  val Chunked = "chunked".getAsciiBytes
+  val UserAgent = "User-Agent".getAsciiBytes
 
   def put(header: HttpHeader)(implicit bb: ByteStringBuilder): this.type =
-    putHeader(header.name, header.value)
+    putHeader(header.name7bit, header.value)
 
-  def putHeader(name: String, value: String)(implicit bb: ByteStringBuilder): this.type =
+  def putHeader(name: Array[Byte], value: String)(implicit bb: ByteStringBuilder): this.type =
     put(name).put(':').put(' ').put(value).put(CrLf)
+
+  def putHeaderBytes(name: Array[Byte], valueBytes: Array[Byte])(implicit bb: ByteStringBuilder): this.type =
+    put(name).put(':').put(' ').put(valueBytes).put(CrLf)
 
   @tailrec
   final def putHeaders(h: List[HttpHeader])(implicit bb: ByteStringBuilder): this.type = h match {
@@ -39,7 +47,7 @@ private[rendering] object MessageRendering {
   }
 
   def putContentTypeHeaderIfRequired(entity: HttpEntity)(implicit bb: ByteStringBuilder): this.type =
-    if (!entity.isEmpty) putHeader("Content-Type", entity.asInstanceOf[HttpBody].contentType.value)
+    if (!entity.isEmpty) putHeaderBytes(ContentType, entity.asInstanceOf[HttpBody].contentType.valueBytes)
     else this
 
   def renderChunk(chunk: MessageChunk, messageSizeHint: Int): RenderedMessagePart = {

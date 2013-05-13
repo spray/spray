@@ -24,6 +24,7 @@ import scala.annotation.tailrec
 abstract class HttpHeader {
   def name: String
   def lowercaseName: String
+  val name7bit: Array[Byte] = name.map(_.toByte).toArray
   def value: String
   def is(nameInLowerCase: String): Boolean = lowercaseName == nameInLowerCase
   def isNot(nameInLowerCase: String): Boolean = lowercaseName != nameInLowerCase
