@@ -210,8 +210,12 @@ class UriSpec extends Specification {
       query.get("d") === None
       query.getOrElse("a", "x") === "1"
       query.getOrElse("d", "x") === "x"
-      query.getAll("b") === List("2", "4", "")
+      query.getAll("b") === List("", "4", "2")
       query.getAll("d") === Nil
+      query.toMap === Map("a" -> "1", "b" -> "", "c" -> "3")
+      query.toMultiMap === Map("a" -> List("1"), "b" -> List("", "4", "2"), "c" -> List("3"))
+      query.toList === List("a" -> "1", "b" -> "2", "c" -> "3", "b" -> "4", "b" -> "")
+      query.toSeq === Seq("a" -> "1", "b" -> "2", "c" -> "3", "b" -> "4", "b" -> "")
     }
     "support conversion from list of name/value pairs" in {
       import Query._

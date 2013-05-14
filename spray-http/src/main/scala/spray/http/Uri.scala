@@ -23,6 +23,7 @@ import scala.annotation.tailrec
 import spray.http.parser.{ ParserInput, UriParser }
 import UriParser._
 import Uri._
+import scala.collection.generic.CanBuildFrom
 
 /**
  * An immutable model of an internet URI as defined by http://tools.ietf.org/html/rfc3986.
@@ -377,17 +378,41 @@ object Uri {
     def key: String
     def value: String
     def tail: Query
-    def length: Int
+    def length: Int = {
+      @tailrec def len(q: Query, l: Int = 0): Int = if (q.isEmpty) l else len(q.tail, l + 1)
+      len(this)
+    }
     def +:(kvp: (String, String)) = Query.Cons(kvp._1, kvp._2, this)
-    def get(key: String): Option[String]
-    def getOrElse(key: String, default: ⇒ String): String
-    def getAll(key: String): List[String]
-    def toMap: Map[String, String]
-    def toList: List[(String, String)] = {
-      val builder = List.newBuilder[(String, String)]
-      @tailrec def toList(q: Query): List[(String, String)] =
-        if (q.isEmpty) builder.result() else { builder += ((q.key, q.value)); toList(q.tail) }
-      toList(this)
+    def get(key: String): Option[String] = {
+      @tailrec def g(q: Query): Option[String] = if (q.isEmpty) None else if (q.key == key) Some(q.value) else g(q.tail)
+      g(this)
+    }
+    def getOrElse(key: String, default: ⇒ String): String = {
+      @tailrec def g(q: Query): String = if (q.isEmpty) default else if (q.key == key) q.value else g(q.tail)
+      g(this)
+    }
+    def getAll(key: String): List[String] = {
+      @tailrec def fetch(q: Query, result: List[String] = Nil): List[String] =
+        if (q.isEmpty) result else fetch(q.tail, if (q.key == key) q.value :: result else result)
+      fetch(this)
+    }
+    def toMap: Map[String, String] = {
+      @tailrec def append(map: Map[String, String], q: Query): Map[String, String] =
+        if (q.isEmpty) map else append(map.updated(q.key, q.value), q.tail)
+      append(Map.empty, this)
+    }
+    def toMultiMap: Map[String, List[String]] = {
+      @tailrec def append(map: Map[String, List[String]], q: Query): Map[String, List[String]] =
+        if (q.isEmpty) map else append(map.updated(q.key, q.value :: map.getOrElse(q.key, Nil)), q.tail)
+      append(Map.empty, this)
+    }
+    def toList: List[(String, String)] = toCollection[List]
+    def toSeq: Seq[(String, String)] = toCollection[Vector]
+    def toCollection[M[_] <: TraversableOnce[_]](implicit cbf: CanBuildFrom[Nothing, (String, String), M[(String, String)]]): M[(String, String)] = {
+      val builder = cbf()
+      @tailrec def append(q: Query): M[(String, String)] =
+        if (q.isEmpty) builder.result() else { builder += ((q.key, q.value)); append(q.tail) }
+      append(this)
     }
     def render(sb: JStringBuilder, charset: Charset = UTF8): JStringBuilder = {
       def enc(s: String) = encode(s, charset, QUERY_FRAGMENT_CHAR & ~(AMP | EQUAL | PLUS) | SPACE).replace(' ', '+')
@@ -434,19 +459,9 @@ object Uri {
       def key = throw new NoSuchElementException("key of empty path")
       def value = throw new NoSuchElementException("value of empty path")
       def tail = throw new UnsupportedOperationException("tail of empty query")
-      def length: Int = 0
-      def get(key: String): Option[String] = None
-      def getOrElse(key: String, default: ⇒ String): String = default
-      def getAll(key: String): List[String] = Nil
-      def toMap: Map[String, String] = Map.empty
     }
     case class Cons(key: String, value: String, tail: Query) extends Query {
       def isEmpty = false
-      def length = tail.length + 1
-      def get(key: String) = if (this.key == key) Some(value) else tail.get(key)
-      def getOrElse(key: String, default: ⇒ String) = if (this.key == key) value else tail.getOrElse(key, default)
-      def getAll(key: String) = if (this.key == key) value :: tail.getAll(key) else tail.getAll(key)
-      def toMap: Map[String, String] = tail.toMap.updated(key, value)
     }
   }
 
