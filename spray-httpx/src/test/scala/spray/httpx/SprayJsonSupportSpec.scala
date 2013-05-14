@@ -35,14 +35,27 @@ class SprayJsonSupportSpec extends Specification with SprayJsonSupport {
   import MyJsonProtocol._
 
   val employee = Employee("Frank", "Smith", 42, 12345, false)
-  val employeeJson = PrettyPrinter(employee.toJson)
+  val employeeJson = employee.toJson.prettyPrint
 
   "The SprayJsonSupport" should {
     "provide unmarshalling capability for case classes with an in-scope JsonFormat" in {
       HttpEntity(`application/json`, employeeJson).as[Employee] === Right(employee)
     }
+
     "provide marshalling capability for case classes with an in-scope JsonFormat" in {
-      marshal(employee) === Right(HttpEntity(ContentType(`application/json`, `UTF-8`), employeeJson))
+      marshal(employee) === Right(HttpEntity(ContentType.`application/json`, employeeJson))
+    }
+
+    "using UTF-8 as the default charset for JSON source decoding" in {
+      val json =
+        """{
+          |  "fname": "Fränk",
+          |  "name": "Smi√",
+          |  "age": 42,
+          |  "id": 12345,
+          |  "boardMember": false
+          |}""".stripMargin.getBytes(HttpCharsets.`UTF-8`.nioCharset)
+      HttpEntity(`application/json`, json).as[Employee] === Right(Employee("Fränk", "Smi√", 42, 12345, false))
     }
   }
 

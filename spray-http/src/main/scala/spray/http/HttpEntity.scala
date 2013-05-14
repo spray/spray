@@ -27,6 +27,7 @@ sealed trait HttpEntity {
   def flatMap(f: HttpBody ⇒ HttpEntity): HttpEntity
   def orElse(other: HttpEntity): HttpEntity
   def asString: String
+  def asString(defaultCharset: HttpCharset): String
   def toOption: Option[HttpBody]
 }
 
@@ -39,6 +40,7 @@ case object EmptyEntity extends HttpEntity {
   def flatMap(f: HttpBody ⇒ HttpEntity): HttpEntity = this
   def orElse(other: HttpEntity): HttpEntity = other
   def asString = ""
+  def asString(defaultCharset: HttpCharset) = ""
   def toOption = None
 }
 
@@ -53,6 +55,8 @@ case class HttpBody private (contentType: ContentType, buffer: Array[Byte]) exte
   def flatMap(f: HttpBody ⇒ HttpEntity): HttpEntity = f(this)
   def orElse(other: HttpEntity): HttpEntity = this
   def asString = new String(buffer, contentType.charset.nioCharset)
+  def asString(defaultCharset: HttpCharset) =
+    new String(buffer, contentType.definedCharset.getOrElse(defaultCharset).nioCharset)
   def toOption = Some(this)
 
   override def toString =
