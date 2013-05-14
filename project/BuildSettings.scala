@@ -29,8 +29,7 @@ object BuildSettings {
       "-unchecked",
       "-deprecation",
       "-target:jvm-1.6",
-      "-language:postfixOps",
-      "-language:implicitConversions",
+      "-language:_",
       "-Xlog-reflective-calls"
     )
   )
