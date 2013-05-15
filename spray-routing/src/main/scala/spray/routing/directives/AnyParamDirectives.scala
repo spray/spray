@@ -60,12 +60,11 @@ object AnyParamDefMagnet {
   implicit def forNDefR[T <: NameDefaultReceptacle[_]](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
   implicit def forNDesDefR[T <: NameDeserializerDefaultReceptacle[_]](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
 
-  implicit def forTuple[T <: Product](value: T)(implicit apdm21: AnyParamDefMagnet2[T]) = {
+  implicit def forTuple[T <: Product](value: T)(implicit apdm21: AnyParamDefMagnet2[T]) =
     new AnyParamDefMagnet {
       type Out = apdm21.Out
       def apply() = apdm21(value)
     }
-  }
 }
 
 trait AnyParamDefMagnet2[T] {
@@ -75,12 +74,11 @@ trait AnyParamDefMagnet2[T] {
 
 object AnyParamDefMagnet2 {
   implicit def forTuple[T <: Product, L <: HList, Out](implicit hla: HListerAux[T, L],
-                                                       apdma: AnyParamDefMagnetAux[L]) = {
+                                                       apdma: AnyParamDefMagnetAux[L]) =
     new AnyParamDefMagnet2[T] {
       def apply(value: T) = apdma(hla(value))
       type Out = apdma.Out
     }
-  }
 }
 
 trait AnyParamDefMagnetAux[L] {
@@ -89,14 +87,13 @@ trait AnyParamDefMagnetAux[L] {
 }
 
 object AnyParamDefMagnetAux {
-  implicit def forHList[L <: HList](implicit f: LeftFolder[L, Directive0, MapReduce.type]) = {
+  implicit def forHList[L <: HList](implicit f: LeftFolder[L, Directive0, MapReduce.type]) =
     new AnyParamDefMagnetAux[L] {
       type Out = f.Out
       def apply(value: L) = {
         value.foldLeft(BasicDirectives.noop)(MapReduce)
       }
     }
-  }
 
   object MapReduce extends Poly2 {
     implicit def from[T, LA <: HList, LB <: HList, Out <: HList](implicit fdma: FieldDefMagnetAux[T, Directive[LB]],
