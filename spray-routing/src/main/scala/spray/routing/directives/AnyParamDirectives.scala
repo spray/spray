@@ -45,47 +45,20 @@ trait AnyParamDefMagnet {
 }
 
 object AnyParamDefMagnet {
-  implicit def forString[T <: String](value: T)(implicit apdm2: AnyParamDefMagnet2[Tuple1[T]]) = {
-    new AnyParamDefMagnet {
-      type Out = apdm2.Out
-      def apply() = apdm2(Tuple1(value))
-    }
-  }
+  private type APDM2Tuple1[T] = AnyParamDefMagnet2[Tuple1[T]]
 
-  implicit def forSymbol[T <: Symbol](value: T)(implicit apdm2: AnyParamDefMagnet2[Tuple1[T]]) = {
+  private def apply[T](value: T)(implicit apdm2Tuple1: APDM2Tuple1[T]) =
     new AnyParamDefMagnet {
-      type Out = apdm2.Out
-      def apply() = apdm2(Tuple1(value))
+      type Out = apdm2Tuple1.Out
+      def apply() = apdm2Tuple1(Tuple1(value))
     }
-  }
 
-  implicit def forNR[T <: NameReceptacle[_]](value: T)(implicit apdm2: AnyParamDefMagnet2[Tuple1[T]]) = {
-    new AnyParamDefMagnet {
-      type Out = apdm2.Out
-      def apply() = apdm2(Tuple1(value))
-    }
-  }
-
-  implicit def forNDesR[T <: NameDeserializerReceptacle[_]](value: T)(implicit apdm2: AnyParamDefMagnet2[Tuple1[T]]) = {
-    new AnyParamDefMagnet {
-      type Out = apdm2.Out
-      def apply() = apdm2(Tuple1(value))
-    }
-  }
-
-  implicit def forNDefR[T <: NameDefaultReceptacle[_]](value: T)(implicit apdm2: AnyParamDefMagnet2[Tuple1[T]]) = {
-    new AnyParamDefMagnet {
-      type Out = apdm2.Out
-      def apply() = apdm2(Tuple1(value))
-    }
-  }
-
-  implicit def forNDesDefR[T <: NameDeserializerDefaultReceptacle[_]](value: T)(implicit apdm2: AnyParamDefMagnet2[Tuple1[T]]) = {
-    new AnyParamDefMagnet {
-      type Out = apdm2.Out
-      def apply() = apdm2(Tuple1(value))
-    }
-  }
+  implicit def forString[T <: String](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
+  implicit def forSymbol[T <: Symbol](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
+  implicit def forNR[T <: NameReceptacle[_]](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
+  implicit def forNDesR[T <: NameDeserializerReceptacle[_]](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
+  implicit def forNDefR[T <: NameDefaultReceptacle[_]](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
+  implicit def forNDesDefR[T <: NameDeserializerDefaultReceptacle[_]](value: T)(implicit apdm2: APDM2Tuple1[T]) = apply(value)
 
   implicit def forTuple[T <: Product](value: T)(implicit apdm21: AnyParamDefMagnet2[T]) = {
     new AnyParamDefMagnet {
