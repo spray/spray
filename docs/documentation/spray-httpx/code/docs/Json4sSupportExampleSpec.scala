@@ -14,7 +14,7 @@ case class Employee2(fname: String, name: String, age: Int, id: Long, boardMembe
 class Json4sSupportExampleSpec extends Specification  {
 
   object Json4sMarshaller extends Json4sSupport {
-    val formats = DefaultFormats
+    val json4sFormats = DefaultFormats
   }
   import spray.httpx.marshalling.{ Marshaller, MetaMarshallers }
   import spray.httpx.unmarshalling._

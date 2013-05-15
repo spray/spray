@@ -15,17 +15,18 @@
  */
 package spray.httpx
 
-import marshalling.{ Marshaller, MetaMarshallers }
-import unmarshalling.Unmarshaller
-import spray.http.MediaTypes._
-import spray.http.{ ContentType, HttpBody }
-import org.json4s.native.Serialization.{ read, write }
+import org.json4s.native.Serialization
 import org.json4s.Formats
+import spray.httpx.marshalling.{ Marshaller, MetaMarshallers }
+import spray.httpx.unmarshalling.Unmarshaller
+import spray.http._
+import MediaTypes._
 
 trait Json4sSupport extends MetaMarshallers {
 
   /**
-   * serialization and deserialization formats
+   * Supplies the serialization and deserialization formats for JSON4s.
+   *
    * proper usage
    * formats = DefaultFormats(NoTypeHints)
    * if you want extra support add json4s-ext to dependencies and add
@@ -37,17 +38,14 @@ trait Json4sSupport extends MetaMarshallers {
    * implicit val formats = org.json4s.DefaultFormats + new org.json4s.ext.EnumNameSerializer(MyEnum)
    * Joda Time
    * implicit val formats = org.json4s.DefaultFormats ++ org.json4s.ext.JodaTimeSerializers.all
-   *
    */
-  implicit def formats: Formats
+  implicit def json4sFormats: Formats
 
   implicit def json4sUnmarshaller[T: Manifest] =
     Unmarshaller[T](`application/json`) {
-      case x: HttpBody ⇒ read[T](x.asString)
+      case x: HttpBody ⇒ Serialization.read[T](x.asString(defaultCharset = HttpCharsets.`UTF-8`))
     }
 
   implicit def json4sMarshaller[T <: AnyRef] =
-    Marshaller.delegate[T, String](ContentType.`application/json`) {
-      write(_)
-    }
+    Marshaller.delegate[T, String](ContentType.`application/json`)(Serialization.write(_))
 }

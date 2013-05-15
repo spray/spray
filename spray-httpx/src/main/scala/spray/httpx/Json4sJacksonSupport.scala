@@ -15,23 +15,21 @@
  */
 package spray.httpx
 
-import marshalling.{ Marshaller, MetaMarshallers }
-import unmarshalling.Unmarshaller
-import spray.http.MediaTypes._
-import spray.http.{ ContentType, HttpBody }
-import org.json4s.jackson.Serialization.{ read, write }
+import org.json4s.jackson.Serialization
 import org.json4s.Formats
+import spray.httpx.marshalling.{ Marshaller, MetaMarshallers }
+import spray.httpx.unmarshalling.Unmarshaller
+import spray.http._
+import MediaTypes._
 
 trait Json4sJacksonSupport extends MetaMarshallers {
-  implicit def formats: Formats
+  implicit def json4sJacksonFormats: Formats
 
   implicit def json4sUnmarshaller[T: Manifest] =
     Unmarshaller[T](`application/json`) {
-      case x: HttpBody ⇒ read[T](x.asString)
+      case x: HttpBody ⇒ Serialization.read[T](x.asString(defaultCharset = HttpCharsets.`UTF-8`))
     }
 
   implicit def json4sMarshaller[T <: AnyRef] =
-    Marshaller.delegate[T, String](ContentType.`application/json`) {
-      write(_)
-    }
+    Marshaller.delegate[T, String](ContentType.`application/json`)(Serialization.write(_))
 }
