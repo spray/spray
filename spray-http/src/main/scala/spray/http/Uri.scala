@@ -20,10 +20,11 @@ package spray.http
 import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import java.nio.charset.Charset
 import scala.annotation.tailrec
+import scala.collection.{ mutable, LinearSeqOptimized }
+import scala.collection.immutable.LinearSeq
 import spray.http.parser.{ ParserInput, UriParser }
 import UriParser._
 import Uri._
-import scala.collection.generic.CanBuildFrom
 
 /**
  * An immutable model of an internet URI as defined by http://tools.ietf.org/html/rfc3986.
@@ -373,15 +374,9 @@ object Uri {
     }
   }
 
-  sealed abstract class Query {
-    def isEmpty: Boolean
+  sealed abstract class Query extends LinearSeq[(String, String)] with LinearSeqOptimized[(String, String), Query] {
     def key: String
     def value: String
-    def tail: Query
-    def length: Int = {
-      @tailrec def len(q: Query, l: Int = 0): Int = if (q.isEmpty) l else len(q.tail, l + 1)
-      len(this)
-    }
     def +:(kvp: (String, String)) = Query.Cons(kvp._1, kvp._2, this)
     def get(key: String): Option[String] = {
       @tailrec def g(q: Query): Option[String] = if (q.isEmpty) None else if (q.key == key) Some(q.value) else g(q.tail)
@@ -396,23 +391,10 @@ object Uri {
         if (q.isEmpty) result else fetch(q.tail, if (q.key == key) q.value :: result else result)
       fetch(this)
     }
-    def toMap: Map[String, String] = {
-      @tailrec def append(map: Map[String, String], q: Query): Map[String, String] =
-        if (q.isEmpty) map else append(map.updated(q.key, q.value), q.tail)
-      append(Map.empty, this)
-    }
     def toMultiMap: Map[String, List[String]] = {
       @tailrec def append(map: Map[String, List[String]], q: Query): Map[String, List[String]] =
         if (q.isEmpty) map else append(map.updated(q.key, q.value :: map.getOrElse(q.key, Nil)), q.tail)
       append(Map.empty, this)
-    }
-    def toList: List[(String, String)] = toCollection[List]
-    def toSeq: Seq[(String, String)] = toCollection[Vector]
-    def toCollection[M[_] <: TraversableOnce[_]](implicit cbf: CanBuildFrom[Nothing, (String, String), M[(String, String)]]): M[(String, String)] = {
-      val builder = cbf()
-      @tailrec def append(q: Query): M[(String, String)] =
-        if (q.isEmpty) builder.result() else { builder += ((q.key, q.value)); append(q.tail) }
-      append(this)
     }
     def render(sb: JStringBuilder, charset: Charset = UTF8): JStringBuilder = {
       def enc(s: String) = encode(s, charset, QUERY_FRAGMENT_CHAR & ~(AMP | EQUAL | PLUS) | SPACE).replace(' ', '+')
@@ -426,6 +408,7 @@ object Uri {
     }
     def toString(charset: Charset) = render(new JStringBuilder, charset).toString
     override def toString = toString(UTF8)
+    override def newBuilder: mutable.Builder[(String, String), Query] = Query.newBuilder
   }
   object Query {
     /**
@@ -445,23 +428,27 @@ object Uri {
       case None         ⇒ Query.Empty
       case Some(string) ⇒ apply(string, mode)
     }
-    def apply(list: List[(String, String)]): Query = {
-      @tailrec def queryFrom(l: List[(String, String)], query: Query = Query.Empty): Query = l match {
-        case Nil                ⇒ query
-        case (key, value) :: xs ⇒ queryFrom(xs, Cons(key, value, query))
-      }
-      queryFrom(list)
+    def apply(seq: Seq[(String, String)]): Query =
+      seq.foldRight(Query.Empty: Query) { case ((key, value), acc) ⇒ Cons(key, value, acc) }
+    def apply(map: Map[String, String]): Query = apply(map.toSeq)
+
+    def newBuilder: mutable.Builder[(String, String), Query] = new mutable.Builder[(String, String), Query] {
+      val b = mutable.ArrayBuffer.newBuilder[(String, String)]
+      def +=(elem: (String, String)): this.type = { b += elem; this }
+      def clear(): Unit = b.clear()
+      def result(): Query = apply(b.result())
     }
-    def apply(map: Map[String, String]): Query = apply(map.toList)
 
     object Empty extends Query {
-      def isEmpty = true
       def key = throw new NoSuchElementException("key of empty path")
       def value = throw new NoSuchElementException("value of empty path")
-      def tail = throw new UnsupportedOperationException("tail of empty query")
+      override def isEmpty = true
+      override def head: Nothing = throw new NoSuchElementException("head of empty list")
+      override def tail: Nothing = throw new UnsupportedOperationException("tail of empty query")
     }
-    case class Cons(key: String, value: String, tail: Query) extends Query {
-      def isEmpty = false
+    case class Cons(key: String, value: String, override val tail: Query) extends Query {
+      override def isEmpty = false
+      override def head = (key, value)
     }
   }
 
