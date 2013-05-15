@@ -20,9 +20,7 @@ import spray.http.FormData
 
 class AnyParamDirectivesSpec extends RoutingSpec {
   "when used with a single required parameter" should {
-    val route = path("test") {
-      anyParam("x") { x ⇒ _.complete(s"$x") }
-    }
+    val route = (path("test") & anyParam("x")) { echoComplete }
 
     "extract the parameter from query parameters" in {
       Get("/test?x=1") ~> route ~> check {
@@ -44,9 +42,7 @@ class AnyParamDirectivesSpec extends RoutingSpec {
   }
 
   "when used with a single optional parameter" should {
-    val route = path("test") {
-      anyParam("x"?) { x ⇒ _.complete(s"$x") }
-    }
+    val route = (path("test") & anyParam("x"?)) { echoComplete }
 
     "extract the parameter from query parameters" in {
       Get("/test?x=1") ~> route ~> check {
@@ -146,9 +142,7 @@ class AnyParamDirectivesSpec extends RoutingSpec {
   }
 
   "when used with a symbol" should {
-    val route = path("test") {
-      anyParam('x) { x ⇒ _.complete(s"$x") }
-    }
+    val route = (path("test") & anyParam('x)) { echoComplete }
 
     "extract the parameter from query parameters" in {
       Get("/test?x=1") ~> route ~> check {
