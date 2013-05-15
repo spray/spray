@@ -70,9 +70,7 @@ class AnyParamDirectivesSpec extends RoutingSpec {
   }
 
   "when used with two required parameters" should {
-    val route = path("test") {
-      anyParam("x", "y") { (x, y) ⇒ _.complete(s"$x $y") }
-    }
+    val route = (path("test") & anyParam("x", "y")) { echoComplete2 }
 
     "extract the parameters from query parameters" in {
       Get("/test?x=1&y=2") ~> route ~> check {
@@ -94,9 +92,7 @@ class AnyParamDirectivesSpec extends RoutingSpec {
   }
 
   "when used with two optional parameters" should {
-    val route = path("test") {
-      anyParam("x"?, "y"?) { (x, y) ⇒ _.complete(s"$x $y") }
-    }
+    val route = (path("test") & anyParam("x"?, "y"?)) { echoComplete2 }
 
     "extract the parameters from query parameters" in {
       Get("/test?x=1&y=2") ~> route ~> check {
@@ -124,9 +120,7 @@ class AnyParamDirectivesSpec extends RoutingSpec {
   }
 
   "when used with type conversions" should {
-    val route = path("test") {
-      anyParam("x".as[Int], "y".as[Boolean]) { (x, y) ⇒ _.complete(s"$x $y") }
-    }
+    val route = (path("test") & anyParam("x".as[Int], "y".as[Boolean])) { echoComplete2 }
 
     "extract the parameters with correct types, from query parameters" in {
       Get("/test?x=1&y=false") ~> route ~> check {
