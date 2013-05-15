@@ -24,5 +24,8 @@ trait ScalatestInterface extends TestFrameworkInterface with BeforeAndAfterAll {
 
   def failTest(msg: String) = throw new TestFailedException(msg, 11)
 
-  override protected def afterAll() { cleanUp() }
+  override protected def afterAll() { 
+    cleanUp() 
+    super.afterAll()
+  }
 }
