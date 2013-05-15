@@ -76,7 +76,7 @@ object Build extends Build with DocSupport {
     .settings(sprayModuleSettings: _*)
     .settings(libraryDependencies ++=
       compile(mimepull) ++
-      provided(akkaActor, sprayJson, twirlApi, liftJson) ++
+      provided(akkaActor, sprayJson, twirlApi, liftJson, json4sNative, json4sJackson) ++
       test(specs2)
     )
 
@@ -161,7 +161,7 @@ object Build extends Build with DocSupport {
     .dependsOn(sprayCaching, sprayCan, sprayClient, sprayHttp, sprayHttpx, sprayIO, sprayRouting,
                sprayServlet, sprayTestKit, sprayUtil)
     .settings(docsSettings: _*)
-    .settings(libraryDependencies ++= test(akkaActor, akkaTestKit, sprayJson, specs2))
+    .settings(libraryDependencies ++= test(akkaActor, akkaTestKit, sprayJson, specs2, json4sNative))
 
 
   // -------------------------------------------------------------------------------------------------------------------
