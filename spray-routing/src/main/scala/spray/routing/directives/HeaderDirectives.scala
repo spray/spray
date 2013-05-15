@@ -32,7 +32,7 @@ trait HeaderDirectives {
    * with a [[spray.routing.MalformedHeaderRejection]].
    */
   def headerValue[T](f: HttpHeader ⇒ Option[T]): Directive1[T] = {
-    def protectedF(header: HttpHeader): Option[Either[Rejection, T]] =
+    val protectedF: HttpHeader ⇒ Option[Either[Rejection, T]] = header ⇒
       try f(header).map(Right.apply)
       catch {
         case NonFatal(e) ⇒ Some(Left(MalformedHeaderRejection(header.name, e.getMessage, Some(e))))
