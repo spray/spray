@@ -24,7 +24,6 @@ import spray.http._
 import HttpMethods._
 import HttpHeaders._
 
-
 trait RequestBuilding {
   import RequestBuilding.RequestTransformer
 

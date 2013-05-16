@@ -124,6 +124,10 @@ class RequestParserSpec extends Specification {
         parse(parser)(start)
         parse(parser)("3\nabc\n") === ("abc", "", "", false)
         parse(parser)("10;some=stuff;bla\n0123456789ABCDEF\n") === ("0123456789ABCDEF", "some=stuff;bla", "", false)
+        parse(parser)("10;foo=") === Result.NeedMoreData
+        parse(parser)("bar\n0123456789ABCDEF\nmore") === ("0123456789ABCDEF", "foo=bar", "more", false)
+        parse(parser)("10\n0123456789") === Result.NeedMoreData
+        parse(parser)("ABCDEF\neven-more") === ("0123456789ABCDEF", "", "even-more", false)
       }
 
       "message end" in {
