@@ -435,16 +435,16 @@ object Uri {
     def newBuilder: mutable.Builder[(String, String), Query] = new mutable.Builder[(String, String), Query] {
       val b = mutable.ArrayBuffer.newBuilder[(String, String)]
       def +=(elem: (String, String)): this.type = { b += elem; this }
-      def clear(): Unit = b.clear()
-      def result(): Query = apply(b.result())
+      def clear() = b.clear()
+      def result() = apply(b.result())
     }
 
     object Empty extends Query {
       def key = throw new NoSuchElementException("key of empty path")
       def value = throw new NoSuchElementException("value of empty path")
       override def isEmpty = true
-      override def head: Nothing = throw new NoSuchElementException("head of empty list")
-      override def tail: Nothing = throw new UnsupportedOperationException("tail of empty query")
+      override def head = throw new NoSuchElementException("head of empty list")
+      override def tail = throw new UnsupportedOperationException("tail of empty query")
     }
     case class Cons(key: String, value: String, override val tail: Query) extends Query {
       override def isEmpty = false
