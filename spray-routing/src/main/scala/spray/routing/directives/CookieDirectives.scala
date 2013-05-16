@@ -46,15 +46,18 @@ trait CookieDirectives {
   }
 
   /**
-   * Adds a Set-Cookie header with the given cookie to all responses of its inner route.
+   * Adds a Set-Cookie header with the given cookies to all responses of its inner route.
    */
-  def setCookie(cookie: HttpCookie): Directive0 = respondWithHeader(`Set-Cookie`(cookie))
+  def setCookie(first: HttpCookie, more: HttpCookie*): Directive0 =
+    respondWithHeaders((first :: more.toList).map(`Set-Cookie`(_)))
 
   /**
-   * Adds a Set-Cookie header expiring the given cookie to all responses of its inner route.
+   * Adds a Set-Cookie header expiring the given cookies to all responses of its inner route.
    */
-  def deleteCookie(cookie: HttpCookie): Directive0 =
-    respondWithHeader(`Set-Cookie`(cookie.copy(content = "deleted", expires = Some(DateTime.MinValue))))
+  def deleteCookie(first: HttpCookie, more: HttpCookie*): Directive0 =
+    respondWithHeaders((first :: more.toList).map { c ⇒
+      `Set-Cookie`(c.copy(content = "deleted", expires = Some(DateTime.MinValue)))
+    })
 
   /**
    * Adds a Set-Cookie header expiring the given cookie to all responses of its inner route.
