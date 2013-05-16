@@ -74,13 +74,13 @@ trait RespondWithDirectives {
    * Also note that this directive does *not* change the response entity buffer content in any way,
    * it merely overrides the media-type component of the entities Content-Type.
    */
-  def respondWithMediaType(mediaType: MediaType): Directive0 =
-    extract(_.request.isMediaTypeAccepted(mediaType)).flatMap[HNil] {
-      if (_) pass else reject(UnacceptedResponseContentTypeRejection(ContentType(mediaType) :: Nil))
-    } &
-      mapRequest(_.mapHeaders(h ⇒ if (h.exists(_.is("accept"))) h.filter(_.isNot("accept")) else h)) &
-      mapHttpResponseEntity(_.flatMap { case HttpBody(ct, buf) ⇒ HttpEntity(ct.withMediaType(mediaType), buf) })
-
+  def respondWithMediaType(mediaType: MediaType): Directive0 = {
+    val rejection = UnacceptedResponseContentTypeRejection(ContentType(mediaType) :: Nil)
+    extract(_.request.isMediaTypeAccepted(mediaType)).flatMap[HNil] { if (_) pass else reject(rejection) } &
+      mapRequestContext(_.withContentNegotiationDisabled) &
+      mapHttpResponseEntity(_.flatMap { case HttpBody(ct, buf) ⇒ HttpEntity(ct.withMediaType(mediaType), buf) }) &
+      MiscDirectives.cancelRejection(rejection)
+  }
 }
 
 object RespondWithDirectives extends RespondWithDirectives

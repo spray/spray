@@ -73,6 +73,13 @@ trait MiscDirectives {
   def cancelAllRejections(cancelFilter: Rejection ⇒ Boolean): Directive0 =
     mapRejections(_ :+ TransformationRejection(_.filterNot(cancelFilter)))
 
+  /**
+   * Adds a TransformationRejection cancelling all rejections equal to the given one
+   * to the list of rejections potentially coming back from the inner route.
+   */
+  def cancelRejection(rejection: Rejection): Directive0 =
+    cancelAllRejections(_ == rejection)
+
   def ofType[T <: Rejection: ClassTag]: Rejection ⇒ Boolean = {
     val erasure = classTag[T].runtimeClass
     erasure.isInstance(_)
