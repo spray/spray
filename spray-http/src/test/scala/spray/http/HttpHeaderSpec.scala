@@ -111,8 +111,8 @@ class HttpHeaderSpec extends Specification {
       example(`Content-Type`(ContentType(`text/xml`, `windows-1252`)))_ ^
       "Content-Type: text/plain; charset=fancy-pants" !
       errorExample(ErrorInfo("Illegal HTTP header 'Content-Type': Unsupported charset", "fancy-pants"))_ ^
-      "Content-Type: multipart/mixed; boundary=ABC123" !
-      example(`Content-Type`(ContentType(new `multipart/mixed`(Some("ABC123")))), fix(_).replace("=", "=\"") + '"')_ ^
+      "Content-Type: multipart/mixed; boundary=ABC123" ! example(`Content-Type`(ContentType(new `multipart/mixed`(Some("ABC123")))))_ ^
+      "Content-Type: multipart/mixed; boundary=\"ABC$123\"" ! example(`Content-Type`(ContentType(new `multipart/mixed`(Some("ABC$123")))))_ ^
       p ^
       "Cookie: SID=31d4d96e407aad42" !
       example(`Cookie`(HttpCookie("SID", "31d4d96e407aad42")), fix(_).replace("=", "=\"") + '"')_ ^
@@ -136,8 +136,9 @@ class HttpHeaderSpec extends Specification {
       "Last-Modified: Wed, 13 Jul 2011 08:12:31 GMT" ! example(`Last-Modified`(DateTime(2011, 7, 13, 8, 12, 31)))_ ^
       p ^
       "Location: https://spray.io/secure" ! example(Location(Uri("https://spray.io/secure")))_ ^
-      "Location: https://spray.io/{sec}" ! errorExample(ErrorInfo("Illegal HTTP header 'Location': Illegal absolute " +
-        "URI, unexpected character '{' at position 17", "\nhttps://spray.io/{sec}\n                 ^\n"))_ ^
+      "Location: https://spray.io/{sec}" ! example(Location(Uri("https://spray.io/{sec}")), fix(_).replace("{", "%7B").replace("}", "%7D"))_ ^
+      "Location: https://spray.io/ sec" ! errorExample(ErrorInfo("Illegal HTTP header 'Location': Illegal absolute " +
+        "URI, unexpected character ' ' at position 17", "\nhttps://spray.io/ sec\n                 ^\n"))_ ^
       p ^
       "Remote-Address: 111.22.3.4" ! example(`Remote-Address`("111.22.3.4"))_ ^
       p ^
@@ -156,7 +157,10 @@ class HttpHeaderSpec extends Specification {
       "Set-Cookie: name=\"123\"; HttpOnly; fancyPants" !
       example(`Set-Cookie`(HttpCookie("name", "123", httpOnly = true, extension = Some("fancyPants"))))_ ^
       p ^
-      "User-Agent: abc/1" ! example(`User-Agent`(ProductVersion.parseMultiple("abc/1  /")))_ ^
+      "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_3) AppleWebKit/537.31" !
+      example(`User-Agent`(ProductVersion("Mozilla", "5.0", "Macintosh; Intel Mac OS X 10_8_3"), ProductVersion("AppleWebKit", "537.31")))_ ^
+      "User-Agent: foo(bar)(baz)" !
+      example(`User-Agent`(ProductVersion("foo", "", "bar"), ProductVersion(comment = "baz")), _.replace("o(", "o (").replace(")(", ") ("))_ ^
       p ^
       "WWW-Authenticate: Basic realm=\"WallyWorld\"" !
       example(`WWW-Authenticate`(HttpChallenge("Basic", "WallyWorld")))_ ^

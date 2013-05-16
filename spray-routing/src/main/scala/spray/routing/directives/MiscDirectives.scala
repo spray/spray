@@ -39,12 +39,13 @@ trait MiscDirectives {
     }
 
   /**
-   * Directive extracting the IP of the client from either the X-Forwarded-For, Remote-Address or X-Real-IP header.
+   * Directive extracting the IP of the client from either the X-Forwarded-For, Remote-Address or X-Real-IP header
+   * (in that order of priority).
    */
   lazy val clientIP: Directive1[HttpIp] =
     (headerValuePF { case `X-Forwarded-For`(ips) if ips.flatten.nonEmpty ⇒ ips.flatten.head }) |
       (headerValuePF { case `Remote-Address`(ip) ⇒ ip }) |
-      (headerValuePF { case RawHeader("x-real-ip", ip) ⇒ ip })
+      (headerValuePF { case h: RawHeader if h.lowercaseName == "x-real-ip" ⇒ h.value })
 
   /**
    * Wraps the inner Route with JSONP support. If a query parameter with the given name is present in the request and
@@ -71,6 +72,13 @@ trait MiscDirectives {
    */
   def cancelAllRejections(cancelFilter: Rejection ⇒ Boolean): Directive0 =
     mapRejections(_ :+ TransformationRejection(_.filterNot(cancelFilter)))
+
+  /**
+   * Adds a TransformationRejection cancelling all rejections equal to the given one
+   * to the list of rejections potentially coming back from the inner route.
+   */
+  def cancelRejection(rejection: Rejection): Directive0 =
+    cancelAllRejections(_ == rejection)
 
   def ofType[T <: Rejection: ClassTag]: Rejection ⇒ Boolean = {
     val erasure = classTag[T].runtimeClass

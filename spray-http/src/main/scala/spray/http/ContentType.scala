@@ -51,6 +51,8 @@ case class ContentType(mediaType: MediaType, definedCharset: Option[HttpCharset]
   def noCharsetDefined = definedCharset.isEmpty
 
   def charset: HttpCharset = definedCharset.getOrElse(`ISO-8859-1`)
+
+  def valueBytes: Array[Byte] = value.getBytes("ASCII")
 }
 
 object ContentType {
@@ -58,7 +60,9 @@ object ContentType {
   val `application/octet-stream` = ContentType(MediaTypes.`application/octet-stream`)
 
   // RFC4627 defines JSON to always be UTF encoded, we always render JSON to UTF-8
-  val `application/json` = ContentType(MediaTypes.`application/json`, `UTF-8`)
+  val `application/json` = new ContentType(MediaTypes.`application/json`, Some(`UTF-8`)) {
+    override val valueBytes: Array[Byte] = super.valueBytes
+  }
 
   def apply(mediaType: MediaType, charset: HttpCharset): ContentType = apply(mediaType, Some(charset))
   implicit def apply(mediaType: MediaType): ContentType = apply(mediaType, None)

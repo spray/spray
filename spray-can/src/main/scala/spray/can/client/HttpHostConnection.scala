@@ -34,6 +34,9 @@ private[client] class HttpHostConnection(remoteAddress: InetSocketAddress,
                                          clientConnectionSettingsGroup: ActorRef)(implicit sslEngineProvider: ClientSSLEngineProvider)
     extends Actor with SprayActorLogging {
 
+  // we cannot sensibly recover from crashes
+  override def supervisorStrategy = SupervisorStrategy.stoppingStrategy
+
   def receive: Receive = unconnected
 
   def unconnected: Receive = {

@@ -19,6 +19,8 @@ package spray.http
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
+import org.parboiled.common.Base64
+import java.util
 
 sealed abstract class MediaRange {
   val value = mainType + "/*"
@@ -207,10 +209,16 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
       }
     }
 
+  private def containsOnlyRFC2045chars: String ⇒ Boolean = {
+    val rfc2045alphabet = Base64.rfc2045().getAlphabet.sorted
+    _.forall(util.Arrays.binarySearch(rfc2045alphabet, _) >= 0)
+  }
+
   class MultipartMediaType(val subType: String, val boundary: Option[String]) extends MediaType {
     override val value = boundary match {
-      case None       ⇒ mainType + '/' + subType
-      case _: Some[_] ⇒ mainType + '/' + subType + "; boundary=\"" + boundary.get + '"'
+      case None                                   ⇒ mainType + '/' + subType
+      case Some(b) if containsOnlyRFC2045chars(b) ⇒ mainType + '/' + subType + "; boundary=" + b
+      case Some(b)                                ⇒ mainType + '/' + subType + "; boundary=\"" + b + '"'
     }
     def mainType = "multipart"
     def compressible = true

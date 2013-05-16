@@ -15,8 +15,8 @@ addSbtPlugin("io.spray" % "sbt-twirl" % "0.6.1")
 
 addSbtPlugin("io.spray" % "sbt-boilerplate" % "0.5.0")
 
-addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.8.5")
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.8.8")
 
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.0")
+addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.3")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-scalariform" % "1.0.1")

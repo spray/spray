@@ -24,6 +24,7 @@ import scala.annotation.tailrec
 abstract class HttpHeader {
   def name: String
   def lowercaseName: String
+  val name7bit: Array[Byte] = name.map(_.toByte).toArray
   def value: String
   def is(nameInLowerCase: String): Boolean = lowercaseName == nameInLowerCase
   def isNot(nameInLowerCase: String): Boolean = lowercaseName != nameInLowerCase
@@ -169,7 +170,10 @@ object HttpHeaders {
     def value = ip.value
   }
 
-  object Server { def apply(products: String): Server = apply(ProductVersion.parseMultiple(products)) }
+  object Server {
+    def apply(products: String): Server = apply(ProductVersion.parseMultiple(products))
+    def apply(first: ProductVersion, more: ProductVersion*): Server = apply(first +: more)
+  }
   case class Server(products: Seq[ProductVersion]) extends HttpHeader {
     def name = "Server"
     def lowercaseName = "server"
@@ -197,7 +201,10 @@ object HttpHeaders {
     }
   }
 
-  object `User-Agent` { def apply(products: String): `User-Agent` = apply(ProductVersion.parseMultiple(products)) }
+  object `User-Agent` {
+    def apply(products: String): `User-Agent` = apply(ProductVersion.parseMultiple(products))
+    def apply(first: ProductVersion, more: ProductVersion*): `User-Agent` = apply(first +: more)
+  }
   case class `User-Agent`(products: Seq[ProductVersion]) extends HttpHeader {
     def name = "User-Agent"
     def lowercaseName = "user-agent"

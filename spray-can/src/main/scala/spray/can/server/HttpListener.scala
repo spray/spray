@@ -42,6 +42,9 @@ private[can] class HttpListener(bindCommander: ActorRef,
 
   context.setReceiveTimeout(settings.bindTimeout)
 
+  // we cannot sensibly recover from crashes
+  override def supervisorStrategy = SupervisorStrategy.stoppingStrategy
+
   def receive = binding()
 
   def binding(unbindCommanders: Set[ActorRef] = Set.empty): Receive = {

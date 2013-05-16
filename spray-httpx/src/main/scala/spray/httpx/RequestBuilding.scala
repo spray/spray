@@ -51,7 +51,8 @@ trait RequestBuilding {
   val Put = new RequestBuilder(PUT)
   val Patch = new RequestBuilder(PATCH)
   val Delete = new RequestBuilder(DELETE)
-
+  val Options = new RequestBuilder(OPTIONS)
+  val Head = new RequestBuilder(HEAD)
   def encode(encoder: Encoder): RequestTransformer = encoder.encode(_)
 
   def addHeader(header: HttpHeader): RequestTransformer = _.mapHeaders(header :: _)

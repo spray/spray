@@ -18,8 +18,10 @@ package spray.routing
 package directives
 
 import scala.concurrent.{ ExecutionContext, Future }
+import shapeless.HNil
 import spray.routing.authentication._
 import BasicDirectives._
+import MiscDirectives._
 import RouteDirectives._
 
 trait SecurityDirectives {
@@ -46,7 +48,8 @@ trait SecurityDirectives {
    * If the check fails the route is rejected with an [[spray.AuthorizationFailedRejection]].
    */
   def authorize(check: RequestContext ⇒ Boolean): Directive0 =
-    extract(check).flatMap(if (_) pass else reject(AuthorizationFailedRejection))
+    extract(check).flatMap[HNil](if (_) pass else reject(AuthorizationFailedRejection)) &
+      cancelRejection(AuthorizationFailedRejection)
 }
 
 class AuthMagnet[T](val value: Directive1[Future[Authentication[T]]])(implicit val executor: ExecutionContext)

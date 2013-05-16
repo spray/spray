@@ -1,7 +1,11 @@
-import com.typesafe.sbt.SbtScalariform
-import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import sbt._
 import Keys._
+import com.typesafe.sbt.SbtScalariform
+import com.typesafe.sbt.SbtScalariform.ScalariformKeys
+import sbtassembly.Plugin.AssemblyKeys._
+import sbtassembly.Plugin._
+import spray.revolver.RevolverPlugin.Revolver
+import twirl.sbt.TwirlPlugin.Twirl
 import ls.Plugin._
 
 
@@ -25,8 +29,7 @@ object BuildSettings {
       "-unchecked",
       "-deprecation",
       "-target:jvm-1.6",
-      "-language:postfixOps",
-      "-language:implicitConversions",
+      "-language:_",
       "-Xlog-reflective-calls"
     )
   )
@@ -82,15 +85,21 @@ object BuildSettings {
     }
   )
 
-  lazy val siteSettings = basicSettings ++ formatSettings ++ noPublishing ++ twirl.sbt.TwirlPlugin.Twirl.settings ++
-    spray.revolver.RevolverPlugin.Revolver.settings ++ SiteSupport.settings
-
+  lazy val siteSettings = basicSettings ++ formatSettings ++ noPublishing ++ Twirl.settings ++ Revolver.settings ++
+    SiteSupport.settings
 
   lazy val docsSettings = basicSettings ++ noPublishing ++ seq(
     unmanagedSourceDirectories in Test <<= baseDirectory { _ ** "code" get }
   )
 
   lazy val exampleSettings = basicSettings ++ noPublishing
+
+  lazy val benchmarkSettings = basicSettings ++ noPublishing ++ Revolver.settings ++ assemblySettings ++ Seq(
+    mainClass in assembly := Some("spray.examples.Main"),
+    jarName in assembly := "benchmark.jar",
+    test in assembly := {},
+    javaOptions in Revolver.reStart ++= Seq("-verbose:gc", "-XX:+PrintCompilation")
+  )
 
   import com.github.siasia.WebPlugin._
   lazy val jettyExampleSettings = exampleSettings ++ webSettings // ++ disableJettyLogSettings

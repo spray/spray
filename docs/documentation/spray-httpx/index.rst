@@ -18,4 +18,5 @@ used by both of them.
    spray-json-support
    lift-json-support
    twirl-support
+   json4s-support
 

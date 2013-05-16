@@ -48,22 +48,3 @@ package object http {
     HttpResponse(status = 200)
   }
 }
-
-package http {
-
-  case class ProductVersion(product: String, version: String = "") {
-    override def toString = if (version.isEmpty) product else product + '/' + version
-  }
-
-  object ProductVersion {
-    def parseMultiple(string: String): Seq[ProductVersion] =
-      string.split("\\s").flatMap {
-        _.split("/", 2) match {
-          case Array() | Array("") | Array("", _) ⇒ None
-          case Array(product)                     ⇒ Some(ProductVersion(product))
-          case Array(product, version)            ⇒ Some(ProductVersion(product, version))
-        }
-      }(collection.breakOut)
-  }
-
-}

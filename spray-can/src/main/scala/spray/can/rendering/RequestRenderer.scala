@@ -37,14 +37,14 @@ class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) {
   private def renderRequest(request: HttpRequest, remoteAddress: InetSocketAddress) = {
     implicit val bb = renderRequestStart(request, remoteAddress)
     val bodyLength = request.entity.buffer.length
-    if (bodyLength > 0 || request.method.entityAccepted) putHeader("Content-Length", bodyLength.toString)
+    if (bodyLength > 0 || request.method.entityAccepted) putHeader(ContentLength, bodyLength.toString)
     put(CrLf).put(request.entity.buffer)
     RenderedMessagePart(bb.result())
   }
 
   private def renderChunkedRequestStart(request: HttpRequest, remoteAddress: InetSocketAddress): RenderedMessagePart = {
     implicit val bb = renderRequestStart(request, remoteAddress)
-    putHeader("Transfer-Encoding", "chunked").put(CrLf)
+    putHeaderBytes(TransferEncoding, Chunked).put(CrLf)
     if (request.entity.buffer.length > 0) putChunk(request.entity.buffer)
     RenderedMessagePart(bb.result())
   }
@@ -62,7 +62,7 @@ class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) {
       if (port != 0) put(':').put(Integer.toString(port))
       put(CrLf)
     }
-    if (!userAgentHeader.isEmpty) putHeader("User-Agent", userAgentHeader)
+    if (!userAgentHeader.isEmpty) putHeader(UserAgent, userAgentHeader)
     putContentTypeHeaderIfRequired(request.entity)
     bb
   }

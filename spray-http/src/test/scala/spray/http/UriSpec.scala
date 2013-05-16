@@ -181,13 +181,28 @@ class UriSpec extends Specification {
   }
 
   "Uri.Query instances" should {
-    "be parsed and rendered correctly" in {
-      import Query._
-      Query("") === ("", "") +: Empty
-      Query("a") === ("a", "") +: Empty
-      Query("a=") === ("a", "") +: Empty
-      Query("=a") === ("", "a") +: Empty
-      Query("a&") === ("a", "") +: ("", "") +: Empty
+    def parser(mode: Uri.ParsingMode): String ⇒ Query = Query(_, mode)
+    "be parsed and rendered correctly in strict mode" in {
+      val test = parser(Uri.ParsingMode.Strict)
+      test("") === ("", "") +: Query.Empty
+      test("a") === ("a", "") +: Query.Empty
+      test("a=") === ("a", "") +: Query.Empty
+      test("=a") === ("", "a") +: Query.Empty
+      test("a&") === ("a", "") +: ("", "") +: Query.Empty
+      test("a^=b") must throwAn[IllegalUriException]
+    }
+    "be parsed and rendered correctly in relaxed mode" in {
+      val test = parser(Uri.ParsingMode.Relaxed)
+      test("") === ("", "") +: Query.Empty
+      test("a") === ("a", "") +: Query.Empty
+      test("a=") === ("a", "") +: Query.Empty
+      test("=a") === ("", "a") +: Query.Empty
+      test("a&") === ("a", "") +: ("", "") +: Query.Empty
+      test("a^=b") === ("a^", "b") +: Query.Empty
+    }
+    "be parsed and rendered correctly in relaxed-with-raw-query mode" in {
+      val test = parser(Uri.ParsingMode.RelaxedWithRawQuery)
+      test("a^=b&c").toString === "a%5E%3Db%26c"
     }
     "properly support the retrieval interface" in {
       val query = Query("a=1&b=2&c=3&b=4&b")
@@ -195,8 +210,19 @@ class UriSpec extends Specification {
       query.get("d") === None
       query.getOrElse("a", "x") === "1"
       query.getOrElse("d", "x") === "x"
-      query.getAll("b") === List("2", "4", "")
+      query.getAll("b") === List("", "4", "2")
       query.getAll("d") === Nil
+      query.toMap === Map("a" -> "1", "b" -> "", "c" -> "3")
+      query.toMultiMap === Map("a" -> List("1"), "b" -> List("", "4", "2"), "c" -> List("3"))
+      query.toList === List("a" -> "1", "b" -> "2", "c" -> "3", "b" -> "4", "b" -> "")
+      query.toSeq === Seq("a" -> "1", "b" -> "2", "c" -> "3", "b" -> "4", "b" -> "")
+    }
+    "support conversion from list of name/value pairs" in {
+      import Query._
+      val pairs = List("key1" -> "value1", "key2" -> "value2", "key3" -> "value3")
+      Query(pairs).toList.diff(pairs) === Nil
+      Query(Nil) === Empty
+      Query(List("k" -> "v")) === ("k" -> "v") +: Empty
     }
   }
 
@@ -232,6 +258,10 @@ class UriSpec extends Specification {
       Uri("http://") === Uri(scheme = "http", authority = Authority(host = NamedHost("")))
       Uri("http:?") === Uri.from(scheme = "http", query = Query(""))
       Uri("?a+b=c%2Bd") === Uri.from(query = ("a b", "c+d") +: Query.Empty)
+
+      // illegal paths
+      Uri("foo/another@url/[]and{}") === Uri.from(path = "foo/another@url/%5B%5Dand%7B%7D")
+      Uri("foo/another@url/[]and{}", mode = Uri.ParsingMode.Strict) must throwAn[IllegalUriException]
     }
 
     "properly complete a normalization cycle" in {
@@ -273,11 +303,17 @@ class UriSpec extends Specification {
       normalize("http://user:pass@SOMEHOST.COM:123") === "http://user:pass@somehost.com:123"
       normalize("HTTP://a:b@HOST:123/./1/2/../%41?abc#def") === "http://a:b@host:123/1/A?abc#def"
 
+      // acceptance and normalization of unescaped ascii characters such as {} and []:
+      normalize("eXAMPLE://a/./b/../b/%63/{foo}/[bar]") === "example://a/b/c/%7Bfoo%7D/%5Bbar%5D"
+      normalize("eXAMPLE://a/./b/../b/%63/{foo}/[bar]", mode = Uri.ParsingMode.Strict) must throwAn[IllegalUriException]
+
       // queries
       normalize("?") === "?"
       normalize("?key") === "?key"
       normalize("?key=") === "?key" // our query model cannot discriminate between these two inputs
       normalize("?key=&a=b") === "?key&a=b" // our query model cannot discriminate between these two inputs
+      normalize("?key={}&a=[]") === "?key=%7B%7D&a=%5B%5D"
+      normalize("?key={}&a=[]", mode = Uri.ParsingMode.Strict) must throwAn[IllegalUriException]
       normalize("?=value") === "?=value"
       normalize("?key=value") === "?key=value"
       normalize("?a+b") === "?a+b"
@@ -290,6 +326,8 @@ class UriSpec extends Specification {
       normalize("?&#") === "?&#"
       normalize("?#") === "?#"
       normalize("#") === "#"
+      normalize("#{}[]") === "#%7B%7D%5B%5D"
+      normalize("#{}[]", mode = Uri.ParsingMode.Strict) must throwAn[IllegalUriException]
     }
 
     "produce proper error messages for illegal URIs" in {

@@ -32,7 +32,6 @@ import spray.can.{ HostConnectorInfo, HostConnectorSetup, Http }
 import spray.client.pipelining._
 import spray.http._
 import spray.util._
-import akka.testkit.TestProbe
 
 class HttpHostConnectorSpec extends Specification with NoTimeConversions {
   implicit val timeout: Timeout = 5.seconds
@@ -71,7 +70,7 @@ class HttpHostConnectorSpec extends Specification with NoTimeConversions {
     IO(Http).ask(Http.Bind(testService, interface, port))(3.seconds).await
   }
 
-  "An HttpConduit with max. 4 connections and pipelining enabled" should {
+  "An HttpHostConnector with max. 4 connections and pipelining enabled" should {
     "properly deliver the result of a simple request (pipelining)" in {
       oneRequest(pipelined = true)
     }

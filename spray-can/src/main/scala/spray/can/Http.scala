@@ -22,9 +22,9 @@ import scala.collection.immutable
 import akka.io.{ Inet, Tcp }
 import akka.actor._
 import spray.can.server.{ ServerFrontend, ServerSettings }
-import spray.can.client.{ HostConnectorSettings, ClientConnectionSettings }
+import spray.can.client.ClientConnectionSettings
 import spray.io.{ ConnectionTimeouts, ClientSSLEngineProvider, ServerSSLEngineProvider }
-import spray.http.{ HttpMessagePart, HttpMessagePartWrapper }
+import spray.http.{ HttpResponse, HttpRequest, HttpMessagePart, HttpMessagePartWrapper }
 
 object Http extends ExtensionKey[HttpExt] {
 
@@ -58,7 +58,18 @@ object Http extends ExtensionKey[HttpExt] {
       apply(listener, new InetSocketAddress(interface, port), backlog, options, settings, sslEngineProvider)
   }
 
-  type Register = Tcp.Register; val Register = Tcp.Register
+  type FastPath = PartialFunction[HttpRequest, HttpResponse]
+
+  // we don't use PartialFunction.empty for the default fastPath because we need serializability
+  case object EmptyFastPath extends FastPath {
+    def isDefinedAt(x: HttpRequest) = false
+    def apply(x: HttpRequest) = throw new MatchError(x)
+  }
+
+  case class Register(handler: ActorRef,
+                      keepOpenOnPeerClosed: Boolean = false,
+                      fastPath: FastPath = EmptyFastPath) extends Command
+
   val Unbind = Tcp.Unbind
 
   type CloseCommand = Tcp.CloseCommand

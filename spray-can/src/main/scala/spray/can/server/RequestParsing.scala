@@ -38,7 +38,8 @@ object RequestParsing {
           import context.log
           val https = settings.sslEncryption && context.sslEngine.isDefined
           val parser = rootParser.copyWith { errorInfo ⇒
-            log.warning(errorInfo.withSummaryPrepended("Illegal request header").formatPretty)
+            if (settings.parserSettings.illegalHeaderWarnings)
+              log.warning(errorInfo.withSummaryPrepended("Illegal request header").formatPretty)
           }
 
           @tailrec def parse(data: CompactByteString): Unit =

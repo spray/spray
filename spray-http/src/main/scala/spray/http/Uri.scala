@@ -20,6 +20,8 @@ package spray.http
 import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import java.nio.charset.Charset
 import scala.annotation.tailrec
+import scala.collection.{ mutable, LinearSeqOptimized }
+import scala.collection.immutable.LinearSeq
 import spray.http.parser.{ ParserInput, UriParser }
 import UriParser._
 import Uri._
@@ -65,7 +67,7 @@ sealed abstract case class Uri(scheme: String, authority: Authority, path: Path,
     authority.render(sb, scheme, charset)
     path.render(sb, charset, encodeFirstSegmentColons = isRelative)
     if (!query.isEmpty) query.render(sb.append('?'), charset)
-    if (fragment.isDefined) sb.append('#').append(encode(fragment.get, charset, QUERY_FRAGMENT_CHARS))
+    if (fragment.isDefined) sb.append('#').append(encode(fragment.get, charset, QUERY_FRAGMENT_CHAR))
     sb
   }
 
@@ -90,27 +92,38 @@ object Uri {
    * Parses a valid URI string into a normalized URI reference as defined
    * by http://tools.ietf.org/html/rfc3986#section-4.1.
    * Percent-encoded octets are UTF-8 decoded.
+   * Accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  implicit def apply(input: String): Uri = apply(input: ParserInput)
+  implicit def apply(input: String): Uri = apply(input: ParserInput, UTF8, Uri.ParsingMode.Relaxed)
 
   /**
    * Parses a valid URI string into a normalized URI reference as defined
    * by http://tools.ietf.org/html/rfc3986#section-4.1.
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
+   * Accepts unencoded visible 7-bit ASCII characters in addition to the rfc.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def apply(input: ParserInput): Uri =
-    apply(input, UTF8)
+  def apply(input: ParserInput): Uri = apply(input, UTF8, Uri.ParsingMode.Relaxed)
 
   /**
    * Parses a valid URI string into a normalized URI reference as defined
    * by http://tools.ietf.org/html/rfc3986#section-4.1.
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def apply(input: ParserInput, charset: Charset): Uri =
-    new UriParser(input, charset).parseReference()
+  def apply(input: ParserInput, mode: Uri.ParsingMode): Uri = apply(input, UTF8, mode)
+
+  /**
+   * Parses a valid URI string into a normalized URI reference as defined
+   * by http://tools.ietf.org/html/rfc3986#section-4.1.
+   * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
+   * If the given string is not a valid URI the method throws an `IllegalUriException`.
+   */
+  def apply(input: ParserInput, charset: Charset, mode: Uri.ParsingMode): Uri =
+    new UriParser(input, charset, mode).parseReference()
 
   /**
    * Creates a new Uri instance from the given components.
@@ -136,34 +149,40 @@ object Uri {
    * http://tools.ietf.org/html/rfc3986 the method throws an `IllegalUriException`.
    */
   def from(scheme: String = "", userinfo: String = "", host: String = "", port: Int = 0, path: String = "",
-           query: Query = Query.Empty, fragment: Option[String] = None): Uri =
-    apply(scheme, Authority(Host(host), normalizePort(port, scheme), userinfo), Path(path), query, fragment)
+           query: Query = Query.Empty, fragment: Option[String] = None,
+           mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Uri =
+    apply(scheme, Authority(Host(host, mode), normalizePort(port, scheme), userinfo), Path(path), query, fragment)
 
   /**
    * Parses a string into a normalized absolute URI as defined by http://tools.ietf.org/html/rfc3986#section-4.3.
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseAbsolute(input: ParserInput, charset: Charset = UTF8): Uri =
-    new UriParser(input, charset).parseAbsolute()
+  def parseAbsolute(input: ParserInput, charset: Charset = UTF8, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Uri =
+    new UriParser(input, charset, mode).parseAbsolute()
 
   /**
    * Parses a string into a normalized URI reference that is immediately resolved against the given base URI as
    * defined by http://tools.ietf.org/html/rfc3986#section-5.2.
    * Note that the given base Uri must be absolute (i.e. define a scheme).
    * Percent-encoded octets are decoded using the given charset (where specified by the RFC).
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseAndResolve(input: ParserInput, base: Uri, charset: Charset = UTF8): Uri =
-    new UriParser(input, charset).parseAndResolveReference(base)
+  def parseAndResolve(string: ParserInput, base: Uri, charset: Charset = UTF8,
+                      mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Uri =
+    new UriParser(string, charset, mode).parseAndResolveReference(base)
 
   /**
    * Parses the given string into an HTTP request target URI as defined by
    * http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.3.
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def parseHttpRequestTarget(input: ParserInput, charset: Charset = UTF8): Uri =
-    new UriParser(input, charset).parseHttpRequestTarget()
+  def parseHttpRequestTarget(requestTarget: ParserInput, charset: Charset = UTF8,
+                             mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Uri =
+    new UriParser(requestTarget, charset, mode).parseHttpRequestTarget()
 
   /**
    * Normalizes the given URI string by performing the following normalizations:
@@ -172,10 +191,11 @@ object Uri {
    * - percent-encoded octets are decoded if allowed, otherwise they are converted to uppercase hex notation
    * - `.` and `..` path segments are resolved as far as possible
    *
+   * If strict is `false`, accepts unencoded visible 7-bit ASCII characters in addition to the RFC.
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
-  def normalize(input: ParserInput, charset: Charset = UTF8): String =
-    Uri(input, charset).toString(charset)
+  def normalize(uri: ParserInput, charset: Charset = UTF8, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): String =
+    apply(uri, charset, mode).toString(charset)
 
   /**
    * Converts a set of URI components to an "effective HTTP request URI" as defined by
@@ -240,9 +260,9 @@ object Uri {
       def toOption = None
       def render(sb: JStringBuilder) = sb
     }
-    def apply(string: String): Host =
+    def apply(string: String, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Host =
       if (!string.isEmpty) {
-        val parser = new UriParser(string, UTF8)
+        val parser = new UriParser(string, UTF8, mode)
         import parser._
         complete("URI host", host)
         _host
@@ -341,7 +361,7 @@ object Uri {
       def length: Int = tail.length + 1
       def charCount: Int = head.length + tail.charCount
       def render(sb: JStringBuilder, charset: Charset = UTF8, encodeFirstSegmentColons: Boolean = false) = {
-        val keep = if (encodeFirstSegmentColons) PATH_SEGMENT_CHARS & ~COLON else PATH_SEGMENT_CHARS
+        val keep = if (encodeFirstSegmentColons) PATH_SEGMENT_CHAR & ~COLON else PATH_SEGMENT_CHAR
         tail.render(sb.append(encode(head, charset, keep)), charset)
       }
       def ::(segment: String) = if (segment.isEmpty) this else Segment(segment + head, tail)
@@ -354,25 +374,30 @@ object Uri {
     }
   }
 
-  sealed abstract class Query {
-    def isEmpty: Boolean
+  sealed abstract class Query extends LinearSeq[(String, String)] with LinearSeqOptimized[(String, String), Query] {
     def key: String
     def value: String
-    def tail: Query
-    def length: Int
     def +:(kvp: (String, String)) = Query.Cons(kvp._1, kvp._2, this)
-    def get(key: String): Option[String]
-    def getOrElse(key: String, default: ⇒ String): String
-    def getAll(key: String): List[String]
-    def toMap: Map[String, String]
-    def toList: List[(String, String)] = {
-      val builder = List.newBuilder[(String, String)]
-      @tailrec def toList(q: Query): List[(String, String)] =
-        if (q.isEmpty) builder.result() else { builder += ((q.key, q.value)); toList(q.tail) }
-      toList(this)
+    def get(key: String): Option[String] = {
+      @tailrec def g(q: Query): Option[String] = if (q.isEmpty) None else if (q.key == key) Some(q.value) else g(q.tail)
+      g(this)
+    }
+    def getOrElse(key: String, default: ⇒ String): String = {
+      @tailrec def g(q: Query): String = if (q.isEmpty) default else if (q.key == key) q.value else g(q.tail)
+      g(this)
+    }
+    def getAll(key: String): List[String] = {
+      @tailrec def fetch(q: Query, result: List[String] = Nil): List[String] =
+        if (q.isEmpty) result else fetch(q.tail, if (q.key == key) q.value :: result else result)
+      fetch(this)
+    }
+    def toMultiMap: Map[String, List[String]] = {
+      @tailrec def append(map: Map[String, List[String]], q: Query): Map[String, List[String]] =
+        if (q.isEmpty) map else append(map.updated(q.key, q.value :: map.getOrElse(q.key, Nil)), q.tail)
+      append(Map.empty, this)
     }
     def render(sb: JStringBuilder, charset: Charset = UTF8): JStringBuilder = {
-      def enc(s: String) = encode(s, charset, QUERY_FRAGMENT_CHARS & ~(AMP | EQUAL | PLUS) | SPACE).replace(' ', '+')
+      def enc(s: String) = encode(s, charset, QUERY_FRAGMENT_CHAR & ~(AMP | EQUAL | PLUS) | SPACE).replace(' ', '+')
       @tailrec def append(q: Query): JStringBuilder = if (q.isEmpty) sb else {
         if (q ne this) sb.append('&')
         sb.append(enc(q.key))
@@ -383,48 +408,47 @@ object Uri {
     }
     def toString(charset: Charset) = render(new JStringBuilder, charset).toString
     override def toString = toString(UTF8)
+    override def newBuilder: mutable.Builder[(String, String), Query] = Query.newBuilder
   }
   object Query {
     /**
      * Parses the given String into a Query instance.
      * Note that this method will never return Query.Empty, even for the empty String.
      * Empty strings will be parsed to `("", "") +: Query.Empty`
+     * If you want to allow for Query.Empty creation use the apply overload taking an `Option[String`.
      */
-    def apply(string: String): Query = {
-      val parser = new UriParser(string, UTF8)
+    def apply(string: String, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Query = {
+      val parser = new UriParser(string, UTF8, mode)
       import parser._
       complete("Query", query)
       _query
     }
-    def apply(input: Option[String]): Query = input match {
+    def apply(input: Option[String]): Query = apply(input, Uri.ParsingMode.Relaxed)
+    def apply(input: Option[String], mode: Uri.ParsingMode): Query = input match {
       case None         ⇒ Query.Empty
-      case Some(string) ⇒ apply(string)
+      case Some(string) ⇒ apply(string, mode)
     }
-    def apply(list: List[(String, String)]): Query = {
-      @tailrec def queryFrom(l: List[(String, String)], query: Query = Query.Empty): Query =
-        if (l.isEmpty) query else queryFrom(l.tail, Cons(query.key, query.value, query))
-      queryFrom(list)
+    def apply(seq: Seq[(String, String)]): Query =
+      seq.foldRight(Query.Empty: Query) { case ((key, value), acc) ⇒ Cons(key, value, acc) }
+    def apply(map: Map[String, String]): Query = apply(map.toSeq)
+
+    def newBuilder: mutable.Builder[(String, String), Query] = new mutable.Builder[(String, String), Query] {
+      val b = mutable.ArrayBuffer.newBuilder[(String, String)]
+      def +=(elem: (String, String)): this.type = { b += elem; this }
+      def clear() = b.clear()
+      def result() = apply(b.result())
     }
-    def apply(map: Map[String, String]): Query = apply(map.toList)
 
     object Empty extends Query {
-      def isEmpty = true
       def key = throw new NoSuchElementException("key of empty path")
       def value = throw new NoSuchElementException("value of empty path")
-      def tail = throw new UnsupportedOperationException("tail of empty query")
-      def length: Int = 0
-      def get(key: String): Option[String] = None
-      def getOrElse(key: String, default: ⇒ String): String = default
-      def getAll(key: String): List[String] = Nil
-      def toMap: Map[String, String] = Map.empty
+      override def isEmpty = true
+      override def head = throw new NoSuchElementException("head of empty list")
+      override def tail = throw new UnsupportedOperationException("tail of empty query")
     }
-    case class Cons(key: String, value: String, tail: Query) extends Query {
-      def isEmpty = false
-      def length = tail.length + 1
-      def get(key: String) = if (this.key == key) Some(value) else tail.get(key)
-      def getOrElse(key: String, default: ⇒ String) = if (this.key == key) value else tail.getOrElse(key, default)
-      def getAll(key: String) = if (this.key == key) value :: tail.getAll(key) else tail.getAll(key)
-      def toMap: Map[String, String] = tail.toMap.updated(key, value)
+    case class Cons(key: String, value: String, override val tail: Query) extends Query {
+      override def isEmpty = false
+      override def head = (key, value)
     }
   }
 
@@ -432,6 +456,22 @@ object Uri {
     Map("ftp" -> 21, "ssh" -> 22, "telnet" -> 23, "smtp" -> 25, "domain" -> 53, "tftp" -> 69, "http" -> 80,
       "pop3" -> 110, "nntp" -> 119, "imap" -> 143, "snmp" -> 161, "ldap" -> 389, "https" -> 443, "imaps" -> 993,
       "nfs" -> 2049).withDefaultValue(-1)
+
+  sealed trait ParsingMode
+
+  object ParsingMode {
+    case object Strict extends ParsingMode
+    case object Relaxed extends ParsingMode
+    case object RelaxedWithRawQuery extends ParsingMode
+
+    def apply(string: String): ParsingMode =
+      string match {
+        case "strict"                 ⇒ Strict
+        case "relaxed"                ⇒ Relaxed
+        case "relaxed-with-raw-query" ⇒ RelaxedWithRawQuery
+        case x                        ⇒ throw new IllegalArgumentException(x + " is not a legal UriParsingMode")
+      }
+  }
 
   /////////////////////////////////// PRIVATE //////////////////////////////////////////
 

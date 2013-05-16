@@ -16,7 +16,6 @@
 
 package spray.httpx
 
-import net.liftweb.json.Serialization._
 import net.liftweb.json._
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling.Unmarshaller
@@ -38,11 +37,10 @@ trait LiftJsonSupport {
   implicit def liftJsonUnmarshaller[T: Manifest] =
     Unmarshaller[T](`application/json`) {
       case x: HttpBody ⇒
-        val jsonSource = x.asString
+        val jsonSource = x.asString(defaultCharset = HttpCharsets.`UTF-8`)
         parse(jsonSource).extract[T]
     }
 
   implicit def liftJsonMarshaller[T <: AnyRef] =
-    Marshaller.delegate[T, String](`application/json`)(write(_))
-
+    Marshaller.delegate[T, String](ContentType.`application/json`)(Serialization.write(_))
 }

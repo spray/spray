@@ -27,9 +27,6 @@ trait HttpServiceBase extends Directives {
 
   /**
    * Supplies the actor behavior for executing the given route.
-   *
-   * Note that the route parameter is call-by-name to alleviate initialization order issues when
-   * mixing into an Actor.
    */
   def runRoute(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext,
                              rs: RoutingSettings, log: LoggingContext): Actor.Receive = {

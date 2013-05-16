@@ -45,6 +45,9 @@ private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, client
 
   context.setReceiveTimeout(settings.idleTimeout)
 
+  // we cannot sensibly recover from crashes
+  override def supervisorStrategy = SupervisorStrategy.stoppingStrategy
+
   def receive: Receive = {
     case request: HttpRequest ⇒
       val requestWithHostHeader =

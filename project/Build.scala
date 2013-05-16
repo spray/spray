@@ -76,7 +76,7 @@ object Build extends Build with DocSupport {
     .settings(sprayModuleSettings: _*)
     .settings(libraryDependencies ++=
       compile(mimepull) ++
-      provided(akkaActor, sprayJson, twirlApi, liftJson) ++
+      provided(akkaActor, sprayJson, twirlApi, liftJson, json4sNative, json4sJackson) ++
       test(specs2)
     )
 
@@ -161,7 +161,7 @@ object Build extends Build with DocSupport {
     .dependsOn(sprayCaching, sprayCan, sprayClient, sprayHttp, sprayHttpx, sprayIO, sprayRouting,
                sprayServlet, sprayTestKit, sprayUtil)
     .settings(docsSettings: _*)
-    .settings(libraryDependencies ++= test(akkaActor, akkaTestKit, sprayJson, specs2))
+    .settings(libraryDependencies ++= test(akkaActor, akkaTestKit, sprayJson, specs2, json4sNative))
 
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -173,8 +173,16 @@ object Build extends Build with DocSupport {
     .settings(exampleSettings: _*)
 
   lazy val sprayCanExamples = Project("spray-can-examples", file("examples/spray-can"))
-    .aggregate(simpleHttpClient, simpleHttpServer)
+    .aggregate(serverBenchmark, simpleHttpClient, simpleHttpServer)
     .settings(exampleSettings: _*)
+
+  lazy val serverBenchmark = Project("server-benchmark", file("examples/spray-can/server-benchmark"))
+    .dependsOn(sprayCan, sprayHttp)
+    .settings(benchmarkSettings: _*)
+    .settings(libraryDependencies ++=
+      compile(akkaActor, sprayJson) ++
+      runtime(akkaSlf4j, logback)
+    )
 
   lazy val simpleHttpClient = Project("simple-http-client", file("examples/spray-can/simple-http-client"))
     .dependsOn(sprayCan, sprayHttp)
