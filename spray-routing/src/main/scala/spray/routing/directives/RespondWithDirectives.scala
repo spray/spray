@@ -42,28 +42,38 @@ trait RespondWithDirectives {
    */
   def respondWithSingletonHeader(responseHeader: HttpHeader): Directive0 =
     mapHttpResponseHeaders { headers ⇒
-      if (headers.exists(_.name == responseHeader.name)) headers
+      if (headers.exists(_.is(responseHeader.lowercaseName))) headers
       else responseHeader :: headers
     }
 
   /**
    * Unconditionally adds the given response headers to all HTTP responses of its inner Route.
    */
-  def respondWithHeaders(responseHeaders: HttpHeader*): Directive0 = {
-    val headers = responseHeaders.toList
-    mapHttpResponseHeaders(headers ::: _)
-  }
+  def respondWithHeaders(responseHeaders: HttpHeader*): Directive0 =
+    respondWithHeaders(responseHeaders.toList)
+
+  /**
+   * Unconditionally adds the given response headers to all HTTP responses of its inner Route.
+   */
+  def respondWithHeaders(responseHeaders: List[HttpHeader]): Directive0 =
+    mapHttpResponseHeaders(responseHeaders ::: _)
 
   /**
    * Adds the given response headers to all HTTP responses of its inner Route,
    * if a header already exists it is not added again.
    */
-  def respondWithSingletonHeaders(responseHeaders: HttpHeader*): Directive0 = {
-    val headersToAdd = responseHeaders.toList
-    mapHttpResponseHeaders { headers ⇒
-      headersToAdd.filterNot(h ⇒ headers.exists(_.is(h.lowercaseName))) ::: headers
+  def respondWithSingletonHeaders(responseHeaders: HttpHeader*): Directive0 =
+    respondWithSingletonHeaders(responseHeaders.toList)
+
+  /* Adds the given response headers to all HTTP responses of its inner Route,
+   * if a header already exists it is not added again.
+   */
+  def respondWithSingletonHeaders(responseHeaders: List[HttpHeader]): Directive0 =
+    mapHttpResponseHeaders {
+      responseHeaders.foldLeft(_) {
+        case (headers, h) ⇒ if (headers.exists(_.is(h.lowercaseName))) headers else h :: headers
+      }
     }
-  }
 
   /**
    * Overrides the media-type of the response returned by its inner route with the given one.
