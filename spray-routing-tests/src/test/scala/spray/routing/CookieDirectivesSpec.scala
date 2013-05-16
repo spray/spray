@@ -50,4 +50,22 @@ class CookieDirectivesSpec extends RoutingSpec {
     }
   }
 
+  "The 'optionalCookie' directive" should {
+    "produce a `Some(cookie)` extraction if the cookie is present" in {
+      Get() ~> Cookie(HttpCookie("abc", "123")) ~> {
+        optionalCookie("abc") { echoComplete }
+      } ~> check { entityAs[String] === """Some(abc="123")""" }
+    }
+    "produce a `None` extraction if the cookie is not present" in {
+      Get() ~> optionalCookie("abc") { echoComplete } ~> check { entityAs[String] === "None" }
+    }
+    "let rejections from its inner route pass through" in {
+      Get() ~> {
+        optionalCookie("test-cookie") { _ ⇒
+          validate(false, "ouch") { completeOk }
+        }
+      } ~> check { rejection === ValidationRejection("ouch") }
+    }
+  }
+
 }

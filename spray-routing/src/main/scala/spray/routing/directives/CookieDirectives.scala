@@ -17,13 +17,11 @@
 package spray.routing
 package directives
 
-import shapeless._
 import spray.util._
 import spray.http._
 import HttpHeaders._
 
 trait CookieDirectives {
-  import BasicDirectives._
   import RouteDirectives._
   import HeaderDirectives._
   import RespondWithDirectives._
@@ -33,17 +31,19 @@ trait CookieDirectives {
    * request is rejected with a respective [[spray.routing.MissingCookieRejection]].
    */
   def cookie(name: String): Directive1[HttpCookie] =
-    headerValue {
-      case Cookie(cookies) ⇒ cookies.find(_.name == name)
-      case _               ⇒ None
-    } | reject(MissingCookieRejection(name))
+    headerValue(findCookie(name)) | reject(MissingCookieRejection(name))
 
   /**
    * Extracts an HttpCookie with the given name.
    * If the cookie is not present a value of `None` is extracted.
    */
   def optionalCookie(name: String): Directive1[Option[HttpCookie]] =
-    cookie(name).hmap(_.map(shapeless.option)) | provide(None)
+    optionalHeaderValue(findCookie(name))
+
+  private def findCookie(name: String): HttpHeader ⇒ Option[HttpCookie] = {
+    case Cookie(cookies) ⇒ cookies.find(_.name == name)
+    case _               ⇒ None
+  }
 
   /**
    * Adds a Set-Cookie header with the given cookie to all responses of its inner route.
