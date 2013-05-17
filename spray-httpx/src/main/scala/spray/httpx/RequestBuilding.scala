@@ -66,7 +66,7 @@ trait RequestBuilding {
 
   def addHeaders(headers: List[HttpHeader]): RequestTransformer = _.mapHeaders(headers ::: _)
 
-  def addCredentials(credentials: BasicHttpCredentials) = addHeader(HttpHeaders.Authorization(credentials))
+  def addCredentials(credentials: HttpCredentials) = addHeader(HttpHeaders.Authorization(credentials))
 
   def logRequest(log: LoggingAdapter): HttpRequest ⇒ HttpRequest =
     logRequest { request ⇒ log.debug(request.toString) }
