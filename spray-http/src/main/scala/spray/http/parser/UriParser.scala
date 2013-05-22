@@ -384,7 +384,7 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
   def slice(start: Int, end: Int): String = input.sliceString(start, end)
 
   def resetFirstUpper() = { firstUpper = -1; true }
-  def resetFirstPercent() = { firstUpper = -1; true }
+  def resetFirstPercent() = { firstPercent = -1; true }
   def markUpper() = { if (firstUpper == -1) firstUpper = cursor; true }
   def markPercent(delta: Int = 0) = { if (firstPercent == -1) firstPercent = cursor + delta; true }
 
