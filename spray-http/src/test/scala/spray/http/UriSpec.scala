@@ -264,7 +264,7 @@ class UriSpec extends Specification {
       Uri("foo/another@url/[]and{}", mode = Uri.ParsingMode.Strict) must throwAn[IllegalUriException]
 
       // handle query parameters with more than percent-encoded character
-      Uri("?%7Ba%7D=$%7B%7D", UTF8, Uri.ParsingMode.Strict) === Uri(query=Query.Cons("{a}", "${}", Query.Empty))
+      Uri("?%7Ba%7D=$%7B%7D", UTF8, Uri.ParsingMode.Strict) === Uri(query = Query.Cons("{a}", "${}", Query.Empty))
     }
 
     "properly complete a normalization cycle" in {
