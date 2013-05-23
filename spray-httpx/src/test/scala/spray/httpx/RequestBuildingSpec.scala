@@ -37,6 +37,11 @@ class RequestBuildingSpec extends Specification with RequestBuilding {
       Get() ~> addHeader("X-Yeah", "Naah") ~> addHeader(Authorization(BasicHttpCredentials("bla"))) ===
         HttpRequest(headers = List(Authorization(BasicHttpCredentials("bla")), RawHeader("X-Yeah", "Naah")))
     }
+
+    "provide the ability to add generic Authorization credentials to the request" >> {
+      val creds = GenericHttpCredentials("OAuth", Map("oauth_version" -> "1.0"))
+      Get() ~> addCredentials(creds) === HttpRequest(headers = List(Authorization(creds)))
+    }
   }
 
 }
