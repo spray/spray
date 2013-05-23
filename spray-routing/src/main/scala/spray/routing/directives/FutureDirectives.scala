@@ -19,6 +19,7 @@ package directives
 
 import shapeless._
 import scala.concurrent.{ ExecutionContext, Future }
+import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
 import spray.httpx.marshalling.Marshaller
 
@@ -50,14 +51,16 @@ trait FutureDirectives {
   def onFailure(magnet: OnFailureFutureMagnet): Directive1[Throwable] = magnet
 }
 
-object FutureDirectives extends BasicDirectives
+object FutureDirectives extends FutureDirectives
 
 trait OnCompleteFutureMagnet[T] extends Directive1[Try[T]]
 
 object OnCompleteFutureMagnet {
   implicit def apply[T](future: Future[T])(implicit ec: ExecutionContext) =
     new OnCompleteFutureMagnet[T] {
-      def happly(f: (Try[T] :: HNil) ⇒ Route) = ctx ⇒ future.onComplete(t ⇒ f(t :: HNil)(ctx))
+      def happly(f: (Try[T] :: HNil) ⇒ Route) = ctx ⇒
+        try future.onComplete(t ⇒ f(t :: HNil)(ctx))
+        catch { case NonFatal(error) ⇒ ctx.failWith(error) }
     }
 }
 
@@ -72,7 +75,9 @@ object OnSuccessFutureMagnet {
       type Out = hl.Out
       def get = this
       def happly(f: Out ⇒ Route) = ctx ⇒ future.onComplete {
-        case Success(t)     ⇒ f(hl(t))(ctx)
+        case Success(t) ⇒
+          try f(hl(t))(ctx)
+          catch { case NonFatal(error) ⇒ ctx.failWith(error) }
         case Failure(error) ⇒ ctx.failWith(error)
       }
     }
@@ -84,8 +89,10 @@ object OnFailureFutureMagnet {
   implicit def apply[T](future: Future[T])(implicit m: Marshaller[T], ec: ExecutionContext) =
     new OnFailureFutureMagnet {
       def happly(f: (Throwable :: HNil) ⇒ Route) = ctx ⇒ future.onComplete {
-        case Success(t)     ⇒ ctx.complete(t)
-        case Failure(error) ⇒ f(error :: HNil)(ctx)
+        case Success(t) ⇒ ctx.complete(t)
+        case Failure(error) ⇒
+          try f(error :: HNil)(ctx)
+          catch { case NonFatal(err) ⇒ ctx.failWith(err) }
       }
     }
 }

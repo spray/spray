@@ -16,6 +16,7 @@
 
 package spray.routing
 
+import scala.util.{ Failure, Success }
 import scala.concurrent.{ ExecutionContext, Future }
 import shapeless._
 import spray.httpx.unmarshalling.MalformedContent
@@ -90,16 +91,6 @@ abstract class Directive[L <: HList] { self ⇒
     new Directive0 {
       def happly(f: HNil ⇒ Route) =
         self.happly { values ⇒ ctx ⇒ if (predicate(values)) f(HNil)(ctx) else ctx.reject() }
-    }
-
-  def unwrapFuture[R](implicit ev: L <:< (Future[R] :: HNil), hl: HListable[R], ec: ExecutionContext) =
-    new Directive[hl.Out] {
-      def happly(f: hl.Out ⇒ Route) = self.happly { list ⇒
-        ctx ⇒
-          list.head
-            .map { value ⇒ f(hl(value))(ctx) }
-            .onFailure { case error ⇒ ctx.failWith(error) }
-      }
     }
 
   def recover[R >: L <: HList](recovery: List[Rejection] ⇒ Directive[R]): Directive[R] =
