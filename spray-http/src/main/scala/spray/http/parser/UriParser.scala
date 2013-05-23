@@ -245,12 +245,12 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
 
   def `path-abempty` = {
     val start = cursor
-    resetFirstPercent() && slashSegments && savePath(start)
+    slashSegments && savePath(start)
   }
 
   def `path-absolute` = {
     val start = cursor
-    resetFirstPercent() && ch('/') && {
+    ch('/') && {
       val mark = cursor
       `segment-nz` && slashSegments || reset(mark)
     } && savePath(start)
@@ -258,12 +258,12 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
 
   def `path-noscheme` = {
     val start = cursor
-    resetFirstPercent() && `segment-nz-nc` && slashSegments && savePath(start)
+    `segment-nz-nc` && slashSegments && savePath(start)
   }
 
   def `path-rootless` = {
     val start = cursor
-    resetFirstPercent() && `segment-nz` && slashSegments && savePath(start)
+    `segment-nz` && slashSegments && savePath(start)
   }
 
   def `path-empty` = true
@@ -330,7 +330,7 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
   // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-2.7
   def `absolute-path` = {
     val start = cursor
-    resetFirstPercent() && ch('/') && segment && slashSegments && savePath(start)
+    ch('/') && segment && slashSegments && savePath(start)
   }
 
   // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.3
@@ -377,7 +377,7 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
   def advance() = { cursor += 1; maxCursor = math.max(maxCursor, cursor); true }
 
   def savePath(start: Int) = {
-    _path = Path(decodeIfNeeded(slice(start, cursor), firstPercent - start, charset))
+    _path = Path(slice(start, cursor), charset)
     true
   }
 

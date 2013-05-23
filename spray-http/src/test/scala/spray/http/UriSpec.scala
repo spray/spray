@@ -20,6 +20,7 @@ import org.specs2.mutable.Specification
 import Uri._
 
 class UriSpec extends Specification {
+
   "Uri.Host instances" should {
 
     "parse correctly from IPv4 literals" in {
@@ -177,6 +178,7 @@ class UriSpec extends Specification {
       Path("H%C3%A4ll%C3%B6") === """Hällö""" :: Empty
       Path("/%2F%5C") === Path / """/\"""
       Path("/:foo:/") === Path / ":foo:" / ""
+      Path("%2520").head === "%20"
     }
   }
 
@@ -265,6 +267,10 @@ class UriSpec extends Specification {
 
       // handle query parameters with more than percent-encoded character
       Uri("?%7Ba%7D=$%7B%7D", UTF8, Uri.ParsingMode.Strict) === Uri(query = Query.Cons("{a}", "${}", Query.Empty))
+
+      // don't double decode
+      Uri("%2520").path.head === "%20"
+      Uri("/%2F%5C").path === Path / """/\"""
     }
 
     "properly complete a normalization cycle" in {

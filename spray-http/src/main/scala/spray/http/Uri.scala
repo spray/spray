@@ -310,7 +310,7 @@ object Uri {
     def /(path: Path): Path = Slash(path)
     def /(segment: String): Path = Slash(segment :: Empty)
     def apply(string: String, charset: Charset = UTF8): Path = {
-      @tailrec def build(path: Path = Empty, ix: Int = string.length - 1, segmentEnd: Int = 0): Path = {
+      @tailrec def build(path: Path = Empty, ix: Int = string.length - 1, segmentEnd: Int = 0): Path =
         if (ix >= 0)
           if (string.charAt(ix) == '/')
             if (segmentEnd == 0) build(Slash(path), ix - 1)
@@ -318,7 +318,6 @@ object Uri {
           else if (segmentEnd == 0) build(path, ix - 1, ix + 1)
           else build(path, ix - 1, segmentEnd)
         else if (segmentEnd == 0) path else decode(string.substring(0, segmentEnd), charset) :: path
-      }
       build()
     }
     def unapply(path: Path): Option[String] = Some(path.toString)
@@ -550,13 +549,12 @@ object Uri {
         val bytesCount = (lastPercentSignIndexPlus3 - ix) / 3
         val bytes = new Array[Byte](bytesCount)
 
-        @tailrec def decodeBytes(i: Int = 0, oredBytes: Int = 0): Int = {
+        @tailrec def decodeBytes(i: Int = 0, oredBytes: Int = 0): Int =
           if (i < bytesCount) {
             val byte = intValueOfHexWord(ix + 3 * i + 1)
             bytes(i) = byte.toByte
             decodeBytes(i + 1, oredBytes | byte)
           } else oredBytes
-        }
 
         if ((decodeBytes() >> 7) != 0) { // if non-ASCII chars are present we need to involve the charset for decoding
           sb.append(new String(bytes, charset))
