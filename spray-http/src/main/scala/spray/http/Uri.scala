@@ -427,15 +427,15 @@ object Uri {
       case None         ⇒ Query.Empty
       case Some(string) ⇒ apply(string, mode)
     }
-    def apply(seq: Seq[(String, String)]): Query =
-      seq.foldRight(Query.Empty: Query) { case ((key, value), acc) ⇒ Cons(key, value, acc) }
-    def apply(map: Map[String, String]): Query = apply(map.toSeq)
+    def apply(kvp: (String, String)*): Query =
+      kvp.foldRight(Query.Empty: Query) { case ((key, value), acc) ⇒ Cons(key, value, acc) }
+    def apply(map: Map[String, String]): Query = apply(map.toSeq: _*)
 
     def newBuilder: mutable.Builder[(String, String), Query] = new mutable.Builder[(String, String), Query] {
       val b = mutable.ArrayBuffer.newBuilder[(String, String)]
       def +=(elem: (String, String)): this.type = { b += elem; this }
       def clear() = b.clear()
-      def result() = apply(b.result())
+      def result() = apply(b.result(): _*)
     }
 
     object Empty extends Query {
