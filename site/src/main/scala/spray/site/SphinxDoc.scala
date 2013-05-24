@@ -22,16 +22,21 @@ import spray.http.DateTime
 import spray.json._
 
 object JsonProtocol extends DefaultJsonProtocol {
-  implicit val postMetaDataFormat = jsonFormat(PostMetaData, "author", "tags", "index-paragraphs", "show-post-structure")
+  implicit val postMetaDataFormat = jsonFormat(PostMetaData, "author", "tags", "index-paragraphs", "show-post-structure", "scripts", "styles")
   implicit val sphinxJsonFormat = jsonFormat(SphinxDoc.apply, "body", "current_page_name", "meta")
 }
 
 case class PostMetaData(
-    author: Option[String],
-    tags: Option[String],
-    indexParagraphs: Option[String],
-    showPostStructure: Option[String]) {
+  author: Option[String],
+  tags: Option[String],
+  indexParagraphs: Option[String],
+  showPostStructure: Option[String],
+  scripts: Option[String],
+  styles: Option[String]
+  ) {
   val tagList: List[String] = tags.map(_.split(',').map(_.trim)).toList.flatten
+  val scriptList: List[String] = scripts.map(_.split(' ')).toList.flatten
+  val styleList: List[String] = styles.map(_.split(' ')).toList.flatten
 }
 
 case class SphinxDoc(body: String, current_page_name: String, meta: PostMetaData) {
@@ -49,7 +54,7 @@ case class SphinxDoc(body: String, current_page_name: String, meta: PostMetaData
 object SphinxDoc {
   import JsonProtocol._
 
-  val Empty = SphinxDoc("", "", PostMetaData(None, None, None, None))
+  val Empty = SphinxDoc("", "", PostMetaData(None, None, None, None, None, None))
 
   def load(docPath: String): Option[SphinxDoc] = {
     require(docPath.endsWith("/"), s"$docPath URI doesn't end with a slash")
