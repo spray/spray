@@ -31,6 +31,7 @@ import akka.util.{ ByteString, Timeout }
 import akka.io.{ IO, Tcp }
 import spray.testkit.TestUtils
 import spray.util.{ Utils, LoggingContext }
+import annotation.tailrec
 
 class SslTlsSupportSpec extends Specification with NoTimeConversions {
   implicit val timeOut: Timeout = 1.second
@@ -118,9 +119,9 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
 
     def run() {
       probe.send(handler, Tcp.Write(ByteString("3+4\n")))
-      probe.expectMsg(Tcp.Received(ByteString("7\n")))
+      expectReceived(probe, ByteString("7\n"))
       probe.send(handler, Tcp.Write(ByteString("20+22\n")))
-      probe.expectMsg(Tcp.Received(ByteString("42\n")))
+      expectReceived(probe, ByteString("42\n"))
     }
 
     def close() {
@@ -155,14 +156,28 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
     def frontend: PipelineStage = new PipelineStage {
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
+          var buffer = ByteString.empty
+
           val commandPipeline = commandPL
           val eventPipeline: EPL = {
             case Tcp.Received(data) ⇒
-              val input = data.utf8String.dropRight(1)
-              context.log.debug("spray-io Server received {} from {}", input, sender)
-              val response = serverResponse(input)
-              commandPL(Tcp.Write(ByteString(response)))
-              context.log.debug("spray-io Server sent: {}", response.dropRight(1))
+              @tailrec def consume(buffer: ByteString): ByteString = {
+                val (next, rest) = buffer.span(_ != '\n'.toByte)
+                if (rest.nonEmpty) {
+                  val input = next.utf8String
+                  context.log.debug("spray-io Server received {} from {}", input, sender)
+                  val response = serverResponse(input)
+                  commandPL(Tcp.Write(ByteString(response)))
+                  context.log.debug("spray-io Server sent: {}", response.dropRight(1))
+
+                  consume(rest.drop(1) /* \n */ )
+                } else {
+                  if (next.nonEmpty) context.log.debug(s"Buffering prefix of next message '$next'")
+                  next
+                }
+              }
+
+              buffer = consume(buffer ++ data)
             case ev ⇒ eventPL(ev)
           }
         }
@@ -246,7 +261,11 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
     reader -> writer
   }
 
-  def serverResponse(input: String): String = input.split('+').map(_.toInt).reduceLeft(_ + _).toString + '\n'
+  def serverResponse(input: String): String =
+    try input.split('+').map(_.toInt).reduceLeft(_ + _).toString + '\n'
+    catch {
+      case e: Exception ⇒ e.printStackTrace(); "999\n"
+    }
 
   def sslTlsContext[T <: (PipelineContext ⇒ Option[SSLEngine])](connected: Tcp.Connected)(implicit engineProvider: T, context: ActorContext): SslTlsContext =
     new SslTlsContext {
@@ -256,5 +275,11 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
       def log = implicitly[LoggingContext]
       def sslEngine = engineProvider(this)
     }
-}
 
+  @tailrec final def expectReceived(probe: TestProbe, expectedMessage: ByteString): Unit =
+    if (expectedMessage.nonEmpty) {
+      val data = probe.expectMsgType[Tcp.Received].data
+      data must be_==(expectedMessage.take(data.length))
+      expectReceived(probe, expectedMessage.drop(data.length))
+    }
+}
