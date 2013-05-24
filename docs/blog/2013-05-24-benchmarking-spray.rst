@@ -2,8 +2,8 @@
 :tags: benchmarking
 :index-paragraphs: 1
 :show-post-structure: yes
-:scripts: //d3js.org/d3.v3.min.js /js/jquery.powertip.min.js /js/2013-05-21-benchmarking-spray.js
-:styles: /css/2013-05-21-benchmarking-spray.css
+:scripts: //d3js.org/d3.v3.min.js /js/jquery.powertip.min.js /js/2013-05-24-benchmarking-spray.js
+:styles: /css/2013-05-24-benchmarking-spray.css
 
 Benchmarking spray
 ==================
