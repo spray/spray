@@ -93,13 +93,14 @@ trait FileAndResourceDirectives {
   def getFromResource(resourceName: String, contentType: ContentType)(implicit refFactory: ActorRefFactory): Route =
     if (!resourceName.endsWith("/"))
       (get & detachTo(singleRequestServiceActor)) {
-        actorSystem(refFactory).dynamicAccess.classLoader.getResource(resourceName) match {
+        val theClassLoader = actorSystem(refFactory).dynamicAccess.classLoader
+        theClassLoader.getResource(resourceName) match {
           case null ⇒ reject
           case url ⇒
-            val urlConn = url.openConnection()
+            val lastModified = url.openConnection().getLastModified
             implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(contentType)
-            respondWithLastModifiedHeader(urlConn.getLastModified) {
-              complete(FileUtils.readAllBytes(urlConn.getInputStream))
+            respondWithLastModifiedHeader(lastModified) {
+              complete(FileUtils.readAllBytes(theClassLoader.getResourceAsStream(resourceName)))
             }
         }
       }
