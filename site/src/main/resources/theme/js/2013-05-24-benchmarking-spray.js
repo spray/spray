@@ -48,7 +48,7 @@ $(function() {
     { "name": "go"                  , "jvm": 0, "actual": { "ec2": { "rps":  23560, "projected":  25498, "conc": 128, "lat": 0.00502 }, "ded": { "rps": 174996, "projected": 179020, "conc": 256, "lat":  0.00143 } } },
     { "name": "grails"              , "jvm": 1, "actual": { "ec2": { "rps":   4039, "projected":   4018, "conc": 256, "lat":  0.0637 }, "ded": { "rps":  30051, "projected":  29024, "conc": 128, "lat":  0.00441 } } },
     { "name": "grizzly-jersey"      , "jvm": 1, "actual": { "ec2": { "rps":  14321, "projected":  14206, "conc": 256, "lat": 0.01802 }, "ded": { "rps": 115544, "projected": 101185, "conc": 256, "lat":  0.00253 } } },
-    { "name": "http-kit"            , "jvm": 0, "actual": { "ec2": { "rps":  21380, "projected":  21440, "conc": 256, "lat": 0.01194 }, "ded": { "rps": 105958, "projected": 106666, "conc": 256, "lat":   0.0024 } } },
+    { "name": "http-kit"            , "jvm": 1, "actual": { "ec2": { "rps":  21380, "projected":  21440, "conc": 256, "lat": 0.01194 }, "ded": { "rps": 105958, "projected": 106666, "conc": 256, "lat":   0.0024 } } },
     { "name": "kelp"                , "jvm": 0, "actual": { "ec2": { "rps":   1740, "projected":   1742, "conc": 256, "lat": 0.14695 }, "ded": { "rps":  12444, "projected":  11710, "conc": 256, "lat":  0.02186 } } },
     { "name": "kohana"              , "jvm": 0, "actual": { "ec2": { "rps":    355, "projected":    310, "conc":  16, "lat":  0.0516 }, "ded": { "rps":   2090, "projected":   2143, "conc":  32, "lat":  0.01493 } } },
     { "name": "laravel"             , "jvm": 0, "actual": { "ec2": { "rps":    362, "projected":    291, "conc":  16, "lat":  0.0549 }, "ded": { "rps":   2139, "projected":   2122, "conc":  16, "lat":  0.00754 } } },
