@@ -19,9 +19,8 @@ package spray.http
 
 import java.net.InetAddress
 
-case class HttpIp(ip: InetAddress) {
-  def value: String = ip.getHostAddress
-  override def toString = value
+case class HttpIp(ip: InetAddress) extends ValueRenderable {
+  def render[R <: Rendering](r: R): r.type = r ~~ ip.getHostAddress
 }
 
 object HttpIp {

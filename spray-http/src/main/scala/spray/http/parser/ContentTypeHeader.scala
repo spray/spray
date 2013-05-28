@@ -25,7 +25,7 @@ private[parser] trait ContentTypeHeader {
   this: Parser with ProtocolParameterRules with CommonActions ⇒
 
   def `*Content-Type` = rule {
-    ContentTypeHeaderValue ~~> `Content-Type`
+    ContentTypeHeaderValue ~~> (`Content-Type`(_))
   }
 
   lazy val ContentTypeHeaderValue = rule {

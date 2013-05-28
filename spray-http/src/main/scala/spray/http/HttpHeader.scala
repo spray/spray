@@ -15,20 +15,17 @@
  * limitations under the License.
  */
 
-package spray
-package http
+package spray.http
 
-import java.lang.String
 import scala.annotation.tailrec
+import java.net.InetSocketAddress
 
-abstract class HttpHeader {
+abstract class HttpHeader extends ToStringRenderable {
   def name: String
-  def lowercaseName: String
-  val name7bit: Array[Byte] = name.map(_.toByte).toArray
   def value: String
+  def lowercaseName: String
   def is(nameInLowerCase: String): Boolean = lowercaseName == nameInLowerCase
   def isNot(nameInLowerCase: String): Boolean = lowercaseName != nameInLowerCase
-  override def toString = name + ": " + value
 }
 
 object HttpHeader {
@@ -37,59 +34,81 @@ object HttpHeader {
 
 object HttpHeaders {
 
-  object Accept { def apply(first: MediaRange, more: MediaRange*): Accept = apply(first +: more) }
-  case class Accept(mediaRanges: Seq[MediaRange]) extends HttpHeader {
-    def name = "Accept"
-    def lowercaseName = "accept"
-    def value = mediaRanges.map(_.value).mkString(", ")
+  sealed abstract class ModeledCompanion extends Renderable {
+    val name = {
+      val n = getClass.getName
+      n.substring(n.indexOf('$') + 1, n.length - 1).replace("$minus", "-")
+    }
+    val lowercaseName = name.toLowerCase
+    private[this] val nameBytes = asciiBytes(name)
+    def render[R <: Rendering](r: R): r.type = r ~~ nameBytes ~~ ':' ~~ ' '
   }
 
-  object `Accept-Charset` { def apply(first: HttpCharsetRange, more: HttpCharsetRange*): `Accept-Charset` = apply(first +: more) }
-  case class `Accept-Charset`(charsetRanges: Seq[HttpCharsetRange]) extends HttpHeader {
-    def name = "Accept-Charset"
-    def lowercaseName = "accept-charset"
-    def value = charsetRanges.map(_.value).mkString(", ")
+  abstract class ModeledHeader(companion: ModeledCompanion) extends HttpHeader {
+    def name: String = companion.name
+    def value: String = renderValue(new StringRendering).get
+    def lowercaseName: String = companion.lowercaseName
+    def render[R <: Rendering](r: R): r.type = renderValue(r ~~ companion)
+    def renderValue[R <: Rendering](r: R): r.type
   }
 
-  object `Accept-Encoding` { def apply(first: HttpEncodingRange, more: HttpEncodingRange*): `Accept-Encoding` = apply(first +: more) }
-  case class `Accept-Encoding`(encodings: Seq[HttpEncodingRange]) extends HttpHeader {
-    def name = "Accept-Encoding"
-    def lowercaseName = "accept-encoding"
-    def value = encodings.map(_.value).mkString(", ")
+  object Accept extends ModeledCompanion {
+    def apply(first: MediaRange, more: MediaRange*): Accept = apply(first +: more)
+    implicit val rangesRenderer = Renderer.defaultSeqRenderer[MediaRange] // cache
+  }
+  case class Accept(mediaRanges: Seq[MediaRange]) extends ModeledHeader(Accept) {
+    import Accept.rangesRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ mediaRanges
   }
 
-  object `Accept-Language` { def apply(first: LanguageRange, more: LanguageRange*): `Accept-Language` = apply(first +: more) }
-  case class `Accept-Language`(languageRanges: Seq[LanguageRange]) extends HttpHeader {
-    def name = "Accept-Language"
-    def lowercaseName = "accept-language"
-    def value = languageRanges.map(_.value).mkString(", ")
+  object `Accept-Charset` extends ModeledCompanion {
+    def apply(first: HttpCharsetRange, more: HttpCharsetRange*): `Accept-Charset` = apply(first +: more)
+    implicit val rangesRenderer = Renderer.defaultSeqRenderer[HttpCharsetRange] // cache
+  }
+  case class `Accept-Charset`(charsetRanges: Seq[HttpCharsetRange]) extends ModeledHeader(`Accept-Charset`) {
+    import `Accept-Charset`.rangesRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ charsetRanges
   }
 
-  object `Accept-Ranges` { def apply(first: RangeUnit, more: RangeUnit*): `Accept-Ranges` = apply(first +: more) }
-  case class `Accept-Ranges`(rangeUnits: Seq[RangeUnit]) extends HttpHeader {
-    def name = "Accept-Ranges"
-    def lowercaseName = "accept-ranges"
-    def value = if (rangeUnits.isEmpty) "none" else rangeUnits.mkString(", ")
+  object `Accept-Encoding` extends ModeledCompanion {
+    def apply(first: HttpEncodingRange, more: HttpEncodingRange*): `Accept-Encoding` = apply(first +: more)
+    implicit val rangesRenderer = Renderer.defaultSeqRenderer[HttpEncodingRange] // cache
+  }
+  case class `Accept-Encoding`(encodings: Seq[HttpEncodingRange]) extends ModeledHeader(`Accept-Encoding`) {
+    import `Accept-Encoding`.rangesRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ encodings
   }
 
-  case class Authorization(credentials: HttpCredentials) extends HttpHeader {
-    def name = "Authorization"
-    def lowercaseName = "authorization"
-    def value = credentials.value
+  object `Accept-Language` extends ModeledCompanion {
+    def apply(first: LanguageRange, more: LanguageRange*): `Accept-Language` = apply(first +: more)
+    implicit val rangesRenderer = Renderer.defaultSeqRenderer[LanguageRange] // cache
+  }
+  case class `Accept-Language`(languages: Seq[LanguageRange]) extends ModeledHeader(`Accept-Language`) {
+    import `Accept-Language`.rangesRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ languages
   }
 
-  object `Cache-Control` { def apply(first: CacheDirective, more: CacheDirective*): `Cache-Control` = apply(first +: more) }
-  case class `Cache-Control`(directives: Seq[CacheDirective]) extends HttpHeader {
-    def name = "Cache-Control"
-    def lowercaseName = "cache-control"
-    def value = directives.mkString(", ")
+  object Authorization extends ModeledCompanion
+  case class Authorization(credentials: HttpCredentials) extends ModeledHeader(Authorization) {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ credentials
   }
 
-  object Connection { def apply(first: String, more: String*): Connection = apply(first +: more) }
-  case class Connection(tokens: Seq[String]) extends HttpHeader {
-    def name = "Connection"
-    def lowercaseName = "connection"
-    def value = if (tokens.size == 1) tokens.head else tokens mkString ", "
+  object `Cache-Control` extends ModeledCompanion {
+    def apply(first: CacheDirective, more: CacheDirective*): `Cache-Control` = apply(first +: more)
+    implicit val directivesRenderer = Renderer.defaultSeqRenderer[CacheDirective] // cache
+  }
+  case class `Cache-Control`(directives: Seq[CacheDirective]) extends ModeledHeader(`Cache-Control`) {
+    import `Cache-Control`.directivesRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ directives
+  }
+
+  object Connection extends ModeledCompanion {
+    def apply(first: String, more: String*): Connection = apply(first +: more)
+    implicit val tokensRenderer = Renderer.defaultSeqRenderer[String] // cache
+  }
+  case class Connection(tokens: Seq[String]) extends ModeledHeader(Connection) {
+    import Connection.tokensRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ tokens
     def hasClose = has("close")
     def hasKeepAlive = has("keep-alive")
     @tailrec private def has(item: String, ix: Int = 0): Boolean =
@@ -100,132 +119,140 @@ object HttpHeaders {
   }
 
   // see http://tools.ietf.org/html/rfc2183
-  case class `Content-Disposition`(dispositionType: String, parameters: Map[String, String]) extends HttpHeader {
-    def name = "Content-Disposition"
-    def lowercaseName = "content-disposition"
-    def value = parameters.map(p ⇒ "; " + p._1 + "=\"" + p._2 + '"').mkString(dispositionType, "", "")
-  }
-
-  case class `Content-Encoding`(encoding: HttpEncoding) extends HttpHeader {
-    def name = "Content-Encoding"
-    def lowercaseName = "content-encoding"
-    def value = encoding.value
-  }
-
-  case class `Content-Length`(length: Int) extends HttpHeader {
-    def name = "Content-Length"
-    def lowercaseName = "content-length"
-    def value = length.toString
-  }
-
-  case class `Content-Type`(contentType: ContentType) extends HttpHeader {
-    def name = "Content-Type"
-    def lowercaseName = "content-type"
-    def value = contentType.value
-  }
-
-  object Cookie { def apply(first: HttpCookie, more: HttpCookie*): `Cookie` = apply(first +: more) }
-  case class Cookie(cookies: Seq[HttpCookie]) extends HttpHeader {
-    def name = "Cookie"
-    def lowercaseName = "cookie"
-    def value = cookies.mkString("; ")
-  }
-
-  case class Date(date: DateTime) extends HttpHeader {
-    def name = "Date"
-    def lowercaseName = "date"
-    def value = date.toRfc1123DateTimeString
-  }
-
-  object Expect { def apply(first: String, more: String*): Expect = apply(first +: more) }
-  case class Expect(expectations: Seq[String]) extends HttpHeader {
-    def name = "Expect"
-    def lowercaseName = "expect"
-    def value = expectations mkString ", "
-    def has100continue = expectations.exists(_ equalsIgnoreCase "100-continue")
-  }
-
-  case class Host(host: String, port: Int = 0) extends HttpHeader {
-    require(port >> 16 == 0, "Illegal port: " + port)
-    def name = "Host"
-    def lowercaseName = "host"
-    def value = if (port > 0) host + ':' + port else host
-  }
-
-  case class `Last-Modified`(date: DateTime) extends HttpHeader {
-    def name = "Last-Modified"
-    def lowercaseName = "last-modified"
-    def value = date.toRfc1123DateTimeString
-  }
-
-  case class Location(absoluteUri: Uri) extends HttpHeader {
-    def name = "Location"
-    def lowercaseName = "location"
-    def value = absoluteUri.toString
-  }
-
-  case class `Remote-Address`(ip: HttpIp) extends HttpHeader {
-    def name = "Remote-Address"
-    def lowercaseName = "remote-address"
-    def value = ip.value
-  }
-
-  object Server {
-    def apply(products: String): Server = apply(ProductVersion.parseMultiple(products))
-    def apply(first: ProductVersion, more: ProductVersion*): Server = apply(first +: more)
-  }
-  case class Server(products: Seq[ProductVersion]) extends HttpHeader {
-    def name = "Server"
-    def lowercaseName = "server"
-    def value = products mkString " "
-  }
-
-  case class `Set-Cookie`(cookie: HttpCookie) extends HttpHeader {
-    def name = "Set-Cookie"
-    def lowercaseName = "set-cookie"
-    def value = cookie.value
-  }
-
-  object `Transfer-Encoding` { def apply(first: String, more: String*): `Transfer-Encoding` = apply(first +: more) }
-  case class `Transfer-Encoding`(encodings: Seq[String]) extends HttpHeader {
-    def name = "Transfer-Encoding"
-    def lowercaseName = "Transfer-Encoding"
-    def value = encodings mkString ", "
-    def hasChunked: Boolean = {
-      @tailrec def recurse(ix: Int = 0): Boolean =
-        if (ix < encodings.size)
-          if (encodings(ix) equalsIgnoreCase "chunked") true
-          else recurse(ix + 1)
-        else false
-      recurse()
+  object `Content-Disposition` extends ModeledCompanion
+  case class `Content-Disposition`(dispositionType: String, parameters: Map[String, String] = Map.empty)
+      extends ModeledHeader(`Content-Disposition`) {
+    def renderValue[R <: Rendering](r: R): r.type = {
+      r ~~ dispositionType
+      if (parameters.nonEmpty) parameters foreach { case (k, v) ⇒ r ~~ ';' ~~ ' ' ~~ k ~~ '=' ~~# v }
+      r
     }
   }
 
-  object `User-Agent` {
+  object `Content-Encoding` extends ModeledCompanion
+  case class `Content-Encoding`(encoding: HttpEncoding) extends ModeledHeader(`Content-Encoding`) {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ encoding
+  }
+
+  object `Content-Length` extends ModeledCompanion
+  case class `Content-Length`(length: Int) extends ModeledHeader(`Content-Length`) {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ length
+  }
+
+  object `Content-Type` extends ModeledCompanion
+  case class `Content-Type`(contentType: ContentType) extends ModeledHeader(`Content-Type`) {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ contentType
+  }
+
+  object Cookie extends ModeledCompanion {
+    def apply(first: HttpCookie, more: HttpCookie*): `Cookie` = apply(first +: more)
+    implicit val cookiesRenderer = Renderer.seqRenderer[String, HttpCookie](separator = "; ") // cache
+  }
+  case class Cookie(cookies: Seq[HttpCookie]) extends ModeledHeader(Cookie) {
+    import Cookie.cookiesRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ cookies
+  }
+
+  object Date extends ModeledCompanion
+  case class Date(date: DateTime) extends ModeledHeader(Date) {
+    def renderValue[R <: Rendering](r: R): r.type = date.renderRfc1123DateTimeString(r)
+  }
+
+  object Expect extends ModeledCompanion {
+    def apply(first: String, more: String*): Expect = apply(first +: more)
+    implicit val expectationsRenderer = Renderer.defaultSeqRenderer[String] // cache
+  }
+  case class Expect(expectations: Seq[String]) extends ModeledHeader(Expect) {
+    import Expect.expectationsRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ expectations
+    def has100continue = expectations.exists(_ equalsIgnoreCase "100-continue")
+  }
+
+  object Host extends ModeledCompanion {
+    def apply(address: InetSocketAddress): Host = apply(address.getHostName, address.getPort)
+  }
+  case class Host(host: String, port: Int = 0) extends ModeledHeader(Host) {
+    require((port >> 16) == 0, "Illegal port: " + port)
+    def renderValue[R <: Rendering](r: R): r.type = if (port > 0) r ~~ host ~~ ':' ~~ port else r ~~ host
+  }
+
+  object `Last-Modified` extends ModeledCompanion
+  case class `Last-Modified`(date: DateTime) extends ModeledHeader(`Last-Modified`) {
+    def renderValue[R <: Rendering](r: R): r.type = date.renderRfc1123DateTimeString(r)
+  }
+
+  object Location extends ModeledCompanion
+  case class Location(uri: Uri) extends ModeledHeader(Location) {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ uri
+  }
+
+  object `Remote-Address` extends ModeledCompanion
+  case class `Remote-Address`(ip: HttpIp) extends ModeledHeader(`Remote-Address`) {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ ip
+  }
+
+  object Server extends ModeledCompanion {
+    def apply(products: String): Server = apply(ProductVersion.parseMultiple(products))
+    def apply(first: ProductVersion, more: ProductVersion*): Server = apply(first +: more)
+    implicit val productsRenderer = Renderer.seqRenderer[Char, ProductVersion](separator = ' ') // cache
+  }
+  case class Server(products: Seq[ProductVersion]) extends ModeledHeader(Server) {
+    import Server.productsRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ products
+  }
+
+  object `Set-Cookie` extends ModeledCompanion
+  case class `Set-Cookie`(cookie: HttpCookie) extends ModeledHeader(`Set-Cookie`) {
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ cookie
+  }
+
+  object `Transfer-Encoding` extends ModeledCompanion {
+    def apply(first: String, more: String*): `Transfer-Encoding` = apply(first +: more)
+    implicit val encodingsRenderer = Renderer.defaultSeqRenderer[String] // cache
+  }
+  case class `Transfer-Encoding`(encodings: Seq[String]) extends ModeledHeader(`Transfer-Encoding`) {
+    import `Transfer-Encoding`.encodingsRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ encodings
+    def hasChunked: Boolean = {
+      @tailrec def rec(ix: Int = 0): Boolean =
+        if (ix < encodings.size)
+          if (encodings(ix) equalsIgnoreCase "chunked") true
+          else rec(ix + 1)
+        else false
+      rec()
+    }
+  }
+
+  object `User-Agent` extends ModeledCompanion {
     def apply(products: String): `User-Agent` = apply(ProductVersion.parseMultiple(products))
     def apply(first: ProductVersion, more: ProductVersion*): `User-Agent` = apply(first +: more)
+    implicit val productsRenderer = Renderer.seqRenderer[Char, ProductVersion](separator = ' ') // cache
   }
-  case class `User-Agent`(products: Seq[ProductVersion]) extends HttpHeader {
-    def name = "User-Agent"
-    def lowercaseName = "user-agent"
-    def value = products mkString " "
-  }
-
-  object `WWW-Authenticate` { def apply(first: HttpChallenge, more: HttpChallenge*): `WWW-Authenticate` = apply(first +: more) }
-  case class `WWW-Authenticate`(challenges: Seq[HttpChallenge]) extends HttpHeader {
-    def name = "WWW-Authenticate"
-    def lowercaseName = "www-authenticate"
-    def value = challenges.mkString(", ")
+  case class `User-Agent`(products: Seq[ProductVersion]) extends ModeledHeader(`User-Agent`) {
+    import `User-Agent`.productsRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ products
   }
 
-  object `X-Forwarded-For` { def apply(first: HttpIp, more: HttpIp*): `X-Forwarded-For` = apply((first +: more).map(Some(_))) }
-  case class `X-Forwarded-For`(ips: Seq[Option[HttpIp]]) extends HttpHeader {
-    def name = "X-Forwarded-For"
-    def lowercaseName = "x-forwarded-for"
-    def value = ips.map(_.getOrElse("unknown")).mkString(", ")
+  object `WWW-Authenticate` extends ModeledCompanion {
+    def apply(first: HttpChallenge, more: HttpChallenge*): `WWW-Authenticate` = apply(first +: more)
+    implicit val challengesRenderer = Renderer.defaultSeqRenderer[HttpChallenge] // cache
+  }
+  case class `WWW-Authenticate`(challenges: Seq[HttpChallenge]) extends ModeledHeader(`WWW-Authenticate`) {
+    import `WWW-Authenticate`.challengesRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ challenges
+  }
+
+  object `X-Forwarded-For` extends ModeledCompanion {
+    def apply(first: HttpIp, more: HttpIp*): `X-Forwarded-For` = apply((first +: more).map(Some(_)))
+    implicit val ipsRenderer = Renderer.defaultSeqRenderer[Option[HttpIp]](Renderer.optionRenderer("unknown"))
+  }
+  case class `X-Forwarded-For`(ips: Seq[Option[HttpIp]]) extends ModeledHeader(`X-Forwarded-For`) {
+    import `X-Forwarded-For`.ipsRenderer
+    def renderValue[R <: Rendering](r: R): r.type = r ~~ ips
   }
 
   case class RawHeader(name: String, value: String) extends HttpHeader {
     val lowercaseName = name.toLowerCase
+    def render[R <: Rendering](r: R): r.type = r ~~ name ~~ ':' ~~ ' ' ~~ value
   }
 }

@@ -33,12 +33,12 @@ private[parser] trait CookieHeaders {
   }
 
   def CookiePair = rule {
-    Token ~ ch('=') ~ CookieValue ~~> (HttpCookie(_, _))
+    Token ~ ch('=') ~ CookieValue ~ OptWS ~~> (HttpCookie(_, _))
   }
 
   def CookieValue = rule(
     ch('"') ~ zeroOrMore(CookieOctet) ~> identityFunc ~ "\""
-      | zeroOrMore(CookieOctet) ~> identityFunc ~ OptWS)
+      | zeroOrMore(CookieOctet) ~> identityFunc)
 
   def CookieOctet = rule {
     ch('\u0021') | ch('\u0023') - "\u002b" | ch('\u002d') - "\u003a" | ch('\u003c') - "\u005b" | ch('\u005d') - "\u007e"

@@ -34,14 +34,14 @@ private[parser] trait CommonActions {
         case custom        ⇒ new MultipartMediaType(custom, boundary)
       }
       case mainLower ⇒
-        MediaTypes.getForKey((mainLower, subType.toLowerCase)).getOrElse(new CustomMediaType(mainType, subType))
+        MediaTypes.getForKey((mainLower, subType.toLowerCase)) getOrElse MediaType.custom(mainType, subType)
     }
   }
 
   val getCharset: String ⇒ HttpCharset = { charsetName ⇒
     HttpCharsets
       .getForKey(charsetName.toLowerCase)
-      .orElse(HttpCharsets.CustomHttpCharset(charsetName))
+      .orElse(HttpCharset.custom(charsetName))
       .getOrElse(throw new ParsingException("Unsupported charset: " + charsetName))
   }
 }

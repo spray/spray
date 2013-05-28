@@ -31,15 +31,13 @@ import Uri._
  * All members of this class represent the *decoded* URI elements (i.e. without percent-encoding).
  */
 sealed abstract case class Uri(scheme: String, authority: Authority, path: Path, query: Query,
-                               fragment: Option[String]) {
+                               fragment: Option[String]) extends ToStringRenderable {
 
   def isAbsolute: Boolean = !isRelative
   def isRelative: Boolean = scheme.isEmpty
   def isEmpty: Boolean
 
-  def toString(charset: Charset): String = render(charset = charset).toString
-  override def toString: String = toString(UTF8)
-  def inspect: String = s"Uri($scheme,$authority,$path,$query,$fragment)"
+  def inspect: String = s"Uri(scheme=$scheme, authority=$authority, path=$path, query=$query, fragment=$fragment)"
 
   /**
    * Returns a copy of this Uri with the given components.
@@ -56,19 +54,33 @@ sealed abstract case class Uri(scheme: String, authority: Authority, path: Path,
   def resolvedAgainst(base: Uri): Uri =
     resolve(scheme, authority.userinfo, authority.host, authority.port, path, query, fragment, base)
 
+  def render[R <: Rendering](r: R): r.type = render(r, UTF8)
+
   /**
-   * Renders this Uri into a String as defined by http://tools.ietf.org/html/rfc3986.
+   * Renders this Uri into the given Renderer as defined by http://tools.ietf.org/html/rfc3986.
    * All Uri components are encoded and joined as required by the spec. The given charset is used to
    * produce percent-encoded representations of potentially existing non-ASCII characters in the
    * different components.
    */
-  def render(sb: JStringBuilder = new JStringBuilder, charset: Charset = UTF8): JStringBuilder = {
-    if (isAbsolute) sb.append(scheme).append(':')
-    authority.render(sb, scheme, charset)
-    path.render(sb, charset, encodeFirstSegmentColons = isRelative)
-    if (!query.isEmpty) query.render(sb.append('?'), charset)
-    if (fragment.isDefined) sb.append('#').append(encode(fragment.get, charset, QUERY_FRAGMENT_CHAR))
-    sb
+  def render[R <: Rendering](r: R, charset: Charset): r.type = {
+    renderWithoutFragment(r, charset)
+    if (fragment.isDefined) encode(r ~~ '#', fragment.get, charset, QUERY_FRAGMENT_CHAR)
+    r
+  }
+
+  /**
+   * Renders this Uri (without the fragment component) into the given Renderer as defined by
+   * http://tools.ietf.org/html/rfc3986.
+   * All Uri components are encoded and joined as required by the spec. The given charset is used to
+   * produce percent-encoded representations of potentially existing non-ASCII characters in the
+   * different components.
+   */
+  def renderWithoutFragment[R <: Rendering](r: R, charset: Charset): r.type = {
+    if (isAbsolute) r ~~ scheme ~~ ':'
+    authority.render(r, scheme, charset)
+    path.render(r, charset, encodeFirstSegmentColons = isRelative)
+    if (!query.isEmpty) query.render(r ~~ '?', charset)
+    r
   }
 
   /**
@@ -195,7 +207,7 @@ object Uri {
    * If the given string is not a valid URI the method throws an `IllegalUriException`.
    */
   def normalize(uri: ParserInput, charset: Charset = UTF8, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): String =
-    apply(uri, charset, mode).toString(charset)
+    apply(uri, charset, mode).render(new StringRendering, charset).get
 
   /**
    * Converts a set of URI components to an "effective HTTP request URI" as defined by
@@ -222,21 +234,20 @@ object Uri {
     Impl(_scheme, "", _host, _port, collapseDotSegments(path), query, fragment)
   }
 
-  case class Authority(host: Host, port: Int = 0, userinfo: String = "") {
+  case class Authority(host: Host, port: Int = 0, userinfo: String = "") extends ToStringRenderable {
     def isEmpty = host.isEmpty
-    def render(sb: JStringBuilder, scheme: String = "", charset: Charset = UTF8): JStringBuilder =
-      if (isEmpty) sb else {
-        sb.append('/').append('/')
-        if (!userinfo.isEmpty) sb.append(encode(userinfo, charset, UNRESERVED | SUB_DELIM | COLON)).append('@')
-        host.render(sb)
+    def render[R <: Rendering](r: R): r.type = render(r, "", UTF8)
+    def render[R <: Rendering](r: R, scheme: String, charset: Charset): r.type =
+      if (isEmpty) r else {
+        r ~~ '/' ~~ '/'
+        if (!userinfo.isEmpty) encode(r, userinfo, charset, UNRESERVED | SUB_DELIM | COLON) ~~ '@'
+        r ~~ host
         if (port != 0) normalizePort(port, scheme) match {
-          case 0 ⇒ sb
-          case x ⇒ sb.append(':').append(port)
+          case 0 ⇒ r
+          case x ⇒ r ~~ ':' ~~ port
         }
-        else sb
+        else r
       }
-    def toString(charset: Charset): String = render(new JStringBuilder).toString
-    override def toString: String = toString(UTF8)
     def normalizedFor(scheme: String): Authority = {
       val normalizedPort = normalizePort(port, scheme)
       if (normalizedPort == port) this else copy(port = normalizedPort)
@@ -246,19 +257,17 @@ object Uri {
     val Empty = Authority(Host.Empty)
   }
 
-  sealed abstract class Host {
+  sealed abstract class Host extends Renderable {
     def address: String
     def isEmpty: Boolean
     def toOption: Option[NonEmptyHost]
-    def render(sb: JStringBuilder): JStringBuilder
-    override def toString: String = render(new JStringBuilder).toString
   }
   object Host {
     case object Empty extends Host {
       def address: String = ""
       def isEmpty = true
       def toOption = None
-      def render(sb: JStringBuilder) = sb
+      def render[R <: Rendering](r: R): r.type = r
     }
     def apply(string: String, mode: Uri.ParsingMode = Uri.ParsingMode.Relaxed): Host =
       if (!string.isEmpty) {
@@ -268,23 +277,23 @@ object Uri {
         _host
       } else Empty
   }
-  sealed abstract class NonEmptyHost extends Host {
+  sealed abstract class NonEmptyHost extends Host with ToStringRenderable {
     def isEmpty = false
     def toOption = Some(this)
   }
   case class IPv4Host(address: String) extends NonEmptyHost {
     require(!address.isEmpty, "address must not be empty")
-    def render(sb: JStringBuilder) = sb.append(address)
+    def render[R <: Rendering](r: R): r.type = r ~~ address
   }
   case class IPv6Host(address: String) extends NonEmptyHost {
     require(!address.isEmpty, "address must not be empty")
-    def render(sb: JStringBuilder) = sb.append('[').append(address).append(']')
+    def render[R <: Rendering](r: R): r.type = r ~~ '[' ~~ address ~~ ']'
   }
   case class NamedHost(address: String) extends NonEmptyHost {
-    def render(sb: JStringBuilder) = sb.append(encode(address, UTF8, UNRESERVED | SUB_DELIM))
+    def render[R <: Rendering](r: R): r.type = encode(r, address, UTF8, UNRESERVED | SUB_DELIM)
   }
 
-  sealed abstract class Path {
+  sealed abstract class Path extends ToStringRenderable {
     type Head
     def isEmpty: Boolean
     def startsWithSlash: Boolean
@@ -293,15 +302,14 @@ object Uri {
     def tail: Path
     def length: Int
     def charCount: Int
-    def render(sb: JStringBuilder, charset: Charset = UTF8, encodeFirstSegmentColons: Boolean = false): JStringBuilder
+    def render[R <: Rendering](r: R): r.type = render(r, UTF8, encodeFirstSegmentColons = false)
+    def render[R <: Rendering](r: R, charset: Charset, encodeFirstSegmentColons: Boolean): r.type
     def ::(c: Char): Path = { require(c == '/'); Path.Slash(this) }
     def ::(segment: String): Path
     def +(pathString: String): Path = this ++ Path(pathString)
     def ++(suffix: Path): Path
     def reverse: Path = reverseAndPrependTo(Path.Empty)
     def reverseAndPrependTo(prefix: Path): Path
-    def toString(charset: Charset) = render(new JStringBuilder, charset).toString
-    override def toString = toString(UTF8)
     def /(segment: String): Path = this ++ Path.Slash(segment :: Path.Empty)
   }
   object Path {
@@ -333,7 +341,7 @@ object Uri {
       def tail: Path = throw new UnsupportedOperationException("tail of empty path")
       def length = 0
       def charCount = 0
-      def render(sb: JStringBuilder, charset: Charset = UTF8, encodeFirstSegmentColons: Boolean = false) = sb
+      def render[R <: Rendering](r: R, charset: Charset, encodeFirstSegmentColons: Boolean): r.type = r
       def ::(segment: String) = if (segment.isEmpty) this else Segment(segment, this)
       def ++(suffix: Path) = suffix
       def reverseAndPrependTo(prefix: Path) = prefix
@@ -345,8 +353,8 @@ object Uri {
       def isEmpty = false
       def length: Int = tail.length + 1
       def charCount: Int = tail.charCount + 1
-      def render(sb: JStringBuilder, charset: Charset = UTF8, encodeFirstSegmentColons: Boolean = false) =
-        tail.render(sb.append('/'), charset)
+      def render[R <: Rendering](r: R, charset: Charset, encodeFirstSegmentColons: Boolean): r.type =
+        tail.render(r ~~ '/', charset, encodeFirstSegmentColons = false)
       def ::(segment: String) = if (segment.isEmpty) this else Segment(segment, this)
       def ++(suffix: Path) = Slash(tail ++ suffix)
       def reverseAndPrependTo(prefix: Path) = tail.reverseAndPrependTo(Slash(prefix))
@@ -359,9 +367,9 @@ object Uri {
       def startsWithSegment = true
       def length: Int = tail.length + 1
       def charCount: Int = head.length + tail.charCount
-      def render(sb: JStringBuilder, charset: Charset = UTF8, encodeFirstSegmentColons: Boolean = false) = {
+      def render[R <: Rendering](r: R, charset: Charset, encodeFirstSegmentColons: Boolean): r.type = {
         val keep = if (encodeFirstSegmentColons) PATH_SEGMENT_CHAR & ~COLON else PATH_SEGMENT_CHAR
-        tail.render(sb.append(encode(head, charset, keep)), charset)
+        tail.render(encode(r, head, charset, keep), charset, encodeFirstSegmentColons = false)
       }
       def ::(segment: String) = if (segment.isEmpty) this else Segment(segment + head, tail)
       def ++(suffix: Path) = head :: (tail ++ suffix)
@@ -373,7 +381,8 @@ object Uri {
     }
   }
 
-  sealed abstract class Query extends LinearSeq[(String, String)] with LinearSeqOptimized[(String, String), Query] {
+  sealed abstract class Query extends LinearSeq[(String, String)] with LinearSeqOptimized[(String, String), Query]
+      with Renderable {
     def key: String
     def value: String
     def +:(kvp: (String, String)) = Query.Cons(kvp._1, kvp._2, this)
@@ -395,18 +404,19 @@ object Uri {
         if (q.isEmpty) map else append(map.updated(q.key, q.value :: map.getOrElse(q.key, Nil)), q.tail)
       append(Map.empty, this)
     }
-    def render(sb: JStringBuilder, charset: Charset = UTF8): JStringBuilder = {
-      def enc(s: String) = encode(s, charset, QUERY_FRAGMENT_CHAR & ~(AMP | EQUAL | PLUS) | SPACE).replace(' ', '+')
-      @tailrec def append(q: Query): JStringBuilder = if (q.isEmpty) sb else {
-        if (q ne this) sb.append('&')
-        sb.append(enc(q.key))
-        if (!q.value.isEmpty) sb.append('=').append(enc(q.value))
-        append(q.tail)
-      }
+    def render[R <: Rendering](r: R): r.type = render(r, UTF8)
+    def render[R <: Rendering](r: R, charset: Charset): r.type = {
+      def enc(r: Rendering, s: String): r.type =
+        encode(r, s, charset, QUERY_FRAGMENT_CHAR & ~(AMP | EQUAL | PLUS), replaceSpaces = true)
+      @tailrec def append(q: Query): r.type =
+        if (!q.isEmpty) {
+          if (q ne this) r ~~ '&'
+          enc(r, q.key)
+          if (!q.value.isEmpty) enc(r ~~ '=', q.value)
+          append(q.tail)
+        } else r
       append(this)
     }
-    def toString(charset: Charset) = render(new JStringBuilder, charset).toString
-    override def toString = toString(UTF8)
     override def newBuilder: mutable.Builder[(String, String), Query] = Query.newBuilder
   }
   object Query {
@@ -445,7 +455,7 @@ object Uri {
       override def head = throw new NoSuchElementException("head of empty list")
       override def tail = throw new UnsupportedOperationException("tail of empty query")
     }
-    case class Cons(key: String, value: String, override val tail: Query) extends Query {
+    case class Cons(key: String, value: String, override val tail: Query) extends Query with ToStringRenderable {
       override def isEmpty = false
       override def head = (key, value)
     }
@@ -503,26 +513,21 @@ object Uri {
     else Impl(scheme, userinfo, host, port, collapseDotSegments(path), query, fragment)
   }
 
-  private[http] def encode(string: String, charset: Charset, keep: Int): String = {
-    @tailrec def firstToBeEncoded(ix: Int = 0): Int =
-      if (ix == string.length) -1 else if (is(string.charAt(ix), keep)) firstToBeEncoded(ix + 1) else ix
-
-    firstToBeEncoded() match {
-      case -1 ⇒ string
-      case first ⇒
-        @tailrec def process(sb: JStringBuilder, ix: Int = first): String = {
-          def appendEncoded(byte: Byte): Unit = sb.append('%').append(hexDigit(byte >>> 4)).append(hexDigit(byte))
-          if (ix < string.length) {
-            string.charAt(ix) match {
-              case c if is(c, keep) ⇒ sb.append(c)
-              case c if c <= 127    ⇒ appendEncoded(c.toByte)
-              case c                ⇒ c.toString.getBytes(charset).foreach(appendEncoded)
-            }
-            process(sb, ix + 1)
-          } else sb.toString
+  private[http] def encode(r: Rendering, string: String, charset: Charset, keep: Int,
+                           replaceSpaces: Boolean = false): r.type = {
+    @tailrec def rec(ix: Int = 0): r.type = {
+      def appendEncoded(byte: Byte): Unit = r ~~ '%' ~~ hexDigit(byte >>> 4) ~~ hexDigit(byte)
+      if (ix < string.length) {
+        string.charAt(ix) match {
+          case c if is(c, keep)     ⇒ r ~~ c
+          case ' ' if replaceSpaces ⇒ r ~~ '+'
+          case c if c <= 127        ⇒ appendEncoded(c.toByte)
+          case c                    ⇒ c.toString.getBytes(charset).foreach(appendEncoded)
         }
-        process(new JStringBuilder(string.length * 2).append(string, 0, first))
+        rec(ix + 1)
+      } else r
     }
+    rec()
   }
 
   private[http] def decode(string: String, charset: Charset): String = {

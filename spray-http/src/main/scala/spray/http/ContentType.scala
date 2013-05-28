@@ -16,29 +16,36 @@
 
 package spray.http
 
-import HttpCharsets._
-
-case class ContentTypeRange(mediaRange: MediaRange, charsetRange: HttpCharsetRange = `*`) {
-  def value: String = charsetRange match {
-    case `*`            ⇒ mediaRange.value
-    case x: HttpCharset ⇒ mediaRange.value + "; charset=" + x.value
-  }
-  def matches(contentType: ContentType) = {
-    mediaRange.matches(contentType.mediaType) &&
-      ((charsetRange eq `*`) || contentType.definedCharset.map(charsetRange.matches(_)).getOrElse(false))
-  }
-  override def toString = "ContentTypeRange(" + value + ')'
+sealed abstract class ContentTypeRange extends ValueRenderable {
+  def mediaRange: MediaRange
+  def charsetRange: HttpCharsetRange
+  def matches(contentType: ContentType) =
+    mediaRange.matches(contentType.mediaType) && charsetRange.matches(contentType.charset)
 }
 
 object ContentTypeRange {
-  implicit def fromMediaRange(mediaRange: MediaRange): ContentTypeRange = apply(mediaRange)
+  private case class Impl(mediaRange: MediaRange, charsetRange: HttpCharsetRange) extends ContentTypeRange {
+    def render[R <: Rendering](r: R): r.type = charsetRange match {
+      case HttpCharsets.`*` ⇒ r ~~ mediaRange
+      case x: HttpCharset   ⇒ r ~~ mediaRange ~~ ContentType.`; charset=` ~~ charsetRange
+    }
+  }
+
+  implicit def apply(mediaRange: MediaRange): ContentTypeRange = apply(mediaRange, HttpCharsets.`*`)
+  def apply(mediaRange: MediaRange, charsetRange: HttpCharsetRange): ContentTypeRange = Impl(mediaRange, charsetRange)
 }
 
-case class ContentType(mediaType: MediaType, definedCharset: Option[HttpCharset]) {
-  def value: String = definedCharset match {
-    case Some(cs) ⇒ mediaType.value + "; charset=" + cs.value
-    case _        ⇒ mediaType.value
+case class ContentType(mediaType: MediaType, definedCharset: Option[HttpCharset]) extends ContentTypeRange {
+  def render[R <: Rendering](r: R): r.type = definedCharset match {
+    case Some(cs) ⇒ r ~~ mediaType ~~ ContentType.`; charset=` ~~ cs
+    case _        ⇒ r ~~ mediaType
   }
+  def charset: HttpCharset = definedCharset getOrElse HttpCharsets.`ISO-8859-1`
+  def mediaRange: MediaRange = mediaType
+  def charsetRange: HttpCharsetRange = charset
+
+  def isCharsetDefined = definedCharset.isDefined
+  def noCharsetDefined = definedCharset.isEmpty
 
   def withMediaType(mediaType: MediaType) =
     if (mediaType != this.mediaType) copy(mediaType = mediaType) else this
@@ -46,24 +53,20 @@ case class ContentType(mediaType: MediaType, definedCharset: Option[HttpCharset]
     if (noCharsetDefined || charset != definedCharset.get) copy(definedCharset = Some(charset)) else this
   def withoutDefinedCharset =
     if (isCharsetDefined) copy(definedCharset = None) else this
-
-  def isCharsetDefined = definedCharset.isDefined
-  def noCharsetDefined = definedCharset.isEmpty
-
-  def charset: HttpCharset = definedCharset.getOrElse(`ISO-8859-1`)
-
-  def valueBytes: Array[Byte] = value.getBytes("ASCII")
 }
 
 object ContentType {
-  val `text/plain` = ContentType(MediaTypes.`text/plain`)
-  val `application/octet-stream` = ContentType(MediaTypes.`application/octet-stream`)
-
-  // RFC4627 defines JSON to always be UTF encoded, we always render JSON to UTF-8
-  val `application/json` = new ContentType(MediaTypes.`application/json`, Some(`UTF-8`)) {
-    override val valueBytes: Array[Byte] = super.valueBytes
-  }
+  private[http] case object `; charset=` extends SingletonValueRenderable
 
   def apply(mediaType: MediaType, charset: HttpCharset): ContentType = apply(mediaType, Some(charset))
   implicit def apply(mediaType: MediaType): ContentType = apply(mediaType, None)
+}
+
+object ContentTypes {
+  val `*` = ContentTypeRange(MediaRanges.`*/*`, HttpCharsets.`*`)
+
+  // RFC4627 defines JSON to always be UTF encoded, we always render JSON to UTF-8
+  val `application/json` = ContentType(MediaTypes.`application/json`, HttpCharsets.`UTF-8`)
+  val `text/plain` = ContentType(MediaTypes.`text/plain`)
+  val `application/octet-stream` = ContentType(MediaTypes.`application/octet-stream`)
 }

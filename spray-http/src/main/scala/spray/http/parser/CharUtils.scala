@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2011-2013 spray.io
- * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,19 +14,20 @@
  * limitations under the License.
  */
 
-package spray.http
+package spray.http.parser
 
-sealed abstract class RangeUnit {
-  def value: String
-  override def toString = value
-}
+object CharUtils {
+  def hexValue(c: Char): Int = (c & 0x1f) + ((c >> 6) * 0x19) - 0x10
 
-object RangeUnits {
+  def toLowerCase(c: Char): Char = if (CharPredicate.UpperAlpha(c)) (c + 0x20).toChar else c
 
-  val bytes = new RangeUnit {
-    def value = "bytes"
+  def abs(i: Int): Int = { val j = i >> 31; (i ^ j) - j }
+
+  def escape(c: Char): String = c match {
+    case '\t'                           ⇒ "\\t"
+    case '\r'                           ⇒ "\\r"
+    case '\n'                           ⇒ "\\n"
+    case x if Character.isISOControl(x) ⇒ "\\u%04x" format c.toInt
+    case x                              ⇒ x.toString
   }
-
-  case class CustomRangeUnit(value: String) extends RangeUnit
 }
-

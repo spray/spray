@@ -31,7 +31,6 @@ object HttpParser extends Parser with ProtocolParameterRules with AdditionalRule
     with AcceptEncodingHeader
     with AcceptHeader
     with AcceptLanguageHeader
-    with AcceptRangesHeader
     with AuthorizationHeader
     with CacheControlHeader
     with ContentEncodingHeader

@@ -415,6 +415,7 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
     }
 }
 
+// TODO: switch to CharMask-based masking
 private[http] object UriParser {
   // compile time constants
   final val EOI = '\uffff'
@@ -466,7 +467,7 @@ private[http] object UriParser {
   private[this] val props = new Array[Int](128)
 
   private[http] def is(c: Int, mask: Int): Boolean = (props(indexFor(c)) & mask) != 0
-  private def indexFor(c: Int): Int = c & sex(c - 127) // branchless for `if (c <= 127) c else 0`
+  private def indexFor(c: Int): Int = c & sex(c - 128) // branchless for `if (c < 128) c else 0`
   private def mark(mask: Int, chars: Char*): Unit = chars.foreach(c ⇒ props(indexFor(c)) = props(indexFor(c)) | mask)
   private def mark(mask: Int, range: NumericRange[Char]): Unit = mark(mask, range.toSeq: _*)
 

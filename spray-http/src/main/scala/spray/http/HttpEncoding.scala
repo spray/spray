@@ -17,46 +17,37 @@
 
 package spray.http
 
-sealed abstract class HttpEncodingRange {
-  def value: String
+sealed abstract class HttpEncodingRange extends Renderable {
   def matches(encoding: HttpEncoding): Boolean
-  override def toString = "HttpEncodingRange(" + value + ')'
 }
 
-sealed abstract class HttpEncoding extends HttpEncodingRange {
+case class HttpEncoding private[http] (value: String) extends HttpEncodingRange with LazyValueBytesRenderable {
   def matches(encoding: HttpEncoding) = this == encoding
-  override def equals(obj: Any) = obj match {
-    case x: HttpEncoding ⇒ (this eq x) || value == x.value
-    case _               ⇒ false
-  }
-  override def hashCode() = value.##
-  override def toString = "HttpEncoding(" + value + ')'
+}
+
+object HttpEncoding {
+  def custom(value: String) = apply(value)
 }
 
 // see http://www.iana.org/assignments/http-parameters/http-parameters.xml
 object HttpEncodings extends ObjectRegistry[String, HttpEncoding] {
 
-  def register(encoding: HttpEncoding): HttpEncoding = {
+  def register(encoding: HttpEncoding): HttpEncoding =
     register(encoding.value.toLowerCase, encoding)
-    encoding
-  }
 
-  val `*`: HttpEncodingRange = new HttpEncodingRange {
-    def value = "*"
+  case object `*` extends HttpEncodingRange with SingletonValueRenderable {
     def matches(encoding: HttpEncoding) = true
   }
 
-  private class PredefEncoding(val value: String) extends HttpEncoding
+  private def register(value: String): HttpEncoding = register(HttpEncoding(value))
 
   // format: OFF
-  val compress      = register(new PredefEncoding("compress"))
-  val chunked       = register(new PredefEncoding("chunked"))
-  val deflate       = register(new PredefEncoding("deflate"))
-  val gzip          = register(new PredefEncoding("gzip"))
-  val identity      = register(new PredefEncoding("identity"))
-  val `x-compress`  = register(new PredefEncoding("x-compress"))
-  val `x-zip`       = register(new PredefEncoding("x-zip"))
+  val compress      = register("compress")
+  val chunked       = register("chunked")
+  val deflate       = register("deflate")
+  val gzip          = register("gzip")
+  val identity      = register("identity")
+  val `x-compress`  = register("x-compress")
+  val `x-zip`       = register("x-zip")
   // format: ON
-
-  case class CustomHttpEncoding(value: String) extends HttpEncoding
 }

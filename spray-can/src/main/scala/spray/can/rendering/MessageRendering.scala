@@ -32,7 +32,7 @@ private[rendering] object MessageRendering {
   val UserAgent = "User-Agent".getAsciiBytes
 
   def put(header: HttpHeader)(implicit bb: ByteStringBuilder): this.type =
-    putHeader(header.name7bit, header.value)
+    putHeader(header.nameBytes, header.value)
 
   def putHeader(name: Array[Byte], value: String)(implicit bb: ByteStringBuilder): this.type =
     put(name).put(':').put(' ').put(value).put(CrLf)

@@ -19,18 +19,16 @@ package spray.http
 
 import spray.http.parser.HttpParser
 
-case class ProductVersion(product: String = "", version: String = "", comment: String = "") {
-  override def toString =
-    if (version.isEmpty && comment.isEmpty) product
-    else {
-      val sb = new java.lang.StringBuilder(product)
-      if (!version.isEmpty) sb.append('/').append(version)
-      if (!comment.isEmpty) {
-        if (sb.length > 0) sb.append(' ')
-        sb.append('(').append(comment).append(')')
-      }
-      sb.toString
+case class ProductVersion(product: String = "", version: String = "", comment: String = "") extends ValueRenderable {
+  def render[R <: Rendering](r: R): r.type = {
+    r ~~ product
+    if (!version.isEmpty) r ~~ '/' ~~ version
+    if (!comment.isEmpty) {
+      if (!product.isEmpty || !version.isEmpty) r ~~ ' '
+      r ~~ '(' ~~ comment ~~ ')'
     }
+    r
+  }
 }
 
 object ProductVersion {

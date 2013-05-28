@@ -44,13 +44,9 @@ private[parser] trait AcceptHeader {
 
   // helpers
 
-  def getMediaRange(mainType: String, subType: String): MediaRange = {
+  def getMediaRange(mainType: String, subType: String): MediaRange =
     if (subType == "*") {
       val mainTypeLower = mainType.toLowerCase
-      MediaRanges.getForKey(mainTypeLower).getOrElse(MediaRanges.CustomMediaRange(mainTypeLower))
-    } else {
-      getMediaType(mainType, subType)
-    }
-  }
-
+      MediaRanges.getForKey(mainTypeLower) getOrElse MediaRanges.custom(mainTypeLower)
+    } else getMediaType(mainType, subType)
 }
