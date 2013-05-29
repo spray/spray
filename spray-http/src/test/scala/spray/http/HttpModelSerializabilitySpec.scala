@@ -1,7 +1,7 @@
 package spray.http
 
 import org.specs2.mutable.Specification
-import java.io.{ ByteArrayOutputStream, ObjectOutputStream }
+import java.io._
 import spray.http.HttpCharsets.CustomHttpCharset
 
 class HttpModelSerializabilitySpec extends Specification {
@@ -41,11 +41,22 @@ class HttpModelSerializabilitySpec extends Specification {
   }
 
   def beSerializable =
-    (throwA[java.io.NotSerializableException] ^^ (tryToSerialize _)).not
+    (throwA[java.lang.Throwable] ^^ (tryToSerialize[AnyRef] _)).not
 
-  def tryToSerialize(obj: AnyRef) = {
-    val oos = new ObjectOutputStream(new ByteArrayOutputStream)
-    try oos.writeObject(obj)
-    finally oos.close()
+  def tryToSerialize[T](obj: T): T = {
+    val baos = new ByteArrayOutputStream
+    val oos = new ObjectOutputStream(baos)
+    oos.writeObject(obj)
+    oos.close()
+    // make sure to use correct class loader
+    val loader = classOf[HttpRequest].getClassLoader
+    val ois = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray)) {
+      override def resolveClass(desc: ObjectStreamClass): Class[_] =
+        Class.forName(desc.getName(), false, loader)
+    }
+
+    val rereadObj = ois.readObject()
+    rereadObj must be_==(obj)
+    rereadObj.asInstanceOf[T]
   }
 }
