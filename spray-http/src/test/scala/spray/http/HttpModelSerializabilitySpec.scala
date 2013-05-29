@@ -37,6 +37,17 @@ class HttpModelSerializabilitySpec extends Specification {
       "Content-Disposition" in { ContentDispositions.`form-data` must beSerializable }
       "Cache" in { CacheDirectives.`no-store` must beSerializable }
       "DateTime" in { DateTime.now must beSerializable }
+      "Charsets" in {
+        val exampleCharset = HttpCharsets.`UTF-16`
+        exampleCharset.nioCharset // initialize possibly lazy field
+        val obj = tryToSerialize(exampleCharset)
+        obj.nioCharset must be_==(exampleCharset.nioCharset)
+      }
+      "LanguageRange" in {
+        LanguageRanges.Language("a", "b") must beSerializable
+        LanguageRanges.`*` must beSerializable
+      }
+      "MediaRange" in { MediaRanges.`application/*` must beSerializable }
     }
   }
 
