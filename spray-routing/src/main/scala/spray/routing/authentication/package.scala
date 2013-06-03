@@ -16,17 +16,12 @@
 
 package spray.routing
 
-import scala.concurrent.{ Promise, ExecutionContext, Future }
-import com.typesafe.config.{ Config, ConfigException }
-import spray.caching.{ Cache, LruCache }
-import spray.util.pimpString
+import scala.concurrent.Future
 
 package object authentication {
-
   type ContextAuthenticator[T] = RequestContext ⇒ Future[Authentication[T]]
   type Authentication[T] = Either[Rejection, T]
   type UserPassAuthenticator[T] = Option[UserPass] ⇒ Future[Option[T]]
-
 }
 
 package authentication {

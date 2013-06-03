@@ -19,7 +19,7 @@ package spray.routing.authentication
 import com.typesafe.config.{ ConfigException, Config }
 import scala.concurrent.{ ExecutionContext, Promise }
 import spray.caching.{ LruCache, Cache }
-import spray.util.pimpString
+import spray.util.pimpString_
 
 object UserPassAuthenticator {
 
