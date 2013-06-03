@@ -16,17 +16,22 @@
 
 package spray.can.rendering
 
-import akka.io.Tcp
-import spray.io.Command
-import spray.http._
+import spray.http.Rendering
+import akka.util.{ ByteStringBuilder, ByteString }
 
-case class RequestPartRenderingContext(
-  requestPart: HttpRequestPart,
-  ack: Any = Tcp.NoAck) extends Command
+private[can] class ByteStringRendering(sizeHint: Int) extends Rendering {
+  private[this] val b = new ByteStringBuilder
+  b.sizeHint(sizeHint)
 
-case class ResponsePartRenderingContext(
-  responsePart: HttpResponsePart,
-  requestMethod: HttpMethod = HttpMethods.GET,
-  requestProtocol: HttpProtocol = HttpProtocols.`HTTP/1.1`,
-  closeAfterResponseCompletion: Boolean = false,
-  ack: Any = Tcp.NoAck) extends Command
+  def ~~(char: Char): this.type = {
+    b.putByte(char.toByte)
+    this
+  }
+
+  def ~~(bytes: Array[Byte]): this.type = {
+    b.putBytes(bytes)
+    this
+  }
+
+  def get: ByteString = b.result()
+}

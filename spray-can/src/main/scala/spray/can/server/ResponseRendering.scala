@@ -16,25 +16,25 @@
 
 package spray.can.server
 
-import spray.can.rendering.{ RenderedMessagePart, HttpResponsePartRenderingContext, ResponseRenderer }
-import spray.io._
 import akka.io.Tcp
+import spray.can.rendering.{ ByteStringRendering, ResponseRenderingComponent, ResponsePartRenderingContext }
+import spray.io._
 import spray.can.Http
 
 object ResponseRendering {
 
   def apply(settings: ServerSettings): PipelineStage =
-    new PipelineStage {
-      val renderer = new ResponseRenderer(
-        settings.serverHeader,
-        settings.chunklessStreaming,
-        settings.responseSizeHint)
+    new PipelineStage with ResponseRenderingComponent {
+      def serverHeaderValue: String = settings.serverHeader
+      def chunklessStreaming: Boolean = settings.chunklessStreaming
 
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           val commandPipeline: CPL = {
-            case ctx: HttpResponsePartRenderingContext ⇒
-              val RenderedMessagePart(data, close) = renderer.render(ctx)
+            case ctx: ResponsePartRenderingContext ⇒
+              val rendering = new ByteStringRendering(settings.responseSizeHint)
+              val close = renderResponsePartRenderingContext(rendering, ctx)
+              val data = rendering.get
               if (!data.isEmpty) commandPL(Tcp.Write(data, ctx.ack))
               if (close) commandPL(Http.Close)
 

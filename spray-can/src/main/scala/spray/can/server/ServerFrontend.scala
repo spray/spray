@@ -21,7 +21,7 @@ import scala.concurrent.duration.Duration
 import akka.actor.ActorRef
 import akka.io.Tcp
 import spray.can.server.RequestParsing.HttpMessageStartEvent
-import spray.can.rendering.HttpResponsePartRenderingContext
+import spray.can.rendering.ResponsePartRenderingContext
 import spray.can.Http
 import spray.util.requirePositiveOrUndefined
 import spray.http._
@@ -105,7 +105,7 @@ object ServerFrontend {
                       HttpResponse(StatusCodes.InternalServerError, StatusCodes.InternalServerError.defaultMessage)
                   }
                 if (firstOpenRequest.isEmpty) commandPL {
-                  HttpResponsePartRenderingContext(response, request.method, request.protocol,
+                  ResponsePartRenderingContext(response, request.method, request.protocol,
                     closeAfterResponseCompletion, Tcp.NoAck(PartAndSender(response, context.self)))
                 }
                 else throw new NotImplementedError("fastPath is not yet supported with pipelining enabled")

@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicLong
 import scala.annotation.tailrec
 import scala.concurrent.duration._
 import spray.http.{ Timedout, HttpMessageStart }
-import spray.can.rendering.HttpResponsePartRenderingContext
+import spray.can.rendering.ResponsePartRenderingContext
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.io._
 import spray.can.Http
@@ -86,7 +86,7 @@ object StatsSupport {
           adjustMaxOpenConnections()
 
           val commandPipeline: CPL = {
-            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageStart] ⇒
+            case x: ResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageStart] ⇒
               responseStarts.incrementAndGet()
               commandPL(x)
 

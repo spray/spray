@@ -33,7 +33,7 @@ import spray.can.Http
 import spray.can.TestSupport._
 import spray.http._
 
-class HttpOutgoingConnectionPipelineSpec extends Specification with RawSpecs2PipelineStageTest with NoTimeConversions {
+class HttpClientConnectionPipelineSpec extends Specification with RawSpecs2PipelineStageTest with NoTimeConversions {
   type Context = SslTlsContext
 
   val stage = HttpClientConnection.pipelineStage(ClientConnectionSettings(system))
@@ -134,7 +134,7 @@ class HttpOutgoingConnectionPipelineSpec extends Specification with RawSpecs2Pip
       connectionActor ! Tcp.PeerClosed
       commands.expectMsgPF() {
         case Pipeline.Tell(`probeRef`, HttpResponse(StatusCodes.OK, entity, _, _), `connectionActor`) ⇒ entity
-      } === HttpEntity(ContentType.`application/octet-stream`, "Yeah")
+      } === HttpEntity(ContentTypes.`application/octet-stream`, "Yeah")
     }
 
     "dispatch Closed events to the Close commander" in new Fixture(stage) {

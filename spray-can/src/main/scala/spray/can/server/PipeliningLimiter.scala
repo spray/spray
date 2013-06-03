@@ -17,7 +17,7 @@
 package spray.can.server
 
 import scala.annotation.tailrec
-import spray.can.rendering.HttpResponsePartRenderingContext
+import spray.can.rendering.ResponsePartRenderingContext
 import spray.http._
 import spray.io._
 import scala.collection.immutable.Queue
@@ -38,7 +38,7 @@ object PipeliningLimiter {
           var readingStopped = false
 
           val commandPipeline: CPL = {
-            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEnd] ⇒
+            case x: ResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEnd] ⇒
               openRequests -= 1
               commandPL(x)
               if (!parkedRequestParts.isEmpty) {

@@ -20,7 +20,7 @@ import scala.collection.immutable.Queue
 import scala.concurrent.duration._
 import akka.actor.ActorRef
 import akka.io.Tcp
-import spray.can.rendering.HttpRequestPartRenderingContext
+import spray.can.rendering.RequestPartRenderingContext
 import spray.can.Http
 import spray.http._
 import spray.io._
@@ -121,7 +121,7 @@ object ClientFrontend {
               case Some(x) ⇒ x
               case None    ⇒ Tcp.NoAck(PartAndSender(part, context.sender))
             }
-            commandPL(HttpRequestPartRenderingContext(part, sentAck))
+            commandPL(RequestPartRenderingContext(part, sentAck))
           }
 
           def checkForTimeout(): Unit =

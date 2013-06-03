@@ -19,7 +19,7 @@ package spray.can.server
 import scala.annotation.tailrec
 import akka.io.Tcp
 import akka.util.{ CompactByteString, ByteString }
-import spray.can.rendering.HttpResponsePartRenderingContext
+import spray.can.rendering.ResponsePartRenderingContext
 import spray.can.Http
 import spray.can.parsing._
 import spray.http._
@@ -68,9 +68,9 @@ object RequestParsing {
             }
 
           def handleError(status: StatusCode, info: ErrorInfo): Unit = {
-            log.warning("Illegal request, responding with status '{}': {}", status.formatPretty, info.formatPretty)
+            log.warning("Illegal request, responding with status '{}': {}", status, info.formatPretty)
             val msg = if (settings.verboseErrorMessages) info.formatPretty else info.summary
-            commandPL(HttpResponsePartRenderingContext(HttpResponse(status, msg)))
+            commandPL(ResponsePartRenderingContext(HttpResponse(status, msg)))
             commandPL(Http.Close)
           }
 
