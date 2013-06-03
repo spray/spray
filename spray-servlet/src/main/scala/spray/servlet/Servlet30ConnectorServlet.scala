@@ -186,7 +186,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
                     hsResponse: HttpServletResponse, req: AnyRef)(complete: ⇒ Unit): Option[Throwable] = {
     try {
       val resp = response.message.asInstanceOf[HttpResponse]
-      hsResponse.setStatus(resp.status.value)
+      hsResponse.setStatus(resp.status.intValue)
       resp.headers.foreach { header ⇒
         header.lowercaseName match {
           case "content-type"   ⇒ // we never render these headers here, because their production is the

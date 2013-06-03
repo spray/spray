@@ -169,7 +169,7 @@ trait DemoService extends HttpService {
     }
 
   implicit val statsMarshaller: Marshaller[Stats] =
-    Marshaller.delegate[Stats, String](ContentType.`text/plain`) { stats =>
+    Marshaller.delegate[Stats, String](ContentTypes.`text/plain`) { stats =>
       "Uptime                : " + stats.uptime.formatHMS + '\n' +
       "Total requests        : " + stats.totalRequests + '\n' +
       "Open requests         : " + stats.openRequests + '\n' +

@@ -17,12 +17,12 @@
 package spray.httpx.marshalling
 
 import java.util.Random
-import java.io.ByteArrayOutputStream
 import org.parboiled.common.Base64
 import akka.actor.ActorRef
 import spray.http._
 import MediaTypes._
 import HttpHeaders._
+import Rendering.CrLf
 
 trait MultipartMarshallers {
   protected val multipartBoundaryRandom = new Random
@@ -38,40 +38,19 @@ trait MultipartMarshallers {
 
   implicit def multipartContentMarshaller =
     Marshaller.of[MultipartContent](new `multipart/mixed`(Some(randomBoundary))) { (value, contentType, ctx) ⇒
-      val out = new ByteArrayOutputStream(1024)
+      val r = new ByteArrayRendering(512)
       val boundary = contentType.mediaType.asInstanceOf[MultipartMediaType].boundary.get
-
-      def putCrLf() { put('\r'); put('\n') }
-      def putDashDash() { put('-'); put('-') }
-      def put(char: Char) { out.write(char.asInstanceOf[Byte]) }
-      def putHeader(name: String, value: String) { putString(name); put(':'); put(' '); putString(value); putCrLf() }
-      def putString(string: String) {
-        val chars = new Array[Char](string.length)
-        string.getChars(0, string.length, chars, 0)
-        var i = 0
-        while (i < chars.length) { put(chars(i)); i += 1 }
-      }
-
       if (!value.parts.isEmpty) {
         value.parts.foreach { part ⇒
-          putDashDash(); putString(boundary); putCrLf()
-          part.headers.foreach { header ⇒
-            require(header.name != "Content-Type", "")
-            putHeader(header.name, header.value)
-          }
+          r ~~ '-' ~~ '-' ~~ boundary ~~ CrLf
+          part.headers.foreach { header ⇒ if (header.isNot("content-type")) r ~~ header ~~ CrLf }
           part.entity match {
-            case EmptyEntity ⇒
-            case HttpBody(ct, buf) ⇒
-              if (buf.length > 0) {
-                putHeader("Content-Type", ct.value)
-                putCrLf()
-                out.write(buf)
-                putCrLf()
-              }
+            case EmptyEntity       ⇒
+            case HttpBody(ct, buf) ⇒ if (buf.length > 0) r ~~ `Content-Type` ~~ ct ~~ CrLf ~~ CrLf ~~ buf ~~ CrLf
           }
         }
-        putDashDash(); putString(boundary); putDashDash()
-        ctx.marshalTo(HttpEntity(contentType, out.toByteArray))
+        r ~~ '-' ~~ '-' ~~ boundary ~~ '-' ~~ '-'
+        ctx.marshalTo(HttpEntity(contentType, r.get))
       } else ctx.marshalTo(EmptyEntity)
     }
 

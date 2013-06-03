@@ -6,7 +6,6 @@ import spray.httpx.unmarshalling._
 import spray.httpx.marshalling._
 import spray.json._
 import spray.http._
-import MediaTypes._
 
 case class Employee(fname: String, name: String, age: Int, id: Long, boardMember: Boolean) {
   require(!boardMember || age > 40, "Board members must be older than 40")
@@ -37,13 +36,13 @@ class SprayJsonSupportSpec extends Specification with SprayJsonSupport {
 
   "The SprayJsonSupport" should {
     "provide unmarshalling support for a case class" in {
-      HttpEntity(ContentType.`application/json`, Employee.json).as[Employee] === Right(Employee.simple)
+      HttpEntity(ContentTypes.`application/json`, Employee.json).as[Employee] === Right(Employee.simple)
     }
     "provide marshalling support for a case class" in {
-      marshal(Employee.simple) === Right(HttpEntity(ContentType.`application/json`, Employee.json))
+      marshal(Employee.simple) === Right(HttpEntity(ContentTypes.`application/json`, Employee.json))
     }
     "use UTF-8 as the default charset for JSON source decoding" in {
-      HttpEntity(`application/json`, Employee.utf8json).as[Employee] === Right(Employee.utf8)
+      HttpEntity(MediaTypes.`application/json`, Employee.utf8json).as[Employee] === Right(Employee.utf8)
     }
   }
 }
@@ -53,13 +52,13 @@ class Json4sSupportSpec extends Specification with Json4sSupport {
 
   "The Json4sSupport" should {
     "provide unmarshalling support for a case class" in {
-      HttpEntity(`application/json`, Employee.json).as[Employee] === Right(Employee.simple)
+      HttpEntity(ContentTypes.`application/json`, Employee.json).as[Employee] === Right(Employee.simple)
     }
     "provide marshalling support for a case class" in {
-      marshal(Employee.simple) === Right(HttpEntity(ContentType.`application/json`, Employee.json))
+      marshal(Employee.simple) === Right(HttpEntity(ContentTypes.`application/json`, Employee.json))
     }
     "use UTF-8 as the default charset for JSON source decoding" in {
-      HttpEntity(`application/json`, Employee.utf8json).as[Employee] === Right(Employee.utf8)
+      HttpEntity(MediaTypes.`application/json`, Employee.utf8json).as[Employee] === Right(Employee.utf8)
     }
   }
 }
@@ -69,13 +68,13 @@ class Json4sJacksonSupportSpec extends Specification with Json4sJacksonSupport {
 
   "The Json4sJacksonSupport" should {
     "provide unmarshalling support for a case class" in {
-      HttpEntity(`application/json`, Employee.json).as[Employee] === Right(Employee.simple)
+      HttpEntity(ContentTypes.`application/json`, Employee.json).as[Employee] === Right(Employee.simple)
     }
     "provide marshalling support for a case class" in {
-      marshal(Employee.simple) === Right(HttpEntity(ContentType.`application/json`, Employee.json))
+      marshal(Employee.simple) === Right(HttpEntity(ContentTypes.`application/json`, Employee.json))
     }
     "use UTF-8 as the default charset for JSON source decoding" in {
-      HttpEntity(`application/json`, Employee.utf8json).as[Employee] === Right(Employee.utf8)
+      HttpEntity(MediaTypes.`application/json`, Employee.utf8json).as[Employee] === Right(Employee.utf8)
     }
   }
 }
@@ -85,13 +84,13 @@ class LiftJsonSupportSpec extends Specification with LiftJsonSupport {
 
   "The LiftJsonSupport" should {
     "provide unmarshalling support for a case class" in {
-      HttpEntity(`application/json`, Employee.json).as[Employee] === Right(Employee.simple)
+      HttpEntity(ContentTypes.`application/json`, Employee.json).as[Employee] === Right(Employee.simple)
     }
     "provide marshalling support for a case class" in {
-      marshal(Employee.simple) === Right(HttpEntity(ContentType.`application/json`, Employee.json))
+      marshal(Employee.simple) === Right(HttpEntity(ContentTypes.`application/json`, Employee.json))
     }
     "use UTF-8 as the default charset for JSON source decoding" in {
-      HttpEntity(`application/json`, Employee.utf8json).as[Employee] === Right(Employee.utf8)
+      HttpEntity(MediaTypes.`application/json`, Employee.utf8json).as[Employee] === Right(Employee.utf8)
     }
   }
 }

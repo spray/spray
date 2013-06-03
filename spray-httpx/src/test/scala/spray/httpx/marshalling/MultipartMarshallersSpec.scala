@@ -51,7 +51,7 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
       } === Right {
         HttpEntity(ContentType(new `multipart/mixed`(Some("OvAdT7dw6YwDJfQdPrr4mG2n"))),
           """|--OvAdT7dw6YwDJfQdPrr4mG2n
-            |Content-Disposition: form-data; name="email"
+            |Content-Disposition: form-data; name=email
             |Content-Type: text/plain; charset=UTF-8
             |
             |test@there.com
@@ -93,12 +93,12 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
           HttpEntity(
             contentType = ContentType(new `multipart/form-data`(Some("WA+a+wgbEuEHsegF8rT18PHQ"))),
             string = """|--WA+a+wgbEuEHsegF8rT18PHQ
-                        |Content-Disposition: form-data; name="surname"
+                        |Content-Disposition: form-data; name=surname
                         |Content-Type: text/plain
                         |
                         |Mike
                         |--WA+a+wgbEuEHsegF8rT18PHQ
-                        |Content-Disposition: form-data; name="age"
+                        |Content-Disposition: form-data; name=age
                         |Content-Type: text/xml
                         |
                         |<int>42</int>

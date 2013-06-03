@@ -6,12 +6,11 @@ import org.specs2.mutable.Specification
 class MarshallingExamplesSpec extends Specification {
 
   //# example-1
-  import spray.http.HttpEntity
-  import spray.http.MediaTypes._
+  import spray.http._
   import spray.httpx.marshalling._
 
   val `application/vnd.acme.person` =
-    register(CustomMediaType("application/vnd.acme.person"))
+    MediaTypes.register(MediaType.custom("application/vnd.acme.person"))
 
   case class Person(name: String, firstName: String, age: Int)
 

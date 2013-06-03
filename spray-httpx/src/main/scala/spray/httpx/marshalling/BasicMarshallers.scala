@@ -30,10 +30,10 @@ trait BasicMarshallers {
       ctx.marshalTo(HttpEntity(contentType, value))
     }
 
-  implicit val ByteArrayMarshaller = byteArrayMarshaller(ContentType.`application/octet-stream`)
+  implicit val ByteArrayMarshaller = byteArrayMarshaller(ContentTypes.`application/octet-stream`)
 
   implicit val CharArrayMarshaller =
-    Marshaller.of[Array[Char]](ContentType.`text/plain`) { (value, contentType, ctx) ⇒
+    Marshaller.of[Array[Char]](ContentTypes.`text/plain`) { (value, contentType, ctx) ⇒
       ctx.marshalTo {
         if (value.length > 0) {
           val nioCharset = contentType.charset.nioCharset
@@ -46,7 +46,7 @@ trait BasicMarshallers {
 
   //# string-marshaller
   implicit val StringMarshaller =
-    Marshaller.of[String](ContentType.`text/plain`) { (value, contentType, ctx) ⇒
+    Marshaller.of[String](ContentTypes.`text/plain`) { (value, contentType, ctx) ⇒
       ctx.marshalTo(HttpEntity(contentType, value))
     }
   //#

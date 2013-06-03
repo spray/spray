@@ -81,7 +81,7 @@ class MultipartUnmarshallersSpec extends Specification {
     "correctly unmarshal 'multipart/form-data' content with one element" in (
       HttpEntity(new `multipart/form-data`(Some("XYZABC")),
         """|--XYZABC
-           |content-disposition: form-data; name="email"
+           |content-disposition: form-data; name=email
            |
            |test@there.com
            |--XYZABC--""".stripMargin).as[MultipartFormData] === Right {

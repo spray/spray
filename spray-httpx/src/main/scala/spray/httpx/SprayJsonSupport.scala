@@ -20,7 +20,6 @@ import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling.Unmarshaller
 import spray.json._
 import spray.http._
-import MediaTypes._
 
 /**
  * A trait providing automatic to and from JSON marshalling/unmarshalling using an in-scope *spray-json* protocol.
@@ -30,14 +29,14 @@ import MediaTypes._
 trait SprayJsonSupport {
 
   implicit def sprayJsonUnmarshaller[T: RootJsonReader] =
-    Unmarshaller[T](`application/json`) {
+    Unmarshaller[T](MediaTypes.`application/json`) {
       case x: HttpBody ⇒
         val json = JsonParser(x.asString(defaultCharset = HttpCharsets.`UTF-8`))
         jsonReader[T].read(json)
     }
 
   implicit def sprayJsonMarshaller[T](implicit writer: RootJsonWriter[T], printer: JsonPrinter = PrettyPrinter) =
-    Marshaller.delegate[T, String](ContentType.`application/json`) { value ⇒
+    Marshaller.delegate[T, String](ContentTypes.`application/json`) { value ⇒
       val json = writer.write(value)
       printer(json)
     }

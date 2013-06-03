@@ -25,7 +25,7 @@ class CookieDirectivesSpec extends RoutingSpec {
     "extract the respectively named cookie" in {
       Get() ~> addHeader(Cookie(HttpCookie("fancy", "pants"))) ~> {
         cookie("fancy") { echoComplete }
-      } ~> check { entityAs[String] === "fancy=\"pants\"" }
+      } ~> check { entityAs[String] === "fancy=pants" }
     }
     "reject the request if the cookie is not present" in {
       Get() ~> {
@@ -44,7 +44,7 @@ class CookieDirectivesSpec extends RoutingSpec {
       Get() ~> {
         deleteCookie("myCookie", "test.com") { completeOk }
       } ~> check {
-        response.toString === "HttpResponse(StatusCode(200, OK),EmptyEntity,List(Set-Cookie: myCookie=\"deleted\"; " +
+        response.toString === "HttpResponse(200 OK,EmptyEntity,List(Set-Cookie: myCookie=deleted; " +
           "Expires=Wed, 01 Jan 1800 00:00:00 GMT; Domain=test.com),HTTP/1.1)"
       }
     }
@@ -53,9 +53,9 @@ class CookieDirectivesSpec extends RoutingSpec {
       Get() ~> {
         deleteCookie(HttpCookie("myCookie", "test.com"), HttpCookie("myCookie2", "foobar.com")) { completeOk }
       } ~> check {
-        response.toString === "HttpResponse(StatusCode(200, OK),EmptyEntity,List(" +
-          "Set-Cookie: myCookie=\"deleted\"; Expires=Wed, 01 Jan 1800 00:00:00 GMT, " +
-          "Set-Cookie: myCookie2=\"deleted\"; Expires=Wed, 01 Jan 1800 00:00:00 GMT" +
+        response.toString === "HttpResponse(200 OK,EmptyEntity,List(" +
+          "Set-Cookie: myCookie=deleted; Expires=Wed, 01 Jan 1800 00:00:00 GMT, " +
+          "Set-Cookie: myCookie2=deleted; Expires=Wed, 01 Jan 1800 00:00:00 GMT" +
           "),HTTP/1.1)"
       }
     }
@@ -65,7 +65,7 @@ class CookieDirectivesSpec extends RoutingSpec {
     "produce a `Some(cookie)` extraction if the cookie is present" in {
       Get() ~> Cookie(HttpCookie("abc", "123")) ~> {
         optionalCookie("abc") { echoComplete }
-      } ~> check { entityAs[String] === """Some(abc="123")""" }
+      } ~> check { entityAs[String] === "Some(abc=123)" }
     }
     "produce a `None` extraction if the cookie is not present" in {
       Get() ~> optionalCookie("abc") { echoComplete } ~> check { entityAs[String] === "None" }
@@ -84,7 +84,7 @@ class CookieDirectivesSpec extends RoutingSpec {
       Get() ~> {
         setCookie(HttpCookie("myCookie", "test.com")) { completeOk }
       } ~> check {
-        response.toString === "HttpResponse(StatusCode(200, OK),EmptyEntity,List(Set-Cookie: myCookie=\"test.com\"),HTTP/1.1)"
+        response.toString === "HttpResponse(200 OK,EmptyEntity,List(Set-Cookie: myCookie=test.com),HTTP/1.1)"
       }
     }
 
@@ -92,9 +92,9 @@ class CookieDirectivesSpec extends RoutingSpec {
       Get() ~> {
         setCookie(HttpCookie("myCookie", "test.com"), HttpCookie("myCookie2", "foobar.com")) { completeOk }
       } ~> check {
-        response.toString === "HttpResponse(StatusCode(200, OK),EmptyEntity,List(" +
-          "Set-Cookie: myCookie=\"test.com\", " +
-          "Set-Cookie: myCookie2=\"foobar.com\"" +
+        response.toString === "HttpResponse(200 OK,EmptyEntity,List(" +
+          "Set-Cookie: myCookie=test.com, " +
+          "Set-Cookie: myCookie2=foobar.com" +
           "),HTTP/1.1)"
       }
     }
