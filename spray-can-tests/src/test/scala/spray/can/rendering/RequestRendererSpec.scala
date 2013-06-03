@@ -19,6 +19,7 @@ package rendering
 
 import java.net.InetSocketAddress
 import org.specs2.mutable.Specification
+import akka.event.NoLogging
 import spray.util.EOL
 import spray.http._
 import HttpHeaders._
@@ -139,7 +140,7 @@ class RequestRendererSpec extends Specification {
     def beRenderedTo(content: String) = {
       beEqualTo(content.stripMargin.replace(EOL, "\r\n")) ^^ { part: HttpRequestPart ⇒
         val r = new ByteStringRendering(256)
-        renderRequestPart(r, part, new InetSocketAddress("test.com", 8080))
+        renderRequestPart(r, part, new InetSocketAddress("test.com", 8080), NoLogging)
         r.get.utf8String
       }
     }

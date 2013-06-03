@@ -19,6 +19,7 @@ package spray.can.rendering
 import org.specs2.matcher.DataTables
 import org.specs2.specification.Scope
 import org.specs2._
+import akka.event.NoLogging
 import spray.util._
 import spray.http._
 import HttpHeaders._
@@ -214,7 +215,8 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
       }
       val rendering = new ByteStringRendering(256)
       val closeAfterWrite = renderResponsePartRenderingContext(rendering,
-        ResponsePartRenderingContext(response, requestMethod, requestProtocol, closeAfterResponseCompletion))
+        ResponsePartRenderingContext(response, requestMethod, requestProtocol, closeAfterResponseCompletion),
+        NoLogging)
       rendering.get.utf8String -> closeAfterWrite
     }
 

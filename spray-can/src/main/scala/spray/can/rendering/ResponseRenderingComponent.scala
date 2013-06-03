@@ -23,6 +23,7 @@ import spray.http._
 import HttpProtocols._
 import HttpHeaders._
 import RenderSupport._
+import akka.event.LoggingAdapter
 
 trait ResponseRenderingComponent {
   def serverHeaderValue: String
@@ -34,18 +35,23 @@ trait ResponseRenderingComponent {
       case x  ⇒ ("Server: " + x + "\r\nDate: ").getAsciiBytes
     }
 
-  def renderResponsePartRenderingContext(r: Rendering, ctx: ResponsePartRenderingContext): Boolean = {
+  def renderResponsePartRenderingContext(r: Rendering, ctx: ResponsePartRenderingContext,
+                                         log: LoggingAdapter): Boolean = {
     def renderResponseStart(response: HttpResponse): Connection = {
       @tailrec def renderHeaders(remaining: List[HttpHeader])(connectionHeader: Connection = null): Connection =
         remaining match {
           case Nil ⇒ connectionHeader
           case head :: tail ⇒ renderHeaders(tail) {
+            def logHeaderSuppressionWarning(msg: String = "the spray-can HTTP layer sets this header automatically!"): Connection = {
+              log.warning("Explicitly set response header '{}' is ignored, {}", head, msg)
+              connectionHeader
+            }
             head match {
-              case _: `Content-Type` if !response.entity.isEmpty ⇒ connectionHeader // we never render these headers here,
-              case _: `Content-Length`                           ⇒ connectionHeader // because their production is the
-              case _: `Transfer-Encoding`                        ⇒ connectionHeader // responsibility of the spray-can layer,
-              case _: `Date`                                     ⇒ connectionHeader // not the user
-              case _: `Server`                                   ⇒ connectionHeader
+              case _: `Content-Type` if !response.entity.isEmpty ⇒ logHeaderSuppressionWarning("the response Content-Type is set via the response's HttpEntity!")
+              case _: `Content-Length`                           ⇒ logHeaderSuppressionWarning()
+              case _: `Transfer-Encoding`                        ⇒ logHeaderSuppressionWarning()
+              case _: `Date`                                     ⇒ logHeaderSuppressionWarning()
+              case _: `Server`                                   ⇒ logHeaderSuppressionWarning()
               case x: `Connection` ⇒
                 r ~~ x ~~ CrLf
                 if (connectionHeader eq null) x else Connection(x.tokens ++ connectionHeader.tokens)
@@ -54,7 +60,7 @@ trait ResponseRenderingComponent {
                 x.lowercaseName == "transfer-encoding" ||
                 x.lowercaseName == "date" ||
                 x.lowercaseName == "server" ||
-                x.lowercaseName == "connection" ⇒ connectionHeader
+                x.lowercaseName == "connection" ⇒ logHeaderSuppressionWarning()
               case _ ⇒ r ~~ head ~~ CrLf; connectionHeader
             }
           }

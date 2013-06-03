@@ -21,24 +21,32 @@ import scala.annotation.tailrec
 import spray.http._
 import HttpHeaders._
 import RenderSupport._
+import akka.event.LoggingAdapter
 
 trait RequestRenderingComponent {
   def userAgent: Option[`User-Agent`]
 
-  def renderRequestPart(r: Rendering, part: HttpRequestPart, serverAddress: InetSocketAddress): Unit = {
+  def renderRequestPart(r: Rendering, part: HttpRequestPart, serverAddress: InetSocketAddress,
+                        log: LoggingAdapter): Unit = {
     def renderRequestStart(request: HttpRequest): Unit = {
       import request._
       @tailrec def renderHeaders(remaining: List[HttpHeader], hostHeaderSeen: Boolean = false): Unit =
         remaining match {
           case Nil ⇒ if (!hostHeaderSeen) r ~~ Host(serverAddress) ~~ CrLf
           case head :: tail ⇒
+            def logHeaderSuppressionWarning(msg: String): Boolean = {
+              log.warning("Explicitly set request header '{}' is ignored, {}", head, msg)
+              false
+            }
             val found = head.lowercaseName match {
-              case "content-type" if !entity.isEmpty   ⇒ false // we never render these headers here,
-              case "content-length"                    ⇒ false // because their production is the
-              case "transfer-encoding"                 ⇒ false // responsibility of the spray-can layer,
-              case "user-agent" if userAgent.isDefined ⇒ false // not the user
-              case "host"                              ⇒ r ~~ head ~~ CrLf; true
-              case _                                   ⇒ r ~~ head ~~ CrLf; false
+              case "content-type" if !entity.isEmpty ⇒
+                logHeaderSuppressionWarning("the request Content-Type is set via the request's HttpEntity!")
+              case "content-length" | "transfer-encoding" ⇒
+                logHeaderSuppressionWarning("the spray-can HTTP layer sets this header automatically!")
+              case "user-agent" if userAgent.isDefined ⇒
+                logHeaderSuppressionWarning("the configured User-Agent header overrides the given one!")
+              case "host" ⇒ r ~~ head ~~ CrLf; true
+              case _      ⇒ r ~~ head ~~ CrLf; false
             }
             renderHeaders(tail, found || hostHeaderSeen)
         }

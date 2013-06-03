@@ -33,7 +33,7 @@ object ResponseRendering {
           val commandPipeline: CPL = {
             case ctx: ResponsePartRenderingContext ⇒
               val rendering = new ByteStringRendering(settings.responseSizeHint)
-              val close = renderResponsePartRenderingContext(rendering, ctx)
+              val close = renderResponsePartRenderingContext(rendering, ctx, context.log)
               val data = rendering.get
               if (!data.isEmpty) commandPL(Tcp.Write(data, ctx.ack))
               if (close) commandPL(Http.Close)

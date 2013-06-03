@@ -33,7 +33,7 @@ object RequestRendering {
           val commandPipeline: CPL = {
             case RequestPartRenderingContext(requestPart, ack) ⇒
               val rendering = new ByteStringRendering(settings.requestSizeHint)
-              renderRequestPart(rendering, requestPart, context.remoteAddress)
+              renderRequestPart(rendering, requestPart, context.remoteAddress, context.log)
               commandPL(Tcp.Write(rendering.get, ack))
 
             case cmd ⇒ commandPL(cmd)
