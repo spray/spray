@@ -27,7 +27,14 @@ sealed abstract class HttpCharsetRange extends Renderable {
 case class HttpCharset private[http] (value: String)(val aliases: String*)
     extends HttpCharsetRange with LazyValueBytesRenderable {
 
-  val nioCharset: Charset = Charset.forName(value)
+  @transient private[this] var _nioCharset: Charset = Charset.forName(value)
+  def nioCharset: Charset = _nioCharset
+
+  private def readObject(in: java.io.ObjectInputStream): Unit = {
+    in.defaultReadObject()
+    _nioCharset = Charset.forName(value)
+  }
+
   def matches(charset: HttpCharset) = this == charset
 }
 

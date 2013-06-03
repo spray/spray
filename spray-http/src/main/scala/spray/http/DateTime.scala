@@ -19,17 +19,16 @@ package spray.http
 /**
  * Immutable, fast and efficient Date + Time implementation without any dependencies.
  * Does not support TimeZones, all DateTime values are always GMT based.
- *
- */ // TODO: make serializable
-final class DateTime private (val year: Int, // the year
-                              val month: Int, // the month of the year. January is 1.
-                              val day: Int, // the day of the month. The first day is 1.
-                              val hour: Int, // the hour of the day. The first hour is 0.
-                              val minute: Int, // the minute of the hour. The first minute is 0.
-                              val second: Int, // the second of the minute. The first second is 0.
-                              val weekday: Int, // the day of the week. Sunday is 0.
-                              val clicks: Long, // milliseconds since January 1, 1970, 00:00:00 GMT
-                              val isLeapYear: Boolean) extends Ordered[DateTime] with Renderable {
+ */
+case class DateTime private (year: Int, // the year
+                             month: Int, // the month of the year. January is 1.
+                             day: Int, // the day of the month. The first day is 1.
+                             hour: Int, // the hour of the day. The first hour is 0.
+                             minute: Int, // the minute of the hour. The first minute is 0.
+                             second: Int, // the second of the minute. The first second is 0.
+                             weekday: Int, // the day of the week. Sunday is 0.
+                             clicks: Long, // milliseconds since January 1, 1970, 00:00:00 GMT
+                             isLeapYear: Boolean) extends Ordered[DateTime] with Renderable {
   /**
    * The day of the week as a 3 letter abbreviation:
    * `Sun`, `Mon`, `Tue`, `Wed`, `Thu`, `Fri` or `Sat`

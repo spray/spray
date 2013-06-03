@@ -448,7 +448,7 @@ object Uri {
       def result() = apply(b.result(): _*)
     }
 
-    object Empty extends Query {
+    case object Empty extends Query {
       def key = throw new NoSuchElementException("key of empty path")
       def value = throw new NoSuchElementException("value of empty path")
       override def isEmpty = true
