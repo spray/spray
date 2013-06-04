@@ -23,12 +23,13 @@ import javax.servlet.{ AsyncEvent, AsyncListener }
 import javax.servlet.http.{ HttpServlet, HttpServletResponse, HttpServletRequest }
 import java.util.concurrent.atomic.AtomicInteger
 import scala.util.control.NonFatal
+import scala.concurrent.duration.Duration
 import akka.actor.{ UnhandledMessage, ActorRef, ActorSystem }
 import akka.spray.{ RefUtils, UnregisteredActorRef }
 import akka.event.{ LoggingAdapter, Logging }
 import akka.io.Tcp
+import spray.util.pimpString_
 import spray.http._
-import scala.concurrent.duration.Duration
 
 /**
  * The connector servlet for all servlet 3.0 containers.
