@@ -8,7 +8,7 @@ jdk:
   - oraclejdk7
   - openjdk7
 notifications:
-  # Email notifications are disabled to not annoy anybody.
-  # See http://about.travis-ci.org/docs/user/notifications/ to learn more
-  # about configuring notification recipients and more (e.g. IRC notifications).
-  email: false
+  notifications:
+    email:
+      - johannes@spray.io
+      - mathias@spray.io
