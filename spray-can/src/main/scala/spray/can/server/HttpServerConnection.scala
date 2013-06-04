@@ -23,6 +23,7 @@ import akka.io.Tcp
 import spray.can.server.StatsSupport.StatsHolder
 import spray.io._
 import spray.can.Http
+import spray.http.{ SetTimeoutTimeout, SetRequestTimeout }
 
 private[can] class HttpServerConnection(tcpConnection: ActorRef,
                                         userLevelListener: ActorRef,
@@ -72,6 +73,12 @@ private[can] class HttpServerConnection(tcpConnection: ActorRef,
     def log = actor.log
     def sslEngine = sslEngineProvider(this)
   }
+
+  override def running(tcpConnection: ActorRef, pipelines: Pipelines): Receive =
+    super.running(tcpConnection, pipelines) orElse {
+      case x: SetRequestTimeout ⇒ pipelines.commandPipeline(CommandWrapper(x))
+      case x: SetTimeoutTimeout ⇒ pipelines.commandPipeline(CommandWrapper(x))
+    }
 }
 
 private[can] object HttpServerConnection {

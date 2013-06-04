@@ -71,9 +71,9 @@ object ClientFrontend {
               closeCommanders += context.sender
               commandPL(x)
 
-            case SetRequestTimeout(timeout) ⇒ requestTimeout = timeout
+            case CommandWrapper(SetRequestTimeout(timeout)) ⇒ requestTimeout = timeout
 
-            case cmd                        ⇒ commandPL(cmd)
+            case cmd                                        ⇒ commandPL(cmd)
           }
 
           val eventPipeline: EPL = {
@@ -143,14 +143,4 @@ object ClientFrontend {
   private class RequestRecord(val request: HttpRequestPart with HttpMessageStart, val sender: ActorRef, var timestamp: Long)
 
   private case class PartAndSender(part: HttpRequestPart, sender: ActorRef)
-
-  ////////////// COMMANDS //////////////
-
-  /**
-   * Sets a new request-timeout on the connection.
-   * Set to `Duration.Undefined` to disable timeout checking.
-   */
-  case class SetRequestTimeout(timeout: Duration) extends Command {
-    require(timeout >= Duration.Zero, "timeout must not be negative")
-  }
 }
