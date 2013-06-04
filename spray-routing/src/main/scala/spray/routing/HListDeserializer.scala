@@ -17,8 +17,8 @@
 package spray.routing
 
 import shapeless._
-import spray.httpx.unmarshalling.{ MalformedContent, DeserializationError, Deserializer }
-import spray.util._
+import spray.httpx.unmarshalling._
+import spray.util.pimpString_
 
 // TODO: simplify by rebasing on a shapeless fold
 // I don't think we can get around spelling out 22 different cases without giving up on our short
@@ -42,15 +42,15 @@ object HListDeserializer extends HListDeserializerInstances {
   // save lines of code as well as excessive closure class creation in the many "hld" methods below
   private class BubbleLeftException(val left: Left[Any, Any]) extends RuntimeException
 
-  protected def create[L <: HList, T](deserialize: L ⇒ T) = new HListDeserializer[L, T] {
-    def apply(list: L) = {
-      try Right(deserialize(list))
-      catch {
-        case e: BubbleLeftException      ⇒ e.left.asInstanceOf[Left[DeserializationError, T]]
-        case e: IllegalArgumentException ⇒ Left(MalformedContent(e.getMessage.nullAsEmpty, e))
-      }
+  protected def create[L <: HList, T](deserialize: L ⇒ T): HListDeserializer[L, T] =
+    new HListDeserializer[L, T] {
+      def apply(list: L): Deserialized[T] =
+        try Right(deserialize(list))
+        catch {
+          case e: BubbleLeftException      ⇒ e.left.asInstanceOf[Left[DeserializationError, T]]
+          case e: IllegalArgumentException ⇒ Left(MalformedContent(e.getMessage.nullAsEmpty, e))
+        }
     }
-  }
 
   protected def get[T](either: Either[DeserializationError, T]): T = either match {
     case Right(x)         ⇒ x
