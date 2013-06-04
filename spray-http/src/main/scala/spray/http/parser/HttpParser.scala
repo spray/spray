@@ -17,10 +17,10 @@
 package spray.http
 package parser
 
+import java.lang.reflect.Method
+import scala.annotation.tailrec
 import org.parboiled.scala._
 import org.parboiled.errors.{ ParsingException, ParserRuntimeException, ErrorUtils }
-import scala.annotation.tailrec
-import java.lang.reflect.Method
 
 /**
  * Parser for all HTTP headers as defined by
@@ -31,7 +31,6 @@ object HttpParser extends Parser with ProtocolParameterRules with AdditionalRule
     with AcceptEncodingHeader
     with AcceptHeader
     with AcceptLanguageHeader
-    with AcceptRangesHeader
     with AuthorizationHeader
     with CacheControlHeader
     with ContentEncodingHeader
@@ -82,12 +81,6 @@ object HttpParser extends Parser with ProtocolParameterRules with AdditionalRule
       else errors -> parsed
     parse(headers)
   }
-
-  def parseContentType(contentType: String): Either[ErrorInfo, ContentType] =
-    parse(HttpParser.ContentTypeHeaderValue, contentType) match {
-      case x: Right[_, _] ⇒ x.asInstanceOf[Either[ErrorInfo, ContentType]]
-      case Left(info)     ⇒ Left(info.withFallbackSummary("Illegal Content-Type"))
-    }
 
   def parse[A](rule: Rule1[A], input: String): Either[ErrorInfo, A] = {
     try {

@@ -53,7 +53,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
       resetDebugMsg()
       Get("/hello") ~> logResponse("2") { completeOk } ~> check {
         response === Ok
-        debugMsg === "2: HttpResponse(StatusCode(200, OK),EmptyEntity,List(),HTTP/1.1)\n"
+        debugMsg === "2: HttpResponse(200 OK,EmptyEntity,List(),HTTP/1.1)\n"
       }
     }
   }
@@ -65,7 +65,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
         response === Ok
         debugMsg === """|3: Response for
                         |  Request : HttpRequest(GET,/hello,List(),EmptyEntity,HTTP/1.1)
-                        |  Response: HttpResponse(StatusCode(200, OK),EmptyEntity,List(),HTTP/1.1)
+                        |  Response: HttpResponse(200 OK,EmptyEntity,List(),HTTP/1.1)
                         |""".stripMargin.replace(EOL, "\n")
       }
     }

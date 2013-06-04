@@ -55,7 +55,8 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   def handled: Boolean = result.handled
   def response: HttpResponse = result.response
   def entity: HttpEntity = response.entity
-  def entityAs[T: Unmarshaller] = entity.as[T].fold(error ⇒ failTest(error.toString), identityFunc)
+  def entityAs[T: Unmarshaller: ClassTag]: T = entity.as[T].fold(error ⇒ failTest("Could not unmarshal response " +
+    s"to type '${implicitly[ClassTag[T]]}' for `entityAs` assertion: $error\n\nResponse was: $response"), identityFunc)
   def body: HttpBody = entity.toOption getOrElse failTest("Response has no body")
   def contentType: ContentType = body.contentType
   def mediaType: MediaType = contentType.mediaType

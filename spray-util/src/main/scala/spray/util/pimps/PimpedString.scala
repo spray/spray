@@ -65,13 +65,13 @@ class PimpedString(underlying: String) {
    * Returns Some(String) if the underlying string is non-emtpy, None otherwise
    */
   def toOption: Option[String] =
-    if (underlying.isEmpty) None else Some(underlying)
+    if ((underlying eq null) || underlying.isEmpty) None else Some(underlying)
 
   /**
    * If the underlying string is null the method returns the empty string, otherwise the underlying string.
    */
   def nullAsEmpty: String =
-    if (underlying == null) "" else underlying
+    if (underlying eq null) "" else underlying
 
   /**
    * Returns the ASCII encoded bytes of this string.

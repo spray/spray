@@ -14,24 +14,24 @@
  * limitations under the License.
  */
 
-package spray.http
-package parser
+package spray.can.rendering
 
-import org.parboiled.scala._
-import BasicRules._
+import spray.http.Rendering
+import akka.util.{ ByteStringBuilder, ByteString }
 
-private[parser] trait AcceptRangesHeader {
-  this: Parser with ProtocolParameterRules ⇒
+private[can] class ByteStringRendering(sizeHint: Int) extends Rendering {
+  private[this] val b = new ByteStringBuilder
+  b.sizeHint(sizeHint)
 
-  def `*Accept-Ranges` = rule(
-    RangeUnitsDef ~ EOI ~~> (HttpHeaders.`Accept-Ranges`(_)))
-
-  def RangeUnitsDef = rule {
-    NoRangeUnitsDef | zeroOrMore(RangeUnit, separator = ListSep)
+  def ~~(char: Char): this.type = {
+    b.putByte(char.toByte)
+    this
   }
 
-  def NoRangeUnitsDef = rule {
-    "none" ~ push(List.empty[RangeUnit])
+  def ~~(bytes: Array[Byte]): this.type = {
+    b.putBytes(bytes)
+    this
   }
 
+  def get: ByteString = b.result()
 }

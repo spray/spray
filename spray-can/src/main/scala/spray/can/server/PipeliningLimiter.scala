@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-package spray.can.server
+package spray.can
+package server
 
 import scala.annotation.tailrec
-import spray.can.rendering.HttpResponsePartRenderingContext
+import scala.collection.immutable.Queue
+import akka.io.Tcp
+import spray.can.rendering.ResponsePartRenderingContext
 import spray.http._
 import spray.io._
-import scala.collection.immutable.Queue
-import spray.can.Http
-import akka.io.Tcp
 
 object PipeliningLimiter {
 
@@ -32,69 +32,43 @@ object PipeliningLimiter {
 
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
-          var parkedRequestParts = Queue.empty[HttpRequestPart]
+          var parkedRequestParts = Queue.empty[Http.MessageEvent]
           var openRequests = 0
-          var limit = pipeliningLimit
-          var readingStopped = false
 
           val commandPipeline: CPL = {
-            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEnd] ⇒
+            case x: ResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEnd] ⇒
               openRequests -= 1
               commandPL(x)
-              if (!parkedRequestParts.isEmpty) {
+              if (parkedRequestParts.nonEmpty) {
                 unparkOneRequest()
-                if (parkedRequestParts.isEmpty) resumeReading()
+                if (parkedRequestParts.isEmpty) commandPL(Tcp.ResumeReading)
               }
 
             case cmd ⇒ commandPL(cmd)
           }
 
           val eventPipeline: EPL = {
-            case ev @ Http.MessageEvent(x: HttpRequestPart) ⇒
-              if (openRequests == limit) {
-                stopReading()
-                park(x)
-              } else {
-                if (x.isInstanceOf[HttpMessageEnd]) openRequests += 1
+            case ev: Http.MessageEvent ⇒
+              if (openRequests < pipeliningLimit) {
                 eventPL(ev)
+                if (ev.ev.isInstanceOf[HttpMessageEnd]) openRequests += 1
+              } else {
+                commandPL(Tcp.SuspendReading)
+                parkedRequestParts = parkedRequestParts enqueue ev
               }
 
             case ev ⇒ eventPL(ev)
           }
 
-          def stopReading() {
-            if (!readingStopped) {
-              readingStopped = true
-              commandPL(Tcp.SuspendReading)
-            }
-          }
-
-          def resumeReading() {
-            if (readingStopped) {
-              readingStopped = false
-              commandPL(Tcp.ResumeReading)
-            }
-          }
-
-          def park(part: HttpRequestPart) {
-            parkedRequestParts = parkedRequestParts enqueue part
-          }
-
           @tailrec
-          def unparkOneRequest() {
+          def unparkOneRequest(): Unit =
             if (!parkedRequestParts.isEmpty) {
               val next = parkedRequestParts.head
               parkedRequestParts = parkedRequestParts.tail
-              next match {
-                case part: HttpMessageEnd ⇒
-                  openRequests += 1
-                  eventPL(Http.MessageEvent(part))
-                case part ⇒
-                  eventPL(Http.MessageEvent(part))
-                  unparkOneRequest()
-              }
+              eventPL(next)
+              if (next.ev.isInstanceOf[HttpMessageEnd]) openRequests += 1
+              else unparkOneRequest()
             }
-          }
         }
     }
 }

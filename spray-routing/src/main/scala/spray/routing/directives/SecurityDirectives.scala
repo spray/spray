@@ -21,6 +21,7 @@ import scala.concurrent.{ ExecutionContext, Future }
 import shapeless.HNil
 import spray.routing.authentication._
 import BasicDirectives._
+import FutureDirectives._
 import MiscDirectives._
 import RouteDirectives._
 
@@ -28,14 +29,9 @@ trait SecurityDirectives {
 
   /**
    * Wraps its inner Route with authentication support.
+   * Can be called either with a ``Future[Authentication[T]]`` or ``ContextAuthenticator[T]``.
    */
-  def authenticate[T](am: AuthMagnet[T]): Directive1[T] = {
-    import am.executor
-    am.value.unwrapFuture.flatMap {
-      case Right(user)     ⇒ provide(user)
-      case Left(rejection) ⇒ reject(rejection)
-    }
-  }
+  def authenticate[T](magnet: AuthMagnet[T]): Directive1[T] = magnet.directive
 
   /**
    * Applies the given authorization check to the request.
@@ -52,12 +48,18 @@ trait SecurityDirectives {
       cancelRejection(AuthorizationFailedRejection)
 }
 
-class AuthMagnet[T](val value: Directive1[Future[Authentication[T]]])(implicit val executor: ExecutionContext)
+class AuthMagnet[T](authDirective: Directive1[Authentication[T]])(implicit executor: ExecutionContext) {
+  val directive: Directive1[T] = authDirective.flatMap {
+    case Right(user)     ⇒ provide(user)
+    case Left(rejection) ⇒ reject(rejection)
+  }
+}
 
 object AuthMagnet {
+
   implicit def fromFutureAuth[T](auth: Future[Authentication[T]])(implicit executor: ExecutionContext) =
-    new AuthMagnet(provide(auth))
+    new AuthMagnet(onSuccess(auth))
 
   implicit def fromContextAuthenticator[T](auth: ContextAuthenticator[T])(implicit executor: ExecutionContext) =
-    new AuthMagnet(extract(auth))
+    new AuthMagnet(extract(auth).flatMap(onSuccess(_)))
 }

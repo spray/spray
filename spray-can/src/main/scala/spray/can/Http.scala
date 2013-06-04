@@ -21,7 +21,7 @@ import com.typesafe.config.Config
 import scala.collection.immutable
 import akka.io.{ Inet, Tcp }
 import akka.actor._
-import spray.can.server.{ ServerFrontend, ServerSettings }
+import spray.can.server.ServerSettings
 import spray.can.client.ClientConnectionSettings
 import spray.io.{ ConnectionTimeouts, ClientSSLEngineProvider, ServerSSLEngineProvider }
 import spray.http.{ HttpResponse, HttpRequest, HttpMessagePart, HttpMessagePartWrapper }
@@ -84,10 +84,6 @@ object Http extends ExtensionKey[HttpExt] {
   case object GetStats extends Command
 
   type SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout; val SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout
-
-  // only for server connections
-  type SetRequestTimeout = ServerFrontend.SetRequestTimeout; val SetRequestTimeout = ServerFrontend.SetRequestTimeout
-  type SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout; val SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout
 
   case class MessageCommand(cmd: HttpMessagePartWrapper) extends Command
 

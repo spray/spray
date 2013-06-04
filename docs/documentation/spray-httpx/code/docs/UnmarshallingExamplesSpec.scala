@@ -11,10 +11,9 @@ class UnmarshallingExamplesSpec extends Specification {
   import spray.httpx.unmarshalling.{Unmarshaller, pimpHttpEntity}
   import spray.util._
   import spray.http._
-  import MediaTypes._
 
   val `application/vnd.acme.person` =
-    register(CustomMediaType("application/vnd.acme.person"))
+    MediaTypes.register(MediaType.custom("application/vnd.acme.person"))
 
   case class Person(name: String, firstName: String, age: Int)
 
@@ -54,11 +53,9 @@ class UnmarshallingExamplesSpec extends Specification {
   }
 
   "example-3" in {
-    import spray.http.MediaTypes.`text/xml`
-
     implicit val myNodeSeqUnmarshaller = Unmarshaller.forNonEmpty[NodeSeq]
 
-    HttpEntity(`text/xml`, "<xml>yeah</xml>").as[NodeSeq] === Right(<xml>yeah</xml>)
+    HttpEntity(MediaTypes.`text/xml`, "<xml>yeah</xml>").as[NodeSeq] === Right(<xml>yeah</xml>)
     EmptyEntity.as[NodeSeq] === Left(ContentExpected)
   }
 }

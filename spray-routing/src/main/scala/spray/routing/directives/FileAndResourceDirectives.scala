@@ -18,18 +18,14 @@ package spray.routing
 package directives
 
 import java.io.File
-import java.net.{ URL, URLConnection }
 import org.parboiled.common.FileUtils
-import scala.annotation.tailrec
 import akka.actor.ActorRefFactory
-import shapeless._
 import spray.httpx.marshalling.{ Marshaller, BasicMarshallers }
 import spray.util._
 import spray.http._
 import HttpHeaders._
 
 trait FileAndResourceDirectives {
-  import BasicDirectives._
   import ExecutionDirectives._
   import MethodDirectives._
   import RespondWithDirectives._
@@ -53,16 +49,23 @@ trait FileAndResourceDirectives {
    */
   def getFromFile(file: File)(implicit settings: RoutingSettings, resolver: ContentTypeResolver,
                               refFactory: ActorRefFactory): Route =
-    get {
-      detachTo(singleRequestServiceActor) {
-        respondWithLastModifiedHeader(file.lastModified) {
-          if (file.isFile && file.canRead) {
-            implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(resolver(file.getName))
-            if (0 < settings.fileChunkingThresholdSize && settings.fileChunkingThresholdSize <= file.length)
-              complete(file.toByteArrayStream(settings.fileChunkingChunkSize.toInt))
-            else complete(FileUtils.readAllBytes(file))
-          } else reject
-        }
+    getFromFile(file, resolver(file.getName))
+
+  /**
+   * Completes GET requests with the content of the given file. The actual I/O operation is
+   * running detached in the context of a newly spawned actor, so it doesn't block the current thread (but potentially
+   * some other thread !). If the file cannot be found or read the request is rejected.
+   */
+  def getFromFile(file: File, contentType: ContentType)(implicit settings: RoutingSettings,
+                                                        refFactory: ActorRefFactory): Route =
+    (get & detachTo(singleRequestServiceActor)) {
+      respondWithLastModifiedHeader(file.lastModified) {
+        if (file.isFile && file.canRead) {
+          implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(contentType)
+          if (0 < settings.fileChunkingThresholdSize && settings.fileChunkingThresholdSize <= file.length)
+            complete(file.toByteArrayStream(settings.fileChunkingChunkSize.toInt))
+          else complete(FileUtils.readAllBytes(file))
+        } else reject
       }
     }
 
@@ -78,22 +81,30 @@ trait FileAndResourceDirectives {
    * some other thread !).
    * If the file cannot be found or read the Route rejects the request.
    */
-  def getFromResource(resourceName: String)(implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route = {
-    def openConnection: Option[URL] :: HNil ⇒ Directive1[URLConnection] = {
-      case Some(url) :: HNil ⇒ provide(url.openConnection())
-      case _                 ⇒ reject
-    }
-    if (!resourceName.endsWith("/")) {
-      def resource = actorSystem(refFactory).dynamicAccess.classLoader.getResource(resourceName)
-      (get & detachTo(singleRequestServiceActor) & provide(Option(resource)))
-        .hflatMap(openConnection) { urlConn ⇒
-          implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(resolver(resourceName))
-          respondWithLastModifiedHeader(urlConn.getLastModified) {
-            complete(FileUtils.readAllBytes(urlConn.getInputStream))
-          }
+  def getFromResource(resourceName: String)(implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route =
+    getFromResource(resourceName, resolver(resourceName))
+
+  /**
+   * Completes GET requests with the content of the given resource. The actual I/O operation is
+   * running detached in the context of a newly spawned actor, so it doesn't block the current thread (but potentially
+   * some other thread !).
+   * If the file cannot be found or read the Route rejects the request.
+   */
+  def getFromResource(resourceName: String, contentType: ContentType)(implicit refFactory: ActorRefFactory): Route =
+    if (!resourceName.endsWith("/"))
+      (get & detachTo(singleRequestServiceActor)) {
+        val theClassLoader = actorSystem(refFactory).dynamicAccess.classLoader
+        theClassLoader.getResource(resourceName) match {
+          case null ⇒ reject
+          case url ⇒
+            val lastModified = url.openConnection().getLastModified
+            implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(contentType)
+            respondWithLastModifiedHeader(lastModified) {
+              complete(FileUtils.readAllBytes(theClassLoader.getResourceAsStream(resourceName)))
+            }
         }
-    } else reject // don't serve the content of resource "directories"
-  }
+      }
+    else reject // don't serve the content of resource "directories"
 
   /**
    * Completes GET requests with the content of a file underneath the given directory.
@@ -114,18 +125,16 @@ trait FileAndResourceDirectives {
    * Completes GET requests with a unified listing of the contents of all given directories.
    * The actual rendering of the directory contents is performed by the in-scope `Marshaller[DirectoryListing]`.
    */
-  def listDirectoryContents(directories: String*)(implicit renderer: Marshaller[DirectoryListing], refFactory: ActorRefFactory): Route = {
-    get {
-      detachTo(singleRequestServiceActor) {
-        unmatchedPath { path ⇒
-          val pathString = path.toString
-          val dirs = directories.map(new File(_, pathString)).filter(dir ⇒ dir.isDirectory && dir.canRead)
-          if (dirs.isEmpty) reject
-          else complete(DirectoryListing(withTrailingSlash(pathString), dirs.flatMap(_.listFiles)))
-        }
+  def listDirectoryContents(directories: String*)(implicit renderer: Marshaller[DirectoryListing],
+                                                  refFactory: ActorRefFactory): Route =
+    (get & detachTo(singleRequestServiceActor)) {
+      unmatchedPath { path ⇒
+        val pathString = path.toString
+        val dirs = directories.map(new File(_, pathString)).filter(dir ⇒ dir.isDirectory && dir.canRead)
+        if (dirs.isEmpty) reject
+        else complete(DirectoryListing(withTrailingSlash(pathString), dirs.flatMap(_.listFiles)))
       }
     }
-  }
 
   /**
    * Same as `getFromBrowseableDirectories` with only one directory.

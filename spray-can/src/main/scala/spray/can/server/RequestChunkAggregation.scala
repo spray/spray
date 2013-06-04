@@ -17,7 +17,7 @@
 package spray.can.server
 
 import akka.util.{ ByteString, ByteStringBuilder }
-import spray.can.rendering.HttpResponsePartRenderingContext
+import spray.can.rendering.ResponsePartRenderingContext
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.io._
 import spray.http._
@@ -47,7 +47,7 @@ object RequestChunkAggregation {
             case Http.MessageEvent(_: ChunkedMessageEnd) ⇒
               val contentType = request.header[HttpHeaders.`Content-Type`] match {
                 case Some(x) ⇒ x.contentType
-                case None    ⇒ ContentType.`application/octet-stream`
+                case None    ⇒ ContentTypes.`application/octet-stream`
               }
               val aggregatedRequest = request.copy(entity = HttpEntity(contentType, bb.result().toArray[Byte]))
               eventPL(mse.copy(messagePart = aggregatedRequest))
@@ -59,7 +59,7 @@ object RequestChunkAggregation {
           def closeWithError(): Unit = {
             val msg = "Aggregated request entity greater than configured limit of " + limit + " bytes"
             context.log.error(msg + ", closing connection")
-            commandPL(HttpResponsePartRenderingContext(HttpResponse(StatusCodes.RequestEntityTooLarge, msg)))
+            commandPL(ResponsePartRenderingContext(HttpResponse(StatusCodes.RequestEntityTooLarge, msg)))
             commandPL(Http.Close)
             eventPipeline.become(eventPL) // disable this stage
           }

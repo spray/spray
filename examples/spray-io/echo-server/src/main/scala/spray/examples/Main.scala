@@ -63,7 +63,7 @@ class EchoServerConnection(tcpConnection: ActorRef) extends Actor with SprayActo
       tcpConnection ! Tcp.Close
 
     case Tcp.Received(data) =>
-      tcpConnection ! Tcp.Write(data, ack = 'SentOk)
+      tcpConnection ! Tcp.Write(data, ack = SentOk)
       context.become(waitingForAck)
 
     case x: Tcp.ConnectionClosed =>
@@ -76,7 +76,7 @@ class EchoServerConnection(tcpConnection: ActorRef) extends Actor with SprayActo
       tcpConnection ! Tcp.SuspendReading
       context.become(waitingForAckWithQueuedData(Queue(data)))
 
-    case 'SentOk =>
+    case SentOk =>
       context.become(idle)
 
     case x: Tcp.ConnectionClosed =>
@@ -89,18 +89,18 @@ class EchoServerConnection(tcpConnection: ActorRef) extends Actor with SprayActo
       case Tcp.Received(data) =>
         context.become(waitingForAckWithQueuedData(queuedData.enqueue(data)))
 
-      case 'SentOk if queuedData.isEmpty && closed =>
+      case SentOk if queuedData.isEmpty && closed =>
         log.debug("No more pending ACKs, stopping")
         tcpConnection ! Tcp.Close
         context.stop(self)
 
-      case 'SentOk if queuedData.isEmpty =>
+      case SentOk if queuedData.isEmpty =>
         tcpConnection ! Tcp.ResumeReading
         context.become(idle)
 
-      case 'SentOk =>
+      case SentOk =>
         // for brevity we don't interpret STOP commands here
-        tcpConnection ! Tcp.Write(queuedData.head, ack = 'SentOk)
+        tcpConnection ! Tcp.Write(queuedData.head, ack = SentOk)
         context.become(waitingForAckWithQueuedData(queuedData.tail, closed))
 
       case x: Tcp.ConnectionClosed =>
@@ -113,4 +113,6 @@ class EchoServerConnection(tcpConnection: ActorRef) extends Actor with SprayActo
       log.debug("TCP connection actor terminated, stopping...")
       context.stop(self)
   }
+  
+  object SentOk extends Tcp.Event
 }

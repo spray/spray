@@ -35,7 +35,7 @@ trait HeaderDirectives {
     val protectedF: HttpHeader ⇒ Option[Either[Rejection, T]] = header ⇒
       try f(header).map(Right.apply)
       catch {
-        case NonFatal(e) ⇒ Some(Left(MalformedHeaderRejection(header.name, e.getMessage, Some(e))))
+        case NonFatal(e) ⇒ Some(Left(MalformedHeaderRejection(header.name, e.getMessage.nullAsEmpty, Some(e))))
       }
     extract(_.request.headers.mapFind(protectedF)).flatMap {
       case Some(Right(a))        ⇒ provide(a)

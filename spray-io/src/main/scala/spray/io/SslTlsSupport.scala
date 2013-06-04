@@ -197,7 +197,7 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
       }
     }
 
-  private final class Send(val buffer: ByteBuffer, val ack: Any)
+  private final class Send(val buffer: ByteBuffer, val ack: Event)
 
   private object Send {
     val Empty = new Send(ByteBuffer wrap EmptyByteArray, Tcp.NoAck)

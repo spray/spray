@@ -34,7 +34,7 @@ trait EncodingDirectives {
       ctx ⇒
         tryToEither(decoder.decode(ctx.request)) match {
           case Right(decodedRequest) ⇒ inner(ctx.copy(request = decodedRequest))
-          case Left(error)           ⇒ ctx.reject(CorruptRequestEncodingRejection(error.getMessage))
+          case Left(error)           ⇒ ctx.reject(CorruptRequestEncodingRejection(error.getMessage.nullAsEmpty))
         }
     }
     requestEntityEmpty | (

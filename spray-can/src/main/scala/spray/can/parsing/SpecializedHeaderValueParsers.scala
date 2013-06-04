@@ -21,6 +21,7 @@ import akka.util.CompactByteString
 import spray.http._
 import HttpHeaders._
 import CharUtils._
+import ProtectedHeaderCreation.enable
 
 private[parsing] object SpecializedHeaderValueParsers {
   import HttpHeaderParser._

@@ -38,4 +38,6 @@ package io {
   }
 
   trait Droppable // marker for Commands and Events
+
+  case class CommandWrapper(command: AnyRef) extends Command
 }

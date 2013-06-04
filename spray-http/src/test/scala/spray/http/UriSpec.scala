@@ -20,6 +20,7 @@ import org.specs2.mutable.Specification
 import Uri._
 
 class UriSpec extends Specification {
+
   "Uri.Host instances" should {
 
     "parse correctly from IPv4 literals" in {
@@ -177,6 +178,7 @@ class UriSpec extends Specification {
       Path("H%C3%A4ll%C3%B6") === """Hällö""" :: Empty
       Path("/%2F%5C") === Path / """/\"""
       Path("/:foo:/") === Path / ":foo:" / ""
+      Path("%2520").head === "%20"
     }
   }
 
@@ -220,9 +222,9 @@ class UriSpec extends Specification {
     "support conversion from list of name/value pairs" in {
       import Query._
       val pairs = List("key1" -> "value1", "key2" -> "value2", "key3" -> "value3")
-      Query(pairs).toList.diff(pairs) === Nil
-      Query(Nil) === Empty
-      Query(List("k" -> "v")) === ("k" -> "v") +: Empty
+      Query(pairs: _*).toList.diff(pairs) === Nil
+      Query() === Empty
+      Query("k" -> "v") === ("k" -> "v") +: Empty
     }
   }
 
@@ -262,6 +264,13 @@ class UriSpec extends Specification {
       // illegal paths
       Uri("foo/another@url/[]and{}") === Uri.from(path = "foo/another@url/%5B%5Dand%7B%7D")
       Uri("foo/another@url/[]and{}", mode = Uri.ParsingMode.Strict) must throwAn[IllegalUriException]
+
+      // handle query parameters with more than percent-encoded character
+      Uri("?%7Ba%7D=$%7B%7D", UTF8, Uri.ParsingMode.Strict) === Uri(query = Query.Cons("{a}", "${}", Query.Empty))
+
+      // don't double decode
+      Uri("%2520").path.head === "%20"
+      Uri("/%2F%5C").path === Path / """/\"""
     }
 
     "properly complete a normalization cycle" in {
@@ -328,6 +337,15 @@ class UriSpec extends Specification {
       normalize("#") === "#"
       normalize("#{}[]") === "#%7B%7D%5B%5D"
       normalize("#{}[]", mode = Uri.ParsingMode.Strict) must throwAn[IllegalUriException]
+    }
+
+    "support tunneling a URI through a query param" in {
+      val uri = Uri("http://aHost/aPath?aParam=aValue#aFragment")
+      val q = Query("uri" -> uri.toString)
+      val uri2 = Uri(path = Path./, query = q, fragment = Some("aFragment")).toString
+      uri2 === "/?uri=http://ahost/aPath?aParam%3DaValue%23aFragment#aFragment"
+      Uri(uri2).query === q
+      Uri(q.getOrElse("uri", "<nope>")) === uri
     }
 
     "produce proper error messages for illegal URIs" in {

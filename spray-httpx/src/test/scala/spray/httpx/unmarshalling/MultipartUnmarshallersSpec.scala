@@ -22,6 +22,7 @@ import spray.http._
 import MediaTypes._
 import HttpCharsets._
 import HttpHeaders._
+import ProtectedHeaderCreation.enable
 
 class MultipartUnmarshallersSpec extends Specification {
 
@@ -81,7 +82,7 @@ class MultipartUnmarshallersSpec extends Specification {
     "correctly unmarshal 'multipart/form-data' content with one element" in (
       HttpEntity(new `multipart/form-data`(Some("XYZABC")),
         """|--XYZABC
-           |content-disposition: form-data; name="email"
+           |content-disposition: form-data; name=email
            |
            |test@there.com
            |--XYZABC--""".stripMargin).as[MultipartFormData] === Right {

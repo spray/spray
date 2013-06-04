@@ -14,7 +14,7 @@ class BenchmarkService extends Actor {
   import Uri.Path._
 
   def jsonResponseEntity = HttpEntity(
-    contentType = ContentType.`application/json`,
+    contentType = ContentTypes.`application/json`,
     string = JsObject("message" -> JsString("Hello, World!")).compactPrint)
 
   def fastPath: Http.FastPath = {

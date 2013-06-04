@@ -60,7 +60,7 @@ case class HttpBody private (contentType: ContentType, buffer: Array[Byte]) exte
   def toOption = Some(this)
 
   override def toString =
-    "HttpEntity(" + contentType + ',' + (if (buffer.length < 50) asString.take(50) + "..." else asString) + ')'
+    "HttpEntity(" + contentType + ',' + (if (buffer.length > 500) asString.take(500) + "..." else asString) + ')'
 
   override def hashCode = contentType.## * 31 + util.Arrays.hashCode(buffer)
   override def equals(obj: Any) = obj match {
@@ -76,10 +76,10 @@ object HttpBody {
 
 object HttpEntity {
   implicit def apply(string: String): HttpEntity =
-    apply(ContentType.`text/plain`, string)
+    apply(ContentTypes.`text/plain`, string)
 
   implicit def apply(buffer: Array[Byte]): HttpEntity =
-    apply(ContentType.`application/octet-stream`, buffer)
+    apply(ContentTypes.`application/octet-stream`, buffer)
 
   implicit def flatten(optionalEntity: Option[HttpEntity]): HttpEntity =
     optionalEntity match {

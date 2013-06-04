@@ -30,7 +30,7 @@ trait TwirlSupport {
     twirlMarshaller[Html](`text/html`, `application/xhtml+xml`)
 
   implicit val twirlTxtMarshaller =
-    twirlMarshaller[Txt](ContentType.`text/plain`)
+    twirlMarshaller[Txt](ContentTypes.`text/plain`)
 
   implicit val twirlXmlMarshaller =
     twirlMarshaller[Xml](`text/xml`, `text/html`, `application/xhtml+xml`)

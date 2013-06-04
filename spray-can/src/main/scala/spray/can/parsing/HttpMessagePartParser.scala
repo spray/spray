@@ -188,7 +188,7 @@ private[parsing] abstract class HttpMessagePartParser[Part <: HttpMessagePart](v
   def entity(cth: Option[`Content-Type`], body: Array[Byte]): HttpEntity = {
     val contentType = cth match {
       case Some(x) ⇒ x.contentType
-      case None    ⇒ ContentType.`application/octet-stream`
+      case None    ⇒ ContentTypes.`application/octet-stream`
     }
     HttpEntity(contentType, body)
   }

@@ -71,11 +71,11 @@ private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, client
         context.stop(self)
       } else context.become(closing(stillConnected, Set(sender)))
 
-    case Disconnected(openRequestCount) ⇒
+    case Disconnected(rescheduledRequestCount) ⇒
       val oldCount = openRequestCounts(sender)
       val newCount =
-        if (oldCount == openRequestCount) -1 // "normal" case when a connection was closed
-        else oldCount - openRequestCount // we have already scheduled a new request onto this connection
+        if (oldCount == rescheduledRequestCount) -1 // "normal" case when a connection was closed
+        else oldCount - rescheduledRequestCount // we have already scheduled a new request onto this connection
       openRequestCounts = openRequestCounts.updated(sender, newCount)
       dispatchStrategy.onConnectionStateChange()
 
@@ -190,7 +190,7 @@ private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, client
 
 private[can] object HttpHostConnector {
   case class RequestContext(request: HttpRequest, retriesLeft: Int, commander: ActorRef)
-  case class Disconnected(openRequestCount: Int)
+  case class Disconnected(rescheduledRequestCount: Int)
   case object RequestCompleted
   case object DemandIdleShutdown
 }

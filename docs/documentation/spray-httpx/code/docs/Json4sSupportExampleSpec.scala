@@ -1,13 +1,10 @@
 package docs
 
 import org.json4s.DefaultFormats
+import org.specs2.mutable.Specification
 import spray.httpx.Json4sSupport
 import spray.httpx.marshalling._
-import org.specs2.mutable.Specification
-import spray.http.HttpEntity
-import spray.http.MediaTypes
-import spray.http.ContentType._
-import spray.http.ContentType
+import spray.http._
 
 case class Employee2(fname: String, name: String, age: Int, id: Long, boardMember: Boolean)
 
@@ -26,10 +23,10 @@ class Json4sSupportExampleSpec extends Specification  {
 
   "The Json4sSupport" should {
     "provide unmarshalling support for a case class" in {
-      HttpEntity(`application/json`, employeeJson).as[Employee2] === Right(employee)
+      HttpEntity(ContentTypes.`application/json`, employeeJson).as[Employee2] === Right(employee)
     }
     "provide marshalling support for a case class" in {
-      marshal(employee) === Right(HttpEntity(`application/json`, employeeJson))
+      marshal(employee) === Right(HttpEntity(ContentTypes.`application/json`, employeeJson))
     }
   }
 }

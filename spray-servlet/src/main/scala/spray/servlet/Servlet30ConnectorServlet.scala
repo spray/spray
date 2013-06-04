@@ -23,12 +23,13 @@ import javax.servlet.{ AsyncEvent, AsyncListener }
 import javax.servlet.http.{ HttpServlet, HttpServletResponse, HttpServletRequest }
 import java.util.concurrent.atomic.AtomicInteger
 import scala.util.control.NonFatal
+import scala.concurrent.duration.Duration
 import akka.actor.{ UnhandledMessage, ActorRef, ActorSystem }
 import akka.spray.{ RefUtils, UnregisteredActorRef }
 import akka.event.{ LoggingAdapter, Logging }
 import akka.io.Tcp
+import spray.util.pimpString_
 import spray.http._
-import spray.util._
 
 /**
  * The connector servlet for all servlet 3.0 containers.
@@ -100,6 +101,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
         def onComplete(event: AsyncEvent) {}
       }
     }
+    private[this] var timeoutTimeout: Duration = settings.timeoutTimeout
 
     def postProcess(error: Option[Throwable], ack: Option[Any], close: Boolean)(implicit sender: ActorRef) {
       error match {
@@ -107,7 +109,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
           ack.foreach(sender.tell(_, this))
           if (close) sender.tell(Tcp.Closed, this)
         case Some(e) ⇒
-          sender.tell(Tcp.ErrorClosed(e.getMessage), this)
+          sender.tell(Tcp.ErrorClosed(e.getMessage.nullAsEmpty), this)
           asyncContext.complete()
       }
     }
@@ -160,33 +162,57 @@ class Servlet30ConnectorServlet extends HttpServlet {
               }
           }
 
+        case msg @ SetRequestTimeout(timeout) ⇒
+          state.get match {
+            case COMPLETED ⇒ notCompleted(msg)
+            case _ ⇒
+              val millis = if (timeout.isFinite()) timeout.toMillis else 0
+              asyncContext.setTimeout(millis)
+          }
+
+        case msg @ SetTimeoutTimeout(timeout) ⇒
+          state.get match {
+            case COMPLETED ⇒ notCompleted(msg)
+            case _         ⇒ timeoutTimeout = timeout
+          }
+
         case x ⇒ system.eventStream.publish(UnhandledMessage(x, sender, this))
       }
     }
-  }
 
-  def handleTimeout(hsResponse: HttpServletResponse, req: HttpRequest) {
-    log.warning("Timeout of {}", req)
-    val latch = new CountDownLatch(1)
-    val responder = new UnregisteredActorRef(system) {
-      def handle(message: Any)(implicit sender: ActorRef) {
-        message match {
-          case x: HttpResponse ⇒ writeResponse(x, hsResponse, req) { latch.countDown() }
-          case x               ⇒ system.eventStream.publish(UnhandledMessage(x, sender, this))
+    def notCompleted(msg: Any) {
+      log.warning("Received a {} for a request that was already completed, dropping ...\nRequest: {}", msg, req)
+    }
+
+    def handleTimeout(hsResponse: HttpServletResponse, req: HttpRequest) {
+      log.warning("Timeout of {}", req)
+      val latch = new CountDownLatch(1)
+      val responder = new UnregisteredActorRef(system) {
+        def handle(message: Any)(implicit sender: ActorRef) {
+          message match {
+            case x: HttpResponse ⇒ writeResponse(x, hsResponse, req) {
+              latch.countDown()
+            }
+            case x ⇒ system.eventStream.publish(UnhandledMessage(x, sender, this))
+          }
         }
       }
+
+      def respond = writeResponse(timeoutResponse(req), hsResponse, req) {}
+      if (timeoutTimeout.isFinite()) {
+        timeoutHandler.tell(Timedout(req), responder)
+        // we need to react synchronously to Timeout events (thx to the great Servlet API design), so we block here
+        latch.await(timeoutTimeout.toMillis, MILLISECONDS)
+        if (latch.getCount != 0) respond
+      } else respond
     }
-    timeoutHandler.tell(Timedout(req), responder)
-    // we need to react synchronously to Timeout events (thx to the great Servlet API design), so we block here
-    latch.await(settings.timeoutTimeout.toMillis, MILLISECONDS)
-    if (latch.getCount != 0) writeResponse(timeoutResponse(req), hsResponse, req) {}
   }
 
   def writeResponse(response: HttpMessageStart with HttpResponsePart,
                     hsResponse: HttpServletResponse, req: AnyRef)(complete: ⇒ Unit): Option[Throwable] = {
     try {
       val resp = response.message.asInstanceOf[HttpResponse]
-      hsResponse.setStatus(resp.status.value)
+      hsResponse.setStatus(resp.status.intValue)
       resp.headers.foreach { header ⇒
         header.lowercaseName match {
           case "content-type"   ⇒ // we never render these headers here, because their production is the

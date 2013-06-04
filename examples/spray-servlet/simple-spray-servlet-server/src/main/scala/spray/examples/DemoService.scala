@@ -30,6 +30,10 @@ class DemoService extends Actor with SprayActorLogging {
     case HttpRequest(GET, Uri.Path("/timeout"), _, _, _) =>
       log.info("Dropping request, triggering a timeout")
 
+    case HttpRequest(GET, Uri.Path("/changetimeout"), _, _, _) =>
+      sender ! SetRequestTimeout(60.seconds)
+      log.info("Changing timeout initially set by 'spray.servlet.request-timeout' property and triggering timeout")
+
     case HttpRequest(GET, Uri.Path("/timeout/timeout"), _, _, _) =>
       log.info("Dropping request, triggering a timeout")
 

@@ -18,9 +18,21 @@ package spray
 
 import java.nio.charset.Charset
 import spray.http.parser.HttpParser
+import scala.annotation.tailrec
 
 package object http {
   val UTF8: Charset = HttpCharsets.`UTF-8`.nioCharset
+
+  private[http] def asciiBytes(s: String) = {
+    val array = new Array[Byte](s.length)
+    @tailrec def copyChars(ix: Int = 0): Unit =
+      if (ix < array.length) {
+        array(ix) = s.charAt(ix).asInstanceOf[Byte]
+        copyChars(ix + 1)
+      }
+    copyChars()
+    array
+  }
 
   /**
    * Warms up the spray.http module by triggering the loading of most classes in this package,

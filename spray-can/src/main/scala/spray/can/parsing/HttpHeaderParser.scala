@@ -386,6 +386,7 @@ private[parsing] object HttpHeaderParser {
     def name = ""
     def lowercaseName = ""
     def value = ""
+    def render[R <: Rendering](r: R): r.type = r
     override def toString = "EmptyHeader"
   }
 

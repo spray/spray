@@ -17,10 +17,12 @@
 
 package spray.http
 
-case class HttpChallenge(scheme: String, realm: String, params: Map[String, String] = Map.empty) {
-  def value = scheme + ' ' + (("realm" -> realm) :: params.toList).map {
-    case (k, v) ⇒ k + "=\"" + v + '"'
-  }.mkString(",")
+case class HttpChallenge(scheme: String, realm: String,
+                         params: Map[String, String] = Map.empty) extends ValueRenderable {
 
-  override def toString = value
+  def render[R <: Rendering](r: R): r.type = {
+    r ~~ scheme ~~ " realm=" ~~# realm
+    if (params.nonEmpty) params.foreach { case (k, v) ⇒ r ~~ ',' ~~ k ~~ '=' ~~# v }
+    r
+  }
 }

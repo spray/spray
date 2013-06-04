@@ -55,7 +55,7 @@ package object util {
 
   // implicits
   implicit def pimpActorSystem(system: ActorSystem): PimpedActorSystem = new PimpedActorSystem(system)
-  implicit def pimpAny[T](any: T): PimpedAny[T] = new PimpedAny(any)
+  implicit def pimpAny_[T](any: T): PimpedAny[T] = new PimpedAny(any)
   implicit def pimpByteArray(array: Array[Byte]): PimpedByteArray = new PimpedByteArray(array)
   implicit def pimpByteBuffer(buf: ByteBuffer): PimpedByteBuffer = new PimpedByteBuffer(buf)
   implicit def pimpClass[T](clazz: Class[T]): PimpedClass[T] = new PimpedClass[T](clazz)
@@ -69,6 +69,6 @@ package object util {
     case x: IndexedSeq[_] ⇒ new PimpedIndexedSeq[T](x)
   }
   implicit def pimpRegex(regex: Regex): PimpedRegex = new PimpedRegex(regex)
-  implicit def pimpString(s: String): PimpedString = new PimpedString(s)
+  implicit def pimpString_(s: String): PimpedString = new PimpedString(s)
   implicit def pimpEither[A, B](either: Either[A, B]): Either.RightProjection[A, B] = either.right
 }

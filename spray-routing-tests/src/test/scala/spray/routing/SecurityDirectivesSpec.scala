@@ -47,10 +47,10 @@ class SecurityDirectivesSpec extends RoutingSpec {
       } ~> check { entityAs[String] === "BasicUserContext(Alice)" }
     }
     "properly handle exceptions thrown in its inner route" in {
-      implicit val log = NoLogging // suppress logging of the error
+      object TestException extends spray.util.SingletonException
       Get() ~> Authorization(BasicHttpCredentials("Alice", "")) ~> {
         handleExceptions(ExceptionHandler.default) {
-          authenticate(BasicAuth(doAuth, "Realm")) { _ ⇒ sys.error("Nope") }
+          authenticate(BasicAuth(doAuth, "Realm")) { _ ⇒ throw TestException }
         }
       } ~> check { status === StatusCodes.InternalServerError }
     }

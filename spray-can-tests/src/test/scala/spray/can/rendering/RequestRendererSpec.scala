@@ -19,17 +19,19 @@ package rendering
 
 import java.net.InetSocketAddress
 import org.specs2.mutable.Specification
+import akka.event.NoLogging
 import spray.util.EOL
 import spray.http._
-import HttpHeaders.RawHeader
+import HttpHeaders._
 import HttpMethods._
+import org.specs2.specification.Scope
 
 class RequestRendererSpec extends Specification {
 
   "The request preparation logic" should {
     "properly render a" in {
 
-      "GET request without headers and without body" in {
+      "GET request without headers and without body" in new TestSetup() {
         HttpRequest(GET, "/abc") must beRenderedTo {
           """|GET /abc HTTP/1.1
              |Host: test.com:8080
@@ -39,7 +41,7 @@ class RequestRendererSpec extends Specification {
         }
       }
 
-      "POST request, a few headers (incl. a custom Host header) and no body" in {
+      "POST request, a few headers (incl. a custom Host header) and no body" in new TestSetup() {
         HttpRequest(POST, "/abc/xyz", List(
           RawHeader("X-Fancy", "naa"),
           RawHeader("Age", "0"),
@@ -55,7 +57,7 @@ class RequestRendererSpec extends Specification {
         }
       }
 
-      "PUT request, a few headers and a body" in {
+      "PUT request, a few headers and a body" in new TestSetup() {
         HttpRequest(PUT, "/abc/xyz", List(
           RawHeader("X-Fancy", "naa"),
           RawHeader("Cache-Control", "public"),
@@ -72,7 +74,7 @@ class RequestRendererSpec extends Specification {
         }
       }
 
-      "PUT request start (chunked) without body" in {
+      "PUT request start (chunked) without body" in new TestSetup() {
         ChunkedRequestStart(HttpRequest(PUT, "/abc/xyz")) must beRenderedTo {
           """|PUT /abc/xyz HTTP/1.1
              |Host: test.com:8080
@@ -83,7 +85,7 @@ class RequestRendererSpec extends Specification {
         }
       }
 
-      "POST request start (chunked) with body" in {
+      "POST request start (chunked) with body" in new TestSetup() {
         ChunkedRequestStart(HttpRequest(POST, "/abc/xyz")
           .withEntity("ABCDEFGHIJKLMNOPQRSTUVWXYZ")) must beRenderedTo {
           """|POST /abc/xyz HTTP/1.1
@@ -101,7 +103,7 @@ class RequestRendererSpec extends Specification {
 
     "properly handle the User-Agent header" in {
 
-      "GET request without headers and without body" in {
+      "GET request without headers and without body" in new TestSetup() {
         HttpRequest(GET, "/abc") must beRenderedTo {
           """GET /abc HTTP/1.1
             |Host: test.com:8080
@@ -111,36 +113,36 @@ class RequestRendererSpec extends Specification {
         }
       }
 
-      "GET request with overridden User-Agent and without body" in {
+      "GET request with overridden User-Agent and without body" in new TestSetup(None) {
         HttpRequest(GET, "/abc", List(RawHeader("User-Agent", "blah-blah/1.0"))) must beRenderedTo {
           """GET /abc HTTP/1.1
+            |User-Agent: blah-blah/1.0
             |Host: test.com:8080
-            |User-Agent: spray-can/1.0.0
             |
             |"""
         }
       }
 
-      "GET request with overridden User-Agent and without body" in {
-        HttpRequest(GET, "/abc", List(RawHeader("User-Agent", "user-ua/1.0"))) must beRenderedToWithRenderer(
+      "GET request with overridden User-Agent and without body" in new TestSetup(Some(`User-Agent`("settings-ua/1.0"))) {
+        HttpRequest(GET, "/abc", List(RawHeader("User-Agent", "user-ua/1.0"))) must beRenderedTo {
           """GET /abc HTTP/1.1
             |Host: test.com:8080
             |User-Agent: settings-ua/1.0
             |
-            |""",
-          new RequestRenderer("settings-ua/1.0", 256))
+            |"""
+        }
       }
     }
   }
 
-  val defaultRenderer = new RequestRenderer("spray-can/1.0.0", 256)
-
-  def beRenderedTo(content: String) = beRenderedToWithRenderer(content, defaultRenderer)
-
-  def beRenderedToWithRenderer(content: String, renderer: RequestRenderer) = {
-    beEqualTo(content.stripMargin.replace(EOL, "\r\n")) ^^ { part: HttpRequestPart ⇒
-      val RenderedMessagePart(data, false) = renderer.render(part, new InetSocketAddress("test.com", 8080))
-      data.utf8String
+  class TestSetup(val userAgent: Option[`User-Agent`] = Some(`User-Agent`("spray-can/1.0.0")))
+      extends RequestRenderingComponent with Scope {
+    def beRenderedTo(content: String) = {
+      beEqualTo(content.stripMargin.replace(EOL, "\r\n")) ^^ { part: HttpRequestPart ⇒
+        val r = new ByteStringRendering(256)
+        renderRequestPart(r, part, new InetSocketAddress("test.com", 8080), NoLogging)
+        r.get.utf8String
+      }
     }
   }
 }

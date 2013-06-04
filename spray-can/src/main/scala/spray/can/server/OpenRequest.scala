@@ -20,7 +20,7 @@ import scala.collection.immutable.Queue
 import scala.concurrent.duration.Duration
 import akka.actor.ActorRef
 import akka.spray.RefUtils
-import spray.can.rendering.HttpResponsePartRenderingContext
+import spray.can.rendering.ResponsePartRenderingContext
 import spray.io._
 import spray.http._
 import spray.can.Http
@@ -182,7 +182,7 @@ trait OpenRequestComponent { component ⇒
           pendingSentAcks += 1
           AckEventWithReceiver(x, handler)
       }
-      val cmd = HttpResponsePartRenderingContext(responsePart, request.method, request.protocol,
+      val cmd = ResponsePartRenderingContext(responsePart, request.method, request.protocol,
         closeAfterResponseCompletion, ack)
       downstreamCommandPL(cmd)
     }

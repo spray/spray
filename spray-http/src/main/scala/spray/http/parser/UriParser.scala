@@ -245,12 +245,12 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
 
   def `path-abempty` = {
     val start = cursor
-    resetFirstPercent() && slashSegments && savePath(start)
+    slashSegments && savePath(start)
   }
 
   def `path-absolute` = {
     val start = cursor
-    resetFirstPercent() && ch('/') && {
+    ch('/') && {
       val mark = cursor
       `segment-nz` && slashSegments || reset(mark)
     } && savePath(start)
@@ -258,12 +258,12 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
 
   def `path-noscheme` = {
     val start = cursor
-    resetFirstPercent() && `segment-nz-nc` && slashSegments && savePath(start)
+    `segment-nz-nc` && slashSegments && savePath(start)
   }
 
   def `path-rootless` = {
     val start = cursor
-    resetFirstPercent() && `segment-nz` && slashSegments && savePath(start)
+    `segment-nz` && slashSegments && savePath(start)
   }
 
   def `path-empty` = true
@@ -330,7 +330,7 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
   // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-2.7
   def `absolute-path` = {
     val start = cursor
-    resetFirstPercent() && ch('/') && segment && slashSegments && savePath(start)
+    ch('/') && segment && slashSegments && savePath(start)
   }
 
   // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-22#section-5.3
@@ -377,14 +377,14 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
   def advance() = { cursor += 1; maxCursor = math.max(maxCursor, cursor); true }
 
   def savePath(start: Int) = {
-    _path = Path(decodeIfNeeded(slice(start, cursor), firstPercent - start, charset))
+    _path = Path(slice(start, cursor), charset)
     true
   }
 
   def slice(start: Int, end: Int): String = input.sliceString(start, end)
 
   def resetFirstUpper() = { firstUpper = -1; true }
-  def resetFirstPercent() = { firstUpper = -1; true }
+  def resetFirstPercent() = { firstPercent = -1; true }
   def markUpper() = { if (firstUpper == -1) firstUpper = cursor; true }
   def markPercent(delta: Int = 0) = { if (firstPercent == -1) firstPercent = cursor + delta; true }
 
@@ -415,6 +415,7 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
     }
 }
 
+// TODO: switch to CharMask-based masking
 private[http] object UriParser {
   // compile time constants
   final val EOI = '\uffff'
@@ -466,7 +467,7 @@ private[http] object UriParser {
   private[this] val props = new Array[Int](128)
 
   private[http] def is(c: Int, mask: Int): Boolean = (props(indexFor(c)) & mask) != 0
-  private def indexFor(c: Int): Int = c & sex(c - 127) // branchless for `if (c <= 127) c else 0`
+  private def indexFor(c: Int): Int = c & sex(c - 128) // branchless for `if (c < 128) c else 0`
   private def mark(mask: Int, chars: Char*): Unit = chars.foreach(c ⇒ props(indexFor(c)) = props(indexFor(c)) | mask)
   private def mark(mask: Int, range: NumericRange[Char]): Unit = mark(mask, range.toSeq: _*)
 

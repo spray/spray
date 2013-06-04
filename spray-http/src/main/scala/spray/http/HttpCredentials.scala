@@ -22,17 +22,14 @@ import HttpCharsets._
 import org.parboiled.common.Base64
 import scala.annotation.tailrec
 
-sealed abstract class HttpCredentials {
-  def value: String
-  override def toString = value
-}
+sealed trait HttpCredentials extends ValueRenderable
 
 case class BasicHttpCredentials(username: String, password: String) extends HttpCredentials {
-  lazy val value = {
+  def render[R <: Rendering](r: R): r.type = {
     val userPass = username + ':' + password
     val bytes = userPass.getBytes(`ISO-8859-1`.nioCharset)
-    val cookie = Base64.rfc2045.encodeToString(bytes, false)
-    "Basic " + cookie
+    val cookie = Base64.rfc2045.encodeToChar(bytes, false)
+    r ~~ "Basic " ~~ cookie
   }
 }
 
@@ -48,34 +45,26 @@ object BasicHttpCredentials {
 }
 
 case class OAuth2BearerToken(token: String) extends HttpCredentials {
-  def value = "Bearer " + token
+  def render[R <: Rendering](r: R): r.type = r ~~ "Bearer " ~~ token
 }
 
 case class GenericHttpCredentials(scheme: String, token: String,
                                   params: Map[String, String] = Map.empty) extends HttpCredentials {
-  def value = {
-    val sb = new java.lang.StringBuilder(scheme)
-    if (!token.isEmpty) sb.append(' ').append(token)
-    if (params.nonEmpty) {
-      val startLen = sb.length
-      params.foreach {
-        case (k, v) ⇒
-          sb.append(if (sb.length == startLen) ' ' else ',')
-          if (k.isEmpty) sb.append('"') else sb.append(k).append('=').append('"')
-          @tailrec def addValueChars(ix: Int = 0): Unit =
-            if (ix < v.length) {
-              v.charAt(ix) match {
-                case '"'  ⇒ sb.append('\\').append('"')
-                case '\\' ⇒ sb.append('\\').append('\\')
-                case c    ⇒ sb.append(c)
-              }
-              addValueChars(ix + 1)
-            }
-          addValueChars()
-          sb.append('"')
+
+  def render[R <: Rendering](r: R): r.type = {
+    r ~~ scheme
+    if (!token.isEmpty) r ~~ ' ' ~~ token
+    if (params.nonEmpty)
+      params foreach new (((String, String)) ⇒ Unit) {
+        var first = true
+        def apply(kvp: (String, String)): Unit = {
+          val (k, v) = kvp
+          if (first) { r ~~ ' '; first = false } else r ~~ ','
+          if (!k.isEmpty) r ~~ k ~~ '='
+          r ~~# v
+        }
       }
-    }
-    sb.toString
+    r
   }
 }
 

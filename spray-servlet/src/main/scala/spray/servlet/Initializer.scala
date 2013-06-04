@@ -22,6 +22,7 @@ import scala.language.reflectiveCalls
 import scala.util.control.NonFatal
 import akka.util.Switch
 import akka.actor.ActorSystem
+import spray.util._
 
 class Initializer extends ServletContextListener {
   private val booted = new Switch(false)
@@ -63,7 +64,7 @@ class Initializer extends ServletContextListener {
             "`javax.servlet.ServletContext` parameter nor a default constructor"), e)
         }
       } catch {
-        case NonFatal(e) ⇒ servletContext.log(e.getMessage, e)
+        case NonFatal(e) ⇒ servletContext.log(e.getMessage.nullAsEmpty, e)
       }
     }
   }

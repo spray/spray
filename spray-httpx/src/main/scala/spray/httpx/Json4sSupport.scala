@@ -20,7 +20,6 @@ import org.json4s.Formats
 import spray.httpx.marshalling.{ Marshaller, MetaMarshallers }
 import spray.httpx.unmarshalling.Unmarshaller
 import spray.http._
-import MediaTypes._
 
 trait Json4sSupport extends MetaMarshallers {
 
@@ -42,10 +41,10 @@ trait Json4sSupport extends MetaMarshallers {
   implicit def json4sFormats: Formats
 
   implicit def json4sUnmarshaller[T: Manifest] =
-    Unmarshaller[T](`application/json`) {
+    Unmarshaller[T](MediaTypes.`application/json`) {
       case x: HttpBody ⇒ Serialization.read[T](x.asString(defaultCharset = HttpCharsets.`UTF-8`))
     }
 
   implicit def json4sMarshaller[T <: AnyRef] =
-    Marshaller.delegate[T, String](ContentType.`application/json`)(Serialization.write(_))
+    Marshaller.delegate[T, String](ContentTypes.`application/json`)(Serialization.write(_))
 }

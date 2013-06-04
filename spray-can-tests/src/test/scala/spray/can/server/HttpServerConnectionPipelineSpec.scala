@@ -34,7 +34,7 @@ import spray.can.TestSupport._
 import HttpHeaders._
 import MediaTypes._
 
-class HttpIncomingConnectionPipelineSpec extends Specification with RawSpecs2PipelineStageTest {
+class HttpServerConnectionPipelineSpec extends Specification with RawSpecs2PipelineStageTest {
   type Context = ServerFrontend.Context with SslTlsContext
 
   "The HttpServer pipeline" should {

@@ -104,27 +104,26 @@ class HttpHeaderParserSpec extends Specification {
 
     "prime an empty parser with all defined HeaderValueParsers" in new TestSetup() {
       parser.formatTrie ===
-        """   ┌─\r-\n- EmptyHeader
-          |   |             ┌─c-h-a-r-s-e-t-:- (Accept-Charset)
-          |   |             | └─e-n-c-o-d-i-n-g-:- (Accept-Encoding)
-          | ┌─a-c-c-e-p-t---l-a-n-g-u-a-g-e-:- (Accept-Language)
-          | |   |         | └─r-a-n-g-e-s-:- (Accept-Ranges)
-          | |   |         |                ┌─\r-\n- Accept: */*
-          | |   |         └─:-(Accept)- -*-/-*-\r-\n- Accept: */*
-          | |   └─u-t-h-o-r-i-z-a-t-i-o-n-:- (Authorization)
-          | | ┌─a-c-h-e---c-o-n-t-r-o-l-:-(Cache-Control)- -m-a-x---a-g-e-=-0-\r-\n- Cache-Control: max-age=0
-          | | |                                             └─n-o---c-a-c-h-e-\r-\n- Cache-Control: no-cache
-          | | |     ┌─n-e-c-t-i-o-n-:-(Connection)- -K-e-e-p---A-l-i-v-e-\r-\n- Connection: Keep-Alive
-          | | |     |                                | ┌─c-l-o-s-e-\r-\n- Connection: close
-          | | |     |                                └─k-e-e-p---a-l-i-v-e-\r-\n- Connection: keep-alive
-          | | |     |         ┌─d-i-s-p-o-s-i-t-i-o-n-:- (Content-Disposition)
-          | | | ┌─n-t-e-n-t---e-n-c-o-d-i-n-g-:- (Content-Encoding)
-          | | | |             | ┌─l-e-n-g-t-h-:-(Content-Length)- -0-\r-\n- Content-Length: 0
-          | | | |             └─t-y-p-e-:- (Content-Type)
-          |-c-o-o-k-i-e-:- (Cookie)
-          | |     ┌─d-a-t-e-:- (Date)
-          | |   ┌─e-x-p-e-c-t-:-(Expect)- -1-0-0---c-o-n-t-i-n-u-e-\r-\n- Expect: 100-continue
-          | |   | └─h-o-s-t-:- (Host)
+        """     ┌─\r-\n- EmptyHeader
+          |     |             ┌─c-h-a-r-s-e-t-:- (Accept-Charset)
+          |     |             | └─e-n-c-o-d-i-n-g-:- (Accept-Encoding)
+          |   ┌─a-c-c-e-p-t---l-a-n-g-u-a-g-e-:- (Accept-Language)
+          |   |   |         |                ┌─\r-\n- Accept: */*
+          |   |   |         └─:-(Accept)- -*-/-*-\r-\n- Accept: */*
+          |   |   └─u-t-h-o-r-i-z-a-t-i-o-n-:- (Authorization)
+          |   | ┌─a-c-h-e---c-o-n-t-r-o-l-:-(Cache-Control)- -m-a-x---a-g-e-=-0-\r-\n- Cache-Control: max-age=0
+          |   | |                                             └─n-o---c-a-c-h-e-\r-\n- Cache-Control: no-cache
+          | ┌─c-o-n-n-e-c-t-i-o-n-:-(Connection)- -K-e-e-p---A-l-i-v-e-\r-\n- Connection: Keep-Alive
+          | |     | |                              | ┌─c-l-o-s-e-\r-\n- Connection: close
+          | |     | |                              └─k-e-e-p---a-l-i-v-e-\r-\n- Connection: keep-alive
+          | |     | |             ┌─d-i-s-p-o-s-i-t-i-o-n-:- (Content-Disposition)
+          | |     | |           ┌─e-n-c-o-d-i-n-g-:- (Content-Encoding)
+          | |     | └─t-e-n-t---l-e-n-g-t-h-:-(Content-Length)- -0-\r-\n- Content-Length: 0
+          | |     |             └─t-y-p-e-:- (Content-Type)
+          | |     └─o-k-i-e-:- (Cookie)
+          |-d-a-t-e-:- (Date)
+          | |     ┌─e-x-p-e-c-t-:-(Expect)- -1-0-0---c-o-n-t-i-n-u-e-\r-\n- Expect: 100-continue
+          | |   ┌─h-o-s-t-:- (Host)
           | | ┌─l-a-s-t---m-o-d-i-f-i-e-d-:- (Last-Modified)
           | | | | └─o-c-a-t-i-o-n-:- (Location)
           | | | └─r-e-m-o-t-e---a-d-d-r-e-s-s-:- (Remote-Address)
@@ -135,7 +134,7 @@ class HttpHeaderParserSpec extends Specification {
           |     | ┌─w-w-w---a-u-t-h-e-n-t-i-c-a-t-e-:- (WWW-Authenticate)
           |     └─x---f-o-r-w-a-r-d-e-d---f-o-r-:- (X-Forwarded-For)
           |""".stripMargin
-      parser.formatSizes === "371 nodes, 22 nodeData rows, 35 values"
+      parser.formatSizes === "363 nodes, 23 nodeData rows, 34 values"
       parser.contentHistogram ===
         Map("Connection" -> 3, "Content-Length" -> 1, "Accept" -> 2, "Cache-Control" -> 2, "Expect" -> 1)
     }
@@ -202,7 +201,7 @@ class HttpHeaderParserSpec extends Specification {
       randomHeaders.take(300).foldLeft(0) {
         case (acc, rawHeader) ⇒ acc + parseAndCache(rawHeader.toString + "\r\nx", rawHeader)
       } === 110
-      parser.formatSizes === "3073 nodes, 104 nodeData rows, 255 values"
+      parser.formatSizes === "3070 nodes, 106 nodeData rows, 255 values"
     }
 
     "continue parsing modelled headers even if the overall cache capacity is reached" in new TestSetup() {
@@ -213,8 +212,8 @@ class HttpHeaderParserSpec extends Specification {
       }
       randomHostHeaders.take(300).foldLeft(0) {
         case (acc, header) ⇒ acc + parseAndCache(header.toString + "\r\nx", header)
-      } === 220
-      parser.formatSizes === "3199 nodes, 185 nodeData rows, 255 values"
+      } === 221
+      parser.formatSizes === "3204 nodes, 186 nodeData rows, 255 values"
     }
 
     "continue parsing raw headers even if the header-specific cache capacity is reached" in new TestSetup() {
