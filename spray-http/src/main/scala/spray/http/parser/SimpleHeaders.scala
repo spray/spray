@@ -20,6 +20,7 @@ package parser
 import org.parboiled.scala._
 import BasicRules._
 import HttpHeaders._
+import ProtectedHeaderCreation.enable
 
 /**
  * parser rules for all headers that can be parsed with one simple rule

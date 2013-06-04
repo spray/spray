@@ -20,6 +20,7 @@ package parser
 
 import org.parboiled.scala._
 import HttpHeaders._
+import ProtectedHeaderCreation.enable
 
 private[parser] trait ContentTypeHeader {
   this: Parser with ProtocolParameterRules with CommonActions ⇒

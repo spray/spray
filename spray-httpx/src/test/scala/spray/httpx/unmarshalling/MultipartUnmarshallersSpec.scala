@@ -22,6 +22,7 @@ import spray.http._
 import MediaTypes._
 import HttpCharsets._
 import HttpHeaders._
+import ProtectedHeaderCreation.enable
 
 class MultipartUnmarshallersSpec extends Specification {
 

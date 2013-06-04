@@ -17,7 +17,7 @@
 
 package spray.http
 
-import scala.annotation.tailrec
+import scala.annotation.{ implicitNotFound, tailrec }
 import java.net.InetSocketAddress
 
 abstract class HttpHeader extends ToStringRenderable {
@@ -33,6 +33,14 @@ object HttpHeader {
 }
 
 object HttpHeaders {
+
+  object ProtectedHeaderCreation {
+    @implicitNotFound("Headers of this type are managed automatically by spray. If you are sure that creating instances " +
+      "manually is required in your use case `import HttpHeaders.ProtectedHeaderCreation.enable` to override this warning.")
+    sealed trait Enabled
+    implicit def enable: Enabled = null
+  }
+  import ProtectedHeaderCreation.enable
 
   sealed abstract class ModeledCompanion extends Renderable {
     val name = {
@@ -144,13 +152,13 @@ object HttpHeaders {
   }
 
   object `Content-Length` extends ModeledCompanion
-  case class `Content-Length`(length: Int) extends ModeledHeader {
+  case class `Content-Length`(length: Int)(implicit ev: ProtectedHeaderCreation.Enabled) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ length
     protected def companion = `Content-Length`
   }
 
   object `Content-Type` extends ModeledCompanion
-  case class `Content-Type`(contentType: ContentType) extends ModeledHeader {
+  case class `Content-Type`(contentType: ContentType)(implicit ev: ProtectedHeaderCreation.Enabled) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = r ~~ contentType
     protected def companion = `Content-Type`
   }
@@ -166,7 +174,7 @@ object HttpHeaders {
   }
 
   object Date extends ModeledCompanion
-  case class Date(date: DateTime) extends ModeledHeader {
+  case class Date(date: DateTime)(implicit ev: ProtectedHeaderCreation.Enabled) extends ModeledHeader {
     def renderValue[R <: Rendering](r: R): r.type = date.renderRfc1123DateTimeString(r)
     protected def companion = Date
   }
@@ -214,7 +222,7 @@ object HttpHeaders {
     def apply(first: ProductVersion, more: ProductVersion*): Server = apply(first +: more)
     implicit val productsRenderer = Renderer.seqRenderer[Char, ProductVersion](separator = ' ') // cache
   }
-  case class Server(products: Seq[ProductVersion]) extends ModeledHeader {
+  case class Server(products: Seq[ProductVersion])(implicit ev: ProtectedHeaderCreation.Enabled) extends ModeledHeader {
     import Server.productsRenderer
     def renderValue[R <: Rendering](r: R): r.type = r ~~ products
     protected def companion = Server
@@ -230,7 +238,7 @@ object HttpHeaders {
     def apply(first: String, more: String*): `Transfer-Encoding` = apply(first +: more)
     implicit val encodingsRenderer = Renderer.defaultSeqRenderer[String] // cache
   }
-  case class `Transfer-Encoding`(encodings: Seq[String]) extends ModeledHeader {
+  case class `Transfer-Encoding`(encodings: Seq[String])(implicit ev: ProtectedHeaderCreation.Enabled) extends ModeledHeader {
     import `Transfer-Encoding`.encodingsRenderer
     def renderValue[R <: Rendering](r: R): r.type = r ~~ encodings
     def hasChunked: Boolean = {
@@ -249,7 +257,7 @@ object HttpHeaders {
     def apply(first: ProductVersion, more: ProductVersion*): `User-Agent` = apply(first +: more)
     implicit val productsRenderer = Renderer.seqRenderer[Char, ProductVersion](separator = ' ') // cache
   }
-  case class `User-Agent`(products: Seq[ProductVersion]) extends ModeledHeader {
+  case class `User-Agent`(products: Seq[ProductVersion])(implicit ev: ProtectedHeaderCreation.Enabled) extends ModeledHeader {
     import `User-Agent`.productsRenderer
     def renderValue[R <: Rendering](r: R): r.type = r ~~ products
     protected def companion = `User-Agent`

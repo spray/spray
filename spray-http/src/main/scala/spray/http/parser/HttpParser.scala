@@ -82,12 +82,6 @@ object HttpParser extends Parser with ProtocolParameterRules with AdditionalRule
     parse(headers)
   }
 
-  def parseContentType(contentType: String): Either[ErrorInfo, ContentType] =
-    parse(HttpParser.ContentTypeHeaderValue, contentType) match {
-      case x: Right[_, _] ⇒ x.asInstanceOf[Either[ErrorInfo, ContentType]]
-      case Left(info)     ⇒ Left(info.withFallbackSummary("Illegal Content-Type"))
-    }
-
   def parse[A](rule: Rule1[A], input: String): Either[ErrorInfo, A] = {
     try {
       val result = ReportingParseRunner(rule).run(input)
