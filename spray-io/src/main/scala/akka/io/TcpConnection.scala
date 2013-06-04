@@ -276,13 +276,11 @@ private[io] abstract class TcpConnection(val tcp: TcpExt, val channel: SocketCha
   }
 
   @tailrec private[this] def extractMsg(t: Throwable): String =
-    if (t == null) "unknown"
-    else {
-      t.getMessage match {
-        case null | "" ⇒ extractMsg(t.getCause)
-        case msg       ⇒ msg
-      }
+    if (t ne null) t.getMessage match {
+      case null | "" ⇒ extractMsg(t.getCause)
+      case msg       ⇒ msg
     }
+    else "unknown"
 
   def abort(): Unit = {
     try channel.socket.setSoLinger(true, 0) // causes the following close() to send TCP RST

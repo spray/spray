@@ -107,7 +107,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
           ack.foreach(sender.tell(_, this))
           if (close) sender.tell(Tcp.Closed, this)
         case Some(e) ⇒
-          sender.tell(Tcp.ErrorClosed(e.getMessage), this)
+          sender.tell(Tcp.ErrorClosed(e.getMessage.nullAsEmpty), this)
           asyncContext.complete()
       }
     }

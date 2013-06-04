@@ -18,6 +18,7 @@ package spray.httpx.unmarshalling
 
 import scala.util.control.NonFatal
 import spray.http._
+import spray.util._
 
 abstract class SimpleUnmarshaller[T] extends Unmarshaller[T] {
   val canUnmarshalFrom: Seq[ContentTypeRange]
@@ -38,6 +39,6 @@ abstract class SimpleUnmarshaller[T] extends Unmarshaller[T] {
   protected def protect(f: ⇒ T): Either[DeserializationError, T] =
     try Right(f)
     catch {
-      case NonFatal(ex) ⇒ Left(MalformedContent(ex.getMessage, ex))
+      case NonFatal(ex) ⇒ Left(MalformedContent(ex.getMessage.nullAsEmpty, ex))
     }
 }

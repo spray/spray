@@ -17,14 +17,15 @@
 package spray.can.server
 
 import scala.annotation.tailrec
+import scala.util.control.NonFatal
 import akka.io.Tcp
 import akka.util.{ CompactByteString, ByteString }
 import spray.can.rendering.ResponsePartRenderingContext
 import spray.can.Http
 import spray.can.parsing._
 import spray.http._
+import spray.util._
 import spray.io._
-import scala.util.control.NonFatal
 
 object RequestParsing {
 
@@ -80,7 +81,7 @@ object RequestParsing {
             case Tcp.Received(data: CompactByteString) ⇒
               try parse(data)
               catch {
-                case NonFatal(e) ⇒ handleError(StatusCodes.BadRequest, ErrorInfo(e.getMessage))
+                case NonFatal(e) ⇒ handleError(StatusCodes.BadRequest, ErrorInfo(e.getMessage.nullAsEmpty))
               }
 
             case ev ⇒ eventPL(ev)

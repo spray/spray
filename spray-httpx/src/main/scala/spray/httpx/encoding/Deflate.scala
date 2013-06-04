@@ -18,7 +18,7 @@ package spray.httpx.encoding
 
 import java.util.zip.{ DataFormatException, ZipException, Inflater, Deflater }
 import scala.annotation.tailrec
-import spray.util.EmptyByteArray
+import spray.util._
 import spray.http._
 
 class Deflate(val messageFilter: HttpMessage ⇒ Boolean) extends Decoder with Encoder {
@@ -97,7 +97,7 @@ class DeflateDecompressor extends Decompressor {
       } else 0
     } catch {
       case e: DataFormatException ⇒
-        throw new ZipException(if (e.getMessage != null) e.getMessage else "Invalid ZLIB data format")
+        throw new ZipException(e.getMessage.toOption getOrElse "Invalid ZLIB data format")
     }
   }
 

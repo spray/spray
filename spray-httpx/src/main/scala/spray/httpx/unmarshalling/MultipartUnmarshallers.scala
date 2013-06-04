@@ -72,7 +72,8 @@ trait MultipartUnmarshallers {
       MultipartContentUnmarshaller(entity).right.flatMap { mpContent ⇒
         try Right(MultipartFormData(mpContent.parts.map(part ⇒ nameOf(part) -> part)(collection.breakOut)))
         catch {
-          case NonFatal(ex) ⇒ Left(MalformedContent("Illegal multipart/form-data content: " + ex.getMessage, ex))
+          case NonFatal(ex) ⇒
+            Left(MalformedContent("Illegal multipart/form-data content: " + ex.getMessage.nullAsEmpty, ex))
         }
       }
 

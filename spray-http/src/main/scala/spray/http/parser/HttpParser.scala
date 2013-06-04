@@ -17,10 +17,10 @@
 package spray.http
 package parser
 
+import java.lang.reflect.Method
+import scala.annotation.tailrec
 import org.parboiled.scala._
 import org.parboiled.errors.{ ParsingException, ParserRuntimeException, ErrorUtils }
-import scala.annotation.tailrec
-import java.lang.reflect.Method
 
 /**
  * Parser for all HTTP headers as defined by

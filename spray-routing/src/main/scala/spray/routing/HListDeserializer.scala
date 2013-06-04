@@ -16,8 +16,9 @@
 
 package spray.routing
 
-import spray.httpx.unmarshalling.{ MalformedContent, DeserializationError, Deserializer }
 import shapeless._
+import spray.httpx.unmarshalling.{ MalformedContent, DeserializationError, Deserializer }
+import spray.util._
 
 // TODO: simplify by rebasing on a shapeless fold
 // I don't think we can get around spelling out 22 different cases without giving up on our short
@@ -46,7 +47,7 @@ object HListDeserializer extends HListDeserializerInstances {
       try Right(deserialize(list))
       catch {
         case e: BubbleLeftException      ⇒ e.left.asInstanceOf[Left[DeserializationError, T]]
-        case e: IllegalArgumentException ⇒ Left(MalformedContent(e.getMessage, e))
+        case e: IllegalArgumentException ⇒ Left(MalformedContent(e.getMessage.nullAsEmpty, e))
       }
     }
   }
