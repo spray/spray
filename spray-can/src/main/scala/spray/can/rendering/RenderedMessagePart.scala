@@ -22,11 +22,11 @@ import spray.http._
 
 case class RequestPartRenderingContext(
   requestPart: HttpRequestPart,
-  ack: Any = Tcp.NoAck) extends Command
+  ack: Tcp.Event = Tcp.NoAck) extends Command
 
 case class ResponsePartRenderingContext(
   responsePart: HttpResponsePart,
   requestMethod: HttpMethod = HttpMethods.GET,
   requestProtocol: HttpProtocol = HttpProtocols.`HTTP/1.1`,
   closeAfterResponseCompletion: Boolean = false,
-  ack: Any = Tcp.NoAck) extends Command
+  ack: Tcp.Event = Tcp.NoAck) extends Command

@@ -38,8 +38,8 @@ private[io] class UdpConnection(udpConn: UdpConnectedExt,
       datagramChannel.connect(remoteAddress)
     } catch {
       case NonFatal(e) ⇒
-        log.error(e, "Failure while connecting UDP channel to remote address [{}] local address [{}]",
-          remoteAddress, localAddress.map { _.toString }.getOrElse("undefined"))
+        log.debug("Failure while connecting UDP channel to remote address [{}] local address [{}]: {}",
+          remoteAddress, localAddress.getOrElse("undefined"), e)
         commander ! CommandFailed(connect)
         context.stop(self)
     }
@@ -55,11 +55,11 @@ private[io] class UdpConnection(udpConn: UdpConnectedExt,
   }
 
   def connected(registration: ChannelRegistration): Receive = {
-    case StopReading     ⇒ registration.disableInterest(OP_READ)
+    case SuspendReading  ⇒ registration.disableInterest(OP_READ)
     case ResumeReading   ⇒ registration.enableInterest(OP_READ)
     case ChannelReadable ⇒ doRead(registration, handler)
 
-    case Close ⇒
+    case Disconnect ⇒
       log.debug("Closing UDP connection to [{}]", remoteAddress)
       channel.close()
       sender ! Disconnected
@@ -123,7 +123,7 @@ private[io] class UdpConnection(udpConn: UdpConnectedExt,
       log.debug("Closing DatagramChannel after being stopped")
       try channel.close()
       catch {
-        case NonFatal(e) ⇒ log.error(e, "Error closing DatagramChannel")
+        case NonFatal(e) ⇒ log.debug("Error closing DatagramChannel: {}", e)
       }
     }
 }

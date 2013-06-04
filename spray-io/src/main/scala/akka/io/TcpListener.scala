@@ -5,13 +5,12 @@
 package akka.io
 
 import java.nio.channels.{ SocketChannel, SelectionKey, ServerSocketChannel }
+import java.net.InetSocketAddress
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import akka.actor.{ Props, ActorLogging, ActorRef, Actor }
 import akka.io.SelectionHandler._
 import akka.io.Tcp._
-import akka.io.IO.HasFailureMessage
-import java.net.InetSocketAddress
 
 /**
  * INTERNAL API
@@ -33,31 +32,35 @@ private[io] class TcpListener(selectorRouter: ActorRef,
                               tcp: TcpExt,
                               channelRegistry: ChannelRegistry,
                               bindCommander: ActorRef,
-                              bind: Bind) extends Actor with ActorLogging {
+                              bind: Bind)
+    extends Actor with ActorLogging {
+
   import TcpListener._
   import tcp.Settings._
-  import bind._
 
-  context.watch(handler) // sign death pact
-  val channel = {
-    val serverSocketChannel = ServerSocketChannel.open
-    serverSocketChannel.configureBlocking(false)
-    val socket = serverSocketChannel.socket
-    options.foreach(_.beforeServerSocketBind(socket))
+  context.watch(bind.handler) // sign death pact
+
+  val channel = ServerSocketChannel.open
+  channel.configureBlocking(false)
+
+  val localAddress =
     try {
-      socket.bind(localAddress, backlog)
-      require(socket.getLocalSocketAddress.isInstanceOf[InetSocketAddress],
-        s"bound to unknown SocketAddress [${socket.getLocalSocketAddress}]")
+      val socket = channel.socket
+      bind.options.foreach(_.beforeServerSocketBind(socket))
+      socket.bind(bind.localAddress, bind.backlog)
+      val ret = socket.getLocalSocketAddress match {
+        case isa: InetSocketAddress ⇒ isa
+        case x                      ⇒ throw new IllegalArgumentException(s"bound to unknown SocketAddress [$x]")
+      }
+      channelRegistry.register(channel, SelectionKey.OP_ACCEPT)
+      log.debug("Successfully bound to {}", ret)
+      ret
     } catch {
       case NonFatal(e) ⇒
         bindCommander ! bind.failureMessage
-        log.error(e, "Bind failed for TCP channel on endpoint [{}]", localAddress)
+        log.debug("Bind failed for TCP channel on endpoint [{}]: {}", bind.localAddress, e)
         context.stop(self)
     }
-    serverSocketChannel
-  }
-  channelRegistry.register(channel, SelectionKey.OP_ACCEPT)
-  log.debug("Successfully bound to {}", localAddress)
 
   def receive: Receive = {
     case registration: ChannelRegistration ⇒
@@ -73,7 +76,7 @@ private[io] class TcpListener(selectorRouter: ActorRef,
       log.warning("Could not register incoming connection since selector capacity limit is reached, closing connection")
       try socketChannel.close()
       catch {
-        case NonFatal(e) ⇒ log.error(e, "Error closing channel")
+        case NonFatal(e) ⇒ log.debug("Error closing socket channel: {}", e)
       }
 
     case Unbind ⇒
@@ -89,13 +92,13 @@ private[io] class TcpListener(selectorRouter: ActorRef,
       if (limit > 0) {
         try channel.accept()
         catch {
-          case NonFatal(e) ⇒ { log.error(e, "Accept error: could not accept new connection due to {}", e); null }
+          case NonFatal(e) ⇒ { log.error(e, "Accept error: could not accept new connection"); null }
         }
       } else null
     if (socketChannel != null) {
       log.debug("New connection accepted")
       socketChannel.configureBlocking(false)
-      def props(registry: ChannelRegistry) = Props(new TcpIncomingConnection(tcp, socketChannel, registry, handler, options))
+      def props(registry: ChannelRegistry) = Props(new TcpIncomingConnection(tcp, socketChannel, registry, bind.handler, bind.options))
       selectorRouter ! WorkerForCommand(RegisterIncoming(socketChannel), self, props)
       acceptAllPending(registration, limit - 1)
     } else registration.enableInterest(SelectionKey.OP_ACCEPT)
@@ -108,8 +111,7 @@ private[io] class TcpListener(selectorRouter: ActorRef,
         channel.close()
       }
     } catch {
-      case NonFatal(e) ⇒ log.error(e, "Error closing ServerSocketChannel")
+      case NonFatal(e) ⇒ log.debug("Error closing ServerSocketChannel: {}", e)
     }
   }
-
 }

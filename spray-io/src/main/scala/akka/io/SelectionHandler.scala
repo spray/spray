@@ -5,18 +5,18 @@
 package akka.io
 
 import java.util.{ Iterator ⇒ JIterator }
-import java.lang.Runnable
-import java.nio.channels.spi.SelectorProvider
+import java.util.concurrent.atomic.AtomicBoolean
 import java.nio.channels.{ SelectableChannel, SelectionKey, CancelledKeyException }
 import java.nio.channels.SelectionKey._
-import java.util.concurrent.atomic.AtomicBoolean
+import java.nio.channels.spi.SelectorProvider
 import com.typesafe.config.Config
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
-import akka.dispatch.MessageDispatcher
+import scala.concurrent.ExecutionContext
 import akka.event.LoggingAdapter
-import akka.io.IO.HasFailureMessage
 import akka.actor._
+import akka.routing.RandomRouter
+import akka.event.Logging
 
 abstract class SelectionHandlerSettings(config: Config) {
   import config._
@@ -36,16 +36,32 @@ abstract class SelectionHandlerSettings(config: Config) {
   def MaxChannelsPerSelector: Int
 }
 
+/**
+ * Interface behind which we hide our selector management logic from the connection actors
+ */
 private[io] trait ChannelRegistry {
+  /**
+   * Registers the given channel with the selector, creates a ChannelRegistration instance for it
+   * and dispatches it back to the channelActor calling this `register`
+   */
   def register(channel: SelectableChannel, initialOps: Int)(implicit channelActor: ActorRef)
 }
 
+/**
+ * Implementations of this interface are sent as actor messages back to a channel actor as
+ * a result of it having called `register` on the `ChannelRegistry`.
+ * Enables a channel actor to directly schedule interest setting tasks to the selector mgmt. dispatcher.
+ */
 private[io] trait ChannelRegistration {
   def enableInterest(op: Int)
   def disableInterest(op: Int)
 }
 
 private[io] object SelectionHandler {
+
+  trait HasFailureMessage {
+    def failureMessage: Any
+  }
 
   case class WorkerForCommand(apiCommand: HasFailureMessage, commander: ActorRef, childProps: ChannelRegistry ⇒ Props)
 
@@ -56,7 +72,18 @@ private[io] object SelectionHandler {
   case object ChannelReadable
   case object ChannelWritable
 
-  private class ChannelRegistryImpl(dispatcher: MessageDispatcher, log: LoggingAdapter) extends ChannelRegistry {
+  private[io] abstract class SelectorBasedManager(selectorSettings: SelectionHandlerSettings, nrOfSelectors: Int) extends Actor {
+
+    val selectorPool = context.actorOf(
+      props = Props(new SelectionHandler(selectorSettings)).withRouter(RandomRouter(nrOfSelectors)),
+      name = "selectors")
+
+    def workerForCommandHandler(pf: PartialFunction[HasFailureMessage, ChannelRegistry ⇒ Props]): Receive = {
+      case cmd: HasFailureMessage if pf.isDefinedAt(cmd) ⇒ selectorPool ! WorkerForCommand(cmd, sender, pf(cmd))
+    }
+  }
+
+  private class ChannelRegistryImpl(executionContext: ExecutionContext, log: LoggingAdapter) extends ChannelRegistry {
     private[this] val selector = SelectorProvider.provider.openSelector
     private[this] val wakeUp = new AtomicBoolean(false)
 
@@ -64,15 +91,14 @@ private[io] object SelectionHandler {
 
     private[this] val select = new Task {
       def tryRun(): Unit = {
-        wakeUp.set(false) // reset early, worst-case we do a double-wakeup, but it's supposed to be idempotent so it's just an extra syscall
-        if (selector.select() > 0) { // this assumes select return value == selectedKeys.size
+        if (selector.select() > 0) { // This assumes select return value == selectedKeys.size
           val keys = selector.selectedKeys
           val iterator = keys.iterator()
           while (iterator.hasNext) {
             val key = iterator.next()
             if (key.isValid) {
               try {
-                // cache because the performance implications of calling this on different platforms are not clear
+                // Cache because the performance implications of calling this on different platforms are not clear
                 val readyOps = key.readyOps()
                 key.interestOps(key.interestOps & ~readyOps) // prevent immediate reselection by always clearing
                 val connection = key.attachment.asInstanceOf[ActorRef]
@@ -93,14 +119,16 @@ private[io] object SelectionHandler {
           }
           keys.clear() // we need to remove the selected keys from the set, otherwise they remain selected
         }
+        wakeUp.set(false)
       }
 
-      override def run(): Unit = if (selector.isOpen) super.run()
-
-      override def postRun(): Unit = dispatcher.execute(this) // re-schedule select behind all currently queued tasks
+      override def run(): Unit =
+        if (selector.isOpen)
+          try super.run()
+          finally executionContext.execute(this) // re-schedule select behind all currently queued tasks
     }
 
-    dispatcher.execute(select) // start selection "loop"
+    executionContext.execute(select) // start selection "loop"
 
     def register(channel: SelectableChannel, initialOps: Int)(implicit channelActor: ActorRef): Unit =
       execute {
@@ -121,15 +149,17 @@ private[io] object SelectionHandler {
           def tryRun(): Unit = {
             // thorough 'close' of the Selector
             @tailrec def closeNextChannel(it: JIterator[SelectionKey]): Unit = if (it.hasNext) {
-              try it.next().channel.close() catch { case NonFatal(e) ⇒ log.error(e, "Error closing channel") }
+              try it.next().channel.close() catch { case NonFatal(e) ⇒ log.debug("Error closing channel: {}", e) }
               closeNextChannel(it)
             }
-            try closeNextChannel(selector.keys.iterator) finally selector.close()
+            try closeNextChannel(selector.keys.iterator)
+            finally selector.close()
           }
         }
       }
 
-    // always set the interest keys on the selector thread according to benchmark
+    // always set the interest keys on the selector thread,
+    // benchmarks show that not doing so results in lock contention
     private def enableInterestOps(key: SelectionKey, ops: Int): Unit =
       execute {
         new Task {
@@ -153,8 +183,9 @@ private[io] object SelectionHandler {
       }
 
     private def execute(task: Task): Unit = {
-      dispatcher.execute(task)
-      if (wakeUp.compareAndSet(false, true)) selector.wakeup() // Avoiding syscall and trade off with LOCK CMPXCHG
+      executionContext.execute(task)
+      if (wakeUp.compareAndSet(false, true)) // if possible avoid syscall and trade off with LOCK CMPXCHG
+        selector.wakeup()
     }
 
     // FIXME: Add possibility to signal failure of task to someone
@@ -165,9 +196,8 @@ private[io] object SelectionHandler {
         catch {
           case _: CancelledKeyException ⇒ // ok, can be triggered while setting interest ops
           case NonFatal(e)              ⇒ log.error(e, "Error during selector management task: [{}]", e)
-        } finally postRun()
+        }
       }
-      def postRun(): Unit = ()
     }
   }
 }
@@ -176,15 +206,17 @@ private[io] class SelectionHandler(settings: SelectionHandlerSettings) extends A
   import SelectionHandler._
   import settings._
 
-  private[this] val registry = new ChannelRegistryImpl(context.system.dispatchers.lookup(SelectorDispatcher), log)
   private[this] var sequenceNumber = 0
   private[this] var childCount = 0
+  private[this] val registry = new ChannelRegistryImpl(context.system.dispatchers.lookup(SelectorDispatcher), log)
 
   def receive: Receive = {
     case cmd: WorkerForCommand   ⇒ spawnChildWithCapacityProtection(cmd, SelectorAssociationRetries)
 
     case Retry(cmd, retriesLeft) ⇒ spawnChildWithCapacityProtection(cmd, retriesLeft)
 
+    // since our ActorRef is never exposed to the user and we are only assigning watches to our
+    // children all incoming `Terminated` events must be for a child of ours
     case _: Terminated           ⇒ childCount -= 1
   }
 
@@ -198,12 +230,12 @@ private[io] class SelectionHandler(settings: SelectionHandlerSettings) extends A
     if (MaxChannelsPerSelector == -1 || childCount < MaxChannelsPerSelector) {
       val newName = sequenceNumber.toString
       sequenceNumber += 1
-      childCount += 1
       val child = context.actorOf(props = cmd.childProps(registry).withDispatcher(WorkerDispatcher), name = newName)
+      childCount += 1
       if (MaxChannelsPerSelector > 0) context.watch(child) // we don't need to watch if we aren't limited
     } else {
       if (retriesLeft >= 1) {
-        log.warning("Rejecting [{}] with [{}] retries left, retrying...", cmd, retriesLeft)
+        log.debug("Rejecting [{}] with [{}] retries left, retrying...", cmd, retriesLeft)
         context.parent forward Retry(cmd, retriesLeft - 1)
       } else {
         log.warning("Rejecting [{}] with no retries left, aborting...", cmd)

@@ -51,7 +51,7 @@ class HttpClientConnectionPipelineSpec extends Specification with RawSpecs2Pipel
       val probe = TestProbe()
       probe.send(connectionActor, Http.MessageCommand(HttpRequest().withAck('Ack)))
       commands.expectMsgPF() {
-        case Tcp.Write(StringBytes(data), 'Ack) ⇒ data
+        case Tcp.Write(StringBytes(data), Pipeline.AckEvent('Ack)) ⇒ data
       } === emptyRawRequest()
       connectionActor ! Pipeline.AckEvent('Ack)
       commands.expectMsg(Pipeline.Tell(probe.ref, 'Ack, connectionActor))

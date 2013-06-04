@@ -15,8 +15,8 @@ import akka.actor._
  */
 private[io] class UdpSender(val udp: UdpExt,
                             channelRegistry: ChannelRegistry,
-                            options: immutable.Traversable[SocketOption],
-                            commander: ActorRef)
+                            commander: ActorRef,
+                            options: immutable.Traversable[SocketOption])
     extends Actor with ActorLogging with WithUdpSend {
 
   val channel = {
@@ -32,15 +32,15 @@ private[io] class UdpSender(val udp: UdpExt,
 
   def receive: Receive = {
     case registration: ChannelRegistration ⇒
-      context.become(sendHandlers(registration), discardOld = true)
-      commander ! SimpleSendReady
+      commander ! SimpleSenderReady
+      context.become(sendHandlers(registration))
   }
 
   override def postStop(): Unit = if (channel.isOpen) {
     log.debug("Closing DatagramChannel after being stopped")
     try channel.close()
     catch {
-      case NonFatal(e) ⇒ log.error(e, "Error closing DatagramChannel")
+      case NonFatal(e) ⇒ log.debug("Error closing DatagramChannel: {}", e)
     }
   }
 }

@@ -18,15 +18,15 @@ import akka.io.Inet.SocketOption
 private[io] class TcpIncomingConnection(_tcp: TcpExt,
                                         _channel: SocketChannel,
                                         registry: ChannelRegistry,
-                                        handler: ActorRef,
+                                        bindHandler: ActorRef,
                                         options: immutable.Traversable[SocketOption])
     extends TcpConnection(_tcp, _channel) {
 
-  context.watch(handler) // sign death pact
+  context.watch(bindHandler) // sign death pact
 
   registry.register(channel, initialOps = 0)
 
   def receive = {
-    case registration: ChannelRegistration ⇒ completeConnect(registration, handler, options)
+    case registration: ChannelRegistration ⇒ completeConnect(registration, bindHandler, options)
   }
 }

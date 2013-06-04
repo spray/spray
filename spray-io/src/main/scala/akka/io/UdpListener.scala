@@ -23,30 +23,34 @@ private[io] class UdpListener(val udp: UdpExt,
                               bind: Bind)
     extends Actor with ActorLogging with WithUdpSend {
 
-  import bind._
   import udp.bufferPool
   import udp.settings._
 
-  context.watch(handler) // sign death pact
-  val channel = {
-    val datagramChannel = DatagramChannel.open
-    datagramChannel.configureBlocking(false)
-    val socket = datagramChannel.socket
-    options.foreach(_.beforeDatagramBind(socket))
+  def selector: ActorRef = context.parent
+
+  context.watch(bind.handler) // sign death pact
+
+  val channel = DatagramChannel.open
+  channel.configureBlocking(false)
+
+  val localAddress =
     try {
-      socket.bind(endpoint)
-      require(socket.getLocalSocketAddress.isInstanceOf[InetSocketAddress],
-        s"bound to unknown SocketAddress [${socket.getLocalSocketAddress}]")
+      val socket = channel.socket
+      bind.options.foreach(_.beforeDatagramBind(socket))
+      socket.bind(bind.localAddress)
+      val ret = socket.getLocalSocketAddress match {
+        case isa: InetSocketAddress ⇒ isa
+        case x                      ⇒ throw new IllegalArgumentException(s"bound to unknown SocketAddress [$x]")
+      }
+      channelRegistry.register(channel, OP_READ)
+      log.debug("Successfully bound to [{}]", ret)
+      ret
     } catch {
       case NonFatal(e) ⇒
         bindCommander ! CommandFailed(bind)
-        log.error(e, "Failed to bind UDP channel to endpoint [{}]", endpoint)
+        log.debug("Failed to bind UDP channel to endpoint [{}]: {}", bind.localAddress, e)
         context.stop(self)
     }
-    datagramChannel
-  }
-  channelRegistry.register(channel, OP_READ)
-  log.debug("Successfully bound to [{}]", endpoint)
 
   def receive: Receive = {
     case registration: ChannelRegistration ⇒
@@ -55,20 +59,20 @@ private[io] class UdpListener(val udp: UdpExt,
   }
 
   def readHandlers(registration: ChannelRegistration): Receive = {
-    case StopReading     ⇒ registration.disableInterest(OP_READ)
+    case SuspendReading  ⇒ registration.disableInterest(OP_READ)
     case ResumeReading   ⇒ registration.enableInterest(OP_READ)
-    case ChannelReadable ⇒ doReceive(handler, registration)
+    case ChannelReadable ⇒ doReceive(registration, bind.handler)
 
     case Unbind ⇒
-      log.debug("Unbinding endpoint [{}]", endpoint)
+      log.debug("Unbinding endpoint [{}]", bind.localAddress)
       try {
         channel.close()
         sender ! Unbound
-        log.debug("Unbound endpoint [{}], stopping listener", endpoint)
+        log.debug("Unbound endpoint [{}], stopping listener", bind.localAddress)
       } finally context.stop(self)
   }
 
-  def doReceive(handler: ActorRef, registration: ChannelRegistration): Unit = {
+  def doReceive(registration: ChannelRegistration, handler: ActorRef): Unit = {
     @tailrec def innerReceive(readsLeft: Int, buffer: ByteBuffer) {
       buffer.clear()
       buffer.limit(DirectBufferSize)
@@ -89,12 +93,12 @@ private[io] class UdpListener(val udp: UdpExt,
     }
   }
 
-  override def postStop() {
+  override def postStop(): Unit = {
     if (channel.isOpen) {
       log.debug("Closing DatagramChannel after being stopped")
       try channel.close()
       catch {
-        case NonFatal(e) ⇒ log.error(e, "Error closing DatagramChannel")
+        case NonFatal(e) ⇒ log.debug("Error closing DatagramChannel: {}", e)
       }
     }
   }
