@@ -8,7 +8,6 @@ jdk:
   - oraclejdk7
   - openjdk7
 notifications:
-  notifications:
-    email:
-      - johannes@spray.io
-      - mathias@spray.io
+  email:
+    - johannes@spray.io
+    - mathias@spray.io
