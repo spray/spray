@@ -23,9 +23,9 @@ import akka.io.Tcp
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.can.rendering.HttpResponsePartRenderingContext
 import spray.can.Http
-import spray.util.requirePositiveOrUndefined
 import spray.http._
 import spray.io._
+import spray.util.requirePositiveOrUndefined
 
 object ServerFrontend {
 
@@ -74,7 +74,7 @@ object ServerFrontend {
               // a response for a non-current openRequest has to be queued
               openRequest.enqueueCommand(command)
 
-            case SetRequestTimeout(timeout) ⇒
+            case CommandWrapper(SetRequestTimeout(timeout)) ⇒
               _requestTimeout = timeout
               if (_requestTimeout.isFinite() && _idleTimeout.isFinite() && _idleTimeout <= _requestTimeout) {
                 val newIdleTimeout = timeout * 2
@@ -83,7 +83,7 @@ object ServerFrontend {
                 commandPipeline(ConnectionTimeouts.SetIdleTimeout(newIdleTimeout))
               }
 
-            case SetTimeoutTimeout(timeout) ⇒ _timeoutTimeout = timeout
+            case CommandWrapper(SetTimeoutTimeout(timeout)) ⇒ _timeoutTimeout = timeout
 
             case x @ ConnectionTimeouts.SetIdleTimeout(timeout) ⇒
               _idleTimeout = timeout
@@ -157,15 +157,4 @@ object ServerFrontend {
         }
     }
   }
-
-  ////////////// COMMANDS //////////////
-
-  case class SetRequestTimeout(timeout: Duration) extends Command {
-    requirePositiveOrUndefined(timeout)
-  }
-
-  case class SetTimeoutTimeout(timeout: Duration) extends Command {
-    requirePositiveOrUndefined(timeout)
-  }
-
 }
