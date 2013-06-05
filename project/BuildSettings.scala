@@ -1,6 +1,14 @@
 import sbt._
 import Keys._
 
+import com.typesafe.sbt.SbtScalariform
+import com.typesafe.sbt.SbtScalariform.ScalariformKeys
+import sbtassembly.Plugin.AssemblyKeys._
+import sbtassembly.Plugin._
+import spray.revolver.RevolverPlugin.Revolver
+import twirl.sbt.TwirlPlugin.Twirl
+import ls.Plugin._
+
 
 object BuildSettings {
   val VERSION = "1.0-M7"
@@ -14,30 +22,40 @@ object BuildSettings {
                              "web services on top of Akka",
     startYear             := Some(2011),
     licenses              := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
-    scalaVersion          := "2.9.2",
+    scalaVersion          := "2.9.3",
+    scalaVersion in update:= "2.9.2",
     resolvers             ++= Dependencies.resolutionRepos,
-    scalacOptions         := Seq("-Ydependent-method-types", "-unchecked", "-deprecation", "-encoding", "utf8")
+    scalacOptions         := Seq(
+      "-encoding", "utf8",
+      "-unchecked",
+      "-deprecation",
+      "-Ydependent-method-types"
+    )
   )
 
-  lazy val sprayModuleSettings = basicSettings ++ NightlyBuildSupport.settings ++ seq(
-    // scaladoc settings
-    (scalacOptions in doc) <++= (name, version).map { (n, v) => Seq("-doc-title", n, "-doc-version", v) },
+  lazy val sprayModuleSettings =
+    basicSettings ++ formatSettings ++
+    NightlyBuildSupport.settings ++
+    net.virtualvoid.sbt.graph.Plugin.graphSettings ++
+    seq(
+      // scaladoc settings
+      (scalacOptions in doc) <++= (name, version).map { (n, v) => Seq("-doc-title", n, "-doc-version", v) },
 
-    // publishing
-    crossPaths := false,
-    publishMavenStyle := true,
-    publishTo <<= version { version =>
-      Some {
-        "spray nexus" at {
-          // public uri is repo.spray.io, we use an SSH tunnel to the nexus here
-          "http://localhost:42424/content/repositories/" + {
-            if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else
-              if (NightlyBuildSupport.isNightly) "nightlies/" else "releases/"
+      // publishing
+      crossPaths := false,
+      publishMavenStyle := true,
+      publishTo <<= version { version =>
+        Some {
+          "spray nexus" at {
+            // public uri is repo.spray.io, we use an SSH tunnel to the nexus here
+            "http://localhost:42424/content/repositories/" + {
+              if (version.trim.endsWith("SNAPSHOT")) "snapshots/" else
+                if (NightlyBuildSupport.isNightly) "nightlies/" else "releases/"
+            }
           }
         }
       }
-    }
-  )
+    )
 
   lazy val noPublishing = seq(
     publish := (),
@@ -63,6 +81,13 @@ object BuildSettings {
 
   lazy val exampleSettings = basicSettings ++ noPublishing
 
+  lazy val benchmarkSettings = basicSettings ++ noPublishing ++ Revolver.settings ++ assemblySettings ++ Seq(
+    mainClass in assembly := Some("spray.examples.Main"),
+    jarName in assembly := "benchmark.jar",
+    test in assembly := {},
+    javaOptions in Revolver.reStart ++= Seq("-verbose:gc", "-XX:+PrintCompilation")
+  )
+
   import com.github.siasia.WebPlugin._
   lazy val jettyExampleSettings = exampleSettings ++ webSettings // ++ disableJettyLogSettings
 
@@ -75,5 +100,18 @@ object BuildSettings {
       }
     )
   }
+
+  lazy val formatSettings = SbtScalariform.scalariformSettings ++ Seq(
+    ScalariformKeys.preferences in Compile := formattingPreferences,
+    ScalariformKeys.preferences in Test    := formattingPreferences
+  )
+
+  import scalariform.formatter.preferences._
+  def formattingPreferences =
+    FormattingPreferences()
+      .setPreference(RewriteArrowSymbols, true)
+      .setPreference(AlignParameters, true)
+      .setPreference(AlignSingleLineCaseStatements, true)
+      .setPreference(DoubleIndentClassDeclaration, true)
 
 }
