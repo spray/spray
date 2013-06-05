@@ -27,19 +27,18 @@ object JsonProtocol extends DefaultJsonProtocol {
 }
 
 case class PostMetaData(
-  author: Option[String],
-  tags: Option[String],
-  indexParagraphs: Option[String],
-  showPostStructure: Option[String],
-  scripts: Option[String],
-  styles: Option[String]
-  ) {
+    author: Option[String] = None,
+    tags: Option[String] = None,
+    indexParagraphs: Option[String] = None,
+    showPostStructure: Option[String] = None,
+    scripts: Option[String] = None,
+    styles: Option[String] = None) {
   val tagList: List[String] = tags.map(_.split(',').map(_.trim)).toList.flatten
   val scriptList: List[String] = scripts.map(_.split(' ')).toList.flatten
   val styleList: List[String] = styles.map(_.split(' ')).toList.flatten
 }
 
-case class SphinxDoc(body: String, current_page_name: String, meta: PostMetaData) {
+case class SphinxDoc(body: String, current_page_name: String, meta: PostMetaData = PostMetaData()) {
   val post: Option[BlogPost] = {
     val date = current_page_name.substring(current_page_name.lastIndexOf("/") + 1).take(10) + "T00:00:00"
     (DateTime.fromIsoDateTimeString(date), meta.author) match {
@@ -54,7 +53,7 @@ case class SphinxDoc(body: String, current_page_name: String, meta: PostMetaData
 object SphinxDoc {
   import JsonProtocol._
 
-  val Empty = SphinxDoc("", "", PostMetaData(None, None, None, None, None, None))
+  val Empty = SphinxDoc("", "")
 
   def load(docPath: String): Option[SphinxDoc] = {
     require(docPath.endsWith("/"), s"$docPath URI doesn't end with a slash")

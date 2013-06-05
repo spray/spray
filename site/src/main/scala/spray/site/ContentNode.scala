@@ -16,9 +16,10 @@
 
 package spray.site
 
-import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import scala.xml.{ Node, XML }
+import spray.http.Rendering
 import spray.util._
+import org.parboiled.common.FileUtils
 
 sealed trait ContentNode {
   def title: String
@@ -28,6 +29,7 @@ sealed trait ContentNode {
   def isRoot: Boolean
   def parent: ContentNode
   def doc: SphinxDoc
+  def loadUri: String
   def post: BlogPost = doc.post.getOrElse(sys.error(s"$uri is not a blog-post"))
   def isLast = parent.children.last == this
   def isLeaf = children.isEmpty
@@ -39,43 +41,85 @@ sealed trait ContentNode {
     if (uri == this.uri) Some(this)
     else children.mapFind(_.find(uri))
 
-  override def toString: String = {
-    val sb = new JStringBuilder
-    format(sb, "")
-    sb.toString.dropRight(1)
-  }
-
-  private def format(sb: JStringBuilder, indent: String) {
-    sb.append(indent).append(name).append(": ").append(uri).append("\n")
-    children.foreach(_.format(sb, indent + "  "))
+  def render[R <: Rendering](r: R, prefix: String = ""): r.type = {
+    if (children.nonEmpty) {
+      r ~~ prefix ~~ name ~~ ": " ~~ uri ~~ '\n'
+      children foreach (_.render(r, prefix + "  "))
+      r
+    } else r
   }
 }
 
-class RootNode(val doc: SphinxDoc) extends ContentNode {
-  val children: Seq[ContentNode] = (XML.loadString(doc.body) \ "ul" \ "li").par.map(li2Node(this)).seq
-  def title = "HTTP and more for your Akka/Scala Actors"
-  def name = "root"
-  def uri = ""
+abstract class BranchRootNode(val title: String, val name: String, val uri: String, val loadUri: String,
+                              val doc: SphinxDoc, docVersion: String) extends ContentNode {
+  val children: Seq[ContentNode] = {
+    def findTocTreeWrapper(n: Node): Node =
+      if (n.attribute("class").get.text.startsWith("toctree-wrapper")) n else findTocTreeWrapper((n \ "div").head)
+    (findTocTreeWrapper(XML.loadString(doc.body)) \ "ul" \ "li").par.map(SubNode(this, docVersion)).seq
+  }
+}
+
+class RootNode(doc: SphinxDoc) extends BranchRootNode("REST/HTTP for your Akka/Scala Actors", "root", "", "", doc, "") {
   def isRoot = true
   def parent = this
+}
 
-  private def li2Node(_parent: ContentNode)(li: Node): ContentNode =
-    new ContentNode {
-      import SphinxDoc.load
-      val a = (li \ "a").head
-      def title = if (parent.isRoot) name else parent.title + " » " + name
-      val name = a.text
-      val uri = (a \ "@href").text
-      val children: Seq[ContentNode] = (li \ "ul" \ "li").map(li2Node(this))(collection.breakOut)
-      var lastDoc: Option[SphinxDoc] = None
-      def doc: SphinxDoc = lastDoc.getOrElse {
-        val loaded =
-          if (uri.contains("#")) SphinxDoc.Empty
-          else load(uri).orElse(load(uri + "index/")).getOrElse(sys.error(s"SphinxDoc for uri '$uri' not found"))
-        if (!Main.settings.devMode) lastDoc = Some(loaded)
-        loaded
-      }
+object SubNode {
+  private final val DOC_URI = "documentation/"
+  def apply(parent: ContentNode, docVersion: String)(li: Node): ContentNode = {
+    val a = (li \ "a").head
+    val rawUri = (a \ "@href").text
+    if (rawUri == DOC_URI && docVersion.isEmpty)
+      docParentNode(parent, li)
+    else {
+      val name = if (rawUri == DOC_URI) docVersion else a.text
+      val (uri, loadUri) =
+        if (docVersion.nonEmpty) {
+          if (rawUri.startsWith(DOC_URI)) (DOC_URI + docVersion + '/' + rawUri.substring(DOC_URI.length)) -> rawUri
+          else (DOC_URI + docVersion + '/' + rawUri) -> ("documentation-" + docVersion + '/' + rawUri)
+        } else rawUri -> rawUri
+      new SubNode(li, docVersion, name, uri, loadUri, parent)
+    }
+  }
+
+  def docParentNode(_parent: ContentNode, li: Node): ContentNode =
+    new ContentNode { docRoot ⇒
+      def title = "Documentation"
+      def name = title
+      def uri = DOC_URI
+      def loadUri = ""
       def isRoot = false
       def parent = _parent
+      val doc = SphinxDoc(FileUtils.readAllTextFromResource("documentation-root.html"), "documentation", PostMetaData())
+      val children: Seq[ContentNode] = {
+        val other = Main.settings.otherVersions map { v ⇒
+          SphinxDoc.load(s"documentation-$v/index/") match {
+            case Some(d) ⇒ new BranchRootNode("Documentation » " + v, v, DOC_URI + v + '/', "documentation-" + v, d, v) {
+              def isRoot = false
+              def parent = docRoot
+            }
+            case None ⇒ sys.error(s"index.fjson for documentation version $v not found")
+          }
+        }
+        (other :+ SubNode(this, Main.settings.mainVersion)(li)).sortBy(_.name)
+      }
     }
+}
+
+class SubNode(li: Node, docVersion: String,
+              val name: String, val uri: String, val loadUri: String, val parent: ContentNode) extends ContentNode {
+  def title = if (parent.isRoot) name else parent.title + " » " + name
+  val children: Seq[ContentNode] = (li \ "ul" \ "li").map(SubNode(this, docVersion))(collection.breakOut)
+  private[this] var lastDoc: Option[SphinxDoc] = None
+  def doc: SphinxDoc = lastDoc.getOrElse {
+    import SphinxDoc.load
+    val loaded =
+      if (!uri.contains("#")) {
+        val d = load(loadUri).orElse(load(loadUri + "index/")).getOrElse(sys.error(s"SphinxDoc for uri '$loadUri' not found"))
+        if (loadUri != uri) d.copy(body = d.body.replace("href=\"../", "href=\"../../")) else d
+      } else SphinxDoc.Empty
+    if (!Main.settings.devMode) lastDoc = Some(loaded)
+    loaded
+  }
+  def isRoot = false
 }
