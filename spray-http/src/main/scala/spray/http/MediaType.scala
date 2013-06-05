@@ -36,40 +36,39 @@ sealed abstract class MediaRange extends LazyValueBytesRenderable {
 
 object MediaRanges extends ObjectRegistry[String, MediaRange] {
 
-  abstract class PredefinedMediaRange extends MediaRange with Product {
-    def value = productPrefix
+  sealed abstract case class PredefinedMediaRange(value: String) extends MediaRange {
     val mainType = value takeWhile (_ != '/')
     register(mainType.toLowerCase, this)
   }
 
-  case object `*/*` extends PredefinedMediaRange {
+  val `*/*` = new PredefinedMediaRange("*/*") {
     def matches(mediaType: MediaType) = true
   }
-  case object `application/*` extends PredefinedMediaRange {
+  val `application/*` = new PredefinedMediaRange("application/*") {
     def matches(mediaType: MediaType) = mediaType.isApplication
     override def isApplication: Boolean = true
   }
-  case object `audio/*` extends PredefinedMediaRange {
+  val `audio/*` = new PredefinedMediaRange("audio/*") {
     def matches(mediaType: MediaType) = mediaType.isAudio
     override def isAudio: Boolean = true
   }
-  case object `image/*` extends PredefinedMediaRange {
+  val `image/*` = new PredefinedMediaRange("image/*") {
     def matches(mediaType: MediaType) = mediaType.isImage
     override def isImage: Boolean = true
   }
-  case object `message/*` extends PredefinedMediaRange {
+  val `message/*` = new PredefinedMediaRange("message/*") {
     def matches(mediaType: MediaType) = mediaType.isMessage
     override def isMessage: Boolean = true
   }
-  case object `multipart/*` extends PredefinedMediaRange {
+  val `multipart/*` = new PredefinedMediaRange("multipart/*") {
     def matches(mediaType: MediaType) = mediaType.isMultipart
     override def isMultipart: Boolean = true
   }
-  case object `text/*` extends PredefinedMediaRange {
+  val `text/*` = new PredefinedMediaRange("text/*") {
     def matches(mediaType: MediaType) = mediaType.isText
     override def isText: Boolean = true
   }
-  case object `video/*` extends PredefinedMediaRange {
+  val `video/*` = new PredefinedMediaRange("video/*") {
     def matches(mediaType: MediaType) = mediaType.isVideo
     override def isVideo: Boolean = true
   }
