@@ -18,21 +18,18 @@ package spray.can
 
 import spray.http._
 
-
 sealed trait MessageLine
 
 case class RequestLine(
   method: HttpMethod = HttpMethods.GET,
   uri: String = "/",
-  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`
-) extends MessageLine
+  protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`) extends MessageLine
 
 case class StatusLine(
   protocol: HttpProtocol,
   status: Int,
   reason: String,
-  isResponseToHeadRequest: Boolean = false
-) extends MessageLine
+  isResponseToHeadRequest: Boolean = false) extends MessageLine
 
 object Trailer {
   def verify(trailer: List[HttpHeader]) = {

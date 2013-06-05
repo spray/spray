@@ -16,9 +16,8 @@
 
 package spray.util
 
-import akka.event.{Logging, LoggingAdapter}
+import akka.event.{ Logging, LoggingAdapter }
 import akka.actor._
-
 
 /**
  * A LoggingAdapter that can be implicitly supplied from an implicitly available
@@ -45,12 +44,12 @@ object LoggingContext extends LoggingContextLowerOrderImplicit1 {
 }
 
 private[util] sealed abstract class LoggingContextLowerOrderImplicit1 extends LoggingContextLowerOrderImplicit2 {
-  this: LoggingContext.type =>
+  this: LoggingContext.type ⇒
 
   implicit def fromActorRefFactory(implicit refFactory: ActorRefFactory) =
     refFactory match {
-      case x: ActorSystem => fromActorSystem(x)
-      case x: ActorContext => fromActorContext(x)
+      case x: ActorSystem  ⇒ fromActorSystem(x)
+      case x: ActorContext ⇒ fromActorContext(x)
     }
 
   def fromActorSystem(system: ActorSystem) = fromAdapter(system.log)
@@ -67,7 +66,7 @@ private[util] sealed abstract class LoggingContextLowerOrderImplicit1 extends Lo
 }
 
 private[util] sealed abstract class LoggingContextLowerOrderImplicit2 {
-  this: LoggingContext.type =>
+  this: LoggingContext.type ⇒
 
   implicit val NoLogging = fromAdapter(akka.spray.NoLogging)
 }

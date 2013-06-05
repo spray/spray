@@ -17,7 +17,7 @@
 package akka.spray
 
 import annotation.tailrec
-import akka.dispatch.{Terminate, SystemMessage}
+import akka.dispatch.{ Terminate, SystemMessage }
 import akka.actor._
 import akka.util.Unsafe
 
@@ -31,10 +31,10 @@ import akka.util.Unsafe
  */
 abstract class LazyActorRef(val provider: ActorRefProvider) extends akka.actor.MinimalActorRef {
   def this(related: ActorRef) = this(RefUtils.provider(related))
-  def this(system: ActorSystem) = this {
+  def this(system: ActorSystem) = this{
     system match {
-      case x: ExtendedActorSystem => x.provider
-      case _ => throw new IllegalArgumentException("Unsupported ActorSystem implementation")
+      case x: ExtendedActorSystem ⇒ x.provider
+      case _                      ⇒ throw new IllegalArgumentException("Unsupported ActorSystem implementation")
     }
   }
   def this(context: ActorContext) = this(context.system)
@@ -84,7 +84,7 @@ abstract class LazyActorRef(val provider: ActorRefProvider) extends akka.actor.M
   override def !(message: Any)(implicit sender: ActorRef = null) {
     pathState match {
       case Stopped | _: StoppedWithPath ⇒ provider.deadLetters ! message
-      case _ ⇒ handle(message)
+      case _                            ⇒ handle(message)
     }
   }
 

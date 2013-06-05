@@ -18,7 +18,6 @@ package spray.io
 
 import akka.actor.ActorRef
 
-
 //# source-quote
 /**
  * A handle for a network connection.
@@ -44,5 +43,4 @@ case class DefaultConnection(
   handler: ActorRef,
   ioBridge: ActorRef,
   commander: ActorRef,
-  tag: Any
-) extends Connection
+  tag: Any) extends Connection

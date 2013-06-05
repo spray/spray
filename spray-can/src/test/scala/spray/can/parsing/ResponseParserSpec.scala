@@ -23,7 +23,6 @@ import spray.http._
 import HttpHeaders._
 import HttpProtocols._
 
-
 class ResponseParserSpec extends Specification {
 
   "The reponse parsing logic" should {
@@ -58,8 +57,7 @@ class ResponseParserSpec extends Specification {
           RawHeader("content-length", "17"),
           RawHeader("connection", "close"),
           RawHeader("transfer-encoding", "identity"),
-          RawHeader("user-agent", "curl/7.19.7 xyz")
-        ), Some("close"), None, "Shake your BOODY!")
+          RawHeader("user-agent", "curl/7.19.7 xyz")), Some("close"), None, "Shake your BOODY!")
       }
 
       "with multi-line headers" in {
@@ -76,8 +74,7 @@ class ResponseParserSpec extends Specification {
         } === (`HTTP/1.0`, 200, "OK", List(
           RawHeader("content-type", "application/json"),
           RawHeader("accept", "*/*"),
-          RawHeader("user-agent", "curl/7.19.7 abc xyz")
-        ), None, Some(ContentType(MediaTypes.`application/json`)), "")
+          RawHeader("user-agent", "curl/7.19.7 abc xyz")), None, Some(ContentType(MediaTypes.`application/json`)), "")
       }
 
       "to a HEAD request" in {
@@ -88,8 +85,7 @@ class ResponseParserSpec extends Specification {
              |"""
         } === CompleteMessageState(
           messageLine = StatusLine(`HTTP/1.1`, 500, "Internal Server Error", true),
-          headers = List(RawHeader("content-length", "17"))
-        )
+          headers = List(RawHeader("content-length", "17")))
       }
     }
 
@@ -105,8 +101,7 @@ class ResponseParserSpec extends Specification {
         } === ChunkedStartState(
           StatusLine(`HTTP/1.1`, 200, "OK"),
           List(RawHeader("transfer-encoding", "chunked"), RawHeader("user-agent", "curl/7.19.7")),
-          None
-        )
+          None)
       }
     }
 
@@ -122,7 +117,7 @@ class ResponseParserSpec extends Specification {
 
       "a response status reason longer than 64 chars" in {
         parse("HTTP/1.1 250 x" + "xxxx" * 16 + "\r\n") ===
-                ErrorState("Reason phrase exceeds the configured limit of 64 characters")
+          ErrorState("Reason phrase exceeds the configured limit of 64 characters")
       }
 
       "with an illegal char in a header name" in {
@@ -160,7 +155,7 @@ class ResponseParserSpec extends Specification {
              |
              |abc"""
         } === ErrorState("Invalid Content-Length header value: " +
-                "requirement failed: Content-Length must not be negative")
+          "requirement failed: Content-Length must not be negative")
       }
     }
   }

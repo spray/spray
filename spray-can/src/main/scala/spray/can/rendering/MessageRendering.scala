@@ -22,7 +22,6 @@ import spray.io.BufferBuilder
 import spray.util._
 import spray.http._
 
-
 private[rendering] trait MessageRendering {
   import MessageRendering._
 
@@ -31,7 +30,7 @@ private[rendering] trait MessageRendering {
 
   @tailrec
   protected final def appendHeaders(httpHeaders: List[HttpHeader], bb: BufferBuilder, blockDateHeader: Boolean = false,
-                    connectionHeaderValue: Option[String] = None): Option[String] = {
+                                    connectionHeaderValue: Option[String] = None): Option[String] = {
     if (httpHeaders.isEmpty) {
       connectionHeaderValue
     } else {
@@ -43,14 +42,14 @@ private[rendering] trait MessageRendering {
         else connectionHeaderValue
       }
       header.lowercaseName match {
-        case "content-type"            => // we never render these headers here,
-        case "content-length"          => // because their production is the
-        case "transfer-encoding"       => // responsibility of the spray-can layer,
-        case "host"                    => // not the user
-        case "date" if blockDateHeader =>
-        case "server"                  =>
-        case "user-agent"              =>
-        case _ => appendHeader(header.name, header.value, bb)
+        case "content-type"            ⇒ // we never render these headers here,
+        case "content-length"          ⇒ // because their production is the
+        case "transfer-encoding"       ⇒ // responsibility of the spray-can layer,
+        case "host"                    ⇒ // not the user
+        case "date" if blockDateHeader ⇒
+        case "server"                  ⇒
+        case "user-agent"              ⇒
+        case _                         ⇒ appendHeader(header.name, header.value, bb)
       }
       appendHeaders(httpHeaders.tail, bb, blockDateHeader, newConnectionHeaderValue)
     }
@@ -84,8 +83,8 @@ private[rendering] trait MessageRendering {
   @tailrec
   private def appendChunkExtensions(extensions: List[ChunkExtension], bb: BufferBuilder): BufferBuilder = {
     extensions match {
-      case Nil => bb
-      case ChunkExtension(name, value) :: rest => appendChunkExtensions(rest, {
+      case Nil ⇒ bb
+      case ChunkExtension(name, value) :: rest ⇒ appendChunkExtensions(rest, {
         bb.append(';').append(name).append('=')
         if (value.forall(isTokenChar)) bb.append(value) else bb.append('"').append(value).append('"')
       })

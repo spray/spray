@@ -23,7 +23,6 @@ import spray.io.Command
 import spray.http._
 import spray.can.HttpCommand
 
-
 object ResponseReceiverRef {
   private val responseStateOffset = Unsafe.instance.objectFieldOffset(
     classOf[ResponseReceiverRef].getDeclaredField("_responseStateDoNotCallMeDirectly"))
@@ -35,29 +34,28 @@ object ResponseReceiverRef {
 }
 
 private class ResponseReceiverRef(openRequest: OpenRequest)
-  extends UnregisteredActorRef(openRequest.connectionActorContext) {
+    extends UnregisteredActorRef(openRequest.connectionActorContext) {
   import ResponseReceiverRef._
 
   @volatile private[this] var _responseStateDoNotCallMeDirectly: ResponseState = Uncompleted
 
   def handle(message: Any)(implicit sender: ActorRef) {
     message match {
-      case x: HttpMessagePartWrapper if x.messagePart.isInstanceOf[HttpResponsePart] =>
+      case x: HttpMessagePartWrapper if x.messagePart.isInstanceOf[HttpResponsePart] ⇒
         x.messagePart.asInstanceOf[HttpResponsePart] match {
-          case _: HttpResponse         => dispatch(x, Uncompleted, Completed)
-          case _: ChunkedResponseStart => dispatch(x, Uncompleted, Chunking)
-          case _: MessageChunk         => dispatch(x, Chunking, Chunking)
-          case _: ChunkedMessageEnd    => dispatch(x, Chunking, Completed)
+          case _: HttpResponse         ⇒ dispatch(x, Uncompleted, Completed)
+          case _: ChunkedResponseStart ⇒ dispatch(x, Uncompleted, Chunking)
+          case _: MessageChunk         ⇒ dispatch(x, Chunking, Chunking)
+          case _: ChunkedMessageEnd    ⇒ dispatch(x, Chunking, Completed)
         }
-      case x: Command              => dispatch(x)
-      case x =>
+      case x: Command ⇒ dispatch(x)
+      case x ⇒
         openRequest.warn("Illegal response " + x + " to " + requestInfo)
         unhandledMessage(x)
     }
   }
 
-  private def dispatch(msg: HttpMessagePartWrapper, expectedState: ResponseState, newState: ResponseState)
-                      (implicit sender: ActorRef) {
+  private def dispatch(msg: HttpMessagePartWrapper, expectedState: ResponseState, newState: ResponseState)(implicit sender: ActorRef) {
     if (Unsafe.instance.compareAndSwapObject(this, responseStateOffset, expectedState, newState)) {
       dispatch(new Response(openRequest, HttpCommand(msg)))
     } else {

@@ -20,11 +20,10 @@ import com.typesafe.config.ConfigFactory
 import org.specs2.mutable.Specification
 import akka.actor.ActorSystem
 import spray.can.rendering.HttpResponsePartRenderingContext
-import spray.io.{IOPeer, Command}
+import spray.io.{ IOPeer, Command }
 import spray.can.HttpPipelineStageSpec
 import spray.util.ConnectionCloseReasons.CleanClose
 import spray.http._
-
 
 class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
   val system = ActorSystem()
@@ -53,13 +52,11 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
     }
     "append a Close command to the Send if the connection is to be closed" in {
       pipelineStage.test {
-        val Commands(commands@ _*) = process(
+        val Commands(commands @ _*) = process(
           HttpResponsePartRenderingContext(
             responsePart = HttpResponse(entity = "Some Message"),
             requestMethod = HttpMethods.HEAD,
-            requestConnectionHeader = Some("close")
-          )
-        )
+            requestConnectionHeader = Some("close")))
         commands(0) === sendString {
           """|HTTP/1.1 200 OK
              |Connection: close
@@ -85,9 +82,7 @@ class ResponseRenderingSpec extends Specification with HttpPipelineStageSpec {
         ConfigFactory.parseString("""
           spray.can.server.server-header = spray/1.0
           spray.can.server.response-size-hint = 256
-        """)
-      )
-    )
+        """)))
 
   def sendString(rawMessage: String) = SendString(prep(rawMessage))
 }

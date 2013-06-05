@@ -17,7 +17,6 @@
 package spray.util
 package pimps
 
-
 import scala.annotation.tailrec
 
 class PimpedString(underlying: String) {
@@ -94,6 +93,6 @@ class PimpedString(underlying: String) {
    * Note that this function still leaks information about the length of each string as well as
    * whether the two strings have the same length.
    */
-  def secure_== (other: String): Boolean = getAsciiBytes secure_== other.getAsciiBytes
+  def secure_==(other: String): Boolean = getAsciiBytes secure_== other.getAsciiBytes
 
 }

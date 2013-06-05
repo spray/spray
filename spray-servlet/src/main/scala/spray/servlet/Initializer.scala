@@ -16,11 +16,10 @@
 
 package spray.servlet
 
-import akka.util.{NonFatal, Switch}
-import akka.actor.{ActorRef, ActorSystem}
-import javax.servlet.{ServletContextListener, ServletContextEvent}
+import akka.util.{ NonFatal, Switch }
+import akka.actor.{ ActorRef, ActorSystem }
+import javax.servlet.{ ServletContextListener, ServletContextEvent }
 import com.typesafe.config.ConfigFactory
-
 
 class Initializer extends ServletContextListener {
   private val booted = new Switch(false)
@@ -47,17 +46,17 @@ class Initializer extends ServletContextListener {
             servletContext.setAttribute(Initializer.SystemAttrName, actorSystem.get)
             servletContext.setAttribute(Initializer.ServiceActorAttrName, webBoot.serviceActor)
           } catch {
-            case e: ClassCastException =>
+            case e: ClassCastException ⇒
               servletContext.log(configuredBootClass + " does not implement spray.servlet.WebBoot", e)
           }
         } catch {
-          case e: ClassNotFoundException =>
+          case e: ClassNotFoundException ⇒
             servletContext.log(configuredBootClass + " cannot be found", e)
-          case e: NoSuchMethodException=>
+          case e: NoSuchMethodException ⇒
             servletContext.log(configuredBootClass + " does not define a default constructor", e)
         }
       } catch {
-        case NonFatal(e) => servletContext.log(e.getMessage, e)
+        case NonFatal(e) ⇒ servletContext.log(e.getMessage, e)
       }
     }
   }

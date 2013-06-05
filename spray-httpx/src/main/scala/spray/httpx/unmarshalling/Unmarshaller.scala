@@ -19,15 +19,14 @@ package spray.httpx.unmarshalling
 import akka.util.NonFatal
 import spray.http._
 
-
 abstract class SimpleUnmarshaller[T] extends Unmarshaller[T] {
   val canUnmarshalFrom: Seq[ContentTypeRange]
 
   def apply(entity: HttpEntity) = {
     entity match {
-      case EmptyEntity => unmarshal(entity)
-      case x: HttpBody if canUnmarshalFrom.exists(_.matches(x.contentType)) => unmarshal(entity)
-      case _ => Left(UnsupportedContentType(canUnmarshalFrom.map(_.value).mkString("Expected '", "' or '", "'")))
+      case EmptyEntity ⇒ unmarshal(entity)
+      case x: HttpBody if canUnmarshalFrom.exists(_.matches(x.contentType)) ⇒ unmarshal(entity)
+      case _ ⇒ Left(UnsupportedContentType(canUnmarshalFrom.map(_.value).mkString("Expected '", "' or '", "'")))
     }
   }
 
@@ -37,10 +36,10 @@ abstract class SimpleUnmarshaller[T] extends Unmarshaller[T] {
    * Helper method for turning exceptions occuring during evaluation of the named parameter into
    * [[spray.httpx.unmarshalling.MalformedContent]] instances.
    */
-  protected def protect(f: => T): Either[DeserializationError, T] = {
+  protected def protect(f: ⇒ T): Either[DeserializationError, T] = {
     try Right(f)
     catch {
-      case NonFatal(ex) => Left(MalformedContent(ex.getMessage, ex))
+      case NonFatal(ex) ⇒ Left(MalformedContent(ex.getMessage, ex))
     }
   }
 }
@@ -53,10 +52,10 @@ object Unmarshaller {
         if (f.isDefinedAt(entity)) protect(f(entity)) else Left(ContentExpected)
     }
 
-  def delegate[A, B](unmarshalFrom: ContentTypeRange*)(f: A => B)(implicit mb: Unmarshaller[A]): Unmarshaller[B] =
+  def delegate[A, B](unmarshalFrom: ContentTypeRange*)(f: A ⇒ B)(implicit mb: Unmarshaller[A]): Unmarshaller[B] =
     new SimpleUnmarshaller[B] {
       val canUnmarshalFrom = unmarshalFrom
-      def unmarshal(entity: HttpEntity) = mb(entity).right.flatMap(a => protect(f(a)))
+      def unmarshal(entity: HttpEntity) = mb(entity).right.flatMap(a ⇒ protect(f(a)))
     }
 
   def forNonEmpty[T](implicit um: Unmarshaller[T]): Unmarshaller[T] =

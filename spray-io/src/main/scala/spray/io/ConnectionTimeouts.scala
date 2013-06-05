@@ -17,9 +17,8 @@
 package spray.io
 
 import akka.util.Duration
-import akka.event.{Logging, LoggingAdapter}
+import akka.event.{ Logging, LoggingAdapter }
 import spray.util.ConnectionCloseReasons.IdleTimeout
-
 
 object ConnectionTimeouts {
 
@@ -33,29 +32,29 @@ object ConnectionTimeouts {
         var lastActivity = System.currentTimeMillis
 
         val commandPipeline: CPL = {
-          case x: SetIdleTimeout =>
+          case x: SetIdleTimeout ⇒
             timeout = x.timeout.toMillis
 
-          case x: IOPeer.Send =>
+          case x: IOPeer.Send ⇒
             commandPL(x)
             lastActivity = System.currentTimeMillis
 
-          case cmd => commandPL(cmd)
+          case cmd ⇒ commandPL(cmd)
         }
 
         val eventPipeline: EPL = {
-          case x: IOPeer.Received =>
+          case x: IOPeer.Received ⇒
             lastActivity = System.currentTimeMillis
             eventPL(x)
 
-          case TickGenerator.Tick =>
+          case TickGenerator.Tick ⇒
             if (timeout > 0 && (lastActivity + timeout < System.currentTimeMillis)) {
-              debug.log(context.connection.tag ,"Closing connection due to idle timeout...")
+              debug.log(context.connection.tag, "Closing connection due to idle timeout...")
               commandPL(IOPeer.Close(IdleTimeout))
             }
             eventPL(TickGenerator.Tick)
 
-          case ev => eventPL(ev)
+          case ev ⇒ eventPL(ev)
         }
       }
     }

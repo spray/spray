@@ -18,7 +18,6 @@ package spray.routing
 
 import spray.http.HttpMethods
 
-
 class MethodDirectivesSpec extends RoutingSpec {
 
   "get | put" should {
@@ -39,11 +38,11 @@ class MethodDirectivesSpec extends RoutingSpec {
     "only result in a single Rejection" in {
       Put() ~> {
         get { completeOk } ~
-        get { completeOk }
+          get { completeOk }
       } ~> check {
         rejections === List(MethodRejection(HttpMethods.GET))
       }
     }
   }
-  
+
 }

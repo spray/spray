@@ -18,14 +18,12 @@ package spray.can.server
 
 import akka.event.LoggingAdapter
 import akka.util.Duration
-import akka.actor.{Props, ActorRef}
+import akka.actor.{ Props, ActorRef }
 import spray.can.server.StatsSupport.StatsHolder
 import spray.io._
 import spray.http._
 
-
-class HttpServer(ioBridge: ActorRef, messageHandler: MessageHandler, settings: ServerSettings = ServerSettings())
-                (implicit sslEngineProvider: ServerSSLEngineProvider) extends IOServer(ioBridge) with ConnectionActors {
+class HttpServer(ioBridge: ActorRef, messageHandler: MessageHandler, settings: ServerSettings = ServerSettings())(implicit sslEngineProvider: ServerSSLEngineProvider) extends IOServer(ioBridge) with ConnectionActors {
 
   protected val statsHolder: Option[StatsHolder] =
     if (settings.StatsSupport) Some(new StatsHolder) else None
@@ -39,8 +37,8 @@ class HttpServer(ioBridge: ActorRef, messageHandler: MessageHandler, settings: S
     context.actorOf(Props(new IOConnectionActor(connection)), "c" + { connectionCounter += 1; connectionCounter })
 
   override def receive: Receive = super.receive orElse {
-    case HttpServer.GetStats    => statsHolder.foreach(holder => sender ! holder.toStats)
-    case HttpServer.ClearStats  => statsHolder.foreach(_.clear())
+    case HttpServer.GetStats   ⇒ statsHolder.foreach(holder ⇒ sender ! holder.toStats)
+    case HttpServer.ClearStats ⇒ statsHolder.foreach(_.clear())
   }
 
   /**
@@ -50,8 +48,7 @@ class HttpServer(ioBridge: ActorRef, messageHandler: MessageHandler, settings: S
   protected def timeoutResponse(request: HttpRequest): HttpResponse = HttpResponse(
     status = 500,
     entity = "Ooops! The server was not able to produce a timely response to your request.\n" +
-      "Please try again in a short while!"
-  )
+      "Please try again in a short while!")
 }
 
 object HttpServer {
@@ -165,21 +162,20 @@ object HttpServer {
    */
   private[can] def pipeline(settings: ServerSettings,
                             messageHandler: MessageHandler,
-                            timeoutResponse: HttpRequest => HttpResponse,
+                            timeoutResponse: HttpRequest ⇒ HttpResponse,
                             statsHolder: Option[StatsHolder],
-                            log: LoggingAdapter)
-                           (implicit sslEngineProvider: ServerSSLEngineProvider): PipelineStage = {
-    import settings.{StatsSupport => _, _}
+                            log: LoggingAdapter)(implicit sslEngineProvider: ServerSSLEngineProvider): PipelineStage = {
+    import settings.{ StatsSupport ⇒ _, _ }
     ServerFrontend(settings, messageHandler, timeoutResponse, log) >>
-    (RequestChunkAggregationLimit > 0) ? RequestChunkAggregation(RequestChunkAggregationLimit.toInt) >>
-    (PipeliningLimit > 0) ? PipeliningLimiter(settings.PipeliningLimit) >>
-    settings.StatsSupport ? StatsSupport(statsHolder.get) >>
-    RemoteAddressHeader ? RemoteAddressHeaderSupport() >>
-    RequestParsing(ParserSettings, VerboseErrorMessages, log) >>
-    ResponseRendering(settings) >>
-    (IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
-    SSLEncryption ? SslTlsSupport(sslEngineProvider, log) >>
-    (ReapingCycle > 0 && (IdleTimeout > 0 || RequestTimeout > 0)) ? TickGenerator(ReapingCycle)
+      (RequestChunkAggregationLimit > 0) ? RequestChunkAggregation(RequestChunkAggregationLimit.toInt) >>
+      (PipeliningLimit > 0) ? PipeliningLimiter(settings.PipeliningLimit) >>
+      settings.StatsSupport ? StatsSupport(statsHolder.get) >>
+      RemoteAddressHeader ? RemoteAddressHeaderSupport() >>
+      RequestParsing(ParserSettings, VerboseErrorMessages, log) >>
+      ResponseRendering(settings) >>
+      (IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
+      SSLEncryption ? SslTlsSupport(sslEngineProvider, log) >>
+      (ReapingCycle > 0 && (IdleTimeout > 0 || RequestTimeout > 0)) ? TickGenerator(ReapingCycle)
   }
 
   case class Stats(
@@ -191,24 +187,23 @@ object HttpServer {
     openConnections: Long,
     maxOpenConnections: Long,
     requestTimeouts: Long,
-    idleTimeouts: Long
-  )
+    idleTimeouts: Long)
 
   ////////////// COMMANDS //////////////
   // HttpResponseParts +
   type ServerCommand = IOServer.ServerCommand
-  type Bind = IOServer.Bind;                                  val Bind = IOServer.Bind
+  type Bind = IOServer.Bind; val Bind = IOServer.Bind
   val Unbind = IOServer.Unbind
-  type Close = IOServer.Close;                                val Close = IOServer.Close
-  type SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout;    val SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout
-  type SetRequestTimeout = ServerFrontend.SetRequestTimeout;  val SetRequestTimeout = ServerFrontend.SetRequestTimeout
-  type SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout;  val SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout
+  type Close = IOServer.Close; val Close = IOServer.Close
+  type SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout; val SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout
+  type SetRequestTimeout = ServerFrontend.SetRequestTimeout; val SetRequestTimeout = ServerFrontend.SetRequestTimeout
+  type SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout; val SetTimeoutTimeout = ServerFrontend.SetTimeoutTimeout
   case object ClearStats extends Command
   case object GetStats extends Command
 
   ////////////// EVENTS //////////////
   // HttpRequestParts +
-  type Bound = IOServer.Bound;     val Bound = IOServer.Bound
+  type Bound = IOServer.Bound; val Bound = IOServer.Bound
   type Unbound = IOServer.Unbound; val Unbound = IOServer.Unbound
-  type Closed = IOServer.Closed;   val Closed = IOServer.Closed
+  type Closed = IOServer.Closed; val Closed = IOServer.Closed
 }

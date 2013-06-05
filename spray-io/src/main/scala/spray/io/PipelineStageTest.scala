@@ -21,12 +21,11 @@ import util.DynamicVariable
 import java.nio.ByteBuffer
 import java.net.InetSocketAddress
 import scala.annotation.tailrec
-import akka.actor.{ActorRef, ActorContext, ActorSystem}
+import akka.actor.{ ActorRef, ActorContext, ActorSystem }
 import akka.spray.UnregisteredActorRef
 import spray.util._
 
-
-trait PipelineStageTest { test =>
+trait PipelineStageTest { test ⇒
   implicit def system: ActorSystem
 
   lazy val testHandle = new Connection {
@@ -53,8 +52,8 @@ trait PipelineStageTest { test =>
 
   def connectionActorContext: ActorContext = throw new UnsupportedOperationException
 
-  implicit def pimpPipelineStageWithTest(stage: PipelineStage): { def test[T](body: => T): T } =
-    new { def test[T](body: => T): T = new Fixture(stage).run(body) }
+  implicit def pimpPipelineStageWithTest(stage: PipelineStage): { def test[T](body: ⇒ T): T } =
+    new { def test[T](body: ⇒ T): T = new Fixture(stage).run(body) }
 
   private class Fixture(stage: PipelineStage) {
     var msgSender: ActorRef = null
@@ -66,10 +65,10 @@ trait PipelineStageTest { test =>
         def connectionActorContext = test.connectionActorContext
         override def sender = if (msgSender != null) msgSender else sys.error("No message sender set")
       }
-      stage.build(context, x => commands += x, x => events += x)
+      stage.build(context, x ⇒ commands += x, x ⇒ events += x)
     }
     def clear() { commands.clear(); events.clear() }
-    def run[T](body: => T): T = dynFixture.withValue(this)(body)
+    def run[T](body: ⇒ T): T = dynFixture.withValue(this)(body)
   }
 
   private val dynFixture = new DynamicVariable[Fixture](null)
@@ -85,8 +84,7 @@ trait PipelineStageTest { test =>
 
   def result = ProcessResult(
     extractCommands(fixture.commands.toList),
-    extractEvents(fixture.events.toList)
-  )
+    extractEvents(fixture.events.toList))
 
   def clear() { fixture.clear() }
 
@@ -108,23 +106,23 @@ trait PipelineStageTest { test =>
 
   @tailrec
   final def process(cmdsAndEvents: List[AnyRef]): ProcessResult = cmdsAndEvents match {
-    case Nil                        => result
-    case Message(msg, sndr) :: rest => fixture.msgSender = sndr; process(msg :: rest)
-    case (x: Command) :: rest       => fixture.pipelines.commandPipeline(x); process(rest)
-    case (x: Event) :: rest         => fixture.pipelines.eventPipeline(x); process(rest)
+    case Nil                        ⇒ result
+    case Message(msg, sndr) :: rest ⇒ fixture.msgSender = sndr; process(msg :: rest)
+    case (x: Command) :: rest       ⇒ fixture.pipelines.commandPipeline(x); process(rest)
+    case (x: Event) :: rest         ⇒ fixture.pipelines.eventPipeline(x); process(rest)
   }
 
   def extractCommands(commands: List[Command]): List[Command] = commands.map {
-    case IOPeer.Send(bufs, ack) =>
+    case IOPeer.Send(bufs, ack) ⇒
       val sb = new java.lang.StringBuilder
-      for (b <- bufs) sb.append(b.duplicate.drainToString)
+      for (b ← bufs) sb.append(b.duplicate.drainToString)
       SendString(sb.toString, ack)
-    case x => x
+    case x ⇒ x
   }
 
   def extractEvents(events: List[Event]): List[Event] = events.map {
-    case IOPeer.Received(_, buffer) => ReceivedString(buffer.duplicate.drainToString)
-    case x => x
+    case IOPeer.Received(_, buffer) ⇒ ReceivedString(buffer.duplicate.drainToString)
+    case x                          ⇒ x
   }
 
   object Commands {

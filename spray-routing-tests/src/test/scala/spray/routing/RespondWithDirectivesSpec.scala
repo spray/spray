@@ -21,7 +21,6 @@ import MediaTypes._
 import HttpHeaders._
 import StatusCodes._
 
-
 class RespondWithDirectivesSpec extends RoutingSpec {
 
   "respondWithStatus" should {

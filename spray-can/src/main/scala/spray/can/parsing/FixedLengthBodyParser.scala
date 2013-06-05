@@ -21,7 +21,6 @@ import spray.can.MessageLine
 import spray.http.HttpHeaders.RawHeader
 import spray.http.ContentType
 
-
 class FixedLengthBodyParser(messageLine: MessageLine,
                             headers: List[RawHeader],
                             connectionHeader: Option[String],

@@ -21,7 +21,6 @@ import akka.actor.ActorSystem
 import spray.http._
 import StatusCodes._
 
-
 class MetaMarshallersSpec extends Specification {
   implicit val system = ActorSystem()
 

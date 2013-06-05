@@ -24,10 +24,9 @@ import HttpCharsets._
 import HttpEncodings._
 import MediaTypes._
 
-
 class EncodingDirectivesSpec extends RoutingSpec {
 
-  val echoRequestContent: Route = { ctx => ctx.complete(ctx.request.entity.asString) }
+  val echoRequestContent: Route = { ctx ⇒ ctx.complete(ctx.request.entity.asString) }
   val yeah = complete("Yeah!")
 
   "the NoEncoding decoder" should {
@@ -77,7 +76,7 @@ class EncodingDirectivesSpec extends RoutingSpec {
       } ~> check { response === Ok }
     }
   }
-  
+
   "the Gzip encoder" should {
     val yeahGzipped = fromHexDump("1f8b08000000000000008b4c4dcc500400700d815705000000")
 
@@ -169,8 +168,7 @@ class EncodingDirectivesSpec extends RoutingSpec {
       } ~> check {
         rejections === Seq(
           UnacceptedResponseEncodingRejection(gzip),
-          UnacceptedResponseEncodingRejection(identity)
-        )
+          UnacceptedResponseEncodingRejection(identity))
       }
     }
   }
@@ -198,17 +196,16 @@ class EncodingDirectivesSpec extends RoutingSpec {
       } ~> check {
         rejections === Seq(
           UnacceptedResponseEncodingRejection(identity),
-          UnacceptedResponseEncodingRejection(gzip)
-        )
+          UnacceptedResponseEncodingRejection(gzip))
       }
     }
   }
 
   def hexDump(bytes: Array[Byte]) = bytes.map("%02x" format _).mkString
-  def fromHexDump(dump: String) = dump.grouped(2).toArray.map(chars => Integer.parseInt(new String(chars), 16).toByte)
+  def fromHexDump(dump: String) = dump.grouped(2).toArray.map(chars ⇒ Integer.parseInt(new String(chars), 16).toByte)
 
   def haveContentEncoding(encoding: HttpEncoding) =
-      beEqualTo(Some(`Content-Encoding`(encoding))) ^^ { (_: HttpResponse).headers.findByType[`Content-Encoding`] }
+    beEqualTo(Some(`Content-Encoding`(encoding))) ^^ { (_: HttpResponse).headers.findByType[`Content-Encoding`] }
 
   def readAs(string: String, charset: String = "UTF8") = beEqualTo(string) ^^ { new String(_: Array[Byte], charset) }
 }

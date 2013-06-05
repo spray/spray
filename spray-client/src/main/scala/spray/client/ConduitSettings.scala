@@ -16,19 +16,18 @@
 
 package spray.client
 
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.{ Config, ConfigFactory }
 import spray.util.ConfigUtils
-
 
 class ConduitSettings(config: Config) {
   protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.client")
 
-  val MaxConnections       = c getInt "max-connections"
-  val MaxRetries           = c getInt "max-retries"
+  val MaxConnections = c getInt "max-connections"
+  val MaxRetries = c getInt "max-retries"
   val WarnOnIllegalHeaders = c getBoolean "warn-on-illegal-headers"
 
-  require(MaxConnections >  0, "max-connections must be > 0")
-  require(MaxRetries     >= 0, "max-retries must be >= 0")
+  require(MaxConnections > 0, "max-connections must be > 0")
+  require(MaxRetries >= 0, "max-retries must be >= 0")
 }
 
 object ConduitSettings {

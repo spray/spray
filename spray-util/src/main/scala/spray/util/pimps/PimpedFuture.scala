@@ -16,11 +16,10 @@
 
 package spray.util.pimps
 
-import akka.util.{FiniteDuration, Duration, Timeout}
+import akka.util.{ FiniteDuration, Duration, Timeout }
 import akka.actor.ActorRefFactory
 import akka.dispatch._
 import akka.spray.RefUtils
-
 
 class PimpedFuture[+A](underlying: Future[A]) {
 
@@ -34,7 +33,7 @@ class PimpedFuture[+A](underlying: Future[A]) {
     val system = RefUtils.actorSystem(refFactory)
     implicit val executionContext = system.dispatcher
     val promise = Promise[A]()
-    underlying.onComplete { value =>
+    underlying.onComplete { value ⇒
       system.scheduler.scheduleOnce(duration, new Runnable {
         def run() {
           promise.complete(value)

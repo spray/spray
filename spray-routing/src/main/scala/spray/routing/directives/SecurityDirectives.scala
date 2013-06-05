@@ -23,7 +23,6 @@ import spray.routing.authentication._
 import BasicDirectives._
 import RouteDirectives._
 
-
 trait SecurityDirectives {
 
   /**
@@ -31,21 +30,21 @@ trait SecurityDirectives {
    */
   def authenticate[T](am: AuthMagnet[T]): Directive[T :: HNil] =
     am.value.unwrapFuture.flatMap {
-      case Right(user) => provide(user)
-      case Left(rejection) => reject(rejection)
+      case Right(user)     ⇒ provide(user)
+      case Left(rejection) ⇒ reject(rejection)
     }
 
   /**
    * Applies the given authorization check to the request.
    * If the check fails the route is rejected with an [[spray.AuthorizationFailedRejection]].
    */
-  def authorize(check: => Boolean): Directive0 = authorize(_ => check)
+  def authorize(check: ⇒ Boolean): Directive0 = authorize(_ ⇒ check)
 
   /**
    * Applies the given authorization check to the request.
    * If the check fails the route is rejected with an [[spray.AuthorizationFailedRejection]].
    */
-  def authorize(check: RequestContext => Boolean): Directive0 =
+  def authorize(check: RequestContext ⇒ Boolean): Directive0 =
     extract(check).flatMap(if (_) pass else reject(AuthorizationFailedRejection))
 
 }

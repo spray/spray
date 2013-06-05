@@ -15,18 +15,17 @@
  */
 package spray.io
 
-import java.io.{BufferedWriter, OutputStreamWriter, InputStreamReader, BufferedReader}
+import java.io.{ BufferedWriter, OutputStreamWriter, InputStreamReader, BufferedReader }
 import java.nio.ByteBuffer
-import java.security.{KeyStore, SecureRandom}
+import java.security.{ KeyStore, SecureRandom }
 import javax.net.ssl._
 import com.typesafe.config.ConfigFactory
 import scala.annotation.tailrec
 import org.specs2.mutable.Specification
 import akka.pattern.ask
-import akka.util.{Duration, Timeout}
-import akka.actor.{ActorRef, Props, ActorSystem}
+import akka.util.{ Duration, Timeout }
+import akka.actor.{ ActorRef, Props, ActorSystem }
 import spray.util._
-
 
 class SslTlsSupportSpec extends Specification {
   implicit val system = ActorSystem()
@@ -108,12 +107,12 @@ class SslTlsSupportSpec extends Specification {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) = new Pipelines {
         var receiver: ActorRef = _
         val commandPipeline: CPL = {
-          case x: IOClient.Send => receiver = context.sender; commandPL(x)
-          case cmd => commandPL(cmd)
+          case x: IOClient.Send ⇒ receiver = context.sender; commandPL(x)
+          case cmd              ⇒ commandPL(cmd)
         }
         val eventPipeline: EPL = {
-          case x: IOClient.Received => receiver ! x
-          case ev => eventPL(ev)
+          case x: IOClient.Received ⇒ receiver ! x
+          case ev                   ⇒ eventPL(ev)
         }
       }
     }
@@ -126,13 +125,13 @@ class SslTlsSupportSpec extends Specification {
         new Pipelines {
           val commandPipeline = commandPL
           val eventPipeline: EPL = {
-            case IOServer.Received(_, buf) =>
+            case IOServer.Received(_, buf) ⇒
               val input = buf.drainToString.dropRight(1)
               log.debug("Server received: {}", input)
               val response = serverResponse(input)
               commandPL(IOServer.Send(ByteBuffer.wrap(response.getBytes)))
               log.debug("Server sent: {}", response.dropRight(1))
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
         }
     }
@@ -149,13 +148,13 @@ class SslTlsSupportSpec extends Specification {
           val s = reader.readLine()
           log.debug("Server received: {}", s)
           s match {
-            case null => true
-            case "EXIT" =>
+            case null ⇒ true
+            case "EXIT" ⇒
               writer.write("OK\n")
               writer.flush()
               log.debug("Server sent: OK")
               false
-            case string =>
+            case string ⇒
               val result = serverResponse(string)
               writer.write(result)
               writer.flush()

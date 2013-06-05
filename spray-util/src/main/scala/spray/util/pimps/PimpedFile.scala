@@ -17,13 +17,11 @@
 package spray.util
 package pimps
 
-import java.io.{FileInputStream, File}
-
+import java.io.{ FileInputStream, File }
 
 class PimpedFile(underlying: File) {
 
   def toByteArrayStream(chunkSize: Int): Stream[Array[Byte]] =
     new FileInputStream(underlying).toByteArrayStream(chunkSize)
-
 
 }

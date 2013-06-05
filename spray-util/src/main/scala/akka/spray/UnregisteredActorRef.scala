@@ -29,7 +29,7 @@ import akka.util.Timeout
  * It should therefore be used only in purely local environments and in consideration of the limitations.
  * You can, however, manually wrap it with a registered ActorRef using one of the register... calls.
  */
-abstract class UnregisteredActorRef(p: ActorRefProvider) extends LazyActorRef(p) { unregistered =>
+abstract class UnregisteredActorRef(p: ActorRefProvider) extends LazyActorRef(p) { unregistered ⇒
   def this(related: ActorRef) = this(RefUtils.provider(related))
   def this(actorRefFactory: ActorRefFactory) = this(RefUtils.provider(actorRefFactory))
 
@@ -50,7 +50,7 @@ abstract class UnregisteredActorRef(p: ActorRefProvider) extends LazyActorRef(p)
    * The resulting ActorRef is reachable from remote JVMs and can receive several replies.
    * However, the last one must be identifiable and has to arrive within the given timeout period.
    */
-  def registerForMultiResponse(isLastResponse: Any => Boolean, timeout: Timeout): ActorRef =
+  def registerForMultiResponse(isLastResponse: Any ⇒ Boolean, timeout: Timeout): ActorRef =
     new LazyActorRef(provider) {
       val timer = provider.scheduler.scheduleOnce(timeout.duration) {
         stop()
@@ -76,13 +76,13 @@ abstract class UnregisteredActorRef(p: ActorRefProvider) extends LazyActorRef(p)
 
       def handle(message: Any)(implicit sender: ActorRef) {
         message match {
-          case Terminated(`dieWith`) => stop()
-          case msg => unregistered.handle(msg)
+          case Terminated(`dieWith`) ⇒ stop()
+          case msg                   ⇒ unregistered.handle(msg)
         }
       }
     }
 }
 
 object UnregisteredActorRef {
-  val EveryMessageIsLastResponse = (_:Any) => true
+  val EveryMessageIsLastResponse = (_: Any) ⇒ true
 }

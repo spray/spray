@@ -32,7 +32,7 @@ case class BasicHttpCredentials(username: String, password: String) extends Http
     val bytes = userPass.getBytes(`ISO-8859-1`.nioCharset)
     val cookie = Base64.rfc2045.encodeToString(bytes, false)
     "Basic " + cookie
-  } 
+  }
 }
 
 object BasicHttpCredentials {
@@ -40,17 +40,15 @@ object BasicHttpCredentials {
     val bytes = Base64.rfc2045.decodeFast(credentials)
     val userPass = new String(bytes, `ISO-8859-1`.nioCharset)
     userPass.indexOf(':') match {
-      case -1 => apply(userPass, "")
-      case ix => apply(userPass.substring(0, ix), userPass.substring(ix + 1))
-    } 
+      case -1 ⇒ apply(userPass, "")
+      case ix ⇒ apply(userPass.substring(0, ix), userPass.substring(ix + 1))
+    }
   }
 }
-
 
 case class OAuth2BearerToken(token: String) extends HttpCredentials {
   def value = "Bearer " + token
 }
-
 
 case class GenericHttpCredentials(scheme: String, params: Map[String, String]) extends HttpCredentials {
   lazy val value = if (params.isEmpty) scheme else formatParams
@@ -59,18 +57,17 @@ case class GenericHttpCredentials(scheme: String, params: Map[String, String]) e
     val sb = new java.lang.StringBuilder(scheme).append(' ')
     var first = true
     params.foreach {
-      case (k, v) =>
+      case (k, v) ⇒
         if (first) first = false else sb.append(',')
         if (k.isEmpty) sb.append('"') else sb.append(k).append('=').append('"')
         v.foreach {
-          case '"' => sb.append('\\').append('"')
-          case '\\' => sb.append('\\').append('\\')
-          case c => sb.append(c)
+          case '"'  ⇒ sb.append('\\').append('"')
+          case '\\' ⇒ sb.append('\\').append('\\')
+          case c    ⇒ sb.append(c)
         }
         sb.append('"')
     }
     sb.toString
   }
 }
-
 

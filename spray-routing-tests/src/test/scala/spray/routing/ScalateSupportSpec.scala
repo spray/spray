@@ -18,7 +18,6 @@ package spray.routing
 
 import directives.ScalateSupport
 
-
 class ScalateSupportSpec extends RoutingSpec with ScalateSupport {
 
   "The ScalateSupport" should {
@@ -27,16 +26,14 @@ class ScalateSupportSpec extends RoutingSpec with ScalateSupport {
         "name" -> "Chris",
         "value" -> 10000,
         "taxed_value" -> (10000 - (10000 * 0.4)),
-        "in_ca" -> true
-        )
-      ) ~> check {
+        "in_ca" -> true)) ~> check {
         entityAs[String] ===
           """|Hello Chris
              |You have just won $%,d!
              |Well, $%,d, after taxes.
-             |""".format(10000,6000).stripMargin
+             |""".format(10000, 6000).stripMargin
       }
     }
   }
-  
+
 }

@@ -22,9 +22,8 @@ import spray.http._
 import MediaTypes._
 import HttpCharsets._
 
-
 class BasicUnmarshallersSpec extends Specification {
-  
+
   "The StringUnmarshaller" should {
     "decode `text/plain` content in ISO-8859-1 to Strings" in {
       HttpBody("Hällö").as[String] === Right("Hällö")
@@ -46,8 +45,7 @@ class BasicUnmarshallersSpec extends Specification {
   "The FormDataUnmarshaller" should {
     "correctly unmarshal HTML form content with one element" in (
       HttpBody(ContentType(`application/x-www-form-urlencoded`, `UTF-8`), "secret=h%C3%A4ll%C3%B6").as[FormData] ===
-        Right(FormData(Map("secret" -> "hällö")))
-    )
+      Right(FormData(Map("secret" -> "hällö"))))
     "correctly unmarshal HTML form content with three fields" in {
       HttpBody(`application/x-www-form-urlencoded`, "email=test%40there.com&password=&username=dirk").as[FormData] ===
         Right(FormData(Map("email" -> "test@there.com", "password" -> "", "username" -> "dirk")))

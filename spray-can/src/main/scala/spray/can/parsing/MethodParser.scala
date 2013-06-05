@@ -18,7 +18,6 @@ package spray.can.parsing
 
 import spray.http.HttpMethod
 
-
 class MethodParser(settings: ParserSettings, method: HttpMethod, var pos: Int = 0) extends CharacterParser {
 
   def handleChar(cursor: Char) = {

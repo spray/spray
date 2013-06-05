@@ -26,7 +26,6 @@ import HttpMethods._
 import HttpProtocols._
 import StatusCodes._
 
-
 class RequestParserSpec extends Specification {
 
   "The request parsing logic" should {
@@ -61,8 +60,7 @@ class RequestParserSpec extends Specification {
           RawHeader("content-length", "17"),
           RawHeader("connection", "close"),
           RawHeader("transfer-encoding", "identity"),
-          RawHeader("user-agent", "curl/7.19.7 xyz")
-        ), Some("close"), None, "Shake your BOODY!")
+          RawHeader("user-agent", "curl/7.19.7 xyz")), Some("close"), None, "Shake your BOODY!")
       }
 
       "with multi-line headers" in {
@@ -81,8 +79,7 @@ class RequestParserSpec extends Specification {
           RawHeader("content-type", "application/json"),
           RawHeader("host", "example.com"),
           RawHeader("accept", "*/*"),
-          RawHeader("user-agent", "curl/7.19.7 abc xyz")
-        ), None, Some(ContentType(MediaTypes.`application/json`)), "")
+          RawHeader("user-agent", "curl/7.19.7 abc xyz")), None, Some(ContentType(MediaTypes.`application/json`)), "")
       }
     }
 
@@ -102,10 +99,8 @@ class RequestParserSpec extends Specification {
           List(
             RawHeader("host", "ping"),
             RawHeader("connection", "lalelu"),
-            RawHeader("transfer-encoding", "chunked")
-          ),
-          Some("lalelu")
-        )
+            RawHeader("transfer-encoding", "chunked")),
+          Some("lalelu"))
       }
       "message chunk" in {
         def chunkParser = new ChunkParser(new ParserSettings())
@@ -114,10 +109,8 @@ class RequestParserSpec extends Specification {
           List(
             ChunkExtension("and", "more"),
             ChunkExtension("another", "one"),
-            ChunkExtension("key", "value")
-          ),
-          "0123456789ABCDEF"
-        )
+            ChunkExtension("key", "value")),
+            "0123456789ABCDEF")
         parse(chunkParser)("15 ;\n") ===
           ErrorState("Invalid character '\\u000d', expected TOKEN CHAR, SPACE, TAB or EQUAL")
         parse(chunkParser)("bla") === ErrorState("Illegal chunk size")
@@ -134,8 +127,7 @@ class RequestParserSpec extends Specification {
              |"""
         } === (
           List(ChunkExtension("nice", "true")),
-          List(RawHeader("bar", "xyz"), RawHeader("foo", "pip apo"))
-        )
+          List(RawHeader("bar", "xyz"), RawHeader("foo", "pip apo")))
       }
     }
 
@@ -147,7 +139,7 @@ class RequestParserSpec extends Specification {
 
       "an URI longer than 2048 chars" in {
         parse("GET x" + "xxxx" * 512 + " HTTP/1.1") ===
-                ErrorState(RequestUriTooLong, "URI length exceeds the configured limit of 2048 characters")
+          ErrorState(RequestUriTooLong, "URI length exceeds the configured limit of 2048 characters")
       }
 
       "HTTP version 1.2" in {
@@ -189,7 +181,7 @@ class RequestParserSpec extends Specification {
              |
              |abc"""
         } === ErrorState("Invalid Content-Length header value: " +
-                "requirement failed: Content-Length must not be negative")
+          "requirement failed: Content-Length must not be negative")
       }
 
       "a required Host header missing" in {
@@ -202,9 +194,9 @@ class RequestParserSpec extends Specification {
     }
   }
 
-  def parse: String => AnyRef = parse(new EmptyRequestParser(new ParserSettings()))
-  
-  def parse(startParser: IntermediateState): String => AnyRef = {
+  def parse: String ⇒ AnyRef = parse(new EmptyRequestParser(new ParserSettings()))
+
+  def parse(startParser: IntermediateState): String ⇒ AnyRef = {
     RequestParserSpec.parse(startParser, extractFromCompleteMessage _) _
   }
 
@@ -216,17 +208,17 @@ class RequestParserSpec extends Specification {
 }
 
 object RequestParserSpec {
-  def parse(startParser: => IntermediateState,
-            extractFromCompleteMessage: CompleteMessageState => AnyRef)(response: String): AnyRef = {
+  def parse(startParser: ⇒ IntermediateState,
+            extractFromCompleteMessage: CompleteMessageState ⇒ AnyRef)(response: String): AnyRef = {
     // Some tests use multiline strings and some use one line with "\n" separators
     val req = response.stripMargin.replace(EOL, "\n").replace("\n", "\r\n")
     val buf = ByteBuffer.wrap(req.getBytes("US-ASCII"))
     startParser.read(buf) match {
-      case x: CompleteMessageState => extractFromCompleteMessage(x)
-      case x: ToCloseBodyParser => extractFromCompleteMessage(x.complete)
-      case ChunkedChunkState(extensions, body) => (extensions, body.asString("ISO-8859-1"))
-      case ChunkedEndState(extensions, trailer) => (extensions, trailer)
-      case x => x
+      case x: CompleteMessageState              ⇒ extractFromCompleteMessage(x)
+      case x: ToCloseBodyParser                 ⇒ extractFromCompleteMessage(x.complete)
+      case ChunkedChunkState(extensions, body)  ⇒ (extensions, body.asString("ISO-8859-1"))
+      case ChunkedEndState(extensions, trailer) ⇒ (extensions, trailer)
+      case x                                    ⇒ x
     }
   }
 }

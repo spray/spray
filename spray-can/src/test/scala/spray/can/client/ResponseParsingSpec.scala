@@ -19,11 +19,10 @@ package spray.can.client
 import org.specs2.mutable.Specification
 import akka.actor.ActorSystem
 import spray.can.parsing.ParserSettings
-import spray.can.{HttpEvent, HttpPipelineStageSpec}
+import spray.can.{ HttpEvent, HttpPipelineStageSpec }
 import spray.can.rendering.HttpRequestPartRenderingContext
 import spray.util.ConnectionCloseReasons.ProtocolError
 import spray.io.Event
-
 
 class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
   val system = ActorSystem()
@@ -46,11 +45,10 @@ class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
     }
     "parse a double response and produce the corresponding events" in {
       pipelineStage.test {
-        val Events(events@ _*) = process(
+        val Events(events @ _*) = process(
           HttpRequestPartRenderingContext(request(), "localhost", 80),
           HttpRequestPartRenderingContext(request(), "localhost", 80),
-          Received(rawResponse("foo") + rawResponse("bar"))
-        )
+          Received(rawResponse("foo") + rawResponse("bar")))
         events(0) === HttpEvent(response("foo"))
         events(1) === HttpEvent(response("bar"))
       }
@@ -66,13 +64,11 @@ class ResponseParsingSpec extends Specification with HttpPipelineStageSpec {
         pipelineStage.test {
           process(
             HttpRequestPartRenderingContext(request(), "localhost", 80),
-            HttpRequestPartRenderingContext(request(), "localhost", 80)
-          )
+            HttpRequestPartRenderingContext(request(), "localhost", 80))
           val ProcessResult(commands, events) = clearAndProcess(
             Received(rawResponse("foo")),
             Received(rawResponse("bar")),
-            Received(rawResponse("baz"))
-          )
+            Received(rawResponse("baz")))
           commands(0) === HttpClient.Close(ProtocolError("Response to non-existent request"))
           events(0) === HttpEvent(response("foo"))
           events(1) === HttpEvent(response("bar"))

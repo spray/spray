@@ -22,7 +22,7 @@ import java.nio.ByteBuffer
 /**
  * A fast, mutable builder for byte arrays and heap-based ByteBuffers.
  */
-class BufferBuilder protected(initialSize: Int, array: Array[Byte]) {
+class BufferBuilder protected (initialSize: Int, array: Array[Byte]) {
   if (initialSize > array.length) throw new IllegalArgumentException
   private[this] var _array = array
   private[this] var _size = initialSize

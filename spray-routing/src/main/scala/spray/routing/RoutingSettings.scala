@@ -16,22 +16,21 @@
 
 package spray.routing
 
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.{ ConfigFactory, Config }
 import spray.util.ConfigUtils
-
 
 class RoutingSettings(config: Config) {
   protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.routing")
 
-  val RelaxedHeaderParsing      = c getBoolean "relaxed-header-parsing"
-  val VerboseErrorMessages      = c getBoolean "verbose-error-messages"
-  val FileChunkingThresholdSize = c getBytes   "file-chunking-threshold-size"
-  val FileChunkingChunkSize     = c getBytes   "file-chunking-chunk-size"
-  val Users                     = c getConfig  "users"
-  val RenderVanityFooter        = c getBoolean "render-vanity-footer"
+  val RelaxedHeaderParsing = c getBoolean "relaxed-header-parsing"
+  val VerboseErrorMessages = c getBoolean "verbose-error-messages"
+  val FileChunkingThresholdSize = c getBytes "file-chunking-threshold-size"
+  val FileChunkingChunkSize = c getBytes "file-chunking-chunk-size"
+  val Users = c getConfig "users"
+  val RenderVanityFooter = c getBoolean "render-vanity-footer"
 
   require(FileChunkingThresholdSize >= 0, "file-chunking-threshold-size must be >= 0")
-  require(FileChunkingChunkSize     > 0, "file-chunking-chunk-size must be > 0")
+  require(FileChunkingChunkSize > 0, "file-chunking-chunk-size must be > 0")
 }
 
 object RoutingSettings {

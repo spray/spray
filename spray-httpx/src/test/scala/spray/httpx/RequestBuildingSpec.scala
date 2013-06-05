@@ -21,7 +21,6 @@ import spray.http._
 import HttpMethods._
 import HttpHeaders._
 
-
 class RequestBuildingSpec extends Specification with RequestBuilding {
 
   "The RequestBuilding trait" should {

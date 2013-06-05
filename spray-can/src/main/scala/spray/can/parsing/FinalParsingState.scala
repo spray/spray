@@ -16,10 +16,9 @@
 
 package spray.can.parsing
 
-import spray.can.{StatusLine, RequestLine, MessageLine}
+import spray.can.{ StatusLine, RequestLine, MessageLine }
 import spray.util.EmptyByteArray
 import spray.http._
-
 
 sealed trait FinalParsingState extends ParsingState
 
@@ -38,55 +37,47 @@ sealed trait HttpMessageStartCompletedState extends HttpMessagePartCompletedStat
 sealed trait HttpMessageEndCompletedState extends HttpMessagePartCompletedState
 
 case class CompleteMessageState(
-  messageLine: MessageLine,
-  headers: List[HttpHeader] = Nil,
-  connectionHeader: Option[String] = None,
-  contentType: Option[ContentType] = None,
-  body: Array[Byte] = EmptyByteArray
-) extends HttpMessageStartCompletedState with HttpMessageEndCompletedState {
+    messageLine: MessageLine,
+    headers: List[HttpHeader] = Nil,
+    connectionHeader: Option[String] = None,
+    contentType: Option[ContentType] = None,
+    body: Array[Byte] = EmptyByteArray) extends HttpMessageStartCompletedState with HttpMessageEndCompletedState {
 
   def toHttpMessagePart = messageLine match {
-    case x: RequestLine => HttpRequest(x.method, x.uri, headers, entity, x.protocol)
-    case x: StatusLine => HttpResponse(x.status, entity, headers, x.protocol)
+    case x: RequestLine ⇒ HttpRequest(x.method, x.uri, headers, entity, x.protocol)
+    case x: StatusLine  ⇒ HttpResponse(x.status, entity, headers, x.protocol)
   }
 
   def entity = if (contentType.isEmpty) HttpEntity(body) else HttpBody(contentType.get, body)
 }
 
-
 case class ChunkedStartState(
-  messageLine: MessageLine,
-  headers: List[HttpHeader] = Nil,
-  connectionHeader: Option[String] = None,
-  contentType: Option[ContentType] = None
-) extends HttpMessageStartCompletedState {
+    messageLine: MessageLine,
+    headers: List[HttpHeader] = Nil,
+    connectionHeader: Option[String] = None,
+    contentType: Option[ContentType] = None) extends HttpMessageStartCompletedState {
 
   def toHttpMessagePart = messageLine match {
-    case x: RequestLine => ChunkedRequestStart(HttpRequest(x.method, x.uri, headers, entity))
-    case x: StatusLine => ChunkedResponseStart(HttpResponse(x.status, entity, headers))
+    case x: RequestLine ⇒ ChunkedRequestStart(HttpRequest(x.method, x.uri, headers, entity))
+    case x: StatusLine  ⇒ ChunkedResponseStart(HttpResponse(x.status, entity, headers))
   }
 
   def entity = if (contentType.isEmpty) EmptyEntity else HttpBody(contentType.get, EmptyByteArray)
 }
 
-
 case class ChunkedChunkState(
-  extensions: List[ChunkExtension],
-  body: Array[Byte]
-) extends HttpMessagePartCompletedState {
+    extensions: List[ChunkExtension],
+    body: Array[Byte]) extends HttpMessagePartCompletedState {
 
   def toHttpMessagePart = MessageChunk(body, extensions)
 }
 
-
 case class ChunkedEndState(
-  extensions: List[ChunkExtension],
-  trailer: List[HttpHeader]
-) extends HttpMessageEndCompletedState {
+    extensions: List[ChunkExtension],
+    trailer: List[HttpHeader]) extends HttpMessageEndCompletedState {
 
   def toHttpMessagePart = ChunkedMessageEnd(extensions, trailer)
 }
-
 
 case class Expect100ContinueState(next: ParsingState) extends FinalParsingState
 

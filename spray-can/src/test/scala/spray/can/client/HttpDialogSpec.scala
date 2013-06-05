@@ -16,7 +16,7 @@
 
 package spray.can.client
 
-import akka.actor.{Props, ActorSystem}
+import akka.actor.{ Props, ActorSystem }
 import akka.pattern.ask
 import akka.util.Duration
 import org.specs2.mutable.Specification
@@ -25,15 +25,14 @@ import spray.io._
 import spray.util._
 import spray.http._
 
-
 class HttpDialogSpec extends Specification {
   implicit val system = ActorSystem()
   val ioBridge = IOExtension(system).ioBridge()
   val port = 8899
 
   step {
-    val handler = system.actorOf(Props(behavior = ctx => {
-      case x: HttpRequest => ctx.sender ! HttpResponse(entity = x.uri)
+    val handler = system.actorOf(Props(behavior = ctx ⇒ {
+      case x: HttpRequest ⇒ ctx.sender ! HttpResponse(entity = x.uri)
     }))
     val server = system.actorOf(Props(new HttpServer(ioBridge, SingletonHandler(handler))))
     server.ask(HttpServer.Bind("localhost", port))(Duration("1 s")).await
@@ -72,9 +71,9 @@ class HttpDialogSpec extends Specification {
     "be able to complete a dialog with 3 replies" in {
       HttpDialog(client, "localhost", port)
         .send(HttpRequest(uri = "/foo"))
-        .reply(response => HttpRequest(uri = response.entity.asString + "/a"))
-        .reply(response => HttpRequest(uri = response.entity.asString + "/b"))
-        .reply(response => HttpRequest(uri = response.entity.asString + "/c"))
+        .reply(response ⇒ HttpRequest(uri = response.entity.asString + "/a"))
+        .reply(response ⇒ HttpRequest(uri = response.entity.asString + "/b"))
+        .reply(response ⇒ HttpRequest(uri = response.entity.asString + "/c"))
         .end
         .map(_.entity.asString)
         .await === "/foo/a/b/c"

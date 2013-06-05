@@ -20,7 +20,7 @@ import shapeless._
 
 trait Prepender[P <: HList, S <: HList] {
   type Out <: HList
-  def apply(prefix : P, suffix : S) : Out
+  def apply(prefix: P, suffix: S): Out
 }
 
 object Prepender {
@@ -29,9 +29,9 @@ object Prepender {
     def apply(prefix: P, suffix: S) = prefix
   }
 
-  implicit def apply[P <: HList, S <: HList, Out0 <: HList](implicit prepend : PrependAux[P, S, Out0]) =
+  implicit def apply[P <: HList, S <: HList, Out0 <: HList](implicit prepend: PrependAux[P, S, Out0]) =
     new Prepender[P, S] {
       type Out = Out0
-      def apply(prefix : P, suffix : S) : Out = prepend(prefix, suffix)
+      def apply(prefix: P, suffix: S): Out = prepend(prefix, suffix)
     }
 }

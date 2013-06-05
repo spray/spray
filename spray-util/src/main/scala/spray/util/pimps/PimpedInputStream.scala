@@ -20,7 +20,6 @@ package pimps
 import java.io.InputStream
 import java.util.Arrays
 
-
 class PimpedInputStream(underlying: InputStream) {
 
   def toByteArrayStream(chunkSize: Int): Stream[Array[Byte]] = {

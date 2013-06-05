@@ -18,12 +18,11 @@ package spray.routing
 
 import akka.dispatch.Future
 
-
 package object authentication {
 
-  type ContextAuthenticator[T] = RequestContext => Future[Authentication[T]]
+  type ContextAuthenticator[T] = RequestContext ⇒ Future[Authentication[T]]
   type Authentication[T] = Either[Rejection, T]
-  type UserPassAuthenticator[T] = Option[UserPass] => Future[Option[T]]
+  type UserPassAuthenticator[T] = Option[UserPass] ⇒ Future[Option[T]]
 
 }
 

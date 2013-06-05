@@ -22,31 +22,29 @@ import java.net.URLDecoder
 import java.io.UnsupportedEncodingException
 import org.parboiled.errors.ParsingException
 
-
 object QueryParser extends SprayParser {
-  
-  val QueryString: Rule1[QueryParams] = rule (
-      EOI ~ push(Map.empty[String, String])
-    | zeroOrMore(QueryParameter, separator = "&") ~ EOI ~~> (_.toMap)
-  )
-  
+
+  val QueryString: Rule1[QueryParams] = rule(
+    EOI ~ push(Map.empty[String, String])
+      | zeroOrMore(QueryParameter, separator = "&") ~ EOI ~~> (_.toMap))
+
   def QueryParameter = rule {
-    QueryParameterComponent ~ optional("=") ~ (QueryParameterComponent | push("")) 
+    QueryParameterComponent ~ optional("=") ~ (QueryParameterComponent | push(""))
   }
-  
+
   def QueryParameterComponent = rule {
-    zeroOrMore(!anyOf("&=") ~ ANY) ~> { s =>
+    zeroOrMore(!anyOf("&=") ~ ANY) ~> { s ⇒
       try URLDecoder.decode(s, "UTF8")
       catch {
-        case e: IllegalArgumentException =>
+        case e: IllegalArgumentException ⇒
           throw new ParsingException("Illegal query string: " + e.getMessage)
-        case e: UnsupportedEncodingException =>
+        case e: UnsupportedEncodingException ⇒
           throw new ParsingException("Unsupported character encoding in query string: " + e.getMessage)
       }
     }
   }
-  
+
   def parseQueryString(queryString: String): Either[RequestErrorInfo, QueryParams] =
     parse(QueryString, queryString).left.map(_.withFallbackSummary("Illegal query string"))
-  
+
 }

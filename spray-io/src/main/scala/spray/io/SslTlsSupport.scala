@@ -17,14 +17,13 @@
 package spray.io
 
 import java.nio.ByteBuffer
-import javax.net.ssl.{SSLContext, SSLException, SSLEngineResult, SSLEngine}
+import javax.net.ssl.{ SSLContext, SSLException, SSLEngineResult, SSLEngine }
 import javax.net.ssl.SSLEngineResult.HandshakeStatus._
 import scala.collection.mutable
 import scala.annotation.tailrec
-import akka.event.{Logging, LoggingAdapter}
+import akka.event.{ Logging, LoggingAdapter }
 import spray.util._
 import SSLEngineResult.Status._
-
 
 object SslTlsSupport {
 
@@ -53,15 +52,15 @@ object SslTlsSupport {
     def encrypt(ctx: PipelineContext): Boolean
   }
 
-  def apply(engineProvider: PipelineContext => SSLEngine, log: LoggingAdapter,
+  def apply(engineProvider: PipelineContext ⇒ SSLEngine, log: LoggingAdapter,
             encryptIfUntagged: Boolean = true): PipelineStage = {
     val debug = TaggableLog(log, Logging.DebugLevel)
     val error = TaggableLog(log, Logging.ErrorLevel)
     new PipelineStage {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = {
         val encrypt = context.connection.tag match {
-          case x: Enabling => x.encrypt(context)
-          case _ => encryptIfUntagged
+          case x: Enabling ⇒ x.encrypt(context)
+          case _           ⇒ encryptIfUntagged
         }
         if (encrypt) new SslPipelines(context, commandPL, eventPL)
         else Pipelines(commandPL, eventPL)
@@ -73,34 +72,34 @@ object SslTlsSupport {
         var inboundReceptacle: ByteBuffer = _ // holds incoming data that are too small to be decrypted yet
 
         val commandPipeline: CPL = {
-          case x: IOPeer.Send =>
+          case x: IOPeer.Send ⇒
             if (pendingSends.isEmpty) withTempBuf(encrypt(Send(x), _))
             else pendingSends += Send(x)
 
-          case x: IOPeer.Close =>
-            debug.log(context.connection.tag ,"Closing SSLEngine due to reception of {}", x)
+          case x: IOPeer.Close ⇒
+            debug.log(context.connection.tag, "Closing SSLEngine due to reception of {}", x)
             engine.closeOutbound()
             withTempBuf(closeEngine)
             commandPL(x)
 
-          case cmd => commandPL(cmd)
+          case cmd ⇒ commandPL(cmd)
         }
 
         val eventPipeline: EPL = {
-          case IOPeer.Received(_, buffer) =>
+          case IOPeer.Received(_, buffer) ⇒
             val buf = if (inboundReceptacle != null) {
               val r = inboundReceptacle; inboundReceptacle = null; r.concat(buffer)
             } else buffer
             withTempBuf(decrypt(buf, _))
 
-          case x: IOPeer.Closed =>
+          case x: IOPeer.Closed ⇒
             if (!engine.isOutboundDone) {
               try engine.closeInbound()
-              catch { case e: SSLException => } // ignore warning about possible possible truncation attacks
+              catch { case e: SSLException ⇒ } // ignore warning about possible possible truncation attacks
             }
             eventPL(x)
 
-          case ev => eventPL(ev)
+          case ev ⇒ eventPL(ev)
         }
 
         /**
@@ -121,24 +120,24 @@ object SslTlsSupport {
             IOPeer.Send(tempBuf.copy :: Nil, sendAck)
           }
           result.getStatus match {
-            case OK => result.getHandshakeStatus match {
-              case NOT_HANDSHAKING | FINISHED =>
+            case OK ⇒ result.getHandshakeStatus match {
+              case NOT_HANDSHAKING | FINISHED ⇒
                 if (postContentLeft) encrypt(send, tempBuf, fromQueue)
-              case NEED_WRAP => encrypt(send, tempBuf, fromQueue)
-              case NEED_UNWRAP =>
+              case NEED_WRAP ⇒ encrypt(send, tempBuf, fromQueue)
+              case NEED_UNWRAP ⇒
                 if (fromQueue) send +=: pendingSends // output coming from the queue needs to go to the front,
-                else pendingSends += send            // "new" output to the back of the queue
-              case NEED_TASK =>
+                else pendingSends += send // "new" output to the back of the queue
+              case NEED_TASK ⇒
                 runDelegatedTasks()
                 encrypt(send, tempBuf, fromQueue)
             }
-            case CLOSED =>
+            case CLOSED ⇒
               if (postContentLeft) commandPL {
                 IOPeer.Close(ConnectionCloseReasons.ProtocolError("SSLEngine closed prematurely while sending"))
               }
-            case BUFFER_OVERFLOW =>
+            case BUFFER_OVERFLOW ⇒
               throw new IllegalStateException // the SslBufferPool should make sure that buffers are never too small
-            case BUFFER_UNDERFLOW =>
+            case BUFFER_UNDERFLOW ⇒
               throw new IllegalStateException // BUFFER_UNDERFLOW should never appear as a result of a wrap
           }
         }
@@ -154,40 +153,39 @@ object SslTlsSupport {
           tempBuf.flip()
           if (tempBuf.remaining > 0) eventPL(IOBridge.Received(context.connection, tempBuf.copy))
           result.getStatus match {
-            case OK => result.getHandshakeStatus match {
-              case NOT_HANDSHAKING | FINISHED =>
+            case OK ⇒ result.getHandshakeStatus match {
+              case NOT_HANDSHAKING | FINISHED ⇒
                 if (buffer.remaining > 0) decrypt(buffer, tempBuf)
                 else processPendingSends(tempBuf)
-              case NEED_UNWRAP => decrypt(buffer, tempBuf)
-              case NEED_WRAP =>
+              case NEED_UNWRAP ⇒ decrypt(buffer, tempBuf)
+              case NEED_WRAP ⇒
                 if (pendingSends.isEmpty) encrypt(Send.Empty, tempBuf)
                 else processPendingSends(tempBuf)
                 if (buffer.remaining > 0) decrypt(buffer, tempBuf)
-              case NEED_TASK =>
+              case NEED_TASK ⇒
                 runDelegatedTasks()
                 decrypt(buffer, tempBuf)
             }
-            case CLOSED =>
+            case CLOSED ⇒
               if (!engine.isOutboundDone) commandPL {
                 IOPeer.Close(ConnectionCloseReasons.ProtocolError("SSLEngine closed prematurely while receiving"))
               }
-            case BUFFER_UNDERFLOW =>
+            case BUFFER_UNDERFLOW ⇒
               inboundReceptacle = buffer // save buffer so we can append the next one to it
-            case BUFFER_OVERFLOW =>
+            case BUFFER_OVERFLOW ⇒
               throw new IllegalStateException // the SslBufferPool should make sure that buffers are never too small
           }
         }
 
-        def withTempBuf(f: ByteBuffer => Unit) {
+        def withTempBuf(f: ByteBuffer ⇒ Unit) {
           val tempBuf = SslBufferPool.acquire()
           try f(tempBuf)
           catch {
-            case e: SSLException =>
+            case e: SSLException ⇒
               error.log(context.connection.tag, "Closing encrypted connection to {} due to {}",
                 context.connection.remoteAddress, e)
               commandPL(IOPeer.Close(ConnectionCloseReasons.ProtocolError(e.toString)))
-          }
-          finally SslBufferPool.release(tempBuf)
+          } finally SslBufferPool.release(tempBuf)
         }
 
         @tailrec
@@ -238,16 +236,16 @@ object SslTlsSupport {
 }
 
 private[io] sealed abstract class SSLEngineProviderCompanion {
-  type Self <: (PipelineContext => SSLEngine)
+  type Self <: (PipelineContext ⇒ SSLEngine)
   protected def clientMode: Boolean
 
-  protected def fromFunc(f: PipelineContext => SSLEngine): Self
+  protected def fromFunc(f: PipelineContext ⇒ SSLEngine): Self
 
-  def apply(f: SSLEngine => SSLEngine)(implicit cp: SSLContextProvider): Self =
+  def apply(f: SSLEngine ⇒ SSLEngine)(implicit cp: SSLContextProvider): Self =
     fromFunc(default.andThen(f))
 
   implicit def default(implicit cp: SSLContextProvider): Self =
-    fromFunc { plc =>
+    fromFunc { plc ⇒
       val sslContext = cp(plc)
       val remoteAddress = plc.connection.remoteAddress
       val engine = sslContext.createSSLEngine(remoteAddress.getHostName, remoteAddress.getPort)
@@ -256,36 +254,36 @@ private[io] sealed abstract class SSLEngineProviderCompanion {
     }
 }
 
-trait ServerSSLEngineProvider extends (PipelineContext => SSLEngine)
+trait ServerSSLEngineProvider extends (PipelineContext ⇒ SSLEngine)
 object ServerSSLEngineProvider extends SSLEngineProviderCompanion {
   type Self = ServerSSLEngineProvider
   protected def clientMode = false
 
-  implicit def fromFunc(f: PipelineContext => SSLEngine): Self = {
+  implicit def fromFunc(f: PipelineContext ⇒ SSLEngine): Self = {
     new ServerSSLEngineProvider {
       def apply(plc: PipelineContext) = f(plc)
     }
   }
 }
 
-trait ClientSSLEngineProvider extends (PipelineContext => SSLEngine)
+trait ClientSSLEngineProvider extends (PipelineContext ⇒ SSLEngine)
 object ClientSSLEngineProvider extends SSLEngineProviderCompanion {
   type Self = ClientSSLEngineProvider
   protected def clientMode = true
 
-  implicit def fromFunc(f: PipelineContext => SSLEngine): Self = {
+  implicit def fromFunc(f: PipelineContext ⇒ SSLEngine): Self = {
     new ClientSSLEngineProvider {
       def apply(plc: PipelineContext) = f(plc)
     }
   }
 }
 
-trait SSLContextProvider extends (PipelineContext => SSLContext)
+trait SSLContextProvider extends (PipelineContext ⇒ SSLContext)
 object SSLContextProvider {
   implicit def forContext(implicit context: SSLContext = SSLContext.getDefault): SSLContextProvider =
-    fromFunc(_ => context)
+    fromFunc(_ ⇒ context)
 
-  implicit def fromFunc(f: PipelineContext => SSLContext): SSLContextProvider = {
+  implicit def fromFunc(f: PipelineContext ⇒ SSLContext): SSLContextProvider = {
     new SSLContextProvider {
       def apply(plc: PipelineContext) = f(plc)
     }

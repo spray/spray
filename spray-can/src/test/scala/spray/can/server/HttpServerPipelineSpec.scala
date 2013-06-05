@@ -18,14 +18,13 @@ package spray.can.server
 
 import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActorRef
-import akka.actor.{ActorSystem, Actor}
+import akka.actor.{ ActorSystem, Actor }
 import org.specs2.mutable.Specification
-import spray.can.{HttpCommand, HttpPipelineStageSpec}
+import spray.can.{ HttpCommand, HttpPipelineStageSpec }
 import spray.util.ConnectionCloseReasons._
 import spray.io._
 import spray.http._
 import HttpHeaders.RawHeader
-
 
 class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
   implicit val system: ActorSystem = ActorSystem()
@@ -45,16 +44,13 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
           Received(chunkedRequestStart),
           Received(messageChunk),
           Received(messageChunk),
-          Received(chunkedMessageEnd)
-        )
+          Received(chunkedMessageEnd))
         message === HttpRequest(
           headers = List(
             RawHeader("transfer-encoding", "chunked"),
             RawHeader("content-type", "text/plain"),
-            RawHeader("host", "test.com")
-          ),
-          entity = HttpBody("body123body123")
-        )
+            RawHeader("host", "test.com")),
+          entity = HttpBody("body123body123"))
       }
     }
 
@@ -77,7 +73,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
           peer.tell(HttpCommand(MessageChunk("part 2")), sender2)
           peer.tell(HttpCommand(MessageChunk("part 3").withSentAck(3)), sender3)
           peer.tell(HttpCommand(ChunkedMessageEnd().withSentAck(4)), sender4)
-          val Commands(commands@ _*) = process(AckEventWithReceiver(3, sender3), AckEventWithReceiver(4, sender4))
+          val Commands(commands @ _*) = process(AckEventWithReceiver(3, sender3), AckEventWithReceiver(4, sender4))
 
           commands(0) === SendString(`chunkedResponseStart`, AckEventWithReceiver(1, sender1))
           val Tell(`sender1`, 1, _) = commands(1)
@@ -211,9 +207,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
               RawHeader("expect", expectValue),
               RawHeader("content-length", "12"),
               RawHeader("content-type", "text/plain"),
-              RawHeader("host", "test.com")
-            )
-          ).withEntity("bodybodybody")
+              RawHeader("host", "test.com"))).withEntity("bodybodybody")
           result.commands(0) === SendString(simpleResponse)
         }
       }
@@ -239,7 +233,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         result.commands === Seq(
           SendString {
             prep {
-            """|HTTP/1.1 200 OK
+              """|HTTP/1.1 200 OK
                |Server: spray/1.0
                |Date: XXXX
                |Content-Type: text/plain
@@ -247,8 +241,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
                |
                |"""
             }
-          }
-        )
+          })
       }
     }
 
@@ -269,7 +262,7 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         peer.tell(HttpCommand(ChunkedResponseStart(HttpResponse(entity = "1234567"))), sender1)
         val Seq(SendString(raw, Some(AckEventWithReceiver(IOBridge.Closed(_, CleanClose), `sender1`)))) = result.commands
         raw === prep {
-        """|HTTP/1.1 200 OK
+          """|HTTP/1.1 200 OK
            |Server: spray/1.0
            |Date: XXXX
            |Content-Type: text/plain
@@ -318,14 +311,14 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
   ///////////////////////// SUPPORT ////////////////////////
 
   val simpleRequest = prep {
-  """|GET / HTTP/1.1
+    """|GET / HTTP/1.1
      |Host: test.com
      |
      |"""
   }
 
   val simpleResponse = prep {
-  """|HTTP/1.1 200 OK
+    """|HTTP/1.1 200 OK
      |Server: spray/1.0
      |Date: XXXX
      |Content-Length: 0
@@ -338,8 +331,8 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
 
   class DummyActor extends Actor {
     def receive = {
-      case x: Command => currentTestPipelines.commandPipeline(x)
-      case x: Event => currentTestPipelines.eventPipeline(x)
+      case x: Command ⇒ currentTestPipelines.commandPipeline(x)
+      case x: Event   ⇒ currentTestPipelines.eventPipeline(x)
     }
     def getContext = context
   }
@@ -357,12 +350,10 @@ class HttpServerPipelineSpec extends Specification with HttpPipelineStageSpec {
         spray.can.server.timeout-timeout = 30 ms
         spray.can.server.reaping-cycle = 0  # don't enable the TickGenerator
         spray.can.server.pipelining-limit = 10
-      """ + (if (!requestChunkAggregation) "spray.can.server.request-chunk-aggregation-limit = 0" else ""))
-    ),
+      """ + (if (!requestChunkAggregation) "spray.can.server.request-chunk-aggregation-limit = 0" else ""))),
     messageHandler,
-    req => HttpResponse(500, "Timeout for " + req.uri),
+    req ⇒ HttpResponse(500, "Timeout for " + req.uri),
     Some(new StatsSupport.StatsHolder),
-    system.log
-  )
+    system.log)
 }
 

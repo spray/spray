@@ -17,13 +17,12 @@
 package spray.can.server
 
 import collection.mutable
-import akka.actor.{ActorContext, ActorRef}
+import akka.actor.{ ActorContext, ActorRef }
 import akka.event.LoggingAdapter
 import akka.spray.RefUtils
 import spray.can.rendering.HttpResponsePartRenderingContext
 import spray.io._
 import spray.http._
-
 
 sealed trait OpenRequest {
   def connectionActorContext: ActorContext
@@ -48,13 +47,13 @@ sealed trait OpenRequest {
   def handleClosed(ev: HttpServer.Closed)
 }
 
-trait OpenRequestComponent { component =>
-  def handlerCreator: () => ActorRef
+trait OpenRequestComponent { component ⇒
+  def handlerCreator: () ⇒ ActorRef
   def connectionActorContext: ActorContext
   def warn(msg: String)
   def settings: ServerSettings
   def downstreamCommandPL: Pipeline[Command]
-  def createTimeoutResponse: HttpRequest => HttpResponse
+  def createTimeoutResponse: HttpRequest ⇒ HttpResponse
   def handlerReceivesClosedEvents: Boolean
   def requestTimeout: Long
   def timeoutTimeout: Long
@@ -173,7 +172,7 @@ trait OpenRequestComponent { component =>
     private def sendPart(part: HttpMessagePartWrapper) {
       val sentAck = if (part.sentAck.isEmpty) None else Some(AckEventWithReceiver(part.sentAck.get, handler))
       val cmd = HttpResponsePartRenderingContext(part.messagePart.asInstanceOf[HttpResponsePart], request.method,
-                                                 request.protocol, connectionHeader, sentAck)
+        request.protocol, connectionHeader, sentAck)
       downstreamCommandPL(cmd)
       if (part.sentAck.isDefined) pendingSentAcks += 1
     }

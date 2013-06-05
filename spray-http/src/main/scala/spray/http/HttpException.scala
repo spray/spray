@@ -17,8 +17,7 @@
 
 package spray.http
 
-import spray.http.StatusCodes.{ServerError, ClientError}
-
+import spray.http.StatusCodes.{ ServerError, ClientError }
 
 /**
  * Exception modelling all errors in an incoming HTTP request.
@@ -28,7 +27,7 @@ import spray.http.StatusCodes.{ServerError, ClientError}
  * while the detail can contain additional information from any source (even the request itself).
  */
 case class IllegalRequestException(status: ClientError, summary: String = "", detail: String = "")
-  extends RuntimeException(if (summary.isEmpty) status.defaultMessage else summary + ": " + detail) {
+    extends RuntimeException(if (summary.isEmpty) status.defaultMessage else summary + ": " + detail) {
   def this(status: ClientError, error: RequestErrorInfo) { this(status, error.summary, error.detail) }
 }
 
@@ -39,12 +38,11 @@ case class RequestErrorInfo(summary: String = "", detail: String = "") {
 }
 
 object RequestErrorInfo {
-  def apply(message: String): RequestErrorInfo  = message.split(": ", 2) match {
-    case Array(summary, detail) => apply(summary, detail)
-    case _ => RequestErrorInfo("", message)
+  def apply(message: String): RequestErrorInfo = message.split(": ", 2) match {
+    case Array(summary, detail) ⇒ apply(summary, detail)
+    case _                      ⇒ RequestErrorInfo("", message)
   }
 }
-
 
 case class RequestProcessingException(status: ServerError, message: String = "")
   extends RuntimeException(if (message.isEmpty) status.defaultMessage else message)

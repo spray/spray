@@ -16,7 +16,6 @@
 
 package spray.routing
 
-
 class PathDirectivesSpec extends RoutingSpec {
 
   "routes created with the path(string) combinator" should {
@@ -32,13 +31,13 @@ class PathDirectivesSpec extends RoutingSpec {
     }
     "let fully matching requests pass and clear the RequestContext.unmatchedPath" in {
       Get("/noway/this/works") ~> {
-        path("noway/this/works") { ctx => ctx.complete(ctx.unmatchedPath) }
+        path("noway/this/works") { ctx ⇒ ctx.complete(ctx.unmatchedPath) }
       } ~> check { entityAs[String] === "" }
     }
     "be stackable within one single path(...) combinator" in {
       Get("/noway/this/works") ~> {
         path("noway" / "this" / "works") {
-          ctx => ctx.complete(ctx.unmatchedPath)
+          ctx ⇒ ctx.complete(ctx.unmatchedPath)
         }
       } ~> check { entityAs[String] == "" }
     }
@@ -51,7 +50,7 @@ class PathDirectivesSpec extends RoutingSpec {
       } ~> check { response === Ok }
     }
   }
-  
+
   "routes created with the pathPrefix(string) combinator" should {
     "block unmatching requests" in {
       Get("/noway/this/works") ~> {
@@ -60,7 +59,7 @@ class PathDirectivesSpec extends RoutingSpec {
     }
     "let matching requests pass and adapt RequestContext.unmatchedPath" in {
       Get("/noway/this/works") ~> {
-        pathPrefix("noway") { ctx => ctx.complete(ctx.unmatchedPath) }
+        pathPrefix("noway") { ctx ⇒ ctx.complete(ctx.unmatchedPath) }
       } ~> check { entityAs[String] === "/this/works" }
     }
     "be stackable" in {
@@ -74,7 +73,7 @@ class PathDirectivesSpec extends RoutingSpec {
       "when nested" in {
         Get("/noway/this/works") ~> {
           pathPrefix("noway") {
-            pathPrefix("this") { ctx => ctx.complete(ctx.unmatchedPath) }
+            pathPrefix("this") { ctx ⇒ ctx.complete(ctx.unmatchedPath) }
           }
         } ~> check { entityAs[String] === "/works" }
       }
@@ -90,15 +89,15 @@ class PathDirectivesSpec extends RoutingSpec {
     "let matching requests pass, extract the match value and adapt RequestContext.unmatchedPath" in {
       "when the regex is a simple regex" in {
         Get("/noway/this/works") ~> {
-          pathPrefix("no[^/]+".r) { capture =>
-            ctx => ctx.complete(capture + ":" + ctx.unmatchedPath)
+          pathPrefix("no[^/]+".r) { capture ⇒
+            ctx ⇒ ctx.complete(capture + ":" + ctx.unmatchedPath)
           }
         } ~> check { entityAs[String] === "noway:/this/works" }
       }
       "when the regex is a group regex" in {
         Get("/noway/this/works") ~> {
-          pathPrefix("no([^/]+)".r) { capture =>
-            ctx => ctx.complete(capture + ":" + ctx.unmatchedPath)
+          pathPrefix("no([^/]+)".r) { capture ⇒
+            ctx ⇒ ctx.complete(capture + ":" + ctx.unmatchedPath)
           }
         } ~> check { entityAs[String] === "way:/this/works" }
       }
@@ -106,15 +105,15 @@ class PathDirectivesSpec extends RoutingSpec {
     "be stackable" in {
       "within one single path(...) combinator" in {
         Get("/compute/23/19") ~> {
-          pathPrefix("compute" / "\\d+".r / "\\d+".r) { (a, b) =>
+          pathPrefix("compute" / "\\d+".r / "\\d+".r) { (a, b) ⇒
             complete((a.toInt + b.toInt).toString)
           }
         } ~> check { entityAs[String] === "42" }
       }
       "within one single path(...) combinator" in {
         Get("/compute/23/19") ~> {
-          pathPrefix("compute" / "\\d+".r) { a =>
-            pathPrefix("\\d+".r) { b =>
+          pathPrefix("compute" / "\\d+".r) { a ⇒
+            pathPrefix("\\d+".r) { b ⇒
               complete((a.toInt + b.toInt).toString)
             }
           }
@@ -122,7 +121,7 @@ class PathDirectivesSpec extends RoutingSpec {
       }
     }
     "fail when the regex contains more than one group" in {
-      path("compute" / "yea(\\d+)(\\d+)".r / "\\d+".r) { (a, b) =>
+      path("compute" / "yea(\\d+)(\\d+)".r / "\\d+".r) { (a, b) ⇒
         completeOk
       } must throwA[IllegalArgumentException]
     }
@@ -241,7 +240,7 @@ class PathDirectivesSpec extends RoutingSpec {
     "support the mapValues modifier" in {
       import shapeless._
       Get("/yes-no") ~> {
-        path(Rest.map { case s :: HNil => s.split('-').toList :: HNil }) { echoComplete }
+        path(Rest.map { case s :: HNil ⇒ s.split('-').toList :: HNil }) { echoComplete }
       } ~> check { entityAs[String] === "List(yes, no)" }
     }
   }
@@ -249,18 +248,18 @@ class PathDirectivesSpec extends RoutingSpec {
   "The `pathTest` directive" should {
     "match uris without consuming them" in {
       Get("/a") ~> {
-        pathTest("a") { ctx => ctx.complete(ctx.unmatchedPath) }
+        pathTest("a") { ctx ⇒ ctx.complete(ctx.unmatchedPath) }
       } ~> check { entityAs[String] === "/a" }
     }
     "be usable for testing for trailing slashs in URIs" in {
       "example 1" in {
         Get("/a/") ~> {
-          pathTest(".*/".r) { _ => completeOk }
+          pathTest(".*/".r) { _ ⇒ completeOk }
         } ~> check { response === Ok }
       }
       "example 2" in {
         Get("/a") ~> {
-          pathTest(".*/".r) { _ => completeOk }
+          pathTest(".*/".r) { _ ⇒ completeOk }
         } ~> check { handled === false }
       }
     }

@@ -21,7 +21,6 @@ import spray.util.ConnectionCloseReasons.ProtocolError
 import spray.http._
 import spray.io._
 
-
 object ResponseChunkAggregation {
 
   def apply(limit: Int): PipelineStage =
@@ -35,26 +34,26 @@ object ResponseChunkAggregation {
           val commandPipeline = commandPL
 
           val eventPipeline: EPL = {
-            case HttpEvent(ChunkedResponseStart(res)) => if (!closed) {
+            case HttpEvent(ChunkedResponseStart(res)) ⇒ if (!closed) {
               response = res
               if (res.entity.buffer.length <= limit) bb = BufferBuilder(res.entity.buffer)
               else closeWithError()
             }
 
-            case HttpEvent(MessageChunk(body, _)) => if (!closed) {
+            case HttpEvent(MessageChunk(body, _)) ⇒ if (!closed) {
               assert(bb != null)
               if (bb.size + body.length <= limit) bb.append(body)
               else closeWithError()
             }
 
-            case HttpEvent(_: ChunkedMessageEnd) => if (!closed) {
+            case HttpEvent(_: ChunkedMessageEnd) ⇒ if (!closed) {
               assert(response != null && bb != null)
-              eventPL(HttpEvent(response.copy(entity = response.entity.map((ct, _) => ct -> bb.toArray))))
+              eventPL(HttpEvent(response.copy(entity = response.entity.map((ct, _) ⇒ ct -> bb.toArray))))
               response = null
               bb = null
             }
 
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
 
           def closeWithError() {

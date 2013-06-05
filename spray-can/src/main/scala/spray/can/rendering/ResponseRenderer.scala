@@ -23,28 +23,27 @@ import spray.util._
 import spray.http._
 import HttpProtocols._
 
-
 class ResponseRenderer(serverHeader: String,
                        chunklessStreaming: Boolean,
                        responseSizeHint: Int) extends MessageRendering {
 
   private[this] val serverHeaderPlusDateColonSP = (serverHeader match {
-    case "" => "Date: "
-    case x => "Server: " + x + "\r\nDate: "
+    case "" ⇒ "Date: "
+    case x  ⇒ "Server: " + x + "\r\nDate: "
   }).getAsciiBytes
 
   def render(ctx: HttpResponsePartRenderingContext): RenderedMessagePart = {
     def chunkless = chunklessStreaming || ctx.requestProtocol == `HTTP/1.0`
     ctx.responsePart match {
-      case x: HttpResponse => renderResponse(x, ctx)
-      case x: ChunkedResponseStart => renderChunkedResponseStart(x.response, ctx, chunkless)
-      case x: MessageChunk if ctx.requestMethod != HttpMethods.HEAD =>
+      case x: HttpResponse         ⇒ renderResponse(x, ctx)
+      case x: ChunkedResponseStart ⇒ renderChunkedResponseStart(x.response, ctx, chunkless)
+      case x: MessageChunk if ctx.requestMethod != HttpMethods.HEAD ⇒
         if (chunkless) RenderedMessagePart(ByteBuffer.wrap(x.body) :: Nil)
         else renderChunk(x, responseSizeHint)
-      case x: ChunkedMessageEnd if ctx.requestMethod != HttpMethods.HEAD =>
+      case x: ChunkedMessageEnd if ctx.requestMethod != HttpMethods.HEAD ⇒
         if (chunkless) RenderedMessagePart(Nil, closeConnection = true)
         else renderFinalChunk(x, responseSizeHint, ctx.requestConnectionHeader)
-      case _ => RenderedMessagePart(Nil)
+      case _ ⇒ RenderedMessagePart(Nil)
     }
   }
 
@@ -105,9 +104,9 @@ class ResponseRenderer(serverHeader: String,
   }
 
   private def appendConnectionHeaderIfRequired(response: HttpResponse, ctx: HttpResponsePartRenderingContext,
-                                       connectionHeaderValue: Option[String], bb: BufferBuilder): Boolean = {
+                                               connectionHeaderValue: Option[String], bb: BufferBuilder): Boolean = {
     ctx.requestProtocol match {
-      case `HTTP/1.0` => {
+      case `HTTP/1.0` ⇒ {
         if (connectionHeaderValue.isEmpty) {
           if (ctx.requestConnectionHeader.isDefined && ctx.requestConnectionHeader.get == "Keep-Alive") {
             appendHeader("Connection", "Keep-Alive", bb)
@@ -115,7 +114,7 @@ class ResponseRenderer(serverHeader: String,
           } else true
         } else !connectionHeaderValue.get.contains("Keep-Alive")
       }
-      case `HTTP/1.1` => {
+      case `HTTP/1.1` ⇒ {
         if (connectionHeaderValue.isEmpty) {
           if (ctx.requestConnectionHeader.isDefined && ctx.requestConnectionHeader.get == "close") {
             if (response.protocol == `HTTP/1.1`) appendHeader("Connection", "close", bb)
@@ -138,14 +137,14 @@ class ResponseRenderer(serverHeader: String,
       cachedSeconds = now / 1000
       cachedBytes =
         BufferBuilder(serverHeaderPlusDateColonSP.length + 32)
-        .append(serverHeaderPlusDateColonSP)
-        .append(dateTime(now).toRfc1123DateTimeString)
-        .append(MessageRendering.CrLf)
-        .toArray
+          .append(serverHeaderPlusDateColonSP)
+          .append(dateTime(now).toRfc1123DateTimeString)
+          .append(MessageRendering.CrLf)
+          .toArray
       cachedServerAndDateHeader = cachedSeconds -> cachedBytes
     }
     cachedBytes
   }
 
-  protected def dateTime(now: Long) = DateTime.now  // split out so we can stabilize by overriding in tests
+  protected def dateTime(now: Long) = DateTime.now // split out so we can stabilize by overriding in tests
 }

@@ -22,7 +22,6 @@ import scala.annotation.tailrec
 import akka.actor._
 import akka.spray.io.SelectorWakingMailbox
 
-
 class IOExtension(system: ExtendedActorSystem) extends Extension {
   private[this] val Locked = new AnyRef
   private[this] val mailboxes = new ConcurrentHashMap[ActorRef, SelectorWakingMailbox]
@@ -35,16 +34,15 @@ class IOExtension(system: ExtendedActorSystem) extends Extension {
   @tailrec
   final def ioBridge(settings: IOBridge.Settings = new IOBridge.Settings(system.settings.config)): ActorRef =
     rootBridge.get match {
-      case null if rootBridge.compareAndSet(null, Locked) =>
+      case null if rootBridge.compareAndSet(null, Locked) ⇒
         var bridge: ActorRef = null
         try bridge = system.actorOf(
           props = Props(new IOBridge(settings)).withDispatcher(IOBridge.DispatcherName),
-          name = "io-bridge"
-        )
+          name = "io-bridge")
         finally rootBridge.set(bridge)
         bridge
-      case null | Locked => ioBridge(settings)
-      case bridge: ActorRef => bridge
+      case null | Locked    ⇒ ioBridge(settings)
+      case bridge: ActorRef ⇒ bridge
     }
 
   ////////////////////// INTERNAL API ////////////////////////

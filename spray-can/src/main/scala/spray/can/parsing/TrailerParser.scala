@@ -19,7 +19,6 @@ package spray.can.parsing
 import spray.http.ChunkExtension
 import spray.http.HttpHeaders.RawHeader
 
-
 class TrailerParser(settings: ParserSettings, extensions: List[ChunkExtension] = Nil, headerCount: Int = 0,
                     headers: List[RawHeader] = Nil) extends HeaderNameParser(settings, null, headerCount, headers) {
 

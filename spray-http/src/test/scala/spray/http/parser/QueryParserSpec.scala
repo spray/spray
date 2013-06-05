@@ -20,9 +20,8 @@ package parser
 import org.specs2.mutable._
 import QueryParser._
 
-
 class QueryParserSpec extends Specification {
-  
+
   "The QueryParser" should {
     "correctly extract complete key value pairs" in {
       parseQueryString("key=value") === Right(Map("key" -> "value"))
@@ -48,8 +47,7 @@ class QueryParserSpec extends Specification {
           """|Invalid input '=', expected '&' or EOI (line 1, pos 4):
            |a=b=c
            |   ^
-           |""".stripMargin
-        )
+           |""".stripMargin)
       }
     }
     "throw a proper HttpException on illegal URL encodings" in {
@@ -57,5 +55,5 @@ class QueryParserSpec extends Specification {
         Left(RequestErrorInfo("Illegal query string", "URLDecoder: Incomplete trailing escape (%) pattern"))
     }
   }
-  
-} 
+
+}

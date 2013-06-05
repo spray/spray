@@ -23,7 +23,6 @@ import spray.http._
 import HttpMethods._
 import HttpHeaders.RawHeader
 
-
 class RequestRendererSpec extends Specification {
 
   "The request preparation logic" should {
@@ -45,10 +44,8 @@ class RequestRendererSpec extends Specification {
           uri = "/abc/xyz",
           headers = List(
             RawHeader("X-Fancy", "naa"),
-            RawHeader("Age", "0")
-          )
-        ) must beRenderedTo {
-          """|POST /abc/xyz HTTP/1.1
+            RawHeader("Age", "0"))) must beRenderedTo {
+            """|POST /abc/xyz HTTP/1.1
              |X-Fancy: naa
              |Age: 0
              |Host: test.com:8080
@@ -56,7 +53,7 @@ class RequestRendererSpec extends Specification {
              |Content-Length: 0
              |
              |"""
-        }
+          }
       }
 
       "PUT request, a few headers and a body" in {
@@ -65,10 +62,8 @@ class RequestRendererSpec extends Specification {
           uri = "/abc/xyz",
           headers = List(
             RawHeader("X-Fancy", "naa"),
-            RawHeader("Cache-Control", "public")
-          )
-        ).withEntity("The content please!") must beRenderedTo {
-          """|PUT /abc/xyz HTTP/1.1
+            RawHeader("Cache-Control", "public"))).withEntity("The content please!") must beRenderedTo {
+            """|PUT /abc/xyz HTTP/1.1
              |X-Fancy: naa
              |Cache-Control: public
              |Host: test.com:8080
@@ -77,7 +72,7 @@ class RequestRendererSpec extends Specification {
              |Content-Length: 19
              |
              |The content please!"""
-        }
+          }
       }
 
       "PUT request start (chunked) without body" in {
@@ -111,12 +106,12 @@ class RequestRendererSpec extends Specification {
   val renderer = new RequestRenderer("spray-can/1.0.0", 256)
 
   def beRenderedTo(content: String) = {
-    beEqualTo(content.stripMargin.replace(EOL, "\r\n")) ^^ { part: HttpRequestPart =>
+    beEqualTo(content.stripMargin.replace(EOL, "\r\n")) ^^ { part: HttpRequestPart ⇒
       val RenderedMessagePart(buffers, false) = renderer.render {
         HttpRequestPartRenderingContext(part, "test.com", 8080)
       }
       val sb = new java.lang.StringBuilder()
-      buffers.foreach { buf => while (buf.remaining > 0) sb.append(buf.get.toChar) }
+      buffers.foreach { buf ⇒ while (buf.remaining > 0) sb.append(buf.get.toChar) }
       sb.toString
     }
   }

@@ -20,7 +20,6 @@ import annotation.tailrec
 import java.nio.ByteBuffer
 import spray.http.StatusCodes.NotImplemented
 
-
 /**
  * A ParsingState instance holds the complete parsing state at any particular point in the request or response
  * parsing process.
@@ -42,13 +41,13 @@ abstract class CharacterParser extends IntermediateState {
   def read(buf: ByteBuffer): ParsingState = {
     @tailrec
     def read(parser: ParsingState): ParsingState = parser match {
-      case x: CharacterParser =>
+      case x: CharacterParser ⇒
         if (buf.remaining > 0) {
           val cursor = buf.get.asInstanceOf[Char] // simple US-ASCII encoding conversion
           read(x.handleChar(cursor))
         } else x
-      case x: IntermediateState => x.read(buf) // a body parser
-      case x: FinalParsingState => x
+      case x: IntermediateState ⇒ x.read(buf) // a body parser
+      case x: FinalParsingState ⇒ x
     }
     read(this)
   }

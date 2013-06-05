@@ -18,10 +18,9 @@ package akka.spray.io
 
 import java.nio.channels.spi.SelectorProvider
 import scala.annotation.tailrec
-import spray.io.{IOBridge, Command}
+import spray.io.{ IOBridge, Command }
 import akka.actor._
 import akka.dispatch._
-
 
 class SelectorWakingMailbox(_actor: ActorCell, _messageQueue: MessageQueue) extends Mailbox(_actor, _messageQueue) {
   val selector = SelectorProvider.provider.openSelector
@@ -30,9 +29,9 @@ class SelectorWakingMailbox(_actor: ActorCell, _messageQueue: MessageQueue) exte
     super.enqueue(receiver, handle)
     selector.wakeup()
     handle.message match {
-      case _: Command => // commands are handled by the IOBridge.receive, so all is well
-      case _: Kill | _: PoisonPill => // nothing to do since the bridge will die anyway
-      case _ =>
+      case _: Command              ⇒ // commands are handled by the IOBridge.receive, so all is well
+      case _: Kill | _: PoisonPill ⇒ // nothing to do since the bridge will die anyway
+      case _ ⇒
         // all other messages (e.g. AutoReceivedMessages) do not reach the IOBridges `receive` method
         // and thus stop the selection loop, therefore we need to explicitly restart it with a dedicated message
         enqueueSelect(receiver)

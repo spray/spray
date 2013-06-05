@@ -24,7 +24,6 @@ import MediaTypes._
 import HttpCharsets._
 import HttpHeaders._
 
-
 class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
   override protected val multipartBoundaryRandom = new Random(0) // fix for stable value
 
@@ -37,8 +36,7 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
         HttpBody(
           contentType = ContentType(new `multipart/mixed`(Some("YLQguzhR2dR6y5M9vnA5m/bJ"))),
           string = """|--YLQguzhR2dR6y5M9vnA5m/bJ
-                     |--YLQguzhR2dR6y5M9vnA5m/bJ--""".stripMargin.replace(EOL, "\r\n")
-        )
+                     |--YLQguzhR2dR6y5M9vnA5m/bJ--""".stripMargin.replace(EOL, "\r\n"))
       }
     }
 
@@ -48,9 +46,7 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
           Seq(
             BodyPart(
               entity = HttpBody(ContentType(`text/plain`, `UTF-8`), "test@there.com"),
-              headers = `Content-Disposition`("form-data", Map("name" -> "email")) :: Nil
-            )
-          )
+              headers = `Content-Disposition`("form-data", Map("name" -> "email")) :: Nil))
         }
       } === Right {
         HttpBody(ContentType(new `multipart/mixed`(Some("OvAdT7dw6YwDJfQdPrr4mG2n"))),
@@ -59,8 +55,7 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
             |Content-Type: text/plain; charset=UTF-8
             |
             |test@there.com
-            |--OvAdT7dw6YwDJfQdPrr4mG2n--""".stripMargin.replace(EOL, "\r\n")
-        )
+            |--OvAdT7dw6YwDJfQdPrr4mG2n--""".stripMargin.replace(EOL, "\r\n"))
       }
     }
 
@@ -71,9 +66,7 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
             BodyPart(HttpBody(ContentType(`text/plain`, Some(`US-ASCII`)), "first part, with a trailing linebreak\r\n")),
             BodyPart(
               HttpBody(ContentType(`application/octet-stream`), "filecontent"),
-              RawHeader("Content-Transfer-Encoding", "binary") :: Nil
-            )
-          )
+              RawHeader("Content-Transfer-Encoding", "binary") :: Nil))
         }
       } === Right {
         HttpBody(ContentType(new `multipart/mixed`(Some("K81NVUvwtUAjwptiTenvnC+T"))),
@@ -87,8 +80,7 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
             |Content-Type: application/octet-stream
             |
             |filecontent
-            |--K81NVUvwtUAjwptiTenvnC+T--""".stripMargin.replace(EOL, "\r\n")
-        )
+            |--K81NVUvwtUAjwptiTenvnC+T--""".stripMargin.replace(EOL, "\r\n"))
       }
     }
   }
@@ -100,7 +92,7 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
         Right {
           HttpBody(
             contentType = ContentType(new `multipart/form-data`(Some("WA+a+wgbEuEHsegF8rT18PHQ"))),
-            string =  """|--WA+a+wgbEuEHsegF8rT18PHQ
+            string = """|--WA+a+wgbEuEHsegF8rT18PHQ
                         |Content-Disposition: form-data; name="surname"
                         |Content-Type: text/plain
                         |
@@ -110,8 +102,7 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
                         |Content-Type: text/xml
                         |
                         |<int>42</int>
-                        |--WA+a+wgbEuEHsegF8rT18PHQ--""".stripMargin.replace(EOL, "\r\n")
-          )
+                        |--WA+a+wgbEuEHsegF8rT18PHQ--""".stripMargin.replace(EOL, "\r\n"))
         }
     }
 

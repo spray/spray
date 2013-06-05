@@ -24,7 +24,6 @@ import spray.httpx.marshalling._
 import HttpCharsets._
 import MediaTypes._
 
-
 class SprayJsonSupportSpec extends Specification with SprayJsonSupport {
 
   case class Employee(fname: String, name: String, age: Int, id: Long, boardMember: Boolean) {

@@ -18,10 +18,9 @@ package spray.can
 package client
 
 import akka.event.LoggingAdapter
-import akka.actor.{Props, ActorRef}
+import akka.actor.{ Props, ActorRef }
 import spray.http.HttpMessagePartWrapper
 import spray.io._
-
 
 /**
  * Reacts to [[spray.can.HttpClient.Connect]] messages by establishing a connection to the remote host.
@@ -33,8 +32,7 @@ import spray.io._
  * in case of errors).
  */
 class HttpClient(ioBridge: ActorRef,
-                 settings: ClientSettings = ClientSettings())
-                (implicit sslEngineProvider: ClientSSLEngineProvider) extends IOClient(ioBridge) with ConnectionActors {
+                 settings: ClientSettings = ClientSettings())(implicit sslEngineProvider: ClientSSLEngineProvider) extends IOClient(ioBridge) with ConnectionActors {
 
   protected val pipeline: PipelineStage = HttpClient.pipeline(settings, log)
 
@@ -43,7 +41,7 @@ class HttpClient(ioBridge: ActorRef,
       Props {
         new IOConnectionActor(connection) {
           override def receive: Receive = super.receive orElse {
-            case x: HttpMessagePartWrapper => pipelines.commandPipeline(HttpCommand(x))
+            case x: HttpMessagePartWrapper ⇒ pipelines.commandPipeline(HttpCommand(x))
           }
         }
       }
@@ -52,16 +50,15 @@ class HttpClient(ioBridge: ActorRef,
 
 object HttpClient {
 
-  private[can] def pipeline(settings: ClientSettings, log: LoggingAdapter)
-                           (implicit sslEngineProvider: ClientSSLEngineProvider): PipelineStage = {
+  private[can] def pipeline(settings: ClientSettings, log: LoggingAdapter)(implicit sslEngineProvider: ClientSSLEngineProvider): PipelineStage = {
     import settings._
     ClientFrontend(RequestTimeout, log) >>
-    (ResponseChunkAggregationLimit > 0) ? ResponseChunkAggregation(ResponseChunkAggregationLimit.toInt) >>
-    ResponseParsing(ParserSettings, log) >>
-    RequestRendering(settings) >>
-    (settings.IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
-    SslTlsSupport(sslEngineProvider, log, encryptIfUntagged = false) >>
-    (ReapingCycle > 0 && IdleTimeout > 0) ? TickGenerator(ReapingCycle)
+      (ResponseChunkAggregationLimit > 0) ? ResponseChunkAggregation(ResponseChunkAggregationLimit.toInt) >>
+      ResponseParsing(ParserSettings, log) >>
+      RequestRendering(settings) >>
+      (settings.IdleTimeout > 0) ? ConnectionTimeouts(IdleTimeout, log) >>
+      SslTlsSupport(sslEngineProvider, log, encryptIfUntagged = false) >>
+      (ReapingCycle > 0 && IdleTimeout > 0) ? TickGenerator(ReapingCycle)
   }
 
   /**
@@ -75,17 +72,17 @@ object HttpClient {
 
   ////////////// COMMANDS //////////////
   // HttpRequestParts +
-  type Connect = IOClient.Connect;                           val Connect = IOClient.Connect
-  type Close = IOClient.Close;                               val Close = IOClient.Close
-  type Send = IOClient.Send;                                 val Send = IOClient.Send
-  type Tell = IOClient.Tell;                                 val Tell = IOClient.Tell
-  type SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout;   val SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout
+  type Connect = IOClient.Connect; val Connect = IOClient.Connect
+  type Close = IOClient.Close; val Close = IOClient.Close
+  type Send = IOClient.Send; val Send = IOClient.Send
+  type Tell = IOClient.Tell; val Tell = IOClient.Tell
+  type SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout; val SetIdleTimeout = ConnectionTimeouts.SetIdleTimeout
   type SetRequestTimeout = ClientFrontend.SetRequestTimeout; val SetRequestTimeout = ClientFrontend.SetRequestTimeout
 
   ////////////// EVENTS //////////////
   // HttpResponseParts +
   type Connected = IOClient.Connected; val Connected = IOClient.Connected
-  type Closed = IOClient.Closed;       val Closed = IOClient.Closed
-  type Received = IOClient.Received;   val Received = IOClient.Received
+  type Closed = IOClient.Closed; val Closed = IOClient.Closed
+  type Received = IOClient.Received; val Received = IOClient.Received
 }
 

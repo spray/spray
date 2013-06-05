@@ -22,25 +22,23 @@ import spray.util.LoggingContext
 import spray.http._
 import akka.event.LoggingAdapter
 
-
 trait DebuggingDirectives {
   import BasicDirectives._
 
-  def logRequest(magnet: LoggingMagnet[HttpRequest => Unit]): Directive0 =
-    mapRequest { request => magnet.f(request); request }
-  
-  def logResponse(magnet: LoggingMagnet[Any => Unit]): Directive0 =
-    mapRouteResponse { response => magnet.f(response); response }
+  def logRequest(magnet: LoggingMagnet[HttpRequest ⇒ Unit]): Directive0 =
+    mapRequest { request ⇒ magnet.f(request); request }
 
-  def logRequestResponse(magnet: LoggingMagnet[HttpRequest => Any => Unit]): Directive0 =
-    mapRequestContext { ctx =>
+  def logResponse(magnet: LoggingMagnet[Any ⇒ Unit]): Directive0 =
+    mapRouteResponse { response ⇒ magnet.f(response); response }
+
+  def logRequestResponse(magnet: LoggingMagnet[HttpRequest ⇒ Any ⇒ Unit]): Directive0 =
+    mapRequestContext { ctx ⇒
       val logResponse = magnet.f(ctx.request)
-      ctx.withRouteResponseMapped { response => logResponse(response); response }
+      ctx.withRouteResponseMapped { response ⇒ logResponse(response); response }
     }
 }
 
 object DebuggingDirectives extends DebuggingDirectives
-
 
 case class LoggingMagnet[T](f: T)
 
@@ -51,13 +49,13 @@ object LoggingMagnet {
   implicit def forMessageFromMarkerAndLevel[T](tuple: (String, LogLevel))(implicit log: LoggingContext) =
     forMessageFromFullShow[T] {
       val (marker, level) = tuple
-      Message => LogEntry(Message, marker, level)
+      Message ⇒ LogEntry(Message, marker, level)
     }
 
-  implicit def forMessageFromShow[T](show: T => String)(implicit log: LoggingContext) =
-    forMessageFromFullShow[T](msg => LogEntry(show(msg), DebugLevel))
+  implicit def forMessageFromShow[T](show: T ⇒ String)(implicit log: LoggingContext) =
+    forMessageFromFullShow[T](msg ⇒ LogEntry(show(msg), DebugLevel))
 
-  implicit def forMessageFromFullShow[T](show: T => LogEntry)(implicit log: LoggingContext): LoggingMagnet[T => Unit] =
+  implicit def forMessageFromFullShow[T](show: T ⇒ LogEntry)(implicit log: LoggingContext): LoggingMagnet[T ⇒ Unit] =
     LoggingMagnet(show(_).logTo(log))
 
   implicit def forRequestResponseFromMarker(marker: String)(implicit log: LoggingContext) =
@@ -66,29 +64,25 @@ object LoggingMagnet {
   implicit def forRequestResponseFromMarkerAndLevel(tuple: (String, LogLevel))(implicit log: LoggingContext) =
     forRequestResponseFromFullShow {
       val (marker, level) = tuple
-      request => response => Some(
-        LogEntry("Response for\n  Request : " + request + "\n  Response: " + response, marker, level)
-      )
+      request ⇒ response ⇒ Some(
+        LogEntry("Response for\n  Request : " + request + "\n  Response: " + response, marker, level))
     }
 
-  implicit def forRequestResponseFromHttpResponsePartShow(show: HttpRequest => HttpResponsePart => Option[LogEntry])
-               (implicit log: LoggingContext): LoggingMagnet[HttpRequest => Any => Unit] =
-    LoggingMagnet { request =>
+  implicit def forRequestResponseFromHttpResponsePartShow(show: HttpRequest ⇒ HttpResponsePart ⇒ Option[LogEntry])(implicit log: LoggingContext): LoggingMagnet[HttpRequest ⇒ Any ⇒ Unit] =
+    LoggingMagnet { request ⇒
       val showResponse = show(request);
       {
-        case HttpMessagePartWrapper(part :HttpResponsePart, _) => showResponse(part).foreach(_.logTo(log))
-        case _ => None
+        case HttpMessagePartWrapper(part: HttpResponsePart, _) ⇒ showResponse(part).foreach(_.logTo(log))
+        case _ ⇒ None
       }
     }
 
-  implicit def forRequestResponseFromFullShow(show: HttpRequest => Any => Option[LogEntry])
-               (implicit log: LoggingContext): LoggingMagnet[HttpRequest => Any => Unit] =
-    LoggingMagnet { request =>
+  implicit def forRequestResponseFromFullShow(show: HttpRequest ⇒ Any ⇒ Option[LogEntry])(implicit log: LoggingContext): LoggingMagnet[HttpRequest ⇒ Any ⇒ Unit] =
+    LoggingMagnet { request ⇒
       val showResponse = show(request)
-      response => showResponse(response).foreach(_.logTo(log))
+      response ⇒ showResponse(response).foreach(_.logTo(log))
     }
 }
-
 
 case class LogEntry(obj: Any, level: Int = DebugLevel) {
   def logTo(log: LoggingAdapter) {

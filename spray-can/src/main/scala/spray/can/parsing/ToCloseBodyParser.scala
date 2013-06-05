@@ -23,7 +23,6 @@ import spray.http._
 import HttpHeaders.RawHeader
 import StatusCodes.RequestEntityTooLarge
 
-
 class ToCloseBodyParser(settings: ParserSettings,
                         messageLine: MessageLine,
                         headers: List[RawHeader],
@@ -36,8 +35,8 @@ class ToCloseBodyParser(settings: ParserSettings,
     val array = new Array[Byte](buf.remaining)
     buf.get(array)
     body match {
-      case EmptyByteArray => body = array; this
-      case _ => {
+      case EmptyByteArray ⇒ body = array; this
+      case _ ⇒ {
         if (body.length + array.length <= settings.MaxContentLength) {
           body = body concat array
           this

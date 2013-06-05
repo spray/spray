@@ -17,13 +17,12 @@
 package spray.routing
 
 import org.specs2.mutable.Specification
-import akka.testkit.{ImplicitSender, TestKit}
+import akka.testkit.{ ImplicitSender, TestKit }
 import akka.actor._
 import spray.httpx.RequestBuilding
 import spray.http._
 import MediaTypes._
 import HttpCharsets._
-
 
 class HttpServiceSpec extends TestKit(ActorSystem("HttpServiceSpec")) with Specification with RequestBuilding with ImplicitSender {
   sequential
@@ -33,15 +32,15 @@ class HttpServiceSpec extends TestKit(ActorSystem("HttpServiceSpec")) with Speci
       path("") {
         complete("yeah")
       } ~
-      pathPrefix("sub") {
-        subRouteActor ! _
-      }
+        pathPrefix("sub") {
+          subRouteActor ! _
+        }
     }
   }
 
   class SubService extends Actor with HttpServiceActor {
     def receive = runRoute {
-      path(Rest) { pathRest =>
+      path(Rest) { pathRest ⇒
         complete(pathRest)
       }
     }

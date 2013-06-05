@@ -36,7 +36,7 @@ object CacheDirectives {
   case class `max-age`(deltaSeconds: Long) extends RequestDirective with ResponseDirective {
     override def value = name + "=" + deltaSeconds
   }
-  case class CustomCacheDirective(name_ :String, content: Option[String])  extends RequestDirective with ResponseDirective {
+  case class CustomCacheDirective(name_ : String, content: Option[String]) extends RequestDirective with ResponseDirective {
     override val name = name_
     override def value = name + content.map("=\"" + _ + '"').getOrElse("")
   }
@@ -52,7 +52,7 @@ object CacheDirectives {
 
   /* Responses only */
   case object `public` extends ResponseDirective
-  case class `private`(fieldNames :Seq[String] = Nil) extends ResponseDirective {
+  case class `private`(fieldNames: Seq[String] = Nil) extends ResponseDirective {
     override def value = name + (if (fieldNames.isEmpty) "" else fieldNames.mkString("=\"", ",", "\""))
   }
   case class `no-cache`(fieldNames: Seq[String] = Nil) extends ResponseDirective {
@@ -60,7 +60,7 @@ object CacheDirectives {
   }
   case object `must-revalidate` extends ResponseDirective
   case object `proxy-revalidate` extends ResponseDirective
-  case class `s-maxage`(deltaSeconds: Long)  extends ResponseDirective {
+  case class `s-maxage`(deltaSeconds: Long) extends ResponseDirective {
     override def value = name + "=" + deltaSeconds
   }
 }

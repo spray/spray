@@ -16,13 +16,12 @@
 
 package spray.can.parsing
 
-
 class LwsParser(next: CharacterParser) extends CharacterParser {
   def handleChar(cursor: Char) = {
     cursor match {
-      case ' ' | '\t' => this
-      case '\r' => new LwsCrLfParser(next)
-      case x => next.handleChar(x)
+      case ' ' | '\t' ⇒ this
+      case '\r'       ⇒ new LwsCrLfParser(next)
+      case x          ⇒ next.handleChar(x)
     }
   }
 }
@@ -30,9 +29,9 @@ class LwsParser(next: CharacterParser) extends CharacterParser {
 class LwsCrLfParser(next: CharacterParser) extends CharacterParser {
   def handleChar(cursor: Char) = {
     cursor match {
-      case '\n' => this
-      case ' ' | '\t' => new LwsParser(next)
-      case x => {
+      case '\n'       ⇒ this
+      case ' ' | '\t' ⇒ new LwsParser(next)
+      case x ⇒ {
         // we encountered a real CRLF without following whitespace,
         // so we need to handle the newline before the current cursor
         next.handleChar('\n').asInstanceOf[CharacterParser].handleChar(x)

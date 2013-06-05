@@ -17,17 +17,16 @@
 package spray.routing
 package directives
 
-import org.fusesource.scalate.{Binding, TemplateEngine}
+import org.fusesource.scalate.{ Binding, TemplateEngine }
 import spray.http._
 import MediaTypes._
-
 
 trait ScalateSupport {
   import Directives._
 
   val templateEngine = new TemplateEngine
 
-  def render(uri: String, attributes: Map[String,Any] = Map.empty,
+  def render(uri: String, attributes: Map[String, Any] = Map.empty,
              extraBindings: Traversable[Binding] = Nil, mediaType: MediaType = `text/html`): Route = {
     respondWithMediaType(mediaType) {
       complete {

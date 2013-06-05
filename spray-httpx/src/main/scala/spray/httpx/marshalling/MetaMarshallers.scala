@@ -17,39 +17,38 @@
 package spray.httpx.marshalling
 
 import akka.dispatch.Future
-import akka.actor.{ActorRef, Actor, Props, ActorRefFactory}
+import akka.actor.{ ActorRef, Actor, Props, ActorRefFactory }
 import spray.util.IOClosed
 import spray.http._
-
 
 trait MetaMarshallers {
 
   implicit def optionMarshaller[T](implicit m: Marshaller[T]) =
-    Marshaller[Option[T]] { (value, ctx) =>
+    Marshaller[Option[T]] { (value, ctx) ⇒
       value match {
-        case Some(v) => m(v, ctx)
-        case None => ctx.marshalTo(EmptyEntity)
+        case Some(v) ⇒ m(v, ctx)
+        case None    ⇒ ctx.marshalTo(EmptyEntity)
       }
     }
 
   implicit def eitherMarshaller[A, B](implicit ma: Marshaller[A], mb: Marshaller[B]) =
-    Marshaller[Either[A, B]] { (value, ctx) =>
+    Marshaller[Either[A, B]] { (value, ctx) ⇒
       value match {
-        case Left(a) => ma(a, ctx)
-        case Right(b) => mb(b, ctx)
+        case Left(a)  ⇒ ma(a, ctx)
+        case Right(b) ⇒ mb(b, ctx)
       }
     }
 
   implicit def futureMarshaller[T](implicit m: Marshaller[T]) =
-    Marshaller[Future[T]] { (value, ctx) =>
+    Marshaller[Future[T]] { (value, ctx) ⇒
       value.onComplete {
-        case Right(v) => m(v, ctx)
-        case Left(error) => ctx.handleError(error)
+        case Right(v)    ⇒ m(v, ctx)
+        case Left(error) ⇒ ctx.handleError(error)
       }
     }
 
   implicit def streamMarshaller[T](implicit marshaller: Marshaller[T], refFactory: ActorRefFactory) =
-    Marshaller[Stream[T]] { (value, ctx) =>
+    Marshaller[Stream[T]] { (value, ctx) ⇒
       refFactory.actorOf(Props(new MetaMarshallers.ChunkingActor(marshaller, ctx))) ! value
     }
 }
@@ -62,7 +61,7 @@ object MetaMarshallers extends MetaMarshallers {
 
     def receive = {
 
-      case current #:: rest =>
+      case current #:: rest ⇒
         val chunkingCtx = new DelegatingMarshallingContext(ctx) {
           override def marshalTo(entity: HttpEntity) {
             if (connectionActor == null) connectionActor = ctx.startChunkedMessage(entity, Some(SentOk(rest)))
@@ -77,13 +76,13 @@ object MetaMarshallers extends MetaMarshallers {
         }
         marshaller(current.asInstanceOf[T], chunkingCtx)
 
-      case SentOk(remaining) =>
+      case SentOk(remaining) ⇒
         if (remaining.isEmpty) {
           connectionActor ! ChunkedMessageEnd()
           context.stop(self)
         } else self ! remaining
 
-      case _: IOClosed =>
+      case _: IOClosed ⇒
         context.stop(self)
     }
   }

@@ -18,30 +18,28 @@ package spray.routing
 
 import collection.GenTraversableOnce
 import akka.dispatch.Future
-import akka.actor.{Status, ActorRef}
+import akka.actor.{ Status, ActorRef }
 import akka.spray.UnregisteredActorRef
-import spray.httpx.marshalling.{MarshallingContext, Marshaller}
+import spray.httpx.marshalling.{ MarshallingContext, Marshaller }
 import spray.util._
 import spray.http._
 import StatusCodes._
 import HttpHeaders._
 import MediaTypes._
 
-
 /**
  * Immutable object encapsulating the context of an [[spray.http.HttpRequest]]
  * as it flows through a ''spray'' Route structure.
  */
 case class RequestContext(
-  request: HttpRequest,
-  responder: ActorRef,
-  unmatchedPath: String = ""
-) {
+    request: HttpRequest,
+    responder: ActorRef,
+    unmatchedPath: String = "") {
 
   /**
    * Returns a copy of this context with the HttpRequest transformed by the given function.
    */
-  def withRequestMapped(f: HttpRequest => HttpRequest): RequestContext = {
+  def withRequestMapped(f: HttpRequest ⇒ HttpRequest): RequestContext = {
     val transformed = f(request)
     if (transformed eq request) this else copy(request = transformed)
   }
@@ -55,13 +53,13 @@ case class RequestContext(
   /**
    * Returns a copy of this context with the responder transformed by the given function.
    */
-  def withResponderMapped(f: ActorRef => ActorRef) =
+  def withResponderMapped(f: ActorRef ⇒ ActorRef) =
     withResponder(f(responder))
 
   /**
    * Returns a copy of this context with the unmatchedPath transformed by the given function.
    */
-  def withUnmatchedPathMapped(f: String => String) = {
+  def withUnmatchedPathMapped(f: String ⇒ String) = {
     val transformed = f(unmatchedPath)
     if (transformed == unmatchedPath) this else copy(unmatchedPath = transformed)
   }
@@ -100,7 +98,7 @@ case class RequestContext(
   /**
    * Returns a copy of this context with the given response transformation function chained into the response chain.
    */
-  def withRouteResponseMapped(f: Any => Any) =
+  def withRouteResponseMapped(f: Any ⇒ Any) =
     withResponder {
       new UnregisteredActorRef(responder) {
         def handle(message: Any)(implicit sender: ActorRef) {
@@ -113,7 +111,7 @@ case class RequestContext(
    * Returns a copy of this context with the given response transformation function chained into the response chain.
    */
   def withRouteResponseMappedPF(f: PartialFunction[Any, Any]) =
-    withRouteResponseMapped(msg => if (f.isDefinedAt(msg)) f(msg) else msg)
+    withRouteResponseMapped(msg ⇒ if (f.isDefinedAt(msg)) f(msg) else msg)
 
   /**
    * Returns a copy of this context with the given response transformation function chained into the response chain.
@@ -131,61 +129,61 @@ case class RequestContext(
   /**
    * Returns a copy of this context with the given rejection handling function chained into the response chain.
    */
-  def withRejectionHandling(f: List[Rejection] => Unit) =
-    withRouteResponseHandling { case Rejected(rejections) => f(rejections) }
+  def withRejectionHandling(f: List[Rejection] ⇒ Unit) =
+    withRouteResponseHandling { case Rejected(rejections) ⇒ f(rejections) }
 
   /**
    * Returns a copy of this context with the given rejection transformation function chained into the response chain.
    */
-  def withRejectionsMapped(f: List[Rejection] => List[Rejection]) =
+  def withRejectionsMapped(f: List[Rejection] ⇒ List[Rejection]) =
     withRouteResponseMapped {
-      case Rejected(rejections) => Rejected(f(rejections))
-      case x => x
+      case Rejected(rejections) ⇒ Rejected(f(rejections))
+      case x                    ⇒ x
     }
 
   /**
    * Returns a copy of this context with the given response transformation function chained into the response chain.
    */
-  def withHttpResponsePartMapped(f: HttpResponsePart => HttpResponsePart) =
+  def withHttpResponsePartMapped(f: HttpResponsePart ⇒ HttpResponsePart) =
     withRouteResponseMapped {
-      case x: HttpResponsePart => f(x)
-      case Confirmed(x: HttpResponsePart, ack) => Confirmed(f(x), ack)
-      case x => x
+      case x: HttpResponsePart                 ⇒ f(x)
+      case Confirmed(x: HttpResponsePart, ack) ⇒ Confirmed(f(x), ack)
+      case x                                   ⇒ x
     }
 
   /**
    * Returns a copy of this context with the given response transformation function chained into the response chain.
    */
-  def withHttpResponsePartMultiplied(f: HttpResponsePart => Seq[HttpResponsePart]) =
+  def withHttpResponsePartMultiplied(f: HttpResponsePart ⇒ Seq[HttpResponsePart]) =
     withRouteResponseMultiplied {
-      case x: HttpResponsePart => f(x)
-      case Confirmed(x: HttpResponsePart, ack) =>
+      case x: HttpResponsePart ⇒ f(x)
+      case Confirmed(x: HttpResponsePart, ack) ⇒
         val parts = f(x)
-        parts.updated(parts.size-1, Confirmed(parts.last, ack))
+        parts.updated(parts.size - 1, Confirmed(parts.last, ack))
     }
 
   /**
    * Returns a copy of this context with the given response transformation function chained into the response chain.
    */
-  def withHttpResponseMapped(f: HttpResponse => HttpResponse) =
+  def withHttpResponseMapped(f: HttpResponse ⇒ HttpResponse) =
     withRouteResponseMapped {
-      case x: HttpResponse => f(x)
-      case ChunkedResponseStart(x) => ChunkedResponseStart(f(x))
-      case Confirmed(ChunkedResponseStart(x), ack) => Confirmed(ChunkedResponseStart(f(x)), ack)
-      case Confirmed(x: HttpResponse, ack) => Confirmed(f(x), ack)
-      case x => x
+      case x: HttpResponse                         ⇒ f(x)
+      case ChunkedResponseStart(x)                 ⇒ ChunkedResponseStart(f(x))
+      case Confirmed(ChunkedResponseStart(x), ack) ⇒ Confirmed(ChunkedResponseStart(f(x)), ack)
+      case Confirmed(x: HttpResponse, ack)         ⇒ Confirmed(f(x), ack)
+      case x                                       ⇒ x
     }
 
   /**
    * Returns a copy of this context with the given response transformation function chained into the response chain.
    */
-  def withHttpResponseEntityMapped(f: HttpEntity => HttpEntity) =
+  def withHttpResponseEntityMapped(f: HttpEntity ⇒ HttpEntity) =
     withHttpResponseMapped(_.mapEntity(f))
 
   /**
    * Returns a copy of this context with the given response transformation function chained into the response chain.
    */
-  def withHttpResponseHeadersMapped(f: List[HttpHeader] => List[HttpHeader]) =
+  def withHttpResponseHeadersMapped(f: List[HttpHeader] ⇒ List[HttpHeader]) =
     withHttpResponseMapped(_.mapHeaders(f))
 
   /**
@@ -204,8 +202,7 @@ case class RequestContext(
       HttpResponse(
         status = redirectionType,
         headers = Location(uri) :: Nil,
-        entity = redirectionType.htmlTemplate.toOption.map(s => HttpBody(`text/html`, s format uri))
-      )
+        entity = redirectionType.htmlTemplate.toOption.map(s ⇒ HttpBody(`text/html`, s format uri)))
     }
   }
 
@@ -220,7 +217,7 @@ case class RequestContext(
    * Completes the request with status "200 Ok" and the response entity created by marshalling the given object using
    * the in-scope marshaller for the type.
    */
-  def complete[T :Marshaller](obj: T) {
+  def complete[T: Marshaller](obj: T) {
     complete(OK, obj)
   }
 
@@ -228,7 +225,7 @@ case class RequestContext(
    * Completes the request with the given status and the response entity created by marshalling the given object using
    * the in-scope marshaller for the type.
    */
-  def complete[T :Marshaller](status: StatusCode, obj: T) {
+  def complete[T: Marshaller](status: StatusCode, obj: T) {
     complete(status, Nil, obj)
   }
 
@@ -252,8 +249,8 @@ case class RequestContext(
    */
   def complete(future: Future[HttpResponse]) {
     future.onComplete {
-      case Right(response) => complete(response)
-      case Left(error) => failWith(error)
+      case Right(response) ⇒ complete(response)
+      case Left(error)     ⇒ failWith(error)
     }
   }
 
@@ -285,6 +282,6 @@ case class RequestContext(
 }
 
 case class Rejected(rejections: List[Rejection]) {
-  def map(f: Rejection => Rejection) = Rejected(rejections.map(f))
-  def flatMap(f: Rejection => GenTraversableOnce[Rejection]) = Rejected(rejections.flatMap(f))
+  def map(f: Rejection ⇒ Rejection) = Rejected(rejections.map(f))
+  def flatMap(f: Rejection ⇒ GenTraversableOnce[Rejection]) = Rejected(rejections.flatMap(f))
 }

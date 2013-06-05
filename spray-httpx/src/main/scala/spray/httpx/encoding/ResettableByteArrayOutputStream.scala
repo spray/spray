@@ -18,7 +18,6 @@ package spray.httpx.encoding
 
 import java.io.ByteArrayOutputStream
 
-
 class ResettableByteArrayOutputStream(initialSize: Int) extends ByteArrayOutputStream(initialSize) {
 
   def pos = count

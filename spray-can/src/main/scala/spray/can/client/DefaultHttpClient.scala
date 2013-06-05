@@ -21,7 +21,6 @@ import akka.actor._
 import akka.spray.ExtensionActorRef
 import spray.io._
 
-
 object DefaultHttpClient extends ExtensionId[ExtensionActorRef] with ExtensionIdProvider {
   private type ClientConfig = (ClientSettings, ClientSSLEngineProvider)
   private[this] val config = new AtomicReference[ClientConfig]
@@ -29,8 +28,7 @@ object DefaultHttpClient extends ExtensionId[ExtensionActorRef] with ExtensionId
   def lookup() = DefaultHttpClient
 
   def apply(system: ActorSystem,
-            settings: ClientSettings = null)
-           (implicit sslEngineProvider: ClientSSLEngineProvider): ActorRef with Extension = {
+            settings: ClientSettings = null)(implicit sslEngineProvider: ClientSSLEngineProvider): ActorRef with Extension = {
     val clientSettings = Option(settings).getOrElse(ClientSettings(system.settings.config))
     if (!config.compareAndSet(null, (clientSettings, sslEngineProvider)))
       throw new IllegalStateException("Settings can only be supplied on the first call to DefaultHttpClient.apply")
@@ -43,8 +41,7 @@ object DefaultHttpClient extends ExtensionId[ExtensionActorRef] with ExtensionId
     }
     val client = system.actorOf(
       props = Props(new HttpClient(IOExtension(system).ioBridge(), settings)(sslEngineProvider)),
-      name = "default-http-client"
-    )
+      name = "default-http-client")
     new ExtensionActorRef(client)
   }
 }

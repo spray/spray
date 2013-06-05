@@ -20,12 +20,12 @@ import HttpCharsets._
 
 case class ContentTypeRange(mediaRange: MediaRange, charsetRange: HttpCharsetRange = `*`) {
   def value: String = charsetRange match {
-    case `*` => mediaRange.value
-    case x: HttpCharset => mediaRange.value + "; charset=" + x.value
+    case `*`            ⇒ mediaRange.value
+    case x: HttpCharset ⇒ mediaRange.value + "; charset=" + x.value
   }
   def matches(contentType: ContentType) = {
     mediaRange.matches(contentType.mediaType) &&
-            ((charsetRange eq `*`) || contentType.definedCharset.map(charsetRange.matches(_)).getOrElse(false))
+      ((charsetRange eq `*`) || contentType.definedCharset.map(charsetRange.matches(_)).getOrElse(false))
   }
   override def toString = "ContentTypeRange(" + value + ')'
 }
@@ -36,8 +36,8 @@ object ContentTypeRange {
 
 case class ContentType(mediaType: MediaType, definedCharset: Option[HttpCharset]) {
   def value: String = definedCharset match {
-    case Some(cs) => mediaType.value + "; charset=" + cs.value
-    case _ => mediaType.value
+    case Some(cs) ⇒ mediaType.value + "; charset=" + cs.value
+    case _        ⇒ mediaType.value
   }
 
   def withMediaType(mediaType: MediaType) =

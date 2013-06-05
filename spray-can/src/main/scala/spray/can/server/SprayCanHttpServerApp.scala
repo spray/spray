@@ -16,10 +16,9 @@
 
 package spray.can.server
 
-import akka.actor.{Props, ActorRef, ActorSystem}
-import spray.io.{ServerSSLEngineProvider, SingletonHandler, IOExtension}
+import akka.actor.{ Props, ActorRef, ActorSystem }
+import spray.io.{ ServerSSLEngineProvider, SingletonHandler, IOExtension }
 import spray.util.actorSystemNameFrom
-
 
 trait SprayCanHttpServerApp {
 
@@ -35,8 +34,7 @@ trait SprayCanHttpServerApp {
   def newHttpServer(handler: ActorRef,
                     ioBridge: ActorRef = IOExtension(system).ioBridge(),
                     settings: ServerSettings = ServerSettings(),
-                    name: String = "http-server")
-                   (implicit sslEngineProvider: ServerSSLEngineProvider) =
+                    name: String = "http-server")(implicit sslEngineProvider: ServerSSLEngineProvider) =
     system.actorOf(Props(new HttpServer(ioBridge, SingletonHandler(handler), settings)), name)
 
 }

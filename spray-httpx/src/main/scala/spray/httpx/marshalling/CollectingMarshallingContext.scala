@@ -17,12 +17,11 @@
 package spray.httpx.marshalling
 
 import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.{TimeUnit, CountDownLatch}
+import java.util.concurrent.{ TimeUnit, CountDownLatch }
 import annotation.tailrec
 import akka.spray.UnregisteredActorRef
-import akka.actor.{ActorRefFactory, ActorRef}
+import akka.actor.{ ActorRefFactory, ActorRef }
 import spray.http._
-
 
 /**
  * A MarshallingContext serving as a marshalling receptacle, collecting the output of a Marshaller
@@ -65,20 +64,20 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
     val ref = new UnregisteredActorRef(actorRefFactory) {
       def handle(message: Any)(implicit sender: ActorRef) {
         message match {
-          case wrapper: HttpMessagePartWrapper =>
+          case wrapper: HttpMessagePartWrapper ⇒
             wrapper.messagePart match {
-              case x: MessageChunk =>
+              case x: MessageChunk ⇒
                 @tailrec def updateChunks(current: Seq[MessageChunk]) {
                   if (!_chunks.compareAndSet(current, _chunks.get :+ x)) updateChunks(_chunks.get)
                 }
                 updateChunks(_chunks.get)
 
-              case x: ChunkedMessageEnd =>
+              case x: ChunkedMessageEnd ⇒
                 if (!_chunkedMessageEnd.compareAndSet(None, Some(x)))
                   sys.error("ChunkedMessageEnd received more than once")
                 latch.countDown()
 
-              case x => throw new IllegalStateException("Received unexpected message part: " + x)
+              case x ⇒ throw new IllegalStateException("Received unexpected message part: " + x)
             }
             wrapper.sentAck.foreach(sender.tell(_, this))
         }

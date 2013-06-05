@@ -16,15 +16,14 @@
 
 package spray.util
 
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.{ ConfigFactory, Config }
 import akka.actor._
-
 
 class UtilSettings(config: Config) {
   private val c = ConfigUtils.prepareSubConfig(config, "spray.util")
 
   val LogActorPathsWithDots = c getBoolean "log-actor-paths-with-dots"
-  val LogActorSystemName    = c getBoolean "log-actor-system-name"
+  val LogActorSystemName = c getBoolean "log-actor-system-name"
 }
 
 class UtilSettingsExtension(system: ExtendedActorSystem) extends Extension {

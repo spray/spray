@@ -17,13 +17,12 @@
 package spray.can.client
 
 import collection.mutable.ListBuffer
-import akka.dispatch.{Promise, Future}
+import akka.dispatch.{ Promise, Future }
 import akka.util.Duration
 import akka.actor._
 import spray.io.IOClient.IOClientException
 import spray.util._
 import spray.http._
-
 
 /**
  * An `HttpDialog` encapsulates an exchange of HTTP messages over the course of one connection.
@@ -35,14 +34,14 @@ object HttpDialog {
   private case class ConnectAction(host: String, port: Int, tag: Any) extends Action
   private case class SendAction(request: HttpRequest) extends Action
   private case class WaitIdleAction(duration: Duration) extends Action
-  private case class ReplyAction(f: HttpResponse => HttpRequest) extends Action
+  private case class ReplyAction(f: HttpResponse ⇒ HttpRequest) extends Action
   private case object AwaitResponseAction extends Action
 
   private class DialogActor(result: Promise[AnyRef], client: ActorRef, multiResponse: Boolean) extends Actor {
     val responses = ListBuffer.empty[HttpResponse]
     var connection: Option[ActorRef] = None
     var responsesPending = 0
-    var onResponse: Option[() => Unit] = None
+    var onResponse: Option[() ⇒ Unit] = None
 
     def complete(value: Either[Throwable, AnyRef]) {
       result.complete(value)
@@ -51,55 +50,55 @@ object HttpDialog {
     }
 
     def receive: Receive = {
-      case ConnectAction(host, port, tag) :: remainingActions =>
+      case ConnectAction(host, port, tag) :: remainingActions ⇒
         val command = HttpClient.Connect(host, port, tag)
         client.tell(command, Reply.withContext(remainingActions))
 
-      case SendAction(request) :: remainingActions =>
+      case SendAction(request) :: remainingActions ⇒
         connection.foreach(_ ! request)
         responsesPending += 1
         self ! remainingActions
 
-      case WaitIdleAction(duration) :: remainingActions =>
+      case WaitIdleAction(duration) :: remainingActions ⇒
         context.system.scheduler.scheduleOnce(duration, self, remainingActions)
 
-      case ReplyAction(f) :: remainingActions =>
-        onResponse = Some { () =>
+      case ReplyAction(f) :: remainingActions ⇒
+        onResponse = Some { () ⇒
           val request = f(responses.remove(0))
           self.tell(SendAction(request) :: remainingActions)
         }
 
-      case AwaitResponseAction :: remainingActions =>
-        onResponse = Some(() => self ! remainingActions)
+      case AwaitResponseAction :: remainingActions ⇒
+        onResponse = Some(() ⇒ self ! remainingActions)
 
-      case x: HttpResponse =>
+      case x: HttpResponse ⇒
         responses += x
         responsesPending -= 1
         onResponse match {
-          case Some(task) =>
+          case Some(task) ⇒
             onResponse = None
             task()
-          case None => if (responsesPending == 0) {
+          case None ⇒ if (responsesPending == 0) {
             if (multiResponse) complete(Right(responses.toList))
             else complete(Right(responses.head))
           }
         }
 
-      case _: HttpResponsePart =>
+      case _: HttpResponsePart ⇒
         val msg = "The HttpDialog doesn't support chunked responses"
         sender ! HttpClient.Close(ConnectionCloseReasons.ProtocolError(msg))
         complete(Left(IOClientException(msg)))
 
-      case Reply(HttpClient.Connected(handle), actions) =>
+      case Reply(HttpClient.Connected(handle), actions) ⇒
         connection = Some(handle.handler)
         self ! actions
 
-      case Reply(msg, _) => self ! msg // unpack all other with-context replies
+      case Reply(msg, _) ⇒ self ! msg // unpack all other with-context replies
 
-      case HttpClient.Closed(_, reason) =>
+      case HttpClient.Closed(_, reason) ⇒
         complete(Left(IOClientException("Connection closed prematurely, reason: " + reason)))
 
-      case Status.Failure(cause) => complete(Left(cause))
+      case Status.Failure(cause) ⇒ complete(Left(cause))
     }
   }
 
@@ -141,12 +140,7 @@ object HttpDialog {
      * to be send in a pipelined fashion, one right after the other.
      */
     def send(request: HttpRequest) =
-      new EndSingleResponse(context.appendAction(SendAction(request)))
-        with SendSubsequent
-        with SendMany
-        with WaitIdle
-        with AwaitResponse
-        with Reply
+      new EndSingleResponse(context.appendAction(SendAction(request))) with SendSubsequent with SendMany with WaitIdle with AwaitResponse with Reply
   }
 
   sealed trait SendSubsequent {
@@ -160,11 +154,7 @@ object HttpDialog {
      * to be send in a pipelined fashion, one right after the other.
      */
     def send(request: HttpRequest) =
-      new EndMultiResponse(context.appendAction(SendAction(request)))
-        with SendSubsequent
-        with SendMany
-        with WaitIdle
-        with AwaitResponse
+      new EndMultiResponse(context.appendAction(SendAction(request))) with SendSubsequent with SendMany with WaitIdle with AwaitResponse
   }
 
   sealed trait SendMany {
@@ -177,11 +167,8 @@ object HttpDialog {
      * All of the given HttpRequests are send in a pipelined fashion, one right after the other.
      */
     def send(requests: Seq[HttpRequest]) = {
-      requests.foreach(req => context.appendAction(SendAction(req)))
-      new EndMultiResponse(context)
-        with SendSubsequent
-        with SendMany
-        with WaitIdle
+      requests.foreach(req ⇒ context.appendAction(SendAction(req)))
+      new EndMultiResponse(context) with SendSubsequent with SendMany with WaitIdle
     }
   }
 
@@ -205,13 +192,13 @@ object HttpDialog {
      * Only legal after exactly one preceding `send` task. `reply` can be repeated, so the task chain
      * `send(...).reply(...).reply(...).reply(...)` is legal.
      */
-    def reply(f: HttpResponse => HttpRequest): this.type = {
+    def reply(f: HttpResponse ⇒ HttpRequest): this.type = {
       context.appendAction(ReplyAction(f))
       this
     }
   }
 
-  sealed trait AwaitResponse { this: SendSubsequent with SendMany with WaitIdle with AwaitResponse =>
+  sealed trait AwaitResponse { this: SendSubsequent with SendMany with WaitIdle with AwaitResponse ⇒
     private[HttpDialog] def context: Context
 
     /**
@@ -226,10 +213,7 @@ object HttpDialog {
   /**
    * Constructs a new `HttpDialog` for a connection to the given host and port.
    */
-  def apply(httpClient: ActorRef, host: String, port: Int = 80, tag: Any = ())
-           (implicit refFactory: ActorRefFactory) =
-    new SendFirst(new Context(refFactory, httpClient, ConnectAction(host, port, tag)))
-      with SendMany
-      with WaitIdle
+  def apply(httpClient: ActorRef, host: String, port: Int = 80, tag: Any = ())(implicit refFactory: ActorRefFactory) =
+    new SendFirst(new Context(refFactory, httpClient, ConnectAction(host, port, tag))) with SendMany with WaitIdle
 
 }

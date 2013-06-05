@@ -16,7 +16,6 @@
 
 package spray.can.parsing
 
-
 class ChunkParser(settings: ParserSettings) extends CharacterParser {
   var chunkSize = -1
 
@@ -28,17 +27,17 @@ class ChunkParser(settings: ParserSettings) extends CharacterParser {
   }
 
   def handleChar(cursor: Char) = cursor match {
-    case x if '0' <= cursor && cursor <= '9' => handle(x - '0')
-    case x if 'A' <= cursor && cursor <= 'F' => handle(x - 'A' + 10)
-    case x if 'a' <= cursor && cursor <= 'f' => handle(x - 'a' + 10)
-    case ' ' | '\t' | '\r' => this
-    case '\n' => chunkSize match {
-      case -1 => ErrorState("Chunk size expected")
-      case 0 => new TrailerParser(settings)
-      case _ => new ChunkBodyParser(settings, chunkSize)
+    case x if '0' <= cursor && cursor <= '9' ⇒ handle(x - '0')
+    case x if 'A' <= cursor && cursor <= 'F' ⇒ handle(x - 'A' + 10)
+    case x if 'a' <= cursor && cursor <= 'f' ⇒ handle(x - 'a' + 10)
+    case ' ' | '\t' | '\r'                   ⇒ this
+    case '\n' ⇒ chunkSize match {
+      case -1 ⇒ ErrorState("Chunk size expected")
+      case 0  ⇒ new TrailerParser(settings)
+      case _  ⇒ new ChunkBodyParser(settings, chunkSize)
     }
-    case ';'  => new ChunkExtensionNameParser(settings, chunkSize)
-    case _ => ErrorState("Illegal chunk size")
+    case ';' ⇒ new ChunkExtensionNameParser(settings, chunkSize)
+    case _   ⇒ ErrorState("Illegal chunk size")
   }
 
 }

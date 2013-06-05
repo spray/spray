@@ -25,31 +25,29 @@ import spray.http._
 import HttpHeaders._
 import StatusCodes._
 
-
 object ModelConverter {
 
-  def toHttpRequest(hsRequest: HttpServletRequest)
-                   (implicit settings: ConnectorSettings, log: LoggingAdapter): HttpRequest = {
+  def toHttpRequest(hsRequest: HttpServletRequest)(implicit settings: ConnectorSettings, log: LoggingAdapter): HttpRequest = {
     import collection.JavaConverters._
     var contentType: ContentType = null
     var contentLength: Int = 0
-    val rawHeaders = hsRequest.getHeaderNames.asScala.toList.map { name =>
+    val rawHeaders = hsRequest.getHeaderNames.asScala.toList.map { name ⇒
       val value = hsRequest.getHeaders(name).asScala.mkString(", ")
       val lcName = name.toLowerCase
       lcName match {
-        case "content-type" =>
+        case "content-type" ⇒
           contentType = HttpParser.parseContentType(value) match {
-            case Right(x) => x
-            case Left(errorInfo) => throw new IllegalRequestException(BadRequest, errorInfo)
+            case Right(x)        ⇒ x
+            case Left(errorInfo) ⇒ throw new IllegalRequestException(BadRequest, errorInfo)
           }
-        case "content-length" =>
+        case "content-length" ⇒
           contentLength =
             try value.toInt
             catch {
-              case e: NumberFormatException =>
+              case e: NumberFormatException ⇒
                 throw new IllegalRequestException(BadRequest, RequestErrorInfo("Illegal Content-Length", e.getMessage))
             }
-        case _ =>
+        case _ ⇒
       }
       RawHeader(lcName, value)
     }
@@ -58,8 +56,7 @@ object ModelConverter {
       uri = rebuildUri(hsRequest),
       headers = addRemoteAddressHeader(hsRequest, rawHeaders),
       entity = toHttpEntity(hsRequest, contentType, contentLength),
-      protocol = toHttpProtocol(hsRequest.getProtocol)
-    )
+      protocol = toHttpProtocol(hsRequest.getProtocol))
   }
 
   def toHttpMethod(name: String) =
@@ -69,9 +66,9 @@ object ModelConverter {
   def rebuildUri(hsRequest: HttpServletRequest)(implicit settings: ConnectorSettings, log: LoggingAdapter) = {
     val requestUri = hsRequest.getRequestURI
     val uri = settings.RootPath match {
-      case "" => requestUri
-      case rootPath if requestUri.startsWith(rootPath) => requestUri.substring(rootPath.length)
-      case rootPath =>
+      case "" ⇒ requestUri
+      case rootPath if requestUri.startsWith(rootPath) ⇒ requestUri.substring(rootPath.length)
+      case rootPath ⇒
         log.warning("Received request outside of configured root-path, request uri '{}', configured root path '{}'",
           requestUri, rootPath)
         requestUri
@@ -80,8 +77,7 @@ object ModelConverter {
     if (queryString != null && queryString.length > 0) uri + '?' + queryString else uri
   }
 
-  def addRemoteAddressHeader(hsr: HttpServletRequest, headers: List[HttpHeader])
-                            (implicit settings: ConnectorSettings): List[HttpHeader] = {
+  def addRemoteAddressHeader(hsr: HttpServletRequest, headers: List[HttpHeader])(implicit settings: ConnectorSettings): List[HttpHeader] = {
     if (settings.RemoteAddressHeader) `Remote-Address`(hsr.getRemoteAddr) :: headers
     else headers
   }
@@ -90,8 +86,7 @@ object ModelConverter {
     HttpProtocols.getForKey(name)
       .getOrElse(throw new IllegalRequestException(BadRequest, "Illegal HTTP protocol", name))
 
-  def toHttpEntity(hsRequest: HttpServletRequest, contentType: ContentType, contentLength: Int)
-                  (implicit settings: ConnectorSettings, log: LoggingAdapter): HttpEntity = {
+  def toHttpEntity(hsRequest: HttpServletRequest, contentType: ContentType, contentLength: Int)(implicit settings: ConnectorSettings, log: LoggingAdapter): HttpEntity = {
     def body: Array[Byte] = {
       if (contentLength > 0) {
         if (contentLength <= settings.MaxContentLength) {
@@ -107,7 +102,7 @@ object ModelConverter {
             }
             buf
           } catch {
-            case e: IOException =>
+            case e: IOException ⇒
               log.error(e, "Could not read request entity")
               throw new RequestProcessingException(InternalServerError, "Could not read request entity")
           }

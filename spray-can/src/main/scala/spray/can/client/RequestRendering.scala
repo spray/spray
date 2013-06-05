@@ -16,9 +16,8 @@
 
 package spray.can.client
 
-import spray.can.rendering.{HttpRequestPartRenderingContext, RequestRenderer}
+import spray.can.rendering.{ HttpRequestPartRenderingContext, RequestRenderer }
 import spray.io._
-
 
 object RequestRendering {
 
@@ -29,11 +28,11 @@ object RequestRendering {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           val commandPipeline: CPL = {
-            case ctx: HttpRequestPartRenderingContext =>
+            case ctx: HttpRequestPartRenderingContext ⇒
               val rendered = renderer.render(ctx)
               commandPL(IOPeer.Send(rendered.buffers, ctx.sentAck))
 
-            case cmd => commandPL(cmd)
+            case cmd ⇒ commandPL(cmd)
           }
 
           val eventPipeline = eventPL

@@ -16,8 +16,7 @@
 
 package spray.servlet
 
-import akka.actor.{ActorRef, ActorSystem}
-
+import akka.actor.{ ActorRef, ActorSystem }
 
 //# source-quote
 /**

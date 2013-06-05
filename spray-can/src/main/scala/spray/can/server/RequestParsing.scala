@@ -16,7 +16,7 @@
 
 package spray.can.server
 
-import akka.event.{Logging, LoggingAdapter}
+import akka.event.{ Logging, LoggingAdapter }
 import java.nio.ByteBuffer
 import annotation.tailrec
 import spray.can.rendering.HttpResponsePartRenderingContext
@@ -25,7 +25,6 @@ import spray.util.ConnectionCloseReasons.ProtocolError
 import spray.can.parsing._
 import spray.http._
 import spray.io._
-
 
 object RequestParsing {
 
@@ -43,34 +42,34 @@ object RequestParsing {
           @tailrec
           final def parse(buffer: ByteBuffer) {
             currentParsingState match {
-              case x: IntermediateState =>
+              case x: IntermediateState ⇒
                 if (buffer.remaining > 0) {
                   currentParsingState = x.read(buffer)
                   parse(buffer)
                 } // else wait for more input
 
-              case x: HttpMessageStartCompletedState =>
+              case x: HttpMessageStartCompletedState ⇒
                 eventPL(HttpMessageStartEvent(x.toHttpMessagePart, x.connectionHeader))
                 currentParsingState =
                   if (x.isInstanceOf[HttpMessageEndCompletedState]) startParser
                   else new ChunkParser(settings)
                 parse(buffer)
 
-              case x: HttpMessagePartCompletedState =>
+              case x: HttpMessagePartCompletedState ⇒
                 eventPL(HttpEvent(x.toHttpMessagePart))
                 currentParsingState =
                   if (x.isInstanceOf[HttpMessageEndCompletedState]) startParser
                   else new ChunkParser(settings)
                 parse(buffer)
 
-              case Expect100ContinueState(nextState) =>
+              case Expect100ContinueState(nextState) ⇒
                 commandPL(IOPeer.Send(ByteBuffer.wrap(continue)))
                 currentParsingState = nextState
                 parse(buffer)
 
-              case ErrorState.Dead => // if we already handled the error state we ignore all further input
+              case ErrorState.Dead ⇒ // if we already handled the error state we ignore all further input
 
-              case x: ErrorState =>
+              case x: ErrorState ⇒
                 handleParseError(x)
                 currentParsingState = ErrorState.Dead // set to "special" ErrorState that ignores all further input
             }
@@ -92,8 +91,8 @@ object RequestParsing {
           val commandPipeline = commandPL
 
           val eventPipeline: EPL = {
-            case x: IOPeer.Received => parse(x.buffer)
-            case ev => eventPL(ev)
+            case x: IOPeer.Received ⇒ parse(x.buffer)
+            case ev                 ⇒ eventPL(ev)
           }
         }
     }

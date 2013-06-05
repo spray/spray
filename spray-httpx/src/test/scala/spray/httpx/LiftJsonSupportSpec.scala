@@ -23,7 +23,6 @@ import spray.httpx.unmarshalling._
 import spray.httpx.marshalling._
 import MediaTypes._
 
-
 //needs to be defined at top level to avoid some test failures due to how lift-json works
 case class Employee(fname: String, name: String, age: Int, id: Long, boardMember: Boolean)
 

@@ -18,7 +18,6 @@ package spray
 
 import http.HttpHeaders.RawHeader
 
-
 package object http {
 
   type QueryParams = Map[String, String]
@@ -44,10 +43,8 @@ package object http {
         RawHeader("Cookie", "spray=cool"),
         RawHeader("Host", "spray.io"),
         RawHeader("X-Forwarded-For", "1.2.3.4"),
-        RawHeader("Fancy-Custom-Header", "yeah")
-      ),
-      entity = "spray rocks!"
-    ).parseAll
+        RawHeader("Fancy-Custom-Header", "yeah")),
+      entity = "spray rocks!").parseAll
     HttpResponse(status = 200)
   }
 }

@@ -16,12 +16,11 @@
 
 package spray.httpx
 
-import akka.util.{Timeout, NonFatal}
+import akka.util.{ Timeout, NonFatal }
 import akka.util.duration._
 import akka.actor.ActorRefFactory
 import spray.util.identityFunc
 import spray.http.HttpEntity
-
 
 package object marshalling {
 
@@ -29,8 +28,8 @@ package object marshalling {
                            timeout: Timeout = 1.second): Either[Throwable, HttpEntity] = {
     val ctx = marshalCollecting(value)
     ctx.entity match {
-      case Some(entity) => Right(entity)
-      case None =>
+      case Some(entity) ⇒ Right(entity)
+      case None ⇒
         Left(ctx.error.getOrElse(new RuntimeException("Marshaller for %s did not produce result" format value)))
     }
   }
@@ -42,11 +41,11 @@ package object marshalling {
       marshaller(value, ctx)
       ctx.awaitResults
     } catch {
-      case NonFatal(e) => ctx.handleError(e)
+      case NonFatal(e) ⇒ ctx.handleError(e)
     }
     ctx
   }
 
-  def marshalUnsafe[T :Marshaller](value: T): HttpEntity = marshal(value).fold(throw _, identityFunc)
+  def marshalUnsafe[T: Marshaller](value: T): HttpEntity = marshal(value).fold(throw _, identityFunc)
 }
 

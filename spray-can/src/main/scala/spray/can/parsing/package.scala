@@ -16,15 +16,14 @@
 
 package spray.can
 
-
 package object parsing {
 
   private[can] def isTokenChar(c: Char) = c match {
-    case x if 'a' <= x && x <= 'z' => true
-    case x if 'A' <= x && x <= 'Z' => true
-    case '-' => true
-    case '(' | ')' | '<' | '>' | '@' | ',' | ';' | ':' | '\\' | '"' | '/' | '[' | ']' | '?' | '=' | '{' | '}' => false
-    case x => 32 < x && x < 127
+    case x if 'a' <= x && x <= 'z' ⇒ true
+    case x if 'A' <= x && x <= 'Z' ⇒ true
+    case '-' ⇒ true
+    case '(' | ')' | '<' | '>' | '@' | ',' | ';' | ':' | '\\' | '"' | '/' | '[' | ']' | '?' | '=' | '{' | '}' ⇒ false
+    case x ⇒ 32 < x && x < 127
   }
 
   private[can] def escape(c: Char): String =

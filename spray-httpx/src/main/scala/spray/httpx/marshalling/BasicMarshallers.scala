@@ -21,11 +21,10 @@ import xml.NodeSeq
 import spray.http._
 import MediaTypes._
 
-
 trait BasicMarshallers {
 
   def byteArrayMarshaller(contentType: ContentType) =
-    Marshaller.of[Array[Byte]](contentType) { (value, _, ctx) =>
+    Marshaller.of[Array[Byte]](contentType) { (value, _, ctx) ⇒
       // we marshal to the ContentType given as argument to the method, not the one established by content-negotiation,
       // since the former is the one belonging to the byte array
       ctx.marshalTo(HttpBody(contentType, value))
@@ -34,7 +33,7 @@ trait BasicMarshallers {
   implicit val ByteArrayMarshaller = byteArrayMarshaller(ContentType.`application/octet-stream`)
 
   implicit val CharArrayMarshaller =
-    Marshaller.of[Array[Char]](ContentType.`text/plain`) { (value, contentType, ctx) =>
+    Marshaller.of[Array[Char]](ContentType.`text/plain`) { (value, contentType, ctx) ⇒
       ctx.marshalTo {
         if (value.length > 0) {
           val nioCharset = contentType.charset.nioCharset
@@ -47,7 +46,7 @@ trait BasicMarshallers {
 
   //# string-marshaller
   implicit val StringMarshaller =
-    Marshaller.of[String](ContentType.`text/plain`) { (value, contentType, ctx) =>
+    Marshaller.of[String](ContentType.`text/plain`) { (value, contentType, ctx) ⇒
       ctx.marshalTo(if (value.isEmpty) EmptyEntity else HttpBody(contentType, value))
     }
   //#
@@ -59,20 +58,20 @@ trait BasicMarshallers {
   //#
 
   implicit val FormDataMarshaller =
-    Marshaller.delegate[FormData, String](`application/x-www-form-urlencoded`) { (formData, contentType) =>
+    Marshaller.delegate[FormData, String](`application/x-www-form-urlencoded`) { (formData, contentType) ⇒
       import java.net.URLEncoder.encode
       val charset = contentType.charset.value
-      formData.fields.map { case (key, value) => encode(key, charset) + '=' + encode(value, charset) }.mkString("&")
+      formData.fields.map { case (key, value) ⇒ encode(key, charset) + '=' + encode(value, charset) }.mkString("&")
     }
 
-  implicit val ThrowableMarshaller = Marshaller[Throwable] { (value, ctx) => ctx.handleError(value) }
+  implicit val ThrowableMarshaller = Marshaller[Throwable] { (value, ctx) ⇒ ctx.handleError(value) }
 
-  implicit val HttpEntityMarshaller = Marshaller[HttpEntity] { (value, ctx) =>
+  implicit val HttpEntityMarshaller = Marshaller[HttpEntity] { (value, ctx) ⇒
     value match {
-      case EmptyEntity => ctx.marshalTo(EmptyEntity)
-      case body@ HttpBody(contentType, _) => ctx.tryAccept(contentType) match {
-        case Some(_) => ctx.marshalTo(body) // we do NOT use the accepted CT here, since we do not want to recode
-        case None => ctx.rejectMarshalling(Seq(contentType))
+      case EmptyEntity ⇒ ctx.marshalTo(EmptyEntity)
+      case body @ HttpBody(contentType, _) ⇒ ctx.tryAccept(contentType) match {
+        case Some(_) ⇒ ctx.marshalTo(body) // we do NOT use the accepted CT here, since we do not want to recode
+        case None    ⇒ ctx.rejectMarshalling(Seq(contentType))
       }
     }
   }

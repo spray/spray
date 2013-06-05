@@ -18,7 +18,6 @@ package spray.routing
 
 import shapeless._
 
-
 /**
  * Provides a way to convert a value into an HList.
  * If the value is already an HList then it is returned unchanged, otherwise it's wrapped into a single-element HList.

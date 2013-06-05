@@ -18,9 +18,8 @@ package spray.caching
 
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
 import annotation.tailrec
-import akka.dispatch.{Promise, ExecutionContext, Future}
+import akka.dispatch.{ Promise, ExecutionContext, Future }
 import akka.util.Duration
-
 
 object LruCache {
   /**
@@ -50,21 +49,21 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
   require(initialCapacity <= maxCapacity, "initialCapacity must be <= maxCapacity")
 
   private[caching] val store = new ConcurrentLinkedHashMap.Builder[Any, Future[V]]
-      .initialCapacity(initialCapacity)
-      .maximumWeightedCapacity(maxCapacity)
-      .build()
+    .initialCapacity(initialCapacity)
+    .maximumWeightedCapacity(maxCapacity)
+    .build()
 
   def get(key: Any) = Option(store.get(key))
 
-  def fromFuture(key: Any)(future: => Future[V])(implicit executor: ExecutionContext): Future[V] = {
+  def fromFuture(key: Any)(future: ⇒ Future[V])(implicit executor: ExecutionContext): Future[V] = {
     val promise = Promise[V]()
     store.putIfAbsent(key, promise) match {
-      case null => future.onComplete { value =>
+      case null ⇒ future.onComplete { value ⇒
         promise.complete(value)
         // in case of exceptions we remove the cache entry (i.e. try again later)
         if (value.isLeft) store.remove(key, promise)
       }
-      case existingFuture => existingFuture
+      case existingFuture ⇒ existingFuture
     }
   }
 
@@ -102,22 +101,22 @@ final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
 
   @tailrec
   def get(key: Any): Option[Future[V]] = store.get(key) match {
-    case null => None
-    case entry if (isAlive(entry)) =>
+    case null ⇒ None
+    case entry if (isAlive(entry)) ⇒
       entry.refresh()
       Some(entry.promise)
-    case entry =>
+    case entry ⇒
       // remove entry, but only if it hasn't been removed and reinserted in the meantime
       if (store.remove(key, entry)) None // successfully removed
       else get(key) // nope, try again
   }
 
-  def fromFuture(key: Any)(future: => Future[V])(implicit executor: ExecutionContext): Future[V] = {
+  def fromFuture(key: Any)(future: ⇒ Future[V])(implicit executor: ExecutionContext): Future[V] = {
     def insert() = {
       val newEntry = new Entry(Promise[V]())
       val valueFuture = store.put(key, newEntry) match {
-        case null => future
-        case entry => if (isAlive(entry)) {
+        case null ⇒ future
+        case entry ⇒ if (isAlive(entry)) {
           // we date back the new entry we just inserted
           // in the meantime someone might have already seen the too fresh timestamp we just put in,
           // but since the original entry is also still alive this doesn't matter
@@ -125,7 +124,7 @@ final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
           entry.promise
         } else future
       }
-      valueFuture.onComplete { value =>
+      valueFuture.onComplete { value ⇒
         newEntry.promise.tryComplete(value)
         // in case of exceptions we remove the cache entry (i.e. try again later)
         if (value.isLeft) store.remove(key, newEntry)
@@ -133,18 +132,18 @@ final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
       newEntry.promise
     }
     store.get(key) match {
-      case null => insert()
-      case entry if (isAlive(entry)) =>
+      case null ⇒ insert()
+      case entry if (isAlive(entry)) ⇒
         entry.refresh()
         entry.promise
-      case entry => insert()
+      case entry ⇒ insert()
     }
   }
 
   def remove(key: Any) = store.remove(key) match {
-    case null => None
-    case entry if (isAlive(entry)) => Some(entry.promise)
-    case entry => None
+    case null                      ⇒ None
+    case entry if (isAlive(entry)) ⇒ Some(entry.promise)
+    case entry                     ⇒ None
   }
 
   def clear() { store.clear() }
@@ -152,7 +151,7 @@ final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
   private def isAlive(entry: Entry[V]) = {
     val now = System.currentTimeMillis
     (timeToLive == 0 || (now - entry.created) < timeToLive) &&
-    (timeToIdle == 0 || (now - entry.lastAccessed) < timeToIdle)
+      (timeToIdle == 0 || (now - entry.lastAccessed) < timeToIdle)
   }
 }
 
@@ -164,8 +163,8 @@ private[caching] class Entry[T](val promise: Promise[T]) {
     lastAccessed = System.currentTimeMillis
   }
   override def toString = promise.value match {
-    case Some(Right(value)) => value.toString
-    case Some(Left(exception)) => exception.toString
-    case None => "pending"
+    case Some(Right(value))    ⇒ value.toString
+    case Some(Left(exception)) ⇒ exception.toString
+    case None                  ⇒ "pending"
   }
 }

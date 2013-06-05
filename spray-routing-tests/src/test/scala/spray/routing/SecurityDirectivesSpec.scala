@@ -21,12 +21,11 @@ import spray.routing.authentication._
 import spray.http._
 import HttpHeaders._
 
-
 class SecurityDirectivesSpec extends RoutingSpec {
 
-  val dontAuth = UserPassAuthenticator[BasicUserContext](_ => Promise.successful(None))
+  val dontAuth = UserPassAuthenticator[BasicUserContext](_ ⇒ Promise.successful(None))
 
-  val doAuth = UserPassAuthenticator[BasicUserContext] { userPassOption =>
+  val doAuth = UserPassAuthenticator[BasicUserContext] { userPassOption ⇒
     Promise.successful(Some(BasicUserContext(userPassOption.get.user)))
   }
 
@@ -50,7 +49,7 @@ class SecurityDirectivesSpec extends RoutingSpec {
       implicit val log = akka.spray.NoLogging // suppress logging of the error
       Get() ~> addHeader(Authorization(BasicHttpCredentials("Alice", ""))) ~> {
         handleExceptions(ExceptionHandler.default) {
-          authenticate(BasicAuth(doAuth, "Realm")) { _ => sys.error("Nope") }
+          authenticate(BasicAuth(doAuth, "Realm")) { _ ⇒ sys.error("Nope") }
         }
       } ~> check { status === StatusCodes.InternalServerError }
     }

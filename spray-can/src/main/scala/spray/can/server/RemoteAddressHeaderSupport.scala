@@ -20,7 +20,6 @@ import spray.io._
 import spray.http._
 import HttpHeaders._
 
-
 object RemoteAddressHeaderSupport {
 
   def apply(): PipelineStage =
@@ -28,22 +27,21 @@ object RemoteAddressHeaderSupport {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           val raHeader = `Remote-Address`(context.connection.remoteAddress.getAddress)
-          def appendHeader(request: HttpRequest) : HttpRequest = request.mapHeaders(raHeader :: _)
+          def appendHeader(request: HttpRequest): HttpRequest = request.mapHeaders(raHeader :: _)
 
           val commandPipeline = commandPL
 
           val eventPipeline: EPL = {
-            case x: RequestParsing.HttpMessageStartEvent => eventPL {
+            case x: RequestParsing.HttpMessageStartEvent ⇒ eventPL {
               x.copy(
                 messagePart = x.messagePart match {
-                  case request: HttpRequest => appendHeader(request)
-                  case ChunkedRequestStart(request) => ChunkedRequestStart(appendHeader(request))
-                  case _ => throw new IllegalStateException
-                }
-              )
+                  case request: HttpRequest         ⇒ appendHeader(request)
+                  case ChunkedRequestStart(request) ⇒ ChunkedRequestStart(appendHeader(request))
+                  case _                            ⇒ throw new IllegalStateException
+                })
             }
 
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
         }
     }

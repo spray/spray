@@ -17,8 +17,7 @@
 package spray.io
 
 import akka.actor._
-import spray.util.{ConnectionCloseReasons, ClosedEventReason}
-
+import spray.util.{ ConnectionCloseReasons, ClosedEventReason }
 
 trait ConnectionActors extends IOPeer {
 
@@ -34,7 +33,7 @@ trait ConnectionActors extends IOPeer {
       val key = theKey
       val ioBridge = theIoBridge
       val commander = theCommander
-      private[this] val _tag = connectionTag(this, theTag)     // must be 2nd-to-last member to be initialized
+      private[this] val _tag = connectionTag(this, theTag) // must be 2nd-to-last member to be initialized
       private[this] val _handler = createConnectionActor(this) // must be last member to be initialized
       def tag = if (_tag != null) _tag else sys.error("tag not yet available from `connectionTag` method")
       def handler = if (_handler != null) _handler else sys.error("handler not yet available during connection actor creation")
@@ -56,7 +55,7 @@ trait ConnectionActors extends IOPeer {
 
   // we assume that we can never recover from failures of a connection actor,
   // we simply kill it, which causes it to close its connection in postStop()
-  override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy() { case _ => SupervisorStrategy.Stop }
+  override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy() { case _ ⇒ SupervisorStrategy.Stop }
 
   class IOConnectionActor(val connection: Connection) extends Actor {
     import connection.ioBridge
@@ -64,8 +63,7 @@ trait ConnectionActors extends IOPeer {
     val pipelines = pipeline.build(
       context = createPipelineContext,
       commandPL = baseCommandPipeline,
-      eventPL = baseEventPipeline
-    )
+      eventPL = baseEventPipeline)
 
     // if our connection has been closed this field contains the reason
     var closedReason: ClosedEventReason = _
@@ -74,19 +72,19 @@ trait ConnectionActors extends IOPeer {
 
     //# final-stages
     def baseCommandPipeline: Pipeline[Command] = {
-      case IOPeer.Send(buffers, ack)          => ioBridge ! IOBridge.Send(connection, buffers, eventize(ack))
-      case IOPeer.Close(reason)               => ioBridge ! IOBridge.Close(connection, reason)
-      case IOPeer.StopReading                 => ioBridge ! IOBridge.StopReading(connection)
-      case IOPeer.ResumeReading               => ioBridge ! IOBridge.ResumeReading(connection)
-      case IOPeer.Tell(receiver, msg, sender) => receiver.tell(msg, sender)
-      case _: Droppable => // don't warn
-      case cmd => log.warning("commandPipeline: dropped {}", cmd)
+      case IOPeer.Send(buffers, ack)          ⇒ ioBridge ! IOBridge.Send(connection, buffers, eventize(ack))
+      case IOPeer.Close(reason)               ⇒ ioBridge ! IOBridge.Close(connection, reason)
+      case IOPeer.StopReading                 ⇒ ioBridge ! IOBridge.StopReading(connection)
+      case IOPeer.ResumeReading               ⇒ ioBridge ! IOBridge.ResumeReading(connection)
+      case IOPeer.Tell(receiver, msg, sender) ⇒ receiver.tell(msg, sender)
+      case _: Droppable                       ⇒ // don't warn
+      case cmd                                ⇒ log.warning("commandPipeline: dropped {}", cmd)
     }
 
     def baseEventPipeline: Pipeline[Event] = {
-      case x: IOPeer.Closed => stop(x)
-      case _: Droppable => // don't warn
-      case ev => log.warning("eventPipeline: dropped {}", ev)
+      case x: IOPeer.Closed ⇒ stop(x)
+      case _: Droppable     ⇒ // don't warn
+      case ev               ⇒ log.warning("eventPipeline: dropped {}", ev)
     }
     //#
 
@@ -98,16 +96,16 @@ trait ConnectionActors extends IOPeer {
     }
 
     def eventize(ack: Option[Any]) = ack match {
-      case None | Some(_: Event) => ack
-      case Some(x) => Some(IOPeer.AckEvent(x))
+      case None | Some(_: Event) ⇒ ack
+      case Some(x)               ⇒ Some(IOPeer.AckEvent(x))
     }
 
     //# receive
     def receive = {
-      case x: Command => pipelines.commandPipeline(x)
-      case x: Event => pipelines.eventPipeline(x)
-      case Status.Failure(x: CommandException) => pipelines.eventPipeline(x)
-      case Terminated(actor) => pipelines.eventPipeline(IOPeer.ActorDeath(actor))
+      case x: Command                          ⇒ pipelines.commandPipeline(x)
+      case x: Event                            ⇒ pipelines.eventPipeline(x)
+      case Status.Failure(x: CommandException) ⇒ pipelines.eventPipeline(x)
+      case Terminated(actor)                   ⇒ pipelines.eventPipeline(IOPeer.ActorDeath(actor))
     }
     //#
 

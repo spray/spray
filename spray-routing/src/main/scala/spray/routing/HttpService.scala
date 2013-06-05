@@ -23,7 +23,6 @@ import spray.util._
 import spray.http._
 import StatusCodes._
 
-
 trait HttpService extends Directives {
 
   warmUp() // trigger the loading of most classes in spray-http
@@ -45,8 +44,8 @@ trait HttpService extends Directives {
    * Note that the route parameter is call-by-name to alleviate initialization order issues when
    * mixing into an Actor.
    */
-  def runRoute(route: => Route)(implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext,
-                                rs: RoutingSettings, log: LoggingContext): Actor.Receive = {
+  def runRoute(route: ⇒ Route)(implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext,
+                               rs: RoutingSettings, log: LoggingContext): Actor.Receive = {
     // we don't use a lazy val for the 'sealedRoute' member here, since we can be sure to be running in an Actor
     // (we require an implicit ActorContext) and can therefore avoid the "lazy val"-synchronization
     var sr: Route = null
@@ -55,26 +54,26 @@ trait HttpService extends Directives {
     def contextFor(req: HttpRequest) = RequestContext(req, ac.sender, req.path).withDefaultSender(ac.self)
 
     {
-      case request: HttpRequest =>
+      case request: HttpRequest ⇒
         try {
           request.parseQuery.parseHeaders match {
-            case ("", parsedRequest) =>
+            case ("", parsedRequest) ⇒
               sealedRoute(contextFor(parsedRequest))
-            case (errorMsg, parsedRequest) if rs.RelaxedHeaderParsing =>
+            case (errorMsg, parsedRequest) if rs.RelaxedHeaderParsing ⇒
               log.warning("Request {}: {}", request, errorMsg)
               sealedRoute(contextFor(parsedRequest))
-            case (errorMsg, _) =>
+            case (errorMsg, _) ⇒
               throw new IllegalRequestException(BadRequest, RequestErrorInfo(errorMsg))
           }
         } catch {
-          case NonFatal(e) =>
+          case NonFatal(e) ⇒
             val errorRoute = sealedExceptionHandler(e)
             errorRoute(contextFor(request))
         }
 
-      case ctx: RequestContext => sealedRoute(ctx)
+      case ctx: RequestContext           ⇒ sealedRoute(ctx)
 
-      case Timeout(request: HttpRequest) => runRoute(timeoutRoute)(eh, rh, ac, rs, log)(request)
+      case Timeout(request: HttpRequest) ⇒ runRoute(timeoutRoute)(eh, rh, ac, rs, log)(request)
     }
   }
 
@@ -88,19 +87,18 @@ trait HttpService extends Directives {
     rh orElse RejectionHandler.Default orElse handleUnhandledRejections
 
   def handleUnhandledRejections: RejectionHandler.PF = {
-    case x :: _ => sys.error("Unhandled rejection: " + x)
+    case x :: _ ⇒ sys.error("Unhandled rejection: " + x)
   }
 
   //# timeout-route
   def timeoutRoute: Route = complete(
     InternalServerError,
-    "The server was not able to produce a timely response to your request."
-  )
+    "The server was not able to produce a timely response to your request.")
   //#
 }
 
 trait HttpServiceActor extends HttpService {
-  this: Actor =>
+  this: Actor ⇒
 
   def actorRefFactory = context
 }

@@ -16,17 +16,16 @@
 
 package spray.util.pimps
 
-import akka.actor.{ActorSystem, ActorContext, ActorRefFactory}
+import akka.actor.{ ActorSystem, ActorContext, ActorRefFactory }
 import akka.dispatch.MessageDispatcher
-
 
 class PimpedActorRefFactory(underlying: ActorRefFactory) {
 
   def messageDispatcher: MessageDispatcher = {
     underlying match {
-      case x: ActorContext => x.dispatcher
-      case x: ActorSystem => x.dispatcher
-      case x => throw new IllegalArgumentException("Unsupported ActorRefFactory '" + x + "'")
+      case x: ActorContext ⇒ x.dispatcher
+      case x: ActorSystem  ⇒ x.dispatcher
+      case x               ⇒ throw new IllegalArgumentException("Unsupported ActorRefFactory '" + x + "'")
     }
   }
 

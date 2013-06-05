@@ -20,15 +20,14 @@ import java.nio.ByteBuffer
 import spray.io.BufferBuilder
 import spray.http._
 
-
 class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) extends MessageRendering {
 
   def render(ctx: HttpRequestPartRenderingContext): RenderedMessagePart = {
     ctx.requestPart match {
-      case x: HttpRequest => renderRequest(x, ctx.host, ctx.port)
-      case x: ChunkedRequestStart => renderChunkedRequestStart(x.request, ctx.host, ctx.port)
-      case x: MessageChunk => renderChunk(x, requestSizeHint)
-      case x: ChunkedMessageEnd => renderFinalChunk(x, requestSizeHint)
+      case x: HttpRequest         ⇒ renderRequest(x, ctx.host, ctx.port)
+      case x: ChunkedRequestStart ⇒ renderChunkedRequestStart(x.request, ctx.host, ctx.port)
+      case x: MessageChunk        ⇒ renderChunk(x, requestSizeHint)
+      case x: ChunkedMessageEnd   ⇒ renderFinalChunk(x, requestSizeHint)
     }
   }
 
@@ -54,7 +53,7 @@ class RequestRenderer(userAgentHeader: String, requestSizeHint: Int) extends Mes
   }
 
   private def renderRequestStart(request: HttpRequest, host: String, port: Int) = {
-    import request.{host => _, port => _, _}
+    import request.{ host ⇒ _, port ⇒ _, _ }
     val bb = BufferBuilder(requestSizeHint)
     bb.append(method.value).append(' ').append(uri).append(' ').append(protocol.value).append(MessageRendering.CrLf)
     appendHeaders(headers, bb)

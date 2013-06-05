@@ -18,14 +18,13 @@ package spray.io
 
 import akka.pattern.ask
 import java.nio.ByteBuffer
-import akka.util.{Timeout, Duration}
+import akka.util.{ Timeout, Duration }
 import akka.actor._
 import akka.dispatch.Future
 import org.specs2.matcher.Matcher
 import org.specs2.mutable.Specification
 import spray.util._
 import ConnectionCloseReasons._
-
 
 class IOBridgeSpec extends Specification {
   implicit val timeout: Timeout = Duration("1000 ms")
@@ -49,8 +48,8 @@ class IOBridgeSpec extends Specification {
       request("Echoooo").await === ("Echoooo" -> CleanClose)
     }
     "properly complete 100 requests in parallel" in {
-      val requests = Future.traverse((1 to 100).toList) { i => request("Ping" + i).map(r => i -> r._1) }
-      val beOk: Matcher[(Int, String)] = ({ t:(Int, String) => t._2 == "Ping" + t._1 }, "not ok")
+      val requests = Future.traverse((1 to 100).toList) { i ⇒ request("Ping" + i).map(r ⇒ i -> r._1) }
+      val beOk: Matcher[(Int, String)] = ({ t: (Int, String) ⇒ t._2 == "Ping" + t._1 }, "not ok")
       requests.await must beOk.forall
     }
     "support confirmed connection closing" in {
@@ -62,7 +61,7 @@ class IOBridgeSpec extends Specification {
 
   class TestServer(_rootIoBridge: ActorRef) extends IOServer(_rootIoBridge) {
     override def receive = super.receive orElse {
-      case IOBridge.Received(handle, buffer) => sender ! IOBridge.Send(handle, buffer)
+      case IOBridge.Received(handle, buffer) ⇒ sender ! IOBridge.Send(handle, buffer)
     }
   }
 
@@ -70,15 +69,15 @@ class IOBridgeSpec extends Specification {
     var requests = Map.empty[Connection, ActorRef]
     override def receive: Receive = myReceive orElse super.receive
     def myReceive: Receive = {
-      case (connection: Connection, string: String) =>
+      case (connection: Connection, string: String) ⇒
         requests += connection -> sender
         connection.ioBridge ! IOBridge.Send(connection, ByteBuffer.wrap(string.getBytes))
-      case IOPeer.Received(connection, buffer) =>
+      case IOPeer.Received(connection, buffer) ⇒
         requests(connection) ! buffer.drainToString
-      case cmd@IOBridge.Close(connection :Connection, _) =>
+      case cmd @ IOBridge.Close(connection: Connection, _) ⇒
         requests += connection -> sender
         connection.ioBridge ! cmd
-      case IOPeer.Closed(connection, reason) =>
+      case IOPeer.Closed(connection, reason) ⇒
         requests(connection) ! reason
         requests -= connection
     }
@@ -86,9 +85,9 @@ class IOBridgeSpec extends Specification {
 
   def request(payload: String, closeReason: CloseCommandReason = CleanClose) = {
     for {
-      IOClient.Connected(connection) <- (client ? IOClient.Connect("localhost", port)).mapTo[IOClient.Connected]
-      response: String               <- (client ? (connection -> payload)).mapTo[String]
-      reason: ClosedEventReason      <- (client ? IOBridge.Close(connection, closeReason)).mapTo[ClosedEventReason]
+      IOClient.Connected(connection) ← (client ? IOClient.Connect("localhost", port)).mapTo[IOClient.Connected]
+      response: String ← (client ? (connection -> payload)).mapTo[String]
+      reason: ClosedEventReason ← (client ? IOBridge.Close(connection, closeReason)).mapTo[ClosedEventReason]
     } yield response -> reason
   }
 }

@@ -21,7 +21,6 @@ import spray.http.HttpMethod
 import spray.http.HttpMethods._
 import shapeless.HNil
 
-
 trait MethodDirectives {
   import BasicDirectives._
   import MiscDirectives._
@@ -58,8 +57,8 @@ trait MethodDirectives {
    */
   def method(mth: HttpMethod): Directive0 =
     extract(_.request.method).flatMap[HNil] {
-      case `mth` => pass
-      case _     => reject(MethodRejection(mth))
+      case `mth` ⇒ pass
+      case _     ⇒ reject(MethodRejection(mth))
     } & cancelAllRejections(ofType[MethodRejection])
   //#
 }

@@ -17,7 +17,6 @@
 
 package spray.http
 
-
 /**
  * Basic model for multipart content as defind in RFC 2046.
  * If you are looking for a model for `multipart/form-data` you should be using [[spray.http.MultipartFormData]].

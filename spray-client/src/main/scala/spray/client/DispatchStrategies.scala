@@ -20,7 +20,6 @@ package client
 import collection.mutable.Queue
 import http._
 
-
 /**
  * Abstraction over the logic of how to dispatch outgoing requests to one of several connections.
  */
@@ -71,8 +70,8 @@ object DispatchStrategies {
 
     def dispatch(context: HttpRequestContext, conns: Seq[HttpConn]) {
       findAvailableConnection(conns) match {
-        case Some(conn) => conn.dispatch(context)
-        case None => queue.enqueue(context)
+        case Some(conn) ⇒ conn.dispatch(context)
+        case None       ⇒ queue.enqueue(context)
       }
     }
 

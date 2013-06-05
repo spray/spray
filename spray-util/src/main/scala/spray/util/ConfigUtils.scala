@@ -16,10 +16,9 @@
 
 package spray.util
 
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.{ Config, ConfigFactory }
 import collection.JavaConverters._
 import java.net.InetAddress
-
 
 object ConfigUtils {
 
@@ -32,6 +31,6 @@ object ConfigUtils {
   lazy val referenceConfig = ConfigFactory.defaultReference withFallback sprayConfigAdditions
 
   def sprayConfigAdditions: Config = ConfigFactory.parseMap {
-    Map("spray.hostname" -> tryOrElse(InetAddress.getLocalHost.getHostName, _ => "")).asJava
+    Map("spray.hostname" -> tryOrElse(InetAddress.getLocalHost.getHostName, _ ⇒ "")).asJava
   }
 }

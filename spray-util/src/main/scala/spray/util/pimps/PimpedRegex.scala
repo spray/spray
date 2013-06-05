@@ -27,7 +27,7 @@ class PimpedRegex(regex: Regex) {
       field.setAccessible(true)
       field.getInt(regex.pattern) - 1
     } catch {
-      case t: Throwable =>
+      case t: Throwable ⇒
         throw new RuntimeException("Could not determine regex group count: " + regex.pattern.pattern, t)
     }
   }

@@ -2,7 +2,6 @@ package akka.spray
 
 import akka.event.LoggingAdapter
 
-
 object NoLogging extends LoggingAdapter {
   def isErrorEnabled = false
   def isWarningEnabled = false

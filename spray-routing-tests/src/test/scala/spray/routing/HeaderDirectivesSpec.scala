@@ -19,11 +19,10 @@ package spray.routing
 import spray.http._
 import HttpHeaders._
 
-
 class HeaderDirectivesSpec extends RoutingSpec {
 
   "The headerValuePF directive" should {
-    val myHeaderValue = headerValuePF { case Connection(tokens) => tokens.head }
+    val myHeaderValue = headerValuePF { case Connection(tokens) ⇒ tokens.head }
 
     "extract the respective header value if a matching request header is present" in {
       Get("/abc") ~> addHeader(Connection("close")) ~> myHeaderValue { echoComplete } ~> check {
@@ -37,15 +36,15 @@ class HeaderDirectivesSpec extends RoutingSpec {
 
     "reject with a MalformedHeaderRejection if the extract function throws an exception" in {
       Get("/abc") ~> addHeader(Connection("close")) ~> {
-        (headerValuePF { case _ => sys.error("Naah!") }) { echoComplete }
+        (headerValuePF { case _ ⇒ sys.error("Naah!") }) { echoComplete }
       } ~> check { rejection.toString === "MalformedHeaderRejection(Connection,java.lang.RuntimeException: Naah!)" }
     }
   }
 
   "The optionalHeaderValue directive" should {
     val myHeaderValue = optionalHeaderValue {
-      case Connection(tokens) => Some(tokens.head)
-      case _ => None
+      case Connection(tokens) ⇒ Some(tokens.head)
+      case _                  ⇒ None
     }
 
     "extract the respective header value if a matching request header is present" in {
@@ -60,7 +59,7 @@ class HeaderDirectivesSpec extends RoutingSpec {
 
     "reject with a MalformedHeaderRejection if the extract function throws an exception" in {
       Get("/abc") ~> addHeader(Connection("close")) ~> {
-        val myHeaderValue = optionalHeaderValue { case _ => sys.error("Naaah!") }
+        val myHeaderValue = optionalHeaderValue { case _ ⇒ sys.error("Naaah!") }
         myHeaderValue { echoComplete }
       } ~> check { rejection.toString === "MalformedHeaderRejection(Connection,java.lang.RuntimeException: Naaah!)" }
     }

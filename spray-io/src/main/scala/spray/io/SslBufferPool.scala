@@ -20,7 +20,6 @@ import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicInteger
 import annotation.tailrec
 
-
 /**
  * A ByteBuffer pool reduces the number of ByteBuffer allocations in the SslTlsSupport.
  * The reason why SslTlsSupport requires a buffer pool is because the
@@ -54,8 +53,8 @@ object SslBufferPool {
   def acquire(): ByteBuffer = {
     if (state.compareAndSet(Unlocked, Locked)) {
       try pool match {
-        case Nil => ByteBuffer.allocate(MaxPacketSize) // we have no more buffer available, so create a new one
-        case buf :: tail =>
+        case Nil ⇒ ByteBuffer.allocate(MaxPacketSize) // we have no more buffer available, so create a new one
+        case buf :: tail ⇒
           pool = tail
           buf
       } finally state.set(Unlocked)

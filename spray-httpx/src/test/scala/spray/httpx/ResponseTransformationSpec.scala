@@ -18,16 +18,15 @@ package spray.httpx
 
 import org.specs2.mutable.Specification
 import akka.actor.ActorSystem
-import akka.dispatch.{Future, Promise}
+import akka.dispatch.{ Future, Promise }
 import encoding.Gzip
 import spray.http._
 import spray.util._
 import HttpHeaders._
 
-
 class ResponseTransformationSpec extends Specification with RequestBuilding with ResponseTransformation {
   implicit val system = ActorSystem()
-  type SendReceive = HttpRequest => Future[HttpResponse]
+  type SendReceive = HttpRequest ⇒ Future[HttpResponse]
 
   "MessagePipelining" should {
     "work correctly for simple requests" in {
@@ -61,45 +60,43 @@ class ResponseTransformationSpec extends Specification with RequestBuilding with
     }
 
     "allow success for any status codes representing success" in {
-      val pipeline = report ~> ((_:HttpResponse).copy(status = 201)) ~> unmarshal[String]
+      val pipeline = report ~> ((_: HttpResponse).copy(status = 201)) ~> unmarshal[String]
       pipeline(Get("/abc")).await === "GET|/abc|"
     }
 
     "throw an Exception when unmarshalling client error responses" in {
-      val pipeline = echo ~> ((_:HttpResponse).copy(status = 400)) ~> unmarshal[String]
+      val pipeline = echo ~> ((_: HttpResponse).copy(status = 400)) ~> unmarshal[String]
       pipeline(Get("/", "XXX")).await must throwAn(new UnsuccessfulResponseException(StatusCodes.BadRequest))
     }
 
     "throw an Exception when unmarshalling server error responses" in {
-      val pipeline = echo ~> ((_:HttpResponse).copy(status = 500)) ~> unmarshal[String]
+      val pipeline = echo ~> ((_: HttpResponse).copy(status = 500)) ~> unmarshal[String]
       pipeline(Get("/", "XXX")).await must throwAn(new UnsuccessfulResponseException(StatusCodes.InternalServerError))
     }
   }
 
   step(system.shutdown())
 
-  val report: SendReceive = { request =>
+  val report: SendReceive = { request ⇒
     import request._
     Promise.successful(HttpResponse(200, method + "|" + uri + "|" + entity.asString))
   }
 
-  val reportDecoding: SendReceive = request => Promise.successful {
+  val reportDecoding: SendReceive = request ⇒ Promise.successful {
     val decoded = Gzip.decode(request)
     import decoded._
     HttpResponse(200, method + "|" + uri + "|" + entity.asString)
   }
 
-  val echo: SendReceive = request => Promise.successful {
+  val echo: SendReceive = request ⇒ Promise.successful {
     HttpResponse(200, request.entity, request.headers.filter(_.isInstanceOf[`Content-Encoding`]))
   }
 
-  val authenticatedEcho: SendReceive = request => Promise.successful {
+  val authenticatedEcho: SendReceive = request ⇒ Promise.successful {
     HttpResponse(
       status = request.headers
-        .collect { case Authorization(BasicHttpCredentials("bob", "1234")) => StatusCodes.OK }
-        .headOption.getOrElse(StatusCodes.Forbidden)
-    )
+        .collect { case Authorization(BasicHttpCredentials("bob", "1234")) ⇒ StatusCodes.OK }
+        .headOption.getOrElse(StatusCodes.Forbidden))
   }
-
 
 }

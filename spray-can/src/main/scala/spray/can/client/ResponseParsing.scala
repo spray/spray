@@ -16,7 +16,7 @@
 
 package spray.can.client
 
-import akka.event.{Logging, LoggingAdapter}
+import akka.event.{ Logging, LoggingAdapter }
 import collection.mutable
 import java.nio.ByteBuffer
 import annotation.tailrec
@@ -27,7 +27,6 @@ import spray.util.ConnectionCloseReasons._
 import spray.can.parsing._
 import spray.http._
 import spray.io._
-
 
 object ResponseParsing {
 
@@ -46,14 +45,14 @@ object ResponseParsing {
           @tailrec
           final def parse(buffer: ByteBuffer) {
             currentParsingState match {
-              case x: IntermediateState =>
+              case x: IntermediateState ⇒
                 if (buffer.remaining > 0) {
                   currentParsingState = x.read(buffer)
                   parse(buffer)
                 } // else wait for more input
 
-              case x: HttpMessagePartCompletedState => x.toHttpMessagePart match {
-                case part: HttpMessageEnd =>
+              case x: HttpMessagePartCompletedState ⇒ x.toHttpMessagePart match {
+                case part: HttpMessageEnd ⇒
                   eventPL(HttpEvent(part))
                   openRequestMethods.dequeue()
                   if (openRequestMethods.isEmpty) {
@@ -63,19 +62,19 @@ object ResponseParsing {
                     currentParsingState = startParser
                     parse(buffer)
                   }
-                case part =>
+                case part ⇒
                   eventPL(HttpEvent(part))
                   currentParsingState = new ChunkParser(settings)
                   parse(buffer)
               }
 
-              case _: Expect100ContinueState =>
+              case _: Expect100ContinueState ⇒
                 currentParsingState = ErrorState("'Expect: 100-continue' is not allowed in HTTP responses")
                 parse(buffer) // trigger error
 
-              case ErrorState.Dead => // if we already handled the error state we ignore all further input
+              case ErrorState.Dead ⇒ // if we already handled the error state we ignore all further input
 
-              case x: ErrorState =>
+              case x: ErrorState ⇒
                 warning.log(context.connection.tag, "Received illegal response: {}", x.message)
                 commandPL(IOPeer.Close(ProtocolError(x.message)))
                 currentParsingState = ErrorState.Dead // set to "special" ErrorState that ignores all further input
@@ -83,34 +82,34 @@ object ResponseParsing {
           }
 
           val commandPipeline: CPL = {
-            case x: HttpRequestPartRenderingContext =>
+            case x: HttpRequestPartRenderingContext ⇒
               def register(req: HttpRequest) {
                 openRequestMethods.enqueue(req.method)
                 if (currentParsingState eq UnmatchedResponseErrorState) currentParsingState = startParser
               }
               x.requestPart match {
-                case x: HttpRequest => register(x)
-                case x: ChunkedRequestStart => register(x.request)
-                case _ =>
+                case x: HttpRequest         ⇒ register(x)
+                case x: ChunkedRequestStart ⇒ register(x.request)
+                case _                      ⇒
               }
               commandPL(x)
 
-            case cmd => commandPL(cmd)
+            case cmd ⇒ commandPL(cmd)
           }
 
           val eventPipeline: EPL = {
-            case x: IOPeer.Received => parse(x.buffer)
+            case x: IOPeer.Received ⇒ parse(x.buffer)
 
-            case ev@IOPeer.Closed(_, PeerClosed) =>
+            case ev @ IOPeer.Closed(_, PeerClosed) ⇒
               currentParsingState match {
-                case x: ToCloseBodyParser =>
+                case x: ToCloseBodyParser ⇒
                   currentParsingState = x.complete
                   parse(ByteBuffer.wrap(EmptyByteArray))
-                case _ =>
+                case _ ⇒
               }
               eventPL(ev)
 
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
         }
     }

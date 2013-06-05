@@ -32,7 +32,6 @@ import spray.util._
 import DispatchStrategies._
 import HttpHeaders._
 
-
 class HttpConduitSpec extends Specification {
   sequential
   implicit val system = ActorSystem()
@@ -50,19 +49,18 @@ class HttpConduitSpec extends Specification {
         var dropNext = true
         val random = new Random(39)
         def receive = {
-          case HttpRequest(_, "/compressedResponse", _, _, _) =>
+          case HttpRequest(_, "/compressedResponse", _, _, _) ⇒
             sender ! Gzip.encode(HttpResponse(entity = "content"))
-          case x: HttpRequest if x.uri.startsWith("/drop1of2") && dropNext =>
+          case x: HttpRequest if x.uri.startsWith("/drop1of2") && dropNext ⇒
             log.debug("Dropping " + x)
             dropNext = random.nextBoolean()
-          case x@ HttpRequest(method, uri, _, entity, _) =>
+          case x @ HttpRequest(method, uri, _, entity, _) ⇒
             log.debug("Responding with " + x)
             dropNext = random.nextBoolean()
             sender ! response(method + "|" + uri + (if (entity.isEmpty) "" else "|" + entity.asString))
-          case Timeout(request) => sender ! response("TIMEOUT")
+          case Timeout(request) ⇒ sender ! response("TIMEOUT")
         }
-      }
-    ), "handler")
+      }), "handler")
     system.actorOf(Props(new HttpServer(ioBridge, SingletonHandler(handler))), "http-server")
       .ask(HttpServer.Bind("localhost", port))(Duration("1 s"))
       .await // block until the server is actually bound
@@ -89,7 +87,7 @@ class HttpConduitSpec extends Specification {
     "retry GET requests whose sending has failed" in {
       val pipeline = newConduitPipeline(NonPipelined())
       def send = pipeline(HttpRequest(uri = "/drop1of2"))
-      val fut = send.flatMap(r1 => send.map(r2 => r1 -> r2))
+      val fut = send.flatMap(r1 ⇒ send.map(r2 ⇒ r1 -> r2))
       val (r1, r2) = fut.await
       r1.entity === r2.entity
     }
@@ -98,12 +96,11 @@ class HttpConduitSpec extends Specification {
       val requests = List(
         HttpRequest(uri = "/drop1of2/a"),
         HttpRequest(uri = "/drop1of2/b"),
-        HttpRequest(uri = "/drop1of2/c")
-      )
-      val future = Future.traverse(requests)(pipeline).flatMap { responses1 =>
-        Future.traverse(requests)(pipeline).map(responses2 => responses1.zip(responses2))
+        HttpRequest(uri = "/drop1of2/c"))
+      val future = Future.traverse(requests)(pipeline).flatMap { responses1 ⇒
+        Future.traverse(requests)(pipeline).map(responses2 ⇒ responses1.zip(responses2))
       }
-      future.await.map { case (a, b) => a.entity === b.entity }.reduceLeft(_ and _)
+      future.await.map { case (a, b) ⇒ a.entity === b.entity }.reduceLeft(_ and _)
     }
     "deliver the incoming responses fully parsed" in {
       import HttpConduit._
@@ -119,8 +116,7 @@ class HttpConduitSpec extends Specification {
     val conduit = system.actorOf(Props {
       new HttpConduit(client, "127.0.0.1", port,
         settings = ConfigFactory.parseString("spray.client.max-connections = " + maxConnections),
-        dispatchStrategy = strategy
-      )
+        dispatchStrategy = strategy)
     })
     HttpConduit.sendReceive(conduit)
   }
@@ -132,10 +128,11 @@ class HttpConduitSpec extends Specification {
 
   def hundredRequests(strategy: DispatchStrategy) = {
     val pipeline = newConduitPipeline(strategy)
-    val requests = Seq.tabulate(10)(index => HttpRequest(uri = "/" + index))
+    val requests = Seq.tabulate(10)(index ⇒ HttpRequest(uri = "/" + index))
     val responseFutures = requests.map(pipeline)
-    responseFutures.zipWithIndex.map { case (future, index) =>
-      future.await.copy(headers = Nil) === HttpResponse(200, "GET|/" + index)
+    responseFutures.zipWithIndex.map {
+      case (future, index) ⇒
+        future.await.copy(headers = Nil) === HttpResponse(200, "GET|/" + index)
     }.reduceLeft(_ and _)
   }
 

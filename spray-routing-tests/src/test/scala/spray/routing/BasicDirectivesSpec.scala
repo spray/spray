@@ -18,13 +18,12 @@ package spray.routing
 
 import spray.http.HttpResponse
 
-
 class BasicDirectivesSpec extends RoutingSpec {
 
   "The 'routeRouteResponse' directive" should {
     "in its simple String form" in {
       val addYeah = routeRouteResponse {
-        case HttpResponse(_, entity, _, _) => complete(entity.asString + "Yeah")
+        case HttpResponse(_, entity, _, _) ⇒ complete(entity.asString + "Yeah")
       }
       Get() ~> addYeah(complete("abc")) ~> check { entityAs[String] === "abcYeah" }
     }

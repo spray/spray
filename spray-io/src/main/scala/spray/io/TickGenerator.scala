@@ -19,7 +19,6 @@ package spray.io
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
 
-
 //# source-quote
 object TickGenerator {
 
@@ -36,16 +35,15 @@ object TickGenerator {
             initialDelay = period,
             frequency = period,
             receiver = context.self,
-            message = Tick
-          )
+            message = Tick)
 
           val commandPipeline = commandPL
 
           val eventPipeline: EPL = {
-            case x: IOPeer.Closed =>
+            case x: IOPeer.Closed ⇒
               generator.cancel()
               eventPL(x)
-            case x => eventPL(x)
+            case x ⇒ eventPL(x)
           }
         }
     }

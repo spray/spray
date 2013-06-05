@@ -24,22 +24,21 @@ import org.parboiled.scala._
  *  [[http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html]]
  */
 object HttpParser extends SprayParser with ProtocolParameterRules with AdditionalRules with CommonActions
-  with AcceptCharsetHeader
-  with AcceptEncodingHeader
-  with AcceptHeader
-  with AcceptLanguageHeader
-  with AcceptRangesHeader
-  with AuthorizationHeader
-  with CacheControlHeader
-  with ContentEncodingHeader
-  with ContentTypeHeader
-  with CookieHeaders
-  with SimpleHeaders
-  with WwwAuthenticateHeader
-  {
+    with AcceptCharsetHeader
+    with AcceptEncodingHeader
+    with AcceptHeader
+    with AcceptLanguageHeader
+    with AcceptRangesHeader
+    with AuthorizationHeader
+    with CacheControlHeader
+    with ContentEncodingHeader
+    with ContentTypeHeader
+    with CookieHeaders
+    with SimpleHeaders
+    with WwwAuthenticateHeader {
 
   // all string literals automatically receive a trailing optional whitespace
-  override implicit def toRule(string :String): Rule0 =
+  override implicit def toRule(string: String): Rule0 =
     super.toRule(string) ~ BasicRules.OptWS
 
   val rules: Map[String, Rule1[HttpHeader]] =
@@ -47,27 +46,27 @@ object HttpParser extends SprayParser with ProtocolParameterRules with Additiona
       .getClass
       .getMethods
       .filter(_.getName.forall(!_.isLower)) // only the header rules have no lower-case letter in their name
-      .map { method =>
+      .map { method ⇒
         method.getName.toLowerCase.replace('_', '-') -> method.invoke(HttpParser).asInstanceOf[Rule1[HttpHeader]]
-      } (collection.breakOut)
+      }(collection.breakOut)
 
   def parseHeader(header: HttpHeader): Either[String, HttpHeader] = {
     header match {
-      case x@ HttpHeaders.RawHeader(name, value) =>
+      case x @ HttpHeaders.RawHeader(name, value) ⇒
         rules.get(x.lowercaseName) match {
-          case Some(rule) => parse(rule, value).left.map("Illegal HTTP header '" + name + "': " + _.formatPretty)
-          case None => Right(x) // if we don't have a rule for the header we leave it unparsed
+          case Some(rule) ⇒ parse(rule, value).left.map("Illegal HTTP header '" + name + "': " + _.formatPretty)
+          case None       ⇒ Right(x) // if we don't have a rule for the header we leave it unparsed
         }
-      case x => Right(x) // already parsed
+      case x ⇒ Right(x) // already parsed
     }
   }
 
   def parseHeaders(headers: List[HttpHeader]): (List[String], List[HttpHeader]) = {
     val errors = List.newBuilder[String]
-    val parsedHeaders = headers.map { header =>
+    val parsedHeaders = headers.map { header ⇒
       parseHeader(header) match {
-        case Right(parsed) => parsed
-        case Left(error) => errors += error; header
+        case Right(parsed) ⇒ parsed
+        case Left(error)   ⇒ errors += error; header
       }
     }
     (errors.result(), parsedHeaders)

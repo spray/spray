@@ -19,25 +19,24 @@ import java.util.concurrent.atomic.AtomicLong
 import annotation.tailrec
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
-import spray.http.{Timeout, HttpMessageStart}
+import spray.http.{ Timeout, HttpMessageStart }
 import spray.can.rendering.HttpResponsePartRenderingContext
 import spray.can.server.RequestParsing.HttpMessageStartEvent
 import spray.util.ConnectionCloseReasons.IdleTimeout
 import spray.io._
 
-
 object StatsSupport {
 
   class StatsHolder {
-    val startTimestamp     = System.currentTimeMillis
-    val requestStarts      = new AtomicLong
-    val responseStarts     = new AtomicLong
-    val maxOpenRequests    = new AtomicLong
-    val connectionsOpened  = new AtomicLong
-    val connectionsClosed  = new AtomicLong
+    val startTimestamp = System.currentTimeMillis
+    val requestStarts = new AtomicLong
+    val responseStarts = new AtomicLong
+    val maxOpenRequests = new AtomicLong
+    val connectionsOpened = new AtomicLong
+    val connectionsClosed = new AtomicLong
     val maxOpenConnections = new AtomicLong
-    val requestTimeouts    = new AtomicLong
-    val idleTimeouts       = new AtomicLong
+    val requestTimeouts = new AtomicLong
+    val idleTimeouts = new AtomicLong
 
     @tailrec
     final def adjustMaxOpenConnections() {
@@ -68,8 +67,7 @@ object StatsSupport {
       openConnections = connectionsOpened.get - connectionsClosed.get,
       maxOpenConnections = maxOpenConnections.get,
       requestTimeouts = requestTimeouts.get,
-      idleTimeouts = idleTimeouts.get
-    )
+      idleTimeouts = idleTimeouts.get)
 
     def clear() {
       requestStarts.set(0L)
@@ -92,29 +90,29 @@ object StatsSupport {
           adjustMaxOpenConnections()
 
           val commandPipeline: CPL = {
-            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageStart] =>
+            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageStart] ⇒
               responseStarts.incrementAndGet()
               commandPL(x)
 
-            case x: IOServer.Tell if x.message.isInstanceOf[Timeout] =>
+            case x: IOServer.Tell if x.message.isInstanceOf[Timeout] ⇒
               requestTimeouts.incrementAndGet()
               commandPL(x)
 
-            case cmd => commandPL(cmd)
+            case cmd ⇒ commandPL(cmd)
           }
 
           val eventPipeline: EPL = {
-            case ev: HttpMessageStartEvent =>
+            case ev: HttpMessageStartEvent ⇒
               requestStarts.incrementAndGet()
               adjustMaxOpenRequests()
               eventPL(ev)
 
-            case x: HttpServer.Closed =>
+            case x: HttpServer.Closed ⇒
               connectionsClosed.incrementAndGet()
               if (x.reason == IdleTimeout) idleTimeouts.incrementAndGet()
               eventPL(x)
 
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
         }
     }

@@ -16,7 +16,6 @@
 
 package spray.http
 
-
 sealed trait HttpForm {
   type FieldType
   def fields: Map[String, FieldType]
@@ -32,7 +31,6 @@ case class FormData(fields: Map[String, String]) extends HttpForm {
 object FormData {
   val Empty = FormData(Map.empty)
 }
-
 
 /**
  * Model for `multipart/form-data` content as defined in RFC 2388.

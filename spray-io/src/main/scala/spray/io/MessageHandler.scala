@@ -19,25 +19,24 @@ package spray.io
 import akka.actor.ActorRef
 import akka.spray.RefUtils
 
-
-sealed trait MessageHandler extends (PipelineContext => () => ActorRef)
+sealed trait MessageHandler extends (PipelineContext ⇒ () ⇒ ActorRef)
 
 case class SingletonHandler(handler: ActorRef) extends MessageHandler {
   require(RefUtils.isLocal(handler), "The MessageHandler must not be a remote actor")
 
-  def apply(ctx: PipelineContext) = () => handler
+  def apply(ctx: PipelineContext) = () ⇒ handler
 }
 
-case class PerConnectionHandler(handlerCreator: PipelineContext => ActorRef) extends MessageHandler {
+case class PerConnectionHandler(handlerCreator: PipelineContext ⇒ ActorRef) extends MessageHandler {
   def apply(ctx: PipelineContext) = {
     val handler = handlerCreator(ctx)
     require(RefUtils.isLocal(handler), "The MessageHandler must not be a remote actor")
-    () => handler
+    () ⇒ handler
   }
 }
 
-case class PerMessageHandler(handlerCreator: PipelineContext => ActorRef) extends MessageHandler {
-  def apply(ctx: PipelineContext) = () => {
+case class PerMessageHandler(handlerCreator: PipelineContext ⇒ ActorRef) extends MessageHandler {
+  def apply(ctx: PipelineContext) = () ⇒ {
     val handler = handlerCreator(ctx)
     require(RefUtils.isLocal(handler), "The MessageHandler must not be a remote actor")
     handler

@@ -16,13 +16,12 @@
 
 package spray.routing
 
-import akka.actor.{ActorRefFactory, Actor, Props, ActorRef}
+import akka.actor.{ ActorRefFactory, Actor, Props, ActorRef }
 import akka.pattern.ask
 import akka.dispatch.Future
-import akka.util.{Duration, Timeout}
-import spray.can.server.{HttpServer, ServerSettings, SprayCanHttpServerApp}
-import spray.io.{ServerSSLEngineProvider, IOExtension}
-
+import akka.util.{ Duration, Timeout }
+import spray.can.server.{ HttpServer, ServerSettings, SprayCanHttpServerApp }
+import spray.io.{ ServerSSLEngineProvider, IOExtension }
 
 trait SimpleRoutingApp extends SprayCanHttpServerApp with HttpService {
 
@@ -30,8 +29,7 @@ trait SimpleRoutingApp extends SprayCanHttpServerApp with HttpService {
 
   implicit def actorRefFactory = _refFactory.getOrElse(
     sys.error("Route creation is not fully supported before `startServer` has been called, " +
-      "maybe you can turn your route definition into a `def` ?")
-  )
+      "maybe you can turn your route definition into a `def` ?"))
 
   /**
    * Starts a new spray-can HttpServer with the handler being a new HttpServiceActor for the given route and
@@ -45,10 +43,8 @@ trait SimpleRoutingApp extends SprayCanHttpServerApp with HttpService {
                   ioBridge: ActorRef = IOExtension(system).ioBridge(),
                   settings: ServerSettings = ServerSettings(),
                   serverActorName: String = "http-server",
-                  serviceActorName: String = "simple-service-actor")
-                 (route: => Route)
-                 (implicit sslEngineProvider: ServerSSLEngineProvider,
-                  bindingTimeout: Timeout = Duration(1, "sec")): Future[HttpServer.Bound] = {
+                  serviceActorName: String = "simple-service-actor")(route: ⇒ Route)(implicit sslEngineProvider: ServerSSLEngineProvider,
+                                                                                     bindingTimeout: Timeout = Duration(1, "sec")): Future[HttpServer.Bound] = {
     val service = system.actorOf(
       props = Props {
         new Actor {
@@ -56,8 +52,7 @@ trait SimpleRoutingApp extends SprayCanHttpServerApp with HttpService {
           def receive = runRoute(route)
         }
       },
-      name = serviceActorName
-    )
+      name = serviceActorName)
     (newHttpServer(service, ioBridge, settings, serverActorName) ? Bind(interface, port)).mapTo[HttpServer.Bound]
   }
 }

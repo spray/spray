@@ -16,9 +16,8 @@
 
 package spray.can.parsing
 
-import java.lang.{StringBuilder => JStringBuilder}
+import java.lang.{ StringBuilder ⇒ JStringBuilder }
 import spray.http.ChunkExtension
-
 
 class ChunkExtensionValueParser(settings: ParserSettings, chunkSize: Int, extCount: Int,
                                 extensions: List[ChunkExtension], extName: String) extends CharacterParser {
@@ -38,26 +37,26 @@ class ChunkExtensionValueParser(settings: ParserSettings, chunkSize: Int, extCou
     if (extValue.length <= settings.MaxChunkExtValueLength) {
       if (quoted) {
         cursor match {
-          case '"' => quoted = false; this
-          case '\r' | '\n' => ErrorState("Invalid chunk extension value: unclosed quoted string")
-          case x => extValue.append(x); this
+          case '"'         ⇒ quoted = false; this
+          case '\r' | '\n' ⇒ ErrorState("Invalid chunk extension value: unclosed quoted string")
+          case x           ⇒ extValue.append(x); this
         }
       } else {
         cursor match {
-          case x if isTokenChar(x) => extValue.append(x); this
-          case '"' if extValue.length == 0 => quoted = true; this
-          case ' ' | '\t' | '\r' => this
-          case ';' => next(new ChunkExtensionNameParser(settings, chunkSize, extCount + 1, newExtensions))
-          case '\n' => next {
+          case x if isTokenChar(x)         ⇒ extValue.append(x); this
+          case '"' if extValue.length == 0 ⇒ quoted = true; this
+          case ' ' | '\t' | '\r'           ⇒ this
+          case ';'                         ⇒ next(new ChunkExtensionNameParser(settings, chunkSize, extCount + 1, newExtensions))
+          case '\n' ⇒ next {
             if (chunkSize == 0) new TrailerParser(settings, newExtensions)
             else new ChunkBodyParser(settings, chunkSize, newExtensions)
           }
-          case _ => ErrorState("Invalid character '" + escape(cursor) + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
+          case _ ⇒ ErrorState("Invalid character '" + escape(cursor) + "', expected TOKEN CHAR, SPACE, TAB or EQUAL")
         }
       }
     } else {
       ErrorState("Chunk extension value exceeds the configured limit of " + settings.MaxChunkExtValueLength +
-                  " characters", "extension '" + extName + "'")
+        " characters", "extension '" + extName + "'")
     }
   }
 

@@ -16,10 +16,9 @@
 
 package spray.can.server
 
-import spray.can.rendering.{HttpResponsePartRenderingContext, ResponseRenderer}
+import spray.can.rendering.{ HttpResponsePartRenderingContext, ResponseRenderer }
 import spray.util.ConnectionCloseReasons.CleanClose
 import spray.io._
-
 
 object ResponseRendering {
 
@@ -28,13 +27,12 @@ object ResponseRendering {
       val renderer = new ResponseRenderer(
         settings.ServerHeader,
         settings.ChunklessStreaming,
-        settings.ResponseSizeHint.toInt
-      )
+        settings.ResponseSizeHint.toInt)
 
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           val commandPipeline: CPL = {
-            case ctx: HttpResponsePartRenderingContext =>
+            case ctx: HttpResponsePartRenderingContext ⇒
               val rendered = renderer.render(ctx)
               val buffers = rendered.buffers
               if (!buffers.isEmpty)
@@ -42,7 +40,7 @@ object ResponseRendering {
               if (rendered.closeConnection)
                 commandPL(IOPeer.Close(CleanClose))
 
-            case cmd => commandPL(cmd)
+            case cmd ⇒ commandPL(cmd)
           }
 
           val eventPipeline = eventPL

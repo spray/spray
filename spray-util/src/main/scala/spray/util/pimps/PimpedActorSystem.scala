@@ -22,7 +22,6 @@ import akka.pattern.ask
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
 
-
 class PimpedActorSystem(underlying: ActorSystem) {
 
   def terminationOf(subject: ActorRef): Future[Terminated] = {
@@ -32,10 +31,10 @@ class PimpedActorSystem(underlying: ActorSystem) {
           var receiver: Option[ActorRef] = None
 
           def receive = {
-            case subject: ActorRef =>
+            case subject: ActorRef ⇒
               context.watch(subject)
               receiver = Some(sender)
-            case x: Terminated =>
+            case x: Terminated ⇒
               receiver.foreach(_ ! x)
               context.stop(self)
           }

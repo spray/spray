@@ -19,10 +19,9 @@ package spray
 import akka.dispatch.Future
 import spray.http._
 
-
 package object client {
 
-  type SendReceive = HttpRequest => Future[HttpResponse]
+  type SendReceive = HttpRequest ⇒ Future[HttpResponse]
 
 }
 

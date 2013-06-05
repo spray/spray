@@ -22,11 +22,10 @@ import spray.can.client.HttpClient
 import spray.util._
 import spray.io._
 import spray.http._
-import akka.actor.{Status, ActorRef}
-
+import akka.actor.{ Status, ActorRef }
 
 trait ConnComponent {
-  this: HttpConduit =>
+  this: HttpConduit ⇒
 
   class Conn(index: Int) extends HttpConn {
     import Conn._
@@ -37,7 +36,7 @@ trait ConnComponent {
 
     def dispatch(ctx: HttpRequestContext) {
       connection match {
-        case Unconnected =>
+        case Unconnected ⇒
           log.debug("Opening connection {} to {}:{}", index, host, port)
           pendingResponses = 0
           connection = Connecting
@@ -46,11 +45,11 @@ trait ConnComponent {
           httpClient.tell(connect, Reply.withContext(this))
           dispatch(ctx)
 
-        case Connecting =>
+        case Connecting ⇒
           pendingRequests.enqueue(ctx.asInstanceOf[RequestContext])
           pendingResponses += 1
 
-        case Connected(handle) =>
+        case Connected(handle) ⇒
           dispatch(ctx, handle)
           pendingResponses += 1
       }
@@ -76,8 +75,8 @@ trait ConnComponent {
       import HttpProtocols._
       import HttpHeaders._
       def closeExpected = response.protocol match {
-        case `HTTP/1.0` => !response.headers.exists(_ matches { case x: Connection if x.hasKeepAlive => })
-        case `HTTP/1.1` => response.headers.exists(_ matches { case x: Connection if x.hasClose => })
+        case `HTTP/1.0` ⇒ !response.headers.exists(_ matches { case x: Connection if x.hasKeepAlive ⇒ })
+        case `HTTP/1.1` ⇒ response.headers.exists(_ matches { case x: Connection if x.hasClose ⇒ })
       }
       log.debug("Dispatching {} response to {}", response.status.value, requestString(request))
       val (errors, parsedResponse) = response.parseHeaders
@@ -119,10 +118,10 @@ trait ConnComponent {
 
     def close() {
       connection match {
-        case Connected(handle) =>
+        case Connected(handle) ⇒
           log.debug("Closing connection {} to due HttpConduit being closed", index)
           handle.handler ! HttpClient.Close(ConnectionCloseReasons.CleanClose)
-        case _ =>
+        case _ ⇒
       }
     }
 

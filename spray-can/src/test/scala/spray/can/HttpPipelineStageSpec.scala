@@ -21,7 +21,6 @@ import spray.util._
 import spray.http._
 import HttpHeaders.RawHeader
 
-
 trait HttpPipelineStageSpec extends PipelineStageTest {
   val Tell = IOPeer.Tell
   val AckEvent = IOPeer.AckEvent
@@ -29,13 +28,12 @@ trait HttpPipelineStageSpec extends PipelineStageTest {
 
   override def extractCommands(commands: List[Command]) =
     super.extractCommands(commands).map {
-      case SendString(string, ack) => SendString(
+      case SendString(string, ack) ⇒ SendString(
         string.fastSplit('\n').map {
-          case s if s.startsWith("Date:") => "Date: XXXX\r"
-          case s => s
-        }.mkString("\n"), ack
-      )
-      case x => x
+          case s if s.startsWith("Date:") ⇒ "Date: XXXX\r"
+          case s                          ⇒ s
+        }.mkString("\n"), ack)
+      case x ⇒ x
     }
 
   def request(content: String = "") = HttpRequest().withEntity(content)
@@ -63,9 +61,7 @@ trait HttpPipelineStageSpec extends PipelineStageTest {
     headers = List(
       RawHeader("content-length", "0"),
       RawHeader("date", "Thu, 25 Aug 2011 09:10:29 GMT"),
-      RawHeader("server", "spray/1.0")
-    )
-  )
+      RawHeader("server", "spray/1.0")))
 
   def response(content: String) = HttpResponse(
     status = 200,
@@ -73,10 +69,8 @@ trait HttpPipelineStageSpec extends PipelineStageTest {
       RawHeader("content-type", "text/plain"),
       RawHeader("content-length", content.length.toString),
       RawHeader("date", "Thu, 25 Aug 2011 09:10:29 GMT"),
-      RawHeader("server", "spray/1.0")
-    ),
-    entity = content
-  )
+      RawHeader("server", "spray/1.0")),
+    entity = content)
 
   def rawResponse = prep {
     """|HTTP/1.1 200 OK

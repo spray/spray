@@ -21,9 +21,9 @@ import java.util.Arrays
 sealed trait HttpEntity {
   def isEmpty: Boolean
   def buffer: Array[Byte]
-  def map(f: (ContentType, Array[Byte]) => (ContentType, Array[Byte])): HttpEntity
-  def flatMap(f: (ContentType, Array[Byte]) => HttpEntity): HttpEntity
-  def foreach(f: (ContentType, Array[Byte]) => Unit)
+  def map(f: (ContentType, Array[Byte]) ⇒ (ContentType, Array[Byte])): HttpEntity
+  def flatMap(f: (ContentType, Array[Byte]) ⇒ HttpEntity): HttpEntity
+  def foreach(f: (ContentType, Array[Byte]) ⇒ Unit)
   def orElse(other: HttpEntity): HttpEntity
   def asString: String
   def toOption: Option[HttpBody]
@@ -32,9 +32,9 @@ sealed trait HttpEntity {
 case object EmptyEntity extends HttpEntity {
   def isEmpty: Boolean = true
   val buffer = new Array[Byte](0)
-  def map(f: (ContentType, Array[Byte]) => (ContentType, Array[Byte])): HttpEntity = this
-  def flatMap(f: (ContentType, Array[Byte]) => HttpEntity): HttpEntity = this
-  def foreach(f: (ContentType, Array[Byte]) => Unit) {}
+  def map(f: (ContentType, Array[Byte]) ⇒ (ContentType, Array[Byte])): HttpEntity = this
+  def flatMap(f: (ContentType, Array[Byte]) ⇒ HttpEntity): HttpEntity = this
+  def foreach(f: (ContentType, Array[Byte]) ⇒ Unit) {}
   def orElse(other: HttpEntity): HttpEntity = other
   def asString = ""
   def toOption = None
@@ -42,12 +42,12 @@ case object EmptyEntity extends HttpEntity {
 
 case class HttpBody(contentType: ContentType, buffer: Array[Byte]) extends HttpEntity {
   def isEmpty: Boolean = false
-  def map(f: (ContentType, Array[Byte]) => (ContentType, Array[Byte])): HttpEntity = {
+  def map(f: (ContentType, Array[Byte]) ⇒ (ContentType, Array[Byte])): HttpEntity = {
     val (ct, buf) = f(contentType, buffer)
     if (ct != contentType || (buf ne buffer)) new HttpBody(ct, buf) else this
   }
-  def flatMap(f: (ContentType, Array[Byte]) => HttpEntity): HttpEntity = f(contentType, buffer)
-  def foreach(f: (ContentType, Array[Byte]) => Unit) { f(contentType, buffer) }
+  def flatMap(f: (ContentType, Array[Byte]) ⇒ HttpEntity): HttpEntity = f(contentType, buffer)
+  def foreach(f: (ContentType, Array[Byte]) ⇒ Unit) { f(contentType, buffer) }
   def orElse(other: HttpEntity): HttpEntity = this
   def asString = new String(buffer, contentType.charset.nioCharset)
   def toOption = Some(this)
@@ -57,8 +57,8 @@ case class HttpBody(contentType: ContentType, buffer: Array[Byte]) extends HttpE
 
   override def hashCode = contentType.## * 31 + Arrays.hashCode(buffer)
   override def equals(obj: Any) = obj match {
-    case x: HttpBody => (this eq x) || contentType == x.contentType && Arrays.equals(buffer, x.buffer)
-    case _ => false
+    case x: HttpBody ⇒ (this eq x) || contentType == x.contentType && Arrays.equals(buffer, x.buffer)
+    case _           ⇒ false
   }
 }
 
@@ -77,9 +77,8 @@ object HttpEntity {
     if (buffer.length == 0) EmptyEntity else HttpBody(ContentType.`application/octet-stream`, buffer)
 
   implicit def apply(optionalBody: Option[HttpBody]): HttpEntity = optionalBody match {
-    case Some(body) => body
-    case None => EmptyEntity
+    case Some(body) ⇒ body
+    case None       ⇒ EmptyEntity
   }
 }
-
 

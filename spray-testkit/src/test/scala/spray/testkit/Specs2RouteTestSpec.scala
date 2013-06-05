@@ -17,12 +17,11 @@
 package spray.testkit
 
 import org.specs2.mutable.Specification
-import spray.routing.{MethodRejection, RequestContext, Directives}
+import spray.routing.{ MethodRejection, RequestContext, Directives }
 import spray.http._
 import HttpMethods._
 import MediaTypes._
 import HttpCharsets._
-
 
 class Specs2RouteTestSpec extends Specification with Directives with Specs2RouteTest {
 
@@ -46,5 +45,5 @@ class Specs2RouteTestSpec extends Specification with Directives with Specs2Route
       }
     }
   }
-  
+
 }

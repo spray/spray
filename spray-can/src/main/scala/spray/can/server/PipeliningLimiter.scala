@@ -23,7 +23,6 @@ import spray.can.HttpEvent
 import spray.http._
 import spray.io._
 
-
 object PipeliningLimiter {
 
   def apply(pipeliningLimit: Int): PipelineStage =
@@ -38,7 +37,7 @@ object PipeliningLimiter {
           var readingStopped = false
 
           val commandPipeline: CPL = {
-            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEnd] =>
+            case x: HttpResponsePartRenderingContext if x.responsePart.isInstanceOf[HttpMessageEnd] ⇒
               openRequests -= 1
               commandPL(x)
               if (parkedRequestParts != null && !parkedRequestParts.isEmpty) {
@@ -46,11 +45,11 @@ object PipeliningLimiter {
                 if (parkedRequestParts.isEmpty) resumeReading()
               }
 
-            case cmd => commandPL(cmd)
+            case cmd ⇒ commandPL(cmd)
           }
 
           val eventPipeline: EPL = {
-            case ev@ HttpEvent(x: HttpRequestPart) =>
+            case ev @ HttpEvent(x: HttpRequestPart) ⇒
               if (openRequests == limit) {
                 stopReading()
                 park(x)
@@ -59,7 +58,7 @@ object PipeliningLimiter {
                 eventPL(ev)
               }
 
-            case ev => eventPL(ev)
+            case ev ⇒ eventPL(ev)
           }
 
           def stopReading() {
@@ -85,10 +84,10 @@ object PipeliningLimiter {
           def unparkOneRequest() {
             if (!parkedRequestParts.isEmpty) {
               parkedRequestParts.dequeue() match {
-                case part: HttpMessageEnd =>
+                case part: HttpMessageEnd ⇒
                   openRequests += 1
                   eventPL(HttpEvent(part))
-                case part =>
+                case part ⇒
                   eventPL(HttpEvent(part))
                   unparkOneRequest()
               }

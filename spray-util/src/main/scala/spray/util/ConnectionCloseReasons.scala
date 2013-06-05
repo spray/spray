@@ -16,7 +16,6 @@
 
 package spray.util
 
-
 // generally available trait modelling "connection closed" events,
 // defined here in spray-util because spray-util is the only module that is
 // available to all other spray modules (except spray-http) and we can this way
@@ -34,7 +33,6 @@ sealed trait ClosedEventReason
  * The reason why a connection is to be actively closed.
  */
 sealed trait CloseCommandReason extends ClosedEventReason
-
 
 object ConnectionCloseReasons {
   /**
@@ -80,39 +78,4 @@ object ConnectionCloseReasons {
    */
   case class IOError(error: Throwable) extends ClosedEventReason
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

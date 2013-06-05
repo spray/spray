@@ -20,9 +20,8 @@ import org.specs2.mutable.Specification
 import spray.http._
 import MediaTypes._
 
-
 class BasicMarshallersSpec extends Specification {
-  
+
   "The StringMarshaller" should {
     "encode strings to `text/plain` content in UTF-8 if the client accepts it" in {
       marshal("Ha“llo") === Right(HttpBody("Ha“llo"))

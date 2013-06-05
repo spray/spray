@@ -16,10 +16,9 @@
 
 package spray.http
 
-
 package object parser {
 
-  private val _identityFunc: Any => Any = x => x
-  def identityFunc[T]: T => T = _identityFunc.asInstanceOf[T => T]
+  private val _identityFunc: Any ⇒ Any = x ⇒ x
+  def identityFunc[T]: T ⇒ T = _identityFunc.asInstanceOf[T ⇒ T]
 
 }

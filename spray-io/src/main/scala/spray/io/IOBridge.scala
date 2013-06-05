@@ -22,21 +22,19 @@ import java.nio.channels._
 import com.typesafe.config.Config
 import scala.annotation.tailrec
 import akka.util.NonFatal
-import akka.spray.io.{IOBridgeDispatcherConfigurator, SelectorWakingMailbox}
+import akka.spray.io.{ IOBridgeDispatcherConfigurator, SelectorWakingMailbox }
 import akka.spray.UnregisteredActorRef
 import akka.event.Logging
 import akka.actor._
 import spray.util._
 import SelectionKey._
 
-
-final class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = true)
-  extends Actor with SprayActorLogging {
+final class IOBridge private[io] (settings: IOBridge.Settings, isRoot: Boolean = true)
+    extends Actor with SprayActorLogging {
   import IOBridge._
 
   private[this] val mailbox: SelectorWakingMailbox = IOExtension.myMailbox.getOrElse(
-    sys.error("Cannot create %s with a dispatcher other than %s".format(getClass, classOf[IOBridgeDispatcherConfigurator]))
-  )
+    sys.error("Cannot create %s with a dispatcher other than %s".format(getClass, classOf[IOBridgeDispatcherConfigurator])))
   import mailbox.selector
   private[this] val debug = TaggableLog(log, Logging.DebugLevel)
   private[this] val warning = TaggableLog(log, Logging.WarningLevel)
@@ -45,11 +43,10 @@ final class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = 
   private[this] val subBridgesEnabled = isRoot && settings.Parallelism > 1
   private[this] val subBridges: Array[ActorRef] =
     if (subBridgesEnabled) {
-      Array.tabulate(settings.Parallelism) { ix =>
+      Array.tabulate(settings.Parallelism) { ix ⇒
         context.actorOf(
           props = Props(new IOBridge(settings, isRoot = false)).withDispatcher(DispatcherName),
-          name = "sub-" + ix
-        )
+          name = "sub-" + ix)
       }
     } else Array.empty
 
@@ -70,49 +67,50 @@ final class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = 
     log.info("{} stopped", context.self.path)
   }
 
-  def receive: Receive = { case command: Command =>
-    try runCommand(command)
-    catch {
-      case e: CancelledKeyException if command.isInstanceOf[ConnectionCommand] =>
-        val handle = command.asInstanceOf[ConnectionCommand].handle
-        warning.log(handle.tag, "Could not execute command '{}': connection reset by peer", command)
-        handle.handler ! Closed(handle, ConnectionCloseReasons.PeerClosed)
-      case NonFatal(e) =>
-        val msg = "Error during execution of command '{}': {}"
-        command match {
-          case x: ConnectionCommand => error.log(x.handle.tag, msg, command, e)
-          case _ => log.error(e, msg, command, e)
-        }
-        sender ! Status.Failure(CommandException(command, e))
-    }
-    commandsExecuted += 1
-    while (mailbox.isEmpty) select()
+  def receive: Receive = {
+    case command: Command ⇒
+      try runCommand(command)
+      catch {
+        case e: CancelledKeyException if command.isInstanceOf[ConnectionCommand] ⇒
+          val handle = command.asInstanceOf[ConnectionCommand].handle
+          warning.log(handle.tag, "Could not execute command '{}': connection reset by peer", command)
+          handle.handler ! Closed(handle, ConnectionCloseReasons.PeerClosed)
+        case NonFatal(e) ⇒
+          val msg = "Error during execution of command '{}': {}"
+          command match {
+            case x: ConnectionCommand ⇒ error.log(x.handle.tag, msg, command, e)
+            case _                    ⇒ log.error(e, msg, command, e)
+          }
+          sender ! Status.Failure(CommandException(command, e))
+      }
+      commandsExecuted += 1
+      while (mailbox.isEmpty) select()
   }
 
   def runCommand(cmd: Command) {
     cmd match {
-      case cc: ConnectionCommand if cc.handle.selectionKey.selector == selector =>
+      case cc: ConnectionCommand if cc.handle.selectionKey.selector == selector ⇒
         cc match {
-          case Send(handle, buffers, ack) => send(handle, buffers, ack)
-          case StopReading(handle)        => handle.keyImpl.disable(OP_READ)
-          case ResumeReading(handle)      => handle.keyImpl.enable(OP_READ)
-          case Register(handle)           => register(handle)
-          case Close(handle, reason)      => scheduleClose(handle, reason)
+          case Send(handle, buffers, ack) ⇒ send(handle, buffers, ack)
+          case StopReading(handle)        ⇒ handle.keyImpl.disable(OP_READ)
+          case ResumeReading(handle)      ⇒ handle.keyImpl.enable(OP_READ)
+          case Register(handle)           ⇒ register(handle)
+          case Close(handle, reason)      ⇒ scheduleClose(handle, reason)
         }
-      case cc: ConnectionCommand =>
+      case cc: ConnectionCommand ⇒
         warning.log(cc.handle.tag, "Target socket of command {} is not handled by this IOBridge", cc)
         unhandled(cc)
 
-      case cmd: Connect       if isRoot => connect(cmd)
-      case cmd: Bind          if isRoot => bind(cmd)
-      case Unbind(bindingKey) if isRoot => unbind(bindingKey)
-      case GetStats                     => collectAndDispatchStats(sender)
+      case cmd: Connect if isRoot       ⇒ connect(cmd)
+      case cmd: Bind if isRoot          ⇒ bind(cmd)
+      case Unbind(bindingKey) if isRoot ⇒ unbind(bindingKey)
+      case GetStats                     ⇒ collectAndDispatchStats(sender)
 
-      case AssignConnection(channel, connectedEventReceiver, tag) =>
+      case AssignConnection(channel, connectedEventReceiver, tag) ⇒
         connectedEventReceiver ! registerConnectionAndCreateConnectedEvent(channel, tag)
-      case Select => // ignore, this message just restarts the selection loop
+      case Select ⇒ // ignore, this message just restarts the selection loop
 
-      case x => unhandled(x)
+      case x      ⇒ unhandled(x)
     }
   }
 
@@ -201,9 +199,9 @@ final class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = 
 
   def collectAndDispatchStats(resultReceiver: ActorRef) {
     log.debug("Collecting and dispatching stats to {}", resultReceiver)
-    def dispatch(result: Map[ActorRef, Stats]): List[ActorRef] => Unit = {
-      case Nil => resultReceiver ! StatsMap(result)
-      case head :: tail =>
+    def dispatch(result: Map[ActorRef, Stats]): List[ActorRef] ⇒ Unit = {
+      case Nil ⇒ resultReceiver ! StatsMap(result)
+      case head :: tail ⇒
         val receiver = new UnregisteredActorRef(context) {
           def handle(message: Any)(implicit sender: ActorRef) {
             val StatsMap(map) = message
@@ -249,18 +247,18 @@ final class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = 
     def writeToChannel() {
       if (!writeQueue.isEmpty) {
         writeQueue.dequeue() match {
-          case buf: ByteBuffer =>
+          case buf: ByteBuffer ⇒
             bytesWritten += channel.write(buf)
             if (buf.remaining == 0) writeToChannel() // we continue with the next buffer
             else {
               buf +=: writeQueue // we cannot drop the head and need to continue with it next time
               debug.log(handle.tag, "Wrote {} bytes, more pending", bytesWritten - oldBytesWritten)
             }
-          case Ack(receiver, msg) =>
+          case Ack(receiver, msg) ⇒
             receiver ! msg
             writeToChannel()
-          case ConnectionCloseReasons.ConfirmedClose => sendFIN(handle)
-          case reason: CloseCommandReason => close(handle, reason)
+          case ConnectionCloseReasons.ConfirmedClose ⇒ sendFIN(handle)
+          case reason: CloseCommandReason            ⇒ close(handle, reason)
         }
       } else {
         handle.keyImpl.disable(OP_WRITE)
@@ -270,7 +268,7 @@ final class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = 
 
     try writeToChannel()
     catch {
-      case NonFatal(e) =>
+      case NonFatal(e) ⇒
         warning.log(handle.tag, "Write error: closing connection due to {}", e)
         close(handle, ConnectionCloseReasons.IOError(e))
     }
@@ -300,7 +298,7 @@ final class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = 
         close(handle, reason)
       }
     } catch {
-      case NonFatal(e) =>
+      case NonFatal(e) ⇒
         warning.log(handle.tag, "Read error: closing connection due to {}", e)
         close(handle, ConnectionCloseReasons.IOError(e))
     }
@@ -317,7 +315,7 @@ final class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = 
       else
         cmdSender ! registerConnectionAndCreateConnectedEvent(channel, cmd.tag)
     } catch {
-      case NonFatal(e) => error.log(cmd.tag, "Accept error: could not accept new connection due to {}", e)
+      case NonFatal(e) ⇒ error.log(cmd.tag, "Accept error: could not accept new connection due to {}", e)
     }
   }
 
@@ -328,7 +326,7 @@ final class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = 
       debug.log(cmd.tag, "Connection established to {}", cmd.remoteAddress)
       completeConnect(key, cmd, cmdSender)
     } catch {
-      case NonFatal(e) =>
+      case NonFatal(e) ⇒
         error.log(cmd.tag, "Connect error: could not establish new connection to {} due to {}", cmd.remoteAddress, e)
         cmdSender ! Status.Failure(CommandException(cmd, e))
     }
@@ -357,8 +355,8 @@ final class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = 
     val socket = channel.socket
     // tcpReceiveBufferSize needs to be set on the ServerSocket before the bind, so we don't set it here
     if (settings.TcpSendBufferSize != 0) socket.setSendBufferSize(settings.TcpSendBufferSize.toInt)
-    if (settings.TcpKeepAlive != 0)      socket.setKeepAlive(settings.TcpKeepAlive > 0)
-    if (settings.TcpNoDelay != 0)        socket.setTcpNoDelay(settings.TcpNoDelay > 0)
+    if (settings.TcpKeepAlive != 0) socket.setKeepAlive(settings.TcpKeepAlive > 0)
+    if (settings.TcpNoDelay != 0) socket.setTcpNoDelay(settings.TcpNoDelay > 0)
     channel.configureBlocking(false)
   }
 
@@ -368,7 +366,7 @@ final class IOBridge private[io](settings: IOBridge.Settings, isRoot: Boolean = 
       selector.keys.asScala.foreach(_.channel.close())
       selector.close()
     } catch {
-      case NonFatal(e) => log.error(e, "Error closing selector or key")
+      case NonFatal(e) ⇒ log.error(e, "Error closing selector or key")
     }
   }
 }
@@ -379,18 +377,18 @@ object IOBridge {
   class Settings(config: Config) {
     protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.io")
 
-    val Parallelism          = c getInt     "parallelism"
-    val ReadBufferSize       = c getBytes   "read-buffer-size"
+    val Parallelism = c getInt "parallelism"
+    val ReadBufferSize = c getBytes "read-buffer-size"
 
-    val TcpReceiveBufferSize = c getBytes   "tcp.receive-buffer-size"
-    val TcpSendBufferSize    = c getBytes   "tcp.send-buffer-size"
-    val TcpKeepAlive         = c getInt     "tcp.keep-alive"
-    val TcpNoDelay           = c getInt     "tcp.no-delay"
+    val TcpReceiveBufferSize = c getBytes "tcp.receive-buffer-size"
+    val TcpSendBufferSize = c getBytes "tcp.send-buffer-size"
+    val TcpKeepAlive = c getInt "tcp.keep-alive"
+    val TcpNoDelay = c getInt "tcp.no-delay"
 
-    require(Parallelism          > 0,  "parallelism must be > 0")
-    require(ReadBufferSize       > 0,  "read-buffer-size must be > 0")
+    require(Parallelism > 0, "parallelism must be > 0")
+    require(ReadBufferSize > 0, "read-buffer-size must be > 0")
     require(TcpReceiveBufferSize >= 0, "receive-buffer-size must be >= 0")
-    require(TcpSendBufferSize    >= 0, "send-buffer-size must be >= 0")
+    require(TcpSendBufferSize >= 0, "send-buffer-size must be >= 0")
   }
 
   //# handle-interface
@@ -414,30 +412,32 @@ object IOBridge {
      * or for custom log marking (see `LogMarking` trait).
      */
     def tag: Any
-                                                                                                  // hide
-    /**                                                                                           // hide
+    // hide
+    /**
+     *                                                                                          // hide
      * The remote address this connection is attached to.                                         // hide
-     */                                                                                           // hide
-    def remoteAddress: InetSocketAddress =                                                        // hide
-       socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress]                              // hide
-                                                                                                  // hide
-    /**                                                                                           // hide
+     */ // hide
+    def remoteAddress: InetSocketAddress = // hide
+      socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress] // hide
+    // hide
+    /**
+     *                                                                                          // hide
      * The local address this connection is attached to.                                          // hide
-     */                                                                                           // hide
-    def localAddress: InetSocketAddress =                                                         // hide
-      socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress]                                // hide
-                                                                                                  // hide
+     */ // hide
+    def localAddress: InetSocketAddress = // hide
+      socket.getLocalSocketAddress.asInstanceOf[InetSocketAddress] // hide
+    // hide
     ////////////////////// INTERNAL //////////////////////////                                    // hide
-                                                                                                  // hide
-    private[IOBridge] def socket = channel.socket                                                 // hide
-    private[IOBridge] def channel = selectionKey.channel.asInstanceOf[SocketChannel]              // hide
-    private[IOBridge] def selectionKey = keyImpl.selectionKey                                     // hide
-    private[IOBridge] def keyImpl = key.asInstanceOf[KeyImpl]                                     // hide
-                                                                                                  // hide
+    // hide
+    private[IOBridge] def socket = channel.socket // hide
+    private[IOBridge] def channel = selectionKey.channel.asInstanceOf[SocketChannel] // hide
+    private[IOBridge] def selectionKey = keyImpl.selectionKey // hide
+    private[IOBridge] def keyImpl = key.asInstanceOf[KeyImpl] // hide
+    // hide
     // the writeQueue contains instances of either ByteBuffer, CloseCommandReason or Ack          // hide
     // we don't introduce a dedicated sum type for this since we want to save the extra           // hide
     // allocation that would be required for wrapping the ByteBuffers                             // hide
-    private[IOBridge] val writeQueue = collection.mutable.Queue.empty[AnyRef]                     // hide
+    private[IOBridge] val writeQueue = collection.mutable.Queue.empty[AnyRef] // hide
   }
   //#
 
@@ -469,8 +469,7 @@ object IOBridge {
     bytesWritten: Long,
     connectionsOpened: Long,
     connectionsClosed: Long,
-    commandsExecuted: Long
-  )
+    commandsExecuted: Long)
 
   ////////////// COMMANDS //////////////
 

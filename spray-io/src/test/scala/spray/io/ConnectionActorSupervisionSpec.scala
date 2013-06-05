@@ -18,13 +18,12 @@ package spray.io
 
 import java.nio.ByteBuffer
 import org.specs2.mutable.Specification
-import akka.actor.{ActorRef, Props, ActorSystem}
-import akka.util.{Duration, Timeout}
+import akka.actor.{ ActorRef, Props, ActorSystem }
+import akka.util.{ Duration, Timeout }
 import akka.pattern.ask
 import spray.util._
 
-
-class ConnectionActorSupervisionSpec extends Specification  {
+class ConnectionActorSupervisionSpec extends Specification {
   implicit val timeout: Timeout = Duration(1, "sec") // for asks below
   implicit val system = ActorSystem()
   val port = 23556
@@ -57,9 +56,9 @@ class ConnectionActorSupervisionSpec extends Specification  {
       def build(context: PipelineContext, commandPL: CPL, eventPL: EPL) = new Pipelines {
         val commandPipeline = commandPL
         val eventPipeline: EPL = {
-          case IOServer.Received(connection, buffer) if buffer.duplicate.drainToString == "CRASH" =>
+          case IOServer.Received(connection, buffer) if buffer.duplicate.drainToString == "CRASH" ⇒
             sys.error("Crash Boom Bang!")
-          case IOServer.Received(connection, buffer) =>
+          case IOServer.Received(connection, buffer) ⇒
             commandPipeline(IOServer.Send(buffer))
         }
       }
@@ -70,11 +69,11 @@ class ConnectionActorSupervisionSpec extends Specification  {
     var savedSender: ActorRef = _
     override def receive: Receive = myReceive orElse super.receive
     def myReceive: Receive = {
-      case (connection: Connection, string: String) =>
+      case (connection: Connection, string: String) ⇒
         savedSender = sender
         connection.ioBridge ! IOBridge.Send(connection, ByteBuffer.wrap(string.getBytes))
-      case IOPeer.Received(_, buffer) => savedSender ! buffer.drainToString
-      case IOPeer.Closed(connection, reason) => savedSender ! reason
+      case IOPeer.Received(_, buffer)        ⇒ savedSender ! buffer.drainToString
+      case IOPeer.Closed(connection, reason) ⇒ savedSender ! reason
     }
   }
 }

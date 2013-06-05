@@ -20,13 +20,12 @@ import annotation.tailrec
 import java.nio.ByteBuffer
 import spray.http.ChunkExtension
 
-
 class ChunkBodyParser(settings: ParserSettings, chunkSize: Int,
                       extensions: List[ChunkExtension] = Nil) extends IntermediateState {
 
   require(chunkSize > 0, "Chunk size must not be negative")
   require(chunkSize <= settings.MaxChunkSize,
-          "HTTP message chunk size " + chunkSize + " exceeds configured limit of " + settings.MaxChunkSize)
+    "HTTP message chunk size " + chunkSize + " exceeds configured limit of " + settings.MaxChunkSize)
 
   val body = new Array[Byte](chunkSize)
   var bytesRead = 0

@@ -16,7 +16,6 @@
 
 package spray.routing
 
-
 case class Reject(rejections: Seq[Rejection])
 
 object Reject {

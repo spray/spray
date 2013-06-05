@@ -18,17 +18,16 @@ package spray.can.parsing
 
 import spray.http.HttpProtocol
 
-
 class StatusCodeParser(settings: ParserSettings, protocol: HttpProtocol, isResponseToHeadRequest: Boolean)
     extends CharacterParser {
   var pos = 0
   var status = 0
 
   def handleChar(cursor: Char) = pos match {
-    case 0 => if ('1' <= cursor && cursor <= '5') { pos = 1; status = (cursor - '0') * 100; this } else badStatus
-    case 1 => if ('0' <= cursor && cursor <= '9') { pos = 2; status += (cursor - '0') * 10; this } else badStatus
-    case 2 => if ('0' <= cursor && cursor <= '9') { pos = 3; status += cursor - '0'; this } else badStatus
-    case 3 => if (cursor == ' ') new ReasonParser(settings, protocol, status, isResponseToHeadRequest) else badStatus
+    case 0 ⇒ if ('1' <= cursor && cursor <= '5') { pos = 1; status = (cursor - '0') * 100; this } else badStatus
+    case 1 ⇒ if ('0' <= cursor && cursor <= '9') { pos = 2; status += (cursor - '0') * 10; this } else badStatus
+    case 2 ⇒ if ('0' <= cursor && cursor <= '9') { pos = 3; status += cursor - '0'; this } else badStatus
+    case 3 ⇒ if (cursor == ' ') new ReasonParser(settings, protocol, status, isResponseToHeadRequest) else badStatus
   }
 
   def badStatus = ErrorState("Illegal response status code")

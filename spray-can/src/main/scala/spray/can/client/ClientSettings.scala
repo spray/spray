@@ -16,26 +16,25 @@
 
 package spray.can.client
 
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.{ ConfigFactory, Config }
 import spray.can.parsing.ParserSettings
 import spray.util.ConfigUtils
-
 
 class ClientSettings(config: Config) {
   protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.can.client")
 
-  val UserAgentHeader               = c getString       "user-agent-header"
-  val IdleTimeout                   = c getMilliseconds "idle-timeout"
-  val RequestTimeout                = c getMilliseconds "request-timeout"
-  val ReapingCycle                  = c getMilliseconds "reaping-cycle"
-  val ResponseChunkAggregationLimit = c getBytes        "response-chunk-aggregation-limit"
-  val RequestSizeHint               = c getBytes        "request-size-hint"
+  val UserAgentHeader = c getString "user-agent-header"
+  val IdleTimeout = c getMilliseconds "idle-timeout"
+  val RequestTimeout = c getMilliseconds "request-timeout"
+  val ReapingCycle = c getMilliseconds "reaping-cycle"
+  val ResponseChunkAggregationLimit = c getBytes "response-chunk-aggregation-limit"
+  val RequestSizeHint = c getBytes "request-size-hint"
 
   val ParserSettings = new ParserSettings(c.getConfig("parsing"))
 
-  require(IdleTimeout    >= 0, "idle-timeout must be >= 0")
+  require(IdleTimeout >= 0, "idle-timeout must be >= 0")
   require(RequestTimeout >= 0, "request-timeout must be >= 0")
-  require(ReapingCycle   >= 0, "reaping-cycle must be >= 0")
+  require(ReapingCycle >= 0, "reaping-cycle must be >= 0")
   require(0 <= ResponseChunkAggregationLimit && ResponseChunkAggregationLimit <= Int.MaxValue,
     "response-chunk-aggregation-limit must be >= 0 and <= Int.MaxValue")
   require(0 <= RequestSizeHint && RequestSizeHint <= Int.MaxValue,

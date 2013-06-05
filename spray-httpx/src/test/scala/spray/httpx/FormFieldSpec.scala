@@ -21,7 +21,6 @@ import org.specs2.mutable.Specification
 import spray.util._
 import spray.http._
 
-
 class FormFieldSpec extends Specification {
   import spray.httpx.marshalling._
   import spray.httpx.unmarshalling._

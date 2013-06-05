@@ -20,7 +20,6 @@ import org.specs2.mutable.Specification
 import akka.actor.ActorSystem
 import spray.util.ConnectionCloseReasons
 
-
 class ConnectionTimeoutsSpec extends Specification with PipelineStageTest {
   val system = ActorSystem()
   val stage = ConnectionTimeouts(50, system.log)
@@ -51,10 +50,9 @@ class ConnectionTimeoutsSpec extends Specification with PipelineStageTest {
     "reset the idle timer on Received events" in {
       stage.test {
         Thread.sleep(60)
-        val Commands(commands@ _*) = process(
+        val Commands(commands @ _*) = process(
           Received("Some Message"),
-          TickGenerator.Tick
-        )
+          TickGenerator.Tick)
         commands must beEmpty
       }
     }
@@ -63,8 +61,7 @@ class ConnectionTimeoutsSpec extends Specification with PipelineStageTest {
         Thread.sleep(60)
         val Commands(command) = process(
           Send("Some Message"),
-          TickGenerator.Tick
-        )
+          TickGenerator.Tick)
         command === SendString("Some Message")
       }
     }

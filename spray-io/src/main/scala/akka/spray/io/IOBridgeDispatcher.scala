@@ -18,14 +18,13 @@ package akka.spray.io
 
 import java.util.concurrent.TimeUnit
 import com.typesafe.config.Config
-import akka.util.{FiniteDuration, Duration}
+import akka.util.{ FiniteDuration, Duration }
 import akka.actor.ActorCell
 import akka.dispatch._
 import spray.io.IOExtension
 
-
 class IOBridgeDispatcherConfigurator(config: Config, prerequisites: DispatcherPrerequisites)
-  extends MessageDispatcherConfigurator(config, prerequisites) {
+    extends MessageDispatcherConfigurator(config, prerequisites) {
 
   override def dispatcher(): MessageDispatcher =
     new IOBridgeDispatcher(
@@ -34,7 +33,7 @@ class IOBridgeDispatcherConfigurator(config: Config, prerequisites: DispatcherPr
       _mailboxType = mailboxType(),
       _shutdownTimeout = Duration(config.getMilliseconds("shutdown-timeout"), TimeUnit.MILLISECONDS),
       _threadPoolConfig = ThreadPoolConfig() // we use the default config
-    )
+      )
 }
 
 // a PinnedDispatcher with a SelectorWakingMailbox
@@ -42,12 +41,11 @@ class IOBridgeDispatcherConfigurator(config: Config, prerequisites: DispatcherPr
 // (executeTask method). Since the IOBridge doesn't schedule Futures to its dispatcher this appears not to be
 // a problem. TODO: verify that a broken 'executeTask' is ok or override with selector waking
 class IOBridgeDispatcher(
-  _prerequisites: DispatcherPrerequisites,
-  _id: String,
-  _mailboxType: MailboxType,
-  _shutdownTimeout: FiniteDuration,
-  _threadPoolConfig: ThreadPoolConfig
-  ) extends PinnedDispatcher(_prerequisites, null,  _id, _mailboxType, _shutdownTimeout, _threadPoolConfig) {
+    _prerequisites: DispatcherPrerequisites,
+    _id: String,
+    _mailboxType: MailboxType,
+    _shutdownTimeout: FiniteDuration,
+    _threadPoolConfig: ThreadPoolConfig) extends PinnedDispatcher(_prerequisites, null, _id, _mailboxType, _shutdownTimeout, _threadPoolConfig) {
 
   override protected[akka] def createMailbox(actor: ActorCell) = {
     val mb = new SelectorWakingMailbox(actor, mailboxType.create(Some(actor)))

@@ -19,12 +19,11 @@ package spray.can.client
 import org.specs2.mutable.Specification
 import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActorRef
-import akka.actor.{ActorSystem, Actor}
-import spray.can.{HttpCommand, HttpPipelineStageSpec}
+import akka.actor.{ ActorSystem, Actor }
+import spray.can.{ HttpCommand, HttpPipelineStageSpec }
 import spray.io.IOPeer
 import spray.util._
 import spray.http._
-
 
 class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
   implicit val system = ActorSystem()
@@ -42,8 +41,7 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
       pipeline.test {
         val Commands(send, tell) = process(
           HttpCommand(request()) from sender1,
-          Received(rawResponse)
-        )
+          Received(rawResponse))
         send === SendString(emptyRawRequest())
         tell === Tell(sender1, response, connectionActor)
       }
@@ -56,8 +54,7 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
           Received(chunkedResponseStart),
           Received(messageChunk),
           Received(messageChunk),
-          Received(chunkedMessageEnd)
-        )
+          Received(chunkedMessageEnd))
         send === SendString(emptyRawRequest())
         entity === HttpBody("body123body123")
       }
@@ -65,14 +62,13 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
 
     "properly complete a 3 requests pipelined dialog" in {
       pipeline.test {
-        val Commands(commands@ _*) = process(
+        val Commands(commands @ _*) = process(
           HttpCommand(request("Request 1")) from sender1,
           HttpCommand(request("Request 2")) from sender2,
           HttpCommand(request("Request 3")) from sender1,
           Received(rawResponse("Response 1")),
           Received(rawResponse("Response 2")),
-          Received(rawResponse("Response 3"))
-        )
+          Received(rawResponse("Response 3")))
         commands(0) === SendString(rawRequest("Request 1"))
         commands(1) === SendString(rawRequest("Request 2"))
         commands(2) === SendString(rawRequest("Request 3"))
@@ -84,7 +80,7 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
 
     "properly handle responses to HEAD requests" in {
       pipeline.test {
-        val Commands(commands@ _*) = process(
+        val Commands(commands @ _*) = process(
           HttpCommand(HttpRequest(method = HttpMethods.HEAD)) from sender1,
           Received {
             prep {
@@ -96,8 +92,7 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
                  |
                  |"""
             }
-          }
-        )
+          })
         commands(0) === SendString(emptyRawRequest(method = "HEAD"))
         commands(1) === Tell(sender1, response("12345678").withEntity(""), connectionActor)
       }
@@ -111,8 +106,8 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
             `sender1`,
             HttpResponse(StatusCodes.OK, HttpBody(ContentType.`application/octet-stream`, body), _, _),
             `connectionActor`
-          )
-        ) = process(
+            )
+          ) = process(
           Received {
             prep {
               """|HTTP/1.1 200 OK
@@ -123,8 +118,7 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
                 |Yeah"""
             }
           },
-          IOPeer.Closed(testHandle, ConnectionCloseReasons.PeerClosed)
-        )
+          IOPeer.Closed(testHandle, ConnectionCloseReasons.PeerClosed))
         body.asString === "Yeah"
       }
     }
@@ -139,7 +133,7 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
   override def connectionActorContext = connectionActor.underlyingActor.getContext
 
   class NamedActor(val name: String) extends Actor {
-    def receive = { case 'name => sender ! name}
+    def receive = { case 'name ⇒ sender ! name }
     def getContext = context
   }
 
@@ -149,9 +143,7 @@ class HttpClientPipelineSpec extends Specification with HttpPipelineStageSpec {
         spray.can.client.user-agent-header = spray/1.0
         spray.can.client.idle-timeout = 50 ms
         spray.can.client.reaping-cycle = 0  # don't enable the TickGenerator
-      """)
-    ),
-    system.log
-  )
+      """)),
+    system.log)
 
 }

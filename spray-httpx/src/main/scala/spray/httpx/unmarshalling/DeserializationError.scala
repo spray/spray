@@ -16,7 +16,6 @@
 
 package spray.httpx.unmarshalling
 
-
 sealed trait DeserializationError
 
 case object ContentExpected extends DeserializationError

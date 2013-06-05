@@ -63,7 +63,7 @@ class PimpedByteBuffer(underlying: ByteBuffer) {
   def concat(buffers: Array[ByteBuffer]): ByteBuffer = {
     if (!underlying.hasArray) throw new IllegalArgumentException
     var x = underlying.remaining
-    tfor(0)(_ < buffers.length, _ + 1) { i =>
+    tfor(0)(_ < buffers.length, _ + 1) { i ⇒
       val buf = buffers(i)
       if (!buf.hasArray) throw new IllegalArgumentException
       x += buf.remaining
@@ -71,7 +71,7 @@ class PimpedByteBuffer(underlying: ByteBuffer) {
     val array = new Array[Byte](x)
     x = underlying.remaining
     System.arraycopy(underlying.array, underlying.position, array, 0, x)
-    tfor(0)(_ < buffers.length, _ + 1) { i =>
+    tfor(0)(_ < buffers.length, _ + 1) { i ⇒
       val buf = buffers(i)
       System.arraycopy(buf.array, buf.position, array, x, buf.remaining)
       x += buf.remaining

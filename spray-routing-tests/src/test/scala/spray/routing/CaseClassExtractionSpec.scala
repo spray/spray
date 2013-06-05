@@ -16,7 +16,6 @@
 
 package spray.routing
 
-
 class CaseClassExtractionSpec extends RoutingSpec {
 
   case class Age(years: Int)

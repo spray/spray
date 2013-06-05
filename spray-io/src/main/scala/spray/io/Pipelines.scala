@@ -16,7 +16,7 @@
 
 package spray.io
 
-import akka.actor.{ActorRef, ActorContext}
+import akka.actor.{ ActorRef, ActorContext }
 
 //# pipelines
 trait Pipelines {
@@ -33,7 +33,7 @@ object Pipelines {
 }
 
 object Pipeline {
-  val uninitialized: Pipeline[Any] = _ => throw new RuntimeException("Pipeline not yet initialized")
+  val uninitialized: Pipeline[Any] = _ ⇒ throw new RuntimeException("Pipeline not yet initialized")
 }
 
 trait PipelineContext {
@@ -50,13 +50,13 @@ object PipelineContext {
   }
 }
 
-trait PipelineStage { left =>
-  type CPL = Pipeline[Command]  // alias for brevity
-  type EPL = Pipeline[Event]    // alias for brevity
+trait PipelineStage { left ⇒
+  type CPL = Pipeline[Command] // alias for brevity
+  type EPL = Pipeline[Event] // alias for brevity
 
   def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines
 
-  def >> (right: PipelineStage): PipelineStage =
+  def >>(right: PipelineStage): PipelineStage =
     if (right == EmptyPipelineStage) this
     else new PipelineStage {
       def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = {
@@ -70,8 +70,7 @@ trait PipelineStage { left =>
         eplProxy = leftPL.eventPipeline
         Pipelines(
           commandPL = (if (leftPL.commandPipeline == cplProxyPoint) rightPL else leftPL).commandPipeline,
-          eventPL = (if (rightPL.eventPipeline == eplProxyPoint) leftPL else rightPL).eventPipeline
-        )
+          eventPL = (if (rightPL.eventPipeline == eplProxyPoint) leftPL else rightPL).eventPipeline)
       }
     }
 }
@@ -80,5 +79,5 @@ object EmptyPipelineStage extends PipelineStage {
 
   def build(ctx: PipelineContext, cpl: CPL, epl: EPL) = Pipelines(cpl, epl)
 
-  override def >> (right: PipelineStage) = right
+  override def >>(right: PipelineStage) = right
 }
