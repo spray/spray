@@ -16,10 +16,10 @@
 
 package spray.testkit
 
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit._
-import concurrent.duration.{Duration, FiniteDuration}
+import java.util.concurrent.{TimeUnit, CountDownLatch}
 import scala.collection.mutable.ListBuffer
+import akka.util.Duration
+import akka.util.duration._
 import akka.actor.{Status, ActorRefFactory, ActorRef}
 import akka.spray.UnregisteredActorRef
 import spray.routing.{RejectionHandler, Rejected, Rejection}
@@ -33,7 +33,7 @@ trait RouteResultComponent {
   /**
    * A receptacle for the response, rejections and potentially generated response chunks created by a route.
    */
-  class RouteResult(timeout: FiniteDuration)(implicit actorRefFactory: ActorRefFactory) {
+  class RouteResult(timeout: Duration)(implicit actorRefFactory: ActorRefFactory) {
     private[this] var _response: Option[HttpResponse] = None
     private[this] var _rejections: Option[List[Rejection]] = None
     private[this] val _chunks = ListBuffer.empty[MessageChunk]
@@ -71,7 +71,7 @@ trait RouteResultComponent {
     }
 
     private[testkit] def awaitResult: this.type = {
-      latch.await(timeout.toMillis, MILLISECONDS)
+      latch.await(timeout.toMillis, TimeUnit.MILLISECONDS)
       this
     }
 
@@ -114,9 +114,9 @@ trait RouteResultComponent {
     def ~> [T](f: RouteResult => T): T = f(this)
   }
 
-  case class RouteTestTimeout(duration: FiniteDuration)
+  case class RouteTestTimeout(duration: Duration)
 
   object RouteTestTimeout {
-    implicit val default = RouteTestTimeout(Duration(1, SECONDS))
+    implicit val default = RouteTestTimeout(1.second)
   }
 }

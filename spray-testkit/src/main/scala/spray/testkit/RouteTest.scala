@@ -16,10 +16,9 @@
 
 package spray.testkit
 
-import scala.util.DynamicVariable
-import scala.reflect.ClassTag
 import akka.actor.ActorSystem
 import org.scalatest.Suite
+import scala.util.DynamicVariable
 import spray.routing.directives.ExecutionDirectives
 import spray.routing._
 import spray.httpx.unmarshalling._
@@ -32,7 +31,6 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   this: TestFrameworkInterface =>
 
   implicit def system: ActorSystem
-  implicit def executor = system.dispatcher
 
   def cleanUp() { system.shutdown() }
 
@@ -54,7 +52,7 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   def charset: HttpCharset = contentType.charset
   def definedCharset: Option[HttpCharset] = contentType.definedCharset
   def headers: List[HttpHeader] = response.headers
-  def header[T <: HttpHeader :ClassTag]: Option[T] = response.header[T]
+  def header[T <: HttpHeader :ClassManifest]: Option[T] = response.header[T]
   def header(name: String): Option[HttpHeader] = response.headers.mapFind(h => if (h.name == name) Some(h) else None)
   def status: StatusCode = response.status
   def chunks: List[MessageChunk] = result.chunks

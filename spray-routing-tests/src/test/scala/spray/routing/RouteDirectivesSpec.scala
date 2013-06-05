@@ -16,7 +16,7 @@
 
 package spray.routing
 
-import scala.concurrent.Promise
+import akka.dispatch.Promise
 import spray.http._
 import HttpHeaders._
 import StatusCodes._

@@ -16,8 +16,8 @@
 
 package spray.io
 
-import scala.collection.mutable.ListBuffer
-import scala.util.DynamicVariable
+import collection.mutable.ListBuffer
+import util.DynamicVariable
 import java.nio.ByteBuffer
 import java.net.InetSocketAddress
 import scala.annotation.tailrec
@@ -53,9 +53,8 @@ trait PipelineStageTest { test =>
 
   def connectionActorContext: ActorContext = throw new UnsupportedOperationException
 
-  implicit class TestablePipelineStage(stage: PipelineStage) {
-    def test[T](body: => T): T = new Fixture(stage).run(body)
-  }
+  implicit def pimpPipelineStageWithTest(stage: PipelineStage): { def test[T](body: => T): T } =
+    new { def test[T](body: => T): T = new Fixture(stage).run(body) }
 
   private class Fixture(stage: PipelineStage) {
     var msgSender: ActorRef = null
@@ -113,7 +112,6 @@ trait PipelineStageTest { test =>
     case Message(msg, sndr) :: rest => fixture.msgSender = sndr; process(msg :: rest)
     case (x: Command) :: rest       => fixture.pipelines.commandPipeline(x); process(rest)
     case (x: Event) :: rest         => fixture.pipelines.eventPipeline(x); process(rest)
-    case x                          => throw new IllegalArgumentException(x.toString + " is neither Command nor Event")
   }
 
   def extractCommands(commands: List[Command]): List[Command] = commands.map {

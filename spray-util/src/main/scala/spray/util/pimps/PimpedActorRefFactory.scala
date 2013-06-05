@@ -14,19 +14,20 @@
  * limitations under the License.
  */
 
-package spray.routing
+package spray.util.pimps
 
-import shapeless.HList
+import akka.actor.{ActorSystem, ActorContext, ActorRefFactory}
+import akka.dispatch.MessageDispatcher
 
 
-object Route {
-  def apply(f: Route): Route = f
+class PimpedActorRefFactory(underlying: ActorRefFactory) {
 
-  /**
-   * Converts the route into a directive that never passes the request to its inner route
-   * (and always returns its underlying route).
-   */
-  def toDirective[L <: HList](route: Route): Directive[L] = new Directive[L] {
-    def happly(f: L => Route) = route
+  def messageDispatcher: MessageDispatcher = {
+    underlying match {
+      case x: ActorContext => x.dispatcher
+      case x: ActorSystem => x.dispatcher
+      case x => throw new IllegalArgumentException("Unsupported ActorRefFactory '" + x + "'")
+    }
   }
+
 }

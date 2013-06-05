@@ -17,7 +17,7 @@
 package spray.routing
 package directives
 
-import scala.util.matching.Regex
+import util.matching.Regex
 import spray.util._
 import shapeless._
 

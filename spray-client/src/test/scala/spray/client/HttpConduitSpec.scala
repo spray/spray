@@ -16,12 +16,11 @@
 
 package spray.client
 
-import java.util.concurrent.TimeUnit._
-import scala.util.Random
-import scala.concurrent.duration.Duration
-import scala.concurrent.Future
 import org.specs2.mutable.Specification
 import com.typesafe.config.ConfigFactory
+import util.Random
+import akka.util.Duration
+import akka.dispatch.Future
 import akka.pattern.ask
 import akka.actor._
 import spray.can.client.HttpClient
@@ -38,6 +37,8 @@ class HttpConduitSpec extends Specification {
   sequential
   implicit val system = ActorSystem()
   val ioBridge = IOExtension(system).ioBridge()
+
+  //logEventStreamOf[UnhandledMessage]
 
   val port = 17242
   val client = system.actorOf(Props(new HttpClient(ioBridge)), "http-client")
@@ -63,7 +64,7 @@ class HttpConduitSpec extends Specification {
       }
     ), "handler")
     system.actorOf(Props(new HttpServer(ioBridge, SingletonHandler(handler))), "http-server")
-      .ask(HttpServer.Bind("localhost", port))(Duration(1, SECONDS))
+      .ask(HttpServer.Bind("localhost", port))(Duration("1 s"))
       .await // block until the server is actually bound
   }
 

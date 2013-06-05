@@ -69,7 +69,7 @@ private[util] sealed abstract class LoggingContextLowerOrderImplicit1 extends Lo
 private[util] sealed abstract class LoggingContextLowerOrderImplicit2 {
   this: LoggingContext.type =>
 
-  implicit val NoLogging = fromAdapter(akka.event.NoLogging)
+  implicit val NoLogging = fromAdapter(akka.spray.NoLogging)
 }
 
 /**

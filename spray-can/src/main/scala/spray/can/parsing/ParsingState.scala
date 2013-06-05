@@ -16,8 +16,8 @@
 
 package spray.can.parsing
 
+import annotation.tailrec
 import java.nio.ByteBuffer
-import scala.annotation.tailrec
 import spray.http.StatusCodes.NotImplemented
 
 

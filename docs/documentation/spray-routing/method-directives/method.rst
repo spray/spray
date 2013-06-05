@@ -1,6 +1,0 @@
-.. _-method-:
-
-method
-======
-
-(todo)

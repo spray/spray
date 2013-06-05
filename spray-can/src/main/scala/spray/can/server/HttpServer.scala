@@ -16,8 +16,8 @@
 
 package spray.can.server
 
-import scala.concurrent.duration.FiniteDuration
 import akka.event.LoggingAdapter
+import akka.util.Duration
 import akka.actor.{Props, ActorRef}
 import spray.can.server.StatsSupport.StatsHolder
 import spray.io._
@@ -183,7 +183,7 @@ object HttpServer {
   }
 
   case class Stats(
-    uptime: FiniteDuration,
+    uptime: Duration,
     totalRequests: Long,
     openRequests: Long,
     maxOpenRequests: Long,

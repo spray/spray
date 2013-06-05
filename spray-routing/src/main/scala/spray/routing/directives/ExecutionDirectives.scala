@@ -17,8 +17,8 @@
 package spray.routing
 package directives
 
-import scala.util.control.NonFatal
 import akka.actor._
+import akka.util.NonFatal
 import spray.http.HttpHeader
 
 

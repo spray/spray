@@ -1,19 +1,18 @@
 package spray.examples
 
-import java.util.concurrent.TimeUnit._
-import scala.concurrent.duration.Duration
 import akka.pattern.ask
+import akka.util.duration._
 import akka.actor._
 import spray.io.{IOBridge, IOExtension}
 import spray.can.server.HttpServer
-import spray.util._
+import spray.util.SprayActorLogging
 import spray.http._
 import HttpMethods._
 import MediaTypes._
 
 
 class DemoService extends Actor with SprayActorLogging {
-  implicit val timeout: akka.util.Timeout = Duration(1, "sec") // for the actor 'asks' we use below
+  implicit val timeout: akka.util.Timeout = 1.second // for the actor 'asks' we use below
 
   def receive = {
     case HttpRequest(GET, "/", _, _, _) =>
@@ -48,7 +47,7 @@ class DemoService extends Actor with SprayActorLogging {
 
     case HttpRequest(GET, "/stop", _, _, _) =>
       sender ! HttpResponse(entity = "Shutting down in 1 second ...")
-      context.system.scheduler.scheduleOnce(Duration(1, SECONDS), new Runnable { def run() { context.system.shutdown() } })
+      context.system.scheduler.scheduleOnce(1.second, new Runnable { def run() { context.system.shutdown() } })
 
     case _: HttpRequest => sender ! HttpResponse(status = 404, entity = "Unknown resource!")
 
@@ -91,7 +90,7 @@ class DemoService extends Actor with SprayActorLogging {
         <body>
           <h1>HttpServer Stats</h1>
           <table>
-            <tr><td>uptime:</td><td>{s.uptime.formatHMS}</td></tr>
+            <tr><td>uptime:</td><td>{s.uptime.printHMS}</td></tr>
             <tr><td>totalRequests:</td><td>{s.totalRequests}</td></tr>
             <tr><td>openRequests:</td><td>{s.openRequests}</td></tr>
             <tr><td>maxOpenRequests:</td><td>{s.maxOpenRequests}</td></tr>
@@ -144,7 +143,7 @@ class DemoService extends Actor with SprayActorLogging {
 
       case Ok(remaining) =>
         log.info("Sending response chunk ...")
-        context.system.scheduler.scheduleOnce(Duration(100, MILLISECONDS)) {
+        context.system.scheduler.scheduleOnce(100.millis) {
           peer ! MessageChunk(DateTime.now.toIsoDateTimeString + ", ").withSentAck(Ok(remaining - 1))
         }
 

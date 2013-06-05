@@ -16,17 +16,27 @@
 
 package spray.routing
 
-import shapeless.HList
+import directives.ScalateSupport
 
 
-object Route {
-  def apply(f: Route): Route = f
+class ScalateSupportSpec extends RoutingSpec with ScalateSupport {
 
-  /**
-   * Converts the route into a directive that never passes the request to its inner route
-   * (and always returns its underlying route).
-   */
-  def toDirective[L <: HList](route: Route): Directive[L] = new Directive[L] {
-    def happly(f: L => Route) = route
+  "The ScalateSupport" should {
+    "enable the rendering of Scalate templates" in {
+      Get() ~> render("scalate/example.mustache", Map(
+        "name" -> "Chris",
+        "value" -> 10000,
+        "taxed_value" -> (10000 - (10000 * 0.4)),
+        "in_ca" -> true
+        )
+      ) ~> check {
+        entityAs[String] ===
+          """|Hello Chris
+             |You have just won $%,d!
+             |Well, $%,d, after taxes.
+             |""".format(10000,6000).stripMargin
+      }
+    }
   }
+  
 }

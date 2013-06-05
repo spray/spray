@@ -16,21 +16,19 @@
 
 package spray.io
 
-import java.nio.ByteBuffer
-import java.util.concurrent.TimeUnit._
-import scala.concurrent.Future
-import scala.concurrent.duration.Duration
 import akka.pattern.ask
-import akka.util.Timeout
+import java.nio.ByteBuffer
+import akka.util.{Timeout, Duration}
 import akka.actor._
-import org.specs2.mutable.Specification
+import akka.dispatch.Future
 import org.specs2.matcher.Matcher
+import org.specs2.mutable.Specification
 import spray.util._
 import ConnectionCloseReasons._
 
 
 class IOBridgeSpec extends Specification {
-  implicit val timeout: Timeout = Duration(1000, MILLISECONDS)
+  implicit val timeout: Timeout = Duration("1000 ms")
   implicit val system = ActorSystem("IOBridgeSpec")
   val port = 23456
 

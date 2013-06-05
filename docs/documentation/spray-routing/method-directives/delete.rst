@@ -1,6 +1,0 @@
-.. _-delete-:
-
-delete
-======
-
-(todo)

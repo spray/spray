@@ -17,10 +17,9 @@
 package spray.caching
 
 import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap
-import scala.annotation.tailrec
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Promise, ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import annotation.tailrec
+import akka.dispatch.{Promise, ExecutionContext, Future}
+import akka.util.Duration
 
 
 object LruCache {
@@ -59,15 +58,12 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
 
   def fromFuture(key: Any)(future: => Future[V])(implicit executor: ExecutionContext): Future[V] = {
     val promise = Promise[V]()
-    store.putIfAbsent(key, promise.future) match {
-      case null =>
-        val fut = future
-        fut.onComplete { value =>
-          promise.complete(value)
-          // in case of exceptions we remove the cache entry (i.e. try again later)
-          if (value.isFailure) store.remove(key, promise)
-        }
-        fut
+    store.putIfAbsent(key, promise) match {
+      case null => future.onComplete { value =>
+        promise.complete(value)
+        // in case of exceptions we remove the cache entry (i.e. try again later)
+        if (value.isLeft) store.remove(key, promise)
+      }
       case existingFuture => existingFuture
     }
   }
@@ -109,7 +105,7 @@ final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
     case null => None
     case entry if (isAlive(entry)) =>
       entry.refresh()
-      Some(entry.future)
+      Some(entry.promise)
     case entry =>
       // remove entry, but only if it hasn't been removed and reinserted in the meantime
       if (store.remove(key, entry)) None // successfully removed
@@ -126,28 +122,28 @@ final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
           // in the meantime someone might have already seen the too fresh timestamp we just put in,
           // but since the original entry is also still alive this doesn't matter
           newEntry.created = entry.created
-          entry.future
+          entry.promise
         } else future
       }
       valueFuture.onComplete { value =>
         newEntry.promise.tryComplete(value)
         // in case of exceptions we remove the cache entry (i.e. try again later)
-        if (value.isFailure) store.remove(key, newEntry)
+        if (value.isLeft) store.remove(key, newEntry)
       }
-      newEntry.promise.future
+      newEntry.promise
     }
     store.get(key) match {
       case null => insert()
       case entry if (isAlive(entry)) =>
         entry.refresh()
-        entry.future
+        entry.promise
       case entry => insert()
     }
   }
 
   def remove(key: Any) = store.remove(key) match {
     case null => None
-    case entry if (isAlive(entry)) => Some(entry.future)
+    case entry if (isAlive(entry)) => Some(entry.promise)
     case entry => None
   }
 
@@ -163,14 +159,13 @@ final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
 private[caching] class Entry[T](val promise: Promise[T]) {
   @volatile var created = System.currentTimeMillis
   @volatile var lastAccessed = System.currentTimeMillis
-  def future = promise.future
   def refresh() {
     // we dont care whether we overwrite a potentially newer value
     lastAccessed = System.currentTimeMillis
   }
-  override def toString = future.value match {
-    case Some(Success(value)) => value.toString
-    case Some(Failure(exception)) => exception.toString
+  override def toString = promise.value match {
+    case Some(Right(value)) => value.toString
+    case Some(Left(exception)) => exception.toString
     case None => "pending"
   }
 }

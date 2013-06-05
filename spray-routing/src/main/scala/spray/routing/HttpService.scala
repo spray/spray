@@ -16,10 +16,10 @@
 
 package spray.routing
 
-import scala.util.control.NonFatal
-import scala.concurrent.ExecutionContext
+import akka.util.NonFatal
+import akka.dispatch.ExecutionContext
 import akka.actor._
-import spray.util.LoggingContext
+import spray.util._
 import spray.http._
 import StatusCodes._
 
@@ -37,7 +37,7 @@ trait HttpService extends Directives {
   /**
    * Supplies an ExecutionContext (mainly for Future scheduling) from the actorRefFactory.
    */
-  implicit def executionContext: ExecutionContext = actorRefFactory.dispatcher
+  implicit def executionContext: ExecutionContext = actorRefFactory.messageDispatcher
 
   /**
    * Supplies the actor behavior for executing the given route.
@@ -45,10 +45,13 @@ trait HttpService extends Directives {
    * Note that the route parameter is call-by-name to alleviate initialization order issues when
    * mixing into an Actor.
    */
-  def runRoute(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext,
-                             rs: RoutingSettings, log: LoggingContext): Actor.Receive = {
+  def runRoute(route: => Route)(implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext,
+                                rs: RoutingSettings, log: LoggingContext): Actor.Receive = {
+    // we don't use a lazy val for the 'sealedRoute' member here, since we can be sure to be running in an Actor
+    // (we require an implicit ActorContext) and can therefore avoid the "lazy val"-synchronization
+    var sr: Route = null
     val sealedExceptionHandler = eh orElse ExceptionHandler.default
-    val sealedRoute = sealRoute(route)(sealedExceptionHandler, rh)
+    def sealedRoute: Route = { if (sr == null) sr = sealRoute(route); sr }
     def contextFor(req: HttpRequest) = RequestContext(req, ac.sender, req.path).withDefaultSender(ac.self)
 
     {

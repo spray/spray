@@ -17,10 +17,9 @@
 package spray.util
 package pimps
 
-import java.util.{List => JList}
-import scala.collection.LinearSeqOptimized
 import org.specs2.mutable._
-
+import collection.LinearSeqOptimized
+import java.util.{List => JList}
 
 class PimpedClassSpec extends Specification {
   

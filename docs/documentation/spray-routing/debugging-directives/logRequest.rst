@@ -1,6 +1,0 @@
-.. _-logRequest-:
-
-logRequest
-==========
-
-(todo)

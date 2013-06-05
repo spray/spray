@@ -16,8 +16,7 @@
 
 package spray.routing
 
-import scala.concurrent.{Future, Promise}
-import akka.event.NoLogging
+import akka.dispatch.Promise
 import spray.routing.authentication._
 import spray.http._
 import HttpHeaders._
@@ -25,10 +24,10 @@ import HttpHeaders._
 
 class SecurityDirectivesSpec extends RoutingSpec {
 
-  val dontAuth = UserPassAuthenticator[BasicUserContext](_ => Promise.successful(None).future)
+  val dontAuth = UserPassAuthenticator[BasicUserContext](_ => Promise.successful(None))
 
   val doAuth = UserPassAuthenticator[BasicUserContext] { userPassOption =>
-    Promise.successful(Some(BasicUserContext(userPassOption.get.user))).future
+    Promise.successful(Some(BasicUserContext(userPassOption.get.user)))
   }
 
   "the 'authenticate(BasicAuth())' directive" should {
@@ -38,36 +37,22 @@ class SecurityDirectivesSpec extends RoutingSpec {
       } ~> check { rejection === AuthenticationRequiredRejection("Basic", "Realm", Map.empty) }
     }
     "reject unauthenticated requests with Authorization header with an AuthorizationFailedRejection" in {
-      Get() ~> Authorization(BasicHttpCredentials("Bob", "")) ~> {
+      Get() ~> addHeader(Authorization(BasicHttpCredentials("Bob", ""))) ~> {
         authenticate(BasicAuth(dontAuth, "Realm")) { echoComplete }
       } ~> check { rejection === AuthenticationFailedRejection("Realm") }
     }
     "extract the object representing the user identity created by successful authentication" in {
-      Get() ~> Authorization(BasicHttpCredentials("Alice", "")) ~> {
+      Get() ~> addHeader(Authorization(BasicHttpCredentials("Alice", ""))) ~> {
         authenticate(BasicAuth(doAuth, "Realm")) { echoComplete }
       } ~> check { entityAs[String] === "BasicUserContext(Alice)" }
     }
     "properly handle exceptions thrown in its inner route" in {
-      implicit val log = NoLogging // suppress logging of the error
-      Get() ~> Authorization(BasicHttpCredentials("Alice", "")) ~> {
+      implicit val log = akka.spray.NoLogging // suppress logging of the error
+      Get() ~> addHeader(Authorization(BasicHttpCredentials("Alice", ""))) ~> {
         handleExceptions(ExceptionHandler.default) {
           authenticate(BasicAuth(doAuth, "Realm")) { _ => sys.error("Nope") }
         }
       } ~> check { status === StatusCodes.InternalServerError }
-    }
-  }
-
-  "the 'authenticate(<ContextAuthenticator>)' directive" should {
-    val myAuthenticator: ContextAuthenticator[Int] = ctx => Future {
-      Either.cond(ctx.request.host == "spray.io", 42, AuthenticationRequiredRejection("my-scheme", "MyRealm", Map()))
-    }
-    "reject requests not satisfying the filter condition" in {
-      Get() ~> authenticate(myAuthenticator) { echoComplete } ~>
-      check { rejection === AuthenticationRequiredRejection("my-scheme", "MyRealm", Map.empty) }
-    }
-    "pass on the authenticator extraction if the filter conditions is met" in {
-      Get() ~> Host("spray.io") ~> authenticate(myAuthenticator) { echoComplete } ~>
-      check { entityAs[String] === "42" }
     }
   }
 }

@@ -16,7 +16,7 @@
 
 package spray
 
-import shapeless.HNil
+import shapeless.{HNil, HList}
 
 
 package object routing {

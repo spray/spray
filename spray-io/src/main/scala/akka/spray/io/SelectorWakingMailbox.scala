@@ -23,7 +23,7 @@ import akka.actor._
 import akka.dispatch._
 
 
-class SelectorWakingMailbox(system: ActorSystem, _messageQueue: MessageQueue) extends Mailbox(_messageQueue) {
+class SelectorWakingMailbox(_actor: ActorCell, _messageQueue: MessageQueue) extends Mailbox(_actor, _messageQueue) {
   val selector = SelectorProvider.provider.openSelector
 
   override def enqueue(receiver: ActorRef, handle: Envelope) {
@@ -42,11 +42,11 @@ class SelectorWakingMailbox(system: ActorSystem, _messageQueue: MessageQueue) ex
   def systemEnqueue(receiver: ActorRef, message: SystemMessage) {
     doSystemEnqueue(receiver, message)
     selector.wakeup()
-    if (!message.isInstanceOf[Terminate]) enqueueSelect(receiver)
+    enqueueSelect(receiver)
   }
 
   private def enqueueSelect(receiver: ActorRef) {
-    super.enqueue(receiver, Envelope(IOBridge.Select, receiver, system))
+    super.enqueue(receiver, Envelope(IOBridge.Select, null)(actor.system))
   }
 
   def isEmpty = !hasMessages && !hasSystemMessages
@@ -62,29 +62,25 @@ class SelectorWakingMailbox(system: ActorSystem, _messageQueue: MessageQueue) ex
   @tailrec
   private def doSystemEnqueue(receiver: ActorRef, message: SystemMessage): Unit = {
     assert(message.next eq null)
-    if (Mailbox.debug) println(receiver + " having enqueued " + message)
+    if (Mailbox.debug) println(actor.self + " having enqueued " + message)
     val head = systemQueueGet
-    if (head == NoMessage) {
-      if (actor ne null) actor.systemImpl.deadLetterMailbox.systemEnqueue(receiver, message)
-    } else {
-      /*
-       * this write is safely published by the compareAndSet contained within
-       * systemQueuePut; “Intra-Thread Semantics” on page 12 of the JSR133 spec
-       * guarantees that “head” uses the value obtained from systemQueueGet above.
-       * Hence, SystemMessage.next does not need to be volatile.
-       */
-      message.next = head
-      if (!systemQueuePut(head, message)) {
-        message.next = null
-        doSystemEnqueue(receiver, message)
-      }
+    /*
+     * this write is safely published by the compareAndSet contained within
+     * systemQueuePut; “Intra-Thread Semantics” on page 12 of the JSR133 spec
+     * guarantees that “head” uses the value obtained from systemQueueGet above.
+     * Hence, SystemMessage.next does not need to be volatile.
+     */
+    message.next = head
+    if (!systemQueuePut(head, message)) {
+      message.next = null
+      doSystemEnqueue(receiver, message)
     }
   }
 
   @tailrec
-  final def systemDrain(newContents: SystemMessage): SystemMessage = {
+  final def systemDrain(): SystemMessage = {
     val head = systemQueueGet
-    if (systemQueuePut(head, newContents)) SystemMessage.reverse(head) else systemDrain(newContents)
+    if (systemQueuePut(head, null)) SystemMessage.reverse(head) else systemDrain()
   }
 
   def hasSystemMessages: Boolean = systemQueueGet ne null

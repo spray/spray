@@ -1,6 +1,0 @@
-.. _-mapHttpResponseHeaders-:
-
-mapHttpResponseHeaders
-======================
-
-(todo)

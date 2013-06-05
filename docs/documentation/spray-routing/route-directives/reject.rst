@@ -1,6 +1,0 @@
-.. _-reject-:
-
-reject
-======
-
-(todo)

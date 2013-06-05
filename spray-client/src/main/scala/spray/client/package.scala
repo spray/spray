@@ -16,7 +16,7 @@
 
 package spray
 
-import scala.concurrent.Future
+import akka.dispatch.Future
 import spray.http._
 
 

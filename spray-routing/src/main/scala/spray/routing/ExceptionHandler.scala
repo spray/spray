@@ -16,7 +16,7 @@
 
 package spray.routing
 
-import scala.util.control.NonFatal
+import akka.util.NonFatal
 import spray.util.LoggingContext
 import spray.http._
 import StatusCodes._

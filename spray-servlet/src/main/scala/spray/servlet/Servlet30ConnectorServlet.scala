@@ -17,13 +17,12 @@
 package spray.servlet
 
 import java.io.IOException
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit._
+import java.util.concurrent.{TimeUnit, CountDownLatch}
 import javax.servlet.{AsyncEvent, AsyncListener}
 import javax.servlet.http.{HttpServlet, HttpServletResponse, HttpServletRequest}
 import java.util.concurrent.atomic.AtomicInteger
-import scala.util.control.NonFatal
 import akka.actor.{UnhandledMessage, ActorRef, ActorSystem}
+import akka.util.NonFatal
 import akka.spray.{RefUtils, UnregisteredActorRef}
 import spray.http._
 import spray.util._
@@ -177,7 +176,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
     }
     timeoutHandler.tell(Timeout(req), responder)
     // we need to react synchronously to Timeout events (thx to the great Servlet API design), so we block here
-    latch.await(settings.TimeoutTimeout, MILLISECONDS)
+    latch.await(settings.TimeoutTimeout, TimeUnit.MILLISECONDS)
     if (latch.getCount != 0) writeResponse(timeoutResponse(req), hsResponse, req) {}
   }
 

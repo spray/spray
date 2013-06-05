@@ -17,7 +17,7 @@
 package spray.routing
 package directives
 
-import scala.util.control.NonFatal
+import akka.util.NonFatal
 import shapeless._
 import spray.http._
 import spray.util._

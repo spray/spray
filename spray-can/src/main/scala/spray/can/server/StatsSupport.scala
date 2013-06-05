@@ -16,9 +16,9 @@
 package spray.can.server
 
 import java.util.concurrent.atomic.AtomicLong
-import java.util.concurrent.TimeUnit._
-import scala.annotation.tailrec
-import scala.concurrent.duration.Duration
+import annotation.tailrec
+import akka.util.Duration
+import java.util.concurrent.TimeUnit
 import spray.http.{Timeout, HttpMessageStart}
 import spray.can.rendering.HttpResponsePartRenderingContext
 import spray.can.server.RequestParsing.HttpMessageStartEvent
@@ -60,7 +60,7 @@ object StatsSupport {
     }
 
     def toStats = HttpServer.Stats(
-      uptime = Duration(System.currentTimeMillis - startTimestamp, MILLISECONDS),
+      uptime = Duration(System.currentTimeMillis - startTimestamp, TimeUnit.MILLISECONDS),
       totalRequests = requestStarts.get,
       openRequests = requestStarts.get - responseStarts.get,
       maxOpenRequests = maxOpenRequests.get,

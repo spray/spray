@@ -1,6 +1,0 @@
-.. _-optionalHeaderValue-:
-
-optionalHeaderValue
-===================
-
-(todo)

@@ -18,7 +18,7 @@ package spray.routing
 package authentication
 
 import com.typesafe.config.Config
-import scala.concurrent.{ExecutionContext, Future}
+import akka.dispatch.{ExecutionContext, Future}
 import spray.http._
 import spray.util._
 import HttpHeaders._
@@ -42,7 +42,6 @@ trait HttpAuthenticator[U] extends ContextAuthenticator[U] {
     }
   }
 
-  implicit def executionContext: ExecutionContext
   def scheme: String
   def realm: String
   def params(ctx: RequestContext): Map[String, String]
@@ -55,7 +54,6 @@ trait HttpAuthenticator[U] extends ContextAuthenticator[U] {
  * The BasicHttpAuthenticator implements HTTP Basic Auth.
  */
 class BasicHttpAuthenticator[U](val realm: String, val userPassAuthenticator: UserPassAuthenticator[U])
-                               (implicit val executionContext: ExecutionContext)
   extends HttpAuthenticator[U] {
 
   def scheme = "Basic"
@@ -72,22 +70,22 @@ class BasicHttpAuthenticator[U](val realm: String, val userPassAuthenticator: Us
 }
 
 object BasicAuth {
-  def apply()(implicit settings: RoutingSettings, ec: ExecutionContext): BasicHttpAuthenticator[BasicUserContext] =
+  def apply()(implicit settings: RoutingSettings,
+              executor: ExecutionContext): BasicHttpAuthenticator[BasicUserContext] =
     apply("Secured Resource")
 
   def apply(realm: String)(implicit settings: RoutingSettings,
-                           ec: ExecutionContext): BasicHttpAuthenticator[BasicUserContext] =
+                               executor: ExecutionContext): BasicHttpAuthenticator[BasicUserContext] =
     apply(realm, userPass => BasicUserContext(userPass.user))
 
   def apply[T](realm: String, createUser: UserPass => T)
-                  (implicit settings: RoutingSettings, ec: ExecutionContext): BasicHttpAuthenticator[T] =
+                  (implicit settings: RoutingSettings, executor: ExecutionContext): BasicHttpAuthenticator[T] =
     apply(realm, settings.Users, createUser)
 
   def apply[T](realm: String, config: Config, createUser: UserPass => T)
-                  (implicit ec: ExecutionContext): BasicHttpAuthenticator[T] =
+                  (implicit executor: ExecutionContext): BasicHttpAuthenticator[T] =
     apply(UserPassAuthenticator.fromConfig(config)(createUser), realm)
 
-  def apply[T](authenticator: UserPassAuthenticator[T], realm: String)
-              (implicit ec: ExecutionContext): BasicHttpAuthenticator[T] =
+  def apply[T](authenticator: UserPassAuthenticator[T], realm: String): BasicHttpAuthenticator[T] =
     new BasicHttpAuthenticator[T](realm, authenticator)
 }

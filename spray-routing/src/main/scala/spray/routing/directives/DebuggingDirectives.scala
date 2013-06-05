@@ -90,9 +90,9 @@ object LoggingMagnet {
 }
 
 
-case class LogEntry(obj: Any, level: LogLevel = DebugLevel) {
+case class LogEntry(obj: Any, level: Int = DebugLevel) {
   def logTo(log: LoggingAdapter) {
-    log.log(level, obj.toString)
+    log.log(level.asInstanceOf[LogLevel], obj.toString)
   }
 }
 

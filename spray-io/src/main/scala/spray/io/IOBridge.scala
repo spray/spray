@@ -21,7 +21,7 @@ import java.net.InetSocketAddress
 import java.nio.channels._
 import com.typesafe.config.Config
 import scala.annotation.tailrec
-import scala.util.control.NonFatal
+import akka.util.NonFatal
 import akka.spray.io.{IOBridgeDispatcherConfigurator, SelectorWakingMailbox}
 import akka.spray.UnregisteredActorRef
 import akka.event.Logging

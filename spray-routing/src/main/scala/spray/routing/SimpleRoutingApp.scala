@@ -16,13 +16,12 @@
 
 package spray.routing
 
-import scala.concurrent.Future
-import scala.concurrent.duration.Duration
 import akka.actor.{ActorRefFactory, Actor, Props, ActorRef}
 import akka.pattern.ask
+import akka.dispatch.Future
+import akka.util.{Duration, Timeout}
 import spray.can.server.{HttpServer, ServerSettings, SprayCanHttpServerApp}
 import spray.io.{ServerSSLEngineProvider, IOExtension}
-import akka.util.Timeout
 
 
 trait SimpleRoutingApp extends SprayCanHttpServerApp with HttpService {

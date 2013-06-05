@@ -1,17 +1,17 @@
 package spray.examples
 
-import scala.concurrent.Future
+import akka.dispatch.Future
 import akka.actor.ActorSystem
 import spray.can.client.{DefaultHttpClient, HttpDialog}
 import spray.http.{HttpResponse, HttpRequest}
-import spray.util._
 import spray.io.LogMark
 
 
 object GoogleQueryExample extends App {
   // we need an ActorSystem to host our application in
   implicit val system = ActorSystem("google-query-example")
-  import system.log
+
+  def log = system.log
 
   // create and start the default spray-can HttpClient
   val httpClient = DefaultHttpClient(system)
@@ -26,9 +26,9 @@ object GoogleQueryExample extends App {
   val requests = queries.map(q => HttpRequest(uri = "/search?q=" + q.replace(" ", "+")))
 
   log.info("Running {} google queries over a single connection using pipelined requests...", requests.length)
-  val responseFuture = timed(HttpDialog(httpClient, "www.google.com").send(requests).end)
-  responseFuture.onSuccess(printResult andThen secondRun)
-  responseFuture.onFailure(printError andThen shutdown)
+  timed(HttpDialog(httpClient, "www.google.com").send(requests).end)
+    .onSuccess(printResult andThen secondRun)
+    .onFailure(printError andThen shutdown)
 
 
   def secondRun: PartialFunction[Any, Unit] = {
@@ -36,9 +36,9 @@ object GoogleQueryExample extends App {
       log.info("Running google queries as separate requests (in parallel) ...")
       def httpDialog(req: HttpRequest, ix: Int) =
         HttpDialog(httpClient, "www.google.com", tag = LogMark(ix.toString)).send(req).end
-      val responseFuture = timed(Future.sequence(requests.zipWithIndex.map(t => httpDialog(t._1, t._2))))
-      responseFuture.onSuccess(printResult andThen shutdown)
-      responseFuture.onFailure(printError andThen shutdown)
+      timed(Future.sequence(requests.zipWithIndex.map(t => httpDialog(t._1, t._2))))
+        .onSuccess(printResult andThen shutdown)
+        .onFailure(printError andThen shutdown)
   }
 
   def printResult: PartialFunction[(Seq[HttpResponse], Long), Unit] = {

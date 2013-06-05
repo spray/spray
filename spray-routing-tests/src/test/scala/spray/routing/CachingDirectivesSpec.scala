@@ -40,9 +40,7 @@ class CachingDirectivesSpec extends RoutingSpec with CachingDirectives {
     var i = 0
     cache(routeCache()) { _.complete { i += 1; HttpResponse(500 + i) } }
   }
-  def prime(route: Route) = make(route) {
-    _(RequestContext(HttpRequest(), system.deadLetters).withDefaultSender(system.deadLetters))
-  }
+  def prime(route: Route) = make(route) { _(RequestContext(HttpRequest(), system.deadLetters)) }
 
   "the cacheResults directive" should {
     "return and cache the response of the first GET" in {

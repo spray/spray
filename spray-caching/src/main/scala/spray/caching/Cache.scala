@@ -16,7 +16,7 @@
 
 package spray.caching
 
-import scala.concurrent.{Promise, Future, ExecutionContext}
+import akka.dispatch._
 import spray.util.tryOrElse
 
 
@@ -35,7 +35,7 @@ trait Cache[V] {
     /**
      * Wraps the given expression with caching support.
      */
-    def apply(expr: => V)(implicit ec: ExecutionContext): Future[V] = apply { promise =>
+    def apply(expr: => V)(implicit executor: ExecutionContext): Future[V] = apply { promise =>
       tryOrElse(promise.success(expr), promise.failure)
     }
 
@@ -45,7 +45,7 @@ trait Cache[V] {
     def apply(func: Promise[V] => Unit)(implicit executor: ExecutionContext): Future[V] = fromFuture(key) {
       val p = Promise[V]()
       func(p)
-      p.future
+      p
     }
   }
 

@@ -1,6 +1,0 @@
-.. _-headerValuePF-:
-
-headerValuePF
-=============
-
-(todo)

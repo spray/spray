@@ -18,7 +18,7 @@ package spray.io
 
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicInteger
-import scala.annotation.tailrec
+import annotation.tailrec
 
 
 /**

@@ -16,9 +16,9 @@
 
 package spray.util
 
-import java.net.InetAddress
-import scala.collection.JavaConverters._
 import com.typesafe.config.{Config, ConfigFactory}
+import collection.JavaConverters._
+import java.net.InetAddress
 
 
 object ConfigUtils {

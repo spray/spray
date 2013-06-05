@@ -25,8 +25,7 @@ import akka.dispatch.SystemMessage
 // i.e. actors that only exist once per ActorSystem
 class ExtensionActorRef(underlying: ActorRef) extends InternalActorRef with ActorRefScope with Extension {
   private[this] val delegate = RefUtils.asInternalActorRef(underlying)
-  def start()                                    = delegate.start()
-  def resume(causedByFailure: Throwable)         = delegate.resume(causedByFailure)
+  def resume()                                   = delegate.resume()
   def suspend()                                  = delegate.suspend()
   def restart(cause: Throwable)                  = delegate.restart(cause)
   def stop()                                     = delegate.stop()

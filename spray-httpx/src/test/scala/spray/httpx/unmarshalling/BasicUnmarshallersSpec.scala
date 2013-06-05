@@ -16,7 +16,7 @@
 
 package spray.httpx.unmarshalling
 
-import scala.xml.NodeSeq
+import xml.NodeSeq
 import org.specs2.mutable.Specification
 import spray.http._
 import MediaTypes._
@@ -63,11 +63,11 @@ class BasicUnmarshallersSpec extends Specification {
     }
   }
 
-//  "Unmarshaller.forNonEmpty" should {
-//    "prevent the underlying unmarshaller from unmarshalling empty entities" in {
-//      implicit val um = Unmarshaller.forNonEmpty[String]
-//      EmptyEntity.as[String] === Left(ContentExpected)
-//    }
-//  }
+  "Unmarshaller.forNonEmpty" should {
+    "prevent the underlying unmarshaller from unmarshalling empty entities" in {
+      implicit val um = Unmarshaller.forNonEmpty[String]
+      EmptyEntity.as[String] === Left(ContentExpected)
+    }
+  }
 
 }

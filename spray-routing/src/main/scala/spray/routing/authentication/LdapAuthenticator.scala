@@ -21,8 +21,8 @@ import java.util.Hashtable
 import javax.naming.{Context, NamingException, NamingEnumeration}
 import javax.naming.ldap.InitialLdapContext
 import javax.naming.directory.{SearchControls, SearchResult, Attribute}
-import scala.collection.JavaConverters._
-import scala.concurrent.{Promise, Future, ExecutionContext}
+import collection.JavaConverters._
+import akka.dispatch.{ExecutionContext, Promise, Future}
 import akka.actor.ActorSystem
 import spray.util.LoggingContext
 
@@ -38,7 +38,7 @@ import spray.util.LoggingContext
  * principal DN of the found user entry to validate the password.
  */
 class LdapAuthenticator[T](config: LdapAuthConfig[T])
-                          (implicit ec: ExecutionContext, log: LoggingContext) extends UserPassAuthenticator[T] {
+                          (implicit executor: ExecutionContext, log: LoggingContext) extends UserPassAuthenticator[T] {
 
   def apply(userPassOption: Option[UserPass]) = {
     def auth3(entry: LdapQueryResult, pass: String) = {
@@ -84,7 +84,7 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T])
       case Some(userPass) => Future(auth1(userPass))
       case None =>
         log.warning("LdapAuthenticator.apply called with empty userPass, authentication not possible")
-        Promise.successful(None).future
+        Promise.successful(None)
     }
   }
 
@@ -138,5 +138,5 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T])
 
 object LdapAuthenticator {
   def apply[T](config: LdapAuthConfig[T])
-              (implicit ec: ExecutionContext, log: LoggingContext) = new LdapAuthenticator(config)
+              (implicit executor: ExecutionContext, log: LoggingContext) = new LdapAuthenticator(config)
 }

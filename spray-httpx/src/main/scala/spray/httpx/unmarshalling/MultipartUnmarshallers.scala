@@ -19,8 +19,7 @@ package spray.httpx.unmarshalling
 import java.io.{ByteArrayOutputStream, ByteArrayInputStream}
 import org.jvnet.mimepull.{MIMEMessage, MIMEConfig}
 import org.parboiled.common.FileUtils
-import scala.collection.JavaConverters._
-import scala.util.control.NonFatal
+import collection.JavaConverters._
 import spray.http.parser.HttpParser
 import spray.util._
 import spray.http._
@@ -28,6 +27,7 @@ import MediaTypes._
 import MediaRanges._
 import HttpHeaders._
 import HttpCharsets._
+import akka.util.NonFatal
 
 
 trait MultipartUnmarshallers {

@@ -1,6 +1,0 @@
-.. _-alwaysCache-:
-
-alwaysCache
-===========
-
-(todo)

@@ -1,6 +1,0 @@
-.. _-rewriteUnmatchedPath-:
-
-rewriteUnmatchedPath
-====================
-
-(todo)

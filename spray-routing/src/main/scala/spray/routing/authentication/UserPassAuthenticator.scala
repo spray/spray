@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-package spray.routing.authentication
+package spray.routing
+package authentication
 
-import com.typesafe.config.{ConfigException, Config}
-import scala.concurrent.{ExecutionContext, Promise}
-import spray.caching.{LruCache, Cache}
-import spray.util.pimpString
+import com.typesafe.config.Config
+import com.typesafe.config.ConfigException
+import akka.dispatch.{ExecutionContext, Promise}
+import spray.util._
+import spray.caching.{Cache, LruCache}
 
 
 object UserPassAuthenticator {
@@ -36,8 +38,9 @@ object UserPassAuthenticator {
    *   }
    * }}}
    */
-  def fromConfig[T](config: Config)(createUser: UserPass => T): UserPassAuthenticator[T] = { userPassOption =>
-    Promise.successful(
+  def fromConfig[T](config: Config)(createUser: UserPass => T)
+                   (implicit executor: ExecutionContext): UserPassAuthenticator[T] = { userPassOption =>
+    Promise.successful {
       userPassOption.flatMap { userPass =>
         try {
           val pw = config.getString(userPass.user)
@@ -46,7 +49,7 @@ object UserPassAuthenticator {
           case _: ConfigException => None
         }
       }
-    ).future
+    }
   }
 
   /**
@@ -54,7 +57,7 @@ object UserPassAuthenticator {
    * Note that you need to manually add a dependency to the spray-caching module in order to be able to use this method.
    */
   def cached[T](inner: UserPassAuthenticator[T], cache: Cache[Option[T]] = LruCache[Option[T]]())
-               (implicit ec: ExecutionContext): UserPassAuthenticator[T] = { userPassOption =>
+               (implicit executor: ExecutionContext): UserPassAuthenticator[T] = { userPassOption =>
     cache.fromFuture(userPassOption) {
       inner(userPassOption)
     }

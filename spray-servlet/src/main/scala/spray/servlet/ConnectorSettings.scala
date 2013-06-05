@@ -16,8 +16,8 @@
 
 package spray.servlet
 
-import com.typesafe.config.Config
 import spray.util.ConfigUtils
+import com.typesafe.config.Config
 
 
 class ConnectorSettings(config: Config) {

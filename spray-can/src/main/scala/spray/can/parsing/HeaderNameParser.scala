@@ -17,7 +17,7 @@
 package spray.can.parsing
 
 import java.lang.{StringBuilder => JStringBuilder}
-import scala.annotation.tailrec
+import annotation.tailrec
 import spray.can.{StatusLine, RequestLine, MessageLine}
 import spray.http.parser.HttpParser
 import spray.http._

@@ -1,6 +1,0 @@
-.. _-requestEntityEmpty-:
-
-requestEntityEmpty
-==================
-
-(todo)

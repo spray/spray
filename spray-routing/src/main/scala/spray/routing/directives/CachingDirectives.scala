@@ -18,9 +18,8 @@ package spray.routing
 package directives
 
 import akka.actor.ActorRefFactory
-import scala.concurrent.duration.Duration
-import scala.concurrent.ExecutionContext
-import scala.util.{Success, Failure}
+import akka.dispatch.ExecutionContext
+import akka.util.Duration
 import spray.util._
 import spray.caching._
 import spray.http._
@@ -76,9 +75,9 @@ trait CachingDirectives {
               }
             }
           } onComplete {
-            case Success(Right(response)) => ctx.complete(response)
-            case Success(Left(rejections)) => ctx.reject(rejections: _*)
-            case Failure(error) => ctx.failWith(error)
+            case Right(Right(response)) => ctx.complete(response)
+            case Right(Left(rejections)) => ctx.reject(rejections: _*)
+            case Left(error) => ctx.failWith(error)
           }
 
         case None => route(ctx)
@@ -108,7 +107,7 @@ object CacheSpecMagnet {
       def responseCache = cache
       def liftedKeyer = keyer.lift
       def log = lc
-      implicit def executionContext = factory.dispatcher
+      implicit def executionContext = factory.messageDispatcher
     }
 }
 

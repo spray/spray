@@ -16,10 +16,9 @@
 
 package spray.can.client
 
-import scala.collection.mutable.ListBuffer
-import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.{Future, Promise}
-import scala.util.{Try, Failure, Success}
+import collection.mutable.ListBuffer
+import akka.dispatch.{Promise, Future}
+import akka.util.Duration
 import akka.actor._
 import spray.io.IOClient.IOClientException
 import spray.util._
@@ -35,7 +34,7 @@ object HttpDialog {
   private sealed abstract class Action
   private case class ConnectAction(host: String, port: Int, tag: Any) extends Action
   private case class SendAction(request: HttpRequest) extends Action
-  private case class WaitIdleAction(duration: FiniteDuration) extends Action
+  private case class WaitIdleAction(duration: Duration) extends Action
   private case class ReplyAction(f: HttpResponse => HttpRequest) extends Action
   private case object AwaitResponseAction extends Action
 
@@ -45,7 +44,7 @@ object HttpDialog {
     var responsesPending = 0
     var onResponse: Option[() => Unit] = None
 
-    def complete(value: Try[AnyRef]) {
+    def complete(value: Either[Throwable, AnyRef]) {
       result.complete(value)
       connection.foreach(_ ! HttpClient.Close(ConnectionCloseReasons.CleanClose))
       context.stop(self)
@@ -67,7 +66,7 @@ object HttpDialog {
       case ReplyAction(f) :: remainingActions =>
         onResponse = Some { () =>
           val request = f(responses.remove(0))
-          self ! SendAction(request) :: remainingActions
+          self.tell(SendAction(request) :: remainingActions)
         }
 
       case AwaitResponseAction :: remainingActions =>
@@ -81,15 +80,15 @@ object HttpDialog {
             onResponse = None
             task()
           case None => if (responsesPending == 0) {
-            if (multiResponse) complete(Success(responses.toList))
-            else complete(Success(responses.head))
+            if (multiResponse) complete(Right(responses.toList))
+            else complete(Right(responses.head))
           }
         }
 
       case _: HttpResponsePart =>
         val msg = "The HttpDialog doesn't support chunked responses"
         sender ! HttpClient.Close(ConnectionCloseReasons.ProtocolError(msg))
-        complete(Failure(IOClientException(msg)))
+        complete(Left(IOClientException(msg)))
 
       case Reply(HttpClient.Connected(handle), actions) =>
         connection = Some(handle.handler)
@@ -98,9 +97,9 @@ object HttpDialog {
       case Reply(msg, _) => self ! msg // unpack all other with-context replies
 
       case HttpClient.Closed(_, reason) =>
-        complete(Failure(IOClientException("Connection closed prematurely, reason: " + reason)))
+        complete(Left(IOClientException("Connection closed prematurely, reason: " + reason)))
 
-      case Status.Failure(cause) => complete(Failure(cause))
+      case Status.Failure(cause) => complete(Left(cause))
     }
   }
 
@@ -111,9 +110,9 @@ object HttpDialog {
       this
     }
     def runActions(multiResponse: Boolean): Future[AnyRef] = {
-      val result = Promise[AnyRef]()
+      val result = Promise[AnyRef]()(refFactory.messageDispatcher)
       refFactory.actorOf(Props(new DialogActor(result, client, multiResponse))) ! actions.toList
-      result.future
+      result
     }
   }
 
@@ -192,7 +191,7 @@ object HttpDialog {
     /**
      * Delays all subsequent tasks by the given time duration.
      */
-    def waitIdle(duration: FiniteDuration): this.type = {
+    def waitIdle(duration: Duration): this.type = {
       context.appendAction(WaitIdleAction(duration))
       this
     }

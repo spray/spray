@@ -1,6 +1,0 @@
-.. _-logResponse-:
-
-logResponse
-===========
-
-(todo)

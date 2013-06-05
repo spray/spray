@@ -1,6 +1,0 @@
-.. _-cachingProhibited-:
-
-cachingProhibited
-=================
-
-(todo)

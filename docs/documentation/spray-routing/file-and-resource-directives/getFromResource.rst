@@ -1,6 +1,0 @@
-.. _-getFromResource-:
-
-getFromResource
-===============
-
-(todo)

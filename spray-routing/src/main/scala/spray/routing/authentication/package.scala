@@ -16,10 +16,7 @@
 
 package spray.routing
 
-import scala.concurrent.{Promise, ExecutionContext, Future}
-import com.typesafe.config.{Config, ConfigException}
-import spray.caching.{Cache, LruCache}
-import spray.util.pimpString
+import akka.dispatch.Future
 
 
 package object authentication {

@@ -16,7 +16,7 @@
 
 package spray.httpx
 
-import scala.xml.NodeSeq
+import xml.NodeSeq
 import org.specs2.mutable.Specification
 import spray.util._
 import spray.http._

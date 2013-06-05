@@ -23,13 +23,11 @@ class DemoServiceSpec extends Specification with Specs2RouteTest with DemoServic
       Get("/kermit") ~> demoRoute ~> check { handled must beFalse }
     }
 
-    //# source-quote (for the documentation site)
     "return a MethodNotAllowed error for PUT requests to the root path" in {
       Put() ~> sealRoute(demoRoute) ~> check {
         status === MethodNotAllowed
         entityAs[String] === "HTTP method not allowed, supported methods: GET, POST"
       }
     }
-    //#
   }
 }

@@ -16,7 +16,7 @@
 
 package spray.httpx.unmarshalling
 
-import scala.util.control.NonFatal
+import akka.util.NonFatal
 
 
 trait Deserializer[A, B] extends (A => Deserialized[B]) { self =>

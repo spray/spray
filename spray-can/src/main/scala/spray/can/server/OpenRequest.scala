@@ -16,7 +16,7 @@
 
 package spray.can.server
 
-import scala.collection.mutable
+import collection.mutable
 import akka.actor.{ActorContext, ActorRef}
 import akka.event.LoggingAdapter
 import akka.spray.RefUtils

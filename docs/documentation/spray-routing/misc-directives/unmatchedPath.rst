@@ -1,6 +1,0 @@
-.. _-unmatchedPath-:
-
-unmatchedPath
-=============
-
-(todo)

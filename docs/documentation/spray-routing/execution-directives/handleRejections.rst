@@ -1,6 +1,0 @@
-.. _-handleRejections-:
-
-handleRejections
-================
-
-(todo)

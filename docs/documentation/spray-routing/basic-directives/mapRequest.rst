@@ -1,6 +1,0 @@
-.. _-mapRequest-:
-
-mapRequest
-==========
-
-(todo)

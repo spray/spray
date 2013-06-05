@@ -16,7 +16,7 @@
 
 package spray.io
 
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import akka.util.Duration
 import akka.event.{Logging, LoggingAdapter}
 import spray.util.ConnectionCloseReasons.IdleTimeout
 
@@ -63,7 +63,8 @@ object ConnectionTimeouts {
 
   ////////////// COMMANDS //////////////
 
-  case class SetIdleTimeout(timeout: FiniteDuration) extends Command {
+  case class SetIdleTimeout(timeout: Duration) extends Command {
+    require(timeout.finite_?, "timeout must not be infinite, set to zero to disable")
     require(timeout >= Duration.Zero, "timeout must not be negative")
   }
 }

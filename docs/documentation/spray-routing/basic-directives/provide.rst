@@ -1,6 +1,0 @@
-.. _-provide-:
-
-provide
-=======
-
-(todo)

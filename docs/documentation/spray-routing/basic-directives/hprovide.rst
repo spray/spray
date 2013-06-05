@@ -1,6 +1,0 @@
-.. _-hprovide-:
-
-hprovide
-========
-
-(todo)

@@ -1,6 +1,0 @@
-.. _-hextract-:
-
-hextract
-========
-
-(todo)

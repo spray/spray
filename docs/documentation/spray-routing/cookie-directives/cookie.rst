@@ -1,6 +1,0 @@
-.. _-cookie-:
-
-cookie
-======
-
-(todo)

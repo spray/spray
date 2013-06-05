@@ -15,18 +15,24 @@
  */
 
 package spray.routing
+package directives
 
-import shapeless.HList
+import org.fusesource.scalate.{Binding, TemplateEngine}
+import spray.http._
+import MediaTypes._
 
 
-object Route {
-  def apply(f: Route): Route = f
+trait ScalateSupport {
+  import Directives._
 
-  /**
-   * Converts the route into a directive that never passes the request to its inner route
-   * (and always returns its underlying route).
-   */
-  def toDirective[L <: HList](route: Route): Directive[L] = new Directive[L] {
-    def happly(f: L => Route) = route
+  val templateEngine = new TemplateEngine
+
+  def render(uri: String, attributes: Map[String,Any] = Map.empty,
+             extraBindings: Traversable[Binding] = Nil, mediaType: MediaType = `text/html`): Route = {
+    respondWithMediaType(mediaType) {
+      complete {
+        templateEngine.layout(uri, attributes, extraBindings)
+      }
+    }
   }
 }

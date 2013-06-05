@@ -17,7 +17,7 @@
 package spray.httpx.encoding
 
 import java.util.zip.{Inflater, CRC32, ZipException, Deflater}
-import scala.annotation.tailrec
+import annotation.tailrec
 import spray.http._
 
 

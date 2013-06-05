@@ -17,7 +17,7 @@
 package spray.httpx.marshalling
 
 import java.nio.CharBuffer
-import scala.xml.NodeSeq
+import xml.NodeSeq
 import spray.http._
 import MediaTypes._
 

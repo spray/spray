@@ -16,10 +16,8 @@
 
 package spray.util.pimps
 
-import scala.collection.LinearSeq
-import scala.annotation.tailrec
-import scala.reflect.{classTag, ClassTag}
-
+import collection.LinearSeq
+import annotation.tailrec
 
 abstract class PimpedSeq[+A] {
   /**
@@ -37,8 +35,8 @@ abstract class PimpedSeq[+A] {
   /**
    * Returns the first object of type B in the underlying sequence or `None`, if none is found.
    */
-  def findByType[B: ClassTag]: Option[B] = {
-    val erasure = classTag.runtimeClass
+  def findByType[B: ClassManifest]: Option[B] = {
+    val erasure = classManifest.erasure
     mapFind(x => if (erasure.isInstance(x)) Some(x.asInstanceOf[B]) else None)
   }
 }

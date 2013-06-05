@@ -1,6 +1,0 @@
-.. _-pathPrefix-:
-
-pathPrefix
-==========
-
-(todo)

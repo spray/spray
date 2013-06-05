@@ -44,7 +44,6 @@ object SslTlsSupport {
     def encrypt(ctx: PipelineContext) = false
   }
 
-  //# Enabling-trait
   /**
    * Interface that can be implemented by a `tag` object on the connection
    * in order to determine whether encryption on the connection is to be
@@ -53,7 +52,6 @@ object SslTlsSupport {
   trait Enabling {
     def encrypt(ctx: PipelineContext): Boolean
   }
-  //#
 
   def apply(engineProvider: PipelineContext => SSLEngine, log: LoggingAdapter,
             encryptIfUntagged: Boolean = true): PipelineStage = {
@@ -282,7 +280,7 @@ object ClientSSLEngineProvider extends SSLEngineProviderCompanion {
   }
 }
 
-trait SSLContextProvider extends (PipelineContext => SSLContext) // source-quote-SSLContextProvider
+trait SSLContextProvider extends (PipelineContext => SSLContext)
 object SSLContextProvider {
   implicit def forContext(implicit context: SSLContext = SSLContext.getDefault): SSLContextProvider =
     fromFunc(_ => context)

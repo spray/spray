@@ -16,7 +16,7 @@
 
 package spray.client
 
-import scala.concurrent.{Promise, Future}
+import akka.dispatch.{Promise, Future}
 import akka.spray.{RefUtils, UnregisteredActorRef}
 import akka.actor._
 import spray.can.client.HttpClient
@@ -80,9 +80,10 @@ object HttpConduit extends RequestBuilding with ResponseTransformation {
 
   def sendReceive(httpConduitRef: ActorRef): HttpRequest => Future[HttpResponse] = {
     require(RefUtils.isLocal(httpConduitRef), "sendReceive cannot be constructed for remote HttpConduits")
+    val provider = RefUtils.provider(httpConduitRef)
     request => {
-      val promise = Promise[HttpResponse]()
-      val receiver = new UnregisteredActorRef(httpConduitRef) {
+      val promise = Promise[HttpResponse]()(provider.dispatcher)
+      val receiver = new UnregisteredActorRef(provider) {
         def handle(message: Any)(implicit sender: ActorRef) {
           message match {
             case x: HttpResponse => promise.success(x)
@@ -91,7 +92,7 @@ object HttpConduit extends RequestBuilding with ResponseTransformation {
         }
       }
       httpConduitRef.tell(request, receiver)
-      promise.future
+      promise
     }
   }
 }

@@ -1,6 +1,0 @@
-.. _-jsonpWithParameter-:
-
-jsonpWithParameter
-==================
-
-(todo)

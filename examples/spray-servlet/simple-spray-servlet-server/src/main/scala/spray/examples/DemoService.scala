@@ -1,9 +1,8 @@
 package spray.examples
 
-import java.util.concurrent.TimeUnit._
-import scala.concurrent.duration.Duration
+import akka.util.duration._
 import akka.actor._
-import spray.util._
+import spray.util.{SprayActorLogging, IOClosed}
 import spray.http._
 import MediaTypes._
 import HttpMethods._
@@ -12,6 +11,7 @@ import HttpMethods._
 class DemoService extends Actor with SprayActorLogging {
 
   def receive = {
+
     case HttpRequest(GET, "/", _, _, _) =>
       sender ! index
 
@@ -80,7 +80,7 @@ class DemoService extends Actor with SprayActorLogging {
 
       case Ok(remaining) =>
         log.info("Sending response chunk ...")
-        context.system.scheduler.scheduleOnce(Duration(100, MILLISECONDS)) {
+        context.system.scheduler.scheduleOnce(100.millis) {
           peer ! MessageChunk(DateTime.now.toIsoDateTimeString + ", ").withSentAck(Ok(remaining - 1))
         }
 

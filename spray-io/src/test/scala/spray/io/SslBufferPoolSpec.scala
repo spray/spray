@@ -17,10 +17,10 @@
 package spray.io
 
 import org.specs2.mutable.Specification
-import scala.util.Random
-import scala.concurrent.Future
-import akka.actor.ActorSystem
+import util.Random
+import akka.dispatch.Future
 import spray.util._
+import akka.actor.ActorSystem
 
 
 class SslBufferPoolSpec extends Specification {

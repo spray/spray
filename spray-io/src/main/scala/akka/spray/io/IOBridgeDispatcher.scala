@@ -18,10 +18,9 @@ package akka.spray.io
 
 import java.util.concurrent.TimeUnit
 import com.typesafe.config.Config
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import akka.util.{FiniteDuration, Duration}
+import akka.actor.ActorCell
 import akka.dispatch._
-import akka.actor.{ActorCell, Cell}
-import akka.event.Logging.Warning
 import spray.io.IOExtension
 
 
@@ -50,8 +49,8 @@ class IOBridgeDispatcher(
   _threadPoolConfig: ThreadPoolConfig
   ) extends PinnedDispatcher(_prerequisites, null,  _id, _mailboxType, _shutdownTimeout, _threadPoolConfig) {
 
-  override protected[akka] def createMailbox(actor: Cell) = {
-    val mb = new SelectorWakingMailbox(actor.system, mailboxType.create(Some(actor.self), Some(actor.system)))
+  override protected[akka] def createMailbox(actor: ActorCell) = {
+    val mb = new SelectorWakingMailbox(actor, mailboxType.create(Some(actor)))
     IOExtension(actor.system).register(actor.self, mb)
     mb
   }

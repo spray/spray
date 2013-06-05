@@ -1,6 +1,0 @@
-.. _-dynamicIf-:
-
-dynamicIf
-=========
-
-(todo)

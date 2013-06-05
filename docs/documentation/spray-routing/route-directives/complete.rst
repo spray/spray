@@ -1,6 +1,0 @@
-.. _-complete-:
-
-complete
-========
-
-(todo)

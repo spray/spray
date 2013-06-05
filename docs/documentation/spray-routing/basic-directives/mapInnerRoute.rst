@@ -1,6 +1,0 @@
-.. _-mapInnerRoute-:
-
-mapInnerRoute
-=============
-
-(todo)

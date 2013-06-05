@@ -1,6 +1,0 @@
-.. _-setCookie-:
-
-setCookie
-=========
-
-(todo)

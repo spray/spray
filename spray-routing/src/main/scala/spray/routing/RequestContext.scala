@@ -16,9 +16,8 @@
 
 package spray.routing
 
-import scala.collection.GenTraversableOnce
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import collection.GenTraversableOnce
+import akka.dispatch.Future
 import akka.actor.{Status, ActorRef}
 import akka.spray.UnregisteredActorRef
 import spray.httpx.marshalling.{MarshallingContext, Marshaller}
@@ -251,10 +250,10 @@ case class RequestContext(
   /**
    * Schedules the completion of the request with result of the given future.
    */
-  def complete(future: Future[HttpResponse])(implicit ec: ExecutionContext) {
+  def complete(future: Future[HttpResponse]) {
     future.onComplete {
-      case Success(response) => complete(response)
-      case Failure(error) => failWith(error)
+      case Right(response) => complete(response)
+      case Left(error) => failWith(error)
     }
   }
 

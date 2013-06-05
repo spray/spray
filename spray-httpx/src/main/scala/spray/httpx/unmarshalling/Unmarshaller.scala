@@ -16,8 +16,34 @@
 
 package spray.httpx.unmarshalling
 
-import spray.http.{HttpEntity, ContentTypeRange}
+import akka.util.NonFatal
+import spray.http._
 
+
+abstract class SimpleUnmarshaller[T] extends Unmarshaller[T] {
+  val canUnmarshalFrom: Seq[ContentTypeRange]
+
+  def apply(entity: HttpEntity) = {
+    entity match {
+      case EmptyEntity => unmarshal(entity)
+      case x: HttpBody if canUnmarshalFrom.exists(_.matches(x.contentType)) => unmarshal(entity)
+      case _ => Left(UnsupportedContentType(canUnmarshalFrom.map(_.value).mkString("Expected '", "' or '", "'")))
+    }
+  }
+
+  protected def unmarshal(entity: HttpEntity): Either[DeserializationError, T]
+
+  /**
+   * Helper method for turning exceptions occuring during evaluation of the named parameter into
+   * [[spray.httpx.unmarshalling.MalformedContent]] instances.
+   */
+  protected def protect(f: => T): Either[DeserializationError, T] = {
+    try Right(f)
+    catch {
+      case NonFatal(ex) => Left(MalformedContent(ex.getMessage, ex))
+    }
+  }
+}
 
 object Unmarshaller {
   def apply[T](unmarshalFrom: ContentTypeRange*)(f: PartialFunction[HttpEntity, T]): Unmarshaller[T] =

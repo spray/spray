@@ -30,7 +30,7 @@ abstract class HttpHeader {
 }
 
 object HttpHeader {
-  def unapply(header: HttpHeader): Option[(String, String)] = Some((header.lowercaseName, header.value))
+  def unapply(header: HttpHeader): Option[(String, String)] = Some(header.lowercaseName, header.value)
 }
 
 object HttpHeaders {

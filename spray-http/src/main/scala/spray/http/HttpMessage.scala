@@ -18,13 +18,11 @@ package spray.http
 
 import java.nio.charset.Charset
 import java.net.{URISyntaxException, URI}
-import scala.annotation.tailrec
-import scala.reflect.{classTag, ClassTag}
+import annotation.tailrec
 import spray.http.parser.{QueryParser, HttpParser}
 import HttpHeaders._
 import HttpCharsets._
 import StatusCodes._
-
 
 sealed trait HttpMessagePartWrapper {
   def messagePart: HttpMessagePart
@@ -34,7 +32,7 @@ sealed trait HttpMessagePartWrapper {
 case class Confirmed(messagePart: HttpMessagePart, sentAck: Option[Any]) extends HttpMessagePartWrapper
 
 object HttpMessagePartWrapper {
-  def unapply(x: HttpMessagePartWrapper): Option[(HttpMessagePart, Option[Any])] = Some((x.messagePart, x.sentAck))
+  def unapply(x: HttpMessagePartWrapper): Option[(HttpMessagePart, Option[Any])] = Some(x.messagePart, x.sentAck)
 }
 
 
@@ -112,8 +110,8 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
     case Nil => HttpEncodings.identity
   }
 
-  def header[T <: HttpHeader :ClassTag]: Option[T] = {
-    val erasure = classTag[T].runtimeClass
+  def header[T <: HttpHeader :ClassManifest]: Option[T] = {
+    val erasure = classManifest[T].erasure
     @tailrec def next(headers: List[HttpHeader]): Option[T] =
       if (headers.isEmpty) None
       else if (erasure.isInstance(headers.head)) Some(headers.head.asInstanceOf[T]) else next(headers.tail)
@@ -331,7 +329,7 @@ object HttpRequest {
 
   def unapply(request: HttpRequest): Option[(HttpMethod, String, List[HttpHeader], HttpEntity, HttpProtocol)] = {
     import request._
-    Some((method, uri, headers, entity, protocol))
+    Some(method, uri, headers, entity, protocol)
   }
 }
 

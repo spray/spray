@@ -17,10 +17,9 @@
 package spray.io
 
 import java.nio.ByteBuffer
-import scala.concurrent.duration.Duration
 import org.specs2.mutable.Specification
 import akka.actor.{ActorRef, Props, ActorSystem}
-import akka.util.Timeout
+import akka.util.{Duration, Timeout}
 import akka.pattern.ask
 import spray.util._
 

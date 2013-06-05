@@ -1,6 +1,0 @@
-.. _-respondWithLastModifiedHeader-:
-
-respondWithLastModifiedHeader
-=============================
-
-(todo)

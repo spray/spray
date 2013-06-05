@@ -1,10 +1,9 @@
 import sbt._
 import Keys._
-import ls.Plugin._
 
 
 object BuildSettings {
-  val VERSION = "1.1-M7"
+  val VERSION = "1.0-M7"
 
   lazy val basicSettings = seq(
     version               := NightlyBuildSupport.buildVersion(VERSION),
@@ -15,19 +14,9 @@ object BuildSettings {
                              "web services on top of Akka",
     startYear             := Some(2011),
     licenses              := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
-    scalaVersion          := "2.10.0",
+    scalaVersion          := "2.9.2",
     resolvers             ++= Dependencies.resolutionRepos,
-    scalacOptions         := Seq(
-      "-encoding", "utf8",
-      "-feature",
-      "-unchecked",
-      "-deprecation",
-      "-target:jvm-1.6",
-      "-language:postfixOps",
-      "-language:implicitConversions",
-      "-Xlog-reflective-calls",
-      "-Ywarn-adapted-args"
-    )
+    scalacOptions         := Seq("-Ydependent-method-types", "-unchecked", "-deprecation", "-encoding", "utf8")
   )
 
   lazy val sprayModuleSettings = basicSettings ++ NightlyBuildSupport.settings ++ seq(
@@ -47,12 +36,7 @@ object BuildSettings {
           }
         }
       }
-    },
-
-    // LS
-    (LsKeys.tags in LsKeys.lsync) := Seq("http", "server", "client", "async"),
-    (LsKeys.docsUrl in LsKeys.lsync) := Some(new URL("http://spray.github.com/spray/api/spray-can/")),
-    (externalResolvers in LsKeys.lsync) := Seq("spray repo" at "http://repo.spray.io")
+    }
   )
 
   lazy val noPublishing = seq(
@@ -75,14 +59,6 @@ object BuildSettings {
         Seq(target)
       }
     }
-  )
-
-  lazy val siteSettings = basicSettings ++ noPublishing ++ twirl.sbt.TwirlPlugin.Twirl.settings ++
-    spray.revolver.RevolverPlugin.Revolver.settings ++ SiteSupport.settings
-
-
-  lazy val docsSettings = basicSettings ++ noPublishing ++ seq(
-    unmanagedSourceDirectories in Test <<= baseDirectory { _ ** "code" get }
   )
 
   lazy val exampleSettings = basicSettings ++ noPublishing

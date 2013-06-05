@@ -17,9 +17,8 @@
 package spray.routing
 package directives
 
-import scala.reflect.{classTag, ClassTag}
-import akka.actor.{ActorContext, ActorSystem, ActorRefFactory}
 import shapeless._
+import akka.actor.{ActorContext, ActorSystem, ActorRefFactory}
 import spray.http._
 import spray.util._
 import HttpHeaders._
@@ -75,8 +74,8 @@ trait MiscDirectives {
   def cancelAllRejections(cancelFilter: Rejection => Boolean): Directive0 =
     mapRejections(_ :+ TransformationRejection(_.filterNot(cancelFilter)))
 
-  def ofType[T <: Rejection :ClassTag]: Rejection => Boolean = {
-    val erasure = classTag[T].runtimeClass
+  def ofType[T <: Rejection :ClassManifest]: Rejection => Boolean = {
+    val erasure = classManifest[T].erasure
     erasure.isInstance(_)
   }
 

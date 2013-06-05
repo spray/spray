@@ -1,6 +1,0 @@
-.. _-listDirectoryContents-:
-
-listDirectoryContents
-=====================
-
-(todo)

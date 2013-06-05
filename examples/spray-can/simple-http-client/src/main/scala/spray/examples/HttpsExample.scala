@@ -1,16 +1,14 @@
 package spray.examples
 
-import scala.util.{Failure, Success}
 import akka.actor.ActorSystem
 import spray.can.client.{DefaultHttpClient, HttpDialog, HttpClient}
 import spray.http.HttpRequest
-import spray.util._
 
 
 object HttpsExample extends App {
   // we need an ActorSystem to host our application in
   implicit val system = ActorSystem("https-example")
-  import system.log
+  def log = system.log
 
   // create and start the default spray-can HttpClient
   val httpClient = DefaultHttpClient(system)
@@ -24,7 +22,7 @@ object HttpsExample extends App {
 
   // "hook in" our continuation
   responseFuture onComplete {
-    case Success(response) =>
+    case Right(response) =>
       log.info(
         """|Result from host:
            |status : {}
@@ -36,7 +34,7 @@ object HttpsExample extends App {
       )
       system.shutdown()
 
-    case Failure(error) =>
+    case Left(error) =>
       log.error("Could not get response due to {}", error)
       system.shutdown()
   }
