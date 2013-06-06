@@ -58,6 +58,10 @@ private[client] class HttpHostConnection(remoteAddress: InetSocketAddress,
           case ctx: RequestContext  ⇒ context.parent ! ctx
           case _: Http.CloseCommand ⇒ context.stop(self)
         }
+
+      case Terminated(conn) ⇒
+      // ignore, may happen if in closing we unwatch too late
+      // and this message is already in the mailbox
     }
   }
 
