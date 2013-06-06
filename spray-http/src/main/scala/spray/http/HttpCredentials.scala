@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,18 +20,16 @@ package http
 
 import HttpCharsets._
 import org.parboiled.common.Base64
+import scala.annotation.tailrec
 
-sealed abstract class HttpCredentials {
-  def value: String
-  override def toString = value
-}
+sealed trait HttpCredentials extends ValueRenderable
 
 case class BasicHttpCredentials(username: String, password: String) extends HttpCredentials {
-  lazy val value = {
+  def render[R <: Rendering](r: R): R = {
     val userPass = username + ':' + password
     val bytes = userPass.getBytes(`ISO-8859-1`.nioCharset)
-    val cookie = Base64.rfc2045.encodeToString(bytes, false)
-    "Basic " + cookie
+    val cookie = Base64.rfc2045.encodeToChar(bytes, false)
+    r ~~ "Basic " ~~ cookie
   }
 }
 
@@ -47,27 +45,29 @@ object BasicHttpCredentials {
 }
 
 case class OAuth2BearerToken(token: String) extends HttpCredentials {
-  def value = "Bearer " + token
+  def render[R <: Rendering](r: R): R = r ~~ "Bearer " ~~ token
 }
 
-case class GenericHttpCredentials(scheme: String, params: Map[String, String]) extends HttpCredentials {
-  lazy val value = if (params.isEmpty) scheme else formatParams
+case class GenericHttpCredentials(scheme: String, token: String,
+                                  params: Map[String, String] = Map.empty) extends HttpCredentials {
 
-  private def formatParams = {
-    val sb = new java.lang.StringBuilder(scheme).append(' ')
-    var first = true
-    params.foreach {
-      case (k, v) ⇒
-        if (first) first = false else sb.append(',')
-        if (k.isEmpty) sb.append('"') else sb.append(k).append('=').append('"')
-        v.foreach {
-          case '"'  ⇒ sb.append('\\').append('"')
-          case '\\' ⇒ sb.append('\\').append('\\')
-          case c    ⇒ sb.append(c)
+  def render[R <: Rendering](r: R): R = {
+    r ~~ scheme
+    if (!token.isEmpty) r ~~ ' ' ~~ token
+    if (params.nonEmpty)
+      params foreach new (((String, String)) ⇒ Unit) {
+        var first = true
+        def apply(kvp: (String, String)): Unit = {
+          val (k, v) = kvp
+          if (first) { r ~~ ' '; first = false } else r ~~ ','
+          if (!k.isEmpty) r ~~ k ~~ '='
+          r ~~# v
         }
-        sb.append('"')
-    }
-    sb.toString
+      }
+    r
   }
 }
 
+object GenericHttpCredentials {
+  def apply(scheme: String, params: Map[String, String]): GenericHttpCredentials = apply(scheme, "", params)
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,13 +17,11 @@
 package spray.routing
 package directives
 
-import shapeless._
 import spray.util._
 import spray.http._
 import HttpHeaders._
 
 trait CookieDirectives {
-  import BasicDirectives._
   import RouteDirectives._
   import HeaderDirectives._
   import RespondWithDirectives._
@@ -32,29 +30,34 @@ trait CookieDirectives {
    * Extracts an HttpCookie with the given name. If the cookie is not present the
    * request is rejected with a respective [[spray.routing.MissingCookieRejection]].
    */
-  def cookie(name: String): Directive[HttpCookie :: HNil] =
-    headerValue {
-      case Cookie(cookies) ⇒ cookies.find(_.name == name)
-      case _               ⇒ None
-    } | reject(MissingCookieRejection(name))
+  def cookie(name: String): Directive1[HttpCookie] =
+    headerValue(findCookie(name)) | reject(MissingCookieRejection(name))
 
   /**
    * Extracts an HttpCookie with the given name.
    * If the cookie is not present a value of `None` is extracted.
    */
-  def optionalCookie(name: String): Directive[Option[HttpCookie] :: HNil] =
-    cookie(name).hmap(_.map(shapeless.option)) | provide(None)
+  def optionalCookie(name: String): Directive1[Option[HttpCookie]] =
+    optionalHeaderValue(findCookie(name))
+
+  private def findCookie(name: String): HttpHeader ⇒ Option[HttpCookie] = {
+    case Cookie(cookies) ⇒ cookies.find(_.name == name)
+    case _               ⇒ None
+  }
 
   /**
-   * Adds a Set-Cookie header with the given cookie to all responses of its inner route.
+   * Adds a Set-Cookie header with the given cookies to all responses of its inner route.
    */
-  def setCookie(cookie: HttpCookie): Directive0 = respondWithHeader(`Set-Cookie`(cookie))
+  def setCookie(first: HttpCookie, more: HttpCookie*): Directive0 =
+    respondWithHeaders((first :: more.toList).map(`Set-Cookie`(_)))
 
   /**
-   * Adds a Set-Cookie header expiring the given cookie to all responses of its inner route.
+   * Adds a Set-Cookie header expiring the given cookies to all responses of its inner route.
    */
-  def deleteCookie(cookie: HttpCookie): Directive0 =
-    respondWithHeader(`Set-Cookie`(cookie.copy(content = "deleted", expires = Some(DateTime.MinValue))))
+  def deleteCookie(first: HttpCookie, more: HttpCookie*): Directive0 =
+    respondWithHeaders((first :: more.toList).map { c ⇒
+      `Set-Cookie`(c.copy(content = "deleted", expires = Some(DateTime.MinValue)))
+    })
 
   /**
    * Adds a Set-Cookie header expiring the given cookie to all responses of its inner route.

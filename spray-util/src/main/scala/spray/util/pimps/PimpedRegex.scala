@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 
 package spray.util.pimps
 
-import util.matching.Regex
 import java.util.regex.Pattern
+import scala.util.matching.Regex
 
 class PimpedRegex(regex: Regex) {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,11 +19,9 @@ package spray.routing
 import akka.dispatch.Future
 
 package object authentication {
-
   type ContextAuthenticator[T] = RequestContext ⇒ Future[Authentication[T]]
   type Authentication[T] = Either[Rejection, T]
   type UserPassAuthenticator[T] = Option[UserPass] ⇒ Future[Option[T]]
-
 }
 
 package authentication {

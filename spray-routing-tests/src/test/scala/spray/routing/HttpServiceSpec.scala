@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,17 +17,17 @@
 package spray.routing
 
 import org.specs2.mutable.Specification
-import akka.testkit.{ ImplicitSender, TestKit }
+import akka.testkit.TestProbe
 import akka.actor._
-import spray.httpx.RequestBuilding
+import spray.httpx.RequestBuilding._
+import spray.util._
 import spray.http._
 import MediaTypes._
 import HttpCharsets._
 
-class HttpServiceSpec extends TestKit(ActorSystem("HttpServiceSpec")) with Specification with RequestBuilding with ImplicitSender {
-  sequential
+class HttpServiceSpec extends Specification {
 
-  class RootService(subRouteActor: ActorRef) extends Actor with HttpServiceActor {
+  class RootService(subRouteActor: ActorRef) extends HttpServiceActor {
     def receive = runRoute {
       path("") {
         complete("yeah")
@@ -38,7 +38,7 @@ class HttpServiceSpec extends TestKit(ActorSystem("HttpServiceSpec")) with Speci
     }
   }
 
-  class SubService extends Actor with HttpServiceActor {
+  class SubService extends HttpServiceActor {
     def receive = runRoute {
       path(Rest) { pathRest ⇒
         complete(pathRest)
@@ -46,21 +46,26 @@ class HttpServiceSpec extends TestKit(ActorSystem("HttpServiceSpec")) with Speci
     }
   }
 
+  val system = ActorSystem(Utils.actorSystemNameFrom(getClass))
+  val subActor = system.actorOf(Props(new SubService))
+  val rootActor = system.actorOf(Props(new RootService(subActor)))
+
   "The 'runRoute' directive" should {
-    val subActor = system.actorOf(Props(new SubService))
-    val rootActor = system.actorOf(Props(new RootService(subActor)))
 
     "properly produce HttpResponses from the root actor" in {
-      rootActor ! Get("/")
-      receiveOne(remaining) === HttpResponse(entity = HttpBody(ContentType(`text/plain`, `UTF-8`), "yeah"))
+      val probe = TestProbe()(system)
+      probe.send(rootActor, Get("/"))
+      probe.expectMsg(HttpResponse(entity = HttpEntity(ContentType(`text/plain`, `UTF-8`), "yeah")))
+      success
     }
 
     "properly produce HttpResponses from a sub actor" in {
-      rootActor ! Get("/sub/abc")
-      receiveOne(remaining) === HttpResponse(entity = HttpBody(ContentType(`text/plain`, `UTF-8`), "abc"))
+      val probe = TestProbe()(system)
+      probe.send(rootActor, Get("/sub/abc"))
+      probe.expectMsg(HttpResponse(entity = HttpEntity(ContentType(`text/plain`, `UTF-8`), "abc")))
+      success
     }
   }
 
   step(system.shutdown())
-
 }

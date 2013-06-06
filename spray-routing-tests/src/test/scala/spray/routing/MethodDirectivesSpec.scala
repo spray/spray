@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,43 @@ class MethodDirectivesSpec extends RoutingSpec {
           get { completeOk }
       } ~> check {
         rejections === List(MethodRejection(HttpMethods.GET))
+      }
+    }
+  }
+
+  "MethodRejections" should {
+    "be cancelled by a successful match" in {
+      "if the match happens after the rejection" in {
+        Put() ~> {
+          get { completeOk } ~
+            put { reject(RequestEntityExpectedRejection) }
+        } ~> check {
+          rejections === List(RequestEntityExpectedRejection)
+        }
+      }
+      "if the match happens after the rejection (example 2)" in {
+        Put() ~> {
+          (get & complete)(Ok) ~
+            (put & reject(RequestEntityExpectedRejection))
+        } ~> check {
+          rejections === List(RequestEntityExpectedRejection)
+        }
+      }
+      "if the match happens before the rejection" in {
+        Put() ~> {
+          put { reject(RequestEntityExpectedRejection) } ~
+            get { completeOk }
+        } ~> check {
+          rejections === List(RequestEntityExpectedRejection)
+        }
+      }
+      "if the match happens before the rejection (example 2)" in {
+        Put() ~> {
+          (put & reject(RequestEntityExpectedRejection)) ~
+            (get & complete)(Ok)
+        } ~> check {
+          rejections === List(RequestEntityExpectedRejection)
+        }
       }
     }
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,12 +20,13 @@ package parser
 
 import org.parboiled.scala._
 import HttpHeaders._
+import ProtectedHeaderCreation.enable
 
 private[parser] trait ContentTypeHeader {
   this: Parser with ProtocolParameterRules with CommonActions ⇒
 
-  def CONTENT_TYPE = rule {
-    ContentTypeHeaderValue ~~> `Content-Type`
+  def `*Content-Type` = rule {
+    ContentTypeHeaderValue ~~> (`Content-Type`(_))
   }
 
   lazy val ContentTypeHeaderValue = rule {

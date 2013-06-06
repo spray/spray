@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import HttpCharsets._
 private[parser] trait AcceptCharsetHeader {
   this: Parser with ProtocolParameterRules with CommonActions ⇒
 
-  def ACCEPT_CHARSET = rule(
+  def `*Accept-Charset` = rule(
     oneOrMore(CharsetRangeDecl, separator = ListSep) ~ EOI ~~> (HttpHeaders.`Accept-Charset`(_)))
 
   def CharsetRangeDecl = rule(

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ class Specs2RouteTestSpec extends Specification with Directives with Specs2Route
 
     "a basic directive" in {
       Get() ~> complete("abc") ~> check {
-        body === HttpBody(ContentType(`text/plain`, `UTF-8`), "abc")
+        body === HttpEntity(ContentType(`text/plain`, `UTF-8`), "abc")
       }
     }
 

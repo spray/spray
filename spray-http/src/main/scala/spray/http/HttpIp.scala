@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +19,8 @@ package spray.http
 
 import java.net.InetAddress
 
-case class HttpIp(ip: InetAddress) {
-  def value: String = ip.getHostAddress
-  override def toString = value
+case class HttpIp(ip: InetAddress) extends ValueRenderable {
+  def render[R <: Rendering](r: R): R = r ~~ ip.getHostAddress
 }
 
 object HttpIp {

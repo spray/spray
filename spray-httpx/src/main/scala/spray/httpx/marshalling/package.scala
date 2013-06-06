@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,9 @@
 
 package spray.httpx
 
-import akka.util.{ Timeout, NonFatal }
 import akka.util.duration._
+import akka.util.NonFatal
+import akka.util.Timeout
 import akka.actor.ActorRefFactory
 import spray.util.identityFunc
 import spray.http.HttpEntity

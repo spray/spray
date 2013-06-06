@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,10 +17,12 @@
 
 package spray.http
 
-case class HttpChallenge(scheme: String, realm: String, params: Map[String, String] = Map.empty) {
-  def value = scheme + ' ' + (("realm" -> realm) :: params.toList).map {
-    case (k, v) ⇒ k + "=\"" + v + '"'
-  }.mkString(",")
+case class HttpChallenge(scheme: String, realm: String,
+                         params: Map[String, String] = Map.empty) extends ValueRenderable {
 
-  override def toString = value
+  def render[R <: Rendering](r: R): R = {
+    r ~~ scheme ~~ " realm=" ~~# realm
+    if (params.nonEmpty) params.foreach { case (k, v) ⇒ r ~~ ',' ~~ k ~~ '=' ~~# v }
+    r
+  }
 }

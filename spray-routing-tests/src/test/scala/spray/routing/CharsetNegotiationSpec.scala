@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ class CharsetNegotiationSpec extends RoutingSpec {
   "The framework" should {
     "encode text content using UTF-8 if no Accept-Charset header is present in the request" in {
       Get() ~> Hällo ~> check {
-        body === HttpBody(ContentType(`text/plain`, `UTF-8`), "Hällö")
+        body === HttpEntity(ContentType(`text/plain`, `UTF-8`), "Hällö")
       }
     }
     "encode text content using UTF-8 if the Accept-Charset header contains '*'" in {

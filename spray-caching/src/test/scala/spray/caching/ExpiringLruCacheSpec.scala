@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,16 +17,18 @@
 package spray.caching
 
 import java.util.Random
-import java.util.concurrent.CountDownLatch
+import java.util.concurrent.{ TimeUnit, CountDownLatch }
 import akka.actor.ActorSystem
-import akka.util.Duration
 import akka.dispatch.Future
+import akka.util.duration._
 import org.specs2.mutable.Specification
 import org.specs2.matcher.Matcher
 import spray.util._
+import akka.util.Duration
 
 class ExpiringLruCacheSpec extends Specification {
   implicit val system = ActorSystem()
+  import system.dispatcher
 
   "An LruCache" should {
     "be initially empty" in {
@@ -70,7 +72,7 @@ class ExpiringLruCacheSpec extends Specification {
       cache.store.toString === "{2=B, 3=C, 4=D}"
     }
     "expire old entries" in {
-      val cache = lruCache[String](timeToLive = Duration("75 ms"))
+      val cache = lruCache[String](timeToLive = Duration(75, TimeUnit.MILLISECONDS))
       cache(1)("A").await === "A"
       cache(2)("B").await === "B"
       Thread.sleep(50)

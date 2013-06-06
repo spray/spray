@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,15 @@
 
 package spray
 
-import shapeless.{ HNil, HList }
+import shapeless._
 
 package object routing {
 
   type Route = RequestContext ⇒ Unit
   type RouteGenerator[T] = T ⇒ Route
   type Directive0 = Directive[HNil]
+  type Directive1[T] = Directive[T :: HNil]
+  type PathMatcher0 = PathMatcher[HNil]
+  type PathMatcher1[T] = PathMatcher[T :: HNil]
 
 }

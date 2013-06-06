@@ -1,0 +1,84 @@
+#!/bin/bash
+
+DEPLOY_HOME=#{deployDir}
+LOG_FILE=#{logFile}
+
+start_java() {
+    java \
+    -Xmx500M -Xss1M -XX:MaxPermSize=256M \
+    -Dspray.site.interface=0.0.0.0 \
+    -Dspray.site.port=8008 \
+    -Dspray.site.dev-mode=off \
+    -DLOG_FILE=$LOG_FILE \
+    -Dlogback.configurationFile=logback.production.xml \
+    -Dfile.encoding=UTF8 \
+    -jar $DEPLOY_HOME/#{jarName} \
+    &> /dev/null < /dev/null &
+    disown -h
+}
+
+get_pid() {
+    pid=`ps -Af | egrep "[0-9] java.*?$DEPLOY_HOME/#{jarName}" | awk '{print $2}'`
+}
+
+trail_log() {
+    COLOR_NC='\033[0m' # No Color
+    COLOR_BLACK='\033[0;30m'
+    COLOR_RED='\033[0;31m'
+    COLOR_GREEN='\033[0;32m'
+    COLOR_YELLOW='\033[0;33m'
+    COLOR_BLUE='\033[0;34m'
+    COLOR_PURPLE='\033[0;35m'
+    COLOR_CYAN='\033[0;36m'
+    COLOR_GRAY='\033[0;37m'
+
+    TRACE=$(echo -e $COLOR_CYAN)
+    DEBUG=$(echo -e $COLOR_GRAY)
+    INFO=$(echo -e $COLOR_GREEN)
+    WARN=$(echo -e $COLOR_YELLOW)
+    ERROR=$(echo -e $COLOR_RED)
+    NC=$(echo -e $COLOR_NC)
+
+    tail -n 100 -f "$LOG_FILE" | sed -e "
+    s/TRACE.*/$TRACE&$NC/
+    s/DEBUG.*/$DEBUG&$NC/
+    s/INFO.*/$INFO&$NC/
+    s/WARN.*/$WARN&$NC/
+    s/ERROR.*/$ERROR&$NC/
+    "
+}
+
+do_start() {
+    echo "Starting spray.io site ..."
+    get_pid
+    case "$pid" in
+        "") start_java ;;
+         *) echo "Already running with PID $pid" ;;
+    esac
+}
+
+do_stop() {
+    echo "Stopping spray.io site ..."
+    get_pid
+    case "$pid" in
+        "") echo "Already stopped" ;;
+         *) kill "$pid" ;;
+    esac
+}
+
+print_status() {
+    get_pid
+    case "$pid" in
+        "") echo "Not running" ;;
+         *) echo "Running with PID $pid" ;;
+    esac
+}
+
+case "$1" in
+    start) do_start ;;
+    stop) do_stop ;;
+    log) trail_log ;;
+    status) print_status ;;
+    *) echo "tf (start|stop|log|status)" ;;
+esac
+

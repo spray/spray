@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package spray.routing
 package directives
 
 import shapeless._
-import akka.actor.{ ActorContext, ActorSystem, ActorRefFactory }
 import spray.http._
 import spray.util._
 import HttpHeaders._
@@ -39,12 +38,13 @@ trait MiscDirectives {
     }
 
   /**
-   * Directive extracting the IP of the client from either the X-Forwarded-For, Remote-Address or X-Real-IP header.
+   * Directive extracting the IP of the client from either the X-Forwarded-For, Remote-Address or X-Real-IP header
+   * (in that order of priority).
    */
-  lazy val clientIP: Directive[HttpIp :: HNil] =
+  lazy val clientIP: Directive1[HttpIp] =
     (headerValuePF { case `X-Forwarded-For`(ips) if ips.flatten.nonEmpty ⇒ ips.flatten.head }) |
       (headerValuePF { case `Remote-Address`(ip) ⇒ ip }) |
-      (headerValuePF { case RawHeader("x-real-ip", ip) ⇒ ip })
+      (headerValuePF { case h: RawHeader if h.lowercaseName == "x-real-ip" ⇒ h.value })
 
   /**
    * Wraps the inner Route with JSONP support. If a query parameter with the given name is present in the request and
@@ -56,7 +56,7 @@ trait MiscDirectives {
     import ParameterDirectives._
     parameter(parameterName?).flatMap {
       case Some(wrapper) ⇒ mapHttpResponseEntity {
-        case HttpBody(ct @ ContentType(`application/json`, _), buffer) ⇒ HttpBody(
+        case HttpBody(ct @ ContentType(`application/json`, _), buffer) ⇒ HttpEntity(
           contentType = ct.withMediaType(`application/javascript`),
           string = wrapper + '(' + buffer.asString(ct.charset.nioCharset) + ')')
         case entity ⇒ entity
@@ -71,6 +71,13 @@ trait MiscDirectives {
    */
   def cancelAllRejections(cancelFilter: Rejection ⇒ Boolean): Directive0 =
     mapRejections(_ :+ TransformationRejection(_.filterNot(cancelFilter)))
+
+  /**
+   * Adds a TransformationRejection cancelling all rejections equal to the given one
+   * to the list of rejections potentially coming back from the inner route.
+   */
+  def cancelRejection(rejection: Rejection): Directive0 =
+    cancelAllRejections(_ == rejection)
 
   def ofType[T <: Rejection: ClassManifest]: Rejection ⇒ Boolean = {
     val erasure = classManifest[T].erasure
@@ -97,13 +104,13 @@ trait MiscDirectives {
   /**
    * Transforms the unmatchedPath of the RequestContext using the given function.
    */
-  def rewriteUnmatchedPath(f: String ⇒ String): Directive0 =
+  def rewriteUnmatchedPath(f: Uri.Path ⇒ Uri.Path): Directive0 =
     mapRequestContext(_.withUnmatchedPathMapped(f))
 
   /**
    * Extracts the unmatched path from the RequestContext.
    */
-  def unmatchedPath: Directive[String :: HNil] =
+  def unmatchedPath: Directive1[Uri.Path] =
     extract(_.unmatchedPath)
 
   /**
@@ -114,16 +121,6 @@ trait MiscDirectives {
   def rejectEmptyResponse: Directive0 = mapRouteResponse {
     case HttpMessagePartWrapper(HttpResponse(_, EmptyEntity, _, _), _) ⇒ Rejected(Nil)
     case x ⇒ x
-  }
-
-  /**
-   * Not a directive, but a helper function that provides access to the ActorSystem we are running in.
-   */
-  def actorSystem(implicit refFactory: ActorRefFactory): ActorSystem = {
-    refFactory match {
-      case x: ActorContext ⇒ x.system
-      case x: ActorSystem  ⇒ x
-    }
   }
 }
 

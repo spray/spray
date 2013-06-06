@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,7 +37,9 @@ class HeaderDirectivesSpec extends RoutingSpec {
     "reject with a MalformedHeaderRejection if the extract function throws an exception" in {
       Get("/abc") ~> addHeader(Connection("close")) ~> {
         (headerValuePF { case _ ⇒ sys.error("Naah!") }) { echoComplete }
-      } ~> check { rejection.toString === "MalformedHeaderRejection(Connection,java.lang.RuntimeException: Naah!)" }
+      } ~> check {
+        rejection must beLike { case MalformedHeaderRejection("Connection", "Naah!", _) ⇒ ok }
+      }
     }
   }
 
@@ -61,7 +63,9 @@ class HeaderDirectivesSpec extends RoutingSpec {
       Get("/abc") ~> addHeader(Connection("close")) ~> {
         val myHeaderValue = optionalHeaderValue { case _ ⇒ sys.error("Naaah!") }
         myHeaderValue { echoComplete }
-      } ~> check { rejection.toString === "MalformedHeaderRejection(Connection,java.lang.RuntimeException: Naaah!)" }
+      } ~> check {
+        rejection must beLike { case MalformedHeaderRejection("Connection", "Naaah!", _) ⇒ ok }
+      }
     }
   }
 

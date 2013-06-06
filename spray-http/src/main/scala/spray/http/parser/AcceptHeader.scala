@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import BasicRules._
 private[parser] trait AcceptHeader {
   this: Parser with ProtocolParameterRules with CommonActions ⇒
 
-  def ACCEPT = rule(
+  def `*Accept` = rule(
     zeroOrMore(MediaRangeDecl ~ optional(AcceptParams), separator = ListSep) ~ EOI ~~> (HttpHeaders.Accept(_)))
 
   def MediaRangeDecl = rule {
@@ -44,13 +44,9 @@ private[parser] trait AcceptHeader {
 
   // helpers
 
-  def getMediaRange(mainType: String, subType: String): MediaRange = {
+  def getMediaRange(mainType: String, subType: String): MediaRange =
     if (subType == "*") {
       val mainTypeLower = mainType.toLowerCase
-      MediaRanges.getForKey(mainTypeLower).getOrElse(MediaRanges.CustomMediaRange(mainTypeLower))
-    } else {
-      getMediaType(mainType, subType)
-    }
-  }
-
+      MediaRanges.getForKey(mainTypeLower) getOrElse MediaRanges.custom(mainTypeLower)
+    } else getMediaType(mainType, subType)
 }

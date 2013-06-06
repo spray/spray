@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,35 +16,47 @@
 
 package spray
 
-import http.HttpHeaders.RawHeader
+import java.nio.charset.Charset
+import spray.http.parser.HttpParser
+import scala.annotation.tailrec
 
 package object http {
+  val UTF8: Charset = HttpCharsets.`UTF-8`.nioCharset
 
-  type QueryParams = Map[String, String]
+  private[http] def asciiBytes(s: String) = {
+    val array = new Array[Byte](s.length)
+    @tailrec def copyChars(ix: Int = 0): Unit =
+      if (ix < array.length) {
+        array(ix) = s.charAt(ix).asInstanceOf[Byte]
+        copyChars(ix + 1)
+      }
+    copyChars()
+    array
+  }
 
   /**
    * Warms up the spray.http module by triggering the loading of most classes in this package,
    * so as to increase the speed of the first usage.
    */
   def warmUp() {
-    HttpRequest(
-      headers = List(
-        RawHeader("Accept", "*/*,text/plain,custom/custom"),
-        RawHeader("Accept-Charset", "*,UTF-8"),
-        RawHeader("Accept-Encoding", "gzip,custom"),
-        RawHeader("Accept-Language", "*,de-de,custom"),
-        RawHeader("Authorization", "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ=="),
-        RawHeader("Cache-Control", "no-cache"),
-        RawHeader("Connection", "close"),
-        RawHeader("Content-Disposition", "form-data"),
-        RawHeader("Content-Encoding", "deflate"),
-        RawHeader("Content-Length", "42"),
-        RawHeader("Content-Type", "application/json"),
-        RawHeader("Cookie", "spray=cool"),
-        RawHeader("Host", "spray.io"),
-        RawHeader("X-Forwarded-For", "1.2.3.4"),
-        RawHeader("Fancy-Custom-Header", "yeah")),
-      entity = "spray rocks!").parseAll
+    HttpParser.parseHeaders {
+      List(
+        HttpHeaders.RawHeader("Accept", "*/*,text/plain,custom/custom"),
+        HttpHeaders.RawHeader("Accept-Charset", "*,UTF-8"),
+        HttpHeaders.RawHeader("Accept-Encoding", "gzip,custom"),
+        HttpHeaders.RawHeader("Accept-Language", "*,de-de,custom"),
+        HttpHeaders.RawHeader("Authorization", "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ=="),
+        HttpHeaders.RawHeader("Cache-Control", "no-cache"),
+        HttpHeaders.RawHeader("Connection", "close"),
+        HttpHeaders.RawHeader("Content-Disposition", "form-data"),
+        HttpHeaders.RawHeader("Content-Encoding", "deflate"),
+        HttpHeaders.RawHeader("Content-Length", "42"),
+        HttpHeaders.RawHeader("Content-Type", "application/json"),
+        HttpHeaders.RawHeader("Cookie", "spray=cool"),
+        HttpHeaders.RawHeader("Host", "spray.io"),
+        HttpHeaders.RawHeader("X-Forwarded-For", "1.2.3.4"),
+        HttpHeaders.RawHeader("Fancy-Custom-Header", "yeah"))
+    }
     HttpResponse(status = 200)
   }
 }

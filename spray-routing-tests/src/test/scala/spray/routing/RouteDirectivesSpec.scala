@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ class RouteDirectivesSpec extends RoutingSpec {
       } ~> check {
         response === HttpResponse(
           status = 302,
-          entity = HttpBody(`text/html`, "The requested resource temporarily resides under <a href=\"/foo\">this URI</a>."),
+          entity = HttpEntity(`text/html`, "The requested resource temporarily resides under <a href=\"/foo\">this URI</a>."),
           headers = Location("/foo") :: Nil)
       }
     }

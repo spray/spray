@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,34 +16,36 @@
 
 package spray.io
 
-import akka.util.Duration
-import java.util.concurrent.TimeUnit
+import akka.util.duration._
+import akka.io.Tcp
+import akka.util.{ FiniteDuration, Duration }
+import spray.util._
 
 //# source-quote
 object TickGenerator {
 
-  def apply(millis: Long): PipelineStage = apply(Duration(millis, TimeUnit.MILLISECONDS))
-
   def apply(period: Duration): PipelineStage = {
-    require(period.finite_?, "period must not be infinite")
-    require(period > Duration.Zero, "period must be positive")
+    requirePositiveOrUndefined(period)
 
-    new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+    new OptionalPipelineStage[PipelineContext] {
+
+      def enabled(context: PipelineContext): Boolean = period.isFinite()
+
+      def applyIfEnabled(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
-          val generator = context.connectionActorContext.system.scheduler.schedule(
-            initialDelay = period,
-            frequency = period,
-            receiver = context.self,
-            message = Tick)
+          var next = scheduleNext()
 
           val commandPipeline = commandPL
 
           val eventPipeline: EPL = {
-            case x: IOPeer.Closed ⇒
-              generator.cancel()
-              eventPL(x)
-            case x ⇒ eventPL(x)
+            case Tick                    ⇒ next = scheduleNext(); eventPL(Tick)
+            case x: Tcp.ConnectionClosed ⇒ next.cancel(); eventPL(x)
+            case x                       ⇒ eventPL(x)
+          }
+
+          def scheduleNext() = {
+            implicit val executionContext = context.dispatcher
+            context.system.scheduler.scheduleOnce(period.asInstanceOf[FiniteDuration], context.self, Tick)
           }
         }
     }

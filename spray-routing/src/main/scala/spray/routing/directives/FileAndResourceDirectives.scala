@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,24 +18,20 @@ package spray.routing
 package directives
 
 import java.io.File
-import java.net.{ URL, URLConnection }
 import org.parboiled.common.FileUtils
 import akka.actor.ActorRefFactory
 import spray.httpx.marshalling.{ Marshaller, BasicMarshallers }
-import shapeless._
 import spray.util._
 import spray.http._
 import HttpHeaders._
-import akka.spray.RefUtils
 
 trait FileAndResourceDirectives {
-  import BasicDirectives._
   import ExecutionDirectives._
   import MethodDirectives._
   import RespondWithDirectives._
   import RouteDirectives._
   import MiscDirectives._
-  import FileAndResourceDirectives.{ stripLeadingSlash, withTrailingSlash }
+  import FileAndResourceDirectives._
 
   /**
    * Completes GET requests with the content of the given file. The actual I/O operation is
@@ -53,16 +49,23 @@ trait FileAndResourceDirectives {
    */
   def getFromFile(file: File)(implicit settings: RoutingSettings, resolver: ContentTypeResolver,
                               refFactory: ActorRefFactory): Route =
-    get {
-      detachTo(singleRequestServiceActor) {
-        respondWithLastModifiedHeader(file.lastModified) {
-          if (file.isFile && file.canRead) {
-            implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(resolver(file.getName))
-            if (0 < settings.FileChunkingThresholdSize && settings.FileChunkingThresholdSize <= file.length)
-              complete(file.toByteArrayStream(settings.FileChunkingChunkSize.toInt))
-            else complete(FileUtils.readAllBytes(file))
-          } else reject
-        }
+    getFromFile(file, resolver(file.getName))
+
+  /**
+   * Completes GET requests with the content of the given file. The actual I/O operation is
+   * running detached in the context of a newly spawned actor, so it doesn't block the current thread (but potentially
+   * some other thread !). If the file cannot be found or read the request is rejected.
+   */
+  def getFromFile(file: File, contentType: ContentType)(implicit settings: RoutingSettings,
+                                                        refFactory: ActorRefFactory): Route =
+    (get & detachTo(singleRequestServiceActor)) {
+      respondWithLastModifiedHeader(file.lastModified) {
+        if (file.isFile && file.canRead) {
+          implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(contentType)
+          if (0 < settings.fileChunkingThresholdSize && settings.fileChunkingThresholdSize <= file.length)
+            complete(file.toByteArrayStream(settings.fileChunkingChunkSize.toInt))
+          else complete(FileUtils.readAllBytes(file))
+        } else reject
       }
     }
 
@@ -78,22 +81,30 @@ trait FileAndResourceDirectives {
    * some other thread !).
    * If the file cannot be found or read the Route rejects the request.
    */
-  def getFromResource(resourceName: String)(implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route = {
-    def openConnection: Option[URL] :: HNil ⇒ Directive[URLConnection :: HNil] = {
-      case Some(url) :: HNil ⇒ provide(url.openConnection())
-      case _                 ⇒ reject
-    }
-    if (!resourceName.endsWith("/")) {
-      def resource = RefUtils.actorSystem(refFactory).dynamicAccess.classLoader.getResource(resourceName)
-      (get & detachTo(singleRequestServiceActor) & provide(Option(resource)))
-        .hflatMap(openConnection) { urlConn ⇒
-          implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(resolver(resourceName))
-          respondWithLastModifiedHeader(urlConn.getLastModified) {
-            complete(FileUtils.readAllBytes(urlConn.getInputStream))
-          }
+  def getFromResource(resourceName: String)(implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route =
+    getFromResource(resourceName, resolver(resourceName))
+
+  /**
+   * Completes GET requests with the content of the given resource. The actual I/O operation is
+   * running detached in the context of a newly spawned actor, so it doesn't block the current thread (but potentially
+   * some other thread !).
+   * If the file cannot be found or read the Route rejects the request.
+   */
+  def getFromResource(resourceName: String, contentType: ContentType)(implicit refFactory: ActorRefFactory): Route =
+    if (!resourceName.endsWith("/"))
+      (get & detachTo(singleRequestServiceActor)) {
+        val theClassLoader = actorSystem(refFactory).dynamicAccess.classLoader
+        theClassLoader.getResource(resourceName) match {
+          case null ⇒ reject
+          case url ⇒
+            val lastModified = url.openConnection().getLastModified
+            implicit val bufferMarshaller = BasicMarshallers.byteArrayMarshaller(contentType)
+            respondWithLastModifiedHeader(lastModified) {
+              complete(FileUtils.readAllBytes(theClassLoader.getResourceAsStream(resourceName)))
+            }
         }
-    } else reject // don't serve the content of resource "directories"
-  }
+      }
+    else reject // don't serve the content of resource "directories"
 
   /**
    * Completes GET requests with the content of a file underneath the given directory.
@@ -114,17 +125,16 @@ trait FileAndResourceDirectives {
    * Completes GET requests with a unified listing of the contents of all given directories.
    * The actual rendering of the directory contents is performed by the in-scope `Marshaller[DirectoryListing]`.
    */
-  def listDirectoryContents(directories: String*)(implicit renderer: Marshaller[DirectoryListing], refFactory: ActorRefFactory): Route = {
-    get {
-      detachTo(singleRequestServiceActor) {
-        unmatchedPath { path ⇒
-          val dirs = directories.map(new File(_, path)).filter(dir ⇒ dir.isDirectory && dir.canRead)
-          if (dirs.isEmpty) reject
-          else complete(DirectoryListing(withTrailingSlash(path), dirs.flatMap(_.listFiles)))
-        }
+  def listDirectoryContents(directories: String*)(implicit renderer: Marshaller[DirectoryListing],
+                                                  refFactory: ActorRefFactory): Route =
+    (get & detachTo(singleRequestServiceActor)) {
+      unmatchedPath { path ⇒
+        val pathString = path.toString
+        val dirs = directories.map(new File(_, pathString)).filter(dir ⇒ dir.isDirectory && dir.canRead)
+        if (dirs.isEmpty) reject
+        else complete(DirectoryListing(withTrailingSlash(pathString), dirs.flatMap(_.listFiles)))
       }
     }
-  }
 
   /**
    * Same as `getFromBrowseableDirectories` with only one directory.
@@ -150,14 +160,14 @@ trait FileAndResourceDirectives {
   def getFromResourceDirectory(directoryName: String)(implicit resolver: ContentTypeResolver, refFactory: ActorRefFactory): Route = {
     val base = if (directoryName.isEmpty) "" else withTrailingSlash(directoryName)
     unmatchedPath { path ⇒
-      getFromResource(base + stripLeadingSlash(path))
+      getFromResource(base + stripLeadingSlash(path).toString)
     }
   }
 }
 
 object FileAndResourceDirectives extends FileAndResourceDirectives {
-  def stripLeadingSlash(path: String) = if (path.startsWith("/")) path.substring(1) else path
-  def withTrailingSlash(path: String) = if (path.endsWith("/")) path else path + '/'
+  def stripLeadingSlash(path: Uri.Path) = if (path.startsWithSlash) path.tail else path
+  def withTrailingSlash(path: String) = if (path endsWith "/") path else path + '/'
 }
 
 trait ContentTypeResolver {
@@ -207,7 +217,7 @@ object DirectoryListing {
       |</div>$
       |</body>
       |</html>
-      |""".stripMargin.split('$')
+      |""".stripMargin split '$'
 
   implicit def DefaultMarshaller(implicit settings: RoutingSettings): Marshaller[DirectoryListing] =
     Marshaller.delegate[DirectoryListing, String](MediaTypes.`text/html`) { listing ⇒
@@ -227,36 +237,21 @@ object DirectoryListing {
         sb.append("<a href=\"%s/\">../</a>\n" format path.substring(0, secondToLastSlash))
       }
       def lastModified(file: File) = DateTime(file.lastModified).toIsoLikeDateTimeString
-      def start(name: String) {
+      def start(name: String) =
         sb.append("<a href=\"").append(path + name).append("\">").append(name).append("</a>")
-        tfor(0)(_ < maxNameLen - name.length, _ + 1)(_ ⇒ sb.append(' '))
-      }
-      def renderDirectory(file: File, name: String) {
-        start(name + '/')
-        sb.append("        ").append(lastModified(file)).append('\n')
-      }
-      def renderFile(file: File, name: String) {
-        val size = humanReadableByteCount(file.length, si = true)
-        start(name)
-        sb.append("        ").append(lastModified(file))
+          .append(" " * (maxNameLen - name.length))
+      def renderDirectory(file: File, name: String) =
+        start(name + '/').append("        ").append(lastModified(file)).append('\n')
+      def renderFile(file: File, name: String) = {
+        val size = Utils.humanReadableByteCount(file.length, si = true)
+        start(name).append("        ").append(lastModified(file))
         sb.append("                ".substring(size.length)).append(size).append('\n')
       }
       for ((file, name) ← directoryFilesAndNames) renderDirectory(file, name)
       for ((file, name) ← fileFilesAndNames) renderFile(file, name)
       if (path == "/" && files.isEmpty) sb.append("(no files)\n")
       sb.append(html(3))
-      if (settings.RenderVanityFooter) {
-        sb.append(html(4)).append(DateTime.now.toIsoLikeDateTimeString).append(html(5))
-      }
+      if (settings.renderVanityFooter) sb.append(html(4)).append(DateTime.now.toIsoLikeDateTimeString).append(html(5))
       sb.append(html(6)).toString
     }
-
-  def humanReadableByteCount(bytes: Long, si: Boolean): String = {
-    val unit = if (si) 1000 else 1024
-    if (bytes >= unit) {
-      val exp = (math.log(bytes) / math.log(unit)).toInt
-      val pre = if (si) "kMGTPE".charAt(exp - 1).toString else "KMGTPE".charAt(exp - 1).toString + 'i'
-      "%.1f %sB" format (bytes / math.pow(unit, exp), pre)
-    } else bytes.toString + "  B"
-  }
 }

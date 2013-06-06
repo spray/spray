@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,50 +16,47 @@
 
 package spray.can.client
 
-import spray.can.HttpEvent
-import spray.util.ConnectionCloseReasons.ProtocolError
+import akka.util.{ ByteString, ByteStringBuilder }
 import spray.http._
 import spray.io._
+import spray.can.Http
 
 object ResponseChunkAggregation {
 
   def apply(limit: Int): PipelineStage =
     new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
-        new Pipelines {
-          var response: HttpResponse = _
-          var bb: BufferBuilder = _
-          var closed = false
-
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+        new Pipelines with DynamicEventPipeline {
           val commandPipeline = commandPL
 
-          val eventPipeline: EPL = {
-            case HttpEvent(ChunkedResponseStart(res)) ⇒ if (!closed) {
-              response = res
-              if (res.entity.buffer.length <= limit) bb = BufferBuilder(res.entity.buffer)
-              else closeWithError()
-            }
+          val initialEventPipeline: EPL = {
+            case Http.MessageEvent(ChunkedResponseStart(response)) ⇒
+              eventPipeline.become(aggregating(response))
 
-            case HttpEvent(MessageChunk(body, _)) ⇒ if (!closed) {
-              assert(bb != null)
-              if (bb.size + body.length <= limit) bb.append(body)
-              else closeWithError()
-            }
+            case ev ⇒ eventPL(ev)
+          }
 
-            case HttpEvent(_: ChunkedMessageEnd) ⇒ if (!closed) {
-              assert(response != null && bb != null)
-              eventPL(HttpEvent(response.copy(entity = response.entity.map((ct, _) ⇒ ct -> bb.toArray))))
-              response = null
-              bb = null
-            }
+          def aggregating(response: HttpResponse, bb: ByteStringBuilder = ByteString.newBuilder): EPL = {
+            case Http.MessageEvent(MessageChunk(body, _)) ⇒
+              if (bb.result().length + body.length <= limit) bb.++=(body)
+              else closeWithError()
+
+            case Http.MessageEvent(_: ChunkedMessageEnd) ⇒
+              val contentType = response.header[HttpHeaders.`Content-Type`] match {
+                case Some(x) ⇒ x.contentType
+                case None    ⇒ ContentTypes.`application/octet-stream`
+              }
+              eventPL(Http.MessageEvent(response.copy(entity = HttpEntity(contentType, bb.result().toArray[Byte]))))
+              eventPipeline.become(initialEventPipeline)
 
             case ev ⇒ eventPL(ev)
           }
 
           def closeWithError() {
-            val msg = "Aggregated response entity greater than configured limit of " + limit + " bytes"
-            commandPL(HttpClient.Close(ProtocolError(msg)))
-            closed = true
+            context.log.error("Aggregated response entity greater than configured limit of {} bytes," +
+              "closing connection", limit)
+            commandPL(Http.Close)
+            eventPipeline.become(eventPL) // disable this stage
           }
         }
     }

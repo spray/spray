@@ -1,119 +1,153 @@
-Version 1.0-M7 (2012-12-19)
+Version 1.1-M7 (2012-12-19)
 ---------------------------
+- Upgraded to Scala 2.10.0-RC5, Akka 2.1.0-RC6
 - spray-can:
-  - fixed broken overridability of SprayCanHttpServerApp.system member
-  - fixed request rendering to not suppress custom Date headers
-  - fixed rendering of 'Content-Length: 0' request headers
-  - added option for tagging log messages with custom prefixes, closed #153
-  - added DefaultHttpClient extension, closed #166
-  - added explicit naming for connection actors
+
+  + fixed broken overridability of SprayCanHttpServerApp.system member
+  + fixed request rendering to not suppress custom Date headers
+  + fixed rendering of 'Content-Length: 0' request headers
+  + added option for tagging log messages with custom prefixes, closed #153
+  + added DefaultHttpClient extension, closed #166
+  + added explicit naming for connection actors
+
 - spray-http:
-  - fixed non-public access to the HttpRequest URI and queryParams members through the 'copy' method
-  - added HttpMessagePart extractor
-  - improved Date header parser to allow UTC as well as GMT time zone label
-  - improved language-tag parser to also accept tags according to BCP 47, closed #168
+
+  + fixed non-public access to the HttpRequest URI and queryParams members through the 'copy' method
+  + added HttpMessagePart extractor
+  + improved Date header parser to allow UTC as well as GMT time zone label
+  + improved language-tag parser to also accept tags according to BCP 47, closed #168
+
 - spray-httpx: changed JSON rendering to always be UTF-8 encoded
 - spray-io:
-  - changed IOExtension.ioBridge to IOExtension.ioBridge()
-  - added option for tagging log messages with custom prefixes, closed #153
-  - added proper supervisor strategy for connection actors: stop (and close connection) on all exceptions
-  - improved enabling/disabling of encryption on the connection (SslTlsSupport)
-  - flexibilized connection tag provision
-  - changed IOClient.Connected events to be sent with connection actor as sender
+
+  + changed IOExtension.ioBridge to IOExtension.ioBridge()
+  + added option for tagging log messages with custom prefixes, closed #153
+  + added proper supervisor strategy for connection actors: stop (and close connection) on all exceptions
+  + improved enabling/disabling of encryption on the connection (SslTlsSupport)
+  + flexibilized connection tag provision
+  + changed IOClient.Connected events to be sent with connection actor as sender
+
 - spray-routing:
-  - fixed rejection duplication in certain cases
-  - changed default marshalling encoding to UTF-8
-  - added SimpleRoutingApp trait
-  - added `complete(Future[StatusCode])` overload
-  - added `optionalHeaderValuePF` directive
-  - simplified and homogenized ExceptionHandler and RejectionHandler to both return Routes
+
+  + fixed rejection duplication in certain cases
+  + changed default marshalling encoding to UTF-8
+  + added SimpleRoutingApp trait
+  + added `complete(Future[StatusCode])` overload
+  + added `optionalHeaderValuePF` directive
+  + simplified and homogenized ExceptionHandler and RejectionHandler to both return Routes
+
 - testkit: turned response MatchError into proper error message, closed #165
 - util:
-  - introduced SprayActorLogging trait
-  - improved LoggingContext with configurability regarding logger name generation
-  - improved PimpedFuture.delay to accept implicit ActorRefFactory instead of ActorSystem
+
+  + introduced SprayActorLogging trait
+  + improved LoggingContext with configurability regarding logger name generation
+  + improved PimpedFuture.delay to accept implicit ActorRefFactory instead of ActorSystem
+
 - examples:
-  - added simple-routing-app example
-  - renamed simple-on-jetty and simple-on-spray-can examples to on-jetty / on-spray-can resp.
+
+  + added simple-routing-app example
+  + renamed simple-on-jetty and simple-on-spray-can examples to on-jetty / on-spray-can resp.
+
 - smaller fixes and improvements
 
 
-Version 1.0-M6 (2012-11-30)
+Version 1.1-M6 (2012-11-30)
 ---------------------------
-- Upgraded to Akka 2.0.4, parboiled 1.1.4, shapeless 1.2.3 and spray-json 1.2.3
+- Upgraded to Scala 2.10.0-RC3, Akka 2.1.0-RC3, parboiled 1.1.4, shapeless 1.2.3 and spray-json 1.2.3
 - Added 'is-local-ActorRef' assertions across modules (where applicable)
 - spray-can:
-  - removed superfluous ssl-encryption config setting from HttpClient
-  - increase default HttpServer pipelining-limit from 1 to 8
-  - introduced SprayCanHttpServerApp convenience trait, updated examples
-  - smaller performance improvements
+
+  + removed superfluous ssl-encryption config setting from HttpClient
+  + increase default HttpServer pipelining-limit from 1 to 8
+  + introduced SprayCanHttpServerApp convenience trait, updated examples
+  + smaller performance improvements
+
 - spray-http:
-  - added support for 'Bearer' scheme in Authorization header (OAuth 2.0), closes #155
-  - renamed 'OtherHttpCredentials' to 'GenericHttpCredentials'
-  - improved MediaType model, added more default MediaTypes, closed #157
-  - improved warmup
-  - improved parser for 'X-Forwarded-For' header to also accept "unknown" elements
-  - added DateTime.fromIsoDateTimeString
+
+  + added support for 'Bearer' scheme in Authorization header (OAuth 2.0), closes #155
+  + renamed 'OtherHttpCredentials' to 'GenericHttpCredentials'
+  + improved MediaType model, added more default MediaTypes, closed #157
+  + improved warmup
+  + improved parser for 'X-Forwarded-For' header to also accept "unknown" elements
+  + added DateTime.fromIsoDateTimeString
+
 - spray-httpx: made the (Un)marshaller[NodeSeq] also accept 'application/xml'
 - spray-io:
-  - turned IOBridge into Actor, added optional parallelism
-  - general refactoring for cleanliness and clarity
-  - improved flexibility of connection actor creation
-  - smaller performance improvements
+
+  + turned IOBridge into Actor, added optional parallelism
+  + general refactoring for cleanliness and clarity
+  + improved flexibility of connection actor creation
+  + smaller performance improvements
+
 - spray-routing:
-  - added Directive.recover and .recoverPF modifiers
-  - introduced HeaderDirectives trait, reworked and improved header extraction directives
-  - changed evaluation of 'complete' directive arguments to call-by-name
-  - fixed incomplete exception handling in Directive.unwrapFuture
-  - renamed getFromFileName directive to getFromFile
-  - introduced default, simple HttpServiceActor implementation
-  - smaller refactoring in PathMatcher API
+
+  + added Directive.recover and .recoverPF modifiers
+  + introduced HeaderDirectives trait, reworked and improved header extraction directives
+  + changed evaluation of 'complete' directive arguments to call-by-name
+  + fixed incomplete exception handling in Directive.unwrapFuture
+  + renamed getFromFileName directive to getFromFile
+  + introduced default, simple HttpServiceActor implementation
+  + smaller refactoring in PathMatcher API
+
 - spray-servlet: fixed missing application of root-path setting
 - spray-testkit: flexibilized ActorSystem provision for RouteTest, closed #162
 - spray-util: changed log level of loggers installed via 'installEventStreamLoggerFor' from DEBUG to WARNING
 - smaller fixes and improvements
 
 
-Version 1.0-M5 (2012-11-09)
+Version 1.1-M5 (2012-11-09)
 ---------------------------
+- Upgraded to Scala 2.10.0-RC2 and Akka 2.1.0-RC2
 - spray-can:
-  - fixed NPE in RequestChunkAggregation
-  - removed stray logging statement from RequestChunkAggregation
-  - fixed incorrect rendering of chunked responses to HEAD requests
+
+  + fixed NPE in RequestChunkAggregation
+  + removed stray logging statement from RequestChunkAggregation
+  + fixed incorrect rendering of chunked responses to HEAD requests
+
 - spray-http: fixed incorrect test for response encoding acceptance
 - spray-httpx: removed dangerous StatusCodeMarshaller
 - spray-io:
-  - improved logging of errors in the SslTlsSupport pipeline stage
-  - reworked connection closing, added ConfirmedClose reason, fixed #147
+
+  + improved logging of errors in the SslTlsSupport pipeline stage
+  + reworked connection closing, added ConfirmedClose reason, fixed #147
+
 - spray-routing:
-  - added option for disabling automatic file-chunking
-  - removed HttpService.routingSettings method, provision of RoutingSettings now fully implicit
-  - renamed Directive.map and .flatMap to .hmap/.hflatMap,
-    re-added .map and .flatMap pimps for single-value directives
-  - improved HttpService `runRoute` wrapper to also work in "sub-route" actors
-  - removed 'filter' directive, converted all applications to 'extract(...).flatMap'
-  - added `pathTest` directive
-  - improve rendering of directory listings
-  - changed default redirection type to '302 Moved Permanently'
-  - improved host directive
-  - added `dynamicIf` directives
-  - improved and flexibilized DebuggingDirectives
-  - add `complete` overload taking a single StatusCode parameter
+
+  + added option for disabling automatic file-chunking
+  + removed HttpService.routingSettings method, provision of RoutingSettings now fully implicit
+  + renamed Directive.map and .flatMap to .hmap/.hflatMap, re-added .map and .flatMap pimps for single-value directives
+  + improved HttpService 'runRoute' wrapper to also work in "sub-route" actors
+  + removed 'filter' directive, converted all applications to 'extract(...).flatMap'
+  + added 'pathTest' directive
+  + improve rendering of directory listings
+  + changed default redirection type to '302 Moved Permanently'
+  + improved host directive
+  + added 'dynamicIf' directives
+  + improved and flexibilized DebuggingDirectives
+  + add 'complete' overload taking a single StatusCode parameter
+
 - spray-can & spray-servlet: increased default idle and request timeouts to 120s and 30s respectively
 - spray-testkit: improved provision of custom RouteTestTimeout
-- spray-util: added `installDebuggingEventStreamLoggers` convenience helper
+- spray-util: added 'installDebuggingEventStreamLoggers' convenience helper
 - smaller fixes and improvements
+
+
+Version 1.1-M4 (2012-10-19)
+---------------------------
+- Upgraded to Scala 2.10.0-RC1 and Akka 2.1.0-RC1
 
 
 Version 1.0-M4 (2012-10-19)
 ---------------------------
 - Upgraded to parboiled 1.1.3 and spray-json 1.2.2
 - routing: further flexibilized directive combination with StandardRoutes
-- routing: (re)added `complete` overload taking a Future[HttpResponse], closes #143
+- routing: (re)added 'complete' overload taking a Future[HttpResponse], closes #143
 - routing: added new directives:
-  - unmatchedPath
-  - listDirectoryContents
-  - getFromBrowseableDirectory / getFromBrowseableDirectories
+
+  + unmatchedPath
+  + listDirectoryContents
+  + getFromBrowseableDirectory / getFromBrowseableDirectories
+
 - smaller fixes and improvements
 
 
@@ -140,15 +174,15 @@ Version 1.0-M2 (2012-05-16)
   + Fixed SetTimeout messages not working
   + Fixed closing of already closed connections improperly handled
   + Fixed bug in wiring of certain pipeline stages
-  + Dropped `confirm-sends` config setting, added `ack:Boolean` field to IoWorker.Send
-  + Renamed `SendCompleted` event to `AckSend`
+  + Dropped 'confirm-sends' config setting, added 'ack:Boolean' field to IoWorker.Send
+  + Renamed 'SendCompleted' event to 'AckSend'
   + Made IoWorkerThread daemonic
   + Improved pipeline architecture for reduced call stack depth
 
 - spray-can
 
   + Added SSL/TLS support to HttpServer and HttpClient
-  + Added `ack-sends` setting to client and server config
+  + Added 'ack-sends' setting to client and server config
   + Added 'transparent-head-requests' server config setting
   + Added HttpClient.SetRequestTimeout message
   + Fixed HttpServer not handling 'Expect: 100-continue' headers
@@ -174,7 +208,7 @@ Version 1.0-M2 (2012-05-16)
 
 - spray-client
 
-  + Improve `unmarshal` pipeline step to accept all 2xx responses instead of only 200
+  + Improve 'unmarshal' pipeline step to accept all 2xx responses instead of only 200
 
 - general
 
@@ -222,7 +256,7 @@ Version 0.9.0-RC2 (2012-02-17)
 ------------------------------
 - Upgrade to Akka 1.3.1
 - Fixed getFromResource directive to not serve "content" of resources ending with slash
-- Made cacheResults directive honor `Cache-Control: max-age` header
+- Made cacheResults directive honor 'Cache-Control: max-age' header
 - Added default Marshaller for Option[T] (#81)
 - Added TwirlSupport trait
 - Improved DebuggingDirectives trait, added logRequestResponse directive
@@ -270,7 +304,7 @@ Version 0.8.0 (2011-11-16)
   + SBT 0.11.1 (many thx to Steffen for contributing the original buildfile)
 
 - Support for 'application/x-www-form-urlencoded' as well as 'multipart/form-data' form content (many thx to Julien for contributing a lot of the implementation)
-- Support for `multipart/mixed` content (un)marshalling
+- Support for 'multipart/mixed' content (un)marshalling
 - Support for spray-can as the first non-servlet-container web server
 - Completely rewritten spray-client, now based on the new spray-can HttpClient
 - Completely rewritten servlet connector layer for improved performance and stability
@@ -280,13 +314,13 @@ Version 0.8.0 (2011-11-16)
   + spray-example-simple
   + spray-example-spray-can
 
-- Unified SimpleParsers and Unmarshallers into a joint `Deserializer` hierarchy
-- Removed `optionalContent` directive (use `content(as[Option[T]])` instead)
-- Renamed `spray-http` module to `spray-base`
+- Unified SimpleParsers and Unmarshallers into a joint 'Deserializer' hierarchy
+- Removed 'optionalContent' directive (use 'content(as[Option[T]])' instead)
+- Renamed 'spray-http' module to 'spray-base'
 - Renamed cc.spray.marshalling to cc.spray.typeconversion
 - Renamed SprayJsonMarshalling to SprayJsonSupport
 - Moved encoding/decoding to for cc.spray.encoding
-- Simplified case class extraction, now `as(T)` rather than `as(instanceOf(T))`
+- Simplified case class extraction, now 'as(T)' rather than 'as(instanceOf(T))'
 - Simplified SprayTest infrastructure making the 'DontDetach' trait obsolete
 - Lots of other fixes, additions and improvements
 

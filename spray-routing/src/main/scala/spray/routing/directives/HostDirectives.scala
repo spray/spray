@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package spray.routing
 package directives
 
-import util.matching.Regex
+import scala.util.matching.Regex
 import spray.util._
 import shapeless._
 
@@ -28,7 +28,7 @@ trait HostDirectives {
   /**
    * Extracts the hostname part of the Host header value in the request.
    */
-  def hostName: Directive[String :: HNil] = extract(_.request.host)
+  def hostName: Directive1[String] = extract(_.request.uri.authority.host.address)
 
   /**
    * Rejects all requests with a host name different from the given ones.
@@ -46,9 +46,9 @@ trait HostDirectives {
    * If the regex contains a capturing group only the string matched by this group is extracted.
    * If the regex contains more than one capturing group an IllegalArgumentException is thrown.
    */
-  def host(regex: Regex): Directive[String :: HNil] = {
-    def forFunc(regexMatch: String ⇒ Option[String]): Directive[String :: HNil] = {
-      extract(ctx ⇒ regexMatch(ctx.request.host)).flatMap {
+  def host(regex: Regex): Directive1[String] = {
+    def forFunc(regexMatch: String ⇒ Option[String]): Directive1[String] = {
+      extract(ctx ⇒ regexMatch(ctx.request.uri.authority.host.address)).flatMap {
         case Some(matched) ⇒ provide(matched)
         case None          ⇒ reject
       }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,21 +16,25 @@
 
 package spray.can.client
 
-import spray.can.rendering.{ HttpRequestPartRenderingContext, RequestRenderer }
+import akka.io.Tcp
+import spray.can.rendering.{ ByteStringRendering, RequestRenderingComponent, RequestPartRenderingContext }
+import spray.http.HttpHeaders.`User-Agent`
 import spray.io._
+import spray.util._
 
 object RequestRendering {
 
-  def apply(settings: ClientSettings): PipelineStage =
-    new PipelineStage {
-      val renderer = new RequestRenderer(settings.UserAgentHeader, settings.RequestSizeHint.toInt)
+  def apply(settings: ClientConnectionSettings): PipelineStage =
+    new PipelineStage with RequestRenderingComponent {
+      val userAgent = settings.userAgentHeader.toOption.map(`User-Agent`(_))
 
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           val commandPipeline: CPL = {
-            case ctx: HttpRequestPartRenderingContext ⇒
-              val rendered = renderer.render(ctx)
-              commandPL(IOPeer.Send(rendered.buffers, ctx.sentAck))
+            case RequestPartRenderingContext(requestPart, ack) ⇒
+              val rendering = new ByteStringRendering(settings.requestSizeHint)
+              renderRequestPart(rendering, requestPart, context.remoteAddress, context.log)
+              commandPL(Tcp.Write(rendering.get, ack))
 
             case cmd ⇒ commandPL(cmd)
           }

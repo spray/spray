@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,7 +69,11 @@ class GzipSpec extends Specification with CodecSpecSupport {
   def ourGzip(bytes: Array[Byte]) = Gzip.newCompressor.compress(bytes).finish()
   def ourGunzip(bytes: Array[Byte]) = Gzip.newDecompressor.decompress(bytes)
 
-  lazy val corruptGzipContent = make(gzip("Hello")) { _.update(14, 26.toByte) }
+  lazy val corruptGzipContent = {
+    val content = gzip("Hello")
+    content.update(14, 26.toByte)
+    content
+  }
 
   def streamGzip(bytes: Array[Byte]) = {
     val output = new ByteArrayOutputStream()

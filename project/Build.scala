@@ -65,6 +65,7 @@ object Build extends Build {
     .settings(sprayModuleSettings: _*)
     .settings(libraryDependencies ++=
       compile(parboiled) ++
+      provided(akkaActor) ++
       test(specs2)
     )
 
@@ -83,7 +84,7 @@ object Build extends Build {
   lazy val sprayIO = Project("spray-io", file("spray-io"))
     .dependsOn(sprayUtil)
     .settings(sprayModuleSettings: _*)
-    .settings(libraryDependencies ++= provided(akkaActor) ++ test(akkaTestKit, specs2))
+    .settings(libraryDependencies ++= provided(akkaActor))
 
 
   lazy val sprayIOTests = Project("spray-io-tests", file("spray-io-tests"))
@@ -100,9 +101,10 @@ object Build extends Build {
       sprayHttp, sprayHttpx, sprayUtil,
       sprayIO) // for access to akka.io.Tcp, can go away after upgrade to Akka 2.2
     .settings(sprayModuleSettings: _*)
+    .settings(spray.boilerplate.BoilerplatePlugin.Boilerplate.settings: _*)
     .settings(libraryDependencies ++=
       compile(shapeless) ++
-      provided(akkaActor, scalate)
+      provided(akkaActor)
     )
 
 
@@ -110,7 +112,7 @@ object Build extends Build {
     .dependsOn(sprayCaching, sprayHttp, sprayHttpx, sprayRouting, sprayTestKit, sprayUtil)
     .settings(sprayModuleSettings: _*)
     .settings(noPublishing: _*)
-    .settings(libraryDependencies ++= test(akkaActor, akkaTestKit, specs2, shapeless, scalate, sprayJson))
+    .settings(libraryDependencies ++= test(akkaActor, akkaTestKit, specs2, shapeless, sprayJson))
 
 
   lazy val sprayServlet = Project("spray-servlet", file("spray-servlet"))
@@ -209,7 +211,7 @@ object Build extends Build {
     .settings(jettyExampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
-      test(specs2) ++
+      test(specs2, akkaTestKit) ++
       runtime(akkaSlf4j, logback) ++
       container(jettyWebApp, servlet30)
     )
@@ -219,7 +221,7 @@ object Build extends Build {
     .settings(exampleSettings: _*)
     .settings(libraryDependencies ++=
       compile(akkaActor) ++
-      test(specs2) ++
+      test(specs2, akkaTestKit) ++
       runtime(akkaSlf4j, logback)
     )
 

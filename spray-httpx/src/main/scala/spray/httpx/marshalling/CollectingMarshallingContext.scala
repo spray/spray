@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@
 package spray.httpx.marshalling
 
 import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.{ TimeUnit, CountDownLatch }
-import annotation.tailrec
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit._
+import scala.annotation.tailrec
 import akka.spray.UnregisteredActorRef
+import akka.util.Timeout
 import akka.actor.{ ActorRefFactory, ActorRef }
 import spray.http._
 
@@ -56,7 +58,7 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
     latch.countDown()
   }
 
-  def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any] = None)(implicit sender: ActorRef) = {
+  def startChunkedMessage(entity: HttpEntity, ack: Option[Any] = None)(implicit sender: ActorRef) = {
     require(actorRefFactory != null, "Chunked responses can only be collected if an ActorRefFactory is provided")
     if (!_entity.compareAndSet(None, Some(entity)))
       sys.error("`marshalTo` or `startChunkedMessage` was already called")
@@ -64,8 +66,8 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
     val ref = new UnregisteredActorRef(actorRefFactory) {
       def handle(message: Any)(implicit sender: ActorRef) {
         message match {
-          case wrapper: HttpMessagePartWrapper ⇒
-            wrapper.messagePart match {
+          case HttpMessagePartWrapper(part, ack) ⇒
+            part match {
               case x: MessageChunk ⇒
                 @tailrec def updateChunks(current: Seq[MessageChunk]) {
                   if (!_chunks.compareAndSet(current, _chunks.get :+ x)) updateChunks(_chunks.get)
@@ -79,15 +81,15 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
 
               case x ⇒ throw new IllegalStateException("Received unexpected message part: " + x)
             }
-            wrapper.sentAck.foreach(sender.tell(_, this))
+            ack.foreach(sender.tell(_, this))
         }
       }
     }
-    sentAck.foreach(sender.tell(_, ref))
+    ack.foreach(sender.tell(_, ref))
     ref
   }
 
-  def awaitResults(implicit timeout: akka.util.Timeout) {
-    latch.await(timeout.duration.toMillis, TimeUnit.MILLISECONDS)
+  def awaitResults(implicit timeout: Timeout) {
+    latch.await(timeout.duration.toMillis, MILLISECONDS)
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 
 package spray.routing
 
-import collection.GenTraversableOnce
-import akka.dispatch.Future
+import scala.collection.GenTraversableOnce
+import akka.dispatch.{ ExecutionContext, Future }
 import akka.actor.{ Status, ActorRef }
 import akka.spray.UnregisteredActorRef
 import spray.httpx.marshalling.{ MarshallingContext, Marshaller }
@@ -31,10 +31,7 @@ import MediaTypes._
  * Immutable object encapsulating the context of an [[spray.http.HttpRequest]]
  * as it flows through a ''spray'' Route structure.
  */
-case class RequestContext(
-    request: HttpRequest,
-    responder: ActorRef,
-    unmatchedPath: String = "") {
+case class RequestContext(request: HttpRequest, responder: ActorRef, unmatchedPath: Uri.Path) {
 
   /**
    * Returns a copy of this context with the HttpRequest transformed by the given function.
@@ -59,7 +56,7 @@ case class RequestContext(
   /**
    * Returns a copy of this context with the unmatchedPath transformed by the given function.
    */
-  def withUnmatchedPathMapped(f: String ⇒ String) = {
+  def withUnmatchedPathMapped(f: Uri.Path ⇒ Uri.Path) = {
     val transformed = f(unmatchedPath)
     if (transformed == unmatchedPath) this else copy(unmatchedPath = transformed)
   }
@@ -187,80 +184,89 @@ case class RequestContext(
     withHttpResponseMapped(_.mapHeaders(f))
 
   /**
+   * Removes a potentially existing Accept header from the request headers.
+   */
+  def withContentNegotiationDisabled =
+    copy(request = request.withHeaders(request.headers filterNot (_.isInstanceOf[Accept])))
+
+  /**
    * Rejects the request with the given rejections.
    */
-  def reject(rejections: Rejection*) {
+  def reject(rejection: Rejection): Unit =
+    responder ! Rejected(rejection :: Nil)
+
+  /**
+   * Rejects the request with the given rejections.
+   */
+  def reject(rejections: Rejection*): Unit =
     responder ! Rejected(rejections.toList)
-  }
 
   /**
    * Completes the request with redirection response of the given type to the given URI.
    * The default redirectionType is a temporary `302 Found`.
    */
-  def redirect(uri: String, redirectionType: Redirection = Found) {
+  def redirect(uri: String, redirectionType: Redirection = Found): Unit =
     complete {
       HttpResponse(
         status = redirectionType,
         headers = Location(uri) :: Nil,
-        entity = redirectionType.htmlTemplate.toOption.map(s ⇒ HttpBody(`text/html`, s format uri)))
+        entity = redirectionType.htmlTemplate.toOption.map(s ⇒ HttpEntity(`text/html`, s format uri)))
     }
-  }
 
   /**
    * Completes the request with the given status code and its default message as the response entity.
    */
-  def complete(status: StatusCode) {
+  def complete(status: StatusCode): Unit =
     complete(HttpResponse(status, entity = status.defaultMessage))
-  }
 
   /**
    * Completes the request with status "200 Ok" and the response entity created by marshalling the given object using
    * the in-scope marshaller for the type.
    */
-  def complete[T: Marshaller](obj: T) {
+  def complete[T: Marshaller](obj: T): Unit =
     complete(OK, obj)
-  }
 
   /**
    * Completes the request with the given status and the response entity created by marshalling the given object using
    * the in-scope marshaller for the type.
    */
-  def complete[T: Marshaller](status: StatusCode, obj: T) {
+  def complete[T: Marshaller](status: StatusCode, obj: T): Unit =
     complete(status, Nil, obj)
-  }
 
   /**
    * Completes the request with the given status, headers and the response entity created by marshalling the
    * given object using the in-scope marshaller for the type.
    */
-  def complete[T](status: StatusCode, headers: List[HttpHeader], obj: T)(implicit marshaller: Marshaller[T]) {
+  def complete[T](status: StatusCode, headers: List[HttpHeader], obj: T)(implicit marshaller: Marshaller[T]): Unit =
     marshaller(obj, marshallingContext(status, headers))
-  }
 
   /**
    * Completes the request with the given [[spray.http.HttpResponse]].
    */
-  def complete(response: HttpResponse) {
+  def complete(response: HttpResponse): Unit =
     responder ! response
-  }
 
   /**
    * Schedules the completion of the request with result of the given future.
    */
-  def complete(future: Future[HttpResponse]) {
+  def complete(future: Future[HttpResponse])(implicit ec: ExecutionContext): Unit =
     future.onComplete {
       case Right(response) ⇒ complete(response)
       case Left(error)     ⇒ failWith(error)
     }
-  }
 
   /**
-   * Bubbles the given error up the response chain, where it is dealt with by the closest `handleExceptions`
-   * directive and its ExceptionHandler.
+   * Bubbles the given error up the response chain where it is dealt with by the closest `handleExceptions`
+   * directive and its ``ExceptionHandler``, unless the error is a ``RejectionError``. In this case the
+   * wrapped rejection is unpacked and "executed".
    */
-  def failWith(error: Throwable) {
-    responder ! Status.Failure(error)
-  }
+  def failWith(error: Throwable): Unit =
+    responder ! {
+      error match {
+        case RejectionError(rejection) ⇒ Rejected(rejection :: Nil)
+        case x                         ⇒ Status.Failure(x)
+      }
+    }
 
   /**
    * Creates a MarshallingContext using the given status code and response headers.
@@ -273,7 +279,7 @@ case class RequestContext(
       def handleError(error: Throwable) { failWith(error) }
       def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any])(implicit sender: ActorRef) = {
         val chunkStart = ChunkedResponseStart(response(entity))
-        val wrapper = if (sentAck.isEmpty) chunkStart else Confirmed(chunkStart, sentAck)
+        val wrapper = if (sentAck.isEmpty) chunkStart else Confirmed(chunkStart, sentAck.get)
         responder.tell(wrapper, sender)
         responder
       }

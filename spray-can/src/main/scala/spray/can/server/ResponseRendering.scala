@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,29 +16,27 @@
 
 package spray.can.server
 
-import spray.can.rendering.{ HttpResponsePartRenderingContext, ResponseRenderer }
-import spray.util.ConnectionCloseReasons.CleanClose
+import akka.io.Tcp
+import spray.can.rendering.{ ByteStringRendering, ResponseRenderingComponent, ResponsePartRenderingContext }
 import spray.io._
+import spray.can.Http
 
 object ResponseRendering {
 
   def apply(settings: ServerSettings): PipelineStage =
-    new PipelineStage {
-      val renderer = new ResponseRenderer(
-        settings.ServerHeader,
-        settings.ChunklessStreaming,
-        settings.ResponseSizeHint.toInt)
+    new PipelineStage with ResponseRenderingComponent {
+      def serverHeaderValue: String = settings.serverHeader
+      def chunklessStreaming: Boolean = settings.chunklessStreaming
 
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
           val commandPipeline: CPL = {
-            case ctx: HttpResponsePartRenderingContext ⇒
-              val rendered = renderer.render(ctx)
-              val buffers = rendered.buffers
-              if (!buffers.isEmpty)
-                commandPL(IOPeer.Send(buffers, ctx.sentAck))
-              if (rendered.closeConnection)
-                commandPL(IOPeer.Close(CleanClose))
+            case ctx: ResponsePartRenderingContext ⇒
+              val rendering = new ByteStringRendering(settings.responseSizeHint)
+              val close = renderResponsePartRenderingContext(rendering, ctx, context.log)
+              val data = rendering.get
+              if (!data.isEmpty) commandPL(Tcp.Write(data, ctx.ack))
+              if (close) commandPL(Http.Close)
 
             case cmd ⇒ commandPL(cmd)
           }

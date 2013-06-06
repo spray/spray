@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,83 +16,75 @@
 
 package spray.can.server
 
-import akka.event.{ Logging, LoggingAdapter }
-import java.nio.ByteBuffer
-import annotation.tailrec
-import spray.can.rendering.HttpResponsePartRenderingContext
-import spray.can.HttpEvent
-import spray.util.ConnectionCloseReasons.ProtocolError
+import scala.annotation.tailrec
+import akka.util.NonFatal
+import akka.io.Tcp
+import akka.util.ByteString
+import spray.can.rendering.ResponsePartRenderingContext
+import spray.can.Http
 import spray.can.parsing._
 import spray.http._
+import spray.util._
 import spray.io._
 
 object RequestParsing {
 
-  lazy val continue = "HTTP/1.1 100 Continue\r\n\r\n".getBytes("ASCII")
+  val continue = ByteString("HTTP/1.1 100 Continue\r\n\r\n")
 
-  def apply(settings: ParserSettings, verboseErrorMessages: Boolean, log: LoggingAdapter): PipelineStage = {
-    val warning = TaggableLog(log, Logging.WarningLevel)
-    new PipelineStage {
-      val startParser = new EmptyRequestParser(settings)
-
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+  def apply(settings: ServerSettings): RawPipelineStage[SslTlsContext] = {
+    val rootParser = new HttpRequestPartParser(settings.parserSettings)()
+    new RawPipelineStage[SslTlsContext] {
+      def apply(context: SslTlsContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines {
-          var currentParsingState: ParsingState = startParser
-
-          @tailrec
-          final def parse(buffer: ByteBuffer) {
-            currentParsingState match {
-              case x: IntermediateState ⇒
-                if (buffer.remaining > 0) {
-                  currentParsingState = x.read(buffer)
-                  parse(buffer)
-                } // else wait for more input
-
-              case x: HttpMessageStartCompletedState ⇒
-                eventPL(HttpMessageStartEvent(x.toHttpMessagePart, x.connectionHeader))
-                currentParsingState =
-                  if (x.isInstanceOf[HttpMessageEndCompletedState]) startParser
-                  else new ChunkParser(settings)
-                parse(buffer)
-
-              case x: HttpMessagePartCompletedState ⇒
-                eventPL(HttpEvent(x.toHttpMessagePart))
-                currentParsingState =
-                  if (x.isInstanceOf[HttpMessageEndCompletedState]) startParser
-                  else new ChunkParser(settings)
-                parse(buffer)
-
-              case Expect100ContinueState(nextState) ⇒
-                commandPL(IOPeer.Send(ByteBuffer.wrap(continue)))
-                currentParsingState = nextState
-                parse(buffer)
-
-              case ErrorState.Dead ⇒ // if we already handled the error state we ignore all further input
-
-              case x: ErrorState ⇒
-                handleParseError(x)
-                currentParsingState = ErrorState.Dead // set to "special" ErrorState that ignores all further input
-            }
+          import context.log
+          val https = settings.sslEncryption && context.sslEngine.isDefined
+          val parser = rootParser.copyWith { errorInfo ⇒
+            if (settings.parserSettings.illegalHeaderWarnings)
+              log.warning(errorInfo.withSummaryPrepended("Illegal request header").formatPretty)
           }
 
-          def handleParseError(state: ErrorState) {
-            warning.log(context.connection.tag, "Illegal request, responding with status {} and '{}'", state.status,
-              state.message)
-            val msg = if (verboseErrorMessages) state.message else state.summary
-            val response = HttpResponse(state.status, msg)
+          @tailrec def parse(data: ByteString): Unit =
+            if (!data.isEmpty) parser.parse(data) match {
+              case Result.Ok(part, remainingData, closeAfterResponseCompletion) ⇒
+                eventPL {
+                  part match {
+                    case x: HttpRequest ⇒
+                      HttpMessageStartEvent(x.withEffectiveUri(https), closeAfterResponseCompletion)
+                    case x: ChunkedRequestStart ⇒
+                      HttpMessageStartEvent(ChunkedRequestStart(x.request.withEffectiveUri(https)),
+                        closeAfterResponseCompletion)
+                    case x ⇒
+                      Http.MessageEvent(x)
+                  }
+                }
+                parse(remainingData)
 
-            // In case of a request parsing error we probably stopped reading the request somewhere in between,
-            // where we cannot simply resume. Resetting to a known state is not easy either,
-            // so we need to close the connection to do so.
-            commandPL(HttpResponsePartRenderingContext(response))
-            commandPL(HttpServer.Close(ProtocolError(state.message)))
+              case Result.NeedMoreData               ⇒ // just wait for the next packet
+
+              case Result.ParsingError(status, info) ⇒ handleError(status, info)
+
+              case Result.Expect100Continue(remainingData) ⇒
+                commandPL(Tcp.Write(continue))
+                parse(remainingData)
+            }
+
+          def handleError(status: StatusCode, info: ErrorInfo): Unit = {
+            log.warning("Illegal request, responding with status '{}': {}", status, info.formatPretty)
+            val msg = if (settings.verboseErrorMessages) info.formatPretty else info.summary
+            commandPL(ResponsePartRenderingContext(HttpResponse(status, msg)))
+            commandPL(Http.Close)
           }
 
           val commandPipeline = commandPL
 
           val eventPipeline: EPL = {
-            case x: IOPeer.Received ⇒ parse(x.buffer)
-            case ev                 ⇒ eventPL(ev)
+            case Tcp.Received(data: ByteString) ⇒
+              try parse(data)
+              catch {
+                case NonFatal(e) ⇒ handleError(StatusCodes.BadRequest, ErrorInfo(e.getMessage.nullAsEmpty))
+              }
+
+            case ev ⇒ eventPL(ev)
           }
         }
     }
@@ -100,5 +92,5 @@ object RequestParsing {
 
   ////////////// EVENTS //////////////
 
-  case class HttpMessageStartEvent(messagePart: HttpMessageStart, connectionHeader: Option[String]) extends Event
+  case class HttpMessageStartEvent(messagePart: HttpMessageStart, closeAfterResponseCompletion: Boolean) extends Event
 }

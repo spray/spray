@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@
 
 package spray.http
 
-import org.specs2.mutable._
 import java.util.TimeZone
-import util.Random
+import scala.util.Random
 import org.specs2.matcher.Matcher
+import org.specs2.mutable._
 
 class DateTimeSpec extends Specification {
 
@@ -76,6 +76,14 @@ class DateTimeSpec extends Specification {
         { (dt: DateTime) ⇒ val rt = roundTrip(dt); dt == rt && dt.weekday == rt.weekday },
         { (dt: DateTime) ⇒ dt.toRfc1123DateTimeString + " != " + roundTrip(dt).toRfc1123DateTimeString })
       httpDateTimes.take(10000) must roundTripOk.forall
+    }
+    "properly represent DateTime.MinValue" in {
+      DateTime.MinValue.toString === "1800-01-01T00:00:00"
+      DateTime(DateTime.MinValue.clicks).toString === "1800-01-01T00:00:00"
+    }
+    "properly represent DateTime.MaxValue" in {
+      DateTime.MaxValue.toString === "2199-12-31T23:59:59"
+      DateTime(DateTime.MaxValue.clicks).toString === "2199-12-31T23:59:59"
     }
   }
 }

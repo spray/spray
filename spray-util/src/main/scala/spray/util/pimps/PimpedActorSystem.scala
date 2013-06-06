@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,11 @@
 
 package spray.util.pimps
 
+import akka.util.duration._
 import akka.dispatch.Future
-import akka.actor._
 import akka.pattern.ask
+import akka.actor._
 import akka.util.Duration
-import java.util.concurrent.TimeUnit
 
 class PimpedActorSystem(underlying: ActorSystem) {
 
@@ -40,7 +40,7 @@ class PimpedActorSystem(underlying: ActorSystem) {
           }
         }
       }
-    } // TODO: replace with Duration.Inf once Akka #1883 is fixed
-  }.ask(subject)(Duration(Long.MaxValue, TimeUnit.NANOSECONDS)).mapTo[Terminated]
+    }
+  }.ask(subject)(Duration.Inf).mapTo[Terminated]
 
 }

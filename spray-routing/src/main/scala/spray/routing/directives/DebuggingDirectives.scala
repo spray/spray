@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,13 +84,15 @@ object LoggingMagnet {
     }
 }
 
-case class LogEntry(obj: Any, level: Int = DebugLevel) {
+class LogEntry(obj: Any, level: LogLevel = DebugLevel) {
   def logTo(log: LoggingAdapter) {
-    log.log(level.asInstanceOf[LogLevel], obj.toString)
+    log.log(level, obj.toString)
   }
 }
 
 object LogEntry {
+  def apply(obj: Any, level: LogLevel): LogEntry =
+    new LogEntry(obj, level)
   def apply(obj: Any, marker: String, level: LogLevel): LogEntry =
-    LogEntry(if (marker.isEmpty) obj else marker + ": " + obj, level)
+    new LogEntry(if (marker.isEmpty) obj else marker + ": " + obj, level)
 }

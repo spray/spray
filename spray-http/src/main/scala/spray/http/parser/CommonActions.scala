@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,14 +34,14 @@ private[parser] trait CommonActions {
         case custom        ⇒ new MultipartMediaType(custom, boundary)
       }
       case mainLower ⇒
-        MediaTypes.getForKey((mainLower, subType.toLowerCase)).getOrElse(new CustomMediaType(mainType, subType))
+        MediaTypes.getForKey((mainLower, subType.toLowerCase)) getOrElse MediaType.custom(mainType, subType)
     }
   }
 
   val getCharset: String ⇒ HttpCharset = { charsetName ⇒
     HttpCharsets
       .getForKey(charsetName.toLowerCase)
-      .orElse(HttpCharsets.CustomHttpCharset(charsetName))
+      .orElse(HttpCharset.custom(charsetName))
       .getOrElse(throw new ParsingException("Unsupported charset: " + charsetName))
   }
 }

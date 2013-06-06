@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,15 +17,15 @@
 
 package spray.http
 
-trait MessagePredicate extends (HttpMessage ⇒ Boolean) { thiz ⇒
+trait MessagePredicate extends (HttpMessage ⇒ Boolean) { self ⇒
   def &&(that: MessagePredicate): MessagePredicate = new MessagePredicate {
-    def apply(msg: HttpMessage) = thiz(msg) && that(msg)
+    def apply(msg: HttpMessage) = self(msg) && that(msg)
   }
   def ||(that: MessagePredicate) = new MessagePredicate {
-    def apply(msg: HttpMessage) = thiz(msg) || that(msg)
+    def apply(msg: HttpMessage) = self(msg) || that(msg)
   }
   def unary_! = new MessagePredicate {
-    def apply(msg: HttpMessage) = !thiz(msg)
+    def apply(msg: HttpMessage) = !self(msg)
   }
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import HttpEncodings._
 private[parser] trait AcceptEncodingHeader {
   this: Parser with ProtocolParameterRules ⇒
 
-  def ACCEPT_ENCODING = rule(
+  def `*Accept-Encoding` = rule(
     oneOrMore(EncodingRangeDecl, separator = ListSep) ~ EOI ~~> (HttpHeaders.`Accept-Encoding`(_)))
 
   def EncodingRangeDecl = rule(
@@ -32,7 +32,7 @@ private[parser] trait AcceptEncodingHeader {
 
   def EncodingRangeDef = rule(
     "*" ~ push(`*`)
-      | ContentCoding ~~> (x ⇒ getForKey(x.toLowerCase).getOrElse(new CustomHttpEncoding(x))))
+      | ContentCoding ~~> (x ⇒ getForKey(x.toLowerCase) getOrElse (HttpEncoding.custom(x))))
 
   def EncodingQuality = rule {
     ";" ~ "q" ~ "=" ~ QValue // TODO: support encoding quality

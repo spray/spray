@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,9 @@
 
 package spray.httpx.marshalling
 
-import akka.dispatch.Future
+import akka.dispatch.{ ExecutionContext, Future }
 import akka.actor.{ ActorRef, Actor, Props, ActorRefFactory }
-import spray.util.IOClosed
+import akka.io.Tcp
 import spray.http._
 
 trait MetaMarshallers {
@@ -39,11 +39,19 @@ trait MetaMarshallers {
       }
     }
 
-  implicit def futureMarshaller[T](implicit m: Marshaller[T]) =
+  implicit def futureMarshaller[T](implicit m: Marshaller[T], ec: ExecutionContext) =
     Marshaller[Future[T]] { (value, ctx) ⇒
       value.onComplete {
         case Right(v)    ⇒ m(v, ctx)
         case Left(error) ⇒ ctx.handleError(error)
+      }
+    }
+
+  implicit def tryMarshaller[T](implicit m: Marshaller[T]) =
+    Marshaller[Either[Throwable, T]] { (value, ctx) ⇒
+      value match {
+        case Right(v) ⇒ m(v, ctx)
+        case Left(t)  ⇒ ctx.handleError(t)
       }
     }
 
@@ -65,7 +73,7 @@ object MetaMarshallers extends MetaMarshallers {
         val chunkingCtx = new DelegatingMarshallingContext(ctx) {
           override def marshalTo(entity: HttpEntity) {
             if (connectionActor == null) connectionActor = ctx.startChunkedMessage(entity, Some(SentOk(rest)))
-            else connectionActor ! MessageChunk(entity.buffer).withSentAck(SentOk(rest))
+            else connectionActor ! MessageChunk(entity.buffer).withAck(SentOk(rest))
           }
           override def handleError(error: Throwable) {
             context.stop(self)
@@ -82,7 +90,7 @@ object MetaMarshallers extends MetaMarshallers {
           context.stop(self)
         } else self ! remaining
 
-      case _: IOClosed ⇒
+      case _: Tcp.ConnectionClosed ⇒
         context.stop(self)
     }
   }

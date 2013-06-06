@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,14 +71,14 @@ object FieldDefMagnetAux extends ToNameReceptaclePimps {
 
   /************ "regular" field extraction ******************/
 
-  def extractField[A, B](f: A ⇒ Directive[B :: HNil]) = FieldDefMagnetAux[A, Directive[B :: HNil]](f)
+  def extractField[A, B](f: A ⇒ Directive1[B]) = FieldDefMagnetAux[A, Directive1[B]](f)
 
-  private def filter[A, B](nr: NameReceptacle[A])(implicit ev1: UM[HttpForm], ev2: FFC[B]): Directive[B :: HNil] =
+  private def filter[A, B](nr: NameReceptacle[A])(implicit ev1: UM[HttpForm], ev2: FFC[B]): Directive1[B] =
     extract(_.request.entity.as[HttpForm].right.flatMap(_.field(nr.name).as[B])).flatMap {
-      case Right(value)                      ⇒ provide(value)
-      case Left(ContentExpected)             ⇒ reject(MissingFormFieldRejection(nr.name))
-      case Left(MalformedContent(msg, _))    ⇒ reject(MalformedFormFieldRejection(msg, nr.name))
-      case Left(UnsupportedContentType(msg)) ⇒ reject(UnsupportedRequestContentTypeRejection(msg))
+      case Right(value)                       ⇒ provide(value)
+      case Left(ContentExpected)              ⇒ reject(MissingFormFieldRejection(nr.name))
+      case Left(MalformedContent(msg, cause)) ⇒ reject(MalformedFormFieldRejection(nr.name, msg, cause))
+      case Left(UnsupportedContentType(msg))  ⇒ reject(UnsupportedRequestContentTypeRejection(msg))
     }
   implicit def forString(implicit ev1: UM[HttpForm], ev2: FFC[String]) =
     extractField[String, String](string ⇒ filter(string))

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,12 @@
  * limitations under the License.
  */
 
-package spray.routing
-package authentication
+package spray.routing.authentication
 
-import com.typesafe.config.Config
-import com.typesafe.config.ConfigException
+import com.typesafe.config.{ ConfigException, Config }
 import akka.dispatch.{ ExecutionContext, Promise }
-import spray.util._
-import spray.caching.{ Cache, LruCache }
+import spray.caching.{ LruCache, Cache }
+import spray.util.pimpString_
 
 object UserPassAuthenticator {
 
@@ -37,8 +35,8 @@ object UserPassAuthenticator {
    *   }
    * }}}
    */
-  def fromConfig[T](config: Config)(createUser: UserPass ⇒ T)(implicit executor: ExecutionContext): UserPassAuthenticator[T] = { userPassOption ⇒
-    Promise.successful {
+  def fromConfig[T](config: Config)(createUser: UserPass ⇒ T)(implicit ec: ExecutionContext): UserPassAuthenticator[T] = { userPassOption ⇒
+    Promise.successful(
       userPassOption.flatMap { userPass ⇒
         try {
           val pw = config.getString(userPass.user)
@@ -46,15 +44,14 @@ object UserPassAuthenticator {
         } catch {
           case _: ConfigException ⇒ None
         }
-      }
-    }
+      }).future
   }
 
   /**
    * Creates a wrapper around an UserPassAuthenticator providing authentication lookup caching using the given cache.
    * Note that you need to manually add a dependency to the spray-caching module in order to be able to use this method.
    */
-  def cached[T](inner: UserPassAuthenticator[T], cache: Cache[Option[T]] = LruCache[Option[T]]())(implicit executor: ExecutionContext): UserPassAuthenticator[T] = { userPassOption ⇒
+  def cached[T](inner: UserPassAuthenticator[T], cache: Cache[Option[T]] = LruCache[Option[T]]())(implicit ec: ExecutionContext): UserPassAuthenticator[T] = { userPassOption ⇒
     cache.fromFuture(userPassOption) {
       inner(userPassOption)
     }

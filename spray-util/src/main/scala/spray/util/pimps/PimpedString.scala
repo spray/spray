@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,15 +30,14 @@ class PimpedString(underlying: String) {
    * empty leading or trailing empty string (respectively).
    */
   def fastSplit(delimiter: Char): List[String] = {
-    @tailrec
-    def split(end: Int, elements: List[String]): List[String] = {
+    @tailrec def split(end: Int = underlying.length, elements: List[String] = Nil): List[String] = {
       val ix = underlying.lastIndexOf(delimiter, end - 1)
       if (ix < 0)
         underlying.substring(0, end) :: elements
       else
         split(ix, underlying.substring(ix + 1, end) :: elements)
     }
-    split(underlying.length, Nil)
+    split()
   }
 
   /**
@@ -52,40 +51,38 @@ class PimpedString(underlying: String) {
    */
   def lazySplit(delimiter: Char): Stream[String] = {
     // based on an implemented by Jed Wesley-Smith
-    def split(start: Int): Stream[String] = {
+    def split(start: Int = 0): Stream[String] = {
       val ix = underlying.indexOf(delimiter, start)
       if (ix < 0)
         Stream.cons(underlying.substring(start), Stream.Empty)
       else
         Stream.cons(underlying.substring(start, ix), split(ix + 1))
     }
-    split(0)
+    split()
   }
 
   /**
    * Returns Some(String) if the underlying string is non-emtpy, None otherwise
    */
   def toOption: Option[String] =
-    if (underlying.isEmpty) None else Some(underlying)
+    if ((underlying eq null) || underlying.isEmpty) None else Some(underlying)
 
   /**
    * If the underlying string is null the method returns the empty string, otherwise the underlying string.
    */
   def nullAsEmpty: String =
-    if (underlying == null) "" else underlying
+    if (underlying eq null) "" else underlying
 
   /**
    * Returns the ASCII encoded bytes of this string.
    */
   def getAsciiBytes = {
-    val sl = underlying.length
-    val array = new Array[Byte](sl)
-    var i = 0
-    while (i < sl) {
-      array(i) = underlying.charAt(i).asInstanceOf[Byte]
-      i += 1
-    }
-    array
+    @tailrec def bytes(array: Array[Byte] = new Array[Byte](underlying.length), ix: Int = 0): Array[Byte] =
+      if (ix < array.length) {
+        array(ix) = underlying.charAt(ix).asInstanceOf[Byte]
+        bytes(array, ix + 1)
+      } else array
+    bytes()
   }
 
   /**

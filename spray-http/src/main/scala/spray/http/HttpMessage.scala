@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,44 +17,56 @@
 package spray.http
 
 import java.nio.charset.Charset
-import java.net.{ URISyntaxException, URI }
-import annotation.tailrec
-import spray.http.parser.{ QueryParser, HttpParser }
+import scala.annotation.tailrec
 import HttpHeaders._
 import HttpCharsets._
-import StatusCodes._
+import java.util
 
 sealed trait HttpMessagePartWrapper {
   def messagePart: HttpMessagePart
-  def sentAck: Option[Any]
+  def ack: Option[Any]
 }
 
-case class Confirmed(messagePart: HttpMessagePart, sentAck: Option[Any]) extends HttpMessagePartWrapper
+case class Confirmed(messagePart: HttpMessagePart, sentAck: Any) extends HttpMessagePartWrapper {
+  val ack = Some(sentAck)
+}
 
 object HttpMessagePartWrapper {
-  def unapply(x: HttpMessagePartWrapper): Option[(HttpMessagePart, Option[Any])] = Some(x.messagePart, x.sentAck)
+  def unapply(x: HttpMessagePartWrapper): Option[(HttpMessagePart, Option[Any])] = Some((x.messagePart, x.ack))
 }
 
 sealed trait HttpMessagePart extends HttpMessagePartWrapper {
   def messagePart = this
-  def sentAck: Option[Any] = None
-  def withSentAck(ack: Any) = Confirmed(this, Some(ack))
-}
-
-object HttpMessagePart {
-  def unapply(wrapper: HttpMessagePartWrapper): Option[(HttpMessagePart, Option[Any])] =
-    wrapper match {
-      case part: HttpMessagePart    ⇒ Some((part, None))
-      case Confirmed(part, sentAck) ⇒ Some((part, sentAck))
-    }
+  def ack = None
+  def withAck(ack: Any) = Confirmed(this, ack)
 }
 
 sealed trait HttpRequestPart extends HttpMessagePart
 
+object HttpRequestPart {
+  def unapply(wrapper: HttpMessagePartWrapper): Option[(HttpRequestPart, Option[Any])] =
+    wrapper.messagePart match {
+      case x: HttpRequestPart ⇒ Some((x, wrapper.ack))
+      case _                  ⇒ None
+    }
+}
+
 sealed trait HttpResponsePart extends HttpMessagePart
+
+object HttpResponsePart {
+  def unapply(wrapper: HttpMessagePartWrapper): Option[(HttpResponsePart, Option[Any])] =
+    wrapper.messagePart match {
+      case x: HttpResponsePart ⇒ Some((x, wrapper.ack))
+      case _                   ⇒ None
+    }
+}
 
 sealed trait HttpMessageStart extends HttpMessagePart {
   def message: HttpMessage
+}
+
+object HttpMessageStart {
+  def unapply(x: HttpMessageStart): Option[HttpMessage] = Some(x.message)
 }
 
 sealed trait HttpMessageEnd extends HttpMessagePart
@@ -70,24 +82,7 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
   def entity: HttpEntity
   def protocol: HttpProtocol
 
-  /**
-   * Tries to parse all RawHeaders in the headers list that spray has a higher-level model for and
-   * returns an error message together with a copy of this message with the headers list updated respectively.
-   * If there were no errors in the header parsing process the returned error string is empty.
-   * Otherwise the error message is accompanied by a new message object in which all headers that were parsed
-   * without errors have been "upgraded". Invalid headers remain RawHeader instances in this case.
-   */
-  def parseHeaders: (String, Self) = {
-    val (errors, parsed) = HttpParser.parseHeaders(headers)
-    val errorMsg = if (errors.isEmpty) "" else "HTTP message contains illegal headers: " + errors.mkString(", ")
-    (errorMsg, withHeaders(parsed))
-  }
-
-  def parseHeadersToEither: Either[String, Self] = parseHeaders match {
-    case ("", self)    ⇒ Right(self)
-    case (errorMsg, _) ⇒ Left(errorMsg)
-  }
-
+  def withHeaders(headers: HttpHeader*): Self = withHeaders(headers.toList)
   def withHeaders(headers: List[HttpHeader]): Self
   def withEntity(entity: HttpEntity): Self
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity): Self
@@ -96,17 +91,12 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
   def mapEntity(f: HttpEntity ⇒ HttpEntity): Self = withEntity(f(entity))
 
   /**
-   * Returns true if a Content-Encoding header is present.
-   */
-  def isEncodingSpecified: Boolean = headers.exists(_.isInstanceOf[`Content-Encoding`])
-
-  /**
    * The content encoding as specified by the Content-Encoding header. If no Content-Encoding header is present the
    * default value 'identity' is returned.
    */
-  def encoding = headers.collect { case `Content-Encoding`(enc) ⇒ enc } match {
-    case enc :: _ ⇒ enc
-    case Nil      ⇒ HttpEncodings.identity
+  def encoding = header[`Content-Encoding`] match {
+    case Some(x) ⇒ x.encoding
+    case None    ⇒ HttpEncodings.identity
   }
 
   def header[T <: HttpHeader: ClassManifest]: Option[T] = {
@@ -116,116 +106,30 @@ sealed abstract class HttpMessage extends HttpMessageStart with HttpMessageEnd {
       else if (erasure.isInstance(headers.head)) Some(headers.head.asInstanceOf[T]) else next(headers.tail)
     next(headers)
   }
-
-  def as[T](implicit f: Self ⇒ T): T = f(message)
 }
 
 /**
- * Sprays immutable model of an HTTP request.
- * The `uri` member contains the the undecoded URI of the request as it appears in the HTTP message,
- * i.e. just the path, query and fragment string without scheme and authority (host and port).
+ * Immutable HTTP request model.
  */
-final class HttpRequest private (
-    val method: HttpMethod,
-    val uri: String,
-    val headers: List[HttpHeader],
-    val entity: HttpEntity,
-    val protocol: HttpProtocol,
-    val queryParams: QueryParams, // empty for instances not created by `parseQuery`
-    URI: URI // non-public, only used internally for caching after a call to `parseUri`
-    ) extends HttpMessage with HttpRequestPart {
+case class HttpRequest(method: HttpMethod = HttpMethods.GET,
+                       uri: Uri = Uri./,
+                       headers: List[HttpHeader] = Nil,
+                       entity: HttpEntity = EmptyEntity,
+                       protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`) extends HttpMessage with HttpRequestPart {
+  require(!uri.isEmpty, "An HttpRequest must not have an empty Uri")
 
   type Self = HttpRequest
-
   def message = this
   def isRequest = true
   def isResponse = false
 
-  def path = if (URI.getPath == null) "" else URI.getPath
-  def query = if (URI.getQuery == null) "" else URI.getQuery
-  def rawQuery = if (URI.getRawQuery == null) "" else URI.getRawQuery
-  def fragment = if (URI.getFragment == null) "" else URI.getFragment
-
-  def host: String = hostHeader(headers).map(_.host).getOrElse("")
-  def port: Option[Int] = hostHeader(headers).map(_.port).getOrElse(None)
-  def hostAndPort: String = hostHeader(headers).map(_.value).getOrElse("")
-
-  @tailrec
-  private def hostHeader(headers: List[HttpHeader]): Option[Host] = headers match {
-    case Nil            ⇒ None
-    case (x: Host) :: _ ⇒ Some(x)
-    case _              ⇒ hostHeader(headers.tail)
-  }
-
-  /**
-   * Parses the `uri` to create a copy of this request with the `URI` member updated
-   * or throws an HttpException if the `uri` cannot be parsed.
-   *
-   * @throws HttpException with status = BadRequest if the uri is illegal
-   */
-  def parseUri: HttpRequest = {
-    try {
-      if (URI eq HttpRequest.DefaultURI) internalCopy(URI = new URI(uri)) else this
-    } catch {
-      case e: URISyntaxException ⇒ throw new IllegalRequestException(BadRequest, "Illegal URI", e.getMessage)
+  def withEffectiveUri(securedConnection: Boolean): HttpRequest =
+    if (uri.isAbsolute) this
+    else header[Host] match {
+      case None                   ⇒ sys.error("Cannot establish effective request URI, request has a relative URI and is missing a `Host` header")
+      case Some(Host("", _))      ⇒ sys.error("Cannot establish effective request URI, request has a relative URI and an empty `Host` header")
+      case Some(Host(host, port)) ⇒ copy(uri = uri.toEffectiveHttpRequestUri(securedConnection, Uri.Host(host), port))
     }
-  }
-
-  /**
-   * Parses the query string to create a copy of this request with the `queryParams` member updated.
-   * If the query string cannot be parsed an HttpException will be thrown.
-   * This method will implicitly call `parseUri` if this has not yet been done for this request.
-   *
-   * @throws HttpException with status = BadRequest if the query string is illegal
-   */
-  def parseQuery: HttpRequest = {
-    def doParseQuery(req: HttpRequest) = {
-      if (!req.rawQuery.isEmpty) {
-        QueryParser.parseQueryString(req.rawQuery) match {
-          case Right(params)   ⇒ req.internalCopy(queryParams = params)
-          case Left(errorInfo) ⇒ throw new IllegalRequestException(BadRequest, errorInfo)
-        }
-      } else req
-    }
-    if (URI eq HttpRequest.DefaultURI) doParseQuery(parseUri)
-    else doParseQuery(this)
-  }
-
-  /**
-   * Parses the headers, uri and query string of this request and returns either a new HttpRequest with all
-   * the parsed data in place or throws an HttpException
-   *
-   * @throws HttpException with status = BadRequest if the query string, uri or a header is illegal
-   */
-  def parseAll: HttpRequest = parseHeadersToEither match {
-    case Right(request) ⇒ request.parseQuery
-    case Left(errorMsg) ⇒ throw new IllegalRequestException(BadRequest, RequestErrorInfo(errorMsg))
-  }
-
-  def copy(method: HttpMethod = method,
-           uri: String = uri,
-           headers: List[HttpHeader] = headers,
-           entity: HttpEntity = entity,
-           protocol: HttpProtocol = protocol): HttpRequest =
-    if (uri != this.uri) HttpRequest(method, uri, headers, entity, protocol)
-    else new HttpRequest(method, uri, headers, entity, protocol, queryParams, URI)
-
-  private def internalCopy(method: HttpMethod = method,
-                           uri: String = uri,
-                           headers: List[HttpHeader] = headers,
-                           entity: HttpEntity = entity,
-                           protocol: HttpProtocol = protocol,
-                           queryParams: QueryParams = queryParams,
-                           URI: URI = URI): HttpRequest =
-    new HttpRequest(method, uri, headers, entity, protocol, queryParams, URI)
-
-  override def hashCode(): Int = (((((method.## * 31) + uri.##) * 31) + headers.##) * 31 + entity.##) + protocol.##
-  override def equals(that: Any) = that match {
-    case x: HttpRequest ⇒ (this eq x) ||
-      method == x.method && uri == x.uri && headers == x.headers && entity == x.entity && protocol == x.protocol
-    case _ ⇒ false
-  }
-  override def toString = "HttpRequest(%s, %s, %s, %s, %s)" format (method, uri, headers, entity, protocol)
 
   def acceptedMediaRanges: List[MediaRange] = {
     // TODO: sort by preference
@@ -245,7 +149,7 @@ final class HttpRequest private (
   def cookies: List[HttpCookie] = for (`Cookie`(cookies) ← headers; cookie ← cookies) yield cookie
 
   /**
-   * Determines whether the given mediatype is accepted by the client.
+   * Determines whether the given media-type is accepted by the client.
    */
   def isMediaTypeAccepted(mediaType: MediaType) = {
     // according to the HTTP spec a client has to accept all mime types if no Accept header is sent with the request
@@ -309,31 +213,14 @@ final class HttpRequest private (
 
   def canBeRetried = method.isIdempotent
 
-  def withHeaders(headers: List[HttpHeader]) = if (headers eq this.headers) this else internalCopy(headers = headers)
-  def withEntity(entity: HttpEntity) = if (entity eq this.entity) this else internalCopy(entity = entity)
+  def withHeaders(headers: List[HttpHeader]) = if (headers eq this.headers) this else copy(headers = headers)
+  def withEntity(entity: HttpEntity) = if (entity eq this.entity) this else copy(entity = entity)
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) =
-    if ((headers eq this.headers) && (entity eq this.entity)) this else internalCopy(headers = headers, entity = entity)
-}
-
-object HttpRequest {
-  val DefaultURI = new URI("")
-
-  def apply(method: HttpMethod = HttpMethods.GET,
-            uri: String = "/",
-            headers: List[HttpHeader] = Nil,
-            entity: HttpEntity = EmptyEntity,
-            protocol: HttpProtocol = HttpProtocols.`HTTP/1.1`): HttpRequest = {
-    new HttpRequest(method, uri, headers, entity, protocol, Map.empty, DefaultURI)
-  }
-
-  def unapply(request: HttpRequest): Option[(HttpMethod, String, List[HttpHeader], HttpEntity, HttpProtocol)] = {
-    import request._
-    Some(method, uri, headers, entity, protocol)
-  }
+    if ((headers eq this.headers) && (entity eq this.entity)) this else copy(headers = headers, entity = entity)
 }
 
 /**
- * Sprays immutable model of an HTTP response.
+ * Immutable HTTP response model.
  */
 case class HttpResponse(status: StatusCode = StatusCodes.OK,
                         entity: HttpEntity = EmptyEntity,
@@ -348,31 +235,41 @@ case class HttpResponse(status: StatusCode = StatusCodes.OK,
   def withHeaders(headers: List[HttpHeader]) = copy(headers = headers)
   def withEntity(entity: HttpEntity) = copy(entity = entity)
   def withHeadersAndEntity(headers: List[HttpHeader], entity: HttpEntity) = copy(headers = headers, entity = entity)
+
+  def connectionCloseExpected: Boolean = protocol match {
+    case HttpProtocols.`HTTP/1.0` ⇒ headers.forall { case x: Connection if x.hasKeepAlive ⇒ false; case _ ⇒ true }
+    case HttpProtocols.`HTTP/1.1` ⇒ headers.exists { case x: Connection if x.hasClose ⇒ true; case _ ⇒ false }
+  }
 }
 
 /**
  * Instance of this class represent the individual chunks of a chunked HTTP message (request or response).
  */
-case class MessageChunk(body: Array[Byte], extensions: List[ChunkExtension]) extends HttpRequestPart with HttpResponsePart {
+case class MessageChunk(body: Array[Byte], extension: String) extends HttpRequestPart with HttpResponsePart {
   require(body.length > 0, "MessageChunk must not have empty body")
   def bodyAsString: String = bodyAsString(HttpCharsets.`ISO-8859-1`.nioCharset)
   def bodyAsString(charset: HttpCharset): String = bodyAsString(charset.nioCharset)
   def bodyAsString(charset: Charset): String = if (body.isEmpty) "" else new String(body, charset)
   def bodyAsString(charset: String): String = if (body.isEmpty) "" else new String(body, charset)
+  override def hashCode = extension.## * 31 + util.Arrays.hashCode(body)
+  override def equals(obj: Any) = obj match {
+    case x: MessageChunk ⇒ (this eq x) || extension == x.extension && util.Arrays.equals(body, x.body)
+    case _               ⇒ false
+  }
 }
 
 object MessageChunk {
   import HttpCharsets._
   def apply(body: String): MessageChunk =
-    apply(body, Nil)
+    apply(body, "")
   def apply(body: String, charset: HttpCharset): MessageChunk =
-    apply(body, charset, Nil)
-  def apply(body: String, extensions: List[ChunkExtension]): MessageChunk =
-    apply(body, `ISO-8859-1`, extensions)
-  def apply(body: String, charset: HttpCharset, extensions: List[ChunkExtension]): MessageChunk =
-    apply(body.getBytes(charset.nioCharset), extensions)
+    apply(body, charset, "")
+  def apply(body: String, extension: String): MessageChunk =
+    apply(body, `ISO-8859-1`, extension)
+  def apply(body: String, charset: HttpCharset, extension: String): MessageChunk =
+    apply(body.getBytes(charset.nioCharset), extension)
   def apply(body: Array[Byte]): MessageChunk =
-    apply(body, Nil)
+    apply(body, "")
 }
 
 case class ChunkedRequestStart(request: HttpRequest) extends HttpMessageStart with HttpRequestPart {
@@ -383,14 +280,11 @@ case class ChunkedResponseStart(response: HttpResponse) extends HttpMessageStart
   def message = response
 }
 
-case class ChunkedMessageEnd(
-    extensions: List[ChunkExtension] = Nil,
-    trailer: List[HttpHeader] = Nil) extends HttpRequestPart with HttpResponsePart with HttpMessageEnd {
+case class ChunkedMessageEnd(extension: String = "",
+                             trailer: List[HttpHeader] = Nil) extends HttpRequestPart with HttpResponsePart with HttpMessageEnd {
   if (!trailer.isEmpty) {
     require(trailer.forall(_.isNot("content-length")), "Content-Length header is not allowed in trailer")
     require(trailer.forall(_.isNot("transfer-encoding")), "Transfer-Encoding header is not allowed in trailer")
     require(trailer.forall(_.isNot("trailer")), "Trailer header is not allowed in trailer")
   }
 }
-
-case class ChunkExtension(name: String, value: String)

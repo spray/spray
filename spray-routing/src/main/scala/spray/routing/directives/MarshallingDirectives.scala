@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,12 +32,12 @@ trait MarshallingDirectives {
    * If there is a problem with unmarshalling the request is rejected with the [[spray.routing.Rejection]]
    * produced by the unmarshaller.
    */
-  def entity[T](um: Unmarshaller[T]): Directive[T :: HNil] =
+  def entity[T](um: Unmarshaller[T]): Directive1[T] =
     extract(_.request.entity.as(um)).flatMap[T :: HNil] {
       case Right(value)                            ⇒ provide(value)
       case Left(ContentExpected)                   ⇒ reject(RequestEntityExpectedRejection)
       case Left(UnsupportedContentType(supported)) ⇒ reject(UnsupportedRequestContentTypeRejection(supported))
-      case Left(MalformedContent(error, _))        ⇒ reject(MalformedRequestContentRejection(error))
+      case Left(MalformedContent(errorMsg, cause)) ⇒ reject(MalformedRequestContentRejection(errorMsg, cause))
     } & cancelAllRejections(ofTypes(RequestEntityExpectedRejection.getClass, classOf[UnsupportedRequestContentTypeRejection]))
 
   /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,12 @@
 package spray.routing
 package directives
 
-import akka.actor.ActorRefFactory
-import akka.dispatch.ExecutionContext
+import akka.actor.{ ActorRefProvider, ActorRefFactory }
 import akka.util.Duration
-import spray.util._
+import akka.dispatch.ExecutionContext
 import spray.caching._
 import spray.http._
+import spray.util._
 import CacheDirectives._
 import HttpHeaders._
 import HttpMethods._
@@ -68,10 +68,9 @@ trait CachingDirectives {
               route {
                 ctx.withRouteResponseHandling {
                   case response: HttpResponse ⇒ promise.success(Right(response))
-                  case Reject(rejections)     ⇒ promise.success(Left(rejections))
-                  case x ⇒
-                    log.error("Route responses other than HttpResponse or Rejections cannot be cached (received: {})", x)
-                    promise.failure(RequestProcessingException(StatusCodes.InternalServerError))
+                  case Rejected(rejections)   ⇒ promise.success(Left(rejections))
+                  case x ⇒ promise.failure(new RequestProcessingException(StatusCodes.InternalServerError,
+                    "Route responses other than HttpResponse or Rejections cannot be cached (received: " + x + ")"))
                 }
               }
             } onComplete {
@@ -95,16 +94,14 @@ object CachingDirectives extends CachingDirectives
 trait CacheSpecMagnet {
   def responseCache: Cache[CachingDirectives.RouteResponse]
   def liftedKeyer: RequestContext ⇒ Option[Any]
-  def log: LoggingContext
   implicit def executionContext: ExecutionContext
 }
 
 object CacheSpecMagnet {
-  implicit def apply(cache: Cache[CachingDirectives.RouteResponse])(implicit keyer: CacheKeyer, factory: ActorRefFactory, lc: LoggingContext) =
+  implicit def apply(cache: Cache[CachingDirectives.RouteResponse])(implicit keyer: CacheKeyer, factory: ActorRefFactory) =
     new CacheSpecMagnet {
       def responseCache = cache
       def liftedKeyer = keyer.lift
-      def log = lc
       implicit def executionContext = factory.messageDispatcher
     }
 }

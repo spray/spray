@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ import java.util.Hashtable
 import javax.naming.{ Context, NamingException, NamingEnumeration }
 import javax.naming.ldap.InitialLdapContext
 import javax.naming.directory.{ SearchControls, SearchResult, Attribute }
-import collection.JavaConverters._
-import akka.dispatch.{ ExecutionContext, Promise, Future }
+import scala.collection.JavaConverters._
+import akka.dispatch.{ Promise, Future, ExecutionContext }
 import akka.actor.ActorSystem
 import spray.util.LoggingContext
 
@@ -36,7 +36,7 @@ import spray.util.LoggingContext
  * matching a given user name. If exactly one user entry is found another LDAP bind operation is performed using the
  * principal DN of the found user entry to validate the password.
  */
-class LdapAuthenticator[T](config: LdapAuthConfig[T])(implicit executor: ExecutionContext, log: LoggingContext) extends UserPassAuthenticator[T] {
+class LdapAuthenticator[T](config: LdapAuthConfig[T])(implicit ec: ExecutionContext, log: LoggingContext) extends UserPassAuthenticator[T] {
 
   def apply(userPassOption: Option[UserPass]) = {
     def auth3(entry: LdapQueryResult, pass: String) = {
@@ -82,7 +82,7 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T])(implicit executor: Executi
       case Some(userPass) ⇒ Future(auth1(userPass))
       case None ⇒
         log.warning("LdapAuthenticator.apply called with empty userPass, authentication not possible")
-        Promise.successful(None)
+        Promise.successful(None).future
     }
   }
 
@@ -132,5 +132,5 @@ class LdapAuthenticator[T](config: LdapAuthConfig[T])(implicit executor: Executi
 }
 
 object LdapAuthenticator {
-  def apply[T](config: LdapAuthConfig[T])(implicit executor: ExecutionContext, log: LoggingContext) = new LdapAuthenticator(config)
+  def apply[T](config: LdapAuthConfig[T])(implicit ec: ExecutionContext, log: LoggingContext) = new LdapAuthenticator(config)
 }

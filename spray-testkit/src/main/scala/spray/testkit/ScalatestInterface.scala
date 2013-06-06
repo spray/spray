@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,5 +24,8 @@ trait ScalatestInterface extends TestFrameworkInterface with BeforeAndAfterAll {
 
   def failTest(msg: String) = throw new TestFailedException(msg, 11)
 
-  override protected def afterAll() { cleanUp() }
+  abstract override protected def afterAll(): Unit = {
+    cleanUp()
+    super.afterAll()
+  }
 }

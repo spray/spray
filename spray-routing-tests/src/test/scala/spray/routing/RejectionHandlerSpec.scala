@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,7 +49,7 @@ class RejectionHandlerSpec extends RoutingSpec {
     }
     "respond with Forbidden for requests resulting in an AuthorizationFailedRejection" in {
       Get() ~> wrap {
-        authorize(false) { _ ⇒ completeOk }
+        authorize(false) { completeOk }
       } ~> check {
         status === Forbidden
         entityAs[String] === "The supplied authentication is not authorized to access this resource"
@@ -81,7 +81,7 @@ class RejectionHandlerSpec extends RoutingSpec {
       }
     }
     "respond with BadRequest for requests resulting in MalformedRequestContentRejections" in {
-      Post("/", HttpBody(`text/xml`, "<broken>xmlbroken>")) ~> wrap {
+      Post("/", HttpEntity(`text/xml`, "<broken>xmlbroken>")) ~> wrap {
         entity(as[NodeSeq]) { _ ⇒ completeOk }
       } ~> check {
         status === BadRequest
@@ -141,7 +141,7 @@ class RejectionHandlerSpec extends RoutingSpec {
       }
     }
     "respond with UnsupportedMediaType for requests resulting in UnsupportedRequestContentTypeRejection" in {
-      Post("/", HttpBody(`application/pdf`, "...PDF...")) ~> wrap {
+      Post("/", HttpEntity(`application/pdf`, "...PDF...")) ~> wrap {
         entity(as[NodeSeq]) { _ ⇒ completeOk }
       } ~> check {
         status === UnsupportedMediaType

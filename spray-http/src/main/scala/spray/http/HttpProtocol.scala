@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,12 +17,11 @@
 
 package spray.http
 
-class HttpProtocol private[http] (val value: String) {
-  override def toString = value
-  HttpProtocols.register(value, this)
-}
+case class HttpProtocol private[http] (value: String) extends LazyValueBytesRenderable
 
 object HttpProtocols extends ObjectRegistry[String, HttpProtocol] {
-  val `HTTP/1.0` = new HttpProtocol("HTTP/1.0")
-  val `HTTP/1.1` = new HttpProtocol("HTTP/1.1")
+  private def register(p: HttpProtocol): HttpProtocol = register(p.value, p)
+
+  val `HTTP/1.0` = register(HttpProtocol("HTTP/1.0"))
+  val `HTTP/1.1` = register(HttpProtocol("HTTP/1.1"))
 }

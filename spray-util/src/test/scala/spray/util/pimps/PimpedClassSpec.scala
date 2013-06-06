@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@
 package spray.util
 package pimps
 
-import org.specs2.mutable._
-import collection.LinearSeqOptimized
 import java.util.{ List ⇒ JList }
+import scala.collection.LinearSeqOptimized
+import org.specs2.mutable._
 
 class PimpedClassSpec extends Specification {
 

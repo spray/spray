@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import BasicRules._
 private[parser] trait WwwAuthenticateHeader {
   this: Parser with AdditionalRules ⇒
 
-  def WWW_AUTHENTICATE = rule {
+  def `*WWW-Authenticate` = rule {
     oneOrMore(Challenge, separator = ListSep) ~ EOI ~~> (HttpHeaders.`WWW-Authenticate`(_))
   }
 

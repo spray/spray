@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,22 +16,33 @@
 
 package spray
 
+import akka.actor.ActorRef
+import akka.io.Tcp
+
 package object io {
   type Pipeline[-T] = T ⇒ Unit
+  object Pipeline {
+    val Uninitialized: Pipeline[Any] = _ ⇒ throw new RuntimeException("Pipeline not yet initialized")
+
+    case class Tell(receiver: ActorRef, message: Any, sender: ActorRef) extends Command
+
+    case class ActorDeath(actor: ActorRef) extends Event
+    case class AckEvent(ack: Any) extends Event
+  }
+  type Command = Tcp.Command
+  type Event = Tcp.Event
+  type PipelineStage = RawPipelineStage[PipelineContext]
 
   implicit def pimpBooleanWithOptionalPipelineStageOperator(condition: Boolean) = new PimpedBoolean(condition)
   class PimpedBoolean(condition: Boolean) {
     // unfortunately we cannot use the nicer right-associative `?:` operator due to
     // https://issues.scala-lang.org/browse/SI-1980
-    def ?(stage: ⇒ PipelineStage) = if (condition) stage else EmptyPipelineStage
+    def ?[T <: PipelineContext](stage: ⇒ RawPipelineStage[T]) = if (condition) stage else EmptyPipelineStage
   }
 }
 
 package io {
-
-  trait Command
-
-  trait Event
-
   trait Droppable // marker for Commands and Events
+
+  case class CommandWrapper(command: AnyRef) extends Command
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,7 +70,7 @@ trait BasicDirectives {
   /**
    * Injects the given value into a directive.
    */
-  def provide[T](value: T): Directive[T :: HNil] = hprovide(value :: HNil)
+  def provide[T](value: T): Directive1[T] = hprovide(value :: HNil)
 
   /**
    * Injects the given values into a directive.
@@ -82,7 +82,7 @@ trait BasicDirectives {
   /**
    * Extracts a single value using the given function.
    */
-  def extract[T](f: RequestContext ⇒ T): Directive[T :: HNil] =
+  def extract[T](f: RequestContext ⇒ T): Directive1[T] =
     hextract(ctx ⇒ f(ctx) :: HNil)
 
   /**

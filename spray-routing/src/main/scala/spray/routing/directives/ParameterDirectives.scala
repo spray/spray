@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package spray.routing
 package directives
 
 import java.lang.IllegalStateException
-import spray.http.QueryParams
 import shapeless._
 
 trait ParameterDirectives extends ToNameReceptaclePimps {
@@ -26,8 +25,20 @@ trait ParameterDirectives extends ToNameReceptaclePimps {
   /**
    * Extracts the requests query parameters as a Map[String, String].
    */
-  def parameterMap: Directive[QueryParams :: HNil] =
-    BasicDirectives.extract(_.request.queryParams)
+  def parameterMap: Directive[Map[String, String] :: HNil] =
+    BasicDirectives.extract(_.request.uri.query.toMap)
+
+  /**
+   * Extracts the requests query parameters as a Map[String, List[String]].
+   */
+  def parameterMultiMap: Directive[Map[String, List[String]] :: HNil] =
+    BasicDirectives.extract(_.request.uri.query.toMultiMap)
+
+  /**
+   * Extracts the requests query parameters as a Seq[(String, String)].
+   */
+  def parameterSeq: Directive[Seq[(String, String)] :: HNil] =
+    BasicDirectives.extract(_.request.uri.query.toSeq)
 
   /**
    * Rejects the request if the query parameter matcher(s) defined by the definition(s) don't match.
@@ -78,13 +89,13 @@ object ParamDefMagnetAux {
 
   /************ "regular" parameter extraction ******************/
 
-  private def extractParameter[A, B](f: A ⇒ Directive[B :: HNil]) = ParamDefMagnetAux[A, Directive[B :: HNil]](f)
-  private def filter[T](paramName: String, fsod: FSOD[T]): Directive[T :: HNil] =
-    extract(ctx ⇒ fsod(ctx.request.queryParams.get(paramName))).flatMap {
-      case Right(x)                         ⇒ provide(x)
-      case Left(ContentExpected)            ⇒ reject(MissingQueryParamRejection(paramName))
-      case Left(MalformedContent(error, _)) ⇒ reject(MalformedQueryParamRejection(error, paramName))
-      case Left(x: UnsupportedContentType)  ⇒ throw new IllegalStateException(x.toString)
+  private def extractParameter[A, B](f: A ⇒ Directive1[B]) = ParamDefMagnetAux[A, Directive1[B]](f)
+  private def filter[T](paramName: String, fsod: FSOD[T]): Directive1[T] =
+    extract(ctx ⇒ fsod(ctx.request.uri.query.get(paramName))).flatMap {
+      case Right(x)                             ⇒ provide(x)
+      case Left(ContentExpected)                ⇒ reject(MissingQueryParamRejection(paramName))
+      case Left(MalformedContent(error, cause)) ⇒ reject(MalformedQueryParamRejection(paramName, error, cause))
+      case Left(x: UnsupportedContentType)      ⇒ throw new IllegalStateException(x.toString)
     }
   implicit def forString(implicit fsod: FSOD[String]) = extractParameter[String, String] { string ⇒
     filter(string, fsod)
@@ -108,7 +119,7 @@ object ParamDefMagnetAux {
   /************ required parameter support ******************/
 
   private def requiredFilter(paramName: String, fsod: FSOD[_], requiredValue: Any): Directive0 =
-    extract(ctx ⇒ fsod(ctx.request.queryParams.get(paramName))).flatMap {
+    extract(ctx ⇒ fsod(ctx.request.uri.query.get(paramName))).flatMap {
       case Right(value) if value == requiredValue ⇒ pass
       case _                                      ⇒ reject
     }

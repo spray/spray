@@ -30,5 +30,4 @@ object Dependencies {
   val liftJson      = "net.liftweb"                             %   "lift-json_2.9.2"             % "2.5-RC5"
   val json4sNative  = "org.json4s"                              %   "json4s-native_2.9.2"         % "3.2.4"
   val json4sJackson = "org.json4s"                              %   "json4s-jackson_2.9.2"        % "3.2.4"
-  val scalate       = "org.fusesource.scalate"                  %   "scalate-core_2.9"            % "1.6.0"
 }

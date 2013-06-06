@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,10 +25,10 @@ import CacheDirectives._
 private[parser] trait CacheControlHeader {
   this: Parser with ProtocolParameterRules ⇒
 
-  def CACHE_CONTROL = rule(
-    zeroOrMore(CacheDirective, separator = ListSep) ~ EOI ~~> (HttpHeaders.`Cache-Control`(_)))
+  def `*Cache-Control` = rule(
+    zeroOrMore(cacheDirective, separator = ListSep) ~ EOI ~~> (HttpHeaders.`Cache-Control`(_)))
 
-  def CacheDirective = rule(
+  def cacheDirective = rule(
     "no-cache" ~ push(`no-cache`)
       | "no-store" ~ push(`no-store`)
       | "no-transform" ~ push(`no-transform`)
@@ -39,13 +39,13 @@ private[parser] trait CacheControlHeader {
       | "only-if-cached" ~ push(`only-if-cached`)
 
       | "public" ~ push(`public`)
-      | "private" ~ optional("=" ~ FieldNames) ~~> (fn ⇒ `private`(fn.getOrElse(Nil)))
-      | "no-cache" ~ optional("=" ~ FieldNames) ~~> (fn ⇒ `no-cache`(fn.getOrElse(Nil)))
+      | "private" ~ optional("=" ~ FieldNames) ~~> (fn ⇒ `private`((fn getOrElse Nil): _*))
+      | "no-cache" ~ optional("=" ~ FieldNames) ~~> (fn ⇒ `no-cache`((fn getOrElse Nil): _*))
       | "must-revalidate" ~ push(`must-revalidate`)
       | "proxy-revalidate" ~ push(`proxy-revalidate`)
       | "s-maxage=" ~ DeltaSeconds ~~> (`s-maxage`(_))
 
-      | Token ~ optional("=" ~ (Token | QuotedString)) ~~> (CustomCacheDirective(_, _)))
+      | Token ~ optional("=" ~ (Token | QuotedString)) ~~> (CacheDirective.custom(_, _)))
 
   def FieldNames = rule { oneOrMore(QuotedString, separator = ListSep) }
 }

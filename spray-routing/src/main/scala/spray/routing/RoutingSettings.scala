@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,23 +17,34 @@
 package spray.routing
 
 import com.typesafe.config.{ ConfigFactory, Config }
-import spray.util.ConfigUtils
+import akka.actor.{ ActorRefFactory, ActorSystem }
+import spray.util._
 
-class RoutingSettings(config: Config) {
-  protected val c: Config = ConfigUtils.prepareSubConfig(config, "spray.routing")
+case class RoutingSettings(
+    verboseErrorMessages: Boolean,
+    fileChunkingThresholdSize: Long,
+    fileChunkingChunkSize: Long,
+    users: Config,
+    renderVanityFooter: Boolean) {
 
-  val RelaxedHeaderParsing = c getBoolean "relaxed-header-parsing"
-  val VerboseErrorMessages = c getBoolean "verbose-error-messages"
-  val FileChunkingThresholdSize = c getBytes "file-chunking-threshold-size"
-  val FileChunkingChunkSize = c getBytes "file-chunking-chunk-size"
-  val Users = c getConfig "users"
-  val RenderVanityFooter = c getBoolean "render-vanity-footer"
-
-  require(FileChunkingThresholdSize >= 0, "file-chunking-threshold-size must be >= 0")
-  require(FileChunkingChunkSize > 0, "file-chunking-chunk-size must be > 0")
+  require(fileChunkingThresholdSize >= 0, "file-chunking-threshold-size must be >= 0")
+  require(fileChunkingChunkSize > 0, "file-chunking-chunk-size must be > 0")
 }
 
 object RoutingSettings {
-  implicit val Default = apply(ConfigFactory.load())
-  def apply(config: Config) = new RoutingSettings(config)
+  implicit def default(implicit refFactory: ActorRefFactory) =
+    apply(actorSystem)
+
+  def apply(system: ActorSystem): RoutingSettings =
+    apply(system.settings.config getConfig "spray.routing")
+
+  def apply(config: Config): RoutingSettings = {
+    val c = config withFallback ConfigFactory.defaultReference(getClass.getClassLoader)
+    RoutingSettings(
+      c getBoolean "verbose-error-messages",
+      c getBytes "file-chunking-threshold-size",
+      c getBytes "file-chunking-chunk-size",
+      c getConfig "users",
+      c getBoolean "render-vanity-footer")
+  }
 }

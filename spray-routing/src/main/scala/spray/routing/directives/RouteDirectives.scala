@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,15 +72,6 @@ trait CompletionMagnet {
 }
 
 object CompletionMagnet {
-  implicit def fromHttpResponseFuture(future: Future[HttpResponse])(implicit ec: ExecutionContext) =
-    new CompletionMagnet {
-      def route = new StandardRoute {
-        def apply(ctx: RequestContext) { ctx.complete(future) }
-      }
-    }
-  implicit def fromStatusCodeFuture(future: Future[StatusCode])(implicit ec: ExecutionContext) =
-    future.map(status ⇒ HttpResponse(status, entity = status.defaultMessage))
-
   implicit def fromObject[T: Marshaller](obj: T) =
     new CompletionMagnet {
       def route: StandardRoute = new CompletionRoute(OK, Nil, obj)
@@ -105,6 +96,14 @@ object CompletionMagnet {
         def apply(ctx: RequestContext) { ctx.complete(status) }
       }
     }
+  implicit def fromHttpResponseFuture(future: Future[HttpResponse])(implicit ec: ExecutionContext) =
+    new CompletionMagnet {
+      def route = new StandardRoute {
+        def apply(ctx: RequestContext) { ctx.complete(future) }
+      }
+    }
+  implicit def fromStatusCodeFuture(future: Future[StatusCode])(implicit ec: ExecutionContext): CompletionMagnet =
+    future.map(status ⇒ HttpResponse(status, entity = status.defaultMessage))
 
   private class CompletionRoute[T: Marshaller](status: StatusCode, headers: List[HttpHeader], obj: T)
       extends StandardRoute {

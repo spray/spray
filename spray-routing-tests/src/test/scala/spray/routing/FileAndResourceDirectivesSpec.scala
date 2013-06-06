@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,12 @@ import HttpHeaders._
 import HttpCharsets._
 
 class FileAndResourceDirectivesSpec extends RoutingSpec {
+
+  override def testConfigSource =
+    """spray.routing {
+      |  file-chunking-threshold-size = 16
+      |  file-chunking-chunk-size = 8
+      |}""".stripMargin
 
   "getFromFile" should {
     "reject non-GET requests" in {
@@ -79,13 +85,19 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
       Get() ~> getFromResource("nonExistingResource") ~> check { handled must beFalse }
     }
     "return the resource content with the MediaType matching the file extension" in {
-      Get() ~> getFromResource("sample.html") ~> check {
-        mediaType === `text/html`
-        body.asString === "<p>Lorem ipsum!</p>"
-        headers must have {
-          case `Last-Modified`(dt) ⇒ DateTime(2011, 7, 1) < dt && dt.clicks < System.currentTimeMillis()
+      val route = getFromResource("sample.html")
+
+      def runCheck =
+        Get() ~> route ~> check {
+          mediaType === `text/html`
+          body.asString === "<p>Lorem ipsum!</p>"
+          headers must have {
+            case `Last-Modified`(dt) ⇒ DateTime(2011, 7, 1) < dt && dt.clicks < System.currentTimeMillis()
+          }
         }
-      }
+
+      runCheck
+      runCheck // additional test to check that no internal state is kept
     }
     "return the file content with MediaType 'application/octet-stream' on unknown file extensions" in {
       Get() ~> getFromResource("sample.xyz") ~> check {
@@ -102,7 +114,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     "return the resource content with the MediaType matching the file extension" in {
       val verify = check {
         mediaType === `application/pdf`
-        body.asString === ""
+        body.asString === "123\n"
       }
       "example 1" in { Get("empty.pdf") ~> getFromResourceDirectory("subDirectory") ~> verify }
       "example 2" in { Get("empty.pdf") ~> getFromResourceDirectory("subDirectory/") ~> verify }
@@ -117,7 +129,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
     val base = new File(getClass.getClassLoader.getResource("").toURI).getPath
     new File(base, "subDirectory/emptySub").mkdir()
     def eraseDateTime(s: String) = s.replaceAll("""\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d""", "xxxx-xx-xx xx:xx:xx")
-    implicit val settings = new RoutingSettings(ConfigFactory.parseString("spray.routing.render-vanity-footer = no"))
+    implicit val settings = RoutingSettings.default.copy(renderVanityFooter = false)
 
     "properly render a simple directory" in {
       Get() ~> listDirectoryContents(base + "/someDir") ~> check {
@@ -167,7 +179,7 @@ class FileAndResourceDirectivesSpec extends RoutingSpec {
             |<pre>
             |<a href="/emptySub/">emptySub/</a>        xxxx-xx-xx xx:xx:xx
             |<a href="/sub/">sub/</a>             xxxx-xx-xx xx:xx:xx
-            |<a href="/empty.pdf">empty.pdf</a>        xxxx-xx-xx xx:xx:xx            0  B
+            |<a href="/empty.pdf">empty.pdf</a>        xxxx-xx-xx xx:xx:xx            4  B
             |<a href="/fileA.txt">fileA.txt</a>        xxxx-xx-xx xx:xx:xx            3  B
             |<a href="/fileB.xml">fileB.xml</a>        xxxx-xx-xx xx:xx:xx            0  B
             |</pre>

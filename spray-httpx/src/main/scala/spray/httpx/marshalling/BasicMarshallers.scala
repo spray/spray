@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package spray.httpx.marshalling
 
 import java.nio.CharBuffer
-import xml.NodeSeq
+import scala.xml.NodeSeq
 import spray.http._
 import MediaTypes._
 
@@ -27,27 +27,27 @@ trait BasicMarshallers {
     Marshaller.of[Array[Byte]](contentType) { (value, _, ctx) ⇒
       // we marshal to the ContentType given as argument to the method, not the one established by content-negotiation,
       // since the former is the one belonging to the byte array
-      ctx.marshalTo(HttpBody(contentType, value))
+      ctx.marshalTo(HttpEntity(contentType, value))
     }
 
-  implicit val ByteArrayMarshaller = byteArrayMarshaller(ContentType.`application/octet-stream`)
+  implicit val ByteArrayMarshaller = byteArrayMarshaller(ContentTypes.`application/octet-stream`)
 
   implicit val CharArrayMarshaller =
-    Marshaller.of[Array[Char]](ContentType.`text/plain`) { (value, contentType, ctx) ⇒
+    Marshaller.of[Array[Char]](ContentTypes.`text/plain`) { (value, contentType, ctx) ⇒
       ctx.marshalTo {
         if (value.length > 0) {
           val nioCharset = contentType.charset.nioCharset
           val charBuffer = CharBuffer.wrap(value)
           val byteBuffer = nioCharset.encode(charBuffer)
-          HttpBody(contentType, byteBuffer.array)
+          HttpEntity(contentType, byteBuffer.array)
         } else EmptyEntity
       }
     }
 
   //# string-marshaller
   implicit val StringMarshaller =
-    Marshaller.of[String](ContentType.`text/plain`) { (value, contentType, ctx) ⇒
-      ctx.marshalTo(if (value.isEmpty) EmptyEntity else HttpBody(contentType, value))
+    Marshaller.of[String](ContentTypes.`text/plain`) { (value, contentType, ctx) ⇒
+      ctx.marshalTo(HttpEntity(contentType, value))
     }
   //#
 

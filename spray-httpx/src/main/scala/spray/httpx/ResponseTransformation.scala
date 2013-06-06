@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,8 @@
 
 package spray.httpx
 
-import akka.dispatch.Future
+import akka.dispatch.{ ExecutionContext, Future }
+import akka.event.LoggingAdapter
 import spray.httpx.unmarshalling._
 import spray.httpx.encoding.Decoder
 import spray.http._
@@ -34,7 +35,15 @@ trait ResponseTransformation {
         case Right(value) ⇒ value
         case Left(error)  ⇒ throw new PipelineException(error.toString)
       }
-    else throw new UnsuccessfulResponseException(response.status)
+    else throw new UnsuccessfulResponseException(response)
+  }
+
+  def logResponse(log: LoggingAdapter): HttpResponse ⇒ HttpResponse =
+    logResponse { response ⇒ log.debug(response.toString) }
+
+  def logResponse(logFun: HttpResponse ⇒ Unit): HttpResponse ⇒ HttpResponse = { response ⇒
+    logFun(response)
+    response
   }
 
   implicit def pimpWithResponseTransformation[A, B](f: A ⇒ B) = new PimpedResponseTransformer(f)
@@ -57,13 +66,16 @@ object TransformerAux {
   implicit def aux1[A, B, C] = new TransformerAux[A, B, B, C, C] {
     def apply(f: A ⇒ B, g: B ⇒ C) = f andThen g
   }
-  implicit def aux2[A, B, C] = new TransformerAux[A, Future[B], B, C, Future[C]] {
-    def apply(f: A ⇒ Future[B], g: B ⇒ C) = f(_).map(g)
-  }
-  implicit def aux3[A, B, C] = new TransformerAux[A, Future[B], B, Future[C], Future[C]] {
-    def apply(f: A ⇒ Future[B], g: B ⇒ Future[C]) = f(_).flatMap(g)
-  }
+  implicit def aux2[A, B, C](implicit ec: ExecutionContext) =
+    new TransformerAux[A, Future[B], B, C, Future[C]] {
+      def apply(f: A ⇒ Future[B], g: B ⇒ C) = f(_).map(g)
+    }
+  implicit def aux3[A, B, C](implicit ec: ExecutionContext) =
+    new TransformerAux[A, Future[B], B, Future[C], Future[C]] {
+      def apply(f: A ⇒ Future[B], g: B ⇒ Future[C]) = f(_).flatMap(g)
+    }
 }
 
 class PipelineException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
-class UnsuccessfulResponseException(val responseStatus: StatusCode) extends RuntimeException
+class UnsuccessfulResponseException(val response: HttpResponse) extends RuntimeException("Status: " + response.status + "\n" +
+  "Body: " + { if (response.entity.buffer.length < 1024) response.entity.asString else response.entity.buffer.length + " bytes" })

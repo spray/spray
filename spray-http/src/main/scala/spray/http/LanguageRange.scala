@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  * Based on code copyright (C) 2010-2011 by the BlueEyes Web Framework Team (http://github.com/jdegoes/blueeyes)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,23 +15,28 @@
  * limitations under the License.
  */
 
-package spray
-package http
+package spray.http
 
-sealed abstract class LanguageRange {
+sealed abstract class LanguageRange extends ValueRenderable {
   def primaryTag: String
   def subTags: Seq[String]
-  val value = (primaryTag +: subTags).mkString("-")
-  override def toString = "LanguageRange(" + value + ')'
+  def matches(lang: Language): Boolean
+  def render[R <: Rendering](r: R): R = {
+    r ~~ primaryTag
+    if (subTags.nonEmpty) subTags.foreach(r ~~ '-' ~~ _)
+    r
+  }
+}
+
+case class Language(primaryTag: String, subTags: String*) extends LanguageRange {
+  def matches(lang: Language): Boolean = lang == this
 }
 
 object LanguageRanges {
 
   case object `*` extends LanguageRange {
     def primaryTag = "*"
-    def subTags = Seq.empty[String]
+    def subTags = Nil
+    def matches(lang: Language): Boolean = true
   }
-
-  case class Language(primaryTag: String, subTags: String*) extends LanguageRange
-
 }

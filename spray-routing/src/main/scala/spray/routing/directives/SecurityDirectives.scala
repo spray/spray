@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,22 +17,21 @@
 package spray.routing
 package directives
 
-import akka.dispatch.Future
-import shapeless._
+import akka.dispatch.{ ExecutionContext, Future }
+import shapeless.HNil
 import spray.routing.authentication._
 import BasicDirectives._
+import FutureDirectives._
+import MiscDirectives._
 import RouteDirectives._
 
 trait SecurityDirectives {
 
   /**
    * Wraps its inner Route with authentication support.
+   * Can be called either with a ``Future[Authentication[T]]`` or ``ContextAuthenticator[T]``.
    */
-  def authenticate[T](am: AuthMagnet[T]): Directive[T :: HNil] =
-    am.value.unwrapFuture.flatMap {
-      case Right(user)     ⇒ provide(user)
-      case Left(rejection) ⇒ reject(rejection)
-    }
+  def authenticate[T](magnet: AuthMagnet[T]): Directive1[T] = magnet.directive
 
   /**
    * Applies the given authorization check to the request.
@@ -45,16 +44,22 @@ trait SecurityDirectives {
    * If the check fails the route is rejected with an [[spray.AuthorizationFailedRejection]].
    */
   def authorize(check: RequestContext ⇒ Boolean): Directive0 =
-    extract(check).flatMap(if (_) pass else reject(AuthorizationFailedRejection))
-
+    extract(check).flatMap[HNil](if (_) pass else reject(AuthorizationFailedRejection)) &
+      cancelRejection(AuthorizationFailedRejection)
 }
 
-class AuthMagnet[T](val value: Directive[Future[Authentication[T]] :: HNil])
+class AuthMagnet[T](authDirective: Directive1[Authentication[T]])(implicit executor: ExecutionContext) {
+  val directive: Directive1[T] = authDirective.flatMap {
+    case Right(user)     ⇒ provide(user)
+    case Left(rejection) ⇒ reject(rejection)
+  }
+}
 
 object AuthMagnet {
-  implicit def fromFutureAuth[T](auth: Future[Authentication[T]]) =
-    new AuthMagnet(provide(auth))
 
-  implicit def fromContextAuthenticator[T](auth: ContextAuthenticator[T]) =
-    new AuthMagnet(extract(auth))
+  implicit def fromFutureAuth[T](auth: Future[Authentication[T]])(implicit executor: ExecutionContext) =
+    new AuthMagnet(onSuccess(auth))
+
+  implicit def fromContextAuthenticator[T](auth: ContextAuthenticator[T])(implicit executor: ExecutionContext) =
+    new AuthMagnet(extract(auth).flatMap(onSuccess(_)))
 }

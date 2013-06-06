@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,8 @@
 package spray.routing
 package directives
 
-import akka.actor._
 import akka.util.NonFatal
-import spray.http.HttpHeader
+import akka.actor._
 
 trait ExecutionDirectives {
   import BasicDirectives._
@@ -31,10 +30,10 @@ trait ExecutionDirectives {
   def handleExceptions(handler: ExceptionHandler): Directive0 =
     mapInnerRoute { inner ⇒
       ctx ⇒
-        def handleError = handler andThen (_(ctx))
+        def handleError = handler andThen (_(ctx.withContentNegotiationDisabled))
         try inner {
-          ctx.withRouteResponseHandling {
-            case Status.Failure(error) if handler.isDefinedAt(error) ⇒ handleError(error)
+          ctx withRouteResponseHandling {
+            case Status.Failure(error) if handler isDefinedAt error ⇒ handleError(error)
           }
         }
         catch handleError
@@ -46,18 +45,15 @@ trait ExecutionDirectives {
    */
   def handleRejections(handler: RejectionHandler): Directive0 =
     mapRequestContext { ctx ⇒
-      ctx.withRejectionHandling { rejections ⇒
-        if (handler.isDefinedAt(rejections)) {
-          val filteredRejections = RejectionHandler.applyTransformations(rejections)
-          def isAcceptHeader(h: HttpHeader) = h.lowercaseName.startsWith("accept")
-          // we "disable" content negotiation for the rejection handling route
-          // so as to avoid UnacceptedResponseContentTypeRejections from it
-          val handlingContext = ctx
-            .withRequestMapped(request ⇒ request.withHeaders(request.headers.filterNot(isAcceptHeader)))
-            .withRejectionHandling(rej ⇒ sys.error("The RejectionHandler for " + rejections +
-              " must not itself produce rejections (received " + rej + ")!"))
-          handler(filteredRejections)(handlingContext)
-        } else ctx.reject(rejections: _*)
+      ctx withRejectionHandling { rejections ⇒
+        val filteredRejections = RejectionHandler.applyTransformations(rejections)
+        if (handler isDefinedAt filteredRejections)
+          handler(filteredRejections) {
+            ctx.withContentNegotiationDisabled withRejectionHandling { r ⇒
+              sys.error("The RejectionHandler for " + rejections + " must not itself produce rejections (received " + r + ")!")
+            }
+          }
+        else ctx.reject(filteredRejections: _*)
       }
     }
 

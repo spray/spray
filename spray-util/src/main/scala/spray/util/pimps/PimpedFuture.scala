@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,31 +14,26 @@
  * limitations under the License.
  */
 
-package spray.util.pimps
+package spray.util
+package pimps
 
-import akka.util.{ FiniteDuration, Duration, Timeout }
+import akka.dispatch.{ ExecutionContext, Promise, Await, Future }
+import akka.util.duration._
 import akka.actor.ActorRefFactory
-import akka.dispatch._
-import akka.spray.RefUtils
+import akka.util.{ FiniteDuration, Timeout }
 
 class PimpedFuture[+A](underlying: Future[A]) {
 
-  def await(implicit timeout: Timeout = Duration.Inf): A =
+  def await(implicit timeout: Timeout = 1.minute): A =
     Await.result(underlying, timeout.duration)
 
-  def ready(implicit timeout: Timeout = Duration.Inf): Future[A] =
+  def ready(implicit timeout: Timeout = 1.minute): Future[A] =
     Await.ready(underlying, timeout.duration)
 
-  def delay(duration: FiniteDuration)(implicit refFactory: ActorRefFactory): Future[A] = {
-    val system = RefUtils.actorSystem(refFactory)
-    implicit val executionContext = system.dispatcher
+  def delay(duration: FiniteDuration)(implicit refFactory: ActorRefFactory, ec: ExecutionContext): Future[A] = {
     val promise = Promise[A]()
     underlying.onComplete { value ⇒
-      system.scheduler.scheduleOnce(duration, new Runnable {
-        def run() {
-          promise.complete(value)
-        }
-      })
+      actorSystem.scheduler.scheduleOnce(duration) { promise.complete(value) }
     }
     promise.future
   }

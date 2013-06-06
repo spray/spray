@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,10 @@
 
 package spray.httpx
 
-import net.liftweb.json.Serialization._
 import net.liftweb.json._
 import spray.httpx.marshalling.Marshaller
 import spray.httpx.unmarshalling.Unmarshaller
 import spray.http._
-import MediaTypes._
 
 /**
  * A trait providing automatic to and from JSON marshalling/unmarshalling for case classes via lift-json.
@@ -36,13 +34,12 @@ trait LiftJsonSupport {
   implicit def liftJsonFormats: Formats
 
   implicit def liftJsonUnmarshaller[T: Manifest] =
-    Unmarshaller[T](`application/json`) {
+    Unmarshaller[T](MediaTypes.`application/json`) {
       case x: HttpBody ⇒
-        val jsonSource = x.asString
+        val jsonSource = x.asString(defaultCharset = HttpCharsets.`UTF-8`)
         parse(jsonSource).extract[T]
     }
 
   implicit def liftJsonMarshaller[T <: AnyRef] =
-    Marshaller.delegate[T, String](`application/json`)(write(_))
-
+    Marshaller.delegate[T, String](ContentTypes.`application/json`)(Serialization.write(_))
 }

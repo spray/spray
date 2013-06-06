@@ -1,75 +1,56 @@
 package spray.examples
 
+import akka.util.duration._
 import akka.actor.{Props, ActorSystem}
-import spray.can.client.DefaultHttpClient
-import spray.client.HttpConduit
+import akka.pattern.ask
+import akka.util.Timeout
+import akka.event.Logging
+import akka.io.IO
+import spray.json.{JsonFormat, DefaultJsonProtocol}
+import spray.can.Http
 import spray.httpx.SprayJsonSupport
+import spray.client.pipelining._
 import spray.http._
+import spray.util._
+
+case class Elevation(location: Location, elevation: Double)
+case class Location(lat: Double, lng: Double)
+case class GoogleApiResult[T](status: String, results: List[T])
+
+object ElevationJsonProtocol extends DefaultJsonProtocol {
+  implicit val locationFormat = jsonFormat2(Location)
+  implicit val elevationFormat = jsonFormat2(Elevation)
+  implicit def googleApiResultFormat[T :JsonFormat] = jsonFormat2(GoogleApiResult.apply[T])
+}
 
 
 object Main extends App {
   // we need an ActorSystem to host our application in
-  val system = ActorSystem("simple-spray-client")
-  def log = system.log
+  implicit val system = ActorSystem("simple-spray-client")
+  import system.dispatcher // execution context for futures below
+  val log = Logging(system, getClass)
 
-  // create and start the default spray-can HttpClient
-  val httpClient = DefaultHttpClient(system)
+  log.info("Requesting the elevation of Mt. Everest from Googles Elevation API...")
 
-  startExample1()
+  import ElevationJsonProtocol._
+  import SprayJsonSupport._
+  val pipeline = sendReceive ~> unmarshal[GoogleApiResult[Elevation]]
 
-  ///////////////////////////////////////////////////
+  val responseFuture = pipeline {
+    Get("http://maps.googleapis.com/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false")
+  }
+  responseFuture onComplete {
+    case Right(GoogleApiResult(_, Elevation(_, elevation) :: _)) =>
+      log.info("The elevation of Mt. Everest is: {} m", elevation)
+      shutdown()
 
-  def startExample1() {
-    log.info("Getting http://github.com ...")
-    // an HttpConduit gives us access to an HTTP server,
-    // it manages a pool of connections to _one_ host/port combination
-    val conduit = system.actorOf(
-      props = Props(new HttpConduit(httpClient, "github.com")),
-      name = "http-conduit"
-    )
-
-    // send a simple request
-    val pipeline = HttpConduit.sendReceive(conduit)
-    val responseFuture = pipeline(HttpRequest(method = HttpMethods.GET, uri = "/"))
-    responseFuture onComplete {
-      case Right(response) =>
-        log.info(
-          """|Response for GET request to github.com:
-             |status : {}
-             |headers: {}
-             |body   : {}""".stripMargin,
-          response.status.value, response.headers.mkString("\n  ", "\n  ", ""), response.entity.asString
-        )
-        system.stop(conduit) // the conduit can be stopped when all operations on it have been completed
-        startExample2()
-
-      case Left(error) =>
-        log.error(error, "Couldn't get http://github.com")
-        system.shutdown() // also stops all conduits (since they are actors)
-    }
+    case Left(error) =>
+      log.error(error, "Couldn't get elevation")
+      shutdown()
   }
 
-  def startExample2() {
-    log.info("Requesting the elevation of Mt. Everest from Googles Elevation API...")
-    val conduit = system.actorOf(
-      props = Props(new HttpConduit(httpClient, "maps.googleapis.com")),
-      name = "http-conduit"
-    )
-
-    import HttpConduit._
-    import ElevationJsonProtocol._
-    import SprayJsonSupport._
-    val pipeline = sendReceive(conduit) ~> unmarshal[GoogleApiResult[Elevation]]
-
-    val responseF = pipeline(Get("/maps/api/elevation/json?locations=27.988056,86.925278&sensor=false"))
-    responseF onComplete {
-      case Right(response) =>
-        log.info("The elevation of Mt. Everest is: {} m", response.results.head.elevation)
-        system.shutdown() // also stops all conduits (since they are actors)
-
-      case Left(error) =>
-        log.error(error, "Couldn't get elevation")
-        system.shutdown() // also stops all conduits (since they are actors)
-    }
+  def shutdown(): Unit = {
+    IO(Http).ask(Http.CloseAll)(1.second).await
+    system.shutdown()
   }
 }

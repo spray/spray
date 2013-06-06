@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,63 +17,41 @@
 package spray.routing
 
 import akka.util.NonFatal
-import akka.dispatch.ExecutionContext
 import akka.actor._
-import spray.util._
+import akka.io.Tcp
+import spray.util.LoggingContext
 import spray.http._
 import StatusCodes._
 
-trait HttpService extends Directives {
-
-  warmUp() // trigger the loading of most classes in spray-http
-
-  /**
-   * An ActorRefFactory needs to be supplied by the class mixing us in
-   * (mostly either the service actor or the service test)
-   */
-  implicit def actorRefFactory: ActorRefFactory
-
-  /**
-   * Supplies an ExecutionContext (mainly for Future scheduling) from the actorRefFactory.
-   */
-  implicit def executionContext: ExecutionContext = actorRefFactory.messageDispatcher
+trait HttpServiceBase extends Directives {
 
   /**
    * Supplies the actor behavior for executing the given route.
-   *
-   * Note that the route parameter is call-by-name to alleviate initialization order issues when
-   * mixing into an Actor.
    */
-  def runRoute(route: ⇒ Route)(implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext,
-                               rs: RoutingSettings, log: LoggingContext): Actor.Receive = {
-    // we don't use a lazy val for the 'sealedRoute' member here, since we can be sure to be running in an Actor
-    // (we require an implicit ActorContext) and can therefore avoid the "lazy val"-synchronization
-    var sr: Route = null
+  def runRoute(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext,
+                             rs: RoutingSettings, log: LoggingContext): Actor.Receive = {
     val sealedExceptionHandler = eh orElse ExceptionHandler.default
-    def sealedRoute: Route = { if (sr == null) sr = sealRoute(route); sr }
-    def contextFor(req: HttpRequest) = RequestContext(req, ac.sender, req.path).withDefaultSender(ac.self)
+    val sealedRoute = sealRoute(route)(sealedExceptionHandler, rh)
+    def runSealedRoute(ctx: RequestContext): Unit =
+      try sealedRoute(ctx)
+      catch {
+        case NonFatal(e) ⇒
+          val errorRoute = sealedExceptionHandler(e)
+          errorRoute(ctx)
+      }
 
     {
       case request: HttpRequest ⇒
-        try {
-          request.parseQuery.parseHeaders match {
-            case ("", parsedRequest) ⇒
-              sealedRoute(contextFor(parsedRequest))
-            case (errorMsg, parsedRequest) if rs.RelaxedHeaderParsing ⇒
-              log.warning("Request {}: {}", request, errorMsg)
-              sealedRoute(contextFor(parsedRequest))
-            case (errorMsg, _) ⇒
-              throw new IllegalRequestException(BadRequest, RequestErrorInfo(errorMsg))
-          }
-        } catch {
-          case NonFatal(e) ⇒
-            val errorRoute = sealedExceptionHandler(e)
-            errorRoute(contextFor(request))
-        }
+        val ctx = RequestContext(request, ac.sender, request.uri.path).withDefaultSender(ac.self)
+        runSealedRoute(ctx)
 
-      case ctx: RequestContext           ⇒ sealedRoute(ctx)
+      case ctx: RequestContext ⇒ runSealedRoute(ctx)
 
-      case Timeout(request: HttpRequest) ⇒ runRoute(timeoutRoute)(eh, rh, ac, rs, log)(request)
+      case Tcp.Connected(_, _) ⇒
+        // by default we register ourselves as the handler for a new connection
+        ac.sender ! Tcp.Register(ac.self)
+
+      case Timedout(request: HttpRequest) ⇒ runRoute(timeoutRoute)(eh, rh, ac, rs, log)(request)
     }
   }
 
@@ -97,15 +75,16 @@ trait HttpService extends Directives {
   //#
 }
 
-trait HttpServiceActor extends HttpService {
-  this: Actor ⇒
+object HttpService extends HttpServiceBase
 
-  def actorRefFactory = context
+trait HttpService extends HttpServiceBase {
+  /**
+   * An ActorRefFactory needs to be supplied by the class mixing us in
+   * (mostly either the service actor or the service test)
+   */
+  implicit def actorRefFactory: ActorRefFactory
 }
 
-object HttpServiceActor {
-  def apply(route: Route) =
-    new Actor with HttpServiceActor {
-      def receive = runRoute(route)
-    }
+abstract class HttpServiceActor extends Actor with HttpService {
+  def actorRefFactory = context
 }

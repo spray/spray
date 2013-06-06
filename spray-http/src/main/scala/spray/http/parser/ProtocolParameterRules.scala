@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,11 +19,11 @@ package parser
 
 import org.parboiled.scala._
 import org.parboiled.errors.ParsingException
-import BasicRules._
 
 // direct implementation of http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html
 private[parser] trait ProtocolParameterRules {
   this: Parser ⇒
+  import BasicRules.{ toRule ⇒ _, _ }
 
   /* 3.1 HTTP Version */
 
@@ -33,16 +33,11 @@ private[parser] trait ProtocolParameterRules {
 
   /* 3.3.1 Full Date */
 
-  def HttpDate: Rule1[DateTime] = rule { (RFC1123Date | RFC850Date | ASCTimeDate) ~ OptWS }
+  def HttpDate: Rule1[DateTime] = rule { (`RFC1123/RFC850 Date` | ASCTimeDate) ~ OptWS }
 
-  def RFC1123Date = rule {
-    Wkday ~ str(", ") ~ Date1 ~ ch(' ') ~ Time ~ ch(' ') ~ (str("GMT") | str("UTC")) ~~> {
-      (wkday, day, month, year, hour, min, sec) ⇒ createDateTime(year, month, day, hour, min, sec, wkday)
-    }
-  }
-
-  def RFC850Date = rule {
-    Weekday ~ str(", ") ~ Date2 ~ ch(' ') ~ Time ~ ch(' ') ~ (str("GMT") | str("UTC")) ~~> {
+  // we are a bit more lenient than the spec since we also allow a mixture of RFC1123 and RFC850 dates
+  def `RFC1123/RFC850 Date` = rule {
+    (Wkday | Weekday) ~ str(", ") ~ (Date1 | Date2) ~ ch(' ') ~ Time ~ ch(' ') ~ (str("GMT") | str("UTC")) ~~> {
       (wkday, day, month, year, hour, min, sec) ⇒ createDateTime(year, month, day, hour, min, sec, wkday)
     }
   }
@@ -123,9 +118,14 @@ private[parser] trait ProtocolParameterRules {
 
   /* 3.8 Product Tokens */
 
-  def Product = rule { Token ~ optional("/" ~ ProductVersion) }
+  def Product: Rule2[String, String] = rule { Token ~ (ch('/') ~ Token | push("")) }
 
-  def ProductVersion = rule { Token }
+  def ProductVersionComment = rule(
+    Product ~ OptWS ~ Comment ~~> (ProductVersion(_, _, _))
+      | Product ~~> (ProductVersion(_, _))
+      | Comment ~~> (ProductVersion("", "", _)))
+
+  def ProductVersionComments = rule { oneOrMore(ProductVersionComment, separator = OptWS) ~ EOI }
 
   /* 3.9 Quality Values */
 
@@ -149,12 +149,4 @@ private[parser] trait ProtocolParameterRules {
   def EntityTag = rule { optional("W/") ~ OpaqueTag }
 
   def OpaqueTag = rule { QuotedString }
-
-  /* 3.12 Range Units */
-
-  def RangeUnit = rule { BytesUnit | OtherRangeUnit }
-
-  def BytesUnit = rule { "bytes" ~ push(RangeUnits.bytes) }
-
-  def OtherRangeUnit = rule { Token ~~> RangeUnits.CustomRangeUnit }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,57 +16,52 @@
 
 package spray.can.server
 
-import spray.can.rendering.HttpResponsePartRenderingContext
+import akka.util.{ ByteString, ByteStringBuilder }
+import spray.can.rendering.ResponsePartRenderingContext
 import spray.can.server.RequestParsing.HttpMessageStartEvent
-import spray.can.HttpEvent
-import spray.util.ConnectionCloseReasons.ProtocolError
 import spray.io._
 import spray.http._
+import spray.can.Http
 
 object RequestChunkAggregation {
 
   def apply(limit: Int): PipelineStage =
     new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
-        new Pipelines {
-          var startEvent: HttpMessageStartEvent = _
-          var request: HttpRequest = _
-          var bb: BufferBuilder = _
-          var closed = false
-
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+        new Pipelines with DynamicEventPipeline {
           val commandPipeline = commandPL
 
-          val eventPipeline: EPL = {
-            case ev @ HttpMessageStartEvent(ChunkedRequestStart(req), _) ⇒ if (!closed) {
-              startEvent = ev
-              request = req
-              if (req.entity.buffer.length <= limit) bb = BufferBuilder(req.entity.buffer)
-              else closeWithError()
-            }
-
-            case HttpEvent(MessageChunk(body, _)) ⇒ if (!closed) {
-              assert(bb != null)
-              if (bb.size + body.length <= limit) bb.append(body)
-              else closeWithError()
-            }
-
-            case HttpEvent(_: ChunkedMessageEnd) ⇒ if (!closed) {
-              assert(startEvent != null && request != null && bb != null)
-              val entity = request.entity.map((ct, _) ⇒ ct -> bb.toArray)
-              eventPL(startEvent.copy(messagePart = request.copy(entity = entity)))
-              startEvent = null
-              request = null
-              bb = null
-            }
+          val initialEventPipeline: EPL = {
+            case ev @ HttpMessageStartEvent(ChunkedRequestStart(request), _) ⇒
+              eventPipeline.become(aggregating(ev, request))
 
             case ev ⇒ eventPL(ev)
           }
 
-          def closeWithError() {
+          def aggregating(mse: HttpMessageStartEvent, request: HttpRequest,
+                          bb: ByteStringBuilder = ByteString.newBuilder): EPL = {
+            case Http.MessageEvent(MessageChunk(body, _)) ⇒
+              if (bb.result.length + body.length <= limit) bb.++=(body)
+              else closeWithError()
+
+            case Http.MessageEvent(_: ChunkedMessageEnd) ⇒
+              val contentType = request.header[HttpHeaders.`Content-Type`] match {
+                case Some(x) ⇒ x.contentType
+                case None    ⇒ ContentTypes.`application/octet-stream`
+              }
+              val aggregatedRequest = request.copy(entity = HttpEntity(contentType, bb.result().toArray[Byte]))
+              eventPL(mse.copy(messagePart = aggregatedRequest))
+              eventPipeline.become(initialEventPipeline)
+
+            case ev ⇒ eventPL(ev)
+          }
+
+          def closeWithError(): Unit = {
             val msg = "Aggregated request entity greater than configured limit of " + limit + " bytes"
-            commandPL(HttpResponsePartRenderingContext(HttpResponse(StatusCodes.RequestEntityTooLarge, msg)))
-            commandPL(HttpServer.Close(ProtocolError(msg)))
-            closed = true
+            context.log.error(msg + ", closing connection")
+            commandPL(ResponsePartRenderingContext(HttpResponse(StatusCodes.RequestEntityTooLarge, msg)))
+            commandPL(Http.Close)
+            eventPipeline.become(eventPL) // disable this stage
           }
         }
     }

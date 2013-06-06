@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,42 +17,41 @@
 package spray.io
 
 import akka.util.Duration
-import akka.event.{ Logging, LoggingAdapter }
-import spray.util.ConnectionCloseReasons.IdleTimeout
+import akka.io.Tcp
+import spray.util.requirePositiveOrUndefined
+import System.{ currentTimeMillis ⇒ now }
 
 object ConnectionTimeouts {
 
-  def apply(idleTimeout: Long, log: LoggingAdapter): PipelineStage = {
-    require(idleTimeout >= 0)
-    val debug = TaggableLog(log, Logging.DebugLevel)
+  def apply(idleTimeout: Duration): PipelineStage = {
+    requirePositiveOrUndefined(idleTimeout)
 
     new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
+      def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines = new Pipelines {
         var timeout = idleTimeout
-        var lastActivity = System.currentTimeMillis
+        var lastActivity = now
 
         val commandPipeline: CPL = {
-          case x: SetIdleTimeout ⇒
-            timeout = x.timeout.toMillis
-
-          case x: IOPeer.Send ⇒
+          case x: Tcp.Write ⇒
             commandPL(x)
-            lastActivity = System.currentTimeMillis
+            lastActivity = now
 
-          case cmd ⇒ commandPL(cmd)
+          case SetIdleTimeout(x) ⇒ timeout = x
+
+          case cmd               ⇒ commandPL(cmd)
         }
 
         val eventPipeline: EPL = {
-          case x: IOPeer.Received ⇒
-            lastActivity = System.currentTimeMillis
+          case x: Tcp.Received ⇒
+            lastActivity = now
             eventPL(x)
 
-          case TickGenerator.Tick ⇒
-            if (timeout > 0 && (lastActivity + timeout < System.currentTimeMillis)) {
-              debug.log(context.connection.tag, "Closing connection due to idle timeout...")
-              commandPL(IOPeer.Close(IdleTimeout))
+          case tick @ TickGenerator.Tick ⇒
+            if (timeout.isFinite && (lastActivity + timeout.toMillis < System.currentTimeMillis)) {
+              context.log.debug("Closing connection due to idle timeout...")
+              commandPL(Tcp.Close)
             }
-            eventPL(TickGenerator.Tick)
+            eventPL(tick)
 
           case ev ⇒ eventPL(ev)
         }
@@ -63,7 +62,6 @@ object ConnectionTimeouts {
   ////////////// COMMANDS //////////////
 
   case class SetIdleTimeout(timeout: Duration) extends Command {
-    require(timeout.finite_?, "timeout must not be infinite, set to zero to disable")
-    require(timeout >= Duration.Zero, "timeout must not be negative")
+    requirePositiveOrUndefined(timeout)
   }
 }

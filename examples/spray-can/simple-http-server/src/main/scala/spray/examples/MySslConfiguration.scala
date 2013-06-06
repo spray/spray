@@ -3,8 +3,6 @@ package spray.examples
 import java.security.{SecureRandom, KeyStore}
 import javax.net.ssl.{KeyManagerFactory, SSLContext, TrustManagerFactory}
 import spray.io._
-import akka.actor._
-
 
 // for SSL support (if enabled in application.conf)
 trait MySslConfiguration {

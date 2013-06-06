@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,48 +16,45 @@
 
 package spray.can.server
 
-import akka.event.{ Logging, LoggingAdapter }
+import akka.util.NonFatal
 import akka.util.Duration
+import akka.actor.ActorRef
+import akka.io.Tcp
 import spray.can.server.RequestParsing.HttpMessageStartEvent
-import spray.can.{ HttpEvent, HttpCommand }
-import spray.util.ConnectionCloseReasons._
+import spray.can.rendering.ResponsePartRenderingContext
+import spray.can.Http
 import spray.http._
 import spray.io._
+import spray.util.requirePositiveOrUndefined
 
 object ServerFrontend {
 
-  def apply(serverSettings: ServerSettings,
-            messageHandler: MessageHandler,
-            timeoutResponse: HttpRequest ⇒ HttpResponse,
-            log: LoggingAdapter): PipelineStage = {
-    val warning = TaggableLog(log, Logging.WarningLevel)
-    new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+  trait Context extends PipelineContext {
+    // the application-level request handler
+    def handler: ActorRef
+    def fastPath: Http.FastPath
+  }
+
+  def apply(serverSettings: ServerSettings): RawPipelineStage[Context] = {
+    new RawPipelineStage[Context] {
+      def apply(_context: Context, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines with OpenRequestComponent {
           var firstOpenRequest: OpenRequest = EmptyOpenRequest
           var firstUnconfirmed: OpenRequest = EmptyOpenRequest
-          var _requestTimeout: Long = serverSettings.RequestTimeout
-          var _timeoutTimeout: Long = serverSettings.TimeoutTimeout
-          def requestTimeout = _requestTimeout // required due to https://issues.scala-lang.org/browse/SI-6387
-          def timeoutTimeout = _timeoutTimeout // required due to https://issues.scala-lang.org/browse/SI-6387
-          val handlerCreator = messageHandler(context)
-          val connectionActorContext = context.connectionActorContext
+          var _requestTimeout: Duration = serverSettings.requestTimeout
+          var _idleTimeout: Duration = serverSettings.idleTimeout
+          var _timeoutTimeout: Duration = serverSettings.timeoutTimeout
+          def context = _context
           val settings = serverSettings
           val downstreamCommandPL = commandPL
-          val createTimeoutResponse = timeoutResponse
-
-          // per-message handlers do not receive Closed messages that are
-          // not related to a specific request, they need to cleanup themselves
-          // upon response sending or reception of the send confirmation
-          val handlerReceivesClosedEvents = !messageHandler.isInstanceOf[PerMessageHandler]
-
-          def warn(msg: String) { warning.log(context.connection.tag, msg) }
+          def requestTimeout = _requestTimeout // required due to https://issues.scala-lang.org/browse/SI-6387
+          def timeoutTimeout = _timeoutTimeout // required due to https://issues.scala-lang.org/browse/SI-6387
 
           val commandPipeline: CPL = {
             case Response(openRequest, command) if openRequest == firstOpenRequest ⇒
               commandPipeline(command) // "unpack" the command and recurse
 
-            case HttpCommand(wrapper: HttpMessagePartWrapper) if wrapper.messagePart.isInstanceOf[HttpResponsePart] ⇒
+            case Http.MessageCommand(wrapper: HttpMessagePartWrapper) if wrapper.messagePart.isInstanceOf[HttpResponsePart] ⇒
               // we can only see this command either after having "unpacked" a Response
               // or after an openRequest has begun dispatching its queued commands,
               // in both cases the firstOpenRequest member is valid and current
@@ -65,82 +62,99 @@ object ServerFrontend {
                 case ChunkedResponseStart(response) if firstOpenRequest.request.method == HttpMethods.HEAD ⇒
                   // if HEAD requests are responded to with a chunked response we only sent the initial part
                   // and "cancel" the stream by "acking" with a fake Closed event
-                  response.withSentAck(IOBridge.Closed(context.connection, CleanClose))
+                  response.withAck(Http.Closed)
                 case _ ⇒ wrapper
               }
               if (part.messagePart.isInstanceOf[HttpMessageEnd]) {
-                firstOpenRequest = firstOpenRequest.handleResponseEndAndReturnNextOpenRequest(part)
+                firstOpenRequest = firstOpenRequest handleResponseEndAndReturnNextOpenRequest part
                 firstUnconfirmed = firstUnconfirmed.nextIfNoAcksPending
-              } else firstOpenRequest.handleResponsePart(part)
+              } else firstOpenRequest handleResponsePart part
 
             case Response(openRequest, command) ⇒
               // a response for a non-current openRequest has to be queued
               openRequest.enqueueCommand(command)
 
-            case SetRequestTimeout(timeout) ⇒
-              _requestTimeout = timeout.toMillis
+            case CommandWrapper(SetRequestTimeout(timeout)) ⇒
+              _requestTimeout = timeout
+              if (_requestTimeout.isFinite() && _idleTimeout.isFinite() && _idleTimeout <= _requestTimeout) {
+                val newIdleTimeout = timeout * 2
+                context.log.debug("Auto-adjusting idle-timeout to {} after setting request-timeout to {}",
+                  newIdleTimeout, timeout)
+                commandPipeline(ConnectionTimeouts.SetIdleTimeout(newIdleTimeout))
+              }
 
-            case SetTimeoutTimeout(timeout) ⇒
-              _timeoutTimeout = timeout.toMillis
+            case CommandWrapper(SetTimeoutTimeout(timeout)) ⇒ _timeoutTimeout = timeout
+
+            case x @ ConnectionTimeouts.SetIdleTimeout(timeout) ⇒
+              _idleTimeout = timeout
+              if (_requestTimeout.isFinite() && _idleTimeout.isFinite() && _idleTimeout <= _requestTimeout)
+                context.log.warning("Setting an idle-timeout < request-timeout effectively disables the request-timeout!")
+              downstreamCommandPL(x)
 
             case cmd ⇒ downstreamCommandPL(cmd)
           }
 
           val eventPipeline: EPL = {
-            case HttpMessageStartEvent(request: HttpRequest, connectionHeader) ⇒
-              openNewRequest(request, connectionHeader, System.currentTimeMillis)
+            case HttpMessageStartEvent(request: HttpRequest, closeAfterResponseCompletion) ⇒
+              if (context.fastPath.isDefinedAt(request)) {
+                val response =
+                  try context.fastPath(request)
+                  catch {
+                    case NonFatal(e) ⇒
+                      context.log.error(e, "Error during fastPath evaluation for request {}", request)
+                      HttpResponse(StatusCodes.InternalServerError, StatusCodes.InternalServerError.defaultMessage)
+                  }
+                if (firstOpenRequest.isEmpty) commandPL {
+                  ResponsePartRenderingContext(response, request.method, request.protocol,
+                    closeAfterResponseCompletion, Tcp.NoAck(PartAndSender(response, context.self)))
+                }
+                else throw new UnsupportedOperationException("fastPath is not yet supported with pipelining enabled")
 
-            case HttpMessageStartEvent(ChunkedRequestStart(request), connectionHeader) ⇒
-              openNewRequest(request, connectionHeader, 0L)
+              } else openNewRequest(request, closeAfterResponseCompletion, System.currentTimeMillis)
 
-            case HttpEvent(x: MessageChunk) ⇒
-              firstOpenRequest.handleMessageChunk(x)
+            case HttpMessageStartEvent(ChunkedRequestStart(request), closeAfterResponseCompletion) ⇒
+              openNewRequest(request, closeAfterResponseCompletion, 0L)
 
-            case HttpEvent(x: ChunkedMessageEnd) ⇒
-              firstOpenRequest.handleChunkedMessageEnd(x)
+            case Http.MessageEvent(x: MessageChunk) ⇒
+              firstOpenRequest handleMessageChunk x
+
+            case Http.MessageEvent(x: ChunkedMessageEnd) ⇒
+              firstOpenRequest handleChunkedMessageEnd x
 
             case x: AckEventWithReceiver ⇒
-              firstUnconfirmed = firstUnconfirmed.handleSentAckAndReturnNextUnconfirmed(x)
+              firstUnconfirmed = firstUnconfirmed handleSentAckAndReturnNextUnconfirmed x
 
-            case x: HttpServer.Closed ⇒
+            case Tcp.CommandFailed(Tcp.Write(_, Tcp.NoAck(PartAndSender(part, responseSender)))) ⇒
+              // TODO: implement automatic checkpoint buffering and write resuming
+              context.log.error("Could not write response part {}, closing connection", part)
+              commandPL(Pipeline.Tell(responseSender, Http.SendFailed(part), context.self))
+
+            case x: Http.ConnectionClosed ⇒
               if (firstUnconfirmed.isEmpty)
-                firstOpenRequest.handleClosed(x) // dispatches to the handler if no request is open
+                firstOpenRequest handleClosed x // dispatches to the handler if no request is open
               else
-                firstUnconfirmed.handleClosed(x) // also includes the firstOpenRequest and beyond
+                firstUnconfirmed handleClosed x // also includes the firstOpenRequest and beyond
               eventPL(x) // terminates the connection actor
 
             case TickGenerator.Tick ⇒
-              if (requestTimeout > 0L)
-                firstOpenRequest.checkForTimeout(System.currentTimeMillis())
+              if (requestTimeout.isFinite())
+                firstOpenRequest checkForTimeout System.currentTimeMillis
               eventPL(TickGenerator.Tick)
 
-            case x: CommandException ⇒
-              log.warning("Received {}, closing connection ...", x)
-              downstreamCommandPL(HttpServer.Close(ProtocolError(x.toString)))
+            case Pipeline.ActorDeath(actor) if actor == context.handler ⇒
+              context.log.debug("User-level connection handler died, closing connection")
+              commandPL(Http.Close)
 
             case ev ⇒ eventPL(ev)
           }
 
-          def openNewRequest(request: HttpRequest, connectionHeader: Option[String], timestamp: Long) {
-            val nextOpenRequest = new DefaultOpenRequest(request, connectionHeader, timestamp)
-            firstOpenRequest = firstOpenRequest.appendToEndOfChain(nextOpenRequest)
+          def openNewRequest(request: HttpRequest, closeAfterResponseCompletion: Boolean, timestamp: Long) {
+            val nextOpenRequest = new DefaultOpenRequest(request, closeAfterResponseCompletion, timestamp)
+            firstOpenRequest = firstOpenRequest appendToEndOfChain nextOpenRequest
             nextOpenRequest.dispatchInitialRequestPartToHandler()
             if (firstUnconfirmed.isEmpty) firstUnconfirmed = firstOpenRequest
           }
         }
     }
   }
-
-  ////////////// COMMANDS //////////////
-
-  case class SetRequestTimeout(timeout: Duration) extends Command {
-    require(timeout.isFinite, "timeout must not be infinite, set to zero to disable")
-    require(timeout >= Duration.Zero, "timeout must not be negative")
-  }
-
-  case class SetTimeoutTimeout(timeout: Duration) extends Command {
-    require(timeout.isFinite, "timeout must not be infinite, set to zero to disable")
-    require(timeout >= Duration.Zero, "timeout must not be negative")
-  }
-
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,29 +20,25 @@ import spray.io._
 import spray.http._
 import HttpHeaders._
 
-object RemoteAddressHeaderSupport {
+object RemoteAddressHeaderSupport extends PipelineStage {
+  def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
+    new Pipelines {
+      val raHeader = `Remote-Address`(context.remoteAddress.getAddress)
+      def appendHeader(request: HttpRequest): HttpRequest = request.mapHeaders(raHeader :: _)
 
-  def apply(): PipelineStage =
-    new PipelineStage {
-      def build(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
-        new Pipelines {
-          val raHeader = `Remote-Address`(context.connection.remoteAddress.getAddress)
-          def appendHeader(request: HttpRequest): HttpRequest = request.mapHeaders(raHeader :: _)
+      val commandPipeline = commandPL
 
-          val commandPipeline = commandPL
-
-          val eventPipeline: EPL = {
-            case x: RequestParsing.HttpMessageStartEvent ⇒ eventPL {
-              x.copy(
-                messagePart = x.messagePart match {
-                  case request: HttpRequest         ⇒ appendHeader(request)
-                  case ChunkedRequestStart(request) ⇒ ChunkedRequestStart(appendHeader(request))
-                  case _                            ⇒ throw new IllegalStateException
-                })
-            }
-
-            case ev ⇒ eventPL(ev)
-          }
+      val eventPipeline: EPL = {
+        case x: RequestParsing.HttpMessageStartEvent ⇒ eventPL {
+          x.copy(
+            messagePart = x.messagePart match {
+              case request: HttpRequest         ⇒ appendHeader(request)
+              case ChunkedRequestStart(request) ⇒ ChunkedRequestStart(appendHeader(request))
+              case _                            ⇒ throw new IllegalStateException
+            })
         }
+
+        case ev ⇒ eventPL(ev)
+      }
     }
 }

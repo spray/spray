@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package spray.caching
 
-import akka.dispatch._
+import akka.dispatch.{ Promise, Future, ExecutionContext }
 import spray.util.tryOrElse
 
 /**
@@ -34,7 +34,7 @@ trait Cache[V] {
     /**
      * Wraps the given expression with caching support.
      */
-    def apply(expr: ⇒ V)(implicit executor: ExecutionContext): Future[V] = apply { promise ⇒
+    def apply(expr: ⇒ V)(implicit ec: ExecutionContext): Future[V] = apply { promise ⇒
       tryOrElse(promise.success(expr), promise.failure)
     }
 
@@ -44,7 +44,7 @@ trait Cache[V] {
     def apply(func: Promise[V] ⇒ Unit)(implicit executor: ExecutionContext): Future[V] = fromFuture(key) {
       val p = Promise[V]()
       func(p)
-      p
+      p.future
     }
   }
 

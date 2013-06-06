@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2012 spray.io
+ * Copyright (C) 2011-2013 spray.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
 
     "correctly marshal to multipart content with one empty part" in {
       marshal(MultipartContent(Seq(BodyPart("")))) === Right {
-        HttpBody(
+        HttpEntity(
           contentType = ContentType(new `multipart/mixed`(Some("YLQguzhR2dR6y5M9vnA5m/bJ"))),
           string = """|--YLQguzhR2dR6y5M9vnA5m/bJ
                      |--YLQguzhR2dR6y5M9vnA5m/bJ--""".stripMargin.replace(EOL, "\r\n"))
@@ -45,13 +45,13 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
         MultipartContent {
           Seq(
             BodyPart(
-              entity = HttpBody(ContentType(`text/plain`, `UTF-8`), "test@there.com"),
+              entity = HttpEntity(ContentType(`text/plain`, `UTF-8`), "test@there.com"),
               headers = `Content-Disposition`("form-data", Map("name" -> "email")) :: Nil))
         }
       } === Right {
-        HttpBody(ContentType(new `multipart/mixed`(Some("OvAdT7dw6YwDJfQdPrr4mG2n"))),
+        HttpEntity(ContentType(new `multipart/mixed`(Some("OvAdT7dw6YwDJfQdPrr4mG2n"))),
           """|--OvAdT7dw6YwDJfQdPrr4mG2n
-            |Content-Disposition: form-data; name="email"
+            |Content-Disposition: form-data; name=email
             |Content-Type: text/plain; charset=UTF-8
             |
             |test@there.com
@@ -63,13 +63,13 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
       marshal {
         MultipartContent {
           Seq(
-            BodyPart(HttpBody(ContentType(`text/plain`, Some(`US-ASCII`)), "first part, with a trailing linebreak\r\n")),
+            BodyPart(HttpEntity(ContentType(`text/plain`, Some(`US-ASCII`)), "first part, with a trailing linebreak\r\n")),
             BodyPart(
-              HttpBody(ContentType(`application/octet-stream`), "filecontent"),
+              HttpEntity(ContentType(`application/octet-stream`), "filecontent"),
               RawHeader("Content-Transfer-Encoding", "binary") :: Nil))
         }
       } === Right {
-        HttpBody(ContentType(new `multipart/mixed`(Some("K81NVUvwtUAjwptiTenvnC+T"))),
+        HttpEntity(ContentType(new `multipart/mixed`(Some("K81NVUvwtUAjwptiTenvnC+T"))),
           """|--K81NVUvwtUAjwptiTenvnC+T
             |Content-Type: text/plain; charset=US-ASCII
             |
@@ -90,15 +90,15 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
     "correctly marshal 'multipart/form-data' with two fields" in {
       marshal(MultipartFormData(Map("surname" -> BodyPart("Mike"), "age" -> BodyPart(marshal(<int>42</int>).get)))) ===
         Right {
-          HttpBody(
+          HttpEntity(
             contentType = ContentType(new `multipart/form-data`(Some("WA+a+wgbEuEHsegF8rT18PHQ"))),
             string = """|--WA+a+wgbEuEHsegF8rT18PHQ
-                        |Content-Disposition: form-data; name="surname"
+                        |Content-Disposition: form-data; name=surname
                         |Content-Type: text/plain
                         |
                         |Mike
                         |--WA+a+wgbEuEHsegF8rT18PHQ
-                        |Content-Disposition: form-data; name="age"
+                        |Content-Disposition: form-data; name=age
                         |Content-Type: text/xml
                         |
                         |<int>42</int>
