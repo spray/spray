@@ -18,6 +18,7 @@ package spray.routing
 
 import shapeless._
 
+// TODO: check whether we can remove this additional layer on top of PrependAux
 trait Prepender[P <: HList, S <: HList] {
   type Out <: HList
   def apply(prefix: P, suffix: S): Out
