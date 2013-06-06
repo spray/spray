@@ -56,17 +56,17 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
 
   def get(key: Any) = Option(store.get(key))
 
-  def fromFuture(key: Any)(future: ⇒ Future[V])(implicit executor: ExecutionContext): Future[V] = {
+  def apply(key: Any, genValue: () ⇒ Future[V])(implicit ec: ExecutionContext): Future[V] = {
     val promise = Promise[V]()
     store.putIfAbsent(key, promise.future) match {
       case null ⇒
-        val fut = future
-        fut.onComplete { value ⇒
+        val future = genValue()
+        future.onComplete { value ⇒
           promise.complete(value)
           // in case of exceptions we remove the cache entry (i.e. try again later)
           if (value.isFailure) store.remove(key, promise)
         }
-        fut
+        future
       case existingFuture ⇒ existingFuture
     }
   }
@@ -115,19 +115,21 @@ final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
       else get(key) // nope, try again
   }
 
-  def fromFuture(key: Any)(future: ⇒ Future[V])(implicit executor: ExecutionContext): Future[V] = {
+  def apply(key: Any, genValue: () ⇒ Future[V])(implicit ec: ExecutionContext): Future[V] = {
     def insert() = {
       val newEntry = new Entry(Promise[V]())
-      val valueFuture = store.put(key, newEntry) match {
-        case null ⇒ future
-        case entry ⇒ if (isAlive(entry)) {
-          // we date back the new entry we just inserted
-          // in the meantime someone might have already seen the too fresh timestamp we just put in,
-          // but since the original entry is also still alive this doesn't matter
-          newEntry.created = entry.created
-          entry.future
-        } else future
-      }
+      val valueFuture =
+        store.put(key, newEntry) match {
+          case null ⇒ genValue()
+          case entry ⇒
+            if (isAlive(entry)) {
+              // we date back the new entry we just inserted
+              // in the meantime someone might have already seen the too fresh timestamp we just put in,
+              // but since the original entry is also still alive this doesn't matter
+              newEntry.created = entry.created
+              entry.future
+            } else genValue()
+        }
       valueFuture.onComplete { value ⇒
         newEntry.promise.tryComplete(value)
         // in case of exceptions we remove the cache entry (i.e. try again later)
