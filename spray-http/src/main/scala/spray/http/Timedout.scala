@@ -22,9 +22,9 @@ import concurrent.duration.Duration
 case class Timedout(request: HttpRequestPart with HttpMessageStart)
 
 case class SetRequestTimeout(timeout: Duration) {
-  require(timeout == Duration.Undefined || (timeout.isFinite() && timeout > Duration.Zero), "timeout must be positive or undefined")
+  require(timeout > Duration.Zero, "timeout must be positive or undefined")
 }
 
 case class SetTimeoutTimeout(timeout: Duration) {
-  require(timeout == Duration.Undefined || (timeout.isFinite() && timeout > Duration.Zero), "timeout must be positive or undefined")
+  require(timeout > Duration.Zero, "timeout must be positive or undefined")
 }
