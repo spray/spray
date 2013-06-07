@@ -16,10 +16,11 @@
 
 package spray.site
 
+import org.parboiled.common.FileUtils
+import scala.annotation.tailrec
 import scala.xml.{ Node, XML }
 import spray.http.Rendering
 import spray.util._
-import org.parboiled.common.FileUtils
 
 sealed trait ContentNode {
   def title: String
@@ -116,7 +117,12 @@ class SubNode(li: Node, docVersion: String,
     val loaded =
       if (!uri.contains("#")) {
         val d = load(loadUri).orElse(load(loadUri + "index/")).getOrElse(sys.error(s"SphinxDoc for uri '$loadUri' not found"))
-        if (loadUri != uri) d.copy(body = d.body.replace("href=\"../", "href=\"../../")) else d
+        if (loadUri != uri) {
+          @tailrec def levelUp(node: ContentNode = parent, dots: String = ""): String =
+            if (node.isInstanceOf[BranchRootNode]) dots else levelUp(node.parent, dots + "../")
+          val dots = levelUp()
+          d.copy(body = d.body.replace("href=\"" + dots, "href=\"../" + dots))
+        } else d
       } else SphinxDoc.Empty
     if (!Main.settings.devMode) lastDoc = Some(loaded)
     loaded
