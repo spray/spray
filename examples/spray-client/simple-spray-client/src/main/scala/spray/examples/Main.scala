@@ -2,16 +2,14 @@ package spray.examples
 
 import scala.util.{Success, Failure}
 import scala.concurrent.duration._
-import akka.actor.{Props, ActorSystem}
+import akka.actor.ActorSystem
 import akka.pattern.ask
-import akka.util.Timeout
 import akka.event.Logging
 import akka.io.IO
 import spray.json.{JsonFormat, DefaultJsonProtocol}
 import spray.can.Http
 import spray.httpx.SprayJsonSupport
 import spray.client.pipelining._
-import spray.http._
 import spray.util._
 
 case class Elevation(location: Location, elevation: Double)
@@ -23,7 +21,6 @@ object ElevationJsonProtocol extends DefaultJsonProtocol {
   implicit val elevationFormat = jsonFormat2(Elevation)
   implicit def googleApiResultFormat[T :JsonFormat] = jsonFormat2(GoogleApiResult.apply[T])
 }
-
 
 object Main extends App {
   // we need an ActorSystem to host our application in
