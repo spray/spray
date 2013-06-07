@@ -34,9 +34,9 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
     "correctly marshal to multipart content with one empty part" in {
       marshal(MultipartContent(Seq(BodyPart("")))) === Right {
         HttpEntity(
-          contentType = ContentType(new `multipart/mixed`(Some("YLQguzhR2dR6y5M9vnA5m/bJ"))),
-          string = """|--YLQguzhR2dR6y5M9vnA5m/bJ
-                     |--YLQguzhR2dR6y5M9vnA5m/bJ--""".stripMargin.replace(EOL, "\r\n"))
+          contentType = ContentType(new `multipart/mixed`("YLQguzhR2dR6y5M9vnA5m-bJ")),
+          string = """|--YLQguzhR2dR6y5M9vnA5m-bJ
+                     |--YLQguzhR2dR6y5M9vnA5m-bJ--""".stripMargin.replace(EOL, "\r\n"))
       }
     }
 
@@ -49,7 +49,7 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
               headers = `Content-Disposition`("form-data", Map("name" -> "email")) :: Nil))
         }
       } === Right {
-        HttpEntity(ContentType(new `multipart/mixed`(Some("OvAdT7dw6YwDJfQdPrr4mG2n"))),
+        HttpEntity(ContentType(new `multipart/mixed`("OvAdT7dw6YwDJfQdPrr4mG2n")),
           """|--OvAdT7dw6YwDJfQdPrr4mG2n
             |Content-Disposition: form-data; name=email
             |Content-Type: text/plain; charset=UTF-8
@@ -69,7 +69,7 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
               RawHeader("Content-Transfer-Encoding", "binary") :: Nil))
         }
       } === Right {
-        HttpEntity(ContentType(new `multipart/mixed`(Some("K81NVUvwtUAjwptiTenvnC+T"))),
+        HttpEntity(ContentType(new `multipart/mixed`("K81NVUvwtUAjwptiTenvnC+T")),
           """|--K81NVUvwtUAjwptiTenvnC+T
             |Content-Type: text/plain; charset=US-ASCII
             |
@@ -91,7 +91,7 @@ class MultipartMarshallersSpec extends Specification with MultipartMarshallers {
       marshal(MultipartFormData(Map("surname" -> BodyPart("Mike"), "age" -> BodyPart(marshal(<int>42</int>).get)))) ===
         Right {
           HttpEntity(
-            contentType = ContentType(new `multipart/form-data`(Some("WA+a+wgbEuEHsegF8rT18PHQ"))),
+            contentType = ContentType(new `multipart/form-data`("WA+a+wgbEuEHsegF8rT18PHQ")),
             string = """|--WA+a+wgbEuEHsegF8rT18PHQ
                         |Content-Disposition: form-data; name=surname
                         |Content-Type: text/plain
