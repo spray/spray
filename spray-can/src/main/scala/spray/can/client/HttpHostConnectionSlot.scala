@@ -28,10 +28,10 @@ import spray.can.Http
 import spray.io.ClientSSLEngineProvider
 import spray.http._
 
-private[client] class HttpHostConnection(remoteAddress: InetSocketAddress,
-                                         options: immutable.Traversable[Inet.SocketOption],
-                                         idleTimeout: Duration,
-                                         clientConnectionSettingsGroup: ActorRef)(implicit sslEngineProvider: ClientSSLEngineProvider)
+private[client] class HttpHostConnectionSlot(remoteAddress: InetSocketAddress,
+                                             options: immutable.Traversable[Inet.SocketOption],
+                                             idleTimeout: Duration,
+                                             clientConnectionSettingsGroup: ActorRef)(implicit sslEngineProvider: ClientSSLEngineProvider)
     extends Actor with SprayActorLogging {
 
   // we cannot sensibly recover from crashes
@@ -45,7 +45,7 @@ private[client] class HttpHostConnection(remoteAddress: InetSocketAddress,
     {
       case ctx: RequestContext ⇒
         log.debug("Attempting new connection to {}", remoteAddress)
-        clientConnectionSettingsGroup ! Http.Connect(remoteAddress, None, options, None, sslEngineProvider)
+        clientConnectionSettingsGroup ! Http.Connect(remoteAddress, None, options, None)
         context.setReceiveTimeout(Duration.Undefined)
         context.become(connecting(Queue(ctx)))
 

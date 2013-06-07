@@ -21,9 +21,9 @@ import akka.actor._
 import spray.util.SprayActorLogging
 import spray.io.ClientSSLEngineProvider
 import spray.http.{ HttpHeaders, HttpRequest }
-import spray.can.{ Http, HostConnectorSetup }
+import spray.can.Http
 
-private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, clientConnectionSettingsGroup: ActorRef)(implicit sslEngineProvider: ClientSSLEngineProvider)
+private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, clientConnectionSettingsGroup: ActorRef)(implicit sslEngineProvider: ClientSSLEngineProvider)
     extends Actor with SprayActorLogging {
 
   import HttpHostConnector._
@@ -123,7 +123,7 @@ private[can] class HttpHostConnector(normalizedSetup: HostConnectorSetup, client
   def newConnectionChild(): ActorRef = {
     val child = context.watch {
       context.actorOf(
-        props = Props(new HttpHostConnection(remoteAddress, options, settings.idleTimeout,
+        props = Props(new HttpHostConnectionSlot(remoteAddress, options, settings.idleTimeout,
           clientConnectionSettingsGroup)),
         name = counter.next().toString)
     }

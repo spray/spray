@@ -22,9 +22,10 @@ import scala.collection.immutable
 import akka.io.{ Inet, Tcp }
 import akka.actor._
 import spray.can.server.ServerSettings
-import spray.can.client.ClientConnectionSettings
+import spray.can.client.{ HostConnectorSettings, ClientConnectionSettings }
 import spray.io.{ ConnectionTimeouts, ClientSSLEngineProvider, ServerSSLEngineProvider }
 import spray.http.{ HttpResponse, HttpRequest, HttpMessagePart, HttpMessagePartWrapper }
+import spray.util.actorSystem
 
 object Http extends ExtensionKey[HttpExt] {
 
@@ -34,28 +35,40 @@ object Http extends ExtensionKey[HttpExt] {
   case class Connect(remoteAddress: InetSocketAddress,
                      localAddress: Option[InetSocketAddress],
                      options: immutable.Traversable[Inet.SocketOption],
-                     settings: Option[ClientConnectionSettings],
-                     sslEngineProvider: ClientSSLEngineProvider) extends Command {
-    implicit def clientSslEngineProvider = sslEngineProvider
-  }
+                     settings: Option[ClientConnectionSettings])(implicit val sslEngineProvider: ClientSSLEngineProvider) extends Command
   object Connect {
     def apply(host: String, port: Int = 80, localAddress: Option[InetSocketAddress] = None,
               options: immutable.Traversable[Inet.SocketOption] = Nil, settings: Option[ClientConnectionSettings] = None)(implicit sslEngineProvider: ClientSSLEngineProvider): Connect =
-      apply(new InetSocketAddress(host, port), localAddress, options, settings, sslEngineProvider)
+      apply(new InetSocketAddress(host, port), localAddress, options, settings)
   }
 
   case class Bind(listener: ActorRef,
                   endpoint: InetSocketAddress,
                   backlog: Int,
                   options: immutable.Traversable[Inet.SocketOption],
-                  settings: Option[ServerSettings],
-                  sslEngineProvider: ServerSSLEngineProvider) extends Command {
-    implicit def serverSslEngineProvider = sslEngineProvider
-  }
+                  settings: Option[ServerSettings])(implicit val sslEngineProvider: ServerSSLEngineProvider) extends Command
   object Bind {
     def apply(listener: ActorRef, interface: String, port: Int = 80, backlog: Int = 100,
               options: immutable.Traversable[Inet.SocketOption] = Nil, settings: Option[ServerSettings] = None)(implicit sslEngineProvider: ServerSSLEngineProvider): Bind =
-      apply(listener, new InetSocketAddress(interface, port), backlog, options, settings, sslEngineProvider)
+      apply(listener, new InetSocketAddress(interface, port), backlog, options, settings)
+  }
+
+  case class HostConnectorSetup(remoteAddress: InetSocketAddress,
+                                options: immutable.Traversable[Inet.SocketOption],
+                                settings: Option[HostConnectorSettings])(implicit sslEngineProvider: ClientSSLEngineProvider) extends Command {
+    private[can] def normalized(implicit refFactory: ActorRefFactory) =
+      if (settings.isDefined) this
+      else copy(settings = Some(HostConnectorSettings(actorSystem)))
+  }
+  object HostConnectorSetup {
+    def apply(host: String, port: Int = 80, options: immutable.Traversable[Inet.SocketOption] = Nil,
+              settings: Option[HostConnectorSettings] = None)(implicit sslEngineProvider: ClientSSLEngineProvider): HostConnectorSetup =
+      apply(new InetSocketAddress(host, port), options, settings)
+
+    def apply(host: String, port: Int, sslEncryption: Boolean)(implicit refFactory: ActorRefFactory): HostConnectorSetup = {
+      val connectionSettings = ClientConnectionSettings(actorSystem).copy(sslEncryption = sslEncryption)
+      apply(host, port, settings = Some(HostConnectorSettings(actorSystem).copy(connectionSettings = connectionSettings)))
+    }
   }
 
   type FastPath = PartialFunction[HttpRequest, HttpResponse]
@@ -106,6 +119,8 @@ object Http extends ExtensionKey[HttpExt] {
   type CommandFailed = Tcp.CommandFailed; val CommandFailed = Tcp.CommandFailed
   case class SendFailed(part: HttpMessagePart) extends Event
   case class MessageEvent(ev: HttpMessagePart) extends Event
+
+  case class HostConnectorInfo(hostConnector: ActorRef, setup: HostConnectorSetup) extends Event
 }
 
 class HttpExt(system: ExtendedActorSystem) extends akka.io.IO.Extension {
