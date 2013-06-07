@@ -165,10 +165,10 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
     }
   }
 
-  class MultipartMediaType(subType: String, val boundary: String)
-      extends MediaType(
-        if (boundary.isEmpty) "multipart/" + subType
-        else (new StringRendering ~~ "multipart/" ~~ subType ~~ "; boundary=" ~~# boundary).get)("multipart", subType, compressible = true, binary = false, fileExtensions = Nil) {
+  class MultipartMediaType(subType: String, val boundary: String) extends MediaType({
+    if (boundary.isEmpty) "multipart/" + subType
+    else (new StringRendering ~~ "multipart/" ~~ subType ~~ "; boundary=" ~~# boundary).get
+  })("multipart", subType, compressible = true, binary = false, fileExtensions = Nil) {
     override def isMultipart = true
     override def matches(that: MediaType): Boolean = that match {
       case x: MultipartMediaType ⇒ x.subType == this.subType
