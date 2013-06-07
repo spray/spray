@@ -4,16 +4,16 @@ Introduction
 What is *spray*?
 ----------------
 
-*spray* is a suite of lightweight Scala_ libraries providing client- and server-side **REST**/**HTTP** support as well
-as low-level network IO on top Akka_.
+*spray* is a suite of lightweight Scala_ libraries providing client- and server-side **REST**/**HTTP** support
+on top Akka_.
 
 We believe that, having chosen Scala_ (and possibly Akka_) as primary tools for building software, you'll want to rely
 on their power not only in your application layer but throughout the full (JVM-level) network stack. *spray* provides
-just that: a set of integrated components for all your REST/HTTP and network IO needs that let you work with idiomatic
-Scala_ (and Akka_) APIs at the stack level of your choice, all implemented without any wrapping layers around "legacy"
+just that: a set of integrated components for all your REST/HTTP needs that let you work with idiomatic Scala_
+(and Akka_) APIs at the stack level of your choice, all implemented without any wrapping layers around "legacy"
 Java libraries.
 
-.. _scala: http://scala-lang.org
+.. _scala: http://www.scala-lang.org
 .. _akka: http://akka.io
 
 
@@ -55,7 +55,7 @@ Currently the *spray* suite consists of these modules:
   A low-level, low-overhead, high-performance HTTP server and client built on top of :ref:`spray-io`.
 
 :ref:`spray-client`
-  An HTTP client providing a higher-level interface than the low-level :ref:`spray-can` :ref:`HttpClient`,
+  Provides client-side HTTP support at a higher level than the low-level :ref:`spray-can` :ref:`HttpClient`,
   which it builds on.
 
 :ref:`spray-http`
@@ -67,9 +67,10 @@ Currently the *spray* suite consists of these modules:
   that are used by both :ref:`spray-client` as well as :ref:`spray-routing`.
 
 :ref:`spray-io`
-  A low-level network IO layer for directly connecting Akka actors to asynchronous Java NIO sockets. It sports a
-  pipelined architecture including predefined reusable pipeline stages (like connection timeouts and SSL/TLS support).
-  We like to think of it a basic version of Netty_ for Scala.
+  A low-level network IO layer for directly connecting Akka actors to asynchronous Java NIO sockets. We like to think of
+  it a basic version of Netty_ for Scala. As of 1.0-M8/1.1-M8 it contains a backport of the new Akka IO layer coming
+  with Akka 2.2. In 1.2-M8 it merely contains a few spray-specific "left-overs" that will likely go away completely in
+  the future.
 
 :ref:`spray-servlet`
   An adapter layer providing (a subset of) the *spray-can* :ref:`HttpServer` interface on top of the Servlet API.
@@ -88,6 +89,8 @@ spray-json_
   A lightweight, clean and simple JSON implementation in Scala. Because it neither depends on any other part of *spray*
   nor on Akka and is only an optional dependency of :ref:`spray-client` and :ref:`spray-httpx` it doesn't live in
   the main *spray* repository, but rather in `its own github repository`__
+  Note that you can easily use *spray* with whatever JSON library you like best, *spray-json* is just one of several
+  alternatives.
 
 __ spray-json_
 .. _concurrentlinkedhashmap: http://code.google.com/p/concurrentlinkedhashmap/
@@ -104,22 +107,22 @@ building integration layers rather than application cores. As such it regards it
 than a framework.
 
 A framework, as we'd like to think of the term, gives you a "frame", in which you build your application. It comes with
-a lot of decisions already pre-made and provides a foundation including support structures, that lets you get started
+a lot of decisions already pre-made and provides a foundation including support structures that lets you get started
 and deliver results quickly. In a way a framework is like a skeleton onto which you put the "flesh" of your application
 in order to have it come alive. As such frameworks work best if you choose them *before* you start application
 development and try to stick to the frameworks "way of doing things" as you go along.
 
 For example, if you are building a browser-facing web application it makes sense to choose a web framework and build
-your application on top of it, because the "core" of the application is the interaction of a browser with your code on
+your application on top of it because the "core" of the application is the interaction of a browser with your code on
 the web-server. The framework makers have chosen one "proven" way of designing such applications and let you "fill in
-the blanks" of a more or less flexible "application-template". Being able to rely on "best-practice" architecture like
+the blanks" of a more or less flexible "application-template". Being able to rely on best-practice architecture like
 this can be a great asset for getting things done quickly.
 
-However, if your application is not primarily a web application, because its core is not browser-interaction but
-some specialized, maybe complex business service, and you are merely trying to connect it to the world via a REST/HTTP
-interface, a web-framework might not be what you need. In this case the application architecture should be dictated by
-what makes sense for the core, not the interface layer. Also, you probably won't benefit of the possibly existing
-browser-specific framework components, like view templating, asset management, JavaScript- and CSS
+However, if your application is not primarily a web application because its core is not browser-interaction but
+some specialized maybe complex business service and you are merely trying to connect it to the world via a REST/HTTP
+interface a web-framework might not be what you need. In this case the application architecture should be dictated by
+what makes sense for the core not the interface layer. Also, you probably won't benefit from the possibly existing
+browser-specific framework components like view templating, asset management, JavaScript- and CSS
 generation/manipulation/minification, localization support, AJAX support, etc.
 
 *spray* was designed specifically as "not-a-framework", not because we don't like frameworks, but for use cases where
@@ -131,10 +134,10 @@ application on top of whatever makes sense and use *spray* merely for the HTTP i
 spray for Web Development
 -------------------------
 
-Even though *sprays* development focus so far has not been web applications, but HTTP-based integration
-layers, you can of course use it for powering browser-based GUIs as well. The recent trend of moving web application
-logic more and more away from the server and into the (JS-based) browser client as well as the increasing availability
-of good SBT-plugins for things *spray* itself does not provide (like view-templating or LESS- and CoffeeScript-Support)
+Even though *sprays* development focus so far has not been web applications but HTTP-based integration layers, you can
+of course use it for powering browser-based GUIs as well. The recent trend of moving web application logic more and more
+away from the server and into the (JS-based) browser client as well as the increasing availability of good SBT-plugins
+for things *spray* itself does not provide (like view-templating or LESS- and CoffeeScript-Support)
 might even make such an approach gain attractiveness.
 
 Currently a *spray*-based web development stack might consist of (a subset of) these components:
@@ -180,11 +183,11 @@ sbt-assembly_
 While a stack like this might not provide everything that a full-grown web framework can offer it could have all that's
 required for your particular application. And, because you can pick the best tool for each individual job, the resulting
 application stack is a lot more flexible and possibly future-proof than any single framework.
-Of course, the downside of this approach is that integrating the different components is now on your shoulders. Also,
+Of course the downside of this approach is that integrating the different components is now on your shoulders. Also,
 there is no single point of contact for support and upgrades.
 
 Still, combining a client-side JavaScript framework with a *spray*-based application backend could prove itself as an
-interesting alternative to a "classic", server-side web framework. We'd love to hear about your experiences in this
+interesting alternative to a "classic" server-side web framework. We'd love to hear about your experiences in this
 regard...
 
 
