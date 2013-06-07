@@ -23,12 +23,18 @@ import scala.concurrent.{ Promise, ExecutionContext, Future }
 import scala.util.{ Failure, Success }
 
 object LruCache {
+
+  //# source-quote-LruCache-apply
   /**
-   * Creates a new instance of either []spray.caching.ExpiringLruCache]] or [[spray.caching.SimpleLruCache]],
-   * depending on whether a non-zero and finite timeToLive and/or timeToIdle is set or not.
+   * Creates a new [[spray.caching.ExpiringLruCache]] or
+   * [[spray.caching.SimpleLruCache]] instance depending on whether
+   * a non-zero and finite timeToLive and/or timeToIdle is set or not.
    */
-  def apply[V](maxCapacity: Int = 500, initialCapacity: Int = 16,
-               timeToLive: Duration = Duration.Zero, timeToIdle: Duration = Duration.Zero): Cache[V] = {
+  def apply[V](maxCapacity: Int = 500,
+               initialCapacity: Int = 16,
+               timeToLive: Duration = Duration.Zero,
+               timeToIdle: Duration = Duration.Zero): Cache[V] = {
+    //#
     import Duration._
     def isNonZeroFinite(d: Duration) = d != Zero && d.isFinite
     def millis(d: Duration) = if (isNonZeroFinite(d)) d.toMillis else 0L
