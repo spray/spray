@@ -118,10 +118,11 @@ class SubNode(li: Node, docVersion: String,
       if (!uri.contains("#")) {
         val d = load(loadUri).orElse(load(loadUri + "index/")).getOrElse(sys.error(s"SphinxDoc for uri '$loadUri' not found"))
         if (loadUri != uri) {
-          @tailrec def levelUp(node: ContentNode = parent, dots: String = ""): String =
-            if (node.isInstanceOf[BranchRootNode]) dots else levelUp(node.parent, dots + "../")
+          val documentationBranchRootName = SubNode.DOC_URI + docVersion + '/'
+          @tailrec def levelUp(node: ContentNode = this, dots: String = "../"): String =
+            if (node.uri == documentationBranchRootName) dots else levelUp(node.parent, dots + "../")
           val dots = levelUp()
-          d.copy(body = d.body.replace("href=\"" + dots, "href=\"../" + dots))
+          d.copy(body = d.body.replace("href=\"" + dots, "href=\"../" + dots).replace("src=\"" + dots, "src=\"../" + dots))
         } else d
       } else SphinxDoc.Empty
     if (!Main.settings.devMode) lastDoc = Some(loaded)
