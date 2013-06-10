@@ -23,7 +23,7 @@ import spray.can.Http
 import spray.http.StringRendering
 
 object Main extends App {
-  implicit val system = ActorSystem()
+  implicit val system = ActorSystem("site")
   val log = Logging(system, getClass)
   val settings = SiteSettings(system)
 

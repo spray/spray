@@ -33,14 +33,14 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
   def receive = runRoute {
     dynamicIf(settings.devMode) { // for proper support of twirl + sbt-revolver during development
       (get & encodeResponse(Gzip)) {
-        (host("repo.spray.cc") & unmatchedPath) { ump =>
-          redirect("http://repo.spray.io" + ump, Found)
-        } ~
         host("repo.spray.io") {
           logRequestResponse(showRepoResponses("repo") _) {
             getFromBrowseableDirectories(settings.repoDirs: _*) ~
             complete(NotFound)
           }
+        } ~
+        (host("repo.spray.cc") & unmatchedPath) { ump =>
+          redirect("http://repo.spray.io" + ump, Found)
         } ~
         host("nightlies.spray.io") {
           logRequestResponse(showRepoResponses("nightlies") _) {
