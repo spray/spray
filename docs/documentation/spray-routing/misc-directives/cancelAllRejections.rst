@@ -1,0 +1,6 @@
+.. _-cancelAllRejections-:
+
+cancelAllRejections
+===================
+
+(todo)

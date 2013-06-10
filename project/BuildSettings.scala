@@ -79,6 +79,10 @@ object BuildSettings {
     }
   )
 
+  lazy val docsSettings = basicSettings ++ noPublishing ++ seq(
+    unmanagedSourceDirectories in Test <<= baseDirectory { _ ** "code" get }
+  )
+
   lazy val exampleSettings = basicSettings ++ noPublishing
 
   lazy val benchmarkSettings = basicSettings ++ noPublishing ++ Revolver.settings ++ assemblySettings ++ Seq(

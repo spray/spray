@@ -1,0 +1,6 @@
+.. _-respondWithSingletonHeader-:
+
+respondWithSingletonHeader
+==========================
+
+(todo)

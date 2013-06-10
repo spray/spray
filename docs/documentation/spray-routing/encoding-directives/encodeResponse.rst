@@ -1,0 +1,6 @@
+.. _-encodeResponse-:
+
+encodeResponse
+==============
+
+(todo)

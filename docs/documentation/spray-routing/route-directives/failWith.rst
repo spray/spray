@@ -1,0 +1,6 @@
+.. _-failWith-:
+
+failWith
+========
+
+(todo)

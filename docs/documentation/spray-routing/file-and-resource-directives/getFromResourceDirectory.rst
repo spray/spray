@@ -1,0 +1,6 @@
+.. _-getFromResourceDirectory-:
+
+getFromResourceDirectory
+========================
+
+(todo)

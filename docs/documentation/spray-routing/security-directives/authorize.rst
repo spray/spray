@@ -1,0 +1,6 @@
+.. _-authorize-:
+
+authorize
+=========
+
+(todo)
