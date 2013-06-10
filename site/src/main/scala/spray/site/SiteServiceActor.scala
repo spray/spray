@@ -36,7 +36,7 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
         (host("repo.spray.cc") & unmatchedPath) { ump =>
           redirect("http://repo.spray.io" + ump, Found)
         } ~
-        (host("repo.spray.io")) {
+        host("repo.spray.io") {
           logRequestResponse(showRepoResponses("repo") _) {
             getFromBrowseableDirectories(settings.repoDirs: _*) ~
             complete(NotFound)
@@ -75,10 +75,10 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
                   path("blog") {
                     complete(page(blogIndex(Main.blog.root.children), Main.blog.root))
                   } ~
-                  path("blog/feed") {
+                  path("blog" / "feed") {
                     complete(xml.blogAtomFeed())
                   } ~
-                  path("blog/category" / Segment) { tag =>
+                  path("blog" / "category" / Segment) { tag =>
                     Main.blog.posts(tag) match {
                       case Nil => complete(NotFound, page(error404()))
                       case posts => complete(page(blogIndex(posts, tag), Main.blog.root))
