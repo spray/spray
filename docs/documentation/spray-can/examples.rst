@@ -4,7 +4,7 @@ Examples
 The `/examples/spray-can/`__ directory of the *spray* repository
 contains a number of example projects for *spray-can*, which are described here.
 
-__ https://github.com/spray/spray/tree/master/examples/spray-can
+__ https://github.com/spray/spray/tree/release/1.1/examples/spray-can
 
 .. _simple-http-client:
 

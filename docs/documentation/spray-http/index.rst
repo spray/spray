@@ -64,7 +64,7 @@ In order to develop a better understanding for how *spray* models HTTP you proba
 around the `spray-http sources`_ (ideally with an IDE that supports proper code navigation).
 
 .. _here: `spray-http sources`_
-.. _spray-http sources: https://github.com/spray/spray/tree/master/spray-http/src/main/scala/spray/http
+.. _spray-http sources: https://github.com/spray/spray/tree/release/1.1/spray-http/src/main/scala/spray/http
 
 
 Content-Type Header

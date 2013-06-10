@@ -139,4 +139,4 @@ __ https://github.com/spray/spray/blob/master/examples/spray-routing/on-spray-ca
 Another great pool of examples are the tests for all the predefined directives in :ref:`spray-routing`.
 They can be found here__.
 
-__ https://github.com/spray/spray/tree/master/spray-routing-tests/src/test/scala/spray/routing
+__ https://github.com/spray/spray/tree/release/1.1/spray-routing-tests/src/test/scala/spray/routing

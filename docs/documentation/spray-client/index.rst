@@ -84,7 +84,7 @@ Example
 
 The `/examples/spray-client/`__ directory of the *spray* repository contains an example project for *spray-client*.
 
-__ https://github.com/spray/spray/tree/master/examples/spray-client
+__ https://github.com/spray/spray/tree/release/1.1/examples/spray-client
 
 simple-spray-client
 ~~~~~~~~~~~~~~~~~~~

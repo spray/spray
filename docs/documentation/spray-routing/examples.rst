@@ -6,7 +6,7 @@ Complete Examples
 The `/examples/spray-routing/`__ directory of the *spray* repository
 contains a number of example projects for *spray-routing*, which are described here.
 
-.. __: https://github.com/spray/spray/tree/master/examples/spray-routing
+.. __: https://github.com/spray/spray/tree/release/1.1/examples/spray-routing
 
 .. _on-spray-can:
 

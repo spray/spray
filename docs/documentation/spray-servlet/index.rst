@@ -219,7 +219,7 @@ Example
 The `/examples/spray-servlet/`__ directory of the *spray* repository
 contains a number of example projects for *spray-servlet*.
 
-.. __: https://github.com/spray/spray/tree/master/examples/spray-servlet
+.. __: https://github.com/spray/spray/tree/release/1.1/examples/spray-servlet
 
 
 simple-spray-servlet-server

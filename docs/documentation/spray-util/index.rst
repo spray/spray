@@ -53,7 +53,7 @@ you bring them in scope with the following import::
 
   import spray.util._
 
-__ https://github.com/spray/spray/tree/master/spray-util/src/main/scala/spray/util/pimps
+__ https://github.com/spray/spray/tree/release/1.1/spray-util/src/main/scala/spray/util/pimps
 __ https://github.com/spray/spray/blob/master/spray-util/src/main/scala/spray/util/package.scala
 
 .. admonition:: Side Note
