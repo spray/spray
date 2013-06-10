@@ -8,7 +8,7 @@ import spray.revolver.RevolverPlugin.Revolver
 import twirl.sbt.TwirlPlugin.Twirl
 
 object BuildSettings {
-  val VERSION = "1.1-SNAPSHOT"
+  val VERSION = "1.1-M8"
 
   lazy val basicSettings = seq(
     version               := NightlyBuildSupport.buildVersion(VERSION),
