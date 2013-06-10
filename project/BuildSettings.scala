@@ -11,7 +11,7 @@ import ls.Plugin._
 
 
 object BuildSettings {
-  val VERSION = "1.0-SNAPSHOT"
+  val VERSION = "1.0-M8"
 
   lazy val basicSettings = seq(
     version               := NightlyBuildSupport.buildVersion(VERSION),
