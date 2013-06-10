@@ -1,3 +1,54 @@
+Version 1.2-M8 (2013-06-10)
+---------------------------
+- Upgraded to Scala 2.10.2, Akka 2.2.0-RC1 and latest versions of all dependencies
+- general: added automatic source formatting via sbt-scalariform
+- spray-caching: folded `Cache.fromFuture` into Cache.apply
+- spray-can:
+
+  + migrated from old spray-io onto new akka-io
+  + completely rewrote client-side APIs for improved architecture and usability
+  + completely rewrote HTTP parser for cleanliness and much better performance
+  + rewrote HTTP renderer for cleanliness and performance
+  + many fixes, additions and smaller improvements
+
+- spray-client:
+
+  + removed HttpConduit (now part of spray-can client-side APIs)
+  + moved HttpDialog from spray-can into spray-client
+  + adapted to new spray-can client layer
+
+- spray-http:
+
+  + major refactoring for cleanliness and performance
+  + established serializability for all model classes
+  + added custom RFC3986-compliant URI model incl. fast parser
+  + many fixes, additions and smaller improvements
+
+- spray-httpx:
+
+  + added marshaller for `Try[T]`
+  + added Json4s native and Json4S jackson support
+  + many fixes, additions and smaller improvements
+
+- spray-io:
+
+  + migrated large majority of logic to new Akka I/O layer
+  + updated remaining logic
+
+- spray-routing:
+
+  + added several new directives (most notably: FutureDirectives, AnyParamDirectives)
+  + many fixes, additions and smaller improvements
+
+- spray-servlet:
+
+  + fixed NPE during exception handling using `e.getMessage`
+  + enabled dynamic timeout setting via SetRequestTimeout and SetTimeoutTimeout commands
+  + smaller improvements
+
+- spray-util: many small fixes and improvements
+
+
 Version 1.1-M7 (2012-12-19)
 ---------------------------
 - Upgraded to Scala 2.10.0-RC5, Akka 2.1.0-RC6
