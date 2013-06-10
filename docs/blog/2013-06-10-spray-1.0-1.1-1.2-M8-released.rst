@@ -1,0 +1,70 @@
+:author: Mathias
+:tags: benchmarking
+:index-paragraphs: 2
+:show-post-structure: no
+
+spray 1.0-M8 / 1.1-M8 / 1.2-M8 released
+=======================================
+
+Dear sprayers,
+
+we -- the *spray* team -- are happy and proud to finally be able to announce the release of the much too long awaited
+**M8 milestone** of *spray* 1.0 / 1.1 / 1.2.
+
+A lot has happened in and around the *spray* codebase since we released M7 in December, with the most notable change
+probably being the move onto the new Akka I/O layer that was jointly developed with the Akka team in the last months
+in order to provide an even better "Scala-all-the-way-through" actor-based I/O foundation, not just for HTTP.
+This new I/O layer will be officially released with Akka 2.2 (the first RC of which is already at this time), but for
+everyone who is not yet willing or able to upgrade from Akka 2.0 or 2.1 we provide a one-to-one backport of the new
+I/O abstraction with *spray-io* 1.0/1.1-M8.
+
+But also on top of the raw I/O layer this milestone brings a lot of good stuff for your *spray* applications,
+for example:
+
+- A completely new and even faster implementation of our *spray-can* HTTP parser. The work in this area was the basis
+  for *spray's* success in the latest round of the `techempower benchmark`_, so upgrading to M8 should give your
+  HTTP stack a nice performance boost.
+
+- Fully rewritten :ref:`HTTP Client APIs`, which improve upon the experiences from earlier releases and give you the
+  most powerful and flexible client-side HTTP abstractions available with *spray* to date.
+
+- Much improved HTTP model in :ref:`spray-http`, with things like complete serializability, a very fast and fully
+  `RFC 3986`_-compliant URI parser as well as better and more efficient rendering abstractions.
+
+The full list of changes, fixes and additions is too long for us to properly compile it, please check out the
+:ref:`Changelog` for more details.
+
+Since this milestone is a triple release, here are the Scala and Akka versions that are targeted by the different
+artifacts (see also the :ref:`Current Versions` chapter):
+
+.. rst-class:: table table-striped
+
+===============  =============  ============
+*spray* version  Scala version  Akka version
+===============  =============  ============
+1.0-M8           Scala 2.9.x    Akka 2.0.x
+1.1-M8           Scala 2.10.x   Akka 2.1.x
+1.2-M8           Scala 2.10.x   Akka 2.2.x
+===============  =============  ============
+
+The development statistics for 1.1-M8 (since 1.1-M7):
+
+- 1.081 files changed
+- 21.628 insertions
+- 15.363 deletions
+- 18 committers
+
+As the name implies this release is still only a milestone until the 1.0/1.1/1.2 finals, but it will be the last one.
+In the coming weeks we a planning on burning through the `open tickets`_ and provide you with the first release
+candidate as soon as we can.
+
+Until then we are, as always, very much looking forward to your feedback!
+
+Happy spraying!
+
+| Cheers,
+| Mathias
+
+.. _techempower benchmark: /blog/2013-05-24-benchmarking-spray/
+.. _RFC 3986: http://tools.ietf.org/html/rfc3986
+.. _open tickets: https://github.com/spray/spray/issues?state=open

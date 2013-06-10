@@ -10,7 +10,7 @@ except :ref:`spray-http`, which is kept intentionally free of other *spray* depe
 Dependencies
 ------------
 
-Apart from the Scala library (see :ref:`current-versions` chapter) *spray-util* only depends on
+Apart from the Scala library (see :ref:`Current Versions` chapter) *spray-util* only depends on
 *akka-actor* (with 'provided' scope, i.e. you need to pull it in yourself).
 
 

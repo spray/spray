@@ -10,7 +10,7 @@ Servlet API. As one main application it enables the use of :ref:`spray-routing` 
 Dependencies
 ------------
 
-Apart from the Scala library (see :ref:`current-versions` chapter) *spray-can* depends on
+Apart from the Scala library (see :ref:`Current Versions` chapter) *spray-can* depends on
 
 - :ref:`spray-http`
 - :ref:`spray-util`

@@ -1,7 +1,7 @@
 Dependencies
 ============
 
-Apart from the Scala library (see :ref:`current-versions` chapter) *spray-can* depends on
+Apart from the Scala library (see :ref:`Current Versions` chapter) *spray-can* depends on
 
 - :ref:`spray-io`
 - :ref:`spray-http`

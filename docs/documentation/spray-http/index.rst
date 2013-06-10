@@ -14,7 +14,7 @@ Dependencies
 *spray-http* is stand-alone in that it has no dependency on any other *spray* module and not even Akka.
 You can therefore use it directly and independently for any other type of HTTP work you might be doing.
 
-Apart from the Scala library (see :ref:`current-versions` chapter) *spray-http* only depends on parboiled_,
+Apart from the Scala library (see :ref:`Current Versions` chapter) *spray-http* only depends on parboiled_,
 a lightweight PEG parsing library providing the basis for the header parser. Since parboiled_ is also written and
 maintained by the members of the *spray* team it's not an "outside" dependency that we have no control over.
 

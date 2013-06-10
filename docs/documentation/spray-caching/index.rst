@@ -19,7 +19,7 @@ ones complete as well. This minimizes processing time and server load for all re
 Dependencies
 ------------
 
-Apart from the Scala library (see :ref:`current-versions` chapter) *spray-caching* depends on
+Apart from the Scala library (see :ref:`Current Versions` chapter) *spray-caching* depends on
 
 - :ref:`spray-util`
 - concurrentlinkedhashmap_
