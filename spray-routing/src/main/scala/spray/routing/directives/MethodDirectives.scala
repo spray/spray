@@ -37,6 +37,16 @@ trait MethodDirectives {
   val get = method(GET) // source-quote
 
   /**
+   * A route filter that rejects all non-HEAD requests.
+   */
+  val head = method(HEAD) // source-quote
+
+  /**
+   * A route filter that rejects all non-OPTIONS requests.
+   */
+  val options = method(OPTIONS) // source-quote
+
+  /**
    * A route filter that rejects all non-PATCH requests.
    */
   val patch = method(PATCH) // source-quote
@@ -50,11 +60,6 @@ trait MethodDirectives {
    * A route filter that rejects all non-PUT requests.
    */
   val put = method(PUT) // source-quote
-
-  /**
-   * A route filter that rejects all non-OPTIONS requests.
-   */
-  val options = method(OPTIONS) // source-quote
 
   //# method-directive
   /**

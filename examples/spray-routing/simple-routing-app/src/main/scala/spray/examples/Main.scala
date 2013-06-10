@@ -3,7 +3,8 @@ package spray.examples
 import scala.concurrent.duration._
 import akka.actor.ActorSystem
 import spray.routing.SimpleRoutingApp
-import spray.http.MediaTypes._
+import spray.http._
+import MediaTypes._
 
 object Main extends App with SimpleRoutingApp {
   implicit val system = ActorSystem("simple-routing-app")
@@ -11,7 +12,7 @@ object Main extends App with SimpleRoutingApp {
   startServer("localhost", port = 8080) {
     get {
       path("") {
-        redirect("/hello")
+        redirect("/hello", StatusCodes.Found)
       } ~
       path("hello") {
         respondWithMediaType(`text/html`) { // XML is marshalled to `text/xml` by default, so we simply override here

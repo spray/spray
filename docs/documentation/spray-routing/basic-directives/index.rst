@@ -7,19 +7,19 @@ BasicDirectives
    :maxdepth: 1
 
    extract
-   flatMapRouteResponse
-   flatMapRouteResponsePF
    hextract
    hprovide
    mapHttpResponse
    mapHttpResponseEntity
    mapHttpResponseHeaders
+   mapHttpResponsePart
    mapInnerRoute
    mapRejections
    mapRequest
    mapRequestContext
-   mapResponder
    mapRouteResponse
    mapRouteResponsePF
    noop
+   pass
    provide
+   routeRouteResponse

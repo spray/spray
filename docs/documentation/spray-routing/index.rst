@@ -4,7 +4,7 @@ spray-routing
 =============
 
 The *spray-routing* module provides a high-level, very flexible routing DSL for elegantly defining RESTful web services.
-Normally you would use it either on top of a :ref:`spray-can` :ref:`HttpServer` or inside of a servlet container
+Normally you would use it either on top of a :ref:`spray-can` :ref:`HTTP Server` or inside of a servlet container
 together with :ref:`spray-servlet`.
 
 .. toctree::
@@ -29,7 +29,7 @@ This is a complete, very basic *spray-routing* application:
 .. includecode:: code/docs/HttpServiceExamplesSpec.scala
    :snippet: minimal-example
 
-It starts a *spray-can* :ref:`HttpServer` on localhost and replies to GET requests to ``/hello`` with a simple response.
+It starts a *spray-can* :ref:`HTTP Server` on localhost and replies to GET requests to ``/hello`` with a simple response.
 
 
 .. _Longer Example:

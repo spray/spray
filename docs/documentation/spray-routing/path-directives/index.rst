@@ -8,4 +8,6 @@ PathDirectives
 
    path
    pathPrefix
-   pathTest
+   pathPrefixTest
+   pathSuffix
+   pathSuffixTest

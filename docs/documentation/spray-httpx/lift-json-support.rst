@@ -2,12 +2,12 @@ lift-json Support
 =================
 
 In analogy to the :ref:`spray-json-support` *spray-httpx* also provides the LiftJsonSupport_ trait, which
-automatically provides ``Marshaller`` and ``Unmarshaller`` objects if an implicit ``net.liftweb.json.Formats``
-instance is in scope.
+automatically provides implicit ``Marshaller`` and ``Unmarshaller`` instances for *all* types if an implicit
+``net.liftweb.json.Formats`` instance is in scope.
 
 When mixing in ``LiftJsonSupport`` you have to implement the abstract member::
 
-    def liftJsonFormats: Formats
+    implicit def liftJsonFormats: Formats
 
 with your custom logic.
 

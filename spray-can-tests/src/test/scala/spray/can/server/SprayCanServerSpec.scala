@@ -69,18 +69,18 @@ class SprayCanServerSpec extends Specification {
       probe.send(connection, MessageChunk("456"))
       serverHandler.expectMsg(MessageChunk("123"))
       serverHandler.expectMsg(MessageChunk("456"))
-      probe.send(connection, ChunkedMessageEnd())
-      serverHandler.expectMsg(ChunkedMessageEnd())
+      probe.send(connection, ChunkedMessageEnd)
+      serverHandler.expectMsg(ChunkedMessageEnd)
 
       serverHandler.reply(ChunkedResponseStart(HttpResponse(entity = "yeah")))
       serverHandler.reply(MessageChunk("234"))
       serverHandler.reply(MessageChunk("345"))
-      serverHandler.reply(ChunkedMessageEnd())
+      serverHandler.reply(ChunkedMessageEnd)
       probe.expectMsgType[ChunkedResponseStart].response.entity === EmptyEntity
       probe.expectMsg(MessageChunk("yeah"))
       probe.expectMsg(MessageChunk("234"))
       probe.expectMsg(MessageChunk("345"))
-      probe.expectMsg(ChunkedMessageEnd())
+      probe.expectMsg(ChunkedMessageEnd)
     }
 
     "maintain response order for pipelined requests" in new TestSetup {

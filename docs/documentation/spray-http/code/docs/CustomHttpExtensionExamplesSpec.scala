@@ -7,6 +7,7 @@ class CustomHttpExtensionExamplesSpec extends Specification {
 
   "custom-media-type" in {
     import spray.http.MediaTypes._
+
     val MarkdownType = register(
       MediaType.custom(
         mainType = "text",

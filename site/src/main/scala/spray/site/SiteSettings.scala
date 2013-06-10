@@ -17,6 +17,7 @@
 package spray.site
 
 import com.typesafe.config.{ Config, ConfigFactory }
+import scala.collection.JavaConverters._
 import akka.actor.ActorSystem
 
 case class SiteSettings(
@@ -24,7 +25,9 @@ case class SiteSettings(
     port: Int,
     devMode: Boolean,
     repoDirs: List[String],
-    nightliesDir: String) {
+    nightliesDir: String,
+    mainVersion: String,
+    otherVersions: Seq[String]) {
 
   require(interface.nonEmpty, "interface must be non-empty")
   require(0 < port && port < 65536, "illegal port")
@@ -41,6 +44,8 @@ object SiteSettings {
       c getInt "port",
       c getBoolean "dev-mode",
       c getString "repo-dirs" split ':' toList,
-      c getString "nightlies-dir")
+      c getString "nightlies-dir",
+      c getString "main-version",
+      c.getStringList("other-versions").asScala)
   }
 }

@@ -25,7 +25,7 @@ import HttpMethods._
 import HttpHeaders._
 
 trait RequestBuilding {
-  import RequestBuilding.RequestTransformer
+  type RequestTransformer = HttpRequest ⇒ HttpRequest
 
   class RequestBuilder(val method: HttpMethod) {
     def apply(): HttpRequest = apply("/")
@@ -83,6 +83,4 @@ trait RequestBuilding {
   }
 }
 
-object RequestBuilding extends RequestBuilding {
-  type RequestTransformer = HttpRequest ⇒ HttpRequest
-}
+object RequestBuilding extends RequestBuilding

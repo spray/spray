@@ -26,14 +26,14 @@ trait ExceptionHandler extends ExceptionHandler.PF
 object ExceptionHandler {
   type PF = PartialFunction[Throwable, Route]
 
-  implicit def fromPF(pf: PF): ExceptionHandler =
+  implicit def apply(pf: PF): ExceptionHandler =
     new ExceptionHandler {
       def isDefinedAt(error: Throwable) = pf.isDefinedAt(error)
       def apply(error: Throwable) = pf(error)
     }
 
   implicit def default(implicit settings: RoutingSettings, log: LoggingContext): ExceptionHandler =
-    fromPF {
+    apply {
       case e: IllegalRequestException ⇒ ctx ⇒
         log.warning("Illegal request {}\n\t{}\n\tCompleting with '{}' response",
           ctx.request, e.getMessage, e.status)

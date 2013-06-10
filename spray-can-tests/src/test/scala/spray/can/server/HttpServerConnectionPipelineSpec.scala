@@ -116,7 +116,7 @@ class HttpServerConnectionPipelineSpec extends Specification with RawSpecs2Pipel
         connectionActor ! ack3
         commands.expectMsg(Pipeline.Tell(probe3.ref, 3, requestSender))
 
-        requestSender.tell(Http.MessageCommand(ChunkedMessageEnd().withAck(4)), probe4.ref)
+        requestSender.tell(Http.MessageCommand(ChunkedMessageEnd.withAck(4)), probe4.ref)
         val Tcp.Write(StringBytes(data4), ack4) = commands.expectMsgType[Tcp.Write]
         data4 === prep("0\n\n")
         connectionActor ! ack4
@@ -215,7 +215,7 @@ class HttpServerConnectionPipelineSpec extends Specification with RawSpecs2Pipel
         val (probe1, probe2, probe3) = (TestProbe(), TestProbe(), TestProbe())
         requestSender.tell(Http.MessageCommand(ChunkedResponseStart(HttpResponse())), probe1.ref)
         requestSender.tell(Http.MessageCommand(MessageChunk("bla")), probe2.ref)
-        requestSender.tell(Http.MessageCommand(ChunkedMessageEnd().withAck(16)), probe3.ref)
+        requestSender.tell(Http.MessageCommand(ChunkedMessageEnd.withAck(16)), probe3.ref)
         commands.expectMsgType[Tcp.Write].data.utf8String must contain("Transfer-Encoding: chunked")
         commands.expectMsgType[Tcp.Write].data.utf8String must contain("bla")
         commands.expectMsgType[Tcp.Write]
@@ -230,7 +230,7 @@ class HttpServerConnectionPipelineSpec extends Specification with RawSpecs2Pipel
         val (probe1, probe2, probe3) = (TestProbe(), TestProbe(), TestProbe())
         requestSender.tell(Http.MessageCommand(ChunkedResponseStart(HttpResponse())), probe1.ref)
         requestSender.tell(Http.MessageCommand(MessageChunk("bla")), probe2.ref)
-        requestSender.tell(Http.MessageCommand(ChunkedMessageEnd()), probe3.ref)
+        requestSender.tell(Http.MessageCommand(ChunkedMessageEnd), probe3.ref)
         commands.expectMsgType[Tcp.Write].data.utf8String must contain("Transfer-Encoding: chunked")
         commands.expectMsgType[Tcp.Write].data.utf8String must contain("bla")
         commands.expectMsgType[Tcp.Write]
@@ -245,7 +245,7 @@ class HttpServerConnectionPipelineSpec extends Specification with RawSpecs2Pipel
         val (probe1, probe2, probe3) = (TestProbe(), TestProbe(), TestProbe())
         requestSender.tell(Http.MessageCommand(ChunkedResponseStart(HttpResponse())), probe1.ref)
         requestSender.tell(Http.MessageCommand(MessageChunk("bla")), probe2.ref)
-        requestSender.tell(Http.MessageCommand(ChunkedMessageEnd().withAck(16)), probe3.ref)
+        requestSender.tell(Http.MessageCommand(ChunkedMessageEnd.withAck(16)), probe3.ref)
         commands.expectMsgType[Tcp.Write].data.utf8String must contain("Transfer-Encoding: chunked")
         commands.expectMsgType[Tcp.Write].data.utf8String must contain("bla")
         connectionActor ! commands.expectMsgType[Tcp.Write].ack

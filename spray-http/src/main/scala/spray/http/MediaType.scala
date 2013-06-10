@@ -36,40 +36,39 @@ sealed abstract class MediaRange extends LazyValueBytesRenderable {
 
 object MediaRanges extends ObjectRegistry[String, MediaRange] {
 
-  abstract class PredefinedMediaRange extends MediaRange with Product {
-    def value = productPrefix
+  sealed abstract case class PredefinedMediaRange(value: String) extends MediaRange {
     val mainType = value takeWhile (_ != '/')
     register(mainType.toLowerCase, this)
   }
 
-  case object `*/*` extends PredefinedMediaRange {
+  val `*/*` = new PredefinedMediaRange("*/*") {
     def matches(mediaType: MediaType) = true
   }
-  case object `application/*` extends PredefinedMediaRange {
+  val `application/*` = new PredefinedMediaRange("application/*") {
     def matches(mediaType: MediaType) = mediaType.isApplication
     override def isApplication: Boolean = true
   }
-  case object `audio/*` extends PredefinedMediaRange {
+  val `audio/*` = new PredefinedMediaRange("audio/*") {
     def matches(mediaType: MediaType) = mediaType.isAudio
     override def isAudio: Boolean = true
   }
-  case object `image/*` extends PredefinedMediaRange {
+  val `image/*` = new PredefinedMediaRange("image/*") {
     def matches(mediaType: MediaType) = mediaType.isImage
     override def isImage: Boolean = true
   }
-  case object `message/*` extends PredefinedMediaRange {
+  val `message/*` = new PredefinedMediaRange("message/*") {
     def matches(mediaType: MediaType) = mediaType.isMessage
     override def isMessage: Boolean = true
   }
-  case object `multipart/*` extends PredefinedMediaRange {
+  val `multipart/*` = new PredefinedMediaRange("multipart/*") {
     def matches(mediaType: MediaType) = mediaType.isMultipart
     override def isMultipart: Boolean = true
   }
-  case object `text/*` extends PredefinedMediaRange {
+  val `text/*` = new PredefinedMediaRange("text/*") {
     def matches(mediaType: MediaType) = mediaType.isText
     override def isText: Boolean = true
   }
-  case object `video/*` extends PredefinedMediaRange {
+  val `video/*` = new PredefinedMediaRange("video/*") {
     def matches(mediaType: MediaType) = mediaType.isVideo
     override def isVideo: Boolean = true
   }
@@ -166,17 +165,10 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
     }
   }
 
-  private def containsOnlyRFC2045chars: String ⇒ Boolean = {
-    val rfc2045alphabet = Base64.rfc2045().getAlphabet.sorted
-    _.forall(util.Arrays.binarySearch(rfc2045alphabet, _) >= 0)
-  }
-
-  class MultipartMediaType(subType: String, val boundary: Option[String]) extends MediaType(
-    value = boundary match {
-      case None                                   ⇒ "multipart/" + subType
-      case Some(b) if containsOnlyRFC2045chars(b) ⇒ "multipart/" + subType + "; boundary=" + b
-      case Some(b)                                ⇒ "multipart/" + subType + "; boundary=\"" + b + '"'
-    })("multipart", subType, compressible = true, binary = false, fileExtensions = Nil) {
+  class MultipartMediaType(subType: String, val boundary: String) extends MediaType({
+    if (boundary.isEmpty) "multipart/" + subType
+    else (new StringRendering ~~ "multipart/" ~~ subType ~~ "; boundary=" ~~# boundary).get
+  })("multipart", subType, compressible = true, binary = false, fileExtensions = Nil) {
     override def isMultipart = true
     override def matches(that: MediaType): Boolean = that match {
       case x: MultipartMediaType ⇒ x.subType == this.subType
@@ -293,19 +285,19 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   val `message/delivery-status` = msg("delivery-status")
   val `message/rfc822`          = msg("rfc822", "eml", "mht", "mhtml", "mime")
 
-  class `multipart/mixed`      (boundary: Option[String]) extends MultipartMediaType("mixed", boundary)
-  class `multipart/alternative`(boundary: Option[String]) extends MultipartMediaType("alternative", boundary)
-  class `multipart/related`    (boundary: Option[String]) extends MultipartMediaType("related", boundary)
-  class `multipart/form-data`  (boundary: Option[String]) extends MultipartMediaType("form-data", boundary)
-  class `multipart/signed`     (boundary: Option[String]) extends MultipartMediaType("signed", boundary)
-  class `multipart/encrypted`  (boundary: Option[String]) extends MultipartMediaType("encrypted", boundary)
+  class `multipart/mixed`      (boundary: String) extends MultipartMediaType("mixed", boundary)
+  class `multipart/alternative`(boundary: String) extends MultipartMediaType("alternative", boundary)
+  class `multipart/related`    (boundary: String) extends MultipartMediaType("related", boundary)
+  class `multipart/form-data`  (boundary: String) extends MultipartMediaType("form-data", boundary)
+  class `multipart/signed`     (boundary: String) extends MultipartMediaType("signed", boundary)
+  class `multipart/encrypted`  (boundary: String) extends MultipartMediaType("encrypted", boundary)
 
-  object `multipart/mixed`       extends `multipart/mixed`(None)
-  object `multipart/alternative` extends `multipart/alternative`(None)
-  object `multipart/related`     extends `multipart/related`(None)
-  object `multipart/form-data`   extends `multipart/form-data`(None)
-  object `multipart/signed`      extends `multipart/signed`(None)
-  object `multipart/encrypted`   extends `multipart/encrypted`(None)
+  object `multipart/mixed`       extends `multipart/mixed`("")
+  object `multipart/alternative` extends `multipart/alternative`("")
+  object `multipart/related`     extends `multipart/related`("")
+  object `multipart/form-data`   extends `multipart/form-data`("")
+  object `multipart/signed`      extends `multipart/signed`("")
+  object `multipart/encrypted`   extends `multipart/encrypted`("")
 
   val `text/asp`                  = txt("asp", "asp")
   val `text/cache-manifest`       = txt("cache-manifest", "manifest")

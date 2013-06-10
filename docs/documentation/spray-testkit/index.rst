@@ -15,11 +15,11 @@ Dependencies
 
 Apart from the Scala library (see :ref:`current-versions` chapter) *spray-testkit* depends on
 
-- :ref:`spray-http`
-- :ref:`spray-httpx`
-- :ref:`spray-routing`
+- :ref:`spray-http` (with 'provided' scope)
+- :ref:`spray-httpx` (with 'provided' scope)
+- :ref:`spray-routing` (with 'provided' scope)
 - :ref:`spray-util`
-- akka-actor (with 'provided' scope, i.e. you need to pull it in yourself)
+- akka-actor 2.1.x (with 'provided' scope, i.e. you need to pull it in yourself)
 - scalatest_ (with 'provided' scope, for the ``ScalatestRouteTest``)
 - specs2_ (with 'provided' scope, for the ``Specs2RouteTest``)
 
@@ -73,59 +73,41 @@ like this::
 
 The following inspectors are defined:
 
-``handled: Boolean``
-  Indicates whether the route produced an ``HttpResponse`` for the request. If the route rejected the
-  request ``handled`` evaluates to ``false``.
+.. rst-class:: table table-striped
 
-``response: HttpResponse``
-  The ``HttpResponse`` returned by the route. If the route did not return an ``HttpResponse`` instance (e.g. because it
-  rejected the request) a test failure is triggered.
-
-``rejections: List[Rejection]``
-  The rejections produced by the route. If the route did not reject the request a test failure is triggered.
-
-``rejection: Rejection``
-  The rejection produced by the route. If the route did not produce exactly one rejection a test failure is triggered.
-
-``status: StatusCode``
-  Identical to ``response.status``
-
-``headers: List[HttpHeader]``
-  Identical to ``response.headers``
-
-``header[T <: HttpHeader :ClassManifest]: Option[T]``
-  Identical to ``response.header[T]``
-
-``header(name: String): Option[HttpHeader]``
-  Returns the response header with the given name or ``None`` if no such header can be found.
-
-``entityAs[T :Unmarshaller]: T``
-  Unmarshals the response entity using the in-scope ``Unmarshaller`` for the given type. Any errors in the process
-  trigger a test failure.
-
-``body: HttpBody``
-  Returns the contents of the response entity. If the response entity is empty a test failure is triggered.
-
-``contentType: ContentType``
-  Identical to ``body.contentType``.
-
-``mediaType: MediaType``
-  Identical to ``contentType.mediaType``
-
-``charset: HttpCharset``
-  Identical to ``contentType.charset``
-
-``definedCharset: Option[HttpCharset]``
-  Identical to ``contentType.definedCharset``
-
-``chunks: List[MessageChunk]``
-  Returns the list of message chunks produced by the route.
-
-``closingExtensions: List[ChunkExtension]``
-  Returns the list of chunk extensions the route produced with a ``ChunkedMessageEnd`` response part.
-
-``trailer: List[HttpHeader]``
-  Returns the list of trailer headers the route produced with a ``ChunkedMessageEnd`` response part.
+================================================ =======================================================================
+Inspector                                        Description
+================================================ =======================================================================
+``body: HttpBody``                               Returns the contents of the response entity. If the response entity is
+                                                 empty a test failure is triggered.
+``charset: HttpCharset``                         Identical to ``contentType.charset``
+``chunks: List[MessageChunk]``                   Returns the list of message chunks produced by the route.
+``closingExtension: String``                     Returns chunk extensions the route produced with a
+                                                 ``ChunkedMessageEnd`` response part.
+``contentType: ContentType``                     Identical to ``body.contentType``
+``definedCharset: Option[HttpCharset]``          Identical to ``contentType.definedCharset``
+``entity: HttpEntity``                           Identical to ``response.entity``
+``entityAs[T: Unmarshaller: ClassTag]: T``       Unmarshals the response entity using the in-scope ``Unmarshaller`` for
+                                                 the given type. Any errors in the process trigger a test failure.
+``handled: Boolean``                             Indicates whether the route produced an ``HttpResponse`` for the
+                                                 request. If the route rejected the request ``handled`` evaluates to
+                                                 ``false``.
+``header(name: String): Option[HttpHeader]``     Returns the response header with the given name or ``None`` if no such
+                                                 header can be found.
+``header[T <: HttpHeader: ClassTag]: Option[T]`` Identical to ``response.header[T]``
+``headers: List[HttpHeader]``                    Identical to ``response.headers``
+``mediaType: MediaType``                         Identical to ``contentType.mediaType``
+``rejection: Rejection``                         The rejection produced by the route. If the route did not produce
+                                                 exactly one rejection a test failure is triggered.
+``rejections: List[Rejection]``                  The rejections produced by the route. If the route did not reject the
+                                                 request a test failure is triggered.
+``response: HttpResponse``                       The ``HttpResponse`` returned by the route. If the route did not return
+                                                 an ``HttpResponse`` instance (e.g. because it rejected the request) a
+                                                 test failure is triggered.
+``status: StatusCode``                           Identical to ``response.status``
+``trailer: List[HttpHeader]``                    Returns the list of trailer headers the route produced with a
+                                                 ``ChunkedMessageEnd`` response part.
+================================================ =======================================================================
 
 
 Sealing Routes
@@ -157,4 +139,4 @@ __ https://github.com/spray/spray/blob/master/examples/spray-routing/on-spray-ca
 Another great pool of examples are the tests for all the predefined directives in :ref:`spray-routing`.
 They can be found here__.
 
-__ https://github.com/spray/spray/tree/master/spray-routing-tests/src/test/scala/spray/routing
+__ https://github.com/spray/spray/tree/release/1.1/spray-routing-tests/src/test/scala/spray/routing

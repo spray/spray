@@ -34,11 +34,11 @@ case class HttpCookie(
   import HttpCookie._
 
   // TODO: suppress running these requires for cookies created from our header parser
-  require(nameChars.matchAll(name), s"'${nameChars.firstMismatch(name).get}' not allowed in cookie name")
-  require(contentChars.matchAll(content), s"'${contentChars.firstMismatch(content).get}' not allowed in cookie content")
-  require(domain.isEmpty || domainChars.matchAll(domain.get), s"'${domainChars.firstMismatch(domain.get).get}' not allowed in cookie domain")
-  require(path.isEmpty || pathOrExtChars.matchAll(path.get), s"'${pathOrExtChars.firstMismatch(path.get).get}' not allowed in cookie path")
-  require(extension.isEmpty || pathOrExtChars.matchAll(extension.get), s"'${pathOrExtChars.firstMismatch(extension.get).get}' not allowed in cookie extension")
+  require(nameChars.matchAll(name), s"'${nameChars.firstMismatch(name).get}' not allowed in cookie name ('$name')")
+  require(contentChars.matchAll(content), s"'${contentChars.firstMismatch(content).get}' not allowed in cookie content ('$content')")
+  require(domain.isEmpty || domainChars.matchAll(domain.get), s"'${domainChars.firstMismatch(domain.get).get}' not allowed in cookie domain ('${domain.get}')")
+  require(path.isEmpty || pathOrExtChars.matchAll(path.get), s"'${pathOrExtChars.firstMismatch(path.get).get}' not allowed in cookie path ('${path.get}')")
+  require(extension.isEmpty || pathOrExtChars.matchAll(extension.get), s"'${pathOrExtChars.firstMismatch(extension.get).get}' not allowed in cookie extension ('${extension.get}')")
 
   def render[R <: Rendering](r: R): r.type = {
     r ~~ name ~~ '=' ~~ content

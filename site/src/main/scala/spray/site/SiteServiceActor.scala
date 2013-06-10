@@ -33,7 +33,10 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
   def receive = runRoute {
     dynamicIf(settings.devMode) { // for proper support of twirl + sbt-revolver during development
       (get & encodeResponse(Gzip)) {
-        (host("repo.spray.io", "repo.spray.cc")) {
+        (host("repo.spray.cc") & unmatchedPath) { ump =>
+          redirect("http://repo.spray.io" + ump, Found)
+        } ~
+        (host("repo.spray.io")) {
           logRequestResponse(showRepoResponses("repo") _) {
             getFromBrowseableDirectories(settings.repoDirs: _*) ~
             complete(NotFound)
@@ -44,6 +47,9 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
             getFromBrowseableDirectories(settings.nightliesDir) ~
             complete(NotFound)
           }
+        } ~
+        (host("nightlies.spray.cc") & unmatchedPath) { ump =>
+          redirect("http://nightlies.spray.io" + ump, Found)
         } ~
         host("spray.io", "localhost", "127.0.0.1") {
           path("favicon.ico") {
@@ -60,7 +66,7 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
               } ~
               pathSuffixTest(Slash) {
                 path("home") {
-                  redirect("/")
+                  redirect("/", MovedPermanently)
                 } ~
                 path("index") {
                   complete(page(index()))
@@ -82,18 +88,21 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
                     complete(page(blogPost(node), node))
                   }
                 } ~
+                pathPrefixTest("documentation" / !IntNumber ~ Rest) { subUri =>
+                  redirect("/documentation/" + Main.settings.mainVersion + '/' + subUri, MovedPermanently)
+                } ~
                 sphinxNode { node =>
                   complete(page(document(node), node))
                 }
               } ~
               unmatchedPath { ump =>
-                redirect(ump.toString + "/")
+                redirect(ump.toString + "/", MovedPermanently)
               }
             }
           }
         } ~
         unmatchedPath { ump =>
-          redirect("http://spray.io" + ump)
+          redirect("http://spray.io" + ump, Found)
         }
       }
     }

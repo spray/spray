@@ -50,7 +50,6 @@ transformations defined on all ``Directive[L <: HList]`` instances:
 - `map / hmap`_
 - `flatMap / hflatMap`_
 - `require / hrequire`_
-- unwrapFuture_
 - `recover / recoverPF`_
 
 map / hmap
@@ -67,10 +66,10 @@ Here is a somewhat contrived example:
 .. includecode:: ../code/docs/CustomDirectiveExamplesSpec.scala
    :snippet: example-1
 
-One example of a predefined directive relying on ``hmap`` is the :ref:`-optionalCookie-` directive.
-
 If the Directive is a single-value Directive, i.e. one that extracts exactly one value, you can also use the simple
 ``map`` modifier, which doesn't take the directives ``HList`` as parameter but rather the single value itself.
+
+One example of a predefined directive relying on ``map`` is the :ref:`-optionalHeaderValue-` directive.
 
 
 flatMap / hflatMap
@@ -86,7 +85,7 @@ In order to do the latter you need ``hflatMap`` or ``flatMap``. The ``hflatMap``
     def hflatMap[R <: HList](f: L => Directive[R]): Directive[R]
 
 The given function produces a new directive depending on the ``HList`` of extractions of the underlying one.
-As in the case of ``hmap / map`` there is also a single-value variant called ``flatMap``, which simplifies the operation
+As in the case of `map / hmap`_ there is also a single-value variant called ``flatMap``, which simplifies the operation
 for Directives only extracting one single value.
 
 Here is the (contrived) example from above, which doubles positive ``Int`` values and rejects all others:
@@ -122,21 +121,6 @@ One example of a predefined directive relying on ``require`` is the first overlo
 You can only call ``require`` on single-extraction directives. The ``hrequire`` modifier is the more general variant,
 which takes a predicate of type ``HList => Boolean``.
 It can therefore also be used on directives with several extractions.
-
-
-unwrapFuture
-~~~~~~~~~~~~
-
-Sometimes a directive depends on results from other services, which might not be readily available.
-For example, in order to :ref:`-authenticate-` a user the application might have to talk to a database or an LDAP
-server. Since usually this cannot be done synchronously the "other service" might return a ``Future`` of its result,
-that the directive then needs to "hook into".
-
-The ``unwrapFuture`` modifier performs exactly this "hooking into a future" by transforming a
-``Directive[Future[T] :: HNil]`` into the corresponding ``Directive[T :: HNil]``. If ``T <: HList`` then
-the result is a ``Directive[T]``. This allows you to unwrap a Future of several extractions.
-
-One example of a predefined directive relying ``unwrapFuture`` is the :ref:`-authenticate-` directive.
 
 
 recover / recoverPF

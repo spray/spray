@@ -22,7 +22,7 @@ import org.parboiled.errors.ParsingException
 
 private[parser] trait CommonActions {
 
-  def getMediaType(mainType: String, subType: String, boundary: Option[String] = None): MediaType = {
+  def getMediaType(mainType: String, subType: String, boundary: String = ""): MediaType = {
     mainType.toLowerCase match {
       case "multipart" ⇒ subType.toLowerCase match {
         case "mixed"       ⇒ new `multipart/mixed`(boundary)

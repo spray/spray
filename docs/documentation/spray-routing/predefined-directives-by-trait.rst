@@ -12,6 +12,7 @@ You can browse the predefined directives by trait:
 .. toctree::
    :maxdepth: 1
 
+   any-param-directives/index
    basic-directives/index
    caching-directives/index
    chunking-directives/index
@@ -21,6 +22,7 @@ You can browse the predefined directives by trait:
    execution-directives/index
    file-and-resource-directives/index
    form-field-directives/index
+   future-directives/index
    header-directives/index
    host-directives/index
    marshalling-directives/index

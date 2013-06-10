@@ -1,7 +1,7 @@
 Big Picture
 ===========
 
-The *spray-can* :ref:`HttpServer` and the :ref:`spray-servlet` connector servlet both provide an actor-level interface
+The *spray-can* :ref:`HTTP Server` and the :ref:`spray-servlet` connector servlet both provide an actor-level interface
 that allows your application to respond to incoming HTTP requests by simply replying with an ``HttpResponse``:
 
 .. includecode:: ../code/docs/HttpServiceExamplesSpec.scala
@@ -42,7 +42,7 @@ service actor you can either mix in the ``HttpService`` trait and add this line 
 
     def actorRefFactory = context
 
-or, instead of the ``HttpService`` itself, mix in the ``HttpServiceActor`` trait, which already defines the connecting
+or, alternatively, derive your service actor from ``HttpServiceActor`` clas, which already defines the connecting
 ``def actorRefFactory = context`` for you.
 
 

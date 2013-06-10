@@ -19,13 +19,14 @@ package spray.caching
 import java.util.Random
 import java.util.concurrent.CountDownLatch
 import akka.actor.ActorSystem
-import scala.concurrent.Future
+import scala.concurrent.{ Promise, Future }
 import scala.concurrent.duration._
 import org.specs2.mutable.Specification
 import org.specs2.matcher.Matcher
 import spray.util._
+import org.specs2.time.NoTimeConversions
 
-class ExpiringLruCacheSpec extends Specification {
+class ExpiringLruCacheSpec extends Specification with NoTimeConversions {
   implicit val system = ActorSystem()
   import system.dispatcher
 
@@ -41,13 +42,13 @@ class ExpiringLruCacheSpec extends Specification {
     "return stored values upon cache hit on existing values" in {
       val cache = lruCache[String]()
       cache(1)("A").await === "A"
-      cache(1)("").await === "A"
+      cache(1)(failure("Cached expression was evaluated despite a cache hit"): String).await === "A"
       cache.store.toString === "{1=A}"
     }
     "return Futures on uncached values during evaluation and replace these with the value afterwards" in {
       val cache = lruCache[String]()
       val latch = new CountDownLatch(1)
-      val future1 = cache(1) { promise ⇒
+      val future1 = cache(1) { (promise: Promise[String]) ⇒
         Future {
           latch.await()
           promise.success("A")
@@ -63,7 +64,7 @@ class ExpiringLruCacheSpec extends Specification {
     "properly limit capacity" in {
       val cache = lruCache[String](maxCapacity = 3)
       cache(1)("A").await === "A"
-      cache(2)("B").await === "B"
+      cache(2)(Future.successful("B")).await === "B"
       cache(3)("C").await === "C"
       cache.store.toString === "{2=B, 1=A, 3=C}"
       cache(4)("D")

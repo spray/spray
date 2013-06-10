@@ -11,10 +11,10 @@ import spray.util._
 //#
 
 class CachingExamplesSpec extends Specification {
-  implicit val system = ActorSystem() // example-1
-  import system.dispatcher
+  val system = ActorSystem() // example-1
 
   "example-1" in {
+    import system.dispatcher
 
     // if we have an "expensive" operation
     def expensiveOp(): Double = new util.Random().nextDouble()

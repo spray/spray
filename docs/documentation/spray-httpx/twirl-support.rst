@@ -17,4 +17,4 @@ Simply mix in the ``TwirlSupport`` trait or ``import spray.httpx.TwirlSupport._`
 
 .. _twirl: https://github.com/spray/twirl
 .. _TwirlSupport: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/TwirlSupport.scala
-.. _pages: https://github.com/spray/spray/tree/master/site/src/main/twirl
+.. _pages: https://github.com/spray/spray/tree/release/1.1/site/src/main/twirl

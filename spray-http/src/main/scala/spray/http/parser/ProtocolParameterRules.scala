@@ -33,16 +33,11 @@ private[parser] trait ProtocolParameterRules {
 
   /* 3.3.1 Full Date */
 
-  def HttpDate: Rule1[DateTime] = rule { (RFC1123Date | RFC850Date | ASCTimeDate) ~ OptWS }
+  def HttpDate: Rule1[DateTime] = rule { (`RFC1123/RFC850 Date` | ASCTimeDate) ~ OptWS }
 
-  def RFC1123Date = rule {
-    Wkday ~ str(", ") ~ Date1 ~ ch(' ') ~ Time ~ ch(' ') ~ (str("GMT") | str("UTC")) ~~> {
-      (wkday, day, month, year, hour, min, sec) ⇒ createDateTime(year, month, day, hour, min, sec, wkday)
-    }
-  }
-
-  def RFC850Date = rule {
-    Weekday ~ str(", ") ~ Date2 ~ ch(' ') ~ Time ~ ch(' ') ~ (str("GMT") | str("UTC")) ~~> {
+  // we are a bit more lenient than the spec since we also allow a mixture of RFC1123 and RFC850 dates
+  def `RFC1123/RFC850 Date` = rule {
+    (Wkday | Weekday) ~ str(", ") ~ (Date1 | Date2) ~ ch(' ') ~ Time ~ ch(' ') ~ (str("GMT") | str("UTC")) ~~> {
       (wkday, day, month, year, hour, min, sec) ⇒ createDateTime(year, month, day, hour, min, sec, wkday)
     }
   }

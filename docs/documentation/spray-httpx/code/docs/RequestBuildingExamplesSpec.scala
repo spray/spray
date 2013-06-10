@@ -11,7 +11,7 @@ class RequestBuildingExamplesSpec extends Specification {
     import spray.http._
     import HttpMethods._
     import HttpHeaders._
-    import MediaTypes._
+    import ContentTypes._
 
     // simple GET requests
     Get() === HttpRequest(method = GET)
@@ -22,9 +22,10 @@ class RequestBuildingExamplesSpec extends Specification {
     Put("/abc", "foobar") === HttpRequest(method = PUT, uri = "/abc", entity = "foobar")
 
     implicit val intMarshaller = Marshaller.of[Int](`application/json`) {
-      (value, _, ctx) => ctx.marshalTo("{ value: %s }" format value)
+      (value, ct, ctx) => ctx.marshalTo(HttpEntity(ct, s"{ value: $value }"))
     }
-    Post("/int", 42) === HttpRequest(method = POST, uri = "/int", entity = "{ value: 42 }")
+    Post("/int", 42) === HttpRequest(method = POST, uri = "/int",
+      entity = HttpEntity(`application/json`, "{ value: 42 }"))
 
     // add one or more headers by chaining in the `addHeader` modifier
     Patch("/abc", "content") ~> addHeader("X-Yeah", "Naah") === HttpRequest(

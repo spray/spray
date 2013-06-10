@@ -16,16 +16,25 @@
     <link href="/css/spray.css" rel="stylesheet"/>
     <link href="/css/pygments.css" rel="stylesheet"/>
 
+    @node.doc.meta.styleList.map { style =>
+      <link href="@style" rel="stylesheet"/>
+    }
+
+    <link rel="shortcut icon" href="/favicon.png" />
+
+    @if(node.uri.startsWith("blog")) {
+    <link href="/blog/feed/" type="application/atom+xml" rel="alternate" title="Blog Atom Feed" />
+    }
+
     <!-- http://remysharp.com/2009/01/07/html5-enabling-script/ -->
     <!--[if lt IE 9]>
         <script type="text/javascript">/*@@cc_on'abbr article aside audio canvas details figcaption figure footer header hgroup mark meter nav output progress section summary subline time video'.replace(/\w+/g,function(n){document.createElement(n)})@@*/</script>
     <![endif]-->
     <script type="text/javascript">(function(H){H.className=H.className.replace(/\bno-js\b/,'js')})(document.documentElement)</script>
 
-    <link rel="shortcut icon" href="/favicon.png" />
-
-    @if(node.uri.startsWith("blog")) {
-      <link href="/blog/feed/" type="application/atom+xml" rel="alternate" title="Blog Atom Feed" />
+    <script type="text/javascript" src="/js/mentor.min.js"></script>
+    @node.doc.meta.scriptList.map { script =>
+      <script type="text/javascript" src="@script" charset="utf-8"></script>
     }
 
     <script type="text/javascript">
@@ -50,8 +59,6 @@
 
 <!--back to top button-->
 <a href="#top" id="peBackToTop" class="label btt disabled"><span class="icon-chevron-up icon-white"></span></a>
-
-<script type="text/javascript" src="/js/mentor.min.js"></script>
 
 </body>
 </html>

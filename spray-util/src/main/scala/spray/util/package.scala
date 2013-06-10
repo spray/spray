@@ -44,6 +44,10 @@ package object util {
   def tryOrElse[A, B >: A](body: ⇒ A, onError: Throwable ⇒ B): B =
     try body catch { case NonFatal(e) ⇒ onError(e) }
 
+  /**
+   * Requires that the given duration is greater than Duration.Zero (finite or infinite) or Duration.Undefined.
+   * This implementation is macro-based and only works if the argument is an identifier or member selector.
+   */
   def requirePositiveOrUndefined(duration: Duration): Duration = macro Macros.requirePositiveOrUndefined
 
   def actorSystem(implicit refFactory: ActorRefFactory): ExtendedActorSystem =

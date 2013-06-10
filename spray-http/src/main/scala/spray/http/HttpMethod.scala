@@ -24,10 +24,25 @@ package spray.http
 case class HttpMethod private[http] (value: String,
                                      isSafe: Boolean,
                                      isIdempotent: Boolean,
-                                     entityAccepted: Boolean) extends LazyValueBytesRenderable
+                                     entityAccepted: Boolean) extends LazyValueBytesRenderable {
+  // for faster equality checks we use the hashcode of the method name (and make sure it's distinct during registration)
+  private[http] val fingerprint = value.##
+
+  def name = value
+
+  override def hashCode(): Int = fingerprint
+  override def equals(obj: Any): Boolean =
+    obj match {
+      case m: HttpMethod ⇒ fingerprint == m.fingerprint
+      case _             ⇒ false
+    }
+}
 
 object HttpMethods extends ObjectRegistry[String, HttpMethod] {
-  private def register(m: HttpMethod): HttpMethod = register(m.value, m)
+  private def register(method: HttpMethod): HttpMethod = {
+    registry.values foreach { m ⇒ if (m.fingerprint == method.fingerprint) sys.error("Method fingerprint collision") }
+    register(method.value, method)
+  }
 
   // format: OFF
   val DELETE  = register(HttpMethod("DELETE" , isSafe = false, isIdempotent = true , entityAccepted = false))

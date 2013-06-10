@@ -131,7 +131,7 @@ object Directive {
     def flatMap[R <: HList](f: T ⇒ Directive[R]): Directive[R] =
       underlying.hflatMap { case value :: HNil ⇒ f(value) }
 
-    def require(predicate: T ⇒ Boolean) =
+    def require(predicate: T ⇒ Boolean): Directive0 =
       underlying.hrequire { case value :: HNil ⇒ predicate(value) }
   }
 }

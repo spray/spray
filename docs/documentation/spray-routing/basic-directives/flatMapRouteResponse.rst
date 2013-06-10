@@ -1,6 +1,0 @@
-.. _-flatMapRouteResponse-:
-
-flatMapRouteResponse
-====================
-
-(todo)

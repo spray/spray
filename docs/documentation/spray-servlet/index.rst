@@ -3,7 +3,7 @@
 spray-servlet
 =============
 
-*spray-servlet* is an adapter layer providing (a subset of) the *spray-can* :ref:`HttpServer` interface on top of the
+*spray-servlet* is an adapter layer providing (a subset of) the *spray-can* :ref:`HTTP Server` interface on top of the
 Servlet API. As one main application it enables the use of :ref:`spray-routing` in a servlet container.
 
 
@@ -14,7 +14,8 @@ Apart from the Scala library (see :ref:`current-versions` chapter) *spray-can* d
 
 - :ref:`spray-http`
 - :ref:`spray-util`
-- akka-actor (with 'provided' scope, i.e. you need to pull it in yourself)
+- :ref:`spray-io` (only required until the upgrade to Akka 2.2, will go away afterwards)
+- akka-actor 2.1.x (with 'provided' scope, i.e. you need to pull it in yourself)
 - the Servlet-3.0 API (with 'provided' scope, usually automatically available from your servlet container)
 
 
@@ -51,7 +52,7 @@ requests, suspend them (using Servlet 3.0 ``startAsync``), create immutable :ref
 for them and dispatch these to a service actor provided by the application.
 
 The messaging API as seen from the application is modeled as closely as possible like its counterpart, the
-*spray-can* :ref:`HttpServer`.
+*spray-can* :ref:`HTTP Server`.
 
 In the most basic case, the service actor completes a request by simply replying
 with an ``HttpResponse`` instance to the request sender::
@@ -89,7 +90,7 @@ cleanly terminates all application actors including the service actor.
 Message Protocol
 ----------------
 
-Just like in its counterpart, the *spray-can* :ref:`HttpServer`, all communication between the connector servlet and
+Just like in its counterpart, the *spray-can* :ref:`HTTP Server`, all communication between the connector servlet and
 the application happens through actor messages.
 
 
@@ -105,8 +106,11 @@ request, i.e. each request will appear to be sent from different senders. *spray
 ``ActorRefs`` to coalesce the response with the request, so you cannot sent several responses to the same sender.
 However, the different response parts of a chunked response need to be sent to the same sender.
 
-.. caution:: Since the ``ActorRef`` used as the sender of a request is an :ref:`UnregisteredActorRef` it is not
- reachable remotely. This means that the service actor needs to live in the same JVM as the connector servlet.
+.. caution:: Since the ``ActorRef`` used as the sender of a request is an UnregisteredActorRef_ it is not
+   reachable remotely. This means that the service actor needs to live in the same JVM as the connector servlet.
+   This will be changed before the 1.1 final release.
+
+.. _UnregisteredActorRef: /documentation/1.1-M7/spray-util/#unregisteredactorref
 
 
 Chunked Responses
@@ -128,19 +132,19 @@ Request Timeouts
 ~~~~~~~~~~~~~~~~
 
 If the service actor does not complete a request within the configured ``request-timeout`` period a
-``spray.http.Timeout`` message is sent to the timeout handler, which can be the service actor itself or
+``spray.http.Timedout`` message is sent to the timeout handler, which can be the service actor itself or
 another actor (depending on the ``timeout-handler`` config setting). The timeout handler then has the chance to
 complete the request within the time period configured as ``timeout-timeout``. Only if the timeout handler also misses
 its deadline for completing the request will the connector servlet complete the request itself with a "hard-coded"
-error response (which you can change by overriding the ``timeoutResponse`` method).
+error response (which you can change by overriding the ``timeoutResponse`` method of the ``Servlet30ConnectorServlet``).
 
 
 Send Confirmations
 ~~~~~~~~~~~~~~~~~~
 
 If required the connector servlet can reply with a "send confirmation" message to every response (part) coming in from
-the application. You request a send confirmation by modifying a response part with the ``withSentAck`` method
-(see the :ref:`HttpServer Send Confirmations` section of the *spray-can* ``HttpServer`` documentation for example code).
+the application. You request a send confirmation by modifying a response part with the ``withAck`` method
+(see the :ref:`ACKed Sends` section of the *spray-can* documentation for example code).
 Confirmation messages are especially helpful for triggering the sending of the next response part in a response
 streaming scenario, since with such a design the application will never produce more data than the servlet container can
 handle.
@@ -154,13 +158,13 @@ Closed Notifications
 The Servlet API completely hides the actual management of the HTTP connections from the application. Therefore the
 connector servlet has no real way of finding out whether a connection was closed or not. However, if the connection
 was closed unexpectedly for whatever reason a subsequent attempt to write to it usually fails with an ``IOException``.
-In order to adhere to same message protocol as the *spray-can* :ref:`HttpServer` the connector servlet therefore
+In order to adhere to same message protocol as the *spray-can* :ref:`HTTP Server` the connector servlet therefore
 dispatches any exception, which the servlet container throws when a response (part) is written, back to the application
-wrapped in an ``spray.util.IOClosed`` message.
+wrapped in an ``Tcp.ErrorClosed`` message.
 
-In addition the connector servlet also dispatches ``IOClosed`` notification messages after the final part of a response
-has been successfully written to the servlet container. This allows the application to use the same execution model for
-*spray-servlet* as it would for the *spray-can* :ref:`HttpServer`.
+In addition the connector servlet also dispatches ``Tcp.Closed`` notification messages after the final part of a
+response has been successfully written to the servlet container. This allows the application to use the same execution
+model for *spray-servlet* as it would for the *spray-can* :ref:`HTTP Server`.
 
 
 HTTP Headers
@@ -174,7 +178,7 @@ Also, if your ``HttpResponse`` instances include a ``Content-Length`` or ``Conte
 and *not* written through to the servlet container (as the connector servlet sets these response headers itself).
 
 .. note:: The ``Content-Type`` header has special status in *spray* since its value is part of the ``HttpEntity`` model
-   class. Even though the header also remains in the ``headers`` list of the ``HttpRequest`` *sprays* higher layers
+   class. Even though the header also remains in the ``headers`` list of the ``HttpRequest`` *spray's* higher layers
    (like *spray-routing*) only work with the Content-Type value contained in the ``HttpEntity``.
 
 
@@ -205,10 +209,6 @@ Timeout Semantics
   received), while in *spray-servlet* it defines the time, in which the response must have been *completed* (i.e. the
   last chunk received).
 
-Connection Configuration
-  *spray-servlet* does not allow for the dynamic reconfiguration of the various timeout settings in the way *spray-can*
-  does.
-
 HTTP Pipelining & SSL Support
   Whether and how HTTP pipelining and SSL/TLS encryption are supported depends on the servlet container implementation.
 
@@ -216,8 +216,10 @@ HTTP Pipelining & SSL Support
 Example
 -------
 
-The ``/examples/spray-servlet/`` directory of the *spray* repository
+The `/examples/spray-servlet/`__ directory of the *spray* repository
 contains a number of example projects for *spray-servlet*.
+
+.. __: https://github.com/spray/spray/tree/release/1.1/examples/spray-servlet
 
 
 simple-spray-servlet-server

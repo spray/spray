@@ -41,6 +41,11 @@ trait PathMatcher[L <: HList] extends (Path ⇒ PathMatcher.Matching[L]) { self 
   def ~[R <: HList](other: PathMatcher[R])(implicit prepender: Prepender[L, R]): PathMatcher[prepender.Out] =
     transform(_.andThen((restL, valuesL) ⇒ other(restL).map(prepender(valuesL, _))))
 
+  def unary_!(): PathMatcher[HNil] =
+    new PathMatcher[HNil] {
+      def apply(path: Path) = if (self(path) eq Unmatched) Matched(path, HNil) else Unmatched
+    }
+
   def transform[R <: HList](f: Matching[L] ⇒ Matching[R]): PathMatcher[R] =
     new PathMatcher[R] { def apply(path: Path) = f(self(path)) }
 

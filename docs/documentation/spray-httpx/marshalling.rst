@@ -24,7 +24,8 @@ why *spray* Marshallers are designed in this way:
   (e.g. when the result of a Future arrives), which is not something that ordinary functions can do. (We could have
   the Marshaller return a Future, but this would add overhead to the majority of cases that do not require delayed
   execution.)
-- Marshallers can produce more than one response part, i.e. a stream of response chunks.
+- Marshallers can produce more than one response part, whereby the sequence of response chunks is available as a
+  pull-style stream or from a push-style producer. Both these approaches need to be supported.
 
 .. _MarshallingContext: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/marshalling/MarshallingContext.scala
 .. _content negotiation: http://en.wikipedia.org/wiki/Content_negotiation
@@ -45,13 +46,13 @@ Default Marshallers
   - ``NodeSeq``
   - ``Throwable``
   - ``spray.http.FormData``
-  - ``spray.http.StatusCode``
   - ``spray.http.HttpEntity``
 
 - MetaMarshallers_
 
   - ``Option[T]``
   - ``Either[A, B]``
+  - ``Try[T]``
   - ``Future[T]``
   - ``Stream[T]``
 
@@ -108,7 +109,7 @@ Deriving Marshallers
 Sometimes you can save yourself some work by reusing existing Marshallers for your custom ones.
 The idea is to "wrap" an existing ``Marshaller`` with come logic to "re-target" it to your type.
 
-In this regard "wrapping" a ``Marshaller`` can mean one or both of the following two things:
+In this regard wrapping a ``Marshaller`` can mean one or both of the following two things:
 
 - Transform the input before it reaches the wrapped Marshaller
 - Transform the output of the wrapped Marshaller

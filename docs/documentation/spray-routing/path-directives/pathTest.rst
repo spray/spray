@@ -1,6 +1,0 @@
-.. _-pathTest-:
-
-pathTest
-========
-
-(todo)
