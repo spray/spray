@@ -261,15 +261,6 @@ class PathDirectivesSpec extends RoutingSpec {
     }
   }
 
-  "A PathMatcher" should {
-    "support the mapValues modifier" in {
-      import shapeless._
-      Get("/yes-no") ~> {
-        path(Rest.map { case s :: HNil ⇒ s.split('-').toList :: HNil }) { echoComplete }
-      } ~> check { entityAs[String] === "List(yes, no)" }
-    }
-  }
-
   "The `pathPrefixTest` directive" should {
     "match uris without consuming them" in {
       Get("/a") ~> {
@@ -326,6 +317,12 @@ class PathDirectivesSpec extends RoutingSpec {
   }
 
   "PathMatchers" should {
+    "support the map modifier" in {
+      import shapeless._
+      Get("/yes-no") ~> {
+        path(Rest.map { case s :: HNil ⇒ s.split('-').toList :: HNil }) { echoComplete }
+      } ~> check { entityAs[String] === "List(yes, no)" }
+    }
     "support the `|` operator" in {
       val route = path("ab" / ("cd" | "ef") / "gh") { completeOk }
       "example 1" in {
@@ -336,6 +333,15 @@ class PathDirectivesSpec extends RoutingSpec {
       }
       "example 3" in {
         Get("/ab/xy/gh") ~> route ~> check { handled === false }
+      }
+    }
+    "support the unary_! modifier" in {
+      val route = pathPrefix("ab" / !"cd" ~ Rest) { echoComplete }
+      "example 1a" in {
+        Get("/ab/cef") ~> route ~> check { entityAs[String] === "cef" }
+      }
+      "example 2" in {
+        Get("/ab/cde") ~> route ~> check { handled === false }
       }
     }
   }
