@@ -10,7 +10,7 @@ Currently *spray* supports the compression and decompression of HTTP requests an
 modules for the client- and server-side (respectively), lives in the `spray.httpx.encoding`_ package.
 
 .. _HTTP spec: http://www.w3.org/Protocols/rfc2616/rfc2616.html
-.. _spray.httpx.encoding: https://github.com/spray/spray/tree/release/1.1/spray-httpx/src/main/scala/spray/httpx/encoding
+.. _spray.httpx.encoding: https://github.com/spray/spray/tree/release/1.2/spray-httpx/src/main/scala/spray/httpx/encoding
 
 
 Compression of Chunk Streams

@@ -30,7 +30,7 @@ Apart from the Scala library (see :ref:`current-versions` chapter) *spray-client
 - :ref:`spray-http`
 - :ref:`spray-httpx`
 - :ref:`spray-util`
-- akka-actor 2.1.x (with 'provided' scope, i.e. you need to pull it in yourself)
+- akka-actor 2.2.x (with 'provided' scope, i.e. you need to pull it in yourself)
 
 
 Installation
@@ -84,7 +84,7 @@ Example
 
 The `/examples/spray-client/`__ directory of the *spray* repository contains an example project for *spray-client*.
 
-__ https://github.com/spray/spray/tree/release/1.1/examples/spray-client
+__ https://github.com/spray/spray/tree/release/1.2/examples/spray-client
 
 simple-spray-client
 ~~~~~~~~~~~~~~~~~~~

@@ -11,9 +11,9 @@ Over time more and more things that were previously provided by *spray-io* (e.g.
 the `SSL/TLS support`_) have found their way, in an improved form, from the *spray* codebase into the Akka codebase, so that
 *spray's* own IO module will cease to exist in the near future.
 
-For *spray* 1.0 and 1.1 the *spray-io* module contains a direct **back-port** of the new Akka-I/O infrastructure from
-Akka 2.2 to Akka 2.0 and Akka 2.1 (respectively). This means that users of Akka 2.0 and Akka 2.1 can enjoy the benefits
-of the new I/O layer even without upgrading by simply including *spray-io* as a dependency.
+In release 1.2 *spray-io* only contains a few remnants of the earlier infrastructure, which haven't been completely
+upgraded to the Akka 2.2 I/O layer yet. So, usually there should be no reason to depend on *spray-io* from your
+own applications anymore.
 
 All documentation for the new I/O layer can be found in the `docs to Akka 2.2`_, namely:
 
@@ -34,18 +34,3 @@ All documentation for the new I/O layer can be found in the `docs to Akka 2.2`_,
 .. _TCP Support: http://doc.akka.io/docs/akka/2.2.0-RC1/scala/io-tcp.html
 .. _UDP Support: http://doc.akka.io/docs/akka/2.2.0-RC1/scala/io-udp.html
 .. _Pipeline Infrastructure: http://doc.akka.io/docs/akka/2.2.0-RC1/scala/io-codec.html
-
-
-Dependencies
-------------
-
-Apart from the Scala library (see :ref:`current-versions` chapter) *spray-io* only depends on :ref:`spray-util` and
-*akka-actor* (with 'provided' scope, i.e. you need to pull it in yourself).
-
-
-Installation
-------------
-
-The :ref:`maven-repo` chapter contains all the info about how to pull *spray-io* into your classpath.
-Just as in Akka 2.2 all the (backported) components of the new I/O layer live in the ``akka.actor.io`` package.
-

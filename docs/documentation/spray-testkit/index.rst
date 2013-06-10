@@ -19,7 +19,7 @@ Apart from the Scala library (see :ref:`current-versions` chapter) *spray-testki
 - :ref:`spray-httpx` (with 'provided' scope)
 - :ref:`spray-routing` (with 'provided' scope)
 - :ref:`spray-util`
-- akka-actor 2.1.x (with 'provided' scope, i.e. you need to pull it in yourself)
+- akka-actor 2.2.x (with 'provided' scope, i.e. you need to pull it in yourself)
 - scalatest_ (with 'provided' scope, for the ``ScalatestRouteTest``)
 - specs2_ (with 'provided' scope, for the ``Specs2RouteTest``)
 
@@ -139,4 +139,4 @@ __ https://github.com/spray/spray/blob/master/examples/spray-routing/on-spray-ca
 Another great pool of examples are the tests for all the predefined directives in :ref:`spray-routing`.
 They can be found here__.
 
-__ https://github.com/spray/spray/tree/release/1.1/spray-routing-tests/src/test/scala/spray/routing
+__ https://github.com/spray/spray/tree/release/1.2/spray-routing-tests/src/test/scala/spray/routing

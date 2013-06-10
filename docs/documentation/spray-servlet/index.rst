@@ -15,7 +15,7 @@ Apart from the Scala library (see :ref:`current-versions` chapter) *spray-can* d
 - :ref:`spray-http`
 - :ref:`spray-util`
 - :ref:`spray-io` (only required until the upgrade to Akka 2.2, will go away afterwards)
-- akka-actor 2.1.x (with 'provided' scope, i.e. you need to pull it in yourself)
+- akka-actor 2.2.x (with 'provided' scope, i.e. you need to pull it in yourself)
 - the Servlet-3.0 API (with 'provided' scope, usually automatically available from your servlet container)
 
 
@@ -219,7 +219,7 @@ Example
 The `/examples/spray-servlet/`__ directory of the *spray* repository
 contains a number of example projects for *spray-servlet*.
 
-.. __: https://github.com/spray/spray/tree/release/1.1/examples/spray-servlet
+.. __: https://github.com/spray/spray/tree/release/1.2/examples/spray-servlet
 
 
 simple-spray-servlet-server

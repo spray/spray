@@ -10,6 +10,6 @@ Apart from the Scala library (see :ref:`current-versions` chapter) *spray-routin
 - :ref:`spray-can` (optionally, required for ``SimpleRoutingApp``)
 - :ref:`spray-caching` (optionally, required for ``CachingDirectives``)
 - shapeless_
-- akka-actor 2.1.x (with 'provided' scope, i.e. you need to pull it in yourself)
+- akka-actor 2.2.x (with 'provided' scope, i.e. you need to pull it in yourself)
 
 .. _shapeless: https://github.com/milessabin/shapeless
