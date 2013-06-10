@@ -17,47 +17,45 @@
 package spray.caching
 
 import akka.dispatch.{ Promise, Future, ExecutionContext }
-import spray.util.tryOrElse
+import akka.util.NonFatal
 
 /**
  * General interface implemented by all spray cache implementations.
  */
-trait Cache[V] {
+trait Cache[V] { cache ⇒
 
   /**
    * Selects the (potentially non-existing) cache entry with the given key.
    */
-  def apply(key: Any) = new Key(key)
+  def apply(key: Any) = new Keyed(key)
 
-  class Key(key: Any) {
+  class Keyed(key: Any) {
+    /**
+     * Returns either the cached Future for the key or evaluates the given call-by-name argument
+     * which produces either a value instance of type `V` or a `Future[V]`.
+     */
+    def apply(magnet: ⇒ ValueMagnet[V])(implicit ec: ExecutionContext): Future[V] =
+      cache.apply(key, () ⇒ try magnet.future catch { case NonFatal(e) ⇒ Promise.failed(e) })
 
     /**
-     * Wraps the given expression with caching support.
+     * Returns either the cached Future for the key or evaluates the given function which
+     * should lead to eventual completion of the promise.
      */
-    def apply(expr: ⇒ V)(implicit ec: ExecutionContext): Future[V] = apply { promise ⇒
-      tryOrElse(promise.success(expr), promise.failure)
-    }
-
-    /**
-     * Wraps the given function with caching support.
-     */
-    def apply(func: Promise[V] ⇒ Unit)(implicit executor: ExecutionContext): Future[V] = fromFuture(key) {
-      val p = Promise[V]()
-      func(p)
-      p.future
-    }
+    def apply[U](f: Promise[V] ⇒ U)(implicit ec: ExecutionContext): Future[V] =
+      cache.apply(key, () ⇒ { val p = Promise[V](); f(p); p.future })
   }
+
+  /**
+   * Returns either the cached Future for the given key or evaluates the given value generating
+   * function producing a `Future[V]`.
+   */
+  def apply(key: Any, genValue: () ⇒ Future[V])(implicit ec: ExecutionContext): Future[V]
 
   /**
    * Retrieves the future instance that is currently in the cache for the given key.
    * Returns None if the key has no corresponding cache entry.
    */
   def get(key: Any): Option[Future[V]]
-
-  /**
-   * Supplies a cache entry for the given key from the given expression.
-   */
-  def fromFuture(key: Any)(future: ⇒ Future[V])(implicit executor: ExecutionContext): Future[V]
 
   /**
    * Removes the cache item for the given key. Returns the removed item if it was found (and removed).
@@ -68,4 +66,10 @@ trait Cache[V] {
    * Clears the cache by removing all entries.
    */
   def clear()
+}
+
+class ValueMagnet[V](val future: Future[V])
+object ValueMagnet {
+  implicit def fromAny[V](block: V)(implicit ec: ExecutionContext): ValueMagnet[V] = fromFuture(Promise.successful(block))
+  implicit def fromFuture[V](future: Future[V]): ValueMagnet[V] = new ValueMagnet(future)
 }

@@ -112,7 +112,7 @@ class DemoService extends Actor with SprayActorLogging {
       case Ok(0) =>
         log.info("Finalizing response stream ...")
         client ! MessageChunk("\nStopped...")
-        client ! ChunkedMessageEnd()
+        client ! ChunkedMessageEnd
         context.stop(self)
 
       case Ok(remaining) =>

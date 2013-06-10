@@ -57,10 +57,10 @@ trait MultipartUnmarshallers {
   implicit val MultipartContentUnmarshaller = Unmarshaller[MultipartContent](`multipart/*`) {
     case HttpBody(contentType, buffer) ⇒
       contentType.mediaType.asInstanceOf[MultipartMediaType].boundary match {
-        case Some(boundary) ⇒
+        case "" ⇒ sys.error("Content-Type with a multipart media type must have a 'boundary' parameter")
+        case boundary ⇒
           val mimeMsg = new MIMEMessage(new ByteArrayInputStream(buffer), boundary, mimeParsingConfig)
           MultipartContent(convertMimeMessage(mimeMsg))
-        case None ⇒ sys.error("Content-Type with a multipart media type must have a 'boundary' parameter")
       }
     case EmptyEntity ⇒ MultipartContent.Empty
   }

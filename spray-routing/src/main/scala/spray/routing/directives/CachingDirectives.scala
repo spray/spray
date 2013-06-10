@@ -17,9 +17,9 @@
 package spray.routing
 package directives
 
-import akka.actor.{ ActorRefProvider, ActorRefFactory }
+import akka.actor.ActorRefFactory
 import akka.util.Duration
-import akka.dispatch.ExecutionContext
+import akka.dispatch.{ Promise, ExecutionContext }
 import spray.caching._
 import spray.http._
 import spray.util._
@@ -64,7 +64,7 @@ trait CachingDirectives {
       ctx ⇒
         liftedKeyer(ctx) match {
           case Some(key) ⇒
-            responseCache(key) { promise ⇒
+            responseCache(key) { (promise: Promise[RouteResponse]) ⇒
               route {
                 ctx.withRouteResponseHandling {
                   case response: HttpResponse ⇒ promise.success(Right(response))

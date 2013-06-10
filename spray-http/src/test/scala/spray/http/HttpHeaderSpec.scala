@@ -104,8 +104,8 @@ class HttpHeaderSpec extends Specification {
       example(`Content-Type`(ContentType(`text/xml`, `windows-1252`)))_ ^
       "Content-Type: text/plain; charset=fancy-pants" !
       errorExample(ErrorInfo("Illegal HTTP header 'Content-Type': Unsupported charset", "fancy-pants"))_ ^
-      "Content-Type: multipart/mixed; boundary=ABC123" ! example(`Content-Type`(ContentType(new `multipart/mixed`(Some("ABC123")))))_ ^
-      "Content-Type: multipart/mixed; boundary=\"ABC$123\"" ! example(`Content-Type`(ContentType(new `multipart/mixed`(Some("ABC$123")))))_ ^
+      "Content-Type: multipart/mixed; boundary=ABC123" ! example(`Content-Type`(ContentType(new `multipart/mixed`("ABC123"))))_ ^
+      "Content-Type: multipart/mixed; boundary=\"ABC/123\"" ! example(`Content-Type`(ContentType(new `multipart/mixed`("ABC/123"))))_ ^
       p ^
       "Cookie: SID=31d4d96e407aad42" ! example(`Cookie`(HttpCookie("SID", "31d4d96e407aad42")))_ ^
       "Cookie: SID=31d4d96e407aad42; lang=en>US" ! example(`Cookie`(HttpCookie("SID", "31d4d96e407aad42"), HttpCookie("lang", "en>US")))_ ^

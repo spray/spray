@@ -18,16 +18,17 @@ package spray.can
 package rendering
 
 import scala.annotation.tailrec
+import akka.event.LoggingAdapter
 import spray.util._
 import spray.http._
 import HttpProtocols._
 import HttpHeaders._
 import RenderSupport._
-import akka.event.LoggingAdapter
 
 trait ResponseRenderingComponent {
   def serverHeaderValue: String
   def chunklessStreaming: Boolean
+  def transparentHeadRequests: Boolean
 
   private[this] val serverHeaderPlusDateColonSP =
     serverHeaderValue match {
@@ -38,6 +39,9 @@ trait ResponseRenderingComponent {
   def renderResponsePartRenderingContext(r: Rendering, ctx: ResponsePartRenderingContext,
                                          log: LoggingAdapter): Boolean = {
     def renderResponseStart(response: HttpResponse): Connection = {
+      val manualContentHeadersAllowed =
+        transparentHeadRequests && ctx.requestMethod == HttpMethods.HEAD && response.entity.isEmpty
+
       @tailrec def renderHeaders(remaining: List[HttpHeader])(connectionHeader: Connection = null): Connection =
         remaining match {
           case Nil ⇒ connectionHeader
@@ -47,11 +51,11 @@ trait ResponseRenderingComponent {
               connectionHeader
             }
             head match {
-              case _: `Content-Type` if !response.entity.isEmpty ⇒ logHeaderSuppressionWarning("the response Content-Type is set via the response's HttpEntity!")
-              case _: `Content-Length`                           ⇒ logHeaderSuppressionWarning()
-              case _: `Transfer-Encoding`                        ⇒ logHeaderSuppressionWarning()
-              case _: `Date`                                     ⇒ logHeaderSuppressionWarning()
-              case _: `Server`                                   ⇒ logHeaderSuppressionWarning()
+              case _: `Content-Type` if !manualContentHeadersAllowed ⇒ logHeaderSuppressionWarning("the response Content-Type is set via the response's HttpEntity!")
+              case _: `Content-Length` if !manualContentHeadersAllowed ⇒ logHeaderSuppressionWarning()
+              case _: `Transfer-Encoding` ⇒ logHeaderSuppressionWarning()
+              case _: `Date` ⇒ logHeaderSuppressionWarning()
+              case _: `Server` ⇒ logHeaderSuppressionWarning()
               case x: `Connection` ⇒
                 r ~~ x ~~ CrLf
                 if (connectionHeader eq null) x else Connection(x.tokens ++ connectionHeader.tokens)

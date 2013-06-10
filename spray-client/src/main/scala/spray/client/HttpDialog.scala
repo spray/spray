@@ -29,7 +29,7 @@ import spray.http._
 
 /**
  * An `HttpDialog` allows you to define an exchange of HTTP messages over a given transport
- * (i.e. at the `HttpClientConnection`, `HttpHostConnector` or `HttpClient` level).
+ * (i.e. at the connection-, host- or request-API level).
  * It provides a fluent API for constructing a "chain" of scheduled tasks that define what
  * to do over the course of the dialog.
  */
@@ -68,8 +68,13 @@ object HttpDialog {
     new dialog.State0(trigger.future)
   }
 
+  def apply()(implicit refFactory: ActorRefFactory, ec: ExecutionContext, requestTimeout: Timeout): Dialog#State0 = {
+    implicit def system = actorSystem
+    apply(IO(Http))
+  }
+
   def apply(transport: ActorRef)(implicit refFactory: ActorRefFactory, ec: ExecutionContext,
-                                 requestTimeout: Timeout = 30.seconds): Dialog#State0 = {
+                                 requestTimeout: Timeout): Dialog#State0 = {
     val dialog = new Dialog(transport)
     new dialog.State0(Promise.successful(()).future)
   }

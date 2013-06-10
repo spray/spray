@@ -28,18 +28,18 @@ trait MultipartMarshallers {
   protected val multipartBoundaryRandom = new Random
 
   /**
-   * Creates a new random 144-bit number and base64 encodes it (RFC2045, yielding 24 characters).
+   * Creates a new random 144-bit number and base64 encodes it (using a custom "safe" alphabet, yielding 24 characters).
    */
   def randomBoundary = {
     val array = new Array[Byte](18)
     multipartBoundaryRandom.nextBytes(array)
-    Base64.rfc2045.encodeToString(array, false)
+    Base64.custom.encodeToString(array, false)
   }
 
   implicit def multipartContentMarshaller =
-    Marshaller.of[MultipartContent](new `multipart/mixed`(Some(randomBoundary))) { (value, contentType, ctx) ⇒
+    Marshaller.of[MultipartContent](new `multipart/mixed`(randomBoundary)) { (value, contentType, ctx) ⇒
       val r = new ByteArrayRendering(512)
-      val boundary = contentType.mediaType.asInstanceOf[MultipartMediaType].boundary.get
+      val boundary = contentType.mediaType.asInstanceOf[MultipartMediaType].boundary
       if (!value.parts.isEmpty) {
         value.parts.foreach { part ⇒
           r ~~ '-' ~~ '-' ~~ boundary ~~ CrLf
@@ -66,7 +66,7 @@ trait MultipartMarshallers {
             }(collection.breakOut)
           },
           ctx = new DelegatingMarshallingContext(ctx) {
-            var boundary: Option[String] = None
+            var boundary = ""
             override def tryAccept(contentType: ContentType) = {
               boundary = contentType.mediaType.asInstanceOf[MultipartMediaType].boundary
               Some(contentType)

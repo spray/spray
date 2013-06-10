@@ -44,7 +44,7 @@ trait MiscDirectives {
   lazy val clientIP: Directive1[HttpIp] =
     (headerValuePF { case `X-Forwarded-For`(ips) if ips.flatten.nonEmpty ⇒ ips.flatten.head }) |
       (headerValuePF { case `Remote-Address`(ip) ⇒ ip }) |
-      (headerValuePF { case h: RawHeader if h.lowercaseName == "x-real-ip" ⇒ h.value })
+      (headerValuePF { case h if h.is("x-real-ip") ⇒ h.value })
 
   /**
    * Wraps the inner Route with JSONP support. If a query parameter with the given name is present in the request and

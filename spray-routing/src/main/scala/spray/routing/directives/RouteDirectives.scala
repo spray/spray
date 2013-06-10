@@ -28,31 +28,28 @@ trait RouteDirectives {
    * Rejects the request with an empty set of rejections.
    */
   val reject: StandardRoute = new StandardRoute {
-    def apply(ctx: RequestContext) { ctx.reject() }
+    def apply(ctx: RequestContext): Unit = ctx.reject()
   }
 
   /**
    * Rejects the request with the given rejections.
    */
   def reject(rejections: Rejection*): StandardRoute = new StandardRoute {
-    def apply(ctx: RequestContext) { ctx.reject(rejections: _*) }
+    def apply(ctx: RequestContext): Unit = ctx.reject(rejections: _*)
   }
 
   /**
    * Completes the request with redirection response of the given type to the given URI.
-   * The default redirectionType is a temporary `301 Moved Permanently`.
    */
-  def redirect(uri: String, redirectionType: Redirection = MovedPermanently): StandardRoute = new StandardRoute {
-    def apply(ctx: RequestContext) { ctx.redirect(uri, redirectionType) }
+  def redirect(uri: Uri, redirectionType: Redirection): StandardRoute = new StandardRoute {
+    def apply(ctx: RequestContext): Unit = ctx.redirect(uri, redirectionType)
   }
 
   /**
    * Completes the request using the given arguments.
    */
   def complete: (⇒ CompletionMagnet) ⇒ StandardRoute = magnet ⇒ new StandardRoute {
-    def apply(ctx: RequestContext) {
-      magnet.route(ctx)
-    }
+    def apply(ctx: RequestContext): Unit = magnet.route(ctx)
   }
 
   /**
@@ -60,9 +57,8 @@ trait RouteDirectives {
    * directive and its ExceptionHandler.
    */
   def failWith(error: Throwable): StandardRoute = new StandardRoute {
-    def apply(ctx: RequestContext) { ctx.failWith(error) }
+    def apply(ctx: RequestContext): Unit = ctx.failWith(error)
   }
-
 }
 
 object RouteDirectives extends RouteDirectives

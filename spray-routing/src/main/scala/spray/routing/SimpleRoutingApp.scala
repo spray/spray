@@ -36,10 +36,10 @@ trait SimpleRoutingApp extends HttpService {
       "maybe you can turn your route definition into a `def` ?")
 
   /**
-   * Starts a new spray-can HTTP server with a default singleton handler for the given route and
-   * binds the server to the given interface and port.
+   * Starts a new spray-can HTTP server with a default HttpService for the given route and binds the server to the
+   * given interface and port.
    * The method returns a Future on the Bound event returned by the HttpListener as a reply to the Bind command.
-   * You can use the Future to determine when the server is actually up (or you can simply drop it, if you are not
+   * You can use the Future to determine when the server is actually up (or you can simply drop it if you are not
    * interested in it).
    */
   def startServer(interface: String,
@@ -48,7 +48,7 @@ trait SimpleRoutingApp extends HttpService {
                   backlog: Int = 100,
                   options: immutable.Traversable[Inet.SocketOption] = Nil,
                   settings: Option[ServerSettings] = None)(route: ⇒ Route)(implicit system: ActorSystem, sslEngineProvider: ServerSSLEngineProvider,
-                                                                           bindingTimeout: Timeout = 1.second): Future[Any] = {
+                                                                           bindingTimeout: Timeout = 1.second): Future[Http.Bound] = {
     val serviceActor = system.actorOf(
       props = Props {
         new Actor {
@@ -60,18 +60,6 @@ trait SimpleRoutingApp extends HttpService {
         }
       },
       name = serviceActorName)
-    IO(Http) ? Http.Bind(serviceActor, interface, port, backlog, options, settings)
+    IO(Http).ask(Http.Bind(serviceActor, interface, port, backlog, options, settings)).mapTo[Http.Bound]
   }
 }
-
-// TODO: verify working
-//object Chatter2App extends App with SimpleRoutingApp {
-//  startServer(interface = "localhost", port = 8080) {
-//    path("")(
-//      getFromResource("index.html")
-//    )
-//  }
-//  println("Hit ENTER to exit ...")
-//  readLine()
-//  system.shutdown()
-//}

@@ -30,7 +30,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
   private[this] val hostConnectorCounter = Iterator from 0
 
   private[this] var settingsGroups = Map.empty[ClientConnectionSettings, ActorRef]
-  private[this] var hostConnectors = Map.empty[HostConnectorSetup, ActorRef]
+  private[this] var hostConnectors = Map.empty[Http.HostConnectorSetup, ActorRef]
   private[this] var listeners = Seq.empty[ActorRef]
 
   def receive = withTerminationManagement {
@@ -39,7 +39,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
         val req = request.withEffectiveUri(securedConnection = false)
         val Uri.Authority(host, port, _) = req.uri.authority
         val effectivePort = if (port == 0) Uri.defaultPorts(req.uri.scheme) else port
-        val connector = hostConnectorFor(HostConnectorSetup(host.toString, effectivePort, req.uri.scheme == "https"))
+        val connector = hostConnectorFor(Http.HostConnectorSetup(host.toString, effectivePort, req.uri.scheme == "https"))
         // never render absolute URI here
         connector.forward(req.copy(uri = req.uri.copy(scheme = "", authority = Uri.Authority.Empty)))
       } catch {
@@ -48,12 +48,12 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
           sender ! Status.Failure(e)
       }
 
-    case (request: HttpRequest, setup: HostConnectorSetup) ⇒
+    case (request: HttpRequest, setup: Http.HostConnectorSetup) ⇒
       hostConnectorFor(setup).forward(request)
 
-    case setup: HostConnectorSetup ⇒
+    case setup: Http.HostConnectorSetup ⇒
       val connector = hostConnectorFor(setup)
-      sender.tell(HostConnectorInfo(connector, setup), connector)
+      sender.tell(Http.HostConnectorInfo(connector, setup), connector)
 
     case connect: Http.Connect ⇒
       settingsGroupFor(ClientConnectionSettings(connect.settings)).forward(connect)
@@ -140,7 +140,7 @@ private[can] class HttpManager(httpSettings: HttpExt#Settings) extends Actor wit
       case Terminated(child) if running contains child ⇒ self.tell(Http.Unbound, child)
     }
 
-  def hostConnectorFor(setup: HostConnectorSetup): ActorRef = {
+  def hostConnectorFor(setup: Http.HostConnectorSetup): ActorRef = {
     val normalizedSetup = setup.normalized
 
     def createAndRegisterHostConnector = {

@@ -35,25 +35,26 @@ object UserPassAuthenticator {
    *   }
    * }}}
    */
-  def fromConfig[T](config: Config)(createUser: UserPass ⇒ T)(implicit ec: ExecutionContext): UserPassAuthenticator[T] = { userPassOption ⇒
-    Promise.successful(
-      userPassOption.flatMap { userPass ⇒
-        try {
-          val pw = config.getString(userPass.user)
-          if (pw secure_== userPass.pass) Some(createUser(userPass)) else None
-        } catch {
-          case _: ConfigException ⇒ None
+  def fromConfig[T](config: Config)(createUser: UserPass ⇒ T)(implicit ec: ExecutionContext): UserPassAuthenticator[T] =
+    userPassOption ⇒
+      Promise.successful {
+        userPassOption.flatMap { userPass ⇒
+          try {
+            val pw = config.getString(userPass.user)
+            if (pw secure_== userPass.pass) Some(createUser(userPass)) else None
+          } catch {
+            case _: ConfigException ⇒ None
+          }
         }
-      }).future
-  }
+      }
 
   /**
    * Creates a wrapper around an UserPassAuthenticator providing authentication lookup caching using the given cache.
    * Note that you need to manually add a dependency to the spray-caching module in order to be able to use this method.
    */
-  def cached[T](inner: UserPassAuthenticator[T], cache: Cache[Option[T]] = LruCache[Option[T]]())(implicit ec: ExecutionContext): UserPassAuthenticator[T] = { userPassOption ⇒
-    cache.fromFuture(userPassOption) {
-      inner(userPassOption)
-    }
-  }
+  def cached[T](inner: UserPassAuthenticator[T], cache: Cache[Option[T]] = LruCache[Option[T]]())(implicit ec: ExecutionContext): UserPassAuthenticator[T] =
+    userPassOption ⇒
+      cache(userPassOption) {
+        inner(userPassOption)
+      }
 }

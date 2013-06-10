@@ -50,7 +50,7 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
 
   def check[T](body: ⇒ T): RouteResult ⇒ T = dynRR.withValue(_)(body)
 
-  def result = { assertInCheck(); dynRR.value }
+  private def result = { assertInCheck(); dynRR.value }
   def handled: Boolean = result.handled
   def response: HttpResponse = result.response
   def entity: HttpEntity = response.entity
@@ -68,11 +68,7 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   def chunks: List[MessageChunk] = result.chunks
   def closingExtension: String = result.closingExtension
   def trailer: List[HttpHeader] = result.trailer
-
-  def rejections: List[Rejection] = {
-    assertInCheck()
-    RejectionHandler.applyTransformations(dynRR.value.rejections)
-  }
+  def rejections: List[Rejection] = RejectionHandler.applyTransformations(result.rejections)
   def rejection: Rejection = {
     val r = rejections
     if (r.size == 1) r.head else failTest("Expected a single rejection but got %s (%s)".format(r.size, r))

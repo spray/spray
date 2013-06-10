@@ -14,18 +14,9 @@
  * limitations under the License.
  */
 
-package spray
+package spray.client
 
-import akka.dispatch.Future
 import spray.http._
 
-package object client {
-  type SendReceive = HttpRequest ⇒ Future[HttpResponse]
-}
-
-package client {
-
-  class PipelineException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
-  class UnsuccessfulResponseException(val responseStatus: StatusCode) extends RuntimeException
-
-}
+class PipelineException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
+class UnsuccessfulResponseException(val responseStatus: StatusCode) extends RuntimeException

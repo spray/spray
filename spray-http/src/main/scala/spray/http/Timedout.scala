@@ -19,12 +19,12 @@ package spray.http
 
 import akka.util.Duration
 
-case class Timedout(request: HttpRequestPart with HttpMessageStart)
+case class Timedout(request: HttpRequestPart with HttpMessageStart) // source-quote
 
 case class SetRequestTimeout(timeout: Duration) {
-  require(timeout == Duration.Undefined || (timeout.isFinite() && timeout > Duration.Zero), "timeout must be positive or undefined")
+  require(timeout > Duration.Zero, "timeout must be positive or undefined")
 }
 
 case class SetTimeoutTimeout(timeout: Duration) {
-  require(timeout == Duration.Undefined || (timeout.isFinite() && timeout > Duration.Zero), "timeout must be positive or undefined")
+  require(timeout > Duration.Zero, "timeout must be positive or undefined")
 }

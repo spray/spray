@@ -201,7 +201,9 @@ class ResponseRendererSpec extends mutable.Specification with DataTables {
     }
   }
 
-  class TestSetup(val serverHeaderValue: String = "spray-can/1.0.0", val chunklessStreaming: Boolean = false)
+  class TestSetup(val serverHeaderValue: String = "spray-can/1.0.0",
+                  val chunklessStreaming: Boolean = false,
+                  val transparentHeadRequests: Boolean = true)
       extends ResponseRenderingComponent with Scope {
 
     def render(response: HttpResponsePart,

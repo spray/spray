@@ -42,6 +42,9 @@ package object util {
   def tryOrElse[A, B >: A](body: ⇒ A, onError: Throwable ⇒ B): B =
     try body catch { case NonFatal(e) ⇒ onError(e) }
 
+  /**
+   * Requires that the given duration is greater than Duration.Zero (finite or infinite) or Duration.Undefined.
+   */
   def requirePositiveOrUndefined(duration: Duration): Duration =
     if (duration == Duration.Undefined || duration > Duration.Zero) duration
     else throw new IllegalArgumentException("requirement failed: duration must be > 0 or 'infinite'")

@@ -86,7 +86,7 @@ object MetaMarshallers extends MetaMarshallers {
 
       case SentOk(remaining) ⇒
         if (remaining.isEmpty) {
-          connectionActor ! ChunkedMessageEnd()
+          connectionActor ! ChunkedMessageEnd
           context.stop(self)
         } else self ! remaining
 

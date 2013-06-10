@@ -122,7 +122,7 @@ trait DemoService extends HttpService {
           def receive = {
             case Ok(0) =>
               ctx.responder ! MessageChunk(streamEnd)
-              ctx.responder ! ChunkedMessageEnd()
+              ctx.responder ! ChunkedMessageEnd
               context.stop(self)
 
             case Ok(remaining) =>

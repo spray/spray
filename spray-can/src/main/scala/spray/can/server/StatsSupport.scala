@@ -114,6 +114,7 @@ object StatsSupport {
     }
 }
 
+//# Stats
 case class Stats(
   uptime: FiniteDuration,
   totalRequests: Long,
@@ -123,3 +124,4 @@ case class Stats(
   openConnections: Long,
   maxOpenConnections: Long,
   requestTimeouts: Long)
+//#

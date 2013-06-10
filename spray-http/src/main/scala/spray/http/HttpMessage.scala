@@ -280,6 +280,7 @@ case class ChunkedResponseStart(response: HttpResponse) extends HttpMessageStart
   def message = response
 }
 
+object ChunkedMessageEnd extends ChunkedMessageEnd("", Nil)
 case class ChunkedMessageEnd(extension: String = "",
                              trailer: List[HttpHeader] = Nil) extends HttpRequestPart with HttpResponsePart with HttpMessageEnd {
   if (!trailer.isEmpty) {

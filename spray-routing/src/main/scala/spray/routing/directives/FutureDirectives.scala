@@ -25,13 +25,13 @@ import spray.httpx.marshalling.Marshaller
 trait FutureDirectives {
 
   /**
-   * "Unwraps" a ``Future[T]`` and runs it's inner route after future
+   * "Unwraps" a ``Future[T]`` and runs its inner route after future
    * completion with the future's value as an extraction of type ``Try[T]``.
    */
   def onComplete[T](magnet: OnCompleteFutureMagnet[T]): Directive1[Either[Throwable, T]] = magnet
 
   /**
-   * "Unwraps" a ``Future[T]`` and runs it's inner route after future
+   * "Unwraps" a ``Future[T]`` and runs its inner route after future
    * completion with the future's value as an extraction of type ``T``.
    * If the future fails its failure throwable is bubbled up to the nearest
    * ExceptionHandler.
@@ -41,7 +41,7 @@ trait FutureDirectives {
   def onSuccess(magnet: OnSuccessFutureMagnet): Directive[magnet.Out] = magnet.get
 
   /**
-   * "Unwraps" a ``Future[T]`` and runs it's inner route when the future has failed
+   * "Unwraps" a ``Future[T]`` and runs its inner route when the future has failed
    * with the future's failure exception as an extraction of type ``Throwable``.
    * If the future succeeds the request is completed using the values marshaller
    * (This directive therefore requires a marshaller for the futures type to be
