@@ -4,6 +4,7 @@ import org.specs2.mutable.Specification
 import scala.concurrent.Future
 import akka.actor.ActorSystem
 import akka.util.Timeout
+import spray.testkit.Specs2Utils._
 
 class ClientPipeliningExamplesSpec extends Specification {
   implicit val timeout: Timeout = null
@@ -13,6 +14,7 @@ class ClientPipeliningExamplesSpec extends Specification {
     import spray.client.pipelining._
 
     implicit val system = ActorSystem()
+    import system.dispatcher // execution context for futures
 
     val pipeline: HttpRequest => Future[HttpResponse] = sendReceive
 
@@ -27,13 +29,16 @@ class ClientPipeliningExamplesSpec extends Specification {
     import spray.client.pipelining._
 
     implicit val system = ActorSystem()
+    import system.dispatcher // execution context for futures
 
-    val Http.HostConnectorInfo(hostConnector, _) =
-      IO(Http) ? Http.HostConnectorSetup("www.spray.io", port = 80)
+    val pipeline: Future[SendReceive] =
+      for (
+        Http.HostConnectorInfo(connector, _) <-
+          IO(Http) ? Http.HostConnectorSetup("www.spray.io", port = 80)
+      ) yield sendReceive(connector)
 
-    val pipeline: HttpRequest => Future[HttpResponse] = sendReceive(hostConnector)
-
-    val response: Future[HttpResponse] = pipeline(Get("/"))
+    val request = Get("/")
+    val response: Future[HttpResponse] = pipeline.flatMap(_(request))
   }
 
   "large-request-level-pipeline" in compileOnly {
@@ -52,6 +57,9 @@ class ClientPipeliningExamplesSpec extends Specification {
     }
     import MyJsonProtocol._
 
+    implicit val system = ActorSystem()
+    import system.dispatcher // execution context for futures
+
     val pipeline: HttpRequest => Future[OrderConfirmation] = (
       addHeader("X-My-Special-Header", "fancy-value")
       ~> addCredentials(BasicHttpCredentials("bob", "secret"))
@@ -60,7 +68,7 @@ class ClientPipeliningExamplesSpec extends Specification {
       ~> decode(Deflate)
       ~> unmarshal[OrderConfirmation]
     )
-    val confirmation: Future[OrderConfirmation] =
+    val response: Future[OrderConfirmation] =
       pipeline(Post("http://example.com/orders", Order(42)))
   }
 }

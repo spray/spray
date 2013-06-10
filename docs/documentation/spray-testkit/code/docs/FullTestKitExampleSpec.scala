@@ -6,7 +6,6 @@ import spray.testkit.Specs2RouteTest
 import spray.routing.HttpService
 import spray.http.StatusCodes._
 
-
 class FullTestKitExampleSpec extends Specification with Specs2RouteTest with HttpService {
   def actorRefFactory = system // connect the DSL to the test ActorSystem
 

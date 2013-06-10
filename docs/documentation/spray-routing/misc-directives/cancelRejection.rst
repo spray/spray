@@ -1,0 +1,6 @@
+.. _-cancelRejection-:
+
+cancelRejection
+===============
+
+(todo)

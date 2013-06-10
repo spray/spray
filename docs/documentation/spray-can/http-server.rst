@@ -1,4 +1,4 @@
-.. _HttpServer:
+.. _HTTP Server:
 
 HTTP Server
 ===========
@@ -108,10 +108,11 @@ several requests, even when coming in across the same connection, will appear to
 responses to the same sender. However, the different request parts of chunked requests arrive from the same sender,
 and the different response parts of a chunked response need to be sent to the same sender as well.
 
-.. caution:: Since the ``ActorRef`` used as the sender of a request is an :ref:`UnregisteredActorRef` it is not
+.. caution:: Since the ``ActorRef`` used as the sender of a request is an UnregisteredActorRef_ it is not
    reachable remotely. This means that the actor designated as handler by the application needs to live in the same
    JVM as the HTTP extension. This will be changed before the 1.1 final release.
 
+.. _UnregisteredActorRef: /documentation/1.1-M7/spray-util/#unregisteredactorref
 
 Chunked Requests
 ~~~~~~~~~~~~~~~~

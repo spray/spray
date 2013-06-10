@@ -2,11 +2,12 @@ package docs
 
 import scala.concurrent.duration._
 import org.specs2.mutable.Specification
-import akka.actor.{Actor, ActorRef}
+import akka.actor.{ActorSystem, Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
 import spray.testkit.Specs2RouteTest
-
+import spray.testkit.Specs2Utils._
+import spray.http.StatusCodes
 
 class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
 
@@ -14,6 +15,8 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
   import spray.routing.SimpleRoutingApp
 
   object Main extends App with SimpleRoutingApp {
+    implicit val system = ActorSystem("my-system")
+
     startServer(interface = "localhost", port = 8080) {
       path("hello") {
         get {
@@ -127,7 +130,7 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
         }
       } ~
       path("oldApi" / Rest) { path =>
-        redirect("http://oldapi.example.com/" + path)
+        redirect("http://oldapi.example.com/" + path, StatusCodes.MovedPermanently)
       }
     }
   }
@@ -138,11 +141,11 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
       def actorRefFactory = system
     }
     Get("/oldApi/1") ~> service.route ~> check {
-      status === spray.http.StatusCodes.MovedPermanently
+      status === StatusCodes.MovedPermanently
     }
   }
 
-  "example-3" in {
+  "example-3" in compileOnly {
     import spray.http._
     import HttpMethods._
 
@@ -152,14 +155,13 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
           sender ! HttpResponse(entity = "PONG")
       }
     }
-    success // hide
   }
 
-  "example-4" in {
+  "example-4" in compileOnly {
     import spray.routing._
 
     class MyHttpService extends HttpServiceActor {
-      val system = 0 // shadow implicit from test, hide
+      def system = 0 // shadow implicit from test, hide
       def receive = runRoute {
         path("ping") {
           get {
@@ -168,6 +170,5 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
         }
       }
     }
-    success // hide
   }
 }

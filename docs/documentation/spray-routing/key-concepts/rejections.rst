@@ -31,7 +31,7 @@ type ``Rejection``. *spray-routing* comes with a set of `predefined rejections`_
 :ref:`predefined directives <Predefined Directives>`.
 
 Rejections are gathered up over the course of a Route evaluation and finally converted to ``HttpResponse`` replies by
-the :ref:`-handleRejections-` directive, if there was no way for the request to be completed.
+the :ref:`-handleRejections-` directive if there was no way for the request to be completed.
 
 __ https://github.com/spray/spray/blob/master/spray-routing/src/main/scala/spray/routing/Rejection.scala
 
@@ -44,7 +44,7 @@ RejectionHandler
 The ``handleRejections`` directive delegates the actual job of converting a list of rejections to its argument, a
 RejectionHandler__, which is defined like this::
 
-    trait RejectionHandler extends PartialFunction[List[Rejection], HttpResponse]
+    trait RejectionHandler extends PartialFunction[List[Rejection], Route]
 
 __ https://github.com/spray/spray/blob/master/spray-routing/src/main/scala/spray/routing/RejectionHandler.scala
 
@@ -65,8 +65,8 @@ Here is an example:
 Rejection Cancellation
 ----------------------
 
-As you can see from its definition above the ``RejectionHandler`` handles not single rejections, but a whole lists of
-them. This is because some route structure produce several "reasons", why a request could not be handled.
+As you can see from its definition above the ``RejectionHandler`` handles not single rejections but a whole list of
+them. This is because some route structure produce several "reasons" why a request could not be handled.
 
 Take this route structure for example:
 

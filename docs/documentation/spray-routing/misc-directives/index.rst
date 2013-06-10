@@ -7,9 +7,9 @@ MiscDirectives
    :maxdepth: 1
 
    cancelAllRejections
+   cancelRejection
    clientIP
    jsonpWithParameter
-   rejectEmptyRequests
    rejectEmptyResponse
    requestEntityEmpty
    requestEntityPresent

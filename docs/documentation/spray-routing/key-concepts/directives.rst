@@ -139,7 +139,7 @@ readable and therefore maintainable routing code. It might even be that the very
 is in fact the most readable one.
 
 Still, the purpose of the exercise presented here is to show you how flexible directives can be and how you can
-use their power to define your web service behavior at the level of abstraction that is right for _your_ application.
+use their power to define your web service behavior at the level of abstraction that is right for **your** application.
 
 
 Type Safety

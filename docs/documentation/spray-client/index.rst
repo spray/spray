@@ -4,7 +4,7 @@ spray-client
 ============
 
 *spray-client* provides high-level HTTP client functionality by adding another logic layer on top of the relatively
-basic *spray-can* :ref:`HttpClientApis`. It doesn't yet provide all the features that we'd like to include
+basic *spray-can* :ref:`HTTP Client APIs`. It doesn't yet provide all the features that we'd like to include
 eventually, but it should already be of some utility for many applications.
 
 Currently it allows you to wrap any one of the three *spray-can* client-side API levels with a pipelining logic,
@@ -16,7 +16,7 @@ which provides for:
 - Marshalling / Unmarshalling from and to your custom types
 
 Currently, HTTP streaming (i.e. chunked transfer encoding) is not yet supported on the *spray-client* level (even though
-the underlying *spray-can* :ref:`HttpClientApis` do support it (the host- and request-level APIs only for responses)),
+the underlying *spray-can* :ref:`HTTP Client APIs` do support it (the host- and request-level APIs only for responses)),
 i.e. you cannot send chunked requests and the ``response-chunk-aggregation-limit`` config setting for the underlying
 transport must be non-zero).
 
@@ -30,7 +30,7 @@ Apart from the Scala library (see :ref:`current-versions` chapter) *spray-client
 - :ref:`spray-http`
 - :ref:`spray-httpx`
 - :ref:`spray-util`
-- akka-actor (with 'provided' scope, i.e. you need to pull it in yourself)
+- akka-actor 2.1.x (with 'provided' scope, i.e. you need to pull it in yourself)
 
 
 Installation
@@ -48,9 +48,10 @@ The simplest of all use cases is this:
    :snippet: simple-request-level-pipeline
 
 The central element of a *spray-client* pipeline is ``sendReceive``, which produces a function
-``HttpRequest => Future[HttpResponse]``. When called without parameters ``sendReceive`` will automatically use the
-``IO(Http)`` extension of an implicitly available ``ActorSystem`` to access the *spray-can* :ref:`RequestLevelApi`.
-All requests must therefore either carry an absolute URI or an explicit ``Host`` header.
+``HttpRequest => Future[HttpResponse]`` (this function type is also aliased to ``SendReceive``). When called without
+parameters ``sendReceive`` will automatically use the ``IO(Http)`` extension of an implicitly available ``ActorSystem``
+to access the *spray-can* :ref:`RequestLevelApi`. All requests must therefore either carry an absolute URI or an
+explicit ``Host`` header.
 
 In order to wrap pipelining around *spray-can*'s :ref:`HostLevelApi` you need to tell ``sendReceive`` which
 host connector to use:
@@ -73,7 +74,7 @@ dispatching it to the target server (the ``sendReceive`` element of the pipeline
 decompressed and its entity unmarshalled.
 
 When you ``import spray.client.pipelining._`` you not only get easy access to ``sendReceive`` but also all elements of
-the :ref:`spray-httpx` :ref:`RequestBuilding` and :ref:`ResponseBuilding` traits. Therefore you can easily create
+the :ref:`spray-httpx` :ref:`RequestBuilding` and :ref:`ResponseTransformation` traits. Therefore you can easily create
 requests via something like ``Post("/orders", Order(42))``, which is not only shorter but also provides for
 automatic marshalling of custom types.
 

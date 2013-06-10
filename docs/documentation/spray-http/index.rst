@@ -5,7 +5,7 @@ spray-http
 
 The *spray-http* module contains a fully immutable, case-class based model of the major HTTP data structures, like
 HTTP requests, responses and common headers. It also includes a parser for the latter, which is able to construct
-the more structured header models from raw, unstructured header name/value pairs.
+the more structured header models from raw unstructured header name/value pairs.
 
 
 Dependencies
@@ -43,7 +43,7 @@ This brings in scope all of the relevant things that are defined here_ and that 
 - ``ChunkedRequestStart``, ``ChunkedResponseStart``, ``MessageChunk`` and ``ChunkedMessageEnd`` modeling the different
   message parts of request/response streams
 - ``HttpHeaders``, an object containing all the defined HTTP header models
-- Supporting types like ``HttpMethods``, ``MediaTypes``, ``StatusCodes``, etc.
+- Supporting types like ``Uri``, ``HttpMethods``, ``MediaTypes``, ``StatusCodes``, etc.
 
 A common pattern is that the model of a certain entity is represented by an immutable type (class or trait), while the
 actual instances of the entity defined by the HTTP spec live in an accompanying object carrying the name of the type
@@ -67,39 +67,16 @@ around the `spray-http sources`_ (ideally with an IDE that supports proper code 
 .. _spray-http sources: https://github.com/spray/spray/tree/master/spray-http/src/main/scala/spray/http
 
 
-2-Stage Message Parsing
------------------------
-
-The center point of *spray-http* is the ``HttpMessage`` class with its sub-classes ``HttpRequest`` and ``HttpResponse``.
-``HttpMessage`` defines the things that are shared between requests and responses, most importantly the HTTP headers
-and the message entity.
-
-One thing that's important to understand is that *spray* follows **a two-stage approach** for creating the model
-structure upon reception of an HTTP message from the network. In order to not waste resources on parsing and creation
-of model objects that the application doesn't require the low-level modules *spray-can* and *spray-servlet* construct
-only "basic versions" of an ``HttpRequest`` or ``HttpResponse``.
-
-In their "basic" incarnations an ``HttpMessage`` contains all its headers as ``RawHeader`` instances, which are not
-much more than a simple pair of name/value strings. For some applications this might be all that's required.
-However, if you call the ``parseHeaders`` method of the message object all headers that *spray-http* has a
-higher-level model for (the ones defined in ``HttpHeaders``) are "upgraded" and returned with a fresh copy of the
-message object.
-
-The ``HttpRequest`` has a similar way of "upgrading" the URI and the query string from their raw, unparsed counterparts.
-
-The main point, where this "upgrading" of the request headers, uri and query string currently happens, is in the
-``runRoute`` method of the ``HttpService`` trait in the :ref:`spray-routing` module. It transforms the "basic"
-``HttpRequest`` instances coming in from the :ref:`spray-can` or :ref:`spray-servlet` layer into their fully-parsed
-state, which is later used by many of the various :ref:`spray-routing` directives.
-
-
 Content-Type Header
 -------------------
 
-One other thing worth highlighting is the special treatment of the HTTP ``Content-Type`` header. Because of its crucial
-role in content negotiation its value has a special status in *spray*. It is part of the ``HttpBody``, which is the
-non-empty variant of an ``HttpEntity``. The value of the ``Content-Type`` header is parsed into its higher-level model
-class (i.e. "upgraded") even by the low-level :ref:`spray-can` and :ref:`spray-servlet` layers.
+One thing worth highlighting is the special treatment of the HTTP ``Content-Type`` header. Since the binary content of
+HTTP message entities can only be properly interpreted when the corresponding content-type is known *spray-http* puts
+the content-type value very close to the entity data. The ``HttpBody`` type (the non-empty variant of the
+``HttpEntity``) is essentially little more than a tuple of the ``ContentType`` and the entity's bytes.
+All logic in *spray* that needs to access the content-type of an HTTP message always works with the ``ContentType``
+value in the ``HttpEntity``. Potentially existing instances of the ``Content-Type`` header in the ``HttpMessage``'s
+header list are ignored!
 
 
 Custom Media-Types

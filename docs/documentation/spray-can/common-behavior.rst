@@ -3,8 +3,8 @@
 Common Behavior
 ===============
 
-The *spray-can* :ref:`HttpServer` and :ref:`HttpClient` share a number of command and event messages that are explained
-in this chapter.
+The *spray-can* :ref:`HTTP Server` and :ref:`HTTP Client APIs` share a number of command and event messages that are
+explained in this chapter.
 
 
 Closing Connections
@@ -39,6 +39,8 @@ the ``Http.ConnectionClosed`` trait in certain cases:
 
 __ http://doc.akka.io/docs/akka/2.2.0-RC1/scala/io-tcp.html#Closing_connections
 
+
+.. _ACKed Sends:
 
 ACKed Sends
 -----------

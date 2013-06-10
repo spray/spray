@@ -12,7 +12,7 @@ object MyRejectionHandler {
   import StatusCodes._
   import Directives._
 
-  implicit val myRejectionHandler = RejectionHandler.fromPF {
+  implicit val myRejectionHandler = RejectionHandler {
     case MissingCookieRejection(cookieName) :: _ =>
       complete(BadRequest, "No cookies, no service!!!")
   }

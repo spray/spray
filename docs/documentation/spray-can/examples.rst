@@ -39,7 +39,7 @@ Follow these steps to run it on your machine:
 simple-http-server
 ------------------
 
-This examples implements a very simple web-site built with the *spray-can* :ref:`HttpServer`.
+This examples implements a very simple web-site built with the *spray-can* :ref:`HTTP Server`.
 It shows off various features like streaming, stats support and timeout handling.
 
 Follow these steps to run it on your machine:

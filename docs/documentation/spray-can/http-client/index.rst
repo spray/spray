@@ -1,4 +1,4 @@
-.. _HttpClientApis:
+.. _HTTP Client APIs:
 
 HTTP Client APIs
 ================
@@ -7,7 +7,7 @@ Apart from the server-side HTTP abstractions *spray-can* also contains a client-
 your application to interact with other HTTP servers. And just like on the server side it is actor-based,
 fully asynchronous, low-overhead and built on top of `Akka IO`_ / :ref:`spray-io`.
 
-As the counterpart of the :ref:`HttpServer` it shares all core features as well as the basic "low-level" philosophy
+As the counterpart of the :ref:`HTTP Server` it shares all core features as well as the basic "low-level" philosophy
 with the server-side constructs.
 
 The *spray-can* client API offers three different levels of abstraction that you can work with

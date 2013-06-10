@@ -3,15 +3,17 @@
 Complete Examples
 =================
 
-The ``/examples/spray-routing/`` directory of the *spray* repository
+The `/examples/spray-routing/`__ directory of the *spray* repository
 contains a number of example projects for *spray-routing*, which are described here.
+
+.. __: https://github.com/spray/spray/tree/master/examples/spray-routing
 
 .. _on-spray-can:
 
 on-spray-can
 ------------
 
-This examples demonstrates how to run *spray-routing* on top of the :ref:`spray-can` :ref:`HttpServer`.
+This examples demonstrates how to run *spray-routing* on top of the :ref:`spray-can` :ref:`HTTP Server`.
 It implements a very simple web-site and shows off various features like streaming, stats support and timeout handling.
 
 Follow these steps to run it on your machine:

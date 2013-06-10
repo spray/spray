@@ -2,7 +2,7 @@ Response Streaming
 ==================
 
 Apart from completing requests with simple ``HttpResponse`` instances *spray-routing* also supports asynchronous
-response streaming. If you run *spray-routing* on top of the :ref:`spray-can` :ref:`HttpServer` a response stream can be
+response streaming. If you run *spray-routing* on top of the :ref:`spray-can` :ref:`HTTP Server` a response stream can be
 rendered as an HTTP/1.1 ``chunked`` response or, if ``chunkless-streaming`` is enabled, as a single response, whose
 entity body is sent in several parts, one by one, across the network.
 
@@ -14,8 +14,8 @@ A streaming response is started by sending a ``ChunkedResponseStart`` message to
 response is terminated with a ``ChunkedMessageEnd`` message.
 
 In order to not flood the network with chunks that it might not be able to currently digest it's always a good idea to
-not send out another chunk before having received a ``spray.util.model.IOSent`` confirmation message from the
-underlying layer.
+not send out another chunk before having received a "ACK" confirmation message from the
+underlying layer (see :ref:`ACKed Sends` in the :ref:`spray-can` documentation).
 
 The :ref:`Complete Examples` both contain sample code, which shows how to send a streaming response that is "pulled"
 by the network via send confirmation messages.

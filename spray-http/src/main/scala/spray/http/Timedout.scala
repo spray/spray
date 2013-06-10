@@ -19,7 +19,7 @@ package spray.http
 
 import concurrent.duration.Duration
 
-case class Timedout(request: HttpRequestPart with HttpMessageStart)
+case class Timedout(request: HttpRequestPart with HttpMessageStart) // source-quote
 
 case class SetRequestTimeout(timeout: Duration) {
   require(timeout > Duration.Zero, "timeout must be positive or undefined")

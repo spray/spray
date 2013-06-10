@@ -9,7 +9,7 @@ Exceptions thrown during route execution bubble up throw the route structure up 
 Similarly to the way that :ref:`Rejections` are handled the ``handleExceptions`` directive delegates the actual job of
 converting a list of rejections to its argument, an ExceptionHandler__, which is defined like this::
 
-    trait ExceptionHandler extends PartialFunction[Throwable, LoggingAdapter => Route]
+    trait ExceptionHandler extends PartialFunction[Throwable, Route]
 
 __ https://github.com/spray/spray/blob/master/spray-routing/src/main/scala/spray/routing/ExceptionHandler.scala
 

@@ -55,7 +55,7 @@ Currently the *spray* suite consists of these modules:
   A low-level, low-overhead, high-performance HTTP server and client built on top of :ref:`spray-io`.
 
 :ref:`spray-client`
-  Provides client-side HTTP support at a higher level than the low-level :ref:`spray-can` :ref:`HttpClient`,
+  Provides client-side HTTP support at a higher level than the low-level :ref:`spray-can` :ref:`HTTP Client APIs`,
   which it builds on.
 
 :ref:`spray-http`
@@ -73,7 +73,7 @@ Currently the *spray* suite consists of these modules:
   the future.
 
 :ref:`spray-servlet`
-  An adapter layer providing (a subset of) the *spray-can* :ref:`HttpServer` interface on top of the Servlet API.
+  An adapter layer providing (a subset of) the *spray-can* :ref:`HTTP Server` interface on top of the Servlet API.
   Enables the use of :ref:`spray-routing` in a servlet container.
 
 :ref:`spray-routing`
@@ -142,7 +142,7 @@ might even make such an approach gain attractiveness.
 
 Currently a *spray*-based web development stack might consist of (a subset of) these components:
 
-:ref:`spray-can` :ref:`HttpServer`
+:ref:`spray-can` :ref:`HTTP Server`
   The web-server. Receives HTTP request and sends out responses. Optionally terminates SSL.
 
 :ref:`spray-routing`
@@ -197,7 +197,7 @@ This Site
 One example of a simple website running on a *spray*-based stack is this site (http://spray.io). Here is the stack we
 use for *spray.io*:
 
-- :ref:`spray-can` :ref:`HttpServer`
+- :ref:`spray-can` :ref:`HTTP Server`
 - :ref:`spray-routing`
 - sbt-revolver_
 - twirl_

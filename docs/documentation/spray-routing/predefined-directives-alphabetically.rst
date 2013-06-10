@@ -10,6 +10,9 @@ Directive                              Description
 ====================================== =================================================================================
 :ref:`-alwaysCache-`                   Wraps its inner Route with caching support using a given cache instance, ignores
                                        request ``Cache-Control`` headers
+:ref:`-anyParam-`                      Extracts a parameter either from a form field or from query parameters (in that
+                                       order), rejects if no form field of query param of the given name can be found
+:ref:`-anyParams-`                     Same as :ref:`-anyParam-`, except for several parameters at once
 :ref:`-authenticate-`                  Tries to authenticate the user with a given authenticator and either extract a
                                        an object representing the user context or rejects
 :ref:`-authorize-`                     Applies a given authorization check to the request and rejects if it doesn't pass
@@ -20,6 +23,7 @@ Directive                              Description
                                        ``no-cache`` or ``max-age=0``
 :ref:`-cancelAllRejections-`           Adds a ``TransformationRejection`` to rejections from its inner Route, which
                                        cancels other rejections according to a predicate function
+:ref:`-cancelRejection-`               Adds a ``TransformationRejection`` cancelling all rejections equal to a given one
 :ref:`-clientIP-`                      Extracts the IP address of the client from either the ``X-Forwarded-For``,
                                        ``Remote-Address`` or ``X-Real-IP`` request header
 :ref:`-complete-`                      Completes the request with a given response, several overloads
@@ -39,9 +43,6 @@ Directive                              Description
                                        ``RequestContext => T``
 :ref:`-failWith-`                      Bubbles the given error up the response chain, where it is dealt with by the
                                        closest :ref:`-handleExceptions-` directive and its ExceptionHandler
-:ref:`-flatMapRouteResponse-`          Transforms all responses coming back from its inner Route with a
-                                       ``Any => Seq[Any]`` function
-:ref:`-flatMapRouteResponsePF-`        Same as :ref:`-flatMapRouteResponse-`, but with a ``PartialFunction``
 :ref:`-formField-`                     Extracts the value of an HTTP form field, rejects if the request doesn't come
                                        with a field matching the definition
 :ref:`-formFields-`                    Same as :ref:`-formField-`, except for several fields at once
@@ -61,6 +62,7 @@ Directive                              Description
                                        using a given RejectionHandler
 :ref:`-handleWith-`                    Completes the request using a given function. Uses the in-scope ``Unmarshaller``
                                        and ``Marshaller`` for converting to and from the function
+:ref:`-head-`                          Rejects all non-HEAD requests
 :ref:`-headerValue-`                   Extracts an HTTP header value using a given function, rejects if no value can
                                        be extracted
 :ref:`-headerValueByName-`             Extracts an HTTP header value by selecting a header by name
@@ -80,33 +82,47 @@ Directive                              Description
 :ref:`-logResponse-`                   Produces a log entry for every response or rejection coming back from its inner
                                        route
 :ref:`-mapHttpResponse-`               Transforms the ``HttpResponse`` coming back from its inner Route
+:ref:`-mapHttpResponsePart-`           More general than :ref:`-mapHttpResponse-`, transforms the ``HttpResponsePart``
+                                       coming back from its inner Route
 :ref:`-mapHttpResponseEntity-`         Transforms the entity of the ``HttpResponse`` coming back from its inner Route
 :ref:`-mapHttpResponseHeaders-`        Transforms the headers of the ``HttpResponse`` coming back from its inner Route
 :ref:`-mapInnerRoute-`                 Transforms its inner Route with a ``Route => Route`` function
 :ref:`-mapRejections-`                 Transforms all rejections coming back from its inner Route
 :ref:`-mapRequest-`                    Transforms the incoming ``HttpRequest``
 :ref:`-mapRequestContext-`             Transforms the ``RequestContext``
-:ref:`-mapResponder-`                  Transforms the current responder ``ActorRef``
 :ref:`-mapRouteResponse-`              Transforms all responses coming back from its inner Route with a ``Any => Any``
                                        function
 :ref:`-mapRouteResponsePF-`            Same as :ref:`-mapRouteResponse-`, but with a ``PartialFunction``
 :ref:`-method-`                        Rejects if the request method does not match a given one
 :ref:`-noop-`                          Does nothing, i.e. passes the ``RequestContext`` unchanged to its inner Route
+:ref:`-onComplete-`                    "Unwraps" a ``Future[T]`` and runs its inner route after future completion with
+                                       the future's value as an extraction of type ``Try[T]``
+:ref:`-onFailure-`                     "Unwraps" a ``Future[T]`` and runs its inner route when the future has failed
+                                       with the future's failure exception as an extraction of type ``Throwable``
+:ref:`-onSuccess-`                     "Unwraps" a ``Future[T]`` and runs its inner route after future completion with
+                                       the future's value as an extraction of type ``T``
 :ref:`-optionalCookie-`                Extracts an ``HttpCookie`` with a given name, if the cookie is not present in the
                                        request extracts ``None``
 :ref:`-optionalHeaderValue-`           Extracts an optional HTTP header value using a given function
 :ref:`-optionalHeaderValueByName-`     Extracts an optional HTTP header value by selecting a header by name
 :ref:`-optionalHeaderValuePF-`         Extracts an optional HTTP header value using a given partial function
+:ref:`-options-`                       Rejects all non-OPTIONS requests
 :ref:`-parameter-`                     Extracts the value of a request query parameter, rejects if the request doesn't
                                        come with a parameter matching the definition
-:ref:`-parameterMap-`                  Extracts the requests query parameters as a Map[String, String]
+:ref:`-parameterMap-`                  Extracts the requests query parameters as a ``Map[String, String]``
+:ref:`-parameterMultiMap-`             Extracts the requests query parameters as a ``Map[String, List[String]]``
 :ref:`-parameters-`                    Same as :ref:`-parameter-`, except for several parameters at once
+:ref:`-parameterSeq-`                  Extracts the requests query parameters as a ``Seq[(String, String)]``
+:ref:`-pass-`                          Alias for :ref:`-noop-`
 :ref:`-patch-`                         Rejects all non-PATCH requests
 :ref:`-path-`                          Extracts zero+ values from the ``unmatchedPath`` of the ``RequestContext``
                                        according to a given ``PathMatcher``, rejects if no match
 :ref:`-pathPrefix-`                    Same as :ref:`-path-`, but also matches (and consumes) prefixes of the unmatched
-                                       path
-:ref:`-pathTest-`                      Like :ref:`-pathPrefix-` but without "consumption" of the matched path (prefix).
+                                       path (rather than only the complete unmatched path at once)
+:ref:`-pathPrefixTest-`                Like :ref:`-pathPrefix-` but without "consumption" of the matched path (prefix).
+:ref:`-pathSuffix-`                    Like as :ref:`-pathPrefix-`, but for suffixes rather than prefixed of the
+                                       unmatched path
+:ref:`-pathSuffixTest-`                Like :ref:`-pathSuffix-` but without "consumption" of the matched path (suffix).
 :ref:`-post-`                          Rejects all non-POST requests
 :ref:`-produce-`                       Uses the in-scope marshaller to extract a function that can be used for
                                        completing the request with an instance of a custom type
@@ -114,7 +130,6 @@ Directive                              Description
 :ref:`-put-`                           Rejects all non-PUT requests
 :ref:`-redirect-`                      Completes the request with redirection response of the given type to a given URI
 :ref:`-reject-`                        Rejects the request with a given set of rejections
-:ref:`-rejectEmptyRequests-`           Rejects empty requests
 :ref:`-rejectEmptyResponse-`           Converts responses with an empty entity into a rejection
 :ref:`-requestEncodedWith-`            Rejects the request if its encoding doesn't match a given one
 :ref:`-requestEntityEmpty-`            Rejects the request if its entity is not empty
@@ -134,6 +149,8 @@ Directive                              Description
 :ref:`-responseEncodingAccepted-`      Rejects the request if the client doesn't accept a given encoding for the
                                        response
 :ref:`-rewriteUnmatchedPath-`          Transforms the ``unmatchedPath`` of the ``RequestContext`` using a given function
+:ref:`-routeRouteResponse-`            Chains a partial function into the response chain, which, for certain responses
+                                       from its inner route, produces another route that is to be applied instead
 :ref:`-setCookie-`                     Adds a ``Set-Cookie`` header to all ``HttpResponse`` replies of its inner Route
 :ref:`-unmatchedPath-`                 Extracts the unmatched path from the RequestContext
 :ref:`-validate-`                      Passes or rejects the request depending on evaluation of a given conditional
