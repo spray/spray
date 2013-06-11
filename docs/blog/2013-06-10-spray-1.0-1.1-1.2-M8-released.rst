@@ -42,13 +42,14 @@ artifacts (see also the :ref:`Current Versions` chapter):
 ===============  =============  ============
 *spray* version  Scala version  Akka version
 ===============  =============  ============
-1.0-M8           Scala 2.9.x    Akka 2.0.x
+1.0-M8.1         Scala 2.9.x    Akka 2.0.x
 1.1-M8           Scala 2.10.x   Akka 2.1.x
 1.2-M8           Scala 2.10.x   Akka 2.2.x
 ===============  =============  ============
 
 The development statistics for 1.1-M8 (since 1.1-M7):
 
+- 334 commits
 - 1.081 files changed
 - 21.628 insertions
 - 15.363 deletions
@@ -64,6 +65,12 @@ Happy spraying!
 
 | Cheers,
 | Mathias
+
+Update 2013-06-11
+-----------------
+
+We discovered a regression in *spray-routing* 1.0-M8 causing an NPE on first access. This has been fixed with the
+superseding release of **1.0-M8.1**.
 
 .. _techempower benchmark: /blog/2013-05-24-benchmarking-spray/
 .. _RFC 3986: http://tools.ietf.org/html/rfc3986

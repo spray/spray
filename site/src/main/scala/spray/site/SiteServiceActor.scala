@@ -119,6 +119,8 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
   def showErrorResponses(request: HttpRequest): Any ⇒ Option[LogEntry] = {
     case HttpResponse(OK, _, _, _)       ⇒ None
     case HttpResponse(NotFound, _, _, _) ⇒ Some(LogEntry("404: " + request.uri, WarningLevel))
+    case r @ HttpResponse(Found | MovedPermanently, _, _, _) ⇒
+      Some(LogEntry(s"${r.status.intValue}: ${request.uri} -> ${r.header[HttpHeaders.Location].map(_.uri.toString).getOrElse("")}", WarningLevel))
     case response ⇒ Some(
       LogEntry("Non-200 response for\n  Request : " + request + "\n  Response: " + response, WarningLevel))
   }

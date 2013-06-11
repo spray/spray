@@ -20,6 +20,7 @@ Apart from the Scala library (see :ref:`Current Versions` chapter) *spray-testki
 - :ref:`spray-routing` (with 'provided' scope)
 - :ref:`spray-util`
 - akka-actor 2.1.x (with 'provided' scope, i.e. you need to pull it in yourself)
+- akka-testkit 2.1.x (with 'provided' scope, i.e. you need to pull it in yourself)
 - scalatest_ (with 'provided' scope, for the ``ScalatestRouteTest``)
 - specs2_ (with 'provided' scope, for the ``Specs2RouteTest``)
 

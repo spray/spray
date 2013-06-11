@@ -26,6 +26,7 @@ However, at present *spray* 1.0/1.1/1.2 is not yet quite completed, the current 
 
 - | *spray* |1.0| is built against Scala 2.9.3 and Akka 2.0.5.
   | It's sources live in the `release/1.0`_ branch of the *spray* repository.
+  | (Note that 1.0-M8 suffered from a regression in *spray-routing* and has been superseded by 1.0-M8.1)
 
 - | *spray* |1.1| is built against Scala 2.10.2 and Akka 2.1.4.
   | It's sources live in the `release/1.1`_ branch of the *spray* repository.
@@ -35,7 +36,7 @@ However, at present *spray* 1.0/1.1/1.2 is not yet quite completed, the current 
 
 For information about where to find the *spray* artifacts please check out the :ref:`maven-repo` chapter.
 
-.. |1.0| replace:: **1.0-M8**
+.. |1.0| replace:: **1.0-M8.1**
 .. |1.1| replace:: **1.1-M8**
 .. |1.2| replace:: **1.2-M8**
 
