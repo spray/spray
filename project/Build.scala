@@ -1,7 +1,6 @@
 import sbt._
 import Keys._
 
-
 object Build extends Build with DocSupport {
   import BuildSettings._
   import Dependencies._
