@@ -6,9 +6,6 @@ import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import sbtassembly.Plugin.AssemblyKeys._
 import sbtassembly.Plugin._
 import spray.revolver.RevolverPlugin.Revolver
-import twirl.sbt.TwirlPlugin.Twirl
-import ls.Plugin._
-
 
 object BuildSettings {
   val VERSION = "1.0-M8"
@@ -23,7 +20,6 @@ object BuildSettings {
     startYear             := Some(2011),
     licenses              := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
     scalaVersion          := "2.9.3",
-    scalaVersion in update:= "2.9.2",
     resolvers             ++= Dependencies.resolutionRepos,
     scalacOptions         := Seq(
       "-encoding", "utf8",
@@ -117,5 +113,4 @@ object BuildSettings {
       .setPreference(AlignParameters, true)
       .setPreference(AlignSingleLineCaseStatements, true)
       .setPreference(DoubleIndentClassDeclaration, true)
-
 }
