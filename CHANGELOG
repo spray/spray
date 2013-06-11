@@ -1,3 +1,8 @@
+Version 1.0-M8.1 (2013-06-11)
+-----------------------------
+- Fixed regression in spray-routing causing NPEs on first request
+
+
 Version 1.0-M8 (2013-06-10)
 ---------------------------
 - Upgraded to Scala 2.9.3, Akka 2.0.5 and latest versions of all dependencies
