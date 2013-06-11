@@ -28,10 +28,13 @@ trait HttpServiceBase extends Directives {
   /**
    * Supplies the actor behavior for executing the given route.
    */
-  def runRoute(route: Route)(implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext,
-                             rs: RoutingSettings, log: LoggingContext): Actor.Receive = {
+  def runRoute(route: ⇒ Route)(implicit eh: ExceptionHandler, rh: RejectionHandler, ac: ActorContext,
+                               rs: RoutingSettings, log: LoggingContext): Actor.Receive = {
+    // we don't use a lazy val for the 'sealedRoute' member here, since we can be sure to be running in an Actor
+    // (we require an implicit ActorContext) and can therefore avoid the "lazy val"-synchronization
+    var sr: Route = null
     val sealedExceptionHandler = eh orElse ExceptionHandler.default
-    val sealedRoute = sealRoute(route)(sealedExceptionHandler, rh)
+    def sealedRoute: Route = { if (sr == null) sr = sealRoute(route); sr }
     def runSealedRoute(ctx: RequestContext): Unit =
       try sealedRoute(ctx)
       catch {
