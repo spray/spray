@@ -1,9 +1,9 @@
-.. _contact:
+.. _Contact:
 
 Contact
 =======
 
-.. _mailing-list:
+.. _Mailing List:
 
 Mailing List
 ------------

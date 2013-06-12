@@ -6,11 +6,10 @@ Project Info
 
    current-versions
    maven-repository
-   issue-tracking
-   building-spray
-   patch-policy
+   contributing
    changelog
    credits
    references
    sponsors
    license
+   external-resources
