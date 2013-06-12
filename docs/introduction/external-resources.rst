@@ -1,8 +1,6 @@
 External Resources
 ==================
 
-Talks, Podcasts:
-
 "*spray*: REST on Akka" talk from the Northeast Scala Symposium 2012
   | Video: http://www.youtube.com/watch?v=fUuLJmWB__E
   | Slides: http://www.slideshare.net/sirthias/spray-rest-on-akka
@@ -14,12 +12,3 @@ Talks, Podcasts:
 "The Scala Types" podcast: "Mathias Doenitz on *spray*"
   | Part 1: http://scalatypes.com/episode-27-mathias-doenitz-on-spray-part-1
   | Part 2: http://scalatypes.com/episode-28-mathias-doenitz-on-spray-part-2
-
-
-Libraries, etc., building on spray:
-
-S4 - Spray Slick Scala Start
-  | https://github.com/jacobus/s4
-
-*spray* template for heroku
-  | https://github.com/ontoadaptive/spray-template-heroku

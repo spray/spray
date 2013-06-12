@@ -12,4 +12,4 @@ Project Info
    references
    sponsors
    license
-   external-resources
+   other-projects
