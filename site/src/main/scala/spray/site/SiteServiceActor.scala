@@ -88,7 +88,7 @@ class SiteServiceActor(settings: SiteSettings) extends HttpServiceActor {
                     complete(page(blogPost(node), node))
                   }
                 } ~
-                pathPrefixTest("documentation" / !IntNumber ~ Rest) { subUri =>
+                pathPrefixTest("documentation" / !IntNumber ~ !PathEnd ~ Rest) { subUri =>
                   redirect("/documentation/" + Main.settings.mainVersion + '/' + subUri, MovedPermanently)
                 } ~
                 sphinxNode { node =>
