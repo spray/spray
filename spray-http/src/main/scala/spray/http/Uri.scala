@@ -301,7 +301,7 @@ object Uri {
     def head: Head
     def tail: Path
     def length: Int
-    def charCount: Int
+    def charCount: Int // count of decoded (!) chars, i.e. the ones contained directly in this high-level model
     def render[R <: Rendering](r: R): r.type = render(r, UTF8, encodeFirstSegmentColons = false)
     def render[R <: Rendering](r: R, charset: Charset, encodeFirstSegmentColons: Boolean): r.type
     def ::(c: Char): Path = { require(c == '/'); Path.Slash(this) }
@@ -312,6 +312,7 @@ object Uri {
     def reverseAndPrependTo(prefix: Path): Path
     def /(segment: String): Path = this ++ Path.Slash(segment :: Path.Empty)
     def startsWith(that: Path): Boolean
+    def dropChars(count: Int): Path
   }
   object Path {
     val SingleSlash = Slash(Empty)
@@ -347,6 +348,7 @@ object Uri {
       def ++(suffix: Path) = suffix
       def reverseAndPrependTo(prefix: Path) = prefix
       def startsWith(that: Path): Boolean = that.isEmpty
+      def dropChars(count: Int) = this
     }
     case class Slash(tail: Path) extends SlashOrEmpty {
       type Head = Char
@@ -361,6 +363,7 @@ object Uri {
       def ++(suffix: Path) = Slash(tail ++ suffix)
       def reverseAndPrependTo(prefix: Path) = tail.reverseAndPrependTo(Slash(prefix))
       def startsWith(that: Path): Boolean = that.isEmpty || that.startsWithSlash && tail.startsWith(that.tail)
+      def dropChars(count: Int): Path = if (count < 1) this else tail.dropChars(count - 1)
     }
     case class Segment(head: String, tail: SlashOrEmpty) extends Path {
       if (head.isEmpty) throw new IllegalArgumentException("Path segment must not be empty")
@@ -382,6 +385,10 @@ object Uri {
         case Segment(h, Empty)  ⇒ head.startsWith(h)
         case x                  ⇒ x.isEmpty
       }
+      def dropChars(count: Int): Path =
+        if (count < 1) this
+        else if (count >= head.length) tail.dropChars(count - head.length)
+        else head.substring(count) :: tail
     }
     object ~ {
       def unapply(cons: Segment): Option[(String, Path)] = Some((cons.head, cons.tail))

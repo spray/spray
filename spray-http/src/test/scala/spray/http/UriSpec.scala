@@ -202,6 +202,20 @@ class UriSpec extends Specification {
       Path("/abc/def") startsWith Path("/abc/def") must beTrue
       Path("/abc/def") startsWith Path("/abc/def/") must beFalse
     }
+    "support the `dropChars` modifier" in {
+      Path./.dropChars(0) === Path./
+      Path./.dropChars(1) === Empty
+      Path("/abc/def/").dropChars(0) === Path("/abc/def/")
+      Path("/abc/def/").dropChars(1) === Path("abc/def/")
+      Path("/abc/def/").dropChars(2) === Path("bc/def/")
+      Path("/abc/def/").dropChars(3) === Path("c/def/")
+      Path("/abc/def/").dropChars(4) === Path("/def/")
+      Path("/abc/def/").dropChars(5) === Path("def/")
+      Path("/abc/def/").dropChars(6) === Path("ef/")
+      Path("/abc/def/").dropChars(7) === Path("f/")
+      Path("/abc/def/").dropChars(8) === Path("/")
+      Path("/abc/def/").dropChars(9) === Empty
+    }
   }
 
   "Uri.Query instances" should {
