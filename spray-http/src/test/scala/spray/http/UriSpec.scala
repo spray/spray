@@ -163,8 +163,8 @@ class UriSpec extends Specification {
   }
 
   "Uri.Path instances" should {
+    import Path.Empty
     "be parsed and rendered correctly" in {
-      import Path._
       Path("") === Empty
       Path("/") === Path./
       Path("a") === "a" :: Empty
@@ -179,6 +179,28 @@ class UriSpec extends Specification {
       Path("/%2F%5C") === Path / """/\"""
       Path("/:foo:/") === Path / ":foo:" / ""
       Path("%2520").head === "%20"
+    }
+    "support the `startsWith` predicate" in {
+      Empty startsWith Empty must beTrue
+      Path./ startsWith Empty must beTrue
+      Path("abc") startsWith Empty must beTrue
+      Empty startsWith Path./ must beFalse
+      Empty startsWith Path("abc") must beFalse
+      Path./ startsWith Path./ must beTrue
+      Path./ startsWith Path("abc") must beFalse
+      Path("/abc") startsWith Path./ must beTrue
+      Path("abc") startsWith Path./ must beFalse
+      Path("abc") startsWith Path("ab") must beTrue
+      Path("abc") startsWith Path("abc") must beTrue
+      Path("/abc") startsWith Path("/a") must beTrue
+      Path("/abc") startsWith Path("/abc") must beTrue
+      Path("/ab") startsWith Path("/abc") must beFalse
+      Path("/abc") startsWith Path("/abd") must beFalse
+      Path("/abc/def") startsWith Path("/ab") must beTrue
+      Path("/abc/def") startsWith Path("/abc/") must beTrue
+      Path("/abc/def") startsWith Path("/abc/d") must beTrue
+      Path("/abc/def") startsWith Path("/abc/def") must beTrue
+      Path("/abc/def") startsWith Path("/abc/def/") must beFalse
     }
   }
 

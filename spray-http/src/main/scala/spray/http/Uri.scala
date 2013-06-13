@@ -311,6 +311,7 @@ object Uri {
     def reverse: Path = reverseAndPrependTo(Path.Empty)
     def reverseAndPrependTo(prefix: Path): Path
     def /(segment: String): Path = this ++ Path.Slash(segment :: Path.Empty)
+    def startsWith(that: Path): Boolean
   }
   object Path {
     val SingleSlash = Slash(Empty)
@@ -345,6 +346,7 @@ object Uri {
       def ::(segment: String) = if (segment.isEmpty) this else Segment(segment, this)
       def ++(suffix: Path) = suffix
       def reverseAndPrependTo(prefix: Path) = prefix
+      def startsWith(that: Path): Boolean = that.isEmpty
     }
     case class Slash(tail: Path) extends SlashOrEmpty {
       type Head = Char
@@ -358,6 +360,7 @@ object Uri {
       def ::(segment: String) = if (segment.isEmpty) this else Segment(segment, this)
       def ++(suffix: Path) = Slash(tail ++ suffix)
       def reverseAndPrependTo(prefix: Path) = tail.reverseAndPrependTo(Slash(prefix))
+      def startsWith(that: Path): Boolean = that.isEmpty || that.startsWithSlash && tail.startsWith(that.tail)
     }
     case class Segment(head: String, tail: SlashOrEmpty) extends Path {
       if (head.isEmpty) throw new IllegalArgumentException("Path segment must not be empty")
@@ -374,6 +377,11 @@ object Uri {
       def ::(segment: String) = if (segment.isEmpty) this else Segment(segment + head, tail)
       def ++(suffix: Path) = head :: (tail ++ suffix)
       def reverseAndPrependTo(prefix: Path): Path = tail.reverseAndPrependTo(head :: prefix)
+      def startsWith(that: Path): Boolean = that match {
+        case Segment(`head`, t) ⇒ tail.startsWith(t)
+        case Segment(h, Empty)  ⇒ head.startsWith(h)
+        case x                  ⇒ x.isEmpty
+      }
     }
     object ~ {
       def unapply(cons: Segment): Option[(String, Path)] = Some((cons.head, cons.tail))
