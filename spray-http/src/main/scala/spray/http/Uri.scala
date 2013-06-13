@@ -397,7 +397,7 @@ object Uri {
   }
 
   sealed abstract class Query extends LinearSeq[(String, String)] with LinearSeqOptimized[(String, String), Query]
-      with Renderable {
+      with ToStringRenderable {
     def key: String
     def value: String
     def +:(kvp: (String, String)) = Query.Cons(kvp._1, kvp._2, this)
@@ -470,7 +470,7 @@ object Uri {
       override def head = throw new NoSuchElementException("head of empty list")
       override def tail = throw new UnsupportedOperationException("tail of empty query")
     }
-    case class Cons(key: String, value: String, override val tail: Query) extends Query with ToStringRenderable {
+    case class Cons(key: String, value: String, override val tail: Query) extends Query {
       override def isEmpty = false
       override def head = (key, value)
     }
