@@ -8,7 +8,7 @@ concurrentlinkedhashmap_. The primary use-case is the "wrapping" of an expensive
 based on a certain key of type ``K``, runs the wrapped operation only once and returns the the cached value for all
 future accesses for the same key (as long as the respective entry has not expired).
 
-The central idea of a *spray-cachine* cache is to not store the actual values of type ``T`` themselves in the cache
+The central idea of a *spray-caching* cache is to not store the actual values of type ``T`` themselves in the cache
 but rather corresponding Akka Futures, i.e. instances of type ``Future[T]``. This approach has the advantage of nicely
 taking care of the thundering herds problem where many requests to a particular cache key (e.g. a resource URI) arrive
 before the first one could be completed. Normally (without special guarding techniques, like so-called "cowboy" entries)
