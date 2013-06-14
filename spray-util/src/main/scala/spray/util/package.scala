@@ -34,7 +34,7 @@ package object util {
 
   val EOL = System.getProperty("line.separator")
   val UTF8 = Charset.forName("UTF8")
-  val EmptyByteArray = new Array[Byte](0)
+  val EmptyByteArray = Array.empty[Byte]
 
   private[this] val _identityFunc: Any ⇒ Any = x ⇒ x
   def identityFunc[T]: T ⇒ T = _identityFunc.asInstanceOf[T ⇒ T]

@@ -34,7 +34,7 @@ trait BasicUnmarshallers {
       entity match {
         case HttpBody(contentType, buffer) ⇒
           contentType.charset.nioCharset.decode(ByteBuffer.wrap(buffer)).array()
-        case EmptyEntity ⇒ new Array[Char](0)
+        case EmptyEntity ⇒ Array.empty[Char]
       }
     }
   }
