@@ -184,7 +184,7 @@ private[can] class HttpHostConnector(normalizedSetup: Http.HostConnectorSetup, c
       dispatch(ctx, connection)
     }
 
-    def onConnectionStateChange() {}
+    def onConnectionStateChange(): Unit = {}
   }
 }
 

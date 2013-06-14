@@ -73,7 +73,7 @@ trait OpenRequestComponent { component ⇒
       this
     }
 
-    def dispatchInitialRequestPartToHandler() {
+    def dispatchInitialRequestPartToHandler(): Unit = {
       val requestToDispatch =
         if (request.method == HttpMethods.HEAD && settings.transparentHeadRequests)
           request.copy(method = HttpMethods.GET)
@@ -86,14 +86,14 @@ trait OpenRequestComponent { component ⇒
       downstreamCommandPL(Pipeline.Tell(handler, partToDispatch, receiverRef))
     }
 
-    def dispatchNextQueuedResponse() {
+    def dispatchNextQueuedResponse(): Unit = {
       if (responsesQueued) {
         context.self.tell(responseQueue.head, handler)
         responseQueue = responseQueue.tail
       }
     }
 
-    def checkForTimeout(now: Long) {
+    def checkForTimeout(now: Long): Unit = {
       if (timestamp > 0) {
         if (timestamp + requestTimeout.toMillis < now) {
           val timeoutHandler =
@@ -130,20 +130,20 @@ trait OpenRequestComponent { component ⇒
       nextInChain
     }
 
-    def handleResponsePart(part: HttpMessagePartWrapper) {
+    def handleResponsePart(part: HttpMessagePartWrapper): Unit = {
       timestamp = 0L // disable request timeout checking once the first response part has come in
       handler = context.actorContext.sender // remember who to send Closed events to
       sendPart(part)
       dispatchNextQueuedResponse()
     }
 
-    def enqueueCommand(command: Command) {
+    def enqueueCommand(command: Command): Unit = {
       responseQueue = responseQueue enqueue command
     }
 
     /***** EVENTS *****/
 
-    def handleMessageChunk(chunk: MessageChunk) {
+    def handleMessageChunk(chunk: MessageChunk): Unit = {
       if (nextInChain.isEmpty)
         downstreamCommandPL(Pipeline.Tell(handler, chunk, receiverRef))
       else
@@ -151,7 +151,7 @@ trait OpenRequestComponent { component ⇒
         nextInChain handleMessageChunk chunk
     }
 
-    def handleChunkedMessageEnd(part: ChunkedMessageEnd) {
+    def handleChunkedMessageEnd(part: ChunkedMessageEnd): Unit = {
       if (nextInChain.isEmpty) {
         // only start request timeout checking after request has been completed
         timestamp = System.currentTimeMillis
@@ -168,13 +168,13 @@ trait OpenRequestComponent { component ⇒
       if (pendingSentAcks == 0) nextInChain else this
     }
 
-    def handleClosed(ev: Http.ConnectionClosed) {
+    def handleClosed(ev: Http.ConnectionClosed): Unit = {
       downstreamCommandPL(Pipeline.Tell(handler, ev, receiverRef))
     }
 
     /***** PRIVATE *****/
 
-    private def sendPart(part: HttpMessagePartWrapper) {
+    private def sendPart(part: HttpMessagePartWrapper): Unit = {
       val responsePart = part.messagePart.asInstanceOf[HttpResponsePart]
       val ack = part.ack match {
         case None ⇒ Tcp.NoAck(PartAndSender(responsePart, context.sender))
@@ -203,9 +203,9 @@ trait OpenRequestComponent { component ⇒
     def context: Context = component.context
     def isEmpty = true
     def request = throw new IllegalStateException
-    def dispatchInitialRequestPartToHandler() { throw new IllegalStateException }
-    def dispatchNextQueuedResponse() {}
-    def checkForTimeout(now: Long) {}
+    def dispatchInitialRequestPartToHandler(): Unit = { throw new IllegalStateException }
+    def dispatchNextQueuedResponse(): Unit = {}
+    def checkForTimeout(now: Long): Unit = {}
     def nextIfNoAcksPending = throw new IllegalStateException
 
     // commands
@@ -215,16 +215,16 @@ trait OpenRequestComponent { component ⇒
     def handleResponsePart(part: HttpMessagePartWrapper): Nothing =
       throw new IllegalStateException("Received ResponsePart '" + part + "' for non-existing request")
 
-    def enqueueCommand(command: Command) {}
+    def enqueueCommand(command: Command): Unit = {}
 
     // events
-    def handleMessageChunk(chunk: MessageChunk) { throw new IllegalStateException }
-    def handleChunkedMessageEnd(part: ChunkedMessageEnd) { throw new IllegalStateException }
+    def handleMessageChunk(chunk: MessageChunk): Unit = { throw new IllegalStateException }
+    def handleChunkedMessageEnd(part: ChunkedMessageEnd): Unit = { throw new IllegalStateException }
 
     def handleSentAckAndReturnNextUnconfirmed(ev: AckEventWithReceiver) =
       throw new IllegalStateException("Received unmatched send confirmation: " + ev.ack)
 
-    def handleClosed(ev: Http.ConnectionClosed) {
+    def handleClosed(ev: Http.ConnectionClosed): Unit = {
       downstreamCommandPL(Pipeline.Tell(context.handler, ev, context.self))
     }
   }

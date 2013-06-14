@@ -41,7 +41,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
   implicit var settings: ConnectorSettings = _
   implicit var log: LoggingAdapter = _
 
-  override def init() {
+  override def init(): Unit = {
     import Initializer._
     system = getServletContext.getAttribute(SystemAttrName).asInstanceOf[ActorSystem]
     serviceActor = getServletContext.getAttribute(ServiceActorAttrName).asInstanceOf[ActorRef]
@@ -56,7 +56,7 @@ class Servlet30ConnectorServlet extends HttpServlet {
     log.info("Initialized Servlet API 3.0 <=> Spray Connector")
   }
 
-  override def service(hsRequest: HttpServletRequest, hsResponse: HttpServletResponse) {
+  override def service(hsRequest: HttpServletRequest, hsResponse: HttpServletResponse): Unit = {
     def request = "%s request to '%s'" format (hsRequest.getMethod, ModelConverter.rebuildUri(hsRequest))
     try {
       val request = ModelConverter.toHttpRequest(hsRequest)
@@ -87,18 +87,18 @@ class Servlet30ConnectorServlet extends HttpServlet {
     asyncContext.setTimeout(settings.requestTimeout.toMillis)
     asyncContext.addListener {
       new AsyncListener {
-        def onTimeout(event: AsyncEvent) {
+        def onTimeout(event: AsyncEvent): Unit = {
           handleTimeout(hsResponse, req)
           asyncContext.complete()
         }
-        def onError(event: AsyncEvent) {
+        def onError(event: AsyncEvent): Unit = {
           event.getThrowable match {
             case null ⇒ log.error("Unspecified Error during async processing of {}", req)
             case ex   ⇒ log.error(ex, "Error during async processing of {}", req)
           }
         }
-        def onStartAsync(event: AsyncEvent) {}
-        def onComplete(event: AsyncEvent) {}
+        def onStartAsync(event: AsyncEvent): Unit = {}
+        def onComplete(event: AsyncEvent): Unit = {}
       }
     }
     private[this] var timeoutTimeout: Duration = settings.timeoutTimeout
@@ -180,11 +180,11 @@ class Servlet30ConnectorServlet extends HttpServlet {
       }
     }
 
-    def notCompleted(msg: Any) {
+    def notCompleted(msg: Any): Unit = {
       log.warning("Received a {} for a request that was already completed, dropping ...\nRequest: {}", msg, req)
     }
 
-    def handleTimeout(hsResponse: HttpServletResponse, req: HttpRequest) {
+    def handleTimeout(hsResponse: HttpServletResponse, req: HttpRequest): Unit = {
       log.warning("Timeout of {}", req)
       val latch = new CountDownLatch(1)
       val responder = new UnregisteredActorRef(system) {

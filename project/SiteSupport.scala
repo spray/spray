@@ -28,7 +28,7 @@ object SiteSupport {
     deploy <<= (siteHost, deployDir, assembly, state) map deploySite
   )
 
-  def setupSite(siteHost: String, deployDir: String, logFile: String, jarName: String, state: State) {
+  def setupSite(siteHost: String, deployDir: String, logFile: String, jarName: String, state: State): Unit = {
     job {
       colorLog(state)("[YELLOW]Setting up deployment on host %s ..." format siteHost)
       val user = HostFileConfig()(siteHost).fold(sys.error, identity).login.user
@@ -45,7 +45,7 @@ object SiteSupport {
     }
   }
 
-  def deploySite(siteHost: String, deployDir: String, artifactPath: File, state: State) {
+  def deploySite(siteHost: String, deployDir: String, artifactPath: File, state: State): Unit = {
     job {
       colorLog(state)("[YELLOW]Deploying site to %s ..." format siteHost)
       val jarName = artifactPath.getName

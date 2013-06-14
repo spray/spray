@@ -469,7 +469,7 @@ the parameter to be used, but there is a catch to watch out for!
 
 Suppose we have this "traditional" definition::
 
-  def foo(s: => String) {
+  def foo(s: => String): Unit = {
     println(s)
     println(s)
   }
@@ -484,7 +484,7 @@ We *can* "magnetize" it like this::
   object FooMagnet {
     implicit def fromString(s: => String) =
       new FooMagnet {
-        def apply() {
+        def apply(): Unit = {
           println(s)
           println(s)
         }

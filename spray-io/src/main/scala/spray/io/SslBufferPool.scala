@@ -63,7 +63,7 @@ object SslBufferPool {
   }
 
   @tailrec
-  def release(buf: ByteBuffer) {
+  def release(buf: ByteBuffer): Unit = {
     if (state.compareAndSet(Unlocked, Locked)) {
       buf.clear() // ensure that we never have dirty buffers in the pool
       pool = buf :: pool

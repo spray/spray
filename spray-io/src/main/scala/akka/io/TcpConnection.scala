@@ -386,7 +386,7 @@ private[io] abstract class TcpConnection(val tcp: TcpExt, val channel: SocketCha
     def ack: Any = write.ack
 
     /** Release any open resources */
-    def release() { fileChannel.close() }
+    def release(): Unit = { fileChannel.close() }
 
     def updatedWrite(nowWritten: Long): PendingWriteFile = {
       require(nowWritten < write.count)

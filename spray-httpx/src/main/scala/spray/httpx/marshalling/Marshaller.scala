@@ -31,14 +31,14 @@ object Marshaller extends BasicMarshallers
 
   def apply[T](f: (T, MarshallingContext) ⇒ Unit): Marshaller[T] =
     new Marshaller[T] {
-      def apply(value: T, ctx: MarshallingContext) {
+      def apply(value: T, ctx: MarshallingContext): Unit = {
         f(value, ctx)
       }
     }
 
   def of[T](marshalTo: ContentType*)(f: (T, ContentType, MarshallingContext) ⇒ Unit): Marshaller[T] =
     new Marshaller[T] {
-      def apply(value: T, ctx: MarshallingContext) {
+      def apply(value: T, ctx: MarshallingContext): Unit = {
         marshalTo.mapFind(ctx.tryAccept) match {
           case Some(contentType) ⇒ f(value, contentType, ctx)
           case None              ⇒ ctx.rejectMarshalling(marshalTo)

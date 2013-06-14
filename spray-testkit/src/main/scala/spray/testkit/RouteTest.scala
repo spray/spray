@@ -41,11 +41,11 @@ trait RouteTest extends RequestBuilding with RouteResultComponent {
   implicit val system = ActorSystem(Utils.actorSystemNameFrom(getClass), testConfig)
   implicit def executor = system.dispatcher
 
-  def cleanUp() { system.shutdown() }
+  def cleanUp(): Unit = { system.shutdown() }
 
   private val dynRR = new DynamicVariable[RouteResult](null)
 
-  private def assertInCheck() {
+  private def assertInCheck(): Unit = {
     if (dynRR.value == null) sys.error("This value is only available inside of a `check` construct!")
   }
 

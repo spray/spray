@@ -38,7 +38,7 @@ class HttpServiceExamplesSpec extends Specification with Specs2RouteTest {
     case class Update(order: Order)
     case class OrderItem(i: Int, os: Option[String], s: String)
     def getOrdersFromDB = ""
-    def processOrderRequest(id: Int, f: Order => Unit) {}
+    def processOrderRequest(id: Int, f: Order => Unit): Unit = {}
     def myDbActor: ActorRef = null
     implicit val umOrder: Unmarshaller[Order] = null
     implicit val mOrder: Marshaller[Order] = null

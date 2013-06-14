@@ -38,7 +38,7 @@ package object http {
    * Warms up the spray.http module by triggering the loading of most classes in this package,
    * so as to increase the speed of the first usage.
    */
-  def warmUp() {
+  def warmUp(): Unit = {
     HttpParser.parseHeaders {
       List(
         HttpHeaders.RawHeader("Accept", "*/*,text/plain,custom/custom"),

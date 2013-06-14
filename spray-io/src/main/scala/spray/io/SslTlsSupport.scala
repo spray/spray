@@ -83,7 +83,7 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
        * Encrypts the given buffers and dispatches the results to the commandPL as IOPeer.Send messages.
        */
       @tailrec
-      def encrypt(send: Send, tempBuf: ByteBuffer, fromQueue: Boolean = false) {
+      def encrypt(send: Send, tempBuf: ByteBuffer, fromQueue: Boolean = false): Unit = {
         import send._
         log.debug("Encrypting {} bytes", buffer.remaining)
         tempBuf.clear()
@@ -124,7 +124,7 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
        * Decrypts the given buffer and dispatches the results to the eventPL as a Received message.
        */
       @tailrec
-      def decrypt(buffer: ByteBuffer, tempBuf: ByteBuffer) {
+      def decrypt(buffer: ByteBuffer, tempBuf: ByteBuffer): Unit = {
         log.debug("Decrypting {} bytes", buffer.remaining)
         tempBuf.clear()
         val result = engine.unwrap(buffer, tempBuf)
@@ -156,7 +156,7 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
         }
       }
 
-      def withTempBuf(f: ByteBuffer ⇒ Unit) {
+      def withTempBuf(f: ByteBuffer ⇒ Unit): Unit = {
         val tempBuf = SslBufferPool.acquire()
         try f(tempBuf)
         catch {
@@ -167,7 +167,7 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
       }
 
       @tailrec
-      def runDelegatedTasks() {
+      def runDelegatedTasks(): Unit = {
         val task = engine.getDelegatedTask
         if (task != null) {
           task.run()
@@ -176,7 +176,7 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
       }
 
       @tailrec
-      def processPendingSends(tempBuf: ByteBuffer) {
+      def processPendingSends(tempBuf: ByteBuffer): Unit = {
         if (!pendingSends.isEmpty) {
           val next = pendingSends.head
           pendingSends = pendingSends.tail
@@ -189,7 +189,7 @@ object SslTlsSupport extends OptionalPipelineStage[SslTlsContext] {
       }
 
       @tailrec
-      def closeEngine(tempBuf: ByteBuffer) {
+      def closeEngine(tempBuf: ByteBuffer): Unit = {
         if (!engine.isOutboundDone) {
           encrypt(Send.Empty, tempBuf)
           closeEngine(tempBuf)

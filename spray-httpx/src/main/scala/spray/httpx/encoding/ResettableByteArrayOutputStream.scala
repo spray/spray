@@ -24,7 +24,7 @@ class ResettableByteArrayOutputStream(initialSize: Int) extends ByteArrayOutputS
 
   def buffer = buf
 
-  def resetTo(pos: Int) {
+  def resetTo(pos: Int): Unit = {
     count = pos
   }
 

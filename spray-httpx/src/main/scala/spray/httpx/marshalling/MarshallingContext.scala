@@ -63,7 +63,7 @@ trait MarshallingContext { self ⇒
     new DelegatingMarshallingContext(self) {
       override def tryAccept(ct: ContentType) =
         Some(if (contentType.isCharsetDefined) ct.withCharset(contentType.charset) else ct)
-      override def marshalTo(entity: HttpEntity) { self.marshalTo(overrideContentType(entity)) }
+      override def marshalTo(entity: HttpEntity): Unit = { self.marshalTo(overrideContentType(entity)) }
       override def startChunkedMessage(entity: HttpEntity, ack: Option[Any])(implicit sender: ActorRef) =
         self.startChunkedMessage(overrideContentType(entity), ack)
       def overrideContentType(entity: HttpEntity) =
@@ -77,9 +77,9 @@ trait MarshallingContext { self ⇒
  */
 class DelegatingMarshallingContext(underlying: MarshallingContext) extends MarshallingContext {
   def tryAccept(contentType: ContentType) = underlying.tryAccept(contentType)
-  def rejectMarshalling(supported: Seq[ContentType]) { underlying.rejectMarshalling(supported) }
-  def marshalTo(entity: HttpEntity) { underlying.marshalTo(entity) }
-  def handleError(error: Throwable) { underlying.handleError(error) }
+  def rejectMarshalling(supported: Seq[ContentType]): Unit = { underlying.rejectMarshalling(supported) }
+  def marshalTo(entity: HttpEntity): Unit = { underlying.marshalTo(entity) }
+  def handleError(error: Throwable): Unit = { underlying.handleError(error) }
   def startChunkedMessage(entity: HttpEntity, ack: Option[Any] = None)(implicit sender: ActorRef) =
     underlying.startChunkedMessage(entity, ack)
 }

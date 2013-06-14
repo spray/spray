@@ -120,14 +120,14 @@ class ModelConverterSpec extends Specification with NoTimeConversions {
     def isRequestedSessionIdFromURL: Boolean = ???
     def isRequestedSessionIdFromUrl: Boolean = ???
     def authenticate(response: HttpServletResponse): Boolean = ???
-    def login(username: String, password: String) {}
-    def logout() {}
+    def login(username: String, password: String): Unit = {}
+    def logout(): Unit = {}
     def getParts: util.Collection[Part] = ???
     def getPart(name: String): Part = ???
     def getAttribute(name: String): AnyRef = ???
     def getAttributeNames: util.Enumeration[String] = ???
     def getCharacterEncoding: String = ???
-    def setCharacterEncoding(env: String) {}
+    def setCharacterEncoding(env: String): Unit = {}
     def getContentLength: Int = content.length
     def getContentType: String = ???
     def getInputStream: ServletInputStream = new ServletInputStream {
@@ -145,8 +145,8 @@ class ModelConverterSpec extends Specification with NoTimeConversions {
     def getReader: BufferedReader = ???
     def getRemoteAddr: String = remoteAddr
     def getRemoteHost: String = ???
-    def setAttribute(name: String, o: Any) {}
-    def removeAttribute(name: String) {}
+    def setAttribute(name: String, o: Any): Unit = {}
+    def removeAttribute(name: String): Unit = {}
     def getLocale: Locale = ???
     def getLocales: util.Enumeration[Locale] = ???
     def isSecure: Boolean = ???

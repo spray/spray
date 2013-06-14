@@ -73,7 +73,7 @@ trait RouteResultComponent {
       this
     }
 
-    private def saveResult(result: Either[List[Rejection], HttpResponse]) {
+    private def saveResult(result: Either[List[Rejection], HttpResponse]): Unit = {
       synchronized {
         if (!virginal) failTest("Route completed/rejected more than once")
         result match {
