@@ -16,63 +16,32 @@
 
 package spray.httpx
 
-import scala.concurrent.{ ExecutionContext, Future }
 import akka.event.LoggingAdapter
 import spray.httpx.unmarshalling._
 import spray.httpx.encoding.Decoder
 import spray.http._
 
-trait ResponseTransformation {
+trait ResponseTransformation extends TransformerPipelineSupport {
   type ResponseTransformer = HttpResponse ⇒ HttpResponse
 
-  def decode(decoder: Decoder): ResponseTransformer = { response ⇒
-    if (response.encoding == decoder.encoding) decoder.decode(response) else response
-  }
+  def decode(decoder: Decoder): ResponseTransformer =
+    response ⇒ if (response.encoding == decoder.encoding) decoder.decode(response) else response
 
-  def unmarshal[T: Unmarshaller]: HttpResponse ⇒ T = { response ⇒
-    if (response.status.isSuccess)
-      response.entity.as[T] match {
-        case Right(value) ⇒ value
-        case Left(error)  ⇒ throw new PipelineException(error.toString)
-      }
-    else throw new UnsuccessfulResponseException(response)
-  }
+  def unmarshal[T: Unmarshaller]: HttpResponse ⇒ T =
+    response ⇒
+      if (response.status.isSuccess)
+        response.entity.as[T] match {
+          case Right(value) ⇒ value
+          case Left(error)  ⇒ throw new PipelineException(error.toString)
+        }
+      else throw new UnsuccessfulResponseException(response)
 
-  def logResponse(log: LoggingAdapter): HttpResponse ⇒ HttpResponse =
-    logResponse { response ⇒ log.debug(response.toString) }
+  def logResponse(log: LoggingAdapter) = logValue[HttpResponse](log)
 
-  def logResponse(logFun: HttpResponse ⇒ Unit): HttpResponse ⇒ HttpResponse = { response ⇒
-    logFun(response)
-    response
-  }
-
-  implicit def pimpWithResponseTransformation[A, B](f: A ⇒ B) = new PimpedResponseTransformer(f)
-  class PimpedResponseTransformer[A, B](f: A ⇒ B) extends (A ⇒ B) {
-    def apply(input: A) = f(input)
-    def ~>[AA, BB, R](g: AA ⇒ BB)(implicit aux: TransformerAux[A, B, AA, BB, R]) =
-      new PimpedResponseTransformer[A, R](aux(f, g))
-  }
+  def logResponse(logFun: HttpResponse ⇒ Unit) = logValue[HttpResponse](logFun)
 }
 
 object ResponseTransformation extends ResponseTransformation
-
-trait TransformerAux[A, B, AA, BB, R] {
-  def apply(f: A ⇒ B, g: AA ⇒ BB): A ⇒ R
-}
-
-object TransformerAux {
-  implicit def aux1[A, B, C] = new TransformerAux[A, B, B, C, C] {
-    def apply(f: A ⇒ B, g: B ⇒ C): A ⇒ C = f andThen g
-  }
-  implicit def aux2[A, B, C](implicit ec: ExecutionContext) =
-    new TransformerAux[A, Future[B], B, C, Future[C]] {
-      def apply(f: A ⇒ Future[B], g: B ⇒ C): A ⇒ Future[C] = f(_).map(g)
-    }
-  implicit def aux3[A, B, C](implicit ec: ExecutionContext) =
-    new TransformerAux[A, Future[B], B, Future[C], Future[C]] {
-      def apply(f: A ⇒ Future[B], g: B ⇒ Future[C]): A ⇒ Future[C] = f(_).flatMap(g)
-    }
-}
 
 class PipelineException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
 class UnsuccessfulResponseException(val response: HttpResponse) extends RuntimeException(s"Status: ${response.status}\n" +

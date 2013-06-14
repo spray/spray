@@ -24,7 +24,7 @@ import spray.http._
 import HttpMethods._
 import HttpHeaders._
 
-trait RequestBuilding {
+trait RequestBuilding extends TransformerPipelineSupport {
   type RequestTransformer = HttpRequest ⇒ HttpRequest
 
   class RequestBuilder(val method: HttpMethod) {
@@ -34,7 +34,7 @@ trait RequestBuilding {
     def apply[T: Marshaller](uri: String, content: Option[T]): HttpRequest = apply(Uri(uri), content)
     def apply(uri: Uri): HttpRequest = apply[String](uri, None)
     def apply[T: Marshaller](uri: Uri, content: T): HttpRequest = apply(uri, Some(content))
-    def apply[T: Marshaller](uri: Uri, content: Option[T]): HttpRequest = {
+    def apply[T: Marshaller](uri: Uri, content: Option[T]): HttpRequest =
       HttpRequest(method, uri,
         entity = content match {
           case None ⇒ EmptyEntity
@@ -43,7 +43,6 @@ trait RequestBuilding {
             case Left(error)   ⇒ throw error
           }
         })
-    }
   }
 
   val Get = new RequestBuilder(GET)
@@ -53,6 +52,7 @@ trait RequestBuilding {
   val Delete = new RequestBuilder(DELETE)
   val Options = new RequestBuilder(OPTIONS)
   val Head = new RequestBuilder(HEAD)
+
   def encode(encoder: Encoder): RequestTransformer = encoder.encode(_)
 
   def addHeader(header: HttpHeader): RequestTransformer = _.mapHeaders(header :: _)
@@ -68,19 +68,11 @@ trait RequestBuilding {
 
   def addCredentials(credentials: HttpCredentials) = addHeader(HttpHeaders.Authorization(credentials))
 
-  def logRequest(log: LoggingAdapter): HttpRequest ⇒ HttpRequest =
-    logRequest { request ⇒ log.debug(request.toString) }
+  def logRequest(log: LoggingAdapter) = logValue[HttpRequest](log)
 
-  def logRequest(logFun: HttpRequest ⇒ Unit): HttpRequest ⇒ HttpRequest = { request ⇒
-    logFun(request)
-    request
-  }
+  def logRequest(logFun: HttpRequest ⇒ Unit) = logValue[HttpRequest](logFun)
 
-  implicit def request2TransformableHttpRequest(request: HttpRequest) = new TransformableHttpRequest(request)
-  class TransformableHttpRequest(request: HttpRequest) {
-    def ~>[T](f: HttpRequest ⇒ T) = f(request)
-    def ~>(header: HttpHeader) = addHeader(header)(request)
-  }
+  implicit def header2AddHeader(header: HttpHeader): RequestTransformer = addHeader(header)
 }
 
 object RequestBuilding extends RequestBuilding
