@@ -23,7 +23,7 @@ Here is how:
 3. Run ``sbt compile test`` to compile the suite and run all tests.
 
 
-git branching model
+git Branching Model
 -------------------
 
 The *spray* team follows the "standard" practice of using the ``master`` branch as main integration branch,
@@ -31,6 +31,41 @@ with WIP- and feature branches branching of it. The rule is to keep the ``master
 i.e. having it compile and test cleanly.
 
 Additionally we maintain release branches for older and possibly future releases.
+
+
+git Commit Messages
+-------------------
+
+We follow the "imperative present tense" style for commit messages (more info here__) and begin each message with
+the module name(s) touched by the commit followed by a colon. Additionally, in order to make it easier for us
+(and everyone else) to track the effects of changes onto the public API we also explicitly classify every commit into
+exactly one of three categories:
+
+__ http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html
+
+.. rst-class:: table table-striped
+
+========= =============================================================================== ======
+Category  Description                                                                     Marker
+========= =============================================================================== ======
+Neutral   Only touches things "under the hood" and has no effect on *spray's* public API. ``=``
+Extending Extends the API by adding things. In rare cases this might break code due to    ``+``
+          things like identifier shadowing but is generally considered a "safe" change.
+Breaking  Changes or removes public API elements. Will definitely break user code         ``!``
+          relying on these parts of the API surface.
+========= =============================================================================== ======
+
+Apart from the actual Scala interfaces the public API surface covered by these categories also includes configuration
+settings (most importantly the ``reference.conf`` files).
+
+The category that a commit belongs to is indicated with a respective marker character that the commit's message must
+start with (followed by a space char), e.g. ``= testkit: clean up imports``. Note that *all* commits must carry exactly
+one of the markers listed in the table above! This makes sure that the committer has actively thought about the effects
+of the commit on the API surface.
+
+Also, all commits in the "Extending" and especially in the "Breaking" category should contain a dedicated paragraph
+(in addition to the summary line) explaining in what way the change breaks the API and why this is necessary/beneficial.
+These paragraphes form the basis of release-to-release migration guides.
 
 
 Issue Tracking
