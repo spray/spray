@@ -277,9 +277,9 @@ case class RequestContext(request: HttpRequest, responder: ActorRef, unmatchedPa
   def marshallingContext(status: StatusCode, headers: List[HttpHeader]): MarshallingContext =
     new MarshallingContext {
       def tryAccept(contentType: ContentType) = request.acceptableContentType(contentType)
-      def rejectMarshalling(onlyTo: Seq[ContentType]) { reject(UnacceptedResponseContentTypeRejection(onlyTo)) }
-      def marshalTo(entity: HttpEntity) { complete(response(entity)) }
-      def handleError(error: Throwable) { failWith(error) }
+      def rejectMarshalling(onlyTo: Seq[ContentType]): Unit = { reject(UnacceptedResponseContentTypeRejection(onlyTo)) }
+      def marshalTo(entity: HttpEntity): Unit = { complete(response(entity)) }
+      def handleError(error: Throwable): Unit = { failWith(error) }
       def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any])(implicit sender: ActorRef) = {
         val chunkStart = ChunkedResponseStart(response(entity))
         val wrapper = if (sentAck.isEmpty) chunkStart else Confirmed(chunkStart, sentAck.get)

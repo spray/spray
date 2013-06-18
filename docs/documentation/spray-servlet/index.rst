@@ -10,7 +10,7 @@ Servlet API. As one main application it enables the use of :ref:`spray-routing` 
 Dependencies
 ------------
 
-Apart from the Scala library (see :ref:`current-versions` chapter) *spray-can* depends on
+Apart from the Scala library (see :ref:`Current Versions` chapter) *spray-can* depends on
 
 - :ref:`spray-http`
 - :ref:`spray-util`
@@ -23,6 +23,12 @@ Installation
 ------------
 
 The :ref:`maven-repo` chapter contains all the info about how to pull *spray-servlet* into your classpath.
+You might also want to check out:
+
+- The `xsbt-web-plugin`_ for simplifying the development process
+- The :ref:`Getting Started` chapter for info on the *spray* project template for *spray-servlet*
+
+.. _xsbt-web-plugin: https://github.com/JamesEarlDouglas/xsbt-web-plugin
 
 
 Configuration
@@ -211,6 +217,13 @@ Timeout Semantics
 
 HTTP Pipelining & SSL Support
   Whether and how HTTP pipelining and SSL/TLS encryption are supported depends on the servlet container implementation.
+
+
+Packaging a WAR file
+--------------------
+
+If you use the `xsbt-web-plugin`_ you can very easily package your project into a WAR file with the ``package`` command
+provided by the plugin.
 
 
 Example

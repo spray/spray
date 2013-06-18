@@ -117,14 +117,14 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
       name = "client" + counter.incrementAndGet())
     probe.send(connection, Tcp.Register(handler))
 
-    def run() {
+    def run(): Unit = {
       probe.send(handler, Tcp.Write(ByteString("3+4\n")))
       expectReceived(probe, ByteString("7\n"))
       probe.send(handler, Tcp.Write(ByteString("20+22\n")))
       expectReceived(probe, ByteString("42\n"))
     }
 
-    def close() {
+    def close(): Unit = {
       probe.send(handler, Tcp.Close)
       probe.expectMsgType[Tcp.ConnectionClosed]
       TestUtils.verifyActorTermination(handler)
@@ -204,12 +204,12 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
     @volatile private var socket: SSLSocket = _
     start()
 
-    def close() {
+    def close(): Unit = {
       serverSocket.close()
       if (socket != null) socket.close()
     }
 
-    override def run() {
+    override def run(): Unit = {
       try {
         socket = serverSocket.accept().asInstanceOf[SSLSocket]
         val (reader, writer) = readerAndWriter(socket)
@@ -233,14 +233,14 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
     val (reader, writer) = readerAndWriter(socket)
     val log: LoggingAdapter = Logging(system, getClass)
 
-    def run() {
+    def run(): Unit = {
       write("1+2")
       readLine() === "3"
       write("12+24")
       readLine() === "36"
     }
 
-    def write(string: String) {
+    def write(string: String): Unit = {
       writer.write(string + "\n")
       writer.flush()
       log.debug("SSLSocket Client sent: {}", string)
@@ -252,7 +252,7 @@ class SslTlsSupportSpec extends Specification with NoTimeConversions {
       string
     }
 
-    def close() { socket.close() }
+    def close(): Unit = { socket.close() }
   }
 
   def readerAndWriter(socket: SSLSocket) = {

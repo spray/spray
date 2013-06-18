@@ -35,7 +35,7 @@ abstract class UnregisteredActorRefBase(val provider: ActorRefProvider) extends 
     Unsafe.instance.compareAndSwapObject(this, stateOffset, oldState, newState)
 
   @inline
-  private[this] def setState(newState: AnyRef) {
+  private[this] def setState(newState: AnyRef): Unit = {
     Unsafe.instance.putObjectVolatile(this, stateOffset, newState)
   }
 
@@ -73,7 +73,7 @@ abstract class UnregisteredActorRefBase(val provider: ActorRefProvider) extends 
     }
   }
 
-  override def sendSystemMessage(message: SystemMessage) {
+  override def sendSystemMessage(message: SystemMessage): Unit = {
     message match {
       case _: Terminate ⇒ stop()
       case _            ⇒
@@ -86,7 +86,7 @@ abstract class UnregisteredActorRefBase(val provider: ActorRefProvider) extends 
   }
 
   @tailrec
-  override final def stop() {
+  override final def stop(): Unit = {
     state match {
       case null ⇒ // if path was never queried nobody can possibly be watching us, so we don't have to publish termination either
         if (updateState(null, Stopped)) onStop() else stop()
@@ -101,11 +101,11 @@ abstract class UnregisteredActorRefBase(val provider: ActorRefProvider) extends 
 
   protected def handle(message: Any)(implicit sender: ActorRef)
 
-  protected def onStop() {}
+  protected def onStop(): Unit = {}
 
-  protected def register(path: ActorPath) {}
+  protected def register(path: ActorPath): Unit = {}
 
-  protected def unregister(path: ActorPath) {}
+  protected def unregister(path: ActorPath): Unit = {}
 }
 
 object UnregisteredActorRefBase {

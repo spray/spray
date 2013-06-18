@@ -122,6 +122,10 @@ class ParameterDirectivesSpec extends RoutingSpec {
         }
       } ~> check { entityAs[String] === "EllenParsons" }
     }
+    "correctly extract an optional parameter" in {
+      Get("/?foo=bar") ~> parameters('foo ?) { echoComplete } ~> check { entityAs[String] === "Some(bar)" }
+      Get("/?foo=bar") ~> parameters('baz ?) { echoComplete } ~> check { entityAs[String] === "None" }
+    }
     "ignore additional parameters" in {
       Get("/?name=Parsons&FirstName=Ellen&age=29") ~> {
         parameters("name", 'FirstName) { (name, firstName) ⇒

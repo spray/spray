@@ -44,7 +44,7 @@ trait RawPipelineStageTest { test ⇒
   def actorSystem(config: Map[String, _]): ActorSystem = actorSystem(Utils.mapToConfig(config))
   def actorSystem(config: Config): ActorSystem = ActorSystem("PipelineStageTest", config withFallback testConf)
 
-  def cleanUp() { system.shutdown() }
+  def cleanUp(): Unit = { system.shutdown() }
 
   def remoteHostName = "example.com"
   def remoteHostPost = 8080

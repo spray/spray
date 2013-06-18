@@ -32,7 +32,7 @@ trait DocSupport {
       doc in (sprayUtil, Compile)
     ) map { (siteResDir, version, state, docCaching, docCan, docClient, docHttp, docHttpx, docIO, docRouting, docServlet, docTestKit, docUtil) =>
       val log = colorLog(state)
-      def move(docDir: File) {
+      def move(docDir: File): Unit = {
         assert(docDir.getName == "api")
         assert(docDir.getParentFile.getName == "target")
         val projectName = docDir.getParentFile.getParentFile.getName

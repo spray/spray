@@ -51,7 +51,7 @@ abstract class LazyActorRef(prov: ActorRefProvider) extends UnregisteredActorRef
   }
 
   @tailrec
-  private[this] final def remWatcher(watcher: ActorRef) {
+  private[this] final def remWatcher(watcher: ActorRef): Unit = {
     watchedBy match {
       case null  ⇒
       case other ⇒ if (!updateWatchedBy(other, other - watcher)) remWatcher(watcher)
@@ -66,7 +66,7 @@ abstract class LazyActorRef(prov: ActorRefProvider) extends UnregisteredActorRef
 
   override def getParent: InternalActorRef = provider.tempContainer
 
-  override def sendSystemMessage(message: SystemMessage) {
+  override def sendSystemMessage(message: SystemMessage): Unit = {
     message match {
       case _: Terminate ⇒ stop()
       case Watch(watchee, watcher) ⇒
@@ -82,7 +82,7 @@ abstract class LazyActorRef(prov: ActorRefProvider) extends UnregisteredActorRef
 
   // callbacks
 
-  protected override def onStop() {
+  protected override def onStop(): Unit = {
     val watchers = clearWatchers()
     if (!watchers.isEmpty) {
       val termination = Terminated(this)(existenceConfirmed = true, addressTerminated = false)
@@ -90,11 +90,11 @@ abstract class LazyActorRef(prov: ActorRefProvider) extends UnregisteredActorRef
     }
   }
 
-  protected override def register(path: ActorPath) {
+  protected override def register(path: ActorPath): Unit = {
     provider.registerTempActor(this, path)
   }
 
-  protected override def unregister(path: ActorPath) {
+  protected override def unregister(path: ActorPath): Unit = {
     provider.unregisterTempActor(path)
   }
 }

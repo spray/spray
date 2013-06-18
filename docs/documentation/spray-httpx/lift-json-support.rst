@@ -15,5 +15,5 @@ with your custom logic.
    project yourself. Check the lift-json_ documentation for information on how to do this.
 
 
-.. _LiftJsonSupport: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/LiftJsonSupport.scala
+.. _LiftJsonSupport: https://github.com/spray/spray/blob/release/1.2/spray-httpx/src/main/scala/spray/httpx/LiftJsonSupport.scala
 .. _lift-json: https://github.com/lift/lift/tree/master/framework/lift-base/lift-json/

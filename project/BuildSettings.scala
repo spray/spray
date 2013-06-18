@@ -5,9 +5,6 @@ import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 import sbtassembly.Plugin.AssemblyKeys._
 import sbtassembly.Plugin._
 import spray.revolver.RevolverPlugin.Revolver
-import twirl.sbt.TwirlPlugin.Twirl
-import ls.Plugin._
-
 
 object BuildSettings {
   val VERSION = "1.2-M8"
@@ -55,12 +52,7 @@ object BuildSettings {
             }
           }
         }
-      },
-
-      // LS
-      (LsKeys.tags in LsKeys.lsync) := Seq("http", "server", "client", "async"),
-      (LsKeys.docsUrl in LsKeys.lsync) := Some(new URL("http://spray.github.com/spray/api/spray-can/")),
-      (externalResolvers in LsKeys.lsync) := Seq("spray repo" at "http://repo.spray.io")
+      }
     )
 
   lazy val noPublishing = seq(
@@ -84,9 +76,6 @@ object BuildSettings {
       }
     }
   )
-
-  lazy val siteSettings = basicSettings ++ formatSettings ++ noPublishing ++ Twirl.settings ++ Revolver.settings ++
-    SiteSupport.settings
 
   lazy val docsSettings = basicSettings ++ noPublishing ++ seq(
     unmanagedSourceDirectories in Test <<= baseDirectory { _ ** "code" get }

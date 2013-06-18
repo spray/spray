@@ -1,8 +1,7 @@
 import sbt._
 import Keys._
 
-
-object Build extends Build with DocSupport {
+object Build extends Build {
   import BuildSettings._
   import Dependencies._
 
@@ -16,11 +15,10 @@ object Build extends Build with DocSupport {
   // -------------------------------------------------------------------------------------------------------------------
 
   lazy val root = Project("root",file("."))
-    .aggregate(docs, examples, site, sprayCaching, sprayCan, sprayCanTests, sprayClient, sprayHttp, sprayHttpx,
+    .aggregate(docs, examples, sprayCaching, sprayCan, sprayCanTests, sprayClient, sprayHttp, sprayHttpx,
       sprayIO, sprayIOTests, sprayRouting, sprayRoutingTests, sprayServlet, sprayTestKit, sprayUtil)
     .settings(basicSettings: _*)
     .settings(noPublishing: _*)
-    .settings(moveApiDocsSettings: _*)
 
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -119,7 +117,10 @@ object Build extends Build with DocSupport {
     .dependsOn(sprayHttp, sprayUtil,
       sprayIO) // for access to akka.io.Tcp, can go away after upgrade to Akka 2.2
     .settings(sprayModuleSettings: _*)
-    .settings(libraryDependencies ++= provided(akkaActor, servlet30))
+    .settings(libraryDependencies ++=
+      provided(akkaActor, servlet30) ++
+      test(specs2)
+    )
 
 
   lazy val sprayTestKit = Project("spray-testkit", file("spray-testkit"))
@@ -147,19 +148,10 @@ object Build extends Build with DocSupport {
   // Site Project
   // -------------------------------------------------------------------------------------------------------------------
 
-  lazy val site = Project("site", file("site"))
-    .dependsOn(sprayCaching, sprayCan, sprayRouting)
-    .settings(siteSettings: _*)
-    .settings(SphinxSupport.settings: _*)
-    .settings(libraryDependencies ++=
-      compile(akkaActor, sprayJson) ++
-      runtime(akkaSlf4j, logback) ++
-      test(specs2)
-    )
-
   lazy val docs = Project("docs", file("docs"))
     .dependsOn(sprayCaching, sprayCan, sprayClient, sprayHttp, sprayHttpx, sprayIO, sprayRouting,
                sprayServlet, sprayTestKit, sprayUtil)
+    .settings(SphinxSupport.settings: _*)
     .settings(docsSettings: _*)
     .settings(libraryDependencies ++= test(akkaActor, akkaTestKit, sprayJson, specs2, json4sNative))
 

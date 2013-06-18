@@ -11,7 +11,7 @@ converting a list of rejections to its argument, an ExceptionHandler__, which is
 
     trait ExceptionHandler extends PartialFunction[Throwable, Route]
 
-__ https://github.com/spray/spray/blob/master/spray-routing/src/main/scala/spray/routing/ExceptionHandler.scala
+__ https://github.com/spray/spray/blob/release/1.2/spray-routing/src/main/scala/spray/routing/ExceptionHandler.scala
 
 The ``runRoute`` wrapper defined in the ``HttpService`` trait does the same but gets its ``ExceptionHandler`` instance
 implicitly.

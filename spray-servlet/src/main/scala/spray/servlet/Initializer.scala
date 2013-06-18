@@ -28,7 +28,7 @@ class Initializer extends ServletContextListener {
   private val booted = new Switch(false)
   @volatile private[this] var actorSystem: Option[ActorSystem] = None
 
-  def contextInitialized(ev: ServletContextEvent) {
+  def contextInitialized(ev: ServletContextEvent): Unit = {
     booted switchOn {
       println("Starting spray application ...")
       val servletContext = ev.getServletContext
@@ -69,7 +69,7 @@ class Initializer extends ServletContextListener {
     }
   }
 
-  def contextDestroyed(e: ServletContextEvent) {
+  def contextDestroyed(e: ServletContextEvent): Unit = {
     booted switchOff {
       println("Shutting down spray application ...")
       actorSystem.foreach(_.shutdown())

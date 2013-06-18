@@ -44,16 +44,16 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
   // we always convert to the first content-type the marshaller can marshal to
   def tryAccept(contentType: ContentType) = Some(contentType)
 
-  def rejectMarshalling(supported: Seq[ContentType]) {
+  def rejectMarshalling(supported: Seq[ContentType]): Unit = {
     handleError(new RuntimeException("Marshaller rejected marshalling, only supports " + supported))
   }
 
-  def marshalTo(entity: HttpEntity) {
+  def marshalTo(entity: HttpEntity): Unit = {
     if (!_entity.compareAndSet(None, Some(entity))) sys.error("`marshalTo` called more than once")
     latch.countDown()
   }
 
-  def handleError(error: Throwable) {
+  def handleError(error: Throwable): Unit = {
     _error.compareAndSet(None, Some(error)) // we only save the very first error
     latch.countDown()
   }
@@ -69,7 +69,7 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
           case HttpMessagePartWrapper(part, ack) ⇒
             part match {
               case x: MessageChunk ⇒
-                @tailrec def updateChunks(current: Seq[MessageChunk]) {
+                @tailrec def updateChunks(current: Seq[MessageChunk]): Unit = {
                   if (!_chunks.compareAndSet(current, _chunks.get :+ x)) updateChunks(_chunks.get)
                 }
                 updateChunks(_chunks.get)
@@ -89,7 +89,7 @@ class CollectingMarshallingContext(implicit actorRefFactory: ActorRefFactory = n
     ref
   }
 
-  def awaitResults(implicit timeout: Timeout) {
+  def awaitResults(implicit timeout: Timeout): Unit = {
     latch.await(timeout.duration.toMillis, MILLISECONDS)
   }
 }

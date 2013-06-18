@@ -61,5 +61,5 @@ object HttpCookie {
   // ; US-ASCII characters excluding CTLs, whitespace DQUOTE, comma, semicolon, and backslash
   val contentChars = CharPredicate('\u0021', '\u0023' to '\u002B', '\u002D' to '\u003A', '\u003C' to '\u005B', '\u005D' to '\u007E')
   val domainChars = AlphaNum ++ ".-"
-  val pathOrExtChars = Visible -- ';'
+  val pathOrExtChars = Printable -- ';'
 }

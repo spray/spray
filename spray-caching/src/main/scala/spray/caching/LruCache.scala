@@ -79,7 +79,7 @@ final class SimpleLruCache[V](val maxCapacity: Int, val initialCapacity: Int) ex
 
   def remove(key: Any) = Option(store.remove(key))
 
-  def clear() { store.clear() }
+  def clear(): Unit = { store.clear() }
 }
 
 /**
@@ -158,7 +158,7 @@ final class ExpiringLruCache[V](maxCapacity: Long, initialCapacity: Int,
     case entry                     ⇒ None
   }
 
-  def clear() { store.clear() }
+  def clear(): Unit = { store.clear() }
 
   private def isAlive(entry: Entry[V]) = {
     val now = System.currentTimeMillis
@@ -171,7 +171,7 @@ private[caching] class Entry[T](val promise: Promise[T]) {
   @volatile var created = System.currentTimeMillis
   @volatile var lastAccessed = System.currentTimeMillis
   def future = promise.future
-  def refresh() {
+  def refresh(): Unit = {
     // we dont care whether we overwrite a potentially newer value
     lastAccessed = System.currentTimeMillis
   }
