@@ -22,6 +22,8 @@ import akka.actor.ActorSystem
 import spray.can.parsing.ParserSettings
 import spray.util._
 
+case class BackpressureSettings(noAckRate: Int, readingLowWatermark: Int)
+
 case class ServerSettings(
     serverHeader: String,
     sslEncryption: Boolean,
@@ -41,6 +43,7 @@ case class ServerSettings(
     bindTimeout: Duration,
     unbindTimeout: Duration,
     registrationTimeout: Duration,
+    backpressureSettings: Option[BackpressureSettings],
     parserSettings: ParserSettings) {
 
   requirePositiveOrUndefined(idleTimeout)
@@ -68,6 +71,11 @@ object ServerSettings {
     val c = config
       .withFallback(Utils.sprayConfigAdditions)
       .withFallback(ConfigFactory.defaultReference(getClass.getClassLoader))
+    val backpressureSettings =
+      Some(BackpressureSettings(
+        c getInt "back-pressure.noack-rate",
+        c getPossiblyInfiniteInt "back-pressure.reading-low-watermark")).filter(_ ⇒ c.getBoolean("automatic-back-pressure-handling"))
+
     ServerSettings(
       c getString "server-header",
       c getBoolean "ssl-encryption",
@@ -87,6 +95,7 @@ object ServerSettings {
       c getDuration "bind-timeout",
       c getDuration "unbind-timeout",
       c getDuration "registration-timeout",
+      backpressureSettings,
       ParserSettings(c getConfig "parsing"))
   }
 }
