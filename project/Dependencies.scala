@@ -3,7 +3,8 @@ import sbt._
 object Dependencies {
 
   val resolutionRepos = Seq(
-    "spray repo" at "http://repo.spray.io/"
+    "spray repo" at "http://repo.spray.io/",
+    "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/"
   )
 
   def compile   (deps: ModuleID*): Seq[ModuleID] = deps map (_ % "compile")
@@ -30,4 +31,6 @@ object Dependencies {
   val liftJson      = "net.liftweb"                             %%  "lift-json"                   % "2.5.1"
   val json4sNative  = "org.json4s"                              %%  "json4s-native"               % "3.2.4"
   val json4sJackson = "org.json4s"                              %%  "json4s-jackson"              % "3.2.4"
+  val playJson      = "com.typesafe.play"                       %%  "play-json"                   % "2.2.0"
 }
+
