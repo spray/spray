@@ -29,7 +29,7 @@ with an ``Http.Connected`` event message to the sender of the ``Http.Connect`` c
 been successfully established. If the connection could not be opened for whatever reason an ``Http.CommandFailed`` event
 is being dispatched instead and the connection actor is stopped.
 
-.. _spray.can.Http: https://github.com/spray/spray/blob/master/spray-can/src/main/scala/spray/can/Http.scala#L29
+.. _spray.can.Http: https://github.com/spray/spray/blob/release/1.0/spray-can/src/main/scala/spray/can/Http.scala#L29
 
 
 Request-Response Cycle

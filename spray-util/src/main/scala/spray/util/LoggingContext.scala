@@ -35,11 +35,11 @@ object LoggingContext extends LoggingContextLowerOrderImplicit1 {
     def isInfoEnabled = la.isInfoEnabled
     def isDebugEnabled = la.isDebugEnabled
 
-    protected def notifyError(message: String) { la.error(message) }
-    protected def notifyError(cause: Throwable, message: String) { la.error(cause, message) }
-    protected def notifyWarning(message: String) { la.warning(message) }
-    protected def notifyInfo(message: String) { la.info(message) }
-    protected def notifyDebug(message: String) { la.debug(message) }
+    protected def notifyError(message: String): Unit = { la.error(message) }
+    protected def notifyError(cause: Throwable, message: String): Unit = { la.error(cause, message) }
+    protected def notifyWarning(message: String): Unit = { la.warning(message) }
+    protected def notifyInfo(message: String): Unit = { la.info(message) }
+    protected def notifyDebug(message: String): Unit = { la.debug(message) }
   }
 }
 

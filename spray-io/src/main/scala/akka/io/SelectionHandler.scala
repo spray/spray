@@ -191,7 +191,7 @@ private[io] object SelectionHandler {
     // FIXME: Add possibility to signal failure of task to someone
     private abstract class Task extends Runnable {
       def tryRun()
-      def run() {
+      def run(): Unit = {
         try tryRun()
         catch {
           case _: CancelledKeyException ⇒ // ok, can be triggered while setting interest ops

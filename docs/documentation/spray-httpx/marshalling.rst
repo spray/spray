@@ -27,7 +27,7 @@ why *spray* Marshallers are designed in this way:
 - Marshallers can produce more than one response part, whereby the sequence of response chunks is available as a
   pull-style stream or from a push-style producer. Both these approaches need to be supported.
 
-.. _MarshallingContext: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/marshalling/MarshallingContext.scala
+.. _MarshallingContext: https://github.com/spray/spray/blob/release/1.0/spray-httpx/src/main/scala/spray/httpx/marshalling/MarshallingContext.scala
 .. _content negotiation: http://en.wikipedia.org/wiki/Content_negotiation
 
 
@@ -61,9 +61,9 @@ Default Marshallers
   - ``spray.http.MultipartContent``
   - ``spray.http.MultipartFormData``
 
-.. _BasicMarshallers: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/marshalling/BasicMarshallers.scala
-.. _MetaMarshallers: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/marshalling/MetaMarshallers.scala
-.. _MultipartMarshallers: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/marshalling/MultipartMarshallers.scala
+.. _BasicMarshallers: https://github.com/spray/spray/blob/release/1.0/spray-httpx/src/main/scala/spray/httpx/marshalling/BasicMarshallers.scala
+.. _MetaMarshallers: https://github.com/spray/spray/blob/release/1.0/spray-httpx/src/main/scala/spray/httpx/marshalling/MetaMarshallers.scala
+.. _MultipartMarshallers: https://github.com/spray/spray/blob/release/1.0/spray-httpx/src/main/scala/spray/httpx/marshalling/MultipartMarshallers.scala
 
 
 Implicit Resolution

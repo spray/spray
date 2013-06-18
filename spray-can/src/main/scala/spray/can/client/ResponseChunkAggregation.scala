@@ -52,7 +52,7 @@ object ResponseChunkAggregation {
             case ev ⇒ eventPL(ev)
           }
 
-          def closeWithError() {
+          def closeWithError(): Unit = {
             context.log.error("Aggregated response entity greater than configured limit of {} bytes," +
               "closing connection", limit)
             commandPL(Http.Close)

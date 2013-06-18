@@ -14,7 +14,7 @@ Dependencies
 *spray-http* is stand-alone in that it has no dependency on any other *spray* module and not even Akka.
 You can therefore use it directly and independently for any other type of HTTP work you might be doing.
 
-Apart from the Scala library (see :ref:`current-versions` chapter) *spray-http* only depends on parboiled_,
+Apart from the Scala library (see :ref:`Current Versions` chapter) *spray-http* only depends on parboiled_,
 a lightweight PEG parsing library providing the basis for the header parser. Since parboiled_ is also written and
 maintained by the members of the *spray* team it's not an "outside" dependency that we have no control over.
 
@@ -93,4 +93,4 @@ incoming responses by :ref:`spray-client`. File extension resolution (as used fo
 :ref:`FileAndResourceDirectives`) will work as expected.
 
 .. _IANA MIME media type registry: http://www.iana.org/assignments/media-types/index.html
-.. _MediaTypes: https://github.com/spray/spray/blob/master/spray-http/src/main/scala/spray/http/MediaType.scala
+.. _MediaTypes: https://github.com/spray/spray/blob/release/1.0/spray-http/src/main/scala/spray/http/MediaType.scala

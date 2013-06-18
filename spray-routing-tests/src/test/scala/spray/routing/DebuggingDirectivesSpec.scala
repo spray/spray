@@ -24,7 +24,7 @@ class DebuggingDirectivesSpec extends RoutingSpec {
 
   var debugMsg = ""
 
-  def resetDebugMsg() { debugMsg = "" }
+  def resetDebugMsg(): Unit = { debugMsg = "" }
 
   implicit val log = new LoggingAdapter {
     def isErrorEnabled = true
@@ -32,11 +32,11 @@ class DebuggingDirectivesSpec extends RoutingSpec {
     def isInfoEnabled = true
     def isDebugEnabled = true
 
-    def notifyError(message: String) {}
-    def notifyError(cause: Throwable, message: String) {}
-    def notifyWarning(message: String) {}
-    def notifyInfo(message: String) {}
-    def notifyDebug(message: String) { debugMsg += message + '\n' }
+    def notifyError(message: String): Unit = {}
+    def notifyError(cause: Throwable, message: String): Unit = {}
+    def notifyWarning(message: String): Unit = {}
+    def notifyInfo(message: String): Unit = {}
+    def notifyDebug(message: String): Unit = { debugMsg += message + '\n' }
   }
 
   "The 'logRequest' directive" should {

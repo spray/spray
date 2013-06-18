@@ -16,8 +16,8 @@ with your custom logic. See the `json4s documentation`_ for more information on 
    this.
 
 
-.. _Json4sSupport: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/Json4sSupport.scala
-.. _Json4sJacksonSupport: https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/Json4sJacksonSupport.scala
+.. _Json4sSupport: https://github.com/spray/spray/blob/release/1.0/spray-httpx/src/main/scala/spray/httpx/Json4sSupport.scala
+.. _Json4sJacksonSupport: https://github.com/spray/spray/blob/release/1.0/spray-httpx/src/main/scala/spray/httpx/Json4sJacksonSupport.scala
 .. _json4s documentation: http://json4s.org/#serialization
 .. _json4s-native: https://github.com/json4s/json4s/tree/master/native
 .. _json4s-jackson: https://github.com/json4s/json4s/tree/master/jackson

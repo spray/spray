@@ -7,7 +7,7 @@ The counterpart to :ref:`RequestBuilding` is the ResponseTransformation__ trait,
 client-side when you want to transform an incoming HTTP response in a number of loosely coupled steps into some kind of
 higher-level result type (see also :ref:`spray-client`).
 
-__ https://github.com/spray/spray/blob/master/spray-httpx/src/main/scala/spray/httpx/ResponseTransformation.scala
+__ https://github.com/spray/spray/blob/release/1.0/spray-httpx/src/main/scala/spray/httpx/ResponseTransformation.scala
 
 Just like with ``RequestBuilding`` the ``ResponseTransformation`` trait gives you the ``~>`` operator, which allows
 you to "append" a transformation function onto an existing function producing an ``HttpResponse``. Thereby it doesn't

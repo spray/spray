@@ -38,7 +38,7 @@ object StatsSupport {
     val requestTimeouts = new AtomicLong
 
     @tailrec
-    final def adjustMaxOpenConnections() {
+    final def adjustMaxOpenConnections(): Unit = {
       val co = connectionsOpened.get
       val cc = connectionsClosed.get
       val moc = maxOpenConnections.get
@@ -48,7 +48,7 @@ object StatsSupport {
     }
 
     @tailrec
-    final def adjustMaxOpenRequests() {
+    final def adjustMaxOpenRequests(): Unit = {
       val rqs = requestStarts.get
       val rss = responseStarts.get
       val mor = maxOpenRequests.get
@@ -67,7 +67,7 @@ object StatsSupport {
       maxOpenConnections = maxOpenConnections.get,
       requestTimeouts = requestTimeouts.get)
 
-    def clear() {
+    def clear(): Unit = {
       requestStarts.set(0L)
       responseStarts.set(0L)
       maxOpenRequests.set(0L)

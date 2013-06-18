@@ -58,6 +58,6 @@ thing, the ``runRoute`` wrapper. This method connects your route structure to th
 .. includecode:: ../code/docs/HttpServiceExamplesSpec.scala
    :snippet: example-4
 
-__  https://github.com/spray/spray/blob/master/spray-routing/src/main/scala/spray/routing/HttpService.scala
+__  https://github.com/spray/spray/blob/release/1.0/spray-routing/src/main/scala/spray/routing/HttpService.scala
 .. _Unfiltered: http://unfiltered.databinder.net/
 .. _DRY: http://en.wikipedia.org/wiki/DRY

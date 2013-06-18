@@ -148,7 +148,7 @@ object ServerFrontend {
             case ev ⇒ eventPL(ev)
           }
 
-          def openNewRequest(request: HttpRequest, closeAfterResponseCompletion: Boolean, timestamp: Long) {
+          def openNewRequest(request: HttpRequest, closeAfterResponseCompletion: Boolean, timestamp: Long): Unit = {
             val nextOpenRequest = new DefaultOpenRequest(request, closeAfterResponseCompletion, timestamp)
             firstOpenRequest = firstOpenRequest appendToEndOfChain nextOpenRequest
             nextOpenRequest.dispatchInitialRequestPartToHandler()

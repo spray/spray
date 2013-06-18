@@ -8,6 +8,7 @@ contains a number of example projects for *spray-routing*, which are described h
 
 .. __: https://github.com/spray/spray/tree/release/1.0/examples/spray-routing
 
+
 .. _on-spray-can:
 
 on-spray-can

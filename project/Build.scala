@@ -1,7 +1,6 @@
 import sbt._
 import Keys._
 
-
 object Build extends Build {
   import BuildSettings._
   import Dependencies._
@@ -119,7 +118,10 @@ object Build extends Build {
     .dependsOn(sprayHttp, sprayUtil,
       sprayIO) // for access to akka.io.Tcp, can go away after upgrade to Akka 2.2
     .settings(sprayModuleSettings: _*)
-    .settings(libraryDependencies ++= provided(akkaActor, servlet30))
+    .settings(libraryDependencies ++=
+      provided(akkaActor, servlet30) ++
+      test(specs2)
+    )
 
 
   lazy val sprayTestKit = Project("spray-testkit", file("spray-testkit"))

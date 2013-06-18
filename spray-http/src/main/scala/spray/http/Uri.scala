@@ -301,7 +301,7 @@ object Uri {
     def head: Head
     def tail: Path
     def length: Int
-    def charCount: Int
+    def charCount: Int // count of decoded (!) chars, i.e. the ones contained directly in this high-level model
     def render[R <: Rendering](r: R): R = render(r, UTF8, encodeFirstSegmentColons = false)
     def render[R <: Rendering](r: R, charset: Charset, encodeFirstSegmentColons: Boolean): R
     def ::(c: Char): Path = { require(c == '/'); Path.Slash(this) }
@@ -311,6 +311,8 @@ object Uri {
     def reverse: Path = reverseAndPrependTo(Path.Empty)
     def reverseAndPrependTo(prefix: Path): Path
     def /(segment: String): Path = this ++ Path.Slash(segment :: Path.Empty)
+    def startsWith(that: Path): Boolean
+    def dropChars(count: Int): Path
   }
   object Path {
     val SingleSlash = Slash(Empty)
@@ -345,6 +347,8 @@ object Uri {
       def ::(segment: String) = if (segment.isEmpty) this else Segment(segment, this)
       def ++(suffix: Path) = suffix
       def reverseAndPrependTo(prefix: Path) = prefix
+      def startsWith(that: Path): Boolean = that.isEmpty
+      def dropChars(count: Int) = this
     }
     case class Slash(tail: Path) extends SlashOrEmpty {
       type Head = Char
@@ -358,6 +362,8 @@ object Uri {
       def ::(segment: String) = if (segment.isEmpty) this else Segment(segment, this)
       def ++(suffix: Path) = Slash(tail ++ suffix)
       def reverseAndPrependTo(prefix: Path) = tail.reverseAndPrependTo(Slash(prefix))
+      def startsWith(that: Path): Boolean = that.isEmpty || that.startsWithSlash && tail.startsWith(that.tail)
+      def dropChars(count: Int): Path = if (count < 1) this else tail.dropChars(count - 1)
     }
     case class Segment(head: String, tail: SlashOrEmpty) extends Path {
       if (head.isEmpty) throw new IllegalArgumentException("Path segment must not be empty")
@@ -374,6 +380,15 @@ object Uri {
       def ::(segment: String) = if (segment.isEmpty) this else Segment(segment + head, tail)
       def ++(suffix: Path) = head :: (tail ++ suffix)
       def reverseAndPrependTo(prefix: Path): Path = tail.reverseAndPrependTo(head :: prefix)
+      def startsWith(that: Path): Boolean = that match {
+        case Segment(`head`, t) ⇒ tail.startsWith(t)
+        case Segment(h, Empty)  ⇒ head.startsWith(h)
+        case x                  ⇒ x.isEmpty
+      }
+      def dropChars(count: Int): Path =
+        if (count < 1) this
+        else if (count >= head.length) tail.dropChars(count - head.length)
+        else head.substring(count) :: tail
     }
     object ~ {
       def unapply(cons: Segment): Option[(String, Path)] = Some((cons.head, cons.tail))
@@ -382,7 +397,7 @@ object Uri {
   }
 
   sealed abstract class Query extends LinearSeq[(String, String)] with LinearSeqOptimized[(String, String), Query]
-      with Renderable {
+      with ToStringRenderable {
     def key: String
     def value: String
     def +:(kvp: (String, String)) = Query.Cons(kvp._1, kvp._2, this)
@@ -455,7 +470,7 @@ object Uri {
       override def head = throw new NoSuchElementException("head of empty list")
       override def tail = throw new UnsupportedOperationException("tail of empty query")
     }
-    case class Cons(key: String, value: String, override val tail: Query) extends Query with ToStringRenderable {
+    case class Cons(key: String, value: String, override val tail: Query) extends Query {
       override def isEmpty = false
       override def head = (key, value)
     }

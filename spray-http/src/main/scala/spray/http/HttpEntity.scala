@@ -36,7 +36,7 @@ sealed trait HttpEntity {
  */
 case object EmptyEntity extends HttpEntity {
   def isEmpty: Boolean = true
-  val buffer = new Array[Byte](0)
+  val buffer = Array.empty[Byte]
   def flatMap(f: HttpBody ⇒ HttpEntity): HttpEntity = this
   def orElse(other: HttpEntity): HttpEntity = other
   def asString = ""

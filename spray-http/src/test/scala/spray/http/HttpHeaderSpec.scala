@@ -147,6 +147,9 @@ class HttpHeaderSpec extends Specification {
       example(`Set-Cookie`(HttpCookie("name", "123", maxAge = Some(12345), secure = true)))_ ^
       "Set-Cookie: name=123; HttpOnly; fancyPants" !
       example(`Set-Cookie`(HttpCookie("name", "123", httpOnly = true, extension = Some("fancyPants"))))_ ^
+      "Set-Cookie: foo=bar; domain=example.com; Path=/this is a path with blanks; extension with blanks" !
+      example(`Set-Cookie`(HttpCookie("foo", "bar", domain = Some("example.com"), path = Some("/this is a path with blanks"),
+        extension = Some("extension with blanks"))), fix(_).replace("domain", "Domain"))_ ^
       p ^
       "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_3) AppleWebKit/537.31" !
       example(`User-Agent`(ProductVersion("Mozilla", "5.0", "Macintosh; Intel Mac OS X 10_8_3"), ProductVersion("AppleWebKit", "537.31")))_ ^

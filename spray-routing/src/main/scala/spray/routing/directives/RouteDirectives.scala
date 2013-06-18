@@ -83,19 +83,19 @@ object CompletionMagnet {
   implicit def fromHttpResponse(response: HttpResponse) =
     new CompletionMagnet {
       def route = new StandardRoute {
-        def apply(ctx: RequestContext) { ctx.complete(response) }
+        def apply(ctx: RequestContext): Unit = { ctx.complete(response) }
       }
     }
   implicit def fromStatus(status: StatusCode) =
     new CompletionMagnet {
       def route = new StandardRoute {
-        def apply(ctx: RequestContext) { ctx.complete(status) }
+        def apply(ctx: RequestContext): Unit = { ctx.complete(status) }
       }
     }
   implicit def fromHttpResponseFuture(future: Future[HttpResponse])(implicit ec: ExecutionContext) =
     new CompletionMagnet {
       def route = new StandardRoute {
-        def apply(ctx: RequestContext) { ctx.complete(future) }
+        def apply(ctx: RequestContext): Unit = { ctx.complete(future) }
       }
     }
   implicit def fromStatusCodeFuture(future: Future[StatusCode])(implicit ec: ExecutionContext): CompletionMagnet =
@@ -103,6 +103,6 @@ object CompletionMagnet {
 
   private class CompletionRoute[T: Marshaller](status: StatusCode, headers: List[HttpHeader], obj: T)
       extends StandardRoute {
-    def apply(ctx: RequestContext) { ctx.complete(status, headers, obj) }
+    def apply(ctx: RequestContext): Unit = { ctx.complete(status, headers, obj) }
   }
 }

@@ -40,7 +40,7 @@ class DeflateCompressor extends Compressor {
 
   def compress(buffer: Array[Byte]) = {
     @tailrec
-    def doCompress(offset: Int = 0) {
+    def doCompress(offset: Int = 0): Unit = {
       deflater.setInput(buffer, offset, math.min(outputBuf.length, buffer.length - offset))
       drain()
       val nextOffset = offset + outputBuf.length
@@ -68,7 +68,7 @@ class DeflateCompressor extends Compressor {
   }
 
   @tailrec
-  protected final def drain() {
+  protected final def drain(): Unit = {
     val len = deflater.deflate(outputBuf)
     if (len > 0) {
       output.write(outputBuf, 0, len)
@@ -83,7 +83,7 @@ class DeflateDecompressor extends Decompressor {
 
   protected def decompress(buffer: Array[Byte], offset: Int) = {
     @tailrec
-    def doDecompress(off: Int) {
+    def doDecompress(off: Int): Unit = {
       inflater.setInput(buffer, off, math.min(1024, buffer.length - off))
       drain()
       if (inflater.needsDictionary) throw new ZipException("ZLIB dictionary missing")
@@ -102,7 +102,7 @@ class DeflateDecompressor extends Decompressor {
   }
 
   @tailrec
-  private def drain() {
+  private def drain(): Unit = {
     val len = inflater.inflate(outputBuf)
     if (len > 0) {
       output.write(outputBuf, 0, len)

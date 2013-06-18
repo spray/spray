@@ -4,22 +4,24 @@ spray-caching
 =============
 
 *spray-caching* provides a lightweight and fast in-memory caching functionality based on Akka Futures and
-concurrentlinkedhashmap_. The key idea is to not store the actual values of type ``T`` themselves in the cache
-but rather corresponding Akka Futures, i.e. instances of type ``Future[T]``.
+concurrentlinkedhashmap_. The primary use-case is the "wrapping" of an expensive operation with a caching layer that,
+based on a certain key of type ``K``, runs the wrapped operation only once and returns the the cached value for all
+future accesses for the same key (as long as the respective entry has not expired).
 
-This approach has the advantage of nicely taking care of the thundering herds problem where many requests to a
-particular cache key (e.g. a resource URI) arrive before the first one could be completed. Normally (without special
-guarding techniques, like so-called "cowboy" entries) this can cause many requests to compete for system resources
-while trying to compute the same result thereby greatly reducing overall system performance.
-When you use a *spray-caching* cache the very first request that arrives for a certain cache key causes a future to
-be put into the cache which all later requests then "hook into". As soon as the first request completes all other
-ones complete as well. This minimizes processing time and server load for all requests.
+The central idea of a *spray-caching* cache is to not store the actual values of type ``T`` themselves in the cache
+but rather corresponding Akka Futures, i.e. instances of type ``Future[T]``. This approach has the advantage of nicely
+taking care of the thundering herds problem where many requests to a particular cache key (e.g. a resource URI) arrive
+before the first one could be completed. Normally (without special guarding techniques, like so-called "cowboy" entries)
+this can cause many requests to compete for system resources while trying to compute the same result thereby greatly
+reducing overall system performance. When you use a *spray-caching* cache the very first request that arrives for a
+certain cache key causes a future to be put into the cache which all later requests then "hook into". As soon as the
+first request completes all other ones complete as well. This minimizes processing time and server load for all requests.
 
 
 Dependencies
 ------------
 
-Apart from the Scala library (see :ref:`current-versions` chapter) *spray-caching* depends on
+Apart from the Scala library (see :ref:`Current Versions` chapter) *spray-caching* depends on
 
 - :ref:`spray-util`
 - concurrentlinkedhashmap_
@@ -102,6 +104,6 @@ has to be strictly greater than the time-to-idle.
    they might prevent gargabe collection of their values for longer than expected.
 
 
-.. _Cache: https://github.com/spray/spray/blob/master/spray-caching/src/main/scala/spray/caching/Cache.scala
-.. _SimpleLruCache and ExpiringLruCache: https://github.com/spray/spray/blob/master/spray-caching/src/main/scala/spray/caching/LruCache.scala
+.. _Cache: https://github.com/spray/spray/blob/release/1.0/spray-caching/src/main/scala/spray/caching/Cache.scala
+.. _SimpleLruCache and ExpiringLruCache: https://github.com/spray/spray/blob/release/1.0/spray-caching/src/main/scala/spray/caching/LruCache.scala
 .. _concurrentlinkedhashmap: http://code.google.com/p/concurrentlinkedhashmap/

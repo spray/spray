@@ -25,8 +25,8 @@ import spray.util._
 import HttpHeaders._
 
 class ResponseTransformationSpec extends Specification with RequestBuilding with ResponseTransformation {
-  implicit val system = ActorSystem()
-  import system.dispatcher
+  val system = ActorSystem()
+  implicit def executionContext = system.dispatcher
   type SendReceive = HttpRequest ⇒ Future[HttpResponse]
 
   "MessagePipelining" should {

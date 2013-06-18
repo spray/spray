@@ -24,7 +24,7 @@ transport must be non-zero).
 Dependencies
 ------------
 
-Apart from the Scala library (see :ref:`current-versions` chapter) *spray-client* depends on
+Apart from the Scala library (see :ref:`Current Versions` chapter) *spray-client* depends on
 
 - :ref:`spray-can`
 - :ref:`spray-http`

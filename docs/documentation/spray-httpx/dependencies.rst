@@ -1,7 +1,7 @@
 Dependencies
 ============
 
-Apart from the Scala library (see :ref:`current-versions` chapter) *spray-httpx* depends on
+Apart from the Scala library (see :ref:`Current Versions` chapter) *spray-httpx* depends on
 
 - :ref:`spray-http`
 - :ref:`spray-util`

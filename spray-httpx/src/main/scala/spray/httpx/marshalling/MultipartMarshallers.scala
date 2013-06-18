@@ -71,7 +71,7 @@ trait MultipartMarshallers {
               boundary = contentType.mediaType.asInstanceOf[MultipartMediaType].boundary
               Some(contentType)
             }
-            override def marshalTo(entity: HttpEntity) { ctx.marshalTo(overrideContentType(entity)) }
+            override def marshalTo(entity: HttpEntity): Unit = { ctx.marshalTo(overrideContentType(entity)) }
             override def startChunkedMessage(entity: HttpEntity, sentAck: Option[Any])(implicit sender: ActorRef) =
               ctx.startChunkedMessage(overrideContentType(entity), sentAck)
             def overrideContentType(entity: HttpEntity) =

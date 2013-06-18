@@ -13,13 +13,14 @@ route logic easy and convenient. This "route test DSL" is made available with th
 Dependencies
 ------------
 
-Apart from the Scala library (see :ref:`current-versions` chapter) *spray-testkit* depends on
+Apart from the Scala library (see :ref:`Current Versions` chapter) *spray-testkit* depends on
 
 - :ref:`spray-http` (with 'provided' scope)
 - :ref:`spray-httpx` (with 'provided' scope)
 - :ref:`spray-routing` (with 'provided' scope)
 - :ref:`spray-util`
 - akka-actor 2.0.x (with 'provided' scope, i.e. you need to pull it in yourself)
+- akka-testkit 2.0.x (with 'provided' scope, i.e. you need to pull it in yourself)
 - scalatest_ (with 'provided' scope, for the ``ScalatestRouteTest``)
 - specs2_ (with 'provided' scope, for the ``Specs2RouteTest``)
 

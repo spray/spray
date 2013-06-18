@@ -27,7 +27,7 @@ a new one, otherwise the existing one is going to be re-used.
 The connector will then respond with an ``Http.HostConnectorInfo`` event message, which repeats the connectors
 ``ActorRef`` and setup command (for easy matching against the result of an "ask").
 
-.. _spray.can.Http: https://github.com/spray/spray/blob/master/spray-can/src/main/scala/spray/can/Http.scala#L29
+.. _spray.can.Http: https://github.com/spray/spray/blob/release/1.0/spray-can/src/main/scala/spray/can/Http.scala#L29
 
 
 Using a HttpHostConnector

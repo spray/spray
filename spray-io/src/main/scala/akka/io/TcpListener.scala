@@ -104,7 +104,7 @@ private[io] class TcpListener(selectorRouter: ActorRef,
     } else registration.enableInterest(SelectionKey.OP_ACCEPT)
   }
 
-  override def postStop() {
+  override def postStop(): Unit = {
     try {
       if (channel.isOpen) {
         log.debug("Closing serverSocketChannel after being stopped")

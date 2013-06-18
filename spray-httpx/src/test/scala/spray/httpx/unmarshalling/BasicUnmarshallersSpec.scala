@@ -61,11 +61,10 @@ class BasicUnmarshallersSpec extends Specification {
     }
   }
 
-  //  "Unmarshaller.forNonEmpty" should {
-  //    "prevent the underlying unmarshaller from unmarshalling empty entities" in {
-  //      implicit val um = Unmarshaller.forNonEmpty[String]
-  //      EmptyEntity.as[String] === Left(ContentExpected)
-  //    }
-  //  }
-
+  "Unmarshaller.forNonEmpty" should {
+    "prevent the underlying unmarshaller from unmarshalling empty entities" in {
+      implicit val um = Unmarshaller.forNonEmpty[String]
+      EmptyEntity.as[String] === Left(ContentExpected)
+    }
+  }
 }
