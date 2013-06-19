@@ -125,7 +125,7 @@ class HttpServerConnectionPipelineSpec extends Specification with RawSpecs2Pipel
     }
 
     "if the response could not be written dispatch SendFailed messages" in {
-      "to the sender of an HttpResponse" in new MyFixture() {
+      "to the sender of an HttpResponse" in new MyFixture(handleBackpressure = false) {
         connectionActor ! Tcp.Received(ByteString(simpleRequest))
         val requestSender = commands.expectMsgType[Tell].sender
 
@@ -300,7 +300,7 @@ class HttpServerConnectionPipelineSpec extends Specification with RawSpecs2Pipel
       }
     }
 
-    "dispatch HEAD requests as GET requests and suppress sending of chunked responses" in new MyFixture() {
+    "dispatch HEAD requests as GET requests and suppress sending of chunked responses" in new MyFixture(handleBackpressure = false) {
       connectionActor ! Tcp.Received(ByteString(prep(
         """HEAD / HTTP/1.1
           |Host: test.com
@@ -335,7 +335,7 @@ class HttpServerConnectionPipelineSpec extends Specification with RawSpecs2Pipel
       wipeDate(commands.expectMsgType[Tcp.Write].data.utf8String) === simpleResponse
     }
 
-    "dispatch the default timeout response if the Timeout timed out" in new MyFixture() {
+    "dispatch the default timeout response if the Timeout timed out" in new MyFixture(handleBackpressure = false) {
       connectionActor ! Tcp.Received(ByteString(simpleRequest))
       val requestSender = commands.expectMsgType[Tell].sender
       Thread.sleep(55)
@@ -376,10 +376,15 @@ class HttpServerConnectionPipelineSpec extends Specification with RawSpecs2Pipel
      |"""
   }
 
-  val stage =
-    HttpServerConnection.pipelineStage(ServerSettings(system).copy(requestChunkAggregationLimit = 0), None)
-  val stageWithRCA =
-    HttpServerConnection.pipelineStage(ServerSettings(system), None)
+  def stage(configUpdates: (ServerSettings ⇒ ServerSettings)*) = {
+    val updater = configUpdates.reduce(_ andThen _)
+    HttpServerConnection.pipelineStage(updater(ServerSettings(system)), None)
+  }
+
+  def handleBackpressureSetting(doHandle: Boolean): ServerSettings ⇒ ServerSettings =
+    if (doHandle) identity /* default is to handle */ else _.copy(backpressureSettings = None)
+  def aggregateRequestChunksSetting(doAggregate: Boolean): ServerSettings ⇒ ServerSettings =
+    if (doAggregate) identity else _.copy(requestChunkAggregationLimit = 0)
 
   override lazy val config: Config = ConfigFactory.parseString("""
     spray.can.server {
@@ -392,8 +397,8 @@ class HttpServerConnectionPipelineSpec extends Specification with RawSpecs2Pipel
       stats-support = off
     }""")
 
-  class MyFixture(requestChunkAggregation: Boolean = false)
-      extends Fixture(if (requestChunkAggregation) stageWithRCA else stage) { fixture ⇒
+  class MyFixture(requestChunkAggregation: Boolean = false, handleBackpressure: Boolean = true)
+      extends Fixture(stage(aggregateRequestChunksSetting(requestChunkAggregation), handleBackpressureSetting(handleBackpressure))) { fixture ⇒
 
     val handler = TestProbe()
     val handlerRef = handler.ref
