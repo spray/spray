@@ -16,6 +16,8 @@ to be listed here (along with a backlink) please provide us with the following d
 
 ----
 
+.. TODO: add logos
+
 `VMware <http://www.vmware.com>`_
   Thanks again for all your hard work on spray. The vCloud Integration Manager wouldn't have shipped (at least on time)
   without it, and we look forward to continuing to use it in our current project as well. :-)
@@ -25,12 +27,15 @@ to be listed here (along with a backlink) please provide us with the following d
   about actor-based programming, but so far we have been very impressed by *spray's* performance and simplicity and the
   fantastic support on the user group.
 
+`Movio <http://movio.co>`_
+  Movio is a big data analytics platform for the cinema industry. We receive all our data through our Restful API,
+  powered by *spray*. We have some complex requirements with routing and *spray's* routing module provides the
+  flexibility to dynamically manipulate routes. We also use *spray* as the REST backend to our application console which
+  is a single page web app. *spray* is an awesome platform = akka + http + performance + simplicity.
+
 `Pongr <http://pongr.com>`_
   At Pongr, spray powers the restful API used by our iPhone & Android apps and has been in production for a few months
   now. We use *spray-routing* on top of *spray-can*, wrapped into one fat jar. We are very happy with *spray*.
-
-`zeebox <http://www.zeebox.com>`_
-  (comment pending :)
 
 `yardi.com <http://www.yardi.com>`_
   We're using *spray* for a sizeable set of REST web services for our real-estate platform. Some of the services are a
@@ -69,6 +74,3 @@ to be listed here (along with a backlink) please provide us with the following d
 
 `system insights <http://systeminsights.com>`_
   We converted from Jersey, which took about 2 weeks. The testability of *spray* is great -- and runs fast.
-
-`bifflabs <http://www.bifflabs.com>`_
-  (comment pending :)
