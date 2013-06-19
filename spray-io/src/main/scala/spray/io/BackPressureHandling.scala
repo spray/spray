@@ -109,7 +109,12 @@ object BackPressureHandling {
 
               case Tcp.CommandFailed(Tcp.Write(_, NoAck(seq: Int))) ⇒ writeFailed(seq)
               case Tcp.CommandFailed(Tcp.Write(_, Ack(seq: Int)))   ⇒ writeFailed(seq)
-              case ResumeReadingNow                                 ⇒ if (!isReading) resumeReading()
+              case Tcp.CommandFailed(ProbeForWriteQueueEmpty)       ⇒ writeFailed(out.nextSequenceNo)
+              case Tcp.CommandFailed(ProbeForEndOfWriting) ⇒
+                // just our probe failed, this still means the queue is empty and we can close now
+                commandPL(closeCommand.get)
+                become(closed())
+              case ResumeReadingNow ⇒ if (!isReading) resumeReading()
               case CanCloseNow ⇒
                 require(isClosing, "Received unexpected CanCloseNow when not closing")
                 commandPL(closeCommand.get)
@@ -226,5 +231,6 @@ object BackPressureHandling {
 
     def queue: Queue[Tcp.Write] = buffer
     def headSequenceNo = firstSequenceNo
+    def nextSequenceNo = firstSequenceNo + buffer.length
   }
 }

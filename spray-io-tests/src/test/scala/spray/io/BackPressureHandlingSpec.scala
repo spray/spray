@@ -312,8 +312,50 @@ class BackPressureHandlingSpec extends Specification with Specs2PipelineStageTes
       // don't defer aborts at all
       commands.expectMsg(Tcp.Abort)
     }
+
+    "a SuspendReading probe fails to be handled" in new Fixture(stage) {
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(0))
+
+      commands.expectNoMsg()
+      connectionActor ! Tcp.CommandFailed(NoAckedWrite(0))
+      commands.expectMsg(Tcp.ResumeWriting)
+      commands.expectMsg(Tcp.SuspendReading)
+
+      commands.expectNoMsg()
+
+      connectionActor ! Tcp.WritingResumed
+      commands.expectMsg(NoAckedWrite(0))
+      commands.expectMsg(BackPressureHandling.ProbeForWriteQueueEmpty)
+
+      connectionActor ! Tcp.CommandFailed(BackPressureHandling.ProbeForWriteQueueEmpty)
+      commands.expectMsg(Tcp.ResumeWriting)
+
+      commands.expectNoMsg()
+
+      connectionActor ! Tcp.WritingResumed
+      commands.expectMsg(BackPressureHandling.ProbeForWriteQueueEmpty)
+
+      events.expectNoMsg()
+    }
+    "a Close probe fails to be handled" in new Fixture(stage) {
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(0))
+
+      connectionActor ! Tcp.ConfirmedClose
+      commands.expectMsg(BackPressureHandling.ProbeForEndOfWriting)
+
+      commands.expectNoMsg()
+
+      connectionActor ! Tcp.CommandFailed(BackPressureHandling.ProbeForEndOfWriting)
+      // if the probe is the thing that's failing we still know that we now the last thing we want to do is closing
+      // so we do just this
+      commands.expectMsg(Tcp.ConfirmedClose)
+
+      events.expectNoMsg()
+    }
+
     // FIXME: these cases are not yet handled
-    "what happens if Probes fail to be handled?" in pending
     "what happens if WriteFile fails" in pending
   }
 }
