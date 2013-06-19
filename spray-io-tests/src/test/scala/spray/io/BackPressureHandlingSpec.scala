@@ -75,6 +75,7 @@ class BackPressureHandlingSpec extends Specification with Specs2PipelineStageTes
       commands.expectMsg(NoAckedWrite(1))
 
       connectionActor ! Tcp.CommandFailed(NoAckedWrite(1))
+      commands.expectMsg(Tcp.ResumeWriting)
       commands.expectMsg(Tcp.SuspendReading)
 
       events.expectNoMsg()
@@ -85,7 +86,6 @@ class BackPressureHandlingSpec extends Specification with Specs2PipelineStageTes
 
       connectionActor ! write
 
-      commands.expectMsg(Tcp.ResumeWriting)
       commands.expectNoMsg()
 
       connectionActor ! Tcp.WritingResumed
@@ -109,8 +109,8 @@ class BackPressureHandlingSpec extends Specification with Specs2PipelineStageTes
       commands.expectMsg(NoAckedWrite(2))
 
       connectionActor ! Tcp.CommandFailed(NoAckedWrite(1))
-      commands.expectMsg(Tcp.SuspendReading)
       commands.expectMsg(Tcp.ResumeWriting)
+      commands.expectMsg(Tcp.SuspendReading)
 
       connectionActor ! Tcp.CommandFailed(NoAckedWrite(2))
       commands.expectNoMsg()
@@ -131,8 +131,8 @@ class BackPressureHandlingSpec extends Specification with Specs2PipelineStageTes
 
       commands.expectNoMsg()
       connectionActor ! Tcp.CommandFailed(AckedWrite(0))
-      commands.expectMsg(Tcp.SuspendReading)
       commands.expectMsg(Tcp.ResumeWriting)
+      commands.expectMsg(Tcp.SuspendReading)
 
       commands.expectNoMsg()
 
@@ -150,8 +150,8 @@ class BackPressureHandlingSpec extends Specification with Specs2PipelineStageTes
 
       commands.expectNoMsg()
       connectionActor ! Tcp.CommandFailed(NoAckedWrite(0))
-      commands.expectMsg(Tcp.SuspendReading)
       commands.expectMsg(Tcp.ResumeWriting)
+      commands.expectMsg(Tcp.SuspendReading)
 
       commands.expectNoMsg()
 
@@ -184,8 +184,8 @@ class BackPressureHandlingSpec extends Specification with Specs2PipelineStageTes
       commands.expectMsg(NoAckedWrite(6))
 
       connectionActor ! Tcp.CommandFailed(NoAckedWrite(1))
-      commands.expectMsg(Tcp.SuspendReading)
       commands.expectMsg(Tcp.ResumeWriting)
+      commands.expectMsg(Tcp.SuspendReading)
 
       connectionActor ! Tcp.CommandFailed(NoAckedWrite(2))
       connectionActor ! Tcp.CommandFailed(NoAckedWrite(3))
@@ -208,6 +208,112 @@ class BackPressureHandlingSpec extends Specification with Specs2PipelineStageTes
 
       events.expectNoMsg()
     }
-    "gracefully handle PeerClosed" in pending
+
+    "Close immediately if queue is empty" in new Fixture(stage) {
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(0))
+
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(1))
+
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(2))
+
+      connectionActor ! write
+      commands.expectMsg(AckedWrite(3))
+
+      // queue can be emptied afterwards
+      connectionActor ! ack(3)
+      commands.expectNoMsg()
+
+      // close directly
+      connectionActor ! Tcp.ConfirmedClose
+      commands.expectMsg(Tcp.ConfirmedClose)
+    }
+    "gracefully handle Close messages without backpressure" in new Fixture(stage) {
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(0))
+
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(1))
+
+      connectionActor ! Tcp.ConfirmedClose
+      // close isn't send directly but instead a probe is queued to notify us that
+      // all former writes did complete successfully
+      commands.expectMsg(BackPressureHandling.ProbeForEndOfWriting)
+
+      commands.expectNoMsg()
+
+      connectionActor ! BackPressureHandling.CanCloseNow
+      commands.expectMsg(Tcp.ConfirmedClose)
+    }
+    "gracefully handle Close messages with backpressure (before experienced)" in new Fixture(stage) {
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(0))
+
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(1))
+
+      connectionActor ! Tcp.ConfirmedClose
+      commands.expectMsg(BackPressureHandling.ProbeForEndOfWriting)
+
+      commands.expectNoMsg()
+
+      connectionActor ! Tcp.CommandFailed(NoAckedWrite(1))
+      // probe is discarded as well, so we have to make sure it is rescheduled later
+      connectionActor ! Tcp.CommandFailed(BackPressureHandling.ProbeForEndOfWriting)
+      commands.expectMsg(Tcp.ResumeWriting)
+
+      connectionActor ! Tcp.WritingResumed
+      commands.expectMsg(NoAckedWrite(1))
+      commands.expectMsg(BackPressureHandling.ProbeForEndOfWriting)
+
+      connectionActor ! BackPressureHandling.CanCloseNow
+      commands.expectMsg(Tcp.ConfirmedClose)
+    }
+    "gracefully handle Close messages with backpressure (in buffering mode)" in new Fixture(stage) {
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(0))
+
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(1))
+
+      commands.expectNoMsg()
+
+      connectionActor ! Tcp.CommandFailed(NoAckedWrite(1))
+      commands.expectMsg(Tcp.ResumeWriting)
+      commands.expectMsg(Tcp.SuspendReading)
+
+      connectionActor ! Tcp.ConfirmedClose
+      // we ResumeReading instantly (since no writes are expected anyways) but defer
+      // actually closing to after the point where all writes have been sent
+      commands.expectMsg(Tcp.ResumeReading)
+      commands.expectNoMsg()
+
+      connectionActor ! Tcp.WritingResumed
+      commands.expectMsg(NoAckedWrite(1))
+      commands.expectMsg(BackPressureHandling.ProbeForEndOfWriting)
+
+      connectionActor ! BackPressureHandling.CanCloseNow
+      commands.expectMsg(Tcp.ConfirmedClose)
+    }
+    "abort instantly" in new Fixture(stage) {
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(0))
+
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(1))
+
+      connectionActor ! Tcp.CommandFailed(NoAckedWrite(1))
+      commands.expectMsg(Tcp.ResumeWriting)
+      commands.expectMsg(Tcp.SuspendReading)
+
+      connectionActor ! Tcp.Abort
+      // don't defer aborts at all
+      commands.expectMsg(Tcp.Abort)
+    }
+    // FIXME: these cases are not yet handled
+    "what happens if Probes fail to be handled?" in pending
+    "what happens if WriteFile fails" in pending
   }
 }

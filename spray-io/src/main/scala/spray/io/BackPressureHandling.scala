@@ -2,7 +2,7 @@ package spray.io
 
 import akka.io._
 import scala.collection.immutable.Queue
-import akka.io.Tcp.NoAck
+import akka.io.Tcp.{ CloseCommand, NoAck }
 import scala.annotation.tailrec
 import akka.util.ByteString
 
@@ -46,30 +46,54 @@ import akka.util.ByteString
 object BackPressureHandling {
   case class Ack(offset: Int) extends Tcp.Event
   object ResumeReadingNow extends Tcp.Event
+  object CanCloseNow extends Tcp.Event
   val ProbeForWriteQueueEmpty = Tcp.Write(ByteString.empty, ResumeReadingNow)
+  val ProbeForEndOfWriting = Tcp.Write(ByteString.empty, CanCloseNow)
 
   def apply(ackRate: Int, lowWatermark: Int = Int.MaxValue): PipelineStage =
     new PipelineStage {
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
         new Pipelines with DynamicCommandPipeline with DynamicEventPipeline {
-          val (initialEventPipeline, initialCommandPipeline) =
-            writeThrough(new OutQueue(ackRate), isReading = true)
+          import context.log
 
-          def writeThrough(out: OutQueue, isReading: Boolean): (EPL, CPL) = {
+          val (initialEventPipeline, initialCommandPipeline) =
+            writeThrough(new OutQueue(ackRate), isReading = true, closeCommand = None)
+
+          /**
+           * In this state all incoming write requests have already been relayed to the connection. There's a buffer
+           * of still unacknowledged writes to retry when back-pressure is experienced.
+           *
+           * Invariant:
+           *   * we've not experienced any failed writes
+           */
+          def writeThrough(out: OutQueue, isReading: Boolean, closeCommand: Option[Tcp.CloseCommand]): (EPL, CPL) = {
             def resumeReading(): Unit = {
               commandPL(Tcp.ResumeReading)
-              become(writeThrough(out, isReading = true))
+              become(writeThrough(out, isReading = true, closeCommand))
             }
             def writeFailed(idx: Int): Unit = {
               out.dequeue(idx - 1)
 
               // go into buffering mode
-              become(buffering(out, isReading))
+              commandPL(Tcp.ResumeWriting)
+              become(buffering(out, isReading, closeCommand))
             }
+            def isClosing = closeCommand.isDefined
 
             val cpl: CPL = {
+              case _: Tcp.Write if isClosing ⇒ log.warning("Can't process more writes when closing. Dropping...")
+              case a @ Tcp.Abort             ⇒ commandPL(a) // always forward abort
+              case c: Tcp.CloseCommand if out.queue.isEmpty ⇒
+                commandPL(c)
+                become(closed())
+              case c: Tcp.CloseCommand ⇒
+                if (isClosing) log.warning(s"Ignored duplicate close request when closing. $c")
+                else {
+                  commandPL(ProbeForEndOfWriting)
+                  become(writeThrough(out, isReading, Some(c)))
+                }
               case w @ Tcp.Write(data, NoAck(noAck)) ⇒
-                if (noAck != null) context.log.warning(s"BackPressureHandling doesn't support custom NoAcks $noAck")
+                if (noAck != null) log.warning(s"BackPressureHandling doesn't support custom NoAcks $noAck")
 
                 commandPL(out.enqueue(w))
               case w @ Tcp.Write(data, ack) ⇒ commandPL(out.enqueue(w, forceAck = true))
@@ -84,38 +108,74 @@ object BackPressureHandling {
                 if (!isReading && out.queue.length < lowWatermark) resumeReading()
 
               case Tcp.CommandFailed(Tcp.Write(_, NoAck(seq: Int))) ⇒ writeFailed(seq)
-              case Tcp.CommandFailed(Tcp.Write(_, Ack(seq: Int))) ⇒ writeFailed(seq)
-              case ResumeReadingNow ⇒ if (!isReading) resumeReading()
+              case Tcp.CommandFailed(Tcp.Write(_, Ack(seq: Int)))   ⇒ writeFailed(seq)
+              case ResumeReadingNow                                 ⇒ if (!isReading) resumeReading()
+              case CanCloseNow ⇒
+                require(isClosing, "Received unexpected CanCloseNow when not closing")
+                commandPL(closeCommand.get)
+                become(closed())
               case e ⇒ eventPL(e)
             }
 
             (epl, cpl)
           }
 
-          def buffering(out: OutQueue, isReading: Boolean): (EPL, CPL) = {
-            //context.log.warning(s"Now buffering with queue length ${out.queue.length}")
+          /**
+           * The state where writing is suspended and we are waiting for WritingResumed. Reading will be suspended
+           * if it currently isn't and if the connection isn't already going to be closed.
+           */
+          def buffering(out: OutQueue, isReading: Boolean, closeCommand: Option[CloseCommand]): (EPL, CPL) = {
+            def isClosing = closeCommand.isDefined
 
-            if (isReading) commandPL(Tcp.SuspendReading)
-            commandPL(Tcp.ResumeWriting)
+            if (!isClosing && isReading) {
+              commandPL(Tcp.SuspendReading)
+              buffering(out, isReading = false, closeCommand)
+            } else {
+              val epl: EPL = {
+                case Tcp.WritingResumed ⇒
+                  // TODO: we are rebuilding the complete queue here to be sure all
+                  // the side-effects have been applied as well
+                  // This could be improved by reusing the internal data structures and
+                  // just executing the side-effects
 
+                  become(writeThrough(new OutQueue(ackRate, out.headSequenceNo), isReading = isReading, closeCommand = None))
+                  out.queue.foreach(commandPipeline) // commandPipeline is already in writeThrough state
+
+                  // we run one special probe writing request to make sure we will ResumeReading when the queue is empty
+                  if (!isClosing) commandPL(ProbeForWriteQueueEmpty)
+                  // otherwise, if we are closing we replay the close as well
+                  else commandPipeline(closeCommand.get)
+
+                case Tcp.CommandFailed(_: Tcp.Write) ⇒ // drop this, this is expected
+                case e                               ⇒ eventPL(e)
+              }
+              val cpl: CPL = {
+                case w: Tcp.Write ⇒
+                  if (isClosing) log.warning("Can't process more writes when closing. Dropping...")
+                  else out.enqueue(w)
+                case a @ Tcp.Abort ⇒ commandPL(a)
+                case c: Tcp.CloseCommand ⇒
+                  if (isClosing) log.warning(s"Ignored duplicate close request ($c) when closing.")
+                  else {
+                    // we can resume reading now (even if we don't expect any more to come in)
+                    // because by definition more data read can't lead to more traffic on the
+                    // writing side once the writing side was closed
+                    if (!isReading) commandPL(Tcp.ResumeReading)
+                    become(buffering(out, true, Some(c)))
+                  }
+                case c ⇒ commandPL(c)
+              }
+              (epl, cpl)
+            }
+          }
+
+          def closed(): (EPL, CPL) = {
             val epl: EPL = {
-              case Tcp.WritingResumed ⇒
-                // TODO: we are rebuilding the complete queue here to be sure all
-                // the side-effects have been applied as well
-                // This could be improved by reusing the internal data structures and
-                // just executing the side-effects
-
-                become(writeThrough(new OutQueue(ackRate, out.headSequenceNo), isReading = false))
-                out.queue.foreach(commandPipeline) // commandPipeline is already in writeThrough state
-                // we run one special probe writing request to make sure we will ResumeReading when the queue is empty
-                commandPL(ProbeForWriteQueueEmpty)
-
-              case Tcp.CommandFailed(_: Tcp.Write) ⇒ // drop this, this is expected
-              case e                               ⇒ eventPL(e)
+              case e ⇒ eventPL(e)
             }
             val cpl: CPL = {
-              case w: Tcp.Write ⇒ out.enqueue(w)
-              case c            ⇒ commandPL(c)
+              case c @ (_: Tcp.Write | _: Tcp.CloseCommand) ⇒ log.warning("Connection is already closed, dropping command $c")
+              case c                                        ⇒ commandPL(c)
             }
             (epl, cpl)
           }
