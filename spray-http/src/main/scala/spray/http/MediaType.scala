@@ -19,11 +19,10 @@ package spray.http
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.annotation.tailrec
-import org.parboiled.common.Base64
-import java.util
 
 sealed abstract class MediaRange extends LazyValueBytesRenderable {
   def mainType: String
+  def parameters: Map[String, String]
   def matches(mediaType: MediaType): Boolean
   def isApplication = false
   def isAudio = false
@@ -34,10 +33,37 @@ sealed abstract class MediaRange extends LazyValueBytesRenderable {
   def isVideo = false
 }
 
+object MediaRange {
+  private[http] trait MainTypeBased extends MediaRange {
+    override def isApplication = mainType == "application"
+    override def isAudio = mainType == "audio"
+    override def isImage = mainType == "image"
+    override def isMessage = mainType == "message"
+    override def isMultipart = mainType == "multipart"
+    override def isText = mainType == "text"
+    override def isVideo = mainType == "video"
+  }
+
+  private[http] def valueFor(mainType: String, subType: String, parameters: Map[String, String]): String = {
+    val r = new StringRendering ~~ mainType ~~ '/' ~~ subType
+    if (parameters.nonEmpty) parameters foreach { case (k, v) ⇒ r ~~ ';' ~~ ' ' ~~ k ~~ '=' ~~# v }
+    r.get
+  }
+
+  private case class CustomMediaRange(mainType: String, parameters: Map[String, String]) extends MainTypeBased {
+    val value = valueFor(mainType, "*", parameters)
+    def matches(mediaType: MediaType) = mediaType.mainType == mainType
+  }
+
+  def custom(mainType: String, parameters: Map[String, String] = Map.empty): MediaRange =
+    CustomMediaRange(mainType, parameters)
+}
+
 object MediaRanges extends ObjectRegistry[String, MediaRange] {
 
   sealed abstract case class PredefinedMediaRange(value: String) extends MediaRange {
     val mainType = value takeWhile (_ != '/')
+    def parameters = Map.empty
     register(mainType.toLowerCase, this)
   }
 
@@ -72,27 +98,12 @@ object MediaRanges extends ObjectRegistry[String, MediaRange] {
     def matches(mediaType: MediaType) = mediaType.isVideo
     override def isVideo: Boolean = true
   }
-
-  private[http] trait MainTypeBased extends MediaRange {
-    override def isApplication = mainType == "application"
-    override def isAudio = mainType == "audio"
-    override def isImage = mainType == "image"
-    override def isMessage = mainType == "message"
-    override def isMultipart = mainType == "multipart"
-    override def isText = mainType == "text"
-    override def isVideo = mainType == "video"
-  }
-
-  private case class CustomMediaRange(mainType: String) extends MainTypeBased {
-    val value = mainType + "/*"
-    def matches(mediaType: MediaType) = mediaType.mainType == mainType
-  }
-
-  def custom(mainType: String): MediaRange = CustomMediaRange(mainType)
 }
 
 sealed abstract case class MediaType private[http] (value: String)(val mainType: String, val subType: String,
-                                                                   val compressible: Boolean, val binary: Boolean, val fileExtensions: Seq[String]) extends MediaRange {
+                                                                   val compressible: Boolean, val binary: Boolean,
+                                                                   val fileExtensions: Seq[String],
+                                                                   val parameters: Map[String, String]) extends MediaRange {
   override def matches(mediaType: MediaType) = this == mediaType
 }
 
@@ -103,10 +114,11 @@ object MediaType {
    * your custom Marshallers and Unmarshallers.
    */
   def custom(mainType: String, subType: String, compressible: Boolean = false, binary: Boolean = false,
-             fileExtensions: Seq[String] = Nil): MediaType =
-    new MediaType(mainType + '/' + subType)(mainType, subType, compressible, binary, fileExtensions) with MediaRanges.MainTypeBased {
-      def withCompressible = custom(mainType, subType, compressible = true, binary, fileExtensions)
-      def withBinary = custom(mainType, subType, compressible, binary = true, fileExtensions)
+             fileExtensions: Seq[String] = Nil, parameters: Map[String, String] = Map.empty): MediaType =
+    new MediaType(MediaRange.valueFor(mainType, subType, parameters))(mainType, subType, compressible, binary,
+      fileExtensions, parameters) with MediaRange.MainTypeBased {
+      def withCompressible = custom(mainType, subType, compressible = true, binary, fileExtensions, parameters)
+      def withBinary = custom(mainType, subType, compressible, binary = true, fileExtensions, parameters)
     }
 
   def custom(value: String): MediaType = {
@@ -135,40 +147,41 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   def forExtension(ext: String): Option[MediaType] = extensionMap.get.get(ext.toLowerCase)
 
   private def app(subType: String, compressible: Boolean, binary: Boolean, fileExtensions: String*) = register {
-    new MediaType("application/" + subType)("application", subType, compressible, binary, fileExtensions) {
+    new MediaType("application/" + subType)("application", subType, compressible, binary, fileExtensions, Map.empty) {
       override def isApplication = true
     }
   }
   private def aud(subType: String, compressible: Boolean, fileExtensions: String*) = register {
-    new MediaType("audio/" + subType)("audio", subType, compressible, binary = true, fileExtensions) {
+    new MediaType("audio/" + subType)("audio", subType, compressible, binary = true, fileExtensions, Map.empty) {
       override def isAudio = true
     }
   }
   private def img(subType: String, compressible: Boolean, binary: Boolean, fileExtensions: String*) = register {
-    new MediaType("image/" + subType)("image", subType, compressible, binary, fileExtensions) {
+    new MediaType("image/" + subType)("image", subType, compressible, binary, fileExtensions, Map.empty) {
       override def isImage = true
     }
   }
   private def msg(subType: String, fileExtensions: String*) = register {
-    new MediaType("message/" + subType)("message", subType, compressible = true, binary = false, fileExtensions) {
+    new MediaType("message/" + subType)("message", subType, compressible = true, binary = false, fileExtensions, Map.empty) {
       override def isMessage = true
     }
   }
   private def txt(subType: String, fileExtensions: String*) = register {
-    new MediaType("text/" + subType)("text", subType, compressible = true, binary = false, fileExtensions) {
+    new MediaType("text/" + subType)("text", subType, compressible = true, binary = false, fileExtensions, Map.empty) {
       override def isText = true
     }
   }
   private def vid(subType: String, fileExtensions: String*) = register {
-    new MediaType("video/" + subType)("video", subType, compressible = false, binary = true, fileExtensions) {
+    new MediaType("video/" + subType)("video", subType, compressible = false, binary = true, fileExtensions, Map.empty) {
       override def isVideo = true
     }
   }
 
-  class MultipartMediaType(subType: String, val boundary: String) extends MediaType({
+  class MultipartMediaType(subType: String, val boundary: String,
+                           parameters: Map[String, String] = Map.empty) extends MediaType({
     if (boundary.isEmpty) "multipart/" + subType
     else (new StringRendering ~~ "multipart/" ~~ subType ~~ "; boundary=" ~~# boundary).get
-  })("multipart", subType, compressible = true, binary = false, fileExtensions = Nil) {
+  })("multipart", subType, compressible = true, binary = false, fileExtensions = Nil, parameters = parameters) {
     override def isMultipart = true
     override def matches(that: MediaType): Boolean = that match {
       case x: MultipartMediaType ⇒ x.subType == this.subType
@@ -285,19 +298,19 @@ object MediaTypes extends ObjectRegistry[(String, String), MediaType] {
   val `message/delivery-status` = msg("delivery-status")
   val `message/rfc822`          = msg("rfc822", "eml", "mht", "mhtml", "mime")
 
-  class `multipart/mixed`      (boundary: String) extends MultipartMediaType("mixed", boundary)
-  class `multipart/alternative`(boundary: String) extends MultipartMediaType("alternative", boundary)
-  class `multipart/related`    (boundary: String) extends MultipartMediaType("related", boundary)
-  class `multipart/form-data`  (boundary: String) extends MultipartMediaType("form-data", boundary)
-  class `multipart/signed`     (boundary: String) extends MultipartMediaType("signed", boundary)
-  class `multipart/encrypted`  (boundary: String) extends MultipartMediaType("encrypted", boundary)
+  class `multipart/mixed`      (boundary: String, parameters: Map[String, String] = Map.empty) extends MultipartMediaType("mixed", boundary, parameters)
+  class `multipart/alternative`(boundary: String, parameters: Map[String, String] = Map.empty) extends MultipartMediaType("alternative", boundary, parameters)
+  class `multipart/related`    (boundary: String, parameters: Map[String, String] = Map.empty) extends MultipartMediaType("related", boundary, parameters)
+  class `multipart/form-data`  (boundary: String, parameters: Map[String, String] = Map.empty) extends MultipartMediaType("form-data", boundary, parameters)
+  class `multipart/signed`     (boundary: String, parameters: Map[String, String] = Map.empty) extends MultipartMediaType("signed", boundary, parameters)
+  class `multipart/encrypted`  (boundary: String, parameters: Map[String, String] = Map.empty) extends MultipartMediaType("encrypted", boundary, parameters)
 
-  object `multipart/mixed`       extends `multipart/mixed`("")
-  object `multipart/alternative` extends `multipart/alternative`("")
-  object `multipart/related`     extends `multipart/related`("")
-  object `multipart/form-data`   extends `multipart/form-data`("")
-  object `multipart/signed`      extends `multipart/signed`("")
-  object `multipart/encrypted`   extends `multipart/encrypted`("")
+  object `multipart/mixed`       extends `multipart/mixed`("", Map.empty)
+  object `multipart/alternative` extends `multipart/alternative`("", Map.empty)
+  object `multipart/related`     extends `multipart/related`("", Map.empty)
+  object `multipart/form-data`   extends `multipart/form-data`("", Map.empty)
+  object `multipart/signed`      extends `multipart/signed`("", Map.empty)
+  object `multipart/encrypted`   extends `multipart/encrypted`("", Map.empty)
 
   val `text/asp`                  = txt("asp", "asp")
   val `text/cache-manifest`       = txt("cache-manifest", "manifest")

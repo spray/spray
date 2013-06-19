@@ -106,7 +106,7 @@ object ServerFrontend {
                   }
                 if (firstOpenRequest.isEmpty) commandPL {
                   ResponsePartRenderingContext(response, request.method, request.protocol,
-                    closeAfterResponseCompletion, Tcp.NoAck(PartAndSender(response, context.self)))
+                    closeAfterResponseCompletion, if (autoBackPressure) Tcp.NoAck else Tcp.NoAck(PartAndSender(response, context.self)))
                 }
                 else throw new NotImplementedError("fastPath is not yet supported with pipelining enabled")
 
@@ -154,6 +154,8 @@ object ServerFrontend {
             nextOpenRequest.dispatchInitialRequestPartToHandler()
             if (firstUnconfirmed.isEmpty) firstUnconfirmed = firstOpenRequest
           }
+
+          def autoBackPressure = serverSettings.backpressureSettings.isDefined
         }
     }
   }
