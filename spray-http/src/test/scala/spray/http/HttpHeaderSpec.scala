@@ -42,8 +42,8 @@ class HttpHeaderSpec extends Specification {
       example(Accept(`text/html`, `image/gif`, `image/jpeg`, `*/*`, `*/*`), fix(_).replace("*,", "*/*,"))_ ^
       "Accept: application/vnd.spray" !
       example(Accept(`application/vnd.spray`))_ ^
-      "Accept: */*, text/plain, custom/custom" !
-      example(Accept(`*/*`, `text/plain`, MediaType.custom("custom/custom")))_ ^
+      "Accept: */*, text/*; foo=bar, custom/custom; bar=\"b>az\"" !
+      example(Accept(`*/*`, MediaRange.custom("text", Map("foo" -> "bar")), MediaType.custom("custom", "custom", parameters = Map("bar" -> "b>az"))))_ ^
       p ^
       "Accept-Charset: utf8; q=0.5, *" !
       example(`Accept-Charset`(`UTF-8`, HttpCharsets.`*`), fix(_).replace("utf", "UTF-"))_ ^
@@ -100,8 +100,8 @@ class HttpHeaderSpec extends Specification {
       example(`Content-Type`(`application/pdf`))_ ^
       "Content-Type: text/plain; charset=utf8" !
       example(`Content-Type`(ContentType(`text/plain`, `UTF-8`)), fix(_).replace("utf", "UTF-"))_ ^
-      "Content-Type: text/xml; charset=windows-1252" !
-      example(`Content-Type`(ContentType(`text/xml`, `windows-1252`)))_ ^
+      "Content-Type: text/xml; version=3; charset=windows-1252" !
+      example(`Content-Type`(ContentType(MediaType.custom("text", "xml", parameters = Map("version" -> "3")), `windows-1252`)))_ ^
       "Content-Type: text/plain; charset=fancy-pants" !
       errorExample(ErrorInfo("Illegal HTTP header 'Content-Type': Unsupported charset", "fancy-pants"))_ ^
       "Content-Type: multipart/mixed; boundary=ABC123" ! example(`Content-Type`(ContentType(new `multipart/mixed`("ABC123"))))_ ^
@@ -177,7 +177,7 @@ class HttpHeaderSpec extends Specification {
 
   def example(expected: HttpHeader, fix: String ⇒ String = fix)(line: String) = {
     val Array(name, value) = line.split(": ", 2)
-    (HttpParser.parseHeader(RawHeader(name, value)) === Right(expected)) and (expected.toString === fix(line))
+    HttpParser.parseHeader(RawHeader(name, value)) === Right(expected) and expected.toString === fix(line)
   }
 
   def fix(line: String) = line.replaceAll("""\s*;\s*q=\d?(\.\d)?""", "").replaceAll("""\s\s+""", " ")

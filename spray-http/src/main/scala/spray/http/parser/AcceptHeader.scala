@@ -24,29 +24,22 @@ private[parser] trait AcceptHeader {
   this: Parser with ProtocolParameterRules with CommonActions ⇒
 
   def `*Accept` = rule(
-    zeroOrMore(MediaRangeDecl ~ optional(AcceptParams), separator = ListSep) ~ EOI ~~> (HttpHeaders.Accept(_)))
+    zeroOrMore(MediaRangeDecl, separator = ListSep) ~ EOI ~~> (HttpHeaders.Accept(_)))
 
   def MediaRangeDecl = rule {
-    MediaRangeDef ~ zeroOrMore(";" ~ Parameter ~ DROP) // TODO: support parameters    
+    MediaRangeDef ~ zeroOrMore(";" ~ Parameter) ~~> { (main, sub, params) ⇒
+      // we don't support q values yet and don't want them to cause creation of custom MediaTypes every time
+      // we see them, so we filter them out of the parameter list here
+      val parameters = params.toMap.filterKeys(_ != "q")
+      if (sub == "*") {
+        val mainLower = main.toLowerCase
+        if (parameters.isEmpty) MediaRanges.getForKey(mainLower) getOrElse MediaRange.custom(mainLower)
+        else MediaRange.custom(mainLower, parameters)
+      } else getMediaType(main, sub, parameters = parameters)
+    }
   }
 
-  def MediaRangeDef = rule(
-    ("*/*" ~ push("*", "*") | Type ~ "/" ~ ("*" ~ push("*") | Subtype) | "*" ~ push("*", "*"))
-      ~~> (getMediaRange(_, _)))
-
-  def AcceptParams = rule {
-    ";" ~ "q" ~ "=" ~ QValue ~ zeroOrMore(AcceptExtension) // TODO: support qvalues
+  def MediaRangeDef = rule {
+    "*/*" ~ push("*", "*") | Type ~ "/" ~ ("*" ~ push("*") | Subtype) | "*" ~ push("*", "*")
   }
-
-  def AcceptExtension = rule {
-    ";" ~ Token ~ optional("=" ~ (Token | QuotedString)) ~ DROP2 // TODO: support extensions
-  }
-
-  // helpers
-
-  def getMediaRange(mainType: String, subType: String): MediaRange =
-    if (subType == "*") {
-      val mainTypeLower = mainType.toLowerCase
-      MediaRanges.getForKey(mainTypeLower) getOrElse MediaRanges.custom(mainTypeLower)
-    } else getMediaType(mainType, subType)
 }
