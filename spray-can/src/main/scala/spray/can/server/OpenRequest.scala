@@ -177,7 +177,8 @@ trait OpenRequestComponent { component ⇒
     private def sendPart(part: HttpMessagePartWrapper): Unit = {
       val responsePart = part.messagePart.asInstanceOf[HttpResponsePart]
       val ack = part.ack match {
-        case None ⇒ Tcp.NoAck(PartAndSender(responsePart, context.sender))
+        case None ⇒
+          if (settings.backpressureSettings.isDefined) Tcp.NoAck else Tcp.NoAck(PartAndSender(responsePart, context.sender))
         case Some(x) ⇒
           pendingSentAcks += 1
           AckEventWithReceiver(x, handler)
