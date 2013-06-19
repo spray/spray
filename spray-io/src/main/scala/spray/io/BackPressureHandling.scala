@@ -53,11 +53,11 @@ object BackPressureHandling {
   def apply(ackRate: Int, lowWatermark: Int = Int.MaxValue): PipelineStage =
     new PipelineStage {
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
-        new Pipelines with DynamicCommandPipeline with DynamicEventPipeline { effective ⇒
+        new DynamicPipelines { effective ⇒
           import context.log
 
-          val initialEventPipeline, initialCommandPipeline = null
-          become(writeThrough(new OutQueue(ackRate), isReading = true, closeCommand = None))
+          def initialPipeline =
+            writeThrough(new OutQueue(ackRate), isReading = true, closeCommand = None)
 
           /**
            * In this state all incoming write requests have already been relayed to the connection. There's a buffer
@@ -179,11 +179,6 @@ object BackPressureHandling {
             def eventPipeline = {
               case e ⇒ eventPL(e)
             }
-          }
-
-          def become(newPipeline: Pipelines): Unit = {
-            eventPipeline.become(newPipeline.eventPipeline)
-            commandPipeline.become(newPipeline.commandPipeline)
           }
         }
     }
