@@ -53,11 +53,11 @@ object BackPressureHandling {
   def apply(ackRate: Int, lowWatermark: Int = Int.MaxValue): PipelineStage =
     new PipelineStage {
       def apply(context: PipelineContext, commandPL: CPL, eventPL: EPL): Pipelines =
-        new Pipelines with DynamicCommandPipeline with DynamicEventPipeline {
+        new Pipelines with DynamicCommandPipeline with DynamicEventPipeline { effective ⇒
           import context.log
 
-          val (initialEventPipeline, initialCommandPipeline) =
-            writeThrough(new OutQueue(ackRate), isReading = true, closeCommand = None)
+          val initialEventPipeline, initialCommandPipeline = null
+          become(writeThrough(new OutQueue(ackRate), isReading = true, closeCommand = None))
 
           /**
            * In this state all incoming write requests have already been relayed to the connection. There's a buffer
@@ -66,7 +66,7 @@ object BackPressureHandling {
            * Invariant:
            *   * we've not experienced any failed writes
            */
-          def writeThrough(out: OutQueue, isReading: Boolean, closeCommand: Option[Tcp.CloseCommand]): (EPL, CPL) = {
+          def writeThrough(out: OutQueue, isReading: Boolean, closeCommand: Option[Tcp.CloseCommand]): Pipelines = new Pipelines {
             def resumeReading(): Unit = {
               commandPL(Tcp.ResumeReading)
               become(writeThrough(out, isReading = true, closeCommand))
@@ -80,7 +80,7 @@ object BackPressureHandling {
             }
             def isClosing = closeCommand.isDefined
 
-            val cpl: CPL = {
+            def commandPipeline = {
               case _: Tcp.Write if isClosing ⇒ log.warning("Can't process more writes when closing. Dropping...")
               case a @ Tcp.Abort             ⇒ commandPL(a) // always forward abort
               case c: Tcp.CloseCommand if out.queue.isEmpty ⇒
@@ -100,7 +100,7 @@ object BackPressureHandling {
               case c                        ⇒ commandPL(c)
             }
 
-            val epl: EPL = {
+            def eventPipeline = {
               case Ack(idx) ⇒
                 // dequeue and send out possible user level ack
                 out.dequeue(idx).foreach(eventPL)
@@ -121,40 +121,20 @@ object BackPressureHandling {
                 become(closed())
               case e ⇒ eventPL(e)
             }
-
-            (epl, cpl)
           }
 
           /**
            * The state where writing is suspended and we are waiting for WritingResumed. Reading will be suspended
            * if it currently isn't and if the connection isn't already going to be closed.
            */
-          def buffering(out: OutQueue, isReading: Boolean, closeCommand: Option[CloseCommand]): (EPL, CPL) = {
+          def buffering(out: OutQueue, isReading: Boolean, closeCommand: Option[CloseCommand]): Pipelines = {
             def isClosing = closeCommand.isDefined
 
             if (!isClosing && isReading) {
               commandPL(Tcp.SuspendReading)
               buffering(out, isReading = false, closeCommand)
-            } else {
-              val epl: EPL = {
-                case Tcp.WritingResumed ⇒
-                  // TODO: we are rebuilding the complete queue here to be sure all
-                  // the side-effects have been applied as well
-                  // This could be improved by reusing the internal data structures and
-                  // just executing the side-effects
-
-                  become(writeThrough(new OutQueue(ackRate, out.headSequenceNo), isReading = isReading, closeCommand = None))
-                  out.queue.foreach(commandPipeline) // commandPipeline is already in writeThrough state
-
-                  // we run one special probe writing request to make sure we will ResumeReading when the queue is empty
-                  if (!isClosing) commandPL(ProbeForWriteQueueEmpty)
-                  // otherwise, if we are closing we replay the close as well
-                  else commandPipeline(closeCommand.get)
-
-                case Tcp.CommandFailed(_: Tcp.Write) ⇒ // drop this, this is expected
-                case e                               ⇒ eventPL(e)
-              }
-              val cpl: CPL = {
+            } else new Pipelines {
+              def commandPipeline = {
                 case w: Tcp.Write ⇒
                   if (isClosing) log.warning("Can't process more writes when closing. Dropping...")
                   else out.enqueue(w)
@@ -170,24 +150,40 @@ object BackPressureHandling {
                   }
                 case c ⇒ commandPL(c)
               }
-              (epl, cpl)
+              def eventPipeline = {
+                case Tcp.WritingResumed ⇒
+                  // TODO: we are rebuilding the complete queue here to be sure all
+                  // the side-effects have been applied as well
+                  // This could be improved by reusing the internal data structures and
+                  // just executing the side-effects
+
+                  become(writeThrough(new OutQueue(ackRate, out.headSequenceNo), isReading = isReading, closeCommand = None))
+                  out.queue.foreach(effective.commandPipeline) // commandPipeline is already in writeThrough state
+
+                  // we run one special probe writing request to make sure we will ResumeReading when the queue is empty
+                  if (!isClosing) commandPL(ProbeForWriteQueueEmpty)
+                  // otherwise, if we are closing we replay the close as well
+                  else effective.commandPipeline(closeCommand.get)
+
+                case Tcp.CommandFailed(_: Tcp.Write) ⇒ // drop this, this is expected
+                case e                               ⇒ eventPL(e)
+              }
             }
           }
 
-          def closed(): (EPL, CPL) = {
-            val epl: EPL = {
-              case e ⇒ eventPL(e)
-            }
-            val cpl: CPL = {
+          def closed(): Pipelines = new Pipelines {
+            def commandPipeline = {
               case c @ (_: Tcp.Write | _: Tcp.CloseCommand) ⇒ log.warning("Connection is already closed, dropping command $c")
               case c                                        ⇒ commandPL(c)
             }
-            (epl, cpl)
+            def eventPipeline = {
+              case e ⇒ eventPL(e)
+            }
           }
 
-          def become(newPipeline: (EPL, CPL)): Unit = {
-            eventPipeline.become(newPipeline._1)
-            commandPipeline.become(newPipeline._2)
+          def become(newPipeline: Pipelines): Unit = {
+            eventPipeline.become(newPipeline.eventPipeline)
+            commandPipeline.become(newPipeline.commandPipeline)
           }
         }
     }
