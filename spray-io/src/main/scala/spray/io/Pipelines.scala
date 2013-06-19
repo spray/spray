@@ -39,6 +39,25 @@ object Pipelines {
   }
 }
 
+trait DynamicPipelines extends Pipelines {
+  def initialPipeline: Pipelines
+  private[this] var _cpl: Pipeline[Command] = _
+  private[this] var _epl: Pipeline[Event] = _
+
+  def commandPipeline = {
+    if (_cpl eq null) become(initialPipeline)
+    cmd ⇒ _cpl(cmd)
+  }
+  def eventPipeline = {
+    if (_epl eq null) become(initialPipeline)
+    event ⇒ _epl(event)
+  }
+  def become(newPipes: Pipelines): Unit = {
+    _cpl = newPipes.commandPipeline
+    _epl = newPipes.eventPipeline
+  }
+}
+
 trait DynamicCommandPipeline { this: Pipelines ⇒
   def initialCommandPipeline: Pipeline[Command]
   private[this] var _cpl: SwitchableCommandPipeline = _
