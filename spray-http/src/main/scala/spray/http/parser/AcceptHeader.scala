@@ -17,6 +17,7 @@
 package spray.http
 package parser
 
+import scala.annotation.tailrec
 import org.parboiled.scala._
 import BasicRules._
 
@@ -24,29 +25,33 @@ private[parser] trait AcceptHeader {
   this: Parser with ProtocolParameterRules with CommonActions ⇒
 
   def `*Accept` = rule(
-    zeroOrMore(MediaRangeDecl ~ optional(AcceptParams), separator = ListSep) ~ EOI ~~> (HttpHeaders.Accept(_)))
+    zeroOrMore(MediaRangeDecl, separator = ListSep) ~ EOI ~~> (HttpHeaders.Accept(_)))
 
   def MediaRangeDecl = rule {
-    MediaRangeDef ~ zeroOrMore(";" ~ Parameter ~ DROP) // TODO: support parameters    
+    MediaRangeDef ~ zeroOrMore(";" ~ Parameter) ~~> { (main, sub, params) ⇒
+      // we don't support q values yet and don't want them to cause creation of custom MediaTypes every time
+      // we see them, so we filter them out of the parameter list here
+      @tailrec def toNonQValueMap(remaining: List[(String, String)],
+                                  builder: StringMapBuilder = null): Map[String, String] =
+        remaining match {
+          case Nil              ⇒ if (builder eq null) Map.empty else builder.result()
+          case ("q", _) :: tail ⇒ toNonQValueMap(tail, builder)
+          case kvp :: tail ⇒
+            val b = if (builder eq null) Map.newBuilder[String, String] else builder
+            b += kvp
+            toNonQValueMap(tail, b)
+        }
+
+      if (sub == "*") {
+        val mainLower = main.toLowerCase
+        val parameters = toNonQValueMap(params)
+        if (parameters.isEmpty) MediaRanges.getForKey(mainLower) getOrElse MediaRange.custom(mainLower)
+        else MediaRange.custom(mainLower, parameters)
+      } else getMediaType(main, sub, parameters = toNonQValueMap(params))
+    }
   }
 
-  def MediaRangeDef = rule(
-    ("*/*" ~ push("*", "*") | Type ~ "/" ~ ("*" ~ push("*") | Subtype) | "*" ~ push("*", "*"))
-      ~~> (getMediaRange(_, _)))
-
-  def AcceptParams = rule {
-    ";" ~ "q" ~ "=" ~ QValue ~ zeroOrMore(AcceptExtension) // TODO: support qvalues
+  def MediaRangeDef = rule {
+    "*/*" ~ push("*", "*") | Type ~ "/" ~ ("*" ~ push("*") | Subtype) | "*" ~ push("*", "*")
   }
-
-  def AcceptExtension = rule {
-    ";" ~ Token ~ optional("=" ~ (Token | QuotedString)) ~ DROP2 // TODO: support extensions
-  }
-
-  // helpers
-
-  def getMediaRange(mainType: String, subType: String): MediaRange =
-    if (subType == "*") {
-      val mainTypeLower = mainType.toLowerCase
-      MediaRanges.getForKey(mainTypeLower) getOrElse MediaRanges.custom(mainTypeLower)
-    } else getMediaType(mainType, subType)
 }
