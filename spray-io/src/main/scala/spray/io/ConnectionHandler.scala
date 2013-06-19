@@ -28,7 +28,7 @@ trait ConnectionHandler extends Actor with SprayActorLogging {
     case x: Tcp.Write ⇒ tcpConnection ! x
     case Pipeline.Tell(receiver, msg, sender) ⇒ receiver.tell(msg, sender)
     case x: Tcp.CloseCommand ⇒ tcpConnection ! x
-    case x @ (Tcp.SuspendReading | Tcp.ResumeReading) ⇒ tcpConnection ! x
+    case x @ (Tcp.SuspendReading | Tcp.ResumeReading | Tcp.ResumeWriting) ⇒ tcpConnection ! x
     case _: Droppable ⇒ // don't warn
     case cmd ⇒ log.warning("command pipeline: dropped {}", cmd)
   }

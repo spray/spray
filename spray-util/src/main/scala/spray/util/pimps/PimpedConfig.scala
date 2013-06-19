@@ -26,4 +26,8 @@ class PimpedConfig(underlying: Config) {
     case x          ⇒ Duration(x)
   }
 
+  def getPossiblyInfiniteInt(path: String) = underlying.getString(path) match {
+    case "infinite" ⇒ Int.MaxValue
+    case x          ⇒ underlying.getInt(path)
+  }
 }

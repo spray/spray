@@ -201,6 +201,7 @@ private[can] object HttpServerConnection {
       ResponseRendering(settings) >>
       (reapingCycle.isFinite && idleTimeout.isFinite) ? ConnectionTimeouts(idleTimeout) >>
       sslEncryption ? SslTlsSupport >>
-      (reapingCycle.isFinite && (idleTimeout.isFinite || requestTimeout.isFinite)) ? TickGenerator(reapingCycle)
+      (reapingCycle.isFinite && (idleTimeout.isFinite || requestTimeout.isFinite)) ? TickGenerator(reapingCycle) >>
+      backpressureSettings.isDefined ? BackPressureHandling(backpressureSettings.get.noAckRate, backpressureSettings.get.readingLowWatermark)
   }
 }

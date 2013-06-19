@@ -22,19 +22,23 @@ import org.parboiled.errors.ParsingException
 
 private[parser] trait CommonActions {
 
-  def getMediaType(mainType: String, subType: String, boundary: String = ""): MediaType = {
+  type StringMapBuilder = scala.collection.mutable.Builder[(String, String), Map[String, String]]
+
+  def getMediaType(mainType: String, subType: String, boundary: String = "",
+                   parameters: Map[String, String] = Map.empty): MediaType = {
     mainType.toLowerCase match {
       case "multipart" ⇒ subType.toLowerCase match {
-        case "mixed"       ⇒ new `multipart/mixed`(boundary)
-        case "alternative" ⇒ new `multipart/alternative`(boundary)
-        case "related"     ⇒ new `multipart/related`(boundary)
-        case "form-data"   ⇒ new `multipart/form-data`(boundary)
-        case "signed"      ⇒ new `multipart/signed`(boundary)
-        case "encrypted"   ⇒ new `multipart/encrypted`(boundary)
-        case custom        ⇒ new MultipartMediaType(custom, boundary)
+        case "mixed"       ⇒ new `multipart/mixed`(boundary, parameters)
+        case "alternative" ⇒ new `multipart/alternative`(boundary, parameters)
+        case "related"     ⇒ new `multipart/related`(boundary, parameters)
+        case "form-data"   ⇒ new `multipart/form-data`(boundary, parameters)
+        case "signed"      ⇒ new `multipart/signed`(boundary, parameters)
+        case "encrypted"   ⇒ new `multipart/encrypted`(boundary, parameters)
+        case custom        ⇒ new MultipartMediaType(custom, boundary, parameters)
       }
       case mainLower ⇒
-        MediaTypes.getForKey((mainLower, subType.toLowerCase)) getOrElse MediaType.custom(mainType, subType)
+        val registered = if (parameters.isEmpty) MediaTypes.getForKey((mainLower, subType.toLowerCase)) else None
+        registered getOrElse MediaType.custom(mainType, subType, parameters = parameters)
     }
   }
 

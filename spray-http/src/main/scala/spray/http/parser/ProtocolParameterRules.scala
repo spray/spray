@@ -108,8 +108,8 @@ private[parser] trait ProtocolParameterRules {
 
   /* 3.7 Media Types */
 
-  def MediaTypeDef: Rule3[String, String, Map[String, String]] = rule {
-    Type ~ "/" ~ Subtype ~ zeroOrMore(";" ~ Parameter) ~~> (_.toMap)
+  def MediaTypeDef: Rule3[String, String, List[(String, String)]] = rule {
+    Type ~ "/" ~ Subtype ~ zeroOrMore(";" ~ Parameter)
   }
 
   def Type = rule { Token }
