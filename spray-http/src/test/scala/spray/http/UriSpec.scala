@@ -240,7 +240,8 @@ class UriSpec extends Specification {
     }
     "be parsed and rendered correctly in relaxed-with-raw-query mode" in {
       val test = parser(Uri.ParsingMode.RelaxedWithRawQuery)
-      test("a^=b&c").toString === "a%5E%3Db%26c"
+      test("a^=b&c").toString === "a^=b&c"
+      test("a%2Fb") === Uri.Query.Raw("a%2Fb")
     }
     "properly support the retrieval interface" in {
       val query = Query("a=1&b=2&c=3&b=4&b")
