@@ -354,7 +354,27 @@ class BackPressureHandlingSpec extends Specification with Specs2PipelineStageTes
 
       events.expectNoMsg()
     }
+    "don't report Ack on the pipeline when Write after successful Ack fails" in new Fixture(stage) {
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(0))
 
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(1))
+
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(2))
+
+      connectionActor ! write
+      commands.expectMsg(AckedWrite(3))
+
+      connectionActor ! write
+      commands.expectMsg(NoAckedWrite(4))
+
+      connectionActor ! Tcp.CommandFailed(NoAckedWrite(4))
+      connectionActor ! ack(3)
+
+      events.expectNoMsg()
+    }
     // FIXME: these cases are not yet handled
     "what happens if WriteFile fails" in pending
   }

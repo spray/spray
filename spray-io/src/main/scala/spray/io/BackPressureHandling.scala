@@ -76,7 +76,7 @@ object BackPressureHandling {
 
               // go into buffering mode
               commandPL(Tcp.ResumeWriting)
-              become(buffering(out, isReading, closeCommand))
+              become(buffering(out, idx, isReading, closeCommand))
             }
             def isClosing = closeCommand.isDefined
 
@@ -128,12 +128,12 @@ object BackPressureHandling {
            * The state where writing is suspended and we are waiting for WritingResumed. Reading will be suspended
            * if it currently isn't and if the connection isn't already going to be closed.
            */
-          def buffering(out: OutQueue, isReading: Boolean, closeCommand: Option[CloseCommand]): Pipelines = {
+          def buffering(out: OutQueue, failedSeq: Int, isReading: Boolean, closeCommand: Option[CloseCommand]): Pipelines = {
             def isClosing = closeCommand.isDefined
 
             if (!isClosing && isReading) {
               commandPL(Tcp.SuspendReading)
-              buffering(out, isReading = false, closeCommand)
+              buffering(out, failedSeq, isReading = false, closeCommand)
             } else new Pipelines {
               def commandPipeline = {
                 case w: Tcp.Write ⇒
@@ -147,7 +147,7 @@ object BackPressureHandling {
                     // because by definition more data read can't lead to more traffic on the
                     // writing side once the writing side was closed
                     if (!isReading) commandPL(Tcp.ResumeReading)
-                    become(buffering(out, true, Some(c)))
+                    become(buffering(out, failedSeq, isReading = true, Some(c)))
                   }
                 case c ⇒ commandPL(c)
               }
@@ -166,8 +166,13 @@ object BackPressureHandling {
                   // otherwise, if we are closing we replay the close as well
                   else effective.commandPipeline(closeCommand.get)
 
-                case Tcp.CommandFailed(_: Tcp.Write) ⇒ // drop this, this is expected
-                case e                               ⇒ eventPL(e)
+                case Tcp.CommandFailed(_: Tcp.Write)  ⇒ // Drop. This is expected.
+                case Ack(seq) if seq == failedSeq - 1 ⇒
+                // Ignore. This is expected since if the last successful write was an
+                // ack'd one and the next one fails (because of the ack'd one still being in the queue)
+                // the CommandFailed will be received before the Ack
+                case Ack(seq)                         ⇒ log.warning(s"Unexpected Ack($seq) in buffering mode. length: ${out.queueLength} head: ${out.headSequenceNo}")
+                case e                                ⇒ eventPL(e)
               }
             }
           }
