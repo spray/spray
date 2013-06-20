@@ -22,6 +22,7 @@ import akka.actor.{ ActorRef, Status, ActorSystem }
 import akka.io.IO
 import akka.testkit.TestProbe
 import spray.can.Http
+import spray.io.ClientSSLEngineProvider
 import spray.util.Utils._
 import spray.httpx.RequestBuilding._
 import spray.http._
@@ -141,6 +142,26 @@ class SprayCanClientSpec extends Specification {
       serverB.expectMsg(Http.PeerClosed)
       probe.expectMsg(Http.ClosedAll)
     }
+
+    "support usage of custom SSLEngines" in new TestSetup {
+      @volatile var customProviderUsed = false
+      implicit val customEngineProvider = ClientSSLEngineProvider.fromFunc { pc ⇒
+        customProviderUsed = true
+        val default = ClientSSLEngineProvider.default
+        default(pc)
+      }
+
+      val probe = TestProbe()
+      probe.send(IO(Http), Http.HostConnectorSetup(hostname, port, true))
+      val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
+      probe.sender === hostConnector
+      probe.reply(Get("/"))
+      probe.expectMsgType[Any]
+
+      customProviderUsed === true
+
+      closeHostConnector(hostConnector)
+    }
   }
 
   "The request-level client infrastructure" should {
@@ -215,7 +236,7 @@ class SprayCanClientSpec extends Specification {
       probe.expectMsg(Http.Unbound)
     }
 
-    def sendViaHostConnector(request: HttpRequest): (TestProbe, ActorRef) = {
+    def sendViaHostConnector(request: HttpRequest)(implicit sslEngineProvider: ClientSSLEngineProvider): (TestProbe, ActorRef) = {
       val probe = TestProbe()
       probe.send(IO(Http), Http.HostConnectorSetup(hostname, port))
       val Http.HostConnectorInfo(hostConnector, _) = probe.expectMsgType[Http.HostConnectorInfo]
