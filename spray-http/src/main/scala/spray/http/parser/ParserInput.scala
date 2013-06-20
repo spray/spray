@@ -34,13 +34,13 @@ object ParserInput {
     new ParserInput {
       def charAt(ix: Int) = bytes(ix).toChar
       def length = bytes.length
-      def sliceString(start: Int, end: Int) = new String(bytes, start, end - start, charset)
+      def sliceString(start: Int, end: Int) = if (end > start) new String(bytes, start, end - start, charset) else ""
     }
   implicit def apply(string: String): ParserInput =
     new ParserInput {
       def charAt(ix: Int) = string.charAt(ix)
       def length = string.length
-      def sliceString(start: Int, end: Int) = string.substring(start, end)
+      def sliceString(start: Int, end: Int) = if (end > start) string.substring(start, end) else ""
     }
   implicit def apply(chars: Array[Char]): ParserInput = apply(new String(chars))
 }
