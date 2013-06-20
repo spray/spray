@@ -400,6 +400,7 @@ object Uri {
       with ToStringRenderable {
     def key: String
     def value: String
+    def isRaw: Boolean
     def +:(kvp: (String, String)) = Query.Cons(kvp._1, kvp._2, this)
     def get(key: String): Option[String] = {
       @tailrec def g(q: Query): Option[String] = if (q.isEmpty) None else if (q.key == key) Some(q.value) else g(q.tail)
@@ -421,15 +422,17 @@ object Uri {
     }
     def render[R <: Rendering](r: R): r.type = render(r, UTF8)
     def render[R <: Rendering](r: R, charset: Charset): r.type = {
-      def enc(r: Rendering, s: String): r.type =
-        encode(r, s, charset, QUERY_FRAGMENT_CHAR & ~(AMP | EQUAL | PLUS), replaceSpaces = true)
+      def enc(s: String): Unit = encode(r, s, charset, QUERY_FRAGMENT_CHAR & ~(AMP | EQUAL | PLUS), replaceSpaces = true)
       @tailrec def append(q: Query): r.type =
-        if (!q.isEmpty) {
-          if (q ne this) r ~~ '&'
-          enc(r, q.key)
-          if (!q.value.isEmpty) enc(r ~~ '=', q.value)
-          append(q.tail)
-        } else r
+        q match {
+          case Query.Empty ⇒ r
+          case Query.Cons(key, value, tail) ⇒
+            if (q ne this) r ~~ '&'
+            enc(key)
+            if (!value.isEmpty) { r ~~ '='; enc(value) }
+            append(tail)
+          case Query.Raw(value) ⇒ r ~~ value
+        }
       append(this)
     }
     override def newBuilder: mutable.Builder[(String, String), Query] = Query.newBuilder
@@ -466,13 +469,22 @@ object Uri {
     case object Empty extends Query {
       def key = throw new NoSuchElementException("key of empty path")
       def value = throw new NoSuchElementException("value of empty path")
+      def isRaw = true
       override def isEmpty = true
       override def head = throw new NoSuchElementException("head of empty list")
       override def tail = throw new UnsupportedOperationException("tail of empty query")
     }
     case class Cons(key: String, value: String, override val tail: Query) extends Query {
+      def isRaw = false
       override def isEmpty = false
       override def head = (key, value)
+    }
+    case class Raw(value: String) extends Query {
+      def key = ""
+      def isRaw = true
+      override def isEmpty = false
+      override def head = ("", value)
+      override def tail = Empty
     }
   }
 
