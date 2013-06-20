@@ -77,14 +77,22 @@ If you find a bug and would like to report it please go there and create an issu
 If you are unsure, whether the problem you've found really is a bug please ask on the :ref:`Mailing List` first.
 
 
-Patch Policy
-------------
+Contributor License Agreement (CLA)
+-----------------------------------
 
 Contributions to the project, no matter what kind, are always very welcome.
-However, patches can only be accepted from their original author.
+However, we can only accept patches if the patch is your original work and you license your work to the *spray* project
+under the :ref:`project's open source license <license>`. In order the provide a proper legal foundation for this we
+need to ask you to sign `our CLA`_, which is a direct adaptation of the
+`Apache Foundation's Individual Contributor License Agreement V2.0`__.
 
-Along with any patches, please state that the patch is your original work and
-that you license the work to the *spray* project under the :ref:`project's open source license <license>`.
+If you have not already done so, please
+download_, complete and sign a copy of the CLA and then scan and :ref:`email <Contact>` us a PDF file!
+If you prefer you can also snail-mail us the original, please ask for the mailing address.
+
+.. _download: `our CLA`_
+.. _our CLA: /spray.io-CLA.pdf
+__ http://www.apache.org/licenses/icla.txt
 
 
 Pull Requests
@@ -92,7 +100,8 @@ Pull Requests
 
 If you'd like to submit a code contribution please fork the `github repository`_ and `send us pull request`_
 against the ``master`` branch (or the respective release branch, depending on what version your patch is targeting).
-Please keep in mind that we might ask you to go through some iterations of discussion and refinements before merging.
+Please keep in mind that we might ask you to go through some iterations of discussion and refinements before merging and
+that you will need have signed a CLA first!
 
 
 .. _SBT: http://www.scala-sbt.org/
