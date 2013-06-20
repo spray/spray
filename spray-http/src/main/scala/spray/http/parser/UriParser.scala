@@ -306,7 +306,12 @@ private[http] class UriParser(input: ParserInput, charset: Charset, mode: Uri.Pa
       val tail = if (ch('&')) readKVP() else Query.Empty
       Query.Cons(key, value, tail)
     }
-    _query = readKVP()
+    _query =
+      if (mode == Uri.ParsingMode.RelaxedWithRawQuery) {
+        val start = cursor
+        while (is(current, PARSE_QUERY_CHAR)) advance()
+        if (cursor > start) Query.Raw(slice(start, cursor)) else Query.Empty
+      } else readKVP()
     true
   }
 
@@ -450,7 +455,8 @@ private[http] object UriParser {
   final val RESERVED = GEN_DELIM | SUB_DELIM | QUESTIONMARK | COLON | SLASH | HASH | AT
 
   final val OTHER_VCHAR = 0x200000
-  final val VCHAR = OTHER_VCHAR | UNRESERVED | HEX_DIGIT | RESERVED | AT | COLON | SLASH | QUESTIONMARK | DASH | DOT | HASH
+  final val PERCENT = 0x400000
+  final val VCHAR = OTHER_VCHAR | UNRESERVED | HEX_DIGIT | RESERVED | AT | COLON | SLASH | QUESTIONMARK | DASH | DOT | HASH | PERCENT
 
   // FRAGMENT/QUERY and PATH characters have two classes of acceptable characters: one that strictly
   // follows rfc3986, which should be used for rendering urls, and one relaxed, which accepts all visible
@@ -459,9 +465,9 @@ private[http] object UriParser {
   final val QUERY_FRAGMENT_CHAR = UNRESERVED | SUB_DELIM | COLON | AT | SLASH | QUESTIONMARK
   final val PATH_SEGMENT_CHAR = UNRESERVED | SUB_DELIM | COLON | AT
 
-  final val RELAXED_FRAGMENT_CHAR = VCHAR
-  final val RELAXED_PATH_SEGMENT_CHAR = VCHAR & ~(SLASH | QUESTIONMARK | HASH)
-  final val RELAXED_QUERY_CHAR = VCHAR & ~(AMP | EQUAL | HASH)
+  final val RELAXED_FRAGMENT_CHAR = VCHAR & ~PERCENT
+  final val RELAXED_PATH_SEGMENT_CHAR = VCHAR & ~(PERCENT | SLASH | QUESTIONMARK | HASH)
+  final val RELAXED_QUERY_CHAR = VCHAR & ~(PERCENT | AMP | EQUAL | HASH)
   final val RAW_QUERY_CHAR = VCHAR & ~HASH
 
   private[this] val props = new Array[Int](128)
@@ -492,6 +498,7 @@ private[http] object UriParser {
   mark(EQUAL, '=')
   mark(SPACE, ' ')
   mark(HASH, '#')
+  mark(PERCENT, '%')
 
   mark(OTHER_VCHAR, '<', '>', '\\', '^', '`', '{', '|', '}')
 
