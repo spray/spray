@@ -82,8 +82,13 @@ object BackPressureHandling {
 
             def commandPipeline = {
               case _: Tcp.Write if isClosing ⇒ log.warning("Can't process more writes when closing. Dropping...")
-              case a @ Tcp.Abort             ⇒ commandPL(a) // always forward abort
-              case c: Tcp.CloseCommand if out.queue.isEmpty ⇒
+              case w @ Tcp.Write(data, NoAck(noAck)) ⇒
+                if (noAck != null) log.warning(s"BackPressureHandling doesn't support custom NoAcks $noAck")
+
+                commandPL(out.enqueue(w))
+              case w @ Tcp.Write(data, ack) ⇒ commandPL(out.enqueue(w, forceAck = true))
+              case a @ Tcp.Abort            ⇒ commandPL(a) // always forward abort
+              case c: Tcp.CloseCommand if out.queueEmpty ⇒
                 commandPL(c)
                 become(closed())
               case c: Tcp.CloseCommand ⇒
@@ -92,12 +97,8 @@ object BackPressureHandling {
                   commandPL(ProbeForEndOfWriting)
                   become(writeThrough(out, isReading, Some(c)))
                 }
-              case w @ Tcp.Write(data, NoAck(noAck)) ⇒
-                if (noAck != null) log.warning(s"BackPressureHandling doesn't support custom NoAcks $noAck")
 
-                commandPL(out.enqueue(w))
-              case w @ Tcp.Write(data, ack) ⇒ commandPL(out.enqueue(w, forceAck = true))
-              case c                        ⇒ commandPL(c)
+              case c ⇒ commandPL(c)
             }
 
             def eventPipeline = {
@@ -105,7 +106,7 @@ object BackPressureHandling {
                 // dequeue and send out possible user level ack
                 out.dequeue(idx).foreach(eventPL)
 
-                if (!isReading && out.queue.length < lowWatermark) resumeReading()
+                if (!isReading && out.queueLength < lowWatermark) resumeReading()
 
               case Tcp.CommandFailed(Tcp.Write(_, NoAck(seq: Int))) ⇒ writeFailed(seq)
               case Tcp.CommandFailed(Tcp.Write(_, Ack(seq: Int)))   ⇒ writeFailed(seq)
@@ -192,9 +193,12 @@ object BackPressureHandling {
     // the sequence number of the first Write in the buffer
     private[this] var firstSequenceNo = _initialSequenceNo
 
+    private[this] var length = 0
+
     def enqueue(w: Tcp.Write, forceAck: Boolean = false): Tcp.Write = {
-      val seq = firstSequenceNo + buffer.length // is that efficient, otherwise maintain counter
+      val seq = firstSequenceNo + length // is that efficient, otherwise maintain counter
       buffer = buffer.enqueue(w)
+      length += 1
 
       val shouldAck = forceAck || unacked >= ackRate - 1
 
@@ -209,11 +213,13 @@ object BackPressureHandling {
       if (firstSequenceNo < upToSeq) {
         firstSequenceNo += 1
         buffer = buffer.tail
+        length -= 1
         dequeue(upToSeq)
       } else if (firstSequenceNo == upToSeq) { // the last one may contain an ack to send
         firstSequenceNo += 1
         val front = buffer.front
         buffer = buffer.tail
+        length -= 1
 
         if (front.wantsAck) Some(front.ack)
         else None
@@ -221,7 +227,9 @@ object BackPressureHandling {
       else throw new IllegalStateException(s"Shouldn't get here, $firstSequenceNo > $upToSeq")
 
     def queue: Queue[Tcp.Write] = buffer
+    def queueEmpty: Boolean = length == 0
+    def queueLength: Int = length
     def headSequenceNo = firstSequenceNo
-    def nextSequenceNo = firstSequenceNo + buffer.length
+    def nextSequenceNo = firstSequenceNo + length
   }
 }
