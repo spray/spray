@@ -158,6 +158,20 @@ trait PathMatchers {
   import PathMatcher._
 
   /**
+   * Converts a path string containing slashes into a PathMatcher that interprets slashes as
+   * path segment separators.
+   */
+  def separateOnSlashes(string: String): PathMatcher0 = {
+    @tailrec def split(ix: Int = 0, matcher: PathMatcher0 = null): PathMatcher0 = {
+      val nextIx = string.indexOf('/', ix)
+      def append(m: PathMatcher0) = if (matcher eq null) m else matcher / m
+      if (nextIx < 0) append(string.substring(ix))
+      else split(nextIx + 1, append(string.substring(ix, nextIx)))
+    }
+    split()
+  }
+
+  /**
    * A PathMatcher that matches a single slash character ('/').
    * Also matches at the very end of the requests URI path if no slash is present.
    */

@@ -261,6 +261,20 @@ class PathDirectivesSpec extends RoutingSpec {
     }
   }
 
+  "The `separateOnSlashes` creator" should {
+    "properly match several path segments" in {
+      Get("/a/b") ~> path(separateOnSlashes("a/b")) { completeOk } ~> check { response === Ok }
+      Get("/a/b") ~> path(separateOnSlashes("a/b/")) { completeOk } ~> check { response === Ok }
+    }
+    "properly match several a single segment" in {
+      Get("/abc") ~> path(separateOnSlashes("abc")) { completeOk } ~> check { response === Ok }
+    }
+    "not match on mismatching path segments" in {
+      Get("/abc/def/ghi") ~> path(separateOnSlashes("abc/def/ghj")) { completeOk } ~> check { handled === false }
+      Get("/abc/def/ghi") ~> path(separateOnSlashes("/abc/def/ghi")) { completeOk } ~> check { handled === false }
+    }
+  }
+
   "The `pathPrefixTest` directive" should {
     "match uris without consuming them" in {
       Get("/a") ~> {
