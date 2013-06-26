@@ -79,6 +79,7 @@ object Build extends Build with DocSupport {
       sprayIO) // for access to akka.io.Tcp, can go away after upgrade to Akka 2.2
     .settings(sprayModuleSettings: _*)
     .settings(osgiSettings(exports = Seq("spray.httpx"), imports = Seq(
+      "spray.json.*;resolution := optional",
       "net.liftweb.*;resolution := optional",
       "org.json4s.*;resolution := optional",
       "twirl.*;resolution := optional"
